@@ -12,6 +12,12 @@
   // Eagerly pre-fetch the official KB so it's ready when user clicks "Getting Started"
   preloadOfficialKb();
 
+  // Start Kokoro TTS download after a short delay so the page renders fast
+  // but the model is pre-loading while the user reads the landing page
+  if (typeof window !== 'undefined') {
+    setTimeout(() => kokoro.warmup(), 3000);
+  }
+
   let loadingTemplate = $state<string | null>(null);
   let loadingDocs = $state(false);
   let loadingExample = $state<string | null>(null);

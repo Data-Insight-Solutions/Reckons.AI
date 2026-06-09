@@ -340,78 +340,78 @@ story:Intro
     rdf:type            story:Step ;
     story:partOf        story:ReckonsPhilosophy ;
     story:order         "1" ;
-    story:title         "Your Knowledge, Your Power" ;
-    story:content       "Every day you accumulate knowledge: conversations, documents, decisions, research, correspondence. But that knowledge is scattered across emails, notes, PDFs, and your memory. Reckons.AI gives you a single, structured, portable place to capture it all -- and tools to USE it when it matters." ;
+    story:title         "Spot What's New Instantly" ;
+    story:content       "You receive a revised contract, an updated policy, a new report. What actually changed? Reckons.AI compares any document against your personal knowledge base and shows you exactly what is new, what conflicts, and what you already know. No more re-reading entire documents to find the three sentences that matter." ;
     story:highlight     guide:WhatIsReckonsAI ;
-    story:prompt        "Explain why scattered knowledge is a problem and how structured knowledge helps." ;
-    story:question      "Have you ever wished you could instantly recall every detail from an important document?" .
+    story:prompt        "Explain how the semantic diff works and why it saves time versus manual comparison." ;
+    story:question      "Have you ever re-read a long document just to find what changed?" .
 
 story:TriplesPower
     rdf:type            story:Step ;
     story:partOf        story:ReckonsPhilosophy ;
     story:order         "2" ;
-    story:title         "Everything Is a Triple" ;
-    story:content       "The secret is the **semantic triple**: subject - predicate - object. 'Alice worksAt AcmeCorp'. 'Policy covers water-damage'. 'Contract expires July-1st'. Every fact breaks down into this atomic form. Triples connect to form a graph -- and graphs reveal relationships that documents hide." ;
+    story:title         "Your Personal Context" ;
+    story:content       "Every fact you confirm becomes part of YOUR knowledge graph. 'Policy covers water-damage'. 'Contract expires July 1st'. 'Landlord agreed to repairs on March 5th'. This is your personal context -- structured, searchable, and portable. When new information arrives, it is compared against what you already know." ;
     story:highlight     arch:SubjectPredicateObject ;
-    story:prompt        "Give more examples of real-world facts expressed as triples. Show how they connect." ;
-    story:question      "Can you think of a fact from your own life that would be useful as a triple?" .
+    story:prompt        "Give examples of personal facts as triples and how they connect to reveal insights." ;
+    story:question      "What facts from your own life would be most useful to have structured?" .
 
 story:PlainText
     rdf:type            story:Step ;
     story:partOf        story:ReckonsPhilosophy ;
     story:order         "3" ;
-    story:title         "Plain Text Outlasts Everything" ;
-    story:content       "Your knowledge base exports as a **.ttl file** -- plain text, human-readable, no proprietary format. You can open it in any text editor, diff it with git, email it, or print it. When apps shut down and formats die, your .ttl file will still work. It is the most durable way to store knowledge." ;
+    story:title         "Plain Text You Own" ;
+    story:content       "Your knowledge exports as a .ttl file -- plain text you can open in any editor, diff with git, or email. No vendor lock-in. When apps shut down, your knowledge survives." ;
     story:highlight     arch:PlainTextPortability ;
-    story:prompt        "Compare .ttl portability to proprietary note-taking apps. Explain why plain text survives." .
+    story:prompt        "Compare .ttl portability to proprietary note-taking apps." .
 
 story:WhatLLMsReally
     rdf:type            story:Step ;
     story:partOf        story:ReckonsPhilosophy ;
     story:order         "4" ;
-    story:title         "What 'AI' Actually Is" ;
-    story:content       "The language models people call 'AI' are **trained statistical models** built with human knowledge at every level. Humans wrote the training data, designed the architecture, and aligned the outputs. These models are powerful tools, but they are tools -- not thinkers. They predict likely text based on patterns. They can hallucinate confidently. That is why YOUR review matters." ;
+    story:title         "AI Tools, Your Review" ;
+    story:content       "Language models extract facts from documents, but they can hallucinate. That is why every extracted triple goes through YOUR review. You confirm, reject, or refine. The model does the heavy lifting; you keep it honest." ;
     story:highlight     llm:WhatLLMsAre ;
-    story:prompt        "Explain honestly what LLMs can and cannot do. Be specific about hallucination." ;
-    story:question      "Does knowing this change how you think about using AI tools?" .
+    story:prompt        "Explain what LLMs can and cannot do, and why human review matters." ;
+    story:question      "Does knowing this change how you think about AI tools?" .
 
 story:KBAccuracy
     rdf:type            story:Step ;
     story:partOf        story:ReckonsPhilosophy ;
     story:order         "5" ;
     story:title         "Your KB Makes AI Accurate" ;
-    story:content       "Here is the game-changer: when an LLM has access to YOUR reviewed knowledge base, its outputs become dramatically more accurate. Instead of guessing from training data, it retrieves YOUR confirmed facts. This is called **retrieval-augmented generation** -- and the quality of the retrieval source is everything. Your curated KB is the best source possible." ;
+    story:content       "When an LLM retrieves from YOUR reviewed knowledge base, its answers become dramatically more accurate. Instead of guessing from training data, it cites your confirmed facts. Your curated KB is the best possible source." ;
     story:highlight     llm:KBGroundedAccuracy ;
-    story:prompt        "Explain RAG and why a curated personal KB is better than generic training data." .
+    story:prompt        "Explain retrieval-augmented generation and why a curated personal KB outperforms generic data." .
 
 story:StandingUp
     rdf:type            story:Step ;
     story:partOf        story:ReckonsPhilosophy ;
     story:order         "6" ;
     story:title         "Level the Playing Field" ;
-    story:content       "Insurance companies have teams of analysts. Corporations have legal departments. Landlords have property managers. You have... your memory and a stack of papers? Not anymore. Build a KB of your policy terms, correspondence, rights, and evidence. Ask Shelly to draft a precise response citing YOUR documented facts. You communicate with the authority of an institution, but it is just you and your knowledge." ;
+    story:content       "Corporations have analysts and legal teams. You have your memory and a stack of papers. Not anymore. Build a KB of your policy terms, correspondence, and evidence. Ask Shelly to draft a response citing your documented facts. You communicate with the authority of an institution -- using your own knowledge." ;
     story:highlight     use:PersonalEmpowerment ;
-    story:prompt        "Give specific examples of using a KB for insurance claims, legal disputes, or corporate pushback." ;
-    story:question      "Is there a situation in your life where having organized, citable evidence would help?" .
+    story:prompt        "Give examples of using a KB for insurance claims, disputes, or corporate pushback." ;
+    story:question      "Is there a situation where having organized, citable evidence would help?" .
 
 story:HowItWorks
     rdf:type            story:Step ;
     story:partOf        story:ReckonsPhilosophy ;
     story:order         "7" ;
     story:title         "The Workflow" ;
-    story:content       "1. **Ingest** -- paste text, upload documents, import calendars\n2. **Review** -- the LLM extracts triples, you confirm or reject each one\n3. **Explore** -- navigate your 3D knowledge graph, find connections\n4. **Ask Shelly** -- get answers grounded in your confirmed facts\n5. **Share** -- export your .ttl and share your knowledge" ;
+    story:content       "Ingest a document. The LLM extracts facts as triples. You review and confirm them. Explore connections in your graph. Ask Shelly questions grounded in your knowledge. Export and share your .ttl file." ;
     story:highlight     arch:ReviewWorkflow ;
-    story:prompt        "Walk through each step in more detail. Explain the human-in-the-loop review." .
+    story:prompt        "Walk through each workflow step in detail." .
 
 story:GetStarted
     rdf:type            story:Step ;
     story:partOf        story:ReckonsPhilosophy ;
     story:order         "8" ;
     story:title         "Start Building" ;
-    story:content       "Your knowledge graph starts with one fact. Ingest a document you care about. Review the triples. Confirm the accurate ones. That is it -- your KB grows with every source you add. Over time, connections emerge that you never would have seen reading documents linearly. Your knowledge becomes a living, queryable, shareable graph." ;
+    story:content       "Your graph starts with one document. Ingest something you care about, review the triples, confirm the accurate ones. Every source you add reveals connections you would never see reading linearly." ;
     story:highlight     tip:StartSmall ;
-    story:prompt        "Suggest concrete first steps. What should someone ingest first?" ;
-    story:question      "Ready to add your first piece of knowledge?" .
+    story:prompt        "Suggest concrete first steps for building a personal knowledge base." ;
+    story:question      "Ready to add your first document?" .
 
 
 ## =============================================================================
