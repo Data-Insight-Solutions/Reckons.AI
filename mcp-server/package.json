@@ -1,0 +1,25 @@
+{
+  "name": "reckons-ai-mcp",
+  "version": "0.1.0",
+  "description": "MCP server exposing a Reckons.AI knowledge base to AI agents",
+  "type": "module",
+  "bin": {
+    "reckons-mcp": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "n3": "^1.21.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/n3": "^1.21.3",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,160 @@
+## ─────────────────────────────────────────────────────────────────────────────
+## Reckons.AI — Quick-Start Knowledge Base
+## ─────────────────────────────────────────────────────────────────────────────
+## A minimal KB with example triples about RDF, your first project, and common
+## patterns. Import this to see how a real knowledge graph looks and works.
+## ─────────────────────────────────────────────────────────────────────────────
+
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix foaf:   <http://xmlns.com/foaf/0.1/> .
+@prefix dc:     <http://purl.org/dc/terms/> .
+@prefix kb:     <urn:kbase:concept/> .
+@prefix pred:   <urn:kbase:predicate/> .
+
+
+## ═════════════════════════════════════════════════════════════════════════════
+## SECTION 1: People and relationships
+## ═════════════════════════════════════════════════════════════════════════════
+
+kb:Alice
+    rdf:type        foaf:Person ;
+    rdfs:label      "Alice" ;
+    foaf:name       "Alice Chen" ;
+    pred:role       "lead engineer" ;
+    pred:worksAt    kb:AcmeCorp ;
+    pred:knows      kb:Bob , kb:Carol .
+
+kb:Bob
+    rdf:type        foaf:Person ;
+    rdfs:label      "Bob" ;
+    foaf:name       "Bob Martinez" ;
+    pred:role       "product manager" ;
+    pred:worksAt    kb:AcmeCorp ;
+    pred:knows      kb:Alice .
+
+kb:Carol
+    rdf:type        foaf:Person ;
+    rdfs:label      "Carol" ;
+    foaf:name       "Carol Okafor" ;
+    pred:role       "data scientist" ;
+    pred:worksAt    kb:AcmeCorp ;
+    pred:knows      kb:Alice .
+
+kb:AcmeCorp
+    rdf:type        foaf:Organization ;
+    rdfs:label      "Acme Corp" ;
+    pred:industry   "technology" ;
+    pred:founded    "2018"^^xsd:gYear ;
+    pred:teamSize   "42"^^xsd:integer .
+
+
+## ═════════════════════════════════════════════════════════════════════════════
+## SECTION 2: A project with deadlines and dependencies
+## ═════════════════════════════════════════════════════════════════════════════
+
+kb:ProjectPhoenix
+    rdf:type            skos:Concept ;
+    rdfs:label          "Project Phoenix" ;
+    pred:status         "in-progress" ;
+    pred:deadline       "2026-09-15"^^xsd:date ;
+    pred:lead           kb:Alice ;
+    pred:stakeholder    kb:Bob ;
+    pred:dependsOn      kb:DataPipeline ;
+    dc:description      "Rebuild the recommendation engine with real-time signals. Target: 15% lift in conversion by Q4." .
+
+kb:DataPipeline
+    rdf:type            skos:Concept ;
+    rdfs:label          "Data Pipeline v2" ;
+    pred:status         "blocked" ;
+    pred:blockedBy      kb:VendorContract ;
+    pred:owner          kb:Carol ;
+    dc:description      "Streaming pipeline replacing the nightly batch ETL. Depends on new vendor data feed." .
+
+kb:VendorContract
+    rdf:type            skos:Concept ;
+    rdfs:label          "Vendor Contract Renewal" ;
+    pred:status         "pending-legal" ;
+    pred:deadline       "2026-07-01"^^xsd:date ;
+    pred:owner          kb:Bob .
+
+
+## ═════════════════════════════════════════════════════════════════════════════
+## SECTION 3: Research notes with sources
+## ═════════════════════════════════════════════════════════════════════════════
+
+kb:RecommendationSystems
+    rdf:type            skos:Concept ;
+    rdfs:label          "Recommendation Systems" ;
+    skos:definition     "Algorithms that predict user preferences based on past behavior, content features, or collaborative filtering." ;
+    skos:related        kb:ProjectPhoenix .
+
+kb:CollaborativeFiltering
+    rdf:type            skos:Concept ;
+    rdfs:label          "Collaborative Filtering" ;
+    skos:definition     "Recommendation approach using user-item interaction patterns. Effective when interaction data is abundant." ;
+    skos:broader        kb:RecommendationSystems ;
+    pred:strength       "works well with sparse item features" ;
+    pred:weakness       "cold-start problem for new users/items" .
+
+kb:ContentBasedFiltering
+    rdf:type            skos:Concept ;
+    rdfs:label          "Content-Based Filtering" ;
+    skos:definition     "Recommendations based on item attributes and user profile matching. No cold-start for items, but requires good feature engineering." ;
+    skos:broader        kb:RecommendationSystems ;
+    pred:strength       "no cold-start for new items" ;
+    pred:weakness       "limited serendipity — only finds similar items" .
+
+kb:HybridApproach
+    rdf:type            skos:Concept ;
+    rdfs:label          "Hybrid Recommendation" ;
+    skos:definition     "Combining collaborative and content-based methods to get the benefits of both." ;
+    skos:broader        kb:RecommendationSystems ;
+    skos:related        kb:CollaborativeFiltering ;
+    skos:related        kb:ContentBasedFiltering ;
+    pred:adoptedBy      kb:ProjectPhoenix .
+
+
+## ═════════════════════════════════════════════════════════════════════════════
+## SECTION 4: Decisions and their rationale
+## ═════════════════════════════════════════════════════════════════════════════
+
+kb:Decision-UseHybrid
+    rdf:type            skos:Concept ;
+    rdfs:label          "Decision: Use Hybrid Approach" ;
+    pred:decidedBy      kb:Alice ;
+    pred:decidedOn      "2026-05-20"^^xsd:date ;
+    pred:rationale      "Cold-start is our biggest problem (30% of users are new monthly). Hybrid model handles both new and returning users." ;
+    pred:implements     kb:HybridApproach ;
+    pred:supports       kb:ProjectPhoenix .
+
+kb:Decision-StreamingArch
+    rdf:type            skos:Concept ;
+    rdfs:label          "Decision: Move to Streaming" ;
+    pred:decidedBy      kb:Carol ;
+    pred:decidedOn      "2026-04-10"^^xsd:date ;
+    pred:rationale      "Batch ETL has 24h latency. Real-time signals improve recommendation freshness by estimated 40%." ;
+    pred:supports       kb:DataPipeline .
+
+
+## ═════════════════════════════════════════════════════════════════════════════
+## SECTION 5: Metrics and measurements
+## ═════════════════════════════════════════════════════════════════════════════
+
+kb:Q2-ConversionRate
+    rdf:type            skos:Concept ;
+    rdfs:label          "Q2 2026 Conversion Rate" ;
+    pred:value          "3.2%"^^xsd:string ;
+    pred:target         "3.7%"^^xsd:string ;
+    pred:measuredAt     "2026-06-01"^^xsd:date ;
+    pred:relatedTo      kb:ProjectPhoenix .
+
+kb:Q1-ConversionRate
+    rdf:type            skos:Concept ;
+    rdfs:label          "Q1 2026 Conversion Rate" ;
+    pred:value          "2.8%"^^xsd:string ;
+    pred:measuredAt     "2026-03-31"^^xsd:date ;
+    pred:trend          "up 14% from Q4 2025" ;
+    pred:relatedTo      kb:ProjectPhoenix .

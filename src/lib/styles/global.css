@@ -1,0 +1,355 @@
+/* ── Self-hosted fonts (Fontshare) ──────────────────────────────────────── */
+
+@font-face {
+  font-family: 'Bespoke Stencil';
+  src: url('/fonts/bespoke-stencil/BespokeStencil-Variable.woff2') format('woff2'),
+       url('/fonts/bespoke-stencil/BespokeStencil-Variable.woff') format('woff');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Bespoke Stencil';
+  src: url('/fonts/bespoke-stencil/BespokeStencil-VariableItalic.woff2') format('woff2'),
+       url('/fonts/bespoke-stencil/BespokeStencil-VariableItalic.woff') format('woff');
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Supreme';
+  src: url('/fonts/supreme/Supreme-Variable.woff2') format('woff2'),
+       url('/fonts/supreme/Supreme-Variable.woff') format('woff');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Supreme';
+  src: url('/fonts/supreme/Supreme-VariableItalic.woff2') format('woff2'),
+       url('/fonts/supreme/Supreme-VariableItalic.woff') format('woff');
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+:root {
+  /* Reckons.AI: Liquid theme (Teal + Deep Purple + Grey) */
+  /* Deep ocean background */
+  --bg: #0a0f14;
+  --bg-grade: radial-gradient(1200px 800px at 30% 0%, #0f4a54 0%, #0a0f14 60%);
+
+  /* Surface layers (dark greys) */
+  --surface: #131a24;
+  --surface-2: #1a2433;
+  --surface-3: #233040;
+  --line: #2a3a4d;
+
+  /* Text (light grey) */
+  --ink: #e8f0f5;
+  --ink-2: #b8c5d4;
+  --muted: #7a8a9d;
+  --muted-2: #5a6a7d;
+
+  /* Primary: Teal (Reckons.AI brand) */
+  --accent: #1a9b8e;
+  --accent-soft: #1a9b8e22;
+
+  /* Secondary: Deep Purple (Reckons.AI brand) */
+  --data: #6b4399;
+  --data-soft: #6b439922;
+
+  /* Semantic colors */
+  --danger: #d4726d;
+  --ok: #6ab68a;
+
+  --font-display: 'Bespoke Stencil', 'Times New Roman', serif;
+  --font-body: 'Supreme', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Supreme', system-ui, -apple-system, sans-serif;
+
+  --rad: 14px;
+  --rad-sm: 8px;
+  --rad-lg: 22px;
+
+  --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 12px 32px -16px rgba(0, 0, 0, 0.6);
+  --shadow-2: 0 24px 60px -24px rgba(255, 107, 53, 0.25);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  font-feature-settings: 'ss01', 'liga';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  min-height: 100dvh;
+  background: var(--bg-grade) fixed;
+  overscroll-behavior-y: none;
+}
+
+/* Subtle grain on the whole document */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(2.2rem, 6vw, 3.6rem);
+  line-height: 1;
+}
+h2 {
+  font-size: clamp(1.5rem, 4vw, 2.1rem);
+  line-height: 1.1;
+}
+h3 {
+  font-size: 1.15rem;
+  letter-spacing: 0;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s;
+}
+a:hover {
+  border-color: var(--accent);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  padding: 0.6rem 1rem;
+  border-radius: var(--rad-sm);
+  letter-spacing: 0.02em;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s;
+}
+button:hover {
+  background: var(--surface-2);
+  border-color: var(--muted-2);
+}
+button:active {
+  transform: translateY(1px);
+}
+button.primary {
+  background: var(--accent);
+  color: #0a0a0b;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+button.primary:hover {
+  background: #ff8a5b;
+  border-color: #ff8a5b;
+}
+button.ghost {
+  border-color: transparent;
+}
+button.danger {
+  color: var(--danger);
+  border-color: transparent;
+}
+button.danger:hover {
+  background: #2a1218;
+  border-color: var(--danger);
+}
+
+input[type='text'],
+input[type='url'],
+input[type='password'],
+input[type='email'],
+input[type='search'],
+input[type='number'],
+input[type='date'],
+input[type='datetime-local'],
+input[type='time'],
+textarea,
+select {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  padding: 0.85rem 1rem;
+  border-radius: var(--rad-sm);
+  font-family: var(--font-body);
+  color: var(--ink);
+  color-scheme: dark;
+}
+input[type='file'] {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--rad-sm);
+  color: var(--ink);
+  color-scheme: dark;
+}
+input[type='file']::file-selector-button {
+  background: var(--surface-2);
+  color: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: var(--rad-sm);
+  padding: 0.35rem 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  cursor: pointer;
+  margin-right: 0.75rem;
+  transition: background 0.12s, border-color 0.12s;
+}
+input[type='file']::file-selector-button:hover {
+  background: var(--surface-3);
+  border-color: var(--accent);
+}
+input[type='checkbox'] {
+  accent-color: var(--accent);
+}
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+
+/* ── Accessibility: visible focus indicators ──
+   Uses !important to override component-scoped outline:none on :focus.
+   Only fires on keyboard navigation (not click), so it never disrupts mouse UX. */
+:focus-visible {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px !important;
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: -1px !important;
+}
+
+/* Screen-reader only utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip-to-content link */
+.skip-link {
+  position: fixed;
+  top: -100%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  background: var(--accent);
+  color: #0a0a0b;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--rad-sm);
+  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  text-decoration: none;
+  transition: top 0.15s;
+}
+.skip-link:focus {
+  top: 1rem;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  letter-spacing: -0.01em;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--rad);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-1);
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--ink-2);
+  border: 1px solid var(--line);
+}
+.tag.new { color: var(--data); border-color: var(--data); background: var(--data-soft); }
+.tag.conflict { color: var(--danger); border-color: var(--danger); background: #2a1218; }
+.tag.refines { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.tag.duplicate { color: var(--muted); }
+.tag.reinforces { color: var(--ok); border-color: var(--ok); background: #11211a; }
+
+hr {
+  border: none;
+  border-top: 1px dashed var(--line);
+  margin: 1.5rem 0;
+}
+
+::selection {
+  background: var(--accent);
+  color: #0a0a0b;
+}

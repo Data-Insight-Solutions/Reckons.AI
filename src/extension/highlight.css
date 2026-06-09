@@ -1,0 +1,82 @@
+/* Injected into every page alongside content-script.js.
+   Colors and label metrics are overridden at runtime via
+   a <style id="reckons-hl-vars"> block injected by the content script. */
+
+/* ── Defaults (overridden by injected :root vars) ── */
+:root {
+  --reckons-conflict-bg:      rgba(239, 68,  68,  0.22);
+  --reckons-conflict-border:  rgba(239, 68,  68,  0.65);
+  --reckons-reinforce-bg:     rgba(34,  197, 94,  0.22);
+  --reckons-reinforce-border: rgba(34,  197, 94,  0.65);
+  --reckons-new-bg:           rgba(99,  179, 237, 0.18);
+  --reckons-new-border:       rgba(99,  179, 237, 0.55);
+  --reckons-label-size:       10px;
+  --reckons-label-scale:      1.6;
+  --reckons-label-font:       monospace;
+}
+
+/* ── Mark base ── */
+.reckons-ext-mark {
+  border-radius: 2px;
+  display: inline-block;
+  position: relative;
+  cursor: help;
+  transition: filter 0.1s;
+}
+.reckons-ext-mark:hover { filter: brightness(1.12); }
+
+.reckons-reinforce {
+  background: var(--reckons-reinforce-bg);
+  border-bottom: 2px solid var(--reckons-reinforce-border);
+  color: inherit;
+}
+.reckons-conflict {
+  background: var(--reckons-conflict-bg);
+  border-bottom: 2px solid var(--reckons-conflict-border);
+  color: inherit;
+}
+.reckons-new {
+  background: var(--reckons-new-bg);
+  border-bottom: 2px solid var(--reckons-new-border);
+  color: inherit;
+}
+
+/* ── Always-visible label ── */
+.reckons-ext-label {
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 0;
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  font-size: var(--reckons-label-size);
+  font-family: var(--reckons-label-font);
+  line-height: 1.3;
+
+  padding: 2px 5px;
+  border-radius: 3px;
+  background: rgba(10, 10, 14, 0.82);
+  color: #e8eaf0;
+  border: 1px solid rgba(255,255,255,0.1);
+
+  pointer-events: none;
+  z-index: 2147483640;
+
+  transform-origin: bottom left;
+  transform: scale(1);
+  transition: transform 0.15s ease, opacity 0.15s ease;
+  opacity: 0.75;
+}
+
+.reckons-reinforce .reckons-ext-label { color: #86efac; border-color: rgba(34,197,94,0.3); }
+.reckons-conflict  .reckons-ext-label { color: #fca5a5; border-color: rgba(239,68,68,0.3); }
+.reckons-new       .reckons-ext-label { color: #93c5fd; border-color: rgba(99,179,237,0.3); }
+
+/* ── Hover: enlarge label ── */
+.reckons-ext-mark:hover .reckons-ext-label {
+  transform: scale(var(--reckons-label-scale));
+  opacity: 1;
+  z-index: 2147483647;
+}

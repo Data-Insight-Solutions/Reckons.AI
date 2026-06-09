@@ -1,0 +1,155 @@
+## ---------------------------------------------------------------------------
+## Reckons.AI Docs — Integrations & Technology
+## ---------------------------------------------------------------------------
+## External integrations (Calendar, MCP, Extension, OCR) and tech stack
+## (SvelteKit, Threlte, N3.js, transformers.js, Dexie).
+## ---------------------------------------------------------------------------
+
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix int:    <urn:reckons:integration/> .
+@prefix tech:   <urn:reckons:tech/> .
+@prefix guide:  <urn:reckons:guide/> .
+@prefix ktype:  <urn:kbase:type/> .
+
+## KB Identity
+<urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a05-b005-000000000005" .
+
+
+## =============================================================================
+## Integrations and Workflows
+## =============================================================================
+
+int:Integrations
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Integrations" ;
+    skos:definition     "Reckons.AI connects to external tools and data sources while keeping your KB local. Every integration is optional -- the core app works with zero external dependencies." ;
+    skos:related        guide:WhatIsReckonsAI .
+
+int:GoogleCalendar
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Google Calendar" ;
+    skos:definition     "Import events as triples. Dates, times, attendees, descriptions, and recurrence patterns all become structured, queryable knowledge. Recurring events are expanded with safety limits." ;
+    skos:broader        int:Integrations .
+
+int:iCalFeed
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "iCal (.ics) Import" ;
+    skos:definition     "Import any iCal feed -- Outlook, Apple Calendar, university schedules, conference programs. Events become triples with datetime extraction, recurrence detection, and conflict identification." ;
+    skos:broader        int:Integrations .
+
+int:IndicoEvents
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Indico Events" ;
+    skos:definition     "Import scientific conference programs from Indico (CERN's event management system). Sessions, contributions, and speakers become structured triples." ;
+    skos:broader        int:Integrations .
+
+int:MCPServer
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "MCP Server" ;
+    skos:definition     "Model Context Protocol server exposing your KB to AI agents (Claude Desktop, Cursor). 6 tools: search, get entity, stats, list, add note, reckoning. Your KB becomes the context for any MCP-aware agent." ;
+    skos:broader        int:Integrations .
+
+int:WorkspaceSync
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Workspace Folder Sync" ;
+    skos:definition     "Auto-exports knowledge.ttl to a local folder on each mutation. The MCP server reads this file. Pending notes arrive via knowledge.pending.jsonl." ;
+    skos:broader        int:Integrations ;
+    skos:related        int:MCPServer .
+
+int:BrowserExtension
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Browser Extension" ;
+    skos:definition     "Highlight text on any webpage and send it to your KB as a source. The extension communicates with the main app -- no separate login needed." ;
+    skos:broader        int:Integrations .
+
+int:WebScraping
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Web Scraping (Jina / Firecrawl)" ;
+    skos:definition     "Extract content from URLs. Jina Reader for simple pages, Firecrawl for JavaScript-rendered sites. Content is parsed into clean text, then LLM-extracted into triples." ;
+    skos:broader        int:Integrations .
+
+int:PDFImport
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "PDF / Image Import (Mistral OCR)" ;
+    skos:definition     "Upload PDFs or images. Mistral OCR extracts text, then the LLM extracts triples. Contracts, invoices, academic papers -- all become structured knowledge." ;
+    skos:broader        int:Integrations .
+
+
+## =============================================================================
+## Architecture and Technology
+## =============================================================================
+
+tech:Architecture
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Technology Stack" ;
+    skos:definition     "Static SvelteKit app with Threlte/Three.js for 3D, N3.js for RDF parsing, transformers.js for embeddings, and Dexie for IndexedDB storage. No server required." ;
+    skos:broader        guide:WhatIsReckonsAI .
+
+tech:SvelteKit
+    rdf:type            ktype:Tool ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "SvelteKit" ;
+    skos:definition     "The web framework powering Reckons.AI. Built with adapter-static for fully client-side deployment." ;
+    skos:broader        tech:Architecture .
+
+tech:Threlte
+    rdf:type            ktype:Tool ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Threlte + Three.js" ;
+    skos:definition     "Svelte bindings for Three.js. Provides the declarative 3D scene graph for the knowledge graph visualization using WebGL." ;
+    skos:broader        tech:Architecture .
+
+tech:N3js
+    rdf:type            ktype:Tool ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "N3.js" ;
+    skos:definition     "JavaScript library for parsing and writing RDF (Turtle, N-Triples, N-Quads, TriG). Used for all .ttl import and export." ;
+    skos:broader        tech:Architecture .
+
+tech:TransformersJS
+    rdf:type            ktype:Tool ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "transformers.js" ;
+    skos:definition     "Runs ML models in the browser via ONNX Runtime WebAssembly. Powers text embeddings for semantic similarity and entity disambiguation." ;
+    skos:broader        tech:Architecture .
+
+tech:Dexie
+    rdf:type            ktype:Tool ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Dexie.js + IndexedDB" ;
+    skos:definition     "Promise-based wrapper around IndexedDB. All KB data (statements, sources, changelog) is stored locally. Nothing leaves your device unless you explicitly export or invoke an external LLM." ;
+    skos:broader        tech:Architecture .
+
+tech:MCP
+    rdf:type            ktype:Tool ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Model Context Protocol" ;
+    skos:definition     "An open protocol for connecting AI models to external data sources. Reckons.AI exposes its KB as an MCP server so AI agents can query your knowledge." ;
+    skos:broader        tech:Architecture ;
+    skos:related        int:MCPServer .
+
+
+## =============================================================================
+## Persona
+## =============================================================================
+
+@prefix shelly: <urn:reckons:shelly/> .
+
+shelly:persona
+    shelly:name             "Shelly" ;
+    shelly:greeting         "This covers integrations and the tech stack! I can explain MCP, the browser extension, calendar import, or any technology under the hood. What interests you?" ;
+    shelly:personality      "technical, thorough, helpful" ;
+    shelly:responseStyle    "concise" ;
+    shelly:systemPrompt     "You are helping someone learn about Reckons.AI integrations and technology. Explain how each piece connects. Be specific about what data flows where." .

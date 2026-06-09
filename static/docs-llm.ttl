@@ -1,0 +1,88 @@
+## ---------------------------------------------------------------------------
+## Reckons.AI Docs — Language Models
+## ---------------------------------------------------------------------------
+## What LLMs actually are, hallucination, RAG, and how your KB makes AI accurate.
+## ---------------------------------------------------------------------------
+
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix llm:    <urn:reckons:llm/> .
+@prefix guide:  <urn:reckons:guide/> .
+@prefix feat:   <urn:reckons:feature/> .
+@prefix ktype:  <urn:kbase:type/> .
+
+## KB Identity
+<urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a02-b002-000000000002" .
+
+
+## =============================================================================
+## Language Models -- What They Actually Are
+## =============================================================================
+
+llm:WhatLLMsAre
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "What Language Models Actually Are" ;
+    skos:definition     "The models people call 'AI' are trained statistical models built with human knowledge at every level. Humans wrote the training data, designed the architecture, labelled the fine-tuning examples, and aligned the outputs. These models predict likely text based on patterns -- they do not think, reason, or understand." ;
+    skos:related        llm:Hallucination ;
+    skos:related        llm:KBGroundedAccuracy .
+
+llm:NotMagic
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Models Are Tools, Not Thinkers" ;
+    skos:definition     "A language model is a tool -- powerful, but still a tool. It cannot verify its own outputs, does not know what is true, and will confidently produce plausible-sounding falsehoods. Calling them 'AI' implies agency they do not have. Treat them as highly capable text prediction engines." ;
+    skos:broader        llm:WhatLLMsAre .
+
+llm:HumanKnowledge
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Built on Human Knowledge" ;
+    skos:definition     "Every layer of a language model relies on human work. The training corpus is human-written text. The architecture was designed by human researchers. RLHF alignment uses human judgments. The model's outputs are a reflection of collective human knowledge, filtered through statistical compression." ;
+    skos:broader        llm:WhatLLMsAre .
+
+llm:Hallucination
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Hallucination" ;
+    skos:definition     "When a model generates plausible-sounding but false information. This is not a bug -- it is an inherent property of how text prediction works. The model optimizes for likelihood, not truth. This is exactly why human review matters." ;
+    skos:broader        llm:WhatLLMsAre ;
+    skos:related        guide:HumanInTheLoop .
+
+llm:KBGroundedAccuracy
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "KB-Grounded Accuracy" ;
+    skos:definition     "When an LLM has access to YOUR reviewed knowledge base, its outputs become dramatically more accurate. Instead of guessing from training data, it retrieves YOUR confirmed facts. This is called retrieval-augmented generation (RAG) -- and the quality of the retrieval source is everything. Your curated KB is the best source possible." ;
+    skos:broader        llm:WhatLLMsAre ;
+    skos:related        feat:Shelly .
+
+llm:RetrievalAugmented
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "RAG (Retrieval-Augmented Generation)" ;
+    skos:definition     "A technique where an LLM retrieves relevant facts from a knowledge base before generating a response. Dramatically reduces hallucination because the model grounds its answer in your verified data, not its training set." ;
+    skos:broader        llm:KBGroundedAccuracy .
+
+llm:PromptEngineering
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Prompt Engineering" ;
+    skos:definition     "The art of structuring input to get useful output from a language model. A Reckoning is a structured prompt: Situation + Target + your KB context. The better the input, the better the output." ;
+    skos:broader        llm:WhatLLMsAre ;
+    skos:related        feat:Reckoning .
+
+
+## =============================================================================
+## Persona
+## =============================================================================
+
+@prefix shelly: <urn:reckons:shelly/> .
+
+shelly:persona
+    shelly:name             "Shelly" ;
+    shelly:greeting         "This is the Language Models documentation. I can explain what LLMs really are, why they hallucinate, and how your KB makes them accurate. Ask me anything!" ;
+    shelly:personality      "honest, demystifying, direct" ;
+    shelly:responseStyle    "concise" ;
+    shelly:systemPrompt     "You are helping someone understand language models honestly. Emphasize that they are tools, not thinkers. Explain hallucination without fear-mongering. Show how a curated KB + RAG solves the accuracy problem." .

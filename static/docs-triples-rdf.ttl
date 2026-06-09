@@ -1,0 +1,199 @@
+## ---------------------------------------------------------------------------
+## Reckons.AI Docs — Triples, RDF & Turtle Syntax
+## ---------------------------------------------------------------------------
+## Deep dive into semantic triples, RDF standards, and Turtle file format.
+## Import into your own KB to explore alongside the main documentation hub.
+## ---------------------------------------------------------------------------
+
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix arch:   <urn:reckons:arch/> .
+@prefix topic:  <urn:reckons:topic/> .
+@prefix guide:  <urn:reckons:guide/> .
+@prefix feat:   <urn:reckons:feature/> .
+@prefix ktype:  <urn:kbase:type/> .
+@prefix kpred:  <urn:kbase:predicate/> .
+
+## KB Identity
+<urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a01-b001-000000000001" .
+
+
+## =============================================================================
+## The Semantic Triple Architecture
+## =============================================================================
+
+arch:TripleArchitecture
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "The Semantic Triple" ;
+    skos:definition     "The fundamental unit of knowledge in RDF: a three-part statement -- subject, predicate, object. Any fact expressible in human language can be expressed as a triple. Triples connect to form a graph, and graphs reveal relationships that documents hide." ;
+    skos:related        guide:WhatIsReckonsAI .
+
+arch:SubjectPredicateObject
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Subject - Predicate - Object" ;
+    skos:definition     "Subject: the entity being described (always an IRI). Predicate: the relationship or property (always an IRI). Object: the value or target (an IRI or a literal string/number/date). Example: 'Alice worksAt AcmeCorp'. Example: 'Policy covers water-damage'." ;
+    skos:broader        arch:TripleArchitecture ;
+    skos:example        "In 'Earth orbits Sun', Earth=subject, orbits=predicate, Sun=object." .
+
+arch:Literal
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Literal Values" ;
+    skos:definition     "A data value in RDF: a string, number, date, or boolean. Literals can have a language tag (@en) or a datatype IRI (^^xsd:integer). Example: '42'^^xsd:integer is a typed literal." ;
+    skos:broader        arch:TripleArchitecture .
+
+arch:IRI
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "IRI (Identifier)" ;
+    skos:definition     "A globally unique identifier for a resource. IRIs are the names of things in RDF -- like URLs but for any concept, not just web pages. Example: urn:reckons:guide/WhatIsReckonsAI" ;
+    skos:broader        arch:TripleArchitecture .
+
+arch:KnowledgeGraph
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Knowledge Graph" ;
+    skos:definition     "A graph-structured database where entities are nodes and relationships are edges. Multiple triples form a graph. The same subject can appear in many triples, creating a web of connected knowledge." ;
+    skos:broader        arch:TripleArchitecture ;
+    skos:note           "Reckons.AI renders your knowledge graph as an interactive 3D force-directed graph." .
+
+arch:Provenance
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Provenance" ;
+    skos:definition     "Every triple in Reckons.AI carries its source. You always know where a fact came from, how trusted that source is, and when it was added. Metadata about metadata -- this is what makes a KB trustworthy." ;
+    skos:broader        arch:TripleArchitecture ;
+    skos:related        feat:TrustSystem .
+
+arch:Reification
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Reification" ;
+    skos:definition     "Making a statement about a statement. In RDF, reification assigns an IRI to a triple so it can be annotated with provenance, confidence, or temporal bounds. Reckons.AI uses reification in its TTL export format." ;
+    skos:broader        arch:TripleArchitecture .
+
+arch:PlainTextPortability
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Plain Text Portability" ;
+    skos:definition     "Your knowledge base exports as a .ttl file -- plain text, human-readable, no proprietary format. You can open it in any text editor, diff it with git, email it, or print it. When apps shut down and formats die, your .ttl file will still work. It is the most durable way to store knowledge." ;
+    skos:broader        arch:TripleArchitecture ;
+    skos:note           "Any RDF tool (SPARQL endpoints, Protege, PoolParty, Neo4j, Python's rdflib) can read your .ttl file directly." .
+
+arch:ReviewWorkflow
+    rdf:type            ktype:Document ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "The Review Workflow" ;
+    skos:definition     "1. Ingest -- paste text, upload documents, import calendars. 2. Review -- the LLM extracts triples, you confirm or reject each one. 3. Explore -- navigate your 3D knowledge graph. 4. Ask Shelly -- get answers grounded in your confirmed facts. 5. Share -- export your .ttl." ;
+    skos:broader        arch:TripleArchitecture ;
+    skos:related        feat:Ingest ;
+    skos:related        feat:ReviewSystem .
+
+
+## =============================================================================
+## Turtle Syntax and RDF Standards
+## =============================================================================
+
+topic:Turtle
+    rdf:type            ktype:Document ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Turtle (.ttl) Syntax" ;
+    skos:definition     "A compact, human-readable syntax for writing RDF triples. File extension: .ttl. Uses prefix declarations, semicolons to share subjects, commas to share predicates, and periods to end statement groups. This file is itself written in Turtle." ;
+    skos:broader        arch:TripleArchitecture .
+
+topic:TurtlePrefix
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "@prefix Declaration" ;
+    skos:definition     "Declares a short alias for a namespace IRI. Example: @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . Prefixes make Turtle readable -- without them every IRI needs full angle-bracket notation." ;
+    skos:broader        topic:Turtle .
+
+topic:TurtleSemicolon
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Semicolon (;) -- Same Subject" ;
+    skos:definition     "In Turtle, a semicolon separates predicate-object pairs that share the same subject. Example: ex:Earth rdf:type ex:Planet ; ex:orbits ex:Sun ." ;
+    skos:broader        topic:Turtle .
+
+topic:TurtleComma
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Comma (,) -- Same Subject and Predicate" ;
+    skos:definition     "In Turtle, a comma separates objects that share the same subject and predicate. Example: ex:Earth ex:hasOcean ex:Pacific , ex:Atlantic , ex:Indian ." ;
+    skos:broader        topic:Turtle .
+
+topic:TurtlePeriod
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Period (.) -- End of Statement Group" ;
+    skos:definition     "A period terminates a group of triples about the same subject." ;
+    skos:broader        topic:Turtle .
+
+topic:RDF
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "RDF (Resource Description Framework)" ;
+    skos:definition     "A W3C standard for representing knowledge as a graph of linked statements. The foundation of the Semantic Web. RDF itself is abstract -- Turtle, JSON-LD, and RDF/XML are concrete serialization formats." ;
+    skos:broader        arch:TripleArchitecture .
+
+topic:RDFS
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "RDF Schema (RDFS)" ;
+    skos:definition     "A vocabulary for describing classes and properties: rdfs:Class, rdfs:subClassOf, rdfs:domain, rdfs:range, rdfs:label, rdfs:comment. Reckons.AI uses rdfs:label for human-readable entity names." ;
+    skos:broader        topic:RDF .
+
+topic:SKOS
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "SKOS (Simple Knowledge Organization System)" ;
+    skos:definition     "A vocabulary for taxonomies and concept hierarchies using skos:broader, skos:narrower, skos:related. This documentation file uses SKOS to organize concepts." ;
+    skos:broader        topic:RDF .
+
+topic:SPARQL
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "SPARQL" ;
+    skos:definition     "The query language for RDF graphs. Like SQL for relational databases, but for triple stores. Example: SELECT ?name WHERE { ?person foaf:name ?name }" ;
+    skos:broader        topic:RDF .
+
+topic:JSONLD
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "JSON-LD" ;
+    skos:definition     "JSON-based serialization for RDF. Embeds linked data in standard JSON using a @context object. Popular for web APIs." ;
+    skos:broader        topic:RDF ;
+    skos:related        topic:Turtle .
+
+topic:LinkedData
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Linked Data" ;
+    skos:definition     "Tim Berners-Lee's principles for publishing data on the web: use IRIs, use HTTP, provide useful RDF, and link to other datasets." ;
+    skos:broader        topic:RDF .
+
+topic:PROVO
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "PROV-O (Provenance Ontology)" ;
+    skos:definition     "A W3C vocabulary for expressing provenance: who created something, when, and from what sources. Reckons.AI uses prov:wasDerivedFrom to link statements to their source." ;
+    skos:broader        topic:RDF ;
+    skos:related        arch:Provenance .
+
+
+## =============================================================================
+## Persona
+## =============================================================================
+
+@prefix shelly: <urn:reckons:shelly/> .
+
+shelly:persona
+    shelly:name             "Shelly" ;
+    shelly:greeting         "Welcome to the Triples and RDF documentation! I can explain semantic triples, Turtle syntax, or any RDF standard. Ask away!" ;
+    shelly:personality      "precise, educational, thorough" ;
+    shelly:responseStyle    "concise" ;
+    shelly:systemPrompt     "You are helping someone learn about RDF, Turtle syntax, and semantic triples. Give clear examples. Use the entities in this KB as reference material." .

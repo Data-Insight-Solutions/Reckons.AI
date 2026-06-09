@@ -1,0 +1,145 @@
+## ---------------------------------------------------------------------------
+## Reckons.AI Docs — Features
+## ---------------------------------------------------------------------------
+## All major features: Ingest, Review, Trust, Graph, Shelly, Reckoning,
+## LLM backends, Compare, Disambiguation, History, Types, Export, Stories.
+## ---------------------------------------------------------------------------
+
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix feat:   <urn:reckons:feature/> .
+@prefix guide:  <urn:reckons:guide/> .
+@prefix llm:    <urn:reckons:llm/> .
+@prefix ktype:  <urn:kbase:type/> .
+
+## KB Identity
+<urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a04-b004-000000000004" .
+
+
+## =============================================================================
+## Features
+## =============================================================================
+
+feat:Ingest
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Ingest" ;
+    skos:definition     "Add knowledge from text, URLs, documents, calendars, or Turtle files. An LLM extracts semantic triples from unstructured input. You review every extracted triple before it enters your confirmed KB." ;
+    skos:broader        guide:WhatIsReckonsAI .
+
+feat:ReviewSystem
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Review System" ;
+    skos:definition     "Every extracted triple starts as 'pending'. You confirm, reject, refine, or merge statements before they become confirmed knowledge. Nothing enters your KB without your approval." ;
+    skos:broader        guide:WhatIsReckonsAI ;
+    skos:related        feat:TrustSystem .
+
+feat:TrustSystem
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Source Trust System" ;
+    skos:definition     "Sources accumulate trust scores based on your review decisions. Trusted sources can be auto-confirmed. A time-decay formula prevents stale trust from persisting." ;
+    skos:broader        guide:WhatIsReckonsAI .
+
+feat:Graph3D
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "3D Knowledge Graph" ;
+    skos:definition     "Interactive force-directed graph rendered in WebGL. Entities are spheres, relationships are edges. Click to select, drag to navigate, RadialMenu for actions. Filter by type, source, or status." ;
+    skos:broader        guide:WhatIsReckonsAI .
+
+feat:Shelly
+    rdf:type            ktype:Person ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Shelly (AI Assistant)" ;
+    skos:definition     "The turtle-shaped AI assistant. Ask Shelly questions about your KB, request analysis, or have a conversation grounded in your knowledge graph. Supports voice via Hume.AI." ;
+    skos:broader        guide:WhatIsReckonsAI ;
+    skos:related        llm:KBGroundedAccuracy .
+
+feat:Reckoning
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "A Reckoning (STP)" ;
+    skos:definition     "Situation-Target-Proposal: describe your situation, state your goal, and the AI synthesizes options grounded ONLY in your confirmed triples. Every option cites its sources. Not general AI advice -- structured reasoning over your verified facts." ;
+    skos:broader        guide:WhatIsReckonsAI ;
+    skos:related        llm:RetrievalAugmented .
+
+feat:LLMBackends
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "LLM Backends" ;
+    skos:definition     "Reckons.AI supports multiple providers: Claude, OpenAI, Gemini, Ollama (local), OpenRouter, WASM (fully offline), and Chrome AI. Use Ollama or WASM and zero data leaves your machine." ;
+    skos:broader        guide:WhatIsReckonsAI .
+
+feat:Compare
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Compare / Diff Engine" ;
+    skos:definition     "Compare two knowledge bases or snapshots. Categories: Add, Reinforce, Conflict, Merge, Remove. Visual Venn diagram and diff table." ;
+    skos:broader        guide:WhatIsReckonsAI .
+
+feat:Disambiguation
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Disambiguation" ;
+    skos:definition     "Automatic detection of duplicate or similar entities using text embeddings and cosine similarity (threshold 0.85). Suggests merges for your review." ;
+    skos:broader        guide:WhatIsReckonsAI .
+
+feat:HistoryMode
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "History Mode" ;
+    skos:definition     "Time-travel through your KB. Scrub a timeline to see the graph at any past point. All mutations are logged in the changelog." ;
+    skos:broader        guide:WhatIsReckonsAI .
+
+feat:EntityTypes
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Entity Type System" ;
+    skos:definition     "Categorize entities (Person, Place, Concept, etc.) with custom colors and 3D shapes. Types are assigned via rdf:type statements." ;
+    skos:broader        guide:WhatIsReckonsAI .
+
+feat:TTLExport
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Turtle Export" ;
+    skos:definition     "Export your entire KB as a .ttl file with full reification metadata (status, source, confidence, timestamps). Roundtrip-safe. Share with anyone." ;
+    skos:broader        guide:WhatIsReckonsAI .
+
+feat:KBIdentity
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "KB Identity" ;
+    skos:definition     "Each KB has a stable UUID (never changes) and a content fingerprint (SHA-256 of sorted N-Quads, changes with every edit). No account needed." ;
+    skos:broader        guide:WhatIsReckonsAI .
+
+feat:StorySystem
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Story System" ;
+    skos:definition     "Guided walkthroughs defined as triples in the KB using the story: vocabulary. Shelly guides users through steps manually or automatically. Users can interrupt to ask questions, then resume. Stories are shareable via .ttl files." ;
+    skos:broader        guide:WhatIsReckonsAI ;
+    skos:related        feat:Shelly .
+
+feat:TurtlePersona
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Turtle Persona System" ;
+    skos:definition     "Each knowledge base can have its own AI assistant personality embedded in the .ttl file using the shelly: vocabulary. A work KB might have a snarky British persona, while a personal KB has a calm guide. Personality travels with the file." ;
+    skos:broader        feat:Shelly .
+
+
+## =============================================================================
+## Persona
+## =============================================================================
+
+@prefix shelly: <urn:reckons:shelly/> .
+
+shelly:persona
+    shelly:name             "Shelly" ;
+    shelly:greeting         "This is the Features documentation! I can explain any Reckons.AI feature in detail -- Ingest, Review, Trust, Shelly, Reckonings, and more. What would you like to know?" ;
+    shelly:personality      "knowledgeable, enthusiastic, practical" ;
+    shelly:responseStyle    "concise" ;
+    shelly:systemPrompt     "You are helping someone learn about Reckons.AI features. Explain how each feature works and give practical usage tips. Reference the feature entities in this KB." .

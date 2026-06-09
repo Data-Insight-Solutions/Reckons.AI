@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reckons.AI — Extension Settings</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d1117; --surface: #161b22; --line: rgba(255,255,255,0.09);
+      --ink: #e8eaf0; --ink2: #8b949e; --accent: #1a9b8e; --rad: 8px;
+    }
+    html, body { background: var(--bg); color: var(--ink); font: 14px/1.5 -apple-system, sans-serif; }
+    .wrap { max-width: 520px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+    h1 { font-size: 1.3rem; color: var(--accent); margin-bottom: 1.5rem; }
+    .field { margin-bottom: 1rem; }
+    label { display: block; font-size: 12px; color: var(--ink2); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.1em; }
+    input, select {
+      width: 100%; padding: 8px 10px;
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: var(--rad); color: var(--ink); font: inherit;
+      outline: none; transition: border-color 0.15s;
+    }
+    input:focus, select:focus { border-color: var(--accent); }
+    input[type="password"] { font-family: monospace; letter-spacing: 0.05em; }
+    .hint { font-size: 11px; color: var(--ink2); margin-top: 4px; }
+    .actions { margin-top: 1.5rem; display: flex; gap: 8px; }
+    .color-row { display: flex; gap: 10px; }
+    .color-field { flex: 1; }
+    input[type="color"] {
+      width: 100%; height: 38px; padding: 2px 4px; cursor: pointer;
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--rad);
+    }
+    .slider-row { display: flex; align-items: center; gap: 10px; }
+    input[type="range"] { flex: 1; accent-color: var(--accent); }
+    .slider-val { font-size: 12px; color: var(--ink2); min-width: 36px; text-align: right; }
+    button {
+      padding: 9px 18px; border-radius: var(--rad);
+      border: 1px solid var(--line); cursor: pointer;
+      font: inherit; background: var(--surface); color: var(--ink);
+      transition: all 0.12s;
+    }
+    button:hover { border-color: rgba(255,255,255,0.25); }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+    .saved { color: #22c55e; font-size: 13px; display: none; }
+    .saved.show { display: inline; }
+    hr { border: none; border-top: 1px solid var(--line); margin: 1.5rem 0; }
+    h2 { font-size: 0.9rem; color: var(--ink2); margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.12em; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1><img src="icons/icon32.png" alt="" style="height:1.2em;width:auto;vertical-align:middle" /> Reckons.AI Extension Settings</h1>
+    <div class="hint" style="margin-bottom: 1rem; padding: 8px 12px; background: rgba(26,155,142,0.07); border: 1px solid rgba(26,155,142,0.2); border-radius: 8px;">
+      <strong>Browser support:</strong> Chrome (full, side panel) · Firefox for Android (tab fallback, no side panel) · Edge/Brave/Arc (full)
+    </div>
+
+    <h2>LLM Backend</h2>
+    <div class="field">
+      <label>Provider</label>
+      <select id="provider">
+        <option value="claude">Claude (Anthropic)</option>
+        <option value="openai">OpenAI</option>
+        <option value="gemini">Google Gemini (free tier available)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>API Key</label>
+      <input type="password" id="api-key" placeholder="sk-ant-… / sk-… / AI…" autocomplete="off">
+      <div class="hint">Stored locally in your browser. Never sent anywhere except the chosen provider.</div>
+    </div>
+    <div class="field">
+      <label>Model (optional)</label>
+      <input type="text" id="model" placeholder="leave blank for default">
+      <div class="hint" id="model-hint">Default: claude-haiku-4-5-20251001</div>
+    </div>
+    <div class="hint" style="margin-top: 4px;">No API key? Use <strong>use any LLM</strong> in the Compare side panel — copies the prompt so you can paste into Claude.ai, ChatGPT, etc., then paste the response back.</div>
+
+    <hr>
+    <h2>Reckons.AI App</h2>
+    <div class="field">
+      <label>App URL</label>
+      <input type="url" id="reckons-url" placeholder="http://localhost:5173">
+      <div class="hint">The URL where your Reckons.AI instance is running.</div>
+    </div>
+
+    <hr>
+    <h2>Page Highlight Appearance</h2>
+
+    <div class="field">
+      <label>Highlight Colors</label>
+      <div class="color-row">
+        <div class="color-field">
+          <div class="hint" style="margin:0 0 4px">Conflict</div>
+          <input type="color" id="hl-conflict-color" value="#ef4444">
+        </div>
+        <div class="color-field">
+          <div class="hint" style="margin:0 0 4px">Reinforce</div>
+          <input type="color" id="hl-reinforce-color" value="#22c55e">
+        </div>
+        <div class="color-field">
+          <div class="hint" style="margin:0 0 4px">New</div>
+          <input type="color" id="hl-new-color" value="#63b3ed">
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Saturation</label>
+      <div class="slider-row">
+        <input type="range" id="hl-saturation" min="0" max="100" value="100">
+        <span class="slider-val" id="hl-saturation-val">100%</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Label Font</label>
+      <select id="hl-font-family">
+        <option value="monospace">Monospace</option>
+        <option value="sans-serif">Sans-serif</option>
+        <option value="serif">Serif</option>
+        <option value="'Courier New', monospace">Courier New</option>
+        <option value="'Georgia', serif">Georgia</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Label Size (base)</label>
+      <div class="slider-row">
+        <input type="range" id="hl-font-size" min="7" max="18" value="10">
+        <span class="slider-val" id="hl-font-size-val">10px</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>On-hover Enlarge</label>
+      <div class="slider-row">
+        <input type="range" id="hl-hover-scale" min="100" max="300" value="160">
+        <span class="slider-val" id="hl-hover-scale-val">160%</span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="primary" id="btn-save">Save Settings</button>
+      <span class="saved" id="saved-msg">Saved!</span>
+    </div>
+  </div>
+  <script src="options.js" type="module"></script>
+</body>
+</html>

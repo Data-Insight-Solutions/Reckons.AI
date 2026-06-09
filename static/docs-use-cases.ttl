@@ -1,0 +1,84 @@
+## ---------------------------------------------------------------------------
+## Reckons.AI Docs — Use Cases (Power to the Individual)
+## ---------------------------------------------------------------------------
+## How individuals use knowledge graphs to level the playing field against
+## institutions: insurance, legal, employment, medical, corporate disputes.
+## ---------------------------------------------------------------------------
+
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix use:    <urn:reckons:use/> .
+@prefix guide:  <urn:reckons:guide/> .
+@prefix ktype:  <urn:kbase:type/> .
+
+## KB Identity
+<urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a03-b003-000000000003" .
+
+
+## =============================================================================
+## Power to the Individual
+## =============================================================================
+
+use:PersonalEmpowerment
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Power to the Individual" ;
+    skos:definition     "Insurance companies have teams of analysts. Corporations have legal departments. Landlords have property managers. You have your memory and a stack of papers? Not anymore. Build a KB of your rights, evidence, and correspondence. Ask Shelly to draft a precise response citing YOUR documented facts. You communicate with the authority of an institution." ;
+    skos:related        guide:WhatIsReckonsAI .
+
+use:InsuranceClaims
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Insurance Claims" ;
+    skos:definition     "Ingest your policy documents, adjuster correspondence, photos, and repair estimates as triples. When you need to dispute a denial or request review, ask Shelly to draft a response citing specific policy clauses and documented evidence from your KB." ;
+    skos:broader        use:PersonalEmpowerment .
+
+use:LegalDisputes
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Legal Disputes" ;
+    skos:definition     "Build a timeline of events, contracts, correspondence, and obligations. Your KB becomes a structured evidence base that you can query: 'What did the landlord promise regarding repairs, and when?' Every answer traces back to a source document." ;
+    skos:broader        use:PersonalEmpowerment .
+
+use:EmploymentRights
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Employment Rights" ;
+    skos:definition     "Track your employment contract terms, company policies, HR correspondence, and performance records. When you need to assert your rights, your KB provides precise, documented, citable facts." ;
+    skos:broader        use:PersonalEmpowerment .
+
+use:MedicalRecords
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Medical Records" ;
+    skos:definition     "Organize diagnoses, prescriptions, test results, and doctor correspondence. Query your own medical history precisely. Prepare for appointments with a complete, structured record." ;
+    skos:broader        use:PersonalEmpowerment .
+
+use:CorporatePushback
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Corporate Pushback" ;
+    skos:definition     "When a company stonewalls, you need precision. Ingest their terms of service, your complaint history, regulatory requirements, and previous communications. Shelly can draft a response that cites chapter and verse from THEIR OWN documents." ;
+    skos:broader        use:PersonalEmpowerment .
+
+use:Research
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Research and Academia" ;
+    skos:definition     "Track papers, authors, claims, contradictions. Build a literature review graph where every statement traces back to its source. Ask Shelly to summarize what you know about a topic -- every claim is cited." ;
+    skos:broader        use:PersonalEmpowerment .
+
+
+## =============================================================================
+## Persona
+## =============================================================================
+
+@prefix shelly: <urn:reckons:shelly/> .
+
+shelly:persona
+    shelly:name             "Shelly" ;
+    shelly:greeting         "This KB covers real-world use cases -- how individuals use knowledge graphs to stand up to institutions. Ask me about insurance claims, legal disputes, or any scenario!" ;
+    shelly:personality      "empowering, practical, direct" ;
+    shelly:responseStyle    "concise" ;
+    shelly:systemPrompt     "You are helping someone understand how a personal knowledge graph levels the playing field. Give concrete, practical examples. Emphasize that a well-curated KB lets individuals communicate with institutional authority." .

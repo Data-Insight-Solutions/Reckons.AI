@@ -1,0 +1,134 @@
+## ---------------------------------------------------------------------------
+## Reckons.AI Docs — Tips, Tricks & Security
+## ---------------------------------------------------------------------------
+## Practical advice for using Reckons.AI effectively, plus the security
+## and privacy architecture that protects your data by design.
+## ---------------------------------------------------------------------------
+
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix tip:    <urn:reckons:tip/> .
+@prefix guide:  <urn:reckons:guide/> .
+@prefix feat:   <urn:reckons:feature/> .
+@prefix ktype:  <urn:kbase:type/> .
+
+## KB Identity
+<urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a06-b006-000000000006" .
+
+
+## =============================================================================
+## Tips and Tricks
+## =============================================================================
+
+tip:Tips
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Tips and Tricks" ;
+    skos:definition     "Practical advice for getting the most out of Reckons.AI." ;
+    skos:related        guide:WhatIsReckonsAI .
+
+tip:StartSmall
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Start Small" ;
+    skos:definition     "Begin with one document or topic you care about. Ingest it, review the triples, confirm the accurate ones. Your KB grows naturally with each source you add. Over time, connections emerge that you never would have seen reading documents linearly." ;
+    skos:broader        tip:Tips .
+
+tip:ReviewCarefully
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Review Carefully" ;
+    skos:definition     "The quality of your KB depends entirely on the quality of your review. Reject inaccurate triples. Refine ambiguous ones. A smaller KB of confirmed facts is far more valuable than a large KB of unreviewed noise." ;
+    skos:broader        tip:Tips .
+
+tip:UseSourceTrust
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Use Source Trust" ;
+    skos:definition     "Mark reliable sources as trusted to auto-confirm future imports from them. But start conservative -- trust is earned through consistent accuracy." ;
+    skos:broader        tip:Tips .
+
+tip:ExportOften
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Export Often" ;
+    skos:definition     "Your .ttl export is your insurance policy. Export regularly. Keep backups. The file is plain text -- it will outlast any app, any platform, any company." ;
+    skos:broader        tip:Tips .
+
+tip:NameEntitiesWell
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Name Entities Well" ;
+    skos:definition     "Use clear, specific entity names. 'Q3 2025 Revenue Report' is better than 'Report'. Good names make the graph navigable and Shelly's answers more precise." ;
+    skos:broader        tip:Tips .
+
+tip:UseOllamaOffline
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Use Ollama for Offline" ;
+    skos:definition     "Install Ollama on your machine for fully local, fully offline LLM inference. Zero data leaves your device. Good models: llama3.2, mistral, phi3." ;
+    skos:broader        tip:Tips ;
+    skos:related        feat:LLMBackends .
+
+tip:ShareTTL
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Share Your .ttl" ;
+    skos:definition     "Export your KB and share the .ttl file. Recipients can import it and see a semantic diff against their own KB. Collaboration through structured knowledge exchange -- no real-time sync needed." ;
+    skos:broader        tip:Tips ;
+    skos:related        feat:Compare .
+
+
+## =============================================================================
+## Security and Privacy
+## =============================================================================
+
+guide:Security
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Security and Privacy" ;
+    skos:definition     "Reckons.AI is designed so that your data cannot leak by accident. The architecture makes security the default, not an afterthought." ;
+    skos:related        guide:WhatIsReckonsAI .
+
+guide:NoServer
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "No Server = No Breach" ;
+    skos:definition     "There is no server to hack. Your data lives in your browser's IndexedDB. The app is a static file served from a CDN or your own machine. No database, no API endpoint, no attack surface." ;
+    skos:broader        guide:Security .
+
+guide:APIKeySafety
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "API Key Safety" ;
+    skos:definition     "API keys are sent directly from your browser to the provider (Claude, OpenAI, etc.). They never pass through any Reckons.AI infrastructure. Keys are excluded from .ttl exports and settings exports." ;
+    skos:broader        guide:Security .
+
+guide:CSP
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Content Security Policy" ;
+    skos:definition     "The app enforces a strict CSP: no inline scripts beyond what SvelteKit requires, object-src none, form-action self. connect-src explicitly lists each allowed AI provider domain." ;
+    skos:broader        guide:Security .
+
+guide:OfflineCapable
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Offline Capable" ;
+    skos:definition     "After first load, the app works without internet. Use Ollama or the WASM model and zero inference traffic leaves your machine. Your KB is fully usable offline." ;
+    skos:broader        guide:Security .
+
+
+## =============================================================================
+## Persona
+## =============================================================================
+
+@prefix shelly: <urn:reckons:shelly/> .
+
+shelly:persona
+    shelly:name             "Shelly" ;
+    shelly:greeting         "Tips, tricks, and security! I can share practical advice for building a great KB, or explain how Reckons.AI keeps your data safe. What would you like to know?" ;
+    shelly:personality      "practical, security-conscious, helpful" ;
+    shelly:responseStyle    "concise" ;
+    shelly:systemPrompt     "You are helping someone get practical value from Reckons.AI and understand its security model. Give actionable tips. Explain security without jargon." .
