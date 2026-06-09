@@ -42,8 +42,7 @@
   .notification-stack {
     position: fixed;
     top: 4rem;
-    left: 50%;
-    transform: translateX(-50%);
+    right: 1rem;
     z-index: 600;
     display: flex;
     flex-direction: column;
