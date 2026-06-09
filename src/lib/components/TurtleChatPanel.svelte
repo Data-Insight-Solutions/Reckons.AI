@@ -655,19 +655,22 @@
   }
 
   // ── Main speak entry point (streaming) ──────────────────────────────────
+  // Track pending speech request so stopSpeaking() can cancel a queued load
+  let pendingSpeechId = 0;
+
   function speakText(text: string): void {
     if (ttsBroken) return;
     const clean = cleanForSpeech(text);
     if (!clean) return;
 
     stopSpeaking();
-    storySpeaking = true;
 
     if (!kokoroReady) {
-      // Model still loading — wait then speak
+      // Model still loading — queue without blocking storySpeaking/countdown
+      const myId = ++pendingSpeechId;
       kokoro.getReady()
-        .then(() => { if (!storySpeaking) return; startStreaming(clean); })
-        .catch(() => { ttsBroken = true; storySpeaking = false; });
+        .then(() => { if (pendingSpeechId !== myId) return; startStreaming(clean); })
+        .catch(() => { ttsBroken = true; });
       return;
     }
 
@@ -1301,8 +1304,8 @@
             <div class="story-audio">
               {#if ttsBroken}
                 <a href="/settings/turtle" class="tts-broken-hint mono">try Hume.AI voice</a>
-              {:else if !kokoroReady && kokoroLoadPct > 0}
-                <span class="tts-loading mono" title="Downloading Kokoro voice model — first time only">voice {kokoroLoadPct}%</span>
+              {:else if !kokoroReady}
+                <span class="tts-loading mono" title="Downloading Kokoro voice model — first time only">{kokoroLoadPct > 0 ? `voice ${kokoroLoadPct}%` : 'loading voice…'}</span>
               {:else}
                 <button
                   class="story-btn story-voice-toggle"
