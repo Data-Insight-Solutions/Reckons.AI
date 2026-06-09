@@ -2,6 +2,9 @@
   "name": "Reckons.AI",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite dev",
@@ -61,6 +64,6 @@
     "n3": "^1.21.3",
     "qrcode": "^1.5.4",
     "three": "^0.169.0",
-    "uuid": "^10.0.0"
+    "uuid": "^11.1.1"
   }
 }
