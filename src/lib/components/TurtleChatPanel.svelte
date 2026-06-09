@@ -639,6 +639,13 @@
     kokoroLoadPct = pct;
   });
 
+  // Start loading Kokoro when panel opens with voice enabled (lazy — no load on page mount)
+  $effect(() => {
+    if (turtleSettings().voiceEnabled && !kokoroReady) {
+      kokoro.warmup();
+    }
+  });
+
   // ── Markdown → clean spoken text ────────────────────────────────────────
   function cleanForSpeech(raw: string): string {
     return raw

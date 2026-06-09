@@ -13,7 +13,6 @@
   import { shellyChatOpen, setShellyChatOpen, shellyOpenMessage, clearShellyOpen, exploreOpen, stopExplore, activeStoryId, stopStory } from '$lib/stores/shelly-bridge.svelte';
   import { officialKbActive, deactivateOfficialKb } from '$lib/stores/official-kb.svelte';
   import { warmWasm } from '$lib/stores/wasm-status.svelte';
-  import { warmup as warmKokoro } from '$lib/integrations/llm/kokoro-tts';
   import { settings } from '$lib/stores/settings.svelte';
   import { loadGlbOverrides } from '$lib/stores/glb-overrides.svelte';
   import { loadGifOverrides } from '$lib/stores/gif-overrides.svelte';
@@ -48,8 +47,8 @@
       if (s.chatBackend === 'wasm' || (!s.chatBackend && s.preferredBackend === 'wasm')) {
         warmWasm(s.wasmModel || undefined);
       }
-      // Lazy-load Kokoro TTS model in background (cached after first download)
-      warmKokoro();
+      // Kokoro TTS: only warm up eagerly if model is already cached (instant).
+      // First-time download (~87MB) is deferred until TTS is actually needed.
       // Register current KB in the registry with its stable ID (for KB Leap navigation)
       {
         const dbName = getCurrentKbId();
