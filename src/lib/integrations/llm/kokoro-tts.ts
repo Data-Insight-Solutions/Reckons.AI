@@ -167,19 +167,21 @@ export function speakStreaming(
   }
 
   // ── Producer: synthesize chunks into buffer ──
-  // Split on paragraph breaks instead of every sentence — fewer chunks = fewer gaps.
-  // Falls back to ~200-char boundaries so very long paragraphs still stream.
+  // Split on sentence boundaries so each WASM inference is short (~1-3s)
+  // and the browser can paint between chunks.
   (async () => {
     try {
       const stream = tts.stream(text, {
         voice: opts.voice ?? DEFAULT_VOICE,
-        split_pattern: /\n\n+/,
+        split_pattern: /(?<=[.!?;:])\s+/,
       });
 
       for await (const { audio } of stream) {
         if (aborted) break;
         buffer.push(audio.toBlob());
         notifyBuffer();
+        // Yield to browser so UI stays responsive between synthesis calls
+        await new Promise(r => setTimeout(r, 0));
       }
     } catch (e) {
       if (!aborted) opts.onError?.(e);
