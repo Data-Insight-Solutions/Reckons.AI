@@ -33,7 +33,9 @@ org:W3C
     skos:definition     "The main international standards body for the Web. Founded by Tim Berners-Lee in 1994. Publishes the RDF, OWL, SPARQL, and SKOS specifications. Stewards the Semantic Web vision." ;
     kpred:founded       "1994-10-01"^^xsd:date ;
     kpred:headquarters  "MIT, Cambridge, Massachusetts" ;
-    kpred:website       "https://www.w3.org" .
+    kpred:website       "https://www.w3.org" ;
+    <urn:reckons:leap>       "https://www.w3.org/RDF/" ;
+    <urn:reckons:leap/label> "W3C RDF Homepage" .
 
 org:IETF
     rdf:type            ktype:Organization ;
@@ -87,7 +89,9 @@ org:AIAlliance
     rdfs:label          "The AI Alliance" ;
     skos:definition     "A consortium of companies, universities, and research organizations promoting open, safe, and beneficial AI. Hosts the Semiont project which inspired Reckons.AI's enrichment pipeline and research session features." ;
     kpred:website       "https://thealliance.ai" ;
-    skos:related        tl:SemiontRelease .
+    skos:related        tl:SemiontRelease ;
+    <urn:reckons:leap>       "https://thealliance.ai" ;
+    <urn:reckons:leap/label> "AI Alliance Website" .
 
 
 ## =============================================================================
@@ -179,7 +183,9 @@ tl:WikidataLaunch
     skos:definition     "Wikimedia's free knowledge base. Over 100 million items, all queryable via SPARQL. The largest collaboratively edited knowledge graph in the world. Powers infoboxes across all Wikipedia language editions." ;
     kpred:date          "2012-10-29"^^xsd:date ;
     kpred:publishedBy   "Wikimedia Foundation" ;
-    skos:related        tl:DBpediaLaunch .
+    skos:related        tl:DBpediaLaunch ;
+    <urn:reckons:leap>       "https://www.wikidata.org" ;
+    <urn:reckons:leap/label> "Wikidata" .
 
 tl:JSONLD10
     rdf:type            ktype:Concept ;
@@ -238,7 +244,9 @@ tl:SemiontRelease
     skos:definition     "A semantic enrichment framework from the AI Alliance. Defines 8 progressive analysis flows: Frame, Yield, Mark, Match, Bind, Gather, Browse, Beckon. Inspired Reckons.AI's Research Sessions and planned enrichment pipeline." ;
     kpred:date          "2025-01-01"^^xsd:date ;
     kpred:publishedBy   org:AIAlliance ;
-    kpred:website       "https://github.com/The-AI-Alliance/semiont" .
+    kpred:website       "https://github.com/The-AI-Alliance/semiont" ;
+    <urn:reckons:leap>       "https://github.com/The-AI-Alliance/semiont" ;
+    <urn:reckons:leap/label> "Semiont on GitHub" .
 
 tl:ReckonsAILaunch
     rdf:type            ktype:Concept ;

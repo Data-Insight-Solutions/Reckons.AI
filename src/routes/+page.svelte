@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Canvas } from '@threlte/core';
+  import { goto } from '$app/navigation';
   import KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
   import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
   import StatementCard from '$lib/components/StatementCard.svelte';
@@ -796,11 +797,18 @@
 
   function jumpToLeap() {
     if (!entityLeap) return;
-    const target = findKbByStableId(entityLeap.targetKbId);
-    if (target) {
-      switchToKb(target.id);
+    if (entityLeap.kind === 'url') {
+      window.open(entityLeap.target, '_blank', 'noopener');
+    } else if (entityLeap.kind === 'app') {
+      goto(entityLeap.target);
     } else {
-      alert(`KB not found on this device.\n\nStable ID: ${entityLeap.targetKbId.slice(0, 8).toUpperCase()}\n\nImport the target KB file first, then leap again.`);
+      // KB stable ID — find and switch
+      const target = findKbByStableId(entityLeap.target);
+      if (target) {
+        switchToKb(target.id);
+      } else {
+        alert(`KB not found on this device.\n\nStable ID: ${entityLeap.target.slice(0, 8).toUpperCase()}\n\nImport the target KB file first, then leap again.`);
+      }
     }
   }
 
@@ -1776,22 +1784,24 @@
         <p class="np-conn-title mono" style="margin-top: 0.5rem;">kb leap</p>
         {#if entityLeap}
           <div class="link-row">
-            <button class="leap-jump mono" onclick={jumpToLeap} title="jump to target KB">⟶</button>
-            <span class="leap-id mono" title={entityLeap.targetKbId}>
-              {entityLeap.label ?? entityLeap.targetKbId.slice(0, 8).toUpperCase()}
+            <button class="leap-jump mono" onclick={jumpToLeap} title={entityLeap.kind === 'url' ? 'open in new tab' : entityLeap.kind === 'app' ? 'navigate' : 'jump to target KB'}>
+              {entityLeap.kind === 'url' ? '↗' : '⟶'}
+            </button>
+            <span class="leap-id mono" title={entityLeap.target}>
+              {entityLeap.label ?? (entityLeap.kind === 'kb' ? entityLeap.target.slice(0, 8).toUpperCase() : entityLeap.target)}
             </span>
-            <button class="link-rm" onclick={() => navigator.clipboard.writeText(entityLeap!.targetKbId)} title="copy KB ID">⎘</button>
+            <button class="link-rm" onclick={() => navigator.clipboard.writeText(entityLeap!.target)} title="copy target">⎘</button>
             <button class="link-rm" onclick={removeLeap} title="remove leap">✕</button>
           </div>
-          {#if entityLeap.label}
-            <span class="leap-target-id mono">{entityLeap.targetKbId.slice(0, 8).toUpperCase()}</span>
+          {#if entityLeap.label && entityLeap.kind === 'kb'}
+            <span class="leap-target-id mono">{entityLeap.target.slice(0, 8).toUpperCase()}</span>
           {/if}
         {:else if addingLeap}
           <div class="link-add-form">
             <input
               class="link-input"
               type="text"
-              placeholder="target KB stable ID"
+              placeholder="KB ID, URL, or app path"
               bind:value={newLeapId}
               onkeydown={(e) => { if (e.key === 'Enter') saveLeap(); if (e.key === 'Escape') { addingLeap = false; newLeapId = ''; newLeapLabel = ''; } }}
               autofocus
