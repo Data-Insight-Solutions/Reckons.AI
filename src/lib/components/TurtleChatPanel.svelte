@@ -43,12 +43,16 @@
     const raw = e instanceof Error ? e.message : String(e);
     if (provider === 'wasm') {
       // Simplify verbose HuggingFace/ONNX errors for the user
-      const short = raw.includes('Unauthorized') ? 'Model download blocked (authorization required)'
-        : raw.includes('timed out') ? 'Model download timed out'
-        : raw.includes('Failed to fetch') || raw.includes('NetworkError') ? 'Network error downloading model'
-        : raw.length > 120 ? raw.slice(0, 100) + '…' : raw;
-      errorMsg = `No AI backend configured. Local model failed: ${short}`;
-      errorLink = { label: 'Add API key in Settings', href: '/settings#s-claude' };
+      const short = raw.includes('Unauthorized') ? 'model download blocked'
+        : raw.includes('timed out') ? 'model download timed out'
+        : raw.includes('Failed to fetch') || raw.includes('NetworkError') ? 'network error'
+        : raw.length > 80 ? raw.slice(0, 70) + '…' : raw;
+      errorMsg = `No AI backend available (local: ${short}). Add an API key or install Ollama.`;
+      errorLink = { label: 'Settings', href: '/settings#s-backends' };
+    } else if (provider === 'ollama') {
+      // Pass through the CORS-aware message from chatOllama
+      errorMsg = raw;
+      errorLink = { label: 'Ollama setup', href: '/settings#s-ollama' };
     } else {
       errorMsg = raw;
       errorLink = null;

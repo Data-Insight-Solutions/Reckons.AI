@@ -87,21 +87,48 @@ export async function chatOllama(
   maxTokens = 1024
 ): Promise<string> {
   const url = `${baseUrl}/v1/chat/completions`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      model,
-      max_tokens: maxTokens,
-      messages: [{ role: 'system', content: system }, ...messages]
-    })
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        max_tokens: maxTokens,
+        messages: [{ role: 'system', content: system }, ...messages]
+      })
+    });
+  } catch (e) {
+    // Network errors (CORS blocked, connection refused, offline)
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes('NetworkError') || msg.includes('Failed to fetch') || msg.includes('Load failed')) {
+      const origin = typeof globalThis.location !== 'undefined' ? globalThis.location.origin : 'http://localhost:5173';
+      throw new Error(
+        `Cannot reach Ollama at ${baseUrl}. ` +
+        `Either Ollama is not running, or CORS is blocking the request. ` +
+        `Start Ollama with: OLLAMA_ORIGINS="${origin}" ollama serve`
+      );
+    }
+    throw e;
+  }
   if (!res.ok) {
     const body = await res.text().catch(() => '');
     throw new Error(`Ollama ${res.status}: ${body.slice(0, 300)} — is Ollama running at ${baseUrl}?`);
   }
   const data = await res.json();
   return data.choices?.[0]?.message?.content ?? '';
+}
+
+/** List models available on a running Ollama instance. Returns [] on error. */
+export async function listOllamaModels(baseUrl = 'http://localhost:11434'): Promise<string[]> {
+  try {
+    const res = await fetch(`${baseUrl}/api/tags`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.models ?? []).map((m: { name: string }) => m.name);
+  } catch {
+    return [];
+  }
 }
 
 // ── OpenRouter ────────────────────────────────────────────────────────────────

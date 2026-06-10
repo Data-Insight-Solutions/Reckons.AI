@@ -2,7 +2,7 @@ import { v4 as uuid } from 'uuid';
 import type { Source, Statement } from '../rdf/types';
 import { extractWithClaude } from '../integrations/llm/claude';
 import { extractWithWasm } from '../integrations/llm/wasm';
-import { chatOpenAI, chatGemini, chatOpenRouter, chatChromeAI, chatReckons } from '../integrations/llm/providers';
+import { chatOpenAI, chatGemini, chatOllama, chatOpenRouter, chatChromeAI, chatReckons } from '../integrations/llm/providers';
 import { triplesToStatements, extractMock, parseTriplesJSON, EXTRACTION_SYSTEM_PROMPT, buildExtractionUserPrompt, type ExtractedTriple } from '../integrations/llm/extractor';
 import { computeDiff, type Diff } from '../rdf/diff';
 import { semanticEnrichDiff } from '../rdf/semantic-diff';
@@ -130,6 +130,14 @@ export async function ingest(
       EXTRACTION_SYSTEM_PROMPT,
       s.openrouterApiKey!,
       s.openrouterModel
+    );
+    triples = parseTriplesJSON(raw);
+  } else if (backend === 'ollama') {
+    const raw = await chatOllama(
+      [{ role: 'user', content: buildExtractionUserPrompt(text, title) }],
+      EXTRACTION_SYSTEM_PROMPT,
+      s.ollamaModel,
+      s.ollamaBaseUrl
     );
     triples = parseTriplesJSON(raw);
   } else if (backend === 'reckons') {
