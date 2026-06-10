@@ -19,7 +19,7 @@ import type { ChatMessage } from './providers';
  *    so users can correct or refine before the statements are committed to KB.
  */
 
-const DEFAULT_MODEL = 'Xenova/Qwen2.5-0.5B-Instruct';
+const DEFAULT_MODEL = 'HuggingFaceTB/SmolLM2-360M-Instruct';
 
 let workerSingleton: Worker | null = null;
 let nextReqId = 1;

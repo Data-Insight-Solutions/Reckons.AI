@@ -40,12 +40,17 @@
   }
 
   function handleChatError(e: unknown, provider: TurtleChatProvider) {
-    const msg = e instanceof Error ? e.message : String(e);
+    const raw = e instanceof Error ? e.message : String(e);
     if (provider === 'wasm') {
-      errorMsg = `Local AI failed: ${msg}. Add a cloud API key for better results.`;
-      errorLink = { label: 'Open Settings', href: '/settings#s-backends' };
+      // Simplify verbose HuggingFace/ONNX errors for the user
+      const short = raw.includes('Unauthorized') ? 'Model download blocked (authorization required)'
+        : raw.includes('timed out') ? 'Model download timed out'
+        : raw.includes('Failed to fetch') || raw.includes('NetworkError') ? 'Network error downloading model'
+        : raw.length > 120 ? raw.slice(0, 100) + '…' : raw;
+      errorMsg = `No AI backend configured. Local model failed: ${short}`;
+      errorLink = { label: 'Add API key in Settings', href: '/settings#s-claude' };
     } else {
-      errorMsg = msg;
+      errorMsg = raw;
       errorLink = null;
     }
   }

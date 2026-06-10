@@ -145,7 +145,7 @@
       color: '#6b4399',
       keyField: undefined,
       modelField: 'wasmModel',
-      modelDefault: 'Xenova/Qwen2.5-0.5B-Instruct',
+      modelDefault: 'HuggingFaceTB/SmolLM2-360M-Instruct',
       features: ['ingest'],
       docsUrl: '',
       note: 'Runs in-browser via transformers.js. No GPU needed, works on mobile. Ingest fallback only.'

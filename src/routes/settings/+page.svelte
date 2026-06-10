@@ -146,13 +146,13 @@
       id: 'HuggingFaceTB/SmolLM2-360M-Instruct',
       label: 'SmolLM2-360M',
       size: '~360 MB',
-      note: 'fastest · lowest quality · ideal for very low RAM or slow connections'
+      note: 'default · fastest · good for quick responses'
     },
     {
       id: 'Xenova/Qwen2.5-0.5B-Instruct',
       label: 'Qwen2.5-0.5B',
       size: '~500 MB',
-      note: 'default · good balance of speed and coherence'
+      note: 'better coherence · may require HuggingFace access'
     },
     {
       id: 'HuggingFaceTB/SmolLM2-1.7B-Instruct',
@@ -1323,7 +1323,7 @@
           <tr><td><code>VITE_OLLAMA_BASE_URL</code></td><td>Ollama URL</td><td>http://localhost:11434</td></tr>
           <tr><td><code>VITE_OLLAMA_MODEL</code></td><td>Ollama model</td><td>llama3.2</td></tr>
           <tr><td><code>VITE_OPENROUTER_MODEL</code></td><td>OpenRouter model</td><td>meta-llama/llama-3.2-3b-instruct:free</td></tr>
-          <tr><td><code>VITE_WASM_MODEL</code></td><td>WASM/HuggingFace model ID</td><td>Xenova/Qwen2.5-0.5B-Instruct</td></tr>
+          <tr><td><code>VITE_WASM_MODEL</code></td><td>WASM/HuggingFace model ID</td><td>HuggingFaceTB/SmolLM2-360M-Instruct</td></tr>
         </tbody>
       </table>
       <p class="hint" style="margin-top:0.6rem">

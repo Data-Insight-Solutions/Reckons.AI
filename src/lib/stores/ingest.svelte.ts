@@ -175,7 +175,7 @@ export async function ingest(
     backend === 'openai'     ? (s.openaiModel     ?? 'gpt-4o-mini')                            :
     backend === 'gemini'     ? (s.geminiModel     ?? 'gemini-2.0-flash')                       :
     backend === 'ollama'     ? (s.ollamaModel     ?? 'llama3.2')                               :
-    backend === 'wasm'       ? (s.wasmModel       ?? 'Xenova/Qwen2.5-0.5B-Instruct')           :
+    backend === 'wasm'       ? (s.wasmModel       ?? 'HuggingFaceTB/SmolLM2-360M-Instruct')    :
     backend === 'openrouter' ? (s.openrouterModel ?? 'meta-llama/llama-3.2-3b-instruct:free')  :
     backend === 'reckons'    ? (s.reckonsModel    ?? '@cf/meta/llama-3.1-8b-instruct')         :
     backend === 'chrome-ai'  ? 'chrome-ai'                                                      :
