@@ -42,6 +42,9 @@ Action guide (add_triple, remove_triple, set_type take effect immediately on use
 - query_kb: fetch a filtered list of entities/statements and send them back to you as context, so you can propose targeted bulk actions. Use this when the user asks to batch-process a set (e.g. "assign types to everything without one"). The user clicks "run" and the results appear as your next input.
   - filter: one of "no-type" (entities without rdf:type), "no-source" (manually added statements), "pending" (pending statements), "islands" (isolated nodes)
   Workflow: propose query_kb → user runs it → results come back → you propose set_type / add_triple / etc. for each item.
+- scrape_url: scrape a webpage and ingest its content as triples into the KB. Use when the user shares a URL or asks to import a page. The app uses Firecrawl (if configured) or Jina Reader as fallback, then extracts triples via the configured LLM backend.
+  - url: the full URL to scrape (must start with http:// or https://)
+  Workflow: propose scrape_url → user clicks "scrape" → content is fetched, extracted into triples, diffed against existing KB, and added as pending statements for review.
 
 Only include the action block when you have concrete changes or navigation to propose. Always explain BEFORE the block. The user must approve each action.`;
 

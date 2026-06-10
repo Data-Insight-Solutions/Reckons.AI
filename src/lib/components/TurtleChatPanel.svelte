@@ -848,6 +848,21 @@
         return;
       }
 
+      // scrape_url: trigger the ingestion pipeline for a URL
+      if (action.type === 'scrape_url') {
+        dismissedActions = new Set([...dismissedActions, key]);
+        const { ingest } = await import('$lib/stores/ingest.svelte');
+        try {
+          const result = await ingest({ kind: 'url', url: action.url });
+          const count = result.statements.length;
+          input = `I scraped "${action.url}" and extracted ${count} triples. They've been added as pending statements for review.`;
+          await sendMessage();
+        } catch (e) {
+          errorMsg = e instanceof Error ? e.message : String(e);
+        }
+        return;
+      }
+
       // adjust_view and confirm_source don't create KB records — handle first
       if (action.type === 'adjust_view') {
         applyShellyViewAdjust({
@@ -1176,10 +1191,14 @@
                         <span class="action-badge badge-query">query KB</span>
                         <span class="action-desc">{action.label}</span>
                         <span class="action-hint">runs filter and returns results so I can help with next steps</span>
+                      {:else if action.type === 'scrape_url'}
+                        <span class="action-badge badge-scrape">scrape URL</span>
+                        <span class="action-desc">{action.label}</span>
+                        <span class="action-hint">{action.url}</span>
                       {/if}
                       <div class="action-btns">
                         <button class="primary sm" onclick={() => acceptAction(action, key)}>
-                          {action.type === 'query_kb' ? 'run' : 'accept'}
+                          {action.type === 'query_kb' ? 'run' : action.type === 'scrape_url' ? 'scrape' : 'accept'}
                         </button>
                         <button class="sm" onclick={() => dismissAction(key)}>dismiss</button>
                       </div>
@@ -1778,6 +1797,7 @@
   .badge-merge { color: var(--data); }
   .badge-nav { color: var(--accent); }
   .badge-query { color: var(--ok, #4caf50); }
+  .badge-scrape { color: #63b3ed; }
 
   .action-danger {
     border-color: color-mix(in srgb, var(--danger) 40%, var(--line));

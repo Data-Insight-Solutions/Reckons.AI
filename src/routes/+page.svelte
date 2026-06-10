@@ -2681,14 +2681,15 @@
     display: block;
     transform: translate(-50%, calc(-100% - 5px));
     font-size: var(--lfs, 11px);
+    font-weight: 700;
     /* --lop is the per-label distance opacity (0.25–0.85); base color alpha multiplied by it */
-    color: rgba(232, 234, 240, calc(var(--lop, 0.85) * 0.75));
+    color: rgba(232, 234, 240, calc(var(--lop, 0.85) * 0.85));
     white-space: nowrap;
     /* Tighter shadow — less blur-radius for crisp text on Firefox */
     text-shadow: 0 1px 2px rgba(0,0,0,0.95), 0 0 6px rgba(0,0,0,0.6);
     transition: transform 0.12s ease-out, color 0.18s ease-out, opacity 0.25s ease-out;
     letter-spacing: 0.02em;
-    max-width: 180px;
+    max-width: 220px;
     overflow: hidden;
     text-overflow: ellipsis;
     -webkit-font-smoothing: antialiased;
@@ -2700,14 +2701,14 @@
   }
   .node-label.hovered {
     color: rgba(232, 234, 240, 1);
-    transform: translate(-50%, calc(-100% - 5px)) scale(1.55);
+    transform: translate(-50%, calc(-100% - 5px)) scale(1.8);
   }
   .node-label.selected-node {
     color: var(--accent);
-    transform: translate(-50%, calc(-100% - 5px)) scale(1.4);
+    transform: translate(-50%, calc(-100% - 5px)) scale(1.6);
   }
   .node-label.hovered.selected-node {
-    transform: translate(-50%, calc(-100% - 5px)) scale(1.7);
+    transform: translate(-50%, calc(-100% - 5px)) scale(2.0);
   }
 
   /* ── Label size slider ── */

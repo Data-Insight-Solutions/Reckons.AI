@@ -13,7 +13,8 @@ export type KBAction =
   | { type: 'merge_entities'; keepEntityIri: string; keepEntityLabel: string; dropEntityIri: string; dropEntityLabel: string }
   | { type: 'confirm_source'; sourceId: string; sourceTitle: string }
   | { type: 'adjust_view'; selectEntity?: string; layout?: 'force' | 'focus' | 'source' | 'type' | 'hub'; filters?: GraphFilter[]; label: string }
-  | { type: 'query_kb'; filter: 'no-type' | 'no-source' | 'pending' | 'islands'; label: string };
+  | { type: 'query_kb'; filter: 'no-type' | 'no-source' | 'pending' | 'islands'; label: string }
+  | { type: 'scrape_url'; url: string; label: string };
 
 export interface TurtleChatRequest {
   apiKey: string;
