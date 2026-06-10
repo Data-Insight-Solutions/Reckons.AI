@@ -74,6 +74,19 @@ function buildHTML(): string {
     <span class="btn-icon">&#x2B07;</span> Ingest Page
   </button>`;
 
+  // Session status
+  const sessionCount = state.session.pages.length;
+  if (sessionCount > 0) {
+    const allTriples = state.session.pages.flatMap(p => p.triples);
+    const nC = allTriples.filter(t => t.kind === 'conflict').length;
+    const nN = allTriples.filter(t => t.kind === 'new').length;
+    html += `<div class="session-row">
+      <span class="session-badge">${sessionCount} page${sessionCount !== 1 ? 's' : ''}</span>
+      ${nC > 0 ? `<span class="session-stat conflict">${nC} conflicts</span>` : ''}
+      ${nN > 0 ? `<span class="session-stat new">${nN} new</span>` : ''}
+    </div>`;
+  }
+
   // KB status
   html += `<div class="kb-row">
     <div class="kb-info">

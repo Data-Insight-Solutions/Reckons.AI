@@ -1,14 +1,18 @@
 /**
- * Side panel — Compare + Ingest views.
+ * Side panel — Compare + Ingest + Session views.
+ *
+ * Compare: analyze the current page against KB.
+ * Session: aggregate findings across multiple pages during research.
+ * Ingest: send triples to Reckons.AI.
  */
 import type {
-  ExtensionState, ExtractedTriple, DiffSummary, PopupRequest, BackgroundEvent,
+  ExtensionState, AnalysisResult, ExtractedTriple, DiffSummary, PopupRequest, BackgroundEvent,
 } from './types';
 
 let state: ExtensionState | null = null;
 let error: string | null = null;
 let currentTab: chrome.tabs.Tab | null = null;
-let view: 'compare' | 'ingest' = 'compare';
+let view: 'compare' | 'ingest' | 'session' = 'compare';
 let focusPrompt = '';
 let ingestStatus: { kind: 'ok' | 'err'; msg: string } | null = null;
 let ingestBusy = false;
@@ -17,6 +21,7 @@ let pasteResponse = '';
 let pasteCopied = false;
 
 const collapsed = new Set<string>();
+const sessionCollapsed = new Set<string>();
 
 function send(msg: PopupRequest): Promise<BackgroundEvent> {
   return chrome.runtime.sendMessage(msg);
@@ -25,8 +30,6 @@ function send(msg: PopupRequest): Promise<BackgroundEvent> {
 chrome.runtime.onMessage.addListener((event: BackgroundEvent) => {
   if (event.type === 'STATE') {
     state = event.state;
-    // Only clear error when a fresh analysis is starting, not when it ends.
-    // (The finally-broadcast after a failed analysis would otherwise wipe the error.)
     if (event.state.analyzing) error = null;
   }
   if (event.type === 'ERROR') { error = event.message; }
@@ -70,13 +73,33 @@ function buildHTML(): string {
   }
 
   // Tab switcher
+  const sessionCount = state.session.pages.length;
   html += `<div class="tab-bar">
     <button class="tab-btn ${view === 'compare' ? 'active' : ''}" data-view="compare">Compare</button>
+    <button class="tab-btn ${view === 'session' ? 'active' : ''}" data-view="session">Session${sessionCount > 0 ? ` <span class="tab-badge">${sessionCount}</span>` : ''}</button>
     <button class="tab-btn ${view === 'ingest'  ? 'active' : ''}" data-view="ingest">Ingest</button>
   </div>`;
 
-  html += view === 'ingest' ? buildIngestView() : buildCompareView();
+  if (view === 'ingest') html += buildIngestView();
+  else if (view === 'session') html += buildSessionView();
+  else html += buildCompareView();
+
   return html;
+}
+
+// ── At-a-glance bar ─────────────────────────────────────────────────────────
+
+function buildGlanceBar(conflicts: number, reinforces: number, news: number): string {
+  const total = conflicts + reinforces + news;
+  if (total === 0) return '';
+  const cPct = Math.round((conflicts / total) * 100);
+  const rPct = Math.round((reinforces / total) * 100);
+  const nPct = 100 - cPct - rPct;
+  return `<div class="glance-bar" title="${conflicts} conflicts, ${reinforces} reinforcing, ${news} new">
+    ${cPct > 0 ? `<div class="glance-seg conflict" style="width:${cPct}%"></div>` : ''}
+    ${rPct > 0 ? `<div class="glance-seg reinforce" style="width:${rPct}%"></div>` : ''}
+    ${nPct > 0 ? `<div class="glance-seg new" style="width:${nPct}%"></div>` : ''}
+  </div>`;
 }
 
 // ── Paste-response inline section ────────────────────────────────────────────
@@ -112,7 +135,6 @@ function buildCompareView(): string {
   const { result, analyzing } = state!;
   let html = '';
 
-  // Error banner (persists until next analysis attempt)
   if (error) {
     html += `<div class="error-box">
       <strong>Error</strong><br>${esc(error)}
@@ -127,7 +149,6 @@ function buildCompareView(): string {
   }
 
   if (!result) {
-    // No analysis — show focus input + big CTA
     html += `<div class="cta-area">
       <div class="cta-text">Compare this page against your knowledge base to see what it confirms, contradicts, or adds.</div>
       <div class="focus-field">
@@ -142,7 +163,7 @@ function buildCompareView(): string {
     return html;
   }
 
-  // Has result — compact toolbar + inline focus for re-analysis
+  // Has result — toolbar
   html += `<div class="toolbar">
     <div class="toolbar-status">Analyzed</div>
     <button class="toolbar-btn" id="btn-refresh">&#x21BA; Re-analyze</button>
@@ -158,23 +179,28 @@ function buildCompareView(): string {
   </div>
   <div class="paste-toolbar-wrap">${buildPasteArea()}</div>`;
 
+  const conflicts  = result.triples.filter(t => t.kind === 'conflict');
+  const reinforces = result.triples.filter(t => t.kind === 'reinforce');
+  const news       = result.triples.filter(t => t.kind === 'new');
+
+  // At-a-glance bar
+  html += buildGlanceBar(conflicts.length, reinforces.length, news.length);
+
+  // Summary cards — hero position
   if (result.summary) {
     if (typeof result.summary === 'object') {
       const s = result.summary as DiffSummary;
       html += `<div class="summary-cards">`;
-      if (s.new)         html += `<div class="summary-card new-card"><div class="sc-head">New Information</div><div class="sc-body">${esc(s.new)}</div></div>`;
-      if (s.reinforcing) html += `<div class="summary-card reinforce-card"><div class="sc-head">Reinforcing</div><div class="sc-body">${esc(s.reinforcing)}</div></div>`;
-      if (s.conflicting) html += `<div class="summary-card conflict-card"><div class="sc-head">Conflicts &amp; Refinements</div><div class="sc-body">${esc(s.conflicting)}</div></div>`;
+      if (s.conflicting) html += `<div class="summary-card conflict-card"><div class="sc-head"><span class="sc-dot conflict"></span>Conflicts &amp; Refinements</div><div class="sc-body">${esc(s.conflicting)}</div></div>`;
+      if (s.new)         html += `<div class="summary-card new-card"><div class="sc-head"><span class="sc-dot new"></span>New Information</div><div class="sc-body">${esc(s.new)}</div></div>`;
+      if (s.reinforcing) html += `<div class="summary-card reinforce-card"><div class="sc-head"><span class="sc-dot reinforce"></span>Reinforcing</div><div class="sc-body">${esc(s.reinforcing)}</div></div>`;
       html += `</div>`;
     } else {
       html += `<div class="summary">${esc(result.summary as string)}</div>`;
     }
   }
 
-  const conflicts  = result.triples.filter(t => t.kind === 'conflict');
-  const reinforces = result.triples.filter(t => t.kind === 'reinforce');
-  const news       = result.triples.filter(t => t.kind === 'new');
-
+  // Counts
   html += `<div class="counts">
     <div class="count-item">
       <div class="count-dot conflict"></div>
@@ -224,6 +250,161 @@ function buildSection(kind: string, label: string, triples: ExtractedTriple[]): 
           </div>`).join('')}
       </div>
     </div>`;
+}
+
+// ── Session ─────────────────────────────────────────────────────────────────
+
+function buildSessionView(): string {
+  const { session: sess } = state!;
+  let html = '';
+
+  if (sess.pages.length === 0) {
+    html += `<div class="session-empty">
+      <div class="session-empty-icon">&#x1F4DA;</div>
+      <div class="session-empty-title">No pages analyzed yet</div>
+      <div class="session-empty-text">Use the <strong>Compare</strong> tab to analyze pages. Each analysis is automatically added to your research session.</div>
+    </div>`;
+    return html;
+  }
+
+  // Aggregate counts
+  const allTriples = sess.pages.flatMap(p => p.triples);
+  const totalConflicts  = allTriples.filter(t => t.kind === 'conflict').length;
+  const totalReinforces = allTriples.filter(t => t.kind === 'reinforce').length;
+  const totalNew        = allTriples.filter(t => t.kind === 'new').length;
+
+  // Session header
+  html += `<div class="session-header">
+    <div class="session-meta">
+      <span class="session-pages-count">${sess.pages.length} page${sess.pages.length !== 1 ? 's' : ''}</span>
+      <span class="session-sep">·</span>
+      <span class="session-triple-count">${allTriples.length} triples</span>
+    </div>
+    <div class="session-actions">
+      <button class="toolbar-btn" id="btn-session-clear" title="Clear session">Clear</button>
+    </div>
+  </div>`;
+
+  // Aggregate at-a-glance
+  html += buildGlanceBar(totalConflicts, totalReinforces, totalNew);
+
+  // Aggregate counts row
+  html += `<div class="counts">
+    <div class="count-item">
+      <div class="count-dot conflict"></div>
+      <span class="count-num">${totalConflicts}</span>
+      <span class="count-label">conflict${totalConflicts !== 1 ? 's' : ''}</span>
+    </div>
+    <div class="count-item">
+      <div class="count-dot reinforce"></div>
+      <span class="count-num">${totalReinforces}</span>
+      <span class="count-label">reinforce${totalReinforces !== 1 ? 's' : ''}</span>
+    </div>
+    <div class="count-item">
+      <div class="count-dot new"></div>
+      <span class="count-num">${totalNew}</span>
+      <span class="count-label">new</span>
+    </div>
+  </div>`;
+
+  // Aggregate summaries — collect from all pages
+  const aggNew: string[] = [];
+  const aggReinforcing: string[] = [];
+  const aggConflicting: string[] = [];
+  for (const page of sess.pages) {
+    const title = shortTitle(page.title || page.url);
+    if (typeof page.summary === 'object') {
+      if (page.summary.new) aggNew.push(`<strong>${esc(title)}</strong>: ${esc(page.summary.new)}`);
+      if (page.summary.reinforcing) aggReinforcing.push(`<strong>${esc(title)}</strong>: ${esc(page.summary.reinforcing)}`);
+      if (page.summary.conflicting) aggConflicting.push(`<strong>${esc(title)}</strong>: ${esc(page.summary.conflicting)}`);
+    }
+  }
+
+  if (aggConflicting.length > 0 || aggNew.length > 0 || aggReinforcing.length > 0) {
+    html += `<div class="summary-cards">`;
+    if (aggConflicting.length > 0) {
+      html += `<div class="summary-card conflict-card">
+        <div class="sc-head"><span class="sc-dot conflict"></span>Conflicts Across Pages</div>
+        <div class="sc-body">${aggConflicting.join('<br>')}</div>
+      </div>`;
+    }
+    if (aggNew.length > 0) {
+      html += `<div class="summary-card new-card">
+        <div class="sc-head"><span class="sc-dot new"></span>New Information Across Pages</div>
+        <div class="sc-body">${aggNew.join('<br>')}</div>
+      </div>`;
+    }
+    if (aggReinforcing.length > 0) {
+      html += `<div class="summary-card reinforce-card">
+        <div class="sc-head"><span class="sc-dot reinforce"></span>Reinforced Across Pages</div>
+        <div class="sc-body">${aggReinforcing.join('<br>')}</div>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  // Per-page breakdown
+  html += `<div class="session-pages-heading">Pages</div>`;
+  for (let i = 0; i < sess.pages.length; i++) {
+    const page = sess.pages[i];
+    const pConflicts  = page.triples.filter(t => t.kind === 'conflict').length;
+    const pReinforces = page.triples.filter(t => t.kind === 'reinforce').length;
+    const pNew        = page.triples.filter(t => t.kind === 'new').length;
+    const key = `page-${i}`;
+    const isCollapsed = sessionCollapsed.has(key);
+
+    html += `<div class="session-page">
+      <div class="session-page-head ${isCollapsed ? 'collapsed' : ''}" data-session-page="${key}">
+        <div class="session-page-info">
+          <div class="session-page-title">${esc(shortTitle(page.title || page.url))}</div>
+          <div class="session-page-pills">
+            ${pConflicts > 0 ? `<span class="pill conflict">${pConflicts}</span>` : ''}
+            ${pReinforces > 0 ? `<span class="pill reinforce">${pReinforces}</span>` : ''}
+            ${pNew > 0 ? `<span class="pill new">${pNew}</span>` : ''}
+          </div>
+        </div>
+        <div class="session-page-actions">
+          <button class="session-page-remove" data-remove-url="${esc(page.url)}" title="Remove from session">✕</button>
+          <span class="chevron">▼</span>
+        </div>
+      </div>
+      <div class="session-page-body ${isCollapsed ? 'hidden' : ''}">
+        ${buildGlanceBar(pConflicts, pReinforces, pNew)}
+        ${page.triples.map(t => `
+          <div class="triple-row ${t.kind} compact">
+            <div class="triple-dot ${t.kind}"></div>
+            <div class="triple-body">
+              <div class="triple-spo">
+                <strong>${esc(t.subject)}</strong>
+                <span class="sep">·</span>${esc(t.predicate)}<span class="sep">·</span>
+                <strong>${esc(t.object)}</strong>
+              </div>
+              ${t.conflictNote ? `<div class="triple-conflict-note">${esc(t.conflictNote)}</div>` : ''}
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  // Ingest session button
+  if (totalNew > 0 || totalConflicts > 0) {
+    html += `<div class="session-ingest-bar">
+      <button class="ingest-action-btn" id="btn-session-ingest" ${ingestBusy ? 'disabled' : ''}>
+        ${ingestBusy ? '<span class="spinner"></span> Ingesting…' : `⬇ Ingest All New (${totalNew} triples)`}
+      </button>
+    </div>`;
+  }
+
+  if (ingestStatus) {
+    html += `<div class="ingest-status-wrap"><div class="ingest-status ${ingestStatus.kind}">${esc(ingestStatus.msg)}</div></div>`;
+  }
+
+  return html;
+}
+
+function shortTitle(title: string): string {
+  if (title.length <= 50) return title;
+  return title.slice(0, 47) + '…';
 }
 
 // ── Ingest ────────────────────────────────────────────────────────────────────
@@ -298,7 +479,6 @@ function attachHandlers() {
   document.getElementById('btn-paste-copy-again')?.addEventListener('click', fetchAndCopyPrompt);
   document.getElementById('paste-response')?.addEventListener('input', (e) => {
     pasteResponse = (e.target as HTMLTextAreaElement).value;
-    // Re-render to enable/disable submit button
     const btn = document.getElementById('btn-paste-submit') as HTMLButtonElement | null;
     if (btn) btn.disabled = !pasteResponse.trim();
   });
@@ -317,14 +497,15 @@ function attachHandlers() {
     render();
   });
 
+  // Tab switching
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      view = (btn as HTMLElement).dataset.view as 'compare' | 'ingest';
+      view = (btn as HTMLElement).dataset.view as 'compare' | 'ingest' | 'session';
       render();
     });
   });
 
-  // Sync textarea value to focusPrompt before triggering analysis
+  // Focus prompt
   const syncFocus = () => {
     focusPrompt = (document.getElementById('focus-input') as HTMLTextAreaElement)?.value ?? focusPrompt;
   };
@@ -347,7 +528,8 @@ function attachHandlers() {
     if (resp.type === 'STATE') { state = resp.state; render(); }
   });
 
-  document.querySelectorAll('.section-head').forEach(el => {
+  // Compare section collapse
+  document.querySelectorAll('.section-head[data-section]').forEach(el => {
     el.addEventListener('click', () => {
       const kind = (el as HTMLElement).dataset.section!;
       collapsed.has(kind) ? collapsed.delete(kind) : collapsed.add(kind);
@@ -355,6 +537,48 @@ function attachHandlers() {
     });
   });
 
+  // Session handlers
+  document.getElementById('btn-session-clear')?.addEventListener('click', async () => {
+    const resp = await send({ type: 'CLEAR_SESSION' });
+    if (resp.type === 'STATE') { state = resp.state; }
+    ingestStatus = null;
+    render();
+  });
+
+  document.querySelectorAll('.session-page-head[data-session-page]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      // Don't toggle if clicking the remove button
+      if ((e.target as HTMLElement).closest('.session-page-remove')) return;
+      const key = (el as HTMLElement).dataset.sessionPage!;
+      sessionCollapsed.has(key) ? sessionCollapsed.delete(key) : sessionCollapsed.add(key);
+      render();
+    });
+  });
+
+  document.querySelectorAll('.session-page-remove[data-remove-url]').forEach(el => {
+    el.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const url = (el as HTMLElement).dataset.removeUrl!;
+      const resp = await send({ type: 'REMOVE_SESSION_PAGE', url });
+      if (resp.type === 'STATE') { state = resp.state; }
+      render();
+    });
+  });
+
+  document.getElementById('btn-session-ingest')?.addEventListener('click', async () => {
+    ingestBusy = true;
+    ingestStatus = null;
+    render();
+    const resp = await send({ type: 'INGEST_SESSION', kinds: ['new'] });
+    if (resp.type === 'INGEST_RESULT') {
+      ingestBusy = false;
+      const ok = resp.status === 'started' || resp.status === 'opened';
+      ingestStatus = { kind: ok ? 'ok' : 'err', msg: resp.message ?? resp.status };
+      render();
+    }
+  });
+
+  // Ingest (single page)
   document.getElementById('btn-do-ingest')?.addEventListener('click', async () => {
     const url = currentTab?.url ?? '';
     if (!url) return;
@@ -365,7 +589,6 @@ function attachHandlers() {
       type: 'DO_INGEST',
       url,
       title: currentTab?.title ?? '',
-      // Pass already-extracted triples so the app doesn't re-analyze
       triples: (state?.result?.triples ?? []).map(t => ({
         subject: t.subject,
         predicate: t.predicate,

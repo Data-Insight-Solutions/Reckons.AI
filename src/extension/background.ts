@@ -3,7 +3,7 @@
  * Handles LLM calls, KB sync, and coordinates popup ↔ content script.
  */
 import type {
-  ExtSettings, KBSnapshot, AnalysisResult, ExtractedTriple, DiffSummary,
+  ExtSettings, KBSnapshot, AnalysisResult, ResearchSession, ExtractedTriple, DiffSummary,
   ExtensionState, PopupRequest, BackgroundEvent, ContentCommand, ContentResponse,
 } from './types';
 import { DEFAULT_SETTINGS } from './types';
@@ -13,6 +13,7 @@ import { DEFAULT_SETTINGS } from './types';
 let settings: ExtSettings = { ...DEFAULT_SETTINGS };
 let snapshot: KBSnapshot | null = null;
 let result: AnalysisResult | null = null;
+let session: ResearchSession = { pages: [], startedAt: Date.now() };
 let analyzing = false;
 let highlightsActive = false;
 let currentTabId: number | null = null;
@@ -20,10 +21,11 @@ let currentTabId: number | null = null;
 // ── Persistence ───────────────────────────────────────────────────────────────
 
 async function loadState() {
-  const stored = await chrome.storage.local.get(['settings', 'snapshot', 'result']);
+  const stored = await chrome.storage.local.get(['settings', 'snapshot', 'result', 'session']);
   if (stored.settings) settings = { ...DEFAULT_SETTINGS, ...stored.settings };
   if (stored.snapshot) snapshot = stored.snapshot;
   if (stored.result) result = stored.result;
+  if (stored.session) session = stored.session;
 }
 
 async function saveSettings() {
@@ -38,8 +40,12 @@ async function saveResult() {
   await chrome.storage.local.set({ result });
 }
 
+async function saveSession() {
+  await chrome.storage.local.set({ session });
+}
+
 function getState(): ExtensionState {
-  return { settings, snapshot, result, analyzing, highlightsActive, currentTabId };
+  return { settings, snapshot, result, session, analyzing, highlightsActive, currentTabId };
 }
 
 // ── Messaging helpers ─────────────────────────────────────────────────────────
@@ -232,6 +238,15 @@ async function analyzePage(autoHighlight = false, focus?: string) {
     result = { url: page.url, title: page.title, triples, summary, analyzedAt: Date.now() };
     await saveResult();
 
+    // Accumulate into research session (replace if same URL already analyzed)
+    const existingIdx = session.pages.findIndex(p => p.url === result!.url);
+    if (existingIdx >= 0) {
+      session.pages[existingIdx] = result;
+    } else {
+      session.pages.push(result);
+    }
+    await saveSession();
+
     if (autoHighlight && currentTabId) {
       await highlightPage();
     }
@@ -387,6 +402,11 @@ chrome.runtime.onMessage.addListener((msg: PopupRequest, _sender, sendResponse) 
             analyzedAt: Date.now(),
           };
           await saveResult();
+          // Accumulate into session
+          const existingIdx = session.pages.findIndex(p => p.url === result!.url);
+          if (existingIdx >= 0) session.pages[existingIdx] = result;
+          else session.pages.push(result);
+          await saveSession();
           if (currentTabId) await highlightPage();
         } catch (e) {
           broadcast({ type: 'ERROR', message: e instanceof Error ? e.message : String(e) });
@@ -418,6 +438,59 @@ chrome.runtime.onMessage.addListener((msg: PopupRequest, _sender, sendResponse) 
         const ingestUrl = `${settings.reckonsUrl}/ingest?url=${encodeURIComponent(pageUrl)}`;
         chrome.tabs.create({ url: ingestUrl, active: false });
         sendResponse({ type: 'STATE', state: getState() } satisfies BackgroundEvent);
+        break;
+      }
+
+      case 'CLEAR_SESSION':
+        session = { pages: [], startedAt: Date.now() };
+        await saveSession();
+        sendResponse({ type: 'STATE', state: getState() } satisfies BackgroundEvent);
+        break;
+
+      case 'REMOVE_SESSION_PAGE': {
+        const removeUrl = (msg as { type: 'REMOVE_SESSION_PAGE'; url: string }).url;
+        session.pages = session.pages.filter(p => p.url !== removeUrl);
+        await saveSession();
+        sendResponse({ type: 'STATE', state: getState() } satisfies BackgroundEvent);
+        break;
+      }
+
+      case 'INGEST_SESSION': {
+        const ingestKinds = (msg as { type: 'INGEST_SESSION'; kinds: string[] }).kinds;
+        const allTriples = session.pages.flatMap(p =>
+          p.triples.filter(t => ingestKinds.includes(t.kind))
+        );
+        if (allTriples.length === 0) {
+          sendResponse({ type: 'INGEST_RESULT', status: 'error',
+            message: 'No triples matching the selected categories.' } satisfies BackgroundEvent);
+          break;
+        }
+        const { reckonsUrl } = settings;
+        const reckTabs = await chrome.tabs.query({ url: `${reckonsUrl}/*` });
+        if (reckTabs.length === 0 || !reckTabs[0].id) {
+          sendResponse({ type: 'INGEST_RESULT', status: 'error',
+            message: `Reckons.AI not open. Open ${reckonsUrl} first.` } satisfies BackgroundEvent);
+          break;
+        }
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId: reckTabs[0].id },
+            world: 'MAIN',
+            func: (url: string, title: string, triples: Array<{ subject: string; predicate: string; object: string; kind: string }>) => {
+              return (window as any).__reckonsKB?.ingestTriples(url, title, triples);
+            },
+            args: [
+              'urn:reckons:session:' + session.startedAt,
+              `Research Session — ${allTriples.length} triples from ${session.pages.length} pages`,
+              allTriples.map(t => ({ subject: t.subject, predicate: t.predicate, object: t.object, kind: t.kind })),
+            ],
+          });
+          sendResponse({ type: 'INGEST_RESULT', status: 'started',
+            message: `${allTriples.length} triples from ${session.pages.length} pages sent to Reckons.AI.` } satisfies BackgroundEvent);
+        } catch (e) {
+          sendResponse({ type: 'INGEST_RESULT', status: 'error',
+            message: e instanceof Error ? e.message : String(e) } satisfies BackgroundEvent);
+        }
         break;
       }
 

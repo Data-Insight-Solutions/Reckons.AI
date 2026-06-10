@@ -99,6 +99,15 @@ export interface AnalysisResult {
   analyzedAt: number;
 }
 
+// ── Research Session ────────────────────────────────────────────────────────
+
+export interface ResearchSession {
+  pages: AnalysisResult[];
+  startedAt: number;
+  /** Optional research focus carried across all pages */
+  focus?: string;
+}
+
 // ── Message protocol ─────────────────────────────────────────────────────────
 
 /** Popup → Background */
@@ -113,7 +122,10 @@ export type PopupRequest =
   | { type: 'OPEN_INGEST' }
   | { type: 'DO_INGEST'; url: string; title: string; triples: Array<{ subject: string; predicate: string; object: string; kind: string }> }
   | { type: 'BUILD_PROMPT'; focus?: string }
-  | { type: 'PARSE_RESPONSE'; text: string };
+  | { type: 'PARSE_RESPONSE'; text: string }
+  | { type: 'CLEAR_SESSION' }
+  | { type: 'REMOVE_SESSION_PAGE'; url: string }
+  | { type: 'INGEST_SESSION'; kinds: ('new' | 'conflict' | 'reinforce')[] };
 
 /** Background → Popup (response or push) */
 export type BackgroundEvent =
@@ -126,6 +138,7 @@ export interface ExtensionState {
   settings: ExtSettings;
   snapshot: KBSnapshot | null;
   result: AnalysisResult | null;
+  session: ResearchSession;
   analyzing: boolean;
   highlightsActive: boolean;
   currentTabId: number | null;

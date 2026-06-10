@@ -68,6 +68,16 @@ pnpm dev:extension        # watch mode (rebuilds on file change)
 4. Select the `dist/extension/` folder
 5. Click the extension icon → **Options** → set your API provider and the URL where Reckons.AI is running
 
+### Using the Extension
+
+The extension has three tabs in the side panel:
+
+- **Compare** — Analyze the current page against your KB. Shows new, conflicting, and reinforcing information with at-a-glance proportional bar. Supports focus prompts and manual LLM paste workflow.
+- **Session** — Aggregates findings across all pages analyzed during your research session. Shows cross-page summaries per category, per-page breakdown with pill counts, and a batch "Ingest All New" button. Sessions persist across browser restarts.
+- **Ingest** — Send extracted triples to Reckons.AI (requires the app to be open).
+
+On **Firefox for Android**, the side panel opens as a full tab (the sidePanel API is not available). The UI is optimized for mobile with larger touch targets and responsive layout.
+
 ### Install in Firefox Desktop
 
 1. Open `about:debugging`

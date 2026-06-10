@@ -174,7 +174,28 @@ OAuth flow and Drive file listing are implemented. Auto-sync on KB mutation is n
 
 ---
 
-### F8 — Browser Extension Explore Mode
+### F8 — Browser Extension Research Sessions
+**Status: ✅ complete**
+
+Inspired by Semiont's Gather flow — aggregate analysis findings across multiple tabs during a research session.
+
+| Feature | Description |
+|---------|-------------|
+| **Session accumulation** | Each page analysis auto-appends to a persistent research session |
+| **Session tab** | New 3rd tab in sidepanel: Compare \| Session \| Ingest |
+| **Aggregate summaries** | Cross-page summaries per category (new/reinforcing/conflicting) with source attribution |
+| **At-a-glance bar** | Proportional colored bar showing conflict/reinforce/new ratio |
+| **Per-page breakdown** | Collapsible page cards with pill counts and triple details |
+| **Batch ingest** | "Ingest All New" button sends all new triples from session to KB |
+| **Session management** | Clear session, remove individual pages |
+| **Mobile Firefox UX** | Responsive CSS with 44px touch targets, larger fonts, bottom-friendly layout |
+| **Popup session badge** | Shows session page count + conflict/new counts in popup |
+
+Files changed: `types.ts`, `background.ts`, `sidepanel.ts`, `sidepanel.css`, `popup.ts`, `popup.css`.
+
+---
+
+### F8b — Browser Extension Explore Mode
 **Status: ⬜ planned**
 
 Add an explore/navigate feature to the browser extension so users can browse and interact with their KB graph directly from the extension popup or side panel, without opening the full app.

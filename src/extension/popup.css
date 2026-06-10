@@ -147,6 +147,30 @@ button#btn-sync:hover { background: var(--surface2); color: var(--ink); }
   line-height: 1.4;
 }
 
+/* Session row */
+.session-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--rad-sm);
+  font-size: 11px;
+  flex-wrap: wrap;
+}
+.session-badge {
+  font-weight: 600;
+  color: var(--accent);
+}
+.session-stat {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+.session-stat.conflict { background: rgba(239,68,68,0.1); color: var(--conflict); }
+.session-stat.new { background: rgba(99,179,237,0.08); color: #63b3ed; }
+
 /* No key */
 .nokey {
   text-align: center; padding: 14px; color: var(--ink2); font-size: 12px;

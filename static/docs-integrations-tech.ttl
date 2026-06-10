@@ -68,7 +68,7 @@ int:BrowserExtension
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Browser Extension" ;
-    skos:definition     "Highlight text on any webpage and send it to your KB as a source. The extension communicates with the main app -- no separate login needed." ;
+    skos:definition     "Compare any webpage against your KB to identify new, conflicting, and reinforcing information. Research Sessions accumulate findings across multiple tabs with aggregate summaries per category. Highlights text on the page with color-coded labels. Supports Chrome, Firefox desktop, and Firefox for Android (mobile-optimized). The extension communicates with the main app -- no separate login needed." ;
     skos:broader        int:Integrations .
 
 int:WebScraping
