@@ -12,11 +12,8 @@
   // Eagerly pre-fetch the official KB so it's ready when user clicks "Getting Started"
   preloadOfficialKb();
 
-  // Start Kokoro TTS download after a short delay so the page renders fast
-  // but the model is pre-loading while the user reads the landing page
-  if (typeof window !== 'undefined') {
-    setTimeout(() => kokoro.warmup(), 3000);
-  }
+  // Kokoro TTS is lazy-loaded on first voice use — no automatic download.
+  // The 87MB model only downloads when the user explicitly enables voice.
 
   let loadingTemplate = $state<string | null>(null);
   let loadingDocs = $state(false);

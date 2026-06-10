@@ -524,12 +524,7 @@
     clearCountdown();
     stopSpeaking();
     if (storyAutoTimer) { clearInterval(storyAutoTimer); storyAutoTimer = null; }
-    // Enable TTS by default for stories
-    const ts = turtleSettings();
-    if (!ts.voiceEnabled) {
-      updateTurtleSettings({ voiceEnabled: true, voiceType: 'tts' });
-    }
-    // Play step 0
+    // Play step 0 — voice plays only if user has explicitly enabled it
     playStoryStep(story, 0);
     tab = 'explore';
   }
@@ -697,25 +692,39 @@
     storyCountdown = 0;
   }
 
+  let voiceConfirmPending = $state(false);
+
   function toggleAutoPlay() {
     if (storyAutoPlaying) {
       stopAutoPlay();
     } else {
-      storyAutoPlaying = true;
-      // Auto-enable voice when user presses play — they expect audio
+      // If voice isn't enabled, ask before starting TTS (downloads ~87MB model)
       const ts = turtleSettings();
       if (!ts.voiceEnabled) {
-        updateTurtleSettings({ voiceEnabled: true, voiceType: 'tts' });
+        voiceConfirmPending = true;
+        return;
       }
-      // If not already speaking the current step, speak it now
-      if (!storySpeaking) {
-        const step = currentStory?.steps[storyStepIdx];
-        if (step) {
-          speakText(`${step.title}. ${step.content}`);
-        }
-      }
-      startCountdown();
+      startAutoPlay();
     }
+  }
+
+  function confirmVoice(enable: boolean) {
+    voiceConfirmPending = false;
+    if (enable) {
+      updateTurtleSettings({ voiceEnabled: true, voiceType: 'tts' });
+    }
+    startAutoPlay();
+  }
+
+  function startAutoPlay() {
+    storyAutoPlaying = true;
+    if (!storySpeaking && turtleSettings().voiceEnabled) {
+      const step = currentStory?.steps[storyStepIdx];
+      if (step) {
+        speakText(`${step.title}. ${step.content}`);
+      }
+    }
+    startCountdown();
   }
 
   function stopAutoPlay() {
@@ -1272,6 +1281,15 @@
               return basePct + withinStep;
             })()}%"></div>
           </div>
+          {#if voiceConfirmPending}
+            <div class="voice-confirm">
+              <span class="voice-confirm-text">Enable voice narration? Downloads ~87 MB on first use.</span>
+              <div class="voice-confirm-btns">
+                <button class="primary sm" onclick={() => confirmVoice(true)}>Enable voice</button>
+                <button class="sm" onclick={() => confirmVoice(false)}>No, just auto-advance</button>
+              </div>
+            </div>
+          {/if}
           <div class="story-controls">
             <span class="story-step-label mono">{storyStepIdx + 1} / {currentStory.steps.length}</span>
             <div class="story-nav">
@@ -1284,7 +1302,7 @@
             <div class="story-audio">
               {#if ttsBroken}
                 <a href="/settings/turtle" class="tts-broken-hint mono">try Hume.AI voice</a>
-              {:else if !kokoroReady}
+              {:else if turtleSettings().voiceEnabled && !kokoroReady}
                 <span class="tts-loading mono" title="Downloading Kokoro voice model — first time only">{kokoroPhase === 'init' ? 'starting voice…' : kokoroLoadPct > 0 ? `voice ${kokoroLoadPct}%` : 'loading voice…'}</span>
               {:else}
                 <button
@@ -1950,6 +1968,25 @@
     background: var(--data);
     border-radius: 2px;
     transition: width 0.3s ease;
+  }
+  .voice-confirm {
+    background: var(--surface-2);
+    border: 1px solid var(--accent-soft);
+    border-radius: var(--rad);
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.5rem;
+    text-align: center;
+  }
+  .voice-confirm-text {
+    font-size: 0.74rem;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 0.4rem;
+  }
+  .voice-confirm-btns {
+    display: flex;
+    gap: 0.4rem;
+    justify-content: center;
   }
   .story-controls {
     display: flex;
