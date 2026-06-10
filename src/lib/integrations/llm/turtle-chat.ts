@@ -116,6 +116,71 @@ CRITICAL: Every message MUST end with a question. Every message MUST include a <
 
 export type TurtleChatProvider = 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'reckons';
 
+export interface ResolvedProvider {
+  provider: TurtleChatProvider;
+  apiKey: string;
+  model: string | undefined;
+}
+
+/**
+ * Resolve the chat LLM provider from settings with auto-fallback:
+ * if a cloud backend is selected but its API key is missing, silently
+ * falls back to WASM so the app works out-of-the-box.
+ */
+export function resolveChatProvider(s: {
+  chatBackend?: string;
+  preferredBackend: string;
+  claudeApiKey?: string;
+  claudeModel?: string;
+  openaiApiKey?: string;
+  openaiModel?: string;
+  geminiApiKey?: string;
+  geminiModel?: string;
+  ollamaModel?: string;
+  wasmModel?: string;
+  reckonsApiKey?: string;
+  reckonsModel?: string;
+  openrouterApiKey?: string;
+  openrouterModel?: string;
+}): ResolvedProvider {
+  const pref = s.chatBackend ?? s.preferredBackend;
+  let provider: TurtleChatProvider =
+    pref === 'openai' ? 'openai'
+    : pref === 'gemini' ? 'gemini'
+    : pref === 'ollama' ? 'ollama'
+    : pref === 'wasm' ? 'wasm'
+    : pref === 'reckons' ? 'reckons'
+    : pref === 'openrouter' ? 'openai'
+    : 'claude';
+
+  // Auto-fallback: cloud backend without a key → WASM
+  const keyForProvider =
+    provider === 'openai' ? (s.openaiApiKey || s.openrouterApiKey)
+    : provider === 'gemini' ? s.geminiApiKey
+    : provider === 'reckons' ? s.reckonsApiKey
+    : provider === 'claude' ? s.claudeApiKey
+    : null; // ollama, wasm need no key
+  if (provider !== 'ollama' && provider !== 'wasm' && !keyForProvider) {
+    provider = 'wasm';
+  }
+
+  const apiKey =
+    provider === 'openai' ? (s.openaiApiKey ?? s.openrouterApiKey ?? '')
+    : provider === 'gemini' ? (s.geminiApiKey ?? '')
+    : provider === 'reckons' ? (s.reckonsApiKey ?? '')
+    : (s.claudeApiKey ?? '');
+
+  const model =
+    provider === 'openai' ? (s.openaiModel ?? (pref === 'openrouter' ? s.openrouterModel : 'gpt-4o-mini'))
+    : provider === 'gemini' ? (s.geminiModel ?? 'gemini-2.0-flash')
+    : provider === 'ollama' ? (s.ollamaModel ?? 'llama3.2')
+    : provider === 'wasm' ? (s.wasmModel ?? undefined)
+    : provider === 'reckons' ? (s.reckonsModel ?? undefined)
+    : (s.claudeModel ?? 'claude-haiku-4-5-20251001');
+
+  return { provider, apiKey, model };
+}
+
 const VOICE_MODE_PREFIX = `VOICE MODE: Respond in 1-2 short spoken sentences only. No markdown, bullet points, code blocks, asterisks, or lists. Plain conversational English that sounds natural when read aloud.\n\n`;
 
 /** Ethics wrapper injected when a KB is published/shared. Cannot be overridden by customPrompt. */

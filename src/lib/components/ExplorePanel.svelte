@@ -13,7 +13,7 @@
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { RDF_TYPE } from '$lib/rdf/entity-types';
   import { applyShellyViewAdjust } from '$lib/stores/shelly-bridge.svelte';
-  import { turtleChat, type TurtleChatProvider } from '$lib/integrations/llm/turtle-chat';
+  import { turtleChat, resolveChatProvider, type TurtleChatProvider } from '$lib/integrations/llm/turtle-chat';
   import type { KBAction, KBContext } from '$lib/types/turtle-chat';
   import type { Statement } from '$lib/rdf/types';
 
@@ -123,29 +123,10 @@
 
   // ── Provider resolution ───────────────────────────────────────────────────
 
-  function getProvider(): { provider: TurtleChatProvider; apiKey: string; model: string; ollamaBaseUrl?: string; reckonsBaseUrl?: string } {
+  function getProvider() {
     const s = settings();
-    const backendPref = s.chatBackend ?? s.preferredBackend;
-    const provider: TurtleChatProvider =
-      backendPref === 'openai' ? 'openai'
-      : backendPref === 'gemini' ? 'gemini'
-      : backendPref === 'ollama' ? 'ollama'
-      : backendPref === 'wasm' ? 'wasm'
-      : backendPref === 'reckons' ? 'reckons'
-      : 'claude';
-    const apiKey =
-      provider === 'openai' ? (s.openaiApiKey ?? '')
-      : provider === 'gemini' ? (s.geminiApiKey ?? '')
-      : provider === 'reckons' ? (s.reckonsApiKey ?? '')
-      : (s.claudeApiKey ?? '');
-    const model =
-      provider === 'openai' ? (s.openaiModel ?? 'gpt-4o-mini')
-      : provider === 'gemini' ? (s.geminiModel ?? 'gemini-2.0-flash')
-      : provider === 'ollama' ? (s.ollamaModel ?? 'llama3.2')
-      : provider === 'wasm' ? (s.wasmModel ?? '')
-      : provider === 'reckons' ? (s.reckonsModel ?? '@cf/meta/llama-3.1-8b-instruct')
-      : (s.claudeModel ?? 'claude-haiku-4-5-20251001');
-    return { provider, apiKey, model, ollamaBaseUrl: s.ollamaBaseUrl, reckonsBaseUrl: s.reckonsBaseUrl };
+    const resolved = resolveChatProvider(s);
+    return { ...resolved, ollamaBaseUrl: s.ollamaBaseUrl, reckonsBaseUrl: s.reckonsBaseUrl };
   }
 
   // ── LLM call ─────────────────────────────────────────────────────────────

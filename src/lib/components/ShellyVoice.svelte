@@ -19,7 +19,7 @@
   // for users who never use voice. The ~300KB chunk fetches only when connect() is called.
   import { settings } from '$lib/stores/settings.svelte';
   import { turtleSettings } from '$lib/stores/turtle-settings.svelte';
-  import { turtleChat, type TurtleChatProvider } from '$lib/integrations/llm/turtle-chat';
+  import { turtleChat, resolveChatProvider, type TurtleChatProvider } from '$lib/integrations/llm/turtle-chat';
   import { confirmedStatements, statements, sources, addStatements, addSource, setStatus } from '$lib/stores/kb.svelte';
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { applyShellyViewAdjust } from '$lib/stores/shelly-bridge.svelte';
@@ -177,22 +177,11 @@
     history = [...history, { role: 'user', content: text }];
 
     const s = settings();
-    const backendPref = s.chatBackend ?? s.preferredBackend;
-    const provider: TurtleChatProvider =
-      backendPref === 'openai' ? 'openai' : backendPref === 'gemini' ? 'gemini'
-      : backendPref === 'ollama' ? 'ollama' : backendPref === 'wasm' ? 'wasm'
-      : backendPref === 'reckons' ? 'reckons' : 'claude';
-    const apiKey = provider === 'openai' ? (s.openaiApiKey ?? '')
-      : provider === 'gemini' ? (s.geminiApiKey ?? '')
-      : provider === 'reckons' ? (s.reckonsApiKey ?? '')
-      : (s.claudeApiKey ?? '');
-    const model = provider === 'openai' ? s.openaiModel : provider === 'gemini' ? s.geminiModel
-      : provider === 'ollama' ? s.ollamaModel : provider === 'wasm' ? (s.wasmModel ?? undefined)
-      : provider === 'reckons' ? (s.reckonsModel ?? undefined) : s.claudeModel;
+    const { provider, apiKey, model } = resolveChatProvider(s);
 
     try {
       const result = await turtleChat({
-        provider, apiKey: apiKey ?? '', model, ollamaBaseUrl: s.ollamaBaseUrl, reckonsBaseUrl: s.reckonsBaseUrl,
+        provider, apiKey, model, ollamaBaseUrl: s.ollamaBaseUrl, reckonsBaseUrl: s.reckonsBaseUrl,
         messages: history.slice(-10).map(m => ({ role: m.role, content: m.content })),
         kbContext: buildKBContext(), voiceMode: true, customPrompt: turtleSettings().systemPrompt || s.shellyCustomPrompt
       });

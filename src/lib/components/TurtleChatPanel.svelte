@@ -14,7 +14,7 @@
   import { settings } from '$lib/stores/settings.svelte';
   import { RDF_TYPE } from '$lib/rdf/entity-types';
   import type { TurtleChatMessage, KBAction, KBContext } from '$lib/types/turtle-chat';
-  import { turtleChat, type TurtleChatProvider } from '$lib/integrations/llm/turtle-chat';
+  import { turtleChat, resolveChatProvider as _resolveProvider, type TurtleChatProvider } from '$lib/integrations/llm/turtle-chat';
   import type { Statement, Source } from '$lib/rdf/types';
   import { v4 as uuid } from 'uuid';
   import { applyShellyViewAdjust, activeStoryId, stopStory, storyAutoPlayRequested, clearStoryAutoPlay } from '$lib/stores/shelly-bridge.svelte';
@@ -35,10 +35,23 @@
   type Tab = 'tutorial' | 'chat' | 'explore';
   let tab = $state<Tab>(storyId ? 'explore' : exploreMode ? 'explore' : 'tutorial');
 
+  function resolveChatProvider() {
+    return _resolveProvider(settings());
+  }
+
+  function handleChatError(e: unknown, provider: TurtleChatProvider) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (provider === 'wasm') {
+      errorMsg = `Local AI failed: ${msg}. Add a cloud API key for better results.`;
+      errorLink = { label: 'Open Settings', href: '/settings#s-backends' };
+    } else {
+      errorMsg = msg;
+      errorLink = null;
+    }
+  }
+
   const isWasmProvider = $derived.by(() => {
-    const s = settings();
-    const bp = s.chatBackend ?? s.preferredBackend;
-    return bp === 'wasm';
+    return resolveChatProvider().provider === 'wasm';
   });
 
   // Auto-send initialMessage when provided (e.g. from search bar forwarding)
@@ -138,6 +151,7 @@
   let input = $state('');
   let loading = $state(false);
   let errorMsg = $state('');
+  let errorLink = $state<{ label: string; href: string } | null>(null);
   let msgListRef: HTMLDivElement | undefined;
 
   // ── Session source ──────────────────────────────────────────────────────────
@@ -149,19 +163,7 @@
 
   async function ensureSessionSource(): Promise<string> {
     if (sessionSourceId) return sessionSourceId;
-    const s = settings();
-    const backendPref = s.chatBackend ?? s.preferredBackend;
-    const provider: TurtleChatProvider =
-      backendPref === 'openai' ? 'openai'
-      : backendPref === 'gemini' ? 'gemini'
-      : backendPref === 'ollama' ? 'ollama'
-      : backendPref === 'wasm' ? 'wasm'
-      : 'claude';
-    const model = provider === 'openai' ? (s.openaiModel ?? 'gpt-4o-mini')
-      : provider === 'gemini' ? (s.geminiModel ?? 'gemini-2.0-flash')
-      : provider === 'ollama' ? (s.ollamaModel ?? 'llama3.2')
-      : provider === 'wasm' ? (s.wasmModel ?? undefined as unknown as string)
-      : (s.claudeModel ?? 'claude-haiku-4-5-20251001');
+    const { provider, model } = resolveChatProvider();
     const now = Date.now();
     const id = `shelly-${now}`;
     const src: Source = {
@@ -177,7 +179,7 @@
     await addSource(src);
     sessionSourceId = id;
     sessionProvider = provider;
-    sessionModel = model;
+    sessionModel = model ?? '';
     return id;
   }
 
@@ -350,40 +352,12 @@
     const text = input.trim();
     if (!text || loading) return;
 
+    const { provider, apiKey, model } = resolveChatProvider();
     const s = settings();
-    const backendPref = s.chatBackend ?? s.preferredBackend;
-    const provider: TurtleChatProvider =
-      backendPref === 'openai' ? 'openai'
-      : backendPref === 'gemini' ? 'gemini'
-      : backendPref === 'ollama' ? 'ollama'
-      : backendPref === 'wasm' ? 'wasm'
-      : backendPref === 'reckons' ? 'reckons'
-      : 'claude';
-
-    if (provider !== 'ollama' && provider !== 'wasm') {
-      const apiKey = provider === 'openai' ? s.openaiApiKey
-        : provider === 'gemini' ? s.geminiApiKey
-        : provider === 'reckons' ? s.reckonsApiKey
-        : s.claudeApiKey;
-      if (!apiKey) {
-        errorMsg = `No ${provider} API key — add one in Settings → backends.`;
-        return;
-      }
-    }
-
-    const apiKey = provider === 'openai' ? (s.openaiApiKey ?? '')
-      : provider === 'gemini' ? (s.geminiApiKey ?? '')
-      : provider === 'reckons' ? (s.reckonsApiKey ?? '')
-      : (s.claudeApiKey ?? '');
-    const model = provider === 'openai' ? s.openaiModel
-      : provider === 'gemini' ? s.geminiModel
-      : provider === 'ollama' ? s.ollamaModel
-      : provider === 'wasm' ? (s.wasmModel ?? undefined)
-      : provider === 'reckons' ? (s.reckonsModel ?? undefined)
-      : s.claudeModel;
 
     input = '';
     errorMsg = '';
+    errorLink = null;
     messages = [...messages, { role: 'user', content: text }];
     loading = true;
 
@@ -400,7 +374,7 @@
       });
       messages = [...messages, { role: 'assistant', content: data.message, actions: data.actions ?? [] }];
     } catch (e) {
-      errorMsg = e instanceof Error ? e.message : String(e);
+      handleChatError(e, provider);
     } finally {
       loading = false;
     }
@@ -454,25 +428,8 @@
             content: m.content
           }));
 
+    const { provider, apiKey, model } = resolveChatProvider();
     const s = settings();
-    const backendPref = s.chatBackend ?? s.preferredBackend;
-    const provider: TurtleChatProvider =
-      backendPref === 'openai' ? 'openai'
-      : backendPref === 'gemini' ? 'gemini'
-      : backendPref === 'ollama' ? 'ollama'
-      : backendPref === 'wasm' ? 'wasm'
-      : backendPref === 'reckons' ? 'reckons'
-      : 'claude';
-    const apiKey = provider === 'openai' ? (s.openaiApiKey ?? '')
-      : provider === 'gemini' ? (s.geminiApiKey ?? '')
-      : provider === 'reckons' ? (s.reckonsApiKey ?? '')
-      : (s.claudeApiKey ?? '');
-    const model = provider === 'openai' ? (s.openaiModel ?? 'gpt-4o-mini')
-      : provider === 'gemini' ? (s.geminiModel ?? 'gemini-2.0-flash')
-      : provider === 'ollama' ? (s.ollamaModel ?? 'llama3.2')
-      : provider === 'wasm' ? (s.wasmModel ?? '')
-      : provider === 'reckons' ? (s.reckonsModel ?? '@cf/meta/llama-3.1-8b-instruct')
-      : (s.claudeModel ?? 'claude-haiku-4-5-20251001');
 
     try {
       const resp = await turtleChat({
@@ -497,7 +454,8 @@
 
       exploreMessages = [...exploreMessages, { role: 'shelly', content: resp.message }];
     } catch (e) {
-      exploreErrorMsg = e instanceof Error ? e.message : String(e);
+      handleChatError(e, provider);
+      exploreErrorMsg = errorMsg;
     } finally {
       exploreLoading = false;
     }
@@ -780,25 +738,8 @@
     const step = currentStory.steps[storyStepIdx];
     const contextPrefix = `The user is on step ${storyStepIdx + 1} of "${currentStory.label}": "${step?.title}". Step content: "${step?.content}". ${step?.prompt ? `Elaboration prompt: ${step.prompt}` : ''}\n\nAnswer the user's question in the context of this step and the KB. Be helpful but concise. After answering, remind them they can click "continue" to resume the story.`;
 
+    const { provider, apiKey, model } = resolveChatProvider();
     const s = settings();
-    const backendPref = s.chatBackend ?? s.preferredBackend;
-    const provider: TurtleChatProvider =
-      backendPref === 'openai' ? 'openai'
-      : backendPref === 'gemini' ? 'gemini'
-      : backendPref === 'ollama' ? 'ollama'
-      : backendPref === 'wasm' ? 'wasm'
-      : backendPref === 'reckons' ? 'reckons'
-      : 'claude';
-    const apiKey = provider === 'openai' ? (s.openaiApiKey ?? '')
-      : provider === 'gemini' ? (s.geminiApiKey ?? '')
-      : provider === 'reckons' ? (s.reckonsApiKey ?? '')
-      : (s.claudeApiKey ?? '');
-    const model = provider === 'openai' ? (s.openaiModel ?? 'gpt-4o-mini')
-      : provider === 'gemini' ? (s.geminiModel ?? 'gemini-2.0-flash')
-      : provider === 'ollama' ? (s.ollamaModel ?? 'llama3.2')
-      : provider === 'wasm' ? (s.wasmModel ?? '')
-      : provider === 'reckons' ? (s.reckonsModel ?? '')
-      : (s.claudeModel ?? 'claude-haiku-4-5-20251001');
 
     try {
       const resp = await turtleChat({
@@ -814,7 +755,8 @@
       });
       storyMessages = [...storyMessages, { role: 'shelly', content: resp.message }];
     } catch (e) {
-      storyErrorMsg = e instanceof Error ? e.message : String(e);
+      handleChatError(e, provider);
+      storyErrorMsg = errorMsg;
     } finally {
       storyLoading = false;
     }
@@ -1227,7 +1169,12 @@
       </div>
 
       {#if errorMsg}
-        <p class="error">{errorMsg}</p>
+        <p class="error">
+          {errorMsg}
+          {#if errorLink}
+            <a href={errorLink.href} class="error-link">{errorLink.label}</a>
+          {/if}
+        </p>
       {/if}
 
       {#if isWasmProvider && wasmStatus() !== 'ready'}
@@ -1302,7 +1249,12 @@
           {/if}
 
           {#if storyErrorMsg}
-            <p class="error">{storyErrorMsg}</p>
+            <p class="error">
+              {storyErrorMsg}
+              {#if errorLink}
+                <a href={errorLink.href} class="error-link">{errorLink.label}</a>
+              {/if}
+            </p>
           {/if}
         </div>
 
@@ -1445,7 +1397,12 @@
           {/if}
 
           {#if exploreErrorMsg}
-            <p class="error">{exploreErrorMsg}</p>
+            <p class="error">
+              {exploreErrorMsg}
+              {#if errorLink}
+                <a href={errorLink.href} class="error-link">{errorLink.label}</a>
+              {/if}
+            </p>
           {/if}
         </div>
 
@@ -1823,6 +1780,13 @@
     color: var(--danger);
     padding: 0 0.75rem;
     margin: 0;
+  }
+  .error-link {
+    display: inline-block;
+    margin-left: 0.25rem;
+    color: var(--accent);
+    text-decoration: underline;
+    cursor: pointer;
   }
   .wasm-status {
     display: flex;
