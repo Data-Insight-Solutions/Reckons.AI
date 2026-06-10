@@ -8,8 +8,9 @@
 ##   docs-llm.ttl              — Language models, hallucination, RAG
 ##   docs-use-cases.ttl        — Real-world use cases (individual empowerment)
 ##   docs-features.ttl         — All major features
-##   docs-integrations-tech.ttl — Integrations and technology stack
-##   docs-tips-security.ttl    — Tips, tricks, security & privacy
+##   docs-integrations-tech.ttl    — Integrations and technology stack
+##   docs-tips-security.ttl       — Tips, tricks, security & privacy
+##   docs-timeline-ecosystem.ttl  — RDF timeline, consortiums, Reckons.AI launch
 ##
 ## This hub loads as the read-only docs graph from the landing page.
 ## ---------------------------------------------------------------------------
@@ -143,6 +144,14 @@ leap:TipsSecurity
     skos:related        guide:WhatIsReckonsAI ;
     <urn:reckons:leap>          "a1b2c3d4-e5f6-4a06-b006-000000000006" ;
     <urn:reckons:leap/label>    "Tips, Tricks & Security" .
+
+leap:TimelineEcosystem
+    rdf:type            ktype:Document ;
+    rdfs:label          "LEAP: Timeline & RDF Ecosystem" ;
+    skos:definition     "Import docs-timeline-ecosystem.ttl for the RDF timeline from 1999 to 2026, key organizations (W3C, AI Alliance, Schema.org), people (Tim Berners-Lee), and the Reckons.AI launch." ;
+    skos:related        guide:WhatIsReckonsAI ;
+    <urn:reckons:leap>          "a1b2c3d4-e5f6-4a07-b007-000000000007" ;
+    <urn:reckons:leap/label>    "Timeline & RDF Ecosystem" .
 
 
 ## =============================================================================

@@ -1,0 +1,280 @@
+## ---------------------------------------------------------------------------
+## Reckons.AI Docs — Timeline & RDF Ecosystem
+## ---------------------------------------------------------------------------
+## Key dates in the RDF/Semantic Web timeline, standards bodies,
+## consortiums, and the Reckons.AI launch.
+## ---------------------------------------------------------------------------
+
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix tl:     <urn:reckons:timeline/> .
+@prefix org:    <urn:reckons:org/> .
+@prefix person: <urn:reckons:person/> .
+@prefix topic:  <urn:reckons:topic/> .
+@prefix guide:  <urn:reckons:guide/> .
+@prefix ktype:  <urn:kbase:type/> .
+@prefix kpred:  <urn:kbase:predicate/> .
+@prefix kmeta:  <urn:kbase:meta/> .
+
+## KB Identity
+<urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a07-b007-000000000007" .
+
+
+## =============================================================================
+## Organizations & Consortiums
+## =============================================================================
+
+org:W3C
+    rdf:type            ktype:Organization ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "W3C (World Wide Web Consortium)" ;
+    skos:definition     "The main international standards body for the Web. Founded by Tim Berners-Lee in 1994. Publishes the RDF, OWL, SPARQL, and SKOS specifications. Stewards the Semantic Web vision." ;
+    kpred:founded       "1994-10-01"^^xsd:date ;
+    kpred:headquarters  "MIT, Cambridge, Massachusetts" ;
+    kpred:website       "https://www.w3.org" .
+
+org:IETF
+    rdf:type            ktype:Organization ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "IETF (Internet Engineering Task Force)" ;
+    skos:definition     "Develops internet standards including URI/IRI specifications (RFC 3986, RFC 3987) that underpin RDF identifiers." ;
+    skos:related        org:W3C .
+
+org:DublinCore
+    rdf:type            ktype:Organization ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Dublin Core Metadata Initiative (DCMI)" ;
+    skos:definition     "Maintains the Dublin Core metadata vocabulary — one of the earliest and most widely used RDF vocabularies for describing resources (dc:title, dc:creator, dc:date)." ;
+    kpred:founded       "1995-01-01"^^xsd:date ;
+    skos:related        org:W3C .
+
+org:SchemaOrg
+    rdf:type            ktype:Organization ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Schema.org" ;
+    skos:definition     "A collaborative vocabulary founded by Google, Bing, Yahoo, and Yandex in 2011. Provides structured data types for web content. Uses JSON-LD as the preferred format — the largest deployment of linked data on the web." ;
+    kpred:founded       "2011-06-01"^^xsd:date ;
+    skos:related        topic:JSONLD ;
+    skos:related        org:W3C .
+
+org:ApacheJena
+    rdf:type            ktype:Organization ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Apache Jena" ;
+    skos:definition     "An open-source Java framework for building Semantic Web and Linked Data applications. Includes a SPARQL engine (ARQ), a triple store (TDB), and a rule-based reasoner." ;
+    skos:related        topic:SPARQL .
+
+org:OpenLinkSoftware
+    rdf:type            ktype:Organization ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "OpenLink Software (Virtuoso)" ;
+    skos:definition     "Creator of Virtuoso, a hybrid RDBMS/graph database and SPARQL endpoint. Powers DBpedia and many enterprise linked data deployments." ;
+    skos:related        tl:DBpediaLaunch .
+
+org:Anthropic
+    rdf:type            ktype:Organization ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Anthropic" ;
+    skos:definition     "AI safety company behind the Claude model family. Claude powers Reckons.AI's default LLM backend for triple extraction, chat, and analysis. Also created the Model Context Protocol (MCP)." ;
+    kpred:founded       "2021-01-01"^^xsd:date ;
+    skos:related        tl:MCPSpec .
+
+org:AIAlliance
+    rdf:type            ktype:Organization ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "The AI Alliance" ;
+    skos:definition     "A consortium of companies, universities, and research organizations promoting open, safe, and beneficial AI. Hosts the Semiont project which inspired Reckons.AI's enrichment pipeline and research session features." ;
+    kpred:website       "https://thealliance.ai" ;
+    skos:related        tl:SemiontRelease .
+
+
+## =============================================================================
+## People
+## =============================================================================
+
+person:TimBernersLee
+    rdf:type            ktype:Person ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Tim Berners-Lee" ;
+    skos:definition     "Inventor of the World Wide Web (1989) and the Semantic Web vision (2001). Founded W3C. Proposed the Linked Data principles: use URIs, use HTTP, provide RDF, link to other datasets." ;
+    kpred:worksAt       org:W3C ;
+    skos:related        tl:SemanticWebVision .
+
+person:PatHayes
+    rdf:type            ktype:Person ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Pat Hayes" ;
+    skos:definition     "Logician and AI researcher. Co-author of the RDF Semantics specification. His work on formal semantics gave RDF its rigorous logical foundation." ;
+    skos:related        tl:RDF10 .
+
+person:DanBrickley
+    rdf:type            ktype:Person ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Dan Brickley" ;
+    skos:definition     "Co-creator of FOAF (Friend of a Friend) vocabulary and Schema.org. Demonstrated that RDF could describe social networks long before Facebook." ;
+    skos:related        org:SchemaOrg .
+
+
+## =============================================================================
+## Timeline — Semantic Web & RDF Milestones
+## =============================================================================
+
+tl:RDF10
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "RDF 1.0 Specification" ;
+    skos:definition     "First W3C Recommendation for the Resource Description Framework. Established the triple model (subject-predicate-object) and RDF/XML serialization. The formal birth of machine-readable knowledge graphs on the web." ;
+    kpred:date          "1999-02-22"^^xsd:date ;
+    kpred:publishedBy   org:W3C ;
+    skos:related        person:TimBernersLee .
+
+tl:SemanticWebVision
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Semantic Web Vision (Scientific American)" ;
+    skos:definition     "Tim Berners-Lee, James Hendler, and Ora Lassila published 'The Semantic Web' in Scientific American, describing a future web where machines understand meaning — not just display pages. This article launched a global research movement." ;
+    kpred:date          "2001-05-17"^^xsd:date ;
+    skos:related        person:TimBernersLee .
+
+tl:OWL10
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "OWL 1.0 (Web Ontology Language)" ;
+    skos:definition     "W3C Recommendation for expressing rich ontologies: class hierarchies, cardinality constraints, equivalences. Built on RDF. Enables automated reasoning about domain knowledge." ;
+    kpred:date          "2004-02-10"^^xsd:date ;
+    kpred:publishedBy   org:W3C .
+
+tl:SPARQL10
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "SPARQL 1.0" ;
+    skos:definition     "First W3C Recommendation for querying RDF graphs. SPARQL is to triple stores what SQL is to relational databases. Enabled programmatic access to any RDF dataset." ;
+    kpred:date          "2008-01-15"^^xsd:date ;
+    kpred:publishedBy   org:W3C ;
+    skos:related        topic:SPARQL .
+
+tl:LinkedDataPrinciples
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Linked Data Principles" ;
+    skos:definition     "Tim Berners-Lee's four rules: (1) Use URIs as names. (2) Use HTTP URIs so people can look them up. (3) Provide useful RDF information at those URIs. (4) Include links to other URIs for discovery. Published as a Design Issues note." ;
+    kpred:date          "2006-07-27"^^xsd:date ;
+    skos:related        person:TimBernersLee ;
+    skos:related        topic:LinkedData .
+
+tl:DBpediaLaunch
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "DBpedia Launch" ;
+    skos:definition     "DBpedia extracts structured data from Wikipedia and publishes it as RDF. One of the first and largest Linked Data datasets. Demonstrated that RDF could work at web scale." ;
+    kpred:date          "2007-01-01"^^xsd:date ;
+    skos:related        topic:LinkedData .
+
+tl:WikidataLaunch
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Wikidata Launch" ;
+    skos:definition     "Wikimedia's free knowledge base. Over 100 million items, all queryable via SPARQL. The largest collaboratively edited knowledge graph in the world. Powers infoboxes across all Wikipedia language editions." ;
+    kpred:date          "2012-10-29"^^xsd:date ;
+    kpred:publishedBy   "Wikimedia Foundation" ;
+    skos:related        tl:DBpediaLaunch .
+
+tl:JSONLD10
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "JSON-LD 1.0" ;
+    skos:definition     "W3C Recommendation for embedding linked data in JSON. Made RDF accessible to web developers who found RDF/XML and Turtle unfamiliar. Adopted by Schema.org as the preferred format." ;
+    kpred:date          "2014-01-16"^^xsd:date ;
+    kpred:publishedBy   org:W3C ;
+    skos:related        topic:JSONLD .
+
+tl:GoogleKnowledgeGraph
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Google Knowledge Graph" ;
+    skos:definition     "Google announced its Knowledge Graph in 2012, using structured data (including Freebase and Schema.org) to enhance search results with entity panels. Brought knowledge graphs into mainstream awareness." ;
+    kpred:date          "2012-05-16"^^xsd:date ;
+    skos:related        org:SchemaOrg .
+
+tl:RDF11
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "RDF 1.1 Specification" ;
+    skos:definition     "Updated W3C Recommendation. Added Turtle and JSON-LD as official serializations, adopted IRIs (replacing URIs), and clarified the abstract syntax. The current version of the RDF standard." ;
+    kpred:date          "2014-02-25"^^xsd:date ;
+    kpred:publishedBy   org:W3C .
+
+tl:SHACL
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "SHACL (Shapes Constraint Language)" ;
+    skos:definition     "W3C Recommendation for validating RDF graphs against a set of constraints (shapes). Like a schema for RDF: define required properties, value types, and cardinalities." ;
+    kpred:date          "2017-07-20"^^xsd:date ;
+    kpred:publishedBy   org:W3C .
+
+tl:KnowledgeGraphsAndLLMs
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Knowledge Graphs Meet LLMs" ;
+    skos:definition     "The convergence of structured knowledge graphs with large language models. LLMs can extract triples from text (what Reckons.AI does), query graphs in natural language, and ground their answers in verified facts. This synergy addresses both LLM hallucination and the knowledge graph population bottleneck." ;
+    kpred:date          "2023-01-01"^^xsd:date ;
+    skos:related        guide:WhatIsReckonsAI .
+
+tl:MCPSpec
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Model Context Protocol (MCP)" ;
+    skos:definition     "An open protocol by Anthropic for connecting AI models to external data sources and tools. Reckons.AI implements an MCP server so Claude Desktop, Cursor, and other agents can query your knowledge base." ;
+    kpred:date          "2024-11-25"^^xsd:date ;
+    kpred:publishedBy   org:Anthropic ;
+    skos:related        guide:WhatIsReckonsAI .
+
+tl:SemiontRelease
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Semiont (AI Alliance)" ;
+    skos:definition     "A semantic enrichment framework from the AI Alliance. Defines 8 progressive analysis flows: Frame, Yield, Mark, Match, Bind, Gather, Browse, Beckon. Inspired Reckons.AI's Research Sessions and planned enrichment pipeline." ;
+    kpred:date          "2025-01-01"^^xsd:date ;
+    kpred:publishedBy   org:AIAlliance ;
+    kpred:website       "https://github.com/The-AI-Alliance/semiont" .
+
+tl:ReckonsAILaunch
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Reckons.AI Launch" ;
+    skos:definition     "Public launch of Reckons.AI -- a local-first personal knowledge base built on RDF Turtle. Runs entirely in the browser. LLM-powered triple extraction, 3D graph visualization, browser extension for research sessions, and MCP server for AI agent integration." ;
+    kpred:date          "2026-06-01"^^xsd:date ;
+    skos:related        guide:WhatIsReckonsAI ;
+    skos:related        tl:KnowledgeGraphsAndLLMs ;
+    skos:related        tl:MCPSpec .
+
+
+## =============================================================================
+## Relationships — connecting the timeline
+## =============================================================================
+
+tl:RDF10          skos:related  tl:SemanticWebVision .
+tl:SemanticWebVision skos:related tl:OWL10 .
+tl:OWL10          skos:related  tl:SPARQL10 .
+tl:SPARQL10       skos:related  tl:LinkedDataPrinciples .
+tl:LinkedDataPrinciples skos:related tl:DBpediaLaunch .
+tl:DBpediaLaunch  skos:related  tl:WikidataLaunch .
+tl:RDF11          skos:related  tl:JSONLD10 .
+tl:SHACL          skos:related  tl:RDF11 .
+tl:SemiontRelease skos:related  tl:ReckonsAILaunch .
+
+
+## =============================================================================
+## Persona
+## =============================================================================
+
+@prefix shelly: <urn:reckons:shelly/> .
+
+shelly:persona
+    shelly:name             "Shelly" ;
+    shelly:greeting         "This KB covers the RDF ecosystem timeline -- from RDF 1.0 in 1999 to the Reckons.AI launch in 2026. I can walk you through the standards, the people, or the organizations. Where should we start?" ;
+    shelly:personality      "historically informed, connecting past to present" ;
+    shelly:responseStyle    "concise" ;
+    shelly:systemPrompt     "You are guiding someone through the history and ecosystem of RDF, knowledge graphs, and semantic web technology. Connect historical milestones to present-day features in Reckons.AI. Use dates to ground the narrative." .
