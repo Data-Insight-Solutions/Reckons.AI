@@ -634,9 +634,11 @@
   // Track Kokoro load status reactively
   let kokoroReady = $state(false);
   let kokoroLoadPct = $state(0);
-  kokoro.onKokoroStatus((status, pct) => {
+  let kokoroPhase = $state<'download' | 'init'>('download');
+  kokoro.onKokoroStatus((status, pct, phase) => {
     kokoroReady = status === 'ready';
     kokoroLoadPct = pct;
+    kokoroPhase = phase;
   });
 
   // Start loading Kokoro when panel opens with voice enabled (lazy — no load on page mount)
@@ -1312,7 +1314,7 @@
               {#if ttsBroken}
                 <a href="/settings/turtle" class="tts-broken-hint mono">try Hume.AI voice</a>
               {:else if !kokoroReady}
-                <span class="tts-loading mono" title="Downloading Kokoro voice model — first time only">{kokoroLoadPct > 0 ? `voice ${kokoroLoadPct}%` : 'loading voice…'}</span>
+                <span class="tts-loading mono" title="Downloading Kokoro voice model — first time only">{kokoroPhase === 'init' ? 'starting voice…' : kokoroLoadPct > 0 ? `voice ${kokoroLoadPct}%` : 'loading voice…'}</span>
               {:else}
                 <button
                   class="story-btn story-voice-toggle"
@@ -1331,7 +1333,7 @@
                 >
                   ♪
                 </button>
-                <button class="story-btn story-vol-toggle" onclick={() => showVolumeSlider = !showVolumeSlider} title={kokoroReady ? 'Volume · Kokoro' : 'Volume · loading voice model...'}>
+                <button class="story-btn story-vol-toggle" onclick={() => showVolumeSlider = !showVolumeSlider} title={kokoroReady ? 'Volume · Kokoro' : kokoroPhase === 'init' ? 'Volume · starting voice…' : 'Volume · loading voice model...'}>
                   {turtleSettings().voiceEnabled ? '🔊' : '🔇'}
                 </button>
               {/if}

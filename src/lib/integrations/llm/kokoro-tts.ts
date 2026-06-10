@@ -13,20 +13,23 @@ let _instance: any = null;
 let _loading: Promise<any> | null = null;
 let _status: 'idle' | 'loading' | 'ready' | 'error' = 'idle';
 let _progress = 0;
-let _onStatus: ((s: typeof _status, pct: number) => void) | null = null;
+/** Phase distinguishes download from WASM initialization */
+let _phase: 'download' | 'init' = 'download';
+let _onStatus: ((s: typeof _status, pct: number, phase: typeof _phase) => void) | null = null;
 
 /** Subscribe to load status changes */
-export function onKokoroStatus(cb: (status: typeof _status, pct: number) => void) {
+export function onKokoroStatus(cb: (status: typeof _status, pct: number, phase: typeof _phase) => void) {
   _onStatus = cb;
-  cb(_status, _progress);
+  cb(_status, _progress, _phase);
 }
 
 function notify() {
-  _onStatus?.(_status, _progress);
+  _onStatus?.(_status, _progress, _phase);
 }
 
 export function kokoroStatus() { return _status; }
 export function kokoroProgress() { return _progress; }
+export function kokoroPhase() { return _phase; }
 
 async function loadModel(): Promise<any> {
   const { KokoroTTS } = await import('kokoro-js');
@@ -36,6 +39,18 @@ async function loadModel(): Promise<any> {
     progress_callback: (p: any) => {
       if (p.status === 'progress' && p.total) {
         _progress = Math.round((p.loaded / p.total) * 100);
+        _phase = 'download';
+        notify();
+      }
+      // 'done' signals downloads finished; WASM session init starts next
+      if (p.status === 'done') {
+        _phase = 'init';
+        _progress = 100;
+        notify();
+      }
+      // 'initiate' with no prior progress means model is cached
+      if (p.status === 'initiate') {
+        _phase = 'init';
         notify();
       }
     },
