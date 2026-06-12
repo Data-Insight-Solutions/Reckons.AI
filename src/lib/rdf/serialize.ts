@@ -1,5 +1,6 @@
 import type { Statement, Source, Term, NamedNode } from './types';
 import { isIRI, isLit, isBNode, termToString } from './types';
+import { scanForExportAdvisory, exportAdvisoryHeader, exportAdvisoryTriple } from '../safety/content-policy';
 
 /* ============================================================
  *  PREFIX REGISTRY
@@ -74,13 +75,22 @@ export function toTurtle(statements: Statement[], opts: TurtleOptions = {}): str
 
   const kept = statements.filter((s) => includeStatuses.includes(s.status));
 
+  // Content advisory scan
+  const advisory = scanForExportAdvisory(kept);
+  const advisoryLines = exportAdvisoryHeader(advisory);
+
   const lines: string[] = [];
   if (header) lines.push(`# ${header}`);
   lines.push(`# generated ${new Date().toISOString()}`);
   lines.push(`# ${kept.length} statements`);
+  if (advisoryLines.length > 0) lines.push(...advisoryLines);
   lines.push('');
   for (const [p, ns] of Object.entries(prefixes)) lines.push(`@prefix ${p}: <${ns}> .`);
   lines.push('');
+
+  // Content advisory RDF triple
+  const advisoryTriple = exportAdvisoryTriple(advisory);
+  if (advisoryTriple) lines.push(advisoryTriple);
 
   // Group by subject for compact output
   const bySubject = new Map<string, Statement[]>();
@@ -200,11 +210,17 @@ export function toTurtleFull(
   opts: Pick<TurtleOptions, 'header' | 'prefixes'> & { shellyPersona?: ShellyPersonaExport; kbStableId?: string } = {}
 ): string {
   const prefixes = { ...FULL_PREFIXES, ...(opts.prefixes ?? {}) };
+
+  // Content advisory scan
+  const advisory = scanForExportAdvisory(statements);
+  const advisoryLines = exportAdvisoryHeader(advisory);
+
   const lines: string[] = [];
 
   if (opts.header) lines.push(`# ${opts.header}`);
   lines.push(`# generated ${new Date().toISOString()}`);
   lines.push(`# ${statements.length} statements — full annotated export`);
+  if (advisoryLines.length > 0) lines.push(...advisoryLines);
   lines.push('');
   for (const [p, ns] of Object.entries(prefixes)) lines.push(`@prefix ${p}: <${ns}> .`);
   if (opts.shellyPersona) lines.push('@prefix shelly: <urn:reckons:shelly/> .');
@@ -215,6 +231,12 @@ export function toTurtleFull(
     lines.push('# ---- kb identity ----');
     lines.push(`<urn:reckons:kb> <urn:reckons:meta/kbStableId> "${opts.kbStableId}" .`);
     lines.push('');
+  }
+
+  // Content advisory RDF triple
+  const advisoryTriple = exportAdvisoryTriple(advisory);
+  if (advisoryTriple) {
+    lines.push(advisoryTriple);
   }
 
   // 0. Shelly persona block (if configured beyond defaults)

@@ -9,6 +9,7 @@
 import { chatClaude, chatOpenAI, chatGemini, chatOllama, chatOpenRouter, chatReckons } from './providers';
 import { settings } from '$lib/stores/settings.svelte';
 import { db } from '$lib/storage/db';
+import { ETHICS_PREAMBLE } from '$lib/safety/content-policy';
 import { findTemporalConflicts } from '$lib/rdf/temporal';
 import { embedMany, cosine } from '$lib/embed';
 
@@ -80,7 +81,7 @@ async function buildHistoricalContext(countA: number, countB: number): Promise<s
  */
 export async function analyzeMerge(params: MergeAnalysisParams): Promise<string> {
   const s = settings();
-  const backendPref = s.analyzeBackend ?? s.preferredBackend;
+  const backendPref = s.mergeAnalysisBackend ?? s.analyzeBackend ?? s.preferredBackend;
   const provider: 'claude' | 'openai' | 'gemini' | 'ollama' | 'openrouter' | 'reckons' =
     backendPref === 'openai'     ? 'openai' :
     backendPref === 'gemini'     ? 'gemini' :
@@ -136,7 +137,7 @@ export async function analyzeMerge(params: MergeAnalysisParams): Promise<string>
       similarityText = `\n\nSemantic Similarity (label): ${(sim * 100).toFixed(0)}%`;
     } catch { /* non-fatal */ }
 
-    prompt = `You are a semantic data analyst helping a user decide whether to merge two RDF entities.
+    prompt = ETHICS_PREAMBLE + `You are a semantic data analyst helping a user decide whether to merge two RDF entities.
 
 **Entity A: ${entityKeyA}**
 ${statementsA.length} statements:
@@ -157,7 +158,7 @@ Provide a concise analysis (under 200 words) covering:
 Be specific and actionable.`;
   } else {
     // ── Follow-up question with full context ────────────────────────────────
-    prompt = `Previous analysis of merge between ${entityKeyA} and ${entityKeyB}:
+    prompt = ETHICS_PREAMBLE + `Previous analysis of merge between ${entityKeyA} and ${entityKeyB}:
 ${previousAnalysis}
 
 User follow-up: ${followUpQuestion ?? '(no question provided)'}

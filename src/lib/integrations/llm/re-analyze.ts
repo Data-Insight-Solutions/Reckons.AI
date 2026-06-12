@@ -1,5 +1,6 @@
 import { chatClaude, chatOpenAI, chatGemini, chatOllama, chatOpenRouter, chatReckons } from './providers';
 import { BUILT_IN_TYPES } from '$lib/rdf/entity-types';
+import { ETHICS_PREAMBLE } from '$lib/safety/content-policy';
 
 export type AnalysisType = 'new-triples' | 'merge' | 'entity-types' | 'delete';
 
@@ -269,19 +270,21 @@ export async function reAnalyze(opts: ReAnalyzeOptions): Promise<ReAnalyzeRespon
   const DEFAULT_OLLAMA     = 'llama3.2';
   const DEFAULT_OPENROUTER = 'meta-llama/llama-3.2-3b-instruct:free';
 
+  const systemPrompt = ETHICS_PREAMBLE.trim();
+
   let raw: string;
   if (provider === 'openai') {
-    raw = await chatOpenAI(messages, '', apiKey, model ?? DEFAULT_OPENAI, 2048);
+    raw = await chatOpenAI(messages, systemPrompt, apiKey, model ?? DEFAULT_OPENAI, 2048);
   } else if (provider === 'gemini') {
-    raw = await chatGemini(messages, '', apiKey, model ?? DEFAULT_GEMINI, 2048);
+    raw = await chatGemini(messages, systemPrompt, apiKey, model ?? DEFAULT_GEMINI, 2048);
   } else if (provider === 'ollama') {
-    raw = await chatOllama(messages, '', model ?? DEFAULT_OLLAMA, ollamaBaseUrl, 2048);
+    raw = await chatOllama(messages, systemPrompt, model ?? DEFAULT_OLLAMA, ollamaBaseUrl, 2048);
   } else if (provider === 'openrouter') {
-    raw = await chatOpenRouter(messages, '', apiKey, model ?? DEFAULT_OPENROUTER, 2048);
+    raw = await chatOpenRouter(messages, systemPrompt, apiKey, model ?? DEFAULT_OPENROUTER, 2048);
   } else if (provider === 'reckons') {
-    raw = await chatReckons(messages, '', apiKey, reckonsBaseUrl, model ?? '@cf/meta/llama-3.1-8b-instruct', 2048);
+    raw = await chatReckons(messages, systemPrompt, apiKey, reckonsBaseUrl, model ?? '@cf/meta/llama-3.1-8b-instruct', 2048);
   } else {
-    raw = await chatClaude(messages, '', apiKey, model ?? DEFAULT_CLAUDE, 2048);
+    raw = await chatClaude(messages, systemPrompt, apiKey, model ?? DEFAULT_CLAUDE, 2048);
   }
 
   const cleaned = raw.replace(/^```(?:json)?\s*/m, '').replace(/\s*```$/m, '').trim();

@@ -4,6 +4,7 @@ import type { ChangeLogEntry, TrustEvent } from '../storage/types';
 import { scheduleAutoSave } from '../storage/backup';
 import { scheduleWorkspaceTtlExport } from './workspace.svelte';
 import { officialKbActive, officialKbStatements, officialKbSources } from './official-kb.svelte';
+import { filterBlockedStatements } from '../safety/content-policy';
 
 /**
  * Module-level reactive state using Svelte 5 runes ($state).
@@ -169,8 +170,26 @@ export async function autoConfirmTrustedSources() {
 
 export async function addStatements(sts: Statement[], sourceId?: string) {
   if (isReadOnly() || sts.length === 0) return;
+
+  // Content safety gate — block extreme content before save
+  const { allowed, blocked, blockReasons } = filterBlockedStatements(sts);
+  if (blocked.length > 0) {
+    console.warn(`[ContentPolicy] Blocked ${blocked.length} statement(s):`,
+      blocked.map(s => ({ id: s.id, reasons: blockReasons[s.id] })));
+    for (const st of blocked) {
+      await logChange({
+        action: 'reject',
+        statementId: st.id,
+        sourceId: st.sourceId,
+        note: `content-policy: ${blockReasons[st.id]?.join(', ') ?? 'blocked'}`,
+        after: JSON.stringify({ s: st.s, p: st.p, o: st.o, status: 'rejected' })
+      });
+    }
+  }
+  if (allowed.length === 0) return;
+
   // Clean statements via JSON round-trip to ensure IndexedDB compatibility
-  const cleanedSts = sts.map(st => JSON.parse(JSON.stringify(st)) as Statement);
+  const cleanedSts = allowed.map(st => JSON.parse(JSON.stringify(st)) as Statement);
   await db.statements.bulkPut(cleanedSts);
   _statements = [..._statements, ...cleanedSts];
 

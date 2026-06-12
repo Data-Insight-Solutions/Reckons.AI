@@ -1,6 +1,7 @@
 import { chatClaude, chatOpenAI, chatGemini, chatOllama, chatReckons, type ChatMessage } from './providers';
 import { chatWithWasm } from './wasm';
 import type { KBAction, KBContext, TurtleChatResponse } from '$lib/types/turtle-chat';
+import { ETHICS_PREAMBLE } from '../../safety/content-policy';
 
 const SYSTEM_PROMPT = `You are Shelly, a friendly low-poly turtle companion for Reckons.AI — a personal knowledge base tool built on RDF Turtle format (.ttl).
 
@@ -174,7 +175,7 @@ export function resolveChatProvider(s: {
     provider === 'openai' ? (s.openaiModel ?? (pref === 'openrouter' ? s.openrouterModel : 'gpt-4o-mini'))
     : provider === 'gemini' ? (s.geminiModel ?? 'gemini-2.0-flash')
     : provider === 'ollama' ? (s.ollamaModel ?? 'llama3.2')
-    : provider === 'wasm' ? (s.wasmModel ?? undefined)
+    : provider === 'wasm' ? (s.wasmChatModel || s.wasmModel || undefined)
     : provider === 'reckons' ? (s.reckonsModel ?? undefined)
     : (s.claudeModel ?? 'claude-haiku-4-5-20251001');
 
@@ -220,6 +221,8 @@ export async function turtleChat(opts: TurtleChatOptions): Promise<TurtleChatRes
   if (voiceMode) basePrompt = VOICE_MODE_PREFIX + basePrompt;
   if (customPrompt?.trim()) basePrompt = customPrompt.trim() + '\n\n' + basePrompt;
   if (publishedMode) basePrompt = PUBLISHED_ETHICS_WRAPPER + basePrompt;
+  // Inalienable ethics preamble — always first, cannot be overridden
+  basePrompt = ETHICS_PREAMBLE + basePrompt;
   const system = basePrompt + buildContextSection(kbContext);
 
   let raw: string;

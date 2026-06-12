@@ -1,6 +1,7 @@
 import type { Statement, Source } from '../../rdf/types';
 import { iri, lit } from '../../rdf/types';
 import { v4 as uuid } from 'uuid';
+import { ETHICS_PREAMBLE } from '../../safety/content-policy';
 
 /**
  * Both the Claude backend and the local WASM backend produce the same
@@ -26,7 +27,7 @@ export type ExtractedTriple = {
   excerpt?: string;
 };
 
-export const EXTRACTION_SYSTEM_PROMPT = `You are an information extraction system that converts text into RDF-style triples.
+export const EXTRACTION_SYSTEM_PROMPT = ETHICS_PREAMBLE + `You are an information extraction system that converts text into RDF-style triples.
 
 Your job is to read the source text and output a JSON array of triples that capture the factual content.
 

@@ -9,6 +9,7 @@ import type { Statement } from './types';
 import { chatClaude, chatOpenAI, chatGemini, chatOllama, chatOpenRouter, chatReckons, type ChatMessage } from '$lib/integrations/llm/providers';
 import { chatWithWasm } from '$lib/integrations/llm/wasm';
 import type { SettingsRecord } from '$lib/storage/db';
+import { ETHICS_PREAMBLE } from '$lib/safety/content-policy';
 
 export type DiffSummary = {
   newSummary: string;
@@ -16,7 +17,7 @@ export type DiffSummary = {
   conflictingSummary: string;
 };
 
-const SUMMARY_SYSTEM = `You summarize the differences between a new document and an existing knowledge base.
+const SUMMARY_SYSTEM = ETHICS_PREAMBLE + `You summarize the differences between a new document and an existing knowledge base.
 You receive three categorized lists of facts (as short glosses or triple descriptions).
 For each category, write 1-3 concise sentences summarizing the key themes. If a category is empty, say "None."
 Respond with valid JSON: {"newSummary":"...","reinforcingSummary":"...","conflictingSummary":"..."}
@@ -85,7 +86,7 @@ export async function generateDiffSummary(
     + diff.summary.refines + diff.summary.synonymReinforces + diff.summary.antonymConflicts;
   if (total === 0) return fallbackSummary(diff);
 
-  const provider = s.analyzeBackend ?? s.preferredBackend;
+  const provider = s.diffSummaryBackend ?? s.analyzeBackend ?? s.preferredBackend;
   const messages: ChatMessage[] = [
     { role: 'user', content: buildPrompt(diff) }
   ];
@@ -103,7 +104,7 @@ export async function generateDiffSummary(
     } else if (provider === 'reckons') {
       raw = await chatReckons(messages, SUMMARY_SYSTEM, s.reckonsApiKey ?? '', s.reckonsBaseUrl, undefined, 512);
     } else if (provider === 'wasm') {
-      raw = await chatWithWasm(messages, SUMMARY_SYSTEM);
+      raw = await chatWithWasm(messages, SUMMARY_SYSTEM, s.wasmAnalyzeModel || s.wasmModel || undefined);
     } else {
       // claude (default)
       raw = await chatClaude(messages, SUMMARY_SYSTEM, s.claudeApiKey ?? '', s.claudeModel ?? 'claude-haiku-4-5-20251001', 512);

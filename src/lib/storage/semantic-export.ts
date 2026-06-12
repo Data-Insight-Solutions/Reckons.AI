@@ -21,6 +21,7 @@
 import type { Statement, Source } from '../rdf/types';
 import { BUILT_IN_TYPES, RDF_TYPE, RDFS_LABEL } from '../rdf/entity-types';
 import { db } from './db';
+import { scanForExportAdvisory } from '../safety/content-policy';
 
 // ── Schema.org type mapping ───────────────────────────────────────────────────
 
@@ -154,6 +155,9 @@ export function toJsonLd(
     nodes.push(node);
   }
 
+  // Content advisory metadata
+  const advisory = scanForExportAdvisory(confirmed);
+
   const doc: Record<string, unknown> = {
     '@context': 'https://schema.org/',
     '@graph': nodes,
@@ -163,6 +167,11 @@ export function toJsonLd(
     doc['@id'] = opts.siteUrl ?? '';
     doc['name'] = opts.kbTitle ?? 'Knowledge Base';
     if (opts.kbDescription) doc['description'] = opts.kbDescription;
+  }
+
+  if (advisory.rating !== 'none') {
+    doc['contentRating'] = advisory.rating === 'mature' ? 'mature' : 'restricted';
+    doc['_contentAdvisory'] = advisory.flags.join('; ');
   }
 
   return doc;
@@ -230,12 +239,19 @@ export function toLlmsTxt(
     byType.get(schemaType)!.push({ label, iri: subjectIri, facts });
   }
 
+  // Content advisory
+  const advisory = scanForExportAdvisory(confirmed);
+
   const lines: string[] = [
     `# ${title}`,
     '',
     `> ${desc}`,
     '',
   ];
+
+  if (advisory.rating !== 'none') {
+    lines.push(`> **Content Advisory:** This knowledge base contains ${advisory.rating} content (${advisory.flags.join(', ')}). Viewer discretion is advised.`, '');
+  }
 
   if (opts.siteUrl) {
     lines.push(`Site: ${opts.siteUrl}`, '');
