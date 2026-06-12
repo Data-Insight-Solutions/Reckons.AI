@@ -2,7 +2,8 @@
  * Reactive WASM model status store.
  * Tracks download/init progress so UI components can show a loading bar.
  */
-import { onWasmProgress, ensureWasmReady } from '$lib/integrations/llm/wasm';
+import { onWasmProgress, onWasmFallback, ensureWasmReady } from '$lib/integrations/llm/wasm';
+import { pushNotification } from '$lib/stores/notifications.svelte';
 
 type WasmState = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -13,9 +14,27 @@ let _text = $state<string>('');
 // Register progress callback once at module load (no worker created yet)
 // transformers.js sends progress as 0–100 (a percentage), not 0–1
 onWasmProgress((status, p) => {
+  if (status === 'ready') {
+    _status = 'ready';
+    _pct = 100;
+    _text = 'ready';
+    return;
+  }
   _status = 'loading';
   _text = status;
   if (p !== undefined) _pct = Math.min(100, Math.round(p));
+});
+
+// When the worker falls back to a different model, notify the user
+onWasmFallback((requested, actual, reason) => {
+  console.warn(`[wasm] Model "${requested}" unavailable (${reason}), fell back to "${actual}"`);
+  pushNotification({
+    id: 'wasm-model-fallback',
+    type: 'warn',
+    title: 'Switched to fallback model',
+    body: `"${requested.split('/').pop()}" couldn't load — using "${actual.split('/').pop()}" instead. You can change this in Settings.`,
+    action: { label: 'Settings', href: '/settings' },
+  });
 });
 
 export function wasmStatus(): WasmState { return _status; }

@@ -18,11 +18,18 @@ export type SettingsRecord = {
   geminiApiKey?: string;
   geminiModel: string;
   wasmModel: string;
+  /** Per-task WASM model overrides — fall back to wasmModel when absent */
+  wasmIngestModel?: string;
+  wasmAnalyzeModel?: string;
+  wasmChatModel?: string;
   preferredBackend: 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'mock' | 'openrouter' | 'chrome-ai' | 'reckons';
   /** Per-task backend overrides — fall back to preferredBackend when absent */
   ingestBackend?: 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'mock' | 'openrouter' | 'chrome-ai' | 'reckons';
-  analyzeBackend?: 'claude' | 'openai' | 'gemini' | 'ollama' | 'openrouter' | 'reckons';
+  analyzeBackend?: 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'openrouter' | 'chrome-ai' | 'reckons';
   chatBackend?: 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'openrouter' | 'chrome-ai' | 'reckons';
+  /** Sub-task overrides within analyze — fall back to analyzeBackend when absent */
+  diffSummaryBackend?: 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'openrouter' | 'chrome-ai' | 'reckons';
+  mergeAnalysisBackend?: 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'openrouter' | 'chrome-ai' | 'reckons';
   ollamaModel: string;
   ollamaBaseUrl: string;
   embeddingThreshold: number;
@@ -111,6 +118,7 @@ export const DEFAULT_TURTLE_SETTINGS: TurtleSettings = {
   humeApiKey: import.meta.env.VITE_HUME_API_KEY ?? '',
   humeSecretKey: import.meta.env.VITE_HUME_SECRET_KEY ?? '',
   humeConfigId: import.meta.env.VITE_HUME_CONFIG_ID ?? '',
+  whisperModel: 'onnx-community/whisper-tiny',
   animationSpeed: 'normal',
   opacity: 100,
   size: 'medium',
@@ -277,6 +285,20 @@ export async function getSettings(): Promise<SettingsRecord> {
   const base: SettingsRecord = s ? { ...DEFAULT_SETTINGS, ...s } : DEFAULT_SETTINGS;
   if (!s) await db.settings.put(DEFAULT_SETTINGS);
 
+  // Migrate stale WASM model references from older versions (e.g. Xenova/ namespace)
+  const STALE_MODELS = ['Xenova/Qwen2.5-0.5B-Instruct', 'Xenova/'];
+  const isStale = (m: string | undefined) => m && STALE_MODELS.some(p => m.startsWith(p));
+  if (isStale(base.wasmModel)) {
+    base.wasmModel = DEFAULT_SETTINGS.wasmModel;
+    db.settings.update('main', { wasmModel: base.wasmModel }).catch(() => {});
+  }
+  for (const field of ['wasmIngestModel', 'wasmAnalyzeModel', 'wasmChatModel'] as const) {
+    if (isStale(base[field])) {
+      base[field] = undefined;
+      db.settings.update('main', { [field]: undefined }).catch(() => {});
+    }
+  }
+
   // Test-only override: Playwright sets localStorage['__reckons_test_backend__']
   // before page load to force a specific backend without touching IndexedDB.
   // This key is never set in production.
@@ -327,10 +349,15 @@ export async function saveSettings(patch: Partial<SettingsRecord>): Promise<void
       geminiApiKey: m.geminiApiKey,
       geminiModel: m.geminiModel,
       wasmModel: m.wasmModel,
+      wasmIngestModel: m.wasmIngestModel,
+      wasmAnalyzeModel: m.wasmAnalyzeModel,
+      wasmChatModel: m.wasmChatModel,
       preferredBackend: m.preferredBackend,
       ingestBackend: m.ingestBackend,
       analyzeBackend: m.analyzeBackend,
       chatBackend: m.chatBackend,
+      diffSummaryBackend: m.diffSummaryBackend,
+      mergeAnalysisBackend: m.mergeAnalysisBackend,
       ollamaModel: m.ollamaModel,
       ollamaBaseUrl: m.ollamaBaseUrl,
       embeddingThreshold: m.embeddingThreshold,

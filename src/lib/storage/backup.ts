@@ -32,6 +32,8 @@ export interface SettingsProfile {
   ingestBackend?: SettingsRecord['ingestBackend'];
   analyzeBackend?: SettingsRecord['analyzeBackend'];
   chatBackend?: SettingsRecord['chatBackend'];
+  diffSummaryBackend?: SettingsRecord['diffSummaryBackend'];
+  mergeAnalysisBackend?: SettingsRecord['mergeAnalysisBackend'];
   // Models
   claudeModel: string;
   openaiModel: string;
@@ -39,6 +41,9 @@ export interface SettingsProfile {
   ollamaModel: string;
   ollamaBaseUrl: string;
   wasmModel: string;
+  wasmIngestModel?: string;
+  wasmAnalyzeModel?: string;
+  wasmChatModel?: string;
   openrouterModel: string;
   // Analysis
   autoAnalyzeOnImport: boolean;
@@ -70,12 +75,17 @@ export async function buildSettingsProfileJson(): Promise<string> {
     ingestBackend: s.ingestBackend,
     analyzeBackend: s.analyzeBackend,
     chatBackend: s.chatBackend,
+    diffSummaryBackend: s.diffSummaryBackend,
+    mergeAnalysisBackend: s.mergeAnalysisBackend,
     claudeModel: s.claudeModel,
     openaiModel: s.openaiModel,
     geminiModel: s.geminiModel,
     ollamaModel: s.ollamaModel,
     ollamaBaseUrl: s.ollamaBaseUrl,
     wasmModel: s.wasmModel,
+    wasmIngestModel: s.wasmIngestModel,
+    wasmAnalyzeModel: s.wasmAnalyzeModel,
+    wasmChatModel: s.wasmChatModel,
     openrouterModel: s.openrouterModel,
     autoAnalyzeOnImport: s.autoAnalyzeOnImport ?? false,
     autoAnalyzeIntervalMinutes: s.autoAnalyzeIntervalMinutes ?? 0,

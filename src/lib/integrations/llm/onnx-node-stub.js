@@ -1,7 +1,7 @@
 /**
  * Browser stub for onnxruntime-node.
  *
- * @xenova/transformers statically imports both onnxruntime-node and onnxruntime-web
+ * @huggingface/transformers statically imports both onnxruntime-node and onnxruntime-web
  * and selects between them at runtime via `process?.release?.name === 'node'`.
  * In a browser/worker context Vite would otherwise try to bundle the real Node.js
  * native addon, whose module-level initialisation calls registerBackend() on APIs

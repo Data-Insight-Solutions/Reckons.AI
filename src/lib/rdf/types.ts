@@ -102,6 +102,8 @@ export type TurtleSettings = {
   humeSecretKey: string;
   /** Hume.AI EVI Config ID (voice persona config) */
   humeConfigId: string;
+  /** Whisper model for local speech-to-text (e.g. 'onnx-community/whisper-tiny') */
+  whisperModel: string;
 
   // ── Visual ───────────────────────────────────────────────────────────────
   animationSpeed: 'slow' | 'normal' | 'fast';

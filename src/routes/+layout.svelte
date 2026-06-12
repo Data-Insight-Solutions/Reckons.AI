@@ -24,6 +24,8 @@
   import { getOrCreateStableId } from '$lib/storage/kb-fingerprint';
   import { Tooltip } from 'bits-ui';
   import NotificationStack from '$lib/components/NotificationStack.svelte';
+  import DownloadConsentDialog from '$lib/components/DownloadConsentDialog.svelte';
+  import { initDownloadConsent } from '$lib/stores/download-consent.svelte';
 
   let { children } = $props();
   let error = $state<string | null>(null);
@@ -38,6 +40,9 @@
   });
 
   onMount(async () => {
+    // Register download consent handlers before any model loading can occur
+    initDownloadConsent();
+
     // Load in background; show UI immediately for testing
     Promise.all([loadAll(), loadSettings(), loadTurtleSettings(), loadGlbOverrides(), loadGifOverrides(), loadIcon2dOverrides()]).then(async () => {
       startScheduler();
@@ -144,6 +149,7 @@
 
 <ManualLLMModal />
 <NotificationStack />
+<DownloadConsentDialog />
 
 {#if shellyChatOpen()}
   <TurtleChatPanel

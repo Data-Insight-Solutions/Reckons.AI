@@ -747,12 +747,13 @@
     const dt = Math.min((time - lastTime) / 1000, 0.05);
     lastTime = time;
 
-    // Physics (same constants as 3D — world units match)
-    const REPEL     = 1.6;
-    const SPRING    = layout === 'force' ? 0.18 : 0.10;
+    // Physics — tuned for 2D (fewer DOF than 3D, needs stronger damping + wider spacing)
+    const REPEL     = 2.2;
+    const SPRING    = layout === 'force' ? 0.15 : 0.08;
     const CENTER    = activeAnchors.size > 0 ? 0.008 : 0.04;
-    const DAMP      = 0.86;
-    const BASE_REST = 2.4;
+    const DAMP      = 0.78;
+    const BASE_REST = 3.2;
+    const VEL_FLOOR = 0.001; // clamp micro-velocities to zero to stop jitter
 
     for (let i = 0; i < nodes.length; i++) {
       const a = nodes[i];
@@ -769,8 +770,8 @@
       const dx = e.b.x - e.a.x, dy = e.b.y - e.a.y;
       const d = Math.hypot(dx, dy) + 0.001;
       const f = (d - BASE_REST * e.semanticDist) * SPRING;
-      e.a.vx += (dx/d)*f*dt*8; e.a.vy += (dy/d)*f*dt*8;
-      e.b.vx -= (dx/d)*f*dt*8; e.b.vy -= (dy/d)*f*dt*8;
+      e.a.vx += (dx/d)*f*dt*5; e.a.vy += (dy/d)*f*dt*5;
+      e.b.vx -= (dx/d)*f*dt*5; e.b.vy -= (dy/d)*f*dt*5;
     }
     for (const n of nodes) {
       if (activeAnchors.size > 0) {
@@ -779,6 +780,8 @@
       }
       n.vx += -n.x * CENTER * dt; n.vy += -n.y * CENTER * dt;
       n.vx *= DAMP; n.vy *= DAMP;
+      // Clamp micro-velocities to zero — prevents infinite low-amplitude jitter
+      if (Math.abs(n.vx) < VEL_FLOOR && Math.abs(n.vy) < VEL_FLOOR) { n.vx = 0; n.vy = 0; }
       n.x += n.vx; n.y += n.vy;
       nodePositionCache.set(n.key, { x: n.x, y: n.y });
     }

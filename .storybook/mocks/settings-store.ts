@@ -6,7 +6,7 @@ const MOCK_SETTINGS: SettingsRecord = {
   claudeModel: 'claude-haiku-4-5-20251001',
   openaiModel: 'gpt-4o-mini',
   geminiModel: 'gemini-2.0-flash',
-  wasmModel: 'Xenova/Qwen2.5-0.5B-Instruct',
+  wasmModel: 'HuggingFaceTB/SmolLM2-360M-Instruct',
   preferredBackend: 'mock',
   ollamaModel: 'llama3.2',
   ollamaBaseUrl: 'http://localhost:11434',

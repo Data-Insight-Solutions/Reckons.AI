@@ -157,14 +157,18 @@ export async function ingest(
     triples = parseTriplesJSON(raw);
   } else if (backend === 'wasm') {
     try {
-      triples = await extractWithWasm(text, title, s.wasmModel);
+      triples = await extractWithWasm(text, title, s.wasmIngestModel || s.wasmModel);
     } catch (wasmErr) {
       console.warn('[fallback] WASM extraction failed, using mock:', wasmErr);
+      const errMsg = wasmErr instanceof Error ? wasmErr.message : String(wasmErr);
+      const isOnnx = /registerBackend|ONNX runtime/i.test(errMsg);
       pushNotification({
         id: 'wasm-fallback',
         type: 'warn',
         title: 'Local AI unavailable — used placeholder extraction',
-        body: 'The WASM model could not load. Statements were placeholder-extracted and need careful review. Switch to a cloud backend in Settings for better quality.',
+        body: isOnnx
+          ? 'ONNX runtime is not supported in this browser. Statements were placeholder-extracted. Try Ollama, Chrome AI, or a cloud backend in Settings.'
+          : 'The WASM model could not load. Statements were placeholder-extracted and need careful review. Switch to a cloud backend in Settings for better quality.',
         action: { label: 'Settings', href: '/settings' },
       });
       triples = extractMock(text, title);
@@ -183,7 +187,7 @@ export async function ingest(
     backend === 'openai'     ? (s.openaiModel     ?? 'gpt-4o-mini')                            :
     backend === 'gemini'     ? (s.geminiModel     ?? 'gemini-2.0-flash')                       :
     backend === 'ollama'     ? (s.ollamaModel     ?? 'llama3.2')                               :
-    backend === 'wasm'       ? (s.wasmModel       ?? 'HuggingFaceTB/SmolLM2-360M-Instruct')    :
+    backend === 'wasm'       ? (s.wasmIngestModel || s.wasmModel || 'HuggingFaceTB/SmolLM2-360M-Instruct') :
     backend === 'openrouter' ? (s.openrouterModel ?? 'meta-llama/llama-3.2-3b-instruct:free')  :
     backend === 'reckons'    ? (s.reckonsModel    ?? '@cf/meta/llama-3.1-8b-instruct')         :
     backend === 'chrome-ai'  ? 'chrome-ai'                                                      :

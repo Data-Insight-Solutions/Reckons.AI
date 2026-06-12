@@ -10,10 +10,10 @@
  * The model defaults to all-MiniLM-L6-v2 (22MB, 384 dims) which loads in
  * seconds and runs comfortably on phones.
  *
- * @xenova/transformers is dynamically imported so ort-web never runs on the
- * main thread at module-evaluation time (it only loads when first needed).
+ * @huggingface/transformers is dynamically imported so ort-web never runs on
+ * the main thread at module-evaluation time (it only loads when first needed).
  *
- * NOTE: Do NOT add any static `import` from '@xenova/transformers' or
+ * NOTE: Do NOT add any static `import` from '@huggingface/transformers' or
  * 'onnxruntime-web' here — even `import type` can cause Vite to include
  * ort-web in the main-thread bundle, which crashes with
  * "Cannot read properties of undefined (reading 'registerBackend')".
@@ -22,14 +22,51 @@
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let extractor: any = null;
 
+/**
+ * Download consent gate — same pattern as wasm.ts / whisper-stt.ts.
+ * MiniLM-L6-v2 is ~22MB quantized.
+ */
+let consentHandler: ((model: string, approxMB: number) => Promise<boolean>) | null = null;
+const consentGranted = new Set<string>();
+
+export function setEmbedConsentHandler(
+  handler: ((model: string, approxMB: number) => Promise<boolean>) | null
+) {
+  consentHandler = handler;
+}
+
+async function isEmbedCached(): Promise<boolean> {
+  try {
+    const cache = await caches.open('transformers-cache');
+    const url = 'https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/onnx/model_quantized.onnx';
+    return !!(await cache.match(url));
+  } catch {
+    return false;
+  }
+}
+
 export async function ensureEmbedder(): Promise<FeatureExtractionPipeline> {
   if (extractor) return extractor;
-  const { pipeline, env } = await import('@xenova/transformers');
+
+  const MODEL = 'Xenova/all-MiniLM-L6-v2';
+
+  // Ask user before downloading if not cached
+  if (consentHandler && !consentGranted.has(MODEL)) {
+    const cached = await isEmbedCached();
+    if (!cached) {
+      const ok = await consentHandler(MODEL, 22);
+      if (!ok) throw new Error('Embedding model download declined by user.');
+      consentGranted.add(MODEL);
+    }
+  }
+
+  const { pipeline, env } = await import('@huggingface/transformers');
   env.allowLocalModels = false;
   env.useBrowserCache = true;
   extractor = (await pipeline(
     'feature-extraction',
-    'Xenova/all-MiniLM-L6-v2'
+    MODEL,
+    { dtype: 'q8' }
   )) as FeatureExtractionPipeline;
   return extractor;
 }

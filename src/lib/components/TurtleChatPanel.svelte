@@ -43,7 +43,8 @@
     const raw = e instanceof Error ? e.message : String(e);
     if (provider === 'wasm') {
       // Simplify verbose HuggingFace/ONNX errors for the user
-      const short = raw.includes('Unauthorized') ? 'model download blocked'
+      const short = raw.includes('registerBackend') || raw.includes('ONNX runtime') ? 'ONNX unsupported in this browser'
+        : raw.includes('Unauthorized') ? 'model download blocked'
         : raw.includes('timed out') ? 'model download timed out'
         : raw.includes('Failed to fetch') || raw.includes('NetworkError') ? 'network error'
         : raw.length > 80 ? raw.slice(0, 70) + '…' : raw;
@@ -73,9 +74,13 @@
     }
   });
 
-  // Switch to explore tab when explore mode is activated (e.g. explore chip clicked while panel already open)
+  // Switch to explore tab once when explore mode is first activated
+  // (e.g. explore chip clicked while panel already open).
+  // Does NOT continuously force the tab — user can navigate freely after.
+  let exploreModeHandled = $state(false);
   $effect(() => {
-    if (exploreMode && tab !== 'explore') {
+    if (exploreMode && !exploreModeHandled) {
+      exploreModeHandled = true;
       tab = 'explore';
       if (!exploreStarted) {
         exploreStarted = true;
@@ -619,9 +624,12 @@
       .replace(/^>\s*/gm, '')
       .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
       .replace(/--/g, ', ')
-      .replace(/\n{2,}/g, '\n')
       .replace(/^[-•*]\s+/gm, '')
       .replace(/^\d+[.)]\s+/gm, '')
+      // Convert newlines to sentence breaks so TTS pauses naturally at paragraphs
+      .replace(/\n{2,}/g, '.\n')
+      .replace(/\n/g, '. ')
+      .replace(/\.\s*\./g, '.')
       .trim();
   }
 
@@ -934,6 +942,44 @@
   let voiceVolume = $state(0);          // 0-1 mic volume from AnalyserNode
   let interimText = $state('');         // live interim transcript (clears on turn end)
 
+  // ── Whisper local STT ────────────────────────────────────────────────────
+  let whisperRecording = $state(false);
+  let whisperTranscribing = $state(false);
+  let whisperController: ReturnType<typeof import('$lib/integrations/llm/whisper-stt').startMicRecording> | null = null;
+
+  async function toggleWhisperMic() {
+    if (whisperRecording) {
+      // Stop recording and transcribe
+      if (!whisperController) return;
+      whisperRecording = false;
+      whisperTranscribing = true;
+      try {
+        const audio = await whisperController.stop();
+        const { transcribe } = await import('$lib/integrations/llm/whisper-stt');
+        const whisperModel = turtleSettings().whisperModel || 'onnx-community/whisper-tiny';
+        const result = await transcribe(audio, whisperModel);
+        if (result.text) {
+          input = (input ? input + ' ' : '') + result.text;
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg !== 'Recording cancelled') {
+          errorMsg = `Whisper: ${msg}`;
+        }
+      } finally {
+        whisperTranscribing = false;
+        whisperController = null;
+      }
+    } else {
+      // Start recording
+      const { startMicRecording } = await import('$lib/integrations/llm/whisper-stt');
+      const { registerWhisperConsent } = await import('$lib/stores/download-consent.svelte');
+      await registerWhisperConsent();
+      whisperController = startMicRecording();
+      whisperRecording = true;
+    }
+  }
+
   function handleVoiceMessage(role: 'user' | 'assistant', content: string, actions?: import('$lib/types/turtle-chat').KBAction[]) {
     messages = [...messages, { role, content, actions: actions ?? [] }];
     tick().then(() => { if (msgListRef) msgListRef.scrollTop = msgListRef.scrollHeight; });
@@ -972,6 +1018,10 @@
 <Tabs.Root
   value={tab}
   onValueChange={(v) => {
+    // Auto-pause story when navigating away from explore tab
+    if (tab === 'explore' && v !== 'explore' && currentStory && storyAutoPlaying) {
+      stopAutoPlay();
+    }
     tab = v as Tab;
     if (v === 'explore' && !exploreStarted) {
       exploreStarted = true;
@@ -1235,6 +1285,17 @@
             oninterim={(t) => { interimText = t; tick().then(() => { if (msgListRef) msgListRef.scrollTop = msgListRef.scrollHeight; }); }}
             onvolume={(v) => { voiceVolume = v; }}
           />
+        {:else}
+          <button
+            class="mic-btn"
+            class:recording={whisperRecording}
+            class:transcribing={whisperTranscribing}
+            onclick={toggleWhisperMic}
+            disabled={whisperTranscribing || loading}
+            title={whisperRecording ? 'Stop recording' : whisperTranscribing ? 'Transcribing...' : 'Voice input (Whisper)'}
+          >
+            {whisperTranscribing ? '...' : whisperRecording ? '■' : '🎤'}
+          </button>
         {/if}
       </div>
     </div>
@@ -1883,6 +1944,33 @@
     line-height: 1;
     border-radius: var(--rad-sm);
     align-self: flex-end;
+  }
+
+  .mic-btn {
+    padding: 0.45rem 0.55rem;
+    font-size: 0.85rem;
+    line-height: 1;
+    border-radius: var(--rad-sm);
+    align-self: flex-end;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .mic-btn:hover { background: var(--surface-3); }
+  .mic-btn.recording {
+    background: color-mix(in srgb, var(--danger, #ef4444) 15%, var(--surface));
+    border-color: var(--danger, #ef4444);
+    color: var(--danger, #ef4444);
+    animation: mic-pulse 1s infinite;
+  }
+  .mic-btn.transcribing {
+    opacity: 0.6;
+    cursor: wait;
+  }
+  @keyframes mic-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
   }
 
   /* ── Explore tab ── */

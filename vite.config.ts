@@ -26,13 +26,37 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2,wasm}'],
-        maximumFileSizeToCacheInBytes: 50_000_000
+        maximumFileSizeToCacheInBytes: 50_000_000,
+        runtimeCaching: [
+          {
+            // Cache HuggingFace model files (ONNX weights, tokenizers, configs)
+            // after first download so WASM LLM + embeddings work offline.
+            urlPattern: /^https:\/\/huggingface\.co\/.+\/(resolve|raw)\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'hf-models',
+              expiration: { maxEntries: 50, maxAgeSeconds: 30 * 24 * 60 * 60 },
+              cacheableResponse: { statuses: [0, 200] },
+              rangeRequests: true,
+            }
+          },
+          {
+            // Cache CDN assets (ONNX WASM runtime fallback from jsdelivr)
+            urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/.+\.(wasm|mjs|js)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'cdn-assets',
+              expiration: { maxEntries: 20, maxAgeSeconds: 30 * 24 * 60 * 60 },
+              cacheableResponse: { statuses: [0, 200] },
+            }
+          }
+        ]
       }
     })
   ],
   resolve: {
     alias: {
-      // onnxruntime-node is a Node.js-only native addon. @xenova/transformers imports
+      // onnxruntime-node is a Node.js-only native addon. @huggingface/transformers imports
       // it statically alongside onnxruntime-web and selects at runtime via process.release.
       // In a browser/worker context Vite bundles the real addon whose module-level init
       // calls registerBackend() on undefined browser APIs — crashing the worker.
@@ -41,6 +65,6 @@ export default defineConfig({
     }
   },
   worker: { format: 'es' },
-  optimizeDeps: { exclude: ['@xenova/transformers', '@huggingface/transformers', 'onnxruntime-web'] },
+  optimizeDeps: { exclude: ['@huggingface/transformers', 'onnxruntime-web'] },
   ssr: { noExternal: ['bits-ui', 'svelte-toolbelt', 'runed'] }
 });

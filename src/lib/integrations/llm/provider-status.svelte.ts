@@ -50,17 +50,17 @@ export function getSdkState(key: ProviderKey): 'loading' | 'ready' | 'error' | '
 // ── Provider config ───────────────────────────────────────────────────────────
 
 const PROVIDER_META: Record<ProviderKey, { label: string; sdkSize?: string; hasLazySdk: boolean }> = {
-  claude:      { label: 'Claude (Anthropic)',  hasLazySdk: false },
-  openai:      { label: 'OpenAI',              hasLazySdk: false },
-  gemini:      { label: 'Gemini (Google)',      hasLazySdk: false },
-  openrouter:  { label: 'OpenRouter',          hasLazySdk: false },
-  ollama:      { label: 'Ollama (local)',       hasLazySdk: false },
-  wasm:        { label: 'WASM (in-browser)',    sdkSize: '~50 MB on first use', hasLazySdk: true },
-  'chrome-ai': { label: 'Chrome Built-in AI',  hasLazySdk: false },
-  reckons:     { label: 'Reckons.AI Cloud',     hasLazySdk: false },
-  hume:        { label: 'Hume.AI (voice)',      sdkSize: '~300 KB on first connect', hasLazySdk: true },
-  mistral:     { label: 'Mistral OCR',         hasLazySdk: false },
-  firecrawl:   { label: 'Firecrawl',           hasLazySdk: false },
+  claude:      { label: 'Claude',         hasLazySdk: false },
+  openai:      { label: 'OpenAI',         hasLazySdk: false },
+  gemini:      { label: 'Gemini',         hasLazySdk: false },
+  openrouter:  { label: 'OpenRouter',     hasLazySdk: false },
+  ollama:      { label: 'Ollama',         hasLazySdk: false },
+  wasm:        { label: 'WASM',           sdkSize: '~50 MB on first use', hasLazySdk: true },
+  'chrome-ai': { label: 'Chrome AI',      hasLazySdk: false },
+  reckons:     { label: 'Reckons.AI',     hasLazySdk: false },
+  hume:        { label: 'Hume.AI',        sdkSize: '~300 KB on first connect', hasLazySdk: true },
+  mistral:     { label: 'Mistral OCR',    hasLazySdk: false },
+  firecrawl:   { label: 'Firecrawl',      hasLazySdk: false },
 };
 
 function isConfigured(key: ProviderKey): boolean {
@@ -114,9 +114,12 @@ export function providerStatus(): ProviderInfo[] {
 /** Convenience: providers used for at least one current task. */
 export function activeProviders(): ProviderInfo[] {
   const s = settings();
+  const analyzeDefault = s.analyzeBackend ?? s.preferredBackend;
   const used = new Set([
     s.ingestBackend ?? s.preferredBackend,
-    s.analyzeBackend ?? s.preferredBackend,
+    analyzeDefault,
+    s.diffSummaryBackend ?? analyzeDefault,
+    s.mergeAnalysisBackend ?? analyzeDefault,
     s.chatBackend ?? s.preferredBackend,
     s.humeAiApiKey ? 'hume' : null,
     s.mistralApiKey ? 'mistral' : null,
