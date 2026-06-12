@@ -657,12 +657,13 @@
         <strong>Core app</strong>
         <p>The full knowledge graph, local inference, provenance tracking, RDF/Turtle export and the complete open-source codebase. No account, no telemetry, no expiry.</p>
         <a
-          href="https://buymeacoffee.com/reckons"
+          href="https://www.paypal.com/ncp/payment/KH5J484QMVFS2"
           target="_blank"
           rel="noopener noreferrer"
           class="tier-contact mono"
-          aria-label="Support Reckons.AI on Buy Me a Coffee"
+          aria-label="Support Reckons.AI — Buy me a coffee"
         >☕ buy me a coffee</a>
+        <img src="/png/BuymeaCoffee-qrcode.png" alt="Scan to support Reckons.AI" class="coffee-qr" />
       </div>
       <div class="pricing-tier">
         <span class="tier-badge mono tier-planned">coming</span>
@@ -1588,6 +1589,15 @@
     transition: opacity 0.15s;
   }
   .tier-contact:hover { opacity: 0.75; }
+  .coffee-qr {
+    width: 120px;
+    height: 120px;
+    margin-top: 0.5rem;
+    border-radius: var(--rad-sm);
+    opacity: 0.85;
+    transition: opacity 0.15s;
+  }
+  .coffee-qr:hover { opacity: 1; }
 
   /* ── Footer ────────────────────────────────────────────────────── */
   .page-footer {

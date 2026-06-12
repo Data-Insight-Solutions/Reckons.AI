@@ -22,7 +22,7 @@
   import { onMount } from 'svelte';
   import Select from '$lib/components/ui/Select.svelte';
   import { Dialog } from 'bits-ui';
-  import { DEFAULT_SETTINGS, getSettings, getUserDefaults, saveUserDefaults, clearUserDefaults } from '$lib/storage/db';
+  import { DEFAULT_SETTINGS, getSettings, getUserDefaults, saveUserDefaults, clearUserDefaults, type SettingsRecord } from '$lib/storage/db';
   import {
     workspaceName, workspaceState, supportsWorkspace,
     pickWorkspace, reconnectWorkspace, clearWorkspace, loadWorkspace
@@ -33,15 +33,20 @@
   let openaiKey = $state(settings().openaiApiKey ?? '');
   let geminiKey = $state(settings().geminiApiKey ?? '');
   let backend = $state(settings().preferredBackend);
-  let ingestBackend  = $state(settings().ingestBackend  ?? settings().preferredBackend);
-  let analyzeBackend = $state(settings().analyzeBackend ?? settings().preferredBackend);
-  let chatBackend    = $state(settings().chatBackend    ?? settings().preferredBackend);
+  let ingestBackend       = $state(settings().ingestBackend       ?? settings().preferredBackend);
+  let analyzeBackend      = $state(settings().analyzeBackend      ?? settings().preferredBackend);
+  let chatBackend         = $state(settings().chatBackend         ?? settings().preferredBackend);
+  let diffSummaryBackend  = $state(settings().diffSummaryBackend  ?? '');
+  let mergeAnalysisBackend = $state(settings().mergeAnalysisBackend ?? '');
   let claudeModel = $state(settings().claudeModel);
   let openaiModel = $state(settings().openaiModel);
   let geminiModel = $state(settings().geminiModel);
   let ollamaModel = $state(settings().ollamaModel ?? 'llama3.2');
   let ollamaBaseUrl = $state(settings().ollamaBaseUrl ?? 'http://localhost:11434');
   let wasmModel = $state(settings().wasmModel);
+  let wasmIngestModel = $state(settings().wasmIngestModel ?? '');
+  let wasmAnalyzeModel = $state(settings().wasmAnalyzeModel ?? '');
+  let wasmChatModel = $state(settings().wasmChatModel ?? '');
   let openrouterKey = $state(settings().openrouterApiKey ?? '');
   let openrouterModel = $state(settings().openrouterModel ?? 'meta-llama/llama-3.2-3b-instruct:free');
   let mistralApiKey = $state(settings().mistralApiKey ?? '');
@@ -52,6 +57,30 @@
   async function saveDisplaySettings() {
     await updateSettings({ uiScale, nodeLabelFontSize });
   }
+
+  // ── Shared backend option groups (consistent naming across all selectors) ──
+  type OptGroup = { label: string; options: { value: string; label: string }[] };
+  const LOCAL_GROUP: OptGroup = { label: 'local', options: [
+    { value: 'wasm',      label: 'WASM (free · offline)' },
+    { value: 'chrome-ai', label: 'Chrome AI (free · local)' },
+    { value: 'ollama',    label: 'Ollama (free · local)' },
+  ]};
+  const CLOUD_GROUP: OptGroup = { label: 'cloud', options: [
+    { value: 'openrouter', label: 'OpenRouter (free tier available)' },
+    { value: 'gemini',     label: 'Gemini (free tier)' },
+    { value: 'reckons',    label: 'Reckons.AI (managed)' },
+    { value: 'claude',     label: 'Claude (paid)' },
+    { value: 'openai',     label: 'OpenAI (paid)' },
+  ]};
+  const DEV_GROUP: OptGroup   = { label: 'dev', options: [
+    { value: 'mock', label: 'Mock (testing)' },
+  ]};
+  const ALL_GROUPS:  OptGroup[] = [LOCAL_GROUP, CLOUD_GROUP, DEV_GROUP];
+  const FULL_GROUPS: OptGroup[] = [LOCAL_GROUP, CLOUD_GROUP];
+  const ANALYZE_SUB_GROUPS: OptGroup[] = [
+    { label: 'default', options: [{ value: '', label: '← use analyze default' }] },
+    ...FULL_GROUPS,
+  ];
   let wasmStatus = $state('');
   let wasmPct = $state<number | null>(null);
   let wasmLoading = $state(false);
@@ -96,14 +125,19 @@
       geminiApiKey: geminiKey.trim() || undefined,
       preferredBackend: backend,
       ingestBackend,
-      analyzeBackend: analyzeBackend as 'claude' | 'openai' | 'gemini' | 'ollama' | 'openrouter' | 'reckons',
-      chatBackend: chatBackend as 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'openrouter' | 'chrome-ai' | 'reckons',
+      analyzeBackend: analyzeBackend as SettingsRecord['analyzeBackend'],
+      chatBackend: chatBackend as SettingsRecord['chatBackend'],
+      diffSummaryBackend: (diffSummaryBackend || undefined) as SettingsRecord['diffSummaryBackend'],
+      mergeAnalysisBackend: (mergeAnalysisBackend || undefined) as SettingsRecord['mergeAnalysisBackend'],
       claudeModel,
       openaiModel,
       geminiModel,
       ollamaModel,
       ollamaBaseUrl: ollamaBaseUrl.trim() || 'http://localhost:11434',
       wasmModel,
+      wasmIngestModel: wasmIngestModel.trim() || undefined,
+      wasmAnalyzeModel: wasmAnalyzeModel.trim() || undefined,
+      wasmChatModel: wasmChatModel.trim() || undefined,
       openrouterApiKey: openrouterKey.trim() || undefined,
       openrouterModel: openrouterModel.trim() || 'meta-llama/llama-3.2-3b-instruct:free',
       mistralApiKey: mistralApiKey.trim() || undefined,
@@ -143,28 +177,34 @@
 
   const WASM_MODELS: ModelRec[] = [
     {
+      id: 'HuggingFaceTB/SmolLM2-135M-Instruct',
+      label: 'SmolLM2-135M',
+      size: '~135 MB',
+      note: 'ultra-light · fast download · basic extraction'
+    },
+    {
       id: 'HuggingFaceTB/SmolLM2-360M-Instruct',
       label: 'SmolLM2-360M',
       size: '~360 MB',
-      note: 'default · fastest · good for quick responses'
+      note: 'default · good balance of speed and quality'
     },
     {
-      id: 'Xenova/Qwen2.5-0.5B-Instruct',
+      id: 'onnx-community/Qwen2.5-0.5B-Instruct',
       label: 'Qwen2.5-0.5B',
       size: '~500 MB',
-      note: 'better coherence · may require HuggingFace access'
+      note: 'strong reasoning for size · multilingual'
+    },
+    {
+      id: 'onnx-community/Phi-3.5-mini-instruct-onnx-web',
+      label: 'Phi-3.5-mini',
+      size: '~900 MB',
+      note: 'high quality · slow download · needs 4 GB+ RAM'
     },
     {
       id: 'HuggingFaceTB/SmolLM2-1.7B-Instruct',
       label: 'SmolLM2-1.7B',
       size: '~1.7 GB',
-      note: 'better reasoning · needs 6 GB+ RAM'
-    },
-    {
-      id: 'Xenova/Qwen2.5-1.5B-Instruct',
-      label: 'Qwen2.5-1.5B',
-      size: '~1.5 GB',
-      note: 'strong instruction following · needs 6 GB+ RAM'
+      note: 'may crash in-browser WASM (use Ollama for larger models)'
     },
   ];
 
@@ -202,8 +242,7 @@
     }
 
     const recommendation =
-      tier === 'high' ? WASM_MODELS[3]   // Qwen2.5-1.5B
-      : tier === 'mid' ? WASM_MODELS[1]  // Qwen2.5-0.5B (default)
+      tier === 'high' ? WASM_MODELS[1]   // SmolLM2-1.7B
       : WASM_MODELS[0];                  // SmolLM2-360M
 
     const ramStr = ramGb !== null ? `${ramGb} GB RAM` : 'unknown RAM';
@@ -217,7 +256,11 @@
   });
 
   // Which provider sections to show — derived live from the task dropdowns
-  const usedProviders = $derived(new Set([ingestBackend, analyzeBackend, chatBackend]));
+  const usedProviders = $derived(new Set([
+    ingestBackend, analyzeBackend, chatBackend,
+    diffSummaryBackend || analyzeBackend,
+    mergeAnalysisBackend || analyzeBackend,
+  ]));
 
   // Auto re-analysis
   let autoAnalyzeOnImport = $state(settings().autoAnalyzeOnImport ?? false);
@@ -316,7 +359,9 @@
   $effect(() => {
     // Track every form field — any change triggers debounced save
     void [key, openaiKey, geminiKey, backend, ingestBackend, analyzeBackend, chatBackend,
+          diffSummaryBackend, mergeAnalysisBackend,
           claudeModel, openaiModel, geminiModel, ollamaModel, ollamaBaseUrl, wasmModel,
+          wasmIngestModel, wasmAnalyzeModel, wasmChatModel,
           openrouterKey, openrouterModel, mistralApiKey, meshyApiKey, autoAnalyzeOnImport,
           autoAnalyzeIntervalMinutes, hlConflictColor, hlReinforceColor, hlNewColor,
           hlSaturation, hlFontFamily, hlFontSize, hlHoverScale];
@@ -341,12 +386,17 @@
     ingestBackend          = d.ingestBackend         ?? d.preferredBackend;
     analyzeBackend         = d.analyzeBackend        ?? d.preferredBackend;
     chatBackend            = d.chatBackend           ?? d.preferredBackend;
+    diffSummaryBackend     = d.diffSummaryBackend    ?? '';
+    mergeAnalysisBackend   = d.mergeAnalysisBackend  ?? '';
     claudeModel            = d.claudeModel;
     openaiModel            = d.openaiModel;
     geminiModel            = d.geminiModel;
     ollamaModel            = d.ollamaModel;
     ollamaBaseUrl          = d.ollamaBaseUrl;
     wasmModel              = d.wasmModel;
+    wasmIngestModel        = d.wasmIngestModel        ?? '';
+    wasmAnalyzeModel       = d.wasmAnalyzeModel       ?? '';
+    wasmChatModel          = d.wasmChatModel          ?? '';
     openrouterKey          = d.openrouterApiKey      ?? '';
     openrouterModel        = d.openrouterModel;
     mistralApiKey          = d.mistralApiKey          ?? '';
@@ -390,14 +440,19 @@
       geminiApiKey: ud.geminiApiKey,
       preferredBackend: ud.preferredBackend,
       ingestBackend: ud.ingestBackend,
-      analyzeBackend: ud.analyzeBackend as typeof analyzeBackend,
-      chatBackend: ud.chatBackend as typeof chatBackend,
+      analyzeBackend: ud.analyzeBackend as SettingsRecord['analyzeBackend'],
+      chatBackend: ud.chatBackend as SettingsRecord['chatBackend'],
+      diffSummaryBackend: ud.diffSummaryBackend as SettingsRecord['diffSummaryBackend'],
+      mergeAnalysisBackend: ud.mergeAnalysisBackend as SettingsRecord['mergeAnalysisBackend'],
       claudeModel: ud.claudeModel,
       openaiModel: ud.openaiModel,
       geminiModel: ud.geminiModel,
       ollamaModel: ud.ollamaModel,
       ollamaBaseUrl: ud.ollamaBaseUrl,
       wasmModel: ud.wasmModel,
+      wasmIngestModel: ud.wasmIngestModel,
+      wasmAnalyzeModel: ud.wasmAnalyzeModel,
+      wasmChatModel: ud.wasmChatModel,
       openrouterApiKey: ud.openrouterApiKey,
       openrouterModel: ud.openrouterModel,
       mistralApiKey: ud.mistralApiKey,
@@ -414,14 +469,19 @@
     geminiKey                  = ud.geminiApiKey              ?? '';
     backend                    = ud.preferredBackend;
     ingestBackend              = ud.ingestBackend             ?? ud.preferredBackend;
-    analyzeBackend             = (ud.analyzeBackend           ?? ud.preferredBackend) as typeof analyzeBackend;
-    chatBackend                = (ud.chatBackend              ?? ud.preferredBackend) as typeof chatBackend;
+    analyzeBackend             = ud.analyzeBackend            ?? ud.preferredBackend;
+    chatBackend                = ud.chatBackend               ?? ud.preferredBackend;
+    diffSummaryBackend         = ud.diffSummaryBackend        ?? '';
+    mergeAnalysisBackend       = ud.mergeAnalysisBackend      ?? '';
     claudeModel                = ud.claudeModel;
     openaiModel                = ud.openaiModel;
     geminiModel                = ud.geminiModel;
     ollamaModel                = ud.ollamaModel;
     ollamaBaseUrl              = ud.ollamaBaseUrl;
     wasmModel                  = ud.wasmModel;
+    wasmIngestModel            = ud.wasmIngestModel           ?? '';
+    wasmAnalyzeModel           = ud.wasmAnalyzeModel          ?? '';
+    wasmChatModel              = ud.wasmChatModel             ?? '';
     openrouterKey              = ud.openrouterApiKey          ?? '';
     openrouterModel            = ud.openrouterModel;
     mistralApiKey              = ud.mistralApiKey              ?? '';
@@ -590,81 +650,108 @@
 
 <section id="s-backends" class="card">
   <h3>AI backends per task</h3>
-  <p class="sub">each task uses its own model — mix a fast free model for ingestion with a smarter cloud model for analysis. provider keys and model names are set in the sections below. if a cloud backend has no key configured, ingest falls back to wasm automatically.</p>
+  <p class="sub">each task uses its own model — mix a fast free model for ingestion with a smarter cloud model for analysis. provider keys and model names are set in the sections below. if a cloud backend has no key configured, ingest and chat fall back to WASM automatically.</p>
 
   <div class="task-backends">
+    <!-- ── Ingest ── -->
+    <div class="task-category-header mono">ingest</div>
     <div class="task-row">
       <div class="task-info">
-        <span class="task-label mono">ingest</span>
-        <span class="task-desc">text → triples extraction</span>
+        <span class="task-label mono">extraction</span>
+        <span class="task-desc">text → triples</span>
       </div>
-      <div class="backend-sel-wrap"><Select bind:value={ingestBackend} groups={[
-        { label: 'free / offline', options: [
-          { value: 'wasm', label: 'local wasm (free · offline)' },
-          { value: 'chrome-ai', label: 'chrome built-in AI (free · local)' },
-          { value: 'ollama', label: 'ollama (free · local)' },
-        ]},
-        { label: 'cloud', options: [
-          { value: 'openrouter', label: 'openrouter (free models available)' },
-          { value: 'gemini', label: 'gemini (free tier)' },
-          { value: 'claude', label: 'claude (paid)' },
-          { value: 'openai', label: 'openai (paid)' },
-        ]},
-        { label: 'dev', options: [
-          { value: 'mock', label: 'mock (testing)' },
-        ]},
-      ]} /></div>
+      <div class="backend-sel-wrap"><Select bind:value={ingestBackend} groups={ALL_GROUPS} /></div>
     </div>
 
+    <!-- ── Analyze ── -->
+    <div class="task-category-header mono">
+      analyze
+      <button class="set-all-btn mono" onclick={() => { diffSummaryBackend = ''; mergeAnalysisBackend = ''; }}>
+        reset sub-tasks
+      </button>
+    </div>
     <div class="task-row">
       <div class="task-info">
-        <span class="task-label mono">analyze</span>
-        <span class="task-desc">KB re-analysis · type/relation/merge suggestions</span>
+        <span class="task-label mono">default</span>
+        <span class="task-desc">all analysis tasks below</span>
       </div>
-      <div class="backend-sel-wrap"><Select bind:value={analyzeBackend} groups={[
-        { label: 'cloud', options: [
-          { value: 'claude', label: 'claude (best reasoning)' },
-          { value: 'openai', label: 'openai' },
-          { value: 'gemini', label: 'gemini (free tier)' },
-          { value: 'openrouter', label: 'openrouter (free models available)' },
-        ]},
-        { label: 'local', options: [
-          { value: 'ollama', label: 'ollama (free · local)' },
-        ]},
-      ]} /></div>
+      <div class="backend-sel-wrap"><Select bind:value={analyzeBackend} groups={FULL_GROUPS} /></div>
+    </div>
+    <div class="task-row task-row-sub">
+      <div class="task-info">
+        <span class="task-label mono">new triples</span>
+        <span class="task-desc">discover missing relations</span>
+      </div>
+      <span class="task-inherits mono">← default</span>
+    </div>
+    <div class="task-row task-row-sub">
+      <div class="task-info">
+        <span class="task-label mono">entity types</span>
+        <span class="task-desc">assign rdf:type to entities</span>
+      </div>
+      <span class="task-inherits mono">← default</span>
+    </div>
+    <div class="task-row task-row-sub">
+      <div class="task-info">
+        <span class="task-label mono">merge</span>
+        <span class="task-desc">entity deduplication</span>
+      </div>
+      <div class="backend-sel-wrap"><Select bind:value={mergeAnalysisBackend} groups={ANALYZE_SUB_GROUPS} /></div>
+    </div>
+    <div class="task-row task-row-sub">
+      <div class="task-info">
+        <span class="task-label mono">prune</span>
+        <span class="task-desc">remove low-value statements</span>
+      </div>
+      <span class="task-inherits mono">← default</span>
+    </div>
+    <div class="task-row task-row-sub">
+      <div class="task-info">
+        <span class="task-label mono">diff summary</span>
+        <span class="task-desc">summarize new & conflicting</span>
+      </div>
+      <div class="backend-sel-wrap"><Select bind:value={diffSummaryBackend} groups={ANALYZE_SUB_GROUPS} /></div>
     </div>
 
+    <!-- ── Chat ── -->
+    <div class="task-category-header mono">chat</div>
     <div class="task-row">
       <div class="task-info">
-        <span class="task-label mono">chat</span>
-        <span class="task-desc">Shelly assistant conversations</span>
+        <span class="task-label mono">shelly</span>
+        <span class="task-desc">assistant conversations</span>
       </div>
-      <div class="backend-sel-wrap"><Select bind:value={chatBackend} groups={[
-        { label: 'cloud', options: [
-          { value: 'claude', label: 'claude (best quality)' },
-          { value: 'openai', label: 'openai' },
-          { value: 'gemini', label: 'gemini (free tier)' },
-          { value: 'openrouter', label: 'openrouter (free models available)' },
-        ]},
-        { label: 'local', options: [
-          { value: 'chrome-ai', label: 'chrome built-in AI (free · local)' },
-          { value: 'ollama', label: 'ollama (free · local)' },
-          { value: 'wasm', label: 'wasm (offline · in-browser)' },
-        ]},
-      ]} /></div>
+      <div class="backend-sel-wrap"><Select bind:value={chatBackend} groups={FULL_GROUPS} /></div>
+    </div>
+
+    <!-- ── Extension ── -->
+    <div class="task-category-header mono">extension</div>
+    <div class="task-row">
+      <div class="task-info">
+        <span class="task-label mono">page summary</span>
+        <span class="task-desc">compare page against KB</span>
+      </div>
+      <span class="task-inherits mono">← ingest</span>
+    </div>
+    <div class="task-row">
+      <div class="task-info">
+        <span class="task-label mono">session summary</span>
+        <span class="task-desc">aggregate research session</span>
+      </div>
+      <span class="task-inherits mono">← diff summary</span>
     </div>
   </div>
 
   <details class="backend-detail">
     <summary class="mono">provider descriptions</summary>
     <div class="backend-detail-body">
-      <p><strong>local wasm</strong> — transformers.js in a web worker. 100% offline and private. slower and smaller than cloud, but zero cost.</p>
-      <p><strong>chrome built-in AI</strong> — Gemini Nano inside Chrome, no API key. requires enabling an experimental flag. Chrome/Edge only.</p>
-      <p><strong>ollama</strong> — fully local LLM via <a href="https://ollama.com" target="_blank" rel="noopener">Ollama</a>. run <code>ollama serve</code> and pull a model. best free quality option.</p>
-      <p><strong>openrouter</strong> — one account, many models. free-tier models: Llama 3, Mistral, etc. key from openrouter.ai/keys, no credit card for free models.</p>
-      <p><strong>gemini</strong> — Gemini 2.0 Flash free up to 1,500 req/day via Google AI Studio. key from aistudio.google.com.</p>
-      <p><strong>claude</strong> — highest reasoning quality. usage-billed, not subscription. key from console.anthropic.com.</p>
-      <p><strong>openai</strong> — GPT-4o-mini or better. usage-billed. key from platform.openai.com.</p>
+      <p><strong>WASM</strong> — transformers.js in a web worker. 100% offline and private. slower and smaller than cloud, but zero cost.</p>
+      <p><strong>Chrome AI</strong> — Gemini Nano inside Chrome, no API key. requires enabling an experimental flag. Chrome/Edge only.</p>
+      <p><strong>Ollama</strong> — fully local LLM via <a href="https://ollama.com" target="_blank" rel="noopener">Ollama</a>. run <code>ollama serve</code> and pull a model. best free quality option.</p>
+      <p><strong>OpenRouter</strong> — one account, many models. free-tier models: Llama 3, Mistral, etc. key from openrouter.ai/keys, no credit card for free models.</p>
+      <p><strong>Gemini</strong> — Gemini 2.0 Flash free up to 1,500 req/day via Google AI Studio. key from aistudio.google.com.</p>
+      <p><strong>Reckons.AI</strong> — managed AI inference on Cloudflare Workers. fast, private, no cold starts.</p>
+      <p><strong>Claude</strong> — highest reasoning quality. usage-billed, not subscription. key from console.anthropic.com.</p>
+      <p><strong>OpenAI</strong> — GPT-4o-mini or better. usage-billed. key from platform.openai.com.</p>
     </div>
   </details>
 </section>
@@ -788,7 +875,7 @@
   </div>
 
   <label class="field" style="margin-top: 0.75rem;">
-    <span class="lbl mono">huggingface model id</span>
+    <span class="lbl mono">default wasm model</span>
     <input type="text" bind:value={wasmModel} placeholder="org/model-name" />
   </label>
   <p class="hint">
@@ -796,6 +883,25 @@
     <a href="https://huggingface.co/models?pipeline_tag=text-generation&library=transformers.js" target="_blank" rel="noopener">transformers.js-compatible models on HuggingFace</a>
     (filter: library → transformers.js).
   </p>
+
+  <details class="per-task-wasm">
+    <summary class="mono">per-task model overrides</summary>
+    <p class="hint" style="margin-top: 0.5rem;">
+      optionally use different models for each task. leave blank to use the default model above.
+    </p>
+    <label class="field">
+      <span class="lbl mono">ingest model</span>
+      <input type="text" bind:value={wasmIngestModel} placeholder="← default" />
+    </label>
+    <label class="field">
+      <span class="lbl mono">analyze / diff model</span>
+      <input type="text" bind:value={wasmAnalyzeModel} placeholder="← default" />
+    </label>
+    <label class="field">
+      <span class="lbl mono">chat model</span>
+      <input type="text" bind:value={wasmChatModel} placeholder="← default" />
+    </label>
+  </details>
 
   <div class="row">
     <button onclick={warmWasm} disabled={wasmLoading}>
@@ -816,9 +922,9 @@
       <span class="wasm-prog-text mono" class:wasm-prog-ready={wasmStatus === 'ready'} class:wasm-prog-error={!wasmLoading && wasmStatus && wasmStatus !== 'ready'}>
         {wasmStatus || 'starting…'}{wasmLoading && wasmPct !== null && wasmPct > 0 ? ` · ${wasmPct}%` : ''}
       </span>
-      {#if !wasmLoading && wasmStatus && wasmStatus !== 'ready' && wasmStatus.includes('registerBackend')}
+      {#if !wasmLoading && wasmStatus && wasmStatus !== 'ready' && (wasmStatus.includes('registerBackend') || wasmStatus.includes('ONNX runtime'))}
         <p class="hint" style="margin-top:0.4rem;">
-          ONNX backend registration failed — this is a browser compatibility issue with certain Chrome versions.
+          ONNX runtime is not supported in this browser.
           Try <strong>Chrome AI</strong> (built-in Gemini Nano) or <strong>Ollama</strong> as a local alternative.
         </p>
       {/if}
@@ -1345,6 +1451,12 @@
   </div>
 </section>
 
+<!-- ── Support footer ───────────────────────────────────────────────────── -->
+<footer class="settings-support-footer">
+  <a href="https://www.paypal.com/ncp/payment/KH5J484QMVFS2" target="_blank" rel="noopener noreferrer" class="support-link mono">☕ buy me a coffee</a>
+  <p class="mono support-sub">Reckons.AI is free, open source, and self-funded.</p>
+</footer>
+
 <!-- Reset confirmation dialog -->
 <Dialog.Root bind:open={confirmResetOpen}>
   <Dialog.Portal>
@@ -1582,6 +1694,13 @@
     color: var(--accent); border: 1px solid var(--accent); margin-left: auto;
   }
   .wasm-rec-note { font-size: 0.7rem; color: var(--muted); }
+  .per-task-wasm { margin-top: 0.75rem; }
+  .per-task-wasm summary {
+    font-size: 0.75rem; color: var(--accent); cursor: pointer;
+    padding: 0.3rem 0; user-select: none;
+  }
+  .per-task-wasm summary:hover { text-decoration: underline; }
+  .per-task-wasm .field { margin-top: 0.4rem; }
   .local-badge { font-size: 0.62rem; color: var(--ok); border: 1px solid var(--ok); border-radius: 999px; padding: 0.05rem 0.4rem; vertical-align: middle; margin-left: 0.3rem; }
   .badge { font-size: 0.6rem; border-radius: 999px; padding: 0.05rem 0.45rem; vertical-align: middle; margin-left: 0.35rem; font-family: var(--font-mono); font-weight: 500; }
   .badge.free { color: var(--ok, #22c55e); border: 1px solid var(--ok, #22c55e); }
@@ -1589,7 +1708,32 @@
   .badge.gemini { color: #60a5fa; border: 1px solid #60a5fa; }
   .badge.paid { color: var(--muted); border: 1px solid var(--muted); }
   /* Task backends */
-  .task-backends { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.9rem; }
+  .task-backends { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.9rem; }
+  .task-category-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    padding: 0.6rem 0.2rem 0.15rem;
+    border-bottom: 1px solid var(--line);
+    margin-top: 0.3rem;
+  }
+  .task-category-header:first-child { margin-top: 0; }
+  .set-all-btn {
+    font-size: 0.6rem;
+    color: var(--accent);
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: var(--rad-sm);
+    padding: 0.15rem 0.5rem;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.15s;
+  }
+  .set-all-btn:hover { opacity: 1; }
   .task-row {
     display: flex;
     align-items: center;
@@ -1600,11 +1744,17 @@
     border: 1px solid var(--line);
     border-radius: var(--rad-sm);
   }
+  .task-row-sub {
+    margin-left: 1rem;
+    opacity: 0.85;
+    border-style: dashed;
+  }
   .task-info { flex: 1; display: flex; flex-direction: column; gap: 0.15rem; }
   .task-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent); }
   .task-desc  { font-size: 0.75rem; color: var(--muted); }
+  .task-inherits { font-size: 0.68rem; color: var(--muted); opacity: 0.7; white-space: nowrap; }
   .backend-sel-wrap {
-    width: 220px;
+    width: 250px;
     flex-shrink: 0;
   }
   .backend-detail {
@@ -1940,5 +2090,25 @@
   .autosave-indicator.autosave-pulse {
     color: var(--accent);
     opacity: 1;
+  }
+
+  /* ── Support footer ──────────────────────────────────────────── */
+  .settings-support-footer {
+    text-align: center;
+    padding: 1.5rem 1rem;
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--line);
+  }
+  .support-link {
+    font-size: 0.8rem;
+    color: var(--accent);
+    text-decoration: none;
+    transition: opacity 0.15s;
+  }
+  .support-link:hover { opacity: 0.7; }
+  .support-sub {
+    font-size: 0.65rem;
+    color: var(--muted);
+    margin: 0.3rem 0 0;
   }
 </style>

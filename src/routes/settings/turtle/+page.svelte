@@ -606,6 +606,12 @@ shelly:persona
         </p>
       </details>
     </section>
+
+    <!-- ── Support footer ─────────────────────────────────────────── -->
+    <footer class="settings-support-footer">
+      <a href="https://www.paypal.com/ncp/payment/KH5J484QMVFS2" target="_blank" rel="noopener noreferrer" class="support-link mono">☕ buy me a coffee</a>
+      <p class="mono support-sub">Reckons.AI is free, open source, and self-funded.</p>
+    </footer>
   </div>
 </div>
 
@@ -950,5 +956,25 @@ shelly:persona
     .settings-grid {
       grid-template-columns: 1fr;
     }
+  }
+
+  /* ── Support footer ──────────────────────────────────────────── */
+  .settings-support-footer {
+    text-align: center;
+    padding: 1.5rem 1rem;
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--line);
+  }
+  .support-link {
+    font-size: 0.8rem;
+    color: var(--accent);
+    text-decoration: none;
+    transition: opacity 0.15s;
+  }
+  .support-link:hover { opacity: 0.7; }
+  .support-sub {
+    font-size: 0.65rem;
+    color: var(--muted);
+    margin: 0.3rem 0 0;
   }
 </style>

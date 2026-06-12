@@ -1,8 +1,13 @@
 <script lang="ts">
   import { page } from '$app/stores';
+  import { onMount } from 'svelte';
   import { settings, updateSettings } from '$lib/stores/settings.svelte';
   import type { SettingsRecord } from '$lib/storage/db';
   import QRSharePanel from '$lib/components/QRSharePanel.svelte';
+  import {
+    inspectModelCache, sideloadModel, purgeModelCache, formatBytes,
+    MODEL_MANIFESTS, type CachedModelStatus, type SideloadProgress
+  } from '$lib/integrations/llm/model-cache';
 
   /**
    * Integrations — provider-first settings matrix.
@@ -37,7 +42,7 @@
   const PROVIDERS: ProviderDef[] = [
     {
       id: 'claude',
-      label: 'Claude (Anthropic)',
+      label: 'Claude',
       offline: false,
       color: '#d4845a',
       keyField: 'claudeApiKey',
@@ -63,7 +68,7 @@
     },
     {
       id: 'gemini',
-      label: 'Gemini (Google)',
+      label: 'Gemini',
       offline: false,
       color: '#4285f4',
       keyField: 'geminiApiKey',
@@ -76,7 +81,7 @@
     },
     {
       id: 'reckons',
-      label: 'Reckons.AI Cloud',
+      label: 'Reckons.AI',
       offline: false,
       color: '#1a9b8e',
       keyField: 'reckonsApiKey' as keyof SettingsRecord,
@@ -139,20 +144,20 @@
     },
     {
       id: 'wasm',
-      label: 'WASM (browser)',
+      label: 'WASM',
       offline: true,
       offlineTier: 'cpu',
       color: '#6b4399',
       keyField: undefined,
       modelField: 'wasmModel',
       modelDefault: 'HuggingFaceTB/SmolLM2-360M-Instruct',
-      features: ['ingest'],
+      features: ['ingest', 'chat'],
       docsUrl: '',
-      note: 'Runs in-browser via transformers.js. No GPU needed, works on mobile. Ingest fallback only.'
+      note: 'Runs in-browser via transformers.js. No GPU needed, works on mobile. Auto-fallback for ingest and chat.'
     },
     {
       id: 'chrome-ai',
-      label: 'Chrome Built-in AI',
+      label: 'Chrome AI',
       offline: true,
       offlineTier: 'cpu',
       color: '#facc15',
@@ -253,6 +258,46 @@
     await updateSettings(patch);
   }
 
+  // ── Model cache ──────────────────────────────────────────────────────────
+  let modelStatuses = $state<CachedModelStatus[]>([]);
+  let sideloadingId = $state<string | null>(null);
+  let sideloadProgress = $state<SideloadProgress | null>(null);
+  let sideloadError = $state<string | null>(null);
+  let purging = $state<string | null>(null);
+
+  onMount(() => { refreshModelCache(); });
+
+  async function refreshModelCache() {
+    try { modelStatuses = await inspectModelCache(); } catch { /* Cache API unavailable */ }
+  }
+
+  async function handleSideload(manifestId: string, files: FileList | null) {
+    if (!files || files.length === 0) return;
+    sideloadingId = manifestId;
+    sideloadError = null;
+    sideloadProgress = null;
+    try {
+      const count = await sideloadModel(manifestId, files, (p) => { sideloadProgress = p; });
+      const manifest = MODEL_MANIFESTS.find(m => m.id === manifestId);
+      if (count < (manifest?.files.length ?? 0)) {
+        sideloadError = `Loaded ${count} of ${manifest?.files.length} files. Some files were not found in the selected folder.`;
+      }
+      await refreshModelCache();
+    } catch (e) {
+      sideloadError = e instanceof Error ? e.message : String(e);
+    } finally {
+      sideloadingId = null;
+      sideloadProgress = null;
+    }
+  }
+
+  async function handlePurge(manifestId: string) {
+    purging = manifestId;
+    await purgeModelCache(manifestId);
+    await refreshModelCache();
+    purging = null;
+  }
+
   // ── Indico server ──────────────────────────────────────────────────────────
   let indicoServerUrl = $state(settings().indicoServerUrl ?? '');
   let indicoApiToken = $state(settings().indicoApiToken ?? '');
@@ -283,6 +328,7 @@
   <nav class="section-toc">
     <a href="#s-mobile">mobile</a>
     <a href="#s-preference">preference</a>
+    <a href="#s-models">models</a>
     <a href="#s-features">features</a>
     <a href="#s-indico">indico</a>
     <a href="#s-planned">roadmap</a>
@@ -355,6 +401,90 @@
     <button class="btn-apply" onclick={applyLocalFirst}>
       Apply local-first to all features
     </button>
+  {/if}
+</section>
+
+<!-- Model cache & sideload -->
+<section id="s-models" class="card">
+  <h3>local model cache</h3>
+  <p class="sub">Models are cached in the browser after first download. Sideload from disk for fully offline setup.</p>
+
+  {#if modelStatuses.length === 0}
+    <p class="hint">Checking cache...</p>
+  {:else}
+    <div class="model-grid">
+      {#each modelStatuses as ms (ms.manifest.id)}
+        {@const m = ms.manifest}
+        <div class="model-row" class:model-complete={ms.complete}>
+          <div class="model-info">
+            <div class="model-head">
+              <strong>{m.label}</strong>
+              {#if ms.complete}
+                <span class="badge-ok mono">cached</span>
+              {:else if ms.cachedCount > 0}
+                <span class="badge-partial mono">{ms.cachedCount}/{ms.totalCount} files</span>
+              {:else}
+                <span class="badge-missing mono">not cached</span>
+              {/if}
+            </div>
+            <p class="model-desc">{m.description}</p>
+            {#if ms.cachedBytes > 0}
+              <span class="model-size mono">{formatBytes(ms.cachedBytes)} cached</span>
+            {/if}
+          </div>
+          <div class="model-actions">
+            {#if sideloadingId === m.id}
+              <span class="sideload-progress mono">
+                {#if sideloadProgress}
+                  loading {sideloadProgress.index + 1}/{sideloadProgress.total}...
+                {:else}
+                  reading files...
+                {/if}
+              </span>
+            {:else}
+              <label class="btn-sideload">
+                <input
+                  type="file"
+                  multiple
+                  accept=".onnx,.json,.bin,.txt"
+                  style="display:none"
+                  onchange={(e) => handleSideload(m.id, (e.target as HTMLInputElement).files)}
+                />
+                sideload files
+              </label>
+              <label class="btn-sideload">
+                <input
+                  type="file"
+                  webkitdirectory
+                  style="display:none"
+                  onchange={(e) => handleSideload(m.id, (e.target as HTMLInputElement).files)}
+                />
+                sideload folder
+              </label>
+            {/if}
+            {#if ms.cachedCount > 0}
+              <button class="btn-purge" onclick={() => handlePurge(m.id)} disabled={purging === m.id}>
+                {purging === m.id ? 'purging...' : 'purge'}
+              </button>
+            {/if}
+          </div>
+        </div>
+      {/each}
+    </div>
+
+    {#if sideloadError}
+      <p class="sideload-error">{sideloadError}</p>
+    {/if}
+
+    <div class="model-help">
+      <p class="hint">
+        To sideload: download model files from
+        <a href="https://huggingface.co" target="_blank" rel="noopener">huggingface.co</a>
+        on a connected device, transfer to this device, then use "sideload folder" to load the entire repo directory.
+        Individual ONNX + JSON files also work via "sideload files".
+      </p>
+      <button class="btn-refresh" onclick={refreshModelCache}>refresh cache status</button>
+    </div>
   {/if}
 </section>
 
@@ -561,6 +691,12 @@
     {/each}
   </div>
 </section>
+
+<!-- ── Support footer ───────────────────────────────────────────────────── -->
+<footer class="settings-support-footer">
+  <a href="https://www.paypal.com/ncp/payment/KH5J484QMVFS2" target="_blank" rel="noopener noreferrer" class="support-link mono">☕ buy me a coffee</a>
+  <p class="mono support-sub">Reckons.AI is free, open source, and self-funded.</p>
+</footer>
 
 <style>
   .head { margin-bottom: 2rem; }
@@ -905,4 +1041,92 @@
   .rm-title strong { font-size: 0.88rem; color: var(--ink-2); }
   .rm-score { font-size: 0.65rem; color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent); padding: 0.1rem 0.4rem; border-radius: 999px; }
   .rm-row p { font-size: 0.78rem; color: var(--muted); margin: 0; line-height: 1.4; }
+
+  /* ── Model cache ── */
+  .model-grid { display: flex; flex-direction: column; gap: 0.5rem; }
+  .model-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 0.85rem 1rem;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--rad-sm);
+  }
+  .model-row.model-complete { border-color: color-mix(in srgb, var(--data) 40%, var(--line)); }
+  .model-info { flex: 1; min-width: 0; }
+  .model-head { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+  .model-head strong { font-size: 0.88rem; }
+  .model-desc { font-size: 0.78rem; color: var(--muted); margin: 0.2rem 0 0; }
+  .model-size { font-size: 0.68rem; color: var(--data); }
+  .model-actions {
+    display: flex;
+    gap: 0.35rem;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .btn-sideload {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: var(--rad-sm);
+    background: var(--surface-3);
+    border: 1px solid var(--line);
+    color: var(--ink-2);
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+  }
+  .btn-sideload:hover { background: var(--accent-soft); color: var(--accent); }
+  .btn-purge {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: var(--rad-sm);
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .btn-purge:hover { color: var(--danger, #ef4444); border-color: var(--danger, #ef4444); }
+  .badge-partial { font-size: 0.62rem; color: var(--warn, #f59e0b); background: color-mix(in srgb, var(--warn, #f59e0b) 12%, transparent); border: 1px solid color-mix(in srgb, var(--warn, #f59e0b) 30%, var(--line)); padding: 0.1rem 0.4rem; border-radius: 999px; }
+  .badge-missing { font-size: 0.62rem; color: var(--muted); background: var(--surface-3); border: 1px solid var(--line); padding: 0.1rem 0.4rem; border-radius: 999px; }
+  .sideload-progress { font-size: 0.7rem; color: var(--accent); }
+  .sideload-error { font-size: 0.78rem; color: var(--danger, #ef4444); margin-top: 0.5rem; }
+  .model-help { margin-top: 0.75rem; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0.75rem; }
+  .model-help .hint { flex: 1; min-width: 200px; }
+  .model-help a { color: var(--accent); }
+  .btn-refresh {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    padding: 0.25rem 0.55rem;
+    border-radius: var(--rad-sm);
+    background: var(--surface-3);
+    border: 1px solid var(--line);
+    color: var(--muted);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-refresh:hover { color: var(--accent); }
+
+  /* ── Support footer ──────────────────────────────────────────── */
+  .settings-support-footer {
+    text-align: center;
+    padding: 1.5rem 1rem;
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--line);
+  }
+  .support-link {
+    font-size: 0.8rem;
+    color: var(--accent);
+    text-decoration: none;
+    transition: opacity 0.15s;
+  }
+  .support-link:hover { opacity: 0.7; }
+  .support-sub {
+    font-size: 0.65rem;
+    color: var(--muted);
+    margin: 0.3rem 0 0;
+  }
 </style>
