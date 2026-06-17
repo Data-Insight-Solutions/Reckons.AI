@@ -41,7 +41,8 @@ Rules:
 7. Decompose complex sentences into atomic triples — one fact per triple.
 8. Do not invent facts not present in the source.
 9. Output ONLY a JSON array. No prose, no markdown fence.
-10. excerpt is the verbatim sentence or phrase from the source text that this triple was derived from. Copy it exactly — do not paraphrase.`;
+10. excerpt is the verbatim sentence or phrase from the source text that this triple was derived from. Copy it exactly — do not paraphrase.
+11. Consolidate similar facts: if multiple sentences state the same relationship with minor wording differences, emit ONE triple capturing the core fact. Prefer fewer, well-formed triples over many near-duplicates. A 500-word text should typically produce 8–20 triples, not 40.`;
 
 export function buildExtractionUserPrompt(text: string, sourceTitle: string): string {
   return `Source: "${sourceTitle}"

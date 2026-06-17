@@ -24,13 +24,15 @@
     timelineZoom = 1,
     timelineCenter = null,
     timelineTimeSource = 'event' as 'event' | 'ingested',
+    nodeOrder = [] as string[],
     onselect = () => {},
     onhover = () => {},
     onnodemove = () => {},
     onhovermove = () => {},
     onmarkersmove = () => {},
     onlabelsmove = () => {},
-    ontimelinepan = () => {}
+    ontimelinepan = () => {},
+    onreorder = (_order: string[]) => {}
   } = $props<{
     statements?: Statement[];
     selected?: string | null;
@@ -39,10 +41,11 @@
     targetKey?: string | null;
     historyTimestamp?: number | null;
     sources?: any[];
-    layout?: 'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline';
+    layout?: 'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order';
     timelineZoom?: number;
     timelineCenter?: number | null;
     timelineTimeSource?: 'event' | 'ingested';
+    nodeOrder?: string[];
     onselect?: (key: string | null, ctrlKey?: boolean) => void;
     onhover?: (key: string | null) => void;
     onnodemove?: (key: string, x: number, y: number) => void;
@@ -50,6 +53,7 @@
     onmarkersmove?: (markers: Array<{ key: string; label: string; color: string; x: number; y: number }>) => void;
     onlabelsmove?: (labels: Array<{ key: string; label: string; x: number; y: number; opacity: number }>) => void;
     ontimelinepan?: (center: number) => void;
+    onreorder?: (order: string[]) => void;
   }>();
 
   const isHistoryMode = $derived(historyTimestamp !== null);
@@ -61,7 +65,7 @@
     x: number; y: number; vx: number; vy: number;
     degree: number;
   };
-  type Edge = { a: Node; b: Node; predicate: string; confidence: number; semanticDist: number; };
+  type Edge = { a: Node; b: Node; predicate: string; confidence: number; semanticDist: number; isSourceEdge?: boolean; };
   type Marker = { key: string; label: string; color: string; x: number; y: number; };
 
   // ── Graph data ───────────────────────────────────────────────────────────────
@@ -77,6 +81,13 @@
       if (st.p.value === RDF_TYPE && st.s.kind === 'iri') {
         const def = tm.get(st.o.value);
         if (def) map.set(termKey(st.s), def);
+      }
+    }
+    // Source nodes → Document type
+    const docType = tm.get('urn:kbase:type/Document');
+    if (docType) {
+      for (const src of sources as any[]) {
+        map.set(`src:${src.id}`, docType);
       }
     }
     return map;
@@ -173,6 +184,37 @@
       e.push({ a, b, predicate: pred, confidence: st.confidence,
         semanticDist: edgeDist(!isIRI(st.o), pred, st.confidence) });
     }
+    // ── Inject source document nodes + edges ──────────────────────────────────
+    const entitySources = new Map<string, Set<string>>();
+    for (const st of statements as Statement[]) {
+      if (st.status === 'rejected' || st.status === 'superseded' || !st.sourceId) continue;
+      for (const term of [st.s, st.o]) {
+        if (term.kind !== 'iri') continue;
+        const k = termKey(term);
+        if (!nodeMap.has(k)) continue; // only visible entity nodes
+        if (!entitySources.has(k)) entitySources.set(k, new Set());
+        entitySources.get(k)!.add(st.sourceId);
+      }
+    }
+    for (const src of sources as any[]) {
+      const srcKey = `src:${src.id}`;
+      const c = nodePositionCache.get(srcKey);
+      const x = c?.x ?? (Math.random() - 0.5) * 12;
+      const y = c?.y ?? (Math.random() - 0.5) * 12;
+      nodeMap.set(srcKey, { key: srcKey, label: src.title ?? src.id, kind: 'concept', x, y, vx: 0, vy: 0, degree: 0 });
+    }
+    // One edge per unique (entity, source) pair
+    for (const [nk, srcIds] of entitySources) {
+      const entityNode = nodeMap.get(nk);
+      if (!entityNode) continue;
+      for (const sid of srcIds) {
+        const srcNode = nodeMap.get(`src:${sid}`);
+        if (!srcNode) continue;
+        srcNode.degree++;
+        e.push({ a: entityNode, b: srcNode, predicate: '◆source', confidence: 1.0, semanticDist: 2.5, isSourceEdge: true });
+      }
+    }
+
     nodes = [...nodeMap.values()];
     edges = e;
     rebuildLayout();
@@ -218,6 +260,12 @@
       const r = buildTimelineAnchors2D();
       activeAnchors = r.anchors; markerData = r.markers;
       anchorStrength = 0.85; nodeColorMap = new Map(); hubNodeKeys = [];
+    } else if (layout === 'order') {
+      activeAnchors  = buildOrderAnchors();
+      anchorStrength = 0.90;
+      markerData     = [];
+      nodeColorMap   = new Map();
+      hubNodeKeys    = [];
     } else {
       activeAnchors  = new Map(); markerData = []; nodeColorMap = new Map(); hubNodeKeys = [];
       anchorStrength = 0.25;
@@ -409,46 +457,92 @@
   }
 
   function buildSourceAnchors() {
-    const sourceSet = new Set<string>();
-    for (const st of statements as Statement[]) {
-      if (st.status === 'rejected' || st.status === 'superseded') continue;
-      if (st.sourceId) sourceSet.add(st.sourceId);
-    }
-    const srcList = [...sourceSet];
-    if (!srcList.length) return { anchors: new Map<string, {x:number;y:number}>(), markers: [] as Marker[], nodeColors: new Map<string, string>() };
-    const R = srcList.length === 1 ? 0 : 16;
+    // Find source nodes injected into the graph
+    const srcNodes = nodes.filter(n => n.key.startsWith('src:'));
+    if (!srcNodes.length) return { anchors: new Map<string, {x:number;y:number}>(), markers: [] as Marker[], nodeColors: new Map<string, string>() };
+
+    // Arrange source nodes in a circle
+    const R = srcNodes.length === 1 ? 0 : 16;
     const srcAnchor = new Map<string, { x: number; y: number }>();
-    srcList.forEach((sid, i) => {
-      const theta = (2*Math.PI*i)/srcList.length - Math.PI/2;
-      srcAnchor.set(sid, { x: R*Math.cos(theta), y: R*Math.sin(theta) });
+    srcNodes.forEach((sn, i) => {
+      const theta = (2 * Math.PI * i) / srcNodes.length - Math.PI / 2;
+      srcAnchor.set(sn.key, { x: R * Math.cos(theta), y: R * Math.sin(theta) });
     });
+
+    // Map sourceId → srcKey for lookup
+    const sidToKey = new Map<string, string>();
+    for (const sn of srcNodes) sidToKey.set(sn.key.slice(4), sn.key);
+
+    // Map each entity node → its source IDs
     const nodeSrcs = new Map<string, Set<string>>();
     for (const st of statements as Statement[]) {
-      if (st.status === 'rejected' || st.status === 'superseded') continue;
-      const sk = termKey(st.s), ok = termKey(st.o);
-      for (const k of [sk, ok]) {
+      if (st.status === 'rejected' || st.status === 'superseded' || !st.sourceId) continue;
+      for (const term of [st.s, st.o]) {
+        const k = termKey(term);
+        if (k.startsWith('src:')) continue;
         if (!nodeSrcs.has(k)) nodeSrcs.set(k, new Set());
-        if (st.sourceId) nodeSrcs.get(k)!.add(st.sourceId);
+        nodeSrcs.get(k)!.add(st.sourceId);
       }
     }
+
+    // Compute hub nodes for fallback
+    const hubNodes = nodes
+      .filter(n => !n.key.startsWith('src:'))
+      .sort((a, b) => b.degree - a.degree)
+      .slice(0, 5);
+    const hubKeySet = new Set(hubNodes.map(h => h.key));
+
     const anchors = new Map<string, { x: number; y: number }>();
     const nodeColors = new Map<string, string>();
+
+    // Place source nodes at circle positions
+    for (const sn of srcNodes) {
+      const pos = srcAnchor.get(sn.key)!;
+      anchors.set(sn.key, pos);
+      const idx = srcNodes.indexOf(sn);
+      nodeColors.set(sn.key, SOURCE_COLORS[idx % SOURCE_COLORS.length]);
+    }
+
+    // Place entity nodes near their source(s)
     for (const [nk, srcs] of nodeSrcs) {
       let ax = 0, ay = 0, cnt = 0, firstColor = '';
       for (const sid of srcs) {
-        const a = srcAnchor.get(sid);
-        if (a) { ax += a.x; ay += a.y; cnt++; }
-        if (!firstColor) { const idx = srcList.indexOf(sid); if (idx >= 0) firstColor = SOURCE_COLORS[idx % SOURCE_COLORS.length]; }
+        const srcKey = sidToKey.get(sid);
+        if (srcKey) {
+          const a = srcAnchor.get(srcKey);
+          if (a) { ax += a.x; ay += a.y; cnt++; }
+          if (!firstColor) {
+            const idx = srcNodes.findIndex(sn => sn.key === srcKey);
+            if (idx >= 0) firstColor = SOURCE_COLORS[idx % SOURCE_COLORS.length];
+          }
+        }
       }
-      if (cnt) { ax /= cnt; ay /= cnt; }
+
+      // Fallback 1: cluster near a connected hub
+      if (cnt === 0) {
+        for (const e of edges) {
+          if (e.isSourceEdge) continue;
+          const other = e.a.key === nk ? e.b.key : e.b.key === nk ? e.a.key : null;
+          if (other && hubKeySet.has(other)) {
+            const ha = anchors.get(other);
+            if (ha) { ax = ha.x; ay = ha.y; cnt = 1; break; }
+          }
+        }
+      }
+
+      // Fallback 2: center (cluster naturally via force)
+      if (cnt === 0) { ax = 0; ay = 0; cnt = 1; }
+      else { ax /= cnt; ay /= cnt; }
+
       anchors.set(nk, { x: ax, y: ay });
       if (firstColor) nodeColors.set(nk, firstColor);
     }
-    const markers: Marker[] = srcList.map((sid, i) => {
-      const src = (sources as any[]).find((s: any) => s.id === sid);
-      const p = srcAnchor.get(sid)!;
-      return { key: sid, label: src?.title ?? sid, color: SOURCE_COLORS[i % SOURCE_COLORS.length], x: p.x, y: p.y };
-    });
+
+    const markers: Marker[] = srcNodes.map((sn, i) => ({
+      key: sn.key, label: sn.label,
+      color: SOURCE_COLORS[i % SOURCE_COLORS.length],
+      x: srcAnchor.get(sn.key)!.x, y: srcAnchor.get(sn.key)!.y
+    }));
     return { anchors, markers, nodeColors };
   }
 
@@ -477,6 +571,24 @@
       return { key: iri, label: def?.label ?? iri.split('/').pop() ?? iri, color: def?.color ?? '#e8b84b', x: p.x, y: p.y };
     });
     return { anchors, markers };
+  }
+
+  // ── Order layout: grid positions based on nodeOrder array ───────────────────
+  function buildOrderAnchors(): Map<string, { x: number; y: number }> {
+    const anchors = new Map<string, { x: number; y: number }>();
+    if (!nodeOrder.length) return anchors;
+    // Lay out nodes in a grid, reading left-to-right then down
+    const cols = Math.max(1, Math.ceil(Math.sqrt(nodeOrder.length * 1.5)));
+    const spacing = 8; // world units between nodes
+    for (let i = 0; i < nodeOrder.length; i++) {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const totalCols = Math.min(cols, nodeOrder.length - row * cols);
+      const x = (col - (totalCols - 1) / 2) * spacing;
+      const y = (row - Math.floor(nodeOrder.length / cols) / 2) * spacing;
+      anchors.set(nodeOrder[i], { x, y });
+    }
+    return anchors;
   }
 
   function buildHubAnchors() {
@@ -658,8 +770,13 @@
       const isSel = selected && (e.a.key === selected || e.b.key === selected);
       const isHov = hoveredKey && (e.a.key === hoveredKey || e.b.key === hoveredKey);
       ctx2d.beginPath(); ctx2d.moveTo(e.a.x, e.a.y); ctx2d.lineTo(e.b.x, e.b.y);
-      ctx2d.strokeStyle = isSel ? 'rgba(255,107,53,0.65)' : isHov ? 'rgba(255,107,53,0.40)' : 'rgba(255,107,53,0.20)';
-      ctx2d.lineWidth = (isSel ? 0.06 : 0.035) / camScale * 40;
+      if (e.isSourceEdge) {
+        ctx2d.strokeStyle = isSel ? 'rgba(96,165,250,0.45)' : isHov ? 'rgba(96,165,250,0.30)' : 'rgba(96,165,250,0.08)';
+        ctx2d.lineWidth = (isSel ? 0.04 : 0.02) / camScale * 40;
+      } else {
+        ctx2d.strokeStyle = isSel ? 'rgba(255,107,53,0.65)' : isHov ? 'rgba(255,107,53,0.40)' : 'rgba(255,107,53,0.20)';
+        ctx2d.lineWidth = (isSel ? 0.06 : 0.035) / camScale * 40;
+      }
       ctx2d.globalAlpha = baseAlpha;
       ctx2d.stroke();
     }
@@ -731,6 +848,23 @@
           ctx2d.fillText(typeDef.icon2d, n.x, n.y);
         }
       }
+
+      // Order number badge
+      if (layout === 'order') {
+        const orderIdx = nodeOrder.indexOf(n.key);
+        if (orderIdx !== -1) {
+          const numStr = String(orderIdx + 1);
+          const badgeR = r * 0.55;
+          const bx = n.x + drawR * 0.75, by = n.y - drawR * 0.75;
+          ctx2d.globalAlpha = 0.92 * baseAlpha;
+          ctx2d.fillStyle = '#1a9b8e';
+          ctx2d.beginPath(); ctx2d.arc(bx, by, badgeR, 0, Math.PI * 2); ctx2d.fill();
+          ctx2d.fillStyle = '#fff';
+          ctx2d.font = `bold ${badgeR * 1.3}px sans-serif`;
+          ctx2d.textAlign = 'center'; ctx2d.textBaseline = 'middle';
+          ctx2d.fillText(numStr, bx, by);
+        }
+      }
     }
     ctx2d.textAlign = 'left'; ctx2d.textBaseline = 'alphabetic'; // reset canvas text state
 
@@ -769,7 +903,8 @@
     for (const e of edges) {
       const dx = e.b.x - e.a.x, dy = e.b.y - e.a.y;
       const d = Math.hypot(dx, dy) + 0.001;
-      const f = (d - BASE_REST * e.semanticDist) * SPRING;
+      const k = e.isSourceEdge ? SPRING * 0.25 : SPRING;
+      const f = (d - BASE_REST * e.semanticDist) * k;
       e.a.vx += (dx/d)*f*dt*5; e.a.vy += (dy/d)*f*dt*5;
       e.b.vx -= (dx/d)*f*dt*5; e.b.vy -= (dy/d)*f*dt*5;
     }
@@ -872,6 +1007,7 @@
   let isDragging = false;
   let dragStart = { x: 0, y: 0, cx: 0, cy: 0 };
   let dragStartHit: Node | null = null; // node under pointer at drag start — suppresses pan
+  let orderDragNode: Node | null = null; // node being dragged in order layout
 
   function hitTest(clientX: number, clientY: number): Node | null {
     const el = canvasEl;
@@ -950,7 +1086,16 @@
     // Only pan/drag when a button is held — never on bare hover
     if (isPointerDown) {
       const dx = e.clientX - dragStart.x, dy = e.clientY - dragStart.y;
-      if (!dragStartHit && Math.hypot(dx, dy) > 10) {
+      if (layout === 'order' && dragStartHit && Math.hypot(dx, dy) > 6) {
+        // Order layout: drag node to reorder
+        isDragging = true;
+        orderDragNode = dragStartHit;
+        // Move the node to cursor position in world space
+        const wx = (e.clientX - _rect.left - _rect.width / 2 - camX) / camScale;
+        const wy = (e.clientY - _rect.top - _rect.height / 2 - camY) / camScale;
+        orderDragNode.x = wx;
+        orderDragNode.y = wy;
+      } else if (!dragStartHit && Math.hypot(dx, dy) > 10) {
         isDragging = true;
         camX = dragStart.cx + dx;
         camY = dragStart.cy + dy;
@@ -970,6 +1115,27 @@
       canvasEl?.releasePointerCapture(e.pointerId);
       return;
     }
+    // Order layout: finalize reorder on drop
+    if (orderDragNode && layout === 'order' && nodeOrder.length > 0) {
+      // Find nearest grid slot by distance to each anchor
+      const dragKey = orderDragNode.key;
+      const dragX = orderDragNode.x, dragY = orderDragNode.y;
+      let bestIdx = 0, bestDist = Infinity;
+      for (let i = 0; i < nodeOrder.length; i++) {
+        const anchor = activeAnchors.get(nodeOrder[i]);
+        if (!anchor) continue;
+        const d = Math.hypot(dragX - anchor.x, dragY - anchor.y);
+        if (d < bestDist) { bestDist = d; bestIdx = i; }
+      }
+      const curIdx = nodeOrder.indexOf(dragKey);
+      if (curIdx !== -1 && curIdx !== bestIdx) {
+        const newOrder = [...nodeOrder];
+        newOrder.splice(curIdx, 1);
+        newOrder.splice(bestIdx, 0, dragKey);
+        onreorder(newOrder);
+      }
+      orderDragNode = null;
+    }
     // Use the node captured at pointerdown (dragStartHit) for selection — the node may
     // have moved by 1-2 physics frames between press and release, so a fresh hit test
     // at the release position can miss it.
@@ -986,6 +1152,7 @@
     isPointerDown = false;
     isDragging    = false;
     dragStartHit  = null;
+    orderDragNode = null;
     timelineDragging = false;
   }
 
