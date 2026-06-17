@@ -130,7 +130,7 @@
     },
     {
       title: "you're ready",
-      body: `That's the core of Reckons.AI:\n\n<span class="check">✓</span> **Ingest** sources to add facts\n<span class="check">✓</span> **Review** to confirm what's accurate\n<span class="check">✓</span> **Explore** the graph with layout modes and filters\n<span class="check">✓</span> **Reckon** (⟁) when you need a decision\n<span class="check">✓</span> **Share** your Turtle (.ttl) or use the \`reckons\` CLI\n<span class="check">✓</span> **Base** (☷) to manage and export your Turtle\n\nSwitch to the **chat** tab to ask me anything about your Turtle. Or close this panel and start exploring.`
+      body: `That's the core of Reckons.AI:\n\n✓ **Ingest** sources to add facts\n✓ **Review** to confirm what's accurate\n✓ **Explore** the graph with layout modes and filters\n✓ **Reckon** (⟁) when you need a decision\n✓ **Share** your Turtle (.ttl) or use the \`reckons\` CLI\n✓ **Base** (☷) to manage and export your Turtle\n\nSwitch to the **chat** tab to ask me anything about your Turtle. Or close this panel and start exploring.`
     }
   ];
 
