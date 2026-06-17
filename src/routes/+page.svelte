@@ -30,8 +30,8 @@
   import { setGlb, clearGlb, glbOverrides } from '$lib/stores/glb-overrides.svelte';
   import { gifOverrides, setGif, clearGif } from '$lib/stores/gif-overrides.svelte';
   import { icon2dOverrides, setIcon2d, clearIcon2d } from '$lib/stores/icon2d-overrides.svelte';
-  import { LEAP_PRED, LEAP_LABEL_PRED, getLeap } from '$lib/rdf/kb-leap';
-  import { findKbByStableId, switchToKb } from '$lib/storage/kb-registry';
+  import { LEAP_PRED, LEAP_LABEL_PRED, getLeap, leapNodeKeys } from '$lib/rdf/kb-leap';
+  import { findKbByStableId, switchToKb, createKb, registerStableId } from '$lib/storage/kb-registry';
 
   // Predicates that are internal KB metadata — never shown as graph edges/nodes
   const GRAPH_EXCLUDED_PREDICATES = new Set([
@@ -42,7 +42,7 @@
   import { isIRI, isLit } from '$lib/rdf/types';
   import { requestShellyChat, setShellyChatOpen, shellyViewAdjust, clearShellyViewAdjust, shellySpotlight, exploreOpen, startExplore, stopExplore } from '$lib/stores/shelly-bridge.svelte';
   import SnapPanel from '$lib/components/SnapPanel.svelte';
-  import { Popover, ToggleGroup, Slider } from 'bits-ui';
+  import { Popover, ToggleGroup } from 'bits-ui';
   import { analysisRunning, lastAnalysisError } from '$lib/stores/auto-analyze.svelte';
   import { onMount, untrack } from 'svelte';
   import { fade } from 'svelte/transition';
@@ -53,7 +53,7 @@
   import type { GraphFilter } from '$lib/types/turtle-chat';
   import { getSettings, saveSettings } from '$lib/storage/db';
   import { shouldSuggest2D, dismissPerfSuggestion, resetPerfMonitor, currentFps } from '$lib/stores/perf-monitor.svelte';
-  import { pushNotification, dismissNotification } from '$lib/stores/notifications.svelte';
+  import { pushNotification, dismissNotification, notificationStackHeight } from '$lib/stores/notifications.svelte';
 
   function checkWebGL(): boolean {
     if (typeof window === 'undefined') return false;
@@ -64,7 +64,7 @@
     } catch { return false; }
   }
   let webglAvailable = $state(checkWebGL()); // synchronous — no Canvas mounted if false
-  let use2D = $state(false);
+  let use2D = $state(settings().prefer2D ?? false);
 
   let selected = $state<string | null>(null);
   let hoverTarget = $state<string | null>(null);
@@ -201,13 +201,15 @@
   let selectedTypes = $state<Set<string>>(new Set()); // entity type IRIs
   let showSourcesPanel = $state(false);
   let hubLimit = $state(5);
-  let layout = $state<'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline'>('force');
+  let layout = $state<'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order'>('force');
+  let nodeOrder = $state<string[]>([]); // ordered node keys for 'order' layout
   let timelineZoom = $state(1);
   let timelineCenter = $state<number | null>(null);
   let timelineTimeSource = $state<'event' | 'ingested'>('event');
 
-  // Keep labelFontSize in sync with settings (e.g. changed from settings page)
+  // Keep labelFontSize and renderer in sync with settings (e.g. changed from settings page)
   $effect(() => { const sz = settings().nodeLabelFontSize; if (sz != null) labelFontSize = sz; });
+  $effect(() => { const p = settings().prefer2D; if (p != null) use2D = p; });
 
   // ── URL query param sync ──────────────────────────────────────────────────
   // Read initial view state from URL params (enables Shelly-recommended views
@@ -215,7 +217,7 @@
   onMount(async () => {
     const params = $page.url.searchParams;
     const l = params.get('layout');
-    if (l && ['force','focus','source','type','hub','timeline'].includes(l)) layout = l as typeof layout;
+    if (l && ['force','focus','source','type','hub','timeline','order'].includes(l)) layout = l as typeof layout;
     const sel = params.get('sel');
     if (sel) selected = sel;
     const f = params.get('f');
@@ -263,11 +265,6 @@
     });
   });
 
-  let _labelSizeTimer: ReturnType<typeof setTimeout> | null = null;
-  function saveLabelFontSize() {
-    if (_labelSizeTimer) clearTimeout(_labelSizeTimer);
-    _labelSizeTimer = setTimeout(() => saveSettings({ nodeLabelFontSize: labelFontSize }), 600);
-  }
 
   // Sync view state → URL whenever it changes (replaceState: no history entry)
   $effect(() => {
@@ -280,6 +277,19 @@
     const qs = params.toString();
     replaceState(qs ? `?${qs}` : '?', {});
   });
+  // Auto-populate nodeOrder when switching to order layout
+  $effect(() => {
+    if (layout === 'order' && nodeOrder.length === 0 && allNodes.size > 0) {
+      // Seed order: sort by degree (highest-connected first), then alphabetical
+      const sorted = [...allNodes].sort((a, b) => {
+        const da = nodeDegrees.get(a) ?? 0, db = nodeDegrees.get(b) ?? 0;
+        if (db !== da) return db - da;
+        return a.localeCompare(b);
+      });
+      nodeOrder = sorted;
+    }
+  });
+
   let showMergeUI = $state(false);
   let showMergeReview = $state(false);
   let showRelationUI = $state(false);
@@ -404,12 +414,18 @@
     return Array.from(smallComponentNodes);
   });
 
-  const hubs = $derived(
-    Array.from(nodeDegrees.entries())
-      .sort(([, a], [, b]) => b - a)
+  // Hub threshold: median degree × 2 or 3, whichever is higher — only truly connected nodes qualify
+  const hubs = $derived.by(() => {
+    const entries = Array.from(nodeDegrees.entries()).sort(([, a], [, b]) => b - a);
+    if (entries.length === 0) return [];
+    const degrees = entries.map(([, d]) => d);
+    const median = degrees[Math.floor(degrees.length / 2)];
+    const minDeg = Math.max(median * 2, 3);
+    return entries
+      .filter(([, d]) => d >= minDeg)
       .slice(0, hubLimit)
-      .map(([key]) => key)
-  );
+      .map(([key]) => key);
+  });
 
   // All entity IRIs (subjects + non-type-definition objects) in the confirmed KB
   // that have no rdf:type statement. Includes entities that only appear as objects.
@@ -435,19 +451,37 @@
     [...untypedSubjectIris].map(iri => `i:${iri}`)
   );
 
+  // Node keys for entities with leap targets (used for highlighting)
+  const leapKeys = $derived([...leapNodeKeys(statements())]);
+
   // Shared dim/highlight state — used by both the graph components and the label overlay
   const dimMode = $derived(
-    activeFilters.has('hubs') || activeFilters.has('islands') || activeFilters.has('no-type')
+    activeFilters.has('hubs') || activeFilters.has('islands') || activeFilters.has('no-type') || activeFilters.has('leaps')
   );
   const highlightedSet = $derived(new Set([
     ...Array.from(activeFilters).flatMap(f =>
       f === 'hubs' ? hubs
       : f === 'islands' ? islandNodes
       : f === 'no-type' ? untypedNodeKeys
+      : f === 'leaps' ? leapKeys
       : [] as string[]
     ),
     ...shellySpotlight()
   ]));
+
+  // Visible-accurate filter counts (exclude GRAPH_EXCLUDED_PREDICATES like the graph does)
+  const visibleConfirmedCount = $derived(
+    statements().filter(s =>
+      (s.status === 'confirmed' || s.status === 'refined') &&
+      !GRAPH_EXCLUDED_PREDICATES.has(s.p.value)
+    ).length
+  );
+  const visiblePendingCount = $derived(
+    statements().filter(s =>
+      s.status === 'pending' &&
+      !GRAPH_EXCLUDED_PREDICATES.has(s.p.value)
+    ).length
+  );
 
   // Statements that were added manually (no ingested source)
   const manualStatements = $derived(
@@ -546,6 +580,11 @@
       // l:value|datatype|lang — take just the value part
       return key.slice(2).split('|')[0].slice(0, 48) || key;
     }
+    if (key.startsWith('src:')) {
+      const srcId = key.slice(4);
+      const src = sources().find(s => s.id === srcId);
+      return src?.title ?? srcId;
+    }
     return key; // blank node
   }
 
@@ -553,6 +592,26 @@
   const nodeDetails = $derived.by(() => {
     if (!selected) return null;
     const label = keyLabel(selected);
+
+    // Source document node — show entities sourced from it
+    if (selected.startsWith('src:')) {
+      const srcId = selected.slice(4);
+      const src = sources().find(s => s.id === srcId);
+      const docType = allTypes().find(t => t.iri === 'urn:kbase:type/Document') ?? null;
+      const srcStmts = visible.filter(s => s.sourceId === srcId);
+      const entityIris = new Set<string>();
+      for (const s of srcStmts) {
+        if (s.s.kind === 'iri') entityIris.add(s.s.value);
+      }
+      const outgoing = [...entityIris].slice(0, 30).map(iri => ({
+        predicate: 'sources',
+        target: iri.split('/').pop() ?? iri,
+        targetKey: `i:${iri}`,
+        status: 'confirmed' as const
+      }));
+      return { label: src?.title ?? srcId, typeDef: docType, outgoing, incoming: [] };
+    }
+
     const typeStmt = visible.find(s => termKey(s.s) === selected && s.p.value === RDF_TYPE);
     const typeDef = typeStmt ? allTypes().find(t => t.iri === typeStmt.o.value) ?? null : null;
     const outgoing = visible
@@ -571,6 +630,22 @@
         sourceKey: termKey(s.s),
         status: s.status
       }));
+
+    // Show which sources contribute to this entity
+    const entityIri = selected.startsWith('i:') ? selected.slice(2) : null;
+    if (entityIri) {
+      const entitySrcIds = new Set(visible.filter(s => s.s.kind === 'iri' && s.s.value === entityIri && s.sourceId).map(s => s.sourceId));
+      for (const sid of entitySrcIds) {
+        const src = sources().find(s => s.id === sid);
+        incoming.push({
+          predicate: 'sourced-by',
+          source: src?.title ?? sid,
+          sourceKey: `src:${sid}`,
+          status: 'confirmed'
+        });
+      }
+    }
+
     return { label, typeDef, outgoing, incoming };
   });
 
@@ -795,7 +870,21 @@
     for (const id of entityLeap.statementIds) await setStatus(id, 'rejected');
   }
 
-  function jumpToLeap() {
+  /** Map of docs sub-graph stable IDs to their static file paths. */
+  const DOCS_KB_MAP: Record<string, { file: string; name: string }> = {
+    'a1b2c3d4-e5f6-4a00-b000-000000000000': { file: '/starter-guide.ttl', name: 'Documentation Hub' },
+    'a1b2c3d4-e5f6-4a01-b001-000000000001': { file: '/docs-triples-rdf.ttl', name: 'Triples & RDF' },
+    'a1b2c3d4-e5f6-4a02-b002-000000000002': { file: '/docs-llm.ttl', name: 'Language Models' },
+    'a1b2c3d4-e5f6-4a03-b003-000000000003': { file: '/docs-use-cases.ttl', name: 'Use Cases' },
+    'a1b2c3d4-e5f6-4a04-b004-000000000004': { file: '/docs-features.ttl', name: 'Features' },
+    'a1b2c3d4-e5f6-4a05-b005-000000000005': { file: '/docs-integrations-tech.ttl', name: 'Integrations & Tech' },
+    'a1b2c3d4-e5f6-4a06-b006-000000000006': { file: '/docs-tips-security.ttl', name: 'Tips & Security' },
+    'a1b2c3d4-e5f6-4a07-b007-000000000007': { file: '/docs-timeline-ecosystem.ttl', name: 'Timeline & Ecosystem' },
+  };
+
+  let leapImporting = $state(false);
+
+  async function jumpToLeap() {
     if (!entityLeap) return;
     if (entityLeap.kind === 'url') {
       window.open(entityLeap.target, '_blank', 'noopener');
@@ -803,11 +892,55 @@
       goto(entityLeap.target);
     } else {
       // KB stable ID — find and switch
-      const target = findKbByStableId(entityLeap.target);
-      if (target) {
-        switchToKb(target.id);
+      const found = findKbByStableId(entityLeap.target);
+      if (found) {
+        switchToKb(found.id);
+        return;
+      }
+      // Auto-import known docs sub-graphs
+      const docsEntry = DOCS_KB_MAP[entityLeap.target];
+      if (docsEntry) {
+        leapImporting = true;
+        try {
+          const resp = await fetch(docsEntry.file);
+          if (!resp.ok) throw new Error(`Failed to fetch ${docsEntry.file}`);
+          const ttlText = await resp.text();
+          const { importTurtleFull } = await import('$lib/rdf/import-ttl');
+          const { KBaseDB, DEFAULT_SETTINGS } = await import('$lib/storage/db');
+          const { v4: uuidv4 } = await import('uuid');
+
+          const { statements: rawStmts } = await importTurtleFull(ttlText);
+          const newKb = createKb(docsEntry.name);
+          const tempDb = new KBaseDB(newKb.id);
+          await tempDb.open();
+          await tempDb.settings.put({ ...DEFAULT_SETTINGS, kbTitle: docsEntry.name, kbStableId: entityLeap.target });
+
+          const now = Date.now();
+          const sourceId = uuidv4();
+          await tempDb.sources.put({
+            id: sourceId, title: docsEntry.name,
+            uri: `file://${docsEntry.file}`, kind: 'document',
+            trustLevel: 'trusted', ingestedAt: now,
+          });
+
+          const stmts = rawStmts
+            .filter(s => s.status === 'confirmed' || s.status === 'refined' || s.status === 'pending')
+            .map(s => ({
+              ...s, id: uuidv4(), sourceId,
+              g: { kind: 'iri' as const, value: `urn:kbase:source/${sourceId}` },
+              status: 'confirmed' as const, createdAt: now, updatedAt: now,
+            }));
+          await tempDb.statements.bulkPut(stmts);
+          registerStableId(newKb.id, entityLeap.target, stmts.length);
+          tempDb.close();
+          switchToKb(newKb.id);
+        } catch (e) {
+          alert(`Failed to import docs KB: ${e instanceof Error ? e.message : String(e)}`);
+        } finally {
+          leapImporting = false;
+        }
       } else {
-        alert(`KB not found on this device.\n\nStable ID: ${entityLeap.target.slice(0, 8).toUpperCase()}\n\nImport the target KB file first, then leap again.`);
+        alert(`KB not found on this device.\n\nStable ID: ${entityLeap.target.slice(0, 8).toUpperCase()}\n\nImport the target KB's .ttl file as a new KB first\n(Ingest page → upload file → "as new KB" button).`);
       }
     }
   }
@@ -1056,6 +1189,8 @@
       onlabelsmove={(labels) => { nodeLabels = labels; }}
       onmarkersmove={(m) => { markerLabels = m; }}
       ontimelinepan={(c) => { timelineCenter = c; }}
+      {nodeOrder}
+      onreorder={(order) => { nodeOrder = order; }}
       highlighted={[...highlightedSet]}
       {dimMode}
     />
@@ -1105,7 +1240,7 @@
 
 <!-- Floating filter UI overlay — hidden on landing page (no nodes yet) -->
 {#if visible.length > 0}
-<SnapPanel corner="top-left" width={320} minWidth={220} maxWidth={800} zIndex={300}>
+<SnapPanel corner="top-left" width={360} minWidth={240} maxWidth={800} zIndex={300}>
 <div class="overlay-inner">
 
   <!-- FILTERS -->
@@ -1120,12 +1255,18 @@
         <span class="num">{islandNodes.length}</span>
         <span class="lbl mono">islands</span>
       </button>
+      {#if leapKeys.length > 0}
+        <button class="chip" class:active={activeFilters.has('leaps')} onclick={() => toggleFilter('leaps')}>
+          <span class="num">{leapKeys.length}</span>
+          <span class="lbl mono">leaps</span>
+        </button>
+      {/if}
       <button class="chip" class:active={activeFilters.has('confirmed')} onclick={() => toggleFilter('confirmed')}>
-        <span class="num">{confirmedStatements().length}</span>
+        <span class="num">{visibleConfirmedCount}</span>
         <span class="lbl mono">confirmed</span>
       </button>
       <button class="chip" class:active={activeFilters.has('pending')} onclick={() => toggleFilter('pending')}>
-        <span class="num">{pendingStatements().length}</span>
+        <span class="num">{visiblePendingCount}</span>
         <span class="lbl mono">pending</span>
       </button>
       <!-- Sources filter chip -->
@@ -1236,6 +1377,7 @@
       {/if}
       <ToggleGroup.Item value="hub" class="tg-chip"><span class="lbl mono">hub</span></ToggleGroup.Item>
       <ToggleGroup.Item value="timeline" class="tg-chip"><span class="lbl mono">time</span></ToggleGroup.Item>
+      <ToggleGroup.Item value="order" class="tg-chip"><span class="lbl mono">order</span></ToggleGroup.Item>
     </ToggleGroup.Root>
   </div>
 
@@ -1283,61 +1425,6 @@
   </div>
   {/if}
 
-  <!-- 2D / 3D TOGGLE -->
-  <div class="overlay-group">
-    <span class="group-label mono">renderer</span>
-    <div class="chip-row">
-      {#if webglAvailable}
-        <button class="chip" class:active={!use2D} onclick={() => { use2D = false; resetPerfMonitor(); }}>
-          <span class="lbl mono">3D</span>
-        </button>
-      {:else}
-        <Tooltip pinnable side="bottom">
-          {#snippet content()}
-            <span class="mono" style="font-size:0.75rem; line-height:1.6;">
-              WebGL is disabled. To enable 3D:<br><br>
-              1. Open <code>chrome://flags/</code><br>
-              2. Search <code>WebGL</code><br>
-              3. Set <strong>WebGL 2.0</strong> → Enabled<br>
-              4. Relaunch Chrome<br><br>
-              On a machine with a GPU, WebGL<br>
-              is already on by default.
-            </span>
-          {/snippet}
-          <span class="chip chip-disabled">
-            <span class="lbl mono">3D</span>
-            <span class="webgl-info-icon mono">ⓘ</span>
-          </span>
-        </Tooltip>
-      {/if}
-      <button class="chip" class:active={use2D || !webglAvailable} onclick={() => { use2D = true; resetPerfMonitor(); }}>
-        <span class="lbl mono">2D</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- LABELS -->
-  <div class="overlay-group">
-    <span class="group-label mono">labels</span>
-    <div class="label-size-row">
-      <span class="group-label mono">size</span>
-      <Slider.Root
-        type="single"
-        value={labelFontSize}
-        onValueChange={(v) => { labelFontSize = v; saveLabelFontSize(); }}
-        min={7} max={20} step={1}
-        class="kv-slider"
-      >
-        {#snippet children({ thumbItems })}
-          <Slider.Range class="kv-slider-range" />
-          {#each thumbItems as thumb}
-            <Slider.Thumb index={thumb.index} class="kv-slider-thumb" />
-          {/each}
-        {/snippet}
-      </Slider.Root>
-      <span class="group-label mono">{labelFontSize}px</span>
-    </div>
-  </div>
 
 </div>
 </SnapPanel>
@@ -1460,7 +1547,7 @@
 <!-- Unified node panel — shown when a node is selected -->
 {#if selected && nodeDetails}
   {@const info = nodeDetails}
-  <SnapPanel corner="bottom-right" width={320} minWidth={240} maxWidth={800} zIndex={300}>
+  <SnapPanel corner="bottom-right" width={320} minWidth={240} maxWidth={800} zIndex={300} extraStyle="max-height: calc(100vh - {124 + notificationStackHeight.get()}px)">
     {#snippet header()}
     <!-- Header: name + type + close -->
     <div class="np-header">
@@ -1514,8 +1601,8 @@
     {/snippet}
     <div class="np-body">
 
-    <!-- Action row — always visible, at the top -->
-    {#if !showMergeUI && !showRelationUI}
+    <!-- Action row — always visible, at the top (not for source nodes) -->
+    {#if !showMergeUI && !showRelationUI && !selected?.startsWith('src:')}
       {#if confirmingDelete}
         <div class="np-action-row np-action-confirm">
           <span class="np-confirm-label mono">delete {deleteTargets.length} triple{deleteTargets.length !== 1 ? 's' : ''}?</span>
@@ -1784,8 +1871,8 @@
         <p class="np-conn-title mono" style="margin-top: 0.5rem;">kb leap</p>
         {#if entityLeap}
           <div class="link-row">
-            <button class="leap-jump mono" onclick={jumpToLeap} title={entityLeap.kind === 'url' ? 'open in new tab' : entityLeap.kind === 'app' ? 'navigate' : 'jump to target KB'}>
-              {entityLeap.kind === 'url' ? '↗' : '⟶'}
+            <button class="leap-jump mono" onclick={jumpToLeap} disabled={leapImporting} title={entityLeap.kind === 'url' ? 'open in new tab' : entityLeap.kind === 'app' ? 'navigate' : 'jump to target KB'}>
+              {leapImporting ? '...' : entityLeap.kind === 'url' ? '↗' : '⟶'}
             </button>
             <span class="leap-id mono" title={entityLeap.target}>
               {entityLeap.label ?? (entityLeap.kind === 'kb' ? entityLeap.target.slice(0, 8).toUpperCase() : entityLeap.target)}
@@ -2097,10 +2184,6 @@
     text-transform: uppercase;
     letter-spacing: 0.14em;
     color: color-mix(in srgb, currentColor 35%, transparent);
-  }
-  .webgl-info-icon {
-    font-size: 0.7rem;
-    opacity: 0.7;
   }
   .timeline-controls {
     display: flex;
@@ -2721,14 +2804,6 @@
     transform: translate(-50%, calc(-100% - 5px)) scale(2.0);
   }
 
-  /* ── Label size slider ── */
-  .label-size-row {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  /* replaced by bits-ui Slider — kept for reference, no longer rendered */
-
   /* ── bits-ui ToggleGroup (layout selector) ── */
   :global(.tg-row) {
     display: flex;
@@ -2759,50 +2834,6 @@
     border-color: var(--accent);
     color: var(--accent);
   }
-
-  /* ── bits-ui Slider (label font size) ── */
-  :global(.kv-slider) {
-    position: relative;
-    display: flex;
-    align-items: center;
-    flex: 1;
-    height: 20px;
-    touch-action: none;
-    cursor: pointer;
-  }
-  :global(.kv-slider)::before {
-    content: '';
-    position: absolute;
-    left: 0; right: 0;
-    height: 3px;
-    background: var(--line);
-    border-radius: 999px;
-  }
-  :global(.kv-slider-range) {
-    position: absolute;
-    height: 3px;
-    background: var(--accent);
-    border-radius: 999px;
-  }
-  :global(.kv-slider-thumb) {
-    position: absolute;
-    display: block;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: var(--accent);
-    border: 2px solid rgba(14, 14, 20, 0.94);
-    box-shadow: 0 0 0 1px var(--accent);
-    cursor: grab;
-    z-index: 1;
-    transition: box-shadow 0.1s;
-    translate: -50% 0;
-  }
-  :global(.kv-slider-thumb:focus-visible) {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 4px var(--accent);
-  }
-  :global(.kv-slider-thumb:active) { cursor: grabbing; }
 
   /* ── Layout anchor labels (source / type / hub cluster markers) ── */
   .marker-label {

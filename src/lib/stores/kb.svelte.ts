@@ -324,9 +324,9 @@ export function pendingMergeStatements(): Statement[] {
 }
 
 export function confirmedStatements(): Statement[] {
-  return _statements.filter((s) => s.status === 'confirmed' || s.status === 'refined');
+  return statements().filter((s) => s.status === 'confirmed' || s.status === 'refined');
 }
 
 export function statementsForSource(sourceId: string): Statement[] {
-  return _statements.filter((s) => s.sourceId === sourceId);
+  return statements().filter((s) => s.sourceId === sourceId);
 }
