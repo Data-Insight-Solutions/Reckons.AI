@@ -22,6 +22,13 @@ const DISMISSED_KEY = 'reckons:dismissed-tips';
 
 let _notifications = $state<AppNotification[]>([]);
 
+/** Reactive height of the rendered notification stack (px). Updated by NotificationStack. */
+let _stackHeight = $state(0);
+export const notificationStackHeight = {
+  get: () => _stackHeight,
+  set: (h: number) => { _stackHeight = h; },
+};
+
 function getDismissed(): Set<string> {
   try { return new Set(JSON.parse(localStorage.getItem(DISMISSED_KEY) ?? '[]')); }
   catch { return new Set(); }

@@ -234,6 +234,10 @@ export function speakStreaming(
           el.onerror = () => { URL.revokeObjectURL(url); currentAudio = null; resolve(); };
           el.play().catch(() => { URL.revokeObjectURL(url); currentAudio = null; resolve(); });
         });
+        // Brief inter-chunk silence for natural sentence rhythm
+        if (!aborted && buffer.length > 0) {
+          await new Promise(r => setTimeout(r, 180));
+        }
       }
 
       if (!aborted) opts.onEnd?.();

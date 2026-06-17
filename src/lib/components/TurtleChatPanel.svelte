@@ -636,6 +636,7 @@
   // ── Main speak entry point (streaming) ──────────────────────────────────
   // Track pending speech request so stopSpeaking() can cancel a queued load
   let pendingSpeechId = 0;
+  let speechQueued = $state(false); // true while waiting for Kokoro model to load
 
   function speakText(text: string): void {
     if (ttsBroken) return;
@@ -645,11 +646,12 @@
     stopSpeaking();
 
     if (!kokoroReady) {
-      // Model still loading — queue without blocking storySpeaking/countdown
+      // Model still loading — freeze countdown until speech actually starts
+      speechQueued = true;
       const myId = ++pendingSpeechId;
       kokoro.getReady()
-        .then(() => { if (pendingSpeechId !== myId) return; startStreaming(clean); })
-        .catch(() => { ttsBroken = true; });
+        .then(() => { speechQueued = false; if (pendingSpeechId !== myId) return; startStreaming(clean); })
+        .catch(() => { speechQueued = false; ttsBroken = true; });
       return;
     }
 
@@ -681,6 +683,8 @@
       stopCurrentSpeech = null;
     }
     storySpeaking = false;
+    speechQueued = false;
+    pendingSpeechId++; // invalidate any queued getReady() callback
   }
 
   // ── Auto-play with countdown ───────────────────────────────────────────
@@ -689,7 +693,7 @@
     const paceSec = currentStory?.pace ?? 40;
     storyCountdown = paceSec;
     storyCountdownTimer = setInterval(() => {
-      if (storyDetoured || storyLoading || storySpeaking) return; // freeze during Q&A or TTS
+      if (storyDetoured || storyLoading || storySpeaking || speechQueued) return; // freeze during Q&A, TTS, or model loading
       storyCountdown--;
       if (storyCountdown <= 0) {
         clearCountdown();

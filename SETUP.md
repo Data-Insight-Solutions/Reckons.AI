@@ -146,7 +146,7 @@ OLLAMA_ORIGINS="https://your-domain.com" ollama serve
 
 Select **local wasm** in settings. On first use, the model is downloaded from Hugging Face (~400MB–2GB depending on model) and cached in the browser. Inference runs in a Web Worker. No data leaves the device. Slower than Ollama for large models.
 
-Recommended model: `Xenova/Qwen2.5-0.5B-Instruct` (default, ~400MB)
+Default model: `HuggingFaceTB/SmolLM2-360M-Instruct` (~370MB). Configurable in Settings.
 
 ---
 
@@ -212,12 +212,17 @@ Reckons.AI supports multiple independent knowledge bases. In the KB page (☷ in
 - [ ] Pending statements appear in /review
 - [ ] Confirm some statements
 - [ ] Graph shows confirmed entities at /
-- [ ] Shelly (🐢) is visible and opens chat on click
+- [ ] Shelly is visible and opens chat on click
 - [ ] Shelly responds (check API key in Settings)
 - [ ] Search bar returns results; "ask Shelly" appears for unknown queries
-- [ ] Extension installed and popup loads
-- [ ] Extension "sync KB" retrieves entities from the web app
-- [ ] Extension "analyze page" returns triples on a content page
+- [ ] Create a second KB via /kb → "+ new KB"
+- [ ] Switch between KBs from the KB page
+- [ ] Export KB as .ttl from Settings → Backup & Export
+- [ ] /compare shows diff when importing a .ttl file
+- [ ] /reckoning generates a Situation-Target-Proposal
+- [ ] Extension installed and side panel loads
+- [ ] Extension "compare" analyzes page against KB
+- [ ] Extension "session" accumulates findings across tabs
 
 ---
 

@@ -1,8 +1,7 @@
 ## ---------------------------------------------------------------------------
-## Reckons.AI Docs — Integrations & Technology
+## Reckons.AI Docs -- Integrations & Technology
 ## ---------------------------------------------------------------------------
-## External integrations (Calendar, MCP, Extension, OCR) and tech stack
-## (SvelteKit, Threlte, N3.js, transformers.js, Dexie).
+## External integrations and the technology stack. Concise, typed, comprehensive.
 ## ---------------------------------------------------------------------------
 
 @prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -18,71 +17,106 @@
 
 
 ## =============================================================================
+## Navigation
+## =============================================================================
+
+@prefix nav: <urn:reckons:docs/nav/> .
+
+nav:BackToHub
+    rdf:type            ktype:Document ;
+    rdfs:label          "Back to Documentation Hub" ;
+    skos:definition     "Return to the main documentation hub with all leap nodes and the Reckons.AI story." ;
+    <urn:reckons:leap>          "a1b2c3d4-e5f6-4a00-b000-000000000000" ;
+    <urn:reckons:leap/label>    "Documentation Hub" .
+
+
+## =============================================================================
 ## Integrations and Workflows
 ## =============================================================================
 
 int:Integrations
     rdf:type            ktype:Concept ;
-    rdf:type            skos:Concept ;
     rdfs:label          "Integrations" ;
     skos:definition     "Reckons.AI connects to external tools and data sources while keeping your KB local. Every integration is optional -- the core app works with zero external dependencies." ;
     skos:related        guide:WhatIsReckonsAI .
 
 int:GoogleCalendar
     rdf:type            ktype:Concept ;
-    rdf:type            skos:Concept ;
     rdfs:label          "Google Calendar" ;
-    skos:definition     "Import events as triples. Dates, times, attendees, descriptions, and recurrence patterns all become structured, queryable knowledge. Recurring events are expanded with safety limits." ;
+    skos:definition     "Import events as triples via OAuth. Dates, times, attendees, descriptions, and recurrence patterns become structured, queryable knowledge. Recurring events expanded with safety limits." ;
     skos:broader        int:Integrations .
 
 int:iCalFeed
     rdf:type            ktype:Concept ;
-    rdf:type            skos:Concept ;
     rdfs:label          "iCal (.ics) Import" ;
     skos:definition     "Import any iCal feed -- Outlook, Apple Calendar, university schedules, conference programs. Events become triples with datetime extraction, recurrence detection, and conflict identification." ;
     skos:broader        int:Integrations .
 
 int:IndicoEvents
     rdf:type            ktype:Concept ;
-    rdf:type            skos:Concept ;
     rdfs:label          "Indico Events" ;
     skos:definition     "Import scientific conference programs from Indico (CERN's event management system). Sessions, contributions, and speakers become structured triples." ;
     skos:broader        int:Integrations .
 
 int:MCPServer
     rdf:type            ktype:Concept ;
-    rdf:type            skos:Concept ;
     rdfs:label          "MCP Server" ;
-    skos:definition     "Model Context Protocol server exposing your KB to AI agents (Claude Desktop, Cursor). 6 tools: search, get entity, stats, list, add note, reckoning. Your KB becomes the context for any MCP-aware agent." ;
-    skos:broader        int:Integrations .
+    skos:definition     "Standalone Node.js MCP server exposing your KB to AI agents (Claude Desktop, Cursor). 6 tools: kb_search (BM25), kb_get_entity, kb_list_entities, kb_stats, kb_add_note, kb_reckoning. Reads knowledge.ttl from workspace folder." ;
+    skos:broader        int:Integrations ;
+    skos:related        int:WorkspaceSync .
 
 int:WorkspaceSync
     rdf:type            ktype:Concept ;
-    rdf:type            skos:Concept ;
     rdfs:label          "Workspace Folder Sync" ;
-    skos:definition     "Auto-exports knowledge.ttl to a local folder on each mutation. The MCP server reads this file. Pending notes arrive via knowledge.pending.jsonl." ;
-    skos:broader        int:Integrations ;
-    skos:related        int:MCPServer .
+    skos:definition     "Auto-exports knowledge.ttl to a local folder on each mutation. The MCP server reads this file. Pending notes arrive via knowledge.pending.jsonl. Can sync settings via save/load from folder." ;
+    skos:broader        int:Integrations .
 
 int:BrowserExtension
     rdf:type            ktype:Concept ;
-    rdf:type            skos:Concept ;
     rdfs:label          "Browser Extension" ;
-    skos:definition     "Compare any webpage against your KB to identify new, conflicting, and reinforcing information. Research Sessions accumulate findings across multiple tabs with aggregate summaries per category. Highlights text on the page with color-coded labels. Supports Chrome, Firefox desktop, and Firefox for Android (mobile-optimized). The extension communicates with the main app -- no separate login needed." ;
+    skos:definition     "Manifest V3 extension with three tabs: Compare (page vs KB with at-a-glance bar), Session (multi-page research accumulation with aggregate summaries), Ingest (batch send to app). Supports Chrome, Firefox desktop, and Firefox for Android with mobile-optimized UI." ;
     skos:broader        int:Integrations .
 
 int:WebScraping
     rdf:type            ktype:Concept ;
-    rdf:type            skos:Concept ;
     rdfs:label          "Web Scraping (Jina / Firecrawl)" ;
-    skos:definition     "Extract content from URLs. Jina Reader for simple pages, Firecrawl for JavaScript-rendered sites. Content is parsed into clean text, then LLM-extracted into triples." ;
+    skos:definition     "Extract content from URLs. Jina Reader for simple pages, Firecrawl for JavaScript-rendered sites. Content parsed into clean text, then LLM-extracted into triples." ;
     skos:broader        int:Integrations .
 
 int:PDFImport
     rdf:type            ktype:Concept ;
-    rdf:type            skos:Concept ;
     rdfs:label          "PDF / Image Import (Mistral OCR)" ;
     skos:definition     "Upload PDFs or images. Mistral OCR extracts text, then the LLM extracts triples. Contracts, invoices, academic papers -- all become structured knowledge." ;
+    skos:broader        int:Integrations .
+
+int:WhisperSTT
+    rdf:type            ktype:Tool ;
+    rdfs:label          "Whisper STT" ;
+    skos:definition     "Local speech-to-text via @huggingface/transformers using onnx-community/whisper-tiny (42MB quantized). Mic button in the chat tab. Runs entirely in-browser -- no cloud required." ;
+    skos:broader        int:Integrations .
+
+int:KokoroTTS
+    rdf:type            ktype:Tool ;
+    rdfs:label          "Kokoro TTS" ;
+    skos:definition     "Local text-to-speech using a cached 82MB model. Used for story walkthrough narration. Falls back to browser window.speechSynthesis. Voices cached in 'kokoro-voices' Cache API store." ;
+    skos:broader        int:Integrations .
+
+int:Meshy3D
+    rdf:type            ktype:Tool ;
+    rdfs:label          "Meshy 3D Generation" ;
+    skos:definition     "Generate 3D GLB models for entities via the Meshy.ai API. Models are displayed as custom node shapes in the 3D graph view. Task status tracked via urn:kbase:meta/meshyTaskId statements." ;
+    skos:broader        int:Integrations .
+
+int:GoogleDrive
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Google Drive" ;
+    skos:definition     "KB backup to Google Drive. Export .ttl to a dedicated Drive folder. OAuth-authenticated. Privacy note: Google can access the stored file." ;
+    skos:broader        int:Integrations .
+
+int:ModelCache
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Model Cache Management" ;
+    skos:definition     "Inspect, sideload, and purge locally cached WASM models via Cache API. Manifests track SmolLM2-360M (370MB), MiniLM-L6-v2 (22MB), Kokoro 82M (88MB), Whisper Tiny (42MB). Service worker caches HuggingFace downloads with CacheFirst strategy." ;
     skos:broader        int:Integrations .
 
 
@@ -92,53 +126,52 @@ int:PDFImport
 
 tech:Architecture
     rdf:type            ktype:Concept ;
-    rdf:type            skos:Concept ;
     rdfs:label          "Technology Stack" ;
-    skos:definition     "Static SvelteKit app with Threlte/Three.js for 3D, N3.js for RDF parsing, transformers.js for embeddings, and Dexie for IndexedDB storage. No server required." ;
+    skos:definition     "Static SvelteKit 2 app with Svelte 5 runes. Threlte/Three.js for 3D, N3.js for RDF parsing, @huggingface/transformers for embeddings and local LLM, Dexie for IndexedDB storage. No server required." ;
     skos:broader        guide:WhatIsReckonsAI .
 
 tech:SvelteKit
     rdf:type            ktype:Tool ;
-    rdf:type            skos:Concept ;
-    rdfs:label          "SvelteKit" ;
-    skos:definition     "The web framework powering Reckons.AI. Built with adapter-static for fully client-side deployment." ;
+    rdfs:label          "SvelteKit 2 + Svelte 5" ;
+    skos:definition     "Web framework with adapter-static for fully client-side deployment. Svelte 5 runes ($state, $derived, $effect) for reactive state management." ;
     skos:broader        tech:Architecture .
 
 tech:Threlte
     rdf:type            ktype:Tool ;
-    rdf:type            skos:Concept ;
-    rdfs:label          "Threlte + Three.js" ;
-    skos:definition     "Svelte bindings for Three.js. Provides the declarative 3D scene graph for the knowledge graph visualization using WebGL." ;
+    rdfs:label          "Threlte 8 + Three.js" ;
+    skos:definition     "Svelte bindings for Three.js. Declarative 3D scene graph for the knowledge graph visualization. Canvas 2D fallback for low-end devices." ;
     skos:broader        tech:Architecture .
 
 tech:N3js
     rdf:type            ktype:Tool ;
-    rdf:type            skos:Concept ;
     rdfs:label          "N3.js" ;
     skos:definition     "JavaScript library for parsing and writing RDF (Turtle, N-Triples, N-Quads, TriG). Used for all .ttl import and export." ;
     skos:broader        tech:Architecture .
 
 tech:TransformersJS
     rdf:type            ktype:Tool ;
-    rdf:type            skos:Concept ;
-    rdfs:label          "transformers.js" ;
-    skos:definition     "Runs ML models in the browser via ONNX Runtime WebAssembly. Powers text embeddings for semantic similarity and entity disambiguation." ;
+    rdfs:label          "@huggingface/transformers v3" ;
+    skos:definition     "Runs ML models in the browser via ONNX Runtime WebAssembly. Powers local LLM inference (SmolLM2-360M, q4 quantized), text embeddings (MiniLM-L6-v2, q8), speech-to-text (Whisper Tiny), and text-to-speech (Kokoro 82M)." ;
     skos:broader        tech:Architecture .
 
 tech:Dexie
     rdf:type            ktype:Tool ;
-    rdf:type            skos:Concept ;
     rdfs:label          "Dexie.js + IndexedDB" ;
-    skos:definition     "Promise-based wrapper around IndexedDB. All KB data (statements, sources, changelog) is stored locally. Nothing leaves your device unless you explicitly export or invoke an external LLM." ;
+    skos:definition     "Promise-based wrapper around IndexedDB. All KB data (statements, sources, changelog, settings) stored locally. Each KB is a separate Dexie database instance." ;
     skos:broader        tech:Architecture .
 
 tech:MCP
     rdf:type            ktype:Tool ;
-    rdf:type            skos:Concept ;
     rdfs:label          "Model Context Protocol" ;
-    skos:definition     "An open protocol for connecting AI models to external data sources. Reckons.AI exposes its KB as an MCP server so AI agents can query your knowledge." ;
+    skos:definition     "An open protocol by Anthropic for connecting AI models to external data sources. Reckons.AI implements a standalone MCP server (Node.js) that reads the workspace TTL file." ;
     skos:broader        tech:Architecture ;
     skos:related        int:MCPServer .
+
+tech:PWA
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Progressive Web App" ;
+    skos:definition     "Service worker (via @vite-pwa/sveltekit) enables offline access after first load. HuggingFace model downloads cached with CacheFirst strategy. Installable on desktop and mobile." ;
+    skos:broader        tech:Architecture .
 
 
 ## =============================================================================
@@ -149,7 +182,7 @@ tech:MCP
 
 shelly:persona
     shelly:name             "Shelly" ;
-    shelly:greeting         "This covers integrations and the tech stack! I can explain MCP, the browser extension, calendar import, or any technology under the hood. What interests you?" ;
+    shelly:greeting         "This covers integrations and the tech stack! I can explain MCP, the browser extension, calendar import, Whisper STT, Kokoro TTS, model caching, or any technology under the hood. What interests you?" ;
     shelly:personality      "technical, thorough, helpful" ;
     shelly:responseStyle    "concise" ;
     shelly:systemPrompt     "You are helping someone learn about Reckons.AI integrations and technology. Explain how each piece connects. Be specific about what data flows where." .

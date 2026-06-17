@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { notifications, dismissNotification } from '$lib/stores/notifications.svelte';
+  import { notifications, dismissNotification, notificationStackHeight } from '$lib/stores/notifications.svelte';
+
+  const MAX_VISIBLE = 3;
 
   const typeIcon: Record<string, string> = {
     info: 'ℹ',
@@ -12,11 +14,23 @@
     success: 'var(--ok, #4caf50)',
     warn: '#f59e0b',
   };
+
+  let stackEl: HTMLDivElement | undefined;
+
+  // Keep the reactive store in sync with actual rendered height
+  $effect(() => {
+    // re-run whenever notifications change
+    const _ = notifications();
+    // Wait a tick for DOM to update
+    requestAnimationFrame(() => {
+      notificationStackHeight.set(stackEl?.offsetHeight ?? 0);
+    });
+  });
 </script>
 
 {#if notifications().length > 0}
-  <div class="notification-stack" aria-live="polite">
-    {#each notifications() as n (n.id)}
+  <div class="notification-stack" aria-live="polite" bind:this={stackEl}>
+    {#each notifications().slice(0, MAX_VISIBLE) as n (n.id)}
       <div class="notification" style:--nc={typeColor[n.type]}>
         <span class="notif-icon" style:color={typeColor[n.type]}>{typeIcon[n.type]}</span>
         <div class="notif-body">
@@ -35,6 +49,11 @@
         <button class="notif-close" onclick={() => dismissNotification(n.id)} aria-label="dismiss">✕</button>
       </div>
     {/each}
+    {#if notifications().length > MAX_VISIBLE}
+      <div class="notif-overflow mono">
+        +{notifications().length - MAX_VISIBLE} more
+      </div>
+    {/if}
   </div>
 {/if}
 
@@ -128,4 +147,12 @@
     line-height: 1;
   }
   .notif-close:hover { color: var(--ink); }
+
+  .notif-overflow {
+    font-size: 0.68rem;
+    color: var(--muted);
+    text-align: right;
+    padding: 0.15rem 0.5rem;
+    pointer-events: none;
+  }
 </style>

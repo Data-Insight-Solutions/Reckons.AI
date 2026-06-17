@@ -34,6 +34,10 @@
 @prefix kpred:  <urn:kbase:predicate/> .
 @prefix kmeta:  <urn:kbase:meta/> .
 @prefix leap:   <urn:reckons:docs/leap/> .
+@prefix creator: <urn:reckons:creator/> .
+
+## KB Identity
+<urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a00-b000-000000000000" .
 
 
 ## =============================================================================
@@ -48,7 +52,29 @@ guide:ReckonsAI
     kpred:icon2d        "/svg/ReckonsAI-Logo.svg" ;
     skos:related        guide:WhatIsReckonsAI ;
     skos:related        feat:Shelly ;
-    skos:related        tech:Architecture .
+    skos:related        tech:Architecture ;
+    kpred:createdBy     creator:DataInsightSolutions ;
+    kpred:createdBy     creator:MatthewRoe .
+
+
+## =============================================================================
+## Creator
+## =============================================================================
+
+creator:DataInsightSolutions
+    rdf:type            ktype:Organization ;
+    rdfs:label          "Data Insight Solutions LLC" ;
+    skos:definition     "The company behind Reckons.AI. A software consultancy focused on knowledge management, data engineering, and AI-augmented tooling." ;
+    kpred:operates      guide:ReckonsAI ;
+    skos:related        creator:MatthewRoe .
+
+creator:MatthewRoe
+    rdf:type            ktype:Person ;
+    rdfs:label          "Matthew Roe" ;
+    skos:definition     "Owner-operator of Data Insight Solutions LLC and creator of Reckons.AI. Designed the local-first architecture, the human-in-the-loop review workflow, and the KB Leap cross-referencing system." ;
+    kpred:role          "Founder & Developer" ;
+    kpred:worksAt       creator:DataInsightSolutions ;
+    skos:related        guide:ReckonsAI .
 
 
 guide:WhatIsReckonsAI
@@ -94,13 +120,13 @@ guide:HumanInTheLoop
 ## =============================================================================
 ## KB LEAP NODES — Gateways to detailed sub-graphs
 ## =============================================================================
-## Each leap node appears with an amber ring in the graph view. Import the
-## corresponding .ttl file into a new KB, then these leaps will jump you there.
+## Each leap node appears with an amber ring in the graph view. Click the
+## arrow button to jump -- the sub-graph auto-imports as a new KB on first use.
 
 leap:TriplesAndRDF
     rdf:type            ktype:Document ;
     rdfs:label          "LEAP: Triples & RDF Deep Dive" ;
-    skos:definition     "Import docs-triples-rdf.ttl to explore the semantic triple architecture, Turtle syntax, RDF standards (RDFS, SKOS, SPARQL, JSON-LD, PROV-O), and knowledge graph fundamentals." ;
+    skos:definition     "Click to explore the semantic triple architecture, Turtle syntax, RDF standards (RDFS, SKOS, SPARQL, JSON-LD, PROV-O), and knowledge graph fundamentals." ;
     skos:related        guide:WhatIsReckonsAI ;
     <urn:reckons:leap>          "a1b2c3d4-e5f6-4a01-b001-000000000001" ;
     <urn:reckons:leap/label>    "Triples, Turtle & RDF Standards" .
@@ -108,7 +134,7 @@ leap:TriplesAndRDF
 leap:LanguageModels
     rdf:type            ktype:Document ;
     rdfs:label          "LEAP: Language Models" ;
-    skos:definition     "Import docs-llm.ttl to learn what LLMs actually are, why they hallucinate, how RAG works, and why your curated KB makes AI dramatically more accurate." ;
+    skos:definition     "Click to learn what LLMs actually are, why they hallucinate, how RAG works, and why your curated KB makes AI dramatically more accurate." ;
     skos:related        guide:WhatIsReckonsAI ;
     <urn:reckons:leap>          "a1b2c3d4-e5f6-4a02-b002-000000000002" ;
     <urn:reckons:leap/label>    "Language Models & RAG" .
@@ -116,7 +142,7 @@ leap:LanguageModels
 leap:UseCases
     rdf:type            ktype:Document ;
     rdfs:label          "LEAP: Use Cases" ;
-    skos:definition     "Import docs-use-cases.ttl to explore real-world scenarios: insurance claims, legal disputes, employment rights, medical records, corporate pushback, and research." ;
+    skos:definition     "Click to explore real-world scenarios: insurance claims, legal disputes, employment rights, medical records, corporate pushback, and research." ;
     skos:related        guide:WhatIsReckonsAI ;
     <urn:reckons:leap>          "a1b2c3d4-e5f6-4a03-b003-000000000003" ;
     <urn:reckons:leap/label>    "Real-World Use Cases" .
@@ -124,7 +150,7 @@ leap:UseCases
 leap:Features
     rdf:type            ktype:Document ;
     rdfs:label          "LEAP: Features" ;
-    skos:definition     "Import docs-features.ttl for detailed coverage of every feature: Ingest, Review, Trust, 3D Graph, Shelly, Reckonings, LLM backends, Compare, Disambiguation, History, Types, Export, and Stories." ;
+    skos:definition     "Click for detailed coverage of every feature: Ingest, Review, Trust, Graph, Shelly, Reckonings, Compare, Multi-KB, KB Leap, Content Safety, Predicate Manager, Whisper STT, Kokoro TTS, and more." ;
     skos:related        guide:WhatIsReckonsAI ;
     <urn:reckons:leap>          "a1b2c3d4-e5f6-4a04-b004-000000000004" ;
     <urn:reckons:leap/label>    "All Features" .
@@ -132,7 +158,7 @@ leap:Features
 leap:IntegrationsTech
     rdf:type            ktype:Document ;
     rdfs:label          "LEAP: Integrations & Tech" ;
-    skos:definition     "Import docs-integrations-tech.ttl for integrations (Calendar, MCP, Extension, OCR, Firecrawl) and the technology stack (SvelteKit, Threlte, N3.js, transformers.js, Dexie)." ;
+    skos:definition     "Click for integrations (Calendar, MCP, Extension, Whisper, Kokoro, OCR, Firecrawl, Meshy 3D) and the technology stack (SvelteKit 2, Threlte 8, N3.js, @huggingface/transformers, Dexie)." ;
     skos:related        guide:WhatIsReckonsAI ;
     <urn:reckons:leap>          "a1b2c3d4-e5f6-4a05-b005-000000000005" ;
     <urn:reckons:leap/label>    "Integrations & Technology" .
@@ -140,7 +166,7 @@ leap:IntegrationsTech
 leap:TipsSecurity
     rdf:type            ktype:Document ;
     rdfs:label          "LEAP: Tips & Security" ;
-    skos:definition     "Import docs-tips-security.ttl for practical tips (start small, review carefully, export often, use Ollama offline) and the security architecture (no server, API key safety, CSP, offline-capable)." ;
+    skos:definition     "Click for practical tips (start small, review carefully, export often, use Ollama offline) and the security architecture (no server, API key safety, content safety, CSP, offline-capable)." ;
     skos:related        guide:WhatIsReckonsAI ;
     <urn:reckons:leap>          "a1b2c3d4-e5f6-4a06-b006-000000000006" ;
     <urn:reckons:leap/label>    "Tips, Tricks & Security" .
@@ -148,7 +174,7 @@ leap:TipsSecurity
 leap:TimelineEcosystem
     rdf:type            ktype:Document ;
     rdfs:label          "LEAP: Timeline & RDF Ecosystem" ;
-    skos:definition     "Import docs-timeline-ecosystem.ttl for the RDF timeline from 1999 to 2026, key organizations (W3C, AI Alliance, Schema.org), people (Tim Berners-Lee), and the Reckons.AI launch." ;
+    skos:definition     "Click for the RDF timeline from 1999 to 2026, key organizations (W3C, AI Alliance, Schema.org), people (Tim Berners-Lee), and the Reckons.AI launch." ;
     skos:related        guide:WhatIsReckonsAI ;
     <urn:reckons:leap>          "a1b2c3d4-e5f6-4a07-b007-000000000007" ;
     <urn:reckons:leap/label>    "Timeline & RDF Ecosystem" .
@@ -223,7 +249,7 @@ feat:Ingest
 feat:LLMBackends
     rdf:type            ktype:Concept ;
     rdfs:label          "LLM Backends" ;
-    skos:definition     "Claude, OpenAI, Gemini, Ollama (local), OpenRouter, WASM (offline), Chrome AI." ;
+    skos:definition     "9 providers: Claude, OpenAI, Gemini, Ollama (local), OpenRouter, WASM (offline), Chrome AI, Manual paste, Mock. Per-task backend overrides available." ;
     skos:broader        guide:WhatIsReckonsAI .
 
 feat:Graph3D
@@ -253,7 +279,7 @@ feat:TrustSystem
 tech:Architecture
     rdf:type            ktype:Concept ;
     rdfs:label          "Technology Stack" ;
-    skos:definition     "SvelteKit + Threlte/Three.js + N3.js + transformers.js + Dexie. No server." ;
+    skos:definition     "SvelteKit 2 + Svelte 5 + Threlte 8/Three.js + N3.js + @huggingface/transformers + Dexie. No server." ;
     skos:broader        guide:WhatIsReckonsAI ;
     skos:related        leap:IntegrationsTech .
 
@@ -429,7 +455,7 @@ story:GetStarted
 
 shelly:persona
     shelly:name             "Shelly" ;
-    shelly:greeting         "Hey! I'm Shelly, and this is the Reckons.AI documentation hub. The nodes with amber rings are **leap points** -- each links to a deeper sub-graph you can import. Try the **stories** tab for a guided walkthrough!" ;
+    shelly:greeting         "Hey! I'm Shelly, and this is the Reckons.AI documentation hub. The nodes with amber rings are **leap points** -- click the arrow to jump into a deeper sub-graph (auto-imports on first use). Try the **explore** tab for a guided walkthrough!" ;
     shelly:personality      "knowledgeable, empowering, direct" ;
     shelly:responseStyle    "conversational" ;
     shelly:systemPrompt     "You are helping someone learn Reckons.AI. This is the documentation HUB -- a compact overview. Nodes labeled 'LEAP:' link to deeper sub-graphs (separate .ttl files). Emphasize practical uses, individual empowerment, and the accuracy advantage of KB-grounded LLM responses. Be honest about what LLMs can and cannot do. Encourage the user to build their own knowledge and never blindly trust any model output." .

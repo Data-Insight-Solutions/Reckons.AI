@@ -23,6 +23,20 @@
 
 
 ## =============================================================================
+## Navigation
+## =============================================================================
+
+@prefix nav: <urn:reckons:docs/nav/> .
+
+nav:BackToHub
+    rdf:type            ktype:Document ;
+    rdfs:label          "Back to Documentation Hub" ;
+    skos:definition     "Return to the main documentation hub with all leap nodes and the Reckons.AI story." ;
+    <urn:reckons:leap>          "a1b2c3d4-e5f6-4a00-b000-000000000000" ;
+    <urn:reckons:leap/label>    "Documentation Hub" .
+
+
+## =============================================================================
 ## Organizations & Consortiums
 ## =============================================================================
 
@@ -252,11 +266,29 @@ tl:ReckonsAILaunch
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Reckons.AI Launch" ;
-    skos:definition     "Public launch of Reckons.AI -- a local-first personal knowledge base built on RDF Turtle. Runs entirely in the browser. LLM-powered triple extraction, 3D graph visualization, browser extension for research sessions, and MCP server for AI agent integration." ;
+    skos:definition     "Public launch of Reckons.AI -- a local-first personal knowledge base built on RDF Turtle. Created by Matthew Roe at Data Insight Solutions LLC. Runs entirely in the browser. LLM-powered triple extraction, 3D graph visualization, browser extension for research sessions, and MCP server for AI agent integration." ;
     kpred:date          "2026-06-01"^^xsd:date ;
+    kpred:createdBy     person:MatthewRoe ;
     skos:related        guide:WhatIsReckonsAI ;
     skos:related        tl:KnowledgeGraphsAndLLMs ;
-    skos:related        tl:MCPSpec .
+    skos:related        tl:MCPSpec ;
+    skos:related        org:DataInsightSolutions .
+
+org:DataInsightSolutions
+    rdf:type            ktype:Organization ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Data Insight Solutions LLC" ;
+    skos:definition     "Software consultancy behind Reckons.AI. Founded by Matthew Roe. Focused on knowledge management, data engineering, and AI-augmented tooling." ;
+    skos:related        person:MatthewRoe .
+
+person:MatthewRoe
+    rdf:type            ktype:Person ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Matthew Roe" ;
+    skos:definition     "Owner-operator of Data Insight Solutions LLC. Creator of Reckons.AI. Designed the local-first architecture, human-in-the-loop review workflow, and the KB Leap cross-referencing system." ;
+    kpred:role          "Founder & Developer" ;
+    kpred:worksAt       org:DataInsightSolutions ;
+    skos:related        tl:ReckonsAILaunch .
 
 
 ## =============================================================================

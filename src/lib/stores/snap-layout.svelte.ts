@@ -12,7 +12,7 @@ type Corner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 const TOP_MARGIN = 60;   // SearchBar / top chrome
 const BOT_MARGIN = 52;   // NavBar + breathing room
 const COL_GAP    = 8;    // gap between top and bottom panel in same column
-const TOP_FRAC   = 0.25; // top panel gets 1/4, bottom gets 3/4
+const TOP_MAX    = 260;  // top panel caps at this height — rest goes to bottom
 
 // Plain Map for data storage. _tick is the reactive signal — replaced with a new
 // object on every change. Writing `_tick = {}` never reads the old value, so
@@ -53,5 +53,6 @@ export function getColumnMaxH(id: string, vh: number): number | null {
   if (!hasPartner) return null;
   const available = vh - TOP_MARGIN - BOT_MARGIN - COL_GAP;
   const isTop = corner === 'top-left' || corner === 'top-right';
-  return Math.floor(available * (isTop ? TOP_FRAC : 1 - TOP_FRAC));
+  const topH = Math.min(TOP_MAX, Math.floor(available * 0.4));
+  return isTop ? topH : available - topH;
 }

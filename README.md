@@ -9,23 +9,43 @@ You own the file. You review and confirm every fact. Nothing leaves your device 
 ## What it does
 
 ```
-note / url / doc / .ttl
-        │
-        ▼
+note / url / doc / .ttl / calendar / extension
+        |
+        v
    AI extraction
-        │
-        ▼
-   Review & confirm  ←── only what you approve enters your Turtle
-        │
-        ▼
+        |
+        v
+   Review & confirm  <-- only what you approve enters your KB
+        |
+        v
    3D knowledge graph   Reckoning (decision support)   Share .ttl
 ```
 
-1. **Ingest** — paste a note, URL, document, or an existing `.ttl` file from someone else
+1. **Ingest** — paste a note, URL, document, calendar, or an existing `.ttl` file from someone else
 2. **Review** — confirm or reject each proposed triple; refine labels before accepting
-3. **Explore** — 3D force-directed graph with hub emphasis, layout modes, and filter chips
-4. **Reckon** — describe a situation and a target; the AI proposes options grounded in your Turtle
-5. **Share** — export `.ttl` and send it to collaborators; they see the diff on import
+3. **Explore** — 3D force-directed graph with hub emphasis, layout modes, filter chips, and 2D fallback
+4. **Reckon** — describe a situation and a target; the AI proposes options grounded in your KB
+5. **Compare** — import a `.ttl` file or analyze a page to see what's new, conflicting, or reinforcing
+6. **Share** — export `.ttl` and send it to collaborators; they see the diff on import
+
+---
+
+## Key features
+
+- **Multi-KB management** — create, switch, rename, and delete independent knowledge bases
+- **KB Leap** — cross-reference entities between KBs; click to jump between them
+- **Browser extension** — compare any webpage against your KB, accumulate research sessions across tabs, batch ingest
+- **MCP server** — expose your KB to Claude Desktop, Cursor, and other MCP-compatible AI agents
+- **Predicate Manager** — view, rename, and merge predicates across your KB
+- **Content safety** — ethics preamble in all LLM prompts, content classifier, export advisory
+- **Passage grounding** — verbatim source excerpts attached to extracted triples
+- **Diff summaries** — LLM-generated 3-part summaries (new/reinforcing/conflicting)
+- **Whisper STT** — local speech-to-text via transformers.js (no cloud required)
+- **Kokoro TTS** — local text-to-speech for story walkthroughs
+- **Per-task LLM backends** — use different providers for ingest, chat, analysis, and diff summary
+- **Model cache management** — inspect, sideload, and purge locally cached WASM models
+- **Source trust system** — sources earn trust through consistent accuracy; trusted sources auto-confirm
+- **History mode** — time-travel through your KB with a timeline scrubber
 
 ---
 
@@ -33,8 +53,8 @@ note / url / doc / .ttl
 
 ```bash
 cp .env.example .env   # add at least one AI backend key (or leave blank for WASM)
-npm install
-npm run dev            # http://localhost:5173
+pnpm install
+pnpm dev               # http://localhost:5173
 ```
 
 No AI key required — the local WASM backend works out of the box (slower, fully offline).
@@ -51,7 +71,7 @@ docker compose up      # http://localhost:5173
 
 | Backend | Cost | Privacy | Quality |
 |---|---|---|---|
-| **WASM (built-in)** | Free | 100% local | Low–medium |
+| **WASM (built-in)** | Free | 100% local | Low-medium |
 | **Ollama** | Free | 100% local | High |
 | **Chrome built-in AI** | Free | Local (Chrome only) | Medium |
 | **OpenRouter** | Free tier available | Third-party | High |
@@ -60,7 +80,7 @@ docker compose up      # http://localhost:5173
 | **OpenAI** | Pay-per-token | OpenAI | High |
 | **Manual paste** | Free | Any LLM | Any |
 
-Full setup details in [`docs/GUIDE.md — AI Backends`](docs/GUIDE.md#ai-backends).
+Full setup details in [`SETUP.md`](SETUP.md) and [`docs/GUIDE.md`](docs/GUIDE.md).
 
 ---
 
@@ -70,7 +90,7 @@ Full setup details in [`docs/GUIDE.md — AI Backends`](docs/GUIDE.md#ai-backend
 - **Threlte 8 / Three.js** — 3D force-directed knowledge graph
 - **Dexie** — IndexedDB persistence (all data stays in-browser)
 - **N3.js** — W3C RDF/Turtle parsing and serialization
-- **Transformers.js** — local WASM LLM and embedding inference
+- **@huggingface/transformers** — local WASM LLM and embedding inference
 - **Playwright** — end-to-end test suite
 
 ---
@@ -88,6 +108,7 @@ Every fact is a `Statement` — an RDF triple with provenance:
   sourceId: '<uuid>',
   confidence: 0.95,
   status: 'confirmed',   // pending | confirmed | refined | rejected | superseded
+  excerpt: 'Alice organized the float trip last summer.',  // verbatim source sentence
 }
 ```
 
@@ -95,20 +116,67 @@ Exported as standard Turtle (`.ttl`) — readable by any RDF tool.
 
 ---
 
+## Browser extension
+
+The extension adds a side panel with three tabs:
+
+- **Compare** — analyze the current page against your KB with at-a-glance proportional bar
+- **Session** — accumulate findings across multiple pages with aggregate summaries and batch ingest
+- **Ingest** — send extracted triples to Reckons.AI
+
+Supports Chrome, Edge, Brave, Firefox desktop, and Firefox for Android.
+
+See [`SETUP.md`](SETUP.md) for installation instructions.
+
+---
+
+## MCP server
+
+The standalone MCP server (`mcp-server/`) exposes 6 tools to AI agents:
+
+| Tool | Description |
+|------|-------------|
+| `kb_search` | Full-text BM25 search over KB entities and statements |
+| `kb_get_entity` | Get all statements for a specific entity |
+| `kb_list_entities` | List all entities with type and connection count |
+| `kb_stats` | Return KB statistics (entity count, statement count, types) |
+| `kb_add_note` | Add a note for extraction and review |
+| `kb_reckoning` | Run a Situation-Target-Proposal analysis |
+
+---
+
 ## Documentation
 
 | Doc | Contents |
 |---|---|
-| [`docs/GUIDE.md`](docs/GUIDE.md) | Full user + developer guide — backends, settings, review, graph, voice, merge, architecture |
+| [`SETUP.md`](SETUP.md) | Setup guide — dev, extension, Ollama, Docker, self-hosting, multi-KB |
+| [`docs/GUIDE.md`](docs/GUIDE.md) | Full user + developer guide — backends, review, graph, voice, merge, architecture |
+| [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md) | Brand colors, typography, component patterns, z-index scale |
 | [`docs/DEPENDENCIES.md`](docs/DEPENDENCIES.md) | Dependency health, browser support matrix, replacement candidates |
 | [`docs/SECURITY.md`](docs/SECURITY.md) | Known CVEs, risk assessments, vulnerability response process |
-| [`docs/USER_STORIES.md`](docs/USER_STORIES.md) | Collaborative use case scenarios (float trip, home project, research, emergency prep) |
+| [`docs/USER_STORIES.md`](docs/USER_STORIES.md) | Collaborative use case scenarios |
+
+---
+
+## Documentation KB
+
+The app ships with a built-in documentation graph (`starter-guide.ttl`) containing:
+- Core philosophy and getting-started steps
+- **KB Leap nodes** linking to 7 deep-dive sub-graphs (auto-imported on first click):
+  - Triples & RDF standards
+  - Language models & RAG
+  - Real-world use cases
+  - All features
+  - Integrations & technology
+  - Tips & security
+  - Timeline & RDF ecosystem
+- A guided story walkthrough narrated by Shelly
 
 ---
 
 ## Things that are deliberately absent
 
 - **No backend server** — all state in IndexedDB; Turtle export for backup
-- **No accounts** — your Turtle is yours alone, on this device
+- **No accounts** — your KB is yours alone, on this device
 - **No analytics, no tracking, no remote logging**
 - URL ingestion proxies through `r.jina.ai/<url>` for clean-text extraction; use the note or document tab to avoid that hop entirely

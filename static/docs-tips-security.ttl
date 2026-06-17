@@ -18,6 +18,20 @@
 
 
 ## =============================================================================
+## Navigation
+## =============================================================================
+
+@prefix nav: <urn:reckons:docs/nav/> .
+
+nav:BackToHub
+    rdf:type            ktype:Document ;
+    rdfs:label          "Back to Documentation Hub" ;
+    skos:definition     "Return to the main documentation hub with all leap nodes and the Reckons.AI story." ;
+    <urn:reckons:leap>          "a1b2c3d4-e5f6-4a00-b000-000000000000" ;
+    <urn:reckons:leap/label>    "Documentation Hub" .
+
+
+## =============================================================================
 ## Tips and Tricks
 ## =============================================================================
 
@@ -117,6 +131,13 @@ guide:OfflineCapable
     rdf:type            skos:Concept ;
     rdfs:label          "Offline Capable" ;
     skos:definition     "After first load, the app works without internet. Use Ollama or the WASM model and zero inference traffic leaves your machine. Your KB is fully usable offline." ;
+    skos:broader        guide:Security .
+
+guide:ContentSafety
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Content Safety System" ;
+    skos:definition     "All LLM prompts include an ethics preamble (hardcoded, not configurable). A content classifier filters blocked content on ingest and flags mature content on export with an advisory triple. Discourse, disagreement, and academic content pass freely." ;
     skos:broader        guide:Security .
 
 

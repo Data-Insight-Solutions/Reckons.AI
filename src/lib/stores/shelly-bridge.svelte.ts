@@ -4,6 +4,8 @@
  *   2. View adjustments Shelly proposes (select entity, change layout/filters)
  */
 
+import type { GraphFilter } from '$lib/types/turtle-chat';
+
 // ── Chat open state ───────────────────────────────────────────────────────────
 
 let _chatOpen = $state(false);
@@ -34,9 +36,9 @@ export interface ViewAdjust {
   /** IRI of entity to select in the graph */
   selectEntity?: string;
   /** Graph layout mode */
-  layout?: 'force' | 'focus' | 'source' | 'type' | 'hub';
+  layout?: 'force' | 'focus' | 'source' | 'type' | 'hub' | 'order';
   /** Filter chips to activate (replaces current set) */
-  filters?: Array<'hubs' | 'islands' | 'confirmed' | 'pending' | 'no-type' | 'no-source'>;
+  filters?: GraphFilter[];
   /** Entity IRIs to spotlight (highlighted) in the graph — used by explore mode */
   spotlight?: string[];
 }

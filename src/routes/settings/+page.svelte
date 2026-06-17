@@ -53,9 +53,10 @@
   let meshyApiKey = $state(settings().meshyApiKey ?? '');
   let uiScale = $state<'sm' | 'md' | 'lg'>(settings().uiScale ?? 'md');
   let nodeLabelFontSize = $state(settings().nodeLabelFontSize ?? 11);
+  let prefer2D = $state(settings().prefer2D ?? false);
 
   async function saveDisplaySettings() {
-    await updateSettings({ uiScale, nodeLabelFontSize });
+    await updateSettings({ uiScale, nodeLabelFontSize, prefer2D });
   }
 
   // ── Shared backend option groups (consistent naming across all selectors) ──
@@ -461,6 +462,7 @@
       autoAnalyzeIntervalMinutes: ud.autoAnalyzeIntervalMinutes,
       uiScale: ud.uiScale,
       nodeLabelFontSize: ud.nodeLabelFontSize,
+      prefer2D: ud.prefer2D,
       extensionHighlight: ud.extensionHighlight,
     });
     // Sync form state
@@ -490,6 +492,7 @@
     autoAnalyzeIntervalMinutes = ud.autoAnalyzeIntervalMinutes ?? 0;
     uiScale                    = ud.uiScale                   ?? 'md';
     nodeLabelFontSize          = ud.nodeLabelFontSize          ?? 11;
+    prefer2D                   = ud.prefer2D                   ?? false;
     if (ud.extensionHighlight) {
       const hl = { ...DEFAULT_HIGHLIGHT_SETTINGS, ...ud.extensionHighlight };
       hlConflictColor  = hl.conflictColor;
@@ -963,6 +966,17 @@
       style="flex: 1;"
     />
   </label>
+
+  <div class="field row-field">
+    <div>
+      <span class="lbl mono">graph renderer</span>
+      <p class="hint" style="margin: 0.1rem 0 0;">3D uses WebGL with interactive camera. 2D is lighter and works everywhere.</p>
+    </div>
+    <div class="btn-group">
+      <button class="scale-btn" class:active={!prefer2D} onclick={() => { prefer2D = false; saveDisplaySettings(); }}>3D</button>
+      <button class="scale-btn" class:active={prefer2D} onclick={() => { prefer2D = true; saveDisplaySettings(); }}>2D</button>
+    </div>
+  </div>
 
   <div class="field row-field">
     <div>

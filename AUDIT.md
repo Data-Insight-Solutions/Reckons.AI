@@ -11,7 +11,7 @@ All production dependencies use permissive open-source licenses. The project is 
 | three.js | MIT | 3D rendering |
 | @threlte/core, @threlte/extras | MIT | Svelte + Three.js bridge |
 | dexie | Apache 2.0 | IndexedDB wrapper |
-| @xenova/transformers | Apache 2.0 | In-browser ML (local embeddings) |
+| @huggingface/transformers | Apache 2.0 | In-browser ML (local LLM + embeddings) |
 | n3 | MIT | RDF/Turtle parser |
 | uuid | MIT | ID generation |
 | comlink | Apache 2.0 | Web Worker RPC |
@@ -61,141 +61,75 @@ All production dependencies use permissive open-source licenses. The project is 
 
 ---
 
-## 4. Roadmap
+## 4. Roadmap & Feature Status
 
-### A — Comparison View (replaces Semfile + Disambiguation Panel plans)
+### A — Comparison View --- COMPLETE
 
-The core workflow need: when a new source arrives (ingest, re-analysis, or a second KB), the user needs a clear side-by-side view of what would change and why. The existing `/review` three-tab approach (Incoming / Deletions / Merges) is a good foundation but needs a dedicated, richer comparison surface.
+Full comparison surface at `/compare`. Diff engine (`src/lib/rdf/diff.ts`) categorizes changes as Add, Reinforce, Conflict, Merge, Remove. Visual Venn diagram, diff table with action buttons, and LLM-generated diff summaries (`src/lib/rdf/diff-summary.ts`). Integrated in `/compare`, `/review`, and browser extension sidepanel.
 
-**Goals:**
-- Compare any two KB snapshots: current KB vs. new ingest source, KB vs. re-analysis run, KB A vs. KB B
-- Display every suggested change categorised as:
-  - **Add** — new statement not in the target KB
-  - **Reinforce** — statement already exists; this source agrees (increases confidence / trust score)
-  - **Conflict** — same (subject, predicate) with a different object — highlight temporal or factual disagreement
-  - **Merge** — two entity IRIs that likely refer to the same real-world thing
-  - **Remove** — statement in target KB that the source contradicts or marks for deletion
-- Allow bulk accept / reject per category, or statement-by-statement review
-- Show provenance clearly: which source proposed each change, trust score, timestamp
-- Accessible from `/compare` (already scaffolded for KB-vs-KB) and inline from `/review` as a "full comparison" link
+### B — MCP Server --- COMPLETE
 
-**Files to build / extend:**
-- `src/routes/compare/+page.svelte` — extend existing Venn/diff scaffold into full comparison surface
-- `src/lib/rdf/compare.ts` — diff engine: takes two `Statement[]` arrays, returns categorised `CompareResult`
-- `src/lib/components/CompareTable.svelte` — row-per-statement table with action buttons and category badges
+Standalone Node.js MCP server in `mcp-server/`. 6 tools: `kb_search` (BM25), `kb_get_entity`, `kb_list_entities`, `kb_stats`, `kb_add_note`, `kb_reckoning`. Reads `knowledge.ttl` from workspace folder. Pending notes arrive via `knowledge.pending.jsonl`.
 
-**Removed plans (superseded by comparison view):**
-- Semfile format — custom binary/text format not needed; Turtle import + comparison view covers the use case
-- `DisambiguationPanel.svelte` / `disambiguation.svelte.ts` — merge suggestions surface into comparison view Merges category; standalone panel is redundant
+### C — Google Colab Example Notebook --- NOT STARTED
 
----
+Planned companion notebook to demonstrate MCP server integration from Python. File location: `colab/reckons_ai_mcp_demo.ipynb`.
 
-### B — MCP Server + Cloud Sync
+### D — Multi-KB Management --- COMPLETE
 
-The MCP (Model Context Protocol) server extends Reckons.AI into a persistent personal AI assistant reachable from any device or AI client. This is the primary path to daily-driver usefulness.
+KB registry (`src/lib/storage/kb-registry.ts`), switching, KB Leap cross-references, import-as-new-KB, per-tab KB support via URL `?kb=` param or sessionStorage.
 
-#### Architecture
+### E — Extension Research Sessions (F8) --- COMPLETE
 
-```
-Mobile / Claude app / CLI
-  ↓ MCP protocol (JSON-RPC over HTTP/SSE)
-reckons-mcp-server (Node.js or Deno)
-  ↓ REST / WebSocket
-Reckons.AI web app  ←→  Cloud storage (Google Drive)
-  ↓
-User's KB (IndexedDB, local-first; synced to Drive)
-```
+Session accumulation across tabs, aggregate summaries, at-a-glance bar, batch ingest, mobile Firefox responsive CSS.
 
-#### Core MCP tools to expose
+### F — Passage Grounding (F9) --- COMPLETE
 
-| Tool | Description |
-|------|-------------|
-| `kb_query` | Answer a natural-language question against the confirmed KB |
-| `kb_add_note` | Add a quick note; Shelly extracts triples and queues for review |
-| `kb_search` | Keyword or semantic search over entities and statements |
-| `kb_status` | Return pending review count, trust scores, recent changes |
-| `kb_list_kbs` | List available KBs for the authenticated user |
-| `kb_switch` | Set active KB for subsequent calls |
-| `calendar_today` | Return today's calendar events as KB-enriched context |
+`excerpt` field on Statement. LLM prompt rule requests verbatim source sentence. Persists via `meta:excerpt` in TTL reification. Displayed in StatementCard and DiffEntry.
 
-#### KB identity (implemented — `src/lib/storage/kb-fingerprint.ts`)
+### G — Enrichment Pipeline (F10) --- NOT STARTED
 
-Every KB carries two complementary identifiers, both derived locally with no account required:
+Progressive analysis inspired by Semiont. Reserved for future development.
 
-| Identifier | Derivation | Changes? | Used for |
-|---|---|---|---|
-| **Stable KB ID** | UUID generated once at KB creation, stored in settings | Never | MCP routing, Drive folder naming, cross-device references |
-| **Content fingerprint** | SHA-256 of sorted canonical N-Quads of confirmed/refined statements | Every edit | Sync verification, deduplication, snapshot references |
+### H — Diff Summary (F11) --- COMPLETE
 
-The stable ID is displayed compactly as the first 8 chars (e.g. `A1B2C3D4`); the full UUID is copyable. The content fingerprint is computed on demand and displayed as `xxxx-xxxx-xxxx-xxxx` (first 32 hex chars). Both are visible in Settings → KB Identity.
+`src/lib/rdf/diff-summary.ts` generates 3-part summaries (new/reinforcing/conflicting). Integrated in `/compare`, `/review`, and browser extension sidepanel.
 
-#### User model + authentication
+### I — Predicate Manager (F12) --- COMPLETE
 
-- Each user's KB is identified by its **stable KB ID** — no account needed for local use
-- Default KB is `kbase` (the existing IndexedDB name); users can create named KBs
-- MCP server holds a **session token** that maps to a stable KB ID
-- Self-hosted: single-user mode with optional password; no cloud account needed
-- Cloud mode: Google OAuth + Drive for KB storage, keyed by stable KB ID
+`PredicateManager.svelte` on `/kb` page. View all predicates with counts, rename, merge.
 
-#### Cloud storage (Google Drive first)
+### J — Content Safety --- COMPLETE
 
-- KB exported as Turtle (`.ttl`) and stored in a dedicated Drive folder: `Reckons.AI/kbs/<kb-name>.ttl`
-- On sync: Drive `.ttl` is ingested as a trusted source; conflicts go to the comparison view
-- Sync can be manual ("push to Drive" / "pull from Drive") or automatic on change
-- Future: support S3-compatible storage as an alternative backend
+`src/lib/safety/content-policy.ts`. Ethics preamble in all LLM prompts. Content classifier (blocked/mature/none). Export advisory.
 
-#### Voice interface (Hume.AI)
+### K — Whisper STT --- COMPLETE
 
-- `VoiceInput.svelte` is scaffolded; Hume.AI SDK install: `npm install @humeai/voice`
-- `docs/VOICE_SETUP.md` has integration notes
-- Primary use case via MCP: voice note → `kb_add_note` → queued for review
-- Emotion context from Hume can tag notes with affect metadata (optional enrichment)
+`src/lib/integrations/llm/whisper-stt.ts`. Local speech-to-text via transformers.js. Mic button in chat tab.
 
-#### Google Calendar integration
+### L — Kokoro TTS --- COMPLETE
 
-- `src/lib/google/calendar.ts` and `calendar-rdf.ts` exist; partially implemented
-- MCP `calendar_today` tool should surface upcoming events with KB entity links
-- e.g. "Meeting with Alice" → KB has `<urn:kbase:person/alice>` with notes, context
-- Needed: end-to-end test of the OAuth → calendar fetch → RDF conversion pipeline
+`src/lib/integrations/llm/kokoro-tts.ts`. Local text-to-speech for story walkthroughs.
 
-#### VR / AR (lower priority)
+### M — Model Cache Management --- COMPLETE
 
-- `VRShell.svelte` and `ARShell.svelte` scaffolded, not connected to any route
-- WebXR API is the integration point
-- Useful once MCP is stable — spatial KB browsing as a stretch goal
+`src/lib/integrations/llm/model-cache.ts`. Inspect, sideload, purge locally cached WASM models. Model manifests for SmolLM2-360M, MiniLM-L6-v2, Kokoro 82M, Whisper Tiny.
 
----
+### Future / Scaffolded
 
-### C — Google Colab Example Notebook
-
-A companion Colab notebook to demonstrate the MCP server and KB query capabilities outside the web UI. Target audience: developers, researchers, and power users who want to script against their KB.
-
-**Notebook outline:**
-
-1. **Setup** — install `mcp` client library, set server URL + token
-2. **Add notes** — `kb_add_note` examples: plain text, Turtle snippet, URL
-3. **Query the KB** — `kb_query` with natural-language questions, inspect returned triples
-4. **Bulk import** — load a `.ttl` file, push to KB via `kb_add_note` or direct Turtle ingest
-5. **Calendar context** — `calendar_today`, show how events link to KB entities
-6. **Export** — pull the full KB as Turtle, analyse with `rdflib` or `networkx`
-7. **Visualise** — plot the KB graph with `matplotlib` or `pyvis`
-
-**File location:** `colab/reckons_ai_mcp_demo.ipynb`
+- **VR / AR**: `VRShell.svelte` and `ARShell.svelte` scaffolded, not connected to routes
+- **Hume.AI Voice**: `VoiceInput.svelte` scaffolded, requires SDK install
+- **Cloud sync**: Google Drive integration exists; full sync workflow not yet end-to-end
 
 ---
 
 ## 5. Technical Debt
 
-| Issue | Severity | Fix |
-|-------|----------|-----|
-| `src/routes/api/merge-analysis.ts` missing `+` prefix | **High** — route is unreachable | Rename to `src/routes/api/merge-analysis/+server.ts` |
-| `pendingStatements()` previously included merge meta-statements | Medium — fixed | Done |
-| `setStatus` changelog log action uses wrong action string for `pending-removal` | Low | Update logChange in setStatus to handle new status |
-| `TurtleCompanion.svelte` still in codebase | Low | Delete |
-| WASM backend: `wasm-worker.ts` loading strategy needs review for production | Medium | Test with `pnpm build` |
-| TurtleShell floating bubble removed | Done — session 3 | Replaced with `🐢` button in SearchBar; TurtleChatPanel rendered directly from layout |
-| `.env` lacked Ollama and multi-provider variables | Done — session 3 | Added `VITE_OLLAMA_BASE_URL`, `VITE_OLLAMA_MODEL`, `VITE_PREFERRED_BACKEND`, etc. |
-| `saveSettings` missing `ollamaModel`/`ollamaBaseUrl` in serialized object | Done — session 3 | Fixed in `db.ts` |
+| Issue | Severity | Status |
+|-------|----------|--------|
+| `src/routes/api/merge-analysis.ts` missing `+` prefix | **High** — route is unreachable | Rename to `+server.ts` |
+| Orphaned `TurtleCompanion.svelte` | Low | Delete |
+| Orphaned `AtmosphericField.svelte` (commented out) | Low | Delete or re-enable |
 
 ---
 
@@ -215,11 +149,17 @@ KnowledgeGraph.svelte — 3D vis
 ```
 
 ### LLM providers (in order of local-first preference)
-1. **Ollama** — fully local, no API key, best privacy ← recommended for self-hosting
-2. **WebAssembly** — fully in-browser, no server, limited model quality
-3. **Claude** — highest quality, cloud, API key required
-4. **OpenAI** — high quality, cloud, API key required
-5. **Gemini** — good quality, cloud, API key required
+1. **Ollama** — fully local, no API key, best privacy
+2. **WebAssembly** — fully in-browser via @huggingface/transformers, default SmolLM2-360M
+3. **Chrome AI** — Gemini Nano via Prompt API, Chrome-only
+4. **Claude** — highest quality, cloud, API key required
+5. **OpenAI** — high quality, cloud, API key required
+6. **Gemini** — good quality, cloud, API key required
+7. **OpenRouter** — unified API, free tier available
+8. **Manual paste** — works with any LLM web interface
+9. **Mock** — dummy responses for testing
+
+Per-task backend overrides: `ingestBackend`, `analyzeBackend`, `chatBackend`, `diffSummaryBackend`, `mergeAnalysisBackend`
 
 ### Shelly actions routing (as of this session)
 - `add_triple` → `status: 'pending'` → appears in /review **Incoming** tab

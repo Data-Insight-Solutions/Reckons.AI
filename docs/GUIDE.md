@@ -16,8 +16,8 @@ A browser extension lets you compare any web page against your Turtle in real ti
 git clone <repo>
 cd tripleNotes
 cp .env.example .env          # add your API key(s)
-npm install
-npm run dev                    # http://localhost:5173
+pnpm install
+pnpm dev                    # http://localhost:5173
 ```
 
 ### Option B — Docker (one command, no Node required)
@@ -31,7 +31,7 @@ All data is stored in IndexedDB inside your browser. Nothing is sent to any serv
 ### Option C — Static hosting (Netlify / Vercel / Cloudflare Pages)
 
 ```bash
-npm run build                  # generates dist/
+pnpm build                  # generates dist/
 ```
 
 Deploy `dist/` to any static host. No backend required. The app is a pure PWA — install it from the browser for an app-like experience on desktop and mobile.
@@ -105,7 +105,7 @@ Setup (one time):
 
 ### Local WASM — free, offline
 
-Runs a small language model (Qwen 2.5 0.5B or similar) in a Web Worker via transformers.js. No account, no install, works in any browser. Used as the **automatic fallback** if a cloud backend is selected but no API key is configured.
+Runs a small language model (SmolLM2-360M by default) in a Web Worker via @huggingface/transformers. No account, no install, works in any browser. Used as the **automatic fallback** if a cloud backend is selected but no API key is configured.
 
 - **Pros:** Works everywhere, zero setup, completely private
 - **Cons:** Slower (15–120s), lower quality than larger models
@@ -159,19 +159,12 @@ Note: Claude.ai subscriptions ($20/month) do **not** include API access. The API
 
 First-time users are guided by **Shelly**, the turtle companion in the bottom-left of the graph view.
 
-### Starter scenarios
+### Starter content
 
-On the landing page, choose a starter scenario to pre-load your Turtle with example knowledge:
+On the landing page:
 
-| Scenario | Description |
-|---|---|
-| Float Trip | Weather-dependent group event planning |
-| Home Project | Kitchen renovation with contractor bids |
-| Research Notes | Academic literature tracking |
-| Emergency Prep | Household readiness checklist |
-| Blank | Start from scratch → goes to Ingest |
-
-See [`docs/USER_STORIES.md`](USER_STORIES.md) for the detailed collaborative workflows behind these scenarios.
+- **Quick-Start Example** — a practical KB with 15 entities and 90 triples showing how real-world data maps to a knowledge graph. Import it to explore immediately.
+- **Documentation Hub** — switch to the built-in docs KB (`starter-guide.ttl`) for a guided introduction. Amber-ringed **KB Leap nodes** link to 7 deep-dive sub-graphs that auto-import on first click.
 
 ### Tutorial hints
 
@@ -181,10 +174,11 @@ To disable tutorial hints: **Settings → Display → tutorial hints → off**. 
 
 ### Shelly chat
 
-Click the turtle companion or the 🐢 button in the search bar to open Shelly's chat panel. Two tabs:
+Click the 🐢 button in the search bar to open Shelly's chat panel. Three tabs:
 
-- **learn turtle** — 9-step walkthrough of the Turtle format, the workflow, and Reckonings
-- **chat** — free-form conversation with Claude, with your Turtle as context. Shelly can propose new triples, edits, and deletions; review them in the Review tab before they take effect.
+- **tutorial** — step-by-step walkthrough of the Turtle format, the workflow, and Reckonings
+- **chat** — free-form conversation with your LLM backend, grounded in your KB. Shelly can propose new triples, edits, and deletions; review them in the Review tab before they take effect. Supports voice input via Whisper STT (mic button, no cloud required).
+- **explore** — story picker chips at top + LLM-driven guided tours of your KB. Story playback with TTS via Kokoro (local) or browser speech synthesis.
 
 ---
 
@@ -194,22 +188,25 @@ The extension requires **Google Chrome** (or Chromium-based browsers: Edge, Brav
 
 ### Installation
 
-1. `npm run build:extension` — builds to `dist-extension/`
+1. `pnpm build:extension` — builds to `dist/extension/`
 2. Chrome → `chrome://extensions` → Enable "Developer mode"
-3. "Load unpacked" → select `dist-extension/`
+3. "Load unpacked" → select `dist/extension/`
 
 ### Features
 
-#### Compare Page
-Opens a side panel alongside the current web page. The AI analyzes the page against your Turtle and highlights:
-- **Red** — claims that conflict with your Turtle
-- **Green** — claims that reinforce your Turtle
-- **Blue** — new knowledge not yet in your Turtle
+#### Compare Tab
+Opens a side panel alongside the current web page. The AI analyzes the page against your KB and highlights:
+- **Red** — claims that conflict with your KB
+- **Green** — claims that reinforce your KB
+- **Blue** — new knowledge not yet in your KB
 
-Each highlighted span shows an always-visible label (subject · predicate) and a hover tooltip with full triple detail.
+Each highlighted span shows an always-visible label (subject - predicate) and a hover tooltip with full triple detail. An at-a-glance proportional bar shows the balance of new/conflicting/reinforcing information.
 
-#### Ingest Page
-Sends the page's already-extracted triples directly to your Turtle (no re-analysis). Requires Reckons.AI to be open in another tab. After ingesting, check **Review** to confirm or reject the new statements.
+#### Session Tab
+Accumulates findings across all pages analyzed during your research session. Shows cross-page summaries per category, per-page breakdown with conflict/new pill counts, and a batch "Ingest All New" button. Sessions persist across browser restarts.
+
+#### Ingest Tab
+Sends the page's already-extracted triples directly to your KB (no re-analysis). Requires Reckons.AI to be open in another tab. After ingesting, check **Review** to confirm or reject the new statements.
 
 ### Extension Settings
 
@@ -313,7 +310,7 @@ Voice input via the Hume.AI SDK is scaffolded in `src/lib/components/VoiceInput.
 ### Setup
 
 ```bash
-npm install @humeai/voice
+pnpm install @humeai/voice
 ```
 
 1. Sign up at [hume.ai](https://hume.ai) and create an API key
@@ -349,11 +346,16 @@ src/
     storage/       # Dexie IndexedDB (db.ts, backup.ts, kb-fingerprint.ts, kb-registry.ts)
     stores/        # Svelte 5 reactive stores (kb.svelte.ts, ingest.svelte.ts, settings.svelte.ts, ...)
     rdf/           # RDF types, temporal reasoning, entity types, comparison engine
-    llm/           # LLM dispatching (claude, openai, gemini, ollama, wasm, openrouter)
+    integrations/  # Third-party integrations organized by company
+      llm/         # claude, openai, gemini, ollama, wasm, openrouter, whisper-stt, kokoro-tts, model-cache
+      parsers/     # firecrawl, mistral-ocr
+      google/      # OAuth, Calendar, Drive
+      indico/      # Indico event management
+      meshy/       # 3D model generation
     3d/            # Threlte (Three.js) graph, AR/VR shells
     components/    # Shared UI (NavBar, SnapPanel, TurtleChatPanel, MergeReview, ...)
+    safety/        # Content policy, classifier, ethics preamble
     onboarding/    # Starter templates (templates.ts)
-    google/        # OAuth, Drive, Calendar integrations
     extension-bridge.ts  # Exposes window.__reckonsKB for the browser extension
   extension/       # Chrome MV3 extension (background, content-script, popup, sidepanel)
   routes/
@@ -414,7 +416,7 @@ VITE_GEMINI_MODEL=gemini-2.0-flash
 VITE_PREFERRED_BACKEND=claude
 VITE_OLLAMA_BASE_URL=http://localhost:11434
 VITE_OLLAMA_MODEL=llama3.2
-VITE_WASM_MODEL=Xenova/Qwen2.5-0.5B-Instruct
+VITE_WASM_MODEL=HuggingFaceTB/SmolLM2-360M-Instruct
 ```
 
 Keys in `.env` are baked into the extension build at compile time and stored as defaults in `chrome.storage.local`. They are not exposed in the web app beyond the settings page (where users can override them).
@@ -422,7 +424,7 @@ Keys in `.env` are baked into the extension build at compile time and stored as 
 ### Building the Extension
 
 ```bash
-npm run build:extension        # outputs to dist-extension/
+pnpm build:extension        # outputs to dist/extension/
 ```
 
 The extension build is separate from the app build (`vite.extension.config.ts`). Both share types from `src/extension/types.ts`.
@@ -430,10 +432,10 @@ The extension build is separate from the app build (`vite.extension.config.ts`).
 ### Testing
 
 ```bash
-npm run test:e2e               # desktop Chrome only
-npm run test:e2e:devices       # all 6 device profiles
-npm run test:e2e:mobile        # Android + iOS + tablet
-npm run test:e2e:headed        # headed Chrome (for debugging)
+pnpm test:e2e               # desktop Chrome only
+pnpm test:e2e:devices       # all 6 device profiles
+pnpm test:e2e:mobile        # Android + iOS + tablet
+pnpm test:e2e:headed        # headed Chrome (for debugging)
 ```
 
 Device profiles: `desktop-chrome`, `desktop-firefox`, `desktop-safari`, `mobile-android` (Pixel 7), `mobile-ios` (iPhone 15), `tablet` (iPad Pro 11).
@@ -445,6 +447,29 @@ sudo apt-get install libavif16   # Ubuntu/Debian
 npx playwright install webkit
 ```
 
-### MCP Server (Roadmap)
+### MCP Server
 
-A Model Context Protocol server is planned to expose Turtle query tools (`kb_query`, `kb_add_note`, `kb_search`) to Claude Desktop and other MCP clients. See the roadmap notes in `memory/MEMORY.md` for current status.
+A standalone Node.js MCP server in `mcp-server/` exposes 6 tools to AI agents (Claude Desktop, Cursor, etc.):
+
+| Tool | Description |
+|------|-------------|
+| `kb_search` | Full-text BM25 search over KB entities and statements |
+| `kb_get_entity` | Get all statements for a specific entity |
+| `kb_list_entities` | List all entities with type and connection count |
+| `kb_stats` | Return KB statistics |
+| `kb_add_note` | Add a note for extraction and review |
+| `kb_reckoning` | Run a Situation-Target-Proposal analysis |
+
+The MCP server reads `knowledge.ttl` from the workspace folder (auto-exported on each mutation). Pending notes arrive via `knowledge.pending.jsonl`.
+
+### Multi-KB Management
+
+Create, switch, rename, and delete independent knowledge bases from the KB page. Each KB has its own IndexedDB store, stable UUID, and content fingerprint. KB Leap allows cross-referencing entities between KBs — click a leap node to jump to the target KB (auto-imports docs sub-graphs on first click).
+
+### Content Safety
+
+All LLM system prompts include an ethics preamble. A content classifier (`src/lib/safety/content-policy.ts`) filters blocked content on ingest and flags mature content on export. Two levels: `blocked` (filtered out) and `mature` (flagged with advisory).
+
+### Predicate Manager
+
+View all predicates in your KB with usage counts. Rename predicates across all statements, or merge two predicates into one. Accessible from the KB page.
