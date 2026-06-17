@@ -682,8 +682,8 @@
     </div>
     <div class="task-row task-row-sub">
       <div class="task-info">
-        <span class="task-label mono">new triples</span>
-        <span class="task-desc">discover missing relations</span>
+        <span class="task-label mono">enrich</span>
+        <span class="task-desc">discover missing relations + web search</span>
       </div>
       <span class="task-inherits mono">← default</span>
     </div>
@@ -1068,8 +1068,8 @@
 
   <div class="analyze-types-grid">
     <div class="analyze-type-chip">
-      <span class="atype-glyph">＋</span>
-      <span class="atype-label">new triples</span>
+      <span class="atype-glyph">◎</span>
+      <span class="atype-label">enrich</span>
     </div>
     <div class="analyze-type-chip">
       <span class="atype-glyph">⟷</span>

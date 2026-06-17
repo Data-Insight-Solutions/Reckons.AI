@@ -118,6 +118,18 @@
       note: 'JS-rendered web scraping — replaces Jina Reader for URL ingestion when a key is set. Handles SPAs, paywalled content, and complex layouts. 500 free credits/mo.'
     },
     {
+      id: 'tavily',
+      label: 'Tavily',
+      offline: false,
+      color: '#6366f1',
+      keyField: 'tavilyApiKey' as keyof SettingsRecord,
+      modelField: undefined,
+      keyPlaceholder: 'tvly-...',
+      features: [],
+      docsUrl: 'https://tavily.com',
+      note: 'AI-optimized web search for KB enrichment. Powers the Enrich analysis action. 1,000 free searches/mo.'
+    },
+    {
       id: 'mistral',
       label: 'Mistral',
       offline: false,

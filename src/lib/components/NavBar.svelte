@@ -18,7 +18,7 @@
   ];
 
   const ANALYSIS_ACTIONS: { type: AnalysisType; glyph: string; label: string }[] = [
-    { type: 'new-triples',  glyph: '＋', label: 'new triples'  },
+    { type: 'enrich',       glyph: '◎', label: 'enrich'        },
     { type: 'merge',        glyph: '⟷', label: 'merge'         },
     { type: 'entity-types', glyph: '◈', label: 'types'         },
     { type: 'delete',       glyph: '✕', label: 'prune'         },

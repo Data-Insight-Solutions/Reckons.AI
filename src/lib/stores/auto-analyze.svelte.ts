@@ -15,6 +15,7 @@ import type { Statement, Source } from '$lib/rdf/types';
 import { pushNotification } from './notifications.svelte';
 import { embedMany, cosine } from '$lib/embed';
 import { labelFromIRI } from '$lib/rdf/semantic-diff';
+import { tavilySearch } from '$lib/integrations/search/tavily';
 
 export type AnalysisTrigger = 'manual' | 'import' | 'schedule';
 
@@ -74,7 +75,7 @@ function buildEntitySummaries(): EntitySummary[] {
  *
  * Returns the new analysis sourceId, or null if skipped / failed.
  */
-export async function runAndStoreAnalysis(trigger: AnalysisTrigger = 'manual', analysisType: AnalysisType = 'new-triples'): Promise<string | null> {
+export async function runAndStoreAnalysis(trigger: AnalysisTrigger = 'manual', analysisType: AnalysisType = 'enrich'): Promise<string | null> {
   if (_running) return null;
 
   const s = settings();
@@ -137,7 +138,40 @@ export async function runAndStoreAnalysis(trigger: AnalysisTrigger = 'manual', a
       // Embedding failure is non-fatal — continue without semantic annotations
     }
 
-    const result = await reAnalyze({ provider, apiKey, model, ollamaBaseUrl: s.ollamaBaseUrl, reckonsBaseUrl: s.reckonsBaseUrl, entities, analysisType, kbTitle: s.kbTitle, kbDescription: s.kbDescription });
+    // ── Web search enrichment (enrich mode only) ──────────────────────────
+    let webContext: string | undefined;
+    if (analysisType === 'enrich' && s.tavilyApiKey) {
+      try {
+        // Build search queries from KB focus + top entities
+        const kbFocus = s.kbDescription || s.kbTitle || '';
+        const topLabels = entities.slice(0, 5).map(e => e.label);
+        const queries = topLabels.map(label =>
+          kbFocus ? `${label} ${kbFocus}` : label
+        );
+        // Run searches in parallel (max 3 to stay within rate limits)
+        const searchResults = await Promise.all(
+          queries.slice(0, 3).map(q => tavilySearch(s.tavilyApiKey!, q, 3).catch(() => null))
+        );
+        // Format results into compact context for the LLM
+        const snippets: string[] = [];
+        for (const res of searchResults) {
+          if (!res) continue;
+          for (const r of res.results) {
+            snippets.push(`[${r.title}] (${r.url})\n${r.content.slice(0, 300)}`);
+          }
+        }
+        webContext = snippets.length > 0
+          ? snippets.join('\n\n')
+          : '(no relevant web results found)';
+      } catch (e) {
+        console.warn('Web search failed, continuing without:', e);
+        webContext = '(web search unavailable)';
+      }
+    } else if (analysisType === 'enrich' && !s.tavilyApiKey) {
+      webContext = '(no search API key configured — set Tavily API key in Settings > Integrations)';
+    }
+
+    const result = await reAnalyze({ provider, apiKey, model, ollamaBaseUrl: s.ollamaBaseUrl, reckonsBaseUrl: s.reckonsBaseUrl, entities, analysisType, kbTitle: s.kbTitle, kbDescription: s.kbDescription, webContext });
     const total =
       result.typeSuggestions.length +
       result.relationSuggestions.length +

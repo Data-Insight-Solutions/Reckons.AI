@@ -64,9 +64,9 @@ Basis: [plain-language KB support] — Source: [source name]
 Action: [specific first step]
 Consideration: [practical tradeoff]
 
-Recommendation: [2-3 sentences, direct and practical. If the KB lacks enough information, say what's missing.]
+Recommendation: [2-3 sentences, direct and practical. If the KB doesn't cover relevant areas, note what additional sources could strengthen the analysis — but remember that absence of a fact in this KB doesn't mean it's untrue, just not yet captured.]
 
-Confidence: [high / medium / low] — [brief reason]
+Confidence: [high / medium / low] — [brief reason, noting if confidence is limited by KB scope rather than contradictory evidence]
 
 Ask for more: Reply "show technical details" to see the full KB entity references, predicate names, and IRI citations behind this proposal.`;
 

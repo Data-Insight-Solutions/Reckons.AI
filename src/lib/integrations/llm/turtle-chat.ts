@@ -59,7 +59,7 @@ function buildContextSection(ctx: KBContext): string {
   if (ctx.untypedEntityCount > 0) alerts.push(`${ctx.untypedEntityCount} entities have no type (use query_kb filter:"no-type" to see them)`);
   if (ctx.manualStatementCount > 0) alerts.push(`${ctx.manualStatementCount} manually added statements (use query_kb filter:"no-source")`);
 
-  return `\n\n---\nKB SNAPSHOT:\n- ${ctx.statementCount} confirmed statements across ${ctx.sourceCount} source(s)\n- Types in use: ${ctx.typesPresent.join(', ') || 'none yet'}${alerts.length ? '\n- Attention: ' + alerts.join('; ') : ''}\n- Sample entities (label [type] <IRI>: predicates) — untyped shown first:\n${entities || '  (empty KB)'}`;
+  return `\n\n---\nKB SNAPSHOT (sample of ${Math.min(ctx.sampleEntities.length, 15)} of ${ctx.statementCount > 0 ? 'many' : '0'} entities — this KB is deliberately scoped; absence of a fact doesn't mean it's false, just not yet captured):\n- ${ctx.statementCount} confirmed statements across ${ctx.sourceCount} source(s)\n- Types in use: ${ctx.typesPresent.join(', ') || 'none yet'}${alerts.length ? '\n- Attention: ' + alerts.join('; ') : ''}\n- Sample entities (label [type] <IRI>: predicates) — untyped shown first:\n${entities || '  (no entities loaded yet)'}`;
 }
 
 function parseActions(text: string): { clean: string; actions: KBAction[] } {
@@ -85,7 +85,7 @@ Tour guide rules:
 1. Each response: (a) say 1-3 sentences about what you're showing, (b) navigate with adjust_view, (c) ask ONE engaging question
 2. Keep it short — never more than 4 sentences before your question
 3. Use adjust_view in EVERY response to move the graph as you talk
-4. Notice and comment on: hubs with many connections, isolated islands, clusters by source or type, gaps (no-type entities)
+4. Notice and comment on: hubs with many connections, isolated islands, clusters by source or type, entities missing types (which may just not be captured yet — this KB is scoped, not exhaustive)
 5. If the user answers your question, briefly acknowledge it before the next stop
 6. If the user asks you something, answer in 1-2 sentences then continue the tour
 7. Plan a 5-6 stop tour: overview → a hub entity → a cluster or pattern → something unusual → closing invitation

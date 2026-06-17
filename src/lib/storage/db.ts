@@ -111,6 +111,8 @@ export type SettingsRecord = {
   indicoCategoryId?: string;
   /** Last successful Indico sync timestamp */
   indicoLastSync?: number;
+  /** Tavily API key — AI-optimized web search for KB enrichment (free tier: 1k searches/mo) */
+  tavilyApiKey?: string;
 };
 
 export const DEFAULT_TURTLE_SETTINGS: TurtleSettings = {

@@ -43,7 +43,7 @@ export type Source = {
   analysisModel?: string;
   analysisProvider?: string;
   analysisTrigger?: 'manual' | 'import' | 'schedule';
-  analysisFocus?: 'new-triples' | 'merge' | 'entity-types' | 'delete';
+  analysisFocus?: 'enrich' | 'merge' | 'entity-types' | 'delete' | 'new-triples';
   analysisTotalSuggestions?: number;
   /** Merge and prune recommendations stored as actions, NOT as graph statements */
   analysisActions?: {

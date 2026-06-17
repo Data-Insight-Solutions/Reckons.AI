@@ -19,7 +19,8 @@ export type DiffSummary = {
 
 const SUMMARY_SYSTEM = ETHICS_PREAMBLE + `You summarize the differences between a new document and an existing knowledge base.
 You receive three categorized lists of facts (as short glosses or triple descriptions).
-For each category, write 1-3 concise sentences summarizing the key themes. If a category is empty, say "None."
+For each category, write 1-3 concise sentences summarizing the key themes.
+"New to this KB" means the KB hasn't captured these facts yet — not that they are newly discovered or previously unknown in the world. If a category is empty, say "None in this source."
 Respond with valid JSON: {"newSummary":"...","reinforcingSummary":"...","conflictingSummary":"..."}
 No markdown fences, no extra text.`;
 
@@ -66,14 +67,14 @@ function fallbackSummary(diff: Diff): DiffSummary {
   const conflCount = diff.summary.conflicts + diff.summary.antonymConflicts + diff.summary.refines;
   return {
     newSummary: newCount > 0
-      ? `This source introduces ${newCount} new fact${newCount !== 1 ? 's' : ''} not yet in your knowledge base.`
-      : 'None.',
+      ? `This source introduces ${newCount} fact${newCount !== 1 ? 's' : ''} not yet captured in this KB.`
+      : 'None in this source.',
     reinforcingSummary: reinfCount > 0
-      ? `${reinfCount} fact${reinfCount !== 1 ? 's' : ''} corroborate${reinfCount === 1 ? 's' : ''} what you already know.`
-      : 'None.',
+      ? `${reinfCount} fact${reinfCount !== 1 ? 's' : ''} corroborate${reinfCount === 1 ? 's' : ''} what this KB already contains.`
+      : 'None in this source.',
     conflictingSummary: conflCount > 0
-      ? `${conflCount} fact${conflCount !== 1 ? 's' : ''} conflict${conflCount === 1 ? 's' : ''} with or refine${conflCount === 1 ? 's' : ''} existing knowledge.`
-      : 'None.'
+      ? `${conflCount} fact${conflCount !== 1 ? 's' : ''} conflict${conflCount === 1 ? 's' : ''} with or refine${conflCount === 1 ? 's' : ''} existing KB statements.`
+      : 'None in this source.'
   };
 }
 

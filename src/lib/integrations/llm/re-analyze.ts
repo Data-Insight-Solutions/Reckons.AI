@@ -2,10 +2,10 @@ import { chatClaude, chatOpenAI, chatGemini, chatOllama, chatOpenRouter, chatRec
 import { BUILT_IN_TYPES } from '$lib/rdf/entity-types';
 import { ETHICS_PREAMBLE } from '$lib/safety/content-policy';
 
-export type AnalysisType = 'new-triples' | 'merge' | 'entity-types' | 'delete';
+export type AnalysisType = 'enrich' | 'merge' | 'entity-types' | 'delete';
 
 export const ANALYSIS_TYPE_LABELS: Record<AnalysisType, string> = {
-  'new-triples': 'New Triples',
+  'enrich':      'Enrich',
   'merge':       'Merge Entities',
   'entity-types':'Entity Types',
   'delete':      'Entity Delete',
@@ -42,6 +42,8 @@ export interface RelationSuggestion {
   objectIri: string;
   objectLabel: string;
   reason: string;
+  /** URL of the web source that supports this suggestion (enrich mode only) */
+  sourceUrl?: string;
 }
 
 export interface MergeSuggestion {
@@ -93,6 +95,9 @@ function entityBlock(entities: EntitySummary[]): string {
 function buildNewTriplesPrompt(entities: EntitySummary[], kbTitle?: string, kbDescription?: string): string {
   return `${kbHeader(kbTitle, kbDescription)}You are enriching an RDF knowledge graph. Your ONLY task is to identify MISSING RELATIONS — new predicate triples that connect existing entities.
 
+IMPORTANT — OPEN WORLD ASSUMPTION:
+This KB is deliberately scoped. Absence of a fact does NOT mean the fact is false — it means this KB hasn't captured it yet. Your suggestions should surface connections that the KB *probably* should contain given its current focus, not everything that *could* be true in the world.
+
 RULES:
 - Only suggest relations between entities that appear in the list below.
 - Do not suggest type corrections or merges.
@@ -115,6 +120,48 @@ Return exactly:
       "objectIri": "<iri of another entity in the list>",
       "objectLabel": "<label>",
       "reason": "<one sentence — why this relation is clearly implied>"
+    }
+  ]
+}`;
+}
+
+function buildEnrichPrompt(entities: EntitySummary[], webContext: string, kbTitle?: string, kbDescription?: string): string {
+  return `${kbHeader(kbTitle, kbDescription)}You are enriching an RDF knowledge graph using web search results.
+
+IMPORTANT — OPEN WORLD ASSUMPTION:
+This KB is deliberately scoped. Absence of a fact does NOT mean the fact is false — it means this KB hasn't captured it yet. Your job is to identify facts from the web search results that would meaningfully fill gaps in this KB's coverage, given its existing focus and entities.
+
+TASK:
+1. Compare the web search results against the existing entities below.
+2. Identify facts from the web that are RELEVANT to this KB's scope and would fill notable gaps.
+3. Suggest new triples — either connecting existing entities with newly discovered facts, or introducing new entities that clearly belong in this KB's scope.
+
+RULES:
+- Every suggestion must cite which web result it came from.
+- Prefer facts that connect to existing entities over facts about entirely new topics.
+- Do not suggest facts the KB already contains — check the entity predicates.
+- New entity IRIs should follow the pattern: urn:kbase:<type>/<slug>
+- Limit: up to 8 suggestions. Only facts well-supported by the search results.
+- Output valid JSON only — no prose, no markdown fences.
+
+EXISTING ENTITIES (${entities.length}):
+${entityBlock(entities)}
+
+WEB SEARCH RESULTS:
+${webContext}
+
+Return exactly:
+{
+  "relationSuggestions": [
+    {
+      "subjectIri": "<existing or new entity iri>",
+      "subjectLabel": "<label>",
+      "predicateIri": "urn:kbase:predicate/<slug>",
+      "predicateLabel": "<human label>",
+      "objectIri": "<existing or new entity iri>",
+      "objectLabel": "<label>",
+      "reason": "<one sentence — what web source supports this and why it fills a gap>",
+      "sourceUrl": "<url of the web result>"
     }
   ]
 }`;
@@ -243,6 +290,8 @@ export interface ReAnalyzeOptions {
   analysisType: AnalysisType;
   kbTitle?: string;
   kbDescription?: string;
+  /** Pre-formatted web search context (for 'enrich' analysis type) */
+  webContext?: string;
 }
 
 const EMPTY: ReAnalyzeResponse = {
@@ -253,11 +302,11 @@ const EMPTY: ReAnalyzeResponse = {
 };
 
 export async function reAnalyze(opts: ReAnalyzeOptions): Promise<ReAnalyzeResponse> {
-  const { provider, apiKey, model, ollamaBaseUrl, reckonsBaseUrl, entities, analysisType, kbTitle, kbDescription } = opts;
+  const { provider, apiKey, model, ollamaBaseUrl, reckonsBaseUrl, entities, analysisType, kbTitle, kbDescription, webContext } = opts;
   if (entities.length === 0) return EMPTY;
 
   const prompt =
-    analysisType === 'new-triples'   ? buildNewTriplesPrompt(entities, kbTitle, kbDescription) :
+    analysisType === 'enrich'        ? (webContext ? buildEnrichPrompt(entities, webContext, kbTitle, kbDescription) : buildNewTriplesPrompt(entities, kbTitle, kbDescription)) :
     analysisType === 'merge'         ? buildMergePrompt(entities, kbTitle, kbDescription) :
     analysisType === 'entity-types'  ? buildEntityTypesPrompt(entities, kbTitle, kbDescription) :
                                        buildDeletePrompt(entities, kbTitle, kbDescription);

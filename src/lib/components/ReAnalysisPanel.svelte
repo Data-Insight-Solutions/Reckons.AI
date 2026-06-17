@@ -77,7 +77,7 @@
   }
 
   // ── Cost warning / confirm ───────────────────────────────────────────────
-  const ANALYSIS_TYPES: AnalysisType[] = ['new-triples', 'merge', 'entity-types', 'delete'];
+  const ANALYSIS_TYPES: AnalysisType[] = ['enrich', 'merge', 'entity-types', 'delete'];
 
   let showWarning = $state(false);
   let pendingType = $state<AnalysisType | null>(null);
@@ -89,7 +89,7 @@
 
   async function confirmRun() {
     showWarning = false;
-    const id = await runAndStoreAnalysis('manual', pendingType ?? 'new-triples');
+    const id = await runAndStoreAnalysis('manual', pendingType ?? 'enrich');
     if (id) expandedId = id;
     pendingType = null;
   }
@@ -118,6 +118,7 @@
       <p class="warn-body">
         <strong>{pendingType ? focusLabel(pendingType) : ''}</strong> analysis sends your confirmed KB
         entities to <strong>{settings().analyzeBackend ?? settings().preferredBackend}</strong>.
+        {#if pendingType === 'enrich'}Also searches the web via Tavily for relevant facts.{/if}
         Each run costs API credits.
       </p>
       <div class="warn-actions">
@@ -134,7 +135,7 @@
           disabled={analysisRunning()}
           title={type}
         >
-          <span class="run-type-icon">{type === 'new-triples' ? '＋' : type === 'merge' ? '⟷' : type === 'entity-types' ? '◈' : '✕'}</span>
+          <span class="run-type-icon">{type === 'enrich' ? '◎' : type === 'merge' ? '⟷' : type === 'entity-types' ? '◈' : '✕'}</span>
           <span class="run-type-label">{ANALYSIS_TYPE_LABELS[type]}</span>
         </button>
       {/each}

@@ -140,7 +140,7 @@ function handleKbSearch(params: { query: string; limit?: number }): object {
   const results = bm25Search(triples, params.query, Math.min(params.limit ?? 10, 50));
 
   if (results.length === 0) {
-    return { content: [{ type: 'text', text: `No results for "${params.query}"` }] };
+    return { content: [{ type: 'text', text: `No results in this KB for "${params.query}" (absence doesn't mean nonexistence)` }] };
   }
 
   const lines = results.map(r => fmtTriple(r.triple));
@@ -160,14 +160,14 @@ function handleKbGetEntity(params: { entity: string }): object {
   if (!iri.startsWith('urn:') && !iri.startsWith('http')) {
     const resolved = kb.resolveLabel(iri);
     if (!resolved) {
-      return { content: [{ type: 'text', text: `Not found: "${iri}". Use kb_search or kb_list_entities.` }] };
+      return { content: [{ type: 'text', text: `Not found in this KB: "${iri}". Use kb_search or kb_list_entities.` }] };
     }
     iri = resolved;
   }
 
   const triples = kb.triplesAbout(iri);
   if (triples.length === 0) {
-    return { content: [{ type: 'text', text: `No facts for: ${iri}` }] };
+    return { content: [{ type: 'text', text: `No facts in this KB for: ${iri}` }] };
   }
 
   const MAX = 40;
