@@ -94,31 +94,35 @@
   const STEPS = [
     {
       title: "Hi, I'm Shelly",
-      body: `Welcome to **Reckons.AI** — your personal knowledge graph.\n\nI'm your guide. I'll walk you through the main ideas, then you can ask me anything or load a starter scenario to jump straight in.\n\nReckons.AI stores knowledge as a **Turtle** — a living file of facts about your world, with every fact traced back to where it came from.`
+      body: `Welcome to **Reckons.AI** — your personal knowledge graph.\n\nI'm your guide. I'll walk you through the main ideas, then you can ask me anything or load a starter scenario to jump straight in.\n\nReckons.AI stores knowledge as a **Turtle** — a living file of facts about your world, with every fact traced back to the source document it came from.`
     },
     {
       title: 'your turtle file',
-      body: `The core file format is called **Turtle** (\`.ttl\`) — a text format for storing knowledge as a graph.\n\nEverything Reckons.AI knows lives in your Turtle:\n\n• **Entities** — people, places, events, concepts\n• **Relationships** — how they connect\n• **Sources** — where each fact came from\n• **Trust** — how reliable each source has proven to be\n\nYou own the file. Nothing leaves your device unless you share it.`
+      body: `The core file format is called **Turtle** (\`.ttl\`) — a text format for storing knowledge as a graph.\n\nEverything Reckons.AI knows lives in your Turtle:\n\n• **Entities** — people, places, events, concepts\n• **Relationships** — how they connect\n• **Source documents** — visible in the graph as 📄 nodes, linked to everything they contributed\n• **Trust** — how reliable each source has proven to be\n\nYou own the file. Nothing leaves your device unless you share it.`
     },
     {
       title: 'one fact = one triple',
-      body: `Every fact in your Turtle is a **triple**: three parts.\n\n\`subject · predicate · object\`\n\nExample in plain language:\n**Alice** · **organized** · **Meramec Float Trip**\n\nIn your Turtle file:\n\`\`\`\n<urn:kbase:person/alice>\n  <urn:kbase:predicate/organized>\n  <urn:kbase:event/float-trip> .\n\`\`\`\n\nEvery node in the 3D graph is a subject or object. Every edge is a predicate.`
+      body: `Every fact in your Turtle is a **triple**: three parts.\n\n\`subject · predicate · object\`\n\nExample in plain language:\n**Alice** · **organized** · **Meramec Float Trip**\n\nIn your Turtle file:\n\`\`\`\n<urn:kbase:person/alice>\n  <urn:kbase:predicate/organized>\n  <urn:kbase:event/float-trip> .\n\`\`\`\n\nEvery node in the graph is a subject or object. Every edge is a predicate. Source documents also appear as nodes — click one to see which entities it contributed.`
     },
     {
       title: 'adding knowledge',
-      body: `Go to **Ingest** to add new knowledge to your Turtle.\n\nYou can ingest:\n• A **note** you type\n• A **URL** (web page, news article)\n• A **document** (PDF, markdown)\n• A **shared Turtle** (.ttl) from someone else\n\nThe AI reads your source and extracts facts as triples. You review and confirm them — only what you approve enters your Turtle.`
+      body: `Go to **Ingest** to add new knowledge to your Turtle.\n\nYou can ingest:\n• A **note** you type\n• A **URL** (web page, news article)\n• A **document** (PDF, markdown)\n• A **shared Turtle** (.ttl) from someone else\n• Your **calendar** events\n\nThe AI reads your source, consolidates overlapping facts, and extracts triples. You review and confirm them — only what you approve enters your Turtle.\n\nEach ingested source becomes a 📄 document node in the graph, connected to every entity it contributed.`
     },
     {
       title: 'review & confirm',
       body: `After ingestion, triples start as **pending** — waiting for your approval.\n\nIn the **Review** tab:\n• ✓ **Confirm** triples that are accurate\n• ✕ **Reject** ones that are wrong\n• Merge duplicate entities (e.g. "Alice Smith" and "Alice" are the same person)\n\nOnly confirmed triples appear in the graph and are used by Reckonings. This keeps your Turtle trustworthy.`
     },
     {
+      title: 'explore the graph',
+      body: `Your knowledge comes alive in the **graph view**.\n\nUse the layout chips to organize your view:\n• **force** — free-form physics layout\n• **source** — clusters around each source document\n• **type** — groups by entity type (Person, Concept, etc.)\n• **hub** — highlights your most connected entities\n• **order** — numbered grid you can drag to reorder\n• **focus** — centers on the selected node\n\nFilters let you highlight **hubs**, **islands**, **leaps**, or entities missing types or sources.`
+    },
+    {
       title: 'run a reckoning',
       body: `Once your Turtle has facts, try a **Reckoning** (the ⟁ tab).\n\n1. Describe your **situation** — what context matters?\n2. State your **target** — what outcome do you want?\n3. Reckons.AI proposes options grounded only in what your Turtle already knows\n\nThe proposal cites which facts and sources back each option. You can accept the AI's suggested updates to mark the decision as part of your Turtle's history.`
     },
     {
-      title: 'sharing your turtle',
-      body: `Your Turtle is a portable \`.ttl\` file.\n\n**Share it** when others need your knowledge:\n• Go to **Settings → Export** to download your Turtle\n• Send it to teammates, family, or collaborators\n• They import it in their own Reckons.AI as a trusted source\n\n**Example:** Alice plans a float trip, exports her Turtle, sends it to friends. Each person imports it and asks Shelly questions specific to them — departure time, gear, weather.`
+      title: 'sharing & CLI',
+      body: `Your Turtle is a portable \`.ttl\` file.\n\n**Share it:** Go to **Settings → Export** to download your Turtle. Others import it as a trusted source in their own Reckons.AI.\n\n**Use the CLI:** The \`reckons\` command-line tool reads your Turtle from the terminal:\n\`\`\`\nreckons search "contract"\nreckons ask "what do I know about Alice?"\nreckons --listen\n\`\`\`\n\nThe \`--listen\` flag enables audio mode — speak to your KB through smart glasses or bluetooth headphones. Mic in, speaker out.`
     },
     {
       title: 'the turtle format (technical)',
@@ -126,7 +130,7 @@
     },
     {
       title: "you're ready",
-      body: `That's the core of Reckons.AI:\n\n<span class="check">✓</span> **Ingest** sources to add facts\n<span class="check">✓</span> **Review** to confirm what's accurate\n<span class="check">✓</span> **Reckon** (⟁) when you need a decision\n<span class="check">✓</span> **Share** your Turtle (.ttl) with others\n<span class="check">✓</span> **Base** (☷) to explore and export your Turtle\n\nSwitch to the **chat** tab to ask me anything about your Turtle. Or close this panel and start exploring.`
+      body: `That's the core of Reckons.AI:\n\n<span class="check">✓</span> **Ingest** sources to add facts\n<span class="check">✓</span> **Review** to confirm what's accurate\n<span class="check">✓</span> **Explore** the graph with layout modes and filters\n<span class="check">✓</span> **Reckon** (⟁) when you need a decision\n<span class="check">✓</span> **Share** your Turtle (.ttl) or use the \`reckons\` CLI\n<span class="check">✓</span> **Base** (☷) to manage and export your Turtle\n\nSwitch to the **chat** tab to ask me anything about your Turtle. Or close this panel and start exploring.`
     }
   ];
 
