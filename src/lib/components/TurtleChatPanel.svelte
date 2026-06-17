@@ -3,7 +3,7 @@
    * TurtleChatPanel — slide-in panel next to the Turtle companion.
    *
    * Two tabs:
-   *  • "learn turtle" — guided 8-step tutorial on RDF/Turtle format
+   *  • "learn" — guided tutorial on KB concepts and workflow
    *  • "chat"         — free-form Claude conversation that can propose KB changes
    */
   import { onMount, tick } from 'svelte';
@@ -94,23 +94,23 @@
   const STEPS = [
     {
       title: "Hi, I'm Shelly",
-      body: `Welcome to **Reckons.AI** — your personal knowledge graph.\n\nI'm your guide. I'll walk you through the main ideas, then you can ask me anything or load a starter scenario to jump straight in.\n\nReckons.AI stores knowledge as a **Turtle** — a living file of facts about your world, with every fact traced back to the source document it came from.`
+      body: `Welcome to **Reckons.AI** — your personal knowledge base.\n\nI'm your guide. I'll walk you through the main ideas, then you can ask me anything or load a starter scenario to jump straight in.\n\nReckons.AI stores knowledge as a **KB** (knowledge base) — a living graph of facts about your world, with every fact traced back to the source document it came from.`
     },
     {
-      title: 'your turtle file',
-      body: `The core file format is called **Turtle** (\`.ttl\`) — a text format for storing knowledge as a graph.\n\nEverything Reckons.AI knows lives in your Turtle:\n\n• **Entities** — people, places, events, concepts\n• **Relationships** — how they connect\n• **Source documents** — visible in the graph as 📄 nodes, linked to everything they contributed\n• **Trust** — how reliable each source has proven to be\n\nYou own the file. Nothing leaves your device unless you share it.`
+      title: 'your knowledge base',
+      body: `Your KB is stored in the **Turtle** (\`.ttl\`) format — a W3C standard for expressing knowledge as a graph.\n\nEverything Reckons.AI knows lives in your KB:\n\n• **Entities** — people, places, events, concepts\n• **Relationships** — how they connect\n• **Source documents** — visible in the graph as 📄 nodes, linked to everything they contributed\n• **Trust** — how reliable each source has proven to be\n\nYou own the data. Nothing leaves your device unless you share it.`
     },
     {
       title: 'one fact = one triple',
-      body: `Every fact in your Turtle is a **triple**: three parts.\n\n\`subject · predicate · object\`\n\nExample in plain language:\n**Alice** · **organized** · **Meramec Float Trip**\n\nIn your Turtle file:\n\`\`\`\n<urn:kbase:person/alice>\n  <urn:kbase:predicate/organized>\n  <urn:kbase:event/float-trip> .\n\`\`\`\n\nEvery node in the graph is a subject or object. Every edge is a predicate. Source documents also appear as nodes — click one to see which entities it contributed.`
+      body: `Every fact in your KB is a **triple**: three parts.\n\n\`subject · predicate · object\`\n\nExample in plain language:\n**Alice** · **organized** · **Meramec Float Trip**\n\nIn Turtle syntax:\n\`\`\`\n<urn:kbase:person/alice>\n  <urn:kbase:predicate/organized>\n  <urn:kbase:event/float-trip> .\n\`\`\`\n\nEvery node in the graph is a subject or object. Every edge is a predicate. Source documents also appear as nodes — click one to see which entities it contributed.`
     },
     {
       title: 'adding knowledge',
-      body: `Go to **Ingest** to add new knowledge to your Turtle.\n\nYou can ingest:\n• A **note** you type\n• A **URL** (web page, news article)\n• A **document** (PDF, markdown)\n• A **shared Turtle** (.ttl) from someone else\n• Your **calendar** events\n\nThe AI reads your source, consolidates overlapping facts, and extracts triples. You review and confirm them — only what you approve enters your Turtle.\n\nEach ingested source becomes a 📄 document node in the graph, connected to every entity it contributed.`
+      body: `Go to **Ingest** (＋) to add new knowledge to your KB.\n\nYou can ingest:\n• A **note** you type\n• A **URL** (web page, news article)\n• A **document** (PDF, markdown)\n• A **shared KB** (.ttl) from someone else\n• Your **calendar** events\n\nThe AI reads your source, consolidates overlapping facts, and extracts triples. You review and confirm them — only what you approve enters your KB.\n\nEach ingested source becomes a 📄 document node in the graph, connected to every entity it contributed.`
     },
     {
       title: 'review & confirm',
-      body: `After ingestion, triples start as **pending** — waiting for your approval.\n\nIn the **Review** tab:\n• ✓ **Confirm** triples that are accurate\n• ✕ **Reject** ones that are wrong\n• Merge duplicate entities (e.g. "Alice Smith" and "Alice" are the same person)\n\nOnly confirmed triples appear in the graph and are used by Reckonings. This keeps your Turtle trustworthy.`
+      body: `After ingestion, triples start as **pending** — waiting for your approval.\n\nIn the **Review** tab:\n• ✓ **Confirm** triples that are accurate\n• ✕ **Reject** ones that are wrong\n• Merge duplicate entities (e.g. "Alice Smith" and "Alice" are the same person)\n\nOnly confirmed triples appear in the graph and are used by Reckonings. This keeps your KB trustworthy.`
     },
     {
       title: 'explore the graph',
@@ -118,19 +118,19 @@
     },
     {
       title: 'run a reckoning',
-      body: `Once your Turtle has facts, try a **Reckoning** (the ⟁ tab).\n\n1. Describe your **situation** — what context matters?\n2. State your **target** — what outcome do you want?\n3. Reckons.AI proposes options grounded only in what your Turtle already knows\n\nThe proposal cites which facts and sources back each option. You can accept the AI's suggested updates to mark the decision as part of your Turtle's history.`
+      body: `Once your KB has facts, try a **Reckoning** (the ⟁ tab).\n\n1. Describe your **situation** — what context matters?\n2. State your **target** — what outcome do you want?\n3. Reckons.AI proposes options grounded only in what your KB already knows\n\nThe proposal cites which facts and sources back each option. You can accept the AI's suggested updates to mark the decision as part of your KB's history.`
     },
     {
       title: 'sharing & CLI',
-      body: `Your Turtle is a portable \`.ttl\` file.\n\n**Share it:** Go to **Settings → Export** to download your Turtle. Others import it as a trusted source in their own Reckons.AI.\n\n**Use the CLI:** The \`reckons\` command-line tool reads your Turtle from the terminal:\n\`\`\`\nreckons search "contract"\nreckons ask "what do I know about Alice?"\nreckons --listen\n\`\`\`\n\nThe \`--listen\` flag enables audio mode — speak to your KB through smart glasses or bluetooth headphones. Mic in, speaker out.`
+      body: `Your KB exports as a portable \`.ttl\` file.\n\n**Share it:** Go to **KB** to download your knowledge base. Others import it as a trusted source in their own Reckons.AI.\n\n**Use the CLI:** The \`reckons\` command-line tool reads your KB from the terminal:\n\`\`\`\nreckons search "contract"\nreckons ask "what do I know about Alice?"\nreckons --listen\n\`\`\`\n\nThe \`--listen\` flag enables audio mode — speak to your KB through smart glasses or bluetooth headphones. Mic in, speaker out.`
     },
     {
-      title: 'the turtle format (technical)',
-      body: `For the curious: Turtle is a W3C standard for **RDF** (Resource Description Framework).\n\nEach entity has a unique **IRI** (like a URL for a concept):\n\`\`\`\n@prefix kb: <urn:kbase:> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n\nkb:person/alice\n  a kb:type/Person ;\n  rdfs:label "Alice" ;\n  kb:predicate/organized kb:event/float-trip .\n\`\`\`\n\nSemicolons stack predicates for the same subject. \`a\` is shorthand for \`rdf:type\`. The dot ends the statement.\n\nYou never need to write raw Turtle — the app handles it. But you can always inspect or edit the \`.ttl\` file directly.`
+      title: 'the Turtle format (technical)',
+      body: `For the curious: Turtle is a W3C standard for **RDF** (Resource Description Framework) — the file format behind your KB.\n\nEach entity has a unique **IRI** (like a URL for a concept):\n\`\`\`\n@prefix kb: <urn:kbase:> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n\nkb:person/alice\n  a kb:type/Person ;\n  rdfs:label "Alice" ;\n  kb:predicate/organized kb:event/float-trip .\n\`\`\`\n\nSemicolons stack predicates for the same subject. \`a\` is shorthand for \`rdf:type\`. The dot ends the statement.\n\nYou never need to write raw Turtle — the app handles it. But you can always inspect or edit the \`.ttl\` file directly.`
     },
     {
       title: "you're ready",
-      body: `That's the core of Reckons.AI:\n\n✓ **Ingest** sources to add facts\n✓ **Review** to confirm what's accurate\n✓ **Explore** the graph with layout modes and filters\n✓ **Reckon** (⟁) when you need a decision\n✓ **Share** your Turtle (.ttl) or use the \`reckons\` CLI\n✓ **Base** (☷) to manage and export your Turtle\n\nSwitch to the **chat** tab to ask me anything about your Turtle. Or close this panel and start exploring.`
+      body: `That's the core of Reckons.AI:\n\n✓ **Ingest** (＋) sources to add facts\n✓ **Review** (◐) to confirm what's accurate\n✓ **Explore** the graph with layout modes and filters\n✓ **Reckon** (⟁) when you need a decision\n✓ **Share** your KB (.ttl) or use the Reckons CLI\n✓ **KB** (△) to manage and export your knowledge base\n\nSwitch to the **chat** tab to ask me anything about your KB. Or close this panel and start exploring.`
     }
   ];
 
@@ -492,7 +492,31 @@
 
   // ── Story tab ─────────────────────────────────────────────────────────────
 
-  const kbStories = $derived(extractStories(statements()));
+  const kbStories = $derived((() => {
+    const rdfStories = extractStories(statements());
+    const s = settings();
+    if (s.kbStory && s.kbStory.length > 0) {
+      const userStory: Story = {
+        id: 'urn:reckons:story/KbGuide',
+        label: s.kbTitle ? `${s.kbTitle} Guide` : 'KB Guide',
+        description: s.kbDescription ?? 'A guided tour of this knowledge base.',
+        autoplay: false,
+        pace: 8,
+        steps: s.kbStory.map((step, i) => ({
+          id: `urn:reckons:story/KbGuide/step${i + 1}`,
+          order: i + 1,
+          title: step.title,
+          content: step.content,
+          highlights: step.highlights ?? [],
+        })),
+      };
+      // Put the user story first, skip if an RDF story with same ID exists
+      if (!rdfStories.some(s => s.id === userStory.id)) {
+        return [userStory, ...rdfStories];
+      }
+    }
+    return rdfStories;
+  })());
   let currentStory = $state<Story | null>(null);
   let storyStepIdx = $state(0);
   let storyAutoPlaying = $state(false);
@@ -1044,7 +1068,7 @@
     <div class="panel-header">
       <img src="/svg/head1.svg" alt="" class="turtle-icon" />
       <Tabs.List class="tcp-tab-list">
-        <Tabs.Trigger value="tutorial" class="tcp-tab">learn turtle</Tabs.Trigger>
+        <Tabs.Trigger value="tutorial" class="tcp-tab">learn</Tabs.Trigger>
         <Tabs.Trigger value="chat" class="tcp-tab">chat</Tabs.Trigger>
         <Tabs.Trigger value="explore" class="tcp-tab">explore</Tabs.Trigger>
       </Tabs.List>

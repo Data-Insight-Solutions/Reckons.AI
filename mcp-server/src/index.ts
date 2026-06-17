@@ -22,7 +22,7 @@
 
 import { createInterface } from 'node:readline';
 import { KBReader } from './kb-reader.js';
-import { bm25Search } from './search.js';
+import { bm25Search, invalidateCache } from './search.js';
 
 // ── Args ─────────────────────────────────────────────────────────────────────
 
@@ -36,7 +36,10 @@ if (!kbPath) {
 }
 
 const kb = new KBReader(kbPath);
-kb.watch(() => process.stderr.write(`[reckons-mcp] KB reloaded\n`));
+kb.watch(() => {
+  invalidateCache();
+  process.stderr.write(`[reckons-mcp] KB reloaded\n`);
+});
 
 process.stderr.write(`[reckons-mcp] Loaded KB from ${kbPath} (${kb.stats().tripleCount} triples)\n`);
 
@@ -96,6 +99,19 @@ const TOOLS = [
     }
   },
   {
+    name: 'kb_subgraph',
+    description: 'Extract a focused neighborhood around an entity (1-2 hops). More efficient than kb_get_entity for understanding context around a specific topic.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        entity: { type: 'string', description: 'Entity IRI or name/slug to center the subgraph on' },
+        hops:   { type: 'number', description: 'Number of hops from the entity (default 1, max 2)', default: 1 },
+        limit:  { type: 'number', description: 'Max triples to return (default 30, max 60)', default: 30 }
+      },
+      required: ['entity']
+    }
+  },
+  {
     name: 'kb_reckoning',
     description: 'Run an STP (Situation-Target-Proposal) analysis using the knowledge base. Returns a structured proposal with KB citations.',
     inputSchema: {
@@ -111,27 +127,28 @@ const TOOLS = [
 
 // ── Tool Handlers ─────────────────────────────────────────────────────────────
 
+/** Compact triple format: subject .predicate value */
+function fmtTriple(t: { subject: string; predicate: string; object: string }): string {
+  const s = t.subject.split('/').pop() ?? t.subject;
+  const p = t.predicate.split('/').pop() ?? t.predicate;
+  return `${s} .${p} ${t.object}`;
+}
+
 function handleKbSearch(params: { query: string; limit?: number }): object {
   kb.reload();
   const triples = kb.allTriples();
   const results = bm25Search(triples, params.query, Math.min(params.limit ?? 10, 50));
 
   if (results.length === 0) {
-    return { content: [{ type: 'text', text: `No results found for: "${params.query}"` }] };
+    return { content: [{ type: 'text', text: `No results for "${params.query}"` }] };
   }
 
-  const lines = results.map(r => {
-    const s = r.triple.subject.split('/').pop() ?? r.triple.subject;
-    const p = r.triple.predicate.split('/').pop() ?? r.triple.predicate;
-    const o = r.triple.object;
-    const src = r.triple.sourceId ? ` [source: ${r.triple.sourceId}]` : '';
-    return `• ${s} — ${p} → ${o}${src}  (score: ${r.score.toFixed(2)})`;
-  });
+  const lines = results.map(r => fmtTriple(r.triple));
 
   return {
     content: [{
       type: 'text',
-      text: `Found ${results.length} result(s) for "${params.query}":\n\n${lines.join('\n')}`
+      text: `${results.length} results:\n${lines.join('\n')}`
     }]
   };
 }
@@ -140,40 +157,40 @@ function handleKbGetEntity(params: { entity: string }): object {
   kb.reload();
   let iri = params.entity;
 
-  // Resolve slug to IRI if needed
   if (!iri.startsWith('urn:') && !iri.startsWith('http')) {
     const resolved = kb.resolveLabel(iri);
     if (!resolved) {
-      return { content: [{ type: 'text', text: `Entity not found: "${iri}". Try kb_list_entities to see available IRIs.` }] };
+      return { content: [{ type: 'text', text: `Not found: "${iri}". Use kb_search or kb_list_entities.` }] };
     }
     iri = resolved;
   }
 
   const triples = kb.triplesAbout(iri);
   if (triples.length === 0) {
-    return { content: [{ type: 'text', text: `No facts found for entity: ${iri}` }] };
+    return { content: [{ type: 'text', text: `No facts for: ${iri}` }] };
   }
 
-  const asSubject = triples.filter(t => t.subject === iri);
-  const asObject  = triples.filter(t => t.object  === iri);
+  const MAX = 40;
+  const capped = triples.slice(0, MAX);
+  const slug = iri.split('/').pop() ?? iri;
 
-  const lines: string[] = [`Entity: ${iri}\n`];
+  const asSubject = capped.filter(t => t.subject === iri);
+  const asObject  = capped.filter(t => t.object  === iri);
 
-  if (asSubject.length > 0) {
-    lines.push('Facts about this entity:');
-    for (const t of asSubject) {
-      const p = t.predicate.split('/').pop() ?? t.predicate;
-      lines.push(`  ${p} → ${t.object}`);
-    }
+  const lines: string[] = [slug];
+  for (const t of asSubject) {
+    const p = t.predicate.split('/').pop() ?? t.predicate;
+    lines.push(`.${p} ${t.object}`);
   }
   if (asObject.length > 0) {
-    lines.push('\nReferenced by:');
+    lines.push('refs:');
     for (const t of asObject) {
       const s = t.subject.split('/').pop() ?? t.subject;
       const p = t.predicate.split('/').pop() ?? t.predicate;
-      lines.push(`  ${s} — ${p}`);
+      lines.push(`${s} .${p}`);
     }
   }
+  if (triples.length > MAX) lines.push(`(+${triples.length - MAX} more)`);
 
   return { content: [{ type: 'text', text: lines.join('\n') }] };
 }
@@ -194,15 +211,19 @@ function handleKbStats(): object {
 
 function handleKbListEntities(params: { limit?: number }): object {
   kb.reload();
-  const iris = kb.entityIRIs().slice(0, params.limit ?? 50);
+  const allIris = kb.entityIRIs();
+  const cap = Math.min(params.limit ?? 50, 100);
+  const iris = allIris.slice(0, cap);
   if (iris.length === 0) {
-    return { content: [{ type: 'text', text: 'Knowledge base is empty.' }] };
+    return { content: [{ type: 'text', text: 'KB empty.' }] };
   }
-  const lines = iris.map(iri => `• ${iri.split('/').pop()} <${iri}>`);
+  // Compact: just slugs, one per line
+  const lines = iris.map(iri => iri.split('/').pop() ?? iri);
+  const suffix = allIris.length > cap ? `\n(+${allIris.length - cap} more)` : '';
   return {
     content: [{
       type: 'text',
-      text: `${iris.length} entities:\n\n${lines.join('\n')}\n\nUse kb_get_entity with an IRI for full details.`
+      text: `${allIris.length} entities:\n${lines.join('\n')}${suffix}`
     }]
   };
 }
@@ -231,11 +252,40 @@ function handleKbAddNote(params: { subject: string; predicate: string; object: s
   };
 }
 
+function handleKbSubgraph(params: { entity: string; hops?: number; limit?: number }): object {
+  kb.reload();
+  let iri = params.entity;
+
+  if (!iri.startsWith('urn:') && !iri.startsWith('http')) {
+    const resolved = kb.resolveLabel(iri);
+    if (!resolved) {
+      return { content: [{ type: 'text', text: `Not found: "${iri}". Use kb_search.` }] };
+    }
+    iri = resolved;
+  }
+
+  const hops = Math.min(params.hops ?? 1, 2);
+  const limit = Math.min(params.limit ?? 30, 60);
+  const triples = kb.subgraph(iri, hops).slice(0, limit);
+
+  if (triples.length === 0) {
+    return { content: [{ type: 'text', text: `No facts near: ${iri}` }] };
+  }
+
+  const lines = triples.map(t => fmtTriple(t));
+  const slug = iri.split('/').pop() ?? iri;
+  return {
+    content: [{
+      type: 'text',
+      text: `${slug} (${hops}-hop, ${triples.length} triples):\n${lines.join('\n')}`
+    }]
+  };
+}
+
 function handleKbReckoning(params: { situation: string; target: string }): object {
   kb.reload();
   const triples = kb.allTriples();
 
-  // Build a context summary of relevant triples via BM25
   const situationHits = bm25Search(triples, params.situation, 8);
   const targetHits    = bm25Search(triples, params.target, 8);
 
@@ -244,32 +294,21 @@ function handleKbReckoning(params: { situation: string; target: string }): objec
   ).values()].slice(0, 12);
 
   const kbContext = combined.length > 0
-    ? combined.map(r => {
-        const s = r.triple.subject.split('/').pop() ?? r.triple.subject;
-        const p = r.triple.predicate.split('/').pop() ?? r.triple.predicate;
-        return `  • ${s} — ${p} → ${r.triple.object}`;
-      }).join('\n')
-    : '  (no directly relevant KB facts found)';
+    ? combined.map(r => fmtTriple(r.triple)).join('\n')
+    : '(no relevant facts)';
 
   const prompt = [
     `SITUATION: ${params.situation}`,
     `TARGET: ${params.target}`,
+    `KB FACTS:\n${kbContext}`,
     '',
-    'RELEVANT KB FACTS:',
-    kbContext,
-    '',
-    'Based on the above KB facts, provide a brief structured proposal with:',
-    '- Option A and Option B (if applicable)',
-    '- Recommendation',
-    '- Confidence level and reason',
-    'Cite specific KB facts. Keep under 250 words.'
+    'Provide a structured proposal: options, recommendation, confidence. Cite KB facts. Max 250 words.'
   ].join('\n');
 
-  // The MCP server returns the context; the AI agent (Claude) does the synthesis
   return {
     content: [{
       type: 'text',
-      text: `Reckoning context assembled. Pass this to your LLM for synthesis:\n\n${prompt}`
+      text: `Reckoning context:\n\n${prompt}`
     }]
   };
 }
@@ -324,6 +363,7 @@ rl.on('line', (line) => {
           case 'kb_stats':        result = handleKbStats(); break;
           case 'kb_list_entities':result = handleKbListEntities(toolArgs as { limit?: number }); break;
           case 'kb_add_note':     result = handleKbAddNote(toolArgs as { subject: string; predicate: string; object: string; note?: string }); break;
+          case 'kb_subgraph':    result = handleKbSubgraph(toolArgs as { entity: string; hops?: number; limit?: number }); break;
           case 'kb_reckoning':    result = handleKbReckoning(toolArgs as { situation: string; target: string }); break;
           default:
             respondError(id ?? null, -32601, `Unknown tool: ${toolName}`);

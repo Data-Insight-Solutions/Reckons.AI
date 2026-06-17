@@ -9,7 +9,7 @@
 
 import { readFileSync, statSync, watchFile, type WatchListener } from 'node:fs';
 import { resolve } from 'node:path';
-import { Store, Parser, type Quad } from 'n3';
+import { Store, Parser, DataFactory, type Quad } from 'n3';
 
 export type Triple = {
   subject: string;
@@ -105,8 +105,63 @@ export class KBReader {
     return out;
   }
 
+  private quadToTriple(q: Quad): Triple {
+    return {
+      subject: q.subject.value,
+      predicate: q.predicate.value,
+      object: q.object.value,
+      objectIsLiteral: q.object.termType === 'Literal',
+      graph: q.graph?.value || undefined,
+      sourceId: q.graph?.value?.replace('urn:kbase:source/', '') || undefined,
+    };
+  }
+
   triplesAbout(iri: string): Triple[] {
-    return this.allTriples().filter(t => t.subject === iri || t.object === iri);
+    const node = DataFactory.namedNode(iri);
+    const out: Triple[] = [];
+    const seen = new Set<string>();
+    const add = (q: Quad) => {
+      const key = `${q.subject.value}\t${q.predicate.value}\t${q.object.value}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push(this.quadToTriple(q));
+    };
+    for (const q of this.store.getQuads(node, null, null, null)) add(q);
+    for (const q of this.store.getQuads(null, null, node, null)) add(q);
+    return out;
+  }
+
+  /** Get triples in the N-hop neighborhood of an entity */
+  subgraph(iri: string, hops = 1): Triple[] {
+    const visited = new Set<string>([iri]);
+    let frontier = [iri];
+    const out: Triple[] = [];
+    const seen = new Set<string>();
+
+    for (let h = 0; h < hops; h++) {
+      const next: string[] = [];
+      for (const entity of frontier) {
+        const node = DataFactory.namedNode(entity);
+        const add = (q: Quad) => {
+          const key = `${q.subject.value}\t${q.predicate.value}\t${q.object.value}`;
+          if (seen.has(key)) return;
+          seen.add(key);
+          out.push(this.quadToTriple(q));
+          if (q.object.termType === 'NamedNode' && !visited.has(q.object.value)) {
+            visited.add(q.object.value);
+            next.push(q.object.value);
+          }
+          if (!visited.has(q.subject.value)) {
+            visited.add(q.subject.value);
+            next.push(q.subject.value);
+          }
+        };
+        for (const q of this.store.getQuads(node, null, null, null)) add(q);
+        for (const q of this.store.getQuads(null, null, node, null)) add(q);
+      }
+      frontier = next;
+    }
+    return out;
   }
 
   entityIRIs(): string[] {

@@ -149,7 +149,7 @@
     <a href="/settings/integrations" class:active={page.url.pathname.includes('/integrations')} class="nav-link">integrations</a>
     <a href="/settings/turtle" class:active={page.url.pathname.includes('/turtle')} class="nav-link">turtle</a>
     <a href="/settings/entity-types" class:active={page.url.pathname.includes('/entity-types')} class="nav-link">entity types</a>
-    <a href="/analyze" class="nav-link">analyze history ↗</a>
+    <a href="/kb" class="nav-link">← kb</a>
   </div>
 </header>
 

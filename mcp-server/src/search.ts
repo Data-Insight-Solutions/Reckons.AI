@@ -1,6 +1,9 @@
 /**
  * BM25 search over triples — same algorithm as src/lib/retrieval/bm25.ts
  * duplicated here so the MCP server has no dependency on the browser bundle.
+ *
+ * Caches tokenization so repeated searches against the same triple set
+ * don't re-tokenize on every call.
  */
 
 import type { Triple } from './kb-reader.js';
@@ -24,17 +27,49 @@ function tripleText(t: Triple): string {
 
 export type SearchResult = { triple: Triple; score: number };
 
-export function bm25Search(triples: Triple[], query: string, limit = 10): SearchResult[] {
-  const N = triples.length;
-  if (N === 0) return [];
+// ── Tokenization cache ──────────────────────────────────────────────────────
+
+type TokenCache = {
+  tripleCount: number;
+  tokenized: string[][];
+  df: Map<string, number>;
+  avgdl: number;
+};
+
+let cache: TokenCache | null = null;
+let cacheTriples: Triple[] | null = null;
+
+function getTokenCache(triples: Triple[]): TokenCache {
+  // Invalidate if triple array identity or length changed
+  if (cache && cacheTriples === triples && cache.tripleCount === triples.length) {
+    return cache;
+  }
 
   const tokenized = triples.map(t => tokenize(tripleText(t)));
   const df = new Map<string, number>();
   for (const tokens of tokenized) {
     for (const t of new Set(tokens)) df.set(t, (df.get(t) ?? 0) + 1);
   }
-  const avgdl = tokenized.reduce((s, t) => s + t.length, 0) / N;
+  const avgdl = triples.length > 0
+    ? tokenized.reduce((s, t) => s + t.length, 0) / triples.length
+    : 0;
 
+  cache = { tripleCount: triples.length, tokenized, df, avgdl };
+  cacheTriples = triples;
+  return cache;
+}
+
+/** Invalidate the token cache (call after KB reload) */
+export function invalidateCache(): void {
+  cache = null;
+  cacheTriples = null;
+}
+
+export function bm25Search(triples: Triple[], query: string, limit = 10): SearchResult[] {
+  const N = triples.length;
+  if (N === 0) return [];
+
+  const { tokenized, df, avgdl } = getTokenCache(triples);
   const qTokens = tokenize(query);
   const scores = new Float64Array(N);
 

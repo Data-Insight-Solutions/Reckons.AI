@@ -9,6 +9,14 @@ import type { HighlightSettings } from '../../extension/types';
  * unless the user explicitly invokes Claude or exports a Turtle file.
  */
 
+/** A step in a user-defined KB story (played in Shelly's explore tab). */
+export type KbStoryStep = {
+  title: string;
+  content: string;
+  /** Entity IRIs to highlight in the graph during this step */
+  highlights?: string[];
+};
+
 export type SettingsRecord = {
   key: 'main' | 'user-defaults';
   claudeApiKey?: string;
@@ -50,6 +58,8 @@ export type SettingsRecord = {
   kbTitle?: string;
   /** What this KB is about — used to guide re-analysis and AI prompts */
   kbDescription?: string;
+  /** User-defined guided story for this KB (played in Shelly's explore tab) */
+  kbStory?: KbStoryStep[];
   /**
    * Stable UUID identity for this KB — generated once on first use, never changes.
    * Used for MCP routing, cloud sync folder naming, and cross-device references.

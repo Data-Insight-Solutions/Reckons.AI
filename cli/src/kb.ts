@@ -6,7 +6,7 @@
 import { readFileSync, statSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Readable } from 'node:stream';
-import { Store, StreamParser, type Quad } from 'n3';
+import { Store, StreamParser, DataFactory, type Quad } from 'n3';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -116,7 +116,25 @@ export class KBReader {
   }
 
   triplesAbout(iri: string): Triple[] {
-    return this.allTriples().filter(t => t.subject === iri || t.object === iri);
+    const node = DataFactory.namedNode(iri);
+    const out: Triple[] = [];
+    const seen = new Set<string>();
+    const add = (q: Quad) => {
+      const key = `${q.subject.value}\t${q.predicate.value}\t${q.object.value}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push({
+        subject: q.subject.value,
+        predicate: q.predicate.value,
+        object: q.object.value,
+        objectIsLiteral: q.object.termType === 'Literal',
+        graph: q.graph?.value || undefined,
+        sourceId: q.graph?.value?.replace('urn:kbase:source/', '') || undefined,
+      });
+    };
+    for (const q of this.store.getQuads(node, null, null, null)) add(q);
+    for (const q of this.store.getQuads(null, null, node, null)) add(q);
+    return out;
   }
 
   entityIRIs(): string[] {
@@ -156,7 +174,7 @@ export class KBReader {
   }
 }
 
-// ── BM25 Search ──────────────────────────────────────────────────────────────
+// ── BM25 Search (with tokenization cache) ───────────────────────────────────
 
 const K1 = 1.5;
 const B = 0.75;
@@ -171,16 +189,38 @@ function tripleText(t: Triple): string {
   return `${s} ${p} ${t.object}`;
 }
 
-export function search(triples: Triple[], query: string, limit = 10): Array<{ triple: Triple; score: number }> {
-  const N = triples.length;
-  if (N === 0) return [];
+type TokenCache = {
+  tripleCount: number;
+  tokenized: string[][];
+  df: Map<string, number>;
+  avgdl: number;
+};
 
+let searchCache: TokenCache | null = null;
+let searchCacheTriples: Triple[] | null = null;
+
+function getTokenCache(triples: Triple[]): TokenCache {
+  if (searchCache && searchCacheTriples === triples && searchCache.tripleCount === triples.length) {
+    return searchCache;
+  }
   const tokenized = triples.map(t => tokenize(tripleText(t)));
   const df = new Map<string, number>();
   for (const tokens of tokenized) {
     for (const t of new Set(tokens)) df.set(t, (df.get(t) ?? 0) + 1);
   }
-  const avgdl = tokenized.reduce((s, t) => s + t.length, 0) / N;
+  const avgdl = triples.length > 0
+    ? tokenized.reduce((s, t) => s + t.length, 0) / triples.length
+    : 0;
+  searchCache = { tripleCount: triples.length, tokenized, df, avgdl };
+  searchCacheTriples = triples;
+  return searchCache;
+}
+
+export function search(triples: Triple[], query: string, limit = 10): Array<{ triple: Triple; score: number }> {
+  const N = triples.length;
+  if (N === 0) return [];
+
+  const { tokenized, df, avgdl } = getTokenCache(triples);
   const qTokens = tokenize(query);
   const scores = new Float64Array(N);
 

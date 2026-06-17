@@ -45,7 +45,7 @@ export async function nudge(event: TutorialEvent): Promise<void> {
         id: 'tutorial:template-loaded',
         type: 'success',
         title: 'Starter loaded',
-        body: 'Your turtle has some knowledge. Ask Shelly a question, or run a Reckoning to see what it knows.',
+        body: 'Your KB has some knowledge. Ask Shelly a question, or run a Reckoning to see what it knows.',
         action: { label: 'Open Shelly' },
         oneTime: true,
       });
@@ -67,7 +67,7 @@ export async function nudge(event: TutorialEvent): Promise<void> {
         id: 'tutorial:first-pending',
         type: 'info',
         title: 'Triples extracted',
-        body: 'The AI found facts in your source. Confirm the accurate ones in Review — only confirmed triples enter your Turtle.',
+        body: 'The AI found facts in your source. Confirm the accurate ones in Review — only confirmed triples enter your KB.',
         action: { label: 'Review →', href: '/review' },
         oneTime: true,
       });
@@ -78,7 +78,7 @@ export async function nudge(event: TutorialEvent): Promise<void> {
         id: 'tutorial:first-confirmed',
         type: 'success',
         title: 'First triple confirmed',
-        body: 'Your Turtle is building up. When you have a few facts, try a Reckoning — describe your situation and let the KB propose a path forward.',
+        body: 'Your KB is building up. When you have a few facts, try a Reckoning — describe your situation and let the KB propose a path forward.',
         action: { label: 'Try a Reckoning →', href: '/reckoning' },
         oneTime: true,
       });
@@ -89,7 +89,7 @@ export async function nudge(event: TutorialEvent): Promise<void> {
         id: 'tutorial:has-data',
         type: 'info',
         title: 'Ready for a Reckoning',
-        body: 'You have verified knowledge. Describe a situation and target — Reckons.AI will propose options grounded in what you already know.',
+        body: 'You have verified knowledge in your KB. Describe a situation and target — Reckons.AI will propose options grounded in what you already know.',
         action: { label: 'Run a Reckoning →', href: '/reckoning' },
         oneTime: true,
       });
@@ -100,8 +100,8 @@ export async function nudge(event: TutorialEvent): Promise<void> {
         id: 'tutorial:first-reckoning',
         type: 'success',
         title: 'Your first Reckoning',
-        body: 'The proposal is grounded in your Turtle. Accept KB actions to mark the decision — then export your .ttl to share it with others.',
-        action: { label: 'Base →', href: '/kb' },
+        body: 'The proposal is grounded in your KB. Accept KB actions to mark the decision — then export your .ttl to share it with others.',
+        action: { label: 'KB →', href: '/kb' },
         oneTime: true,
       });
       break;

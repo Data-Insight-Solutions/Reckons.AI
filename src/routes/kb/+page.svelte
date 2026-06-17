@@ -9,11 +9,20 @@
   } from '$lib/stores/kb.svelte';
   import { toTurtle, toNQuads, parseNQuads } from '$lib/rdf/serialize';
   import { merge, splitByConcept, closure } from '$lib/rdf/reasoning';
-  import ReAnalysisPanel from '$lib/components/ReAnalysisPanel.svelte';
   import PredicateManager from '$lib/components/PredicateManager.svelte';
   import { v4 as uuid } from 'uuid';
   import type { Statement } from '$lib/rdf/types';
+  import type { KbStoryStep } from '$lib/storage/db';
   import { settings, updateSettings } from '$lib/stores/settings.svelte';
+  import {
+    workspaceName, workspaceState, supportsWorkspace,
+    pickWorkspace, reconnectWorkspace, clearWorkspace,
+    WORKSPACE_KB_FILE, WORKSPACE_PENDING_FILE
+  } from '$lib/stores/workspace.svelte';
+  import {
+    isAutoSaveSupported, hasAutoSaveFile, getAutoSaveFileName,
+    pickAutoSaveFile, clearAutoSaveFile
+  } from '$lib/storage/backup';
   import { ensureAuth, isSignedIn } from '$lib/integrations/google/auth';
   import { uploadTurtle, listTurtleFiles, type DriveFile } from '$lib/integrations/google/drive';
   import { KB_CALENDAR_NAME } from '$lib/integrations/google/calendar';
@@ -225,13 +234,44 @@
     }
   }
 
-  // ── Advanced: merge / split ───────────────────────────────────────────────
+  // ── Merge / split ────────────────────────────────────────────────────────
   let mergePreview = $state('');
   let mergeReport = $state('');
   let splitSeed = $state('');
   let showPredicates = $state(false);
-  let showReAnalysis = $state(false);
-  let showAdvanced = $state(false);
+
+  // ── KB Story editor ─────────────────────────────────────────────────────
+  let showStoryEditor = $state(false);
+  let storySteps = $state<KbStoryStep[]>(settings().kbStory ?? []);
+  let storySaving = $state(false);
+
+  $effect(() => {
+    const s = settings();
+    if (!showStoryEditor && s.kbStory) storySteps = s.kbStory;
+  });
+
+  function addStoryStep() {
+    storySteps = [...storySteps, { title: '', content: '' }];
+  }
+
+  function removeStoryStep(idx: number) {
+    storySteps = storySteps.filter((_, i) => i !== idx);
+  }
+
+  function moveStoryStep(idx: number, dir: -1 | 1) {
+    const target = idx + dir;
+    if (target < 0 || target >= storySteps.length) return;
+    const next = [...storySteps];
+    [next[idx], next[target]] = [next[target], next[idx]];
+    storySteps = next;
+  }
+
+  async function saveStory() {
+    storySaving = true;
+    const clean = storySteps.filter(s => s.title.trim() || s.content.trim());
+    await updateSettings({ kbStory: clean.length > 0 ? clean : undefined });
+    storySaving = false;
+  }
 
   async function importMerge() {
     if (!mergePreview.trim()) return;
@@ -521,20 +561,65 @@
   {/if}
 </section>
 
-<!-- ── Re-analyze ─────────────────────────────────────────────────────────── -->
+<!-- ── KB Story ──────────────────────────────────────────────────────────── -->
 <section class="section">
   <div class="section-head">
-    <h3>re-analyze</h3>
-    <button class="ghost sm mono" onclick={() => (showReAnalysis = !showReAnalysis)}>
-      {showReAnalysis ? 'hide ▲' : 'show ▼'}
+    <h3>guided story</h3>
+    <button class="ghost sm mono" onclick={() => (showStoryEditor = !showStoryEditor)}>
+      {showStoryEditor ? 'hide ▲' : storySteps.length > 0 ? `edit (${storySteps.length} steps)` : '+ create'}
     </button>
   </div>
-  {#if showReAnalysis}
-    <div class="reanalysis-wrap">
-      <ReAnalysisPanel onclose={() => (showReAnalysis = false)} />
+  {#if showStoryEditor}
+    <div class="story-editor">
+      <p class="section-hint">define a guided tour for this KB. Shelly will walk visitors through these steps in the explore tab.</p>
+      {#each storySteps as step, i}
+        <div class="story-step-card">
+          <div class="story-step-head">
+            <span class="story-step-num mono">{i + 1}</span>
+            <input
+              class="story-step-title"
+              type="text"
+              bind:value={step.title}
+              placeholder="step title…"
+              spellcheck="false"
+            />
+            <div class="story-step-actions">
+              <button class="ghost sm" onclick={() => moveStoryStep(i, -1)} disabled={i === 0} title="Move up">↑</button>
+              <button class="ghost sm" onclick={() => moveStoryStep(i, 1)} disabled={i === storySteps.length - 1} title="Move down">↓</button>
+              <button class="ghost sm danger" onclick={() => removeStoryStep(i)} title="Remove step">×</button>
+            </div>
+          </div>
+          <textarea
+            class="story-step-content"
+            bind:value={step.content}
+            placeholder="what Shelly says at this step… (supports **markdown**)"
+            rows="3"
+          ></textarea>
+          <input
+            class="story-step-highlights mono"
+            type="text"
+            value={step.highlights?.join(', ') ?? ''}
+            oninput={(e) => { step.highlights = (e.currentTarget as HTMLInputElement).value.split(',').map(s => s.trim()).filter(Boolean); }}
+            placeholder="entity IRIs to highlight (comma-separated, optional)"
+            spellcheck="false"
+          />
+        </div>
+      {/each}
+      <div class="story-actions">
+        <button class="ghost sm mono" onclick={addStoryStep}>+ add step</button>
+        <button class="primary sm" onclick={saveStory} disabled={storySaving}>
+          {storySaving ? 'saving…' : 'save story'}
+        </button>
+      </div>
     </div>
+  {:else if storySteps.length === 0}
+    <p class="section-hint">no story defined yet. create one to guide visitors through your KB.</p>
   {:else}
-    <p class="section-hint">use the configured AI to find merges, prune noise, and correct entity types.</p>
+    <div class="story-preview">
+      {#each storySteps as step, i}
+        <span class="story-chip mono">{i + 1}. {step.title || '(untitled)'}</span>
+      {/each}
+    </div>
   {/if}
 </section>
 
@@ -715,61 +800,121 @@
   </div>
 </section>
 
-<!-- ── Advanced ───────────────────────────────────────────────────────────── -->
+<!-- ── Entity Types ────────────────────────────────────────────────────── -->
 <section class="section">
-  <button class="advanced-toggle mono" onclick={() => (showAdvanced = !showAdvanced)}>
-    {showAdvanced ? '▲' : '▼'} advanced · export · merge
-  </button>
+  <div class="section-head">
+    <h3>entity types</h3>
+    <a href="/settings/entity-types" class="ghost sm mono nav-cta">manage types →</a>
+  </div>
+  <p class="section-hint">customize type icons, colors, geometries, and 3D models for graph nodes.</p>
+</section>
 
-  {#if showAdvanced}
-    <div class="advanced-body">
-      <div class="adv-section">
-        <h4>export</h4>
-        <p class="hint">turtle files transfer cleanly between any rdf-aware tool.</p>
-        <div class="row">
-          <button onclick={exportTurtle}>turtle (.ttl)</button>
-          <button onclick={exportNQuads}>n-quads (.nq)</button>
-          <button onclick={exportClosure}>turtle + inferred</button>
-          {#if gifOverrides().size > 0}
-            <button onclick={exportGifPackage} disabled={exportingGifZip}>
-              {exportingGifZip ? 'zipping…' : `zip with gifs (${gifOverrides().size})`}
-            </button>
-          {/if}
-        </div>
-      </div>
-
-      {#if googleReady}
-        <div class="adv-section">
-          <h4>save to google drive</h4>
-          <div class="row">
-            <button onclick={saveToDrive} disabled={driveUploading}>
-              {driveUploading ? 'uploading…' : '↑ save to drive'}
-            </button>
-          </div>
-          {#if driveUploadMsg}<p class="hint">{driveUploadMsg}</p>{/if}
-        </div>
-      {/if}
-
-      <div class="adv-section">
-        <h4>split by concept</h4>
-        <p class="hint">extract a topical subset around one or more seed concepts.</p>
-        <input type="text" bind:value={splitSeed} placeholder="coffee-bean, morning-routine" />
-        <div class="row">
-          <button onclick={exportSplit}>export subset turtle</button>
-        </div>
-      </div>
-
-      <div class="adv-section">
-        <h4>merge from n-quads</h4>
-        <p class="hint">paste another kbase export; conflicts surface in review.</p>
-        <textarea bind:value={mergePreview} rows="4" placeholder="<urn:...> <urn:...> ... ."></textarea>
-        <div class="row">
-          <button onclick={importMerge}>merge</button>
-        </div>
-        {#if mergeReport}<pre class="report mono">{mergeReport}</pre>{/if}
-      </div>
+<!-- ── Export ─────────────────────────────────────────────────────────────── -->
+<section class="section">
+  <div class="section-head">
+    <h3>export</h3>
+  </div>
+  <p class="section-hint">turtle files transfer cleanly between any rdf-aware tool.</p>
+  <div class="row" style="margin-top: 0.5rem;">
+    <button onclick={exportTurtle}>turtle (.ttl)</button>
+    <button onclick={exportNQuads}>n-quads (.nq)</button>
+    <button onclick={exportClosure}>turtle + inferred</button>
+    {#if gifOverrides().size > 0}
+      <button onclick={exportGifPackage} disabled={exportingGifZip}>
+        {exportingGifZip ? 'zipping…' : `zip with gifs (${gifOverrides().size})`}
+      </button>
+    {/if}
+  </div>
+  {#if googleReady}
+    <div class="row" style="margin-top: 0.5rem;">
+      <button onclick={saveToDrive} disabled={driveUploading}>
+        {driveUploading ? 'uploading…' : '↑ save to google drive'}
+      </button>
     </div>
+    {#if driveUploadMsg}<p class="hint">{driveUploadMsg}</p>{/if}
   {/if}
+</section>
+
+<!-- ── Split by Concept ──────────────────────────────────────────────────── -->
+<section class="section">
+  <div class="section-head">
+    <h3>split by concept</h3>
+  </div>
+  <p class="section-hint">extract a topical subset around one or more seed concepts.</p>
+  <div class="split-row">
+    <input type="text" bind:value={splitSeed} placeholder="coffee-bean, morning-routine" />
+    <button onclick={exportSplit}>export subset</button>
+  </div>
+</section>
+
+<!-- ── Merge ──────────────────────────────────────────────────────────────── -->
+<section class="section">
+  <div class="section-head">
+    <h3>merge from n-quads</h3>
+  </div>
+  <p class="section-hint">paste another KB export; conflicts surface in review.</p>
+  <textarea bind:value={mergePreview} rows="4" placeholder="<urn:...> <urn:...> ... ."></textarea>
+  <div class="row" style="margin-top: 0.4rem;">
+    <button onclick={importMerge}>merge</button>
+  </div>
+  {#if mergeReport}<pre class="report mono">{mergeReport}</pre>{/if}
+</section>
+
+<!-- ── Local Files ────────────────────────────────────────────────────────── -->
+<section class="section">
+  <div class="section-head">
+    <h3>local files</h3>
+  </div>
+  <p class="section-hint">your KB data lives in the browser's IndexedDB. link a local folder to keep a .ttl file on disk.</p>
+
+  <div class="files-card">
+    <div class="files-row">
+      <span class="files-label mono">indexeddb</span>
+      <span class="files-value mono">{currentKbId}</span>
+    </div>
+
+    <!-- Workspace folder -->
+    <div class="files-row">
+      <span class="files-label mono">workspace folder</span>
+      {#if workspaceState() === 'connected'}
+        <span class="files-value mono files-connected">{workspaceName()}/</span>
+        <button class="ghost sm" onclick={clearWorkspace}>unlink</button>
+      {:else if workspaceState() === 'disconnected'}
+        <span class="files-value mono files-disconnected">{workspaceName()}/ (disconnected)</span>
+        <button class="sm" onclick={reconnectWorkspace}>reconnect</button>
+      {:else if supportsWorkspace()}
+        <button class="sm" onclick={pickWorkspace}>link folder</button>
+      {:else}
+        <span class="files-value mono files-na">not supported (Chrome/Edge only)</span>
+      {/if}
+    </div>
+
+    {#if workspaceState() === 'connected'}
+      <div class="files-sub">
+        <div class="files-row files-indent">
+          <span class="files-label mono">.ttl file</span>
+          <span class="files-value mono">{workspaceName()}/{WORKSPACE_KB_FILE}</span>
+        </div>
+        <div class="files-row files-indent">
+          <span class="files-label mono">pending (MCP)</span>
+          <span class="files-value mono">{workspaceName()}/{WORKSPACE_PENDING_FILE}</span>
+        </div>
+      </div>
+    {/if}
+
+    <!-- Auto-save file -->
+    <div class="files-row">
+      <span class="files-label mono">auto-save file</span>
+      {#if hasAutoSaveFile()}
+        <span class="files-value mono files-connected">{getAutoSaveFileName()}</span>
+        <button class="ghost sm" onclick={clearAutoSaveFile}>unlink</button>
+      {:else if isAutoSaveSupported()}
+        <button class="sm" onclick={pickAutoSaveFile}>pick file</button>
+      {:else}
+        <span class="files-value mono files-na">not supported</span>
+      {/if}
+    </div>
+  </div>
 </section>
 
 <style>
@@ -839,13 +984,6 @@
   .ingest-cta:hover { text-decoration: underline; }
 
   .section-hint { color: var(--muted); font-size: 0.8rem; margin: 0; }
-
-  .reanalysis-wrap {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--rad);
-    padding: 1rem 1.2rem;
-  }
 
   /* ── Filter bar ── */
   .filter-bar {
@@ -1117,20 +1255,93 @@
   .err { color: var(--danger); font-size: 0.78rem; margin: 0; }
   .hint { color: var(--muted); font-size: 0.78rem; margin: 0.3rem 0 0; }
 
-  /* ── Advanced ── */
-  .advanced-toggle {
-    width: 100%; text-align: left; font-size: 0.7rem; text-transform: uppercase;
-    letter-spacing: 0.12em; color: var(--muted); background: none; border: none;
-    border-top: 1px solid var(--line); padding: 0.6rem 0; cursor: pointer;
-  }
-  .advanced-toggle:hover { color: var(--ink-2); }
-
-  .advanced-body { display: flex; flex-direction: column; gap: 1rem; padding-top: 0.75rem; }
-
-  .adv-section { display: flex; flex-direction: column; gap: 0.4rem; }
-  .adv-section h4 { font-size: 0.82rem; margin: 0; }
-
   .row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+  .split-row { display: flex; gap: 0.5rem; margin-top: 0.5rem; align-items: center; }
+  .split-row input { flex: 1; }
+
+  .nav-cta {
+    font-size: 0.72rem; color: var(--accent); text-decoration: none;
+    padding: 0.2rem 0.5rem; border: 1px solid var(--line); border-radius: var(--rad-sm);
+  }
+  .nav-cta:hover { border-color: var(--accent); background: var(--accent-soft); }
+
+  /* ── Story editor ── */
+  .story-editor {
+    display: flex; flex-direction: column; gap: 0.7rem;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--rad); padding: 1rem;
+  }
+  .story-step-card {
+    display: flex; flex-direction: column; gap: 0.4rem;
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: var(--rad-sm); padding: 0.7rem 0.85rem;
+  }
+  .story-step-head {
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .story-step-num {
+    font-size: 0.65rem; color: var(--accent); font-weight: 700;
+    min-width: 1.2rem; text-align: center;
+  }
+  .story-step-title {
+    flex: 1; font-size: 0.88rem; font-weight: 600;
+    background: none; border: none; outline: none; color: var(--ink);
+    padding: 0; border-bottom: 1px solid transparent;
+  }
+  .story-step-title:focus { border-bottom-color: var(--accent); }
+  .story-step-title::placeholder { color: var(--muted); font-weight: 400; }
+  .story-step-actions { display: flex; gap: 0.2rem; flex-shrink: 0; }
+  .story-step-content {
+    width: 100%; resize: vertical; font-size: 0.8rem;
+    background: none; border: none; outline: none;
+    border-bottom: 1px solid transparent;
+    color: var(--ink-2); font-family: inherit; line-height: 1.5;
+    padding: 0; min-height: 2.5rem;
+  }
+  .story-step-content:focus { border-bottom-color: var(--line); }
+  .story-step-content::placeholder { color: var(--muted); }
+  .story-step-highlights {
+    font-size: 0.68rem; color: var(--muted);
+    background: none; border: none; outline: none;
+    border-bottom: 1px solid transparent; padding: 0;
+  }
+  .story-step-highlights:focus { border-bottom-color: var(--line); color: var(--data); }
+  .story-step-highlights::placeholder { color: var(--muted); }
+  .story-actions {
+    display: flex; gap: 0.5rem; justify-content: space-between; align-items: center;
+  }
+  .story-preview {
+    display: flex; flex-wrap: wrap; gap: 0.35rem;
+  }
+  .story-chip {
+    font-size: 0.68rem; padding: 0.18rem 0.55rem; border-radius: 999px;
+    background: var(--surface-2); border: 1px solid var(--line); color: var(--muted);
+  }
+
+  /* ── Local files card ── */
+  .files-card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--rad); padding: 0.85rem 1rem;
+    display: flex; flex-direction: column; gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+  .files-row {
+    display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+  }
+  .files-indent { padding-left: 1.2rem; }
+  .files-sub {
+    display: flex; flex-direction: column; gap: 0.35rem;
+    border-left: 2px solid var(--line); margin-left: 0.5rem; padding-left: 0.5rem;
+  }
+  .files-label {
+    font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--muted); min-width: 8rem; flex-shrink: 0;
+  }
+  .files-value { font-size: 0.72rem; color: var(--ink-2); }
+  .files-connected { color: var(--data); }
+  .files-disconnected { color: var(--accent); }
+  .files-na { color: var(--muted); font-style: italic; }
 
   .empty-card {
     background: var(--surface); border: 1px solid var(--line); border-radius: var(--rad);

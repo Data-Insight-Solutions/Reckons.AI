@@ -21,14 +21,29 @@ const DEFAULT_MODELS: Record<Provider, string> = {
   openai: 'gpt-4o-mini',
 };
 
-/** Build a KB context block from relevant triples */
+/** Build a compact KB context block from relevant triples.
+ *  Groups by subject to reduce repetition and token usage. */
 export function buildContext(triples: Triple[]): string {
-  if (triples.length === 0) return '(empty knowledge base)';
-  return triples.map(t => {
+  if (triples.length === 0) return '(no relevant facts)';
+
+  // Group triples by subject for compact representation
+  const bySubject = new Map<string, Array<{ p: string; o: string }>>();
+  for (const t of triples) {
     const s = t.subject.split('/').pop() ?? t.subject;
     const p = t.predicate.split('/').pop() ?? t.predicate;
-    return `${s} -- ${p} --> ${t.object}`;
-  }).join('\n');
+    if (!bySubject.has(s)) bySubject.set(s, []);
+    bySubject.get(s)!.push({ p, o: t.object });
+  }
+
+  const lines: string[] = [];
+  for (const [subj, facts] of bySubject) {
+    if (facts.length === 1) {
+      lines.push(`${subj} .${facts[0].p} ${facts[0].o}`);
+    } else {
+      lines.push(`${subj}: ${facts.map(f => `${f.p}=${f.o}`).join('; ')}`);
+    }
+  }
+  return lines.join('\n');
 }
 
 const SYSTEM = `You are Shelly, the Reckons.AI assistant. You help users explore and reason about their personal knowledge base.
@@ -39,6 +54,44 @@ Rules:
 - Be concise and direct. This may be read aloud via TTS.
 - Keep responses under 150 words unless the user asks for detail.
 - Use plain language — avoid markdown formatting when possible.`;
+
+const EXTRACT_SYSTEM = `You are a knowledge extraction engine for Reckons.AI.
+
+Given a short note or observation, extract structured triples in Turtle (.ttl) format.
+
+Rules:
+1. Use the prefix \`@prefix kb: <urn:kbase:> .\`
+2. Entity IRIs: \`kb:<type>/<slug>\` where type is person, concept, event, place, org, etc.
+3. Predicate IRIs: \`kb:predicate/<verb>\` in camelCase.
+4. Add \`rdfs:label\` for every new entity.
+5. Add \`rdf:type\` using \`kb:type/<Type>\`.
+6. Keep it minimal — only extract what the note actually says.
+7. Output ONLY valid Turtle. No explanation, no markdown fences.
+8. Include the @prefix declarations at the top.`;
+
+/**
+ * Extract Turtle triples from a short note using the LLM.
+ */
+export async function extract(
+  config: LLMConfig,
+  noteText: string,
+): Promise<string> {
+  const model = config.model ?? DEFAULT_MODELS[config.provider];
+  const messages = [{ role: 'user' as const, content: `Extract triples from this note:\n\n${noteText}` }];
+
+  if (config.provider === 'ollama') {
+    return chatOllama(config.baseUrl ?? 'http://localhost:11434', model, EXTRACT_SYSTEM, messages);
+  }
+  if (config.provider === 'claude') {
+    if (!config.apiKey) throw new Error('Claude API key required (--api-key or ANTHROPIC_API_KEY)');
+    return chatClaude(config.apiKey, model, EXTRACT_SYSTEM, messages);
+  }
+  if (config.provider === 'openai') {
+    if (!config.apiKey) throw new Error('OpenAI API key required (--api-key or OPENAI_API_KEY)');
+    return chatOpenAI(config.apiKey, model, EXTRACT_SYSTEM, messages);
+  }
+  throw new Error(`Unknown provider: ${config.provider}`);
+}
 
 /**
  * Send a message to the LLM with KB context.

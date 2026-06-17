@@ -16,22 +16,27 @@
  *   reckons entity "alice"           entity details
  *   reckons stats                    KB statistics
  *   reckons list                     list all entities
+ *   reckons kbs                      list available KBs in ~/.reckons/
+ *   reckons use <name>               set default KB
+ *   reckons ingest "note text"       quick-ingest via LLM extraction
  *   echo "query" | reckons ask       pipe mode
  */
 
 import { parseArgs } from 'node:util';
 import { createInterface } from 'node:readline';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, writeFileSync, appendFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { KBReader, search } from './kb.js';
-import { chat, buildContext, type LLMConfig, type Provider } from './llm.js';
+import { chat, extract, buildContext, type LLMConfig, type Provider } from './llm.js';
 import { detectAudioCaps, printAudioCaps, record, transcribe, speak, chime, cleanup, type AudioCaps } from './audio.js';
 
 // ── Config file (.reckonsrc) ─────────────────────────────────────────────────
 
 interface RCConfig {
   kb?: string;
+  /** Directory containing named .ttl KB files (default: ~/.reckons/) */
+  kbDir?: string;
   provider?: string;
   model?: string;
   apiKey?: string;
@@ -39,17 +44,79 @@ interface RCConfig {
   voice?: string;
 }
 
-function loadRC(): RCConfig {
+function rcPath(): string | null {
   const paths = [
     join(process.cwd(), '.reckonsrc'),
     join(homedir(), '.reckonsrc'),
   ];
   for (const p of paths) {
-    if (existsSync(p)) {
-      try { return JSON.parse(readFileSync(p, 'utf8')); } catch {}
-    }
+    if (existsSync(p)) return p;
+  }
+  return null;
+}
+
+function loadRC(): RCConfig {
+  const p = rcPath();
+  if (p) {
+    try { return JSON.parse(readFileSync(p, 'utf8')); } catch {}
   }
   return {};
+}
+
+function saveRC(config: RCConfig): void {
+  const p = rcPath() ?? join(homedir(), '.reckonsrc');
+  writeFileSync(p, JSON.stringify(config, null, 2) + '\n', 'utf8');
+}
+
+// ── KB directory & name resolution ──────────────────────────────────────────
+
+function getKbDir(rc: RCConfig): string {
+  return rc.kbDir ?? join(homedir(), '.reckons');
+}
+
+type KBInfo = { name: string; path: string; tripleCount?: number };
+
+function listLocalKBs(rc: RCConfig): KBInfo[] {
+  const dir = getKbDir(rc);
+  if (!existsSync(dir)) return [];
+  const results: KBInfo[] = [];
+  try {
+    for (const f of readdirSync(dir)) {
+      if (!f.endsWith('.ttl')) continue;
+      const name = f.replace(/\.ttl$/, '');
+      const fullPath = join(dir, f);
+      let tripleCount: number | undefined;
+      try {
+        const reader = new KBReader(fullPath);
+        tripleCount = reader.stats().tripleCount;
+      } catch { /* skip count on parse error */ }
+      results.push({ name, path: fullPath, tripleCount });
+    }
+  } catch { /* dir not readable */ }
+  return results;
+}
+
+/**
+ * Resolve a --kb value to a file path.
+ * Accepts: a file path, a KB name (matched against kbDir), or a partial name.
+ */
+function resolveKbPath(nameOrPath: string, rc: RCConfig): string {
+  // If it's already a path (contains / or \ or ends with .ttl), use as-is
+  if (nameOrPath.includes('/') || nameOrPath.includes('\\') || nameOrPath.endsWith('.ttl')) {
+    return nameOrPath;
+  }
+  // Try exact name match in kbDir
+  const dir = getKbDir(rc);
+  const exact = join(dir, `${nameOrPath}.ttl`);
+  if (existsSync(exact)) return exact;
+  // Try case-insensitive partial match
+  const lower = nameOrPath.toLowerCase();
+  const kbs = listLocalKBs(rc);
+  const match = kbs.find(k => k.name.toLowerCase() === lower)
+    ?? kbs.find(k => k.name.toLowerCase().includes(lower));
+  if (match) return match.path;
+  // Fall back to treating it as a path
+  return nameOrPath;
 }
 
 // ── Arg parsing ──────────────────────────────────────────────────────────────
@@ -83,7 +150,8 @@ const { values: opts, positionals } = parseArgs({
 const str = (v: string | boolean | undefined): string | undefined =>
   typeof v === 'string' ? v : undefined;
 
-const kbPath = str(opts.kb) ?? process.env.RECKONS_KB_PATH ?? rc.kb ?? './knowledge.ttl';
+const kbPathRaw = str(opts.kb) ?? process.env.RECKONS_KB_PATH ?? rc.kb ?? './knowledge.ttl';
+const kbPath = resolveKbPath(kbPathRaw, rc);
 const provider = (str(opts.provider) ?? process.env.RECKONS_PROVIDER ?? rc.provider ?? 'ollama') as Provider;
 const model = str(opts.model) ?? rc.model;
 const apiKey = str(opts['api-key'])
@@ -111,11 +179,31 @@ USAGE
   reckons entity "name"             get all facts about an entity
   reckons list                      list all entities
   reckons stats                     KB statistics
+  reckons kbs                       list available knowledge bases
+  reckons use <name>                set default KB by name
+  reckons ingest "note text"        quick-ingest a note via LLM extraction
   reckons --caps                    show detected audio capabilities
   echo "q" | reckons ask            pipe mode (stdin)
 
+KB SELECTION
+  Name your .ttl files and place them in ~/.reckons/:
+    ~/.reckons/personal.ttl
+    ~/.reckons/work.ttl
+    ~/.reckons/research.ttl
+
+  Then refer to them by name:
+    reckons --kb work search "deadline"
+    reckons --kb personal ingest "Met Alice at the conference"
+    reckons use research
+
+  In audio mode (smart glasses):
+    "switch to work"         switch active KB
+    "add met Alice today"    quick ingest to current KB
+    "add to work: deadline Friday"  ingest to a named KB
+    "list KBs"               hear available KBs
+
 OPTIONS
-  -k, --kb <path>       path to .ttl file (default: ./knowledge.ttl)
+  -k, --kb <name|path>  KB name or path to .ttl file (default: ./knowledge.ttl)
   -p, --provider <name> LLM provider: ollama, claude, openai (default: ollama)
   -m, --model <name>    LLM model override
   --api-key <key>       API key (or use ANTHROPIC_API_KEY / OPENAI_API_KEY)
@@ -132,7 +220,8 @@ OPTIONS
 CONFIG
   Place a .reckonsrc file in your home directory or project root:
   {
-    "kb": "~/knowledge/my-kb.ttl",
+    "kb": "~/.reckons/personal.ttl",
+    "kbDir": "~/.reckons",
     "provider": "ollama",
     "model": "llama3.2",
     "voice": "en"
@@ -292,6 +381,89 @@ async function cmdAsk(question: string): Promise<void> {
   }
 }
 
+function cmdKbs(): void {
+  const kbs = listLocalKBs(rc);
+  const dir = getKbDir(rc);
+
+  if (kbs.length === 0) {
+    out(`No KBs found in ${dir}`);
+    out(`Place .ttl files in ${dir}/ to manage multiple knowledge bases.`);
+    out(`Or set "kbDir" in .reckonsrc to point to your KB directory.`);
+    return;
+  }
+
+  if (opts.json) {
+    out(JSON.stringify(kbs));
+    return;
+  }
+
+  out(`Knowledge bases in ${dir}/\n`);
+  const currentName = kbs.find(k => k.path === kbPath)?.name;
+  for (const k of kbs) {
+    const active = k.path === kbPath ? ' (active)' : '';
+    const count = k.tripleCount !== undefined ? `  ${k.tripleCount} triples` : '';
+    if (opts.terse) {
+      out(k.name);
+    } else {
+      out(`  ${k.name}${active}${count}`);
+    }
+  }
+}
+
+function cmdUse(name: string): void {
+  const resolved = resolveKbPath(name, rc);
+  if (!existsSync(resolved)) {
+    process.stderr.write(`KB not found: "${name}"\nRun \`reckons kbs\` to see available knowledge bases.\n`);
+    process.exit(1);
+  }
+  // Update .reckonsrc
+  const updated = { ...rc, kb: resolved };
+  saveRC(updated);
+  const label = listLocalKBs(rc).find(k => k.path === resolved)?.name ?? name;
+  out(`Default KB set to: ${label} (${resolved})`);
+}
+
+async function cmdIngest(noteText: string): Promise<void> {
+  const r = ensureKB();
+
+  if (!opts.quiet) process.stderr.write(`[reckons] extracting triples from note...\n`);
+
+  try {
+    let turtle = await extract(llmConfig, noteText);
+
+    // Strip markdown code fences if the LLM wrapped them
+    turtle = turtle.replace(/^```(?:turtle|ttl)?\s*\n?/m, '').replace(/\n?```\s*$/m, '').trim();
+
+    if (!turtle) {
+      process.stderr.write('No triples extracted.\n');
+      return;
+    }
+
+    // Add a source comment and append to the .ttl file
+    const timestamp = new Date().toISOString();
+    const block = `\n# Quick ingest — ${timestamp}\n# Note: ${noteText.replace(/\n/g, ' ').slice(0, 100)}\n${turtle}\n`;
+
+    appendFileSync(kbPath, block, 'utf8');
+
+    // Reload and show what was added
+    r.reload();
+    const s = r.stats();
+    if (!opts.quiet) process.stderr.write(`[reckons] KB now has ${s.tripleCount} triples, ${s.entityCount} entities\n`);
+
+    if (opts.json) {
+      out(JSON.stringify({ note: noteText, turtle, file: kbPath }));
+    } else {
+      out(`Ingested into ${kbPath}:`);
+      for (const line of turtle.split('\n').filter(l => l.trim() && !l.startsWith('@prefix'))) {
+        out(`  ${line.trim()}`);
+      }
+    }
+  } catch (e) {
+    process.stderr.write(`Extraction error: ${e instanceof Error ? e.message : e}\n`);
+    process.exit(1);
+  }
+}
+
 // ── Text REPL ────────────────────────────────────────────────────────────────
 
 async function textREPL(): Promise<void> {
@@ -317,6 +489,9 @@ async function textREPL(): Promise<void> {
   /entity <name>    entity details
   /list             list entities
   /stats            KB statistics
+  /kbs              list available KBs
+  /use <name>       switch default KB
+  /ingest <text>    quick ingest a note
   /clear            clear conversation
   /quit             exit
   (anything else)   ask Shelly
@@ -328,6 +503,10 @@ async function textREPL(): Promise<void> {
     if (input === '/clear') { messages.length = 0; process.stderr.write('Conversation cleared.\n'); rl.prompt(); return; }
     if (input === '/stats') { cmdStats(); rl.prompt(); return; }
     if (input === '/list') { cmdList(); rl.prompt(); return; }
+    if (input === '/kbs') { cmdKbs(); rl.prompt(); return; }
+    if (input.startsWith('/use ')) { cmdUse(input.slice(5).trim()); rl.prompt(); return; }
+    if (input.startsWith('/ingest ')) { await cmdIngest(input.slice(8).trim()); rl.prompt(); return; }
+    if (input.startsWith('/i ')) { await cmdIngest(input.slice(3).trim()); rl.prompt(); return; }
     if (input.startsWith('/search ')) { cmdSearch(input.slice(8).trim()); rl.prompt(); return; }
     if (input.startsWith('/entity ')) { cmdEntity(input.slice(8).trim()); rl.prompt(); return; }
     if (input.startsWith('/e ')) { cmdEntity(input.slice(3).trim()); rl.prompt(); return; }
@@ -373,7 +552,7 @@ async function audioREPL(): Promise<void> {
   }
 
   const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
-  const r = ensureKB();
+  let r = ensureKB();
 
   // Greeting
   const greeting = 'Reckons ready. Speak now.';
@@ -413,6 +592,95 @@ async function audioREPL(): Promise<void> {
     }
 
     // Handle simple commands by voice
+
+    // Voice KB switching: "switch to <name>" / "use <name>"
+    const switchMatch = lower.match(/^(?:switch to|use|open)\s+(.+?)(?:\s+kb)?$/);
+    if (switchMatch) {
+      const name = switchMatch[1];
+      const resolved = resolveKbPath(name, rc);
+      if (existsSync(resolved)) {
+        kb = new KBReader(resolved);
+        r = kb;
+        const s = kb.stats();
+        const label = listLocalKBs(rc).find(k => k.path === resolved)?.name ?? name;
+        const msg = `Switched to ${label}. ${s.tripleCount} triples, ${s.entityCount} entities.`;
+        out(msg);
+        process.stderr.write(`  [switched to ${resolved}]\n`);
+        if (caps.tts) speak(msg, caps, voice);
+      } else {
+        const kbs = listLocalKBs(rc);
+        const msg = kbs.length > 0
+          ? `KB "${name}" not found. Available: ${kbs.map(k => k.name).join(', ')}.`
+          : `KB "${name}" not found. No KBs in ${getKbDir(rc)}.`;
+        out(msg);
+        if (caps.tts) speak(msg, caps, voice);
+      }
+      continue;
+    }
+
+    // Voice quick ingest: "add <text>" / "remember <text>" / "note <text>" / "add to <kb>: <text>"
+    const addToMatch = lower.match(/^(?:add to|ingest to|note to)\s+(.+?):\s*(.+)$/);
+    const addMatch = !addToMatch ? lower.match(/^(?:add|remember|note|ingest)\s+(.+)$/) : null;
+    if (addToMatch || addMatch) {
+      let targetPath = kbPath;
+      let noteText: string;
+      if (addToMatch) {
+        const targetName = addToMatch[1];
+        targetPath = resolveKbPath(targetName, rc);
+        if (!existsSync(targetPath)) {
+          const msg = `KB "${targetName}" not found.`;
+          out(msg);
+          if (caps.tts) speak(msg, caps, voice);
+          continue;
+        }
+        noteText = addToMatch[2];
+      } else {
+        noteText = addMatch![1];
+      }
+
+      process.stderr.write('  [extracting...]\n');
+      try {
+        let turtle = await extract(llmConfig, noteText);
+        turtle = turtle.replace(/^```(?:turtle|ttl)?\s*\n?/m, '').replace(/\n?```\s*$/m, '').trim();
+        if (turtle) {
+          const timestamp = new Date().toISOString();
+          const block = `\n# Quick ingest — ${timestamp}\n# Note: ${noteText.slice(0, 100)}\n${turtle}\n`;
+          appendFileSync(targetPath, block, 'utf8');
+          if (targetPath === kbPath) r.reload();
+          const targetLabel = addToMatch
+            ? (listLocalKBs(rc).find(k => k.path === targetPath)?.name ?? 'KB')
+            : 'your KB';
+          const msg = `Got it. Added to ${targetLabel}.`;
+          out(msg);
+          if (caps.tts) speak(msg, caps, voice);
+        } else {
+          const msg = `Couldn't extract facts from that.`;
+          out(msg);
+          if (caps.tts) speak(msg, caps, voice);
+        }
+      } catch (e) {
+        const msg = `Sorry, extraction failed.`;
+        process.stderr.write(`  error: ${e instanceof Error ? e.message : e}\n`);
+        if (caps.tts) speak(msg, caps, voice);
+      }
+      continue;
+    }
+
+    // Voice list KBs: "list KBs" / "my KBs" / "which KBs"
+    if (lower === 'list kbs' || lower === 'my kbs' || lower === 'which kbs' || lower === 'what kbs') {
+      const kbs = listLocalKBs(rc);
+      if (kbs.length === 0) {
+        const msg = 'No knowledge bases found.';
+        out(msg);
+        if (caps.tts) speak(msg, caps, voice);
+      } else {
+        const msg = `You have ${kbs.length} knowledge base${kbs.length === 1 ? '' : 's'}: ${kbs.map(k => k.name).join(', ')}.`;
+        out(msg);
+        if (caps.tts) speak(msg, caps, voice);
+      }
+      continue;
+    }
+
     if (lower.startsWith('search ') || lower.startsWith('find ')) {
       const query = text.slice(text.indexOf(' ') + 1);
       const results = search(r.allTriples(), query, 5);
@@ -478,6 +746,30 @@ async function main(): Promise<void> {
 
   // One-shot commands
   switch (command) {
+    case 'kbs':
+      cmdKbs();
+      return;
+
+    case 'use': {
+      const name = positionals.slice(1).join(' ');
+      if (!name) { process.stderr.write('Usage: reckons use <kb-name>\n'); process.exit(1); }
+      cmdUse(name);
+      return;
+    }
+
+    case 'ingest':
+    case 'i': {
+      let text = positionals.slice(1).join(' ');
+      if (!text && !isTTY) {
+        const chunks: Buffer[] = [];
+        for await (const chunk of process.stdin) chunks.push(chunk);
+        text = Buffer.concat(chunks).toString().trim();
+      }
+      if (!text) { process.stderr.write('Usage: reckons ingest "note text"\n'); process.exit(1); }
+      await cmdIngest(text);
+      return;
+    }
+
     case 'stats':
       cmdStats();
       return;
