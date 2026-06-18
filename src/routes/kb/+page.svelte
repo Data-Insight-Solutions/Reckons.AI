@@ -17,7 +17,7 @@
   import {
     workspaceName, workspaceState, supportsWorkspace,
     pickWorkspace, reconnectWorkspace, clearWorkspace,
-    WORKSPACE_KB_FILE, WORKSPACE_PENDING_FILE
+    syncAllKbs, lastSyncTime, syncedKbCount
   } from '$lib/stores/workspace.svelte';
   import {
     isAutoSaveSupported, hasAutoSaveFile, getAutoSaveFileName,
@@ -293,6 +293,30 @@
     if (seeds.length === 0) return;
     const subset = splitByConcept(confirmedStatements(), seeds);
     download(`kbase-subset-${Date.now()}.ttl`, toTurtle(subset, { header: `subset around ${seeds.join(', ')}` }), 'text/turtle');
+  }
+
+  // ── Workspace folder sync ─────────────────────────────────────────────────
+  let wsSyncing = $state(false);
+  let wsSyncMsg = $state('');
+
+  async function handlePickWorkspace() {
+    const ok = await pickWorkspace();
+    if (ok) {
+      wsSyncing = true;
+      const count = await syncAllKbs();
+      wsSyncMsg = `Synced ${count} KB${count !== 1 ? 's' : ''} to folder.`;
+      wsSyncing = false;
+      setTimeout(() => { wsSyncMsg = ''; }, 5000);
+    }
+  }
+
+  async function handleSyncAllKbs() {
+    wsSyncing = true;
+    wsSyncMsg = '';
+    const count = await syncAllKbs();
+    wsSyncMsg = `Synced ${count} KB${count !== 1 ? 's' : ''} to folder.`;
+    wsSyncing = false;
+    setTimeout(() => { wsSyncMsg = ''; }, 5000);
   }
 
   const googleReady = $derived(!!settings().googleClientId);
@@ -860,22 +884,22 @@
   {#if mergeReport}<pre class="report mono">{mergeReport}</pre>{/if}
 </section>
 
-<!-- ── Local Files ────────────────────────────────────────────────────────── -->
-<section class="section">
+<!-- ── Local Folder Sync ──────────────────────────────────────────────────── -->
+<section class="section" id="local-folder-sync">
   <div class="section-head">
-    <h3>local files</h3>
+    <h3>local folder sync</h3>
   </div>
-  <p class="section-hint">your KB data lives in the browser's IndexedDB. link a local folder to keep a .ttl file on disk.</p>
+  <p class="section-hint">link a local folder to automatically back up all KBs. your data survives browser cache clears.</p>
 
   <div class="files-card">
     <div class="files-row">
-      <span class="files-label mono">indexeddb</span>
+      <span class="files-label mono">browser storage</span>
       <span class="files-value mono">{currentKbId}</span>
     </div>
 
     <!-- Workspace folder -->
     <div class="files-row">
-      <span class="files-label mono">workspace folder</span>
+      <span class="files-label mono">sync folder</span>
       {#if workspaceState() === 'connected'}
         <span class="files-value mono files-connected">{workspaceName()}/</span>
         <button class="ghost sm" onclick={clearWorkspace}>unlink</button>
@@ -883,7 +907,7 @@
         <span class="files-value mono files-disconnected">{workspaceName()}/ (disconnected)</span>
         <button class="sm" onclick={reconnectWorkspace}>reconnect</button>
       {:else if supportsWorkspace()}
-        <button class="sm" onclick={pickWorkspace}>link folder</button>
+        <button class="sm" onclick={handlePickWorkspace}>link folder</button>
       {:else}
         <span class="files-value mono files-na">not supported (Chrome/Edge only)</span>
       {/if}
@@ -892,13 +916,27 @@
     {#if workspaceState() === 'connected'}
       <div class="files-sub">
         <div class="files-row files-indent">
-          <span class="files-label mono">.ttl file</span>
-          <span class="files-value mono">{workspaceName()}/{WORKSPACE_KB_FILE}</span>
+          <span class="files-label mono">kbs synced</span>
+          <span class="files-value mono">{syncedKbCount() > 0 ? `${syncedKbCount()} KB${syncedKbCount() !== 1 ? 's' : ''}` : 'none yet'}</span>
         </div>
+        {#if lastSyncTime()}
+          <div class="files-row files-indent">
+            <span class="files-label mono">last sync</span>
+            <span class="files-value mono">{new Date(lastSyncTime()!).toLocaleTimeString()}</span>
+          </div>
+        {/if}
         <div class="files-row files-indent">
-          <span class="files-label mono">pending (MCP)</span>
-          <span class="files-value mono">{workspaceName()}/{WORKSPACE_PENDING_FILE}</span>
+          <span class="files-label mono">folder structure</span>
+          <span class="files-value mono">{workspaceName()}/kbs/*/kb.ttl</span>
         </div>
+        <div class="files-row" style="margin-top:0.4rem">
+          <button class="sm" onclick={handleSyncAllKbs} disabled={wsSyncing}>
+            {wsSyncing ? 'syncing...' : 'sync all KBs now'}
+          </button>
+        </div>
+        {#if wsSyncMsg}
+          <p class="files-msg">{wsSyncMsg}</p>
+        {/if}
       </div>
     {/if}
 
@@ -1342,6 +1380,7 @@
   .files-connected { color: var(--data); }
   .files-disconnected { color: var(--accent); }
   .files-na { color: var(--muted); font-style: italic; }
+  .files-msg { font-size: 0.72rem; color: var(--accent); margin: 0; padding-left: 1.2rem; }
 
   .empty-card {
     background: var(--surface); border: 1px solid var(--line); border-radius: var(--rad);

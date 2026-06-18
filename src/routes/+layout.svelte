@@ -17,7 +17,8 @@
   import { loadGlbOverrides } from '$lib/stores/glb-overrides.svelte';
   import { loadGifOverrides } from '$lib/stores/gif-overrides.svelte';
   import { loadIcon2dOverrides } from '$lib/stores/icon2d-overrides.svelte';
-  import { loadWorkspace, drainWorkspacePending } from '$lib/stores/workspace.svelte';
+  import { loadWorkspace, drainWorkspacePending, workspaceState, supportsWorkspace } from '$lib/stores/workspace.svelte';
+  import { pushNotification } from '$lib/stores/notifications.svelte';
   import { addStatements, addSource, confirmedStatements } from '$lib/stores/kb.svelte';
   import { updateSettings } from '$lib/stores/settings.svelte';
   import { getCurrentKbId, registerStableId, getRegistry, createKb } from '$lib/storage/kb-registry';
@@ -99,6 +100,18 @@
         }));
         await addStatements(sts, sourceId);
       }
+      // Nudge: suggest linking a local folder once the user has some data
+      if (supportsWorkspace() && workspaceState() === 'none' && confirmedStatements().length >= 10) {
+        pushNotification({
+          id: 'setup-local-folder',
+          type: 'info',
+          title: 'Protect your knowledge base',
+          body: 'Link a local folder so your KBs are backed up to disk and survive browser cache clears.',
+          action: { label: 'Set up folder', href: '/kb#local-folder-sync' },
+          oneTime: true,
+        });
+      }
+
       // Handle ?indico= query param — save to settings on any page
       const indicoParam = new URL(window.location.href).searchParams.get('indico');
       if (indicoParam?.trim()) {
