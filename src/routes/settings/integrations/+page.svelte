@@ -6,8 +6,11 @@
   import QRSharePanel from '$lib/components/QRSharePanel.svelte';
   import {
     inspectModelCache, sideloadModel, purgeModelCache, formatBytes,
-    MODEL_MANIFESTS, type CachedModelStatus, type SideloadProgress
+    MODEL_MANIFESTS, type CachedModelStatus, type SideloadProgress,
+    saveModelToWorkspace, restoreModelFromWorkspace, inspectWorkspaceModels,
+    type WorkspaceModelStatus
   } from '$lib/integrations/llm/model-cache';
+  import { workspaceState } from '$lib/stores/workspace.svelte';
 
   /**
    * Integrations — provider-first settings matrix.
@@ -276,8 +279,13 @@
   let sideloadProgress = $state<SideloadProgress | null>(null);
   let sideloadError = $state<string | null>(null);
   let purging = $state<string | null>(null);
+  let wsModelStatuses = $state<WorkspaceModelStatus[]>([]);
+  let wsModelSaving = $state<string | null>(null);
+  let wsModelRestoring = $state<string | null>(null);
+  let wsModelProgress = $state<SideloadProgress | null>(null);
+  let wsModelMsg = $state('');
 
-  onMount(() => { refreshModelCache(); });
+  onMount(() => { refreshModelCache(); refreshWorkspaceModels(); });
 
   async function refreshModelCache() {
     try { modelStatuses = await inspectModelCache(); } catch { /* Cache API unavailable */ }
@@ -308,6 +316,47 @@
     await purgeModelCache(manifestId);
     await refreshModelCache();
     purging = null;
+  }
+
+  async function refreshWorkspaceModels() {
+    if (workspaceState() !== 'connected') return;
+    try { wsModelStatuses = await inspectWorkspaceModels(); } catch { /* no workspace */ }
+  }
+
+  async function handleSaveToWorkspace(manifestId: string) {
+    wsModelSaving = manifestId;
+    wsModelProgress = null;
+    wsModelMsg = '';
+    try {
+      const count = await saveModelToWorkspace(manifestId, (p) => { wsModelProgress = p; });
+      const manifest = MODEL_MANIFESTS.find(m => m.id === manifestId);
+      wsModelMsg = `Saved ${count}/${manifest?.files.length ?? '?'} files to workspace.`;
+      await refreshWorkspaceModels();
+    } catch (e) {
+      wsModelMsg = `Save failed: ${e instanceof Error ? e.message : String(e)}`;
+    } finally {
+      wsModelSaving = null;
+      wsModelProgress = null;
+      setTimeout(() => { wsModelMsg = ''; }, 5000);
+    }
+  }
+
+  async function handleRestoreFromWorkspace(manifestId: string) {
+    wsModelRestoring = manifestId;
+    wsModelProgress = null;
+    wsModelMsg = '';
+    try {
+      const count = await restoreModelFromWorkspace(manifestId, (p) => { wsModelProgress = p; });
+      const manifest = MODEL_MANIFESTS.find(m => m.id === manifestId);
+      wsModelMsg = `Restored ${count}/${manifest?.files.length ?? '?'} files from workspace.`;
+      await refreshModelCache();
+    } catch (e) {
+      wsModelMsg = `Restore failed: ${e instanceof Error ? e.message : String(e)}`;
+    } finally {
+      wsModelRestoring = null;
+      wsModelProgress = null;
+      setTimeout(() => { wsModelMsg = ''; }, 5000);
+    }
   }
 
   // ── Indico server ──────────────────────────────────────────────────────────
@@ -427,6 +476,7 @@
     <div class="model-grid">
       {#each modelStatuses as ms (ms.manifest.id)}
         {@const m = ms.manifest}
+        {@const wsMs = wsModelStatuses.find(w => w.manifestId === m.id)}
         <div class="model-row" class:model-complete={ms.complete}>
           <div class="model-info">
             <div class="model-head">
@@ -438,6 +488,11 @@
               {:else}
                 <span class="badge-missing mono">not cached</span>
               {/if}
+              {#if wsMs?.complete}
+                <span class="badge-ws mono">in folder</span>
+              {:else if wsMs && wsMs.folderCount > 0}
+                <span class="badge-ws-partial mono">folder: {wsMs.folderCount}/{wsMs.totalCount}</span>
+              {/if}
             </div>
             <p class="model-desc">{m.description}</p>
             {#if ms.cachedBytes > 0}
@@ -445,15 +500,29 @@
             {/if}
           </div>
           <div class="model-actions">
-            {#if sideloadingId === m.id}
+            {#if sideloadingId === m.id || wsModelSaving === m.id || wsModelRestoring === m.id}
               <span class="sideload-progress mono">
-                {#if sideloadProgress}
+                {#if wsModelProgress}
+                  {wsModelSaving === m.id ? 'saving' : wsModelRestoring === m.id ? 'restoring' : 'loading'} {wsModelProgress.index + 1}/{wsModelProgress.total}...
+                {:else if sideloadProgress}
                   loading {sideloadProgress.index + 1}/{sideloadProgress.total}...
                 {:else}
                   reading files...
                 {/if}
               </span>
             {:else}
+              {#if workspaceState() === 'connected'}
+                {#if ms.complete && !wsMs?.complete}
+                  <button class="btn-sideload" onclick={() => handleSaveToWorkspace(m.id)}>
+                    save to folder
+                  </button>
+                {/if}
+                {#if !ms.complete && wsMs?.complete}
+                  <button class="btn-sideload" onclick={() => handleRestoreFromWorkspace(m.id)}>
+                    restore from folder
+                  </button>
+                {/if}
+              {/if}
               <label class="btn-sideload">
                 <input
                   type="file"
@@ -487,6 +556,9 @@
     {#if sideloadError}
       <p class="sideload-error">{sideloadError}</p>
     {/if}
+    {#if wsModelMsg}
+      <p class="hint" style="color:var(--accent);margin-top:0.5rem">{wsModelMsg}</p>
+    {/if}
 
     <div class="model-help">
       <p class="hint">
@@ -494,8 +566,11 @@
         <a href="https://huggingface.co" target="_blank" rel="noopener">huggingface.co</a>
         on a connected device, transfer to this device, then use "sideload folder" to load the entire repo directory.
         Individual ONNX + JSON files also work via "sideload files".
+        {#if workspaceState() === 'connected'}
+          Models saved to your workspace folder persist across browser cache clears.
+        {/if}
       </p>
-      <button class="btn-refresh" onclick={refreshModelCache}>refresh cache status</button>
+      <button class="btn-refresh" onclick={() => { refreshModelCache(); refreshWorkspaceModels(); }}>refresh cache status</button>
     </div>
   {/if}
 </section>
@@ -1104,6 +1179,8 @@
   .btn-purge:hover { color: var(--danger, #ef4444); border-color: var(--danger, #ef4444); }
   .badge-partial { font-size: 0.62rem; color: var(--warn, #f59e0b); background: color-mix(in srgb, var(--warn, #f59e0b) 12%, transparent); border: 1px solid color-mix(in srgb, var(--warn, #f59e0b) 30%, var(--line)); padding: 0.1rem 0.4rem; border-radius: 999px; }
   .badge-missing { font-size: 0.62rem; color: var(--muted); background: var(--surface-3); border: 1px solid var(--line); padding: 0.1rem 0.4rem; border-radius: 999px; }
+  .badge-ws { font-size: 0.62rem; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line)); padding: 0.1rem 0.4rem; border-radius: 999px; }
+  .badge-ws-partial { font-size: 0.62rem; color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); border: 1px solid var(--line); padding: 0.1rem 0.4rem; border-radius: 999px; }
   .sideload-progress { font-size: 0.7rem; color: var(--accent); }
   .sideload-error { font-size: 0.78rem; color: var(--danger, #ef4444); margin-top: 0.5rem; }
   .model-help { margin-top: 0.75rem; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0.75rem; }

@@ -256,6 +256,113 @@ export async function purgeModelCache(manifestId: string): Promise<number> {
   return deleted;
 }
 
+// ── Workspace folder persistence ──────────────────────────────────────────
+//
+// Save cached models to the workspace models/ folder so they survive
+// browser cache clears. Restore from workspace when cache is empty.
+
+export interface WorkspaceModelStatus {
+  manifestId: string;
+  /** Number of files found in workspace folder */
+  folderCount: number;
+  totalCount: number;
+  complete: boolean;
+}
+
+/**
+ * Save a cached model from the browser Cache API to the workspace models/ folder.
+ * Reads each file from the cache and writes it to disk.
+ */
+export async function saveModelToWorkspace(
+  manifestId: string,
+  onProgress?: (p: SideloadProgress) => void
+): Promise<number> {
+  const { writeModelFile } = await import('$lib/stores/workspace.svelte');
+  const manifest = MODEL_MANIFESTS.find(m => m.id === manifestId);
+  if (!manifest) throw new Error(`Unknown model: ${manifestId}`);
+
+  let saved = 0;
+  for (let i = 0; i < manifest.files.length; i++) {
+    const mf = manifest.files[i];
+    try {
+      const cache = await caches.open(mf.cacheName);
+      const url = hfUrl(manifest.repo, mf.path);
+      const resp = await cache.match(url);
+      if (!resp) continue;
+
+      const buffer = await resp.arrayBuffer();
+      await writeModelFile(manifest.repo, mf.path, buffer);
+      saved++;
+      onProgress?.({ file: mf.path, index: i, total: manifest.files.length, bytes: buffer.byteLength });
+    } catch (e) {
+      console.warn(`[model-cache] Failed to save ${mf.path} to workspace:`, e);
+    }
+  }
+
+  return saved;
+}
+
+/**
+ * Restore a model from the workspace models/ folder into the browser Cache API.
+ * This is the workspace-aware equivalent of sideloadModel.
+ */
+export async function restoreModelFromWorkspace(
+  manifestId: string,
+  onProgress?: (p: SideloadProgress) => void
+): Promise<number> {
+  const { readModelFile } = await import('$lib/stores/workspace.svelte');
+  const manifest = MODEL_MANIFESTS.find(m => m.id === manifestId);
+  if (!manifest) throw new Error(`Unknown model: ${manifestId}`);
+
+  let loaded = 0;
+  for (let i = 0; i < manifest.files.length; i++) {
+    const mf = manifest.files[i];
+    try {
+      const buffer = await readModelFile(manifest.repo, mf.path);
+      if (!buffer) continue;
+
+      const cache = await caches.open(mf.cacheName);
+      const url = hfUrl(manifest.repo, mf.path);
+      const contentType = mf.path.endsWith('.json') ? 'application/json' : 'application/octet-stream';
+
+      await cache.put(url, new Response(buffer, {
+        headers: {
+          'Content-Type': contentType,
+          'Content-Length': String(buffer.byteLength),
+        }
+      }));
+
+      loaded++;
+      onProgress?.({ file: mf.path, index: i, total: manifest.files.length, bytes: buffer.byteLength });
+    } catch (e) {
+      console.warn(`[model-cache] Failed to restore ${mf.path} from workspace:`, e);
+    }
+  }
+
+  return loaded;
+}
+
+/**
+ * Check which models are available in the workspace models/ folder.
+ */
+export async function inspectWorkspaceModels(): Promise<WorkspaceModelStatus[]> {
+  const { listModelFiles } = await import('$lib/stores/workspace.svelte');
+  const results: WorkspaceModelStatus[] = [];
+
+  for (const manifest of MODEL_MANIFESTS) {
+    const paths = manifest.files.map(f => f.path);
+    const found = await listModelFiles(manifest.repo, paths);
+    results.push({
+      manifestId: manifest.id,
+      folderCount: found.length,
+      totalCount: manifest.files.length,
+      complete: found.length === manifest.files.length,
+    });
+  }
+
+  return results;
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 export function formatBytes(bytes: number): string {

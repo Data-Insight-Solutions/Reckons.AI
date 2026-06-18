@@ -416,3 +416,106 @@ export async function drainWorkspacePending(): Promise<PendingEntry[]> {
 
   return entries;
 }
+
+// ── Model folder persistence ────────────────────────────────────────────────
+//
+// Models downloaded to the browser Cache API can also be saved to
+// models/{repo-folder}/ in the workspace. When the cache is cleared,
+// the app can restore from the workspace folder instead of re-downloading.
+
+/**
+ * Sanitize a HuggingFace repo ID into a safe folder name.
+ * e.g. "onnx-community/Qwen2.5-0.5B-Instruct" → "onnx-community--Qwen2.5-0.5B-Instruct"
+ */
+function modelFolderName(repo: string): string {
+  return repo.replace(/\//g, '--');
+}
+
+/**
+ * Write a single model file to the workspace models/ directory.
+ * Path is relative to the model repo (e.g. "onnx/model_q4.onnx").
+ */
+export async function writeModelFile(
+  repo: string,
+  filePath: string,
+  data: ArrayBuffer
+): Promise<void> {
+  if (!_handle) return;
+  try {
+    const modelsDir = await getOrCreateDir(_handle, 'models');
+    const repoDir = await getOrCreateDir(modelsDir, modelFolderName(repo));
+
+    // Handle nested paths like "onnx/model_q4.onnx" or "voices/af_heart.bin"
+    const segments = filePath.split('/');
+    let dir = repoDir;
+    for (let i = 0; i < segments.length - 1; i++) {
+      dir = await getOrCreateDir(dir, segments[i]);
+    }
+
+    const fileName = segments[segments.length - 1];
+    const fh = await dir.getFileHandle(fileName, { create: true });
+    const w = await fh.createWritable();
+    await w.write(data);
+    await w.close();
+  } catch (e) {
+    console.warn(`[workspace] Model file write failed for "${repo}/${filePath}":`, e);
+  }
+}
+
+/**
+ * Read a single model file from the workspace models/ directory.
+ * Returns null if not found or no workspace connected.
+ */
+export async function readModelFile(
+  repo: string,
+  filePath: string
+): Promise<ArrayBuffer | null> {
+  if (!_handle) return null;
+  try {
+    const modelsDir = await _handle.getDirectoryHandle('models');
+    const repoDir = await modelsDir.getDirectoryHandle(modelFolderName(repo));
+
+    const segments = filePath.split('/');
+    let dir: FileSystemDirectoryHandle = repoDir;
+    for (let i = 0; i < segments.length - 1; i++) {
+      dir = await dir.getDirectoryHandle(segments[i]);
+    }
+
+    const fileName = segments[segments.length - 1];
+    const fh = await dir.getFileHandle(fileName);
+    const file = await fh.getFile();
+    return await file.arrayBuffer();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check which model files exist in the workspace models/ directory.
+ * Returns an array of file paths that are present.
+ */
+export async function listModelFiles(repo: string, filePaths: string[]): Promise<string[]> {
+  if (!_handle) return [];
+  try {
+    const modelsDir = await _handle.getDirectoryHandle('models');
+    const repoDir = await modelsDir.getDirectoryHandle(modelFolderName(repo));
+
+    const found: string[] = [];
+    for (const fp of filePaths) {
+      try {
+        const segments = fp.split('/');
+        let dir: FileSystemDirectoryHandle = repoDir;
+        for (let i = 0; i < segments.length - 1; i++) {
+          dir = await dir.getDirectoryHandle(segments[i]);
+        }
+        await dir.getFileHandle(segments[segments.length - 1]);
+        found.push(fp);
+      } catch {
+        // file doesn't exist
+      }
+    }
+    return found;
+  } catch {
+    return []; // models/ or repo dir doesn't exist
+  }
+}
