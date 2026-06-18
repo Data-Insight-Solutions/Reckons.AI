@@ -1,14 +1,18 @@
 /**
- * KB Reader — parses a Reckons.AI .ttl file into queryable in-memory triples.
+ * KB Reader — parses Reckons.AI .ttl files into queryable in-memory triples.
+ *
+ * Supports two modes:
+ *  1. Single-file: `--kb /path/to/knowledge.ttl` (legacy)
+ *  2. Workspace:   `--kb /path/to/workspace/` (scans kbs/{name}/kb.ttl)
  *
  * Reckons.AI exports annotated Turtle with named graphs carrying provenance:
- *   GRAPH <urn:kbase:source/SOURCE_ID> { <s> <p> <o> . }
+ *   GRAPH <urn:kbase:source/SOURCE_ID> { s p o . }
  *
  * This reader handles both annotated (named graphs) and plain Turtle.
  */
 
-import { readFileSync, statSync, watchFile, type WatchListener } from 'node:fs';
-import { resolve } from 'node:path';
+import { readFileSync, statSync, readdirSync, existsSync, watchFile } from 'node:fs';
+import { resolve, join } from 'node:path';
 import { Store, Parser, DataFactory, type Quad } from 'n3';
 
 export type Triple = {
@@ -26,6 +30,70 @@ export type KBStats = {
   entityCount: number;
   lastModified: Date;
 };
+
+export type KBMeta = {
+  stableId?: string;
+  name: string;
+  description?: string;
+  color?: string;
+  createdAt: number;
+  lastModified: number;
+  statementCount: number;
+  sourceCount: number;
+  dbName: string;
+};
+
+export type KBInfo = {
+  folderName: string;
+  meta: KBMeta;
+  stats: KBStats;
+};
+
+// ── Single-KB store ─────────────────────────────────────────────────────────
+
+function parseTtl(text: string): Quad[] {
+  try {
+    const parser = new Parser({ format: 'Turtle*' });
+    const quads = parser.parse(text);
+    if (quads.length > 0) return quads;
+  } catch { /* try plain Turtle */ }
+
+  try {
+    const parser = new Parser({ format: 'Turtle' });
+    return parser.parse(text);
+  } catch { /* return empty */ }
+
+  return [];
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function quadToTriple(q: any): Triple {
+  return {
+    subject: q.subject.value,
+    predicate: q.predicate.value,
+    object: q.object.value,
+    objectIsLiteral: q.object.termType === 'Literal',
+    graph: q.graph?.value || undefined,
+    sourceId: q.graph?.value?.replace('urn:kbase:source/', '') || undefined,
+  };
+}
+
+function storeStats(store: Store, mtime: number): KBStats {
+  const subjects = new Set<string>();
+  const graphs = new Set<string>();
+  for (const q of store) {
+    subjects.add(q.subject.value);
+    if (q.graph?.value) graphs.add(q.graph.value);
+  }
+  return {
+    tripleCount: store.size,
+    sourceCount: graphs.size,
+    entityCount: subjects.size,
+    lastModified: new Date(mtime),
+  };
+}
+
+// ── KBReader (single file — kept for internal use) ──────────────────────────
 
 export class KBReader {
   private ttlPath: string;
@@ -45,25 +113,10 @@ export class KBReader {
       this.lastMtime = mtime;
 
       const text = readFileSync(this.ttlPath, 'utf8');
-      const parser = new Parser({ format: 'Turtle*' });
-      const quads: Quad[] = [];
-
-      parser.parse(text, (err, quad) => {
-        if (err) {
-          // Try plain Turtle fallback
-          try {
-            const p2 = new Parser({ format: 'Turtle' });
-            const q2: Quad[] = [];
-            p2.parse(text, (e2, q) => { if (q) q2.push(q); });
-            this.store = new Store(q2);
-          } catch { /* leave existing store */ }
-          return;
-        }
-        if (quad) quads.push(quad);
-      });
-
-      if (quads.length > 0) this.store = new Store(quads);
-    } catch (e) {
+      const quads = parseTtl(text);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (quads.length > 0) this.store = new Store(quads as any);
+    } catch {
       // File doesn't exist yet or is unreadable — start with empty store
     }
   }
@@ -76,44 +129,13 @@ export class KBReader {
   }
 
   stats(): KBStats {
-    const subjects = new Set<string>();
-    const graphs   = new Set<string>();
-    for (const q of this.store) {
-      subjects.add(q.subject.value);
-      if (q.graph?.value) graphs.add(q.graph.value);
-    }
-    return {
-      tripleCount:  this.store.size,
-      sourceCount:  graphs.size,
-      entityCount:  subjects.size,
-      lastModified: new Date(this.lastMtime),
-    };
+    return storeStats(this.store, this.lastMtime);
   }
 
   allTriples(): Triple[] {
     const out: Triple[] = [];
-    for (const q of this.store) {
-      out.push({
-        subject:       q.subject.value,
-        predicate:     q.predicate.value,
-        object:        q.object.value,
-        objectIsLiteral: q.object.termType === 'Literal',
-        graph:         q.graph?.value || undefined,
-        sourceId:      q.graph?.value?.replace('urn:kbase:source/', '') || undefined,
-      });
-    }
+    for (const q of this.store) out.push(quadToTriple(q));
     return out;
-  }
-
-  private quadToTriple(q: Quad): Triple {
-    return {
-      subject: q.subject.value,
-      predicate: q.predicate.value,
-      object: q.object.value,
-      objectIsLiteral: q.object.termType === 'Literal',
-      graph: q.graph?.value || undefined,
-      sourceId: q.graph?.value?.replace('urn:kbase:source/', '') || undefined,
-    };
   }
 
   triplesAbout(iri: string): Triple[] {
@@ -124,14 +146,13 @@ export class KBReader {
       const key = `${q.subject.value}\t${q.predicate.value}\t${q.object.value}`;
       if (seen.has(key)) return;
       seen.add(key);
-      out.push(this.quadToTriple(q));
+      out.push(quadToTriple(q));
     };
     for (const q of this.store.getQuads(node, null, null, null)) add(q);
     for (const q of this.store.getQuads(null, null, node, null)) add(q);
     return out;
   }
 
-  /** Get triples in the N-hop neighborhood of an entity */
   subgraph(iri: string, hops = 1): Triple[] {
     const visited = new Set<string>([iri]);
     let frontier = [iri];
@@ -146,7 +167,7 @@ export class KBReader {
           const key = `${q.subject.value}\t${q.predicate.value}\t${q.object.value}`;
           if (seen.has(key)) return;
           seen.add(key);
-          out.push(this.quadToTriple(q));
+          out.push(quadToTriple(q));
           if (q.object.termType === 'NamedNode' && !visited.has(q.object.value)) {
             visited.add(q.object.value);
             next.push(q.object.value);
@@ -172,7 +193,6 @@ export class KBReader {
     return [...seen];
   }
 
-  /** Resolve a short label/slug to an entity IRI (best-effort) */
   resolveLabel(label: string): string | null {
     const lower = label.toLowerCase();
     for (const iri of this.entityIRIs()) {
@@ -180,5 +200,268 @@ export class KBReader {
       if (slug === lower || slug.includes(lower)) return iri;
     }
     return null;
+  }
+}
+
+// ── MultiKBReader (workspace directory) ─────────────────────────────────────
+
+export class MultiKBReader {
+  private wsDir: string;
+  private kbsDir: string;
+  private readers = new Map<string, KBReader>(); // folderName → KBReader
+  private metas = new Map<string, KBMeta>();     // folderName → meta
+  /** Legacy single-file reader (for backward compat with --kb file.ttl) */
+  private legacyReader: KBReader | null = null;
+
+  constructor(kbPath: string) {
+    const stat = statSync(kbPath);
+
+    if (!stat.isDirectory()) {
+      // Legacy mode: single .ttl file
+      this.legacyReader = new KBReader(kbPath);
+      this.wsDir = '';
+      this.kbsDir = '';
+      return;
+    }
+
+    this.wsDir = resolve(kbPath);
+    this.kbsDir = join(this.wsDir, 'kbs');
+    this.scanKbs();
+  }
+
+  private scanKbs(): void {
+    if (!this.kbsDir || !existsSync(this.kbsDir)) return;
+
+    const entries = readdirSync(this.kbsDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const kbDir = join(this.kbsDir, entry.name);
+      const ttlPath = join(kbDir, 'kb.ttl');
+      const metaPath = join(kbDir, 'meta.json');
+
+      if (!existsSync(ttlPath)) continue;
+
+      // Load or update the reader
+      if (!this.readers.has(entry.name)) {
+        this.readers.set(entry.name, new KBReader(ttlPath));
+      } else {
+        this.readers.get(entry.name)!.reload();
+      }
+
+      // Load meta
+      if (existsSync(metaPath)) {
+        try {
+          const metaText = readFileSync(metaPath, 'utf8');
+          this.metas.set(entry.name, JSON.parse(metaText));
+        } catch { /* skip bad meta */ }
+      }
+    }
+  }
+
+  /** Re-scan the kbs/ directory for new or changed KBs. */
+  reload(): void {
+    if (this.legacyReader) {
+      this.legacyReader.reload();
+      return;
+    }
+    this.scanKbs();
+    for (const reader of this.readers.values()) reader.reload();
+  }
+
+  /** Watch all KB files for changes. */
+  watch(cb: () => void): void {
+    if (this.legacyReader) {
+      this.legacyReader.watch(cb);
+      return;
+    }
+    for (const reader of this.readers.values()) reader.watch(cb);
+    // Also poll the kbs/ dir for new KBs
+    if (this.kbsDir && existsSync(this.kbsDir)) {
+      watchFile(this.kbsDir, { interval: 5000 }, () => {
+        this.scanKbs();
+        cb();
+      });
+    }
+  }
+
+  /** Is this running in legacy single-file mode? */
+  isLegacy(): boolean {
+    return this.legacyReader !== null;
+  }
+
+  /** List all known KBs with their metadata and stats. */
+  listKbs(): KBInfo[] {
+    if (this.legacyReader) {
+      const s = this.legacyReader.stats();
+      return [{
+        folderName: 'default',
+        meta: { name: 'default', createdAt: 0, lastModified: s.lastModified.getTime(), statementCount: s.tripleCount, sourceCount: s.sourceCount, dbName: 'kbase' },
+        stats: s,
+      }];
+    }
+
+    const result: KBInfo[] = [];
+    for (const [folderName, reader] of this.readers) {
+      const s = reader.stats();
+      const meta = this.metas.get(folderName) ?? {
+        name: folderName, createdAt: 0, lastModified: s.lastModified.getTime(),
+        statementCount: s.tripleCount, sourceCount: s.sourceCount, dbName: folderName,
+      };
+      result.push({ folderName, meta, stats: s });
+    }
+    return result;
+  }
+
+  /** Get a specific KB reader by folder name. */
+  private getReader(kbName?: string): KBReader | null {
+    if (this.legacyReader) return this.legacyReader;
+    if (!kbName) return null;
+
+    // Try exact folder name match
+    if (this.readers.has(kbName)) return this.readers.get(kbName)!;
+
+    // Try matching by meta.name (case-insensitive)
+    const lower = kbName.toLowerCase();
+    for (const [folder, meta] of this.metas) {
+      if (meta.name.toLowerCase() === lower) return this.readers.get(folder)!;
+    }
+    // Try folder name contains
+    for (const [folder, reader] of this.readers) {
+      if (folder.toLowerCase().includes(lower)) return reader;
+    }
+    return null;
+  }
+
+  /** Get all readers (for cross-KB queries). */
+  private allReaders(): KBReader[] {
+    if (this.legacyReader) return [this.legacyReader];
+    return [...this.readers.values()];
+  }
+
+  /** Get all triples, optionally filtered to a specific KB. */
+  allTriples(kbName?: string): Triple[] {
+    if (kbName) {
+      const reader = this.getReader(kbName);
+      return reader ? reader.allTriples() : [];
+    }
+    // All KBs combined
+    const out: Triple[] = [];
+    for (const reader of this.allReaders()) out.push(...reader.allTriples());
+    return out;
+  }
+
+  /** Get aggregate stats across all KBs, or for a specific KB. */
+  stats(kbName?: string): KBStats & { kbCount: number } {
+    const readers = kbName ? (() => { const r = this.getReader(kbName); return r ? [r] : []; })() : this.allReaders();
+    let tripleCount = 0, entityCount = 0, sourceCount = 0;
+    let lastModified = new Date(0);
+    const allEntities = new Set<string>();
+    const allSources = new Set<string>();
+
+    for (const reader of readers) {
+      const s = reader.stats();
+      tripleCount += s.tripleCount;
+      if (s.lastModified > lastModified) lastModified = s.lastModified;
+      for (const iri of reader.entityIRIs()) allEntities.add(iri);
+      for (const t of reader.allTriples()) {
+        if (t.graph) allSources.add(t.graph);
+      }
+    }
+
+    return {
+      tripleCount,
+      entityCount: allEntities.size,
+      sourceCount: allSources.size,
+      lastModified,
+      kbCount: readers.length,
+    };
+  }
+
+  triplesAbout(iri: string, kbName?: string): Triple[] {
+    if (kbName) {
+      const reader = this.getReader(kbName);
+      return reader ? reader.triplesAbout(iri) : [];
+    }
+    const seen = new Set<string>();
+    const out: Triple[] = [];
+    for (const reader of this.allReaders()) {
+      for (const t of reader.triplesAbout(iri)) {
+        const key = `${t.subject}\t${t.predicate}\t${t.object}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(t);
+      }
+    }
+    return out;
+  }
+
+  subgraph(iri: string, hops: number, kbName?: string): Triple[] {
+    if (kbName) {
+      const reader = this.getReader(kbName);
+      return reader ? reader.subgraph(iri, hops) : [];
+    }
+    const seen = new Set<string>();
+    const out: Triple[] = [];
+    for (const reader of this.allReaders()) {
+      for (const t of reader.subgraph(iri, hops)) {
+        const key = `${t.subject}\t${t.predicate}\t${t.object}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(t);
+      }
+    }
+    return out;
+  }
+
+  entityIRIs(kbName?: string): string[] {
+    if (kbName) {
+      const reader = this.getReader(kbName);
+      return reader ? reader.entityIRIs() : [];
+    }
+    const seen = new Set<string>();
+    for (const reader of this.allReaders()) {
+      for (const iri of reader.entityIRIs()) seen.add(iri);
+    }
+    return [...seen];
+  }
+
+  resolveLabel(label: string, kbName?: string): string | null {
+    if (kbName) {
+      const reader = this.getReader(kbName);
+      return reader ? reader.resolveLabel(label) : null;
+    }
+    for (const reader of this.allReaders()) {
+      const iri = reader.resolveLabel(label);
+      if (iri) return iri;
+    }
+    return null;
+  }
+
+  /** Get the workspace directory path (for writing pending files). */
+  getKbFolderPath(kbName?: string): string | null {
+    if (this.legacyReader) return null;
+    if (!kbName) {
+      // Default to first KB
+      const first = this.readers.keys().next().value;
+      return first ? join(this.kbsDir, first) : null;
+    }
+    // Try exact match
+    if (this.readers.has(kbName)) return join(this.kbsDir, kbName);
+    // Try meta name match
+    const lower = kbName.toLowerCase();
+    for (const [folder, meta] of this.metas) {
+      if (meta.name.toLowerCase() === lower) return join(this.kbsDir, folder);
+    }
+    for (const folder of this.readers.keys()) {
+      if (folder.toLowerCase().includes(lower)) return join(this.kbsDir, folder);
+    }
+    return null;
+  }
+
+  /** Get the legacy TTL path (for kb_add_note backward compat). */
+  getLegacyTtlPath(): string | null {
+    if (!this.wsDir) return null;
+    const p = join(this.wsDir, 'knowledge.ttl');
+    return existsSync(p) ? p : null;
   }
 }
