@@ -19,7 +19,7 @@ import type { ChatMessage } from './providers';
  *    so users can correct or refine before the statements are committed to KB.
  */
 
-const DEFAULT_MODEL = 'HuggingFaceTB/SmolLM2-360M-Instruct';
+const DEFAULT_MODEL = 'onnx-community/Qwen2.5-0.5B-Instruct';
 
 /**
  * Download consent gate. When set, `ensureWasmReady` calls this before

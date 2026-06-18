@@ -14,7 +14,7 @@ describe('parseSettingsProfile', () => {
     geminiModel: 'gemini-2.0-flash',
     ollamaModel: 'llama3.2',
     ollamaBaseUrl: 'http://localhost:11434',
-    wasmModel: 'HuggingFaceTB/SmolLM2-360M-Instruct',
+    wasmModel: 'onnx-community/Qwen2.5-0.5B-Instruct',
     openrouterModel: '',
     autoAnalyzeOnImport: false,
     autoAnalyzeIntervalMinutes: 0,

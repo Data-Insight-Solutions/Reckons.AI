@@ -11,7 +11,7 @@
  * "Cannot read properties of undefined (reading 'registerBackend')" crash.
  */
 
-const FALLBACK_MODEL = 'HuggingFaceTB/SmolLM2-360M-Instruct';
+const FALLBACK_MODEL = 'onnx-community/Qwen2.5-0.5B-Instruct';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let generator: any = null;

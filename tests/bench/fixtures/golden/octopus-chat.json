@@ -1,0 +1,62 @@
+[
+  {
+    "question": "What is reckons?",
+    "golden": "Reckons.AI is the knowledge base tool you're using right now! It stores knowledge as RDF triples — subject, predicate, object. Your KB currently has information about the common octopus. Want me to show you around?",
+    "maxWords": 60,
+    "mustReference": [],
+    "mustNotClaim": [
+      "created in",
+      "one of the most powerful",
+      "constantly growing and evolving",
+      "representation of what it means to be human",
+      "giant of knowledge"
+    ]
+  },
+  {
+    "question": "Tell me about the octopus",
+    "golden": "Your KB shows the common octopus (Octopus vulgaris) is a marine mollusk in class Cephalopoda. It has 3 hearts, blue blood from hemocyanin, weighs 3-5 kg, and has ~500 million neurons. It's found in the Mediterranean Sea and eastern Atlantic. It feeds on crabs and uses chromatophores for camouflage.",
+    "maxWords": 80,
+    "mustReference": [
+      "common-octopus",
+      "marine-mollusk",
+      "cephalopoda"
+    ],
+    "mustNotClaim": [
+      "fascinating creature",
+      "amazing",
+      "incredible"
+    ]
+  },
+  {
+    "question": "How long do octopuses live?",
+    "golden": "According to your KB, the common octopus has a lifespan of 1 to 2 years. Their reproductive strategy is semelparity — the female dies after her eggs hatch.",
+    "maxWords": 50,
+    "mustReference": [
+      "1 to 2 years",
+      "semelparity"
+    ],
+    "mustNotClaim": []
+  },
+  {
+    "question": "What eats octopuses?",
+    "golden": "Your KB lists moray eels and sharks as primary predators of the common octopus. The octopus uses camouflage via chromatophores to avoid them.",
+    "maxWords": 40,
+    "mustReference": [
+      "moray-eel",
+      "shark"
+    ],
+    "mustNotClaim": []
+  },
+  {
+    "question": "Tell me about octopus intelligence and quantum physics",
+    "golden": "Your KB shows octopuses are intelligent invertebrates with ~500 million neurons, two-thirds in their arms. They can solve mazes, open jars, and recognize human faces (studied at University of Otago). I don't see anything about quantum physics in your KB — want me to add some?",
+    "maxWords": 70,
+    "mustReference": [
+      "500 million",
+      "university-of-otago"
+    ],
+    "mustNotClaim": [
+      "quantum"
+    ]
+  }
+]

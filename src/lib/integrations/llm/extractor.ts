@@ -110,17 +110,46 @@ export function triplesToStatements(triples: ExtractedTriple[], source: Source):
   });
 }
 
-/** Robust JSON extraction: strips fences, trailing text, etc. */
+/**
+ * Attempt to repair a truncated JSON array by walking backwards through `}`
+ * positions until a valid parse is found. Handles `}` chars inside strings
+ * by trying each candidate.
+ */
+function repairTruncatedArray(slice: string): unknown[] {
+  let pos = slice.length;
+  for (let attempts = 0; attempts < 50; attempts++) {
+    pos = slice.lastIndexOf('}', pos - 1);
+    if (pos === -1) break;
+    const candidate = slice.slice(0, pos + 1).replace(/,\s*$/, '') + ']';
+    try {
+      const parsed = JSON.parse(candidate);
+      if (Array.isArray(parsed)) return parsed;
+    } catch { /* try next position */ }
+  }
+  throw new Error('No JSON array found in LLM output');
+}
+
+/** Robust JSON extraction: strips fences, trailing text, repairs truncated arrays. */
 export function parseTriplesJSON(raw: string): ExtractedTriple[] {
   let text = raw.trim();
   // Strip markdown fences
   text = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '');
   // Find the first array bracket
   const start = text.indexOf('[');
+  if (start === -1) throw new Error('No JSON array found in LLM output');
+
   const end = text.lastIndexOf(']');
-  if (start === -1 || end === -1) throw new Error('No JSON array found in LLM output');
-  const slice = text.slice(start, end + 1);
-  const arr = JSON.parse(slice);
+  let slice = end > start ? text.slice(start, end + 1) : text.slice(start);
+
+  let arr: unknown[];
+  try {
+    arr = JSON.parse(slice);
+  } catch {
+    // Repair truncated JSON: small models often hit the token limit mid-array.
+    // Try progressively shorter slices ending at each `}` until one parses.
+    arr = repairTruncatedArray(slice);
+  }
+
   if (!Array.isArray(arr)) throw new Error('LLM output is not a JSON array');
   return arr.filter(
     (t): t is ExtractedTriple =>

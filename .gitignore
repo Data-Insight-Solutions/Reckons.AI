@@ -44,3 +44,6 @@ yarn-debug.log*
 # Local development
 .cache/
 temp/
+
+# Bench results (generated)
+tests/bench/results/

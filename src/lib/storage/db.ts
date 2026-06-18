@@ -158,7 +158,7 @@ export const DEFAULT_SETTINGS: SettingsRecord = {
   openaiModel: import.meta.env.VITE_OPENAI_MODEL ?? 'gpt-4o-mini',
   geminiApiKey: import.meta.env.VITE_GEMINI_API_KEY || undefined,
   geminiModel: import.meta.env.VITE_GEMINI_MODEL ?? 'gemini-2.0-flash',
-  wasmModel: import.meta.env.VITE_WASM_MODEL ?? 'HuggingFaceTB/SmolLM2-360M-Instruct',
+  wasmModel: import.meta.env.VITE_WASM_MODEL ?? 'onnx-community/Qwen2.5-0.5B-Instruct',
   preferredBackend: (import.meta.env.VITE_PREFERRED_BACKEND as SettingsRecord['preferredBackend']) ?? 'claude',
   ingestBackend: (import.meta.env.VITE_INGEST_BACKEND as SettingsRecord['ingestBackend']) || undefined,
   analyzeBackend: (import.meta.env.VITE_ANALYZE_BACKEND as SettingsRecord['analyzeBackend']) || undefined,
@@ -300,7 +300,7 @@ export async function getSettings(): Promise<SettingsRecord> {
   if (!s) await db.settings.put(DEFAULT_SETTINGS);
 
   // Migrate stale WASM model references from older versions (e.g. Xenova/ namespace)
-  const STALE_MODELS = ['Xenova/Qwen2.5-0.5B-Instruct', 'Xenova/'];
+  const STALE_MODELS = ['Xenova/Qwen2.5-0.5B-Instruct', 'Xenova/', 'HuggingFaceTB/SmolLM2-360M-Instruct'];
   const isStale = (m: string | undefined) => m && STALE_MODELS.some(p => m.startsWith(p));
   if (isStale(base.wasmModel)) {
     base.wasmModel = DEFAULT_SETTINGS.wasmModel;

@@ -60,8 +60,45 @@ describe('parseTriplesJSON', () => {
     expect(() => parseTriplesJSON('No array here')).toThrow('No JSON array found');
   });
 
-  it('throws when brackets are unmatched', () => {
+  it('throws when no array start bracket exists', () => {
     expect(() => parseTriplesJSON('{')).toThrow();
+  });
+
+  it('repairs truncated array missing closing bracket', () => {
+    const raw = '[{"subject":"alice","predicate":"knows","object":"bob"},{"subject":"carol","predicate":"knows","object":"dave"}';
+    const result = parseTriplesJSON(raw);
+    expect(result).toHaveLength(2);
+    expect(result[0].subject).toBe('alice');
+    expect(result[1].subject).toBe('carol');
+  });
+
+  it('repairs truncated array cut mid-object', () => {
+    // Simulates token-limit truncation: first object complete, second cut off
+    const raw = '[{"subject":"alice","predicate":"knows","object":"bob"},{"subject":"carol","predicate":"kno';
+    const result = parseTriplesJSON(raw);
+    expect(result).toHaveLength(1);
+    expect(result[0].subject).toBe('alice');
+  });
+
+  it('repairs truncated array with trailing comma after last object', () => {
+    const raw = '[{"subject":"alice","predicate":"knows","object":"bob"},';
+    const result = parseTriplesJSON(raw);
+    expect(result).toHaveLength(1);
+  });
+
+  it('repairs truncated JSON when } appears inside string values', () => {
+    const raw = '[{"subject":"a","predicate":"b","object":"c","excerpt":"text with } inside"},{"subject":"d","predicate":"e","object":"f","excerpt":"more } text and trunc';
+    const result = parseTriplesJSON(raw);
+    expect(result).toHaveLength(1);
+    expect(result[0].subject).toBe('a');
+  });
+
+  it('repairs real SmolLM2-style truncated output', () => {
+    const raw = '```json\n[{"subject":"common-octopus","predicate":"is-a","object":"marine-mollusk","confidence":0.9},{"subject":"octopus","predicate":"has-heart-count","object":"3","objectIsLiteral":true,"confidence":0.95},{"subject":"octopus","predicate":"has-color","object":"blue","confidence":';
+    const result = parseTriplesJSON(raw);
+    expect(result).toHaveLength(2);
+    expect(result[0].subject).toBe('common-octopus');
+    expect(result[1].object).toBe('3');
   });
 
   it('filters out entries missing subject', () => {

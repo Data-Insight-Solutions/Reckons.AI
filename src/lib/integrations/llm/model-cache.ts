@@ -43,17 +43,17 @@ function hfUrl(repo: string, path: string, revision = 'main'): string {
   return `${HF_HOST}/${repo}/resolve/${revision}/${path}`;
 }
 
-// SmolLM2-360M q4 — the default WASM LLM
-const SMOLLM2_360M: ModelManifest = {
-  id: 'smollm2-360m',
-  label: 'SmolLM2-360M (LLM)',
-  description: 'Default local LLM for extraction and chat. ~370 MB.',
-  repo: 'HuggingFaceTB/SmolLM2-360M-Instruct',
-  totalBytes: 370_000_000,
+// Qwen2.5-0.5B q4 — the default WASM LLM
+const QWEN25_05B: ModelManifest = {
+  id: 'qwen25-05b',
+  label: 'Qwen2.5-0.5B (LLM)',
+  description: 'Default local LLM for extraction and chat. ~500 MB.',
+  repo: 'onnx-community/Qwen2.5-0.5B-Instruct',
+  totalBytes: 500_000_000,
   files: [
-    { path: 'onnx/model_q4.onnx', approxBytes: 370_000_000, cacheName: TRANSFORMERS_CACHE },
+    { path: 'onnx/model_q4.onnx', approxBytes: 500_000_000, cacheName: TRANSFORMERS_CACHE },
     { path: 'config.json', approxBytes: 900, cacheName: TRANSFORMERS_CACHE },
-    { path: 'tokenizer.json', approxBytes: 2_100_000, cacheName: TRANSFORMERS_CACHE },
+    { path: 'tokenizer.json', approxBytes: 7_000_000, cacheName: TRANSFORMERS_CACHE },
     { path: 'tokenizer_config.json', approxBytes: 4_000, cacheName: TRANSFORMERS_CACHE },
     { path: 'generation_config.json', approxBytes: 200, cacheName: TRANSFORMERS_CACHE },
   ],
@@ -111,7 +111,7 @@ const WHISPER_TINY: ModelManifest = {
   ],
 };
 
-export const MODEL_MANIFESTS: ModelManifest[] = [SMOLLM2_360M, MINILM, KOKORO, WHISPER_TINY];
+export const MODEL_MANIFESTS: ModelManifest[] = [QWEN25_05B, MINILM, KOKORO, WHISPER_TINY];
 
 // ── Cache inspection ───────────────────────────────────────────────────────
 

@@ -1,0 +1,160 @@
+[
+  {
+    "subject": "common-octopus",
+    "predicate": "is-a",
+    "object": "marine-mollusk",
+    "gloss": "The common octopus is a marine mollusk.",
+    "confidence": 0.95,
+    "excerpt": "The common octopus (Octopus vulgaris) is a marine mollusk belonging to the class Cephalopoda."
+  },
+  {
+    "subject": "common-octopus",
+    "predicate": "belongs-to-class",
+    "object": "cephalopoda",
+    "gloss": "The common octopus belongs to the class Cephalopoda.",
+    "confidence": 0.95,
+    "excerpt": "The common octopus (Octopus vulgaris) is a marine mollusk belonging to the class Cephalopoda."
+  },
+  {
+    "subject": "common-octopus",
+    "predicate": "has-scientific-name",
+    "object": "Octopus vulgaris",
+    "objectIsLiteral": true,
+    "datatype": "string",
+    "gloss": "The scientific name of the common octopus is Octopus vulgaris.",
+    "confidence": 0.98,
+    "excerpt": "The common octopus (Octopus vulgaris) is a marine mollusk belonging to the class Cephalopoda."
+  },
+  {
+    "subject": "common-octopus",
+    "predicate": "is-found-in",
+    "object": "mediterranean-sea",
+    "gloss": "The common octopus is found in the Mediterranean Sea.",
+    "confidence": 0.9,
+    "excerpt": "It is found in tropical and temperate waters worldwide, particularly in the Mediterranean Sea and the eastern Atlantic Ocean."
+  },
+  {
+    "subject": "common-octopus",
+    "predicate": "is-found-in",
+    "object": "eastern-atlantic-ocean",
+    "gloss": "The common octopus is found in the eastern Atlantic Ocean.",
+    "confidence": 0.9,
+    "excerpt": "It is found in tropical and temperate waters worldwide, particularly in the Mediterranean Sea and the eastern Atlantic Ocean."
+  },
+  {
+    "subject": "common-octopus",
+    "predicate": "has-heart-count",
+    "object": "3",
+    "objectIsLiteral": true,
+    "datatype": "number",
+    "gloss": "Octopuses have three hearts.",
+    "confidence": 0.95,
+    "excerpt": "Octopuses have three hearts: two branchial hearts that pump blood through the gills, and one systemic heart that pumps blood through the body."
+  },
+  {
+    "subject": "common-octopus",
+    "predicate": "has-blood-color",
+    "object": "blue",
+    "objectIsLiteral": true,
+    "datatype": "string",
+    "gloss": "Octopus blood is blue due to copper-based hemocyanin.",
+    "confidence": 0.95,
+    "excerpt": "Their blood is blue because it contains copper-based hemocyanin rather than iron-based hemoglobin."
+  },
+  {
+    "subject": "common-octopus",
+    "predicate": "has-weight-range",
+    "object": "3 to 5 kilograms",
+    "objectIsLiteral": true,
+    "datatype": "string",
+    "gloss": "An adult common octopus typically weighs between 3 and 5 kilograms.",
+    "confidence": 0.9,
+    "excerpt": "An adult common octopus typically weighs between 3 and 5 kilograms and has an arm span of up to 1 meter."
+  },
+  {
+    "subject": "common-octopus",
+    "predicate": "has-neuron-count",
+    "object": "500000000",
+    "objectIsLiteral": true,
+    "datatype": "number",
+    "gloss": "Octopuses have approximately 500 million neurons.",
+    "confidence": 0.9,
+    "excerpt": "They have approximately 500 million neurons, with about two-thirds located in their arms rather than their central brain."
+  },
+  {
+    "subject": "common-octopus",
+    "predicate": "has-ability",
+    "object": "camouflage",
+    "gloss": "The octopus is a master of camouflage using chromatophores.",
+    "confidence": 0.9,
+    "excerpt": "The octopus is a master of camouflage."
+  },
+  {
+    "subject": "chromatophores",
+    "predicate": "enables",
+    "object": "color-change",
+    "gloss": "Chromatophores allow octopuses to change color and texture in less than a second.",
+    "confidence": 0.9,
+    "excerpt": "Specialized skin cells called chromatophores allow them to change color and texture in less than a second."
+  },
+  {
+    "subject": "common-octopus",
+    "predicate": "has-predator",
+    "object": "moray-eel",
+    "gloss": "Moray eels are a primary predator of octopuses.",
+    "confidence": 0.85,
+    "excerpt": "Their primary predators include moray eels, sharks, and dolphins."
+  },
+  {
+    "subject": "common-octopus",
+    "predicate": "has-predator",
+    "object": "shark",
+    "gloss": "Sharks are a primary predator of octopuses.",
+    "confidence": 0.85,
+    "excerpt": "Their primary predators include moray eels, sharks, and dolphins."
+  },
+  {
+    "subject": "common-octopus",
+    "predicate": "has-lifespan",
+    "object": "1 to 2 years",
+    "objectIsLiteral": true,
+    "datatype": "string",
+    "gloss": "Octopuses have a short lifespan of 1 to 2 years.",
+    "confidence": 0.9,
+    "excerpt": "Octopuses are solitary creatures with a short lifespan of 1 to 2 years."
+  },
+  {
+    "subject": "common-octopus",
+    "predicate": "has-reproductive-strategy",
+    "object": "semelparity",
+    "gloss": "The octopus reproductive strategy is known as semelparity.",
+    "confidence": 0.9,
+    "excerpt": "This reproductive strategy is known as semelparity."
+  },
+  {
+    "subject": "common-octopus",
+    "predicate": "feeds-on",
+    "object": "crabs",
+    "gloss": "The common octopus primarily feeds on crabs.",
+    "confidence": 0.9,
+    "excerpt": "The common octopus primarily feeds on crabs, crayfish, and bivalve mollusks."
+  },
+  {
+    "subject": "common-octopus",
+    "predicate": "has-sucker-count-per-arm",
+    "object": "240",
+    "objectIsLiteral": true,
+    "datatype": "number",
+    "gloss": "Each octopus arm has approximately 240 suckers.",
+    "confidence": 0.85,
+    "excerpt": "Each arm has approximately 240 suckers that can taste and grip independently."
+  },
+  {
+    "subject": "university-of-otago",
+    "predicate": "is-located-in",
+    "object": "new-zealand",
+    "gloss": "The University of Otago is in New Zealand.",
+    "confidence": 0.9,
+    "excerpt": "In laboratory experiments at the University of Otago in New Zealand, octopuses demonstrated the ability to recognize individual human faces."
+  }
+]

@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [sveltekit()],
   test: {
     environment: 'jsdom',
-    include: ['src/**/*.{test,spec}.{js,ts}'],
+    include: ['src/**/*.{test,spec}.{js,ts}', 'tests/bench/**/*.{test,spec}.{js,ts}'],
     coverage: {
       provider: 'v8',
       include: ['src/lib/**/*.ts'],

@@ -162,7 +162,7 @@
       color: '#6b4399',
       keyField: undefined,
       modelField: 'wasmModel',
-      modelDefault: 'HuggingFaceTB/SmolLM2-360M-Instruct',
+      modelDefault: 'onnx-community/Qwen2.5-0.5B-Instruct',
       features: ['ingest', 'chat'],
       docsUrl: '',
       note: 'Runs in-browser via transformers.js. No GPU needed, works on mobile. Auto-fallback for ingest and chat.'

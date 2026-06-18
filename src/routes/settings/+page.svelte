@@ -181,31 +181,31 @@
       id: 'HuggingFaceTB/SmolLM2-135M-Instruct',
       label: 'SmolLM2-135M',
       size: '~135 MB',
-      note: 'ultra-light · fast download · basic extraction'
+      note: 'ultra-light · fast download · basic chat only'
     },
     {
       id: 'HuggingFaceTB/SmolLM2-360M-Instruct',
       label: 'SmolLM2-360M',
       size: '~360 MB',
-      note: 'default · good balance of speed and quality'
+      note: 'lightweight · limited extraction quality'
     },
     {
       id: 'onnx-community/Qwen2.5-0.5B-Instruct',
       label: 'Qwen2.5-0.5B',
       size: '~500 MB',
-      note: 'strong reasoning for size · multilingual'
+      note: 'default · best chat quality for size · multilingual'
     },
     {
-      id: 'onnx-community/Phi-3.5-mini-instruct-onnx-web',
-      label: 'Phi-3.5-mini',
-      size: '~900 MB',
-      note: 'high quality · slow download · needs 4 GB+ RAM'
+      id: 'onnx-community/Qwen2.5-1.5B-Instruct',
+      label: 'Qwen2.5-1.5B',
+      size: '~1.5 GB',
+      note: 'best extraction quality · needs 4 GB+ RAM'
     },
     {
       id: 'HuggingFaceTB/SmolLM2-1.7B-Instruct',
       label: 'SmolLM2-1.7B',
       size: '~1.7 GB',
-      note: 'may crash in-browser WASM (use Ollama for larger models)'
+      note: 'best chat quality · slow · may crash in-browser'
     },
   ];
 
@@ -243,8 +243,8 @@
     }
 
     const recommendation =
-      tier === 'high' ? WASM_MODELS[1]   // SmolLM2-1.7B
-      : WASM_MODELS[0];                  // SmolLM2-360M
+      tier === 'high' ? WASM_MODELS[3]   // Qwen2.5-1.5B
+      : WASM_MODELS[2];                  // Qwen2.5-0.5B (default)
 
     const ramStr = ramGb !== null ? `${ramGb} GB RAM` : 'unknown RAM';
     const gpuStr = hasWebGPU ? ' · WebGPU available' : '';
@@ -1443,7 +1443,7 @@
           <tr><td><code>VITE_OLLAMA_BASE_URL</code></td><td>Ollama URL</td><td>http://localhost:11434</td></tr>
           <tr><td><code>VITE_OLLAMA_MODEL</code></td><td>Ollama model</td><td>llama3.2</td></tr>
           <tr><td><code>VITE_OPENROUTER_MODEL</code></td><td>OpenRouter model</td><td>meta-llama/llama-3.2-3b-instruct:free</td></tr>
-          <tr><td><code>VITE_WASM_MODEL</code></td><td>WASM/HuggingFace model ID</td><td>HuggingFaceTB/SmolLM2-360M-Instruct</td></tr>
+          <tr><td><code>VITE_WASM_MODEL</code></td><td>WASM/HuggingFace model ID</td><td>onnx-community/Qwen2.5-0.5B-Instruct</td></tr>
         </tbody>
       </table>
       <p class="hint" style="margin-top:0.6rem">
