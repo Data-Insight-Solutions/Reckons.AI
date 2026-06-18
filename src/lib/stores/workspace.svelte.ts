@@ -2,8 +2,10 @@
  * Local Workspace — a user-selected directory on their filesystem.
  *
  * When a workspace is set it serves as:
- *  - Default export location for TTL snapshots (knowledge.ttl — read by MCP server)
+ *  - Persistent home for all KBs (kbs/{name}/kb.ttl + meta.json + sources.json)
+ *  - Default export location for MCP server (knowledge.ttl — backward compat)
  *  - Profile sync location (settings_profile.json)
+ *  - Future: model storage, cross-device sync
  *
  * The FileSystemDirectoryHandle is stored in IndexedDB (structured-clone safe),
  * but PERMISSION must be re-granted each browser session.  We store the folder
@@ -12,8 +14,9 @@
  *
  * Requires the File System Access API — Chrome/Edge only (not Firefox/Safari).
  */
-import { db } from '../storage/db';
+import { db, KBaseDB } from '../storage/db';
 import { updateSettings } from './settings.svelte';
+import { getRegistry, type KbEntry } from '../storage/kb-registry';
 
 /** Filename written to the workspace dir on every KB mutation (read by the MCP server). */
 export const WORKSPACE_KB_FILE = 'knowledge.ttl';
@@ -21,10 +24,14 @@ export const WORKSPACE_KB_FILE = 'knowledge.ttl';
 let _handle = $state<FileSystemDirectoryHandle | null>(null);
 let _name   = $state<string | null>(null);
 let _state  = $state<'none' | 'disconnected' | 'connected'>('none');
+let _lastSyncTime = $state<number | null>(null);
+let _syncedKbCount = $state(0);
 
 export function workspaceHandle(): FileSystemDirectoryHandle | null { return _handle; }
 export function workspaceName(): string | null { return _name; }
 export function workspaceState(): 'none' | 'disconnected' | 'connected' { return _state; }
+export function lastSyncTime(): number | null { return _lastSyncTime; }
+export function syncedKbCount(): number { return _syncedKbCount; }
 
 export function supportsWorkspace(): boolean {
   return typeof window !== 'undefined' && 'showDirectoryPicker' in window;
@@ -89,7 +96,16 @@ export async function clearWorkspace(): Promise<void> {
   _handle = null;
   _name = null;
   _state = 'none';
+  _lastSyncTime = null;
+  _syncedKbCount = 0;
   await updateSettings({ workspaceName: undefined });
+}
+
+// ── Low-level file helpers ───────────────────────────────────────────────────
+
+/** Get or create a subdirectory. */
+async function getOrCreateDir(parent: FileSystemDirectoryHandle, name: string): Promise<FileSystemDirectoryHandle> {
+  return parent.getDirectoryHandle(name, { create: true });
 }
 
 /**
@@ -123,15 +139,201 @@ export async function writeToWorkspace(filename: string, content: string): Promi
   }
 }
 
+/** Write a text file into a subdirectory handle. */
+async function writeToDir(dir: FileSystemDirectoryHandle, filename: string, content: string): Promise<void> {
+  const fh = await dir.getFileHandle(filename, { create: true });
+  const w = await fh.createWritable();
+  await w.write(content);
+  await w.close();
+}
+
+/** Read a text file from a subdirectory handle. Returns null if not found. */
+async function readFromDir(dir: FileSystemDirectoryHandle, filename: string): Promise<string | null> {
+  try {
+    const fh = await dir.getFileHandle(filename);
+    const file = await fh.getFile();
+    return await file.text();
+  } catch {
+    return null;
+  }
+}
+
+// ── Multi-KB folder sync ─────────────────────────────────────────────────────
+
+/** Sanitize a KB name into a safe folder name. */
+function kbFolderName(name: string, id: string): string {
+  const sanitized = name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  return sanitized || id;
+}
+
+export type KbMeta = {
+  stableId?: string;
+  name: string;
+  description?: string;
+  color?: string;
+  createdAt: number;
+  lastModified: number;
+  statementCount: number;
+  sourceCount: number;
+  dbName: string;
+};
+
+/**
+ * Write one KB's data to the workspace folder: kbs/{folderName}/kb.ttl + meta.json + sources.json
+ */
+export async function writeKbToFolder(
+  entry: KbEntry,
+  ttl: string,
+  sources: unknown[],
+  stableId?: string
+): Promise<void> {
+  if (!_handle) return;
+  try {
+    const kbsDir = await getOrCreateDir(_handle, 'kbs');
+    const folderName = kbFolderName(entry.name, entry.id);
+    const kbDir = await getOrCreateDir(kbsDir, folderName);
+
+    const meta: KbMeta = {
+      stableId: stableId || entry.stableId,
+      name: entry.name,
+      description: entry.description,
+      color: entry.color,
+      createdAt: entry.createdAt,
+      lastModified: Date.now(),
+      statementCount: entry.statementCount ?? 0,
+      sourceCount: sources.length,
+      dbName: entry.id,
+    };
+
+    await Promise.all([
+      writeToDir(kbDir, 'kb.ttl', ttl),
+      writeToDir(kbDir, 'meta.json', JSON.stringify(meta, null, 2)),
+      writeToDir(kbDir, 'sources.json', JSON.stringify(sources, null, 2)),
+    ]);
+  } catch (e) {
+    console.warn(`[workspace] KB folder write failed for "${entry.name}":`, e);
+  }
+}
+
+/**
+ * Scan the kbs/ directory for KB folders (those containing meta.json).
+ * Returns the parsed meta for each found KB.
+ */
+export async function listKbFolders(): Promise<Array<{ folderName: string; meta: KbMeta }>> {
+  if (!_handle) return [];
+  try {
+    const kbsDir = await _handle.getDirectoryHandle('kbs');
+    const results: Array<{ folderName: string; meta: KbMeta }> = [];
+
+    for await (const entry of (kbsDir as any).values()) {
+      if (entry.kind !== 'directory') continue;
+      const metaText = await readFromDir(entry, 'meta.json');
+      if (!metaText) continue;
+      try {
+        const meta = JSON.parse(metaText) as KbMeta;
+        results.push({ folderName: entry.name, meta });
+      } catch { /* skip malformed */ }
+    }
+
+    return results;
+  } catch {
+    return []; // kbs/ dir doesn't exist yet
+  }
+}
+
+/**
+ * Read a KB's full data from its folder.
+ * Returns null if the folder or key files don't exist.
+ */
+export async function readKbFromFolder(folderName: string): Promise<{
+  ttl: string;
+  meta: KbMeta;
+  sources: unknown[];
+} | null> {
+  if (!_handle) return null;
+  try {
+    const kbsDir = await _handle.getDirectoryHandle('kbs');
+    const kbDir = await kbsDir.getDirectoryHandle(folderName);
+
+    const [ttl, metaText, sourcesText] = await Promise.all([
+      readFromDir(kbDir, 'kb.ttl'),
+      readFromDir(kbDir, 'meta.json'),
+      readFromDir(kbDir, 'sources.json'),
+    ]);
+
+    if (!ttl || !metaText) return null;
+    const meta = JSON.parse(metaText) as KbMeta;
+    const sources = sourcesText ? JSON.parse(sourcesText) : [];
+
+    return { ttl, meta, sources };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Sync all registered KBs to the workspace folder.
+ * Exports each KB's TTL + meta + sources to kbs/{name}/.
+ */
+export async function syncAllKbs(): Promise<number> {
+  if (!_handle) return 0;
+  const { toTurtle } = await import('../rdf/serialize');
+  const registry = getRegistry();
+  let synced = 0;
+
+  for (const entry of registry) {
+    try {
+      // Open a temporary DB connection for this KB
+      const kbDb = new KBaseDB(entry.id);
+      const statements = await kbDb.statements.toArray();
+      const sources = await kbDb.sources.toArray();
+      const settings = await kbDb.settings.get('main');
+      const stableId = settings?.kbStableId;
+
+      if (statements.length === 0 && entry.id !== 'kbase') {
+        // Skip empty non-default KBs
+        if (kbDb !== db) kbDb.close();
+        continue;
+      }
+
+      const ttl = toTurtle(statements);
+      await writeKbToFolder(entry, ttl, sources, stableId);
+      synced++;
+
+      // Close if it's not the active DB
+      if (kbDb !== db) kbDb.close();
+    } catch (e) {
+      console.warn(`[workspace] Failed to sync KB "${entry.name}":`, e);
+    }
+  }
+
+  // Also write legacy knowledge.ttl for MCP server backward compat
+  try {
+    const statements = await db.statements.toArray();
+    const ttl = toTurtle(statements);
+    await writeToWorkspace(WORKSPACE_KB_FILE, ttl);
+  } catch { /* best-effort */ }
+
+  _syncedKbCount = synced;
+  _lastSyncTime = Date.now();
+  return synced;
+}
+
 // ── Workspace TTL auto-export ─────────────────────────────────────────────────
 //
-// After each KB mutation, schedule a debounced clean export to knowledge.ttl.
-// The MCP server watches this file and reloads automatically.
+// After each KB mutation, schedule a debounced export to:
+//  1. kbs/{name}/ folder (multi-KB sync)
+//  2. knowledge.ttl (legacy MCP compat)
 
 let _wsExportTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
- * Schedule a clean TTL export to knowledge.ttl in the workspace directory.
+ * Schedule a workspace export after a KB mutation.
  * Debounced 2 s so rapid bulk operations produce one write.
  * No-ops when no workspace is connected.
  */
@@ -147,11 +349,24 @@ export function scheduleWorkspaceTtlExport(): void {
 async function _triggerWorkspaceTtlExport(): Promise<void> {
   if (!_handle) return;
   try {
-    // Lazy import to avoid circular dependency
     const { toTurtle } = await import('../rdf/serialize');
     const statements = await db.statements.toArray();
-    const turtle = toTurtle(statements);
-    await writeToWorkspace(WORKSPACE_KB_FILE, turtle);
+    const sources = await db.sources.toArray();
+    const settings = await db.settings.get('main');
+    const ttl = toTurtle(statements);
+
+    // Write legacy flat file for MCP server
+    await writeToWorkspace(WORKSPACE_KB_FILE, ttl);
+
+    // Write to multi-KB folder structure
+    const { getCurrentKbId } = await import('../storage/kb-registry');
+    const currentId = getCurrentKbId();
+    const registry = getRegistry();
+    const entry = registry.find(e => e.id === currentId);
+    if (entry) {
+      await writeKbToFolder(entry, ttl, sources, settings?.kbStableId);
+      _lastSyncTime = Date.now();
+    }
   } catch (err) {
     console.warn('[workspace] TTL export failed:', err);
   }

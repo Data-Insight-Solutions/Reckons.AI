@@ -25,7 +25,8 @@
   import { DEFAULT_SETTINGS, getSettings, getUserDefaults, saveUserDefaults, clearUserDefaults, type SettingsRecord } from '$lib/storage/db';
   import {
     workspaceName, workspaceState, supportsWorkspace,
-    pickWorkspace, reconnectWorkspace, clearWorkspace, loadWorkspace
+    pickWorkspace, reconnectWorkspace, clearWorkspace, loadWorkspace,
+    syncAllKbs, listKbFolders, lastSyncTime, syncedKbCount
   } from '$lib/stores/workspace.svelte';
   import { exportJsonLd, exportLlmsTxt } from '$lib/storage/semantic-export';
 
@@ -579,17 +580,42 @@
 
   // ── Workspace ──────────────────────────────────────────────────────────────
   let workspaceConnecting = $state(false);
+  let wsSyncing = $state(false);
+  let wsSyncMsg = $state('');
+  let wsFolderCount = $state(0);
 
   async function handlePickWorkspace() {
     workspaceConnecting = true;
-    await pickWorkspace();
+    const ok = await pickWorkspace();
     workspaceConnecting = false;
+    if (ok) {
+      // Initial sync of all KBs to the new folder
+      wsSyncing = true;
+      const count = await syncAllKbs();
+      wsSyncMsg = `Synced ${count} KB${count !== 1 ? 's' : ''} to folder.`;
+      wsSyncing = false;
+      setTimeout(() => { wsSyncMsg = ''; }, 5000);
+    }
   }
 
   async function handleReconnectWorkspace() {
     workspaceConnecting = true;
-    await reconnectWorkspace();
+    const ok = await reconnectWorkspace();
     workspaceConnecting = false;
+    if (ok) {
+      // Check what's in the folder
+      const folders = await listKbFolders();
+      wsFolderCount = folders.length;
+    }
+  }
+
+  async function handleSyncAllKbs() {
+    wsSyncing = true;
+    wsSyncMsg = '';
+    const count = await syncAllKbs();
+    wsSyncMsg = `Synced ${count} KB${count !== 1 ? 's' : ''} to folder.`;
+    wsSyncing = false;
+    setTimeout(() => { wsSyncMsg = ''; }, 5000);
   }
 </script>
 
@@ -1358,15 +1384,15 @@
 <section id="s-workspace" class="card">
   <h3>local workspace</h3>
   <p class="sub">
-    Link a local folder as your workspace. TTL exports default there. If the folder is
-    inside Dropbox, iCloud Drive, or OneDrive, saving a settings profile here lets
-    you restore your setup on any browser or device — no account required.
+    Link a local folder as your Reckons home. All KBs are auto-synced there as TTL files,
+    so your data survives browser cache clears. Place the folder inside Dropbox, iCloud
+    Drive, or OneDrive for cross-device sync — no account required.
   </p>
 
   {#if supportsWorkspace()}
     {#if workspaceState() === 'none'}
       <button class="primary" onclick={handlePickWorkspace} disabled={workspaceConnecting}>
-        {workspaceConnecting ? 'picking…' : 'pick workspace folder…'}
+        {workspaceConnecting ? 'picking…' : 'pick Reckons home folder…'}
       </button>
     {:else if workspaceState() === 'disconnected'}
       <div class="ws-row">
@@ -1387,6 +1413,29 @@
     {/if}
 
     {#if workspaceState() === 'connected'}
+      <div class="ws-profile-row">
+        <div class="defaults-info">
+          <strong>KB folder sync</strong>
+          <p class="check-hint">
+            All KBs are auto-synced to <code>kbs/</code> in your workspace folder on every change.
+            {#if lastSyncTime()}
+              Last synced: {new Date(lastSyncTime()!).toLocaleTimeString()}.
+            {/if}
+            {#if syncedKbCount() > 0}
+              {syncedKbCount()} KB{syncedKbCount() !== 1 ? 's' : ''} in folder.
+            {/if}
+          </p>
+        </div>
+        <div class="btn-group">
+          <button onclick={handleSyncAllKbs} disabled={wsSyncing}>
+            {wsSyncing ? 'syncing…' : 'sync all KBs now'}
+          </button>
+        </div>
+      </div>
+      {#if wsSyncMsg}
+        <p class="hint" style="color:var(--accent);margin-top:0.4rem">{wsSyncMsg}</p>
+      {/if}
+
       <div class="ws-profile-row">
         <div class="defaults-info">
           <strong>settings profile sync</strong>
