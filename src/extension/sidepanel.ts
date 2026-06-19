@@ -7,12 +7,13 @@
  */
 import type {
   ExtensionState, AnalysisResult, ExtractedTriple, DiffSummary, PopupRequest, BackgroundEvent,
+  LiveSession, LiveClaim, LiveVerdict,
 } from './types';
 
 let state: ExtensionState | null = null;
 let error: string | null = null;
 let currentTab: chrome.tabs.Tab | null = null;
-let view: 'compare' | 'ingest' | 'session' = 'compare';
+let view: 'compare' | 'ingest' | 'session' | 'live' = 'compare';
 let focusPrompt = '';
 let ingestStatus: { kind: 'ok' | 'err'; msg: string } | null = null;
 let ingestBusy = false;
@@ -29,8 +30,11 @@ function send(msg: PopupRequest): Promise<BackgroundEvent> {
 
 chrome.runtime.onMessage.addListener((event: BackgroundEvent) => {
   if (event.type === 'STATE') {
+    const wasLive = state?.liveStreaming;
     state = event.state;
     if (event.state.analyzing) error = null;
+    // Auto-switch to Live tab when streaming starts
+    if (!wasLive && event.state.liveStreaming) view = 'live';
   }
   if (event.type === 'ERROR') { error = event.message; }
   if (event.type === 'INGEST_RESULT') {
@@ -74,14 +78,18 @@ function buildHTML(): string {
 
   // Tab switcher
   const sessionCount = state.session.pages.length;
+  const fcActive = state.liveStreaming;
+  const fcClaimCount = state.liveSession?.claims?.length ?? 0;
   html += `<div class="tab-bar">
     <button class="tab-btn ${view === 'compare' ? 'active' : ''}" data-view="compare">Compare</button>
     <button class="tab-btn ${view === 'session' ? 'active' : ''}" data-view="session">Session${sessionCount > 0 ? ` <span class="tab-badge">${sessionCount}</span>` : ''}</button>
+    <button class="tab-btn ${view === 'live' ? 'active' : ''}" data-view="live">Live${fcActive ? ' <span class="tab-badge live-badge">ON</span>' : (fcClaimCount > 0 ? ` <span class="tab-badge">${fcClaimCount}</span>` : '')}</button>
     <button class="tab-btn ${view === 'ingest'  ? 'active' : ''}" data-view="ingest">Ingest</button>
   </div>`;
 
   if (view === 'ingest') html += buildIngestView();
   else if (view === 'session') html += buildSessionView();
+  else if (view === 'live') html += buildLiveView();
   else html += buildCompareView();
 
   return html;
@@ -455,6 +463,101 @@ function buildIngestView(): string {
   return html;
 }
 
+// ── Live view ────────────────────────────────────────────────────────────────
+
+function buildLiveView(): string {
+  const { liveStreaming: active, liveSession: sess } = state!;
+  let html = '';
+
+  if (error) {
+    html += `<div class="error-box"><strong>Error</strong><br>${esc(error)}</div>`;
+  }
+
+  if (!active && (!sess || sess.claims.length === 0)) {
+    html += `<div class="cta-area">
+      <div class="cta-text">Stream audio from the current tab and compare statements against your knowledge base in real-time.</div>
+      <div class="cta-text" style="font-size:11px;color:var(--ink3)">Works with YouTube, podcasts, lectures, meetings — any tab with audio. Uses local Whisper model by default, or Deepgram for real-time streaming.</div>
+      <button class="cta-btn" id="btn-go-live">&#x1F534; Go Live</button>
+    </div>`;
+    return html;
+  }
+
+  // Active or has session data
+  html += `<div class="toolbar">
+    <div class="toolbar-status">${active ? '<span class="spinner"></span> Live' : 'Session ended'}</div>
+    ${active
+      ? `<button class="toolbar-btn" id="btn-stop-live" style="color:var(--conflict);border-color:rgba(239,68,68,0.4)">&#x25A0; Stop</button>`
+      : `<button class="toolbar-btn" id="btn-go-live">&#x1F534; Go Live</button>`
+    }
+  </div>`;
+
+  if (sess) {
+    const confirmed  = sess.claims.filter(c => c.verdict === 'KB_CONFIRMED').length;
+    const conflicts  = sess.claims.filter(c => c.verdict === 'KB_CONFLICT').length;
+    const newClaims  = sess.claims.filter(c => c.verdict === 'KB_NEW').length;
+    const unverified = sess.claims.filter(c => c.verdict === 'UNVERIFIABLE').length;
+
+    // At-a-glance bar
+    const total = confirmed + conflicts + newClaims + unverified;
+    if (total > 0) {
+      const cPct = Math.round((conflicts / total) * 100);
+      const okPct = Math.round((confirmed / total) * 100);
+      const nPct = Math.round((newClaims / total) * 100);
+      const uPct = 100 - cPct - okPct - nPct;
+      html += `<div class="glance-bar">
+        ${cPct > 0 ? `<div class="glance-seg conflict" style="width:${cPct}%"></div>` : ''}
+        ${okPct > 0 ? `<div class="glance-seg reinforce" style="width:${okPct}%"></div>` : ''}
+        ${nPct > 0 ? `<div class="glance-seg new" style="width:${nPct}%"></div>` : ''}
+        ${uPct > 0 ? `<div class="glance-seg" style="width:${uPct}%;background:#6b7280"></div>` : ''}
+      </div>`;
+    }
+
+    // Counts
+    html += `<div class="counts">
+      <div class="count-item"><div class="count-dot conflict"></div><span class="count-num">${conflicts}</span><span class="count-label">conflict${conflicts !== 1 ? 's' : ''}</span></div>
+      <div class="count-item"><div class="count-dot reinforce"></div><span class="count-num">${confirmed}</span><span class="count-label">confirmed</span></div>
+      <div class="count-item"><div class="count-dot new"></div><span class="count-num">${newClaims}</span><span class="count-label">new</span></div>
+    </div>`;
+
+    // Claims list
+    if (sess.claims.length > 0) {
+      const sorted = [...sess.claims].reverse(); // newest first
+      html += `<div class="session-pages-heading">Claims (${sorted.length})</div>`;
+      for (const claim of sorted) {
+        const kind = claim.verdict === 'KB_CONFIRMED' ? 'reinforce' : claim.verdict === 'KB_CONFLICT' ? 'conflict' : claim.verdict === 'KB_NEW' ? 'new' : '';
+        const label = claim.verdict.replace('KB_', '').replace('_', ' ');
+        html += `<div class="triple-row ${kind}" style="margin:3px 8px">
+          <div class="triple-dot ${kind}"></div>
+          <div class="triple-body">
+            <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.05em;font-weight:700;color:var(--ink3);margin-bottom:2px">
+              ${esc(label)}${claim.speaker ? ` &middot; ${esc(claim.speaker)}` : ''} &middot; ${claim.confidence}
+            </div>
+            <div class="triple-spo" style="font-style:italic">"${esc(claim.claim)}"</div>
+            <div style="font-size:11px;color:var(--ink2);margin-top:2px">${esc(claim.explanation)}</div>
+            ${claim.conflictNote ? `<div class="triple-conflict-note">${esc(claim.conflictNote)}</div>` : ''}
+            <div class="triple-span">${esc(claim.triple.subject)} &middot; ${esc(claim.triple.predicate)} &middot; ${esc(claim.triple.object)}</div>
+          </div>
+        </div>`;
+      }
+    }
+
+    // Ingest button
+    if (newClaims > 0 || conflicts > 0) {
+      html += `<div class="session-ingest-bar">
+        <button class="ingest-action-btn" id="btn-fc-ingest" ${ingestBusy ? 'disabled' : ''}>
+          ${ingestBusy ? '<span class="spinner"></span> Ingesting...' : `&#x2B07; Ingest New Claims (${newClaims})`}
+        </button>
+      </div>`;
+    }
+  }
+
+  if (ingestStatus) {
+    html += `<div class="ingest-status-wrap"><div class="ingest-status ${ingestStatus.kind}">${esc(ingestStatus.msg)}</div></div>`;
+  }
+
+  return html;
+}
+
 // ── Handlers ──────────────────────────────────────────────────────────────────
 
 function attachHandlers() {
@@ -500,9 +603,35 @@ function attachHandlers() {
   // Tab switching
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      view = (btn as HTMLElement).dataset.view as 'compare' | 'ingest' | 'session';
+      view = (btn as HTMLElement).dataset.view as 'compare' | 'ingest' | 'session' | 'live';
       render();
     });
+  });
+
+  // Live tab handlers
+  document.getElementById('btn-go-live')?.addEventListener('click', async () => {
+    error = null;
+    const resp = await send({ type: 'START_LIVE' });
+    if (resp.type === 'STATE') { state = resp.state; }
+    if (resp.type === 'ERROR') { error = resp.message; }
+    render();
+  });
+  document.getElementById('btn-stop-live')?.addEventListener('click', async () => {
+    const resp = await send({ type: 'STOP_LIVE' });
+    if (resp.type === 'STATE') { state = resp.state; }
+    render();
+  });
+  document.getElementById('btn-fc-ingest')?.addEventListener('click', async () => {
+    ingestBusy = true;
+    ingestStatus = null;
+    render();
+    const resp = await send({ type: 'INGEST_LIVE_CLAIMS', kinds: ['KB_NEW'] as any });
+    if (resp.type === 'INGEST_RESULT') {
+      ingestBusy = false;
+      const ok = resp.status === 'started' || resp.status === 'opened';
+      ingestStatus = { kind: ok ? 'ok' : 'err', msg: resp.message ?? resp.status };
+      render();
+    }
   });
 
   // Focus prompt
@@ -611,7 +740,11 @@ async function init() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   currentTab = tab ?? null;
   const resp = await send({ type: 'GET_STATE' });
-  if (resp.type === 'STATE') state = resp.state;
+  if (resp.type === 'STATE') {
+    state = resp.state;
+    // Auto-show Live tab if streaming is active
+    if (state.liveStreaming) view = 'live';
+  }
   render();
 }
 

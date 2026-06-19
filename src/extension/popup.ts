@@ -74,6 +74,15 @@ function buildHTML(): string {
     <span class="btn-icon">&#x2B07;</span> Ingest Page
   </button>`;
 
+  // Go Live button
+  const fcActive = state.liveStreaming;
+  html += `<button class="action-btn ${fcActive ? 'live-active' : ''}" id="btn-live">
+    ${fcActive
+      ? '<span class="btn-icon">&#x25A0;</span> Stop Live'
+      : '<span class="btn-icon">&#x1F534;</span> Go Live'
+    }
+  </button>`;
+
   // Session status
   const sessionCount = state.session.pages.length;
   if (sessionCount > 0) {
@@ -127,6 +136,23 @@ function attachHandlers() {
   document.getElementById('btn-ingest')?.addEventListener('click', async () => {
     await send({ type: 'OPEN_INGEST' });
     window.close();
+  });
+  document.getElementById('btn-live')?.addEventListener('click', async () => {
+    if (state?.liveStreaming) {
+      const resp = await send({ type: 'STOP_LIVE' });
+      if (resp.type === 'STATE') { state = resp.state; render(); }
+    } else {
+      // Start live stream first, then open sidepanel
+      const resp = await send({ type: 'START_LIVE' });
+      if (resp.type === 'ERROR') { error = resp.message; render(); return; }
+      if (resp.type === 'STATE') { state = resp.state; }
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const hasSidePanel = typeof (chrome as any).sidePanel !== 'undefined';
+      if (hasSidePanel && tab?.id) {
+        try { await (chrome.sidePanel as any).open({ tabId: tab.id }); } catch {}
+      }
+      window.close();
+    }
   });
   document.getElementById('btn-sync')?.addEventListener('click', async () => {
     error = null;

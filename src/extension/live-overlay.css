@@ -1,0 +1,375 @@
+/* Live stream overlay panel — injected into pages via content script */
+
+#reckons-fc-panel {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  width: 380px;
+  max-height: calc(100vh - 24px);
+  z-index: 2147483646;
+  background: rgba(13,17,23,0.97);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  font: 13px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #e8eaf0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Header */
+#reckons-fc-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 9px;
+  background: rgba(26,155,142,0.08);
+  border-bottom: 1px solid rgba(255,255,255,0.09);
+  cursor: grab;
+  user-select: none;
+}
+#reckons-fc-header .rfc-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: rfc-pulse 1.5s infinite;
+  flex-shrink: 0;
+}
+@keyframes rfc-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+#reckons-fc-header .rfc-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a9b8e;
+  letter-spacing: -0.01em;
+}
+.rfc-header-actions {
+  display: flex;
+  gap: 4px;
+}
+.rfc-header-btn {
+  background: none;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 5px;
+  color: #8b949e;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 3px 8px;
+  transition: all 0.12s;
+}
+.rfc-header-btn:hover { color: #e8eaf0; border-color: rgba(255,255,255,0.25); }
+
+/* Body sections */
+#reckons-fc-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.12) transparent;
+}
+
+/* Section headers */
+.rfc-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px 5px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.rfc-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8b949e;
+  flex: 1;
+}
+
+/* Speaker editor */
+.rfc-speaker-editor {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.rfc-speaker-chip {
+  display: inline-flex;
+  border: 1px solid;
+  border-radius: 999px;
+  padding: 1px 2px;
+}
+.rfc-speaker-chip-input {
+  background: none;
+  border: none;
+  font: 10px/1.3 -apple-system, sans-serif;
+  font-weight: 600;
+  padding: 1px 6px;
+  width: 64px;
+  outline: none;
+}
+
+/* Transcript feed */
+#reckons-fc-transcript-feed {
+  padding: 6px 14px 4px;
+  font-size: 12px;
+  color: #8b949e;
+  max-height: 80px;
+  overflow-y: auto;
+  line-height: 1.45;
+  scrollbar-width: thin;
+}
+#reckons-fc-transcript-feed .rfc-transcript-word {
+  color: #c9d1d9;
+}
+#reckons-fc-interim {
+  padding: 0 14px 4px;
+  font-size: 12px;
+  color: #6b7280;
+  font-style: italic;
+  min-height: 1.2em;
+}
+
+/* Toggle button for transcript */
+.rfc-toggle-btn {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 10px;
+  padding: 2px 4px;
+}
+.rfc-toggle-btn:hover { color: #e8eaf0; }
+
+/* Speaker banner */
+.rfc-speaker-banner {
+  padding: 8px 14px;
+  background: rgba(59,130,246,0.08);
+  border-bottom: 1px solid rgba(59,130,246,0.2);
+}
+.rfc-speaker-banner-text {
+  font-size: 11px;
+  color: #93c5fd;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+.rfc-speaker-banner-sample {
+  font-size: 10px;
+  color: #8b949e;
+  font-style: italic;
+  margin-bottom: 6px;
+}
+.rfc-speaker-banner-buttons {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.rfc-speaker-banner-btn {
+  background: rgba(59,130,246,0.12);
+  border: 1px solid rgba(59,130,246,0.35);
+  border-radius: 5px;
+  color: #93c5fd;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 4px 10px;
+  font-weight: 600;
+  transition: all 0.12s;
+}
+.rfc-speaker-banner-btn:hover { background: rgba(59,130,246,0.25); }
+.rfc-speaker-banner-btn--skip {
+  color: #6b7280;
+  border-color: rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+}
+
+/* Error toast */
+.rfc-error-toast {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(239,68,68,0.1);
+  border-bottom: 1px solid rgba(239,68,68,0.3);
+  font-size: 11px;
+  color: #fca5a5;
+}
+.rfc-error-icon { font-size: 13px; }
+.rfc-error-msg { flex: 1; }
+.rfc-error-close {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+/* Verdicts section */
+#reckons-fc-verdicts {
+  padding: 4px 0;
+}
+.rfc-empty {
+  text-align: center;
+  padding: 16px;
+  color: #6b7280;
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* Verdict cards */
+.rfc-verdict {
+  margin: 4px 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  transition: opacity 0.3s;
+}
+.rfc-verdict--pending { opacity: 0.7; }
+
+.rfc-verdict--green  { border-color: rgba(34,197,94,0.35);  background: rgba(34,197,94,0.06); }
+.rfc-verdict--red    { border-color: rgba(239,68,68,0.35);  background: rgba(239,68,68,0.06); }
+.rfc-verdict--blue   { border-color: rgba(99,179,237,0.35); background: rgba(99,179,237,0.06); }
+.rfc-verdict--grey   { border-color: rgba(107,114,128,0.3); background: rgba(107,114,128,0.06); }
+
+.rfc-verdict-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+/* Verdict badges */
+.rfc-badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 4px;
+  line-height: 1.3;
+}
+.rfc-badge--green  { background: rgba(34,197,94,0.2);  color: #4ade80; }
+.rfc-badge--red    { background: rgba(239,68,68,0.2);  color: #f87171; }
+.rfc-badge--blue   { background: rgba(99,179,237,0.2); color: #93c5fd; }
+.rfc-badge--grey   { background: rgba(107,114,128,0.2);color: #9ca3af; }
+
+.rfc-verifying {
+  font-size: 10px;
+  color: #8b949e;
+  animation: rfc-pulse 1.2s infinite;
+}
+.rfc-confidence-right {
+  font-size: 9px;
+  color: #6b7280;
+  margin-left: auto;
+}
+.rfc-timestamp {
+  font-size: 9px;
+  color: #4b5563;
+  font-family: monospace;
+}
+
+/* Claim text */
+.rfc-claim {
+  font-size: 12px;
+  color: #c9d1d9;
+  font-style: italic;
+  line-height: 1.4;
+  margin-bottom: 3px;
+}
+.rfc-explanation {
+  font-size: 11px;
+  color: #8b949e;
+  line-height: 1.4;
+  margin-bottom: 3px;
+}
+.rfc-conflict-note {
+  font-size: 10px;
+  color: #fca5a5;
+  line-height: 1.35;
+  margin-bottom: 3px;
+}
+
+/* Triple row inside verdict */
+.rfc-triple-row {
+  font-size: 10px;
+  color: #6b7280;
+  font-family: monospace;
+  padding: 3px 6px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 3px;
+  margin-bottom: 3px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+.rfc-triple-row strong { color: #8b949e; }
+
+/* Speaker tag */
+.rfc-speaker-tag {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1px 7px;
+  border-radius: 3px;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+/* Speaker conviction toggle */
+.rfc-speaker-toggle {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+}
+.rfc-speaker-toggle:hover { color: #8b949e; }
+.rfc-speaker-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.rfc-speaker-dot--green  { background: #22c55e; }
+.rfc-speaker-dot--yellow { background: #eab308; }
+.rfc-speaker-dot--red    { background: #ef4444; }
+.rfc-speaker-arrow { font-size: 8px; margin-left: 2px; }
+.rfc-speaker-explanation {
+  padding: 4px 0 2px;
+  font-size: 10px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+.rfc-conviction-row { margin-bottom: 2px; }
+.rfc-conviction-label { font-weight: 600; color: #8b949e; }
+
+/* Claims bullet list */
+#reckons-fc-claim-feed {
+  list-style: none;
+  padding: 2px 14px 4px;
+  max-height: 60px;
+  overflow-y: auto;
+}
+.rfc-claim-bullet {
+  font-size: 11px;
+  color: #8b949e;
+  padding: 1px 0;
+  border-left: 3px solid #4b5563;
+  padding-left: 8px;
+  margin-bottom: 2px;
+  line-height: 1.4;
+}
+.rfc-claim-bullet--green  { border-color: #22c55e; }
+.rfc-claim-bullet--red    { border-color: #ef4444; }
+.rfc-claim-bullet--blue   { border-color: #63b3ed; }
+.rfc-claim-bullet--grey   { border-color: #6b7280; }
+.rfc-claim-bullet--pending { border-color: #4b5563; }

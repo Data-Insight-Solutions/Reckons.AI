@@ -23,6 +23,8 @@ function copyExtensionAssets(): Plugin {
       'highlight.css',
       'popup.css',
       'sidepanel.css',
+      'offscreen.html',
+      'live-overlay.css',
     ];
     mkdirSync(out, { recursive: true });
     mkdirSync(resolve(out, 'icons'), { recursive: true });
@@ -61,6 +63,7 @@ export default defineConfig({
         popup:            resolve(__dirname, 'src/extension/popup.ts'),
         sidepanel:        resolve(__dirname, 'src/extension/sidepanel.ts'),
         options:          resolve(__dirname, 'src/extension/options.ts'),
+        offscreen:        resolve(__dirname, 'src/extension/offscreen.ts'),
       },
       output: {
         entryFileNames: '[name].js',
@@ -75,6 +78,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '$lib': resolve(__dirname, 'src/lib'),
+      'onnxruntime-node': resolve(__dirname, 'src/lib/integrations/llm/onnx-node-stub.js'),
     },
   },
 });

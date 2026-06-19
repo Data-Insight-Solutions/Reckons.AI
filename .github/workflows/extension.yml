@@ -1,0 +1,90 @@
+name: Extension Build & Sign
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/extension/**'
+      - 'vite.extension.config.ts'
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump (patch/minor/major) or skip'
+        required: false
+        default: 'skip'
+
+jobs:
+  build-and-sign:
+    name: Build, sign & release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build extension
+        run: npm run build:extension
+
+      - name: Get version from manifest
+        id: version
+        run: echo "version=$(jq -r .version dist/extension/manifest.json)" >> $GITHUB_OUTPUT
+
+      # ── Firefox: sign via AMO self-distribution ──────────────────────
+      - name: Sign Firefox extension (AMO self-distribution)
+        if: env.AMO_JWT_ISSUER != ''
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          npx web-ext sign \
+            --source-dir=dist/extension \
+            --artifacts-dir=dist/signed \
+            --channel=unlisted \
+            --api-key="$AMO_JWT_ISSUER" \
+            --api-secret="$AMO_JWT_SECRET"
+
+      # ── Chrome: package as .zip (manual upload or CWS API) ──────────
+      - name: Package Chrome extension
+        run: |
+          cd dist/extension
+          zip -r ../reckons-ai-chrome-${{ steps.version.outputs.version }}.zip .
+
+      # ── Upload artifacts (available on every run) ───────────────────
+      - name: Upload Chrome zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: reckons-ai-chrome-${{ steps.version.outputs.version }}
+          path: dist/reckons-ai-chrome-*.zip
+
+      - name: Upload Firefox signed xpi
+        if: env.AMO_JWT_ISSUER != ''
+        uses: actions/upload-artifact@v4
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+        with:
+          name: reckons-ai-firefox-${{ steps.version.outputs.version }}
+          path: dist/signed/*.xpi
+
+      # ── GitHub Release (on manual dispatch or version tag) ──────────
+      - name: Create GitHub Release
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ext-v${{ steps.version.outputs.version }}
+          name: Extension v${{ steps.version.outputs.version }}
+          files: |
+            dist/reckons-ai-chrome-*.zip
+            dist/signed/*.xpi
+          body: |
+            ## Reckons.AI Browser Extension v${{ steps.version.outputs.version }}
+
+            **Chrome/Edge/Brave:** Download the `.zip`, unzip, go to `chrome://extensions`, enable Developer Mode, click "Load unpacked", select the folder.
+
+            **Firefox (signed):** Download the `.xpi` and open it in Firefox, or drag it onto the Firefox window.
+
+            **Firefox for Android (Nightly):** Add to a custom AMO collection, then enable in Firefox Nightly add-ons settings.

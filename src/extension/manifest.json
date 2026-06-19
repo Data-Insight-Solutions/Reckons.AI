@@ -9,9 +9,15 @@
     "scripting",
     "storage",
     "tabs",
-    "sidePanel"
+    "sidePanel",
+    "tabCapture",
+    "offscreen"
   ],
   "host_permissions": ["<all_urls>"],
+
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
 
   "background": {
     "service_worker": "background.js",
@@ -37,7 +43,7 @@
     {
       "matches": ["<all_urls>"],
       "js": ["content-script.js"],
-      "css": ["highlight.css"],
+      "css": ["highlight.css", "live-overlay.css"],
       "run_at": "document_idle",
       "all_frames": false
     }

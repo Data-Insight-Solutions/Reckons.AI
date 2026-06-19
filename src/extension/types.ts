@@ -27,6 +27,8 @@ export interface ExtSettings {
   /** Base URL of the running Reckons.AI web app, e.g. http://localhost:5173 */
   reckonsUrl: string;
   highlight: HighlightSettings;
+  /** Deepgram API key for real-time transcription in Live mode */
+  deepgramApiKey?: string;
 }
 
 // Resolve provider/key/model from build-time env vars (VITE_ prefix baked in by Vite).
@@ -108,6 +110,45 @@ export interface ResearchSession {
   focus?: string;
 }
 
+// ── Live Stream ─────────────────────────────────────────────────────────────
+
+export type LiveVerdict = 'KB_CONFIRMED' | 'KB_CONFLICT' | 'KB_NEW' | 'UNVERIFIABLE';
+
+export interface LiveClaim {
+  claim: string;
+  verdict: LiveVerdict;
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  explanation: string;
+  speaker?: string | null;
+  speakerConfidence?: 'HIGH' | 'MEDIUM' | 'LOW';
+  triple: { subject: string; predicate: string; object: string };
+  conflictNote?: string;
+  timestamp?: string;
+  pending?: boolean;
+  lexical?: LexicalSnapshot;
+}
+
+export interface LexicalSnapshot {
+  rates: {
+    hedging: number;
+    certainty: number;
+    filler: number;
+    emotional: number;
+    exclusive: number;
+    firstPersonSg: number;
+  };
+  wordsPerSecond: number | null;
+  wordCount: number;
+}
+
+export interface LiveSession {
+  claims: LiveClaim[];
+  startedAt: number;
+  pageTitle: string;
+  pageUrl: string;
+  speakers: string[];
+}
+
 // ── Message protocol ─────────────────────────────────────────────────────────
 
 /** Popup → Background */
@@ -125,14 +166,19 @@ export type PopupRequest =
   | { type: 'PARSE_RESPONSE'; text: string }
   | { type: 'CLEAR_SESSION' }
   | { type: 'REMOVE_SESSION_PAGE'; url: string }
-  | { type: 'INGEST_SESSION'; kinds: ('new' | 'conflict' | 'reinforce')[] };
+  | { type: 'INGEST_SESSION'; kinds: ('new' | 'conflict' | 'reinforce')[] }
+  | { type: 'START_LIVE' }
+  | { type: 'STOP_LIVE' }
+  | { type: 'CONFIRM_LIVE_SPEAKER'; speakerId: number; name: string }
+  | { type: 'INGEST_LIVE_CLAIMS'; kinds: LiveVerdict[] };
 
 /** Background → Popup (response or push) */
 export type BackgroundEvent =
   | { type: 'STATE'; state: ExtensionState }
   | { type: 'ERROR'; message: string }
   | { type: 'INGEST_RESULT'; status: 'started' | 'opened' | 'error'; message?: string }
-  | { type: 'PROMPT_READY'; prompt: string };
+  | { type: 'PROMPT_READY'; prompt: string }
+  | { type: 'LIVE_STATUS'; active: boolean; session: LiveSession | null };
 
 export interface ExtensionState {
   settings: ExtSettings;
@@ -142,6 +188,8 @@ export interface ExtensionState {
   analyzing: boolean;
   highlightsActive: boolean;
   currentTabId: number | null;
+  liveStreaming: boolean;
+  liveSession: LiveSession | null;
 }
 
 /** Background → Content Script */
@@ -149,7 +197,14 @@ export type ContentCommand =
   | { type: 'GET_TEXT' }
   | { type: 'HIGHLIGHT'; triples: ExtractedTriple[] }
   | { type: 'CLEAR_HIGHLIGHTS' }
-  | { type: 'GET_KB_SNAPSHOT' };
+  | { type: 'GET_KB_SNAPSHOT' }
+  | { type: 'LIVE_START'; speakers: string[] }
+  | { type: 'LIVE_STOP' }
+  | { type: 'LIVE_TRANSCRIPT'; text: string; isFinal: boolean; interim?: boolean; speaker?: number }
+  | { type: 'LIVE_VERDICT'; claims: LiveClaim[] }
+  | { type: 'LIVE_UPDATE_VERDICT'; claims: LiveClaim[] }
+  | { type: 'LIVE_ERROR'; message: string }
+  | { type: 'LIVE_SPEAKER'; speakerId: number; sample: string };
 
 /** Content Script → Background */
 export type ContentResponse =

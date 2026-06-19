@@ -357,6 +357,16 @@ body {
   line-height: 1;
 }
 
+/* Live badge pulse */
+.live-badge {
+  background: var(--conflict) !important;
+  animation: live-pulse 1.5s infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
 /* ── Session view ──────────────────────────────────────────────────────────── */
 
 .session-empty {

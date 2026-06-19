@@ -176,3 +176,12 @@ button#btn-sync:hover { background: var(--surface2); color: var(--ink); }
   text-align: center; padding: 14px; color: var(--ink2); font-size: 12px;
 }
 .nokey a { color: var(--accent); text-decoration: none; cursor: pointer; }
+
+/* Live button */
+.action-btn.live-active {
+  border-color: rgba(239,68,68,0.4);
+  color: #f87171;
+}
+.action-btn.live-active:hover {
+  background: rgba(239,68,68,0.12);
+}

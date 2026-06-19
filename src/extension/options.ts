@@ -12,6 +12,7 @@ const providerEl  = document.getElementById('provider')      as HTMLSelectElemen
 const apiKeyEl    = document.getElementById('api-key')       as HTMLInputElement;
 const modelEl     = document.getElementById('model')         as HTMLInputElement;
 const reckonsEl   = document.getElementById('reckons-url')   as HTMLInputElement;
+const deepgramEl  = document.getElementById('deepgram-key')  as HTMLInputElement;
 const saveBtn     = document.getElementById('btn-save')!;
 const savedMsg    = document.getElementById('saved-msg')!;
 const modelHint   = document.getElementById('model-hint')!;
@@ -48,6 +49,7 @@ async function load() {
   modelEl.value     = s.apiModel === MODEL_DEFAULTS[s.apiProvider] ? '' : s.apiModel;
   reckonsEl.value   = s.reckonsUrl;
   modelHint.textContent = `Default: ${MODEL_DEFAULTS[s.apiProvider] ?? ''}`;
+  deepgramEl.value = s.deepgramApiKey ?? '';
 
   conflictColorEl.value  = hl.conflictColor;
   reinforceColorEl.value = hl.reinforceColor;
@@ -75,6 +77,7 @@ saveBtn.addEventListener('click', async () => {
     apiKey:      apiKeyEl.value.trim(),
     apiModel:    modelEl.value.trim() || MODEL_DEFAULTS[provider],
     reckonsUrl:  reckonsEl.value.trim().replace(/\/$/, '') || DEFAULT_SETTINGS.reckonsUrl,
+    deepgramApiKey: deepgramEl.value.trim() || undefined,
     highlight: {
       conflictColor:   conflictColorEl.value,
       reinforceColor:  reinforceColorEl.value,

@@ -77,6 +77,17 @@
     <div class="hint" style="margin-top: 4px;">No API key? Use <strong>use any LLM</strong> in the Compare side panel — copies the prompt so you can paste into Claude.ai, ChatGPT, etc., then paste the response back.</div>
 
     <hr>
+    <h2>Live Transcription</h2>
+    <div class="hint" style="margin-bottom: 0.75rem; padding: 8px 12px; background: rgba(26,155,142,0.07); border: 1px solid rgba(26,155,142,0.2); border-radius: 8px;">
+      <strong>Default:</strong> Local Whisper model (~42MB, runs entirely in your browser). Add a Deepgram key below for faster real-time transcription with speaker identification.
+    </div>
+    <div class="field">
+      <label>Deepgram API Key (optional)</label>
+      <input type="password" id="deepgram-key" placeholder="dg-…" autocomplete="off">
+      <div class="hint">Optional upgrade for real-time streaming + speaker diarization. Get a free key at <a href="https://console.deepgram.com" target="_blank" style="color:#1a9b8e">console.deepgram.com</a> (200+ hours free tier).</div>
+    </div>
+
+    <hr>
     <h2>Reckons.AI App</h2>
     <div class="field">
       <label>App URL</label>
