@@ -1,0 +1,585 @@
+@prefix kb:     <urn:kbase:concept/> .
+@prefix kpred:  <urn:kbase:predicate/> .
+@prefix kmeta:  <urn:kbase:meta/> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix ktype:  <urn:kbase:type/> .
+@prefix story:  <urn:reckons:story/> .
+
+# ==============================================================================
+# Reckons.AI Product Design & Roadmap KB
+# ==============================================================================
+# This KB captures the product vision, design decisions, and planned features.
+# Compare against the Production Status KB to identify gaps between design
+# intent and current implementation.
+#
+# Status values: production | functional | scaffolded | planned | speculative
+# ==============================================================================
+
+# -- Core Product ---------------------------------------------------------------
+
+kb:reckons-ai  rdf:type          ktype:Application ;
+               rdfs:label        "Reckons.AI" ;
+               kpred:tagline     "Personal knowledge graph with LLM-powered triple extraction" ;
+               kpred:architecture "Static SvelteKit + IndexedDB + transformers.js" ;
+               kpred:status      "alpha" ;
+               kpred:principle   "local-first" ;
+               kpred:principle   "privacy-by-default" ;
+               kpred:principle   "zero-cloud-dependency" ;
+               kpred:has-workflow kb:wf-ingest ;
+               kpred:has-workflow kb:wf-review ;
+               kpred:has-workflow kb:wf-explore ;
+               kpred:has-workflow kb:wf-compare ;
+               kpred:has-workflow kb:wf-reckon ;
+               kmeta:glbModel    "/Meshy_AI_Turtle_1.glb" ;
+               kpred:icon2d      "/ReckonsAI-Logo.svg" .
+
+# -- Core Workflows -------------------------------------------------------------
+
+kb:wf-ingest   rdf:type     ktype:Concept ;
+               rdfs:label   "Ingest Workflow" ;
+               kpred:description "Add knowledge from notes, URLs, documents, calendars, repos, or Turtle files. LLM extracts semantic triples." ;
+               kpred:has-status  "production" ;
+               kpred:has-source-type "note" ;
+               kpred:has-source-type "url" ;
+               kpred:has-source-type "document" ;
+               kpred:has-source-type "reminder" ;
+               kpred:has-source-type "repository" ;
+               kpred:has-source-type "calendar" ;
+               kpred:has-source-type "vault" ;
+               kpred:has-source-type "folder" ;
+               kpred:has-source-type "triples" ;
+               kpred:has-source-type "kb-import" .
+
+kb:wf-review   rdf:type     ktype:Concept ;
+               rdfs:label   "Review Workflow" ;
+               kpred:description "Three-tab review: incoming triples, deletion proposals, entity merge suggestions. Human-in-the-loop curation." ;
+               kpred:has-status  "production" ;
+               kpred:has-tab  "incoming" ;
+               kpred:has-tab  "deletions" ;
+               kpred:has-tab  "merges" .
+
+kb:wf-explore  rdf:type     ktype:Concept ;
+               rdfs:label   "Explore Workflow" ;
+               kpred:description "Interactive graph visualization (2D/3D), entity navigation, story-driven tours, AI-guided exploration via Shelly." ;
+               kpred:has-status  "production" .
+
+kb:wf-compare  rdf:type     ktype:Concept ;
+               rdfs:label   "Compare Workflow" ;
+               kpred:description "Semantic diff engine comparing two KB snapshots. Categories: Add, Reinforce, Conflict, Merge, Remove." ;
+               kpred:has-status  "production" .
+
+kb:wf-reckon   rdf:type     ktype:Concept ;
+               rdfs:label   "Reckon Workflow" ;
+               kpred:description "AI-powered reasoning over KB contents. Shelly synthesizes facts, identifies conflicts, and suggests actions." ;
+               kpred:has-status  "production" .
+
+# -- Tech Stack -----------------------------------------------------------------
+
+kb:sveltekit   rdf:type     ktype:Framework ;
+               rdfs:label   "SvelteKit" ;
+               kpred:version "2.x" ;
+               kpred:role    "UI framework + static build" .
+
+kb:dexie       rdf:type     ktype:Library ;
+               rdfs:label   "Dexie.js" ;
+               kpred:version "4.x" ;
+               kpred:role    "IndexedDB persistence" .
+
+kb:threlte     rdf:type     ktype:Library ;
+               rdfs:label   "Threlte" ;
+               kpred:role    "Svelte + Three.js bridge for 3D graph" .
+
+kb:n3          rdf:type     ktype:Library ;
+               rdfs:label   "N3.js" ;
+               kpred:role    "RDF/Turtle parser and serializer" .
+
+kb:transformers-js rdf:type ktype:Library ;
+               rdfs:label   "transformers.js" ;
+               kpred:version "3.8.1" ;
+               kpred:role    "In-browser ML (LLM, embeddings, STT, TTS)" .
+
+# -- LLM Backend Design ---------------------------------------------------------
+
+kb:llm-design  rdf:type     ktype:Concept ;
+               rdfs:label   "LLM Backend System" ;
+               kpred:has-status  "production" ;
+               kpred:description "Per-task backend overrides. Provider abstraction supports 9 backends." ;
+               kpred:has-backend kb:backend-wasm ;
+               kpred:has-backend kb:backend-ollama ;
+               kpred:has-backend kb:backend-chrome-ai ;
+               kpred:has-backend kb:backend-claude ;
+               kpred:has-backend kb:backend-openai ;
+               kpred:has-backend kb:backend-gemini ;
+               kpred:has-backend kb:backend-openrouter ;
+               kpred:has-backend kb:backend-manual ;
+               kpred:has-backend kb:backend-mock ;
+               kpred:has-task-override "ingestBackend" ;
+               kpred:has-task-override "analyzeBackend" ;
+               kpred:has-task-override "chatBackend" ;
+               kpred:has-task-override "diffSummaryBackend" ;
+               kpred:has-task-override "mergeAnalysisBackend" .
+
+kb:backend-wasm    rdf:type ktype:Tool ;
+                   rdfs:label "WASM Backend" ;
+                   kpred:has-status "production" ;
+                   kpred:model    "SmolLM2-360M" ;
+                   kpred:locality "browser" .
+
+kb:backend-ollama  rdf:type ktype:Tool ;
+                   rdfs:label "Ollama Backend" ;
+                   kpred:has-status "production" ;
+                   kpred:locality "local-server" .
+
+kb:backend-chrome-ai rdf:type ktype:Tool ;
+                   rdfs:label "Chrome AI Backend" ;
+                   kpred:has-status "production" ;
+                   kpred:locality "browser" .
+
+kb:backend-claude  rdf:type ktype:Tool ;
+                   rdfs:label "Claude Backend" ;
+                   kpred:has-status "production" ;
+                   kpred:locality "cloud" .
+
+kb:backend-openai  rdf:type ktype:Tool ;
+                   rdfs:label "OpenAI Backend" ;
+                   kpred:has-status "production" ;
+                   kpred:locality "cloud" .
+
+kb:backend-gemini  rdf:type ktype:Tool ;
+                   rdfs:label "Gemini Backend" ;
+                   kpred:has-status "production" ;
+                   kpred:locality "cloud" .
+
+kb:backend-openrouter rdf:type ktype:Tool ;
+                   rdfs:label "OpenRouter Backend" ;
+                   kpred:has-status "production" ;
+                   kpred:locality "cloud" .
+
+kb:backend-manual  rdf:type ktype:Tool ;
+                   rdfs:label "Manual Paste Backend" ;
+                   kpred:has-status "production" ;
+                   kpred:locality "user" .
+
+kb:backend-mock    rdf:type ktype:Tool ;
+                   rdfs:label "Mock Backend" ;
+                   kpred:has-status "production" ;
+                   kpred:locality "testing" .
+
+# -- Completed Features (Production) --------------------------------------------
+
+kb:knowledge-graph rdf:type ktype:Feature ;
+               rdfs:label   "Knowledge Graph" ;
+               kpred:has-status   "production" ;
+               kpred:description  "2D force-directed + 3D Three.js graph. Per-entity GLB models, image icons, label overlap prevention." ;
+               kpred:has-capability "2D canvas rendering" ;
+               kpred:has-capability "3D WebGL rendering" ;
+               kpred:has-capability "entity type coloring" ;
+               kpred:has-capability "per-entity 3D models" ;
+               kpred:has-capability "per-entity image icons" ;
+               kpred:has-capability "label overlap prevention" .
+
+kb:multi-kb    rdf:type     ktype:Feature ;
+               rdfs:label   "Multi-KB Management" ;
+               kpred:has-status   "production" ;
+               kpred:description  "Create, switch, rename, delete KBs. KB Leap cross-references. Import-as-new-KB." ;
+               kpred:has-capability "kb-registry" ;
+               kpred:has-capability "kb-leap" ;
+               kpred:has-capability "import-as-new-kb" ;
+               kpred:has-capability "url-based-kb-switching" .
+
+kb:triple-extraction rdf:type ktype:Feature ;
+               rdfs:label   "Triple Extraction" ;
+               kpred:has-status   "production" ;
+               kpred:description  "LLM-powered extraction of subject-predicate-object triples from unstructured text." ;
+               kpred:has-capability "passage grounding" ;
+               kpred:has-capability "code-aware extraction" .
+
+kb:mcp-server  rdf:type     ktype:Feature ;
+               rdfs:label   "MCP Server" ;
+               kpred:has-status   "production" ;
+               kpred:description  "Standalone Node.js server. 10 tools over JSON-RPC stdio. Multi-KB workspace support." ;
+               kpred:has-tool     "kb_search" ;
+               kpred:has-tool     "kb_get_entity" ;
+               kpred:has-tool     "kb_stats" ;
+               kpred:has-tool     "kb_list_entities" ;
+               kpred:has-tool     "kb_add_note" ;
+               kpred:has-tool     "kb_subgraph" ;
+               kpred:has-tool     "kb_reckoning" ;
+               kpred:has-tool     "kb_list_sources" ;
+               kpred:has-tool     "kb_request_refresh" .
+
+kb:comparison-view rdf:type ktype:Feature ;
+               rdfs:label   "Comparison View" ;
+               kpred:has-status   "production" ;
+               kpred:description  "Semantic diff engine + Venn diagram UI. Categories: Add, Reinforce, Conflict, Merge, Remove." .
+
+kb:diff-summary rdf:type    ktype:Feature ;
+               rdfs:label   "Diff Summary" ;
+               kpred:has-status   "production" ;
+               kpred:description  "LLM-generated 3-part summaries (new/reinforcing/conflicting) for compare, review, and extension." .
+
+kb:predicate-manager rdf:type ktype:Feature ;
+               rdfs:label   "Predicate Manager" ;
+               kpred:has-status   "production" ;
+               kpred:description  "View all predicates with counts, rename, merge. Schema evolution tool." .
+
+kb:content-safety rdf:type  ktype:Feature ;
+               rdfs:label   "Content Safety" ;
+               kpred:has-status   "production" ;
+               kpred:description  "Ethics preamble in all LLM prompts. Content classifier (blocked/mature/none). Export advisory." .
+
+kb:passage-grounding rdf:type ktype:Feature ;
+               rdfs:label   "Passage Grounding" ;
+               kpred:has-status   "production" ;
+               kpred:description  "Excerpt field on triples with verbatim source sentence. Persists via meta:excerpt in TTL reification." .
+
+kb:repo-ingest rdf:type     ktype:Feature ;
+               rdfs:label   "Repository Ingest" ;
+               kpred:has-status   "production" ;
+               kpred:description  "GitHub REST API for tree walking and file content. Delta updates between commits." .
+
+kb:source-refresh rdf:type  ktype:Feature ;
+               rdfs:label   "Source Refresh" ;
+               kpred:has-status   "production" ;
+               kpred:description  "Re-ingest URLs, repos, and calendars. Auto-refresh on KB open or on schedule." .
+
+kb:browser-extension rdf:type ktype:Feature ;
+               rdfs:label   "Browser Extension" ;
+               kpred:has-status   "production" ;
+               kpred:description  "Research session accumulation, at-a-glance bar, batch ingest. Compare | Session | Ingest tabs." .
+
+kb:whisper-stt rdf:type     ktype:Feature ;
+               rdfs:label   "Whisper STT" ;
+               kpred:has-status   "production" ;
+               kpred:description  "Local speech-to-text via transformers.js. Mic button in Shelly chat." .
+
+kb:kokoro-tts  rdf:type     ktype:Feature ;
+               rdfs:label   "Kokoro TTS" ;
+               kpred:has-status   "production" ;
+               kpred:description  "Local text-to-speech for story walkthroughs." .
+
+kb:model-cache rdf:type     ktype:Feature ;
+               rdfs:label   "Model Cache Management" ;
+               kpred:has-status   "production" ;
+               kpred:description  "Inspect, sideload, purge locally cached WASM models. Offline-first with sideload for air-gapped installs." .
+
+kb:shelly-chat rdf:type     ktype:Feature ;
+               rdfs:label   "Shelly Chat System" ;
+               kpred:has-status   "production" ;
+               kpred:description  "AI assistant with tutorial, chat, and explore tabs. Story playback with TTS. KB-aware reasoning." .
+
+kb:workspace-sync rdf:type  ktype:Feature ;
+               rdfs:label   "Workspace Folder Sync" ;
+               kpred:has-status   "production" ;
+               kpred:description  "Link a local folder. Auto-export TTL on mutation. Multi-KB support. MCP server reads from workspace." .
+
+kb:visual-testing rdf:type  ktype:Feature ;
+               rdfs:label   "Visual Testing" ;
+               kpred:has-status   "production" ;
+               kpred:description  "5-tier visual QA: pixel analysis, DOM overlap, text extraction, Mistral OCR, Claude vision. 95%+ accuracy." .
+
+kb:entity-types rdf:type    ktype:Feature ;
+               rdfs:label   "Entity Type System" ;
+               kpred:has-status   "production" ;
+               kpred:description  "Customizable entity types with colors and labels. Type selector in node panel." .
+
+kb:history-mode rdf:type    ktype:Feature ;
+               rdfs:label   "History Mode" ;
+               kpred:has-status   "production" ;
+               kpred:description  "Timeline slider to view KB state at any past timestamp. Ghost mode in graph." .
+
+kb:trust-system rdf:type    ktype:Feature ;
+               rdfs:label   "Trust System" ;
+               kpred:has-status   "production" ;
+               kpred:description  "Source trust levels (trusted/review). Auto-confirm for trusted sources." .
+
+# -- Functional / Scaffolded Features -------------------------------------------
+
+kb:voice-interface rdf:type ktype:Feature ;
+               rdfs:label   "Voice Interface (Hume.AI)" ;
+               kpred:has-status   "functional" ;
+               kpred:feature-id   "F5" ;
+               kpred:description  "ShellyVoice.svelte wired with mic capture pipeline. Hume SDK integrated." ;
+               kpred:remaining    "Real-world testing, reconnection handling, animated voice indicator" .
+
+kb:google-drive-sync rdf:type ktype:Feature ;
+               rdfs:label   "Google Drive Sync" ;
+               kpred:has-status   "scaffolded" ;
+               kpred:feature-id   "F6" ;
+               kpred:description  "OAuth flow and file listing implemented. Auto-sync on mutation not wired." ;
+               kpred:depends-on   kb:workspace-sync .
+
+kb:vr-ar-shells rdf:type    ktype:Feature ;
+               rdfs:label   "VR / AR Shells" ;
+               kpred:has-status   "scaffolded" ;
+               kpred:feature-id   "F7" ;
+               kpred:description  "VRShell.svelte and ARShell.svelte define the interface contract. Depends on WebXR maturity." .
+
+# -- Planned Features (Roadmap) -------------------------------------------------
+
+kb:kb-publication rdf:type  ktype:Feature ;
+               rdfs:label   "KB Publication (GitHub Gist)" ;
+               kpred:has-status   "planned" ;
+               kpred:feature-id   "F2" ;
+               kpred:description  "Publish KB to a static URL via GitHub Gist. Shareable read-only link with published GUID." ;
+               kpred:enables      kb:read-only-guest .
+
+kb:read-only-guest rdf:type ktype:Feature ;
+               rdfs:label   "Read-Only Guest View" ;
+               kpred:has-status   "planned" ;
+               kpred:feature-id   "F3" ;
+               kpred:description  "Open a published KB URL in read-only mode. Fork to own KB button." ;
+               kpred:depends-on   kb:kb-publication ;
+               kpred:enables      kb:collaborative-kb .
+
+kb:collaborative-kb rdf:type ktype:Feature ;
+               rdfs:label   "Collaborative KB" ;
+               kpred:has-status   "speculative" ;
+               kpred:feature-id   "F4" ;
+               kpred:description  "Published KBs receive statement proposals from guests. Owner reviews via existing workflow." ;
+               kpred:depends-on   kb:read-only-guest .
+
+kb:extension-explore rdf:type ktype:Feature ;
+               rdfs:label   "Extension Explore Mode" ;
+               kpred:has-status   "planned" ;
+               kpred:feature-id   "F8b" ;
+               kpred:description  "Browse and interact with KB graph from the extension side panel. Lightweight 2D graph." ;
+               kpred:depends-on   kb:browser-extension .
+
+kb:enrichment-pipeline rdf:type ktype:Feature ;
+               rdfs:label   "Enrichment Pipeline" ;
+               kpred:has-status   "planned" ;
+               kpred:feature-id   "F10" ;
+               kpred:description  "Progressive analysis inspired by Semiont. Multi-pass enrichment of extracted triples." .
+
+kb:model-training rdf:type  ktype:Feature ;
+               rdfs:label   "Model Training" ;
+               kpred:has-status   "planned" ;
+               kpred:feature-id   "F13" ;
+               kpred:description  "Fine-tune local models on KB data. Training data export, cloud fine-tuning, local LoRA." ;
+               kpred:has-phase    kb:training-phase-1 ;
+               kpred:has-phase    kb:training-phase-2 ;
+               kpred:has-phase    kb:training-phase-3 ;
+               kpred:target-model "Granite 3.1 2B" ;
+               kpred:target-model "SmolLM2-360M" ;
+               kpred:target-model "Phi-3-mini" .
+
+kb:training-phase-1 rdf:type ktype:Concept ;
+               rdfs:label   "Training Phase 1: Data Export" ;
+               kpred:description  "Triple to QA pair generation. JSONL/Alpaca/ShareGPT export formats." ;
+               kpred:has-status   "planned" .
+
+kb:training-phase-2 rdf:type ktype:Concept ;
+               rdfs:label   "Training Phase 2: Cloud Integration" ;
+               kpred:description  "AWS Bedrock, Together.ai, Hugging Face AutoTrain integration." ;
+               kpred:has-status   "planned" ;
+               kpred:depends-on   kb:training-phase-1 .
+
+kb:training-phase-3 rdf:type ktype:Concept ;
+               rdfs:label   "Training Phase 3: Local LoRA" ;
+               kpred:description  "WebGPU-accelerated LoRA training. Adapter management per KB." ;
+               kpred:has-status   "planned" ;
+               kpred:depends-on   kb:training-phase-2 .
+
+kb:cost-awareness rdf:type  ktype:Feature ;
+               rdfs:label   "Cost & Rate Awareness" ;
+               kpred:has-status   "planned" ;
+               kpred:feature-id   "R3" ;
+               kpred:description  "Track token estimates per provider call. Session cost display. Max tokens guard." .
+
+kb:glb-management-ui rdf:type ktype:Feature ;
+               rdfs:label   "GLB Model Management UI" ;
+               kpred:has-status   "planned" ;
+               kpred:feature-id   "R4" ;
+               kpred:description  "Browsable table of all 3D model overrides. Preview thumbnails. Bulk remove." .
+
+kb:self-hosted-auth rdf:type ktype:Feature ;
+               rdfs:label   "Self-Hosted Authentication" ;
+               kpred:has-status   "planned" ;
+               kpred:feature-id   "R5" ;
+               kpred:description  "Optional passphrase. PBKDF2 key derivation. IndexedDB encryption via Web Crypto API." .
+
+kb:colab-notebook rdf:type  ktype:Feature ;
+               rdfs:label   "Google Colab Example" ;
+               kpred:has-status   "planned" ;
+               kpred:description  "Companion notebook demonstrating MCP server integration from Python." .
+
+kb:cross-kb-alignment rdf:type ktype:Feature ;
+               rdfs:label   "Cross-KB Alignment" ;
+               kpred:has-status   "planned" ;
+               kpred:description  "Analyze and merge across two or more KBs. Each suggestion shows source and target KB." ;
+               kpred:depends-on   kb:multi-kb ;
+               kpred:depends-on   kb:comparison-view .
+
+# -- User-Requested Future Capabilities -----------------------------------------
+
+kb:source-subscription rdf:type ktype:Feature ;
+               rdfs:label   "Source Subscription" ;
+               kpred:has-status   "planned" ;
+               kpred:description  "Mark a URL source as recurring with a check interval. Auto-creates dated source records." .
+
+kb:condition-triggers rdf:type ktype:Feature ;
+               rdfs:label   "Condition Triggers" ;
+               kpred:has-status   "speculative" ;
+               kpred:description  "Alert rules stored as triples. Check conditions after re-ingest, push browser notification." ;
+               kpred:depends-on   kb:source-subscription .
+
+kb:share-links rdf:type     ktype:Feature ;
+               rdfs:label   "TTL Share Links" ;
+               kpred:has-status   "planned" ;
+               kpred:description  "Generate a URL pointing to hosted TTL. Others paste URL to import. No accounts required." ;
+               kpred:depends-on   kb:kb-publication .
+
+# -- Design System --------------------------------------------------------------
+
+kb:design-system rdf:type   ktype:Concept ;
+               rdfs:label   "Design System" ;
+               kpred:has-status   "production" ;
+               kpred:has-font     "Bespoke Stencil Bold (display)" ;
+               kpred:has-font     "Supreme Regular (body/mono)" ;
+               kpred:accent-color "#1a9b8e" ;
+               kpred:data-color   "#6b4399" ;
+               kpred:bg-color     "#0a0f14" ;
+               kpred:has-component "SnapPanel" ;
+               kpred:has-component "NavBar" ;
+               kpred:has-component "SearchBar" ;
+               kpred:has-component "StatementCard" ;
+               kpred:has-component "TurtleChatPanel" ;
+               kpred:has-component "MergeReview" ;
+               kpred:has-component "NotificationStack" ;
+               kpred:ui-library   "bits-ui v2" .
+
+# -- Integration Catalog --------------------------------------------------------
+
+kb:integrations rdf:type    ktype:Concept ;
+               rdfs:label   "Integration Catalog" ;
+               kpred:has-integration kb:int-google ;
+               kpred:has-integration kb:int-github ;
+               kpred:has-integration kb:int-hume ;
+               kpred:has-integration kb:int-indico ;
+               kpred:has-integration kb:int-meshy ;
+               kpred:has-integration kb:int-firecrawl ;
+               kpred:has-integration kb:int-mistral-ocr .
+
+kb:int-google  rdf:type     ktype:Tool ;
+               rdfs:label   "Google (Calendar + Drive)" ;
+               kpred:has-status   "production" ;
+               kpred:provides     "calendar ingest" ;
+               kpred:provides     "iCal feed ingest" ;
+               kpred:provides     "drive file listing" .
+
+kb:int-github  rdf:type     ktype:Tool ;
+               rdfs:label   "GitHub" ;
+               kpred:has-status   "production" ;
+               kpred:provides     "repo tree walking" ;
+               kpred:provides     "delta updates" ;
+               kpred:provides     "private repo access" .
+
+kb:int-hume    rdf:type     ktype:Tool ;
+               rdfs:label   "Hume.AI" ;
+               kpred:has-status   "functional" ;
+               kpred:provides     "voice conversation" .
+
+kb:int-indico  rdf:type     ktype:Tool ;
+               rdfs:label   "Indico" ;
+               kpred:has-status   "production" ;
+               kpred:provides     "event ingest" ;
+               kpred:provides     "category sync" .
+
+kb:int-meshy   rdf:type     ktype:Tool ;
+               rdfs:label   "Meshy.AI" ;
+               kpred:has-status   "production" ;
+               kpred:provides     "3D model generation" .
+
+kb:int-firecrawl rdf:type   ktype:Tool ;
+               rdfs:label   "Firecrawl" ;
+               kpred:has-status   "production" ;
+               kpred:provides     "URL content extraction" .
+
+kb:int-mistral-ocr rdf:type ktype:Tool ;
+               rdfs:label   "Mistral OCR" ;
+               kpred:has-status   "production" ;
+               kpred:provides     "document OCR" ;
+               kpred:provides     "visual test scoring" .
+
+# ==============================================================================
+# Story: Product Vision & Roadmap Tour
+# ==============================================================================
+
+story:roadmap-tour  rdf:type         story:Story ;
+                    rdfs:label       "Product Vision & Roadmap" ;
+                    story:description "Walk through the design intent and planned features of Reckons.AI." ;
+                    story:autoplay   "false" ;
+                    story:pace       "12" .
+
+# Step 1: Vision
+story:rm-step-1  rdf:type         story:Step ;
+                 story:partOf     story:roadmap-tour ;
+                 story:order      "1"^^xsd:integer ;
+                 story:title      "The Vision" ;
+                 story:content    "Reckons.AI is a personal knowledge graph that extracts semantic triples from anything you feed it -- notes, URLs, documents, repos, calendars. It runs entirely in your browser with zero cloud dependency. Knowledge stays local, private, and under your control." ;
+                 story:highlight  kb:reckons-ai .
+
+# Step 2: Core Workflow
+story:rm-step-2  rdf:type         story:Step ;
+                 story:partOf     story:roadmap-tour ;
+                 story:order      "2"^^xsd:integer ;
+                 story:title      "The Core Loop" ;
+                 story:content    "Five workflows form the backbone: Ingest (add knowledge), Review (curate with human-in-the-loop), Explore (navigate the graph), Compare (semantic diffs), and Reckon (AI-powered reasoning). Every triple passes through review before entering your confirmed KB." ;
+                 story:highlight  kb:wf-ingest ;
+                 story:highlight  kb:wf-review ;
+                 story:highlight  kb:wf-explore ;
+                 story:highlight  kb:wf-compare ;
+                 story:highlight  kb:wf-reckon .
+
+# Step 3: Local-First AI
+story:rm-step-3  rdf:type         story:Step ;
+                 story:partOf     story:roadmap-tour ;
+                 story:order      "3"^^xsd:integer ;
+                 story:title      "Local-First AI" ;
+                 story:content    "Nine LLM backends range from fully in-browser (WASM, Chrome AI) to local server (Ollama) to cloud (Claude, OpenAI, Gemini, OpenRouter). Per-task overrides let you use a fast local model for chat but a powerful cloud model for extraction. The WASM backend auto-falls back when no API key is set." ;
+                 story:highlight  kb:llm-design ;
+                 story:highlight  kb:backend-wasm ;
+                 story:highlight  kb:backend-ollama .
+
+# Step 4: Extension & MCP
+story:rm-step-4  rdf:type         story:Step ;
+                 story:partOf     story:roadmap-tour ;
+                 story:order      "4"^^xsd:integer ;
+                 story:title      "Beyond the Browser Tab" ;
+                 story:content    "The browser extension adds research session accumulation across tabs. The MCP server lets AI agents like Claude Code search, query, and add to your KB. Together, they make Reckons.AI a knowledge backbone that other tools can tap into." ;
+                 story:highlight  kb:browser-extension ;
+                 story:highlight  kb:mcp-server ;
+                 story:question   "Want to see what the MCP server can do?" .
+
+# Step 5: Sharing Roadmap
+story:rm-step-5  rdf:type         story:Step ;
+                 story:partOf     story:roadmap-tour ;
+                 story:order      "5"^^xsd:integer ;
+                 story:title      "Sharing & Collaboration (Planned)" ;
+                 story:content    "The sharing roadmap progresses through three stages: F2 publishes KBs to GitHub Gist as static TTL files. F3 adds read-only guest views with a Fork button. F4 enables collaborative KBs where guests can propose statements. TTL is the protocol -- no accounts required." ;
+                 story:highlight  kb:kb-publication ;
+                 story:highlight  kb:read-only-guest ;
+                 story:highlight  kb:collaborative-kb .
+
+# Step 6: Model Training
+story:rm-step-6  rdf:type         story:Step ;
+                 story:partOf     story:roadmap-tour ;
+                 story:order      "6"^^xsd:integer ;
+                 story:title      "Personalized AI (F13)" ;
+                 story:content    "The most ambitious planned feature: fine-tune a local model on your KB data. Phase 1 exports training pairs (JSONL). Phase 2 integrates cloud fine-tuning. Phase 3 enables local LoRA adapter training via WebGPU. Your KB teaches the model your domain vocabulary." ;
+                 story:highlight  kb:model-training ;
+                 story:highlight  kb:training-phase-1 ;
+                 story:highlight  kb:training-phase-3 .
+
+# Step 7: Cross-KB Alignment
+story:rm-step-7  rdf:type         story:Step ;
+                 story:partOf     story:roadmap-tour ;
+                 story:order      "7"^^xsd:integer ;
+                 story:title      "Cross-KB Alignment" ;
+                 story:content    "The next frontier: aligning knowledge across multiple KBs. Compare a production status KB against a roadmap KB to see gaps. Each suggested change clearly indicates which KB it targets. This turns Reckons.AI into a tool for tracking vision vs reality." ;
+                 story:highlight  kb:cross-kb-alignment ;
+                 story:highlight  kb:multi-kb ;
+                 story:question   "Ready to compare this roadmap against production status?" .
