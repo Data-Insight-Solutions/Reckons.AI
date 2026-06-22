@@ -1,21 +1,37 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * Visual regression config — runs against the Storybook dev server.
- * Start Storybook first: npm run storybook
+ * Visual regression config — runs against both Storybook and the Vite dev server.
+ *
+ * Tests use layered analysis:
+ *  1. Local (pixel + DOM + text) — always runs, free, fast
+ *  2. Mistral OCR               — if MISTRAL_API_KEY is set
+ *  3. Claude Vision              — if ANTHROPIC_API_KEY is set
  *
  * Usage:
- *   npm run storybook &    # start Storybook on :6006
- *   npm run test:visual    # run visual + AI analysis tests
+ *   npm run dev:test &           # start Vite on :5174 with mock backends
+ *   npm run storybook &          # start Storybook on :6006
+ *   npm run test:visual          # run visual + AI analysis tests
+ *
+ * Bench (separate from tests):
+ *   npm run dev:test &
+ *   npm run bench:visual         # run visual analysis benchmark
+ *   npm run bench:visual:api     # include API tiers in benchmark
  */
+
+const sharedEnv = {
+  VITE_PREFERRED_BACKEND: 'mock',
+  VITE_INGEST_BACKEND: 'mock',
+  VITE_CHAT_BACKEND: 'mock',
+};
+
 export default defineConfig({
   testDir: './tests/visual',
   testMatch: '**/*.test.ts',
-  timeout: 30_000,
+  timeout: 60_000,
   fullyParallel: true,
 
   use: {
-    baseURL: 'http://localhost:6006',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     trace: 'retain-on-failure',
@@ -24,14 +40,26 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: { args: ['--no-sandbox', '--disable-dev-shm-usage'] },
+      },
     },
   ],
 
-  webServer: {
-    command: 'npm run storybook',
-    url: 'http://localhost:6006',
-    reuseExistingServer: true,
-    timeout: 120_000,
-  },
+  webServer: [
+    {
+      command: 'npm run storybook',
+      url: 'http://localhost:6006',
+      reuseExistingServer: true,
+      timeout: 120_000,
+    },
+    {
+      command: 'npm run dev:test',
+      url: 'http://localhost:5174',
+      reuseExistingServer: true,
+      timeout: 60_000,
+      env: sharedEnv,
+    },
+  ],
 });

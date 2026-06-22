@@ -1,0 +1,264 @@
+{
+  "timestamp": "2026-06-22T17:57:38.065Z",
+  "testCases": 1,
+  "apiMode": true,
+  "availableTiers": [
+    "local",
+    "mistral-ocr"
+  ],
+  "reports": [
+    {
+      "testCase": "review-split-view",
+      "timestamp": "2026-06-22T17:57:34.659Z",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "methods": [
+        {
+          "method": "pixel",
+          "passed": true,
+          "checks": [
+            {
+              "name": "no-solid-fill",
+              "passed": true,
+              "expected": "no solid fill",
+              "actual": "varied content"
+            },
+            {
+              "name": "not-blank",
+              "passed": true,
+              "expected": "has content",
+              "actual": "has content"
+            },
+            {
+              "name": "no-color-anomaly",
+              "passed": true,
+              "expected": "no artifact colors",
+              "actual": "clean"
+            }
+          ],
+          "durationMs": 87,
+          "cost": 0
+        },
+        {
+          "method": "dom",
+          "passed": true,
+          "checks": [
+            {
+              "name": "visible:.graph-pane",
+              "passed": true,
+              "expected": "visible",
+              "actual": "visible"
+            },
+            {
+              "name": "visible:.review-panel",
+              "passed": true,
+              "expected": "visible",
+              "actual": "visible"
+            },
+            {
+              "name": "visible:.resize-handle",
+              "passed": true,
+              "expected": "visible",
+              "actual": "visible"
+            },
+            {
+              "name": "no-overlap:.graph-pane+.review-panel",
+              "passed": true,
+              "expected": "no significant overlap",
+              "actual": "no overlap"
+            },
+            {
+              "name": "no-offscreen",
+              "passed": true,
+              "expected": "all on screen",
+              "actual": "all on screen"
+            },
+            {
+              "name": "no-zindex-collision",
+              "passed": true,
+              "expected": "no collisions",
+              "actual": "clean"
+            }
+          ],
+          "durationMs": 54,
+          "cost": 0
+        },
+        {
+          "method": "text",
+          "passed": true,
+          "checks": [
+            {
+              "name": "text:review",
+              "passed": true,
+              "expected": "present",
+              "actual": "found"
+            },
+            {
+              "name": "text:preview",
+              "passed": true,
+              "expected": "present",
+              "actual": "found"
+            },
+            {
+              "name": "text:incoming",
+              "passed": true,
+              "expected": "present",
+              "actual": "found"
+            }
+          ],
+          "durationMs": 1,
+          "cost": 0
+        },
+        {
+          "method": "touch",
+          "passed": false,
+          "checks": [
+            {
+              "name": "touch-targets",
+              "passed": false,
+              "expected": "all >= 44px",
+              "actual": "11 undersized: PREVIEW(64×25), COMPARE(67×25), OVERLAY(62×25)"
+            }
+          ],
+          "durationMs": 3,
+          "cost": 0
+        },
+        {
+          "method": "local-combined",
+          "passed": false,
+          "checks": [
+            {
+              "name": "no-solid-fill",
+              "passed": true,
+              "expected": "no solid fill",
+              "actual": "varied content"
+            },
+            {
+              "name": "not-blank",
+              "passed": true,
+              "expected": "has content",
+              "actual": "has content"
+            },
+            {
+              "name": "no-color-anomaly",
+              "passed": true,
+              "expected": "no artifact colors",
+              "actual": "clean"
+            },
+            {
+              "name": "visible:.graph-pane",
+              "passed": true,
+              "expected": "visible",
+              "actual": "visible"
+            },
+            {
+              "name": "visible:.review-panel",
+              "passed": true,
+              "expected": "visible",
+              "actual": "visible"
+            },
+            {
+              "name": "visible:.resize-handle",
+              "passed": true,
+              "expected": "visible",
+              "actual": "visible"
+            },
+            {
+              "name": "no-overlap:.graph-pane+.review-panel",
+              "passed": true,
+              "expected": "no significant overlap",
+              "actual": "no overlap"
+            },
+            {
+              "name": "no-offscreen",
+              "passed": true,
+              "expected": "all on screen",
+              "actual": "all on screen"
+            },
+            {
+              "name": "no-zindex-collision",
+              "passed": true,
+              "expected": "no collisions",
+              "actual": "clean"
+            },
+            {
+              "name": "text:review",
+              "passed": true,
+              "expected": "present",
+              "actual": "found"
+            },
+            {
+              "name": "text:preview",
+              "passed": true,
+              "expected": "present",
+              "actual": "found"
+            },
+            {
+              "name": "text:incoming",
+              "passed": true,
+              "expected": "present",
+              "actual": "found"
+            },
+            {
+              "name": "touch-targets",
+              "passed": false,
+              "expected": "all >= 44px",
+              "actual": "11 undersized: PREVIEW(64×25), COMPARE(67×25), OVERLAY(62×25)"
+            }
+          ],
+          "durationMs": 145,
+          "cost": 0
+        }
+      ]
+    }
+  ],
+  "comparison": [
+    {
+      "method": "pixel",
+      "totalChecks": 3,
+      "passed": 3,
+      "accuracy": 1,
+      "avgDurationMs": 87,
+      "totalCost": 0,
+      "recommendation": "sufficient for CI"
+    },
+    {
+      "method": "dom",
+      "totalChecks": 6,
+      "passed": 6,
+      "accuracy": 1,
+      "avgDurationMs": 54,
+      "totalCost": 0,
+      "recommendation": "sufficient for CI"
+    },
+    {
+      "method": "text",
+      "totalChecks": 3,
+      "passed": 3,
+      "accuracy": 1,
+      "avgDurationMs": 1,
+      "totalCost": 0,
+      "recommendation": "sufficient for CI"
+    },
+    {
+      "method": "touch",
+      "totalChecks": 1,
+      "passed": 0,
+      "accuracy": 0,
+      "avgDurationMs": 3,
+      "totalCost": 0,
+      "recommendation": "not recommended alone"
+    },
+    {
+      "method": "local-combined",
+      "totalChecks": 13,
+      "passed": 12,
+      "accuracy": 0.9230769230769231,
+      "avgDurationMs": 145,
+      "totalCost": 0,
+      "recommendation": "good for nightly"
+    }
+  ]
+}
