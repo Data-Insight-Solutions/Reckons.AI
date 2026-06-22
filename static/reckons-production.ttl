@@ -1,0 +1,260 @@
+@prefix kb:     <urn:kbase:concept/> .
+@prefix kpred:  <urn:kbase:predicate/> .
+@prefix kmeta:  <urn:kbase:meta/> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix ktype:  <urn:kbase:type/> .
+@prefix story:  <urn:reckons:story/> .
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Reckons.AI Production Status KB
+# ══════════════════════════════════════════════════════════════════════════════
+# This KB represents the production health and architecture of Reckons.AI.
+# Sources: https://reckons.ai + GitHub repo + production test suite.
+#
+# Intended use: reference KB for self-improvement workflow.
+# Refresh sources to get latest production status.
+
+# ── Core Entity ──────────────────────────────────────────────────────────────
+
+kb:reckons-ai  rdf:type          ktype:Application ;
+               rdfs:label        "Reckons.AI" ;
+               kpred:has-url     "https://reckons.ai" ;
+               kpred:has-repo    "https://github.com/Data-Insight-Solutions/Reckons.AI" ;
+               kpred:built-with  kb:sveltekit ;
+               kpred:built-with  kb:typescript ;
+               kpred:built-with  kb:dexie ;
+               kpred:has-feature kb:knowledge-graph ;
+               kpred:has-feature kb:multi-kb ;
+               kpred:has-feature kb:triple-extraction ;
+               kpred:has-feature kb:visual-testing ;
+               kpred:has-feature kb:mcp-server ;
+               kpred:has-feature kb:repo-ingest ;
+               kpred:has-feature kb:source-refresh ;
+               kmeta:glbModel    "/Meshy_AI_Turtle_1.glb" ;
+               kpred:icon2d      "/ReckonsAI-Logo.svg" .
+
+# ── Tech Stack ───────────────────────────────────────────────────────────────
+
+kb:sveltekit   rdf:type     ktype:Framework ;
+               rdfs:label   "SvelteKit" ;
+               kpred:version "2.x" .
+
+kb:typescript  rdf:type     ktype:Language ;
+               rdfs:label   "TypeScript" ;
+               kpred:version "5.x" .
+
+kb:dexie       rdf:type     ktype:Library ;
+               rdfs:label   "Dexie.js" ;
+               kpred:purpose "IndexedDB persistence" .
+
+# ── Features ─────────────────────────────────────────────────────────────────
+
+kb:knowledge-graph  rdf:type     ktype:Feature ;
+                    rdfs:label   "Knowledge Graph" ;
+                    kpred:renders-with kb:force-graph-2d ;
+                    kpred:renders-with kb:three-js-3d ;
+                    kpred:has-status   "production" .
+
+kb:multi-kb         rdf:type     ktype:Feature ;
+                    rdfs:label   "Multi-KB Management" ;
+                    kpred:has-status   "production" ;
+                    kpred:includes     kb:kb-registry ;
+                    kpred:includes     kb:kb-leap ;
+                    kpred:includes     kb:import-as-new-kb .
+
+kb:triple-extraction rdf:type    ktype:Feature ;
+                    rdfs:label   "Triple Extraction" ;
+                    kpred:has-status   "production" ;
+                    kpred:supports     kb:claude-backend ;
+                    kpred:supports     kb:openai-backend ;
+                    kpred:supports     kb:wasm-backend ;
+                    kpred:supports     kb:ollama-backend .
+
+kb:visual-testing   rdf:type     ktype:Feature ;
+                    rdfs:label   "Visual Testing" ;
+                    kpred:has-status   "production" ;
+                    kpred:uses         kb:playwright ;
+                    kpred:uses         kb:pngjs ;
+                    kpred:has-tier     "pixel-analysis" ;
+                    kpred:has-tier     "dom-overlap" ;
+                    kpred:has-tier     "text-extraction" ;
+                    kpred:has-tier     "mistral-ocr" ;
+                    kpred:has-tier     "claude-vision" .
+
+kb:mcp-server       rdf:type     ktype:Feature ;
+                    rdfs:label   "MCP Server" ;
+                    kpred:has-status   "production" ;
+                    kpred:has-tool     "kb_search" ;
+                    kpred:has-tool     "kb_get_entity" ;
+                    kpred:has-tool     "kb_stats" ;
+                    kpred:has-tool     "kb_list_entities" ;
+                    kpred:has-tool     "kb_add_note" ;
+                    kpred:has-tool     "kb_subgraph" ;
+                    kpred:has-tool     "kb_reckoning" ;
+                    kpred:has-tool     "kb_list_sources" ;
+                    kpred:has-tool     "kb_request_refresh" .
+
+kb:repo-ingest      rdf:type     ktype:Feature ;
+                    rdfs:label   "Repository Ingest" ;
+                    kpred:has-status   "production" ;
+                    kpred:uses         kb:github-api ;
+                    kpred:supports     "public repos" ;
+                    kpred:supports     "private repos (with token)" ;
+                    kpred:supports     "delta updates" .
+
+kb:source-refresh   rdf:type     ktype:Feature ;
+                    rdfs:label   "Source Refresh" ;
+                    kpred:has-status   "production" ;
+                    kpred:refreshes    "url" ;
+                    kpred:refreshes    "repository" ;
+                    kpred:refreshes    "calendar" ;
+                    kpred:has-setting  "autoRefreshOnOpen" ;
+                    kpred:has-setting  "autoRefreshIntervalMinutes" .
+
+# ── Production Tests ─────────────────────────────────────────────────────────
+
+kb:test-suite       rdf:type     ktype:TestSuite ;
+                    rdfs:label   "Production Test Suite" ;
+                    kpred:has-test kb:test-unit ;
+                    kpred:has-test kb:test-visual ;
+                    kpred:has-test kb:test-visual-bench ;
+                    kpred:has-test kb:test-mcp .
+
+kb:test-unit        rdf:type     ktype:TestCategory ;
+                    rdfs:label   "Unit Tests" ;
+                    kpred:command  "npx vitest run" ;
+                    kpred:checks   "triple parsing" ;
+                    kpred:checks   "diff computation" ;
+                    kpred:checks   "content safety" ;
+                    kpred:checks   "repo URL parsing" ;
+                    kpred:checks   "vision scoring" ;
+                    kpred:expected-result "215+ tests pass" .
+
+kb:test-visual      rdf:type     ktype:TestCategory ;
+                    rdfs:label   "Visual/Playwright Tests" ;
+                    kpred:command  "npx playwright test --config=playwright.visual.config.ts" ;
+                    kpred:checks   "graph rendering" ;
+                    kpred:checks   "nav bar presence" ;
+                    kpred:checks   "page screenshots" ;
+                    kpred:checks   "mobile touch targets" ;
+                    kpred:checks   "panel overlap detection" ;
+                    kpred:expected-result "all visual checks pass, no solid-fill artifacts" .
+
+kb:test-visual-bench rdf:type    ktype:TestCategory ;
+                    rdfs:label   "Visual Bench" ;
+                    kpred:command  "npm run bench:visual" ;
+                    kpred:checks   "pixel analysis accuracy" ;
+                    kpred:checks   "DOM overlap detection" ;
+                    kpred:checks   "text presence verification" ;
+                    kpred:checks   "touch target WCAG compliance" ;
+                    kpred:expected-result "local-combined >= 95% accuracy" .
+
+kb:test-mcp         rdf:type     ktype:TestCategory ;
+                    rdfs:label   "MCP Server Tests" ;
+                    kpred:command  "cd mcp-server && npm test" ;
+                    kpred:checks   "tool registration" ;
+                    kpred:checks   "JSON-RPC protocol" ;
+                    kpred:checks   "multi-KB workspace" ;
+                    kpred:expected-result "all tools respond correctly" .
+
+# ── Ingest Source Types ──────────────────────────────────────────────────────
+
+kb:ingest-pipeline  rdf:type     ktype:Feature ;
+                    rdfs:label   "Ingest Pipeline" ;
+                    kpred:has-status   "production" ;
+                    kpred:has-source-type "note" ;
+                    kpred:has-source-type "url" ;
+                    kpred:has-source-type "document" ;
+                    kpred:has-source-type "reminder" ;
+                    kpred:has-source-type "repository" ;
+                    kpred:has-source-type "calendar" ;
+                    kpred:has-source-type "vault" ;
+                    kpred:has-source-type "folder" ;
+                    kpred:has-source-type "triples" ;
+                    kpred:has-source-type "kb-import" .
+
+# ── Key Architecture Patterns ────────────────────────────────────────────────
+
+kb:review-workflow  rdf:type     ktype:Concept ;
+                    rdfs:label   "Review Workflow" ;
+                    kpred:has-tab  "incoming" ;
+                    kpred:has-tab  "deletions" ;
+                    kpred:has-tab  "merges" ;
+                    kpred:has-status "pending -> confirmed/rejected/refined" .
+
+kb:browser-extension rdf:type    ktype:Feature ;
+                    rdfs:label   "Browser Extension" ;
+                    kpred:has-status   "production" ;
+                    kpred:has-tab  "compare" ;
+                    kpred:has-tab  "session" ;
+                    kpred:has-tab  "ingest" .
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Story: Production Health Tour
+# ══════════════════════════════════════════════════════════════════════════════
+
+story:production-tour  rdf:type         story:Story ;
+                       rdfs:label       "Production Health Tour" ;
+                       story:description "Walk through the key production tests and verify Reckons.AI health." ;
+                       story:autoplay   "false" ;
+                       story:pace       "10" .
+
+# Step 1: Overview
+story:prod-step-1  rdf:type         story:Step ;
+                   story:partOf     story:production-tour ;
+                   story:order      "1"^^xsd:integer ;
+                   story:title      "Welcome to Production Status" ;
+                   story:content    "This KB tracks the production health of Reckons.AI. It has two live sources: the website URL and the GitHub repository. Both can be refreshed to pull in the latest state. Let me walk you through the key test categories." ;
+                   story:highlight  kb:reckons-ai .
+
+# Step 2: Unit Tests
+story:prod-step-2  rdf:type         story:Step ;
+                   story:partOf     story:production-tour ;
+                   story:order      "2"^^xsd:integer ;
+                   story:title      "Unit Tests" ;
+                   story:content    "The unit test suite runs with `npx vitest run` and covers triple parsing, diff computation, content safety filtering, repo URL parsing, and vision scoring. There should be 215+ passing tests with zero failures in our code." ;
+                   story:highlight  kb:test-unit ;
+                   story:highlight  kb:test-suite ;
+                   story:question   "Want to see the latest test results?" .
+
+# Step 3: Visual Tests
+story:prod-step-3  rdf:type         story:Step ;
+                   story:partOf     story:production-tour ;
+                   story:order      "3"^^xsd:integer ;
+                   story:title      "Visual & Playwright Tests" ;
+                   story:content    "Visual tests use Playwright to capture screenshots and analyze them with a layered approach: pixel statistics detect solid fills and blank screens, DOM analysis catches element overlaps and off-screen content, and text extraction verifies labels are visible. The visual bench achieves 95%+ accuracy with zero API cost." ;
+                   story:highlight  kb:test-visual ;
+                   story:highlight  kb:visual-testing ;
+                   story:highlight  kb:test-visual-bench .
+
+# Step 4: MCP Server
+story:prod-step-4  rdf:type         story:Step ;
+                   story:partOf     story:production-tour ;
+                   story:order      "4"^^xsd:integer ;
+                   story:title      "MCP Server" ;
+                   story:content    "The MCP server exposes 10 tools over JSON-RPC stdio. Claude Code and other AI agents can search the KB, get entity details, extract subgraphs, add notes, list sources, and request refreshes. The server supports multi-KB workspaces." ;
+                   story:highlight  kb:mcp-server ;
+                   story:question   "Should I verify the MCP server tools are responding?" .
+
+# Step 5: Ingest Pipeline
+story:prod-step-5  rdf:type         story:Step ;
+                   story:partOf     story:production-tour ;
+                   story:order      "5"^^xsd:integer ;
+                   story:title      "Ingest & Source Refresh" ;
+                   story:content    "The ingest pipeline supports 10 source types including the new GitHub repo ingest. URL, repository, and calendar sources can be refreshed to pull in updates. Auto-refresh can be configured to run on KB open or on a schedule. The repo ingest uses the GitHub REST API for tree walking and delta comparison." ;
+                   story:highlight  kb:ingest-pipeline ;
+                   story:highlight  kb:repo-ingest ;
+                   story:highlight  kb:source-refresh .
+
+# Step 6: Self-Improvement Loop
+story:prod-step-6  rdf:type         story:Step ;
+                   story:partOf     story:production-tour ;
+                   story:order      "6"^^xsd:integer ;
+                   story:title      "The Self-Improvement Loop" ;
+                   story:content    "This is the key insight: Reckons.AI can analyze its own codebase, extract architectural knowledge into triples, and then use those triples (via the MCP server) to guide Claude Code in making improvements. Refresh the repo source, review the updated triples, and use them as context for your next development session." ;
+                   story:highlight  kb:reckons-ai ;
+                   story:highlight  kb:mcp-server ;
+                   story:highlight  kb:repo-ingest ;
+                   story:question   "Ready to refresh sources and see what has changed?" .
