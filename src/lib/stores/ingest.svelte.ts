@@ -21,7 +21,8 @@ export type IngestInput =
   | { kind: 'url'; url: string }
   | { kind: 'document'; title: string; text: string; filename?: string }
   | { kind: 'note'; title: string; body: string }
-  | { kind: 'reminder'; title: string; body: string; dueAt?: number };
+  | { kind: 'reminder'; title: string; body: string; dueAt?: number }
+  | { kind: 'repository'; repoUrl: string; token?: string };
 
 export type IngestProgress =
   | { phase: 'fetching' }
@@ -58,6 +59,9 @@ export async function ingest(
   let uri: string;
   let kind: Source['kind'];
 
+  // Extra metadata for repository sources
+  let repoMeta: { owner: string; repo: string; branch: string; headSha: string; fileCount: number } | undefined;
+
   if (input.kind === 'url') {
     onProgress?.({ phase: 'fetching' });
     const fetched = await fetchReadable(input.url);
@@ -65,6 +69,22 @@ export async function ingest(
     text = fetched.text;
     uri = input.url;
     kind = 'url';
+  } else if (input.kind === 'repository') {
+    onProgress?.({ phase: 'fetching' });
+    const { parseRepoUrl, fetchRepoFiles, buildRepoExtractionText } =
+      await import('../integrations/github/repo-ingest');
+    const ref = parseRepoUrl(input.repoUrl);
+    if (!ref) throw new Error(`Invalid GitHub repo URL: ${input.repoUrl}`);
+    const { meta, files } = await fetchRepoFiles(ref, input.token, (p) => {
+      if (p.phase === 'reading-files') {
+        onProgress?.({ phase: 'fetching' });
+      }
+    });
+    title = `${meta.owner}/${meta.repo}`;
+    text = buildRepoExtractionText(meta, files);
+    uri = `https://github.com/${meta.owner}/${meta.repo}`;
+    kind = 'repository';
+    repoMeta = { owner: meta.owner, repo: meta.repo, branch: meta.branch, headSha: meta.headSha, fileCount: files.length };
   } else if (input.kind === 'document') {
     title = input.title;
     text = input.text;
@@ -88,7 +108,14 @@ export async function ingest(
     uri,
     ingestedAt: Date.now(),
     kind,
-    hash: await sha256(text)
+    hash: await sha256(text),
+    ...(repoMeta ? {
+      repoOwner: repoMeta.owner,
+      repoName: repoMeta.repo,
+      repoBranch: repoMeta.branch,
+      repoHeadSha: repoMeta.headSha,
+      repoFileCount: repoMeta.fileCount,
+    } : {}),
   };
 
   const s = settings();
@@ -105,11 +132,19 @@ export async function ingest(
     true; // ollama, wasm, mock, manual, chrome-ai need no key
   const backend = hasKey ? chosen : 'wasm';
   onProgress?.({ phase: 'extracting', backend });
+
+  // Augment system prompt for code/repository sources
+  let systemPrompt = EXTRACTION_SYSTEM_PROMPT;
+  if (kind === 'repository') {
+    const { CODE_EXTRACTION_SUPPLEMENT } = await import('../integrations/github/repo-ingest');
+    systemPrompt = EXTRACTION_SYSTEM_PROMPT + CODE_EXTRACTION_SUPPLEMENT;
+  }
+
   let triples: ExtractedTriple[];
   if (backend === 'openai') {
     const raw = await chatOpenAI(
       [{ role: 'user', content: buildExtractionUserPrompt(text, title) }],
-      EXTRACTION_SYSTEM_PROMPT,
+      systemPrompt,
       s.openaiApiKey!,
       s.openaiModel
     );
@@ -117,17 +152,17 @@ export async function ingest(
   } else if (backend === 'gemini') {
     const raw = await chatGemini(
       [{ role: 'user', content: buildExtractionUserPrompt(text, title) }],
-      EXTRACTION_SYSTEM_PROMPT,
+      systemPrompt,
       s.geminiApiKey!,
       s.geminiModel
     );
     triples = parseTriplesJSON(raw);
   } else if (backend === 'claude') {
-    triples = await extractWithClaude(text, title, { apiKey: s.claudeApiKey!, model: s.claudeModel });
+    triples = await extractWithClaude(text, title, { apiKey: s.claudeApiKey!, model: s.claudeModel, systemPrompt });
   } else if (backend === 'openrouter') {
     const raw = await chatOpenRouter(
       [{ role: 'user', content: buildExtractionUserPrompt(text, title) }],
-      EXTRACTION_SYSTEM_PROMPT,
+      systemPrompt,
       s.openrouterApiKey!,
       s.openrouterModel
     );
@@ -135,7 +170,7 @@ export async function ingest(
   } else if (backend === 'ollama') {
     const raw = await chatOllama(
       [{ role: 'user', content: buildExtractionUserPrompt(text, title) }],
-      EXTRACTION_SYSTEM_PROMPT,
+      systemPrompt,
       s.ollamaModel,
       s.ollamaBaseUrl
     );
@@ -143,7 +178,7 @@ export async function ingest(
   } else if (backend === 'reckons') {
     const raw = await chatReckons(
       [{ role: 'user', content: buildExtractionUserPrompt(text, title) }],
-      EXTRACTION_SYSTEM_PROMPT,
+      systemPrompt,
       s.reckonsApiKey!,
       s.reckonsBaseUrl,
       s.reckonsModel
@@ -152,7 +187,7 @@ export async function ingest(
   } else if (backend === 'chrome-ai') {
     const raw = await chatChromeAI(
       [{ role: 'user', content: buildExtractionUserPrompt(text, title) }],
-      EXTRACTION_SYSTEM_PROMPT
+      systemPrompt
     );
     triples = parseTriplesJSON(raw);
   } else if (backend === 'wasm') {
@@ -267,6 +302,14 @@ export async function buildIngestionPrompt(input: IngestInput): Promise<{ prompt
     const fetched = await fetchReadable(input.url);
     title = fetched.title;
     text = fetched.text;
+  } else if (input.kind === 'repository') {
+    const { parseRepoUrl, fetchRepoFiles, buildRepoExtractionText } =
+      await import('../integrations/github/repo-ingest');
+    const ref = parseRepoUrl(input.repoUrl);
+    if (!ref) throw new Error(`Invalid GitHub repo URL: ${input.repoUrl}`);
+    const { meta, files } = await fetchRepoFiles(ref, input.token);
+    title = `${meta.owner}/${meta.repo}`;
+    text = buildRepoExtractionText(meta, files);
   } else if (input.kind === 'document') {
     title = input.title;
     text = input.text;

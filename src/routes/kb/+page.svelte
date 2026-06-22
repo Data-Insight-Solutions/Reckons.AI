@@ -374,7 +374,7 @@
   }
 
   function kindIcon(kind: string) {
-    return kind === 'text' ? '📄' : kind === 'analysis' ? '🔬' : kind === 'url' ? '🔗' : kind === 'turtle' ? '' : '📦';
+    return kind === 'text' ? '📄' : kind === 'analysis' ? '🔬' : kind === 'url' ? '🔗' : kind === 'repository' ? '📂' : kind === 'turtle' ? '' : '📦';
   }
 
   function kindLabel(kind: string) {
@@ -382,6 +382,7 @@
     if (kind === 'text') return 'Text';
     if (kind === 'url') return 'URL';
     if (kind === 'analysis') return 'Analysis';
+    if (kind === 'repository') return 'Repo';
     return kind;
   }
 

@@ -12,6 +12,8 @@ export type ClaudeOptions = {
   apiKey: string;
   model?: string;
   signal?: AbortSignal;
+  /** Override the default extraction system prompt (e.g. for code-aware extraction) */
+  systemPrompt?: string;
 };
 
 /**
@@ -39,7 +41,7 @@ export async function extractWithClaude(
     body: JSON.stringify({
       model: opts.model ?? DEFAULT_MODEL,
       max_tokens: 4096,
-      system: EXTRACTION_SYSTEM_PROMPT,
+      system: opts.systemPrompt ?? EXTRACTION_SYSTEM_PROMPT,
       messages: [
         { role: 'user', content: buildExtractionUserPrompt(text, sourceTitle) },
         // Prefill forces Claude to start its response mid-array, guaranteeing

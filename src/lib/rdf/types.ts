@@ -30,7 +30,7 @@ export type Source = {
   /** Optional checksum of source content for change detection */
   hash?: string;
   /** Type of source */
-  kind: 'url' | 'document' | 'note' | 'reminder' | 'semfile' | 'analysis' | 'calendar';
+  kind: 'url' | 'document' | 'note' | 'reminder' | 'semfile' | 'analysis' | 'calendar' | 'repository';
   /** Trust level: 'trusted' auto-confirms statements, 'review' requires human review */
   trustLevel?: 'trusted' | 'review';
   /** Computed trust score (0.0-1.0) based on user actions and historical patterns */
@@ -45,6 +45,14 @@ export type Source = {
   analysisTrigger?: 'manual' | 'import' | 'schedule';
   analysisFocus?: 'enrich' | 'merge' | 'entity-types' | 'delete' | 'new-triples';
   analysisTotalSuggestions?: number;
+  /** Repository metadata (present when kind === 'repository') */
+  repoOwner?: string;
+  repoName?: string;
+  repoBranch?: string;
+  /** Last ingested commit SHA — used for delta updates */
+  repoHeadSha?: string;
+  /** Number of files ingested from the repo */
+  repoFileCount?: number;
   /** Merge and prune recommendations stored as actions, NOT as graph statements */
   analysisActions?: {
     merges: Array<{

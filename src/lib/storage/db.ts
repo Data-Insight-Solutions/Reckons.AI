@@ -113,6 +113,8 @@ export type SettingsRecord = {
   indicoLastSync?: number;
   /** Tavily API key — AI-optimized web search for KB enrichment (free tier: 1k searches/mo) */
   tavilyApiKey?: string;
+  /** GitHub personal access token — enables repo ingest and higher API rate limits */
+  githubToken?: string;
 };
 
 export const DEFAULT_TURTLE_SETTINGS: TurtleSettings = {

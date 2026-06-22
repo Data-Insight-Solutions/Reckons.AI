@@ -145,6 +145,18 @@
       note: 'Used for Mistral OCR: PDF and image → markdown parsing. Drop a PDF on the document ingest tab.'
     },
     {
+      id: 'github',
+      label: 'GitHub',
+      offline: false,
+      color: '#8b949e',
+      keyField: 'githubToken' as keyof SettingsRecord,
+      modelField: undefined,
+      keyPlaceholder: 'ghp_...',
+      features: [],
+      docsUrl: 'https://github.com/settings/tokens',
+      note: 'Personal access token for repo ingest. Enables private repos and 5,000 req/hr (vs 60/hr unauthenticated). Fine-grained tokens recommended.'
+    },
+    {
       id: 'ollama',
       label: 'Ollama',
       offline: true,

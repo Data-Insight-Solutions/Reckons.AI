@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation';
   import { ingest, buildIngestionPrompt, type IngestInput, type IngestProgress } from '$lib/stores/ingest.svelte';
   import { addSource, addStatements, sources, statements } from '$lib/stores/kb.svelte';
+  import type { Source } from '$lib/rdf/types';
   import { settings, updateSettings } from '$lib/stores/settings.svelte';
   import { requestManualLLM } from '$lib/stores/manual-llm.svelte';
   import { parseTriplesJSON, triplesToStatements } from '$lib/integrations/llm/extractor';
@@ -26,7 +27,7 @@
   import { KBaseDB, DEFAULT_SETTINGS } from '$lib/storage/db';
   import { createKb, registerStableId, switchToKb } from '$lib/storage/kb-registry';
 
-  type Mode = 'note' | 'url' | 'document' | 'reminder' | 'triples' | 'drive' | 'calendar' | 'kb' | 'vault' | 'folder';
+  type Mode = 'note' | 'url' | 'document' | 'reminder' | 'triples' | 'drive' | 'calendar' | 'kb' | 'vault' | 'folder' | 'repo';
   let mode = $state<Mode>('note');
 
   // Standard ingest fields
@@ -194,7 +195,7 @@
 
   const canSubmit = $derived.by(() => {
     if (busy) return false;
-    if (mode === 'vault' || mode === 'folder') return false; // these have their own submit flow
+    if (mode === 'vault' || mode === 'folder' || mode === 'repo') return false; // these have their own submit flow
     if (mode === 'url') return url.trim().length > 0;
     if (mode === 'document') return docText.trim().length > 0;
     if (mode === 'triples') return title.trim().length > 0 && manualTriples.some(t => t.subject.trim() && t.predicate.trim() && t.object.trim());
@@ -203,7 +204,7 @@
 
   // For "use any LLM" button — needs content but not a backend key
   const canCopyPrompt = $derived(
-    !busy && !copyBusy && mode !== 'triples' && mode !== 'drive' && mode !== 'calendar' &&
+    !busy && !copyBusy && mode !== 'triples' && mode !== 'drive' && mode !== 'calendar' && mode !== 'repo' &&
     (mode === 'url' ? url.trim().length > 0 : title.trim().length > 0)
   );
 
@@ -786,6 +787,69 @@
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
+
+  // ── Repo ingest ───────────────────────────────────────────────────────────
+  import type { RepoMeta, RepoIngestProgress } from '$lib/integrations/github/repo-ingest';
+
+  let repoUrl = $state('');
+  let repoMeta = $state<RepoMeta | null>(null);
+  let repoFetching = $state(false);
+  let repoProgress = $state('');
+  let repoDone = $state(false);
+
+  async function fetchRepoPreview() {
+    if (!repoUrl.trim()) return;
+    error = null;
+    repoFetching = true;
+    repoMeta = null;
+    repoProgress = 'fetching repo info…';
+    try {
+      const { parseRepoUrl, fetchRepoMeta } = await import('$lib/integrations/github/repo-ingest');
+      const ref = parseRepoUrl(repoUrl.trim());
+      if (!ref) { error = 'Invalid repo URL. Use "owner/repo" or a GitHub URL.'; return; }
+      const token = settings().githubToken;
+      repoMeta = await fetchRepoMeta(ref, token || undefined);
+      repoProgress = '';
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+    } finally {
+      repoFetching = false;
+    }
+  }
+
+  async function submitRepo() {
+    if (!repoUrl.trim()) return;
+    error = null;
+    busy = true;
+    repoDone = false;
+    try {
+      const token = settings().githubToken;
+      const result = await ingest(
+        { kind: 'repository', repoUrl: repoUrl.trim(), token: token || undefined },
+        (p: IngestProgress) => {
+          phase = p.phase;
+          if (p.phase === 'fetching') repoProgress = 'fetching files…';
+          else if (p.phase === 'extracting') repoProgress = `extracting triples (${p.backend})…`;
+          else if (p.phase === 'diffing') repoProgress = 'computing diff…';
+          else if (p.phase === 'semantic') repoProgress = 'semantic enrichment…';
+          else repoProgress = '';
+        },
+      );
+      repoDone = true;
+      goto(`/compare?source=${result.source.id}`);
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+    } finally {
+      busy = false;
+    }
+  }
+
+  /** Check if an existing source is a repo and can be updated */
+  function findExistingRepoSource(owner: string, repo: string): Source | undefined {
+    return sources().find(s =>
+      s.kind === 'repository' && s.repoOwner === owner && s.repoName === repo
+    );
+  }
 </script>
 
 <header class="head">
@@ -813,6 +877,7 @@
     title={googleReady ? 'Import from Google Calendar' : 'Set a Google Client ID in Settings first'}
   >calendar</button>
   <button class:active={mode === 'folder'} onclick={() => (mode = 'folder')}>folder</button>
+  <button class:active={mode === 'repo'} onclick={() => (mode = 'repo')}>repo</button>
 </div>
 
 {#if mode !== 'kb' && mode !== 'drive' && mode !== 'calendar'}
@@ -918,6 +983,38 @@
       {#if folderDone}
         <p class="hint mono ok">Done — {folderStmtCount} statements created. <a href="/review">Review →</a></p>
       {/if}
+    {/if}
+
+  {:else if mode === 'repo'}
+    <p class="hint" style="margin-bottom:0.5rem">Ingest a GitHub repository — code, docs, and configs are analyzed for knowledge extraction. Use <code>owner/repo</code> or a full GitHub URL.</p>
+    <label>
+      <span class="lbl mono">repository</span>
+      <div class="repo-input-row">
+        <input type="text" bind:value={repoUrl} placeholder="owner/repo or https://github.com/..." onkeydown={(e) => e.key === 'Enter' && fetchRepoPreview()} />
+        <button class="btn-secondary" onclick={fetchRepoPreview} disabled={repoFetching || !repoUrl.trim()}>
+          {repoFetching ? 'loading…' : 'preview'}
+        </button>
+      </div>
+    </label>
+    {#if !settings().githubToken}
+      <p class="hint">For private repos and higher rate limits, add a GitHub token in <a href="/settings/integrations">Settings → Integrations</a>.</p>
+    {/if}
+    {#if repoMeta}
+      {@const existing = findExistingRepoSource(repoMeta.owner, repoMeta.repo)}
+      <div class="repo-preview">
+        <p class="mono"><strong>{repoMeta.owner}/{repoMeta.repo}</strong> on <code>{repoMeta.branch}</code></p>
+        {#if repoMeta.description}<p class="hint">{repoMeta.description}</p>{/if}
+        <p class="hint mono">{repoMeta.language ?? 'unknown'} — {repoMeta.stars} stars — HEAD: {repoMeta.headSha.slice(0, 8)}</p>
+        {#if existing}
+          <p class="hint ok">Previously ingested at {existing.repoHeadSha?.slice(0, 8) ?? '???'}. This will update with changes.</p>
+        {/if}
+        <button class="btn-primary" onclick={submitRepo} disabled={busy}>
+          {busy ? repoProgress || 'ingesting…' : existing ? 'update repo' : 'ingest repo'}
+        </button>
+      </div>
+    {/if}
+    {#if repoProgress && !repoMeta}
+      <p class="hint mono">{repoProgress}</p>
     {/if}
 
   {:else if mode === 'note'}
@@ -1499,6 +1596,25 @@
     background: var(--accent-soft);
   }
   .ok { color: var(--ok); }
+
+  /* ── Repo ── */
+  .repo-input-row {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .repo-input-row input { flex: 1; }
+  .repo-input-row button { white-space: nowrap; }
+  .repo-preview {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: var(--rad);
+    background: var(--surface-2);
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .repo-preview .btn-primary { margin-top: 0.5rem; align-self: flex-start; }
 
   /* ── Mobile ── */
   @media (max-width: 500px) {
