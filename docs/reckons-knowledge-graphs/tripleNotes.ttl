@@ -1,0 +1,323 @@
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix doap:    <http://usefulinc.com/ns/doap#> .
+@prefix rk:      <urn:reckons:ontology/> .
+@prefix proj:    <urn:reckons:project/> .
+@prefix tech:    <urn:reckons:technology/> .
+@prefix comp:    <urn:reckons:component/> .
+@prefix feat:    <urn:reckons:feature/> .
+@prefix arch:    <urn:reckons:architecture/> .
+@prefix dep:     <urn:reckons:dependency/> .
+@prefix iface:   <urn:reckons:interface/> .
+@prefix dm:      <urn:reckons:datamodel/> .
+
+# ════════════════════════════════════════════════════════════════════════════
+# tripleNotes — Early Working Version of Reckons.AI
+# The most complete iteration: PWA + CLI + MCP Server + Browser Extension
+# ════════════════════════════════════════════════════════════════════════════
+
+proj:tripleNotes a rk:Project ;
+    rdfs:label "tripleNotes (Reckons.AI v0.1)" ;
+    dcterms:description "Personal knowledge graph platform that turns documents, web pages, notes, and calendar events into structured RDF triples. Users ingest content, review AI-extracted facts, and build a searchable, shareable knowledge base stored as Turtle files." ;
+    rk:maturityLevel "working-prototype" ;
+    rk:primaryLanguage "TypeScript" ;
+    rk:storageBackend "IndexedDB (Dexie)" ;
+    rk:llmStrategy "multi-provider (Claude, OpenAI, Gemini, Ollama, WASM)" .
+
+# ── Interfaces ──────────────────────────────────────────────────────────────
+
+proj:tripleNotes rk:hasInterface iface:WebApp ,
+                                  iface:CLI ,
+                                  iface:MCPServer ,
+                                  iface:BrowserExtension ,
+                                  iface:PWA .
+
+iface:WebApp a rk:InterfaceType ; rdfs:label "Web Application" .
+iface:CLI a rk:InterfaceType ; rdfs:label "Command-Line Interface" .
+iface:MCPServer a rk:InterfaceType ; rdfs:label "MCP Server" .
+iface:BrowserExtension a rk:InterfaceType ; rdfs:label "Browser Extension" .
+iface:PWA a rk:InterfaceType ; rdfs:label "Progressive Web App" .
+
+# ── Technologies ────────────────────────────────────────────────────────────
+
+proj:tripleNotes rk:usesTechnology tech:SvelteKit2 ,
+                                    tech:Svelte5 ,
+                                    tech:TypeScript ,
+                                    tech:ThreeJS ,
+                                    tech:Threlte8 ,
+                                    tech:Vite ,
+                                    tech:Dexie ,
+                                    tech:N3js ,
+                                    tech:HuggingFaceTransformers ,
+                                    tech:Playwright ,
+                                    tech:Vitest ,
+                                    tech:Storybook ,
+                                    tech:TailwindCSS ,
+                                    tech:WebGL ,
+                                    tech:IndexedDB ,
+                                    tech:ServiceWorker ,
+                                    tech:Workbox ,
+                                    tech:WebWorkers ,
+                                    tech:Comlink ,
+                                    tech:WASM .
+
+tech:SvelteKit2 a rk:Technology ; rdfs:label "SvelteKit 2" ; rk:category "framework" .
+tech:Svelte5 a rk:Technology ; rdfs:label "Svelte 5" ; rk:category "framework" .
+tech:TypeScript a rk:Technology ; rdfs:label "TypeScript" ; rk:category "language" .
+tech:ThreeJS a rk:Technology ; rdfs:label "Three.js" ; rk:category "3d-visualization" .
+tech:Threlte8 a rk:Technology ; rdfs:label "Threlte 8" ; rk:category "3d-visualization" .
+tech:Vite a rk:Technology ; rdfs:label "Vite" ; rk:category "build-tool" .
+tech:Dexie a rk:Technology ; rdfs:label "Dexie (IndexedDB)" ; rk:category "database" .
+tech:N3js a rk:Technology ; rdfs:label "N3.js" ; rk:category "rdf-library" .
+tech:HuggingFaceTransformers a rk:Technology ; rdfs:label "HuggingFace Transformers.js" ; rk:category "ai-ml" .
+tech:Playwright a rk:Technology ; rdfs:label "Playwright" ; rk:category "testing" .
+tech:Vitest a rk:Technology ; rdfs:label "Vitest" ; rk:category "testing" .
+tech:Storybook a rk:Technology ; rdfs:label "Storybook" ; rk:category "testing" .
+tech:TailwindCSS a rk:Technology ; rdfs:label "Tailwind CSS" ; rk:category "styling" .
+tech:WebGL a rk:Technology ; rdfs:label "WebGL" ; rk:category "rendering" .
+tech:IndexedDB a rk:Technology ; rdfs:label "IndexedDB" ; rk:category "storage" .
+tech:ServiceWorker a rk:Technology ; rdfs:label "Service Worker" ; rk:category "pwa" .
+tech:Workbox a rk:Technology ; rdfs:label "Workbox" ; rk:category "pwa" .
+tech:WebWorkers a rk:Technology ; rdfs:label "Web Workers" ; rk:category "concurrency" .
+tech:Comlink a rk:Technology ; rdfs:label "Comlink" ; rk:category "concurrency" .
+tech:WASM a rk:Technology ; rdfs:label "WebAssembly" ; rk:category "runtime" .
+
+# ── Components ──────────────────────────────────────────────────────────────
+
+proj:tripleNotes rk:hasComponent comp:tn-RDFCore ,
+                                  comp:tn-StorageLayer ,
+                                  comp:tn-LLMIntegration ,
+                                  comp:tn-3DGraph ,
+                                  comp:tn-ReviewSystem ,
+                                  comp:tn-DiffEngine ,
+                                  comp:tn-TurtleChat ,
+                                  comp:tn-IngestPipeline ,
+                                  comp:tn-CLITool ,
+                                  comp:tn-MCPServerComp ,
+                                  comp:tn-BrowserExt ,
+                                  comp:tn-VoiceIO ,
+                                  comp:tn-TrustSystem ,
+                                  comp:tn-SafetyModule ,
+                                  comp:tn-SearchEngine ,
+                                  comp:tn-ReckoningModule ,
+                                  comp:tn-KBLeap ,
+                                  comp:tn-GoogleIntegration ,
+                                  comp:tn-IndicoIntegration ,
+                                  comp:tn-PredicateManager .
+
+comp:tn-RDFCore a rk:Component ;
+    rdfs:label "RDF Core (types, serialize, parse)" ;
+    dcterms:description "W3C RDF triple model with N3.js parsing, Turtle serialization, prefix management." ;
+    rk:componentUses tech:N3js .
+
+comp:tn-StorageLayer a rk:Component ;
+    rdfs:label "Storage Layer (Dexie v6)" ;
+    dcterms:description "IndexedDB via Dexie with 10 tables: sources, statements, settings, changelog, mergeDecisions, trustEvents, glbOverrides, workspace, entityGifs, icon2dOverrides." ;
+    rk:componentUses tech:Dexie , tech:IndexedDB .
+
+comp:tn-LLMIntegration a rk:Component ;
+    rdfs:label "Multi-LLM Integration" ;
+    dcterms:description "Supports Claude, OpenAI, Gemini, Ollama, local WASM (Qwen2.5), OpenRouter, Chrome AI. Per-task backend selection." ;
+    rk:componentUses tech:HuggingFaceTransformers , tech:WASM .
+
+comp:tn-3DGraph a rk:Component ;
+    rdfs:label "3D Knowledge Graph Visualization" ;
+    dcterms:description "Force-directed 3D graph with hub emphasis, multiple view modes (force, focus, source, type, hub, order). Timeline scrubber." ;
+    rk:componentUses tech:ThreeJS , tech:Threlte8 , tech:WebGL .
+
+comp:tn-ReviewSystem a rk:Component ;
+    rdfs:label "Human Review System" ;
+    dcterms:description "Pending statement review with confirm/reject/refine workflow. Status: pending, confirmed, refined, rejected, superseded, pending-removal." .
+
+comp:tn-DiffEngine a rk:Component ;
+    rdfs:label "Semantic Diff Engine" ;
+    dcterms:description "Categorizes changes as Add/Reinforce/Conflict/Merge/Remove with LLM-generated 3-part summaries." .
+
+comp:tn-TurtleChat a rk:Component ;
+    rdfs:label "Turtle Chat (Shelly)" ;
+    dcterms:description "Multi-turn KB-grounded chat with structured action proposals: add_triple, remove_triple, merge_entities, set_type, adjust_view." .
+
+comp:tn-IngestPipeline a rk:Component ;
+    rdfs:label "Ingestion Pipeline" ;
+    dcterms:description "Multi-source ingestion: notes, URLs, PDFs, documents, calendar events, TTL files. AI extraction with passage grounding." .
+
+comp:tn-CLITool a rk:Component ;
+    rdfs:label "CLI Tool (reckons command)" ;
+    dcterms:description "Node.js REPL with commands: ask, search, entity, ingest, stats, list, kbs, use. Audio REPL mode for smart glasses." .
+
+comp:tn-MCPServerComp a rk:Component ;
+    rdfs:label "MCP Server" ;
+    dcterms:description "6 tools: kb_search, kb_get_entity, kb_list_entities, kb_stats, kb_add_note, kb_reckoning." .
+
+comp:tn-BrowserExt a rk:Component ;
+    rdfs:label "Browser Extension (MV3)" ;
+    dcterms:description "Chrome/Edge/Firefox extension with side panel for Compare, Session, Ingest tabs." ;
+    rk:componentUses tech:Comlink , tech:WebWorkers .
+
+comp:tn-VoiceIO a rk:Component ;
+    rdfs:label "Voice I/O (Whisper + Kokoro)" ;
+    dcterms:description "Local STT via Whisper transformers.js, local TTS via Kokoro. Smart glasses audio REPL." ;
+    rk:componentUses tech:HuggingFaceTransformers .
+
+comp:tn-TrustSystem a rk:Component ;
+    rdfs:label "Trust Scoring System" ;
+    dcterms:description "Sources earn trust through user actions. High-trust sources auto-confirm extracted triples." .
+
+comp:tn-SafetyModule a rk:Component ;
+    rdfs:label "Content Safety Module" ;
+    dcterms:description "Ethics preamble injection, content classifier (blocked/mature/none), export advisory." .
+
+comp:tn-SearchEngine a rk:Component ;
+    rdfs:label "BM25 Search Engine" ;
+    dcterms:description "Full-text search scoring over entity labels and statement text." .
+
+comp:tn-ReckoningModule a rk:Component ;
+    rdfs:label "Reckoning Decision Support" ;
+    dcterms:description "Situation-Target-Proposal analysis framework for knowledge-backed decision making." .
+
+comp:tn-KBLeap a rk:Component ;
+    rdfs:label "KB Leap (Cross-KB References)" ;
+    dcterms:description "Cross-reference entities between multiple independent knowledge bases." .
+
+comp:tn-GoogleIntegration a rk:Component ;
+    rdfs:label "Google Calendar/Drive Integration" ;
+    dcterms:description "Auto-ingest calendar events and Drive documents as knowledge sources." .
+
+comp:tn-IndicoIntegration a rk:Component ;
+    rdfs:label "Indico Conference Integration" ;
+    dcterms:description "Conference event sync for academic/professional knowledge capture." .
+
+comp:tn-PredicateManager a rk:Component ;
+    rdfs:label "Predicate Manager" ;
+    dcterms:description "Rename, merge, and consolidate predicates across the knowledge base." .
+
+# ── Features ────────────────────────────────────────────────────────────────
+
+proj:tripleNotes rk:hasFeature feat:RDFTripleExtraction ,
+                                feat:HumanReview ,
+                                feat:3DVisualization ,
+                                feat:SemanticDiff ,
+                                feat:MultiLLM ,
+                                feat:LocalFirstStorage ,
+                                feat:TurtleExport ,
+                                feat:VoiceInteraction ,
+                                feat:KBComparison ,
+                                feat:ConversationalChat ,
+                                feat:DecisionSupport ,
+                                feat:MultiKB ,
+                                feat:QRSharing ,
+                                feat:SmartGlasses ,
+                                feat:AuditTrail ,
+                                feat:CalendarIngestion ,
+                                feat:ContentSafety ,
+                                feat:OfflineCapable .
+
+feat:RDFTripleExtraction a rk:Feature ; rdfs:label "AI Triple Extraction" ;
+    dcterms:description "LLM extracts subject-predicate-object triples from any text source." .
+feat:HumanReview a rk:Feature ; rdfs:label "Human Review Workflow" ;
+    dcterms:description "Every extracted fact requires human confirmation before becoming canonical." .
+feat:3DVisualization a rk:Feature ; rdfs:label "3D Graph Visualization" ;
+    dcterms:description "Interactive 3D force-directed knowledge graph with multiple view modes." .
+feat:SemanticDiff a rk:Feature ; rdfs:label "Semantic Diff" ;
+    dcterms:description "Intelligent change categorization when importing or comparing knowledge bases." .
+feat:MultiLLM a rk:Feature ; rdfs:label "Multi-LLM Support" ;
+    dcterms:description "Choose from Claude, OpenAI, Gemini, Ollama, local WASM, or OpenRouter per task." .
+feat:LocalFirstStorage a rk:Feature ; rdfs:label "Local-First Storage" ;
+    dcterms:description "All data stored in browser IndexedDB. No backend server required." .
+feat:TurtleExport a rk:Feature ; rdfs:label "Turtle File Export/Import" ;
+    dcterms:description "Standard W3C Turtle (.ttl) files for sharing and interoperability." .
+feat:VoiceInteraction a rk:Feature ; rdfs:label "Voice Interaction" ;
+    dcterms:description "Speech-to-text and text-to-speech via local Whisper and Kokoro models." .
+feat:KBComparison a rk:Feature ; rdfs:label "Knowledge Base Comparison" ;
+    dcterms:description "Side-by-side diff of two knowledge bases with semantic matching." .
+feat:ConversationalChat a rk:Feature ; rdfs:label "Conversational Chat (Shelly)" ;
+    dcterms:description "KB-grounded conversational AI with structured action proposals." .
+feat:DecisionSupport a rk:Feature ; rdfs:label "Reckoning Decision Support" ;
+    dcterms:description "Situation-Target-Proposal framework for knowledge-backed decisions." .
+feat:MultiKB a rk:Feature ; rdfs:label "Multi-KB Management" ;
+    dcterms:description "Independent knowledge bases with cross-references via KB Leap." .
+feat:QRSharing a rk:Feature ; rdfs:label "QR Code Sharing" ;
+    dcterms:description "Mobile access links via QR codes." .
+feat:SmartGlasses a rk:Feature ; rdfs:label "Smart Glasses Support" ;
+    dcterms:description "Audio REPL mode for wearable AR glasses." .
+feat:AuditTrail a rk:Feature ; rdfs:label "Audit Trail" ;
+    dcterms:description "Every change tracked in changelog table with timestamps and user actions." .
+feat:CalendarIngestion a rk:Feature ; rdfs:label "Calendar Event Ingestion" ;
+    dcterms:description "Automatic extraction of knowledge from Google Calendar events." .
+feat:ContentSafety a rk:Feature ; rdfs:label "Content Safety" ;
+    dcterms:description "Ethics preamble, content classification, export advisory." .
+feat:OfflineCapable a rk:Feature ; rdfs:label "Offline Capable (PWA)" ;
+    dcterms:description "Service worker with Workbox caching for offline operation." .
+
+# ── Architectural Patterns ──────────────────────────────────────────────────
+
+proj:tripleNotes rk:followsPattern arch:LocalFirst ,
+                                    arch:HumanInTheLoop ,
+                                    arch:MultiInterface ,
+                                    arch:RDFStandards ,
+                                    arch:PluggableLLM ,
+                                    arch:EventualConsistency ,
+                                    arch:ProvenanceTracking .
+
+arch:LocalFirst a rk:ArchPattern ; rdfs:label "Local-First Architecture" ;
+    dcterms:description "All data stored locally. No mandatory cloud dependency." .
+arch:HumanInTheLoop a rk:ArchPattern ; rdfs:label "Human-in-the-Loop" ;
+    dcterms:description "AI proposes, human confirms. Nothing is canonical without review." .
+arch:MultiInterface a rk:ArchPattern ; rdfs:label "Multi-Interface Delivery" ;
+    dcterms:description "Same data accessible via web, CLI, extension, and MCP." .
+arch:RDFStandards a rk:ArchPattern ; rdfs:label "W3C RDF Standards" ;
+    dcterms:description "Data stored as standard RDF triples with W3C Turtle serialization." .
+arch:PluggableLLM a rk:ArchPattern ; rdfs:label "Pluggable LLM Backends" ;
+    dcterms:description "Swap between cloud and local LLM providers per task." .
+arch:EventualConsistency a rk:ArchPattern ; rdfs:label "Eventual Consistency" ;
+    dcterms:description "Pending facts converge to confirmed/rejected through human review." .
+arch:ProvenanceTracking a rk:ArchPattern ; rdfs:label "Provenance Tracking" ;
+    dcterms:description "Every triple links back to its source with confidence scores." .
+
+# ── Data Models ─────────────────────────────────────────────────────────────
+
+proj:tripleNotes rk:hasDataModel dm:RDFStatement ,
+                                  dm:Source ,
+                                  dm:ChangeLog ,
+                                  dm:TrustEvent ,
+                                  dm:MergeDecision .
+
+dm:RDFStatement a rk:DataModel ; rdfs:label "RDF Statement" ;
+    dcterms:description "Subject, predicate, object, graph, sourceId, confidence, status, gloss, excerpt, supersedes, timestamps." .
+dm:Source a rk:DataModel ; rdfs:label "Source (Provenance)" ;
+    dcterms:description "Title, URI, kind (url/document/note/calendar/analysis), trust level, extraction backend/model." .
+dm:ChangeLog a rk:DataModel ; rdfs:label "Change Log Entry" ;
+    dcterms:description "Timestamp, action, statementId, sourceId, entityKey for full audit trail." .
+dm:TrustEvent a rk:DataModel ; rdfs:label "Trust Event" ;
+    dcterms:description "Records trust score changes for sources over time." .
+dm:MergeDecision a rk:DataModel ; rdfs:label "Merge Decision" ;
+    dcterms:description "Records entity merge history between entityKeyA and entityKeyB." .
+
+# ── Key Dependencies ────────────────────────────────────────────────────────
+
+proj:tripleNotes rk:dependsOn dep:threlte-core ,
+                                dep:threlte-extras ,
+                                dep:three ,
+                                dep:dexie ,
+                                dep:n3 ,
+                                dep:hf-transformers ,
+                                dep:bits-ui ,
+                                dep:comlink ,
+                                dep:fflate ,
+                                dep:kokoro-js ,
+                                dep:qrcode ,
+                                dep:uuid .
+
+dep:threlte-core a rk:Dependency ; rdfs:label "@threlte/core ^8.0" .
+dep:threlte-extras a rk:Dependency ; rdfs:label "@threlte/extras ^9.0" .
+dep:three a rk:Dependency ; rdfs:label "three ^0.169.0" .
+dep:dexie a rk:Dependency ; rdfs:label "dexie ^4.0.8" .
+dep:n3 a rk:Dependency ; rdfs:label "n3 ^1.21.3" .
+dep:hf-transformers a rk:Dependency ; rdfs:label "@xenova/transformers ^2.17.2" .
+dep:bits-ui a rk:Dependency ; rdfs:label "bits-ui ^2.18.1" .
+dep:comlink a rk:Dependency ; rdfs:label "comlink ^4.4.1" .
+dep:fflate a rk:Dependency ; rdfs:label "fflate ^0.8.3" .
+dep:kokoro-js a rk:Dependency ; rdfs:label "kokoro-js ^1.2.1" .
+dep:qrcode a rk:Dependency ; rdfs:label "qrcode ^1.5.4" .
+dep:uuid a rk:Dependency ; rdfs:label "uuid ^11.1.1" .

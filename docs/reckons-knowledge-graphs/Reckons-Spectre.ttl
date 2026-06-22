@@ -1,0 +1,239 @@
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix doap:    <http://usefulinc.com/ns/doap#> .
+@prefix rk:      <urn:reckons:ontology/> .
+@prefix proj:    <urn:reckons:project/> .
+@prefix tech:    <urn:reckons:technology/> .
+@prefix comp:    <urn:reckons:component/> .
+@prefix feat:    <urn:reckons:feature/> .
+@prefix arch:    <urn:reckons:architecture/> .
+@prefix dep:     <urn:reckons:dependency/> .
+@prefix iface:   <urn:reckons:interface/> .
+@prefix dm:      <urn:reckons:datamodel/> .
+
+# ════════════════════════════════════════════════════════════════════════════
+# Reckons-Spectre — Enterprise-Grade SvelteKit PWA + FalkorDB API
+# Focus on security, middleware, multi-query-language support
+# ════════════════════════════════════════════════════════════════════════════
+
+proj:Reckons-Spectre a rk:Project ;
+    rdfs:label "Reckons Spectre" ;
+    dcterms:description "Enterprise-grade Progressive Web App with FalkorDB backend, comprehensive security middleware (JWT, CORS, rate limiting), and multi-query-language support (Cypher, SPARQL, RDF triple patterns). Most backend-focused iteration." ;
+    rk:maturityLevel "api-prototype" ;
+    rk:primaryLanguage "TypeScript" ;
+    rk:storageBackend "FalkorDB (Redis graph module)" ;
+    rk:llmStrategy "planned (WebLLM, not yet integrated)" .
+
+# ── Interfaces ──────────────────────────────────────────────────────────────
+
+proj:Reckons-Spectre rk:hasInterface iface:WebApp ,
+                                      iface:PWA ,
+                                      iface:RESTAPI .
+
+iface:RESTAPI a rk:InterfaceType ; rdfs:label "REST API" .
+
+# ── Technologies ────────────────────────────────────────────────────────────
+
+proj:Reckons-Spectre rk:usesTechnology tech:SvelteKit2 ,
+                                         tech:Svelte5 ,
+                                         tech:TypeScript ,
+                                         tech:TailwindCSS ,
+                                         tech:Vite ,
+                                         tech:FalkorDB ,
+                                         tech:Redis ,
+                                         tech:JWT ,
+                                         tech:Bcrypt ,
+                                         tech:Winston ,
+                                         tech:Morgan ,
+                                         tech:ServiceWorker ,
+                                         tech:Workbox ,
+                                         tech:VitePWA .
+
+tech:Redis a rk:Technology ; rdfs:label "Redis" ; rk:category "database" .
+tech:JWT a rk:Technology ; rdfs:label "JSON Web Tokens" ; rk:category "security" .
+tech:Bcrypt a rk:Technology ; rdfs:label "bcryptjs" ; rk:category "security" .
+tech:Winston a rk:Technology ; rdfs:label "Winston" ; rk:category "logging" .
+tech:Morgan a rk:Technology ; rdfs:label "Morgan" ; rk:category "logging" .
+tech:VitePWA a rk:Technology ; rdfs:label "vite-plugin-pwa" ; rk:category "pwa" .
+
+# ── Components ──────────────────────────────────────────────────────────────
+
+proj:Reckons-Spectre rk:hasComponent comp:sp-FalkorDBManager ,
+                                       comp:sp-KnowledgeGraphService ,
+                                       comp:sp-AuthMiddleware ,
+                                       comp:sp-CORSMiddleware ,
+                                       comp:sp-RateLimitMiddleware ,
+                                       comp:sp-SecurityMiddleware ,
+                                       comp:sp-LoggingMiddleware ,
+                                       comp:sp-ValidationMiddleware ,
+                                       comp:sp-ErrorHandler ,
+                                       comp:sp-GraphQueryAPI ,
+                                       comp:sp-GraphUpdateAPI ,
+                                       comp:sp-GraphReviewAPI ,
+                                       comp:sp-AppConfig ,
+                                       comp:sp-SecurityConfig .
+
+comp:sp-FalkorDBManager a rk:Component ;
+    rdfs:label "FalkorDB Connection Manager (singleton)" ;
+    dcterms:description "Connection pooling, health checks, module availability detection, error handling for Redis/FalkorDB." ;
+    rk:componentUses tech:FalkorDB , tech:Redis .
+
+comp:sp-KnowledgeGraphService a rk:Component ;
+    rdfs:label "Knowledge Graph Service (570 lines)" ;
+    dcterms:description "CRUD on nodes and relationships, Cypher execution, SPARQL support (with conversion), RDF triple patterns, path finding between nodes, graph filtering." .
+
+comp:sp-AuthMiddleware a rk:Component ;
+    rdfs:label "Authentication Middleware" ;
+    dcterms:description "JWT and API key authentication with role-based access control (admin, user, guest)." ;
+    rk:componentUses tech:JWT , tech:Bcrypt .
+
+comp:sp-CORSMiddleware a rk:Component ;
+    rdfs:label "CORS Middleware" ;
+    dcterms:description "Configurable allowed origins, preflight request handling, credentials support." .
+
+comp:sp-RateLimitMiddleware a rk:Component ;
+    rdfs:label "Rate Limiting Middleware" ;
+    dcterms:description "Three-tier rate limiting: standard (100/min), authenticated (300/min), admin (1000/min). IP-based." .
+
+comp:sp-SecurityMiddleware a rk:Component ;
+    rdfs:label "Combined Security Middleware" ;
+    dcterms:description "Composes auth + rate limit + validation: standardSecurity, publicSecurity, adminSecurity presets." .
+
+comp:sp-LoggingMiddleware a rk:Component ;
+    rdfs:label "Logging Middleware" ;
+    dcterms:description "Winston logger with sensitive header filtering and performance tracking." ;
+    rk:componentUses tech:Winston , tech:Morgan .
+
+comp:sp-ValidationMiddleware a rk:Component ;
+    rdfs:label "Input Validation Middleware" ;
+    dcterms:description "JSON sanitization, request body validation, maximum payload enforcement." .
+
+comp:sp-ErrorHandler a rk:Component ;
+    rdfs:label "Centralized Error Handler" ;
+    dcterms:description "Custom error classes: DatabaseConnectionError, QueryExecutionError, EntityNotFoundError, InvalidQueryError, DatabaseTimeoutError, ConstraintViolationError." .
+
+comp:sp-GraphQueryAPI a rk:Component ;
+    rdfs:label "GET /api/graph/query" ;
+    dcterms:description "Query knowledge graph via Cypher, SPARQL, RDF triple patterns, nodes_by_type, or node_by_id." .
+
+comp:sp-GraphUpdateAPI a rk:Component ;
+    rdfs:label "POST /api/graph/update" ;
+    dcterms:description "Create, update, delete nodes and relationships." .
+
+comp:sp-GraphReviewAPI a rk:Component ;
+    rdfs:label "POST /api/graph/review" ;
+    dcterms:description "Batch processing with review workflow, reviewer attribution, partial failure handling." .
+
+comp:sp-AppConfig a rk:Component ;
+    rdfs:label "Application Configuration" ;
+    dcterms:description "FalkorDB connection parameters, API endpoint config, environment-based settings." .
+
+comp:sp-SecurityConfig a rk:Component ;
+    rdfs:label "Security Configuration" ;
+    dcterms:description "Auth config, rate limiting parameters, CORS settings, logging config, security headers." .
+
+# ── Features ────────────────────────────────────────────────────────────────
+
+proj:Reckons-Spectre rk:hasFeature feat:GraphDatabaseStorage ,
+                                     feat:CypherQueries ,
+                                     feat:SPARQLQueries ,
+                                     feat:RDFTriplePatterns ,
+                                     feat:JWTAuthentication ,
+                                     feat:RoleBasedAccess ,
+                                     feat:ThreeTierRateLimit ,
+                                     feat:CORSProtection ,
+                                     feat:InputValidation ,
+                                     feat:AuditLogging ,
+                                     feat:BatchReviewWorkflow ,
+                                     feat:PathFinding ,
+                                     feat:OfflineCapable ,
+                                     feat:HumanReview .
+
+feat:SPARQLQueries a rk:Feature ; rdfs:label "SPARQL Query Support" ;
+    dcterms:description "SPARQL-to-Cypher conversion for RDF semantic web queries." .
+feat:RDFTriplePatterns a rk:Feature ; rdfs:label "RDF Triple Pattern Matching" ;
+    dcterms:description "Subject-predicate-object pattern matching with optional objectType, datatype, language." .
+feat:JWTAuthentication a rk:Feature ; rdfs:label "JWT Authentication" ;
+    dcterms:description "HS256 token-based auth with configurable expiration." .
+feat:RoleBasedAccess a rk:Feature ; rdfs:label "Role-Based Access Control" ;
+    dcterms:description "Three roles: admin, user, guest with different API permissions." .
+feat:ThreeTierRateLimit a rk:Feature ; rdfs:label "Three-Tier Rate Limiting" ;
+    dcterms:description "Standard 100/min, authenticated 300/min, admin 1000/min." .
+feat:CORSProtection a rk:Feature ; rdfs:label "CORS Protection" ;
+    dcterms:description "Configurable allowed origins, methods, and credentials." .
+feat:InputValidation a rk:Feature ; rdfs:label "Input Validation & Sanitization" ;
+    dcterms:description "JSON sanitization, payload size limits, validator library." .
+feat:AuditLogging a rk:Feature ; rdfs:label "Audit Logging" ;
+    dcterms:description "Winston-based request/response logging with sensitive data redaction." .
+feat:BatchReviewWorkflow a rk:Feature ; rdfs:label "Batch Review Workflow" ;
+    dcterms:description "Multiple graph changes submitted as a batch with reviewer attribution and partial failure handling." .
+feat:PathFinding a rk:Feature ; rdfs:label "Path Finding" ;
+    dcterms:description "Discover connections between entities up to configurable depth." .
+
+# ── Architectural Patterns ──────────────────────────────────────────────────
+
+proj:Reckons-Spectre rk:followsPattern arch:HumanInTheLoop ,
+                                         arch:MiddlewareChain ,
+                                         arch:SingletonDB ,
+                                         arch:ServiceLayer ,
+                                         arch:MultiQueryLanguage ,
+                                         arch:EnterpriseGrade .
+
+arch:MiddlewareChain a rk:ArchPattern ; rdfs:label "Middleware Chain" ;
+    dcterms:description "Layered security: auth → rate limit → validation → handler." .
+arch:SingletonDB a rk:ArchPattern ; rdfs:label "Singleton Database Connection" ;
+    dcterms:description "FalkorDBManager as singleton for single connection instance." .
+arch:ServiceLayer a rk:ArchPattern ; rdfs:label "Service Layer Pattern" ;
+    dcterms:description "KnowledgeGraphService encapsulates all business logic over DB." .
+arch:MultiQueryLanguage a rk:ArchPattern ; rdfs:label "Multi-Query-Language Support" ;
+    dcterms:description "Cypher, SPARQL, and RDF triple patterns through unified API." .
+arch:EnterpriseGrade a rk:ArchPattern ; rdfs:label "Enterprise-Grade Security" ;
+    dcterms:description "JWT auth, RBAC, rate limiting, CORS, input validation, error handling, audit logging." .
+
+# ── Data Models ─────────────────────────────────────────────────────────────
+
+proj:Reckons-Spectre rk:hasDataModel dm:sp-KGNode ,
+                                       dm:sp-KGRelationship ,
+                                       dm:sp-RDFTriple ,
+                                       dm:sp-SPARQLResult ,
+                                       dm:sp-APIResponse ,
+                                       dm:sp-ReviewBatch .
+
+dm:sp-KGNode a rk:DataModel ; rdfs:label "Knowledge Graph Node" ;
+    dcterms:description "Id, type, label, description, tags, properties, timestamps." .
+dm:sp-KGRelationship a rk:DataModel ; rdfs:label "Knowledge Graph Relationship" ;
+    dcterms:description "Id, sourceId, targetId, relationshipType, properties, timestamps." .
+dm:sp-RDFTriple a rk:DataModel ; rdfs:label "RDF Triple" ;
+    dcterms:description "Subject, predicate, object with optional objectType (literal/uri), datatype, language." .
+dm:sp-SPARQLResult a rk:DataModel ; rdfs:label "SPARQL Query Result" ;
+    dcterms:description "Structured result set from SPARQL-to-Cypher conversion." .
+dm:sp-APIResponse a rk:DataModel ; rdfs:label "Standardized API Response" ;
+    dcterms:description "Success boolean, data, error, code, timestamp, pagination (limit/offset/total)." .
+dm:sp-ReviewBatch a rk:DataModel ; rdfs:label "Review Batch" ;
+    dcterms:description "Array of changes (operation, entity, updates) with reviewerId, comments, graphName." .
+
+# ── Key Dependencies ────────────────────────────────────────────────────────
+
+proj:Reckons-Spectre rk:dependsOn dep:redis ,
+                                     dep:redis-graph ,
+                                     dep:jsonwebtoken ,
+                                     dep:bcryptjs ,
+                                     dep:winston ,
+                                     dep:morgan ,
+                                     dep:rate-limiter-flexible ,
+                                     dep:validator ,
+                                     dep:workbox-precaching ,
+                                     dep:workbox-window ,
+                                     dep:vite-plugin-pwa .
+
+dep:redis a rk:Dependency ; rdfs:label "redis ^5.10.0" .
+dep:redis-graph a rk:Dependency ; rdfs:label "@redis/graph" .
+dep:jsonwebtoken a rk:Dependency ; rdfs:label "jsonwebtoken ^9.0.3" .
+dep:bcryptjs a rk:Dependency ; rdfs:label "bcryptjs ^3.0.3" .
+dep:winston a rk:Dependency ; rdfs:label "winston" .
+dep:morgan a rk:Dependency ; rdfs:label "morgan" .
+dep:rate-limiter-flexible a rk:Dependency ; rdfs:label "rate-limiter-flexible" .
+dep:validator a rk:Dependency ; rdfs:label "validator" .
+dep:workbox-precaching a rk:Dependency ; rdfs:label "workbox-precaching" .
+dep:vite-plugin-pwa a rk:Dependency ; rdfs:label "vite-plugin-pwa" .

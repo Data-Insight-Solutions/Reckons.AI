@@ -1,0 +1,529 @@
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import OverlayGraph from '$lib/components/OverlayGraph.svelte';
+  import OverlayGraph3D from '$lib/components/OverlayGraph3D.svelte';
+  import {
+    parseMultipleGraphs,
+    MEMBERSHIP_PREDICATES,
+    MEMBERSHIP_LABELS,
+    isProjectIri,
+    type OverlayData, type GraphDef
+  } from '$lib/rdf/multi-graph-parse';
+
+  // ── Bundled example files via Vite glob ─────────────────────────────────────
+  const ttlModules = import.meta.glob('/docs/reckons-knowledge-graphs/*.ttl', {
+    query: '?raw', import: 'default', eager: true
+  }) as Record<string, string>;
+
+  // ── State ───────────────────────────────────────────────────────────────────
+  let data = $state<OverlayData | null>(null);
+  let loading = $state(false);
+  let error = $state<string | null>(null);
+  let activeGraphIds = $state(new Set<string>());
+  let activePredicates = $state(new Set<string>(MEMBERSHIP_PREDICATES));
+  let selectedKey = $state<string | null>(null);
+  let customFiles = $state<Array<{ id: string; content: string }>>([]);
+  let viewMode = $state<'2d' | '3d'>('2d');
+
+  // Also include non-membership predicates that create inter-entity edges
+  const STRUCTURAL_PREDICATES = new Set([
+    'urn:reckons:ontology/componentUses',
+    'urn:reckons:ontology/relatedTo',
+    'urn:reckons:ontology/evolvedInto',
+  ]);
+  // Initialize with both membership + structural predicates
+  for (const p of STRUCTURAL_PREDICATES) activePredicates.add(p);
+
+  // ── Derived stats ───────────────────────────────────────────────────────────
+  const stats = $derived.by(() => {
+    if (!data) return null;
+    let total = 0, shared = 0, uniquePerGraph = new Map<string, number>();
+    for (const g of data.graphs) uniquePerGraph.set(g.id, 0);
+
+    for (const [key, node] of data.nodes) {
+      if (isProjectIri(key)) continue;
+      const activeMem = [...node.membership].filter(gid => activeGraphIds.has(gid));
+      if (activeMem.length === 0) continue;
+      total++;
+      if (activeMem.length > 1) shared++;
+      if (activeMem.length === 1) {
+        uniquePerGraph.set(activeMem[0], (uniquePerGraph.get(activeMem[0]) ?? 0) + 1);
+      }
+    }
+    return { total, shared, uniquePerGraph };
+  });
+
+  const selectedNode = $derived(selectedKey ? data?.nodes.get(selectedKey) ?? null : null);
+  const selectedGraphs = $derived.by(() => {
+    if (!selectedNode || !data) return [] as GraphDef[];
+    return data.graphs.filter(g => selectedNode.membership.has(g.id));
+  });
+
+  // ── Load examples ───────────────────────────────────────────────────────────
+  async function loadExamples() {
+    loading = true;
+    error = null;
+    try {
+      const files = Object.entries(ttlModules).map(([path, content]) => ({
+        id: path.split('/').pop()!.replace('.ttl', ''),
+        content: content as string
+      }));
+      // Also include any custom files
+      const allFiles = [...files, ...customFiles];
+      data = await parseMultipleGraphs(allFiles);
+      activeGraphIds = new Set(data.graphs.map(g => g.id));
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+    } finally {
+      loading = false;
+    }
+  }
+
+  // ── File picker ─────────────────────────────────────────────────────────────
+  async function onFileInput(e: Event) {
+    const input = e.target as HTMLInputElement;
+    if (!input.files?.length) return;
+    const newFiles: Array<{ id: string; content: string }> = [];
+    for (const file of input.files) {
+      if (!file.name.endsWith('.ttl')) continue;
+      const content = await file.text();
+      newFiles.push({ id: file.name.replace('.ttl', ''), content });
+    }
+    customFiles = [...customFiles, ...newFiles];
+    // Re-parse with all files
+    const bundled = Object.entries(ttlModules).map(([path, content]) => ({
+      id: path.split('/').pop()!.replace('.ttl', ''),
+      content: content as string
+    }));
+    data = await parseMultipleGraphs([...bundled, ...customFiles]);
+    activeGraphIds = new Set(data.graphs.map(g => g.id));
+    input.value = '';
+  }
+
+  // ── Toggle helpers ──────────────────────────────────────────────────────────
+  function toggleGraph(id: string) {
+    const next = new Set(activeGraphIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    activeGraphIds = next;
+  }
+
+  function togglePredicate(iri: string) {
+    const next = new Set(activePredicates);
+    if (next.has(iri)) next.delete(iri); else next.add(iri);
+    activePredicates = next;
+  }
+
+  function shortType(iri: string | null): string {
+    if (!iri) return '';
+    const slash = iri.lastIndexOf('/');
+    return slash >= 0 ? iri.slice(slash + 1) : iri;
+  }
+
+  onMount(loadExamples);
+</script>
+
+<div class="page">
+  <header class="head">
+    <p class="kicker mono">overlay</p>
+    <h1>multi-graph comparison</h1>
+    <p class="subtitle">venn-style overlay of multiple knowledge graphs</p>
+  </header>
+
+  <!-- ── File controls ───────────────────────────────────────────────────── -->
+  <div class="controls-bar">
+    <button class="ghost" onclick={loadExamples} disabled={loading}>
+      {loading ? 'loading...' : 'reload examples'}
+    </button>
+    <label class="file-label ghost">
+      + add TTL files
+      <input type="file" accept=".ttl" multiple onchange={onFileInput} hidden />
+    </label>
+    <div class="view-toggle">
+      <button class="toggle-btn" class:active={viewMode === '2d'} onclick={() => viewMode = '2d'}>2D</button>
+      <button class="toggle-btn" class:active={viewMode === '3d'} onclick={() => viewMode = '3d'}>3D</button>
+    </div>
+  </div>
+
+  {#if error}
+    <div class="error-bar">{error}</div>
+  {/if}
+
+  {#if data}
+    <!-- ── Predicate filters ───────────────────────────────────────────── -->
+    <div class="filter-section">
+      <span class="filter-label mono">show</span>
+      {#each [...MEMBERSHIP_PREDICATES] as pred}
+        <button
+          class="chip"
+          class:active={activePredicates.has(pred)}
+          onclick={() => togglePredicate(pred)}
+        >
+          {MEMBERSHIP_LABELS[pred] ?? pred.split('/').pop()}
+        </button>
+      {/each}
+      {#each [...STRUCTURAL_PREDICATES] as pred}
+        <button
+          class="chip structural"
+          class:active={activePredicates.has(pred)}
+          onclick={() => togglePredicate(pred)}
+        >
+          {pred.split('/').pop()}
+        </button>
+      {/each}
+    </div>
+
+    <!-- ── Project toggles ─────────────────────────────────────────────── -->
+    <div class="filter-section">
+      <span class="filter-label mono">graphs</span>
+      {#each data.graphs as g}
+        <button
+          class="chip project-chip"
+          class:active={activeGraphIds.has(g.id)}
+          onclick={() => toggleGraph(g.id)}
+          style="--chip-color: {g.color}"
+        >
+          <span class="color-dot" style="background: {g.color}"></span>
+          {g.id}
+          <span class="chip-count">{g.tripleCount}</span>
+        </button>
+      {/each}
+    </div>
+
+    <!-- ── Graph canvas ────────────────────────────────────────────────── -->
+    <div class="graph-area">
+      {#if viewMode === '2d'}
+        <OverlayGraph
+          graphs={data.graphs}
+          nodes={data.nodes}
+          edges={data.edges}
+          {activeGraphIds}
+          {activePredicates}
+          {selectedKey}
+          onselect={(key) => { selectedKey = key; }}
+        />
+      {:else}
+        <OverlayGraph3D
+          graphs={data.graphs}
+          nodes={data.nodes}
+          edges={data.edges}
+          {activeGraphIds}
+          {activePredicates}
+        />
+      {/if}
+    </div>
+
+    <!-- ── Stats + detail ──────────────────────────────────────────────── -->
+    <div class="bottom-row">
+      {#if stats}
+        <div class="stats-panel">
+          <div class="stat">
+            <span class="stat-num">{stats.total}</span>
+            <span class="stat-label mono">entities</span>
+          </div>
+          <div class="stat">
+            <span class="stat-num shared">{stats.shared}</span>
+            <span class="stat-label mono">shared</span>
+          </div>
+          {#each data.graphs.filter(g => activeGraphIds.has(g.id)) as g}
+            <div class="stat">
+              <span class="stat-num" style="color: {g.color}">{stats.uniquePerGraph.get(g.id) ?? 0}</span>
+              <span class="stat-label mono" title={g.label}>unique {g.id.length > 12 ? g.id.slice(0, 12) + '...' : g.id}</span>
+            </div>
+          {/each}
+        </div>
+      {/if}
+
+      {#if selectedNode}
+        <div class="detail-panel">
+          <h3 class="detail-name">{selectedNode.label}</h3>
+          {#if selectedNode.rdfType}
+            <span class="detail-type mono">{shortType(selectedNode.rdfType)}</span>
+          {/if}
+          <div class="detail-membership">
+            <span class="detail-sub mono">member of</span>
+            {#each selectedGraphs as g}
+              <span class="detail-member" style="color: {g.color}">
+                <span class="color-dot" style="background: {g.color}"></span>
+                {g.label}
+              </span>
+            {/each}
+            {#if selectedGraphs.length === 0}
+              <span class="detail-none">none (filtered out)</span>
+            {/if}
+          </div>
+          <button class="ghost detail-close" onclick={() => { selectedKey = null; }}>close</button>
+        </div>
+      {/if}
+    </div>
+
+    <!-- ── Legend ───────────────────────────────────────────────────────── -->
+    <div class="legend">
+      <span class="legend-item"><span class="legend-dot" style="background: #fff; opacity: 0.5"></span> single project</span>
+      <span class="legend-item"><span class="legend-pie"></span> shared (pie = projects)</span>
+      <span class="legend-item"><span class="legend-dot big" style="background: #888"></span> more shared = larger</span>
+    </div>
+  {/if}
+</div>
+
+<style>
+  .page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 6rem;
+  }
+  .head {
+    margin-bottom: 1.5rem;
+  }
+  .kicker {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 0 0 0.25rem;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    color: var(--ink);
+    margin: 0 0 0.3rem;
+  }
+  .subtitle {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  /* Controls */
+  .controls-bar {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .ghost {
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: var(--rad-sm);
+    padding: 0.4rem 0.8rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color 0.12s, border-color 0.12s;
+  }
+  .ghost:hover { color: var(--accent); border-color: var(--accent); }
+  .ghost:disabled { opacity: 0.4; cursor: not-allowed; }
+  .file-label { cursor: pointer; }
+  .view-toggle {
+    display: flex;
+    margin-left: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--rad-sm);
+    overflow: hidden;
+  }
+  .toggle-btn {
+    background: none;
+    border: none;
+    padding: 0.4rem 0.7rem;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .toggle-btn:hover { color: var(--ink); }
+  .toggle-btn.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .toggle-btn + .toggle-btn {
+    border-left: 1px solid var(--line);
+  }
+  .error-bar {
+    background: rgba(232, 83, 75, 0.15);
+    border: 1px solid rgba(232, 83, 75, 0.3);
+    border-radius: var(--rad-sm);
+    padding: 0.5rem 0.8rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: #e8534b;
+    margin-bottom: 1rem;
+  }
+
+  /* Filters */
+  .filter-section {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0.6rem;
+    flex-wrap: wrap;
+  }
+  .filter-label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-right: 0.25rem;
+    flex-shrink: 0;
+  }
+  .chip {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.25rem 0.6rem;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.12s;
+    white-space: nowrap;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--ink); }
+  .chip.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .chip.structural { font-style: italic; }
+  .project-chip { display: inline-flex; align-items: center; gap: 0.3rem; }
+  .project-chip.active { border-color: var(--chip-color, var(--accent)); color: var(--chip-color, var(--accent)); background: color-mix(in srgb, var(--chip-color, var(--accent)) 12%, transparent); }
+  .color-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .chip-count {
+    font-size: 0.52rem;
+    opacity: 0.5;
+  }
+
+  /* Graph area */
+  .graph-area {
+    height: clamp(400px, 60vh, 700px);
+    margin-bottom: 1rem;
+  }
+
+  /* Stats + detail */
+  .bottom-row {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  .stats-panel {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--rad);
+    padding: 0.75rem 1rem;
+    flex: 1;
+    min-width: 200px;
+  }
+  .stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+  }
+  .stat-num {
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    color: var(--ink);
+  }
+  .stat-num.shared { color: var(--data); }
+  .stat-label {
+    font-family: var(--font-mono);
+    font-size: 0.52rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+  .detail-panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--rad);
+    padding: 0.75rem 1rem;
+    min-width: 200px;
+    max-width: 300px;
+  }
+  .detail-name {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    color: var(--ink);
+    margin: 0 0 0.25rem;
+  }
+  .detail-type {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .detail-membership {
+    margin-top: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .detail-sub {
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .detail-member {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+  }
+  .detail-none {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+  }
+  .detail-close {
+    margin-top: 0.5rem;
+    font-size: 0.6rem;
+    padding: 0.2rem 0.5rem;
+  }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    gap: 1.2rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    color: var(--muted);
+  }
+  .legend-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+  .legend-dot.big { width: 12px; height: 12px; }
+  .legend-pie {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: conic-gradient(#1a9b8e 0deg 120deg, #3d7cf5 120deg 240deg, #e8534b 240deg 360deg);
+  }
+
+  .mono {
+    font-family: var(--font-mono);
+  }
+</style>

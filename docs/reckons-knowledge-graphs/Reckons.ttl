@@ -1,0 +1,211 @@
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix doap:    <http://usefulinc.com/ns/doap#> .
+@prefix rk:      <urn:reckons:ontology/> .
+@prefix proj:    <urn:reckons:project/> .
+@prefix tech:    <urn:reckons:technology/> .
+@prefix comp:    <urn:reckons:component/> .
+@prefix feat:    <urn:reckons:feature/> .
+@prefix arch:    <urn:reckons:architecture/> .
+@prefix dep:     <urn:reckons:dependency/> .
+@prefix iface:   <urn:reckons:interface/> .
+@prefix dm:      <urn:reckons:datamodel/> .
+
+# ════════════════════════════════════════════════════════════════════════════
+# Reckons — Cross-Browser Extension with Sveltia CMS
+# A browser extension approach embedding a Git-based headless CMS
+# ════════════════════════════════════════════════════════════════════════════
+
+proj:Reckons a rk:Project ;
+    rdfs:label "Reckons (Cross-Browser Extension + Sveltia CMS)" ;
+    dcterms:description "Cross-browser extension combining a modern UI with Sveltia CMS, a Git-based headless CMS. Supports Chrome/Brave (Manifest V3) and Firefox (Manifest V2) with a Rust/WASM module." ;
+    rk:maturityLevel "early-prototype" ;
+    rk:primaryLanguage "TypeScript" ;
+    rk:storageBackend "Git repositories (GitHub/GitLab)" ;
+    rk:llmStrategy "none" .
+
+# ── Interfaces ──────────────────────────────────────────────────────────────
+
+proj:Reckons rk:hasInterface iface:BrowserExtension ,
+                              iface:CMSDashboard .
+
+iface:CMSDashboard a rk:InterfaceType ; rdfs:label "CMS Dashboard (fullscreen)" .
+
+# ── Technologies ────────────────────────────────────────────────────────────
+
+proj:Reckons rk:usesTechnology tech:Svelte4 ,
+                                tech:TypeScript ,
+                                tech:TailwindCSS ,
+                                tech:Rollup ,
+                                tech:Vite ,
+                                tech:Rust ,
+                                tech:WASM ,
+                                tech:WebExtensionPolyfill ,
+                                tech:ManifestV3 ,
+                                tech:ManifestV2 ,
+                                tech:PostCSS ,
+                                tech:Sass ,
+                                tech:ESBuild ,
+                                tech:Lexical .
+
+tech:Svelte4 a rk:Technology ; rdfs:label "Svelte 4" ; rk:category "framework" .
+tech:Rollup a rk:Technology ; rdfs:label "Rollup" ; rk:category "build-tool" .
+tech:Rust a rk:Technology ; rdfs:label "Rust" ; rk:category "language" .
+tech:WebExtensionPolyfill a rk:Technology ; rdfs:label "WebExtension Polyfill" ; rk:category "browser-api" .
+tech:ManifestV3 a rk:Technology ; rdfs:label "Manifest V3" ; rk:category "browser-api" .
+tech:ManifestV2 a rk:Technology ; rdfs:label "Manifest V2" ; rk:category "browser-api" .
+tech:PostCSS a rk:Technology ; rdfs:label "PostCSS" ; rk:category "styling" .
+tech:Sass a rk:Technology ; rdfs:label "Sass" ; rk:category "styling" .
+tech:ESBuild a rk:Technology ; rdfs:label "esbuild" ; rk:category "build-tool" .
+tech:Lexical a rk:Technology ; rdfs:label "Lexical (rich text editor)" ; rk:category "editor" .
+
+# ── Components ──────────────────────────────────────────────────────────────
+
+proj:Reckons rk:hasComponent comp:rk-Popup ,
+                              comp:rk-Dashboard ,
+                              comp:rk-BackgroundScript ,
+                              comp:rk-ContentScript ,
+                              comp:rk-WASMModule ,
+                              comp:rk-SveltiaCMS ,
+                              comp:rk-GitBackend ,
+                              comp:rk-AssetManager ,
+                              comp:rk-EntryEditor ,
+                              comp:rk-i18nSystem ,
+                              comp:rk-MediaLibrary .
+
+comp:rk-Popup a rk:Component ;
+    rdfs:label "Extension Popup (400x400px)" ;
+    dcterms:description "Small popup window with buttons to open the full CMS dashboard." .
+
+comp:rk-Dashboard a rk:Component ;
+    rdfs:label "CMS Dashboard" ;
+    dcterms:description "Full-screen dashboard that mounts Sveltia CMS as the main interface." .
+
+comp:rk-BackgroundScript a rk:Component ;
+    rdfs:label "Background Service Worker" ;
+    dcterms:description "Handles messaging, initializes WASM module, responds to extension events." .
+
+comp:rk-ContentScript a rk:Component ;
+    rdfs:label "Content Script" ;
+    dcterms:description "Injected into web pages for monitoring and data extraction." .
+
+comp:rk-WASMModule a rk:Component ;
+    rdfs:label "Rust WASM Module" ;
+    dcterms:description "Performance-critical operations via Rust compiled to WebAssembly. Currently proof-of-concept (greet function)." ;
+    rk:componentUses tech:Rust , tech:WASM .
+
+comp:rk-SveltiaCMS a rk:Component ;
+    rdfs:label "Sveltia CMS (embedded)" ;
+    dcterms:description "Full-featured Git-based headless CMS with 131 components and 76 service modules. Modern replacement for Netlify/Decap CMS." .
+
+comp:rk-GitBackend a rk:Component ;
+    rdfs:label "Git Backend Integration" ;
+    dcterms:description "Supports GitHub, GitLab, and local Git repositories for content storage." .
+
+comp:rk-AssetManager a rk:Component ;
+    rdfs:label "Asset Management" ;
+    dcterms:description "File management UI with stock photo integrations (Pexels, Pixabay, Unsplash)." .
+
+comp:rk-EntryEditor a rk:Component ;
+    rdfs:label "Entry/Content Editor" ;
+    dcterms:description "Rich content editing with 15+ widget types: String, Select, Markdown, DateTime, UUID, Object, List, Relation, etc." ;
+    rk:componentUses tech:Lexical .
+
+comp:rk-i18nSystem a rk:Component ;
+    rdfs:label "Internationalization System" ;
+    dcterms:description "Multi-language support with DeepL translation integration and locale management." .
+
+comp:rk-MediaLibrary a rk:Component ;
+    rdfs:label "Media Library Integrations" ;
+    dcterms:description "Stock photo integrations: Pexels, Pixabay, Unsplash for content enrichment." .
+
+# ── Features ────────────────────────────────────────────────────────────────
+
+proj:Reckons rk:hasFeature feat:CrossBrowserCompat ,
+                            feat:GitContentStorage ,
+                            feat:RichContentEditing ,
+                            feat:i18nSupport ,
+                            feat:StockPhotoIntegration ,
+                            feat:MultiDataFormat ,
+                            feat:DraftManagement ,
+                            feat:RustWASMPerf ,
+                            feat:CollectionSchemas .
+
+feat:CrossBrowserCompat a rk:Feature ; rdfs:label "Cross-Browser Compatibility" ;
+    dcterms:description "Dual manifest system for Chrome (V3) and Firefox (V2)." .
+feat:GitContentStorage a rk:Feature ; rdfs:label "Git Content Storage" ;
+    dcterms:description "Content stored in Git repositories (GitHub/GitLab) with version control." .
+feat:RichContentEditing a rk:Feature ; rdfs:label "Rich Content Editing" ;
+    dcterms:description "Lexical-based editor with markdown, 15+ widget types, customizable entry schemas." .
+feat:i18nSupport a rk:Feature ; rdfs:label "Internationalization (i18n)" ;
+    dcterms:description "Multi-language content with DeepL API translation integration." .
+feat:StockPhotoIntegration a rk:Feature ; rdfs:label "Stock Photo Integration" ;
+    dcterms:description "Pexels, Pixabay, Unsplash media library access." .
+feat:MultiDataFormat a rk:Feature ; rdfs:label "Multi-Format Support" ;
+    dcterms:description "YAML, TOML, JSON content serialization formats." .
+feat:DraftManagement a rk:Feature ; rdfs:label "Draft Management" ;
+    dcterms:description "Content drafts with version control and preview." .
+feat:RustWASMPerf a rk:Feature ; rdfs:label "Rust WASM Performance" ;
+    dcterms:description "WebAssembly module for performance-critical browser operations." .
+feat:CollectionSchemas a rk:Feature ; rdfs:label "Collection Schemas" ;
+    dcterms:description "Customizable entry collections with flexible field schemas and widget types." .
+
+# ── Architectural Patterns ──────────────────────────────────────────────────
+
+proj:Reckons rk:followsPattern arch:ExtensionBased ,
+                                arch:GitAsDatabase ,
+                                arch:DualManifest ,
+                                arch:EmbeddedCMS .
+
+arch:ExtensionBased a rk:ArchPattern ; rdfs:label "Browser Extension Architecture" ;
+    dcterms:description "Popup, dashboard, background worker, content script separation." .
+arch:GitAsDatabase a rk:ArchPattern ; rdfs:label "Git as Database" ;
+    dcterms:description "Content stored directly in Git repositories for versioning and collaboration." .
+arch:DualManifest a rk:ArchPattern ; rdfs:label "Dual Manifest System" ;
+    dcterms:description "Separate manifests for Chrome (V3) and Firefox (V2) browser compatibility." .
+arch:EmbeddedCMS a rk:ArchPattern ; rdfs:label "Embedded CMS" ;
+    dcterms:description "Full CMS (Sveltia) embedded within browser extension dashboard." .
+
+# ── Data Models ─────────────────────────────────────────────────────────────
+
+proj:Reckons rk:hasDataModel dm:CMSEntry ,
+                              dm:CMSCollection ,
+                              dm:CMSField ,
+                              dm:CMSWidget ,
+                              dm:CMSAsset .
+
+dm:CMSEntry a rk:DataModel ; rdfs:label "CMS Entry" ;
+    dcterms:description "Content items with typed fields, draft state, version history." .
+dm:CMSCollection a rk:DataModel ; rdfs:label "CMS Collection" ;
+    dcterms:description "Groups of related entries with configurable schemas and widgets." .
+dm:CMSField a rk:DataModel ; rdfs:label "CMS Field" ;
+    dcterms:description "Individual content property with associated widget type." .
+dm:CMSWidget a rk:DataModel ; rdfs:label "CMS Widget" ;
+    dcterms:description "UI component type for editing fields: String, Select, Markdown, DateTime, etc." .
+dm:CMSAsset a rk:DataModel ; rdfs:label "CMS Asset" ;
+    dcterms:description "Media files with metadata stored in Git repository." .
+
+# ── Key Dependencies ────────────────────────────────────────────────────────
+
+proj:Reckons rk:dependsOn dep:webextension-polyfill ,
+                            dep:rollup ,
+                            dep:sveltia-ui ,
+                            dep:sveltia-utils ,
+                            dep:lexical ,
+                            dep:marked ,
+                            dep:yaml ,
+                            dep:moment ,
+                            dep:dompurify ,
+                            dep:svelte-i18n .
+
+dep:webextension-polyfill a rk:Dependency ; rdfs:label "webextension-polyfill" .
+dep:rollup a rk:Dependency ; rdfs:label "rollup ^4.18.0" .
+dep:sveltia-ui a rk:Dependency ; rdfs:label "@sveltia/ui ^0.22.6" .
+dep:sveltia-utils a rk:Dependency ; rdfs:label "@sveltia/utils" .
+dep:lexical a rk:Dependency ; rdfs:label "lexical ^0.23.1" .
+dep:marked a rk:Dependency ; rdfs:label "marked ^15.0.6" .
+dep:yaml a rk:Dependency ; rdfs:label "yaml ^2.7.0" .
+dep:moment a rk:Dependency ; rdfs:label "moment ^2.30.1" .
+dep:dompurify a rk:Dependency ; rdfs:label "isomorphic-dompurify" .
+dep:svelte-i18n a rk:Dependency ; rdfs:label "svelte-i18n" .

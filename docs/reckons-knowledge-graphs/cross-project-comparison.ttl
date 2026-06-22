@@ -1,0 +1,138 @@
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix rk:      <urn:reckons:ontology/> .
+@prefix proj:    <urn:reckons:project/> .
+@prefix tech:    <urn:reckons:technology/> .
+@prefix feat:    <urn:reckons:feature/> .
+@prefix arch:    <urn:reckons:architecture/> .
+@prefix iface:   <urn:reckons:interface/> .
+
+# ════════════════════════════════════════════════════════════════════════════
+# Cross-Project Comparison — Evolution & Shared Concepts
+# Import alongside individual project files for a unified knowledge graph
+# ════════════════════════════════════════════════════════════════════════════
+
+# ── Evolution Timeline ──────────────────────────────────────────────────────
+# Approximate ordering based on architectural complexity and feature overlap
+
+proj:Reckons rk:evolvedInto proj:Reckons-cpython-wasm-svelte ;
+    rdfs:comment "Browser extension approach → full PWA with WASM PostgreSQL and ethics." .
+
+proj:Reckons-cpython-wasm-svelte rk:evolvedInto proj:Reckons-LocalQwen30b ;
+    rdfs:comment "PGlite architecture → FalkorDB graph database with local WebLLM." .
+
+proj:Reckons-LocalQwen30b rk:evolvedInto proj:Reckons-Spectre ;
+    rdfs:comment "FalkorDB prototype → enterprise-grade API with security middleware." .
+
+proj:Reckons-FactDiff rk:evolvedInto proj:tripleNotes ;
+    rdfs:comment "Fact-checking focused → full knowledge graph platform with review workflow." .
+
+proj:Reckons-KiloClaude-Ambitious rk:evolvedInto proj:tripleNotes ;
+    rdfs:comment "Offline RAG system → integrated as local WASM inference in tripleNotes." .
+
+# ── Shared Technology Clusters ──────────────────────────────────────────────
+
+# Projects using Svelte/SvelteKit
+proj:tripleNotes             rk:relatedTo proj:Reckons-cpython-wasm-svelte ;
+    rdfs:comment "Both use SvelteKit 2 + Svelte 5 + Threlte for 3D visualization." .
+proj:Reckons-LocalQwen30b    rk:relatedTo proj:Reckons-Spectre ;
+    rdfs:comment "Both use FalkorDB as graph database backend." .
+proj:Reckons-FactDiff        rk:relatedTo proj:tripleNotes ;
+    rdfs:comment "Both focus on triple extraction, review, and human-in-the-loop validation." .
+proj:Reckons-KiloClaude-Ambitious rk:relatedTo proj:tripleNotes ;
+    rdfs:comment "Both pursue fully offline/local-first AI inference in browser." .
+
+# ── Comparative Analysis: Storage Backends ──────────────────────────────────
+
+# IndexedDB family
+proj:tripleNotes             rk:storageBackend "IndexedDB (Dexie)" .
+proj:Reckons-FactDiff        rk:storageBackend "IndexedDB (idb)" .
+
+# WASM database family
+proj:Reckons-cpython-wasm-svelte rk:storageBackend "PGlite (WASM PostgreSQL) + pgvector" .
+proj:Reckons-KiloClaude-Ambitious rk:storageBackend "SQLite WASM + sqlite-vec" .
+
+# Graph database family
+proj:Reckons-LocalQwen30b    rk:storageBackend "FalkorDB (Redis-based graph database)" .
+proj:Reckons-Spectre         rk:storageBackend "FalkorDB (Redis graph module)" .
+
+# Git-based
+proj:Reckons                 rk:storageBackend "Git repositories (GitHub/GitLab)" .
+
+# ── Comparative Analysis: LLM Strategy ──────────────────────────────────────
+
+# Multi-provider (most flexible)
+proj:tripleNotes             rk:llmStrategy "multi-provider (Claude, OpenAI, Gemini, Ollama, WASM)" .
+
+# Hybrid cloud + local
+proj:Reckons-FactDiff        rk:llmStrategy "hybrid (Claude API + local HuggingFace ONNX)" .
+
+# Fully local
+proj:Reckons-KiloClaude-Ambitious rk:llmStrategy "fully local (wllama GGUF models)" .
+proj:Reckons-LocalQwen30b    rk:llmStrategy "local (WebLLM: Llama-3, Mistral, Phi-3)" .
+proj:Reckons-cpython-wasm-svelte rk:llmStrategy "local WASM (CPython, TensorFlow.js)" .
+
+# No LLM
+proj:Reckons                 rk:llmStrategy "none" .
+proj:Reckons-Spectre         rk:llmStrategy "planned (WebLLM, not yet integrated)" .
+
+# ── Comparative Analysis: Interface Count ───────────────────────────────────
+
+# tripleNotes leads with 5 interfaces: Web, CLI, MCP, Extension, PWA
+# Reckons-Spectre has 3: Web, PWA, REST API
+# Others have 1-2
+
+# ── Feature Convergence: Shared Features Across Projects ────────────────────
+
+# Human Review — present in 5 of 7 projects
+proj:tripleNotes             rk:hasFeature feat:HumanReview .
+proj:Reckons-FactDiff        rk:hasFeature feat:HumanReview .
+proj:Reckons-Spectre         rk:hasFeature feat:HumanReview .
+proj:Reckons-LocalQwen30b    rk:hasFeature feat:HumanReview .
+# Reckons-KiloClaude-Ambitious does not have human review
+
+# Local-First Storage — present in 5 of 7 projects
+proj:tripleNotes             rk:hasFeature feat:LocalFirstStorage .
+proj:Reckons-FactDiff        rk:hasFeature feat:LocalFirstStorage .
+proj:Reckons-KiloClaude-Ambitious rk:hasFeature feat:LocalFirstStorage .
+proj:Reckons-cpython-wasm-svelte rk:hasFeature feat:LocalFirstStorage .
+# FalkorDB projects (LocalQwen, Spectre) require server
+
+# 3D Visualization — present in 4 of 7 projects
+proj:tripleNotes             rk:hasFeature feat:3DVisualization .
+proj:Reckons-cpython-wasm-svelte rk:hasFeature feat:3DVisualization .
+proj:Reckons-LocalQwen30b    rk:hasFeature feat:3DVisualization .
+# Reckons uses 2D CMS, FactDiff text-only, KiloClaude no UI framework, Spectre minimal UI
+
+# Voice Interaction — present in 3 of 7 projects
+proj:tripleNotes             rk:hasFeature feat:VoiceInteraction .
+proj:Reckons-cpython-wasm-svelte rk:hasFeature feat:EmotionAwareVoice .
+proj:Reckons-LocalQwen30b    rk:hasFeature feat:VoiceInteraction .
+
+# Vector Search — present in 3 of 7 projects
+proj:Reckons-cpython-wasm-svelte rk:hasFeature feat:VectorSearch .
+proj:Reckons-KiloClaude-Ambitious rk:hasFeature feat:VectorSearch .
+proj:Reckons-FactDiff        rk:hasFeature feat:BrowserMLInference .
+
+# Offline Capable — present in 4 of 7 projects
+proj:tripleNotes             rk:hasFeature feat:OfflineCapable .
+proj:Reckons-cpython-wasm-svelte rk:hasFeature feat:OfflineCapable .
+proj:Reckons-KiloClaude-Ambitious rk:hasFeature feat:FullyOfflineRAG .
+proj:Reckons-Spectre         rk:hasFeature feat:OfflineCapable .
+
+# ── Unique Differentiators Per Project ──────────────────────────────────────
+
+proj:tripleNotes rdfs:comment "UNIQUE: MCP server, browser extension, CLI, Turtle file standard, multi-KB with KB Leap, Shelly chat persona, smart glasses support, Indico integration. Most complete." .
+
+proj:Reckons rdfs:comment "UNIQUE: Embeds full Sveltia CMS, Git-as-database, Rust WASM module, dual browser manifest, stock photo libraries. Only CMS-based approach." .
+
+proj:Reckons-cpython-wasm-svelte rdfs:comment "UNIQUE: Ethics governance with 5 foundational principles, mirrored ethics architecture, 3-7-11 cognitive load constraints, WebXR VR/AR, WCAG 2.1 AA+, Hume.AI emotion detection, spatial audio, haptic feedback. Most ambitious vision." .
+
+proj:Reckons-FactDiff rdfs:comment "UNIQUE: NLI classification (ENTAILS/NEUTRAL/CONTRADICTS), consistency checking pipeline, Mistral OCR, cross-encoder NLI model. Only fact-checking focused approach." .
+
+proj:Reckons-KiloClaude-Ambitious rdfs:comment "UNIQUE: Only 2 production deps (wllama + sqlite-wasm), no UI framework, comprehensive documentation suite (13 guides), LRU embedding cache. Most minimal and focused." .
+
+proj:Reckons-LocalQwen30b rdfs:comment "UNIQUE: Dual 2D/3D visualization (SvelteFlow + 3d-force-graph), AI media generation (image, video, 3D models), Google Generative AI. Most media-rich." .
+
+proj:Reckons-Spectre rdfs:comment "UNIQUE: JWT auth, RBAC, three-tier rate limiting, CORS, SPARQL-to-Cypher conversion, batch review workflow, enterprise security middleware. Most backend/API focused." .

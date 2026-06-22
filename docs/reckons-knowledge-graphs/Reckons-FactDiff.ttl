@@ -1,0 +1,173 @@
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix doap:    <http://usefulinc.com/ns/doap#> .
+@prefix rk:      <urn:reckons:ontology/> .
+@prefix proj:    <urn:reckons:project/> .
+@prefix tech:    <urn:reckons:technology/> .
+@prefix comp:    <urn:reckons:component/> .
+@prefix feat:    <urn:reckons:feature/> .
+@prefix arch:    <urn:reckons:architecture/> .
+@prefix dep:     <urn:reckons:dependency/> .
+@prefix iface:   <urn:reckons:interface/> .
+@prefix dm:      <urn:reckons:datamodel/> .
+
+# ════════════════════════════════════════════════════════════════════════════
+# Reckons-FactDiff — Fact-Checking & Consistency Verification
+# Focused on document validation against a knowledge graph of approved facts
+# ════════════════════════════════════════════════════════════════════════════
+
+proj:Reckons-FactDiff a rk:Project ;
+    rdfs:label "Reckons FactDiff" ;
+    dcterms:description "Fact-checking web application that checks documents against a user-maintained knowledge graph. Extracts claims via Claude, validates them using NLI (Natural Language Inference) against approved triples to identify agreements, contradictions, or neutral relationships." ;
+    rk:maturityLevel "functional-prototype" ;
+    rk:primaryLanguage "TypeScript" ;
+    rk:storageBackend "IndexedDB (idb)" ;
+    rk:llmStrategy "hybrid (Claude API + local HuggingFace ONNX)" .
+
+# ── Interfaces ──────────────────────────────────────────────────────────────
+
+proj:Reckons-FactDiff rk:hasInterface iface:WebApp .
+
+# ── Technologies ────────────────────────────────────────────────────────────
+
+proj:Reckons-FactDiff rk:usesTechnology tech:Svelte4 ,
+                                         tech:SvelteKit2 ,
+                                         tech:TypeScript ,
+                                         tech:TailwindCSS ,
+                                         tech:Vite ,
+                                         tech:IndexedDB ,
+                                         tech:HuggingFaceTransformers ,
+                                         tech:ONNX ,
+                                         tech:ClaudeAPI ,
+                                         tech:MistralAPI ,
+                                         tech:PostCSS .
+
+tech:ONNX a rk:Technology ; rdfs:label "ONNX Runtime (browser)" ; rk:category "ai-ml" .
+tech:ClaudeAPI a rk:Technology ; rdfs:label "Claude API (Anthropic)" ; rk:category "ai-api" .
+tech:MistralAPI a rk:Technology ; rdfs:label "Mistral API (OCR)" ; rk:category "ai-api" .
+
+# ── Components ──────────────────────────────────────────────────────────────
+
+proj:Reckons-FactDiff rk:hasComponent comp:fd-Pipeline ,
+                                       comp:fd-ClaudeExtractor ,
+                                       comp:fd-InferenceEngine ,
+                                       comp:fd-TripleGraph ,
+                                       comp:fd-SourceManager ,
+                                       comp:fd-MistralOCR ,
+                                       comp:fd-SettingsUI ,
+                                       comp:fd-CheckUI ,
+                                       comp:fd-TripleUI .
+
+comp:fd-Pipeline a rk:Component ;
+    rdfs:label "Consistency Checking Pipeline" ;
+    dcterms:description "6-stage pipeline: OCR → Extract → Embed → Search → Classify → Done. Orchestrates Claude extraction, embedding, similarity search, and NLI classification." .
+
+comp:fd-ClaudeExtractor a rk:Component ;
+    rdfs:label "Claude Triple Extractor" ;
+    dcterms:description "Uses Claude 3.5 Haiku to extract entity-relation-entity triples from text. Normalizes entity names against existing triple vocabulary." ;
+    rk:componentUses tech:ClaudeAPI .
+
+comp:fd-InferenceEngine a rk:Component ;
+    rdfs:label "HuggingFace Inference Engine" ;
+    dcterms:description "Browser-based ML: bi-encoder (all-MiniLM-L6-v2) for embeddings, cross-encoder (nli-deberta-v3-small) for NLI classification. Top-K cosine similarity search." ;
+    rk:componentUses tech:HuggingFaceTransformers , tech:ONNX .
+
+comp:fd-TripleGraph a rk:Component ;
+    rdfs:label "Triple Graph Operations" ;
+    dcterms:description "Create, approve, reject, delete triples. Confidence computation from source trust + corroboration boost. Triple-to-sentence conversion for NLI." .
+
+comp:fd-SourceManager a rk:Component ;
+    rdfs:label "Source Manager" ;
+    dcterms:description "Information sources with trust scores (0-1). Source references link triples to their origins." .
+
+comp:fd-MistralOCR a rk:Component ;
+    rdfs:label "Mistral OCR Processor" ;
+    dcterms:description "PDF and image OCR via Mistral API, converts documents to markdown for extraction." ;
+    rk:componentUses tech:MistralAPI .
+
+comp:fd-SettingsUI a rk:Component ;
+    rdfs:label "Settings UI" ;
+    dcterms:description "API key management, model selection, Top-K slider, NLI threshold, cache clearing." .
+
+comp:fd-CheckUI a rk:Component ;
+    rdfs:label "Document Check UI" ;
+    dcterms:description "Paste text or upload files. Real-time progress through pipeline stages. Color-coded NLI results." .
+
+comp:fd-TripleUI a rk:Component ;
+    rdfs:label "Triple Management UI" ;
+    dcterms:description "Create subject-relation-object triples. Filter by status: all, approved, pending, rejected. Shows confidence scores." .
+
+# ── Features ────────────────────────────────────────────────────────────────
+
+proj:Reckons-FactDiff rk:hasFeature feat:FactConsistencyCheck ,
+                                     feat:NLIClassification ,
+                                     feat:TripleManagement ,
+                                     feat:SourceTrustScoring ,
+                                     feat:OCRDocumentSupport ,
+                                     feat:BrowserMLInference ,
+                                     feat:LocalFirstStorage ,
+                                     feat:ConfidenceComputation ,
+                                     feat:RDFTripleExtraction .
+
+feat:FactConsistencyCheck a rk:Feature ; rdfs:label "Fact Consistency Checking" ;
+    dcterms:description "Check documents against approved knowledge graph triples for agreements, contradictions, and neutral claims." .
+feat:NLIClassification a rk:Feature ; rdfs:label "NLI Classification (ENTAILS/NEUTRAL/CONTRADICTS)" ;
+    dcterms:description "Cross-encoder NLI model classifies relationship between candidate claims and approved facts." .
+feat:TripleManagement a rk:Feature ; rdfs:label "Triple CRUD with Approval Workflow" ;
+    dcterms:description "Create, approve, reject, delete triples with status filtering." .
+feat:SourceTrustScoring a rk:Feature ; rdfs:label "Source Trust Scoring" ;
+    dcterms:description "Sources have trust scores (0-1) that feed into triple confidence computation." .
+feat:OCRDocumentSupport a rk:Feature ; rdfs:label "OCR Document Support" ;
+    dcterms:description "PDF and image ingestion via Mistral OCR API." .
+feat:BrowserMLInference a rk:Feature ; rdfs:label "Browser-Based ML Inference" ;
+    dcterms:description "Embedding and NLI models run locally via ONNX/HuggingFace Transformers.js." .
+feat:ConfidenceComputation a rk:Feature ; rdfs:label "Confidence Computation" ;
+    dcterms:description "Triple confidence derived from source trust scores plus corroboration boost from multiple sources." .
+
+# ── Architectural Patterns ──────────────────────────────────────────────────
+
+proj:Reckons-FactDiff rk:followsPattern arch:LocalFirst ,
+                                         arch:HumanInTheLoop ,
+                                         arch:HybridAI ,
+                                         arch:PipelineArch ,
+                                         arch:StaticSPA .
+
+arch:HybridAI a rk:ArchPattern ; rdfs:label "Hybrid AI (Cloud + Local)" ;
+    dcterms:description "Claude for extraction (cloud), HuggingFace for classification (local browser)." .
+arch:PipelineArch a rk:ArchPattern ; rdfs:label "Multi-Stage Pipeline" ;
+    dcterms:description "Sequential processing: OCR → Extract → Embed → Search → Classify → Done." .
+arch:StaticSPA a rk:ArchPattern ; rdfs:label "Static SPA Deployment" ;
+    dcterms:description "SvelteKit with static adapter. Deployable to Cloudflare Pages or similar." .
+
+# ── Data Models ─────────────────────────────────────────────────────────────
+
+proj:Reckons-FactDiff rk:hasDataModel dm:fd-Triple ,
+                                       dm:fd-Source ,
+                                       dm:fd-SourceRef ,
+                                       dm:fd-CheckResult ,
+                                       dm:fd-NLILabel ,
+                                       dm:fd-PipelineState .
+
+dm:fd-Triple a rk:DataModel ; rdfs:label "Triple (subject-relation-object)" ;
+    dcterms:description "Entity-relation-entity triple with id, confidence (0-1), status (approved/pending/rejected), sources array, timestamps." .
+dm:fd-Source a rk:DataModel ; rdfs:label "Information Source" ;
+    dcterms:description "Named source with trust score (0-1), optional URI." .
+dm:fd-SourceRef a rk:DataModel ; rdfs:label "Source Reference" ;
+    dcterms:description "Links triples to their originating sources." .
+dm:fd-CheckResult a rk:DataModel ; rdfs:label "Check Result" ;
+    dcterms:description "Candidate triple matched against rule triple with NLI label (ENTAILS/NEUTRAL/CONTRADICTS) and confidence score." .
+dm:fd-NLILabel a rk:DataModel ; rdfs:label "NLI Label Enum" ;
+    dcterms:description "ENTAILS (agrees), NEUTRAL (unrelated), CONTRADICTS (conflicts)." .
+dm:fd-PipelineState a rk:DataModel ; rdfs:label "Pipeline State" ;
+    dcterms:description "Tracks processing through 6 stages: ocr, extracting, embedding, searching, classifying, done/error." .
+
+# ── Key Dependencies ────────────────────────────────────────────────────────
+
+proj:Reckons-FactDiff rk:dependsOn dep:anthropic-sdk ,
+                                     dep:mistral-sdk ,
+                                     dep:hf-transformers ,
+                                     dep:idb .
+
+dep:anthropic-sdk a rk:Dependency ; rdfs:label "@anthropic-ai/sdk ^0.36.1" .
+dep:mistral-sdk a rk:Dependency ; rdfs:label "@mistralai/mistralai ^0.3.0" .

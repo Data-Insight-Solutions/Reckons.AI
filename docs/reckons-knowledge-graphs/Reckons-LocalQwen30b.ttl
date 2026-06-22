@@ -1,0 +1,181 @@
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix doap:    <http://usefulinc.com/ns/doap#> .
+@prefix rk:      <urn:reckons:ontology/> .
+@prefix proj:    <urn:reckons:project/> .
+@prefix tech:    <urn:reckons:technology/> .
+@prefix comp:    <urn:reckons:component/> .
+@prefix feat:    <urn:reckons:feature/> .
+@prefix arch:    <urn:reckons:architecture/> .
+@prefix dep:     <urn:reckons:dependency/> .
+@prefix iface:   <urn:reckons:interface/> .
+@prefix dm:      <urn:reckons:datamodel/> .
+
+# ════════════════════════════════════════════════════════════════════════════
+# Reckons-LocalQwen30b — SvelteKit + FalkorDB + WebLLM + Media Generation
+# Knowledge graph app with local LLM, 2D/3D visualization, voice, media gen
+# ════════════════════════════════════════════════════════════════════════════
+
+proj:Reckons-LocalQwen30b a rk:Project ;
+    rdfs:label "Reckons LocalQwen30b" ;
+    dcterms:description "SvelteKit knowledge graph application with FalkorDB graph database, WebLLM for local inference (Llama-3, Mistral, Phi-3), 2D/3D graph visualization, voice interaction via Web Speech API, and media generation via Google Generative AI." ;
+    rk:maturityLevel "early-prototype" ;
+    rk:primaryLanguage "TypeScript" ;
+    rk:storageBackend "FalkorDB (Redis-based graph database)" ;
+    rk:llmStrategy "local (WebLLM: Llama-3, Mistral, Phi-3)" .
+
+# ── Interfaces ──────────────────────────────────────────────────────────────
+
+proj:Reckons-LocalQwen30b rk:hasInterface iface:WebApp .
+
+# ── Technologies ────────────────────────────────────────────────────────────
+
+proj:Reckons-LocalQwen30b rk:usesTechnology tech:SvelteKit2 ,
+                                              tech:Svelte5 ,
+                                              tech:TypeScript ,
+                                              tech:Vite ,
+                                              tech:FalkorDB ,
+                                              tech:WebLLM ,
+                                              tech:GoogleGenAI ,
+                                              tech:ThreeJS ,
+                                              tech:Threlte8 ,
+                                              tech:XYFlow ,
+                                              tech:3DForceGraph ,
+                                              tech:WebSpeechAPI .
+
+tech:FalkorDB a rk:Technology ; rdfs:label "FalkorDB" ; rk:category "graph-database" .
+tech:WebLLM a rk:Technology ; rdfs:label "WebLLM (@mlc-ai)" ; rk:category "ai-ml" .
+tech:GoogleGenAI a rk:Technology ; rdfs:label "Google Generative AI" ; rk:category "ai-api" .
+tech:XYFlow a rk:Technology ; rdfs:label "@xyflow/svelte" ; rk:category "2d-visualization" .
+tech:3DForceGraph a rk:Technology ; rdfs:label "3d-force-graph" ; rk:category "3d-visualization" .
+
+# ── Components ──────────────────────────────────────────────────────────────
+
+proj:Reckons-LocalQwen30b rk:hasComponent comp:lq-FalkorDBIntegration ,
+                                            comp:lq-WebLLMEngine ,
+                                            comp:lq-ConfigManager ,
+                                            comp:lq-VoiceInteraction ,
+                                            comp:lq-MediaGeneration ,
+                                            comp:lq-ChatWithKnowledge ,
+                                            comp:lq-TripleReview ,
+                                            comp:lq-Graph2D ,
+                                            comp:lq-Graph3D .
+
+comp:lq-FalkorDBIntegration a rk:Component ;
+    rdfs:label "FalkorDB Integration" ;
+    dcterms:description "Graph database abstraction: CRUD on triples, Cypher queries, RDF/N-Quads support, multi-graph management, batch operations." ;
+    rk:componentUses tech:FalkorDB .
+
+comp:lq-WebLLMEngine a rk:Component ;
+    rdfs:label "WebLLM Inference Engine" ;
+    dcterms:description "Local LLM inference via WebLLM. Supports Llama-3-8B, Mistral-7B, Phi-3-mini. Configurable temperature, topP, maxTokens." ;
+    rk:componentUses tech:WebLLM .
+
+comp:lq-ConfigManager a rk:Component ;
+    rdfs:label "Configuration Manager" ;
+    dcterms:description "Environment variables, feature flags (voice, media generation, debug mode), API key management." .
+
+comp:lq-VoiceInteraction a rk:Component ;
+    rdfs:label "Voice Interaction (Web Speech API)" ;
+    dcterms:description "Speech recognition and transcription, voice command processing, mock emotion analysis, voice-to-triple creation." ;
+    rk:componentUses tech:WebSpeechAPI .
+
+comp:lq-MediaGeneration a rk:Component ;
+    rdfs:label "Media Generation" ;
+    dcterms:description "Image generation (Google Imagen 3), video generation (Google text-to-video), 3D model generation (custom), graph visualization export." ;
+    rk:componentUses tech:GoogleGenAI .
+
+comp:lq-ChatWithKnowledge a rk:Component ;
+    rdfs:label "Chat with Knowledge Graph" ;
+    dcterms:description "Natural language interface to graph. Hybrid querying (LLM + graph DB), session management, graph search and summarization." .
+
+comp:lq-TripleReview a rk:Component ;
+    rdfs:label "Triple Review Workflow" ;
+    dcterms:description "Validation states: pending, approved, rejected, edited. Audit trail, reviewer attribution, review statistics." .
+
+comp:lq-Graph2D a rk:Component ;
+    rdfs:label "2D Graph Visualization (SvelteFlow)" ;
+    dcterms:description "Interactive 2D force-directed graph using @xyflow/svelte with node/edge click handlers." ;
+    rk:componentUses tech:XYFlow .
+
+comp:lq-Graph3D a rk:Component ;
+    rdfs:label "3D Graph Visualization (3d-force-graph)" ;
+    dcterms:description "Immersive 3D force-directed graph with dynamic node/edge rendering and responsive sizing." ;
+    rk:componentUses tech:3DForceGraph .
+
+# ── Features ────────────────────────────────────────────────────────────────
+
+proj:Reckons-LocalQwen30b rk:hasFeature feat:GraphDatabaseStorage ,
+                                          feat:LocalLLMInference ,
+                                          feat:2DVisualization ,
+                                          feat:3DVisualization ,
+                                          feat:VoiceInteraction ,
+                                          feat:MediaGeneration ,
+                                          feat:NaturalLanguageQuery ,
+                                          feat:TripleManagement ,
+                                          feat:HumanReview ,
+                                          feat:MultiGraphSupport ,
+                                          feat:CypherQueries .
+
+feat:GraphDatabaseStorage a rk:Feature ; rdfs:label "Graph Database Storage (FalkorDB)" ;
+    dcterms:description "Redis-based graph database with Cypher queries and RDF/N-Quads support." .
+feat:LocalLLMInference a rk:Feature ; rdfs:label "Local LLM Inference (WebLLM)" ;
+    dcterms:description "Browser-based inference with Llama-3-8B, Mistral-7B, Phi-3-mini." .
+feat:2DVisualization a rk:Feature ; rdfs:label "2D Graph Visualization" ;
+    dcterms:description "Interactive force-directed 2D graph via SvelteFlow." .
+feat:MediaGeneration a rk:Feature ; rdfs:label "AI Media Generation" ;
+    dcterms:description "Image, video, and 3D model generation from graph data." .
+feat:NaturalLanguageQuery a rk:Feature ; rdfs:label "Natural Language Graph Querying" ;
+    dcterms:description "Chat interface converts natural language to graph queries." .
+feat:MultiGraphSupport a rk:Feature ; rdfs:label "Multi-Graph Support" ;
+    dcterms:description "Multiple named graphs with independent triple sets." .
+feat:CypherQueries a rk:Feature ; rdfs:label "Cypher Query Support" ;
+    dcterms:description "Execute FalkorDB Cypher-like queries for advanced graph operations." .
+
+# ── Architectural Patterns ──────────────────────────────────────────────────
+
+proj:Reckons-LocalQwen30b rk:followsPattern arch:ModularIntegration ,
+                                              arch:PluggableLLM ,
+                                              arch:DualVisualization ,
+                                              arch:HumanInTheLoop ,
+                                              arch:GracefulDegradation .
+
+arch:ModularIntegration a rk:ArchPattern ; rdfs:label "Modular Integration" ;
+    dcterms:description "Each external service (FalkorDB, WebLLM, etc.) has its own module with error handling." .
+arch:DualVisualization a rk:ArchPattern ; rdfs:label "Dual 2D/3D Visualization" ;
+    dcterms:description "Both 2D (SvelteFlow) and 3D (3d-force-graph) graph views." .
+arch:GracefulDegradation a rk:ArchPattern ; rdfs:label "Graceful Degradation" ;
+    dcterms:description "Mock implementations as fallback when services are unavailable." .
+
+# ── Data Models ─────────────────────────────────────────────────────────────
+
+proj:Reckons-LocalQwen30b rk:hasDataModel dm:lq-RDFTriple ,
+                                            dm:lq-ReviewTriple ,
+                                            dm:lq-ChatMessage ,
+                                            dm:lq-GraphNode .
+
+dm:lq-RDFTriple a rk:DataModel ; rdfs:label "RDF Triple (subject-predicate-object)" ;
+    dcterms:description "Basic triple with subject, predicate, object strings." .
+dm:lq-ReviewTriple a rk:DataModel ; rdfs:label "Review Triple" ;
+    dcterms:description "Triple with id, graphName, status (pending/approved/rejected/edited), timestamps, createdBy, reviewedBy, reviewNotes." .
+dm:lq-ChatMessage a rk:DataModel ; rdfs:label "Chat Message" ;
+    dcterms:description "Message with role (user/assistant/system), content, timestamp, source (graph/llm/hybrid)." .
+dm:lq-GraphNode a rk:DataModel ; rdfs:label "Graph Visualization Node" ;
+    dcterms:description "Node with id, x, y, z coordinates, and entity data for rendering." .
+
+# ── Key Dependencies ────────────────────────────────────────────────────────
+
+proj:Reckons-LocalQwen30b rk:dependsOn dep:falkordb ,
+                                          dep:web-llm ,
+                                          dep:google-genai ,
+                                          dep:xyflow-svelte ,
+                                          dep:3d-force-graph ,
+                                          dep:threlte-core ,
+                                          dep:three .
+
+dep:falkordb a rk:Dependency ; rdfs:label "falkordb ^6.3.0" .
+dep:web-llm a rk:Dependency ; rdfs:label "@mlc-ai/web-llm ^0.2.80" .
+dep:google-genai a rk:Dependency ; rdfs:label "@google/generative-ai ^0.1.3" .
+dep:xyflow-svelte a rk:Dependency ; rdfs:label "@xyflow/svelte ^1.0.0" .
+dep:3d-force-graph a rk:Dependency ; rdfs:label "3d-force-graph ^1.79.0" .

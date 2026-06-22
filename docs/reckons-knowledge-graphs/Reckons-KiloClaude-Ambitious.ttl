@@ -1,0 +1,164 @@
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix doap:    <http://usefulinc.com/ns/doap#> .
+@prefix rk:      <urn:reckons:ontology/> .
+@prefix proj:    <urn:reckons:project/> .
+@prefix tech:    <urn:reckons:technology/> .
+@prefix comp:    <urn:reckons:component/> .
+@prefix feat:    <urn:reckons:feature/> .
+@prefix arch:    <urn:reckons:architecture/> .
+@prefix dep:     <urn:reckons:dependency/> .
+@prefix iface:   <urn:reckons:interface/> .
+@prefix dm:      <urn:reckons:datamodel/> .
+
+# ════════════════════════════════════════════════════════════════════════════
+# Reckons-KiloClaude-Ambitious — Offline-First Educational RAG System
+# Minimal deps: wllama + SQLite-vec, no framework, pure TypeScript
+# ════════════════════════════════════════════════════════════════════════════
+
+proj:Reckons-KiloClaude-Ambitious a rk:Project ;
+    rdfs:label "Reckons KiloClaude Ambitious" ;
+    dcterms:description "Complete offline-first educational AI system with RAG (Retrieval-Augmented Generation) running entirely in the browser. Uses wllama for WASM LLM inference and SQLite-vec for vector similarity search. Focuses on transparency, privacy, and educational accessibility." ;
+    rk:maturityLevel "production-ready-prototype" ;
+    rk:primaryLanguage "TypeScript" ;
+    rk:storageBackend "SQLite WASM + sqlite-vec" ;
+    rk:llmStrategy "fully local (wllama GGUF models)" .
+
+# ── Interfaces ──────────────────────────────────────────────────────────────
+
+proj:Reckons-KiloClaude-Ambitious rk:hasInterface iface:WebApp .
+
+# ── Technologies ────────────────────────────────────────────────────────────
+
+proj:Reckons-KiloClaude-Ambitious rk:usesTechnology tech:TypeScript ,
+                                                     tech:Vite ,
+                                                     tech:WASM ,
+                                                     tech:Wllama ,
+                                                     tech:SQLiteWASM ,
+                                                     tech:SQLiteVec ,
+                                                     tech:Vitest ,
+                                                     tech:ESLint ,
+                                                     tech:Prettier ,
+                                                     tech:WebWorkers ,
+                                                     tech:SharedArrayBuffer .
+
+tech:Wllama a rk:Technology ; rdfs:label "wllama (WASM LLM)" ; rk:category "ai-ml" .
+tech:SQLiteWASM a rk:Technology ; rdfs:label "SQLite WASM" ; rk:category "database" .
+tech:SQLiteVec a rk:Technology ; rdfs:label "sqlite-vec" ; rk:category "vector-search" .
+tech:ESLint a rk:Technology ; rdfs:label "ESLint" ; rk:category "code-quality" .
+tech:Prettier a rk:Technology ; rdfs:label "Prettier" ; rk:category "code-quality" .
+tech:SharedArrayBuffer a rk:Technology ; rdfs:label "SharedArrayBuffer" ; rk:category "browser-api" .
+
+# ── Components ──────────────────────────────────────────────────────────────
+
+proj:Reckons-KiloClaude-Ambitious rk:hasComponent comp:kc-ReckonAI ,
+                                                    comp:kc-DocumentProcessor ,
+                                                    comp:kc-EmbeddingService ,
+                                                    comp:kc-VectorStore ,
+                                                    comp:kc-ChatService ,
+                                                    comp:kc-SyncManager .
+
+comp:kc-ReckonAI a rk:Component ;
+    rdfs:label "ReckonAI Orchestrator" ;
+    dcterms:description "Central coordinator: component lifecycle management, event system, system status monitoring, performance metrics aggregation, knowledge base management." .
+
+comp:kc-DocumentProcessor a rk:Component ;
+    rdfs:label "Document Processor" ;
+    dcterms:description "Multi-format ingestion (TXT, Markdown, HTML). Intelligent sentence-aware chunking (512-1024 tokens with overlap). Automatic metadata extraction (language, tags, difficulty, category). 50-100 pages/minute." .
+
+comp:kc-EmbeddingService a rk:Component ;
+    rdfs:label "Embedding Service (wllama)" ;
+    dcterms:description "Text-to-vector conversion via wllama WASM. Batch processing (10/batch), LRU cache (1000 entries, 1hr TTL), 384 dimensions (all-MiniLM-L6-v2). 50-200 embeddings/minute." ;
+    rk:componentUses tech:Wllama , tech:WASM .
+
+comp:kc-VectorStore a rk:Component ;
+    rdfs:label "Vector Store (SQLite-vec)" ;
+    dcterms:description "High-performance vector similarity search. Multiple metrics: Cosine, Euclidean, Inner Product. ACID transactions, batch ops, dimension validation. <200ms search on 10K+ vectors." ;
+    rk:componentUses tech:SQLiteWASM , tech:SQLiteVec .
+
+comp:kc-ChatService a rk:Component ;
+    rdfs:label "Chat Service (RAG)" ;
+    dcterms:description "RAG-powered chat: model lifecycle via wllama, session management, context retrieval (top-5), citation generation, streaming responses. 5-20 tokens/sec, 4096 context length." ;
+    rk:componentUses tech:Wllama .
+
+comp:kc-SyncManager a rk:Component ;
+    rdfs:label "Sync Manager (offline-first)" ;
+    dcterms:description "Queue-based sync operations (create/update/delete). Conflict resolution strategies (local/remote/manual). Network status monitoring." .
+
+# ── Features ────────────────────────────────────────────────────────────────
+
+proj:Reckons-KiloClaude-Ambitious rk:hasFeature feat:FullyOfflineRAG ,
+                                                  feat:DocumentIngestion ,
+                                                  feat:VectorSearch ,
+                                                  feat:RAGChat ,
+                                                  feat:CitationAttribution ,
+                                                  feat:KnowledgeBaseManagement ,
+                                                  feat:PerformanceMonitoring ,
+                                                  feat:LocalFirstStorage ,
+                                                  feat:LRUEmbeddingCache ,
+                                                  feat:EducationalFocus .
+
+feat:FullyOfflineRAG a rk:Feature ; rdfs:label "Fully Offline RAG Pipeline" ;
+    dcterms:description "Complete RAG system runs in browser with zero external API calls." .
+feat:DocumentIngestion a rk:Feature ; rdfs:label "Multi-Format Document Ingestion" ;
+    dcterms:description "TXT, Markdown, HTML with intelligent chunking and metadata extraction." .
+feat:RAGChat a rk:Feature ; rdfs:label "RAG-Powered Chat" ;
+    dcterms:description "Conversational AI grounded in ingested documents with streaming responses." .
+feat:CitationAttribution a rk:Feature ; rdfs:label "Source Citation Attribution" ;
+    dcterms:description "Every chat response includes source citations pointing to document chunks." .
+feat:KnowledgeBaseManagement a rk:Feature ; rdfs:label "Knowledge Base Management" ;
+    dcterms:description "Organize documents into themed collections with processing metrics." .
+feat:PerformanceMonitoring a rk:Feature ; rdfs:label "Performance Monitoring" ;
+    dcterms:description "Comprehensive metrics: embedding speed, search latency, memory usage, cache hit rates." .
+feat:LRUEmbeddingCache a rk:Feature ; rdfs:label "LRU Embedding Cache" ;
+    dcterms:description "1000-entry LRU cache with 1hr TTL achieving 85-95% hit rate." .
+feat:EducationalFocus a rk:Feature ; rdfs:label "Educational Focus" ;
+    dcterms:description "Designed for learning: configurable difficulty, transparent reasoning, learning metrics." .
+
+# ── Architectural Patterns ──────────────────────────────────────────────────
+
+proj:Reckons-KiloClaude-Ambitious rk:followsPattern arch:LocalFirst ,
+                                                      arch:FullyOffline ,
+                                                      arch:MinimalDependencies ,
+                                                      arch:ComponentOrchestrator ,
+                                                      arch:EventDriven .
+
+arch:FullyOffline a rk:ArchPattern ; rdfs:label "Fully Offline Architecture" ;
+    dcterms:description "Zero external API calls. All inference, search, and storage in browser." .
+arch:MinimalDependencies a rk:ArchPattern ; rdfs:label "Minimal Dependencies" ;
+    dcterms:description "Only 2 production deps: wllama + sqlite-wasm. No UI framework." .
+arch:ComponentOrchestrator a rk:ArchPattern ; rdfs:label "Component Orchestrator" ;
+    dcterms:description "Central ReckonAI class manages lifecycle and coordination of all services." .
+arch:EventDriven a rk:ArchPattern ; rdfs:label "Event-Driven Communication" ;
+    dcterms:description "Inter-component communication via event system." .
+
+# ── Data Models ─────────────────────────────────────────────────────────────
+
+proj:Reckons-KiloClaude-Ambitious rk:hasDataModel dm:kc-Document ,
+                                                    dm:kc-DocumentChunk ,
+                                                    dm:kc-Embedding ,
+                                                    dm:kc-ChatMessage ,
+                                                    dm:kc-ChatSession ,
+                                                    dm:kc-SearchResult .
+
+dm:kc-Document a rk:DataModel ; rdfs:label "Document" ;
+    dcterms:description "Title, content, metadata (language, tags, difficulty, category), timestamps." .
+dm:kc-DocumentChunk a rk:DataModel ; rdfs:label "Document Chunk" ;
+    dcterms:description "Document fragment with index, content, metadata (position, tokenCount, wordCount, sentiment)." .
+dm:kc-Embedding a rk:DataModel ; rdfs:label "Embedding Vector" ;
+    dcterms:description "384-dimensional vector with documentId, chunkIndex, text, and metadata." .
+dm:kc-ChatMessage a rk:DataModel ; rdfs:label "Chat Message" ;
+    dcterms:description "Role (system/user/assistant), content, timestamp, optional metadata." .
+dm:kc-ChatSession a rk:DataModel ; rdfs:label "Chat Session" ;
+    dcterms:description "Conversation with messages, title, timestamps." .
+dm:kc-SearchResult a rk:DataModel ; rdfs:label "Search Result" ;
+    dcterms:description "DocumentId, chunkIndex, similarity score, matched text, metadata." .
+
+# ── Key Dependencies ────────────────────────────────────────────────────────
+
+proj:Reckons-KiloClaude-Ambitious rk:dependsOn dep:wllama ,
+                                                  dep:sqlite-wasm .
+
+dep:wllama a rk:Dependency ; rdfs:label "@wllama/wllama ^1.10.0" .
+dep:sqlite-wasm a rk:Dependency ; rdfs:label "@sqlite.org/sqlite-wasm ^3.46.1" .

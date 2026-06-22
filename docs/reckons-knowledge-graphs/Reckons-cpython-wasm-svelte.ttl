@@ -1,0 +1,219 @@
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix doap:    <http://usefulinc.com/ns/doap#> .
+@prefix rk:      <urn:reckons:ontology/> .
+@prefix proj:    <urn:reckons:project/> .
+@prefix tech:    <urn:reckons:technology/> .
+@prefix comp:    <urn:reckons:component/> .
+@prefix feat:    <urn:reckons:feature/> .
+@prefix arch:    <urn:reckons:architecture/> .
+@prefix dep:     <urn:reckons:dependency/> .
+@prefix iface:   <urn:reckons:interface/> .
+@prefix dm:      <urn:reckons:datamodel/> .
+
+# ════════════════════════════════════════════════════════════════════════════
+# Reckons-cpython-wasm-svelte — SvelteKit + PGlite + Ethics + XR
+# Ambitious vision: critical thinking AI with ethical governance and WebXR
+# ════════════════════════════════════════════════════════════════════════════
+
+proj:Reckons-cpython-wasm-svelte a rk:Project ;
+    rdfs:label "Reckons (CPython WASM Svelte)" ;
+    dcterms:description "PWA combining critical analytical intelligence with 3D knowledge exploration, emotion-aware voice (Hume.AI), ethical governance, and WCAG 2.1 AA+ accessibility. Uses PGlite (WASM PostgreSQL) with pgvector for local-first vector search." ;
+    rk:maturityLevel "architectural-prototype" ;
+    rk:primaryLanguage "TypeScript" ;
+    rk:storageBackend "PGlite (WASM PostgreSQL) + pgvector" ;
+    rk:llmStrategy "local WASM (CPython, TensorFlow.js)" .
+
+# ── Interfaces ──────────────────────────────────────────────────────────────
+
+proj:Reckons-cpython-wasm-svelte rk:hasInterface iface:WebApp ,
+                                                  iface:PWA ,
+                                                  iface:WebXR .
+
+iface:WebXR a rk:InterfaceType ; rdfs:label "WebXR (VR/AR)" .
+
+# ── Technologies ────────────────────────────────────────────────────────────
+
+proj:Reckons-cpython-wasm-svelte rk:usesTechnology tech:SvelteKit2 ,
+                                                    tech:Svelte5 ,
+                                                    tech:TypeScript ,
+                                                    tech:ThreeJS ,
+                                                    tech:Threlte8 ,
+                                                    tech:ThrelteXR ,
+                                                    tech:Vite ,
+                                                    tech:PGlite ,
+                                                    tech:pgvector ,
+                                                    tech:HumeAI ,
+                                                    tech:TensorFlowJS ,
+                                                    tech:ElectricSQL ,
+                                                    tech:TailwindCSS ,
+                                                    tech:Playwright ,
+                                                    tech:Vitest ,
+                                                    tech:WASM ,
+                                                    tech:Comlink ,
+                                                    tech:WebSpeechAPI ,
+                                                    tech:ServiceWorker ,
+                                                    tech:Workbox ,
+                                                    tech:WebXRAPI ,
+                                                    tech:axeCore .
+
+tech:PGlite a rk:Technology ; rdfs:label "PGlite (WASM PostgreSQL)" ; rk:category "database" .
+tech:pgvector a rk:Technology ; rdfs:label "pgvector" ; rk:category "vector-search" .
+tech:HumeAI a rk:Technology ; rdfs:label "Hume.AI" ; rk:category "ai-voice" .
+tech:TensorFlowJS a rk:Technology ; rdfs:label "TensorFlow.js" ; rk:category "ai-ml" .
+tech:ElectricSQL a rk:Technology ; rdfs:label "Electric SQL" ; rk:category "sync" .
+tech:ThrelteXR a rk:Technology ; rdfs:label "@threlte/xr" ; rk:category "xr" .
+tech:WebSpeechAPI a rk:Technology ; rdfs:label "Web Speech API" ; rk:category "browser-api" .
+tech:WebXRAPI a rk:Technology ; rdfs:label "WebXR API" ; rk:category "xr" .
+tech:axeCore a rk:Technology ; rdfs:label "axe-core" ; rk:category "accessibility-testing" .
+
+# ── Components ──────────────────────────────────────────────────────────────
+
+proj:Reckons-cpython-wasm-svelte rk:hasComponent comp:cws-PGLiteManager ,
+                                                  comp:cws-EthicsController ,
+                                                  comp:cws-HumeVoice ,
+                                                  comp:cws-AccessibilityManager ,
+                                                  comp:cws-NavigationController ,
+                                                  comp:cws-KnowledgeTreeScene ,
+                                                  comp:cws-ServiceWorkerPWA .
+
+comp:cws-PGLiteManager a rk:Component ;
+    rdfs:label "PGlite Database Manager" ;
+    dcterms:description "WASM PostgreSQL (3MB gzip) running in browser. Vector search via pgvector (1536-dim embeddings). 3-7-11 cognitive load constraints: max 3 trunks, 7 branches, 11 leaves." ;
+    rk:componentUses tech:PGlite , tech:pgvector .
+
+comp:cws-EthicsController a rk:Component ;
+    rdfs:label "Ethics Governance Controller" ;
+    dcterms:description "Mirrored ethics architecture: each knowledge node has corresponding ethics rules. 5 foundational principles: Truthfulness, Respect for Persons, Beneficence, Justice, Transparency. Content analysis for bias, unsupported claims, harmful content." .
+
+comp:cws-HumeVoice a rk:Component ;
+    rdfs:label "Hume.AI Voice Client" ;
+    dcterms:description "Emotion recognition and empathic voice. Adapts to frustration, confusion, excitement, anxiety. Falls back to browser Web Speech APIs." ;
+    rk:componentUses tech:HumeAI , tech:WebSpeechAPI .
+
+comp:cws-AccessibilityManager a rk:Component ;
+    rdfs:label "Accessibility Manager (WCAG 2.1 AA+)" ;
+    dcterms:description "High contrast modes, scalable text, dyslexia-friendly fonts, keyboard nav, dwell selection, screen reader support, voice control, spatial audio, haptic feedback, XR accessibility." ;
+    rk:componentUses tech:axeCore .
+
+comp:cws-NavigationController a rk:Component ;
+    rdfs:label "Hierarchical Navigation Controller" ;
+    dcterms:description "Breadcrumb tracking, focus management, search query management, multi-modal navigation (text, voice, 3D spatial)." .
+
+comp:cws-KnowledgeTreeScene a rk:Component ;
+    rdfs:label "Knowledge Tree 3D/XR Scene" ;
+    dcterms:description "Threlte + Three.js + WebXR immersive visualization. Hand tracking, gesture recognition, haptic feedback. Compatible with VR headsets and mobile AR." ;
+    rk:componentUses tech:ThreeJS , tech:Threlte8 , tech:ThrelteXR , tech:WebXRAPI .
+
+comp:cws-ServiceWorkerPWA a rk:Component ;
+    rdfs:label "Service Worker (PWA)" ;
+    dcterms:description "Offline-first capabilities with progressive asset caching and background sync." ;
+    rk:componentUses tech:ServiceWorker , tech:Workbox .
+
+# ── Features ────────────────────────────────────────────────────────────────
+
+proj:Reckons-cpython-wasm-svelte rk:hasFeature feat:CriticalThinkingAI ,
+                                                feat:EthicsGovernance ,
+                                                feat:EmotionAwareVoice ,
+                                                feat:3DVisualization ,
+                                                feat:WebXRImmersive ,
+                                                feat:VectorSearch ,
+                                                feat:CognitiveLimits ,
+                                                feat:WCAG21AA ,
+                                                feat:SpatialAudio ,
+                                                feat:HapticFeedback ,
+                                                feat:LocalFirstStorage ,
+                                                feat:OfflineCapable ,
+                                                feat:OptionalCloudSync .
+
+feat:CriticalThinkingAI a rk:Feature ; rdfs:label "Critical Thinking AI" ;
+    dcterms:description "Non-agreeable AI that challenges assumptions via Socratic questioning." .
+feat:EthicsGovernance a rk:Feature ; rdfs:label "Ethics Governance System" ;
+    dcterms:description "Mirrored ethics rules per knowledge node with 5 foundational principles and compliance auditing." .
+feat:EmotionAwareVoice a rk:Feature ; rdfs:label "Emotion-Aware Voice" ;
+    dcterms:description "Real-time emotion detection from voice with adaptive AI responses via Hume.AI." .
+feat:WebXRImmersive a rk:Feature ; rdfs:label "WebXR Immersive Experience" ;
+    dcterms:description "VR/AR headset support with hand tracking, gestures, and spatial navigation." .
+feat:VectorSearch a rk:Feature ; rdfs:label "Vector Similarity Search" ;
+    dcterms:description "pgvector HNSW indexing for 1536-dimensional semantic search in browser." .
+feat:CognitiveLimits a rk:Feature ; rdfs:label "3-7-11 Cognitive Load Constraints" ;
+    dcterms:description "Hierarchical tree limited to 3 trunks, 7 branches, 11 leaves to prevent cognitive overload." .
+feat:WCAG21AA a rk:Feature ; rdfs:label "WCAG 2.1 AA+ Accessibility" ;
+    dcterms:description "Comprehensive accessibility: visual, motor, cognitive, auditory, and XR-specific features." .
+feat:SpatialAudio a rk:Feature ; rdfs:label "Spatial Audio Navigation" ;
+    dcterms:description "Audio cues and beacons for navigating knowledge spaces in 3D/XR." .
+feat:HapticFeedback a rk:Feature ; rdfs:label "Haptic Feedback" ;
+    dcterms:description "Tactile patterns and texture simulation for XR interaction." .
+feat:OptionalCloudSync a rk:Feature ; rdfs:label "Optional Cloud Sync" ;
+    dcterms:description "Electric SQL for real-time distributed sync when desired." .
+
+# ── Architectural Patterns ──────────────────────────────────────────────────
+
+proj:Reckons-cpython-wasm-svelte rk:followsPattern arch:LocalFirst ,
+                                                    arch:EthicsbyDesign ,
+                                                    arch:ProgressiveEnhancement ,
+                                                    arch:MultiModal ,
+                                                    arch:CognitiveConstraints ,
+                                                    arch:EdgeComputing .
+
+arch:EthicsbyDesign a rk:ArchPattern ; rdfs:label "Ethics by Design" ;
+    dcterms:description "Mirrored governance system with ethics validation at every layer." .
+arch:ProgressiveEnhancement a rk:ArchPattern ; rdfs:label "Progressive Enhancement" ;
+    dcterms:description "Graceful fallbacks: 3D→2D, Hume.AI→Web Speech, cloud→local." .
+arch:MultiModal a rk:ArchPattern ; rdfs:label "Multi-Modal Interaction" ;
+    dcterms:description "Text, voice, and 3D spatial interfaces with emotion-awareness." .
+arch:CognitiveConstraints a rk:ArchPattern ; rdfs:label "Cognitive Load Constraints" ;
+    dcterms:description "3-7-11 hierarchy enforced at database level to prevent information overload." .
+arch:EdgeComputing a rk:ArchPattern ; rdfs:label "Edge/Browser Computing" ;
+    dcterms:description "WASM PostgreSQL, TensorFlow.js, CPython all running in-browser." .
+
+# ── Data Models ─────────────────────────────────────────────────────────────
+
+proj:Reckons-cpython-wasm-svelte rk:hasDataModel dm:KnowledgeTree ,
+                                                  dm:KnowledgeNode ,
+                                                  dm:NodeEmbedding ,
+                                                  dm:NodeConnection ,
+                                                  dm:EthicsRule ,
+                                                  dm:FoundationalEthics ,
+                                                  dm:UserSession ,
+                                                  dm:PerformanceMetric .
+
+dm:KnowledgeTree a rk:DataModel ; rdfs:label "Knowledge Tree" ;
+    dcterms:description "Tree with title, visibility, creator, ethics root. Max 3 trunks." .
+dm:KnowledgeNode a rk:DataModel ; rdfs:label "Knowledge Node (trunk/branch/leaf)" ;
+    dcterms:description "Unified table for hierarchical nodes with spatial positions [x,y,z], full-text search vectors, constraint triggers." .
+dm:NodeEmbedding a rk:DataModel ; rdfs:label "Node Embedding (1536-dim)" ;
+    dcterms:description "Vector embeddings with HNSW indexing for semantic similarity search." .
+dm:NodeConnection a rk:DataModel ; rdfs:label "Node Connection" ;
+    dcterms:description "Typed relationships: semantic, causal, temporal, hierarchical, ethical." .
+dm:EthicsRule a rk:DataModel ; rdfs:label "Ethics Rule" ;
+    dcterms:description "Mirrored governance rule bound to knowledge node with principle and severity." .
+dm:FoundationalEthics a rk:DataModel ; rdfs:label "Foundational Ethics (immutable)" ;
+    dcterms:description "5 immutable principles: Truthfulness, Respect, Beneficence, Justice, Transparency." .
+dm:UserSession a rk:DataModel ; rdfs:label "User Session" ;
+    dcterms:description "State tracking and analytics per user session." .
+dm:PerformanceMetric a rk:DataModel ; rdfs:label "Performance Metric" ;
+    dcterms:description "System monitoring and optimization data." .
+
+# ── Key Dependencies ────────────────────────────────────────────────────────
+
+proj:Reckons-cpython-wasm-svelte rk:dependsOn dep:pglite ,
+                                                dep:hume ,
+                                                dep:threlte-core ,
+                                                dep:threlte-extras ,
+                                                dep:threlte-xr ,
+                                                dep:three ,
+                                                dep:electric-sql ,
+                                                dep:tensorflow-js ,
+                                                dep:idb ,
+                                                dep:workbox-window ,
+                                                dep:comlink .
+
+dep:pglite a rk:Dependency ; rdfs:label "@electric-sql/pglite ^0.2.0" .
+dep:hume a rk:Dependency ; rdfs:label "hume ^0.13.3" .
+dep:threlte-xr a rk:Dependency ; rdfs:label "@threlte/xr ^1.1.1" .
+dep:electric-sql a rk:Dependency ; rdfs:label "electric-sql ^0.12.1" .
+dep:tensorflow-js a rk:Dependency ; rdfs:label "@tensorflow/tfjs ^4.15.0" .
+dep:idb a rk:Dependency ; rdfs:label "idb ^8.0.0" .
+dep:workbox-window a rk:Dependency ; rdfs:label "workbox-window ^7.0.0" .

@@ -1,0 +1,118 @@
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix doap:    <http://usefulinc.com/ns/doap#> .
+@prefix rk:      <urn:reckons:ontology/> .
+
+# ── Reckons.AI Project Comparison Ontology ──────────────────────────────────
+
+rk:Ontology a owl:Ontology ;
+    rdfs:label "Reckons.AI Project Comparison Ontology" ;
+    dcterms:description "Shared vocabulary for comparing Reckons.AI project iterations." .
+
+# ── Classes ─────────────────────────────────────────────────────────────────
+
+rk:Project a owl:Class ;
+    rdfs:label "Software Project" ;
+    rdfs:comment "A distinct Reckons.AI implementation attempt." .
+
+rk:Technology a owl:Class ;
+    rdfs:label "Technology" ;
+    rdfs:comment "A programming language, framework, library, or platform." .
+
+rk:Component a owl:Class ;
+    rdfs:label "Component" ;
+    rdfs:comment "A module, service, or subsystem within a project." .
+
+rk:Feature a owl:Class ;
+    rdfs:label "Feature" ;
+    rdfs:comment "A user-facing capability or system behavior." .
+
+rk:ArchPattern a owl:Class ;
+    rdfs:label "Architectural Pattern" ;
+    rdfs:comment "A high-level design decision or structural approach." .
+
+rk:DataModel a owl:Class ;
+    rdfs:label "Data Model" ;
+    rdfs:comment "A schema, storage format, or data representation." .
+
+rk:Dependency a owl:Class ;
+    rdfs:label "Dependency" ;
+    rdfs:comment "An npm/pip package or external library." .
+
+rk:InterfaceType a owl:Class ;
+    rdfs:label "Interface Type" ;
+    rdfs:comment "A delivery surface: web app, CLI, extension, API, etc." .
+
+# ── Object Properties ───────────────────────────────────────────────────────
+
+rk:usesTechnology a owl:ObjectProperty ;
+    rdfs:domain rk:Project ;
+    rdfs:range rk:Technology ;
+    rdfs:label "uses technology" .
+
+rk:hasComponent a owl:ObjectProperty ;
+    rdfs:domain rk:Project ;
+    rdfs:range rk:Component ;
+    rdfs:label "has component" .
+
+rk:hasFeature a owl:ObjectProperty ;
+    rdfs:domain rk:Project ;
+    rdfs:range rk:Feature ;
+    rdfs:label "has feature" .
+
+rk:followsPattern a owl:ObjectProperty ;
+    rdfs:domain rk:Project ;
+    rdfs:range rk:ArchPattern ;
+    rdfs:label "follows pattern" .
+
+rk:hasDataModel a owl:ObjectProperty ;
+    rdfs:domain rk:Project ;
+    rdfs:range rk:DataModel ;
+    rdfs:label "has data model" .
+
+rk:dependsOn a owl:ObjectProperty ;
+    rdfs:domain rk:Project ;
+    rdfs:range rk:Dependency ;
+    rdfs:label "depends on" .
+
+rk:hasInterface a owl:ObjectProperty ;
+    rdfs:domain rk:Project ;
+    rdfs:range rk:InterfaceType ;
+    rdfs:label "has interface" .
+
+rk:componentUses a owl:ObjectProperty ;
+    rdfs:domain rk:Component ;
+    rdfs:range rk:Technology ;
+    rdfs:label "component uses" .
+
+rk:relatedTo a owl:ObjectProperty, owl:SymmetricProperty ;
+    rdfs:label "related to" ;
+    rdfs:comment "General relationship between entities." .
+
+rk:evolvedInto a owl:ObjectProperty, owl:TransitiveProperty ;
+    rdfs:domain rk:Project ;
+    rdfs:range rk:Project ;
+    rdfs:label "evolved into" .
+
+# ── Datatype Properties ─────────────────────────────────────────────────────
+
+rk:maturityLevel a owl:DatatypeProperty ;
+    rdfs:domain rk:Project ;
+    rdfs:label "maturity level" .
+
+rk:primaryLanguage a owl:DatatypeProperty ;
+    rdfs:domain rk:Project ;
+    rdfs:label "primary language" .
+
+rk:storageBackend a owl:DatatypeProperty ;
+    rdfs:domain rk:Project ;
+    rdfs:label "storage backend" .
+
+rk:llmStrategy a owl:DatatypeProperty ;
+    rdfs:domain rk:Project ;
+    rdfs:label "LLM strategy" .
+
+rk:category a owl:DatatypeProperty ;
+    rdfs:label "category" .
