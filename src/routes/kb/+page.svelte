@@ -732,7 +732,12 @@
         {compareSelection.size}/2 selected for comparison
       </span>
       {#if compareSelection.size === 2}
-        <span class="mono compare-hint">cross-KB comparison coming soon</span>
+        <a
+          href="/review?align={[...compareSelection].join(',')}"
+          class="sm compare-link"
+        >
+          align these KBs
+        </a>
       {/if}
       <button class="sm" onclick={() => (compareSelection = new Set())}>clear</button>
     </div>
@@ -1230,7 +1235,18 @@
     margin-bottom: 0.5rem;
   }
   .compare-label { font-size: 0.7rem; color: var(--accent); }
-  .compare-hint { font-size: 0.65rem; color: var(--muted); }
+  .compare-link {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent);
+    text-decoration: none;
+    transition: background 0.12s;
+  }
+  .compare-link:hover { background: var(--accent); color: #fff; }
 
   /* ── KB list ── */
   .kb-list { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.75rem; }

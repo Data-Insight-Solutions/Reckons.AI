@@ -9,6 +9,8 @@
   import StatementCard from '$lib/components/StatementCard.svelte';
   import SwipeCard from '$lib/components/SwipeCard.svelte';
   import MergeReview from '$lib/components/MergeReview.svelte';
+  import AlignmentCard from '$lib/components/AlignmentCard.svelte';
+  import KbPicker from '$lib/components/KbPicker.svelte';
   import {
     statements,
     sources,
@@ -19,8 +21,14 @@
     statementsForSource,
     setStatus,
     updateStatement,
-    addStatements
+    addStatements,
+    addSource,
   } from '$lib/stores/kb.svelte';
+  import { getRegistry, getCurrentKbId } from '$lib/storage/kb-registry';
+  import {
+    computeAlignment, loadKbStatements, applyAlignmentToActiveKb,
+    type AlignmentResult, type AlignmentSuggestion,
+  } from '$lib/rdf/cross-kb-align';
   import { termKey, isIRI, isLit, isMetaPredicate } from '$lib/rdf/types';
   import { computeDiff } from '$lib/rdf/diff';
   import { generateDiffSummary, type DiffSummary } from '$lib/rdf/diff-summary';
@@ -53,7 +61,7 @@
   let webglAvailable = checkWebGL();
 
   // ── Review panel tabs ─────────────────────────────────────────────────────
-  type Tab = 'incoming' | 'deletions' | 'merges';
+  type Tab = 'incoming' | 'deletions' | 'merges' | 'align';
   let activeTab = $state<Tab>('incoming');
 
   // ── Graph view mode ───────────────────────────────────────────────────────
@@ -316,6 +324,81 @@
 
   // Total pending count for graph label
   const totalPending = $derived(incoming.length + pendingDeletions.length + pendingMerges.length);
+
+  // ── Cross-KB alignment ──────────────────────────────────────────────────
+  let alignSelectedKbs = $state<Set<string>>(new Set());
+  let alignResult = $state<AlignmentResult | null>(null);
+  let alignLoading = $state(false);
+  let alignError = $state<string | null>(null);
+  const currentKbId = getCurrentKbId();
+  const currentKbName = $derived(
+    getRegistry().find(k => k.id === currentKbId)?.name ?? 'Current KB'
+  );
+  const alignPending = $derived(
+    alignResult?.suggestions.filter(s => s.decision === 'pending').length ?? 0
+  );
+
+  async function runAlignment() {
+    alignLoading = true;
+    alignError = null;
+    alignResult = null;
+    try {
+      const activeConfirmed = confirmedStatements();
+      const allSuggestions: AlignmentSuggestion[] = [];
+      const allAligned: import('$lib/rdf/cross-kb-align').AlignedEntity[] = [];
+
+      for (const kbId of alignSelectedKbs) {
+        const entry = getRegistry().find(k => k.id === kbId);
+        if (!entry) continue;
+        const foreignStmts = await loadKbStatements(kbId);
+        const result = await computeAlignment(
+          currentKbId, activeConfirmed,
+          kbId, entry.name,
+          foreignStmts, currentKbName,
+        );
+        allSuggestions.push(...result.suggestions);
+        allAligned.push(...result.alignedEntities);
+      }
+
+      const summary = {
+        additions: allSuggestions.filter(s => s.kind === 'add').length,
+        conflicts: allSuggestions.filter(s => s.kind === 'conflict').length,
+        reinforcements: allSuggestions.filter(s => s.kind === 'reinforce').length,
+        refinements: allSuggestions.filter(s => s.kind === 'refine').length,
+      };
+
+      alignResult = { suggestions: allSuggestions, alignedEntities: allAligned, summary };
+    } catch (e) {
+      alignError = e instanceof Error ? e.message : String(e);
+    } finally {
+      alignLoading = false;
+    }
+  }
+
+  async function acceptAlignment(suggestion: AlignmentSuggestion) {
+    try {
+      await applyAlignmentToActiveKb(suggestion, addStatements, addSource);
+      suggestion.decision = 'accepted';
+      alignResult = { ...alignResult! };
+      refresh();
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+    }
+  }
+
+  function rejectAlignment(suggestion: AlignmentSuggestion) {
+    suggestion.decision = 'rejected';
+    alignResult = { ...alignResult! };
+  }
+
+  // Auto-populate from URL params
+  onMount(() => {
+    const alignParam = new URL(window.location.href).searchParams.get('align');
+    if (alignParam) {
+      alignSelectedKbs = new Set(alignParam.split(',').filter(Boolean));
+      activeTab = 'align';
+    }
+  });
 </script>
 
 <div class="review-layout" class:dragging={isDragging}>
@@ -514,6 +597,10 @@
         merge
         {#if pendingMerges.length > 0}<span class="badge badge-merge">{pendingMerges.length}</span>{/if}
       </button>
+      <button class:active={activeTab === 'align'} onclick={() => activeTab = 'align'}>
+        align
+        {#if alignPending > 0}<span class="badge badge-align">{alignPending}</span>{/if}
+      </button>
     </nav>
 
     <!-- Tab content -->
@@ -643,6 +730,79 @@
                 </div>
               </SwipeCard>
             {/each}
+          </div>
+        {/if}
+      {/if}
+
+      {#if activeTab === 'align'}
+        <div class="align-picker">
+          <KbPicker bind:selected={alignSelectedKbs} excludeId={currentKbId} />
+          <button
+            class="bulk-btn"
+            onclick={runAlignment}
+            disabled={alignSelectedKbs.size === 0 || alignLoading}
+          >
+            {alignLoading ? 'analyzing...' : `align ${alignSelectedKbs.size} KB${alignSelectedKbs.size !== 1 ? 's' : ''}`}
+          </button>
+        </div>
+
+        {#if alignError}
+          <p class="error-text">{alignError}</p>
+        {/if}
+
+        {#if alignResult}
+          <div class="summary">
+            <span class="sc new">{alignResult.summary.additions} add</span>
+            <span class="sc reinforces">{alignResult.summary.reinforcements} reinforce</span>
+            <span class="sc conflict">{alignResult.summary.conflicts} conflict</span>
+            {#if alignResult.summary.refinements > 0}
+              <span class="sc refines">{alignResult.summary.refinements} refine</span>
+            {/if}
+          </div>
+
+          {#if alignResult.alignedEntities.filter(e => e.matchType === 'label-similarity').length > 0}
+            <details class="align-entities-detail">
+              <summary class="mono">
+                {alignResult.alignedEntities.filter(e => e.matchType === 'label-similarity').length} entities matched by similarity
+              </summary>
+              <div class="align-entity-list">
+                {#each alignResult.alignedEntities.filter(e => e.matchType === 'label-similarity') as ae}
+                  <div class="align-entity-row mono">
+                    <span class="ae-foreign">{ae.foreignLabel}</span>
+                    <span class="ae-arrow">≈</span>
+                    <span class="ae-active">{ae.activeLabel}</span>
+                    <span class="ae-sim">{Math.round(ae.similarity * 100)}%</span>
+                  </div>
+                {/each}
+              </div>
+            </details>
+          {/if}
+
+          {#if alignPending === 0}
+            <div class="empty-state">
+              <p>all suggestions reviewed.</p>
+            </div>
+          {:else}
+            <div class="entry-list">
+              {#each alignResult.suggestions.filter(s => s.decision === 'pending') as suggestion (suggestion.id)}
+                <SwipeCard
+                  acceptLabel="accept"
+                  rejectLabel="reject"
+                  onaccept={() => acceptAlignment(suggestion)}
+                  onreject={() => rejectAlignment(suggestion)}
+                >
+                  <AlignmentCard
+                    {suggestion}
+                    onaccept={() => acceptAlignment(suggestion)}
+                    onreject={() => rejectAlignment(suggestion)}
+                  />
+                </SwipeCard>
+              {/each}
+            </div>
+          {/if}
+        {:else if !alignLoading}
+          <div class="empty-state">
+            <p>select KBs above to find alignment opportunities.</p>
           </div>
         {/if}
       {/if}
@@ -1086,6 +1246,45 @@
     font-size: 0.82rem;
   }
   .empty-state p { margin: 0.2rem 0; }
+
+  /* ── Align tab ── */
+  .badge-align { background: color-mix(in srgb, var(--accent) 15%, var(--surface)); color: var(--accent); }
+  .align-picker {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.25rem;
+  }
+  .align-entities-detail {
+    font-size: 0.65rem;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    border-radius: var(--rad-sm);
+    padding: 0.3rem 0.5rem;
+  }
+  .align-entities-detail summary {
+    cursor: pointer;
+    font-size: 0.55rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .align-entity-list {
+    margin-top: 0.3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .align-entity-row {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.58rem;
+  }
+  .ae-foreign { color: var(--data); }
+  .ae-active { color: var(--accent); }
+  .ae-arrow { opacity: 0.4; }
+  .ae-sim { opacity: 0.5; font-size: 0.5rem; }
 
   /* ── Mobile ── */
   @media (max-width: 700px) {
