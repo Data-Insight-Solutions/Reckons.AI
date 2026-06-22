@@ -152,6 +152,25 @@ const TOOLS = [
       },
       required: ['situation', 'target']
     }
+  },
+  {
+    name: 'kb_list_sources',
+    description: 'List all sources in the knowledge base with their kind, URI, and refresh status. Shows which sources can be refreshed (URLs, repos) vs static (notes, documents).',
+    inputSchema: {
+      type: 'object',
+      properties: { ...KB_PARAM }
+    }
+  },
+  {
+    name: 'kb_request_refresh',
+    description: 'Request a refresh of one or all refreshable sources (URL, repository, calendar). Writes a refresh request that the Reckons.AI web app will pick up on next load.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        source_id: { type: 'string', description: 'Specific source ID to refresh. Omit to request refresh of all refreshable sources.' },
+        ...KB_PARAM
+      }
+    }
   }
 ];
 
@@ -360,6 +379,58 @@ function handleKbReckoning(params: { situation: string; target: string; kb?: str
   };
 }
 
+function handleKbListSources(params: { kb?: string }): object {
+  kb.reload();
+  const sources = kb.listSources(params.kb);
+
+  if (sources.length === 0) {
+    return { content: [{ type: 'text', text: 'No sources found. Sources are visible when using workspace mode with sources.json files.' }] };
+  }
+
+  const REFRESHABLE = new Set(['url', 'repository', 'calendar']);
+  const lines = sources.map(({ kb: kbName, source: s }) => {
+    const kind = String(s.kind ?? 'unknown');
+    const refreshable = REFRESHABLE.has(kind);
+    const title = String(s.title ?? '');
+    const uri = String(s.uri ?? '');
+    const id = String(s.id ?? '');
+    const age = s.ingestedAt ? `${Math.round((Date.now() - Number(s.ingestedAt)) / 86400000)}d ago` : '';
+    const sha = s.repoHeadSha ? ` @${String(s.repoHeadSha).slice(0, 8)}` : '';
+    return `${refreshable ? '↻' : '·'} [${kind}] ${title} — ${uri}${sha} (${age}) id:${id.slice(0, 8)}`;
+  });
+
+  const refreshableCount = sources.filter(({ source: s }) => REFRESHABLE.has(String(s.kind))).length;
+  return {
+    content: [{
+      type: 'text',
+      text: `${sources.length} sources (${refreshableCount} refreshable):\n${lines.join('\n')}\n\n↻ = refreshable, · = static`
+    }]
+  };
+}
+
+function handleKbRequestRefresh(params: { source_id?: string; kb?: string }): object {
+  const kbFolder = kb.getKbFolderPath(params.kb);
+  if (!kbFolder) {
+    return { content: [{ type: 'text', text: 'Refresh requires workspace mode. Use --kb /path/to/workspace/' }] };
+  }
+
+  const request = {
+    type: 'refresh',
+    sourceId: params.source_id ?? 'all',
+    requestedAt: new Date().toISOString(),
+    requestedBy: 'mcp',
+  };
+
+  const refreshPath = join(kbFolder, 'refresh-request.json');
+  appendFileSync(refreshPath, JSON.stringify(request) + '\n', 'utf8');
+
+  const msg = params.source_id
+    ? `Refresh requested for source ${params.source_id}. Open Reckons.AI to process.`
+    : `Refresh requested for all refreshable sources. Open Reckons.AI to process.`;
+
+  return { content: [{ type: 'text', text: msg }] };
+}
+
 // ── MCP Protocol (JSON-RPC 2.0 over stdio) ────────────────────────────────────
 
 function respond(id: number | string | null, result: object): void {
@@ -413,6 +484,8 @@ rl.on('line', (line) => {
           case 'kb_add_note':    result = handleKbAddNote(toolArgs as { subject: string; predicate: string; object: string; note?: string; kb?: string }); break;
           case 'kb_subgraph':    result = handleKbSubgraph(toolArgs as { entity: string; hops?: number; limit?: number; kb?: string }); break;
           case 'kb_reckoning':   result = handleKbReckoning(toolArgs as { situation: string; target: string; kb?: string }); break;
+          case 'kb_list_sources': result = handleKbListSources(toolArgs as { kb?: string }); break;
+          case 'kb_request_refresh': result = handleKbRequestRefresh(toolArgs as { source_id?: string; kb?: string }); break;
           default:
             respondError(id ?? null, -32601, `Unknown tool: ${toolName}`);
             return;

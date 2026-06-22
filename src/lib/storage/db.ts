@@ -115,6 +115,10 @@ export type SettingsRecord = {
   tavilyApiKey?: string;
   /** GitHub personal access token — enables repo ingest and higher API rate limits */
   githubToken?: string;
+  /** Refresh all refreshable sources (URL, repo, calendar) when KB is opened */
+  autoRefreshOnOpen?: boolean;
+  /** Periodic source refresh interval in minutes. 0 or absent = disabled. */
+  autoRefreshIntervalMinutes?: number;
 };
 
 export const DEFAULT_TURTLE_SETTINGS: TurtleSettings = {

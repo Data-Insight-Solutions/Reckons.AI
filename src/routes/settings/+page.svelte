@@ -146,6 +146,8 @@
       meshyApiKey: meshyApiKey.trim() || undefined,
       autoAnalyzeOnImport,
       autoAnalyzeIntervalMinutes: Math.max(0, autoAnalyzeIntervalMinutes),
+      autoRefreshOnOpen,
+      autoRefreshIntervalMinutes: Math.max(0, autoRefreshIntervalMinutes),
       extensionHighlight: {
         conflictColor:   hlConflictColor,
         reinforceColor:  hlReinforceColor,
@@ -268,6 +270,10 @@
   let autoAnalyzeOnImport = $state(settings().autoAnalyzeOnImport ?? false);
   let autoAnalyzeIntervalMinutes = $state(settings().autoAnalyzeIntervalMinutes ?? 0);
 
+  // Auto source refresh
+  let autoRefreshOnOpen = $state(settings().autoRefreshOnOpen ?? false);
+  let autoRefreshIntervalMinutes = $state(settings().autoRefreshIntervalMinutes ?? 0);
+
   // KB Identity
   let stableId = $state(settings().kbStableId ?? '');
   let contentHash = $state('');
@@ -365,7 +371,8 @@
           claudeModel, openaiModel, geminiModel, ollamaModel, ollamaBaseUrl, wasmModel,
           wasmIngestModel, wasmAnalyzeModel, wasmChatModel,
           openrouterKey, openrouterModel, mistralApiKey, meshyApiKey, autoAnalyzeOnImport,
-          autoAnalyzeIntervalMinutes, hlConflictColor, hlReinforceColor, hlNewColor,
+          autoAnalyzeIntervalMinutes, autoRefreshOnOpen, autoRefreshIntervalMinutes,
+          hlConflictColor, hlReinforceColor, hlNewColor,
           hlSaturation, hlFontFamily, hlFontSize, hlHoverScale];
     if (!_autoSaveInit) { _autoSaveInit = true; return; }
     clearTimeout(_autoSaveTimer);
@@ -405,6 +412,8 @@
     meshyApiKey            = d.meshyApiKey           ?? '';
     autoAnalyzeOnImport    = d.autoAnalyzeOnImport   ?? false;
     autoAnalyzeIntervalMinutes = d.autoAnalyzeIntervalMinutes ?? 0;
+    autoRefreshOnOpen      = d.autoRefreshOnOpen     ?? false;
+    autoRefreshIntervalMinutes = d.autoRefreshIntervalMinutes ?? 0;
     const dhl = { ...DEFAULT_HIGHLIGHT_SETTINGS, ...(d.extensionHighlight ?? {}) };
     hlConflictColor  = dhl.conflictColor;
     hlReinforceColor = dhl.reinforceColor;
@@ -461,6 +470,8 @@
       meshyApiKey: ud.meshyApiKey,
       autoAnalyzeOnImport: ud.autoAnalyzeOnImport,
       autoAnalyzeIntervalMinutes: ud.autoAnalyzeIntervalMinutes,
+      autoRefreshOnOpen: ud.autoRefreshOnOpen,
+      autoRefreshIntervalMinutes: ud.autoRefreshIntervalMinutes,
       uiScale: ud.uiScale,
       nodeLabelFontSize: ud.nodeLabelFontSize,
       prefer2D: ud.prefer2D,
@@ -491,6 +502,8 @@
     meshyApiKey                = ud.meshyApiKey               ?? '';
     autoAnalyzeOnImport        = ud.autoAnalyzeOnImport       ?? false;
     autoAnalyzeIntervalMinutes = ud.autoAnalyzeIntervalMinutes ?? 0;
+    autoRefreshOnOpen          = ud.autoRefreshOnOpen          ?? false;
+    autoRefreshIntervalMinutes = ud.autoRefreshIntervalMinutes ?? 0;
     uiScale                    = ud.uiScale                   ?? 'md';
     nodeLabelFontSize          = ud.nodeLabelFontSize          ?? 11;
     prefer2D                   = ud.prefer2D                   ?? false;
@@ -1125,6 +1138,31 @@
       class="interval-input"
       type="number"
       bind:value={autoAnalyzeIntervalMinutes}
+      min="0"
+      step="1"
+    />
+    <span class="lbl mono">minutes&nbsp;<span class="muted">(0 = off)</span></span>
+  </div>
+</section>
+
+<section class="card">
+  <h3>source refresh</h3>
+  <p class="sub">automatically re-ingest URL, repository, and calendar sources to pick up changes.</p>
+
+  <label class="check-row">
+    <input type="checkbox" bind:checked={autoRefreshOnOpen} />
+    <div>
+      <strong>refresh sources on KB open</strong>
+      <p class="check-hint">when the app loads, refresh all URL and repo sources to check for updates.</p>
+    </div>
+  </label>
+
+  <div class="interval-row">
+    <span class="lbl mono">refresh every</span>
+    <input
+      class="interval-input"
+      type="number"
+      bind:value={autoRefreshIntervalMinutes}
       min="0"
       step="1"
     />

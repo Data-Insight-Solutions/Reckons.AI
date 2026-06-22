@@ -348,6 +348,32 @@
   function getTripleSearch(id: string) { return tripleSearchMap[id] ?? ''; }
   function setTripleSearch(id: string, val: string) { tripleSearchMap = { ...tripleSearchMap, [id]: val }; }
 
+  // ── Source refresh ──────────────────────────────────────────────────────
+  let refreshing = $state(false);
+  let refreshProgress = $state('');
+
+  async function refreshAllSources() {
+    refreshing = true;
+    refreshProgress = 'checking sources…';
+    try {
+      const { refreshAllSources: doRefresh, refreshableSources } = await import('$lib/stores/source-refresh');
+      const count = refreshableSources().length;
+      if (count === 0) { refreshProgress = 'no refreshable sources'; return; }
+      const results = await doRefresh((p) => {
+        refreshProgress = `refreshing ${p.current + 1}/${p.total}: ${p.currentTitle}`;
+      });
+      const refreshed = results.filter(r => r.status === 'refreshed').length;
+      const errors = results.filter(r => r.status === 'error').length;
+      refreshProgress = refreshed > 0
+        ? `${refreshed} refreshed${errors > 0 ? `, ${errors} errors` : ''}`
+        : errors > 0 ? `${errors} error(s)` : 'all sources up to date';
+    } catch (e) {
+      refreshProgress = e instanceof Error ? e.message : String(e);
+    } finally {
+      refreshing = false;
+    }
+  }
+
   function filteredTriples(sourceId: string) {
     const stmts = statementsForSource(sourceId).filter(
       (s) => s.status === 'confirmed' || s.status === 'refined'
@@ -440,8 +466,16 @@
 <section class="section">
   <div class="section-head">
     <h3>sources</h3>
-    <a href="/ingest" class="ingest-cta mono">+ ingest new →</a>
+    <div class="section-actions">
+      <button class="refresh-btn mono" onclick={refreshAllSources} disabled={refreshing}>
+        {refreshing ? refreshProgress : '↻ refresh'}
+      </button>
+      <a href="/ingest" class="ingest-cta mono">+ ingest new →</a>
+    </div>
   </div>
+  {#if refreshProgress && !refreshing}
+    <p class="refresh-status mono">{refreshProgress}</p>
+  {/if}
 
   {#if nonAnalysisSources.length === 0}
     <div class="empty-card">
@@ -1017,10 +1051,18 @@
     color: var(--accent); margin: 0;
   }
 
+  .section-actions { display: flex; align-items: center; gap: 0.75rem; }
   .ingest-cta {
     font-size: 0.7rem; color: var(--accent); text-decoration: none;
   }
   .ingest-cta:hover { text-decoration: underline; }
+  .refresh-btn {
+    font-size: 0.68rem; color: var(--muted); background: none; border: 1px solid var(--line);
+    padding: 0.25rem 0.6rem; border-radius: var(--rad-sm); cursor: pointer;
+  }
+  .refresh-btn:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+  .refresh-btn:disabled { opacity: 0.6; cursor: default; }
+  .refresh-status { font-size: 0.68rem; color: var(--muted); margin: -0.4rem 0 0.5rem; }
 
   .section-hint { color: var(--muted); font-size: 0.8rem; margin: 0; }
 

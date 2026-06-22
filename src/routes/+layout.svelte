@@ -117,6 +117,24 @@
       if (indicoParam?.trim()) {
         await updateSettings({ indicoServerUrl: indicoParam.trim() });
       }
+
+      // Auto-refresh sources on KB open (if enabled)
+      {
+        const { refreshOnOpen, startAutoRefreshScheduler } = await import('$lib/stores/source-refresh');
+        refreshOnOpen().then(results => {
+          const refreshed = results.filter(r => r.status === 'refreshed');
+          if (refreshed.length > 0) {
+            pushNotification({
+              id: 'auto-refresh',
+              type: 'info',
+              title: `Refreshed ${refreshed.length} source${refreshed.length > 1 ? 's' : ''}`,
+              body: refreshed.map(r => r.title).join(', '),
+              action: { label: 'Review', href: '/review' },
+            });
+          }
+        }).catch(e => console.warn('[auto-refresh] Failed:', e));
+        startAutoRefreshScheduler();
+      }
     }).catch(e => {
       error = e instanceof Error ? e.message : String(e);
       console.error('Store initialization error:', e);

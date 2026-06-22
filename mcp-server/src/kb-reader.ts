@@ -437,6 +437,33 @@ export class MultiKBReader {
     return null;
   }
 
+  /** List sources from sources.json files in workspace KBs. */
+  listSources(kbName?: string): Array<{ kb: string; source: Record<string, unknown> }> {
+    if (this.legacyReader) return [];
+    const results: Array<{ kb: string; source: Record<string, unknown> }> = [];
+
+    const folders = kbName
+      ? (() => {
+          // Find matching folder
+          for (const [folder, meta] of this.metas) {
+            if (folder === kbName || meta.name.toLowerCase() === kbName.toLowerCase()) return [folder];
+          }
+          return [];
+        })()
+      : [...this.readers.keys()];
+
+    for (const folder of folders) {
+      const sourcesPath = join(this.kbsDir, folder, 'sources.json');
+      if (!existsSync(sourcesPath)) continue;
+      try {
+        const raw = readFileSync(sourcesPath, 'utf8');
+        const sources = JSON.parse(raw) as Record<string, unknown>[];
+        for (const src of sources) results.push({ kb: folder, source: src });
+      } catch { /* skip bad sources file */ }
+    }
+    return results;
+  }
+
   /** Get the workspace directory path (for writing pending files). */
   getKbFolderPath(kbName?: string): string | null {
     if (this.legacyReader) return null;
