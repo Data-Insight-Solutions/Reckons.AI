@@ -43,7 +43,7 @@ export type Source = {
   analysisModel?: string;
   analysisProvider?: string;
   analysisTrigger?: 'manual' | 'import' | 'schedule';
-  analysisFocus?: 'enrich' | 'merge' | 'entity-types' | 'delete' | 'new-triples';
+  analysisFocus?: 'enrich' | 'merge' | 'entity-types' | 'delete' | 'new-triples' | 'align';
   analysisTotalSuggestions?: number;
   /** Repository metadata (present when kind === 'repository') */
   repoOwner?: string;

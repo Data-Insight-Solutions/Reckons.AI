@@ -40,6 +40,18 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      testMatch: '*.test.ts', // top-level visual tests only
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: { args: ['--no-sandbox', '--disable-dev-shm-usage'] },
+      },
+    },
+    {
+      name: 'user-stories',
+      testDir: './tests/visual/user-stories',
+      testMatch: '*.test.ts',
+      timeout: 120_000,
+      fullyParallel: false, // stories are sequential within each file
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: { args: ['--no-sandbox', '--disable-dev-shm-usage'] },

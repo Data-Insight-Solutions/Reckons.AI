@@ -74,6 +74,21 @@ const MINILM: ModelManifest = {
   ],
 };
 
+// bge-small-en-v1.5 q8 — embedding model (new default, better merge/alignment accuracy)
+const BGE_SMALL: ModelManifest = {
+  id: 'bge-small-en-v1.5',
+  label: 'BGE-small-en (embeddings)',
+  description: 'Semantic search, entity clustering & cross-KB alignment. ~33 MB.',
+  repo: 'Xenova/bge-small-en-v1.5',
+  totalBytes: 33_000_000,
+  files: [
+    { path: 'onnx/model_quantized.onnx', approxBytes: 33_000_000, cacheName: TRANSFORMERS_CACHE },
+    { path: 'config.json', approxBytes: 600, cacheName: TRANSFORMERS_CACHE },
+    { path: 'tokenizer.json', approxBytes: 700_000, cacheName: TRANSFORMERS_CACHE },
+    { path: 'tokenizer_config.json', approxBytes: 1_200, cacheName: TRANSFORMERS_CACHE },
+  ],
+};
+
 // Kokoro 82M quantized — TTS
 const KOKORO: ModelManifest = {
   id: 'kokoro-82m',
@@ -111,7 +126,7 @@ const WHISPER_TINY: ModelManifest = {
   ],
 };
 
-export const MODEL_MANIFESTS: ModelManifest[] = [QWEN25_05B, MINILM, KOKORO, WHISPER_TINY];
+export const MODEL_MANIFESTS: ModelManifest[] = [QWEN25_05B, BGE_SMALL, MINILM, KOKORO, WHISPER_TINY];
 
 // ── Cache inspection ───────────────────────────────────────────────────────
 

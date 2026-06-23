@@ -40,6 +40,8 @@ export type SettingsRecord = {
   mergeAnalysisBackend?: 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'openrouter' | 'chrome-ai' | 'reckons';
   ollamaModel: string;
   ollamaBaseUrl: string;
+  /** Embedding model used for similarity, clustering, and alignment */
+  embeddingModel?: string;
   embeddingThreshold: number;
   autoConfirmHighConfidence: boolean;
   humeAiApiKey?: string;
@@ -58,6 +60,10 @@ export type SettingsRecord = {
   kbTitle?: string;
   /** What this KB is about — used to guide re-analysis and AI prompts */
   kbDescription?: string;
+  /** Central guidance text for all analyze operations. Pre-fills from kbTitle + kbDescription. */
+  analyzeGuidance?: string;
+  /** Custom prompts per analyze type — overrides built-in defaults when set */
+  analyzePrompts?: Partial<Record<'enrich' | 'merge' | 'entity-types' | 'delete', string>>;
   /** User-defined guided story for this KB (played in Shelly's explore tab) */
   kbStory?: KbStoryStep[];
   /**
@@ -185,6 +191,7 @@ export const DEFAULT_SETTINGS: SettingsRecord = {
   kbTitle: import.meta.env.VITE_KB_TITLE || undefined,
   kbDescription: import.meta.env.VITE_KB_DESCRIPTION || undefined,
   shellyCustomPrompt: import.meta.env.VITE_SHELLY_PROMPT || undefined,
+  embeddingModel: import.meta.env.VITE_EMBEDDING_MODEL ?? 'Xenova/bge-small-en-v1.5',
   embeddingThreshold: 0.85,
   autoConfirmHighConfidence: false,
   turtleSettings: { ...DEFAULT_TURTLE_SETTINGS }

@@ -2,13 +2,14 @@ import { chatClaude, chatOpenAI, chatGemini, chatOllama, chatOpenRouter, chatRec
 import { BUILT_IN_TYPES } from '$lib/rdf/entity-types';
 import { ETHICS_PREAMBLE } from '$lib/safety/content-policy';
 
-export type AnalysisType = 'enrich' | 'merge' | 'entity-types' | 'delete';
+export type AnalysisType = 'enrich' | 'merge' | 'entity-types' | 'delete' | 'align';
 
 export const ANALYSIS_TYPE_LABELS: Record<AnalysisType, string> = {
   'enrich':      'Enrich',
   'merge':       'Merge Entities',
   'entity-types':'Entity Types',
   'delete':      'Entity Delete',
+  'align':       'Cross-KB Align',
 };
 
 export interface EntitySummary {
@@ -71,10 +72,15 @@ export interface ReAnalyzeResponse {
 
 // ── Shared helpers ──────────────────────────────────────────────────────────
 
-function kbHeader(kbTitle?: string, kbDescription?: string): string {
-  return (kbTitle || kbDescription)
-    ? `KNOWLEDGE BASE: ${kbTitle ?? 'Unnamed'}\nPURPOSE: ${kbDescription ?? '(not specified)'}\n\n`
-    : '';
+function kbHeader(kbTitle?: string, kbDescription?: string, analyzeGuidance?: string): string {
+  const parts: string[] = [];
+  if (kbTitle || kbDescription) {
+    parts.push(`KNOWLEDGE BASE: ${kbTitle ?? 'Unnamed'}\nPURPOSE: ${kbDescription ?? '(not specified)'}`);
+  }
+  if (analyzeGuidance) {
+    parts.push(`GUIDANCE: ${analyzeGuidance}`);
+  }
+  return parts.length > 0 ? parts.join('\n') + '\n\n' : '';
 }
 
 function entityBlock(entities: EntitySummary[]): string {
@@ -92,8 +98,8 @@ function entityBlock(entities: EntitySummary[]): string {
 
 // ── Focused prompt builders ─────────────────────────────────────────────────
 
-function buildNewTriplesPrompt(entities: EntitySummary[], kbTitle?: string, kbDescription?: string): string {
-  return `${kbHeader(kbTitle, kbDescription)}You are enriching an RDF knowledge graph. Your ONLY task is to identify MISSING RELATIONS — new predicate triples that connect existing entities.
+function buildNewTriplesPrompt(entities: EntitySummary[], kbTitle?: string, kbDescription?: string, analyzeGuidance?: string): string {
+  return `${kbHeader(kbTitle, kbDescription, analyzeGuidance)}You are enriching an RDF knowledge graph. Your ONLY task is to identify MISSING RELATIONS — new predicate triples that connect existing entities.
 
 IMPORTANT — OPEN WORLD ASSUMPTION:
 This KB is deliberately scoped. Absence of a fact does NOT mean the fact is false — it means this KB hasn't captured it yet. Your suggestions should surface connections that the KB *probably* should contain given its current focus, not everything that *could* be true in the world.
@@ -125,8 +131,8 @@ Return exactly:
 }`;
 }
 
-function buildEnrichPrompt(entities: EntitySummary[], webContext: string, kbTitle?: string, kbDescription?: string): string {
-  return `${kbHeader(kbTitle, kbDescription)}You are enriching an RDF knowledge graph using web search results.
+function buildEnrichPrompt(entities: EntitySummary[], webContext: string, kbTitle?: string, kbDescription?: string, analyzeGuidance?: string): string {
+  return `${kbHeader(kbTitle, kbDescription, analyzeGuidance)}You are enriching an RDF knowledge graph using web search results.
 
 IMPORTANT — OPEN WORLD ASSUMPTION:
 This KB is deliberately scoped. Absence of a fact does NOT mean the fact is false — it means this KB hasn't captured it yet. Your job is to identify facts from the web search results that would meaningfully fill gaps in this KB's coverage, given its existing focus and entities.
@@ -167,8 +173,8 @@ Return exactly:
 }`;
 }
 
-function buildMergePrompt(entities: EntitySummary[], kbTitle?: string, kbDescription?: string): string {
-  return `${kbHeader(kbTitle, kbDescription)}You are simplifying an RDF knowledge graph by finding DUPLICATE ENTITIES — nodes that represent the same real-world thing and should be merged into one.
+function buildMergePrompt(entities: EntitySummary[], kbTitle?: string, kbDescription?: string, analyzeGuidance?: string): string {
+  return `${kbHeader(kbTitle, kbDescription, analyzeGuidance)}You are simplifying an RDF knowledge graph by finding DUPLICATE ENTITIES — nodes that represent the same real-world thing and should be merged into one.
 
 Signs of duplicates: same name in different case, abbreviation vs full name, spelling variants, same identifier in different formats.
 
@@ -198,12 +204,12 @@ Return exactly:
 }`;
 }
 
-function buildEntityTypesPrompt(entities: EntitySummary[], kbTitle?: string, kbDescription?: string): string {
+function buildEntityTypesPrompt(entities: EntitySummary[], kbTitle?: string, kbDescription?: string, analyzeGuidance?: string): string {
   const typeList = BUILT_IN_TYPES.map(
     (t) => `  ${t.iri} | "${t.label}" — ${t.description}`
   ).join('\n');
 
-  return `${kbHeader(kbTitle, kbDescription)}You are correcting entity types in an RDF knowledge graph. Your ONLY task is to find MISTYPED or UNTYPED entities that need a type correction.
+  return `${kbHeader(kbTitle, kbDescription, analyzeGuidance)}You are correcting entity types in an RDF knowledge graph. Your ONLY task is to find MISTYPED or UNTYPED entities that need a type correction.
 
 Common errors:
 - A Document node typed as Concept
@@ -242,10 +248,10 @@ Return exactly:
 }`;
 }
 
-function buildDeletePrompt(entities: EntitySummary[], kbTitle?: string, kbDescription?: string): string {
+function buildDeletePrompt(entities: EntitySummary[], kbTitle?: string, kbDescription?: string, analyzeGuidance?: string): string {
   const islands = entities.filter(e => e.isIsland).map(e => `  • ${e.label} (${e.iri})`).join('\n');
 
-  return `${kbHeader(kbTitle, kbDescription)}You are pruning an RDF knowledge graph. Your ONLY task is to identify NOISE NODES — entities that should be deleted.
+  return `${kbHeader(kbTitle, kbDescription, analyzeGuidance)}You are pruning an RDF knowledge graph. Your ONLY task is to identify NOISE NODES — entities that should be deleted.
 
 PRIORITY ORDER (assess in this order):
 1. ISLAND NODES — low-connectivity nodes with few statements and a single source, especially if the label looks like a raw keyword, partial phrase, or accidental IRI.
@@ -276,6 +282,19 @@ Return exactly:
 }`;
 }
 
+// ── Default prompt access (for prompt editor UI) ────────────────────────────
+
+/** Returns the built-in default prompt for a given analysis type. Used by the settings UI to pre-fill prompt editors. */
+export function getDefaultPrompt(analysisType: Exclude<AnalysisType, 'align'>, entityCount = 12, kbTitle?: string, kbDescription?: string, analyzeGuidance?: string): string {
+  const placeholder: EntitySummary[] = [{ iri: 'urn:example', label: '(sample entity)', currentTypeIri: null, currentTypeLabel: null, predicates: [], statementCount: 1, sourceCount: 1, isIsland: false }];
+  switch (analysisType) {
+    case 'enrich': return buildNewTriplesPrompt(placeholder, kbTitle, kbDescription, analyzeGuidance);
+    case 'merge': return buildMergePrompt(placeholder, kbTitle, kbDescription, analyzeGuidance);
+    case 'entity-types': return buildEntityTypesPrompt(placeholder, kbTitle, kbDescription, analyzeGuidance);
+    case 'delete': return buildDeletePrompt(placeholder, kbTitle, kbDescription, analyzeGuidance);
+  }
+}
+
 // ── Public API ──────────────────────────────────────────────────────────────
 
 export type ReAnalyzeProvider = 'claude' | 'openai' | 'gemini' | 'ollama' | 'openrouter' | 'reckons';
@@ -290,8 +309,12 @@ export interface ReAnalyzeOptions {
   analysisType: AnalysisType;
   kbTitle?: string;
   kbDescription?: string;
+  /** Central guidance text shared across all analyze operations */
+  analyzeGuidance?: string;
   /** Pre-formatted web search context (for 'enrich' analysis type) */
   webContext?: string;
+  /** Custom user-edited prompt — replaces the built-in prompt entirely when set */
+  customPrompt?: string;
 }
 
 const EMPTY: ReAnalyzeResponse = {
@@ -302,14 +325,15 @@ const EMPTY: ReAnalyzeResponse = {
 };
 
 export async function reAnalyze(opts: ReAnalyzeOptions): Promise<ReAnalyzeResponse> {
-  const { provider, apiKey, model, ollamaBaseUrl, reckonsBaseUrl, entities, analysisType, kbTitle, kbDescription, webContext } = opts;
+  const { provider, apiKey, model, ollamaBaseUrl, reckonsBaseUrl, entities, analysisType, kbTitle, kbDescription, analyzeGuidance, webContext, customPrompt } = opts;
   if (entities.length === 0) return EMPTY;
+  if (analysisType === 'align') return EMPTY; // Align is handled by cross-kb-align, not LLM
 
-  const prompt =
-    analysisType === 'enrich'        ? (webContext ? buildEnrichPrompt(entities, webContext, kbTitle, kbDescription) : buildNewTriplesPrompt(entities, kbTitle, kbDescription)) :
-    analysisType === 'merge'         ? buildMergePrompt(entities, kbTitle, kbDescription) :
-    analysisType === 'entity-types'  ? buildEntityTypesPrompt(entities, kbTitle, kbDescription) :
-                                       buildDeletePrompt(entities, kbTitle, kbDescription);
+  const prompt = customPrompt ??
+    (analysisType === 'enrich'        ? (webContext ? buildEnrichPrompt(entities, webContext, kbTitle, kbDescription, analyzeGuidance) : buildNewTriplesPrompt(entities, kbTitle, kbDescription, analyzeGuidance)) :
+    analysisType === 'merge'         ? buildMergePrompt(entities, kbTitle, kbDescription, analyzeGuidance) :
+    analysisType === 'entity-types'  ? buildEntityTypesPrompt(entities, kbTitle, kbDescription, analyzeGuidance) :
+                                       buildDeletePrompt(entities, kbTitle, kbDescription, analyzeGuidance));
 
   const messages = [{ role: 'user' as const, content: prompt }];
 

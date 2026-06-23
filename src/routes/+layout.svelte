@@ -48,8 +48,10 @@
     Promise.all([loadAll(), loadSettings(), loadTurtleSettings(), loadGlbOverrides(), loadGifOverrides(), loadIcon2dOverrides()]).then(async () => {
       startScheduler();
       initExtensionBridge();
-      // Auto-warm WASM model if it's the configured backend
+      // Apply embedding model from settings
+      const { setEmbeddingModel } = await import('$lib/embed');
       const s = settings();
+      if (s.embeddingModel) setEmbeddingModel(s.embeddingModel);
       if (s.chatBackend === 'wasm' || (!s.chatBackend && s.preferredBackend === 'wasm')) {
         warmWasm(s.wasmModel || undefined);
       }

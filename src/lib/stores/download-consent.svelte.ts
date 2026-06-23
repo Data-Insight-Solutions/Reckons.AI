@@ -10,7 +10,7 @@
  */
 
 import { setDownloadConsentHandler } from '$lib/integrations/llm/wasm';
-import { setEmbedConsentHandler } from '$lib/embed';
+import { setEmbedConsentHandler, setEmbeddingModel } from '$lib/embed';
 
 /** Pending consent request — when non-null, the dialog should be shown. */
 let _pending = $state<{

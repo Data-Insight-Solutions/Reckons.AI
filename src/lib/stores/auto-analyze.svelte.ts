@@ -171,7 +171,8 @@ export async function runAndStoreAnalysis(trigger: AnalysisTrigger = 'manual', a
       webContext = '(no search API key configured — set Tavily API key in Settings > Integrations)';
     }
 
-    const result = await reAnalyze({ provider, apiKey, model, ollamaBaseUrl: s.ollamaBaseUrl, reckonsBaseUrl: s.reckonsBaseUrl, entities, analysisType, kbTitle: s.kbTitle, kbDescription: s.kbDescription, webContext });
+    const customPrompt = analysisType !== 'align' ? s.analyzePrompts?.[analysisType] : undefined;
+    const result = await reAnalyze({ provider, apiKey, model, ollamaBaseUrl: s.ollamaBaseUrl, reckonsBaseUrl: s.reckonsBaseUrl, entities, analysisType, kbTitle: s.kbTitle, kbDescription: s.kbDescription, analyzeGuidance: s.analyzeGuidance, webContext, customPrompt });
     const total =
       result.typeSuggestions.length +
       result.relationSuggestions.length +

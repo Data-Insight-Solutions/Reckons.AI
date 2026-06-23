@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state';
+  import { goto } from '$app/navigation';
   import { pendingStatements } from '$lib/stores/kb.svelte';
   import { analysisRunning, runAndStoreAnalysis } from '$lib/stores/auto-analyze.svelte';
   import type { AnalysisType } from '$lib/integrations/llm/re-analyze';
@@ -17,12 +18,23 @@
     { href: '/about', label: 'info', glyph: 'ⓘ' },
   ];
 
-  const ANALYSIS_ACTIONS: { type: AnalysisType; glyph: string; label: string }[] = [
+  const DEFAULT_ACTIONS: { type: AnalysisType; glyph: string; label: string }[] = [
     { type: 'enrich',       glyph: '◎', label: 'enrich'        },
     { type: 'merge',        glyph: '⟷', label: 'merge'         },
     { type: 'entity-types', glyph: '◈', label: 'types'         },
     { type: 'delete',       glyph: '✕', label: 'prune'         },
   ];
+
+  const REVIEW_ACTIONS: { type: AnalysisType; glyph: string; label: string }[] = [
+    { type: 'enrich',       glyph: '◎', label: 'enrich'        },
+    { type: 'align',        glyph: '⊕', label: 'align'         },
+    { type: 'entity-types', glyph: '◈', label: 'types'         },
+    { type: 'delete',       glyph: '✕', label: 'prune'         },
+  ];
+
+  const analysisActions = $derived(
+    page.url.pathname.startsWith('/review') ? REVIEW_ACTIONS : DEFAULT_ACTIONS
+  );
 
   const pendingCount = $derived(pendingStatements().length);
   const running = $derived(analysisRunning());
@@ -36,6 +48,11 @@
 
   async function runAnalysis(type: AnalysisType) {
     analyzeOpen = false;
+    if (type === 'align') {
+      // Navigate to review page's align tab instead of running LLM analysis
+      await goto('/review?tab=align');
+      return;
+    }
     await runAndStoreAnalysis('manual', type);
   }
 
@@ -46,7 +63,7 @@
 
 {#if analyzeOpen}
   <div class="analyze-popup" role="menu" aria-label="Analysis actions" onclick={(e) => e.stopPropagation()}>
-    {#each ANALYSIS_ACTIONS as action}
+    {#each analysisActions as action}
       <button
         class="popup-item"
         role="menuitem"
@@ -58,7 +75,7 @@
         <span class="popup-glyph">{action.glyph}</span>
         <span class="popup-label">{action.label}</span>
       </button>
-      {#if action !== ANALYSIS_ACTIONS[ANALYSIS_ACTIONS.length - 1]}
+      {#if action !== analysisActions[analysisActions.length - 1]}
         <div class="popup-divider"></div>
       {/if}
     {/each}

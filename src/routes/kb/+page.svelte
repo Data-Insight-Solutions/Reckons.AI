@@ -68,6 +68,22 @@
     descSaving = false;
   }
 
+  // ── Analyze guidance ───────────────────────────────────────────────────────
+  let guidanceLocal = $state(settings().analyzeGuidance ?? '');
+  let guidanceSaving = $state(false);
+  let showPromptEditor = $state(false);
+
+  $effect(() => {
+    const s = settings();
+    if (guidanceLocal === '' && s.analyzeGuidance) guidanceLocal = s.analyzeGuidance;
+  });
+
+  async function saveGuidance() {
+    guidanceSaving = true;
+    await updateSettings({ analyzeGuidance: guidanceLocal.trim() || undefined });
+    guidanceSaving = false;
+  }
+
   // ── Stats ─────────────────────────────────────────────────────────────────
   const nonAnalysisSources = $derived(sources().filter((s) => s.kind !== 'analysis'));
 
@@ -460,6 +476,14 @@
       <a href="/review" class="stat stat-pending">{pendingTotal} pending review →</a>
     {/if}
   </div>
+  <textarea
+    class="kb-guidance-input"
+    bind:value={guidanceLocal}
+    onblur={saveGuidance}
+    placeholder="analyze guidance — shared context for enrich, types, prune, and align operations"
+    rows="2"
+  ></textarea>
+  {#if guidanceSaving}<span class="saving mono" style="font-size:0.7rem">saving…</span>{/if}
 </div>
 
 <!-- ── Sources ────────────────────────────────────────────────────────────── -->
@@ -1034,6 +1058,15 @@
   }
   .kb-desc-input:focus { border-bottom-color: var(--line); }
   .kb-desc-input::placeholder { color: var(--muted); }
+
+  .kb-guidance-input {
+    width: 100%; resize: vertical; font-size: 0.78rem;
+    background: var(--surface-2); border: 1px solid var(--line); outline: none;
+    border-radius: var(--rad-sm); color: var(--ink-2); font-family: var(--font-mono);
+    line-height: 1.5; padding: 0.5rem; min-height: 2rem; margin-top: 0.5rem;
+  }
+  .kb-guidance-input:focus { border-color: var(--accent); }
+  .kb-guidance-input::placeholder { color: var(--muted); font-family: inherit; }
 
   .kb-stats {
     display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem;

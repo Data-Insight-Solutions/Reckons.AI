@@ -17,12 +17,21 @@
  */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { EXTRACTION_SYSTEM_PROMPT, buildExtractionUserPrompt, parseTriplesJSON } from '../../src/lib/integrations/llm/extractor';
 import { ETHICS_PREAMBLE } from '../../src/lib/safety/content-policy';
 import { buildReport, formatReport } from './scoring';
 import type { ExtractedTriple } from '../../src/lib/integrations/llm/extractor';
 import type { ChatTestCase, BenchReport } from './scoring';
+
+// Load .env for API keys (enables cloud provider comparison)
+const envPath = resolve(import.meta.dirname || __dirname, '../../.env');
+if (existsSync(envPath)) {
+  for (const line of readFileSync(envPath, 'utf-8').split('\n')) {
+    const match = line.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.+?)\s*$/);
+    if (match && !process.env[match[1]]) process.env[match[1]] = match[2];
+  }
+}
 
 // ── Default model catalogue ──────────────────────────────────────────────────
 // These match the WASM_MODELS list in settings + a few extras worth testing.
@@ -45,6 +54,7 @@ const CATALOGUE: Record<string, { label: string; note: string }> = {
 
 const args = process.argv.slice(2);
 const saveResults = args.includes('--save');
+const queryHF = args.includes('--hf');
 
 if (args.includes('--list')) {
   console.log('\nAvailable models:');
@@ -52,6 +62,7 @@ if (args.includes('--list')) {
     console.log(`  ${m.label.padEnd(16)} ${id.padEnd(48)} ${m.note}`);
   }
   console.log('\nPass --model <id> to run a specific model, or any HuggingFace model ID.');
+  console.log('Pass --hf to query HuggingFace for top text-generation models.');
   process.exit(0);
 }
 
@@ -64,6 +75,36 @@ function parseModels(): string[] {
   }
   // Default: run all catalogue models
   return models.length > 0 ? models : Object.keys(CATALOGUE);
+}
+
+async function queryHFModels(): Promise<string[]> {
+  if (!queryHF) return [];
+  console.log('\nQuerying HuggingFace for top text-generation ONNX models...');
+  try {
+    const params = new URLSearchParams({
+      pipeline_tag: 'text-generation',
+      sort: 'downloads',
+      direction: '-1',
+      limit: '30',
+    });
+    const res = await fetch(`https://huggingface.co/api/models?${params}`);
+    if (!res.ok) throw new Error(`HF API ${res.status}`);
+    const models: Array<{ modelId: string; tags: string[]; downloads: number; library_name?: string }> = await res.json();
+    // Filter for ONNX-compatible small models
+    const onnxModels = models.filter(m => {
+      const tags = m.tags ?? [];
+      return (tags.includes('onnx') || tags.includes('transformers.js') || m.library_name === 'onnx')
+        && !CATALOGUE[m.modelId]; // skip already-catalogued
+    });
+    console.log(`  Found ${onnxModels.length} additional ONNX text-generation models`);
+    for (const m of onnxModels.slice(0, 5)) {
+      console.log(`    ${m.modelId} (${m.downloads.toLocaleString()} downloads)`);
+    }
+    return onnxModels.slice(0, 3).map(m => m.modelId);
+  } catch (e) {
+    console.warn(`  HF query failed: ${(e as Error).message}`);
+    return [];
+  }
 }
 
 const modelsToRun = parseModels();
@@ -284,11 +325,15 @@ async function main() {
   console.log(`╚${'═'.repeat(58)}╝`);
   console.log(`Fixture: octopus.txt (${sourceText.length} chars)`);
   console.log(`Golden: ${goldenIngest.length} ingest triples, ${chatTestCases.length} chat questions`);
-  console.log(`Models: ${modelsToRun.length} (${modelsToRun.map(m => CATALOGUE[m]?.label ?? m.split('/').pop()).join(', ')})`);
+  // Query HF for additional models if requested
+  const hfModels = await queryHFModels();
+  const allModels = [...modelsToRun, ...hfModels];
+
+  console.log(`Models: ${allModels.length} (${allModels.map(m => CATALOGUE[m]?.label ?? m.split('/').pop()).join(', ')})`);
 
   const reports: BenchReport[] = [];
 
-  for (const modelId of modelsToRun) {
+  for (const modelId of allModels) {
     const report = await runModel(modelId);
     if (report) reports.push(report);
   }

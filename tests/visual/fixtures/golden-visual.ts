@@ -147,6 +147,133 @@ export const VISUAL_TEST_CASES: VisualTestCase[] = [
       description: 'Tablet view of the main graph page',
     },
   },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // User-Story derived test cases
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // ── Review page: Align tab ────────────────────────────────────────────────
+  {
+    id: 'review-align-tab',
+    pageUrl: '/review',
+    description: 'Review page with align tab for cross-KB alignment',
+    viewport: { width: 1280, height: 720 },
+    golden: {
+      noSolidFill: true,
+      notBlank: true,
+      mustBeVisible: ['.graph-pane', '.review-panel'],
+      mustNotOverlap: [['.graph-pane', '.review-panel']],
+      mustContainText: ['review', 'incoming', 'align'],
+      semanticFeatures: ['split view', 'tab bar', 'align tab'],
+      description: 'Review page with align tab visible in the tab bar',
+    },
+  },
+
+  // ── KB page: multiple KBs ────────────────────────────────────────────────
+  {
+    id: 'kb-page-multi',
+    pageUrl: '/kb',
+    description: 'KB page showing multiple knowledge bases in registry',
+    viewport: { width: 1280, height: 720 },
+    golden: {
+      noSolidFill: true,
+      notBlank: true,
+      mustBeVisible: ['nav'],
+      mustNotOverlap: [],
+      mustContainText: ['kb'],
+      semanticFeatures: ['navigation bar', 'knowledge base list', 'dark theme'],
+      description: 'KB management page with multiple KB entries',
+    },
+  },
+
+  // ── Ingest page: KB import tab ────────────────────────────────────────────
+  {
+    id: 'ingest-kb-tab',
+    pageUrl: '/ingest',
+    description: 'Ingest page with KB tab for TTL file import',
+    viewport: { width: 1280, height: 720 },
+    golden: {
+      noSolidFill: true,
+      notBlank: true,
+      mustBeVisible: ['nav'],
+      mustNotOverlap: [],
+      mustContainText: ['ingest', 'kb'],
+      semanticFeatures: ['navigation bar', 'tab bar', 'file upload', 'dark theme'],
+      description: 'Ingest page showing KB import tab with file upload area',
+    },
+  },
+
+  // ── Mobile: Review page with align tab ─────────────────────────────────────
+  {
+    id: 'review-align-mobile',
+    pageUrl: '/review',
+    description: 'Review page align tab on mobile (stacked layout)',
+    viewport: { width: 412, height: 915 },
+    device: 'Pixel 7',
+    golden: {
+      noSolidFill: true,
+      notBlank: true,
+      mustBeVisible: ['.graph-pane', '.review-panel'],
+      mustNotOverlap: [],
+      mustContainText: ['review'],
+      semanticFeatures: ['stacked layout', 'review panel', 'mobile viewport'],
+      description: 'Mobile review page with graph and panel stacked vertically',
+    },
+  },
+
+  // ── Mobile: KB page ───────────────────────────────────────────────────────
+  {
+    id: 'kb-page-mobile',
+    pageUrl: '/kb',
+    description: 'KB management page on mobile viewport',
+    viewport: { width: 412, height: 915 },
+    device: 'Pixel 7',
+    golden: {
+      noSolidFill: true,
+      notBlank: true,
+      mustBeVisible: ['nav'],
+      mustNotOverlap: [],
+      mustContainText: ['kb'],
+      semanticFeatures: ['navigation bar', 'mobile layout', 'dark theme'],
+      description: 'Mobile KB page with touch-friendly layout',
+    },
+  },
+
+  // ── Mobile: Ingest page ───────────────────────────────────────────────────
+  {
+    id: 'ingest-page-mobile',
+    pageUrl: '/ingest',
+    description: 'Ingest page on mobile viewport',
+    viewport: { width: 412, height: 915 },
+    device: 'Pixel 7',
+    golden: {
+      noSolidFill: true,
+      notBlank: true,
+      mustBeVisible: ['nav'],
+      mustNotOverlap: [],
+      mustContainText: ['ingest'],
+      semanticFeatures: ['navigation bar', 'mobile layout', 'dark theme'],
+      description: 'Mobile ingest page with responsive input form',
+    },
+  },
+
+  // ── Tablet: Review page ───────────────────────────────────────────────────
+  {
+    id: 'review-page-tablet',
+    pageUrl: '/review',
+    description: 'Review page on tablet viewport',
+    viewport: { width: 834, height: 1194 },
+    device: 'iPad Pro 11',
+    golden: {
+      noSolidFill: true,
+      notBlank: true,
+      mustBeVisible: ['.graph-pane', '.review-panel'],
+      mustNotOverlap: [],
+      mustContainText: ['review', 'incoming'],
+      semanticFeatures: ['split or stacked view', 'review panel', 'tablet layout'],
+      description: 'Tablet review page with adaptive layout',
+    },
+  },
 ];
 
 // ── Storybook story fixtures (for visual regression against Storybook) ─────

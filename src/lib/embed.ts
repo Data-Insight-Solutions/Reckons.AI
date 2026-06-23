@@ -6,9 +6,10 @@
  *    slightly different surface forms ("morning coffee" vs "coffee at
  *    breakfast"), so the reviewer can collapse them with one tap.
  *  - semantic search across the KB.
+ *  - cross-KB entity alignment via label embedding similarity.
  *
- * The model defaults to all-MiniLM-L6-v2 (22MB, 384 dims) which loads in
- * seconds and runs comfortably on phones.
+ * The model defaults to bge-small-en-v1.5 (33MB, 384 dims) which loads in
+ * seconds and runs comfortably on phones. Configurable via settings.
  *
  * @huggingface/transformers is dynamically imported so ort-web never runs on
  * the main thread at module-evaluation time (it only loads when first needed).
@@ -21,10 +22,25 @@
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let extractor: any = null;
+/** Currently loaded model ID — reset when switching models */
+let loadedModel: string | null = null;
+
+const DEFAULT_MODEL = 'Xenova/bge-small-en-v1.5';
+
+/** Model size estimates (MB) for consent dialog */
+const MODEL_SIZES: Record<string, number> = {
+  'Xenova/all-MiniLM-L6-v2': 22,
+  'Xenova/bge-small-en-v1.5': 33,
+  'Xenova/gte-small': 33,
+  'Xenova/e5-small-v2': 33,
+  'Xenova/all-MiniLM-L12-v2': 33,
+  'Xenova/paraphrase-MiniLM-L6-v2': 22,
+  'Xenova/jina-embeddings-v2-small-en': 33,
+  'nomic-ai/nomic-embed-text-v1.5': 130,
+};
 
 /**
  * Download consent gate — same pattern as wasm.ts / whisper-stt.ts.
- * MiniLM-L6-v2 is ~22MB quantized.
  */
 let consentHandler: ((model: string, approxMB: number) => Promise<boolean>) | null = null;
 const consentGranted = new Set<string>();
@@ -35,10 +51,29 @@ export function setEmbedConsentHandler(
   consentHandler = handler;
 }
 
-async function isEmbedCached(): Promise<boolean> {
+/** Allow external code (settings) to override which model is used */
+let _modelOverride: string | null = null;
+export function setEmbeddingModel(model: string | undefined) {
+  const next = model || DEFAULT_MODEL;
+  if (next !== _modelOverride) {
+    _modelOverride = next;
+    // If a different model was loaded, reset so next call loads the new one
+    if (loadedModel && loadedModel !== next) {
+      extractor = null;
+      loadedModel = null;
+    }
+  }
+}
+
+function resolveModel(): string {
+  return _modelOverride || DEFAULT_MODEL;
+}
+
+async function isEmbedCached(model: string): Promise<boolean> {
   try {
     const cache = await caches.open('transformers-cache');
-    const url = 'https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/onnx/model_quantized.onnx';
+    // Check for quantized ONNX file — works for Xenova/* and onnx-community/*
+    const url = `https://huggingface.co/${model}/resolve/main/onnx/model_quantized.onnx`;
     return !!(await cache.match(url));
   } catch {
     return false;
@@ -46,15 +81,25 @@ async function isEmbedCached(): Promise<boolean> {
 }
 
 export async function ensureEmbedder(): Promise<FeatureExtractionPipeline> {
-  if (extractor) return extractor;
+  const MODEL = resolveModel();
 
-  const MODEL = 'Xenova/all-MiniLM-L6-v2';
+  // If same model is already loaded, reuse
+  if (extractor && loadedModel === MODEL) return extractor;
+
+  // If switching models, release old one
+  if (extractor && loadedModel !== MODEL) {
+    try { await extractor.dispose?.(); } catch { /* ignore */ }
+    extractor = null;
+    loadedModel = null;
+  }
+
+  const approxMB = MODEL_SIZES[MODEL] ?? 40;
 
   // Ask user before downloading if not cached
   if (consentHandler && !consentGranted.has(MODEL)) {
-    const cached = await isEmbedCached();
+    const cached = await isEmbedCached(MODEL);
     if (!cached) {
-      const ok = await consentHandler(MODEL, 22);
+      const ok = await consentHandler(MODEL, approxMB);
       if (!ok) throw new Error('Embedding model download declined by user.');
       consentGranted.add(MODEL);
     }
@@ -68,6 +113,7 @@ export async function ensureEmbedder(): Promise<FeatureExtractionPipeline> {
     MODEL,
     { dtype: 'q8' }
   )) as FeatureExtractionPipeline;
+  loadedModel = MODEL;
   return extractor;
 }
 

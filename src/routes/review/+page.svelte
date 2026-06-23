@@ -393,10 +393,15 @@
 
   // Auto-populate from URL params
   onMount(() => {
-    const alignParam = new URL(window.location.href).searchParams.get('align');
+    const params = new URL(window.location.href).searchParams;
+    const alignParam = params.get('align');
     if (alignParam) {
       alignSelectedKbs = new Set(alignParam.split(',').filter(Boolean));
       activeTab = 'align';
+    }
+    const tabParam = params.get('tab');
+    if (tabParam && ['incoming', 'deletions', 'merges', 'align'].includes(tabParam)) {
+      activeTab = tabParam as Tab;
     }
   });
 </script>
