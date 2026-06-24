@@ -34,6 +34,8 @@ kb:reckons-ai  rdf:type          ktype:Application ;
                kpred:has-feature kb:source-refresh ;
                kpred:has-feature kb:cross-kb-alignment ;
                kpred:has-feature kb:n8n-cloud-sync ;
+               kpred:has-feature kb:entity-normalisation ;
+               kpred:has-feature kb:mcp-workspace ;
                kmeta:glbModel    "/Meshy_AI_Turtle_1.glb" ;
                kpred:icon2d      "/ReckonsAI-Logo.svg" .
 
@@ -129,6 +131,22 @@ kb:n8n-cloud-sync   rdf:type     ktype:Feature ;
                     kpred:description  "Private cloud sync via self-hosted n8n VPS" ;
                     kpred:has-workflow  "KB Sync Hub (gzL6AXn9iWo4GZxN)" ;
                     kpred:has-workflow  "Source Monitor (CvbUNSZkZVf4hJFG)" .
+
+kb:entity-normalisation rdf:type ktype:Feature ;
+                    rdfs:label   "Entity Normalisation" ;
+                    kpred:has-status   "production" ;
+                    kpred:description  "Post-extraction IRI rewriting using embedding similarity. Prevents duplicate entities entering review queue." ;
+                    kpred:uses         kb:bge-small .
+
+kb:mcp-workspace    rdf:type     ktype:Feature ;
+                    rdfs:label   "MCP Workspace (Self-Dogfooding)" ;
+                    kpred:has-status   "production" ;
+                    kpred:description  "Three internal KBs (Roadmap, Production, Features) symlinked from static/*.ttl. Claude Code queries via MCP server." .
+
+kb:bge-small        rdf:type     ktype:Library ;
+                    rdfs:label   "BGE-small-en-v1.5" ;
+                    kpred:purpose "Embedding model for similarity, normalisation, and cross-KB alignment" ;
+                    kpred:version "33MB, 384d, q8" .
 
 # ── Production Tests ─────────────────────────────────────────────────────────
 

@@ -232,6 +232,29 @@ feat:ContextCompression
 
 
 ## =============================================================================
+## Entity Normalisation
+## =============================================================================
+
+feat:EntityNormalisation
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Entity Normalisation" ;
+    skos:definition     "Post-extraction normalisation that rewrites incoming IRIs to match existing KB entities and predicates using embedding similarity. Prevents duplicate entities like 'octopus-vulgaris' vs 'common-octopus' from entering the review queue. Two-pass matching: exact label (case-insensitive) then cosine similarity (0.90 entity, 0.88 predicate). Protected standard vocabularies (rdf:, rdfs:, skos:, xsd:) are never remapped." ;
+    skos:broader        feat:Ingest ;
+    skos:related        feat:Disambiguation .
+
+
+## =============================================================================
+## MCP Workspace (Self-Dogfooding)
+## =============================================================================
+
+feat:MCPWorkspace
+    rdf:type            ktype:Concept ;
+    rdfs:label          "MCP Workspace" ;
+    skos:definition     "Reckons.AI uses its own MCP server to track product state. Three internal KBs (Roadmap, Production, Features) are symlinked from static/*.ttl into mcp-workspace/kbs/. Claude Code queries these KBs before planning work. Edit a TTL file and the MCP server auto-reloads. Setup: bash scripts/setup-mcp-workspace.sh." ;
+    skos:broader        guide:WhatIsReckonsAI .
+
+
+## =============================================================================
 ## Stories & Persona
 ## =============================================================================
 

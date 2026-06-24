@@ -830,6 +830,7 @@
           phase = p.phase;
           if (p.phase === 'fetching') repoProgress = 'fetching files…';
           else if (p.phase === 'extracting') repoProgress = `extracting triples (${p.backend})…`;
+          else if (p.phase === 'normalizing') repoProgress = 'normalising entities…';
           else if (p.phase === 'diffing') repoProgress = 'computing diff…';
           else if (p.phase === 'semantic') repoProgress = 'semantic enrichment…';
           else repoProgress = '';

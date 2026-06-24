@@ -5,7 +5,8 @@ import { extractWithWasm } from '../integrations/llm/wasm';
 import { chatOpenAI, chatGemini, chatOllama, chatOpenRouter, chatChromeAI, chatReckons } from '../integrations/llm/providers';
 import { triplesToStatements, extractMock, parseTriplesJSON, EXTRACTION_SYSTEM_PROMPT, buildExtractionUserPrompt, type ExtractedTriple } from '../integrations/llm/extractor';
 import { computeDiff, type Diff } from '../rdf/diff';
-import { semanticEnrichDiff } from '../rdf/semantic-diff';
+import { semanticEnrichDiff, labelFromIRI } from '../rdf/semantic-diff';
+import { normalizeEntities } from '../rdf/normalize-entities';
 import { addSource, addStatements, statements as allStatements } from './kb.svelte';
 import { settings } from './settings.svelte';
 import { addSuggestion } from './disambiguation.svelte';
@@ -27,6 +28,7 @@ export type IngestInput =
 export type IngestProgress =
   | { phase: 'fetching' }
   | { phase: 'extracting'; backend: 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'mock' | 'openrouter' | 'chrome-ai' }
+  | { phase: 'normalizing' }
   | { phase: 'diffing' }
   | { phase: 'semantic' }
   | { phase: 'done'; source: Source; statements: Statement[]; diff: Diff };
@@ -212,7 +214,7 @@ export async function ingest(
     triples = extractMock(text, title);
   }
 
-  const newStatements = triplesToStatements(triples, source);
+  let newStatements = triplesToStatements(triples, source);
 
   // Record the backend and exact model that performed extraction.
   // Useful for provenance, re-extraction decisions, and explaining confidence variance.
@@ -228,11 +230,24 @@ export async function ingest(
     backend === 'chrome-ai'  ? 'chrome-ai'                                                      :
     'mock';
 
+  // Normalise incoming entities against existing KB vocabulary.
+  // Rewrites IRIs to match existing entities/predicates when similarity is high,
+  // preventing duplicates like "common-octopus" vs "octopus-vulgaris" from
+  // entering the review queue as separate entities.
+  onProgress?.({ phase: 'normalizing' });
+  const existingStmts = allStatements();
+  const normResult = await normalizeEntities(newStatements, existingStmts);
+  newStatements = normResult.statements;
+  if (normResult.remaps.length > 0) {
+    console.info(`[ingest] Normalised ${normResult.subjectRemaps} entities, ${normResult.predicateRemaps} predicates:`,
+      normResult.remaps.map(r => `${r.kind}: "${labelFromIRI(r.from)}" → "${labelFromIRI(r.to)}"`));
+  }
+
   onProgress?.({ phase: 'diffing' });
-  const structuralDiff = computeDiff(newStatements, allStatements());
+  const structuralDiff = computeDiff(newStatements, existingStmts);
 
   onProgress?.({ phase: 'semantic' });
-  const diff = await semanticEnrichDiff(structuralDiff, allStatements());
+  const diff = await semanticEnrichDiff(structuralDiff, existingStmts);
 
   await addSource(source);
   await addStatements(newStatements, source.id);

@@ -449,18 +449,27 @@ npx playwright install webkit
 
 ### MCP Server
 
-A standalone Node.js MCP server in `mcp-server/` exposes 6 tools to AI agents (Claude Desktop, Cursor, etc.):
+A standalone Node.js MCP server in `mcp-server/` exposes 11 tools to AI agents (Claude Desktop, Cursor, Claude Code, etc.):
 
 | Tool | Description |
 |------|-------------|
+| `kb_list_kbs` | List all available knowledge bases |
 | `kb_search` | Full-text BM25 search over KB entities and statements |
 | `kb_get_entity` | Get all statements for a specific entity |
 | `kb_list_entities` | List all entities with type and connection count |
 | `kb_stats` | Return KB statistics |
 | `kb_add_note` | Add a note for extraction and review |
+| `kb_subgraph` | Extract a subgraph around an entity (configurable depth) |
 | `kb_reckoning` | Run a Situation-Target-Proposal analysis |
+| `kb_list_sources` | List all sources with metadata and trust scores |
+| `kb_request_refresh` | Request a source refresh by source ID |
+| `kb_add_triple` | Directly add a triple with subject, predicate, object |
 
-The MCP server reads `knowledge.ttl` from the workspace folder (auto-exported on each mutation). Pending notes arrive via `knowledge.pending.jsonl`.
+The MCP server reads `.ttl` files from a workspace folder via `MultiKBReader`. Supports single-file legacy mode (`--kb file.ttl`) and multi-KB workspace mode (`--kb /path/to/workspace/` scanning `kbs/{name}/kb.ttl`). File watching auto-reloads on changes.
+
+#### Self-dogfooding workspace
+
+Reckons.AI uses its own MCP server to track product state. Run `bash scripts/setup-mcp-workspace.sh` to set up symlinks from `mcp-workspace/kbs/` to the reference TTL files in `static/`. Claude Code is configured to start the MCP server automatically and query these KBs (Roadmap, Production, Features) before planning new work.
 
 ### Multi-KB Management
 

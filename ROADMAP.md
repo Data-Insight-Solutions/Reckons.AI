@@ -257,6 +257,41 @@ See [`docs/ENTERPRISE.md`](docs/ENTERPRISE.md) for the full roadmap.
 
 ---
 
+### F22 — Entity Normalisation
+**Status: ✅ complete**
+
+Post-extraction, pre-review normalisation step in the ingest pipeline (`src/lib/rdf/normalize-entities.ts`). When new triples arrive, embedding similarity detects if incoming entity/predicate IRIs refer to concepts already in the KB and rewrites them to match the existing IRI.
+
+| Aspect | Detail |
+|--------|--------|
+| **Entity threshold** | Cosine ≥ 0.90 (conservative, above semantic-diff's 0.88) |
+| **Predicate threshold** | Cosine ≥ 0.88 (above semantic-diff's 0.82) |
+| **Two-pass matching** | Exact label match (case-insensitive) first, then embedding similarity |
+| **Perf guard** | Skips normalisation if KB has >500 unique entities |
+| **Protected vocabs** | rdf:, rdfs:, skos:, xsd: IRIs are never remapped |
+| **Fallback** | Returns raw statements unchanged if embeddings fail |
+
+Pipeline position: `LLM extraction → triplesToStatements() → normalizeEntities() → computeDiff() → semanticEnrichDiff() → addStatements()`
+
+---
+
+### F23 — Self-Dogfooding MCP Workspace
+**Status: ✅ complete**
+
+Reckons.AI uses its own MCP server to track product state. Three internal KBs are symlinked from `static/*.ttl` into `mcp-workspace/kbs/`:
+
+| KB | Source TTL | Content |
+|----|-----------|---------|
+| **Roadmap** | `reckons-roadmap.ttl` | Feature status, planned work, design decisions |
+| **Production** | `reckons-production.ttl` | Tech stack, test suite, architecture |
+| **Features** | `docs-features.ttl` | User-facing feature documentation |
+
+Claude Code is configured (`.claude/settings.local.json`) to start the MCP server automatically and query these KBs before planning work. Edit a TTL file → MCP server auto-reloads → next AI session sees the change.
+
+Setup: `bash scripts/setup-mcp-workspace.sh`
+
+---
+
 ## Implementation Notes
 
 ### Published GUID assignment

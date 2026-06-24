@@ -47,3 +47,6 @@ temp/
 
 # Bench results (generated)
 tests/bench/results/
+
+# MCP workspace (local symlinks)
+mcp-workspace/

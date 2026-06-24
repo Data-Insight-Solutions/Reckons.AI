@@ -490,6 +490,25 @@ kb:ent-ttl-delivery rdf:type ktype:Concept ;
                kpred:description  "Enterprise KBs distributed as .ttl files. Portable W3C standard. Diffable via git. Offline-first. No proprietary format, no database dependency." ;
                kpred:related      kb:enterprise-3ps .
 
+# -- Entity Normalisation (F22) -------------------------------------------------
+
+kb:entity-normalisation rdf:type ktype:Feature ;
+               rdfs:label   "Entity Normalisation" ;
+               kpred:has-status   "production" ;
+               kpred:feature-id   "F22" ;
+               kpred:description  "Post-extraction, pre-review IRI rewriting using embedding similarity. Two-pass: exact label match then cosine (0.90 entity, 0.88 predicate). Prevents duplicate entities from entering review queue. Protects standard vocabularies. Perf guard at 500 entities." ;
+               kpred:depends-on   kb:embedding-model ;
+               kpred:related      kb:cross-kb-alignment .
+
+# -- Self-Dogfooding MCP Workspace (F23) ----------------------------------------
+
+kb:mcp-workspace rdf:type ktype:Feature ;
+               rdfs:label   "MCP Workspace (Self-Dogfooding)" ;
+               kpred:has-status   "production" ;
+               kpred:feature-id   "F23" ;
+               kpred:description  "Reckons.AI uses its own MCP server to track product state. Three internal KBs (Roadmap, Production, Features) symlinked from static/*.ttl into mcp-workspace/kbs/. Claude Code configured via CLAUDE.md + .claude/settings.local.json. Setup: scripts/setup-mcp-workspace.sh." ;
+               kpred:depends-on   kb:mcp-server .
+
 # -- User-Requested Future Capabilities -----------------------------------------
 
 kb:source-subscription rdf:type ktype:Feature ;

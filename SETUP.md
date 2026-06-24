@@ -205,6 +205,22 @@ Reckons.AI supports multiple independent knowledge bases. In the KB page (☷ in
 
 ---
 
+## MCP Workspace Setup (Self-Dogfooding)
+
+Reckons.AI uses its own MCP server to track product state. Three internal KBs (Roadmap, Production, Features) are symlinked from `static/*.ttl`.
+
+```bash
+bash scripts/setup-mcp-workspace.sh   # creates symlinks + meta files
+```
+
+This is pre-configured for Claude Code (`.claude/settings.local.json` starts the MCP server automatically). For other MCP-compatible tools, point them at:
+
+```bash
+node mcp-server/dist/index.js --kb mcp-workspace
+```
+
+---
+
 ## Testing Checklist (new device)
 
 - [ ] App loads at localhost:5173

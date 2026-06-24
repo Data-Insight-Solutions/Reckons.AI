@@ -50,6 +50,8 @@ note / url / doc / .ttl / calendar / extension
 - **n8n cloud sync** — private cloud sync via self-hosted n8n VPS; upload, download, and monitor KBs
 - **Source monitoring** — watch URLs for changes, detect diffs, queue pending notes automatically
 - **GitHub repo ingest** — ingest repository structure and code as knowledge with delta compare
+- **Entity normalisation** — embedding-based IRI rewriting prevents duplicate entities at ingest time
+- **Self-dogfooding MCP workspace** — the product tracks its own roadmap and status via its own MCP server
 
 ---
 
@@ -151,6 +153,14 @@ The standalone MCP server (`mcp-server/`) exposes 11 tools to AI agents:
 | `kb_list_sources` | List all sources with metadata and trust scores |
 | `kb_request_refresh` | Request a source refresh by source ID |
 | `kb_add_triple` | Directly add a triple with subject, predicate, object |
+
+### Self-dogfooding workspace
+
+Reckons.AI uses its own MCP server to track product state. Three internal KBs (Roadmap, Production, Features) are symlinked from `static/*.ttl` into `mcp-workspace/kbs/`. Claude Code queries these KBs before planning new work or modifying architecture. Edit a TTL file → the MCP server auto-reloads → the next AI session sees the change.
+
+```bash
+bash scripts/setup-mcp-workspace.sh   # one-time setup after cloning
+```
 
 ---
 

@@ -135,6 +135,14 @@ Private cloud sync via self-hosted n8n VPS. KB Sync Hub (upload/download/status/
 
 RBAC, BYOA auth (SSO/LDAP/OIDC), file-based `.ttl` delivery, policy and procedure as graph entities. See `docs/ENTERPRISE.md`.
 
+### S — Entity Normalisation (F22) --- COMPLETE
+
+`src/lib/rdf/normalize-entities.ts`. Post-extraction IRI rewriting using embedding similarity (0.90 entity, 0.88 predicate). Two-pass matching: exact label then cosine. Prevents duplicate entities from entering the review queue. Perf guard at 500 entities. Protected standard vocabularies.
+
+### T — Self-Dogfooding MCP Workspace (F23) --- COMPLETE
+
+`mcp-workspace/kbs/` with 3 symlinked KBs (Roadmap, Production, Features) from `static/*.ttl`. Claude Code configured via `.claude/settings.local.json` + `CLAUDE.md`. Setup script: `scripts/setup-mcp-workspace.sh`. MCP server auto-reloads on TTL file changes.
+
 ### Future / Scaffolded
 
 - **VR / AR**: `VRShell.svelte` and `ARShell.svelte` scaffolded, not connected to routes
