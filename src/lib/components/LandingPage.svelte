@@ -216,14 +216,14 @@
   ];
 
   const ROADMAP = [
-    { status: 'next',    label: 'MCP server',              note: 'Expose the KB as tools to any AI agent (Claude, Cursor, etc.)' },
-    { status: 'next',    label: 'Markdown ingestion',       note: 'Drop .md files or Obsidian vaults → auto-extract triples' },
-    { status: 'next',    label: 'A Reckoning',              note: 'STP workflow: Situation → Target → AI-synthesised Proposal from your KB' },
-    { status: 'next',    label: 'Firecrawl + web research', note: 'Scrape any URL or crawl an entire site; each page becomes a traceable source' },
-    { status: 'planned', label: 'Git version backbone',     note: 'Commit .ttl snapshots; GitHub Actions for automated KB analysis' },
-    { status: 'planned', label: 'Voice interface',          note: 'Hume.AI voice + local GPU — ask questions aloud, review by voice' },
-    { status: 'planned', label: 'Mobile + home server',     note: 'QR-link your iPhone to a local GPU server for full-model inference' },
-    { status: 'planned', label: 'Hybrid retrieval',         note: 'BM25 + vector search over the triple store for MCP query answers' },
+    { status: 'done',    label: 'MCP server (11 tools)',    note: 'Search, query, add notes, run reckonings — your KB available to any AI agent' },
+    { status: 'done',    label: 'Cross-KB alignment',       note: 'Align entities across knowledge bases with embedding similarity and IRI remapping' },
+    { status: 'done',    label: 'n8n cloud sync',           note: 'Private cloud sync via self-hosted n8n — upload, download, and monitor KBs from any device' },
+    { status: 'done',    label: 'Source monitoring',        note: 'Watch URLs for changes, detect diffs, queue pending notes automatically' },
+    { status: 'next',    label: 'Context compression',      note: 'Condense your knowledge graph for LLM context — semantic meaning preserved, tokens reduced' },
+    { status: 'next',    label: 'VS Code / Claude Code',    note: 'Auto-inject your KB into coding sessions via MCP bridge — zero config' },
+    { status: 'enterprise', label: 'People · Policy · Procedure', note: 'Structure graphs around the 3 Ps with RBAC, file-based TTL delivery, bring-your-own auth' },
+    { status: 'planned', label: 'Enrichment pipeline',      note: 'Progressive analysis — auto-categorize, cross-reference, and score entities over time' },
   ];
 </script>
 
@@ -239,7 +239,8 @@
         A knowledge graph that knows<br/><em>your situation.</em>
       </p>
       <p class="sub">
-        An assistant that understands your context, <em>controlled by you,</em> private by default.
+        Condense your context. Keep the meaning.<br/>
+        An assistant that understands your situation, <em>controlled by you,</em> private by default.
       </p>
 
       <div class="ctas">
@@ -351,6 +352,31 @@
     </div>
   </section>
 
+  <!-- Context Compression -->
+  <section class="section compress-section">
+    <p class="section-kicker mono">context compression</p>
+    <h2>Condense your context.<br/><em>Keep the meaning.</em></h2>
+    <p class="section-sub">Knowledge graphs are dense by nature. Reckons.AI compresses what you know into structured triples — retaining semantic meaning while reducing the tokens an AI needs to understand your situation.</p>
+
+    <div class="compress-grid">
+      <div class="compress-card">
+        <span class="compress-num mono">10x</span>
+        <strong>Denser than documents</strong>
+        <p>A page of prose becomes a handful of triples. Same meaning, fraction of the tokens.</p>
+      </div>
+      <div class="compress-card">
+        <span class="compress-num mono">RDF</span>
+        <strong>Structured, not summarised</strong>
+        <p>Unlike summaries that lose detail, triples preserve every relationship. Nothing is paraphrased away.</p>
+      </div>
+      <div class="compress-card">
+        <span class="compress-num mono">MCP</span>
+        <strong>AI-ready context</strong>
+        <p>Feed your compressed KB directly to AI agents via MCP. They get the full picture in fewer tokens.</p>
+      </div>
+    </div>
+  </section>
+
   <!-- AI without the downsides -->
   <section class="section ethics-section">
     <p class="section-kicker mono">AI for the people</p>
@@ -401,8 +427,49 @@
       </div>
 
       <p class="reckoning-note mono">Voice-first version available. Brief input, conversational refinement, no forms.</p>
-      <span class="coming-soon">coming next</span>
     </div>
+  </section>
+
+  <!-- Enterprise -->
+  <section class="section enterprise-section">
+    <p class="section-kicker mono">enterprise</p>
+    <h2>People · Policy · Procedure</h2>
+    <p class="section-sub">Structure organisational knowledge around the three dimensions that matter. Who knows what, what governs it, and how it gets done.</p>
+
+    <div class="enterprise-grid">
+      <div class="enterprise-card">
+        <span class="enterprise-icon">👥</span>
+        <strong>People</strong>
+        <p>Role-based access controls. Team KBs with ownership, delegation, and audit trails. Know who contributed what, when.</p>
+      </div>
+      <div class="enterprise-card">
+        <span class="enterprise-icon">📜</span>
+        <strong>Policy</strong>
+        <p>Legal, cultural, and compliance constraints as first-class graph entities. Governance rules that travel with the knowledge.</p>
+      </div>
+      <div class="enterprise-card enterprise-card-accent">
+        <span class="enterprise-icon">📋</span>
+        <strong>Procedure</strong>
+        <p>Depth of specifics — SOPs, decision trees, and process graphs. From high-level intent down to step-by-step execution.</p>
+      </div>
+    </div>
+
+    <div class="enterprise-details">
+      <div class="enterprise-detail">
+        <span class="enterprise-detail-label mono">delivery</span>
+        <p>File-based <code>.ttl</code> distribution. No platform lock-in — your enterprise KB is a portable W3C standard file.</p>
+      </div>
+      <div class="enterprise-detail">
+        <span class="enterprise-detail-label mono">authentication</span>
+        <p>Bring your own auth. SSO, LDAP, OIDC — plug in what you already run. No new identity provider required.</p>
+      </div>
+      <div class="enterprise-detail">
+        <span class="enterprise-detail-label mono">self-hosted</span>
+        <p>Deploy on your infrastructure. n8n cloud sync, private AI backends, air-gapped operation. Your data never leaves your network.</p>
+      </div>
+    </div>
+
+    <p class="enterprise-cta mono">Enterprise features in development. <a href="https://data-insight.solutions/contact" target="_blank" rel="noopener noreferrer">Get in touch →</a></p>
   </section>
 
   <!-- Roadmap -->
@@ -413,7 +480,7 @@
     <div class="roadmap-list">
       {#each ROADMAP as item}
         <div class="roadmap-row">
-          <span class="rm-status {item.status}">{item.status === 'next' ? 'up next' : 'planned'}</span>
+          <span class="rm-status {item.status}">{item.status === 'done' ? 'shipped' : item.status === 'next' ? 'up next' : item.status === 'enterprise' ? 'enterprise' : 'planned'}</span>
           <div class="rm-body">
             <strong>{item.label}</strong>
             <span class="rm-note">{item.note}</span>
@@ -458,7 +525,7 @@
 
   <footer class="landing-footer">
     <p class="mono"><img src="/svg/logo-text.svg" alt="Reckons.AI" class="footer-logo" /> · local-first · open source · RDF/Turtle</p>
-    <p class="mono footer-pricing">Core is free forever. Cloud and enterprise services available. <a href="https://data-insight.solutions/contact" target="_blank" rel="noopener noreferrer">Contact for inquiries →</a></p>
+    <p class="mono footer-pricing">Core is free forever. Private n8n cloud sync and enterprise RBAC available. <a href="https://data-insight.solutions/contact" target="_blank" rel="noopener noreferrer">Contact for inquiries →</a></p>
     <p class="mono footer-credit">Developed by <a href="https://data-insight.solutions/" target="_blank" rel="noopener noreferrer">Data Insight Solutions LLC</a></p>
   </footer>
 </div>
@@ -977,10 +1044,22 @@
     margin-top: 0.15rem;
   }
 
+  .rm-status.done {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+  }
+
   .rm-status.next {
     background: var(--accent-soft);
     color: var(--accent);
     border: 1px solid var(--accent);
+  }
+
+  .rm-status.enterprise {
+    background: rgba(107, 67, 153, 0.1);
+    color: #a78bfa;
+    border: 1px solid rgba(107, 67, 153, 0.4);
   }
 
   .rm-status.planned {
@@ -1053,6 +1132,140 @@
   }
   .step-link:hover { text-decoration: underline; }
 
+  /* ── Context Compression ─────────────────────────────── */
+  .compress-section {
+    border-top: 1px solid var(--line);
+  }
+
+  .compress-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+  }
+
+  .compress-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--rad);
+    padding: 1.3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+
+  .compress-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  .compress-num {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .compress-card strong {
+    font-size: 0.95rem;
+    color: var(--ink);
+  }
+
+  .compress-card p {
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  /* ── Enterprise ────────────────────────────────────────── */
+  .enterprise-section {
+    background: linear-gradient(135deg, var(--surface) 0%, rgba(107, 67, 153, 0.06) 100%);
+    border-radius: var(--rad-lg);
+    padding: 3rem 2rem;
+  }
+
+  .enterprise-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .enterprise-card {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--rad);
+    padding: 1.3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+
+  .enterprise-card:hover {
+    border-color: #a78bfa;
+    transform: translateY(-2px);
+  }
+
+  .enterprise-card-accent {
+    border-color: rgba(107, 67, 153, 0.3);
+  }
+
+  .enterprise-icon { font-size: 1.5rem; line-height: 1; }
+  .enterprise-card strong { font-size: 0.95rem; color: var(--ink); }
+  .enterprise-card p { font-size: 0.82rem; color: var(--muted); margin: 0; line-height: 1.6; }
+
+  .enterprise-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .enterprise-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .enterprise-detail-label {
+    font-size: 0.65rem;
+    color: #a78bfa;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .enterprise-detail p {
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  .enterprise-detail code {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    background: var(--surface-3);
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+    color: var(--ink-2);
+  }
+
+  .enterprise-cta {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  .enterprise-cta a {
+    color: #a78bfa;
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+
+  .enterprise-cta a:hover { color: var(--accent); }
+
   /* ── Footer ──────────────────────────────────────────── */
   .landing-footer {
     text-align: center;
@@ -1104,6 +1317,10 @@
     .stp-flow { flex-direction: column; }
     .stp-arrow { transform: rotate(90deg); align-self: center; }
     .reckoning-inner { padding: 3rem 1rem; }
+    .compress-grid { grid-template-columns: 1fr; }
+    .enterprise-grid { grid-template-columns: 1fr; }
+    .enterprise-details { grid-template-columns: 1fr; }
+    .enterprise-section { padding: 1.5rem 1rem; border-radius: var(--rad); }
     .step { gap: 1rem; }
     .step-num { font-size: 1.4rem; min-width: 2rem; }
     .roadmap-row { gap: 0.7rem; padding: 0.8rem 0.9rem; flex-wrap: wrap; }

@@ -87,18 +87,23 @@ A self-hosted instance on a home network or VPS is open to anyone who knows the 
 ### F1 — MCP Server
 **Status: ✅ complete**
 
-`mcp-server/` is a standalone Node.js package exposing 6 tools:
+`mcp-server/` is a standalone Node.js package exposing 11 tools:
 
 | Tool | Description |
 |------|-------------|
-| `kb_search` | Full-text search over entity labels |
+| `kb_list_kbs` | List all available knowledge bases |
+| `kb_search` | Full-text BM25 search over entities and statements |
 | `kb_get_entity` | Get all statements about an entity |
-| `kb_stats` | KB statistics (statement/source counts) |
-| `kb_list_entities` | List all entities with statement counts |
-| `kb_add_note` | Ingest a note (via pending pipeline) |
-| `kb_reckoning` | Trigger re-analysis of KB |
+| `kb_list_entities` | List all entities with type and connection count |
+| `kb_stats` | KB statistics (entity count, statement count, types) |
+| `kb_add_note` | Add a note for extraction and review |
+| `kb_subgraph` | Extract a subgraph around an entity (configurable depth) |
+| `kb_reckoning` | Run a Situation-Target-Proposal analysis |
+| `kb_list_sources` | List all sources with metadata and trust scores |
+| `kb_request_refresh` | Request a source refresh by source ID |
+| `kb_add_triple` | Directly add a triple with subject, predicate, object |
 
-Bridge: App auto-exports `knowledge.ttl` on each mutation (debounced 2s). MCP server reads this file. Pending notes written to `knowledge.pending.jsonl`, drained on app load.
+Bridge: App auto-exports `knowledge.ttl` on each mutation (debounced 2s). MCP server reads this file via `MultiKBReader`. Pending notes written to `knowledge.pending.jsonl`, drained on app load.
 
 ---
 
@@ -205,6 +210,50 @@ Add an explore/navigate feature to the browser extension so users can browse and
 - Search entities, view statements, navigate relationships
 - Quick-add notes or highlights from the current page context
 - Sync state with the main app via `extension-bridge.ts`
+
+---
+
+### F20 — n8n Cloud Sync
+**Status: ✅ complete**
+
+Private, self-hosted cloud sync and source monitoring via n8n VPS. No SaaS dependency.
+
+| Component | n8n Workflow ID | Description |
+|-----------|----------------|-------------|
+| **KB Sync Hub** | `gzL6AXn9iWo4GZxN` | Upload/download/status/pending via webhooks |
+| **Source Monitor** | `CvbUNSZkZVf4hJFG` | Watch URLs for changes, detect diffs, queue pending notes |
+
+**Data tables:** `reckons_kb_store`, `reckons_watched_urls`, `reckons_pending_notes`
+
+**Endpoints:**
+- `POST /webhook/reckons-kb-upload` — upload a KB snapshot (content-hash dedup)
+- `GET /webhook/reckons-kb-download?kb=name` — download latest TTL
+- `GET /webhook/reckons-kb-status` — JSON summary of all stored KBs
+- `GET /webhook/reckons-kb-pending?kb=name` — pending notes from source monitors
+- `POST /webhook/reckons-watch-url` — add a URL to the watch list
+
+See [`docs/N8N_INTEGRATION.md`](docs/N8N_INTEGRATION.md) for full details.
+
+---
+
+### F21 — Enterprise: People · Policy · Procedure
+**Status: ⬜ planned**
+
+Structure organisational knowledge around three dimensions:
+
+| Dimension | Scope |
+|-----------|-------|
+| **People** | RBAC, team KBs, ownership, delegation, audit trails |
+| **Policy** | Legal, cultural, and compliance constraints as graph entities |
+| **Procedure** | SOPs, decision trees, process graphs — from intent to execution |
+
+**Key decisions:**
+- **Authentication:** Bring-your-own (SSO, LDAP, OIDC) — no built-in identity provider
+- **Delivery:** File-based `.ttl` distribution — portable W3C standard, no platform lock-in
+- **Deployment:** Self-hosted via n8n cloud sync, private AI backends, air-gapped operation
+- **RBAC model:** Entity-level + graph-level permissions, not just KB-level
+
+See [`docs/ENTERPRISE.md`](docs/ENTERPRISE.md) for the full roadmap.
 
 ---
 

@@ -120,6 +120,32 @@ int:ModelCache
     skos:broader        int:Integrations .
 
 
+int:N8nCloudSync
+    rdf:type            ktype:Concept ;
+    rdfs:label          "n8n Cloud Sync" ;
+    skos:definition     "Private, self-hosted cloud sync via n8n workflow automation. Two workflows: KB Sync Hub (upload/download/status/pending via webhooks with content-hash deduplication) and Source Monitor (watches URLs every 6 hours, detects content changes, queues pending notes). No SaaS dependency — your n8n VPS is the cloud backend." ;
+    skos:broader        int:Integrations .
+
+int:N8nSyncHub
+    rdf:type            ktype:Concept ;
+    rdfs:label          "KB Sync Hub (n8n)" ;
+    skos:definition     "n8n workflow with 4 webhook endpoints: POST upload (SHA-256 dedup), GET download (serves text/turtle), GET status (JSON summary of all KBs), GET pending (pending notes from source monitors). Data stored in n8n Data Tables." ;
+    skos:broader        int:N8nCloudSync .
+
+int:N8nSourceMonitor
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Source Monitor (n8n)" ;
+    skos:definition     "n8n workflow running every 6 hours. Fetches watched URLs, computes content hash, compares against stored hash. Changed URLs produce pending notes that surface via the Sync Hub pending endpoint." ;
+    skos:broader        int:N8nCloudSync .
+
+int:VSCodeExtension
+    rdf:type            ktype:Concept ;
+    rdfs:label          "VS Code Extension (Planned)" ;
+    skos:definition     "Auto-inject KB into coding sessions via MCP bridge. Wraps reckons-ai-mcp as child process with stdio transport. Phase 1: MCP bridge + auto-inject. Phase 2: live updates from editor actions. Phase 3: sidebar KB browser with webview graph. Zero config — activates when it detects kbs/*/kb.ttl in workspace." ;
+    skos:broader        int:Integrations ;
+    skos:related        int:MCPServer .
+
+
 ## =============================================================================
 ## Architecture and Technology
 ## =============================================================================
@@ -163,7 +189,7 @@ tech:Dexie
 tech:MCP
     rdf:type            ktype:Tool ;
     rdfs:label          "Model Context Protocol" ;
-    skos:definition     "An open protocol by Anthropic for connecting AI models to external data sources. Reckons.AI implements a standalone MCP server (Node.js) that reads the workspace TTL file." ;
+    skos:definition     "An open protocol by Anthropic for connecting AI models to external data sources. Reckons.AI implements a standalone MCP server (Node.js) with 11 tools that reads workspace TTL files. Multi-KB support via MultiKBReader." ;
     skos:broader        tech:Architecture ;
     skos:related        int:MCPServer .
 

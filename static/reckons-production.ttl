@@ -32,6 +32,8 @@ kb:reckons-ai  rdf:type          ktype:Application ;
                kpred:has-feature kb:mcp-server ;
                kpred:has-feature kb:repo-ingest ;
                kpred:has-feature kb:source-refresh ;
+               kpred:has-feature kb:cross-kb-alignment ;
+               kpred:has-feature kb:n8n-cloud-sync ;
                kmeta:glbModel    "/Meshy_AI_Turtle_1.glb" ;
                kpred:icon2d      "/ReckonsAI-Logo.svg" .
 
@@ -94,7 +96,9 @@ kb:mcp-server       rdf:type     ktype:Feature ;
                     kpred:has-tool     "kb_subgraph" ;
                     kpred:has-tool     "kb_reckoning" ;
                     kpred:has-tool     "kb_list_sources" ;
-                    kpred:has-tool     "kb_request_refresh" .
+                    kpred:has-tool     "kb_request_refresh" ;
+                    kpred:has-tool     "kb_list_kbs" ;
+                    kpred:has-tool     "kb_add_triple" .
 
 kb:repo-ingest      rdf:type     ktype:Feature ;
                     rdfs:label   "Repository Ingest" ;
@@ -112,6 +116,19 @@ kb:source-refresh   rdf:type     ktype:Feature ;
                     kpred:refreshes    "calendar" ;
                     kpred:has-setting  "autoRefreshOnOpen" ;
                     kpred:has-setting  "autoRefreshIntervalMinutes" .
+
+kb:cross-kb-alignment rdf:type  ktype:Feature ;
+                    rdfs:label   "Cross-KB Alignment" ;
+                    kpred:has-status   "production" ;
+                    kpred:description  "Align entities across KBs with embedding similarity and IRI remapping" ;
+                    kpred:has-tab      "align" .
+
+kb:n8n-cloud-sync   rdf:type     ktype:Feature ;
+                    rdfs:label   "n8n Cloud Sync" ;
+                    kpred:has-status   "production" ;
+                    kpred:description  "Private cloud sync via self-hosted n8n VPS" ;
+                    kpred:has-workflow  "KB Sync Hub (gzL6AXn9iWo4GZxN)" ;
+                    kpred:has-workflow  "Source Monitor (CvbUNSZkZVf4hJFG)" .
 
 # ── Production Tests ─────────────────────────────────────────────────────────
 

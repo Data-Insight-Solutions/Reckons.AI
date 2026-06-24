@@ -198,6 +198,40 @@ feat:ModelCache
 
 
 ## =============================================================================
+## Cross-KB & Alignment
+## =============================================================================
+
+feat:CrossKBAlignment
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Cross-KB Alignment" ;
+    skos:definition     "Align entities across knowledge bases. Entity matching via exact IRI match and embedding similarity. IRI remapping for entities that represent the same concept across KBs. Align tab in review page. KbPicker selects source KB, AlignmentCard shows each match with accept/reject." ;
+    skos:broader        guide:WhatIsReckonsAI .
+
+feat:SourceRefresh
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Source Refresh" ;
+    skos:definition     "Generic refresh for url, repository, and calendar sources. Auto-refresh on open and on interval (configurable). KB page refresh button. MCP tools: kb_list_sources and kb_request_refresh. Delta comparison shows what changed since last ingest." ;
+    skos:broader        guide:WhatIsReckonsAI .
+
+feat:SourceMonitoring
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Source Monitoring" ;
+    skos:definition     "Watch URLs for content changes. The n8n Source Monitor workflow checks every 6 hours, detects diffs via content hash, and queues pending notes for review. Surfaces via /webhook/reckons-kb-pending endpoint." ;
+    skos:broader        feat:SourceRefresh .
+
+
+## =============================================================================
+## Context Compression
+## =============================================================================
+
+feat:ContextCompression
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Context Compression" ;
+    skos:definition     "Condense your context. Keep the meaning. Knowledge graphs are dense by nature — a page of prose becomes a handful of triples. Semantic meaning preserved, tokens reduced. Feed compressed KB directly to AI agents via MCP. Structured triples outperform summaries because no relationships are paraphrased away." ;
+    skos:broader        guide:WhatIsReckonsAI .
+
+
+## =============================================================================
 ## Stories & Persona
 ## =============================================================================
 

@@ -40,7 +40,13 @@
     "bench:tts": "npx tsx tests/bench/run-tts-bench.ts",
     "bench:tts:save": "npx tsx tests/bench/run-tts-bench.ts --save",
     "bench:stt": "npx tsx tests/bench/run-stt-bench.ts",
-    "bench:stt:save": "npx tsx tests/bench/run-stt-bench.ts --save"
+    "bench:stt:save": "npx tsx tests/bench/run-stt-bench.ts --save",
+    "bench:ollama": "npx tsx tests/bench/run-ollama-bench.ts",
+    "bench:ollama:save": "npx tsx tests/bench/run-ollama-bench.ts --save",
+    "bench:ollama:list": "npx tsx tests/bench/run-ollama-bench.ts --list",
+    "test:local": "bash tests/bench/run-local-suite.sh",
+    "test:local:quick": "bash tests/bench/run-local-suite.sh --quick",
+    "test:local:bench": "bash tests/bench/run-local-suite.sh --bench-only --save"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.100.1",

@@ -408,10 +408,87 @@ kb:colab-notebook rdf:type  ktype:Feature ;
 
 kb:cross-kb-alignment rdf:type ktype:Feature ;
                rdfs:label   "Cross-KB Alignment" ;
-               kpred:has-status   "planned" ;
-               kpred:description  "Analyze and merge across two or more KBs. Each suggestion shows source and target KB." ;
+               kpred:has-status   "production" ;
+               kpred:feature-id   "F16" ;
+               kpred:description  "Align entities across KBs with embedding similarity and IRI remapping. Align tab in review page. Entity matching (exact IRI + embedding), computeDiff(), applyAlignmentToActiveKb()." ;
                kpred:depends-on   kb:multi-kb ;
                kpred:depends-on   kb:comparison-view .
+
+# -- n8n Cloud Sync (F20) -------------------------------------------------------
+
+kb:n8n-cloud-sync rdf:type ktype:Feature ;
+               rdfs:label   "n8n Cloud Sync" ;
+               kpred:has-status   "production" ;
+               kpred:feature-id   "F20" ;
+               kpred:description  "Private, self-hosted cloud sync via n8n VPS. Upload, download, and monitor KBs from any device. No SaaS dependency." ;
+               kpred:has-workflow  kb:n8n-sync-hub ;
+               kpred:has-workflow  kb:n8n-source-monitor .
+
+kb:n8n-sync-hub rdf:type   ktype:Concept ;
+               rdfs:label   "KB Sync Hub" ;
+               kpred:description  "n8n workflow with 4 webhook endpoints: upload (POST), download (GET), status (GET), pending notes (GET). Content-hash deduplication via SHA-256." ;
+               kpred:has-status   "production" ;
+               kpred:workflow-id  "gzL6AXn9iWo4GZxN" ;
+               kpred:has-endpoint "/webhook/reckons-kb-upload" ;
+               kpred:has-endpoint "/webhook/reckons-kb-download" ;
+               kpred:has-endpoint "/webhook/reckons-kb-status" ;
+               kpred:has-endpoint "/webhook/reckons-kb-pending" .
+
+kb:n8n-source-monitor rdf:type ktype:Concept ;
+               rdfs:label   "Source Monitor" ;
+               kpred:description  "n8n workflow that watches URLs for content changes every 6 hours. Detects diffs via content hash, queues pending notes for review." ;
+               kpred:has-status   "production" ;
+               kpred:workflow-id  "CvbUNSZkZVf4hJFG" ;
+               kpred:has-endpoint "/webhook/reckons-watch-url" .
+
+# -- Context Compression --------------------------------------------------------
+
+kb:context-compression rdf:type ktype:Feature ;
+               rdfs:label   "Context Compression" ;
+               kpred:has-status   "next" ;
+               kpred:description  "Condense knowledge graphs for LLM context windows. Semantic meaning preserved, tokens reduced. A page of prose becomes a handful of triples. Feed compressed KB directly to AI agents via MCP." .
+
+# -- VS Code Extension (F19) ----------------------------------------------------
+
+kb:vscode-extension rdf:type ktype:Feature ;
+               rdfs:label   "VS Code Extension" ;
+               kpred:has-status   "planned" ;
+               kpred:feature-id   "F19" ;
+               kpred:description  "Auto-inject KB into coding sessions via MCP bridge. Wraps reckons-ai-mcp as child process. Phase 1: MCP bridge + auto-inject. Phase 2: live KB updates from editor. Phase 3: visual KB browser sidebar." ;
+               kpred:depends-on   kb:mcp-server .
+
+# -- Enterprise: People · Policy · Procedure (F21) ------------------------------
+
+kb:enterprise-3ps rdf:type ktype:Feature ;
+               rdfs:label   "Enterprise: People · Policy · Procedure" ;
+               kpred:has-status   "planned" ;
+               kpred:feature-id   "F21" ;
+               kpred:description  "Structure organisational knowledge around three dimensions: People (RBAC, teams, audit trails), Policy (legal, cultural, compliance constraints as graph entities), Procedure (SOPs, decision trees, process graphs)." ;
+               kpred:has-dimension kb:ent-people ;
+               kpred:has-dimension kb:ent-policy ;
+               kpred:has-dimension kb:ent-procedure .
+
+kb:ent-people  rdf:type     ktype:Concept ;
+               rdfs:label   "People (Enterprise)" ;
+               kpred:description  "Role-based access controls. Team KBs with ownership, delegation, and audit trails. Graph-native RBAC — permissions are triples, queryable and time-bounded." .
+
+kb:ent-policy  rdf:type     ktype:Concept ;
+               rdfs:label   "Policy (Enterprise)" ;
+               kpred:description  "Legal, cultural, and compliance constraints as first-class graph entities. Temporal bounds, provenance, governed-by relationships. Policies travel with the knowledge they govern." .
+
+kb:ent-procedure rdf:type   ktype:Concept ;
+               rdfs:label   "Procedure (Enterprise)" ;
+               kpred:description  "Depth of specifics — SOPs, decision trees, process graphs. Step ordering, decision points, SLAs. From high-level intent to step-by-step execution." .
+
+kb:ent-byoa    rdf:type     ktype:Concept ;
+               rdfs:label   "Bring Your Own Auth" ;
+               kpred:description  "No built-in identity provider. Organisations plug in SSO, LDAP, OIDC, or SAML. Auth gateway validates tokens and maps to RBAC roles from the graph." ;
+               kpred:related      kb:enterprise-3ps .
+
+kb:ent-ttl-delivery rdf:type ktype:Concept ;
+               rdfs:label   "File-Based TTL Delivery" ;
+               kpred:description  "Enterprise KBs distributed as .ttl files. Portable W3C standard. Diffable via git. Offline-first. No proprietary format, no database dependency." ;
+               kpred:related      kb:enterprise-3ps .
 
 # -- User-Requested Future Capabilities -----------------------------------------
 
@@ -461,7 +538,8 @@ kb:integrations rdf:type    ktype:Concept ;
                kpred:has-integration kb:int-indico ;
                kpred:has-integration kb:int-meshy ;
                kpred:has-integration kb:int-firecrawl ;
-               kpred:has-integration kb:int-mistral-ocr .
+               kpred:has-integration kb:int-mistral-ocr ;
+               kpred:has-integration kb:int-n8n .
 
 kb:int-google  rdf:type     ktype:Tool ;
                rdfs:label   "Google (Calendar + Drive)" ;
@@ -503,6 +581,14 @@ kb:int-mistral-ocr rdf:type ktype:Tool ;
                kpred:has-status   "production" ;
                kpred:provides     "document OCR" ;
                kpred:provides     "visual test scoring" .
+
+kb:int-n8n     rdf:type     ktype:Tool ;
+               rdfs:label   "n8n" ;
+               kpred:has-status   "production" ;
+               kpred:provides     "cloud KB sync" ;
+               kpred:provides     "URL source monitoring" ;
+               kpred:provides     "pending note queuing" ;
+               kpred:description  "Self-hosted workflow automation. Two workflows: Sync Hub (upload/download/status/pending) and Source Monitor (URL watching, change detection)." .
 
 # ==============================================================================
 # Story: Product Vision & Roadmap Tour
@@ -583,3 +669,25 @@ story:rm-step-7  rdf:type         story:Step ;
                  story:highlight  kb:cross-kb-alignment ;
                  story:highlight  kb:multi-kb ;
                  story:question   "Ready to compare this roadmap against production status?" .
+
+# Step 8: n8n Cloud Sync
+story:rm-step-8  rdf:type         story:Step ;
+                 story:partOf     story:roadmap-tour ;
+                 story:order      "8"^^xsd:integer ;
+                 story:title      "Private Cloud Sync" ;
+                 story:content    "n8n provides self-hosted cloud sync with zero SaaS dependency. The Sync Hub stores KB snapshots via webhooks with content-hash deduplication. The Source Monitor watches URLs every 6 hours and queues pending notes when content changes. Private. Personalized. Perfection." ;
+                 story:highlight  kb:n8n-cloud-sync ;
+                 story:highlight  kb:n8n-sync-hub ;
+                 story:highlight  kb:n8n-source-monitor ;
+                 story:question   "Interested in how n8n connects to the enterprise roadmap?" .
+
+# Step 9: Enterprise Vision
+story:rm-step-9  rdf:type         story:Step ;
+                 story:partOf     story:roadmap-tour ;
+                 story:order      "9"^^xsd:integer ;
+                 story:title      "Enterprise: People · Policy · Procedure" ;
+                 story:content    "The enterprise vision structures organisational knowledge around three dimensions. People: RBAC, team KBs, audit trails. Policy: legal and cultural constraints as graph entities with temporal bounds. Procedure: SOPs and decision trees from intent to execution. Authentication is bring-your-own. Delivery is file-based TTL — portable, diffable, no lock-in." ;
+                 story:highlight  kb:enterprise-3ps ;
+                 story:highlight  kb:ent-people ;
+                 story:highlight  kb:ent-policy ;
+                 story:highlight  kb:ent-procedure .

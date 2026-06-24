@@ -69,7 +69,7 @@ Full comparison surface at `/compare`. Diff engine (`src/lib/rdf/diff.ts`) categ
 
 ### B — MCP Server --- COMPLETE
 
-Standalone Node.js MCP server in `mcp-server/`. 6 tools: `kb_search` (BM25), `kb_get_entity`, `kb_list_entities`, `kb_stats`, `kb_add_note`, `kb_reckoning`. Reads `knowledge.ttl` from workspace folder. Pending notes arrive via `knowledge.pending.jsonl`.
+Standalone Node.js MCP server in `mcp-server/`. 11 tools: `kb_list_kbs`, `kb_search` (BM25), `kb_get_entity`, `kb_list_entities`, `kb_stats`, `kb_add_note`, `kb_subgraph`, `kb_reckoning`, `kb_list_sources`, `kb_request_refresh`, `kb_add_triple`. Multi-KB support via `MultiKBReader`. Reads `knowledge.ttl` from workspace folder. Pending notes arrive via `knowledge.pending.jsonl`.
 
 ### C — Google Colab Example Notebook --- NOT STARTED
 
@@ -115,11 +115,32 @@ Progressive analysis inspired by Semiont. Reserved for future development.
 
 `src/lib/integrations/llm/model-cache.ts`. Inspect, sideload, purge locally cached WASM models. Model manifests for SmolLM2-360M, MiniLM-L6-v2, Kokoro 82M, Whisper Tiny.
 
+### N — Cross-KB Alignment (F16) --- COMPLETE
+
+`src/lib/rdf/cross-kb-align.ts`. Align tab in review page. Entity matching (exact IRI + embedding similarity). IRI remapping + `computeDiff()`. `applyAlignmentToActiveKb()` for accept.
+
+### O — GitHub Repo Ingest (F14) --- COMPLETE
+
+`src/lib/integrations/github/repo-ingest.ts`. Source kind `'repository'`. GitHub REST API tree walk, file content fetch, delta compare. Code-aware extraction supplement.
+
+### P — Source Refresh (F15) --- COMPLETE
+
+`src/lib/stores/source-refresh.ts`. Generic refresh for url/repository/calendar sources. Auto-refresh on open + interval. MCP tools: `kb_list_sources`, `kb_request_refresh`.
+
+### Q — n8n Cloud Sync (F20) --- COMPLETE
+
+Private cloud sync via self-hosted n8n VPS. KB Sync Hub (upload/download/status/pending) + Source Monitor (URL watching, change detection, pending notes). See `docs/N8N_INTEGRATION.md`.
+
+### R — Enterprise: People · Policy · Procedure (F21) --- PLANNED
+
+RBAC, BYOA auth (SSO/LDAP/OIDC), file-based `.ttl` delivery, policy and procedure as graph entities. See `docs/ENTERPRISE.md`.
+
 ### Future / Scaffolded
 
 - **VR / AR**: `VRShell.svelte` and `ARShell.svelte` scaffolded, not connected to routes
 - **Hume.AI Voice**: `VoiceInput.svelte` scaffolded, requires SDK install
-- **Cloud sync**: Google Drive integration exists; full sync workflow not yet end-to-end
+- **Google Drive sync**: Google Drive integration exists; full sync workflow not yet end-to-end
+- **VS Code Extension**: Design doc at `docs/VSCODE_EXTENSION.md`, not yet implemented
 
 ---
 

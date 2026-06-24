@@ -46,6 +46,10 @@ note / url / doc / .ttl / calendar / extension
 - **Model cache management** — inspect, sideload, and purge locally cached WASM models
 - **Source trust system** — sources earn trust through consistent accuracy; trusted sources auto-confirm
 - **History mode** — time-travel through your KB with a timeline scrubber
+- **Cross-KB alignment** — align entities across knowledge bases with embedding similarity and IRI remapping
+- **n8n cloud sync** — private cloud sync via self-hosted n8n VPS; upload, download, and monitor KBs
+- **Source monitoring** — watch URLs for changes, detect diffs, queue pending notes automatically
+- **GitHub repo ingest** — ingest repository structure and code as knowledge with delta compare
 
 ---
 
@@ -132,16 +136,21 @@ See [`SETUP.md`](SETUP.md) for installation instructions.
 
 ## MCP server
 
-The standalone MCP server (`mcp-server/`) exposes 6 tools to AI agents:
+The standalone MCP server (`mcp-server/`) exposes 11 tools to AI agents:
 
 | Tool | Description |
 |------|-------------|
+| `kb_list_kbs` | List all available knowledge bases |
 | `kb_search` | Full-text BM25 search over KB entities and statements |
 | `kb_get_entity` | Get all statements for a specific entity |
 | `kb_list_entities` | List all entities with type and connection count |
 | `kb_stats` | Return KB statistics (entity count, statement count, types) |
 | `kb_add_note` | Add a note for extraction and review |
+| `kb_subgraph` | Extract a subgraph around an entity (configurable depth) |
 | `kb_reckoning` | Run a Situation-Target-Proposal analysis |
+| `kb_list_sources` | List all sources with metadata and trust scores |
+| `kb_request_refresh` | Request a source refresh by source ID |
+| `kb_add_triple` | Directly add a triple with subject, predicate, object |
 
 ---
 
@@ -155,6 +164,8 @@ The standalone MCP server (`mcp-server/`) exposes 6 tools to AI agents:
 | [`docs/DEPENDENCIES.md`](docs/DEPENDENCIES.md) | Dependency health, browser support matrix, replacement candidates |
 | [`docs/SECURITY.md`](docs/SECURITY.md) | Known CVEs, risk assessments, vulnerability response process |
 | [`docs/USER_STORIES.md`](docs/USER_STORIES.md) | Collaborative use case scenarios |
+| [`docs/N8N_INTEGRATION.md`](docs/N8N_INTEGRATION.md) | n8n cloud sync — architecture, API, sync scripts |
+| [`docs/ENTERPRISE.md`](docs/ENTERPRISE.md) | Enterprise roadmap — People, Policy, Procedure framework |
 
 ---
 
@@ -174,9 +185,21 @@ The app ships with a built-in documentation graph (`starter-guide.ttl`) containi
 
 ---
 
+## Context compression
+
+Knowledge graphs are dense by nature. Reckons.AI compresses what you know into structured RDF triples — retaining semantic meaning while reducing the tokens an AI needs to understand your situation. A page of prose becomes a handful of triples. Same meaning, fraction of the tokens. Feed your compressed KB directly to AI agents via MCP.
+
+---
+
+## Enterprise roadmap
+
+Structure organisational knowledge around **People · Policy · Procedure** — the three dimensions that matter. RBAC, bring-your-own auth (SSO/LDAP/OIDC), file-based `.ttl` delivery, and self-hosted deployment via n8n. See [`docs/ENTERPRISE.md`](docs/ENTERPRISE.md).
+
+---
+
 ## Things that are deliberately absent
 
-- **No backend server** — all state in IndexedDB; Turtle export for backup
-- **No accounts** — your KB is yours alone, on this device
+- **No backend server** — all state in IndexedDB; Turtle export for backup. Optional n8n cloud sync is self-hosted.
+- **No accounts** — your KB is yours alone, on this device. Enterprise RBAC is an opt-in layer.
 - **No analytics, no tracking, no remote logging**
 - URL ingestion proxies through `r.jina.ai/<url>` for clean-text extraction; use the note or document tab to avoid that hop entirely
