@@ -220,6 +220,28 @@
       </div>
     </div>
     <div class="scroll-hint" aria-hidden="true">↓</div>
+
+    <!-- Sea creature: graph-fish swimming right -->
+    <div class="sea-creature sea-hero-fish" aria-hidden="true">
+      <svg viewBox="0 0 200 130" width="100%">
+        <g stroke="#3a9a92" stroke-width="1.3" fill="none">
+          <polyline points="160,65 105,40 64,65 105,90 160,65"></polyline>
+          <line x1="108" y1="65" x2="160" y2="65"></line><line x1="108" y1="65" x2="105" y2="40"></line><line x1="108" y1="65" x2="64" y2="65"></line><line x1="108" y1="65" x2="105" y2="90"></line>
+          <line x1="105" y1="40" x2="102" y2="22"></line>
+          <line x1="64" y1="65" x2="32" y2="44"></line><line x1="64" y1="65" x2="32" y2="88"></line><line x1="32" y1="44" x2="32" y2="88"></line>
+        </g>
+        <g fill="#2E8F8C"><circle cx="108" cy="65" r="3.2"></circle><circle cx="105" cy="40" r="3"></circle><circle cx="64" cy="65" r="3"></circle><circle cx="105" cy="90" r="3"></circle></g>
+        <g fill="#68b8ae"><circle cx="160" cy="65" r="4.5" class="sea-twinkle"></circle><circle cx="102" cy="22" r="4" class="sea-twinkle d1"></circle><circle cx="32" cy="44" r="4" class="sea-twinkle d2"></circle><circle cx="32" cy="88" r="4" class="sea-twinkle d3"></circle></g>
+        <circle cx="150" cy="60" r="2" fill="#0b1116"></circle>
+      </svg>
+    </div>
+
+    <!-- Bubbles -->
+    <div class="sea-bubbles sea-hero-bubbles" aria-hidden="true">
+      <div class="bubble b1"></div>
+      <div class="bubble b2"></div>
+      <div class="bubble b3"></div>
+    </div>
   </section>
 
   <!-- ── What is a Triple ─────────────────────────────────────────────────── -->
@@ -406,6 +428,28 @@
       </div>
     </div>
   </section>
+
+  <!-- Sea creature: graph-fish swimming left (between sections) -->
+  <div class="sea-divider" aria-hidden="true">
+    <div class="sea-creature sea-mid-fish">
+      <svg viewBox="0 0 170 110" width="100%">
+        <g stroke="#3a9a92" stroke-width="1.3" fill="none">
+          <line x1="24" y1="55" x2="58" y2="32"></line><line x1="24" y1="55" x2="58" y2="78"></line>
+          <line x1="58" y1="32" x2="104" y2="55"></line><line x1="58" y1="78" x2="104" y2="55"></line><line x1="58" y1="32" x2="58" y2="78"></line>
+          <line x1="104" y1="55" x2="126" y2="55"></line>
+          <line x1="126" y1="55" x2="148" y2="30"></line><line x1="126" y1="55" x2="148" y2="80"></line><line x1="148" y1="30" x2="148" y2="80"></line>
+          <polyline points="70,33 86,16 100,35"></polyline>
+        </g>
+        <g fill="#2E8F8C"><circle cx="24" cy="55" r="3"></circle><circle cx="58" cy="32" r="3"></circle><circle cx="58" cy="78" r="3"></circle><circle cx="104" cy="55" r="3"></circle><circle cx="126" cy="55" r="3"></circle></g>
+        <g fill="#68b8ae"><circle cx="148" cy="30" r="4" class="sea-twinkle"></circle><circle cx="148" cy="80" r="4" class="sea-twinkle d1"></circle></g>
+        <circle cx="40" cy="50" r="2.2" fill="#0b1116"></circle>
+      </svg>
+    </div>
+    <div class="sea-bubbles sea-mid-bubbles">
+      <div class="bubble b1"></div>
+      <div class="bubble b2"></div>
+    </div>
+  </div>
 
   <!-- ── Compression benchmarks (verified) ──────────────────────────────────── -->
   {#if benchData}
@@ -809,6 +853,27 @@
       <a href="/ingest" class="btn-primary">Add your first source →</a>
       <a href="/" class="btn-secondary">Explore the graph</a>
       <a href="/settings" class="btn-secondary">Configure a backend</a>
+    </div>
+
+    <!-- Sea creature: flipped graph-fish -->
+    <div class="sea-creature sea-cta-fish" aria-hidden="true">
+      <svg viewBox="0 0 170 110" width="100%" style="transform:scaleX(-1)">
+        <g stroke="#44a79d" stroke-width="1.3" fill="none">
+          <line x1="24" y1="55" x2="58" y2="32"></line><line x1="24" y1="55" x2="58" y2="78"></line>
+          <line x1="58" y1="32" x2="104" y2="55"></line><line x1="58" y1="78" x2="104" y2="55"></line><line x1="58" y1="32" x2="58" y2="78"></line>
+          <line x1="104" y1="55" x2="126" y2="55"></line>
+          <line x1="126" y1="55" x2="148" y2="30"></line><line x1="126" y1="55" x2="148" y2="80"></line><line x1="148" y1="30" x2="148" y2="80"></line>
+          <polyline points="70,33 86,16 100,35"></polyline>
+        </g>
+        <g fill="#2E8F8C"><circle cx="24" cy="55" r="3"></circle><circle cx="58" cy="32" r="3"></circle><circle cx="58" cy="78" r="3"></circle><circle cx="104" cy="55" r="3"></circle><circle cx="126" cy="55" r="3"></circle></g>
+        <g fill="#68b8ae"><circle cx="148" cy="30" r="4" class="sea-twinkle"></circle><circle cx="148" cy="80" r="4" class="sea-twinkle d1"></circle></g>
+        <circle cx="40" cy="50" r="2.2" fill="#0b1116"></circle>
+      </svg>
+    </div>
+    <div class="sea-bubbles sea-cta-bubbles" aria-hidden="true">
+      <div class="bubble b1"></div>
+      <div class="bubble b2"></div>
+      <div class="bubble b3"></div>
     </div>
   </section>
 
@@ -2166,4 +2231,112 @@
   .rt-s { color: var(--accent); }
   .rt-p { color: var(--muted); }
   .rt-o { color: var(--data); }
+
+  /* ── Sea creature animations ─────────────────────────────── */
+  @keyframes sea-swim {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(26px); }
+  }
+  @keyframes sea-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+  @keyframes sea-drift {
+    0% { transform: translateY(18px) scale(0.7); opacity: 0; }
+    18% { opacity: 0.5; }
+    82% { opacity: 0.32; }
+    100% { transform: translateY(-150px) scale(1); opacity: 0; }
+  }
+  @keyframes sea-twinkle-kf {
+    0%, 100% { opacity: 0.32; }
+    50% { opacity: 1; }
+  }
+
+  .sea-creature {
+    position: absolute;
+    pointer-events: none;
+    animation: sea-swim 7s ease-in-out infinite;
+  }
+  .sea-creature :global(.sea-twinkle) {
+    animation: sea-twinkle-kf 3s ease-in-out infinite;
+  }
+  .sea-creature :global(.sea-twinkle.d1) { animation-delay: 0.5s; }
+  .sea-creature :global(.sea-twinkle.d2) { animation-delay: 0.8s; }
+  .sea-creature :global(.sea-twinkle.d3) { animation-delay: 1.1s; }
+
+  /* Hero fish — bottom right */
+  .sea-hero-fish {
+    right: 5%;
+    bottom: 60px;
+    width: 180px;
+    opacity: 0.5;
+  }
+  .sea-hero-bubbles {
+    position: absolute;
+    right: 4%;
+    bottom: 40px;
+    width: 100px;
+    height: 200px;
+  }
+
+  /* Mid-section divider fish */
+  .sea-divider {
+    position: relative;
+    height: 80px;
+    overflow: hidden;
+  }
+  .sea-mid-fish {
+    left: 8%;
+    top: 10px;
+    width: 120px;
+    opacity: 0.4;
+    animation-duration: 6s;
+  }
+  .sea-mid-bubbles {
+    position: absolute;
+    left: 6%;
+    top: 0;
+    width: 80px;
+    height: 80px;
+  }
+
+  /* CTA fish — top right */
+  .cta-section { position: relative; overflow: hidden; }
+  .sea-cta-fish {
+    right: 6%;
+    top: 30px;
+    width: 110px;
+    opacity: 0.45;
+    animation-duration: 5.5s;
+  }
+  .sea-cta-bubbles {
+    position: absolute;
+    right: 8%;
+    top: 10px;
+    width: 90px;
+    height: 180px;
+  }
+
+  /* Bubbles */
+  .sea-bubbles { pointer-events: none; }
+  .bubble {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(127, 224, 168, 0.4);
+    box-shadow: 0 0 7px rgba(127, 224, 168, 0.45);
+    animation: sea-drift 9s ease-in infinite;
+  }
+  .bubble.b1 { left: 24px; bottom: 0; width: 9px; height: 9px; }
+  .bubble.b2 { left: 52px; bottom: 0; width: 6px; height: 6px; animation-duration: 10.5s; animation-delay: 3s; opacity: 0.34; }
+  .bubble.b3 { left: 38px; bottom: 0; width: 12px; height: 12px; animation-duration: 12s; animation-delay: 5.5s; opacity: 0.3; box-shadow: 0 0 9px rgba(127, 224, 168, 0.4); }
+
+  /* Hide sea creatures on very small screens to avoid clutter */
+  @media (max-width: 600px) {
+    .sea-hero-fish { width: 100px; right: 2%; bottom: 40px; opacity: 0.35; }
+    .sea-hero-bubbles { display: none; }
+    .sea-divider { height: 50px; }
+    .sea-mid-fish { width: 80px; opacity: 0.3; }
+    .sea-cta-fish { width: 70px; opacity: 0.3; }
+    .sea-cta-bubbles, .sea-mid-bubbles { display: none; }
+  }
 </style>
