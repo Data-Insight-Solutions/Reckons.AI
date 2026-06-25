@@ -67,11 +67,32 @@ export async function computeContentHash(statements: Statement[]): Promise<strin
 
   const canonical = lines.join('\n');
   const bytes = new TextEncoder().encode(canonical);
-  const hashBuf = await crypto.subtle.digest('SHA-256', bytes);
-  const hex = Array.from(new Uint8Array(hashBuf))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-  return hex.slice(0, 32);
+
+  // crypto.subtle is unavailable in insecure contexts (HTTP, some mobile browsers).
+  if (typeof crypto === 'undefined' || !crypto.subtle) {
+    return fnv1aFallback(bytes).slice(0, 32);
+  }
+  try {
+    const hashBuf = await crypto.subtle.digest('SHA-256', bytes);
+    const hex = Array.from(new Uint8Array(hashBuf))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+    return hex.slice(0, 32);
+  } catch {
+    return fnv1aFallback(bytes).slice(0, 32);
+  }
+}
+
+/** FNV-1a 128-bit fallback when crypto.subtle is unavailable. */
+function fnv1aFallback(data: Uint8Array): string {
+  let h1 = 0x811c9dc5 >>> 0;
+  let h2 = 0xc4ceb9fe >>> 0;
+  for (let i = 0; i < data.length; i++) {
+    h1 ^= data[i]; h1 = Math.imul(h1, 0x01000193) >>> 0;
+    h2 ^= data[i]; h2 = Math.imul(h2, 0x01000193) >>> 0;
+    h2 ^= (h1 >>> 16);
+  }
+  return (h1.toString(16).padStart(8, '0') + h2.toString(16).padStart(8, '0')).repeat(2);
 }
 
 /**

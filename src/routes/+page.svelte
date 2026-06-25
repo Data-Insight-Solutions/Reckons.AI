@@ -47,7 +47,7 @@
   import { onMount, untrack } from 'svelte';
   import { fade } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
-  import { settings } from '$lib/stores/settings.svelte';
+  import { settings, updateSettings } from '$lib/stores/settings.svelte';
   import { replaceState } from '$app/navigation';
   import { page } from '$app/stores';
   import type { GraphFilter } from '$lib/types/turtle-chat';
@@ -257,7 +257,7 @@
             ? 'Removing custom 3D models may help.'
             : 'Consider switching to 2D for better performance.',
           ondismiss: dismissPerfSuggestion,
-          action: { label: 'Switch to 2D', onclick: () => { use2D = true; resetPerfMonitor(); dismissNotification('perf-3d'); } }
+          action: { label: 'Switch to 2D', onclick: () => { use2D = true; resetPerfMonitor(); dismissNotification('perf-3d'); updateSettings({ prefer2D: true }); } }
         });
       } else {
         dismissNotification('perf-3d');
@@ -1229,7 +1229,7 @@
         <div class="no-webgl">
           <p class="no-webgl-title mono">3D graph error</p>
           <p class="no-webgl-sub">{error?.message ?? 'WebGL context could not be created.'}</p>
-          <button class="cta" style="margin-top:0.75rem;" onclick={() => { use2D = true; resetPerfMonitor(); }}>switch to 2D view →</button>
+          <button class="cta" style="margin-top:0.75rem;" onclick={() => { use2D = true; webglAvailable = false; resetPerfMonitor(); updateSettings({ prefer2D: true }); }}>switch to 2D view →</button>
         </div>
       {/snippet}
     </svelte:boundary>
@@ -3088,13 +3088,15 @@
       max-width: none;
       bottom: 5rem;
     }
-    .chip { font-size: 0.68rem; padding: 0.25rem 0.55rem; }
+    /* Larger touch targets for filter chips */
+    .chip { font-size: 0.72rem; padding: 0.4rem 0.6rem; min-height: 36px; }
     .chip .num { font-size: 0.95rem; }
-    .chip .lbl { font-size: 0.55rem; }
+    .chip .lbl { font-size: 0.58rem; }
+    .chip-row { gap: 0.4rem; }
     .np-label { font-size: 0.95rem; }
     .np-body { padding: 0.5rem 0.75rem 0.75rem; }
     .np-header { padding: 0.5rem 0.75rem 0.4rem; }
-    .np-act-btn { font-size: 0.62rem; padding: 0.25rem 0.5rem; }
+    .np-act-btn { font-size: 0.65rem; padding: 0.35rem 0.6rem; min-height: 36px; }
     .analyze-toast { bottom: calc(max(0.5rem, env(safe-area-inset-bottom)) + 56px); }
     .perf-banner {
       top: 3rem;
@@ -3105,5 +3107,8 @@
     }
     :global(.filter-popover) { max-width: calc(100vw - 2rem); }
     .overlay-inner { padding: 0.4rem 0.5rem; }
+    .kb-hint { display: none; } /* keyboard nav hint not useful on touch devices */
+    .gif-preview { display: none; } /* hover-triggered GIF preview not useful on touch */
+    .node-label-wrap { pointer-events: none; } /* prevent label divs from stealing touch events */
   }
 </style>

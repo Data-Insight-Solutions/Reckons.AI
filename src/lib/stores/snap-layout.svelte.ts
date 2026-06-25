@@ -13,6 +13,7 @@ const TOP_MARGIN = 60;   // SearchBar / top chrome
 const BOT_MARGIN = 52;   // NavBar + breathing room
 const COL_GAP    = 8;    // gap between top and bottom panel in same column
 const TOP_MAX    = 260;  // top panel caps at this height — rest goes to bottom
+const TOP_MAX_MOBILE = 180; // tighter cap on mobile — leave room for graph + node panel
 
 // Plain Map for data storage. _tick is the reactive signal — replaced with a new
 // object on every change. Writing `_tick = {}` never reads the old value, so
@@ -53,6 +54,9 @@ export function getColumnMaxH(id: string, vh: number): number | null {
   if (!hasPartner) return null;
   const available = vh - TOP_MARGIN - BOT_MARGIN - COL_GAP;
   const isTop = corner === 'top-left' || corner === 'top-right';
-  const topH = Math.min(TOP_MAX, Math.floor(available * 0.4));
+  // On mobile viewports, use a tighter cap so both panels + graph canvas fit
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 600;
+  const topCap = isMobile ? TOP_MAX_MOBILE : TOP_MAX;
+  const topH = Math.min(topCap, Math.floor(available * (isMobile ? 0.3 : 0.4)));
   return isTop ? topH : available - topH;
 }

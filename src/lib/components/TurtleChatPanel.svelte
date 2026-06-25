@@ -2237,4 +2237,43 @@
     min-width: 1.6rem;
     text-align: right;
   }
+
+  /* ── Mobile: prevent overlap with NavBar, enlarge touch targets ── */
+  @media (max-width: 600px) {
+    .panel-header { padding: 0.5rem 0.6rem; gap: 0.3rem; }
+    .close {
+      font-size: 1.1rem;
+      min-width: 44px;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    :global(.tcp-tab) {
+      padding: 0.4rem 0.55rem;
+      font-size: 0.72rem;
+      min-height: 36px;
+    }
+    /* Story controls: wrap onto two lines so exit button stays visible */
+    .story-controls {
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      padding: 0.3rem 0.1rem;
+    }
+    .story-exit {
+      font-size: 0.85rem;
+      min-width: 44px;
+      min-height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: color-mix(in srgb, var(--danger) 12%, var(--surface-2));
+      border-color: color-mix(in srgb, var(--danger) 30%, var(--line));
+      color: var(--danger);
+    }
+    .story-btn {
+      min-height: 36px;
+      padding: 0.3rem 0.55rem;
+    }
+  }
 </style>

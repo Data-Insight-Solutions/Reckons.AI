@@ -421,14 +421,16 @@
 
     a:not(.wordmark), .nav-btn {
       padding: 0.5rem 0.55rem;
-      min-width: 40px;
+      min-width: 44px;
+      min-height: 44px;
     }
 
-    /* nav-pair: increase tap targets to 44px minimum */
+    /* nav-pair: 44px minimum tap targets */
     .nav-pair { margin: 0; border-radius: 6px; }
     .nav-pair-item {
       padding: 0.45rem 0.5rem;
-      min-width: 32px;
+      min-width: 36px;
+      min-height: 44px;
     }
 
     .divider { margin: 0; height: 20px; }

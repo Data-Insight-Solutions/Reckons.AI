@@ -102,7 +102,20 @@ export async function chatOllama(
     // Network errors (CORS blocked, connection refused, offline)
     const msg = e instanceof Error ? e.message : String(e);
     if (msg.includes('NetworkError') || msg.includes('Failed to fetch') || msg.includes('Load failed')) {
-      const origin = typeof globalThis.location !== 'undefined' ? globalThis.location.origin : 'http://localhost:5173';
+      const origin = typeof globalThis.location !== 'undefined' ? globalThis.location.origin : '';
+      const isRemote = origin && !origin.includes('localhost') && !origin.includes('127.0.0.1');
+      const isLocalUrl = baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1');
+
+      // Most common mobile mistake: app accessed via LAN IP but Ollama URL still points to localhost
+      if (isRemote && isLocalUrl) {
+        const host = new URL(origin).hostname;
+        throw new Error(
+          `Ollama URL is "${baseUrl}" but you're accessing this app from ${origin}. ` +
+          `"localhost" means this device — your phone can't reach the desktop's Ollama that way. ` +
+          `Change the Ollama URL in Settings to http://${host}:11434`
+        );
+      }
+
       throw new Error(
         `Cannot reach Ollama at ${baseUrl}. ` +
         `Either Ollama is not running, or CORS is blocking the request. ` +

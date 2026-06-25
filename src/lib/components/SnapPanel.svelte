@@ -336,6 +336,8 @@
       /* Override inline width on mobile */
       width: calc(100vw - 1rem) !important;
       max-width: calc(100vw - 1rem) !important;
+      /* Cap height so panels never dominate the viewport */
+      max-height: 50vh !important;
     }
     .snapped-tl, .snapped-tr { top: 52px; left: 0.5rem; right: 0.5rem; }
     .snapped-bl, .snapped-br { bottom: 52px; left: 0.5rem; right: 0.5rem; }

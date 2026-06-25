@@ -341,8 +341,30 @@ export async function buildIngestionPrompt(input: IngestInput): Promise<{ prompt
 
 async function sha256(text: string): Promise<string> {
   const buf = new TextEncoder().encode(text);
-  const hash = await crypto.subtle.digest('SHA-256', buf);
-  return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
+  // crypto.subtle is unavailable in insecure contexts (HTTP, some mobile browsers).
+  // Fall back to a simple FNV-1a-based hash — not cryptographic, but sufficient
+  // for content deduplication.
+  if (typeof crypto === 'undefined' || !crypto.subtle) {
+    return fnv1aFallback(buf);
+  }
+  try {
+    const hash = await crypto.subtle.digest('SHA-256', buf);
+    return Array.from(new Uint8Array(hash))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+  } catch {
+    return fnv1aFallback(buf);
+  }
+}
+
+/** FNV-1a 128-bit fallback when crypto.subtle is unavailable. */
+function fnv1aFallback(data: Uint8Array): string {
+  let h1 = 0x811c9dc5 >>> 0;
+  let h2 = 0xc4ceb9fe >>> 0;
+  for (let i = 0; i < data.length; i++) {
+    h1 ^= data[i]; h1 = Math.imul(h1, 0x01000193) >>> 0;
+    h2 ^= data[i]; h2 = Math.imul(h2, 0x01000193) >>> 0;
+    h2 ^= (h1 >>> 16);
+  }
+  return (h1.toString(16).padStart(8, '0') + h2.toString(16).padStart(8, '0')).repeat(2);
 }

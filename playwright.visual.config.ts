@@ -47,6 +47,16 @@ export default defineConfig({
       },
     },
     {
+      name: 'mobile',
+      testDir: './tests/visual/mobile',
+      testMatch: '*.test.ts',
+      timeout: 90_000,
+      use: {
+        ...devices['Pixel 7'],
+        launchOptions: { args: ['--no-sandbox', '--disable-dev-shm-usage'] },
+      },
+    },
+    {
       name: 'user-stories',
       testDir: './tests/visual/user-stories',
       testMatch: '*.test.ts',
