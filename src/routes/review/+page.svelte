@@ -198,6 +198,9 @@
   );
 
   // ── Overlay mode ──────────────────────────────────────────────────────────
+  import { KBaseDB } from '$lib/storage/db';
+  import { toTurtle } from '$lib/rdf/serialize';
+
   let overlayData = $state<OverlayData | null>(null);
   let overlayLoading = $state(false);
   let overlayActiveGraphIds = $state(new Set<string>());
@@ -210,38 +213,102 @@
   let overlaySelectedKey = $state<string | null>(null);
   let overlayViewIs3D = $state(false);
 
-  const overlayTtlModules = import.meta.glob('/docs/reckons-knowledge-graphs/*.ttl', {
-    query: '?raw', import: 'default', eager: true
-  }) as Record<string, string>;
+  // KB-based overlay sources
+  let overlayKbEntries = $state(getRegistry());
+  let overlaySelectedKbIds = $state(new Set<string>());
+  let overlayKbTtlCache = new Map<string, string>();
+  let overlayLoadingKbIds = $state(new Set<string>());
 
-  async function loadOverlayExamples() {
+  // Bundled examples (collapsed by default)
+  let overlayShowExamples = $state(false);
+  let overlaySelectedExampleIds = $state(new Set<string>());
+  const overlayBundledFiles = (() => {
+    const mods = import.meta.glob('/docs/reckons-knowledge-graphs/*.ttl', {
+      query: '?raw', import: 'default', eager: true
+    }) as Record<string, string>;
+    return Object.entries(mods).map(([path, content]) => ({
+      id: path.split('/').pop()!.replace('.ttl', ''),
+      content: content as string
+    }));
+  })();
+
+  async function loadOverlayKbAsTtl(entry: import('$lib/storage/kb-registry').KbEntry): Promise<string> {
+    if (overlayKbTtlCache.has(entry.id)) return overlayKbTtlCache.get(entry.id)!;
+    const tempDb = new KBaseDB(entry.id);
+    try {
+      const stmts = await tempDb.statements.toArray();
+      const confirmed = stmts.filter(s => s.status === 'confirmed' || s.status === 'refined');
+      if (confirmed.length === 0) return '';
+      const ttl = toTurtle(confirmed, { header: entry.name });
+      overlayKbTtlCache.set(entry.id, ttl);
+      return ttl;
+    } finally {
+      tempDb.close();
+    }
+  }
+
+  async function rebuildOverlay() {
+    const files: Array<{ id: string; content: string }> = [];
+
+    // Add selected KBs
+    for (const kbId of overlaySelectedKbIds) {
+      const entry = overlayKbEntries.find(e => e.id === kbId);
+      if (!entry) continue;
+      overlayLoadingKbIds = new Set([...overlayLoadingKbIds, kbId]);
+      try {
+        const ttl = await loadOverlayKbAsTtl(entry);
+        if (ttl) files.push({ id: entry.name || entry.id, content: ttl });
+      } catch (e) { console.warn(`Failed to load KB "${entry.name}":`, e); }
+      overlayLoadingKbIds = new Set([...overlayLoadingKbIds].filter(id => id !== kbId));
+    }
+    overlayLoadingKbIds = new Set();
+
+    // Add selected bundled examples
+    if (overlayShowExamples) {
+      for (const ex of overlayBundledFiles) {
+        if (overlaySelectedExampleIds.has(ex.id)) files.push(ex);
+      }
+    }
+
+    if (files.length === 0) { overlayData = null; return; }
+
     overlayLoading = true;
     try {
-      const files = Object.entries(overlayTtlModules).map(([path, content]) => ({
-        id: path.split('/').pop()!.replace('.ttl', ''),
-        content: content as string
-      }));
       overlayData = await parseMultipleGraphs(files);
       overlayActiveGraphIds = new Set(overlayData.graphs.map(g => g.id));
     } catch (e) { console.warn('Overlay parse error:', e); }
     finally { overlayLoading = false; }
   }
 
-  async function onOverlayFileInput(e: Event) {
-    const input = e.target as HTMLInputElement;
-    if (!input.files?.length) return;
-    const newFiles: Array<{ id: string; content: string }> = [];
-    for (const file of input.files) {
-      if (!file.name.endsWith('.ttl')) continue;
-      newFiles.push({ id: file.name.replace('.ttl', ''), content: await file.text() });
+  async function toggleOverlayKb(kbId: string) {
+    const next = new Set(overlaySelectedKbIds);
+    if (next.has(kbId)) next.delete(kbId); else next.add(kbId);
+    overlaySelectedKbIds = next;
+    await rebuildOverlay();
+  }
+
+  function toggleOverlayExample(exId: string) {
+    const next = new Set(overlaySelectedExampleIds);
+    if (next.has(exId)) next.delete(exId); else next.add(exId);
+    overlaySelectedExampleIds = next;
+    rebuildOverlay();
+  }
+
+  function toggleOverlayShowExamples() {
+    overlayShowExamples = !overlayShowExamples;
+    if (!overlayShowExamples) {
+      overlaySelectedExampleIds = new Set();
+      rebuildOverlay();
     }
-    const bundled = Object.entries(overlayTtlModules).map(([path, content]) => ({
-      id: path.split('/').pop()!.replace('.ttl', ''),
-      content: content as string
-    }));
-    overlayData = await parseMultipleGraphs([...bundled, ...newFiles]);
-    overlayActiveGraphIds = new Set(overlayData.graphs.map(g => g.id));
-    input.value = '';
+  }
+
+  function initOverlay() {
+    overlayKbEntries = getRegistry();
+    // Auto-select current KB if not already loaded
+    if (overlaySelectedKbIds.size === 0) {
+      overlaySelectedKbIds = new Set([currentKbId]);
+      rebuildOverlay();
+    }
   }
 
   function toggleOverlayGraph(id: string) {
@@ -391,6 +458,14 @@
     alignResult = { ...alignResult! };
   }
 
+  // ── URL query param helpers ─────────────────────────────────────────────
+  function setViewParam(view: string | null) {
+    const url = new URL(window.location.href);
+    if (view) { url.searchParams.set('view', view); }
+    else { url.searchParams.delete('view'); }
+    history.replaceState(null, '', url.toString());
+  }
+
   // Auto-populate from URL params
   onMount(() => {
     const params = new URL(window.location.href).searchParams;
@@ -403,6 +478,9 @@
     if (tabParam && ['incoming', 'deletions', 'merges', 'align'].includes(tabParam)) {
       activeTab = tabParam as Tab;
     }
+    const viewParam = params.get('view');
+    if (viewParam === 'compare') { graphMode = 'compare'; }
+    else if (viewParam === 'overlay') { graphMode = 'overlay'; initOverlay(); }
   });
 </script>
 
@@ -411,14 +489,14 @@
   <section class="graph-pane">
     <!-- Graph mode bar -->
     <div class="graph-mode-bar">
-      <button class="mode-btn" class:active={graphMode === 'preview'} onclick={() => graphMode = 'preview'}>
+      <button class="mode-btn" class:active={graphMode === 'preview'} onclick={() => { graphMode = 'preview'; setViewParam(null); }}>
         <span class="mode-lbl mono">preview</span>
         {#if totalPending > 0}<span class="mode-badge">{totalPending}</span>{/if}
       </button>
-      <button class="mode-btn" class:active={graphMode === 'compare'} onclick={() => graphMode = 'compare'}>
+      <button class="mode-btn" class:active={graphMode === 'compare'} onclick={() => { graphMode = 'compare'; setViewParam('compare'); }}>
         <span class="mode-lbl mono">compare</span>
       </button>
-      <button class="mode-btn" class:active={graphMode === 'overlay'} onclick={() => { graphMode = 'overlay'; if (!overlayData) loadOverlayExamples(); }}>
+      <button class="mode-btn" class:active={graphMode === 'overlay'} onclick={() => { graphMode = 'overlay'; initOverlay(); setViewParam('overlay'); }}>
         <span class="mode-lbl mono">overlay</span>
       </button>
       <span class="mode-spacer"></span>
@@ -435,33 +513,65 @@
     </div>
 
     <!-- Overlay controls strip (when overlay mode) -->
-    {#if graphMode === 'overlay' && overlayData}
+    {#if graphMode === 'overlay'}
       <div class="overlay-controls">
+        <!-- KB picker row -->
         <div class="ov-row">
-          <span class="ov-label mono">show</span>
-          {#each [...MEMBERSHIP_PREDICATES] as pred}
-            <button class="ov-chip" class:active={overlayActivePredicates.has(pred)} onclick={() => toggleOverlayPredicate(pred)}>
-              {MEMBERSHIP_LABELS[pred] ?? pred.split('/').pop()}
+          <span class="ov-label mono">KBs</span>
+          {#each overlayKbEntries as entry}
+            {@const isActive = overlaySelectedKbIds.has(entry.id)}
+            <button
+              class="ov-chip"
+              class:active={isActive}
+              onclick={() => toggleOverlayKb(entry.id)}
+              disabled={overlayLoadingKbIds.has(entry.id)}
+            >
+              {isActive ? '\u2713 ' : ''}{entry.name.length > 16 ? entry.name.slice(0, 14) + '..' : entry.name}
+              {#if entry.statementCount}<span class="ov-count">{entry.statementCount}</span>{/if}
+              {#if entry.id === currentKbId}<span class="ov-current">*</span>{/if}
             </button>
           {/each}
-          {#each [...OVERLAY_STRUCTURAL] as pred}
-            <button class="ov-chip" class:active={overlayActivePredicates.has(pred)} onclick={() => toggleOverlayPredicate(pred)} style="font-style:italic">
-              {pred.split('/').pop()}
-            </button>
-          {/each}
+          <!-- Examples dropdown -->
+          <button class="ov-chip" class:active={overlayShowExamples} onclick={toggleOverlayShowExamples}>
+            {overlayShowExamples ? '\u25BE' : '\u25B8'} examples
+          </button>
         </div>
-        <div class="ov-row">
-          <span class="ov-label mono">graphs</span>
-          {#each overlayData.graphs as g}
-            <button class="ov-chip" class:active={overlayActiveGraphIds.has(g.id)} onclick={() => toggleOverlayGraph(g.id)}>
-              <span class="ov-dot" style="background:{g.color}"></span>
-              {g.id.length > 14 ? g.id.slice(0, 12) + '..' : g.id}
-            </button>
-          {/each}
-          <label class="ov-chip" style="cursor:pointer">
-            + TTL <input type="file" accept=".ttl" multiple onchange={onOverlayFileInput} hidden />
-          </label>
-        </div>
+        {#if overlayShowExamples}
+          <div class="ov-row">
+            <span class="ov-label mono"></span>
+            {#each overlayBundledFiles as ex}
+              <button class="ov-chip" class:active={overlaySelectedExampleIds.has(ex.id)} onclick={() => toggleOverlayExample(ex.id)}>
+                {ex.id.length > 16 ? ex.id.slice(0, 14) + '..' : ex.id}
+              </button>
+            {/each}
+          </div>
+        {/if}
+        {#if overlayData}
+          <!-- Predicate filters -->
+          <div class="ov-row">
+            <span class="ov-label mono">show</span>
+            {#each [...MEMBERSHIP_PREDICATES] as pred}
+              <button class="ov-chip" class:active={overlayActivePredicates.has(pred)} onclick={() => toggleOverlayPredicate(pred)}>
+                {MEMBERSHIP_LABELS[pred] ?? pred.split('/').pop()}
+              </button>
+            {/each}
+            {#each [...OVERLAY_STRUCTURAL] as pred}
+              <button class="ov-chip" class:active={overlayActivePredicates.has(pred)} onclick={() => toggleOverlayPredicate(pred)} style="font-style:italic">
+                {pred.split('/').pop()}
+              </button>
+            {/each}
+          </div>
+          <!-- Graph toggles -->
+          <div class="ov-row">
+            <span class="ov-label mono">graphs</span>
+            {#each overlayData.graphs as g}
+              <button class="ov-chip" class:active={overlayActiveGraphIds.has(g.id)} onclick={() => toggleOverlayGraph(g.id)}>
+                <span class="ov-dot" style="background:{g.color}"></span>
+                {g.id.length > 14 ? g.id.slice(0, 12) + '..' : g.id}
+              </button>
+            {/each}
+          </div>
+        {/if}
       </div>
     {/if}
 
@@ -562,7 +672,7 @@
           {/if}
         {:else}
           <div class="graph-empty">
-            <p class="mono">{overlayLoading ? 'loading...' : 'loading overlay data...'}</p>
+            <p class="mono">{overlayLoading ? 'loading...' : 'select KBs above to compare'}</p>
           </div>
         {/if}
       {/if}
@@ -977,6 +1087,9 @@
   .ov-chip:hover { border-color: var(--accent); color: var(--ink); }
   .ov-chip.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
   .ov-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .ov-count { font-size: 0.48rem; opacity: 0.5; }
+  .ov-current { color: var(--accent); font-size: 0.6rem; }
+  .ov-chip:disabled { opacity: 0.5; cursor: wait; }
   .ov-hint { font-size: 0.55rem; color: var(--muted); }
 
   /* ── Resize handle ── */

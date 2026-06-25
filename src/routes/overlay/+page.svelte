@@ -9,11 +9,18 @@
     isProjectIri,
     type OverlayData, type GraphDef
   } from '$lib/rdf/multi-graph-parse';
+  import { getRegistry, getCurrentKbId, type KbEntry } from '$lib/storage/kb-registry';
+  import { KBaseDB } from '$lib/storage/db';
+  import { toTurtle } from '$lib/rdf/serialize';
 
   // ── Bundled example files via Vite glob ─────────────────────────────────────
   const ttlModules = import.meta.glob('/docs/reckons-knowledge-graphs/*.ttl', {
     query: '?raw', import: 'default', eager: true
   }) as Record<string, string>;
+  const bundledFiles = Object.entries(ttlModules).map(([path, content]) => ({
+    id: path.split('/').pop()!.replace('.ttl', ''),
+    content: content as string
+  }));
 
   // ── State ───────────────────────────────────────────────────────────────────
   let data = $state<OverlayData | null>(null);
@@ -22,8 +29,15 @@
   let activeGraphIds = $state(new Set<string>());
   let activePredicates = $state(new Set<string>(MEMBERSHIP_PREDICATES));
   let selectedKey = $state<string | null>(null);
-  let customFiles = $state<Array<{ id: string; content: string }>>([]);
   let viewMode = $state<'2d' | '3d'>('2d');
+
+  // ── KB registry sources ─────────────────────────────────────────────────────
+  let kbEntries = $state<KbEntry[]>([]);
+  let selectedKbIds = $state(new Set<string>());
+  let kbTtlCache = $state(new Map<string, string>()); // kbId → TTL content
+  let loadingKbIds = $state(new Set<string>());
+  let showExamples = $state(false);
+  let selectedExampleIds = $state(new Set<string>());
 
   // Also include non-membership predicates that create inter-entity edges
   const STRUCTURAL_PREDICATES = new Set([
@@ -59,18 +73,60 @@
     return data.graphs.filter(g => selectedNode.membership.has(g.id));
   });
 
-  // ── Load examples ───────────────────────────────────────────────────────────
-  async function loadExamples() {
+  const currentKbId = typeof window !== 'undefined' ? getCurrentKbId() : 'kbase';
+
+  // ── Load a single KB's statements as TTL ──────────────────────────────────
+  async function loadKbAsTtl(entry: KbEntry): Promise<string> {
+    if (kbTtlCache.has(entry.id)) return kbTtlCache.get(entry.id)!;
+    const tempDb = new KBaseDB(entry.id);
+    try {
+      const stmts = await tempDb.statements.toArray();
+      const confirmed = stmts.filter(s => s.status === 'confirmed' || s.status === 'refined');
+      if (confirmed.length === 0) return '';
+      const ttl = toTurtle(confirmed, { header: entry.name });
+      kbTtlCache.set(entry.id, ttl);
+      return ttl;
+    } finally {
+      tempDb.close();
+    }
+  }
+
+  // ── Rebuild overlay from all selected sources ─────────────────────────────
+  async function rebuildOverlay() {
+    const files: Array<{ id: string; content: string }> = [];
+
+    // Add selected KB entries
+    for (const kbId of selectedKbIds) {
+      const entry = kbEntries.find(e => e.id === kbId);
+      if (!entry) continue;
+      loadingKbIds.add(kbId);
+      loadingKbIds = new Set(loadingKbIds);
+      try {
+        const ttl = await loadKbAsTtl(entry);
+        if (ttl) files.push({ id: entry.name || entry.id, content: ttl });
+      } catch (e) {
+        console.warn(`Failed to load KB "${entry.name}":`, e);
+      }
+      loadingKbIds.delete(kbId);
+    }
+    loadingKbIds = new Set();
+
+    // Add selected bundled examples
+    if (showExamples) {
+      for (const ex of bundledFiles) {
+        if (selectedExampleIds.has(ex.id)) files.push(ex);
+      }
+    }
+
+    if (files.length === 0) {
+      data = null;
+      return;
+    }
+
     loading = true;
     error = null;
     try {
-      const files = Object.entries(ttlModules).map(([path, content]) => ({
-        id: path.split('/').pop()!.replace('.ttl', ''),
-        content: content as string
-      }));
-      // Also include any custom files
-      const allFiles = [...files, ...customFiles];
-      data = await parseMultipleGraphs(allFiles);
+      data = await parseMultipleGraphs(files);
       activeGraphIds = new Set(data.graphs.map(g => g.id));
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
@@ -79,28 +135,30 @@
     }
   }
 
-  // ── File picker ─────────────────────────────────────────────────────────────
-  async function onFileInput(e: Event) {
-    const input = e.target as HTMLInputElement;
-    if (!input.files?.length) return;
-    const newFiles: Array<{ id: string; content: string }> = [];
-    for (const file of input.files) {
-      if (!file.name.endsWith('.ttl')) continue;
-      const content = await file.text();
-      newFiles.push({ id: file.name.replace('.ttl', ''), content });
-    }
-    customFiles = [...customFiles, ...newFiles];
-    // Re-parse with all files
-    const bundled = Object.entries(ttlModules).map(([path, content]) => ({
-      id: path.split('/').pop()!.replace('.ttl', ''),
-      content: content as string
-    }));
-    data = await parseMultipleGraphs([...bundled, ...customFiles]);
-    activeGraphIds = new Set(data.graphs.map(g => g.id));
-    input.value = '';
+  // ── Toggle a KB selection ─────────────────────────────────────────────────
+  async function toggleKb(kbId: string) {
+    const next = new Set(selectedKbIds);
+    if (next.has(kbId)) next.delete(kbId); else next.add(kbId);
+    selectedKbIds = next;
+    await rebuildOverlay();
   }
 
-  // ── Toggle helpers ──────────────────────────────────────────────────────────
+  function toggleExample(exId: string) {
+    const next = new Set(selectedExampleIds);
+    if (next.has(exId)) next.delete(exId); else next.add(exId);
+    selectedExampleIds = next;
+    rebuildOverlay();
+  }
+
+  function toggleShowExamples() {
+    showExamples = !showExamples;
+    if (!showExamples) {
+      selectedExampleIds = new Set();
+      rebuildOverlay();
+    }
+  }
+
+  // ── Toggle helpers ──────────────────────────────────────────────────────
   function toggleGraph(id: string) {
     const next = new Set(activeGraphIds);
     if (next.has(id)) next.delete(id); else next.add(id);
@@ -119,7 +177,27 @@
     return slash >= 0 ? iri.slice(slash + 1) : iri;
   }
 
-  onMount(loadExamples);
+  function selectAll() {
+    selectedKbIds = new Set(kbEntries.map(e => e.id));
+    rebuildOverlay();
+  }
+
+  function selectNone() {
+    selectedKbIds = new Set();
+    selectedExampleIds = new Set();
+    data = null;
+  }
+
+  onMount(() => {
+    // Show all registered KBs — those without a recorded count might still have data
+    kbEntries = getRegistry();
+    // Auto-select current KB
+    const current = kbEntries.find(e => e.id === currentKbId);
+    if (current) {
+      selectedKbIds = new Set([current.id]);
+      rebuildOverlay();
+    }
+  });
 </script>
 
 <div class="page">
@@ -129,23 +207,84 @@
     <p class="subtitle">venn-style overlay of multiple knowledge graphs</p>
   </header>
 
-  <!-- ── File controls ───────────────────────────────────────────────────── -->
-  <div class="controls-bar">
-    <button class="ghost" onclick={loadExamples} disabled={loading}>
-      {loading ? 'loading...' : 'reload examples'}
-    </button>
-    <label class="file-label ghost">
-      + add TTL files
-      <input type="file" accept=".ttl" multiple onchange={onFileInput} hidden />
-    </label>
-    <div class="view-toggle">
-      <button class="toggle-btn" class:active={viewMode === '2d'} onclick={() => viewMode = '2d'}>2D</button>
-      <button class="toggle-btn" class:active={viewMode === '3d'} onclick={() => viewMode = '3d'}>3D</button>
+  <!-- ── KB source picker ───────────────────────────────────────────────── -->
+  <div class="source-picker">
+    <div class="picker-header">
+      <span class="picker-label mono">knowledge bases</span>
+      <div class="picker-actions">
+        <button class="ghost-sm" onclick={selectAll}>all</button>
+        <button class="ghost-sm" onclick={selectNone}>none</button>
+      </div>
+    </div>
+
+    {#if kbEntries.length === 0}
+      <p class="no-kbs mono">No knowledge bases with data found. Ingest some sources first.</p>
+    {:else}
+      <div class="kb-chips">
+        {#each kbEntries as entry}
+          {@const isActive = selectedKbIds.has(entry.id)}
+          {@const isCurrent = entry.id === currentKbId}
+          {@const isLoading = loadingKbIds.has(entry.id)}
+          <button
+            class="kb-chip"
+            class:active={isActive}
+            class:current={isCurrent}
+            onclick={() => toggleKb(entry.id)}
+            style:--kb-color={entry.color || 'var(--accent)'}
+            disabled={isLoading}
+          >
+            <span class="kb-check">{isActive ? '\u2713' : ''}</span>
+            <span class="kb-name">{entry.name}</span>
+            {#if entry.statementCount}
+              <span class="kb-count">{entry.statementCount}</span>
+            {/if}
+            {#if isCurrent}
+              <span class="kb-current-badge">current</span>
+            {/if}
+            {#if isLoading}
+              <span class="kb-loading">...</span>
+            {/if}
+          </button>
+        {/each}
+      </div>
+    {/if}
+
+    <!-- Examples folder -->
+    <div class="examples-folder">
+      <button class="examples-toggle ghost-sm" onclick={toggleShowExamples}>
+        <span class="folder-arrow">{showExamples ? '\u25BE' : '\u25B8'}</span>
+        Reckons.AI examples
+        <span class="examples-count">{bundledFiles.length}</span>
+      </button>
+      {#if showExamples}
+        <div class="example-chips">
+          {#each bundledFiles as ex}
+            <button
+              class="chip"
+              class:active={selectedExampleIds.has(ex.id)}
+              onclick={() => toggleExample(ex.id)}
+            >
+              {ex.id}
+            </button>
+          {/each}
+        </div>
+      {/if}
+    </div>
+
+    <div class="file-row">
+      <div class="view-toggle">
+        <button class="toggle-btn" class:active={viewMode === '2d'} onclick={() => viewMode = '2d'}>2D</button>
+        <button class="toggle-btn" class:active={viewMode === '3d'} onclick={() => viewMode = '3d'}>3D</button>
+      </div>
     </div>
   </div>
 
   {#if error}
     <div class="error-bar">{error}</div>
+  {/if}
+
+  {#if loading}
+    <div class="loading-bar mono">loading knowledge bases...</div>
   {/if}
 
   {#if data}
@@ -262,6 +401,12 @@
       <span class="legend-item"><span class="legend-pie"></span> shared (pie = projects)</span>
       <span class="legend-item"><span class="legend-dot big" style="background: #888"></span> more shared = larger</span>
     </div>
+  {:else if !loading}
+    <!-- Empty state -->
+    <div class="empty-state">
+      <p class="empty-title">Select knowledge bases above to compare</p>
+      <p class="empty-sub mono">Pick two or more KBs to see a venn-style overlay of shared and unique entities</p>
+    </div>
   {/if}
 </div>
 
@@ -295,27 +440,137 @@
     margin: 0;
   }
 
-  /* Controls */
-  .controls-bar {
-    display: flex;
-    gap: 0.5rem;
+  /* Source picker */
+  .source-picker {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--rad);
+    padding: 0.75rem 1rem;
     margin-bottom: 1rem;
-    flex-wrap: wrap;
   }
-  .ghost {
+  .picker-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+  }
+  .picker-label {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .picker-actions {
+    display: flex;
+    gap: 0.35rem;
+  }
+  .ghost-sm {
     background: none;
     border: 1px solid var(--line);
     border-radius: var(--rad-sm);
-    padding: 0.4rem 0.8rem;
+    padding: 0.25rem 0.5rem;
     font-family: var(--font-mono);
-    font-size: 0.7rem;
+    font-size: 0.6rem;
     color: var(--muted);
     cursor: pointer;
     transition: color 0.12s, border-color 0.12s;
   }
-  .ghost:hover { color: var(--accent); border-color: var(--accent); }
-  .ghost:disabled { opacity: 0.4; cursor: not-allowed; }
-  .file-label { cursor: pointer; }
+  .ghost-sm:hover { color: var(--accent); border-color: var(--accent); }
+  .no-kbs {
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin: 0.5rem 0;
+  }
+
+  /* KB chips */
+  .kb-chips {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+  }
+  .kb-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.3rem 0.7rem;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.12s;
+    white-space: nowrap;
+  }
+  .kb-chip:hover { border-color: var(--kb-color); color: var(--ink); }
+  .kb-chip.active {
+    background: color-mix(in srgb, var(--kb-color) 12%, transparent);
+    border-color: var(--kb-color);
+    color: var(--kb-color);
+  }
+  .kb-chip.current { font-weight: 600; }
+  .kb-chip:disabled { opacity: 0.6; cursor: wait; }
+  .kb-check {
+    width: 1em;
+    font-size: 0.7rem;
+    text-align: center;
+  }
+  .kb-name { max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+  .kb-count {
+    font-size: 0.52rem;
+    opacity: 0.5;
+  }
+  .kb-current-badge {
+    font-size: 0.48rem;
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 0.1rem 0.3rem;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .kb-loading {
+    font-size: 0.6rem;
+    animation: pulse 0.8s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  /* Examples folder */
+  .examples-folder {
+    margin-bottom: 0.5rem;
+  }
+  .examples-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .folder-arrow {
+    font-size: 0.7rem;
+    width: 0.8em;
+    display: inline-block;
+  }
+  .examples-count {
+    font-size: 0.5rem;
+    opacity: 0.5;
+  }
+  .example-chips {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    margin-top: 0.4rem;
+    padding-left: 1rem;
+  }
+
+  /* File row */
+  .file-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
   .view-toggle {
     display: flex;
     margin-left: auto;
@@ -351,6 +606,50 @@
     color: #e8534b;
     margin-bottom: 1rem;
   }
+  .loading-bar {
+    text-align: center;
+    padding: 1rem;
+    font-size: 0.7rem;
+    color: var(--muted);
+    animation: pulse 1s ease-in-out infinite;
+  }
+
+  /* Empty state */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    text-align: center;
+    gap: 0.5rem;
+  }
+  .empty-title {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    color: var(--ink);
+    margin: 0;
+  }
+  .empty-sub {
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin: 0;
+    max-width: 400px;
+  }
+
+  /* Controls (legacy class for detail-close) */
+  .ghost {
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: var(--rad-sm);
+    padding: 0.4rem 0.8rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color 0.12s, border-color 0.12s;
+  }
+  .ghost:hover { color: var(--accent); border-color: var(--accent); }
 
   /* Filters */
   .filter-section {
@@ -525,5 +824,26 @@
 
   .mono {
     font-family: var(--font-mono);
+  }
+
+  /* ── Mobile responsive ── */
+  @media (max-width: 600px) {
+    .page { padding: 1.5rem 0.75rem 4rem; }
+    h1 { font-size: 1.2rem; }
+    .graph-area { height: clamp(300px, 50vh, 500px); }
+    .ghost { min-height: 44px; padding: 0.5rem 0.8rem; font-size: 0.75rem; }
+    .ghost-sm { min-height: 36px; padding: 0.3rem 0.5rem; }
+    .chip { min-height: 36px; padding: 0.35rem 0.6rem; font-size: 0.65rem; }
+    .kb-chip { min-height: 40px; padding: 0.35rem 0.7rem; }
+    .toggle-btn { min-height: 44px; padding: 0.5rem 0.8rem; }
+    .bottom-row { flex-direction: column; }
+    .detail-panel { max-width: none; }
+    .stats-panel { gap: 0.6rem; padding: 0.6rem 0.75rem; }
+    .stat-num { font-size: 1.1rem; }
+    .legend { gap: 0.6rem; }
+    .legend-item { font-size: 0.55rem; }
+    .source-picker { padding: 0.6rem 0.75rem; }
+    .kb-name { max-width: 140px; }
+    .empty-state { min-height: 200px; }
   }
 </style>

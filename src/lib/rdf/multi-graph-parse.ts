@@ -83,6 +83,13 @@ export async function parseMultipleGraphs(
   const allNodes = new Map<string, OverlayNode>();
   const edgeMap = new Map<string, OverlayEdge>();
 
+  // Track which files each node appears in (for fallback membership)
+  const nodeFileAppearance = new Map<string, Set<string>>();
+  function trackAppearance(iri: string, fileId: string) {
+    if (!nodeFileAppearance.has(iri)) nodeFileAppearance.set(iri, new Set());
+    nodeFileAppearance.get(iri)!.add(fileId);
+  }
+
   for (let gi = 0; gi < files.length; gi++) {
     const file = files[gi];
     const parser = new Parser({ format: 'Turtle' });
@@ -133,6 +140,9 @@ export async function parseMultipleGraphs(
       if (pIri === 'http://www.w3.org/2000/01/rdf-schema#comment') continue;
       if (pIri === 'http://purl.org/dc/terms/description') continue;
 
+      // Track which file this node appears in
+      trackAppearance(sIri, file.id);
+
       // rdf:type — set the type on the node
       if (pIri === RDF_TYPE) {
         const node = allNodes.get(sIri) ?? {
@@ -155,6 +165,9 @@ export async function parseMultipleGraphs(
 
       // Skip literal-valued properties
       if (oIsLiteral) continue;
+
+      // Track object appearance too
+      trackAppearance(oVal, file.id);
 
       // Ensure both nodes exist
       const ensure = (iri: string) => {
@@ -181,6 +194,18 @@ export async function parseMultipleGraphs(
         });
       }
       edgeMap.get(edgeKey)!.graphIds.add(file.id);
+    }
+  }
+
+  // Fallback: for nodes with no project-based membership, assign membership
+  // based on which files they appeared in. This makes regular KB exports
+  // (using urn:kbase: IRIs) work in the overlay just like reckons ontology files.
+  for (const [iri, node] of allNodes) {
+    if (node.membership.size === 0) {
+      const files = nodeFileAppearance.get(iri);
+      if (files) {
+        for (const fid of files) node.membership.add(fid);
+      }
     }
   }
 
