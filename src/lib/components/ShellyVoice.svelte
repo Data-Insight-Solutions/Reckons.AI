@@ -157,6 +157,7 @@
           o: action.o.startsWith('urn:') || action.o.startsWith('http')
             ? { kind: 'iri', value: action.o }
             : { kind: 'literal', value: action.o, datatype: 'xsd:string' },
+          g: { kind: 'iri', value: `urn:kbase:source/${srcId}` },
           status: 'confirmed', sourceId: srcId, createdAt: Date.now(), updatedAt: Date.now(),
           confidence: 0.9,
         };
@@ -214,7 +215,7 @@
 
       function poll() {
         if (!analyser || !volBuf || !onvolume) return;
-        analyser.getByteFrequencyData(volBuf);
+        analyser.getByteFrequencyData(volBuf as Uint8Array<ArrayBuffer>);
         let sum = 0;
         for (let i = 0; i < volBuf.length; i++) sum += volBuf[i];
         onvolume(Math.min(sum / volBuf.length / 80, 1)); // normalise ~0-1

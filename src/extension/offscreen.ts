@@ -25,7 +25,7 @@ let whisperInterval: ReturnType<typeof setInterval> | null = null;
 let whisperTranscriber: any = null;
 let whisperProcessing = false;
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((msg: any, _sender: any, sendResponse: any) => {
   switch (msg.type) {
     case 'START_CAPTURE':
       startCapture(msg.streamId, msg.deepgramKey, msg.mode ?? 'whisper')

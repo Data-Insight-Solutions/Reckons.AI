@@ -47,8 +47,8 @@
   // ── Source map ───────────────────────────────────────────────────────────────
 
   const srcMap = $derived.by(() => {
-    const m = new Map<string, { title: string; trustLevel?: string }>();
-    for (const s of sources()) m.set(s.id, s);
+    const m = new Map<string, { id: string; title: string; trustLevel?: 'trusted' | 'review' }>();
+    for (const s of sources()) m.set(s.id, { id: s.id, title: s.title, trustLevel: s.trustLevel });
     return m;
   });
 

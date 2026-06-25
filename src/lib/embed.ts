@@ -20,6 +20,9 @@
  * "Cannot read properties of undefined (reading 'registerBackend')".
  */
 
+/** Local alias — cannot import type from @huggingface/transformers (see note above) */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type FeatureExtractionPipeline = any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let extractor: any = null;
 /** Currently loaded model ID — reset when switching models */

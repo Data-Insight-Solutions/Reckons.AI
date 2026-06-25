@@ -52,16 +52,16 @@
   let dragCamX = 0, dragCamY = 0;
 
   // Graph color lookup
-  const graphColorMap = $derived(new Map(graphs.map(g => [g.id, g.color])));
+  const graphColorMap = $derived(new Map<string, string>(graphs.map((g: GraphDef) => [g.id, g.color] as [string, string])));
 
   // Project anchor positions in a circle
   const projectAnchors = $derived.by(() => {
-    const active = graphs.filter(g => activeGraphIds.has(g.id));
+    const active = graphs.filter((g: GraphDef) => activeGraphIds.has(g.id));
     const n = active.length;
     if (n === 0) return new Map<string, { x: number; y: number }>();
     const R = Math.max(16, n * 3.5);
     const map = new Map<string, { x: number; y: number }>();
-    active.forEach((g, i) => {
+    active.forEach((g: GraphDef, i: number) => {
       const theta = (2 * Math.PI * i) / n - Math.PI / 2;
       map.set(g.id, { x: R * Math.cos(theta), y: R * Math.sin(theta) });
     });
@@ -71,7 +71,7 @@
   // ── Rebuild simulation when data/filters change ─────────────────────────────
   $effect(() => {
     // Filter edges by active predicates and graphs
-    const visibleEdges = edges.filter(e => {
+    const visibleEdges = edges.filter((e: OverlayEdge) => {
       if (!activePredicates.has(e.predicateIri)) return false;
       for (const gid of e.graphIds) {
         if (activeGraphIds.has(gid)) return true;
@@ -99,7 +99,7 @@
       const node = nodes.get(key);
       if (!node) continue;
 
-      const activeMem = [...node.membership].filter(gid => activeGraphIds.has(gid));
+      const activeMem: string[] = [...node.membership].filter((gid: string) => activeGraphIds.has(gid));
       const isPrj = isProjectIri(key);
       if (activeMem.length === 0 && !isPrj) continue;
 
@@ -117,7 +117,8 @@
       }
 
       const prev = prevPos.get(key);
-      const colors = activeMem.map(gid => graphColorMap.get(gid) ?? '#888');
+      const colors: string[] = [];
+      for (const gid of activeMem) colors.push(graphColorMap.get(gid) ?? '#888');
 
       nodeMap.set(key, {
         key, label: node.label,
@@ -136,9 +137,9 @@
 
     // Build simulation edges — exclude membership predicates (shown via color)
     simEdges = visibleEdges
-      .filter(e => !MEMBERSHIP_PREDICATES.has(e.predicateIri))
-      .filter(e => nodeMap.has(e.sourceKey) && nodeMap.has(e.targetKey))
-      .map(e => ({ a: nodeMap.get(e.sourceKey)!, b: nodeMap.get(e.targetKey)!, predicate: e.predicate }));
+      .filter((e: OverlayEdge) => !MEMBERSHIP_PREDICATES.has(e.predicateIri))
+      .filter((e: OverlayEdge) => nodeMap.has(e.sourceKey) && nodeMap.has(e.targetKey))
+      .map((e: OverlayEdge) => ({ a: nodeMap.get(e.sourceKey)!, b: nodeMap.get(e.targetKey)!, predicate: e.predicate }));
   });
 
   // ── Physics + render loop ───────────────────────────────────────────────────

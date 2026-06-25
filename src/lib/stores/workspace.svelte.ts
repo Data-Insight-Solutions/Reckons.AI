@@ -43,7 +43,7 @@ export async function loadWorkspace(): Promise<void> {
   if (!row) { _state = 'none'; return; }
   _name = row.name;
   try {
-    const perm = await row.handle.queryPermission({ mode: 'readwrite' });
+    const perm = await (row.handle as any).queryPermission({ mode: 'readwrite' });
     if (perm === 'granted') {
       _handle = row.handle;
       _state = 'connected';
@@ -59,7 +59,7 @@ export async function loadWorkspace(): Promise<void> {
 export async function pickWorkspace(): Promise<boolean> {
   if (!supportsWorkspace()) return false;
   try {
-    const handle = await (window as Window & { showDirectoryPicker(o?: { mode?: string }): Promise<FileSystemDirectoryHandle> })
+    const handle = await (window as unknown as { showDirectoryPicker(o?: { mode?: string }): Promise<FileSystemDirectoryHandle> })
       .showDirectoryPicker({ mode: 'readwrite' });
     await db.workspace.put({ id: 'main', handle, name: handle.name });
     _handle = handle;
@@ -77,7 +77,7 @@ export async function reconnectWorkspace(): Promise<boolean> {
   const row = await db.workspace.get('main');
   if (!row) return false;
   try {
-    const perm = await row.handle.requestPermission({ mode: 'readwrite' });
+    const perm = await (row.handle as any).requestPermission({ mode: 'readwrite' });
     if (perm === 'granted') {
       _handle = row.handle;
       _name = row.name;

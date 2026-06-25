@@ -33,14 +33,14 @@
    */
   import { T, useTask } from '@threlte/core';
   import { Color } from 'three';
-  import type * as THREE from 'three';
-  import { GEOMETRY_ARGS, UNKNOWN_TYPE, type EntityTypeDef } from '$lib/rdf/entity-types';
+  import type { Mesh, Group, Vector3 as Vec3 } from 'three';
+  import { GEOMETRY_ARGS, UNKNOWN_TYPE, type EntityTypeDef, type GeometryName } from '$lib/rdf/entity-types';
 
   type Node = {
     key: string;
     label: string;
     kind: 'concept' | 'literal';
-    pos: THREE.Vector3;
+    pos: Vec3;
     degree: number;
   };
 
@@ -123,9 +123,9 @@
     return tripleRank !== null ? applyTripleRank(raw, tripleRank) : raw;
   });
 
-  let meshRef: THREE.Mesh | undefined = $state();
-  let iconRef: THREE.Group | undefined = $state();
-  let ringRef: THREE.Mesh | undefined = $state();
+  let meshRef: Mesh | undefined = $state();
+  let iconRef: Group | undefined = $state();
+  let ringRef: Mesh | undefined = $state();
 
   useTask(() => {
     if (meshRef) meshRef.position.copy(node.pos);
@@ -148,7 +148,7 @@
     return degreeScale;
   });
 
-  const geometry = $derived(typeDef?.geometry ?? (node.kind === 'concept' ? UNKNOWN_TYPE.geometry : 'sphere'));
+  const geometry: GeometryName = $derived(typeDef?.geometry ?? (node.kind === 'concept' ? UNKNOWN_TYPE.geometry : 'sphere'));
   const geoArgs = $derived(GEOMETRY_ARGS[geometry]);
 
   // Effective 3D icon: per-entity override takes priority over type default
@@ -202,7 +202,7 @@
 {#if gltfScene}
   <!-- Cloned GLB scene — each instance owns its own Object3D clone -->
   <T.Group bind:ref={iconRef} scale={scale * 0.8}
-    onclick={(e) => onclick({ stopPropagation: () => e.stopPropagation(), ctrlKey: e.ctrlKey })}
+    onclick={(e: any) => onclick({ stopPropagation: () => e.stopPropagation(), ctrlKey: e.ctrlKey })}
     onpointerenter={() => onhover(node.key)}
     onpointerleave={() => onhover(null)}>
     <T is={gltfScene} />

@@ -153,6 +153,7 @@ export function resolveChatProvider(s: {
   geminiModel?: string;
   ollamaModel?: string;
   wasmModel?: string;
+  wasmChatModel?: string;
   reckonsApiKey?: string;
   reckonsModel?: string;
   openrouterApiKey?: string;

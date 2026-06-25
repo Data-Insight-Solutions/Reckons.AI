@@ -24,11 +24,11 @@
 
   const allOptions = $derived.by(() => {
     if (options) return options;
-    if (groups) return groups.flatMap((g) => g.options);
+    if (groups) return groups.flatMap((g: Group) => g.options);
     return [];
   });
 
-  const selectedLabel = $derived(allOptions.find((o) => o.value === value)?.label ?? '');
+  const selectedLabel = $derived(allOptions.find((o: Option) => o.value === value)?.label ?? '');
 </script>
 
 <Select.Root type="single" bind:value {disabled} onValueChange={(v) => onchange?.(v)}>

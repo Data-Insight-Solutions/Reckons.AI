@@ -63,6 +63,7 @@
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
     "@types/chrome": "^0.0.325",
     "@types/qrcode": "^1.5.6",
+    "@types/three": "^0.185.0",
     "@vite-pwa/sveltekit": "^0.6.6",
     "@vitest/coverage-v8": "^4.1.7",
     "jsdom": "^29.1.1",

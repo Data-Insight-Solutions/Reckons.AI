@@ -42,7 +42,7 @@ async function ensureLoaded(): Promise<void> {
       id: OFFICIAL_SOURCE_ID,
       title: 'Reckons.AI Official Documentation',
       uri: 'urn:reckons:official-kb',
-      kind: 'manual',
+      kind: 'turtle',
       trustLevel: 'trusted',
       ingestedAt: now,
     };

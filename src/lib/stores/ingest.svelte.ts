@@ -27,7 +27,7 @@ export type IngestInput =
 
 export type IngestProgress =
   | { phase: 'fetching' }
-  | { phase: 'extracting'; backend: 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'mock' | 'openrouter' | 'chrome-ai' }
+  | { phase: 'extracting'; backend: 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'mock' | 'openrouter' | 'chrome-ai' | 'reckons' }
   | { phase: 'normalizing' }
   | { phase: 'diffing' }
   | { phase: 'semantic' }

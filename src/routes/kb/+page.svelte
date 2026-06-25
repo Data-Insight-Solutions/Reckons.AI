@@ -238,7 +238,7 @@
       const gifRows = await db.entityGifs.toArray();
       const glbRows = await db.glbOverrides.toArray();
       const zipBytes = await buildGifPackage(confirmedStatements(), gifRows, glbRows);
-      const blob = new Blob([zipBytes], { type: 'application/zip' });
+      const blob = new Blob([zipBytes as BlobPart], { type: 'application/zip' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

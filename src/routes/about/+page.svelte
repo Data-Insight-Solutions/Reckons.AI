@@ -49,7 +49,7 @@
   let loadError = $state('');
   let switchingToOfficial = $state(false);
 
-  async function importStarterKB(kb: typeof STARTER_KBS[0]) {
+  async function importStarterKB(kb: typeof EXAMPLE_KBS[0]) {
     loadingKb = kb.id;
     loadError = '';
     try {
@@ -92,7 +92,7 @@
   let exIdx = $state(0);
   let fading = $state(false);
 
-  onMount(async () => {
+  onMount(() => {
     const iv = setInterval(() => {
       fading = true;
       setTimeout(() => {
@@ -102,10 +102,10 @@
     }, 3200);
 
     // Fetch compression benchmark data
-    try {
-      const res = await fetch('/compression-results.json');
-      if (res.ok) benchData = await res.json();
-    } catch {}
+    fetch('/compression-results.json')
+      .then(res => { if (res.ok) return res.json(); })
+      .then(json => { if (json) benchData = json; })
+      .catch(() => {});
 
     return () => clearInterval(iv);
   });
@@ -2178,13 +2178,6 @@
     white-space: nowrap;
     flex-shrink: 0;
     animation: pulse 1s infinite;
-  }
-
-  .starter-note {
-    font-size: 0.72rem;
-    color: var(--muted);
-    max-width: 480px;
-    margin: 1.2rem auto 0;
   }
 
   .starter-error {

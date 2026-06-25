@@ -152,8 +152,10 @@ export function parseTriplesJSON(raw: string): ExtractedTriple[] {
 
   if (!Array.isArray(arr)) throw new Error('LLM output is not a JSON array');
   return arr.filter(
-    (t): t is ExtractedTriple =>
-      t && typeof t.subject === 'string' && typeof t.predicate === 'string' && t.object != null
+    (t: unknown): t is ExtractedTriple => {
+      const r = t as Record<string, unknown>;
+      return !!r && typeof r.subject === 'string' && typeof r.predicate === 'string' && r.object != null;
+    }
   );
 }
 

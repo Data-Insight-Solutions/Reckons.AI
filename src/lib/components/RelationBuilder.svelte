@@ -42,13 +42,13 @@
     if (targetQuery.length < 1) return [];
     const q = targetQuery.toLowerCase();
     return nodeList
-      .filter(n => n.label.toLowerCase().includes(q) || n.iri.toLowerCase().includes(q))
+      .filter((n: { key: string; label: string; iri: string }) => n.label.toLowerCase().includes(q) || n.iri.toLowerCase().includes(q))
       .slice(0, 8);
   });
 
   const showCreateNew = $derived(
     targetQuery.trim().length > 1 &&
-    !nodeList.some(n => n.label.toLowerCase() === targetQuery.trim().toLowerCase())
+    !nodeList.some((n: { key: string; label: string; iri: string }) => n.label.toLowerCase() === targetQuery.trim().toLowerCase())
   );
 
   const newTargetIri = $derived(

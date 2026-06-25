@@ -30,7 +30,7 @@ export type Source = {
   /** Optional checksum of source content for change detection */
   hash?: string;
   /** Type of source */
-  kind: 'url' | 'document' | 'note' | 'reminder' | 'semfile' | 'analysis' | 'calendar' | 'repository';
+  kind: 'url' | 'document' | 'note' | 'reminder' | 'semfile' | 'analysis' | 'calendar' | 'repository' | 'turtle';
   /** Trust level: 'trusted' auto-confirms statements, 'review' requires human review */
   trustLevel?: 'trusted' | 'review';
   /** Computed trust score (0.0-1.0) based on user actions and historical patterns */

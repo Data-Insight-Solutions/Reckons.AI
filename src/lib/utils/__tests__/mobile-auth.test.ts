@@ -20,7 +20,7 @@ describe('validateMobileToken', () => {
   it('returns invalid when token is null', () => {
     const result = validateMobileToken(null, null, [], NOW);
     expect(result.state).toBe('invalid');
-    expect(result.reason).toMatch(/No token/);
+    if (result.state !== 'valid') expect(result.reason).toMatch(/No token/);
   });
 
   it('returns invalid when token is empty string', () => {
@@ -31,7 +31,7 @@ describe('validateMobileToken', () => {
   it('returns invalid when token is not a UUID v4', () => {
     const result = validateMobileToken('some-random-token', String(FUTURE), [], NOW);
     expect(result.state).toBe('invalid');
-    expect(result.reason).toMatch(/Malformed/i);
+    if (result.state !== 'valid') expect(result.reason).toMatch(/Malformed/i);
   });
 
   // ── Missing / invalid expiry ─────────────────────────────────────────────
@@ -39,13 +39,13 @@ describe('validateMobileToken', () => {
   it('returns invalid when expires param is null', () => {
     const result = validateMobileToken(VALID_TOKEN, null, [], NOW);
     expect(result.state).toBe('invalid');
-    expect(result.reason).toMatch(/No expiry/i);
+    if (result.state !== 'valid') expect(result.reason).toMatch(/No expiry/i);
   });
 
   it('returns invalid when expires param is non-numeric', () => {
     const result = validateMobileToken(VALID_TOKEN, 'not-a-number', [], NOW);
     expect(result.state).toBe('invalid');
-    expect(result.reason).toMatch(/Invalid expiry/i);
+    if (result.state !== 'valid') expect(result.reason).toMatch(/Invalid expiry/i);
   });
 
   // ── Expiry checks ───────────────────────────────────────────────────────
@@ -53,7 +53,7 @@ describe('validateMobileToken', () => {
   it('returns expired when expires param is in the past', () => {
     const result = validateMobileToken(VALID_TOKEN, String(PAST), [], NOW);
     expect(result.state).toBe('expired');
-    expect(result.reason).toMatch(/expired/i);
+    if (result.state !== 'valid') expect(result.reason).toMatch(/expired/i);
   });
 
   it('returns valid when token is UUID v4 and expires is in the future', () => {

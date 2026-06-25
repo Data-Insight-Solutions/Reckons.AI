@@ -822,7 +822,6 @@
         // Torus: fill the ring area using evenodd winding
         ctx2d.save();
         applyShape(ctx2d, n.x, n.y, drawR, 'torus');
-        ctx2d.fillRule = 'evenodd' as any;
         ctx2d.fill('evenodd');
         ctx2d.restore();
       } else {

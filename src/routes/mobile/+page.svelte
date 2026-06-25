@@ -17,7 +17,7 @@
 
   type State = 'checking' | 'valid' | 'invalid' | 'expired';
 
-  let state = $state<State>('checking');
+  let pageState = $state<State>('checking');
   let reason = $state('');
   let countdown = $state(3);
 
@@ -32,12 +32,12 @@
     );
 
     if (result.state !== 'valid') {
-      state = result.state;
+      pageState = result.state;
       reason = result.reason;
       return;
     }
 
-    state = 'valid';
+    pageState = 'valid';
 
     // Count down then redirect to the Reckoning (voice-first workflow)
     const t = setInterval(() => {
@@ -57,13 +57,13 @@
 <div class="mobile-gate">
   <p class="wordmark">Reckons.AI</p>
 
-  {#if state === 'checking'}
+  {#if pageState === 'checking'}
     <div class="status">
       <span class="spinner"></span>
       <p>Verifying access…</p>
     </div>
 
-  {:else if state === 'valid'}
+  {:else if pageState === 'valid'}
     <div class="status valid">
       <span class="check">✓</span>
       <p>Access granted.</p>
@@ -71,7 +71,7 @@
       <a href="/reckoning?mode=voice" class="btn-enter">Open now →</a>
     </div>
 
-  {:else if state === 'expired'}
+  {:else if pageState === 'expired'}
     <div class="status invalid">
       <span class="x">⏱</span>
       <p>QR code expired.</p>

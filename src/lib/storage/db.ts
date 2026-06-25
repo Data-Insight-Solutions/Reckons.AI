@@ -125,6 +125,8 @@ export type SettingsRecord = {
   autoRefreshOnOpen?: boolean;
   /** Periodic source refresh interval in minutes. 0 or absent = disabled. */
   autoRefreshIntervalMinutes?: number;
+  /** Show contextual tutorial nudges for first-time users */
+  showTutorialHints?: boolean;
 };
 
 export const DEFAULT_TURTLE_SETTINGS: TurtleSettings = {

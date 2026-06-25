@@ -102,7 +102,12 @@ function getWorker(): Worker {
   return workerSingleton;
 }
 
-function call<T>(msg: Omit<WorkerMsgIn, 'id'>): Promise<T> {
+type WorkerMsgPayload =
+  | { type: 'init'; model: string }
+  | { type: 'extract'; system: string; user: string }
+  | { type: 'chat'; system: string; messages: Array<{ role: 'user' | 'assistant'; content: string }> };
+
+function call<T>(msg: WorkerMsgPayload): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const id = nextReqId++;
     pending.set(id, { resolve: resolve as (v: unknown) => void, reject });

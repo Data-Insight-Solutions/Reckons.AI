@@ -84,7 +84,7 @@
   const nodeTypeRankMap = $derived.by(() => {
     const groups = new Map<string, typeof nodes>();
     for (const n of nodes) {
-      const typeKey = nodeTypeMap.get(n.key)?.name ?? '__default__';
+      const typeKey = nodeTypeMap.get(n.key)?.label ?? '__default__';
       if (!groups.has(typeKey)) groups.set(typeKey, []);
       groups.get(typeKey)!.push(n);
     }

@@ -94,7 +94,7 @@ async function main() {
     const { KokoroTTS } = await import('kokoro-js');
     tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {
       dtype: 'q8',
-      device: 'auto',
+      device: 'auto' as any,
     });
   } catch (e) {
     console.error(`Failed to load Kokoro TTS: ${(e as Error).message}`);

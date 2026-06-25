@@ -359,7 +359,7 @@ async function syncKB() {
 
 // ── Message router ────────────────────────────────────────────────────────────
 
-chrome.runtime.onMessage.addListener((msg: PopupRequest, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((msg: PopupRequest, _sender: any, sendResponse: any) => {
   (async () => {
     await _ready; // ensure storage loaded before handling any message
     switch (msg.type) {
@@ -924,8 +924,8 @@ async function startLiveStream() {
   fcTabId = tab.id;
 
   // Create offscreen document
-  const existing = await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] });
-  if (existing.length === 0) {
+  const existing = await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT' as any] });
+  if ((existing as any[]).length === 0) {
     await chrome.offscreen.createDocument({
       url: chrome.runtime.getURL('offscreen.html'),
       reasons: ['USER_MEDIA' as any],
@@ -988,7 +988,7 @@ function stopLiveStream() {
 
 // ── Settings sync from options page ──────────────────────────────────────────
 
-chrome.storage.onChanged.addListener((changes) => {
+chrome.storage.onChanged.addListener((changes: any) => {
   if (changes.settings) {
     settings = { ...DEFAULT_SETTINGS, ...changes.settings.newValue };
   }

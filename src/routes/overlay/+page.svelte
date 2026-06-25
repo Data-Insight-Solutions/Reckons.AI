@@ -27,7 +27,14 @@
   let loading = $state(false);
   let error = $state<string | null>(null);
   let activeGraphIds = $state(new Set<string>());
-  let activePredicates = $state(new Set<string>(MEMBERSHIP_PREDICATES));
+  // Also include non-membership predicates that create inter-entity edges
+  const STRUCTURAL_PREDICATES = new Set([
+    'urn:reckons:ontology/componentUses',
+    'urn:reckons:ontology/relatedTo',
+    'urn:reckons:ontology/evolvedInto',
+  ]);
+
+  let activePredicates = $state(new Set<string>([...MEMBERSHIP_PREDICATES, ...STRUCTURAL_PREDICATES]));
   let selectedKey = $state<string | null>(null);
   let viewMode = $state<'2d' | '3d'>('2d');
 
@@ -38,15 +45,6 @@
   let loadingKbIds = $state(new Set<string>());
   let showExamples = $state(false);
   let selectedExampleIds = $state(new Set<string>());
-
-  // Also include non-membership predicates that create inter-entity edges
-  const STRUCTURAL_PREDICATES = new Set([
-    'urn:reckons:ontology/componentUses',
-    'urn:reckons:ontology/relatedTo',
-    'urn:reckons:ontology/evolvedInto',
-  ]);
-  // Initialize with both membership + structural predicates
-  for (const p of STRUCTURAL_PREDICATES) activePredicates.add(p);
 
   // ── Derived stats ───────────────────────────────────────────────────────────
   const stats = $derived.by(() => {

@@ -128,7 +128,7 @@
     <div class="source-title mono">{sourceLabel}</div>
   {/if}
   <div class="header">
-    <span class="tag {entry.kind}">{labels[entry.kind]}</span>
+    <span class="tag {entry.kind}">{labels[entry.kind as DiffEntry['kind']]}</span>
     {#if entry.kind === 'reinforces'}
       <span class="muted">new source corroborates existing claim</span>
     {:else if entry.kind === 'duplicate'}

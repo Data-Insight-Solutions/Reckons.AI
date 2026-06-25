@@ -73,7 +73,7 @@ async function loadHighlightSettings() {
 }
 
 // Re-apply when settings are changed from the options page
-chrome.storage.onChanged.addListener((changes) => {
+chrome.storage.onChanged.addListener((changes: any) => {
   if (changes.settings?.newValue?.highlight) {
     const hs: HighlightSettings = {
       conflictColor: '#ef4444', reinforceColor: '#22c55e', newColor: '#63b3ed',
@@ -559,7 +559,7 @@ function exportFCSession() {
 
 // ── Message handler ───────────────────────────────────────────────────────────
 
-chrome.runtime.onMessage.addListener((cmd: ContentCommand, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((cmd: ContentCommand, _sender: any, sendResponse: any) => {
   switch (cmd.type) {
     case 'GET_TEXT':
       sendResponse({ type: 'TEXT', text: getPageText(), title: document.title, url: location.href } satisfies ContentResponse);

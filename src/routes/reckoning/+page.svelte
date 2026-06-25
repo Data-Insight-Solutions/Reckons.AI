@@ -342,7 +342,7 @@ Do NOT include <kb-actions> blocks.`;
         bind:value={situation}
         placeholder="e.g. I'm evaluating two ML frameworks for a production recommendation system. Team has 3 engineers, deadline is 6 weeks."
         rows="4"
-        disabled={step === 'confirm' || step === 'proposal' || step === 'done'}
+        disabled={step === 'confirm'}
       ></textarea>
       {#if step === 'situation'}
         <button class="btn-next" disabled={situation.trim().length < 10} onclick={() => step = 'target'}>
@@ -366,7 +366,7 @@ Do NOT include <kb-actions> blocks.`;
         bind:value={target}
         placeholder="e.g. Choose the framework that minimises engineering risk while giving us the best long-term scalability for 10M+ users."
         rows="3"
-        disabled={step === 'confirm' || step === 'proposal' || step === 'done'}
+        disabled={step === 'confirm'}
       ></textarea>
       {#if step === 'target'}
         <div class="btn-row">

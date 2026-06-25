@@ -1228,7 +1228,7 @@
       {#snippet failed(error)}
         <div class="no-webgl">
           <p class="no-webgl-title mono">3D graph error</p>
-          <p class="no-webgl-sub">{error?.message ?? 'WebGL context could not be created.'}</p>
+          <p class="no-webgl-sub">{(error as Error)?.message ?? 'WebGL context could not be created.'}</p>
           <button class="cta" style="margin-top:0.75rem;" onclick={() => { use2D = true; webglAvailable = false; resetPerfMonitor(); updateSettings({ prefer2D: true }); }}>switch to 2D view →</button>
         </div>
       {/snippet}
