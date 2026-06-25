@@ -272,6 +272,17 @@ feat:TurtlePersona
 
 
 ## =============================================================================
+## Git Analysis (F24)
+## =============================================================================
+
+feat:GitAnalysis
+    rdf:type            ktype:Feature ;
+    rdfs:label          "Git Analysis" ;
+    skos:definition     "Git-aware MCP tools for agent plan alignment. Tools: kb_git_status (branch/commits), kb_check_plan (BM25 drift detection), kb_pending (review queue), kb_git_diff_triples (file-to-KB cross-ref), kb_alignment_score (quantitative 0-1 score across 4 dimensions: coverage, status alignment, dependency respect, scope discipline). Enhanced kb_add_note supports type, priority, agent, and commit_sha metadata." ;
+    skos:broader        feat:MCPWorkspace .
+
+
+## =============================================================================
 ## Persona
 ## =============================================================================
 

@@ -1,0 +1,13 @@
+Attention Is All You Need
+
+Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Łukasz Kaiser, and Illia Polosukhin introduced the Transformer architecture in their 2017 paper published at NeurIPS. The model relies entirely on self-attention mechanisms, dispensing with recurrence and convolutions previously considered essential for sequence transduction tasks.
+
+The Transformer uses an encoder-decoder structure. The encoder maps an input sequence of symbol representations to a sequence of continuous representations. The decoder then generates an output sequence of symbols one element at a time, consuming the previously generated symbols as additional input. Both encoder and decoder consist of stacked layers. Each encoder layer has two sub-layers: a multi-head self-attention mechanism and a position-wise fully connected feed-forward network. Each decoder layer adds a third sub-layer performing multi-head attention over the encoder output.
+
+The multi-head attention mechanism computes attention using queries, keys, and values. Scaled dot-product attention is calculated as softmax(QK^T / sqrt(d_k))V, where d_k is the dimension of the keys. The authors used 8 parallel attention heads with d_model = 512 and d_k = d_v = 64. Multi-head attention allows the model to jointly attend to information from different representation subspaces at different positions.
+
+The base Transformer model has 65 million parameters, while the big model has 213 million parameters. The base model was trained for 12 hours on 8 NVIDIA P100 GPUs, consuming approximately 3.3 × 10^18 floating point operations. The big model was trained for 3.5 days on the same hardware.
+
+On the WMT 2014 English-to-German translation task, the big Transformer achieved a BLEU score of 28.4, improving over the best previously reported results by more than 2 BLEU. On the WMT 2014 English-to-French task, it achieved a BLEU score of 41.0, surpassing all previously published single models at a fraction of the training cost of the previous state-of-the-art.
+
+The Transformer has since become the foundation for large language models including BERT, GPT, and T5. Its self-attention mechanism enables parallel processing of sequence elements, providing significant training speed advantages over recurrent architectures like LSTMs and GRUs.

@@ -34,6 +34,7 @@
     "bench:embed:hf": "npx tsx tests/visual/run-embed-bench.ts --hf --save",
     "bench:embed:list": "npx tsx tests/visual/run-embed-bench.ts --list",
     "bench:hf-query": "npx tsx tests/visual/hf-model-query.ts",
+    "bench:compression": "npx tsx tests/bench/run-compression-bench.ts --save",
     "bench:llm": "npx tsx tests/bench/run-bench.ts",
     "bench:llm:hf": "npx tsx tests/bench/run-bench.ts --hf --save",
     "bench:llm:list": "npx tsx tests/bench/run-bench.ts --list",

@@ -100,7 +100,12 @@ kb:mcp-server       rdf:type     ktype:Feature ;
                     kpred:has-tool     "kb_list_sources" ;
                     kpred:has-tool     "kb_request_refresh" ;
                     kpred:has-tool     "kb_list_kbs" ;
-                    kpred:has-tool     "kb_add_triple" .
+                    kpred:has-tool     "kb_add_triple" ;
+                    kpred:has-tool     "kb_git_status" ;
+                    kpred:has-tool     "kb_check_plan" ;
+                    kpred:has-tool     "kb_pending" ;
+                    kpred:has-tool     "kb_git_diff_triples" ;
+                    kpred:has-tool     "kb_alignment_score" .
 
 kb:repo-ingest      rdf:type     ktype:Feature ;
                     rdfs:label   "Repository Ingest" ;

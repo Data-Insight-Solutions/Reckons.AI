@@ -387,6 +387,10 @@ type PendingEntry = {
   note?: string;
   addedByMcp?: boolean;
   addedAt?: string;
+  type?: 'observation' | 'question' | 'suggestion' | 'status-update' | 'drift-warning';
+  commitSha?: string;
+  agent?: string;
+  priority?: 'low' | 'normal' | 'high';
 };
 
 /**

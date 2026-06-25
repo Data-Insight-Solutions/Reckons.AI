@@ -35,6 +35,22 @@ The KBs are symlinked from `static/*.ttl` files in this repo. When you complete 
 - `kb_stats(kb?)` — Triple/entity/source counts
 - `kb_subgraph(entity, hops?, kb?)` — N-hop neighbourhood
 - `kb_reckoning(situation, target, kb?)` — AI-grounded Situation-Target-Proposal
+- `kb_git_status(commits?, diff?)` — Current branch, staged/modified files, recent commits
+- `kb_check_plan(work, commits?, kb?)` — Check work alignment against KB entities
+- `kb_pending(kb?)` — List queued proposals from pending.jsonl
+- `kb_git_diff_triples(ref?, kb?)` — Cross-reference git changes with KB entities
+- `kb_alignment_score(ref?, work?, kb?)` — Quantitative alignment score (0–1) with per-dimension breakdown
+
+### Git analysis workflow
+
+Use `/check-plan` or the individual tools to maintain alignment between code and KBs:
+
+- **Before starting work**: `kb_check_plan` to verify alignment with the roadmap
+- **After significant changes**: `kb_git_diff_triples` to find affected KB entities
+- **Before proposing KB updates**: `kb_pending` to avoid duplicates
+- **Proposing updates**: `kb_add_note` with `type`/`priority`/`agent` metadata
+- **Measuring alignment**: `kb_alignment_score` for a quantitative 0–1 score across 4 dimensions
+- **Drift detected**: use type `'drift-warning'` + priority `'high'`
 
 ## Code Conventions
 

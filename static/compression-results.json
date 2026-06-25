@@ -1,0 +1,150 @@
+{
+  "timestamp": "2026-06-25T04:20:00.071Z",
+  "categories": [
+    {
+      "category": "Literature",
+      "label": "A Tale of Two Cities",
+      "source": {
+        "bytes": 1107,
+        "words": 213,
+        "tokens": 283
+      },
+      "triples": {
+        "count": 12,
+        "turtleBytes": 450,
+        "turtleTokens": 89
+      },
+      "compression": {
+        "byteReduction": -59,
+        "tokenReduction": -69,
+        "factDensity": 4.2,
+        "densityMultiplier": 3.2
+      }
+    },
+    {
+      "category": "Encyclopedia",
+      "label": "Mount Everest",
+      "source": {
+        "bytes": 1763,
+        "words": 284,
+        "tokens": 378
+      },
+      "triples": {
+        "count": 19,
+        "turtleBytes": 812,
+        "turtleTokens": 122
+      },
+      "compression": {
+        "byteReduction": -54,
+        "tokenReduction": -68,
+        "factDensity": 5,
+        "densityMultiplier": 3.1
+      }
+    },
+    {
+      "category": "News",
+      "label": "Central-bank rate decision",
+      "source": {
+        "bytes": 1366,
+        "words": 221,
+        "tokens": 294
+      },
+      "triples": {
+        "count": 13,
+        "turtleBytes": 550,
+        "turtleTokens": 82
+      },
+      "compression": {
+        "byteReduction": -60,
+        "tokenReduction": -72,
+        "factDensity": 4.4,
+        "densityMultiplier": 3.6
+      }
+    },
+    {
+      "category": "Biography",
+      "label": "Marie Curie",
+      "source": {
+        "bytes": 1593,
+        "words": 257,
+        "tokens": 342
+      },
+      "triples": {
+        "count": 19,
+        "turtleBytes": 769,
+        "turtleTokens": 136
+      },
+      "compression": {
+        "byteReduction": -52,
+        "tokenReduction": -60,
+        "factDensity": 5.6,
+        "densityMultiplier": 2.5
+      }
+    },
+    {
+      "category": "Everyday",
+      "label": "Recipe instructions",
+      "source": {
+        "bytes": 1735,
+        "words": 307,
+        "tokens": 408
+      },
+      "triples": {
+        "count": 16,
+        "turtleBytes": 664,
+        "turtleTokens": 129
+      },
+      "compression": {
+        "byteReduction": -62,
+        "tokenReduction": -68,
+        "factDensity": 3.9,
+        "densityMultiplier": 3.2
+      }
+    },
+    {
+      "category": "Code",
+      "label": "React useState",
+      "source": {
+        "bytes": 1825,
+        "words": 284,
+        "tokens": 378
+      },
+      "triples": {
+        "count": 15,
+        "turtleBytes": 764,
+        "turtleTokens": 121
+      },
+      "compression": {
+        "byteReduction": -58,
+        "tokenReduction": -68,
+        "factDensity": 4,
+        "densityMultiplier": 3.1
+      }
+    },
+    {
+      "category": "Research",
+      "label": "Attention Is All You Need",
+      "source": {
+        "bytes": 2350,
+        "words": 341,
+        "tokens": 454
+      },
+      "triples": {
+        "count": 18,
+        "turtleBytes": 788,
+        "turtleTokens": 120
+      },
+      "compression": {
+        "byteReduction": -66,
+        "tokenReduction": -74,
+        "factDensity": 4,
+        "densityMultiplier": 3.8
+      }
+    }
+  ],
+  "averages": {
+    "byteReduction": -59,
+    "tokenReduction": -68,
+    "densityMultiplier": 3.2
+  }
+}

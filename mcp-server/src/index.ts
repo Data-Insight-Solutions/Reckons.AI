@@ -17,10 +17,11 @@
  */
 
 import { createInterface } from 'node:readline';
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { MultiKBReader } from './kb-reader.js';
 import { bm25Search, invalidateCache } from './search.js';
+import { gitStatus, gitLog, gitChangedFiles } from './git-utils.js';
 
 // ── Args ─────────────────────────────────────────────────────────────────────
 
@@ -121,6 +122,10 @@ const TOOLS = [
         predicate: { type: 'string', description: 'Predicate slug (e.g. "has-status", "works-with")' },
         object:    { type: 'string', description: 'Object value or entity slug' },
         note:      { type: 'string', description: 'Optional human-readable context for the reviewer' },
+        type:      { type: 'string', enum: ['observation', 'question', 'suggestion', 'status-update', 'drift-warning'], description: 'Kind of note (default: observation)' },
+        commit_sha: { type: 'string', description: 'Git commit SHA this note relates to' },
+        agent:     { type: 'string', description: 'Agent identifier (e.g. "claude-code")' },
+        priority:  { type: 'string', enum: ['low', 'normal', 'high'], description: 'Priority level (default: normal)' },
         ...KB_PARAM
       },
       required: ['subject', 'predicate', 'object']
@@ -168,6 +173,61 @@ const TOOLS = [
       type: 'object',
       properties: {
         source_id: { type: 'string', description: 'Specific source ID to refresh. Omit to request refresh of all refreshable sources.' },
+        ...KB_PARAM
+      }
+    }
+  },
+  {
+    name: 'kb_git_status',
+    description: 'Show current git branch, staged/modified files, and recent commits. Gives agents development context awareness.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        commits: { type: 'number', description: 'Number of recent commits to include (default 5, max 20)', default: 5 },
+        diff: { type: 'boolean', description: 'Include list of changed files in diff (default false)', default: false }
+      }
+    }
+  },
+  {
+    name: 'kb_check_plan',
+    description: 'Check alignment of current work against the knowledge base. BM25 searches all KBs for matching features/entities and returns their statuses. The agent reasons about drift — this tool assembles context.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        work: { type: 'string', description: 'Description of current or planned work' },
+        commits: { type: 'number', description: 'Include last N commit messages for cross-reference (default 0)', default: 0 },
+        ...KB_PARAM
+      },
+      required: ['work']
+    }
+  },
+  {
+    name: 'kb_pending',
+    description: 'List pending proposals from pending.jsonl files. Prevents duplicate proposals and lets agents see queued work.',
+    inputSchema: {
+      type: 'object',
+      properties: { ...KB_PARAM }
+    }
+  },
+  {
+    name: 'kb_git_diff_triples',
+    description: 'Cross-reference git changes with KB entities. Shows which KB facts relate to recently changed files.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ref: { type: 'string', description: 'Git ref to diff from (default "HEAD~1")', default: 'HEAD~1' },
+        ...KB_PARAM
+      }
+    }
+  },
+  {
+    name: 'kb_alignment_score',
+    description: 'Compute a quantitative alignment score (0.0–1.0) measuring how well recent git work aligns with the KB plan. Scores four dimensions: coverage (changed files with KB matches), status alignment (touching features in the right lifecycle state), dependency respect (dependencies already met), and scope discipline (planned vs unplanned work ratio). Returns composite score + per-dimension breakdown + per-entity verdicts.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ref: { type: 'string', description: 'Git ref to diff from (default "HEAD~5")', default: 'HEAD~5' },
+        work: { type: 'string', description: 'Optional description of intended work to improve BM25 matching' },
         ...KB_PARAM
       }
     }
@@ -289,12 +349,22 @@ function handleKbListEntities(params: { limit?: number; kb?: string }): object {
   };
 }
 
-function handleKbAddNote(params: { subject: string; predicate: string; object: string; note?: string; kb?: string }): object {
+type AddNoteParams = {
+  subject: string; predicate: string; object: string; note?: string;
+  type?: string; commit_sha?: string; agent?: string; priority?: string;
+  kb?: string;
+};
+
+function handleKbAddNote(params: AddNoteParams): object {
   const entry = JSON.stringify({
     subject: `urn:kbase:${params.subject.replace(/\s+/g, '-').toLowerCase()}`,
     predicate: `urn:kbase:predicate/${params.predicate.replace(/\s+/g, '-').toLowerCase()}`,
     object: params.object,
     note: params.note,
+    type: params.type ?? 'observation',
+    commitSha: params.commit_sha,
+    agent: params.agent,
+    priority: params.priority ?? 'normal',
     addedByMcp: true,
     addedAt: new Date().toISOString()
   });
@@ -431,6 +501,501 @@ function handleKbRequestRefresh(params: { source_id?: string; kb?: string }): ob
   return { content: [{ type: 'text', text: msg }] };
 }
 
+function handleKbGitStatus(params: { commits?: number; diff?: boolean }): object {
+  try {
+    const status = gitStatus();
+    const commits = gitLog(params.commits ?? 5);
+
+    const lines: string[] = [
+      `Branch: ${status.branch}`,
+      status.ahead || status.behind
+        ? `Tracking: +${status.ahead} ahead / -${status.behind} behind`
+        : 'Tracking: up to date',
+    ];
+
+    if (status.staged.length > 0) lines.push(`Staged (${status.staged.length}): ${status.staged.join(', ')}`);
+    if (status.modified.length > 0) lines.push(`Modified (${status.modified.length}): ${status.modified.join(', ')}`);
+    if (status.untracked.length > 0) lines.push(`Untracked (${status.untracked.length}): ${status.untracked.join(', ')}`);
+    if (status.clean) lines.push('Working tree clean.');
+
+    if (commits.length > 0) {
+      lines.push('', `Recent commits (${commits.length}):`);
+      for (const c of commits) {
+        lines.push(`  ${c.shortHash} ${c.message} (${c.author}, ${c.filesChanged} files)`);
+      }
+    }
+
+    if (params.diff) {
+      try {
+        const changed = gitChangedFiles('HEAD~1');
+        if (changed.length > 0) {
+          lines.push('', 'Files changed since HEAD~1:');
+          for (const f of changed) lines.push(`  [${f.status}] ${f.path}`);
+        }
+      } catch { /* no prior commit */ }
+    }
+
+    return { content: [{ type: 'text', text: lines.join('\n') }] };
+  } catch (e) {
+    return { content: [{ type: 'text', text: `Git unavailable: ${e instanceof Error ? e.message : String(e)}` }] };
+  }
+}
+
+function handleKbCheckPlan(params: { work: string; commits?: number; kb?: string }): object {
+  kb.reload();
+  const triples = kb.allTriples(params.kb);
+  const results = bm25Search(triples, params.work, 8);
+
+  const sections: string[] = [`Plan check for: "${params.work}"`];
+
+  if (results.length === 0) {
+    sections.push('\nNo matching KB entities found. This work may be unplanned or uses different terminology.');
+  } else {
+    sections.push(`\n${results.length} KB matches:`);
+
+    // Group by entity and fetch subgraph for each
+    const entities = new Set<string>();
+    for (const r of results) {
+      entities.add(r.triple.subject);
+    }
+
+    for (const iri of entities) {
+      const slug = iri.split('/').pop() ?? iri;
+      const entityTriples = kb.triplesAbout(iri, params.kb);
+
+      // Extract key facts: status, dependencies, description
+      const facts: string[] = [];
+      for (const t of entityTriples.slice(0, 10)) {
+        const p = t.predicate.split('/').pop() ?? t.predicate;
+        facts.push(`  .${p} ${t.object}`);
+      }
+
+      sections.push(`\n${slug}:`);
+      sections.push(...facts);
+    }
+  }
+
+  // Optionally cross-reference with recent commits
+  if (params.commits && params.commits > 0) {
+    try {
+      const commits = gitLog(params.commits);
+      if (commits.length > 0) {
+        sections.push('\nRecent commits:');
+        for (const c of commits) {
+          sections.push(`  ${c.shortHash} ${c.message}`);
+        }
+      }
+    } catch { /* git unavailable */ }
+  }
+
+  return { content: [{ type: 'text', text: sections.join('\n') }] };
+}
+
+function handleKbPending(params: { kb?: string }): object {
+  const folders: string[] = [];
+
+  if (kb.isLegacy()) {
+    // Legacy: check sidecar file
+    const legacyPath = kbPath.replace(/\.ttl$/, '.pending.jsonl');
+    if (existsSync(legacyPath)) folders.push(legacyPath);
+  } else {
+    // Workspace: scan kbs/*/pending.jsonl
+    const kbList = kb.listKbs();
+    for (const k of kbList) {
+      if (params.kb && !k.meta.name.toLowerCase().includes(params.kb.toLowerCase()) && k.folderName !== params.kb) continue;
+      const kbFolder = kb.getKbFolderPath(k.folderName);
+      if (kbFolder) {
+        const pendingPath = join(kbFolder, 'pending.jsonl');
+        if (existsSync(pendingPath)) folders.push(pendingPath);
+      }
+    }
+  }
+
+  type PendingLine = { subject: string; predicate: string; object: string; note?: string; type?: string; priority?: string; agent?: string; addedAt?: string };
+  const entries: Array<PendingLine & { file: string }> = [];
+
+  for (const file of folders) {
+    try {
+      const text = readFileSync(file, 'utf8');
+      for (const line of text.split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        try {
+          const parsed = JSON.parse(trimmed) as PendingLine;
+          entries.push({ ...parsed, file });
+        } catch { /* skip malformed */ }
+      }
+    } catch { /* skip unreadable */ }
+  }
+
+  if (entries.length === 0) {
+    return { content: [{ type: 'text', text: 'No pending proposals.' }] };
+  }
+
+  const lines = entries.map(e => {
+    const s = e.subject.split('/').pop() ?? e.subject;
+    const p = e.predicate.split('/').pop() ?? e.predicate;
+    const tag = e.type && e.type !== 'observation' ? `[${e.type}] ` : '';
+    const pri = e.priority === 'high' ? ' !' : '';
+    const agent = e.agent ? ` (${e.agent})` : '';
+    const when = e.addedAt ? ` ${e.addedAt.slice(0, 10)}` : '';
+    return `${tag}${s} .${p} ${e.object}${pri}${agent}${when}`;
+  });
+
+  return { content: [{ type: 'text', text: `${entries.length} pending:\n${lines.join('\n')}` }] };
+}
+
+function handleKbGitDiffTriples(params: { ref?: string; kb?: string }): object {
+  const ref = params.ref ?? 'HEAD~1';
+
+  let changed: { path: string; status: string }[];
+  try {
+    changed = gitChangedFiles(ref);
+  } catch (e) {
+    return { content: [{ type: 'text', text: `Git diff failed: ${e instanceof Error ? e.message : String(e)}` }] };
+  }
+
+  if (changed.length === 0) {
+    return { content: [{ type: 'text', text: `No files changed since ${ref}.` }] };
+  }
+
+  kb.reload();
+  const triples = kb.allTriples(params.kb);
+
+  // Extract keywords from changed file paths
+  const keywords = new Set<string>();
+  for (const f of changed) {
+    // Get filename without extension, directory names, component names
+    const parts = f.path.split('/');
+    for (const part of parts) {
+      const name = part.replace(/\.[^.]+$/, ''); // strip extension
+      if (name.length > 2) {
+        keywords.add(name.toLowerCase());
+        // Split camelCase/kebab-case into words
+        for (const word of name.split(/[-_.]/).filter(w => w.length > 2)) {
+          keywords.add(word.toLowerCase());
+        }
+      }
+    }
+  }
+
+  // Search KB with extracted keywords
+  const query = [...keywords].join(' ');
+  const matches = bm25Search(triples, query, 10);
+
+  const sections: string[] = [`${changed.length} files changed since ${ref}:`];
+  for (const f of changed) {
+    sections.push(`  [${f.status}] ${f.path}`);
+  }
+
+  if (matches.length > 0) {
+    sections.push(`\n${matches.length} related KB facts:`);
+    for (const m of matches) {
+      sections.push(`  ${fmtTriple(m.triple)}`);
+    }
+  } else {
+    sections.push('\nNo KB entities matched the changed files.');
+  }
+
+  // Find unmatched files (files with no KB coverage)
+  const matchedKeywords = new Set<string>();
+  for (const m of matches) {
+    const slug = m.triple.subject.split('/').pop()?.toLowerCase() ?? '';
+    matchedKeywords.add(slug);
+    for (const word of slug.split(/[-_]/)) matchedKeywords.add(word);
+  }
+
+  const unmatched = changed.filter(f => {
+    const name = f.path.split('/').pop()?.replace(/\.[^.]+$/, '')?.toLowerCase() ?? '';
+    return !matchedKeywords.has(name) && ![...matchedKeywords].some(k => name.includes(k) || k.includes(name));
+  });
+
+  if (unmatched.length > 0) {
+    sections.push(`\n${unmatched.length} files with no KB coverage:`);
+    for (const f of unmatched) sections.push(`  ${f.path}`);
+  }
+
+  return { content: [{ type: 'text', text: sections.join('\n') }] };
+}
+
+// ── Alignment Score ──────────────────────────────────────────────────────────
+
+type AlignmentVerdict = {
+  entity: string;
+  status: string;
+  verdict: 'aligned' | 'advancing' | 'premature' | 'regressing' | 'unplanned';
+  score: number;
+  reason: string;
+};
+
+/**
+ * Score how appropriate it is to be working on a feature given its current status.
+ *
+ * Status lifecycle: speculative → planned → scaffolded → functional → production
+ *
+ * Working on "planned" or "scaffolded" is the sweet spot (advancing).
+ * Working on "production" means modifying stable code (may be maintenance or regression).
+ * Working on "speculative" means jumping ahead of the plan.
+ */
+function scoreStatusAlignment(status: string, isModifying: boolean): { score: number; verdict: AlignmentVerdict['verdict']; reason: string } {
+  const STATUS_ORDER: Record<string, number> = {
+    speculative: 0, planned: 1, scaffolded: 2, functional: 3, production: 4,
+  };
+  const rank = STATUS_ORDER[status];
+
+  if (rank === undefined) {
+    // Unknown status — treat neutrally
+    return { score: 0.5, verdict: 'aligned', reason: `unknown status "${status}"` };
+  }
+
+  if (rank <= 1) {
+    // planned or speculative — this is the active frontier, great alignment
+    return { score: 1.0, verdict: 'advancing', reason: `${status} → actively advancing` };
+  }
+  if (rank === 2) {
+    // scaffolded — still being built, good
+    return { score: 0.9, verdict: 'advancing', reason: `${status} → building on scaffold` };
+  }
+  if (rank === 3) {
+    // functional — polishing, acceptable
+    return { score: 0.7, verdict: 'aligned', reason: `${status} → polishing functional code` };
+  }
+  // production — touching stable code
+  if (isModifying) {
+    return { score: 0.4, verdict: 'regressing', reason: `${status} → modifying stable production code` };
+  }
+  return { score: 0.6, verdict: 'aligned', reason: `${status} → minor production touch` };
+}
+
+/**
+ * Check whether all depends-on targets of an entity are "production" or "functional".
+ */
+function scoreDependencies(entityIri: string, kbName?: string): { score: number; met: number; total: number; unmet: string[] } {
+  const triples = kb.triplesAbout(entityIri, kbName);
+  const deps = triples
+    .filter(t => t.predicate.endsWith('/depends-on'))
+    .map(t => t.object);
+
+  if (deps.length === 0) return { score: 1.0, met: 0, total: 0, unmet: [] };
+
+  const READY = new Set(['production', 'functional']);
+  let met = 0;
+  const unmet: string[] = [];
+
+  for (const dep of deps) {
+    const depTriples = kb.triplesAbout(dep, kbName);
+    const statusTriple = depTriples.find(t => t.predicate.endsWith('/has-status'));
+    if (statusTriple && READY.has(statusTriple.object)) {
+      met++;
+    } else {
+      unmet.push(dep.split('/').pop() ?? dep);
+    }
+  }
+
+  return { score: deps.length > 0 ? met / deps.length : 1.0, met, total: deps.length, unmet };
+}
+
+/**
+ * Extract keywords from file paths for matching against KB entities.
+ */
+function fileKeywords(paths: string[]): Set<string> {
+  const kw = new Set<string>();
+  for (const p of paths) {
+    for (const part of p.split('/')) {
+      const name = part.replace(/\.[^.]+$/, '');
+      if (name.length > 2) {
+        kw.add(name.toLowerCase());
+        for (const word of name.split(/[-_.]/).filter(w => w.length > 2)) {
+          kw.add(word.toLowerCase());
+        }
+      }
+    }
+  }
+  return kw;
+}
+
+function handleKbAlignmentScore(params: { ref?: string; work?: string; kb?: string }): object {
+  const ref = params.ref ?? 'HEAD~5';
+
+  // 1. Get changed files from git
+  let changedFiles: { path: string; status: string }[];
+  try {
+    changedFiles = gitChangedFiles(ref);
+  } catch (e) {
+    return { content: [{ type: 'text', text: `Git diff failed: ${e instanceof Error ? e.message : String(e)}` }] };
+  }
+
+  if (changedFiles.length === 0) {
+    return { content: [{ type: 'text', text: `No files changed since ${ref}. Alignment score: N/A` }] };
+  }
+
+  kb.reload();
+  const allTriples = kb.allTriples(params.kb);
+
+  // 2. Build search query from file paths + optional work description
+  const keywords = fileKeywords(changedFiles.map(f => f.path));
+  let query = [...keywords].join(' ');
+  if (params.work) query = `${params.work} ${query}`;
+
+  const searchHits = bm25Search(allTriples, query, 15);
+
+  // 3. Deduplicate to unique entities and gather their facts
+  const entityMap = new Map<string, { iri: string; triples: ReturnType<typeof kb.triplesAbout> }>();
+  for (const hit of searchHits) {
+    const iri = hit.triple.subject;
+    if (!entityMap.has(iri)) {
+      entityMap.set(iri, { iri, triples: kb.triplesAbout(iri, params.kb) });
+    }
+  }
+
+  // 4. Filter to entities that are features (have has-status)
+  const featureEntities: Array<{
+    iri: string;
+    slug: string;
+    status: string;
+    featureId: string;
+    triples: ReturnType<typeof kb.triplesAbout>;
+  }> = [];
+
+  for (const { iri, triples } of entityMap.values()) {
+    const statusTriple = triples.find(t => t.predicate.endsWith('/has-status'));
+    if (!statusTriple) continue;
+    const fidTriple = triples.find(t => t.predicate.endsWith('/feature-id'));
+    featureEntities.push({
+      iri,
+      slug: iri.split('/').pop() ?? iri,
+      status: statusTriple.object,
+      featureId: fidTriple?.object ?? '',
+      triples,
+    });
+  }
+
+  // ── Dimension 1: Coverage (30%) ──
+  // What fraction of changed files can be linked to a KB entity?
+  const matchedSlugs = new Set<string>();
+  for (const fe of featureEntities) {
+    matchedSlugs.add(fe.slug.toLowerCase());
+    for (const word of fe.slug.toLowerCase().split(/[-_]/)) {
+      if (word.length > 2) matchedSlugs.add(word);
+    }
+    // Also add words from description/label
+    for (const t of fe.triples) {
+      if (t.predicate.endsWith('/description') || t.predicate.endsWith('label')) {
+        for (const w of t.object.toLowerCase().split(/\s+/).filter(w => w.length > 3)) {
+          matchedSlugs.add(w);
+        }
+      }
+    }
+  }
+
+  let coveredFiles = 0;
+  for (const f of changedFiles) {
+    const parts = f.path.toLowerCase().split('/');
+    const name = parts[parts.length - 1]?.replace(/\.[^.]+$/, '') ?? '';
+    const matched = [...matchedSlugs].some(slug =>
+      name.includes(slug) || slug.includes(name) ||
+      parts.some(p => p === slug || slug.includes(p))
+    );
+    if (matched) coveredFiles++;
+  }
+  const coverageScore = changedFiles.length > 0 ? coveredFiles / changedFiles.length : 0;
+
+  // ── Dimension 2: Status Alignment (30%) ──
+  // Are we working on features in an appropriate lifecycle stage?
+  const verdicts: AlignmentVerdict[] = [];
+  let statusScoreSum = 0;
+
+  if (featureEntities.length === 0) {
+    // No feature entities matched → all work is unplanned
+    statusScoreSum = 0;
+  } else {
+    for (const fe of featureEntities) {
+      const hasDeletes = changedFiles.some(f => f.status === 'deleted');
+      const sa = scoreStatusAlignment(fe.status, hasDeletes);
+      verdicts.push({
+        entity: fe.slug,
+        status: fe.status,
+        verdict: sa.verdict,
+        score: sa.score,
+        reason: `${fe.featureId ? fe.featureId + ' ' : ''}${sa.reason}`,
+      });
+      statusScoreSum += sa.score;
+    }
+  }
+  const statusScore = featureEntities.length > 0 ? statusScoreSum / featureEntities.length : 0;
+
+  // ── Dimension 3: Dependency Respect (20%) ──
+  // Do the features we're touching have their dependencies met?
+  let depScoreSum = 0;
+  let depCount = 0;
+  const unmetDeps: string[] = [];
+
+  for (const fe of featureEntities) {
+    const dep = scoreDependencies(fe.iri, params.kb);
+    if (dep.total > 0) {
+      depScoreSum += dep.score;
+      depCount++;
+      unmetDeps.push(...dep.unmet);
+    }
+  }
+  const depScore = depCount > 0 ? depScoreSum / depCount : 1.0; // no deps = perfect
+
+  // ── Dimension 4: Scope Discipline (20%) ──
+  // Ratio of planned work (matched features) vs unplanned (unmatched files)
+  const unmatchedCount = changedFiles.length - coveredFiles;
+  // Penalise when a large fraction of changes is unplanned
+  const scopeScore = changedFiles.length > 0
+    ? Math.max(0, 1 - (unmatchedCount / changedFiles.length) * 0.8)
+    : 1.0;
+
+  // ── Composite ──
+  const composite = (
+    coverageScore * 0.30 +
+    statusScore   * 0.30 +
+    depScore      * 0.20 +
+    scopeScore    * 0.20
+  );
+
+  // ── Format output ──
+  const grade =
+    composite >= 0.85 ? 'EXCELLENT' :
+    composite >= 0.70 ? 'GOOD' :
+    composite >= 0.50 ? 'FAIR' :
+    composite >= 0.30 ? 'POOR' : 'MISALIGNED';
+
+  const lines: string[] = [
+    `Alignment Score: ${composite.toFixed(2)} (${grade})`,
+    `  ref: ${ref} → ${changedFiles.length} files changed`,
+    '',
+    `Dimensions:`,
+    `  Coverage:    ${(coverageScore * 100).toFixed(0)}%  (${coveredFiles}/${changedFiles.length} files matched KB entities)`,
+    `  Status:      ${(statusScore * 100).toFixed(0)}%  (working on features in appropriate lifecycle stage)`,
+    `  Deps:        ${(depScore * 100).toFixed(0)}%  (dependency prerequisites met)`,
+    `  Scope:       ${(scopeScore * 100).toFixed(0)}%  (planned vs unplanned work ratio)`,
+  ];
+
+  if (verdicts.length > 0) {
+    lines.push('', 'Per-entity verdicts:');
+    for (const v of verdicts) {
+      const icon = v.verdict === 'advancing' ? '+' :
+                   v.verdict === 'aligned' ? '=' :
+                   v.verdict === 'regressing' ? '!' :
+                   v.verdict === 'premature' ? '?' : '-';
+      lines.push(`  ${icon} ${v.entity} [${v.status}] → ${v.verdict}: ${v.reason}`);
+    }
+  }
+
+  if (unmetDeps.length > 0) {
+    lines.push('', `Unmet dependencies: ${[...new Set(unmetDeps)].join(', ')}`);
+  }
+
+  if (featureEntities.length === 0) {
+    lines.push('', 'No KB feature entities matched the changed files. Consider using the `work` parameter to describe your intent.');
+  }
+
+  return { content: [{ type: 'text', text: lines.join('\n') }] };
+}
+
 // ── MCP Protocol (JSON-RPC 2.0 over stdio) ────────────────────────────────────
 
 function respond(id: number | string | null, result: object): void {
@@ -481,11 +1046,16 @@ rl.on('line', (line) => {
           case 'kb_get_entity':  result = handleKbGetEntity(toolArgs as { entity: string; kb?: string }); break;
           case 'kb_stats':       result = handleKbStats(toolArgs as { kb?: string }); break;
           case 'kb_list_entities': result = handleKbListEntities(toolArgs as { limit?: number; kb?: string }); break;
-          case 'kb_add_note':    result = handleKbAddNote(toolArgs as { subject: string; predicate: string; object: string; note?: string; kb?: string }); break;
+          case 'kb_add_note':    result = handleKbAddNote(toolArgs as AddNoteParams); break;
           case 'kb_subgraph':    result = handleKbSubgraph(toolArgs as { entity: string; hops?: number; limit?: number; kb?: string }); break;
           case 'kb_reckoning':   result = handleKbReckoning(toolArgs as { situation: string; target: string; kb?: string }); break;
           case 'kb_list_sources': result = handleKbListSources(toolArgs as { kb?: string }); break;
           case 'kb_request_refresh': result = handleKbRequestRefresh(toolArgs as { source_id?: string; kb?: string }); break;
+          case 'kb_git_status':  result = handleKbGitStatus(toolArgs as { commits?: number; diff?: boolean }); break;
+          case 'kb_check_plan':  result = handleKbCheckPlan(toolArgs as { work: string; commits?: number; kb?: string }); break;
+          case 'kb_pending':     result = handleKbPending(toolArgs as { kb?: string }); break;
+          case 'kb_git_diff_triples': result = handleKbGitDiffTriples(toolArgs as { ref?: string; kb?: string }); break;
+          case 'kb_alignment_score': result = handleKbAlignmentScore(toolArgs as { ref?: string; work?: string; kb?: string }); break;
           default:
             respondError(id ?? null, -32601, `Unknown tool: ${toolName}`);
             return;

@@ -6,6 +6,32 @@
   import { activateOfficialKb, officialKbActive } from '$lib/stores/official-kb.svelte';
   import { startStory } from '$lib/stores/shelly-bridge.svelte';
 
+  // ── Compression benchmark data ─────────────────────────────────────────
+  const GITHUB_REPO = 'https://github.com/Data-Insight-Solutions/Reckons.AI';
+  const FIXTURES_PATH = `${GITHUB_REPO}/tree/main/tests/bench/fixtures/why`;
+  const BENCH_SCRIPT = `${GITHUB_REPO}/blob/main/tests/bench/run-compression-bench.ts`;
+
+  type CategoryResult = {
+    category: string;
+    label: string;
+    source: { bytes: number; words: number; tokens: number };
+    triples: { count: number; turtleBytes: number; turtleTokens: number };
+    compression: { byteReduction: number; tokenReduction: number; factDensity: number; densityMultiplier: number };
+  };
+  type BenchData = {
+    timestamp: string;
+    categories: CategoryResult[];
+    averages: { byteReduction: number; tokenReduction: number; densityMultiplier: number };
+  };
+
+  let benchData = $state<BenchData | null>(null);
+  let selectedIdx = $state(0);
+  const selected = $derived(benchData?.categories[selectedIdx] ?? null);
+
+  function barWidth(pct: number): string {
+    return `${Math.min(Math.abs(pct), 100)}%`;
+  }
+
   // ── Example KBs (importable into user's own KB) ──────────────────────
   const EXAMPLE_KBS = [
     {
@@ -66,7 +92,7 @@
   let exIdx = $state(0);
   let fading = $state(false);
 
-  onMount(() => {
+  onMount(async () => {
     const iv = setInterval(() => {
       fading = true;
       setTimeout(() => {
@@ -74,6 +100,13 @@
         fading = false;
       }, 250);
     }, 3200);
+
+    // Fetch compression benchmark data
+    try {
+      const res = await fetch('/compression-results.json');
+      if (res.ok) benchData = await res.json();
+    } catch {}
+
     return () => clearInterval(iv);
   });
 
@@ -374,6 +407,143 @@
     </div>
   </section>
 
+  <!-- ── Compression benchmarks (verified) ──────────────────────────────────── -->
+  {#if benchData}
+    <section class="section bench-section">
+      <p class="section-kicker mono">verified calculation</p>
+      <h2>Condense your context.<br><em>Keep the meaning.</em></h2>
+      <p class="section-sub">
+        We checked the math — {benchData.categories.length} categories, real text, measured byte-for-byte.
+        Each source is condensed to the facts it asserts.
+      </p>
+
+      <!-- Hero stats -->
+      <div class="bench-hero-stats">
+        <div class="bench-stat" title="View benchmark script" aria-label="Average byte reduction across {benchData.categories.length} categories">
+          <a href={BENCH_SCRIPT} target="_blank" rel="noopener noreferrer" class="bench-stat-link">
+            <span class="bench-stat-value mono">{benchData.averages.byteReduction}%</span>
+            <span class="bench-stat-label mono">bytes</span>
+          </a>
+        </div>
+        <div class="bench-stat" title="View benchmark script" aria-label="Average token reduction">
+          <a href={BENCH_SCRIPT} target="_blank" rel="noopener noreferrer" class="bench-stat-link">
+            <span class="bench-stat-value mono">{benchData.averages.tokenReduction}%</span>
+            <span class="bench-stat-label mono">tokens</span>
+          </a>
+        </div>
+        <div class="bench-stat" title="View benchmark script" aria-label="Average density multiplier">
+          <a href={BENCH_SCRIPT} target="_blank" rel="noopener noreferrer" class="bench-stat-link">
+            <span class="bench-stat-value mono">{benchData.averages.densityMultiplier}×</span>
+            <span class="bench-stat-label mono">denser</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Category picker -->
+      <div class="bench-picker">
+        {#each benchData.categories as cat, i}
+          <button
+            class="bench-chip"
+            class:active={selectedIdx === i}
+            onclick={() => selectedIdx = i}
+          >
+            {cat.category}
+          </button>
+        {/each}
+      </div>
+
+      <!-- Selected category detail -->
+      {#if selected}
+        <div class="bench-detail">
+          <div class="bench-detail-header">
+            <span class="bench-detail-cat mono">{selected.category}</span>
+            <a href={FIXTURES_PATH} target="_blank" rel="noopener noreferrer" class="bench-detail-title" title="View test fixtures on GitHub">{selected.label}</a>
+          </div>
+
+          <div class="bench-metrics-grid">
+            <div class="bench-metric">
+              <div class="bench-bar-track">
+                <div class="bench-bar bench-bar-byte" style:width={barWidth(selected.compression.byteReduction)}></div>
+              </div>
+              <div class="bench-metric-row">
+                <span class="bench-metric-value mono">{selected.compression.byteReduction}%</span>
+                <span class="bench-metric-label mono">bytes</span>
+              </div>
+              <div class="bench-metric-detail mono">{selected.source.bytes.toLocaleString()} → {selected.triples.turtleBytes.toLocaleString()} bytes</div>
+            </div>
+            <div class="bench-metric">
+              <div class="bench-bar-track">
+                <div class="bench-bar bench-bar-token" style:width={barWidth(selected.compression.tokenReduction)}></div>
+              </div>
+              <div class="bench-metric-row">
+                <span class="bench-metric-value mono">{selected.compression.tokenReduction}%</span>
+                <span class="bench-metric-label mono">tokens</span>
+              </div>
+              <div class="bench-metric-detail mono">{selected.source.tokens.toLocaleString()} → {selected.triples.turtleTokens.toLocaleString()} tokens</div>
+            </div>
+            <div class="bench-metric">
+              <div class="bench-bar-track">
+                <div class="bench-bar bench-bar-density" style:width={`${Math.min(selected.compression.densityMultiplier / 5 * 100, 100)}%`}></div>
+              </div>
+              <div class="bench-metric-row">
+                <span class="bench-metric-value mono">{selected.compression.densityMultiplier}×</span>
+                <span class="bench-metric-label mono">denser</span>
+              </div>
+              <div class="bench-metric-detail mono">{selected.triples.count} facts from {selected.source.words} words</div>
+            </div>
+          </div>
+        </div>
+      {/if}
+
+      <!-- Summary table -->
+      <div class="bench-table-wrap">
+        <table class="bench-table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Source</th>
+              <th>Bytes</th>
+              <th>Tokens</th>
+              <th>Density</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each benchData.categories as cat}
+              <tr>
+                <td>
+                  <span class="bench-td-cat mono">{cat.category}</span>
+                  <span class="bench-td-label">{cat.label}</span>
+                </td>
+                <td class="bench-num mono">{cat.source.words} words</td>
+                <td class="bench-num mono">{cat.compression.byteReduction}%</td>
+                <td class="bench-num mono">{cat.compression.tokenReduction}%</td>
+                <td class="bench-num mono">{cat.compression.densityMultiplier}×</td>
+              </tr>
+            {/each}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td>Average</td>
+              <td></td>
+              <td class="bench-num mono">{benchData.averages.byteReduction}%</td>
+              <td class="bench-num mono">{benchData.averages.tokenReduction}%</td>
+              <td class="bench-num mono">{benchData.averages.densityMultiplier}×</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <p class="bench-methodology mono">
+        <a href={FIXTURES_PATH} target="_blank" rel="noopener noreferrer">test fixtures</a> ·
+        <a href={BENCH_SCRIPT} target="_blank" rel="noopener noreferrer">benchmark script</a> ·
+        run <code>npm run bench:compression</code> to reproduce
+        {#if benchData.timestamp}
+          · last run {new Date(benchData.timestamp).toLocaleDateString()}
+        {/if}
+      </p>
+    </section>
+  {/if}
+
   <!-- ── STP Framework ──────────────────────────────────────────────────────── -->
   <section class="section stp-section">
     <div class="stp-inner">
@@ -526,9 +696,9 @@
   </section>
 
   <!-- ── Getting Started ────────────────────────────────────────────────── -->
-  <section class="section starter-section">
+  <section class="section starter-section starter-hero">
     <p class="section-kicker mono">getting started</p>
-    <h2>Explore the documentation graph</h2>
+    <h2>Explore the <em>documentation graph</em></h2>
     <p class="section-sub">
       The documentation is itself a knowledge graph. Browse it in 3D, talk to Shelly,
       play the guided story — then switch back to your own KB when you're ready to build.
@@ -687,6 +857,7 @@
   <footer class="page-footer">
     <p class="mono">Reckons.AI · local-first · open source · RDF/Turtle · MIT license</p>
     <p class="mono footer-credit">Developed by <a href="https://data-insight.solutions/" target="_blank" rel="noopener noreferrer">Data Insight Solutions LLC</a></p>
+    <a href="https://github.com/Data-Insight-Solutions/Reckons.AI" target="_blank" rel="noopener noreferrer" class="footer-github mono">GitHub</a>
   </footer>
 </div>
 
@@ -1620,6 +1791,201 @@
     transition: color 0.15s;
   }
   .footer-credit a:hover { color: var(--accent); }
+  .footer-github {
+    font-size: 0.68rem;
+    color: var(--muted);
+    text-decoration: none;
+    padding: 0.2rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .footer-github:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ── Compression benchmarks ──────────────────────────────────── */
+  .bench-section {
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    text-align: center;
+  }
+  .bench-hero-stats {
+    display: flex;
+    justify-content: center;
+    gap: 3rem;
+    margin-bottom: 2rem;
+  }
+  .bench-stat-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    color: inherit;
+    transition: opacity 0.15s;
+  }
+  .bench-stat-link:hover { opacity: 0.75; }
+  .bench-stat-value {
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: var(--ok);
+  }
+  .bench-stat-label {
+    font-size: 0.68rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .bench-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+  }
+  .bench-chip {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    padding: 0.4rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--ink-2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .bench-chip:hover { border-color: var(--accent); color: var(--ink); }
+  .bench-chip.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .bench-detail {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--rad);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    text-align: left;
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .bench-detail-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .bench-detail-cat {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+  }
+  .bench-detail-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--ink);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--line);
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .bench-detail-title:hover { color: var(--accent); border-color: var(--accent); }
+  .bench-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+  .bench-metric { display: flex; flex-direction: column; gap: 0.35rem; }
+  .bench-bar-track {
+    height: 5px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .bench-bar {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.4s ease;
+  }
+  .bench-bar-byte { background: var(--ok); }
+  .bench-bar-token { background: var(--accent); }
+  .bench-bar-density { background: var(--data); }
+  .bench-metric-row { display: flex; align-items: baseline; gap: 0.4rem; }
+  .bench-metric-value { font-size: 1.4rem; font-weight: 700; }
+  .bench-metric-label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; }
+  .bench-metric-detail { font-size: 0.7rem; color: var(--muted); }
+  .bench-table-wrap { overflow-x: auto; max-width: 640px; margin: 0 auto 1rem; }
+  .bench-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    text-align: left;
+  }
+  .bench-table th {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .bench-table td {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--surface-2);
+  }
+  .bench-num { text-align: right; }
+  .bench-td-cat {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    display: block;
+  }
+  .bench-td-label { font-size: 0.82rem; }
+  .bench-table tfoot td {
+    font-weight: 700;
+    border-top: 1px solid var(--line);
+    border-bottom: none;
+  }
+  .bench-methodology {
+    font-size: 0.72rem;
+    color: var(--muted);
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  .bench-methodology a {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--accent);
+    transition: opacity 0.15s;
+  }
+  .bench-methodology a:hover { opacity: 0.7; }
+  .bench-methodology code {
+    font-family: var(--font-mono);
+    font-size: 0.88em;
+    background: var(--surface-2);
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+  }
+
+  /* ── Getting started hero treatment ──────────────────────────── */
+  .starter-hero {
+    background: linear-gradient(180deg, transparent, rgba(26, 155, 142, 0.04) 30%, rgba(26, 155, 142, 0.08) 70%, transparent);
+    border-top: 2px solid var(--accent);
+    position: relative;
+  }
+  .starter-hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    height: 2px;
+    background: var(--accent);
+    box-shadow: 0 0 20px 4px rgba(26, 155, 142, 0.4);
+  }
 
   /* ── Responsive ────────────────────────────────────────────────── */
   @media (max-width: 640px) {
@@ -1636,6 +2002,9 @@
     .pipe-fork { grid-template-columns: 1fr; }
     .stack-layers { flex-direction: column; }
     .stack-arrow-right { transform: rotate(90deg); }
+    .bench-hero-stats { gap: 1.5rem; }
+    .bench-stat-value { font-size: 1.8rem; }
+    .bench-metrics-grid { grid-template-columns: 1fr; }
   }
 
   /* ── Starter KBs ───────────────────────────────────────────── */

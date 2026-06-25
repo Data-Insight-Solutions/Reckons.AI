@@ -509,6 +509,22 @@ kb:mcp-workspace rdf:type ktype:Feature ;
                kpred:description  "Reckons.AI uses its own MCP server to track product state. Three internal KBs (Roadmap, Production, Features) symlinked from static/*.ttl into mcp-workspace/kbs/. Claude Code configured via CLAUDE.md + .claude/settings.local.json. Setup: scripts/setup-mcp-workspace.sh." ;
                kpred:depends-on   kb:mcp-server .
 
+# -- Git Analysis (F24) --------------------------------------------------------
+
+kb:git-analysis rdf:type ktype:Feature ;
+               rdfs:label   "Git Analysis" ;
+               kpred:has-status   "production" ;
+               kpred:feature-id   "F24" ;
+               kpred:description  "Git-aware MCP tools for agent plan alignment. Agents can check git status, cross-reference code changes against KB entities, review pending proposals, verify work alignment against the roadmap, and compute a quantitative alignment score (0-1) across 4 dimensions: coverage, status alignment, dependency respect, and scope discipline." ;
+               kpred:has-tool     "kb_git_status" ;
+               kpred:has-tool     "kb_check_plan" ;
+               kpred:has-tool     "kb_pending" ;
+               kpred:has-tool     "kb_git_diff_triples" ;
+               kpred:has-tool     "kb_alignment_score" ;
+               kpred:depends-on   kb:mcp-server ;
+               kpred:depends-on   kb:mcp-workspace ;
+               kpred:related      kb:entity-normalisation .
+
 # -- User-Requested Future Capabilities -----------------------------------------
 
 kb:source-subscription rdf:type ktype:Feature ;

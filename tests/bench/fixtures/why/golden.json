@@ -1,0 +1,156 @@
+{
+  "literature": {
+    "label": "A Tale of Two Cities",
+    "category": "Literature",
+    "triples": [
+      { "subject": "the-era", "predicate": "is-a", "object": "period" },
+      { "subject": "the-era", "predicate": "was-both", "object": "best of times" },
+      { "subject": "the-era", "predicate": "was-both", "object": "worst of times" },
+      { "subject": "the-era", "predicate": "paired", "object": "wisdom and foolishness" },
+      { "subject": "the-era", "predicate": "paired", "object": "belief and incredulity" },
+      { "subject": "the-era", "predicate": "paired", "object": "light and darkness" },
+      { "subject": "the-era", "predicate": "paired", "object": "hope and despair" },
+      { "subject": "the-era", "predicate": "has-year", "object": "1775" },
+      { "subject": "england", "predicate": "has-ruler", "object": "king with large jaw" },
+      { "subject": "england", "predicate": "has-ruler", "object": "queen with plain face" },
+      { "subject": "france", "predicate": "has-ruler", "object": "king with large jaw" },
+      { "subject": "france", "predicate": "has-ruler", "object": "queen with fair face" }
+    ]
+  },
+  "encyclopedia": {
+    "label": "Mount Everest",
+    "category": "Encyclopedia",
+    "triples": [
+      { "subject": "mount-everest", "predicate": "is-a", "object": "mountain" },
+      { "subject": "mount-everest", "predicate": "has-distinction", "object": "highest mountain above sea level" },
+      { "subject": "mount-everest", "predicate": "located-in", "object": "mahalangur-himal" },
+      { "subject": "mount-everest", "predicate": "border-between", "object": "China and Nepal" },
+      { "subject": "mount-everest", "predicate": "has-elevation", "object": "8848.86 metres" },
+      { "subject": "mount-everest", "predicate": "elevation-established", "object": "2020" },
+      { "subject": "mount-everest", "predicate": "has-route", "object": "southeast ridge (standard)" },
+      { "subject": "mount-everest", "predicate": "has-route", "object": "north ridge from Tibet" },
+      { "subject": "mount-everest", "predicate": "has-hazard", "object": "altitude sickness" },
+      { "subject": "mount-everest", "predicate": "has-hazard", "object": "Khumbu Icefall" },
+      { "subject": "1922-expedition", "predicate": "reached-altitude", "object": "8320 metres" },
+      { "subject": "1922-expedition", "predicate": "first-to", "object": "climb above 8000 metres" },
+      { "subject": "george-mallory", "predicate": "attempted-summit", "object": "8 June 1924" },
+      { "subject": "george-mallory", "predicate": "climbed-with", "object": "andrew-irvine" },
+      { "subject": "tenzing-norgay", "predicate": "first-ascent-with", "object": "edmund-hillary" },
+      { "subject": "tenzing-norgay", "predicate": "first-ascent-year", "object": "1953" },
+      { "subject": "tenzing-norgay", "predicate": "previous-expeditions", "object": "6" },
+      { "subject": "first-north-ridge-ascent", "predicate": "date", "object": "25 May 1960" },
+      { "subject": "first-north-ridge-ascent", "predicate": "by-team", "object": "Wang Fuzhou, Gonpo, Qu Yinhua" }
+    ]
+  },
+  "news": {
+    "label": "Central-bank rate decision",
+    "category": "News",
+    "triples": [
+      { "subject": "federal-reserve", "predicate": "held-rate-at", "object": "5.25% to 5.50%" },
+      { "subject": "june-meeting", "predicate": "decision", "object": "hold" },
+      { "subject": "june-meeting", "predicate": "vote", "object": "unanimous (12 members)" },
+      { "subject": "june-meeting", "predicate": "consecutive-pause", "object": "7th" },
+      { "subject": "pce-index", "predicate": "rose", "object": "2.6% (May, 12-month)" },
+      { "subject": "pce-index", "predicate": "peak-was", "object": "7.1% (June 2022)" },
+      { "subject": "fed-target", "predicate": "inflation-goal", "object": "2%" },
+      { "subject": "jerome-powell", "predicate": "described-stance-as", "object": "restrictive" },
+      { "subject": "jerome-powell", "predicate": "wants-evidence-of", "object": "sustainable move toward 2%" },
+      { "subject": "unemployment-rate", "predicate": "current", "object": "4.0%" },
+      { "subject": "unemployment-rate", "predicate": "year-ago", "object": "3.4%" },
+      { "subject": "cme-fedwatch", "predicate": "probability-of-hold", "object": "99.4%" },
+      { "subject": "10-year-treasury", "predicate": "yield", "object": "4.28%" }
+    ]
+  },
+  "biography": {
+    "label": "Marie Curie",
+    "category": "Biography",
+    "triples": [
+      { "subject": "marie-curie", "predicate": "born-name", "object": "Maria Salomea Skłodowska" },
+      { "subject": "marie-curie", "predicate": "born-date", "object": "7 November 1867" },
+      { "subject": "marie-curie", "predicate": "born-in", "object": "Warsaw" },
+      { "subject": "marie-curie", "predicate": "nationality", "object": "Polish and French" },
+      { "subject": "marie-curie", "predicate": "field", "object": "physics and chemistry" },
+      { "subject": "marie-curie", "predicate": "researched", "object": "radioactivity" },
+      { "subject": "marie-curie", "predicate": "first-woman-to", "object": "win a Nobel Prize" },
+      { "subject": "marie-curie", "predicate": "first-person-to", "object": "win Nobel Prize twice" },
+      { "subject": "marie-curie", "predicate": "married", "object": "Pierre Curie (1895)" },
+      { "subject": "marie-curie", "predicate": "won", "object": "1903 Nobel Prize in Physics" },
+      { "subject": "marie-curie", "predicate": "shared-prize-with", "object": "Pierre Curie and Henri Becquerel" },
+      { "subject": "marie-curie", "predicate": "won", "object": "1911 Nobel Prize in Chemistry" },
+      { "subject": "marie-curie", "predicate": "discovered", "object": "polonium" },
+      { "subject": "marie-curie", "predicate": "discovered", "object": "radium" },
+      { "subject": "marie-curie", "predicate": "founded", "object": "Curie Institute (Paris)" },
+      { "subject": "marie-curie", "predicate": "founded", "object": "Curie Institute (Warsaw)" },
+      { "subject": "marie-curie", "predicate": "died", "object": "4 July 1934" },
+      { "subject": "marie-curie", "predicate": "cause-of-death", "object": "aplastic anaemia from radiation" },
+      { "subject": "pierre-curie", "predicate": "died-by", "object": "traffic accident (1906)" }
+    ]
+  },
+  "recipe": {
+    "label": "Recipe instructions",
+    "category": "Everyday",
+    "triples": [
+      { "subject": "beef-bourguignon", "predicate": "is-a", "object": "French stew" },
+      { "subject": "beef-bourguignon", "predicate": "braised-in", "object": "red Burgundy wine" },
+      { "subject": "beef-bourguignon", "predicate": "serves", "object": "6" },
+      { "subject": "beef-bourguignon", "predicate": "total-time", "object": "3 hours" },
+      { "subject": "beef-bourguignon", "predicate": "braise-time", "object": "2.5 hours" },
+      { "subject": "beef-bourguignon", "predicate": "oven-temp", "object": "325°F (163°C)" },
+      { "subject": "beef-bourguignon", "predicate": "main-protein", "object": "3 lbs beef chuck (2-inch cubes)" },
+      { "subject": "beef-bourguignon", "predicate": "has-ingredient", "object": "bacon lardons" },
+      { "subject": "beef-bourguignon", "predicate": "has-ingredient", "object": "pearl onions (18)" },
+      { "subject": "beef-bourguignon", "predicate": "has-ingredient", "object": "cremini mushrooms (1 lb)" },
+      { "subject": "beef-bourguignon", "predicate": "has-ingredient", "object": "beef stock (2 cups)" },
+      { "subject": "beef-bourguignon", "predicate": "step-1", "object": "brown bacon 8 min, reserve fat" },
+      { "subject": "beef-bourguignon", "predicate": "step-2", "object": "brown beef in batches, 3 min/side" },
+      { "subject": "beef-bourguignon", "predicate": "step-3", "object": "add wine, stock, braise in oven" },
+      { "subject": "beef-bourguignon", "predicate": "step-4", "object": "sauté mushrooms, add last 30 min" },
+      { "subject": "beef-bourguignon", "predicate": "served-with", "object": "egg noodles or mashed potatoes" }
+    ]
+  },
+  "code": {
+    "label": "React useState",
+    "category": "Code",
+    "triples": [
+      { "subject": "use-state", "predicate": "is-a", "object": "React hook" },
+      { "subject": "use-state", "predicate": "introduced-in", "object": "React 16.8 (Feb 2019)" },
+      { "subject": "use-state", "predicate": "accepts", "object": "initial state value" },
+      { "subject": "use-state", "predicate": "returns", "object": "[currentValue, setterFunction]" },
+      { "subject": "setter-function", "predicate": "accepts", "object": "new value or updater function" },
+      { "subject": "setter-function", "predicate": "triggers", "object": "component re-render" },
+      { "subject": "setter-function", "predicate": "replaces-state", "object": "completely (not merge)" },
+      { "subject": "state-updates", "predicate": "are", "object": "batched for performance" },
+      { "subject": "react-18", "predicate": "extends-batching-to", "object": "promises, setTimeout, native events" },
+      { "subject": "pre-react-18", "predicate": "batched-only-in", "object": "React event handlers" },
+      { "subject": "lazy-initialization", "predicate": "uses", "object": "function as initial value" },
+      { "subject": "lazy-initialization", "predicate": "executes", "object": "only on mount" },
+      { "subject": "complex-state", "predicate": "prefer", "object": "useReducer hook" },
+      { "subject": "rules-of-hooks", "predicate": "requires", "object": "top-level calls only" },
+      { "subject": "rules-of-hooks", "predicate": "forbids", "object": "calls in loops, conditions, nested functions" }
+    ]
+  },
+  "research": {
+    "label": "Attention Is All You Need",
+    "category": "Research",
+    "triples": [
+      { "subject": "transformer", "predicate": "introduced-by", "object": "Vaswani et al." },
+      { "subject": "transformer", "predicate": "published-at", "object": "NeurIPS 2017" },
+      { "subject": "transformer", "predicate": "relies-on", "object": "self-attention (no recurrence/convolution)" },
+      { "subject": "transformer", "predicate": "has-structure", "object": "encoder-decoder" },
+      { "subject": "encoder-layer", "predicate": "has-sublayer", "object": "multi-head self-attention" },
+      { "subject": "encoder-layer", "predicate": "has-sublayer", "object": "feed-forward network" },
+      { "subject": "decoder-layer", "predicate": "adds", "object": "cross-attention over encoder output" },
+      { "subject": "attention", "predicate": "formula", "object": "softmax(QK^T / sqrt(d_k))V" },
+      { "subject": "base-model", "predicate": "attention-heads", "object": "8" },
+      { "subject": "base-model", "predicate": "d_model", "object": "512" },
+      { "subject": "base-model", "predicate": "parameters", "object": "65 million" },
+      { "subject": "big-model", "predicate": "parameters", "object": "213 million" },
+      { "subject": "base-model", "predicate": "trained-on", "object": "8 NVIDIA P100 GPUs, 12 hours" },
+      { "subject": "big-model", "predicate": "trained-for", "object": "3.5 days" },
+      { "subject": "big-transformer", "predicate": "en-de-bleu", "object": "28.4" },
+      { "subject": "big-transformer", "predicate": "en-fr-bleu", "object": "41.0" },
+      { "subject": "transformer", "predicate": "foundation-for", "object": "BERT, GPT, T5" },
+      { "subject": "self-attention", "predicate": "enables", "object": "parallel sequence processing" }
+    ]
+  }
+}

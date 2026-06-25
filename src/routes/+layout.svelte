@@ -80,26 +80,48 @@
         const { v4: nanoid } = await import('uuid');
         const sourceId = `mcp-pending-${Date.now()}`;
         const now = Date.now();
+
+        // Build source title with agent info if available
+        const agents = [...new Set(pending.map(e => e.agent).filter(Boolean))];
+        const agentSuffix = agents.length > 0 ? ` (${agents.join(', ')})` : '';
         await addSource({
           id: sourceId,
-          title: `MCP — ${pending.length} queued note${pending.length > 1 ? 's' : ''}`,
+          title: `MCP${agentSuffix} — ${pending.length} queued note${pending.length > 1 ? 's' : ''}`,
           uri: `urn:mcp:pending:${sourceId}`,
           kind: 'analysis',
           trustLevel: 'review',
           ingestedAt: now,
         });
-        const sts = pending.map(e => ({
-          id: nanoid(),
-          sourceId,
-          status: 'pending' as const,
-          confidence: 0.7,
-          s: { kind: 'iri' as const, value: e.subject },
-          p: { kind: 'iri' as const, value: e.predicate },
-          o: { kind: 'literal' as const, value: e.object },
-          g: { kind: 'iri' as const, value: `urn:mcp:pending:${sourceId}` },
-          createdAt: e.addedAt ? new Date(e.addedAt).getTime() : now,
-          updatedAt: now,
-        }));
+
+        const priorityToConfidence: Record<string, number> = { high: 0.9, normal: 0.7, low: 0.5 };
+        const typePrefix: Record<string, string> = {
+          'drift-warning': '[DRIFT WARNING] ',
+          'question': '[QUESTION] ',
+          'suggestion': '[SUGGESTION] ',
+          'status-update': '[STATUS] ',
+        };
+
+        const sts = pending.map(e => {
+          const confidence = priorityToConfidence[e.priority ?? 'normal'] ?? 0.7;
+          const prefix = e.type ? (typePrefix[e.type] ?? '') : '';
+          const gloss = prefix + (e.note ?? '');
+          const excerpt = e.commitSha ? `commit: ${e.commitSha}` : undefined;
+
+          return {
+            id: nanoid(),
+            sourceId,
+            status: 'pending' as const,
+            confidence,
+            s: { kind: 'iri' as const, value: e.subject },
+            p: { kind: 'iri' as const, value: e.predicate },
+            o: { kind: 'literal' as const, value: e.object },
+            g: { kind: 'iri' as const, value: `urn:mcp:pending:${sourceId}` },
+            ...(gloss ? { gloss } : {}),
+            ...(excerpt ? { excerpt } : {}),
+            createdAt: e.addedAt ? new Date(e.addedAt).getTime() : now,
+            updatedAt: now,
+          };
+        });
         await addStatements(sts, sourceId);
       }
       // Nudge: suggest linking a local folder once the user has some data

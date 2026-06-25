@@ -1,0 +1,11 @@
+The React useState hook is one of the most fundamental hooks in the React library. It allows function components to manage local state without converting to class components. The hook was introduced in React 16.8, released in February 2019.
+
+useState accepts an initial state value and returns an array with exactly two elements: the current state value and a setter function. The setter function can accept either a new value directly or an updater function that receives the previous state and returns the new state. When the setter is called, React schedules a re-render of the component with the new state value.
+
+State updates in React are batched for performance. Multiple setState calls within the same event handler are grouped into a single re-render. As of React 18, automatic batching extends to promises, setTimeout, and native event handlers as well. Prior to React 18, batching only occurred inside React event handlers.
+
+The initial value passed to useState is only used during the first render. If computing the initial state is expensive, you can pass a function (lazy initialization) that will only be executed on mount. For example, useState(() => computeExpensiveValue()) avoids recomputing on every render.
+
+Unlike class component setState, the useState setter completely replaces the state value rather than merging it. When managing objects, you must spread the previous state manually: setState(prev => ({ ...prev, newKey: value })). For complex state logic with multiple sub-values, the useReducer hook is generally preferred.
+
+useState follows the Rules of Hooks: it must be called at the top level of a function component or custom hook, never inside loops, conditions, or nested functions. This constraint allows React to correctly associate state with components across renders using call order.
