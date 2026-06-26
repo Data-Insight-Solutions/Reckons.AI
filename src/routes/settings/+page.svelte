@@ -26,7 +26,8 @@
   import {
     workspaceName, workspaceState, supportsWorkspace,
     pickWorkspace, reconnectWorkspace, clearWorkspace, loadWorkspace,
-    syncAllKbs, listKbFolders, lastSyncTime, syncedKbCount
+    syncAllKbs, listKbFolders, lastSyncTime, syncedKbCount,
+    importKbsFromWorkspace
   } from '$lib/stores/workspace.svelte';
   import { exportJsonLd, exportLlmsTxt } from '$lib/storage/semantic-export';
 
@@ -629,6 +630,24 @@
     wsSyncMsg = `Synced ${count} KB${count !== 1 ? 's' : ''} to folder.`;
     wsSyncing = false;
     setTimeout(() => { wsSyncMsg = ''; }, 5000);
+  }
+
+  let wsImporting = $state(false);
+  let wsImportMsg = $state('');
+
+  async function handleImportFromWorkspace() {
+    wsImporting = true;
+    wsImportMsg = '';
+    const { imported, skipped } = await importKbsFromWorkspace();
+    const parts: string[] = [];
+    if (imported.length > 0) parts.push(`Imported: ${imported.join(', ')}`);
+    if (skipped.length > 0) parts.push(`Skipped: ${skipped.join(', ')}`);
+    wsImportMsg = parts.join('. ') || 'No new KBs found.';
+    wsImporting = false;
+    // Refresh folder count
+    const folders = await listKbFolders();
+    wsFolderCount = folders.length;
+    setTimeout(() => { wsImportMsg = ''; }, 10000);
   }
 </script>
 
@@ -1472,6 +1491,24 @@
       </div>
       {#if wsSyncMsg}
         <p class="hint" style="color:var(--accent);margin-top:0.4rem">{wsSyncMsg}</p>
+      {/if}
+
+      <div class="ws-profile-row">
+        <div class="defaults-info">
+          <strong>import from folder</strong>
+          <p class="check-hint">
+            Import KBs found in the workspace folder that aren't in the browser yet.
+            Each <code>kbs/*/kb.ttl</code> becomes a new KB.
+          </p>
+        </div>
+        <div class="btn-group">
+          <button onclick={handleImportFromWorkspace} disabled={wsImporting}>
+            {wsImporting ? 'importing…' : 'import KBs from folder'}
+          </button>
+        </div>
+      </div>
+      {#if wsImportMsg}
+        <p class="hint" style="color:var(--accent);margin-top:0.4rem">{wsImportMsg}</p>
       {/if}
 
       <div class="ws-profile-row">

@@ -421,6 +421,107 @@ export async function drainWorkspacePending(): Promise<PendingEntry[]> {
   return entries;
 }
 
+// ── Import KBs from workspace ────────────────────────────────────────────────
+
+/**
+ * Import KBs found in the workspace folder that don't exist in IndexedDB.
+ * Reads each kbs/{name}/kb.ttl, parses it, creates a Dexie DB, and registers
+ * the KB. Returns the number of KBs imported.
+ */
+export async function importKbsFromWorkspace(): Promise<{ imported: string[]; skipped: string[] }> {
+  const folders = await listKbFolders();
+  if (folders.length === 0) return { imported: [], skipped: [] };
+
+  const { importTurtleFull } = await import('../rdf/import-ttl');
+  const { createKb, registerStableId, getRegistry, findKbByStableId } = await import('../storage/kb-registry');
+  const { v4: uuid } = await import('uuid');
+  const { DEFAULT_SETTINGS } = await import('../storage/db');
+
+  const registry = getRegistry();
+  const existing = new Set(registry.map(e => e.name.toLowerCase()));
+  // Also check by stableId
+  const existingStableIds = new Set<string>();
+  for (const e of registry) {
+    if (e.stableId) existingStableIds.add(e.stableId);
+  }
+
+  const imported: string[] = [];
+  const skipped: string[] = [];
+
+  for (const { folderName, meta } of folders) {
+    // Skip if a KB with the same name or stableId already exists
+    if (existing.has(meta.name.toLowerCase()) || existing.has(folderName.toLowerCase())) {
+      skipped.push(meta.name);
+      continue;
+    }
+    if (meta.stableId && (existingStableIds.has(meta.stableId) || findKbByStableId(meta.stableId))) {
+      skipped.push(meta.name);
+      continue;
+    }
+
+    // Read the TTL file
+    const data = await readKbFromFolder(folderName);
+    if (!data?.ttl) {
+      skipped.push(meta.name);
+      continue;
+    }
+
+    try {
+      const { statements: rawStmts } = await importTurtleFull(data.ttl);
+      if (rawStmts.length === 0) {
+        skipped.push(`${meta.name} (empty)`);
+        continue;
+      }
+
+      // Create the KB
+      const newKb = createKb(meta.name);
+
+      // Open a temporary Dexie instance
+      const tempDb = new KBaseDB(newKb.id);
+      await tempDb.open();
+      await tempDb.settings.put({ ...DEFAULT_SETTINGS, kbTitle: meta.name });
+
+      const now = Date.now();
+      const sourceId = uuid();
+      await tempDb.sources.put({
+        id: sourceId,
+        title: meta.name,
+        uri: `workspace://${folderName}/kb.ttl`,
+        kind: 'document' as const,
+        trustLevel: 'trusted' as const,
+        ingestedAt: now,
+      });
+
+      const stmts = rawStmts
+        .filter(s => s.status === 'confirmed' || s.status === 'refined' || s.status === 'pending')
+        .map(s => ({
+          ...s,
+          id: uuid(),
+          sourceId,
+          g: { kind: 'iri' as const, value: `urn:kbase:source/${sourceId}` },
+          status: 'confirmed' as const,
+          createdAt: now,
+          updatedAt: now,
+        }));
+      await tempDb.statements.bulkPut(stmts);
+
+      // Register stable ID
+      if (meta.stableId) {
+        await tempDb.settings.update('main', { kbStableId: meta.stableId });
+        registerStableId(newKb.id, meta.stableId, stmts.length);
+      }
+
+      tempDb.close();
+      imported.push(`${meta.name} (${stmts.length} statements)`);
+    } catch (err) {
+      console.warn(`[workspace] Failed to import ${meta.name}:`, err);
+      skipped.push(`${meta.name} (parse error)`);
+    }
+  }
+
+  return { imported, skipped };
+}
+
 // ── Model folder persistence ────────────────────────────────────────────────
 //
 // Models downloaded to the browser Cache API can also be saved to
