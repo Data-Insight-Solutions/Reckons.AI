@@ -41,18 +41,10 @@ test('ingest a note with mock backend produces pending statements', async ({ pag
   await expect(submitBtn).not.toBeDisabled({ timeout: 5_000 });
   await submitBtn.click();
 
-  // After extraction, app navigates to /compare or shows progress
-  // Wait for either a route change or done text
-  await page.waitForURL(/\/compare|\/review/, { timeout: 20_000 }).catch(() => {
-    // May stay on /ingest — check for done state text instead
-  });
-  // Either we navigated away or we see completion text
-  const onCompare = page.url().includes('/compare');
-  if (!onCompare) {
-    await expect(
-      page.getByText(/extracting|working|statements|done/i).first()
-    ).toBeVisible({ timeout: 10_000 });
-  }
+  // Mock backend completes fast and navigates to /compare.
+  // Wait for the URL to change away from /ingest.
+  await page.waitForURL((url) => !url.pathname.startsWith('/ingest'), { timeout: 30_000 });
+  expect(page.url()).toContain('/compare');
 });
 
 test('document tab renders file input', async ({ page }) => {

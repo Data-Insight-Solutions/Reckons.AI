@@ -16,12 +16,9 @@ async function seedPendingStatement(page: Page) {
   const submitBtn = page.getByRole('button', { name: /extract triples/i });
   await expect(submitBtn).not.toBeDisabled({ timeout: 5_000 });
   await submitBtn.click();
-  // Wait for extraction to complete
-  await page.waitForURL(/\/compare|\/review/, { timeout: 20_000 }).catch(() => {});
-  // If still on ingest, wait for done text
-  if (!page.url().includes('/compare') && !page.url().includes('/review')) {
-    await page.getByText(/statements|done|extracting/i).first().waitFor({ timeout: 15_000 });
-  }
+  // Mock backend completes fast and navigates to /compare.
+  // Wait for the URL to change away from /ingest.
+  await page.waitForURL((url) => !url.pathname.startsWith('/ingest'), { timeout: 30_000 });
 }
 
 test.beforeEach(async ({ page }) => {

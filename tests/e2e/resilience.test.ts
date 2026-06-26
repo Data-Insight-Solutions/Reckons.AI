@@ -46,10 +46,9 @@ test('mock backend completes ingest without any API key', async ({ page }) => {
   // Default dev server already has VITE_INGEST_BACKEND=mock
   await goIngestNote(page, 'Fallback Corp', 'Fallback Corp was founded in 2021 with 100 employees.');
 
-  // Should reach a done state — no error banner, progress indicators resolve
-  await expect(
-    page.getByText(/extracting|statements|done|review/i).first()
-  ).toBeVisible({ timeout: 20_000 });
+  // Mock backend completes fast and navigates to /compare
+  await page.waitForURL((url) => !url.pathname.startsWith('/ingest'), { timeout: 30_000 });
+  expect(page.url()).toContain('/compare');
 
   // No error message visible
   await expect(page.getByText(/failed|error|unavailable/i)).not.toBeVisible();
@@ -64,9 +63,11 @@ test('WASM failure falls back to mock extraction', async ({ page }) => {
 
   await goIngestNote(page, 'WASM Fail Corp', 'A company that tests WASM resilience.');
 
-  // The app should NOT show a permanent error — fallback to mock keeps it alive
-  // Either "done" state or a warning notification is acceptable, but NOT a blank/crash
-  await expect(page.locator('nav')).toBeVisible({ timeout: 5_000 });
+  // WASM extraction fails → falls back to mock → navigates to /compare.
+  // Wait for completion (nav visible + no crash overlay).
+  await page.waitForURL((url) => !url.pathname.startsWith('/ingest'), { timeout: 30_000 }).catch(() => {});
+
+  await expect(page.locator('nav')).toBeVisible({ timeout: 10_000 });
 
   // No uncaught exception overlay from SvelteKit
   await expect(page.getByText(/unhandled.*exception|unexpected.*error/i)).not.toBeVisible();
@@ -152,9 +153,9 @@ test('notification shows when backend degrades', async ({ page }) => {
   await page.locator('textarea').first().fill('Testing fallback notification.');
   await page.getByRole('button', { name: /extract triples/i }).click();
 
-  // Wait for the extraction attempt to complete (or time out)
-  await page.waitForTimeout(8_000);
+  // WASM fails → mock fallback → navigates to /compare. Wait for completion.
+  await page.waitForURL((url) => !url.pathname.startsWith('/ingest'), { timeout: 30_000 }).catch(() => {});
 
   // Nav must still be visible — app is alive
-  await expect(page.locator('nav')).toBeVisible();
+  await expect(page.locator('nav')).toBeVisible({ timeout: 10_000 });
 });

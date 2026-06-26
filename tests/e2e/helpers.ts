@@ -44,6 +44,9 @@ export async function clearStorage(page: Page): Promise<void> {
  * Navigate to the app and wait until the NavBar is visible.
  * Re-navigates to "/" if not already on the app — avoids a redundant
  * navigation when clearStorage() was already called.
+ *
+ * Also installs a handler to auto-dismiss the download consent dialog
+ * (embedding model / WASM model) that would otherwise block ingest flow.
  */
 export async function waitForApp(page: Page): Promise<void> {
   const url = page.url();
@@ -57,6 +60,35 @@ export async function waitForApp(page: Page): Promise<void> {
     await page.goto('/');
   }
   await page.locator('nav').waitFor({ timeout: 15_000 });
+
+  // Auto-dismiss download consent dialogs (embedding / WASM models).
+  // These block the ingest pipeline in E2E since no model cache exists.
+  // Clicking "Not now" lets semanticEnrichDiff fall back to structural diff.
+  startConsentDismisser(page);
+}
+
+/**
+ * Poll for the download consent dialog and dismiss it automatically.
+ * The dialog blocks the ingest JS pipeline (an awaited Promise), so
+ * Playwright's `addLocatorHandler` doesn't fire (it only triggers during
+ * actionability checks on elements, not during `waitForURL`).
+ * We use a recursive setTimeout approach that won't stack up.
+ */
+function startConsentDismisser(page: Page): void {
+  let stopped = false;
+  page.on('close', () => { stopped = true; });
+  setTimeout(() => { stopped = true; }, 120_000);
+
+  const tick = async () => {
+    if (stopped) return;
+    try {
+      const btn = page.getByRole('button', { name: /not now/i });
+      const visible = await btn.isVisible().catch(() => false);
+      if (visible) await btn.click().catch(() => {});
+    } catch { /* page navigated or closed */ }
+    if (!stopped) setTimeout(tick, 400);
+  };
+  setTimeout(tick, 300);
 }
 
 // ── Navigation helpers ────────────────────────────────────────────────────────
