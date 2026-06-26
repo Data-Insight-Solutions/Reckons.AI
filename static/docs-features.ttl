@@ -11,6 +11,7 @@
 @prefix guide:  <urn:reckons:guide/> .
 @prefix llm:    <urn:reckons:llm/> .
 @prefix ktype:  <urn:kbase:type/> .
+@prefix kpred:  <urn:kbase:predicate/> .
 
 ## KB Identity
 <urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a04-b004-000000000004" .

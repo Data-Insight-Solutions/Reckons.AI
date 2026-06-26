@@ -32,7 +32,7 @@ const refIdx = args.indexOf('--ref');
 const GIT_REF = refIdx >= 0 ? args[refIdx + 1] ?? 'HEAD~5' : 'HEAD~5';
 
 const ROOT = resolve(import.meta.dirname ?? '.', '..');
-const WORKSPACE = join(ROOT, 'mcp-workspace');
+const WORKSPACE = join(ROOT, 'reckons-workspace');
 const PENDING_PATH = join(WORKSPACE, 'kbs', 'production', 'pending.jsonl');
 
 // ── Types ────────────────────────────────────────────────────────────────────

@@ -1,0 +1,10 @@
+{
+  "stableId": "a9d7f853-4b30-4579-8b7b-589dfe42750a",
+  "name": "Production",
+  "description": "Reckons.AI production status, test suite health, architecture, and tech stack.",
+  "dbName": "production",
+  "createdAt": 1719100000000,
+  "lastModified": 1719100000000,
+  "statementCount": 0,
+  "sourceCount": 0
+}
