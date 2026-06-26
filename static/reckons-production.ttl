@@ -159,6 +159,8 @@ kb:bge-small        rdf:type     ktype:Library ;
 kb:test-suite       rdf:type     ktype:TestSuite ;
                     rdfs:label   "Production Test Suite" ;
                     kpred:has-test kb:test-unit ;
+                    kpred:has-test kb:test-e2e ;
+                    kpred:has-test kb:test-typecheck ;
                     kpred:has-test kb:test-visual ;
                     kpred:has-test kb:test-visual-bench ;
                     kpred:has-test kb:test-mcp .
@@ -171,7 +173,25 @@ kb:test-unit        rdf:type     ktype:TestCategory ;
                     kpred:checks   "content safety" ;
                     kpred:checks   "repo URL parsing" ;
                     kpred:checks   "vision scoring" ;
-                    kpred:expected-result "215+ tests pass" .
+                    kpred:checks   "semantic diff" ;
+                    kpred:checks   "entity normalisation" ;
+                    kpred:expected-result "336+ tests pass" .
+
+kb:test-e2e         rdf:type     ktype:TestCategory ;
+                    rdfs:label   "E2E Tests" ;
+                    kpred:command  "npx playwright test --project=desktop-chrome" ;
+                    kpred:checks   "ingest flow" ;
+                    kpred:checks   "review queue" ;
+                    kpred:checks   "resilience fallbacks" ;
+                    kpred:checks   "settings persistence" ;
+                    kpred:expected-result "42+ tests pass" .
+
+kb:test-typecheck   rdf:type     ktype:TestCategory ;
+                    rdfs:label   "Type Check" ;
+                    kpred:command  "npx svelte-check --threshold error" ;
+                    kpred:checks   "TypeScript errors" ;
+                    kpred:checks   "Svelte component types" ;
+                    kpred:expected-result "0 errors" .
 
 kb:test-visual      rdf:type     ktype:TestCategory ;
                     rdfs:label   "Visual/Playwright Tests" ;
@@ -193,12 +213,11 @@ kb:test-visual-bench rdf:type    ktype:TestCategory ;
                     kpred:expected-result "local-combined >= 95% accuracy" .
 
 kb:test-mcp         rdf:type     ktype:TestCategory ;
-                    rdfs:label   "MCP Server Tests" ;
-                    kpred:command  "cd mcp-server && npm test" ;
-                    kpred:checks   "tool registration" ;
-                    kpred:checks   "JSON-RPC protocol" ;
-                    kpred:checks   "multi-KB workspace" ;
-                    kpred:expected-result "all tools respond correctly" .
+                    rdfs:label   "MCP Server Build" ;
+                    kpred:command  "cd mcp-server && npm run build" ;
+                    kpred:checks   "TypeScript compilation" ;
+                    kpred:checks   "16 tool handlers" ;
+                    kpred:expected-result "build succeeds, 0 errors" .
 
 # ── Ingest Source Types ──────────────────────────────────────────────────────
 
@@ -255,7 +274,7 @@ story:prod-step-2  rdf:type         story:Step ;
                    story:partOf     story:production-tour ;
                    story:order      "2"^^xsd:integer ;
                    story:title      "Unit Tests" ;
-                   story:content    "The unit test suite runs with `npx vitest run` and covers triple parsing, diff computation, content safety filtering, repo URL parsing, and vision scoring. There should be 215+ passing tests with zero failures in our code." ;
+                   story:content    "The unit test suite runs with `npx vitest run` and covers triple parsing, diff computation, content safety filtering, repo URL parsing, entity normalisation, semantic diff, and vision scoring. 336+ passing tests across 89 suites with zero failures." ;
                    story:highlight  kb:test-unit ;
                    story:highlight  kb:test-suite ;
                    story:question   "Want to see the latest test results?" .
