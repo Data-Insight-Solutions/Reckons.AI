@@ -1,10 +1,11 @@
 {
   "stableId": "f1f1a23d-8f0a-4742-8dc9-e80351a2ba76",
   "name": "Documentation",
-  "description": "Complete Reckons.AI documentation — starter guide, RDF/triples, LLM concepts, use cases, integrations, tips, and timeline.",
+  "description": "Complete Reckons.AI documentation.",
   "dbName": "docs",
-  "createdAt": 1719100000000,
-  "lastModified": 1719100000000,
+  "readOnly": true,
+  "createdAt": 1782515445000,
+  "lastModified": 1782515445000,
   "statementCount": 0,
   "sourceCount": 0
 }

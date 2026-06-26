@@ -1,10 +1,11 @@
 {
   "stableId": "c7b5106a-06c7-4a79-82d0-48d3903f8546",
   "name": "Roadmap",
-  "description": "Reckons.AI product design, roadmap, and feature status. Consult before planning new work.",
+  "description": "Reckons.AI product design, roadmap, and feature status.",
   "dbName": "roadmap",
-  "createdAt": 1719100000000,
-  "lastModified": 1719100000000,
+  "readOnly": true,
+  "createdAt": 1782515445000,
+  "lastModified": 1782515445000,
   "statementCount": 0,
   "sourceCount": 0
 }

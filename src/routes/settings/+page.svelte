@@ -603,12 +603,28 @@
     const ok = await pickWorkspace();
     workspaceConnecting = false;
     if (ok) {
-      // Initial sync of all KBs to the new folder
-      wsSyncing = true;
-      const count = await syncAllKbs();
-      wsSyncMsg = `Synced ${count} KB${count !== 1 ? 's' : ''} to folder.`;
-      wsSyncing = false;
-      setTimeout(() => { wsSyncMsg = ''; }, 5000);
+      // Check if folder already has KBs — import them instead of overwriting
+      const folders = await listKbFolders();
+      wsFolderCount = folders.length;
+      if (folders.length > 0) {
+        wsImporting = true;
+        const { imported, skipped } = await importKbsFromWorkspace();
+        wsImporting = false;
+        if (imported.length > 0) {
+          wsImportMsg = `Imported ${imported.length} KB(s): ${imported.join(', ')}`;
+          setTimeout(() => { wsImportMsg = ''; }, 10000);
+        } else {
+          wsSyncMsg = `${folders.length} KB(s) found in folder (already imported or empty).`;
+          setTimeout(() => { wsSyncMsg = ''; }, 5000);
+        }
+      } else {
+        // Empty folder — export current KBs to it
+        wsSyncing = true;
+        const count = await syncAllKbs();
+        wsSyncMsg = `Synced ${count} KB${count !== 1 ? 's' : ''} to folder.`;
+        wsSyncing = false;
+        setTimeout(() => { wsSyncMsg = ''; }, 5000);
+      }
     }
   }
 
@@ -617,9 +633,16 @@
     const ok = await reconnectWorkspace();
     workspaceConnecting = false;
     if (ok) {
-      // Check what's in the folder
       const folders = await listKbFolders();
       wsFolderCount = folders.length;
+      // Auto-import any new KBs found in the folder
+      if (folders.length > 0) {
+        const { imported } = await importKbsFromWorkspace();
+        if (imported.length > 0) {
+          wsImportMsg = `Imported ${imported.length} KB(s): ${imported.join(', ')}`;
+          setTimeout(() => { wsImportMsg = ''; }, 10000);
+        }
+      }
     }
   }
 

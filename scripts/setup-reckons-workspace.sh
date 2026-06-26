@@ -53,6 +53,7 @@ write_meta() {
   "name": "$name",
   "description": "$desc",
   "dbName": "$db",
+  "readOnly": true,
   "createdAt": $(date +%s)000,
   "lastModified": $(date +%s)000,
   "statementCount": 0,

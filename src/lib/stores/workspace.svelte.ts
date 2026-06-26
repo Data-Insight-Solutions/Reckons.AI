@@ -181,10 +181,13 @@ export type KbMeta = {
   statementCount: number;
   sourceCount: number;
   dbName: string;
+  /** When true, the app will never overwrite kb.ttl in this folder (source-of-truth is external). */
+  readOnly?: boolean;
 };
 
 /**
  * Write one KB's data to the workspace folder: kbs/{folderName}/kb.ttl + meta.json + sources.json
+ * Skips folders marked as readOnly in their meta.json (source-of-truth is external, e.g. symlinks).
  */
 export async function writeKbToFolder(
   entry: KbEntry,
@@ -197,6 +200,18 @@ export async function writeKbToFolder(
     const kbsDir = await getOrCreateDir(_handle, 'kbs');
     const folderName = kbFolderName(entry.name, entry.id);
     const kbDir = await getOrCreateDir(kbsDir, folderName);
+
+    // Check if this folder is marked read-only — skip writing kb.ttl
+    const existingMeta = await readFromDir(kbDir, 'meta.json');
+    if (existingMeta) {
+      try {
+        const parsed = JSON.parse(existingMeta) as KbMeta;
+        if (parsed.readOnly) {
+          console.info(`[workspace] Skipping write for read-only KB "${entry.name}"`);
+          return;
+        }
+      } catch { /* malformed meta, proceed with write */ }
+    }
 
     const meta: KbMeta = {
       stableId: stableId || entry.stableId,

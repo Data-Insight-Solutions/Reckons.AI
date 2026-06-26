@@ -1,10 +1,11 @@
 {
   "stableId": "185228d4-2329-44c2-aca5-690a71d68a67",
   "name": "Features",
-  "description": "Reckons.AI feature documentation — ingest, review, graph, Shelly, compare, multi-KB, safety, etc.",
+  "description": "Reckons.AI feature documentation.",
   "dbName": "features",
-  "createdAt": 1719100000000,
-  "lastModified": 1719100000000,
+  "readOnly": true,
+  "createdAt": 1782515445000,
+  "lastModified": 1782515445000,
   "statementCount": 0,
   "sourceCount": 0
 }
