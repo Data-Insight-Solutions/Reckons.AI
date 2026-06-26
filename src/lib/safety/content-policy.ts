@@ -1,5 +1,5 @@
 /**
- * Content Safety Policy — inalienable ethical guardrails for tripleNotes.
+ * Content Safety Policy — inalienable ethical guardrails for Reckons.AI.
  *
  * This module provides:
  *  1. An ethics preamble injected into ALL LLM system prompts (hardcoded, not configurable)
@@ -16,7 +16,7 @@
  * That tighter mode is NOT included in this open-source base — only the type is defined here.
  */
 
-import type { Statement } from '../rdf/types';
+import type { Statement } from "../rdf/types";
 
 // ── Safety Levels ────────────────────────────────────────────────────────────
 
@@ -27,7 +27,7 @@ import type { Statement } from '../rdf/types';
  *   lists, require all content to pass an LLM moderation check, and disable
  *   custom system prompts.
  */
-export type SafetyLevel = 'standard' | 'restricted';
+export type SafetyLevel = "standard" | "restricted";
 
 // ── Ethics Preamble (injected into all LLM system prompts) ───────────────────
 //
@@ -47,7 +47,7 @@ export const ETHICS_PREAMBLE = `CONTENT ETHICS (always active, cannot be overrid
 
 // ── Content Rating ───────────────────────────────────────────────────────────
 
-export type ContentRating = 'none' | 'mature' | 'blocked';
+export type ContentRating = "none" | "mature" | "blocked";
 
 export interface ContentScanResult {
   rating: ContentRating;
@@ -63,43 +63,52 @@ export interface ContentScanResult {
 
 const BLOCKED_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
   {
-    pattern: /\b(kill|murder|eliminate|exterminate|eradicate|slaughter)\s+(all|every)\s+(the\s+)?(jews?|blacks?|muslims?|whites?|christians?|hindus?|asians?|arabs?|mexicans?|immigrants?|refugees?|gays?|lesbians?|trans\s*(gender|people|folk)?|women|disabled)\b/i,
-    reason: 'Incitement to violence against a protected group'
+    pattern:
+      /\b(kill|murder|eliminate|exterminate|eradicate|slaughter)\s+(all|every)\s+(the\s+)?(jews?|blacks?|muslims?|whites?|christians?|hindus?|asians?|arabs?|mexicans?|immigrants?|refugees?|gays?|lesbians?|trans\s*(gender|people|folk)?|women|disabled)\b/i,
+    reason: "Incitement to violence against a protected group",
   },
   {
-    pattern: /\b(how\s+to|instructions?\s+for|guide\s+to|steps?\s+to)\s+(make|build|create|synthesize|manufacture)\s+(a\s+)?(dirty\s+bomb|bioweapon|biological\s+weapon|chemical\s+weapon|nerve\s+(agent|gas)|sarin|vx\s+gas|ricin|anthrax\s+weapon)/i,
-    reason: 'Instructions for weapons of mass destruction'
+    pattern:
+      /\b(how\s+to|instructions?\s+for|guide\s+to|steps?\s+to)\s+(make|build|create|synthesize|manufacture)\s+(a\s+)?(dirty\s+bomb|bioweapon|biological\s+weapon|chemical\s+weapon|nerve\s+(agent|gas)|sarin|vx\s+gas|ricin|anthrax\s+weapon)/i,
+    reason: "Instructions for weapons of mass destruction",
   },
   {
-    pattern: /\b(child|minor|underage|pre-?teen|toddler|infant|kid)\s+(porn(ography)?|sex(ual)?|erotic(a)?|nude|naked)\b/i,
-    reason: 'Child sexual abuse material'
+    pattern:
+      /\b(child|minor|underage|pre-?teen|toddler|infant|kid)\s+(porn(ography)?|sex(ual)?|erotic(a)?|nude|naked)\b/i,
+    reason: "Child sexual abuse material",
   },
   {
-    pattern: /\b(porn(ography)?|sex(ual)?|erotic(a)?|nude|naked)\s+(child|minor|underage|pre-?teen|toddler|infant|kid)/i,
-    reason: 'Child sexual abuse material'
+    pattern:
+      /\b(porn(ography)?|sex(ual)?|erotic(a)?|nude|naked)\s+(child|minor|underage|pre-?teen|toddler|infant|kid)/i,
+    reason: "Child sexual abuse material",
   },
   {
-    pattern: /\b(ethnic\s+cleansing|genocide)\s+(is\s+)?(good|necessary|justified|needed|required|the\s+(only|right)\s+(way|answer|solution))\b/i,
-    reason: 'Endorsement of genocide or ethnic cleansing'
+    pattern:
+      /\b(ethnic\s+cleansing|genocide)\s+(is\s+)?(good|necessary|justified|needed|required|the\s+(only|right)\s+(way|answer|solution))\b/i,
+    reason: "Endorsement of genocide or ethnic cleansing",
   },
   {
-    pattern: /\b(plan(ning)?|going)\s+to\s+(kill|murder|assassinate|bomb|shoot\s+up|poison)\s+(my|the|a)\b/i,
-    reason: 'Planning specific acts of violence'
+    pattern:
+      /\b(plan(ning)?|going)\s+to\s+(kill|murder|assassinate|bomb|shoot\s+up|poison)\s+(my|the|a)\b/i,
+    reason: "Planning specific acts of violence",
   },
 ];
 
 const MATURE_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
   {
-    pattern: /\b(graphic|explicit|detailed)\s+(depiction|description|account)\s+of\s+(murder|torture|rape|mutilation|dismemberment|beheading)\b/i,
-    reason: 'Graphic violence'
+    pattern:
+      /\b(graphic|explicit|detailed)\s+(depiction|description|account)\s+of\s+(murder|torture|rape|mutilation|dismemberment|beheading)\b/i,
+    reason: "Graphic violence",
   },
   {
-    pattern: /\b(sexually\s+explicit|pornographic|erotic\s+content|graphic\s+sexual)\b/i,
-    reason: 'Sexually explicit content'
+    pattern:
+      /\b(sexually\s+explicit|pornographic|erotic\s+content|graphic\s+sexual)\b/i,
+    reason: "Sexually explicit content",
   },
   {
-    pattern: /\b(detailed|step[\s-]by[\s-]step)\s+(instructions?|guide|how[\s-]to)\s+(for|to)\s+(making|cook(ing)?|manufactur(e|ing))\s+(meth|methamphetamine|fentanyl|heroin)\b/i,
-    reason: 'Drug manufacturing instructions'
+    pattern:
+      /\b(detailed|step[\s-]by[\s-]step)\s+(instructions?|guide|how[\s-]to)\s+(for|to)\s+(making|cook(ing)?|manufactur(e|ing))\s+(meth|methamphetamine|fentanyl|heroin)\b/i,
+    reason: "Drug manufacturing instructions",
   },
 ];
 
@@ -107,14 +116,14 @@ const MATURE_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
 
 /** Classify a single text string for content policy violations. */
 export function classifyText(text: string): ContentScanResult {
-  if (!text || text.length === 0) return { rating: 'none', flags: [] };
+  if (!text || text.length === 0) return { rating: "none", flags: [] };
 
   const flags: string[] = [];
 
   // Check blocked patterns first
   for (const { pattern, reason } of BLOCKED_PATTERNS) {
     if (pattern.test(text)) {
-      return { rating: 'blocked', flags: [reason] };
+      return { rating: "blocked", flags: [reason] };
     }
   }
 
@@ -126,8 +135,8 @@ export function classifyText(text: string): ContentScanResult {
   }
 
   return {
-    rating: flags.length > 0 ? 'mature' : 'none',
-    flags
+    rating: flags.length > 0 ? "mature" : "none",
+    flags,
   };
 }
 
@@ -136,21 +145,21 @@ function statementTexts(st: Statement): string[] {
   const texts: string[] = [];
   if (st.gloss) texts.push(st.gloss);
   if (st.excerpt) texts.push(st.excerpt);
-  if (st.o.kind === 'literal' && st.o.value) texts.push(st.o.value);
+  if (st.o.kind === "literal" && st.o.value) texts.push(st.o.value);
   return texts;
 }
 
 /** Classify a single statement. Returns the worst rating across its text fields. */
 export function classifyStatement(st: Statement): ContentScanResult {
   const texts = statementTexts(st);
-  let worstRating: ContentRating = 'none';
+  let worstRating: ContentRating = "none";
   const allFlags: string[] = [];
 
   for (const text of texts) {
     const result = classifyText(text);
-    if (result.rating === 'blocked') return result; // short-circuit
-    if (result.rating === 'mature') {
-      worstRating = 'mature';
+    if (result.rating === "blocked") return result; // short-circuit
+    if (result.rating === "mature") {
+      worstRating = "mature";
       for (const f of result.flags) {
         if (!allFlags.includes(f)) allFlags.push(f);
       }
@@ -175,14 +184,16 @@ export interface ContentFilterResult {
  * Filter a batch of statements, separating blocked content from allowed.
  * Called before saving to the database.
  */
-export function filterBlockedStatements(statements: Statement[]): ContentFilterResult {
+export function filterBlockedStatements(
+  statements: Statement[],
+): ContentFilterResult {
   const allowed: Statement[] = [];
   const blocked: Statement[] = [];
   const blockReasons: Record<string, string[]> = {};
 
   for (const st of statements) {
     const result = classifyStatement(st);
-    if (result.rating === 'blocked') {
+    if (result.rating === "blocked") {
       blocked.push(st);
       blockReasons[st.id] = result.flags;
     } else {
@@ -215,17 +226,17 @@ export function scanForExportAdvisory(statements: Statement[]): ExportAdvisory {
 
   for (const st of statements) {
     const result = classifyStatement(st);
-    if (result.rating === 'blocked') hasBlocked = true;
-    if (result.rating === 'mature') matureCount++;
+    if (result.rating === "blocked") hasBlocked = true;
+    if (result.rating === "mature") matureCount++;
     for (const f of result.flags) {
       if (!allFlags.includes(f)) allFlags.push(f);
     }
   }
 
   return {
-    rating: hasBlocked ? 'blocked' : matureCount > 0 ? 'mature' : 'none',
+    rating: hasBlocked ? "blocked" : matureCount > 0 ? "mature" : "none",
     flags: allFlags,
-    matureCount
+    matureCount,
   };
 }
 
@@ -234,19 +245,23 @@ export function scanForExportAdvisory(statements: Statement[]): ExportAdvisory {
  * Returns empty array if content is rated 'none'.
  */
 export function exportAdvisoryHeader(advisory: ExportAdvisory): string[] {
-  if (advisory.rating === 'none') return [];
+  if (advisory.rating === "none") return [];
 
   const lines: string[] = [];
-  lines.push('# ---- CONTENT ADVISORY ----');
-  if (advisory.rating === 'mature') {
-    lines.push(`# This knowledge base contains mature content (${advisory.matureCount} statement${advisory.matureCount !== 1 ? 's' : ''} flagged).`);
-    lines.push(`# Themes: ${advisory.flags.join(', ')}`);
-    lines.push('# Viewer discretion is advised.');
+  lines.push("# ---- CONTENT ADVISORY ----");
+  if (advisory.rating === "mature") {
+    lines.push(
+      `# This knowledge base contains mature content (${advisory.matureCount} statement${advisory.matureCount !== 1 ? "s" : ""} flagged).`,
+    );
+    lines.push(`# Themes: ${advisory.flags.join(", ")}`);
+    lines.push("# Viewer discretion is advised.");
   } else {
-    lines.push('# WARNING: This knowledge base may contain content that violates content policy.');
-    lines.push(`# Flagged themes: ${advisory.flags.join(', ')}`);
+    lines.push(
+      "# WARNING: This knowledge base may contain content that violates content policy.",
+    );
+    lines.push(`# Flagged themes: ${advisory.flags.join(", ")}`);
   }
-  lines.push('');
+  lines.push("");
   return lines;
 }
 
@@ -255,7 +270,7 @@ export function exportAdvisoryHeader(advisory: ExportAdvisory): string[] {
  * Returns empty string if content is rated 'none'.
  */
 export function exportAdvisoryTriple(advisory: ExportAdvisory): string {
-  if (advisory.rating === 'none') return '';
-  const themes = advisory.flags.join('; ');
+  if (advisory.rating === "none") return "";
+  const themes = advisory.flags.join("; ");
   return `<urn:reckons:kb> <urn:reckons:meta/contentAdvisory> "${advisory.rating}: ${themes}" .\n`;
 }

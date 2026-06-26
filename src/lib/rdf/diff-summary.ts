@@ -6,7 +6,7 @@
 
 import type { Diff, DiffEntry } from './diff';
 import type { Statement } from './types';
-import { chatClaude, chatOpenAI, chatGemini, chatOllama, chatOpenRouter, chatReckons, type ChatMessage } from '$lib/integrations/llm/providers';
+import { chatClaude, chatOpenAI, chatGemini, chatOllama, chatOpenRouter, chatReckons, chatChromeAI, type ChatMessage } from '$lib/integrations/llm/providers';
 import { chatWithWasm } from '$lib/integrations/llm/wasm';
 import type { SettingsRecord } from '$lib/storage/db';
 import { ETHICS_PREAMBLE } from '$lib/safety/content-policy';
@@ -106,6 +106,8 @@ export async function generateDiffSummary(
       raw = await chatReckons(messages, SUMMARY_SYSTEM, s.reckonsApiKey ?? '', s.reckonsBaseUrl, undefined, 512);
     } else if (provider === 'wasm') {
       raw = await chatWithWasm(messages, SUMMARY_SYSTEM, s.wasmAnalyzeModel || s.wasmModel || undefined);
+    } else if (provider === 'chrome-ai') {
+      raw = await chatChromeAI(messages, SUMMARY_SYSTEM, 512);
     } else {
       // claude (default)
       raw = await chatClaude(messages, SUMMARY_SYSTEM, s.claudeApiKey ?? '', s.claudeModel ?? 'claude-haiku-4-5-20251001', 512);

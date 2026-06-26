@@ -6,7 +6,8 @@
  * directly from the browser to the chosen provider, exactly like re-analyze.ts.
  */
 
-import { chatClaude, chatOpenAI, chatGemini, chatOllama, chatOpenRouter, chatReckons } from './providers';
+import { chatClaude, chatOpenAI, chatGemini, chatOllama, chatOpenRouter, chatReckons, chatChromeAI } from './providers';
+import { chatWithWasm } from './wasm';
 import { settings } from '$lib/stores/settings.svelte';
 import { db } from '$lib/storage/db';
 import { ETHICS_PREAMBLE } from '$lib/safety/content-policy';
@@ -82,27 +83,44 @@ async function buildHistoricalContext(countA: number, countB: number): Promise<s
 export async function analyzeMerge(params: MergeAnalysisParams): Promise<string> {
   const s = settings();
   const backendPref = s.mergeAnalysisBackend ?? s.analyzeBackend ?? s.preferredBackend;
-  const provider: 'claude' | 'openai' | 'gemini' | 'ollama' | 'openrouter' | 'reckons' =
+  const provider: 'claude' | 'openai' | 'gemini' | 'ollama' | 'openrouter' | 'reckons' | 'wasm' | 'chrome-ai' =
     backendPref === 'openai'     ? 'openai' :
     backendPref === 'gemini'     ? 'gemini' :
     backendPref === 'ollama'     ? 'ollama' :
     backendPref === 'openrouter' ? 'openrouter' :
-    backendPref === 'reckons'    ? 'reckons' : 'claude';
+    backendPref === 'reckons'    ? 'reckons' :
+    backendPref === 'wasm'       ? 'wasm' :
+    backendPref === 'chrome-ai'  ? 'chrome-ai' : 'claude';
+
+  // Auto-fallback: cloud backend without a key → WASM
+  const keyForProvider =
+    provider === 'openai'     ? (s.openaiApiKey || s.openrouterApiKey) :
+    provider === 'gemini'     ? s.geminiApiKey :
+    provider === 'openrouter' ? s.openrouterApiKey :
+    provider === 'reckons'    ? s.reckonsApiKey :
+    provider === 'claude'     ? s.claudeApiKey :
+    null; // ollama, wasm, chrome-ai need no key
+  const effectiveProvider = (provider !== 'ollama' && provider !== 'wasm' && provider !== 'chrome-ai' && !keyForProvider)
+    ? 'wasm' as const
+    : provider;
 
   const apiKey =
-    provider === 'openai'     ? (s.openaiApiKey     ?? '') :
-    provider === 'gemini'     ? (s.geminiApiKey     ?? '') :
-    provider === 'openrouter' ? (s.openrouterApiKey ?? '') :
-    provider === 'reckons'    ? (s.reckonsApiKey    ?? '') :
-    provider === 'ollama'     ? '__ollama__' :
+    effectiveProvider === 'openai'     ? (s.openaiApiKey     ?? '') :
+    effectiveProvider === 'gemini'     ? (s.geminiApiKey     ?? '') :
+    effectiveProvider === 'openrouter' ? (s.openrouterApiKey ?? '') :
+    effectiveProvider === 'reckons'    ? (s.reckonsApiKey    ?? '') :
+    effectiveProvider === 'ollama'     ? '__ollama__' :
+    effectiveProvider === 'wasm'       ? '' :
+    effectiveProvider === 'chrome-ai'  ? '' :
     (s.claudeApiKey ?? '');
 
   const model =
-    provider === 'openai'     ? s.openaiModel :
-    provider === 'gemini'     ? s.geminiModel :
-    provider === 'ollama'     ? s.ollamaModel :
-    provider === 'openrouter' ? s.openrouterModel :
-    provider === 'reckons'    ? (s.reckonsModel ?? '@cf/meta/llama-3.1-8b-instruct') :
+    effectiveProvider === 'openai'     ? s.openaiModel :
+    effectiveProvider === 'gemini'     ? s.geminiModel :
+    effectiveProvider === 'ollama'     ? s.ollamaModel :
+    effectiveProvider === 'openrouter' ? s.openrouterModel :
+    effectiveProvider === 'reckons'    ? (s.reckonsModel ?? '@cf/meta/llama-3.1-8b-instruct') :
+    effectiveProvider === 'wasm'       ? (s.wasmAnalyzeModel || s.wasmModel) :
     s.claudeModel;
 
   const { entityKeyA, entityKeyB, statementsA, statementsB, sourcesInfo,
@@ -168,10 +186,12 @@ Answer concisely (under 150 words) based on the context above.`;
 
   const messages = [{ role: 'user' as const, content: prompt }];
 
-  if (provider === 'openai')     return chatOpenAI(messages, '', apiKey, model, 1024);
-  if (provider === 'gemini')     return chatGemini(messages, '', apiKey, model, 1024);
-  if (provider === 'ollama')     return chatOllama(messages, '', model, s.ollamaBaseUrl, 1024);
-  if (provider === 'openrouter') return chatOpenRouter(messages, '', apiKey, model, 1024);
-  if (provider === 'reckons')    return chatReckons(messages, '', apiKey, s.reckonsBaseUrl, model, 1024);
+  if (effectiveProvider === 'wasm')       return chatWithWasm(messages, '', model || undefined);
+  if (effectiveProvider === 'chrome-ai')  return chatChromeAI(messages, '', 1024);
+  if (effectiveProvider === 'openai')     return chatOpenAI(messages, '', apiKey, model, 1024);
+  if (effectiveProvider === 'gemini')     return chatGemini(messages, '', apiKey, model, 1024);
+  if (effectiveProvider === 'ollama')     return chatOllama(messages, '', model, s.ollamaBaseUrl, 1024);
+  if (effectiveProvider === 'openrouter') return chatOpenRouter(messages, '', apiKey, model, 1024);
+  if (effectiveProvider === 'reckons')    return chatReckons(messages, '', apiKey, s.reckonsBaseUrl, model, 1024);
   return chatClaude(messages, '', apiKey, model, 1024);
 }

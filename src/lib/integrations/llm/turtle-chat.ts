@@ -1,4 +1,4 @@
-import { chatClaude, chatOpenAI, chatGemini, chatOllama, chatReckons, type ChatMessage } from './providers';
+import { chatClaude, chatOpenAI, chatGemini, chatOllama, chatReckons, chatChromeAI, type ChatMessage } from './providers';
 import { chatWithWasm } from './wasm';
 import type { KBAction, KBContext, TurtleChatResponse } from '$lib/types/turtle-chat';
 import { ETHICS_PREAMBLE } from '../../safety/content-policy';
@@ -129,7 +129,7 @@ Examples:
 
 CRITICAL: Every message MUST end with a question. Every message MUST include a <kb-actions> block with one adjust_view. Plain text descriptions of navigation (like "adjust_view { layout: hub }") will NOT work — only the <kb-actions> JSON block works.`;
 
-export type TurtleChatProvider = 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'reckons';
+export type TurtleChatProvider = 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'reckons' | 'chrome-ai';
 
 export interface ResolvedProvider {
   provider: TurtleChatProvider;
@@ -165,6 +165,7 @@ export function resolveChatProvider(s: {
     : pref === 'gemini' ? 'gemini'
     : pref === 'ollama' ? 'ollama'
     : pref === 'wasm' ? 'wasm'
+    : pref === 'chrome-ai' ? 'chrome-ai'
     : pref === 'reckons' ? 'reckons'
     : pref === 'openrouter' ? 'openai'
     : 'claude';
@@ -175,8 +176,8 @@ export function resolveChatProvider(s: {
     : provider === 'gemini' ? s.geminiApiKey
     : provider === 'reckons' ? s.reckonsApiKey
     : provider === 'claude' ? s.claudeApiKey
-    : null; // ollama, wasm need no key
-  if (provider !== 'ollama' && provider !== 'wasm' && !keyForProvider) {
+    : null; // ollama, wasm, chrome-ai need no key
+  if (provider !== 'ollama' && provider !== 'wasm' && provider !== 'chrome-ai' && !keyForProvider) {
     provider = 'wasm';
   }
 
@@ -191,6 +192,7 @@ export function resolveChatProvider(s: {
     : provider === 'gemini' ? (s.geminiModel ?? 'gemini-2.0-flash')
     : provider === 'ollama' ? (s.ollamaModel ?? 'llama3.2')
     : provider === 'wasm' ? (s.wasmChatModel || s.wasmModel || undefined)
+    : provider === 'chrome-ai' ? undefined
     : provider === 'reckons' ? (s.reckonsModel ?? undefined)
     : (s.claudeModel ?? 'claude-haiku-4-5-20251001');
 
@@ -249,6 +251,8 @@ export async function turtleChat(opts: TurtleChatOptions): Promise<TurtleChatRes
     raw = await chatOllama(messages, system, model ?? 'llama3.2', ollamaBaseUrl);
   } else if (provider === 'wasm') {
     raw = await chatWithWasm(messages, system, model ?? undefined);
+  } else if (provider === 'chrome-ai') {
+    raw = await chatChromeAI(messages, system);
   } else if (provider === 'reckons') {
     raw = await chatReckons(messages, system, apiKey, reckonsBaseUrl, model ?? undefined);
   } else {

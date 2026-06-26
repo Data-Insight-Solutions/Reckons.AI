@@ -1,4 +1,5 @@
-import { chatClaude, chatOpenAI, chatGemini, chatOllama, chatOpenRouter, chatReckons } from './providers';
+import { chatClaude, chatOpenAI, chatGemini, chatOllama, chatOpenRouter, chatReckons, chatChromeAI } from './providers';
+import { chatWithWasm } from './wasm';
 import { BUILT_IN_TYPES } from '$lib/rdf/entity-types';
 import { ETHICS_PREAMBLE } from '$lib/safety/content-policy';
 
@@ -297,7 +298,7 @@ export function getDefaultPrompt(analysisType: Exclude<AnalysisType, 'align'>, e
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
-export type ReAnalyzeProvider = 'claude' | 'openai' | 'gemini' | 'ollama' | 'openrouter' | 'reckons';
+export type ReAnalyzeProvider = 'claude' | 'openai' | 'gemini' | 'ollama' | 'openrouter' | 'reckons' | 'wasm' | 'chrome-ai';
 
 export interface ReAnalyzeOptions {
   provider: ReAnalyzeProvider;
@@ -305,6 +306,8 @@ export interface ReAnalyzeOptions {
   model?: string;
   ollamaBaseUrl?: string;
   reckonsBaseUrl?: string;
+  /** WASM model override for analyze tasks */
+  wasmModel?: string;
   entities: EntitySummary[];
   analysisType: AnalysisType;
   kbTitle?: string;
@@ -325,7 +328,7 @@ const EMPTY: ReAnalyzeResponse = {
 };
 
 export async function reAnalyze(opts: ReAnalyzeOptions): Promise<ReAnalyzeResponse> {
-  const { provider, apiKey, model, ollamaBaseUrl, reckonsBaseUrl, entities, analysisType, kbTitle, kbDescription, analyzeGuidance, webContext, customPrompt } = opts;
+  const { provider, apiKey, model, ollamaBaseUrl, reckonsBaseUrl, wasmModel, entities, analysisType, kbTitle, kbDescription, analyzeGuidance, webContext, customPrompt } = opts;
   if (entities.length === 0) return EMPTY;
   if (analysisType === 'align') return EMPTY; // Align is handled by cross-kb-align, not LLM
 
@@ -346,7 +349,11 @@ export async function reAnalyze(opts: ReAnalyzeOptions): Promise<ReAnalyzeRespon
   const systemPrompt = ETHICS_PREAMBLE.trim();
 
   let raw: string;
-  if (provider === 'openai') {
+  if (provider === 'wasm') {
+    raw = await chatWithWasm(messages, systemPrompt, wasmModel || model);
+  } else if (provider === 'chrome-ai') {
+    raw = await chatChromeAI(messages, systemPrompt, 2048);
+  } else if (provider === 'openai') {
     raw = await chatOpenAI(messages, systemPrompt, apiKey, model ?? DEFAULT_OPENAI, 2048);
   } else if (provider === 'gemini') {
     raw = await chatGemini(messages, systemPrompt, apiKey, model ?? DEFAULT_GEMINI, 2048);
