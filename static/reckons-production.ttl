@@ -105,7 +105,8 @@ kb:mcp-server       rdf:type     ktype:Feature ;
                     kpred:has-tool     "kb_check_plan" ;
                     kpred:has-tool     "kb_pending" ;
                     kpred:has-tool     "kb_git_diff_triples" ;
-                    kpred:has-tool     "kb_alignment_score" .
+                    kpred:has-tool     "kb_alignment_score" ;
+                    kpred:has-tool     "kb_compress" .
 
 kb:repo-ingest      rdf:type     ktype:Feature ;
                     rdfs:label   "Repository Ingest" ;

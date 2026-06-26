@@ -40,6 +40,7 @@ The KBs are symlinked from `static/*.ttl` files in this repo. When you complete 
 - `kb_pending(kb?)` — List queued proposals from pending.jsonl
 - `kb_git_diff_triples(ref?, kb?)` — Cross-reference git changes with KB entities
 - `kb_alignment_score(ref?, work?, kb?)` — Quantitative alignment score (0–1) with per-dimension breakdown
+- `kb_compress(query, budget?, hops?, kb?)` — Compressed KB context for LLM prompts (~60-70% token reduction)
 
 ### Git analysis workflow
 

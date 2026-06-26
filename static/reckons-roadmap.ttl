@@ -445,8 +445,11 @@ kb:n8n-source-monitor rdf:type ktype:Concept ;
 
 kb:context-compression rdf:type ktype:Feature ;
                rdfs:label   "Context Compression" ;
-               kpred:has-status   "next" ;
-               kpred:description  "Condense knowledge graphs for LLM context windows. Semantic meaning preserved, tokens reduced. A page of prose becomes a handful of triples. Feed compressed KB directly to AI agents via MCP." .
+               kpred:feature-id   "F25" ;
+               kpred:has-status   "functional" ;
+               kpred:description  "Condense knowledge graphs for LLM context windows. Semantic meaning preserved, tokens reduced. A page of prose becomes a handful of triples. Feed compressed KB directly to AI agents via MCP." ;
+               kpred:has-tool     "kb_compress" ;
+               kpred:depends-on   kb:mcp-server .
 
 # -- VS Code Extension (F19) ----------------------------------------------------
 
