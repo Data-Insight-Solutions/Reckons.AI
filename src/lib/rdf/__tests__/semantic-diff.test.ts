@@ -56,8 +56,8 @@ vi.mock('$lib/embed', () => {
     'bob':         [0.00, 0.00, 0.10, 0.99],
     'loves':       [0.70, 0.70, 0.10, 0.00],
     'adores':      [0.71, 0.69, 0.11, 0.00],
-    'supports':    [0.60, 0.60, 0.50, 0.00],
-    'opposes':     [0.58, 0.62, 0.48, 0.02],
+    'supports':    [0.80, 0.50, 0.20, 0.00],
+    'opposes':     [0.20, 0.50, 0.80, 0.00],
     'knows':       [0.50, 0.50, 0.50, 0.50],
     'is-friend-of':[0.51, 0.50, 0.50, 0.49],
   };
@@ -76,7 +76,7 @@ vi.mock('$lib/embed', () => {
   }
 
   return {
-    embedMany: (labels: string[]) => Promise.resolve(labels.map(getVec)),
+    embedMany: vi.fn((labels: string[]) => Promise.resolve(labels.map(getVec))),
     cosine: (a: Float32Array, b: Float32Array) => {
       let dot = 0;
       for (let i = 0; i < a.length; i++) dot += a[i] * b[i];
