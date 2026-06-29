@@ -216,11 +216,11 @@
   ];
 
   const ROADMAP = [
-    { status: 'done',    label: 'MCP server (11 tools)',    note: 'Search, query, add notes, run reckonings — your KB available to any AI agent' },
+    { status: 'done',    label: 'MCP server (16 tools)',    note: 'Search, query, compress, align, run reckonings — your KB available to any AI agent' },
     { status: 'done',    label: 'Cross-KB alignment',       note: 'Align entities across knowledge bases with embedding similarity and IRI remapping' },
     { status: 'done',    label: 'n8n cloud sync',           note: 'Private cloud sync via self-hosted n8n — upload, download, and monitor KBs from any device' },
     { status: 'done',    label: 'Source monitoring',        note: 'Watch URLs for changes, detect diffs, queue pending notes automatically' },
-    { status: 'next',    label: 'Context compression',      note: 'Condense your knowledge graph for LLM context — semantic meaning preserved, tokens reduced' },
+    { status: 'done',    label: 'Context compression',       note: 'Condense your knowledge graph for LLM context — semantic meaning preserved, tokens reduced' },
     { status: 'next',    label: 'VS Code / Claude Code',    note: 'Auto-inject your KB into coding sessions via MCP bridge — zero config' },
     { status: 'enterprise', label: 'People · Policy · Procedure', note: 'Structure graphs around the 3 Ps with RBAC, file-based TTL delivery, bring-your-own auth' },
     { status: 'planned', label: 'Enrichment pipeline',      note: 'Progressive analysis — auto-categorize, cross-reference, and score entities over time' },
@@ -352,6 +352,36 @@
     </div>
   </section>
 
+  <!-- Why not documents -->
+  <section class="section docs-problem-section">
+    <p class="section-kicker mono">why triples, not documents</p>
+    <h2>Documents grow stale.<br/><em>Graphs stay current.</em></h2>
+    <p class="section-sub">Wikis, notebooks, and markdown files store knowledge as prose. Updating one fact means editing an entire page — so people don't. Triples are atomic: change one fact without touching anything else.</p>
+
+    <div class="docs-compare">
+      <div class="docs-col docs-old">
+        <span class="docs-col-label mono">documents & wikis</span>
+        <ul>
+          <li>Update = rewrite a page</li>
+          <li>Search = keyword matching on prose</li>
+          <li>Duplicates = same info in 10 pages</li>
+          <li>Contradictions = invisible until someone notices</li>
+          <li>AI reads text, guesses structure</li>
+        </ul>
+      </div>
+      <div class="docs-col docs-new">
+        <span class="docs-col-label mono">semantic triples</span>
+        <ul>
+          <li>Update = change one fact</li>
+          <li>Search = typed relationship queries</li>
+          <li>Duplicates = same triple auto-merges</li>
+          <li>Contradictions = detected at ingest</li>
+          <li>AI queries a structured graph directly</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
   <!-- Context Compression -->
   <section class="section compress-section">
     <p class="section-kicker mono">context compression</p>
@@ -360,9 +390,9 @@
 
     <div class="compress-grid">
       <div class="compress-card">
-        <span class="compress-num mono">10x</span>
+        <span class="compress-num mono">3×</span>
         <strong>Denser than documents</strong>
-        <p>A page of prose becomes a handful of triples. Same meaning, fraction of the tokens.</p>
+        <p>Measured across 7 text categories: prose compresses to ~68% fewer tokens as triples. Run <code>npm run bench:compression</code> to verify.</p>
       </div>
       <div class="compress-card">
         <span class="compress-num mono">RDF</span>
@@ -1132,6 +1162,52 @@
   }
   .step-link:hover { text-decoration: underline; }
 
+  /* ── Document Problem ────────────────────────────────── */
+  .docs-problem-section {
+    border-top: 1px solid var(--line);
+  }
+
+  .docs-compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  .docs-col {
+    padding: 1.2rem;
+    border-radius: var(--rad);
+    border: 1px solid var(--line);
+  }
+  .docs-col ul {
+    margin: 0.6rem 0 0;
+    padding-left: 1.2rem;
+    list-style: none;
+  }
+  .docs-col li {
+    position: relative;
+    padding: 0.3rem 0;
+    font-size: 0.88rem;
+    color: var(--ink-2);
+    line-height: 1.5;
+  }
+  .docs-col li::before {
+    position: absolute;
+    left: -1.2rem;
+    font-size: 0.75rem;
+  }
+  .docs-old { background: var(--surface-2); }
+  .docs-old li::before { content: '✕'; color: var(--muted); }
+  .docs-new { background: var(--surface); border-color: var(--accent); }
+  .docs-new li::before { content: '✓'; color: var(--accent); }
+
+  .docs-col-label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .docs-new .docs-col-label { color: var(--accent); }
+
   /* ── Context Compression ─────────────────────────────── */
   .compress-section {
     border-top: 1px solid var(--line);
@@ -1317,6 +1393,7 @@
     .stp-flow { flex-direction: column; }
     .stp-arrow { transform: rotate(90deg); align-self: center; }
     .reckoning-inner { padding: 3rem 1rem; }
+    .docs-compare { grid-template-columns: 1fr; }
     .compress-grid { grid-template-columns: 1fr; }
     .enterprise-grid { grid-template-columns: 1fr; }
     .enterprise-details { grid-template-columns: 1fr; }

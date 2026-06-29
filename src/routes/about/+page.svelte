@@ -451,6 +451,82 @@
     </div>
   </div>
 
+  <!-- ── Why not documents ──────────────────────────────────────────────────── -->
+  <section class="section docs-section">
+    <p class="section-kicker mono">why triples, not documents</p>
+    <h2>Documents grow stale.<br><em>Graphs stay current.</em></h2>
+    <p class="section-sub">
+      Wikis, notebooks, and markdown files trap knowledge in prose.
+      Updating one fact means editing an entire page — so people don't, and information goes stale.
+      Triples are atomic: change one fact without touching anything else.
+    </p>
+
+    <div class="docs-compare">
+      <div class="docs-col docs-old">
+        <span class="docs-col-label mono">documents & wikis</span>
+        <ul>
+          <li>Update = rewrite a page</li>
+          <li>Search = keyword matching on prose</li>
+          <li>Duplicates = same info scattered across pages</li>
+          <li>Contradictions = invisible until someone notices</li>
+          <li>AI reads text, guesses structure</li>
+          <li>Export = proprietary format or PDF blob</li>
+        </ul>
+      </div>
+      <div class="docs-col docs-new">
+        <span class="docs-col-label mono">semantic triples</span>
+        <ul>
+          <li>Update = change one fact</li>
+          <li>Search = typed relationship queries</li>
+          <li>Duplicates = same triple auto-merges</li>
+          <li>Contradictions = detected structurally at ingest</li>
+          <li>AI queries a typed graph directly</li>
+          <li>Export = W3C standard Turtle file</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── How it compares ──────────────────────────────────────────────────── -->
+  <section class="section compare-section">
+    <p class="section-kicker mono">how it compares</p>
+    <h2>Not another note-taking app.<br><em>A different model entirely.</em></h2>
+    <p class="section-sub">
+      Most tools store what you write. Reckons.AI extracts what you know — as structured, reviewable, machine-queryable facts.
+    </p>
+
+    <div class="compare-grid">
+      <div class="compare-card">
+        <strong class="compare-approach mono">markdown wikis</strong>
+        <span class="compare-ref">(Obsidian, Karpathy's LLM Wiki)</span>
+        <p>Prose files linked by filename. The LLM re-parses everything on each query. Errors compound into the wiki over time. Dead without the API.</p>
+        <span class="compare-gap mono">Reckons.AI:</span>
+        <p>Atomic triples, not prose. Conflicts detected at ingest. Human review queue. Works offline with WASM.</p>
+      </div>
+      <div class="compare-card">
+        <strong class="compare-approach mono">block outliners</strong>
+        <span class="compare-ref">(Roam, Logseq, Tana)</span>
+        <p>Blocks with backlinks create an implicit graph, but every block is authored manually. No extraction, no conflict detection, no semantic diff.</p>
+        <span class="compare-gap mono">Reckons.AI:</span>
+        <p>AI extracts triples from any source. Every fact carries provenance. Two KBs can be structurally diffed and merged.</p>
+      </div>
+      <div class="compare-card">
+        <strong class="compare-approach mono">AI memory tools</strong>
+        <span class="compare-ref">(mem0, Zep, MemGPT)</span>
+        <p>Auto-extract facts from conversations. No human review — errors are silently stored. Developer APIs, not end-user products.</p>
+        <span class="compare-gap mono">Reckons.AI:</span>
+        <p>Every extracted fact enters a review queue. Nothing is confirmed without your approval. Full UI with graph visualisation.</p>
+      </div>
+      <div class="compare-card">
+        <strong class="compare-approach mono">enterprise platforms</strong>
+        <span class="compare-ref">(Confluence, Notion, SharePoint)</span>
+        <p>Page-based knowledge management. Content sprawl, weak search, governance overhead. AI bolted on as a chat layer over documents.</p>
+        <span class="compare-gap mono">Reckons.AI:</span>
+        <p>Graph-native from the start. Every entity is queryable by type, status, or relationship. No governance layer needed — the structure is the governance.</p>
+      </div>
+    </div>
+  </section>
+
   <!-- ── Compression benchmarks (verified) ──────────────────────────────────── -->
   {#if benchData}
     <section class="section bench-section">
@@ -1867,6 +1943,96 @@
   }
   .footer-github:hover { color: var(--accent); border-color: var(--accent); }
 
+  /* ── Document Problem ────────────────────────────────────────── */
+  .docs-section {
+    border-top: 1px solid var(--line);
+  }
+
+  .docs-compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  .docs-col {
+    padding: 1.4rem;
+    border-radius: var(--rad);
+    border: 1px solid var(--line);
+  }
+  .docs-col ul {
+    margin: 0.8rem 0 0;
+    padding-left: 1.3rem;
+    list-style: none;
+  }
+  .docs-col li {
+    position: relative;
+    padding: 0.35rem 0;
+    font-size: 0.88rem;
+    color: var(--ink-2);
+    line-height: 1.5;
+  }
+  .docs-col li::before {
+    position: absolute;
+    left: -1.3rem;
+    font-size: 0.75rem;
+  }
+  .docs-old { background: var(--surface-2); }
+  .docs-old li::before { content: '✕'; color: var(--muted); }
+  .docs-new { background: var(--surface); border-color: var(--accent); }
+  .docs-new li::before { content: '✓'; color: var(--accent); }
+
+  .docs-col-label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .docs-new .docs-col-label { color: var(--accent); }
+
+  /* ── How it compares ────────────────────────────────────────── */
+  .compare-section {
+    border-top: 1px solid var(--line);
+  }
+
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.2rem;
+  }
+
+  .compare-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--rad);
+    padding: 1.4rem;
+  }
+  .compare-card p {
+    font-size: 0.88rem;
+    color: var(--ink-2);
+    line-height: 1.55;
+    margin: 0.3rem 0 0;
+  }
+  .compare-approach {
+    font-size: 0.78rem;
+    color: var(--ink);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .compare-ref {
+    font-size: 0.75rem;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 0.4rem;
+  }
+  .compare-gap {
+    display: block;
+    margin-top: 0.8rem;
+    font-size: 0.7rem;
+    color: var(--accent);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
   /* ── Compression benchmarks ──────────────────────────────────── */
   .bench-section {
     border-top: 1px solid var(--line);
@@ -2067,6 +2233,8 @@
     .pipe-fork { grid-template-columns: 1fr; }
     .stack-layers { flex-direction: column; }
     .stack-arrow-right { transform: rotate(90deg); }
+    .docs-compare { grid-template-columns: 1fr; }
+    .compare-grid { grid-template-columns: 1fr; }
     .bench-hero-stats { gap: 1.5rem; }
     .bench-stat-value { font-size: 1.8rem; }
     .bench-metrics-grid { grid-template-columns: 1fr; }
