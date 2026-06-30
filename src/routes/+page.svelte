@@ -98,6 +98,28 @@
     gifPointerY = e.clientY;
   }
 
+  /** Hover content tooltip — shows full text for literal nodes and skos:definition for IRI nodes. */
+  const SKOS_DEFINITION = 'http://www.w3.org/2004/02/skos/core#definition';
+  const hoverContent = $derived.by(() => {
+    const key = hoverTarget;
+    if (!key) return null;
+    // Literal nodes: key starts with 'l:'
+    if (key.startsWith('l:')) {
+      const val = key.slice(2);
+      if (val.length <= 48) return null; // already fully visible in label
+      return val.length > 300 ? val.slice(0, 297) + '...' : val;
+    }
+    // IRI nodes: look for skos:definition
+    const iri = iriFromNodeKey(key);
+    if (!iri) return null;
+    const defStmt = confirmedStatements().find(
+      s => s.s.kind === 'iri' && s.s.value === iri && s.p.value === SKOS_DEFINITION && s.o.kind === 'literal'
+    );
+    if (!defStmt) return null;
+    const def = defStmt.o.value;
+    return def.length > 300 ? def.slice(0, 297) + '...' : def;
+  });
+
   /** Metadata fields for the currently hovered entity (for hover overlay). */
   const hoverMeta = $derived.by(() => {
     const iri = iriFromNodeKey(hoverTarget);
@@ -138,6 +160,23 @@
     gifTimer = setTimeout(() => {
       gifActiveKey = gifHoverKey;
     }, 700);
+  });
+
+  /** Definition text for the selected entity (shown in node panel — essential on touch devices). */
+  const selectedContent = $derived.by(() => {
+    if (!selected) return null;
+    if (selected.startsWith('l:')) {
+      const val = selected.slice(2);
+      return val.length <= 48 ? null : (val.length > 500 ? val.slice(0, 497) + '...' : val);
+    }
+    const iri = iriFromNodeKey(selected);
+    if (!iri) return null;
+    const defStmt = confirmedStatements().find(
+      s => s.s.kind === 'iri' && s.s.value === iri && s.p.value === SKOS_DEFINITION && s.o.kind === 'literal'
+    );
+    if (!defStmt) return null;
+    const def = defStmt.o.value;
+    return def.length > 500 ? def.slice(0, 497) + '...' : def;
   });
 
   // ── Schema metadata fields (for selected entity) ──────────────────────────
@@ -201,7 +240,7 @@
   let selectedTypes = $state<Set<string>>(new Set()); // entity type IRIs
   let showSourcesPanel = $state(false);
   let hubLimit = $state(5);
-  let layout = $state<'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order'>('force');
+  let layout = $state<'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy'>('force');
   let nodeOrder = $state<string[]>([]); // ordered node keys for 'order' layout
   let timelineZoom = $state(1);
   let timelineCenter = $state<number | null>(null);
@@ -217,7 +256,7 @@
   onMount(async () => {
     const params = $page.url.searchParams;
     const l = params.get('layout');
-    if (l && ['force','focus','source','type','hub','timeline','order'].includes(l)) layout = l as typeof layout;
+    if (l && ['force','focus','source','type','hub','timeline','order','hierarchy'].includes(l)) layout = l as typeof layout;
     const sel = params.get('sel');
     if (sel) selected = sel;
     const f = params.get('f');
@@ -828,6 +867,35 @@
     return getLeap(statements(), selected);
   });
 
+  // Ghost graph preview for leap nodes
+  import type { GhostGraph } from '$lib/rdf/ghost-graph';
+  let ghostGraph = $state<GhostGraph | null>(null);
+  let ghostAnchorKey = $state<string | null>(null);
+
+  $effect(() => {
+    const leap = entityLeap;
+    const sel = selected;
+    if (!leap || leap.kind !== 'kb') {
+      ghostGraph = null;
+      ghostAnchorKey = null;
+      return;
+    }
+    const docsEntry = DOCS_KB_MAP[leap.target];
+    if (!docsEntry) {
+      ghostGraph = null;
+      ghostAnchorKey = null;
+      return;
+    }
+    // Load ghost graph asynchronously
+    ghostAnchorKey = sel;
+    import('$lib/rdf/ghost-graph').then(({ fetchGhostGraph }) =>
+      fetchGhostGraph(docsEntry.file).then(g => {
+        // Only set if selection hasn't changed
+        if (selected === sel) ghostGraph = g;
+      }).catch(() => { ghostGraph = null; })
+    );
+  });
+
   async function saveLeap() {
     if (!selected || !newLeapId.trim()) return;
     const entityIri = selected.slice(2);
@@ -880,6 +948,8 @@
     'a1b2c3d4-e5f6-4a05-b005-000000000005': { file: '/docs-integrations-tech.ttl', name: 'Integrations & Tech' },
     'a1b2c3d4-e5f6-4a06-b006-000000000006': { file: '/docs-tips-security.ttl', name: 'Tips & Security' },
     'a1b2c3d4-e5f6-4a07-b007-000000000007': { file: '/docs-timeline-ecosystem.ttl', name: 'Timeline & Ecosystem' },
+    'a1b2c3d4-e5f6-4a08-b008-000000000008': { file: '/docs-architecture.ttl', name: 'Architecture & Design' },
+    'a1b2c3d4-e5f6-4a09-b009-000000000009': { file: '/docs-testing.ttl', name: 'Test Suite & Visual Regression' },
   };
 
   let leapImporting = $state(false);
@@ -1193,6 +1263,8 @@
       onreorder={(order) => { nodeOrder = order; }}
       highlighted={[...highlightedSet]}
       {dimMode}
+      {ghostGraph}
+      {ghostAnchorKey}
     />
   {:else}
     <svelte:boundary>
@@ -1378,6 +1450,7 @@
       <ToggleGroup.Item value="hub" class="tg-chip"><span class="lbl mono">hub</span></ToggleGroup.Item>
       <ToggleGroup.Item value="timeline" class="tg-chip"><span class="lbl mono">time</span></ToggleGroup.Item>
       <ToggleGroup.Item value="order" class="tg-chip"><span class="lbl mono">order</span></ToggleGroup.Item>
+      <ToggleGroup.Item value="hierarchy" class="tg-chip"><span class="lbl mono">tree</span></ToggleGroup.Item>
     </ToggleGroup.Root>
   </div>
 
@@ -1482,6 +1555,18 @@
       class:selected-node={n.key === selected}
       class:dim-hidden={dimMode && !highlightedSet.has(n.key) && n.key !== hoverTarget && n.key !== selected}
     >{n.label}</span>
+    {#if n.key === selected && entityLeap}
+      <button
+        class="leap-badge mono"
+        onclick={jumpToLeap}
+        disabled={leapImporting}
+        title={entityLeap.kind === 'url' ? 'Open in new tab' : entityLeap.kind === 'app' ? 'Navigate' : `Jump to ${entityLeap.label ?? 'target KB'}`}
+        transition:fade={{ duration: 150 }}
+      >
+        <span class="leap-badge-arrow">{entityLeap.kind === 'url' ? '↗' : '⟶'}</span>
+        <span class="leap-badge-label">{entityLeap.label ?? (entityLeap.kind === 'kb' ? entityLeap.target.slice(0, 8).toUpperCase() : entityLeap.target)}</span>
+      </button>
+    {/if}
   </div>
 {/each}
 
@@ -1494,6 +1579,17 @@
     {m.label}
   </div>
 {/each}
+
+<!-- Hover content tooltip — shows full text for literal nodes, skos:definition for IRI nodes -->
+{#if hoverContent && !gifActiveKey}
+  <div
+    class="hover-content-tooltip"
+    style="left: {gifPointerX + 14}px; top: {gifPointerY + 18}px;"
+    transition:fade={{ duration: 120 }}
+  >
+    {hoverContent}
+  </div>
+{/if}
 
 <!-- Long-hover preview (GIF and/or metadata card) -->
 {#if gifActiveKey}
@@ -1617,6 +1713,18 @@
           <button class="np-act-btn np-act-danger" onclick={deleteSelected}>✕ delete</button>
         </div>
       {/if}
+    {/if}
+
+    <!-- Preview: definition text + preview image (replaces hover tooltips on touch devices) -->
+    {#if selectedContent || entityGifUrl}
+      <div class="np-preview">
+        {#if entityGifUrl}
+          <img class="np-preview-img" src={entityGifUrl} alt="entity preview" />
+        {/if}
+        {#if selectedContent}
+          <p class="np-preview-text">{selectedContent}</p>
+        {/if}
+      </div>
     {/if}
 
     <!-- Quick connections -->
@@ -1875,9 +1983,9 @@
             <button class="leap-jump mono" onclick={jumpToLeap} disabled={leapImporting} title={entityLeap.kind === 'url' ? 'open in new tab' : entityLeap.kind === 'app' ? 'navigate' : 'jump to target KB'}>
               {leapImporting ? '...' : entityLeap.kind === 'url' ? '↗' : '⟶'}
             </button>
-            <span class="leap-id mono" title={entityLeap.target}>
+            <button class="leap-id mono" title={`${entityLeap.target}\nClick to navigate`} onclick={jumpToLeap} disabled={leapImporting}>
               {entityLeap.label ?? (entityLeap.kind === 'kb' ? entityLeap.target.slice(0, 8).toUpperCase() : entityLeap.target)}
-            </span>
+            </button>
             <button class="link-rm" onclick={() => navigator.clipboard.writeText(entityLeap!.target)} title="copy target">⎘</button>
             <button class="link-rm" onclick={removeLeap} title="remove leap">✕</button>
           </div>
@@ -2445,6 +2553,25 @@
   }
   .np-act-danger:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
   /* Statement accordion */
+  .np-preview {
+    padding: 0 0.75rem 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .np-preview-img {
+    max-width: 100%;
+    max-height: 120px;
+    object-fit: contain;
+    border-radius: var(--rad-sm);
+    border: 1px solid var(--line);
+  }
+  .np-preview-text {
+    font-size: 0.75rem;
+    color: var(--ink-2);
+    line-height: 1.45;
+    margin: 0;
+  }
   .np-leap {
     display: flex;
     flex-direction: column;
@@ -2473,6 +2600,15 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    padding: 0;
+    transition: text-decoration 0.12s;
+  }
+  .leap-id:hover {
+    text-decoration: underline;
   }
   .leap-target-id {
     font-size: 0.62rem;
@@ -2805,6 +2941,47 @@
     transform: translate(-50%, calc(-100% - 5px)) scale(2.0);
   }
 
+  /* ── Leap badge (floating on selected node) ── */
+  .leap-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.25rem;
+    padding: 0.2rem 0.55rem;
+    font-size: calc(var(--lfs, 10) * 0.9px);
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    border-radius: var(--rad-sm);
+    cursor: pointer;
+    white-space: nowrap;
+    transform: translateX(-50%);
+    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+    animation: leap-pulse 2s ease-in-out infinite;
+  }
+  .leap-badge:hover {
+    background: rgba(245, 158, 11, 0.25);
+    border-color: #f59e0b;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.3);
+    animation: none;
+  }
+  .leap-badge:disabled {
+    opacity: 0.5;
+    cursor: wait;
+  }
+  .leap-badge-arrow {
+    font-size: 1.1em;
+  }
+  .leap-badge-label {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  @keyframes leap-pulse {
+    0%, 100% { box-shadow: 0 0 4px rgba(245, 158, 11, 0.15); }
+    50% { box-shadow: 0 0 10px rgba(245, 158, 11, 0.35); }
+  }
+
   /* ── bits-ui ToggleGroup (layout selector) ── */
   :global(.tg-row) {
     display: flex;
@@ -2878,6 +3055,23 @@
   }
 
   /* ── GIF long-hover preview + metadata overlay ── */
+  .hover-content-tooltip {
+    position: fixed;
+    z-index: 450;
+    pointer-events: none;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--rad-sm);
+    padding: 0.45rem 0.65rem;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: var(--text, #e0e0e0);
+    max-width: 320px;
+    box-shadow: 0 3px 16px rgba(0,0,0,0.45);
+    word-wrap: break-word;
+    white-space: pre-wrap;
+  }
+
   .gif-preview {
     position: fixed;
     z-index: 500;
@@ -3109,6 +3303,9 @@
     .overlay-inner { padding: 0.4rem 0.5rem; }
     .kb-hint { display: none; } /* keyboard nav hint not useful on touch devices */
     .gif-preview { display: none; } /* hover-triggered GIF preview not useful on touch */
+    .hover-content-tooltip { display: none; } /* hover tooltip not useful on touch — use node panel preview instead */
     .node-label-wrap { pointer-events: none; } /* prevent label divs from stealing touch events */
+    .node-label-wrap .leap-badge { pointer-events: auto; } /* but keep leap badges tappable */
+    .np-preview-img { max-height: 160px; } /* slightly taller on mobile since it's the primary preview */
   }
 </style>
