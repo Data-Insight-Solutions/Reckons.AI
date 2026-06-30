@@ -20,6 +20,7 @@
   import { glbOverrides } from '$lib/stores/glb-overrides.svelte';
   import { recordFrame } from '$lib/stores/perf-monitor.svelte';
   import { leapNodeKeys } from '$lib/rdf/kb-leap';
+  import { SKOS_BROADER, NAV_ORDER, NAV_LAYER } from '$lib/rdf/hierarchy';
 
   interactivity();
 
@@ -50,7 +51,7 @@
     targetKey?: string | null;
     historyTimestamp?: number | null;
     sources?: any[];
-    layout?: 'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order';
+    layout?: 'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy';
     timelineZoom?: number;
     timelineCenter?: number | null;
     timelineTimeSource?: 'event' | 'ingested';
@@ -127,6 +128,8 @@
     pos: THREE.Vector3;
     vel: THREE.Vector3;
     degree: number;
+    /** Full text for hover display (literals: full value; IRIs: label only) */
+    fullText?: string;
   };
   type Edge = {
     a: Node; b: Node;
@@ -221,16 +224,18 @@
       for (const term of [st.s, st.o]) {
         const k = termKey(term);
         if (!nodeMap.has(k)) {
+          const isLiteral = isLit(term);
+          const fullVal = isLiteral ? term.value : undefined;
           const label = isIRI(term)
             ? term.value.split('/').pop() ?? term.value
-            : isLit(term)
-              ? term.value.slice(0, 24)
+            : isLiteral
+              ? (term.value.length > 48 ? term.value.slice(0, 45) + '...' : term.value)
               : `_:${term.value}`;
           // Reuse cached position so filter toggles don't scatter the graph;
           // fall back to a random spawn only for genuinely new nodes.
           const pos = nodePositionCache.get(k)
             ?? new THREE.Vector3((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
-          nodeMap.set(k, { key: k, label, kind: isIRI(term) ? 'concept' : 'literal', pos, vel: new THREE.Vector3(), degree: 0 });
+          nodeMap.set(k, { key: k, label, kind: isIRI(term) ? 'concept' : 'literal', pos, vel: new THREE.Vector3(), degree: 0, fullText: fullVal });
           nodePositionCache.set(k, pos); // ensure new nodes are cached
         }
       }
@@ -554,6 +559,172 @@
     return { anchors, markers, nodeColors, hubKeys: hubNodes.map(n => n.key) };
   }
 
+  function buildHierarchyAnchors3D(): { anchors: Map<string, THREE.Vector3>; markers: LayoutMarker[] } {
+    const active = (statements as Statement[]).filter(s => s.status !== 'rejected' && s.status !== 'superseded');
+
+    // Build broader tree
+    const parentOf = new Map<string, string>();
+    const childrenOf = new Map<string, string[]>();
+    const orderOf = new Map<string, number>();
+    const labels = new Map<string, string>();
+
+    for (const s of active) {
+      if (s.s.kind !== 'iri') continue;
+      if (s.p.value === SKOS_BROADER && s.o.kind === 'iri') {
+        parentOf.set(s.s.value, s.o.value);
+        if (!childrenOf.has(s.o.value)) childrenOf.set(s.o.value, []);
+        childrenOf.get(s.o.value)!.push(s.s.value);
+      }
+      if (s.p.value === NAV_ORDER && s.o.kind === 'literal') {
+        orderOf.set(s.s.value, parseInt(s.o.value, 10));
+      }
+      if (s.p.value === RDFS_LABEL && s.o.kind === 'literal') {
+        labels.set(s.s.value, s.o.value);
+      }
+    }
+
+    // Map node keys ↔ IRIs
+    const keyToIri = new Map<string, string>();
+    const iriToKey = new Map<string, string>();
+    for (const n of nodes) {
+      if (n.key.startsWith('i:')) {
+        keyToIri.set(n.key, n.key.slice(2));
+        iriToKey.set(n.key.slice(2), n.key);
+      }
+    }
+
+    // Find roots (no parent, has children)
+    const allIris = new Set([...parentOf.keys(), ...childrenOf.keys()]);
+    const rootIris = [...allIris].filter(iri => !parentOf.has(iri) && childrenOf.has(iri));
+    if (rootIris.length === 0) return { anchors: new Map(), markers: [] };
+
+    // BFS depth assignment
+    const depthOf = new Map<string, number>();
+    const queue: string[] = [];
+    for (const r of rootIris) { depthOf.set(r, 0); queue.push(r); }
+    let qi = 0;
+    while (qi < queue.length) {
+      const cur = queue[qi++];
+      const d = depthOf.get(cur)!;
+      const children = childrenOf.get(cur) ?? [];
+      children.sort((a, b) => (orderOf.get(a) ?? 999) - (orderOf.get(b) ?? 999));
+      for (const child of children) {
+        if (!depthOf.has(child)) { depthOf.set(child, d + 1); queue.push(child); }
+      }
+    }
+
+    const maxDepth = Math.max(0, ...depthOf.values());
+    const byDepth = new Map<number, string[]>();
+    for (const [iri, d] of depthOf) {
+      if (!byDepth.has(d)) byDepth.set(d, []);
+      byDepth.get(d)!.push(iri);
+    }
+
+    // Sort each ring by parent angle → own order
+    for (const [, iris] of byDepth) {
+      iris.sort((a, b) => {
+        const pa = parentOf.get(a), pb = parentOf.get(b);
+        if (pa === pb) return (orderOf.get(a) ?? 999) - (orderOf.get(b) ?? 999);
+        return (orderOf.get(pa!) ?? 999) - (orderOf.get(pb!) ?? 999);
+      });
+    }
+
+    const SHELL_SPACING = 7;
+    const anchors = new Map<string, THREE.Vector3>();
+    const markers: LayoutMarker[] = [];
+    const parentAngles = new Map<string, { theta: number; phi: number }>();
+
+    for (let d = 0; d <= maxDepth; d++) {
+      const iris = byDepth.get(d) ?? [];
+      if (d === 0) {
+        // Roots at center — slight spread if multiple
+        if (iris.length === 1) {
+          const key = iriToKey.get(iris[0]);
+          if (key) {
+            anchors.set(key, new THREE.Vector3(0, 0, 0));
+            parentAngles.set(iris[0], { theta: 0, phi: Math.PI / 2 });
+          }
+        } else {
+          iris.forEach((iri, i) => {
+            const theta = (2 * Math.PI * i) / iris.length;
+            const r = SHELL_SPACING * 0.5;
+            const key = iriToKey.get(iri);
+            if (key) {
+              anchors.set(key, new THREE.Vector3(r * Math.cos(theta), r * Math.sin(theta), 0));
+              parentAngles.set(iri, { theta, phi: Math.PI / 2 });
+            }
+          });
+        }
+      } else {
+        const r = d * SHELL_SPACING;
+        // Group children by parent for sector allocation
+        const groups = new Map<string, string[]>();
+        for (const iri of iris) {
+          const p = parentOf.get(iri) ?? '__orphan__';
+          if (!groups.has(p)) groups.set(p, []);
+          groups.get(p)!.push(iri);
+        }
+
+        const totalChildren = iris.length;
+        for (const [pIri, children] of groups) {
+          const pAngle = parentAngles.get(pIri) ?? { theta: 0, phi: Math.PI / 2 };
+          const sector = (2 * Math.PI * children.length) / Math.max(totalChildren, 1);
+          const startTheta = pAngle.theta - sector / 2;
+          // Spread phi (elevation) across children to use 3D space
+          const phiSpread = Math.min(Math.PI * 0.4, Math.PI * 0.8 / Math.max(children.length, 1));
+          const basePhi = pAngle.phi;
+
+          children.forEach((iri, i) => {
+            const theta = children.length === 1
+              ? pAngle.theta
+              : startTheta + (i + 0.5) * (sector / children.length);
+            const phi = children.length === 1
+              ? basePhi
+              : basePhi + (i - (children.length - 1) / 2) * phiSpread / children.length;
+
+            const x = r * Math.sin(phi) * Math.cos(theta);
+            const y = r * Math.sin(phi) * Math.sin(theta);
+            const z = r * Math.cos(phi);
+            const key = iriToKey.get(iri);
+            if (key) {
+              anchors.set(key, new THREE.Vector3(x, y, z));
+              parentAngles.set(iri, { theta, phi });
+            }
+          });
+        }
+      }
+
+      // Shell ring marker for each depth level
+      if (d > 0) {
+        markers.push({
+          key: `hierarchy-ring-${d}`,
+          pos: new THREE.Vector3(0, 0, 0),
+          label: `Layer ${maxDepth - d}`,
+          color: '#f59e0b',
+          kind: 'cluster'
+        });
+      }
+    }
+
+    // Place unplaced nodes in outer shell
+    const placedKeys = new Set(anchors.keys());
+    const unplaced = nodes.filter(n => !placedKeys.has(n.key));
+    if (unplaced.length > 0) {
+      const outerR = (maxDepth + 2) * SHELL_SPACING;
+      unplaced.forEach((n, i) => {
+        const theta = (2 * Math.PI * i) / unplaced.length;
+        const phi = Math.PI / 2 + (Math.random() - 0.5) * 0.5;
+        anchors.set(n.key, new THREE.Vector3(
+          outerR * Math.sin(phi) * Math.cos(theta),
+          outerR * Math.sin(phi) * Math.sin(theta),
+          outerR * Math.cos(phi)
+        ));
+      });
+    }
+
+    return { anchors, markers };
+  }
+
   const TIMELINE_PREDICATES = new Set([
     'urn:kbase:predicate/scheduled-at',
     'urn:kbase:predicate/ends-at',
@@ -727,6 +898,14 @@
       // Reference zoom/center/timeSource so the effect re-runs when they change
       void timelineZoom; void timelineCenter; void timelineTimeSource;
       const { anchors, markers } = buildTimelineAnchors();
+      activeAnchors = anchors;
+      layoutMarkers = markers;
+      layoutRingRadii = [];
+      anchorStrength = 0.85;
+      nodeColorMap = new Map();
+      hubNodeKeys = [];
+    } else if (layout === 'hierarchy') {
+      const { anchors, markers } = buildHierarchyAnchors3D();
       activeAnchors = anchors;
       layoutMarkers = markers;
       layoutRingRadii = [];

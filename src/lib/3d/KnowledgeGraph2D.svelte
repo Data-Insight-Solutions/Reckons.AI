@@ -10,7 +10,9 @@
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { RDF_TYPE, RDFS_LABEL, type EntityTypeDef, type GeometryName } from '$lib/rdf/entity-types';
   import { leapNodeKeys } from '$lib/rdf/kb-leap';
+  import { buildHierarchyAnchors } from '$lib/rdf/hierarchy';
   import { icon2dOverrides } from '$lib/stores/icon2d-overrides.svelte';
+  import type { GhostGraph, GhostNode } from '$lib/rdf/ghost-graph';
 
   let {
     statements = [],
@@ -25,6 +27,8 @@
     timelineCenter = null,
     timelineTimeSource = 'event' as 'event' | 'ingested',
     nodeOrder = [] as string[],
+    ghostGraph = null as GhostGraph | null,
+    ghostAnchorKey = null as string | null,
     onselect = () => {},
     onhover = () => {},
     onnodemove = () => {},
@@ -41,11 +45,13 @@
     targetKey?: string | null;
     historyTimestamp?: number | null;
     sources?: any[];
-    layout?: 'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order';
+    layout?: 'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy';
     timelineZoom?: number;
     timelineCenter?: number | null;
     timelineTimeSource?: 'event' | 'ingested';
     nodeOrder?: string[];
+    ghostGraph?: GhostGraph | null;
+    ghostAnchorKey?: string | null;
     onselect?: (key: string | null, ctrlKey?: boolean) => void;
     onhover?: (key: string | null) => void;
     onnodemove?: (key: string, x: number, y: number) => void;
@@ -64,6 +70,8 @@
     kind: 'concept' | 'literal';
     x: number; y: number; vx: number; vy: number;
     degree: number;
+    /** Full text for hover display (literals: full value; IRIs: label only) */
+    fullText?: string;
   };
   type Edge = { a: Node; b: Node; predicate: string; confidence: number; semanticDist: number; isSourceEdge?: boolean; };
   type Marker = { key: string; label: string; color: string; x: number; y: number; };
@@ -169,12 +177,15 @@
       for (const term of [st.s, st.o]) {
         const k = termKey(term);
         if (!nodeMap.has(k)) {
+          const isLiteral = isLit(term);
+          const fullVal = isLiteral ? term.value : undefined;
           const label = isIRI(term) ? term.value.split('/').pop() ?? term.value
-            : isLit(term) ? term.value.slice(0, 24) : `_:${term.value}`;
+            : isLiteral ? (term.value.length > 48 ? term.value.slice(0, 45) + '...' : term.value)
+            : `_:${term.value}`;
           const c = nodePositionCache.get(k);
           const x = c?.x ?? (Math.random() - 0.5) * 8;
           const y = c?.y ?? (Math.random() - 0.5) * 8;
-          nodeMap.set(k, { key: k, label, kind: isIRI(term) ? 'concept' : 'literal', x, y, vx: 0, vy: 0, degree: 0 });
+          nodeMap.set(k, { key: k, label, kind: isIRI(term) ? 'concept' : 'literal', x, y, vx: 0, vy: 0, degree: 0, fullText: fullVal });
         }
       }
       const a = nodeMap.get(termKey(st.s))!;
@@ -263,6 +274,12 @@
     } else if (layout === 'order') {
       activeAnchors  = buildOrderAnchors();
       anchorStrength = 0.90;
+      markerData     = [];
+      nodeColorMap   = new Map();
+      hubNodeKeys    = [];
+    } else if (layout === 'hierarchy') {
+      activeAnchors  = buildHierarchyAnchors(statements as Statement[], nodes, edges);
+      anchorStrength = 0.85;
       markerData     = [];
       nodeColorMap   = new Map();
       hubNodeKeys    = [];
@@ -781,6 +798,86 @@
       ctx2d.stroke();
     }
 
+    // Ghost graph preview — transparent overlay of target KB
+    if (ghostGraph && ghostAnchorKey) {
+      const anchor = nodes.find(n => n.key === ghostAnchorKey);
+      if (anchor) {
+        const gNodes = ghostGraph.nodes;
+        const gEdges = ghostGraph.edges;
+        const ghostR = 0.35 / camScale * 40 * 0.1;
+        const GHOST_ALPHA = 0.18;
+        const GHOST_RADIUS = 8; // world units spread radius
+
+        // Position ghost nodes in a radial layout around the anchor
+        const ghostPositions = new Map<string, { x: number; y: number }>();
+        // Find hubs for inner ring, others for outer ring
+        const hubs = gNodes.filter((gn: GhostNode) => gn.isHub);
+        const others = gNodes.filter((gn: GhostNode) => !gn.isHub);
+
+        // Inner ring: hubs
+        for (let gi = 0; gi < hubs.length; gi++) {
+          const theta = (2 * Math.PI * gi) / Math.max(hubs.length, 1) - Math.PI / 2;
+          const r2 = GHOST_RADIUS * 0.5;
+          ghostPositions.set(hubs[gi].iri, { x: anchor.x + r2 * Math.cos(theta), y: anchor.y + r2 * Math.sin(theta) });
+        }
+
+        // Outer ring: remaining nodes
+        for (let gi = 0; gi < others.length; gi++) {
+          const theta = (2 * Math.PI * gi) / Math.max(others.length, 1) - Math.PI / 2;
+          const r2 = GHOST_RADIUS;
+          ghostPositions.set(others[gi].iri, { x: anchor.x + r2 * Math.cos(theta), y: anchor.y + r2 * Math.sin(theta) });
+        }
+
+        // Ghost edges
+        ctx2d.globalAlpha = GHOST_ALPHA * 0.5;
+        for (const ge of gEdges) {
+          const sp = ghostPositions.get(ge.source);
+          const tp = ghostPositions.get(ge.target);
+          if (!sp || !tp) continue;
+          ctx2d.beginPath();
+          ctx2d.moveTo(sp.x, sp.y);
+          ctx2d.lineTo(tp.x, tp.y);
+          ctx2d.strokeStyle = '#f59e0b';
+          ctx2d.lineWidth = 0.02 / camScale * 40;
+          ctx2d.stroke();
+        }
+
+        // Ghost nodes
+        for (const g of gNodes) {
+          const pos = ghostPositions.get(g.iri);
+          if (!pos) continue;
+          ctx2d.globalAlpha = g.isHub ? GHOST_ALPHA * 1.5 : GHOST_ALPHA;
+          ctx2d.beginPath();
+          ctx2d.arc(pos.x, pos.y, g.isHub ? ghostR * 1.5 : ghostR, 0, Math.PI * 2);
+          ctx2d.fillStyle = '#f59e0b';
+          ctx2d.fill();
+        }
+
+        // Ghost labels (hubs only)
+        ctx2d.globalAlpha = GHOST_ALPHA * 1.2;
+        ctx2d.fillStyle = '#f59e0b';
+        ctx2d.font = `${ghostR * 1.8}px sans-serif`;
+        ctx2d.textAlign = 'center';
+        ctx2d.textBaseline = 'top';
+        for (const g of hubs) {
+          const pos = ghostPositions.get(g.iri);
+          if (!pos) continue;
+          const label = g.label.length > 20 ? g.label.slice(0, 18) + '...' : g.label;
+          ctx2d.fillText(label, pos.x, pos.y + ghostR * 2);
+        }
+
+        // Entity count badge
+        ctx2d.globalAlpha = GHOST_ALPHA * 2;
+        ctx2d.fillStyle = '#f59e0b';
+        ctx2d.font = `bold ${ghostR * 2.5}px sans-serif`;
+        ctx2d.textAlign = 'center';
+        ctx2d.textBaseline = 'bottom';
+        ctx2d.fillText(`${ghostGraph.totalEntities} entities`, anchor.x, anchor.y + GHOST_RADIUS + ghostR * 4);
+
+        ctx2d.globalAlpha = baseAlpha;
+      }
+    }
+
     // Nodes
     const tm = nodeTypeMap;
     for (const n of nodes) {
@@ -992,7 +1089,7 @@
       }
       if (hoveredKey) {
         const hn = nodes.find(n => n.key === hoveredKey);
-        if (hn) { const s = worldToScreen(hn.x, hn.y); onhovermove(hoveredKey, hn.label, s.x, s.y); }
+        if (hn) { const s = worldToScreen(hn.x, hn.y); onhovermove(hoveredKey, hn.fullText ?? hn.label, s.x, s.y); }
       } else {
         onhovermove(null, null, 0, 0);
       }

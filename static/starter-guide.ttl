@@ -11,6 +11,7 @@
 ##   docs-integrations-tech.ttl    — Integrations and technology stack
 ##   docs-tips-security.ttl       — Tips, tricks, security & privacy
 ##   docs-timeline-ecosystem.ttl  — RDF timeline, consortiums, Reckons.AI launch
+##   docs-architecture.ttl        — Design decisions, TTL-first docs, standards, style
 ##
 ## This hub loads as the read-only docs graph from the landing page.
 ## ---------------------------------------------------------------------------
@@ -34,6 +35,7 @@
 @prefix kpred:  <urn:kbase:predicate/> .
 @prefix kmeta:  <urn:kbase:meta/> .
 @prefix leap:   <urn:reckons:docs/leap/> .
+@prefix hnav:   <urn:reckons:nav/> .
 @prefix creator: <urn:reckons:creator/> .
 
 ## KB Identity
@@ -82,6 +84,7 @@ guide:WhatIsReckonsAI
     rdf:type            skos:Concept ;
     rdfs:label          "What Is Reckons.AI" ;
     skos:definition     "Reckons.AI is a personal knowledge graph that runs entirely in your browser. No server, no account, no cloud dependency. Your data stays on your device in IndexedDB, and you control every piece of knowledge that enters your graph through a human review process." ;
+    hnav:layer          "2"^^xsd:integer ;
     skos:related        arch:TripleArchitecture ;
     skos:related        guide:WhyItMatters .
 
@@ -123,11 +126,19 @@ guide:HumanInTheLoop
 ## Each leap node appears with an amber ring in the graph view. Click the
 ## arrow button to jump -- the sub-graph auto-imports as a new KB on first use.
 
+## HNSW-inspired navigation: leap nodes form Layer 1 of the hierarchy.
+## guide:WhatIsReckonsAI is the entry point (Layer 2). Sub-KB entities are Layer 0.
+## hnav:order sets prescribed traversal sequence. hnav:next/hnav:prev enable
+## horizontal small-world traversal between sibling sub-KBs at the same layer.
+
 leap:TriplesAndRDF
     rdf:type            ktype:Document ;
     rdfs:label          "LEAP: Triples & RDF Deep Dive" ;
     skos:definition     "Click to explore the semantic triple architecture, Turtle syntax, RDF standards (RDFS, SKOS, SPARQL, JSON-LD, PROV-O), and knowledge graph fundamentals." ;
-    skos:related        guide:WhatIsReckonsAI ;
+    skos:broader        guide:WhatIsReckonsAI ;
+    hnav:order          "1"^^xsd:integer ;
+    hnav:layer          "1"^^xsd:integer ;
+    hnav:next           leap:LanguageModels ;
     <urn:reckons:leap>          "a1b2c3d4-e5f6-4a01-b001-000000000001" ;
     <urn:reckons:leap/label>    "Triples, Turtle & RDF Standards" .
 
@@ -135,7 +146,11 @@ leap:LanguageModels
     rdf:type            ktype:Document ;
     rdfs:label          "LEAP: Language Models" ;
     skos:definition     "Click to learn what LLMs actually are, why they hallucinate, how RAG works, and why your curated KB makes AI dramatically more accurate." ;
-    skos:related        guide:WhatIsReckonsAI ;
+    skos:broader        guide:WhatIsReckonsAI ;
+    hnav:order          "2"^^xsd:integer ;
+    hnav:layer          "1"^^xsd:integer ;
+    hnav:prev           leap:TriplesAndRDF ;
+    hnav:next           leap:UseCases ;
     <urn:reckons:leap>          "a1b2c3d4-e5f6-4a02-b002-000000000002" ;
     <urn:reckons:leap/label>    "Language Models & RAG" .
 
@@ -143,7 +158,11 @@ leap:UseCases
     rdf:type            ktype:Document ;
     rdfs:label          "LEAP: Use Cases" ;
     skos:definition     "Click to explore real-world scenarios: insurance claims, legal disputes, employment rights, medical records, corporate pushback, and research." ;
-    skos:related        guide:WhatIsReckonsAI ;
+    skos:broader        guide:WhatIsReckonsAI ;
+    hnav:order          "3"^^xsd:integer ;
+    hnav:layer          "1"^^xsd:integer ;
+    hnav:prev           leap:LanguageModels ;
+    hnav:next           leap:Features ;
     <urn:reckons:leap>          "a1b2c3d4-e5f6-4a03-b003-000000000003" ;
     <urn:reckons:leap/label>    "Real-World Use Cases" .
 
@@ -151,7 +170,11 @@ leap:Features
     rdf:type            ktype:Document ;
     rdfs:label          "LEAP: Features" ;
     skos:definition     "Click for detailed coverage of every feature: Ingest, Review, Trust, Graph, Shelly, Reckonings, Compare, Multi-KB, KB Leap, Content Safety, Predicate Manager, Whisper STT, Kokoro TTS, and more." ;
-    skos:related        guide:WhatIsReckonsAI ;
+    skos:broader        guide:WhatIsReckonsAI ;
+    hnav:order          "4"^^xsd:integer ;
+    hnav:layer          "1"^^xsd:integer ;
+    hnav:prev           leap:UseCases ;
+    hnav:next           leap:IntegrationsTech ;
     <urn:reckons:leap>          "a1b2c3d4-e5f6-4a04-b004-000000000004" ;
     <urn:reckons:leap/label>    "All Features" .
 
@@ -159,7 +182,11 @@ leap:IntegrationsTech
     rdf:type            ktype:Document ;
     rdfs:label          "LEAP: Integrations & Tech" ;
     skos:definition     "Click for integrations (Calendar, MCP, Extension, Whisper, Kokoro, OCR, Firecrawl, Meshy 3D) and the technology stack (SvelteKit 2, Threlte 8, N3.js, @huggingface/transformers, Dexie)." ;
-    skos:related        guide:WhatIsReckonsAI ;
+    skos:broader        guide:WhatIsReckonsAI ;
+    hnav:order          "5"^^xsd:integer ;
+    hnav:layer          "1"^^xsd:integer ;
+    hnav:prev           leap:Features ;
+    hnav:next           leap:TipsSecurity ;
     <urn:reckons:leap>          "a1b2c3d4-e5f6-4a05-b005-000000000005" ;
     <urn:reckons:leap/label>    "Integrations & Technology" .
 
@@ -167,7 +194,11 @@ leap:TipsSecurity
     rdf:type            ktype:Document ;
     rdfs:label          "LEAP: Tips & Security" ;
     skos:definition     "Click for practical tips (start small, review carefully, export often, use Ollama offline) and the security architecture (no server, API key safety, content safety, CSP, offline-capable)." ;
-    skos:related        guide:WhatIsReckonsAI ;
+    skos:broader        guide:WhatIsReckonsAI ;
+    hnav:order          "6"^^xsd:integer ;
+    hnav:layer          "1"^^xsd:integer ;
+    hnav:prev           leap:IntegrationsTech ;
+    hnav:next           leap:TimelineEcosystem ;
     <urn:reckons:leap>          "a1b2c3d4-e5f6-4a06-b006-000000000006" ;
     <urn:reckons:leap/label>    "Tips, Tricks & Security" .
 
@@ -175,9 +206,36 @@ leap:TimelineEcosystem
     rdf:type            ktype:Document ;
     rdfs:label          "LEAP: Timeline & RDF Ecosystem" ;
     skos:definition     "Click for the RDF timeline from 1999 to 2026, key organizations (W3C, AI Alliance, Schema.org), people (Tim Berners-Lee), and the Reckons.AI launch." ;
-    skos:related        guide:WhatIsReckonsAI ;
+    skos:broader        guide:WhatIsReckonsAI ;
+    hnav:order          "7"^^xsd:integer ;
+    hnav:layer          "1"^^xsd:integer ;
+    hnav:prev           leap:TipsSecurity ;
+    hnav:next           leap:Architecture ;
     <urn:reckons:leap>          "a1b2c3d4-e5f6-4a07-b007-000000000007" ;
     <urn:reckons:leap/label>    "Timeline & RDF Ecosystem" .
+
+leap:Architecture
+    rdf:type            ktype:Document ;
+    rdfs:label          "LEAP: Architecture & Design" ;
+    skos:definition     "Click for architecture decisions, TTL-first documentation strategy, standards alignment (PROV-O, SKOS), deployment patterns, style conventions, dependency health, and the markdown migration tracker." ;
+    skos:broader        guide:WhatIsReckonsAI ;
+    hnav:order          "8"^^xsd:integer ;
+    hnav:layer          "1"^^xsd:integer ;
+    hnav:prev           leap:TimelineEcosystem ;
+    hnav:next           leap:Testing ;
+    <urn:reckons:leap>          "a1b2c3d4-e5f6-4a08-b008-000000000008" ;
+    <urn:reckons:leap/label>    "Architecture & Design Decisions" .
+
+leap:Testing
+    rdf:type            ktype:Document ;
+    rdfs:label          "LEAP: Test Suite & Visual Regression" ;
+    skos:definition     "Click for test documentation as interactive stories. Walk through user story E2E tests step-by-step with screenshots attached to each node. Covers Dev Sprint Planning, User Docs Import, Cross-KB Alignment, and page-level visual regression." ;
+    skos:broader        guide:WhatIsReckonsAI ;
+    hnav:order          "9"^^xsd:integer ;
+    hnav:layer          "1"^^xsd:integer ;
+    hnav:prev           leap:Architecture ;
+    <urn:reckons:leap>          "a1b2c3d4-e5f6-4a09-b009-000000000009" ;
+    <urn:reckons:leap/label>    "Test Suite & Visual Regression" .
 
 
 ## =============================================================================

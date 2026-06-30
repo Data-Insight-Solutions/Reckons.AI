@@ -173,9 +173,15 @@ export const PREDICATE_PREFIX = 'urn:kbase:predicate/';
 /** Predicates under this prefix are node metadata (shown in detail panel, NOT as edges) */
 export const META_PREFIX = 'urn:kbase:meta/';
 
+/** Predicates under this prefix are hierarchical navigation metadata */
+export const NAV_PREFIX = 'urn:reckons:nav/';
+
 /** Returns true if the predicate is metadata (should not render as a graph edge/node) */
 export function isMetaPredicate(predicateIri: string): boolean {
-  return predicateIri.startsWith(META_PREFIX);
+  if (predicateIri.startsWith(META_PREFIX)) return true;
+  // nav:order and nav:layer are node metadata, not graph edges
+  if (predicateIri === `${NAV_PREFIX}order` || predicateIri === `${NAV_PREFIX}layer`) return true;
+  return false;
 }
 
 /* ---------- term helpers ---------- */
