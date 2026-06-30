@@ -81,6 +81,18 @@ export async function loadAll() {
   _loaded = true;
 }
 
+/**
+ * Hot-swap store data for seamless KB transitions (leap animation).
+ * Replaces statements and sources without a page reload. The `db` singleton
+ * still points to the previous DB — call switchToKb() for a full transition
+ * when the user navigates away or the session can tolerate a reload.
+ */
+export function hotSwapData(stmts: Statement[], srcs: Source[]) {
+  _statements = stmts;
+  _sources = srcs;
+  _loaded = true;
+}
+
 /** Returns true if the official KB is active (mutations should be blocked). */
 function isReadOnly(): boolean {
   return officialKbActive();

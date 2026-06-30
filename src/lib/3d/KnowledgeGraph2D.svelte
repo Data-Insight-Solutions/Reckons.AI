@@ -29,6 +29,8 @@
     nodeOrder = [] as string[],
     ghostGraph = null as GhostGraph | null,
     ghostAnchorKey = null as string | null,
+    flyToGhost = false,
+    onflyend = () => {},
     onselect = () => {},
     onhover = () => {},
     onnodemove = () => {},
@@ -52,6 +54,8 @@
     nodeOrder?: string[];
     ghostGraph?: GhostGraph | null;
     ghostAnchorKey?: string | null;
+    flyToGhost?: boolean;
+    onflyend?: () => void;
     onselect?: (key: string | null, ctrlKey?: boolean) => void;
     onhover?: (key: string | null) => void;
     onnodemove?: (key: string, x: number, y: number) => void;
@@ -143,6 +147,15 @@
   }
 
   $effect(() => {
+    // After a leap fly, seed position cache so new nodes spawn at the camera destination
+    if (flyCenterWorld) {
+      nodePositionCache.clear();
+      // Setting flyCenterWorld as fallback — individual nodes get jitter added below
+    }
+    const spawnCenter = flyCenterWorld;
+    // Clear fly center after one rebuild cycle
+    flyCenterWorld = null;
+
     const nodeMap = new Map<string, Node>();
     const e: Edge[] = [];
     for (const st of statements as Statement[]) {
@@ -152,8 +165,8 @@
         if (!nodeMap.has(k) && st.s.kind === 'iri') {
           const label = st.s.value.split('/').pop() ?? st.s.value;
           const c = nodePositionCache.get(k);
-          const x = c?.x ?? (Math.random() - 0.5) * 8;
-          const y = c?.y ?? (Math.random() - 0.5) * 8;
+          const x = c?.x ?? (spawnCenter?.x ?? 0) + (Math.random() - 0.5) * 8;
+          const y = c?.y ?? (spawnCenter?.y ?? 0) + (Math.random() - 0.5) * 8;
           nodeMap.set(k, { key: k, label, kind: 'concept', x, y, vx: 0, vy: 0, degree: 0 });
         }
         continue;
@@ -168,8 +181,8 @@
           existing.label = st.o.value;
         } else if (st.s.kind === 'iri') {
           const c = nodePositionCache.get(k);
-          const x = c?.x ?? (Math.random() - 0.5) * 8;
-          const y = c?.y ?? (Math.random() - 0.5) * 8;
+          const x = c?.x ?? (spawnCenter?.x ?? 0) + (Math.random() - 0.5) * 8;
+          const y = c?.y ?? (spawnCenter?.y ?? 0) + (Math.random() - 0.5) * 8;
           nodeMap.set(k, { key: k, label: st.o.value, kind: 'concept', x, y, vx: 0, vy: 0, degree: 0 });
         }
         continue;
@@ -183,8 +196,8 @@
             : isLiteral ? (term.value.length > 48 ? term.value.slice(0, 45) + '...' : term.value)
             : `_:${term.value}`;
           const c = nodePositionCache.get(k);
-          const x = c?.x ?? (Math.random() - 0.5) * 8;
-          const y = c?.y ?? (Math.random() - 0.5) * 8;
+          const x = c?.x ?? (spawnCenter?.x ?? 0) + (Math.random() - 0.5) * 8;
+          const y = c?.y ?? (spawnCenter?.y ?? 0) + (Math.random() - 0.5) * 8;
           nodeMap.set(k, { key: k, label, kind: isIRI(term) ? 'concept' : 'literal', x, y, vx: 0, vy: 0, degree: 0, fullText: fullVal });
         }
       }
@@ -210,8 +223,8 @@
     for (const src of sources as any[]) {
       const srcKey = `src:${src.id}`;
       const c = nodePositionCache.get(srcKey);
-      const x = c?.x ?? (Math.random() - 0.5) * 12;
-      const y = c?.y ?? (Math.random() - 0.5) * 12;
+      const x = c?.x ?? (spawnCenter?.x ?? 0) + (Math.random() - 0.5) * 12;
+      const y = c?.y ?? (spawnCenter?.y ?? 0) + (Math.random() - 0.5) * 12;
       nodeMap.set(srcKey, { key: srcKey, label: src.title ?? src.id, kind: 'concept', x, y, vx: 0, vy: 0, degree: 0 });
     }
     // One edge per unique (entity, source) pair
@@ -659,6 +672,52 @@
   // Cached viewport rect — updated once per tick to avoid repeated layout queries
   let _rect = { left: 0, top: 0, width: 0, height: 0 };
 
+  // ── Ghost graph + camera fly (leap transition) ──────────────────────────────
+  const GHOST_OFFSET = 35;  // world units from anchor to ghost cluster center
+  const GHOST_SPREAD = 8;   // radius of ghost node layout
+
+  type FlyAnim = {
+    startTime: number; duration: number;
+    sx: number; sy: number; ss: number; // start cam
+    tx: number; ty: number; ts: number; // target cam
+  };
+  let flyAnim: FlyAnim | null = null;
+  let flyProgress = 0; // 0–1, exposed for ghost alpha ramp
+
+  // Ghost fade-in: ramps 0→1 over time when ghost becomes visible
+  let ghostFade = 0;       // current fade progress (0–1)
+  let ghostFadeTarget = 0; // 1 when ghost should be visible, 0 when hidden
+  const GHOST_FADE_SPEED = 0.6; // per second — takes ~1.7s to fully appear
+
+  function cubicInOut(t: number): number {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
+  // React to ghost graph appearing/disappearing
+  $effect(() => {
+    ghostFadeTarget = (ghostGraph && ghostAnchorKey) ? 1 : 0;
+    if (ghostFadeTarget === 0) ghostFade = 0; // reset immediately on hide
+  });
+
+  /** World-space center the camera last flew to — used to seed new node positions after data swap. */
+  let flyCenterWorld: { x: number; y: number } | null = null;
+
+  $effect(() => {
+    if (!flyToGhost || !ghostGraph || !ghostAnchorKey) return;
+    const anchor = nodes.find(n => n.key === ghostAnchorKey);
+    if (!anchor) return;
+    const gx = anchor.x + GHOST_OFFSET;
+    const gy = anchor.y;
+    flyCenterWorld = { x: gx, y: gy };
+    const targetScale = camScale * 1.2;
+    flyAnim = {
+      startTime: performance.now(),
+      duration: 1800, // longer, smoother slide
+      sx: camX, sy: camY, ss: camScale,
+      tx: -gx * targetScale, ty: -gy * targetScale, ts: targetScale,
+    };
+  });
+
   function worldToScreen(wx: number, wy: number): { x: number; y: number } {
     // Returns viewport (fixed-position) coordinates using cached rect
     return {
@@ -702,6 +761,15 @@
         ctx2d.moveTo(cx,          cy - h3);
         ctx2d.lineTo(cx + r,      cy + h3 * 0.55);
         ctx2d.lineTo(cx - r,      cy + h3 * 0.55);
+        ctx2d.closePath();
+        break;
+      }
+      case 'tetrahedron-inv': {
+        // Inverted triangle (pyramid pointing down) — knowledge base
+        const h4 = r * 1.15;
+        ctx2d.moveTo(cx,          cy + h4);
+        ctx2d.lineTo(cx + r,      cy - h4 * 0.55);
+        ctx2d.lineTo(cx - r,      cy - h4 * 0.55);
         ctx2d.closePath();
         break;
       }
@@ -798,38 +866,53 @@
       ctx2d.stroke();
     }
 
-    // Ghost graph preview — transparent overlay of target KB
-    if (ghostGraph && ghostAnchorKey) {
+    // Ghost graph preview — target KB rendered in the distance, fades in smoothly
+    if (ghostGraph && ghostAnchorKey && ghostFade > 0.01) {
       const anchor = nodes.find(n => n.key === ghostAnchorKey);
       if (anchor) {
         const gNodes = ghostGraph.nodes;
         const gEdges = ghostGraph.edges;
         const ghostR = 0.35 / camScale * 40 * 0.1;
-        const GHOST_ALPHA = 0.18;
-        const GHOST_RADIUS = 8; // world units spread radius
 
-        // Position ghost nodes in a radial layout around the anchor
+        // ghostFade (0→1) controls overall visibility; ramps slowly on appear, fast during fly
+        const GA = ghostFade * 0.7; // max alpha 0.7 at full fade
+
+        // Ghost cluster center — offset far from the anchor
+        const gcx = anchor.x + GHOST_OFFSET;
+        const gcy = anchor.y;
+
+        // Long connecting edge from anchor to ghost cluster
+        ctx2d.save();
+        ctx2d.beginPath();
+        ctx2d.moveTo(anchor.x, anchor.y);
+        ctx2d.lineTo(gcx, gcy);
+        ctx2d.strokeStyle = '#f59e0b';
+        ctx2d.lineWidth = 0.05 / camScale * 40;
+        ctx2d.setLineDash([0.6, 0.4]);
+        ctx2d.globalAlpha = GA * 0.5;
+        ctx2d.stroke();
+        ctx2d.restore();
+
+        // Position ghost nodes in a radial layout around the ghost center
         const ghostPositions = new Map<string, { x: number; y: number }>();
-        // Find hubs for inner ring, others for outer ring
         const hubs = gNodes.filter((gn: GhostNode) => gn.isHub);
         const others = gNodes.filter((gn: GhostNode) => !gn.isHub);
 
-        // Inner ring: hubs
         for (let gi = 0; gi < hubs.length; gi++) {
           const theta = (2 * Math.PI * gi) / Math.max(hubs.length, 1) - Math.PI / 2;
-          const r2 = GHOST_RADIUS * 0.5;
-          ghostPositions.set(hubs[gi].iri, { x: anchor.x + r2 * Math.cos(theta), y: anchor.y + r2 * Math.sin(theta) });
+          const r2 = GHOST_SPREAD * 0.5;
+          ghostPositions.set(hubs[gi].iri, { x: gcx + r2 * Math.cos(theta), y: gcy + r2 * Math.sin(theta) });
         }
 
-        // Outer ring: remaining nodes
         for (let gi = 0; gi < others.length; gi++) {
           const theta = (2 * Math.PI * gi) / Math.max(others.length, 1) - Math.PI / 2;
-          const r2 = GHOST_RADIUS;
-          ghostPositions.set(others[gi].iri, { x: anchor.x + r2 * Math.cos(theta), y: anchor.y + r2 * Math.sin(theta) });
+          ghostPositions.set(others[gi].iri, { x: gcx + GHOST_SPREAD * Math.cos(theta), y: gcy + GHOST_SPREAD * Math.sin(theta) });
         }
 
         // Ghost edges
-        ctx2d.globalAlpha = GHOST_ALPHA * 0.5;
+        ctx2d.globalAlpha = GA * 0.4;
+        ctx2d.strokeStyle = '#f59e0b';
+        ctx2d.lineWidth = 0.02 / camScale * 40;
         for (const ge of gEdges) {
           const sp = ghostPositions.get(ge.source);
           const tp = ghostPositions.get(ge.target);
@@ -837,42 +920,46 @@
           ctx2d.beginPath();
           ctx2d.moveTo(sp.x, sp.y);
           ctx2d.lineTo(tp.x, tp.y);
-          ctx2d.strokeStyle = '#f59e0b';
-          ctx2d.lineWidth = 0.02 / camScale * 40;
           ctx2d.stroke();
         }
 
-        // Ghost nodes
+        // Ghost nodes — hubs larger + brighter
         for (const g of gNodes) {
           const pos = ghostPositions.get(g.iri);
           if (!pos) continue;
-          ctx2d.globalAlpha = g.isHub ? GHOST_ALPHA * 1.5 : GHOST_ALPHA;
+          ctx2d.globalAlpha = g.isHub ? GA * 1.3 : GA * 0.8;
           ctx2d.beginPath();
-          ctx2d.arc(pos.x, pos.y, g.isHub ? ghostR * 1.5 : ghostR, 0, Math.PI * 2);
+          ctx2d.arc(pos.x, pos.y, g.isHub ? ghostR * 1.8 : ghostR, 0, Math.PI * 2);
           ctx2d.fillStyle = '#f59e0b';
           ctx2d.fill();
         }
 
-        // Ghost labels (hubs only)
-        ctx2d.globalAlpha = GHOST_ALPHA * 1.2;
-        ctx2d.fillStyle = '#f59e0b';
-        ctx2d.font = `${ghostR * 1.8}px sans-serif`;
-        ctx2d.textAlign = 'center';
-        ctx2d.textBaseline = 'top';
-        for (const g of hubs) {
-          const pos = ghostPositions.get(g.iri);
-          if (!pos) continue;
-          const label = g.label.length > 20 ? g.label.slice(0, 18) + '...' : g.label;
-          ctx2d.fillText(label, pos.x, pos.y + ghostR * 2);
+        // Ghost labels (hubs only — appear after ghost is ~40% faded in)
+        if (ghostFade > 0.4) {
+          const labelAlpha = (ghostFade - 0.4) / 0.6; // 0→1 from 40%→100% fade
+          ctx2d.globalAlpha = labelAlpha * 0.6;
+          ctx2d.fillStyle = '#f59e0b';
+          ctx2d.font = `${ghostR * 2}px sans-serif`;
+          ctx2d.textAlign = 'center';
+          ctx2d.textBaseline = 'top';
+          for (const g of hubs) {
+            const pos = ghostPositions.get(g.iri);
+            if (!pos) continue;
+            const label = g.label.length > 20 ? g.label.slice(0, 18) + '...' : g.label;
+            ctx2d.fillText(label, pos.x, pos.y + ghostR * 2.5);
+          }
         }
 
-        // Entity count badge
-        ctx2d.globalAlpha = GHOST_ALPHA * 2;
-        ctx2d.fillStyle = '#f59e0b';
-        ctx2d.font = `bold ${ghostR * 2.5}px sans-serif`;
-        ctx2d.textAlign = 'center';
-        ctx2d.textBaseline = 'bottom';
-        ctx2d.fillText(`${ghostGraph.totalEntities} entities`, anchor.x, anchor.y + GHOST_RADIUS + ghostR * 4);
+        // Entity count badge at ghost center (appears after ~30% fade)
+        if (ghostFade > 0.3) {
+          const badgeAlpha = (ghostFade - 0.3) / 0.7;
+          ctx2d.globalAlpha = badgeAlpha * 0.5;
+          ctx2d.fillStyle = '#f59e0b';
+          ctx2d.font = `bold ${ghostR * 2.5}px sans-serif`;
+          ctx2d.textAlign = 'center';
+          ctx2d.textBaseline = 'bottom';
+          ctx2d.fillText(`${ghostGraph.totalEntities} entities`, gcx, gcy + GHOST_SPREAD + ghostR * 4);
+        }
 
         ctx2d.globalAlpha = baseAlpha;
       }
@@ -977,7 +1064,30 @@
     const dt = Math.min((time - lastTime) / 1000, 0.05);
     lastTime = time;
 
+    // Ghost fade-in animation (smooth appearance over time)
+    if (ghostFade < ghostFadeTarget) {
+      ghostFade = Math.min(ghostFadeTarget, ghostFade + dt * GHOST_FADE_SPEED);
+    }
+
+    // Camera fly animation — skip physics during flight
+    if (flyAnim) {
+      const t = Math.min(1, (time - flyAnim.startTime) / flyAnim.duration);
+      const e = cubicInOut(t);
+      flyProgress = t;
+      camX     = flyAnim.sx + (flyAnim.tx - flyAnim.sx) * e;
+      camY     = flyAnim.sy + (flyAnim.ty - flyAnim.sy) * e;
+      camScale = flyAnim.ss + (flyAnim.ts - flyAnim.ss) * e;
+      // Accelerate ghost to full opacity during fly
+      ghostFade = Math.min(1, ghostFade + dt * 2.5);
+      if (t >= 1) {
+        flyAnim = null;
+        onflyend();
+      }
+    }
+
     // Physics — tuned for 2D (fewer DOF than 3D, needs stronger damping + wider spacing)
+    // Freeze physics during camera fly animation to prevent drift
+    if (!flyAnim) {
     const REPEL     = 2.2;
     const SPRING    = layout === 'force' ? 0.15 : 0.08;
     const CENTER    = activeAnchors.size > 0 ? 0.008 : 0.04;
@@ -1016,6 +1126,7 @@
       n.x += n.vx; n.y += n.vy;
       nodePositionCache.set(n.key, { x: n.x, y: n.y });
     }
+    } // end if (!flyAnim) — physics freeze
 
     const el = canvasEl;
     if (el) {

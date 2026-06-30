@@ -23,7 +23,7 @@
 @prefix nav: <urn:reckons:docs/nav/> .
 
 nav:BackToHub
-    rdf:type            ktype:Document ;
+    rdf:type            ktype:KnowledgeBase ;
     rdfs:label          "Back to Documentation Hub" ;
     skos:definition     "Return to the main documentation hub with all leap nodes and the Reckons.AI story." ;
     <urn:reckons:leap>          "a1b2c3d4-e5f6-4a00-b000-000000000000" ;
@@ -108,6 +108,14 @@ int:NemoSpeech
     skos:broader        int:Integrations ;
     skos:related        int:WhisperSTT ;
     skos:related        int:KokoroTTS .
+
+int:Cosmos3Nano
+    rdf:type            ktype:Tool ;
+    rdfs:label          "NVIDIA Cosmos3-Nano (Speculative)" ;
+    skos:definition     "16B-parameter omnimodal world foundation model for Physical AI by NVIDIA. Generates and reasons over video, images, audio, and robot actions. OpenMDW 1.1 licence (commercial use). Requires NVIDIA GPU (Ampere/Hopper/Blackwell) with BF16 precision, Linux only. Potential uses: generate preview animations from entity descriptions, multimodal KB ingest (video/image/audio sources), 3D scene understanding. Shares NVIDIA GPU sidecar infrastructure with NeMo Speech." ;
+    skos:broader        int:Integrations ;
+    skos:related        int:NemoSpeech ;
+    skos:related        int:Meshy3D .
 
 int:Meshy3D
     rdf:type            ktype:Tool ;

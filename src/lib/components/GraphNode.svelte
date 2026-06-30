@@ -211,7 +211,8 @@
 
 <T.Mesh bind:ref={meshRef} scale={gltfScene ? 0.001 : scale} {onclick}
   onpointerenter={() => onhover(node.key)}
-  onpointerleave={() => onhover(null)}>
+  onpointerleave={() => onhover(null)}
+  rotation.x={geometry === 'tetrahedron-inv' ? Math.PI : 0}>
   {#if geometry === 'sphere'}
     <T.SphereGeometry args={geoArgs} />
   {:else if geometry === 'icosahedron'}
@@ -231,6 +232,8 @@
   {:else if geometry === 'octahedron'}
     <T.OctahedronGeometry args={geoArgs} />
   {:else if geometry === 'tetrahedron'}
+    <T.TetrahedronGeometry args={geoArgs} />
+  {:else if geometry === 'tetrahedron-inv'}
     <T.TetrahedronGeometry args={geoArgs} />
   {:else if geometry === 'dodecahedron'}
     <T.DodecahedronGeometry args={geoArgs} />

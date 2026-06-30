@@ -104,6 +104,9 @@ export async function parseGhostGraph(ttlText: string): Promise<GhostGraph> {
 // Simple in-memory cache to avoid re-parsing on hover
 const ghostCache = new Map<string, GhostGraph>();
 
+/** Clear the ghost graph cache (e.g. after TTL files are updated). */
+export function clearGhostCache() { ghostCache.clear(); }
+
 /** Fetch and parse a ghost graph, with caching. */
 export async function fetchGhostGraph(filePath: string): Promise<GhostGraph> {
   const cached = ghostCache.get(filePath);

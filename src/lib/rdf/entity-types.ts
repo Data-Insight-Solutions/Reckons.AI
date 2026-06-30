@@ -21,7 +21,8 @@ export type GeometryName =
   | 'icosahedron'
   | 'capsule'
   | 'torus'
-  | 'torus-knot';
+  | 'torus-knot'
+  | 'tetrahedron-inv';
 
 export type EntityTypeDef = {
   iri: string;
@@ -182,6 +183,21 @@ export const BUILT_IN_TYPES: EntityTypeDef[] = [
       'urn:kbase:predicate/created-by'
     ],
     builtIn: true
+  },
+  {
+    iri: 'urn:kbase:type/KnowledgeBase',
+    label: 'Knowledge Base',
+    geometry: 'tetrahedron-inv',
+    color: '#f59e0b',
+    description: 'A knowledge base — a collection of structured triples',
+    icon2d: '🔻',
+    schemaPredicates: [
+      'urn:kbase:predicate/description',
+      'urn:kbase:predicate/url',
+      'urn:reckons:meta/kbStableId',
+      'urn:reckons:leap'
+    ],
+    builtIn: true
   }
 ];
 
@@ -212,6 +228,7 @@ export const GEOMETRY_ARGS: Record<GeometryName, number[]> = {
   capsule:      [0.20, 0.65, 4, 8],        // pill/elongated — humanoid person shape
   torus:        [0.36, 0.14, 6, 14],       // ring with clear hole — event loop
   'torus-knot': [0.24, 0.08, 80, 8, 2, 3], // knotted loop — complex tool
+  'tetrahedron-inv': [0.52],               // inverted 4-face pyramid — knowledge base
 };
 
 /** Fallback definition for unknown/custom types (nodes with no rdf:type). */

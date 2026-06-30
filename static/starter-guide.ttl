@@ -132,7 +132,7 @@ guide:HumanInTheLoop
 ## horizontal small-world traversal between sibling sub-KBs at the same layer.
 
 leap:TriplesAndRDF
-    rdf:type            ktype:Document ;
+    rdf:type            ktype:KnowledgeBase ;
     rdfs:label          "LEAP: Triples & RDF Deep Dive" ;
     skos:definition     "Click to explore the semantic triple architecture, Turtle syntax, RDF standards (RDFS, SKOS, SPARQL, JSON-LD, PROV-O), and knowledge graph fundamentals." ;
     skos:broader        guide:WhatIsReckonsAI ;
@@ -143,7 +143,7 @@ leap:TriplesAndRDF
     <urn:reckons:leap/label>    "Triples, Turtle & RDF Standards" .
 
 leap:LanguageModels
-    rdf:type            ktype:Document ;
+    rdf:type            ktype:KnowledgeBase ;
     rdfs:label          "LEAP: Language Models" ;
     skos:definition     "Click to learn what LLMs actually are, why they hallucinate, how RAG works, and why your curated KB makes AI dramatically more accurate." ;
     skos:broader        guide:WhatIsReckonsAI ;
@@ -155,7 +155,7 @@ leap:LanguageModels
     <urn:reckons:leap/label>    "Language Models & RAG" .
 
 leap:UseCases
-    rdf:type            ktype:Document ;
+    rdf:type            ktype:KnowledgeBase ;
     rdfs:label          "LEAP: Use Cases" ;
     skos:definition     "Click to explore real-world scenarios: insurance claims, legal disputes, employment rights, medical records, corporate pushback, and research." ;
     skos:broader        guide:WhatIsReckonsAI ;
@@ -167,7 +167,7 @@ leap:UseCases
     <urn:reckons:leap/label>    "Real-World Use Cases" .
 
 leap:Features
-    rdf:type            ktype:Document ;
+    rdf:type            ktype:KnowledgeBase ;
     rdfs:label          "LEAP: Features" ;
     skos:definition     "Click for detailed coverage of every feature: Ingest, Review, Trust, Graph, Shelly, Reckonings, Compare, Multi-KB, KB Leap, Content Safety, Predicate Manager, Whisper STT, Kokoro TTS, and more." ;
     skos:broader        guide:WhatIsReckonsAI ;
@@ -179,7 +179,7 @@ leap:Features
     <urn:reckons:leap/label>    "All Features" .
 
 leap:IntegrationsTech
-    rdf:type            ktype:Document ;
+    rdf:type            ktype:KnowledgeBase ;
     rdfs:label          "LEAP: Integrations & Tech" ;
     skos:definition     "Click for integrations (Calendar, MCP, Extension, Whisper, Kokoro, OCR, Firecrawl, Meshy 3D) and the technology stack (SvelteKit 2, Threlte 8, N3.js, @huggingface/transformers, Dexie)." ;
     skos:broader        guide:WhatIsReckonsAI ;
@@ -191,7 +191,7 @@ leap:IntegrationsTech
     <urn:reckons:leap/label>    "Integrations & Technology" .
 
 leap:TipsSecurity
-    rdf:type            ktype:Document ;
+    rdf:type            ktype:KnowledgeBase ;
     rdfs:label          "LEAP: Tips & Security" ;
     skos:definition     "Click for practical tips (start small, review carefully, export often, use Ollama offline) and the security architecture (no server, API key safety, content safety, CSP, offline-capable)." ;
     skos:broader        guide:WhatIsReckonsAI ;
@@ -203,7 +203,7 @@ leap:TipsSecurity
     <urn:reckons:leap/label>    "Tips, Tricks & Security" .
 
 leap:TimelineEcosystem
-    rdf:type            ktype:Document ;
+    rdf:type            ktype:KnowledgeBase ;
     rdfs:label          "LEAP: Timeline & RDF Ecosystem" ;
     skos:definition     "Click for the RDF timeline from 1999 to 2026, key organizations (W3C, AI Alliance, Schema.org), people (Tim Berners-Lee), and the Reckons.AI launch." ;
     skos:broader        guide:WhatIsReckonsAI ;
@@ -215,7 +215,7 @@ leap:TimelineEcosystem
     <urn:reckons:leap/label>    "Timeline & RDF Ecosystem" .
 
 leap:Architecture
-    rdf:type            ktype:Document ;
+    rdf:type            ktype:KnowledgeBase ;
     rdfs:label          "LEAP: Architecture & Design" ;
     skos:definition     "Click for architecture decisions, TTL-first documentation strategy, standards alignment (PROV-O, SKOS), deployment patterns, style conventions, dependency health, and the markdown migration tracker." ;
     skos:broader        guide:WhatIsReckonsAI ;
@@ -227,7 +227,7 @@ leap:Architecture
     <urn:reckons:leap/label>    "Architecture & Design Decisions" .
 
 leap:Testing
-    rdf:type            ktype:Document ;
+    rdf:type            ktype:KnowledgeBase ;
     rdfs:label          "LEAP: Test Suite & Visual Regression" ;
     skos:definition     "Click for test documentation as interactive stories. Walk through user story E2E tests step-by-step with screenshots attached to each node. Covers Dev Sprint Planning, User Docs Import, Cross-KB Alignment, and page-level visual regression." ;
     skos:broader        guide:WhatIsReckonsAI ;

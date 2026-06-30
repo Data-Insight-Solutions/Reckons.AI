@@ -59,6 +59,11 @@
       case 'icosahedron':  return new THREE.IcosahedronGeometry(a[0], a[1]);
       case 'octahedron':   return new THREE.OctahedronGeometry(a[0], a[1] ?? 0);
       case 'tetrahedron':  return new THREE.TetrahedronGeometry(a[0], a[1] ?? 0);
+      case 'tetrahedron-inv': {
+        const g = new THREE.TetrahedronGeometry(a[0], 0);
+        g.rotateX(Math.PI);
+        return g;
+      }
       case 'dodecahedron': return new THREE.DodecahedronGeometry(a[0], a[1] ?? 0);
       case 'box':
       case 'box-flat':     return new THREE.BoxGeometry(a[0], a[1], a[2]);

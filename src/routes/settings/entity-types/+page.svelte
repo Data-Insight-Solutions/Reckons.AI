@@ -3,7 +3,8 @@
     allTypes,
     createCustomType,
     deleteCustomType,
-    updateTypeIcons
+    updateTypeIcons,
+    updateTypeColor
   } from '$lib/stores/entity-types.svelte';
   import { setGlb, clearGlb } from '$lib/stores/glb-overrides.svelte';
   import { BUILT_IN_TYPES, type GeometryName, type EntityTypeDef } from '$lib/rdf/entity-types';
@@ -24,6 +25,7 @@
     { name: 'capsule',      icon: '⊕',  label: 'capsule'     },
     { name: 'torus',        icon: '○',  label: 'torus/ring'  },
     { name: 'torus-knot',   icon: '✦',  label: 'torus-knot'  },
+    { name: 'tetrahedron-inv', icon: '🔻', label: 'inv pyramid' },
   ];
 
   // ── new type form ──────────────────────────────────────────────────────────
@@ -63,6 +65,15 @@
   }
 
   const customTypes = $derived(allTypes().filter((t) => !t.builtIn));
+
+  // ── color editing ─────────────────────────────────────────────────────────
+  let editingColor: Record<string, string> = $state({});
+
+  async function saveColor(t: EntityTypeDef) {
+    const c = editingColor[t.iri];
+    if (c && c !== t.color) await updateTypeColor(t.iri, c);
+    delete editingColor[t.iri];
+  }
 
   // ── icon editing ──────────────────────────────────────────────────────────
   // Inline edit state keyed by type IRI
@@ -160,7 +171,14 @@
   <div class="type-grid">
     {#each allTypes().filter(t => t.builtIn) as t}
       <div class="type-row">
-        <div class="swatch" style="background: {t.color}"></div>
+        {#if editingColor[t.iri] !== undefined}
+          <input type="color" class="swatch-edit" bind:value={editingColor[t.iri]}
+            onchange={() => saveColor(t)} />
+        {:else}
+          <button class="swatch swatch-btn" style="background: {t.color}"
+            title="click to change color"
+            onclick={() => { editingColor[t.iri] = t.color; }}></button>
+        {/if}
         <div class="info">
           <span class="label">{t.label}</span>
           <span class="geo mono">{GEOMETRIES.find(g => g.name === t.geometry)?.icon ?? '?'} {t.geometry}</span>
@@ -292,7 +310,14 @@
     <div class="type-grid">
       {#each customTypes as t}
         <div class="type-row">
-          <div class="swatch" style="background: {t.color}"></div>
+          {#if editingColor[t.iri] !== undefined}
+            <input type="color" class="swatch-edit" bind:value={editingColor[t.iri]}
+              onchange={() => saveColor(t)} />
+          {:else}
+            <button class="swatch swatch-btn" style="background: {t.color}"
+              title="click to change color"
+              onclick={() => { editingColor[t.iri] = t.color; }}></button>
+          {/if}
           <div class="info">
             <span class="label">{t.label}</span>
             <span class="geo mono">{t.geometry}</span>
@@ -399,6 +424,22 @@
     border-radius: 50%;
     margin-top: 0.15rem;
     flex-shrink: 0;
+  }
+  .swatch-btn {
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: border-color 0.12s;
+    padding: 0;
+  }
+  .swatch-btn:hover { border-color: var(--accent); }
+  .swatch-edit {
+    width: 1.4rem;
+    height: 1.4rem;
+    padding: 0;
+    border: none;
+    cursor: pointer;
+    border-radius: 50%;
+    margin-top: 0.05rem;
   }
   .info { display: flex; align-items: baseline; gap: 0.5rem; }
   .label { font-weight: 600; font-size: 0.95rem; }

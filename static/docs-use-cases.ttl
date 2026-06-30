@@ -23,7 +23,7 @@
 @prefix nav: <urn:reckons:docs/nav/> .
 
 nav:BackToHub
-    rdf:type            ktype:Document ;
+    rdf:type            ktype:KnowledgeBase ;
     rdfs:label          "Back to Documentation Hub" ;
     skos:definition     "Return to the main documentation hub with all leap nodes and the Reckons.AI story." ;
     <urn:reckons:leap>          "a1b2c3d4-e5f6-4a00-b000-000000000000" ;

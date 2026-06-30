@@ -270,6 +270,14 @@ kb:nemo-speech rdf:type     ktype:Feature ;
                kpred:open-question "Sidecar architecture: Docker Compose, standalone FastAPI, or Ollama-style model runner? Need /transcribe and /synthesize HTTP endpoints matching existing provider pattern." ;
                kpred:open-question "Dev setup: separate repo or monorepo subfolder like mcp-server/? Python 3.12+ with uv for dependency management." .
 
+kb:cosmos-nano rdf:type     ktype:Feature ;
+               rdfs:label   "NVIDIA Cosmos3-Nano" ;
+               kpred:has-status   "speculative" ;
+               kpred:description  "16B-parameter omnimodal world foundation model for Physical AI. Generates and reasons over video, images, audio, and robot actions. OpenMDW 1.1 licence (commercial use). Requires NVIDIA GPU (Ampere/Hopper/Blackwell), BF16 precision, Linux. Potential uses: generate preview animations from entity descriptions, 3D scene understanding for graph visualisation, multimodal KB ingest (video/image/audio sources). Shares NVIDIA GPU sidecar infrastructure with NeMo Speech." ;
+               kpred:depends-on   kb:nemo-speech ;
+               kpred:open-question "Massive resource requirements (16B params, BF16) — viable only for users with high-end NVIDIA GPUs. Evaluate smaller distilled variants when available." ;
+               kpred:open-question "Integration path: same Python sidecar as NeMo Speech? Separate container? Which Cosmos capabilities map to KB workflows (video→triples, entity→animation)?" .
+
 kb:model-cache rdf:type     ktype:Feature ;
                rdfs:label   "Model Cache Management" ;
                kpred:has-status   "production" ;

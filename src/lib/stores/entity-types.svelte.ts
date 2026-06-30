@@ -84,21 +84,35 @@ function applyGlbOverrides(types: EntityTypeDef[]): EntityTypeDef[] {
   });
 }
 
-/** All known types (built-in + custom derived from KB), with editor GLB overrides applied. */
-export function allTypes(): EntityTypeDef[] {
-  const custom = deriveCustomTypes(confirmedStatements());
-  return applyGlbOverrides([...BUILT_IN_TYPES, ...custom]);
+/** Apply KB_COLOR overrides from confirmed statements to built-in types. */
+function applyColorOverrides(types: EntityTypeDef[], stmts: Statement[]): EntityTypeDef[] {
+  const colorMap = new Map<string, string>();
+  for (const s of stmts) {
+    if (s.p.value === KB_COLOR && s.s.kind === 'iri') {
+      colorMap.set(s.s.value, s.o.value);
+    }
+  }
+  if (colorMap.size === 0) return types;
+  return types.map((t) => {
+    const c = colorMap.get(t.iri);
+    return c ? { ...t, color: c } : t;
+  });
 }
 
-/** O(1) IRI lookup map, with editor GLB overrides applied. */
+/** All known types (built-in + custom derived from KB), with editor GLB and color overrides applied. */
+export function allTypes(): EntityTypeDef[] {
+  const stmts = confirmedStatements();
+  const custom = deriveCustomTypes(stmts);
+  return applyGlbOverrides(applyColorOverrides([...BUILT_IN_TYPES, ...custom], stmts));
+}
+
+/** O(1) IRI lookup map, with editor GLB and color overrides applied. */
 export function typeMap(): Map<string, EntityTypeDef> {
-  const custom = deriveCustomTypes(confirmedStatements());
-  const map = buildTypeMap(custom);
-  const overrides = glbOverrides();
-  for (const [iri, url] of overrides) {
-    const existing = map.get(iri);
-    if (existing) map.set(iri, { ...existing, icon3d: url });
-  }
+  const stmts = confirmedStatements();
+  const custom = deriveCustomTypes(stmts);
+  const types = applyGlbOverrides(applyColorOverrides([...BUILT_IN_TYPES, ...custom], stmts));
+  const map = new Map<string, EntityTypeDef>();
+  for (const t of types) map.set(t.iri, t);
   return map;
 }
 
@@ -171,6 +185,32 @@ export async function createCustomType(
 
   await addStatements(stmts);
   return typeIri;
+}
+
+/**
+ * Update the color of any entity type (built-in or custom).
+ * Persists as a confirmed KB_COLOR statement.
+ */
+export async function updateTypeColor(typeIri: string, color: string): Promise<void> {
+  const { updateStatement, addStatements, statements: allStmts } = await import('./kb.svelte');
+  const { v4: uuidFn } = await import('uuid');
+  const now = Date.now();
+  const existing = allStmts().find(
+    (s) => s.s.value === typeIri && s.p.value === KB_COLOR && s.status !== 'rejected' && s.status !== 'superseded'
+  );
+  if (existing) await updateStatement(existing.id, { status: 'superseded' });
+  await addStatements([{
+    id: uuidFn(),
+    s: { kind: 'iri', value: typeIri },
+    p: { kind: 'iri', value: KB_COLOR },
+    o: { kind: 'literal', value: color, datatype: 'http://www.w3.org/2001/XMLSchema#string' },
+    g: { kind: 'iri', value: 'urn:kbase:source/user-defined' },
+    sourceId: 'user-defined',
+    confidence: 1,
+    status: 'confirmed',
+    createdAt: now,
+    updatedAt: now
+  }]);
 }
 
 /**

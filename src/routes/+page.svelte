@@ -17,9 +17,10 @@
     pendingStatements,
     updateStatement,
     addStatements,
-    setStatus
+    setStatus,
+    hotSwapData
   } from '$lib/stores/kb.svelte';
-  import { termKey } from '$lib/rdf/types';
+  import { termKey, type Statement, type Source } from '$lib/rdf/types';
   import MergeReview from '$lib/components/MergeReview.svelte';
   import { allTypes } from '$lib/stores/entity-types.svelte';
   import {
@@ -31,7 +32,7 @@
   import { gifOverrides, setGif, clearGif } from '$lib/stores/gif-overrides.svelte';
   import { icon2dOverrides, setIcon2d, clearIcon2d } from '$lib/stores/icon2d-overrides.svelte';
   import { LEAP_PRED, LEAP_LABEL_PRED, getLeap, leapNodeKeys } from '$lib/rdf/kb-leap';
-  import { findKbByStableId, switchToKb, createKb, registerStableId } from '$lib/storage/kb-registry';
+  import { findKbByStableId, switchToKb, createKb, registerStableId, getCurrentKbId, getRegistry } from '$lib/storage/kb-registry';
 
   // Predicates that are internal KB metadata — never shown as graph edges/nodes
   const GRAPH_EXCLUDED_PREDICATES = new Set([
@@ -880,20 +881,43 @@
       ghostAnchorKey = null;
       return;
     }
+    ghostAnchorKey = sel;
+
+    // Try docs KB first (static TTL file)
     const docsEntry = DOCS_KB_MAP[leap.target];
-    if (!docsEntry) {
-      ghostGraph = null;
-      ghostAnchorKey = null;
+    if (docsEntry) {
+      import('$lib/rdf/ghost-graph').then(({ fetchGhostGraph }) =>
+        fetchGhostGraph(docsEntry.file).then(g => {
+          if (selected === sel) ghostGraph = g;
+        }).catch(() => { ghostGraph = null; })
+      );
       return;
     }
-    // Load ghost graph asynchronously
-    ghostAnchorKey = sel;
-    import('$lib/rdf/ghost-graph').then(({ fetchGhostGraph }) =>
-      fetchGhostGraph(docsEntry.file).then(g => {
-        // Only set if selection hasn't changed
+
+    // Try existing KB in IndexedDB
+    const found = findKbByStableId(leap.target);
+    if (found) {
+      import('$lib/rdf/ghost-graph').then(async ({ parseGhostGraph }) => {
+        const { KBaseDB } = await import('$lib/storage/db');
+        const tempDb = new KBaseDB(found.id);
+        await tempDb.open();
+        const stmts = await tempDb.statements.toArray();
+        tempDb.close();
+        // Build a minimal TTL from statements for the parser
+        const lines = stmts
+          .filter(s => s.status === 'confirmed' || s.status === 'refined')
+          .map(s => {
+            const sv = s.s.kind === 'iri' ? `<${s.s.value}>` : `"${s.s.value}"`;
+            const ov = s.o.kind === 'iri' ? `<${s.o.value}>` : `"${s.o.value.replace(/"/g, '\\"')}"`;
+            return `${sv} <${s.p.value}> ${ov} .`;
+          });
+        const g = await parseGhostGraph(lines.join('\n'));
         if (selected === sel) ghostGraph = g;
-      }).catch(() => { ghostGraph = null; })
-    );
+      }).catch(() => { ghostGraph = null; });
+      return;
+    }
+
+    ghostGraph = null;
   });
 
   async function saveLeap() {
@@ -953,65 +977,158 @@
   };
 
   let leapImporting = $state(false);
+  let flyToGhost = $state(false);
+  /** Data pre-loaded during fly, injected on arrival. */
+  let pendingLeapData: {
+    kbId: string;
+    stmts: Statement[];
+    srcs: Source[];
+    sourceStableId?: string; // the KB we're leaving — used to find the return leap
+  } | null = null;
+
+  /** Called by KnowledgeGraph2D when camera fly animation completes. */
+  function handleFlyEnd() {
+    flyToGhost = false;
+    if (!pendingLeapData) return;
+    const { kbId, stmts, srcs, sourceStableId } = pendingLeapData;
+    pendingLeapData = null;
+    // Hot-swap visual data — no reload, no overlay
+    hotSwapData(stmts, srcs);
+    // Update session so next page load / navigation uses the target KB
+    sessionStorage.setItem('sessionKbId', kbId);
+    localStorage.setItem('currentKbId', kbId);
+
+    // Find and select the return leap node — gives the user orientation and a way back.
+    // Look for any entity in the new KB that has a leap pointing to the source KB's stable ID.
+    if (sourceStableId) {
+      const returnStmt = stmts.find(
+        s => s.p.value === LEAP_PRED && s.o.kind === 'literal' && s.o.value === sourceStableId
+          && (s.status === 'confirmed' || s.status === 'refined')
+      );
+      if (returnStmt && returnStmt.s.kind === 'iri') {
+        selected = `i:${returnStmt.s.value}`;
+        return;
+      }
+    }
+    // Fallback: find any leap node in the new KB as an anchor point
+    const anyLeap = stmts.find(
+      s => s.p.value === LEAP_PRED && (s.status === 'confirmed' || s.status === 'refined')
+    );
+    if (anyLeap && anyLeap.s.kind === 'iri') {
+      selected = `i:${anyLeap.s.value}`;
+    } else {
+      selected = null;
+    }
+  }
+
+  /** Pre-load target KB data and start fly animation (2D), or fall back to direct switch (3D). */
+  async function startLeapTransition(kbId: string, stmts: Statement[], srcs: Source[]) {
+    const currentEntry = getRegistry().find(k => k.id === getCurrentKbId());
+    const sourceStableId = currentEntry?.stableId ?? settings().kbStableId;
+    if ((use2D || !webglAvailable) && ghostGraph) {
+      pendingLeapData = { kbId, stmts, srcs, sourceStableId };
+      flyToGhost = true;
+    } else {
+      // 3D mode or no ghost graph — hot-swap immediately, find return node
+      hotSwapData(stmts, srcs);
+      sessionStorage.setItem('sessionKbId', kbId);
+      localStorage.setItem('currentKbId', kbId);
+      // Select the return leap node if one exists
+      if (sourceStableId) {
+        const ret = stmts.find(s => s.p.value === LEAP_PRED && s.o.kind === 'literal' && s.o.value === sourceStableId
+          && (s.status === 'confirmed' || s.status === 'refined'));
+        selected = ret?.s.kind === 'iri' ? `i:${ret.s.value}` : null;
+      } else {
+        selected = null;
+      }
+    }
+  }
 
   async function jumpToLeap() {
     if (!entityLeap) return;
     if (entityLeap.kind === 'url') {
       window.open(entityLeap.target, '_blank', 'noopener');
-    } else if (entityLeap.kind === 'app') {
+      return;
+    }
+    if (entityLeap.kind === 'app') {
       goto(entityLeap.target);
-    } else {
-      // KB stable ID — find and switch
-      const found = findKbByStableId(entityLeap.target);
-      if (found) {
+      return;
+    }
+
+    // KB leap — load target data and transition
+    const docsEntry = DOCS_KB_MAP[entityLeap.target];
+    const found = findKbByStableId(entityLeap.target);
+    if (found && !docsEntry) {
+      // Existing user KB in IndexedDB — read its data
+      try {
+        const { KBaseDB } = await import('$lib/storage/db');
+        const tempDb = new KBaseDB(found.id);
+        await tempDb.open();
+        const [stmts, srcs] = await Promise.all([
+          tempDb.statements.toArray(),
+          tempDb.sources.orderBy('ingestedAt').reverse().toArray(),
+        ]);
+        tempDb.close();
+        await startLeapTransition(found.id, stmts, srcs);
+      } catch (e) {
+        // Fallback to reload
         switchToKb(found.id);
-        return;
       }
-      // Auto-import known docs sub-graphs
-      const docsEntry = DOCS_KB_MAP[entityLeap.target];
-      if (docsEntry) {
-        leapImporting = true;
-        try {
-          const resp = await fetch(docsEntry.file);
-          if (!resp.ok) throw new Error(`Failed to fetch ${docsEntry.file}`);
-          const ttlText = await resp.text();
-          const { importTurtleFull } = await import('$lib/rdf/import-ttl');
-          const { KBaseDB, DEFAULT_SETTINGS } = await import('$lib/storage/db');
-          const { v4: uuidv4 } = await import('uuid');
+      return;
+    }
 
-          const { statements: rawStmts } = await importTurtleFull(ttlText);
-          const newKb = createKb(docsEntry.name);
-          const tempDb = new KBaseDB(newKb.id);
-          await tempDb.open();
-          await tempDb.settings.put({ ...DEFAULT_SETTINGS, kbTitle: docsEntry.name, kbStableId: entityLeap.target });
+    // Auto-import known docs sub-graphs (always fetch fresh TTL)
+    if (docsEntry) {
+      leapImporting = true;
+      try {
+        const resp = await fetch(docsEntry.file);
+        if (!resp.ok) throw new Error(`Failed to fetch ${docsEntry.file}`);
+        const ttlText = await resp.text();
+        const { importTurtleFull } = await import('$lib/rdf/import-ttl');
+        const { KBaseDB, DEFAULT_SETTINGS } = await import('$lib/storage/db');
+        const { v4: uuidv4 } = await import('uuid');
 
-          const now = Date.now();
-          const sourceId = uuidv4();
-          await tempDb.sources.put({
-            id: sourceId, title: docsEntry.name,
-            uri: `file://${docsEntry.file}`, kind: 'document',
-            trustLevel: 'trusted', ingestedAt: now,
-          });
-
-          const stmts = rawStmts
-            .filter(s => s.status === 'confirmed' || s.status === 'refined' || s.status === 'pending')
-            .map(s => ({
-              ...s, id: uuidv4(), sourceId,
-              g: { kind: 'iri' as const, value: `urn:kbase:source/${sourceId}` },
-              status: 'confirmed' as const, createdAt: now, updatedAt: now,
-            }));
-          await tempDb.statements.bulkPut(stmts);
-          registerStableId(newKb.id, entityLeap.target, stmts.length);
-          tempDb.close();
-          switchToKb(newKb.id);
-        } catch (e) {
-          alert(`Failed to import docs KB: ${e instanceof Error ? e.message : String(e)}`);
-        } finally {
-          leapImporting = false;
+        const { statements: rawStmts } = await importTurtleFull(ttlText);
+        // Reuse existing KB entry or create new one
+        const kbEntry = found ?? createKb(docsEntry.name);
+        const tempDb = new KBaseDB(kbEntry.id);
+        await tempDb.open();
+        await tempDb.settings.put({ ...DEFAULT_SETTINGS, kbTitle: docsEntry.name, kbStableId: entityLeap.target });
+        // Clear old data for docs KBs (always use fresh TTL)
+        if (found) {
+          await tempDb.statements.clear();
+          await tempDb.sources.clear();
         }
-      } else {
-        alert(`KB not found on this device.\n\nStable ID: ${entityLeap.target.slice(0, 8).toUpperCase()}\n\nImport the target KB's .ttl file as a new KB first\n(Ingest page → upload file → "as new KB" button).`);
+
+        const now = Date.now();
+        const sourceId = uuidv4();
+        const src: Source = {
+          id: sourceId, title: docsEntry.name,
+          uri: `file://${docsEntry.file}`, kind: 'document',
+          trustLevel: 'trusted', ingestedAt: now,
+        };
+        await tempDb.sources.put(src);
+
+        const stmts = rawStmts
+          .filter(s => s.status === 'confirmed' || s.status === 'refined' || s.status === 'pending')
+          .map(s => ({
+            ...s, id: uuidv4(), sourceId,
+            g: { kind: 'iri' as const, value: `urn:kbase:source/${sourceId}` },
+            status: 'confirmed' as const, createdAt: now, updatedAt: now,
+          }));
+        await tempDb.statements.bulkPut(stmts);
+        registerStableId(kbEntry.id, entityLeap.target, stmts.length);
+        tempDb.close();
+        await startLeapTransition(kbEntry.id, stmts, [src]);
+      } catch (e) {
+        alert(`Failed to import docs KB: ${e instanceof Error ? e.message : String(e)}`);
+        flyToGhost = false;
+        pendingLeapData = null;
+      } finally {
+        leapImporting = false;
       }
+    } else {
+      alert(`KB not found on this device.\n\nStable ID: ${entityLeap.target.slice(0, 8).toUpperCase()}\n\nImport the target KB's .ttl file as a new KB first\n(Ingest page → upload file → "as new KB" button).`);
     }
   }
 
@@ -1265,6 +1382,8 @@
       {dimMode}
       {ghostGraph}
       {ghostAnchorKey}
+      {flyToGhost}
+      onflyend={handleFlyEnd}
     />
   {:else}
     <svelte:boundary>
@@ -1559,7 +1678,7 @@
       <button
         class="leap-badge mono"
         onclick={jumpToLeap}
-        disabled={leapImporting}
+        disabled={leapImporting || flyToGhost}
         title={entityLeap.kind === 'url' ? 'Open in new tab' : entityLeap.kind === 'app' ? 'Navigate' : `Jump to ${entityLeap.label ?? 'target KB'}`}
         transition:fade={{ duration: 150 }}
       >
@@ -1980,10 +2099,10 @@
         <p class="np-conn-title mono" style="margin-top: 0.5rem;">kb leap</p>
         {#if entityLeap}
           <div class="link-row">
-            <button class="leap-jump mono" onclick={jumpToLeap} disabled={leapImporting} title={entityLeap.kind === 'url' ? 'open in new tab' : entityLeap.kind === 'app' ? 'navigate' : 'jump to target KB'}>
-              {leapImporting ? '...' : entityLeap.kind === 'url' ? '↗' : '⟶'}
+            <button class="leap-jump mono" onclick={jumpToLeap} disabled={leapImporting || flyToGhost} title={entityLeap.kind === 'url' ? 'open in new tab' : entityLeap.kind === 'app' ? 'navigate' : 'jump to target KB'}>
+              {leapImporting || flyToGhost ? '...' : entityLeap.kind === 'url' ? '↗' : '⟶'}
             </button>
-            <button class="leap-id mono" title={`${entityLeap.target}\nClick to navigate`} onclick={jumpToLeap} disabled={leapImporting}>
+            <button class="leap-id mono" title={`${entityLeap.target}\nClick to navigate`} onclick={jumpToLeap} disabled={leapImporting || flyToGhost}>
               {entityLeap.label ?? (entityLeap.kind === 'kb' ? entityLeap.target.slice(0, 8).toUpperCase() : entityLeap.target)}
             </button>
             <button class="link-rm" onclick={() => navigator.clipboard.writeText(entityLeap!.target)} title="copy target">⎘</button>
@@ -2955,6 +3074,7 @@
     border-radius: var(--rad-sm);
     cursor: pointer;
     white-space: nowrap;
+    pointer-events: auto;
     transform: translateX(-50%);
     transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
     animation: leap-pulse 2s ease-in-out infinite;
