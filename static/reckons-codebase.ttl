@@ -1,0 +1,617 @@
+## =============================================================================
+## Reckons.AI Codebase KB
+## =============================================================================
+## A structural map of the tripleNotes repository. Each module, directory, and
+## key file is represented as an entity. kpred:has-file links modules to source
+## files, kpred:tested-by links to test files, and skos:broader links files to
+## their parent module. KB Leap nodes connect to Production and Features KBs.
+##
+## All file paths are repo-relative (matching `git ls-files` output).
+## =============================================================================
+
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix ktype:  <urn:kbase:type/> .
+@prefix kpred:  <urn:kbase:predicate/> .
+@prefix code:   <urn:reckons:code/> .
+
+## KB Identity
+<urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a0a-b00a-000000000010" .
+
+## =============================================================================
+## Repository Root
+## =============================================================================
+
+code:repo  rdf:type     ktype:Concept ;
+           rdfs:label   "tripleNotes Repository" ;
+           skos:definition "Root of the Reckons.AI monorepo. 400 git-tracked files." ;
+           kpred:has-file "package.json" ;
+           kpred:has-file "vite.config.ts" ;
+           kpred:has-file "svelte.config.js" ;
+           kpred:has-file "tsconfig.json" ;
+           kpred:has-file "vitest.config.ts" ;
+           kpred:has-file "CLAUDE.md" ;
+           kpred:has-file "README.md" ;
+           kpred:has-file "CONTRIBUTING.md" ;
+           kpred:has-file ".gitignore" ;
+           kpred:has-file ".env.example" ;
+           kpred:has-file "LICENSE" .
+
+## =============================================================================
+## src/lib/rdf — Core RDF Engine
+## =============================================================================
+
+code:rdf  rdf:type     ktype:Concept ;
+          rdfs:label   "RDF Engine" ;
+          skos:definition "Core RDF types, diff, serialization, hierarchy, and reasoning." ;
+          skos:broader code:repo ;
+          kpred:has-file "src/lib/rdf/types.ts" ;
+          kpred:has-file "src/lib/rdf/serialize.ts" ;
+          kpred:has-file "src/lib/rdf/import-ttl.ts" ;
+          kpred:has-file "src/lib/rdf/diff.ts" ;
+          kpred:has-file "src/lib/rdf/diff-summary.ts" ;
+          kpred:has-file "src/lib/rdf/semantic-diff.ts" ;
+          kpred:has-file "src/lib/rdf/entity-types.ts" ;
+          kpred:has-file "src/lib/rdf/normalize-entities.ts" ;
+          kpred:has-file "src/lib/rdf/hierarchy.ts" ;
+          kpred:has-file "src/lib/rdf/ghost-graph.ts" ;
+          kpred:has-file "src/lib/rdf/kb-leap.ts" ;
+          kpred:has-file "src/lib/rdf/cross-kb-align.ts" ;
+          kpred:has-file "src/lib/rdf/bm25.ts" ;
+          kpred:has-file "src/lib/rdf/reasoning.ts" ;
+          kpred:has-file "src/lib/rdf/temporal.ts" ;
+          kpred:has-file "src/lib/rdf/recurrence.ts" ;
+          kpred:has-file "src/lib/rdf/event-linker.ts" ;
+          kpred:has-file "src/lib/rdf/story.ts" ;
+          kpred:has-file "src/lib/rdf/multi-graph-parse.ts" ;
+          kpred:tested-by "src/lib/rdf/__tests__/types-helpers.test.ts" ;
+          kpred:tested-by "src/lib/rdf/__tests__/serialize.test.ts" ;
+          kpred:tested-by "src/lib/rdf/__tests__/turtle-w3c.test.ts" ;
+          kpred:tested-by "src/lib/rdf/__tests__/diff.test.ts" ;
+          kpred:tested-by "src/lib/rdf/__tests__/diff-summary.test.ts" ;
+          kpred:tested-by "src/lib/rdf/__tests__/semantic-diff.test.ts" ;
+          kpred:tested-by "src/lib/rdf/__tests__/entity-types.test.ts" ;
+          kpred:tested-by "src/lib/rdf/__tests__/normalize-entities.test.ts" ;
+          kpred:tested-by "src/lib/rdf/__tests__/hierarchy.test.ts" ;
+          kpred:tested-by "src/lib/rdf/__tests__/ghost-graph.test.ts" ;
+          kpred:tested-by "src/lib/rdf/__tests__/bm25.test.ts" ;
+          kpred:tested-by "src/lib/rdf/__tests__/reasoning.test.ts" ;
+          kpred:tested-by "src/lib/rdf/__tests__/temporal.test.ts" .
+
+## =============================================================================
+## src/lib/stores — Svelte 5 Rune Stores
+## =============================================================================
+
+code:stores  rdf:type     ktype:Concept ;
+             rdfs:label   "Svelte Stores" ;
+             skos:definition "Svelte 5 rune-based reactive stores for KB state, settings, ingest, and UI." ;
+             skos:broader code:repo ;
+             kpred:has-file "src/lib/stores/kb.svelte.ts" ;
+             kpred:has-file "src/lib/stores/settings.svelte.ts" ;
+             kpred:has-file "src/lib/stores/ingest.svelte.ts" ;
+             kpred:has-file "src/lib/stores/entity-types.svelte.ts" ;
+             kpred:has-file "src/lib/stores/source-refresh.ts" ;
+             kpred:has-file "src/lib/stores/disambiguation.svelte.ts" ;
+             kpred:has-file "src/lib/stores/auto-analyze.svelte.ts" ;
+             kpred:has-file "src/lib/stores/glb-overrides.svelte.ts" ;
+             kpred:has-file "src/lib/stores/gif-overrides.svelte.ts" ;
+             kpred:has-file "src/lib/stores/icon2d-overrides.svelte.ts" ;
+             kpred:has-file "src/lib/stores/notifications.svelte.ts" ;
+             kpred:has-file "src/lib/stores/shelly-bridge.svelte.ts" ;
+             kpred:has-file "src/lib/stores/snap-layout.svelte.ts" ;
+             kpred:has-file "src/lib/stores/turtle-settings.svelte.ts" ;
+             kpred:has-file "src/lib/stores/tutorial.svelte.ts" ;
+             kpred:has-file "src/lib/stores/download-consent.svelte.ts" ;
+             kpred:has-file "src/lib/stores/manual-llm.svelte.ts" ;
+             kpred:has-file "src/lib/stores/official-kb.svelte.ts" ;
+             kpred:has-file "src/lib/stores/perf-monitor.svelte.ts" ;
+             kpred:has-file "src/lib/stores/wasm-status.svelte.ts" ;
+             kpred:has-file "src/lib/stores/workspace.svelte.ts" ;
+             kpred:tested-by "src/lib/stores/__tests__/entity-types.test.ts" ;
+             kpred:tested-by "src/lib/stores/__tests__/source-refresh.test.ts" .
+
+## =============================================================================
+## src/lib/storage — Persistence Layer
+## =============================================================================
+
+code:storage  rdf:type     ktype:Concept ;
+              rdfs:label   "Storage Layer" ;
+              skos:definition "IndexedDB via Dexie, KB registry, backup, semantic export, and asset management." ;
+              skos:broader code:repo ;
+              kpred:has-file "src/lib/storage/db.ts" ;
+              kpred:has-file "src/lib/storage/types.ts" ;
+              kpred:has-file "src/lib/storage/kb-registry.ts" ;
+              kpred:has-file "src/lib/storage/backup.ts" ;
+              kpred:has-file "src/lib/storage/semantic-export.ts" ;
+              kpred:has-file "src/lib/storage/kb-assets.ts" ;
+              kpred:has-file "src/lib/storage/kb-fingerprint.ts" ;
+              kpred:has-file "src/lib/storage/gif-package.ts" ;
+              kpred:tested-by "src/lib/storage/__tests__/kb-registry.test.ts" ;
+              kpred:tested-by "src/lib/storage/__tests__/backup.test.ts" ;
+              kpred:tested-by "src/lib/storage/__tests__/semantic-export.test.ts" .
+
+## =============================================================================
+## src/lib/components — Svelte UI Components
+## =============================================================================
+
+code:components  rdf:type     ktype:Concept ;
+                 rdfs:label   "UI Components" ;
+                 skos:definition "Svelte 5 components: graph nodes, panels, review cards, navigation, chat." ;
+                 skos:broader code:repo ;
+                 kpred:has-file "src/lib/components/NavBar.svelte" ;
+                 kpred:has-file "src/lib/components/SearchBar.svelte" ;
+                 kpred:has-file "src/lib/components/GraphNode.svelte" ;
+                 kpred:has-file "src/lib/components/SnapPanel.svelte" ;
+                 kpred:has-file "src/lib/components/StatementCard.svelte" ;
+                 kpred:has-file "src/lib/components/DiffEntry.svelte" ;
+                 kpred:has-file "src/lib/components/MergeReview.svelte" ;
+                 kpred:has-file "src/lib/components/TurtleChatPanel.svelte" ;
+                 kpred:has-file "src/lib/components/LandingPage.svelte" ;
+                 kpred:has-file "src/lib/components/CompareScene.svelte" ;
+                 kpred:has-file "src/lib/components/CompareGraph.svelte" ;
+                 kpred:has-file "src/lib/components/AlignmentCard.svelte" ;
+                 kpred:has-file "src/lib/components/KbPicker.svelte" ;
+                 kpred:has-file "src/lib/components/DisambiguationPanel.svelte" ;
+                 kpred:has-file "src/lib/components/PredicateManager.svelte" ;
+                 kpred:has-file "src/lib/components/ExplorePanel.svelte" ;
+                 kpred:has-file "src/lib/components/SourcesPanel.svelte" ;
+                 kpred:has-file "src/lib/components/ReAnalysisPanel.svelte" ;
+                 kpred:has-file "src/lib/components/HistoryTimeline.svelte" ;
+                 kpred:has-file "src/lib/components/CalendarGrid.svelte" ;
+                 kpred:has-file "src/lib/components/SwipeCard.svelte" ;
+                 kpred:has-file "src/lib/components/RadialMenu.svelte" ;
+                 kpred:has-file "src/lib/components/RelationBuilder.svelte" ;
+                 kpred:has-file "src/lib/components/ManualLLMModal.svelte" ;
+                 kpred:has-file "src/lib/components/NotificationStack.svelte" ;
+                 kpred:has-file "src/lib/components/DownloadConsentDialog.svelte" ;
+                 kpred:has-file "src/lib/components/OverlayGraph.svelte" ;
+                 kpred:has-file "src/lib/components/OverlayGraph3D.svelte" ;
+                 kpred:has-file "src/lib/components/OverlayScene.svelte" ;
+                 kpred:has-file "src/lib/components/QRSharePanel.svelte" ;
+                 kpred:has-file "src/lib/components/ShellyVoice.svelte" ;
+                 kpred:has-file "src/lib/components/VoiceInput.svelte" ;
+                 kpred:has-file "src/lib/components/ui/Select.svelte" ;
+                 kpred:has-file "src/lib/components/ui/Tooltip.svelte" .
+
+## =============================================================================
+## src/lib/3d — Three.js / Threlte Rendering
+## =============================================================================
+
+code:threed  rdf:type     ktype:Concept ;
+             rdfs:label   "3D Rendering" ;
+             skos:definition "Three.js and Threlte graph renderers: 2D canvas, 3D WebGL, AR/VR shells." ;
+             skos:broader code:repo ;
+             kpred:has-file "src/lib/3d/KnowledgeGraph.svelte" ;
+             kpred:has-file "src/lib/3d/KnowledgeGraph2D.svelte" ;
+             kpred:has-file "src/lib/3d/ar/ARShell.svelte" ;
+             kpred:has-file "src/lib/3d/vr/VRShell.svelte" .
+
+## =============================================================================
+## src/lib/integrations — Third-Party Integrations
+## =============================================================================
+
+code:integrations  rdf:type     ktype:Concept ;
+                   rdfs:label   "Integrations" ;
+                   skos:definition "Third-party service integrations: LLM providers, GitHub, Google, Indico, Meshy, parsers." ;
+                   skos:broader code:repo .
+
+code:llm  rdf:type     ktype:Concept ;
+          rdfs:label   "LLM Backends" ;
+          skos:definition "Multi-provider LLM integration: Claude, OpenAI, Gemini, Ollama, WASM, OpenRouter, Chrome AI." ;
+          skos:broader code:integrations ;
+          kpred:has-file "src/lib/integrations/llm/providers.ts" ;
+          kpred:has-file "src/lib/integrations/llm/claude.ts" ;
+          kpred:has-file "src/lib/integrations/llm/extractor.ts" ;
+          kpred:has-file "src/lib/integrations/llm/wasm.ts" ;
+          kpred:has-file "src/lib/integrations/llm/wasm-worker.ts" ;
+          kpred:has-file "src/lib/integrations/llm/turtle-chat.ts" ;
+          kpred:has-file "src/lib/integrations/llm/merge-analysis.ts" ;
+          kpred:has-file "src/lib/integrations/llm/re-analyze.ts" ;
+          kpred:has-file "src/lib/integrations/llm/model-cache.ts" ;
+          kpred:has-file "src/lib/integrations/llm/provider-status.svelte.ts" ;
+          kpred:has-file "src/lib/integrations/llm/kokoro-tts.ts" ;
+          kpred:has-file "src/lib/integrations/llm/whisper-stt.ts" ;
+          kpred:has-file "src/lib/integrations/llm/onnx-node-stub.js" ;
+          kpred:tested-by "src/lib/integrations/llm/__tests__/extractor.test.ts" .
+
+code:github  rdf:type     ktype:Concept ;
+             rdfs:label   "GitHub Integration" ;
+             skos:definition "Repository ingest via GitHub REST API: tree walk, file fetch, delta compare." ;
+             skos:broader code:integrations ;
+             kpred:has-file "src/lib/integrations/github/repo-ingest.ts" ;
+             kpred:tested-by "src/lib/integrations/github/__tests__/repo-ingest.test.ts" .
+
+code:google  rdf:type     ktype:Concept ;
+             rdfs:label   "Google Integration" ;
+             skos:definition "Google Calendar sync, Drive import, OAuth authentication." ;
+             skos:broader code:integrations ;
+             kpred:has-file "src/lib/integrations/google/auth.ts" ;
+             kpred:has-file "src/lib/integrations/google/calendar.ts" ;
+             kpred:has-file "src/lib/integrations/google/calendar-rdf.ts" ;
+             kpred:has-file "src/lib/integrations/google/drive.ts" .
+
+code:indico  rdf:type     ktype:Concept ;
+             rdfs:label   "Indico Integration" ;
+             skos:definition "CERN Indico conference system: event sync, iCal parsing, RDF mapping." ;
+             skos:broader code:integrations ;
+             kpred:has-file "src/lib/integrations/indico/client.ts" ;
+             kpred:has-file "src/lib/integrations/indico/sync.ts" ;
+             kpred:has-file "src/lib/integrations/indico/types.ts" ;
+             kpred:has-file "src/lib/integrations/indico/ical-parse.ts" ;
+             kpred:has-file "src/lib/integrations/indico/indico-rdf.ts" .
+
+code:parsers  rdf:type     ktype:Concept ;
+              rdfs:label   "Content Parsers" ;
+              skos:definition "Firecrawl web scraping and Mistral OCR document parsing." ;
+              skos:broader code:integrations ;
+              kpred:has-file "src/lib/integrations/parsers/firecrawl.ts" ;
+              kpred:has-file "src/lib/integrations/parsers/mistral-ocr.ts" .
+
+code:meshy  rdf:type     ktype:Concept ;
+            rdfs:label   "Meshy Integration" ;
+            skos:definition "Meshy.AI 3D model generation for entity icons." ;
+            skos:broader code:integrations ;
+            kpred:has-file "src/lib/integrations/meshy/meshy.ts" .
+
+code:search  rdf:type     ktype:Concept ;
+             rdfs:label   "Search Integration" ;
+             skos:definition "Tavily web search for enrichment and chat." ;
+             skos:broader code:integrations ;
+             kpred:has-file "src/lib/integrations/search/tavily.ts" .
+
+## =============================================================================
+## src/lib/safety — Content Safety
+## =============================================================================
+
+code:safety  rdf:type     ktype:Concept ;
+             rdfs:label   "Content Safety" ;
+             skos:definition "Content classifier (blocked/mature/none) and ETHICS_PREAMBLE for all LLM prompts." ;
+             skos:broader code:repo ;
+             kpred:has-file "src/lib/safety/content-policy.ts" ;
+             kpred:tested-by "src/lib/safety/__tests__/content-policy.test.ts" .
+
+## =============================================================================
+## src/lib — Other Modules
+## =============================================================================
+
+code:embed  rdf:type     ktype:Concept ;
+            rdfs:label   "Embedding Engine" ;
+            skos:definition "BGE-small-en-v1.5 embedding model via transformers.js. Used for similarity, normalisation, and alignment." ;
+            skos:broader code:repo ;
+            kpred:has-file "src/lib/embed.ts" ;
+            kpred:tested-by "src/lib/__tests__/embed.test.ts" .
+
+code:mobile-utils  rdf:type     ktype:Concept ;
+                   rdfs:label   "Mobile Utilities" ;
+                   skos:definition "Mobile browser auth helpers and touch adaptations." ;
+                   skos:broader code:repo ;
+                   kpred:has-file "src/lib/utils/mobile-auth.ts" ;
+                   kpred:tested-by "src/lib/utils/__tests__/mobile-auth.test.ts" .
+
+code:extension-bridge  rdf:type     ktype:Concept ;
+                       rdfs:label   "Extension Bridge" ;
+                       skos:definition "Message bridge between the browser extension and the web app." ;
+                       skos:broader code:repo ;
+                       kpred:has-file "src/lib/extension-bridge.ts" .
+
+code:ingest-lib  rdf:type     ktype:Concept ;
+                 rdfs:label   "Ingest Library" ;
+                 skos:definition "Source-type routing, folder scanning, and ingest progress tracking." ;
+                 skos:broader code:repo ;
+                 kpred:has-file "src/lib/ingest/folder-scan.ts" .
+
+## =============================================================================
+## src/routes — SvelteKit Pages
+## =============================================================================
+
+code:routes  rdf:type     ktype:Concept ;
+             rdfs:label   "SvelteKit Routes" ;
+             skos:definition "App pages: graph view, review, ingest, compare, settings, KB management, about." ;
+             skos:broader code:repo ;
+             kpred:has-file "src/routes/+layout.svelte" ;
+             kpred:has-file "src/routes/+page.svelte" ;
+             kpred:has-file "src/routes/review/+page.svelte" ;
+             kpred:has-file "src/routes/ingest/+page.svelte" ;
+             kpred:has-file "src/routes/compare/+page.svelte" ;
+             kpred:has-file "src/routes/kb/+page.svelte" ;
+             kpred:has-file "src/routes/settings/+page.svelte" ;
+             kpred:has-file "src/routes/settings/entity-types/+page.svelte" ;
+             kpred:has-file "src/routes/settings/integrations/+page.svelte" ;
+             kpred:has-file "src/routes/settings/turtle/+page.svelte" ;
+             kpred:has-file "src/routes/about/+page.svelte" ;
+             kpred:has-file "src/routes/about/case-study-0/+page.svelte" ;
+             kpred:has-file "src/routes/analyze/+page.svelte" ;
+             kpred:has-file "src/routes/history/+page.svelte" ;
+             kpred:has-file "src/routes/reckoning/+page.svelte" ;
+             kpred:has-file "src/routes/overlay/+page.svelte" ;
+             kpred:has-file "src/routes/mobile/+page.svelte" .
+
+## =============================================================================
+## src/extension — Browser Extension
+## =============================================================================
+
+code:extension  rdf:type     ktype:Concept ;
+                rdfs:label   "Browser Extension" ;
+                skos:definition "Chrome/Firefox extension: session accumulation, compare tab, batch ingest." ;
+                skos:broader code:repo ;
+                kpred:has-file "vite.extension.config.ts" ;
+                kpred:has-file "src/extension/background.ts" ;
+                kpred:has-file "src/extension/content-script.ts" ;
+                kpred:has-file "src/extension/manifest.json" ;
+                kpred:has-file "src/extension/popup.html" ;
+                kpred:has-file "src/extension/popup.ts" ;
+                kpred:has-file "src/extension/popup.css" ;
+                kpred:has-file "src/extension/sidepanel.html" ;
+                kpred:has-file "src/extension/sidepanel.ts" ;
+                kpred:has-file "src/extension/sidepanel.css" ;
+                kpred:has-file "src/extension/offscreen.html" ;
+                kpred:has-file "src/extension/offscreen.ts" ;
+                kpred:has-file "src/extension/options.html" ;
+                kpred:has-file "src/extension/options.ts" ;
+                kpred:has-file "src/extension/global.d.ts" ;
+                kpred:has-file "src/extension/highlight.css" ;
+                kpred:has-file "src/extension/live-overlay.css" ;
+                kpred:has-file "src/extension/types.ts" .
+
+## =============================================================================
+## mcp-server — MCP Server (Standalone)
+## =============================================================================
+
+code:mcp-server  rdf:type     ktype:Concept ;
+                 rdfs:label   "MCP Server" ;
+                 skos:definition "Standalone Node.js MCP server. 16 tools over JSON-RPC stdio." ;
+                 skos:broader code:repo ;
+                 kpred:has-file "mcp-server/src/index.ts" ;
+                 kpred:has-file "mcp-server/src/kb-reader.ts" ;
+                 kpred:has-file "mcp-server/src/search.ts" ;
+                 kpred:has-file "mcp-server/src/git-utils.ts" ;
+                 kpred:has-file "mcp-server/package.json" ;
+                 kpred:has-file "mcp-server/tsconfig.json" ;
+                 kpred:has-file "mcp-server/README.md" .
+
+code:workspace  rdf:type     ktype:Concept ;
+                rdfs:label   "MCP Workspace" ;
+                skos:definition "Symlinked KB workspace for MCP server self-dogfooding." ;
+                skos:broader code:repo ;
+                kpred:has-file "reckons-workspace/kbs/production/kb.ttl" ;
+                kpred:has-file "reckons-workspace/kbs/roadmap/kb.ttl" ;
+                kpred:has-file "reckons-workspace/kbs/features/kb.ttl" ;
+                kpred:has-file "reckons-workspace/kbs/default-kb/kb.ttl" ;
+                kpred:has-file "reckons-workspace/kbs/docs/kb.ttl" ;
+                kpred:has-file "reckons-workspace/kbs/integrations-tech/kb.ttl" ;
+                kpred:has-file "reckons-workspace/kbs/quickstart/kb.ttl" .
+
+## =============================================================================
+## cli — CLI Tool
+## =============================================================================
+
+code:cli  rdf:type     ktype:Concept ;
+          rdfs:label   "CLI Tool" ;
+          skos:definition "Command-line interface for KB operations, audio transcription, and LLM chat." ;
+          skos:broader code:repo ;
+          kpred:has-file "cli/src/index.ts" ;
+          kpred:has-file "cli/src/kb.ts" ;
+          kpred:has-file "cli/src/llm.ts" ;
+          kpred:has-file "cli/src/audio.ts" ;
+          kpred:has-file "cli/package.json" ;
+          kpred:has-file "cli/tsconfig.json" .
+
+## =============================================================================
+## tests — Test Infrastructure
+## =============================================================================
+
+code:tests  rdf:type     ktype:Concept ;
+            rdfs:label   "Test Infrastructure" ;
+            skos:definition "E2E tests, visual tests, benchmarks, and fixtures." ;
+            skos:broader code:repo .
+
+code:test-e2e  rdf:type     ktype:Concept ;
+               rdfs:label   "E2E Tests" ;
+               skos:definition "Playwright end-to-end tests for ingest, review, settings, resilience, viewport." ;
+               skos:broader code:tests ;
+               kpred:has-file "tests/e2e/app.test.ts" ;
+               kpred:has-file "tests/e2e/helpers.ts" ;
+               kpred:has-file "tests/e2e/ingest.test.ts" ;
+               kpred:has-file "tests/e2e/review.test.ts" ;
+               kpred:has-file "tests/e2e/settings.test.ts" ;
+               kpred:has-file "tests/e2e/resilience.test.ts" ;
+               kpred:has-file "tests/e2e/viewport.test.ts" ;
+               kpred:has-file "playwright.config.ts" .
+
+code:test-visual  rdf:type     ktype:Concept ;
+                  rdfs:label   "Visual Tests" ;
+                  skos:definition "Screenshot-based visual regression, embed benchmarks, user story playback." ;
+                  skos:broader code:tests ;
+                  kpred:has-file "playwright.visual.config.ts" ;
+                  kpred:has-file "tests/visual/run-embed-bench.ts" ;
+                  kpred:has-file "tests/visual/embed-scoring.ts" ;
+                  kpred:has-file "tests/visual/hf-model-query.ts" ;
+                  kpred:has-file "tests/visual/run-visual-bench.ts" ;
+                  kpred:has-file "tests/visual/vision-scoring.ts" ;
+                  kpred:has-file "tests/visual/vision-scoring.test.ts" ;
+                  kpred:has-file "tests/visual/vision-local.ts" ;
+                  kpred:has-file "tests/visual/vision-analyze.ts" ;
+                  kpred:has-file "tests/visual/kb-seed.ts" ;
+                  kpred:has-file "tests/visual/fixtures/golden-visual.ts" ;
+                  kpred:has-file "tests/visual/stories.test.ts" ;
+                  kpred:has-file "tests/visual/mobile/graph-view.test.ts" ;
+                  kpred:has-file "tests/visual/mobile/overlay.test.ts" ;
+                  kpred:has-file "tests/visual/user-stories/cross-kb-align.test.ts" ;
+                  kpred:has-file "tests/visual/user-stories/dev-sprint.test.ts" ;
+                  kpred:has-file "tests/visual/user-stories/user-docs.test.ts" .
+
+code:test-bench  rdf:type     ktype:Concept ;
+                 rdfs:label   "Benchmarks" ;
+                 skos:definition "Ollama LLM benchmarks, TTS/STT benchmarks, landing page scoring, local suite." ;
+                 skos:broader code:tests ;
+                 kpred:has-file "tests/bench/run-bench.ts" ;
+                 kpred:has-file "tests/bench/run-ollama-bench.ts" ;
+                 kpred:has-file "tests/bench/run-local-suite.sh" ;
+                 kpred:has-file "tests/bench/run-landing-page-bench.ts" ;
+                 kpred:has-file "tests/bench/run-landing-page-e2e.ts" ;
+                 kpred:has-file "tests/bench/run-tts-bench.ts" ;
+                 kpred:has-file "tests/bench/run-stt-bench.ts" ;
+                 kpred:has-file "tests/bench/run-compression-bench.ts" ;
+                 kpred:has-file "tests/bench/run-docs-bench.ts" ;
+                 kpred:has-file "tests/bench/run-kb-workflow.ts" ;
+                 kpred:has-file "tests/bench/scoring.ts" ;
+                 kpred:has-file "tests/bench/scoring.test.ts" ;
+                 kpred:has-file "tests/bench/landing-visual-score.ts" ;
+                 kpred:has-file "tests/bench/fixtures/landing-page/brand-brief.md" ;
+                 kpred:has-file "tests/bench/fixtures/landing-page/brand-kb.ttl" .
+
+## =============================================================================
+## static — Static Assets & Documentation KBs
+## =============================================================================
+
+code:static  rdf:type     ktype:Concept ;
+             rdfs:label   "Static Assets" ;
+             skos:definition "TTL knowledge bases, fonts, images, SVGs, and the 3D turtle model." ;
+             skos:broader code:repo ;
+             kpred:has-file "static/reckons-production.ttl" ;
+             kpred:has-file "static/reckons-roadmap.ttl" ;
+             kpred:has-file "static/starter-guide.ttl" ;
+             kpred:has-file "static/starter-quickstart.ttl" ;
+             kpred:has-file "static/docs-features.ttl" ;
+             kpred:has-file "static/docs-architecture.ttl" ;
+             kpred:has-file "static/docs-integrations-tech.ttl" ;
+             kpred:has-file "static/docs-llm.ttl" ;
+             kpred:has-file "static/docs-triples-rdf.ttl" ;
+             kpred:has-file "static/docs-use-cases.ttl" ;
+             kpred:has-file "static/docs-tips-security.ttl" ;
+             kpred:has-file "static/docs-timeline-ecosystem.ttl" ;
+             kpred:has-file "static/docs-testing.ttl" ;
+             kpred:has-file "static/docs-all.ttl" ;
+             kpred:has-file "static/reckons-codebase.ttl" .
+
+## =============================================================================
+## Configuration & CI
+## =============================================================================
+
+code:ci  rdf:type     ktype:Concept ;
+         rdfs:label   "CI/CD" ;
+         skos:definition "GitHub Actions workflows for CI and extension builds." ;
+         skos:broader code:repo ;
+         kpred:has-file ".github/workflows/ci.yml" ;
+         kpred:has-file ".github/workflows/extension.yml" .
+
+code:storybook  rdf:type     ktype:Concept ;
+                rdfs:label   "Storybook" ;
+                skos:definition "Component development environment with mock stores and fixtures." ;
+                skos:broader code:repo ;
+                kpred:has-file ".storybook/main.ts" ;
+                kpred:has-file ".storybook/fixtures.ts" ;
+                kpred:has-file ".storybook/preview.ts" ;
+                kpred:has-file ".storybook/mocks/app-environment.ts" ;
+                kpred:has-file ".storybook/mocks/app-navigation.ts" ;
+                kpred:has-file ".storybook/mocks/app-state.ts" ;
+                kpred:has-file ".storybook/mocks/app-stores.ts" ;
+                kpred:has-file ".storybook/mocks/auto-analyze-store.ts" ;
+                kpred:has-file ".storybook/mocks/entity-types-store.ts" ;
+                kpred:has-file ".storybook/mocks/gif-overrides-store.ts" ;
+                kpred:has-file ".storybook/mocks/glb-overrides-store.ts" ;
+                kpred:has-file ".storybook/mocks/kb-store.ts" ;
+                kpred:has-file ".storybook/mocks/notifications-store.ts" ;
+                kpred:has-file ".storybook/mocks/perf-monitor-store.ts" ;
+                kpred:has-file ".storybook/mocks/settings-store.ts" ;
+                kpred:has-file ".storybook/mocks/shelly-bridge-store.ts" ;
+                kpred:has-file ".storybook/mocks/snap-layout-store.ts" ;
+                kpred:has-file "src/stories/KnowledgeGraph2D.stories.ts" ;
+                kpred:has-file "src/stories/NavBar.stories.ts" ;
+                kpred:has-file "src/stories/SnapPanel.stories.ts" .
+
+code:scripts  rdf:type     ktype:Concept ;
+              rdfs:label   "Scripts" ;
+              skos:definition "Setup and utility scripts for MCP workspace and development." ;
+              skos:broader code:repo ;
+              kpred:has-file "scripts/setup-mcp-workspace.sh" ;
+              kpred:has-file "scripts/setup-reckons-workspace.sh" ;
+              kpred:has-file "scripts/kb-align.ts" .
+
+code:sample-kgs  rdf:type     ktype:Concept ;
+                 rdfs:label   "Sample Knowledge Graphs" ;
+                 skos:definition "Example KBs from various extraction runs and cross-project comparisons." ;
+                 skos:broader code:repo ;
+                 kpred:has-file "docs/reckons-knowledge-graphs/Reckons.ttl" ;
+                 kpred:has-file "docs/reckons-knowledge-graphs/Reckons-FactDiff.ttl" ;
+                 kpred:has-file "docs/reckons-knowledge-graphs/Reckons-KiloClaude-Ambitious.ttl" ;
+                 kpred:has-file "docs/reckons-knowledge-graphs/Reckons-LocalQwen30b.ttl" ;
+                 kpred:has-file "docs/reckons-knowledge-graphs/Reckons-Spectre.ttl" ;
+                 kpred:has-file "docs/reckons-knowledge-graphs/Reckons-cpython-wasm-svelte.ttl" ;
+                 kpred:has-file "docs/reckons-knowledge-graphs/cross-project-comparison.ttl" ;
+                 kpred:has-file "docs/reckons-knowledge-graphs/ontology.ttl" ;
+                 kpred:has-file "docs/reckons-knowledge-graphs/tripleNotes.ttl" .
+
+code:docs  rdf:type     ktype:Concept ;
+           rdfs:label   "Markdown Docs" ;
+           skos:definition "Legacy markdown documentation (being migrated to TTL KBs)." ;
+           skos:broader code:repo ;
+           kpred:has-file "docs/STYLE_GUIDE.md" ;
+           kpred:has-file "docs/ENTERPRISE.md" ;
+           kpred:has-file "docs/N8N_INTEGRATION.md" ;
+           kpred:has-file "docs/MODEL_TRAINING.md" ;
+           kpred:has-file "docs/VSCODE_EXTENSION.md" ;
+           kpred:has-file "docs/SECURITY.md" ;
+           kpred:has-file "docs/GUIDE.md" ;
+           kpred:has-file "docs/USER_STORIES.md" ;
+           kpred:has-file "docs/DEPENDENCIES.md" ;
+           kpred:has-file "docs/PROV_O_ALIGNMENT.md" ;
+           kpred:has-file "docs/KB_VS_MARKDOWN.md" ;
+           kpred:has-file "docs/CONFLUENCE_MIGRATION.md" ;
+           kpred:has-file "docs/MOBILE_CAPTURE.md" ;
+           kpred:has-file "docs/MOBILE_LOCAL_SERVER.md" ;
+           kpred:has-file "docs/LOCAL_HOME_FOLDER.md" ;
+           kpred:has-file "ROADMAP.md" ;
+           kpred:has-file "SETUP.md" ;
+           kpred:has-file "AUDIT.md" .
+
+code:types-lib  rdf:type     ktype:Concept ;
+                rdfs:label   "Type Definitions" ;
+                skos:definition "Ambient type declarations and shared type modules." ;
+                skos:broader code:repo ;
+                kpred:has-file "src/ambient.d.ts" ;
+                kpred:has-file "src/app.d.ts" ;
+                kpred:has-file "src/lib/types/turtle-chat.ts" ;
+                kpred:has-file "src/lib/onboarding/templates.ts" .
+
+## =============================================================================
+## KB Leap Nodes — Cross-KB Links
+## =============================================================================
+
+code:leap-production  rdf:type     ktype:KnowledgeBase ;
+                      rdfs:label   "LEAP: Production Status" ;
+                      skos:definition "Jump to the Production Status KB for test results, feature health, and architecture." ;
+                      <urn:reckons:leap> "reckons-production" ;
+                      <urn:reckons:leap/label> "Production Status" .
+
+code:leap-features  rdf:type     ktype:KnowledgeBase ;
+                    rdfs:label   "LEAP: Features" ;
+                    skos:definition "Jump to the Features KB for user-facing feature documentation." ;
+                    <urn:reckons:leap> "a1b2c3d4-e5f6-4a04-b004-000000000004" ;
+                    <urn:reckons:leap/label> "Features" .
+
+code:leap-architecture  rdf:type     ktype:KnowledgeBase ;
+                        rdfs:label   "LEAP: Architecture" ;
+                        skos:definition "Jump to the Architecture KB for design decisions and standards." ;
+                        <urn:reckons:leap> "a1b2c3d4-e5f6-4a08-b008-000000000008" ;
+                        <urn:reckons:leap/label> "Architecture" .
+
+code:leap-testing  rdf:type     ktype:KnowledgeBase ;
+                   rdfs:label   "LEAP: Testing" ;
+                   skos:definition "Jump to the Testing KB for interactive test stories and screenshots." ;
+                   <urn:reckons:leap> "a1b2c3d4-e5f6-4a09-b009-000000000009" ;
+                   <urn:reckons:leap/label> "Testing" .
+
+## =============================================================================
+## Cross-references: modules ↔ leap targets
+## =============================================================================
+
+code:rdf       skos:related code:leap-production .
+code:stores    skos:related code:leap-features .
+code:components skos:related code:leap-features .
+code:tests     skos:related code:leap-testing .
+code:threed    skos:related code:leap-architecture .
+code:mcp-server skos:related code:leap-production .
+code:static    skos:related code:leap-architecture .
