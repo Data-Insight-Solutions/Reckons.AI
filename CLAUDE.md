@@ -6,11 +6,13 @@ This is **Reckons.AI**, a personal knowledge base app built on SvelteKit + TypeS
 
 ## Knowledge Base Context (MCP)
 
-This project has its own Reckons.AI MCP server configured (`reckons`). It exposes 3 knowledge bases that describe the product itself:
+This project has its own Reckons.AI MCP server configured (`reckons`). It exposes 4 knowledge bases that describe the product itself:
 
 - **Roadmap** — Feature status, planned work, design decisions, dependencies. Check this before starting new features.
 - **Production** — Tech stack, test suite health, architecture, source types, MCP tools.
 - **Features** — User-facing feature documentation (ingest, review, graph, Shelly, compare, multi-KB, safety, etc.)
+- **Architecture** — Design decisions, TTL-first docs strategy, standards alignment, deployment, style conventions, markdown migration tracker.
+- **Testing** — Test suite docs as interactive stories with ordered steps, screenshots, and assertions.
 
 ### When to query the KBs
 
@@ -52,6 +54,16 @@ Use `/check-plan` or the individual tools to maintain alignment between code and
 - **Proposing updates**: `kb_add_note` with `type`/`priority`/`agent` metadata
 - **Measuring alignment**: `kb_alignment_score` for a quantitative 0–1 score across 4 dimensions
 - **Drift detected**: use type `'drift-warning'` + priority `'high'`
+
+### TTL-first documentation policy
+
+This project uses TTL knowledge bases as the primary documentation format. **Do NOT create new docs/*.md files.** Instead:
+
+- **For feature/design docs**: Add entities to the appropriate TTL KB (roadmap, features, architecture, integrations)
+- **For code conventions**: Use inline code comments near the actual code
+- **Query before reading**: Use `kb_search` to find information before reading raw files
+- **Existing markdown**: `docs/*.md` files are being migrated to TTL. Check `kb_search("migration status", kb="architecture")` for current state
+- **Must stay markdown**: CLAUDE.md, MEMORY.md, .claude/commands/*.md, README.md, CONTRIBUTING.md (system requirements)
 
 ## Code Conventions
 

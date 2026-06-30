@@ -1,0 +1,80 @@
+# DataInsightSolutions
+  .a Company
+  .label "Data Insight Solutions LLC"
+  .tagline "Transform data into actionable insights."
+  .focus "data consultancy"
+  .helps "businesses collect, automate, integrate, and display data"
+  .outcome "informed decisions and sustainable growth"
+  .differentiator "End-to-end: collection through visualization"
+  .differentiator "Technology-agnostic: works with existing stacks"
+  .differentiator "Both low-code and full-code approaches"
+  .differentiator "Sustainable, maintainable solutions over one-off builds"
+  < ServiceCollect .offered-by
+  < ServiceAutomate .offered-by
+  < ServiceIntegrate .offered-by
+  < ServiceDisplay .offered-by
+  < BrandIdentity .brand-of
+  < TargetAudience .audience-of
+  < LandingPage .requirement-of
+  < ContentGuidelines .guideline-of
+
+# ServiceCollect
+  .a Service
+  .label "Collect"
+  .description "Establish reliable data sources through web forms, APIs, databases, and communication platforms"
+  .technologies "PowerApps, Fillable PDFs, VOIP, Zoom, custom forms"
+
+# ServiceAutomate
+  .a Service
+  .label "Automate"
+  .description "Build workflows for data transformation, validation, and business logic"
+  .approach "low-code and full-code solutions, approval flows, scheduled triggers, event-driven pipelines"
+
+# ServiceIntegrate
+  .a Service
+  .label "Integrate"
+  .description "Connect disparate systems via APIs, REST, SOAP, SDKs, and ELT processes"
+  .scope "CRM, ERP, marketing platforms, accounting, legacy systems"
+
+# ServiceDisplay
+  .a Service
+  .label "Display"
+  .description "Create dashboards, reports, and visualizations"
+  .tools "Power BI, custom web dashboards, in-app reporting, PDF exports"
+  .focus "real-time monitoring and executive summaries"
+
+# BrandIdentity
+  .a Brand
+  .label "DIS Brand Identity"
+  .tone "Professional, solution-oriented, technically credible, approachable"
+  .primary-color "#1a2332"
+  .accent-color "#1a9b8e"
+  .typography "Clean sans-serif (Inter or similar)"
+  .logo-style "Text-based with subtle data/graph motif"
+  .photography "Tech-forward, collaboration-focused, conceptual data imagery"
+
+# TargetAudience
+  .a Audience
+  .company-size "50-500 employees"
+  .roles "Operations managers, CTOs, data team leads"
+  .pain-point "fragmented data across multiple systems"
+  .need "reduce manual reporting"
+
+# LandingPage
+  .a Requirement
+  .section "Hero with tagline and CTA"
+  .section "Four service pillars with icons"
+  .section "Social proof / trust indicators"
+  .section "How we work process flow"
+  .section "Contact form or booking widget"
+  .constraint "Mobile-responsive, fast-loading, accessible"
+  .seo-target "data integration consulting"
+  .seo-target "business intelligence services"
+  .cta "Schedule a consultation"
+
+# ContentGuidelines
+  .a Guideline
+  .rule "Avoid jargon unless immediately defined"
+  .rule "Lead with business outcomes, not technology"
+  .rule "Use concrete metrics where possible"
+  .rule "Every section should answer: why should I care?"

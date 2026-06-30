@@ -39,6 +39,8 @@
     "kb:align:dry": "npx tsx scripts/kb-align.ts --dry-run",
     "kb:align:quick": "npx tsx scripts/kb-align.ts --skip-e2e",
     "bench:compression": "npx tsx tests/bench/run-compression-bench.ts --save",
+    "bench:landing": "npx tsx tests/bench/run-landing-page-bench.ts --save",
+    "bench:landing:e2e": "npx tsx tests/bench/run-landing-page-e2e.ts --save",
     "bench:llm": "npx tsx tests/bench/run-bench.ts",
     "bench:llm:hf": "npx tsx tests/bench/run-bench.ts --hf --save",
     "bench:llm:list": "npx tsx tests/bench/run-bench.ts --list",
@@ -51,7 +53,13 @@
     "bench:ollama:list": "npx tsx tests/bench/run-ollama-bench.ts --list",
     "test:local": "bash tests/bench/run-local-suite.sh",
     "test:local:quick": "bash tests/bench/run-local-suite.sh --quick",
-    "test:local:bench": "bash tests/bench/run-local-suite.sh --bench-only --save"
+    "test:local:bench": "bash tests/bench/run-local-suite.sh --bench-only --save",
+    "bench:docs": "npx tsx tests/bench/run-docs-bench.ts",
+    "bench:docs:save": "npx tsx tests/bench/run-docs-bench.ts --save",
+    "kb:stats": "npx tsx tests/bench/run-kb-workflow.ts stats",
+    "kb:review": "npx tsx tests/bench/run-kb-workflow.ts review --save",
+    "kb:reckon": "npx tsx tests/bench/run-kb-workflow.ts reckon --save",
+    "kb:search": "npx tsx tests/bench/run-kb-workflow.ts search"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.100.1",

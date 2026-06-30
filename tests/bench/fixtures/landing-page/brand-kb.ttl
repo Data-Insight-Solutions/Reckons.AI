@@ -1,0 +1,101 @@
+@prefix kb:    <urn:kbase:concept/> .
+@prefix kpred: <urn:kbase:predicate/> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+
+# ── Company ──────────────────────────────────────────────
+kb:DataInsightSolutions  rdf:type  kb:Company ;
+  rdfs:label  "Data Insight Solutions LLC" ;
+  kpred:tagline  "Transform data into actionable insights." ;
+  kpred:focus  "data consultancy" ;
+  kpred:helps  "businesses collect, automate, integrate, and display data" ;
+  kpred:outcome  "informed decisions and sustainable growth" .
+
+# ── Services ─────────────────────────────────────────────
+kb:ServiceCollect  rdf:type  kb:Service ;
+  rdfs:label  "Collect" ;
+  kpred:description  "Establish reliable data sources through web forms, APIs, databases, and communication platforms" ;
+  kpred:technologies  "PowerApps, Fillable PDFs, VOIP, Zoom, custom forms" ;
+  kpred:offered-by  kb:DataInsightSolutions .
+
+kb:ServiceAutomate  rdf:type  kb:Service ;
+  rdfs:label  "Automate" ;
+  kpred:description  "Build workflows for data transformation, validation, and business logic" ;
+  kpred:approach  "low-code and full-code solutions, approval flows, scheduled triggers, event-driven pipelines" ;
+  kpred:offered-by  kb:DataInsightSolutions .
+
+kb:ServiceIntegrate  rdf:type  kb:Service ;
+  rdfs:label  "Integrate" ;
+  kpred:description  "Connect disparate systems via APIs, REST, SOAP, SDKs, and ELT processes" ;
+  kpred:scope  "CRM, ERP, marketing platforms, accounting, legacy systems" ;
+  kpred:offered-by  kb:DataInsightSolutions .
+
+kb:ServiceDisplay  rdf:type  kb:Service ;
+  rdfs:label  "Display" ;
+  kpred:description  "Create dashboards, reports, and visualizations" ;
+  kpred:tools  "Power BI, custom web dashboards, in-app reporting, PDF exports" ;
+  kpred:focus  "real-time monitoring and executive summaries" ;
+  kpred:offered-by  kb:DataInsightSolutions .
+
+# ── Brand Identity ───────────────────────────────────────
+kb:BrandIdentity  rdf:type  kb:Brand ;
+  rdfs:label  "DIS Brand Identity" ;
+  kpred:tone  "Professional, solution-oriented, technically credible, approachable" ;
+  kpred:primary-color  "#1a2332" ;
+  kpred:accent-color  "#1a9b8e" ;
+  kpred:typography  "Clean sans-serif (Inter or similar)" ;
+  kpred:logo-style  "Text-based with subtle data/graph motif" ;
+  kpred:photography  "Tech-forward, collaboration-focused, conceptual data imagery" ;
+  kpred:brand-of  kb:DataInsightSolutions .
+
+# ── Target Audience ──────────────────────────────────────
+kb:TargetAudience  rdf:type  kb:Audience ;
+  rdfs:label  "Target Audience" ;
+  kpred:company-size  "50-500 employees" ;
+  kpred:roles  "Operations managers, CTOs, data team leads" ;
+  kpred:pain-point  "fragmented data across multiple systems" ;
+  kpred:need  "reduce manual reporting" ;
+  kpred:audience-of  kb:DataInsightSolutions .
+
+# ── Differentiators ──────────────────────────────────────
+kb:DataInsightSolutions
+  kpred:differentiator  "End-to-end: collection through visualization" ;
+  kpred:differentiator  "Technology-agnostic: works with existing stacks" ;
+  kpred:differentiator  "Both low-code and full-code approaches" ;
+  kpred:differentiator  "Sustainable, maintainable solutions over one-off builds" .
+
+# ── Landing Page Requirements ────────────────────────────
+kb:LandingPage  rdf:type  kb:Requirement ;
+  rdfs:label  "Landing Page" ;
+  kpred:section  "Hero with tagline and CTA" ;
+  kpred:section  "Four service pillars with icons" ;
+  kpred:section  "Social proof / trust indicators" ;
+  kpred:section  "How we work process flow" ;
+  kpred:section  "Contact form or booking widget" ;
+  kpred:constraint  "Mobile-responsive, fast-loading, accessible" ;
+  kpred:seo-target  "data integration consulting" ;
+  kpred:seo-target  "business intelligence services" ;
+  kpred:cta  "Schedule a consultation" ;
+  kpred:requirement-of  kb:DataInsightSolutions .
+
+# ── Competitive Context ──────────────────────────────────
+kb:Deloitte  rdf:type  kb:Competitor ;
+  rdfs:label  "Deloitte" ;
+  kpred:weakness  "too expensive for SMBs" .
+
+kb:Fivetran  rdf:type  kb:Competitor ;
+  rdfs:label  "Fivetran" ;
+  kpred:weakness  "integration-only, not full pipeline" .
+
+kb:PowerBIConsultancies  rdf:type  kb:Competitor ;
+  rdfs:label  "Power BI Consultancies" ;
+  kpred:weakness  "display-only, not full pipeline" .
+
+# ── Content Guidelines ───────────────────────────────────
+kb:ContentGuidelines  rdf:type  kb:Guideline ;
+  rdfs:label  "Content Guidelines" ;
+  kpred:rule  "Avoid jargon unless immediately defined" ;
+  kpred:rule  "Lead with business outcomes, not technology" ;
+  kpred:rule  "Use concrete metrics where possible" ;
+  kpred:rule  "Every section should answer: why should I care?" ;
+  kpred:guideline-of  kb:DataInsightSolutions .

@@ -1,0 +1,155 @@
+{
+  "timestamp": "2026-06-29T15:35:26.213Z",
+  "context": {
+    "markdown": {
+      "bytes": 2837,
+      "words": 382,
+      "lines": 68,
+      "tokens": 508,
+      "facts": 30
+    },
+    "turtleRaw": {
+      "bytes": 5412,
+      "words": 484,
+      "lines": 102,
+      "tokens": 644,
+      "facts": 75
+    },
+    "compressed": {
+      "bytes": 2996,
+      "words": 330,
+      "lines": 81,
+      "tokens": 439,
+      "facts": 63
+    },
+    "tokenReduction": 13.6,
+    "byteReduction": -5.6,
+    "densityMultiplier": 2.4
+  },
+  "workflow": {
+    "markdown": {
+      "steps": [
+        {
+          "step": 1,
+          "name": "Read brief & plan",
+          "description": "AI reads full markdown brief, plans page structure",
+          "inputContext": 508,
+          "estimatedOutput": 500,
+          "humanReview": "Review plan, check nothing missed from brief",
+          "humanMinutes": 5
+        },
+        {
+          "step": 2,
+          "name": "Generate HTML/CSS",
+          "description": "AI generates landing page code referencing brief for brand details",
+          "inputContext": 1008,
+          "estimatedOutput": 3000,
+          "humanReview": "Review code for accuracy: colors, copy, sections, layout",
+          "humanMinutes": 15
+        },
+        {
+          "step": 3,
+          "name": "Fix brand inconsistencies",
+          "description": "AI re-reads brief to fix color codes, tone, missed sections",
+          "inputContext": 4008,
+          "estimatedOutput": 1500,
+          "humanReview": "Cross-check every brand element against brief manually",
+          "humanMinutes": 10
+        },
+        {
+          "step": 4,
+          "name": "Add SEO & meta",
+          "description": "AI reads brief again for SEO targets, generates meta tags",
+          "inputContext": 5508,
+          "estimatedOutput": 400,
+          "humanReview": "Verify SEO keywords match brief, check meta descriptions",
+          "humanMinutes": 5
+        },
+        {
+          "step": 5,
+          "name": "Responsive polish",
+          "description": "AI adjusts layout, re-reads brief for mobile requirements",
+          "inputContext": 5908,
+          "estimatedOutput": 800,
+          "humanReview": "Test on mobile viewports, verify accessibility",
+          "humanMinutes": 10
+        }
+      ],
+      "totalInputTokens": 16940,
+      "totalOutputTokens": 6200,
+      "totalHumanMinutes": 45,
+      "cost": {
+        "input": 0.050820000000000004,
+        "output": 0.093,
+        "cached": 0.005082,
+        "total": 0.14382,
+        "totalCached": 0.098082
+      }
+    },
+    "reckons": {
+      "steps": [
+        {
+          "step": 1,
+          "name": "Query KB & plan",
+          "description": "AI queries KB for entity types, requirements, brand. Gets compressed context.",
+          "inputContext": 439,
+          "estimatedOutput": 500,
+          "humanReview": "Review plan — KB entities are pre-reviewed, so plan is grounded",
+          "humanMinutes": 3
+        },
+        {
+          "step": 2,
+          "name": "Generate HTML/CSS",
+          "description": "AI generates landing page. Every brand detail is a typed triple — no re-reading prose.",
+          "inputContext": 939,
+          "estimatedOutput": 3000,
+          "humanReview": "Review code — brand facts are structurally correct from KB",
+          "humanMinutes": 8
+        },
+        {
+          "step": 3,
+          "name": "Verify against KB",
+          "description": "Diff generated code against KB: which triples were used, which were missed?",
+          "inputContext": 939,
+          "estimatedOutput": 300,
+          "humanReview": "Review diff report — structural, not manual cross-checking",
+          "humanMinutes": 3
+        },
+        {
+          "step": 4,
+          "name": "Add SEO & meta",
+          "description": "Query KB for seo-target and cta predicates directly",
+          "inputContext": 739,
+          "estimatedOutput": 400,
+          "humanReview": "SEO targets are typed triples — verify they match",
+          "humanMinutes": 2
+        },
+        {
+          "step": 5,
+          "name": "Responsive polish",
+          "description": "Query KB for constraint predicates (mobile-responsive, accessible)",
+          "inputContext": 839,
+          "estimatedOutput": 800,
+          "humanReview": "Test on mobile viewports, verify accessibility",
+          "humanMinutes": 8
+        }
+      ],
+      "totalInputTokens": 3895,
+      "totalOutputTokens": 5000,
+      "totalHumanMinutes": 24,
+      "cost": {
+        "input": 0.011685000000000001,
+        "output": 0.075,
+        "cached": 0.0011685,
+        "total": 0.086685,
+        "totalCached": 0.0761685
+      }
+    }
+  },
+  "savings": {
+    "tokenReductionPct": 13.6,
+    "humanTimeSavedMinutes": 21,
+    "humanTimeSavedPct": 47,
+    "costSavedPct": 39.7
+  }
+}

@@ -25,6 +25,7 @@
     addSource,
   } from '$lib/stores/kb.svelte';
   import { getRegistry, getCurrentKbId } from '$lib/storage/kb-registry';
+  import { drainAndImportPending, workspaceState } from '$lib/stores/workspace.svelte';
   import {
     computeAlignment, loadKbStatements, applyAlignmentToActiveKb,
     type AlignmentResult, type AlignmentSuggestion,
@@ -124,6 +125,19 @@
   }
 
   function refresh() { bumpKey++; }
+
+  let draining = $state(false);
+  let drainResult = $state<string | null>(null);
+  async function checkPending() {
+    draining = true;
+    drainResult = null;
+    try {
+      const count = await drainAndImportPending();
+      drainResult = count > 0 ? `${count} imported` : 'none';
+      if (count > 0) refresh();
+    } catch { drainResult = 'error'; }
+    finally { draining = false; setTimeout(() => drainResult = null, 3000); }
+  }
 
   function sourceLabel(sourceId: string): string {
     return sources().find(s => s.id === sourceId)?.title ?? sourceId;
@@ -695,7 +709,14 @@
   <aside class="review-panel" style="width:{panelWidth}px">
     <div class="rp-header">
       <h2 class="rp-title">review</h2>
-      <p class="rp-sub mono">{totalPending} pending change{totalPending !== 1 ? 's' : ''}</p>
+      <p class="rp-sub mono">
+        {totalPending} pending change{totalPending !== 1 ? 's' : ''}
+        {#if workspaceState() === 'connected'}
+          <button class="drain-btn" onclick={checkPending} disabled={draining} title="Check workspace for pending MCP proposals">
+            {draining ? '...' : drainResult ?? '↻'}
+          </button>
+        {/if}
+      </p>
     </div>
 
     <!-- Tab bar -->
@@ -1145,6 +1166,18 @@
     letter-spacing: 0.08em;
     margin: 0.15rem 0 0;
   }
+  .drain-btn {
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 0.6rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: var(--rad-sm);
+    cursor: pointer;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+  }
+  .drain-btn:hover { color: var(--accent); border-color: var(--accent); }
 
   .rp-tabs {
     display: flex;

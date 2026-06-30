@@ -174,7 +174,7 @@
 
   // ── Architecture features ────────────────────────────────────────────────
   const ARCH = [
-    { icon: '⬡', title: 'No backend server',   body: 'Everything runs in your browser. No cloud, no deploy, no ops.' },
+    { icon: '⬡', title: 'No datacenter required', body: 'Your knowledge graph runs in your browser. Cloud AI backends are optional, never mandatory.' },
     { icon: '◎', title: 'No account needed',    body: 'No sign-up, no email, no profile. Open the app and start.' },
     { icon: '◷', title: 'No tracking, ever',    body: 'Zero analytics, zero telemetry. We literally cannot see your data.' },
     { icon: '⬢', title: 'Local-first storage',  body: 'All triples live in IndexedDB in your browser. Export as .ttl anytime.' },
@@ -211,7 +211,7 @@
         <span class="badge">open source</span>
         <span class="badge">RDF / Turtle</span>
         <span class="badge">no account</span>
-        <span class="badge">no backend</span>
+        <span class="badge">no datacenter required</span>
         <span class="badge">MIT license</span>
       </div>
       <div class="hero-ctas">
@@ -660,6 +660,9 @@
         {#if benchData.timestamp}
           · last run {new Date(benchData.timestamp).toLocaleDateString()}
         {/if}
+      </p>
+      <p class="bench-methodology mono" style="margin-top: 0.6rem;">
+        <a href="/about/case-study-0">Read the full case study: structured context vs. markdown →</a>
       </p>
     </section>
   {/if}

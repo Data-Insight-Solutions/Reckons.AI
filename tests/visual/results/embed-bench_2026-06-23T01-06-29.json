@@ -1,0 +1,256 @@
+{
+  "timestamp": "2026-06-23T01:06:29.589Z",
+  "testPairs": 26,
+  "clusterGroups": 3,
+  "retrievalQueries": 3,
+  "alignmentPairs": 9,
+  "results": [
+    {
+      "modelId": "Xenova/bge-small-en-v1.5",
+      "dtype": "q8",
+      "dims": 384,
+      "accuracy": 0.9230769230769231,
+      "composite": {
+        "overall": 0.7209766117604979,
+        "similarity": {
+          "accuracy": 0.9230769230769231,
+          "categoryAccuracy": {
+            "entity-match": 1,
+            "kb-related": 1,
+            "cross-kb": 0.6666666666666666,
+            "negative": 0.8,
+            "merge-detect": 1,
+            "predicate": 1
+          },
+          "optimalThreshold": 0.65,
+          "auroc": 0.9
+        },
+        "retrieval": {
+          "ndcg": 1,
+          "mrr": 1,
+          "precision5": 0.6666666666666666,
+          "recall10": 1
+        },
+        "clustering": {
+          "intraAvg": 0.5547077103928639,
+          "interAvg": 0.46881442300921533,
+          "separationRatio": 0.15484422836454875,
+          "silhouette": 0.13927283689495187,
+          "vMeasure": 0.5858778960946422
+        },
+        "alignment": {
+          "accuracy": 0.5,
+          "map": 0.5,
+          "recall": 0.5,
+          "falsePositiveRate": 0
+        }
+      },
+      "loadTimeMs": 1126,
+      "avgEmbedMs": 7.423076923076923,
+      "clusterResults": [
+        {
+          "group": "tech-stack",
+          "intraAvg": 0.48516227735437034,
+          "interAvg": 0.4606209099916629,
+          "separation": 0.024541367362707456
+        },
+        {
+          "group": "workflows",
+          "intraAvg": 0.7987624360709416,
+          "interAvg": 0.47734340874047876,
+          "separation": 0.3214190273304628
+        },
+        {
+          "group": "llm-backends",
+          "intraAvg": 0.47782030802451125,
+          "interAvg": 0.4694266153767556,
+          "separation": 0.008393692647755635
+        }
+      ],
+      "pairResults": [
+        {
+          "textA": "Reckons.AI",
+          "textB": "reckons ai knowledge graph",
+          "expected": "similar",
+          "cosine": 0.84484964801322,
+          "passed": true
+        },
+        {
+          "textA": "SvelteKit",
+          "textB": "Svelte Kit framework",
+          "expected": "similar",
+          "cosine": 0.7303025715821005,
+          "passed": true
+        },
+        {
+          "textA": "TypeScript",
+          "textB": "TS programming language",
+          "expected": "similar",
+          "cosine": 0.7516380147102499,
+          "passed": true
+        },
+        {
+          "textA": "IndexedDB",
+          "textB": "indexed database browser storage",
+          "expected": "similar",
+          "cosine": 0.8362946380462074,
+          "passed": true
+        },
+        {
+          "textA": "triple extraction",
+          "textB": "extracting RDF triples from text",
+          "expected": "similar",
+          "cosine": 0.70645509580941,
+          "passed": true
+        },
+        {
+          "textA": "knowledge graph",
+          "textB": "semantic web ontology",
+          "expected": "related",
+          "cosine": 0.7154774869221767,
+          "passed": true
+        },
+        {
+          "textA": "ingest workflow",
+          "textB": "importing documents for extraction",
+          "expected": "related",
+          "cosine": 0.6211725839965943,
+          "passed": true
+        },
+        {
+          "textA": "review panel",
+          "textB": "confirming pending triples",
+          "expected": "related",
+          "cosine": 0.4724738675705038,
+          "passed": true
+        },
+        {
+          "textA": "MCP server",
+          "textB": "model context protocol tools",
+          "expected": "related",
+          "cosine": 0.5790810350342775,
+          "passed": true
+        },
+        {
+          "textA": "visual testing",
+          "textB": "screenshot comparison benchmarks",
+          "expected": "related",
+          "cosine": 0.6749189771922803,
+          "passed": true
+        },
+        {
+          "textA": "multi-KB management",
+          "textB": "multiple knowledge bases switching",
+          "expected": "similar",
+          "cosine": 0.6579397537228441,
+          "passed": true
+        },
+        {
+          "textA": "production test suite passing",
+          "textB": "all tests green in CI",
+          "expected": "similar",
+          "cosine": 0.5785245955578746,
+          "passed": false
+        },
+        {
+          "textA": "planned feature: enrichment pipeline",
+          "textB": "roadmap item for progressive analysis",
+          "expected": "related",
+          "cosine": 0.595624043657305,
+          "passed": true
+        },
+        {
+          "textA": "Dexie.js local persistence",
+          "textB": "browser database storage layer",
+          "expected": "related",
+          "cosine": 0.5539195670458859,
+          "passed": true
+        },
+        {
+          "textA": "SvelteKit framework",
+          "textB": "morning coffee recipe",
+          "expected": "unrelated",
+          "cosine": 0.4563830297288514,
+          "passed": false
+        },
+        {
+          "textA": "RDF triple extraction",
+          "textB": "weather forecast tomorrow",
+          "expected": "unrelated",
+          "cosine": 0.4081426523848282,
+          "passed": true
+        },
+        {
+          "textA": "knowledge graph visualization",
+          "textB": "stock market trading",
+          "expected": "unrelated",
+          "cosine": 0.42966348596518994,
+          "passed": true
+        },
+        {
+          "textA": "IndexedDB persistence",
+          "textB": "Italian pasta carbonara",
+          "expected": "unrelated",
+          "cosine": 0.3317190182478135,
+          "passed": true
+        },
+        {
+          "textA": "Playwright visual testing",
+          "textB": "medieval castle architecture",
+          "expected": "unrelated",
+          "cosine": 0.3884049373070865,
+          "passed": true
+        },
+        {
+          "textA": "Claude API",
+          "textB": "Anthropic Claude",
+          "expected": "similar",
+          "cosine": 0.6777224033069217,
+          "passed": true
+        },
+        {
+          "textA": "ollama local model",
+          "textB": "Ollama LLM backend",
+          "expected": "similar",
+          "cosine": 0.7091078487483768,
+          "passed": true
+        },
+        {
+          "textA": "transformers.js",
+          "textB": "HuggingFace Transformers JavaScript",
+          "expected": "similar",
+          "cosine": 0.7149362523426395,
+          "passed": true
+        },
+        {
+          "textA": "Shelly turtle companion",
+          "textB": "turtle AI assistant",
+          "expected": "related",
+          "cosine": 0.6714778373599256,
+          "passed": true
+        },
+        {
+          "textA": "has-feature",
+          "textB": "includes capability",
+          "expected": "related",
+          "cosine": 0.670860708509472,
+          "passed": true
+        },
+        {
+          "textA": "built-with",
+          "textB": "uses technology",
+          "expected": "related",
+          "cosine": 0.5901256726244739,
+          "passed": true
+        },
+        {
+          "textA": "has-status production",
+          "textB": "deployed and working",
+          "expected": "related",
+          "cosine": 0.5516340253579464,
+          "passed": true
+        }
+      ]
+    }
+  ]
+}

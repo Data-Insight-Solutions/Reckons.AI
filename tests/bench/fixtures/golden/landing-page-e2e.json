@@ -1,0 +1,61 @@
+{
+  "description": "Golden scoring criteria for landing page generation from brand KB. Each check is a substring or pattern that must appear in the generated HTML.",
+  "brand": {
+    "mustContain": [
+      { "id": "company-name", "pattern": "Data Insight Solutions", "weight": 1.0 },
+      { "id": "tagline", "pattern": "Transform data into actionable insights", "weight": 1.0 },
+      { "id": "primary-color", "pattern": "#1a2332", "weight": 1.0 },
+      { "id": "accent-color", "pattern": "#1a9b8e", "weight": 1.0 },
+      { "id": "font-inter", "pattern": "Inter", "weight": 0.5 },
+      { "id": "cta-text", "pattern": "Schedule a consultation", "weight": 1.0 }
+    ],
+    "description": "Core brand elements that must appear exactly"
+  },
+  "services": {
+    "mustContain": [
+      { "id": "service-collect", "pattern": "Collect", "weight": 1.0 },
+      { "id": "service-automate", "pattern": "Automate", "weight": 1.0 },
+      { "id": "service-integrate", "pattern": "Integrate", "weight": 1.0 },
+      { "id": "service-display", "pattern": "Display", "weight": 1.0 }
+    ],
+    "description": "All four service pillars must be present"
+  },
+  "sections": {
+    "mustContain": [
+      { "id": "hero-section", "patterns": ["hero", "banner", "<h1"], "matchAny": true, "weight": 0.5 },
+      { "id": "contact-section", "patterns": ["contact", "form", "booking"], "matchAny": true, "weight": 0.5 }
+    ],
+    "description": "Key page sections"
+  },
+  "seo": {
+    "mustContain": [
+      { "id": "seo-integration", "pattern": "data integration consulting", "weight": 0.5 },
+      { "id": "seo-bi", "pattern": "business intelligence services", "weight": 0.5 }
+    ],
+    "description": "SEO target keywords"
+  },
+  "structure": {
+    "mustContain": [
+      { "id": "valid-html", "pattern": "<html", "weight": 0.5 },
+      { "id": "has-head", "pattern": "<head", "weight": 0.25 },
+      { "id": "has-body", "pattern": "<body", "weight": 0.25 },
+      { "id": "has-style", "patterns": ["<style", "<link"], "matchAny": true, "weight": 0.25 },
+      { "id": "responsive-meta", "pattern": "viewport", "weight": 0.5 }
+    ],
+    "description": "Structural HTML requirements"
+  },
+  "mustNotContain": [
+    { "id": "no-lorem", "pattern": "lorem ipsum", "penalty": 1.0 },
+    { "id": "no-placeholder-img", "pattern": "placeholder.com", "penalty": 0.5 },
+    { "id": "no-todo", "pattern": "TODO", "penalty": 0.5 },
+    { "id": "no-fixme", "pattern": "FIXME", "penalty": 0.5 }
+  ],
+  "scoreWeights": {
+    "brand": 0.30,
+    "services": 0.25,
+    "sections": 0.10,
+    "seo": 0.10,
+    "structure": 0.10,
+    "noHallucination": 0.15
+  }
+}
