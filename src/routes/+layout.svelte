@@ -17,9 +17,9 @@
   import { loadGlbOverrides } from '$lib/stores/glb-overrides.svelte';
   import { loadGifOverrides } from '$lib/stores/gif-overrides.svelte';
   import { loadIcon2dOverrides } from '$lib/stores/icon2d-overrides.svelte';
-  import { loadWorkspace, drainWorkspacePending, workspaceState, supportsWorkspace } from '$lib/stores/workspace.svelte';
+  import { loadWorkspace, drainAndImportPending, workspaceState, supportsWorkspace } from '$lib/stores/workspace.svelte';
   import { pushNotification } from '$lib/stores/notifications.svelte';
-  import { addStatements, addSource, confirmedStatements } from '$lib/stores/kb.svelte';
+  import { confirmedStatements } from '$lib/stores/kb.svelte';
   import { updateSettings } from '$lib/stores/settings.svelte';
   import { getCurrentKbId, registerStableId, getRegistry, createKb } from '$lib/storage/kb-registry';
   import { getOrCreateStableId } from '$lib/storage/kb-fingerprint';
@@ -75,55 +75,7 @@
 
       // Reconnect workspace and drain any pending triples written by the MCP server
       await loadWorkspace();
-      const pending = await drainWorkspacePending();
-      if (pending.length > 0) {
-        const { v4: nanoid } = await import('uuid');
-        const sourceId = `mcp-pending-${Date.now()}`;
-        const now = Date.now();
-
-        // Build source title with agent info if available
-        const agents = [...new Set(pending.map(e => e.agent).filter(Boolean))];
-        const agentSuffix = agents.length > 0 ? ` (${agents.join(', ')})` : '';
-        await addSource({
-          id: sourceId,
-          title: `MCP${agentSuffix} — ${pending.length} queued note${pending.length > 1 ? 's' : ''}`,
-          uri: `urn:mcp:pending:${sourceId}`,
-          kind: 'analysis',
-          trustLevel: 'review',
-          ingestedAt: now,
-        });
-
-        const priorityToConfidence: Record<string, number> = { high: 0.9, normal: 0.7, low: 0.5 };
-        const typePrefix: Record<string, string> = {
-          'drift-warning': '[DRIFT WARNING] ',
-          'question': '[QUESTION] ',
-          'suggestion': '[SUGGESTION] ',
-          'status-update': '[STATUS] ',
-        };
-
-        const sts = pending.map(e => {
-          const confidence = priorityToConfidence[e.priority ?? 'normal'] ?? 0.7;
-          const prefix = e.type ? (typePrefix[e.type] ?? '') : '';
-          const gloss = prefix + (e.note ?? '');
-          const excerpt = e.commitSha ? `commit: ${e.commitSha}` : undefined;
-
-          return {
-            id: nanoid(),
-            sourceId,
-            status: 'pending' as const,
-            confidence,
-            s: { kind: 'iri' as const, value: e.subject },
-            p: { kind: 'iri' as const, value: e.predicate },
-            o: { kind: 'literal' as const, value: e.object },
-            g: { kind: 'iri' as const, value: `urn:mcp:pending:${sourceId}` },
-            ...(gloss ? { gloss } : {}),
-            ...(excerpt ? { excerpt } : {}),
-            createdAt: e.addedAt ? new Date(e.addedAt).getTime() : now,
-            updatedAt: now,
-          };
-        });
-        await addStatements(sts, sourceId);
-      }
+      await drainAndImportPending();
       // Nudge: suggest linking a local folder once the user has some data
       if (supportsWorkspace() && workspaceState() === 'none' && confirmedStatements().length >= 10) {
         pushNotification({

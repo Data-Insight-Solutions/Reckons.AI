@@ -2,10 +2,20 @@
  * Local Workspace — a user-selected directory on their filesystem.
  *
  * When a workspace is set it serves as:
- *  - Persistent home for all KBs (kbs/{name}/kb.ttl + meta.json + sources.json)
+ *  - Persistent home for all KBs with human-readable TTL and structured binary assets
  *  - Default export location for MCP server (knowledge.ttl — backward compat)
  *  - Profile sync location (settings_profile.json)
  *  - Future: model storage, cross-device sync
+ *
+ * KB folder layout:
+ *
+ *   kbs/my-kb/
+ *     kb.ttl              human-readable Turtle (no base64 blobs)
+ *     meta.json            discovery metadata, readOnly flag, stableId
+ *     assets/              only created when the KB has binary assets
+ *       icons/             2D node icons (SVG, PNG) — only if populated
+ *       previews/          hover preview images (GIF, PNG, JPG) — only if populated
+ *       models/            3D node models (GLB) — only if populated
  *
  * The FileSystemDirectoryHandle is stored in IndexedDB (structured-clone safe),
  * but PERMISSION must be re-granted each browser session.  We store the folder
@@ -17,6 +27,7 @@
 import { db, KBaseDB } from '../storage/db';
 import { updateSettings } from './settings.svelte';
 import { getRegistry, type KbEntry } from '../storage/kb-registry';
+import { collectAssets, assetTriples, type CollectedAsset, type AssetCategory } from '../storage/kb-assets';
 
 /** Filename written to the workspace dir on every KB mutation (read by the MCP server). */
 export const WORKSPACE_KB_FILE = 'knowledge.ttl';
@@ -179,21 +190,23 @@ export type KbMeta = {
   createdAt: number;
   lastModified: number;
   statementCount: number;
-  sourceCount: number;
+  /** @deprecated No longer written. Kept for backward compat with existing meta.json files. */
+  sourceCount?: number;
   dbName: string;
   /** When true, the app will never overwrite kb.ttl in this folder (source-of-truth is external). */
   readOnly?: boolean;
 };
 
 /**
- * Write one KB's data to the workspace folder: kbs/{folderName}/kb.ttl + meta.json + sources.json
+ * Write one KB's data to the workspace folder: kbs/{folderName}/kb.ttl + meta.json
+ * Binary assets written to assets/{icons,previews,models}/ — directories only created when populated.
  * Skips folders marked as readOnly in their meta.json (source-of-truth is external, e.g. symlinks).
  */
 export async function writeKbToFolder(
   entry: KbEntry,
   ttl: string,
-  sources: unknown[],
-  stableId?: string
+  stableId?: string,
+  assets?: CollectedAsset[]
 ): Promise<void> {
   if (!_handle) return;
   try {
@@ -221,17 +234,46 @@ export async function writeKbToFolder(
       createdAt: entry.createdAt,
       lastModified: Date.now(),
       statementCount: entry.statementCount ?? 0,
-      sourceCount: sources.length,
       dbName: entry.id,
     };
 
     await Promise.all([
       writeToDir(kbDir, 'kb.ttl', ttl),
       writeToDir(kbDir, 'meta.json', JSON.stringify(meta, null, 2)),
-      writeToDir(kbDir, 'sources.json', JSON.stringify(sources, null, 2)),
     ]);
+
+    // Write binary assets to structured directories (only populated categories)
+    if (assets && assets.length > 0) {
+      await writeAssetsToFolder(kbDir, assets);
+    }
   } catch (e) {
     console.warn(`[workspace] KB folder write failed for "${entry.name}":`, e);
+  }
+}
+
+/** Write binary assets to assets/{category}/ subdirectories. */
+async function writeAssetsToFolder(
+  kbDir: FileSystemDirectoryHandle,
+  assets: CollectedAsset[]
+): Promise<void> {
+  // Group by category — only create directories that have content
+  const byCategory = new Map<AssetCategory, CollectedAsset[]>();
+  for (const a of assets) {
+    const list = byCategory.get(a.category) ?? [];
+    list.push(a);
+    byCategory.set(a.category, list);
+  }
+
+  const assetsDir = await getOrCreateDir(kbDir, 'assets');
+
+  for (const [category, entries] of byCategory) {
+    const catDir = await getOrCreateDir(assetsDir, category);
+    for (const entry of entries) {
+      const fh = await catDir.getFileHandle(entry.filename, { create: true });
+      const w = await fh.createWritable();
+      await w.write(entry.data.buffer as ArrayBuffer);
+      await w.close();
+    }
   }
 }
 
@@ -264,28 +306,44 @@ export async function listKbFolders(): Promise<Array<{ folderName: string; meta:
 /**
  * Read a KB's full data from its folder.
  * Returns null if the folder or key files don't exist.
+ * Also reads any binary assets from assets/{icons,previews,models}/ subdirectories.
  */
 export async function readKbFromFolder(folderName: string): Promise<{
   ttl: string;
   meta: KbMeta;
-  sources: unknown[];
+  assets: Map<string, Uint8Array>; // relative path ("assets/icons/foo.svg") → bytes
 } | null> {
   if (!_handle) return null;
   try {
     const kbsDir = await _handle.getDirectoryHandle('kbs');
     const kbDir = await kbsDir.getDirectoryHandle(folderName);
 
-    const [ttl, metaText, sourcesText] = await Promise.all([
+    const [ttl, metaText] = await Promise.all([
       readFromDir(kbDir, 'kb.ttl'),
       readFromDir(kbDir, 'meta.json'),
-      readFromDir(kbDir, 'sources.json'),
     ]);
 
     if (!ttl || !metaText) return null;
     const meta = JSON.parse(metaText) as KbMeta;
-    const sources = sourcesText ? JSON.parse(sourcesText) : [];
 
-    return { ttl, meta, sources };
+    // Read binary assets from structured directories
+    const assets = new Map<string, Uint8Array>();
+    try {
+      const assetsDir = await kbDir.getDirectoryHandle('assets');
+      for (const category of ['icons', 'previews', 'models'] as const) {
+        try {
+          const catDir = await assetsDir.getDirectoryHandle(category);
+          for await (const entry of (catDir as any).values()) {
+            if (entry.kind !== 'file') continue;
+            const file = await entry.getFile();
+            const ab = await file.arrayBuffer();
+            assets.set(`assets/${category}/${entry.name}`, new Uint8Array(ab));
+          }
+        } catch { /* category dir doesn't exist — fine */ }
+      }
+    } catch { /* no assets/ dir — fine */ }
+
+    return { ttl, meta, assets };
   } catch {
     return null;
   }
@@ -293,7 +351,7 @@ export async function readKbFromFolder(folderName: string): Promise<{
 
 /**
  * Sync all registered KBs to the workspace folder.
- * Exports each KB's TTL + meta + sources to kbs/{name}/.
+ * Exports each KB's TTL + meta + assets to kbs/{name}/.
  */
 export async function syncAllKbs(): Promise<number> {
   if (!_handle) return 0;
@@ -306,7 +364,6 @@ export async function syncAllKbs(): Promise<number> {
       // Open a temporary DB connection for this KB
       const kbDb = new KBaseDB(entry.id);
       const statements = await kbDb.statements.toArray();
-      const sources = await kbDb.sources.toArray();
       const settings = await kbDb.settings.get('main');
       const stableId = settings?.kbStableId;
 
@@ -316,8 +373,12 @@ export async function syncAllKbs(): Promise<number> {
         continue;
       }
 
-      const ttl = toTurtle(statements);
-      await writeKbToFolder(entry, ttl, sources, stableId);
+      // Collect binary assets and generate TTL with asset references
+      const assets = await collectAssets(kbDb);
+      const assetTtl = await assetTriples(kbDb, assets);
+      const ttl = toTurtle(statements) + assetTtl;
+
+      await writeKbToFolder(entry, ttl, stableId, assets);
       synced++;
 
       // Close if it's not the active DB
@@ -366,20 +427,21 @@ async function _triggerWorkspaceTtlExport(): Promise<void> {
   try {
     const { toTurtle } = await import('../rdf/serialize');
     const statements = await db.statements.toArray();
-    const sources = await db.sources.toArray();
     const settings = await db.settings.get('main');
-    const ttl = toTurtle(statements);
+    const baseTtl = toTurtle(statements);
 
     // Write legacy flat file for MCP server
-    await writeToWorkspace(WORKSPACE_KB_FILE, ttl);
+    await writeToWorkspace(WORKSPACE_KB_FILE, baseTtl);
 
-    // Write to multi-KB folder structure
+    // Write to multi-KB folder structure with assets
     const { getCurrentKbId } = await import('../storage/kb-registry');
     const currentId = getCurrentKbId();
     const registry = getRegistry();
     const entry = registry.find(e => e.id === currentId);
     if (entry) {
-      await writeKbToFolder(entry, ttl, sources, settings?.kbStableId);
+      const assets = await collectAssets(db);
+      const assetTtl = await assetTriples(db, assets);
+      await writeKbToFolder(entry, baseTtl + assetTtl, settings?.kbStableId, assets);
       _lastSyncTime = Date.now();
     }
   } catch (err) {
@@ -434,6 +496,64 @@ export async function drainWorkspacePending(): Promise<PendingEntry[]> {
   }
 
   return entries;
+}
+
+/**
+ * Drain pending.jsonl and import entries as pending statements into IndexedDB.
+ * Returns the number of statements imported (0 if none or workspace not connected).
+ */
+export async function drainAndImportPending(): Promise<number> {
+  const pending = await drainWorkspacePending();
+  if (pending.length === 0) return 0;
+
+  const { addStatements, addSource } = await import('./kb.svelte');
+  const { v4: uuid } = await import('uuid');
+
+  const sourceId = `mcp-pending-${Date.now()}`;
+  const now = Date.now();
+
+  const agents = [...new Set(pending.map(e => e.agent).filter(Boolean))];
+  const agentSuffix = agents.length > 0 ? ` (${agents.join(', ')})` : '';
+  await addSource({
+    id: sourceId,
+    title: `MCP${agentSuffix} — ${pending.length} queued note${pending.length > 1 ? 's' : ''}`,
+    uri: `urn:mcp:pending:${sourceId}`,
+    kind: 'analysis',
+    trustLevel: 'review',
+    ingestedAt: now,
+  });
+
+  const priorityToConfidence: Record<string, number> = { high: 0.9, normal: 0.7, low: 0.5 };
+  const typePrefix: Record<string, string> = {
+    'drift-warning': '[DRIFT WARNING] ',
+    'question': '[QUESTION] ',
+    'suggestion': '[SUGGESTION] ',
+    'status-update': '[STATUS] ',
+  };
+
+  const sts = pending.map(e => {
+    const confidence = priorityToConfidence[e.priority ?? 'normal'] ?? 0.7;
+    const prefix = e.type ? (typePrefix[e.type] ?? '') : '';
+    const gloss = prefix + (e.note ?? '');
+    const excerpt = e.commitSha ? `commit: ${e.commitSha}` : undefined;
+
+    return {
+      id: uuid(),
+      sourceId,
+      status: 'pending' as const,
+      confidence,
+      s: { kind: 'iri' as const, value: e.subject },
+      p: { kind: 'iri' as const, value: e.predicate },
+      o: { kind: 'literal' as const, value: e.object },
+      g: { kind: 'iri' as const, value: `urn:mcp:pending:${sourceId}` },
+      ...(gloss ? { gloss } : {}),
+      ...(excerpt ? { excerpt } : {}),
+      createdAt: e.addedAt ? new Date(e.addedAt).getTime() : now,
+      updatedAt: now,
+    };
+  });
+  await addStatements(sts, sourceId);
+  return sts.length;
 }
 
 // ── Import KBs from workspace ────────────────────────────────────────────────
@@ -519,6 +639,35 @@ export async function importKbsFromWorkspace(): Promise<{ imported: string[]; sk
           updatedAt: now,
         }));
       await tempDb.statements.bulkPut(stmts);
+
+      // Import binary assets into IndexedDB override tables
+      if (data.assets.size > 0) {
+        const { parseAssetRefs, isAssetPath, extToMime } = await import('../storage/kb-assets');
+        const refs = parseAssetRefs(data.ttl);
+        for (const ref of refs) {
+          if (!isAssetPath(ref.value)) continue;
+          const bytes = data.assets.get(ref.value);
+          if (!bytes) continue;
+
+          if (ref.category === 'previews') {
+            const filename = ref.value.split('/').pop() ?? 'preview';
+            const mime = extToMime(ref.value);
+            await tempDb.entityGifs.put({
+              id: ref.entityIri,
+              blob: new Blob([bytes.buffer as ArrayBuffer], { type: mime }),
+              filename,
+            });
+          } else if (ref.category === 'models') {
+            // Convert to data URL for glbOverrides
+            const b64 = btoa(String.fromCharCode(...bytes));
+            await tempDb.glbOverrides.put({ id: ref.entityIri, url: `data:model/gltf-binary;base64,${b64}` });
+          } else if (ref.category === 'icons') {
+            const mime = extToMime(ref.value);
+            const b64 = btoa(String.fromCharCode(...bytes));
+            await tempDb.icon2dOverrides.put({ id: ref.entityIri, url: `data:${mime};base64,${b64}` });
+          }
+        }
+      }
 
       // Register stable ID
       if (meta.stableId) {
