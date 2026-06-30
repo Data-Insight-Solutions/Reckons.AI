@@ -59,14 +59,18 @@ kb:knowledge-graph  rdf:type     ktype:Feature ;
                     rdfs:label   "Knowledge Graph" ;
                     kpred:renders-with kb:force-graph-2d ;
                     kpred:renders-with kb:three-js-3d ;
-                    kpred:has-status   "production" .
+                    kpred:has-status   "production" ;
+                    kpred:tested-by    "src/lib/rdf/__tests__/hierarchy.test.ts" ;
+                    kpred:tested-by    "src/lib/rdf/__tests__/ghost-graph.test.ts" .
 
 kb:multi-kb         rdf:type     ktype:Feature ;
                     rdfs:label   "Multi-KB Management" ;
                     kpred:has-status   "production" ;
                     kpred:includes     kb:kb-registry ;
                     kpred:includes     kb:kb-leap ;
-                    kpred:includes     kb:import-as-new-kb .
+                    kpred:includes     kb:import-as-new-kb ;
+                    kpred:tested-by    "src/lib/storage/__tests__/kb-registry.test.ts" ;
+                    kpred:tested-by    "src/lib/rdf/__tests__/ghost-graph.test.ts" .
 
 kb:triple-extraction rdf:type    ktype:Feature ;
                     rdfs:label   "Triple Extraction" ;
@@ -74,7 +78,8 @@ kb:triple-extraction rdf:type    ktype:Feature ;
                     kpred:supports     kb:claude-backend ;
                     kpred:supports     kb:openai-backend ;
                     kpred:supports     kb:wasm-backend ;
-                    kpred:supports     kb:ollama-backend .
+                    kpred:supports     kb:ollama-backend ;
+                    kpred:tested-by    "src/lib/integrations/llm/__tests__/extractor.test.ts" .
 
 kb:visual-testing   rdf:type     ktype:Feature ;
                     rdfs:label   "Visual Testing" ;
@@ -114,7 +119,8 @@ kb:repo-ingest      rdf:type     ktype:Feature ;
                     kpred:uses         kb:github-api ;
                     kpred:supports     "public repos" ;
                     kpred:supports     "private repos (with token)" ;
-                    kpred:supports     "delta updates" .
+                    kpred:supports     "delta updates" ;
+                    kpred:tested-by    "src/lib/integrations/github/__tests__/repo-ingest.test.ts" .
 
 kb:source-refresh   rdf:type     ktype:Feature ;
                     rdfs:label   "Source Refresh" ;
@@ -123,13 +129,28 @@ kb:source-refresh   rdf:type     ktype:Feature ;
                     kpred:refreshes    "repository" ;
                     kpred:refreshes    "calendar" ;
                     kpred:has-setting  "autoRefreshOnOpen" ;
-                    kpred:has-setting  "autoRefreshIntervalMinutes" .
+                    kpred:has-setting  "autoRefreshIntervalMinutes" ;
+                    kpred:tested-by    "src/lib/stores/__tests__/source-refresh.test.ts" .
 
 kb:cross-kb-alignment rdf:type  ktype:Feature ;
                     rdfs:label   "Cross-KB Alignment" ;
                     kpred:has-status   "production" ;
                     kpred:description  "Align entities across KBs with embedding similarity and IRI remapping" ;
-                    kpred:has-tab      "align" .
+                    kpred:has-tab      "align" ;
+                    kpred:tested-by    "src/lib/rdf/__tests__/bm25.test.ts" .
+
+kb:reasoning-engine rdf:type     ktype:Feature ;
+                    rdfs:label   "Reasoning Engine" ;
+                    kpred:has-status   "production" ;
+                    kpred:description  "Inference rules and temporal reasoning over KB statements." ;
+                    kpred:tested-by    "src/lib/rdf/__tests__/reasoning.test.ts" ;
+                    kpred:tested-by    "src/lib/rdf/__tests__/temporal.test.ts" .
+
+kb:mobile-auth      rdf:type     ktype:Feature ;
+                    rdfs:label   "Mobile Auth" ;
+                    kpred:has-status   "production" ;
+                    kpred:description  "Google OAuth flow adapted for mobile browsers." ;
+                    kpred:tested-by    "src/lib/utils/__tests__/mobile-auth.test.ts" .
 
 kb:n8n-cloud-sync   rdf:type     ktype:Feature ;
                     rdfs:label   "n8n Cloud Sync" ;
@@ -142,7 +163,8 @@ kb:entity-normalisation rdf:type ktype:Feature ;
                     rdfs:label   "Entity Normalisation" ;
                     kpred:has-status   "production" ;
                     kpred:description  "Post-extraction IRI rewriting using embedding similarity. Prevents duplicate entities entering review queue." ;
-                    kpred:uses         kb:bge-small .
+                    kpred:uses         kb:bge-small ;
+                    kpred:tested-by    "src/lib/rdf/__tests__/normalize-entities.test.ts" .
 
 kb:mcp-workspace    rdf:type     ktype:Feature ;
                     rdfs:label   "MCP Workspace (Self-Dogfooding)" ;
@@ -152,7 +174,50 @@ kb:mcp-workspace    rdf:type     ktype:Feature ;
 kb:bge-small        rdf:type     ktype:Library ;
                     rdfs:label   "BGE-small-en-v1.5" ;
                     kpred:purpose "Embedding model for similarity, normalisation, and cross-KB alignment" ;
-                    kpred:version "33MB, 384d, q8" .
+                    kpred:version "33MB, 384d, q8" ;
+                    kpred:tested-by    "src/lib/__tests__/embed.test.ts" .
+
+kb:entity-types     rdf:type     ktype:Feature ;
+                    rdfs:label   "Entity Type System" ;
+                    kpred:has-status   "production" ;
+                    kpred:description  "Built-in + custom entity types with geometry, color, icon. KnowledgeBase type uses inverted pyramid." ;
+                    kpred:tested-by    "src/lib/rdf/__tests__/entity-types.test.ts" ;
+                    kpred:tested-by    "src/lib/stores/__tests__/entity-types.test.ts" .
+
+kb:diff-engine      rdf:type     ktype:Feature ;
+                    rdfs:label   "Diff Engine" ;
+                    kpred:has-status   "production" ;
+                    kpred:description  "Classifies incoming triples as new, duplicate, reinforcing, conflicting, or refining." ;
+                    kpred:tested-by    "src/lib/rdf/__tests__/diff.test.ts" ;
+                    kpred:tested-by    "src/lib/rdf/__tests__/semantic-diff.test.ts" ;
+                    kpred:tested-by    "src/lib/rdf/__tests__/diff-summary.test.ts" .
+
+kb:rdf-core         rdf:type     ktype:Feature ;
+                    rdfs:label   "RDF Core (Types & Serialization)" ;
+                    kpred:has-status   "production" ;
+                    kpred:description  "Term constructors, type guards, N-Quads round-trip, Turtle export/import, W3C conformance." ;
+                    kpred:tested-by    "src/lib/rdf/__tests__/types-helpers.test.ts" ;
+                    kpred:tested-by    "src/lib/rdf/__tests__/serialize.test.ts" ;
+                    kpred:tested-by    "src/lib/rdf/__tests__/turtle-w3c.test.ts" .
+
+kb:content-safety   rdf:type     ktype:Feature ;
+                    rdfs:label   "Content Safety" ;
+                    kpred:has-status   "production" ;
+                    kpred:description  "Pattern-based content classifier (blocked/mature/none) and ETHICS_PREAMBLE injection." ;
+                    kpred:tested-by    "src/lib/safety/__tests__/content-policy.test.ts" .
+
+kb:hierarchy-nav    rdf:type     ktype:Feature ;
+                    rdfs:label   "Hierarchy Navigation" ;
+                    kpred:has-status   "production" ;
+                    kpred:description  "HNSW-inspired hierarchical layout. skos:broader trees, nav:order, nav:layer, sibling links." ;
+                    kpred:tested-by    "src/lib/rdf/__tests__/hierarchy.test.ts" .
+
+kb:workspace-export rdf:type     ktype:Feature ;
+                    rdfs:label   "Workspace Export" ;
+                    kpred:has-status   "production" ;
+                    kpred:description  "Semantic TTL export with backup scheduling. KB asset round-trip." ;
+                    kpred:tested-by    "src/lib/storage/__tests__/semantic-export.test.ts" ;
+                    kpred:tested-by    "src/lib/storage/__tests__/backup.test.ts" .
 
 # ── Production Tests ─────────────────────────────────────────────────────────
 
@@ -175,7 +240,16 @@ kb:test-unit        rdf:type     ktype:TestCategory ;
                     kpred:checks   "vision scoring" ;
                     kpred:checks   "semantic diff" ;
                     kpred:checks   "entity normalisation" ;
-                    kpred:expected-result "336+ tests pass" .
+                    kpred:checks   "entity types" ;
+                    kpred:checks   "ghost graph / KB leap" ;
+                    kpred:checks   "diff summary" ;
+                    kpred:checks   "source refresh" ;
+                    kpred:checks   "RDF types & helpers" ;
+                    kpred:checks   "W3C Turtle conformance" ;
+                    kpred:checks   "hierarchy navigation" ;
+                    kpred:checks   "KB registry" ;
+                    kpred:checks   "TTL serialization round-trip" ;
+                    kpred:expected-result "520 tests pass" .
 
 kb:test-e2e         rdf:type     ktype:TestCategory ;
                     rdfs:label   "E2E Tests" ;
@@ -274,7 +348,7 @@ story:prod-step-2  rdf:type         story:Step ;
                    story:partOf     story:production-tour ;
                    story:order      "2"^^xsd:integer ;
                    story:title      "Unit Tests" ;
-                   story:content    "The unit test suite runs with `npx vitest run` and covers triple parsing, diff computation, content safety filtering, repo URL parsing, entity normalisation, semantic diff, and vision scoring. 336+ passing tests across 89 suites with zero failures." ;
+                   story:content    "The unit test suite runs with `npx vitest run` and covers triple parsing, diff computation, content safety, entity types, ghost graph / KB leap, diff summary, source refresh, RDF types, W3C Turtle conformance, hierarchy navigation, KB registry, and TTL serialization round-trip. 520 passing tests across 25 suites with zero failures." ;
                    story:highlight  kb:test-unit ;
                    story:highlight  kb:test-suite ;
                    story:question   "Want to see the latest test results?" .
