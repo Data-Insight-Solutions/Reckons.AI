@@ -1,0 +1,352 @@
+## ---------------------------------------------------------------------------
+## Reckons.AI Docs — Test Suite & Visual Regression
+## ---------------------------------------------------------------------------
+## Test documentation as a knowledge graph. Each test scenario is a Story
+## with ordered Steps. Screenshots attach to step nodes via kpred:icon2d.
+## This proves that procedural documentation (step-by-step) works in TTL
+## using the existing story:order vocabulary.
+## ---------------------------------------------------------------------------
+
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix story:  <urn:reckons:story/> .
+@prefix test:   <urn:reckons:test/> .
+@prefix guide:  <urn:reckons:guide/> .
+@prefix ktype:  <urn:kbase:type/> .
+@prefix kpred:  <urn:kbase:predicate/> .
+
+## KB Identity
+<urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a09-b009-000000000009" .
+
+
+## =============================================================================
+## Navigation
+## =============================================================================
+
+@prefix nav: <urn:reckons:docs/nav/> .
+
+nav:BackToHub
+    rdf:type            ktype:Document ;
+    rdfs:label          "Back to Documentation Hub" ;
+    skos:definition     "Return to the main documentation hub." ;
+    <urn:reckons:leap>          "a1b2c3d4-e5f6-4a00-b000-000000000000" ;
+    <urn:reckons:leap/label>    "Documentation Hub" .
+
+
+## =============================================================================
+## Test Suite Overview
+## =============================================================================
+
+test:TestSuite
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Test Suite" ;
+    skos:definition     "Reckons.AI test infrastructure: 336+ unit tests (Vitest + jsdom), Playwright E2E with 6 device profiles, visual regression with pixel analysis + DOM overlap + text presence checks, optional Mistral OCR and Claude Vision tiers. All tests run locally without API keys." ;
+    skos:related        guide:WhatIsReckonsAI .
+
+test:UnitTests
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Unit Tests" ;
+    skos:definition     "336+ tests via Vitest with jsdom environment. Coverage: RDF serialize/import, temporal conflict detection, semantic diff, merge analysis, content safety (28 tests), embedding, mobile auth. Run: npx vitest run." ;
+    kpred:test-count    "336" ;
+    kpred:framework     "vitest" ;
+    kpred:command       "npx vitest run" ;
+    skos:broader        test:TestSuite .
+
+test:VisualTests
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Visual Regression Tests" ;
+    skos:definition     "Playwright-based visual regression. 5 analysis layers (cheapest first): pixel analysis (solid fill, color anomaly), DOM overlap detection, text presence checks, Mistral OCR (if API key), Claude Vision semantic analysis (if API key). Screenshots saved to tests/visual/screenshots/." ;
+    kpred:framework     "playwright" ;
+    kpred:command       "npm run test:visual" ;
+    skos:broader        test:TestSuite .
+
+test:UserStoryTests
+    rdf:type            ktype:Concept ;
+    rdfs:label          "User Story Tests" ;
+    skos:definition     "End-to-end test scenarios that follow real user workflows. Each story imports KBs, navigates pages, takes screenshots at each step, and verifies UI state. Three stories: Dev Sprint Planning, User Docs Import, Cross-KB Alignment." ;
+    kpred:command       "npm run test:stories" ;
+    skos:broader        test:VisualTests .
+
+
+## =============================================================================
+## Story: Developer Sprint Planning
+## =============================================================================
+## This is a real Playwright test (tests/visual/user-stories/dev-sprint.test.ts)
+## captured as a Story. Each step has an order, description, screenshot path,
+## and the assertions it verifies.
+
+test:DevSprintStory
+    rdf:type            story:Story ;
+    rdfs:label          "Developer Sprint Planning" ;
+    story:description   "A developer uses the Production and Roadmap KBs to plan a sprint. They import both KBs, compare them on the KB page, navigate to the align tab, run alignment, and verify the suggestions render correctly." ;
+    story:autoplay      "false" ;
+    story:pace          "10" ;
+    kpred:test-file     "tests/visual/user-stories/dev-sprint.test.ts" ;
+    kpred:screenshot-dir "tests/visual/screenshots/dev-sprint/" ;
+    skos:broader        test:UserStoryTests .
+
+test:DevSprint-Step1
+    rdf:type            story:Step ;
+    story:partOf        test:DevSprintStory ;
+    story:order         "1"^^xsd:integer ;
+    story:title         "Import Production KB" ;
+    story:content       "Clear all KBs, then import the Production Status KB. Navigate to the main page. Verify the graph renders (not a solid fill). The Production KB contains test suite entities, architecture components, and MCP tools." ;
+    story:highlight     test:UnitTests ;
+    kpred:icon2d        "/tests/visual/screenshots/dev-sprint/01-production-imported.png" ;
+    kpred:assertion     "pixel.isSolidFill === false" ;
+    kpred:page          "/" .
+
+test:DevSprint-Step2
+    rdf:type            story:Step ;
+    story:partOf        test:DevSprintStory ;
+    story:order         "2"^^xsd:integer ;
+    story:title         "Import Roadmap KB" ;
+    story:content       "Import the Roadmap KB alongside the Production KB. Both KBs now coexist. The roadmap contains planned features with statuses (done, in-progress, planned)." ;
+    kpred:icon2d        "/tests/visual/screenshots/dev-sprint/02-roadmap-imported.png" ;
+    kpred:page          "/" .
+
+test:DevSprint-Step3
+    rdf:type            story:Step ;
+    story:partOf        test:DevSprintStory ;
+    story:order         "3"^^xsd:integer ;
+    story:title         "KB Page Shows Both KBs" ;
+    story:content       "Navigate to /kb. Both imported KBs appear in the registry list. Select two KBs for comparison using the compare checkboxes." ;
+    kpred:icon2d        "/tests/visual/screenshots/dev-sprint/03-kb-page-both.png" ;
+    kpred:assertion     "KB entry count >= 2" ;
+    kpred:page          "/kb" .
+
+test:DevSprint-Step4
+    rdf:type            story:Step ;
+    story:partOf        test:DevSprintStory ;
+    story:order         "4"^^xsd:integer ;
+    story:title         "Align Link Appears" ;
+    story:content       "After selecting two KBs for comparison, an 'align these KBs' link appears. This link navigates to the Review page with the align tab pre-selected." ;
+    kpred:assertion     "align link is visible" ;
+    kpred:page          "/kb" .
+
+test:DevSprint-Step5
+    rdf:type            story:Step ;
+    story:partOf        test:DevSprintStory ;
+    story:order         "5"^^xsd:integer ;
+    story:title         "Review Align Tab with KB Picker" ;
+    story:content       "Navigate to /review and switch to the align tab. The KB picker component renders with chips for each available KB. Select a source KB to align against the active KB." ;
+    kpred:assertion     "KB picker chip count >= 1" ;
+    kpred:page          "/review?tab=align" .
+
+test:DevSprint-Step6
+    rdf:type            story:Step ;
+    story:partOf        test:DevSprintStory ;
+    story:order         "6"^^xsd:integer ;
+    story:title         "Run Alignment" ;
+    story:content       "Click the first KB chip, then click the align button. Wait for alignment to complete (entity matching via exact IRI + embedding similarity). Results appear as AlignmentCards showing source→target entity matches." ;
+    kpred:assertion     "alignment results render" ;
+    kpred:page          "/review?tab=align" .
+
+test:DevSprint-Step7
+    rdf:type            story:Step ;
+    story:partOf        test:DevSprintStory ;
+    story:order         "7"^^xsd:integer ;
+    story:title         "Summary Chips Render" ;
+    story:content       "After alignment, summary chips show the breakdown: add (new entities), reinforce (matching entities), conflict (contradictions). These chips use the same diff categories as the incoming tab." ;
+    kpred:assertion     "summary chips include add/reinforce/conflict" ;
+    kpred:page          "/review?tab=align" .
+
+test:DevSprint-Step8
+    rdf:type            story:Step ;
+    story:partOf        test:DevSprintStory ;
+    story:order         "8"^^xsd:integer ;
+    story:title         "AlignmentCard Shows Flow" ;
+    story:content       "Each AlignmentCard shows the source→target KB entity flow with accept and reject buttons. The developer can approve matches (remapping the entity IRI) or reject them (keeping separate entities)." ;
+    kpred:assertion     "ac-flow, ac-accept, ac-reject visible" ;
+    kpred:page          "/review?tab=align" .
+
+test:DevSprint-Step9
+    rdf:type            story:Step ;
+    story:partOf        test:DevSprintStory ;
+    story:order         "9"^^xsd:integer ;
+    story:title         "No Rendering Artifacts" ;
+    story:content       "Final check: the review page renders without solid fills, color anomalies, or visual artifacts. This validates the entire flow completed without rendering errors." ;
+    kpred:icon2d        "/tests/visual/screenshots/dev-sprint/09-no-artifacts.png" ;
+    kpred:assertion     "pixel.isSolidFill === false, pixel.hasColorAnomaly === false" ;
+    kpred:page          "/review" .
+
+
+## =============================================================================
+## Story: User Docs Import
+## =============================================================================
+
+test:UserDocsStory
+    rdf:type            story:Story ;
+    rdfs:label          "User Docs Import" ;
+    story:description   "A new user imports the documentation KBs to learn about Reckons.AI. They start with the starter guide, then import the production KB, and verify both appear in the KB registry." ;
+    story:autoplay      "false" ;
+    story:pace          "10" ;
+    kpred:test-file     "tests/visual/user-stories/user-docs.test.ts" ;
+    kpred:screenshot-dir "tests/visual/screenshots/user-docs/" ;
+    skos:broader        test:UserStoryTests .
+
+test:UserDocs-Step1
+    rdf:type            story:Step ;
+    story:partOf        test:UserDocsStory ;
+    story:order         "1"^^xsd:integer ;
+    story:title         "Import Docs KB" ;
+    story:content       "Clear all existing KBs, then import the starter-guide.ttl documentation KB. This is the hub with leap nodes to sub-graphs. The graph should render with Reckons.AI at the center." ;
+    kpred:icon2d        "/tests/visual/screenshots/user-docs/01-docs-kb-imported.png" ;
+    kpred:page          "/" .
+
+test:UserDocs-Step2
+    rdf:type            story:Step ;
+    story:partOf        test:UserDocsStory ;
+    story:order         "2"^^xsd:integer ;
+    story:title         "Import Production KB" ;
+    story:content       "Import the production status KB alongside the docs KB. This contains the real test suite entities, architecture, and MCP tool documentation." ;
+    kpred:icon2d        "/tests/visual/screenshots/user-docs/02-production-kb-imported.png" ;
+    kpred:page          "/" .
+
+test:UserDocs-Step3
+    rdf:type            story:Step ;
+    story:partOf        test:UserDocsStory ;
+    story:order         "3"^^xsd:integer ;
+    story:title         "KB Registry Shows Both" ;
+    story:content       "Navigate to /kb. Both KBs appear in the registry with their names, entity counts, and accent colors. The user can switch between them or select multiple for comparison." ;
+    kpred:icon2d        "/tests/visual/screenshots/user-docs/03-kb-registry-both.png" ;
+    kpred:assertion     "KB entry count >= 2" ;
+    kpred:page          "/kb" .
+
+
+## =============================================================================
+## Story: Cross-KB Alignment
+## =============================================================================
+
+test:CrossKBStory
+    rdf:type            story:Story ;
+    rdfs:label          "Cross-KB Alignment" ;
+    story:description   "Tests the full cross-KB alignment workflow: import all three self-dogfooding KBs (docs, production, roadmap), verify the KB registry, run alignment, and check mobile responsive layout." ;
+    story:autoplay      "false" ;
+    story:pace          "10" ;
+    kpred:test-file     "tests/visual/user-stories/cross-kb-align.test.ts" ;
+    kpred:screenshot-dir "tests/visual/screenshots/cross-kb-align/" ;
+    skos:broader        test:UserStoryTests .
+
+test:CrossKB-Step1
+    rdf:type            story:Step ;
+    story:partOf        test:CrossKBStory ;
+    story:order         "1"^^xsd:integer ;
+    story:title         "Import All Three KBs" ;
+    story:content       "Clear all KBs, then import docs, production, and roadmap KBs in sequence. All three coexist in IndexedDB with separate Dexie databases." ;
+    kpred:icon2d        "/tests/visual/screenshots/cross-kb-align/01-all-three-imported.png" ;
+    kpred:page          "/" .
+
+test:CrossKB-Step2
+    rdf:type            story:Step ;
+    story:partOf        test:CrossKBStory ;
+    story:order         "2"^^xsd:integer ;
+    story:title         "KB Registry Shows Three" ;
+    story:content       "The KB page lists all three imported KBs. Each shows its name, entity count, and stable ID. This validates multi-KB management." ;
+    kpred:icon2d        "/tests/visual/screenshots/cross-kb-align/02-kb-registry-three.png" ;
+    kpred:assertion     "KB entry count >= 3" ;
+    kpred:page          "/kb" .
+
+test:CrossKB-Step9
+    rdf:type            story:Step ;
+    story:partOf        test:CrossKBStory ;
+    story:order         "9"^^xsd:integer ;
+    story:title         "Mobile Responsive Layout" ;
+    story:content       "Verify the review page renders correctly on mobile viewport (375x812). The stacked layout should show the review panel full-width with no horizontal overflow." ;
+    kpred:icon2d        "/tests/visual/screenshots/cross-kb-align/09-mobile-stacked-layout.png" ;
+    kpred:assertion     "no horizontal overflow on 375px viewport" ;
+    kpred:page          "/review" .
+
+
+## =============================================================================
+## Static Page Screenshots
+## =============================================================================
+
+test:PageScreenshots
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Page Screenshots" ;
+    skos:definition     "Baseline visual regression screenshots for each major page. These are not stories but single-page captures used for pixel analysis and DOM overlap detection." ;
+    skos:broader        test:VisualTests .
+
+test:MainPageEmpty
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Main Page (Empty KB)" ;
+    skos:definition     "The graph view with an empty knowledge base. Should show the empty state message and Shelly greeting, not a blank screen." ;
+    kpred:icon2d        "/tests/visual/screenshots/main-page-empty.png" ;
+    kpred:page          "/" ;
+    skos:broader        test:PageScreenshots .
+
+test:MainPageMobile
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Main Page (Mobile)" ;
+    skos:definition     "Main graph view on mobile viewport (375x812). NavBar collapses to hamburger, graph fills screen, touch targets are 44px minimum." ;
+    kpred:icon2d        "/tests/visual/screenshots/main-page-mobile.png" ;
+    kpred:page          "/" ;
+    kpred:viewport      "375x812" ;
+    skos:broader        test:PageScreenshots .
+
+test:MainPageTablet
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Main Page (Tablet)" ;
+    skos:definition     "Main graph view on tablet viewport (768x1024). Intermediate layout between mobile and desktop." ;
+    kpred:icon2d        "/tests/visual/screenshots/main-page-tablet.png" ;
+    kpred:page          "/" ;
+    kpred:viewport      "768x1024" ;
+    skos:broader        test:PageScreenshots .
+
+test:IngestPage
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Ingest Page" ;
+    skos:definition     "The /ingest page with text, URL, file, and KB import tabs. Verified for correct tab rendering and input field visibility." ;
+    kpred:icon2d        "/tests/visual/screenshots/ingest-page.png" ;
+    kpred:page          "/ingest" ;
+    skos:broader        test:PageScreenshots .
+
+test:ReviewSplitView
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Review Split View" ;
+    skos:definition     "The /review page with the graph preview and review panel side by side. Diff entries, summary chips, and tab navigation all visible." ;
+    kpred:icon2d        "/tests/visual/screenshots/review-split-view.png" ;
+    kpred:page          "/review" ;
+    skos:broader        test:PageScreenshots .
+
+test:ReviewMobile
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Review Page (Mobile)" ;
+    skos:definition     "The /review page on mobile viewport. Stacked layout with review panel full-width above graph. Touch-friendly card actions." ;
+    kpred:icon2d        "/tests/visual/screenshots/review-page-mobile.png" ;
+    kpred:page          "/review" ;
+    kpred:viewport      "375x812" ;
+    skos:broader        test:PageScreenshots .
+
+test:KBPage
+    rdf:type            ktype:Concept ;
+    rdfs:label          "KB Management Page" ;
+    skos:definition     "The /kb page showing the KB registry, predicate manager, and workspace controls." ;
+    kpred:icon2d        "/tests/visual/screenshots/kb-page.png" ;
+    kpred:page          "/kb" ;
+    skos:broader        test:PageScreenshots .
+
+test:SettingsPage
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Settings Page" ;
+    skos:definition     "The /settings page with LLM backend selection, API key inputs, model configuration, and export options." ;
+    kpred:icon2d        "/tests/visual/screenshots/settings-page.png" ;
+    kpred:page          "/settings" ;
+    skos:broader        test:PageScreenshots .
+
+
+## =============================================================================
+## Persona
+## =============================================================================
+
+@prefix shelly: <urn:reckons:shelly/> .
+
+shelly:persona
+    shelly:name             "Shelly" ;
+    shelly:greeting         "This is the test documentation! I can walk you through any test story step-by-step, show you screenshots, or explain the test infrastructure. The Dev Sprint story is a great place to start!" ;
+    shelly:personality      "methodical, visual, precise" ;
+    shelly:responseStyle    "concise" ;
+    shelly:systemPrompt     "You are helping someone understand the Reckons.AI test suite. Walk through stories in order, reference screenshots, and explain what each step verifies. The stories are ordered — follow the sequence." .

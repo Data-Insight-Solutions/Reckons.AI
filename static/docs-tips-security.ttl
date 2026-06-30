@@ -142,6 +142,53 @@ guide:ContentSafety
 
 
 ## =============================================================================
+## Vulnerability Response and Dependency Audit
+## =============================================================================
+
+tip:VulnerabilityResponse
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Vulnerability Response Process" ;
+    skos:definition     "When a new vulnerability is reported (via npm audit, Dependabot alert, or public advisory): 1) Assess impact — is the vulnerable code path reachable? Consider SSR-only vs static, lazy-loaded vs always-bundled, user-supplied input vs fixed sources. 2) Document in SECURITY.md with severity, CVE, risk assessment, and fix path. 3) If high/critical and exploitable: open GitHub issue tagged security, disable the feature by default, begin research into replacement, apply npm audit fix. 4) If moderate/low and not exploitable: document and apply on next routine upgrade. 5) When fixed: move to Resolved section with date." ;
+    skos:broader        guide:Security .
+
+tip:DependencyAudit
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Dependency Audit Process" ;
+    skos:definition     "Three free tools in use: npm audit (known CVEs in dependency tree), GitHub Dependabot (automated PRs for vulnerable deps — enable via Settings > Security > Dependabot), and GitHub Code Scanning via CodeQL (static analysis of source code). CI gate: npm audit --audit-level=high blocks merges on high/critical findings." ;
+    skos:broader        guide:Security .
+
+tip:DataClassification
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Data Classification Levels" ;
+    skos:definition     "All KB data stored in browser IndexedDB (origin-locked). API keys stored in IndexedDB settings table (origin-locked, not in localStorage). sessionStorage for per-tab KB selection (not shared across origins). localStorage for KB registry (names and IDs only, no secrets). No cookies used. Keys sent directly from browser to provider APIs — never transit through Reckons.AI infrastructure. Keys excluded from TTL exports and settings profile exports." ;
+    skos:broader        guide:Security .
+
+tip:NoTelemetry
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "No Telemetry Constraint" ;
+    skos:definition     "Reckons.AI collects zero telemetry, zero analytics, and performs zero third-party tracking. No server exists to receive telemetry. No analytics scripts are loaded. No tracking pixels. No usage data leaves the browser. This is an architectural constraint, not a policy — there is no server-side code in production (adapter-static). Fonts are self-hosted (no Google Fonts CDN). CSP connect-src explicitly lists only AI provider domains." ;
+    skos:broader        guide:Security .
+
+tip:RiskWarnings
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Risk Warnings for Integrations" ;
+    skos:definition     "Features with inherent risk are disabled by default and display a warning in Settings. Voice (Hume.AI): audio sent to cloud, warning shown. QR Mobile Access: token-based auth with expiry, warning shown. Cloud LLM backends: note text sent to third-party API, warning shown in backend selector. WASM local inference: transitive protobufjs CVE in dependency chain — models loaded only from HuggingFace CDN, no user data affected." ;
+    skos:broader        guide:Security .
+
+tip:XSSProtection
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "XSS Protection" ;
+    skos:definition     "All {@html} usages are safe: TurtleChatPanel uses escHtml() before markdown, SearchBar uses escHtml() on all segments, NavBar renders hardcoded SVG, extension popup/sidepanel use template literals with no user input. Input validation: Turtle files parsed by N3.js, user text sent to LLMs for extraction has prompt injection mitigated by mandatory review step (all triples must be confirmed by user), file uploads handled by browser File API (no server upload)." ;
+    skos:broader        guide:Security .
+
+
+## =============================================================================
 ## Persona
 ## =============================================================================
 

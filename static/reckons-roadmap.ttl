@@ -6,6 +6,7 @@
 @prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
 @prefix ktype:  <urn:kbase:type/> .
 @prefix story:  <urn:reckons:story/> .
+@prefix train:  <urn:reckons:training/> .
 
 # ==============================================================================
 # Reckons.AI Product Design & Roadmap KB
@@ -260,6 +261,15 @@ kb:kokoro-tts  rdf:type     ktype:Feature ;
                kpred:has-status   "production" ;
                kpred:description  "Local text-to-speech for story walkthroughs." .
 
+kb:nemo-speech rdf:type     ktype:Feature ;
+               rdfs:label   "NVIDIA NeMo Speech" ;
+               kpred:has-status   "planned" ;
+               kpred:description  "GPU-accelerated STT and TTS via NVIDIA NeMo (Apache 2.0). Python sidecar or Docker container. Models: Nemotron-3.5-ASR-Streaming-0.6B (40 languages, 80ms-1s latency), MagpieTTS v2602 (9 languages). Requires NVIDIA GPU + CUDA. Fallback to existing Whisper+Kokoro WASM for non-NVIDIA users." ;
+               kpred:depends-on   kb:whisper-stt ;
+               kpred:depends-on   kb:kokoro-tts ;
+               kpred:open-question "Sidecar architecture: Docker Compose, standalone FastAPI, or Ollama-style model runner? Need /transcribe and /synthesize HTTP endpoints matching existing provider pattern." ;
+               kpred:open-question "Dev setup: separate repo or monorepo subfolder like mcp-server/? Python 3.12+ with uv for dependency management." .
+
 kb:model-cache rdf:type     ktype:Feature ;
                rdfs:label   "Model Cache Management" ;
                kpred:has-status   "production" ;
@@ -358,30 +368,51 @@ kb:model-training rdf:type  ktype:Feature ;
                rdfs:label   "Model Training" ;
                kpred:has-status   "planned" ;
                kpred:feature-id   "F13" ;
-               kpred:description  "Fine-tune local models on KB data. Training data export, cloud fine-tuning, local LoRA." ;
-               kpred:has-phase    kb:training-phase-1 ;
-               kpred:has-phase    kb:training-phase-2 ;
-               kpred:has-phase    kb:training-phase-3 ;
+               kpred:description  "Fine-tune local models on KB data. Personalised assistant that reasons natively over domain vocabulary and relationships. Three phases: training data export, cloud fine-tuning, local LoRA." ;
+               kpred:has-phase    train:phase-1 ;
+               kpred:has-phase    train:phase-2 ;
+               kpred:has-phase    train:phase-3 ;
                kpred:target-model "Granite 3.1 2B" ;
                kpred:target-model "SmolLM2-360M" ;
-               kpred:target-model "Phi-3-mini" .
+               kpred:target-model "Phi-3-mini" ;
+               kpred:open-question "Quality threshold: how many triples needed for useful fine-tuning? Likely 200+." ;
+               kpred:open-question "Evaluation: how to measure if fine-tuned model is better than RAG alone?" ;
+               kpred:open-question "Incremental training: update adapter when new triples added without full retraining?" ;
+               kpred:open-question "Multi-KB: adapters per-KB or trained on all user KBs combined?" .
 
-kb:training-phase-1 rdf:type ktype:Concept ;
-               rdfs:label   "Training Phase 1: Data Export" ;
-               kpred:description  "Triple to QA pair generation. JSONL/Alpaca/ShareGPT export formats." ;
-               kpred:has-status   "planned" .
-
-kb:training-phase-2 rdf:type ktype:Concept ;
-               rdfs:label   "Training Phase 2: Cloud Integration" ;
-               kpred:description  "AWS Bedrock, Together.ai, Hugging Face AutoTrain integration." ;
+train:phase-1  rdf:type     ktype:Concept ;
+               rdfs:label   "Training Phase 1: Training Data Export" ;
                kpred:has-status   "planned" ;
-               kpred:depends-on   kb:training-phase-1 .
+               kpred:description  "Convert KB triples into instruction-tuning pairs. Entity QA, relationship QA, multi-hop reasoning, and subgraph summarisation generation strategies. Augmentation with paraphrases and negative examples." ;
+               kpred:has-file     "src/lib/training/generate-pairs.ts" ;
+               kpred:has-file     "src/lib/training/export.ts" ;
+               kpred:export-format "JSONL (instruction/response pairs)" ;
+               kpred:export-format "Alpaca (instruction/input/output)" ;
+               kpred:export-format "ShareGPT (multi-turn conversations)" ;
+               kpred:has-ui       "Settings > Training tab" ;
+               kpred:has-tool     "kb_export_training" .
 
-kb:training-phase-3 rdf:type ktype:Concept ;
+train:phase-2  rdf:type     ktype:Concept ;
+               rdfs:label   "Training Phase 2: Cloud Fine-Tuning" ;
+               kpred:has-status   "planned" ;
+               kpred:description  "Export training data for cloud LoRA fine-tuning platforms. Reckons.AI generates and exports JSONL; user handles training externally. Model download back to local cache after training." ;
+               kpred:depends-on   train:phase-1 ;
+               kpred:has-platform "AWS Bedrock (Granite, custom models)" ;
+               kpred:has-platform "Together.ai / Fireworks (open models)" ;
+               kpred:has-platform "Hugging Face AutoTrain" ;
+               kpred:pro          "No local GPU needed, production-quality training" ;
+               kpred:con          "Data leaves the device, requires cloud account + cost" .
+
+train:phase-3  rdf:type     ktype:Concept ;
                rdfs:label   "Training Phase 3: Local LoRA" ;
-               kpred:description  "WebGPU-accelerated LoRA training. Adapter management per KB." ;
                kpred:has-status   "planned" ;
-               kpred:depends-on   kb:training-phase-2 .
+               kpred:description  "On-device LoRA adapter training. Base model SmolLM2-360M (already cached locally). Generate adapter weights from KB data (10-50MB, portable). Multiple KB adapters coexist with one base model." ;
+               kpred:depends-on   train:phase-2 ;
+               kpred:has-approach "WebGPU-accelerated LoRA training (when browser support matures)" ;
+               kpred:has-approach "Python sidecar fallback (reckons train --local)" ;
+               kpred:has-capability "adapter management (load/unload per KB)" ;
+               kpred:pro          "Data stays local, no cloud costs" ;
+               kpred:con          "Requires GPU or long CPU training time, quality limited by base model size" .
 
 kb:cost-awareness rdf:type  ktype:Feature ;
                rdfs:label   "Cost & Rate Awareness" ;
@@ -466,10 +497,14 @@ kb:enterprise-3ps rdf:type ktype:Feature ;
                rdfs:label   "Enterprise: People · Policy · Procedure" ;
                kpred:has-status   "planned" ;
                kpred:feature-id   "F21" ;
-               kpred:description  "Structure organisational knowledge around three dimensions: People (RBAC, teams, audit trails), Policy (legal, cultural, compliance constraints as graph entities), Procedure (SOPs, decision trees, process graphs)." ;
+               kpred:description  "Structure organisational knowledge around the 3 Ps framework: People (who knows what — RBAC, teams, ownership, delegation, audit trails, trust scores), Policy (what governs it — legal constraints, cultural norms, compliance rules, data classification, retention policies), Procedure (how it gets done — SOPs, decision trees, process graphs, checklists, runbooks). Each dimension maps naturally to RDF triples. Key design decisions: file-based TTL delivery (portable W3C format, diffable via git, no proprietary lock-in), Bring Your Own Auth (organisations plug in existing SSO/LDAP/OIDC/SAML — no built-in identity provider), graph-native RBAC (permissions are triples, queryable and time-bounded), and self-hosted operation (n8n cloud sync on the organisation's infrastructure, air-gapped first-class). Personal Reckons.AI remains unchanged; enterprise is an opt-in layer." ;
                kpred:has-dimension kb:ent-people ;
                kpred:has-dimension kb:ent-policy ;
-               kpred:has-dimension kb:ent-procedure .
+               kpred:has-dimension kb:ent-procedure ;
+               kpred:has-phase    kb:ent-phase-1 ;
+               kpred:has-phase    kb:ent-phase-2 ;
+               kpred:has-phase    kb:ent-phase-3 ;
+               kpred:has-phase    kb:ent-phase-4 .
 
 kb:ent-people  rdf:type     ktype:Concept ;
                rdfs:label   "People (Enterprise)" ;
@@ -492,6 +527,75 @@ kb:ent-ttl-delivery rdf:type ktype:Concept ;
                rdfs:label   "File-Based TTL Delivery" ;
                kpred:description  "Enterprise KBs distributed as .ttl files. Portable W3C standard. Diffable via git. Offline-first. No proprietary format, no database dependency." ;
                kpred:related      kb:enterprise-3ps .
+
+kb:ent-phase-1 rdf:type   ktype:Concept ;
+               rdfs:label   "Enterprise Phase 1: Graph-Native RBAC" ;
+               kpred:description  "Define role/permission vocabulary as RDF predicates. Four roles (Viewer, Contributor, Reviewer, Admin) with scoping at KB, graph, and entity levels. RBAC evaluation engine (client-side, reads permission triples). Admin UI for role assignment. Audit trail logging — every mutation records actor, action, target, and timestamp as triples." ;
+               kpred:has-status   "planned" .
+
+kb:ent-phase-2 rdf:type   ktype:Concept ;
+               rdfs:label   "Enterprise Phase 2: BYOA Auth Gateway" ;
+               kpred:description  "Bring Your Own Auth — thin middleware that validates tokens from the organisation's identity provider and maps identities to RBAC roles defined in the graph. Supported protocols: OIDC (Okta, Auth0, Entra ID), LDAP (on-premise Active Directory), SAML (legacy enterprise SSO), API Key (machine-to-machine for MCP, n8n, CI/CD). No stored credentials, no sessions — stateless token validation only." ;
+               kpred:has-status   "planned" ;
+               kpred:depends-on   kb:ent-phase-1 .
+
+kb:ent-phase-3 rdf:type   ktype:Concept ;
+               rdfs:label   "Enterprise Phase 3: Policy & Procedure Modelling" ;
+               kpred:description  "Policy entity type with temporal bounds (effective-date, superseded-by), provenance, and governed-by relationships. Procedure entity type with step ordering, decision points, SLAs, on-failure branches. Policies travel with the knowledge they govern. Procedures become navigable process graphs in the 3D view. Reckoning becomes policy-aware. Diff/review shows governed-by relationships." ;
+               kpred:has-status   "planned" ;
+               kpred:depends-on   kb:ent-phase-1 .
+
+kb:ent-phase-4 rdf:type   ktype:Concept ;
+               rdfs:label   "Enterprise Phase 4: Team Workflows" ;
+               kpred:description  "Shared KB registry backed by n8n data tables. Merge request workflow: propose, review, accept — with multi-reviewer support. Conflict resolution across concurrent edits. Activity feed and notification via n8n webhooks (Slack, email, ntfy). Team members export TTL, submit via n8n sync hub or git PR, reviewer imports and curates." ;
+               kpred:has-status   "planned" ;
+               kpred:depends-on   kb:ent-phase-2 ;
+               kpred:depends-on   kb:ent-phase-3 .
+
+# -- Confluence Migration (F26) -------------------------------------------------
+
+kb:confluence-migration rdf:type ktype:Feature ;
+               rdfs:label   "Confluence Migration" ;
+               kpred:has-status   "planned" ;
+               kpred:feature-id   "F26" ;
+               kpred:description  "Bulk import from Confluence spaces into Reckons.AI. Upload HTML export ZIP, parse page tree, chunk large pages, extract triples with local models. Pause/resume checkpoint, progress persistence, label-to-type mapping, page hierarchy as skos:broader." ;
+               kpred:depends-on   kb:wf-ingest ;
+               kpred:depends-on   kb:entity-normalisation ;
+               kpred:has-phase    kb:conf-phase-1 ;
+               kpred:has-phase    kb:conf-phase-2 ;
+               kpred:has-phase    kb:conf-phase-3 ;
+               kpred:has-phase    kb:conf-phase-4 .
+
+kb:conf-phase-1 rdf:type   ktype:Concept ;
+               rdfs:label   "Confluence Phase 1: HTML Parser" ;
+               kpred:description  "New confluence tab on Add page. ZIP upload, HTML parsing, page tree reconstruction from index.html. Sequential extraction using existing pipeline." ;
+               kpred:has-status   "planned" .
+
+kb:conf-phase-2 rdf:type   ktype:Concept ;
+               rdfs:label   "Confluence Phase 2: Chunking + Queue" ;
+               kpred:description  "Sliding window chunking (10K chars, 2K overlap) for large pages. Per-chunk extraction with deduplication. Pause/resume with localStorage checkpoint. Error retry queue." ;
+               kpred:has-status   "planned" ;
+               kpred:depends-on   kb:conf-phase-1 .
+
+kb:conf-phase-3 rdf:type   ktype:Concept ;
+               rdfs:label   "Confluence Phase 3: Rename Ingest to Add" ;
+               kpred:description  "Route /ingest → /add with redirect. NavBar label change. Vault → Batch tab rename. Less technical terminology for non-developer users." ;
+               kpred:has-status   "planned" .
+
+kb:conf-phase-4 rdf:type   ktype:Concept ;
+               rdfs:label   "Confluence Phase 4: API Connector" ;
+               kpred:description  "REST API client for Confluence Cloud. Incremental sync (pages modified since last import). Label and space metadata via API. Optional — HTML export covers most use cases." ;
+               kpred:has-status   "planned" ;
+               kpred:depends-on   kb:conf-phase-1 .
+
+# -- Text Chunking (F27) -------------------------------------------------------
+
+kb:text-chunking rdf:type ktype:Feature ;
+               rdfs:label   "Text Chunking" ;
+               kpred:has-status   "planned" ;
+               kpred:feature-id   "F27" ;
+               kpred:description  "Sliding window chunking for sources exceeding the 12K char extraction limit. Context header per chunk (source title, chunk N of M). Cross-chunk deduplication by (subject, predicate, object). Benefits all source types, not just Confluence." ;
+               kpred:depends-on   kb:wf-ingest .
 
 # -- Entity Normalisation (F22) -------------------------------------------------
 
@@ -695,8 +799,8 @@ story:rm-step-6  rdf:type         story:Step ;
                  story:title      "Personalized AI (F13)" ;
                  story:content    "The most ambitious planned feature: fine-tune a local model on your KB data. Phase 1 exports training pairs (JSONL). Phase 2 integrates cloud fine-tuning. Phase 3 enables local LoRA adapter training via WebGPU. Your KB teaches the model your domain vocabulary." ;
                  story:highlight  kb:model-training ;
-                 story:highlight  kb:training-phase-1 ;
-                 story:highlight  kb:training-phase-3 .
+                 story:highlight  train:phase-1 ;
+                 story:highlight  train:phase-3 .
 
 # Step 7: Cross-KB Alignment
 story:rm-step-7  rdf:type         story:Step ;

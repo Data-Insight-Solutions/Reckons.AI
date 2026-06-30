@@ -1,0 +1,374 @@
+## ---------------------------------------------------------------------------
+## Reckons.AI Docs — Architecture & Design Decisions
+## ---------------------------------------------------------------------------
+## Design decisions, standards alignment, deployment patterns, and the
+## TTL-first documentation strategy. This KB replaces multiple markdown docs:
+## KB_VS_MARKDOWN.md, LOCAL_HOME_FOLDER.md, PROV_O_ALIGNMENT.md,
+## DEPENDENCIES.md, MOBILE_LOCAL_SERVER.md, MOBILE_CAPTURE.md,
+## SECURITY.md (expanded), STYLE_GUIDE.md (summary).
+## ---------------------------------------------------------------------------
+
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix arch:   <urn:reckons:arch/> .
+@prefix guide:  <urn:reckons:guide/> .
+@prefix tech:   <urn:reckons:tech/> .
+@prefix feat:   <urn:reckons:feature/> .
+@prefix ktype:  <urn:kbase:type/> .
+@prefix kpred:  <urn:kbase:predicate/> .
+
+## KB Identity
+<urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a08-b008-000000000008" .
+
+
+## =============================================================================
+## Navigation
+## =============================================================================
+
+@prefix nav: <urn:reckons:docs/nav/> .
+
+nav:BackToHub
+    rdf:type            ktype:Document ;
+    rdfs:label          "Back to Documentation Hub" ;
+    skos:definition     "Return to the main documentation hub with all leap nodes and the Reckons.AI story." ;
+    <urn:reckons:leap>          "a1b2c3d4-e5f6-4a00-b000-000000000000" ;
+    <urn:reckons:leap/label>    "Documentation Hub" .
+
+
+## =============================================================================
+## TTL-First Documentation Strategy
+## =============================================================================
+
+arch:TtlFirstDocs
+    rdf:type            ktype:Concept ;
+    rdfs:label          "TTL-First Documentation" ;
+    skos:definition     "Reckons.AI uses its own TTL knowledge bases as the primary documentation format. Claude Code queries KBs via MCP tools (kb_search, kb_get_entity, kb_compress) instead of reading markdown files. This dogfoods the product and proves that structured knowledge graphs can replace prose documentation for AI-assisted development." ;
+    skos:broader        guide:WhatIsReckonsAI ;
+    skos:related        arch:TtlVsMarkdownGaps .
+
+arch:TtlVsMarkdownGaps
+    rdf:type            ktype:Concept ;
+    rdfs:label          "TTL vs Markdown Gap Analysis" ;
+    skos:definition     "Ongoing evaluation of what TTL handles well vs where markdown is still needed. Key gaps: procedural sequences (step-by-step), code block formatting, ASCII diagrams, long-form rationale prose. Key advantages: MCP queryability, cross-KB linking, type system, semantic diff, compression (60-70% token reduction), graph visualization." ;
+    skos:broader        arch:TtlFirstDocs .
+
+arch:MustStayMarkdown
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Files That Must Stay Markdown" ;
+    skos:definition     "CLAUDE.md (Claude Code system file, always loaded into context), MEMORY.md (auto-memory system file), .claude/commands/*.md (slash command definitions), README.md (GitHub convention, npm ecosystem), CONTRIBUTING.md (GitHub convention). These are consumed by tools that require markdown format." ;
+    skos:broader        arch:TtlVsMarkdownGaps ;
+    skos:related        arch:ClaudeMdMinimal .
+
+arch:ClaudeMdMinimal
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Minimal CLAUDE.md Pattern" ;
+    skos:definition     "Keep CLAUDE.md as small as possible — only hard constraints (file format rules, test commands, key directories) and MCP instructions. All feature docs, roadmap, architecture, and design decisions live in TTL KBs. CLAUDE.md tells Claude HOW to find information (use kb_search), not what the information IS." ;
+    skos:broader        arch:TtlFirstDocs .
+
+arch:TtlGapProcedural
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Gap: Procedural Sequences" ;
+    skos:definition     "Step-by-step instructions (install X, then configure Y, then run Z) are awkward as triples. Mitigation: use skos:note for numbered steps within an entity, or use plain-text comments in TTL files. For setup/install guides, keep as README.md or inline code comments." ;
+    skos:broader        arch:TtlVsMarkdownGaps .
+
+arch:TtlGapCodeBlocks
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Gap: Code Block Formatting" ;
+    skos:definition     "CSS variable tables, TypeScript patterns, shell commands lose syntax highlighting in TTL string literals. Mitigation: keep code conventions as inline code comments near the actual code. Use TTL for the conceptual summary (what the convention IS), not the literal code." ;
+    skos:broader        arch:TtlVsMarkdownGaps .
+
+arch:TtlGapDiscovery
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Gap: Discovery Without Prior Knowledge" ;
+    skos:definition     "Markdown: Glob docs/*.md shows all docs. TTL via MCP: must know what to search for. Mitigation: kb_list_entities gives full entity list, kb_stats gives overview, CLAUDE.md lists which KBs exist and their purpose. The hub TTL (starter-guide.ttl) provides a table of contents." ;
+    skos:broader        arch:TtlVsMarkdownGaps .
+
+arch:TtlGapContextLoading
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Gap: Full Context Loading" ;
+    skos:definition     "Reading a markdown file puts full content in context. MCP kb_search returns BM25 results — good for targeted queries, incomplete for broad understanding. Mitigation: kb_compress gives a budget-capped summary, kb_subgraph gives entity neighbourhood, reading the TTL file directly is always possible as fallback." ;
+    skos:broader        arch:TtlVsMarkdownGaps .
+
+arch:TtlAdvantageQuery
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Advantage: MCP Queryability" ;
+    skos:definition     "kb_search finds relevant entities across all KBs with a single query. No need to know which file to read. kb_compress reduces tokens by 60-70%. kb_reckoning gives grounded STP analysis. This is fundamentally better than reading 15 markdown files." ;
+    skos:broader        arch:TtlVsMarkdownGaps .
+
+arch:TtlAdvantageLinking
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Advantage: Semantic Linking" ;
+    skos:definition     "Entities link via skos:related, skos:broader, skos:narrower. A feature entity connects to its roadmap status, its design decisions, its integration dependencies. Markdown cross-references are just hyperlinks with no semantic meaning." ;
+    skos:broader        arch:TtlVsMarkdownGaps .
+
+arch:TtlAdvantageVisualization
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Advantage: Graph Visualization" ;
+    skos:definition     "TTL docs load into the app as interactive 3D/2D knowledge graphs. Navigate visually. See relationships. This is impossible with markdown — it is the product demonstrating itself." ;
+    skos:broader        arch:TtlVsMarkdownGaps .
+
+
+## =============================================================================
+## Markdown Migration Status
+## =============================================================================
+
+arch:MigrationStatus
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Markdown Migration Status" ;
+    skos:definition     "Tracking which markdown docs have been migrated to TTL KBs. Goal: eliminate all docs/*.md files except where markdown format is structurally required (GitHub conventions, Claude Code system files)." ;
+    skos:broader        arch:TtlFirstDocs .
+
+arch:MigGuide
+    rdf:type            ktype:Concept ;
+    rdfs:label          "GUIDE.md → Superseded" ;
+    skos:definition     "docs/GUIDE.md (484 lines) is fully superseded by the TTL documentation hub (starter-guide.ttl) and 7 sub-graph TTLs (features, integrations, llm, use-cases, tips, triples, timeline). Safe to delete." ;
+    kpred:status        "superseded" ;
+    skos:broader        arch:MigrationStatus .
+
+arch:MigKbVsMarkdown
+    rdf:type            ktype:Concept ;
+    rdfs:label          "KB_VS_MARKDOWN.md → Superseded" ;
+    skos:definition     "docs/KB_VS_MARKDOWN.md (384 lines) is a meta-document comparing TTL vs markdown. Its content is now captured in this architecture KB (TtlFirstDocs section). Safe to delete." ;
+    kpred:status        "superseded" ;
+    skos:broader        arch:MigrationStatus .
+
+arch:MigUserStories
+    rdf:type            ktype:Concept ;
+    rdfs:label          "USER_STORIES.md → Superseded" ;
+    skos:definition     "docs/USER_STORIES.md (416 lines) covers collaborative reckoning stories. The individual empowerment use cases already exist in docs-use-cases.ttl. The collaborative stories should be added there too." ;
+    kpred:status        "superseded" ;
+    skos:broader        arch:MigrationStatus .
+
+arch:MigConfluence
+    rdf:type            ktype:Concept ;
+    rdfs:label          "CONFLUENCE_MIGRATION.md → Superseded" ;
+    skos:definition     "docs/CONFLUENCE_MIGRATION.md (490 lines) is a detailed design doc for F26. Key entities already exist in reckons-roadmap.ttl (F26 phases) and docs-features.ttl (ConfluenceMigration, TextChunking). Detailed implementation notes (chunking params, pause/resume) should be expanded in the roadmap TTL. Safe to delete after expansion." ;
+    kpred:status        "superseded" ;
+    skos:broader        arch:MigrationStatus .
+
+arch:MigN8n
+    rdf:type            ktype:Concept ;
+    rdfs:label          "N8N_INTEGRATION.md → Superseded" ;
+    skos:definition     "docs/N8N_INTEGRATION.md (157 lines) documents n8n workflows and data tables. Already captured in docs-integrations-tech.ttl (N8nCloudSync, N8nSyncHub, N8nSourceMonitor) and docs-features.ttl (SourceMonitoring). Workflow IDs and data table IDs need to be added as literal properties. Safe to delete after expansion." ;
+    kpred:status        "superseded" ;
+    skos:broader        arch:MigrationStatus .
+
+arch:MigEnterprise
+    rdf:type            ktype:Concept ;
+    rdfs:label          "ENTERPRISE.md → Superseded" ;
+    skos:definition     "docs/ENTERPRISE.md (242 lines) covers F21 People/Policy/Procedure. Already has entity in reckons-roadmap.ttl. Four phase entities need to be added (RBAC, auth gateway, policy modelling, team workflows). Safe to delete after expansion." ;
+    kpred:status        "superseded" ;
+    skos:broader        arch:MigrationStatus .
+
+arch:MigModelTraining
+    rdf:type            ktype:Concept ;
+    rdfs:label          "MODEL_TRAINING.md → Superseded" ;
+    skos:definition     "docs/MODEL_TRAINING.md (148 lines) covers F13 fine-tuning. Already has entity in reckons-roadmap.ttl. Three phase entities need to be added (training data export, cloud fine-tuning, local LoRA). Safe to delete after expansion." ;
+    kpred:status        "superseded" ;
+    skos:broader        arch:MigrationStatus .
+
+arch:MigVSCode
+    rdf:type            ktype:Concept ;
+    rdfs:label          "VSCODE_EXTENSION.md → Superseded" ;
+    skos:definition     "docs/VSCODE_EXTENSION.md (342 lines) covers F19 VS Code extension. Already captured in docs-integrations-tech.ttl (VSCodeExtension entity with 3 phases). Safe to delete." ;
+    kpred:status        "superseded" ;
+    skos:broader        arch:MigrationStatus .
+
+arch:MigSecurity
+    rdf:type            ktype:Concept ;
+    rdfs:label          "SECURITY.md → Partially Superseded" ;
+    skos:definition     "docs/SECURITY.md (248 lines) covers vulnerability tracking and response process. Security architecture is in docs-tips-security.ttl but vulnerability tracking and incident response procedures need expansion. The vulnerability log format (CVE-like entries) is procedural — use skos:note on security entities." ;
+    kpred:status        "partial" ;
+    skos:broader        arch:MigrationStatus .
+
+arch:MigDependencies
+    rdf:type            ktype:Concept ;
+    rdfs:label          "DEPENDENCIES.md → Superseded" ;
+    skos:definition     "docs/DEPENDENCIES.md (131 lines) is a dependency health review. Already captured in reckons-production.ttl (tech stack entities with versions). Add dep health status as kpred:dep-status. Safe to delete after expansion." ;
+    kpred:status        "superseded" ;
+    skos:broader        arch:MigrationStatus .
+
+arch:MigStyleGuide
+    rdf:type            ktype:Concept ;
+    rdfs:label          "STYLE_GUIDE.md → Hybrid" ;
+    skos:definition     "docs/STYLE_GUIDE.md (226 lines) contains CSS variable tables and component patterns. The conceptual summary belongs in TTL (this KB). The literal CSS values (hex codes, font stacks, z-index numbers) should live as code comments in the CSS source files. A TTL entity with the key conventions exists here (arch:StyleConventions)." ;
+    kpred:status        "hybrid" ;
+    skos:broader        arch:MigrationStatus .
+
+arch:MigMobileCapture
+    rdf:type            ktype:Concept ;
+    rdfs:label          "MOBILE_CAPTURE.md → Superseded" ;
+    skos:definition     "docs/MOBILE_CAPTURE.md (193 lines) covers async voice note capture via n8n webhooks. Design concept, not implemented. Add as a roadmap feature entity with the key design decisions as properties." ;
+    kpred:status        "superseded" ;
+    skos:broader        arch:MigrationStatus .
+
+arch:MigMobileServer
+    rdf:type            ktype:Concept ;
+    rdfs:label          "MOBILE_LOCAL_SERVER.md → Superseded" ;
+    skos:definition     "docs/MOBILE_LOCAL_SERVER.md (325 lines) covers running the app on a Linux server with Ollama and accessing via QR code. Setup steps are procedural but the architecture decisions (CORS, SSL, Ollama remote binding) are entity-friendly. Add as entities in docs-integrations-tech.ttl." ;
+    kpred:status        "superseded" ;
+    skos:broader        arch:MigrationStatus .
+
+arch:MigLocalHomeFolder
+    rdf:type            ktype:Concept ;
+    rdfs:label          "LOCAL_HOME_FOLDER.md → Superseded" ;
+    skos:definition     "docs/LOCAL_HOME_FOLDER.md (215 lines) covers the workspace folder concept. Already implemented (src/lib/stores/workspace.svelte.ts). Architecture captured in docs-integrations-tech.ttl (WorkspaceSync) and docs-features.ttl (MultiKB). Safe to delete." ;
+    kpred:status        "superseded" ;
+    skos:broader        arch:MigrationStatus .
+
+arch:MigProvO
+    rdf:type            ktype:Concept ;
+    rdfs:label          "PROV_O_ALIGNMENT.md → Superseded" ;
+    skos:definition     "docs/PROV_O_ALIGNMENT.md (265 lines) analyses alignment with W3C PROV-O ontology. Standards alignment decisions belong in this architecture KB. Key decisions: partial alignment (source provenance yes, activity chains no), custom urn:kbase: namespace preferred over prov: for simplicity." ;
+    kpred:status        "superseded" ;
+    skos:broader        arch:MigrationStatus .
+
+
+## =============================================================================
+## Data & State Architecture
+## =============================================================================
+
+arch:LocalFirstArch
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Local-First Architecture" ;
+    skos:definition     "All user data lives in browser IndexedDB (Dexie v4). No server, no accounts, no cloud dependency. The app is a static SvelteKit build. Export to .ttl for portability. Workspace folder sync for disk backup and MCP server access." ;
+    skos:broader        guide:WhatIsReckonsAI .
+
+arch:WorkspaceFolderDesign
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Workspace Folder Design" ;
+    skos:definition     "User-selected directory via File System Access API (Chrome/Edge only). Structure: knowledge.ttl (legacy single-KB), kbs/{name}/kb.ttl + meta.json + sources.json (multi-KB), knowledge.pending.jsonl (MCP inbox), settings_profile.json. Auto-exports on every KB mutation (2s debounce)." ;
+    skos:broader        arch:LocalFirstArch ;
+    skos:related        feat:MultiKB .
+
+arch:PendingJsonlQueue
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Pending JSONL Queue" ;
+    skos:definition     "Append-only JSONL file (pending.jsonl) serves as message queue between MCP server/CLI tools and the web app. Entries carry subject, predicate, object, type, priority, agent, commitSha metadata. Web app drains on load or manual trigger, converts to pending statements for human review, then clears the file. JSONL chosen over TTL for this role because: atomic line-append is safe for concurrent writes, rich metadata is native JSON, parse cost is trivial, drain-and-clear is a queue pattern not a knowledge pattern." ;
+    skos:broader        arch:WorkspaceFolderDesign .
+
+arch:StaticDeployment
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Static Deployment" ;
+    skos:definition     "SvelteKit adapter-static produces a pure client-side build. No server-side runtime in production. Deployable to any static host (Netlify, Vercel, GitHub Pages, local file server). Vite dev server provides HMR during development only." ;
+    skos:broader        arch:LocalFirstArch .
+
+
+## =============================================================================
+## Standards Alignment (PROV-O, SKOS, RDF)
+## =============================================================================
+
+arch:ProvOAlignment
+    rdf:type            ktype:Concept ;
+    rdfs:label          "PROV-O Alignment" ;
+    skos:definition     "Partial alignment with W3C PROV-O ontology. Source provenance tracked via custom urn:kbase:meta/ predicates (source, ingestedAt, confidence, excerpt). Full prov:Activity chains not implemented — unnecessary complexity for a personal KB where the user IS the reviewing agent. Custom namespace chosen for simplicity and smaller TTL output." ;
+    skos:broader        arch:LocalFirstArch ;
+    skos:related        arch:RdfVocabulary .
+
+arch:RdfVocabulary
+    rdf:type            ktype:Concept ;
+    rdfs:label          "RDF Vocabulary Decisions" ;
+    skos:definition     "Standard: rdf:type, rdfs:label, skos:definition, skos:broader, skos:related, skos:note. Custom: urn:kbase:type/ (entity types), urn:kbase:predicate/ (user predicates), urn:kbase:meta/ (reification metadata: status, source, confidence, excerpt, timestamps). urn:reckons: namespace for product-specific vocab (leap, shelly, feature)." ;
+    skos:broader        arch:LocalFirstArch .
+
+
+## =============================================================================
+## Style Conventions (Summary)
+## =============================================================================
+
+arch:StyleConventions
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Style Conventions" ;
+    skos:definition     "Brand: dark theme, accent #7dd3fc (sky-300). Fonts: Bespoke Stencil Bold (display), Supreme Regular (body/mono), self-hosted (no Google Fonts). CSS variables: --accent, --accent-soft, --data, --surface, --surface-2, --surface-3, --line, --muted, --font-mono, --font-display, --rad, --rad-sm, --rad-lg. Z-index scale: node-labels=10, panels=300, Shelly=350, SearchBar=390, NavBar=400, MergeReview=500. bits-ui components always use :global(.class) for CSS targeting." ;
+    skos:broader        guide:WhatIsReckonsAI .
+
+
+## =============================================================================
+## Deployment Patterns
+## =============================================================================
+
+arch:MobileAccess
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Mobile Access via Local Server" ;
+    skos:definition     "Run Reckons.AI on a Linux machine with Ollama, access from mobile via LAN. Requires: Vite dev server bound to 0.0.0.0, Ollama OLLAMA_HOST=0.0.0.0, optional self-signed SSL for HTTPS. QR code generation built into settings page. PWA installable on mobile after first visit." ;
+    skos:broader        arch:StaticDeployment .
+
+arch:MobileVoiceCapture
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Mobile Voice Capture (Design)" ;
+    skos:definition     "Planned: async voice memo capture on iOS/Android via n8n webhook. Record memo → n8n receives audio → Whisper transcription → extract triples → write to pending.jsonl → appears in review queue on next app load. No mobile app required — uses native voice recorder + Shortcuts/Tasker to POST to webhook." ;
+    kpred:status        "planned" ;
+    skos:broader        arch:MobileAccess .
+
+
+## =============================================================================
+## Dependency Health
+## =============================================================================
+
+arch:DependencyHealth
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Dependency Health" ;
+    skos:definition     "Core deps: svelte 5, sveltekit 2, dexie 4, n3 1.x, three 0.169, @huggingface/transformers 3.x, bits-ui 2.x, fflate 0.8. Dev deps: vitest 4.x, playwright 1.x, typescript 5.x. All deps actively maintained. No abandoned packages. Browser-only runtime — no server deps in production." ;
+    skos:broader        arch:LocalFirstArch .
+
+
+## =============================================================================
+## Confluence Migration Design
+## =============================================================================
+
+arch:MigConfluenceDesign
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Confluence Migration Design" ;
+    skos:definition     "Design decisions and implementation details for F26 Confluence Migration. Covers the 6-step migration pipeline, sliding window chunking, local model recommendations, pause/resume checkpointing, and page hierarchy preservation." ;
+    skos:broader        arch:MigConfluence .
+
+arch:ConfSlidingWindow
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Sliding Window Chunking" ;
+    skos:definition     "Confluence pages often exceed the 12K char extraction limit. Sliding window with overlap: CHUNK_SIZE 10,000 chars (safe for all model context windows), CHUNK_OVERLAP 2,000 chars (catches facts split across boundaries). Cross-chunk deduplication by exact match on (subject, predicate, object) after slugification. Each chunk gets a context header: source title, page N of M, chunk N of M, parent page, labels." ;
+    skos:broader        arch:MigConfluenceDesign .
+
+arch:ConfLocalModels
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Local Model Recommendations" ;
+    skos:definition     "Recommended: gemma3:12b via Ollama for migration. Handles structured extraction well, 128K context, ~15 tokens/sec on consumer GPU. For 500 pages with 3 chunks average, ~1,500 LLM calls, approximately 2-4 hours. Alternatives: gemma3:4b (fast, good for <100 pages), gemma3:27b (excellent quality, slow), qwen3:8b (good alternative), llama3.2:3b (very fast, acceptable quality). WASM fallback (Qwen2.5-0.5B) for small spaces <50 pages where user reviews every triple." ;
+    skos:broader        arch:MigConfluenceDesign .
+
+arch:ConfPauseResume
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Pause/Resume Checkpoint" ;
+    skos:definition     "MigrationCheckpoint stored in localStorage: id, spaceName, totalPages, completedPages (IDs already processed), failedPages (IDs that errored), startedAt, lastCheckpoint. On page load, detects incomplete migration and offers to resume. Enables overnight imports for large spaces (500+ pages with gemma3:12b takes ~11 hours). Error retry queue with 3 attempts per page." ;
+    skos:broader        arch:MigConfluenceDesign .
+
+arch:ConfPageHierarchy
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Page Hierarchy Preservation" ;
+    skos:definition     "Confluence parent-child page relationships mapped to skos:broader triples. Page tree reconstructed from index.html table of contents links. Labels converted to rdf:type entities. Each page becomes a Source with Confluence metadata (confluencePageId, confluenceSpaceKey, confluenceLabels). Source kind: confluence." ;
+    skos:broader        arch:MigConfluenceDesign .
+
+arch:ConfMigrationPipeline
+    rdf:type            ktype:Concept ;
+    rdfs:label          "6-Step Migration Pipeline" ;
+    skos:definition     "Step 1: Upload ZIP — user selects Confluence HTML export ZIP via confluence tab. Step 2: Preview and Configure — shows page count, total text, estimated chunks, estimated time, backend/model selector, options (preserve hierarchy, convert labels, include URLs, extract from attachments). Step 3: Extraction Queue — sequential page processing with progress bar, pause/skip/cancel controls. Step 4: Post-Processing — cross-page entity normalisation, hierarchy injection (skos:broader), label-to-type mapping (rdf:type), source provenance. Step 5: Review — all triples enter review queue as pending with confluence-aware filters (by source page, by label, bulk confirm by page, sort by confidence). Step 6: Optional Cloud Refinement — re-extract only rejected/low-confidence triples with Claude, typically <5% of total." ;
+    skos:broader        arch:MigConfluenceDesign .
+
+arch:ConfMemoryManagement
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Migration Memory Management" ;
+    skos:definition     "For large spaces (500+ pages): write each page's triples to IndexedDB immediately after extraction (already done via addStatements). Run normalisation in batches of 50 pages. Throttle queue with configurable delay between pages (default 600ms, same as vault mode)." ;
+    skos:broader        arch:MigConfluenceDesign .
+
+
+## =============================================================================
+## Persona
+## =============================================================================
+
+@prefix shelly: <urn:reckons:shelly/> .
+
+shelly:persona
+    shelly:name             "Shelly" ;
+    shelly:greeting         "This is the architecture and design decisions KB. I can explain the local-first approach, TTL-first documentation strategy, standards alignment, deployment patterns, or dependency health. What would you like to know?" ;
+    shelly:personality      "architectural, precise, opinionated" ;
+    shelly:responseStyle    "concise" ;
+    shelly:systemPrompt     "You are helping someone understand Reckons.AI architecture and design decisions. Explain trade-offs clearly. Reference specific entities in this KB." .

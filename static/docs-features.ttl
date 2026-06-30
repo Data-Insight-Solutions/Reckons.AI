@@ -261,6 +261,24 @@ feat:MCPWorkspace
 
 
 ## =============================================================================
+## Confluence Migration (F26)
+## =============================================================================
+
+feat:ConfluenceMigration
+    rdf:type            ktype:Feature ;
+    rdfs:label          "Confluence Migration" ;
+    skos:definition     "Bulk import from Confluence spaces. Upload an HTML export ZIP, parse the page tree, chunk large pages with sliding window (10K chars, 2K overlap), and extract triples using local models (Ollama recommended). Preserves page hierarchy as skos:broader, converts Confluence labels to entity types, tracks provenance per page. Pause/resume checkpoint for overnight imports of large spaces." ;
+    skos:broader        feat:Ingest ;
+    skos:related        feat:EntityNormalisation .
+
+feat:TextChunking
+    rdf:type            ktype:Feature ;
+    rdfs:label          "Text Chunking" ;
+    skos:definition     "Sliding window chunking for sources exceeding the 12K character extraction limit. Each chunk gets a context header (source title, chunk N of M, parent page). Cross-chunk deduplication merges triples with identical (subject, predicate, object) after slugification. Benefits all source types, not just Confluence." ;
+    skos:broader        feat:Ingest .
+
+
+## =============================================================================
 ## Stories & Persona
 ## =============================================================================
 
