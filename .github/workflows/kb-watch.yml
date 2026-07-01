@@ -37,11 +37,26 @@ jobs:
       # Run alignment check (skip E2E — that's in the main CI workflow)
       - name: KB Alignment
         id: align
+        env:
+          # Target branch (PR base, or the pushed branch) → environment for the
+          # KB review deep link. URLs overridable via repo variables.
+          TARGET_REF: ${{ github.base_ref || github.ref_name }}
+          APP_URL_MAIN: ${{ vars.APP_URL_MAIN }}
+          APP_URL_STAGING: ${{ vars.APP_URL_STAGING }}
+          APP_URL_DEV: ${{ vars.APP_URL_DEV }}
         run: |
           set +e
           OUTPUT=$(npx tsx scripts/kb-align.ts --skip-e2e --dry-run --ref HEAD~5 2>&1)
           EXIT_CODE=$?
           echo "$OUTPUT"
+
+          # Resolve the KB review URL for the target environment.
+          case "$TARGET_REF" in
+            staging) REVIEW_BASE="${APP_URL_STAGING:-https://staging.reckons-ai.pages.dev}"; ENV_LABEL="Staging" ;;
+            dev)     REVIEW_BASE="${APP_URL_DEV:-https://dev.reckons-ai.pages.dev}"; ENV_LABEL="Dev" ;;
+            *)       REVIEW_BASE="${APP_URL_MAIN:-https://reckons.ai}"; ENV_LABEL="Production" ;;
+          esac
+          REVIEW_URL="${REVIEW_BASE}/review?tab=align"
 
           # Write output to step summary
           {
@@ -52,9 +67,9 @@ jobs:
             echo '```'
             echo ''
             if [ $EXIT_CODE -ne 0 ]; then
-              echo '> **Drift detected** — KB entities may need updating.'
+              echo "> **Drift detected** — KB entities may need updating. [Open the KB review → (${ENV_LABEL})](${REVIEW_URL})"
             else
-              echo '> KB is aligned with current code.'
+              echo "> KB is aligned with current code. [Open the KB review → (${ENV_LABEL})](${REVIEW_URL})"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
