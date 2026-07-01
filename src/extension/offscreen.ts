@@ -159,6 +159,14 @@ async function startWhisperMode() {
   const { pipeline, env } = await import('@huggingface/transformers');
   env.allowLocalModels = false;
   env.useBrowserCache = true;
+  // MV3 CSP is `script-src 'self'` — ORT-web must load its wasm loader from the
+  // bundled extension origin, not the jsDelivr CDN (which the CSP blocks).
+  // `ort/` is populated by vite.extension.config.ts. Force single-thread so ORT
+  // doesn't need a cross-origin-isolated context for SharedArrayBuffer workers.
+  if (env.backends?.onnx?.wasm) {
+    env.backends.onnx.wasm.wasmPaths = chrome.runtime.getURL('ort/');
+    env.backends.onnx.wasm.numThreads = 1;
+  }
 
   whisperTranscriber = await pipeline('automatic-speech-recognition', WHISPER_MODEL, {
     dtype: 'q8',
