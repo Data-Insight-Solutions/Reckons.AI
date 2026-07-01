@@ -22,7 +22,7 @@ Last updated: 2026-06-02
 | `@threlte/core` | 8.5.14 | Moderate | Medium | Svelte wrapper for Three.js; active but API still evolving |
 | `@threlte/extras` | 9.17.1 | Moderate | Medium | Add-on for @threlte/core; breaking changes occur between minors |
 | `bits-ui` | 2.18.1 | Moderate | Medium | Headless Svelte component primitives; active but relatively young |
-| `@xenova/transformers` | 2.17.2 | Moderate | **Low** | **Deprecated** — superseded by `@huggingface/transformers` v3+. No new features. See SECURITY.md. |
+| `@huggingface/transformers` | 3.8.1 | Good | Medium | In-browser ML (local LLM + embeddings + Whisper STT). Actively maintained successor to `@xenova/transformers`. See SECURITY.md. |
 | `hume` | 0.15.17 | Moderate | Medium | Official Hume AI SDK; lazy-loaded (not bundled by default). API stability improving. |
 
 ## Dev Dependencies
@@ -51,7 +51,7 @@ Features are grouped by the Web API they depend on.
 | IndexedDB (Dexie) | 24+ | 16+ | 10+ | 12+ | Universal |
 | Service Worker / PWA | 45+ | 44+ | 11.1+ | 17+ | Universal |
 | Web Crypto (`crypto.subtle`) | 37+ | 34+ | 10.1+ | 12+ | Used for KB fingerprinting |
-| WASM (`@xenova/transformers`) | 57+ | 52+ | 11+ | 16+ | WASM is universal |
+| WASM (`@huggingface/transformers`) | 57+ | 52+ | 11+ | 16+ | WASM is universal |
 
 ### Advanced Features — Chromium-only or limited
 
@@ -93,7 +93,7 @@ These packages have extensive StackOverflow coverage, official docs, and can be 
 
 ### Novel / potentially fragile
 
-- **`@xenova/transformers`** — WASM-based in-browser LLM inference. The package is deprecated in favor of `@huggingface/transformers` v3. In-browser LLM is a rapidly evolving space with limited StackOverflow history. Most production apps still run inference server-side. The fallback to mock extraction means app functionality is preserved if this breaks.
+- **`@huggingface/transformers`** — WASM-based in-browser LLM inference (v3, the actively maintained successor to the deprecated `@xenova/transformers`). In-browser LLM is a rapidly evolving space with limited StackOverflow history. Most production apps still run inference server-side. The fallback to mock extraction means app functionality is preserved if this breaks.
 
 - **`@vite-pwa/sveltekit`** — thin glue between Vite PWA plugin and SvelteKit routing. Service worker scope + SvelteKit's server-side routing interaction is a niche integration. Issues have historically required workarounds not found in standard documentation.
 
@@ -105,7 +105,6 @@ These packages have extensive StackOverflow coverage, official docs, and can be 
 
 | Current | Status | Recommended replacement | Urgency |
 |---|---|---|---|
-| `@xenova/transformers` | Deprecated | `@huggingface/transformers` v3 | Medium — functional but no new features |
 | `three` r169 | Stable | Stay, monitor r170+ changelogs | Low |
 | `bits-ui` v2 | Active | Monitor v3 roadmap | Low |
 

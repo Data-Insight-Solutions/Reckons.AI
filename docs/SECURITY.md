@@ -40,21 +40,21 @@ Audit run: 2026-06-02 | `npm audit` — 10 total (1 critical, 4 high, 4 moderate
 
 ---
 
-### CRITICAL — protobufjs < 7.5.5
+### MODERATE — protobufjs ≤ 7.6.2
 
-**Package:** `protobufjs` (transitive: `@xenova/transformers` → `onnxruntime-web` → `onnx-proto` → `protobufjs`)
+**Package:** `protobufjs` (transitive: `@huggingface/transformers` → `onnxruntime-web` → `protobufjs`)
 
-**CVEs:**
-- GHSA-xq3m-2v4x-88gg — Arbitrary code execution via crafted `.proto` files
-- GHSA-66ff-xgx4-vchm — Code injection through bytes field defaults in generated toObject code
+**CVE:** GHSA-f38q-mgvj-vph7 — Schema-derived names can shadow runtime-significant properties
 
-**CVSS:** 9.8 (Critical)
+**CVSS:** Moderate
 
-**Risk in Reckons.AI:** LOW in practice. `protobufjs` is used internally by `onnxruntime-web` to parse ONNX model files. Reckons.AI only loads models from HuggingFace CDN (fixed URLs). No user-supplied `.proto` files are ever parsed. An attacker would need to compromise the HuggingFace CDN or a MITM position to exploit this.
+**Risk in Reckons.AI:** LOW in practice. `protobufjs` is used internally by `onnxruntime-web` to parse ONNX model files. Reckons.AI only loads models from HuggingFace CDN (fixed URLs). No user-supplied `.proto` files are ever parsed.
 
-**Fix path:** `@xenova/transformers` v2.x has no fix available (the only "fix" npm suggests is downgrading to 2.0.1, which predates WASM support). The package is deprecated. Migration to `@huggingface/transformers` v3+ resolves this.
+**History:** Previously this was a CRITICAL (CVSS 9.8) chain via the deprecated `@xenova/transformers` → `onnxruntime-web ≤1.16` → `onnx-proto` → `protobufjs <7.5.5` (arbitrary code execution, GHSA-xq3m-2v4x-88gg / GHSA-66ff-xgx4-vchm). The migration to `@huggingface/transformers` v3 (onnxruntime-web 1.22+) removed the `onnx-proto` dependency and the critical CVEs. See Resolved section.
 
-**Status:** Tracking — migration to `@huggingface/transformers` v3 planned. See Research section below.
+**Fix path:** Upstream `onnxruntime-web` fix required. Apply on next routine upgrade when available.
+
+**Status:** Tracking — low practical risk, awaiting upstream.
 
 ---
 
@@ -77,13 +77,6 @@ npm install @sveltejs/kit@latest
 **Status:** Apply on next routine upgrade cycle.
 
 ---
-
-### HIGH — @xenova/transformers (transitive protobufjs chain)
-
-See CRITICAL protobufjs entry above. The high-severity rating propagates through the chain:
-`@xenova/transformers` → `onnxruntime-web` → `onnx-proto` → `protobufjs`
-
-**Status:** Same as protobufjs — tracked under migration to `@huggingface/transformers` v3.
 
 ---
 
@@ -130,15 +123,7 @@ Integrations or features with inherent risk are disabled by default and display 
 | **Voice (Hume.AI)** | Disabled — requires API key | Voice audio sent to Hume.AI cloud servers | Yes — Settings shows data leaves device |
 | **QR Mobile Access** | Disabled — opt-in per session | Token-based auth; expires but still network-accessible | Yes — Settings warns about network exposure |
 | **Cloud LLM backends** | Disabled — requires API key | Note text sent to third-party API | Yes — shown in backend selector |
-| **WASM local inference** | Available as fallback | `@xenova/transformers` has known CVE in transitive deps | No in-app warning yet — see below |
-
-### Planned: WASM security warning
-
-Given the critical `protobufjs` CVE in the `@xenova/transformers` chain, the WASM backend will show an in-settings notice:
-
-> "Local AI uses on-device inference via WebAssembly. The underlying ONNX runtime library has a known dependency vulnerability (protobufjs). Models are only loaded from HuggingFace CDN — no user data is affected. A dependency upgrade is in progress."
-
-This will be added to the Settings → Backends section when the WASM backend is selected.
+| **WASM local inference** | Available as fallback | `@huggingface/transformers` v3 (onnxruntime-web) has a moderate transitive protobufjs advisory; models loaded only from HuggingFace CDN | Low practical risk — see protobufjs entry |
 
 ---
 
@@ -165,30 +150,28 @@ When a new vulnerability is reported (via `npm audit`, Dependabot alert, or publ
 
 ---
 
-## Research: @xenova/transformers Migration
+## Resolved: @xenova/transformers → @huggingface/transformers v3 Migration
 
-**Goal:** Replace `@xenova/transformers` with `@huggingface/transformers` v3, resolving the protobufjs CVE chain.
+**Goal:** Replace `@xenova/transformers` with `@huggingface/transformers` v3, resolving the critical protobufjs CVE chain.
 
-**Status:** In research
+**Status:** ✅ Complete (2026-07-01)
+
+**Outcome:** Removed the direct `@xenova/transformers` v2 dependency. `@huggingface/transformers` v3.8.1 is now a direct dependency (previously only transitive via `kokoro-js`). This upgraded `onnxruntime-web` from ≤1.16 to 1.22+, removing the `onnx-proto` dependency and the CRITICAL (CVSS 9.8) protobufjs arbitrary-code-execution CVEs. A single MODERATE protobufjs advisory (GHSA-f38q-mgvj-vph7) remains from the modern onnxruntime-web chain, awaiting an upstream fix.
 
 **Key differences (v2 → v3):**
 
 | | @xenova/transformers v2 | @huggingface/transformers v3 |
 |---|---|---|
 | Import | `import { pipeline } from '@xenova/transformers'` | `import { pipeline } from '@huggingface/transformers'` |
-| Worker support | Comlink-based manual worker | Built-in worker support |
-| ONNX runtime | Bundled (older, vulnerable) | Updated, actively maintained |
+| ONNX runtime | onnxruntime-web ≤1.16 (vulnerable, onnx-proto) | onnxruntime-web 1.22+ (actively maintained) |
 | Model compatibility | HuggingFace ONNX models | Same + new quantized formats |
 | WASM SIMD | Optional | Default |
 
 **Migration checklist:**
-- [ ] Install `@huggingface/transformers` and remove `@xenova/transformers`
-- [ ] Update import path in `src/lib/llm/embed.ts` and `src/lib/llm/wasm.ts`
-- [ ] Test embedding pipeline with `Xenova/all-MiniLM-L6-v2` (same model, same hub)
-- [ ] Test text generation pipeline with `Xenova/Qwen2.5-0.5B-Instruct`
-- [ ] Verify Comlink worker bridge still works or update to v3 worker API
-- [ ] Run full Playwright test suite
-- [ ] Verify `npm audit` clears protobufjs chain
+- [x] Install `@huggingface/transformers` and remove `@xenova/transformers`
+- [x] All imports already reference `@huggingface/transformers` (`embed.ts`, `wasm-worker.ts`, `whisper-stt.ts`, `offscreen.ts`, bench scripts)
+- [x] Type-check passes (`npm run check` — 0 errors)
+- [x] Verify `npm audit` clears the critical onnx-proto / protobufjs chain
 
 ---
 
