@@ -160,13 +160,34 @@ kb:n8n-cloud-sync   rdf:type     ktype:Feature ;
                     kpred:has-workflow  "Source Monitor (CvbUNSZkZVf4hJFG)" .
 
 kb:ci-cd-kb-watch   rdf:type     ktype:Feature ;
-                    rdfs:label   "CI/CD KB Watch" ;
+                    rdfs:label   "Reckons.AI Graph Alignment" ;
+                    kpred:aka          "CI/CD KB Watch" ;
                     kpred:has-status   "functional" ;
-                    kpred:description  "GitHub Actions alignment scoring, pre/post review snapshots, and Claude Code commands for agent coding workflows." ;
+                    kpred:description  "GitHub Actions graph-alignment scoring, pre/post review snapshots, and Claude Code commands for agent coding workflows. Runs on push/PR to main, staging, and dev; posts a 'Reckons.AI Graph Alignment Check' status and a PR comment with a deep link to the in-app review." ;
                     kpred:tested-by    "tests/visual/user-stories/coding-workflow.test.ts" ;
                     kpred:has-script   "scripts/kb-align.ts" ;
                     kpred:has-script   "scripts/kb-snapshot.ts" ;
-                    kpred:has-ci       ".github/workflows/kb-watch.yml" .
+                    kpred:has-ci       ".github/workflows/kb-watch.yml" ;
+                    kpred:has-setup    kb:graph-alignment-setup .
+
+# Setup instructions (TTL-first — this is the documentation, not a markdown file).
+# Ordered steps carry kpred:step-order; run them from the repo root.
+kb:graph-alignment-setup rdf:type ktype:Concept ;
+                    rdfs:label   "Graph Alignment — Setup" ;
+                    kpred:description  "How to run the Reckons.AI Graph Alignment Check locally or wire it in CI. The workflow builds the MCP server, sets up the self-dogfooding workspace, then runs the alignment script." ;
+                    kpred:prerequisite "Node.js 24+ and npm" ;
+                    kpred:prerequisite "Repo checked out with git history (CI uses fetch-depth: 20 for diff scoring)" ;
+                    kpred:setup-step   "1. Install deps: npm ci" ;
+                    kpred:setup-step   "2. Build the MCP server (kb-align imports from it): cd mcp-server && npm ci && npm run build" ;
+                    kpred:setup-step   "3. Set up the workspace symlinks: bash scripts/setup-reckons-workspace.sh" ;
+                    kpred:setup-step   "4. Run the check: npx tsx scripts/kb-align.ts --skip-e2e --dry-run --ref HEAD~5" ;
+                    kpred:setup-step   "5. (Optional) Snapshot for before/after: npx tsx scripts/kb-snapshot.ts --output snapshot.json" ;
+                    kpred:npm-script   "kb:setup — bash scripts/setup-reckons-workspace.sh" ;
+                    kpred:npm-script   "kb:align:quick — npx tsx scripts/kb-align.ts --skip-e2e" ;
+                    kpred:ci-variable  "APP_URL_MAIN — production app URL for the review deep link (default https://reckons.ai)" ;
+                    kpred:ci-variable  "APP_URL_STAGING — staging app URL (default https://staging.reckons-ai.pages.dev)" ;
+                    kpred:ci-variable  "APP_URL_DEV — dev app URL (default https://dev.reckons-ai.pages.dev)" ;
+                    kpred:note         "The PR-comment step needs `permissions: pull-requests: write` (already set in kb-watch.yml)." .
 
 kb:entity-normalisation rdf:type ktype:Feature ;
                     rdfs:label   "Entity Normalisation" ;

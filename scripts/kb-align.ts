@@ -548,7 +548,7 @@ function deduplicateEntries(entries: PendingEntry[]): PendingEntry[] {
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 function main() {
-  console.log(`\n${bold('KB Alignment Report')}`);
+  console.log(`\n${bold('Graph Alignment Report')}`);
   console.log('═'.repeat(56));
 
   // Check workspace exists
