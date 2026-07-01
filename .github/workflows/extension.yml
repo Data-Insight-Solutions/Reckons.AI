@@ -18,9 +18,9 @@ jobs:
     name: Build, sign & release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -56,14 +56,14 @@ jobs:
 
       # ── Upload artifacts (available on every run) ───────────────────
       - name: Upload Chrome zip
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: reckons-ai-chrome-${{ steps.version.outputs.version }}
           path: dist/reckons-ai-chrome-*.zip
 
       - name: Upload Firefox signed xpi
         if: env.AMO_JWT_ISSUER != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         env:
           AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
         with:

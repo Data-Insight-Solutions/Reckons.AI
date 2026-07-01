@@ -15,11 +15,11 @@ jobs:
     name: KB Alignment Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 20  # Need history for git diff alignment scoring
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -83,7 +83,7 @@ jobs:
       # Post alignment report as PR comment (PRs only)
       - name: Comment on PR
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           # Per-environment app URLs, overridable via repo variables. Defaults:
           # main→production, staging/dev→Cloudflare Pages branch aliases.
@@ -159,7 +159,7 @@ jobs:
 
       - name: Upload snapshot
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: kb-snapshot
           path: /tmp/kb-snapshot.json
