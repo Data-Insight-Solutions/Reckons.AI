@@ -2,9 +2,13 @@ name: KB Watch
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main, staging, dev]
   pull_request:
-    branches: [main]
+    branches: [main, staging, dev]
+
+permissions:
+  contents: read
+  pull-requests: write
 
 jobs:
   alignment:
