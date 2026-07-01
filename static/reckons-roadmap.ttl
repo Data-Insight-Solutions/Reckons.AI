@@ -359,6 +359,61 @@ kb:collaborative-kb rdf:type ktype:Feature ;
                kpred:description  "Published KBs receive statement proposals from guests. Owner reviews via existing workflow." ;
                kpred:depends-on   kb:read-only-guest .
 
+# -- Graph Publishing / Sveltia CMS (F27) ---------------------------------------
+# Model a website directly in the graph — pages as connected nodes — and publish
+# a static, graph-powered site. Competes with markdown docs tools (Docusaurus/
+# MkDocs/GitBook) but powered by the triple framework and offline for authoring.
+# Graph-first: graph is source of truth -> export markdown+frontmatter to a Git
+# repo -> Sveltia CMS (external, un-forked) edits -> SvelteKit static theme ->
+# Cloudflare Pages. See plan "Sveltia CMS Publishing".
+
+kb:graph-publishing rdf:type ktype:Feature ;
+               rdfs:label   "Graph Publishing (Sveltia CMS)" ;
+               kpred:has-status   "planned" ;
+               kpred:feature-id   "F27" ;
+               kpred:description  "Publish WebPage graph nodes as a static, graph-powered website. Graph-first: nodes export to content/<section>/<slug>.md (frontmatter + body) plus graph.json; Sveltia CMS (external bundle, un-forked) edits the files; a SvelteKit static theme renders; Cloudflare Pages deploys. Hybrid body: excerpt in graph, long-form markdown in Git. Offline-capable authoring and .zip export." ;
+               kpred:has-phase    kb:gp-phase-1 ;
+               kpred:has-phase    kb:gp-phase-2 ;
+               kpred:has-phase    kb:gp-phase-3 ;
+               kpred:has-phase    kb:gp-phase-4 ;
+               kpred:depends-on   kb:knowledge-graph ;
+               kpred:depends-on   kb:repo-ingest ;
+               kpred:credits      "Sveltia CMS — github.com/sveltia/sveltia-cms (MIT). Used as an external dependency; consider sponsoring." .
+
+kb:webpage-entity rdf:type   ktype:Feature ;
+               rdfs:label   "WebPage Entity" ;
+               kpred:has-status   "functional" ;
+               kpred:feature-id   "F27.0" ;
+               kpred:description  "Dedicated ktype:WebPage entity type with page: metadata (slug, section, template, status, nav, excerpt, body). Reuses nav:order for position, skos:broader for the site tree, nav:next/prev for sequence, skos:related for cross-links. src/lib/rdf/page.ts builds an ordered SitePage[]." ;
+               kpred:part-of      kb:graph-publishing .
+
+kb:gp-phase-1  rdf:type      ktype:Phase ;
+               rdfs:label    "Phase 1 — WebPage model (offline, graph-only)" ;
+               kpred:has-status   "functional" ;
+               kpred:description  "ktype:WebPage type + page: predicates; entity-types registration; isMetaPredicate hides page:* from graph edges; page.ts model. Node-panel authoring affordance pending." ;
+               kpred:part-of      kb:graph-publishing .
+
+kb:gp-phase-2  rdf:type      ktype:Phase ;
+               rdfs:label    "Phase 2 — Static export + starter theme" ;
+               kpred:has-status   "scaffolded" ;
+               kpred:description  "src/lib/publish/site-export.ts serializes pages to markdown/frontmatter + graph.json; offline .zip export via fflate. Starter SvelteKit + mdsvex theme repo pending." ;
+               kpred:part-of      kb:graph-publishing ;
+               kpred:depends-on   kb:gp-phase-1 .
+
+kb:gp-phase-3  rdf:type      ktype:Phase ;
+               rdfs:label    "Phase 3 — GitHub publish + Sveltia" ;
+               kpred:has-status   "scaffolded" ;
+               kpred:description  "publishSiteToGitHub PUTs files to a site repo (reuses parseRepoUrl + githubToken); scaffolds admin/ (Sveltia bundle + config.yml). Cloudflare Pages deploy and markdown->graph round-trip import pending. GitHub OAuth for Sveltia is a setup task." ;
+               kpred:part-of      kb:graph-publishing ;
+               kpred:depends-on   kb:gp-phase-2 .
+
+kb:gp-phase-4  rdf:type      ktype:Phase ;
+               rdfs:label    "Phase 4 — Graph-powered site features" ;
+               kpred:has-status   "planned" ;
+               kpred:description  "Interactive graph view on the published site (from graph.json), search, related pages, prev/next — the differentiation vs plain markdown docs tools." ;
+               kpred:part-of      kb:graph-publishing ;
+               kpred:depends-on   kb:gp-phase-3 .
+
 kb:extension-explore rdf:type ktype:Feature ;
                rdfs:label   "Extension Explore Mode" ;
                kpred:has-status   "planned" ;

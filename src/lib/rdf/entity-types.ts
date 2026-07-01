@@ -155,6 +155,24 @@ export const BUILT_IN_TYPES: EntityTypeDef[] = [
     builtIn: true
   },
   {
+    iri: 'urn:kbase:type/WebPage',
+    label: 'Web Page',
+    geometry: 'box-flat',
+    color: '#34d399',
+    description: 'A publishable web page — a node in a graph-authored website',
+    icon2d: '🌐',
+    schemaPredicates: [
+      'urn:reckons:page/slug',
+      'urn:reckons:page/section',
+      'urn:reckons:page/template',
+      'urn:reckons:page/status',
+      'urn:reckons:page/nav',
+      'urn:reckons:page/excerpt',
+      'urn:reckons:nav/order'
+    ],
+    builtIn: true
+  },
+  {
     iri: 'urn:kbase:type/Concept',
     label: 'Concept',
     geometry: 'icosahedron',

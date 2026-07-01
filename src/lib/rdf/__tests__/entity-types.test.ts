@@ -41,8 +41,11 @@ describe('BUILT_IN_TYPES', () => {
     expect(new Set(iris).size).toBe(iris.length);
   });
 
-  it('all types have unique geometries except cone/tetrahedron sharing', () => {
-    // cone and tetrahedron share the upward triangle in 2D — that's by design
+  it('all types have unique geometries except known shares', () => {
+    // cone and tetrahedron share the upward triangle in 2D — that's by design.
+    // box-flat (the flat page slab) is shared by Document and Web Page — both are
+    // flat "page" concepts, differentiated by color and icon (📄 blue vs 🌐 green).
+    const SHARED_GEOMETRIES = new Set(['cone', 'tetrahedron', 'box-flat']);
     const geoCounts = new Map<string, string[]>();
     for (const t of BUILT_IN_TYPES) {
       const list = geoCounts.get(t.geometry) ?? [];
@@ -51,7 +54,7 @@ describe('BUILT_IN_TYPES', () => {
     }
     // Each geometry should map to at most 1 type (except the known shares)
     for (const [geo, types] of geoCounts) {
-      if (geo === 'cone' || geo === 'tetrahedron') continue; // Place and legacy share
+      if (SHARED_GEOMETRIES.has(geo)) continue;
       expect(types, `geometry '${geo}' used by: ${types.join(', ')}`).toHaveLength(1);
     }
   });
