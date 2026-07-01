@@ -854,7 +854,7 @@
 </script>
 
 <header class="head">
-  <p class="kicker mono">ingest</p>
+  <p class="kicker mono">add</p>
   <h1>add to the base.</h1>
   <p class="sub">
     a single document, note, url or reminder. it will be parsed into atomic

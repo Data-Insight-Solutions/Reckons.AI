@@ -989,7 +989,7 @@
 
   <div class="row">
     <button onclick={warmWasm} disabled={wasmLoading}>
-      {wasmLoading ? 'warming…' : 'download / warm model'}
+      {wasmLoading ? 'preparing…' : 'download / prepare model'}
     </button>
   </div>
   {#if wasmLoading || wasmStatus}

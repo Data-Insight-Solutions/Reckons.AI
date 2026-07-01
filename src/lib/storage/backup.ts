@@ -14,6 +14,7 @@
 
 import { db, getSettings, type SettingsRecord } from './db';
 import { toTurtle, toTurtleFull } from '../rdf/serialize';
+import { kbFileSlug } from './kb-registry';
 
 // ── Settings profile ─────────────────────────────────────────────────────────
 //
@@ -155,7 +156,7 @@ export async function pickAutoSaveFile(): Promise<boolean> {
     _autoSaveHandle = await (window as Window & typeof globalThis & {
       showSaveFilePicker(opts?: unknown): Promise<FileSystemFileHandle>
     }).showSaveFilePicker({
-      suggestedName: 'kb.ttl',
+      suggestedName: `${kbFileSlug()}.ttl`,
       types: [{ description: 'Turtle RDF', accept: { 'text/turtle': ['.ttl'] } }]
     });
     return true;
