@@ -11,7 +11,6 @@
  *
  *   kbs/my-kb/
  *     kb.ttl                        human-readable, no base64 blobs
- *     meta.json                     discovery, readOnly flag, stableId
  *     assets/
  *       icons/reckons-ai.svg        2D node face
  *       previews/turtle.gif         hover preview image

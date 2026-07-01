@@ -6,26 +6,28 @@ This is **Reckons.AI**, a personal knowledge base app built on SvelteKit + TypeS
 
 ## Knowledge Base Context (MCP)
 
-This project has its own Reckons.AI MCP server configured (`reckons`). It exposes 4 knowledge bases that describe the product itself:
+This project has its own Reckons.AI MCP server configured (`reckons`). It exposes knowledge bases that describe the product itself:
 
 - **Roadmap** — Feature status, planned work, design decisions, dependencies. Check this before starting new features.
-- **Production** — Tech stack, test suite health, architecture, source types, MCP tools.
+- **Production** — Tech stack, test suite health, architecture, source types, MCP tools. Links test files via `kpred:tested-by`.
 - **Features** — User-facing feature documentation (ingest, review, graph, Shelly, compare, multi-KB, safety, etc.)
 - **Architecture** — Design decisions, TTL-first docs strategy, standards alignment, deployment, style conventions, markdown migration tracker.
 - **Testing** — Test suite docs as interactive stories with ordered steps, screenshots, and assertions.
+- **Codebase** — Module structure, file links (`kpred:has-file`), cross-KB leaps. Covers all git-tracked source files.
 
 ### When to query the KBs
 
 - **Before planning new work**: `kb_search` the Roadmap KB for the feature area. Check if it's already planned, in progress, or done.
 - **Before modifying architecture**: `kb_search` the Production KB for the component. Understand dependencies.
 - **When asked about features**: `kb_search` the Features KB for how things work.
+- **When touching code files**: `kb_search` the Codebase KB to see which module owns the file.
 - **At the start of a session**: `kb_stats` to see current state.
 
 ### Keeping KBs up to date
 
 The KBs are symlinked from `static/*.ttl` files in this repo. When you complete a feature or change the roadmap:
 
-1. Update the relevant `.ttl` file in `static/` (e.g., `reckons-roadmap.ttl`, `reckons-production.ttl`, `docs-features.ttl`)
+1. Update the relevant `.ttl` file in `static/` (e.g., `reckons-roadmap.ttl`, `reckons-production.ttl`, `docs-features.ttl`, `reckons-codebase.ttl`)
 2. The MCP server watches for file changes and auto-reloads — no restart needed.
 
 ### MCP tools available
@@ -55,6 +57,26 @@ Use `/check-plan` or the individual tools to maintain alignment between code and
 - **Measuring alignment**: `kb_alignment_score` for a quantitative 0–1 score across 4 dimensions
 - **Drift detected**: use type `'drift-warning'` + priority `'high'`
 
+### Pre/Post review workflow
+
+Use `/pre-review` and `/post-review` to capture KB snapshots before and after code changes:
+
+- **Before making changes**: `/pre-review <description of planned work>` — captures a baseline snapshot of KB entities, alignment score, and test/file links
+- **After making changes**: `/post-review` — compares current state against the pre-review snapshot, showing entity changes, status transitions, new test coverage, and alignment score delta
+- This gives the user a structured before/after view of how code changes affect the knowledge base
+
+### CI/CD KB Watch
+
+The `.github/workflows/kb-watch.yml` workflow runs on every push/PR to main:
+
+1. Builds the MCP server and sets up the workspace
+2. Runs `scripts/kb-align.ts` to compare code changes against KB plans
+3. Posts an alignment report as a PR comment (for PRs)
+4. Writes a step summary with alignment score, discrepancies, and drift warnings
+5. Saves a KB snapshot artifact for post-action comparison
+
+The alignment score is a composite of 4 dimensions (30% coverage, 30% status alignment, 20% dependency respect, 20% scope discipline). Commits that don't match any planned KB work are flagged as unplanned.
+
 ### TTL-first documentation policy
 
 This project uses TTL knowledge bases as the primary documentation format. **Do NOT create new docs/*.md files.** Instead:
@@ -64,6 +86,13 @@ This project uses TTL knowledge bases as the primary documentation format. **Do 
 - **Query before reading**: Use `kb_search` to find information before reading raw files
 - **Existing markdown**: `docs/*.md` files are being migrated to TTL. Check `kb_search("migration status", kb="architecture")` for current state
 - **Must stay markdown**: CLAUDE.md, MEMORY.md, .claude/commands/*.md, README.md, CONTRIBUTING.md (system requirements)
+
+### KB predicates convention
+
+- `kpred:tested-by` — Links a Production KB feature entity to its test file (repo-relative path, e.g., `src/lib/rdf/__tests__/diff.test.ts`)
+- `kpred:has-file` — Links a Codebase KB module entity to its source files (repo-relative path)
+- `kpred:has-status` — Feature lifecycle: `speculative` → `planned` → `scaffolded` → `functional` → `production`
+- `kpred:depends-on` — Feature dependency (alignment scoring checks these are met)
 
 ## Code Conventions
 
@@ -81,6 +110,15 @@ This project uses TTL knowledge bases as the primary documentation format. **Do 
 - Visual tests: `npx playwright test --config=playwright.visual.config.ts`
 - Full local suite: `bash tests/bench/run-local-suite.sh`
 - MCP server: `cd mcp-server && npm test`
+- KB alignment: `npx tsx scripts/kb-align.ts --skip-e2e`
+- KB snapshot: `npx tsx scripts/kb-snapshot.ts --output snapshot.json`
+
+## Claude Code Commands
+
+- `/check-plan` — Check current work against KB alignment (score + drift)
+- `/kb-align` — Run tests, compare results against Production KB, write pending entries
+- `/pre-review <work>` — Capture KB snapshot before code changes
+- `/post-review` — Compare current state against pre-review snapshot
 
 ## Key Directories
 
@@ -92,3 +130,4 @@ This project uses TTL knowledge bases as the primary documentation format. **Do 
 - `mcp-server/` — Standalone MCP server (Node.js, N3.js)
 - `static/*.ttl` — Documentation and reference KBs
 - `tests/bench/` — Ollama LLM benchmarks and scoring
+- `scripts/` — KB alignment, snapshot, and workspace setup scripts

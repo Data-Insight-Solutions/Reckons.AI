@@ -740,6 +740,23 @@ kb:int-n8n     rdf:type     ktype:Tool ;
                kpred:provides     "pending note queuing" ;
                kpred:description  "Self-hosted workflow automation. Two workflows: Sync Hub (upload/download/status/pending) and Source Monitor (URL watching, change detection)." .
 
+# -- CI/CD KB Watch (F26) ------------------------------------------------------
+
+kb:ci-cd-kb-watch  rdf:type         ktype:Feature ;
+               rdfs:label           "CI/CD KB Watch" ;
+               kpred:feature-id     "F26" ;
+               kpred:has-status     "functional" ;
+               kpred:depends-on     kb:mcp-server ;
+               kpred:depends-on     kb:mcp-workspace ;
+               kpred:description    "GitHub Actions workflow that watches every push/PR, runs KB alignment scoring, and detects unplanned or drifting commits. Posts alignment reports as PR comments. Pre/post review commands for Claude Code sessions." ;
+               kpred:has-component  "kb-watch.yml" ;
+               kpred:has-component  "kb-snapshot.ts" ;
+               kpred:has-component  "kb-align.ts" ;
+               kpred:has-command    "/pre-review" ;
+               kpred:has-command    "/post-review" ;
+               kpred:has-command    "/check-plan" ;
+               kpred:has-command    "/kb-align" .
+
 # ==============================================================================
 # Story: Product Vision & Roadmap Tour
 # ==============================================================================

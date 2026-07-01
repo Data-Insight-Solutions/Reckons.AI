@@ -159,6 +159,15 @@ kb:n8n-cloud-sync   rdf:type     ktype:Feature ;
                     kpred:has-workflow  "KB Sync Hub (gzL6AXn9iWo4GZxN)" ;
                     kpred:has-workflow  "Source Monitor (CvbUNSZkZVf4hJFG)" .
 
+kb:ci-cd-kb-watch   rdf:type     ktype:Feature ;
+                    rdfs:label   "CI/CD KB Watch" ;
+                    kpred:has-status   "functional" ;
+                    kpred:description  "GitHub Actions alignment scoring, pre/post review snapshots, and Claude Code commands for agent coding workflows." ;
+                    kpred:tested-by    "tests/visual/user-stories/coding-workflow.test.ts" ;
+                    kpred:has-script   "scripts/kb-align.ts" ;
+                    kpred:has-script   "scripts/kb-snapshot.ts" ;
+                    kpred:has-ci       ".github/workflows/kb-watch.yml" .
+
 kb:entity-normalisation rdf:type ktype:Feature ;
                     rdfs:label   "Entity Normalisation" ;
                     kpred:has-status   "production" ;

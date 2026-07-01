@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Set up the MCP workspace with symlinks to TTL documentation KBs.
-# Run once after cloning, or if symlinks are broken.
+# KB discovery is by folder name + kb.ttl — no meta.json needed.
 #
+# Run once after cloning, or if symlinks are broken.
 # Usage: bash scripts/setup-mcp-workspace.sh
 
 set -euo pipefail
@@ -14,23 +15,13 @@ echo "Setting up MCP workspace..."
 # Create directories
 mkdir -p "$WORKSPACE/roadmap" "$WORKSPACE/production" "$WORKSPACE/features"
 
+# Clean up legacy meta.json files
+find "$WORKSPACE" -name meta.json -delete 2>/dev/null || true
+
 # Symlink TTL files
 ln -sf "$(pwd)/static/reckons-roadmap.ttl" "$WORKSPACE/roadmap/kb.ttl"
 ln -sf "$(pwd)/static/reckons-production.ttl" "$WORKSPACE/production/kb.ttl"
 ln -sf "$(pwd)/static/docs-features.ttl" "$WORKSPACE/features/kb.ttl"
-
-# Write meta files
-cat > "$WORKSPACE/roadmap/meta.json" << 'EOF'
-{"name":"Roadmap","description":"Reckons.AI product design, roadmap, and feature status. Consult before planning new work.","dbName":"roadmap","createdAt":0,"lastModified":0,"statementCount":0,"sourceCount":0}
-EOF
-
-cat > "$WORKSPACE/production/meta.json" << 'EOF'
-{"name":"Production","description":"Reckons.AI production status, test suite health, architecture, and tech stack.","dbName":"production","createdAt":0,"lastModified":0,"statementCount":0,"sourceCount":0}
-EOF
-
-cat > "$WORKSPACE/features/meta.json" << 'EOF'
-{"name":"Features","description":"Reckons.AI feature documentation — ingest, review, graph, Shelly, compare, multi-KB, safety, etc.","dbName":"features","createdAt":0,"lastModified":0,"statementCount":0,"sourceCount":0}
-EOF
 
 # Verify
 echo "Verifying..."

@@ -47,7 +47,7 @@ if (kb.isLegacy()) {
 } else {
   process.stderr.write(`[reckons-mcp] Workspace mode: ${kbList.length} KB(s) from ${kbPath}\n`);
   for (const k of kbList) {
-    process.stderr.write(`  - ${k.meta.name} (${k.stats.tripleCount} triples)\n`);
+    process.stderr.write(`  - ${k.name} (${k.stats.tripleCount} triples)\n`);
   }
 }
 
@@ -264,8 +264,7 @@ function handleKbListKbs(): object {
     return { content: [{ type: 'text', text: 'No KBs found.' }] };
   }
   const lines = kbs.map(k => {
-    const desc = k.meta.description ? ` — ${k.meta.description}` : '';
-    return `${k.meta.name} (${k.stats.tripleCount} triples, ${k.stats.entityCount} entities)${desc}`;
+    return `${k.name} (${k.stats.tripleCount} triples, ${k.stats.entityCount} entities)`;
   });
   return { content: [{ type: 'text', text: `${kbs.length} KB(s):\n${lines.join('\n')}` }] };
 }
@@ -616,7 +615,7 @@ function handleKbPending(params: { kb?: string }): object {
     // Workspace: scan kbs/*/pending.jsonl
     const kbList = kb.listKbs();
     for (const k of kbList) {
-      if (params.kb && !k.meta.name.toLowerCase().includes(params.kb.toLowerCase()) && k.folderName !== params.kb) continue;
+      if (params.kb && !k.name.toLowerCase().includes(params.kb.toLowerCase()) && k.folderName !== params.kb) continue;
       const kbFolder = kb.getKbFolderPath(k.folderName);
       if (kbFolder) {
         const pendingPath = join(kbFolder, 'pending.jsonl');

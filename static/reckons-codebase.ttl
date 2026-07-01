@@ -384,6 +384,19 @@ code:workspace  rdf:type     ktype:Concept ;
                 kpred:has-file "reckons-workspace/kbs/quickstart/kb.ttl" .
 
 ## =============================================================================
+## Claude Code Commands
+## =============================================================================
+
+code:claude-commands  rdf:type     ktype:Concept ;
+                      rdfs:label   "Claude Code Commands" ;
+                      skos:definition "Slash commands for KB alignment, pre/post review, and plan checking." ;
+                      skos:broader code:repo ;
+                      kpred:has-file ".claude/commands/check-plan.md" ;
+                      kpred:has-file ".claude/commands/kb-align.md" ;
+                      kpred:has-file ".claude/commands/pre-review.md" ;
+                      kpred:has-file ".claude/commands/post-review.md" .
+
+## =============================================================================
 ## cli — CLI Tool
 ## =============================================================================
 
@@ -440,7 +453,8 @@ code:test-visual  rdf:type     ktype:Concept ;
                   kpred:has-file "tests/visual/mobile/overlay.test.ts" ;
                   kpred:has-file "tests/visual/user-stories/cross-kb-align.test.ts" ;
                   kpred:has-file "tests/visual/user-stories/dev-sprint.test.ts" ;
-                  kpred:has-file "tests/visual/user-stories/user-docs.test.ts" .
+                  kpred:has-file "tests/visual/user-stories/user-docs.test.ts" ;
+                  kpred:has-file "tests/visual/user-stories/coding-workflow.test.ts" .
 
 code:test-bench  rdf:type     ktype:Concept ;
                  rdfs:label   "Benchmarks" ;
@@ -492,10 +506,11 @@ code:static  rdf:type     ktype:Concept ;
 
 code:ci  rdf:type     ktype:Concept ;
          rdfs:label   "CI/CD" ;
-         skos:definition "GitHub Actions workflows for CI and extension builds." ;
+         skos:definition "GitHub Actions workflows for CI, extension builds, and KB alignment watching." ;
          skos:broader code:repo ;
          kpred:has-file ".github/workflows/ci.yml" ;
-         kpred:has-file ".github/workflows/extension.yml" .
+         kpred:has-file ".github/workflows/extension.yml" ;
+         kpred:has-file ".github/workflows/kb-watch.yml" .
 
 code:storybook  rdf:type     ktype:Concept ;
                 rdfs:label   "Storybook" ;
@@ -524,11 +539,12 @@ code:storybook  rdf:type     ktype:Concept ;
 
 code:scripts  rdf:type     ktype:Concept ;
               rdfs:label   "Scripts" ;
-              skos:definition "Setup and utility scripts for MCP workspace and development." ;
+              skos:definition "Setup and utility scripts for MCP workspace, KB alignment, and snapshots." ;
               skos:broader code:repo ;
               kpred:has-file "scripts/setup-mcp-workspace.sh" ;
               kpred:has-file "scripts/setup-reckons-workspace.sh" ;
-              kpred:has-file "scripts/kb-align.ts" .
+              kpred:has-file "scripts/kb-align.ts" ;
+              kpred:has-file "scripts/kb-snapshot.ts" .
 
 code:sample-kgs  rdf:type     ktype:Concept ;
                  rdfs:label   "Sample Knowledge Graphs" ;

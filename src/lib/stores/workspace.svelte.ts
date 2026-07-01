@@ -11,7 +11,6 @@
  *
  *   kbs/my-kb/
  *     kb.ttl              human-readable Turtle (no base64 blobs)
- *     meta.json            discovery metadata, readOnly flag, stableId
  *     assets/              only created when the KB has binary assets
  *       icons/             2D node icons (SVG, PNG) — only if populated
  *       previews/          hover preview images (GIF, PNG, JPG) — only if populated
@@ -185,22 +184,11 @@ function kbFolderName(name: string, id: string): string {
 export type KbMeta = {
   stableId?: string;
   name: string;
-  description?: string;
-  color?: string;
-  createdAt: number;
-  lastModified: number;
-  statementCount: number;
-  /** @deprecated No longer written. Kept for backward compat with existing meta.json files. */
-  sourceCount?: number;
-  dbName: string;
-  /** When true, the app will never overwrite kb.ttl in this folder (source-of-truth is external). */
-  readOnly?: boolean;
 };
 
 /**
- * Write one KB's data to the workspace folder: kbs/{folderName}/kb.ttl + meta.json
+ * Write one KB's data to the workspace folder: kbs/{folderName}/kb.ttl
  * Binary assets written to assets/{icons,previews,models}/ — directories only created when populated.
- * Skips folders marked as readOnly in their meta.json (source-of-truth is external, e.g. symlinks).
  */
 export async function writeKbToFolder(
   entry: KbEntry,
@@ -214,33 +202,7 @@ export async function writeKbToFolder(
     const folderName = kbFolderName(entry.name, entry.id);
     const kbDir = await getOrCreateDir(kbsDir, folderName);
 
-    // Check if this folder is marked read-only — skip writing kb.ttl
-    const existingMeta = await readFromDir(kbDir, 'meta.json');
-    if (existingMeta) {
-      try {
-        const parsed = JSON.parse(existingMeta) as KbMeta;
-        if (parsed.readOnly) {
-          console.info(`[workspace] Skipping write for read-only KB "${entry.name}"`);
-          return;
-        }
-      } catch { /* malformed meta, proceed with write */ }
-    }
-
-    const meta: KbMeta = {
-      stableId: stableId || entry.stableId,
-      name: entry.name,
-      description: entry.description,
-      color: entry.color,
-      createdAt: entry.createdAt,
-      lastModified: Date.now(),
-      statementCount: entry.statementCount ?? 0,
-      dbName: entry.id,
-    };
-
-    await Promise.all([
-      writeToDir(kbDir, 'kb.ttl', ttl),
-      writeToDir(kbDir, 'meta.json', JSON.stringify(meta, null, 2)),
-    ]);
+    await writeToDir(kbDir, 'kb.ttl', ttl);
 
     // Write binary assets to structured directories (only populated categories)
     if (assets && assets.length > 0) {
@@ -278,8 +240,8 @@ async function writeAssetsToFolder(
 }
 
 /**
- * Scan the kbs/ directory for KB folders (those containing meta.json).
- * Returns the parsed meta for each found KB.
+ * Scan the kbs/ directory for KB folders (those containing kb.ttl).
+ * KB name is derived from the folder name. StableId is extracted from the TTL.
  */
 export async function listKbFolders(): Promise<Array<{ folderName: string; meta: KbMeta }>> {
   if (!_handle) return [];
@@ -289,12 +251,16 @@ export async function listKbFolders(): Promise<Array<{ folderName: string; meta:
 
     for await (const entry of (kbsDir as any).values()) {
       if (entry.kind !== 'directory') continue;
-      const metaText = await readFromDir(entry, 'meta.json');
-      if (!metaText) continue;
-      try {
-        const meta = JSON.parse(metaText) as KbMeta;
-        results.push({ folderName: entry.name, meta });
-      } catch { /* skip malformed */ }
+      const ttl = await readFromDir(entry, 'kb.ttl');
+      if (!ttl) continue;
+
+      // Extract stableId from TTL content (lightweight regex, no full parse)
+      const stableIdMatch = ttl.match(/kbStableId[>"]\s+"([^"]+)"/);
+      const meta: KbMeta = {
+        name: entry.name,
+        stableId: stableIdMatch?.[1],
+      };
+      results.push({ folderName: entry.name, meta });
     }
 
     return results;
@@ -305,7 +271,7 @@ export async function listKbFolders(): Promise<Array<{ folderName: string; meta:
 
 /**
  * Read a KB's full data from its folder.
- * Returns null if the folder or key files don't exist.
+ * Returns null if the folder or kb.ttl don't exist.
  * Also reads any binary assets from assets/{icons,previews,models}/ subdirectories.
  */
 export async function readKbFromFolder(folderName: string): Promise<{
@@ -318,13 +284,14 @@ export async function readKbFromFolder(folderName: string): Promise<{
     const kbsDir = await _handle.getDirectoryHandle('kbs');
     const kbDir = await kbsDir.getDirectoryHandle(folderName);
 
-    const [ttl, metaText] = await Promise.all([
-      readFromDir(kbDir, 'kb.ttl'),
-      readFromDir(kbDir, 'meta.json'),
-    ]);
+    const ttl = await readFromDir(kbDir, 'kb.ttl');
+    if (!ttl) return null;
 
-    if (!ttl || !metaText) return null;
-    const meta = JSON.parse(metaText) as KbMeta;
+    const stableIdMatch = ttl.match(/kbStableId[>"]\s+"([^"]+)"/);
+    const meta: KbMeta = {
+      name: folderName,
+      stableId: stableIdMatch?.[1],
+    };
 
     // Read binary assets from structured directories
     const assets = new Map<string, Uint8Array>();

@@ -26,6 +26,7 @@ export const KB_FILES = {
   production: 'reckons-production.ttl',
   roadmap: 'reckons-roadmap.ttl',
   docs: 'starter-guide.ttl',
+  codebase: 'reckons-codebase.ttl',
 } as const;
 
 export type KbName = keyof typeof KB_FILES;
@@ -58,14 +59,29 @@ export async function clearAllKbs(page: Page): Promise<void> {
     });
     try { localStorage.clear(); } catch {}
     try { sessionStorage.clear(); } catch {}
+    // Pre-dismiss oneTime notifications that overlay UI during tests
+    try {
+      localStorage.setItem('reckons:dismissed-tips', JSON.stringify([
+        'setup-local-folder', 'tutorial-welcome', 'tutorial-ingest',
+        'tutorial-review', 'tutorial-graph', 'tutorial-settings',
+        'tutorial-kb', 'tutorial-compare',
+      ]));
+    } catch {}
   });
 }
 
 /**
  * Import a TTL file as a new KB using the ingest page's file input.
- * Returns the registered KB name for later reference.
+ *
+ * @param switchTo — if true, accept the confirm dialog to switch to the new KB
+ *   (makes it the active KB for subsequent navigation). Default: false (dismiss).
+ * @returns the registered KB name for later reference.
  */
-export async function importKbFromTtl(page: Page, kbKey: KbName): Promise<string> {
+export async function importKbFromTtl(
+  page: Page,
+  kbKey: KbName,
+  opts?: { switchTo?: boolean },
+): Promise<string> {
   const filename = KB_FILES[kbKey];
   const ttlPath = path.join(TTL_DIR, filename);
 
@@ -100,13 +116,22 @@ export async function importKbFromTtl(page: Page, kbKey: KbName): Promise<string
   // Wait for parsing to complete
   await page.waitForTimeout(2000);
 
-  // Click "as new KB" button
+  // Click "as new KB" button — this triggers a confirm() dialog
   const asNewBtn = page.getByRole('button', { name: /as new kb/i });
   await expect(asNewBtn).toBeEnabled({ timeout: 10_000 });
-  await asNewBtn.click();
 
-  // Wait for import to complete — a notification or redirect happens
-  await page.waitForTimeout(3000);
+  if (opts?.switchTo) {
+    // Accept: switch to the new KB (triggers page reload via switchToKb)
+    page.once('dialog', dialog => dialog.accept());
+    await asNewBtn.click();
+    await page.waitForLoadState('load');
+    await page.waitForTimeout(2000);
+  } else {
+    // Dismiss: create the KB but stay on the current one
+    page.once('dialog', dialog => dialog.dismiss());
+    await asNewBtn.click();
+    await page.waitForTimeout(3000);
+  }
 
   return filename.replace('.ttl', '');
 }

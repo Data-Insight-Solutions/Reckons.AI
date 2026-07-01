@@ -31,21 +31,9 @@ export type KBStats = {
   lastModified: Date;
 };
 
-export type KBMeta = {
-  stableId?: string;
-  name: string;
-  description?: string;
-  color?: string;
-  createdAt: number;
-  lastModified: number;
-  statementCount: number;
-  sourceCount: number;
-  dbName: string;
-};
-
 export type KBInfo = {
   folderName: string;
-  meta: KBMeta;
+  name: string;
   stats: KBStats;
 };
 
@@ -209,7 +197,6 @@ export class MultiKBReader {
   private wsDir: string;
   private kbsDir: string;
   private readers = new Map<string, KBReader>(); // folderName → KBReader
-  private metas = new Map<string, KBMeta>();     // folderName → meta
   /** Legacy single-file reader (for backward compat with --kb file.ttl) */
   private legacyReader: KBReader | null = null;
 
@@ -237,7 +224,6 @@ export class MultiKBReader {
       if (!entry.isDirectory()) continue;
       const kbDir = join(this.kbsDir, entry.name);
       const ttlPath = join(kbDir, 'kb.ttl');
-      const metaPath = join(kbDir, 'meta.json');
 
       if (!existsSync(ttlPath)) continue;
 
@@ -246,14 +232,6 @@ export class MultiKBReader {
         this.readers.set(entry.name, new KBReader(ttlPath));
       } else {
         this.readers.get(entry.name)!.reload();
-      }
-
-      // Load meta
-      if (existsSync(metaPath)) {
-        try {
-          const metaText = readFileSync(metaPath, 'utf8');
-          this.metas.set(entry.name, JSON.parse(metaText));
-        } catch { /* skip bad meta */ }
       }
     }
   }
@@ -292,22 +270,12 @@ export class MultiKBReader {
   /** List all known KBs with their metadata and stats. */
   listKbs(): KBInfo[] {
     if (this.legacyReader) {
-      const s = this.legacyReader.stats();
-      return [{
-        folderName: 'default',
-        meta: { name: 'default', createdAt: 0, lastModified: s.lastModified.getTime(), statementCount: s.tripleCount, sourceCount: s.sourceCount, dbName: 'kbase' },
-        stats: s,
-      }];
+      return [{ folderName: 'default', name: 'default', stats: this.legacyReader.stats() }];
     }
 
     const result: KBInfo[] = [];
     for (const [folderName, reader] of this.readers) {
-      const s = reader.stats();
-      const meta = this.metas.get(folderName) ?? {
-        name: folderName, createdAt: 0, lastModified: s.lastModified.getTime(),
-        statementCount: s.tripleCount, sourceCount: s.sourceCount, dbName: folderName,
-      };
-      result.push({ folderName, meta, stats: s });
+      result.push({ folderName, name: folderName, stats: reader.stats() });
     }
     return result;
   }
@@ -320,14 +288,10 @@ export class MultiKBReader {
     // Try exact folder name match
     if (this.readers.has(kbName)) return this.readers.get(kbName)!;
 
-    // Try matching by meta.name (case-insensitive)
+    // Try case-insensitive / substring match on folder name
     const lower = kbName.toLowerCase();
-    for (const [folder, meta] of this.metas) {
-      if (meta.name.toLowerCase() === lower) return this.readers.get(folder)!;
-    }
-    // Try folder name contains
     for (const [folder, reader] of this.readers) {
-      if (folder.toLowerCase().includes(lower)) return reader;
+      if (folder.toLowerCase() === lower || folder.toLowerCase().includes(lower)) return reader;
     }
     return null;
   }
@@ -445,8 +409,9 @@ export class MultiKBReader {
     const folders = kbName
       ? (() => {
           // Find matching folder
-          for (const [folder, meta] of this.metas) {
-            if (folder === kbName || meta.name.toLowerCase() === kbName.toLowerCase()) return [folder];
+          const lower = kbName.toLowerCase();
+          for (const folder of this.readers.keys()) {
+            if (folder === kbName || folder.toLowerCase() === lower) return [folder];
           }
           return [];
         })()
@@ -474,13 +439,10 @@ export class MultiKBReader {
     }
     // Try exact match
     if (this.readers.has(kbName)) return join(this.kbsDir, kbName);
-    // Try meta name match
+    // Try folder name match
     const lower = kbName.toLowerCase();
-    for (const [folder, meta] of this.metas) {
-      if (meta.name.toLowerCase() === lower) return join(this.kbsDir, folder);
-    }
     for (const folder of this.readers.keys()) {
-      if (folder.toLowerCase().includes(lower)) return join(this.kbsDir, folder);
+      if (folder.toLowerCase() === lower || folder.toLowerCase().includes(lower)) return join(this.kbsDir, folder);
     }
     return null;
   }
