@@ -363,21 +363,27 @@ kb:collaborative-kb rdf:type ktype:Feature ;
 # Model a website directly in the graph — pages as connected nodes — and publish
 # a static, graph-powered site. Competes with markdown docs tools (Docusaurus/
 # MkDocs/GitBook) but powered by the triple framework and offline for authoring.
-# Graph-first: graph is source of truth -> export markdown+frontmatter to a Git
-# repo -> Sveltia CMS (external, un-forked) edits -> SvelteKit static theme ->
-# Cloudflare Pages. See plan "Sveltia CMS Publishing".
+# Graph-first: graph is source of truth -> export markdown+frontmatter to content/
+# in THIS repo -> Sveltia CMS (external, un-forked) edits -> a /docs route group in
+# the main app renders the pages (prerendered via adapter-static) -> Cloudflare
+# Pages. Hosting: served alongside the app at Reckons.AI/docs now; a docs.reckons.ai
+# subdomain can point at the same /docs build later. See plan "Sveltia CMS Publishing".
 
 kb:graph-publishing rdf:type ktype:Feature ;
                rdfs:label   "Graph Publishing (Sveltia CMS)" ;
                kpred:has-status   "planned" ;
                kpred:feature-id   "F27" ;
-               kpred:description  "Publish WebPage graph nodes as a static, graph-powered website. Graph-first: nodes export to content/<section>/<slug>.md (frontmatter + body) plus graph.json; Sveltia CMS (external bundle, un-forked) edits the files; a SvelteKit static theme renders; Cloudflare Pages deploys. Hybrid body: excerpt in graph, long-form markdown in Git. Offline-capable authoring and .zip export." ;
+               kpred:description  "Publish WebPage graph nodes as a static, graph-powered docs site served at Reckons.AI/docs (self-contained, in the main app — not a separate repo). Graph-first: nodes export to content/<section>/<slug>.md (frontmatter + body) plus graph.json; Sveltia CMS (external bundle, un-forked) edits the files; a prerendered /docs route group renders them via mdsvex; Cloudflare Pages deploys. Hybrid body: excerpt in graph, long-form markdown in Git. Offline-capable authoring and .zip export. Future: docs.reckons.ai subdomain over the same build." ;
                kpred:has-phase    kb:gp-phase-1 ;
                kpred:has-phase    kb:gp-phase-2 ;
                kpred:has-phase    kb:gp-phase-3 ;
                kpred:has-phase    kb:gp-phase-4 ;
                kpred:depends-on   kb:knowledge-graph ;
                kpred:depends-on   kb:repo-ingest ;
+               kpred:hosting      "Served at Reckons.AI/docs (route group in the main app, prerendered via adapter-static). Future: docs.reckons.ai subdomain over the same /docs build." ;
+               kpred:principle    "Graph/TTL + Reckoning is the PRIMARY authoring surface. AI-generated page content is directly editable in the graph; content/*.md is a generated, trailing by-product. Sveltia editing is a secondary convenience (round-trips back into the graph)." ;
+               kpred:principle    "A markdown alignment check keeps content/*.md honest against the graph: CI regenerates markdown from the WebPage nodes and flags any committed .md that drifts (edited outside the graph, or graph changed without re-publish) — mirroring the Reckons.AI Graph Alignment Check." ;
+               kpred:supports     "Embeddable images (Sveltia media_folder) and the rest of Sveltia's CMS widgets remain available for hand-editing." ;
                kpred:credits      "Sveltia CMS — github.com/sveltia/sveltia-cms (MIT). Used as an external dependency; consider sponsoring." .
 
 kb:webpage-entity rdf:type   ktype:Feature ;
@@ -394,16 +400,16 @@ kb:gp-phase-1  rdf:type      ktype:Phase ;
                kpred:part-of      kb:graph-publishing .
 
 kb:gp-phase-2  rdf:type      ktype:Phase ;
-               rdfs:label    "Phase 2 — Static export + starter theme" ;
+               rdfs:label    "Phase 2 — Static export + in-app /docs route" ;
                kpred:has-status   "scaffolded" ;
-               kpred:description  "src/lib/publish/site-export.ts serializes pages to markdown/frontmatter + graph.json; offline .zip export via fflate. Starter SvelteKit + mdsvex theme repo pending." ;
+               kpred:description  "src/lib/publish/site-export.ts serializes pages to markdown/frontmatter + graph.json; offline .zip export via fflate. A /docs route group in the main app renders content/*.md via mdsvex, prerendered under adapter-static (hybrid SPA + prerendered /docs). No separate theme repo." ;
                kpred:part-of      kb:graph-publishing ;
                kpred:depends-on   kb:gp-phase-1 .
 
 kb:gp-phase-3  rdf:type      ktype:Phase ;
-               rdfs:label    "Phase 3 — GitHub publish + Sveltia" ;
+               rdfs:label    "Phase 3 — GitHub publish + Sveltia /admin" ;
                kpred:has-status   "scaffolded" ;
-               kpred:description  "publishSiteToGitHub PUTs files to a site repo (reuses parseRepoUrl + githubToken); scaffolds admin/ (Sveltia bundle + config.yml). Cloudflare Pages deploy and markdown->graph round-trip import pending. GitHub OAuth for Sveltia is a setup task." ;
+               kpred:description  "publishSiteToGitHub PUTs content/ to this repo (reuses parseRepoUrl + githubToken); Sveltia /admin served from the app (static/admin: external bundle + config.yml). Markdown->graph round-trip import + a markdown alignment check (CI regenerates content/*.md from the graph and flags drift) pending. GitHub OAuth for the Sveltia backend is a setup task." ;
                kpred:part-of      kb:graph-publishing ;
                kpred:depends-on   kb:gp-phase-2 .
 
