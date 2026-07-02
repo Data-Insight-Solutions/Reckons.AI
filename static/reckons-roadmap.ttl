@@ -972,7 +972,7 @@ story:rm-step-9  rdf:type         story:Step ;
                  story:partOf     story:roadmap-tour ;
                  story:order      "9"^^xsd:integer ;
                  story:title      "Enterprise: People · Policy · Procedure" ;
-                 story:content    "The enterprise vision structures organisational knowledge around three dimensions. People: RBAC, team KBs, audit trails. Policy: legal and cultural constraints as graph entities with temporal bounds. Procedure: SOPs and decision trees from intent to execution. Authentication is bring-your-own. Delivery is file-based TTL — portable, diffable, no lock-in." ;
+                 story:content    "The enterprise vision structures organizational knowledge around three dimensions. People: RBAC, team KBs, audit trails. Policy: legal and cultural constraints as graph entities with temporal bounds. Procedure: SOPs and decision trees from intent to execution. Authentication is bring-your-own. Delivery is file-based TTL — portable, diffable, no lock-in." ;
                  story:highlight  kb:enterprise-3ps ;
                  story:highlight  kb:ent-people ;
                  story:highlight  kb:ent-policy ;
