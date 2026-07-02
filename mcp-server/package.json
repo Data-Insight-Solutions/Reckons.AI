@@ -12,7 +12,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "n3": "^1.21.3"
+    "n3": "^2.1.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
