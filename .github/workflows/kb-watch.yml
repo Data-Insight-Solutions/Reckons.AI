@@ -83,7 +83,7 @@ jobs:
       # Post alignment report as PR comment (PRs only)
       - name: Comment on PR
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           # Per-environment app URLs, overridable via repo variables. Defaults:
           # main→production, staging/dev→Cloudflare Pages branch aliases.
