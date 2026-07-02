@@ -431,10 +431,10 @@ kb:sveltia-cms-setup rdf:type ktype:Concept ;
                rdfs:label    "Sveltia CMS — Setup (GitHub OAuth)" ;
                kpred:part-of      kb:graph-publishing ;
                kpred:description  "Wire the /admin content manager. The CMS entry (static/admin/index.html) + config (static/admin/config.yml) ship in the app and are served at Reckons.AI/admin. GitHub login uses sveltia-cms-auth, a small Cloudflare Worker." ;
-               kpred:setup-step   "1. Deploy sveltia-cms-auth: github.com/sveltia/sveltia-cms-auth (Cloudflare Worker). Note its URL, e.g. https://sveltia-cms-auth.<sub>.workers.dev" ;
-               kpred:setup-step   "2. Create a GitHub OAuth App: Settings > Developer settings > OAuth Apps. Homepage https://reckons.ai; Authorization callback URL https://<worker>/callback" ;
+               kpred:setup-step   "1. Deploy sveltia-cms-auth: github.com/sveltia/sveltia-cms-auth (Cloudflare Worker reckons-sveltia-cms-auth, mapped to admin.reckons.ai). DONE." ;
+               kpred:setup-step   "2. Create a GitHub OAuth App: Settings > Developer settings > OAuth Apps. Homepage https://reckons.ai; Authorization callback URL https://admin.reckons.ai/callback" ;
                kpred:setup-step   "3. Set the worker's GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET vars (and ALLOWED_DOMAINS=reckons.ai) to the OAuth App credentials" ;
-               kpred:setup-step   "4. Set backend.base_url in static/admin/config.yml to the worker origin" ;
+               kpred:setup-step   "4. backend.base_url in static/admin/config.yml points at https://admin.reckons.ai. DONE." ;
                kpred:setup-step   "5. Visit https://reckons.ai/admin/ and Login with GitHub" ;
                kpred:alt          "Local editing without the worker: npx @sveltia/cms-proxy-server, then enable local_backend: true in config.yml" ;
                kpred:note         "/admin is a standalone static page, so the app's strict CSP does not apply; Sveltia reaches api.github.com and the worker directly." .

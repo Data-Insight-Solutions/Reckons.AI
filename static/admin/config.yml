@@ -9,11 +9,11 @@ backend:
   name: github
   repo: Data-Insight-Solutions/Reckons.AI
   branch: main
-  # OAuth handled by sveltia-cms-auth (a small Cloudflare Worker you deploy).
-  # Point this at your deployed worker's origin, then create a GitHub OAuth App
-  # whose callback is https://<this-worker>/callback. See the F27 setup docs
-  # (kb:sveltia-cms-setup in the roadmap KB).
-  base_url: https://sveltia-cms-auth.YOUR-SUBDOMAIN.workers.dev
+  # OAuth handled by sveltia-cms-auth — the Cloudflare Worker
+  # `reckons-sveltia-cms-auth`, mapped to admin.reckons.ai. sveltia-cms-auth
+  # serves /auth and /callback there. The GitHub OAuth App's callback must be
+  # https://admin.reckons.ai/callback. See kb:sveltia-cms-setup in the roadmap KB.
+  base_url: https://admin.reckons.ai
 
 # Uploaded images/assets are embeddable in page bodies (markdown widget).
 media_folder: static/media

@@ -97,7 +97,14 @@
     "FOAF",
     "bnode",
     "ONNX",
-    "Berners"
+    "Berners",
+    "Sveltia",
+    "sveltia",
+    "frontmatter",
+    "mdsvex",
+    "slugify",
+    "webpage",
+    "workers"
   ],
   "ignorePaths": [
     "node_modules",
