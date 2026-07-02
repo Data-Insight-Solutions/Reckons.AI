@@ -1,0 +1,48 @@
+# Sveltia CMS configuration for the Reckons.AI graph-authored docs site (F27).
+#
+# Graph-first: the graph/TTL + Reckoning is the primary authoring surface and
+# content/*.md is a generated, trailing by-product. This CMS is a secondary,
+# convenient editor whose commits round-trip back into the graph. Field schema
+# mirrors src/lib/publish/site-export.ts (pageToMarkdown / sveltiaConfig).
+
+backend:
+  name: github
+  repo: Data-Insight-Solutions/Reckons.AI
+  branch: main
+  # OAuth handled by sveltia-cms-auth (a small Cloudflare Worker you deploy).
+  # Point this at your deployed worker's origin, then create a GitHub OAuth App
+  # whose callback is https://<this-worker>/callback. See the F27 setup docs
+  # (kb:sveltia-cms-setup in the roadmap KB).
+  base_url: https://sveltia-cms-auth.YOUR-SUBDOMAIN.workers.dev
+
+# Uploaded images/assets are embeddable in page bodies (markdown widget).
+media_folder: static/media
+public_folder: /media
+
+# Local editing without deploying the OAuth worker:
+#   npx @sveltia/cms-proxy-server   (then load /admin/ with local_backend on)
+# local_backend: true
+
+collections:
+  - name: pages
+    label: Pages
+    label_singular: Page
+    description: >-
+      WebPage nodes published from the graph. Edits here are proposed back into
+      the graph (see the markdown alignment check).
+    folder: content
+    create: true
+    nested: { depth: 4 }
+    identifier_field: slug
+    summary: '{{fields.title}}  ·  {{fields.status}}'
+    fields:
+      - { name: title, label: Title, widget: string }
+      - { name: slug, label: Slug, widget: string, hint: URL path segment, e.g. getting-started }
+      - { name: order, label: Order, widget: number, default: 0, value_type: int, hint: Position within its section/parent }
+      - { name: section, label: Section, widget: string, required: false, hint: Top-level nav group, e.g. Docs }
+      - { name: parent, label: Parent slug, widget: string, required: false, hint: Slug of the parent page (site tree) }
+      - { name: template, label: Template, widget: select, options: [landing, doc, full, sidebar], default: doc }
+      - { name: status, label: Status, widget: select, options: [draft, published, unlisted], default: draft }
+      - { name: nav, label: Nav placement, widget: select, options: [menu, sidebar, both, hidden], default: sidebar }
+      - { name: excerpt, label: Excerpt, widget: text, required: false, hint: Short summary (mirrors page:excerpt in the graph) }
+      - { name: body, label: Body, widget: markdown }

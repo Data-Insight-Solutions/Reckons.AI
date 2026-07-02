@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Reckons.AI — Content Manager</title>
+    <!--
+      Sveltia CMS content manager for the graph-authored docs site (F27).
+      Loads the EXTERNAL, un-forked Sveltia bundle from CDN — never vendored here.
+      Thanks to the Sveltia project: https://github.com/sveltia/sveltia-cms
+      (please consider sponsoring). Config lives in ./config.yml.
+
+      This is a standalone document (not the SvelteKit app shell), so the app's
+      strict CSP does not apply here; Sveltia reaches the GitHub API and the
+      sveltia-cms-auth OAuth worker directly.
+    -->
+  </head>
+  <body>
+    <script src="https://cdn.jsdelivr.net/npm/@sveltia/cms/dist/sveltia-cms.js"></script>
+  </body>
+</html>
