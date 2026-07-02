@@ -342,7 +342,7 @@
     <h2>From raw source to <em>structured knowledge.</em></h2>
     <p class="section-sub">
       Reckons.AI extracts facts from anything you give it, lets you review every claim,
-      and builds a knowledge graph you can query, visualise, and reason over.
+      and builds a knowledge graph you can query, visualize, and reason over.
     </p>
 
     <div class="pipeline">
@@ -695,7 +695,7 @@
         <div class="stp-card stp-proposal">
           <span class="stp-num mono">P</span>
           <strong>Proposal</strong>
-          <p>The AI synthesises options grounded <em>only</em> in facts from your Knowledge Graph. Every option cites its sources.</p>
+          <p>The AI synthesizes options grounded <em>only</em> in facts from your Knowledge Graph. Every option cites its sources.</p>
           <div class="stp-example mono">"Based on <em>3 confirmed sources</em>: Option A — accelerate feature X (revenue est. +6%). Option B — …"</div>
         </div>
       </div>

@@ -132,7 +132,7 @@
     <p>
       We designed a concrete, reproducible test case. A freelance developer has been hired to build a
       landing page for <strong>Data Insight Solutions LLC</strong>, a data consultancy. The brand brief
-      covers company identity, four service pillars, brand colours, typography, target audience, SEO targets,
+      covers company identity, four service pillars, brand colors, typography, target audience, SEO targets,
       and content guidelines — 30 distinct facts across 382 words.
     </p>
 
@@ -218,7 +218,7 @@ automate, integrate, and display data...
     <p>
       The density advantage compounds across a multi-step workflow. In the markdown approach, the AI re-reads
       the entire brief at each step, and the conversation history accumulates. In the graph approach, the AI
-      queries specific predicates — only the brand colours for a colour-fix step, only the SEO targets
+      queries specific predicates — only the brand colors for a color-fix step, only the SEO targets
       for the meta-tags step.
     </p>
 
@@ -338,7 +338,7 @@ automate, integrate, and display data...
 
     <p>
       With a markdown brief, reviewing AI-generated code means manually scanning prose to verify that
-      the correct hex colour was used, the right tagline appears, all four service pillars are present,
+      the correct hex color was used, the right tagline appears, all four service pillars are present,
       and the SEO targets match. This is error-prone: humans miss details in prose.
     </p>
 
@@ -451,7 +451,7 @@ automate, integrate, and display data...
     <p>
       RDF triples are unambiguous by design. <code>kb:BrandIdentity kpred:primary-color "#1a2332"</code>
       is a typed assertion that cannot be misinterpreted. The AI doesn't need to parse prose to find
-      the brand colour — it queries a predicate.
+      the brand color — it queries a predicate.
     </p>
 
     <h3>4. Review fatigue undermines AI productivity gains</h3>

@@ -437,7 +437,7 @@
     <div class="reckoning-inner">
       <p class="section-kicker mono">core workflow</p>
       <h2>A Reckoning</h2>
-      <p class="section-sub">Describe your situation. State your target. Reckons.AI consults your entire knowledge graph and synthesises a brief proposal, drawing only on what you've already verified.</p>
+      <p class="section-sub">Describe your situation. State your target. Reckons.AI consults your entire knowledge graph and synthesizes a brief proposal, drawing only on what you've already verified.</p>
 
       <div class="stp-flow">
         <div class="stp-step">
@@ -452,7 +452,7 @@
         <div class="stp-arrow">→</div>
         <div class="stp-step">
           <span class="stp-label mono">03 — Proposal</span>
-          <p>AI synthesises options from your graph: sourced, ranked, traceable.</p>
+          <p>AI synthesizes options from your graph: sourced, ranked, traceable.</p>
         </div>
       </div>
 
@@ -464,7 +464,7 @@
   <section class="section enterprise-section">
     <p class="section-kicker mono">enterprise</p>
     <h2>People · Policy · Procedure</h2>
-    <p class="section-sub">Structure organisational knowledge around the three dimensions that matter. Who knows what, what governs it, and how it gets done.</p>
+    <p class="section-sub">Structure organizational knowledge around the three dimensions that matter. Who knows what, what governs it, and how it gets done.</p>
 
     <div class="enterprise-grid">
       <div class="enterprise-card">
