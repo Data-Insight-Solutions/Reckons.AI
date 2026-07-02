@@ -78,25 +78,19 @@ export async function chatOpenAI(
 
 // ── Ollama (local) ────────────────────────────────────────────────────────────
 
-/** Calls a locally running Ollama instance via its OpenAI-compatible chat endpoint. */
-export async function chatOllama(
-  messages: ChatMessage[],
-  system: string,
-  model = 'llama3.2',
-  baseUrl = 'http://localhost:11434',
-  maxTokens = 1024
-): Promise<string> {
-  const url = `${baseUrl}/v1/chat/completions`;
-  let res: Response;
+/**
+ * Shared network layer for both Ollama endpoints (`/v1/chat/completions` and
+ * `/api/chat`). Interprets fetch-level failures (CORS blocked, connection
+ * refused, offline) into actionable error messages, then leaves HTTP-status
+ * and body handling to the caller since the two endpoints shape errors
+ * differently.
+ */
+async function ollamaFetch(url: string, body: unknown, baseUrl: string): Promise<Response> {
   try {
-    res = await fetch(url, {
+    return await fetch(url, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        max_tokens: maxTokens,
-        messages: [{ role: 'system', content: system }, ...messages]
-      })
+      body: JSON.stringify(body)
     });
   } catch (e) {
     // Network errors (CORS blocked, connection refused, offline)
@@ -124,12 +118,69 @@ export async function chatOllama(
     }
     throw e;
   }
+}
+
+/** Calls a locally running Ollama instance via its OpenAI-compatible chat endpoint. */
+export async function chatOllama(
+  messages: ChatMessage[],
+  system: string,
+  model = 'llama3.2',
+  baseUrl = 'http://localhost:11434',
+  maxTokens = 1024
+): Promise<string> {
+  const url = `${baseUrl}/v1/chat/completions`;
+  const res = await ollamaFetch(url, {
+    model,
+    max_tokens: maxTokens,
+    messages: [{ role: 'system', content: system }, ...messages]
+  }, baseUrl);
   if (!res.ok) {
     const body = await res.text().catch(() => '');
     throw new Error(`Ollama ${res.status}: ${body.slice(0, 300)} — is Ollama running at ${baseUrl}?`);
   }
   const data = await res.json();
   return data.choices?.[0]?.message?.content ?? '';
+}
+
+/**
+ * Calls a locally running Ollama instance via its native `/api/chat` endpoint
+ * with the `format` parameter set to a JSON Schema, constraining decoding so
+ * the model can only emit tokens that keep the output schema-valid (Ollama
+ * converts the schema to a GBNF grammar under the hood, same as llama.cpp's
+ * `--json-schema`). This is the schema-constrained counterpart to
+ * `chatOllama` — used for structured extraction, not for plain chat.
+ *
+ * `think: false` disables reasoning on hybrid-thinking models (Qwen3,
+ * gpt-oss, …). Without it, those models spend the entire token budget on a
+ * hidden `<think>` block and return empty `message.content` — measured
+ * empirically against qwen3:4b, which produced 0 usable output at
+ * `num_predict: 2048` with thinking on, vs. correct schema-valid JSON in
+ * under a second with it off. Ignored (harmlessly) by non-thinking models
+ * and older Ollama builds that don't recognize the field.
+ */
+export async function chatOllamaStructured(
+  messages: ChatMessage[],
+  system: string,
+  schema: Record<string, unknown>,
+  model = 'llama3.2',
+  baseUrl = 'http://localhost:11434',
+  maxTokens = 1024
+): Promise<string> {
+  const url = `${baseUrl}/api/chat`;
+  const res = await ollamaFetch(url, {
+    model,
+    stream: false,
+    think: false,
+    format: schema,
+    options: { num_predict: maxTokens },
+    messages: [{ role: 'system', content: system }, ...messages]
+  }, baseUrl);
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Ollama ${res.status}: ${body.slice(0, 300)} — is Ollama running at ${baseUrl}?`);
+  }
+  const data = await res.json();
+  return data.message?.content ?? '';
 }
 
 /** List models available on a running Ollama instance. Returns [] on error. */

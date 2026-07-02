@@ -16,11 +16,15 @@
  *   npx tsx tests/bench/run-ollama-bench.ts --tasks ingest       # only ingest (skip chat)
  *   npx tsx tests/bench/run-ollama-bench.ts --tasks chat         # only chat
  *   npx tsx tests/bench/run-ollama-bench.ts --tasks all          # both (default)
+ *   npx tsx tests/bench/run-ollama-bench.ts --mode structured    # schema-constrained decoding + auto prompt-variant (see ollama-extract.ts)
+ *   npx tsx tests/bench/run-ollama-bench.ts --mode baseline      # plain chat + full prompt (default, matches historical results)
+ *   npx tsx tests/bench/run-ollama-bench.ts --timeout-ms 600000  # per-model ingest timeout (default 5 min); model is skipped and noted if exceeded
  */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join, resolve } from 'path';
 import { EXTRACTION_SYSTEM_PROMPT, buildExtractionUserPrompt, parseTriplesJSON } from '../../src/lib/integrations/llm/extractor';
+import { extractWithOllama } from '../../src/lib/integrations/llm/ollama-extract';
 import { ETHICS_PREAMBLE } from '../../src/lib/safety/content-policy';
 import { buildReport, formatReport } from './scoring';
 import type { ExtractedTriple } from '../../src/lib/integrations/llm/extractor';
@@ -39,6 +43,10 @@ function getArg(name: string, fallback: string): string {
 
 const OLLAMA_URL = getArg('--url', process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434');
 const TASKS = getArg('--tasks', 'all') as 'ingest' | 'chat' | 'all';
+// 'structured' = schema-constrained /api/chat decoding + auto small-model prompt (ollama-extract.ts).
+// 'baseline' = original plain-chat path with the full extraction prompt, for A/B comparison.
+const MODE = getArg('--mode', 'baseline') as 'baseline' | 'structured';
+const INGEST_TIMEOUT_MS = parseInt(getArg('--timeout-ms', '300000'), 10);
 
 function parseModels(): string[] {
   const models: string[] = [];
@@ -150,10 +158,15 @@ ${entityLines}`;
 
 // ── Bench steps ──────────────────────────────────────────────────────────────
 
-async function benchIngest(model: string): Promise<ExtractedTriple[]> {
-  console.log('  Ingest: extracting triples …');
-  const start = Date.now();
+/** Rejects if `promise` doesn't settle within `ms` — used to bound very slow models (e.g. 24B+ on CPU). */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((res, rej) => {
+    const t = setTimeout(() => rej(new Error(`${label} exceeded ${(ms / 1000).toFixed(0)}s timeout`)), ms);
+    promise.then((v) => { clearTimeout(t); res(v); }, (e) => { clearTimeout(t); rej(e); });
+  });
+}
 
+async function benchIngestBaseline(model: string): Promise<ExtractedTriple[]> {
   const raw = await chatOllama(
     EXTRACTION_SYSTEM_PROMPT,
     buildExtractionUserPrompt(sourceText, 'Common Octopus — Wikipedia'),
@@ -161,8 +174,7 @@ async function benchIngest(model: string): Promise<ExtractedTriple[]> {
     2048
   );
 
-  const elapsed = ((Date.now() - start) / 1000).toFixed(1);
-  console.log(`  Ingest: generated in ${elapsed}s (${raw.length} chars)`);
+  console.log(`  Ingest: generated (${raw.length} chars)`);
 
   let triples: ExtractedTriple[];
   try {
@@ -173,6 +185,37 @@ async function benchIngest(model: string): Promise<ExtractedTriple[]> {
     console.error(`  Raw (first 500 chars): ${raw.slice(0, 500)}`);
     triples = [];
   }
+
+  return triples;
+}
+
+async function benchIngestStructured(model: string): Promise<ExtractedTriple[]> {
+  try {
+    const triples = await extractWithOllama(sourceText, 'Common Octopus — Wikipedia', {
+      model,
+      baseUrl: OLLAMA_URL,
+      maxTokens: 2048
+    });
+    console.log(`  Ingest: parsed ${triples.length} triples (structured)`);
+    return triples;
+  } catch (e) {
+    console.error(`  Ingest: STRUCTURED EXTRACTION FAILED — ${(e as Error).message}`);
+    return [];
+  }
+}
+
+async function benchIngest(model: string): Promise<ExtractedTriple[]> {
+  console.log(`  Ingest: extracting triples (mode=${MODE}) …`);
+  const start = Date.now();
+
+  const triples = await withTimeout(
+    MODE === 'structured' ? benchIngestStructured(model) : benchIngestBaseline(model),
+    INGEST_TIMEOUT_MS,
+    `Ingest for ${model}`
+  );
+
+  const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+  console.log(`  Ingest: done in ${elapsed}s`);
 
   return triples;
 }
@@ -293,6 +336,8 @@ async function main() {
   console.log(`Fixture: octopus.txt (${sourceText.length} chars)`);
   console.log(`Golden: ${goldenIngest.length} ingest triples, ${chatTestCases.length} chat questions`);
   console.log(`Tasks: ${TASKS}`);
+  console.log(`Mode: ${MODE}${MODE === 'structured' ? ' (schema-constrained decoding + auto small-model prompt)' : ' (plain chat + full prompt)'}`);
+  console.log(`Ingest timeout: ${(INGEST_TIMEOUT_MS / 1000).toFixed(0)}s`);
 
   // Determine which models to run
   const modelsToRun = requestedModels.length > 0
@@ -315,8 +360,8 @@ async function main() {
     const ts = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
 
     for (const r of reports) {
-      const slug = `ollama_${r.model.replace(/[/:]/g, '_')}`;
-      writeFileSync(join(RESULTS_DIR, `${slug}_${ts}.json`), JSON.stringify(r, null, 2));
+      const slug = `ollama_${r.model.replace(/[/:]/g, '_')}_${MODE}`;
+      writeFileSync(join(RESULTS_DIR, `${slug}_${ts}.json`), JSON.stringify({ ...r, mode: MODE }, null, 2));
     }
 
     const summary = {
@@ -325,16 +370,19 @@ async function main() {
       server: OLLAMA_URL,
       fixture: 'octopus.txt',
       tasks: TASKS,
+      mode: MODE,
       goldenTripleCount: goldenIngest.length,
       chatQuestionCount: chatTestCases.length,
       results: reports.map(r => ({
         model: r.model,
+        ingestPrecision: r.ingest.precision,
+        ingestRecall: r.ingest.recall,
         ingestF1: r.ingest.f1,
         chatOverall: r.chatOverall,
         combined: r.combined,
       })),
     };
-    writeFileSync(join(RESULTS_DIR, `ollama_comparison_${ts}.json`), JSON.stringify(summary, null, 2));
+    writeFileSync(join(RESULTS_DIR, `ollama_comparison_${MODE}_${ts}.json`), JSON.stringify(summary, null, 2));
     console.log(`Results saved to tests/bench/results/`);
   }
 }

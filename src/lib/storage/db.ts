@@ -40,6 +40,18 @@ export type SettingsRecord = {
   mergeAnalysisBackend?: 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'openrouter' | 'chrome-ai' | 'reckons';
   ollamaModel: string;
   ollamaBaseUrl: string;
+  /**
+   * Ollama extraction prompt-variant override. 'auto' (default when unset)
+   * picks the compact small-model prompt via a model-name heuristic; force
+   * 'compact' or 'full' to bypass the heuristic.
+   */
+  ollamaPromptMode?: 'auto' | 'compact' | 'full';
+  /**
+   * Enables schema-constrained decoding for Ollama extraction (native
+   * `/api/chat` `format` parameter). Defaults to true when unset; set to
+   * false to always use the plain OpenAI-compatible chat path.
+   */
+  ollamaStructuredExtraction?: boolean;
   /** Embedding model used for similarity, clustering, and alignment */
   embeddingModel?: string;
   embeddingThreshold: number;
@@ -389,6 +401,8 @@ export async function saveSettings(patch: Partial<SettingsRecord>): Promise<void
       mergeAnalysisBackend: m.mergeAnalysisBackend,
       ollamaModel: m.ollamaModel,
       ollamaBaseUrl: m.ollamaBaseUrl,
+      ollamaPromptMode: m.ollamaPromptMode,
+      ollamaStructuredExtraction: m.ollamaStructuredExtraction,
       embeddingThreshold: m.embeddingThreshold,
       autoConfirmHighConfidence: m.autoConfirmHighConfidence,
       humeAiApiKey: m.humeAiApiKey,

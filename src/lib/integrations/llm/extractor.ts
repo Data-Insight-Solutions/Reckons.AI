@@ -55,6 +55,82 @@ ${text.slice(0, 12_000)}
 Extract triples now. Respond with a JSON array only.`;
 }
 
+/**
+ * Compact extraction prompt for small local models (roughly ≤4B parameters).
+ * Small models follow the full 11-rule prompt inconsistently — they do better
+ * with the output schema restated explicitly and a handful of worked examples
+ * rather than a long rule list. Keeps the same field names/semantics as
+ * EXTRACTION_SYSTEM_PROMPT (including `excerpt`) so downstream parsing is
+ * identical either way.
+ */
+export const EXTRACTION_SYSTEM_PROMPT_COMPACT = ETHICS_PREAMBLE + `Extract facts from text as a JSON array of triples.
+
+Output schema — each array item is an object with these fields:
+{"subject": "kebab-case-slug", "predicate": "kebab-case-verb-phrase", "object": "kebab-case-slug-or-literal", "objectIsLiteral": true|false, "datatype": "string|number|date|boolean", "gloss": "one short sentence", "confidence": 0.0-1.0, "excerpt": "verbatim source sentence"}
+
+Rules:
+- One fact per triple. Split compound sentences into separate triples.
+- objectIsLiteral=true for dates/numbers/plain strings; false when object refers to another concept.
+- excerpt must be copied exactly from the source text — do not paraphrase.
+- Only include facts stated in the text. Never invent facts.
+- Output ONLY the JSON array. No prose, no markdown fences, no explanation.
+
+Examples:
+
+Input: "Marie Curie was born in Warsaw in 1867. She won two Nobel Prizes."
+Output: [{"subject":"marie-curie","predicate":"was-born-in","object":"warsaw","objectIsLiteral":false,"gloss":"Marie Curie was born in Warsaw.","confidence":0.95,"excerpt":"Marie Curie was born in Warsaw in 1867."},{"subject":"marie-curie","predicate":"has-birth-year","object":"1867","objectIsLiteral":true,"datatype":"number","gloss":"Marie Curie was born in 1867.","confidence":0.95,"excerpt":"Marie Curie was born in Warsaw in 1867."},{"subject":"marie-curie","predicate":"has-nobel-prize-count","object":"2","objectIsLiteral":true,"datatype":"number","gloss":"Marie Curie won two Nobel Prizes.","confidence":0.9,"excerpt":"She won two Nobel Prizes."}]
+
+Input: "The octopus has three hearts and blue blood."
+Output: [{"subject":"octopus","predicate":"has-heart-count","object":"3","objectIsLiteral":true,"datatype":"number","gloss":"The octopus has three hearts.","confidence":0.95,"excerpt":"The octopus has three hearts and blue blood."},{"subject":"octopus","predicate":"has-blood-color","object":"blue","objectIsLiteral":true,"datatype":"string","gloss":"The octopus has blue blood.","confidence":0.95,"excerpt":"The octopus has three hearts and blue blood."}]
+
+Input: "Reckons.AI is built with SvelteKit and stores data in IndexedDB."
+Output: [{"subject":"reckons-ai","predicate":"is-built-with","object":"sveltekit","objectIsLiteral":false,"gloss":"Reckons.AI is built with SvelteKit.","confidence":0.95,"excerpt":"Reckons.AI is built with SvelteKit and stores data in IndexedDB."},{"subject":"reckons-ai","predicate":"stores-data-in","object":"indexeddb","objectIsLiteral":false,"gloss":"Reckons.AI stores data in IndexedDB.","confidence":0.9,"excerpt":"Reckons.AI is built with SvelteKit and stores data in IndexedDB."}]`;
+
+/**
+ * Rough heuristic for picking the compact prompt variant: models whose name
+ * encodes a parameter count of 4B or fewer (e.g. "llama3.2:3b", "qwen3:4b")
+ * are treated as small. Falls back to a known-name allowlist for tags without
+ * an explicit size suffix (e.g. the default "llama3.2" tag, which resolves
+ * to a 3B model). Intentionally simple — callers can always override via
+ * settings rather than rely on this alone.
+ */
+export function isSmallOllamaModel(model: string): boolean {
+  const name = model.toLowerCase();
+  const sizeMatch = name.match(/(\d+(?:\.\d+)?)\s*b(?:\b|[^a-z])/);
+  if (sizeMatch) {
+    const size = parseFloat(sizeMatch[1]);
+    if (!Number.isNaN(size)) return size <= 4;
+  }
+  const KNOWN_SMALL = ['llama3.2', 'phi3', 'smollm', 'gemma2:2b', 'gemma3:1b', 'qwen2.5:0.5b'];
+  return KNOWN_SMALL.some((k) => name.includes(k));
+}
+
+/**
+ * JSON Schema for the ExtractedTriple[] shape, used with Ollama's native
+ * `/api/chat` `format` parameter to constrain decoding (see providers.ts
+ * `chatOllamaStructured`). Mirrors the fields documented on ExtractedTriple
+ * above, including `excerpt` (rule 10 of EXTRACTION_SYSTEM_PROMPT).
+ */
+export function buildExtractedTripleSchema(): Record<string, unknown> {
+  return {
+    type: 'array',
+    items: {
+      type: 'object',
+      properties: {
+        subject: { type: 'string', description: 'Kebab-case concept slug, e.g. "coffee-bean"' },
+        predicate: { type: 'string', description: 'Kebab-case verb phrase, e.g. "has-property"' },
+        object: { type: 'string', description: 'Kebab-case concept slug, or the literal value when objectIsLiteral is true' },
+        objectIsLiteral: { type: 'boolean', description: 'True when object is a literal string/number/date/boolean rather than a concept reference' },
+        datatype: { type: 'string', enum: ['string', 'number', 'date', 'boolean'] },
+        gloss: { type: 'string', description: 'One short human-readable sentence describing the fact' },
+        confidence: { type: 'number', minimum: 0, maximum: 1 },
+        excerpt: { type: 'string', description: 'Verbatim sentence or phrase from the source text this triple was derived from' }
+      },
+      required: ['subject', 'predicate', 'object']
+    }
+  };
+}
+
 /** Slugify a concept reference into a stable IRI under urn:kbase:concept/ */
 function slugIRI(slug: string): string {
   const s = slug
