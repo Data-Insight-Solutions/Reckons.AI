@@ -52,6 +52,12 @@ export type SettingsRecord = {
    * false to always use the plain OpenAI-compatible chat path.
    */
   ollamaStructuredExtraction?: boolean;
+  /**
+   * Prefer-local routing: when true and Ollama is reachable, chat, diff
+   * summary, and merge analysis default to the ollama backend unless a
+   * per-task override says otherwise. See src/lib/integrations/llm/prefer-local.ts.
+   */
+  preferLocal?: boolean;
   /** Embedding model used for similarity, clustering, and alignment */
   embeddingModel?: string;
   embeddingThreshold: number;
@@ -191,6 +197,7 @@ export const DEFAULT_SETTINGS: SettingsRecord = {
   chatBackend: (import.meta.env.VITE_CHAT_BACKEND as SettingsRecord['chatBackend']) || undefined,
   ollamaModel: import.meta.env.VITE_OLLAMA_MODEL ?? 'llama3.2',
   ollamaBaseUrl: import.meta.env.VITE_OLLAMA_BASE_URL ?? 'http://localhost:11434',
+  preferLocal: import.meta.env.VITE_PREFER_LOCAL === 'true' || undefined,
   openrouterApiKey: import.meta.env.VITE_OPENROUTER_API_KEY || undefined,
   openrouterModel: import.meta.env.VITE_OPENROUTER_MODEL ?? 'meta-llama/llama-3.2-3b-instruct:free',
   humeAiApiKey: import.meta.env.VITE_HUME_API_KEY || undefined,

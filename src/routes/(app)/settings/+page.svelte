@@ -45,6 +45,7 @@
   let geminiModel = $state(settings().geminiModel);
   let ollamaModel = $state(settings().ollamaModel ?? 'llama3.2');
   let ollamaBaseUrl = $state(settings().ollamaBaseUrl ?? 'http://localhost:11434');
+  let preferLocal = $state(settings().preferLocal ?? false);
   let wasmModel = $state(settings().wasmModel);
   let wasmIngestModel = $state(settings().wasmIngestModel ?? '');
   let wasmAnalyzeModel = $state(settings().wasmAnalyzeModel ?? '');
@@ -137,6 +138,7 @@
       geminiModel,
       ollamaModel,
       ollamaBaseUrl: ollamaBaseUrl.trim() || 'http://localhost:11434',
+      preferLocal: preferLocal || undefined,
       wasmModel,
       wasmIngestModel: wasmIngestModel.trim() || undefined,
       wasmAnalyzeModel: wasmAnalyzeModel.trim() || undefined,
@@ -369,7 +371,7 @@
     // Track every form field — any change triggers debounced save
     void [key, openaiKey, geminiKey, backend, ingestBackend, analyzeBackend, chatBackend,
           diffSummaryBackend, mergeAnalysisBackend,
-          claudeModel, openaiModel, geminiModel, ollamaModel, ollamaBaseUrl, wasmModel,
+          claudeModel, openaiModel, geminiModel, ollamaModel, ollamaBaseUrl, preferLocal, wasmModel,
           wasmIngestModel, wasmAnalyzeModel, wasmChatModel,
           openrouterKey, openrouterModel, mistralApiKey, meshyApiKey, autoAnalyzeOnImport,
           autoAnalyzeIntervalMinutes, autoRefreshOnOpen, autoRefreshIntervalMinutes,
@@ -403,6 +405,7 @@
     geminiModel            = d.geminiModel;
     ollamaModel            = d.ollamaModel;
     ollamaBaseUrl          = d.ollamaBaseUrl;
+    preferLocal            = d.preferLocal            ?? false;
     wasmModel              = d.wasmModel;
     wasmIngestModel        = d.wasmIngestModel        ?? '';
     wasmAnalyzeModel       = d.wasmAnalyzeModel       ?? '';
@@ -461,6 +464,7 @@
       geminiModel: ud.geminiModel,
       ollamaModel: ud.ollamaModel,
       ollamaBaseUrl: ud.ollamaBaseUrl,
+      preferLocal: ud.preferLocal,
       wasmModel: ud.wasmModel,
       wasmIngestModel: ud.wasmIngestModel,
       wasmAnalyzeModel: ud.wasmAnalyzeModel,
@@ -493,6 +497,7 @@
     geminiModel                = ud.geminiModel;
     ollamaModel                = ud.ollamaModel;
     ollamaBaseUrl              = ud.ollamaBaseUrl;
+    preferLocal                = ud.preferLocal              ?? false;
     wasmModel                  = ud.wasmModel;
     wasmIngestModel            = ud.wasmIngestModel           ?? '';
     wasmAnalyzeModel           = ud.wasmAnalyzeModel          ?? '';
@@ -735,6 +740,14 @@
 <section id="s-backends" class="card">
   <h3>AI backends per task</h3>
   <p class="sub">each task uses its own model — mix a fast free model for ingestion with a smarter cloud model for analysis. provider keys and model names are set in the sections below. if a cloud backend has no key configured, ingest and chat fall back to WASM automatically.</p>
+
+  <label class="check-row">
+    <input type="checkbox" bind:checked={preferLocal} />
+    <div>
+      <strong>prefer local</strong>
+      <p class="check-hint">when Ollama is running, chat, diff summaries, and merge analysis route to it automatically — explicit per-task choices below still win.</p>
+    </div>
+  </label>
 
   <div class="task-backends">
     <!-- ── Ingest ── -->

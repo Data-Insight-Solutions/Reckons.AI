@@ -12,6 +12,7 @@ import { settings } from '$lib/stores/settings.svelte';
 import { db } from '$lib/storage/db';
 import { ETHICS_PREAMBLE } from '$lib/safety/content-policy';
 import { findTemporalConflicts } from '$lib/rdf/temporal';
+import { preferLocalBackend } from './prefer-local';
 import { embedMany, cosine } from '$lib/embed';
 
 export interface MergeAnalysisStatement {
@@ -82,7 +83,8 @@ async function buildHistoricalContext(countA: number, countB: number): Promise<s
  */
 export async function analyzeMerge(params: MergeAnalysisParams): Promise<string> {
   const s = settings();
-  const backendPref = s.mergeAnalysisBackend ?? s.analyzeBackend ?? s.preferredBackend;
+  const explicit = s.mergeAnalysisBackend ?? s.analyzeBackend;
+  const backendPref = explicit ?? (await preferLocalBackend(s, explicit)) ?? s.preferredBackend;
   const provider: 'claude' | 'openai' | 'gemini' | 'ollama' | 'openrouter' | 'reckons' | 'wasm' | 'chrome-ai' =
     backendPref === 'openai'     ? 'openai' :
     backendPref === 'gemini'     ? 'gemini' :

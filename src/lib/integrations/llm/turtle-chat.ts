@@ -1,5 +1,6 @@
 import { chatClaude, chatOpenAI, chatGemini, chatOllama, chatReckons, chatChromeAI, type ChatMessage } from './providers';
 import { chatWithWasm } from './wasm';
+import { preferLocalBackendSync } from './prefer-local';
 import type { KBAction, KBContext, TurtleChatResponse } from '$lib/types/turtle-chat';
 import { ETHICS_PREAMBLE } from '../../safety/content-policy';
 
@@ -145,6 +146,8 @@ export interface ResolvedProvider {
 export function resolveChatProvider(s: {
   chatBackend?: string;
   preferredBackend: string;
+  preferLocal?: boolean;
+  ollamaBaseUrl?: string;
   claudeApiKey?: string;
   claudeModel?: string;
   openaiApiKey?: string;
@@ -159,7 +162,7 @@ export function resolveChatProvider(s: {
   openrouterApiKey?: string;
   openrouterModel?: string;
 }): ResolvedProvider {
-  const pref = s.chatBackend ?? s.preferredBackend;
+  const pref = s.chatBackend ?? preferLocalBackendSync(s, s.chatBackend) ?? s.preferredBackend;
   let provider: TurtleChatProvider =
     pref === 'openai' ? 'openai'
     : pref === 'gemini' ? 'gemini'

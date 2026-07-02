@@ -9,6 +9,7 @@ import type { Statement } from './types';
 import { chatClaude, chatOpenAI, chatGemini, chatOllama, chatOpenRouter, chatReckons, chatChromeAI, type ChatMessage } from '$lib/integrations/llm/providers';
 import { chatWithWasm } from '$lib/integrations/llm/wasm';
 import type { SettingsRecord } from '$lib/storage/db';
+import { preferLocalBackend } from '$lib/integrations/llm/prefer-local';
 import { ETHICS_PREAMBLE } from '$lib/safety/content-policy';
 
 export type DiffSummary = {
@@ -87,7 +88,8 @@ export async function generateDiffSummary(
     + diff.summary.refines + diff.summary.synonymReinforces + diff.summary.antonymConflicts;
   if (total === 0) return fallbackSummary(diff);
 
-  const provider = s.diffSummaryBackend ?? s.analyzeBackend ?? s.preferredBackend;
+  const explicit = s.diffSummaryBackend ?? s.analyzeBackend;
+  const provider = explicit ?? (await preferLocalBackend(s, explicit)) ?? s.preferredBackend;
   const messages: ChatMessage[] = [
     { role: 'user', content: buildPrompt(diff) }
   ];

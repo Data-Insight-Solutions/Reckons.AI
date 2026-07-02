@@ -58,6 +58,12 @@
       if (s.chatBackend === 'wasm' || (!s.chatBackend && s.preferredBackend === 'wasm')) {
         warmWasm(s.wasmModel || undefined);
       }
+      // Prefer-local routing: warm the Ollama reachability cache so the first
+      // sync provider resolution (chat) already knows whether to redirect.
+      if (s.preferLocal) {
+        const { ollamaReachable } = await import('$lib/integrations/llm/prefer-local');
+        void ollamaReachable(s.ollamaBaseUrl);
+      }
       // Kokoro TTS: only warm up eagerly if model is already cached (instant).
       // First-time download (~87MB) is deferred until TTS is actually needed.
       // Register current KB in the registry with its stable ID (for KB Leap navigation)
