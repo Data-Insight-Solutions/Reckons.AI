@@ -10,7 +10,9 @@
  * Workspace folder layout (directories only created when populated):
  *
  *   kbs/my-kb/
- *     kb.ttl                        human-readable, no base64 blobs
+ *     my-kb.ttl                     human-readable, no base64 blobs
+ *                                    (legacy: kb.ttl — read as a fallback,
+ *                                    no longer written on export)
  *     assets/
  *       icons/reckons-ai.svg        2D node face
  *       previews/turtle.gif         hover preview image

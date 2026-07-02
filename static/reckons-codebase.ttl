@@ -375,13 +375,13 @@ code:workspace  rdf:type     ktype:Concept ;
                 rdfs:label   "MCP Workspace" ;
                 skos:definition "Symlinked KB workspace for MCP server self-dogfooding." ;
                 skos:broader code:repo ;
-                kpred:has-file "reckons-workspace/kbs/production/kb.ttl" ;
-                kpred:has-file "reckons-workspace/kbs/roadmap/kb.ttl" ;
-                kpred:has-file "reckons-workspace/kbs/features/kb.ttl" ;
-                kpred:has-file "reckons-workspace/kbs/default-kb/kb.ttl" ;
-                kpred:has-file "reckons-workspace/kbs/docs/kb.ttl" ;
-                kpred:has-file "reckons-workspace/kbs/integrations-tech/kb.ttl" ;
-                kpred:has-file "reckons-workspace/kbs/quickstart/kb.ttl" .
+                kpred:has-file "reckons-workspace/kbs/production/production.ttl" ;
+                kpred:has-file "reckons-workspace/kbs/roadmap/roadmap.ttl" ;
+                kpred:has-file "reckons-workspace/kbs/features/features.ttl" ;
+                kpred:has-file "reckons-workspace/kbs/default-kb/default-kb.ttl" ;
+                kpred:has-file "reckons-workspace/kbs/docs/docs.ttl" ;
+                kpred:has-file "reckons-workspace/kbs/integrations-tech/integrations-tech.ttl" ;
+                kpred:has-file "reckons-workspace/kbs/quickstart/quickstart.ttl" .
 
 ## =============================================================================
 ## Claude Code Commands

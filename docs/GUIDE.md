@@ -465,7 +465,7 @@ A standalone Node.js MCP server in `mcp-server/` exposes 11 tools to AI agents (
 | `kb_request_refresh` | Request a source refresh by source ID |
 | `kb_add_triple` | Directly add a triple with subject, predicate, object |
 
-The MCP server reads `.ttl` files from a workspace folder via `MultiKBReader`. Supports single-file legacy mode (`--kb file.ttl`) and multi-KB workspace mode (`--kb /path/to/workspace/` scanning `kbs/{name}/kb.ttl`). File watching auto-reloads on changes.
+The MCP server reads `.ttl` files from a workspace folder via `MultiKBReader`. Supports single-file legacy mode (`--kb file.ttl`) and multi-KB workspace mode (`--kb /path/to/workspace/` scanning `kbs/{name}/{name}.ttl`, with legacy `kbs/{name}/kb.ttl` as a fallback). File watching auto-reloads on changes.
 
 #### Self-dogfooding workspace
 

@@ -551,9 +551,11 @@ function main() {
   console.log(`\n${bold('Graph Alignment Report')}`);
   console.log('═'.repeat(56));
 
-  // Check workspace exists
-  if (!existsSync(join(WORKSPACE, 'kbs', 'production', 'kb.ttl'))) {
-    console.log(fail('MCP workspace not found. Run: bash scripts/setup-mcp-workspace.sh'));
+  // Check workspace exists — production KB is named production.ttl, with a
+  // legacy kb.ttl fallback for workspaces that haven't been migrated yet.
+  const productionKbDir = join(WORKSPACE, 'kbs', 'production');
+  if (!existsSync(join(productionKbDir, 'production.ttl')) && !existsSync(join(productionKbDir, 'kb.ttl'))) {
+    console.log(fail('MCP workspace not found. Run: bash scripts/setup-reckons-workspace.sh'));
     process.exit(1);
   }
 
