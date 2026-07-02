@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import type { Statement } from '../types';
 import { iri, lit } from '../types';
 import {
-  buildSitePages, publishablePages, slugify,
-  PAGE_SLUG, PAGE_SECTION, PAGE_TEMPLATE, PAGE_STATUS, PAGE_NAV, PAGE_EXCERPT, PAGE_BODY,
+  buildSitePages, publishablePages, sitePosts, slugify,
+  PAGE_SLUG, PAGE_SECTION, PAGE_TEMPLATE, PAGE_STATUS, PAGE_NAV, PAGE_EXCERPT, PAGE_BODY, PAGE_DATE,
 } from '../page';
 import { NAV_ORDER } from '../hierarchy';
 
@@ -58,6 +58,7 @@ describe('buildSitePages', () => {
     expect(p.nav).toBe('sidebar');      // default
     expect(p.order).toBe(0);
     expect(p.parent).toBeNull();
+    expect(p.date).toBeNull();
   });
 
   it('reads all page metadata and validates enums', () => {
@@ -109,6 +110,40 @@ describe('buildSitePages', () => {
     const pages = buildSitePages([rejected]);
     expect(pages).toHaveLength(0);
   });
+
+  it('accepts the post template and parses a valid ISO date', () => {
+    const stmts = [
+      st('page:r1', RDF_TYPE, WEBPAGE, true),
+      st('page:r1', RDFS_LABEL, 'v0.1.0'),
+      st('page:r1', PAGE_TEMPLATE, 'post'),
+      st('page:r1', PAGE_STATUS, 'published'),
+      st('page:r1', PAGE_DATE, '2026-07-01'),
+    ];
+    const [p] = buildSitePages(stmts);
+    expect(p.template).toBe('post');
+    expect(p.date).toBe('2026-07-01');
+  });
+
+  it('ignores a malformed date literal (falls back to null)', () => {
+    const stmts = [
+      st('page:r2', RDF_TYPE, WEBPAGE, true),
+      st('page:r2', PAGE_TEMPLATE, 'post'),
+      st('page:r2', PAGE_DATE, 'not-a-date'),
+    ];
+    const [p] = buildSitePages(stmts);
+    expect(p.date).toBeNull();
+  });
+
+  it('does not disturb the (section, order, title) sort for non-post pages', () => {
+    const stmts = [
+      st('page:b', RDF_TYPE, WEBPAGE, true), st('page:b', RDFS_LABEL, 'Bravo'),
+      st('page:b', PAGE_SECTION, 'Docs'), st('page:b', NAV_ORDER, '2'),
+      st('page:a', RDF_TYPE, WEBPAGE, true), st('page:a', RDFS_LABEL, 'Alpha'),
+      st('page:a', PAGE_SECTION, 'Docs'), st('page:a', NAV_ORDER, '1'),
+    ];
+    const pages = buildSitePages(stmts);
+    expect(pages.map((p) => p.title)).toEqual(['Alpha', 'Bravo']);
+  });
 });
 
 describe('publishablePages', () => {
@@ -120,5 +155,66 @@ describe('publishablePages', () => {
     ];
     const pub = publishablePages(buildSitePages(stmts));
     expect(pub.map((p) => p.iri).sort()).toEqual(['page:p', 'page:u']);
+  });
+
+  it('excludes draft posts too', () => {
+    const stmts = [
+      st('page:secret-release', RDF_TYPE, WEBPAGE, true),
+      st('page:secret-release', PAGE_TEMPLATE, 'post'),
+      st('page:secret-release', PAGE_STATUS, 'draft'),
+      st('page:secret-release', PAGE_DATE, '2026-08-01'),
+      st('page:shipped-release', RDF_TYPE, WEBPAGE, true),
+      st('page:shipped-release', PAGE_TEMPLATE, 'post'),
+      st('page:shipped-release', PAGE_STATUS, 'published'),
+      st('page:shipped-release', PAGE_DATE, '2026-07-01'),
+    ];
+    const pub = publishablePages(buildSitePages(stmts));
+    expect(pub.map((p) => p.iri)).toEqual(['page:shipped-release']);
+  });
+});
+
+describe('sitePosts', () => {
+  function samplePosts(): Statement[] {
+    return [
+      st('page:oldest', RDF_TYPE, WEBPAGE, true), st('page:oldest', RDFS_LABEL, 'Oldest'),
+      st('page:oldest', PAGE_TEMPLATE, 'post'), st('page:oldest', PAGE_SECTION, 'Releases'),
+      st('page:oldest', PAGE_DATE, '2026-01-01'),
+
+      st('page:newest', RDF_TYPE, WEBPAGE, true), st('page:newest', RDFS_LABEL, 'Newest'),
+      st('page:newest', PAGE_TEMPLATE, 'post'), st('page:newest', PAGE_SECTION, 'Releases'),
+      st('page:newest', PAGE_DATE, '2026-07-01'),
+
+      st('page:middle', RDF_TYPE, WEBPAGE, true), st('page:middle', RDFS_LABEL, 'Middle'),
+      st('page:middle', PAGE_TEMPLATE, 'post'), st('page:middle', PAGE_SECTION, 'Releases'),
+      st('page:middle', PAGE_DATE, '2026-04-01'),
+
+      // undated post — sorts last
+      st('page:undated', RDF_TYPE, WEBPAGE, true), st('page:undated', RDFS_LABEL, 'Undated'),
+      st('page:undated', PAGE_TEMPLATE, 'post'), st('page:undated', PAGE_SECTION, 'Releases'),
+
+      // not a post — must never appear in sitePosts()
+      st('page:doc', RDF_TYPE, WEBPAGE, true), st('page:doc', RDFS_LABEL, 'Doc'),
+      st('page:doc', PAGE_SECTION, 'Releases'),
+    ];
+  }
+
+  it('orders posts newest-first, undated last, excludes non-posts', () => {
+    const pages = buildSitePages(samplePosts());
+    const posts = sitePosts(pages);
+    expect(posts.map((p) => p.title)).toEqual(['Newest', 'Middle', 'Oldest', 'Undated']);
+    expect(posts.every((p) => p.template === 'post')).toBe(true);
+  });
+
+  it('scopes to a single section when given', () => {
+    const pages = buildSitePages([
+      ...samplePosts(),
+      st('page:other-section', RDF_TYPE, WEBPAGE, true),
+      st('page:other-section', RDFS_LABEL, 'Other'),
+      st('page:other-section', PAGE_TEMPLATE, 'post'),
+      st('page:other-section', PAGE_SECTION, 'Announcements'),
+      st('page:other-section', PAGE_DATE, '2026-12-01'),
+    ]);
+    const posts = sitePosts(pages, 'Releases');
+    expect(posts.map((p) => p.title)).toEqual(['Newest', 'Middle', 'Oldest', 'Undated']);
   });
 });

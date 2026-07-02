@@ -3,7 +3,7 @@ import { unzipSync, strFromU8 } from 'fflate';
 import type { Statement } from '../../rdf/types';
 import { iri, lit } from '../../rdf/types';
 import {
-  PAGE_SLUG, PAGE_SECTION, PAGE_STATUS, PAGE_TEMPLATE, PAGE_BODY,
+  PAGE_SLUG, PAGE_SECTION, PAGE_STATUS, PAGE_TEMPLATE, PAGE_BODY, PAGE_DATE,
 } from '../../rdf/page';
 import { buildSitePages } from '../../rdf/page';
 import { NAV_ORDER } from '../../rdf/hierarchy';
@@ -83,6 +83,24 @@ describe('pageToMarkdown', () => {
     // body fallback when no page:body
     expect(md.trimEnd().endsWith('# Install')).toBe(true);
   });
+
+  it('emits date frontmatter for a post, omits it when absent', () => {
+    const withDate = buildSitePages([
+      st('page:release', RDF_TYPE, WEBPAGE, true),
+      st('page:release', RDFS_LABEL, 'v0.1.0'),
+      st('page:release', PAGE_TEMPLATE, 'post'),
+      st('page:release', PAGE_STATUS, 'published'),
+      st('page:release', PAGE_DATE, '2026-07-01'),
+    ]);
+    const slugs = new Map(withDate.map((p) => [p.iri, p.slug]));
+    const md = pageToMarkdown(withDate[0], slugs);
+    expect(md).toContain('template: post');
+    expect(md).toContain('date: "2026-07-01"');
+
+    const noDate = buildSitePages(sampleSite());
+    const md2 = pageToMarkdown(noDate.find((p) => p.slug === 'overview')!, slugs);
+    expect(md2).not.toContain('date:');
+  });
 });
 
 describe('buildGraphJson', () => {
@@ -129,8 +147,9 @@ describe('sveltiaConfig', () => {
     expect(cfg).toContain('repo: me/site');
     expect(cfg).toContain('branch: dev');
     expect(cfg).toContain('folder: content');
-    for (const field of ['title', 'slug', 'order', 'section', 'template', 'status', 'nav', 'excerpt', 'body']) {
+    for (const field of ['title', 'slug', 'order', 'section', 'template', 'status', 'nav', 'date', 'excerpt', 'body']) {
       expect(cfg).toContain(`name: ${field}`);
     }
+    expect(cfg).toContain('post'); // template widget must offer the post option
   });
 });
