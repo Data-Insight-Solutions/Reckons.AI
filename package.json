@@ -89,6 +89,7 @@
     "@vite-pwa/sveltekit": "^1.1.0",
     "@vitest/coverage-v8": "^4.1.7",
     "jsdom": "^29.1.1",
+    "mdsvex": "^0.12.7",
     "storybook": "^8.4.0",
     "svelte": "^5.1.0",
     "svelte-check": "^4.0.0",
