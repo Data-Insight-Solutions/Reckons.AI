@@ -62,4 +62,5 @@ collections:
       - { name: nav, label: Nav placement, widget: select, options: [menu, sidebar, both, hidden], default: sidebar }
       - { name: date, label: Date, widget: datetime, format: "YYYY-MM-DD", time_format: false, required: false, hint: "Posts only — release notes/announcements/blog publish date" }
       - { name: excerpt, label: Excerpt, widget: text, required: false, hint: Short summary (mirrors page:excerpt in the graph) }
+      - { name: generated, label: "Generated (docs KB — do not edit)", widget: hidden, required: false }
       - { name: body, label: Body, widget: markdown }
