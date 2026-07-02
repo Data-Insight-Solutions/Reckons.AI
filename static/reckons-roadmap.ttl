@@ -1002,9 +1002,11 @@ kb:mcp-ollama-bridge rdf:type    ktype:Feature ;
                rdfs:label   "MCP Ollama Bridge" ;
                kpred:has-status   "functional" ;
                kpred:part-of      kb:local-offload ;
-               kpred:description  "Opt-in MCP tools that route bulk extraction and summarization work to a local Ollama server (native /api/chat, JSON-schema-constrained output) instead of the calling agent's cloud/session tokens. Disabled unless OLLAMA_BASE_URL is set; OLLAMA_MODEL defaults to devstral-small-2:latest. Both tools return proposals only and never write to a KB, matching the review-first philosophy (ReviewStatus: pending/pending-removal/confirmed/refined/rejected/superseded)." ;
+               kpred:description  "Opt-in MCP tools that route bulk extraction, summarization, and page-drafting work to a local Ollama server (native /api/chat, JSON-schema-constrained output) instead of the calling agent's cloud/session tokens. Disabled unless OLLAMA_BASE_URL is set; OLLAMA_MODEL defaults to devstral-small-2:latest. kb_generate_page grounds a prompt in the graph via the same search-subgraph-compress pipeline as kb_compress before drafting a WebPage markdown document (frontmatter + body, mirroring src/lib/publish/site-export.ts's pageToMarkdown field order) -- a proposal only, never written to a KB or file. kb_entity_markdown renders one entity as WebPage markdown deterministically from its triples with no LLM involved, so it works even when OLLAMA_BASE_URL is unset. All four tools return proposals only and never write to a KB, matching the review-first philosophy (ReviewStatus: pending/pending-removal/confirmed/refined/rejected/superseded)." ;
                kpred:has-tool     "kb_local_extract" ;
                kpred:has-tool     "kb_local_summarize" ;
+               kpred:has-tool     "kb_generate_page" ;
+               kpred:has-tool     "kb_entity_markdown" ;
                kpred:depends-on   kb:mcp-server .
 
 # -- Local Offload (parent) ------------------------------------------------------
