@@ -473,7 +473,7 @@ kb:launch-prep rdf:type      ktype:Concept ;
                rdfs:label    "Pre-launch (LinkedIn) checklist" ;
                kpred:has-status   "in-progress" ;
                kpred:done         "Repo About (description/site/topics); Dependabot alerts + auto-fixes; README live link + badges; CI on Node 24." ;
-               kpred:todo         "Social preview image + og:image/twitter:card meta so the shared link renders a thumbnail." ;
+               kpred:done         "Social preview image (static/social-preview.png, 1200x630) + og:image/twitter:card meta so the shared link renders a thumbnail." ;
                kpred:todo         "10-15s demo GIF (ingest -> review -> 3D graph -> reckon) at README top." ;
                kpred:todo         "Tag v0.1.0 as the post hook." ;
                kpred:todo         "Finish the KB -> Graph terminology sweep (see kb:rebrand-kb-to-graph)." .
