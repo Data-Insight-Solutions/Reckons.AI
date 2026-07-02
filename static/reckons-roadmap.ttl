@@ -1006,3 +1006,12 @@ kb:mcp-ollama-bridge rdf:type    ktype:Feature ;
                kpred:has-tool     "kb_local_extract" ;
                kpred:has-tool     "kb_local_summarize" ;
                kpred:depends-on   kb:mcp-server .
+
+# -- Local Offload (parent) ------------------------------------------------------
+
+kb:local-offload rdf:type      ktype:Feature ;
+               rdfs:label   "Local LLM Offload" ;
+               kpred:has-status   "functional" ;
+               kpred:description  "Offload token-heavy LLM work to local models (Ollama) with quality recovered through intelligent instruction. Schema-constrained decoding via Ollama's native /api/chat format parameter plus a compact few-shot extractor prompt for small models (src/lib/integrations/llm/ollama-extract.ts). Measured (2026-07-02, tests/bench/results): llama3.2:3b ingest F1 0.238 baseline -> 0.500 structured (combined 0.657 — the new best local score, surpassing devstral-small-2's 0.649 with a 2GB model); qwen3:4b 0.000 -> 0.263; devstral-small-2 structured ingest 0.486 (its chat leg did not run in that pass). Children: the MCP Ollama bridge; next: prefer-local routing defaults." ;
+               kpred:relates-to   kb:cost-awareness ;
+               kpred:depends-on   kb:llm-providers .
