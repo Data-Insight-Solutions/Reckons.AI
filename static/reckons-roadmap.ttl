@@ -371,7 +371,7 @@ kb:collaborative-kb rdf:type ktype:Feature ;
 
 kb:graph-publishing rdf:type ktype:Feature ;
                rdfs:label   "Graph Publishing (Sveltia CMS)" ;
-               kpred:has-status   "planned" ;
+               kpred:has-status   "in-progress" ;
                kpred:feature-id   "F27" ;
                kpred:description  "Publish WebPage graph nodes as a static, graph-powered docs site served at Reckons.AI/docs (self-contained, in the main app — not a separate repo). Graph-first: nodes export to content/<section>/<slug>.md (frontmatter + body) plus graph.json; Sveltia CMS (external bundle, un-forked) edits the files; a prerendered /docs route group renders them via mdsvex; Cloudflare Pages deploys. Hybrid body: excerpt in graph, long-form markdown in Git. Offline-capable authoring and .zip export. Future: docs.reckons.ai subdomain over the same build." ;
                kpred:has-phase    kb:gp-phase-1 ;
@@ -452,17 +452,18 @@ kb:pr-graph-overlay rdf:type ktype:Feature ;
 
 kb:rebrand-kb-to-graph rdf:type ktype:Decision ;
                rdfs:label    "User-facing rename: KB -> Graph" ;
-               kpred:has-status   "in-progress" ;
+               kpred:has-status   "production" ;
                kpred:decision     "Rename the user-facing label 'KB' to 'Graph'; keep kb/KB in code, IDs, and MCP tool names (kb_*)." ;
+               kpred:decision     "Nav label collision resolved: home 3D view nav label -> 'view'; /kb management page nav label -> 'graph'." ;
                kpred:done         "Applied to the 'Reckons.AI Graph Alignment Check' and to graph-named TTL export filenames." ;
-               kpred:open-question "Nav label collision: the home 3D view is already labelled 'graph'. Resolve the pair before the full sweep — either home->'view'/'map' and /kb->'graph', or keep home 'graph' and /kb->'graphs'." .
+               kpred:done         "Full user-facing sweep applied: nav labels (home 'view', /kb 'graph'), kb page ('graphs' section, switch/rename/bookmark copy), ingest page (tab + import buttons), review page (align tab, overlay picker), compare, overlay, reckoning, history, settings pages, landing/about pages, Shelly tutorial, browser extension (popup, sidepanel, content-script, background errors), export defaults, and notification toasts. Code identifiers, routes, MCP tool names, and TTL IRIs untouched." .
 
 kb:terminology-simplification rdf:type ktype:Decision ;
                rdfs:label    "Friendlier terminology" ;
-               kpred:has-status   "in-progress" ;
+               kpred:has-status   "production" ;
                kpred:decision     "Simplify jargon in user-facing copy while keeping technical terms in code/docs." ;
                kpred:done         "Ingest -> 'Add' (nav + ingest kicker); Warming -> 'Preparing' (WASM model button)." ;
-               kpred:candidate    "Triple/Statement -> 'Fact' in user copy; 'KB Leap' -> 'Jump'." .
+               kpred:done         "Triple/Statement -> 'Fact' in user copy (review cards, counts, ingest results, diff summaries, node panel, search bar, export hints); 'KB Leap' -> 'Jump' (node panel section, add/remove buttons, graph filter chip, badge tooltips). Technical/docs TTL contexts keep triple/statement." .
 
 kb:feedback-channel rdf:type ktype:Feature ;
                rdfs:label    "Feedback channel (suggestion box)" ;
@@ -473,10 +474,10 @@ kb:launch-prep rdf:type      ktype:Concept ;
                rdfs:label    "Pre-launch (LinkedIn) checklist" ;
                kpred:has-status   "in-progress" ;
                kpred:done         "Repo About (description/site/topics); Dependabot alerts + auto-fixes; README live link + badges; CI on Node 24." ;
+               kpred:done         "KB -> Graph terminology sweep (see kb:rebrand-kb-to-graph)." ;
                kpred:todo         "Social preview image + og:image/twitter:card meta so the shared link renders a thumbnail." ;
                kpred:todo         "10-15s demo GIF (ingest -> review -> 3D graph -> reckon) at README top." ;
-               kpred:todo         "Tag v0.1.0 as the post hook." ;
-               kpred:todo         "Finish the KB -> Graph terminology sweep (see kb:rebrand-kb-to-graph)." .
+               kpred:todo         "Tag v0.1.0 as the post hook." .
 
 kb:extension-explore rdf:type ktype:Feature ;
                rdfs:label   "Extension Explore Mode" ;

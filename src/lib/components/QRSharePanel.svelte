@@ -232,7 +232,7 @@
     <div class="warning-banner">
       <span class="warn-icon">⚠</span>
       <div>
-        <strong>Mobile access grants read-write access to your knowledge base.</strong>
+        <strong>Mobile access grants read-write access to your graph.</strong>
         <p>The QR code will be visible for {REVEAL_SECONDS} seconds then auto-hide. Only scan on a device you own. Tokens are valid until revoked or expired.</p>
       </div>
     </div>

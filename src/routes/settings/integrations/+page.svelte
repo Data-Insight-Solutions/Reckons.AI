@@ -130,7 +130,7 @@
       keyPlaceholder: 'tvly-...',
       features: [],
       docsUrl: 'https://tavily.com',
-      note: 'AI-optimized web search for KB enrichment. Powers the Enrich analysis action. 1,000 free searches/mo.'
+      note: 'AI-optimized web search for graph enrichment. Powers the Enrich analysis action. 1,000 free searches/mo.'
     },
     {
       id: 'mistral',
@@ -411,14 +411,14 @@
 <!-- Mobile access -->
 <section id="s-mobile" class="card">
   <h3>mobile access <span class="badge-local mono">local network</span></h3>
-  <p class="sub">Generate a QR code to link a phone or tablet to this KB. The device must be on the same network. The token grants read-write access — treat it like a password.</p>
+  <p class="sub">Generate a QR code to link a phone or tablet to this graph. The device must be on the same network. The token grants read-write access — treat it like a password.</p>
 
   <div class="firewall-notice">
     <span class="firewall-icon">⚠</span>
     <div class="firewall-body">
       <strong>Firewall ports must be open</strong>
       <p>Your OS firewall likely blocks inbound LAN connections by default. You need to allow port <code>5173</code> (Vite) and <code>11434</code> (Ollama) from your local network.</p>
-      <p class="firewall-warn">Only do this on a <strong>trusted home or personal network</strong>. Do not open these ports on public Wi-Fi, hotel networks, or shared office networks — it exposes your knowledge base to others on the same network.</p>
+      <p class="firewall-warn">Only do this on a <strong>trusted home or personal network</strong>. Do not open these ports on public Wi-Fi, hotel networks, or shared office networks — it exposes your graph to others on the same network.</p>
       <p class="firewall-cmds mono">Ubuntu/Debian: <code>sudo ufw allow 5173/tcp &amp;&amp; sudo ufw allow 11434/tcp</code></p>
       <span class="firewall-link">Full setup guide: <code>docs/MOBILE_LOCAL_SERVER.md</code></span>
     </div>
@@ -771,14 +771,14 @@
 
   <div class="roadmap-list">
     {#each [
-      { label: 'MCP server', desc: 'Expose the KB as tools to Claude, Cursor, Windsurf, and any MCP-compatible agent.', score: '25/25' },
-      { label: 'Firecrawl', desc: 'JS-rendered web scraping + full-site crawls. Each page becomes a sourced triple batch.', score: '20/25' },
-      { label: 'Markdown / Obsidian ingest', desc: 'Drop .md files or vault folders → auto-extract triples with wikilink structure preserved.', score: '25/25' },
+      { label: 'MCP server', desc: 'Expose the graph as tools to Claude, Cursor, Windsurf, and any MCP-compatible agent.', score: '25/25' },
+      { label: 'Firecrawl', desc: 'JS-rendered web scraping + full-site crawls. Each page becomes a sourced fact batch.', score: '20/25' },
+      { label: 'Markdown / Obsidian ingest', desc: 'Drop .md files or vault folders → auto-extract facts with wikilink structure preserved.', score: '25/25' },
       { label: 'Git version backbone', desc: 'Commit .ttl snapshots to a local git repo. GitHub remote + Actions for automated analysis.', score: '16/25' },
-      { label: 'Deepgram audio ingest', desc: 'Upload audio/video → transcribe → extract triples. Speaker diarization = multi-source provenance.', score: '15/25' },
+      { label: 'Deepgram audio ingest', desc: 'Upload audio/video → transcribe → extract facts. Speaker diarization = multi-source provenance.', score: '15/25' },
       { label: 'LlamaParse', desc: 'DOCX, PPTX, complex PDF parsing as an alternative to Mistral OCR.', score: '14/25' },
-      { label: 'Hume.AI voice (complete)', desc: 'Finish the voice integration scaffolded in settings. Voice → triples with speaker provenance.', score: '15/25' },
-      { label: 'Tavily search + extract', desc: 'Research a topic: Tavily retrieves N pages, each becomes its own sourced statement batch.', score: '12/25' },
+      { label: 'Hume.AI voice (complete)', desc: 'Finish the voice integration scaffolded in settings. Voice → facts with speaker provenance.', score: '15/25' },
+      { label: 'Tavily search + extract', desc: 'Research a topic: Tavily retrieves N pages, each becomes its own sourced fact batch.', score: '12/25' },
     ] as item}
       <div class="rm-row">
         <div class="rm-title">

@@ -158,7 +158,7 @@ function buildCompareView(): string {
 
   if (!result) {
     html += `<div class="cta-area">
-      <div class="cta-text">Compare this page against your knowledge base to see what it confirms, contradicts, or adds.</div>
+      <div class="cta-text">Compare this page against your graph to see what it confirms, contradicts, or adds.</div>
       <div class="focus-field">
         <label class="focus-label" for="focus-input">Focus <span class="focus-optional">(optional)</span></label>
         <textarea id="focus-input" class="focus-textarea" rows="2"
@@ -228,7 +228,7 @@ function buildCompareView(): string {
   </div>`;
 
   if (conflicts.length > 0)  html += buildSection('conflict',  'Conflicts',     conflicts);
-  if (reinforces.length > 0) html += buildSection('reinforce', 'Reinforces KB', reinforces);
+  if (reinforces.length > 0) html += buildSection('reinforce', 'Reinforces Graph', reinforces);
   if (news.length > 0)       html += buildSection('new',       'New Knowledge', news);
 
   return html;
@@ -286,7 +286,7 @@ function buildSessionView(): string {
     <div class="session-meta">
       <span class="session-pages-count">${sess.pages.length} page${sess.pages.length !== 1 ? 's' : ''}</span>
       <span class="session-sep">·</span>
-      <span class="session-triple-count">${allTriples.length} triples</span>
+      <span class="session-triple-count">${allTriples.length} facts</span>
     </div>
     <div class="session-actions">
       <button class="toolbar-btn" id="btn-session-clear" title="Clear session">Clear</button>
@@ -475,7 +475,7 @@ function buildLiveView(): string {
 
   if (!active && (!sess || sess.claims.length === 0)) {
     html += `<div class="cta-area">
-      <div class="cta-text">Stream audio from the current tab and compare statements against your knowledge base in real-time.</div>
+      <div class="cta-text">Stream audio from the current tab and compare facts against your graph in real-time.</div>
       <div class="cta-text" style="font-size:11px;color:var(--ink3)">Works with YouTube, podcasts, lectures, meetings — any tab with audio. Uses local Whisper model by default, or Deepgram for real-time streaming.</div>
       <button class="cta-btn" id="btn-go-live">&#x1F534; Go Live</button>
     </div>`;

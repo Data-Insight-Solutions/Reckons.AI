@@ -68,7 +68,7 @@
         // Ensure the KB entry exists in the registry
         const reg = getRegistry();
         if (!reg.find(k => k.id === dbName)) {
-          createKb(s.kbTitle || 'My KB');
+          createKb(s.kbTitle || 'My Graph');
         }
         registerStableId(dbName, stableId, confirmedStatements().length);
       }
@@ -81,8 +81,8 @@
         pushNotification({
           id: 'setup-local-folder',
           type: 'info',
-          title: 'Protect your knowledge base',
-          body: 'Link a local folder so your KBs are backed up to disk and survive browser cache clears.',
+          title: 'Protect your graph',
+          body: 'Link a local folder so your graphs are backed up to disk and survive browser cache clears.',
           action: { label: 'Set up folder', href: '/kb#local-folder-sync' },
           oneTime: true,
         });
@@ -147,8 +147,8 @@
 
 {#if officialKbActive()}
   <div class="official-kb-banner">
-    <span class="official-kb-label">Viewing: <strong>Official Docs KB</strong> (read-only)</span>
-    <button class="official-kb-back" onclick={() => deactivateOfficialKb()}>back to my KB</button>
+    <span class="official-kb-label">Viewing: <strong>Official Docs Graph</strong> (read-only)</span>
+    <button class="official-kb-back" onclick={() => deactivateOfficialKb()}>back to my graph</button>
   </div>
 {/if}
 

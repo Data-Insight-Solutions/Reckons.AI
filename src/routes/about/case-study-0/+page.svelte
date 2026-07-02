@@ -66,7 +66,7 @@
 
 <svelte:head>
   <title>Case Study: Structured Context vs. Markdown | Reckons.AI</title>
-  <meta name="description" content="A runnable benchmark comparing markdown-based AI workflows vs. structured knowledge bases. Real token counts, real costs, real review times.">
+  <meta name="description" content="A runnable benchmark comparing markdown-based AI workflows vs. structured knowledge graphs. Real token counts, real costs, real review times.">
 </svelte:head>
 
 <div class="page">
@@ -85,7 +85,7 @@
 
     <p class="lede">
       AI coding assistants are burning through context windows at an alarming rate.
-      We ran a real benchmark comparing the standard markdown workflow against a structured knowledge base,
+      We ran a real benchmark comparing the standard markdown workflow against a structured knowledge graph,
       and the results challenge a core assumption: that prose documents are the best way to brief an AI.
     </p>
 
@@ -158,7 +158,7 @@ automate, integrate, and display data...
 ...</pre>
       </div>
       <div class="side-col">
-        <div class="side-col-label mono">B. Compressed KB ({bench ? fmt(bench.context.compressed.tokens) : '439'} tokens, {bench ? bench.context.compressed.facts : 63} facts)</div>
+        <div class="side-col-label mono">B. Compressed Graph ({bench ? fmt(bench.context.compressed.tokens) : '439'} tokens, {bench ? bench.context.compressed.facts : 63} facts)</div>
         <pre class="side-code mono"># DataInsightSolutions
   .a Company
   .label "Data Insight Solutions LLC"
@@ -177,7 +177,7 @@ automate, integrate, and display data...
     </div>
 
     <p>
-      The markdown brief is a typical CLAUDE.md or brand-brief.md file. The compressed KB is the output of
+      The markdown brief is a typical CLAUDE.md or brand-brief.md file. The compressed graph is the output of
       Reckons.AI's <code>kb_compress</code> MCP tool: entity-grouped, predicate-abbreviated, deduplicated.
       Both contain the same information. The difference is structure.
     </p>
@@ -198,7 +198,7 @@ automate, integrate, and display data...
       </div>
       <div class="stat-card">
         <span class="stat-value stat-green mono">{bench ? (bench.context.compressed.facts / bench.context.compressed.tokens * 100).toFixed(1) : '14.4'}</span>
-        <span class="stat-label mono">facts / 100 tokens (KB)</span>
+        <span class="stat-label mono">facts / 100 tokens (Graph)</span>
       </div>
       <div class="stat-card">
         <span class="stat-value stat-green mono">{bench ? bench.context.densityMultiplier : 2.4}×</span>
@@ -208,7 +208,7 @@ automate, integrate, and display data...
 
     <p>
       This isn't a theoretical calculation. The benchmark counts every extractable fact in each format:
-      property assertions, relationships, typed values. The compressed KB packs {bench ? bench.context.compressed.facts : 63} facts into {bench ? fmt(bench.context.compressed.tokens) : '439'} tokens;
+      property assertions, relationships, typed values. The compressed graph packs {bench ? bench.context.compressed.facts : 63} facts into {bench ? fmt(bench.context.compressed.tokens) : '439'} tokens;
       the markdown brief packs {bench ? bench.context.markdown.facts : 30} facts into {bench ? fmt(bench.context.markdown.tokens) : '508'} tokens.
     </p>
 
@@ -217,7 +217,7 @@ automate, integrate, and display data...
 
     <p>
       The density advantage compounds across a multi-step workflow. In the markdown approach, the AI re-reads
-      the entire brief at each step, and the conversation history accumulates. In the KB approach, the AI
+      the entire brief at each step, and the conversation history accumulates. In the graph approach, the AI
       queries specific predicates — only the brand colours for a colour-fix step, only the SEO targets
       for the meta-tags step.
     </p>
@@ -230,7 +230,7 @@ automate, integrate, and display data...
               <th>Step</th>
               <th>Task</th>
               <th class="num">Markdown (tokens)</th>
-              <th class="num">KB (tokens)</th>
+              <th class="num">Graph (tokens)</th>
             </tr>
           </thead>
           <tbody>
@@ -257,7 +257,7 @@ automate, integrate, and display data...
     <p>
       The markdown workflow consumes <strong>{bench ? fmt(bench.workflow.markdown.totalInputTokens) : '16,940'} input tokens</strong> across five steps because the full
       brief is re-read at each step, and previous conversation context accumulates.
-      The KB workflow consumes <strong>{bench ? fmt(bench.workflow.reckons.totalInputTokens) : '3,895'} input tokens</strong> because each step queries only the relevant
+      The graph workflow consumes <strong>{bench ? fmt(bench.workflow.reckons.totalInputTokens) : '3,895'} input tokens</strong> because each step queries only the relevant
       predicates. That's a <strong>77% reduction</strong> in total input tokens.
     </p>
 
@@ -343,7 +343,7 @@ automate, integrate, and display data...
     </p>
 
     <p>
-      With a structured KB, each brand detail is a typed predicate. Verification becomes structural:
+      With a structured graph, each brand detail is a typed predicate. Verification becomes structural:
       does the generated CSS contain <code>#1a2332</code> as <code>primary-color</code>? Does the HTML
       include all entities of type <code>Service</code>? This can be partially automated and is
       faster to do manually.
@@ -356,7 +356,7 @@ automate, integrate, and display data...
       </div>
       <div class="stat-card">
         <span class="stat-value stat-green mono">{bench ? bench.workflow.reckons.totalHumanMinutes : 24}</span>
-        <span class="stat-label mono">minutes (KB review)</span>
+        <span class="stat-label mono">minutes (graph review)</span>
       </div>
       <div class="stat-card">
         <span class="stat-value stat-green mono">{bench ? bench.savings.humanTimeSavedPct : 47}%</span>
@@ -374,7 +374,7 @@ automate, integrate, and display data...
               <th>Step</th>
               <th>Markdown review</th>
               <th class="num">Min</th>
-              <th>KB review</th>
+              <th>graph review</th>
               <th class="num">Min</th>
             </tr>
           </thead>
@@ -435,7 +435,7 @@ automate, integrate, and display data...
     </p>
 
     <p>
-      A structured knowledge base is portable. A Turtle (.ttl) file works with any RDF-compatible
+      A structured knowledge graph is portable. A Turtle (.ttl) file works with any RDF-compatible
       tool — SPARQL endpoints, graph databases, Python's rdflib, or a different AI provider entirely.
       The context layer should be independent of the inference layer.
     </p>
@@ -465,7 +465,7 @@ automate, integrate, and display data...
     <p>
       Structured inputs produce structured outputs that are structurally verifiable.
       The review step shifts from "read the whole document and check nothing was missed"
-      to "run the diff against the KB and confirm coverage."
+      to "run the diff against the graph and confirm coverage."
     </p>
 
     <!-- ── 8. Karpathy comparison ───────────────────────────────────────── -->
@@ -559,7 +559,7 @@ automate, integrate, and display data...
       <p>All source materials are included in the repo:</p>
       <p class="fixture-list">
         <code>tests/bench/fixtures/landing-page/brand-brief.md</code> — Markdown brand brief ({bench ? bench.context.markdown.words : 382} words, {bench ? bench.context.markdown.facts : 30} facts)<br>
-        <code>tests/bench/fixtures/landing-page/brand-kb.ttl</code> — Same information as RDF Turtle ({bench ? bench.context.turtleRaw.facts : 75} triples)<br>
+        <code>tests/bench/fixtures/landing-page/brand-kb.ttl</code> — Same information as RDF Turtle ({bench ? bench.context.turtleRaw.facts : 75} facts)<br>
         <code>tests/bench/fixtures/landing-page/compressed-kb.txt</code> — kb_compress output ({bench ? bench.context.compressed.facts : 63} facts, {bench ? bench.context.compressed.tokens : 439} tokens)
       </p>
     </div>

@@ -54,7 +54,7 @@ describe('allTypes', () => {
   it('returns all built-in types when KB is empty', () => {
     const types = allTypes();
     expect(types.length).toBe(BUILT_IN_TYPES.length);
-    expect(types.find(t => t.label === 'Knowledge Base')).toBeDefined();
+    expect(types.find(t => t.label === 'Graph')).toBeDefined();
   });
 
   it('includes custom types from KB statements', () => {
@@ -182,7 +182,7 @@ describe('resolveType', () => {
       makeStatement('urn:example/my-kb', RDF_TYPE, 'urn:kbase:type/KnowledgeBase'),
     ];
     const def = resolveType('urn:example/my-kb');
-    expect(def.label).toBe('Knowledge Base');
+    expect(def.label).toBe('Graph');
     expect(def.geometry).toBe('tetrahedron-inv');
     expect(def.color).toBe('#f59e0b');
   });
@@ -220,7 +220,7 @@ describe('type resolution for leap entities', () => {
       makeStatement('urn:docs/leap/Features', 'urn:reckons:leap', 'target-stable-id', 'literal'),
     ];
     const def = resolveType('urn:docs/leap/Features');
-    expect(def.label).toBe('Knowledge Base');
+    expect(def.label).toBe('Graph');
     expect(def.geometry).toBe('tetrahedron-inv');
   });
 
@@ -229,7 +229,7 @@ describe('type resolution for leap entities', () => {
       makeStatement('urn:reckons:docs/nav/BackToHub', RDF_TYPE, 'urn:kbase:type/KnowledgeBase'),
     ];
     const def = resolveType('urn:reckons:docs/nav/BackToHub');
-    expect(def.label).toBe('Knowledge Base');
+    expect(def.label).toBe('Graph');
   });
 
   it('leap nodes appear in typeMap', () => {

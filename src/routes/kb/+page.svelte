@@ -141,7 +141,7 @@
   }
 
   function handleDeleteKb(id: string) {
-    if (!confirm('Remove this KB from the list? Its IndexedDB data will remain but the entry will be unlinked.')) return;
+    if (!confirm('Remove this graph from the list? Its IndexedDB data will remain but the entry will be unlinked.')) return;
     removeKbFromRegistry(id);
     localKbs = getRegistry();
   }
@@ -200,7 +200,7 @@
     driveUploadMsg = '';
     try {
       await ensureAuth(settings().googleClientId ?? '');
-      const content = toTurtle(confirmedStatements(), { header: 'full KB export' });
+      const content = toTurtle(confirmedStatements(), { header: 'full graph export' });
       const filename = `${kbFileSlug()}_${new Date().toISOString().split('T')[0]}.ttl`;
       await uploadTurtle(filename, content);
       driveUploadMsg = `saved to Drive: ${filename}`;
@@ -223,13 +223,13 @@
   }
 
   function exportTurtle() {
-    download(`${kbFileSlug()}.ttl`, toTurtle(confirmedStatements(), { header: 'full KB export' }), 'text/turtle');
+    download(`${kbFileSlug()}.ttl`, toTurtle(confirmedStatements(), { header: 'full graph export' }), 'text/turtle');
   }
   function exportNQuads() {
     download(`${kbFileSlug()}.nq`, toNQuads(confirmedStatements()), 'application/n-quads');
   }
   function exportClosure() {
-    download(`${kbFileSlug()}-closure.ttl`, toTurtle(closure(confirmedStatements()), { header: 'KB + RDFS/OWL closure' }), 'text/turtle');
+    download(`${kbFileSlug()}-closure.ttl`, toTurtle(closure(confirmedStatements()), { header: 'graph + RDFS/OWL closure' }), 'text/turtle');
   }
 
   let exportingGifZip = $state(false);
@@ -300,7 +300,7 @@
       createdAt: now, updatedAt: now
     }));
     const report = merge(statements(), incoming);
-    mergeReport = `merged: +${report.added} statements, ${report.collapsedDuplicates} duplicates collapsed, ${report.conflicts.length} conflicts surfaced.`;
+    mergeReport = `merged: +${report.added} facts, ${report.collapsedDuplicates} duplicates collapsed, ${report.conflicts.length} conflicts surfaced.`;
     await addStatements(incoming);
   }
 
@@ -321,7 +321,7 @@
     if (ok) {
       wsSyncing = true;
       const count = await syncAllKbs();
-      wsSyncMsg = `Synced ${count} KB${count !== 1 ? 's' : ''} to folder.`;
+      wsSyncMsg = `Synced ${count} graph${count !== 1 ? 's' : ''} to folder.`;
       wsSyncing = false;
       setTimeout(() => { wsSyncMsg = ''; }, 5000);
     }
@@ -331,7 +331,7 @@
     wsSyncing = true;
     wsSyncMsg = '';
     const count = await syncAllKbs();
-    wsSyncMsg = `Synced ${count} KB${count !== 1 ? 's' : ''} to folder.`;
+    wsSyncMsg = `Synced ${count} graph${count !== 1 ? 's' : ''} to folder.`;
     wsSyncing = false;
     setTimeout(() => { wsSyncMsg = ''; }, 5000);
   }
@@ -453,7 +453,7 @@
       bind:value={kbTitleLocal}
       onblur={saveTitle}
       onkeydown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-      placeholder="knowledge base title…"
+      placeholder="graph title…"
       spellcheck="false"
     />
     {#if titleSaving}<span class="saving mono">saving…</span>{/if}
@@ -462,14 +462,14 @@
     class="kb-desc-input"
     bind:value={kbDescLocal}
     onblur={saveDesc}
-    placeholder="what is this KB about? (guides re-analysis prompts)"
+    placeholder="what is this graph about? (guides re-analysis prompts)"
     rows="2"
   ></textarea>
 
   <div class="kb-stats mono">
     <span class="stat">{entityCount} entities</span>
     <span class="sep">·</span>
-    <span class="stat">{confirmedStatements().length} statements</span>
+    <span class="stat">{confirmedStatements().length} facts</span>
     <span class="sep">·</span>
     <span class="stat">{nonAnalysisSources.length} sources</span>
     {#if pendingTotal > 0}
@@ -549,7 +549,7 @@
 
               <div class="src-count-block">
                 <span class="count-big mono">{confirmed}</span>
-                <span class="count-label mono">triples</span>
+                <span class="count-label mono">facts</span>
                 {#if pending > 0}
                   <span class="count-pending-badge">{pending} pending</span>
                 {/if}
@@ -571,7 +571,7 @@
                 </a>
               {/if}
               <button class="sm" onclick={() => toggleExpanded(src.id)}>
-                {isExpanded ? 'hide triples ▲' : 'view triples ▼'}
+                {isExpanded ? 'hide facts ▲' : 'view facts ▼'}
               </button>
               <button class="sm danger" onclick={() => deleteSource(src.id)}>delete</button>
             </div>
@@ -584,18 +584,18 @@
                   <input
                     class="triple-search-input mono"
                     type="search"
-                    placeholder="filter triples…"
+                    placeholder="filter facts…"
                     value={getTripleSearch(src.id)}
                     oninput={(e) => setTripleSearch(src.id, (e.target as HTMLInputElement).value)}
                   />
                   <span class="triple-count-label mono">
-                    {stmts.length}{stmts.length < allStmts.length ? ` / ${allStmts.length}` : ''} triples
+                    {stmts.length}{stmts.length < allStmts.length ? ` / ${allStmts.length}` : ''} facts
                   </span>
                 </div>
 
                 {#if stmts.length === 0}
                   <p class="triple-empty">
-                    {allStmts.length === 0 ? 'no confirmed triples yet.' : 'no triples match search.'}
+                    {allStmts.length === 0 ? 'no confirmed facts yet.' : 'no facts match search.'}
                   </p>
                 {:else}
                   <div class="triple-list">
@@ -641,7 +641,7 @@
   {#if showPredicates}
     <PredicateManager />
   {:else}
-    <p class="section-hint">view, rename, and merge predicates used in your knowledge base.</p>
+    <p class="section-hint">view, rename, and merge predicates used in your graph.</p>
   {/if}
 </section>
 
@@ -655,7 +655,7 @@
   </div>
   {#if showStoryEditor}
     <div class="story-editor">
-      <p class="section-hint">define a guided tour for this KB. Shelly will walk visitors through these steps in the explore tab.</p>
+      <p class="section-hint">define a guided tour for this graph. Shelly will walk visitors through these steps in the explore tab.</p>
       {#each storySteps as step, i}
         <div class="story-step-card">
           <div class="story-step-head">
@@ -697,7 +697,7 @@
       </div>
     </div>
   {:else if storySteps.length === 0}
-    <p class="section-hint">no story defined yet. create one to guide visitors through your KB.</p>
+    <p class="section-hint">no story defined yet. create one to guide visitors through your graph.</p>
   {:else}
     <div class="story-preview">
       {#each storySteps as step, i}
@@ -710,14 +710,14 @@
 <!-- ── Knowledge Bases ────────────────────────────────────────────────────── -->
 <section class="section">
   <div class="section-head">
-    <h3>knowledge bases</h3>
+    <h3>graphs</h3>
     <div class="section-head-actions">
       <button class="ghost sm mono" onclick={() => (showNewKbForm = !showNewKbForm)}>+ new</button>
     </div>
   </div>
 
   <!-- Filter tabs -->
-  <div class="kb-filter-tabs" role="tablist" aria-label="KB filter">
+  <div class="kb-filter-tabs" role="tablist" aria-label="Graph filter">
     <button
       role="tab"
       aria-selected={kbFilter === 'all'}
@@ -740,8 +740,8 @@
       <input
         type="text"
         bind:value={newKbName}
-        placeholder="new KB name…"
-        aria-label="New knowledge base name"
+        placeholder="new graph name…"
+        aria-label="New graph name"
         onkeydown={(e) => { if (e.key === 'Enter') handleCreateKb(); if (e.key === 'Escape') showNewKbForm = false; }}
         autofocus
       />
@@ -761,7 +761,7 @@
           href="/review?align={[...compareSelection].join(',')}"
           class="sm compare-link"
         >
-          align these KBs
+          align these graphs
         </a>
       {/if}
       <button class="sm" onclick={() => (compareSelection = new Set())}>clear</button>
@@ -795,7 +795,7 @@
                 onblur={commitRename}
                 onkeydown={(e) => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') { editingKbId = null; } }}
                 autofocus
-                aria-label="Rename knowledge base"
+                aria-label="Rename graph"
               />
             {:else}
               <span
@@ -846,7 +846,7 @@
       </div>
     {/each}
     {#if sortedKbs.length === 0}
-      <p class="filter-empty mono">no bookmarked KBs yet. star a KB to bookmark it.</p>
+      <p class="filter-empty mono">no bookmarked graphs yet. star a graph to bookmark it.</p>
     {/if}
   </div>
 
@@ -941,7 +941,7 @@
   <div class="section-head">
     <h3>merge from n-quads</h3>
   </div>
-  <p class="section-hint">paste another KB export; conflicts surface in review.</p>
+  <p class="section-hint">paste another graph export; conflicts surface in review.</p>
   <textarea bind:value={mergePreview} rows="4" placeholder="<urn:...> <urn:...> ... ."></textarea>
   <div class="row" style="margin-top: 0.4rem;">
     <button onclick={importMerge}>merge</button>
@@ -954,7 +954,7 @@
   <div class="section-head">
     <h3>local folder sync</h3>
   </div>
-  <p class="section-hint">link a local folder to automatically back up all KBs. your data survives browser cache clears.</p>
+  <p class="section-hint">link a local folder to automatically back up all graphs. your data survives browser cache clears.</p>
 
   <div class="files-card">
     <div class="files-row">
@@ -981,8 +981,8 @@
     {#if workspaceState() === 'connected'}
       <div class="files-sub">
         <div class="files-row files-indent">
-          <span class="files-label mono">kbs synced</span>
-          <span class="files-value mono">{syncedKbCount() > 0 ? `${syncedKbCount()} KB${syncedKbCount() !== 1 ? 's' : ''}` : 'none yet'}</span>
+          <span class="files-label mono">graphs synced</span>
+          <span class="files-value mono">{syncedKbCount() > 0 ? `${syncedKbCount()} graph${syncedKbCount() !== 1 ? 's' : ''}` : 'none yet'}</span>
         </div>
         {#if lastSyncTime()}
           <div class="files-row files-indent">
@@ -996,7 +996,7 @@
         </div>
         <div class="files-row" style="margin-top:0.4rem">
           <button class="sm" onclick={handleSyncAllKbs} disabled={wsSyncing}>
-            {wsSyncing ? 'syncing...' : 'sync all KBs now'}
+            {wsSyncing ? 'syncing...' : 'sync all graphs now'}
           </button>
         </div>
         {#if wsSyncMsg}

@@ -45,7 +45,7 @@ export async function nudge(event: TutorialEvent): Promise<void> {
         id: 'tutorial:template-loaded',
         type: 'success',
         title: 'Starter loaded',
-        body: 'Your KB has some knowledge. Ask Shelly a question, or run a Reckoning to see what it knows.',
+        body: 'Your graph has some knowledge. Ask Shelly a question, or run a Reckoning to see what it knows.',
         action: { label: 'Open Shelly' },
         oneTime: true,
       });
@@ -56,7 +56,7 @@ export async function nudge(event: TutorialEvent): Promise<void> {
         id: 'tutorial:first-ingest',
         type: 'success',
         title: 'Source ingested',
-        body: 'Triples are waiting for your review. Head to Review to confirm the ones that look right.',
+        body: 'Facts are waiting for your review. Head to Review to confirm the ones that look right.',
         action: { label: 'Review →', href: '/review' },
         oneTime: true,
       });
@@ -66,8 +66,8 @@ export async function nudge(event: TutorialEvent): Promise<void> {
       pushNotification({
         id: 'tutorial:first-pending',
         type: 'info',
-        title: 'Triples extracted',
-        body: 'The AI found facts in your source. Confirm the accurate ones in Review — only confirmed triples enter your KB.',
+        title: 'Facts extracted',
+        body: 'The AI found facts in your source. Confirm the accurate ones in Review — only confirmed facts enter your graph.',
         action: { label: 'Review →', href: '/review' },
         oneTime: true,
       });
@@ -77,8 +77,8 @@ export async function nudge(event: TutorialEvent): Promise<void> {
       pushNotification({
         id: 'tutorial:first-confirmed',
         type: 'success',
-        title: 'First triple confirmed',
-        body: 'Your KB is building up. When you have a few facts, try a Reckoning — describe your situation and let the KB propose a path forward.',
+        title: 'First fact confirmed',
+        body: 'Your graph is building up. When you have a few facts, try a Reckoning — describe your situation and let the graph propose a path forward.',
         action: { label: 'Try a Reckoning →', href: '/reckoning' },
         oneTime: true,
       });
@@ -89,7 +89,7 @@ export async function nudge(event: TutorialEvent): Promise<void> {
         id: 'tutorial:has-data',
         type: 'info',
         title: 'Ready for a Reckoning',
-        body: 'You have verified knowledge in your KB. Describe a situation and target — Reckons.AI will propose options grounded in what you already know.',
+        body: 'You have verified knowledge in your graph. Describe a situation and target — Reckons.AI will propose options grounded in what you already know.',
         action: { label: 'Run a Reckoning →', href: '/reckoning' },
         oneTime: true,
       });
@@ -100,8 +100,8 @@ export async function nudge(event: TutorialEvent): Promise<void> {
         id: 'tutorial:first-reckoning',
         type: 'success',
         title: 'Your first Reckoning',
-        body: 'The proposal is grounded in your KB. Accept KB actions to mark the decision — then export your .ttl to share it with others.',
-        action: { label: 'KB →', href: '/kb' },
+        body: 'The proposal is grounded in your graph. Accept graph actions to mark the decision — then export your .ttl to share it with others.',
+        action: { label: 'Graph →', href: '/kb' },
         oneTime: true,
       });
       break;

@@ -204,8 +204,8 @@ export async function ingest(
         type: 'warn',
         title: 'Local AI unavailable — used placeholder extraction',
         body: isOnnx
-          ? 'ONNX runtime is not supported in this browser. Statements were placeholder-extracted. Try Ollama, Chrome AI, or a cloud backend in Settings.'
-          : 'The WASM model could not load. Statements were placeholder-extracted and need careful review. Switch to a cloud backend in Settings for better quality.',
+          ? 'ONNX runtime is not supported in this browser. Facts were placeholder-extracted. Try Ollama, Chrome AI, or a cloud backend in Settings.'
+          : 'The WASM model could not load. Facts were placeholder-extracted and need careful review. Switch to a cloud backend in Settings for better quality.',
         action: { label: 'Settings', href: '/settings' },
       });
       triples = extractMock(text, title);

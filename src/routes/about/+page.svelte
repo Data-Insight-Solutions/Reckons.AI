@@ -38,7 +38,7 @@
       id: 'quickstart',
       icon: '🚀',
       title: 'Quick-Start Example',
-      body: 'People, projects, research notes, decisions, and metrics — see how real-world data maps to triples.',
+      body: 'People, projects, research notes, decisions, and metrics — see how real-world data maps to facts.',
       file: '/starter-quickstart.ttl',
       entities: 15,
       triples: 90
@@ -74,7 +74,7 @@
       startStory('urn:reckons:story/ReckonsPhilosophy', true);
       goto('/');
     } catch (e) {
-      loadError = (e as Error).message || 'Failed to load official KB';
+      loadError = (e as Error).message || 'Failed to load official graph';
       switchingToOfficial = false;
     }
   }
@@ -184,12 +184,12 @@
 
   // ── Use cases ────────────────────────────────────────────────────────────
   const USES = [
-    { icon: '🔬', title: 'Research & Academia', body: 'Track papers, authors, claims, contradictions. Build a lit-review graph where every statement traces back to its source.' },
-    { icon: '📈', title: 'Business Intelligence', body: 'Capture meeting notes, competitor signals, market data. Ask "what do we know about X?" and get sourced answers from your KB.' },
-    { icon: '🧠', title: 'Personal Knowledge', body: 'Your second brain, but structured. Every book summary, insight, and decision logged as verifiable triples, not just text.' },
-    { icon: '⚖️',  title: 'Decision Making',    body: 'State your Situation and Target, and get a Proposal that cites only facts you\'ve already confirmed. No hallucinations, only your KB.' },
-    { icon: '🏗️', title: 'Project Planning',    body: 'Timelines, dependencies, stakeholders, constraints: all as triples with provenance. History playback shows the project at any past moment.' },
-    { icon: '🤝', title: 'Collaboration',        body: 'Export your .ttl, share it. Recipients see a full semantic diff: what you added, what conflicts with their own KB.' },
+    { icon: '🔬', title: 'Research & Academia', body: 'Track papers, authors, claims, contradictions. Build a lit-review graph where every fact traces back to its source.' },
+    { icon: '📈', title: 'Business Intelligence', body: 'Capture meeting notes, competitor signals, market data. Ask "what do we know about X?" and get sourced answers from your graph.' },
+    { icon: '🧠', title: 'Personal Knowledge', body: 'Your second brain, but structured. Every book summary, insight, and decision logged as verifiable facts, not just text.' },
+    { icon: '⚖️',  title: 'Decision Making',    body: 'State your Situation and Target, and get a Proposal that cites only facts you\'ve already confirmed. No hallucinations, only your graph.' },
+    { icon: '🏗️', title: 'Project Planning',    body: 'Timelines, dependencies, stakeholders, constraints: all as facts with provenance. History playback shows the project at any past moment.' },
+    { icon: '🤝', title: 'Collaboration',        body: 'Export your .ttl, share it. Recipients see a full semantic diff: what you added, what conflicts with their own graph.' },
   ];
 </script>
 
@@ -341,7 +341,7 @@
     <p class="section-kicker mono">how it works</p>
     <h2>From raw source to <em>structured knowledge.</em></h2>
     <p class="section-sub">
-      Reckons.AI extracts triples from anything you give it, lets you review every claim,
+      Reckons.AI extracts facts from anything you give it, lets you review every claim,
       and builds a knowledge graph you can query, visualise, and reason over.
     </p>
 
@@ -366,7 +366,7 @@
       <!-- Row 2: AI Extraction -->
       <div class="pipe-node pipe-ai">
         <span class="pipe-tag mono">extraction</span>
-        <strong>AI extracts triples</strong>
+        <strong>AI extracts facts</strong>
         <p>Claude · GPT · Gemini · Ollama · WASM. Any backend, fully offline if preferred. No cloud required.</p>
       </div>
 
@@ -379,7 +379,7 @@
       <div class="pipe-node pipe-review">
         <span class="pipe-tag mono">you decide</span>
         <strong>Review &amp; Confirm</strong>
-        <p>Accept, reject, or refine each proposed triple. Merge duplicate entities. Resolve conflicts. Nothing enters your KB without your approval.</p>
+        <p>Accept, reject, or refine each proposed fact. Merge duplicate entities. Resolve conflicts. Nothing enters your graph without your approval.</p>
       </div>
 
       <div class="pipe-arrow-v" aria-hidden="true">
@@ -398,7 +398,7 @@
           <span class="ptr-arrow">→</span>
           <span class="ptr-o">Object</span>
         </div>
-        <p>All confirmed triples live in IndexedDB locally. Export to .ttl anytime. Import into any RDF tool. Portable forever.</p>
+        <p>All confirmed facts live in IndexedDB locally. Export to .ttl anytime. Import into any RDF tool. Portable forever.</p>
       </div>
 
       <!-- Row 5: Fork to 3D + Reckoning -->
@@ -453,12 +453,12 @@
 
   <!-- ── Why not documents ──────────────────────────────────────────────────── -->
   <section class="section docs-section">
-    <p class="section-kicker mono">why triples, not documents</p>
+    <p class="section-kicker mono">why facts, not documents</p>
     <h2>Documents grow stale.<br><em>Graphs stay current.</em></h2>
     <p class="section-sub">
       Wikis, notebooks, and markdown files trap knowledge in prose.
       Updating one fact means editing an entire page — so people don't, and information goes stale.
-      Triples are atomic: change one fact without touching anything else.
+      Facts are atomic: change one fact without touching anything else.
     </p>
 
     <div class="docs-compare">
@@ -474,11 +474,11 @@
         </ul>
       </div>
       <div class="docs-col docs-new">
-        <span class="docs-col-label mono">semantic triples</span>
+        <span class="docs-col-label mono">semantic facts</span>
         <ul>
           <li>Update = change one fact</li>
           <li>Search = typed relationship queries</li>
-          <li>Duplicates = same triple auto-merges</li>
+          <li>Duplicates = same fact auto-merges</li>
           <li>Contradictions = detected structurally at ingest</li>
           <li>AI queries a typed graph directly</li>
           <li>Export = W3C standard Turtle file</li>
@@ -695,7 +695,7 @@
         <div class="stp-card stp-proposal">
           <span class="stp-num mono">P</span>
           <strong>Proposal</strong>
-          <p>The AI synthesises options grounded <em>only</em> in triples from your Knowledge Graph. Every option cites its sources.</p>
+          <p>The AI synthesises options grounded <em>only</em> in facts from your Knowledge Graph. Every option cites its sources.</p>
           <div class="stp-example mono">"Based on <em>3 confirmed sources</em>: Option A — accelerate feature X (revenue est. +6%). Option B — …"</div>
         </div>
       </div>
@@ -704,7 +704,7 @@
         <span class="stp-note-icon">◈</span>
         <p>
           A Reckoning is not general AI advice. It is a <strong>structured reasoning pass over your verified facts</strong>.
-          The quality of the Proposal is bounded by the quality of your KB, which is bounded by your own review decisions.
+          The quality of the Proposal is bounded by the quality of your graph, which is bounded by your own review decisions.
         </p>
       </div>
     </div>
@@ -824,7 +824,7 @@
     <h2>Explore the <em>documentation graph</em></h2>
     <p class="section-sub">
       The documentation is itself a knowledge graph. Browse it in 3D, talk to Shelly,
-      play the guided story — then switch back to your own KB when you're ready to build.
+      play the guided story — then switch back to your own graph when you're ready to build.
     </p>
 
     {#if loadError}
@@ -855,7 +855,7 @@
 
     <p class="starter-sub-heading mono">example data</p>
     <p class="starter-sub-desc">
-      Import example triples into your own KB to see how real-world data looks as a graph.
+      Import example facts into your own graph to see how real-world data looks as a graph.
     </p>
 
     <div class="starter-grid">
@@ -871,7 +871,7 @@
             <p>{kb.body}</p>
             <div class="starter-stats mono">
               <span>{kb.entities} entities</span>
-              <span>{kb.triples} triples</span>
+              <span>{kb.triples} facts</span>
             </div>
           </div>
           {#if loadingKb === kb.id}
@@ -982,7 +982,7 @@
       <div class="pricing-tier">
         <span class="tier-badge mono tier-planned">coming</span>
         <strong>Cloud services</strong>
-        <p>Managed inference with custom extraction and embedding models, higher-quality triple parsing, and hosted sync. Pay only for what you use.</p>
+        <p>Managed inference with custom extraction and embedding models, higher-quality fact parsing, and hosted sync. Pay only for what you use.</p>
       </div>
       <div class="pricing-tier">
         <span class="tier-badge mono tier-enterprise">enterprise</span>

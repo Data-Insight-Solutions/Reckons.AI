@@ -165,7 +165,7 @@ export function toJsonLd(
 
   if (opts.kbTitle || opts.kbDescription || opts.siteUrl) {
     doc['@id'] = opts.siteUrl ?? '';
-    doc['name'] = opts.kbTitle ?? 'Knowledge Base';
+    doc['name'] = opts.kbTitle ?? 'Knowledge Graph';
     if (opts.kbDescription) doc['description'] = opts.kbDescription;
   }
 
@@ -195,8 +195,8 @@ export function toLlmsTxt(
   opts: { kbTitle?: string; kbDescription?: string; siteUrl?: string } = {}
 ): string {
   const confirmed = statements.filter(isConfirmed);
-  const title = opts.kbTitle ?? 'Knowledge Base';
-  const desc  = opts.kbDescription ?? 'A structured knowledge base.';
+  const title = opts.kbTitle ?? 'Knowledge Graph';
+  const desc  = opts.kbDescription ?? 'A structured knowledge graph.';
 
   // Group by subject
   const bySubject = new Map<string, Statement[]>();

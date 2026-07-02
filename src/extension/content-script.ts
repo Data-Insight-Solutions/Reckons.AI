@@ -279,11 +279,11 @@ function createFCPanel() {
       '<div id="reckons-fc-transcript-feed"></div>',
       '<p id="reckons-fc-interim"></p>',
       '<div class="rfc-section-header">',
-        '<span class="rfc-section-label">KB Verdicts</span>',
+        '<span class="rfc-section-label">Graph Verdicts</span>',
         '<div class="rfc-speaker-editor" id="rfc-speaker-editor"></div>',
       '</div>',
       '<div id="reckons-fc-verdicts">',
-        '<p class="rfc-empty">Verdicts will appear here as statements are analyzed against your KB...</p>',
+        '<p class="rfc-empty">Verdicts will appear here as facts are analyzed against your graph...</p>',
       '</div>',
     '</div>',
   ].join('');

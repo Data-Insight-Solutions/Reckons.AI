@@ -96,17 +96,17 @@ function buildHTML(): string {
     </div>`;
   }
 
-  // KB status
+  // Graph status
   html += `<div class="kb-row">
     <div class="kb-info">
-      <div class="kb-title">Knowledge Base</div>
+      <div class="kb-title">Graph</div>
       <div class="kb-sub">${
         snapshot
           ? `${snapshot.entityCount} entities synced`
           : 'Not synced &mdash; open Reckons.AI and click Sync'
       }</div>
     </div>
-    <button id="btn-sync">Sync KB</button>
+    <button id="btn-sync">Sync Graph</button>
   </div>`;
 
   html += `</div>`;
