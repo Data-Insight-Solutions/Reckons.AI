@@ -74,6 +74,7 @@ export function pageToMarkdown(page: SitePage, slugs: Map<string, string>): stri
   lines.push(`nav: ${page.nav}`);
   if (page.date) lines.push(`date: ${yamlStr(page.date)}`);
   if (page.excerpt) lines.push(`excerpt: ${yamlStr(page.excerpt)}`);
+  if (page.generated) lines.push(`generated: ${yamlStr(page.generated)}`);
   const related = page.related.map((r) => slugs.get(r)).filter((s): s is string => !!s);
   if (related.length) {
     lines.push('related:');
@@ -139,6 +140,7 @@ export function sveltiaConfig(opts: SiteExportOptions): string {
     '      - { name: date, label: Date, widget: datetime, format: "YYYY-MM-DD", time_format: false, required: false, hint: "Posts only — release notes/announcements/blog publish date" }',
     '      - { name: excerpt, label: Excerpt, widget: text, required: false }',
     '      - { name: body, label: Body, widget: markdown }',
+    '      - { name: generated, label: "Generated (docs KB — do not edit)", widget: hidden, required: false }',
     '',
   ].join('\n');
 }

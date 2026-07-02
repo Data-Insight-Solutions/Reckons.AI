@@ -3,7 +3,7 @@ import { unzipSync, strFromU8 } from 'fflate';
 import type { Statement } from '../../rdf/types';
 import { iri, lit } from '../../rdf/types';
 import {
-  PAGE_SLUG, PAGE_SECTION, PAGE_STATUS, PAGE_TEMPLATE, PAGE_BODY, PAGE_DATE,
+  PAGE_SLUG, PAGE_SECTION, PAGE_STATUS, PAGE_TEMPLATE, PAGE_BODY, PAGE_DATE, PAGE_GENERATED,
 } from '../../rdf/page';
 import { buildSitePages } from '../../rdf/page';
 import { NAV_ORDER } from '../../rdf/hierarchy';
@@ -101,6 +101,22 @@ describe('pageToMarkdown', () => {
     const md2 = pageToMarkdown(noDate.find((p) => p.slug === 'overview')!, slugs);
     expect(md2).not.toContain('date:');
   });
+
+  it('emits generated frontmatter for docs-KB pages, omits it when absent', () => {
+    const generatedPages = buildSitePages([
+      st('page:auto', RDF_TYPE, WEBPAGE, true),
+      st('page:auto', RDFS_LABEL, 'Auto Page'),
+      st('page:auto', PAGE_STATUS, 'published'),
+      st('page:auto', PAGE_GENERATED, 'docs-kb'),
+    ]);
+    const slugs = new Map(generatedPages.map((p) => [p.iri, p.slug]));
+    const md = pageToMarkdown(generatedPages[0], slugs);
+    expect(md).toContain('generated: "docs-kb"');
+
+    const manual = buildSitePages(sampleSite());
+    const md2 = pageToMarkdown(manual.find((p) => p.slug === 'overview')!, slugs);
+    expect(md2).not.toContain('generated:');
+  });
 });
 
 describe('buildGraphJson', () => {
@@ -147,9 +163,10 @@ describe('sveltiaConfig', () => {
     expect(cfg).toContain('repo: me/site');
     expect(cfg).toContain('branch: dev');
     expect(cfg).toContain('folder: content');
-    for (const field of ['title', 'slug', 'order', 'section', 'template', 'status', 'nav', 'date', 'excerpt', 'body']) {
+    for (const field of ['title', 'slug', 'order', 'section', 'template', 'status', 'nav', 'date', 'excerpt', 'body', 'generated']) {
       expect(cfg).toContain(`name: ${field}`);
     }
     expect(cfg).toContain('post'); // template widget must offer the post option
+    expect(cfg).toContain('widget: hidden'); // generated field is readonly, hidden from editors
   });
 });

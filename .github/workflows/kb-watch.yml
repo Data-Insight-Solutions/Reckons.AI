@@ -7,7 +7,7 @@ on:
     branches: [main, staging, dev]
 
 permissions:
-  contents: read
+  contents: write  # docs KB regeneration commits content/ back to main (see "Commit regenerated docs pages")
   pull-requests: write
 
 jobs:
@@ -25,6 +25,63 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      # Docs KB pipeline (F27 Graph Publishing): static/starter-guide.ttl + static/docs-*.ttl
+      # are the source of truth for the "generated" /docs sections (Guide, Features,
+      # Triples & RDF, LLM, Use Cases, Integrations & Tech, Tips, Timeline & Ecosystem,
+      # Architecture, Testing). scripts/docs-pages.ts turns those TTLs into
+      # content/<section>/<slug>.md — idempotent, so re-running it when the KBs haven't
+      # changed produces zero diff (that idempotency is what keeps the commit-back step
+      # below from looping). Hand-authored content (content/docs/welcome.md,
+      # content/releases/*) has no `generated: "docs-kb"` frontmatter tag and is never
+      # touched by this script.
+      - name: Regenerate docs pages from Docs KBs
+        id: docs_pages
+        run: |
+          set +e
+          OUTPUT=$(npx tsx scripts/docs-pages.ts 2>&1)
+          EXIT_CODE=$?
+          echo "$OUTPUT"
+          DIFF=$(git status --porcelain content/)
+
+          {
+            echo '## Docs KB Pages Report'
+            echo ''
+            echo '```'
+            echo "$OUTPUT"
+            echo '```'
+            if [ -n "$DIFF" ]; then
+              echo ''
+              echo '### Changed files'
+              echo '```'
+              echo "$DIFF"
+              echo '```'
+            fi
+            echo ''
+            if [ -z "$DIFF" ]; then
+              echo '> `content/` already matches the docs KBs — nothing to regenerate.'
+            elif [ "${{ github.event_name }}" = "pull_request" ]; then
+              echo '> **Drift detected** — `content/` is out of sync with the docs KBs (`static/starter-guide.ttl` + `static/docs-*.ttl`). This regenerates automatically on merge to `main`; no action needed here unless the diff looks wrong.'
+            else
+              echo '> Regenerated `content/` from the docs KBs — committing the changes.'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -n "$DIFF" ]; then echo "changed=true" >> "$GITHUB_OUTPUT"; else echo "changed=false" >> "$GITHUB_OUTPUT"; fi
+          exit $EXIT_CODE
+
+      # Push the regeneration back to main only — never on PRs (forked PRs can't push,
+      # and same-repo PRs shouldn't get surprise commits from CI). docs-pages.ts's
+      # idempotency guarantees this commit itself regenerates to zero diff, so the
+      # push it triggers doesn't loop.
+      - name: Commit regenerated docs pages
+        if: steps.docs_pages.outputs.changed == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add content/
+          git commit -m "docs: regenerate content from docs KBs"
+          git push
 
       # Markdown alignment (F27 Graph Publishing): content/*.md is a generated,
       # trailing by-product of the graph. This imports each committed file back

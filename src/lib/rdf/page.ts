@@ -26,6 +26,10 @@ export const PAGE_BODY     = `${PAGE_NS}body`;
 /** ISO `yyyy-mm-dd` literal — publish date for `template: 'post'` pages (release notes,
  *  announcements, blog entries). Unset for non-post templates. */
 export const PAGE_DATE     = `${PAGE_NS}date`;
+/** Provenance tag for pages regenerated from a docs KB (`scripts/docs-pages.ts`), e.g.
+ *  `"docs-kb"`. Unset for hand-authored pages (releases, manually edited content). CI
+ *  and the generator use this to know which files are safe to prune/regenerate. */
+export const PAGE_GENERATED = `${PAGE_NS}generated`;
 
 export const WEBPAGE_TYPE = 'urn:kbase:type/WebPage';
 
@@ -54,6 +58,9 @@ export interface SitePage {
   next: string | null;
   prev: string | null;
   date: string | null;      // ISO yyyy-mm-dd — posts only; null for other templates
+  /** Set to a provenance tag (e.g. `"docs-kb"`) for pages regenerated from a docs KB;
+   *  undefined for hand-authored pages. See `PAGE_GENERATED`. */
+  generated?: string;
 }
 
 const TEMPLATES = new Set<PageTemplate>(['landing', 'doc', 'full', 'sidebar', 'post']);
@@ -106,6 +113,7 @@ export function buildSitePages(stmts: Statement[]): SitePage[] {
   const prev     = new Map<string, string>();
   const related  = new Map<string, string[]>();
   const date     = new Map<string, string>();
+  const generated = new Map<string, string>();
 
   for (const s of active) {
     if (s.s.kind !== 'iri' || !pageIris.has(s.s.value)) continue;
@@ -123,6 +131,7 @@ export function buildSitePages(stmts: Statement[]): SitePage[] {
     else if (p === PAGE_EXCERPT && s.o.kind === 'literal') excerpt.set(iri, s.o.value);
     else if (p === PAGE_BODY && s.o.kind === 'literal') body.set(iri, s.o.value);
     else if (p === PAGE_DATE && s.o.kind === 'literal' && ISO_DATE_RE.test(s.o.value)) date.set(iri, s.o.value);
+    else if (p === PAGE_GENERATED && s.o.kind === 'literal') generated.set(iri, s.o.value);
     else if (p === NAV_NEXT && s.o.kind === 'iri') next.set(iri, s.o.value);
     else if (p === NAV_PREV && s.o.kind === 'iri') prev.set(iri, s.o.value);
     else if (p === SKOS_RELATED && s.o.kind === 'iri') {
@@ -150,6 +159,7 @@ export function buildSitePages(stmts: Statement[]): SitePage[] {
       next: next.get(iri) ?? null,
       prev: prev.get(iri) ?? null,
       date: date.get(iri) ?? null,
+      generated: generated.get(iri),
     };
   });
 
