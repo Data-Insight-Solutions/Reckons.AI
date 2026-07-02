@@ -3,7 +3,8 @@
  *
  * Supports two modes:
  *  1. Single-file: `--kb /path/to/knowledge.ttl` (legacy)
- *  2. Workspace:   `--kb /path/to/workspace/` (scans kbs/{name}/kb.ttl)
+ *  2. Workspace:   `--kb /path/to/workspace/` (scans kbs/{name}/{name}.ttl,
+ *                  falling back to the legacy kbs/{name}/kb.ttl filename)
  *
  * Reckons.AI exports annotated Turtle with named graphs carrying provenance:
  *   GRAPH <urn:kbase:source/SOURCE_ID> { s p o . }
@@ -11,7 +12,7 @@
  * This reader handles both annotated (named graphs) and plain Turtle.
  */
 
-import { readFileSync, statSync, readdirSync, existsSync, watchFile } from 'node:fs';
+import { readFileSync, statSync, readdirSync, existsSync, watchFile, unwatchFile } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { Store, Parser, DataFactory, type Quad } from 'n3';
 
@@ -116,6 +117,11 @@ export class KBReader {
     });
   }
 
+  /** Stop watching this reader's file (used when a KB's resolved path changes). */
+  unwatch(): void {
+    unwatchFile(this.ttlPath);
+  }
+
   stats(): KBStats {
     return storeStats(this.store, this.lastMtime);
   }
@@ -197,6 +203,10 @@ export class MultiKBReader {
   private wsDir: string;
   private kbsDir: string;
   private readers = new Map<string, KBReader>(); // folderName → KBReader
+  /** folderName → resolved ttl path currently backing that reader (for re-resolution on rename/migration) */
+  private resolvedPaths = new Map<string, string>();
+  /** Change callback registered via watch() — attached to readers created on later re-scans too */
+  private watchCb: (() => void) | null = null;
   /** Legacy single-file reader (for backward compat with --kb file.ttl) */
   private legacyReader: KBReader | null = null;
 
@@ -216,6 +226,28 @@ export class MultiKBReader {
     this.scanKbs();
   }
 
+  /**
+   * Resolve the TTL file for a KB folder. Prefers `{folderName}.ttl`;
+   * falls back to the legacy `kb.ttl`. If both exist, the named file wins
+   * and a warning is logged so stale legacy files get noticed.
+   */
+  private resolveTtlPath(kbDir: string, folderName: string): string | null {
+    const namedPath = join(kbDir, `${folderName}.ttl`);
+    const legacyPath = join(kbDir, 'kb.ttl');
+    const namedExists = existsSync(namedPath);
+    const legacyExists = existsSync(legacyPath);
+
+    if (namedExists && legacyExists) {
+      console.error(
+        `[kb-reader] Both ${folderName}.ttl and legacy kb.ttl found in ${kbDir} — using ${folderName}.ttl (kb.ttl ignored)`
+      );
+      return namedPath;
+    }
+    if (namedExists) return namedPath;
+    if (legacyExists) return legacyPath;
+    return null;
+  }
+
   private scanKbs(): void {
     if (!this.kbsDir || !existsSync(this.kbsDir)) return;
 
@@ -223,13 +255,20 @@ export class MultiKBReader {
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
       const kbDir = join(this.kbsDir, entry.name);
-      const ttlPath = join(kbDir, 'kb.ttl');
+      const ttlPath = this.resolveTtlPath(kbDir, entry.name);
 
-      if (!existsSync(ttlPath)) continue;
+      if (!ttlPath) continue;
 
-      // Load or update the reader
-      if (!this.readers.has(entry.name)) {
-        this.readers.set(entry.name, new KBReader(ttlPath));
+      // Load or update the reader — recreate if the resolved path changed
+      // (e.g. a workspace was migrated from kb.ttl to {name}.ttl at runtime).
+      const prevPath = this.resolvedPaths.get(entry.name);
+      if (!this.readers.has(entry.name) || prevPath !== ttlPath) {
+        // Stop watching the old file (if any) and watch the newly resolved one
+        this.readers.get(entry.name)?.unwatch();
+        const reader = new KBReader(ttlPath);
+        if (this.watchCb) reader.watch(this.watchCb);
+        this.readers.set(entry.name, reader);
+        this.resolvedPaths.set(entry.name, ttlPath);
       } else {
         this.readers.get(entry.name)!.reload();
       }
@@ -246,12 +285,13 @@ export class MultiKBReader {
     for (const reader of this.readers.values()) reader.reload();
   }
 
-  /** Watch all KB files for changes. */
+  /** Watch all KB files for changes (each KB's resolved TTL file — named or legacy). */
   watch(cb: () => void): void {
     if (this.legacyReader) {
       this.legacyReader.watch(cb);
       return;
     }
+    this.watchCb = cb; // readers created on future re-scans get watched too
     for (const reader of this.readers.values()) reader.watch(cb);
     // Also poll the kbs/ dir for new KBs
     if (this.kbsDir && existsSync(this.kbsDir)) {

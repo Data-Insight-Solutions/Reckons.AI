@@ -10,7 +10,10 @@
  * KB folder layout:
  *
  *   kbs/my-kb/
- *     kb.ttl              human-readable Turtle (no base64 blobs)
+ *     my-kb.ttl            human-readable Turtle (no base64 blobs), named
+ *                           after the folder. Legacy `kb.ttl` is still read
+ *                           on import for backward compatibility, but is
+ *                           no longer written.
  *     assets/              only created when the KB has binary assets
  *       icons/             2D node icons (SVG, PNG) — only if populated
  *       previews/          hover preview images (GIF, PNG, JPG) — only if populated
@@ -168,6 +171,16 @@ async function readFromDir(dir: FileSystemDirectoryHandle, filename: string): Pr
   }
 }
 
+/**
+ * Read a KB's TTL from a folder, preferring `{folderName}.ttl` and falling
+ * back to the legacy `kb.ttl` filename when the named file isn't present.
+ */
+async function readKbTtl(dir: FileSystemDirectoryHandle, folderName: string): Promise<string | null> {
+  const named = await readFromDir(dir, `${folderName}.ttl`);
+  if (named !== null) return named;
+  return readFromDir(dir, 'kb.ttl');
+}
+
 // ── Multi-KB folder sync ─────────────────────────────────────────────────────
 
 /** Sanitize a KB name into a safe folder name. */
@@ -187,7 +200,7 @@ export type KbMeta = {
 };
 
 /**
- * Write one KB's data to the workspace folder: kbs/{folderName}/kb.ttl
+ * Write one KB's data to the workspace folder: kbs/{folderName}/{folderName}.ttl
  * Binary assets written to assets/{icons,previews,models}/ — directories only created when populated.
  */
 export async function writeKbToFolder(
@@ -202,7 +215,7 @@ export async function writeKbToFolder(
     const folderName = kbFolderName(entry.name, entry.id);
     const kbDir = await getOrCreateDir(kbsDir, folderName);
 
-    await writeToDir(kbDir, 'kb.ttl', ttl);
+    await writeToDir(kbDir, `${folderName}.ttl`, ttl);
 
     // Write binary assets to structured directories (only populated categories)
     if (assets && assets.length > 0) {
@@ -240,7 +253,8 @@ async function writeAssetsToFolder(
 }
 
 /**
- * Scan the kbs/ directory for KB folders (those containing kb.ttl).
+ * Scan the kbs/ directory for KB folders (those containing a TTL file —
+ * `{folderName}.ttl`, or the legacy `kb.ttl`).
  * KB name is derived from the folder name. StableId is extracted from the TTL.
  */
 export async function listKbFolders(): Promise<Array<{ folderName: string; meta: KbMeta }>> {
@@ -251,7 +265,7 @@ export async function listKbFolders(): Promise<Array<{ folderName: string; meta:
 
     for await (const entry of (kbsDir as any).values()) {
       if (entry.kind !== 'directory') continue;
-      const ttl = await readFromDir(entry, 'kb.ttl');
+      const ttl = await readKbTtl(entry, entry.name);
       if (!ttl) continue;
 
       // Extract stableId from TTL content (lightweight regex, no full parse)
@@ -271,7 +285,8 @@ export async function listKbFolders(): Promise<Array<{ folderName: string; meta:
 
 /**
  * Read a KB's full data from its folder.
- * Returns null if the folder or kb.ttl don't exist.
+ * Returns null if the folder or its TTL file (`{folderName}.ttl`, or legacy
+ * `kb.ttl`) don't exist.
  * Also reads any binary assets from assets/{icons,previews,models}/ subdirectories.
  */
 export async function readKbFromFolder(folderName: string): Promise<{
@@ -284,7 +299,7 @@ export async function readKbFromFolder(folderName: string): Promise<{
     const kbsDir = await _handle.getDirectoryHandle('kbs');
     const kbDir = await kbsDir.getDirectoryHandle(folderName);
 
-    const ttl = await readFromDir(kbDir, 'kb.ttl');
+    const ttl = await readKbTtl(kbDir, folderName);
     if (!ttl) return null;
 
     const stableIdMatch = ttl.match(/kbStableId[>"]\s+"([^"]+)"/);
@@ -527,8 +542,8 @@ export async function drainAndImportPending(): Promise<number> {
 
 /**
  * Import KBs found in the workspace folder that don't exist in IndexedDB.
- * Reads each kbs/{name}/kb.ttl, parses it, creates a Dexie DB, and registers
- * the KB. Returns the number of KBs imported.
+ * Reads each kbs/{name}/{name}.ttl (or legacy kbs/{name}/kb.ttl), parses it,
+ * creates a Dexie DB, and registers the KB. Returns the number of KBs imported.
  */
 export async function importKbsFromWorkspace(): Promise<{ imported: string[]; skipped: string[] }> {
   const folders = await listKbFolders();
@@ -588,7 +603,7 @@ export async function importKbsFromWorkspace(): Promise<{ imported: string[]; sk
       await tempDb.sources.put({
         id: sourceId,
         title: meta.name,
-        uri: `workspace://${folderName}/kb.ttl`,
+        uri: `workspace://${folderName}/${folderName}.ttl`,
         kind: 'document' as const,
         trustLevel: 'trusted' as const,
         ingestedAt: now,

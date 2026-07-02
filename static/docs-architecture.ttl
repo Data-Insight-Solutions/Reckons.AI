@@ -238,7 +238,7 @@ arch:LocalFirstArch
 arch:WorkspaceFolderDesign
     rdf:type            ktype:Concept ;
     rdfs:label          "Workspace Folder Design" ;
-    skos:definition     "User-selected directory via File System Access API (Chrome/Edge only). Structure: knowledge.ttl (legacy single-KB), kbs/{name}/kb.ttl + meta.json + sources.json (multi-KB), knowledge.pending.jsonl (MCP inbox), settings_profile.json. Auto-exports on every KB mutation (2s debounce)." ;
+    skos:definition     "User-selected directory via File System Access API (Chrome/Edge only). Structure: knowledge.ttl (legacy single-KB), kbs/{name}/{name}.ttl + meta.json + sources.json (multi-KB; legacy kb.ttl still read as a fallback), knowledge.pending.jsonl (MCP inbox), settings_profile.json. Auto-exports on every KB mutation (2s debounce)." ;
     skos:broader        arch:LocalFirstArch ;
     skos:related        feat:MultiKB .
 

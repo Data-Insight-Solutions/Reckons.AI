@@ -163,7 +163,7 @@ int:N8nDataTables
 int:VSCodeExtension
     rdf:type            ktype:Concept ;
     rdfs:label          "VS Code Extension (Planned)" ;
-    skos:definition     "Auto-inject KB into coding sessions via MCP bridge. Wraps reckons-ai-mcp as child process with stdio transport. Phase 1: MCP bridge + auto-inject. Phase 2: live updates from editor actions. Phase 3: sidebar KB browser with webview graph. Zero config — activates when it detects kbs/*/kb.ttl in workspace." ;
+    skos:definition     "Auto-inject KB into coding sessions via MCP bridge. Wraps reckons-ai-mcp as child process with stdio transport. Phase 1: MCP bridge + auto-inject. Phase 2: live updates from editor actions. Phase 3: sidebar KB browser with webview graph. Zero config — activates when it detects kbs/*/*.ttl in workspace (legacy kbs/*/kb.ttl also recognised)." ;
     skos:broader        int:Integrations ;
     skos:related        int:MCPServer .
 
