@@ -8,6 +8,7 @@ status: published
 nav: sidebar
 excerpt: "Your first graph-authored page — pages are nodes in the Reckons.AI graph."
 ---
+
 # Welcome
 
 This page is a **WebPage node** in the Reckons.AI graph. Its title, slug, order,

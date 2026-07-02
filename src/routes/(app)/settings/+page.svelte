@@ -10,7 +10,7 @@
     pickAutoSaveFile, clearAutoSaveFile
   } from '$lib/storage/backup';
   import { writeToWorkspace, readFromWorkspace } from '$lib/stores/workspace.svelte';
-  import { DEFAULT_HIGHLIGHT_SETTINGS } from '../../extension/types';
+  import { DEFAULT_HIGHLIGHT_SETTINGS } from '../../../extension/types';
   import { startScheduler } from '$lib/stores/auto-analyze.svelte';
   import { page } from '$app/state';
   import { signIn, signOut, isSignedIn } from '$lib/integrations/google/auth';
