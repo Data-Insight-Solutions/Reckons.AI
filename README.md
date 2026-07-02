@@ -1,5 +1,9 @@
 # Reckons.AI
 
+![Reckons.AI — the semantic understanding knowledge graph you review, automatically edit, compare, and share](static/social-preview.png)
+
+<!-- A short demo GIF (ingest -> review -> 3D graph -> reckon) is planned; the image above is an interim visual. -->
+
 **🌐 Live app: [reckons.ai](https://reckons.ai)**
 
 [![CI](https://github.com/Data-Insight-Solutions/Reckons.AI/actions/workflows/ci.yml/badge.svg)](https://github.com/Data-Insight-Solutions/Reckons.AI/actions/workflows/ci.yml)
