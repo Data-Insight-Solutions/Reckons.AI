@@ -26,6 +26,36 @@ jobs:
 
       - run: npm ci
 
+      # Markdown alignment (F27 Graph Publishing): content/*.md is a generated,
+      # trailing by-product of the graph. This imports each committed file back
+      # into WebPage statements and re-exports it, flagging any file whose
+      # shape drifted from what the graph → site-export round trip produces.
+      # Non-blocking (continue-on-error) — it's a hygiene signal, not a gate.
+      - name: Markdown Alignment
+        id: md_align
+        continue-on-error: true
+        run: |
+          set +e
+          OUTPUT=$(npx tsx scripts/md-align.ts 2>&1)
+          EXIT_CODE=$?
+          echo "$OUTPUT"
+
+          {
+            echo '## Markdown Alignment Report'
+            echo ''
+            echo '```'
+            echo "$OUTPUT"
+            echo '```'
+            echo ''
+            if [ $EXIT_CODE -ne 0 ]; then
+              echo '> **Drift detected** — one or more `content/*.md` files no longer match the graph → site-export round trip. Re-export the affected pages and commit the result.'
+            else
+              echo '> `content/*.md` matches the graph-generated form.'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          exit $EXIT_CODE
+
       # Build MCP server (kb-align.ts imports from it)
       - name: Build MCP server
         run: cd mcp-server && npm ci && npm run build
