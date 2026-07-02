@@ -408,8 +408,8 @@ kb:gp-phase-2  rdf:type      ktype:Phase ;
 
 kb:gp-phase-3  rdf:type      ktype:Phase ;
                rdfs:label    "Phase 3 — GitHub publish + Sveltia /admin" ;
-               kpred:has-status   "scaffolded" ;
-               kpred:description  "Sveltia /admin now shipped in the app (static/admin/index.html + config.yml, external CDN bundle) and served at Reckons.AI/admin; a starter content/docs/welcome.md seeds the collection. publishSiteToGitHub PUTs content/ to this repo (reuses parseRepoUrl + githubToken). Remaining: deploy sveltia-cms-auth (GitHub OAuth), markdown->graph round-trip import, and the markdown alignment check (CI regenerates content/*.md from the graph and flags drift)." ;
+               kpred:has-status   "functional" ;
+               kpred:description  "Sveltia /admin now shipped in the app (static/admin/index.html + config.yml, external CDN bundle) and served at Reckons.AI/admin; a starter content/docs/welcome.md seeds the collection. publishSiteToGitHub PUTs content/ to this repo (reuses parseRepoUrl + githubToken). src/lib/publish/site-import.ts round-trips content/<section>/<slug>.md back into WebPage statements (skos:broader/related, reconstructed nav:next/prev). scripts/md-align.ts (npm run md-align) regenerates content/*.md via the round trip and flags drift; wired as a non-blocking step in .github/workflows/kb-watch.yml. Remaining: deploy the GitHub OAuth App credentials for sveltia-cms-auth (manual, one-time)." ;
                kpred:part-of      kb:graph-publishing ;
                kpred:has-setup    kb:sveltia-cms-setup ;
                kpred:depends-on   kb:gp-phase-2 .
