@@ -401,8 +401,8 @@ kb:gp-phase-1  rdf:type      ktype:Phase ;
 
 kb:gp-phase-2  rdf:type      ktype:Phase ;
                rdfs:label    "Phase 2 — Static export + in-app /docs route" ;
-               kpred:has-status   "scaffolded" ;
-               kpred:description  "src/lib/publish/site-export.ts serializes pages to markdown/frontmatter + graph.json; offline .zip export via fflate. A /docs route group in the main app renders content/*.md via mdsvex, prerendered under adapter-static (hybrid SPA + prerendered /docs). No separate theme repo." ;
+               kpred:has-status   "functional" ;
+               kpred:description  "src/lib/publish/site-export.ts serializes pages to markdown/frontmatter + graph.json; offline .zip export via fflate. A /docs route group in the main app renders content/*.md via mdsvex, prerendered under adapter-static (hybrid SPA + prerendered /docs). No separate theme repo. Implemented: src/routes/docs/+layout.(ts|svelte) (docs chrome + section nav), src/routes/docs/+page.svelte (index by section), src/routes/docs/[...slug]/+page.(ts|svelte) (per-page renderer with entries() for adapter-static prerendering); content loaded via import.meta.glob('/content/**/*.md', { eager: true }) in src/routes/docs/_content/docs.ts. The rest of the app was moved into a src/routes/(app)/ route group so it keeps its existing SPA-fallback behaviour untouched." ;
                kpred:part-of      kb:graph-publishing ;
                kpred:depends-on   kb:gp-phase-1 .
 
