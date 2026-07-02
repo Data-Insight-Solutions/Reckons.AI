@@ -2,7 +2,8 @@ import { v4 as uuid } from 'uuid';
 import type { Source, Statement } from '../rdf/types';
 import { extractWithClaude } from '../integrations/llm/claude';
 import { extractWithWasm } from '../integrations/llm/wasm';
-import { chatOpenAI, chatGemini, chatOllama, chatOpenRouter, chatChromeAI, chatReckons } from '../integrations/llm/providers';
+import { extractWithOllama } from '../integrations/llm/ollama-extract';
+import { chatOpenAI, chatGemini, chatOpenRouter, chatChromeAI, chatReckons } from '../integrations/llm/providers';
 import { triplesToStatements, extractMock, parseTriplesJSON, EXTRACTION_SYSTEM_PROMPT, buildExtractionUserPrompt, type ExtractedTriple } from '../integrations/llm/extractor';
 import { computeDiff, type Diff } from '../rdf/diff';
 import { semanticEnrichDiff, labelFromIRI } from '../rdf/semantic-diff';
@@ -170,13 +171,16 @@ export async function ingest(
     );
     triples = parseTriplesJSON(raw);
   } else if (backend === 'ollama') {
-    const raw = await chatOllama(
-      [{ role: 'user', content: buildExtractionUserPrompt(text, title) }],
-      systemPrompt,
-      s.ollamaModel,
-      s.ollamaBaseUrl
-    );
-    triples = parseTriplesJSON(raw);
+    // Repository sources already compose a specialised (code-aware) system
+    // prompt above — pass it through as an override so small-model prompt
+    // selection doesn't replace it.
+    triples = await extractWithOllama(text, title, {
+      model: s.ollamaModel,
+      baseUrl: s.ollamaBaseUrl,
+      systemPromptOverride: kind === 'repository' ? systemPrompt : undefined,
+      promptMode: s.ollamaPromptMode,
+      structured: s.ollamaStructuredExtraction !== false
+    });
   } else if (backend === 'reckons') {
     const raw = await chatReckons(
       [{ role: 'user', content: buildExtractionUserPrompt(text, title) }],
