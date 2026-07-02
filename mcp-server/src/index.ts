@@ -6,7 +6,8 @@
  * that any compatible AI agent (Claude, Cursor, Windsurf, etc.) can call.
  *
  * Usage:
- *   # Workspace mode (recommended) — reads all KBs from kbs/{name}/kb.ttl:
+ *   # Workspace mode (recommended) — reads all KBs from kbs/{name}/{name}.ttl
+ *   # (legacy kbs/{name}/kb.ttl is read as a fallback):
  *   node dist/index.js --kb /path/to/workspace/
  *
  *   # Legacy single-file mode:
