@@ -25,6 +25,9 @@ import { bm25Search, invalidateCache } from './search.js';
 import { gitStatus, gitLog, gitChangedFiles } from './git-utils.js';
 import { ollamaEnabled, OLLAMA_DISABLED_MESSAGE, OLLAMA_MODEL } from './ollama-client.js';
 import { extractTriplesLocally, summarizeLocally } from './local-llm.js';
+import { entityToMarkdown } from './entity-markdown.js';
+import { generatePageMarkdown, type GeneratePageParams } from './generate-page.js';
+import type { PageTemplate } from './page-markdown.js';
 
 // ── Args ─────────────────────────────────────────────────────────────────────
 
@@ -273,6 +276,35 @@ const TOOLS = [
         budget: { type: 'number', description: 'Approximate max words for the summary (default 150, max 1000)', default: 150 },
         ...KB_PARAM
       }
+    }
+  },
+  {
+    name: 'kb_generate_page',
+    description: 'PROPOSAL ONLY — draft a documentation-page markdown document (frontmatter + body) from a prompt, grounded strictly in the knowledge graph via the same search→subgraph→compress pipeline as kb_compress. Requires a LOCAL Ollama model (opt-in via OLLAMA_BASE_URL; disabled by default). Never writes to any KB or file — returns the markdown plus the parsed JSON fields for review.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prompt: { type: 'string', description: 'What the page should be about / cover' },
+        section: { type: 'string', description: 'Site section (default "docs")' },
+        slug: { type: 'string', description: 'Page slug (default: kebab-case of the title)' },
+        title: { type: 'string', description: 'Page title (default: model-generated from the prompt)' },
+        template: { type: 'string', enum: ['landing', 'doc', 'full', 'sidebar', 'post'], description: 'Page template (default "doc"; "post" adds a date: today)' },
+        budget: { type: 'number', description: 'Approximate token budget for the grounding context pulled from the graph (default 2000, max 8000)', default: 2000 },
+        ...KB_PARAM
+      },
+      required: ['prompt']
+    }
+  },
+  {
+    name: 'kb_entity_markdown',
+    description: 'Deterministically render one KB entity as a WebPage markdown document (frontmatter + body) from its triples — no LLM involved, works without OLLAMA_BASE_URL. rdfs:label becomes the title, description-ish literal predicates become body sections (and drive the excerpt), and relations become a markdown link list naming the target entities.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        entity: { type: 'string', description: 'Entity IRI or a name/slug to resolve' },
+        ...KB_PARAM
+      },
+      required: ['entity']
     }
   }
 ];
@@ -1263,6 +1295,96 @@ async function handleKbLocalSummarize(params: { entity?: string; text?: string; 
   }
 }
 
+// ── Page generation (Ollama, grounded) + deterministic entity rendering ───────
+
+type GeneratePageToolParams = {
+  prompt: string; kb?: string; section?: string; slug?: string; title?: string;
+  template?: string; budget?: number;
+};
+
+async function handleKbGeneratePage(params: GeneratePageToolParams): Promise<object> {
+  if (!ollamaEnabled()) {
+    return { content: [{ type: 'text', text: OLLAMA_DISABLED_MESSAGE }] };
+  }
+  if (!params.prompt || !params.prompt.trim()) {
+    return { content: [{ type: 'text', text: 'prompt is required and must be non-empty.' }] };
+  }
+
+  kb.reload();
+  const budget = Math.min(params.budget ?? 2000, 8000);
+  const allTriples = kb.allTriples(params.kb);
+
+  // Grounding: same search → subgraph → compress pipeline as kb_compress.
+  let graphContext = '';
+  if (allTriples.length > 0) {
+    const searchHits = bm25Search(allTriples, params.prompt, 20);
+    const entityOrder: string[] = [];
+    const entitySet = new Set<string>();
+    for (const hit of searchHits) {
+      if (!entitySet.has(hit.triple.subject)) {
+        entitySet.add(hit.triple.subject);
+        entityOrder.push(hit.triple.subject);
+      }
+    }
+    const expandedTriples: Triple[] = [];
+    const seen = new Set<string>();
+    for (const iriStr of entityOrder) {
+      for (const t of kb.subgraph(iriStr, 1, params.kb)) {
+        const key = `${t.subject}\t${t.predicate}\t${t.object}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        expandedTriples.push(t);
+      }
+    }
+    graphContext = compressTriples(expandedTriples, entityOrder, budget).text;
+  }
+
+  try {
+    const generateParams: GeneratePageParams = {
+      prompt: params.prompt,
+      section: params.section,
+      slug: params.slug,
+      title: params.title,
+      template: params.template as PageTemplate | undefined,
+    };
+    const result = await generatePageMarkdown(generateParams, graphContext);
+    return {
+      content: [{
+        type: 'text',
+        text: `PROPOSAL ONLY — not written to any KB or file. Generated with local model "${OLLAMA_MODEL}".\n\n--- MARKDOWN ---\n${result.markdown}\n\n--- JSON ---\n${JSON.stringify({ frontmatter: result.frontmatter, body: result.body }, null, 2)}`
+      }]
+    };
+  } catch (e) {
+    return { content: [{ type: 'text', text: `Page generation failed: ${e instanceof Error ? e.message : String(e)}` }] };
+  }
+}
+
+function handleKbEntityMarkdown(params: { entity: string; kb?: string }): object {
+  kb.reload();
+  let iriStr = params.entity;
+
+  if (!iriStr.startsWith('urn:') && !iriStr.startsWith('http')) {
+    const resolved = kb.resolveLabel(iriStr, params.kb);
+    if (!resolved) {
+      return { content: [{ type: 'text', text: `Not found: "${iriStr}". Use kb_search or kb_list_entities.` }] };
+    }
+    iriStr = resolved;
+  }
+
+  const triples = kb.triplesAbout(iriStr, params.kb);
+  if (triples.length === 0) {
+    return { content: [{ type: 'text', text: `No facts for: ${iriStr}` }] };
+  }
+
+  const result = entityToMarkdown(iriStr, kb, params.kb);
+  return {
+    content: [{
+      type: 'text',
+      text: `--- MARKDOWN ---\n${result.markdown}\n\n--- JSON ---\n${JSON.stringify(result.frontmatter, null, 2)}`
+    }]
+  };
+}
+
 // ── MCP Protocol (JSON-RPC 2.0 over stdio) ────────────────────────────────────
 
 function respond(id: number | string | null, result: object): void {
@@ -1334,6 +1456,12 @@ rl.on('line', (line) => {
               .then(result => respond(id ?? null, result))
               .catch(e => respondError(id ?? null, -32603, `Internal error: ${e instanceof Error ? e.message : String(e)}`));
             break;
+          case 'kb_generate_page':
+            handleKbGeneratePage(toolArgs as GeneratePageToolParams)
+              .then(result => respond(id ?? null, result))
+              .catch(e => respondError(id ?? null, -32603, `Internal error: ${e instanceof Error ? e.message : String(e)}`));
+            break;
+          case 'kb_entity_markdown': respond(id ?? null, handleKbEntityMarkdown(toolArgs as { entity: string; kb?: string })); break;
           default:
             respondError(id ?? null, -32601, `Unknown tool: ${toolName}`);
             return;
