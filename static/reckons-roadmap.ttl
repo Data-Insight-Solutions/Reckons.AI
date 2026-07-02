@@ -390,7 +390,18 @@ kb:webpage-entity rdf:type   ktype:Feature ;
                rdfs:label   "WebPage Entity" ;
                kpred:has-status   "functional" ;
                kpred:feature-id   "F27.0" ;
-               kpred:description  "Dedicated ktype:WebPage entity type with page: metadata (slug, section, template, status, nav, excerpt, body). Reuses nav:order for position, skos:broader for the site tree, nav:next/prev for sequence, skos:related for cross-links. src/lib/rdf/page.ts builds an ordered SitePage[]." ;
+               kpred:description  "Dedicated ktype:WebPage entity type with page: metadata (slug, section, template, status, nav, excerpt, body, date). Reuses nav:order for position, skos:broader for the site tree, nav:next/prev for sequence, skos:related for cross-links. src/lib/rdf/page.ts builds an ordered SitePage[]." ;
+               kpred:part-of      kb:graph-publishing .
+
+kb:post-template rdf:type    ktype:Feature ;
+               rdfs:label   "Post Template (dated content)" ;
+               kpred:has-status   "functional" ;
+               kpred:feature-id   "F27.1" ;
+               kpred:description  "A 'post' PageTemplate for dated, reverse-chronological content — release notes, announcements, and blog entries. Adds page:date (urn:reckons:page/date, ISO yyyy-mm-dd literal) alongside the existing page: predicates. src/lib/rdf/page.ts's sitePosts() helper sorts template==='post' pages newest-first within a section (undated posts sort last); other templates keep the general (section, order, title) sort from buildSitePages() untouched. src/routes/docs/_content/docs.ts mirrors the same ordering for the prerendered /docs site: a section made up entirely of posts renders newest-first as a release-notes-style feed (date + excerpt), e.g. content/releases/. Round-trips through site-export.ts/site-import.ts (date: frontmatter, omitted when unset) and Sveltia CMS (config.yml + the generated sveltiaConfig() both offer a 'post' template option and a date widget)." ;
+               kpred:use-case     "Release notes — e.g. content/releases/v0-1-0.md, the shipped Reckons.AI v0.1.0 post." ;
+               kpred:use-case     "Product announcements." ;
+               kpred:use-case     "Blog entries." ;
+               kpred:depends-on   kb:webpage-entity ;
                kpred:part-of      kb:graph-publishing .
 
 kb:gp-phase-1  rdf:type      ktype:Phase ;

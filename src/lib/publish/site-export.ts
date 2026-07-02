@@ -72,6 +72,7 @@ export function pageToMarkdown(page: SitePage, slugs: Map<string, string>): stri
   lines.push(`template: ${page.template}`);
   lines.push(`status: ${page.status}`);
   lines.push(`nav: ${page.nav}`);
+  if (page.date) lines.push(`date: ${yamlStr(page.date)}`);
   if (page.excerpt) lines.push(`excerpt: ${yamlStr(page.excerpt)}`);
   const related = page.related.map((r) => slugs.get(r)).filter((s): s is string => !!s);
   if (related.length) {
@@ -132,9 +133,10 @@ export function sveltiaConfig(opts: SiteExportOptions): string {
     '      - { name: order, label: Order, widget: number, default: 0, value_type: int }',
     '      - { name: section, label: Section, widget: string, required: false }',
     '      - { name: parent, label: Parent slug, widget: string, required: false }',
-    '      - { name: template, label: Template, widget: select, options: [landing, doc, full, sidebar], default: doc }',
+    '      - { name: template, label: Template, widget: select, options: [landing, doc, full, sidebar, post], default: doc }',
     '      - { name: status, label: Status, widget: select, options: [draft, published, unlisted], default: draft }',
     '      - { name: nav, label: Nav placement, widget: select, options: [menu, sidebar, both, hidden], default: sidebar }',
+    '      - { name: date, label: Date, widget: datetime, format: "YYYY-MM-DD", time_format: false, required: false, hint: "Posts only — release notes/announcements/blog publish date" }',
     '      - { name: excerpt, label: Excerpt, widget: text, required: false }',
     '      - { name: body, label: Body, widget: markdown }',
     '',

@@ -20,11 +20,13 @@ export interface DocFrontmatter {
   order: number;
   section?: string;
   parent?: string;
-  template?: 'landing' | 'doc' | 'full' | 'sidebar';
+  template?: 'landing' | 'doc' | 'full' | 'sidebar' | 'post';
   status?: 'draft' | 'published' | 'unlisted';
   nav?: 'menu' | 'sidebar' | 'both' | 'hidden';
   excerpt?: string;
   related?: string[];
+  /** ISO yyyy-mm-dd — posts only (`template: 'post'`). */
+  date?: string;
 }
 
 export interface DocEntry {
@@ -72,7 +74,25 @@ export interface DocSection {
   docs: DocEntry[];
 }
 
-/** Docs grouped by section, in first-seen (already sorted) order — feeds the docs nav. */
+/** Reverse-chronological comparator for posts — mirrors `sitePosts()` in rdf/page.ts:
+ *  newest date first, undated posts sort last, ties broken by title. */
+function comparePostsDesc(a: DocEntry, b: DocEntry): number {
+  const da = a.metadata.date ?? '';
+  const db = b.metadata.date ?? '';
+  if (da !== db) {
+    if (!da) return 1;
+    if (!db) return -1;
+    return db.localeCompare(da);
+  }
+  return a.metadata.title.localeCompare(b.metadata.title);
+}
+
+/**
+ * Docs grouped by section, in first-seen (already sorted) order — feeds the docs nav.
+ * A section made up entirely of posts (`template: 'post'`, e.g. release notes) is
+ * re-sorted newest-first by date; mixed/non-post sections keep the (order, title)
+ * sort from `allDocs()`.
+ */
 export function docsBySection(): DocSection[] {
   const sections: DocSection[] = [];
   const bySection = new Map<string, DocEntry[]>();
@@ -85,6 +105,11 @@ export function docsBySection(): DocSection[] {
       sections.push({ section: key, docs: list });
     }
     list.push(doc);
+  }
+  for (const s of sections) {
+    if (s.docs.length && s.docs.every((d) => d.metadata.template === 'post')) {
+      s.docs.sort(comparePostsDesc);
+    }
   }
   return sections;
 }

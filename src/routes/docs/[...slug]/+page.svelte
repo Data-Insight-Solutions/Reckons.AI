@@ -16,6 +16,9 @@
 
 {#if doc}
   <article class="doc-prose">
+    {#if data.metadata.template === 'post' && data.metadata.date}
+      <p class="doc-date">{data.metadata.date}</p>
+    {/if}
     <doc.component />
   </article>
 {/if}
@@ -23,6 +26,14 @@
 <style>
   .doc-prose {
     max-width: 68ch;
+  }
+  .doc-date {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 0.5rem;
   }
   .doc-prose :global(h1) {
     font-size: clamp(1.9rem, 5vw, 2.6rem);

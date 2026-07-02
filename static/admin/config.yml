@@ -41,8 +41,9 @@ collections:
       - { name: order, label: Order, widget: number, default: 0, value_type: int, hint: Position within its section/parent }
       - { name: section, label: Section, widget: string, required: false, hint: Top-level nav group, e.g. Docs }
       - { name: parent, label: Parent slug, widget: string, required: false, hint: Slug of the parent page (site tree) }
-      - { name: template, label: Template, widget: select, options: [landing, doc, full, sidebar], default: doc }
+      - { name: template, label: Template, widget: select, options: [landing, doc, full, sidebar, post], default: doc }
       - { name: status, label: Status, widget: select, options: [draft, published, unlisted], default: draft }
       - { name: nav, label: Nav placement, widget: select, options: [menu, sidebar, both, hidden], default: sidebar }
+      - { name: date, label: Date, widget: datetime, format: "YYYY-MM-DD", time_format: false, required: false, hint: "Posts only — release notes/announcements/blog publish date" }
       - { name: excerpt, label: Excerpt, widget: text, required: false, hint: Short summary (mirrors page:excerpt in the graph) }
       - { name: body, label: Body, widget: markdown }
