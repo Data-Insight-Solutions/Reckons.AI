@@ -15,7 +15,7 @@ jobs:
     name: Reckons.AI Graph Alignment Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 20  # Need history for git diff alignment scoring
 
