@@ -420,6 +420,51 @@ kb:gp-phase-4  rdf:type      ktype:Phase ;
                kpred:part-of      kb:graph-publishing ;
                kpred:depends-on   kb:gp-phase-3 .
 
+kb:gp-authoring rdf:type     ktype:Concept ;
+               rdfs:label    "Docs authoring surface" ;
+               kpred:part-of      kb:graph-publishing ;
+               kpred:description  "Website/docs settings live on the Graph page (the manage/switch surface). Reckoning (Situation-Target-Proposal) is a first-class way to draft/edit page content; AI-generated content is directly editable in the graph before it becomes a page." ;
+               kpred:has-status   "planned" .
+
+# -- Captured ideas & in-flight decisions ---------------------------------------
+# Parking lot for directions raised in conversation, so they aren't lost.
+
+kb:pr-graph-overlay rdf:type ktype:Feature ;
+               rdfs:label    "GitHub PR Graph Overlay (extension)" ;
+               kpred:feature-id   "F28" ;
+               kpred:has-status   "speculative" ;
+               kpred:description  "Inject the Reckons.AI extension into github.com/*/pull/* pages to enable graph browse of a PR. Map changed files -> Codebase KB modules (kpred:has-file), render an inline graph-browse overlay, and surface alignment visually (which planned entities the PR advances/regresses) — the Graph Alignment signal, browsable on the PR. Reuses the extension content-script + sidepanel graph rendering." ;
+               kpred:depends-on   kb:ci-cd-kb-watch ;
+               kpred:relates-to   kb:graph-publishing .
+
+kb:rebrand-kb-to-graph rdf:type ktype:Decision ;
+               rdfs:label    "User-facing rename: KB -> Graph" ;
+               kpred:has-status   "in-progress" ;
+               kpred:decision     "Rename the user-facing label 'KB' to 'Graph'; keep kb/KB in code, IDs, and MCP tool names (kb_*)." ;
+               kpred:done         "Applied to the 'Reckons.AI Graph Alignment Check' and to graph-named TTL export filenames." ;
+               kpred:open-question "Nav label collision: the home 3D view is already labelled 'graph'. Resolve the pair before the full sweep — either home->'view'/'map' and /kb->'graph', or keep home 'graph' and /kb->'graphs'." .
+
+kb:terminology-simplification rdf:type ktype:Decision ;
+               rdfs:label    "Friendlier terminology" ;
+               kpred:has-status   "in-progress" ;
+               kpred:decision     "Simplify jargon in user-facing copy while keeping technical terms in code/docs." ;
+               kpred:done         "Ingest -> 'Add' (nav + ingest kicker); Warming -> 'Preparing' (WASM model button)." ;
+               kpred:candidate    "Triple/Statement -> 'Fact' in user copy; 'KB Leap' -> 'Jump'." .
+
+kb:feedback-channel rdf:type ktype:Feature ;
+               rdfs:label    "Feedback channel (suggestion box)" ;
+               kpred:has-status   "functional" ;
+               kpred:description  "MVP digital suggestion box: a 'Send feedback' mailto link (matthew.roe@data-insight.solutions) in the About footer. Offline-friendly, no backend. Future: route through the existing n8n pipeline." .
+
+kb:launch-prep rdf:type      ktype:Concept ;
+               rdfs:label    "Pre-launch (LinkedIn) checklist" ;
+               kpred:has-status   "in-progress" ;
+               kpred:done         "Repo About (description/site/topics); Dependabot alerts + auto-fixes; README live link + badges; CI on Node 24." ;
+               kpred:todo         "Social preview image + og:image/twitter:card meta so the shared link renders a thumbnail." ;
+               kpred:todo         "10-15s demo GIF (ingest -> review -> 3D graph -> reckon) at README top." ;
+               kpred:todo         "Tag v0.1.0 as the post hook." ;
+               kpred:todo         "Finish the KB -> Graph terminology sweep (see kb:rebrand-kb-to-graph)." .
+
 kb:extension-explore rdf:type ktype:Feature ;
                rdfs:label   "Extension Explore Mode" ;
                kpred:has-status   "planned" ;
