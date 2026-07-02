@@ -22,6 +22,8 @@ import { join } from 'node:path';
 import { MultiKBReader, type Triple } from './kb-reader.js';
 import { bm25Search, invalidateCache } from './search.js';
 import { gitStatus, gitLog, gitChangedFiles } from './git-utils.js';
+import { ollamaEnabled, OLLAMA_DISABLED_MESSAGE, OLLAMA_MODEL } from './ollama-client.js';
+import { extractTriplesLocally, summarizeLocally } from './local-llm.js';
 
 // ── Args ─────────────────────────────────────────────────────────────────────
 
@@ -244,6 +246,32 @@ const TOOLS = [
         ...KB_PARAM
       },
       required: ['query']
+    }
+  },
+  {
+    name: 'kb_local_extract',
+    description: 'Extract subject-predicate-object triples from text using a LOCAL Ollama model, offloading bulk extraction work away from cloud/session tokens. Returns proposed triples (JSON + Turtle) for review — does NOT write to any KB. Requires OLLAMA_BASE_URL to be set (disabled by default); when disabled, returns instructions for enabling it.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        text: { type: 'string', description: 'Source text to extract triples from' },
+        source: { type: 'string', description: 'Optional source title/label for context (shown in the extraction prompt)' },
+        ...KB_PARAM
+      },
+      required: ['text']
+    }
+  },
+  {
+    name: 'kb_local_summarize',
+    description: 'Summarize an entity\'s subgraph or raw text using a LOCAL Ollama model, offloading bulk summarization work away from cloud/session tokens. Provide exactly one of entity or text. Requires OLLAMA_BASE_URL to be set (disabled by default); when disabled, returns instructions for enabling it.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        entity: { type: 'string', description: 'Entity IRI or name/slug to summarize (pulls its 1-hop subgraph, like kb_subgraph)' },
+        text: { type: 'string', description: 'Raw text to summarize (alternative to entity)' },
+        budget: { type: 'number', description: 'Approximate max words for the summary (default 150, max 1000)', default: 150 },
+        ...KB_PARAM
+      }
     }
   }
 ];
@@ -1187,6 +1215,53 @@ function handleKbCompress(params: { query: string; budget?: number; hops?: numbe
   };
 }
 
+// ── Local LLM offload (Ollama) ──────────────────────────────────────────────
+
+async function handleKbLocalExtract(params: { text: string; source?: string; kb?: string }): Promise<object> {
+  if (!ollamaEnabled()) {
+    return { content: [{ type: 'text', text: OLLAMA_DISABLED_MESSAGE }] };
+  }
+  if (!params.text || !params.text.trim()) {
+    return { content: [{ type: 'text', text: 'text is required and must be non-empty.' }] };
+  }
+
+  try {
+    const { triples, turtle } = await extractTriplesLocally(params.text, params.source);
+    if (triples.length === 0) {
+      return { content: [{ type: 'text', text: `No triples extracted by local model (${OLLAMA_MODEL}) — the source text may be too short or off-topic.` }] };
+    }
+    const json = JSON.stringify(triples, null, 2);
+    return {
+      content: [{
+        type: 'text',
+        text: `${triples.length} proposed triples from local model "${OLLAMA_MODEL}" — NOT written to any KB, review before adding:\n\nJSON:\n${json}\n\nTurtle:\n${turtle}`
+      }]
+    };
+  } catch (e) {
+    return { content: [{ type: 'text', text: `Local extraction failed: ${e instanceof Error ? e.message : String(e)}` }] };
+  }
+}
+
+async function handleKbLocalSummarize(params: { entity?: string; text?: string; kb?: string; budget?: number }): Promise<object> {
+  if (!ollamaEnabled()) {
+    return { content: [{ type: 'text', text: OLLAMA_DISABLED_MESSAGE }] };
+  }
+
+  kb.reload();
+
+  try {
+    const { label, summary } = await summarizeLocally(params, kb);
+    return {
+      content: [{
+        type: 'text',
+        text: `Summary of ${label} (local model: ${OLLAMA_MODEL}):\n\n${summary}`
+      }]
+    };
+  } catch (e) {
+    return { content: [{ type: 'text', text: `Local summarization failed: ${e instanceof Error ? e.message : String(e)}` }] };
+  }
+}
+
 // ── MCP Protocol (JSON-RPC 2.0 over stdio) ────────────────────────────────────
 
 function respond(id: number | string | null, result: object): void {
@@ -1230,29 +1305,38 @@ rl.on('line', (line) => {
         const toolName = (params as { name?: string; arguments?: Record<string, unknown> }).name;
         const toolArgs = (params as { name?: string; arguments?: Record<string, unknown> }).arguments ?? {};
 
-        let result: object;
         switch (toolName) {
-          case 'kb_list_kbs':    result = handleKbListKbs(); break;
-          case 'kb_search':      result = handleKbSearch(toolArgs as { query: string; limit?: number; kb?: string }); break;
-          case 'kb_get_entity':  result = handleKbGetEntity(toolArgs as { entity: string; kb?: string }); break;
-          case 'kb_stats':       result = handleKbStats(toolArgs as { kb?: string }); break;
-          case 'kb_list_entities': result = handleKbListEntities(toolArgs as { limit?: number; kb?: string }); break;
-          case 'kb_add_note':    result = handleKbAddNote(toolArgs as AddNoteParams); break;
-          case 'kb_subgraph':    result = handleKbSubgraph(toolArgs as { entity: string; hops?: number; limit?: number; kb?: string }); break;
-          case 'kb_reckoning':   result = handleKbReckoning(toolArgs as { situation: string; target: string; kb?: string }); break;
-          case 'kb_list_sources': result = handleKbListSources(toolArgs as { kb?: string }); break;
-          case 'kb_request_refresh': result = handleKbRequestRefresh(toolArgs as { source_id?: string; kb?: string }); break;
-          case 'kb_git_status':  result = handleKbGitStatus(toolArgs as { commits?: number; diff?: boolean }); break;
-          case 'kb_check_plan':  result = handleKbCheckPlan(toolArgs as { work: string; commits?: number; kb?: string }); break;
-          case 'kb_pending':     result = handleKbPending(toolArgs as { kb?: string }); break;
-          case 'kb_git_diff_triples': result = handleKbGitDiffTriples(toolArgs as { ref?: string; kb?: string }); break;
-          case 'kb_alignment_score': result = handleKbAlignmentScore(toolArgs as { ref?: string; work?: string; kb?: string }); break;
-          case 'kb_compress': result = handleKbCompress(toolArgs as { query: string; budget?: number; hops?: number; kb?: string }); break;
+          case 'kb_list_kbs':    respond(id ?? null, handleKbListKbs()); break;
+          case 'kb_search':      respond(id ?? null, handleKbSearch(toolArgs as { query: string; limit?: number; kb?: string })); break;
+          case 'kb_get_entity':  respond(id ?? null, handleKbGetEntity(toolArgs as { entity: string; kb?: string })); break;
+          case 'kb_stats':       respond(id ?? null, handleKbStats(toolArgs as { kb?: string })); break;
+          case 'kb_list_entities': respond(id ?? null, handleKbListEntities(toolArgs as { limit?: number; kb?: string })); break;
+          case 'kb_add_note':    respond(id ?? null, handleKbAddNote(toolArgs as AddNoteParams)); break;
+          case 'kb_subgraph':    respond(id ?? null, handleKbSubgraph(toolArgs as { entity: string; hops?: number; limit?: number; kb?: string })); break;
+          case 'kb_reckoning':   respond(id ?? null, handleKbReckoning(toolArgs as { situation: string; target: string; kb?: string })); break;
+          case 'kb_list_sources': respond(id ?? null, handleKbListSources(toolArgs as { kb?: string })); break;
+          case 'kb_request_refresh': respond(id ?? null, handleKbRequestRefresh(toolArgs as { source_id?: string; kb?: string })); break;
+          case 'kb_git_status':  respond(id ?? null, handleKbGitStatus(toolArgs as { commits?: number; diff?: boolean })); break;
+          case 'kb_check_plan':  respond(id ?? null, handleKbCheckPlan(toolArgs as { work: string; commits?: number; kb?: string })); break;
+          case 'kb_pending':     respond(id ?? null, handleKbPending(toolArgs as { kb?: string })); break;
+          case 'kb_git_diff_triples': respond(id ?? null, handleKbGitDiffTriples(toolArgs as { ref?: string; kb?: string })); break;
+          case 'kb_alignment_score': respond(id ?? null, handleKbAlignmentScore(toolArgs as { ref?: string; work?: string; kb?: string })); break;
+          case 'kb_compress': respond(id ?? null, handleKbCompress(toolArgs as { query: string; budget?: number; hops?: number; kb?: string })); break;
+          // Async tools (call out to a local Ollama instance) — resolve then respond.
+          case 'kb_local_extract':
+            handleKbLocalExtract(toolArgs as { text: string; source?: string; kb?: string })
+              .then(result => respond(id ?? null, result))
+              .catch(e => respondError(id ?? null, -32603, `Internal error: ${e instanceof Error ? e.message : String(e)}`));
+            break;
+          case 'kb_local_summarize':
+            handleKbLocalSummarize(toolArgs as { entity?: string; text?: string; kb?: string; budget?: number })
+              .then(result => respond(id ?? null, result))
+              .catch(e => respondError(id ?? null, -32603, `Internal error: ${e instanceof Error ? e.message : String(e)}`));
+            break;
           default:
             respondError(id ?? null, -32601, `Unknown tool: ${toolName}`);
             return;
         }
-        respond(id ?? null, result);
         break;
       }
 

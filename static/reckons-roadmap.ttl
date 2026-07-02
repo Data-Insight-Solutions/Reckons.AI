@@ -977,3 +977,18 @@ story:rm-step-9  rdf:type         story:Step ;
                  story:highlight  kb:ent-people ;
                  story:highlight  kb:ent-policy ;
                  story:highlight  kb:ent-procedure .
+
+# -- MCP Ollama Bridge (Local LLM Offload) --------------------------------------
+# Lets MCP clients (e.g. Claude Code sessions) offload bulk LLM work to a
+# LOCAL Ollama instance instead of spending cloud/session tokens. Part of the
+# broader "local offload" direction for the MCP server — kept as its own
+# entity to avoid clobbering any sibling kb:local-offload description.
+
+kb:mcp-ollama-bridge rdf:type    ktype:Feature ;
+               rdfs:label   "MCP Ollama Bridge" ;
+               kpred:has-status   "functional" ;
+               kpred:part-of      kb:local-offload ;
+               kpred:description  "Opt-in MCP tools that route bulk extraction and summarization work to a local Ollama server (native /api/chat, JSON-schema-constrained output) instead of the calling agent's cloud/session tokens. Disabled unless OLLAMA_BASE_URL is set; OLLAMA_MODEL defaults to devstral-small-2:latest. Both tools return proposals only and never write to a KB, matching the review-first philosophy (ReviewStatus: pending/pending-removal/confirmed/refined/rejected/superseded)." ;
+               kpred:has-tool     "kb_local_extract" ;
+               kpred:has-tool     "kb_local_summarize" ;
+               kpred:depends-on   kb:mcp-server .

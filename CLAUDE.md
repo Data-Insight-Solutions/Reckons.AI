@@ -45,6 +45,8 @@ The KBs are symlinked from `static/*.ttl` files in this repo. When you complete 
 - `kb_git_diff_triples(ref?, kb?)` — Cross-reference git changes with KB entities
 - `kb_alignment_score(ref?, work?, kb?)` — Quantitative alignment score (0–1) with per-dimension breakdown
 - `kb_compress(query, budget?, hops?, kb?)` — Compressed KB context for LLM prompts (~60-70% token reduction)
+- `kb_local_extract(text, source?, kb?)` — Extract triples via a LOCAL Ollama model (opt-in via `OLLAMA_BASE_URL`); returns proposals only, never writes to a KB
+- `kb_local_summarize(entity?, text?, kb?, budget?)` — Summarize an entity subgraph or raw text via a LOCAL Ollama model (opt-in via `OLLAMA_BASE_URL`)
 
 ### Git analysis workflow
 
