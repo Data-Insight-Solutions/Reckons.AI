@@ -31,7 +31,7 @@ import type { ReviewStatus, Statement, Term } from '../rdf/types';
 import { iri, lit } from '../rdf/types';
 import {
   PAGE_SLUG, PAGE_SECTION, PAGE_TEMPLATE, PAGE_STATUS, PAGE_NAV, PAGE_EXCERPT, PAGE_BODY, PAGE_DATE,
-  WEBPAGE_TYPE, slugify,
+  PAGE_GENERATED, WEBPAGE_TYPE, slugify,
 } from '../rdf/page';
 import { SKOS_BROADER, SKOS_RELATED, NAV_ORDER, NAV_NEXT, NAV_PREV } from '../rdf/hierarchy';
 
@@ -58,6 +58,7 @@ export interface ParsedPageFile {
   relatedSlugs: string[];    // frontmatter `related` — resolved to IRIs at import time
   body: string;
   date: string | null;       // ISO yyyy-mm-dd — posts only
+  generated: string | null;  // provenance tag (e.g. "docs-kb") — null for hand-authored pages
 }
 
 interface RawFrontmatter {
@@ -72,6 +73,7 @@ interface RawFrontmatter {
   excerpt?: string;
   related?: string[];
   date?: string;
+  generated?: string;
 }
 
 /** Reverse `yamlStr()` from site-export.ts — that's JSON string escaping (backslash, quote). */
@@ -116,6 +118,7 @@ function parseFrontmatterBlock(header: string): RawFrontmatter {
       case 'parent': fm.parent = unquoteYaml(rawVal); break;
       case 'excerpt': fm.excerpt = unquoteYaml(rawVal); break;
       case 'date': fm.date = unquoteYaml(rawVal); break;
+      case 'generated': fm.generated = unquoteYaml(rawVal); break;
       case 'order': {
         const n = parseInt(rawVal.trim(), 10);
         if (!Number.isNaN(n)) fm.order = n;
@@ -146,7 +149,7 @@ export function parsePageFile(source: string): ParsedPageFile {
     return {
       title: '', slug: '', order: 0, section: '', parentSlug: null,
       template: 'doc', status: 'draft', nav: 'sidebar', excerpt: '',
-      relatedSlugs: [], body: source, date: null,
+      relatedSlugs: [], body: source, date: null, generated: null,
     };
   }
 
@@ -168,6 +171,7 @@ export function parsePageFile(source: string): ParsedPageFile {
     relatedSlugs: fm.related ?? [],
     body,
     date: fm.date && ISO_DATE_RE.test(fm.date) ? fm.date : null,
+    generated: fm.generated ?? null,
   };
 }
 
@@ -252,6 +256,7 @@ export function importSitePages(files: ParsedPageFile[], opts: SiteImportOptions
     stmts.push(mk(subject, PAGE_NAV, lit(f.nav)));
     if (f.excerpt) stmts.push(mk(subject, PAGE_EXCERPT, lit(f.excerpt)));
     if (f.date) stmts.push(mk(subject, PAGE_DATE, lit(f.date)));
+    if (f.generated) stmts.push(mk(subject, PAGE_GENERATED, lit(f.generated)));
     if (f.body) stmts.push(mk(subject, PAGE_BODY, lit(f.body)));
     for (const relSlug of f.relatedSlugs) {
       if (slugToIri.has(relSlug)) stmts.push(mk(subject, SKOS_RELATED, iri(slugToIri.get(relSlug)!)));

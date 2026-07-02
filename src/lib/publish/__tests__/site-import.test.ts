@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import type { Statement } from '../../rdf/types';
 import { iri, lit } from '../../rdf/types';
 import {
-  PAGE_SLUG, PAGE_SECTION, PAGE_STATUS, PAGE_TEMPLATE, PAGE_BODY, PAGE_EXCERPT, PAGE_DATE,
+  PAGE_SLUG, PAGE_SECTION, PAGE_STATUS, PAGE_TEMPLATE, PAGE_BODY, PAGE_EXCERPT, PAGE_DATE, PAGE_GENERATED,
   buildSitePages, sitePosts,
 } from '../../rdf/page';
 import { NAV_ORDER } from '../../rdf/hierarchy';
@@ -148,6 +148,21 @@ describe('parsePageFile', () => {
     const parsed = parsePageFile('---\ntitle: "X"\ndate: "not-a-date"\n---\nBody\n');
     expect(parsed.date).toBeNull();
   });
+
+  it('parses the generated provenance tag, defaults to null when absent', () => {
+    const generatedStmts = [
+      st('page:auto', RDF_TYPE, WEBPAGE, true),
+      st('page:auto', RDFS_LABEL, 'Auto Page'),
+      st('page:auto', PAGE_STATUS, 'published'),
+      st('page:auto', PAGE_GENERATED, 'docs-kb'),
+    ];
+    const files = buildSiteFiles(generatedStmts, {});
+    const parsed = parsePageFile(files['content/auto-page.md']);
+    expect(parsed.generated).toBe('docs-kb');
+
+    const manualParsed = parsePageFile(buildSiteFiles(sampleSite(), { repo: 'me/site' })['content/docs/overview.md']);
+    expect(manualParsed.generated).toBeNull();
+  });
 });
 
 describe('importSitePages / importSiteFiles', () => {
@@ -212,6 +227,25 @@ describe('importSitePages / importSiteFiles', () => {
     const imported = importSiteFiles(files);
     const pages = buildSitePages(imported);
     expect(pages.some((p) => p.title === 'v0.3.0-rc')).toBe(false);
+  });
+
+  it('reconstructs the generated provenance tag through a full import round-trip', () => {
+    const generatedStmts = [
+      st('page:auto', RDF_TYPE, WEBPAGE, true),
+      st('page:auto', RDFS_LABEL, 'Auto Page'),
+      st('page:auto', PAGE_STATUS, 'published'),
+      st('page:auto', PAGE_GENERATED, 'docs-kb'),
+    ];
+    const files = buildSiteFiles(generatedStmts, {});
+    const imported = importSiteFiles(files);
+    const pages = buildSitePages(imported);
+    expect(pages.find((p) => p.slug === 'auto-page')?.generated).toBe('docs-kb');
+
+    // hand-authored pages never pick up a generated tag
+    const manualFiles = buildSiteFiles(sampleSite(), { repo: 'me/site' });
+    const manualImported = importSiteFiles(manualFiles);
+    const manualPages = buildSitePages(manualImported);
+    expect(manualPages.find((p) => p.slug === 'overview')?.generated).toBeUndefined();
   });
 
   it('round-trips post dates, and sitePosts() orders them newest-first', () => {

@@ -49,6 +49,7 @@
     "kb:align:dry": "npx tsx scripts/kb-align.ts --dry-run",
     "kb:align:quick": "npx tsx scripts/kb-align.ts --skip-e2e",
     "md-align": "npx tsx scripts/md-align.ts",
+    "docs:pages": "npx tsx scripts/docs-pages.ts",
     "bench:compression": "npx tsx tests/bench/run-compression-bench.ts --save",
     "bench:landing": "npx tsx tests/bench/run-landing-page-bench.ts --save",
     "bench:landing:e2e": "npx tsx tests/bench/run-landing-page-e2e.ts --save",

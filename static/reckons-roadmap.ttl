@@ -383,6 +383,7 @@ kb:graph-publishing rdf:type ktype:Feature ;
                kpred:hosting      "Served at Reckons.AI/docs (route group in the main app, prerendered via adapter-static). Future: docs.reckons.ai subdomain over the same /docs build." ;
                kpred:principle    "Graph/TTL + Reckoning is the PRIMARY authoring surface. AI-generated page content is directly editable in the graph; content/*.md is a generated, trailing by-product. Sveltia editing is a secondary convenience (round-trips back into the graph)." ;
                kpred:principle    "A markdown alignment check keeps content/*.md honest against the graph: CI regenerates markdown from the WebPage nodes and flags any committed .md that drifts (edited outside the graph, or graph changed without re-publish) — mirroring the Reckons.AI Graph Alignment Check." ;
+               kpred:principle    "The docs knowledge graphs (static/starter-guide.ttl + static/docs-*.ttl) are the source of truth for the 'generated' /docs sections; Sveltia CMS is for the OTHER content (releases) and for capturing refinements back into the graph, not for hand-editing generated pages — see kb:docs-pipeline." ;
                kpred:supports     "Embeddable images (Sveltia media_folder) and the rest of Sveltia's CMS widgets remain available for hand-editing." ;
                kpred:credits      "Sveltia CMS — github.com/sveltia/sveltia-cms (MIT). Used as an external dependency; consider sponsoring." .
 
@@ -431,6 +432,15 @@ kb:gp-phase-4  rdf:type      ktype:Phase ;
                kpred:description  "Interactive graph view on the published site (from graph.json), search, related pages, prev/next — the differentiation vs plain markdown docs tools." ;
                kpred:part-of      kb:graph-publishing ;
                kpred:depends-on   kb:gp-phase-3 .
+
+kb:docs-pipeline rdf:type    ktype:Feature ;
+               rdfs:label    "Docs KB Publishing Pipeline" ;
+               kpred:has-status   "functional" ;
+               kpred:feature-id   "F27.2" ;
+               kpred:description  "The docs knowledge graphs (static/starter-guide.ttl, the hub with hnav:order-sequenced leap nodes, plus the nine static/docs-*.ttl sub-graphs: triples-rdf, llm, use-cases, features, integrations-tech, tips-security, timeline-ecosystem, architecture, testing) are the source of truth for the 'generated' sections of the published /docs site. scripts/docs-pages.ts (npm run docs:pages) parses the TTLs with n3, turns each qualifying entity (any subject typed under urn:kbase:type/, excluding each sub-graph's urn:reckons:docs/nav/ back-to-hub stub) into a WebPage, and writes content/<section>/<slug>.md via pageToMarkdown — so the output round-trips through scripts/md-align.ts exactly like Sveltia-authored pages. Every generated page carries generated: \"docs-kb\" in its frontmatter (page:generated / PAGE_GENERATED in src/lib/rdf/page.ts); regeneration is idempotent and prunes any previously-generated file whose entity was removed from the TTLs, but never touches a file without that tag. An entity asserted in both the hub (a lightweight 'summary' stub, kept inline for the hub's own story/graph view) and a sub-graph (the fuller definition) is owned by the sub-graph; slugs are disambiguated by section suffix when two distinct entities share a local name across sections. Generated ~236 pages across 10 sections on first run." ;
+               kpred:tooling      "CI (.github/workflows/kb-watch.yml) runs scripts/docs-pages.ts on every push/PR: pushes to main that produce a diff are committed back as github-actions[bot] ('docs: regenerate content from docs KBs'); PRs only report the drift in the job summary. The generator's own idempotency is the loop guard — a regeneration commit produces zero further diff, so it doesn't retrigger itself." ;
+               kpred:depends-on   kb:webpage-entity ;
+               kpred:part-of      kb:graph-publishing .
 
 kb:gp-authoring rdf:type     ktype:Concept ;
                rdfs:label    "Docs authoring surface" ;
