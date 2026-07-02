@@ -489,8 +489,8 @@ kb:launch-prep rdf:type      ktype:Concept ;
                kpred:done         "Repo About (description/site/topics); Dependabot alerts + auto-fixes; README live link + badges; CI on Node 24." ;
                kpred:done         "KB -> Graph terminology sweep (see kb:rebrand-kb-to-graph)." ;
                kpred:done         "Social preview image (static/social-preview.png, 1200x630) + og:image/twitter:card meta so the shared link renders a thumbnail." ;
-               kpred:todo         "10-15s demo GIF (ingest -> review -> 3D graph -> reckon) at README top." ;
-               kpred:todo         "Tag v0.1.0 as the post hook." .
+               kpred:done         "Tagged v0.1.0 (2026-07-02) as the post hook — release notes published at /docs (content/releases/v0-1-0.md)." ;
+               kpred:todo         "10-15s demo GIF (ingest -> review -> 3D graph -> reckon) at README top." .
 
 kb:extension-explore rdf:type ktype:Feature ;
                rdfs:label   "Extension Explore Mode" ;
