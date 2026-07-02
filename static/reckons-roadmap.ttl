@@ -359,6 +359,125 @@ kb:collaborative-kb rdf:type ktype:Feature ;
                kpred:description  "Published KBs receive statement proposals from guests. Owner reviews via existing workflow." ;
                kpred:depends-on   kb:read-only-guest .
 
+# -- Graph Publishing / Sveltia CMS (F27) ---------------------------------------
+# Model a website directly in the graph — pages as connected nodes — and publish
+# a static, graph-powered site. Competes with markdown docs tools (Docusaurus/
+# MkDocs/GitBook) but powered by the triple framework and offline for authoring.
+# Graph-first: graph is source of truth -> export markdown+frontmatter to content/
+# in THIS repo -> Sveltia CMS (external, un-forked) edits -> a /docs route group in
+# the main app renders the pages (prerendered via adapter-static) -> Cloudflare
+# Pages. Hosting: served alongside the app at Reckons.AI/docs now; a docs.reckons.ai
+# subdomain can point at the same /docs build later. See plan "Sveltia CMS Publishing".
+
+kb:graph-publishing rdf:type ktype:Feature ;
+               rdfs:label   "Graph Publishing (Sveltia CMS)" ;
+               kpred:has-status   "planned" ;
+               kpred:feature-id   "F27" ;
+               kpred:description  "Publish WebPage graph nodes as a static, graph-powered docs site served at Reckons.AI/docs (self-contained, in the main app — not a separate repo). Graph-first: nodes export to content/<section>/<slug>.md (frontmatter + body) plus graph.json; Sveltia CMS (external bundle, un-forked) edits the files; a prerendered /docs route group renders them via mdsvex; Cloudflare Pages deploys. Hybrid body: excerpt in graph, long-form markdown in Git. Offline-capable authoring and .zip export. Future: docs.reckons.ai subdomain over the same build." ;
+               kpred:has-phase    kb:gp-phase-1 ;
+               kpred:has-phase    kb:gp-phase-2 ;
+               kpred:has-phase    kb:gp-phase-3 ;
+               kpred:has-phase    kb:gp-phase-4 ;
+               kpred:depends-on   kb:knowledge-graph ;
+               kpred:depends-on   kb:repo-ingest ;
+               kpred:hosting      "Served at Reckons.AI/docs (route group in the main app, prerendered via adapter-static). Future: docs.reckons.ai subdomain over the same /docs build." ;
+               kpred:principle    "Graph/TTL + Reckoning is the PRIMARY authoring surface. AI-generated page content is directly editable in the graph; content/*.md is a generated, trailing by-product. Sveltia editing is a secondary convenience (round-trips back into the graph)." ;
+               kpred:principle    "A markdown alignment check keeps content/*.md honest against the graph: CI regenerates markdown from the WebPage nodes and flags any committed .md that drifts (edited outside the graph, or graph changed without re-publish) — mirroring the Reckons.AI Graph Alignment Check." ;
+               kpred:supports     "Embeddable images (Sveltia media_folder) and the rest of Sveltia's CMS widgets remain available for hand-editing." ;
+               kpred:credits      "Sveltia CMS — github.com/sveltia/sveltia-cms (MIT). Used as an external dependency; consider sponsoring." .
+
+kb:webpage-entity rdf:type   ktype:Feature ;
+               rdfs:label   "WebPage Entity" ;
+               kpred:has-status   "functional" ;
+               kpred:feature-id   "F27.0" ;
+               kpred:description  "Dedicated ktype:WebPage entity type with page: metadata (slug, section, template, status, nav, excerpt, body). Reuses nav:order for position, skos:broader for the site tree, nav:next/prev for sequence, skos:related for cross-links. src/lib/rdf/page.ts builds an ordered SitePage[]." ;
+               kpred:part-of      kb:graph-publishing .
+
+kb:gp-phase-1  rdf:type      ktype:Phase ;
+               rdfs:label    "Phase 1 — WebPage model (offline, graph-only)" ;
+               kpred:has-status   "functional" ;
+               kpred:description  "ktype:WebPage type + page: predicates; entity-types registration; isMetaPredicate hides page:* from graph edges; page.ts model. Node-panel authoring affordance pending." ;
+               kpred:part-of      kb:graph-publishing .
+
+kb:gp-phase-2  rdf:type      ktype:Phase ;
+               rdfs:label    "Phase 2 — Static export + in-app /docs route" ;
+               kpred:has-status   "scaffolded" ;
+               kpred:description  "src/lib/publish/site-export.ts serializes pages to markdown/frontmatter + graph.json; offline .zip export via fflate. A /docs route group in the main app renders content/*.md via mdsvex, prerendered under adapter-static (hybrid SPA + prerendered /docs). No separate theme repo." ;
+               kpred:part-of      kb:graph-publishing ;
+               kpred:depends-on   kb:gp-phase-1 .
+
+kb:gp-phase-3  rdf:type      ktype:Phase ;
+               rdfs:label    "Phase 3 — GitHub publish + Sveltia /admin" ;
+               kpred:has-status   "scaffolded" ;
+               kpred:description  "Sveltia /admin now shipped in the app (static/admin/index.html + config.yml, external CDN bundle) and served at Reckons.AI/admin; a starter content/docs/welcome.md seeds the collection. publishSiteToGitHub PUTs content/ to this repo (reuses parseRepoUrl + githubToken). Remaining: deploy sveltia-cms-auth (GitHub OAuth), markdown->graph round-trip import, and the markdown alignment check (CI regenerates content/*.md from the graph and flags drift)." ;
+               kpred:part-of      kb:graph-publishing ;
+               kpred:has-setup    kb:sveltia-cms-setup ;
+               kpred:depends-on   kb:gp-phase-2 .
+
+kb:gp-phase-4  rdf:type      ktype:Phase ;
+               rdfs:label    "Phase 4 — Graph-powered site features" ;
+               kpred:has-status   "planned" ;
+               kpred:description  "Interactive graph view on the published site (from graph.json), search, related pages, prev/next — the differentiation vs plain markdown docs tools." ;
+               kpred:part-of      kb:graph-publishing ;
+               kpred:depends-on   kb:gp-phase-3 .
+
+kb:gp-authoring rdf:type     ktype:Concept ;
+               rdfs:label    "Docs authoring surface" ;
+               kpred:part-of      kb:graph-publishing ;
+               kpred:description  "Website/docs settings live on the Graph page (the manage/switch surface). Reckoning (Situation-Target-Proposal) is a first-class way to draft/edit page content; AI-generated content is directly editable in the graph before it becomes a page." ;
+               kpred:has-status   "planned" .
+
+kb:sveltia-cms-setup rdf:type ktype:Concept ;
+               rdfs:label    "Sveltia CMS — Setup (GitHub OAuth)" ;
+               kpred:part-of      kb:graph-publishing ;
+               kpred:description  "Wire the /admin content manager. The CMS entry (static/admin/index.html) + config (static/admin/config.yml) ship in the app and are served at Reckons.AI/admin. GitHub login uses sveltia-cms-auth, a small Cloudflare Worker." ;
+               kpred:setup-step   "1. Deploy sveltia-cms-auth: github.com/sveltia/sveltia-cms-auth (Cloudflare Worker reckons-sveltia-cms-auth, mapped to admin.reckons.ai). DONE." ;
+               kpred:setup-step   "2. Create a GitHub OAuth App: Settings > Developer settings > OAuth Apps. Homepage https://reckons.ai; Authorization callback URL https://admin.reckons.ai/callback" ;
+               kpred:setup-step   "3. Set the worker's GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET vars (and ALLOWED_DOMAINS=reckons.ai) to the OAuth App credentials" ;
+               kpred:setup-step   "4. backend.base_url in static/admin/config.yml points at https://admin.reckons.ai. DONE." ;
+               kpred:setup-step   "5. Visit https://reckons.ai/admin/ and Login with GitHub" ;
+               kpred:alt          "Local editing without the worker: npx @sveltia/cms-proxy-server, then enable local_backend: true in config.yml" ;
+               kpred:note         "/admin is a standalone static page, so the app's strict CSP does not apply; Sveltia reaches api.github.com and the worker directly." .
+
+# -- Captured ideas & in-flight decisions ---------------------------------------
+# Parking lot for directions raised in conversation, so they aren't lost.
+
+kb:pr-graph-overlay rdf:type ktype:Feature ;
+               rdfs:label    "GitHub PR Graph Overlay (extension)" ;
+               kpred:feature-id   "F28" ;
+               kpred:has-status   "speculative" ;
+               kpred:description  "Inject the Reckons.AI extension into github.com/*/pull/* pages to enable graph browse of a PR. Map changed files -> Codebase KB modules (kpred:has-file), render an inline graph-browse overlay, and surface alignment visually (which planned entities the PR advances/regresses) — the Graph Alignment signal, browsable on the PR. Reuses the extension content-script + sidepanel graph rendering." ;
+               kpred:depends-on   kb:ci-cd-kb-watch ;
+               kpred:relates-to   kb:graph-publishing .
+
+kb:rebrand-kb-to-graph rdf:type ktype:Decision ;
+               rdfs:label    "User-facing rename: KB -> Graph" ;
+               kpred:has-status   "in-progress" ;
+               kpred:decision     "Rename the user-facing label 'KB' to 'Graph'; keep kb/KB in code, IDs, and MCP tool names (kb_*)." ;
+               kpred:done         "Applied to the 'Reckons.AI Graph Alignment Check' and to graph-named TTL export filenames." ;
+               kpred:open-question "Nav label collision: the home 3D view is already labelled 'graph'. Resolve the pair before the full sweep — either home->'view'/'map' and /kb->'graph', or keep home 'graph' and /kb->'graphs'." .
+
+kb:terminology-simplification rdf:type ktype:Decision ;
+               rdfs:label    "Friendlier terminology" ;
+               kpred:has-status   "in-progress" ;
+               kpred:decision     "Simplify jargon in user-facing copy while keeping technical terms in code/docs." ;
+               kpred:done         "Ingest -> 'Add' (nav + ingest kicker); Warming -> 'Preparing' (WASM model button)." ;
+               kpred:candidate    "Triple/Statement -> 'Fact' in user copy; 'KB Leap' -> 'Jump'." .
+
+kb:feedback-channel rdf:type ktype:Feature ;
+               rdfs:label    "Feedback channel (suggestion box)" ;
+               kpred:has-status   "functional" ;
+               kpred:description  "MVP digital suggestion box: a 'Send feedback' mailto link (matthew.roe@data-insight.solutions) in the About footer. Offline-friendly, no backend. Future: route through the existing n8n pipeline." .
+
+kb:launch-prep rdf:type      ktype:Concept ;
+               rdfs:label    "Pre-launch (LinkedIn) checklist" ;
+               kpred:has-status   "in-progress" ;
+               kpred:done         "Repo About (description/site/topics); Dependabot alerts + auto-fixes; README live link + badges; CI on Node 24." ;
+               kpred:todo         "Social preview image + og:image/twitter:card meta so the shared link renders a thumbnail." ;
+               kpred:todo         "10-15s demo GIF (ingest -> review -> 3D graph -> reckon) at README top." ;
+               kpred:todo         "Tag v0.1.0 as the post hook." ;
+               kpred:todo         "Finish the KB -> Graph terminology sweep (see kb:rebrand-kb-to-graph)." .
+
 kb:extension-explore rdf:type ktype:Feature ;
                rdfs:label   "Extension Explore Mode" ;
                kpred:has-status   "planned" ;

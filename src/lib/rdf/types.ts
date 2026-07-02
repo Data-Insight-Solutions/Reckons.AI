@@ -176,11 +176,17 @@ export const META_PREFIX = 'urn:kbase:meta/';
 /** Predicates under this prefix are hierarchical navigation metadata */
 export const NAV_PREFIX = 'urn:reckons:nav/';
 
+/** Predicates under this prefix are web-page publishing metadata (slug, section, template, status, nav, excerpt, body) */
+export const PAGE_PREFIX = 'urn:reckons:page/';
+
 /** Returns true if the predicate is metadata (should not render as a graph edge/node) */
 export function isMetaPredicate(predicateIri: string): boolean {
   if (predicateIri.startsWith(META_PREFIX)) return true;
   // nav:order and nav:layer are node metadata, not graph edges
   if (predicateIri === `${NAV_PREFIX}order` || predicateIri === `${NAV_PREFIX}layer`) return true;
+  // page:* are per-page publishing metadata (literals) — the site tree still renders
+  // via skos:broader/related/next/prev, which stay visible edges.
+  if (predicateIri.startsWith(PAGE_PREFIX)) return true;
   return false;
 }
 
