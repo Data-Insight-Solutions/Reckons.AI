@@ -125,7 +125,14 @@ export function sveltiaConfig(opts: SiteExportOptions): string {
     '    label: Pages',
     '    folder: content',
     '    create: true',
-    '    nested: { depth: 4 }',
+    // Sveltia CMS does not implement Decap's `nested` collection option (planned
+    // for a future 2.0) — it is silently ignored, leaving the collection with no
+    // entries whenever files live below the top-level folder. `path` is the
+    // option Sveltia supports for subfoldered entries: it discovers existing
+    // files recursively and places new ones, no per-entry index file required.
+    // `slugify` mirrors contentPath()'s `slugify(page.section)` above so the
+    // folder segment matches what's actually on disk (e.g. "Docs" -> docs/).
+    "    path: '{{fields.section | slugify}}/{{fields.slug}}'",
     '    identifier_field: slug',
     '    fields:',
     '      - { name: title, label: Title, widget: string }',

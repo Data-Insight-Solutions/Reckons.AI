@@ -19,9 +19,13 @@ backend:
 media_folder: static/media
 public_folder: /media
 
-# Local editing without deploying the OAuth worker:
-#   npx @sveltia/cms-proxy-server   (then load /admin/ with local_backend on)
-# local_backend: true
+# Local editing without deploying the OAuth worker: Sveltia CMS has NO proxy-
+# server backend (unlike Decap/Netlify CMS — @sveltia/cms-proxy-server does not
+# exist) and does not read a `local_backend` option; both are Decap-only and
+# silently ignored here. Instead, on localhost the CMS auto-offers "Work with
+# Local Repository", which uses the browser's File System Access API to edit a
+# real git checkout directly (Chromium-family browsers only) — no config
+# change needed. See kb:sveltia-cms-setup in the roadmap KB.
 
 collections:
   - name: pages
@@ -32,7 +36,19 @@ collections:
       the graph (see the markdown alignment check).
     folder: content
     create: true
-    nested: { depth: 4 }
+    # Sveltia does NOT implement Decap/Netlify's `nested` collection option (it's
+    # tracked for a future 2.0 release) — `nested: { depth: 4 }` was silently
+    # ignored, so the collection fell back to scanning only the immediate
+    # `content/` folder and found zero entries (both pages live one level down,
+    # in content/docs/ and content/releases/). `path` is the option Sveltia DOES
+    # support: it recursively discovers existing files matching the template and
+    # is also used to place new entries, with no per-entry index file required.
+    # The `slugify` filter mirrors contentPath()'s `slugify(page.section)` in
+    # src/lib/publish/site-export.ts so the folder segment matches on disk
+    # (e.g. section "Docs" -> content/docs/, not content/Docs/). Root-level pages
+    # (no section) aren't produced by site-export today, so they're out of scope
+    # for this template — see kb:sveltia-cms-setup in the roadmap KB.
+    path: '{{fields.section | slugify}}/{{fields.slug}}'
     identifier_field: slug
     summary: '{{fields.title}}  ·  {{fields.status}}'
     fields:
