@@ -390,7 +390,18 @@ kb:webpage-entity rdf:type   ktype:Feature ;
                rdfs:label   "WebPage Entity" ;
                kpred:has-status   "functional" ;
                kpred:feature-id   "F27.0" ;
-               kpred:description  "Dedicated ktype:WebPage entity type with page: metadata (slug, section, template, status, nav, excerpt, body). Reuses nav:order for position, skos:broader for the site tree, nav:next/prev for sequence, skos:related for cross-links. src/lib/rdf/page.ts builds an ordered SitePage[]." ;
+               kpred:description  "Dedicated ktype:WebPage entity type with page: metadata (slug, section, template, status, nav, excerpt, body, date). Reuses nav:order for position, skos:broader for the site tree, nav:next/prev for sequence, skos:related for cross-links. src/lib/rdf/page.ts builds an ordered SitePage[]." ;
+               kpred:part-of      kb:graph-publishing .
+
+kb:post-template rdf:type    ktype:Feature ;
+               rdfs:label   "Post Template (dated content)" ;
+               kpred:has-status   "functional" ;
+               kpred:feature-id   "F27.1" ;
+               kpred:description  "A 'post' PageTemplate for dated, reverse-chronological content — release notes, announcements, and blog entries. Adds page:date (urn:reckons:page/date, ISO yyyy-mm-dd literal) alongside the existing page: predicates. src/lib/rdf/page.ts's sitePosts() helper sorts template==='post' pages newest-first within a section (undated posts sort last); other templates keep the general (section, order, title) sort from buildSitePages() untouched. src/routes/docs/_content/docs.ts mirrors the same ordering for the prerendered /docs site: a section made up entirely of posts renders newest-first as a release-notes-style feed (date + excerpt), e.g. content/releases/. Round-trips through site-export.ts/site-import.ts (date: frontmatter, omitted when unset) and Sveltia CMS (config.yml + the generated sveltiaConfig() both offer a 'post' template option and a date widget)." ;
+               kpred:use-case     "Release notes — e.g. content/releases/v0-1-0.md, the shipped Reckons.AI v0.1.0 post." ;
+               kpred:use-case     "Product announcements." ;
+               kpred:use-case     "Blog entries." ;
+               kpred:depends-on   kb:webpage-entity ;
                kpred:part-of      kb:graph-publishing .
 
 kb:gp-phase-1  rdf:type      ktype:Phase ;
@@ -401,15 +412,15 @@ kb:gp-phase-1  rdf:type      ktype:Phase ;
 
 kb:gp-phase-2  rdf:type      ktype:Phase ;
                rdfs:label    "Phase 2 — Static export + in-app /docs route" ;
-               kpred:has-status   "scaffolded" ;
-               kpred:description  "src/lib/publish/site-export.ts serializes pages to markdown/frontmatter + graph.json; offline .zip export via fflate. A /docs route group in the main app renders content/*.md via mdsvex, prerendered under adapter-static (hybrid SPA + prerendered /docs). No separate theme repo." ;
+               kpred:has-status   "functional" ;
+               kpred:description  "src/lib/publish/site-export.ts serializes pages to markdown/frontmatter + graph.json; offline .zip export via fflate. A /docs route group in the main app renders content/*.md via mdsvex, prerendered under adapter-static (hybrid SPA + prerendered /docs). No separate theme repo. Implemented: src/routes/docs/+layout.(ts|svelte) (docs chrome + section nav), src/routes/docs/+page.svelte (index by section), src/routes/docs/[...slug]/+page.(ts|svelte) (per-page renderer with entries() for adapter-static prerendering); content loaded via import.meta.glob('/content/**/*.md', { eager: true }) in src/routes/docs/_content/docs.ts. The rest of the app was moved into a src/routes/(app)/ route group so it keeps its existing SPA-fallback behaviour untouched." ;
                kpred:part-of      kb:graph-publishing ;
                kpred:depends-on   kb:gp-phase-1 .
 
 kb:gp-phase-3  rdf:type      ktype:Phase ;
                rdfs:label    "Phase 3 — GitHub publish + Sveltia /admin" ;
-               kpred:has-status   "scaffolded" ;
-               kpred:description  "Sveltia /admin now shipped in the app (static/admin/index.html + config.yml, external CDN bundle) and served at Reckons.AI/admin; a starter content/docs/welcome.md seeds the collection. publishSiteToGitHub PUTs content/ to this repo (reuses parseRepoUrl + githubToken). Remaining: deploy sveltia-cms-auth (GitHub OAuth), markdown->graph round-trip import, and the markdown alignment check (CI regenerates content/*.md from the graph and flags drift)." ;
+               kpred:has-status   "functional" ;
+               kpred:description  "Sveltia /admin now shipped in the app (static/admin/index.html + config.yml, external CDN bundle) and served at Reckons.AI/admin; a starter content/docs/welcome.md seeds the collection. publishSiteToGitHub PUTs content/ to this repo (reuses parseRepoUrl + githubToken). src/lib/publish/site-import.ts round-trips content/<section>/<slug>.md back into WebPage statements (skos:broader/related, reconstructed nav:next/prev). scripts/md-align.ts (npm run md-align) regenerates content/*.md via the round trip and flags drift; wired as a non-blocking step in .github/workflows/kb-watch.yml. Remaining: deploy the GitHub OAuth App credentials for sveltia-cms-auth (manual, one-time)." ;
                kpred:part-of      kb:graph-publishing ;
                kpred:has-setup    kb:sveltia-cms-setup ;
                kpred:depends-on   kb:gp-phase-2 .
@@ -432,12 +443,14 @@ kb:sveltia-cms-setup rdf:type ktype:Concept ;
                kpred:part-of      kb:graph-publishing ;
                kpred:description  "Wire the /admin content manager. The CMS entry (static/admin/index.html) + config (static/admin/config.yml) ship in the app and are served at Reckons.AI/admin. GitHub login uses sveltia-cms-auth, a small Cloudflare Worker." ;
                kpred:setup-step   "1. Deploy sveltia-cms-auth: github.com/sveltia/sveltia-cms-auth (Cloudflare Worker reckons-sveltia-cms-auth, mapped to admin.reckons.ai). DONE." ;
-               kpred:setup-step   "2. Create a GitHub OAuth App: Settings > Developer settings > OAuth Apps. Homepage https://reckons.ai; Authorization callback URL https://admin.reckons.ai/callback" ;
-               kpred:setup-step   "3. Set the worker's GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET vars (and ALLOWED_DOMAINS=reckons.ai) to the OAuth App credentials" ;
+               kpred:setup-step   "2. Create a GitHub OAuth App: Settings > Developer settings > OAuth Apps. Homepage https://reckons.ai; Authorization callback URL https://admin.reckons.ai/callback. MANUAL — a human must do this in the GitHub UI." ;
+               kpred:setup-step   "3. Set the worker's GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET vars (and ALLOWED_DOMAINS=reckons.ai) to the OAuth App credentials. TOOLED — paste the OAuth App's Client ID/Secret into SVELTIA_GITHUB_CLIENT_ID / SVELTIA_GITHUB_CLIENT_SECRET / SVELTIA_ALLOWED_DOMAINS in .env (see .env.example), then run scripts/sveltia-auth-secrets.sh, which pushes them to the worker via `wrangler secret put`." ;
                kpred:setup-step   "4. backend.base_url in static/admin/config.yml points at https://admin.reckons.ai. DONE." ;
                kpred:setup-step   "5. Visit https://reckons.ai/admin/ and Login with GitHub" ;
                kpred:alt          "Local editing without the worker: npx @sveltia/cms-proxy-server, then enable local_backend: true in config.yml" ;
-               kpred:note         "/admin is a standalone static page, so the app's strict CSP does not apply; Sveltia reaches api.github.com and the worker directly." .
+               kpred:note         "/admin is a standalone static page, so the app's strict CSP does not apply; Sveltia reaches api.github.com and the worker directly." ;
+               kpred:note         "RESOLVED (2026-07-02): the earlier bare-404 readiness finding was a missing route — the worker was deployed with the correct sveltia-cms-auth code but had workers.dev previews disabled and no custom domain attached. Fixed by attaching admin.reckons.ai as a Workers custom domain via the Cloudflare API (PUT /accounts/{id}/workers/domains). OAuth App credentials pushed via scripts/sveltia-auth-secrets.sh. Verified: GET /auth?provider=github&site_id=reckons.ai returns 302 to github.com/login/oauth/authorize. Setup steps 1-4 complete; only step 5 (login smoke test at reckons.ai/admin/) remains." ;
+               kpred:note         "static/admin/index.html now loads a version-pinned Sveltia bundle (@sveltia/cms@0.169.1) instead of an unpinned \"latest\" CDN URL, so upgrades are deliberate. static/media/ (config.yml media_folder) was missing and has been created with a .gitkeep." .
 
 # -- Captured ideas & in-flight decisions ---------------------------------------
 # Parking lot for directions raised in conversation, so they aren't lost.
@@ -473,7 +486,7 @@ kb:launch-prep rdf:type      ktype:Concept ;
                rdfs:label    "Pre-launch (LinkedIn) checklist" ;
                kpred:has-status   "in-progress" ;
                kpred:done         "Repo About (description/site/topics); Dependabot alerts + auto-fixes; README live link + badges; CI on Node 24." ;
-               kpred:todo         "Social preview image + og:image/twitter:card meta so the shared link renders a thumbnail." ;
+               kpred:done         "Social preview image (static/social-preview.png, 1200x630) + og:image/twitter:card meta so the shared link renders a thumbnail." ;
                kpred:todo         "10-15s demo GIF (ingest -> review -> 3D graph -> reckon) at README top." ;
                kpred:todo         "Tag v0.1.0 as the post hook." ;
                kpred:todo         "Finish the KB -> Graph terminology sweep (see kb:rebrand-kb-to-graph)." .
@@ -972,7 +985,7 @@ story:rm-step-9  rdf:type         story:Step ;
                  story:partOf     story:roadmap-tour ;
                  story:order      "9"^^xsd:integer ;
                  story:title      "Enterprise: People · Policy · Procedure" ;
-                 story:content    "The enterprise vision structures organisational knowledge around three dimensions. People: RBAC, team KBs, audit trails. Policy: legal and cultural constraints as graph entities with temporal bounds. Procedure: SOPs and decision trees from intent to execution. Authentication is bring-your-own. Delivery is file-based TTL — portable, diffable, no lock-in." ;
+                 story:content    "The enterprise vision structures organizational knowledge around three dimensions. People: RBAC, team KBs, audit trails. Policy: legal and cultural constraints as graph entities with temporal bounds. Procedure: SOPs and decision trees from intent to execution. Authentication is bring-your-own. Delivery is file-based TTL — portable, diffable, no lock-in." ;
                  story:highlight  kb:enterprise-3ps ;
                  story:highlight  kb:ent-people ;
                  story:highlight  kb:ent-policy ;
