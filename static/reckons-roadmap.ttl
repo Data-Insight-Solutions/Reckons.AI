@@ -1042,3 +1042,52 @@ kb:design-system rdf:type      ktype:Feature ;
                kpred:candidate    "P4 Toasts: adopt svelte-sonner for tutorial/WASM-fallback/sync notifications, replacing ad-hoc toast implementations." ;
                kpred:candidate    "P5 Menus & dialogs: shared Dialog/DropdownMenu wrappers that respect the app z-index scale (panels=300, NavBar=400, MergeReview=500); NavBar analyze menu first." ;
                kpred:candidate    "P6 Button hierarchy: audit primary (teal) vs outline vs ghost usage on ingest and kb pages for consistent affordance weight." .
+
+# -- F29: News Aggregation & Filtering -------------------------------------------
+# Planned 2026-07-02. Decisions: crawl runs on n8n VPS primarily with a
+# browser-fetch fallback for CORS-friendly feeds; the filtered feed is an
+# in-app /news view (private, interactive), not published pages.
+
+kb:news-feed   rdf:type      ktype:Feature ;
+               rdfs:label    "News Aggregation & Filtering" ;
+               kpred:feature-id   "F29" ;
+               kpred:has-status   "planned" ;
+               kpred:description  "Top news from preferred sources, crawled and personalized against the user's own graph: headlines ranked by embedding affinity to the entities the graph shows the user cares about, plus contextual blocks (weather forecast, in-your-state-yesterday items). Short filtered feed rendered in-app. Ground News has no official public API (verified 2026-07-02) — treated as a speculative integration; reliable inputs are RSS/Atom, GDELT (free), and keyed news APIs." ;
+               kpred:principle    "Personalization data (location, interests, reading signals) stays local-first: ranking and digest generation run on-device or via the user's own Ollama; the VPS only fetches public feeds." ;
+               kpred:has-phase    kb:news-phase-1 ;
+               kpred:has-phase    kb:news-phase-2 ;
+               kpred:has-phase    kb:news-phase-3 ;
+               kpred:has-phase    kb:news-phase-4 ;
+               kpred:depends-on   kb:source-refresh ;
+               kpred:depends-on   kb:n8n-cloud-sync ;
+               kpred:depends-on   kb:local-offload ;
+               kpred:relates-to   kb:source-subscription ;
+               kpred:relates-to   kb:condition-triggers ;
+               kpred:relates-to   kb:content-safety .
+
+kb:news-phase-1 rdf:type     ktype:Phase ;
+               rdfs:label    "F29.1 — Feed sources" ;
+               kpred:has-status   "planned" ;
+               kpred:part-of      kb:news-feed ;
+               kpred:description  "New source kind 'feed' (RSS/Atom) alongside url/repository/calendar. Preferred-sources management UI. Fetching: n8n News Monitor workflow (extends the Source Monitor pattern — scheduled polling, item rows in a data table, app syncs down) as the primary path; direct browser fetch as fallback for CORS-friendly feeds. Absorbs the older kb:source-subscription idea (recurring checks with dated records)." .
+
+kb:news-phase-2 rdf:type     ktype:Phase ;
+               rdfs:label    "F29.2 — Interest profile & filtering" ;
+               kpred:has-status   "planned" ;
+               kpred:part-of      kb:news-feed ;
+               kpred:depends-on   kb:news-phase-1 ;
+               kpred:description  "Interest profile derived from the user's graph: top entities by degree and recency plus explicit interest markers and a location setting. Headlines embedded with BGE-small and ranked by affinity to the profile; near-duplicate stories collapsed by embedding similarity; content-policy classifier applied to filter blocked content." .
+
+kb:news-phase-3 rdf:type     ktype:Phase ;
+               rdfs:label    "F29.3 — /news view, digest & context" ;
+               kpred:has-status   "planned" ;
+               kpred:part-of      kb:news-feed ;
+               kpred:depends-on   kb:news-phase-2 ;
+               kpred:description  "In-app /news route: short ranked feed with one-click 'add to graph' (item -> reviewed facts via the extraction pipeline). Daily briefing summarized via the prefer-local Ollama path (zero cloud tokens). Context blocks: weather forecast via Open-Meteo (free, no key) using the location setting; 'in your state yesterday' via location-filtered items. Optional later: publish-a-digest action using the post template." .
+
+kb:news-phase-4 rdf:type     ktype:Phase ;
+               rdfs:label    "F29.4 — External news integrations" ;
+               kpred:has-status   "speculative" ;
+               kpred:part-of      kb:news-feed ;
+               kpred:depends-on   kb:news-phase-1 ;
+               kpred:description  "Connectors beyond RSS: GDELT (free, no key), NewsAPI/NewsData/GNews (user-supplied keys, consistent with the BYO-key provider pattern). Ground News: no official public developer API exists (verified 2026-07-02; only third-party wrappers) — revisit if one ships or a partnership allows it; their bias/blindspot data would map naturally onto source-trust triples." .
