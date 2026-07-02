@@ -1,10 +1,15 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { SvelteKitPWA } from '@vite-pwa/sveltekit';
+import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 import path from 'path';
 
 export default defineConfig({
   plugins: [
+    // Tailwind v4 powers the shadcn-svelte design-system foundation only.
+    // src/lib/styles/tailwind.css imports theme + utilities layers WITHOUT
+    // preflight, so the hand-rolled Liquid theme in global.css is untouched.
+    tailwindcss(),
     sveltekit(),
     SvelteKitPWA({
       strategies: 'generateSW',

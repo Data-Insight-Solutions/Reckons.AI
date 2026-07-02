@@ -1,5 +1,8 @@
 <script lang="ts">
   import '$lib/styles/global.css';
+  // Tailwind v4 utilities for shadcn-svelte components only — imported WITHOUT
+  // preflight so global.css base styles are untouched (see tailwind.css header).
+  import '$lib/styles/tailwind.css';
   import { onMount } from 'svelte';
 
   import NavBar from '$lib/components/NavBar.svelte';

@@ -5,6 +5,9 @@
   import { addStatements, addSource } from '$lib/stores/kb.svelte';
   import { activateOfficialKb, officialKbActive } from '$lib/stores/official-kb.svelte';
   import { startStory } from '$lib/stores/shelly-bridge.svelte';
+  // Design-system pilot: shadcn-svelte Button themed via the Liquid token mapping
+  // in src/lib/styles/tailwind.css (see kb:design-system in reckons-roadmap.ttl).
+  import { Button } from '$lib/components/ui/button';
 
   // ── Compression benchmark data ─────────────────────────────────────────
   const GITHUB_REPO = 'https://github.com/Data-Insight-Solutions/Reckons.AI';
@@ -1003,7 +1006,13 @@
     <p class="mono footer-credit">Developed by <a href="https://data-insight.solutions/" target="_blank" rel="noopener noreferrer">Data Insight Solutions LLC</a></p>
     <div class="footer-links mono">
       <a href="https://github.com/Data-Insight-Solutions/Reckons.AI" target="_blank" rel="noopener noreferrer" class="footer-github">GitHub</a>
-      <a href="mailto:matthew.roe@data-insight.solutions?subject=Reckons.AI%20feedback" class="footer-github">Send feedback</a>
+      <!-- Design-system pilot: shadcn Button (outline) restyled with utilities to
+           match the .footer-github pill exactly — proves the Liquid token mapping. -->
+      <Button
+        variant="outline"
+        href="mailto:matthew.roe@data-insight.solutions?subject=Reckons.AI%20feedback"
+        class="h-auto rounded-full border-border bg-transparent px-[0.7rem] py-[0.2rem] text-[0.68rem] font-normal tracking-[-0.01em] text-muted-foreground shadow-none hover:border-primary hover:bg-transparent hover:text-primary dark:border-border dark:bg-transparent dark:hover:border-primary dark:hover:bg-transparent"
+      >Send feedback</Button>
     </div>
   </footer>
 </div>

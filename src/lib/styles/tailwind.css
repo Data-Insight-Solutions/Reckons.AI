@@ -1,0 +1,122 @@
+/*
+ * Tailwind v4 entry point for the shadcn-svelte design-system foundation.
+ *
+ * THIS IS A SCOPED IMPORT, NOT the full `@import "tailwindcss";` that shadcn-svelte's
+ * docs recommend. We deliberately omit `tailwindcss/preflight.css` (Tailwind's CSS
+ * reset). The hand-rolled "Liquid" theme in `src/lib/styles/global.css` already sets
+ * base element styles (html/body margins, font stacks, button/input resets, focus
+ * rings, etc.) and preflight would strip or override those, visibly changing the app.
+ * shadcn-svelte components carry their own utility classes and render correctly
+ * without preflight.
+ *
+ * We also skip shadcn's stock `@layer base { * { border-color: ... } body { ... } }`
+ * block — that is itself a mini global reset and would fight global.css. Everything
+ * the components need (`bg-primary`, `rounded-md`, `text-muted-foreground`, ...) is
+ * generated from the `theme` layer + utilities below.
+ *
+ * CASCADE NOTE: utilities are imported UN-layered (no `layer(utilities)`) on purpose.
+ * global.css is un-layered author CSS, and un-layered rules beat anything inside
+ * @layer regardless of specificity — utilities in a layer could never override
+ * global.css's element selectors (`button { ... }`, `a { ... }`) on shadcn markup.
+ * Un-layered, a utility class (specificity 0,1,0) beats those element rules (0,0,1)
+ * by normal specificity, which is exactly what shadcn components need. Utilities
+ * only apply to elements that carry the classes, so nothing else changes.
+ */
+@layer theme, base, components;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css';
+@import 'tw-animate-css';
+
+/* The app is dark-only: <html class="dark"> is set statically in app.html, so the
+   `dark:` utilities inside shadcn components (tuned for dark surfaces) always apply.
+   Standard shadcn-svelte custom variant — kept class-based rather than media-query
+   so rendering never depends on the OS theme. */
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * ── "Liquid" theme → shadcn token mapping ─────────────────────────────────
+ * Dark-only (Reckons.AI has no light mode), so values live directly in :root
+ * rather than behind a `.dark` class toggle.
+ *
+ * Every value is a var() reference into global.css — global.css remains the
+ * single source of truth for the actual color values.
+ *
+ * NAME COLLISION NOTE: shadcn's `--accent`/`--accent-foreground` slot names a
+ * neutral hover-state surface (ghost/outline button hover, skeleton fill) —
+ * NOT the Reckons.AI brand `--accent` (teal). shadcn's brand-color slot is
+ * `--primary`, which is what maps to the teal. To avoid clobbering the Liquid
+ * `--accent` custom property that hundreds of components read, the shadcn
+ * accent slot is defined ONLY inside @theme (as --color-accent), never as a
+ * bare `--accent` in :root.
+ */
+:root {
+  --shadcn-background: var(--bg);
+  --shadcn-foreground: var(--ink);
+
+  --shadcn-card: var(--surface);
+  --shadcn-card-foreground: var(--ink);
+  --shadcn-popover: var(--surface);
+  --shadcn-popover-foreground: var(--ink);
+
+  /* Primary action = brand teal with near-black text (matches button.primary) */
+  --shadcn-primary: var(--accent);
+  --shadcn-primary-foreground: #0a0a0b;
+
+  /* Secondary = brand deep purple */
+  --shadcn-secondary: var(--data);
+  --shadcn-secondary-foreground: var(--ink);
+
+  --shadcn-muted: var(--surface-2);
+  --shadcn-muted-foreground: var(--muted);
+
+  /* Neutral hover surface (shadcn "accent" slot — see note above) */
+  --shadcn-accent: var(--surface-3);
+  --shadcn-accent-foreground: var(--ink);
+
+  --shadcn-destructive: var(--danger);
+  --shadcn-destructive-foreground: var(--ink);
+
+  --shadcn-border: var(--line);
+  --shadcn-input: var(--line);
+  --shadcn-ring: var(--accent);
+}
+
+@theme inline {
+  --color-background: var(--shadcn-background);
+  --color-foreground: var(--shadcn-foreground);
+  --color-card: var(--shadcn-card);
+  --color-card-foreground: var(--shadcn-card-foreground);
+  --color-popover: var(--shadcn-popover);
+  --color-popover-foreground: var(--shadcn-popover-foreground);
+  --color-primary: var(--shadcn-primary);
+  --color-primary-foreground: var(--shadcn-primary-foreground);
+  --color-secondary: var(--shadcn-secondary);
+  --color-secondary-foreground: var(--shadcn-secondary-foreground);
+  --color-muted: var(--shadcn-muted);
+  --color-muted-foreground: var(--shadcn-muted-foreground);
+  --color-accent: var(--shadcn-accent);
+  --color-accent-foreground: var(--shadcn-accent-foreground);
+  --color-destructive: var(--shadcn-destructive);
+  --color-destructive-foreground: var(--shadcn-destructive-foreground);
+  --color-border: var(--shadcn-border);
+  --color-input: var(--shadcn-input);
+  --color-ring: var(--shadcn-ring);
+  /* Semantic success color (Liquid --ok) exposed as `ok` utilities (bg-ok, text-ok) */
+  --color-ok: var(--ok);
+
+  /* Font stacks — reuse the self-hosted @font-face definitions in global.css.
+     No new font requests (CSP forbids external fonts). */
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+
+  /* Radius scale — pinned to the Liquid tokens instead of Tailwind's default
+     calc-from-one-value scheme, so shadcn components land exactly on
+     --rad-sm / --rad / --rad-lg. shadcn Button uses rounded-md, Card rounded-xl. */
+  --radius-sm: var(--rad-sm); /* 8px  — inputs, small controls */
+  --radius-md: var(--rad-sm); /* 8px  — buttons (STYLE_GUIDE: buttons use --rad-sm) */
+  --radius-lg: var(--rad); /* 14px — cards, large panels */
+  --radius-xl: var(--rad); /* 14px — shadcn <Card> uses rounded-xl */
+  --radius-2xl: var(--rad-lg); /* 22px — modals, full-page overlays */
+}

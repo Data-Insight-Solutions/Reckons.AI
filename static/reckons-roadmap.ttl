@@ -1015,3 +1015,17 @@ kb:local-offload rdf:type      ktype:Feature ;
                kpred:description  "Offload token-heavy LLM work to local models (Ollama) with quality recovered through intelligent instruction. Schema-constrained decoding via Ollama's native /api/chat format parameter plus a compact few-shot extractor prompt for small models (src/lib/integrations/llm/ollama-extract.ts). Measured (2026-07-02, tests/bench/results): llama3.2:3b ingest F1 0.238 baseline -> 0.500 structured (combined 0.657 — the new best local score, surpassing devstral-small-2's 0.649 with a 2GB model); qwen3:4b 0.000 -> 0.263; devstral-small-2 structured ingest 0.486 (its chat leg did not run in that pass). Children: the MCP Ollama bridge; next: prefer-local routing defaults." ;
                kpred:relates-to   kb:cost-awareness ;
                kpred:depends-on   kb:llm-providers .
+
+# -- Design System (shadcn-svelte) -----------------------------------------------
+
+kb:design-system rdf:type      ktype:Feature ;
+               rdfs:label   "Design System (shadcn-svelte)" ;
+               kpred:has-status   "scaffolded" ;
+               kpred:description  "shadcn-svelte foundation on Tailwind v4, themed to the Liquid aesthetic. Preflight (Tailwind's CSS reset) is deliberately omitted — src/lib/styles/tailwind.css imports only the theme and utilities layers, so global.css remains the visual source of truth and the app renders unchanged. Every shadcn token is a var() reference into global.css (e.g. --color-primary -> --accent teal); shadcn's neutral 'accent' hover slot is kept inside @theme only, never clobbering the Liquid --accent custom property. Starter components: button, badge, card, separator, skeleton under src/lib/components/ui/. Pilot: the About-footer 'Send feedback' button." ;
+               kpred:relates-to   kb:rebrand-kb-to-graph ;
+               kpred:candidate    "P1 Settings forms: unify the three settings pages' inputs/selects/switches on shadcn form controls — the largest consistency win." ;
+               kpred:candidate    "P2 Review cards: Card + color-coded status Badge (pending/confirmed/refined/rejected/superseded) across StatementCard, DiffEntry, AlignmentCard." ;
+               kpred:candidate    "P3 Loading states: Skeleton placeholders for graph load, extraction progress, and model downloads instead of text spinners." ;
+               kpred:candidate    "P4 Toasts: adopt svelte-sonner for tutorial/WASM-fallback/sync notifications, replacing ad-hoc toast implementations." ;
+               kpred:candidate    "P5 Menus & dialogs: shared Dialog/DropdownMenu wrappers that respect the app z-index scale (panels=300, NavBar=400, MergeReview=500); NavBar analyze menu first." ;
+               kpred:candidate    "P6 Button hierarchy: audit primary (teal) vs outline vs ghost usage on ingest and kb pages for consistent affordance weight." .
