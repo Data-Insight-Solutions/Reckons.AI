@@ -314,7 +314,7 @@ Do NOT include <kb-actions> blocks.`;
 {#if !hasKB}
   <div class="empty-kb">
     <span class="empty-icon">☷</span>
-    <p>Your knowledge base is empty.</p>
+    <p>Your graph is empty.</p>
     <p class="hint">Ingest at least one source before running a Reckoning — the proposal draws only on facts you've verified.</p>
     <a href="/ingest" class="btn-ingest">Ingest a source →</a>
   </div>
@@ -385,7 +385,7 @@ Do NOT include <kb-actions> blocks.`;
         <span class="stp-num mono">03</span>
         <div>
           <h3>Confirm</h3>
-          <p class="stp-desc">Review your inputs. The proposal draws only on your verified KB ({kbSize} statements).</p>
+          <p class="stp-desc">Review your inputs. The proposal draws only on your verified graph ({kbSize} facts).</p>
         </div>
       </div>
 
@@ -399,8 +399,8 @@ Do NOT include <kb-actions> blocks.`;
           <p>{target}</p>
         </div>
         <div class="confirm-row">
-          <span class="confirm-label mono">KB context</span>
-          <p>{kbSize} confirmed statements · {sources().length} source{sources().length !== 1 ? 's' : ''}</p>
+          <span class="confirm-label mono">graph context</span>
+          <p>{kbSize} confirmed facts · {sources().length} source{sources().length !== 1 ? 's' : ''}</p>
         </div>
       </div>
 
@@ -411,7 +411,7 @@ Do NOT include <kb-actions> blocks.`;
       <div class="btn-row">
         <button class="btn-back" onclick={() => step = 'target'}>← Edit</button>
         <button class="btn-reckon" disabled={busy} onclick={generateProposal}>
-          {busy ? 'Consulting KB…' : 'Generate Proposal'}
+          {busy ? 'Consulting graph…' : 'Generate Proposal'}
         </button>
       </div>
     </section>
@@ -501,7 +501,7 @@ Do NOT include <kb-actions> blocks.`;
       {#if conversation.length === 0}
         <div class="conv-starter">
           <p class="conv-prompt">What's your situation?</p>
-          <p class="conv-hint mono">Describe briefly — I'll ask follow-up questions and consult your KB.</p>
+          <p class="conv-hint mono">Describe briefly — I'll ask follow-up questions and consult your graph.</p>
         </div>
       {/if}
       {#each conversation as msg}

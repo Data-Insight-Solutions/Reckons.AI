@@ -242,7 +242,7 @@
       onfocus={onFocus}
       onblur={onBlur}
       onkeydown={onInputKeydown}
-      placeholder="search nodes or statements…"
+      placeholder="search nodes or facts…"
       autocomplete="off"
       spellcheck="false"
     />
@@ -282,7 +282,7 @@
       {/if}
 
       {#if results.some(r => r.kind === 'statement')}
-        <p class="sb-section-title mono" style="margin-top: 0.4rem;">statements</p>
+        <p class="sb-section-title mono" style="margin-top: 0.4rem;">facts</p>
         {#each results.filter(r => r.kind === 'statement') as r (r.kind === 'statement' ? r.id : '')}
           {#if r.kind === 'statement'}
             {@const idx = results.indexOf(r)}

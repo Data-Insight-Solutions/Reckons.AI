@@ -101,7 +101,7 @@
 
   <p class="page-intro">
     Configure Shelly, your knowledge assistant (identity, personality, voice) and the turtle companion
-    (visual appearance, movement). Every KB can have its own persona — personality travels with the .ttl file.
+    (visual appearance, movement). Every graph can have its own persona — personality travels with the .ttl file.
   </p>
 
   <div class="section-divider">
@@ -586,7 +586,7 @@
 
       <p class="section-intro">
         Turtle personality can be embedded in a .ttl file using the <span class="mono">shelly:</span> vocabulary.
-        When you import a .ttl with personality triples, they override the defaults for that KB.
+        When you import a .ttl with personality triples, they override the defaults for that graph.
       </p>
 
       <details class="voice-docs">

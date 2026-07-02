@@ -413,7 +413,7 @@
   let alignError = $state<string | null>(null);
   const currentKbId = getCurrentKbId();
   const currentKbName = $derived(
-    getRegistry().find(k => k.id === currentKbId)?.name ?? 'Current KB'
+    getRegistry().find(k => k.id === currentKbId)?.name ?? 'Current Graph'
   );
   const alignPending = $derived(
     alignResult?.suggestions.filter(s => s.decision === 'pending').length ?? 0
@@ -531,7 +531,7 @@
       <div class="overlay-controls">
         <!-- KB picker row -->
         <div class="ov-row">
-          <span class="ov-label mono">KBs</span>
+          <span class="ov-label mono">Graphs</span>
           {#each overlayKbEntries as entry}
             {@const isActive = overlaySelectedKbIds.has(entry.id)}
             <button
@@ -878,7 +878,7 @@
             onclick={runAlignment}
             disabled={alignSelectedKbs.size === 0 || alignLoading}
           >
-            {alignLoading ? 'analyzing...' : `align ${alignSelectedKbs.size} KB${alignSelectedKbs.size !== 1 ? 's' : ''}`}
+            {alignLoading ? 'analyzing...' : `align ${alignSelectedKbs.size} graph${alignSelectedKbs.size !== 1 ? 's' : ''}`}
           </button>
         </div>
 

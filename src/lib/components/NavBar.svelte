@@ -6,11 +6,11 @@
   import type { AnalysisType } from '$lib/integrations/llm/re-analyze';
 
   const items: { href: string; label: string; glyph?: string; svg?: string; img?: string; small?: boolean }[] = [
-    { href: '/', label: 'graph' },
+    { href: '/', label: 'view' },
     { href: '/ingest', label: 'add', glyph: '＋' },
     { href: '/review', label: 'review', glyph: '◐' },
     { href: '/reckoning', label: 'reckon', glyph: '⟁' },
-    { href: '/kb', label: 'kb', svg: `<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" width="14" height="14"><line x1="4" y1="4" x2="10" y2="4"/><line x1="4" y1="4" x2="7" y2="10"/><line x1="10" y1="4" x2="7" y2="10"/><circle cx="4" cy="4" r="1.5" fill="currentColor" stroke="none"/><circle cx="10" cy="4" r="1.5" fill="currentColor" stroke="none"/><circle cx="7" cy="10" r="1.5" fill="currentColor" stroke="none"/></svg>` },
+    { href: '/kb', label: 'graph', svg: `<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" width="14" height="14"><line x1="4" y1="4" x2="10" y2="4"/><line x1="4" y1="4" x2="7" y2="10"/><line x1="10" y1="4" x2="7" y2="10"/><circle cx="4" cy="4" r="1.5" fill="currentColor" stroke="none"/><circle cx="10" cy="4" r="1.5" fill="currentColor" stroke="none"/><circle cx="7" cy="10" r="1.5" fill="currentColor" stroke="none"/></svg>` },
   ];
 
   const smallItems = [
@@ -83,7 +83,7 @@
 {/if}
 
 <nav aria-label="Main navigation">
-  <a href="/" class="wordmark" class:active={page.url.pathname === '/'} aria-label="Reckons.AI — graph view">
+  <a href="/" class="wordmark" class:active={page.url.pathname === '/'} aria-label="Reckons.AI — 3D view">
     <img src="/svg/circlegraph.svg" alt="Reckons.AI" class="wm-logo" />
   </a>
   <div class="divider"></div>
@@ -116,7 +116,7 @@
         class:running
         onclick={toggleAnalyze}
         title="analyze"
-        aria-label="Analyze knowledge base"
+        aria-label="Analyze graph"
         aria-expanded={analyzeOpen}
       >
         <span class="glyph-wrap">

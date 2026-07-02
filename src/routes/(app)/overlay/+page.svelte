@@ -208,7 +208,7 @@
   <!-- ── KB source picker ───────────────────────────────────────────────── -->
   <div class="source-picker">
     <div class="picker-header">
-      <span class="picker-label mono">knowledge bases</span>
+      <span class="picker-label mono">graphs</span>
       <div class="picker-actions">
         <button class="ghost-sm" onclick={selectAll}>all</button>
         <button class="ghost-sm" onclick={selectNone}>none</button>
@@ -216,7 +216,7 @@
     </div>
 
     {#if kbEntries.length === 0}
-      <p class="no-kbs mono">No knowledge bases with data found. Ingest some sources first.</p>
+      <p class="no-kbs mono">No graphs with data found. Ingest some sources first.</p>
     {:else}
       <div class="kb-chips">
         {#each kbEntries as entry}
@@ -282,7 +282,7 @@
   {/if}
 
   {#if loading}
-    <div class="loading-bar mono">loading knowledge bases...</div>
+    <div class="loading-bar mono">loading graphs...</div>
   {/if}
 
   {#if data}
@@ -402,8 +402,8 @@
   {:else if !loading}
     <!-- Empty state -->
     <div class="empty-state">
-      <p class="empty-title">Select knowledge bases above to compare</p>
-      <p class="empty-sub mono">Pick two or more KBs to see a venn-style overlay of shared and unique entities</p>
+      <p class="empty-title">Select graphs above to compare</p>
+      <p class="empty-sub mono">Pick two or more graphs to see a venn-style overlay of shared and unique entities</p>
     </div>
   {/if}
 </div>

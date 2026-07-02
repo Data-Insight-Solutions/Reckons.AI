@@ -116,7 +116,7 @@
     <div class="warning-box">
       <p class="warn-title mono">api cost warning</p>
       <p class="warn-body">
-        <strong>{pendingType ? focusLabel(pendingType) : ''}</strong> analysis sends your confirmed KB
+        <strong>{pendingType ? focusLabel(pendingType) : ''}</strong> analysis sends your confirmed graph
         entities to <strong>{settings().analyzeBackend ?? settings().preferredBackend}</strong>.
         {#if pendingType === 'enrich'}Also searches the web via Tavily for relevant facts.{/if}
         Each run costs API credits.

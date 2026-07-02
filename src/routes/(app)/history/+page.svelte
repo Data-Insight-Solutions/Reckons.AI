@@ -84,9 +84,9 @@
 
 <div class="history-page">
   <div class="header">
-    <h1>Knowledge Base History</h1>
+    <h1>Graph History</h1>
     <p>
-      Scrub through past KB states. The graph shows only statements that existed at the selected time.
+      Scrub through past graph states. The graph shows only facts that existed at the selected time.
     </p>
   </div>
 

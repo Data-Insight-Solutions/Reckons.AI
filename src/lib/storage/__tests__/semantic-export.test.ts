@@ -145,7 +145,7 @@ describe('toLlmsTxt', () => {
 
   it('uses default title when none provided', () => {
     const txt = toLlmsTxt([]);
-    expect(txt).toContain('# Knowledge Base');
+    expect(txt).toContain('# Knowledge Graph');
   });
 
   it('includes description in blockquote', () => {
@@ -207,6 +207,6 @@ describe('toLlmsTxt', () => {
   it('returns a non-empty string for empty statements', () => {
     const txt = toLlmsTxt([]);
     expect(txt.length).toBeGreaterThan(0);
-    expect(txt).toContain('# Knowledge Base');
+    expect(txt).toContain('# Knowledge Graph');
   });
 });

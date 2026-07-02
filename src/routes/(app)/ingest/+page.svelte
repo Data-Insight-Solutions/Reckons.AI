@@ -426,7 +426,7 @@
 
       tempDb.close();
 
-      if (confirm(`Created "${kbName}" with ${stmts.length} statements.\n\nSwitch to it now?`)) {
+      if (confirm(`Created "${kbName}" with ${stmts.length} facts.\n\nSwitch to it now?`)) {
         switchToKb(newKb.id);
       }
     } catch (e) {
@@ -580,7 +580,7 @@
           ingestedAt: Date.now()
         });
         await addStatements(stmts);
-        indicoImportResult = `Imported ${events.length} events (${stmts.length} statements)`;
+        indicoImportResult = `Imported ${events.length} events (${stmts.length} facts)`;
       } else {
         indicoImportResult = 'No events found.';
       }
@@ -628,7 +628,7 @@
           ingestedAt: Date.now()
         });
         await addStatements(stmts);
-        icalImportResult = `Imported ${events.length} events (${stmts.length} statements)`;
+        icalImportResult = `Imported ${events.length} events (${stmts.length} facts)`;
       } else {
         icalImportResult = 'No events found in feed.';
       }
@@ -829,7 +829,7 @@
         (p: IngestProgress) => {
           phase = p.phase;
           if (p.phase === 'fetching') repoProgress = 'fetching files…';
-          else if (p.phase === 'extracting') repoProgress = `extracting triples (${p.backend})…`;
+          else if (p.phase === 'extracting') repoProgress = `extracting facts (${p.backend})…`;
           else if (p.phase === 'normalizing') repoProgress = 'normalising entities…';
           else if (p.phase === 'diffing') repoProgress = 'computing diff…';
           else if (p.phase === 'semantic') repoProgress = 'semantic enrichment…';
@@ -858,15 +858,15 @@
   <h1>add to the base.</h1>
   <p class="sub">
     a single document, note, url or reminder. it will be parsed into atomic
-    triples for you to review.
+    facts for you to review.
   </p>
 </header>
 
 <div class="tabs mono">
-  {#each [{ k: 'note', l: 'note' }, { k: 'reminder', l: 'reminder' }, { k: 'url', l: 'url' }, { k: 'document', l: 'document' }, { k: 'vault', l: 'vault ⟁' }, { k: 'triples', l: 'triples ✎' }] as t}
+  {#each [{ k: 'note', l: 'note' }, { k: 'reminder', l: 'reminder' }, { k: 'url', l: 'url' }, { k: 'document', l: 'document' }, { k: 'vault', l: 'vault ⟁' }, { k: 'triples', l: 'facts ✎' }] as t}
     <button class:active={mode === t.k} onclick={() => (mode = t.k as Mode)}>{t.l}</button>
   {/each}
-  <button class:active={mode === 'kb'} onclick={() => (mode = 'kb')}><svg class="tab-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><line x1="4" y1="4" x2="10" y2="4"/><line x1="4" y1="4" x2="7" y2="10"/><line x1="10" y1="4" x2="7" y2="10"/><circle cx="4" cy="4" r="1.5" fill="currentColor" stroke="none"/><circle cx="10" cy="4" r="1.5" fill="currentColor" stroke="none"/><circle cx="7" cy="10" r="1.5" fill="currentColor" stroke="none"/></svg> kb</button>
+  <button class:active={mode === 'kb'} onclick={() => (mode = 'kb')}><svg class="tab-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><line x1="4" y1="4" x2="10" y2="4"/><line x1="4" y1="4" x2="7" y2="10"/><line x1="10" y1="4" x2="7" y2="10"/><circle cx="4" cy="4" r="1.5" fill="currentColor" stroke="none"/><circle cx="10" cy="4" r="1.5" fill="currentColor" stroke="none"/><circle cx="7" cy="10" r="1.5" fill="currentColor" stroke="none"/></svg> graph</button>
   <button
     class:active={mode === 'drive'}
     onclick={() => { mode = 'drive'; loadDriveFiles(); }}
@@ -904,7 +904,7 @@
       <p class="hint mono">{docText.length.toLocaleString()} chars loaded from {docName}</p>
     {/if}
   {:else if mode === 'vault'}
-    <p class="hint" style="margin-bottom:0.5rem">Drop a folder of <code>.md</code> / <code>.txt</code> files — each file becomes its own sourced statement batch. Wikilinks are extracted as entity hints.</p>
+    <p class="hint" style="margin-bottom:0.5rem">Drop a folder of <code>.md</code> / <code>.txt</code> files — each file becomes its own sourced batch of facts. Wikilinks are extracted as entity hints.</p>
     {#if vaultQueue.length === 0}
       <label>
         <span class="lbl mono">select files</span>
@@ -965,7 +965,7 @@
     {/if}
 
   {:else if mode === 'folder'}
-    <p class="hint" style="margin-bottom:0.5rem">Select a folder — its structure (file names, extensions, paths) and readable text content will be ingested into the KB.</p>
+    <p class="hint" style="margin-bottom:0.5rem">Select a folder — its structure (file names, extensions, paths) and readable text content will be ingested into the graph.</p>
     {#if !folderScanResult}
       <button class="btn-primary" onclick={pickFolder} disabled={folderScanning}>
         {folderScanning ? folderProgress : 'Choose Folder'}
@@ -982,7 +982,7 @@
         <button class="btn-secondary" onclick={() => { folderScanResult = null; }}>clear</button>
       </div>
       {#if folderDone}
-        <p class="hint mono ok">Done — {folderStmtCount} statements created. <a href="/review">Review →</a></p>
+        <p class="hint mono ok">Done — {folderStmtCount} facts created. <a href="/review">Review →</a></p>
       {/if}
     {/if}
 
@@ -1025,10 +1025,10 @@
     </label>
     <label>
       <span class="lbl mono">body</span>
-      <textarea bind:value={body} rows="9" placeholder="write a note in your own words. it will be decomposed into triples."></textarea>
+      <textarea bind:value={body} rows="9" placeholder="write a note in your own words. it will be decomposed into facts."></textarea>
     </label>
   {:else if mode === 'triples'}
-    <p class="hint" style="margin-bottom: 0.25rem;">Add triples directly — no AI needed. Great for structured notes.</p>
+    <p class="hint" style="margin-bottom: 0.25rem;">Add facts directly — no AI needed. Great for structured notes.</p>
     <label>
       <span class="lbl mono">source title</span>
       <input type="text" bind:value={title} placeholder="name for this set of notes" />
@@ -1063,7 +1063,7 @@
     <div class="row">
       <span></span>
       <button class="primary" onclick={submitManualTriples} disabled={!canSubmit || busy}>
-        {busy ? 'saving…' : 'add to KB →'}
+        {busy ? 'saving…' : 'add to graph →'}
       </button>
     </div>
   {:else}
@@ -1077,7 +1077,7 @@
           title="Build the prompt and paste the response from any LLM — no API key needed"
         >use any LLM</button>
         <button class="primary" onclick={submit} disabled={!canSubmit}>
-          {busy ? phase || 'working…' : 'extract triples →'}
+          {busy ? phase || 'working…' : 'extract facts →'}
         </button>
       </div>
     </div>
@@ -1098,9 +1098,9 @@
 {#if mode === 'kb'}
   <div class="card gcard">
     <p class="sub" style="margin-bottom: 0.75rem;">
-      upload a <code>.ttl</code> file or a <code>.zip</code> kb-export bundle (includes GIFs, GLB models, stories) —
-      exported from this KB or any other Turtle source.
-      statements will be imported as <em>pending</em> for you to review and confirm.
+      upload a <code>.ttl</code> file or a <code>.zip</code> export bundle (includes GIFs, GLB models, stories) —
+      exported from this graph or any other Turtle source.
+      facts will be imported as <em>pending</em> for you to review and confirm.
     </p>
     <label class="kb-file-label">
       <span class="lbl mono">turtle file</span>
@@ -1114,7 +1114,7 @@
       <p class="hint mono">parsing…</p>
     {:else if kbPreview}
       <div class="kb-preview">
-        <span class="kb-count mono">{kbPreview.stmts} statement{kbPreview.stmts !== 1 ? 's' : ''}</span>
+        <span class="kb-count mono">{kbPreview.stmts} fact{kbPreview.stmts !== 1 ? 's' : ''}</span>
         <span class="kb-badge mono">{kbPreview.isAnnotated ? 'annotated export' : 'plain turtle'}</span>
         {#if pendingGifImports.size > 0}
           <span class="kb-badge mono">{pendingGifImports.size} gif{pendingGifImports.size !== 1 ? 's' : ''}</span>
@@ -1126,8 +1126,8 @@
     {/if}
     {#if error}<p class="err">{error}</p>{/if}
     <div class="row" style="margin-top: 0.75rem; gap: 0.5rem;">
-      <button class="secondary" onclick={importAsNewKb} disabled={!kbPreview || busy} title="Create a separate KB (enables KB Leap navigation)">
-        {busy ? 'importing…' : 'as new KB'}
+      <button class="secondary" onclick={importAsNewKb} disabled={!kbPreview || busy} title="Create a separate graph (enables Jump navigation)">
+        {busy ? 'importing…' : 'as new graph'}
       </button>
       <button class="primary" onclick={importKb} disabled={!kbPreview || busy}>
         {busy ? 'importing…' : 'import →'}
@@ -1143,7 +1143,7 @@
     {:else if driveLoading}
       <p class="hint mono">loading files…</p>
     {:else if driveFiles.length === 0}
-      <p class="hint">no .ttl files found in your drive. export your KB first.</p>
+      <p class="hint">no .ttl files found in your drive. export your graph first.</p>
       <button onclick={loadDriveFiles} style="margin-top: 0.5rem;">refresh</button>
     {:else}
       <p class="sub" style="margin-bottom: 0.75rem;">select a .ttl file to import:</p>

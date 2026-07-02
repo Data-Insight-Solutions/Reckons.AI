@@ -180,7 +180,7 @@
     {
       icon: '⬡',
       title: 'Provenance-first',
-      body: 'Every statement knows its source, when it was added, and how trustworthy that source has proven to be over time.',
+      body: 'Every fact knows its source, when it was added, and how trustworthy that source has proven to be over time.',
       color: 'var(--accent)'
     },
     {
@@ -204,7 +204,7 @@
     {
       icon: '⧖',
       title: 'History playback',
-      body: 'Scrub back in time and reconstruct the KB at any moment. Trust scores decay correctly at historical timestamps.',
+      body: 'Scrub back in time and reconstruct the graph at any moment. Trust scores decay correctly at historical timestamps.',
       color: 'var(--accent)'
     },
     {
@@ -216,12 +216,12 @@
   ];
 
   const ROADMAP = [
-    { status: 'done',    label: 'MCP server (16 tools)',    note: 'Search, query, compress, align, run reckonings — your KB available to any AI agent' },
-    { status: 'done',    label: 'Cross-KB alignment',       note: 'Align entities across knowledge bases with embedding similarity and IRI remapping' },
-    { status: 'done',    label: 'n8n cloud sync',           note: 'Private cloud sync via self-hosted n8n — upload, download, and monitor KBs from any device' },
+    { status: 'done',    label: 'MCP server (16 tools)',    note: 'Search, query, compress, align, run reckonings — your graph available to any AI agent' },
+    { status: 'done',    label: 'Cross-graph alignment',    note: 'Align entities across graphs with embedding similarity and IRI remapping' },
+    { status: 'done',    label: 'n8n cloud sync',           note: 'Private cloud sync via self-hosted n8n — upload, download, and monitor graphs from any device' },
     { status: 'done',    label: 'Source monitoring',        note: 'Watch URLs for changes, detect diffs, queue pending notes automatically' },
     { status: 'done',    label: 'Context compression',       note: 'Condense your knowledge graph for LLM context — semantic meaning preserved, tokens reduced' },
-    { status: 'next',    label: 'VS Code / Claude Code',    note: 'Auto-inject your KB into coding sessions via MCP bridge — zero config' },
+    { status: 'next',    label: 'VS Code / Claude Code',    note: 'Auto-inject your graph into coding sessions via MCP bridge — zero config' },
     { status: 'enterprise', label: 'People · Policy · Procedure', note: 'Structure graphs around the 3 Ps with RBAC, file-based TTL delivery, bring-your-own auth' },
     { status: 'planned', label: 'Enrichment pipeline',      note: 'Progressive analysis — auto-categorize, cross-reference, and score entities over time' },
   ];
@@ -277,7 +277,7 @@
   <section class="section starter-section" id="start">
     <p class="section-kicker mono">getting started</p>
     <h2>Learn by exploring.</h2>
-    <p class="section-sub">The documentation is itself a knowledge graph — browse it in 3D, talk to Shelly, play the guided story. Or import example data to see how your own KB will look.</p>
+    <p class="section-sub">The documentation is itself a knowledge graph — browse it in 3D, talk to Shelly, play the guided story. Or import example data to see how your own graph will look.</p>
 
     <div class="template-grid">
       <button
@@ -287,7 +287,7 @@
       >
         <span class="tmpl-icon">📖</span>
         <strong class="tmpl-label">Documentation Graph</strong>
-        <p class="tmpl-desc">The full Reckons.AI guide as an interactive knowledge graph. Read-only — your KB stays untouched.</p>
+        <p class="tmpl-desc">The full Reckons.AI guide as an interactive knowledge graph. Read-only — your graph stays untouched.</p>
         <span class="tmpl-scenario mono">philosophy · architecture · features · story</span>
         {#if loadingDocs}
           <span class="tmpl-loading mono">loading...</span>
@@ -313,7 +313,7 @@
           <span class="tmpl-icon">{kb.icon}</span>
           <strong class="tmpl-label">{kb.title}</strong>
           <p class="tmpl-desc">{kb.body}</p>
-          <span class="tmpl-scenario mono">example data · imports into your KB</span>
+          <span class="tmpl-scenario mono">example data · imports into your graph</span>
           {#if loadingExample === kb.id}
             <span class="tmpl-loading mono">importing...</span>
           {:else}
@@ -354,9 +354,9 @@
 
   <!-- Why not documents -->
   <section class="section docs-problem-section">
-    <p class="section-kicker mono">why triples, not documents</p>
+    <p class="section-kicker mono">why facts, not documents</p>
     <h2>Documents grow stale.<br/><em>Graphs stay current.</em></h2>
-    <p class="section-sub">Wikis, notebooks, and markdown files store knowledge as prose. Updating one fact means editing an entire page — so people don't. Triples are atomic: change one fact without touching anything else.</p>
+    <p class="section-sub">Wikis, notebooks, and markdown files store knowledge as prose. Updating one fact means editing an entire page — so people don't. Facts are atomic: change one fact without touching anything else.</p>
 
     <div class="docs-compare">
       <div class="docs-col docs-old">
@@ -370,11 +370,11 @@
         </ul>
       </div>
       <div class="docs-col docs-new">
-        <span class="docs-col-label mono">semantic triples</span>
+        <span class="docs-col-label mono">semantic facts</span>
         <ul>
           <li>Update = change one fact</li>
           <li>Search = typed relationship queries</li>
-          <li>Duplicates = same triple auto-merges</li>
+          <li>Duplicates = same fact auto-merges</li>
           <li>Contradictions = detected at ingest</li>
           <li>AI queries a structured graph directly</li>
         </ul>
@@ -402,7 +402,7 @@
       <div class="compress-card">
         <span class="compress-num mono">MCP</span>
         <strong>AI-ready context</strong>
-        <p>Feed your compressed KB directly to AI agents via MCP. They get the full picture in fewer tokens.</p>
+        <p>Feed your compressed graph directly to AI agents via MCP. They get the full picture in fewer tokens.</p>
       </div>
     </div>
   </section>
@@ -437,7 +437,7 @@
     <div class="reckoning-inner">
       <p class="section-kicker mono">core workflow</p>
       <h2>A Reckoning</h2>
-      <p class="section-sub">Describe your situation. State your target. Reckons.AI consults your entire knowledge graph and synthesises a brief proposal, drawing only on what you've already verified.</p>
+      <p class="section-sub">Describe your situation. State your target. Reckons.AI consults your entire knowledge graph and synthesizes a brief proposal, drawing only on what you've already verified.</p>
 
       <div class="stp-flow">
         <div class="stp-step">
@@ -452,7 +452,7 @@
         <div class="stp-arrow">→</div>
         <div class="stp-step">
           <span class="stp-label mono">03 — Proposal</span>
-          <p>AI synthesises options from your KB: sourced, ranked, traceable.</p>
+          <p>AI synthesizes options from your graph: sourced, ranked, traceable.</p>
         </div>
       </div>
 
@@ -464,7 +464,7 @@
   <section class="section enterprise-section">
     <p class="section-kicker mono">enterprise</p>
     <h2>People · Policy · Procedure</h2>
-    <p class="section-sub">Structure organisational knowledge around the three dimensions that matter. Who knows what, what governs it, and how it gets done.</p>
+    <p class="section-sub">Structure organizational knowledge around the three dimensions that matter. Who knows what, what governs it, and how it gets done.</p>
 
     <div class="enterprise-grid">
       <div class="enterprise-card">
@@ -487,7 +487,7 @@
     <div class="enterprise-details">
       <div class="enterprise-detail">
         <span class="enterprise-detail-label mono">delivery</span>
-        <p>File-based <code>.ttl</code> distribution. No platform lock-in — your enterprise KB is a portable W3C standard file.</p>
+        <p>File-based <code>.ttl</code> distribution. No platform lock-in — your enterprise graph is a portable W3C standard file.</p>
       </div>
       <div class="enterprise-detail">
         <span class="enterprise-detail-label mono">authentication</span>
@@ -546,7 +546,7 @@
         <span class="step-num">03</span>
         <div>
           <strong>Review and confirm</strong>
-          <p>Approve statements, merge duplicate entities, flag conflicts. Your KB grows with every decision, all logged.</p>
+          <p>Approve facts, merge duplicate entities, flag conflicts. Your graph grows with every decision, all logged.</p>
           <a href="/review" class="step-link">Open Review →</a>
         </div>
       </div>

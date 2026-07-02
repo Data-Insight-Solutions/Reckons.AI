@@ -27,7 +27,7 @@
   <div class="legend">
     <span class="dot-chip incoming">⬤ {newCount} new</span>
     <span class="dot-chip shared">⬤ {sharedCount} shared</span>
-    <span class="dot-chip kb">⬤ {kbOnlyCount} kb only</span>
+    <span class="dot-chip kb">⬤ {kbOnlyCount} graph only</span>
     {#if incoming.length === 0 && existing.length === 0}
       <span class="empty-hint">ingest something to compare</span>
     {/if}

@@ -332,13 +332,13 @@ async function syncKB() {
       }),
     ]);
   } catch (e) {
-    broadcast({ type: 'ERROR', message: 'Could not read KB. Make sure Reckons.AI is fully loaded.' });
+    broadcast({ type: 'ERROR', message: 'Could not read graph. Make sure Reckons.AI is fully loaded.' });
     return;
   }
 
   const snap = snapResults?.[0]?.result as KBSnapshot | null | undefined;
   if (!snap) {
-    broadcast({ type: 'ERROR', message: 'Could not read KB. Make sure Reckons.AI is fully loaded.' });
+    broadcast({ type: 'ERROR', message: 'Could not read graph. Make sure Reckons.AI is fully loaded.' });
     return;
   }
 

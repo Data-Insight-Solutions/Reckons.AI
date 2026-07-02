@@ -134,9 +134,9 @@
     {:else if entry.kind === 'duplicate'}
       <span class="muted">exact n-quad already known</span>
     {:else if entry.kind === 'conflicts'}
-      <span class="muted">disagrees with {entry.existing.length} prior statement(s)</span>
+      <span class="muted">disagrees with {entry.existing.length} prior fact(s)</span>
     {:else if entry.kind === 'refines'}
-      <span class="muted">more specific than {entry.existing.length} prior statement(s)</span>
+      <span class="muted">more specific than {entry.existing.length} prior fact(s)</span>
     {:else if entry.kind === 'near-duplicate'}
       <span class="muted">subject matches existing entity ({(entry.subjectSimilarity * 100).toFixed(0)}% similar) — same person?</span>
     {:else if entry.kind === 'synonym-reinforces'}

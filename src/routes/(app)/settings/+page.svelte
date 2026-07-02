@@ -611,17 +611,17 @@
         const { imported, skipped } = await importKbsFromWorkspace();
         wsImporting = false;
         if (imported.length > 0) {
-          wsImportMsg = `Imported ${imported.length} KB(s): ${imported.join(', ')}`;
+          wsImportMsg = `Imported ${imported.length} graph(s): ${imported.join(', ')}`;
           setTimeout(() => { wsImportMsg = ''; }, 10000);
         } else {
-          wsSyncMsg = `${folders.length} KB(s) found in folder (already imported or empty).`;
+          wsSyncMsg = `${folders.length} graph(s) found in folder (already imported or empty).`;
           setTimeout(() => { wsSyncMsg = ''; }, 5000);
         }
       } else {
         // Empty folder — export current KBs to it
         wsSyncing = true;
         const count = await syncAllKbs();
-        wsSyncMsg = `Synced ${count} KB${count !== 1 ? 's' : ''} to folder.`;
+        wsSyncMsg = `Synced ${count} graph${count !== 1 ? 's' : ''} to folder.`;
         wsSyncing = false;
         setTimeout(() => { wsSyncMsg = ''; }, 5000);
       }
@@ -639,7 +639,7 @@
       if (folders.length > 0) {
         const { imported } = await importKbsFromWorkspace();
         if (imported.length > 0) {
-          wsImportMsg = `Imported ${imported.length} KB(s): ${imported.join(', ')}`;
+          wsImportMsg = `Imported ${imported.length} graph(s): ${imported.join(', ')}`;
           setTimeout(() => { wsImportMsg = ''; }, 10000);
         }
       }
@@ -650,7 +650,7 @@
     wsSyncing = true;
     wsSyncMsg = '';
     const count = await syncAllKbs();
-    wsSyncMsg = `Synced ${count} KB${count !== 1 ? 's' : ''} to folder.`;
+    wsSyncMsg = `Synced ${count} graph${count !== 1 ? 's' : ''} to folder.`;
     wsSyncing = false;
     setTimeout(() => { wsSyncMsg = ''; }, 5000);
   }
@@ -812,7 +812,7 @@
     <div class="task-row">
       <div class="task-info">
         <span class="task-label mono">page summary</span>
-        <span class="task-desc">compare page against KB</span>
+        <span class="task-desc">compare page against graph</span>
       </div>
       <span class="task-inherits mono">← ingest</span>
     </div>
@@ -1083,7 +1083,7 @@
 
 <section id="s-mistral" class="card">
   <h3>mistral ocr <span class="badge paid">paid · document parsing</span></h3>
-  <p class="hint">Convert PDFs and images to clean markdown before triple extraction. Drop a PDF or image on the <strong>document</strong> tab in Ingest and it will be parsed automatically when this key is set. Get a key at console.mistral.ai.</p>
+  <p class="hint">Convert PDFs and images to clean markdown before fact extraction. Drop a PDF or image on the <strong>document</strong> tab in Ingest and it will be parsed automatically when this key is set. Get a key at console.mistral.ai.</p>
   <label class="field">
     <span class="lbl mono">api key</span>
     <input type="password" bind:value={mistralApiKey} placeholder="..." />
@@ -1138,7 +1138,7 @@
   <div class="analyze-header">
     <div>
       <h3>auto re-analysis</h3>
-      <p class="sub">periodically scan your confirmed KB for new type, relation, and merge suggestions.</p>
+      <p class="sub">periodically scan your confirmed graph for new type, relation, and merge suggestions.</p>
     </div>
     <a href="/analyze" class="analyze-history-link mono">history ↗</a>
   </div>
@@ -1194,7 +1194,7 @@
   <label class="check-row">
     <input type="checkbox" bind:checked={autoRefreshOnOpen} />
     <div>
-      <strong>refresh sources on KB open</strong>
+      <strong>refresh sources on graph open</strong>
       <p class="check-hint">when the app loads, refresh all URL and repo sources to check for updates.</p>
     </div>
   </label>
@@ -1265,8 +1265,8 @@
 </section>
 
 <section id="s-identity" class="card">
-  <h3>KB identity</h3>
-  <p class="sub">Unique identifiers for this knowledge base — no account required.</p>
+  <h3>graph identity</h3>
+  <p class="sub">Unique identifiers for this graph — no account required.</p>
 
   <div class="id-row">
     <div class="id-block">
@@ -1287,7 +1287,7 @@
 
     <div class="id-block">
       <span class="lbl mono">content fingerprint</span>
-      <p class="id-hint">SHA-256 of confirmed triples — changes with every edit. Use for sync verification.</p>
+      <p class="id-hint">SHA-256 of confirmed facts — changes with every edit. Use for sync verification.</p>
       <div class="id-value-row">
         {#if contentHash}
           <code class="id-value mono">{formatContentHash(contentHash)}</code>
@@ -1310,7 +1310,7 @@
 
 <section id="s-extension" class="card">
   <h3>browser extension highlights</h3>
-  <p class="sub">colors and label style for the Compare page overlay. click "sync KB" in the extension after saving to apply.</p>
+  <p class="sub">colors and label style for the Compare page overlay. click "sync graph" in the extension after saving to apply.</p>
 
   <div class="field">
     <span class="lbl mono">highlight colors</span>
@@ -1368,7 +1368,7 @@
 
 <section id="s-backup" class="card">
   <h3>backup & export</h3>
-  <p class="sub">export your knowledge base as RDF Turtle (.ttl). no data is sent anywhere.</p>
+  <p class="sub">export your graph as RDF Turtle (.ttl). no data is sent anywhere.</p>
 
   {#if isAutoSaveSupported()}
     <div class="autosave-row">
@@ -1378,7 +1378,7 @@
           {#if autoSaveLinked}
             writing to <code class="mono">{autoSaveFileName}</code> after each change
           {:else}
-            pick a .ttl file — the KB will be written there after every mutation
+            pick a .ttl file — the graph will be written there after every mutation
           {/if}
         </p>
       </div>
@@ -1396,7 +1396,7 @@
     <div class="export-item">
       <div>
         <strong>clean export</strong>
-        <p class="check-hint">confirmed &amp; refined triples only — standard RDF, no annotations. best for interop with other tools.</p>
+        <p class="check-hint">confirmed &amp; refined facts only — standard RDF, no annotations. best for interop with other tools.</p>
       </div>
       <button onclick={handleBackup} disabled={backupLoading} class="backup-btn">
         {backupLoading ? '…' : '↓ .ttl'}
@@ -1406,7 +1406,7 @@
     <div class="export-item">
       <div>
         <strong>full export</strong>
-        <p class="check-hint">all statements (pending, rejected, superseded) with status, confidence, and source metadata as RDF annotations. round-trips on import.</p>
+        <p class="check-hint">all facts (pending, rejected, superseded) with status, confidence, and source metadata as RDF annotations. round-trips on import.</p>
       </div>
       <button onclick={handleExportFull} disabled={exportingFull}>
         {exportingFull ? '…' : '↓ .ttl'}
@@ -1416,7 +1416,7 @@
     <div class="export-item">
       <div>
         <strong>pending preview</strong>
-        <p class="check-hint">pending statements only — save as a temporary KB to inspect before confirming.</p>
+        <p class="check-hint">pending facts only — save as a temporary graph to inspect before confirming.</p>
       </div>
       <button onclick={handleExportPending} disabled={exportingPending}>
         {exportingPending ? '…' : '↓ .ttl'}
@@ -1437,7 +1437,7 @@
 
 <section class="settings-section">
   <h2 class="section-title">Semantic Web &amp; LLM Search</h2>
-  <p class="section-desc">Export your KB in structured formats that help AI crawlers, LLM search systems, and Schema.org-aware tools understand your content.</p>
+  <p class="section-desc">Export your graph in structured formats that help AI crawlers, LLM search systems, and Schema.org-aware tools understand your content.</p>
   <div class="export-list">
     <div class="export-item">
       <div>
@@ -1451,7 +1451,7 @@
     <div class="export-item">
       <div>
         <strong>llms.txt</strong>
-        <p class="check-hint">Plain-text KB summary for AI crawlers, following the <a href="https://llmstxt.org" target="_blank" rel="noopener">llmstxt.org</a> spec. Serve at <code>/llms.txt</code> on your site so LLMs can quickly understand your content during indexing or RAG retrieval.</p>
+        <p class="check-hint">Plain-text graph summary for AI crawlers, following the <a href="https://llmstxt.org" target="_blank" rel="noopener">llmstxt.org</a> spec. Serve at <code>/llms.txt</code> on your site so LLMs can quickly understand your content during indexing or RAG retrieval.</p>
       </div>
       <button onclick={handleExportLlmsTxt} disabled={exportingLlmsTxt}>
         {exportingLlmsTxt ? '…' : '↓ llms.txt'}
@@ -1464,7 +1464,7 @@
 <section id="s-workspace" class="card">
   <h3>local workspace</h3>
   <p class="sub">
-    Link a local folder as your Reckons home. All KBs are auto-synced there as TTL files,
+    Link a local folder as your Reckons home. All graphs are auto-synced there as TTL files,
     so your data survives browser cache clears. Place the folder inside Dropbox, iCloud
     Drive, or OneDrive for cross-device sync — no account required.
   </p>
@@ -1495,20 +1495,20 @@
     {#if workspaceState() === 'connected'}
       <div class="ws-profile-row">
         <div class="defaults-info">
-          <strong>KB folder sync</strong>
+          <strong>graph folder sync</strong>
           <p class="check-hint">
-            All KBs are auto-synced to <code>kbs/</code> in your workspace folder on every change.
+            All graphs are auto-synced to <code>kbs/</code> in your workspace folder on every change.
             {#if lastSyncTime()}
               Last synced: {new Date(lastSyncTime()!).toLocaleTimeString()}.
             {/if}
             {#if syncedKbCount() > 0}
-              {syncedKbCount()} KB{syncedKbCount() !== 1 ? 's' : ''} in folder.
+              {syncedKbCount()} graph{syncedKbCount() !== 1 ? 's' : ''} in folder.
             {/if}
           </p>
         </div>
         <div class="btn-group">
           <button onclick={handleSyncAllKbs} disabled={wsSyncing}>
-            {wsSyncing ? 'syncing…' : 'sync all KBs now'}
+            {wsSyncing ? 'syncing…' : 'sync all graphs now'}
           </button>
         </div>
       </div>
@@ -1520,13 +1520,13 @@
         <div class="defaults-info">
           <strong>import from folder</strong>
           <p class="check-hint">
-            Import KBs found in the workspace folder that aren't in the browser yet.
-            Each <code>kbs/*/kb.ttl</code> becomes a new KB.
+            Import graphs found in the workspace folder that aren't in the browser yet.
+            Each <code>kbs/*/kb.ttl</code> becomes a new graph.
           </p>
         </div>
         <div class="btn-group">
           <button onclick={handleImportFromWorkspace} disabled={wsImporting}>
-            {wsImporting ? 'importing…' : 'import KBs from folder'}
+            {wsImporting ? 'importing…' : 'import graphs from folder'}
           </button>
         </div>
       </div>
@@ -1626,7 +1626,7 @@
       <Dialog.Title class="reset-title">Reset all settings?</Dialog.Title>
       <Dialog.Description id="reset-desc" class="reset-desc">
         This will clear all API keys, model selections, and preferences, restoring
-        factory defaults. Your knowledge base data is not affected.
+        factory defaults. Your graph data is not affected.
       </Dialog.Description>
       <div class="reset-actions">
         <Dialog.Close class="reset-cancel">Cancel</Dialog.Close>

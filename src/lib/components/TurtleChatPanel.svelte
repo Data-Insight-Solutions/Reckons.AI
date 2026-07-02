@@ -94,43 +94,43 @@
   const STEPS = [
     {
       title: "Hi, I'm Shelly",
-      body: `Welcome to **Reckons.AI** — your personal knowledge base.\n\nI'm your guide. I'll walk you through the main ideas, then you can ask me anything or load a starter scenario to jump straight in.\n\nReckons.AI stores knowledge as a **KB** (knowledge base) — a living graph of facts about your world, with every fact traced back to the source document it came from.`
+      body: `Welcome to **Reckons.AI** — your personal knowledge graph.\n\nI'm your guide. I'll walk you through the main ideas, then you can ask me anything or load a starter scenario to jump straight in.\n\nReckons.AI stores knowledge as a **graph** — a living network of facts about your world, with every fact traced back to the source document it came from.`
     },
     {
-      title: 'your knowledge base',
-      body: `Your KB is stored in the **Turtle** (\`.ttl\`) format — a W3C standard for expressing knowledge as a graph.\n\nEverything Reckons.AI knows lives in your KB:\n\n• **Entities** — people, places, events, concepts\n• **Relationships** — how they connect\n• **Source documents** — visible in the graph as 📄 nodes, linked to everything they contributed\n• **Trust** — how reliable each source has proven to be\n\nYou own the data. Nothing leaves your device unless you share it.`
+      title: 'your graph',
+      body: `Your graph is stored in the **Turtle** (\`.ttl\`) format — a W3C standard for expressing knowledge as a graph.\n\nEverything Reckons.AI knows lives in your graph:\n\n• **Entities** — people, places, events, concepts\n• **Relationships** — how they connect\n• **Source documents** — visible in the graph as 📄 nodes, linked to everything they contributed\n• **Trust** — how reliable each source has proven to be\n\nYou own the data. Nothing leaves your device unless you share it.`
     },
     {
       title: 'one fact = one triple',
-      body: `Every fact in your KB is a **triple**: three parts.\n\n\`subject · predicate · object\`\n\nExample in plain language:\n**Alice** · **organized** · **Meramec Float Trip**\n\nIn Turtle syntax:\n\`\`\`\n<urn:kbase:person/alice>\n  <urn:kbase:predicate/organized>\n  <urn:kbase:event/float-trip> .\n\`\`\`\n\nEvery node in the graph is a subject or object. Every edge is a predicate. Source documents also appear as nodes — click one to see which entities it contributed.`
+      body: `Every fact in your graph is a **triple**: three parts.\n\n\`subject · predicate · object\`\n\nExample in plain language:\n**Alice** · **organized** · **Meramec Float Trip**\n\nIn Turtle syntax:\n\`\`\`\n<urn:kbase:person/alice>\n  <urn:kbase:predicate/organized>\n  <urn:kbase:event/float-trip> .\n\`\`\`\n\nEvery node in the graph is a subject or object. Every edge is a predicate. Source documents also appear as nodes — click one to see which entities it contributed.`
     },
     {
       title: 'adding knowledge',
-      body: `Go to **Ingest** (＋) to add new knowledge to your KB.\n\nYou can ingest:\n• A **note** you type\n• A **URL** (web page, news article)\n• A **document** (PDF, markdown)\n• A **shared KB** (.ttl) from someone else\n• Your **calendar** events\n\nThe AI reads your source, consolidates overlapping facts, and extracts triples. You review and confirm them — only what you approve enters your KB.\n\nEach ingested source becomes a 📄 document node in the graph, connected to every entity it contributed.`
+      body: `Go to **Ingest** (＋) to add new knowledge to your graph.\n\nYou can ingest:\n• A **note** you type\n• A **URL** (web page, news article)\n• A **document** (PDF, markdown)\n• A **shared graph** (.ttl) from someone else\n• Your **calendar** events\n\nThe AI reads your source, consolidates overlapping facts, and extracts them. You review and confirm them — only what you approve enters your graph.\n\nEach ingested source becomes a 📄 document node in the graph, connected to every entity it contributed.`
     },
     {
       title: 'review & confirm',
-      body: `After ingestion, triples start as **pending** — waiting for your approval.\n\nIn the **Review** tab:\n• ✓ **Confirm** triples that are accurate\n• ✕ **Reject** ones that are wrong\n• Merge duplicate entities (e.g. "Alice Smith" and "Alice" are the same person)\n\nOnly confirmed triples appear in the graph and are used by Reckonings. This keeps your KB trustworthy.`
+      body: `After ingestion, facts start as **pending** — waiting for your approval.\n\nIn the **Review** tab:\n• ✓ **Confirm** facts that are accurate\n• ✕ **Reject** ones that are wrong\n• Merge duplicate entities (e.g. "Alice Smith" and "Alice" are the same person)\n\nOnly confirmed facts appear in the graph and are used by Reckonings. This keeps your graph trustworthy.`
     },
     {
       title: 'explore the graph',
-      body: `Your knowledge comes alive in the **graph view**.\n\nUse the layout chips to organize your view:\n• **force** — free-form physics layout\n• **source** — clusters around each source document\n• **type** — groups by entity type (Person, Concept, etc.)\n• **hub** — highlights your most connected entities\n• **order** — numbered grid you can drag to reorder\n• **focus** — centers on the selected node\n\nFilters let you highlight **hubs**, **islands**, **leaps**, or entities missing types or sources.`
+      body: `Your knowledge comes alive in the **graph view**.\n\nUse the layout chips to organize your view:\n• **force** — free-form physics layout\n• **source** — clusters around each source document\n• **type** — groups by entity type (Person, Concept, etc.)\n• **hub** — highlights your most connected entities\n• **order** — numbered grid you can drag to reorder\n• **focus** — centers on the selected node\n\nFilters let you highlight **hubs**, **islands**, **jumps**, or entities missing types or sources.`
     },
     {
       title: 'run a reckoning',
-      body: `Once your KB has facts, try a **Reckoning** (the ⟁ tab).\n\n1. Describe your **situation** — what context matters?\n2. State your **target** — what outcome do you want?\n3. Reckons.AI proposes options grounded only in what your KB already knows\n\nThe proposal cites which facts and sources back each option. You can accept the AI's suggested updates to mark the decision as part of your KB's history.`
+      body: `Once your graph has facts, try a **Reckoning** (the ⟁ tab).\n\n1. Describe your **situation** — what context matters?\n2. State your **target** — what outcome do you want?\n3. Reckons.AI proposes options grounded only in what your graph already knows\n\nThe proposal cites which facts and sources back each option. You can accept the AI's suggested updates to mark the decision as part of your graph's history.`
     },
     {
       title: 'sharing & CLI',
-      body: `Your KB exports as a portable \`.ttl\` file.\n\n**Share it:** Go to **KB** to download your knowledge base. Others import it as a trusted source in their own Reckons.AI.\n\n**Use the CLI:** The \`reckons\` command-line tool reads your KB from the terminal:\n\`\`\`\nreckons search "contract"\nreckons ask "what do I know about Alice?"\nreckons --listen\n\`\`\`\n\nThe \`--listen\` flag enables audio mode — speak to your KB through smart glasses or bluetooth headphones. Mic in, speaker out.`
+      body: `Your graph exports as a portable \`.ttl\` file.\n\n**Share it:** Go to **Graph** to download your graph. Others import it as a trusted source in their own Reckons.AI.\n\n**Use the CLI:** The \`reckons\` command-line tool reads your graph from the terminal:\n\`\`\`\nreckons search "contract"\nreckons ask "what do I know about Alice?"\nreckons --listen\n\`\`\`\n\nThe \`--listen\` flag enables audio mode — speak to your graph through smart glasses or bluetooth headphones. Mic in, speaker out.`
     },
     {
       title: 'the Turtle format (technical)',
-      body: `For the curious: Turtle is a W3C standard for **RDF** (Resource Description Framework) — the file format behind your KB.\n\nEach entity has a unique **IRI** (like a URL for a concept):\n\`\`\`\n@prefix kb: <urn:kbase:> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n\nkb:person/alice\n  a kb:type/Person ;\n  rdfs:label "Alice" ;\n  kb:predicate/organized kb:event/float-trip .\n\`\`\`\n\nSemicolons stack predicates for the same subject. \`a\` is shorthand for \`rdf:type\`. The dot ends the statement.\n\nYou never need to write raw Turtle — the app handles it. But you can always inspect or edit the \`.ttl\` file directly.`
+      body: `For the curious: Turtle is a W3C standard for **RDF** (Resource Description Framework) — the file format behind your graph.\n\nEach entity has a unique **IRI** (like a URL for a concept):\n\`\`\`\n@prefix kb: <urn:kbase:> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n\nkb:person/alice\n  a kb:type/Person ;\n  rdfs:label "Alice" ;\n  kb:predicate/organized kb:event/float-trip .\n\`\`\`\n\nSemicolons stack predicates for the same subject. \`a\` is shorthand for \`rdf:type\`. The dot ends the statement.\n\nYou never need to write raw Turtle — the app handles it. But you can always inspect or edit the \`.ttl\` file directly.`
     },
     {
       title: "you're ready",
-      body: `That's the core of Reckons.AI:\n\n✓ **Ingest** (＋) sources to add facts\n✓ **Review** (◐) to confirm what's accurate\n✓ **Explore** the graph with layout modes and filters\n✓ **Reckon** (⟁) when you need a decision\n✓ **Share** your KB (.ttl) or use the Reckons CLI\n✓ **KB** (△) to manage and export your knowledge base\n\nSwitch to the **chat** tab to ask me anything about your KB. Or close this panel and start exploring.`
+      body: `That's the core of Reckons.AI:\n\n✓ **Ingest** (＋) sources to add facts\n✓ **Review** (◐) to confirm what's accurate\n✓ **Explore** the graph with layout modes and filters\n✓ **Reckon** (⟁) when you need a decision\n✓ **Share** your graph (.ttl) or use the Reckons CLI\n✓ **Graph** (△) to manage and export your graph\n\nSwitch to the **chat** tab to ask me anything about your graph. Or close this panel and start exploring.`
     }
   ];
 
@@ -338,7 +338,7 @@
         return `• ${label} <${iri}> — predicates: ${preds || '(object-only, no outgoing)'}`;
       });
       const total = untyped.length;
-      return `[KB Query: entities without a type]\nFound ${total} untyped entities${total > 40 ? ' (showing first 40)' : ''}:\n${lines.join('\n')}`;
+      return `[Graph Query: entities without a type]\nFound ${total} untyped entities${total > 40 ? ' (showing first 40)' : ''}:\n${lines.join('\n')}`;
     }
 
     if (filter === 'no-source') {
@@ -349,7 +349,7 @@
         const obj = s.o.kind === 'iri' ? s.o.value.split('/').pop() : s.o.value.slice(0, 50);
         return `• ${subj} · ${pred} · ${obj}`;
       });
-      return `[KB Query: manually added statements]\nFound ${manual.length} manual statements${manual.length > 30 ? ' (showing first 30)' : ''}:\n${lines.join('\n')}`;
+      return `[Graph Query: manually added facts]\nFound ${manual.length} manual facts${manual.length > 30 ? ' (showing first 30)' : ''}:\n${lines.join('\n')}`;
     }
 
     if (filter === 'pending') {
@@ -360,10 +360,10 @@
         const obj = s.o.kind === 'iri' ? s.o.value.split('/').pop() : s.o.value.slice(0, 50);
         return `• ${subj} · ${pred} · ${obj}`;
       });
-      return `[KB Query: pending statements]\nFound ${pending.length} pending statements${pending.length > 30 ? ' (showing first 30)' : ''}:\n${lines.join('\n')}`;
+      return `[Graph Query: pending facts]\nFound ${pending.length} pending facts${pending.length > 30 ? ' (showing first 30)' : ''}:\n${lines.join('\n')}`;
     }
 
-    return `[KB Query: ${filter}]\n(unsupported filter)`;
+    return `[Graph Query: ${filter}]\n(unsupported filter)`;
   }
 
   async function sendMessage() {
@@ -498,8 +498,8 @@
     if (s.kbStory && s.kbStory.length > 0) {
       const userStory: Story = {
         id: 'urn:reckons:story/KbGuide',
-        label: s.kbTitle ? `${s.kbTitle} Guide` : 'KB Guide',
-        description: s.kbDescription ?? 'A guided tour of this knowledge base.',
+        label: s.kbTitle ? `${s.kbTitle} Guide` : 'Graph Guide',
+        description: s.kbDescription ?? 'A guided tour of this graph.',
         autoplay: false,
         pace: 8,
         steps: s.kbStory.map((step, i) => ({
@@ -794,7 +794,7 @@
     storyErrorMsg = '';
 
     const step = currentStory.steps[storyStepIdx];
-    const contextPrefix = `The user is on step ${storyStepIdx + 1} of "${currentStory.label}": "${step?.title}". Step content: "${step?.content}". ${step?.prompt ? `Elaboration prompt: ${step.prompt}` : ''}\n\nAnswer the user's question in the context of this step and the KB. Be helpful but concise. After answering, remind them they can click "continue" to resume the story.`;
+    const contextPrefix = `The user is on step ${storyStepIdx + 1} of "${currentStory.label}": "${step?.title}". Step content: "${step?.content}". ${step?.prompt ? `Elaboration prompt: ${step.prompt}` : ''}\n\nAnswer the user's question in the context of this step and the graph. Be helpful but concise. After answering, remind them they can click "continue" to resume the story.`;
 
     const { provider, apiKey, model } = resolveChatProvider();
     const s = settings();
@@ -1151,7 +1151,7 @@
           <div class="intro">
             {#if isEmptyKB}
               <p>Hi! I'm Shelly <img src="/svg/head1.svg" alt="" class="msg-icon" style="display:inline;vertical-align:middle" /></p>
-              <p>Your knowledge base is empty. Load a starter graph to explore, or import your own content:</p>
+              <p>Your graph is empty. Load a starter graph to explore, or import your own content:</p>
               <div class="starter-grid">
                 {#each ONBOARDING_TEMPLATES as tmpl}
                   <button
@@ -1174,7 +1174,7 @@
               <p class="intro-or mono">— or ask me anything —</p>
             {:else}
               <p>Hi! I'm Shelly <img src="/svg/head1.svg" alt="" class="msg-icon" style="display:inline;vertical-align:middle" /></p>
-              <p>Ask me anything about your KB, or say things like:</p>
+              <p>Ask me anything about your graph, or say things like:</p>
               <ul>
                 <li>"What types of entities do I have?"</li>
                 <li>"Add a relation between coffee and caffeine"</li>
@@ -1202,10 +1202,10 @@
                       class:action-merge={action.type === 'merge_entities'}
                     >
                       {#if action.type === 'add_triple'}
-                        <span class="action-badge">add triple</span>
+                        <span class="action-badge">add fact</span>
                         <span class="action-desc">{action.label}</span>
                       {:else if action.type === 'remove_triple'}
-                        <span class="action-badge badge-danger">remove triple</span>
+                        <span class="action-badge badge-danger">remove fact</span>
                         <span class="action-desc">{action.label}</span>
                       {:else if action.type === 'set_type'}
                         <span class="action-badge">set type</span>
@@ -1217,7 +1217,7 @@
                           <span class="merge-arrow">→</span>
                           <span class="keep-entity">{action.keepEntityLabel}</span>
                         </span>
-                        <span class="action-hint">all triples from "{action.dropEntityLabel}" will move to "{action.keepEntityLabel}"</span>
+                        <span class="action-hint">all facts from "{action.dropEntityLabel}" will move to "{action.keepEntityLabel}"</span>
                       {:else if action.type === 'confirm_source'}
                         <span class="action-badge">confirm source</span>
                         <span class="action-desc">{action.sourceTitle}</span>
@@ -1230,7 +1230,7 @@
                           </span>
                         {/if}
                       {:else if action.type === 'query_kb'}
-                        <span class="action-badge badge-query">query KB</span>
+                        <span class="action-badge badge-query">query graph</span>
                         <span class="action-desc">{action.label}</span>
                         <span class="action-hint">runs filter and returns results so I can help with next steps</span>
                       {:else if action.type === 'scrape_url'}

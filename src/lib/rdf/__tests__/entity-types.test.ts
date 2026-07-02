@@ -18,7 +18,7 @@ describe('BUILT_IN_TYPES', () => {
   it('includes the KnowledgeBase type', () => {
     const kb = BUILT_IN_TYPES.find(t => t.iri === 'urn:kbase:type/KnowledgeBase');
     expect(kb).toBeDefined();
-    expect(kb!.label).toBe('Knowledge Base');
+    expect(kb!.label).toBe('Graph');
     expect(kb!.geometry).toBe('tetrahedron-inv');
     expect(kb!.builtIn).toBe(true);
   });
@@ -33,7 +33,7 @@ describe('BUILT_IN_TYPES', () => {
     expect(labels).toContain('Document');
     expect(labels).toContain('Concept');
     expect(labels).toContain('Tool');
-    expect(labels).toContain('Knowledge Base');
+    expect(labels).toContain('Graph');
   });
 
   it('all types have unique IRIs', () => {

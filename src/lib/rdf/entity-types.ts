@@ -204,10 +204,10 @@ export const BUILT_IN_TYPES: EntityTypeDef[] = [
   },
   {
     iri: 'urn:kbase:type/KnowledgeBase',
-    label: 'Knowledge Base',
+    label: 'Graph',
     geometry: 'tetrahedron-inv',
     color: '#f59e0b',
-    description: 'A knowledge base — a collection of structured triples',
+    description: 'A linked graph — a collection of structured facts',
     icon2d: '🔻',
     schemaPredicates: [
       'urn:kbase:predicate/description',

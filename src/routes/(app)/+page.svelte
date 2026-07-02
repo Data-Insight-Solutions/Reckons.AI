@@ -1121,14 +1121,14 @@
         tempDb.close();
         await startLeapTransition(kbEntry.id, stmts, [src]);
       } catch (e) {
-        alert(`Failed to import docs KB: ${e instanceof Error ? e.message : String(e)}`);
+        alert(`Failed to import docs graph: ${e instanceof Error ? e.message : String(e)}`);
         flyToGhost = false;
         pendingLeapData = null;
       } finally {
         leapImporting = false;
       }
     } else {
-      alert(`KB not found on this device.\n\nStable ID: ${entityLeap.target.slice(0, 8).toUpperCase()}\n\nImport the target KB's .ttl file as a new KB first\n(Ingest page → upload file → "as new KB" button).`);
+      alert(`Graph not found on this device.\n\nStable ID: ${entityLeap.target.slice(0, 8).toUpperCase()}\n\nImport the target graph's .ttl file as a new graph first\n(Ingest page → upload file → "as new graph" button).`);
     }
   }
 
@@ -1449,7 +1449,7 @@
       {#if leapKeys.length > 0}
         <button class="chip" class:active={activeFilters.has('leaps')} onclick={() => toggleFilter('leaps')}>
           <span class="num">{leapKeys.length}</span>
-          <span class="lbl mono">leaps</span>
+          <span class="lbl mono">jumps</span>
         </button>
       {/if}
       <button class="chip" class:active={activeFilters.has('confirmed')} onclick={() => toggleFilter('confirmed')}>
@@ -1679,7 +1679,7 @@
         class="leap-badge mono"
         onclick={jumpToLeap}
         disabled={leapImporting || flyToGhost}
-        title={entityLeap.kind === 'url' ? 'Open in new tab' : entityLeap.kind === 'app' ? 'Navigate' : `Jump to ${entityLeap.label ?? 'target KB'}`}
+        title={entityLeap.kind === 'url' ? 'Open in new tab' : entityLeap.kind === 'app' ? 'Navigate' : `Jump to ${entityLeap.label ?? 'target graph'}`}
         transition:fade={{ duration: 150 }}
       >
         <span class="leap-badge-arrow">{entityLeap.kind === 'url' ? '↗' : '⟶'}</span>
@@ -1821,7 +1821,7 @@
     {#if !showMergeUI && !showRelationUI && !selected?.startsWith('src:')}
       {#if confirmingDelete}
         <div class="np-action-row np-action-confirm">
-          <span class="np-confirm-label mono">delete {deleteTargets.length} triple{deleteTargets.length !== 1 ? 's' : ''}?</span>
+          <span class="np-confirm-label mono">delete {deleteTargets.length} fact{deleteTargets.length !== 1 ? 's' : ''}?</span>
           <button class="np-act-btn np-act-danger" onclick={confirmDelete}>confirm</button>
           <button class="np-act-btn" onclick={() => (confirmingDelete = false)}>cancel</button>
         </div>
@@ -2093,20 +2093,20 @@
       </div>
     {/if}
 
-    <!-- KB Leap -->
+    <!-- Jump (KB Leap) -->
     {#if selected?.startsWith('i:')}
       <div class="np-leap">
-        <p class="np-conn-title mono" style="margin-top: 0.5rem;">kb leap</p>
+        <p class="np-conn-title mono" style="margin-top: 0.5rem;">jump</p>
         {#if entityLeap}
           <div class="link-row">
-            <button class="leap-jump mono" onclick={jumpToLeap} disabled={leapImporting || flyToGhost} title={entityLeap.kind === 'url' ? 'open in new tab' : entityLeap.kind === 'app' ? 'navigate' : 'jump to target KB'}>
+            <button class="leap-jump mono" onclick={jumpToLeap} disabled={leapImporting || flyToGhost} title={entityLeap.kind === 'url' ? 'open in new tab' : entityLeap.kind === 'app' ? 'navigate' : 'jump to target graph'}>
               {leapImporting || flyToGhost ? '...' : entityLeap.kind === 'url' ? '↗' : '⟶'}
             </button>
             <button class="leap-id mono" title={`${entityLeap.target}\nClick to navigate`} onclick={jumpToLeap} disabled={leapImporting || flyToGhost}>
               {entityLeap.label ?? (entityLeap.kind === 'kb' ? entityLeap.target.slice(0, 8).toUpperCase() : entityLeap.target)}
             </button>
             <button class="link-rm" onclick={() => navigator.clipboard.writeText(entityLeap!.target)} title="copy target">⎘</button>
-            <button class="link-rm" onclick={removeLeap} title="remove leap">✕</button>
+            <button class="link-rm" onclick={removeLeap} title="remove jump">✕</button>
           </div>
           {#if entityLeap.label && entityLeap.kind === 'kb'}
             <span class="leap-target-id mono">{entityLeap.target.slice(0, 8).toUpperCase()}</span>
@@ -2116,7 +2116,7 @@
             <input
               class="link-input"
               type="text"
-              placeholder="KB ID, URL, or app path"
+              placeholder="Graph ID, URL, or app path"
               bind:value={newLeapId}
               onkeydown={(e) => { if (e.key === 'Enter') saveLeap(); if (e.key === 'Escape') { addingLeap = false; newLeapId = ''; newLeapLabel = ''; } }}
               autofocus
@@ -2134,7 +2134,7 @@
             </div>
           </div>
         {:else}
-          <button class="link-add-btn mono" onclick={() => { addingLeap = true; }}>+ add leap</button>
+          <button class="link-add-btn mono" onclick={() => { addingLeap = true; }}>+ add jump</button>
         {/if}
       </div>
     {/if}
@@ -2142,7 +2142,7 @@
     <!-- Statement accordion — collapsed by default -->
     {#if selectedStatements.length > 0}
       <button class="np-stmts-toggle" onclick={() => (expandedTriples = !expandedTriples)}>
-        <span class="mono">{selectedStatements.length} statement{selectedStatements.length !== 1 ? 's' : ''}</span>
+        <span class="mono">{selectedStatements.length} fact{selectedStatements.length !== 1 ? 's' : ''}</span>
         <span class="np-stmts-arrow mono">{expandedTriples ? '▲' : '▼'}</span>
       </button>
       {#if expandedTriples}
