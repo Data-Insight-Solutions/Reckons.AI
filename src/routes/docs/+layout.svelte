@@ -28,6 +28,9 @@
                   class:active={$page.url.pathname === `/docs/${doc.path}`}
                 >
                   {doc.metadata.title}
+                  {#if doc.metadata.template === 'post' && doc.metadata.date}
+                    <span class="docs-nav-date">{doc.metadata.date}</span>
+                  {/if}
                 </a>
               </li>
             {/each}
@@ -130,6 +133,14 @@
   .docs-nav a.active {
     background: var(--accent-soft);
     color: var(--accent);
+  }
+
+  .docs-nav-date {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 0.1rem;
   }
 
   .docs-main {

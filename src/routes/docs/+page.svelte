@@ -19,7 +19,12 @@
       <ul>
         {#each docs as doc (doc.path)}
           <li>
-            <a href={`/docs/${doc.path}`}>{doc.metadata.title}</a>
+            <div class="entry-head">
+              <a href={`/docs/${doc.path}`}>{doc.metadata.title}</a>
+              {#if doc.metadata.template === 'post' && doc.metadata.date}
+                <span class="entry-date">{doc.metadata.date}</span>
+              {/if}
+            </div>
             {#if doc.metadata.excerpt}
               <p class="excerpt">{doc.metadata.excerpt}</p>
             {/if}
@@ -65,6 +70,18 @@
   .index-section a {
     font-family: var(--font-mono);
     font-size: 1rem;
+  }
+  .entry-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .entry-date {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--muted);
+    white-space: nowrap;
   }
   .excerpt {
     margin: 0.3rem 0 0;

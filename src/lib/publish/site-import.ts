@@ -30,7 +30,7 @@ import type { PageNav, PageStatus, PageTemplate } from '../rdf/page';
 import type { ReviewStatus, Statement, Term } from '../rdf/types';
 import { iri, lit } from '../rdf/types';
 import {
-  PAGE_SLUG, PAGE_SECTION, PAGE_TEMPLATE, PAGE_STATUS, PAGE_NAV, PAGE_EXCERPT, PAGE_BODY,
+  PAGE_SLUG, PAGE_SECTION, PAGE_TEMPLATE, PAGE_STATUS, PAGE_NAV, PAGE_EXCERPT, PAGE_BODY, PAGE_DATE,
   WEBPAGE_TYPE, slugify,
 } from '../rdf/page';
 import { SKOS_BROADER, SKOS_RELATED, NAV_ORDER, NAV_NEXT, NAV_PREV } from '../rdf/hierarchy';
@@ -38,9 +38,10 @@ import { SKOS_BROADER, SKOS_RELATED, NAV_ORDER, NAV_NEXT, NAV_PREV } from '../rd
 const RDF_TYPE   = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
 
-const TEMPLATES: readonly PageTemplate[] = ['landing', 'doc', 'full', 'sidebar'];
+const TEMPLATES: readonly PageTemplate[] = ['landing', 'doc', 'full', 'sidebar', 'post'];
 const STATUSES: readonly PageStatus[] = ['draft', 'published', 'unlisted'];
 const NAVS: readonly PageNav[] = ['menu', 'sidebar', 'both', 'hidden'];
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 // ── Frontmatter parsing ──────────────────────────────────────────────────────
 
@@ -56,6 +57,7 @@ export interface ParsedPageFile {
   excerpt: string;
   relatedSlugs: string[];    // frontmatter `related` — resolved to IRIs at import time
   body: string;
+  date: string | null;       // ISO yyyy-mm-dd — posts only
 }
 
 interface RawFrontmatter {
@@ -69,6 +71,7 @@ interface RawFrontmatter {
   nav?: string;
   excerpt?: string;
   related?: string[];
+  date?: string;
 }
 
 /** Reverse `yamlStr()` from site-export.ts — that's JSON string escaping (backslash, quote). */
@@ -112,6 +115,7 @@ function parseFrontmatterBlock(header: string): RawFrontmatter {
       case 'section': fm.section = unquoteYaml(rawVal); break;
       case 'parent': fm.parent = unquoteYaml(rawVal); break;
       case 'excerpt': fm.excerpt = unquoteYaml(rawVal); break;
+      case 'date': fm.date = unquoteYaml(rawVal); break;
       case 'order': {
         const n = parseInt(rawVal.trim(), 10);
         if (!Number.isNaN(n)) fm.order = n;
@@ -142,7 +146,7 @@ export function parsePageFile(source: string): ParsedPageFile {
     return {
       title: '', slug: '', order: 0, section: '', parentSlug: null,
       template: 'doc', status: 'draft', nav: 'sidebar', excerpt: '',
-      relatedSlugs: [], body: source,
+      relatedSlugs: [], body: source, date: null,
     };
   }
 
@@ -163,6 +167,7 @@ export function parsePageFile(source: string): ParsedPageFile {
     excerpt: fm.excerpt ?? '',
     relatedSlugs: fm.related ?? [],
     body,
+    date: fm.date && ISO_DATE_RE.test(fm.date) ? fm.date : null,
   };
 }
 
@@ -246,6 +251,7 @@ export function importSitePages(files: ParsedPageFile[], opts: SiteImportOptions
     stmts.push(mk(subject, PAGE_STATUS, lit(f.status)));
     stmts.push(mk(subject, PAGE_NAV, lit(f.nav)));
     if (f.excerpt) stmts.push(mk(subject, PAGE_EXCERPT, lit(f.excerpt)));
+    if (f.date) stmts.push(mk(subject, PAGE_DATE, lit(f.date)));
     if (f.body) stmts.push(mk(subject, PAGE_BODY, lit(f.body)));
     for (const relSlug of f.relatedSlugs) {
       if (slugToIri.has(relSlug)) stmts.push(mk(subject, SKOS_RELATED, iri(slugToIri.get(relSlug)!)));

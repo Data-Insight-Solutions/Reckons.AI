@@ -4,8 +4,8 @@ import { resolve } from 'node:path';
 import type { Statement } from '../../rdf/types';
 import { iri, lit } from '../../rdf/types';
 import {
-  PAGE_SLUG, PAGE_SECTION, PAGE_STATUS, PAGE_TEMPLATE, PAGE_BODY, PAGE_EXCERPT,
-  buildSitePages,
+  PAGE_SLUG, PAGE_SECTION, PAGE_STATUS, PAGE_TEMPLATE, PAGE_BODY, PAGE_EXCERPT, PAGE_DATE,
+  buildSitePages, sitePosts,
 } from '../../rdf/page';
 import { NAV_ORDER } from '../../rdf/hierarchy';
 import { buildSiteFiles } from '../site-export';
@@ -64,6 +64,39 @@ function mdFiles(files: Record<string, string>): Record<string, string> {
   return Object.fromEntries(Object.entries(files).filter(([path]) => path.endsWith('.md')));
 }
 
+/** sampleSite() plus a "post" section (release notes) — docs + posts mixed together. */
+function mixedSite(): Statement[] {
+  return [
+    ...sampleSite(),
+
+    st('page:release-2', RDF_TYPE, WEBPAGE, true),
+    st('page:release-2', RDFS_LABEL, 'v0.2.0'),
+    st('page:release-2', PAGE_SLUG, 'v0-2-0'),
+    st('page:release-2', PAGE_SECTION, 'Releases'),
+    st('page:release-2', PAGE_TEMPLATE, 'post'),
+    st('page:release-2', PAGE_STATUS, 'published'),
+    st('page:release-2', PAGE_DATE, '2026-08-01'),
+    st('page:release-2', PAGE_BODY, '# v0.2.0\n\nSecond release.'),
+
+    st('page:release-1', RDF_TYPE, WEBPAGE, true),
+    st('page:release-1', RDFS_LABEL, 'v0.1.0'),
+    st('page:release-1', PAGE_SLUG, 'v0-1-0'),
+    st('page:release-1', PAGE_SECTION, 'Releases'),
+    st('page:release-1', PAGE_TEMPLATE, 'post'),
+    st('page:release-1', PAGE_STATUS, 'published'),
+    st('page:release-1', PAGE_DATE, '2026-07-01'),
+    st('page:release-1', PAGE_BODY, '# v0.1.0\n\nFirst release.'),
+
+    // draft post — must not round-trip through the publishable content/ set
+    st('page:release-secret', RDF_TYPE, WEBPAGE, true),
+    st('page:release-secret', RDFS_LABEL, 'v0.3.0-rc'),
+    st('page:release-secret', PAGE_SECTION, 'Releases'),
+    st('page:release-secret', PAGE_TEMPLATE, 'post'),
+    st('page:release-secret', PAGE_STATUS, 'draft'),
+    st('page:release-secret', PAGE_DATE, '2026-09-01'),
+  ];
+}
+
 describe('parsePageFile', () => {
   it('parses frontmatter fields and preserves the body exactly', () => {
     const pages = buildSitePages(sampleSite());
@@ -101,6 +134,19 @@ describe('parsePageFile', () => {
     expect(parsed.status).toBe('draft');
     expect(parsed.nav).toBe('sidebar');
     expect(parsed.body).toBe('just a body, no frontmatter\n');
+    expect(parsed.date).toBeNull();
+  });
+
+  it('parses a post template + ISO date', () => {
+    const files = buildSiteFiles(mixedSite(), { repo: 'me/site' });
+    const parsed = parsePageFile(files['content/releases/v0-1-0.md']);
+    expect(parsed.template).toBe('post');
+    expect(parsed.date).toBe('2026-07-01');
+  });
+
+  it('ignores a malformed date and falls back to null', () => {
+    const parsed = parsePageFile('---\ntitle: "X"\ndate: "not-a-date"\n---\nBody\n');
+    expect(parsed.date).toBeNull();
   });
 });
 
@@ -156,6 +202,30 @@ describe('importSitePages / importSiteFiles', () => {
     expect(b.next).toBe(c.iri);
     expect(c.prev).toBe(b.iri);
   });
+
+  it('excludes draft posts from the publishable file set', () => {
+    const files = buildSiteFiles(mixedSite(), { repo: 'me/site' });
+    expect(Object.keys(files)).toContain('content/releases/v0-1-0.md');
+    expect(Object.keys(files)).toContain('content/releases/v0-2-0.md');
+    expect(Object.keys(files)).not.toContain('content/releases/v0-3-0-rc.md');
+
+    const imported = importSiteFiles(files);
+    const pages = buildSitePages(imported);
+    expect(pages.some((p) => p.title === 'v0.3.0-rc')).toBe(false);
+  });
+
+  it('round-trips post dates, and sitePosts() orders them newest-first', () => {
+    const files = buildSiteFiles(mixedSite(), { repo: 'me/site' });
+    const imported = importSiteFiles(files);
+    const pages = buildSitePages(imported);
+    const release2 = pages.find((p) => p.slug === 'v0-2-0')!;
+    const release1 = pages.find((p) => p.slug === 'v0-1-0')!;
+    expect(release2.date).toBe('2026-08-01');
+    expect(release1.date).toBe('2026-07-01');
+
+    // published only (secret draft dropped on import); newest-first
+    expect(sitePosts(pages, 'Releases').map((p) => p.slug)).toEqual(['v0-2-0', 'v0-1-0']);
+  });
 });
 
 describe('round-trip idempotency (export → import → export)', () => {
@@ -173,6 +243,25 @@ describe('round-trip idempotency (export → import → export)', () => {
     const reExported = buildSiteFiles(imported, { includeDrafts: true, includeAdmin: false });
 
     expect(mdFiles(reExported)).toEqual(mdFiles(original));
+  });
+
+  it('round-trips a mixed site of docs and dated posts byte-identically', () => {
+    const original = buildSiteFiles(mixedSite(), { repo: 'me/site', branch: 'main' });
+    const imported = importSiteFiles(original);
+    const reExported = buildSiteFiles(imported, { repo: 'me/site', branch: 'main' });
+
+    expect(mdFiles(reExported)).toEqual(mdFiles(original));
+    expect(original['content/releases/v0-1-0.md']).toContain('date: "2026-07-01"');
+    expect(original['content/releases/v0-1-0.md']).toContain('template: post');
+  });
+
+  it('round-trips a mixed site with drafts (incl. a draft post) included', () => {
+    const original = buildSiteFiles(mixedSite(), { includeDrafts: true, includeAdmin: false });
+    const imported = importSiteFiles(original);
+    const reExported = buildSiteFiles(imported, { includeDrafts: true, includeAdmin: false });
+
+    expect(mdFiles(reExported)).toEqual(mdFiles(original));
+    expect(Object.keys(original)).toContain('content/releases/v0-3-0-rc.md');
   });
 
   it('round-trips the shipped content/docs/welcome.md unchanged', () => {
