@@ -70,15 +70,21 @@ type PendingEntry = {
 
 // ── Colours ──────────────────────────────────────────────────────────────────
 
-const C = {
-  reset: '\x1b[0m',
-  bold: '\x1b[1m',
-  dim: '\x1b[2m',
-  green: '\x1b[32m',
-  red: '\x1b[31m',
-  yellow: '\x1b[33m',
-  cyan: '\x1b[36m',
-};
+// Disable ANSI colors when not attached to a TTY (e.g. CI) or when NO_COLOR is
+// set, so captured output (like the KB alignment PR comment) stays plain text
+// instead of leaking raw escape codes.
+const USE_COLOR = !!process.stdout.isTTY && !process.env.NO_COLOR;
+const C = USE_COLOR
+  ? {
+      reset: '\x1b[0m',
+      bold: '\x1b[1m',
+      dim: '\x1b[2m',
+      green: '\x1b[32m',
+      red: '\x1b[31m',
+      yellow: '\x1b[33m',
+      cyan: '\x1b[36m',
+    }
+  : { reset: '', bold: '', dim: '', green: '', red: '', yellow: '', cyan: '' };
 
 function ok(s: string) { return `${C.green}${s}${C.reset}`; }
 function warn(s: string) { return `${C.yellow}${s}${C.reset}`; }
@@ -139,7 +145,10 @@ function runSvelteCheck(): TestResult {
       cwd: ROOT, encoding: 'utf8', timeout: 120_000,
     });
     const m = out.match(/COMPLETED\s+(\d+)\s+FILES\s+(\d+)\s+ERRORS\s+(\d+)\s+WARNINGS/);
-    const errors = m ? parseInt(m[2]) : -1;
+    // `--threshold error` exits non-zero when there are errors, so reaching here
+    // without throwing means the type check passed. If the summary line can't be
+    // parsed, fall back to 0 (not a bogus -1 that reads as a phantom failure).
+    const errors = m ? parseInt(m[2]) : 0;
     const warnings = m ? parseInt(m[3]) : 0;
     return {
       name: 'typecheck',
@@ -539,7 +548,7 @@ function deduplicateEntries(entries: PendingEntry[]): PendingEntry[] {
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 function main() {
-  console.log(`\n${bold('KB Alignment Report')}`);
+  console.log(`\n${bold('Graph Alignment Report')}`);
   console.log('═'.repeat(56));
 
   // Check workspace exists

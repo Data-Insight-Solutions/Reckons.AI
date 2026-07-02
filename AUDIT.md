@@ -23,7 +23,7 @@ All production dependencies use permissive open-source licenses. The project is 
 **Recommended for full open-source stack**:
 - Set backend to **ollama** with `llama3.2` or `mistral`
 - Disable Google Calendar/Drive integration (Settings → Google section)
-- Embeddings use `@xenova/transformers` locally — no change needed
+- Embeddings use `@huggingface/transformers` locally — no change needed
 
 ---
 
@@ -56,7 +56,6 @@ All production dependencies use permissive open-source licenses. The project is 
 | `src/lib/3d/vr/VRShell.svelte` | Scaffold, not connected to any route | Keep (roadmap C) |
 | `src/lib/3d/ar/ARShell.svelte` | Scaffold, not connected to any route | Keep (roadmap C) |
 | `src/lib/components/VoiceInput.svelte` | Scaffold, Hume.AI integration pending | Keep (roadmap B) |
-| `src/routes/api/merge-analysis.ts` | **Invalid SvelteKit route** — missing `+` prefix | Rename to `src/routes/api/merge-analysis/+server.ts` |
 | `src/lib/components/RadialMenu.svelte` | Usage unverified | Verify imports before deleting |
 
 ---
@@ -156,7 +155,7 @@ RBAC, BYOA auth (SSO/LDAP/OIDC), file-based `.ttl` delivery, policy and procedur
 
 | Issue | Severity | Status |
 |-------|----------|--------|
-| `src/routes/api/merge-analysis.ts` missing `+` prefix | **High** — route is unreachable | Rename to `+server.ts` |
+| `src/routes/api/merge-analysis.ts` missing `+` prefix | ~~High~~ | ✅ Resolved (ROADMAP R2) — replaced by client-side `src/lib/integrations/llm/merge-analysis.ts` |
 | Orphaned `TurtleCompanion.svelte` | Low | Delete |
 | Orphaned `AtmosphericField.svelte` (commented out) | Low | Delete or re-enable |
 

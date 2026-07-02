@@ -1,21 +1,25 @@
-name: KB Watch
+name: Reckons.AI Graph Alignment
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main, staging, dev]
   pull_request:
-    branches: [main]
+    branches: [main, staging, dev]
+
+permissions:
+  contents: read
+  pull-requests: write
 
 jobs:
   alignment:
-    name: KB Alignment Check
+    name: Reckons.AI Graph Alignment Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 20  # Need history for git diff alignment scoring
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -31,26 +35,41 @@ jobs:
         run: bash scripts/setup-reckons-workspace.sh
 
       # Run alignment check (skip E2E — that's in the main CI workflow)
-      - name: KB Alignment
+      - name: Graph Alignment
         id: align
+        env:
+          # Target branch (PR base, or the pushed branch) → environment for the
+          # Graph review deep link. URLs overridable via repo variables.
+          TARGET_REF: ${{ github.base_ref || github.ref_name }}
+          APP_URL_MAIN: ${{ vars.APP_URL_MAIN }}
+          APP_URL_STAGING: ${{ vars.APP_URL_STAGING }}
+          APP_URL_DEV: ${{ vars.APP_URL_DEV }}
         run: |
           set +e
           OUTPUT=$(npx tsx scripts/kb-align.ts --skip-e2e --dry-run --ref HEAD~5 2>&1)
           EXIT_CODE=$?
           echo "$OUTPUT"
 
+          # Resolve the graph review URL for the target environment.
+          case "$TARGET_REF" in
+            staging) REVIEW_BASE="${APP_URL_STAGING:-https://staging.reckons-ai.pages.dev}"; ENV_LABEL="Staging" ;;
+            dev)     REVIEW_BASE="${APP_URL_DEV:-https://dev.reckons-ai.pages.dev}"; ENV_LABEL="Dev" ;;
+            *)       REVIEW_BASE="${APP_URL_MAIN:-https://reckons.ai}"; ENV_LABEL="Production" ;;
+          esac
+          REVIEW_URL="${REVIEW_BASE}/review?tab=align"
+
           # Write output to step summary
           {
-            echo '## KB Alignment Report'
+            echo '## Graph Alignment Report'
             echo ''
             echo '```'
             echo "$OUTPUT"
             echo '```'
             echo ''
             if [ $EXIT_CODE -ne 0 ]; then
-              echo '> **Drift detected** — KB entities may need updating.'
+              echo "> **Drift detected** — Graph entities may need updating. [Open the graph review → (${ENV_LABEL})](${REVIEW_URL})"
             else
-              echo '> KB is aligned with current code.'
+              echo "> Graph is aligned with current code. [Open the graph review → (${ENV_LABEL})](${REVIEW_URL})"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -64,7 +83,13 @@ jobs:
       # Post alignment report as PR comment (PRs only)
       - name: Comment on PR
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
+        env:
+          # Per-environment app URLs, overridable via repo variables. Defaults:
+          # main→production, staging/dev→Cloudflare Pages branch aliases.
+          APP_URL_MAIN: ${{ vars.APP_URL_MAIN }}
+          APP_URL_STAGING: ${{ vars.APP_URL_STAGING }}
+          APP_URL_DEV: ${{ vars.APP_URL_DEV }}
         with:
           script: |
             const report = `${{ steps.align.outputs.report }}`;
@@ -72,18 +97,30 @@ jobs:
             const status = exitCode === 0 ? 'aligned' : 'drift detected';
             const emoji = exitCode === 0 ? ':white_check_mark:' : ':warning:';
 
+            // Deep-link to the graph review (Align tab) on the environment matching
+            // this PR's base branch. The graph itself is local to the reviewer's
+            // browser (IndexedDB), so the link just opens the review UI against it.
+            const baseRef = context.payload.pull_request?.base?.ref || 'main';
+            const envMap = {
+              main:    { label: 'Production', url: process.env.APP_URL_MAIN    || 'https://reckons.ai' },
+              staging: { label: 'Staging',    url: process.env.APP_URL_STAGING || 'https://staging.reckons-ai.pages.dev' },
+              dev:     { label: 'Dev',        url: process.env.APP_URL_DEV     || 'https://dev.reckons-ai.pages.dev' },
+            };
+            const target = envMap[baseRef] || envMap.main;
+            const reviewUrl = `${target.url}/review?tab=align`;
+
             const body = [
-              `## ${emoji} KB Alignment: ${status}`,
+              `## ${emoji} Graph Alignment: ${status}`,
               '',
               '```',
               report,
               '```',
               '',
               exitCode !== 0
-                ? '> **Action needed**: Review the drift warnings and update TTL KBs if the changes are intentional.'
-                : '> Code changes align with the knowledge base plan.',
+                ? `> **Action needed**: [Open the graph review → (${target.label})](${reviewUrl}) to reconcile the drift, then update the .ttl graph files if the changes are intentional.`
+                : `> Code changes align with the graph plan. [Open the graph review → (${target.label})](${reviewUrl})`,
               '',
-              '*Generated by [KB Watch](.github/workflows/kb-watch.yml)*',
+              '*Generated by [Reckons.AI Graph Alignment](.github/workflows/kb-watch.yml)*',
             ].join('\n');
 
             // Find existing comment to update
@@ -95,7 +132,7 @@ jobs:
 
             const existing = comments.find(c =>
               c.user?.login === 'github-actions[bot]' &&
-              c.body?.includes('KB Alignment')
+              c.body?.includes('Alignment')
             );
 
             if (existing) {
@@ -122,7 +159,7 @@ jobs:
 
       - name: Upload snapshot
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: kb-snapshot
           path: /tmp/kb-snapshot.json

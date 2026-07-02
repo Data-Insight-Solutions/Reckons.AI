@@ -39,6 +39,16 @@ function copyExtensionAssets(): Plugin {
         copyFileSync(resolve(iconsDir, f), resolve(out, 'icons', f));
       }
     }
+    // Bundle the ONNX runtime WASM artifacts locally. MV3 forbids remote code,
+    // and the extension CSP is `script-src 'self'`, so transformers.js must load
+    // ort-wasm-*.mjs/.wasm from the extension origin instead of the jsDelivr CDN.
+    // offscreen.ts points env.backends.onnx.wasm.wasmPaths at this `ort/` dir.
+    const ortSrc = resolve(__dirname, 'node_modules/@huggingface/transformers/dist');
+    const ortOut = resolve(out, 'ort');
+    mkdirSync(ortOut, { recursive: true });
+    for (const f of readdirSync(ortSrc)) {
+      if (f.startsWith('ort-wasm')) copyFileSync(resolve(ortSrc, f), resolve(ortOut, f));
+    }
   }
 
   return {

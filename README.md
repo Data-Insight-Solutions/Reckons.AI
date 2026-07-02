@@ -1,8 +1,16 @@
 # Reckons.AI
 
+**🌐 Live app: [reckons.ai](https://reckons.ai)**
+
+[![CI](https://github.com/Data-Insight-Solutions/Reckons.AI/actions/workflows/ci.yml/badge.svg)](https://github.com/Data-Insight-Solutions/Reckons.AI/actions/workflows/ci.yml)
+![Status: Alpha](https://img.shields.io/badge/status-alpha-orange)
+![License: MIT](https://img.shields.io/badge/license-MIT-blue)
+
 A personal knowledge graph that turns documents, web pages, and notes into a structured graph of facts — stored as a standard **Turtle** (`.ttl`) file on your device.
 
 You own the file. You review and confirm every fact. Nothing leaves your device unless you choose to share it.
+
+> 🚧 **Alpha** — feature-complete for personal use and actively developed. Expect rough edges; please [file issues](https://github.com/Data-Insight-Solutions/Reckons.AI/issues).
 
 ---
 
