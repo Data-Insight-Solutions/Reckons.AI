@@ -990,3 +990,17 @@ story:rm-step-9  rdf:type         story:Step ;
                  story:highlight  kb:ent-people ;
                  story:highlight  kb:ent-policy ;
                  story:highlight  kb:ent-procedure .
+
+# -- Design System (shadcn-svelte) -----------------------------------------------
+
+kb:design-system rdf:type      ktype:Feature ;
+               rdfs:label   "Design System (shadcn-svelte)" ;
+               kpred:has-status   "scaffolded" ;
+               kpred:description  "shadcn-svelte foundation on Tailwind v4, themed to the Liquid aesthetic. Preflight (Tailwind's CSS reset) is deliberately omitted — src/lib/styles/tailwind.css imports only the theme and utilities layers, so global.css remains the visual source of truth and the app renders unchanged. Every shadcn token is a var() reference into global.css (e.g. --color-primary -> --accent teal); shadcn's neutral 'accent' hover slot is kept inside @theme only, never clobbering the Liquid --accent custom property. Starter components: button, badge, card, separator, skeleton under src/lib/components/ui/. Pilot: the About-footer 'Send feedback' button." ;
+               kpred:relates-to   kb:rebrand-kb-to-graph ;
+               kpred:candidate    "P1 Settings forms: unify the three settings pages' inputs/selects/switches on shadcn form controls — the largest consistency win." ;
+               kpred:candidate    "P2 Review cards: Card + color-coded status Badge (pending/confirmed/refined/rejected/superseded) across StatementCard, DiffEntry, AlignmentCard." ;
+               kpred:candidate    "P3 Loading states: Skeleton placeholders for graph load, extraction progress, and model downloads instead of text spinners." ;
+               kpred:candidate    "P4 Toasts: adopt svelte-sonner for tutorial/WASM-fallback/sync notifications, replacing ad-hoc toast implementations." ;
+               kpred:candidate    "P5 Menus & dialogs: shared Dialog/DropdownMenu wrappers that respect the app z-index scale (panels=300, NavBar=400, MergeReview=500); NavBar analyze menu first." ;
+               kpred:candidate    "P6 Button hierarchy: audit primary (teal) vs outline vs ghost usage on ingest and kb pages for consistent affordance weight." .
