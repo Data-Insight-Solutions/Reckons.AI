@@ -35,6 +35,7 @@
     updateKbName,
     toggleBookmark,
     kbUrl,
+    kbFileSlug,
     type KbEntry
   } from '$lib/storage/kb-registry';
   import { buildGifPackage } from '$lib/storage/gif-package';
@@ -200,7 +201,7 @@
     try {
       await ensureAuth(settings().googleClientId ?? '');
       const content = toTurtle(confirmedStatements(), { header: 'full KB export' });
-      const filename = `kb_${new Date().toISOString().split('T')[0]}.ttl`;
+      const filename = `${kbFileSlug()}_${new Date().toISOString().split('T')[0]}.ttl`;
       await uploadTurtle(filename, content);
       driveUploadMsg = `saved to Drive: ${filename}`;
     } catch (e) {
@@ -222,13 +223,13 @@
   }
 
   function exportTurtle() {
-    download(`kbase-${Date.now()}.ttl`, toTurtle(confirmedStatements(), { header: 'full KB export' }), 'text/turtle');
+    download(`${kbFileSlug()}.ttl`, toTurtle(confirmedStatements(), { header: 'full KB export' }), 'text/turtle');
   }
   function exportNQuads() {
-    download(`kbase-${Date.now()}.nq`, toNQuads(confirmedStatements()), 'application/n-quads');
+    download(`${kbFileSlug()}.nq`, toNQuads(confirmedStatements()), 'application/n-quads');
   }
   function exportClosure() {
-    download(`kbase-closure-${Date.now()}.ttl`, toTurtle(closure(confirmedStatements()), { header: 'KB + RDFS/OWL closure' }), 'text/turtle');
+    download(`${kbFileSlug()}-closure.ttl`, toTurtle(closure(confirmedStatements()), { header: 'KB + RDFS/OWL closure' }), 'text/turtle');
   }
 
   let exportingGifZip = $state(false);
@@ -308,7 +309,7 @@
       .map((s) => (s.includes(':') ? s : `urn:kbase:concept/${s}`));
     if (seeds.length === 0) return;
     const subset = splitByConcept(confirmedStatements(), seeds);
-    download(`kbase-subset-${Date.now()}.ttl`, toTurtle(subset, { header: `subset around ${seeds.join(', ')}` }), 'text/turtle');
+    download(`${kbFileSlug()}-subset.ttl`, toTurtle(subset, { header: `subset around ${seeds.join(', ')}` }), 'text/turtle');
   }
 
   // ── Workspace folder sync ─────────────────────────────────────────────────

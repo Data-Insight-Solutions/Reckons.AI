@@ -83,6 +83,26 @@ export function getCurrentKbId(): string {
   return localStorage.getItem(CURRENT_KEY) ?? DEFAULT_ID;
 }
 
+/** Display name of the active graph (KB), for titles and export filenames. */
+export function getCurrentKbName(): string {
+  const id = getCurrentKbId();
+  return getRegistry().find((k) => k.id === id)?.name ?? DEFAULT_ENTRY.name;
+}
+
+/**
+ * File-safe slug of the active graph's name for export filenames, e.g.
+ * "My Research Notes" -> "my-research-notes". Falls back to "graph".
+ */
+export function kbFileSlug(name = getCurrentKbName()): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/['"]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    || 'graph';
+}
+
 /**
  * Switch the active KB for this tab and reload.
  * Also updates localStorage as the global default for new tabs.

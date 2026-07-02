@@ -1001,7 +1001,10 @@
   <footer class="page-footer">
     <p class="mono">Reckons.AI · local-first · open source · RDF/Turtle · MIT license</p>
     <p class="mono footer-credit">Developed by <a href="https://data-insight.solutions/" target="_blank" rel="noopener noreferrer">Data Insight Solutions LLC</a></p>
-    <a href="https://github.com/Data-Insight-Solutions/Reckons.AI" target="_blank" rel="noopener noreferrer" class="footer-github mono">GitHub</a>
+    <div class="footer-links mono">
+      <a href="https://github.com/Data-Insight-Solutions/Reckons.AI" target="_blank" rel="noopener noreferrer" class="footer-github">GitHub</a>
+      <a href="mailto:matthew.roe@data-insight.solutions?subject=Reckons.AI%20feedback" class="footer-github">Send feedback</a>
+    </div>
   </footer>
 </div>
 
@@ -1945,6 +1948,12 @@
     transition: color 0.15s, border-color 0.15s;
   }
   .footer-github:hover { color: var(--accent); border-color: var(--accent); }
+  .footer-links {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
 
   /* ── Document Problem ────────────────────────────────────────── */
   .docs-section {
