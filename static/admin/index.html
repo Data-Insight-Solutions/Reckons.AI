@@ -14,9 +14,14 @@
       This is a standalone document (not the SvelteKit app shell), so the app's
       strict CSP does not apply here; Sveltia reaches the GitHub API and the
       sveltia-cms-auth OAuth worker directly.
+
+      Version-pinned to the current stable @sveltia/cms release (checked
+      against npm on 2026-07-01) rather than an unpinned "latest" alias, so a
+      new Sveltia release can't silently break /admin. Bump the version number
+      deliberately when upgrading.
     -->
   </head>
   <body>
-    <script src="https://cdn.jsdelivr.net/npm/@sveltia/cms/dist/sveltia-cms.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@sveltia/cms@0.169.1/dist/sveltia-cms.js"></script>
   </body>
 </html>
