@@ -10,7 +10,8 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
-    "test": "npm run build && node --test \"test/*.test.mjs\""
+    "test": "npm run build && vitest run && node --test \"test/*.test.mjs\"",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "n3": "^2.1.0"
@@ -18,7 +19,8 @@
   "devDependencies": {
     "@types/node": "^26.1.0",
     "@types/n3": "^1.21.3",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.7"
   },
   "engines": {
     "node": ">=22"
