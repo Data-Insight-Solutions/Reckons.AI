@@ -32,6 +32,7 @@
     flyToGhost = false,
     podMode = false,
     focusKey = null as string | null,
+    highlightedEdges = [] as Array<{ s: string; o: string; p?: string }>,
     onflyend = () => {},
     onselect = () => {},
     onhover = () => {},
@@ -60,6 +61,8 @@
     podMode?: boolean;
     /** When set/changed, the camera flies to center this node (review-item focus). */
     focusKey?: string | null;
+    /** Specific edges (by node-key pair, optionally the local predicate name) to render brighter — e.g. the exact triple a review card is showing. */
+    highlightedEdges?: Array<{ s: string; o: string; p?: string }>;
     onflyend?: () => void;
     onselect?: (key: string | null, ctrlKey?: boolean) => void;
     onhover?: (key: string | null) => void;
@@ -891,15 +894,23 @@
     for (const e of edges) {
       const isSel = selected && (e.a.key === selected || e.b.key === selected);
       const isHov = hoveredKey && (e.a.key === hoveredKey || e.b.key === hoveredKey);
+      // Specific-triple highlight (e.g. a review card's exact statement) — brighter than plain selection
+      const isEdgeHL = highlightedEdges.some((he: { s: string; o: string; p?: string }) =>
+        ((e.a.key === he.s && e.b.key === he.o) || (e.a.key === he.o && e.b.key === he.s)) &&
+        (!he.p || e.predicate === he.p)
+      );
       ctx2d.beginPath(); ctx2d.moveTo(e.a.x, e.a.y); ctx2d.lineTo(e.b.x, e.b.y);
-      if (e.isSourceEdge) {
+      if (isEdgeHL) {
+        ctx2d.strokeStyle = '#ffd23f';
+        ctx2d.lineWidth = 0.10 / camScale * 40;
+      } else if (e.isSourceEdge) {
         ctx2d.strokeStyle = isSel ? 'rgba(96,165,250,0.45)' : isHov ? 'rgba(96,165,250,0.30)' : 'rgba(96,165,250,0.08)';
         ctx2d.lineWidth = (isSel ? 0.04 : 0.02) / camScale * 40;
       } else {
         ctx2d.strokeStyle = isSel ? 'rgba(255,107,53,0.65)' : isHov ? 'rgba(255,107,53,0.40)' : 'rgba(255,107,53,0.20)';
         ctx2d.lineWidth = (isSel ? 0.06 : 0.035) / camScale * 40;
       }
-      ctx2d.globalAlpha = baseAlpha;
+      ctx2d.globalAlpha = isEdgeHL ? 1 : baseAlpha;
       ctx2d.stroke();
     }
 
