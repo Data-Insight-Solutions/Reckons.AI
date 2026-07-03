@@ -1043,21 +1043,26 @@ kb:design-system rdf:type      ktype:Feature ;
                kpred:candidate    "P5 Menus & dialogs: shared Dialog/DropdownMenu wrappers that respect the app z-index scale (panels=300, NavBar=400, MergeReview=500); NavBar analyze menu first." ;
                kpred:candidate    "P6 Button hierarchy: audit primary (teal) vs outline vs ghost usage on ingest and kb pages for consistent affordance weight." .
 
-# -- F29: News Aggregation & Filtering -------------------------------------------
-# Planned 2026-07-02. Decisions: crawl runs on n8n VPS primarily with a
-# browser-fetch fallback for CORS-friendly feeds; the filtered feed is an
-# in-app /news view (private, interactive), not published pages.
+# -- F29: Currents — streamed ingest & the Pod view -------------------------------
+# Planned 2026-07-02, refined same day. Ocean naming: a "current" is a configured
+# recurring stream (RSS/site/topic) attached to a specific graph; "the pod" is the
+# graph view mode where arrivals swim in. News is the first use case, not the only
+# one (research-tool tracking, topic monitoring). Decisions: n8n-primary crawl with
+# browser fallback; in-app graph delivery (no published feed); type gate on NEW
+# entity creation only; settings as meta triples in the graph; arrivals always
+# pending-review, previewed translucently in the pod.
 
-kb:news-feed   rdf:type      ktype:Feature ;
-               rdfs:label    "News Aggregation & Filtering" ;
+kb:currents    rdf:type      ktype:Feature ;
+               rdfs:label    "Currents — Streamed Ingest & Pod View" ;
                kpred:feature-id   "F29" ;
                kpred:has-status   "planned" ;
-               kpred:description  "Top news from preferred sources, crawled and personalized against the user's own graph: headlines ranked by embedding affinity to the entities the graph shows the user cares about, plus contextual blocks (weather forecast, in-your-state-yesterday items). Short filtered feed rendered in-app. Ground News has no official public API (verified 2026-07-02) — treated as a speculative integration; reliable inputs are RSS/Atom, GDELT (free), and keyed news APIs." ;
-               kpred:principle    "Personalization data (location, interests, reading signals) stays local-first: ranking and digest generation run on-device or via the user's own Ollama; the VPS only fetches public feeds." ;
-               kpred:has-phase    kb:news-phase-1 ;
-               kpred:has-phase    kb:news-phase-2 ;
-               kpred:has-phase    kb:news-phase-3 ;
-               kpred:has-phase    kb:news-phase-4 ;
+               kpred:description  "Recurring external content streams (currents) that merge into a graph through the existing add/merge/review spine. Each arrival becomes pending facts: a document/article node plus extracted concept nodes with provenance links. Personalization is the graph itself: headlines ranked by embedding affinity to the graph's entities. The pod is a graph view mode where pending arrivals render translucent and drifting until accepted. Ground News has no official public API (verified 2026-07-02) — speculative; reliable inputs are RSS/Atom, GDELT, keyed news APIs, Open-Meteo for weather context." ;
+               kpred:principle    "Add, merge, and review are the base spine — currents never bypass them. Personalization data (location, interests) stays local-first; the VPS only fetches public feeds." ;
+               kpred:naming       "Feature/streams: currents. Graph view mode: the pod (whale-themed accents, consistent with Shelly and the Liquid ocean aesthetic). Avoid: feed (overused), crawl (technical)." ;
+               kpred:has-phase    kb:currents-phase-1 ;
+               kpred:has-phase    kb:currents-phase-2 ;
+               kpred:has-phase    kb:currents-phase-3 ;
+               kpred:has-phase    kb:currents-phase-4 ;
                kpred:depends-on   kb:source-refresh ;
                kpred:depends-on   kb:n8n-cloud-sync ;
                kpred:depends-on   kb:local-offload ;
@@ -1065,29 +1070,35 @@ kb:news-feed   rdf:type      ktype:Feature ;
                kpred:relates-to   kb:condition-triggers ;
                kpred:relates-to   kb:content-safety .
 
-kb:news-phase-1 rdf:type     ktype:Phase ;
-               rdfs:label    "F29.1 — Feed sources" ;
+kb:currents-settings rdf:type ktype:Concept ;
+               rdfs:label    "Graph-level currents settings (meta triples)" ;
+               kpred:part-of      kb:currents ;
                kpred:has-status   "planned" ;
-               kpred:part-of      kb:news-feed ;
-               kpred:description  "New source kind 'feed' (RSS/Atom) alongside url/repository/calendar. Preferred-sources management UI. Fetching: n8n News Monitor workflow (extends the Source Monitor pattern — scheduled polling, item rows in a data table, app syncs down) as the primary path; direct browser fetch as fallback for CORS-friendly feeds. Absorbs the older kb:source-subscription idea (recurring checks with dated records)." .
+               kpred:description  "Per-graph configuration stored as urn:reckons:meta/currents/* statements in the graph itself — portable with TTL export/import, visible to MCP tools, hidden from graph edges via isMetaPredicate. Holds: the current definitions (source URL/kind/cadence/label), the entity-type gate (enable/disable NEW entity creation per ktype — e.g. a research graph admits only Tool and Concept), and location/interest markers for ranking. Facts attaching to entities already in the graph always flow through (pending review); only new-entity creation is gated." .
 
-kb:news-phase-2 rdf:type     ktype:Phase ;
-               rdfs:label    "F29.2 — Interest profile & filtering" ;
+kb:currents-phase-1 rdf:type ktype:Phase ;
+               rdfs:label    "F29.1 — Currents model & type gate" ;
                kpred:has-status   "planned" ;
-               kpred:part-of      kb:news-feed ;
-               kpred:depends-on   kb:news-phase-1 ;
-               kpred:description  "Interest profile derived from the user's graph: top entities by degree and recency plus explicit interest markers and a location setting. Headlines embedded with BGE-small and ranked by affinity to the profile; near-duplicate stories collapsed by embedding similarity; content-policy classifier applied to filter blocked content." .
+               kpred:part-of      kb:currents ;
+               kpred:description  "Meta-triples settings module (read/write urn:reckons:meta/currents/*), the entity-type gate enforced where stream-originated batches enter addStatements, and the arrival provenance model (article/document node + extracted concepts + derived-from links). Pure model + gate, no UI." .
 
-kb:news-phase-3 rdf:type     ktype:Phase ;
-               rdfs:label    "F29.3 — /news view, digest & context" ;
+kb:currents-phase-2 rdf:type ktype:Phase ;
+               rdfs:label    "F29.2 — Fetch: n8n Currents Monitor + browser fallback" ;
                kpred:has-status   "planned" ;
-               kpred:part-of      kb:news-feed ;
-               kpred:depends-on   kb:news-phase-2 ;
-               kpred:description  "In-app /news route: short ranked feed with one-click 'add to graph' (item -> reviewed facts via the extraction pipeline). Daily briefing summarized via the prefer-local Ollama path (zero cloud tokens). Context blocks: weather forecast via Open-Meteo (free, no key) using the location setting; 'in your state yesterday' via location-filtered items. Optional later: publish-a-digest action using the post template." .
+               kpred:part-of      kb:currents ;
+               kpred:depends-on   kb:currents-phase-1 ;
+               kpred:description  "n8n workflow (extends the Source Monitor pattern): scheduled polling of RSS/Atom/watched pages, items into a data table, app syncs down and pushes arrivals through extraction + the type gate. Direct browser fetch fallback for CORS-friendly feeds. Ranking: BGE-small embedding affinity between headlines and the graph's top entities; near-duplicate collapse; content-policy filter." .
 
-kb:news-phase-4 rdf:type     ktype:Phase ;
-               rdfs:label    "F29.4 — External news integrations" ;
+kb:currents-phase-3 rdf:type ktype:Phase ;
+               rdfs:label    "F29.3 — The Pod view & settings UI" ;
+               kpred:has-status   "planned" ;
+               kpred:part-of      kb:currents ;
+               kpred:depends-on   kb:currents-phase-1 ;
+               kpred:description  "Pod mode in the graph view: pending arrivals render translucent and drifting (reuse the ghost-graph rendering machinery) with accept/dismiss directly on the node; whale-themed accents. Currents settings UI on the graph management page: define currents, toggle entity types, set location. Context blocks: weather via Open-Meteo (free, no key), in-your-state-yesterday via location-filtered items. Daily briefing summarized via prefer-local Ollama." .
+
+kb:currents-phase-4 rdf:type ktype:Phase ;
+               rdfs:label    "F29.4 — External integrations" ;
                kpred:has-status   "speculative" ;
-               kpred:part-of      kb:news-feed ;
-               kpred:depends-on   kb:news-phase-1 ;
-               kpred:description  "Connectors beyond RSS: GDELT (free, no key), NewsAPI/NewsData/GNews (user-supplied keys, consistent with the BYO-key provider pattern). Ground News: no official public developer API exists (verified 2026-07-02; only third-party wrappers) — revisit if one ships or a partnership allows it; their bias/blindspot data would map naturally onto source-trust triples." .
+               kpred:part-of      kb:currents ;
+               kpred:depends-on   kb:currents-phase-2 ;
+               kpred:description  "Connectors beyond RSS: GDELT (free, no key), NewsAPI/NewsData/GNews (user-supplied keys, BYO-key pattern). Ground News: no official public developer API (verified 2026-07-02; only third-party wrappers) — revisit if one ships; bias/blindspot data would map onto source-trust triples." .
