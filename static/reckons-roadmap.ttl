@@ -446,6 +446,7 @@ kb:gp-authoring rdf:type     ktype:Concept ;
                rdfs:label    "Docs authoring surface" ;
                kpred:part-of      kb:graph-publishing ;
                kpred:description  "Website/docs settings live on the Graph page (the manage/switch surface). Reckoning (Situation-Target-Proposal) is a first-class way to draft/edit page content; AI-generated content is directly editable in the graph before it becomes a page." ;
+               kpred:decision     "No markdown-to-TTL back-propagation (decided 2026-07-03). Graph edits happen in the app or directly on the TTL files via the local workspace folder linked in Graph settings; Sveltia is only for non-generated content. Edits to generated pages are overwritten by the next regeneration — by design." ;
                kpred:has-status   "planned" .
 
 kb:sveltia-cms-setup rdf:type ktype:Concept ;
