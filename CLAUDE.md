@@ -81,6 +81,15 @@ The `.github/workflows/kb-watch.yml` workflow runs on every push/PR to main:
 
 The alignment score is a composite of 4 dimensions (30% coverage, 30% status alignment, 20% dependency respect, 20% scope discipline). Commits that don't match any planned KB work are flagged as unplanned.
 
+### Graphs are the plan and source of truth
+
+The TTL graphs in `static/` are the canonical plan and system description — code follows the graphs, not the other way around:
+
+- **Before building**: the feature/phase must exist in `reckons-roadmap.ttl` (status `planned`/`in-progress`). Plan changes are TTL edits, committed like code.
+- **After shipping**: update the entity status + description in the same branch as the code.
+- **Findings and proposals** (discrepancies, suggestions, drift): don't just report in chat — propose them as pending graph entries for in-app review. Append JSONL lines to the app workspace's `knowledge.pending.jsonl` (`{ subject, predicate, object, note?, type?: observation|question|suggestion|status-update|drift-warning, agent?, priority? }` — see `drainWorkspacePending` in `src/lib/stores/workspace.svelte.ts`), or use `kb_add_note` when the MCP server is connected. The app imports them as pending facts for human review.
+- **Docs sections generated from graphs** (`content/` via `scripts/docs-pages.ts`): edit the TTL, regenerate, never hand-edit generated pages.
+
 ### TTL-first documentation policy
 
 This project uses TTL knowledge bases as the primary documentation format. **Do NOT create new docs/*.md files.** Instead:
