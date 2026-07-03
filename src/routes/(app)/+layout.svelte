@@ -146,7 +146,7 @@
   {:else}
     <div class="boot">
       <img src="/svg/logo-text.svg" alt="Reckons.AI" class="boot-logo" />
-      <span class="mono">loading…</span>
+      <span class="boot-loading">loading…</span>
       {#if error}
         <p class="mono" style="color: var(--danger); margin-top: 1rem; font-size: 0.75rem;">{error}</p>
       {/if}
@@ -258,6 +258,13 @@
   .boot-logo {
     width: clamp(180px, 50vw, 320px);
     height: auto;
+  }
+  .boot-loading {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
   }
   .official-kb-banner {
     position: fixed;
