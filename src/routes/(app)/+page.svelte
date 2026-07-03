@@ -69,6 +69,8 @@
 
   let selected = $state<string | null>(null);
   let hoverTarget = $state<string | null>(null);
+  /** Pod view (F29.3): whether the currently selected node is an unaccepted arrival. */
+  let selectedIsArrival = $state(false);
 
   /** Scale-and-fade reveal used for GIF previews — gentle so it doesn't startle. */
   function gifReveal(_node: Element, { duration = 300 } = {}) {
@@ -725,6 +727,24 @@
     } else {
       confirmDelete();
     }
+  }
+
+  // ── Pod view: accept/dismiss an arrival (F29.3) ─────────────────────────────
+  // An "arrival" node is touched only by pending statements (see arrivalKeys in
+  // KnowledgeGraph2D). Accept confirms every pending statement touching the node;
+  // dismiss rejects them. Both act across ALL statements, not just the visible set.
+  async function acceptArrival() {
+    if (!selected) return;
+    const targets = deleteTargets.filter((s) => s.status === 'pending');
+    for (const st of targets) await setStatus(st.id, 'confirmed');
+    selected = null;
+  }
+
+  async function dismissArrival() {
+    if (!selected) return;
+    const targets = deleteTargets.filter((s) => s.status === 'pending');
+    for (const st of targets) await setStatus(st.id, 'rejected');
+    selected = null;
   }
 
   // Reset confirmation state whenever the selected entity changes.
@@ -1387,6 +1407,7 @@
       {ghostAnchorKey}
       {flyToGhost}
       onflyend={handleFlyEnd}
+      onarrivalstatus={(v) => (selectedIsArrival = v)}
     />
   {:else}
     <svelte:boundary>
@@ -1825,6 +1846,15 @@
     </div>
     {/snippet}
     <div class="np-body">
+
+    <!-- Pod arrival actions (F29.3) — shown when pod view is on and this node hasn't been accepted yet -->
+    {#if podMode && selectedIsArrival && !selected?.startsWith('src:')}
+      <div class="np-action-row np-pod-actions">
+        <span class="np-pod-label mono">🐋 arrival</span>
+        <button class="np-act-btn np-pod-accept" onclick={acceptArrival}>✓ accept</button>
+        <button class="np-act-btn np-pod-dismiss" onclick={dismissArrival}>✕ dismiss</button>
+      </div>
+    {/if}
 
     <!-- Action row — always visible, at the top (not for source nodes) -->
     {#if !showMergeUI && !showRelationUI && !selected?.startsWith('src:')}
@@ -2680,6 +2710,32 @@
     background: color-mix(in srgb, var(--danger) 8%, var(--surface-2));
   }
   .np-act-danger:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
+  /* Pod arrival actions (F29.3) — whale/ocean accent, distinct from standard actions */
+  .np-pod-actions {
+    align-items: center;
+    background: #38bdf814;
+    border: 1px solid #38bdf840;
+    border-radius: var(--rad-sm);
+    padding: 0.35rem 0.5rem;
+  }
+  .np-pod-label {
+    font-size: 0.67rem;
+    color: #38bdf8;
+    letter-spacing: 0.04em;
+    flex: 1;
+  }
+  .np-pod-accept {
+    border-color: #38bdf860;
+    color: #38bdf8;
+    background: #38bdf81a;
+  }
+  .np-pod-accept:hover { background: #38bdf8; color: #06222f; border-color: #38bdf8; }
+  .np-pod-dismiss {
+    border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 8%, var(--surface-2));
+  }
+  .np-pod-dismiss:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
   /* Statement accordion */
   .np-preview {
     padding: 0 0.75rem 0.5rem;
