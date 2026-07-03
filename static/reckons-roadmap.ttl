@@ -1091,10 +1091,10 @@ kb:currents-phase-2 rdf:type ktype:Phase ;
 
 kb:currents-phase-3 rdf:type ktype:Phase ;
                rdfs:label    "F29.3 — The Pod view & settings UI" ;
-               kpred:has-status   "planned" ;
+               kpred:has-status   "scaffolded" ;
                kpred:part-of      kb:currents ;
                kpred:depends-on   kb:currents-phase-1 ;
-               kpred:description  "Pod mode in the graph view: pending arrivals render translucent and drifting (reuse the ghost-graph rendering machinery) with accept/dismiss directly on the node; whale-themed accents. Currents settings UI on the graph management page: define currents, toggle entity types, set location. Context blocks: weather via Open-Meteo (free, no key), in-your-state-yesterday via location-filtered items. Daily briefing summarized via prefer-local Ollama." .
+               kpred:description  "Pod mode in the graph view: pending arrivals render translucent and drifting (reuse the ghost-graph rendering machinery) with accept/dismiss directly on the node; whale-themed accents. Currents settings UI on the graph management page: define currents, toggle entity types, set location. Context blocks: weather via Open-Meteo (free, no key), in-your-state-yesterday via location-filtered items. Daily briefing summarized via prefer-local Ollama. STARTED 2026-07-02: pod toggle (whale chip) on the graph page; arrival nodes (pending-only entities) render translucent with a drift-bob and sky-blue dashed halo in KnowledgeGraph2D. Remaining: accept/dismiss on the node, currents settings UI, context blocks." .
 
 kb:currents-phase-4 rdf:type ktype:Phase ;
                rdfs:label    "F29.4 — External integrations" ;

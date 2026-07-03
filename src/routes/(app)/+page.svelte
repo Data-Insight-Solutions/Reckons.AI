@@ -242,6 +242,8 @@
   let showSourcesPanel = $state(false);
   let hubLimit = $state(5);
   let layout = $state<'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy'>('force');
+  /** Pod view (F29 Currents): pending-only arrival nodes render translucent + drifting */
+  let podMode = $state(false);
   let nodeOrder = $state<string[]>([]); // ordered node keys for 'order' layout
   let timelineZoom = $state(1);
   let timelineCenter = $state<number | null>(null);
@@ -1380,6 +1382,7 @@
       onreorder={(order) => { nodeOrder = order; }}
       highlighted={[...highlightedSet]}
       {dimMode}
+      {podMode}
       {ghostGraph}
       {ghostAnchorKey}
       {flyToGhost}
@@ -1571,6 +1574,12 @@
       <ToggleGroup.Item value="order" class="tg-chip"><span class="lbl mono">order</span></ToggleGroup.Item>
       <ToggleGroup.Item value="hierarchy" class="tg-chip"><span class="lbl mono">tree</span></ToggleGroup.Item>
     </ToggleGroup.Root>
+    <button
+      class="tg-chip pod-chip mono"
+      class:pod-active={podMode}
+      onclick={() => (podMode = !podMode)}
+      title="Pod view — arrivals from your currents drift in translucent until you accept them"
+    >🐋 pod</button>
   </div>
 
   <!-- TIMELINE CONTROLS (visible only when timeline layout is active) -->
@@ -3131,6 +3140,12 @@
     background: var(--accent-soft);
     border-color: var(--accent);
     color: var(--accent);
+  }
+  /* Pod view toggle (F29 Currents) — sky-blue when active, matching arrival halos */
+  :global(.pod-chip.pod-active) {
+    background: #38bdf822;
+    border-color: #38bdf8;
+    color: #38bdf8;
   }
 
   /* ── Layout anchor labels (source / type / hub cluster markers) ── */

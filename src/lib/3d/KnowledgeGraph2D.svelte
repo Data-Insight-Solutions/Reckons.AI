@@ -30,6 +30,7 @@
     ghostGraph = null as GhostGraph | null,
     ghostAnchorKey = null as string | null,
     flyToGhost = false,
+    podMode = false,
     onflyend = () => {},
     onselect = () => {},
     onhover = () => {},
@@ -55,6 +56,7 @@
     ghostGraph?: GhostGraph | null;
     ghostAnchorKey?: string | null;
     flyToGhost?: boolean;
+    podMode?: boolean;
     onflyend?: () => void;
     onselect?: (key: string | null, ctrlKey?: boolean) => void;
     onhover?: (key: string | null) => void;
@@ -107,6 +109,24 @@
 
   /** Set of node keys that have a KB Leap defined. */
   const leapKeys = $derived(leapNodeKeys(statements as Statement[]));
+
+  /**
+   * Pod mode (F29 Currents): "arrival" nodes are touched ONLY by pending
+   * statements — they haven't been accepted into the graph yet. In pod mode
+   * they render translucent and gently drifting until reviewed.
+   */
+  const arrivalKeys = $derived.by(() => {
+    if (!podMode) return new Set<string>();
+    const pendingTouched = new Set<string>();
+    const settledTouched = new Set<string>();
+    for (const st of statements as Statement[]) {
+      if (st.status === 'rejected' || st.status === 'superseded') continue;
+      const bucket = st.status === 'pending' ? pendingTouched : settledTouched;
+      bucket.add(termKey(st.s));
+      bucket.add(termKey(st.o));
+    }
+    return new Set([...pendingTouched].filter((k) => !settledTouched.has(k)));
+  });
 
   /** Per-entity icon image URL — editor overrides take priority, then kpred:icon2d KB statements. */
   const entityIconUrlMap = $derived.by(() => {
@@ -979,7 +999,31 @@
       const geom: GeometryName = typeDef?.geometry ?? (n.kind === 'literal' ? 'sphere' : 'octahedron');
       const drawR = isHov ? r * 1.25 : r;
 
-      ctx2d.globalAlpha = isDimmed ? 0.18 * baseAlpha : baseAlpha;
+      // Pod mode: arrivals drift gently and render translucent until accepted.
+      const isArrival = podMode && arrivalKeys.has(n.key);
+      let podBob = 0;
+      if (isArrival) {
+        let h = 0;
+        for (let i = 0; i < n.key.length; i++) h = (h * 31 + n.key.charCodeAt(i)) | 0;
+        podBob = Math.sin(performance.now() / 900 + (h % 628) / 100) * r * 0.35;
+      }
+      const podAlphaScale = isArrival ? 0.5 : 1;
+
+      ctx2d.save();
+      if (isArrival) ctx2d.translate(0, podBob);
+
+      ctx2d.globalAlpha = (isDimmed ? 0.18 * baseAlpha : baseAlpha) * podAlphaScale;
+
+      // Pod arrival ring — soft sky-blue dashed halo (a current carried it in)
+      if (isArrival) {
+        ctx2d.beginPath(); ctx2d.arc(n.x, n.y, r * 1.7, 0, Math.PI * 2);
+        ctx2d.strokeStyle = '#38bdf8'; ctx2d.lineWidth = r * 0.14;
+        ctx2d.setLineDash([r * 0.5, r * 0.3]);
+        ctx2d.globalAlpha = 0.55 * baseAlpha;
+        ctx2d.stroke();
+        ctx2d.setLineDash([]);
+        ctx2d.globalAlpha = (isDimmed ? 0.18 * baseAlpha : baseAlpha) * podAlphaScale;
+      }
 
       // Leap ring (amber dashed ring for KB Leap nodes)
       if (leapKeys.has(n.key)) {
@@ -999,7 +1043,7 @@
       }
 
       // Node body — shape from entity type geometry
-      const fillAlpha = isDimmed ? 0.22 * baseAlpha : (isHL ? 1.0 : 0.82) * baseAlpha;
+      const fillAlpha = (isDimmed ? 0.22 * baseAlpha : (isHL ? 1.0 : 0.82) * baseAlpha) * podAlphaScale;
       ctx2d.globalAlpha = fillAlpha;
       ctx2d.fillStyle = baseColor;
       if (geom === 'torus') {
@@ -1048,6 +1092,8 @@
           ctx2d.fillText(numStr, bx, by);
         }
       }
+
+      ctx2d.restore(); // matches the per-node save (pod-mode drift translate)
     }
     ctx2d.textAlign = 'left'; ctx2d.textBaseline = 'alphabetic'; // reset canvas text state
 
