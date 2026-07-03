@@ -624,6 +624,18 @@ kb:n8n-source-monitor rdf:type ktype:Concept ;
                kpred:workflow-id  "CvbUNSZkZVf4hJFG" ;
                kpred:has-endpoint "/webhook/reckons-watch-url" .
 
+# -- n8n Currents Monitor (F29.2) ------------------------------------------------
+
+kb:n8n-currents-monitor rdf:type ktype:Concept ;
+               rdfs:label   "Currents Monitor" ;
+               kpred:description  "n8n workflow (extends the Source Monitor pattern) that fetches enabled Currents on a 30-minute schedule, respecting each current's own cadenceMinutes via a lastFetchedAt due-check. RSS/Atom currents use the RSS Read node; url-kind currents fetch-and-hash like Source Monitor, keyed by a content-hash-suffixed URL so a changed page produces a new item row. Dedupes items by (url, graphStableId) via the data table rowNotExists operation before insert, so re-running the sweep never creates duplicates. Exposes a register webhook (upsert current definitions) and an items webhook (pull new rows for a graph, optionally since a timestamp) for the Reckons.AI app." ;
+               kpred:has-status   "functional" ;
+               kpred:workflow-id  "qb9uPZ8GScAmuUOX" ;
+               kpred:has-endpoint "/webhook/reckons-currents-register" ;
+               kpred:has-endpoint "/webhook/reckons-currents-items" ;
+               kpred:relates-to   kb:n8n-source-monitor ;
+               kpred:relates-to   kb:currents .
+
 # -- Context Compression --------------------------------------------------------
 
 kb:context-compression rdf:type ktype:Feature ;
@@ -1084,10 +1096,11 @@ kb:currents-phase-1 rdf:type ktype:Phase ;
 
 kb:currents-phase-2 rdf:type ktype:Phase ;
                rdfs:label    "F29.2 — Fetch: n8n Currents Monitor + browser fallback" ;
-               kpred:has-status   "planned" ;
+               kpred:has-status   "functional" ;
                kpred:part-of      kb:currents ;
                kpred:depends-on   kb:currents-phase-1 ;
-               kpred:description  "n8n workflow (extends the Source Monitor pattern): scheduled polling of RSS/Atom/watched pages, items into a data table, app syncs down and pushes arrivals through extraction + the type gate. Direct browser fetch fallback for CORS-friendly feeds. Ranking: BGE-small embedding affinity between headlines and the graph's top entities; near-duplicate collapse; content-policy filter." .
+               kpred:has-workflow kb:n8n-currents-monitor ;
+               kpred:description  "n8n workflow (extends the Source Monitor pattern): scheduled polling of RSS/Atom feeds and watched pages every 30 minutes respecting each current's cadenceMinutes, dedupes items by URL into a data table, app syncs down and pushes arrivals through the type gate. Direct browser fetch fallback (fetchCurrentDirect) for CORS-friendly feeds, with a clear CORS-flavoured error otherwise. Ranking: BGE-small embedding affinity between item text and the graph's top-degree entities; near-duplicate collapse via cosine clustering; content-policy filter drops blocked items pre-rank. SHIPPED 2026-07-03: n8n workflow qb9uPZ8GScAmuUOX (Reckons Currents Monitor) live-tested against https://hnrss.org/frontpage — real items fetched, deduped, and served back via webhook. App side: src/lib/integrations/n8n/currents-sync.ts (registerCurrent, fetchCurrentItems, fetchCurrentDirect, processArrivals — builds the article node only, skips full extraction on the unattended sweep since it's too heavy; deeper extraction stays a manual, on-demand step from the review UI), src/lib/rdf/current-ranking.ts (rankItems, topEntityLabels). settings.n8nBaseUrl added (reused by both F20 cloud sync and F29.2). 26 unit tests (RSS/Atom fixtures, mocked embeddings, mocked fetch, mocked addStatements)." .
 
 kb:currents-phase-3 rdf:type ktype:Phase ;
                rdfs:label    "F29.3 — The Pod view & settings UI" ;

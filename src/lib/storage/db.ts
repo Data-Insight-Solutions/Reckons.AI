@@ -145,6 +145,12 @@ export type SettingsRecord = {
   autoRefreshIntervalMinutes?: number;
   /** Show contextual tutorial nudges for first-time users */
   showTutorialHints?: boolean;
+  /**
+   * Base URL of the self-hosted n8n instance used for Cloud Sync (F20) and
+   * Currents (F29.2). E.g. "https://n8n.example.com" — no trailing slash,
+   * no /webhook suffix (callers append that per-endpoint).
+   */
+  n8nBaseUrl?: string;
 };
 
 export const DEFAULT_TURTLE_SETTINGS: TurtleSettings = {
@@ -213,6 +219,7 @@ export const DEFAULT_SETTINGS: SettingsRecord = {
   kbDescription: import.meta.env.VITE_KB_DESCRIPTION || undefined,
   shellyCustomPrompt: import.meta.env.VITE_SHELLY_PROMPT || undefined,
   embeddingModel: import.meta.env.VITE_EMBEDDING_MODEL ?? 'Xenova/bge-small-en-v1.5',
+  n8nBaseUrl: import.meta.env.VITE_N8N_BASE_URL || undefined,
   embeddingThreshold: 0.85,
   autoConfirmHighConfidence: false,
   turtleSettings: { ...DEFAULT_TURTLE_SETTINGS }
