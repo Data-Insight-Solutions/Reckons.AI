@@ -1102,3 +1102,13 @@ kb:currents-phase-4 rdf:type ktype:Phase ;
                kpred:part-of      kb:currents ;
                kpred:depends-on   kb:currents-phase-2 ;
                kpred:description  "Connectors beyond RSS: GDELT (free, no key), NewsAPI/NewsData/GNews (user-supplied keys, BYO-key pattern). Ground News: no official public developer API (verified 2026-07-02; only third-party wrappers) — revisit if one ships; bias/blindspot data would map onto source-trust triples." .
+
+# -- F30: Review Workbench -------------------------------------------------------
+
+kb:review-workbench rdf:type  ktype:Feature ;
+               rdfs:label    "Review Workbench — browse while reviewing" ;
+               kpred:feature-id   "F30" ;
+               kpred:has-status   "planned" ;
+               kpred:description  "Rework the review screen into a full graph workbench: all graph view controls (layout toggles, filters, search) available on the preview; node details panel on the left with chat below it; the review queue on the right keeps per-item approve/reject/chat actions. Selecting a review item drives the graph (camera fly + selection + name caption — v1 shipped 2026-07-03: clicking an incoming card flies the preview camera to the subject node via the new focusKey prop on KnowledgeGraph2D, left-border highlight on the focused card, node-name badge over the graph). Remaining: full browse controls on the preview, node-details/chat panels, per-item focus on deletions/merges/align tabs, edge highlight of the specific incoming triple (not just its nodes)." ;
+               kpred:depends-on   kb:knowledge-graph ;
+               kpred:relates-to   kb:currents .

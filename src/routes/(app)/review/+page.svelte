@@ -30,7 +30,7 @@
     computeAlignment, loadKbStatements, applyAlignmentToActiveKb,
     type AlignmentResult, type AlignmentSuggestion,
   } from '$lib/rdf/cross-kb-align';
-  import { termKey, isIRI, isLit, isMetaPredicate } from '$lib/rdf/types';
+  import { termKey, isIRI, isLit, isMetaPredicate, type Statement } from '$lib/rdf/types';
   import { computeDiff } from '$lib/rdf/diff';
   import { generateDiffSummary, type DiffSummary } from '$lib/rdf/diff-summary';
   import { semanticEnrichDiff } from '$lib/rdf/semantic-diff';
@@ -160,6 +160,29 @@
   const pendingKeys = $derived(new Set(incoming.flatMap(s => [termKey(s.s), termKey(s.o)])));
 
   let selected = $state<string | null>(null);
+  /** Camera-fly target: set when a review item is clicked so the graph centers its node */
+  let focusKey = $state<string | null>(null);
+
+  /** Focus the preview graph on a statement's subject node (called from review cards). */
+  function focusStatement(st: Statement) {
+    const key = termKey(st.s);
+    selected = key;
+    focusKey = null; // retrigger even if the same node is focused twice
+    requestAnimationFrame(() => { focusKey = key; });
+  }
+
+  /** Human-readable name of the selected node, shown as a caption over the graph. */
+  const focusedLabel = $derived.by(() => {
+    if (!selected || !selected.startsWith('i:')) return null;
+    const iriVal = selected.slice(2);
+    const labelSt = previewStatements.find(
+      (s) => s.s.kind === 'iri' && s.s.value === iriVal &&
+             s.p.value === 'http://www.w3.org/2000/01/rdf-schema#label' && s.o.kind === 'literal'
+    );
+    if (labelSt) return labelSt.o.value;
+    const local = iriVal.split(/[/#]/).pop() ?? iriVal;
+    return local.replace(/-/g, ' ');
+  });
 
   // ── Resizable panel ─────────────────────────────────────────────────────
   let panelWidth = $state(380);
@@ -609,6 +632,9 @@
 
     <!-- Graph render area -->
     <div class="graph-render">
+      {#if graphMode === 'preview' && focusedLabel}
+        <span class="focus-badge" title={focusedLabel}>◉ {focusedLabel}</span>
+      {/if}
       {#if graphMode === 'preview'}
         {#if previewStatements.length === 0}
           <div class="graph-empty">
@@ -619,6 +645,7 @@
           <KnowledgeGraph2D
             statements={previewStatements}
             {selected}
+            {focusKey}
             layout="force"
             sources={sources()}
             onselect={(k) => { selected = k; }}
@@ -792,7 +819,17 @@
                 onaccept={async () => { await setStatus(e.incoming.id, 'confirmed'); refresh(); }}
                 onreject={async () => { await setStatus(e.incoming.id, 'rejected'); refresh(); }}
               >
-                <DiffEntry entry={e} sourceLabel={sourceLabel(e.incoming.sourceId)} onresolved={refresh} />
+                <!-- Clicking a review card flies the preview graph to its node -->
+                <div
+                  class="entry-focus-wrap"
+                  class:entry-focused={selected === termKey(e.incoming.s)}
+                  role="button"
+                  tabindex="0"
+                  onclick={() => focusStatement(e.incoming)}
+                  onkeydown={(ev) => { if (ev.key === 'Enter') focusStatement(e.incoming); }}
+                >
+                  <DiffEntry entry={e} sourceLabel={sourceLabel(e.incoming.sourceId)} onresolved={refresh} />
+                </div>
               </SwipeCard>
             {/each}
           </div>
@@ -1031,6 +1068,30 @@
     position: relative;
     overflow: hidden;
   }
+  /* Focused-node caption (shown while a review item's node is selected) */
+  .focus-badge {
+    position: absolute;
+    top: 0.6rem;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--accent);
+    background: color-mix(in srgb, var(--accent) 16%, rgba(10, 15, 20, 0.85));
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    pointer-events: none;
+    z-index: 5;
+    max-width: 70%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* Review card → graph focus affordance */
+  .entry-focus-wrap { cursor: pointer; border-left: 2px solid transparent; transition: border-color 0.15s; }
+  .entry-focus-wrap:hover { border-left-color: var(--muted-2, var(--muted)); }
+  .entry-focus-wrap.entry-focused { border-left-color: var(--accent); }
   .graph-empty {
     height: 100%;
     display: flex;

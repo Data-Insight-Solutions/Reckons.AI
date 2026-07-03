@@ -31,6 +31,7 @@
     ghostAnchorKey = null as string | null,
     flyToGhost = false,
     podMode = false,
+    focusKey = null as string | null,
     onflyend = () => {},
     onselect = () => {},
     onhover = () => {},
@@ -57,6 +58,8 @@
     ghostAnchorKey?: string | null;
     flyToGhost?: boolean;
     podMode?: boolean;
+    /** When set/changed, the camera flies to center this node (review-item focus). */
+    focusKey?: string | null;
     onflyend?: () => void;
     onselect?: (key: string | null, ctrlKey?: boolean) => void;
     onhover?: (key: string | null) => void;
@@ -735,6 +738,20 @@
       duration: 1800, // longer, smoother slide
       sx: camX, sy: camY, ss: camScale,
       tx: -gx * targetScale, ty: -gy * targetScale, ts: targetScale,
+    };
+  });
+
+  // Fly the camera to a node when focusKey changes (e.g. selecting a review item)
+  $effect(() => {
+    if (!focusKey) return;
+    const n = nodes.find((nd) => nd.key === focusKey);
+    if (!n) return;
+    const ts = Math.max(camScale, 55); // gentle zoom-in, never zoom out
+    flyAnim = {
+      startTime: performance.now(),
+      duration: 700,
+      sx: camX, sy: camY, ss: camScale,
+      tx: -n.x * ts, ty: -n.y * ts, ts
     };
   });
 
