@@ -41,7 +41,10 @@
     KB_ICON2D, KB_ICON3D, KB_MESHY_TASK_ID, KB_MESHY_STATUS,
     KB_COLOR, KB_DESCRIPTION, KB_SCHEMA_PREDICATE
   } from '$lib/rdf/entity-types';
+  import { allTypes } from '$lib/stores/entity-types.svelte';
   import { LEAP_PRED, LEAP_LABEL_PRED } from '$lib/rdf/kb-leap';
+  import { requestShellyChat } from '$lib/stores/shelly-bridge.svelte';
+  import { ToggleGroup } from 'bits-ui';
   import { onMount } from 'svelte';
 
   // Predicates that are internal KB metadata
@@ -162,13 +165,103 @@
   let selected = $state<string | null>(null);
   /** Camera-fly target: set when a review item is clicked so the graph centers its node */
   let focusKey = $state<string | null>(null);
+  /** The specific triple a review card is showing, so its edge (not just its nodes) can be highlighted. */
+  let focusedEdge = $state<{ s: string; o: string; p?: string } | null>(null);
 
-  /** Focus the preview graph on a statement's subject node (called from review cards). */
+  /** Focus the preview graph on a statement's subject node (called from review cards — incoming, deletions, merges, align). */
   function focusStatement(st: Statement) {
     const key = termKey(st.s);
     selected = key;
+    focusedEdge = { s: termKey(st.s), o: termKey(st.o), p: st.p.value.split('/').pop() ?? st.p.value };
     focusKey = null; // retrigger even if the same node is focused twice
     requestAnimationFrame(() => { focusKey = key; });
+  }
+
+  /** Focus the preview graph on an arbitrary node key (called from the node search box). */
+  function focusNode(key: string) {
+    selected = key;
+    focusedEdge = null;
+    focusKey = null;
+    requestAnimationFrame(() => { focusKey = key; });
+  }
+
+  // ── Browse controls (F30: graph controls ported onto the preview pane) ────
+  let previewLayout = $state<'force' | 'focus' | 'hub'>('force');
+  let nodeSearchQuery = $state('');
+  const nodeSearchResults = $derived.by(() => {
+    const q = nodeSearchQuery.trim().toLowerCase();
+    if (q.length < 1) return [];
+    const seen = new Map<string, string>();
+    for (const s of previewStatements) {
+      for (const term of [s.s, s.o]) {
+        if (term.kind !== 'iri') continue;
+        const k = termKey(term);
+        if (seen.has(k)) continue;
+        const label = term.value.split('/').pop() ?? term.value;
+        if (label.toLowerCase().includes(q)) seen.set(k, label);
+      }
+    }
+    return [...seen.entries()].slice(0, 8).map(([key, label]) => ({ key, label }));
+  });
+
+  // ── Node details panel (left of the graph pane) ────────────────────────────
+  function keyLabelReview(key: string): string {
+    if (key.startsWith('i:')) {
+      const iri = key.slice(2);
+      return iri.split('/').pop() ?? iri;
+    }
+    if (key.startsWith('l:')) return key.slice(2).split('|')[0].slice(0, 48) || key;
+    if (key.startsWith('src:')) {
+      const srcId = key.slice(4);
+      return sources().find((s) => s.id === srcId)?.title ?? srcId;
+    }
+    return key;
+  }
+
+  const nodeDetails = $derived.by(() => {
+    if (!selected || graphMode !== 'preview') return null;
+    const label = keyLabelReview(selected);
+    const typeStmt = previewStatements.find((s) => termKey(s.s) === selected && s.p.value === RDF_TYPE);
+    const typeDef = typeStmt && typeStmt.o.kind === 'iri' ? allTypes().find((t) => t.iri === typeStmt.o.value) ?? null : null;
+    const typeLabel = typeDef?.label ?? (typeStmt && typeStmt.o.kind === 'iri' ? (typeStmt.o.value.split('/').pop() ?? typeStmt.o.value) : null);
+
+    const related = statements()
+      .filter((s) =>
+        s.status !== 'rejected' && s.status !== 'superseded' &&
+        s.p.value !== RDF_TYPE &&
+        !isMetaPredicate(s.p.value) && !GRAPH_EXCLUDED_PREDICATES.has(s.p.value) &&
+        (termKey(s.s) === selected || termKey(s.o) === selected)
+      )
+      .map((s) => {
+        const isSubject = termKey(s.s) === selected;
+        const other = isSubject ? s.o : s.s;
+        return {
+          id: s.id,
+          predicate: s.p.value.split('/').pop() ?? s.p.value,
+          isSubject,
+          otherLabel: other.kind === 'iri' ? (other.value.split('/').pop() ?? other.value) : other.value.slice(0, 60),
+          pending: s.status === 'pending' || s.status === 'pending-removal',
+          status: s.status,
+        };
+      })
+      .slice(0, 40);
+
+    return { label, typeLabel, related };
+  });
+
+  // Chat scoped to the selected node — reuses the existing Shelly chat machinery
+  // (requestShellyChat opens the global TurtleChatPanel mounted in the app layout
+  // and auto-sends the message) rather than building a separate chat stack.
+  let nodeChatDraft = $state('');
+  function sendNodeChat() {
+    if (!nodeDetails || !nodeChatDraft.trim()) return;
+    const ctx = `About the node "${nodeDetails.label}"${nodeDetails.typeLabel ? ` (${nodeDetails.typeLabel})` : ''}: `;
+    requestShellyChat(ctx + nodeChatDraft.trim());
+    nodeChatDraft = '';
+  }
+  function openNodeInShelly() {
+    if (!nodeDetails) return;
+    requestShellyChat(`Tell me about "${nodeDetails.label}"${nodeDetails.typeLabel ? `, a ${nodeDetails.typeLabel}` : ''}.`);
   }
 
   /** Human-readable name of the selected node, shown as a caption over the graph. */
@@ -549,6 +642,42 @@
       {/if}
     </div>
 
+    <!-- Browse controls (F30: layout + node search ported onto the preview pane) -->
+    {#if graphMode === 'preview'}
+      <div class="overlay-controls browse-controls">
+        <div class="ov-row">
+          <span class="ov-label mono">layout</span>
+          <ToggleGroup.Root
+            type="single"
+            value={previewLayout}
+            onValueChange={(v) => { if (v) previewLayout = v as typeof previewLayout; }}
+            class="tg-row"
+          >
+            <ToggleGroup.Item value="force" class="tg-chip"><span class="lbl mono">free</span></ToggleGroup.Item>
+            <ToggleGroup.Item value="focus" class="tg-chip"><span class="lbl mono">focus</span></ToggleGroup.Item>
+            <ToggleGroup.Item value="hub" class="tg-chip"><span class="lbl mono">hub</span></ToggleGroup.Item>
+          </ToggleGroup.Root>
+          <div class="node-search-wrap">
+            <input
+              class="node-search-input mono"
+              type="text"
+              placeholder="find node…"
+              bind:value={nodeSearchQuery}
+            />
+            {#if nodeSearchResults.length > 0}
+              <div class="node-search-dropdown">
+                {#each nodeSearchResults as r (r.key)}
+                  <button class="node-search-row" onclick={() => { focusNode(r.key); nodeSearchQuery = ''; }}>
+                    {r.label}
+                  </button>
+                {/each}
+              </div>
+            {/if}
+          </div>
+        </div>
+      </div>
+    {/if}
+
     <!-- Overlay controls strip (when overlay mode) -->
     {#if graphMode === 'overlay'}
       <div class="overlay-controls">
@@ -635,6 +764,46 @@
       {#if graphMode === 'preview' && focusedLabel}
         <span class="focus-badge" title={focusedLabel}>◉ {focusedLabel}</span>
       {/if}
+
+      <!-- Node details (left) + scoped chat (below it) — shown when a node is selected in the preview -->
+      {#if graphMode === 'preview' && nodeDetails}
+        <div class="node-details-pane">
+          <div class="ndp-header">
+            <div class="ndp-title">
+              <span class="ndp-label">{nodeDetails.label}</span>
+              {#if nodeDetails.typeLabel}<span class="ndp-type mono">{nodeDetails.typeLabel}</span>{/if}
+            </div>
+            <button class="ndp-close" onclick={() => { selected = null; focusedEdge = null; }} title="close">✕</button>
+          </div>
+          <div class="ndp-stmts">
+            {#if nodeDetails.related.length === 0}
+              <p class="ndp-empty mono">no facts yet</p>
+            {:else}
+              {#each nodeDetails.related as r (r.id)}
+                <div class="ndp-stmt" class:ndp-pending={r.pending}>
+                  {#if r.pending}<span class="ndp-pending-tag mono">pending</span>{/if}
+                  <span class="ndp-pred mono">{r.isSubject ? r.predicate : `← ${r.predicate}`}</span>
+                  <span class="ndp-other">{r.otherLabel}</span>
+                </div>
+              {/each}
+            {/if}
+          </div>
+          <div class="ndp-chat">
+            <div class="ndp-chat-row">
+              <input
+                class="ndp-chat-input mono"
+                type="text"
+                placeholder="ask Shelly about this node…"
+                bind:value={nodeChatDraft}
+                onkeydown={(e) => { if (e.key === 'Enter') sendNodeChat(); }}
+              />
+              <button class="ndp-chat-send" onclick={sendNodeChat} disabled={!nodeChatDraft.trim()} title="ask">➤</button>
+            </div>
+            <button class="ghost-btn ndp-chat-open" onclick={openNodeInShelly}>open in Shelly →</button>
+          </div>
+        </div>
+      {/if}
+
       {#if graphMode === 'preview'}
         {#if previewStatements.length === 0}
           <div class="graph-empty">
@@ -646,13 +815,14 @@
             statements={previewStatements}
             {selected}
             {focusKey}
-            layout="force"
+            layout={previewLayout}
             sources={sources()}
-            onselect={(k) => { selected = k; }}
+            onselect={(k) => { selected = k; focusedEdge = null; }}
             onhover={() => {}}
             onlabelsmove={() => {}}
             onmarkersmove={() => {}}
             highlighted={[...pendingKeys]}
+            highlightedEdges={focusedEdge ? [focusedEdge] : []}
           />
         {:else}
           <svelte:boundary>
@@ -660,9 +830,9 @@
               <KnowledgeGraph
                 statements={previewStatements}
                 {selected}
-                layout="force"
+                layout={previewLayout}
                 sources={sources()}
-                onselect={(k) => { selected = k; }}
+                onselect={(k) => { selected = k; focusedEdge = null; }}
                 onhover={() => {}}
                 onlabelsmove={() => {}}
                 onmarkersmove={() => {}}
@@ -850,12 +1020,21 @@
                 onaccept={async () => { await keepStatement(st.id); }}
                 onreject={async () => { await confirmDeletion(st.id); }}
               >
-                <div class="del-card">
-                  <span class="del-tag mono">deletion</span>
-                  <StatementCard statement={st} compact />
-                  <div class="del-actions">
-                    <button class="danger-btn" onclick={() => confirmDeletion(st.id)} disabled={isProcessing}>delete</button>
-                    <button class="ghost-btn" onclick={() => keepStatement(st.id)} disabled={isProcessing}>keep</button>
+                <div
+                  class="entry-focus-wrap"
+                  class:entry-focused={selected === termKey(st.s)}
+                  role="button"
+                  tabindex="0"
+                  onclick={() => focusStatement(st)}
+                  onkeydown={(ev) => { if (ev.key === 'Enter') focusStatement(st); }}
+                >
+                  <div class="del-card">
+                    <span class="del-tag mono">deletion</span>
+                    <StatementCard statement={st} compact />
+                    <div class="del-actions">
+                      <button class="danger-btn" onclick={() => confirmDeletion(st.id)} disabled={isProcessing}>delete</button>
+                      <button class="ghost-btn" onclick={() => keepStatement(st.id)} disabled={isProcessing}>keep</button>
+                    </div>
                   </div>
                 </div>
               </SwipeCard>
@@ -882,23 +1061,32 @@
                 onaccept={async () => { await executeMerge(st); }}
                 onreject={async () => { await dismissMerge(st.id); }}
               >
-                <div class="merge-card">
-                  <span class="merge-tag mono">merge</span>
-                  {#if st.gloss}
-                    <p class="merge-gloss">{st.gloss}</p>
-                  {:else}
-                    <p class="merge-gloss">
-                      <strong>{dropLabel}</strong> → <strong>{keepLabel}</strong>
-                    </p>
-                  {/if}
-                  <div class="merge-iris mono">
-                    <span class="drop">{dropIri.split('/').pop()}</span>
-                    <span class="arrow">→</span>
-                    <span class="keep">{keepIri.split('/').pop()}</span>
-                  </div>
-                  <div class="merge-actions">
-                    <button class="primary-btn" onclick={() => executeMerge(st)} disabled={isProcessing}>review merge</button>
-                    <button class="ghost-btn" onclick={() => dismissMerge(st.id)} disabled={isProcessing}>dismiss</button>
+                <div
+                  class="entry-focus-wrap"
+                  class:entry-focused={selected === termKey(st.s)}
+                  role="button"
+                  tabindex="0"
+                  onclick={() => focusStatement(st)}
+                  onkeydown={(ev) => { if (ev.key === 'Enter') focusStatement(st); }}
+                >
+                  <div class="merge-card">
+                    <span class="merge-tag mono">merge</span>
+                    {#if st.gloss}
+                      <p class="merge-gloss">{st.gloss}</p>
+                    {:else}
+                      <p class="merge-gloss">
+                        <strong>{dropLabel}</strong> → <strong>{keepLabel}</strong>
+                      </p>
+                    {/if}
+                    <div class="merge-iris mono">
+                      <span class="drop">{dropIri.split('/').pop()}</span>
+                      <span class="arrow">→</span>
+                      <span class="keep">{keepIri.split('/').pop()}</span>
+                    </div>
+                    <div class="merge-actions">
+                      <button class="primary-btn" onclick={() => executeMerge(st)} disabled={isProcessing}>review merge</button>
+                      <button class="ghost-btn" onclick={() => dismissMerge(st.id)} disabled={isProcessing}>dismiss</button>
+                    </div>
                   </div>
                 </div>
               </SwipeCard>
@@ -964,11 +1152,20 @@
                   onaccept={() => acceptAlignment(suggestion)}
                   onreject={() => rejectAlignment(suggestion)}
                 >
-                  <AlignmentCard
-                    {suggestion}
-                    onaccept={() => acceptAlignment(suggestion)}
-                    onreject={() => rejectAlignment(suggestion)}
-                  />
+                  <div
+                    class="entry-focus-wrap"
+                    class:entry-focused={selected === termKey(suggestion.statement.s)}
+                    role="button"
+                    tabindex="0"
+                    onclick={() => focusStatement(suggestion.statement)}
+                    onkeydown={(ev) => { if (ev.key === 'Enter') focusStatement(suggestion.statement); }}
+                  >
+                    <AlignmentCard
+                      {suggestion}
+                      onaccept={() => acceptAlignment(suggestion)}
+                      onreject={() => rejectAlignment(suggestion)}
+                    />
+                  </div>
                 </SwipeCard>
               {/each}
             </div>
@@ -1173,6 +1370,187 @@
   .ov-current { color: var(--accent); font-size: 0.6rem; }
   .ov-chip:disabled { opacity: 0.5; cursor: wait; }
   .ov-hint { font-size: 0.55rem; color: var(--muted); }
+
+  /* ── Browse controls (F30: layout ToggleGroup + node search on the preview) ── */
+  .browse-controls { padding-top: 0.35rem; padding-bottom: 0.35rem; }
+  :global(.review-layout .tg-row) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+  :global(.review-layout .tg-chip) {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: none;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    cursor: pointer;
+    transition: all 0.12s;
+    user-select: none;
+  }
+  :global(.review-layout .tg-chip:hover) { border-color: var(--accent); color: var(--ink); }
+  :global(.review-layout .tg-chip[data-state="on"]) {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .node-search-wrap { position: relative; margin-left: 0.4rem; flex: 1; min-width: 120px; max-width: 220px; }
+  .node-search-input {
+    width: 100%;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--rad-sm);
+    padding: 0.2rem 0.5rem;
+    font-size: 0.62rem;
+    color: var(--ink-2);
+  }
+  .node-search-input:focus { outline: none; border-color: var(--accent); }
+  .node-search-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: rgba(14, 14, 20, 0.96);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--accent);
+    border-radius: var(--rad-sm);
+    overflow: hidden;
+    z-index: 20;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+  .node-search-row {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.3rem 0.55rem;
+    background: none;
+    border: none;
+    color: var(--ink-2);
+    font-size: 0.68rem;
+    cursor: pointer;
+  }
+  .node-search-row:hover { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); color: var(--accent); }
+
+  /* ── Node details pane (left of graph, F30) ── */
+  .node-details-pane {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    bottom: 0.75rem;
+    width: 250px;
+    max-width: calc(100% - 1.5rem);
+    display: flex;
+    flex-direction: column;
+    background: rgba(14, 14, 20, 0.92);
+    backdrop-filter: blur(14px);
+    border: 1px solid var(--line);
+    border-radius: var(--rad);
+    box-shadow: 0 8px 28px rgba(0,0,0,0.4);
+    z-index: 6;
+    overflow: hidden;
+  }
+  .ndp-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.4rem;
+    padding: 0.6rem 0.65rem 0.45rem;
+    border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+  }
+  .ndp-title { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+  .ndp-label {
+    font-family: var(--font-display);
+    font-size: 0.9rem;
+    color: var(--ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ndp-type {
+    font-size: 0.55rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+  }
+  .ndp-close {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 0.7rem;
+    cursor: pointer;
+    padding: 0.1rem;
+  }
+  .ndp-close:hover { color: var(--danger); }
+  .ndp-stmts {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem 0.65rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-height: 0;
+  }
+  .ndp-empty { color: var(--muted); font-size: 0.65rem; margin: 0; }
+  .ndp-stmt {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.3rem;
+    font-size: 0.68rem;
+    padding: 0.15rem 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+  }
+  .ndp-stmt.ndp-pending { color: var(--accent); }
+  .ndp-pending-tag {
+    font-size: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-radius: 999px;
+    padding: 0.02rem 0.3rem;
+  }
+  .ndp-pred { color: var(--muted); }
+  .ndp-other { color: var(--ink-2); overflow-wrap: anywhere; }
+  .ndp-chat {
+    flex-shrink: 0;
+    border-top: 1px solid var(--line);
+    padding: 0.5rem 0.65rem 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .ndp-chat-row { display: flex; gap: 0.3rem; }
+  .ndp-chat-input {
+    flex: 1;
+    min-width: 0;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--rad-sm);
+    padding: 0.3rem 0.5rem;
+    font-size: 0.65rem;
+    color: var(--ink-2);
+  }
+  .ndp-chat-input:focus { outline: none; border-color: var(--accent); }
+  .ndp-chat-send {
+    flex-shrink: 0;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: var(--rad-sm);
+    width: 1.9rem;
+    cursor: pointer;
+    font-size: 0.75rem;
+  }
+  .ndp-chat-send:disabled { opacity: 0.4; cursor: not-allowed; }
+  .ndp-chat-open { align-self: flex-start; }
 
   /* ── Resize handle ── */
   .resize-handle {
@@ -1516,6 +1894,15 @@
       min-width: 0;
       border-top: 1px solid var(--line);
       flex: 1;
+    }
+    .node-details-pane {
+      width: calc(100% - 1.5rem);
+      max-height: 60%;
+      bottom: auto;
+    }
+    .node-search-wrap {
+      max-width: none;
+      flex-basis: 100%;
     }
   }
 </style>
