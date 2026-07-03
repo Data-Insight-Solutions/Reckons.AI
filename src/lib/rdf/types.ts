@@ -179,6 +179,9 @@ export const NAV_PREFIX = 'urn:reckons:nav/';
 /** Predicates under this prefix are web-page publishing metadata (slug, section, template, status, nav, excerpt, body) */
 export const PAGE_PREFIX = 'urn:reckons:page/';
 
+/** Predicates under this prefix are graph-level currents settings (F29) */
+export const CURRENTS_PREFIX = 'urn:reckons:meta/currents/';
+
 /** Returns true if the predicate is metadata (should not render as a graph edge/node) */
 export function isMetaPredicate(predicateIri: string): boolean {
   if (predicateIri.startsWith(META_PREFIX)) return true;
@@ -187,6 +190,8 @@ export function isMetaPredicate(predicateIri: string): boolean {
   // page:* are per-page publishing metadata (literals) — the site tree still renders
   // via skos:broader/related/next/prev, which stay visible edges.
   if (predicateIri.startsWith(PAGE_PREFIX)) return true;
+  // currents settings are graph-level config, never edges
+  if (predicateIri.startsWith(CURRENTS_PREFIX)) return true;
   return false;
 }
 

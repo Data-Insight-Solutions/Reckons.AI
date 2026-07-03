@@ -1073,14 +1073,14 @@ kb:currents    rdf:type      ktype:Feature ;
 kb:currents-settings rdf:type ktype:Concept ;
                rdfs:label    "Graph-level currents settings (meta triples)" ;
                kpred:part-of      kb:currents ;
-               kpred:has-status   "planned" ;
+               kpred:has-status   "functional" ;
                kpred:description  "Per-graph configuration stored as urn:reckons:meta/currents/* statements in the graph itself — portable with TTL export/import, visible to MCP tools, hidden from graph edges via isMetaPredicate. Holds: the current definitions (source URL/kind/cadence/label), the entity-type gate (enable/disable NEW entity creation per ktype — e.g. a research graph admits only Tool and Concept), and location/interest markers for ranking. Facts attaching to entities already in the graph always flow through (pending review); only new-entity creation is gated." .
 
 kb:currents-phase-1 rdf:type ktype:Phase ;
                rdfs:label    "F29.1 — Currents model & type gate" ;
-               kpred:has-status   "planned" ;
+               kpred:has-status   "functional" ;
                kpred:part-of      kb:currents ;
-               kpred:description  "Meta-triples settings module (read/write urn:reckons:meta/currents/*), the entity-type gate enforced where stream-originated batches enter addStatements, and the arrival provenance model (article/document node + extracted concepts + derived-from links). Pure model + gate, no UI." .
+               kpred:description  "Meta-triples settings module (read/write urn:reckons:meta/currents/*), the entity-type gate enforced where stream-originated batches enter addStatements, and the arrival provenance model (article/document node + extracted concepts + derived-from links). Pure model + gate, no UI. SHIPPED 2026-07-02: src/lib/rdf/currents.ts (settings round-trip, isTypeAllowed, applyTypeGate, buildArrivalStatements), origin-aware gate in addStatements (kb.svelte.ts), currents namespace registered in isMetaPredicate; 14 unit tests." .
 
 kb:currents-phase-2 rdf:type ktype:Phase ;
                rdfs:label    "F29.2 — Fetch: n8n Currents Monitor + browser fallback" ;

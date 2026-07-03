@@ -180,8 +180,34 @@ export async function autoConfirmTrustedSources() {
   }
 }
 
-export async function addStatements(sts: Statement[], sourceId?: string) {
+export async function addStatements(
+  sts: Statement[],
+  sourceId?: string,
+  opts?: { origin?: 'manual' | 'current' }
+) {
   if (isReadOnly() || sts.length === 0) return;
+
+  // Currents type gate (F29) — only batches originating from a current are
+  // gated, and only NEW entity creation is blocked; facts on entities already
+  // in the graph always pass (still pending review).
+  if (opts?.origin === 'current') {
+    const { readCurrentsSettings, applyTypeGate } = await import('$lib/rdf/currents');
+    const settings = readCurrentsSettings(_statements);
+    const existing = new Set<string>();
+    for (const st of _statements) {
+      if (st.status !== 'rejected' && st.status !== 'superseded') existing.add(st.s.value);
+    }
+    const gate = applyTypeGate(sts, existing, settings);
+    if (gate.gatedStatementCount > 0) {
+      console.info(
+        `[Currents] Type gate dropped ${gate.gatedStatementCount} statement(s) for ` +
+        `${Object.keys(gate.gatedEntities).length} disallowed new entit(y/ies):`,
+        gate.gatedEntities
+      );
+    }
+    sts = gate.allowed;
+    if (sts.length === 0) return;
+  }
 
   // Content safety gate — block extreme content before save
   const { allowed, blocked, blockReasons } = filterBlockedStatements(sts);
