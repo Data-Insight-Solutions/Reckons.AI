@@ -34,6 +34,7 @@
     focusKey = null as string | null,
     onflyend = () => {},
     onselect = () => {},
+    onarrivalstatus = (_isArrival: boolean) => {},
     onhover = () => {},
     onnodemove = () => {},
     onhovermove = () => {},
@@ -62,6 +63,8 @@
     focusKey?: string | null;
     onflyend?: () => void;
     onselect?: (key: string | null, ctrlKey?: boolean) => void;
+    /** Fires whenever the selected node's pod-arrival status changes (F29.3). */
+    onarrivalstatus?: (isArrival: boolean) => void;
     onhover?: (key: string | null) => void;
     onnodemove?: (key: string, x: number, y: number) => void;
     onhovermove?: (key: string | null, label: string | null, x: number, y: number) => void;
@@ -129,6 +132,11 @@
       bucket.add(termKey(st.o));
     }
     return new Set([...pendingTouched].filter((k) => !settledTouched.has(k)));
+  });
+
+  // Report the selected node's arrival status to the parent (pod accept/dismiss UI).
+  $effect(() => {
+    onarrivalstatus(selected !== null && arrivalKeys.has(selected));
   });
 
   /** Per-entity icon image URL — editor overrides take priority, then kpred:icon2d KB statements. */

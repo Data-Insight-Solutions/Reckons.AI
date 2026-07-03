@@ -41,6 +41,9 @@
   import { buildGifPackage } from '$lib/storage/gif-package';
   import { gifOverrides } from '$lib/stores/gif-overrides.svelte';
   import { db } from '$lib/storage/db';
+  import { readCurrentsSettings, type CurrentsSettings, type CurrentDef } from '$lib/rdf/currents';
+  import { replaceCurrentsSettings } from '$lib/rdf/currents-persist';
+  import { allTypes } from '$lib/stores/entity-types.svelte';
 
   // ── KB identity ────────────────────────────────────────────────────────────
   const currentKbId = getCurrentKbId();
@@ -288,6 +291,77 @@
     const clean = storySteps.filter(s => s.title.trim() || s.content.trim());
     await updateSettings({ kbStory: clean.length > 0 ? clean : undefined });
     storySaving = false;
+  }
+
+  // ── Currents (F29.3) — graph-level streams + type gate ───────────────────
+  let showCurrents = $state(false);
+  let currentsDraft = $state<CurrentsSettings>(readCurrentsSettings(statements()));
+  let currentsSaving = $state(false);
+
+  // Re-hydrate from the graph whenever it changes, but only while the editor is
+  // closed (mirrors the guided-story pattern) so live edits aren't clobbered.
+  $effect(() => {
+    const stmts = statements();
+    if (!showCurrents) currentsDraft = readCurrentsSettings(stmts);
+  });
+
+  function currentsSlugify(label: string): string {
+    return label.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'current';
+  }
+
+  function currentsUniqueSlug(base: string, exceptIndex: number): string {
+    const taken = new Set(currentsDraft.currents.filter((_, i) => i !== exceptIndex).map((c) => c.slug));
+    let slug = base;
+    let n = 2;
+    while (taken.has(slug)) { slug = `${base}-${n}`; n++; }
+    return slug;
+  }
+
+  function toggleAllowedType(iri: string) {
+    const set = new Set(currentsDraft.allowedTypes);
+    if (set.has(iri)) set.delete(iri); else set.add(iri);
+    currentsDraft = { ...currentsDraft, allowedTypes: [...set] };
+  }
+
+  function addCurrent() {
+    const label = 'new current';
+    const next: CurrentDef = {
+      slug: currentsUniqueSlug(currentsSlugify(label), -1),
+      sourceUrl: '',
+      kind: 'rss',
+      label,
+      cadenceMinutes: 360,
+      enabled: true
+    };
+    currentsDraft = { ...currentsDraft, currents: [...currentsDraft.currents, next] };
+  }
+
+  function removeCurrent(idx: number) {
+    currentsDraft = { ...currentsDraft, currents: currentsDraft.currents.filter((_, i) => i !== idx) };
+  }
+
+  function updateCurrent(idx: number, patch: Partial<CurrentDef>) {
+    const next = [...currentsDraft.currents];
+    const merged = { ...next[idx], ...patch };
+    // Slug auto-follows the label unless the user is mid-editing an empty label.
+    if (patch.label !== undefined) merged.slug = currentsUniqueSlug(currentsSlugify(patch.label), idx);
+    next[idx] = merged;
+    currentsDraft = { ...currentsDraft, currents: next };
+  }
+
+  async function saveCurrents() {
+    currentsSaving = true;
+    try {
+      const next: CurrentsSettings = {
+        allowedTypes: currentsDraft.allowedTypes,
+        location: currentsDraft.location?.trim() || undefined,
+        currents: currentsDraft.currents.filter((c) => c.sourceUrl.trim() && c.slug.trim())
+      };
+      await replaceCurrentsSettings(next);
+      currentsDraft = readCurrentsSettings(statements());
+    } finally {
+      currentsSaving = false;
+    }
   }
 
   async function importMerge() {
@@ -704,6 +778,116 @@
         <span class="story-chip mono">{i + 1}. {step.title || '(untitled)'}</span>
       {/each}
     </div>
+  {/if}
+</section>
+
+<!-- ── Currents ───────────────────────────────────────────────────────────── -->
+<section class="section">
+  <div class="section-head">
+    <h3>currents</h3>
+    <button class="ghost sm mono" onclick={() => (showCurrents = !showCurrents)}>
+      {showCurrents ? 'hide ▲' : currentsDraft.currents.length > 0 ? `edit (${currentsDraft.currents.length})` : '+ configure'}
+    </button>
+  </div>
+  {#if showCurrents}
+    <div class="currents-editor">
+      <p class="section-hint">recurring streams (rss / url / topic) that bring new arrivals into this graph. arrivals always land as pending facts — review them in the pod view.</p>
+
+      <div class="currents-field">
+        <label class="currents-label mono" for="currents-location">location</label>
+        <input
+          id="currents-location"
+          type="text"
+          value={currentsDraft.location ?? ''}
+          oninput={(e) => (currentsDraft = { ...currentsDraft, location: (e.currentTarget as HTMLInputElement).value })}
+          placeholder="e.g. Colorado, US — optional, used for context blocks"
+        />
+      </div>
+
+      <div class="currents-field">
+        <span class="currents-label mono">entity types a current may create</span>
+        <p class="section-hint" style="margin: 0 0 0.4rem;">empty = every type allowed. gate applies only to brand-new entities; facts on entities already in the graph always flow through.</p>
+        <div class="chip-row">
+          {#each allTypes() as t (t.iri)}
+            <button
+              type="button"
+              class="chip"
+              class:active={currentsDraft.allowedTypes.includes(t.iri)}
+              onclick={() => toggleAllowedType(t.iri)}
+            >{t.label}</button>
+          {/each}
+        </div>
+      </div>
+
+      <div class="currents-list">
+        {#each currentsDraft.currents as cur, i (i)}
+          <div class="current-card">
+            <div class="current-card-row">
+              <input
+                class="current-label"
+                type="text"
+                value={cur.label}
+                oninput={(e) => updateCurrent(i, { label: (e.currentTarget as HTMLInputElement).value })}
+                placeholder="label"
+              />
+              <select
+                class="current-kind mono"
+                value={cur.kind}
+                onchange={(e) => updateCurrent(i, { kind: (e.currentTarget as HTMLSelectElement).value as CurrentDef['kind'] })}
+              >
+                <option value="rss">rss</option>
+                <option value="url">url</option>
+                <option value="topic">topic</option>
+              </select>
+              <button
+                type="button"
+                class="chip enabled-chip"
+                class:active={cur.enabled}
+                onclick={() => updateCurrent(i, { enabled: !cur.enabled })}
+              >{cur.enabled ? 'enabled' : 'disabled'}</button>
+              <button type="button" class="ghost sm danger" onclick={() => removeCurrent(i)}>remove</button>
+            </div>
+            <input
+              class="current-source mono"
+              type="text"
+              value={cur.sourceUrl}
+              oninput={(e) => updateCurrent(i, { sourceUrl: (e.currentTarget as HTMLInputElement).value })}
+              placeholder={cur.kind === 'topic' ? 'topic query' : 'source url'}
+              spellcheck="false"
+            />
+            <div class="current-card-row">
+              <label class="currents-label mono" for={`current-cadence-${i}`}>cadence</label>
+              <input
+                id={`current-cadence-${i}`}
+                class="current-cadence"
+                type="number"
+                min="5"
+                value={cur.cadenceMinutes}
+                oninput={(e) => updateCurrent(i, { cadenceMinutes: parseInt((e.currentTarget as HTMLInputElement).value, 10) || 0 })}
+              />
+              <span class="currents-label mono">min</span>
+              <span class="currents-slug mono">urn:reckons:currents/{cur.slug}</span>
+            </div>
+          </div>
+        {/each}
+        {#if currentsDraft.currents.length === 0}
+          <p class="filter-empty mono">no currents configured yet.</p>
+        {/if}
+      </div>
+
+      <div class="story-actions">
+        <button class="ghost sm mono" onclick={addCurrent}>+ add current</button>
+        <button class="primary sm" onclick={saveCurrents} disabled={currentsSaving}>
+          {currentsSaving ? 'saving…' : 'save currents'}
+        </button>
+      </div>
+    </div>
+  {:else}
+    <p class="section-hint">
+      {currentsDraft.currents.length > 0
+        ? `${currentsDraft.currents.length} current${currentsDraft.currents.length !== 1 ? 's' : ''} configured, feeding arrivals into the pod view.`
+        : 'define recurring streams (rss / url / topic) that bring new arrivals into this graph.'}
+    </p>
   {/if}
 </section>
 
@@ -1449,6 +1633,47 @@
     font-size: 0.68rem; padding: 0.18rem 0.55rem; border-radius: 999px;
     background: var(--surface-2); border: 1px solid var(--line); color: var(--muted);
   }
+
+  /* ── Currents editor (F29.3) — ocean/whale accent for pod chrome ── */
+  .currents-editor {
+    display: flex; flex-direction: column; gap: 0.7rem;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--rad); padding: 1rem;
+  }
+  .currents-field { display: flex; flex-direction: column; gap: 0.35rem; }
+  .currents-field input[type="text"] { width: 100%; }
+  .currents-label {
+    font-size: 0.68rem; color: var(--muted); text-transform: lowercase; letter-spacing: 0.03em;
+  }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+  .currents-list { display: flex; flex-direction: column; gap: 0.6rem; }
+  .current-card {
+    display: flex; flex-direction: column; gap: 0.4rem;
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: var(--rad-sm); padding: 0.7rem 0.85rem;
+  }
+  .current-card-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+  .current-label {
+    flex: 1; min-width: 100px; font-size: 0.85rem; font-weight: 600;
+    background: none; border: none; outline: none; color: var(--ink);
+    padding: 0; border-bottom: 1px solid transparent;
+  }
+  .current-label:focus { border-bottom-color: #38bdf8; }
+  .current-label::placeholder { color: var(--muted); font-weight: 400; }
+  .current-kind {
+    font-size: 0.68rem; padding: 0.2rem 0.4rem; border-radius: var(--rad-sm);
+    background: var(--surface); border: 1px solid var(--line); color: var(--ink-2);
+  }
+  .current-source {
+    width: 100%; font-size: 0.75rem; color: var(--ink-2);
+    background: none; border: none; outline: none;
+    border-bottom: 1px solid transparent; padding: 0;
+  }
+  .current-source:focus { border-bottom-color: var(--line); }
+  .current-source::placeholder { color: var(--muted); }
+  .current-cadence { width: 4.5rem; font-size: 0.75rem; }
+  .currents-slug { font-size: 0.62rem; color: var(--muted); margin-left: auto; }
+  .enabled-chip.active { background: #38bdf822; border-color: #38bdf8; color: #38bdf8; }
 
   /* ── Local files card ── */
   .files-card {
