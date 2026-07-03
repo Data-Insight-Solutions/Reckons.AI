@@ -1003,6 +1003,15 @@
 
   <footer class="page-footer">
     <p class="mono">Reckons.AI · local-first · open source · RDF/Turtle · MIT license</p>
+    <!-- DIS synapse lockup — animated constellation mark spelling D·I·S
+         (imported from the "Data Insight Solutions animated logo" design project) -->
+    <a class="dis-lockup" href="https://data-insight.solutions/" target="_blank" rel="noopener noreferrer" aria-label="Data Insight Solutions LLC">
+      <img class="dis-mark" src="/svg/dis-synapse.svg" alt="" width="62" height="48" loading="lazy" />
+      <span class="dis-lockup-text">
+        <span class="dis-name">Data Insight Solutions</span>
+        <span class="dis-tagline mono">Collect · Integrate · Display</span>
+      </span>
+    </a>
     <p class="mono footer-credit">Developed by <a href="https://data-insight.solutions/" target="_blank" rel="noopener noreferrer">Data Insight Solutions LLC</a></p>
     <div class="footer-links mono">
       <a href="https://github.com/Data-Insight-Solutions/Reckons.AI" target="_blank" rel="noopener noreferrer" class="footer-github">GitHub</a>
@@ -1947,6 +1956,39 @@
     transition: color 0.15s;
   }
   .footer-credit a:hover { color: var(--accent); }
+  /* DIS synapse lockup (Data Insight Solutions branding) */
+  .dis-lockup {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.5rem 0.9rem;
+    border-radius: var(--rad, 10px);
+    text-decoration: none;
+    transition: background 0.15s;
+  }
+  .dis-lockup:hover { background: var(--surface-2); }
+  .dis-mark { display: block; }
+  .dis-lockup-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.3rem;
+    border-left: 1px solid var(--line);
+    padding-left: 0.9rem;
+  }
+  .dis-name {
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    color: var(--ink-2);
+    letter-spacing: -0.01em;
+    line-height: 1;
+  }
+  .dis-tagline {
+    font-size: 0.58rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted-2);
+  }
   .footer-github {
     font-size: 0.68rem;
     color: var(--muted);
