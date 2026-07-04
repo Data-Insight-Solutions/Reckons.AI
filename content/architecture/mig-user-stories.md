@@ -1,7 +1,7 @@
 ---
 title: "USER_STORIES.md → Superseded"
 slug: "mig-user-stories"
-order: 1041
+order: 1045
 section: "Architecture"
 parent: "migration-status"
 template: doc

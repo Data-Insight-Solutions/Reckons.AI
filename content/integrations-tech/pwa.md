@@ -1,7 +1,7 @@
 ---
 title: "Progressive Web App"
 slug: "pwa"
-order: 1020
+order: 1022
 section: "Integrations & Tech"
 parent: "architecture-integrations-tech"
 template: doc

@@ -1,7 +1,7 @@
 ---
 title: "Threlte 8 + Three.js"
 slug: "threlte"
-order: 1024
+order: 1028
 section: "Integrations & Tech"
 parent: "architecture-integrations-tech"
 template: doc

@@ -1,7 +1,7 @@
 ---
 title: "NVIDIA NeMo Speech (Planned)"
 slug: "nemo-speech"
-order: 1018
+order: 1019
 section: "Integrations & Tech"
 parent: "integrations"
 template: doc

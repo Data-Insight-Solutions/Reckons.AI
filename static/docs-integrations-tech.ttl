@@ -61,9 +61,17 @@ int:IndicoEvents
 int:MCPServer
     rdf:type            ktype:Concept ;
     rdfs:label          "MCP Server" ;
-    skos:definition     "Standalone Node.js MCP server exposing your KB to AI agents (Claude Desktop, Cursor). 6 tools: kb_search (BM25), kb_get_entity, kb_list_entities, kb_stats, kb_add_note, kb_reckoning. Reads knowledge.ttl from workspace folder." ;
+    skos:definition     "Standalone Node.js MCP server exposing your graph to AI agents (Claude Desktop, Cursor, Claude Code). 20 tools over JSON-RPC stdio: search and read (kb_search, kb_get_entity, kb_list_entities, kb_stats, kb_subgraph, kb_list_kbs, kb_compress), write proposals (kb_add_note), reasoning (kb_reckoning), source management (kb_list_sources, kb_request_refresh), git-aware alignment (kb_git_status, kb_check_plan, kb_pending, kb_git_diff_triples, kb_alignment_score), and the local Ollama bridge (kb_local_extract, kb_local_summarize, kb_generate_page, kb_entity_markdown). Reads workspace TTL files (kbs/<name>/<name>.ttl), with multi-KB support via MultiKBReader." ;
     skos:broader        int:Integrations ;
-    skos:related        int:WorkspaceSync .
+    skos:related        int:WorkspaceSync ;
+    skos:related        int:Ollama .
+
+int:Ollama
+    rdf:type            ktype:Tool ;
+    rdfs:label          "Ollama (Local LLM Offload)" ;
+    skos:definition     "Local model server used two ways: as an in-app LLM backend (schema-constrained structured extraction, and prefer-local routing for chat/diff-summary/merge-analysis when reachable), and as an opt-in MCP bridge (kb_local_extract, kb_local_summarize, kb_generate_page) gated by OLLAMA_BASE_URL so the MCP server never depends on a local model unless you configure one. All Ollama-backed output is proposal-only -- nothing is written to a graph without review." ;
+    skos:broader        int:Integrations ;
+    skos:related        int:MCPServer .
 
 int:WorkspaceSync
     rdf:type            ktype:Concept ;
@@ -154,6 +162,13 @@ int:N8nSourceMonitor
     skos:definition     "n8n workflow CvbUNSZkZVf4hJFG running on a 6-hour schedule trigger. Reads watched URLs from reckons_watched_urls data table, fetches each URL, computes SHA-256 content hash, compares against stored hash. Changed URLs produce pending notes written to reckons_pending_notes data table with subject (URN from URL), predicate (source-content-changed), object (byte count and new hash), and review note. Add URLs to watch via POST /webhook/reckons-watch-url with JSON body containing url and kb_name. Pending notes surface via the Sync Hub GET /webhook/reckons-kb-pending endpoint." ;
     skos:broader        int:N8nCloudSync .
 
+int:N8nCurrentsMonitor
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Currents Monitor (n8n)" ;
+    skos:definition     "n8n workflow (workflow-id qb9uPZ8GScAmuUOX) extending the Source Monitor pattern for Currents: fetches enabled currents on a 30-minute schedule, respecting each current's own cadence via a due-check against its last-fetched time. RSS/Atom currents use the RSS Read node; URL-kind currents fetch-and-hash like Source Monitor. Items are deduplicated per (url, graph) before insert, so re-running the sweep never creates duplicate arrivals. Exposes a register webhook (upsert current definitions) and an items webhook (pull new rows for a graph, optionally since a timestamp) that the app polls to populate pod-view arrivals." ;
+    skos:broader        int:N8nCloudSync ;
+    skos:related        int:N8nSourceMonitor .
+
 int:N8nDataTables
     rdf:type            ktype:Concept ;
     rdfs:label          "n8n Data Tables" ;
@@ -199,8 +214,22 @@ tech:N3js
 tech:TransformersJS
     rdf:type            ktype:Tool ;
     rdfs:label          "@huggingface/transformers v3" ;
-    skos:definition     "Runs ML models in the browser via ONNX Runtime WebAssembly. Powers local LLM inference (SmolLM2-360M, q4 quantized), text embeddings (MiniLM-L6-v2, q8), speech-to-text (Whisper Tiny), and text-to-speech (Kokoro 82M)." ;
+    skos:definition     "Runs ML models in the browser via ONNX Runtime WebAssembly. Powers local LLM inference (Qwen2.5-0.5B-Instruct, q4 quantized), text embeddings (BGE-small-en-v1.5, q8, 384d, configurable), speech-to-text (Whisper Tiny), and text-to-speech (Kokoro 82M)." ;
     skos:broader        tech:Architecture .
+
+tech:TailwindCSS
+    rdf:type            ktype:Tool ;
+    rdfs:label          "Tailwind CSS v4" ;
+    skos:definition     "Utility CSS engine, added as the foundation for shadcn-svelte components. Preflight (the base-element reset) is disabled so it layers onto the existing hand-rolled Liquid CSS instead of replacing it." ;
+    skos:broader        tech:Architecture ;
+    skos:related        tech:ShadcnSvelte .
+
+tech:ShadcnSvelte
+    rdf:type            ktype:Tool ;
+    rdfs:label          "shadcn-svelte" ;
+    skos:definition     "Copy-in component foundation (button, badge, card, separator, skeleton) generated by the shadcn-svelte CLI and mapped onto the existing Liquid design tokens (--accent, --surface, --rad, etc.)." ;
+    skos:broader        tech:Architecture ;
+    skos:related        tech:TailwindCSS .
 
 tech:Dexie
     rdf:type            ktype:Tool ;

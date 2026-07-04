@@ -58,7 +58,8 @@ feat:Graph3D
     rdf:type            ktype:Concept ;
     rdfs:label          "3D / 2D Knowledge Graph" ;
     skos:definition     "Interactive force-directed graph in WebGL (3D) or Canvas (2D fallback). Per-entity icons from urn:kbase:predicate/icon2d statements with emoji fallback. Label overlap prevention sorts by degree and hides collisions. Hub emphasis, layout modes (force/focus/source/type/hub), filter chips." ;
-    skos:broader        guide:WhatIsReckonsAI .
+    skos:broader        guide:WhatIsReckonsAI ;
+    skos:note           "Fixed known issue (PR #21): production builds rendered a black graph while hit-testing still worked. Root cause was Threlte's <T.BufferAttribute> resolving its THREE class by function name, which minification mangled, so the geometry got the class instead of an instance and the WebGL renderer threw every frame. A minified-build deploy gate (PR #24, tests/e2e/graph-render.test.ts + playwright.smoke.config.ts) now guards against regressions, since the bug only reproduces in a minified production build, never under `vite dev`." .
 
 feat:Shelly
     rdf:type            ktype:Person ;
@@ -153,7 +154,7 @@ feat:HistoryMode
 feat:LLMBackends
     rdf:type            ktype:Concept ;
     rdfs:label          "LLM Backends" ;
-    skos:definition     "9 providers: Claude, OpenAI, Gemini, Ollama (local), OpenRouter (free tier), WASM (offline, SmolLM2-360M), Chrome AI (Gemini Nano), Manual paste, Mock. Per-task backend overrides let you use different providers for ingest, chat, analysis, diff summary, and merge analysis." ;
+    skos:definition     "9 providers: Claude, OpenAI, Gemini, Ollama (local), OpenRouter (free tier), WASM (offline, Qwen2.5-0.5B-Instruct), Chrome AI (Gemini Nano), Manual paste, Mock. Per-task backend overrides let you use different providers for ingest, chat, analysis, diff summary, and merge analysis. Prefer-local routing can redirect chat, diff summary, and merge analysis to a reachable local Ollama server." ;
     skos:broader        guide:WhatIsReckonsAI .
 
 feat:WhisperSTT
@@ -194,7 +195,7 @@ feat:TTLExport
 feat:ModelCache
     rdf:type            ktype:Concept ;
     rdfs:label          "Model Cache Management" ;
-    skos:definition     "Inspect, sideload, and purge locally cached WASM models. Manifests for SmolLM2-360M (370MB), MiniLM-L6-v2 (22MB), Kokoro 82M (88MB), Whisper Tiny (42MB). Settings > Integrations > local model cache." ;
+    skos:definition     "Inspect, sideload, and purge locally cached WASM models. Manifests for Qwen2.5-0.5B (500MB), BGE-small-en-v1.5 (33MB), MiniLM-L6-v2 (22MB), Kokoro 82M (88MB), Whisper Tiny (42MB). Settings > Integrations > local model cache." ;
     skos:broader        feat:LLMBackends .
 
 
@@ -305,6 +306,60 @@ feat:GitAnalysis
     skos:definition     "Git-aware MCP tools for agent plan alignment. Tools: kb_git_status (branch/commits), kb_check_plan (BM25 drift detection), kb_pending (review queue), kb_git_diff_triples (file-to-KB cross-ref), kb_alignment_score (quantitative 0-1 score across 4 dimensions: coverage, status alignment, dependency respect, scope discipline). Enhanced kb_add_note supports type, priority, agent, and commit_sha metadata." ;
     skos:broader        feat:MCPWorkspace .
 
+
+## =============================================================================
+## Currents & Pod View (F29)
+## =============================================================================
+
+feat:Currents
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Currents" ;
+    skos:definition     "Streamed ingest: point a current at an RSS feed, URL, or topic and it brings recurring external content into your graph on a schedule. Items arrive via the n8n Currents Monitor (or a direct in-browser RSS fetch as fallback) and are ranked by affinity to your graph's most-connected entities, with near-duplicates collapsed and content-policy filtering applied. New facts always land as pending — a current never bypasses review. An entity-type gate (set in graph settings) restricts which types a current may CREATE; facts attaching to entities already in the graph always flow through. Configure currents and the type gate from the graph page." ;
+    skos:broader        guide:WhatIsReckonsAI ;
+    skos:related        feat:PodView .
+
+feat:PodView
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Pod View" ;
+    skos:definition     "Turn on the pod view from the Graph tab (currents section) to see arrivals -- nodes touched only by pending facts from a current -- drift gently at reduced opacity with a dashed halo, kept visually distinct until you accept or dismiss them from the node. Accept folds an arrival into the graph for normal review; dismiss clears it. It is a per-device view preference (stored locally, not in the graph) and is honoured by the home graph view." ;
+    skos:broader        feat:Currents .
+
+## =============================================================================
+## Review Workbench (F30)
+## =============================================================================
+
+feat:ReviewWorkbench
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Review Workbench" ;
+    skos:definition     "The review page pairs its four tabs (incoming, deletions, merges, align) with a preview graph: browse controls step through items, a node-details + chat pane explains the selected fact in context, and clicking a review item flies the preview graph to its node with the relevant edge highlighted." ;
+    skos:broader        feat:ReviewSystem .
+
+## =============================================================================
+## Published Docs Site (F27)
+## =============================================================================
+
+feat:PublishedDocs
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Published Graph Site" ;
+    skos:definition     "Any graph can publish itself as a browsable website. Entities typed as a web page export to markdown with frontmatter (title, section, order, excerpt) via the graph's structure -- skos:broader for parent/child, nav:order and nav:next/nav:prev for sequence. The generated site is served at /docs. The graph stays the source of truth: generated pages are regenerated from the graph, and hand-edits to them are overwritten by the next regeneration by design. A Git-backed admin UI edits non-generated content (like release posts); a drift check flags generated pages that no longer match their graph." ;
+    skos:broader        guide:WhatIsReckonsAI ;
+    skos:related        feat:ReleaseNotes .
+
+feat:ReleaseNotes
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Release Notes" ;
+    skos:definition     "Versioned release posts (starting with v0.1.0) authored as graph facts and published through the docs site, using the same web-page model as the rest of /docs." ;
+    skos:broader        feat:PublishedDocs .
+
+## =============================================================================
+## Prefer-Local Routing (Local Offload)
+## =============================================================================
+
+feat:PreferLocal
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Prefer-Local Routing" ;
+    skos:definition     "Opt-in setting that redirects chat, diff-summary, and merge-analysis to a local Ollama model whenever it is reachable, instead of your chosen cloud backend. Falls back to your normal backend chain the moment Ollama is unreachable -- no extraction quality is sacrificed silently. A companion structured-extraction mode uses a compact, schema-constrained prompt so small local models still produce clean facts." ;
+    skos:broader        feat:LLMBackends .
 
 ## =============================================================================
 ## Persona

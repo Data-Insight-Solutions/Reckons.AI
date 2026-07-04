@@ -1,7 +1,7 @@
 ---
 title: "Local-First Architecture"
 slug: "local-first-arch"
-order: 1018
+order: 1020
 section: "Architecture"
 parent: "what-is-reckons-ai"
 template: doc

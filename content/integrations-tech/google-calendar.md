@@ -1,7 +1,7 @@
 ---
 title: "Google Calendar"
 slug: "google-calendar"
-order: 1003
+order: 1004
 section: "Integrations & Tech"
 parent: "integrations"
 template: doc

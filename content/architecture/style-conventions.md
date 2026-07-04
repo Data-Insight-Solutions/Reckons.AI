@@ -1,7 +1,7 @@
 ---
 title: "Style Conventions"
 slug: "style-conventions"
-order: 1037
+order: 1040
 section: "Architecture"
 parent: "what-is-reckons-ai"
 template: doc

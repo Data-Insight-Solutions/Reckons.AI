@@ -1,7 +1,7 @@
 ---
 title: "MODEL_TRAINING.md → Superseded"
 slug: "mig-model-training"
-order: 1026
+order: 1028
 section: "Architecture"
 parent: "migration-status"
 template: doc

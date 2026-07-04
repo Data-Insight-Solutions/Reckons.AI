@@ -1,7 +1,7 @@
 ---
 title: "Static Deployment"
 slug: "static-deployment"
-order: 1036
+order: 1039
 section: "Architecture"
 parent: "local-first-arch"
 template: doc

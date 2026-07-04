@@ -1,7 +1,7 @@
 ---
 title: "Kokoro TTS"
 slug: "kokoro-tts-integrations-tech"
-order: 1009
+order: 1010
 section: "Integrations & Tech"
 parent: "integrations"
 template: doc

@@ -1,7 +1,7 @@
 ---
 title: "Whisper STT"
 slug: "whisper-stt-features"
-order: 1032
+order: 1038
 section: "Features"
 parent: "shelly"
 template: doc

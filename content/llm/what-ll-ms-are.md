@@ -1,7 +1,7 @@
 ---
 title: "What Language Models Actually Are"
 slug: "what-ll-ms-are"
-order: 1006
+order: 1008
 section: "LLM"
 template: doc
 status: published

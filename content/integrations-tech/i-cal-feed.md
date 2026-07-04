@@ -1,7 +1,7 @@
 ---
 title: "iCal (.ics) Import"
 slug: "i-cal-feed"
-order: 1005
+order: 1006
 section: "Integrations & Tech"
 parent: "integrations"
 template: doc

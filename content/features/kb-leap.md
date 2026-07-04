@@ -1,7 +1,7 @@
 ---
 title: "KB Leap"
 slug: "kb-leap"
-order: 1014
+order: 1015
 section: "Features"
 parent: "multi-kb"
 template: doc

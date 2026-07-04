@@ -1,7 +1,7 @@
 ---
 title: "Predicate Manager"
 slug: "predicate-manager"
-order: 1022
+order: 1024
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc

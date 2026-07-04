@@ -1,7 +1,7 @@
 ---
 title: "PDF / Image Import (Mistral OCR)"
 slug: "pdf-import"
-order: 1019
+order: 1021
 section: "Integrations & Tech"
 parent: "integrations"
 template: doc

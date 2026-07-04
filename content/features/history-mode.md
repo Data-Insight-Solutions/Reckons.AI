@@ -1,7 +1,7 @@
 ---
 title: "History Mode"
 slug: "history-mode"
-order: 1011
+order: 1012
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc

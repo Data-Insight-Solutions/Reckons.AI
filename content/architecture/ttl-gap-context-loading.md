@@ -1,7 +1,7 @@
 ---
 title: "Gap: Full Context Loading"
 slug: "ttl-gap-context-loading"
-order: 1012
+order: 1013
 section: "Architecture"
 parent: "ttl-vs-markdown-gaps"
 template: doc

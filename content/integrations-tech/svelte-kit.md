@@ -1,7 +1,7 @@
 ---
 title: "SvelteKit 2 + Svelte 5"
 slug: "svelte-kit"
-order: 1022
+order: 1025
 section: "Integrations & Tech"
 parent: "architecture-integrations-tech"
 template: doc

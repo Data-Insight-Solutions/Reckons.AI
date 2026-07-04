@@ -1,7 +1,7 @@
 ---
 title: "Local Model Recommendations"
 slug: "conf-local-models"
-order: 1016
+order: 1018
 section: "Architecture"
 parent: "mig-confluence-design"
 template: doc

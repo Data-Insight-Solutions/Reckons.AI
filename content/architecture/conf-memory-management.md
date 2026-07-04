@@ -1,7 +1,7 @@
 ---
 title: "Migration Memory Management"
 slug: "conf-memory-management"
-order: 1020
+order: 1022
 section: "Architecture"
 parent: "mig-confluence-design"
 template: doc

@@ -1,7 +1,7 @@
 ---
 title: "Diff Summary"
 slug: "diff-summary"
-order: 1006
+order: 1007
 section: "Features"
 parent: "compare"
 template: doc

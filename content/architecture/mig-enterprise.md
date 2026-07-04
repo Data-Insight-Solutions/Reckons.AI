@@ -1,7 +1,7 @@
 ---
 title: "ENTERPRISE.md → Superseded"
 slug: "mig-enterprise"
-order: 1008
+order: 1009
 section: "Architecture"
 parent: "migration-status"
 template: doc

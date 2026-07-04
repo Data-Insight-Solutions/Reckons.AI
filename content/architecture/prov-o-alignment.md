@@ -1,7 +1,7 @@
 ---
 title: "PROV-O Alignment"
 slug: "prov-o-alignment"
-order: 1032
+order: 1034
 section: "Architecture"
 parent: "local-first-arch"
 template: doc

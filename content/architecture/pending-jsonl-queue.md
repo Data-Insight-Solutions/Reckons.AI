@@ -1,7 +1,7 @@
 ---
 title: "Pending JSONL Queue"
 slug: "pending-jsonl-queue"
-order: 1030
+order: 1032
 section: "Architecture"
 parent: "workspace-folder-design"
 template: doc

@@ -1,7 +1,7 @@
 ---
 title: "Web Scraping (Jina / Firecrawl)"
 slug: "web-scraping"
-order: 1026
+order: 1030
 section: "Integrations & Tech"
 parent: "integrations"
 template: doc

@@ -1,7 +1,7 @@
 ---
 title: "Gap: Discovery Without Prior Knowledge"
 slug: "ttl-gap-discovery"
-order: 1011
+order: 1012
 section: "Architecture"
 parent: "ttl-vs-markdown-gaps"
 template: doc

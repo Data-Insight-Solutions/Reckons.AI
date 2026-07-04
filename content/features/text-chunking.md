@@ -1,7 +1,7 @@
 ---
 title: "Text Chunking"
 slug: "text-chunking"
-order: 1030
+order: 1036
 section: "Features"
 parent: "ingest"
 template: doc

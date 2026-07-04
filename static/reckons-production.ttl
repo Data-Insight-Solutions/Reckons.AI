@@ -25,6 +25,8 @@ kb:reckons-ai  rdf:type          ktype:Application ;
                kpred:built-with  kb:sveltekit ;
                kpred:built-with  kb:typescript ;
                kpred:built-with  kb:dexie ;
+               kpred:built-with  kb:tailwindcss ;
+               kpred:built-with  kb:shadcn-svelte ;
                kpred:has-feature kb:knowledge-graph ;
                kpred:has-feature kb:multi-kb ;
                kpred:has-feature kb:triple-extraction ;
@@ -36,6 +38,10 @@ kb:reckons-ai  rdf:type          ktype:Application ;
                kpred:has-feature kb:n8n-cloud-sync ;
                kpred:has-feature kb:entity-normalisation ;
                kpred:has-feature kb:mcp-workspace ;
+               kpred:has-feature kb:graph-publishing ;
+               kpred:has-feature kb:local-offload ;
+               kpred:has-feature kb:currents ;
+               kpred:has-feature kb:review-workbench ;
                kmeta:glbModel    "/Meshy_AI_Turtle_1.glb" ;
                kpred:icon2d      "/ReckonsAI-Logo.svg" .
 
@@ -53,6 +59,15 @@ kb:dexie       rdf:type     ktype:Library ;
                rdfs:label   "Dexie.js" ;
                kpred:purpose "IndexedDB persistence" .
 
+kb:tailwindcss rdf:type     ktype:Library ;
+               rdfs:label   "Tailwind CSS" ;
+               kpred:version "v4" ;
+               kpred:purpose "Utility CSS engine backing the shadcn-svelte design system. Preflight disabled — layered onto the existing Liquid token CSS rather than replacing it." .
+
+kb:shadcn-svelte rdf:type   ktype:Library ;
+               rdfs:label   "shadcn-svelte" ;
+               kpred:purpose "Copy-in component foundation (button, badge, card, separator, skeleton) mapped to Liquid design tokens (--accent, --surface, etc.)." .
+
 # ── Features ─────────────────────────────────────────────────────────────────
 
 kb:knowledge-graph  rdf:type     ktype:Feature ;
@@ -60,8 +75,10 @@ kb:knowledge-graph  rdf:type     ktype:Feature ;
                     kpred:renders-with kb:force-graph-2d ;
                     kpred:renders-with kb:three-js-3d ;
                     kpred:has-status   "production" ;
+                    kpred:known-issue  "FIXED (PR #21): production/minified builds rendered a black graph (WebGL renderer threw every frame) while hit-testing still worked. Root cause: Threlte <T.BufferAttribute> resolves its THREE class by function name; minification mangled the name so the geometry received the class instead of an instance. Guarded by a minified-build deploy gate (PR #24, tests/e2e/graph-render.test.ts + playwright.smoke.config.ts), because the bug never reproduces under `vite dev`." ;
                     kpred:tested-by    "src/lib/rdf/__tests__/hierarchy.test.ts" ;
-                    kpred:tested-by    "src/lib/rdf/__tests__/ghost-graph.test.ts" .
+                    kpred:tested-by    "src/lib/rdf/__tests__/ghost-graph.test.ts" ;
+                    kpred:tested-by    "tests/e2e/graph-render.test.ts" .
 
 kb:multi-kb         rdf:type     ktype:Feature ;
                     rdfs:label   "Multi-KB Management" ;
@@ -105,13 +122,22 @@ kb:mcp-server       rdf:type     ktype:Feature ;
                     kpred:has-tool     "kb_list_sources" ;
                     kpred:has-tool     "kb_request_refresh" ;
                     kpred:has-tool     "kb_list_kbs" ;
-                    kpred:has-tool     "kb_add_triple" ;
                     kpred:has-tool     "kb_git_status" ;
                     kpred:has-tool     "kb_check_plan" ;
                     kpred:has-tool     "kb_pending" ;
                     kpred:has-tool     "kb_git_diff_triples" ;
                     kpred:has-tool     "kb_alignment_score" ;
-                    kpred:has-tool     "kb_compress" .
+                    kpred:has-tool     "kb_compress" ;
+                    kpred:has-tool     "kb_local_extract" ;
+                    kpred:has-tool     "kb_local_summarize" ;
+                    kpred:has-tool     "kb_generate_page" ;
+                    kpred:has-tool     "kb_entity_markdown" ;
+                    kpred:description  "20 tools over JSON-RPC stdio. The local-Ollama bridge (kb_local_extract, kb_local_summarize, kb_generate_page) is opt-in via OLLAMA_BASE_URL and never writes to a KB — proposals only. kb_entity_markdown is deterministic (no LLM required)." ;
+                    kpred:tested-by    "mcp-server/src/__tests__/ollama-client.test.ts" ;
+                    kpred:tested-by    "mcp-server/src/__tests__/local-llm.test.ts" ;
+                    kpred:tested-by    "mcp-server/src/__tests__/page-markdown.test.ts" ;
+                    kpred:tested-by    "mcp-server/src/__tests__/entity-markdown.test.ts" ;
+                    kpred:tested-by    "mcp-server/src/__tests__/generate-page.test.ts" .
 
 kb:repo-ingest      rdf:type     ktype:Feature ;
                     rdfs:label   "Repository Ingest" ;
@@ -249,6 +275,45 @@ kb:workspace-export rdf:type     ktype:Feature ;
                     kpred:tested-by    "src/lib/storage/__tests__/semantic-export.test.ts" ;
                     kpred:tested-by    "src/lib/storage/__tests__/backup.test.ts" .
 
+kb:graph-publishing rdf:type     ktype:Feature ;
+                    rdfs:label   "Graph Publishing" ;
+                    kpred:has-status   "functional" ;
+                    kpred:description  "F27 — exports WebPage-typed graph entities to a static-site bundle (frontmatter + markdown) at /docs, and re-imports edits back into graph statements. scripts/docs-pages.ts regenerates content/ from the docs knowledge graphs; scripts/md-align.ts checks the two stay in lockstep. Sveltia CMS (static/admin/) edits content/*.md through a GitHub-backed admin UI." ;
+                    kpred:uses         kb:sveltia-cms ;
+                    kpred:tested-by    "src/lib/publish/__tests__/site-export.test.ts" ;
+                    kpred:tested-by    "src/lib/publish/__tests__/site-import.test.ts" .
+
+kb:sveltia-cms      rdf:type     ktype:Library ;
+                    rdfs:label   "Sveltia CMS" ;
+                    kpred:purpose "Git-backed admin UI at static/admin/ for editing published docs content." .
+
+kb:local-offload    rdf:type     ktype:Feature ;
+                    rdfs:label   "Local (Ollama) Offload" ;
+                    kpred:has-status   "functional" ;
+                    kpred:description  "Offload A: schema-constrained Ollama structured extraction (src/lib/integrations/llm/ollama-extract.ts) with a compact small-model prompt. Offload B: prefer-local routing (src/lib/integrations/llm/prefer-local.ts) — when settings.preferLocal is on and Ollama is reachable, chat/diff-summary/merge-analysis default to the ollama backend, probed via GET /api/tags with a short timeout and cache. MCP-side mirror: kb_local_extract, kb_local_summarize (opt-in via OLLAMA_BASE_URL, proposal-only)." ;
+                    kpred:tested-by    "src/lib/integrations/llm/__tests__/ollama-extract.test.ts" ;
+                    kpred:tested-by    "src/lib/integrations/llm/__tests__/prefer-local.test.ts" ;
+                    kpred:tested-by    "mcp-server/src/__tests__/ollama-client.test.ts" ;
+                    kpred:tested-by    "mcp-server/src/__tests__/local-llm.test.ts" .
+
+kb:currents         rdf:type     ktype:Feature ;
+                    rdfs:label   "Currents" ;
+                    kpred:has-status   "functional" ;
+                    kpred:description  "F29 — streamed-ingest arrival model with an entity-type gate and per-graph meta-triple settings. Items arrive via the n8n Currents Monitor (workflow qb9uPZ8GScAmuUOX; direct in-browser RSS/Atom fetch as fallback), ranked by embedding affinity to the graph's top-degree entities with near-duplicate collapse and content-policy filtering (src/lib/rdf/current-ranking.ts, src/lib/integrations/n8n/currents-sync.ts). Arrivals drift as translucent 'pod view' nodes (KnowledgeGraph2D and the home view) behind a toggle until accepted or dismissed from the graph-level Currents settings on /kb." ;
+                    kpred:tested-by    "src/lib/rdf/__tests__/currents.test.ts" ;
+                    kpred:tested-by    "src/lib/rdf/__tests__/currents-persist.test.ts" ;
+                    kpred:tested-by    "src/lib/rdf/__tests__/current-ranking.test.ts" ;
+                    kpred:tested-by    "src/lib/integrations/n8n/__tests__/currents-sync.test.ts" .
+
+kb:review-workbench rdf:type     ktype:Feature ;
+                    rdfs:label   "Review Workbench" ;
+                    kpred:has-status   "functional" ;
+                    kpred:description  "F30 — /review browse controls, node-details + chat pane, per-item focus (clicking a review item flies the preview graph to its node), and edge highlighting." ;
+                    kpred:has-tab      "incoming" ;
+                    kpred:has-tab      "deletions" ;
+                    kpred:has-tab      "merges" ;
+                    kpred:has-tab      "align" .
+
 # ── Production Tests ─────────────────────────────────────────────────────────
 
 kb:test-suite       rdf:type     ktype:TestSuite ;
@@ -279,7 +344,12 @@ kb:test-unit        rdf:type     ktype:TestCategory ;
                     kpred:checks   "hierarchy navigation" ;
                     kpred:checks   "KB registry" ;
                     kpred:checks   "TTL serialization round-trip" ;
-                    kpred:expected-result "520 tests pass" .
+                    kpred:checks   "currents (streamed-ingest arrivals)" ;
+                    kpred:checks   "Ollama structured extraction" ;
+                    kpred:checks   "prefer-local routing" ;
+                    kpred:checks   "graph publishing (site export/import)" ;
+                    kpred:checks   "web-page model" ;
+                    kpred:expected-result "643 tests pass across 35 files (web app); mcp-server adds 44 vitest + 6 node:test tests." .
 
 kb:test-e2e         rdf:type     ktype:TestCategory ;
                     rdfs:label   "E2E Tests" ;
@@ -318,10 +388,12 @@ kb:test-visual-bench rdf:type    ktype:TestCategory ;
 
 kb:test-mcp         rdf:type     ktype:TestCategory ;
                     rdfs:label   "MCP Server Build" ;
-                    kpred:command  "cd mcp-server && npm run build" ;
+                    kpred:command  "cd mcp-server && npm test" ;
                     kpred:checks   "TypeScript compilation" ;
-                    kpred:checks   "16 tool handlers" ;
-                    kpred:expected-result "build succeeds, 0 errors" .
+                    kpred:checks   "20 tool handlers" ;
+                    kpred:checks   "Ollama client + local LLM bridge" ;
+                    kpred:checks   "page/entity markdown generation" ;
+                    kpred:expected-result "build succeeds, 0 errors; 44 vitest + 6 node:test tests pass" .
 
 # ── Ingest Source Types ──────────────────────────────────────────────────────
 
@@ -378,7 +450,7 @@ story:prod-step-2  rdf:type         story:Step ;
                    story:partOf     story:production-tour ;
                    story:order      "2"^^xsd:integer ;
                    story:title      "Unit Tests" ;
-                   story:content    "The unit test suite runs with `npx vitest run` and covers triple parsing, diff computation, content safety, entity types, ghost graph / KB leap, diff summary, source refresh, RDF types, W3C Turtle conformance, hierarchy navigation, KB registry, and TTL serialization round-trip. 520 passing tests across 25 suites with zero failures." ;
+                   story:content    "The unit test suite runs with `npx vitest run` and covers triple parsing, diff computation, content safety, entity types, ghost graph / KB leap, diff summary, source refresh, RDF types, W3C Turtle conformance, hierarchy navigation, KB registry, TTL serialization round-trip, currents, Ollama offload, and graph publishing. 643 passing tests across 35 files with zero failures." ;
                    story:highlight  kb:test-unit ;
                    story:highlight  kb:test-suite ;
                    story:question   "Want to see the latest test results?" .
@@ -398,7 +470,7 @@ story:prod-step-4  rdf:type         story:Step ;
                    story:partOf     story:production-tour ;
                    story:order      "4"^^xsd:integer ;
                    story:title      "MCP Server" ;
-                   story:content    "The MCP server exposes 10 tools over JSON-RPC stdio. Claude Code and other AI agents can search the KB, get entity details, extract subgraphs, add notes, list sources, and request refreshes. The server supports multi-KB workspaces." ;
+                   story:content    "The MCP server exposes 20 tools over JSON-RPC stdio. Claude Code and other AI agents can search the KB, get entity details, extract subgraphs, add notes, list sources, request refreshes, run git-aware alignment checks, and — opt-in via OLLAMA_BASE_URL — offload extraction, summarization, and page drafting to a local Ollama model. The server supports multi-KB workspaces." ;
                    story:highlight  kb:mcp-server ;
                    story:question   "Should I verify the MCP server tools are responding?" .
 

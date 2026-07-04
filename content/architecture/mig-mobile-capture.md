@@ -1,7 +1,7 @@
 ---
 title: "MOBILE_CAPTURE.md → Superseded"
 slug: "mig-mobile-capture"
-order: 1024
+order: 1026
 section: "Architecture"
 parent: "migration-status"
 template: doc

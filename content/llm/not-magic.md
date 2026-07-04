@@ -1,7 +1,7 @@
 ---
 title: "Models Are Tools, Not Thinkers"
 slug: "not-magic"
-order: 1003
+order: 1004
 section: "LLM"
 parent: "what-ll-ms-are"
 template: doc

@@ -1,7 +1,7 @@
 ---
 title: "VS Code Extension (Planned)"
 slug: "vs-code-extension"
-order: 1025
+order: 1029
 section: "Integrations & Tech"
 parent: "integrations"
 template: doc

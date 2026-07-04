@@ -1,7 +1,7 @@
 ---
 title: "Multi-KB Management"
 slug: "multi-kb"
-order: 1019
+order: 1020
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc

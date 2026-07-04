@@ -1,7 +1,7 @@
 ---
 title: "RDF Vocabulary Decisions"
 slug: "rdf-vocabulary"
-order: 1033
+order: 1035
 section: "Architecture"
 parent: "local-first-arch"
 template: doc
