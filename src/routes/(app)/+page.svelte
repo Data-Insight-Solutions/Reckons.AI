@@ -29,6 +29,7 @@
     KB_COLOR, KB_DESCRIPTION, KB_SCHEMA_PREDICATE
   } from '$lib/rdf/entity-types';
   import { setGlb, clearGlb, glbOverrides } from '$lib/stores/glb-overrides.svelte';
+  import { podViewEnabled } from '$lib/stores/pod-view.svelte';
   import { gifOverrides, setGif, clearGif } from '$lib/stores/gif-overrides.svelte';
   import { icon2dOverrides, setIcon2d, clearIcon2d } from '$lib/stores/icon2d-overrides.svelte';
   import { LEAP_PRED, LEAP_LABEL_PRED, getLeap, leapNodeKeys } from '$lib/rdf/kb-leap';
@@ -244,8 +245,9 @@
   let showSourcesPanel = $state(false);
   let hubLimit = $state(5);
   let layout = $state<'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy'>('force');
-  /** Pod view (F29 Currents): pending-only arrival nodes render translucent + drifting */
-  let podMode = $state(false);
+  /** Pod view (F29 Currents): pending-only arrival nodes render translucent + drifting.
+   *  Toggled on the Graph tab (/kb currents section); honoured here via the shared store. */
+  const podMode = $derived(podViewEnabled());
   let nodeOrder = $state<string[]>([]); // ordered node keys for 'order' layout
   let timelineZoom = $state(1);
   let timelineCenter = $state<number | null>(null);
@@ -1595,12 +1597,9 @@
       <ToggleGroup.Item value="order" class="tg-chip"><span class="lbl mono">order</span></ToggleGroup.Item>
       <ToggleGroup.Item value="hierarchy" class="tg-chip"><span class="lbl mono">tree</span></ToggleGroup.Item>
     </ToggleGroup.Root>
-    <button
-      class="tg-chip pod-chip mono"
-      class:pod-active={podMode}
-      onclick={() => (podMode = !podMode)}
-      title="Pod view — arrivals from your currents drift in translucent until you accept them"
-    >🐋 pod</button>
+    {#if podMode}
+      <span class="pod-indicator mono" title="Pod view is on — arrivals from your currents drift in translucent until you accept them. Toggle it on the Graph tab.">🐋 pod</span>
+    {/if}
   </div>
 
   <!-- TIMELINE CONTROLS (visible only when timeline layout is active) -->
@@ -3197,11 +3196,19 @@
     border-color: var(--accent);
     color: var(--accent);
   }
-  /* Pod view toggle (F29 Currents) — sky-blue when active, matching arrival halos */
-  :global(.pod-chip.pod-active) {
+  /* Pod view indicator (F29 Currents) — shown when pod view is on (toggled on the
+     Graph tab). Sky-blue, matching arrival halos. Read-only status chip, not a button. */
+  .pod-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    border: 1px solid #38bdf8;
     background: #38bdf822;
-    border-color: #38bdf8;
     color: #38bdf8;
+    font-size: 0.75rem;
+    white-space: nowrap;
   }
 
   /* ── Layout anchor labels (source / type / hub cluster markers) ── */

@@ -43,6 +43,7 @@
   import { db } from '$lib/storage/db';
   import { readCurrentsSettings, type CurrentsSettings, type CurrentDef } from '$lib/rdf/currents';
   import { replaceCurrentsSettings } from '$lib/rdf/currents-persist';
+  import { podViewEnabled, setPodViewEnabled } from '$lib/stores/pod-view.svelte';
   import { allTypes } from '$lib/stores/entity-types.svelte';
 
   // ── KB identity ────────────────────────────────────────────────────────────
@@ -295,6 +296,7 @@
 
   // ── Currents (F29.3) — graph-level streams + type gate ───────────────────
   let showCurrents = $state(false);
+  let podView = $state(podViewEnabled());
   let currentsDraft = $state<CurrentsSettings>(readCurrentsSettings(statements()));
   let currentsSaving = $state(false);
 
@@ -792,6 +794,19 @@
   {#if showCurrents}
     <div class="currents-editor">
       <p class="section-hint">recurring streams (rss / url / topic) that bring new arrivals into this graph. arrivals always land as pending facts — review them in the pod view.</p>
+
+      <div class="currents-field">
+        <label class="pod-toggle-row" for="pod-view-toggle">
+          <input
+            id="pod-view-toggle"
+            type="checkbox"
+            checked={podView}
+            onchange={(e) => { podView = (e.currentTarget as HTMLInputElement).checked; setPodViewEnabled(podView); }}
+          />
+          <span class="currents-label mono">🐋 pod view on the graph</span>
+        </label>
+        <p class="section-hint" style="margin: 0.2rem 0 0;">when on, pending arrivals drift in translucent on the graph view, with accept / dismiss on each node.</p>
+      </div>
 
       <div class="currents-field">
         <label class="currents-label mono" for="currents-location">location</label>
