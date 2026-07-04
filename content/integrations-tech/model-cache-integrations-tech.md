@@ -1,7 +1,7 @@
 ---
 title: "Model Cache Management"
 slug: "model-cache-integrations-tech"
-order: 1012
+order: 1013
 section: "Integrations & Tech"
 parent: "integrations"
 template: doc

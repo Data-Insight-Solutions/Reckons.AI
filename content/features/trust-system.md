@@ -1,7 +1,7 @@
 ---
 title: "Source Trust System"
 slug: "trust-system"
-order: 1028
+order: 1034
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc

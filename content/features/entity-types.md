@@ -1,7 +1,7 @@
 ---
 title: "Entity Type System"
 slug: "entity-types"
-order: 1009
+order: 1010
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc

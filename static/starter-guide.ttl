@@ -369,7 +369,7 @@ guide:Step1
 guide:Step2
     rdf:type            ktype:Document ;
     rdfs:label          "Step 2: Ingest Your First Content" ;
-    skos:definition     "Go to Ingest and paste text, a URL, or upload a document. The LLM will extract semantic triples automatically." ;
+    skos:definition     "Go to add (the + tab) and paste text, a URL, or upload a document. The LLM will extract semantic facts automatically." ;
     skos:broader        guide:GettingStarted ;
     skos:related        feat:Ingest .
 
@@ -383,7 +383,7 @@ guide:Step3
 guide:Step4
     rdf:type            ktype:Document ;
     rdfs:label          "Step 4: Explore the Graph" ;
-    skos:definition     "Go to Graph to see your knowledge in 3D. Click nodes to select them, use the RadialMenu for actions, and use filters to focus." ;
+    skos:definition     "Go to view (the home tab) to see your knowledge in 3D. Click nodes to select them, use the RadialMenu for actions, and use filters to focus. The graph tab manages your graphs: create, switch, rename, currents, and publishing." ;
     skos:broader        guide:GettingStarted ;
     skos:related        feat:Graph3D .
 

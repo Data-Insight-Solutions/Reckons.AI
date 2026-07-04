@@ -1,7 +1,7 @@
 ---
 title: "RAG (Retrieval-Augmented Generation)"
 slug: "retrieval-augmented"
-order: 1005
+order: 1006
 section: "LLM"
 parent: "kb-grounded-accuracy"
 template: doc

@@ -1,7 +1,7 @@
 ---
 title: "N8N_INTEGRATION.md → Superseded"
 slug: "mig-n8n"
-order: 1027
+order: 1029
 section: "Architecture"
 parent: "migration-status"
 template: doc

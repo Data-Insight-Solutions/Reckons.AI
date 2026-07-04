@@ -1,7 +1,7 @@
 ---
 title: "Source Monitor (n8n)"
 slug: "n8n-source-monitor"
-order: 1021
+order: 1024
 section: "Integrations & Tech"
 parent: "n8n-cloud-sync"
 template: doc

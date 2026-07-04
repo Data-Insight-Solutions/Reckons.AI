@@ -1,7 +1,7 @@
 ---
 title: "Gap: Procedural Sequences"
 slug: "ttl-gap-procedural"
-order: 1013
+order: 1014
 section: "Architecture"
 parent: "ttl-vs-markdown-gaps"
 template: doc

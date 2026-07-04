@@ -1,7 +1,7 @@
 ---
 title: "Mobile Access via Local Server"
 slug: "mobile-access"
-order: 1022
+order: 1024
 section: "Architecture"
 parent: "static-deployment"
 template: doc

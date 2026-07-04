@@ -15,4 +15,4 @@ generated: "docs-kb"
 
 *Tool*
 
-Runs ML models in the browser via ONNX Runtime WebAssembly. Powers local LLM inference (SmolLM2-360M, q4 quantized), text embeddings (MiniLM-L6-v2, q8), speech-to-text (Whisper Tiny), and text-to-speech (Kokoro 82M).
+Runs ML models in the browser via ONNX Runtime WebAssembly. Powers local LLM inference (Qwen2.5-0.5B-Instruct, q4 quantized), text embeddings (BGE-small-en-v1.5, q8, 384d, configurable), speech-to-text (Whisper Tiny), and text-to-speech (Kokoro 82M).

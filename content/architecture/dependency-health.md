@@ -1,7 +1,7 @@
 ---
 title: "Dependency Health"
 slug: "dependency-health"
-order: 1007
+order: 1008
 section: "Architecture"
 parent: "local-first-arch"
 template: doc

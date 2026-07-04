@@ -1,7 +1,7 @@
 ---
 title: "Model Context Protocol"
 slug: "mcp"
-order: 1013
+order: 1014
 section: "Integrations & Tech"
 parent: "architecture-integrations-tech"
 template: doc

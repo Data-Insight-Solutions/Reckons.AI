@@ -1,7 +1,7 @@
 ---
 title: "Pause/Resume Checkpoint"
 slug: "conf-pause-resume"
-order: 1029
+order: 1031
 section: "Architecture"
 parent: "mig-confluence-design"
 template: doc

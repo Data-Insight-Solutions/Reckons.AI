@@ -1,7 +1,7 @@
 ---
 title: "NVIDIA Cosmos3-Nano (Speculative)"
 slug: "cosmos3-nano"
-order: 1017
+order: 1018
 section: "Integrations & Tech"
 parent: "integrations"
 template: doc

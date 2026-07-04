@@ -1,7 +1,7 @@
 ---
 title: "DEPENDENCIES.md → Superseded"
 slug: "mig-dependencies"
-order: 1006
+order: 1007
 section: "Architecture"
 parent: "migration-status"
 template: doc

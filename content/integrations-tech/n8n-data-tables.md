@@ -1,7 +1,7 @@
 ---
 title: "n8n Data Tables"
 slug: "n8n-data-tables"
-order: 1016
+order: 1017
 section: "Integrations & Tech"
 parent: "n8n-cloud-sync"
 template: doc

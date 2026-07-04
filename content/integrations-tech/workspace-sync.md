@@ -1,7 +1,7 @@
 ---
 title: "Workspace Folder Sync"
 slug: "workspace-sync"
-order: 1028
+order: 1032
 section: "Integrations & Tech"
 parent: "integrations"
 template: doc

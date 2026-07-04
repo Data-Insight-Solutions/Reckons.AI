@@ -1,7 +1,7 @@
 ---
 title: "STYLE_GUIDE.md → Hybrid"
 slug: "mig-style-guide"
-order: 1038
+order: 1041
 section: "Architecture"
 parent: "migration-status"
 template: doc

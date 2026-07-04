@@ -1,7 +1,7 @@
 ---
 title: "Minimal CLAUDE.md Pattern"
 slug: "claude-md-minimal"
-order: 1021
+order: 1023
 section: "Architecture"
 parent: "ttl-first-docs"
 template: doc

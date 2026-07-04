@@ -1,7 +1,7 @@
 ---
 title: "MOBILE_LOCAL_SERVER.md → Superseded"
 slug: "mig-mobile-server"
-order: 1025
+order: 1027
 section: "Architecture"
 parent: "migration-status"
 template: doc

@@ -1,7 +1,7 @@
 ---
 title: "Dexie.js + IndexedDB"
 slug: "dexie"
-order: 1002
+order: 1003
 section: "Integrations & Tech"
 parent: "architecture-integrations-tech"
 template: doc

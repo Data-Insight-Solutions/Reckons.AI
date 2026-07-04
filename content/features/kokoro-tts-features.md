@@ -1,7 +1,7 @@
 ---
 title: "Kokoro TTS"
 slug: "kokoro-tts-features"
-order: 1015
+order: 1016
 section: "Features"
 parent: "shelly"
 template: doc

@@ -1,7 +1,7 @@
 ---
 title: "GUIDE.md → Superseded"
 slug: "mig-guide"
-order: 1014
+order: 1016
 section: "Architecture"
 parent: "migration-status"
 template: doc

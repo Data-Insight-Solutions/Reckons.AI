@@ -1,7 +1,7 @@
 ---
 title: "SECURITY.md → Partially Superseded"
 slug: "mig-security"
-order: 1034
+order: 1037
 section: "Architecture"
 parent: "migration-status"
 template: doc

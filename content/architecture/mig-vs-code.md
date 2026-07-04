@@ -1,7 +1,7 @@
 ---
 title: "VSCODE_EXTENSION.md → Superseded"
 slug: "mig-vs-code"
-order: 1042
+order: 1046
 section: "Architecture"
 parent: "migration-status"
 template: doc

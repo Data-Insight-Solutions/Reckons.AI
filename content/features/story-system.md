@@ -1,7 +1,7 @@
 ---
 title: "Story System"
 slug: "story-system"
-order: 1029
+order: 1035
 section: "Features"
 parent: "shelly"
 template: doc

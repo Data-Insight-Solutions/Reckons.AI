@@ -1,7 +1,7 @@
 ---
 title: "Page Hierarchy Preservation"
 slug: "conf-page-hierarchy"
-order: 1028
+order: 1030
 section: "Architecture"
 parent: "mig-confluence-design"
 template: doc

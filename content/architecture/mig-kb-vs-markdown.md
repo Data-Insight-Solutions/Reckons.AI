@@ -1,7 +1,7 @@
 ---
 title: "KB_VS_MARKDOWN.md → Superseded"
 slug: "mig-kb-vs-markdown"
-order: 1015
+order: 1017
 section: "Architecture"
 parent: "migration-status"
 template: doc

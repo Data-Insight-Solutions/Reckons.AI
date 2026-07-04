@@ -1,7 +1,7 @@
 ---
 title: "TTL vs Markdown Gap Analysis"
 slug: "ttl-vs-markdown-gaps"
-order: 1039
+order: 1043
 section: "Architecture"
 parent: "ttl-first-docs"
 template: doc

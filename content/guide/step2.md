@@ -7,7 +7,7 @@ parent: "getting-started"
 template: doc
 status: published
 nav: sidebar
-excerpt: "Go to Ingest and paste text, a URL, or upload a document."
+excerpt: "Go to add (the + tab) and paste text, a URL, or upload a document."
 generated: "docs-kb"
 related:
   - "ingest"
@@ -17,7 +17,7 @@ related:
 
 *Document*
 
-Go to Ingest and paste text, a URL, or upload a document. The LLM will extract semantic triples automatically.
+Go to add (the + tab) and paste text, a URL, or upload a document. The LLM will extract semantic facts automatically.
 
 ## Related
 

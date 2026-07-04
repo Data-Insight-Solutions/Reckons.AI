@@ -1,7 +1,7 @@
 ---
 title: "Sliding Window Chunking"
 slug: "conf-sliding-window"
-order: 1035
+order: 1038
 section: "Architecture"
 parent: "mig-confluence-design"
 template: doc

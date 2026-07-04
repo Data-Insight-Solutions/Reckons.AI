@@ -1,7 +1,7 @@
 ---
 title: "KB Sync Hub (n8n)"
 slug: "n8n-sync-hub"
-order: 1008
+order: 1009
 section: "Integrations & Tech"
 parent: "n8n-cloud-sync"
 template: doc

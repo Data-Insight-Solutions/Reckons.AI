@@ -1,7 +1,7 @@
 ---
 title: "LOCAL_HOME_FOLDER.md → Superseded"
 slug: "mig-local-home-folder"
-order: 1017
+order: 1019
 section: "Architecture"
 parent: "migration-status"
 template: doc

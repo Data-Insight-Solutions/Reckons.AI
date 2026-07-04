@@ -1,7 +1,7 @@
 ---
 title: "Meshy 3D Generation"
 slug: "meshy3-d"
-order: 1011
+order: 1012
 section: "Integrations & Tech"
 parent: "integrations"
 template: doc

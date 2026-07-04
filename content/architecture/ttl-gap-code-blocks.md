@@ -1,7 +1,7 @@
 ---
 title: "Gap: Code Block Formatting"
 slug: "ttl-gap-code-blocks"
-order: 1010
+order: 1011
 section: "Architecture"
 parent: "ttl-vs-markdown-gaps"
 template: doc

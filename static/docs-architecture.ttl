@@ -238,9 +238,16 @@ arch:LocalFirstArch
 arch:WorkspaceFolderDesign
     rdf:type            ktype:Concept ;
     rdfs:label          "Workspace Folder Design" ;
-    skos:definition     "User-selected directory via File System Access API (Chrome/Edge only). Structure: knowledge.ttl (legacy single-KB), kbs/{name}/{name}.ttl + meta.json + sources.json (multi-KB; legacy kb.ttl still read as a fallback), knowledge.pending.jsonl (MCP inbox), settings_profile.json. Auto-exports on every KB mutation (2s debounce)." ;
+    skos:definition     "User-selected directory via File System Access API (Chrome/Edge only). Structure: knowledge.ttl (legacy single-KB), kbs/{name}/{name}.ttl + meta.json (multi-KB; legacy kbs/{name}/kb.ttl still read as a fallback), knowledge.pending.jsonl (MCP inbox), settings_profile.json. Auto-exports on every KB mutation (2s debounce). sources.json was removed: it was written on export but never consumed on import, so it added disk writes without a reader." ;
     skos:broader        arch:LocalFirstArch ;
-    skos:related        feat:MultiKB .
+    skos:related        feat:MultiKB ;
+    skos:related         arch:WorkspaceTtlNaming .
+
+arch:WorkspaceTtlNaming
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Workspace TTL Naming Convention" ;
+    skos:definition     "Each KB's Turtle file is named after its own folder — kbs/<name>/<name>.ttl — rather than a fixed kb.ttl inside each folder. Renaming a KB therefore renames both the directory and the file together, so `ls kbs/` is a legible index of every KB on disk and file managers/sync tools show meaningful names instead of a directory full of identically-named kb.ttl files. The reader still falls back to the legacy kbs/<name>/kb.ttl name (and migrates it to the new convention on next save) so older workspaces keep working." ;
+    skos:broader        arch:WorkspaceFolderDesign .
 
 arch:PendingJsonlQueue
     rdf:type            ktype:Concept ;
@@ -359,6 +366,50 @@ arch:ConfMemoryManagement
     skos:definition     "For large spaces (500+ pages): write each page's triples to IndexedDB immediately after extraction (already done via addStatements). Run normalisation in batches of 50 pages. Throttle queue with configurable delay between pages (default 600ms, same as vault mode)." ;
     skos:broader        arch:MigConfluenceDesign .
 
+
+## =============================================================================
+## Design System Containment (shadcn-svelte)
+## =============================================================================
+
+arch:TailwindContainment
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Tailwind-Without-Preflight Containment" ;
+    skos:definition     "shadcn-svelte components are introduced on Tailwind v4 with Tailwind's CSS reset (preflight) disabled. Preflight would rewrite base element styles (margins, headings, form controls) across the whole app and collide with the existing hand-rolled Liquid CSS. Disabling it lets Tailwind utility classes and the new components layer on top of, rather than replace, the current design language. Component-level tokens map onto the existing CSS variables (--accent, --surface, --rad, etc.) documented in arch:StyleConventions, so new shadcn components pick up the same theme automatically." ;
+    skos:broader        guide:WhatIsReckonsAI ;
+    skos:related         arch:StyleConventions .
+
+## =============================================================================
+## Schema-Constrained Local Extraction
+## =============================================================================
+
+arch:SchemaConstrainedExtraction
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Schema-Constrained Local Extraction" ;
+    skos:definition     "Small local models (via Ollama) are unreliable at freeform triple extraction, so the local extraction path constrains the model to a fixed JSON schema (subject/predicate/object/type fields) with a compact prompt rather than the richer freeform prompt used for cloud backends. This trades some extraction nuance for reliability: schema-constrained output parses deterministically even from a 1-4B parameter model, where freeform JSON from the same model frequently fails to parse. Structured output is still treated as ordinary pending proposals — nothing bypasses review." ;
+    skos:broader        guide:WhatIsReckonsAI ;
+    skos:related         feat:PreferLocal .
+
+## =============================================================================
+## Graph Is Source of Truth (Docs Publishing Pipeline)
+## =============================================================================
+
+arch:GraphIsSourceOfTruth
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Graph Is Source of Truth (Docs Pipeline)" ;
+    skos:definition     "The docs TTL knowledge graphs (static/*.ttl) are the canonical source for the published /docs site, not the other way around: scripts/docs-pages.ts reads the docs KBs and generates content/*.md, which SvelteKit prerenders. There is deliberately NO markdown-to-TTL back-propagation (decided 2026-07-03): graph edits happen in the app or directly on the TTL files, the Sveltia CMS admin UI is only for non-generated content, and hand-edits to generated pages are overwritten by the next regeneration by design. scripts/md-align.ts (built on the site-import round-trip) flags generated pages that have drifted from their graph, so accidental hand-edits are caught rather than silently absorbed." ;
+    skos:broader        arch:TtlFirstDocs ;
+    skos:related         feat:PublishedDocs .
+
+## =============================================================================
+## Currents Settings as Meta Triples
+## =============================================================================
+
+arch:CurrentsMetaTriples
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Currents Settings as Meta Triples" ;
+    skos:definition     "Per-graph currents configuration (allowed entity types, per-current source/cadence/label) lives IN the graph as ordinary statements under the urn:reckons:meta/currents/ namespace, the same pattern used by nav:order for hierarchy. This means settings travel with TTL export/import and are visible to MCP tools without a separate settings store. isMetaPredicate hides the whole namespace from the rendered graph edges so it does not clutter the visualization." ;
+    skos:broader        guide:WhatIsReckonsAI ;
+    skos:related         feat:Currents .
 
 ## =============================================================================
 ## Persona

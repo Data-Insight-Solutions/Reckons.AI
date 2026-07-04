@@ -1,7 +1,7 @@
 ---
 title: "Whisper STT"
 slug: "whisper-stt-integrations-tech"
-order: 1027
+order: 1031
 section: "Integrations & Tech"
 parent: "integrations"
 template: doc

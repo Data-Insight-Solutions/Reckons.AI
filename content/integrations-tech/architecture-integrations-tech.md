@@ -1,7 +1,7 @@
 ---
 title: "Technology Stack"
 slug: "architecture-integrations-tech"
-order: 1023
+order: 1027
 section: "Integrations & Tech"
 parent: "what-is-reckons-ai"
 template: doc
