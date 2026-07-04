@@ -13,7 +13,7 @@ async function seedPendingStatement(page: Page) {
   await page.goto('/ingest');
   await page.getByPlaceholder(/what is this about/i).first().fill('Company Alpha');
   await page.locator('textarea').first().fill('Company Alpha has 50 employees and was founded in 2020.');
-  const submitBtn = page.getByRole('button', { name: /extract triples/i });
+  const submitBtn = page.getByRole('button', { name: /extract facts/i });
   await expect(submitBtn).not.toBeDisabled({ timeout: 5_000 });
   await submitBtn.click();
   // Mock backend completes fast and navigates to /compare.

@@ -30,7 +30,7 @@ async function goIngestNote(page: Page, title: string, body: string) {
   await page.goto('/ingest');
   await page.getByPlaceholder(/what is this about/i).first().fill(title);
   await page.locator('textarea').first().fill(body);
-  const submitBtn = page.getByRole('button', { name: /extract triples/i });
+  const submitBtn = page.getByRole('button', { name: /extract facts/i });
   await expect(submitBtn).not.toBeDisabled({ timeout: 5_000 });
   await submitBtn.click();
 }
@@ -81,7 +81,7 @@ test('cloud backend with no key auto-falls back to wasm/mock', async ({ page }) 
   await page.getByPlaceholder(/what is this about/i).first().fill('No Key Test');
   await page.locator('textarea').first().fill('Testing fallback when no claude key is configured.');
 
-  const submitBtn = page.getByRole('button', { name: /extract triples/i });
+  const submitBtn = page.getByRole('button', { name: /extract facts/i });
   await expect(submitBtn).not.toBeDisabled({ timeout: 5_000 });
   await submitBtn.click();
 
@@ -151,7 +151,7 @@ test('notification shows when backend degrades', async ({ page }) => {
   await page.goto('/ingest');
   await page.getByPlaceholder(/what is this about/i).first().fill('Notify Test');
   await page.locator('textarea').first().fill('Testing fallback notification.');
-  await page.getByRole('button', { name: /extract triples/i }).click();
+  await page.getByRole('button', { name: /extract facts/i }).click();
 
   // WASM fails → mock fallback → navigates to /compare. Wait for completion.
   await page.waitForURL((url) => !url.pathname.startsWith('/ingest'), { timeout: 30_000 }).catch(() => {});

@@ -36,6 +36,11 @@ const sharedEnv = {
 
 export default defineConfig({
   testDir: './tests/e2e',
+  // graph-render.test.ts is a deploy-gate smoke test that must run against a
+  // MINIFIED PRODUCTION BUILD (vite build + vite preview) — the black-graph
+  // bug it guards against never reproduced under `vite dev`. It has its own
+  // config/runner: see playwright.smoke.config.ts and `npm run test:e2e:smoke`.
+  testIgnore: '**/graph-render.test.ts',
   // Each project gets its own browser context — IndexedDB is isolated per-project.
   // Within a project tests still run serially (workers:1) to avoid origin conflicts.
   fullyParallel: false,

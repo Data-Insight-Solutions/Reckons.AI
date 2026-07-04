@@ -25,7 +25,7 @@ test('submit button is disabled with empty note', async ({ page }) => {
   await page.goto('/ingest');
 
   // Submit button should be disabled when title/body are empty
-  const submitBtn = page.getByRole('button', { name: /extract triples/i });
+  const submitBtn = page.getByRole('button', { name: /extract facts/i });
   await expect(submitBtn).toBeDisabled({ timeout: 5_000 });
 });
 
@@ -37,7 +37,7 @@ test('ingest a note with mock backend produces pending statements', async ({ pag
   await page.locator('textarea').first().fill('Test Company Alpha was founded in 2020. It has 50 employees and is based in London.');
 
   // Submit button becomes enabled
-  const submitBtn = page.getByRole('button', { name: /extract triples/i });
+  const submitBtn = page.getByRole('button', { name: /extract facts/i });
   await expect(submitBtn).not.toBeDisabled({ timeout: 5_000 });
   await submitBtn.click();
 
@@ -77,7 +77,9 @@ test('vault tab renders when present', async ({ page }) => {
 });
 
 test('ingest navigation link works from nav', async ({ page }) => {
-  const link = page.getByRole('link', { name: /ingest/i });
+  // NavBar label for the ingest route is "add" (terminology sweep renamed
+  // ingest -> add); the underlying route is still /ingest.
+  const link = page.locator('nav').getByRole('link', { name: /^add$/i });
   await link.click();
   expect(page.url()).toContain('/ingest');
   await expect(page.locator('h1, h2').first()).toBeVisible({ timeout: 8_000 });

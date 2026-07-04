@@ -17,6 +17,7 @@ storybook-static/
 # Test output
 test-results/
 playwright-report/
+playwright-report-smoke/
 
 # IDE
 .vscode/

@@ -61,7 +61,7 @@ test('ingest form is usable on all screen sizes', async ({ page }) => {
   await bodyInput.fill('A note to test form usability across device sizes.');
 
   // Submit button must be accessible
-  const submitBtn = page.getByRole('button', { name: /extract triples/i });
+  const submitBtn = page.getByRole('button', { name: /extract facts/i });
   await expect(submitBtn).not.toBeDisabled({ timeout: 5_000 });
 });
 
@@ -125,7 +125,7 @@ test('touch targets are large enough on mobile viewports', async ({ page }) => {
   }
 
   // Hard requirement: the primary submit button must always be tap-safe
-  const submitBtn = page.getByRole('button', { name: /extract triples/i });
+  const submitBtn = page.getByRole('button', { name: /extract facts/i });
   if (await submitBtn.count() > 0) {
     const box = await submitBtn.boundingBox();
     if (box) {
