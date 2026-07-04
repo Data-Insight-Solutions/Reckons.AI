@@ -87,7 +87,7 @@ A self-hosted instance on a home network or VPS is open to anyone who knows the 
 ### F1 — MCP Server
 **Status: ✅ complete**
 
-`mcp-server/` is a standalone Node.js package exposing 11 tools:
+`mcp-server/` is a standalone Node.js package exposing 20 tools:
 
 | Tool | Description |
 |------|-------------|
@@ -101,7 +101,16 @@ A self-hosted instance on a home network or VPS is open to anyone who knows the 
 | `kb_reckoning` | Run a Situation-Target-Proposal analysis |
 | `kb_list_sources` | List all sources with metadata and trust scores |
 | `kb_request_refresh` | Request a source refresh by source ID |
-| `kb_add_triple` | Directly add a triple with subject, predicate, object |
+| `kb_git_status` | Show current git branch, staged/modified files, and recent commits |
+| `kb_check_plan` | Check alignment of current work against the knowledge base |
+| `kb_pending` | List queued proposals from pending.jsonl |
+| `kb_git_diff_triples` | Cross-reference git changes with KB entities |
+| `kb_alignment_score` | Quantitative alignment score (0-1) with per-dimension breakdown |
+| `kb_compress` | Compress KB context for LLM prompts (~60-70% token reduction) |
+| `kb_local_extract` | Extract triples from text via a local Ollama model (opt-in) |
+| `kb_local_summarize` | Summarize an entity subgraph or text via a local Ollama model (opt-in) |
+| `kb_generate_page` | Draft a documentation-page markdown proposal via a local Ollama model (opt-in) |
+| `kb_entity_markdown` | Deterministic (no LLM) rendering of one entity as markdown |
 
 Bridge: App auto-exports `knowledge.ttl` on each mutation (debounced 2s). MCP server reads this file via `MultiKBReader`. Pending notes written to `knowledge.pending.jsonl`, drained on app load.
 

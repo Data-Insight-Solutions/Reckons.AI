@@ -13,7 +13,8 @@ WORKSPACE="mcp-workspace/kbs"
 echo "Setting up MCP workspace..."
 
 # Create directories
-mkdir -p "$WORKSPACE/roadmap" "$WORKSPACE/production" "$WORKSPACE/features"
+mkdir -p "$WORKSPACE/roadmap" "$WORKSPACE/production" "$WORKSPACE/features" \
+         "$WORKSPACE/architecture" "$WORKSPACE/testing" "$WORKSPACE/codebase"
 
 # Clean up legacy meta.json files
 find "$WORKSPACE" -name meta.json -delete 2>/dev/null || true
@@ -25,6 +26,9 @@ find "$WORKSPACE" -name kb.ttl -delete 2>/dev/null || true
 ln -sf "$(pwd)/static/reckons-roadmap.ttl" "$WORKSPACE/roadmap/roadmap.ttl"
 ln -sf "$(pwd)/static/reckons-production.ttl" "$WORKSPACE/production/production.ttl"
 ln -sf "$(pwd)/static/docs-features.ttl" "$WORKSPACE/features/features.ttl"
+ln -sf "$(pwd)/static/docs-architecture.ttl" "$WORKSPACE/architecture/architecture.ttl"
+ln -sf "$(pwd)/static/docs-testing.ttl" "$WORKSPACE/testing/testing.ttl"
+ln -sf "$(pwd)/static/reckons-codebase.ttl" "$WORKSPACE/codebase/codebase.ttl"
 
 # Verify
 echo "Verifying..."
@@ -33,7 +37,7 @@ echo "Verifying..."
 TRIPLE_COUNT=$(cd mcp-server && echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"kb_stats","arguments":{}}}' | timeout 5 node dist/index.js --kb ../mcp-workspace 2>/dev/null | grep -oE 'Triples: *[0-9]+' | grep -oE '[0-9]+' | head -1 || true)
 
 if [ -n "$TRIPLE_COUNT" ] && [ "$TRIPLE_COUNT" -gt 0 ]; then
-  echo "MCP workspace ready: $TRIPLE_COUNT triples across 3 KBs"
+  echo "MCP workspace ready: $TRIPLE_COUNT triples across 6 KBs"
   echo ""
   echo "Claude Code will auto-detect the MCP server on next session."
   echo "To test manually: cd mcp-server && echo '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"kb_list_kbs\",\"arguments\":{}}}' | node dist/index.js --kb ../mcp-workspace"

@@ -48,15 +48,15 @@ All production dependencies use permissive open-source licenses. The project is 
 
 | File | Status | Action |
 |------|--------|--------|
-| `src/lib/3d/AtmosphericField.svelte` | Commented out in layout, unreferenced | Remove or re-enable |
-| `src/lib/components/TurtleCompanion.svelte` | Superseded; TurtleShell also removed | **Delete** |
-| `src/lib/components/TurtleShell.svelte` | Removed from layout in session 3; may still exist on disk | **Delete** |
-| `src/lib/components/DisambiguationPanel.svelte` | Superseded by comparison view roadmap | **Delete** |
-| `src/lib/stores/disambiguation.svelte.ts` | Superseded by comparison view roadmap | **Delete** |
+| `src/lib/components/TurtleCompanion.svelte` | Already deleted (superseded) | ✅ Done |
+| `src/lib/components/TurtleShell.svelte` | Already deleted | ✅ Done |
+| `src/lib/3d/AtmosphericField.svelte` | Already deleted | ✅ Done |
+| `src/lib/components/DisambiguationPanel.svelte` | No importers; imports the disambiguation store (its only user) | **Delete candidate** |
+| `src/lib/stores/disambiguation.svelte.ts` | Only imported by DisambiguationPanel.svelte | **Delete candidate** |
 | `src/lib/3d/vr/VRShell.svelte` | Scaffold, not connected to any route | Keep (roadmap C) |
 | `src/lib/3d/ar/ARShell.svelte` | Scaffold, not connected to any route | Keep (roadmap C) |
-| `src/lib/components/VoiceInput.svelte` | Scaffold, Hume.AI integration pending | Keep (roadmap B) |
-| `src/lib/components/RadialMenu.svelte` | Usage unverified | Verify imports before deleting |
+| `src/lib/components/VoiceInput.svelte` | Scaffold, not imported anywhere | Keep (roadmap B) |
+| `src/lib/components/RadialMenu.svelte` | No importers found | Verify before deleting |
 
 ---
 
@@ -68,7 +68,7 @@ Full comparison surface at `/compare`. Diff engine (`src/lib/rdf/diff.ts`) categ
 
 ### B — MCP Server --- COMPLETE
 
-Standalone Node.js MCP server in `mcp-server/`. 11 tools: `kb_list_kbs`, `kb_search` (BM25), `kb_get_entity`, `kb_list_entities`, `kb_stats`, `kb_add_note`, `kb_subgraph`, `kb_reckoning`, `kb_list_sources`, `kb_request_refresh`, `kb_add_triple`. Multi-KB support via `MultiKBReader`. Reads `knowledge.ttl` from workspace folder. Pending notes arrive via `knowledge.pending.jsonl`.
+Standalone Node.js MCP server in `mcp-server/`. 20 tools: `kb_list_kbs`, `kb_search` (BM25), `kb_get_entity`, `kb_list_entities`, `kb_stats`, `kb_add_note`, `kb_subgraph`, `kb_reckoning`, `kb_list_sources`, `kb_request_refresh`, plus git-analysis tools (`kb_git_status`, `kb_check_plan`, `kb_pending`, `kb_git_diff_triples`, `kb_alignment_score`), `kb_compress`, and local-Ollama tools (`kb_local_extract`, `kb_local_summarize`, `kb_generate_page`, `kb_entity_markdown`). Multi-KB support via `MultiKBReader`. Workspace mode reads `kbs/{name}/{name}.ttl` (legacy `kbs/{name}/kb.ttl` fallback). Pending notes arrive via `kbs/{name}/pending.jsonl` (legacy sidecar: `{name}.pending.jsonl`).
 
 ### C — Google Colab Example Notebook --- NOT STARTED
 
@@ -156,8 +156,9 @@ RBAC, BYOA auth (SSO/LDAP/OIDC), file-based `.ttl` delivery, policy and procedur
 | Issue | Severity | Status |
 |-------|----------|--------|
 | `src/routes/api/merge-analysis.ts` missing `+` prefix | ~~High~~ | ✅ Resolved (ROADMAP R2) — replaced by client-side `src/lib/integrations/llm/merge-analysis.ts` |
-| Orphaned `TurtleCompanion.svelte` | Low | Delete |
-| Orphaned `AtmosphericField.svelte` (commented out) | Low | Delete or re-enable |
+| Orphaned `TurtleCompanion.svelte` | Low | ✅ Deleted |
+| Orphaned `AtmosphericField.svelte` | Low | ✅ Deleted |
+| `DisambiguationPanel.svelte` + `disambiguation.svelte.ts` unreferenced cluster | Low | Delete candidate |
 
 ---
 

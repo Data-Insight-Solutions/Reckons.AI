@@ -398,7 +398,7 @@ function buildSessionView(): string {
   if (totalNew > 0 || totalConflicts > 0) {
     html += `<div class="session-ingest-bar">
       <button class="ingest-action-btn" id="btn-session-ingest" ${ingestBusy ? 'disabled' : ''}>
-        ${ingestBusy ? '<span class="spinner"></span> Ingesting…' : `⬇ Ingest All New (${totalNew} triples)`}
+        ${ingestBusy ? '<span class="spinner"></span> Ingesting…' : `⬇ Ingest All New (${totalNew} facts)`}
       </button>
     </div>`;
   }
@@ -439,7 +439,7 @@ function buildIngestView(): string {
     const nR = result.triples.filter(t => t.kind === 'reinforce').length;
     const nN = result.triples.filter(t => t.kind === 'new').length;
     html += `<div class="ingest-field">
-      <div class="ingest-label">Triples from Compare</div>
+      <div class="ingest-label">Facts from Compare</div>
       <div class="ingest-counts">
         <span class="ic conflict">${nC} conflict${nC !== 1 ? 's' : ''}</span>
         <span class="ic reinforce">${nR} reinforce${nR !== 1 ? 's' : ''}</span>
@@ -447,7 +447,7 @@ function buildIngestView(): string {
       </div>
     </div>`;
   } else {
-    html += `<div class="ingest-note">Run Compare first to preview triples, or ingest the URL directly.</div>`;
+    html += `<div class="ingest-note">Run Compare first to preview facts, or ingest the URL directly.</div>`;
   }
 
   if (ingestStatus) {

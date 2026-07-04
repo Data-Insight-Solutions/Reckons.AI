@@ -31,7 +31,7 @@ All data is stored in IndexedDB inside your browser. Nothing is sent to any serv
 ### Option C — Static hosting (Netlify / Vercel / Cloudflare Pages)
 
 ```bash
-pnpm build                  # generates dist/
+pnpm build                  # generates build/
 ```
 
 Deploy `dist/` to any static host. No backend required. The app is a pure PWA — install it from the browser for an app-like experience on desktop and mobile.
@@ -449,7 +449,7 @@ npx playwright install webkit
 
 ### MCP Server
 
-A standalone Node.js MCP server in `mcp-server/` exposes 11 tools to AI agents (Claude Desktop, Cursor, Claude Code, etc.):
+A standalone Node.js MCP server in `mcp-server/` exposes 20 tools to AI agents (Claude Desktop, Cursor, Claude Code, etc.):
 
 | Tool | Description |
 |------|-------------|
@@ -463,13 +463,22 @@ A standalone Node.js MCP server in `mcp-server/` exposes 11 tools to AI agents (
 | `kb_reckoning` | Run a Situation-Target-Proposal analysis |
 | `kb_list_sources` | List all sources with metadata and trust scores |
 | `kb_request_refresh` | Request a source refresh by source ID |
-| `kb_add_triple` | Directly add a triple with subject, predicate, object |
+| `kb_git_status` | Show current git branch, staged/modified files, and recent commits |
+| `kb_check_plan` | Check alignment of current work against the knowledge base |
+| `kb_pending` | List queued proposals from pending.jsonl |
+| `kb_git_diff_triples` | Cross-reference git changes with KB entities |
+| `kb_alignment_score` | Quantitative alignment score (0-1) with per-dimension breakdown |
+| `kb_compress` | Compress KB context for LLM prompts (~60-70% token reduction) |
+| `kb_local_extract` | Extract triples from text via a local Ollama model (opt-in) |
+| `kb_local_summarize` | Summarize an entity subgraph or text via a local Ollama model (opt-in) |
+| `kb_generate_page` | Draft a documentation-page markdown proposal via a local Ollama model (opt-in) |
+| `kb_entity_markdown` | Deterministic (no LLM) rendering of one entity as markdown |
 
 The MCP server reads `.ttl` files from a workspace folder via `MultiKBReader`. Supports single-file legacy mode (`--kb file.ttl`) and multi-KB workspace mode (`--kb /path/to/workspace/` scanning `kbs/{name}/{name}.ttl`, with legacy `kbs/{name}/kb.ttl` as a fallback). File watching auto-reloads on changes.
 
 #### Self-dogfooding workspace
 
-Reckons.AI uses its own MCP server to track product state. Run `bash scripts/setup-mcp-workspace.sh` to set up symlinks from `mcp-workspace/kbs/` to the reference TTL files in `static/`. Claude Code is configured to start the MCP server automatically and query these KBs (Roadmap, Production, Features) before planning new work.
+Reckons.AI uses its own MCP server to track product state. Run `bash scripts/setup-mcp-workspace.sh` to set up symlinks from `mcp-workspace/kbs/` to the reference TTL files in `static/`. Claude Code is configured to start the MCP server automatically and query these KBs (Roadmap, Production, Features, Architecture, Testing, Codebase) before planning new work.
 
 ### Multi-KB Management
 
