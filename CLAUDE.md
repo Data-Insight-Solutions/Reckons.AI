@@ -81,6 +81,17 @@ The `.github/workflows/kb-watch.yml` workflow runs on every push/PR to main:
 
 The alignment score is a composite of 4 dimensions (30% coverage, 30% status alignment, 20% dependency respect, 20% scope discipline). Commits that don't match any planned KB work are flagged as unplanned.
 
+### Branch + PR workflow (required)
+
+**Never push directly to `main`.** All changes — including agent work, KB/TTL edits, and docs — land via:
+
+1. Feature branch (`fix/…`, `feat/…`, `chore/…`) or agent worktree branch
+2. Push the branch, open a PR (`gh pr create`)
+3. CI green (unit tests, build, md-align; visual smoke once available) before merge
+4. The user merges, or explicitly approves a merge
+
+Production deploys from `main` on every push — an unreviewed push is an unreviewed deploy.
+
 ### Graphs are the plan and source of truth
 
 The TTL graphs in `static/` are the canonical plan and system description — code follows the graphs, not the other way around:
