@@ -50,6 +50,15 @@
   const MAX_EDGES = 1500;
   const linePositions = new Float32Array(MAX_EDGES * 6);
 
+  // Attach the position attribute imperatively with a direct THREE import — survives
+  // minification, unlike <T.BufferAttribute> (whose class-name heuristic breaks in builds).
+  $effect(() => {
+    if (lineGeom && !lineGeom.getAttribute('position')) {
+      lineGeom.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
+    }
+  });
+
+
   // Project anchor positions in 3D circle (XZ plane, slightly elevated)
   function computeProjectAnchors(): Map<string, { x: number; y: number; z: number }> {
     const active = graphs.filter((g: GraphDef) => activeGraphIds.has(g.id));
@@ -371,9 +380,8 @@
 
 <!-- Edge lines -->
 <T.LineSegments>
-  <T.BufferGeometry bind:ref={lineGeom}>
-    <T.BufferAttribute attach="attributes.position" args={[linePositions, 3]} />
-  </T.BufferGeometry>
+  <!-- position attribute set imperatively (minification-safe) — see $effect in script -->
+  <T.BufferGeometry bind:ref={lineGeom} />
   <T.LineBasicMaterial color="#8899cc" transparent opacity={0.15} />
 </T.LineSegments>
 
