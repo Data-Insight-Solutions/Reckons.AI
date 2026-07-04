@@ -17,10 +17,13 @@ test('app loads and shows navigation', async ({ page }) => {
   // NavBar is present
   await expect(page.locator('nav')).toBeVisible();
 
-  // Core nav links exist
-  await expect(page.getByRole('link', { name: /ingest/i })).toBeVisible();
-  await expect(page.getByRole('link', { name: /review/i })).toBeVisible();
-  await expect(page.getByRole('link', { name: /settings/i })).toBeVisible();
+  // Core nav links exist. NavBar labels: "add" (ingest), "review", "settings"
+  // (terminology sweep renamed ingest -> add; scope to <nav> to avoid picking
+  // up unrelated "add" text elsewhere on the page).
+  const nav = page.locator('nav');
+  await expect(nav.getByRole('link', { name: /^add$/i })).toBeVisible();
+  await expect(nav.getByRole('link', { name: /review/i })).toBeVisible();
+  await expect(nav.getByRole('link', { name: /settings/i })).toBeVisible();
 
   expect(errors.filter(e => !e.includes('favicon'))).toHaveLength(0);
 });
