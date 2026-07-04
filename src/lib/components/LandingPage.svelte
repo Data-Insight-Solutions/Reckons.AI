@@ -4,7 +4,7 @@
   import { ONBOARDING_TEMPLATES, BLANK_TEMPLATE } from '$lib/onboarding/templates';
   import { addStatements, addSource } from '$lib/stores/kb.svelte';
   import { nudge } from '$lib/stores/tutorial.svelte';
-  import { activateOfficialKb, preloadOfficialKb } from '$lib/stores/official-kb.svelte';
+  import { activateOfficialKb, preloadOfficialKb, officialKbError } from '$lib/stores/official-kb.svelte';
   import { importTurtleFull } from '$lib/rdf/import-ttl';
   import { startStory } from '$lib/stores/shelly-bridge.svelte';
   import * as kokoro from '$lib/integrations/llm/kokoro-tts';
@@ -17,6 +17,7 @@
 
   let loadingTemplate = $state<string | null>(null);
   let loadingDocs = $state(false);
+  let docsError = $state<string | null>(null);
   let loadingExample = $state<string | null>(null);
 
   // Track core module loading (Kokoro TTS voice model)
@@ -35,8 +36,13 @@
 
   async function openDocsKb() {
     loadingDocs = true;
+    docsError = null;
     try {
-      await activateOfficialKb();
+      const ok = await activateOfficialKb();
+      if (!ok) {
+        docsError = officialKbError() ?? 'Could not open the documentation graph. Please try again.';
+        return;
+      }
       startStory(GUIDE_STORY_ID, true);
       goto('/');
     } finally {
@@ -258,6 +264,9 @@
         </button>
         <a href="/ingest" class="btn-secondary">Add your own source</a>
       </div>
+      {#if docsError}
+        <p class="docs-error mono" role="alert">Couldn't open the documentation graph — {docsError}</p>
+      {/if}
       {#if kokoroStatus === 'loading'}
         <p class="core-loading mono">loading voice model — {kokoroPct}%</p>
       {/if}
@@ -850,6 +859,12 @@
     color: var(--muted);
     margin: 0;
     letter-spacing: 0.04em;
+  }
+  .docs-error {
+    font-size: 0.72rem;
+    color: var(--danger, #d4726d);
+    margin: 0.6rem 0 0;
+    letter-spacing: 0.02em;
   }
 
   .btn-loader {
