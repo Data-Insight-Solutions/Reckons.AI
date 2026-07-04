@@ -150,7 +150,7 @@ See [`SETUP.md`](SETUP.md) for installation instructions.
 
 ## MCP server
 
-The standalone MCP server (`mcp-server/`) exposes 11 tools to AI agents:
+The standalone MCP server (`mcp-server/`) exposes 20 tools to AI agents:
 
 | Tool | Description |
 |------|-------------|
@@ -164,11 +164,20 @@ The standalone MCP server (`mcp-server/`) exposes 11 tools to AI agents:
 | `kb_reckoning` | Run a Situation-Target-Proposal analysis |
 | `kb_list_sources` | List all sources with metadata and trust scores |
 | `kb_request_refresh` | Request a source refresh by source ID |
-| `kb_add_triple` | Directly add a triple with subject, predicate, object |
+| `kb_git_status` | Show current git branch, staged/modified files, and recent commits |
+| `kb_check_plan` | Check alignment of current work against the knowledge base |
+| `kb_pending` | List queued proposals from pending.jsonl |
+| `kb_git_diff_triples` | Cross-reference git changes with KB entities |
+| `kb_alignment_score` | Quantitative alignment score (0-1) with per-dimension breakdown |
+| `kb_compress` | Compress KB context for LLM prompts (~60-70% token reduction) |
+| `kb_local_extract` | Extract triples from text via a local Ollama model (opt-in) |
+| `kb_local_summarize` | Summarize an entity subgraph or text via a local Ollama model (opt-in) |
+| `kb_generate_page` | Draft a documentation-page markdown proposal via a local Ollama model (opt-in) |
+| `kb_entity_markdown` | Deterministic (no LLM) rendering of one entity as markdown |
 
 ### Self-dogfooding workspace
 
-Reckons.AI uses its own MCP server to track product state. Three internal KBs (Roadmap, Production, Features) are symlinked from `static/*.ttl` into `mcp-workspace/kbs/`. Claude Code queries these KBs before planning new work or modifying architecture. Edit a TTL file → the MCP server auto-reloads → the next AI session sees the change.
+Reckons.AI uses its own MCP server to track product state. Six internal KBs (Roadmap, Production, Features, Architecture, Testing, Codebase) are symlinked from `static/*.ttl` into `mcp-workspace/kbs/`. Claude Code queries these KBs before planning new work or modifying architecture. Edit a TTL file → the MCP server auto-reloads → the next AI session sees the change.
 
 ```bash
 bash scripts/setup-mcp-workspace.sh   # one-time setup after cloning

@@ -43,7 +43,7 @@ See `.env.example` for the full list with documentation. At minimum you need one
 ### Production build
 
 ```bash
-pnpm build          # outputs to dist/
+pnpm build          # outputs to build/
 pnpm preview        # preview the production build locally
 ```
 
@@ -157,7 +157,7 @@ Default model: `HuggingFaceTB/SmolLM2-360M-Instruct` (~370MB). Configurable in S
 pnpm build
 
 # Serve with any static server
-npx serve dist/         # quick test
+npx serve build/        # quick test
 # or nginx / caddy for production
 
 # For Ollama on the same machine

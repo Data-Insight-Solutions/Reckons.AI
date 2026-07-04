@@ -146,12 +146,16 @@ This project uses TTL knowledge bases as the primary documentation format. **Do 
 
 ## Key Directories
 
-- `src/lib/rdf/` — Core RDF types, diff, semantic-diff, normalize-entities, serialize
-- `src/lib/stores/` — Svelte 5 rune stores (kb, settings, ingest, disambiguation)
+- `src/lib/rdf/` — Core RDF types, diff, semantic-diff, normalize-entities, serialize, currents
+- `src/lib/stores/` — Svelte 5 rune stores (kb, settings, ingest, disambiguation, workspace)
+- `src/lib/publish/` — Graph-first site publishing (WebPage nodes ↔ content/*.md round-trip, Sveltia CMS wiring)
+- `src/lib/components/ui/` — shadcn-svelte primitives (badge, button, card, separator, skeleton)
 - `src/lib/integrations/llm/` — LLM backends (claude, wasm, extractor, providers)
 - `src/lib/integrations/github/` — Repo ingest
 - `src/lib/safety/` — Content policy, ethics preamble
 - `mcp-server/` — Standalone MCP server (Node.js, N3.js)
+- `cli/` — `reckons` terminal/audio CLI (shell commands + smart-glasses listen mode)
 - `static/*.ttl` — Documentation and reference KBs
+- `content/` — Generated markdown pages (from docs TTLs via `scripts/docs-pages.ts`) — do not hand-edit
 - `tests/bench/` — Ollama LLM benchmarks and scoring
-- `scripts/` — KB alignment, snapshot, and workspace setup scripts
+- `scripts/` — KB alignment, snapshot, docs-page generation, and workspace setup scripts
