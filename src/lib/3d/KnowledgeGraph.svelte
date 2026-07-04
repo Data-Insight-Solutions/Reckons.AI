@@ -926,6 +926,17 @@
   const linePositions = new Float32Array(MAX_EDGES * 6);
   const hlLinePositions = new Float32Array(MAX_EDGES * 6); // highlighted edges (selected node)
   let lineGeomHl: THREE.BufferGeometry | undefined = $state();
+
+  // Attach position attributes imperatively with a direct THREE import — survives
+  // minification, unlike <T.BufferAttribute> (see comment at the template markup).
+  $effect(() => {
+    if (lineGeom && !lineGeom.getAttribute('position')) {
+      lineGeom.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
+    }
+    if (lineGeomHl && !lineGeomHl.getAttribute('position')) {
+      lineGeomHl.setAttribute('position', new THREE.BufferAttribute(hlLinePositions, 3));
+    }
+  });
   let _labelFrame = 0;
 
   useTask((delta) => {
@@ -1255,18 +1266,18 @@
 <T.PointLight position={[-8, -4, 6]} intensity={0.7} color="#6dd3c4" />
 
 <!-- Edges (all — dimmed further when a node is selected) -->
+<!-- Position attributes are set imperatively (see the $effect above): Threlte's
+     <T.BufferAttribute> resolves the class by function NAME, which minification
+     mangles — in production builds it attached the raw class instead of an
+     instance, crashing the renderer (undefined .array → black graph). -->
 <T.LineSegments>
-  <T.BufferGeometry bind:ref={lineGeom}>
-    <T.BufferAttribute attach="attributes.position" args={[linePositions, 3]} />
-  </T.BufferGeometry>
+  <T.BufferGeometry bind:ref={lineGeom} />
   <T.LineBasicMaterial color="#ff6b35" transparent opacity={selected ? 0.12 : 0.35} />
 </T.LineSegments>
 
 <!-- Highlighted edges (connected to selected node) -->
 <T.LineSegments>
-  <T.BufferGeometry bind:ref={lineGeomHl}>
-    <T.BufferAttribute attach="attributes.position" args={[hlLinePositions, 3]} />
-  </T.BufferGeometry>
+  <T.BufferGeometry bind:ref={lineGeomHl} />
   <T.LineBasicMaterial color="#6dd3c4" transparent opacity={0.9} linewidth={2} />
 </T.LineSegments>
 
