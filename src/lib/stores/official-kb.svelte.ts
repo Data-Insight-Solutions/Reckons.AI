@@ -18,12 +18,15 @@ let _statements = $state<Statement[]>([]);
 let _sources = $state<Source[]>([]);
 let _loaded = $state(false);
 let _loading = $state(false);
+let _error = $state<string | null>(null);
 
 export function officialKbActive(): boolean { return _active; }
 export function officialKbStatements(): Statement[] { return _statements; }
 export function officialKbSources(): Source[] { return _sources; }
 export function officialKbLoaded(): boolean { return _loaded; }
 export function officialKbLoading(): boolean { return _loading; }
+/** Last load error, if the official KB failed to fetch/parse. Cleared on a successful load. */
+export function officialKbError(): string | null { return _error; }
 
 /**
  * Load the official KB from the static file (cached after first load).
@@ -53,12 +56,20 @@ async function ensureLoaded(): Promise<void> {
       sourceId: OFFICIAL_SOURCE_ID,
       status: 'confirmed' as const,
     }));
+    if (stmts.length === 0) {
+      // A successful fetch that yields no statements is still a failure for our
+      // purposes — activating an empty KB would silently fall back to the landing
+      // page (the graph route renders <LandingPage/> when visible.length === 0).
+      throw new Error(`Official KB parsed to 0 statements from ${OFFICIAL_KB_FILE}`);
+    }
     console.log(`[official-kb] Loaded ${stmts.length} statements from ${OFFICIAL_KB_FILE}`);
     _statements = stmts;
     _sources = [source];
     _loaded = true;
+    _error = null;
   } catch (e) {
     console.error('[official-kb] Failed to load:', e);
+    _error = e instanceof Error ? e.message : String(e);
   } finally {
     _loading = false;
   }
@@ -74,10 +85,21 @@ export function preloadOfficialKb(): void {
 
 /**
  * Switch to the official documentation KB (read-only).
+ *
+ * Only activates when the KB actually loaded with content — otherwise the graph
+ * route's empty-KB guard would fall back to the landing page while the header
+ * banner claimed the docs KB was active (the "Open button shows landing page"
+ * bug). On failure the error is left in `officialKbError()` for the UI to show.
+ * Returns true when activation succeeded.
  */
-export async function activateOfficialKb(): Promise<void> {
+export async function activateOfficialKb(): Promise<boolean> {
   await ensureLoaded();
-  _active = true;
+  if (_loaded && _statements.length > 0) {
+    _active = true;
+    return true;
+  }
+  _active = false;
+  return false;
 }
 
 /**
