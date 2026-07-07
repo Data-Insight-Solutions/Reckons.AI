@@ -502,17 +502,24 @@ story:prod-step-6  rdf:type         story:Step ;
 kb:env-dev a ktype:Environment ;
     rdfs:label        "Development" ;
     kpred:git-branch  "dev" ;
+    kpred:deploy-url  "https://dev.reckons-ai.pages.dev" ;
     kpred:review-gate "developer" ;
+    kpred:reviews-graph "codebase" ;
     kpred:description "Integration branch. Changes land here for DEVELOPER (technical) review — unit tests, build, svelte-check, code review — before promotion to staging. A feature carries kpred:in-dev once merged, and kpred:dev-approved once the developer signs off (which unblocks promotion to staging)." .
 
 kb:env-staging a ktype:Environment ;
     rdfs:label        "Staging" ;
     kpred:git-branch  "staging" ;
+    kpred:deploy-url  "https://staging.reckons-ai.pages.dev" ;
     kpred:review-gate "stakeholder" ;
+    kpred:reviews-graph "roadmap" ;
     kpred:description "Stakeholder (business) review environment; serves a preview build for sign-off. A feature carries kpred:in-staging on promotion from dev, and kpred:stakeholder-approved once the business side signs off (which unblocks promotion to production)." .
 
 kb:env-production a ktype:Environment ;
     rdfs:label        "Production" ;
     kpred:git-branch  "main" ;
+    kpred:deploy-url  "https://reckons.ai" ;
     kpred:review-gate "both" ;
+    kpred:reviews-graph "roadmap+codebase" ;
+    kpred:requires-documentation "true" ;
     kpred:description "Live site; deploys from main on every push. Requires BOTH developer and stakeholder approval. A feature reaching production carries kpred:in-production; has-status 'production' implies it." .
