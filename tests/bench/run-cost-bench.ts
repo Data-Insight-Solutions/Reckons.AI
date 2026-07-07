@@ -38,6 +38,7 @@ const save = args.includes('--save');
 const getArg = (n: string, d: string) => { const i = args.indexOf(n); return i >= 0 && args[i + 1] ? args[i + 1] : d; };
 const OLLAMA_URL = getArg('--url', process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434');
 const LOCAL_MODEL = getArg('--local', 'gpt-oss:20b');
+const ONLY = getArg('--only', ''); // run a single task id
 const OPUS_MODEL = 'claude-opus-4-8';
 
 // Opus 4.8 pricing, $/token (from the claude-api skill).
@@ -104,10 +105,10 @@ async function opus(system: string, user: string, maxTokens: number): Promise<{ 
   return { text, usage: { in: u.input_tokens, out: u.output_tokens, cacheRead: u.cache_read_input_tokens ?? 0, cacheWrite: u.cache_creation_input_tokens ?? 0 } };
 }
 
-async function local(prompt: string): Promise<{ text: string; evalCount: number }> {
+async function local(prompt: string, numPredict = 400): Promise<{ text: string; evalCount: number }> {
   const res = await fetch(`${OLLAMA_URL}/api/generate`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: LOCAL_MODEL, prompt, stream: false, keep_alive: '5m', options: { temperature: 0, num_ctx: 8192, num_predict: 400 } }),
+    body: JSON.stringify({ model: LOCAL_MODEL, prompt, stream: false, keep_alive: '5m', options: { temperature: 0, num_ctx: 8192, num_predict: numPredict } }),
   });
   if (!res.ok) throw new Error(`ollama ${res.status}`);
   const j = (await res.json()) as { response?: string; eval_count?: number };
@@ -124,28 +125,31 @@ interface ArmResult { arm: string; usage: Usage; localTokens: number; cov: numbe
 
 async function runTask(task: CostTask, raw: string): Promise<ArmResult[]> {
   const comp = compress(raw, task.query);
+  const maxOut = task.maxOut ?? 400;
   const sys = 'You write concise, accurate documentation grounded strictly in the provided knowledge-graph context. Do not invent facts.';
   const out: ArmResult[] = [];
 
   // A0 — Opus alone, raw corpus
   {
-    const { text, usage } = await opus(sys, `KNOWLEDGE GRAPH:\n${raw}\n\nTASK: ${task.prompt}`, 400);
+    const { text, usage } = await opus(sys, `KNOWLEDGE GRAPH:\n${raw}\n\nTASK: ${task.prompt}`, maxOut);
     out.push({ arm: 'A0 opus-alone', usage, localTokens: 0, cov: grade(text, task.expect), text });
   }
   // A1 — Opus + compressed graph
   {
-    const { text, usage } = await opus(sys, `KNOWLEDGE GRAPH (compressed):\n${comp}\n\nTASK: ${task.prompt}`, 400);
+    const { text, usage } = await opus(sys, `KNOWLEDGE GRAPH (compressed):\n${comp}\n\nTASK: ${task.prompt}`, maxOut);
     out.push({ arm: 'A1 opus+graph', usage, localTokens: 0, cov: grade(text, task.expect), text });
   }
-  // A2 — local writes from compressed graph, Opus reviews
+  // A2 — local writes from compressed graph, Opus reviews (short output = the saving)
   {
-    const draft = await local(`KNOWLEDGE GRAPH (compressed):\n${comp}\n\nTASK: ${task.prompt}\n\nWrite the blurb now:`);
+    const draft = await local(`KNOWLEDGE GRAPH (compressed):\n${comp}\n\nTASK: ${task.prompt}\n\nWrite it now:`, maxOut);
     const review = await opus(
-      'You are reviewing a draft doc blurb for factual accuracy against the provided compressed knowledge graph. Return a corrected final version. Keep it concise; fix only what is wrong or unsupported.',
-      `COMPRESSED GRAPH:\n${comp}\n\nTASK: ${task.prompt}\n\nDRAFT:\n${draft.text}\n\nFinal version:`,
-      250,
+      'You are reviewing a draft for factual accuracy against the provided compressed knowledge graph. If it is accurate and complete, reply with only "APPROVED". Otherwise return a corrected version. Do not pad.',
+      `COMPRESSED GRAPH:\n${comp}\n\nTASK: ${task.prompt}\n\nDRAFT:\n${draft.text}\n\nReview:`,
+      Math.min(400, maxOut),
     );
-    out.push({ arm: 'A2 full-system', usage: review.usage, localTokens: draft.evalCount, cov: grade(review.text, task.expect), text: review.text });
+    // if Opus approved, the delivered text is the local draft; else Opus's correction
+    const finalText = /^\s*APPROVED\b/i.test(review.text) ? draft.text : review.text;
+    out.push({ arm: 'A2 full-system', usage: review.usage, localTokens: draft.evalCount, cov: grade(finalText, task.expect), text: finalText });
   }
   return out;
 }
@@ -172,8 +176,10 @@ async function main() {
   if (!key) { console.error('No VITE_ANTHROPIC_API_KEY / ANTHROPIC_API_KEY found in env/.env'); process.exit(1); }
   client = new Anthropic({ apiKey: key });
 
+  const tasks = ONLY ? COST_TASKS.filter((t) => t.id === ONLY) : COST_TASKS;
+  if (!tasks.length) { console.error(`No task matches --only ${ONLY}`); process.exit(1); }
   const byArm: Record<string, { usage: Usage; localTokens: number; cov: number[] }> = {};
-  for (const task of COST_TASKS) {
+  for (const task of tasks) {
     process.stdout.write(`\n• ${task.id}… `);
     const results = await runTask(task, raw);
     for (const r of results) {
