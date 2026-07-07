@@ -67,6 +67,8 @@
   // ── Review panel tabs ─────────────────────────────────────────────────────
   type Tab = 'incoming' | 'deletions' | 'merges' | 'align';
   let activeTab = $state<Tab>('incoming');
+  /** F32: filter the incoming list to only partial "? question" facts. */
+  let questionsOnly = $state(false);
 
   // ── Graph view mode ───────────────────────────────────────────────────────
   type GraphMode = 'preview' | 'compare' | 'overlay';
@@ -95,6 +97,9 @@
   let semanticFailed = false;
 
   const diff = $derived(semanticDiff ?? structuralDiff);
+  // F32: partial "? question" facts, and the list actually shown (optionally filtered).
+  const questionEntries = $derived(diff.entries.filter((e) => e.incoming.needsObject));
+  const shownEntries = $derived(questionsOnly ? questionEntries : diff.entries);
 
   $effect(() => {
     const inc = incoming;
@@ -509,6 +514,8 @@
     error = null; isProcessing = true;
     try {
       for (const e of diff.entries) {
+        // Partial facts (F32) must be filled individually — never bulk-confirm a '?'.
+        if (e.incoming.needsObject) continue;
         if (e.kind === 'new' || e.kind === 'reinforces' || e.kind === 'synonym-reinforces')
           await setStatus(e.incoming.id, 'confirmed');
       }
@@ -949,6 +956,13 @@
           {#if diff.summary.refines > 0}<span class="sc refines">{diff.summary.refines} refine</span>{/if}
           {#if diff.summary.duplicate > 0}<span class="sc duplicate">{diff.summary.duplicate} dup</span>{/if}
           {#if semanticAnalyzing}<span class="sc analyzing">analyzing...</span>{/if}
+          {#if questionEntries.length > 0}
+            <button class="sc question-filter" class:active={questionsOnly}
+              onclick={() => (questionsOnly = !questionsOnly)}
+              title="Show only partial facts awaiting an object">
+              ❓ {questionEntries.length} question{questionEntries.length !== 1 ? 's' : ''}
+            </button>
+          {/if}
         </div>
 
         {#if diffSummary}
@@ -982,11 +996,15 @@
             {#if error}<p class="error-text">{error}</p>{/if}
           </div>
           <div class="entry-list">
-            {#each diff.entries as e (e.incoming.id)}
+            {#each shownEntries as e (e.incoming.id)}
               <SwipeCard
-                acceptLabel="confirm"
+                acceptLabel={e.incoming.needsObject ? 'fill first' : 'confirm'}
                 rejectLabel="reject"
-                onaccept={async () => { await setStatus(e.incoming.id, 'confirmed'); refresh(); }}
+                onaccept={async () => {
+                  // Partial facts must be filled via the card's picker, not swipe-confirmed.
+                  if (e.incoming.needsObject) return;
+                  await setStatus(e.incoming.id, 'confirmed'); refresh();
+                }}
                 onreject={async () => { await setStatus(e.incoming.id, 'rejected'); refresh(); }}
               >
                 <!-- Clicking a review card flies the preview graph to its node -->
@@ -1678,6 +1696,16 @@
     border-radius: 999px;
     border: 1px solid var(--line);
     color: var(--muted);
+  }
+  .sc.question-filter {
+    cursor: pointer;
+    background: transparent;
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .sc.question-filter.active {
+    background: var(--accent);
+    color: var(--surface);
   }
   .sc.new { color: var(--data); border-color: var(--data); }
   .sc.reinforces { color: var(--ok); border-color: var(--ok); }

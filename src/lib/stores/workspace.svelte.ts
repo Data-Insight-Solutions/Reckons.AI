@@ -537,7 +537,7 @@ export async function drainAndImportPending(): Promise<number> {
       confidence,
       s: { kind: 'iri' as const, value: e.subject },
       p: { kind: 'iri' as const, value: e.predicate },
-      o: { kind: 'literal' as const, value: partial ? '' : e.object! },
+      o: { kind: 'literal' as const, value: partial ? '?' : e.object! },
       g: { kind: 'iri' as const, value: `urn:mcp:pending:${sourceId}` },
       ...(partial ? { needsObject: true, question } : {}),
       ...(gloss ? { gloss } : {}),
