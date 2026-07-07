@@ -80,7 +80,12 @@ export async function pickWorkspace(): Promise<boolean> {
     _state = 'connected';
     await updateSettings({ workspaceName: handle.name });
     return true;
-  } catch {
+  } catch (e) {
+    // AbortError = user cancelled, or the OS directory picker was unavailable — e.g.
+    // Snap-confined Chromium without a working xdg-desktop-portal, where the picker
+    // aborts instantly. Stay quiet on that; surface any other failure rather than
+    // swallowing it silently (a folder link that fails with no feedback is confusing).
+    if ((e as Error)?.name !== 'AbortError') console.error('[workspace] link folder failed:', e);
     return false;
   }
 }
