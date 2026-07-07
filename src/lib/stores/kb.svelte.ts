@@ -1,5 +1,7 @@
 import { db } from '../storage/db';
 import type { Statement, Source, ReviewStatus } from '../rdf/types';
+import { isIRI, termKey } from '../rdf/types';
+import { labelFromIRI } from '../rdf/semantic-diff';
 import type { ChangeLogEntry, TrustEvent } from '../storage/types';
 import { scheduleAutoSave } from '../storage/backup';
 import { scheduleWorkspaceTtlExport } from './workspace.svelte';
@@ -62,6 +64,25 @@ export function sources(): Source[] {
 }
 export function statements(): Statement[] {
   return officialKbActive() ? officialKbStatements() : _statements;
+}
+/**
+ * Existing entities (subject + object IRIs from live statements) as
+ * {key,label,iri} for search-while-typing pickers, e.g. filling a partial
+ * fact's object (F32). Excludes pending/rejected; label falls back to the
+ * IRI's local name.
+ */
+export function entityChoices(): { key: string; label: string; iri: string }[] {
+  const map = new Map<string, { key: string; label: string; iri: string }>();
+  for (const st of statements()) {
+    if (st.status === 'pending' || st.status === 'rejected' || st.status === 'superseded') continue;
+    for (const term of [st.s, st.o]) {
+      if (!isIRI(term)) continue;
+      const k = termKey(term);
+      if (map.has(k)) continue;
+      map.set(k, { key: k, label: labelFromIRI(term.value), iri: term.value });
+    }
+  }
+  return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 /** The user's own statements (ignores official KB overlay) */
 export function userStatements(): Statement[] {

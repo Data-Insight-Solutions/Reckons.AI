@@ -161,6 +161,14 @@ export type Statement = {
   excerpt?: string;
   /** Review state */
   status: ReviewStatus;
+  /**
+   * Partial fact (F32): subject + predicate are known but the object is a
+   * "loose end" the reviewer must fill before accepting. When true, `o` is a
+   * placeholder and the review card shows an entity picker instead of accept.
+   */
+  needsObject?: boolean;
+  /** The sub-agent's question that produced this partial fact (F32). */
+  question?: string;
   /** Created / updated timestamps */
   createdAt: number;
   updatedAt: number;
