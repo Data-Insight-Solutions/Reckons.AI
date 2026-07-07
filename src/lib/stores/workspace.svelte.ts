@@ -447,7 +447,10 @@ export const WORKSPACE_PENDING_FILE = 'knowledge.pending.jsonl';
 type PendingEntry = {
   subject: string;
   predicate: string;
-  object: string;
+  /** Omit (or leave empty) to denote a PARTIAL FACT whose object the reviewer must fill (F32). */
+  object?: string;
+  /** The sub-agent's question for a partial fact (F32). */
+  question?: string;
   note?: string;
   addedByMcp?: boolean;
   addedAt?: string;
@@ -520,8 +523,11 @@ export async function drainAndImportPending(): Promise<number> {
 
   const sts = pending.map(e => {
     const confidence = priorityToConfidence[e.priority ?? 'normal'] ?? 0.7;
-    const prefix = e.type ? (typePrefix[e.type] ?? '') : '';
-    const gloss = prefix + (e.note ?? '');
+    // Partial fact (F32): no object supplied — the reviewer fills it in.
+    const partial = e.object == null || e.object === '';
+    const question = e.question ?? (partial ? e.note : undefined);
+    const prefix = e.type ? (typePrefix[e.type] ?? '') : (partial ? typePrefix.question : '');
+    const gloss = prefix + (question ?? e.note ?? '');
     const excerpt = e.commitSha ? `commit: ${e.commitSha}` : undefined;
 
     return {
@@ -531,8 +537,9 @@ export async function drainAndImportPending(): Promise<number> {
       confidence,
       s: { kind: 'iri' as const, value: e.subject },
       p: { kind: 'iri' as const, value: e.predicate },
-      o: { kind: 'literal' as const, value: e.object },
+      o: { kind: 'literal' as const, value: partial ? '' : e.object! },
       g: { kind: 'iri' as const, value: `urn:mcp:pending:${sourceId}` },
+      ...(partial ? { needsObject: true, question } : {}),
       ...(gloss ? { gloss } : {}),
       ...(excerpt ? { excerpt } : {}),
       createdAt: e.addedAt ? new Date(e.addedAt).getTime() : now,
@@ -541,6 +548,20 @@ export async function drainAndImportPending(): Promise<number> {
   });
   await addStatements(sts, sourceId);
   return sts.length;
+}
+
+/**
+ * Flow a resolved partial-fact answer BACK to the waiting sub-agent (F32).
+ * Appends one JSON line to knowledge.answers.jsonl in the workspace so an agent
+ * polling that file can resume. No-op if no workspace is connected.
+ */
+export async function recordAnswer(answer: {
+  subject: string; predicate: string; object: string;
+  objectKind: 'iri' | 'literal'; agent?: string; question?: string;
+}): Promise<void> {
+  const existing = (await readFromWorkspace('knowledge.answers.jsonl')) ?? '';
+  const line = JSON.stringify({ ...answer, answeredAt: new Date().toISOString() });
+  await writeToWorkspace('knowledge.answers.jsonl', existing + line + '\n');
 }
 
 // ── Import KBs from workspace ────────────────────────────────────────────────
