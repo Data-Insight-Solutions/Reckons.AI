@@ -64,6 +64,8 @@
     "bench:tts:save": "npx tsx tests/bench/run-tts-bench.ts --save",
     "bench:stt": "npx tsx tests/bench/run-stt-bench.ts",
     "bench:stt:save": "npx tsx tests/bench/run-stt-bench.ts --save",
+    "bench:coding": "npx tsx tests/bench/run-coding-bench.ts",
+    "bench:coding:save": "npx tsx tests/bench/run-coding-bench.ts --save",
     "bench:ollama": "npx tsx tests/bench/run-ollama-bench.ts",
     "bench:ollama:save": "npx tsx tests/bench/run-ollama-bench.ts --save",
     "bench:ollama:list": "npx tsx tests/bench/run-ollama-bench.ts --list",
