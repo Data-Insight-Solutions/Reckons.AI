@@ -1133,6 +1133,7 @@ kb:local-model-bench rdf:type ktype:Feature ;
                rdfs:label    "Local Model Benchmarking & Orchestration" ;
                kpred:feature-id   "F31" ;
                kpred:has-status   "functional" ;
+               kpred:in-dev       "2026-07-07"^^xsd:date ;
                kpred:tested-by    "tests/visual/run-vlm-gate-bench.ts" ;
                kpred:tested-by    "tests/bench/run-coding-bench.ts" ;
                kpred:tested-by    "tests/bench/run-agentic-bench.ts" ;
@@ -1147,6 +1148,18 @@ kb:partial-facts rdf:type ktype:Feature ;
                rdfs:label    "Partial Facts & Answer-Flow-Back" ;
                kpred:feature-id   "F32" ;
                kpred:has-status   "functional" ;
+               kpred:in-dev       "2026-07-07"^^xsd:date ;
                kpred:description  "Human-in-the-loop completion of the F31 local-orchestration loop. When a local sub-agent is uncertain about the OBJECT of a fact it emits a PARTIAL FACT — subject + predicate known, object left as a loose end — together with its question, instead of guessing or spending Opus tokens to resolve it. In the review screen the reviewer FILLS the object rather than editing a guessed value: a search-while-typing picker over existing entities (reusing the RelationBuilder node-list pattern), or create-new (new entity IRI via labelToIri, or a plain text value). Accept is gated until the object is filled. On confirm the resolved fact flows BACK to the waiting sub-agent via knowledge.answers.jsonl in the workspace, so it can resume — closing the loop. Model: Statement gains optional needsObject + question fields (types.ts); pending JSONL lines may omit `object` (carrying a `question`) to denote a partial fact; drainAndImportPending maps these to needsObject statements; kb entityChoices() supplies the picker; workspace recordAnswer() appends the resolved triple to knowledge.answers.jsonl. UI in DiffEntry.svelte. Depends on F31 (Opus + local sub-agents + kb_add_note questions). SHIPPED 2026-07-07: demonstrated end-to-end — local agent hoisted a partial fact (embedding-model quantization ?), human filled it in the review picker as a new entity, the answer flowed back via knowledge.answers.jsonl, and the waiting agent resumed; two bugs found in testing and fixed (computeDiff crashed on placeholder objects; swipe-accept could confirm an unfilled ?)." ;
                kpred:depends-on   kb:local-model-bench ;
                kpred:relates-to   kb:review-workbench .
+
+# -- F33: Release Pipeline & Branch Alignment ------------------------------------
+
+kb:release-pipeline rdf:type ktype:Feature ;
+               rdfs:label    "Release Pipeline & Branch Alignment" ;
+               kpred:feature-id   "F33" ;
+               kpred:has-status   "functional" ;
+               kpred:in-dev       "2026-07-07"^^xsd:date ;
+               kpred:description  "Model the release pipeline in the graphs and check branches against it. Three environments with review gates (static/reckons-production.ttl): kb:env-dev (branch dev, DEVELOPER technical review), kb:env-staging (branch staging, STAKEHOLDER business review), kb:env-production (branch main, both approvals; deploys on push). Features carry promotion predicates: kpred:in-dev / kpred:in-staging / kpred:in-production (dated), plus kpred:dev-approved / kpred:stakeholder-approved sign-offs; has-status 'production' implies in-production. scripts/branch-align.ts parses these claims and compares them to real git state (branch existence, main..branch merged PRs), reporting the pipeline per environment and flagging drift: features marked in-dev but status 'production' (contradiction), 'functional' features not marked in any env (untracked), in-dev features already on main (should promote to production status), missing env branches, and merged PRs on a branch not reflected by any tracked feature (unplanned). Run: npm run branch-align. Complements the code<->KB alignment in scripts/kb-align.ts (F26) by adding the environment/branch dimension." ;
+               kpred:depends-on   kb:ci-cd-kb-watch ;
+               kpred:relates-to   kb:git-analysis .
