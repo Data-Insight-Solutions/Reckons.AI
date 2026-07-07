@@ -39,6 +39,8 @@
     "test:visual": "playwright test --config=playwright.visual.config.ts --project=chromium",
     "test:stories": "playwright test --config=playwright.visual.config.ts --project=user-stories",
     "test:visual:all": "playwright test --config=playwright.visual.config.ts",
+    "bench:vlm": "npx tsx tests/visual/run-vlm-gate-bench.ts",
+    "bench:vlm:save": "npx tsx tests/visual/run-vlm-gate-bench.ts --save",
     "bench:visual": "npx tsx tests/visual/run-visual-bench.ts",
     "bench:visual:api": "npx tsx tests/visual/run-visual-bench.ts --api --save",
     "bench:visual:list": "npx tsx tests/visual/run-visual-bench.ts --list",
