@@ -42,7 +42,7 @@ kb:reckons-ai  rdf:type          ktype:Application ;
                kpred:has-feature kb:local-offload ;
                kpred:has-feature kb:currents ;
                kpred:has-feature kb:review-workbench ;
-               kmeta:glbModel    "/Meshy_AI_Turtle_1.glb" ;
+               kmeta:glbModel    "/glb/Meshy_AI_Turtle_1.glb" ;
                kpred:icon2d      "/ReckonsAI-Logo.svg" .
 
 # ── Tech Stack ───────────────────────────────────────────────────────────────

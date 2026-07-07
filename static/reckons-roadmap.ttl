@@ -33,7 +33,7 @@ kb:reckons-ai  rdf:type          ktype:Application ;
                kpred:has-workflow kb:wf-explore ;
                kpred:has-workflow kb:wf-compare ;
                kpred:has-workflow kb:wf-reckon ;
-               kmeta:glbModel    "/Meshy_AI_Turtle_1.glb" ;
+               kmeta:glbModel    "/glb/Meshy_AI_Turtle_1.glb" ;
                kpred:icon2d      "/ReckonsAI-Logo.svg" .
 
 # -- Core Workflows -------------------------------------------------------------
