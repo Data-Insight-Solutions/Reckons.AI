@@ -244,7 +244,8 @@
           id: s.id,
           predicate: s.p.value.split('/').pop() ?? s.p.value,
           isSubject,
-          otherLabel: other.kind === 'iri' ? (other.value.split('/').pop() ?? other.value) : other.value.slice(0, 60),
+          otherLabel: other.value == null ? '(empty)'
+            : other.kind === 'iri' ? (other.value.split('/').pop() ?? other.value) : other.value.slice(0, 60),
           pending: s.status === 'pending' || s.status === 'pending-removal',
           status: s.status,
         };
