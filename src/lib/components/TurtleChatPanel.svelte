@@ -1434,7 +1434,7 @@
                 {storyCountdown}s
               </span>
             {/if}
-            <button class="story-btn story-exit" onclick={() => { stopAutoPlay(); stopStory(); currentStory = null; }} title="Exit story">✕</button>
+            <button class="story-btn story-exit" onclick={() => { stopAutoPlay(); stopStory(); currentStory = null; }} title="Exit story mode" aria-label="Exit story mode">✕ exit story mode</button>
           </div>
           {#if showVolumeSlider}
             <div class="story-volume-row">
@@ -2168,7 +2168,12 @@
     margin-left: auto;
     font-size: 0.65rem;
     color: var(--muted);
+    white-space: nowrap;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.15rem 0.5rem;
   }
+  .story-exit:hover { color: var(--fg, inherit); border-color: var(--muted); }
   .story-resume {
     padding: 0.35rem 0.75rem;
     background: var(--data-soft);
