@@ -42,11 +42,14 @@ const one = (list: Q[], p: string) => list.find((q) => q.predicate.value === KP 
 const label = (list: Q[], fallback: string) => list.find((q) => q.predicate.value === RDFS_LABEL)?.object.value ?? fallback;
 
 // ── Environments ──────────────────────────────────────────────────────────────
-interface Env { iri: string; label: string; branch?: string; gate?: string; }
+interface Env { iri: string; label: string; branch?: string; gate?: string; url?: string; graph?: string; }
 const envs: Env[] = [];
 for (const [s, list] of bySubject) {
   if (!list.some((q) => q.predicate.value === RDF_TYPE && q.object.value === KT + 'Environment')) continue;
-  envs.push({ iri: s, label: label(list, s), branch: one(list, 'git-branch'), gate: one(list, 'review-gate') });
+  envs.push({
+    iri: s, label: label(list, s), branch: one(list, 'git-branch'), gate: one(list, 'review-gate'),
+    url: one(list, 'deploy-url'), graph: one(list, 'reviews-graph'),
+  });
 }
 // order dev → staging → production
 const order = ['dev', 'staging', 'main'];
@@ -98,6 +101,7 @@ for (const env of envs) {
   const prs = mergedPRs(branch);
 
   console.log(`\n${col(C.b, env.label)}  ${col(C.dim, `[branch: ${branch} · gate: ${gateLabel}]`)}`);
+  if (env.url) console.log(col(C.dim, `  ${env.url}${env.graph ? `   reviews against: ${env.graph} graph` : ''}`));
   if (!exists) { console.log(col(C.y, `  ⚠ branch origin/${branch} does not exist yet`)); }
 
   // features claimed in this env
