@@ -1,4 +1,11 @@
 <script lang="ts">
+  /**
+   * Model-download consent. Uses bits-ui Dialog (like ManualLLMModal) rather than
+   * a hand-rolled div overlay — the custom overlay dropped tap/click events on
+   * touch devices. bits-ui handles portal, focus trap, Escape, and touch
+   * correctly and consistently.
+   */
+  import { Dialog } from 'bits-ui';
   import { pendingConsent, resolveConsent } from '$lib/stores/download-consent.svelte';
 
   const pending = $derived(pendingConsent());
@@ -9,58 +16,64 @@
   }
 </script>
 
-{#if pending}
-  <div class="consent-backdrop" role="presentation" onclick={() => resolveConsent(false)}>
-    <div class="consent-dialog" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
-      <p class="consent-title mono">download model?</p>
-      <p class="consent-body">
-        <strong>{shortName(pending.model)}</strong> needs to download
-        <strong>~{pending.approxMB} MB</strong> on first use.
-        The model is cached in your browser after download and works offline.
-      </p>
-      <div class="consent-actions">
-        <button class="consent-btn primary" onclick={() => resolveConsent(true)}>
-          Download ({pending.approxMB} MB)
-        </button>
-        <button class="consent-btn" onclick={() => resolveConsent(false)}>
-          Not now
-        </button>
-      </div>
-      <p class="consent-hint">
-        You can also sideload models from disk in <a href="/settings/integrations#s-models">Settings</a>.
-      </p>
-    </div>
-  </div>
-{/if}
+<Dialog.Root open={!!pending} onOpenChange={(o) => { if (!o) resolveConsent(false); }}>
+  <Dialog.Portal>
+    <Dialog.Overlay class="consent-overlay" />
+    <Dialog.Content class="consent-dialog">
+      {#if pending}
+        <Dialog.Title class="consent-title mono">download model?</Dialog.Title>
+        <Dialog.Description class="consent-body">
+          <strong>{shortName(pending.model)}</strong> needs to download
+          <strong>~{pending.approxMB} MB</strong> on first use.
+          The model is cached in your browser after download and works offline.
+        </Dialog.Description>
+        <div class="consent-actions">
+          <button type="button" class="consent-btn primary" onclick={() => resolveConsent(true)}>
+            Download ({pending.approxMB} MB)
+          </button>
+          <button type="button" class="consent-btn" onclick={() => resolveConsent(false)}>
+            Not now
+          </button>
+        </div>
+        <p class="consent-hint">
+          You can also sideload models from disk in <a href="/settings/integrations#s-models">Settings</a>.
+        </p>
+      {/if}
+    </Dialog.Content>
+  </Dialog.Portal>
+</Dialog.Root>
 
 <style>
-  .consent-backdrop {
+  :global(.consent-overlay) {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.55);
     z-index: 600;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
+    backdrop-filter: blur(2px);
   }
-  .consent-dialog {
+  :global(.consent-dialog) {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 601;
+    width: calc(100vw - 2rem);
+    max-width: 380px;
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--rad);
     padding: 1.5rem;
-    max-width: 380px;
-    width: 100%;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   }
-  .consent-title {
+  :global(.consent-title) {
     font-size: 0.85rem;
     color: var(--accent);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     margin: 0 0 0.75rem;
   }
-  .consent-body {
+  :global(.consent-body) {
+    display: block;
     font-size: 0.82rem;
     color: var(--ink-2);
     line-height: 1.5;
@@ -72,8 +85,10 @@
   }
   .consent-btn {
     flex: 1;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.8rem;
+    /* >= 44px touch target (kb:web-uiux-rubric) */
+    min-height: 44px;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.85rem;
     border-radius: var(--rad-sm);
     cursor: pointer;
     border: 1px solid var(--line);
@@ -95,7 +110,5 @@
     margin: 0.75rem 0 0;
     text-align: center;
   }
-  .consent-hint a {
-    color: var(--accent);
-  }
+  .consent-hint a { color: var(--accent); }
 </style>

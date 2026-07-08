@@ -21,7 +21,7 @@
   import { extractStories, type Story, type StoryStep } from '$lib/rdf/story';
   import { wasmStatus, wasmPct, wasmStatusText } from '$lib/stores/wasm-status.svelte';
   import { turtleSettings, updateTurtleSettings } from '$lib/stores/turtle-settings.svelte';
-  import SnapPanel from './SnapPanel.svelte';
+  import AdaptivePanel from './AdaptivePanel.svelte';
   import ShellyVoice from './ShellyVoice.svelte';
   import { Tabs } from 'bits-ui';
 
@@ -1061,7 +1061,8 @@
     }
   }}
 >
-<SnapPanel corner="bottom-left" width={360} minWidth={240} maxWidth={800} zIndex={350}
+<AdaptivePanel corner="bottom-left" width={360} minWidth={240} maxWidth={800} zIndex={350}
+  title="Shelly" open={true} onOpenChange={(o) => { if (!o) onclose(); }}
   extraStyle={voiceVolume > 0.05 ? `box-shadow: 0 0 ${8 + voiceVolume * 28}px ${2 + voiceVolume * 10}px color-mix(in srgb, #4caf50 ${Math.round(voiceVolume * 55)}%, transparent)` : ''}
 >
   {#snippet header()}
@@ -1546,7 +1547,7 @@
       </div>
     {/if}
   </Tabs.Content>
-</SnapPanel>
+</AdaptivePanel>
 </Tabs.Root>
 
 

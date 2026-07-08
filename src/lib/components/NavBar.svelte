@@ -405,12 +405,21 @@
   }
 
   /* ── Mobile: compress nav to fit iPhone 375–393px ── */
-  @media (max-width: 500px) {
+  @media (max-width: 640px) {
     nav {
+      /* Full-width bottom bar on mobile — was a cramped centred pill (F36). */
+      left: 0;
+      right: 0;
+      bottom: 0;
+      transform: none;
+      max-width: none;
+      width: 100%;
       gap: 0;
-      padding: 0.25rem 0.15rem;
-      /* Ensure nav fits on small screens */
-      max-width: calc(100vw - 1rem);
+      justify-content: space-around;
+      padding: 0.25rem 0.15rem calc(0.25rem + env(safe-area-inset-bottom));
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
     }
 
     /* Labels hidden — glyphs only, saves ~50px total */
