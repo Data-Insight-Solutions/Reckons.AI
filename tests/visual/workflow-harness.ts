@@ -12,8 +12,29 @@
  * overflow, sub-44px touch targets, and DOM overlaps.
  */
 import type { Page, Locator } from '@playwright/test';
+import { writeFileSync, appendFileSync, mkdirSync } from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { screenshotTo } from './kb-seed';
 import { auditTouchTargets, analyzeDOMOverlaps } from './vision-local';
+
+const SHOTS = path.join(path.dirname(fileURLToPath(import.meta.url)), 'screenshots');
+
+// Records the ORDER steps are captured (per storyDir) so the visual-graph
+// generator can lay the tour out in true workflow order, not alphabetical.
+// Truncated on the first step of each storyDir per run, appended thereafter.
+const _manifestStarted = new Set<string>();
+function recordManifest(storyDir: string, step: string, label?: string): void {
+  const dir = path.join(SHOTS, storyDir);
+  mkdirSync(dir, { recursive: true });
+  const line = JSON.stringify({ step, label: label ?? step }) + '\n';
+  const file = path.join(dir, '_manifest.jsonl');
+  if (_manifestStarted.has(storyDir)) appendFileSync(file, line);
+  else {
+    writeFileSync(file, line);
+    _manifestStarted.add(storyDir);
+  }
+}
 
 /** Device viewports the workflows sweep. Phones → tablet → desktop. */
 export const DEVICES = [
@@ -91,6 +112,7 @@ export async function screenshotStep(
   if (opts?.target) cleanup = await boxTarget(page, opts.target, opts.label ?? name);
   const buf = await screenshotTo(page, storyDir, name);
   await cleanup();
+  recordManifest(storyDir, name, opts?.label);
   return buf;
 }
 
