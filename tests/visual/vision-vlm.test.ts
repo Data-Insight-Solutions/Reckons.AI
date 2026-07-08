@@ -55,7 +55,7 @@ describe('vision-vlm (local VLM review)', () => {
     const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ response: 'ok' }) }));
     vi.stubGlobal('fetch', fetchMock);
     await m.reviewImageVLM('ZmFrZQ==', 'describe this', 'qwen2.5vl:7b');
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toContain('/api/generate');
     const body = JSON.parse(String(init.body));
     expect(body.model).toBe('qwen2.5vl:7b');
