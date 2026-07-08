@@ -122,3 +122,15 @@ export async function stepAudit(
 export async function useDevice(page: Page, device: Device): Promise<void> {
   await page.setViewportSize({ width: device.width, height: device.height });
 }
+
+/**
+ * Wait for the app to finish booting before capturing — the shell shows a `.boot`
+ * loader until the stores hydrate. A fixed timeout captured the loader instead of
+ * the real UI on slower (dev) builds, so wait for `.boot` to detach + network
+ * idle, then a short settle.
+ */
+export async function waitForAppReady(page: Page, timeout = 20_000): Promise<void> {
+  await page.locator('.boot').waitFor({ state: 'detached', timeout }).catch(() => {});
+  await page.waitForLoadState('networkidle').catch(() => {});
+  await page.waitForTimeout(400);
+}

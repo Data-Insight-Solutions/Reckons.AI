@@ -1227,3 +1227,19 @@ kb:offline-align-review rdf:type ktype:Feature ;
                kpred:in-dev       "2026-07-08"^^xsd:date ;
                kpred:description  "Offline jobs that review alignment/drift warnings in depth and propose graph changes for human review (never silent edits). DETERMINISTIC LAYER (functional): scripts/branch-align.ts --suggest turns each 'functional but untracked' drift into a pending suggestion in knowledge.pending.jsonl — features with kpred:remaining → propose in-dev; finished ones → propose in-production + a functional→production status-update; idempotent (dedup by subject+predicate+object); wired into npm run offline:sweep. FUTURE AGENT LAYER (planned): when OLLAMA_BASE_URL is set, a LOCAL model reads each flagged feature's triples + recent git and reasons about the correct env/status/proposal, grounded and emitted as a suggestion (ground-first + validate + emit-question, per the devstral salvage lesson). Extends the F33 pipeline and the offline procedures." ;
                kpred:relates-to   kb:release-pipeline .
+
+kb:visual-test-graph rdf:type ktype:Feature ;
+               rdfs:label    "Visual Test Review Graph" ;
+               kpred:feature-id   "F42" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:description  "Turn a visual-workflow run (F34 harness) into a REVIEWABLE GRAPH so a human can walk every test/step visually. Each step becomes a node (ktype:TestStep) carrying its annotated screenshot as a HOVER PREVIEW (urn:kbase:asset/preview, the existing hover-image slot), sequenced by hnav:order and grouped by workflow (skos:broader). Feasible on existing infra (confirmed 2026-07-08): (1) ORDERING FORCE - the 2D graph nav:order/hierarchy layout arranges steps in sequence; (2) LINEAR SCREEN MOVEMENT - the camera pans along the hnav:order chain; (3) STORY PROGRESSION - a generated story (like the TurtleChatPanel tours) automates the review, advancing step by step; (4) AUTO-OPEN PREVIEW - after the camera moves to a step, its screenshot hover-preview opens automatically, a hands-free manual review of each visual test. A generator (scripts/visual-graph.ts) scans the harness screenshot output + step metadata (incl boxTarget labels) and emits the TTL; screenshots overwrite in place (fixed paths, no long-term dupes; run artifacts gitignored). OFFLINE OLLAMA backing: a script captures screenshots DIRECTLY from deploy URLs (reckons.ai prod, dev/staging) and a local VLM (qwen2.5vl:7b) diff-detects prod->dev / staging->dev regressions, emitting findings as pending questions. Expand bounding boxes + labelling across all workflows. Depends on the harness + local-VLM review." ;
+               kpred:depends-on   kb:deep-testing ;
+               kpred:relates-to   kb:graph-ordering .
+
+kb:human-visual-annotation rdf:type ktype:Feature ;
+               rdfs:label    "In-App Human Visual Annotation" ;
+               kpred:feature-id   "F43" ;
+               kpred:has-status   "speculative" ;
+               kpred:description  "A big new feature set: humans review visual tests IN-APP and add their own bounding boxes, notes, and feedback on the screenshots, complementing the automated boxTarget from the harness. Draw/adjust boxes over a captured screenshot, label them, attach notes and pass/fail/feedback, all stored as graph entities (annotations on the F42 ktype:TestStep nodes) so review history lives in the graph. Turns visual QA into a collaborative human-in-the-loop workflow: the machine proposes boxes + VLM verdicts, the human confirms/refines/annotates. Builds on the Visual Test Review Graph (F42)." ;
+               kpred:relates-to   kb:visual-test-graph .
