@@ -15,6 +15,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import type { Page } from '@playwright/test';
+import { hasOllamaVlm } from './vision-vlm';
 
 // ── Model tiers ──────────────────────────────────────────────────────────────
 
@@ -265,10 +266,21 @@ export function hasMistralKey(): boolean {
 }
 
 export function availableTiers(): string[] {
-  const tiers: string[] = ['local']; // always available
+  const tiers: string[] = ['local']; // always available (pixels/DOM/text/touch)
+  // Local Ollama VLM (qwen2.5vl:7b) is the PREFERRED semantic image reviewer when
+  // opted in — offline + free, per the token-driven local-first model. Cloud
+  // Claude stays available as an optional higher-tier fallback below.
+  if (hasOllamaVlm()) tiers.push('ollama-vlm');
   if (hasMistralKey()) tiers.push('mistral-ocr');
   if (hasAnthropicKey()) {
     tiers.push('claude-haiku', 'claude-sonnet', 'claude-opus');
   }
   return tiers;
+}
+
+/** The preferred semantic image-review tier: local VLM when opted in, else cloud. */
+export function preferredReviewTier(): 'ollama-vlm' | 'claude-haiku' | 'none' {
+  if (hasOllamaVlm()) return 'ollama-vlm';
+  if (hasAnthropicKey()) return 'claude-haiku';
+  return 'none';
 }
