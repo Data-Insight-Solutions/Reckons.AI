@@ -16,7 +16,6 @@ const config: StorybookConfig = {
   stories: ['../src/stories/**/*.stories.@(ts|svelte)'],
   addons: [
     '@storybook/addon-essentials',
-    '@storybook/addon-svelte-csf',
   ],
   framework: {
     name: '@storybook/sveltekit',
