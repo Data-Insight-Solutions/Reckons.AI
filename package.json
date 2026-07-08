@@ -40,6 +40,7 @@
     "test:stories": "playwright test --config=playwright.visual.config.ts --project=user-stories",
     "test:visual:all": "playwright test --config=playwright.visual.config.ts",
     "branch-align": "npx tsx scripts/branch-align.ts",
+    "offline:sweep": "bash scripts/offline/alignment-sweep.sh",
     "bench:vlm": "npx tsx tests/visual/run-vlm-gate-bench.ts",
     "bench:vlm:save": "npx tsx tests/visual/run-vlm-gate-bench.ts --save",
     "bench:visual": "npx tsx tests/visual/run-visual-bench.ts",
