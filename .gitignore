@@ -61,3 +61,4 @@ static/docs-all.ttl
 
 # Visual workflow run artifacts (regenerated; overwritten per run)
 tests/visual/screenshots/
+tests/visual/*.ttl
