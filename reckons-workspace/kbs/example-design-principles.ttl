@@ -1,0 +1,44 @@
+# Example KB: classic visual design principles.
+# Content drafted by a local agent (devstral-small-2) during an offline run;
+# corrected on review — the draft had an undeclared ktype: prefix (unparseable),
+# a urn:kabase: namespace typo, and icon paths to non-existent /static/ files.
+@prefix kb:      <urn:kbase:concept/> .
+@prefix kpred:   <urn:kbase:predicate/> .
+@prefix kmeta:   <urn:kbase:meta/> .
+@prefix ktype:   <urn:kbase:type/> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+kb:example-design-graph a ktype:Graph ;
+    rdfs:label      "Design Principles Example Graph" ;
+    kpred:has-part  kb:principle-balance, kb:principle-contrast, kb:principle-movement,
+                    kb:principle-white-space, kb:principle-patterns .
+
+kb:principle-balance a ktype:Principle ;
+    rdfs:label        "Balance" ;
+    kmeta:name        "Balance" ;
+    kpred:description "Creates visual equilibrium by distributing elements evenly." .
+
+kb:principle-contrast a ktype:Principle ;
+    rdfs:label        "Contrast" ;
+    kmeta:name        "Contrast" ;
+    kpred:description "Uses differences in visual properties to create distinction." .
+
+kb:principle-movement a ktype:Principle ;
+    rdfs:label        "Movement" ;
+    kmeta:name        "Movement" ;
+    kpred:description "Guides the eye through implied motion or direction." .
+
+kb:principle-white-space a ktype:Principle ;
+    rdfs:label        "White Space" ;
+    kmeta:name        "White Space" ;
+    kpred:description "Emphasizes content by providing unoccupied areas." .
+
+kb:principle-patterns a ktype:Principle ;
+    rdfs:label        "Patterns" ;
+    kmeta:name        "Patterns" ;
+    kpred:description "Repeating decorative elements that create rhythm and structure." .
+
+kb:example-node-1 a ktype:Node ;
+    rdfs:label        "Example Node" ;
+    kpred:applies-to  kb:principle-balance .
