@@ -30,10 +30,16 @@
   import NotificationStack from '$lib/components/NotificationStack.svelte';
   import DownloadConsentDialog from '$lib/components/DownloadConsentDialog.svelte';
   import { initDownloadConsent } from '$lib/stores/download-consent.svelte';
+  import { initViewport } from '$lib/stores/viewport.svelte';
 
   let { children } = $props();
   let error = $state<string | null>(null);
   let forceShow = $state(false);
+
+  // Track viewport (breakpoint + coarse pointer) app-wide for responsive
+  // behaviour (F36). Client-only; the returned teardown removes matchMedia
+  // listeners on destroy.
+  $effect(() => initViewport());
 
   // Apply UI scale as root font-size whenever it changes
   const UI_SCALE_PX: Record<string, string> = { sm: '14px', md: '16px', lg: '18px' };
