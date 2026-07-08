@@ -58,3 +58,6 @@ reckons-workspace/kbs/*/sources.json
 reckons-workspace/knowledge.ttl
 reckons-workspace/knowledge.pending.jsonl
 static/docs-all.ttl
+
+# Visual workflow run artifacts (regenerated; overwritten per run)
+tests/visual/screenshots/
