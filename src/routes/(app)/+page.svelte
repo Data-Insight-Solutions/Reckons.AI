@@ -43,7 +43,8 @@
   ]);
   import { isIRI, isLit } from '$lib/rdf/types';
   import { requestShellyChat, setShellyChatOpen, shellyViewAdjust, clearShellyViewAdjust, shellySpotlight, exploreOpen, startExplore, stopExplore } from '$lib/stores/shelly-bridge.svelte';
-  import SnapPanel from '$lib/components/SnapPanel.svelte';
+  import AdaptivePanel from '$lib/components/AdaptivePanel.svelte';
+  import { isCompact } from '$lib/stores/viewport.svelte';
   import { Popover, ToggleGroup } from 'bits-ui';
   import { analysisRunning, lastAnalysisError } from '$lib/stores/auto-analyze.svelte';
   import { onMount, untrack } from 'svelte';
@@ -342,6 +343,10 @@
   let mergeTarget = $state('');
   let showSourceFilter = $state(false);
   let showTypeFilter = $state(false);
+  // Compact viewports show the filter/layout overlay as a bottom sheet behind a
+  // FAB (it's an always-on panel on desktop, which would block the graph on a
+  // phone). Desktop keeps the SnapPanel always open. (F36 phase 2b)
+  let filterSheetOpen = $state(false);
 
   // Build a set of subject IRIs matching the selected entity types
   const typedSubjects = $derived.by(() => {
@@ -1455,9 +1460,13 @@
   </section>
 </div>
 
-<!-- Floating filter UI overlay — hidden on landing page (no nodes yet) -->
+<!-- Floating filter UI overlay — hidden on landing page (no nodes yet).
+     Desktop: always-open SnapPanel. Compact: bottom sheet behind the FAB below. -->
+{#if isCompact() && visible.length > 0 && !filterSheetOpen}
+  <button class="filter-fab mono" onclick={() => (filterSheetOpen = true)} aria-label="Filters & layout">☰ filters</button>
+{/if}
 {#if visible.length > 0}
-<SnapPanel corner="top-left" width={360} minWidth={240} maxWidth={800} zIndex={300}>
+<AdaptivePanel corner="top-left" width={360} minWidth={240} maxWidth={800} zIndex={300} title="Filters & layout" open={isCompact() ? filterSheetOpen : true} onOpenChange={(o) => (filterSheetOpen = o)}>
 <div class="overlay-inner">
 
   <!-- FILTERS -->
@@ -1649,7 +1658,7 @@
 
 
 </div>
-</SnapPanel>
+</AdaptivePanel>
 {/if}
 
 {#if visible.length > 0}
@@ -1792,7 +1801,7 @@
 <!-- Unified node panel — shown when a node is selected -->
 {#if selected && nodeDetails}
   {@const info = nodeDetails}
-  <SnapPanel corner="bottom-right" width={320} minWidth={240} maxWidth={800} zIndex={300} extraStyle="max-height: calc(100vh - {124 + notificationStackHeight.get()}px)">
+  <AdaptivePanel corner="bottom-right" width={320} minWidth={240} maxWidth={800} zIndex={300} title={info.label} open={true} onOpenChange={(o) => { if (!o) { selected = null; editingLabel = false; showMergeUI = false; showRelationUI = false; showMergeReview = false; } }} extraStyle="max-height: calc(100vh - {124 + notificationStackHeight.get()}px)">
     {#snippet header()}
     <!-- Header: name + type + close -->
     <div class="np-header">
@@ -2250,7 +2259,7 @@
     {/if}
 
     </div><!-- np-body -->
-  </SnapPanel>
+  </AdaptivePanel>
 {/if}
 
 <!-- Full-screen merge review overlay -->
@@ -2353,6 +2362,29 @@
     flex-direction: column;
     gap: 0.5rem;
     padding: 0.6rem 0.7rem;
+  }
+
+  /* Compact-only trigger that opens the filter/layout sheet (F36 phase 2b). */
+  .filter-fab {
+    position: fixed;
+    top: 66px;
+    left: 12px;
+    z-index: 300;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0 0.85rem;
+    font-size: 0.8rem;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--rad-sm);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+  }
+  .filter-fab:hover {
+    border-color: var(--accent);
   }
 
   .overlay-group {
