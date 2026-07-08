@@ -434,8 +434,14 @@
       min-height: 44px;
     }
 
-    /* nav-pair: 44px minimum tap targets */
-    .nav-pair { margin: 0; border-radius: 6px; }
+    /* nav-pair: settings + info sit INLINE on the full-width bar (they stack
+       vertically in the desktop pill, which doubled the mobile bar's height). */
+    .nav-pair {
+      flex-direction: row;
+      background: none;
+      margin: 0;
+    }
+    .pair-divider { display: none; }
     .nav-pair-item {
       padding: 0.45rem 0.5rem;
       min-width: 36px;
