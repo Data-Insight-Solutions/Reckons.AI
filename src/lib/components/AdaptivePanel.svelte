@@ -25,7 +25,10 @@
     title,
     corner = 'bottom-right' as Corner,
     width = 320,
+    minWidth = 180,
+    maxWidth = 800,
     zIndex = 300,
+    extraStyle = '',
     header,
     children,
   }: {
@@ -35,7 +38,11 @@
     title?: string;
     corner?: Corner;
     width?: number;
+    minWidth?: number;
+    maxWidth?: number;
     zIndex?: number;
+    /** Forwarded to SnapPanel on desktop (e.g. max-height); ignored by the Sheet. */
+    extraStyle?: string;
     header?: Snippet;
     children?: Snippet;
   } = $props();
@@ -44,5 +51,5 @@
 {#if isCompact()}
   <Sheet bind:open {onOpenChange} {title} zIndex={Math.max(zIndex, 500)} {header} {children} />
 {:else if open}
-  <SnapPanel {corner} {width} {zIndex} {header} {children} />
+  <SnapPanel {corner} {width} {minWidth} {maxWidth} {zIndex} {extraStyle} {header} {children} />
 {/if}
