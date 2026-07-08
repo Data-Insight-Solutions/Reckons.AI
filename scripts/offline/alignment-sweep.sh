@@ -67,7 +67,7 @@ fi
 # ── 5. Release-pipeline alignment (deterministic; no LLM) ──────────────────────
 log ""
 log "[5] branch-align (graph pipeline vs git)…"
-npm run --silent branch-align 2>&1 | tee -a "$REPORT" || log "  (branch-align reported drift — see above)"
+npx tsx scripts/branch-align.ts --suggest 2>&1 | tee -a "$REPORT" || log "  (branch-align reported drift — see above)"
 
 # ── 6. Code ↔ KB alignment (F26) ──────────────────────────────────────────────
 log ""

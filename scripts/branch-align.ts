@@ -14,9 +14,15 @@
  *
  * Usage: npm run branch-align   (or: npx tsx scripts/branch-align.ts)
  */
-import { readFileSync } from 'fs';
+import { readFileSync, appendFileSync } from 'fs';
 import { execSync } from 'child_process';
 import N3 from 'n3';
+
+// --suggest: instead of only reporting drift, queue proposed graph changes as
+// pending entries for human review in Reckons.AI (offline-agent workflow).
+const SUGGEST = process.argv.includes('--suggest');
+const PENDING = 'reckons-workspace/knowledge.pending.jsonl';
+const TODAY = new Date().toISOString().slice(0, 10);
 
 const KP = 'urn:kbase:predicate/';
 const KT = 'urn:kbase:type/';
@@ -57,7 +63,7 @@ envs.sort((a, b) => order.indexOf(a.branch ?? '') - order.indexOf(b.branch ?? ''
 
 // ── Features ──────────────────────────────────────────────────────────────────
 interface Feat {
-  iri: string; id: string; label: string; status?: string;
+  iri: string; id: string; label: string; status?: string; remaining?: string;
   inDev?: string; inStaging?: string; inProduction?: string;
   devApproved?: string; stakeholderApproved?: string;
 }
@@ -66,11 +72,15 @@ for (const [s, list] of bySubject) {
   const id = one(list, 'feature-id');
   if (!id) continue;
   features.push({
-    iri: s, id, label: label(list, s), status: one(list, 'has-status'),
+    iri: s, id, label: label(list, s), status: one(list, 'has-status'), remaining: one(list, 'remaining'),
     inDev: one(list, 'in-dev'), inStaging: one(list, 'in-staging'), inProduction: one(list, 'in-production'),
     devApproved: one(list, 'dev-approved'), stakeholderApproved: one(list, 'stakeholder-approved'),
   });
 }
+
+// Proposed graph changes accumulated alongside drift when --suggest is set.
+interface Sug { subject: string; predicate: string; object: string; note: string; type: string; }
+const suggestions: Sug[] = [];
 const inProd = (f: Feat) => !!f.inProduction || f.status === 'production';
 
 // ── Git ───────────────────────────────────────────────────────────────────────
@@ -131,8 +141,21 @@ for (const f of features) {
     drift.push(`${f.id} is marked in-dev but has-status 'production' — contradiction.`);
   if (f.inProduction && f.status !== 'production')
     drift.push(`${f.id} is marked in-production but has-status '${f.status}' (expected 'production').`);
-  if (f.status === 'functional' && !f.inDev && !f.inStaging && !f.inProduction)
+  if (f.status === 'functional' && !f.inDev && !f.inStaging && !f.inProduction) {
     drift.push(`${f.id} '${f.label}' is 'functional' but not tracked in any environment (missing in-dev?).`);
+    // Proposed fix: features with outstanding work belong in dev; finished ones
+    // are already live on main, so track them in-production and promote the
+    // maturity status to match. Both are proposals — the human accepts/adjusts.
+    if (f.remaining) {
+      suggestions.push({ subject: f.iri, predicate: KP + 'in-dev', object: TODAY, type: 'suggestion',
+        note: `${f.id} is 'functional' with remaining work ("${f.remaining.slice(0, 60)}...") — track in dev.` });
+    } else {
+      suggestions.push({ subject: f.iri, predicate: KP + 'in-production', object: TODAY, type: 'suggestion',
+        note: `${f.id} is 'functional' with no remaining work — appears shipped/live on main; track in-production.` });
+      suggestions.push({ subject: f.iri, predicate: KP + 'has-status', object: 'production', type: 'status-update',
+        note: `${f.id} promote maturity 'functional' → 'production' to match in-production tracking.` });
+    }
+  }
   if (f.inStaging && !f.inDev)
     drift.push(`${f.id} is in-staging but never marked in-dev (skipped the developer gate?).`);
   if (f.inProduction && f.inDev && !f.stakeholderApproved && !f.devApproved)
@@ -150,6 +173,34 @@ if (drift.length === 0) {
 } else {
   console.log(col(C.r, `⚠ ${drift.length} drift warning(s):`));
   for (const d of drift) console.log(col(C.y, `  • ${d}`));
+}
+
+// ── Suggestions (--suggest) ─────────────────────────────────────────────────
+if (SUGGEST && suggestions.length > 0) {
+  // Idempotent: skip any suggestion already present (same subject+predicate+object)
+  // so repeated offline runs don't pile up duplicates.
+  const existing = new Set<string>();
+  try {
+    for (const l of readFileSync(PENDING, 'utf8').split('\n')) {
+      if (!l.trim()) continue;
+      try { const o = JSON.parse(l); existing.add(`${o.subject}|${o.predicate}|${o.object}`); } catch { /* skip */ }
+    }
+  } catch { /* no pending file yet */ }
+  const fresh = suggestions.filter((s) => !existing.has(`${s.subject}|${s.predicate}|${s.object}`));
+  const skipped = suggestions.length - fresh.length;
+  if (fresh.length > 0) {
+    const lines = fresh.map((s) => JSON.stringify({
+      subject: s.subject, predicate: s.predicate, object: s.object, note: s.note,
+      type: s.type, agent: 'offline:branch-align', priority: 'medium',
+      addedAt: new Date().toISOString(), addedByMcp: true,
+    })).join('\n') + '\n';
+    appendFileSync(PENDING, lines);
+    console.log(col(C.b, `\n↳ queued ${fresh.length} graph-change suggestion(s) → ${PENDING}`));
+    console.log(col(C.dim, '  Review in Reckons.AI (Review tab → drain ↻) — accept, adjust, or reject each.'));
+  }
+  if (skipped > 0) console.log(col(C.dim, `  (${skipped} already queued — skipped)`));
+} else if (SUGGEST) {
+  console.log(col(C.dim, '\n(no suggestable drift — nothing queued)'));
 }
 console.log('');
 process.exit(drift.length > 0 ? 1 : 0);
