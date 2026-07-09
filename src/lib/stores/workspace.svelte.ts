@@ -257,34 +257,70 @@ async function writeAssetsToFolder(
   }
 }
 
+/** Recursively yield the path segments of every `.ttl` file under `dir`.
+ *  Skips `assets/` subdirectories (binary asset stores, not KBs). */
+async function* walkTtls(dir: any, prefix: string[] = []): AsyncGenerator<string[]> {
+  for await (const entry of dir.values()) {
+    if (entry.kind === 'directory') {
+      if (entry.name === 'assets') continue;
+      yield* walkTtls(entry, [...prefix, entry.name]);
+    } else if (entry.kind === 'file' && entry.name.endsWith('.ttl') && entry.name !== WORKSPACE_KB_FILE) {
+      // Skip the MCP combined export (knowledge.ttl) so it isn't imported as a
+      // duplicate KB alongside the real per-graph files.
+      yield [...prefix, entry.name];
+    }
+  }
+}
+
+/** Read a `.ttl` by its path segments relative to the workspace root. */
+export async function readTtlByPath(segs: string[]): Promise<string | null> {
+  if (!_handle) return null;
+  try {
+    let dir: any = _handle;
+    for (const seg of segs.slice(0, -1)) dir = await dir.getDirectoryHandle(seg);
+    return await readFromDir(dir, segs[segs.length - 1]);
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Scan the kbs/ directory for KB folders (those containing a TTL file —
- * `{folderName}.ttl`, or the legacy `kb.ttl`).
- * KB name is derived from the folder name. StableId is extracted from the TTL.
+ * Discover every KB in the workspace: ANY `.ttl` file anywhere under the linked
+ * folder (recursive) — not just the `kbs/{name}/{name}.ttl` convention. A loose
+ * file is named after its filename; a conventional `kbs/{name}/{name}.ttl` (or
+ * legacy `kb.ttl`) is named after its folder. Legacy `kb.ttl` is dropped when a
+ * named sibling exists so a KB isn't listed twice. Each entry carries the file
+ * `path` so it can be read regardless of location.
  */
-export async function listKbFolders(): Promise<Array<{ folderName: string; meta: KbMeta }>> {
+export async function listKbFolders(): Promise<Array<{ folderName: string; path: string[]; meta: KbMeta }>> {
   if (!_handle) return [];
   try {
-    const kbsDir = await _handle.getDirectoryHandle('kbs');
-    const results: Array<{ folderName: string; meta: KbMeta }> = [];
+    const paths: string[][] = [];
+    for await (const p of walkTtls(_handle)) paths.push(p);
 
-    for await (const entry of (kbsDir as any).values()) {
-      if (entry.kind !== 'directory') continue;
-      const ttl = await readKbTtl(entry, entry.name);
-      if (!ttl) continue;
-
-      // Extract stableId from TTL content (lightweight regex, no full parse)
-      const stableIdMatch = ttl.match(/kbStableId[>"]\s+"([^"]+)"/);
-      const meta: KbMeta = {
-        name: entry.name,
-        stableId: stableIdMatch?.[1],
-      };
-      results.push({ folderName: entry.name, meta });
+    // Track filenames per directory to drop legacy kb.ttl duplicates.
+    const dirFiles = new Map<string, Set<string>>();
+    for (const p of paths) {
+      const d = p.slice(0, -1).join('/');
+      (dirFiles.get(d) ?? dirFiles.set(d, new Set()).get(d)!).add(p[p.length - 1]);
     }
 
+    const results: Array<{ folderName: string; path: string[]; meta: KbMeta }> = [];
+    for (const p of paths) {
+      const file = p[p.length - 1];
+      const dirSegs = p.slice(0, -1);
+      const dirName = dirSegs[dirSegs.length - 1] ?? '';
+      if (file === 'kb.ttl' && dirFiles.get(dirSegs.join('/'))?.has(`${dirName}.ttl`)) continue;
+      const conventional = dirSegs[0] === 'kbs' && (file === `${dirName}.ttl` || file === 'kb.ttl');
+      const folderName = conventional ? dirName : file.replace(/\.ttl$/, '');
+
+      const ttl = await readTtlByPath(p);
+      const stableIdMatch = ttl?.match(/kbStableId[>"]\s+"([^"]+)"/);
+      results.push({ folderName, path: p, meta: { name: folderName, stableId: stableIdMatch?.[1] } });
+    }
     return results;
   } catch {
-    return []; // kbs/ dir doesn't exist yet
+    return [];
   }
 }
 
@@ -591,7 +627,7 @@ export async function importKbsFromWorkspace(): Promise<{ imported: string[]; sk
   const imported: string[] = [];
   const skipped: string[] = [];
 
-  for (const { folderName, meta } of folders) {
+  for (const { folderName, path, meta } of folders) {
     // Skip if a KB with the same name or stableId already exists
     if (existing.has(meta.name.toLowerCase()) || existing.has(folderName.toLowerCase())) {
       skipped.push(meta.name);
@@ -602,8 +638,12 @@ export async function importKbsFromWorkspace(): Promise<{ imported: string[]; sk
       continue;
     }
 
-    // Read the TTL file
-    const data = await readKbFromFolder(folderName);
+    // Read the TTL. Conventional kbs/{name}/ folders read their assets too;
+    // a loose .ttl anywhere reads just the graph (inline data — no asset dir).
+    const conventional = path.length === 3 && path[0] === 'kbs';
+    const data = conventional
+      ? await readKbFromFolder(folderName)
+      : await readTtlByPath(path).then((ttl) => (ttl ? { ttl, meta, assets: new Map<string, Uint8Array>() } : null));
     if (!data?.ttl) {
       skipped.push(meta.name);
       continue;
