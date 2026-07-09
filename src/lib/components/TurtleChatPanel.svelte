@@ -288,13 +288,36 @@
       });
     }
 
+    // F34: detect a visual-test story (TestStep / story:Step nodes carrying a
+    // screenshot + assertion + verdict) so Shelly reviews it screen-by-screen
+    // instead of describing the graph generically.
+    const STEP_TYPES = new Set(['urn:reckons:story/Step', 'urn:kbase:type/TestStep']);
+    const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
+    const reviewSteps: NonNullable<KBContext['reviewSteps']> = [];
+    for (const [iri, sts] of bySubject) {
+      if (!sts.some((s) => s.p.value === RDF_TYPE && STEP_TYPES.has(s.o.value))) continue;
+      const val = (preds: string[]) => sts.find((s) => preds.includes(s.p.value))?.o.value ?? null;
+      const orderStr = val(['urn:reckons:story/order', 'urn:reckons:nav/order']);
+      reviewSteps.push({
+        iri,
+        order: orderStr ? parseInt(orderStr, 10) || 0 : 0,
+        title: val(['urn:reckons:story/title', RDFS_LABEL]) ?? iri.split('/').pop() ?? iri,
+        assertion: val(['urn:kbase:predicate/assertion']),
+        result: val(['urn:kbase:predicate/result']),
+        page: val(['urn:kbase:predicate/page']),
+        hasScreenshot: sts.some((s) => s.p.value === 'urn:kbase:meta/gif' || s.p.value === 'urn:kbase:predicate/icon2d'),
+      });
+    }
+    reviewSteps.sort((a, b) => a.order - b.order);
+
     return {
       statementCount: stmts.length,
       sourceCount: sources().length,
       typesPresent: [...typesPresent],
       untypedEntityCount,
       manualStatementCount,
-      sampleEntities
+      sampleEntities,
+      reviewSteps: reviewSteps.length ? reviewSteps : undefined
     };
   }
 

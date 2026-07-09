@@ -57,7 +57,24 @@ Action guide (add_triple, remove_triple, set_type take effect immediately on use
 
 Only include the action block when you have concrete changes or navigation to propose. Always explain BEFORE the block. The user must approve each action.`;
 
+function buildReviewSection(ctx: KBContext): string {
+  const steps = (ctx.reviewSteps ?? [])
+    .map((s, i) => {
+      const bits = [
+        `Step ${i + 1} — ${s.title}`,
+        s.page ? `on ${s.page}` : '',
+        s.hasScreenshot ? 'screenshot ✓' : 'no screenshot',
+        s.assertion ? `asserts: ${s.assertion}` : '',
+        s.result ? `verdict: ${s.result}` : '',
+      ].filter(Boolean);
+      return `  ${i + 1}. ${bits.join(' · ')}  <${s.iri}>`;
+    })
+    .join('\n');
+  return `\n\n---\nVISUAL REVIEW — this graph is a visual-test story with ${ctx.reviewSteps!.length} step(s). Each step captured a screen; walk them IN ORDER and review the picture, not the graph. The steps (with their IRIs — use these in adjust_view selectEntity to bring each screenshot on screen):\n${steps}`;
+}
+
 function buildContextSection(ctx: KBContext): string {
+  if (ctx.reviewSteps?.length) return buildReviewSection(ctx);
   const entities = ctx.sampleEntities
     .slice(0, 15)
     .map((e) => `  • ${e.label}${e.type ? ` [${e.type}]` : ' [NO TYPE]'} <${e.iri}>: ${e.predicates.slice(0, 3).join(', ')}`)
@@ -129,6 +146,33 @@ Examples:
 - Highlight islands: {"type":"adjust_view","filters":["islands"],"label":"spotlighting isolated nodes"}
 
 CRITICAL: Every message MUST end with a question. Every message MUST include a <kb-actions> block with one adjust_view. Plain text descriptions of navigation (like "adjust_view { layout: hub }") will NOT work — only the <kb-actions> JSON block works.`;
+
+const REVIEW_SYSTEM_PROMPT = `You are Shelly 🐢, guiding a VISUAL TEST REVIEW in Reckons.AI. This graph is not a knowledge base to describe — it is a captured run of the app, one screenshot per step. Your job is to help the reviewer LOOK at each screen and decide if it's right.
+
+REVIEW MODE — you drive a screen-by-screen review, not a graph tour.
+
+RULES (strict):
+- The VISUAL REVIEW list below is your source of truth. Do NOT invent what a screen shows beyond its title/page/assertion/verdict — you can't see the pixels; the reviewer can. Frame observations as prompts for THEM ("does the nav bar look right?"), not claims.
+- Never call this a KB "about" a topic. It is a visual test of the app's UI. Do not guess a subject/domain.
+- Go through the steps IN ORDER (Step 1, 2, 3 …). One step per message.
+
+Each message:
+1. Name the step and what screen it captured (from its title/page), e.g. "Step 1 — the nav bar, on /".
+2. If it has an assertion/verdict, state it plainly ("it should have no blank fill; recorded verdict: ok").
+3. adjust_view with selectEntity = that step's IRI + layout "focus", so its screenshot comes on screen.
+4. Ask ONE question: does this screen look right, or should we flag it?
+
+If the reviewer flags a step, acknowledge it and propose recording the flag as a pending note with an add_triple action (subject = the step IRI, predicate "urn:kbase:predicate/review-flag", object = their reason) so it queues for review — then move to the next step. If they confirm, briefly acknowledge and continue.
+
+STARTING: on "START_TOUR", greet in one sentence, say this is the "<name>" visual review with N steps, then go to Step 1 (focus its IRI) and ask your first question.
+
+ACTION FORMAT — every message MUST end with exactly one <kb-actions> block containing an adjust_view (usually focus on the current step's IRI):
+
+<kb-actions>
+[{"type":"adjust_view","selectEntity":"<step IRI>","layout":"focus","label":"step 1 — nav bar"}]
+</kb-actions>
+
+CRITICAL: every message ends with a question AND a <kb-actions> block. Plain-text navigation does not work — only the JSON block does.`;
 
 export type TurtleChatProvider = 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'reckons' | 'chrome-ai';
 
@@ -237,7 +281,11 @@ export interface TurtleChatOptions {
 
 export async function turtleChat(opts: TurtleChatOptions): Promise<TurtleChatResponse> {
   const { provider, apiKey, model, ollamaBaseUrl, reckonsBaseUrl, messages, kbContext, exploreMode, voiceMode, customPrompt, publishedMode } = opts;
-  let basePrompt = exploreMode ? EXPLORE_SYSTEM_PROMPT : SYSTEM_PROMPT;
+  // A visual-test story (reviewSteps present) reviews screen-by-screen; a normal
+  // tour explores; otherwise it's the plain assistant. (F34)
+  let basePrompt = kbContext.reviewSteps?.length
+    ? REVIEW_SYSTEM_PROMPT
+    : exploreMode ? EXPLORE_SYSTEM_PROMPT : SYSTEM_PROMPT;
   if (voiceMode) basePrompt = VOICE_MODE_PREFIX + basePrompt;
   if (customPrompt?.trim()) basePrompt = customPrompt.trim() + '\n\n' + basePrompt;
   if (publishedMode) basePrompt = PUBLISHED_ETHICS_WRAPPER + basePrompt;
