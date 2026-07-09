@@ -1307,3 +1307,33 @@ kb:sveltia-edit-mapping rdf:type ktype:Feature ;
                kpred:depends-on   kb:graph-publishing ;
                kpred:relates-to   kb:release-pipeline ;
                kpred:relates-to   kb:change-notes .
+
+# -- Graph-as-Site-Navigation (F49) --------------------------------------------
+# The published site's map IS the graph: WebPage nodes appear as graph nodes, a
+# landing page + subpage nav is defined and edited in-graph, and nav edges use a
+# MUCH lighter force so a nav hub linking many pages doesn't distort the graph.
+
+kb:graph-as-navigation rdf:type ktype:Feature ;
+               rdfs:label    "Graph-as-Site-Navigation" ;
+               kpred:feature-id   "F49" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:principle    "The graph is the PRIMARY navigation of what pages are published and where they're accessed — not a separate site-map UI. Publishing structure lives in, and is edited from, the graph." ;
+               kpred:description  "Make published pages first-class citizens of the graph so the graph itself is the site map. PARTS: (1) WebPage nodes (ktype:WebPage, F27) RENDER as graph nodes — visible alongside concepts, distinguishable (icon/type), selectable. (2) In-graph site structure: define a LANDING/home page and navigation to SUBPAGES as graph edges (reuse skos:broader for parent/child + nav:next/prev for sequence, the same hierarchy vocabulary the hnav trees use), created and rearranged in the graph. (3) LIGHT-FORCE nav edges — CRITICAL: page/nav edges must carry a much lower force-directed spring weight than concept edges, because a nav hub connected to many published pages (or pages linked across every concept) would otherwise collapse/warp the main graph shape. Introduce per-edge-kind force weights (concept edges normal; page/nav edges very light, or excluded from the main force pass and laid out in a secondary/orbit pass) so adding the whole published site never distorts the knowledge layout. (4) In-graph PAGE METADATA editing: edit slug, section, template, status, title from the node panel (writes the urn:kbase:page/* triples; round-trips via F27 site-export + md-align). (5) Publishing map: from any concept, see which pages reference/derive from it and jump to them; from a page node, open the published /docs URL. Builds on F27 graph publishing and relates to F46 (question-context pages, another in-graph page attach), the 2D/3D graph (per-edge force weights), and the /docs route." ;
+               kpred:depends-on   kb:graph-publishing ;
+               kpred:relates-to   kb:knowledge-graph ;
+               kpred:relates-to   kb:question-context-pages .
+
+# -- Import & Workspace UX Rework (F50) ----------------------------------------
+# The current import + workspace/graph-settings flow is confusing: graph-scoped
+# actions live in global Settings, "sync" (write) vs "import" (read) are easy to
+# mix up, and a bare-.ttl import silently drops assets. Rework around the graph.
+
+kb:import-workspace-ux rdf:type ktype:Feature ;
+               rdfs:label    "Import & Workspace UX Rework" ;
+               kpred:feature-id   "F50" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:description  "Fix the confusing import + workspace/graph-settings experience (user feedback 2026-07-09: 'how horrible the import and workspace/graph settings are right now'). PROBLEMS: (a) graph-data actions (import graphs from folder, sync) live in GLOBAL Settings, far from where graphs are managed; (b) the nav item labelled 'graph' goes to /kb (registry) while the graph VIEW is / — so 'graph settings' has no obvious home; (c) 'sync all graphs now' (WRITE: browser KBs -> folder) reads as the same thing as 'import graphs from folder' (READ: folder -> browser), and the count/'3 graphs' compounds the confusion; (d) importing a bare .ttl silently loses binary assets (icons/previews/models) — folder import restores them (partly addressed: an import-time warning now points to folder import). DIRECTION: (1) surface graph import/export ON the graph page (/kb) where graphs are managed — the user's choice — keeping detailed workspace CONFIG in Settings; (2) clearly separate and label the two DIRECTIONS (push-to-folder vs pull-from-folder) with plain wording and per-direction affordances; (3) make import asset-aware (prefer conventional kbs/{name}/ folders that carry assets; warn on loose/bare .ttl); (4) reconsider naming ('graph' nav vs graph view). Relates to F48 (Sveltia edit routing, the other workspace-branch surface), F27 publishing, and the recursive folder-discovery fix. Small deterministic wins land first; the fuller IA rework is scoped here." ;
+               kpred:relates-to   kb:sveltia-edit-mapping ;
+               kpred:relates-to   kb:graph-publishing .
