@@ -67,6 +67,7 @@
     "kb:setup": "bash scripts/setup-reckons-workspace.sh",
     "kb:stats": "npx tsx tests/bench/run-kb-workflow.ts stats",
     "md-align": "npx tsx scripts/md-align.ts",
+    "offline:all": "npx tsx scripts/offline/run-all.ts",
     "offline:sweep": "bash scripts/offline/alignment-sweep.sh",
     "offline:visual-diff": "npx tsx scripts/offline/visual-diff.ts",
     "preview": "vite preview",
