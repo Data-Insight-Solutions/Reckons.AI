@@ -1,5 +1,5 @@
-# generated 2026-06-29T21:27:37.364Z
-# 237 statements
+# generated 2026-07-09T03:48:46.608Z
+# 282 statements
 
 @prefix kb: <urn:kbase:concept/> .
 @prefix src: <urn:kbase:source/> .
@@ -11,6 +11,13 @@
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix prov: <http://www.w3.org/ns/prov#> .
 @prefix dc: <http://purl.org/dc/terms/> .
+
+<urn:demo:entity/devstral-small-2>
+    <urn:demo:pred/achieved> "top agent score 0.98" ;
+    <urn:demo:pred/passed> "every task with fewest turns" ;
+    <urn:demo:pred/achieved> "top agent score 0.98" ;
+    <urn:demo:pred/achieved> "top agent score 0.98" ;
+    <urn:demo:pred/passed> "every task with fewest turns" .
 
 <urn:reckons:integration/WebScraping>
     rdf:type <urn:kbase:type/Concept> ;
@@ -94,6 +101,12 @@
     <http://www.w3.org/2004/02/skos/core#definition> "An open protocol by Anthropic for connecting AI models to external data sources. Reckons.AI implements a standalone MCP server (Node.js) with 11 tools that reads workspace TTL files. Multi-KB support via MultiKBReader." ;
     <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:integration/MCPServer> .
 
+kb:docs-pipeline
+    pred:has-status "production" ;
+    pred:in-production "2026-07-08" ;
+    pred:has-status "production" ;
+    pred:in-production "2026-07-08" .
+
 <urn:reckons:integration/PDFImport>
     rdf:type <urn:kbase:type/Concept> ;
     <http://www.w3.org/2004/02/skos/core#definition> "Upload PDFs or images. Mistral OCR extracts text, then the LLM extracts triples. Contracts, invoices, academic papers -- all become structured knowledge." ;
@@ -160,6 +173,11 @@
     <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:integration/Integrations> ;
     rdf:type <urn:kbase:type/Concept> .
 
+<urn:demo:entity/qwen3-coder>
+    <urn:demo:pred/came> "second" ;
+    <urn:demo:pred/came> "second" ;
+    <urn:demo:pred/came> "second" .
+
 <urn:reckons:integration/N8nSourceMonitor>
     <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:integration/N8nCloudSync> ;
     <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:integration/N8nCloudSync> ;
@@ -169,6 +187,12 @@
     rdfs:label "Source Monitor (n8n)" ;
     <http://www.w3.org/2004/02/skos/core#definition> "n8n workflow running every 6 hours. Fetches watched URLs, computes content hash, compares against stored hash. Changed URLs produce pending notes that surface via the Sync Hub pending endpoint." ;
     rdfs:label "Source Monitor (n8n)" .
+
+kb:webpage-entity
+    pred:in-production "2026-07-08" ;
+    pred:has-status "production" ;
+    pred:in-production "2026-07-08" ;
+    pred:has-status "production" .
 
 <urn:reckons:integration/VSCodeExtension>
     rdf:type <urn:kbase:type/Concept> ;
@@ -238,6 +262,12 @@
     <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:tech/Architecture> ;
     <http://www.w3.org/2004/02/skos/core#definition> "Service worker (via @vite-pwa/sveltekit) enables offline access after first load. HuggingFace model downloads cached with CacheFirst strategy. Installable on desktop and mobile." .
 
+kb:context-compression
+    pred:has-status "production" ;
+    pred:in-production "2026-07-08" ;
+    pred:has-status "production" ;
+    pred:in-production "2026-07-08" .
+
 <urn:reckons:tech/Dexie>
     <http://www.w3.org/2004/02/skos/core#definition> "Promise-based wrapper around IndexedDB. All KB data (statements, sources, changelog, settings) stored locally. Each KB is a separate Dexie database instance." ;
     <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:tech/Architecture> ;
@@ -256,6 +286,14 @@
     rdfs:label "Google Calendar" ;
     <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:integration/Integrations> ;
     <http://www.w3.org/2004/02/skos/core#definition> "Import events as triples via OAuth. Dates, times, attendees, descriptions, and recurrence patterns become structured, queryable knowledge. Recurring events expanded with safety limits." .
+
+<urn:demo:entity/qwen2-5vl-7b>
+    <urn:demo:pred/selected-as> "visual gate" ;
+    <urn:demo:pred/scored> "94% accuracy with zero misses" ;
+    <urn:demo:pred/selected-as> "visual gate" ;
+    <urn:demo:pred/scored> "94% accuracy with zero misses" ;
+    <urn:demo:pred/scored> "94% accuracy with zero misses" ;
+    <urn:demo:pred/selected-as> "visual gate" .
 
 <urn:reckons:tech/N3js>
     <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:tech/Architecture> ;
@@ -276,6 +314,10 @@
     rdfs:label "Whisper STT" ;
     <http://www.w3.org/2004/02/skos/core#definition> "Local speech-to-text via @huggingface/transformers using onnx-community/whisper-tiny (42MB quantized). Mic button in the chat tab. Runs entirely in-browser -- no cloud required." ;
     <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:integration/Integrations> .
+
+<urn:demo:entity/vlm-gate-benchmark>
+    <urn:demo:pred/evaluated> "four local vision models" ;
+    <urn:demo:pred/evaluated> "four local vision models" .
 
 <urn:reckons:integration/WorkspaceSync>
     <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:integration/Integrations> ;
@@ -307,7 +349,38 @@
     <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:tech/Architecture> ;
     <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:tech/Architecture> .
 
+kb:post-template
+    pred:has-status "production" ;
+    pred:in-production "2026-07-08" ;
+    pred:has-status "production" ;
+    pred:in-production "2026-07-08" .
+
+kb:voice-interface
+    pred:in-dev "2026-07-08" ;
+    pred:in-dev "2026-07-08" .
+
+kb:review-workbench
+    pred:has-status "production" ;
+    pred:has-status "production" ;
+    pred:in-production "2026-07-08" ;
+    pred:in-production "2026-07-08" .
+
+<urn:demo:entity/embedding-model>
+    <urn:demo:pred/quantization> kb:q4 ;
+    <urn:demo:pred/quantization> undefined .
+
+<l:UNKNOWN — needs human answer||>
+    rdfs:label "q4" .
+
+kb:ci-cd-kb-watch
+    pred:in-production "2026-07-08" ;
+    pred:in-production "2026-07-08" ;
+    pred:has-status "production" ;
+    pred:has-status "production" .
+
 # ---- provenance ----
+<urn:kbase:stmt/000ed257-21a5-4980-bf43-d3945523c87c> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783462474095> ;
+    dc:created "2026-07-07T22:09:44.000Z"^^xsd:dateTime .
 <urn:kbase:stmt/00238207-f62a-4ec5-bb61-5e1d7556f1d4> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/005dd863-7b56-4eec-9d71-b13358a0b115> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
@@ -326,6 +399,8 @@
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/09e87d90-8f33-497d-ae01-3d7a8c82265a> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
+<urn:kbase:stmt/0cd23c77-0b15-43a1-b4d7-0df123980b3d> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522021989> ;
+    dc:created "2026-07-08T14:46:34.630Z"^^xsd:dateTime .
 <urn:kbase:stmt/0e9c63a0-bbb9-4457-a3ab-f0f7c848783c> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/0eee0bf4-c32d-4102-b8c3-9f2b2b2063c4> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
@@ -342,16 +417,22 @@
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/145e677e-852f-4467-b30e-26a538bf0ea0> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
+<urn:kbase:stmt/1593b4a4-2486-45be-b2bf-1eb5b7ce9d2a> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783462474095> ;
+    dc:created "2026-07-07T22:09:44.000Z"^^xsd:dateTime .
 <urn:kbase:stmt/15ca4d8e-e5ae-4fd3-8610-071d543ffb51> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/16741b60-8005-4454-bfe0-599f7cb24fc8> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
+<urn:kbase:stmt/16d75dc4-5d6c-48a0-9985-a3512b4c3485> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522021989> ;
+    dc:created "2026-07-08T14:46:34.630Z"^^xsd:dateTime .
 <urn:kbase:stmt/172c0a89-15af-4b4a-a74e-c98b7e3f1bb1> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/177ea701-d2de-4d69-9e77-961aa9c911ba> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/181afe58-0e22-44cc-98a0-2d355fd01af6> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
+<urn:kbase:stmt/1a1d154d-038e-4194-bd7f-9336abbd9c58> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783461446445> ;
+    dc:created "2026-07-07T21:56:14.000Z"^^xsd:dateTime .
 <urn:kbase:stmt/1aae97c3-b1bf-4602-aae8-85357f3cc00e> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/1cca9672-969b-4fc7-a715-85344b288c7b> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
@@ -362,6 +443,8 @@
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/20aa4b00-0348-4abe-8c2e-522d83272991> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
+<urn:kbase:stmt/20c790b2-d936-4d0e-b31f-bca7088a901e> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522021989> ;
+    dc:created "2026-07-08T14:46:34.630Z"^^xsd:dateTime .
 <urn:kbase:stmt/21c9cd38-4a1e-4558-bf85-b35abe9a8696> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/22a64455-5bcf-48d5-bf5d-79884bff8ac6> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
@@ -370,6 +453,8 @@
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/237c2aac-fc4c-4a7a-a838-2b6263482780> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
+<urn:kbase:stmt/263f68f0-e0f8-402b-b9ac-8f2c79386a66> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522169028> ;
+    dc:created "2026-07-08T14:47:44.408Z"^^xsd:dateTime .
 <urn:kbase:stmt/268f5c42-4f85-4264-8ae1-06ca409684b0> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/26c2aff9-aa3b-412a-9ba4-e4c0390f87de> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
@@ -398,10 +483,16 @@
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/32fefc66-1d88-4b0e-aa87-dbd4bc08ffa6> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
+<urn:kbase:stmt/33e83392-95cd-41c1-aa49-03c5a51e3b02> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522169028> ;
+    dc:created "2026-07-08T14:47:44.408Z"^^xsd:dateTime .
+<urn:kbase:stmt/348574cd-21bf-42ac-85a2-f85bd961ba6a> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783458682263> ;
+    dc:created "2026-07-07T20:50:13.000Z"^^xsd:dateTime .
 <urn:kbase:stmt/35c54ad7-4739-44ef-b6a7-459294c5f598> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/36a540c8-9718-4303-a979-dd6cbc6b1eef> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
+<urn:kbase:stmt/37861cf7-734d-4e4e-8486-2ca08590ebd8> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783461446445> ;
+    dc:created "2026-07-07T21:56:14.000Z"^^xsd:dateTime .
 <urn:kbase:stmt/381357dc-1f62-4f4a-81c6-65a493baf4f4> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/385e822c-ff21-41ba-8571-cd711894ed4f> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
@@ -414,6 +505,8 @@
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/40e8c380-8cd0-4a5c-bb23-f1f50e2f97ad> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
+<urn:kbase:stmt/417b78e2-e1b6-47c5-a404-efc3ce2ba573> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783458682263> ;
+    dc:created "2026-07-07T20:50:13.000Z"^^xsd:dateTime .
 <urn:kbase:stmt/42261a63-fe38-49d1-a875-449c88e303ba> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/42d64c76-3638-488c-a1a5-6e41a42924a2> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
@@ -432,6 +525,10 @@
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/44b19c2b-ef2e-4104-83f2-5ce5ef0179e8> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
+<urn:kbase:stmt/45d67879-49f4-45e8-9dfa-8a221995df5f> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522169028> ;
+    dc:created "2026-07-08T14:47:44.408Z"^^xsd:dateTime .
+<urn:kbase:stmt/4690b3d7-a4f6-40b1-b654-e20c7bf29ac4> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783458682263> ;
+    dc:created "2026-07-07T20:50:13.000Z"^^xsd:dateTime .
 <urn:kbase:stmt/47518c44-65dc-4b87-ab5a-c0c6ffe60f10> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/4b1aa56e-03a7-4e8c-8a28-e915bb16193c> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
@@ -442,6 +539,8 @@
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/4ce2ebb5-febc-47d1-bafc-ed8c816517b4> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
+<urn:kbase:stmt/4e3bea14-a494-4b88-9ce3-ecc647e88932> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783458682263> ;
+    dc:created "2026-07-07T20:50:13.000Z"^^xsd:dateTime .
 <urn:kbase:stmt/4e9d63e9-7b86-455c-b6e2-98c55f9306d3> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/4f969398-cde4-4044-a668-0d04f9f354c8> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
@@ -458,10 +557,16 @@
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/5ad7c4a2-b9f9-4ade-925c-a6e9a96cf8a3> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
+<urn:kbase:stmt/5ad9e8bb-74f3-4d92-8e4a-d2e461ee5b90> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522169028> ;
+    dc:created "2026-07-08T14:47:44.408Z"^^xsd:dateTime .
 <urn:kbase:stmt/5b1a286d-64e6-4122-8d51-c2101ce39ba8> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/5b55d486-d9c5-4e69-949b-077d697d502b> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
+<urn:kbase:stmt/5d4655b9-a5b6-4c4a-8e3b-39e977815eee> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783462474095> ;
+    dc:created "2026-07-07T22:09:44.000Z"^^xsd:dateTime .
+<urn:kbase:stmt/5dcb550f-250a-4530-a976-550a0e03cb5f> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522169028> ;
+    dc:created "2026-07-08T14:47:44.408Z"^^xsd:dateTime .
 <urn:kbase:stmt/5dd8a247-eac2-4e17-81a7-90a6a6889a1c> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/5e869245-eb98-4582-a064-7718669c458e> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
@@ -470,12 +575,18 @@
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/60aefe81-2890-419d-a54f-30646767b5f5> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
+<urn:kbase:stmt/60c452cc-f860-4eb9-94bb-35b97c9000db> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783458682263> ;
+    dc:created "2026-07-07T20:50:13.000Z"^^xsd:dateTime .
 <urn:kbase:stmt/61dc6420-52ea-4351-9cf9-6f149751da94> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/61e1e34a-c3e2-40f4-98f9-786850bbb874> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
+<urn:kbase:stmt/62c932cd-b674-494b-9176-6c2cfce25101> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522169028> ;
+    dc:created "2026-07-08T14:47:44.408Z"^^xsd:dateTime .
 <urn:kbase:stmt/63f3a344-aff6-47ee-b091-2d886423c3d7> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
+<urn:kbase:stmt/660aa6f8-7bf3-4a97-a582-c3093ff58745> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522021989> ;
+    dc:created "2026-07-08T14:46:34.630Z"^^xsd:dateTime .
 <urn:kbase:stmt/67b430ac-516f-4291-9562-a192b8e71be9> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/6a470e8f-8d97-48fd-9008-8a25eb4fa851> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
@@ -516,24 +627,38 @@
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/78bab712-4c64-4e50-a79b-2c51f68d8a05> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
+<urn:kbase:stmt/7ad5142a-ec9f-4a2a-9006-685cfaed5c37> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783462474095> ;
+    dc:created "2026-07-07T22:09:44.000Z"^^xsd:dateTime .
 <urn:kbase:stmt/7d7d2abb-809b-4add-aa92-cc51931c03c4> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/7e532b49-fe80-4ff1-8522-663b6edf923f> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/7fa1add2-fa14-4d89-b4f7-ed91eca0c339> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
+<urn:kbase:stmt/800896c5-0c50-4dcf-ad48-a1314b6fb886> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522169028> ;
+    dc:created "2026-07-08T14:47:44.408Z"^^xsd:dateTime .
+<urn:kbase:stmt/8018ac76-7e03-4bef-80f6-5de20d9e38cf> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522021989> ;
+    dc:created "2026-07-08T14:46:34.630Z"^^xsd:dateTime .
 <urn:kbase:stmt/8066d088-009d-4294-9386-2ec8d218646e> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
+<urn:kbase:stmt/81135788-476a-41fe-9940-dadb994a22eb> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522169028> ;
+    dc:created "2026-07-08T14:47:44.407Z"^^xsd:dateTime .
+<urn:kbase:stmt/81eb6cb2-e7d0-40a7-9729-19273b85d897> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783461446445> ;
+    dc:created "2026-07-07T21:56:14.000Z"^^xsd:dateTime .
 <urn:kbase:stmt/820c0847-3d2b-4152-bd74-772242eed4fc> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/82106bf3-e23a-422c-84db-09a59abfc949> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/821fd3f7-1763-45df-926a-1376ffcd496d> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
+<urn:kbase:stmt/8275b4c3-db8b-4589-9847-34db8615aef2> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522021989> ;
+    dc:created "2026-07-08T14:46:34.630Z"^^xsd:dateTime .
 <urn:kbase:stmt/83545ce2-e647-4a06-881b-6e7b4e385f90> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/83b11b86-758e-4576-ac39-dba6843b58ae> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
+<urn:kbase:stmt/868ae197-24e9-4e98-bd09-d030dda25fc6> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522169028> ;
+    dc:created "2026-07-08T14:47:44.408Z"^^xsd:dateTime .
 <urn:kbase:stmt/87adc9be-38f2-4e44-af15-9e72886645c6> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/87eb79ce-2546-4043-8f70-37c7a6df6c9a> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
@@ -542,6 +667,8 @@
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/892d4475-d355-4a0e-86a5-d6fd5b291fa1> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
+<urn:kbase:stmt/8b2f1b69-e30d-49b3-84d4-7b899ade2ca1> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783462474095> ;
+    dc:created "2026-07-07T22:09:44.000Z"^^xsd:dateTime .
 <urn:kbase:stmt/8bc355e2-f759-47a7-be93-f542cc833555> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/8c06b4a9-033e-49ee-886b-29877d3afa58> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
@@ -550,6 +677,8 @@
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/8c60f867-6f21-478f-88db-10d77c58dcbe> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
+<urn:kbase:stmt/8cf4a5aa-396b-4c55-98f2-247c1525c2a6> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522021989> ;
+    dc:created "2026-07-08T14:46:34.630Z"^^xsd:dateTime .
 <urn:kbase:stmt/8d0b331a-37e3-456f-bd77-1eddd9cb598f> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/8edb2626-e537-4044-8fd7-fb72c5eb634d> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
@@ -602,8 +731,12 @@
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/9fd1284f-c87c-4cb5-b843-aaf93e29aa1c> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
+<urn:kbase:stmt/a0f1cd75-7359-4b12-bb6d-353c17027d76> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783461446445> ;
+    dc:created "2026-07-07T21:56:14.000Z"^^xsd:dateTime .
 <urn:kbase:stmt/a2e45868-7d47-4db1-beb1-597bf5a45a4f> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
+<urn:kbase:stmt/a40c8186-d729-4ad8-aab1-43bfb86c9505> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522021989> ;
+    dc:created "2026-07-08T14:46:34.630Z"^^xsd:dateTime .
 <urn:kbase:stmt/a423c83a-901b-4fae-9fd2-de0c57339101> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/a4ae45e1-f3cf-4ba4-862d-e943230f1add> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
@@ -620,12 +753,16 @@
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/a75b31db-65d8-4a54-a84f-28025d2e02bf> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
+<urn:kbase:stmt/a852b285-21b1-4c34-9d3c-df3fcd1d5ada> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783461446445> ;
+    dc:created "2026-07-07T21:56:14.000Z"^^xsd:dateTime .
 <urn:kbase:stmt/a871dbb3-02ea-4397-853b-0ef0136aa2c7> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/a91c4c92-e0a8-452f-950a-d47334ffaabb> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/aa66e030-c3fc-41f4-9ddc-3abfc33cacde> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
+<urn:kbase:stmt/aae99cb8-d3e1-409d-abba-791daafd0f10> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522021989> ;
+    dc:created "2026-07-08T14:46:34.630Z"^^xsd:dateTime .
 <urn:kbase:stmt/ac369d20-a6e1-4a86-977a-b15f2c093242> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/ad35ca6f-ef57-445a-8ac3-00479f8b95f6> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
@@ -634,6 +771,8 @@
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/adfbbd36-65b6-40e5-8f57-77b891d01b39> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
+<urn:kbase:stmt/af9ef3a0-f962-4e6e-84f9-90ee368f4b96> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783462474095> ;
+    dc:created "2026-07-07T22:09:44.000Z"^^xsd:dateTime .
 <urn:kbase:stmt/b1bbdb29-49fb-44f6-9822-469ce835cc28> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/b3b78788-96df-41b2-89ff-5569d83b9307> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
@@ -660,6 +799,8 @@
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/ba41bea2-b128-4681-820a-4b4ca81a5bad> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
+<urn:kbase:stmt/bb0e43d2-091a-4ec1-8ce2-5dd8e015d6ab> prov:wasDerivedFrom src:manual ;
+    dc:created "2026-07-07T21:13:39.099Z"^^xsd:dateTime .
 <urn:kbase:stmt/bb96df70-8ccb-4dc0-b7db-8ccc107bfbbf> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/bed86ed4-83a7-4ee2-896d-e647936bb3df> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
@@ -690,10 +831,16 @@
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/c95b2e09-444a-44f1-a439-97d8ea45851d> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
+<urn:kbase:stmt/cda511bd-b9ea-4236-b413-01bc26772e0b> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522021989> ;
+    dc:created "2026-07-08T14:46:34.630Z"^^xsd:dateTime .
 <urn:kbase:stmt/ceaf379e-6dea-4c7b-841a-cc83d2e96f95> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
+<urn:kbase:stmt/d03984d7-72a1-4d3b-9a3a-c8679e29318a> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783458682263> ;
+    dc:created "2026-07-07T20:50:13.000Z"^^xsd:dateTime .
 <urn:kbase:stmt/d03b7221-4f99-4894-be25-e96256b401eb> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
+<urn:kbase:stmt/d0443de7-0b11-4aeb-ae5e-f48671162157> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522169028> ;
+    dc:created "2026-07-08T14:47:44.408Z"^^xsd:dateTime .
 <urn:kbase:stmt/d1e1964c-7656-4b1f-9c98-6f72e6232c4a> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/d31892d5-1bc6-4330-a583-167743a0fbee> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
@@ -720,6 +867,8 @@
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/dcdeef37-3d91-4d5c-8be2-50c39c40bdd3> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
+<urn:kbase:stmt/dceb3bb0-d8a4-496e-a4fa-51aa4edfb06a> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522169028> ;
+    dc:created "2026-07-08T14:47:44.408Z"^^xsd:dateTime .
 <urn:kbase:stmt/dda63563-d884-4aa5-a7ac-37b5b4945eee> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/de62a988-7436-4d60-bc46-33e08fc17818> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
@@ -754,20 +903,32 @@
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/eac9648f-ff80-43d3-b457-24f8efb59417> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
+<urn:kbase:stmt/eaf3f0b0-c26a-42f4-8d11-deb7c602583c> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522169028> ;
+    dc:created "2026-07-08T14:47:44.408Z"^^xsd:dateTime .
 <urn:kbase:stmt/ec061dca-8564-484e-99af-c4bdfe0b2469> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/ec1a7971-9810-4e8d-9d97-3ed9b422de1a> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
+<urn:kbase:stmt/ec836032-4b62-4301-a2e7-acf1f9c21aef> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783462474095> ;
+    dc:created "2026-07-07T22:09:44.000Z"^^xsd:dateTime .
 <urn:kbase:stmt/ee26e01d-af5f-4ea5-9645-e0fbe28ffc38> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
+<urn:kbase:stmt/eed2f4bc-552c-437b-86f2-d7dc6f3a9ef1> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522021989> ;
+    dc:created "2026-07-08T14:46:34.630Z"^^xsd:dateTime .
 <urn:kbase:stmt/efe05634-9bb4-4743-bbbc-51f231699195> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
+<urn:kbase:stmt/f135e55d-d237-4f4d-a35d-129ee6f6eb22> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522021989> ;
+    dc:created "2026-07-08T14:46:34.630Z"^^xsd:dateTime .
+<urn:kbase:stmt/f25e4410-74e9-47b9-9920-a517629f22de> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522169028> ;
+    dc:created "2026-07-08T14:47:44.408Z"^^xsd:dateTime .
 <urn:kbase:stmt/f2abc5cc-f970-4dab-82d2-5a9db7e6bc09> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/f3f09d4a-a52c-46f0-95f3-b93cd3819db5> prov:wasDerivedFrom <urn:kbase:source/4154a3b4-8f55-41b2-9323-7346c9992396> ;
     dc:created "2026-06-25T04:38:15.742Z"^^xsd:dateTime .
 <urn:kbase:stmt/f81a9abc-c0f1-4bd1-a04f-04a47957ef55> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
+<urn:kbase:stmt/fa41f4e9-8c38-424a-b680-c34012d59269> prov:wasDerivedFrom <urn:mcp:pending:mcp-pending-1783522021989> ;
+    dc:created "2026-07-08T14:46:34.630Z"^^xsd:dateTime .
 <urn:kbase:stmt/fa7845d4-9eb6-44c9-acd7-081c49092402> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;
     dc:created "2026-06-29T20:41:56.303Z"^^xsd:dateTime .
 <urn:kbase:stmt/fac6daa2-63ac-437e-a21c-bcc7fcf233d7> prov:wasDerivedFrom <urn:kbase:source/486381a6-d9ff-44ee-b500-c05f2156acd4> ;

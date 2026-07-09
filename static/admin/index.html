@@ -22,6 +22,37 @@
     -->
   </head>
   <body>
+    <!--
+      Per-environment edit routing (F48). Production (reckons.ai / the pages.dev
+      apex) is left COMPLETELY untouched: Sveltia auto-initialises from
+      config.yml (branch: main) exactly as before, so any manual-init quirk can
+      only ever affect the dev admin. Only the dev branch alias and hashed
+      preview subdomains (*.reckons-ai.pages.dev) switch the commit target to the
+      `dev` branch, keeping CMS edits made while testing off of production main.
+    -->
+    <script>
+      // Which branch should /admin on THIS host commit to. Pure + testable.
+      // Returns null when production should be left to auto-init untouched.
+      function reckonsAdminBranch(hostname) {
+        // Subdomains of reckons-ai.pages.dev (dev alias + preview hashes) — but
+        // NOT the apex (that tracks production/main) and NOT reckons.ai.
+        if (/\.reckons-ai\.pages\.dev$/.test(hostname)) return 'dev';
+        return null; // production: no override
+      }
+      if (reckonsAdminBranch(location.hostname)) {
+        window.CMS_MANUAL_INIT = true;
+      }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/@sveltia/cms@0.169.1/dist/sveltia-cms.js"></script>
+    <script>
+      // Only the dev/preview path took manual control; production already
+      // auto-inited above. Keep everything from config.yml (load_config_file)
+      // and override only the commit branch.
+      (function () {
+        if (!window.CMS_MANUAL_INIT) return;
+        var branch = reckonsAdminBranch(location.hostname);
+        window.CMS.init({ config: { load_config_file: true, backend: { branch: branch } } });
+      })();
+    </script>
   </body>
 </html>
