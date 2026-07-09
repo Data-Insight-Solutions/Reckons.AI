@@ -114,7 +114,7 @@
     },
     {
       title: 'explore the graph',
-      body: `Your knowledge comes alive in the **graph view**.\n\nUse the layout chips to organize your view:\n• **force** — free-form physics layout\n• **source** — clusters around each source document\n• **type** — groups by entity type (Person, Concept, etc.)\n• **hub** — highlights your most connected entities\n• **order** — numbered grid you can drag to reorder\n• **focus** — centers on the selected node\n\nFilters let you highlight **hubs**, **islands**, **jumps**, or entities missing types or sources.`
+      body: `Your knowledge comes alive in the **graph view**.\n\nUse the layout chips to organize your view:\n• **force** — free-form physics layout\n• **source** — clusters around each source document\n• **type** — groups by entity type (Person, Concept, etc.)\n• **hub** — highlights your most connected entities\n• **arrange** — numbered grid you can drag to reorder\n• **focus** — centers on the selected node\n\nFilters let you highlight **hubs**, **islands**, **jumps**, or entities missing types or sources.`
     },
     {
       title: 'run a reckoning',
