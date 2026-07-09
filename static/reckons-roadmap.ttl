@@ -1245,3 +1245,17 @@ kb:change-notes rdf:type ktype:Feature ;
                kpred:depends-on   kb:graph-publishing ;
                kpred:relates-to   kb:release-pipeline ;
                kpred:relates-to   kb:steering-committee .
+
+# -- Auto Zoom-to-Fit on Layout / Filter Change (F45) --------------------------
+# UX polish for the 2D/3D graph (kb:knowledge-graph): when the visible node set
+# changes because the user just picked a new force layout or applied a filter,
+# optionally auto-fit the camera/viewport so every visible node is in frame.
+
+kb:graph-zoom-to-fit rdf:type ktype:Feature ;
+               rdfs:label    "Auto Zoom-to-Fit on Layout / Filter Change" ;
+               kpred:feature-id   "F45" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "low" ;
+               kpred:description  "A user SETTING that, when enabled, automatically zooms/pans the graph to fit all currently-visible nodes whenever the visible set changes due to a newly-applied force LAYOUT (free/focus/hub/time/order/tree) or a FILTER (status/source/type/no-type/no-source). Today the camera keeps its previous framing after such a change, so nodes can land off-screen or clustered until the user manually zooms. Scope: compute the bounding box of visible nodes after layout settle / filter apply and animate the 2D viewport transform (and the 3D camera) to frame it with padding; debounce so rapid filter toggling doesn't thrash; respect prefers-reduced-motion (snap, no animation); off by default (setting under graph/display) so it never fights users who curate their own framing. Relates to the graph rendering feature and the mobile reflow work (small viewports benefit most)." ;
+               kpred:relates-to   kb:knowledge-graph ;
+               kpred:relates-to   kb:mobile-uiux .
