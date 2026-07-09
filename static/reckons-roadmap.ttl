@@ -1227,3 +1227,34 @@ kb:offline-align-review rdf:type ktype:Feature ;
                kpred:in-dev       "2026-07-08"^^xsd:date ;
                kpred:description  "Offline jobs that review alignment/drift warnings in depth and propose graph changes for human review (never silent edits). DETERMINISTIC LAYER (functional): scripts/branch-align.ts --suggest turns each 'functional but untracked' drift into a pending suggestion in knowledge.pending.jsonl — features with kpred:remaining → propose in-dev; finished ones → propose in-production + a functional→production status-update; idempotent (dedup by subject+predicate+object); wired into npm run offline:sweep. FUTURE AGENT LAYER (planned): when OLLAMA_BASE_URL is set, a LOCAL model reads each flagged feature's triples + recent git and reasons about the correct env/status/proposal, grounded and emitted as a suggestion (ground-first + validate + emit-question, per the devstral salvage lesson). Extends the F33 pipeline and the offline procedures." ;
                kpred:relates-to   kb:release-pipeline .
+
+# -- Triple-Question Context Pages (F46) ---------------------------------------
+# URGENT Sveltia use: a reviewer deciding a pending "? question" fact (F32) often
+# lacks the context to decide well. Let an OPTIONAL short summary page attach to a
+# specific triple/question, authored in Sveltia, so the reviewer has grounded
+# context right at the decision point. Shares F44's ChangeNote/attach mechanism.
+
+kb:question-context-pages rdf:type ktype:Feature ;
+               rdfs:label    "Triple-Question Context Pages" ;
+               kpred:feature-id   "F46" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:description  "An OPTIONAL short context/summary page attached to a specific pending triple or '? question' fact, to give the reviewer what they need to decide. MOTIVATION: the Review tab surfaces partial facts needing an answer (F32 — incoming.needsObject, the 'questions only' filter in routes/(app)/review/+page.svelte), but a bare subject-predicate-? is often not enough context to accept/answer/reject confidently. DESIGN (reuses F27 + F44): the page is a WebPage-like node authored in Sveltia (content/*.md <-> graph round-trip), linked to the question via kpred:context-for -> [the statement/question id or subject IRI], rendered inline in the review card as an expandable summary (excerpt in graph, long-form in the .md). Content can be human-written OR drafted by Shelly grounded in the graph (kb_generate_page / kb_entity_markdown / kb_compress) then edited. Distinct from the answer itself (knowledge.answers.jsonl) — this is decision-support context, not the decision. Kept optional and lightweight so most questions need none. More urgent than F44's change-note use because it unblocks review throughput directly. Relates to F32 partial facts, F44 change notes, and F27 publishing." ;
+               kpred:depends-on   kb:graph-publishing ;
+               kpred:relates-to   kb:change-notes ;
+               kpred:relates-to   kb:partial-facts .
+
+# -- Shelly in Sveltia (un-forked) (F47) ---------------------------------------
+# Bring Shelly (the graph-grounded assistant) INTO the Sveltia authoring surface
+# WITHOUT forking Sveltia — it must remain a separate, un-forked codebase. Shelly
+# drafts/summarises page content grounded in the graph while the user edits.
+
+kb:shelly-in-sveltia rdf:type ktype:Feature ;
+               rdfs:label    "Shelly in Sveltia (un-forked)" ;
+               kpred:feature-id   "F47" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "medium" ;
+               kpred:principle    "Sveltia CMS MUST remain a separate, un-forked, upstream-tracking codebase (as today — static/admin/config.yml uses the external bundle). Shelly integrates AROUND or THROUGH documented extension points, never by patching Sveltia's source." ;
+               kpred:description  "Make Shelly available inside the Sveltia editing experience so authors can draft, summarise, and refine page content grounded in the graph — without forking Sveltia. TWO CANDIDATE INTEGRATION PATHS (validate before building): (1) HOST-APP OVERLAY — Sveltia is already served in-app at /admin; embed it and render a Shelly panel in the surrounding Reckons.AI chrome, exchanging the current entry's text via postMessage / the File System Access working copy, so Sveltia's bundle is untouched; (2) REGISTRATION API — if Sveltia exposes Decap-style registerWidget / registerEditorComponent / registerPreviewTemplate hooks, mount a Shelly widget through config/init without patching source. Shelly reuses existing graph-grounded tools: kb_generate_page (draft a WebPage body from the graph via local Ollama), kb_entity_markdown (deterministic entity->markdown, no LLM), kb_compress (grounded context). Use cases: 'draft this page from the entity', 'summarise these triples', 'write the F46 question-context blurb'. Consent + safety: ETHICS_PREAMBLE applies; suggestions are proposals the author edits, never silent writes. Relates to the Shelly bridge (stores/shelly-bridge.svelte.ts), F27 publishing, and F46 question-context pages." ;
+               kpred:depends-on   kb:graph-publishing ;
+               kpred:relates-to   kb:question-context-pages .
