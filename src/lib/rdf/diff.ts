@@ -57,6 +57,7 @@ function indexExisting(existing: Statement[]) {
  */
 function isRefinementOf(incoming: Term, existing: Term): boolean {
   if (incoming.kind !== 'literal' || existing.kind !== 'literal') return false;
+  if (incoming.value == null || existing.value == null) return false;
   if (incoming.value === existing.value) return false;
   const a = incoming.value.toLowerCase();
   const b = existing.value.toLowerCase();
@@ -69,6 +70,14 @@ export function computeDiff(incoming: Statement[], existing: Statement[]): Diff 
   const summary = { new: 0, duplicate: 0, reinforces: 0, conflicts: 0, refines: 0, nearDuplicate: 0, synonymReinforces: 0, antonymConflicts: 0 };
 
   for (const inc of incoming) {
+    // Partial facts (F32): the object is an unfilled placeholder, so structural
+    // diffing (refines/conflicts against existing objects) is meaningless and
+    // would compare a hole. Always surface them as their own 'new' card.
+    if (inc.needsObject) {
+      entries.push({ kind: 'new', incoming: inc });
+      summary.new++;
+      continue;
+    }
     const tk = tripleKey(inc);
     const sp = `${termKey(inc.s)}>${termKey(inc.p)}`;
     const sameTriple = byTriple.get(tk) ?? [];

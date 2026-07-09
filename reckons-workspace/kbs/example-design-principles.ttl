@@ -1,0 +1,117 @@
+# Example KB: classic visual design principles.
+# Content drafted by a local agent (devstral-small-2) during an offline run;
+# corrected on review — the draft had an undeclared ktype: prefix (unparseable),
+# a urn:kabase: namespace typo, and icon paths to non-existent /static/ files.
+@prefix kb:      <urn:kbase:concept/> .
+@prefix kpred:   <urn:kbase:predicate/> .
+@prefix kmeta:   <urn:kbase:meta/> .
+@prefix ktype:   <urn:kbase:type/> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+kb:example-design-graph a ktype:Graph ;
+    rdfs:label      "Design Principles Example Graph" ;
+    kpred:has-part  kb:principle-balance, kb:principle-contrast, kb:principle-movement,
+                    kb:principle-white-space, kb:principle-patterns .
+
+kb:principle-balance a ktype:Principle ;
+    rdfs:label        "Balance" ;
+    kmeta:name        "Balance" ;
+    kpred:description "Creates visual equilibrium by distributing elements evenly." .
+
+kb:principle-contrast a ktype:Principle ;
+    rdfs:label        "Contrast" ;
+    kmeta:name        "Contrast" ;
+    kpred:description "Uses differences in visual properties to create distinction." .
+
+kb:principle-movement a ktype:Principle ;
+    rdfs:label        "Movement" ;
+    kmeta:name        "Movement" ;
+    kpred:description "Guides the eye through implied motion or direction." .
+
+kb:principle-white-space a ktype:Principle ;
+    rdfs:label        "White Space" ;
+    kmeta:name        "White Space" ;
+    kpred:description "Emphasizes content by providing unoccupied areas." .
+
+kb:principle-patterns a ktype:Principle ;
+    rdfs:label        "Patterns" ;
+    kmeta:name        "Patterns" ;
+    kpred:description "Repeating decorative elements that create rhythm and structure." .
+
+kb:example-node-1 a ktype:Node ;
+    rdfs:label        "Example Node" ;
+    kpred:applies-to  kb:principle-balance .
+
+# ── Web / Mobile UI·UX Rubric ────────────────────────────────────────────────
+# Actionable, testable guidelines grounded in the core principles above. The
+# deep-testing system (F34) scores real user paths against these and cites the
+# violated guideline. kpred:checks-surface = visual | text | both;
+# kpred:derives-from links each guideline to a core principle.
+kb:web-uiux-rubric a ktype:PrincipleSet ;
+    rdfs:label        "Web / Mobile UI·UX Rubric" ;
+    kpred:description "Testable UI/UX guidelines used as the scoring rubric for deep tests. Mobile-first: guidelines tagged kpred:priority \"mobile\" gate the responsive layout work." ;
+    kpred:has-part    kb:guideline-visual-hierarchy, kb:guideline-legibility, kb:guideline-touch-targets,
+                      kb:guideline-responsive-layout, kb:guideline-feedback, kb:guideline-consistency,
+                      kb:guideline-progressive-disclosure, kb:guideline-error-recovery,
+                      kb:guideline-readable-output, kb:guideline-accessibility .
+
+kb:guideline-visual-hierarchy a ktype:Guideline ;
+    rdfs:label          "Visual Hierarchy" ;
+    kpred:derives-from  kb:principle-contrast, kb:principle-balance ;
+    kpred:recommendation "One clear focal point per view; the primary action is the single most prominent element." ;
+    kpred:checks-surface "visual" .
+
+kb:guideline-legibility a ktype:Guideline ;
+    rdfs:label          "Legibility & Contrast" ;
+    kpred:derives-from  kb:principle-contrast ;
+    kpred:recommendation "Body text >= 4.5:1 contrast and >= 16px on mobile; never convey state by colour alone." ;
+    kpred:checks-surface "both" .
+
+kb:guideline-touch-targets a ktype:Guideline ;
+    rdfs:label          "Touch Targets (Fitts's Law)" ;
+    kpred:derives-from  kb:principle-white-space ;
+    kpred:recommendation "Interactive targets >= 44x44px with >= 8px separation; primary actions within thumb reach (bottom third) on mobile." ;
+    kpred:checks-surface "visual" ;
+    kpred:priority       "mobile" .
+
+kb:guideline-responsive-layout a ktype:Guideline ;
+    rdfs:label          "Responsive Layout" ;
+    kpred:derives-from  kb:principle-balance ;
+    kpred:recommendation "Single-column reflow below 640px; no horizontal scroll; floating/draggable panels become bottom sheets or full-screen drawers on mobile, never fixed windows." ;
+    kpred:checks-surface "visual" ;
+    kpred:priority       "mobile" .
+
+kb:guideline-feedback a ktype:Guideline ;
+    rdfs:label          "Feedback & Affordance" ;
+    kpred:derives-from  kb:principle-movement ;
+    kpred:recommendation "Every interactive element has hover/focus/active/disabled states; async actions show progress within 100ms." ;
+    kpred:checks-surface "visual" .
+
+kb:guideline-consistency a ktype:Guideline ;
+    rdfs:label          "Consistency" ;
+    kpred:derives-from  kb:principle-patterns ;
+    kpred:recommendation "Same action = same label, icon, and position across views; spacing and z-index follow the documented scale." ;
+    kpred:checks-surface "both" .
+
+kb:guideline-progressive-disclosure a ktype:Guideline ;
+    rdfs:label          "Progressive Disclosure" ;
+    kpred:derives-from  kb:principle-white-space ;
+    kpred:recommendation "Show only what the current step needs; advanced options collapsed by default; on mobile prefer one primary task per screen." ;
+    kpred:checks-surface "both" ;
+    kpred:priority       "mobile" .
+
+kb:guideline-error-recovery a ktype:Guideline ;
+    rdfs:label          "Error Prevention & Recovery" ;
+    kpred:recommendation "Destructive actions confirm; errors name the cause and the next step in plain language; no dead ends." ;
+    kpred:checks-surface "both" .
+
+kb:guideline-readable-output a ktype:Guideline ;
+    rdfs:label          "Readable Output" ;
+    kpred:recommendation "Generated text leads with the conclusion, is scannable (short paragraphs/lists), defines jargon, and cites the grounding entity." ;
+    kpred:checks-surface "text" .
+
+kb:guideline-accessibility a ktype:Guideline ;
+    rdfs:label          "Accessibility" ;
+    kpred:recommendation "All actions keyboard-reachable with a visible focus ring; semantic roles; respects prefers-reduced-motion; passes WCAG AA." ;
+    kpred:checks-surface "both" .

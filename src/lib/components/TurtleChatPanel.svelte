@@ -21,7 +21,7 @@
   import { extractStories, type Story, type StoryStep } from '$lib/rdf/story';
   import { wasmStatus, wasmPct, wasmStatusText } from '$lib/stores/wasm-status.svelte';
   import { turtleSettings, updateTurtleSettings } from '$lib/stores/turtle-settings.svelte';
-  import SnapPanel from './SnapPanel.svelte';
+  import AdaptivePanel from './AdaptivePanel.svelte';
   import ShellyVoice from './ShellyVoice.svelte';
   import { Tabs } from 'bits-ui';
 
@@ -1061,7 +1061,8 @@
     }
   }}
 >
-<SnapPanel corner="bottom-left" width={360} minWidth={240} maxWidth={800} zIndex={350}
+<AdaptivePanel corner="bottom-left" width={360} minWidth={240} maxWidth={800} zIndex={350}
+  title="Shelly" open={true} onOpenChange={(o) => { if (!o) onclose(); }}
   extraStyle={voiceVolume > 0.05 ? `box-shadow: 0 0 ${8 + voiceVolume * 28}px ${2 + voiceVolume * 10}px color-mix(in srgb, #4caf50 ${Math.round(voiceVolume * 55)}%, transparent)` : ''}
 >
   {#snippet header()}
@@ -1434,7 +1435,7 @@
                 {storyCountdown}s
               </span>
             {/if}
-            <button class="story-btn story-exit" onclick={() => { stopAutoPlay(); stopStory(); currentStory = null; }} title="Exit story">✕</button>
+            <button class="story-btn story-exit" onclick={() => { stopAutoPlay(); stopStory(); currentStory = null; }} title="Exit story mode" aria-label="Exit story mode">✕ exit story mode</button>
           </div>
           {#if showVolumeSlider}
             <div class="story-volume-row">
@@ -1546,7 +1547,7 @@
       </div>
     {/if}
   </Tabs.Content>
-</SnapPanel>
+</AdaptivePanel>
 </Tabs.Root>
 
 
@@ -2168,7 +2169,12 @@
     margin-left: auto;
     font-size: 0.65rem;
     color: var(--muted);
+    white-space: nowrap;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.15rem 0.5rem;
   }
+  .story-exit:hover { color: var(--fg, inherit); border-color: var(--muted); }
   .story-resume {
     padding: 0.35rem 0.75rem;
     background: var(--data-soft);

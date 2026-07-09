@@ -82,6 +82,18 @@
   --shadcn-ring: var(--accent);
 }
 
+@theme {
+  /* ── Responsive breakpoint scale (F36 mobile foundation) ──────────────────
+   * Pinned explicitly (Tailwind's defaults would otherwise be implicit) so the
+   * `sm:`/`md:`/`lg:` utilities and the JS viewport store agree on exactly where
+   * each band starts. These MUST stay in lockstep with BREAKPOINTS in
+   * src/lib/stores/viewport.svelte.ts. Rubric contract: mobile is below sm. */
+  --breakpoint-sm: 640px; /* mobile ends / tablet begins */
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px; /* tablet ends / desktop begins */
+  --breakpoint-xl: 1280px;
+}
+
 @theme inline {
   --color-background: var(--shadcn-background);
   --color-foreground: var(--shadcn-foreground);

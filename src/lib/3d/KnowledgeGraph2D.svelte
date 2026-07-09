@@ -225,10 +225,13 @@
         const k = termKey(term);
         if (!nodeMap.has(k)) {
           const isLiteral = isLit(term);
-          const fullVal = isLiteral ? term.value : undefined;
-          const label = isIRI(term) ? term.value.split('/').pop() ?? term.value
-            : isLiteral ? (term.value.length > 48 ? term.value.slice(0, 45) + '...' : term.value)
-            : `_:${term.value}`;
+          // Guard against a missing value (e.g. a partial/placeholder fact from
+          // F32) so one malformed statement can't crash the whole graph render.
+          const val = term.value ?? '';
+          const fullVal = isLiteral ? val : undefined;
+          const label = isIRI(term) ? val.split('/').pop() ?? val
+            : isLiteral ? (val.length > 48 ? val.slice(0, 45) + '...' : val)
+            : `_:${val}`;
           const c = nodePositionCache.get(k);
           const x = c?.x ?? (spawnCenter?.x ?? 0) + (Math.random() - 0.5) * 8;
           const y = c?.y ?? (spawnCenter?.y ?? 0) + (Math.random() - 0.5) * 8;

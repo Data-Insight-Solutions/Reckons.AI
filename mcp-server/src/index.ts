@@ -26,6 +26,36 @@ import { gitStatus, gitLog, gitChangedFiles } from './git-utils.js';
 import { ollamaEnabled, OLLAMA_DISABLED_MESSAGE, OLLAMA_MODEL } from './ollama-client.js';
 import { extractTriplesLocally, summarizeLocally } from './local-llm.js';
 import { entityToMarkdown } from './entity-markdown.js';
+
+/**
+ * Core usage instructions returned on `initialize` — MCP clients inject these
+ * into the connecting agent's context (Opus, local Ollama models, any client).
+ * Written to prevent the failure mode where a judgment-limited local model has
+ * MCP access but doesn't ground in the graph: it hallucinates namespaces,
+ * prefixes and asset paths. Keep concise — every agent pays for these tokens.
+ */
+const RECKONS_MCP_INSTRUCTIONS = `Reckons.AI exposes this project's own knowledge graphs as queryable KBs. The graphs are the SOURCE OF TRUTH — code follows the graphs. Ground your work in them before acting; do not guess conventions you can look up.
+
+KBs (kb_list_kbs to list; query with kb_search / kb_get_entity / kb_compress):
+- roadmap — business intent: features (F#), status lifecycle (speculative→planned→scaffolded→functional→production), dependencies, and the release pipeline (dev/staging/production review gates). Check BEFORE building.
+- codebase — technical spec: modules, kpred:has-file links, conventions. Check when touching code.
+- production — deployed system, test suite (kpred:tested-by), environments.
+- features / architecture / testing — user features, design decisions, test stories.
+
+BEFORE YOU ACT (do not skip):
+- Before editing a TTL graph, kb_get_entity or kb_compress a nearby entity to learn the EXACT prefixes, namespaces, and asset paths. Do not invent them.
+- Before starting a feature, kb_check_plan / kb_search the roadmap — is it planned, in progress, or done?
+- For context, prefer kb_compress(query) over reading raw files (~60-70% fewer tokens, better grounding).
+
+HARD CONVENTIONS (getting these wrong breaks the graph):
+- Namespace is urn:kbase: (NOT urn:kabase:). Prefixes: kb: (concept/), kpred: (predicate/), kmeta: (meta/), ktype: (type/) — DECLARE every prefix you use.
+- Static assets are served from the site root: /glb/…, /assets/… — never /static/…. Reference only files that exist.
+
+VALIDATE — never commit broken output. Every TTL must parse (N3); run the relevant tests/build first.
+
+WHEN UNCERTAIN OR STUCK, ASK — do not guess. Emit a QUESTION with kb_add_note (type 'question': subject + predicate known, object left open — a partial fact); it surfaces in the Reckons.AI review UI for a human. This is the offline safety valve.
+
+POLICY: never push to main (feature branch → PR → dev). Do NOT create docs/*.md — add entities to the TTL KBs. Surface findings/proposals as pending graph entries (kb_add_note), not chat.`;
 import { generatePageMarkdown, type GeneratePageParams } from './generate-page.js';
 import type { PageTemplate } from './page-markdown.js';
 
@@ -1416,7 +1446,8 @@ rl.on('line', (line) => {
         respond(id ?? null, {
           protocolVersion: '2024-11-05',
           capabilities: { tools: {} },
-          serverInfo: { name: 'reckons-ai-mcp', version: '0.2.0' }
+          serverInfo: { name: 'reckons-ai-mcp', version: '0.2.0' },
+          instructions: RECKONS_MCP_INSTRUCTIONS
         });
         break;
 
