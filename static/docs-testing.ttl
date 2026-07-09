@@ -45,6 +45,28 @@ test:TestSuite
     skos:definition     "Reckons.AI test infrastructure: 336+ unit tests (Vitest + jsdom), Playwright E2E with 6 device profiles, visual regression with pixel analysis + DOM overlap + text presence checks, optional Mistral OCR and Claude Vision tiers. All tests run locally without API keys." ;
     skos:related        guide:WhatIsReckonsAI .
 
+test:GraphReviewStory
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Reckons.AI Graph Review — Goal & Workflow" ;
+    <urn:reckons:nav/order> "0"^^xsd:integer ;
+    skos:definition     """The Reckons.AI Graph Review is an offline, exhaustive audit of the whole app treated as a graph: every button is clicked, every screen is visually checked, and every finding is tied back to the graph for human review. It runs locally and Opus-reviewed — no cloud dependency — and scores against the Web/Mobile UI-UX rubric.
+
+### The goal
+
+Catch the failures a "click everything, flag crashes" pass misses — silent no-ops (a control that fires, throws nothing, and does nothing) and stale-cache regressions — while producing a reviewable, graph-native record rather than a throwaway log.
+
+### Workflow overview
+
+1. **Enumerate** — collect every interactive element on every route (buttons, tabs, leap badges, sheets).
+2. **Act and assert a delta** — click each, then check that something observable actually changed (URL, node count, KB id, open panels, title, visible text). This is what catches silent no-ops.
+3. **Visual check** — pixel, DOM-overlap and touch-target checks run locally; a local VLM scores each screenshot against the rubric.
+4. **Persistent-context pass** — replay against a warm service worker to surface stale-cache regressions that fresh runs never reproduce.
+5. **Tie to the graph** — each route becomes a TestWorkflow and each click a TestStep, carrying its screenshot, a pass/fail verdict, and a citation to any rubric guideline it violates; findings queue as pending facts for review.
+6. **Review and grow** — Opus reads the coverage gaps and authors new predetermined paths, so the library grows over time.
+
+This page is the goal and workflow overview; the stepped review itself is generated as a TestWorkflow story.""" ;
+    skos:broader        test:TestSuite .
+
 test:UnitTests
     rdf:type            ktype:Concept ;
     rdfs:label          "Unit Tests" ;
