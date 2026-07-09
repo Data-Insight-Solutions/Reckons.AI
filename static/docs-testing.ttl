@@ -67,6 +67,83 @@ Catch the failures a "click everything, flag crashes" pass misses — silent no-
 This page is the goal and workflow overview; the stepped review itself is generated as a TestWorkflow story.""" ;
     skos:broader        test:TestSuite .
 
+
+## =============================================================================
+## Story: Reckons.AI Graph Review
+## =============================================================================
+## The stepped, in-app story for the offline exhaustive graph review — grounded
+## in the "Goal & Workflow" overview (test:GraphReviewStory). Steps 1–4 carry
+## real screenshots captured while driving the app; each step names the delta it
+## asserts, so the story shows WHY a crash-only crawl is not enough.
+
+test:GraphReviewFlow
+    rdf:type            story:Story ;
+    rdfs:label          "Reckons.AI Graph Review" ;
+    story:description   "Walk the offline exhaustive graph review as it runs against the app: enumerate every control, click each, and assert an observable delta so silent no-ops are caught — then tie every finding back to the graph for review." ;
+    story:autoplay      "false" ;
+    story:pace          "10" ;
+    kpred:screenshot-dir "tests/visual/screenshots/graph-review/" ;
+    skos:broader        test:GraphReviewStory .
+
+test:GraphReview-Step1
+    rdf:type            story:Step ;
+    story:partOf        test:GraphReviewFlow ;
+    story:order         "1"^^xsd:integer ;
+    story:title         "Enumerate every control" ;
+    story:content       "The review starts on the landing route and enumerates every interactive element — buttons, tabs, leap badges, sheets. The landing page alone exposes 18 controls; the crawl repeats this per route." ;
+    story:highlight     test:GraphReviewStory ;
+    kpred:icon2d        "/tests/visual/screenshots/graph-review/01-enumerate-landing.png" ;
+    kpred:assertion     "interactive element count > 0" ;
+    kpred:page          "/" .
+
+test:GraphReview-Step2
+    rdf:type            story:Step ;
+    story:partOf        test:GraphReviewFlow ;
+    story:order         "2"^^xsd:integer ;
+    story:title         "Act and assert a delta" ;
+    story:content       "Click the hero 'Getting started' button and assert the docs graph actually activates — 119 nodes laid out, not a silent no-op. A click that fires without changing anything observable is a finding." ;
+    kpred:icon2d        "/tests/visual/screenshots/graph-review/02-getting-started-graph.png" ;
+    kpred:assertion     "node-label count > 0 after click" ;
+    kpred:page          "/" .
+
+test:GraphReview-Step3
+    rdf:type            story:Step ;
+    story:partOf        test:GraphReviewFlow ;
+    story:order         "3"^^xsd:integer ;
+    story:title         "Catch the silent no-op" ;
+    story:content       "Follow a KB leap and assert the graph swapped to the target sub-graph — currentKbId changed and 39 new nodes rendered. This is the exact silent-no-op class a crash-only crawler misses (the docs-hub leap regression fixed this session)." ;
+    kpred:icon2d        "/tests/visual/screenshots/graph-review/03-leap-jump-subgraph.png" ;
+    kpred:assertion     "currentKbId changed after leap" ;
+    kpred:page          "/" .
+
+test:GraphReview-Step4
+    rdf:type            story:Step ;
+    story:partOf        test:GraphReviewFlow ;
+    story:order         "4"^^xsd:integer ;
+    story:title         "Visual check, locally" ;
+    story:content       "On each screen run the offline pixel, DOM-overlap and touch-target checks — no blank/solid-fill, targets at least 44px — before any VLM scoring. Cheapest checks first, no API keys." ;
+    kpred:icon2d        "/tests/visual/screenshots/graph-review/04-review-visual-check.png" ;
+    kpred:assertion     "pixel.isSolidFill === false" ;
+    kpred:page          "/review" .
+
+test:GraphReview-Step5
+    rdf:type            story:Step ;
+    story:partOf        test:GraphReviewFlow ;
+    story:order         "5"^^xsd:integer ;
+    story:title         "Tie every finding to the graph" ;
+    story:content       "Each route becomes a TestWorkflow and each click a TestStep carrying its screenshot, a pass/fail verdict, and a citation to any rubric guideline it violates; the worst findings queue as pending facts for human review." ;
+    kpred:assertion     "findings queued to knowledge.pending.jsonl" ;
+    kpred:page          "/review" .
+
+test:GraphReview-Step6
+    rdf:type            story:Step ;
+    story:partOf        test:GraphReviewFlow ;
+    story:order         "6"^^xsd:integer ;
+    story:title         "Review and grow" ;
+    story:content       "Opus reads the coverage gaps and authors new predetermined paths, so the story library grows over time — the 'living coverage' in F34." ;
+    story:highlight     test:GraphReviewStory ;
+    kpred:page          "/review" .
+
 test:UnitTests
     rdf:type            ktype:Concept ;
     rdfs:label          "Unit Tests" ;
