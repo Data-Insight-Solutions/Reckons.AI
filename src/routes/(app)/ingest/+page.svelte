@@ -426,7 +426,20 @@
 
       tempDb.close();
 
-      if (confirm(`Created "${kbName}" with ${stmts.length} facts.\n\nSwitch to it now?`)) {
+      // A plain .ttl (or a .zip whose TTL we read but whose binary assets we
+      // don't) can't carry icon/preview/model images — they live as separate
+      // files under kbs/{name}/assets/. If the graph references any, warn the
+      // user so they aren't surprised by missing previews, and point them at the
+      // folder import that does restore them.
+      const referencesAssets = rawStmts.some(
+        (s) => s.p.value.startsWith('urn:kbase:asset/') ||
+          (s.o.kind === 'iri' && s.o.value.startsWith('urn:kbase:asset/'))
+      );
+      const assetNote = referencesAssets
+        ? `\n\n⚠ This graph references preview/icon images that a plain .ttl can't carry, so they won't appear. To see them, import the graph's folder (kbs/${kbName}/, including its assets/ subfolder) via Settings → workspace → "import graphs from folder" instead.`
+        : '';
+
+      if (confirm(`Created "${kbName}" with ${stmts.length} facts.${assetNote}\n\nSwitch to it now?`)) {
         switchToKb(newKb.id);
       }
     } catch (e) {
