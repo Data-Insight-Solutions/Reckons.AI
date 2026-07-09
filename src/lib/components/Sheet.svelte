@@ -72,6 +72,10 @@
       class="sheet-content"
       style="z-index: {zIndex + 1}; transform: translateY({dragY}px); {dragging ? 'transition: none;' : ''}"
     >
+      <!-- Draggable header: grab handle + title live in one cohesive zone so the
+           whole top of the sheet reads as "pull down to close". Swipe is the
+           primary dismiss; the close button is a subtle, integrated affordance
+           kept for pointer/keyboard/screen-reader users. -->
       <div
         class="sheet-drag"
         onpointerdown={onDragStart}
@@ -87,7 +91,12 @@
         {:else}
           <div class="sheet-header">
             <Dialog.Title class="sheet-title">{title ?? 'Panel'}</Dialog.Title>
-            <Dialog.Close class="sheet-close" aria-label="Close">✕</Dialog.Close>
+            <Dialog.Close class="sheet-close" aria-label="Close">
+              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" />
+              </svg>
+            </Dialog.Close>
           </div>
         {/if}
       </div>
@@ -135,49 +144,77 @@
        scrolling the page/body while swiping the handle to dismiss. */
     touch-action: none;
     cursor: grab;
+    padding-top: 6px;
   }
   .sheet-drag:active {
     cursor: grabbing;
   }
+  /* Prominent grab handle — the primary "pull down to close" affordance. Brighter
+     and a touch larger than a hairline so it reads as interactive; it subtly
+     brightens while dragging. */
   .sheet-grabber {
-    width: 36px;
-    height: 4px;
+    width: 40px;
+    height: 5px;
     flex: none;
-    margin: 8px auto 4px;
-    background: var(--line);
+    margin: 6px auto 2px;
+    background: var(--muted);
+    opacity: 0.5;
     border-radius: 999px;
+    transition: opacity 0.15s, width 0.15s;
   }
+  .sheet-drag:hover .sheet-grabber,
+  .sheet-drag:active .sheet-grabber {
+    opacity: 0.9;
+    width: 48px;
+  }
+  /* Integrated header: title flush with the sheet's padding, a hairline divider
+     that only appears below it (separating chrome from body), no boxed strip. */
   .sheet-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.5rem;
+    gap: 0.75rem;
     flex: none;
-    padding: 0.25rem 1rem 0.5rem;
+    padding: 0.35rem 0.75rem 0.6rem 1rem;
   }
   :global(.sheet-title) {
     margin: 0;
     font-family: var(--font-mono);
-    font-size: 0.95rem;
-    color: var(--ink);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--accent);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
+  /* Subtle, integrated close — a muted disc, not a bare mark. 44px hit area for
+     the touch-targets rubric, but a small visual circle so swipe stays the star. */
   :global(.sheet-close) {
-    /* >= 44px touch target (kb:web-uiux-rubric touch-targets) */
     min-width: 44px;
     min-height: 44px;
+    flex: none;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     background: none;
     border: none;
-    border-radius: var(--rad-sm);
+    border-radius: 999px;
     color: var(--muted);
-    font-size: 1.1rem;
     cursor: pointer;
+    transition: background 0.15s, color 0.15s;
   }
-  :global(.sheet-close:hover) {
+  :global(.sheet-close svg) {
+    border-radius: 999px;
+    padding: 6px;
+    box-sizing: content-box;
+  }
+  :global(.sheet-close:hover),
+  :global(.sheet-close:focus-visible) {
     background: var(--surface-3);
     color: var(--ink);
+    outline: none;
   }
   .sheet-body {
     overflow-y: auto;
