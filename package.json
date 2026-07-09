@@ -32,6 +32,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed --project=desktop-chrome",
     "test:e2e:smoke": "npm run build:test && playwright test --config=playwright.smoke.config.ts",
+    "test:crawl": "npx tsx scripts/offline/button-crawl.ts",
     "dev:test": "VITE_PREFERRED_BACKEND=mock VITE_INGEST_BACKEND=mock VITE_CHAT_BACKEND=mock vite dev --port 5174",
     "build:test": "VITE_PREFERRED_BACKEND=mock VITE_INGEST_BACKEND=mock VITE_CHAT_BACKEND=mock vite build",
     "storybook": "storybook dev --port 6006",
