@@ -5,7 +5,7 @@ import { labelFromIRI } from '../rdf/semantic-diff';
 import type { ChangeLogEntry, TrustEvent } from '../storage/types';
 import { scheduleAutoSave } from '../storage/backup';
 import { scheduleWorkspaceTtlExport } from './workspace.svelte';
-import { officialKbActive, officialKbStatements, officialKbSources } from './official-kb.svelte';
+import { officialKbActive, officialKbStatements, officialKbSources, deactivateOfficialKb } from './official-kb.svelte';
 import { filterBlockedStatements } from '../safety/content-policy';
 
 /**
@@ -109,6 +109,11 @@ export async function loadAll() {
  * when the user navigates away or the session can tolerate a reload.
  */
 export function hotSwapData(stmts: Statement[], srcs: Source[]) {
+  // A hot-swap means we've navigated to a real registered KB (e.g. a KB leap
+  // from the read-only docs hub). The official-KB overlay must be dropped first
+  // — otherwise statements()/sources() keep returning officialKbStatements() and
+  // mask the swapped-in data, so the leap silently appears to do nothing.
+  if (officialKbActive()) deactivateOfficialKb();
   _statements = stmts;
   _sources = srcs;
   _loaded = true;

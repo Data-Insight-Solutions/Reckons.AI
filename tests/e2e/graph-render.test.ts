@@ -92,3 +92,54 @@ test('documentation graph renders nodes without a WebGL/renderer crash', async (
   const matchingConsoleErrors = consoleErrors.filter((e) => rendererErrorPattern.test(e));
   expect(matchingConsoleErrors, `Renderer errors in console:\n${matchingConsoleErrors.join('\n---\n')}`).toHaveLength(0);
 });
+
+/**
+ * Landing-page regression guard — the hero "Getting started →" button.
+ *
+ * The smoke test above clicks the "Documentation Graph" *card*; this covers the
+ * *hero* button (both call `openDocsKb`, but only the card was ever tested).
+ * Regression origin: a stale/pre-guard `activateOfficialKb` returned before the
+ * KB had statements, so the graph route's empty-KB fallback re-rendered the
+ * landing page — the button appeared to do nothing. This asserts the docs graph
+ * actually activates and lays out nodes. Runs against the MINIFIED build.
+ */
+test('hero "Getting started" button activates the docs graph (not a no-op)', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(async () => {
+    try {
+      const dbs = await indexedDB.databases();
+      await Promise.all(
+        dbs.map((d) =>
+          d.name
+            ? new Promise<void>((res) => {
+                const r = indexedDB.deleteDatabase(d.name!);
+                r.onsuccess = () => res();
+                r.onerror = () => res();
+              })
+            : Promise.resolve()
+        )
+      );
+    } catch { /* indexedDB.databases() may not exist on all browsers */ }
+    try { localStorage.clear(); } catch { /* ignore */ }
+    try { sessionStorage.clear(); } catch { /* ignore */ }
+  });
+  await page.reload();
+  await page.locator('nav').waitFor({ timeout: 15_000 });
+
+  // The exact control the user reported: the hero primary CTA.
+  const getStarted = page.getByRole('button', { name: /getting started/i });
+  await expect(getStarted).toBeVisible({ timeout: 10_000 });
+  await getStarted.click();
+
+  // Docs KB must actually activate and lay out nodes. If activation no-ops, the
+  // empty-KB guard re-renders the landing page and no .node-label ever appears.
+  await expect
+    .poll(async () => page.locator('.node-label').count(), {
+      timeout: 30_000,
+      message: 'Getting started was a no-op — docs graph never laid out nodes',
+    })
+    .toBeGreaterThan(0);
+
+  // And the landing hero must be gone (graph route swapped in).
+  await expect(page.getByRole('button', { name: /getting started/i })).toHaveCount(0);
+});

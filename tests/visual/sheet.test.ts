@@ -32,4 +32,34 @@ test.describe('Sheet (mobile bottom-sheet)', () => {
     expect(box!.width, 'close width').toBeGreaterThanOrEqual(44);
     expect(box!.height, 'close height').toBeGreaterThanOrEqual(44);
   });
+
+  // F36 mobile: the sheet must be dismissable by swiping the grabber/header down
+  // (not only via the ✕). Small drags snap back; a drag past the threshold closes.
+  test('swipe-down on the grabber dismisses the sheet; a small drag snaps back', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(storyUrl('shell-sheet--open'));
+    await page.waitForTimeout(500);
+
+    const drag = page.locator('.sheet-drag');
+    await expect(drag).toBeVisible();
+    const start = await drag.boundingBox();
+    expect(start, 'drag handle should have a box').not.toBeNull();
+    const cx = start!.x + start!.width / 2;
+    const topY = start!.y + 6;
+
+    // Small drag (20px) — below threshold — must NOT close.
+    await page.mouse.move(cx, topY);
+    await page.mouse.down();
+    await page.mouse.move(cx, topY + 20, { steps: 6 });
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+    await expect(page.locator('.sheet-content'), 'small drag should snap back').toBeVisible();
+
+    // Large drag (400px down) — past threshold — must close.
+    await page.mouse.move(cx, topY);
+    await page.mouse.down();
+    await page.mouse.move(cx, topY + 400, { steps: 12 });
+    await page.mouse.up();
+    await expect(page.locator('.sheet-content'), 'swipe past threshold should dismiss').toHaveCount(0);
+  });
 });
