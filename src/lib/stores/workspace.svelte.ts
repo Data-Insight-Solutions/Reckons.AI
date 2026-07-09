@@ -264,7 +264,9 @@ async function* walkTtls(dir: any, prefix: string[] = []): AsyncGenerator<string
     if (entry.kind === 'directory') {
       if (entry.name === 'assets') continue;
       yield* walkTtls(entry, [...prefix, entry.name]);
-    } else if (entry.kind === 'file' && entry.name.endsWith('.ttl')) {
+    } else if (entry.kind === 'file' && entry.name.endsWith('.ttl') && entry.name !== WORKSPACE_KB_FILE) {
+      // Skip the MCP combined export (knowledge.ttl) so it isn't imported as a
+      // duplicate KB alongside the real per-graph files.
       yield [...prefix, entry.name];
     }
   }

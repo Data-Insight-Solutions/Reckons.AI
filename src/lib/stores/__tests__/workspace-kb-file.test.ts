@@ -204,4 +204,12 @@ describe('workspace kbs/{name}/{name}.ttl convention', () => {
     const data = await mod.readKbFromFolder('legacy-only');
     expect(data?.ttl).toBe('<legacy> <a> <b> .');
   });
+  it('skips the MCP knowledge.ttl export at root', async () => {
+    const mod = await connectedWorkspace();
+    (await root.getFileHandle('knowledge.ttl', { create: true })).content = '<a> <b> <c> .';
+    (await root.getFileHandle('my-graph.ttl', { create: true })).content = '<a> <b> <c> .';
+    const folders = await mod.listKbFolders();
+    expect(folders.map(f => f.folderName)).toContain('my-graph');
+    expect(folders.map(f => f.folderName)).not.toContain('knowledge');
+  });
 });
