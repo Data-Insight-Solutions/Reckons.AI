@@ -62,7 +62,17 @@
       const s = settings();
       if (s.embeddingModel) setEmbeddingModel(s.embeddingModel);
       if (s.chatBackend === 'wasm' || (!s.chatBackend && s.preferredBackend === 'wasm')) {
-        warmWasm(s.wasmModel || undefined);
+        // Only warm eagerly when the model is ALREADY cached (instant, no prompt).
+        // On a fresh origin the model isn't cached, so warming here would pop a
+        // large-model download modal on the landing page. Defer that download to
+        // first chat use (ensureWasmReady in the generate path), where the prompt
+        // has proper context.
+        const wasmRepo = s.wasmModel || 'onnx-community/Qwen2.5-0.5B-Instruct';
+        const { inspectModelCache } = await import('$lib/integrations/llm/model-cache');
+        const isCached = (await inspectModelCache()).some(
+          (m) => m.complete && m.manifest.repo === wasmRepo
+        );
+        if (isCached) warmWasm(s.wasmModel || undefined);
       }
       // Prefer-local routing: warm the Ollama reachability cache so the first
       // sync provider resolution (chat) already knows whether to redirect.
