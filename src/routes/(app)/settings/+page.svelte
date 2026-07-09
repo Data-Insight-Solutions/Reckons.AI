@@ -1534,7 +1534,9 @@
           <strong>import from folder</strong>
           <p class="check-hint">
             Import graphs found in the workspace folder that aren't in the browser yet.
-            Each <code>kbs/*/kb.ttl</code> becomes a new graph.
+            <strong>Any <code>.ttl</code> anywhere in the folder</strong> becomes a graph (searched
+            recursively; <code>node_modules</code>, <code>build</code>, and hidden folders like
+            <code>.git</code> are skipped).
           </p>
         </div>
         <div class="btn-group">

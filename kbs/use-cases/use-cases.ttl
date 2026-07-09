@@ -1,0 +1,327 @@
+# generated 2026-07-09T18:30:46.324Z
+# 92 statements
+
+@prefix kb: <urn:kbase:concept/> .
+@prefix src: <urn:kbase:source/> .
+@prefix pred: <urn:kbase:predicate/> .
+@prefix meta: <urn:kbase:meta/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix dc: <http://purl.org/dc/terms/> .
+
+<urn:reckons:use/FloatTrip>
+    rdfs:label "Float Trip Planning" ;
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> ;
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "A group plans a weather-dependent river float trip. The organizer builds a KB with launch sites, shuttle logistics, and USGS river gauge data, then shares the TTL with participants. Each person asks Shelly their own questions -- schedule conflicts, gear needs, driving directions. As forecasts change, the organizer re-ingests weather sources, runs a Reckoning to confirm or adjust the launch time, and re-exports. Everyone sees the updated plan and the sources behind it." ;
+    <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:use/RecurringSourceIngestion> ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:use/CollaborativeKnowledge> .
+
+<urn:reckons:use/LegalDisputes>
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Build a timeline of events, contracts, correspondence, and obligations. Your KB becomes a structured evidence base that you can query: 'What did the landlord promise regarding repairs, and when?' Every answer traces back to a source document." ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:use/PersonalEmpowerment> ;
+    rdfs:label "Legal Disputes" ;
+    rdf:type <urn:kbase:type/Concept> .
+
+<urn:reckons:use/DecisionProvenance>
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:use/CollaborativeKnowledge> ;
+    rdfs:label "Decision Provenance" ;
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "When a Reckoning produces a recommendation and the user accepts it, the resulting KB statements are automatically annotated with the source IRIs, Reckoning timestamp, and confidence level. Anyone reading the triple later can see it was added by a Reckoning on a specific date, informed by specific sources. The KB becomes self-documenting." ;
+    <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:use/PersonalEmpowerment> .
+
+<urn:reckons:shelly/persona>
+    <urn:reckons:shelly/responseStyle> "concise" ;
+    <urn:reckons:shelly/personality> "empowering, practical, direct" ;
+    <urn:reckons:shelly/greeting> "This KB covers real-world use cases -- how individuals use knowledge graphs to stand up to institutions, and how groups share knowledge through TTL exports. Ask me about insurance claims, float trips, construction projects, or any scenario!" ;
+    <urn:reckons:shelly/name> "Shelly" ;
+    <urn:reckons:shelly/systemPrompt> "You are helping someone understand how a personal knowledge graph levels the playing field. Give concrete, practical examples. Emphasize that a well-curated KB lets individuals communicate with institutional authority." .
+
+<urn:reckons:use/RecurringSourceIngestion>
+    <http://www.w3.org/2004/02/skos/core#definition> "Mark a URL source as recurring with a check interval. On each re-ingest, a new dated source record is created while the old record is kept for historical comparison. The Compare view shows what changed between ingestions. Enables live-data workflows like weather monitoring, river gauge tracking, and NWS alert subscriptions." ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:use/CollaborativeKnowledge> ;
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> ;
+    rdfs:label "Recurring Source Ingestion" ;
+    rdf:type <urn:kbase:type/Concept> .
+
+<urn:reckons:use/InsuranceClaims>
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Ingest your policy documents, adjuster correspondence, photos, and repair estimates as triples. When you need to dispute a denial or request review, ask Shelly to draft a response citing specific policy clauses and documented evidence from your KB." ;
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:use/PersonalEmpowerment> ;
+    rdfs:label "Insurance Claims" .
+
+<urn:reckons:use/ConstructionProject>
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:use/CollaborativeKnowledge> ;
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> ;
+    <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:use/LegalDisputes> ;
+    rdf:type <urn:kbase:type/Concept> ;
+    rdfs:label "Residential Construction Project" ;
+    <http://www.w3.org/2004/02/skos/core#definition> "A general contractor maintains a project KB with permits, schedules, and trade dependencies for a renovation. Subcontractors import the TTL to understand their scope and timing. When a change order arrives, the contractor ingests it, runs a Reckoning to assess schedule impact, and re-exports. Each trade asks Shelly their own questions -- 'What does CO-3 add to my scope?' -- without the GC being a bottleneck. Decisions trace back to the change order that triggered them." .
+
+<urn:reckons:use/CollaborativeKnowledge>
+    <http://www.w3.org/2004/02/skos/core#definition> "One person organizes a KB around a shared topic, exports a .ttl file, and distributes it. Others import it as a source in their own KB. Each person uses Shelly and the Reckoning to ask questions relevant to them. Decisions are annotated with the sources that informed them. When things change, the organizer re-exports and importers see the diff in Compare." ;
+    rdf:type <urn:kbase:type/Concept> ;
+    rdfs:label "Collaborative Knowledge" ;
+    <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:use/PersonalEmpowerment> ;
+    <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:guide/WhatIsReckonsAI> ;
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> .
+
+<urn:reckons:kb>
+    <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a03-b003-000000000003" .
+
+<urn:reckons:use/PersonalEmpowerment>
+    rdfs:label "Power to the Individual" ;
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:guide/WhatIsReckonsAI> ;
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Insurance companies have teams of analysts. Corporations have legal departments. Landlords have property managers. You have your memory and a stack of papers? Not anymore. Build a KB of your rights, evidence, and correspondence. Ask Shelly to draft a precise response citing YOUR documented facts. You communicate with the authority of an institution." .
+
+<urn:reckons:use/AcademicResearchGroup>
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:use/CollaborativeKnowledge> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "A lab PI maintains a shared base KB of literature reviews, experimental parameters, and confirmed findings. PhD students import it and layer their own experiment results on top. When a student's results conflict with published work, a Reckoning cites papers by DOI and shared parameters to recommend framing -- novel finding or replication caveat. Other students can import each other's results and trace confidence levels through the full trust chain of sources." ;
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> ;
+    <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:use/Research> ;
+    rdfs:label "Academic Research Group" ;
+    rdf:type <urn:kbase:type/Concept> .
+
+<urn:reckons:use/EmploymentRights>
+    <http://www.w3.org/2004/02/skos/core#definition> "Track your employment contract terms, company policies, HR correspondence, and performance records. When you need to assert your rights, your KB provides precise, documented, citable facts." ;
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:use/PersonalEmpowerment> ;
+    rdfs:label "Employment Rights" ;
+    rdf:type <urn:kbase:type/Concept> .
+
+<urn:reckons:use/Research>
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> ;
+    rdfs:label "Research and Academia" ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:use/PersonalEmpowerment> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Track papers, authors, claims, contradictions. Build a literature review graph where every statement traces back to its source. Ask Shelly to summarize what you know about a topic -- every claim is cited." ;
+    rdf:type <urn:kbase:type/Concept> .
+
+<urn:reckons:use/MedicalRecords>
+    <http://www.w3.org/2004/02/skos/core#definition> "Organize diagnoses, prescriptions, test results, and doctor correspondence. Query your own medical history precisely. Prepare for appointments with a complete, structured record." ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:use/PersonalEmpowerment> ;
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> ;
+    rdf:type <urn:kbase:type/Concept> ;
+    rdfs:label "Medical Records" .
+
+<urn:reckons:use/ImportAsSource>
+    rdfs:label "Import as Source with Update Detection" ;
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Treat an imported TTL file as a named source with a sharedBy field and content hash. When the original sharer re-exports, importers see a 'source updated' notification and route through Compare instead of direct merge. The importer accepts or rejects individual changes from the updated TTL, keeping their personal annotations intact." ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:use/CollaborativeKnowledge> ;
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> .
+
+<urn:reckons:docs/nav/BackToHub>
+    <urn:reckons:leap/label> "Documentation Hub" ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Return to the main documentation hub with all leap nodes and the Reckons.AI story." ;
+    <urn:reckons:leap> "a1b2c3d4-e5f6-4a00-b000-000000000000" ;
+    rdfs:label "Back to Documentation Hub" ;
+    rdf:type <urn:kbase:type/KnowledgeBase> .
+
+<urn:reckons:use/EmergencyPreparedness>
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:use/CollaborativeKnowledge> ;
+    rdfs:label "Emergency Preparedness" ;
+    <http://www.w3.org/2004/02/skos/core#definition> "A neighborhood coordinator maintains a KB of resource inventories, contact trees, shelter locations, and special-needs residents. Before severe weather, they re-ingest NWS alerts, run a Reckoning to match generator owners with power-dependent neighbors, and share the updated TTL. Each neighbor sees their assignment and the backing sources. The KB records resource allocation decisions with the weather warning as provenance." ;
+    <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:use/RecurringSourceIngestion> ;
+    rdf:type <urn:kbase:type/Concept> ;
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> .
+
+<urn:reckons:use/CorporatePushback>
+    <http://www.w3.org/2004/02/skos/core#definition> "When a company stonewalls, you need precision. Ingest their terms of service, your complaint history, regulatory requirements, and previous communications. Shelly can draft a response that cites chapter and verse from THEIR OWN documents." ;
+    rdfs:label "Corporate Pushback" ;
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> ;
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:use/PersonalEmpowerment> .
+
+# ---- provenance ----
+<urn:kbase:stmt/02d5dbe6-6027-40b5-a73e-f2eee43ac465> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/041d4fc2-4b6a-4f39-9336-afb5bb0c699c> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/069ea4b0-e443-480c-943b-4fc67aec9013> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/0aa576c0-8b5f-499a-9c98-290958c798c1> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/13875d94-16bd-4b31-b9f3-05c568dc2ce5> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/175f4e8b-6c2e-4029-9428-d06537acffb8> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/17aef090-ee8e-463f-a4f5-4711ffebb10e> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/1909ec5e-b04f-4400-924a-fb9dfc6ce321> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/1d6235e1-7b57-4370-bece-3e33c8ac5db8> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/21ed0f42-6d62-482e-81c2-e4b08bfa93b2> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/292a0c1e-33bd-44c1-ab8c-9d0f196a6233> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/3094426a-fafb-4ca5-9556-f2fc9b3479f2> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/337877cc-0818-4970-acd1-5cc0d5e23bcf> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/3d4dd51e-69b0-4cb6-8b40-a961399ac51b> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/3e5535b1-9079-4071-8cea-2f5bc4fd78fa> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/44243548-0284-48fb-94c4-a324f93ceaed> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/4d90ed77-f879-4e60-9536-f49e39807f1a> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/50988690-ebd3-49a2-ba9a-4808a821ebe8> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/5a51f1e0-65dc-45b9-842f-c0c5cff9d0bb> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/5b3cebe1-26df-4556-8a6c-8f8d7518d973> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/5d325312-f381-45de-a3e0-3cd7f5d9a138> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/5fd8ab75-c455-4336-8182-9eed50b47c21> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/646bf82e-7377-4c5c-b01a-dbb0ff643fc9> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/66cc89bb-f549-4cc6-9da6-ddf3e42618bb> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/6718808e-ebb6-4c96-ab08-81700fd7f183> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/67623aaf-1b26-46f3-9e85-0bb55098d076> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/6bd2df64-787b-4f25-9618-ad35d30f2349> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/6ffdabaf-d310-42a8-932a-6f4caaee314b> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/70918790-b676-44fc-b0da-094c29168860> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/72cf1e8c-09e5-4ddc-9075-49c813025fd2> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/73e58d08-7454-44e0-a954-86b2011d40d7> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/740c0be1-54b4-45f9-b2eb-54c616c09c65> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/78ad2e07-d488-4c00-b184-790062781fe0> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/79bbca0f-036d-40fd-9f90-34ecc7b1ec85> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/7aad5800-37c9-40d6-82b9-07a19ae294fd> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/7b9c83d9-fb3e-4526-8170-b3c50ffdc366> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/7f7d59d9-428d-4e98-baff-913080296b83> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/801c8623-21c9-4cee-9987-41f320137c6a> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/84488fd9-05cf-48d0-b280-b8ef37fda8e1> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/881b89e2-784f-4980-9302-e2561fc4658c> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/88d98ff8-5f33-477c-875a-28dacca8341b> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/899bf758-c108-4008-ab46-941a9804e6a6> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/8b024ee0-5ff9-40c8-89a4-e88c92822cd7> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/8c71aaee-4466-4b6b-b71f-fabd9da84e65> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/8da27dd1-5512-4155-8bde-38496b5e363e> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/8e21f54e-0b1a-4323-9330-acc243646b81> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/8ea38c7f-294c-46a1-a0a2-a7a5d33cb342> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/9165661b-bc80-4a19-9b56-b0393ad2fda1> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/965817b8-90fe-4881-8d60-3432e98fa7dd> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/98861719-75fa-49de-baab-c2878db28283> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/98b26b7f-7267-4346-9ce5-f5e520bcbe8d> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/99b1daf7-3c20-4f73-857d-4e5393a66606> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/99cc3cf4-126e-4663-b491-4dd84af62010> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/9bde3d51-315d-42bf-abe0-0dcd0266a000> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/9ee2bb64-f6f4-40db-beb9-880997928fef> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/a245c821-ef71-4a47-a75e-979f33536fd3> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/a45c511b-97f3-4ee6-88cd-46f89d7ea639> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/a81f0f34-1eed-40cb-b798-567c3959afc6> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/ae6280c2-b9fa-4537-ae46-b15a83882a13> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/b1202905-20ee-4e59-8d0b-1f0ebfc95f51> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/b3b9e90e-0650-4155-8192-c293992824a4> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/b719693f-0fb0-4575-bbde-4962f7a28768> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/be154f5a-8d92-4b88-a41a-09e2f6b5dce1> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/c234932f-c01c-45e5-b151-4804aa644f48> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/c2e4c3a4-bb97-44a1-ad13-f5c6206cf2d5> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/c31f79a2-eec1-467d-b5f8-a3c37c9097f7> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/c5a71e1c-26b7-4dc0-b6f0-b98e16ef8ec9> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/c904e254-c286-4838-8c45-2cb81947f3c4> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/ca9b46f2-418b-4fd4-83a5-4336867a1419> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/cacb450c-1ee1-42dc-b8c1-c1e6445caf7e> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/cb0ea57c-4e21-4d12-b76d-701c1ddc9d75> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/cb45fef9-413f-4279-9400-25cb97d4bc99> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/d50874ff-adde-41ab-b858-de3e598acb9a> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/d841dc1a-0a7c-471c-b189-0dbb444c01f3> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/d87556c7-c774-4d23-9c52-8c2d64479a35> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/dd113a31-fb29-403b-a1e6-3b69cb24c005> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/e505338d-12d5-4724-b118-cd827cbd0d23> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/e5d2d2bf-f9d3-4a3a-8ce3-ed7458aab49f> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/e7f44332-42b2-4656-98d3-cc3bbb27c7a2> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/e9bcbb3b-7233-473f-bff1-07b2699b4455> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/eaf5d977-ccc1-43e7-b0e5-986ca885466a> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/eb48c405-b737-46a3-a87a-857764657976> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/eb7d63cd-9d4a-45c2-b882-56266a2c9549> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/ec4c6a73-2a17-4fe1-9828-27d495acd4a3> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/f0ba638c-5fcd-4d44-a73c-1f28c7cc554b> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/f2c69ccb-5fd2-430a-8e28-c9a6abf7eb23> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/f3635eb4-5976-4930-a8f2-9e67a2e9f0f0> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/f5134469-1ef5-4930-99ba-a2e2bc8a09d6> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/f584158c-21b5-43be-93eb-e08179737b2f> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/f936e21e-06a6-4a6e-9137-ce82999f6bc1> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/fc503c36-7086-4f3a-86b8-095325170672> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .
+<urn:kbase:stmt/fc5bd457-0ba9-4e56-9c18-61183ba335de> prov:wasDerivedFrom src:f10e6705-0bbb-488d-b073-3ade773bab65 ;
+    dc:created "2026-07-08T02:33:42.456Z"^^xsd:dateTime .

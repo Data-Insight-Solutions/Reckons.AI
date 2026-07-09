@@ -114,7 +114,7 @@
     },
     {
       title: 'explore the graph',
-      body: `Your knowledge comes alive in the **graph view**.\n\nUse the layout chips to organize your view:\n• **force** — free-form physics layout\n• **source** — clusters around each source document\n• **type** — groups by entity type (Person, Concept, etc.)\n• **hub** — highlights your most connected entities\n• **order** — numbered grid you can drag to reorder\n• **focus** — centers on the selected node\n\nFilters let you highlight **hubs**, **islands**, **jumps**, or entities missing types or sources.`
+      body: `Your knowledge comes alive in the **graph view**.\n\nUse the layout chips to organize your view:\n• **force** — free-form physics layout\n• **source** — clusters around each source document\n• **type** — groups by entity type (Person, Concept, etc.)\n• **hub** — highlights your most connected entities\n• **arrange** — numbered grid you can drag to reorder\n• **focus** — centers on the selected node\n\nFilters let you highlight **hubs**, **islands**, **jumps**, or entities missing types or sources.`
     },
     {
       title: 'run a reckoning',
@@ -288,13 +288,36 @@
       });
     }
 
+    // F34: detect a visual-test story (TestStep / story:Step nodes carrying a
+    // screenshot + assertion + verdict) so Shelly reviews it screen-by-screen
+    // instead of describing the graph generically.
+    const STEP_TYPES = new Set(['urn:reckons:story/Step', 'urn:kbase:type/TestStep']);
+    const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
+    const reviewSteps: NonNullable<KBContext['reviewSteps']> = [];
+    for (const [iri, sts] of bySubject) {
+      if (!sts.some((s) => s.p.value === RDF_TYPE && STEP_TYPES.has(s.o.value))) continue;
+      const val = (preds: string[]) => sts.find((s) => preds.includes(s.p.value))?.o.value ?? null;
+      const orderStr = val(['urn:reckons:story/order', 'urn:reckons:nav/order']);
+      reviewSteps.push({
+        iri,
+        order: orderStr ? parseInt(orderStr, 10) || 0 : 0,
+        title: val(['urn:reckons:story/title', RDFS_LABEL]) ?? iri.split('/').pop() ?? iri,
+        assertion: val(['urn:kbase:predicate/assertion']),
+        result: val(['urn:kbase:predicate/result']),
+        page: val(['urn:kbase:predicate/page']),
+        hasScreenshot: sts.some((s) => s.p.value === 'urn:kbase:meta/gif' || s.p.value === 'urn:kbase:predicate/icon2d'),
+      });
+    }
+    reviewSteps.sort((a, b) => a.order - b.order);
+
     return {
       statementCount: stmts.length,
       sourceCount: sources().length,
       typesPresent: [...typesPresent],
       untypedEntityCount,
       manualStatementCount,
-      sampleEntities
+      sampleEntities,
+      reviewSteps: reviewSteps.length ? reviewSteps : undefined
     };
   }
 

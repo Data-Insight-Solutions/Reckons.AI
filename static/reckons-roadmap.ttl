@@ -455,7 +455,7 @@ kb:sveltia-cms-setup rdf:type ktype:Concept ;
                kpred:description  "Wire the /admin content manager. The CMS entry (static/admin/index.html) + config (static/admin/config.yml) ship in the app and are served at Reckons.AI/admin. GitHub login uses sveltia-cms-auth, a small Cloudflare Worker." ;
                kpred:setup-step   "1. Deploy sveltia-cms-auth: github.com/sveltia/sveltia-cms-auth (Cloudflare Worker reckons-sveltia-cms-auth, mapped to admin.reckons.ai). DONE." ;
                kpred:setup-step   "2. Create a GitHub OAuth App: Settings > Developer settings > OAuth Apps. Homepage https://reckons.ai; Authorization callback URL https://admin.reckons.ai/callback. MANUAL — a human must do this in the GitHub UI." ;
-               kpred:setup-step   "3. Set the worker's GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET vars (and ALLOWED_DOMAINS=reckons.ai) to the OAuth App credentials. TOOLED — paste the OAuth App's Client ID/Secret into SVELTIA_GITHUB_CLIENT_ID / SVELTIA_GITHUB_CLIENT_SECRET / SVELTIA_ALLOWED_DOMAINS in .env (see .env.example), then run scripts/sveltia-auth-secrets.sh, which pushes them to the worker via `wrangler secret put`." ;
+               kpred:setup-step   "3. Set the worker's GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET vars and ALLOWED_DOMAINS to the OAuth App credentials. ALLOWED_DOMAINS is a comma-separated allowlist (`*` matches one subdomain level); it is 'reckons.ai,*.reckons-ai.pages.dev' so the production custom domain AND the dev branch alias + hashed preview deploys (dev.reckons-ai.pages.dev, <hash>.reckons-ai.pages.dev) can all authenticate. TOOLED — paste the OAuth App's Client ID/Secret into SVELTIA_GITHUB_CLIENT_ID / SVELTIA_GITHUB_CLIENT_SECRET / SVELTIA_ALLOWED_DOMAINS in .env (see .env.example), then run scripts/sveltia-auth-secrets.sh, which pushes them to the worker via `wrangler secret put`. VERIFIED 2026-07-09: GET /auth?provider=github&site_id=dev.reckons-ai.pages.dev (and a preview hash) both 302 to github.com/login/oauth/authorize; a disallowed domain does not." ;
                kpred:setup-step   "4. backend.base_url in static/admin/config.yml points at https://admin.reckons.ai. DONE." ;
                kpred:setup-step   "5. Visit https://reckons.ai/admin/ and Login with GitHub" ;
                kpred:alt          "Local editing without the worker: Sveltia has no proxy-server backend (@sveltia/cms-proxy-server does not exist on npm) and ignores local_backend (a Decap-only option). On localhost it auto-offers \"Work with Local Repository\" (File System Access API, Chromium-family browsers only) with no config change needed." ;
@@ -1167,8 +1167,9 @@ kb:release-pipeline rdf:type ktype:Feature ;
 kb:deep-testing rdf:type ktype:Feature ;
                rdfs:label    "Deep Testing & Living Coverage" ;
                kpred:feature-id   "F34" ;
-               kpred:has-status   "planned" ;
-               kpred:description  "An OFFLINE, ever-growing use-case test system distinct from the fast per-build suite. (1) Deep tests are PREDETERMINED end-user PATHS through the web app, run LOCALLY on demand — not on every build; the per-build suite stays fast (unit + smoke). (2) Two evaluation dimensions beyond pass/fail: a VISUAL surface (each path is captured across a DEVICE MATRIX via Playwright device descriptors — phones + tablets: iPhone 15, Pixel 7, iPad Pro 11 are already configured in playwright.config.ts as touch-emulated projects, extensible to more; a local VLM then scores the per-device screenshots against the Web/Mobile UI-UX Rubric, so responsive/touch guidelines are checked at real viewport sizes — scalable emulation that complements spot-checks on physical iPhone/iPad) and a TEXT/output-consumption surface (generated answer/output quality — leads with the conclusion, scannable, grounded). (3) The rubric is a graph: reckons-workspace design-principles KB (kb:web-uiux-rubric) — testable guidelines grounded in core design principles; every finding CITES the violated guideline (kpred:derives-from -> core principle). Mobile-tagged guidelines gate the responsive work. (4) Opus orchestration periodically ANALYSES coverage, finds GAPS, and authors new path specs at various times (not every build); paths are graph entities so the library grows. (5) Novel user workflows: the app transparently benches and KINDLY ASKS the user to opt in to contributing their real workflow as a new test path (consent-based, never covert). (6) Runs as an offline procedure (scripts/offline/), emitting gaps + rubric violations as pending questions for review in Reckons.AI. Builds on visual-testing (VLM gate) and relates to the release pipeline's developer gate. Consumes the offline-first / Opus-orchestrates-online model." ;
+               kpred:has-status   "scaffolded" ;
+               kpred:in-dev       "2026-07-09"^^xsd:date ;
+               kpred:description  "PHASE 1 SHIPPED (2026-07-09): offline exhaustive button crawler — scripts/offline/button-crawl.ts (npm run test:crawl). Clicks every interactive element on every route and, per click, records crashes (console/page errors), blank screens (solid-fill pixel artifact via tests/visual/vision-local), SILENT NO-OPS (nothing observable changed — URL / node count / KB id / open panels / title / visible-text hash; the class the docs-hub leap regression fell into, which a crash-only crawler misses), and sub-44px touch targets. Resets to the route before each click for deterministic per-click state. Offline-first: pixel/DOM/touch checks are pure local JS (no Ollama/Opus); findings queued to knowledge.pending.jsonl for review. TIED TO THE GRAPH: the crawl also emits a TestWorkflow -> TestStep STORY graph (tests/visual/button-crawl.ttl — one workflow per route, one step per click, each carrying its screenshot via kmeta:gif and a kpred:result verdict + kpred:violates rubric citations), so results are reviewable in-app as an ordered story rather than a JSON dump (same schema as the navigation-sweep story; written to a sibling file so it never clobbers the separately-generated visual-tests.ttl). NEXT: VLM visual scoring of screenshots against kb:web-uiux-rubric across the device matrix (phase 2); a persistent-context / warm-service-worker pass to catch stale-cache regressions fresh contexts never reproduce (phase 3); Opus authoring new path specs from coverage gaps (phase 4). --- FULL DESIGN: An OFFLINE, ever-growing use-case test system distinct from the fast per-build suite. (1) Deep tests are PREDETERMINED end-user PATHS through the web app, run LOCALLY on demand — not on every build; the per-build suite stays fast (unit + smoke). (2) Two evaluation dimensions beyond pass/fail: a VISUAL surface (each path is captured across a DEVICE MATRIX via Playwright device descriptors — phones + tablets: iPhone 15, Pixel 7, iPad Pro 11 are already configured in playwright.config.ts as touch-emulated projects, extensible to more; a local VLM then scores the per-device screenshots against the Web/Mobile UI-UX Rubric, so responsive/touch guidelines are checked at real viewport sizes — scalable emulation that complements spot-checks on physical iPhone/iPad) and a TEXT/output-consumption surface (generated answer/output quality — leads with the conclusion, scannable, grounded). (3) The rubric is a graph: reckons-workspace design-principles KB (kb:web-uiux-rubric) — testable guidelines grounded in core design principles; every finding CITES the violated guideline (kpred:derives-from -> core principle). Mobile-tagged guidelines gate the responsive work. (4) Opus orchestration periodically ANALYSES coverage, finds GAPS, and authors new path specs at various times (not every build); paths are graph entities so the library grows. (5) Novel user workflows: the app transparently benches and KINDLY ASKS the user to opt in to contributing their real workflow as a new test path (consent-based, never covert). (6) Runs as an offline procedure (scripts/offline/), emitting gaps + rubric violations as pending questions for review in Reckons.AI. Builds on visual-testing (VLM gate) and relates to the release pipeline's developer gate. Consumes the offline-first / Opus-orchestrates-online model." ;
                kpred:depends-on   kb:visual-testing ;
                kpred:relates-to   kb:release-pipeline .
 
@@ -1227,3 +1228,112 @@ kb:offline-align-review rdf:type ktype:Feature ;
                kpred:in-dev       "2026-07-08"^^xsd:date ;
                kpred:description  "Offline jobs that review alignment/drift warnings in depth and propose graph changes for human review (never silent edits). DETERMINISTIC LAYER (functional): scripts/branch-align.ts --suggest turns each 'functional but untracked' drift into a pending suggestion in knowledge.pending.jsonl — features with kpred:remaining → propose in-dev; finished ones → propose in-production + a functional→production status-update; idempotent (dedup by subject+predicate+object); wired into npm run offline:sweep. FUTURE AGENT LAYER (planned): when OLLAMA_BASE_URL is set, a LOCAL model reads each flagged feature's triples + recent git and reasons about the correct env/status/proposal, grounded and emitted as a suggestion (ground-first + validate + emit-question, per the devstral salvage lesson). Extends the F33 pipeline and the offline procedures." ;
                kpred:relates-to   kb:release-pipeline .
+
+# -- Change Notes & Approval Tracking (F44) ------------------------------------
+# The graph handles FACTS well (add/remove/merge -> pending -> confirmed). But a
+# CHANGE sometimes needs long-form PROSE ("why we did this"), an APPROVAL trail,
+# and links to the node-state transitions it caused — awkward as bare triples.
+# Reuses the F27 publish machinery (Sveltia CMS <-> markdown <-> graph round-trip)
+# as the long-form authoring surface. Design drafted 2026-07-09; not built.
+
+kb:change-notes rdf:type ktype:Feature ;
+               rdfs:label    "Change Notes & Approval Tracking" ;
+               kpred:feature-id   "F44" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "medium" ;
+               kpred:description  "A first-class ChangeNote + Approval layer over the graph. MOTIVATION: pending->confirmed handles short facts, but some changes need (a) long-form human PROSE explaining the why, (b) an APPROVAL trail (who signed off, when), and (c) automatic links to the OTHER nodes whose state the change moved — none of which fit a bare triple. DESIGN (graph-first, reuses F27): a ChangeNote is a WebPage-like node authored through Sveltia CMS (the existing content/*.md <-> graph round-trip in src/lib/publish/), so the long-form body lives in markdown and the structured metadata lives as triples: kpred:notes-change-to -> [affected entity IRIs] (rendered as leap-style back-links on those nodes — the 'links to node state in a slightly different way'), kpred:state-transition -> a reified from->to on each affected node (before/after status), kpred:approval-status (proposed|approved|rejected), kpred:approved-by, kpred:approved-on. An Approval is its own small shape reused across the app so three things share ONE model: F33 release-gate sign-offs (kpred:dev-approved / stakeholder-approved), F35 steering-committee votes, and note-level approvals. The md-align check (F27) keeps note bodies honest against the graph. Distinct from pending.jsonl (short machine-proposed facts) — ChangeNotes are human-authored, long-form, and approval-bearing. PHASES: (1) ChangeNote graph shape + a Sveltia collection in static/admin/config.yml + render on affected nodes; (2) Approval shape + status transitions surfaced in the Review tab; (3) unify F33/F35 approvals onto it. Grounded in graphs-are-source-of-truth: notes and approvals travel with the KB as ordinary Turtle." ;
+               kpred:depends-on   kb:graph-publishing ;
+               kpred:relates-to   kb:release-pipeline ;
+               kpred:relates-to   kb:steering-committee .
+
+# -- Auto Zoom-to-Fit on Layout / Filter Change (F45) --------------------------
+# UX polish for the 2D/3D graph (kb:knowledge-graph): when the visible node set
+# changes because the user just picked a new force layout or applied a filter,
+# optionally auto-fit the camera/viewport so every visible node is in frame.
+
+kb:graph-zoom-to-fit rdf:type ktype:Feature ;
+               rdfs:label    "Auto Zoom-to-Fit on Layout / Filter Change" ;
+               kpred:feature-id   "F45" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "low" ;
+               kpred:description  "A user SETTING that, when enabled, automatically zooms/pans the graph to fit all currently-visible nodes whenever the visible set changes due to a newly-applied force LAYOUT (free/focus/hub/time/order/tree) or a FILTER (status/source/type/no-type/no-source). Today the camera keeps its previous framing after such a change, so nodes can land off-screen or clustered until the user manually zooms. Scope: compute the bounding box of visible nodes after layout settle / filter apply and animate the 2D viewport transform (and the 3D camera) to frame it with padding; debounce so rapid filter toggling doesn't thrash; respect prefers-reduced-motion (snap, no animation); off by default (setting under graph/display) so it never fights users who curate their own framing. Relates to the graph rendering feature and the mobile reflow work (small viewports benefit most)." ;
+               kpred:relates-to   kb:knowledge-graph ;
+               kpred:relates-to   kb:mobile-uiux .
+
+# -- Triple-Question Context Pages (F46) ---------------------------------------
+# URGENT Sveltia use: a reviewer deciding a pending "? question" fact (F32) often
+# lacks the context to decide well. Let an OPTIONAL short summary page attach to a
+# specific triple/question, authored in Sveltia, so the reviewer has grounded
+# context right at the decision point. Shares F44's ChangeNote/attach mechanism.
+
+kb:question-context-pages rdf:type ktype:Feature ;
+               rdfs:label    "Triple-Question Context Pages" ;
+               kpred:feature-id   "F46" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:description  "An OPTIONAL short context/summary page attached to a specific pending triple or '? question' fact, to give the reviewer what they need to decide. MOTIVATION: the Review tab surfaces partial facts needing an answer (F32 — incoming.needsObject, the 'questions only' filter in routes/(app)/review/+page.svelte), but a bare subject-predicate-? is often not enough context to accept/answer/reject confidently. DESIGN (reuses F27 + F44): the page is a WebPage-like node authored in Sveltia (content/*.md <-> graph round-trip), linked to the question via kpred:context-for -> [the statement/question id or subject IRI], rendered inline in the review card as an expandable summary (excerpt in graph, long-form in the .md). Content can be human-written OR drafted by Shelly grounded in the graph (kb_generate_page / kb_entity_markdown / kb_compress) then edited. Distinct from the answer itself (knowledge.answers.jsonl) — this is decision-support context, not the decision. Kept optional and lightweight so most questions need none. More urgent than F44's change-note use because it unblocks review throughput directly. Relates to F32 partial facts, F44 change notes, and F27 publishing." ;
+               kpred:depends-on   kb:graph-publishing ;
+               kpred:relates-to   kb:change-notes ;
+               kpred:relates-to   kb:partial-facts .
+
+# -- Shelly in Sveltia (un-forked) (F47) ---------------------------------------
+# Bring Shelly (the graph-grounded assistant) INTO the Sveltia authoring surface
+# WITHOUT forking Sveltia — it must remain a separate, un-forked codebase. Shelly
+# drafts/summarises page content grounded in the graph while the user edits.
+
+kb:shelly-in-sveltia rdf:type ktype:Feature ;
+               rdfs:label    "Shelly in Sveltia (un-forked)" ;
+               kpred:feature-id   "F47" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "medium" ;
+               kpred:principle    "Sveltia CMS MUST remain a separate, un-forked, upstream-tracking codebase (as today — static/admin/config.yml uses the external bundle). Shelly integrates AROUND or THROUGH documented extension points, never by patching Sveltia's source." ;
+               kpred:description  "Make Shelly available inside the Sveltia editing experience so authors can draft, summarise, and refine page content grounded in the graph — without forking Sveltia. TWO CANDIDATE INTEGRATION PATHS (validate before building): (1) HOST-APP OVERLAY — Sveltia is already served in-app at /admin; embed it and render a Shelly panel in the surrounding Reckons.AI chrome, exchanging the current entry's text via postMessage / the File System Access working copy, so Sveltia's bundle is untouched; (2) REGISTRATION API — if Sveltia exposes Decap-style registerWidget / registerEditorComponent / registerPreviewTemplate hooks, mount a Shelly widget through config/init without patching source. Shelly reuses existing graph-grounded tools: kb_generate_page (draft a WebPage body from the graph via local Ollama), kb_entity_markdown (deterministic entity->markdown, no LLM), kb_compress (grounded context). Use cases: 'draft this page from the entity', 'summarise these triples', 'write the F46 question-context blurb'. Consent + safety: ETHICS_PREAMBLE applies; suggestions are proposals the author edits, never silent writes. Relates to the Shelly bridge (stores/shelly-bridge.svelte.ts), F27 publishing, and F46 question-context pages." ;
+               kpred:depends-on   kb:graph-publishing ;
+               kpred:relates-to   kb:question-context-pages .
+
+# -- Sveltia Edit Routing & Approval Mapping (F48) ------------------------------
+# Where do CMS edits land, and what counts as approval? Per-environment routing
+# is wired now (dev/preview admin -> dev branch, production -> main untouched);
+# the fuller per-content mapping + approval gates are future work.
+
+kb:sveltia-edit-mapping rdf:type ktype:Feature ;
+               kpred:feature-id   "F48" ;
+               rdfs:label    "Sveltia Edit Routing & Approval Mapping" ;
+               kpred:has-status   "scaffolded" ;
+               kpred:in-dev       "2026-07-09"^^xsd:date ;
+               kpred:principle    "A small, human, MANUAL markdown polish edit carries its own approval — the human who made the change IS the review. Such edits may commit to main directly without a separate gate. Larger, structural, or graph-shaping changes still go through the F33 review pipeline and F44 change-note approval." ;
+               kpred:principle    "Read-only is the default posture for now; editing is opt-in per environment." ;
+               kpred:description  "Route CMS commits to the right branch per environment, and map edit KIND to the approval it needs. DONE (per-environment routing, static/admin/index.html): production (reckons.ai and the pages.dev apex) is left to auto-init from config.yml (branch: main) untouched; only the dev branch alias and hashed preview subdomains (*.reckons-ai.pages.dev) take Sveltia manual-init (window.CMS_MANUAL_INIT + CMS.init with load_config_file: true) and override backend.branch to 'dev', so edits made while testing the review flow land on dev, not production main. Verified: the pinned @sveltia/cms@0.169.1 bundle exposes CMS.init and honours CMS_MANUAL_INIT; the host->branch selector is a pure, unit-tested function (reckonsAdminBranch); production path is unchanged. Remaining smoke test: a real dev-login confirms load_config_file merges (collections preserved) and a commit lands on dev. FUTURE: (1) per-content/section mapping (which collections route where); (2) tie edit KIND to approval — trivial human polish self-approves on main (see principle), structural/graph changes flow through F33 gates + F44 change notes; (3) optionally derive the branch from CF_PAGES_BRANCH at build time instead of hostname matching. Relates to F27 publishing, F33 release pipeline, F44 change notes." ;
+               kpred:depends-on   kb:graph-publishing ;
+               kpred:relates-to   kb:release-pipeline ;
+               kpred:relates-to   kb:change-notes .
+
+# -- Graph-as-Site-Navigation (F49) --------------------------------------------
+# The published site's map IS the graph: WebPage nodes appear as graph nodes, a
+# landing page + subpage nav is defined and edited in-graph, and nav edges use a
+# MUCH lighter force so a nav hub linking many pages doesn't distort the graph.
+
+kb:graph-as-navigation rdf:type ktype:Feature ;
+               rdfs:label    "Graph-as-Site-Navigation" ;
+               kpred:feature-id   "F49" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:principle    "The graph is the PRIMARY navigation of what pages are published and where they're accessed — not a separate site-map UI. Publishing structure lives in, and is edited from, the graph." ;
+               kpred:description  "Make published pages first-class citizens of the graph so the graph itself is the site map. PARTS: (1) WebPage nodes (ktype:WebPage, F27) RENDER as graph nodes — visible alongside concepts, distinguishable (icon/type), selectable. (2) In-graph site structure: define a LANDING/home page and navigation to SUBPAGES as graph edges (reuse skos:broader for parent/child + nav:next/prev for sequence, the same hierarchy vocabulary the hnav trees use), created and rearranged in the graph. (3) LIGHT-FORCE nav edges — CRITICAL: page/nav edges must carry a much lower force-directed spring weight than concept edges, because a nav hub connected to many published pages (or pages linked across every concept) would otherwise collapse/warp the main graph shape. Introduce per-edge-kind force weights (concept edges normal; page/nav edges very light, or excluded from the main force pass and laid out in a secondary/orbit pass) so adding the whole published site never distorts the knowledge layout. (4) In-graph PAGE METADATA editing: edit slug, section, template, status, title from the node panel (writes the urn:kbase:page/* triples; round-trips via F27 site-export + md-align). (5) Publishing map: from any concept, see which pages reference/derive from it and jump to them; from a page node, open the published /docs URL. Builds on F27 graph publishing and relates to F46 (question-context pages, another in-graph page attach), the 2D/3D graph (per-edge force weights), and the /docs route." ;
+               kpred:depends-on   kb:graph-publishing ;
+               kpred:relates-to   kb:knowledge-graph ;
+               kpred:relates-to   kb:question-context-pages .
+
+# -- Import & Workspace UX Rework (F50) ----------------------------------------
+# The current import + workspace/graph-settings flow is confusing: graph-scoped
+# actions live in global Settings, "sync" (write) vs "import" (read) are easy to
+# mix up, and a bare-.ttl import silently drops assets. Rework around the graph.
+
+kb:import-workspace-ux rdf:type ktype:Feature ;
+               rdfs:label    "Import & Workspace UX Rework" ;
+               kpred:feature-id   "F50" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:description  "Fix the confusing import + workspace/graph-settings experience (user feedback 2026-07-09: 'how horrible the import and workspace/graph settings are right now'). PROBLEMS: (a) graph-data actions (import graphs from folder, sync) live in GLOBAL Settings, far from where graphs are managed; (b) the nav item labelled 'graph' goes to /kb (registry) while the graph VIEW is / — so 'graph settings' has no obvious home; (c) 'sync all graphs now' (WRITE: browser KBs -> folder) reads as the same thing as 'import graphs from folder' (READ: folder -> browser), and the count/'3 graphs' compounds the confusion; (d) importing a bare .ttl silently loses binary assets (icons/previews/models) — folder import restores them (partly addressed: an import-time warning now points to folder import). DIRECTION: (1) surface graph import/export ON the graph page (/kb) where graphs are managed — the user's choice — keeping detailed workspace CONFIG in Settings; (2) clearly separate and label the two DIRECTIONS (push-to-folder vs pull-from-folder) with plain wording and per-direction affordances; (3) make import asset-aware (prefer conventional kbs/{name}/ folders that carry assets; warn on loose/bare .ttl); (4) reconsider naming ('graph' nav vs graph view). Relates to F48 (Sveltia edit routing, the other workspace-branch surface), F27 publishing, and the recursive folder-discovery fix. Small deterministic wins land first; the fuller IA rework is scoped here." ;
+               kpred:relates-to   kb:sveltia-edit-mapping ;
+               kpred:relates-to   kb:graph-publishing .

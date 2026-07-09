@@ -1603,7 +1603,9 @@
       {/if}
       <ToggleGroup.Item value="hub" class="tg-chip"><span class="lbl mono">hub</span></ToggleGroup.Item>
       <ToggleGroup.Item value="timeline" class="tg-chip"><span class="lbl mono">time</span></ToggleGroup.Item>
-      <ToggleGroup.Item value="order" class="tg-chip"><span class="lbl mono">order</span></ToggleGroup.Item>
+      <!-- value stays "order" (URL/state); label is "arrange" so it isn't
+           confused with structural hnav ordering — this is a manual drag grid. -->
+      <ToggleGroup.Item value="order" class="tg-chip"><span class="lbl mono">arrange</span></ToggleGroup.Item>
       <ToggleGroup.Item value="hierarchy" class="tg-chip"><span class="lbl mono">tree</span></ToggleGroup.Item>
     </ToggleGroup.Root>
     {#if podMode}

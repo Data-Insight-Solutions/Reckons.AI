@@ -257,12 +257,21 @@ async function writeAssetsToFolder(
   }
 }
 
+/** Directories the recursive `.ttl` walk never descends into. `assets/` holds
+ *  binary asset stores (not KBs); the rest are dependency/VCS/build dirs that
+ *  would otherwise flood discovery with stray `.ttl` fixtures when the linked
+ *  folder is a real project root (e.g. a git repo). Hidden dirs (dot-prefixed:
+ *  `.git`, `.svelte-kit`, `.cache`, …) are skipped separately below. */
+const WALK_SKIP_DIRS = new Set(['assets', 'node_modules', 'build', 'dist', 'coverage', 'vendor']);
+
 /** Recursively yield the path segments of every `.ttl` file under `dir`.
- *  Skips `assets/` subdirectories (binary asset stores, not KBs). */
+ *  Skips asset stores, dependency/build/VCS directories, and hidden folders, so
+ *  linking a real project folder discovers the user's KBs without pulling in
+ *  node_modules/.git/build `.ttl` files. */
 async function* walkTtls(dir: any, prefix: string[] = []): AsyncGenerator<string[]> {
   for await (const entry of dir.values()) {
     if (entry.kind === 'directory') {
-      if (entry.name === 'assets') continue;
+      if (WALK_SKIP_DIRS.has(entry.name) || entry.name.startsWith('.')) continue;
       yield* walkTtls(entry, [...prefix, entry.name]);
     } else if (entry.kind === 'file' && entry.name.endsWith('.ttl') && entry.name !== WORKSPACE_KB_FILE) {
       // Skip the MCP combined export (knowledge.ttl) so it isn't imported as a

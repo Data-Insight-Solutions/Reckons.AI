@@ -29,6 +29,22 @@ export interface KBContext {
   untypedEntityCount: number;
   manualStatementCount: number;
   sampleEntities: Array<{ iri: string; label: string; type: string | null; predicates: string[] }>;
+  /**
+   * Present when the toured KB is a visual-test story — TestStep / story:Step
+   * nodes that carry a screenshot (kmeta:gif / icon2d) plus an assertion and a
+   * result verdict. Its presence flips Shelly from "explore" to "visual review":
+   * walk the steps in order, put each screenshot front-and-centre, read the
+   * assertion + verdict, and ask the reviewer to confirm or flag. (F34)
+   */
+  reviewSteps?: Array<{
+    iri: string;
+    order: number;
+    title: string;
+    assertion: string | null;
+    result: string | null;
+    page: string | null;
+    hasScreenshot: boolean;
+  }>;
 }
 
 export interface TurtleChatResponse {

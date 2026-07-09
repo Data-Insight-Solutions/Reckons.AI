@@ -170,6 +170,24 @@ describe('workspace kbs/{name}/{name}.ttl convention', () => {
     expect(await mod.readTtlByPath(run!.path)).toBe('<a> <b> <c> .');
   });
 
+  it('listKbFolders skips node_modules, build, and hidden dirs (real repo root)', async () => {
+    const mod = await connectedWorkspace();
+    // A real KB the user wants.
+    (await (await root.getDirectoryHandle('static', { create: true }))
+      .getFileHandle('roadmap.ttl', { create: true })).content = '<a> <b> <c> .';
+    // Junk .ttl that must NOT be imported.
+    for (const dir of ['node_modules', 'build', '.git', '.svelte-kit']) {
+      (await (await root.getDirectoryHandle(dir, { create: true }))
+        .getFileHandle('stray.ttl', { create: true })).content = '<x> <y> <z> .';
+    }
+
+    const folders = await mod.listKbFolders();
+    const names = folders.map(f => f.folderName);
+    expect(names).toContain('roadmap');
+    expect(names).not.toContain('stray');
+    expect(folders.every(f => !f.path.some(seg => ['node_modules', 'build', '.git', '.svelte-kit'].includes(seg)))).toBe(true);
+  });
+
   it('listKbFolders drops legacy kb.ttl when a named sibling exists (no dup)', async () => {
     const mod = await connectedWorkspace();
     const kbsDir = await root.getDirectoryHandle('kbs', { create: true });
