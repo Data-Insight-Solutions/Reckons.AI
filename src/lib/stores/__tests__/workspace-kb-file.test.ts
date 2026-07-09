@@ -146,6 +146,41 @@ describe('workspace kbs/{name}/{name}.ttl convention', () => {
     expect(folders.map(f => f.folderName)).toContain('legacy-kb');
   });
 
+  it('listKbFolders discovers a loose .ttl at the workspace root', async () => {
+    const mod = await connectedWorkspace();
+    const fh = await root.getFileHandle('visual-tests.ttl', { create: true });
+    fh.content = '<a> <b> <c> .';
+
+    const folders = await mod.listKbFolders();
+    const vt = folders.find(f => f.folderName === 'visual-tests');
+    expect(vt).toBeTruthy();
+    expect(vt!.path).toEqual(['visual-tests.ttl']);
+  });
+
+  it('listKbFolders discovers a .ttl in any nested directory', async () => {
+    const mod = await connectedWorkspace();
+    const sub = await root.getDirectoryHandle('reports', { create: true });
+    const deep = await sub.getDirectoryHandle('2026', { create: true });
+    (await deep.getFileHandle('run.ttl', { create: true })).content = '<a> <b> <c> .';
+
+    const folders = await mod.listKbFolders();
+    const run = folders.find(f => f.folderName === 'run');
+    expect(run).toBeTruthy();
+    expect(run!.path).toEqual(['reports', '2026', 'run.ttl']);
+    expect(await mod.readTtlByPath(run!.path)).toBe('<a> <b> <c> .');
+  });
+
+  it('listKbFolders drops legacy kb.ttl when a named sibling exists (no dup)', async () => {
+    const mod = await connectedWorkspace();
+    const kbsDir = await root.getDirectoryHandle('kbs', { create: true });
+    const kbDir = await kbsDir.getDirectoryHandle('dup', { create: true });
+    (await kbDir.getFileHandle('dup.ttl', { create: true })).content = '<x> <y> <z> .';
+    (await kbDir.getFileHandle('kb.ttl', { create: true })).content = '<x> <y> <z> .';
+
+    const folders = await mod.listKbFolders();
+    expect(folders.filter(f => f.folderName === 'dup')).toHaveLength(1);
+  });
+
   it('readKbFromFolder prefers the named file when both exist', async () => {
     const mod = await connectedWorkspace();
     const kbsDir = await root.getDirectoryHandle('kbs', { create: true });
