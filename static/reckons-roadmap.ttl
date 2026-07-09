@@ -1227,3 +1227,17 @@ kb:offline-align-review rdf:type ktype:Feature ;
                kpred:in-dev       "2026-07-08"^^xsd:date ;
                kpred:description  "Offline jobs that review alignment/drift warnings in depth and propose graph changes for human review (never silent edits). DETERMINISTIC LAYER (functional): scripts/branch-align.ts --suggest turns each 'functional but untracked' drift into a pending suggestion in knowledge.pending.jsonl — features with kpred:remaining → propose in-dev; finished ones → propose in-production + a functional→production status-update; idempotent (dedup by subject+predicate+object); wired into npm run offline:sweep. FUTURE AGENT LAYER (planned): when OLLAMA_BASE_URL is set, a LOCAL model reads each flagged feature's triples + recent git and reasons about the correct env/status/proposal, grounded and emitted as a suggestion (ground-first + validate + emit-question, per the devstral salvage lesson). Extends the F33 pipeline and the offline procedures." ;
                kpred:relates-to   kb:release-pipeline .
+
+# -- Auto Zoom-to-Fit on Layout / Filter Change (F43) --------------------------
+# UX polish for the 2D/3D graph (kb:knowledge-graph): when the visible node set
+# changes because the user just picked a new force layout or applied a filter,
+# optionally auto-fit the camera/viewport so every visible node is in frame.
+
+kb:graph-zoom-to-fit rdf:type ktype:Feature ;
+               rdfs:label    "Auto Zoom-to-Fit on Layout / Filter Change" ;
+               kpred:feature-id   "F43" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "low" ;
+               kpred:description  "A user SETTING that, when enabled, automatically zooms/pans the graph to fit all currently-visible nodes whenever the visible set changes due to a newly-applied force LAYOUT (free/focus/hub/time/order/tree) or a FILTER (status/source/type/no-type/no-source). Today the camera keeps its previous framing after such a change, so nodes can land off-screen or clustered until the user manually zooms. Scope: compute the bounding box of visible nodes after layout settle / filter apply and animate the 2D viewport transform (and the 3D camera) to frame it with padding; debounce so rapid filter toggling doesn't thrash; respect prefers-reduced-motion (snap, no animation); off by default (setting under graph/display) so it never fights users who curate their own framing. Relates to the graph rendering feature and the mobile reflow work (small viewports benefit most)." ;
+               kpred:relates-to   kb:knowledge-graph ;
+               kpred:relates-to   kb:mobile-uiux .
