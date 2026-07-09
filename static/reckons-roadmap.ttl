@@ -1227,3 +1227,20 @@ kb:offline-align-review rdf:type ktype:Feature ;
                kpred:in-dev       "2026-07-08"^^xsd:date ;
                kpred:description  "Offline jobs that review alignment/drift warnings in depth and propose graph changes for human review (never silent edits). DETERMINISTIC LAYER (functional): scripts/branch-align.ts --suggest turns each 'functional but untracked' drift into a pending suggestion in knowledge.pending.jsonl — features with kpred:remaining → propose in-dev; finished ones → propose in-production + a functional→production status-update; idempotent (dedup by subject+predicate+object); wired into npm run offline:sweep. FUTURE AGENT LAYER (planned): when OLLAMA_BASE_URL is set, a LOCAL model reads each flagged feature's triples + recent git and reasons about the correct env/status/proposal, grounded and emitted as a suggestion (ground-first + validate + emit-question, per the devstral salvage lesson). Extends the F33 pipeline and the offline procedures." ;
                kpred:relates-to   kb:release-pipeline .
+
+# -- Change Notes & Approval Tracking (F42) ------------------------------------
+# The graph handles FACTS well (add/remove/merge -> pending -> confirmed). But a
+# CHANGE sometimes needs long-form PROSE ("why we did this"), an APPROVAL trail,
+# and links to the node-state transitions it caused — awkward as bare triples.
+# Reuses the F27 publish machinery (Sveltia CMS <-> markdown <-> graph round-trip)
+# as the long-form authoring surface. Design drafted 2026-07-09; not built.
+
+kb:change-notes rdf:type ktype:Feature ;
+               rdfs:label    "Change Notes & Approval Tracking" ;
+               kpred:feature-id   "F42" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "medium" ;
+               kpred:description  "A first-class ChangeNote + Approval layer over the graph. MOTIVATION: pending->confirmed handles short facts, but some changes need (a) long-form human PROSE explaining the why, (b) an APPROVAL trail (who signed off, when), and (c) automatic links to the OTHER nodes whose state the change moved — none of which fit a bare triple. DESIGN (graph-first, reuses F27): a ChangeNote is a WebPage-like node authored through Sveltia CMS (the existing content/*.md <-> graph round-trip in src/lib/publish/), so the long-form body lives in markdown and the structured metadata lives as triples: kpred:notes-change-to -> [affected entity IRIs] (rendered as leap-style back-links on those nodes — the 'links to node state in a slightly different way'), kpred:state-transition -> a reified from->to on each affected node (before/after status), kpred:approval-status (proposed|approved|rejected), kpred:approved-by, kpred:approved-on. An Approval is its own small shape reused across the app so three things share ONE model: F33 release-gate sign-offs (kpred:dev-approved / stakeholder-approved), F35 steering-committee votes, and note-level approvals. The md-align check (F27) keeps note bodies honest against the graph. Distinct from pending.jsonl (short machine-proposed facts) — ChangeNotes are human-authored, long-form, and approval-bearing. PHASES: (1) ChangeNote graph shape + a Sveltia collection in static/admin/config.yml + render on affected nodes; (2) Approval shape + status transitions surfaced in the Review tab; (3) unify F33/F35 approvals onto it. Grounded in graphs-are-source-of-truth: notes and approvals travel with the KB as ordinary Turtle." ;
+               kpred:depends-on   kb:graph-publishing ;
+               kpred:relates-to   kb:release-pipeline ;
+               kpred:relates-to   kb:steering-committee .
