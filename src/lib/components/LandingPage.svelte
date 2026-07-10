@@ -6,7 +6,7 @@
   import { nudge } from '$lib/stores/tutorial.svelte';
   import { activateOfficialKb, preloadOfficialKb, officialKbError } from '$lib/stores/official-kb.svelte';
   import { importTurtleFull } from '$lib/rdf/import-ttl';
-  import { startStory } from '$lib/stores/shelly-bridge.svelte';
+  import { startStory, startExplore } from '$lib/stores/shelly-bridge.svelte';
   import * as kokoro from '$lib/integrations/llm/kokoro-tts';
 
   // Eagerly pre-fetch the official KB so it's ready when user clicks "Getting Started"
@@ -17,8 +17,10 @@
 
   let loadingTemplate = $state<string | null>(null);
   let loadingDocs = $state(false);
+  let loadingStarter = $state(false);
   let docsError = $state<string | null>(null);
   let loadingExample = $state<string | null>(null);
+  let loadingVisualReview = $state(false);
 
   // Track core module loading (Kokoro TTS voice model)
   let kokoroStatus = $state<'idle' | 'loading' | 'ready' | 'error'>('idle');
@@ -47,6 +49,51 @@
       goto('/');
     } finally {
       loadingDocs = false;
+    }
+  }
+
+  // Soft landing: the "Getting started" button loads a tiny, everyday graph
+  // (7 facts, one real tension, a natural Reckon) as an EDITABLE KB and opens
+  // Shelly's tour on it — instead of dropping the large, concept-dense docs
+  // graph on a first-time user. The full docs graph is the "go deeper" path.
+  async function openStarter() {
+    loadingStarter = true;
+    try {
+      const res = await fetch('/starter-everyday.ttl');
+      if (!res.ok) throw new Error(`Failed to fetch starter graph: ${res.status}`);
+      const ttl = await res.text();
+      const { statements, sources } = await importTurtleFull(ttl);
+      for (const src of sources) await addSource(src);
+      // Curated example — land it as CONFIRMED facts (not pending review), so the
+      // graph reads as real and Shelly's tour (which sees confirmed statements)
+      // has something to talk about.
+      const confirmed = statements.map((s) => ({ ...s, status: 'confirmed' as const }));
+      if (confirmed.length) await addStatements(confirmed, 'starter');
+      startExplore(); // opens Shelly's guided tour on the graph page
+      goto('/');
+    } finally {
+      loadingStarter = false;
+    }
+  }
+
+  // One-click visual-test review: load the demo visual-test story (four captured
+  // screens with assertions + verdicts) as confirmed facts and open Shelly, who
+  // flips into review mode (F34 / PR #77) — walking the screens and asking you to
+  // confirm or flag each. Regenerate the real thing with `npm run test:crawl`.
+  async function openVisualReview() {
+    loadingVisualReview = true;
+    try {
+      const res = await fetch('/starter-visual-review.ttl');
+      if (!res.ok) throw new Error(`Failed to fetch visual-review story: ${res.status}`);
+      const ttl = await res.text();
+      const { statements, sources } = await importTurtleFull(ttl);
+      for (const src of sources) await addSource(src);
+      const confirmed = statements.map((s) => ({ ...s, status: 'confirmed' as const }));
+      if (confirmed.length) await addStatements(confirmed, 'visual-review');
+      startExplore(); // Shelly detects the visual-test steps → review mode
+      goto('/');
+    } finally {
+      loadingVisualReview = false;
     }
   }
 
@@ -250,8 +297,8 @@
       </p>
 
       <div class="ctas">
-        <button class="btn-primary" onclick={openDocsKb} disabled={loadingDocs}>
-          {#if loadingDocs}
+        <button class="btn-primary" onclick={openStarter} disabled={loadingStarter}>
+          {#if loadingStarter}
             loading...
           {:else}
             Getting started →
@@ -264,6 +311,12 @@
         </button>
         <a href="/ingest" class="btn-secondary">Add your own source</a>
       </div>
+      <p class="starter-hint mono">
+        Starts with a tiny everyday example — one weekend, one decision.
+        <button class="link-btn" onclick={openDocsKb} disabled={loadingDocs}>
+          {loadingDocs ? 'loading…' : 'Or explore the full concept graph →'}
+        </button>
+      </p>
       {#if docsError}
         <p class="docs-error mono" role="alert">Couldn't open the documentation graph — {docsError}</p>
       {/if}
@@ -330,6 +383,22 @@
           {/if}
         </button>
       {/each}
+
+      <button
+        class="template-card"
+        onclick={openVisualReview}
+        disabled={loadingVisualReview}
+      >
+        <span class="tmpl-icon">🔍</span>
+        <strong class="tmpl-label">Review a visual test</strong>
+        <p class="tmpl-desc">Four captured screens of the core flow — Shelly walks you through, screen by screen, to confirm or flag each.</p>
+        <span class="tmpl-scenario mono">Shelly review mode · screenshots + verdicts</span>
+        {#if loadingVisualReview}
+          <span class="tmpl-loading mono">loading...</span>
+        {:else}
+          <span class="tmpl-cta">Start review →</span>
+        {/if}
+      </button>
 
       <button
         class="template-card template-blank"
@@ -866,6 +935,25 @@
     margin: 0.6rem 0 0;
     letter-spacing: 0.02em;
   }
+  .starter-hint {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin: 0.9rem 0 0;
+    letter-spacing: 0.02em;
+    line-height: 1.5;
+  }
+  .starter-hint .link-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: var(--accent);
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .starter-hint .link-btn:hover:not(:disabled) { text-decoration: underline; }
+  .starter-hint .link-btn:disabled { color: var(--muted); cursor: default; }
 
   .btn-loader {
     position: absolute;

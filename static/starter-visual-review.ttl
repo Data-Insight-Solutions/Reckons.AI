@@ -1,0 +1,75 @@
+## ---------------------------------------------------------------------------
+## Reckons.AI — Visual Review demo story
+## ---------------------------------------------------------------------------
+## A tiny, self-contained visual-test story so you can try the Shelly VISUAL
+## REVIEW flow (F34 / PR #77) in one click. Each step is a captured screen with
+## an assertion and a verdict; the screenshot is the node's icon (served from
+## static/visual-review/). Loading this graph + opening Shelly's tour flips her
+## into review mode: she walks the screens in order and asks you to confirm or
+## flag each one.
+##
+## Regenerate the real thing anytime with `npm run test:crawl` (button-crawl.ttl);
+## this committed demo just makes the first review effortless.
+## ---------------------------------------------------------------------------
+
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix story: <urn:reckons:story/> .
+@prefix test:  <urn:reckons:test/> .
+@prefix kpred: <urn:kbase:predicate/> .
+
+test:VisualReviewDemo
+    rdf:type          story:Story ;
+    rdfs:label        "Visual Review — Reckons.AI graph flow" ;
+    story:description "Walk four captured screens of the core flow and decide if each looks right." ;
+    story:autoplay    "false" ;
+    story:pace        "10" .
+
+test:VR-Step1
+    rdf:type          story:Step ;
+    rdfs:label        "1 · Landing — enumerate" ;
+    story:partOf      test:VisualReviewDemo ;
+    story:order       "1"^^xsd:integer ;
+    story:title       "Landing — enumerate" ;
+    story:content     "The review starts on the landing route and enumerates every interactive control." ;
+    kpred:icon2d      "/visual-review/01.png" ;
+    kpred:assertion   "interactive controls > 0" ;
+    kpred:result      "ok" ;
+    kpred:page        "/" .
+
+test:VR-Step2
+    rdf:type          story:Step ;
+    rdfs:label        "2 · Getting started → graph" ;
+    story:partOf      test:VisualReviewDemo ;
+    story:order       "2"^^xsd:integer ;
+    story:title       "Getting started → graph" ;
+    story:content     "Clicking Getting started activates the graph — nodes lay out, not a silent no-op." ;
+    kpred:icon2d      "/visual-review/02.png" ;
+    kpred:assertion   "node-labels > 0 after click" ;
+    kpred:result      "ok" ;
+    kpred:page        "/" .
+
+test:VR-Step3
+    rdf:type          story:Step ;
+    rdfs:label        "3 · Leap → sub-graph" ;
+    story:partOf      test:VisualReviewDemo ;
+    story:order       "3"^^xsd:integer ;
+    story:title       "Leap → sub-graph" ;
+    story:content     "Following a KB leap swaps the graph to the target sub-graph — the silent-no-op class." ;
+    kpred:icon2d      "/visual-review/03.png" ;
+    kpred:assertion   "currentKbId changed after leap" ;
+    kpred:result      "ok" ;
+    kpred:page        "/" .
+
+test:VR-Step4
+    rdf:type          story:Step ;
+    rdfs:label        "4 · Review page" ;
+    story:partOf      test:VisualReviewDemo ;
+    story:order       "4"^^xsd:integer ;
+    story:title       "Review page" ;
+    story:content     "The Review page renders with no blank/solid fill and touch targets at least 44px." ;
+    kpred:icon2d      "/visual-review/04.png" ;
+    kpred:assertion   "pixel.isSolidFill === false" ;
+    kpred:result      "ok" ;
+    kpred:page        "/review" .

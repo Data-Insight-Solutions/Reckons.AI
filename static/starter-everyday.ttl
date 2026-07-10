@@ -1,0 +1,51 @@
+## ---------------------------------------------------------------------------
+## Reckons.AI — "This Weekend" starter graph
+## ---------------------------------------------------------------------------
+## The soft-landing first experience: a tiny, everyday graph (7 facts) with ONE
+## real tension and a natural Reckon. No RDF concepts on show — just a decision
+## anyone recognises. Loaded (editable) by the landing page's "Getting started"
+## button; the full documentation graph is the "go deeper" path.
+##
+## The tension by design: the cheaper option (Mountain Cabin, $120, under the
+## $150 budget) is about to book out, while the pricier option (Coast Trip,
+## $180, over budget, rainy) is the one Sam wants. That contradiction is what
+## the review surface should spotlight — and what a Reckon resolves.
+## ---------------------------------------------------------------------------
+
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ktype: <urn:kbase:type/> .
+@prefix kb:    <urn:kbase:concept/> .
+@prefix p:     <urn:kbase:predicate/> .
+
+kb:me
+    rdf:type        ktype:Person ;
+    rdfs:label      "Me" ;
+    p:deciding      kb:this-weekend ;
+    p:considering   kb:coast-trip ;
+    p:considering   kb:mountain-cabin .
+
+kb:this-weekend
+    rdf:type        ktype:Concept ;
+    rdfs:label      "This Weekend" ;
+    p:budget        "keep it under $150" ;
+    p:choosing-between kb:coast-trip ;
+    p:choosing-between kb:mountain-cabin .
+
+kb:coast-trip
+    rdf:type        ktype:Concept ;
+    rdfs:label      "Coast Trip" ;
+    p:costs         "$180" ;
+    p:weather       "rainy forecast" .
+
+kb:mountain-cabin
+    rdf:type        ktype:Concept ;
+    rdfs:label      "Mountain Cabin" ;
+    p:costs         "$120" ;
+    p:availability  "books out Friday" .
+
+kb:sam
+    rdf:type        ktype:Person ;
+    rdfs:label      "Sam" ;
+    p:coming-along  kb:this-weekend ;
+    p:prefers       kb:coast-trip .
