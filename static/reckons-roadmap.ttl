@@ -1561,6 +1561,25 @@ kb:int-game-engine rdf:type  ktype:Tool ;
                kpred:description  "Consider an open-source game engine as an integration for richer spatial/3D rendering (globe, terrain, scale, physics) beyond what the in-app three.js view does — e.g. Godot (web export), Bevy (wasm), or a three.js/globe.gl layer that stays in-process. NO server exists for this yet (unlike the n8n + Indico servers), so it is roadmap-first. Weigh an in-process wasm/three approach (keeps the offline-first, no-server thesis) against a heavier engine that would need hosting." ;
                kpred:open-question "In-process (globe.gl / three-globe / Bevy-wasm, no server) vs. a hosted engine — the no-server, offline-first constraint strongly favours in-process." .
 
+# -- Arrange → Page Layout Builder (F60) ---------------------------------------
+# The "arrange" force mode (internally layout='order' — a manual drag-grid with
+# numbered nodes, src/lib/3d/KnowledgeGraph2D.svelte) grows into a linear layout
+# surface. Raised 2026-07-10. The insight: arranging nodes in a linear order +
+# vertical/horizontal grouping IS page structure — so this becomes the bridge
+# from graph arrangement to web-page layout building (F27 / F55 publishing).
+
+kb:arrange-layout-builder rdf:type ktype:Feature ;
+               rdfs:label    "Arrange → page layout builder" ;
+               kpred:feature-id   "F60" ;
+               kpred:has-status   "speculative" ;
+               kpred:priority     "high" ;
+               kpred:principle    "Arranging nodes in a linear order, with vertical stacking and horizontal grouping, is exactly a page's block layout (sections, rows, columns). The graph-view arrange tools should translate DIRECTLY into web-page layout building — the same gesture that orders the graph orders the page." ;
+               kpred:description  "Give the arrange mode a VERTICAL-SCROLL, FULL-SCREEN mode: instead of a fixed canvas grid, nodes flow top-to-bottom in a scrollable column, and can be grouped horizontally (side-by-side) to form rows. You accomplish both a vertical layout (stacked sections) and a horizontal layout (columns within a row) by arranging + ordering. That arrangement is captured on the nodes (order + row/column grouping, extending the existing nodeOrder / hnav ordering) and maps to the published page's block structure. Bridges F27 graph-publishing (WebPage nodes -> content/*.md) and F55.4 custom pages: the arrange canvas becomes a lightweight page-layout builder where blocks are graph nodes." ;
+               kpred:depends-on   kb:graph-publishing ;
+               kpred:relates-to   kb:publishing-v2 ;
+               kpred:open-question "Where is the arrangement stored — extend nodeOrder + the hnav ordering predicates (urn:reckons:nav/order|layer) with a row/column grouping, or a dedicated layout predicate? It must round-trip to the page block model." ;
+               kpred:open-question "Full-screen vertical scroll implies a DOM/scroll surface, not the fixed canvas the other force modes use — is arrange a special non-canvas mode, or a canvas with virtual scroll? DOM makes the page-layout mapping far more direct." .
+
 # -- Infrastructure entities (completeness) -------------------------------------
 # Defined here because features depend-on them (F22 -> embedding-model,
 # local-offload -> llm-providers) but they had no entity — the graph pointed at
