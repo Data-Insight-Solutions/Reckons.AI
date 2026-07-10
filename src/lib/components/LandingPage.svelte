@@ -6,7 +6,7 @@
   import { nudge } from '$lib/stores/tutorial.svelte';
   import { activateOfficialKb, preloadOfficialKb, officialKbError } from '$lib/stores/official-kb.svelte';
   import { importTurtleFull } from '$lib/rdf/import-ttl';
-  import { startStory } from '$lib/stores/shelly-bridge.svelte';
+  import { startStory, startExplore } from '$lib/stores/shelly-bridge.svelte';
   import * as kokoro from '$lib/integrations/llm/kokoro-tts';
 
   // Eagerly pre-fetch the official KB so it's ready when user clicks "Getting Started"
@@ -17,6 +17,7 @@
 
   let loadingTemplate = $state<string | null>(null);
   let loadingDocs = $state(false);
+  let loadingStarter = $state(false);
   let docsError = $state<string | null>(null);
   let loadingExample = $state<string | null>(null);
 
@@ -47,6 +48,30 @@
       goto('/');
     } finally {
       loadingDocs = false;
+    }
+  }
+
+  // Soft landing: the "Getting started" button loads a tiny, everyday graph
+  // (7 facts, one real tension, a natural Reckon) as an EDITABLE KB and opens
+  // Shelly's tour on it — instead of dropping the large, concept-dense docs
+  // graph on a first-time user. The full docs graph is the "go deeper" path.
+  async function openStarter() {
+    loadingStarter = true;
+    try {
+      const res = await fetch('/starter-everyday.ttl');
+      if (!res.ok) throw new Error(`Failed to fetch starter graph: ${res.status}`);
+      const ttl = await res.text();
+      const { statements, sources } = await importTurtleFull(ttl);
+      for (const src of sources) await addSource(src);
+      // Curated example — land it as CONFIRMED facts (not pending review), so the
+      // graph reads as real and Shelly's tour (which sees confirmed statements)
+      // has something to talk about.
+      const confirmed = statements.map((s) => ({ ...s, status: 'confirmed' as const }));
+      if (confirmed.length) await addStatements(confirmed, 'starter');
+      startExplore(); // opens Shelly's guided tour on the graph page
+      goto('/');
+    } finally {
+      loadingStarter = false;
     }
   }
 
@@ -250,8 +275,8 @@
       </p>
 
       <div class="ctas">
-        <button class="btn-primary" onclick={openDocsKb} disabled={loadingDocs}>
-          {#if loadingDocs}
+        <button class="btn-primary" onclick={openStarter} disabled={loadingStarter}>
+          {#if loadingStarter}
             loading...
           {:else}
             Getting started →
@@ -264,6 +289,12 @@
         </button>
         <a href="/ingest" class="btn-secondary">Add your own source</a>
       </div>
+      <p class="starter-hint mono">
+        Starts with a tiny everyday example — one weekend, one decision.
+        <button class="link-btn" onclick={openDocsKb} disabled={loadingDocs}>
+          {loadingDocs ? 'loading…' : 'Or explore the full concept graph →'}
+        </button>
+      </p>
       {#if docsError}
         <p class="docs-error mono" role="alert">Couldn't open the documentation graph — {docsError}</p>
       {/if}
@@ -866,6 +897,25 @@
     margin: 0.6rem 0 0;
     letter-spacing: 0.02em;
   }
+  .starter-hint {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin: 0.9rem 0 0;
+    letter-spacing: 0.02em;
+    line-height: 1.5;
+  }
+  .starter-hint .link-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: var(--accent);
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .starter-hint .link-btn:hover:not(:disabled) { text-decoration: underline; }
+  .starter-hint .link-btn:disabled { color: var(--muted); cursor: default; }
 
   .btn-loader {
     position: absolute;
