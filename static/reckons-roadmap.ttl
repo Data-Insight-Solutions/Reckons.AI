@@ -295,6 +295,24 @@ kb:workspace-sync rdf:type  ktype:Feature ;
                kpred:tested-by    "src/lib/stores/__tests__/workspace-sync.test.ts" ;
                kpred:tested-by    "tests/visual/user-stories/graph-sync.test.ts" .
 
+# The two-way local folder sync is done; these are the planned next steps for it.
+kb:drive-folder-sync rdf:type ktype:Feature ;
+               rdfs:label   "Google Drive folder sync" ;
+               kpred:feature-id   "F56" ;
+               kpred:has-status   "planned" ;
+               kpred:description  "The next step after local folder sync: sync the workspace folder to a (shareable) Google Drive folder, so graphs AND their sidecar assets (images, GLB models) live in the cloud and share via Drive links. Reuses the same two-way reconcile as local folder sync (push on mutation, poll to pull) over the Drive API instead of the File System Access API. Motivates fixing node images first: a shared Drive folder is where the local /starter-assets/*.svg photos would graduate to real hosted images. Builds on the existing OAuth + file-listing scaffolding in google-drive-sync." ;
+               kpred:depends-on   kb:workspace-sync ;
+               kpred:depends-on   kb:google-drive-sync ;
+               kpred:relates-to   kb:workspace-index .
+
+kb:workspace-index rdf:type ktype:Feature ;
+               rdfs:label   "Workspace index + session recovery" ;
+               kpred:feature-id   "F57" ;
+               kpred:has-status   "planned" ;
+               kpred:description  "A top-level index .ttl at the workspace root that references every synced graph and sidecar file (local OR cloud) in Turtle form — a manifest of the folder's contents. With it, a Reckons.AI browser session and a set of synced files (local folder or Google Drive) can recover the FILE SESSION: reopen exactly the graphs, assets, and view that were active, rather than re-linking each graph by hand. The index is itself a graph (files/graphs as entities with paths, stable IDs, last-synced timestamps), so it round-trips like everything else and stays diffable." ;
+               kpred:depends-on   kb:workspace-sync ;
+               kpred:relates-to   kb:drive-folder-sync .
+
 kb:visual-testing rdf:type  ktype:Feature ;
                rdfs:label   "Visual Testing" ;
                kpred:has-status   "production" ;
@@ -495,7 +513,8 @@ kb:gp-cloud-storage rdf:type ktype:Feature ;
                kpred:has-status   "speculative" ;
                kpred:part-of      kb:publishing-v2 ;
                kpred:depends-on   kb:google-drive-sync ;
-               kpred:description  "Web file storage beyond GitHub (which has size/binary limits). Google Drive first (shareable links for web assets — done manually before), then GitLab file storage (better options than GitHub) and other providers, to cover full web-asset hosting needs." .
+               kpred:relates-to   kb:drive-folder-sync ;
+               kpred:description  "Web file storage beyond GitHub (which has size/binary limits). Google Drive first (shareable links for web assets — done manually before), then GitLab file storage (better options than GitHub) and other providers, to cover full web-asset hosting needs. The graph-side of this is the folder-sync work (F56 drive-folder-sync + F57 workspace-index)." .
 
 kb:gp-gitlab rdf:type        ktype:Feature ;
                rdfs:label    "GitLab as a GitHub alternative" ;
