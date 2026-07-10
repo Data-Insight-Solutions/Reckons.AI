@@ -68,12 +68,12 @@ kb:wf-explore  rdf:type     ktype:Concept ;
 
 kb:wf-compare  rdf:type     ktype:Concept ;
                rdfs:label   "Compare Workflow" ;
-               kpred:description "Semantic diff engine comparing two KB snapshots. Categories: Add, Reinforce, Conflict, Merge, Remove." ;
+               kpred:description "Semantic diff engine comparing two graph snapshots. Categories: Add, Reinforce, Conflict, Merge, Remove." ;
                kpred:has-status  "production" .
 
 kb:wf-reckon   rdf:type     ktype:Concept ;
                rdfs:label   "Reckon Workflow" ;
-               kpred:description "AI-powered reasoning over KB contents. Shelly synthesizes facts, identifies conflicts, and suggests actions." ;
+               kpred:description "AI-powered reasoning over graph contents. Shelly synthesizes facts, identifies conflicts, and suggests actions." ;
                kpred:has-status  "production" .
 
 # -- Tech Stack -----------------------------------------------------------------
@@ -182,9 +182,9 @@ kb:knowledge-graph rdf:type ktype:Feature ;
                kpred:has-capability "label overlap prevention" .
 
 kb:multi-kb    rdf:type     ktype:Feature ;
-               rdfs:label   "Multi-KB Management" ;
+               rdfs:label   "Multi-Graph Management" ;
                kpred:has-status   "production" ;
-               kpred:description  "Create, switch, rename, delete KBs. KB Leap cross-references. Import-as-new-KB." ;
+               kpred:description  "Create, switch, rename, delete graphs. Graph Leap cross-references. Import-as-new-Graph." ;
                kpred:has-capability "kb-registry" ;
                kpred:has-capability "kb-leap" ;
                kpred:has-capability "import-as-new-kb" ;
@@ -200,7 +200,7 @@ kb:triple-extraction rdf:type ktype:Feature ;
 kb:mcp-server  rdf:type     ktype:Feature ;
                rdfs:label   "MCP Server" ;
                kpred:has-status   "production" ;
-               kpred:description  "Standalone Node.js server. 10 tools over JSON-RPC stdio. Multi-KB workspace support." ;
+               kpred:description  "Standalone Node.js server. 10 tools over JSON-RPC stdio. Multi-Graph workspace support." ;
                kpred:has-tool     "kb_search" ;
                kpred:has-tool     "kb_get_entity" ;
                kpred:has-tool     "kb_stats" ;
@@ -244,7 +244,7 @@ kb:repo-ingest rdf:type     ktype:Feature ;
 kb:source-refresh rdf:type  ktype:Feature ;
                rdfs:label   "Source Refresh" ;
                kpred:has-status   "production" ;
-               kpred:description  "Re-ingest URLs, repos, and calendars. Auto-refresh on KB open or on schedule." .
+               kpred:description  "Re-ingest URLs, repos, and calendars. Auto-refresh on graph open or on schedule." .
 
 kb:browser-extension rdf:type ktype:Feature ;
                rdfs:label   "Browser Extension" ;
@@ -273,10 +273,10 @@ kb:nemo-speech rdf:type     ktype:Feature ;
 kb:cosmos-nano rdf:type     ktype:Feature ;
                rdfs:label   "NVIDIA Cosmos3-Nano" ;
                kpred:has-status   "speculative" ;
-               kpred:description  "16B-parameter omnimodal world foundation model for Physical AI. Generates and reasons over video, images, audio, and robot actions. OpenMDW 1.1 licence (commercial use). Requires NVIDIA GPU (Ampere/Hopper/Blackwell), BF16 precision, Linux. Potential uses: generate preview animations from entity descriptions, 3D scene understanding for graph visualisation, multimodal KB ingest (video/image/audio sources). Shares NVIDIA GPU sidecar infrastructure with NeMo Speech." ;
+               kpred:description  "16B-parameter omnimodal world foundation model for Physical AI. Generates and reasons over video, images, audio, and robot actions. OpenMDW 1.1 license (commercial use). Requires NVIDIA GPU (Ampere/Hopper/Blackwell), BF16 precision, Linux. Potential uses: generate preview animations from entity descriptions, 3D scene understanding for graph visualization, multimodal graph ingest (video/image/audio sources). Shares NVIDIA GPU sidecar infrastructure with NeMo Speech." ;
                kpred:depends-on   kb:nemo-speech ;
                kpred:open-question "Massive resource requirements (16B params, BF16) — viable only for users with high-end NVIDIA GPUs. Evaluate smaller distilled variants when available." ;
-               kpred:open-question "Integration path: same Python sidecar as NeMo Speech? Separate container? Which Cosmos capabilities map to KB workflows (video→triples, entity→animation)?" .
+               kpred:open-question "Integration path: same Python sidecar as NeMo Speech? Separate container? Which Cosmos capabilities map to graph workflows (video→triples, entity→animation)?" .
 
 kb:model-cache rdf:type     ktype:Feature ;
                rdfs:label   "Model Cache Management" ;
@@ -286,12 +286,14 @@ kb:model-cache rdf:type     ktype:Feature ;
 kb:shelly-chat rdf:type     ktype:Feature ;
                rdfs:label   "Shelly Chat System" ;
                kpred:has-status   "production" ;
-               kpred:description  "AI assistant with tutorial, chat, and explore tabs. Story playback with TTS. KB-aware reasoning." .
+               kpred:description  "AI assistant with tutorial, chat, and explore tabs. Story playback with TTS. Graph-aware reasoning." .
 
 kb:workspace-sync rdf:type  ktype:Feature ;
                rdfs:label   "Workspace Folder Sync" ;
                kpred:has-status   "production" ;
-               kpred:description  "Link a local folder. Auto-export TTL on mutation. Multi-KB support. MCP server reads from workspace." .
+               kpred:description  "Two-way local folder sync. Link a folder; the app auto-exports TTL on every mutation (push) AND polls the folder (~10s) to pull external edits and new graphs — recursively discovering any .ttl anywhere under the folder. A content-hash loop guard stops the app re-importing its own writes. Controls live in the graph menu's 'graph package' section (this graph's .ttl, sidecar assets, story, currents, folder sync); an auto-sync toggle + 'resync now' are surfaced there. MCP server reads from the workspace." ;
+               kpred:tested-by    "src/lib/stores/__tests__/workspace-sync.test.ts" ;
+               kpred:tested-by    "tests/visual/user-stories/graph-sync.test.ts" .
 
 kb:visual-testing rdf:type  ktype:Feature ;
                rdfs:label   "Visual Testing" ;
@@ -306,7 +308,7 @@ kb:entity-types rdf:type    ktype:Feature ;
 kb:history-mode rdf:type    ktype:Feature ;
                rdfs:label   "History Mode" ;
                kpred:has-status   "production" ;
-               kpred:description  "Timeline slider to view KB state at any past timestamp. Ghost mode in graph." .
+               kpred:description  "Timeline slider to view graph state at any past timestamp. Ghost mode in graph." .
 
 kb:trust-system rdf:type    ktype:Feature ;
                rdfs:label   "Trust System" ;
@@ -338,25 +340,25 @@ kb:vr-ar-shells rdf:type    ktype:Feature ;
 # -- Planned Features (Roadmap) -------------------------------------------------
 
 kb:kb-publication rdf:type  ktype:Feature ;
-               rdfs:label   "KB Publication (GitHub Gist)" ;
+               rdfs:label   "Graph Publication (GitHub Gist)" ;
                kpred:has-status   "planned" ;
                kpred:feature-id   "F2" ;
-               kpred:description  "Publish KB to a static URL via GitHub Gist. Shareable read-only link with published GUID." ;
+               kpred:description  "Publish graph to a static URL via GitHub Gist. Shareable read-only link with published GUID." ;
                kpred:enables      kb:read-only-guest .
 
 kb:read-only-guest rdf:type ktype:Feature ;
                rdfs:label   "Read-Only Guest View" ;
                kpred:has-status   "planned" ;
                kpred:feature-id   "F3" ;
-               kpred:description  "Open a published KB URL in read-only mode. Fork to own KB button." ;
+               kpred:description  "Open a published graph URL in read-only mode. Fork to own graph button." ;
                kpred:depends-on   kb:kb-publication ;
                kpred:enables      kb:collaborative-kb .
 
 kb:collaborative-kb rdf:type ktype:Feature ;
-               rdfs:label   "Collaborative KB" ;
+               rdfs:label   "Collaborative graph" ;
                kpred:has-status   "speculative" ;
                kpred:feature-id   "F4" ;
-               kpred:description  "Published KBs receive statement proposals from guests. Owner reviews via existing workflow." ;
+               kpred:description  "Published graphs receive statement proposals from guests. Owner reviews via existing workflow." ;
                kpred:depends-on   kb:read-only-guest .
 
 # -- Graph Publishing / Sveltia CMS (F27) ---------------------------------------
@@ -414,7 +416,7 @@ kb:gp-phase-1  rdf:type      ktype:Phase ;
 kb:gp-phase-2  rdf:type      ktype:Phase ;
                rdfs:label    "Phase 2 — Static export + in-app /docs route" ;
                kpred:has-status   "functional" ;
-               kpred:description  "src/lib/publish/site-export.ts serializes pages to markdown/frontmatter + graph.json; offline .zip export via fflate. A /docs route group in the main app renders content/*.md via mdsvex, prerendered under adapter-static (hybrid SPA + prerendered /docs). No separate theme repo. Implemented: src/routes/docs/+layout.(ts|svelte) (docs chrome + section nav), src/routes/docs/+page.svelte (index by section), src/routes/docs/[...slug]/+page.(ts|svelte) (per-page renderer with entries() for adapter-static prerendering); content loaded via import.meta.glob('/content/**/*.md', { eager: true }) in src/routes/docs/_content/docs.ts. The rest of the app was moved into a src/routes/(app)/ route group so it keeps its existing SPA-fallback behaviour untouched." ;
+               kpred:description  "src/lib/publish/site-export.ts serializes pages to markdown/frontmatter + graph.json; offline .zip export via fflate. A /docs route group in the main app renders content/*.md via mdsvex, prerendered under adapter-static (hybrid SPA + prerendered /docs). No separate theme repo. Implemented: src/routes/docs/+layout.(ts|svelte) (docs chrome + section nav), src/routes/docs/+page.svelte (index by section), src/routes/docs/[...slug]/+page.(ts|svelte) (per-page renderer with entries() for adapter-static prerendering); content loaded via import.meta.glob('/content/**/*.md', { eager: true }) in src/routes/docs/_content/docs.ts. The rest of the app was moved into a src/routes/(app)/ route group so it keeps its existing SPA-fallback behavior untouched." ;
                kpred:part-of      kb:graph-publishing ;
                kpred:depends-on   kb:gp-phase-1 .
 
@@ -434,11 +436,11 @@ kb:gp-phase-4  rdf:type      ktype:Phase ;
                kpred:depends-on   kb:gp-phase-3 .
 
 kb:docs-pipeline rdf:type    ktype:Feature ;
-               rdfs:label    "Docs KB Publishing Pipeline" ;
+               rdfs:label    "Docs graph Publishing Pipeline" ;
                kpred:has-status   "functional" ;
                kpred:feature-id   "F27.2" ;
                kpred:description  "The docs knowledge graphs (static/starter-guide.ttl, the hub with hnav:order-sequenced leap nodes, plus the nine static/docs-*.ttl sub-graphs: triples-rdf, llm, use-cases, features, integrations-tech, tips-security, timeline-ecosystem, architecture, testing) are the source of truth for the 'generated' sections of the published /docs site. scripts/docs-pages.ts (npm run docs:pages) parses the TTLs with n3, turns each qualifying entity (any subject typed under urn:kbase:type/, excluding each sub-graph's urn:reckons:docs/nav/ back-to-hub stub) into a WebPage, and writes content/<section>/<slug>.md via pageToMarkdown — so the output round-trips through scripts/md-align.ts exactly like Sveltia-authored pages. Every generated page carries generated: \"docs-kb\" in its frontmatter (page:generated / PAGE_GENERATED in src/lib/rdf/page.ts); regeneration is idempotent and prunes any previously-generated file whose entity was removed from the TTLs, but never touches a file without that tag. An entity asserted in both the hub (a lightweight 'summary' stub, kept inline for the hub's own story/graph view) and a sub-graph (the fuller definition) is owned by the sub-graph; slugs are disambiguated by section suffix when two distinct entities share a local name across sections. Generated ~236 pages across 10 sections on first run." ;
-               kpred:tooling      "CI (.github/workflows/kb-watch.yml) runs scripts/docs-pages.ts on every push/PR: pushes to main that produce a diff are committed back as github-actions[bot] ('docs: regenerate content from docs KBs'); PRs only report the drift in the job summary. The generator's own idempotency is the loop guard — a regeneration commit produces zero further diff, so it doesn't retrigger itself." ;
+               kpred:tooling      "CI (.github/workflows/kb-watch.yml) runs scripts/docs-pages.ts on every push/PR: pushes to main that produce a diff are committed back as github-actions[bot] ('docs: regenerate content from docs graphs'); PRs only report the drift in the job summary. The generator's own idempotency is the loop guard — a regeneration commit produces zero further diff, so it doesn't retrigger itself." ;
                kpred:depends-on   kb:webpage-entity ;
                kpred:part-of      kb:graph-publishing .
 
@@ -464,6 +466,51 @@ kb:sveltia-cms-setup rdf:type ktype:Concept ;
                kpred:note         "static/admin/index.html now loads a version-pinned Sveltia bundle (@sveltia/cms@0.169.1) instead of an unpinned \"latest\" CDN URL, so upgrades are deliberate. static/media/ (config.yml media_folder) was missing and has been created with a .gitkeep." ;
                kpred:note         "RESOLVED (2026-07-02): Pages collection listed zero entries after login, even though content/docs/welcome.md and content/releases/v0-1-0.md exist on main with matching frontmatter. Root cause: Sveltia CMS does not implement Decap/Netlify's `nested` collection option at all (confirmed against the pinned @sveltia/cms@0.169.1 bundle and its docs — nested collections are tracked for a future 2.0 release). The committed config's `nested: { depth: 4 }` was silently ignored, so the folder collection fell back to scanning only the immediate content/ directory and found nothing, since both pages live one level down (content/docs/, content/releases/). Fix: replaced `nested: { depth: 4 }` with `path: '{{fields.section | slugify}}/{{fields.slug}}'` in static/admin/config.yml and in the generated-config string sveltiaConfig() in src/lib/publish/site-export.ts (kept in lockstep). `path` is the option Sveltia does support for subfoldered entries: it recursively discovers existing files matching the template and places new ones, with no per-entry index file required. The `slugify` filter mirrors contentPath()'s `slugify(page.section)` so the folder segment matches what's on disk (e.g. section \"Docs\" -> content/docs/). Verified against the real pinned Sveltia bundle via Playwright + the CMS's built-in `test-repo` backend (OPFS-backed, no GitHub auth needed): with the original `nested` config the console logged \"Nested collections are not yet supported in Sveltia CMS\" and the collection showed 0 entries on the exact same seeded files; with the `path` fix it showed 2 entries (Welcome, Reckons.AI v0.1.0) with correct titles/status. Also verified creating a new page (title \"Test Page\", section \"Sandbox\") through the real CMS UI wrote content/sandbox/test-page.md, matching site-export.ts's contentPath() layout exactly. Note: Sveltia's own frontmatter serialization (quoting style, empty-string fields) differs cosmetically from pageToMarkdown()'s canonical form, so scripts/md-align.ts correctly flags freshly CMS-saved files as drifted until they are re-exported from the graph — this is by design, not a bug." .
 
+# -- Publishing v2 / Static Site Generator (F55) --------------------------------
+# Grow F27 graph-publishing from a docs/markdown pipeline into a real, themeable
+# static site generator: style defined in the graph, cloud file storage beyond
+# GitHub (Google Drive, GitLab), GitLab as a first-class GitHub alternative, and
+# richer page/route authoring. Absorbs the standalone SveltiaWebsiteTemplate and
+# Gitlab-SveltiaWebsiteTemplate projects — uniting web-content editing with the
+# graph editing experience. Raised 2026-07-10; needs its own planning pass.
+
+kb:publishing-v2 rdf:type    ktype:Feature ;
+               rdfs:label    "Publishing v2 — Static Site Generator" ;
+               kpred:feature-id   "F55" ;
+               kpred:has-status   "speculative" ;
+               kpred:description  "Turn Reckons.AI publishing (F27) into a full, themeable static site generator: the site's look, structure, and file assets are all describable in the graph, and non-docs pages (landing, detail) are first-class. Absorb the local SveltiaWebsiteTemplate + Gitlab-SveltiaWebsiteTemplate work so web-content editing rides on the knowledge-graph editing experience." ;
+               kpred:depends-on   kb:graph-publishing ;
+               kpred:relates-to   kb:workspace-sync .
+
+kb:gp-style-system rdf:type  ktype:Feature ;
+               rdfs:label    "Graph-defined style system" ;
+               kpred:feature-id   "F55.1" ;
+               kpred:has-status   "speculative" ;
+               kpred:part-of      kb:publishing-v2 ;
+               kpred:description  "Define the published site's theme in the graph: custom theme colors and, at minimum, a way to bind styles/components to page nodes. Custom theme colors and custom components may already be reachable via shadcn — the missing piece is expressing the style as triples so it round-trips like content. Minimum viable: theme color tokens as graph data; stretch: component-level styling." .
+
+kb:gp-cloud-storage rdf:type ktype:Feature ;
+               rdfs:label    "Cloud file storage integrations" ;
+               kpred:feature-id   "F55.2" ;
+               kpred:has-status   "speculative" ;
+               kpred:part-of      kb:publishing-v2 ;
+               kpred:depends-on   kb:google-drive-sync ;
+               kpred:description  "Web file storage beyond GitHub (which has size/binary limits). Google Drive first (shareable links for web assets — done manually before), then GitLab file storage (better options than GitHub) and other providers, to cover full web-asset hosting needs." .
+
+kb:gp-gitlab rdf:type        ktype:Feature ;
+               rdfs:label    "GitLab as a GitHub alternative" ;
+               kpred:feature-id   "F55.3" ;
+               kpred:has-status   "speculative" ;
+               kpred:part-of      kb:publishing-v2 ;
+               kpred:description  "Option to replace every GitHub element (repo ingest, publish target, Sveltia backend, file storage) with GitLab, whose file-storage options are better. Generalize src/lib/integrations/github/ into a provider abstraction so GitLab is a first-class backend, not a fork." .
+
+kb:gp-pages-routing rdf:type ktype:Feature ;
+               rdfs:label    "Custom pages + SSG routing" ;
+               kpred:feature-id   "F55.4" ;
+               kpred:has-status   "speculative" ;
+               kpred:part-of      kb:publishing-v2 ;
+               kpred:description  "Beyond informational markdown pages: a customizable landing page and richer detail pages. Static page serving is largely present; the gap is route handling to be a true SSG — likely subdomains / custom DNS and additional route features." .
+
 # -- Captured ideas & in-flight decisions ---------------------------------------
 # Parking lot for directions raised in conversation, so they aren't lost.
 
@@ -471,14 +518,14 @@ kb:pr-graph-overlay rdf:type ktype:Feature ;
                rdfs:label    "GitHub PR Graph Overlay (extension)" ;
                kpred:feature-id   "F28" ;
                kpred:has-status   "speculative" ;
-               kpred:description  "Inject the Reckons.AI extension into github.com/*/pull/* pages to enable graph browse of a PR. Map changed files -> Codebase KB modules (kpred:has-file), render an inline graph-browse overlay, and surface alignment visually (which planned entities the PR advances/regresses) — the Graph Alignment signal, browsable on the PR. Reuses the extension content-script + sidepanel graph rendering." ;
+               kpred:description  "Inject the Reckons.AI extension into github.com/*/pull/* pages to enable graph browse of a PR. Map changed files -> Codebase graph modules (kpred:has-file), render an inline graph-browse overlay, and surface alignment visually (which planned entities the PR advances/regresses) — the Graph Alignment signal, browsable on the PR. Reuses the extension content-script + sidepanel graph rendering." ;
                kpred:depends-on   kb:ci-cd-kb-watch ;
                kpred:relates-to   kb:graph-publishing .
 
 kb:rebrand-kb-to-graph rdf:type ktype:Decision ;
-               rdfs:label    "User-facing rename: KB -> Graph" ;
+               rdfs:label    "User-facing rename: Graph -> Graph" ;
                kpred:has-status   "production" ;
-               kpred:decision     "Rename the user-facing label 'KB' to 'Graph'; keep kb/KB in code, IDs, and MCP tool names (kb_*)." ;
+               kpred:decision     "Rename the user-facing label 'Graph' to 'Graph'; keep kb/graph in code, IDs, and MCP tool names (kb_*)." ;
                kpred:decision     "Nav label collision resolved: home 3D view nav label -> 'view'; /kb management page nav label -> 'graph'." ;
                kpred:done         "Applied to the 'Reckons.AI Graph Alignment Check' and to graph-named TTL export filenames." ;
                kpred:done         "Full user-facing sweep applied: nav labels (home 'view', /kb 'graph'), kb page ('graphs' section, switch/rename/bookmark copy), ingest page (tab + import buttons), review page (align tab, overlay picker), compare, overlay, reckoning, history, settings pages, landing/about pages, Shelly tutorial, browser extension (popup, sidepanel, content-script, background errors), export defaults, and notification toasts. Code identifiers, routes, MCP tool names, and TTL IRIs untouched." .
@@ -488,7 +535,7 @@ kb:terminology-simplification rdf:type ktype:Decision ;
                kpred:has-status   "production" ;
                kpred:decision     "Simplify jargon in user-facing copy while keeping technical terms in code/docs." ;
                kpred:done         "Ingest -> 'Add' (nav + ingest kicker); Warming -> 'Preparing' (WASM model button)." ;
-               kpred:done         "Triple/Statement -> 'Fact' in user copy (review cards, counts, ingest results, diff summaries, node panel, search bar, export hints); 'KB Leap' -> 'Jump' (node panel section, add/remove buttons, graph filter chip, badge tooltips). Technical/docs TTL contexts keep triple/statement." .
+               kpred:done         "Triple/Statement -> 'Fact' in user copy (review cards, counts, ingest results, diff summaries, node panel, search bar, export hints); 'Graph Leap' -> 'Jump' (node panel section, add/remove buttons, graph filter chip, badge tooltips). Technical/docs TTL contexts keep triple/statement." .
 
 kb:feedback-channel rdf:type ktype:Feature ;
                rdfs:label    "Feedback channel (suggestion box)" ;
@@ -499,7 +546,7 @@ kb:launch-prep rdf:type      ktype:Concept ;
                rdfs:label    "Pre-launch (LinkedIn) checklist" ;
                kpred:has-status   "in-progress" ;
                kpred:done         "Repo About (description/site/topics); Dependabot alerts + auto-fixes; README live link + badges; CI on Node 24." ;
-               kpred:done         "KB -> Graph terminology sweep (see kb:rebrand-kb-to-graph)." ;
+               kpred:done         "Graph -> Graph terminology sweep (see kb:rebrand-kb-to-graph)." ;
                kpred:done         "Social preview image (static/social-preview.png, 1200x630) + og:image/twitter:card meta so the shared link renders a thumbnail." ;
                kpred:done         "Tagged v0.1.0 (2026-07-02) as the post hook — release notes published at /docs (content/releases/v0-1-0.md)." ;
                kpred:todo         "10-15s demo GIF (ingest -> review -> 3D graph -> reckon) at README top." .
@@ -508,7 +555,7 @@ kb:extension-explore rdf:type ktype:Feature ;
                rdfs:label   "Extension Explore Mode" ;
                kpred:has-status   "planned" ;
                kpred:feature-id   "F8b" ;
-               kpred:description  "Browse and interact with KB graph from the extension side panel. Lightweight 2D graph." ;
+               kpred:description  "Browse and interact with graph graph from the extension side panel. Lightweight 2D graph." ;
                kpred:depends-on   kb:browser-extension .
 
 kb:enrichment-pipeline rdf:type ktype:Feature ;
@@ -521,7 +568,7 @@ kb:model-training rdf:type  ktype:Feature ;
                rdfs:label   "Model Training" ;
                kpred:has-status   "planned" ;
                kpred:feature-id   "F13" ;
-               kpred:description  "Fine-tune local models on KB data. Personalised assistant that reasons natively over domain vocabulary and relationships. Three phases: training data export, cloud fine-tuning, local LoRA." ;
+               kpred:description  "Fine-tune local models on graph data. Personalized assistant that reasons natively over domain vocabulary and relationships. Three phases: training data export, cloud fine-tuning, local LoRA." ;
                kpred:has-phase    train:phase-1 ;
                kpred:has-phase    train:phase-2 ;
                kpred:has-phase    train:phase-3 ;
@@ -531,12 +578,12 @@ kb:model-training rdf:type  ktype:Feature ;
                kpred:open-question "Quality threshold: how many triples needed for useful fine-tuning? Likely 200+." ;
                kpred:open-question "Evaluation: how to measure if fine-tuned model is better than RAG alone?" ;
                kpred:open-question "Incremental training: update adapter when new triples added without full retraining?" ;
-               kpred:open-question "Multi-KB: adapters per-KB or trained on all user KBs combined?" .
+               kpred:open-question "Multi-Graph: adapters per-Graph or trained on all user graphs combined?" .
 
 train:phase-1  rdf:type     ktype:Concept ;
                rdfs:label   "Training Phase 1: Training Data Export" ;
                kpred:has-status   "planned" ;
-               kpred:description  "Convert KB triples into instruction-tuning pairs. Entity QA, relationship QA, multi-hop reasoning, and subgraph summarisation generation strategies. Augmentation with paraphrases and negative examples." ;
+               kpred:description  "Convert graph triples into instruction-tuning pairs. Entity QA, relationship QA, multi-hop reasoning, and subgraph summarization generation strategies. Augmentation with paraphrases and negative examples." ;
                kpred:has-file     "src/lib/training/generate-pairs.ts" ;
                kpred:has-file     "src/lib/training/export.ts" ;
                kpred:export-format "JSONL (instruction/response pairs)" ;
@@ -559,11 +606,11 @@ train:phase-2  rdf:type     ktype:Concept ;
 train:phase-3  rdf:type     ktype:Concept ;
                rdfs:label   "Training Phase 3: Local LoRA" ;
                kpred:has-status   "planned" ;
-               kpred:description  "On-device LoRA adapter training. Base model SmolLM2-360M (already cached locally). Generate adapter weights from KB data (10-50MB, portable). Multiple KB adapters coexist with one base model." ;
+               kpred:description  "On-device LoRA adapter training. Base model SmolLM2-360M (already cached locally). Generate adapter weights from graph data (10-50MB, portable). Multiple graph adapters coexist with one base model." ;
                kpred:depends-on   train:phase-2 ;
                kpred:has-approach "WebGPU-accelerated LoRA training (when browser support matures)" ;
                kpred:has-approach "Python sidecar fallback (reckons train --local)" ;
-               kpred:has-capability "adapter management (load/unload per KB)" ;
+               kpred:has-capability "adapter management (load/unload per graph)" ;
                kpred:pro          "Data stays local, no cloud costs" ;
                kpred:con          "Requires GPU or long CPU training time, quality limited by base model size" .
 
@@ -591,10 +638,10 @@ kb:colab-notebook rdf:type  ktype:Feature ;
                kpred:description  "Companion notebook demonstrating MCP server integration from Python." .
 
 kb:cross-kb-alignment rdf:type ktype:Feature ;
-               rdfs:label   "Cross-KB Alignment" ;
+               rdfs:label   "Cross-Graph Alignment" ;
                kpred:has-status   "production" ;
                kpred:feature-id   "F16" ;
-               kpred:description  "Align entities across KBs with embedding similarity and IRI remapping. Align tab in review page. Entity matching (exact IRI + embedding), computeDiff(), applyAlignmentToActiveKb()." ;
+               kpred:description  "Align entities across graphs with embedding similarity and IRI remapping. Align tab in review page. Entity matching (exact IRI + embedding), computeDiff(), applyAlignmentToActiveKb()." ;
                kpred:depends-on   kb:multi-kb ;
                kpred:depends-on   kb:comparison-view .
 
@@ -604,12 +651,12 @@ kb:n8n-cloud-sync rdf:type ktype:Feature ;
                rdfs:label   "n8n Cloud Sync" ;
                kpred:has-status   "production" ;
                kpred:feature-id   "F20" ;
-               kpred:description  "Private, self-hosted cloud sync via n8n VPS. Upload, download, and monitor KBs from any device. No SaaS dependency." ;
+               kpred:description  "Private, self-hosted cloud sync via n8n VPS. Upload, download, and monitor graphs from any device. No SaaS dependency." ;
                kpred:has-workflow  kb:n8n-sync-hub ;
                kpred:has-workflow  kb:n8n-source-monitor .
 
 kb:n8n-sync-hub rdf:type   ktype:Concept ;
-               rdfs:label   "KB Sync Hub" ;
+               rdfs:label   "Graph Sync Hub" ;
                kpred:description  "n8n workflow with 4 webhook endpoints: upload (POST), download (GET), status (GET), pending notes (GET). Content-hash deduplication via SHA-256." ;
                kpred:has-status   "production" ;
                kpred:workflow-id  "gzL6AXn9iWo4GZxN" ;
@@ -643,7 +690,7 @@ kb:context-compression rdf:type ktype:Feature ;
                rdfs:label   "Context Compression" ;
                kpred:feature-id   "F25" ;
                kpred:has-status   "functional" ;
-               kpred:description  "Condense knowledge graphs for LLM context windows. Semantic meaning preserved, tokens reduced. A page of prose becomes a handful of triples. Feed compressed KB directly to AI agents via MCP." ;
+               kpred:description  "Condense knowledge graphs for LLM context windows. Semantic meaning preserved, tokens reduced. A page of prose becomes a handful of triples. Feed compressed graph directly to AI agents via MCP." ;
                kpred:has-tool     "kb_compress" ;
                kpred:depends-on   kb:mcp-server .
 
@@ -653,7 +700,7 @@ kb:vscode-extension rdf:type ktype:Feature ;
                rdfs:label   "VS Code Extension" ;
                kpred:has-status   "planned" ;
                kpred:feature-id   "F19" ;
-               kpred:description  "Auto-inject KB into coding sessions via MCP bridge. Wraps reckons-ai-mcp as child process. Phase 1: MCP bridge + auto-inject. Phase 2: live KB updates from editor. Phase 3: visual KB browser sidebar." ;
+               kpred:description  "Auto-inject graph into coding sessions via MCP bridge. Wraps reckons-ai-mcp as child process. Phase 1: MCP bridge + auto-inject. Phase 2: live graph updates from editor. Phase 3: visual graph browser sidebar." ;
                kpred:depends-on   kb:mcp-server .
 
 # -- Enterprise: People · Policy · Procedure (F21) ------------------------------
@@ -662,7 +709,7 @@ kb:enterprise-3ps rdf:type ktype:Feature ;
                rdfs:label   "Enterprise: People · Policy · Procedure" ;
                kpred:has-status   "planned" ;
                kpred:feature-id   "F21" ;
-               kpred:description  "Structure organisational knowledge around the 3 Ps framework: People (who knows what — RBAC, teams, ownership, delegation, audit trails, trust scores), Policy (what governs it — legal constraints, cultural norms, compliance rules, data classification, retention policies), Procedure (how it gets done — SOPs, decision trees, process graphs, checklists, runbooks). Each dimension maps naturally to RDF triples. Key design decisions: file-based TTL delivery (portable W3C format, diffable via git, no proprietary lock-in), Bring Your Own Auth (organisations plug in existing SSO/LDAP/OIDC/SAML — no built-in identity provider), graph-native RBAC (permissions are triples, queryable and time-bounded), and self-hosted operation (n8n cloud sync on the organisation's infrastructure, air-gapped first-class). Personal Reckons.AI remains unchanged; enterprise is an opt-in layer." ;
+               kpred:description  "Structure organizational knowledge around the 3 Ps framework: People (who knows what — RBAC, teams, ownership, delegation, audit trails, trust scores), Policy (what governs it — legal constraints, cultural norms, compliance rules, data classification, retention policies), Procedure (how it gets done — SOPs, decision trees, process graphs, checklists, runbooks). Each dimension maps naturally to RDF triples. Key design decisions: file-based TTL delivery (portable W3C format, diffable via git, no proprietary lock-in), Bring Your Own Auth (organizations plug in existing SSO/LDAP/OIDC/SAML — no built-in identity provider), graph-native RBAC (permissions are triples, queryable and time-bounded), and self-hosted operation (n8n cloud sync on the organization's infrastructure, air-gapped first-class). Personal Reckons.AI remains unchanged; enterprise is an opt-in layer." ;
                kpred:has-dimension kb:ent-people ;
                kpred:has-dimension kb:ent-policy ;
                kpred:has-dimension kb:ent-procedure ;
@@ -673,7 +720,7 @@ kb:enterprise-3ps rdf:type ktype:Feature ;
 
 kb:ent-people  rdf:type     ktype:Concept ;
                rdfs:label   "People (Enterprise)" ;
-               kpred:description  "Role-based access controls. Team KBs with ownership, delegation, and audit trails. Graph-native RBAC — permissions are triples, queryable and time-bounded." .
+               kpred:description  "Role-based access controls. Team graphs with ownership, delegation, and audit trails. Graph-native RBAC — permissions are triples, queryable and time-bounded." .
 
 kb:ent-policy  rdf:type     ktype:Concept ;
                rdfs:label   "Policy (Enterprise)" ;
@@ -685,34 +732,34 @@ kb:ent-procedure rdf:type   ktype:Concept ;
 
 kb:ent-byoa    rdf:type     ktype:Concept ;
                rdfs:label   "Bring Your Own Auth" ;
-               kpred:description  "No built-in identity provider. Organisations plug in SSO, LDAP, OIDC, or SAML. Auth gateway validates tokens and maps to RBAC roles from the graph." ;
+               kpred:description  "No built-in identity provider. Organizations plug in SSO, LDAP, OIDC, or SAML. Auth gateway validates tokens and maps to RBAC roles from the graph." ;
                kpred:related      kb:enterprise-3ps .
 
 kb:ent-ttl-delivery rdf:type ktype:Concept ;
                rdfs:label   "File-Based TTL Delivery" ;
-               kpred:description  "Enterprise KBs distributed as .ttl files. Portable W3C standard. Diffable via git. Offline-first. No proprietary format, no database dependency." ;
+               kpred:description  "Enterprise graphs distributed as .ttl files. Portable W3C standard. Diffable via git. Offline-first. No proprietary format, no database dependency." ;
                kpred:related      kb:enterprise-3ps .
 
 kb:ent-phase-1 rdf:type   ktype:Concept ;
                rdfs:label   "Enterprise Phase 1: Graph-Native RBAC" ;
-               kpred:description  "Define role/permission vocabulary as RDF predicates. Four roles (Viewer, Contributor, Reviewer, Admin) with scoping at KB, graph, and entity levels. RBAC evaluation engine (client-side, reads permission triples). Admin UI for role assignment. Audit trail logging — every mutation records actor, action, target, and timestamp as triples." ;
+               kpred:description  "Define role/permission vocabulary as RDF predicates. Four roles (Viewer, Contributor, Reviewer, Admin) with scoping at graph, graph, and entity levels. RBAC evaluation engine (client-side, reads permission triples). Admin UI for role assignment. Audit trail logging — every mutation records actor, action, target, and timestamp as triples." ;
                kpred:has-status   "planned" .
 
 kb:ent-phase-2 rdf:type   ktype:Concept ;
                rdfs:label   "Enterprise Phase 2: BYOA Auth Gateway" ;
-               kpred:description  "Bring Your Own Auth — thin middleware that validates tokens from the organisation's identity provider and maps identities to RBAC roles defined in the graph. Supported protocols: OIDC (Okta, Auth0, Entra ID), LDAP (on-premise Active Directory), SAML (legacy enterprise SSO), API Key (machine-to-machine for MCP, n8n, CI/CD). No stored credentials, no sessions — stateless token validation only." ;
+               kpred:description  "Bring Your Own Auth — thin middleware that validates tokens from the organization's identity provider and maps identities to RBAC roles defined in the graph. Supported protocols: OIDC (Okta, Auth0, Entra ID), LDAP (on-premise Active Directory), SAML (legacy enterprise SSO), API Key (machine-to-machine for MCP, n8n, CI/CD). No stored credentials, no sessions — stateless token validation only." ;
                kpred:has-status   "planned" ;
                kpred:depends-on   kb:ent-phase-1 .
 
 kb:ent-phase-3 rdf:type   ktype:Concept ;
-               rdfs:label   "Enterprise Phase 3: Policy & Procedure Modelling" ;
+               rdfs:label   "Enterprise Phase 3: Policy & Procedure Modeling" ;
                kpred:description  "Policy entity type with temporal bounds (effective-date, superseded-by), provenance, and governed-by relationships. Procedure entity type with step ordering, decision points, SLAs, on-failure branches. Policies travel with the knowledge they govern. Procedures become navigable process graphs in the 3D view. Reckoning becomes policy-aware. Diff/review shows governed-by relationships." ;
                kpred:has-status   "planned" ;
                kpred:depends-on   kb:ent-phase-1 .
 
 kb:ent-phase-4 rdf:type   ktype:Concept ;
                rdfs:label   "Enterprise Phase 4: Team Workflows" ;
-               kpred:description  "Shared KB registry backed by n8n data tables. Merge request workflow: propose, review, accept — with multi-reviewer support. Conflict resolution across concurrent edits. Activity feed and notification via n8n webhooks (Slack, email, ntfy). Team members export TTL, submit via n8n sync hub or git PR, reviewer imports and curates." ;
+               kpred:description  "Shared graph registry backed by n8n data tables. Merge request workflow: propose, review, accept — with multi-reviewer support. Conflict resolution across concurrent edits. Activity feed and notification via n8n webhooks (Slack, email, ntfy). Team members export TTL, submit via n8n sync hub or git PR, reviewer imports and curates." ;
                kpred:has-status   "planned" ;
                kpred:depends-on   kb:ent-phase-2 ;
                kpred:depends-on   kb:ent-phase-3 .
@@ -725,7 +772,7 @@ kb:confluence-migration rdf:type ktype:Feature ;
                kpred:feature-id   "F26" ;
                kpred:description  "Bulk import from Confluence spaces into Reckons.AI. Upload HTML export ZIP, parse page tree, chunk large pages, extract triples with local models. Pause/resume checkpoint, progress persistence, label-to-type mapping, page hierarchy as skos:broader." ;
                kpred:depends-on   kb:wf-ingest ;
-               kpred:depends-on   kb:entity-normalisation ;
+               kpred:depends-on   kb:entity-normalization ;
                kpred:has-phase    kb:conf-phase-1 ;
                kpred:has-phase    kb:conf-phase-2 ;
                kpred:has-phase    kb:conf-phase-3 ;
@@ -762,10 +809,10 @@ kb:text-chunking rdf:type ktype:Feature ;
                kpred:description  "Sliding window chunking for sources exceeding the 12K char extraction limit. Context header per chunk (source title, chunk N of M). Cross-chunk deduplication by (subject, predicate, object). Benefits all source types, not just Confluence." ;
                kpred:depends-on   kb:wf-ingest .
 
-# -- Entity Normalisation (F22) -------------------------------------------------
+# -- Entity Normalization (F22) -------------------------------------------------
 
-kb:entity-normalisation rdf:type ktype:Feature ;
-               rdfs:label   "Entity Normalisation" ;
+kb:entity-normalization rdf:type ktype:Feature ;
+               rdfs:label   "Entity Normalization" ;
                kpred:has-status   "production" ;
                kpred:feature-id   "F22" ;
                kpred:description  "Post-extraction, pre-review IRI rewriting using embedding similarity. Two-pass: exact label match then cosine (0.90 entity, 0.88 predicate). Prevents duplicate entities from entering review queue. Protects standard vocabularies. Perf guard at 500 entities." ;
@@ -778,7 +825,7 @@ kb:mcp-workspace rdf:type ktype:Feature ;
                rdfs:label   "MCP Workspace (Self-Dogfooding)" ;
                kpred:has-status   "production" ;
                kpred:feature-id   "F23" ;
-               kpred:description  "Reckons.AI uses its own MCP server to track product state. Three internal KBs (Roadmap, Production, Features) symlinked from static/*.ttl into mcp-workspace/kbs/. Claude Code configured via CLAUDE.md + .claude/settings.local.json. Setup: scripts/setup-mcp-workspace.sh." ;
+               kpred:description  "Reckons.AI uses its own MCP server to track product state. Three internal graphs (Roadmap, Production, Features) symlinked from static/*.ttl into mcp-workspace/kbs/. Claude Code configured via CLAUDE.md + .claude/settings.local.json. Setup: scripts/setup-mcp-workspace.sh." ;
                kpred:depends-on   kb:mcp-server .
 
 # -- Git Analysis (F24) --------------------------------------------------------
@@ -787,7 +834,7 @@ kb:git-analysis rdf:type ktype:Feature ;
                rdfs:label   "Git Analysis" ;
                kpred:has-status   "production" ;
                kpred:feature-id   "F24" ;
-               kpred:description  "Git-aware MCP tools for agent plan alignment. Agents can check git status, cross-reference code changes against KB entities, review pending proposals, verify work alignment against the roadmap, and compute a quantitative alignment score (0-1) across 4 dimensions: coverage, status alignment, dependency respect, and scope discipline." ;
+               kpred:description  "Git-aware MCP tools for agent plan alignment. Agents can check git status, cross-reference code changes against graph entities, review pending proposals, verify work alignment against the roadmap, and compute a quantitative alignment score (0-1) across 4 dimensions: coverage, status alignment, dependency respect, and scope discipline." ;
                kpred:has-tool     "kb_git_status" ;
                kpred:has-tool     "kb_check_plan" ;
                kpred:has-tool     "kb_pending" ;
@@ -795,7 +842,7 @@ kb:git-analysis rdf:type ktype:Feature ;
                kpred:has-tool     "kb_alignment_score" ;
                kpred:depends-on   kb:mcp-server ;
                kpred:depends-on   kb:mcp-workspace ;
-               kpred:related      kb:entity-normalisation .
+               kpred:related      kb:entity-normalization .
 
 # -- User-Requested Future Capabilities -----------------------------------------
 
@@ -892,7 +939,7 @@ kb:int-mistral-ocr rdf:type ktype:Tool ;
 kb:int-n8n     rdf:type     ktype:Tool ;
                rdfs:label   "n8n" ;
                kpred:has-status   "production" ;
-               kpred:provides     "cloud KB sync" ;
+               kpred:provides     "cloud graph sync" ;
                kpred:provides     "URL source monitoring" ;
                kpred:provides     "pending note queuing" ;
                kpred:description  "Self-hosted workflow automation. Two workflows: Sync Hub (upload/download/status/pending) and Source Monitor (URL watching, change detection)." .
@@ -900,12 +947,12 @@ kb:int-n8n     rdf:type     ktype:Tool ;
 # -- CI/CD KB Watch (F26) ------------------------------------------------------
 
 kb:ci-cd-kb-watch  rdf:type         ktype:Feature ;
-               rdfs:label           "CI/CD KB Watch" ;
+               rdfs:label           "CI/CD graph Watch" ;
                kpred:feature-id     "F26" ;
                kpred:has-status     "functional" ;
                kpred:depends-on     kb:mcp-server ;
                kpred:depends-on     kb:mcp-workspace ;
-               kpred:description    "GitHub Actions workflow that watches every push/PR, runs KB alignment scoring, and detects unplanned or drifting commits. Posts alignment reports as PR comments. Pre/post review commands for Claude Code sessions." ;
+               kpred:description    "GitHub Actions workflow that watches every push/PR, runs graph alignment scoring, and detects unplanned or drifting commits. Posts alignment reports as PR comments. Pre/post review commands for Claude Code sessions." ;
                kpred:has-component  "kb-watch.yml" ;
                kpred:has-component  "kb-snapshot.ts" ;
                kpred:has-component  "kb-align.ts" ;
@@ -937,7 +984,7 @@ story:rm-step-2  rdf:type         story:Step ;
                  story:partOf     story:roadmap-tour ;
                  story:order      "2"^^xsd:integer ;
                  story:title      "The Core Loop" ;
-                 story:content    "Five workflows form the backbone: Ingest (add knowledge), Review (curate with human-in-the-loop), Explore (navigate the graph), Compare (semantic diffs), and Reckon (AI-powered reasoning). Every triple passes through review before entering your confirmed KB." ;
+                 story:content    "Five workflows form the backbone: Ingest (add knowledge), Review (curate with human-in-the-loop), Explore (navigate the graph), Compare (semantic diffs), and Reckon (AI-powered reasoning). Every triple passes through review before entering your confirmed graph." ;
                  story:highlight  kb:wf-ingest ;
                  story:highlight  kb:wf-review ;
                  story:highlight  kb:wf-explore ;
@@ -959,7 +1006,7 @@ story:rm-step-4  rdf:type         story:Step ;
                  story:partOf     story:roadmap-tour ;
                  story:order      "4"^^xsd:integer ;
                  story:title      "Beyond the Browser Tab" ;
-                 story:content    "The browser extension adds research session accumulation across tabs. The MCP server lets AI agents like Claude Code search, query, and add to your KB. Together, they make Reckons.AI a knowledge backbone that other tools can tap into." ;
+                 story:content    "The browser extension adds research session accumulation across tabs. The MCP server lets AI agents like Claude Code search, query, and add to your graph. Together, they make Reckons.AI a knowledge backbone that other tools can tap into." ;
                  story:highlight  kb:browser-extension ;
                  story:highlight  kb:mcp-server ;
                  story:question   "Want to see what the MCP server can do?" .
@@ -969,7 +1016,7 @@ story:rm-step-5  rdf:type         story:Step ;
                  story:partOf     story:roadmap-tour ;
                  story:order      "5"^^xsd:integer ;
                  story:title      "Sharing & Collaboration (Planned)" ;
-                 story:content    "The sharing roadmap progresses through three stages: F2 publishes KBs to GitHub Gist as static TTL files. F3 adds read-only guest views with a Fork button. F4 enables collaborative KBs where guests can propose statements. TTL is the protocol -- no accounts required." ;
+                 story:content    "The sharing roadmap progresses through three stages: F2 publishes graphs to GitHub Gist as static TTL files. F3 adds read-only guest views with a Fork button. F4 enables collaborative graphs where guests can propose statements. TTL is the protocol -- no accounts required." ;
                  story:highlight  kb:kb-publication ;
                  story:highlight  kb:read-only-guest ;
                  story:highlight  kb:collaborative-kb .
@@ -979,7 +1026,7 @@ story:rm-step-6  rdf:type         story:Step ;
                  story:partOf     story:roadmap-tour ;
                  story:order      "6"^^xsd:integer ;
                  story:title      "Personalized AI (F13)" ;
-                 story:content    "The most ambitious planned feature: fine-tune a local model on your KB data. Phase 1 exports training pairs (JSONL). Phase 2 integrates cloud fine-tuning. Phase 3 enables local LoRA adapter training via WebGPU. Your KB teaches the model your domain vocabulary." ;
+                 story:content    "The most ambitious planned feature: fine-tune a local model on your graph data. Phase 1 exports training pairs (JSONL). Phase 2 integrates cloud fine-tuning. Phase 3 enables local LoRA adapter training via WebGPU. Your graph teaches the model your domain vocabulary." ;
                  story:highlight  kb:model-training ;
                  story:highlight  train:phase-1 ;
                  story:highlight  train:phase-3 .
@@ -988,8 +1035,8 @@ story:rm-step-6  rdf:type         story:Step ;
 story:rm-step-7  rdf:type         story:Step ;
                  story:partOf     story:roadmap-tour ;
                  story:order      "7"^^xsd:integer ;
-                 story:title      "Cross-KB Alignment" ;
-                 story:content    "The next frontier: aligning knowledge across multiple KBs. Compare a production status KB against a roadmap KB to see gaps. Each suggested change clearly indicates which KB it targets. This turns Reckons.AI into a tool for tracking vision vs reality." ;
+                 story:title      "Cross-Graph Alignment" ;
+                 story:content    "The next frontier: aligning knowledge across multiple graphs. Compare a production status graph against a roadmap graph to see gaps. Each suggested change clearly indicates which graph it targets. This turns Reckons.AI into a tool for tracking vision vs reality." ;
                  story:highlight  kb:cross-kb-alignment ;
                  story:highlight  kb:multi-kb ;
                  story:question   "Ready to compare this roadmap against production status?" .
@@ -999,7 +1046,7 @@ story:rm-step-8  rdf:type         story:Step ;
                  story:partOf     story:roadmap-tour ;
                  story:order      "8"^^xsd:integer ;
                  story:title      "Private Cloud Sync" ;
-                 story:content    "n8n provides self-hosted cloud sync with zero SaaS dependency. The Sync Hub stores KB snapshots via webhooks with content-hash deduplication. The Source Monitor watches URLs every 6 hours and queues pending notes when content changes. Private. Personalized. Perfection." ;
+                 story:content    "n8n provides self-hosted cloud sync with zero SaaS dependency. The Sync Hub stores graph snapshots via webhooks with content-hash deduplication. The Source Monitor watches URLs every 6 hours and queues pending notes when content changes. Private. Personalized. Perfection." ;
                  story:highlight  kb:n8n-cloud-sync ;
                  story:highlight  kb:n8n-sync-hub ;
                  story:highlight  kb:n8n-source-monitor ;
@@ -1010,7 +1057,7 @@ story:rm-step-9  rdf:type         story:Step ;
                  story:partOf     story:roadmap-tour ;
                  story:order      "9"^^xsd:integer ;
                  story:title      "Enterprise: People · Policy · Procedure" ;
-                 story:content    "The enterprise vision structures organizational knowledge around three dimensions. People: RBAC, team KBs, audit trails. Policy: legal and cultural constraints as graph entities with temporal bounds. Procedure: SOPs and decision trees from intent to execution. Authentication is bring-your-own. Delivery is file-based TTL — portable, diffable, no lock-in." ;
+                 story:content    "The enterprise vision structures organizational knowledge around three dimensions. People: RBAC, team graphs, audit trails. Policy: legal and cultural constraints as graph entities with temporal bounds. Procedure: SOPs and decision trees from intent to execution. Authentication is bring-your-own. Delivery is file-based TTL — portable, diffable, no lock-in." ;
                  story:highlight  kb:enterprise-3ps ;
                  story:highlight  kb:ent-people ;
                  story:highlight  kb:ent-policy ;
@@ -1026,7 +1073,7 @@ kb:mcp-ollama-bridge rdf:type    ktype:Feature ;
                rdfs:label   "MCP Ollama Bridge" ;
                kpred:has-status   "functional" ;
                kpred:part-of      kb:local-offload ;
-               kpred:description  "Opt-in MCP tools that route bulk extraction, summarization, and page-drafting work to a local Ollama server (native /api/chat, JSON-schema-constrained output) instead of the calling agent's cloud/session tokens. Disabled unless OLLAMA_BASE_URL is set; OLLAMA_MODEL defaults to devstral-small-2:latest. kb_generate_page grounds a prompt in the graph via the same search-subgraph-compress pipeline as kb_compress before drafting a WebPage markdown document (frontmatter + body, mirroring src/lib/publish/site-export.ts's pageToMarkdown field order) -- a proposal only, never written to a KB or file. kb_entity_markdown renders one entity as WebPage markdown deterministically from its triples with no LLM involved, so it works even when OLLAMA_BASE_URL is unset. All four tools return proposals only and never write to a KB, matching the review-first philosophy (ReviewStatus: pending/pending-removal/confirmed/refined/rejected/superseded)." ;
+               kpred:description  "Opt-in MCP tools that route bulk extraction, summarization, and page-drafting work to a local Ollama server (native /api/chat, JSON-schema-constrained output) instead of the calling agent's cloud/session tokens. Disabled unless OLLAMA_BASE_URL is set; OLLAMA_MODEL defaults to devstral-small-2:latest. kb_generate_page grounds a prompt in the graph via the same search-subgraph-compress pipeline as kb_compress before drafting a WebPage markdown document (frontmatter + body, mirroring src/lib/publish/site-export.ts's pageToMarkdown field order) -- a proposal only, never written to a graph or file. kb_entity_markdown renders one entity as WebPage markdown deterministically from its triples with no LLM involved, so it works even when OLLAMA_BASE_URL is unset. All four tools return proposals only and never write to a graph, matching the review-first philosophy (ReviewStatus: pending/pending-removal/confirmed/refined/rejected/superseded)." ;
                kpred:has-tool     "kb_local_extract" ;
                kpred:has-tool     "kb_local_summarize" ;
                kpred:has-tool     "kb_generate_page" ;
@@ -1138,7 +1185,7 @@ kb:local-model-bench rdf:type ktype:Feature ;
                kpred:tested-by    "tests/bench/run-coding-bench.ts" ;
                kpred:tested-by    "tests/bench/run-agentic-bench.ts" ;
                kpred:tested-by    "tests/bench/run-cost-bench.ts" ;
-               kpred:description  "Evidence-driven selection of LOCAL models for agent grunt work: keep the strong cloud model (Opus) on the main/orchestration thread and delegate bulk work to local Ollama models via `ollama launch` integrations (claude/opencode/etc.) on a local multi-GPU Ollama host — zero API cost, private. Two reproducible benchmarks pick the right local model per role. (1) VLM visual-gate bench — tests/visual/run-vlm-gate-bench.ts + vlm-golden.ts — scores local vision models as 'does this appear' gates against human-verified screenshot labels (10 images, 48 checks across 7 capability types: toast/mobile/graph/blank/settings/kb/align-tab); the gate score weights recall highest (a miss waves a real regression through — the one intolerable error) plus precision, accuracy, and latency. A cheap local VLM screens every screenshot; only its flags escalate to the expensive reviewer (Opus/Claude Vision). Result: qwen2.5vl:7b selected (94%, 0 misses); granite3.2-vision brittle (44%, 2 misses) despite a perfect 6/6 smoke test — a caution against trusting smoke tests; moondream is prose-only and unusable for yes/no gating. (2) Coding-correctness bench — tests/bench/run-coding-bench.ts + coding-golden.ts — self-contained edit/implement/fix/parse tasks graded by writing the model's code block to a temp dir and running an assert driver via tsx (pass@1 + latency + tokens + output cleanliness). Result: qwen3-coder selected (4/4, fastest full-passer, terse); devstral-small-2 and gpt-oss:20b also 4/4; the large general model nemotron3:33b was the worst coder here (3/4, slowest, ~10x tokens) — reserve big reasoning models for planning, not code grunt work. Operational lesson baked into both harnesses: local models default to very large context windows (up to 128k) which balloon KV-cache VRAM and can crash larger vision runtimes under contention, so the benches pin a small num_ctx (sized to hold one screenshot / prompt) and unload each model between runs. SHIPPED 2026-07-07. Phase 2 SHIPPED 2026-07-07: tool-loop agentic coding bench — tests/bench/run-agentic-bench.ts + agentic-tasks.ts — drives each local model through a real tool-calling loop (list_files/read_file/write_file/run_tests/finish) in a sandbox, measuring pass@1, turns, self-verification, scope discipline, and spiral rate. Result: devstral-small-2 top (0.98, all pass, fewest turns, ~366 tokens), qwen3-coder and gpt-oss:20b also perfect; nemotron3:33b failed a third time (33% pass, spiraled, 6225 tokens, self-verified once) — consistent across all three benches that big reasoning models are wrong for coding/agentic grunt work. Cost bench SHIPPED 2026-07-07: tests/bench/run-cost-bench.ts + cost-golden.ts — compares Opus-token cost of full-system vs Opus-alone on KB-grounded generation, three arms (A0 Opus+raw KB, A1 Opus+kb_compress-style compressed subgraph, A2 local drafts + Opus reviews), inferring $ from live API usage. Result (Opus 4.8, ~$0.48 spend): A1 and A2 both 79% cheaper than A0 at identical 100% quality — the graph compression is the dominant lever (6x fewer input tokens); local delegation adds little on short outputs and pays only when OUTPUT is large (Opus output tokens at $25/Mtok are the expensive ones). Extended 2026-07-07: a long-form (~700-word) generation task confirmed the delegation win — A2 (local writes, Opus reviews/approves) 77% cheaper than A0 vs A1's 66%, because the expensive OUTPUT is generated free locally; and raw context proved LOWER quality here — the full raw KB scored 60% fact-coverage vs 80% for the compressed subgraph (needle-in-haystack). Capacity note: the whole static KB is ~116k tokens — fits comfortably in Opus's 1M window, but feeding it raw costs ~50x more per query than a compressed subgraph and can ground worse; compression is a cost+quality lever, not a capacity workaround. Harness comparison (OpenCode, Qwen Code): both are built for interactive use and their headless local-model paths are immature — OpenCode ships no local-Ollama provider (only ollama-cloud; needs manual provider config), Qwen Code defaults to qwen-oauth cloud — observed opening a browser to chat.qwen.ai for login even in headless -p mode — and even wired neither completed a trivial fix headlessly in 120s via the OpenAI-compatible /v1 path (~13s cold per call), whereas the minimal custom tool-loop and Claude Code complete the same tasks in seconds. Qualitative conclusion (matching hands-on experience): Claude Code's harness has materially lower friction/overhead for local-model agent work; a clean headless pass-rate comparison would need long timeouts and per-tool auth/config work not yet done." ;
+               kpred:description  "Evidence-driven selection of LOCAL models for agent grunt work: keep the strong cloud model (Opus) on the main/orchestration thread and delegate bulk work to local Ollama models via `ollama launch` integrations (claude/opencode/etc.) on a local multi-GPU Ollama host — zero API cost, private. Two reproducible benchmarks pick the right local model per role. (1) VLM visual-gate bench — tests/visual/run-vlm-gate-bench.ts + vlm-golden.ts — scores local vision models as 'does this appear' gates against human-verified screenshot labels (10 images, 48 checks across 7 capability types: toast/mobile/graph/blank/settings/kb/align-tab); the gate score weights recall highest (a miss waves a real regression through — the one intolerable error) plus precision, accuracy, and latency. A cheap local VLM screens every screenshot; only its flags escalate to the expensive reviewer (Opus/Claude Vision). Result: qwen2.5vl:7b selected (94%, 0 misses); granite3.2-vision brittle (44%, 2 misses) despite a perfect 6/6 smoke test — a caution against trusting smoke tests; moondream is prose-only and unusable for yes/no gating. (2) Coding-correctness bench — tests/bench/run-coding-bench.ts + coding-golden.ts — self-contained edit/implement/fix/parse tasks graded by writing the model's code block to a temp dir and running an assert driver via tsx (pass@1 + latency + tokens + output cleanliness). Result: qwen3-coder selected (4/4, fastest full-passer, terse); devstral-small-2 and gpt-oss:20b also 4/4; the large general model nemotron3:33b was the worst coder here (3/4, slowest, ~10x tokens) — reserve big reasoning models for planning, not code grunt work. Operational lesson baked into both harnesses: local models default to very large context windows (up to 128k) which balloon KV-cache VRAM and can crash larger vision runtimes under contention, so the benches pin a small num_ctx (sized to hold one screenshot / prompt) and unload each model between runs. SHIPPED 2026-07-07. Phase 2 SHIPPED 2026-07-07: tool-loop agentic coding bench — tests/bench/run-agentic-bench.ts + agentic-tasks.ts — drives each local model through a real tool-calling loop (list_files/read_file/write_file/run_tests/finish) in a sandbox, measuring pass@1, turns, self-verification, scope discipline, and spiral rate. Result: devstral-small-2 top (0.98, all pass, fewest turns, ~366 tokens), qwen3-coder and gpt-oss:20b also perfect; nemotron3:33b failed a third time (33% pass, spiraled, 6225 tokens, self-verified once) — consistent across all three benches that big reasoning models are wrong for coding/agentic grunt work. Cost bench SHIPPED 2026-07-07: tests/bench/run-cost-bench.ts + cost-golden.ts — compares Opus-token cost of full-system vs Opus-alone on graph-grounded generation, three arms (A0 Opus+raw graph, A1 Opus+kb_compress-style compressed subgraph, A2 local drafts + Opus reviews), inferring $ from live API usage. Result (Opus 4.8, ~$0.48 spend): A1 and A2 both 79% cheaper than A0 at identical 100% quality — the graph compression is the dominant lever (6x fewer input tokens); local delegation adds little on short outputs and pays only when OUTPUT is large (Opus output tokens at $25/Mtok are the expensive ones). Extended 2026-07-07: a long-form (~700-word) generation task confirmed the delegation win — A2 (local writes, Opus reviews/approves) 77% cheaper than A0 vs A1's 66%, because the expensive OUTPUT is generated free locally; and raw context proved LOWER quality here — the full raw graph scored 60% fact-coverage vs 80% for the compressed subgraph (needle-in-haystack). Capacity note: the whole static graph is ~116k tokens — fits comfortably in Opus's 1M window, but feeding it raw costs ~50x more per query than a compressed subgraph and can ground worse; compression is a cost+quality lever, not a capacity workaround. Harness comparison (OpenCode, Qwen Code): both are built for interactive use and their headless local-model paths are immature — OpenCode ships no local-Ollama provider (only ollama-cloud; needs manual provider config), Qwen Code defaults to qwen-oauth cloud — observed opening a browser to chat.qwen.ai for login even in headless -p mode — and even wired neither completed a trivial fix headlessly in 120s via the OpenAI-compatible /v1 path (~13s cold per call), whereas the minimal custom tool-loop and Claude Code complete the same tasks in seconds. Qualitative conclusion (matching hands-on experience): Claude Code's harness has materially lower friction/overhead for local-model agent work; a clean headless pass-rate comparison would need long timeouts and per-tool auth/config work not yet done." ;
                kpred:depends-on   kb:mcp-server ;
                kpred:relates-to   kb:ci-cd-kb-watch .
 
@@ -1160,7 +1207,7 @@ kb:release-pipeline rdf:type ktype:Feature ;
                kpred:feature-id   "F33" ;
                kpred:has-status   "functional" ;
                kpred:in-dev       "2026-07-07"^^xsd:date ;
-               kpred:description  "Model the release pipeline in the graphs and check branches against it. Three environments with review gates (static/reckons-production.ttl): kb:env-dev (branch dev, DEVELOPER technical review), kb:env-staging (branch staging, STAKEHOLDER business review), kb:env-production (branch main, both approvals; deploys on push). Features carry promotion predicates: kpred:in-dev / kpred:in-staging / kpred:in-production (dated), plus kpred:dev-approved / kpred:stakeholder-approved sign-offs; has-status 'production' implies in-production. scripts/branch-align.ts parses these claims and compares them to real git state (branch existence, main..branch merged PRs), reporting the pipeline per environment and flagging drift: features marked in-dev but status 'production' (contradiction), 'functional' features not marked in any env (untracked), in-dev features already on main (should promote to production status), missing env branches, and merged PRs on a branch not reflected by any tracked feature (unplanned). Run: npm run branch-align. Complements the code<->KB alignment in scripts/kb-align.ts (F26) by adding the environment/branch dimension. Development lifecycle — each gate reviews against a graph: (1) BUSINESS DEFINITION of the feature in the roadmap graph (business-goal level, stakeholder-owned); (2) developer + Opus orchestrate the technical spec in the CODEBASE graph; (3) local agents do the task work; (4) PR to dev; (5) DEVELOPER gate — collaborative review of the dev deploy (dev.reckons-ai.pages.dev) with visual-testing agents (VLM), confirming the implementation against the codebase graph -> kpred:dev-approved; (6) merge to staging; (7) STAKEHOLDER gate — business review on staging.reckons-ai.pages.dev of the built feature against the ORIGINAL roadmap goal (does the result meet the intent) -> kpred:stakeholder-approved; (8) agent-assisted DOCUMENTATION generation, reviewed by the stakeholder; (9) merge to main (production, reckons.ai). Env nodes carry kpred:deploy-url and kpred:reviews-graph (dev->codebase technical spec, staging->roadmap business intent); production requires-documentation." ;
+               kpred:description  "Model the release pipeline in the graphs and check branches against it. Three environments with review gates (static/reckons-production.ttl): kb:env-dev (branch dev, DEVELOPER technical review), kb:env-staging (branch staging, STAKEHOLDER business review), kb:env-production (branch main, both approvals; deploys on push). Features carry promotion predicates: kpred:in-dev / kpred:in-staging / kpred:in-production (dated), plus kpred:dev-approved / kpred:stakeholder-approved sign-offs; has-status 'production' implies in-production. scripts/branch-align.ts parses these claims and compares them to real git state (branch existence, main..branch merged PRs), reporting the pipeline per environment and flagging drift: features marked in-dev but status 'production' (contradiction), 'functional' features not marked in any env (untracked), in-dev features already on main (should promote to production status), missing env branches, and merged PRs on a branch not reflected by any tracked feature (unplanned). Run: npm run branch-align. Complements the code<->Graph alignment in scripts/kb-align.ts (F26) by adding the environment/branch dimension. Development lifecycle — each gate reviews against a graph: (1) BUSINESS DEFINITION of the feature in the roadmap graph (business-goal level, stakeholder-owned); (2) developer + Opus orchestrate the technical spec in the CODEBASE graph; (3) local agents do the task work; (4) PR to dev; (5) DEVELOPER gate — collaborative review of the dev deploy (dev.reckons-ai.pages.dev) with visual-testing agents (VLM), confirming the implementation against the codebase graph -> kpred:dev-approved; (6) merge to staging; (7) STAKEHOLDER gate — business review on staging.reckons-ai.pages.dev of the built feature against the ORIGINAL roadmap goal (does the result meet the intent) -> kpred:stakeholder-approved; (8) agent-assisted DOCUMENTATION generation, reviewed by the stakeholder; (9) merge to main (production, reckons.ai). Env nodes carry kpred:deploy-url and kpred:reviews-graph (dev->codebase technical spec, staging->roadmap business intent); production requires-documentation." ;
                kpred:depends-on   kb:ci-cd-kb-watch ;
                kpred:relates-to   kb:git-analysis .
 
@@ -1169,7 +1216,7 @@ kb:deep-testing rdf:type ktype:Feature ;
                kpred:feature-id   "F34" ;
                kpred:has-status   "scaffolded" ;
                kpred:in-dev       "2026-07-09"^^xsd:date ;
-               kpred:description  "PHASE 1 SHIPPED (2026-07-09): offline exhaustive button crawler — scripts/offline/button-crawl.ts (npm run test:crawl). Clicks every interactive element on every route and, per click, records crashes (console/page errors), blank screens (solid-fill pixel artifact via tests/visual/vision-local), SILENT NO-OPS (nothing observable changed — URL / node count / KB id / open panels / title / visible-text hash; the class the docs-hub leap regression fell into, which a crash-only crawler misses), and sub-44px touch targets. Resets to the route before each click for deterministic per-click state. Offline-first: pixel/DOM/touch checks are pure local JS (no Ollama/Opus); findings queued to knowledge.pending.jsonl for review. TIED TO THE GRAPH: the crawl also emits a TestWorkflow -> TestStep STORY graph (tests/visual/button-crawl.ttl — one workflow per route, one step per click, each carrying its screenshot via kmeta:gif and a kpred:result verdict + kpred:violates rubric citations), so results are reviewable in-app as an ordered story rather than a JSON dump (same schema as the navigation-sweep story; written to a sibling file so it never clobbers the separately-generated visual-tests.ttl). NEXT: VLM visual scoring of screenshots against kb:web-uiux-rubric across the device matrix (phase 2); a persistent-context / warm-service-worker pass to catch stale-cache regressions fresh contexts never reproduce (phase 3); Opus authoring new path specs from coverage gaps (phase 4). --- FULL DESIGN: An OFFLINE, ever-growing use-case test system distinct from the fast per-build suite. (1) Deep tests are PREDETERMINED end-user PATHS through the web app, run LOCALLY on demand — not on every build; the per-build suite stays fast (unit + smoke). (2) Two evaluation dimensions beyond pass/fail: a VISUAL surface (each path is captured across a DEVICE MATRIX via Playwright device descriptors — phones + tablets: iPhone 15, Pixel 7, iPad Pro 11 are already configured in playwright.config.ts as touch-emulated projects, extensible to more; a local VLM then scores the per-device screenshots against the Web/Mobile UI-UX Rubric, so responsive/touch guidelines are checked at real viewport sizes — scalable emulation that complements spot-checks on physical iPhone/iPad) and a TEXT/output-consumption surface (generated answer/output quality — leads with the conclusion, scannable, grounded). (3) The rubric is a graph: reckons-workspace design-principles KB (kb:web-uiux-rubric) — testable guidelines grounded in core design principles; every finding CITES the violated guideline (kpred:derives-from -> core principle). Mobile-tagged guidelines gate the responsive work. (4) Opus orchestration periodically ANALYSES coverage, finds GAPS, and authors new path specs at various times (not every build); paths are graph entities so the library grows. (5) Novel user workflows: the app transparently benches and KINDLY ASKS the user to opt in to contributing their real workflow as a new test path (consent-based, never covert). (6) Runs as an offline procedure (scripts/offline/), emitting gaps + rubric violations as pending questions for review in Reckons.AI. Builds on visual-testing (VLM gate) and relates to the release pipeline's developer gate. Consumes the offline-first / Opus-orchestrates-online model." ;
+               kpred:description  "PHASE 1 SHIPPED (2026-07-09): offline exhaustive button crawler — scripts/offline/button-crawl.ts (npm run test:crawl). Clicks every interactive element on every route and, per click, records crashes (console/page errors), blank screens (solid-fill pixel artifact via tests/visual/vision-local), SILENT NO-OPS (nothing observable changed — URL / node count / graph id / open panels / title / visible-text hash; the class the docs-hub leap regression fell into, which a crash-only crawler misses), and sub-44px touch targets. Resets to the route before each click for deterministic per-click state. Offline-first: pixel/DOM/touch checks are pure local JS (no Ollama/Opus); findings queued to knowledge.pending.jsonl for review. TIED TO THE GRAPH: the crawl also emits a TestWorkflow -> TestStep STORY graph (tests/visual/button-crawl.ttl — one workflow per route, one step per click, each carrying its screenshot via kmeta:gif and a kpred:result verdict + kpred:violates rubric citations), so results are reviewable in-app as an ordered story rather than a JSON dump (same schema as the navigation-sweep story; written to a sibling file so it never clobbers the separately-generated visual-tests.ttl). NEXT: VLM visual scoring of screenshots against kb:web-uiux-rubric across the device matrix (phase 2); a persistent-context / warm-service-worker pass to catch stale-cache regressions fresh contexts never reproduce (phase 3); Opus authoring new path specs from coverage gaps (phase 4). --- FULL DESIGN: An OFFLINE, ever-growing use-case test system distinct from the fast per-build suite. (1) Deep tests are PREDETERMINED end-user PATHS through the web app, run LOCALLY on demand — not on every build; the per-build suite stays fast (unit + smoke). (2) Two evaluation dimensions beyond pass/fail: a VISUAL surface (each path is captured across a DEVICE MATRIX via Playwright device descriptors — phones + tablets: iPhone 15, Pixel 7, iPad Pro 11 are already configured in playwright.config.ts as touch-emulated projects, extensible to more; a local VLM then scores the per-device screenshots against the Web/Mobile UI-UX Rubric, so responsive/touch guidelines are checked at real viewport sizes — scalable emulation that complements spot-checks on physical iPhone/iPad) and a TEXT/output-consumption surface (generated answer/output quality — leads with the conclusion, scannable, grounded). (3) The rubric is a graph: reckons-workspace design-principles graph (kb:web-uiux-rubric) — testable guidelines grounded in core design principles; every finding CITES the violated guideline (kpred:derives-from -> core principle). Mobile-tagged guidelines gate the responsive work. (4) Opus orchestration periodically ANALYZES coverage, finds GAPS, and authors new path specs at various times (not every build); paths are graph entities so the library grows. (5) Novel user workflows: the app transparently benches and KINDLY ASKS the user to opt in to contributing their real workflow as a new test path (consent-based, never covert). (6) Runs as an offline procedure (scripts/offline/), emitting gaps + rubric violations as pending questions for review in Reckons.AI. Builds on visual-testing (VLM gate) and relates to the release pipeline's developer gate. Consumes the offline-first / Opus-orchestrates-online model." ;
                kpred:depends-on   kb:visual-testing ;
                kpred:relates-to   kb:release-pipeline .
 
@@ -1178,7 +1225,7 @@ kb:steering-committee rdf:type ktype:Feature ;
                kpred:feature-id   "F35" ;
                kpred:has-status   "speculative" ;
                kpred:priority     "low" ;
-               kpred:description  "FUTURE / enterprise-only: a group of people vote on a decision (e.g. approving a proposed fact, promotion, or roadmap change). Requires RBAC and bring-your-own authentication provider (SSO/LDAP/OIDC). Votes and outcomes modelled as graph entities. Deprioritised in favour of mobile UI/UX work — noted here so the intent is not lost." ;
+               kpred:description  "FUTURE / enterprise-only: a group of people vote on a decision (e.g. approving a proposed fact, promotion, or roadmap change). Requires RBAC and bring-your-own authentication provider (SSO/LDAP/OIDC). Votes and outcomes modeled as graph entities. Deprioritized in favor of mobile UI/UX work — noted here so the intent is not lost." ;
                kpred:relates-to   kb:enterprise-3ps .
 
 kb:mobile-uiux rdf:type ktype:Feature ;
@@ -1186,7 +1233,7 @@ kb:mobile-uiux rdf:type ktype:Feature ;
                kpred:feature-id   "F36" ;
                kpred:has-status   "planned" ;
                kpred:priority     "high" ;
-               kpred:description  "Make Reckons.AI genuinely usable on mobile by fixing how the app uses its UI libraries. DIAGNOSIS (measured 2026-07-07): no shared breakpoint system — 23 hand-rolled @media blocks across ~10 arbitrary px breakpoints (600/640/500/900/380/420...) vs a single Tailwind responsive prefix; Tailwind v4 is installed but its responsive system is effectively unused; no useMediaQuery/viewport store and no @theme screens tokens. SnapPanel is a px-width position:fixed floating window dragged via MOUSE events (clientX/clientY, no touch) that snaps to corners computed from window.innerWidth — unusable on a phone. 18 fixed/absolute floating panels stacked by z-index (300-500) overlap instead of reflowing. bits-ui Dialog/Popover/Select/Tooltip are used as desktop patterns (centre modals, hover tooltips) with no mobile sheet/drawer equivalent. ARCHITECTURE (phased): (1) FOUNDATION — one breakpoint source of truth: Tailwind @theme screens tokens + CSS custom-media + a Svelte 5 viewport rune store (isMobile / isTouch / breakpoint via matchMedia + pointer:coarse). (2) ADAPTIVE PRIMITIVES — a Sheet/Drawer primitive (bits-ui Dialog styled as a bottom sheet) and an AdaptivePanel wrapper that renders SnapPanel on desktop but a bottom sheet / full-screen drawer on mobile; Select -> sheet/native picker on mobile; Tooltip -> tap-to-reveal or dropped on coarse pointers. (3) INPUT — replace SnapPanel mouse-drag with Pointer Events (touch + mouse) and disable free-drag on mobile in favour of the sheet. (4) LAYOUT — single-column reflow below 640px, primary actions in the thumb zone, touch gestures on the 2D/3D graph, >= 44px targets. Verified by F34 deep tests against the mobile-tagged guidelines in kb:web-uiux-rubric (touch-targets, responsive-layout, progressive-disclosure). Prioritised over F35 steering-committee." ;
+               kpred:description  "Make Reckons.AI genuinely usable on mobile by fixing how the app uses its UI libraries. DIAGNOSIS (measured 2026-07-07): no shared breakpoint system — 23 hand-rolled @media blocks across ~10 arbitrary px breakpoints (600/640/500/900/380/420...) vs a single Tailwind responsive prefix; Tailwind v4 is installed but its responsive system is effectively unused; no useMediaQuery/viewport store and no @theme screens tokens. SnapPanel is a px-width position:fixed floating window dragged via MOUSE events (clientX/clientY, no touch) that snaps to corners computed from window.innerWidth — unusable on a phone. 18 fixed/absolute floating panels stacked by z-index (300-500) overlap instead of reflowing. bits-ui Dialog/Popover/Select/Tooltip are used as desktop patterns (center modals, hover tooltips) with no mobile sheet/drawer equivalent. ARCHITECTURE (phased): (1) FOUNDATION — one breakpoint source of truth: Tailwind @theme screens tokens + CSS custom-media + a Svelte 5 viewport rune store (isMobile / isTouch / breakpoint via matchMedia + pointer:coarse). (2) ADAPTIVE PRIMITIVES — a Sheet/Drawer primitive (bits-ui Dialog styled as a bottom sheet) and an AdaptivePanel wrapper that renders SnapPanel on desktop but a bottom sheet / full-screen drawer on mobile; Select -> sheet/native picker on mobile; Tooltip -> tap-to-reveal or dropped on coarse pointers. (3) INPUT — replace SnapPanel mouse-drag with Pointer Events (touch + mouse) and disable free-drag on mobile in favor of the sheet. (4) LAYOUT — single-column reflow below 640px, primary actions in the thumb zone, touch gestures on the 2D/3D graph, >= 44px targets. Verified by F34 deep tests against the mobile-tagged guidelines in kb:web-uiux-rubric (touch-targets, responsive-layout, progressive-disclosure). Prioritized over F35 steering-committee." ;
                kpred:depends-on   kb:visual-testing ;
                kpred:relates-to   kb:deep-testing .
 
@@ -1218,7 +1265,7 @@ kb:use-case-matrix rdf:type ktype:Feature ;
                kpred:feature-id   "F40" ;
                kpred:has-status   "planned" ;
                kpred:priority     "high" ;
-               kpred:description  "Expand F34 deep testing from the software-dev dogfood KB to MANY real-world domains/personas — a long-running brute-scale matrix, NOT run on every build. Each use-case is a graph entity (persona + seed corpus/source kind + predetermined workflow path + rubric checks) so the library grows over time. Candidate personas/domains: researcher/academic (papers → concept graph, find contradictions), student/learner (study notes, exam prep), journalist/investigator (sources, claims, timelines), small-business/CRM (contacts, deals, follow-ups), health/wellness (with privacy + safety), genealogy (people/relationships/events), legal/policy/compliance (ties to F21), creative/worldbuilding (characters, lore), recipes/cooking, personal finance, travel planning, project management, science/lab. Runs the persona × domain × workflow × device matrix, scoring both the end-user OUTPUT (generated text quality) and the visual/UX surface against kb:web-uiux-rubric; findings queued for review. Transparently benches and kindly asks users to opt in to contributing their own (novel) workflows as new use-cases." ;
+               kpred:description  "Expand F34 deep testing from the software-dev dogfood graph to MANY real-world domains/personas — a long-running brute-scale matrix, NOT run on every build. Each use-case is a graph entity (persona + seed corpus/source kind + predetermined workflow path + rubric checks) so the library grows over time. Candidate personas/domains: researcher/academic (papers → concept graph, find contradictions), student/learner (study notes, exam prep), journalist/investigator (sources, claims, timelines), small-business/CRM (contacts, deals, follow-ups), health/wellness (with privacy + safety), genealogy (people/relationships/events), legal/policy/compliance (ties to F21), creative/worldbuilding (characters, lore), recipes/cooking, personal finance, travel planning, project management, science/lab. Runs the persona × domain × workflow × device matrix, scoring both the end-user OUTPUT (generated text quality) and the visual/UX surface against kb:web-uiux-rubric; findings queued for review. Transparently benches and kindly asks users to opt in to contributing their own (novel) workflows as new use-cases." ;
                kpred:depends-on   kb:deep-testing .
 
 kb:offline-align-review rdf:type ktype:Feature ;
@@ -1241,7 +1288,7 @@ kb:change-notes rdf:type ktype:Feature ;
                kpred:feature-id   "F44" ;
                kpred:has-status   "planned" ;
                kpred:priority     "medium" ;
-               kpred:description  "A first-class ChangeNote + Approval layer over the graph. MOTIVATION: pending->confirmed handles short facts, but some changes need (a) long-form human PROSE explaining the why, (b) an APPROVAL trail (who signed off, when), and (c) automatic links to the OTHER nodes whose state the change moved — none of which fit a bare triple. DESIGN (graph-first, reuses F27): a ChangeNote is a WebPage-like node authored through Sveltia CMS (the existing content/*.md <-> graph round-trip in src/lib/publish/), so the long-form body lives in markdown and the structured metadata lives as triples: kpred:notes-change-to -> [affected entity IRIs] (rendered as leap-style back-links on those nodes — the 'links to node state in a slightly different way'), kpred:state-transition -> a reified from->to on each affected node (before/after status), kpred:approval-status (proposed|approved|rejected), kpred:approved-by, kpred:approved-on. An Approval is its own small shape reused across the app so three things share ONE model: F33 release-gate sign-offs (kpred:dev-approved / stakeholder-approved), F35 steering-committee votes, and note-level approvals. The md-align check (F27) keeps note bodies honest against the graph. Distinct from pending.jsonl (short machine-proposed facts) — ChangeNotes are human-authored, long-form, and approval-bearing. PHASES: (1) ChangeNote graph shape + a Sveltia collection in static/admin/config.yml + render on affected nodes; (2) Approval shape + status transitions surfaced in the Review tab; (3) unify F33/F35 approvals onto it. Grounded in graphs-are-source-of-truth: notes and approvals travel with the KB as ordinary Turtle." ;
+               kpred:description  "A first-class ChangeNote + Approval layer over the graph. MOTIVATION: pending->confirmed handles short facts, but some changes need (a) long-form human PROSE explaining the why, (b) an APPROVAL trail (who signed off, when), and (c) automatic links to the OTHER nodes whose state the change moved — none of which fit a bare triple. DESIGN (graph-first, reuses F27): a ChangeNote is a WebPage-like node authored through Sveltia CMS (the existing content/*.md <-> graph round-trip in src/lib/publish/), so the long-form body lives in markdown and the structured metadata lives as triples: kpred:notes-change-to -> [affected entity IRIs] (rendered as leap-style back-links on those nodes — the 'links to node state in a slightly different way'), kpred:state-transition -> a reified from->to on each affected node (before/after status), kpred:approval-status (proposed|approved|rejected), kpred:approved-by, kpred:approved-on. An Approval is its own small shape reused across the app so three things share ONE model: F33 release-gate sign-offs (kpred:dev-approved / stakeholder-approved), F35 steering-committee votes, and note-level approvals. The md-align check (F27) keeps note bodies honest against the graph. Distinct from pending.jsonl (short machine-proposed facts) — ChangeNotes are human-authored, long-form, and approval-bearing. PHASES: (1) ChangeNote graph shape + a Sveltia collection in static/admin/config.yml + render on affected nodes; (2) Approval shape + status transitions surfaced in the Review tab; (3) unify F33/F35 approvals onto it. Grounded in graphs-are-source-of-truth: notes and approvals travel with the graph as ordinary Turtle." ;
                kpred:depends-on   kb:graph-publishing ;
                kpred:relates-to   kb:release-pipeline ;
                kpred:relates-to   kb:steering-committee .
@@ -1287,7 +1334,7 @@ kb:shelly-in-sveltia rdf:type ktype:Feature ;
                kpred:has-status   "planned" ;
                kpred:priority     "medium" ;
                kpred:principle    "Sveltia CMS MUST remain a separate, un-forked, upstream-tracking codebase (as today — static/admin/config.yml uses the external bundle). Shelly integrates AROUND or THROUGH documented extension points, never by patching Sveltia's source." ;
-               kpred:description  "Make Shelly available inside the Sveltia editing experience so authors can draft, summarise, and refine page content grounded in the graph — without forking Sveltia. TWO CANDIDATE INTEGRATION PATHS (validate before building): (1) HOST-APP OVERLAY — Sveltia is already served in-app at /admin; embed it and render a Shelly panel in the surrounding Reckons.AI chrome, exchanging the current entry's text via postMessage / the File System Access working copy, so Sveltia's bundle is untouched; (2) REGISTRATION API — if Sveltia exposes Decap-style registerWidget / registerEditorComponent / registerPreviewTemplate hooks, mount a Shelly widget through config/init without patching source. Shelly reuses existing graph-grounded tools: kb_generate_page (draft a WebPage body from the graph via local Ollama), kb_entity_markdown (deterministic entity->markdown, no LLM), kb_compress (grounded context). Use cases: 'draft this page from the entity', 'summarise these triples', 'write the F46 question-context blurb'. Consent + safety: ETHICS_PREAMBLE applies; suggestions are proposals the author edits, never silent writes. Relates to the Shelly bridge (stores/shelly-bridge.svelte.ts), F27 publishing, and F46 question-context pages." ;
+               kpred:description  "Make Shelly available inside the Sveltia editing experience so authors can draft, summarize, and refine page content grounded in the graph — without forking Sveltia. TWO CANDIDATE INTEGRATION PATHS (validate before building): (1) HOST-APP OVERLAY — Sveltia is already served in-app at /admin; embed it and render a Shelly panel in the surrounding Reckons.AI chrome, exchanging the current entry's text via postMessage / the File System Access working copy, so Sveltia's bundle is untouched; (2) REGISTRATION API — if Sveltia exposes Decap-style registerWidget / registerEditorComponent / registerPreviewTemplate hooks, mount a Shelly widget through config/init without patching source. Shelly reuses existing graph-grounded tools: kb_generate_page (draft a WebPage body from the graph via local Ollama), kb_entity_markdown (deterministic entity->markdown, no LLM), kb_compress (grounded context). Use cases: 'draft this page from the entity', 'summarize these triples', 'write the F46 question-context blurb'. Consent + safety: ETHICS_PREAMBLE applies; suggestions are proposals the author edits, never silent writes. Relates to the Shelly bridge (stores/shelly-bridge.svelte.ts), F27 publishing, and F46 question-context pages." ;
                kpred:depends-on   kb:graph-publishing ;
                kpred:relates-to   kb:question-context-pages .
 
@@ -1334,7 +1381,7 @@ kb:import-workspace-ux rdf:type ktype:Feature ;
                kpred:feature-id   "F50" ;
                kpred:has-status   "planned" ;
                kpred:priority     "high" ;
-               kpred:description  "Fix the confusing import + workspace/graph-settings experience (user feedback 2026-07-09: 'how horrible the import and workspace/graph settings are right now'). PROBLEMS: (a) graph-data actions (import graphs from folder, sync) live in GLOBAL Settings, far from where graphs are managed; (b) the nav item labelled 'graph' goes to /kb (registry) while the graph VIEW is / — so 'graph settings' has no obvious home; (c) 'sync all graphs now' (WRITE: browser KBs -> folder) reads as the same thing as 'import graphs from folder' (READ: folder -> browser), and the count/'3 graphs' compounds the confusion; (d) importing a bare .ttl silently loses binary assets (icons/previews/models) — folder import restores them (partly addressed: an import-time warning now points to folder import). DIRECTION: (1) surface graph import/export ON the graph page (/kb) where graphs are managed — the user's choice — keeping detailed workspace CONFIG in Settings; (2) clearly separate and label the two DIRECTIONS (push-to-folder vs pull-from-folder) with plain wording and per-direction affordances; (3) make import asset-aware (prefer conventional kbs/{name}/ folders that carry assets; warn on loose/bare .ttl); (4) reconsider naming ('graph' nav vs graph view). Relates to F48 (Sveltia edit routing, the other workspace-branch surface), F27 publishing, and the recursive folder-discovery fix. Small deterministic wins land first; the fuller IA rework is scoped here." ;
+               kpred:description  "Fix the confusing import + workspace/graph-settings experience (user feedback 2026-07-09: 'how horrible the import and workspace/graph settings are right now'). PROBLEMS: (a) graph-data actions (import graphs from folder, sync) live in GLOBAL Settings, far from where graphs are managed; (b) the nav item labeled 'graph' goes to /kb (registry) while the graph VIEW is / — so 'graph settings' has no obvious home; (c) 'sync all graphs now' (WRITE: browser graphs -> folder) reads as the same thing as 'import graphs from folder' (READ: folder -> browser), and the count/'3 graphs' compounds the confusion; (d) importing a bare .ttl silently loses binary assets (icons/previews/models) — folder import restores them (partly addressed: an import-time warning now points to folder import). DIRECTION: (1) surface graph import/export ON the graph page (/kb) where graphs are managed — the user's choice — keeping detailed workspace CONFIG in Settings; (2) clearly separate and label the two DIRECTIONS (push-to-folder vs pull-from-folder) with plain wording and per-direction affordances; (3) make import asset-aware (prefer conventional kbs/{name}/ folders that carry assets; warn on loose/bare .ttl); (4) reconsider naming ('graph' nav vs graph view). Relates to F48 (Sveltia edit routing, the other workspace-branch surface), F27 publishing, and the recursive folder-discovery fix. Small deterministic wins land first; the fuller IA rework is scoped here." ;
                kpred:relates-to   kb:sveltia-edit-mapping ;
                kpred:relates-to   kb:graph-publishing .
 
@@ -1367,11 +1414,11 @@ kb:control-model rdf:type ktype:Feature ;
                kpred:feature-id   "F52" ;
                kpred:has-status   "planned" ;
                kpred:priority     "high" ;
-               kpred:principle    "Alignment is a TRIGGER for human review, not a goal to optimise. The instant an agent can edit the graph to raise its own alignment score, the score measures nothing (Goodhart). Alignment must summon a human at a discrepancy; it must never auto-resolve or let an agent self-serve." ;
+               kpred:principle    "Alignment is a TRIGGER for human review, not a goal to optimize. The instant an agent can edit the graph to raise its own alignment score, the score measures nothing (Goodhart). Alignment must summon a human at a discrepancy; it must never auto-resolve or let an agent self-serve." ;
                kpred:principle    "The human holds the fact-edit right. Agents PROPOSE (pending) on knowledge/facts and may edit plan/code/roadmap TTL directly — that boundary is control, and today it is convention, not enforcement. Make it a wall: fact-level agent writes go through review." ;
                kpred:principle    "Divergence between two graphs is often intentional FOCUS, not drift. A 'misalignment' is a question ('these disagree — on purpose?'), never an auto-reconcile." ;
                kpred:principle    "Deliver control seamlessly: keep traditional outputs (web pages, markdown) so switching cost from the traditional method to the knowledge-graph method is near zero. Documentation is one render of the knowledge; implementation accuracy and speed is another." ;
-               kpred:description  "The enforced boundary of what an agent may write directly (plan/code) vs. only propose (facts, pending review), with alignment reframed as a discrepancy detector and cross-graph divergence treated as a question. The key differentiating feature. Relates to cross-KB alignment (F16), git-analysis (F24), the review workflow, change-notes (F44), and the release pipeline (F33)." ;
+               kpred:description  "The enforced boundary of what an agent may write directly (plan/code) vs. only propose (facts, pending review), with alignment reframed as a discrepancy detector and cross-graph divergence treated as a question. The key differentiating feature. Relates to cross-Graph alignment (F16), git-analysis (F24), the review workflow, change-notes (F44), and the release pipeline (F33)." ;
                kpred:relates-to   kb:cross-kb-alignment ;
                kpred:relates-to   kb:git-analysis ;
                kpred:relates-to   kb:change-notes ;
@@ -1402,7 +1449,7 @@ kb:soft-onboarding rdf:type ktype:Feature ;
                kpred:feature-id   "F54" ;
                kpred:has-status   "functional" ;
                kpred:in-dev       "2026-07-09"^^xsd:date ;
-               kpred:description  "The 'Getting started' button loads a tiny everyday graph (static/starter-everyday.ttl — 'This Weekend': 5 nodes, one real tension where the cheaper cabin books out while Sam wants the pricier rainy coast) as CONFIRMED facts, and opens Shelly's guided tour, instead of the 300+ statement concept-dense documentation graph. The full docs graph is demoted to a quiet secondary link. Softens the first impression by condensing to a few nodes and one interesting decision — the F53 principle at t=0. Shipped in PR #79." ;
+               kpred:description  "The 'Getting started' button loads an everyday graph (static/starter-everyday.ttl — 'This Weekend': two friends who live apart, Alex in San Francisco and Jordan in Los Angeles, choosing a weekend campsite roughly halfway between them in the Eastern Sierra) as CONFIRMED facts, and opens Shelly's guided tour, instead of the 300+ statement concept-dense documentation graph. The graph is modelled with realistic depth: two people (with photos + home cities), two real campgrounds (Lake George, Oh! Ridge) with nightly price / elevation / reservation links, two elevation-specific weather forecasts, four drive routes (each friend's distance + time to each option), and a Fri–Sun calendar window each option is dated against — so the 'time' layout shows which stay fits. The real tension: Jordan wants the pricier, colder, fast-booking alpine option; Oh! Ridge is cheaper, warmer, fits the whole window and is nearly equidistant. The full docs graph is demoted to a quiet secondary link. The F53 principle at t=0. Shipped in PR #79; enriched to realistic depth on the folder-sync branch." ;
                kpred:relates-to   kb:review-attention ;
                kpred:relates-to   kb:knowledge-graph .
 
@@ -1414,7 +1461,7 @@ kb:soft-onboarding rdf:type ktype:Feature ;
 kb:embedding-model rdf:type ktype:Feature ;
                rdfs:label    "Embedding Model" ;
                kpred:has-status   "production" ;
-               kpred:description  "In-browser semantic embeddings via BGE-small-en-v1.5 (33MB, 384d, q8) through @huggingface/transformers (src/lib/embed.ts). Runtime-switchable via VITE_EMBEDDING_MODEL (MODEL_SIZES table); powers similarity, entity normalisation (F22), disambiguation, and search. Cached after first load — fully offline." ;
+               kpred:description  "In-browser semantic embeddings via BGE-small-en-v1.5 (33MB, 384d, q8) through @huggingface/transformers (src/lib/embed.ts). Runtime-switchable via VITE_EMBEDDING_MODEL (MODEL_SIZES table); powers similarity, entity normalization (F22), disambiguation, and search. Cached after first load — fully offline." ;
                kpred:relates-to   kb:knowledge-graph .
 
 kb:llm-providers rdf:type ktype:Feature ;

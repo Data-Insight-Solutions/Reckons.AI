@@ -1,51 +1,198 @@
 ## ---------------------------------------------------------------------------
-## Reckons.AI — "This Weekend" starter graph
+## Reckons.AI — "This Weekend" starter graph (two friends meet in the middle)
 ## ---------------------------------------------------------------------------
-## The soft-landing first experience: a tiny, everyday graph (7 facts) with ONE
-## real tension and a natural Reckon. No RDF concepts on show — just a decision
-## anyone recognises. Loaded (editable) by the landing page's "Getting started"
-## button; the full documentation graph is the "go deeper" path.
+## The soft-landing first experience: an everyday decision anyone recognizes —
+## two old friends who live apart want a weekend camping trip, so they look for
+## somewhere roughly HALFWAY between them and each drive ~5 hours to meet.
 ##
-## The tension by design: the cheaper option (Mountain Cabin, $120, under the
-## $150 budget) is about to book out, while the pricier option (Coast Trip,
-## $180, over budget, rainy) is the one Sam wants. That contradiction is what
-## the review surface should spotlight — and what a Reckon resolves.
+## Alex lives in San Francisco; Jordan lives in Los Angeles. The natural meeting
+## ground is the Eastern Sierra — about the same drive from either city. They
+## have narrowed it to TWO real campgrounds a few miles apart:
+##
+##   • Lake George (Mammoth Lakes basin, ~9,000 ft) — iconic alpine lakes,
+##     colder nights, a little pricier, and it books out fast.
+##   • Oh! Ridge (June Lake Loop, ~7,600 ft) — lakeside, warmer, cheaper, and
+##     it still has the whole weekend open.
+##
+## Every branch of the decision is modelled as its own node so the graph tells
+## the story visually:
+##   - TWO people, each with a home city, a photo, and a lean.
+##   - TWO options (campgrounds) with a nightly PRICE, elevation and reservation link.
+##   - TWO weather FORECASTS (one per option — they differ by elevation).
+##   - FOUR routes: each person's DRIVE to each option (two distances per person),
+##     so you can see the trip is genuinely "meet in the middle".
+##   - A calendar WINDOW (Fri–Sun, Jul 10–12 2026); each option carries a
+##     check-in / check-out date, so the "time" force layout shows which stay
+##     actually fits the weekend.
+##
+## The tension by design: Jordan wants the alpine lakes at Lake George, but it
+## only has Saturday night open and the nights are near-freezing; Oh! Ridge is
+## cheaper, warmer, fits the whole window, and is almost exactly equidistant.
+## Preference vs. price vs. calendar-fit vs. a fair drive — exactly what a
+## Reckon resolves.
 ## ---------------------------------------------------------------------------
 
 @prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
 @prefix ktype: <urn:kbase:type/> .
 @prefix kb:    <urn:kbase:concept/> .
 @prefix p:     <urn:kbase:predicate/> .
 
-kb:me
+## == Custom entity types =====================================================
+ktype:Campground
+    rdf:type        ktype:EntityType ;
+    rdfs:label      "Campground" ;
+    p:icon          "cone" ;
+    p:color         "#3a9d5c" .
+
+ktype:Forecast
+    rdf:type        ktype:EntityType ;
+    rdfs:label      "Forecast" ;
+    p:icon          "torus" ;
+    p:color         "#4f9bd9" .
+
+ktype:Route
+    rdf:type        ktype:EntityType ;
+    rdfs:label      "Route" ;
+    p:icon          "tetrahedron" ;
+    p:color         "#e0a13c" .
+
+## == People ==================================================================
+kb:alex
     rdf:type        ktype:Person ;
-    rdfs:label      "Me" ;
-    p:deciding      kb:this-weekend ;
-    p:considering   kb:coast-trip ;
-    p:considering   kb:mountain-cabin .
+    rdfs:label      "Alex" ;
+    rdfs:comment    "Drives up from San Francisco. Wants a fair, even meet-up point and would rather not spend the whole weekend behind the wheel." ;
+    p:icon2d        "https://i.pravatar.cc/240?img=13" ;
+    p:lives-in      kb:san-francisco ;
+    p:deciding      kb:the-weekend ;
+    p:considering   kb:lake-george ;
+    p:considering   kb:oh-ridge ;
+    p:leans-toward  kb:oh-ridge .
 
-kb:this-weekend
-    rdf:type        ktype:Concept ;
-    rdfs:label      "This Weekend" ;
-    p:budget        "keep it under $150" ;
-    p:choosing-between kb:coast-trip ;
-    p:choosing-between kb:mountain-cabin .
-
-kb:coast-trip
-    rdf:type        ktype:Concept ;
-    rdfs:label      "Coast Trip" ;
-    p:costs         "$180" ;
-    p:weather       "rainy forecast" .
-
-kb:mountain-cabin
-    rdf:type        ktype:Concept ;
-    rdfs:label      "Mountain Cabin" ;
-    p:costs         "$120" ;
-    p:availability  "books out Friday" .
-
-kb:sam
+kb:jordan
     rdf:type        ktype:Person ;
-    rdfs:label      "Sam" ;
-    p:coming-along  kb:this-weekend ;
-    p:prefers       kb:coast-trip .
+    rdfs:label      "Jordan" ;
+    rdfs:comment    "Drives up from Los Angeles. Has wanted to shoot the Mammoth Lakes basin at sunrise for years and is happy to pay a little more for it." ;
+    p:icon2d        "https://i.pravatar.cc/240?img=32" ;
+    p:lives-in      kb:los-angeles ;
+    p:coming-along  kb:the-weekend ;
+    p:considering   kb:lake-george ;
+    p:considering   kb:oh-ridge ;
+    p:leans-toward  kb:lake-george .
+
+## == Home cities =============================================================
+kb:san-francisco
+    rdf:type        ktype:Place ;
+    rdfs:label      "San Francisco, CA" ;
+    p:home-of       kb:alex ;
+    p:map           "https://www.google.com/maps/place/San+Francisco,+CA" .
+
+kb:los-angeles
+    rdf:type        ktype:Place ;
+    rdfs:label      "Los Angeles, CA" ;
+    p:home-of       kb:jordan ;
+    p:map           "https://www.google.com/maps/place/Los+Angeles,+CA" .
+
+## == Option 1 — Lake George (Mammoth Lakes basin) ============================
+kb:lake-george
+    rdf:type        ktype:Campground ;
+    rdfs:label      "Lake George" ;
+    rdfs:comment    "Walk-to-the-water sites in the Mammoth Lakes basin at ~9,000 ft. Granite, pines and glassy alpine lakes — the postcard Eastern Sierra. Popular and small, so it books out within minutes of the 6-month window opening." ;
+    p:region        kb:eastern-sierra ;
+    p:elevation     "9,008 ft" ;
+    p:nightly-rate  "$28" ;
+    p:sites         "16 sites" ;
+    p:availability  "only Saturday night open" ;
+    p:reservation   "https://www.recreation.gov/search?q=Lake%20George%20Campground%20Mammoth%20Lakes" ;
+    p:coordinates   "37.6485, -118.9721" ;
+    p:forecast      kb:wx-mammoth ;
+    p:scheduled-at  "2026-07-11"^^xsd:date ;
+    p:ends-at       "2026-07-12"^^xsd:date .
+
+## == Option 2 — Oh! Ridge (June Lake Loop) ===================================
+kb:oh-ridge
+    rdf:type        ktype:Campground ;
+    rdfs:label      "Oh! Ridge" ;
+    rdfs:comment    "The big June Lake Loop campground on a rise above June Lake at ~7,600 ft — warmer nights, a swim beach, and far more availability than the Mammoth basin. Almost exactly halfway between the two friends by drive time." ;
+    p:region        kb:eastern-sierra ;
+    p:elevation     "7,644 ft" ;
+    p:nightly-rate  "$23" ;
+    p:sites         "148 sites" ;
+    p:availability  "full weekend open" ;
+    p:reservation   "https://www.recreation.gov/search?q=Oh%20Ridge%20Campground%20June%20Lake" ;
+    p:coordinates   "37.7716, -119.0715" ;
+    p:forecast      kb:wx-june-lake ;
+    p:scheduled-at  "2026-07-10"^^xsd:date ;
+    p:ends-at       "2026-07-12"^^xsd:date .
+
+kb:eastern-sierra
+    rdf:type        ktype:Place ;
+    rdfs:label      "Eastern Sierra" ;
+    rdfs:comment    "The high country east of the Sierra crest — the natural midpoint for friends coming from the Bay Area and Southern California." .
+
+## == Weather — one forecast per option (mid-July, differ by elevation) =======
+kb:wx-mammoth
+    rdf:type        ktype:Forecast ;
+    rdfs:label      "Mammoth basin — Fri–Sun" ;
+    rdfs:comment    "Sunny days, cold clear nights at altitude. Bring a real sleeping bag." ;
+    p:high          "70°F" ;
+    p:low           "38°F" ;
+    p:summary       "Sunny · breezy afternoons · near-freezing nights" ;
+    p:source        "https://forecast.weather.gov/MapClick.php?lat=37.6485&lon=-118.9721" .
+
+kb:wx-june-lake
+    rdf:type        ktype:Forecast ;
+    rdfs:label      "June Lake — Fri–Sun" ;
+    rdfs:comment    "A touch lower and noticeably milder overnight — easier first night out." ;
+    p:high          "78°F" ;
+    p:low           "43°F" ;
+    p:summary       "Clear · light wind · mild nights" ;
+    p:source        "https://forecast.weather.gov/MapClick.php?lat=37.7716&lon=-119.0715" .
+
+## == Routes — each person's drive to each option (two distances per person) ===
+kb:drive-alex-lake-george
+    rdf:type        ktype:Route ;
+    rdfs:label      "Alex → Lake George" ;
+    p:from          kb:alex ;
+    p:to            kb:lake-george ;
+    p:drive-distance "327 mi" ;
+    p:drive-time    "5h 40m" ;
+    p:directions    "https://www.google.com/maps/dir/San+Francisco,+CA/Lake+George,+Mammoth+Lakes,+CA" .
+
+kb:drive-alex-oh-ridge
+    rdf:type        ktype:Route ;
+    rdfs:label      "Alex → Oh! Ridge" ;
+    p:from          kb:alex ;
+    p:to            kb:oh-ridge ;
+    p:drive-distance "313 mi" ;
+    p:drive-time    "5h 25m" ;
+    p:directions    "https://www.google.com/maps/dir/San+Francisco,+CA/June+Lake,+CA" .
+
+kb:drive-jordan-lake-george
+    rdf:type        ktype:Route ;
+    rdfs:label      "Jordan → Lake George" ;
+    p:from          kb:jordan ;
+    p:to            kb:lake-george ;
+    p:drive-distance "305 mi" ;
+    p:drive-time    "5h 05m" ;
+    p:directions    "https://www.google.com/maps/dir/Los+Angeles,+CA/Mammoth+Lakes,+CA" .
+
+kb:drive-jordan-oh-ridge
+    rdf:type        ktype:Route ;
+    rdfs:label      "Jordan → Oh! Ridge" ;
+    p:from          kb:jordan ;
+    p:to            kb:oh-ridge ;
+    p:drive-distance "319 mi" ;
+    p:drive-time    "5h 20m" ;
+    p:directions    "https://www.google.com/maps/dir/Los+Angeles,+CA/June+Lake,+CA" .
+
+## == The calendar window we're filling =======================================
+kb:the-weekend
+    rdf:type        ktype:CalendarEvent ;
+    rdfs:label      "Free Weekend" ;
+    rdfs:comment    "The one weekend both friends are free this month. Two nights, checkout Sunday so nobody drives home in the dark." ;
+    p:budget        "about $60 for two nights" ;
+    p:nights        "2 nights" ;
+    p:scheduled-at  "2026-07-10"^^xsd:date ;
+    p:ends-at       "2026-07-12"^^xsd:date .

@@ -35,7 +35,7 @@ const CURRENT_KEY = 'currentKbId';
 const SESSION_KEY = 'sessionKbId';
 const DEFAULT_ID = 'kbase';
 
-const DEFAULT_ENTRY: KbEntry = { id: DEFAULT_ID, name: 'Default KB', createdAt: 0 };
+const DEFAULT_ENTRY: KbEntry = { id: DEFAULT_ID, name: 'Default Graph', createdAt: 0 };
 
 export function getRegistry(): KbEntry[] {
   if (typeof window === 'undefined') return [DEFAULT_ENTRY];

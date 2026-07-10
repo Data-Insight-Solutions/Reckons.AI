@@ -44,7 +44,7 @@ feat:Ingest
 feat:ReviewSystem
     rdf:type            ktype:Concept ;
     rdfs:label          "Review System" ;
-    skos:definition     "Three tabs: Incoming (new triples), Deletions (removal proposals), Merges (duplicate entity suggestions). Confirm, reject, or refine each statement. Nothing enters your KB without your approval." ;
+    skos:definition     "Three tabs: Incoming (new triples), Deletions (removal proposals), Merges (duplicate entity suggestions). Confirm, reject, or refine each statement. Nothing enters your graph without your approval." ;
     skos:broader        guide:WhatIsReckonsAI ;
     skos:related        feat:TrustSystem .
 
@@ -64,7 +64,7 @@ feat:Graph3D
 feat:Shelly
     rdf:type            ktype:Person ;
     rdfs:label          "Shelly (AI Assistant)" ;
-    skos:definition     "The turtle-shaped AI assistant. Three tabs: tutorial, chat (grounded in your KB), and explore (guided story tours). Each KB can embed its own Shelly persona via the shelly: vocabulary. Supports Whisper STT voice input and Kokoro TTS voice output." ;
+    skos:definition     "The turtle-shaped AI assistant. Three tabs: tutorial, chat (grounded in your graph), and explore (guided story tours). Each graph can embed its own Shelly persona via the shelly: vocabulary. Supports Whisper STT voice input and Kokoro TTS voice output." ;
     skos:broader        guide:WhatIsReckonsAI ;
     skos:related        feat:WhisperSTT ;
     skos:related        feat:KokoroTTS .
@@ -83,7 +83,7 @@ feat:Reckoning
 feat:Compare
     rdf:type            ktype:Concept ;
     rdfs:label          "Compare / Diff Engine" ;
-    skos:definition     "Compare two knowledge bases or snapshots at /compare. Diff engine categorizes changes as Add, Reinforce, Conflict, Merge, Remove. Visual Venn diagram and diff table with bulk accept/reject." ;
+    skos:definition     "Compare two knowledge graphs or snapshots at /compare. Diff engine categorizes changes as Add, Reinforce, Conflict, Merge, Remove. Visual Venn diagram and diff table with bulk accept/reject." ;
     skos:broader        guide:WhatIsReckonsAI ;
     skos:related        feat:DiffSummary .
 
@@ -100,21 +100,21 @@ feat:DiffSummary
 
 feat:MultiKB
     rdf:type            ktype:Concept ;
-    rdfs:label          "Multi-KB Management" ;
-    skos:definition     "Create, switch, rename, and delete independent knowledge bases. Each KB has its own IndexedDB store, stable UUID, content fingerprint, and optional accent color. Per-tab KB support via URL ?kb= parameter." ;
+    rdfs:label          "Multi-Graph Management" ;
+    skos:definition     "Create, switch, rename, and delete independent knowledge graphs. Each graph has its own IndexedDB store, stable UUID, content fingerprint, and optional accent color. Per-tab graph support via URL ?kb= parameter." ;
     skos:broader        guide:WhatIsReckonsAI ;
     skos:related        feat:KBLeap .
 
 feat:KBLeap
     rdf:type            ktype:Concept ;
-    rdfs:label          "KB Leap" ;
-    skos:definition     "Cross-reference entities between KBs. A leap node stores a target (KB stable ID, app path, or URL) as an ordinary RDF triple. Nodes with leaps show an amber ring. Click to jump to the target KB, navigate within the app, or open an external URL. Docs sub-graphs auto-import on first click." ;
+    rdfs:label          "Graph Leap" ;
+    skos:definition     "Cross-reference entities between graphs. A leap node stores a target (Graph stable ID, app path, or URL) as an ordinary RDF triple. Nodes with leaps show an amber ring. Click to jump to the target graph, navigate within the app, or open an external URL. Docs sub-graphs auto-import on first click." ;
     skos:broader        feat:MultiKB .
 
 feat:KBIdentity
     rdf:type            ktype:Concept ;
-    rdfs:label          "KB Identity" ;
-    skos:definition     "Each KB has a stable UUID (never changes, used for MCP routing and KB Leap) and a content fingerprint (SHA-256 of sorted N-Quads, changes with every edit). Both visible in Settings." ;
+    rdfs:label          "Graph Identity" ;
+    skos:definition     "Each graph has a stable UUID (never changes, used for MCP routing and graph Leap) and a content fingerprint (SHA-256 of sorted N-Quads, changes with every edit). Both visible in Settings." ;
     skos:broader        feat:MultiKB .
 
 
@@ -125,7 +125,7 @@ feat:KBIdentity
 feat:PredicateManager
     rdf:type            ktype:Concept ;
     rdfs:label          "Predicate Manager" ;
-    skos:definition     "View all predicates in your KB with usage counts. Rename predicates across all statements or merge two predicates into one. Accessible from the KB page." ;
+    skos:definition     "View all predicates in your graph with usage counts. Rename predicates across all statements or merge two predicates into one. Accessible from the graph page." ;
     skos:broader        guide:WhatIsReckonsAI .
 
 feat:Disambiguation
@@ -143,7 +143,7 @@ feat:EntityTypes
 feat:HistoryMode
     rdf:type            ktype:Concept ;
     rdfs:label          "History Mode" ;
-    skos:definition     "Time-travel through your KB at /history. Scrub a timeline to see the graph at any past point. All mutations are logged in the changelog." ;
+    skos:definition     "Time-travel through your graph at /history. Scrub a timeline to see the graph at any past point. All mutations are logged in the changelog." ;
     skos:broader        guide:WhatIsReckonsAI .
 
 
@@ -189,7 +189,7 @@ feat:PassageGrounding
 feat:TTLExport
     rdf:type            ktype:Concept ;
     rdfs:label          "Turtle Export" ;
-    skos:definition     "Export your KB as a .ttl file with full reification metadata (status, source, confidence, timestamps, excerpts). Roundtrip-safe. Clean export for interop or full export with all metadata." ;
+    skos:definition     "Export your graph as a .ttl file with full reification metadata (status, source, confidence, timestamps, excerpts). Roundtrip-safe. Clean export for interop or full export with all metadata." ;
     skos:broader        guide:WhatIsReckonsAI .
 
 feat:ModelCache
@@ -205,14 +205,14 @@ feat:ModelCache
 
 feat:CrossKBAlignment
     rdf:type            ktype:Concept ;
-    rdfs:label          "Cross-KB Alignment" ;
-    skos:definition     "Align entities across knowledge bases. Entity matching via exact IRI match and embedding similarity. IRI remapping for entities that represent the same concept across KBs. Align tab in review page. KbPicker selects source KB, AlignmentCard shows each match with accept/reject." ;
+    rdfs:label          "Cross-Graph Alignment" ;
+    skos:definition     "Align entities across knowledge graphs. Entity matching via exact IRI match and embedding similarity. IRI remapping for entities that represent the same concept across graphs. Align tab in review page. KbPicker selects source graph, AlignmentCard shows each match with accept/reject." ;
     skos:broader        guide:WhatIsReckonsAI .
 
 feat:SourceRefresh
     rdf:type            ktype:Concept ;
     rdfs:label          "Source Refresh" ;
-    skos:definition     "Generic refresh for url, repository, and calendar sources. Auto-refresh on open and on interval (configurable). KB page refresh button. MCP tools: kb_list_sources and kb_request_refresh. Delta comparison shows what changed since last ingest." ;
+    skos:definition     "Generic refresh for url, repository, and calendar sources. Auto-refresh on open and on interval (configurable). Graph page refresh button. MCP tools: kb_list_sources and kb_request_refresh. Delta comparison shows what changed since last ingest." ;
     skos:broader        guide:WhatIsReckonsAI .
 
 feat:SourceMonitoring
@@ -229,13 +229,13 @@ feat:SourceMonitoring
 feat:ContextCompression
     rdf:type            ktype:Concept ;
     rdfs:label          "Context Compression" ;
-    skos:definition     "Condense your context. Keep the meaning. Knowledge graphs are dense by nature — a page of prose becomes a handful of triples. Semantic meaning preserved, tokens reduced. Feed compressed KB directly to AI agents via MCP. Structured triples outperform summaries because no relationships are paraphrased away." ;
+    skos:definition     "Condense your context. Keep the meaning. Knowledge graphs are dense by nature — a page of prose becomes a handful of triples. Semantic meaning preserved, tokens reduced. Feed compressed graph directly to AI agents via MCP. Structured triples outperform summaries because no relationships are paraphrased away." ;
     skos:broader        guide:WhatIsReckonsAI ;
     kpred:has-tool      "kb_compress" ;
     kpred:has-param     "query (required) — topic to extract context for" ;
     kpred:has-param     "budget (default 2000, max 8000) — approximate token budget" ;
-    kpred:has-param     "hops (default 1, max 2) — neighbourhood expansion depth" ;
-    kpred:has-param     "kb — target a specific knowledge base" .
+    kpred:has-param     "hops (default 1, max 2) — neighborhood expansion depth" ;
+    kpred:has-param     "kb — target a specific knowledge graph" .
 
 
 ## =============================================================================
@@ -244,8 +244,8 @@ feat:ContextCompression
 
 feat:EntityNormalisation
     rdf:type            ktype:Concept ;
-    rdfs:label          "Entity Normalisation" ;
-    skos:definition     "Post-extraction normalisation that rewrites incoming IRIs to match existing KB entities and predicates using embedding similarity. Prevents duplicate entities like 'octopus-vulgaris' vs 'common-octopus' from entering the review queue. Two-pass matching: exact label (case-insensitive) then cosine similarity (0.90 entity, 0.88 predicate). Protected standard vocabularies (rdf:, rdfs:, skos:, xsd:) are never remapped." ;
+    rdfs:label          "Entity Normalization" ;
+    skos:definition     "Post-extraction normalization that rewrites incoming IRIs to match existing graph entities and predicates using embedding similarity. Prevents duplicate entities like 'octopus-vulgaris' vs 'common-octopus' from entering the review queue. Two-pass matching: exact label (case-insensitive) then cosine similarity (0.90 entity, 0.88 predicate). Protected standard vocabularies (rdf:, rdfs:, skos:, xsd:) are never remapped." ;
     skos:broader        feat:Ingest ;
     skos:related        feat:Disambiguation .
 
@@ -257,7 +257,7 @@ feat:EntityNormalisation
 feat:MCPWorkspace
     rdf:type            ktype:Concept ;
     rdfs:label          "MCP Workspace" ;
-    skos:definition     "Reckons.AI uses its own MCP server to track product state. Three internal KBs (Roadmap, Production, Features) are symlinked from static/*.ttl into mcp-workspace/kbs/. Claude Code queries these KBs before planning work. Edit a TTL file and the MCP server auto-reloads. Setup: bash scripts/setup-mcp-workspace.sh." ;
+    skos:definition     "Reckons.AI uses its own MCP server to track product state. Three internal graphs (Roadmap, Production, Features) are symlinked from static/*.ttl into mcp-workspace/kbs/. Claude Code queries these graphs before planning work. Edit a TTL file and the MCP server auto-reloads. Setup: bash scripts/setup-mcp-workspace.sh." ;
     skos:broader        guide:WhatIsReckonsAI .
 
 
@@ -292,7 +292,7 @@ feat:StorySystem
 feat:TurtlePersona
     rdf:type            ktype:Concept ;
     rdfs:label          "Persona System" ;
-    skos:definition     "Each KB can embed its own AI assistant personality using the shelly: vocabulary. A work KB might have a direct, technical persona while a personal KB has a calm guide. Persona travels with the .ttl file." ;
+    skos:definition     "Each graph can embed its own AI assistant personality using the shelly: vocabulary. A work graph might have a direct, technical persona while a personal graph has a calm guide. Persona travels with the .ttl file." ;
     skos:broader        feat:Shelly .
 
 
@@ -303,7 +303,7 @@ feat:TurtlePersona
 feat:GitAnalysis
     rdf:type            ktype:Feature ;
     rdfs:label          "Git Analysis" ;
-    skos:definition     "Git-aware MCP tools for agent plan alignment. Tools: kb_git_status (branch/commits), kb_check_plan (BM25 drift detection), kb_pending (review queue), kb_git_diff_triples (file-to-KB cross-ref), kb_alignment_score (quantitative 0-1 score across 4 dimensions: coverage, status alignment, dependency respect, scope discipline). Enhanced kb_add_note supports type, priority, agent, and commit_sha metadata." ;
+    skos:definition     "Git-aware MCP tools for agent plan alignment. Tools: kb_git_status (branch/commits), kb_check_plan (BM25 drift detection), kb_pending (review queue), kb_git_diff_triples (file-to-Graph cross-ref), kb_alignment_score (quantitative 0-1 score across 4 dimensions: coverage, status alignment, dependency respect, scope discipline). Enhanced kb_add_note supports type, priority, agent, and commit_sha metadata." ;
     skos:broader        feat:MCPWorkspace .
 
 
@@ -369,7 +369,7 @@ feat:PreferLocal
 
 shelly:persona
     shelly:name             "Shelly" ;
-    shelly:greeting         "This is the Features documentation! I can explain any Reckons.AI feature in detail -- Ingest, Review, Compare, Multi-KB, Leap, Shelly, Reckonings, Content Safety, and more. What would you like to know?" ;
+    shelly:greeting         "This is the Features documentation! I can explain any Reckons.AI feature in detail -- Ingest, Review, Compare, Multi-Graph, Leap, Shelly, Reckonings, Content Safety, and more. What would you like to know?" ;
     shelly:personality      "knowledgeable, enthusiastic, practical" ;
     shelly:responseStyle    "concise" ;
-    shelly:systemPrompt     "You are helping someone learn about Reckons.AI features. Explain how each feature works and give practical usage tips. Reference the feature entities in this KB." .
+    shelly:systemPrompt     "You are helping someone learn about Reckons.AI features. Explain how each feature works and give practical usage tips. Reference the feature entities in this graph." .

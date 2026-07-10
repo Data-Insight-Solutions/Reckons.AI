@@ -49,7 +49,7 @@ describe('getRegistry', () => {
     const reg = getRegistry();
     expect(reg).toHaveLength(1);
     expect(reg[0].id).toBe(DEFAULT_ID);
-    expect(reg[0].name).toBe('Default KB');
+    expect(reg[0].name).toBe('Default Graph');
   });
 
   it('always includes the default entry even if it was not stored', () => {

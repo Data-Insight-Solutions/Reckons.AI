@@ -251,13 +251,13 @@ export function exportAdvisoryHeader(advisory: ExportAdvisory): string[] {
   lines.push("# ---- CONTENT ADVISORY ----");
   if (advisory.rating === "mature") {
     lines.push(
-      `# This knowledge base contains mature content (${advisory.matureCount} statement${advisory.matureCount !== 1 ? "s" : ""} flagged).`,
+      `# This knowledge graph contains mature content (${advisory.matureCount} statement${advisory.matureCount !== 1 ? "s" : ""} flagged).`,
     );
     lines.push(`# Themes: ${advisory.flags.join(", ")}`);
     lines.push("# Viewer discretion is advised.");
   } else {
     lines.push(
-      "# WARNING: This knowledge base may contain content that violates content policy.",
+      "# WARNING: This knowledge graph may contain content that violates content policy.",
     );
     lines.push(`# Flagged themes: ${advisory.flags.join(", ")}`);
   }

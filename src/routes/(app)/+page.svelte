@@ -44,6 +44,7 @@
   import { isIRI, isLit } from '$lib/rdf/types';
   import { requestShellyChat, setShellyChatOpen, shellyViewAdjust, clearShellyViewAdjust, shellySpotlight, exploreOpen, startExplore, stopExplore } from '$lib/stores/shelly-bridge.svelte';
   import AdaptivePanel from '$lib/components/AdaptivePanel.svelte';
+  import GraphPackagePanel from '$lib/components/GraphPackagePanel.svelte';
   import { isCompact } from '$lib/stores/viewport.svelte';
   import { Popover, ToggleGroup } from 'bits-ui';
   import { analysisRunning, lastAnalysisError } from '$lib/stores/auto-analyze.svelte';
@@ -1657,7 +1658,8 @@
   </div>
   {/if}
 
-
+  <!-- GRAPH PACKAGE — this graph's .ttl, sidecars, story, currents & folder sync -->
+  <GraphPackagePanel statementCount={statements().length} />
 
 </div>
 </AdaptivePanel>

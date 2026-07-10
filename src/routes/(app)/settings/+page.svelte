@@ -670,7 +670,7 @@
     const parts: string[] = [];
     if (imported.length > 0) parts.push(`Imported: ${imported.join(', ')}`);
     if (skipped.length > 0) parts.push(`Skipped: ${skipped.join(', ')}`);
-    wsImportMsg = parts.join('. ') || 'No new KBs found.';
+    wsImportMsg = parts.join('. ') || 'No new graphs found.';
     wsImporting = false;
     // Refresh folder count
     const folders = await listKbFolders();

@@ -56,7 +56,7 @@ test:VR-Step3
     story:partOf      test:VisualReviewDemo ;
     story:order       "3"^^xsd:integer ;
     story:title       "Leap → sub-graph" ;
-    story:content     "Following a KB leap swaps the graph to the target sub-graph — the silent-no-op class." ;
+    story:content     "Following a graph leap swaps the graph to the target sub-graph — the silent-no-op class." ;
     kpred:icon2d      "/visual-review/03.png" ;
     kpred:assertion   "currentKbId changed after leap" ;
     kpred:result      "ok" ;

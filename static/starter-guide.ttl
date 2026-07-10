@@ -73,7 +73,7 @@ creator:DataInsightSolutions
 creator:MatthewRoe
     rdf:type            ktype:Person ;
     rdfs:label          "Matthew Roe" ;
-    skos:definition     "Owner-operator of Data Insight Solutions LLC and creator of Reckons.AI. Designed the local-first architecture, the human-in-the-loop review workflow, and the KB Leap cross-referencing system." ;
+    skos:definition     "Owner-operator of Data Insight Solutions LLC and creator of Reckons.AI. Designed the local-first architecture, the human-in-the-loop review workflow, and the graph Leap cross-referencing system." ;
     kpred:role          "Founder & Developer" ;
     kpred:worksAt       creator:DataInsightSolutions ;
     skos:related        guide:ReckonsAI .
@@ -100,7 +100,7 @@ guide:LocalFirst
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Local-First Architecture" ;
-    skos:definition     "Everything runs in the browser. Your KB is stored in IndexedDB, API keys never leave your device, and the app works offline after first load. No server means no data breaches, no vendor lock-in, and no monthly subscription." ;
+    skos:definition     "Everything runs in the browser. Your graph is stored in IndexedDB, API keys never leave your device, and the app works offline after first load. No server means no data breaches, no vendor lock-in, and no monthly subscription." ;
     skos:broader        guide:WhatIsReckonsAI ;
     skos:note           "This is not just a feature -- it is a design philosophy. Your knowledge belongs to you." .
 
@@ -115,7 +115,7 @@ guide:HumanInTheLoop
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Human-in-the-Loop" ;
-    skos:definition     "Nothing enters your confirmed knowledge base without your explicit review. Every triple extracted by an LLM starts as 'pending' and must be confirmed, rejected, or refined by you. You are the authority." ;
+    skos:definition     "Nothing enters your confirmed knowledge graph without your explicit review. Every triple extracted by an LLM starts as 'pending' and must be confirmed, rejected, or refined by you. You are the authority." ;
     skos:broader        guide:WhatIsReckonsAI ;
     skos:related        feat:ReviewSystem .
 
@@ -145,7 +145,7 @@ leap:TriplesAndRDF
 leap:LanguageModels
     rdf:type            ktype:KnowledgeBase ;
     rdfs:label          "LEAP: Language Models" ;
-    skos:definition     "Click to learn what LLMs actually are, why they hallucinate, how RAG works, and why your curated KB makes AI dramatically more accurate." ;
+    skos:definition     "Click to learn what LLMs actually are, why they hallucinate, how RAG works, and why your curated graph makes AI dramatically more accurate." ;
     skos:broader        guide:WhatIsReckonsAI ;
     hnav:order          "2"^^xsd:integer ;
     hnav:layer          "1"^^xsd:integer ;
@@ -169,7 +169,7 @@ leap:UseCases
 leap:Features
     rdf:type            ktype:KnowledgeBase ;
     rdfs:label          "LEAP: Features" ;
-    skos:definition     "Click for detailed coverage of every feature: Ingest, Review, Trust, Graph, Shelly, Reckonings, Compare, Multi-KB, KB Leap, Content Safety, Predicate Manager, Whisper STT, Kokoro TTS, and more." ;
+    skos:definition     "Click for detailed coverage of every feature: Ingest, Review, Trust, Graph, Shelly, Reckonings, Compare, Multi-Graph, graph Leap, Content Safety, Predicate Manager, Whisper STT, Kokoro TTS, and more." ;
     skos:broader        guide:WhatIsReckonsAI ;
     hnav:order          "4"^^xsd:integer ;
     hnav:layer          "1"^^xsd:integer ;
@@ -229,7 +229,7 @@ leap:Architecture
 leap:Testing
     rdf:type            ktype:KnowledgeBase ;
     rdfs:label          "LEAP: Test Suite & Visual Regression" ;
-    skos:definition     "Click for test documentation as interactive stories. Walk through user story E2E tests step-by-step with screenshots attached to each node. Covers Dev Sprint Planning, User Docs Import, Cross-KB Alignment, and page-level visual regression." ;
+    skos:definition     "Click for test documentation as interactive stories. Walk through user story E2E tests step-by-step with screenshots attached to each node. Covers Dev Sprint Planning, User Docs Import, Cross-Graph Alignment, and page-level visual regression." ;
     skos:broader        guide:WhatIsReckonsAI ;
     hnav:order          "9"^^xsd:integer ;
     hnav:layer          "1"^^xsd:integer ;
@@ -258,7 +258,7 @@ arch:SubjectPredicateObject
 arch:PlainTextPortability
     rdf:type            ktype:Concept ;
     rdfs:label          "Plain Text Portability" ;
-    skos:definition     "Your KB exports as a .ttl file -- plain text, human-readable. Open it in any text editor, diff it with git. When apps die, your .ttl still works." ;
+    skos:definition     "Your graph exports as a .ttl file -- plain text, human-readable. Open it in any text editor, diff it with git. When apps die, your .ttl still works." ;
     skos:broader        arch:TripleArchitecture .
 
 arch:ReviewWorkflow
@@ -275,27 +275,27 @@ llm:WhatLLMsAre
 
 llm:KBGroundedAccuracy
     rdf:type            ktype:Concept ;
-    rdfs:label          "KB-Grounded Accuracy" ;
-    skos:definition     "When an LLM retrieves YOUR confirmed facts instead of guessing, accuracy skyrockets. Your curated KB is the best retrieval source possible." ;
+    rdfs:label          "Graph-Grounded Accuracy" ;
+    skos:definition     "When an LLM retrieves YOUR confirmed facts instead of guessing, accuracy skyrockets. Your curated graph is the best retrieval source possible." ;
     skos:broader        llm:WhatLLMsAre .
 
 use:PersonalEmpowerment
     rdf:type            ktype:Concept ;
     rdfs:label          "Power to the Individual" ;
-    skos:definition     "Build a KB of your rights, evidence, and correspondence. Communicate with the authority of an institution -- it is just you and your knowledge." ;
+    skos:definition     "Build a graph of your rights, evidence, and correspondence. Communicate with the authority of an institution -- it is just you and your knowledge." ;
     skos:related        leap:UseCases .
 
 feat:Shelly
     rdf:type            ktype:Person ;
     rdfs:label          "Shelly (AI Assistant)" ;
-    skos:definition     "The turtle-shaped AI assistant. Grounded in your KB, not generic training data." ;
+    skos:definition     "The turtle-shaped AI assistant. Grounded in your graph, not generic training data." ;
     skos:broader        guide:WhatIsReckonsAI ;
     skos:related        leap:Features .
 
 feat:ReviewSystem
     rdf:type            ktype:Concept ;
     rdfs:label          "Review System" ;
-    skos:definition     "Confirm, reject, or refine every extracted triple. Nothing enters your KB without your approval." ;
+    skos:definition     "Confirm, reject, or refine every extracted triple. Nothing enters your graph without your approval." ;
     skos:broader        guide:WhatIsReckonsAI .
 
 feat:Ingest
@@ -319,7 +319,7 @@ feat:Graph3D
 feat:TTLExport
     rdf:type            ktype:Concept ;
     rdfs:label          "Turtle Export" ;
-    skos:definition     "Export your KB as .ttl with full metadata. Roundtrip-safe. Share with anyone." ;
+    skos:definition     "Export your graph as .ttl with full metadata. Roundtrip-safe. Share with anyone." ;
     skos:broader        guide:WhatIsReckonsAI .
 
 feat:Reckoning
@@ -390,14 +390,14 @@ guide:Step4
 guide:Step5
     rdf:type            ktype:Document ;
     rdfs:label          "Step 5: Ask Shelly" ;
-    skos:definition     "Click the turtle icon in the search bar to chat with Shelly. Ask questions about your KB, play the story walkthrough, or request a Reckoning." ;
+    skos:definition     "Click the turtle icon in the search bar to chat with Shelly. Ask questions about your graph, play the story walkthrough, or request a Reckoning." ;
     skos:broader        guide:GettingStarted ;
     skos:related        feat:Shelly .
 
 guide:Step6
     rdf:type            ktype:Document ;
     rdfs:label          "Step 6: Export and Share" ;
-    skos:definition     "Go to Settings -> Backup and Export to download your KB as Turtle. Share the .ttl file or set up workspace sync for MCP integration." ;
+    skos:definition     "Go to Settings -> Backup and Export to download your graph as Turtle. Share the .ttl file or set up workspace sync for MCP integration." ;
     skos:broader        guide:GettingStarted ;
     skos:related        feat:TTLExport .
 
@@ -408,7 +408,7 @@ guide:Step6
 
 guide:QuickStartExample
     rdf:type            ktype:Document ;
-    rdfs:label          "Quick-Start Example KB" ;
+    rdfs:label          "Quick-Start Example graph" ;
     skos:definition     "A practical knowledge graph with people, projects, research notes, decisions, and metrics. Import it from the Info page to see how real-world data maps to triples. 15 entities, 90 triples." ;
     skos:broader        guide:GettingStarted ;
     dc:source           "/starter-quickstart.ttl" .
@@ -434,7 +434,7 @@ story:Intro
     story:partOf        story:ReckonsPhilosophy ;
     story:order         "1" ;
     story:title         "Spot What's New Instantly" ;
-    story:content       "You receive a revised contract, an updated policy, a new report. What actually changed? Reckons.AI compares any document against your personal knowledge base and shows you exactly what is new, what conflicts, and what you already know. No more re-reading entire documents to find the three sentences that matter." ;
+    story:content       "You receive a revised contract, an updated policy, a new report. What actually changed? Reckons.AI compares any document against your personal knowledge graph and shows you exactly what is new, what conflicts, and what you already know. No more re-reading entire documents to find the three sentences that matter." ;
     story:highlight     guide:WhatIsReckonsAI ;
     story:prompt        "Explain how the semantic diff works and why it saves time versus manual comparison." ;
     story:question      "Have you ever re-read a long document just to find what changed?" .
@@ -472,19 +472,19 @@ story:KBAccuracy
     rdf:type            story:Step ;
     story:partOf        story:ReckonsPhilosophy ;
     story:order         "5" ;
-    story:title         "Your KB Makes AI Accurate" ;
-    story:content       "When an LLM retrieves from YOUR reviewed knowledge base, its answers become dramatically more accurate. Instead of guessing from training data, it cites your confirmed facts. Your curated KB is the best possible source." ;
+    story:title         "Your graph Makes AI Accurate" ;
+    story:content       "When an LLM retrieves from YOUR reviewed knowledge graph, its answers become dramatically more accurate. Instead of guessing from training data, it cites your confirmed facts. Your curated graph is the best possible source." ;
     story:highlight     llm:KBGroundedAccuracy ;
-    story:prompt        "Explain retrieval-augmented generation and why a curated personal KB outperforms generic data." .
+    story:prompt        "Explain retrieval-augmented generation and why a curated personal graph outperforms generic data." .
 
 story:StandingUp
     rdf:type            story:Step ;
     story:partOf        story:ReckonsPhilosophy ;
     story:order         "6" ;
     story:title         "Level the Playing Field" ;
-    story:content       "Corporations have analysts and legal teams. You have your memory and a stack of papers. Not anymore. Build a KB of your policy terms, correspondence, and evidence. Ask Shelly to draft a response citing your documented facts. You communicate with the authority of an institution -- using your own knowledge." ;
+    story:content       "Corporations have analysts and legal teams. You have your memory and a stack of papers. Not anymore. Build a graph of your policy terms, correspondence, and evidence. Ask Shelly to draft a response citing your documented facts. You communicate with the authority of an institution -- using your own knowledge." ;
     story:highlight     use:PersonalEmpowerment ;
-    story:prompt        "Give examples of using a KB for insurance claims, disputes, or corporate pushback." ;
+    story:prompt        "Give examples of using a graph for insurance claims, disputes, or corporate pushback." ;
     story:question      "Is there a situation where having organized, citable evidence would help?" .
 
 story:HowItWorks
@@ -503,7 +503,7 @@ story:GetStarted
     story:title         "Start Building" ;
     story:content       "Your graph starts with one document. Ingest something you care about, review the triples, confirm the accurate ones. Every source you add reveals connections you would never see reading linearly." ;
     story:highlight     tip:StartSmall ;
-    story:prompt        "Suggest concrete first steps for building a personal knowledge base." ;
+    story:prompt        "Suggest concrete first steps for building a personal knowledge graph." ;
     story:question      "Ready to add your first document?" .
 
 
@@ -516,4 +516,4 @@ shelly:persona
     shelly:greeting         "Hey! I'm Shelly, and this is the Reckons.AI documentation hub. The nodes with amber rings are **leap points** -- click the arrow to jump into a deeper sub-graph (auto-imports on first use). Try the **explore** tab for a guided walkthrough!" ;
     shelly:personality      "knowledgeable, empowering, direct" ;
     shelly:responseStyle    "conversational" ;
-    shelly:systemPrompt     "You are helping someone learn Reckons.AI. This is the documentation HUB -- a compact overview. Nodes labeled 'LEAP:' link to deeper sub-graphs (separate .ttl files). Emphasize practical uses, individual empowerment, and the accuracy advantage of KB-grounded LLM responses. Be honest about what LLMs can and cannot do. Encourage the user to build their own knowledge and never blindly trust any model output." .
+    shelly:systemPrompt     "You are helping someone learn Reckons.AI. This is the documentation HUB -- a compact overview. Nodes labeled 'LEAP:' link to deeper sub-graphs (separate .ttl files). Emphasize practical uses, individual empowerment, and the accuracy advantage of graph-grounded LLM responses. Be honest about what LLMs can and cannot do. Encourage the user to build their own knowledge and never blindly trust any model output." .

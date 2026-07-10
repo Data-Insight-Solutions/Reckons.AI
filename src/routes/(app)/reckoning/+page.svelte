@@ -45,7 +45,7 @@ OUTPUT RULES:
 - Use the entity LABEL (e.g. "Shared Notes", "Company Alpha") never the raw IRI (e.g. "urn:kbase:...") in the main proposal text.
 - Each option must state a concrete next action the user can take, not just a KB citation.
 - Do NOT include <kb-actions> blocks in this response.
-- Cite only facts in the KB snapshot. Do not invent.
+- Cite only facts in the graph snapshot. Do not invent.
 - Keep total response under 450 words. Plain text only — no markdown, no asterisks.
 - End with a prompt inviting the user to ask for technical depth.
 
@@ -64,11 +64,11 @@ Basis: [plain-language KB support] — Source: [source name]
 Action: [specific first step]
 Consideration: [practical tradeoff]
 
-Recommendation: [2-3 sentences, direct and practical. If the KB doesn't cover relevant areas, note what additional sources could strengthen the analysis — but remember that absence of a fact in this KB doesn't mean it's untrue, just not yet captured.]
+Recommendation: [2-3 sentences, direct and practical. If the graph doesn't cover relevant areas, note what additional sources could strengthen the analysis — but remember that absence of a fact in this graph doesn't mean it's untrue, just not yet captured.]
 
 Confidence: [high / medium / low] — [brief reason, noting if confidence is limited by KB scope rather than contradictory evidence]
 
-Ask for more: Reply "show technical details" to see the full KB entity references, predicate names, and IRI citations behind this proposal.`;
+Ask for more: Reply "show technical details" to see the full graph entity references, predicate names, and IRI citations behind this proposal.`;
 
   const VOICE_RECKONING_PROMPT = `You are a concise AI decision advisor for Reckons.AI.
 
@@ -177,7 +177,7 @@ After proposing, ask: "Does that work for you, or should I adjust?"`;
         ...prov,
         messages: [{
           role: 'user',
-          content: `SITUATION:\n${situation.trim()}\n\nTARGET:\n${target.trim()}\n\nPlease generate a structured proposal based on my KB.`
+          content: `SITUATION:\n${situation.trim()}\n\nTARGET:\n${target.trim()}\n\nPlease generate a structured proposal based on my graph.`
         }],
         kbContext,
         customPrompt: RECKONING_SYSTEM_PROMPT
@@ -223,7 +223,7 @@ Do NOT include <kb-actions> blocks.`;
         messages: [
           {
             role: 'user',
-            content: `SITUATION:\n${situation.trim()}\n\nTARGET:\n${target.trim()}\n\nPlease generate a structured proposal based on my KB.`
+            content: `SITUATION:\n${situation.trim()}\n\nTARGET:\n${target.trim()}\n\nPlease generate a structured proposal based on my graph.`
           },
           { role: 'assistant', content: proposal },
           { role: 'user', content: 'show technical details' }

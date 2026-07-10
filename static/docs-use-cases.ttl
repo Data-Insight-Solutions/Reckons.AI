@@ -38,28 +38,28 @@ use:PersonalEmpowerment
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Power to the Individual" ;
-    skos:definition     "Insurance companies have teams of analysts. Corporations have legal departments. Landlords have property managers. You have your memory and a stack of papers? Not anymore. Build a KB of your rights, evidence, and correspondence. Ask Shelly to draft a precise response citing YOUR documented facts. You communicate with the authority of an institution." ;
+    skos:definition     "Insurance companies have teams of analysts. Corporations have legal departments. Landlords have property managers. You have your memory and a stack of papers? Not anymore. Build a graph of your rights, evidence, and correspondence. Ask Shelly to draft a precise response citing YOUR documented facts. You communicate with the authority of an institution." ;
     skos:related        guide:WhatIsReckonsAI .
 
 use:InsuranceClaims
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Insurance Claims" ;
-    skos:definition     "Ingest your policy documents, adjuster correspondence, photos, and repair estimates as triples. When you need to dispute a denial or request review, ask Shelly to draft a response citing specific policy clauses and documented evidence from your KB." ;
+    skos:definition     "Ingest your policy documents, adjuster correspondence, photos, and repair estimates as triples. When you need to dispute a denial or request review, ask Shelly to draft a response citing specific policy clauses and documented evidence from your graph." ;
     skos:broader        use:PersonalEmpowerment .
 
 use:LegalDisputes
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Legal Disputes" ;
-    skos:definition     "Build a timeline of events, contracts, correspondence, and obligations. Your KB becomes a structured evidence base that you can query: 'What did the landlord promise regarding repairs, and when?' Every answer traces back to a source document." ;
+    skos:definition     "Build a timeline of events, contracts, correspondence, and obligations. Your graph becomes a structured evidence base that you can query: 'What did the landlord promise regarding repairs, and when?' Every answer traces back to a source document." ;
     skos:broader        use:PersonalEmpowerment .
 
 use:EmploymentRights
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Employment Rights" ;
-    skos:definition     "Track your employment contract terms, company policies, HR correspondence, and performance records. When you need to assert your rights, your KB provides precise, documented, citable facts." ;
+    skos:definition     "Track your employment contract terms, company policies, HR correspondence, and performance records. When you need to assert your rights, your graph provides precise, documented, citable facts." ;
     skos:broader        use:PersonalEmpowerment .
 
 use:MedicalRecords
@@ -92,7 +92,7 @@ use:CollaborativeKnowledge
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Collaborative Knowledge" ;
-    skos:definition     "One person organizes a KB around a shared topic, exports a .ttl file, and distributes it. Others import it as a source in their own KB. Each person uses Shelly and the Reckoning to ask questions relevant to them. Decisions are annotated with the sources that informed them. When things change, the organizer re-exports and importers see the diff in Compare." ;
+    skos:definition     "One person organizes a graph around a shared topic, exports a .ttl file, and distributes it. Others import it as a source in their own graph. Each person uses Shelly and the Reckoning to ask questions relevant to them. Decisions are annotated with the sources that informed them. When things change, the organizer re-exports and importers see the diff in Compare." ;
     skos:related        use:PersonalEmpowerment ;
     skos:related        guide:WhatIsReckonsAI .
 
@@ -100,7 +100,7 @@ use:FloatTrip
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Float Trip Planning" ;
-    skos:definition     "A group plans a weather-dependent river float trip. The organizer builds a KB with launch sites, shuttle logistics, and USGS river gauge data, then shares the TTL with participants. Each person asks Shelly their own questions -- schedule conflicts, gear needs, driving directions. As forecasts change, the organizer re-ingests weather sources, runs a Reckoning to confirm or adjust the launch time, and re-exports. Everyone sees the updated plan and the sources behind it." ;
+    skos:definition     "A group plans a weather-dependent river float trip. The organizer builds a graph with launch sites, shuttle logistics, and USGS river gauge data, then shares the TTL with participants. Each person asks Shelly their own questions -- schedule conflicts, gear needs, driving directions. As forecasts change, the organizer re-ingests weather sources, runs a Reckoning to confirm or adjust the launch time, and re-exports. Everyone sees the updated plan and the sources behind it." ;
     skos:broader        use:CollaborativeKnowledge ;
     skos:related        use:RecurringSourceIngestion .
 
@@ -108,7 +108,7 @@ use:ConstructionProject
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Residential Construction Project" ;
-    skos:definition     "A general contractor maintains a project KB with permits, schedules, and trade dependencies for a renovation. Subcontractors import the TTL to understand their scope and timing. When a change order arrives, the contractor ingests it, runs a Reckoning to assess schedule impact, and re-exports. Each trade asks Shelly their own questions -- 'What does CO-3 add to my scope?' -- without the GC being a bottleneck. Decisions trace back to the change order that triggered them." ;
+    skos:definition     "A general contractor maintains a project graph with permits, schedules, and trade dependencies for a renovation. Subcontractors import the TTL to understand their scope and timing. When a change order arrives, the contractor ingests it, runs a Reckoning to assess schedule impact, and re-exports. Each trade asks Shelly their own questions -- 'What does CO-3 add to my scope?' -- without the GC being a bottleneck. Decisions trace back to the change order that triggered them." ;
     skos:broader        use:CollaborativeKnowledge ;
     skos:related        use:LegalDisputes .
 
@@ -116,7 +116,7 @@ use:AcademicResearchGroup
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Academic Research Group" ;
-    skos:definition     "A lab PI maintains a shared base KB of literature reviews, experimental parameters, and confirmed findings. PhD students import it and layer their own experiment results on top. When a student's results conflict with published work, a Reckoning cites papers by DOI and shared parameters to recommend framing -- novel finding or replication caveat. Other students can import each other's results and trace confidence levels through the full trust chain of sources." ;
+    skos:definition     "A lab PI maintains a shared base graph of literature reviews, experimental parameters, and confirmed findings. PhD students import it and layer their own experiment results on top. When a student's results conflict with published work, a Reckoning cites papers by DOI and shared parameters to recommend framing -- novel finding or replication caveat. Other students can import each other's results and trace confidence levels through the full trust chain of sources." ;
     skos:broader        use:CollaborativeKnowledge ;
     skos:related        use:Research .
 
@@ -124,7 +124,7 @@ use:EmergencyPreparedness
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Emergency Preparedness" ;
-    skos:definition     "A neighborhood coordinator maintains a KB of resource inventories, contact trees, shelter locations, and special-needs residents. Before severe weather, they re-ingest NWS alerts, run a Reckoning to match generator owners with power-dependent neighbors, and share the updated TTL. Each neighbor sees their assignment and the backing sources. The KB records resource allocation decisions with the weather warning as provenance." ;
+    skos:definition     "A neighborhood coordinator maintains a graph of resource inventories, contact trees, shelter locations, and special-needs residents. Before severe weather, they re-ingest NWS alerts, run a Reckoning to match generator owners with power-dependent neighbors, and share the updated TTL. Each neighbor sees their assignment and the backing sources. The graph records resource allocation decisions with the weather warning as provenance." ;
     skos:broader        use:CollaborativeKnowledge ;
     skos:related        use:RecurringSourceIngestion .
 
@@ -146,7 +146,7 @@ use:DecisionProvenance
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Decision Provenance" ;
-    skos:definition     "When a Reckoning produces a recommendation and the user accepts it, the resulting KB statements are automatically annotated with the source IRIs, Reckoning timestamp, and confidence level. Anyone reading the triple later can see it was added by a Reckoning on a specific date, informed by specific sources. The KB becomes self-documenting." ;
+    skos:definition     "When a Reckoning produces a recommendation and the user accepts it, the resulting graph statements are automatically annotated with the source IRIs, Reckoning timestamp, and confidence level. Anyone reading the triple later can see it was added by a Reckoning on a specific date, informed by specific sources. The graph becomes self-documenting." ;
     skos:broader        use:CollaborativeKnowledge ;
     skos:related        use:PersonalEmpowerment .
 
@@ -159,7 +159,7 @@ use:DecisionProvenance
 
 shelly:persona
     shelly:name             "Shelly" ;
-    shelly:greeting         "This KB covers real-world use cases -- how individuals use knowledge graphs to stand up to institutions, and how groups share knowledge through TTL exports. Ask me about insurance claims, float trips, construction projects, or any scenario!" ;
+    shelly:greeting         "This graph covers real-world use cases -- how individuals use knowledge graphs to stand up to institutions, and how groups share knowledge through TTL exports. Ask me about insurance claims, float trips, construction projects, or any scenario!" ;
     shelly:personality      "empowering, practical, direct" ;
     shelly:responseStyle    "concise" ;
-    shelly:systemPrompt     "You are helping someone understand how a personal knowledge graph levels the playing field. Give concrete, practical examples. Emphasize that a well-curated KB lets individuals communicate with institutional authority." .
+    shelly:systemPrompt     "You are helping someone understand how a personal knowledge graph levels the playing field. Give concrete, practical examples. Emphasize that a well-curated graph lets individuals communicate with institutional authority." .
