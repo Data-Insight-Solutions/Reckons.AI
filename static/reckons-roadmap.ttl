@@ -299,10 +299,11 @@ kb:workspace-sync rdf:type  ktype:Feature ;
 kb:drive-folder-sync rdf:type ktype:Feature ;
                rdfs:label   "Google Drive folder sync" ;
                kpred:feature-id   "F56" ;
-               kpred:has-status   "planned" ;
-               kpred:description  "The next step after local folder sync: sync the workspace folder to a (shareable) Google Drive folder, so graphs AND their sidecar assets (images, GLB models) live in the cloud and share via Drive links. Reuses the same two-way reconcile as local folder sync (push on mutation, poll to pull) over the Drive API instead of the File System Access API. Motivates fixing node images first: a shared Drive folder is where the local /starter-assets/*.svg photos would graduate to real hosted images. Builds on the existing OAuth + file-listing scaffolding in google-drive-sync." ;
+               kpred:has-status   "functional" ;
+               kpred:description  "Sync the workspace to a (shareable) Google Drive folder — the cloud sibling of local folder sync. Two-way: push each KB out as {name}.ttl and pull .ttl files back, reconciling new graphs and updating changed ones through the SHARED kb-import reconcile (src/lib/stores/kb-import.ts, extracted so local + Drive sync behave identically), with a content-hash loop guard. Uses the drive.file OAuth scope (only app-owned files). Store: src/lib/stores/drive-sync.svelte.ts; Drive folder ops (ensureFolder/listFolderTurtles/uploadTurtleToFolder) added to integrations/google/drive.ts; controls in the graph menu's graph-package panel (☁ sync to Google Drive / resync / unlink). SHIPPED v1 = graph TTL (URL/inline images included). REMAINING: binary sidecar assets (preview blobs, GLB models) need per-file uploads; background polling for cloud pulls; auto-push on mutation." ;
                kpred:depends-on   kb:workspace-sync ;
                kpred:depends-on   kb:google-drive-sync ;
+               kpred:tested-by    "src/lib/stores/__tests__/drive-sync.test.ts" ;
                kpred:relates-to   kb:workspace-index .
 
 kb:workspace-index rdf:type ktype:Feature ;

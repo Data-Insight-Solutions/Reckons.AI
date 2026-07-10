@@ -100,6 +100,8 @@
 
       // Reconnect workspace and drain any pending triples written by the MCP server
       await loadWorkspace();
+      // Restore a previously-linked Google Drive sync folder (F56).
+      import('$lib/stores/drive-sync.svelte').then((m) => m.loadDriveFolder());
       await drainAndImportPending();
       // Nudge: suggest linking a local folder once the user has some data
       if (supportsWorkspace() && workspaceState() === 'none' && confirmedStatements().length >= 10) {

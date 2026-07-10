@@ -19,6 +19,10 @@
     resyncNow, syncAllKbs, autoSyncEnabled, setAutoSync,
     lastSyncTime, syncedKbCount, importKbsFromWorkspace, listKbFolders,
   } from '$lib/stores/workspace.svelte';
+  import {
+    driveConfigured, driveLinked, driveFolderName, driveBusy,
+    linkDriveFolder, unlinkDrive, driveResyncNow, driveLastSync,
+  } from '$lib/stores/drive-sync.svelte';
 
   // Re-count sidecar assets whenever the graph changes.
   let { statementCount = 0 }: { statementCount?: number } = $props();
@@ -82,6 +86,22 @@
 
   function toggleAuto() { auto = !auto; setAutoSync(auto); }
 
+  // ── Google Drive folder sync (F56) ─────────────────────────────────────────
+  async function linkDrive() {
+    busy = true;
+    const ok = await linkDriveFolder();
+    if (ok) { const r = await driveResyncNow(); flash(`Drive: pulled ${r.imported.length + r.updated.length}, pushed ${r.pushed}`); }
+    else flash('Drive link failed — check Google sign-in');
+    busy = false;
+  }
+  async function driveResync() {
+    busy = true;
+    const r = await driveResyncNow();
+    const pulled = r.imported.length + r.updated.length;
+    flash(pulled ? `Drive: pulled ${pulled}, pushed ${r.pushed}` : `Drive: pushed ${r.pushed}`);
+    busy = false;
+  }
+
   function ago(t: number | null): string {
     if (!t) return 'never';
     const s = Math.round((Date.now() - t) / 1000);
@@ -138,6 +158,22 @@
   {:else}
     <button class="pkg-chip pkg-cta" disabled={busy} onclick={link}>📁 link a folder</button>
     <span class="pkg-note mono">back up every graph to disk · survives cache clears</span>
+  {/if}
+
+  <!-- Google Drive (cloud) folder sync (F56) -->
+  {#if driveConfigured()}
+    {#if driveLinked()}
+      <div class="pkg-row mono">
+        <span class="pkg-stat pkg-ok" title="linked Google Drive folder">☁ {driveFolderName()}/</span>
+        <button class="pkg-chip" disabled={busy || driveBusy()} onclick={driveResync}>⟳ resync</button>
+        <button class="pkg-chip" disabled={busy || driveBusy()} onclick={unlinkDrive}>unlink</button>
+      </div>
+      <span class="pkg-note mono">Drive · synced {ago(driveLastSync())}</span>
+    {:else}
+      <button class="pkg-chip" disabled={busy || driveBusy()} onclick={linkDrive}>☁ sync to Google Drive</button>
+    {/if}
+  {:else}
+    <a class="pkg-note pkg-link mono" href="/settings/integrations">☁ set a Google client ID to sync to Drive →</a>
   {/if}
   {#if msg}<span class="pkg-note pkg-msg mono">{msg}</span>{/if}
 </div>

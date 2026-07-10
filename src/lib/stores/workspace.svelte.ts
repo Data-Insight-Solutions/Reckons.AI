@@ -684,118 +684,24 @@ async function readFolderData(
   return ttl ? { ttl, assets: new Map<string, Uint8Array>() } : null;
 }
 
-/** Parse TTL + assets into `target`, REPLACING any existing statements/sources.
- *  Used both for a fresh KB (empty target) and to update an existing one when
- *  its file changed on disk. Returns the number of statements written. */
-async function populateKbFromTtl(
-  target: KBaseDB,
-  name: string,
-  folderName: string,
-  ttl: string,
-  assets: Map<string, Uint8Array>
-): Promise<number> {
-  const { importTurtleFull } = await import('../rdf/import-ttl');
-  const { v4: uuid } = await import('uuid');
-
-  const { statements: rawStmts } = await importTurtleFull(ttl);
-  if (rawStmts.length === 0) return 0;
-
-  const now = Date.now();
-  const sourceId = uuid();
-
-  // Disk is authoritative on (re)import — clear prior data before repopulating.
-  await target.statements.clear();
-  await target.sources.clear();
-  await target.sources.put({
-    id: sourceId,
-    title: name,
-    uri: `workspace://${folderName}/${folderName}.ttl`,
-    kind: 'document' as const,
-    trustLevel: 'trusted' as const,
-    ingestedAt: now,
-  });
-
-  const stmts = rawStmts
-    .filter(s => s.status === 'confirmed' || s.status === 'refined' || s.status === 'pending')
-    .map(s => ({
-      ...s,
-      id: uuid(),
-      sourceId,
-      g: { kind: 'iri' as const, value: `urn:kbase:source/${sourceId}` },
-      status: 'confirmed' as const,
-      createdAt: now,
-      updatedAt: now,
-    }));
-  await target.statements.bulkPut(stmts);
-
-  // Import binary assets into IndexedDB override tables
-  if (assets.size > 0) {
-    const { parseAssetRefs, isAssetPath, extToMime } = await import('../storage/kb-assets');
-    const refs = parseAssetRefs(ttl);
-    for (const ref of refs) {
-      if (!isAssetPath(ref.value)) continue;
-      const bytes = assets.get(ref.value);
-      if (!bytes) continue;
-
-      if (ref.category === 'previews') {
-        const filename = ref.value.split('/').pop() ?? 'preview';
-        const mime = extToMime(ref.value);
-        await target.entityGifs.put({
-          id: ref.entityIri,
-          blob: new Blob([bytes.buffer as ArrayBuffer], { type: mime }),
-          filename,
-        });
-      } else if (ref.category === 'models') {
-        const b64 = btoa(String.fromCharCode(...bytes));
-        await target.glbOverrides.put({ id: ref.entityIri, url: `data:model/gltf-binary;base64,${b64}` });
-      } else if (ref.category === 'icons') {
-        const mime = extToMime(ref.value);
-        const b64 = btoa(String.fromCharCode(...bytes));
-        await target.icon2dOverrides.put({ id: ref.entityIri, url: `data:${mime};base64,${b64}` });
-      }
-    }
-  }
-
-  return stmts.length;
-}
-
 /** Import ONE freshly-discovered folder as a new KB. Returns statements written,
  *  or 0 if empty/unreadable. */
 async function importNewKb(folder: FolderEntry): Promise<number> {
-  const { createKb, registerStableId } = await import('../storage/kb-registry');
-  const { DEFAULT_SETTINGS } = await import('../storage/db');
-
   const data = await readFolderData(folder);
   if (!data?.ttl) return 0;
-
-  const newKb = createKb(folder.meta.name);
-  const tempDb = new KBaseDB(newKb.id);
-  try {
-    await tempDb.open();
-    await tempDb.settings.put({ ...DEFAULT_SETTINGS, kbTitle: folder.meta.name });
-    const count = await populateKbFromTtl(tempDb, folder.meta.name, folder.folderName, data.ttl, data.assets);
-    if (folder.meta.stableId) {
-      await tempDb.settings.update('main', { kbStableId: folder.meta.stableId });
-      registerStableId(newKb.id, folder.meta.stableId, count);
-    }
-    return count;
-  } finally {
-    if (tempDb !== db) tempDb.close();
-  }
+  const { ingestNewKb } = await import('./kb-import');
+  const uri = `workspace://${folder.folderName}/${folder.folderName}.ttl`;
+  const res = await ingestNewKb(data, folder.meta, uri);
+  return res?.count ?? 0;
 }
 
 /** Re-import a changed folder into the EXISTING KB `kbId` (in place). */
 async function updateExistingKb(kbId: string, folder: FolderEntry): Promise<number> {
   const data = await readFolderData(folder);
   if (!data?.ttl) return 0;
-  const target = kbId === db.name ? db : new KBaseDB(kbId);
-  try {
-    if (target !== db) await target.open();
-    const count = await populateKbFromTtl(target, folder.meta.name, folder.folderName, data.ttl, data.assets);
-    return count;
-  } finally {
-    if (target !== db) target.close();
-  }
+  const { ingestExistingKb } = await import('./kb-import');
+  const uri = `workspace://${folder.folderName}/${folder.folderName}.ttl`;
+  return ingestExistingKb(kbId, data, folder.meta, uri);
 }
 
 /**
