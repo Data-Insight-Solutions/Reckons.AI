@@ -114,6 +114,48 @@ export async function listFolderTurtles(folderId: string): Promise<DriveFile[]> 
   return data.files ?? [];
 }
 
+/** List ALL (non-trashed) files that are direct children of a folder. */
+export async function listFolderFiles(folderId: string): Promise<DriveFile[]> {
+  const params = new URLSearchParams({
+    q: `'${folderId}' in parents and trashed = false`,
+    fields: 'files(id,name,modifiedTime,size)',
+    pageSize: '400',
+  });
+  const data = await (await driveFetch(`${DRIVE}/files?${params}`)).json();
+  return data.files ?? [];
+}
+
+/** Upload arbitrary binary INTO a folder (multipart). Update in place with `existingFileId`. */
+export async function uploadBinaryToFolder(
+  filename: string,
+  bytes: Uint8Array,
+  mimeType: string,
+  folderId: string,
+  existingFileId?: string
+): Promise<string> {
+  const metadata: Record<string, unknown> = { name: filename, mimeType };
+  if (!existingFileId) metadata.parents = [folderId];
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+  form.append('file', new Blob([bytes.buffer as ArrayBuffer], { type: mimeType }));
+  const url = existingFileId
+    ? `${UPLOAD}/files/${existingFileId}?uploadType=multipart`
+    : `${UPLOAD}/files?uploadType=multipart`;
+  const res = await fetch(url, {
+    method: existingFileId ? 'PATCH' : 'POST',
+    headers: { Authorization: `Bearer ${getToken()}` },
+    body: form,
+  });
+  if (!res.ok) throw new Error(`Drive upload ${res.status}: ${await res.text().catch(() => '')}`);
+  return (await res.json()).id as string;
+}
+
+/** Download a Drive file's raw bytes. */
+export async function downloadFileBytes(fileId: string): Promise<Uint8Array> {
+  const res = await driveFetch(`${DRIVE}/files/${fileId}?alt=media`);
+  return new Uint8Array(await res.arrayBuffer());
+}
+
 /**
  * Upload a `.ttl` INTO a specific folder. Pass `existingFileId` to update in
  * place (its parent is unchanged). Returns the Drive file id.

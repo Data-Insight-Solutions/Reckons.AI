@@ -112,24 +112,41 @@ export function unlinkDrive(): void {
   if (_pushTimer) { clearTimeout(_pushTimer); _pushTimer = null; }
   _folderId = null;
   _folderName = null;
+  _assetsFolderId = null;
   _lastSync = null;
   _syncedCount = 0;
   _seenHashes.clear();
   persistFolder();
 }
 
-/** Serialize one KB to Turtle (graph statements). */
-async function serializeKb(kbId: string): Promise<string | null> {
+type CollectedAsset = { entityIri: string; category: string; filename: string; data: Uint8Array };
+
+/** Serialize one KB to Turtle (graph statements + asset references) and collect
+ *  its binary sidecar assets (preview/model/icon blobs). */
+async function serializeKb(kbId: string): Promise<{ ttl: string; assets: CollectedAsset[] } | null> {
   const { toTurtle } = await import('../rdf/serialize');
+  const { collectAssets, assetTriples } = await import('../storage/kb-assets');
   const kbDb = kbId === db.name ? db : new KBaseDB(kbId);
   try {
     if (kbDb !== db) await kbDb.open();
     const statements = await kbDb.statements.toArray();
     if (statements.length === 0 && kbId !== 'kbase') return null;
-    return toTurtle(statements);
+    const assets = (await collectAssets(kbDb)) as CollectedAsset[];
+    const ttl = toTurtle(statements) + (await assetTriples(kbDb, assets as never));
+    return { ttl, assets };
   } finally {
     if (kbDb !== db) kbDb.close();
   }
+}
+
+let _assetsFolderId: string | null = null;
+/** Find-or-create the shared `assets/` subfolder under the linked Drive folder. */
+async function ensureAssetsFolder(): Promise<string | null> {
+  if (!_folderId) return null;
+  if (_assetsFolderId) return _assetsFolderId;
+  const { ensureFolder } = await import('../integrations/google/drive');
+  _assetsFolderId = await ensureFolder('assets', _folderId);
+  return _assetsFolderId;
 }
 
 /** Sanitize a KB name into a safe Drive filename stem (mirrors the local layout). */
@@ -144,16 +161,31 @@ export async function driveSyncPush(): Promise<number> {
   if (!(await ensureDriveAuth())) return 0;
   _busy = true;
   try {
-    const { listFolderTurtles, uploadTurtleToFolder } = await import('../integrations/google/drive');
+    const { listFolderTurtles, uploadTurtleToFolder, uploadBinaryToFolder, listFolderFiles } =
+      await import('../integrations/google/drive');
+    const { extToMime } = await import('../storage/kb-assets');
     const existing = new Map((await listFolderTurtles(_folderId)).map((f) => [f.name, f.id]));
     let pushed = 0;
     for (const entry of getRegistry()) {
-      const ttl = await serializeKb(entry.id);
-      if (ttl == null) continue;
-      const filename = `${fileStem(entry.name, entry.id)}.ttl`;
+      const ser = await serializeKb(entry.id);
+      if (ser == null) continue;
+      const stem = fileStem(entry.name, entry.id);
+      const filename = `${stem}.ttl`;
       try {
-        await uploadTurtleToFolder(filename, ttl, _folderId, existing.get(filename));
-        _seenHashes.set(filename, hashString(ttl)); // loop guard: don't re-pull our own write
+        await uploadTurtleToFolder(filename, ser.ttl, _folderId, existing.get(filename));
+        _seenHashes.set(filename, hashString(ser.ttl)); // loop guard: don't re-pull our own write
+
+        // Binary sidecar assets → a shared assets/ subfolder, KB-scoped filenames.
+        if (ser.assets.length) {
+          const af = await ensureAssetsFolder();
+          if (af) {
+            const existingAssets = new Map((await listFolderFiles(af)).map((f) => [f.name, f.id]));
+            for (const a of ser.assets) {
+              const driveName = `${stem}__${a.category}__${a.filename}`;
+              await uploadBinaryToFolder(driveName, a.data, extToMime(a.filename), af, existingAssets.get(driveName));
+            }
+          }
+        }
         pushed++;
       } catch (e) {
         console.warn(`[drive-sync] push failed for "${entry.name}":`, e);
@@ -195,7 +227,24 @@ export async function driveSyncPull(): Promise<{ imported: string[]; updated: st
       const folderName = file.name.replace(/\.ttl$/, '');
       const stableId = ttl.match(/kbStableId[>"]\s+"([^"]+)"/)?.[1];
       const meta = { name: folderName, stableId };
-      const data = { ttl, assets: new Map<string, Uint8Array>() };
+
+      // Pull any binary sidecar assets the TTL references from the assets/ subfolder.
+      const assets = new Map<string, Uint8Array>();
+      const { parseAssetRefs } = await import('../storage/kb-assets');
+      const refs = parseAssetRefs(ttl);
+      if (refs.length) {
+        const { listFolderFiles, downloadFileBytes } = await import('../integrations/google/drive');
+        const af = await ensureAssetsFolder();
+        if (af) {
+          const files = new Map((await listFolderFiles(af)).map((f) => [f.name, f.id]));
+          for (const ref of refs) {
+            const fname = ref.value.split('/').pop() ?? '';
+            const fid = files.get(`${folderName}__${ref.category}__${fname}`);
+            if (fid) assets.set(ref.value, await downloadFileBytes(fid));
+          }
+        }
+      }
+      const data = { ttl, assets };
       const uri = `gdrive://${_folderName}/${file.name}`;
 
       const match =
