@@ -1473,6 +1473,66 @@ kb:soft-onboarding rdf:type ktype:Feature ;
                kpred:relates-to   kb:review-attention ;
                kpred:relates-to   kb:knowledge-graph .
 
+# -- Meta Visual Asset Generation (F58) ----------------------------------------
+# The VISUAL analog of Review-Anchored Generation (F51): F51 renders reviewed
+# facts to PROSE on demand; F58 renders the graph's facts + its embedded VISUAL
+# assets (source images, GLBs, icons, previews) into a single new asset — an
+# image, a document, or a 3D model. The graph itself is the brief. Raised
+# 2026-07-10; feasibility of LOCAL image/3D generation is uncertain (cloud
+# providers likely needed first), so this is roadmap-first.
+
+kb:meta-visual-generation rdf:type ktype:Feature ;
+               rdfs:label    "Meta Visual Asset Generation" ;
+               kpred:feature-id   "F58" ;
+               kpred:has-status   "speculative" ;
+               kpred:principle    "The graph is the brief. The FACTS and the RELATIONSHIPS between an entity's visual assets are the detailed description that drives the generation — a red hex on a node recolors its image; two node images with a 'combine' relationship (or a prompt) merge into one; a subgraph of GLBs assembles into a scene." ;
+               kpred:principle    "Creative generation does NOT need the full Situation-Target-Proposal loop. STP is for grounded decisions; making an asset is expression. So generation offers a single free-form prompt AND the option to drop STP prompting entirely for more variety — while still injecting the relevant graph facts as context." ;
+               kpred:description  "Collage/compose everything a graph (or selected subgraph) holds — source images, GLB models, 2D icons, preview images — plus the facts and inter-asset relationships, into ONE output asset. Enhanced Reckoning becomes 'a generation of some kind': the output can be a picture, a PDF, or a 3D file rather than a text proposal. Needs a NEW generation backend (no text/image->image capability exists today; 3D exists via Meshy text-to-3d). Local 3D generation feasibility is unknown — flagged for research; Meshy.AI is the likely near-term path to function." ;
+               kpred:depends-on   kb:review-anchored-generation ;
+               kpred:relates-to   kb:wf-reckon ;
+               kpred:relates-to   kb:entity-types ;
+               kpred:relates-to   kb:int-meshy .
+
+kb:mvg-prompt-box rdf:type ktype:Feature ;
+               rdfs:label    "\"What do you reckon?\" generation box" ;
+               kpred:feature-id   "F58.1" ;
+               kpred:has-status   "speculative" ;
+               kpred:part-of      kb:meta-visual-generation ;
+               kpred:description  "A single free-form prompt box on the Reckoning surface, labelled \"What do you reckon?\" with subtext \"Describe what you want the graph to generate, and select your output type.\" It bundles the user's prompt with the relevant graph facts (and any selected entities' visual assets) and sends it straight to a generation backend — bypassing the Situation-Target-Proposal scaffolding for creative variety. An explicit toggle removes the STP prompt framing entirely." ;
+               kpred:relates-to   kb:mvg-output-types .
+
+kb:mvg-image-gen rdf:type ktype:Feature ;
+               rdfs:label    "Image generation (recolor / combine / collage)" ;
+               kpred:feature-id   "F58.2" ;
+               kpred:has-status   "speculative" ;
+               kpred:part-of      kb:meta-visual-generation ;
+               kpred:description  "Generate a raster/vector image from the graph: recolor a single source image from a hex fact, merge two or more entity images toward a goal stated in facts or a prompt, or collage a subgraph's images with layout hints from relationships. Requires a text/image->image provider — a cloud image model first; LOCAL diffusion (e.g. SD via WASM/ONNX or Ollama-hosted) is a research question. Reuses the per-entity asset stores (icon2d / preview blobs) as inputs." ;
+               kpred:open-question "Which image backend? Cloud (OpenAI Images / Stability / Replicate) for reach vs. a local diffusion model for the offline-first thesis — likely both, provider-pluggable like the LLM backends." .
+
+kb:mvg-3d-gen rdf:type ktype:Feature ;
+               rdfs:label    "3D asset generation (GLB) via Meshy" ;
+               kpred:feature-id   "F58.3" ;
+               kpred:has-status   "speculative" ;
+               kpred:part-of      kb:meta-visual-generation ;
+               kpred:depends-on   kb:int-meshy ;
+               kpred:description  "Generate a GLB from the graph. Meshy text-to-3d is already integrated (startMeshyGeneration/pollMeshyTask, src/lib/integrations/meshy/meshy.ts) and produces per-entity models today; extend it to (a) build the generation prompt from a subgraph's facts + relationships and (b) use Meshy image-to-3d so an entity's existing image seeds the model. Local 3D generation feasibility is UNKNOWN — Meshy.AI is the near-term path." ;
+               kpred:open-question "Is any local text/image-to-3D model viable in-browser or via a sidecar, or is Meshy (cloud) the only realistic path for now?" .
+
+kb:mvg-output-types rdf:type ktype:Feature ;
+               rdfs:label    "Maximal output types (PNG / PDF / GLB)" ;
+               kpred:feature-id   "F58.4" ;
+               kpred:has-status   "speculative" ;
+               kpred:part-of      kb:meta-visual-generation ;
+               kpred:description  "The generation box lets the user select an output type, aiming for maximal coverage: PNG (image), PDF (composed document — could reuse graph facts + images as a laid-out sheet), and GLB (3D). The chosen type routes to the matching backend (image-gen for PNG, a doc composer for PDF, Meshy for GLB). Outputs land back in the graph as a new entity's asset so they are themselves reviewable and re-usable." .
+
+kb:mvg-asset-assembly rdf:type ktype:Feature ;
+               rdfs:label    "Asset + fact assembly for generation" ;
+               kpred:feature-id   "F58.5" ;
+               kpred:has-status   "speculative" ;
+               kpred:part-of      kb:meta-visual-generation ;
+               kpred:description  "The pipeline that gathers, for a selected entity or subgraph, its visual assets (resolving icon2d / preview / glbModel refs to bytes) AND the facts + relationships among them, then serializes that into a generation context (prompt + reference images/models). This is the graph-side glue every output type shares — the 'describe the output in detail from the graph' step. Builds on context-compression (F25) for the fact side and kb-assets for the binary side." ;
+               kpred:relates-to   kb:context-compression .
+
 # -- Infrastructure entities (completeness) -------------------------------------
 # Defined here because features depend-on them (F22 -> embedding-model,
 # local-offload -> llm-providers) but they had no entity — the graph pointed at
