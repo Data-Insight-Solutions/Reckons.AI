@@ -45,6 +45,7 @@
   import { requestShellyChat, setShellyChatOpen, shellyViewAdjust, clearShellyViewAdjust, shellySpotlight, exploreOpen, startExplore, stopExplore } from '$lib/stores/shelly-bridge.svelte';
   import AdaptivePanel from '$lib/components/AdaptivePanel.svelte';
   import GraphPackagePanel from '$lib/components/GraphPackagePanel.svelte';
+  import { entityProtection } from '$lib/rdf/protected-entities';
   import { isCompact } from '$lib/stores/viewport.svelte';
   import { Popover, ToggleGroup } from 'bits-ui';
   import { analysisRunning, lastAnalysisError } from '$lib/stores/auto-analyze.svelte';
@@ -728,9 +729,17 @@
     selected = null;
   }
 
+  // Deleting some nodes would break features (a type others use, a type
+  // definition, a nav/leap node). Flag those so we always confirm first.
+  const deleteProtection = $derived.by(() =>
+    selected?.startsWith('i:')
+      ? entityProtection(selected.slice(2), statements())
+      : { protected: false as const }
+  );
+
   function deleteSelected() {
     if (!selected) return;
-    if (deleteTargets.length > 1) {
+    if (deleteTargets.length > 1 || deleteProtection.protected) {
       confirmingDelete = true;
     } else {
       confirmDelete();
@@ -1904,9 +1913,12 @@
     <!-- Action row — always visible, at the top (not for source nodes) -->
     {#if !showMergeUI && !showRelationUI && !selected?.startsWith('src:')}
       {#if confirmingDelete}
-        <div class="np-action-row np-action-confirm">
+        <div class="np-action-row np-action-confirm" class:np-action-protected={deleteProtection.protected}>
+          {#if deleteProtection.protected}
+            <span class="np-confirm-warn mono">⚠ are you sure? {deleteProtection.reason}</span>
+          {/if}
           <span class="np-confirm-label mono">delete {deleteTargets.length} fact{deleteTargets.length !== 1 ? 's' : ''}?</span>
-          <button class="np-act-btn np-act-danger" onclick={confirmDelete}>confirm</button>
+          <button class="np-act-btn np-act-danger" onclick={confirmDelete}>{deleteProtection.protected ? 'delete anyway' : 'confirm'}</button>
           <button class="np-act-btn" onclick={() => (confirmingDelete = false)}>cancel</button>
         </div>
       {:else}
@@ -2742,6 +2754,18 @@
   .np-action-confirm {
     align-items: center;
     flex-wrap: nowrap;
+  }
+  /* Protected-entity delete: warn spans a first line, buttons wrap below. */
+  .np-action-protected {
+    flex-wrap: wrap;
+  }
+  .np-confirm-warn {
+    flex-basis: 100%;
+    font-size: 0.64rem;
+    line-height: 1.3;
+    color: #e0a13c;
+    white-space: normal;
+    margin-bottom: 0.3rem;
   }
   .np-confirm-label {
     font-size: 0.67rem;

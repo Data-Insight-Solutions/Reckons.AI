@@ -52,9 +52,9 @@ ktype:Forecast
     p:icon          "torus" ;
     p:color         "#4f9bd9" .
 
-ktype:Route
+ktype:TripLeg
     rdf:type        ktype:EntityType ;
-    rdfs:label      "Route" ;
+    rdfs:label      "Trip Leg" ;
     p:icon          "tetrahedron" ;
     p:color         "#e0a13c" .
 
@@ -154,7 +154,7 @@ kb:wx-june-lake
 
 ## == Routes — each person's drive to each option (two distances per person) ===
 kb:drive-alex-lake-george
-    rdf:type        ktype:Route ;
+    rdf:type        ktype:TripLeg ;
     rdfs:label      "Alex → Lake George" ;
     p:from          kb:alex ;
     p:to            kb:lake-george ;
@@ -163,7 +163,7 @@ kb:drive-alex-lake-george
     p:directions    "https://www.google.com/maps/dir/San+Francisco,+CA/Lake+George,+Mammoth+Lakes,+CA" .
 
 kb:drive-alex-oh-ridge
-    rdf:type        ktype:Route ;
+    rdf:type        ktype:TripLeg ;
     rdfs:label      "Alex → Oh! Ridge" ;
     p:from          kb:alex ;
     p:to            kb:oh-ridge ;
@@ -172,7 +172,7 @@ kb:drive-alex-oh-ridge
     p:directions    "https://www.google.com/maps/dir/San+Francisco,+CA/June+Lake,+CA" .
 
 kb:drive-jordan-lake-george
-    rdf:type        ktype:Route ;
+    rdf:type        ktype:TripLeg ;
     rdfs:label      "Jordan → Lake George" ;
     p:from          kb:jordan ;
     p:to            kb:lake-george ;
@@ -181,7 +181,7 @@ kb:drive-jordan-lake-george
     p:directions    "https://www.google.com/maps/dir/Los+Angeles,+CA/Mammoth+Lakes,+CA" .
 
 kb:drive-jordan-oh-ridge
-    rdf:type        ktype:Route ;
+    rdf:type        ktype:TripLeg ;
     rdfs:label      "Jordan → Oh! Ridge" ;
     p:from          kb:jordan ;
     p:to            kb:oh-ridge ;
