@@ -110,6 +110,32 @@ describe('drive-sync', () => {
     expect(ingestNewKb).toHaveBeenCalledTimes(1);
   });
 
+  it('auto-sync off: a scheduled push is a no-op', async () => {
+    vi.useFakeTimers();
+    localStorage.setItem('reckons:drive-autosync', 'false');
+    registry = [{ id: 'kbase', name: 'g', createdAt: 0 }];
+    const m = await import('../drive-sync.svelte');
+    await m.linkDriveFolder();
+    m.scheduleDrivePush();
+    await vi.advanceTimersByTimeAsync(6000); // past the 5s debounce
+    expect(drive.size).toBe(0);
+    vi.useRealTimers();
+  });
+
+  it('auto-sync on: a scheduled push fires after the debounce', async () => {
+    vi.useFakeTimers();
+    localStorage.setItem('reckons:drive-autosync', 'true');
+    registry = [{ id: 'kbase', name: 'g', createdAt: 0 }];
+    const m = await import('../drive-sync.svelte');
+    expect(m.driveAutoSync()).toBe(true);
+    await m.linkDriveFolder();
+    m.scheduleDrivePush();
+    await vi.advanceTimersByTimeAsync(6000); // 5s debounce fires; 45s poll does not
+    expect(drive.has('g.ttl')).toBe(true);
+    m.stopDrivePolling();
+    vi.useRealTimers();
+  });
+
   it('loop guard: a just-pushed file is not re-imported on the next pull', async () => {
     registry = [{ id: 'kb_x', name: 'x', createdAt: 0 }];
     const m = await import('../drive-sync.svelte');

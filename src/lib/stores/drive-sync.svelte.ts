@@ -15,13 +15,19 @@ import { getRegistry } from '../storage/kb-registry';
 import { settings } from './settings.svelte';
 
 const FOLDER_KEY = 'reckons:drive-folder';
+const AUTOSYNC_KEY = 'reckons:drive-autosync';
 const DEFAULT_FOLDER_NAME = 'Reckons.AI';
+const PUSH_DEBOUNCE_MS = 5_000;   // network write — coalesce bursts of edits
+const POLL_INTERVAL_MS = 45_000;  // cloud pull — gentler than the local 10s poll
 
 let _folderId = $state<string | null>(null);
 let _folderName = $state<string | null>(null);
 let _lastSync = $state<number | null>(null);
 let _syncedCount = $state(0);
 let _busy = $state(false);
+let _autoSync = $state<boolean>(readAutoSyncPref());
+let _pushTimer: ReturnType<typeof setTimeout> | null = null;
+let _pollTimer: ReturnType<typeof setInterval> | null = null;
 /** file path-key → last-seen content hash, to skip re-pulling our own writes. */
 const _seenHashes = new Map<string, string>();
 
@@ -30,8 +36,28 @@ export function driveLinked(): boolean { return _folderId !== null; }
 export function driveLastSync(): number | null { return _lastSync; }
 export function driveSyncedCount(): number { return _syncedCount; }
 export function driveBusy(): boolean { return _busy; }
+export function driveAutoSync(): boolean { return _autoSync; }
 /** True once a Google client id is configured (Settings → Integrations). */
 export function driveConfigured(): boolean { return !!settings().googleClientId; }
+
+function readAutoSyncPref(): boolean {
+  if (typeof localStorage === 'undefined') return false; // default OFF (network + quota)
+  return localStorage.getItem(AUTOSYNC_KEY) === 'true';
+}
+
+/** Refresh the Drive token silently (no popup once consent is granted). Returns
+ *  false if interactive re-auth is needed — callers bail instead of spamming. */
+async function ensureDriveAuth(): Promise<boolean> {
+  const clientId = settings().googleClientId;
+  if (!clientId) return false;
+  try {
+    const { ensureAuth } = await import('../integrations/google/auth');
+    await ensureAuth(clientId);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /** FNV-1a 32-bit hash — cheap change detection for file text. */
 function hashString(s: string): string {
@@ -73,6 +99,7 @@ export async function linkDriveFolder(name: string = DEFAULT_FOLDER_NAME): Promi
     _folderId = id;
     _folderName = name;
     persistFolder();
+    if (_autoSync) startDrivePolling();
     return true;
   } catch (e) {
     console.error('[drive-sync] link failed:', e);
@@ -81,6 +108,8 @@ export async function linkDriveFolder(name: string = DEFAULT_FOLDER_NAME): Promi
 }
 
 export function unlinkDrive(): void {
+  stopDrivePolling();
+  if (_pushTimer) { clearTimeout(_pushTimer); _pushTimer = null; }
   _folderId = null;
   _folderName = null;
   _lastSync = null;
@@ -112,6 +141,7 @@ function fileStem(name: string, id: string): string {
 /** Push every registered KB out to the linked Drive folder. Returns files written. */
 export async function driveSyncPush(): Promise<number> {
   if (!_folderId || _busy) return 0;
+  if (!(await ensureDriveAuth())) return 0;
   _busy = true;
   try {
     const { listFolderTurtles, uploadTurtleToFolder } = await import('../integrations/google/drive');
@@ -146,6 +176,7 @@ export async function driveSyncPull(): Promise<{ imported: string[]; updated: st
   const imported: string[] = [];
   const updated: string[] = [];
   if (!_folderId || _busy) return { imported, updated };
+  if (!(await ensureDriveAuth())) return { imported, updated };
   _busy = true;
   try {
     const { listFolderTurtles, downloadFile } = await import('../integrations/google/drive');
@@ -203,4 +234,31 @@ export async function driveResyncNow(): Promise<{ imported: string[]; updated: s
   const pulled = await driveSyncPull();
   const pushed = await driveSyncPush();
   return { ...pulled, pushed };
+}
+
+// ── Auto-sync (opt-in) ───────────────────────────────────────────────────────
+
+/** Debounced push after a KB mutation. No-op unless linked with auto-sync on. */
+export function scheduleDrivePush(): void {
+  if (!_folderId || !_autoSync) return;
+  if (_pushTimer) clearTimeout(_pushTimer);
+  _pushTimer = setTimeout(() => { _pushTimer = null; void driveSyncPush(); }, PUSH_DEBOUNCE_MS);
+}
+
+/** Poll the Drive folder for external changes (idempotent). */
+export function startDrivePolling(ms: number = POLL_INTERVAL_MS): void {
+  if (_pollTimer || !_folderId || typeof setInterval === 'undefined') return;
+  _pollTimer = setInterval(() => { void driveSyncPull(); }, ms);
+}
+
+export function stopDrivePolling(): void {
+  if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+}
+
+/** Toggle auto-sync (persisted). Starts/stops polling to match. */
+export function setDriveAutoSync(on: boolean): void {
+  _autoSync = on;
+  if (typeof localStorage !== 'undefined') localStorage.setItem(AUTOSYNC_KEY, on ? 'true' : 'false');
+  if (on && _folderId) { void driveSyncPush().finally(() => startDrivePolling()); }
+  else stopDrivePolling();
 }

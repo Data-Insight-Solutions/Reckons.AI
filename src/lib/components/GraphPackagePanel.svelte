@@ -22,6 +22,7 @@
   import {
     driveConfigured, driveLinked, driveFolderName, driveBusy,
     linkDriveFolder, unlinkDrive, driveResyncNow, driveLastSync,
+    driveAutoSync, setDriveAutoSync,
   } from '$lib/stores/drive-sync.svelte';
 
   // Re-count sidecar assets whenever the graph changes.
@@ -167,6 +168,14 @@
         <span class="pkg-stat pkg-ok" title="linked Google Drive folder">☁ {driveFolderName()}/</span>
         <button class="pkg-chip" disabled={busy || driveBusy()} onclick={driveResync}>⟳ resync</button>
         <button class="pkg-chip" disabled={busy || driveBusy()} onclick={unlinkDrive}>unlink</button>
+      </div>
+      <div class="chip-row">
+        <button
+          class="pkg-chip"
+          class:active={driveAutoSync()}
+          onclick={() => setDriveAutoSync(!driveAutoSync())}
+          title="auto-push on edit + poll Drive for changes"
+        >auto-sync {driveAutoSync() ? 'on' : 'off'}</button>
       </div>
       <span class="pkg-note mono">Drive · synced {ago(driveLastSync())}</span>
     {:else}
