@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240" role="img" aria-label="Alex">
+  <defs>
+    <linearGradient id="bgA" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b6cb0"/>
+      <stop offset="1" stop-color="#1a365d"/>
+    </linearGradient>
+  </defs>
+  <rect width="240" height="240" rx="20" fill="url(#bgA)"/>
+  <circle cx="120" cy="96" r="42" fill="#dbeafe"/>
+  <path d="M40 214c0-46 36-74 80-74s80 28 80 74z" fill="#dbeafe"/>
+  <text x="120" y="228" text-anchor="middle" font-family="system-ui, sans-serif" font-size="20" font-weight="700" fill="#e6f0ff">Alex · SF</text>
+</svg>

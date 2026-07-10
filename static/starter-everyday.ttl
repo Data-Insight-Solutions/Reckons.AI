@@ -63,7 +63,8 @@ kb:alex
     rdf:type        ktype:Person ;
     rdfs:label      "Alex" ;
     rdfs:comment    "Drives up from San Francisco. Wants a fair, even meet-up point and would rather not spend the whole weekend behind the wheel." ;
-    p:icon2d        "https://i.pravatar.cc/240?img=13" ;
+    p:icon2d        "/starter-assets/alex.svg" ;
+    p:photo         "/starter-assets/alex.svg" ;
     p:lives-in      kb:san-francisco ;
     p:deciding      kb:the-weekend ;
     p:considering   kb:lake-george ;
@@ -74,7 +75,8 @@ kb:jordan
     rdf:type        ktype:Person ;
     rdfs:label      "Jordan" ;
     rdfs:comment    "Drives up from Los Angeles. Has wanted to shoot the Mammoth Lakes basin at sunrise for years and is happy to pay a little more for it." ;
-    p:icon2d        "https://i.pravatar.cc/240?img=32" ;
+    p:icon2d        "/starter-assets/jordan.svg" ;
+    p:photo         "/starter-assets/jordan.svg" ;
     p:lives-in      kb:los-angeles ;
     p:coming-along  kb:the-weekend ;
     p:considering   kb:lake-george ;

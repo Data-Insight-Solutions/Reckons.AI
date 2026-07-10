@@ -1074,6 +1074,20 @@
 
   <div class="field row-field">
     <div>
+      <span class="lbl mono">always-on previews</span>
+      <p class="hint" style="margin: 0.1rem 0 0;">Show every node's preview image at all times, instead of only on hover or during the story. The graph paints slower with many images.</p>
+    </div>
+    <button
+      class="toggle-btn"
+      class:on={settings().alwaysShowPreviews === true}
+      onclick={() => updateSettings({ alwaysShowPreviews: settings().alwaysShowPreviews !== true })}
+    >
+      {settings().alwaysShowPreviews === true ? 'on' : 'off'}
+    </button>
+  </div>
+
+  <div class="field row-field">
+    <div>
       <span class="lbl mono">tutorial hints</span>
       <p class="hint" style="margin: 0.1rem 0 0;">Show contextual nudges as you use the app for the first time. Dismiss any hint to permanently hide it.</p>
     </div>

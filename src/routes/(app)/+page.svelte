@@ -149,7 +149,7 @@
   $effect(() => {
     const key = hoverTarget;
     const iri = iriFromNodeKey(key);
-    const hasGif = iri != null && gifOverrides().has(iri);
+    const hasGif = previewUrlFor(iri) != null;
     const hasMeta = hoverMeta != null;
 
     if (gifTimer) { clearTimeout(gifTimer); gifTimer = null; }
@@ -811,11 +811,38 @@
     editingIcon3d = false;
   }
 
+  // ── Preview images ──────────────────────────────────────────────────────────
+  // Two sources: editor-assigned blobs (gifOverrides, IndexedDB) and graph-declared
+  // image URLs/paths — a `p:photo` or `meta/gifPreview` literal whose value is a
+  // rooted path ("/starter-assets/alex.svg"), http(s) URL, or data: URI. The latter
+  // lets a plain static .ttl (e.g. the starter graph) ship local photos with no
+  // binary bundling.
+  const PREVIEW_URL_PREDICATES = new Set([
+    'urn:kbase:predicate/photo',
+    'urn:kbase:meta/gifPreview',
+  ]);
+  const previewUrlMap = $derived.by(() => {
+    const m = new Map<string, string>();
+    for (const s of statements()) {
+      if (!PREVIEW_URL_PREDICATES.has(s.p.value)) continue;
+      if (s.s.kind !== 'iri' || s.o.kind !== 'literal') continue;
+      const v = s.o.value;
+      if (v.startsWith('/') || v.startsWith('http') || v.startsWith('data:')) m.set(s.s.value, v);
+    }
+    return m;
+  });
+  /** Resolve an entity's preview image src: editor blob first, then a graph URL. */
+  function previewUrlFor(iri: string | null): string | null {
+    if (!iri) return null;
+    return gifOverrides().get(iri) ?? previewUrlMap.get(iri) ?? null;
+  }
+  /** When on, preview images render on every node (no hover). Slower to paint. */
+  const alwaysPreviews = $derived(settings().alwaysShowPreviews ?? false);
+
   // ── GIF assignment ────────────────────────────────────────────────────────
   const entityGifUrl = $derived.by(() => {
     if (!selected?.startsWith('i:')) return null;
-    const iri = selected.slice(2);
-    return gifOverrides().get(iri) ?? null;
+    return previewUrlFor(selected.slice(2));
   });
 
   async function assignEntityGif(file: File) {
@@ -1710,6 +1737,12 @@
     transition:fade={{ duration: 220 }}
     style="transform: translate3d({n.x}px, {n.y}px, 0); --lfs: {labelFontSize}px; --lop: {n.opacity ?? 0.85};"
   >
+    {#if alwaysPreviews}
+      {@const purl = previewUrlFor(iriFromNodeKey(n.key))}
+      {#if purl}
+        <img class="node-preview-thumb" src={purl} alt="" loading="lazy" />
+      {/if}
+    {/if}
     <span
       class="node-label mono"
       class:hovered={n.key === hoverTarget}
@@ -1755,7 +1788,7 @@
 <!-- Long-hover preview (GIF and/or metadata card) -->
 {#if gifActiveKey}
   {@const activeIri = iriFromNodeKey(gifActiveKey)}
-  {@const gifSrc = activeIri ? gifOverrides().get(activeIri) : null}
+  {@const gifSrc = previewUrlFor(activeIri)}
   {@const activeMeta = hoverMeta?.iri === activeIri ? hoverMeta : null}
   {#if gifSrc || activeMeta}
     <div
@@ -3124,6 +3157,20 @@
     z-index: 10;
     will-change: transform;
     transition: transform 35ms linear;
+  }
+  /* Always-on preview thumbnail: sits centered above the node label. */
+  .node-preview-thumb {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 48px;
+    height: 48px;
+    transform: translate(-50%, calc(-100% - 6px));
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    background: var(--surface);
   }
   /* Inner span: centering + hover scale — separate from position transition */
   .node-label {
