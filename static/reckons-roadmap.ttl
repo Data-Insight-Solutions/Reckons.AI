@@ -1337,3 +1337,88 @@ kb:import-workspace-ux rdf:type ktype:Feature ;
                kpred:description  "Fix the confusing import + workspace/graph-settings experience (user feedback 2026-07-09: 'how horrible the import and workspace/graph settings are right now'). PROBLEMS: (a) graph-data actions (import graphs from folder, sync) live in GLOBAL Settings, far from where graphs are managed; (b) the nav item labelled 'graph' goes to /kb (registry) while the graph VIEW is / — so 'graph settings' has no obvious home; (c) 'sync all graphs now' (WRITE: browser KBs -> folder) reads as the same thing as 'import graphs from folder' (READ: folder -> browser), and the count/'3 graphs' compounds the confusion; (d) importing a bare .ttl silently loses binary assets (icons/previews/models) — folder import restores them (partly addressed: an import-time warning now points to folder import). DIRECTION: (1) surface graph import/export ON the graph page (/kb) where graphs are managed — the user's choice — keeping detailed workspace CONFIG in Settings; (2) clearly separate and label the two DIRECTIONS (push-to-folder vs pull-from-folder) with plain wording and per-direction affordances; (3) make import asset-aware (prefer conventional kbs/{name}/ folders that carry assets; warn on loose/bare .ttl); (4) reconsider naming ('graph' nav vs graph view). Relates to F48 (Sveltia edit routing, the other workspace-branch surface), F27 publishing, and the recursive folder-discovery fix. Small deterministic wins land first; the fuller IA rework is scoped here." ;
                kpred:relates-to   kb:sveltia-edit-mapping ;
                kpred:relates-to   kb:graph-publishing .
+
+# -- Review-Anchored Generation (F51) ------------------------------------------
+# The product thesis, stated (2026-07-09). RAG retrieves slivers from large text
+# because knowledge is TRAPPED in prose. Invert it: store REVIEWED facts, and
+# generate whatever prose a context needs, on demand. Review the compression;
+# generate the expansion.
+
+kb:review-anchored-generation rdf:type ktype:Feature ;
+               rdfs:label    "Review-Anchored Generation" ;
+               kpred:feature-id   "F51" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:principle    "The graph of reviewed facts is the scarce, canonical input; text (docs, pages, prose) is a cheap, disposable, context-tailored OUTPUT generated from it. Store and review facts, not prose." ;
+               kpred:principle    "Every generated sentence MUST trace back to a confirmed triple. Generation that invents a claim not in the graph reintroduces hallucination at the render step — the inversion only works married to grounded generation + provenance (ETHICS_PREAMBLE, Shelly's 'only from your triples')." ;
+               kpred:principle    "Not all knowledge compresses to clean triples (tone, hedges, the 'because'). That irreducible nuance is what change-notes hold: canonical facts (fully regenerable) + human prose (the nuance that can't be re-derived)." ;
+               kpred:description  "Make the RAG-inversion the explicit architecture thesis and hold the system to it: one reviewed fact renders to a tooltip, a paragraph, a warning, a page, a PR description — near-infinite surface, one reviewed source. Builds on context-compression (F25, the compress pipeline) and graph-publishing (F27, graph -> pages); the irreducible-nuance case is change-notes (F44). The moat is the grounding constraint, not the generation." ;
+               kpred:depends-on   kb:context-compression ;
+               kpred:relates-to   kb:graph-publishing ;
+               kpred:relates-to   kb:change-notes .
+
+# -- Control Model (F52) -------------------------------------------------------
+# Control is the product. Alignment is a smoke detector, not a thermostat; the
+# human holds the fact-edit right; divergence between graphs is often intentional
+# focus, not error; adoption cost is paid down via familiar outputs.
+
+kb:control-model rdf:type ktype:Feature ;
+               rdfs:label    "Control Model — the agent-edit boundary" ;
+               kpred:feature-id   "F52" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:principle    "Alignment is a TRIGGER for human review, not a goal to optimise. The instant an agent can edit the graph to raise its own alignment score, the score measures nothing (Goodhart). Alignment must summon a human at a discrepancy; it must never auto-resolve or let an agent self-serve." ;
+               kpred:principle    "The human holds the fact-edit right. Agents PROPOSE (pending) on knowledge/facts and may edit plan/code/roadmap TTL directly — that boundary is control, and today it is convention, not enforcement. Make it a wall: fact-level agent writes go through review." ;
+               kpred:principle    "Divergence between two graphs is often intentional FOCUS, not drift. A 'misalignment' is a question ('these disagree — on purpose?'), never an auto-reconcile." ;
+               kpred:principle    "Deliver control seamlessly: keep traditional outputs (web pages, markdown) so switching cost from the traditional method to the knowledge-graph method is near zero. Documentation is one render of the knowledge; implementation accuracy and speed is another." ;
+               kpred:description  "The enforced boundary of what an agent may write directly (plan/code) vs. only propose (facts, pending review), with alignment reframed as a discrepancy detector and cross-graph divergence treated as a question. The key differentiating feature. Relates to cross-KB alignment (F16), git-analysis (F24), the review workflow, change-notes (F44), and the release pipeline (F33)." ;
+               kpred:relates-to   kb:cross-kb-alignment ;
+               kpred:relates-to   kb:git-analysis ;
+               kpred:relates-to   kb:change-notes ;
+               kpred:relates-to   kb:release-pipeline .
+
+# -- Review at Scale / Attention (F53) -----------------------------------------
+# Review has an attention budget. Spend it on the few contested decisions, not
+# the many obvious facts — or the human auto-accepts and review becomes theatre.
+
+kb:review-attention rdf:type ktype:Feature ;
+               rdfs:label    "Review at Scale — spotlight the decisions" ;
+               kpred:feature-id   "F53" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:principle    "Granularity breeds rubber-stamping. A review list that is too fine trains the human to 'accept all' — condense decisions to a manageable few at a time." ;
+               kpred:principle    "Spend attention on disagreement, not agreement. Fresh, uncontested facts should flow through quietly; CONFLICTS and DECISIONS get the spotlight." ;
+               kpred:principle    "Tenure anchors perspective. The longer a graph is worked, the more its established intention frames new facts — adding to an OLD graph pulls new triples toward the old view (drift). Surface that pull; adding fresh triples is not the same as extending an anchored graph." ;
+               kpred:description  "Redesign the review surface around the attention budget: condense to a few decisions, promote conflicts/contested changes, quiet the uncontested, and flag tenure-driven drift on an established graph. Onboarding is this same problem at t=0 (see soft-onboarding). Relates to the review workbench (F30) and partial facts (F32)." ;
+               kpred:relates-to   kb:review-workbench ;
+               kpred:relates-to   kb:partial-facts .
+
+# -- Soft Onboarding (F54) -----------------------------------------------------
+# The review-at-scale principle applied to the first run: a few nodes and ONE
+# decision, not the concept-dense docs graph. Shipped 2026-07-09 (PR #79).
+
+kb:soft-onboarding rdf:type ktype:Feature ;
+               rdfs:label    "Soft Onboarding — the everyday starter graph" ;
+               kpred:feature-id   "F54" ;
+               kpred:has-status   "functional" ;
+               kpred:in-dev       "2026-07-09"^^xsd:date ;
+               kpred:description  "The 'Getting started' button loads a tiny everyday graph (static/starter-everyday.ttl — 'This Weekend': 5 nodes, one real tension where the cheaper cabin books out while Sam wants the pricier rainy coast) as CONFIRMED facts, and opens Shelly's guided tour, instead of the 300+ statement concept-dense documentation graph. The full docs graph is demoted to a quiet secondary link. Softens the first impression by condensing to a few nodes and one interesting decision — the F53 principle at t=0. Shipped in PR #79." ;
+               kpred:relates-to   kb:review-attention ;
+               kpred:relates-to   kb:knowledge-graph .
+
+# -- Infrastructure entities (completeness) -------------------------------------
+# Defined here because features depend-on them (F22 -> embedding-model,
+# local-offload -> llm-providers) but they had no entity — the graph pointed at
+# nothing. Shipped/production infrastructure.
+
+kb:embedding-model rdf:type ktype:Feature ;
+               rdfs:label    "Embedding Model" ;
+               kpred:has-status   "production" ;
+               kpred:description  "In-browser semantic embeddings via BGE-small-en-v1.5 (33MB, 384d, q8) through @huggingface/transformers (src/lib/embed.ts). Runtime-switchable via VITE_EMBEDDING_MODEL (MODEL_SIZES table); powers similarity, entity normalisation (F22), disambiguation, and search. Cached after first load — fully offline." ;
+               kpred:relates-to   kb:knowledge-graph .
+
+kb:llm-providers rdf:type ktype:Feature ;
+               rdfs:label    "LLM Providers" ;
+               kpred:has-status   "production" ;
+               kpred:description  "Pluggable LLM backends (src/lib/integrations/llm/): claude, openai, gemini, ollama, wasm (in-browser via @huggingface/transformers), reckons (hosted proxy), openrouter, chrome-ai, plus mock/manual. Per-task selection (ingest / analyze / chat / diffSummary / mergeAnalysis); wasm auto-fallback when a chosen cloud backend has no key. ETHICS_PREAMBLE is injected into every provider's system prompt." ;
+               kpred:relates-to   kb:knowledge-graph .
