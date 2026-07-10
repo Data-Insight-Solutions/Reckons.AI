@@ -24,6 +24,7 @@
     "build:extension": "vite build --config vite.extension.config.ts",
     "dev:extension": "vite build --config vite.extension.config.ts --watch",
     "test:extension": "npm run build:extension && playwright test --config=playwright.extension.config.ts",
+    "test:live": "playwright test --config=playwright.visual.config.ts context-gathering-live --project=chromium",
     "test": "vitest",
     "test:run": "vitest run",
     "coverage": "vitest run --coverage",

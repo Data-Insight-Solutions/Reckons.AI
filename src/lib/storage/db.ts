@@ -362,8 +362,12 @@ export async function getSettings(): Promise<SettingsRecord> {
     if (testBackend) {
       base.preferredBackend = testBackend;
       base.ingestBackend = testBackend as SettingsRecord['ingestBackend'];
+      base.analyzeBackend = testBackend as SettingsRecord['analyzeBackend'];
       base.chatBackend = testBackend as SettingsRecord['chatBackend'];
     }
+    // Pin the Ollama model for live-LLM tests (installed tags differ per machine).
+    const testOllamaModel = localStorage.getItem('__reckons_test_ollama_model__');
+    if (testOllamaModel) base.ollamaModel = testOllamaModel;
   }
   return base;
 }
