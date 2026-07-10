@@ -669,11 +669,12 @@ kb:cross-kb-alignment rdf:type ktype:Feature ;
 
 kb:n8n-cloud-sync rdf:type ktype:Feature ;
                rdfs:label   "n8n Cloud Sync" ;
-               kpred:has-status   "production" ;
+               kpred:has-status   "scaffolded" ;
                kpred:feature-id   "F20" ;
                kpred:description  "Private, self-hosted cloud sync via n8n VPS. Upload, download, and monitor graphs from any device. No SaaS dependency." ;
                kpred:has-workflow  kb:n8n-sync-hub ;
-               kpred:has-workflow  kb:n8n-source-monitor .
+               kpred:has-workflow  kb:n8n-source-monitor ;
+               kpred:remaining    "APP-SIDE WIRING GAP (found 2026-07-10): the n8n workflows are deployed on the VPS and the integration code exists (src/lib/integrations/n8n/currents-sync.ts: registerCurrent / fetchCurrentItems / fetchCurrentDirect) plus a settings.n8nBaseUrl field, but NONE of it is called from the app outside tests — no Settings UI to set the n8n endpoint, no trigger to upload/download a graph via the Sync Hub, and currents don't register/pull through the n8n Currents Monitor. Status downgraded production -> scaffolded to reflect that the server side is done but the client side is not integrated. Remaining: (1) Settings → Integrations field for n8nBaseUrl; (2) wire graph upload/download to the Sync Hub webhooks; (3) wire currents register/items to the Currents Monitor (F29.2); (4) end-to-end verification against the live VPS." .
 
 kb:n8n-sync-hub rdf:type   ktype:Concept ;
                rdfs:label   "Graph Sync Hub" ;
@@ -936,9 +937,10 @@ kb:int-hume    rdf:type     ktype:Tool ;
 
 kb:int-indico  rdf:type     ktype:Tool ;
                rdfs:label   "Indico" ;
-               kpred:has-status   "production" ;
+               kpred:has-status   "functional" ;
                kpred:provides     "event ingest" ;
-               kpred:provides     "category sync" .
+               kpred:provides     "category sync" ;
+               kpred:remaining    "App-side wiring EXISTS (unlike n8n): ingest 'calendar' tab imports Indico events (src/lib/integrations/indico/{client,sync,ical-parse,indico-rdf}.ts) and the layout accepts an ?indico= param -> settings.indicoServerUrl. Status production -> functional pending end-to-end verification against the live Indico server: confirm the auth/API-token path (createIndicoClient), error surfacing on a bad server/token, and category sync coverage. Open question: is background/periodic Indico sync wanted, or is manual import from the ingest tab sufficient? Reuses the same calendar plumbing as Google Calendar + iCal." .
 
 kb:int-meshy   rdf:type     ktype:Tool ;
                rdfs:label   "Meshy.AI" ;
@@ -1532,6 +1534,32 @@ kb:mvg-asset-assembly rdf:type ktype:Feature ;
                kpred:part-of      kb:meta-visual-generation ;
                kpred:description  "The pipeline that gathers, for a selected entity or subgraph, its visual assets (resolving icon2d / preview / glbModel refs to bytes) AND the facts + relationships among them, then serializes that into a generation context (prompt + reference images/models). This is the graph-side glue every output type shares — the 'describe the output in detail from the graph' step. Builds on context-compression (F25) for the fact side and kb-assets for the binary side." ;
                kpred:relates-to   kb:context-compression .
+
+# -- Spatial / Map Force Layout (F59) ------------------------------------------
+# A new force mode that positions nodes by real-world LOCATION, not just graph
+# relation. Raised 2026-07-10. The existing force modes (free/focus/source/type/
+# hub/timeline/order/hierarchy in src/lib/3d/KnowledgeGraph.svelte) all lay out by
+# relationship; this one lays out by coordinates, and shows physical DISTANCE.
+# The starter graph already carries the input: p:coordinates "lat, lon" on the
+# campgrounds (and lat/lon in the NWS forecast URLs).
+
+kb:spatial-force-layout rdf:type ktype:Feature ;
+               rdfs:label    "Spatial / map force layout" ;
+               kpred:feature-id   "F59" ;
+               kpred:has-status   "speculative" ;
+               kpred:principle    "Some concepts are best seen by RELATION (the current force modes); others by LOCATION. A place with GPS coordinates has a true position — the graph should be able to honour it, and show real physical distance, without forcing every other node onto a map." ;
+               kpred:description  "Add a 'map' / 'place' force mode alongside the existing ones. Nodes with location facts are positioned by their coordinates; nodes without stay related-but-loose (or hidden) so mixed graphs still read. The mode DISPLAYS physical distance (e.g. the 327 mi / 5h drives in the starter graph) rather than spring-relation distance. Scale-aware: GPS is assumed to be on Earth's surface, so render with Earth's curvature + scale; astronomical coordinates place nodes in space (solar-system scale). Also the umbrella for improving how the starter graph reads across ALL force modes (it exercises timeline via scheduled-at/ends-at, type via its custom types, hub via people<->options, and now map via coordinates)." ;
+               kpred:relates-to   kb:entity-types ;
+               kpred:open-question "Portable plain-text location format — UNDECIDED. Must be plain text and easily portable. Accept multiple input formats (decimal lat/lon, DMS, geo: URIs, maybe WKT/GeoJSON-as-text) and normalise; the graph assumes bare GPS = Earth surface. Which canonical predicate(s) — reuse p:coordinates, or a typed geo predicate?" ;
+               kpred:open-question "Earth model: how much geodesy is worth it (great-circle distance + a globe mesh) vs. a simple projected plane for small extents? Solar-system / space scale is a stretch goal." .
+
+kb:int-game-engine rdf:type  ktype:Tool ;
+               rdfs:label    "Open-source game engine (spatial rendering)" ;
+               kpred:feature-id   "F59.1" ;
+               kpred:has-status   "speculative" ;
+               kpred:part-of      kb:spatial-force-layout ;
+               kpred:description  "Consider an open-source game engine as an integration for richer spatial/3D rendering (globe, terrain, scale, physics) beyond what the in-app three.js view does — e.g. Godot (web export), Bevy (wasm), or a three.js/globe.gl layer that stays in-process. NO server exists for this yet (unlike the n8n + Indico servers), so it is roadmap-first. Weigh an in-process wasm/three approach (keeps the offline-first, no-server thesis) against a heavier engine that would need hosting." ;
+               kpred:open-question "In-process (globe.gl / three-globe / Bevy-wasm, no server) vs. a hosted engine — the no-server, offline-first constraint strongly favours in-process." .
 
 # -- Infrastructure entities (completeness) -------------------------------------
 # Defined here because features depend-on them (F22 -> embedding-model,
