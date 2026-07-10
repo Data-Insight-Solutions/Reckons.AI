@@ -23,6 +23,7 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "build:extension": "vite build --config vite.extension.config.ts",
     "dev:extension": "vite build --config vite.extension.config.ts --watch",
+    "test:extension": "npm run build:extension && playwright test --config=playwright.extension.config.ts",
     "test": "vitest",
     "test:run": "vitest run",
     "coverage": "vitest run --coverage",
