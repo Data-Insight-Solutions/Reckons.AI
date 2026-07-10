@@ -20,6 +20,7 @@
   let loadingStarter = $state(false);
   let docsError = $state<string | null>(null);
   let loadingExample = $state<string | null>(null);
+  let loadingVisualReview = $state(false);
 
   // Track core module loading (Kokoro TTS voice model)
   let kokoroStatus = $state<'idle' | 'loading' | 'ready' | 'error'>('idle');
@@ -72,6 +73,27 @@
       goto('/');
     } finally {
       loadingStarter = false;
+    }
+  }
+
+  // One-click visual-test review: load the demo visual-test story (four captured
+  // screens with assertions + verdicts) as confirmed facts and open Shelly, who
+  // flips into review mode (F34 / PR #77) — walking the screens and asking you to
+  // confirm or flag each. Regenerate the real thing with `npm run test:crawl`.
+  async function openVisualReview() {
+    loadingVisualReview = true;
+    try {
+      const res = await fetch('/starter-visual-review.ttl');
+      if (!res.ok) throw new Error(`Failed to fetch visual-review story: ${res.status}`);
+      const ttl = await res.text();
+      const { statements, sources } = await importTurtleFull(ttl);
+      for (const src of sources) await addSource(src);
+      const confirmed = statements.map((s) => ({ ...s, status: 'confirmed' as const }));
+      if (confirmed.length) await addStatements(confirmed, 'visual-review');
+      startExplore(); // Shelly detects the visual-test steps → review mode
+      goto('/');
+    } finally {
+      loadingVisualReview = false;
     }
   }
 
@@ -361,6 +383,22 @@
           {/if}
         </button>
       {/each}
+
+      <button
+        class="template-card"
+        onclick={openVisualReview}
+        disabled={loadingVisualReview}
+      >
+        <span class="tmpl-icon">🔍</span>
+        <strong class="tmpl-label">Review a visual test</strong>
+        <p class="tmpl-desc">Four captured screens of the core flow — Shelly walks you through, screen by screen, to confirm or flag each.</p>
+        <span class="tmpl-scenario mono">Shelly review mode · screenshots + verdicts</span>
+        {#if loadingVisualReview}
+          <span class="tmpl-loading mono">loading...</span>
+        {:else}
+          <span class="tmpl-cta">Start review →</span>
+        {/if}
+      </button>
 
       <button
         class="template-card template-blank"
