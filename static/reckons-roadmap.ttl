@@ -507,9 +507,19 @@ kb:grant-discovery-currents rdf:type ktype:Feature ;
 
 kb:grant-seeker-profile rdf:type ktype:Feature ;
                rdfs:label   "Grant-seeker profile (graph shape)" ;
-               kpred:has-status   "planned" ;
+               kpred:has-status   "scaffolded" ;
                kpred:relates-to   kb:grant-discovery-currents ;
-               kpred:description  "A small, standard subgraph describing what an org is eligible for and seeking: mission, focus areas, served populations, geography, budget range, org type (501c3 etc.), and deadlines-watch. It's ordinary graph data the org already curates; the scheduled scrape reads it (via the synced TTL / kb:published-ttl) to target searches. Ship a starter profile the two example nonprofits can fill in." .
+               kpred:description  "A small, standard subgraph describing what an org is eligible for and seeking: focus areas, served populations, geography, funding need, org type (501c3 etc.). The scheduled scrape reads it (via synced TTL / kb:published-ttl) to target searches. Shipped a starter graph (static/starter-grants.ttl) with the two real examples: Ava Lions Club → Food Tokens (a piloted redeemable-token system for food-insecure residents), and Ava Growers Project (Saturday town-square market) → Farm Equipment for the President/VP/member farms to raise local produce capacity." ;
+               kpred:example      "static/starter-grants.ttl — kb:lions-profile, kb:growers-profile." ;
+               kpred:relates-to   kb:partial-facts .
+
+kb:growing-filter-set rdf:type ktype:Feature ;
+               rdfs:label   "Growing filter set (requirements → questions → sharper profile)" ;
+               kpred:has-status   "planned" ;
+               kpred:relates-to   kb:grant-seeker-profile ;
+               kpred:relates-to   kb:partial-facts ;
+               kpred:description  "The profile need not be complete up front — it grows one real requirement at a time. When a scraped grant CALL raises a requirement the profile can't yet answer (annual budget? 501c3 status? equipment new/used? residents served?), the scrape posts it as a PARTIAL fact (F32: object '?' + a question) on the profile. Answering it in Review both unblocks that call and permanently sharpens every future search — a filter that accretes from the funders' own asks. Starter graph seeds several such p:… '?' facts on both profiles. Mechanic: knowledge.pending.jsonl question entries (drainWorkspacePending) → partial facts → answer-flow-back." ;
+               kpred:depends-on   kb:partial-facts .
 
 kb:n8n-review-notifications rdf:type ktype:Feature ;
                rdfs:label   "n8n review notifications (email me when there's something to review)" ;
