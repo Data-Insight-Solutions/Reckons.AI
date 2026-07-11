@@ -114,7 +114,10 @@
     const c = new Color(hex);
     const hsl = { h: 0, s: 0, l: 0 };
     c.getHSL(hsl);
-    c.setHSL(hsl.h, Math.min(hsl.s * 1.25, 1.0), Math.min(hsl.l * 1.55, 0.90));
+    // Lift the highlight but keep its hue readable — a gentle saturation bump and a
+    // modest lightness lift (capped well below white) so the tone survives rather
+    // than washing out under the emissive glow.
+    c.setHSL(hsl.h, Math.min(hsl.s * 1.12, 1.0), Math.min(hsl.l * 1.22, 0.68));
     return '#' + c.getHexString();
   }
 
@@ -192,7 +195,7 @@
   const emissiveIntensity = $derived.by(() => {
     if (selected) return 1.4;
     if (focusDimmed) return 0.15;
-    if (highlighted) return 1.2;
+    if (highlighted) return 0.7; // gentle glow — enough to pop, not so bright it washes the hue to white
     if (dimMode) return 0;
     if (focusHop !== null && focusHop > 0) return focusHopEmissive(focusHop);
     return 0.55;
