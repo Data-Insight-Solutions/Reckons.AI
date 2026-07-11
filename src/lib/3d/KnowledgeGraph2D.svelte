@@ -6,7 +6,7 @@
    */
   import { onMount, onDestroy } from 'svelte';
   import type { Statement } from '$lib/rdf/types';
-  import { termKey, isIRI, isLit, isMetaPredicate } from '$lib/rdf/types';
+  import { termKey, isIRI, isLit, isMetaPredicate, displayLiteralLabel } from '$lib/rdf/types';
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { RDF_TYPE, RDFS_LABEL, type EntityTypeDef, type GeometryName } from '$lib/rdf/entity-types';
   import { leapNodeKeys } from '$lib/rdf/kb-leap';
@@ -230,7 +230,7 @@
           const val = term.value ?? '';
           const fullVal = isLiteral ? val : undefined;
           const label = isIRI(term) ? val.split('/').pop() ?? val
-            : isLiteral ? (val.length > 48 ? val.slice(0, 45) + '...' : val)
+            : isLiteral ? displayLiteralLabel(val)
             : `_:${val}`;
           const c = nodePositionCache.get(k);
           const x = c?.x ?? (spawnCenter?.x ?? 0) + (Math.random() - 0.5) * 8;

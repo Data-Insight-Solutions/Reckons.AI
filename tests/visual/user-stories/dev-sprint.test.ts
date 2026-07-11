@@ -109,7 +109,7 @@ test.describe('User Story: Developer Sprint Planning', () => {
     await page.waitForTimeout(1500);
 
     // Switch to align tab
-    const alignTab = page.locator('button').filter({ hasText: /^align$/i });
+    const alignTab = page.locator('.rp-tabs button').filter({ hasText: 'align' });
     await expect(alignTab).toBeVisible({ timeout: 5_000 });
     await alignTab.click();
     await page.waitForTimeout(500);
@@ -128,7 +128,7 @@ test.describe('User Story: Developer Sprint Planning', () => {
     await page.waitForTimeout(1500);
 
     // Switch to align tab
-    await page.locator('button').filter({ hasText: /^align$/i }).click();
+    await page.locator('.rp-tabs button').filter({ hasText: 'align' }).click();
     await page.waitForTimeout(500);
 
     // Click the first available KB chip to select it
@@ -158,7 +158,7 @@ test.describe('User Story: Developer Sprint Planning', () => {
     await page.goto(`${APP}/review`);
     await page.waitForTimeout(1500);
 
-    await page.locator('button').filter({ hasText: /^align$/i }).click();
+    await page.locator('.rp-tabs button').filter({ hasText: 'align' }).click();
     await page.waitForTimeout(500);
 
     // Select first KB
@@ -197,7 +197,7 @@ test.describe('User Story: Developer Sprint Planning', () => {
     await page.goto(`${APP}/review`);
     await page.waitForTimeout(1500);
 
-    await page.locator('button').filter({ hasText: /^align$/i }).click();
+    await page.locator('.rp-tabs button').filter({ hasText: 'align' }).click();
     await page.waitForTimeout(500);
 
     const firstChip = page.locator('.kp-chip').first();

@@ -48,13 +48,24 @@ async function waitForHook(page: Page) {
   await page.waitForFunction(() => !!(window as any).__reckonsWorkspace, undefined, { timeout: 10_000 });
 }
 
+/** The graph-package / folder-sync controls live in a collapsed-by-default
+ * disclosure in the filter panel. Open it before asserting those controls. */
+async function openPackageDisclosure(page: Page) {
+  const summary = page.locator('.pkg-disclosure > summary');
+  await expect(summary).toBeVisible({ timeout: 10_000 });
+  const isOpen = await page.locator('.pkg-disclosure[open]').count();
+  if (!isOpen) { await summary.click(); await page.waitForTimeout(200); }
+}
+
 test.describe('Local Folder Sync', () => {
   test('graph-package menu shows folder-sync controls', async ({ page }) => {
     await clearAllKbs(page);
     await seedStarterGraph(page);
 
     await test.step('graph menu renders the package panel', async () => {
-      // The graph-package section is part of the always-on "Filters & layout" panel.
+      // The graph-package section is a collapsed disclosure in the always-on
+      // "Filters & layout" panel — open it to reveal the folder-sync controls.
+      await openPackageDisclosure(page);
       await expect(page.getByText('folder sync', { exact: false }).first()).toBeVisible({ timeout: 10_000 });
       await expect(page.getByText(/graph package/i).first()).toBeVisible();
       await screenshotTo(page, 'graph-sync', '01-package-panel-unlinked');
@@ -98,6 +109,7 @@ test.describe('Local Folder Sync', () => {
 
     await test.step('panel reflects the connected/synced state', async () => {
       await page.waitForTimeout(500);
+      await openPackageDisclosure(page);
       await expect(page.getByText(/resync now/i).first()).toBeVisible({ timeout: 10_000 });
       await screenshotTo(page, 'graph-sync', '02-package-panel-connected');
     });

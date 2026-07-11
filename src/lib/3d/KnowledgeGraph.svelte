@@ -13,7 +13,7 @@
   import { interactivity, OrbitControls } from '@threlte/extras';
   import * as THREE from 'three';
   import type { Statement } from '$lib/rdf/types';
-  import { termKey, isIRI, isLit, isMetaPredicate } from '$lib/rdf/types';
+  import { termKey, isIRI, isLit, isMetaPredicate, displayLiteralLabel } from '$lib/rdf/types';
   import GraphNode from '$lib/components/GraphNode.svelte';
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { RDF_TYPE, RDFS_LABEL, type EntityTypeDef } from '$lib/rdf/entity-types';
@@ -229,7 +229,7 @@
           const label = isIRI(term)
             ? term.value.split('/').pop() ?? term.value
             : isLiteral
-              ? (term.value.length > 48 ? term.value.slice(0, 45) + '...' : term.value)
+              ? displayLiteralLabel(term.value)
               : `_:${term.value}`;
           // Reuse cached position so filter toggles don't scatter the graph;
           // fall back to a random spawn only for genuinely new nodes.

@@ -56,7 +56,7 @@ test.describe('NavBar', () => {
     await expect(links.first()).toBeVisible();
 
     // Text: expected labels
-    const text = await analyzeText(page, ['graph', 'review', 'ingest']);
+    const text = await analyzeText(page, ['graph', 'review', 'add']);
     expect(text.expectedMissing).toHaveLength(0);
 
     // AI semantic analysis (gated on API key)

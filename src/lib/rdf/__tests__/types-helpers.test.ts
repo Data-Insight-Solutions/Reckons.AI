@@ -3,7 +3,7 @@ import {
   iri, lit, bnode,
   isIRI, isLit, isBNode,
   termToString, termKey, tripleKey, quadKey,
-  isMetaPredicate,
+  isMetaPredicate, displayLiteralLabel,
   PREDICATE_PREFIX, META_PREFIX, NAV_PREFIX,
 } from '../types';
 
@@ -184,6 +184,31 @@ describe('isMetaPredicate', () => {
 
   it('returns false for rdf:type', () => {
     expect(isMetaPredicate('http://www.w3.org/1999/02/22-rdf-syntax-ns#type')).toBe(false);
+  });
+
+  it('hides presentation image predicates (icon2d / photo) so their data-URI/URL object never becomes a node', () => {
+    expect(isMetaPredicate('urn:kbase:predicate/icon2d')).toBe(true);
+    expect(isMetaPredicate('urn:kbase:predicate/photo')).toBe(true);
+  });
+});
+
+// ── displayLiteralLabel ──────────────────────────────────────────────────────
+
+describe('displayLiteralLabel', () => {
+  it('collapses http(s) URLs to their host without www', () => {
+    expect(displayLiteralLabel('https://www.google.com/maps/place/Los+Angeles,+CA')).toBe('🔗 google.com');
+    expect(displayLiteralLabel('http://forecast.weather.gov/MapClick.php?lat=37')).toBe('🔗 forecast.weather.gov');
+  });
+
+  it('collapses data: URIs to a type glyph', () => {
+    expect(displayLiteralLabel('data:image/jpeg;base64,/9j/4AAQSkZ')).toBe('🖼 image');
+    expect(displayLiteralLabel('data:text/plain,hello')).toBe('📎 data');
+  });
+
+  it('truncates long plain literals and leaves short ones untouched', () => {
+    expect(displayLiteralLabel('$28')).toBe('$28');
+    const long = 'x'.repeat(60);
+    expect(displayLiteralLabel(long)).toBe('x'.repeat(45) + '...');
   });
 });
 
