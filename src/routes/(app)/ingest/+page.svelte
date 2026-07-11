@@ -145,20 +145,43 @@
     const isImage = file.type.startsWith('image/');
     const mistralKey = settings().mistralApiKey;
 
-    if ((isPdf || isImage) && mistralKey) {
-      busy = true;
-      phase = 'parsing with mistral ocr…';
+    async function ocrLocally(f: File): Promise<boolean> {
+      phase = 'reading text locally (OCR)…';
       try {
-        const { parsePdfWithMistralOCR } = await import('$lib/integrations/parsers/mistral-ocr');
-        docText = await parsePdfWithMistralOCR(file, mistralKey);
+        const { ocrImageLocal } = await import('$lib/integrations/parsers/local-ocr');
+        docText = await ocrImageLocal(f, (pct) => { phase = `reading text locally (OCR) ${pct}%…`; });
+        return true;
       } catch (err) {
-        error = err instanceof Error ? err.message : String(err);
-        busy = false;
-        phase = '';
-        return;
+        error = `Local OCR failed: ${err instanceof Error ? err.message : String(err)}`;
+        return false;
+      }
+    }
+
+    if (isPdf || isImage) {
+      busy = true;
+      // Prefer Mistral (higher quality) when a key is set; fall back to LOCAL
+      // OCR for images when it fails or when no key is configured — so image
+      // text extraction always works offline, no key required.
+      if (mistralKey) {
+        phase = 'parsing with mistral ocr…';
+        try {
+          const { parsePdfWithMistralOCR } = await import('$lib/integrations/parsers/mistral-ocr');
+          docText = await parsePdfWithMistralOCR(file, mistralKey);
+        } catch (err) {
+          if (isImage) {
+            await ocrLocally(file); // Mistral failed (e.g. offline/CSP) — read it locally.
+          } else {
+            error = `PDF OCR failed: ${err instanceof Error ? err.message : String(err)}`;
+          }
+        }
+      } else if (isImage) {
+        await ocrLocally(file);
+      } else {
+        error = 'PDF text extraction needs a Mistral API key (Settings → Integrations). Images work offline.';
       }
       busy = false;
       phase = '';
+      if (error) return;
     } else {
       docText = await file.text();
     }
@@ -910,7 +933,7 @@
       <span class="lbl mono">upload file</span>
       <input type="file" accept=".txt,.md,.markdown,.json,.csv,.pdf,text/*,image/*,application/pdf" onchange={onFile} />
       {#if !settings().mistralApiKey}
-        <p class="hint">PDFs and images require a Mistral API key — set it in <a href="/settings/integrations">Settings → Integrations</a>.</p>
+        <p class="hint">Images are read <strong>locally (offline OCR)</strong> — no key needed. PDFs need a Mistral API key — set it in <a href="/settings/integrations">Settings → Integrations</a>.</p>
       {/if}
     </label>
     {#if docText}
