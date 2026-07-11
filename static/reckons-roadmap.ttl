@@ -436,6 +436,49 @@ kb:graph-publishing rdf:type ktype:Feature ;
                kpred:supports     "Embeddable images (Sveltia media_folder) and the rest of Sveltia's CMS widgets remain available for hand-editing." ;
                kpred:credits      "Sveltia CMS — github.com/sveltia/sveltia-cms (MIT). Used as an external dependency; consider sponsoring." .
 
+## -- Published-graph exchange: publish → discover → zero-LLM re-ingest → subscribe --
+## The loop: a Reckons.AI page already IS a graph, so anything it publishes carries
+## its own TTL. Readers can Add it straight to their own graph as pending facts with
+## no LLM extraction, and can subscribe so pods surface the publisher's new facts.
+kb:published-graph-exchange rdf:type ktype:Feature ;
+               rdfs:label   "Published-Graph Exchange (F72)" ;
+               kpred:feature-id   "F72" ;
+               kpred:has-status   "planned" ;
+               kpred:relates-to   kb:graph-publishing ;
+               kpred:relates-to   kb:currents ;
+               kpred:description  "Close the loop so Reckons.AI publishers and subscribers exchange GRAPHS, not scraped prose. Four parts: self-describing TTL on every published page (kb:published-ttl), zero-LLM Add-from-URL when the target is a Reckons graph (kb:ttl-aware-ingest), publisher subscriptions polled by pods (kb:publisher-subscriptions), and richer calendar management (kb:calendar-management)." ;
+               kpred:has-part     kb:published-ttl ;
+               kpred:has-part     kb:ttl-aware-ingest ;
+               kpred:has-part     kb:publisher-subscriptions ;
+               kpred:has-part     kb:calendar-management .
+
+kb:published-ttl rdf:type    ktype:Feature ;
+               rdfs:label   "Self-describing published TTL" ;
+               kpred:has-status   "planned" ;
+               kpred:relates-to   kb:graph-publishing ;
+               kpred:description  "Publishing already emits graph.json; also emit a standard .ttl for the published subgraph and make every published page discoverable: a <link rel=\"alternate\" type=\"text/turtle\" href=\"…\"> in the page head (and/or a sibling <slug>.ttl next to <slug>.md). Serve with permissive CORS so another Reckons.AI can fetch it cross-origin. Extends site-export.ts; respects the publish-safety-gate (never emit blocked statements)." ;
+               kpred:depends-on   kb:graph-publishing .
+
+kb:ttl-aware-ingest rdf:type ktype:Feature ;
+               rdfs:label   "Zero-LLM Add-from-URL (TTL)" ;
+               kpred:has-status   "planned" ;
+               kpred:relates-to   kb:ingest ;
+               kpred:description  "When Add-from-URL points at a Reckons.AI graph, import it DIRECTLY as pending facts with no LLM extraction. Detection: try a direct fetch and check content-type text/turtle, a .ttl extension, or an HTML <link rel=alternate type=text/turtle>; on hit, route the TTL through the existing importTurtleFull → pending statements (reuses the file/Drive import path). Falls back to the current firecrawl/jina + LLM flow when the URL is not a graph or is CORS-blocked. Cheaper, exact, and lossless vs. re-extracting prose the publisher already modelled." ;
+               kpred:depends-on   kb:published-ttl .
+
+kb:publisher-subscriptions rdf:type ktype:Feature ;
+               rdfs:label   "Publisher subscriptions + pod polling" ;
+               kpred:has-status   "planned" ;
+               kpred:relates-to   kb:currents ;
+               kpred:description  "Subscribe to a publisher (their published-graph URL / a small manifest). With pods enabled, poll each subscription on the currents cadence (like the workspace folder poll + loop-guard hashes), fetch new/changed TTL via kb:ttl-aware-ingest, and drift the new facts in as translucent pod arrivals for review. Seamless: subscribe once, new published facts appear in your pod without re-adding." ;
+               kpred:depends-on   kb:ttl-aware-ingest .
+
+kb:calendar-management rdf:type ktype:Feature ;
+               rdfs:label   "Calendar management UI/UX" ;
+               kpred:has-status   "planned" ;
+               kpred:description  "Beyond add/incoming calendar events: a management surface for calendars themselves — list connected/subscribed calendars, enable/disable, choose which sync into the graph, and treat a published calendar as a subscription (kb:publisher-subscriptions) so new events flow in via pods. Builds on the existing calendar ingest source." ;
+               kpred:relates-to   kb:publisher-subscriptions .
+
 kb:webpage-entity rdf:type   ktype:Feature ;
                rdfs:label   "WebPage Entity" ;
                kpred:has-status   "functional" ;
