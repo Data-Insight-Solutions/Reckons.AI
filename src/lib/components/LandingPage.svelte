@@ -52,10 +52,12 @@
     }
   }
 
-  // Soft landing: the "Getting started" button loads a tiny, everyday graph
-  // (7 facts, one real tension, a natural Reckon) as an EDITABLE KB and opens
-  // Shelly's tour on it — instead of dropping the large, concept-dense docs
-  // graph on a first-time user. The full docs graph is the "go deeper" path.
+  // Soft landing: the "Getting started" button loads an everyday graph — two
+  // friends meeting in the middle for a weekend camping trip (two people, two
+  // campgrounds, two forecasts, two prices, four drive routes, one real
+  // tension, a natural Reckon) — as an EDITABLE KB and opens Shelly's tour on
+  // it, instead of dropping the large, concept-dense docs graph on a first-time
+  // user. The full docs graph is the "go deeper" path.
   async function openStarter() {
     loadingStarter = true;
     try {

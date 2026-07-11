@@ -81,7 +81,7 @@ kb:knowledge-graph  rdf:type     ktype:Feature ;
                     kpred:tested-by    "tests/e2e/graph-render.test.ts" .
 
 kb:multi-kb         rdf:type     ktype:Feature ;
-                    rdfs:label   "Multi-KB Management" ;
+                    rdfs:label   "Multi-Graph Management" ;
                     kpred:has-status   "production" ;
                     kpred:includes     kb:kb-registry ;
                     kpred:includes     kb:kb-leap ;
@@ -132,7 +132,7 @@ kb:mcp-server       rdf:type     ktype:Feature ;
                     kpred:has-tool     "kb_local_summarize" ;
                     kpred:has-tool     "kb_generate_page" ;
                     kpred:has-tool     "kb_entity_markdown" ;
-                    kpred:description  "20 tools over JSON-RPC stdio. The local-Ollama bridge (kb_local_extract, kb_local_summarize, kb_generate_page) is opt-in via OLLAMA_BASE_URL and never writes to a KB — proposals only. kb_entity_markdown is deterministic (no LLM required)." ;
+                    kpred:description  "20 tools over JSON-RPC stdio. The local-Ollama bridge (kb_local_extract, kb_local_summarize, kb_generate_page) is opt-in via OLLAMA_BASE_URL and never writes to a graph — proposals only. kb_entity_markdown is deterministic (no LLM required)." ;
                     kpred:tested-by    "mcp-server/src/__tests__/ollama-client.test.ts" ;
                     kpred:tested-by    "mcp-server/src/__tests__/local-llm.test.ts" ;
                     kpred:tested-by    "mcp-server/src/__tests__/page-markdown.test.ts" ;
@@ -159,16 +159,16 @@ kb:source-refresh   rdf:type     ktype:Feature ;
                     kpred:tested-by    "src/lib/stores/__tests__/source-refresh.test.ts" .
 
 kb:cross-kb-alignment rdf:type  ktype:Feature ;
-                    rdfs:label   "Cross-KB Alignment" ;
+                    rdfs:label   "Cross-Graph Alignment" ;
                     kpred:has-status   "production" ;
-                    kpred:description  "Align entities across KBs with embedding similarity and IRI remapping" ;
+                    kpred:description  "Align entities across graphs with embedding similarity and IRI remapping" ;
                     kpred:has-tab      "align" ;
                     kpred:tested-by    "src/lib/rdf/__tests__/bm25.test.ts" .
 
 kb:reasoning-engine rdf:type     ktype:Feature ;
                     rdfs:label   "Reasoning Engine" ;
                     kpred:has-status   "production" ;
-                    kpred:description  "Inference rules and temporal reasoning over KB statements." ;
+                    kpred:description  "Inference rules and temporal reasoning over graph statements." ;
                     kpred:tested-by    "src/lib/rdf/__tests__/reasoning.test.ts" ;
                     kpred:tested-by    "src/lib/rdf/__tests__/temporal.test.ts" .
 
@@ -182,12 +182,12 @@ kb:n8n-cloud-sync   rdf:type     ktype:Feature ;
                     rdfs:label   "n8n Cloud Sync" ;
                     kpred:has-status   "production" ;
                     kpred:description  "Private cloud sync via self-hosted n8n VPS" ;
-                    kpred:has-workflow  "KB Sync Hub (gzL6AXn9iWo4GZxN)" ;
+                    kpred:has-workflow  "Graph Sync Hub (gzL6AXn9iWo4GZxN)" ;
                     kpred:has-workflow  "Source Monitor (CvbUNSZkZVf4hJFG)" .
 
 kb:ci-cd-kb-watch   rdf:type     ktype:Feature ;
                     rdfs:label   "Reckons.AI Graph Alignment" ;
-                    kpred:aka          "CI/CD KB Watch" ;
+                    kpred:aka          "CI/CD graph Watch" ;
                     kpred:has-status   "functional" ;
                     kpred:description  "GitHub Actions graph-alignment scoring, pre/post review snapshots, and Claude Code commands for agent coding workflows. Runs on push/PR to main, staging, and dev; posts a 'Reckons.AI Graph Alignment Check' status and a PR comment with a deep link to the in-app review." ;
                     kpred:tested-by    "tests/visual/user-stories/coding-workflow.test.ts" ;
@@ -216,7 +216,7 @@ kb:graph-alignment-setup rdf:type ktype:Concept ;
                     kpred:note         "The PR-comment step needs `permissions: pull-requests: write` (already set in kb-watch.yml)." .
 
 kb:entity-normalisation rdf:type ktype:Feature ;
-                    rdfs:label   "Entity Normalisation" ;
+                    rdfs:label   "Entity Normalization" ;
                     kpred:has-status   "production" ;
                     kpred:description  "Post-extraction IRI rewriting using embedding similarity. Prevents duplicate entities entering review queue." ;
                     kpred:uses         kb:bge-small ;
@@ -225,11 +225,11 @@ kb:entity-normalisation rdf:type ktype:Feature ;
 kb:mcp-workspace    rdf:type     ktype:Feature ;
                     rdfs:label   "MCP Workspace (Self-Dogfooding)" ;
                     kpred:has-status   "production" ;
-                    kpred:description  "Three internal KBs (Roadmap, Production, Features) symlinked from static/*.ttl. Claude Code queries via MCP server." .
+                    kpred:description  "Three internal graphs (Roadmap, Production, Features) symlinked from static/*.ttl. Claude Code queries via MCP server." .
 
 kb:bge-small        rdf:type     ktype:Library ;
                     rdfs:label   "BGE-small-en-v1.5" ;
-                    kpred:purpose "Embedding model for similarity, normalisation, and cross-KB alignment" ;
+                    kpred:purpose "Embedding model for similarity, normalization, and cross-Graph alignment" ;
                     kpred:version "33MB, 384d, q8" ;
                     kpred:tested-by    "src/lib/__tests__/embed.test.ts" .
 
@@ -271,7 +271,7 @@ kb:hierarchy-nav    rdf:type     ktype:Feature ;
 kb:workspace-export rdf:type     ktype:Feature ;
                     rdfs:label   "Workspace Export" ;
                     kpred:has-status   "production" ;
-                    kpred:description  "Semantic TTL export with backup scheduling. KB asset round-trip." ;
+                    kpred:description  "Semantic TTL export with backup scheduling. Graph asset round-trip." ;
                     kpred:tested-by    "src/lib/storage/__tests__/semantic-export.test.ts" ;
                     kpred:tested-by    "src/lib/storage/__tests__/backup.test.ts" .
 
@@ -334,15 +334,15 @@ kb:test-unit        rdf:type     ktype:TestCategory ;
                     kpred:checks   "repo URL parsing" ;
                     kpred:checks   "vision scoring" ;
                     kpred:checks   "semantic diff" ;
-                    kpred:checks   "entity normalisation" ;
+                    kpred:checks   "entity normalization" ;
                     kpred:checks   "entity types" ;
-                    kpred:checks   "ghost graph / KB leap" ;
+                    kpred:checks   "ghost graph / graph leap" ;
                     kpred:checks   "diff summary" ;
                     kpred:checks   "source refresh" ;
                     kpred:checks   "RDF types & helpers" ;
                     kpred:checks   "W3C Turtle conformance" ;
                     kpred:checks   "hierarchy navigation" ;
-                    kpred:checks   "KB registry" ;
+                    kpred:checks   "Graph registry" ;
                     kpred:checks   "TTL serialization round-trip" ;
                     kpred:checks   "currents (streamed-ingest arrivals)" ;
                     kpred:checks   "Ollama structured extraction" ;
@@ -442,7 +442,7 @@ story:prod-step-1  rdf:type         story:Step ;
                    story:partOf     story:production-tour ;
                    story:order      "1"^^xsd:integer ;
                    story:title      "Welcome to Production Status" ;
-                   story:content    "This KB tracks the production health of Reckons.AI. It has two live sources: the website URL and the GitHub repository. Both can be refreshed to pull in the latest state. Let me walk you through the key test categories." ;
+                   story:content    "This graph tracks the production health of Reckons.AI. It has two live sources: the website URL and the GitHub repository. Both can be refreshed to pull in the latest state. Let me walk you through the key test categories." ;
                    story:highlight  kb:reckons-ai .
 
 # Step 2: Unit Tests
@@ -450,7 +450,7 @@ story:prod-step-2  rdf:type         story:Step ;
                    story:partOf     story:production-tour ;
                    story:order      "2"^^xsd:integer ;
                    story:title      "Unit Tests" ;
-                   story:content    "The unit test suite runs with `npx vitest run` and covers triple parsing, diff computation, content safety, entity types, ghost graph / KB leap, diff summary, source refresh, RDF types, W3C Turtle conformance, hierarchy navigation, KB registry, TTL serialization round-trip, currents, Ollama offload, and graph publishing. 643 passing tests across 35 files with zero failures." ;
+                   story:content    "The unit test suite runs with `npx vitest run` and covers triple parsing, diff computation, content safety, entity types, ghost graph / graph leap, diff summary, source refresh, RDF types, W3C Turtle conformance, hierarchy navigation, graph registry, TTL serialization round-trip, currents, Ollama offload, and graph publishing. 643 passing tests across 35 files with zero failures." ;
                    story:highlight  kb:test-unit ;
                    story:highlight  kb:test-suite ;
                    story:question   "Want to see the latest test results?" .
@@ -470,7 +470,7 @@ story:prod-step-4  rdf:type         story:Step ;
                    story:partOf     story:production-tour ;
                    story:order      "4"^^xsd:integer ;
                    story:title      "MCP Server" ;
-                   story:content    "The MCP server exposes 20 tools over JSON-RPC stdio. Claude Code and other AI agents can search the KB, get entity details, extract subgraphs, add notes, list sources, request refreshes, run git-aware alignment checks, and — opt-in via OLLAMA_BASE_URL — offload extraction, summarization, and page drafting to a local Ollama model. The server supports multi-KB workspaces." ;
+                   story:content    "The MCP server exposes 20 tools over JSON-RPC stdio. Claude Code and other AI agents can search the graph, get entity details, extract subgraphs, add notes, list sources, request refreshes, run git-aware alignment checks, and — opt-in via OLLAMA_BASE_URL — offload extraction, summarization, and page drafting to a local Ollama model. The server supports multi-Graph workspaces." ;
                    story:highlight  kb:mcp-server ;
                    story:question   "Should I verify the MCP server tools are responding?" .
 
@@ -479,7 +479,7 @@ story:prod-step-5  rdf:type         story:Step ;
                    story:partOf     story:production-tour ;
                    story:order      "5"^^xsd:integer ;
                    story:title      "Ingest & Source Refresh" ;
-                   story:content    "The ingest pipeline supports 10 source types including the new GitHub repo ingest. URL, repository, and calendar sources can be refreshed to pull in updates. Auto-refresh can be configured to run on KB open or on a schedule. The repo ingest uses the GitHub REST API for tree walking and delta comparison." ;
+                   story:content    "The ingest pipeline supports 10 source types including the new GitHub repo ingest. URL, repository, and calendar sources can be refreshed to pull in updates. Auto-refresh can be configured to run on graph open or on a schedule. The repo ingest uses the GitHub REST API for tree walking and delta comparison." ;
                    story:highlight  kb:ingest-pipeline ;
                    story:highlight  kb:repo-ingest ;
                    story:highlight  kb:source-refresh .

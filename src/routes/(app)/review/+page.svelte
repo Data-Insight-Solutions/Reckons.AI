@@ -891,7 +891,7 @@
           {/if}
         {:else}
           <div class="graph-empty">
-            <p class="mono">{overlayLoading ? 'loading...' : 'select KBs above to compare'}</p>
+            <p class="mono">{overlayLoading ? 'loading...' : 'select graphs above to compare'}</p>
           </div>
         {/if}
       {/if}

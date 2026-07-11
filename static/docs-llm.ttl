@@ -38,7 +38,7 @@ llm:WhatLLMsAre
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "What Language Models Actually Are" ;
-    skos:definition     "The models people call 'AI' are trained statistical models built with human knowledge at every level. Humans wrote the training data, designed the architecture, labelled the fine-tuning examples, and aligned the outputs. These models predict likely text based on patterns -- they do not think, reason, or understand." ;
+    skos:definition     "The models people call 'AI' are trained statistical models built with human knowledge at every level. Humans wrote the training data, designed the architecture, labeled the fine-tuning examples, and aligned the outputs. These models predict likely text based on patterns -- they do not think, reason, or understand." ;
     skos:related        llm:Hallucination ;
     skos:related        llm:KBGroundedAccuracy .
 
@@ -67,8 +67,8 @@ llm:Hallucination
 llm:KBGroundedAccuracy
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
-    rdfs:label          "KB-Grounded Accuracy" ;
-    skos:definition     "When an LLM has access to YOUR reviewed knowledge base, its outputs become dramatically more accurate. Instead of guessing from training data, it retrieves YOUR confirmed facts. This is called retrieval-augmented generation (RAG) -- and the quality of the retrieval source is everything. Your curated KB is the best source possible." ;
+    rdfs:label          "Graph-Grounded Accuracy" ;
+    skos:definition     "When an LLM has access to YOUR reviewed knowledge graph, its outputs become dramatically more accurate. Instead of guessing from training data, it retrieves YOUR confirmed facts. This is called retrieval-augmented generation (RAG) -- and the quality of the retrieval source is everything. Your curated graph is the best source possible." ;
     skos:broader        llm:WhatLLMsAre ;
     skos:related        feat:Shelly .
 
@@ -76,14 +76,14 @@ llm:RetrievalAugmented
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "RAG (Retrieval-Augmented Generation)" ;
-    skos:definition     "A technique where an LLM retrieves relevant facts from a knowledge base before generating a response. Dramatically reduces hallucination because the model grounds its answer in your verified data, not its training set." ;
+    skos:definition     "A technique where an LLM retrieves relevant facts from a knowledge graph before generating a response. Dramatically reduces hallucination because the model grounds its answer in your verified data, not its training set." ;
     skos:broader        llm:KBGroundedAccuracy .
 
 llm:PromptEngineering
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Prompt Engineering" ;
-    skos:definition     "The art of structuring input to get useful output from a language model. A Reckoning is a structured prompt: Situation + Target + your KB context. The better the input, the better the output." ;
+    skos:definition     "The art of structuring input to get useful output from a language model. A Reckoning is a structured prompt: Situation + Target + your graph context. The better the input, the better the output." ;
     skos:broader        llm:WhatLLMsAre ;
     skos:related        feat:Reckoning .
 
@@ -112,7 +112,7 @@ llm:StructuredOutputs
 
 shelly:persona
     shelly:name             "Shelly" ;
-    shelly:greeting         "This is the Language Models documentation. I can explain what LLMs really are, why they hallucinate, and how your KB makes them accurate. Ask me anything!" ;
+    shelly:greeting         "This is the Language Models documentation. I can explain what LLMs really are, why they hallucinate, and how your graph makes them accurate. Ask me anything!" ;
     shelly:personality      "honest, demystifying, direct" ;
     shelly:responseStyle    "concise" ;
-    shelly:systemPrompt     "You are helping someone understand language models honestly. Emphasize that they are tools, not thinkers. Explain hallucination without fear-mongering. Show how a curated KB + RAG solves the accuracy problem." .
+    shelly:systemPrompt     "You are helping someone understand language models honestly. Emphasize that they are tools, not thinkers. Explain hallucination without fear-mongering. Show how a curated graph + RAG solves the accuracy problem." .

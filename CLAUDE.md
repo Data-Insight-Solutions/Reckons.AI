@@ -109,7 +109,7 @@ This project uses TTL knowledge bases as the primary documentation format. **Do 
 - **For code conventions**: Use inline code comments near the actual code
 - **Query before reading**: Use `kb_search` to find information before reading raw files
 - **Existing markdown**: `docs/*.md` files are being migrated to TTL. Check `kb_search("migration status", kb="architecture")` for current state
-- **Must stay markdown**: CLAUDE.md, MEMORY.md, .claude/commands/*.md, README.md, CONTRIBUTING.md (system requirements)
+- **Must stay markdown**: CLAUDE.md, MEMORY.md, .claude/commands/*.md, README.md, CONTRIBUTING.md, SAFETY.md (system/policy docs; SAFETY.md is the human-readable safety & responsibility statement — the graph mirrors it in kb:content-safety)
 
 ### KB predicates convention
 
@@ -127,6 +127,12 @@ This project uses TTL knowledge bases as the primary documentation format. **Do 
 - **Review statuses**: pending, pending-removal, confirmed, refined, rejected, superseded
 - **Embedding model**: BGE-small-en-v1.5 (33MB, 384d, q8) via `src/lib/embed.ts`
 - **Content safety**: `ETHICS_PREAMBLE` injected into ALL LLM system prompts — never remove
+
+## Integration Boundaries (read before adding a "backend")
+
+- **Reckons.AI is local-first with NO general backend.** Do not treat n8n (or any single service) as *the* backend for all things Reckons.AI. n8n is an **optional, per-user automation layer**: a user connects their own self-hosted n8n instance to enable *personalized* automation/integration flowing **into and out of** their Reckons.AI — e.g. the contact form (`src/lib/integrations/n8n/contact.ts`) posts to *their* webhook. The app itself stays static/offline-first; n8n owns web *side-effects*, not core state.
+- **All integrations are optional and per-user, behind `settings.*`** and (eventually) the Integration Plugin SDK (roadmap F61). When a feature "needs a server", first ask whether it can be local/offline; if not, make it an opt-in integration, never a hard dependency of the core app.
+- Cloud-automation providers (Zapier, Power Automate, …) are *future alternatives* to self-hosted n8n, not replacements for local-first behavior.
 
 ## Testing
 

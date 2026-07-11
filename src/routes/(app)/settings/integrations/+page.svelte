@@ -386,6 +386,16 @@
     });
     indicoSaving = false;
   }
+
+  // ── n8n automation server (F20) ──────────────────────────────────────────────
+  let n8nBaseUrl = $state(settings().n8nBaseUrl ?? '');
+  let n8nSaving = $state(false);
+
+  async function saveN8n() {
+    n8nSaving = true;
+    await updateSettings({ n8nBaseUrl: n8nBaseUrl.trim() || undefined });
+    n8nSaving = false;
+  }
 </script>
 
 <header class="head">
@@ -393,6 +403,7 @@
   <h1>system configuration</h1>
   <div class="settings-nav">
     <a href="/settings" class="nav-link">backends</a>
+    <a href="/settings/publishing" class="nav-link">publishing</a>
     <a href="/settings/integrations" class="nav-link active">integrations</a>
     <a href="/settings/turtle" class="nav-link">turtle</a>
     <a href="/settings/entity-types" class="nav-link">entity types</a>
@@ -760,6 +771,29 @@
     </label>
     <button class="save-indico-btn" onclick={saveIndico} disabled={indicoSaving}>
       {indicoSaving ? 'saving...' : 'save'}
+    </button>
+  </div>
+</section>
+
+<section id="s-n8n" class="card">
+  <h3>n8n automation <span class="badge-local mono">self-host</span></h3>
+  <p class="sub">Point at your self-hosted n8n instance to route web integrations — graph sync, currents, and the contact form — through your own automation workflows. Open-source, no SaaS.</p>
+
+  <div class="indico-fields">
+    <label class="field-row">
+      <span class="field-label mono">base url</span>
+      <input
+        type="url"
+        class="field-input"
+        placeholder="https://n8n.example.com"
+        bind:value={n8nBaseUrl}
+      />
+    </label>
+    <p class="sub" style="margin: 0.2rem 0 0; font-size: 0.72rem;">
+      The contact form posts to <code>/webhook/reckons-contact</code> on this instance.
+    </p>
+    <button class="save-indico-btn" onclick={saveN8n} disabled={n8nSaving}>
+      {n8nSaving ? 'saving...' : 'save'}
     </button>
   </div>
 </section>

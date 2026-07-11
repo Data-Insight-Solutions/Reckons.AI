@@ -44,6 +44,9 @@
   import { isIRI, isLit } from '$lib/rdf/types';
   import { requestShellyChat, setShellyChatOpen, shellyViewAdjust, clearShellyViewAdjust, shellySpotlight, exploreOpen, startExplore, stopExplore } from '$lib/stores/shelly-bridge.svelte';
   import AdaptivePanel from '$lib/components/AdaptivePanel.svelte';
+  import GraphPackagePanel from '$lib/components/GraphPackagePanel.svelte';
+  import { entityProtection } from '$lib/rdf/protected-entities';
+  import { buildEntitySet, defaultSetName, isEntitySet, setMembers } from '$lib/rdf/entity-sets';
   import { isCompact } from '$lib/stores/viewport.svelte';
   import { Popover, ToggleGroup } from 'bits-ui';
   import { analysisRunning, lastAnalysisError } from '$lib/stores/auto-analyze.svelte';
@@ -148,7 +151,7 @@
   $effect(() => {
     const key = hoverTarget;
     const iri = iriFromNodeKey(key);
-    const hasGif = iri != null && gifOverrides().has(iri);
+    const hasGif = previewUrlFor(iri) != null;
     const hasMeta = hoverMeta != null;
 
     if (gifTimer) { clearTimeout(gifTimer); gifTimer = null; }
@@ -505,9 +508,19 @@
   // Node keys for entities with leap targets (used for highlighting)
   const leapKeys = $derived([...leapNodeKeys(statements())]);
 
+  // Selecting a SET node spotlights the set + its members (F65): the group lights
+  // up, everything else dims — so a set is something you can see and act on.
+  const selectedSetKeys = $derived.by(() => {
+    if (!selected?.startsWith('i:')) return [] as string[];
+    const iri = selected.slice(2);
+    if (!isEntitySet(iri, statements())) return [];
+    return [selected, ...setMembers(iri, statements()).map(m => `i:${m}`)];
+  });
+
   // Shared dim/highlight state — used by both the graph components and the label overlay
   const dimMode = $derived(
     activeFilters.has('hubs') || activeFilters.has('islands') || activeFilters.has('no-type') || activeFilters.has('leaps')
+    || selectedSetKeys.length > 0
   );
   const highlightedSet = $derived(new Set([
     ...Array.from(activeFilters).flatMap(f =>
@@ -517,7 +530,8 @@
       : f === 'leaps' ? leapKeys
       : [] as string[]
     ),
-    ...shellySpotlight()
+    ...shellySpotlight(),
+    ...selectedSetKeys
   ]));
 
   // Visible-accurate filter counts (exclude GRAPH_EXCLUDED_PREDICATES like the graph does)
@@ -727,9 +741,17 @@
     selected = null;
   }
 
+  // Deleting some nodes would break features (a type others use, a type
+  // definition, a nav/leap node). Flag those so we always confirm first.
+  const deleteProtection = $derived.by(() =>
+    selected?.startsWith('i:')
+      ? entityProtection(selected.slice(2), statements())
+      : { protected: false as const }
+  );
+
   function deleteSelected() {
     if (!selected) return;
-    if (deleteTargets.length > 1) {
+    if (deleteTargets.length > 1 || deleteProtection.protected) {
       confirmingDelete = true;
     } else {
       confirmDelete();
@@ -810,11 +832,38 @@
     editingIcon3d = false;
   }
 
+  // ── Preview images ──────────────────────────────────────────────────────────
+  // Two sources: editor-assigned blobs (gifOverrides, IndexedDB) and graph-declared
+  // image URLs/paths — a `p:photo` or `meta/gifPreview` literal whose value is a
+  // rooted path ("/starter-assets/alex.svg"), http(s) URL, or data: URI. The latter
+  // lets a plain static .ttl (e.g. the starter graph) ship local photos with no
+  // binary bundling.
+  const PREVIEW_URL_PREDICATES = new Set([
+    'urn:kbase:predicate/photo',
+    'urn:kbase:meta/gifPreview',
+  ]);
+  const previewUrlMap = $derived.by(() => {
+    const m = new Map<string, string>();
+    for (const s of statements()) {
+      if (!PREVIEW_URL_PREDICATES.has(s.p.value)) continue;
+      if (s.s.kind !== 'iri' || s.o.kind !== 'literal') continue;
+      const v = s.o.value;
+      if (v.startsWith('/') || v.startsWith('http') || v.startsWith('data:')) m.set(s.s.value, v);
+    }
+    return m;
+  });
+  /** Resolve an entity's preview image src: editor blob first, then a graph URL. */
+  function previewUrlFor(iri: string | null): string | null {
+    if (!iri) return null;
+    return gifOverrides().get(iri) ?? previewUrlMap.get(iri) ?? null;
+  }
+  /** When on, preview images render on every node (no hover). Slower to paint. */
+  const alwaysPreviews = $derived(settings().alwaysShowPreviews ?? false);
+
   // ── GIF assignment ────────────────────────────────────────────────────────
   const entityGifUrl = $derived.by(() => {
     if (!selected?.startsWith('i:')) return null;
-    const iri = selected.slice(2);
-    return gifOverrides().get(iri) ?? null;
+    return previewUrlFor(selected.slice(2));
   });
 
   async function assignEntityGif(file: File) {
@@ -1291,6 +1340,33 @@
       .filter(Boolean) as { key: string; label: string; iri: string }[]
   );
 
+  // Is the currently-selected node an entity set? (drives set-specific actions)
+  const selectedIsSet = $derived(selected != null && selected.startsWith('i:') && isEntitySet(selected.slice(2), statements()));
+  const selectedSetMemberCount = $derived(
+    selected != null && selected.startsWith('i:') ? setMembers(selected.slice(2), statements()).length : 0
+  );
+  /** Turn a selected set into a multi-selection of its members, to act on the group. */
+  function selectSetMembers() {
+    if (!selected?.startsWith('i:')) return;
+    const members = setMembers(selected.slice(2), statements());
+    if (members.length === 0) return;
+    multiSelected = new Set(members.map(m => `i:${m}`));
+    selected = null; // hand off to the multi-select action panel
+  }
+
+  // Batch-select several nodes → group them into a reusable "set" (F65). The set
+  // is a first-class node (ktype:EntitySet) linked to each member via has-member,
+  // so it round-trips in TTL and can be re-selected to act on the whole group.
+  async function createSetFromSelection() {
+    const members = multiSelectedList.map(n => n.iri);
+    if (members.length < 2) return;
+    const name = defaultSetName(members, (iri) => multiSelectedList.find(n => n.iri === iri)?.label ?? iri);
+    const { setIri, statements } = buildEntitySet(name, members);
+    await addStatements(statements);
+    multiSelected = new Set();
+    selected = `i:${setIri}`;
+  }
+
   /**
    * Perform the merge after the user has reviewed conflicts in MergeReview.
    * keepKey  — termKey of the entity whose IRI is kept
@@ -1657,7 +1733,8 @@
   </div>
   {/if}
 
-
+  <!-- GRAPH PACKAGE — this graph's .ttl, sidecars, story, currents & folder sync -->
+  <GraphPackagePanel statementCount={statements().length} />
 
 </div>
 </AdaptivePanel>
@@ -1695,6 +1772,7 @@
         multiSelected = new Set();
         showRelationUI = true;
       }}>+ relate</button>
+      <button class="np-act-btn np-act-set" onclick={createSetFromSelection} title="group these nodes into a reusable set">⬡ group as set</button>
       <button class="np-act-btn" onclick={() => (multiSelected = new Set())}>✕ clear</button>
     </div>
   </div>
@@ -1708,6 +1786,12 @@
     transition:fade={{ duration: 220 }}
     style="transform: translate3d({n.x}px, {n.y}px, 0); --lfs: {labelFontSize}px; --lop: {n.opacity ?? 0.85};"
   >
+    {#if alwaysPreviews}
+      {@const purl = previewUrlFor(iriFromNodeKey(n.key))}
+      {#if purl}
+        <img class="node-preview-thumb" src={purl} alt="" loading="lazy" />
+      {/if}
+    {/if}
     <span
       class="node-label mono"
       class:hovered={n.key === hoverTarget}
@@ -1753,7 +1837,7 @@
 <!-- Long-hover preview (GIF and/or metadata card) -->
 {#if gifActiveKey}
   {@const activeIri = iriFromNodeKey(gifActiveKey)}
-  {@const gifSrc = activeIri ? gifOverrides().get(activeIri) : null}
+  {@const gifSrc = previewUrlFor(activeIri)}
   {@const activeMeta = hoverMeta?.iri === activeIri ? hoverMeta : null}
   {#if gifSrc || activeMeta}
     <div
@@ -1869,13 +1953,19 @@
     <!-- Action row — always visible, at the top (not for source nodes) -->
     {#if !showMergeUI && !showRelationUI && !selected?.startsWith('src:')}
       {#if confirmingDelete}
-        <div class="np-action-row np-action-confirm">
+        <div class="np-action-row np-action-confirm" class:np-action-protected={deleteProtection.protected}>
+          {#if deleteProtection.protected}
+            <span class="np-confirm-warn mono">⚠ are you sure? {deleteProtection.reason}</span>
+          {/if}
           <span class="np-confirm-label mono">delete {deleteTargets.length} fact{deleteTargets.length !== 1 ? 's' : ''}?</span>
-          <button class="np-act-btn np-act-danger" onclick={confirmDelete}>confirm</button>
+          <button class="np-act-btn np-act-danger" onclick={confirmDelete}>{deleteProtection.protected ? 'delete anyway' : 'confirm'}</button>
           <button class="np-act-btn" onclick={() => (confirmingDelete = false)}>cancel</button>
         </div>
       {:else}
         <div class="np-action-row">
+          {#if selectedIsSet}
+            <button class="np-act-btn np-act-set" onclick={selectSetMembers} title="multi-select this set's members to act on them">⬡ select {selectedSetMemberCount} members</button>
+          {/if}
           <button class="np-act-btn" onclick={() => (showMergeUI = true)}>⟷ merge</button>
           <button class="np-act-btn np-act-primary" onclick={() => (showRelationUI = true)}>+ relate</button>
           <button class="np-act-btn np-act-danger" onclick={deleteSelected}>✕ delete</button>
@@ -2708,6 +2798,18 @@
     align-items: center;
     flex-wrap: nowrap;
   }
+  /* Protected-entity delete: warn spans a first line, buttons wrap below. */
+  .np-action-protected {
+    flex-wrap: wrap;
+  }
+  .np-confirm-warn {
+    flex-basis: 100%;
+    font-size: 0.64rem;
+    line-height: 1.3;
+    color: #e0a13c;
+    white-space: normal;
+    margin-bottom: 0.3rem;
+  }
   .np-confirm-label {
     font-size: 0.67rem;
     color: var(--danger);
@@ -2737,6 +2839,12 @@
     background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
   }
   .np-act-primary:hover { background: var(--accent-soft); border-color: var(--accent); }
+  .np-act-set {
+    border-color: color-mix(in srgb, #a78bfa 50%, transparent);
+    color: #a78bfa;
+    background: color-mix(in srgb, #a78bfa 8%, var(--surface-2));
+  }
+  .np-act-set:hover { border-color: #a78bfa; background: color-mix(in srgb, #a78bfa 16%, var(--surface-2)); }
   .np-act-danger {
     border-color: color-mix(in srgb, var(--danger) 35%, transparent);
     color: var(--danger);
@@ -3122,6 +3230,20 @@
     z-index: 10;
     will-change: transform;
     transition: transform 35ms linear;
+  }
+  /* Always-on preview thumbnail: sits centered above the node label. */
+  .node-preview-thumb {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 48px;
+    height: 48px;
+    transform: translate(-50%, calc(-100% - 6px));
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    background: var(--surface);
   }
   /* Inner span: centering + hover scale — separate from position transition */
   .node-label {

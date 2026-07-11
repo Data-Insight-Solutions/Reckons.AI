@@ -8,6 +8,7 @@
   // Design-system pilot: shadcn-svelte Button themed via the Liquid token mapping
   // in src/lib/styles/tailwind.css (see kb:design-system in reckons-roadmap.ttl).
   import { Button } from '$lib/components/ui/button';
+  import ContactForm from '$lib/components/ContactForm.svelte';
 
   // ── Compression benchmark data ─────────────────────────────────────────
   const GITHUB_REPO = 'https://github.com/Data-Insight-Solutions/Reckons.AI';
@@ -1001,6 +1002,12 @@
     </div>
   </section>
 
+  <section class="contact-section">
+    <h2 class="contact-h">Get in touch</h2>
+    <p class="contact-sub mono">Questions, ideas, or want to self-host? Send a note. With an n8n instance linked (Settings → Integrations) this posts straight to your automation workflow; otherwise it opens your email client.</p>
+    <ContactForm source="about" subject="Reckons.AI contact" />
+  </section>
+
   <footer class="page-footer">
     <p class="mono">Reckons.AI · local-first · open source · RDF/Turtle · MIT license</p>
     <!-- DIS synapse lockup — animated constellation mark spelling D·I·S
@@ -1936,6 +1943,20 @@
   .coffee-qr:hover { opacity: 1; }
 
   /* ── Footer ────────────────────────────────────────────────────── */
+  .contact-section {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 1rem;
+  }
+  .contact-h { font-size: 1.4rem; margin: 0 0 0.4rem; }
+  .contact-sub {
+    font-size: 0.8rem;
+    color: var(--muted);
+    line-height: 1.5;
+    margin: 0 0 1rem;
+    max-width: 560px;
+  }
+
   .page-footer {
     text-align: center;
     padding: 2rem;

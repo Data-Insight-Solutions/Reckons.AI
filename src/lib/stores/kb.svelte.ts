@@ -5,6 +5,7 @@ import { labelFromIRI } from '../rdf/semantic-diff';
 import type { ChangeLogEntry, TrustEvent } from '../storage/types';
 import { scheduleAutoSave } from '../storage/backup';
 import { scheduleWorkspaceTtlExport } from './workspace.svelte';
+import { scheduleDrivePush } from './drive-sync.svelte';
 import { officialKbActive, officialKbStatements, officialKbSources, deactivateOfficialKb } from './official-kb.svelte';
 import { filterBlockedStatements } from '../safety/content-policy';
 
@@ -268,6 +269,7 @@ export async function addStatements(
   }
   scheduleAutoSave();
   scheduleWorkspaceTtlExport();
+  scheduleDrivePush();
 }
 
 export async function updateStatement(id: string, patch: Partial<Statement>) {
@@ -318,6 +320,7 @@ export async function setStatus(id: string, status: ReviewStatus) {
   }
   scheduleAutoSave();
   scheduleWorkspaceTtlExport();
+  scheduleDrivePush();
 }
 
 export async function supersede(oldId: string, newSt: Statement) {
@@ -349,6 +352,7 @@ export async function supersede(oldId: string, newSt: Statement) {
   });
   scheduleAutoSave();
   scheduleWorkspaceTtlExport();
+  scheduleDrivePush();
 }
 
 export async function deleteStatement(id: string) {
@@ -366,6 +370,7 @@ export async function deleteStatement(id: string) {
   });
   scheduleAutoSave();
   scheduleWorkspaceTtlExport();
+  scheduleDrivePush();
 }
 
 /** Statements awaiting add-confirmation (excludes meta/operation statements). */

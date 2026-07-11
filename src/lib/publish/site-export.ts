@@ -147,7 +147,7 @@ export function sveltiaConfig(opts: SiteExportOptions): string {
     '      - { name: date, label: Date, widget: datetime, format: "YYYY-MM-DD", time_format: false, required: false, hint: "Posts only — release notes/announcements/blog publish date" }',
     '      - { name: excerpt, label: Excerpt, widget: text, required: false }',
     '      - { name: body, label: Body, widget: markdown }',
-    '      - { name: generated, label: "Generated (docs KB — do not edit)", widget: hidden, required: false }',
+    '      - { name: generated, label: "Generated (docs graph — do not edit)", widget: hidden, required: false }',
     '',
   ].join('\n');
 }

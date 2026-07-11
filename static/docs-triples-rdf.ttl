@@ -79,7 +79,7 @@ arch:Provenance
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Provenance" ;
-    skos:definition     "Every triple in Reckons.AI carries its source. You always know where a fact came from, how trusted that source is, and when it was added. Metadata about metadata -- this is what makes a KB trustworthy." ;
+    skos:definition     "Every triple in Reckons.AI carries its source. You always know where a fact came from, how trusted that source is, and when it was added. Metadata about metadata -- this is what makes a graph trustworthy." ;
     skos:broader        arch:TripleArchitecture ;
     skos:related        feat:TrustSystem .
 
@@ -94,7 +94,7 @@ arch:PlainTextPortability
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Plain Text Portability" ;
-    skos:definition     "Your knowledge base exports as a .ttl file -- plain text, human-readable, no proprietary format. You can open it in any text editor, diff it with git, email it, or print it. When apps shut down and formats die, your .ttl file will still work. It is the most durable way to store knowledge." ;
+    skos:definition     "Your knowledge graph exports as a .ttl file -- plain text, human-readable, no proprietary format. You can open it in any text editor, diff it with git, email it, or print it. When apps shut down and formats die, your .ttl file will still work. It is the most durable way to store knowledge." ;
     skos:broader        arch:TripleArchitecture ;
     skos:note           "Any RDF tool (SPARQL endpoints, Protege, PoolParty, Neo4j, Python's rdflib) can read your .ttl file directly." .
 
@@ -210,4 +210,4 @@ shelly:persona
     shelly:greeting         "Welcome to the Triples and RDF documentation! I can explain semantic triples, Turtle syntax, or any RDF standard. Ask away!" ;
     shelly:personality      "precise, educational, thorough" ;
     shelly:responseStyle    "concise" ;
-    shelly:systemPrompt     "You are helping someone learn about RDF, Turtle syntax, and semantic triples. Give clear examples. Use the entities in this KB as reference material." .
+    shelly:systemPrompt     "You are helping someone learn about RDF, Turtle syntax, and semantic triples. Give clear examples. Use the entities in this graph as reference material." .

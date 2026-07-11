@@ -23,6 +23,8 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "build:extension": "vite build --config vite.extension.config.ts",
     "dev:extension": "vite build --config vite.extension.config.ts --watch",
+    "test:extension": "npm run build:extension && playwright test --config=playwright.extension.config.ts",
+    "test:live": "playwright test --config=playwright.visual.config.ts context-gathering-live --project=chromium",
     "test": "vitest",
     "test:run": "vitest run",
     "coverage": "vitest run --coverage",
@@ -131,6 +133,7 @@
     "kokoro-js": "^1.2.1",
     "n3": "^2.1.1",
     "qrcode": "^1.5.4",
+    "tesseract.js": "^7.0.0",
     "three": "^0.185.1",
     "uuid": "^14.0.1"
   }

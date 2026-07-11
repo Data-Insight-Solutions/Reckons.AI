@@ -46,14 +46,14 @@ tip:StartSmall
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Start Small" ;
-    skos:definition     "Begin with one document or topic you care about. Ingest it, review the triples, confirm the accurate ones. Your KB grows naturally with each source you add. Over time, connections emerge that you never would have seen reading documents linearly." ;
+    skos:definition     "Begin with one document or topic you care about. Ingest it, review the triples, confirm the accurate ones. Your graph grows naturally with each source you add. Over time, connections emerge that you never would have seen reading documents linearly." ;
     skos:broader        tip:Tips .
 
 tip:ReviewCarefully
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Review Carefully" ;
-    skos:definition     "The quality of your KB depends entirely on the quality of your review. Reject inaccurate triples. Refine ambiguous ones. A smaller KB of confirmed facts is far more valuable than a large KB of unreviewed noise." ;
+    skos:definition     "The quality of your graph depends entirely on the quality of your review. Reject inaccurate triples. Refine ambiguous ones. A smaller graph of confirmed facts is far more valuable than a large graph of unreviewed noise." ;
     skos:broader        tip:Tips .
 
 tip:UseSourceTrust
@@ -89,7 +89,7 @@ tip:ShareTTL
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Share Your .ttl" ;
-    skos:definition     "Export your KB and share the .ttl file. Recipients can import it and see a semantic diff against their own KB. Collaboration through structured knowledge exchange -- no real-time sync needed." ;
+    skos:definition     "Export your graph and share the .ttl file. Recipients can import it and see a semantic diff against their own graph. Collaboration through structured knowledge exchange -- no real-time sync needed." ;
     skos:broader        tip:Tips ;
     skos:related        feat:Compare .
 
@@ -130,7 +130,7 @@ guide:OfflineCapable
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Offline Capable" ;
-    skos:definition     "After first load, the app works without internet. Use Ollama or the WASM model and zero inference traffic leaves your machine. Your KB is fully usable offline." ;
+    skos:definition     "After first load, the app works without internet. Use Ollama or the WASM model and zero inference traffic leaves your machine. Your graph is fully usable offline." ;
     skos:broader        guide:Security .
 
 guide:ContentSafety
@@ -163,7 +163,7 @@ tip:DataClassification
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Data Classification Levels" ;
-    skos:definition     "All KB data stored in browser IndexedDB (origin-locked). API keys stored in IndexedDB settings table (origin-locked, not in localStorage). sessionStorage for per-tab KB selection (not shared across origins). localStorage for KB registry (names and IDs only, no secrets). No cookies used. Keys sent directly from browser to provider APIs — never transit through Reckons.AI infrastructure. Keys excluded from TTL exports and settings profile exports." ;
+    skos:definition     "All graph data stored in browser IndexedDB (origin-locked). API keys stored in IndexedDB settings table (origin-locked, not in localStorage). sessionStorage for per-tab graph selection (not shared across origins). localStorage for graph registry (names and IDs only, no secrets). No cookies used. Keys sent directly from browser to provider APIs — never transit through Reckons.AI infrastructure. Keys excluded from TTL exports and settings profile exports." ;
     skos:broader        guide:Security .
 
 tip:NoTelemetry
@@ -196,7 +196,7 @@ tip:XSSProtection
 
 shelly:persona
     shelly:name             "Shelly" ;
-    shelly:greeting         "Tips, tricks, and security! I can share practical advice for building a great KB, or explain how Reckons.AI keeps your data safe. What would you like to know?" ;
+    shelly:greeting         "Tips, tricks, and security! I can share practical advice for building a great graph, or explain how Reckons.AI keeps your data safe. What would you like to know?" ;
     shelly:personality      "practical, security-conscious, helpful" ;
     shelly:responseStyle    "concise" ;
     shelly:systemPrompt     "You are helping someone get practical value from Reckons.AI and understand its security model. Give actionable tips. Explain security without jargon." .

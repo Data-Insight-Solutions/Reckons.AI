@@ -95,7 +95,7 @@ code:rdf  rdf:type     ktype:Concept ;
 
 code:stores  rdf:type     ktype:Concept ;
              rdfs:label   "Svelte Stores" ;
-             skos:definition "Svelte 5 rune-based reactive stores for KB state, settings, ingest, and UI." ;
+             skos:definition "Svelte 5 rune-based reactive stores for graph state, settings, ingest, and UI." ;
              skos:broader code:repo ;
              kpred:has-file "src/lib/stores/kb.svelte.ts" ;
              kpred:has-file "src/lib/stores/settings.svelte.ts" ;
@@ -129,7 +129,7 @@ code:stores  rdf:type     ktype:Concept ;
 
 code:storage  rdf:type     ktype:Concept ;
               rdfs:label   "Storage Layer" ;
-              skos:definition "IndexedDB via Dexie, KB registry, backup, semantic export, and asset management." ;
+              skos:definition "IndexedDB via Dexie, graph registry, backup, semantic export, and asset management." ;
               skos:broader code:repo ;
               kpred:has-file "src/lib/storage/db.ts" ;
               kpred:has-file "src/lib/storage/types.ts" ;
@@ -342,7 +342,7 @@ code:safety  rdf:type     ktype:Concept ;
 
 code:embed  rdf:type     ktype:Concept ;
             rdfs:label   "Embedding Engine" ;
-            skos:definition "BGE-small-en-v1.5 embedding model via transformers.js. Used for similarity, normalisation, and alignment." ;
+            skos:definition "BGE-small-en-v1.5 embedding model via transformers.js. Used for similarity, normalization, and alignment." ;
             skos:broader code:repo ;
             kpred:has-file "src/lib/embed.ts" ;
             kpred:tested-by "src/lib/__tests__/embed.test.ts" .
@@ -372,7 +372,7 @@ code:ingest-lib  rdf:type     ktype:Concept ;
 
 code:routes  rdf:type     ktype:Concept ;
              rdfs:label   "SvelteKit Routes" ;
-             skos:definition "App pages under the (app) route group: graph view, review, ingest, compare, settings, KB management, about. Split from the (unrouted) docs site so /docs can prerender without the app shell." ;
+             skos:definition "App pages under the (app) route group: graph view, review, ingest, compare, settings, graph management, about. Split from the (unrouted) docs site so /docs can prerender without the app shell." ;
              skos:broader code:repo ;
              kpred:has-file "src/routes/(app)/+layout.svelte" ;
              kpred:has-file "src/routes/(app)/+page.svelte" ;
@@ -474,7 +474,7 @@ code:mcp-server  rdf:type     ktype:Concept ;
 
 code:workspace  rdf:type     ktype:Concept ;
                 rdfs:label   "MCP Workspace" ;
-                skos:definition "Symlinked KB workspace for MCP server self-dogfooding." ;
+                skos:definition "Symlinked graph workspace for MCP server self-dogfooding." ;
                 skos:broader code:repo ;
                 kpred:has-file "reckons-workspace/kbs/production/production.ttl" ;
                 kpred:has-file "reckons-workspace/kbs/roadmap/roadmap.ttl" ;
@@ -490,7 +490,7 @@ code:workspace  rdf:type     ktype:Concept ;
 
 code:claude-commands  rdf:type     ktype:Concept ;
                       rdfs:label   "Claude Code Commands" ;
-                      skos:definition "Slash commands for KB alignment, pre/post review, and plan checking." ;
+                      skos:definition "Slash commands for graph alignment, pre/post review, and plan checking." ;
                       skos:broader code:repo ;
                       kpred:has-file ".claude/commands/check-plan.md" ;
                       kpred:has-file ".claude/commands/kb-align.md" ;
@@ -503,7 +503,7 @@ code:claude-commands  rdf:type     ktype:Concept ;
 
 code:cli  rdf:type     ktype:Concept ;
           rdfs:label   "CLI Tool" ;
-          skos:definition "Command-line interface for KB operations, audio transcription, and LLM chat." ;
+          skos:definition "Command-line interface for graph operations, audio transcription, and LLM chat." ;
           skos:broader code:repo ;
           kpred:has-file "cli/src/index.ts" ;
           kpred:has-file "cli/src/kb.ts" ;
@@ -585,7 +585,7 @@ code:test-bench  rdf:type     ktype:Concept ;
 
 code:static  rdf:type     ktype:Concept ;
              rdfs:label   "Static Assets" ;
-             skos:definition "TTL knowledge bases, fonts, images, SVGs, and the 3D turtle model." ;
+             skos:definition "TTL knowledge graphs, fonts, images, SVGs, and the 3D turtle model." ;
              skos:broader code:repo ;
              kpred:has-file "static/reckons-production.ttl" ;
              kpred:has-file "static/reckons-roadmap.ttl" ;
@@ -608,7 +608,7 @@ code:static  rdf:type     ktype:Concept ;
 
 code:ci  rdf:type     ktype:Concept ;
          rdfs:label   "CI/CD" ;
-         skos:definition "GitHub Actions workflows for CI, extension builds, and KB alignment watching." ;
+         skos:definition "GitHub Actions workflows for CI, extension builds, and graph alignment watching." ;
          skos:broader code:repo ;
          kpred:has-file ".github/workflows/ci.yml" ;
          kpred:has-file ".github/workflows/extension.yml" ;
@@ -641,7 +641,7 @@ code:storybook  rdf:type     ktype:Concept ;
 
 code:scripts  rdf:type     ktype:Concept ;
               rdfs:label   "Scripts" ;
-              skos:definition "Setup and utility scripts for MCP workspace, KB alignment, snapshots, and the docs-graph-to-pages pipeline." ;
+              skos:definition "Setup and utility scripts for MCP workspace, graph alignment, snapshots, and the docs-graph-to-pages pipeline." ;
               skos:broader code:repo ;
               kpred:has-file "scripts/setup-mcp-workspace.sh" ;
               kpred:has-file "scripts/setup-reckons-workspace.sh" ;
@@ -653,7 +653,7 @@ code:scripts  rdf:type     ktype:Concept ;
 
 code:sample-kgs  rdf:type     ktype:Concept ;
                  rdfs:label   "Sample Knowledge Graphs" ;
-                 skos:definition "Example KBs from various extraction runs and cross-project comparisons." ;
+                 skos:definition "Example graphs from various extraction runs and cross-project comparisons." ;
                  skos:broader code:repo ;
                  kpred:has-file "docs/reckons-knowledge-graphs/Reckons.ttl" ;
                  kpred:has-file "docs/reckons-knowledge-graphs/Reckons-FactDiff.ttl" ;
@@ -667,7 +667,7 @@ code:sample-kgs  rdf:type     ktype:Concept ;
 
 code:docs  rdf:type     ktype:Concept ;
            rdfs:label   "Markdown Docs" ;
-           skos:definition "Legacy markdown documentation (being migrated to TTL KBs)." ;
+           skos:definition "Legacy markdown documentation (being migrated to TTL graphs)." ;
            skos:broader code:repo ;
            kpred:has-file "docs/STYLE_GUIDE.md" ;
            kpred:has-file "docs/ENTERPRISE.md" ;
@@ -703,25 +703,25 @@ code:types-lib  rdf:type     ktype:Concept ;
 
 code:leap-production  rdf:type     ktype:KnowledgeBase ;
                       rdfs:label   "LEAP: Production Status" ;
-                      skos:definition "Jump to the Production Status KB for test results, feature health, and architecture." ;
+                      skos:definition "Jump to the Production Status graph for test results, feature health, and architecture." ;
                       <urn:reckons:leap> "reckons-production" ;
                       <urn:reckons:leap/label> "Production Status" .
 
 code:leap-features  rdf:type     ktype:KnowledgeBase ;
                     rdfs:label   "LEAP: Features" ;
-                    skos:definition "Jump to the Features KB for user-facing feature documentation." ;
+                    skos:definition "Jump to the Features graph for user-facing feature documentation." ;
                     <urn:reckons:leap> "a1b2c3d4-e5f6-4a04-b004-000000000004" ;
                     <urn:reckons:leap/label> "Features" .
 
 code:leap-architecture  rdf:type     ktype:KnowledgeBase ;
                         rdfs:label   "LEAP: Architecture" ;
-                        skos:definition "Jump to the Architecture KB for design decisions and standards." ;
+                        skos:definition "Jump to the Architecture graph for design decisions and standards." ;
                         <urn:reckons:leap> "a1b2c3d4-e5f6-4a08-b008-000000000008" ;
                         <urn:reckons:leap/label> "Architecture" .
 
 code:leap-testing  rdf:type     ktype:KnowledgeBase ;
                    rdfs:label   "LEAP: Testing" ;
-                   skos:definition "Jump to the Testing KB for interactive test stories and screenshots." ;
+                   skos:definition "Jump to the Testing graph for interactive test stories and screenshots." ;
                    <urn:reckons:leap> "a1b2c3d4-e5f6-4a09-b009-000000000009" ;
                    <urn:reckons:leap/label> "Testing" .
 
