@@ -153,6 +153,14 @@ export type SettingsRecord = {
    * no /webhook suffix (callers append that per-endpoint).
    */
   n8nBaseUrl?: string;
+  /**
+   * When set, POST a small summary to the n8n review webhook
+   * (/webhook/reckons-review) whenever new facts land for review — so n8n can
+   * email you instead of you having to open the graph. Covers scraped grant
+   * calls (currents), pod arrivals, and any pending ingest. Opt-in; needs
+   * n8nBaseUrl. See src/lib/integrations/n8n/notify.ts.
+   */
+  n8nNotifyOnReview?: boolean;
 };
 
 export const DEFAULT_TURTLE_SETTINGS: TurtleSettings = {
@@ -222,6 +230,7 @@ export const DEFAULT_SETTINGS: SettingsRecord = {
   shellyCustomPrompt: import.meta.env.VITE_SHELLY_PROMPT || undefined,
   embeddingModel: import.meta.env.VITE_EMBEDDING_MODEL ?? 'Xenova/bge-small-en-v1.5',
   n8nBaseUrl: import.meta.env.VITE_N8N_BASE_URL || undefined,
+  n8nNotifyOnReview: false,
   embeddingThreshold: 0.85,
   autoConfirmHighConfidence: false,
   turtleSettings: { ...DEFAULT_TURTLE_SETTINGS }

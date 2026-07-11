@@ -270,6 +270,24 @@ export async function addStatements(
   scheduleAutoSave();
   scheduleWorkspaceTtlExport();
   scheduleDrivePush();
+
+  // "Email me when there's something to review" (F73): one best-effort n8n
+  // webhook per batch of new PENDING facts — grant scrapes (currents), pod
+  // arrivals, and any ingest all funnel through here. Fire-and-forget so a
+  // slow/absent n8n never blocks the edit; no-ops unless the user opted in.
+  const newPending = cleanedSts.filter((st) => st.status === 'pending');
+  if (newPending.length > 0) {
+    void import('$lib/integrations/n8n/notify')
+      .then(({ reviewNotifyEnabled, notifyReview }) => {
+        if (!reviewNotifyEnabled()) return;
+        return notifyReview({
+          count: newPending.length,
+          kind: opts?.origin === 'current' ? 'pod' : 'ingest',
+          samples: newPending.slice(0, 5).map((st) => st.s.value.split('/').pop() ?? st.s.value),
+        });
+      })
+      .catch(() => { /* best-effort notification */ });
+  }
 }
 
 export async function updateStatement(id: string, patch: Partial<Statement>) {
