@@ -1753,6 +1753,21 @@ kb:sets-xr rdf:type          ktype:Feature ;
                kpred:relates-to   kb:spatial-force-layout ;
                kpred:relates-to   kb:int-game-engine .
 
+# -- Coding-Agent Context Dogfooding (F68) -------------------------------------
+# The app's own TTL graphs used as CONDENSED, pre-reviewed context for the coding
+# agents building it — the dogfooding of "information-dense instruction for future
+# sessions / local offline agents." Raised 2026-07-10.
+
+kb:agent-context-dogfooding rdf:type ktype:Feature ;
+               rdfs:label    "Coding-agent context dogfooding" ;
+               kpred:feature-id   "F68" ;
+               kpred:has-status   "functional" ;
+               kpred:principle    "The graph is condensed context tracking for coding agents: instead of re-reading the codebase and re-deriving the plan each session, an agent loads a dense, cross-linked, pre-reviewed subgraph. Every feature captured here (status, deps, tests, decisions) is reusable instruction for the next session — cloud OR local/offline." ;
+               kpred:measured     "From the app's own cost bench (kb:local-offload): kb_compress reduces context tokens 60-70%; a compressed subgraph feeds ~6x fewer input tokens than the raw graph (~50x cheaper per query than the whole ~116k-token graph raw) at EQUAL-or-BETTER grounding (raw scored 60% fact-coverage vs 80% compressed — needle-in-haystack). Grounded generation: compressed-context 79% cheaper; local-draft + Opus-review 77% cheaper on long outputs, same quality." ;
+               kpred:estimate     "For coding-agent assistance (this build session as the sample): establishing task context via a compressed feature-area subgraph (~5-8k tokens) vs re-exploring code + re-deriving the plan (~30-60k tokens/feature) is a ~80-90% cut in context-establishment INPUT tokens per feature; output tokens drop ~77% when drafts are delegated to local models (Opus orchestrates + reviews). Compounding: this session added ~20 cross-linked feature entities — dense instruction a future/offline agent loads instead of re-deriving. CAVEAT: directional estimate; the reckons MCP was not connected this session, so the realized win was plan-grounding via the TTL graphs directly (no feature re-derivation, consistent status/deps), not the full kb_compress pipeline." ;
+               kpred:relates-to   kb:local-offload ;
+               kpred:relates-to   kb:context-compression .
+
 # -- Infrastructure entities (completeness) -------------------------------------
 # Defined here because features depend-on them (F22 -> embedding-model,
 # local-offload -> llm-providers) but they had no entity — the graph pointed at
