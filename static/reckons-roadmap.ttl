@@ -488,6 +488,38 @@ kb:calendar-management rdf:type ktype:Feature ;
                kpred:description  "Beyond add/incoming calendar events: a management surface for calendars themselves — list connected/subscribed calendars, enable/disable, choose which sync into the graph, and treat a published calendar as a subscription (kb:publisher-subscriptions) so new events flow in via pods. Builds on the existing calendar ingest source." ;
                kpred:relates-to   kb:publisher-subscriptions .
 
+## -- F73: Grant discovery via scheduled currents + n8n review notifications ------
+## Real use-case (two nonprofits): the graph holds each org's grant-seeker profile;
+## a scheduled n8n scrape uses it to find eligible grant CALLS online and posts them
+## back as pending facts; you only open the graph when there's something to review,
+## because n8n emails you. n8n owns the scrape + schedule + email (side effects); the
+## app owns the profile, the review queue, and firing the "review me" signal.
+kb:grant-discovery-currents rdf:type ktype:Feature ;
+               rdfs:label   "Grant discovery (scheduled scrape → currents)" ;
+               kpred:feature-id   "F73" ;
+               kpred:has-status   "planned" ;
+               kpred:relates-to   kb:currents ;
+               kpred:relates-to   kb:n8n-integration ;
+               kpred:description  "Automatic web scraping for eligible grant CALLS, targeted by the org's own graph. n8n runs a scheduled workflow (cron) that reads the grant-seeker profile (kb:grant-seeker-profile) — mission, focus areas, populations, geography, budget band, org type/501c3, deadlines-watch — turns it into searches across grant sources (grants.gov, foundation/RFP pages, funder lists), filters to eligible calls, and posts each match back into Reckons.AI as PENDING facts (knowledge.pending.jsonl in the synced folder/Drive, or a webhook). They arrive as translucent pod currents for review. Two live examples exist (two nonprofits the operator works with) — each is its own graph with its own profile, so the same workflow serves both. Respects the Integration Boundaries: the scrape/schedule live in the user's n8n, never in the core app." ;
+               kpred:has-part     kb:grant-seeker-profile ;
+               kpred:depends-on   kb:n8n-review-notifications ;
+               kpred:open-question "Which grant sources first (grants.gov API vs. HTML RFP pages)? How much eligibility filtering in n8n vs. surfaced for human review? One shared n8n workflow parameterised per-graph, or one per nonprofit?" .
+
+kb:grant-seeker-profile rdf:type ktype:Feature ;
+               rdfs:label   "Grant-seeker profile (graph shape)" ;
+               kpred:has-status   "planned" ;
+               kpred:relates-to   kb:grant-discovery-currents ;
+               kpred:description  "A small, standard subgraph describing what an org is eligible for and seeking: mission, focus areas, served populations, geography, budget range, org type (501c3 etc.), and deadlines-watch. It's ordinary graph data the org already curates; the scheduled scrape reads it (via the synced TTL / kb:published-ttl) to target searches. Ship a starter profile the two example nonprofits can fill in." .
+
+kb:n8n-review-notifications rdf:type ktype:Feature ;
+               rdfs:label   "n8n review notifications (email me when there's something to review)" ;
+               kpred:feature-id   "F73.1" ;
+               kpred:has-status   "functional" ;
+               kpred:relates-to   kb:n8n-integration ;
+               kpred:description  "One unified signal: whenever new PENDING facts land via addStatements — a scheduled grant scrape (currents), a subscribed publisher's pod (kb:publisher-subscriptions), or any ingest — the app fires a best-effort POST to the user's n8n review webhook (/webhook/reckons-review) with a small summary (count, kind, sample labels). n8n turns it into an email/Slack/digest however the user likes, so they don't have to keep opening the graph. Opt-in via settings.n8nNotifyOnReview + n8nBaseUrl; fire-and-forget so a slow/absent n8n never blocks an edit. Two n8n email automations round out the loop: this review notifier and the existing contact form (kb:n8n-integration). Pods reuse this exact hook." ;
+               kpred:done         "src/lib/integrations/n8n/notify.ts (notifyReview); wired in kb.svelte addStatements; settings.n8nNotifyOnReview; unit-tested." ;
+               kpred:depends-on   kb:n8n-integration .
+
 kb:webpage-entity rdf:type   ktype:Feature ;
                rdfs:label   "WebPage Entity" ;
                kpred:has-status   "functional" ;
