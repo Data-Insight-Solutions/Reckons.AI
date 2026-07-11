@@ -62,3 +62,7 @@ static/docs-all.ttl
 # F34 button-crawl generated artifacts (regenerate: npm run test:crawl)
 tests/visual/button-crawl.ttl
 tests/visual/screenshots/button-crawl/
+
+# tesseract.js OCR language data (downloaded at runtime)
+eng.traineddata
+*.traineddata

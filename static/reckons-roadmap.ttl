@@ -1293,7 +1293,9 @@ kb:release-pipeline rdf:type ktype:Feature ;
                kpred:in-dev       "2026-07-07"^^xsd:date ;
                kpred:description  "Model the release pipeline in the graphs and check branches against it. Three environments with review gates (static/reckons-production.ttl): kb:env-dev (branch dev, DEVELOPER technical review), kb:env-staging (branch staging, STAKEHOLDER business review), kb:env-production (branch main, both approvals; deploys on push). Features carry promotion predicates: kpred:in-dev / kpred:in-staging / kpred:in-production (dated), plus kpred:dev-approved / kpred:stakeholder-approved sign-offs; has-status 'production' implies in-production. scripts/branch-align.ts parses these claims and compares them to real git state (branch existence, main..branch merged PRs), reporting the pipeline per environment and flagging drift: features marked in-dev but status 'production' (contradiction), 'functional' features not marked in any env (untracked), in-dev features already on main (should promote to production status), missing env branches, and merged PRs on a branch not reflected by any tracked feature (unplanned). Run: npm run branch-align. Complements the code<->Graph alignment in scripts/kb-align.ts (F26) by adding the environment/branch dimension. Development lifecycle — each gate reviews against a graph: (1) BUSINESS DEFINITION of the feature in the roadmap graph (business-goal level, stakeholder-owned); (2) developer + Opus orchestrate the technical spec in the CODEBASE graph; (3) local agents do the task work; (4) PR to dev; (5) DEVELOPER gate — collaborative review of the dev deploy (dev.reckons-ai.pages.dev) with visual-testing agents (VLM), confirming the implementation against the codebase graph -> kpred:dev-approved; (6) merge to staging; (7) STAKEHOLDER gate — business review on staging.reckons-ai.pages.dev of the built feature against the ORIGINAL roadmap goal (does the result meet the intent) -> kpred:stakeholder-approved; (8) agent-assisted DOCUMENTATION generation, reviewed by the stakeholder; (9) merge to main (production, reckons.ai). Env nodes carry kpred:deploy-url and kpred:reviews-graph (dev->codebase technical spec, staging->roadmap business intent); production requires-documentation." ;
                kpred:depends-on   kb:ci-cd-kb-watch ;
-               kpred:relates-to   kb:git-analysis .
+               kpred:relates-to   kb:git-analysis ;
+               kpred:enforcement-gap "The review gates are MODELED in the graph but NOT ENFORCED on GitHub (audited 2026-07-11: main, dev, AND staging have branch-protection objects with NOTHING enforced — no required PR reviews, no required status checks, enforce_admins off, force-pushes allowed). Demonstrated live: a merge intended for dev landed on MAIN and deployed to production with no gate stopping it (the base-branch re-target silently failed and nothing blocked the merge). Constraint: only ONE collaborator (Data-Insight-Solutions), so GitHub required-human-approval would deadlock solo merges (can't approve your own PR)." ;
+               kpred:enforcement-plan "DECISION 2026-07-11: allow merges for NOW (velocity during massive change); ENFORCE at LAUNCH (public announcement of Reckons.AI), once the review process is smooth and fully tested. Near-term scope: main only. At launch, enable branch protection on main (then dev + staging): require PR + required status checks green (Type check + Unit tests + Build, Reckons.AI Graph Alignment Check, E2E (Desktop Chrome), Deploy Gate — Graph Render Smoke) with strict/up-to-date, and enforce_admins ON (no bypass) — the automated F33 CI gates become the enforced review. Add required human approval once a 2nd reviewer / review bot exists. INTERIM GUARDRAIL (behavioral, agents): always target dev, verify a PR's resolved base branch BEFORE merging, never merge to main without explicit production intent — so an intended-dev merge can't hit production again." .
 
 kb:deep-testing rdf:type ktype:Feature ;
                rdfs:label    "Deep Testing & Living Coverage" ;
@@ -1775,7 +1777,20 @@ kb:settings-polish rdf:type  ktype:Feature ;
                kpred:priority     "high" ;
                kpred:description  "Refine ALL settings pages and add a PUBLISHING tab. Findings (2026-07-10): (1) the settings nav is COPY-PASTED across all 4 pages (backends / integrations / turtle / entity-types) with duplicated markup AND styles — extract a shared src/routes/(app)/settings/+layout.svelte so the nav/chrome live once; (2) the 'turtle' tab is MISLABELED — it's actually Shelly identity/personality/voice settings, not Turtle/RDF; rename it (e.g. 'shelly' or 'assistant'); (3) NEW 'publishing' tab to house the currently-scattered/absent publish settings — githubToken (used by publishSiteToGitHub, no UI today), site identity (kbTitle/kbDescription), and a link to Sveltia /admin; move 'semantic web' / publishing settings here; (4) audit for stale/older components + surfaced errors (user reports seeing some) — needs the specific errors/components identified. Do the shared-layout extraction FIRST so adding the tab doesn't multiply the duplication." ;
                kpred:relates-to   kb:graph-publishing ;
-               kpred:open-question "Which settings does the user consider 'semantic web' (to move into Publishing)? And which specific errors / older components are visible? Targeted fixes need these." .
+               kpred:has-part     kb:settings-unified-integrations ;
+               kpred:done         "2026-07-11: the 'publishing' tab shipped (semantic web / LLM search export moved off backends; JSON-LD + llms.txt), with a nav link across the settings pages and a visual test. REMAINING: shared-layout dedup, rename the mislabeled 'turtle'(=Shelly) tab, and the unified-integrations rework (F69.1)." ;
+               kpred:open-question "Which specific errors / older components are visible? Targeted fixes need them pointed out." .
+
+kb:settings-unified-integrations rdf:type ktype:Feature ;
+               rdfs:label    "Unified, categorized integrations settings" ;
+               kpred:feature-id   "F69.1" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:settings-polish ;
+               kpred:principle    "The biggest settings mess is BACKENDS vs INTEGRATIONS — an artificial split. Everything is an integration. Present them as one surface, tagged by CATEGORY (what kind of thing) and by CAPABILITY (what workflow verb it serves), filterable either way." ;
+               kpred:description  "Merge the 'backends' + 'integrations' tabs into ONE integrations surface. Tag each integration two ways: (a) CATEGORY — AI (LLM / VLM / code-agent / embedding / OCR / TTS-STT), Calendars (Google / Indico / iCal), Storage/Sync (local folder / Google Drive / GitHub / n8n / Nextcloud), etc.; (b) CAPABILITY — the app verbs it powers: Add (ingest/extract/OCR), Review, Analyze, Reckon. The verb view overlaps with category (an integration's category implies which verbs it serves), so offer FILTERS for either view — browse by category or by 'what powers Reckon'. Provider-status metadata already exists (provider-status.svelte.ts); this is the taxonomy + a filterable UI on top. Pairs naturally with the Integration Plugin SDK (F61): each plug-in DECLARES its category + capabilities, and the settings surface renders from that declaration." ;
+               kpred:relates-to   kb:integration-plugin-sdk ;
+               kpred:open-question "Store the taxonomy where — a static map now, or derived from each plug-in's declared category/capabilities once F61 lands (preferred, so it stays in sync)?" .
 
 kb:local-ocr rdf:type        ktype:Feature ;
                rdfs:label    "Local OCR (Ollama / WASM)" ;
@@ -1794,6 +1809,25 @@ kb:ocr-visual-testing rdf:type ktype:Feature ;
                kpred:part-of      kb:local-ocr ;
                kpred:description  "Add OCR to the visual test harness so screenshots can be asserted on EXACT rendered text, not just the VLM 'does X appear' gate (F34). Recommended: Tesseract.js (WASM) for speed + determinism + offline; keep the qwen2.5vl VLM path (proven verbatim, but ~78s/image) for cases needing layout/semantic reading. E.g. assert the Publishing tab's nav reads 'backends publishing integrations turtle entity types' exactly — the qwen2.5vl OCR already did this correctly in the feasibility test. Complements analyzeText/analyzePixels in tests/visual/vision-local.ts." ;
                kpred:relates-to   kb:visual-testing .
+
+# -- Content Orchestrator (F71) ------------------------------------------------
+# Reframe: Reckons.AI is a CONTENT ORCHESTRATOR, not just a context manager. It
+# doesn't only manage input context — it COMPOSES digital-asset OUTPUTS from the
+# graph. Raised 2026-07-11.
+
+kb:content-orchestrator rdf:type ktype:Feature ;
+               rdfs:label    "Content Orchestrator" ;
+               kpred:feature-id   "F71" ;
+               kpred:has-status   "speculative" ;
+               kpred:priority     "high" ;
+               kpred:principle    "Content Orchestrator, not just Context manager: the graph is a SOURCE for composed outputs (a combined PDF, a doc, a set of images/3D), not only a store of reviewed context. Orchestration = clean, clear composition of digital assets FROM the graph." ;
+               kpred:principle    "Scope by SELECTION, not the whole graph. Generate/compose from a chosen SET (F65 entity sets) or a set-selection menu — or the whole graph — the user picks the scope. 'Maybe both': a scope switch (this set / these sets / everything)." ;
+               kpred:description  "Compose digital-asset outputs cleanly: COMBINE PDFs (merge several PDFs, or compose one PDF from selected graph content/WebPages), and other outputs (image collage, doc, 3D scene). Driven by set-selection menus that bound the output to a subgraph, so you're not forced to render the entire graph. Sits atop F58 meta-visual generation (output types PNG/PDF/GLB, F58.4), F58.5 asset+fact assembly (now scoped by a set), F58.7 file conversion (PDF composition), and F58.8 orchestration; F65 entity sets provide the selection scope. PDF composition is one of the most FEASIBLE near-term outputs (deterministic, OSS libs) — a good first Content-Orchestrator deliverable." ;
+               kpred:depends-on   kb:entity-sets ;
+               kpred:relates-to   kb:meta-visual-generation ;
+               kpred:relates-to   kb:mvg-asset-assembly ;
+               kpred:relates-to   kb:gen-orchestration ;
+               kpred:relates-to   kb:review-anchored-generation .
 
 # -- Infrastructure entities (completeness) -------------------------------------
 # Defined here because features depend-on them (F22 -> embedding-model,

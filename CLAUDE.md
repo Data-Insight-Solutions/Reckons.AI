@@ -92,6 +92,8 @@ The alignment score is a composite of 4 dimensions (30% coverage, 30% status ali
 
 Production deploys from `main` on every push — an unreviewed push is an unreviewed deploy.
 
+**Default PR base is `dev`, NOT `main`.** The pipeline is `dev → staging → main` (F33). Feature PRs target **`dev`**; only deliberate, approved promotions go to `main`. Branch protection is **not yet enforced** on any branch (audited 2026-07-11) and will be enabled at launch (see F33 `enforcement-plan`) — so until then the guardrail is behavioral: **before merging any PR, verify its resolved base branch** (`gh pr view <n> --json baseRefName`) — `gh pr edit --base` can silently fail, and a mis-targeted merge to `main` deploys straight to production. Never merge to `main` without explicit production intent.
+
 ### Graphs are the plan and source of truth
 
 The TTL graphs in `static/` are the canonical plan and system description — code follows the graphs, not the other way around:
