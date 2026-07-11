@@ -672,6 +672,7 @@ kb:n8n-cloud-sync rdf:type ktype:Feature ;
                rdfs:label   "n8n Automation" ;
                kpred:has-status   "functional" ;
                kpred:feature-id   "F20" ;
+               kpred:principle    "n8n is NOT a backend for all things Reckons.AI. It is an OPTIONAL, PER-USER automation layer: a user connects their OWN self-hosted n8n to enable personalized automation/integration flowing into AND out of their Reckons.AI. The app stays local-first with no general backend; n8n owns web side-effects, never core state. (Mirrored in CLAUDE.md → Integration Boundaries for coding agents.)" ;
                kpred:description  "Route web integrations through a self-hosted n8n instance (open-source automation, no SaaS). The clean division of labour: the app stays static/offline-first and owns the VISUAL building; n8n owns the web side-effects (email, sheets, tickets, monitoring). settings.n8nBaseUrl (Settings → Integrations) points at the instance." ;
                kpred:has-workflow  kb:n8n-sync-hub ;
                kpred:has-workflow  kb:n8n-source-monitor ;
@@ -1685,6 +1686,38 @@ kb:integration-plugin-sdk rdf:type ktype:Feature ;
                kpred:relates-to   kb:gp-cloud-storage ;
                kpred:relates-to   kb:gen-orchestration ;
                kpred:relates-to   kb:int-game-engine .
+
+# -- Integration Orchestration & Scheduling (F64) ------------------------------
+# Beyond one-shot integration calls: chain integrations with trigger events,
+# dependencies, and schedules. Raised 2026-07-10.
+
+kb:integration-orchestration rdf:type ktype:Feature ;
+               rdfs:label    "Integration orchestration & scheduling" ;
+               kpred:feature-id   "F64" ;
+               kpred:has-status   "speculative" ;
+               kpred:principle    "Integrations must be INTERCONNECTABLE, with clearly definable trigger events, dependencies, and schedules — not just fire-and-forget. Example: a blogger's web page publishes ONLY AFTER the Facebook post is drafted. Order and timing are first-class." ;
+               kpred:description  "Let a user define trigger events, dependencies BETWEEN integration actions, and schedules — so cross-integration flows are explicit and ordered (publish-after-draft, post-then-notify, nightly-sync). Two layers: (a) the user's own n8n owns the heavy multi-step automation (its native strength); (b) the app models the intent — trigger/dependency/schedule as graph facts — and hands it to n8n or runs light in-app schedules. Scheduling exists in Claude Code routines (CronCreate/ScheduleWakeup) as a pattern; here it is user-facing, per-graph. Plugs into the Integration Plugin SDK (F61) so any plug-in exposes trigger/action hooks." ;
+               kpred:depends-on   kb:integration-plugin-sdk ;
+               kpred:relates-to   kb:n8n-cloud-sync ;
+               kpred:open-question "How much orchestration lives IN Reckons.AI vs. delegated to n8n? Lean: model intent + simple schedules in-app, delegate complex multi-service flows to the user's n8n (its job), per the n8n-is-not-a-backend principle (F20)." .
+
+# -- Entity Sets & Multi-node Grouping (F65) -----------------------------------
+# A user-defined GROUPING of entities (a "set"), alongside entity types, with
+# premade relating triples — creatable up front or from a selection in the graph.
+# Raised 2026-07-10. Builds on the existing multi-select (Ctrl+click -> merge /
+# relate in src/routes/(app)/+page.svelte).
+
+kb:entity-sets rdf:type      ktype:Feature ;
+               rdfs:label    "Entity sets (multi-entity groupings)" ;
+               kpred:feature-id   "F65" ;
+               kpred:has-status   "speculative" ;
+               kpred:priority     "high" ;
+               kpred:principle    "Entity TYPES describe ONE node's kind; entity SETS describe a reusable GROUP of nodes + the relationships among them. A set is a customizable grouping — optionally with premade triples relating its members — that a user can define once and instantiate, the way types are reused." ;
+               kpred:description  "Two entry points to the same concept: (1) MULTI-ENTITY CREATION — define a 'set' up front (members + optional premade relating triples), a template you instantiate to drop a whole related cluster at once (e.g. a 'trip' set = 2 people + 2 options + routes, like the starter graph's shape). Lives alongside entity types. (2) MULTI-NODE GROUPING IN THE GRAPH — select several nodes (extends the existing Ctrl+click multi-select) and GROUP them; a grouped selection unlocks additional ANALYZE options (analyze the subgraph as a unit) and a 'save as entity set' action that captures the members + their inter-relationships as a reusable set. Grouping also feeds F58.5 asset-assembly (a set is a natural generation subgraph) and F60 arrange (a set is a natural page section)." ;
+               kpred:relates-to   kb:entity-types ;
+               kpred:relates-to   kb:meta-visual-generation ;
+               kpred:relates-to   kb:arrange-layout-builder ;
+               kpred:open-question "Storage: is a set a first-class node (ktype:EntitySet) whose members are linked by a 'has-member' predicate, or a saved selection/template? First-class node makes it queryable + shareable and round-trips in TTL." .
 
 # -- Infrastructure entities (completeness) -------------------------------------
 # Defined here because features depend-on them (F22 -> embedding-model,
