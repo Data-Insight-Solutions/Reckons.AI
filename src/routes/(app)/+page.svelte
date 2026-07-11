@@ -350,6 +350,9 @@
   // FAB (it's an always-on panel on desktop, which would block the graph on a
   // phone). Desktop keeps the SnapPanel always open. (F36 phase 2b)
   let filterSheetOpen = $state(false);
+  // Graph-package/sync controls in the filter panel are collapsed by default so
+  // the panel stays short (filters + force fit without an inner scroll).
+  let packageOpen = $state(false);
 
   // Build a set of subject IRIs matching the selected entity types
   const typedSubjects = $derived.by(() => {
@@ -1549,25 +1552,25 @@
   <div class="overlay-group">
     <span class="group-label mono">filters</span>
     <div class="chip-row">
-      <button class="chip" class:active={activeFilters.has('hubs')} onclick={() => toggleFilter('hubs')}>
+      <button class="chip" class:active={activeFilters.has('hubs')} onclick={() => toggleFilter('hubs')} title="Show only highly-connected hub nodes">
         <span class="num">{hubs.length}</span>
         <span class="lbl mono">hubs</span>
       </button>
-      <button class="chip" class:active={activeFilters.has('islands')} onclick={() => toggleFilter('islands')}>
+      <button class="chip" class:active={activeFilters.has('islands')} onclick={() => toggleFilter('islands')} title="Show only isolated nodes with no connections">
         <span class="num">{islandNodes.length}</span>
         <span class="lbl mono">islands</span>
       </button>
       {#if leapKeys.length > 0}
-        <button class="chip" class:active={activeFilters.has('leaps')} onclick={() => toggleFilter('leaps')}>
+        <button class="chip" class:active={activeFilters.has('leaps')} onclick={() => toggleFilter('leaps')} title="Cross-graph leap nodes — jump to another graph">
           <span class="num">{leapKeys.length}</span>
           <span class="lbl mono">jumps</span>
         </button>
       {/if}
-      <button class="chip" class:active={activeFilters.has('confirmed')} onclick={() => toggleFilter('confirmed')}>
+      <button class="chip" class:active={activeFilters.has('confirmed')} onclick={() => toggleFilter('confirmed')} title="Show confirmed facts">
         <span class="num">{visibleConfirmedCount}</span>
         <span class="lbl mono">confirmed</span>
       </button>
-      <button class="chip" class:active={activeFilters.has('pending')} onclick={() => toggleFilter('pending')}>
+      <button class="chip" class:active={activeFilters.has('pending')} onclick={() => toggleFilter('pending')} title="Show pending facts awaiting your review">
         <span class="num">{visiblePendingCount}</span>
         <span class="lbl mono">pending</span>
       </button>
@@ -1669,20 +1672,20 @@
       onValueChange={(v) => { if (v) layout = v as typeof layout; }}
       class="tg-row"
     >
-      <ToggleGroup.Item value="force" class="tg-chip"><span class="lbl mono">free</span></ToggleGroup.Item>
-      <ToggleGroup.Item value="focus" class="tg-chip"><span class="lbl mono">focus</span></ToggleGroup.Item>
+      <ToggleGroup.Item value="force" class="tg-chip" title="Free force layout — nodes repel, links pull them together"><span class="lbl mono">free</span></ToggleGroup.Item>
+      <ToggleGroup.Item value="focus" class="tg-chip" title="Focus the selected node and its neighbours; push the rest away"><span class="lbl mono">focus</span></ToggleGroup.Item>
       {#if sources().filter(s => s.kind !== 'analysis').length > 1}
-        <ToggleGroup.Item value="source" class="tg-chip"><span class="lbl mono">source</span></ToggleGroup.Item>
+        <ToggleGroup.Item value="source" class="tg-chip" title="Cluster nodes by the source they came from"><span class="lbl mono">source</span></ToggleGroup.Item>
       {/if}
       {#if activeEntityTypes.length > 0}
-        <ToggleGroup.Item value="type" class="tg-chip"><span class="lbl mono">type</span></ToggleGroup.Item>
+        <ToggleGroup.Item value="type" class="tg-chip" title="Cluster nodes by entity type"><span class="lbl mono">type</span></ToggleGroup.Item>
       {/if}
-      <ToggleGroup.Item value="hub" class="tg-chip"><span class="lbl mono">hub</span></ToggleGroup.Item>
-      <ToggleGroup.Item value="timeline" class="tg-chip"><span class="lbl mono">time</span></ToggleGroup.Item>
+      <ToggleGroup.Item value="hub" class="tg-chip" title="Pull the most-connected hubs toward the centre"><span class="lbl mono">hub</span></ToggleGroup.Item>
+      <ToggleGroup.Item value="timeline" class="tg-chip" title="Lay nodes out left-to-right on a timeline by date"><span class="lbl mono">time</span></ToggleGroup.Item>
       <!-- value stays "order" (URL/state); label is "arrange" so it isn't
            confused with structural hnav ordering — this is a manual drag grid. -->
-      <ToggleGroup.Item value="order" class="tg-chip"><span class="lbl mono">arrange</span></ToggleGroup.Item>
-      <ToggleGroup.Item value="hierarchy" class="tg-chip"><span class="lbl mono">tree</span></ToggleGroup.Item>
+      <ToggleGroup.Item value="order" class="tg-chip" title="Hand-arrange nodes on a grid — drag to reorder (basis for page layout)"><span class="lbl mono">arrange</span></ToggleGroup.Item>
+      <ToggleGroup.Item value="hierarchy" class="tg-chip" title="Hierarchical tree from broader/narrower and nav order"><span class="lbl mono">tree</span></ToggleGroup.Item>
     </ToggleGroup.Root>
     {#if podMode}
       <span class="pod-indicator mono" title="Pod view is on — arrivals from your currents drift in translucent until you accept them. Toggle it on the Graph tab.">🐋 pod</span>
@@ -1733,8 +1736,13 @@
   </div>
   {/if}
 
-  <!-- GRAPH PACKAGE — this graph's .ttl, sidecars, story, currents & folder sync -->
-  <GraphPackagePanel statementCount={statements().length} />
+  <!-- GRAPH PACKAGE — this graph's .ttl, sidecars, story, currents & folder sync.
+       Collapsed by default so the panel stays short (filters + force fit without
+       an inner scroll); expand for the package/sync controls on demand. -->
+  <details class="pkg-disclosure" bind:open={packageOpen}>
+    <summary class="group-label mono">graph package &amp; sync {packageOpen ? '▾' : '▸'}</summary>
+    <GraphPackagePanel statementCount={statements().length} />
+  </details>
 
 </div>
 </AdaptivePanel>
@@ -2484,6 +2492,25 @@
     flex-direction: column;
     gap: 0.35rem;
   }
+
+  /* Collapsible graph-package / sync section — keeps the panel short by default */
+  .pkg-disclosure {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    border-top: 1px solid var(--line);
+    padding-top: 0.5rem;
+  }
+  .pkg-disclosure > summary {
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .pkg-disclosure > summary::-webkit-details-marker { display: none; }
+  .pkg-disclosure > summary:hover { color: var(--accent); }
 
   .group-label {
     font-size: 0.52rem;

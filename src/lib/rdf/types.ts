@@ -190,9 +190,20 @@ export const PAGE_PREFIX = 'urn:reckons:page/';
 /** Predicates under this prefix are graph-level currents settings (F29) */
 export const CURRENTS_PREFIX = 'urn:reckons:meta/currents/';
 
+/** Predicates whose object is a presentation image (2D icon / preview photo).
+ * They're consumed directly by the icon/preview maps; as edges they'd render
+ * the raw data-URI or URL as a junk literal node, so they're metadata here. */
+export const PRESENTATION_IMAGE_PREDICATES = new Set([
+  'urn:kbase:predicate/icon2d',
+  'urn:kbase:predicate/photo',
+]);
+
 /** Returns true if the predicate is metadata (should not render as a graph edge/node) */
 export function isMetaPredicate(predicateIri: string): boolean {
   if (predicateIri.startsWith(META_PREFIX)) return true;
+  // Icon/preview image predicates are presentation metadata, not semantic edges —
+  // otherwise their data-URI/URL object becomes a junk literal node in the graph.
+  if (PRESENTATION_IMAGE_PREDICATES.has(predicateIri)) return true;
   // nav:order and nav:layer are node metadata, not graph edges
   if (predicateIri === `${NAV_PREFIX}order` || predicateIri === `${NAV_PREFIX}layer`) return true;
   // page:* are per-page publishing metadata (literals) — the site tree still renders
@@ -201,6 +212,22 @@ export function isMetaPredicate(predicateIri: string): boolean {
   // currents settings are graph-level config, never edges
   if (predicateIri.startsWith(CURRENTS_PREFIX)) return true;
   return false;
+}
+
+/** Friendly one-line label for a literal object node: URLs collapse to their
+ * host, data: URIs to a type glyph, everything else truncates. Keeps long links
+ * and stray data-URIs from rendering as unreadable node labels. */
+export function displayLiteralLabel(value: string): string {
+  if (!value) return value;
+  if (value.startsWith('data:')) {
+    const semi = value.indexOf(';');
+    const mime = value.slice(5, semi > 0 ? semi : 5);
+    return mime.startsWith('image/') ? '🖼 image' : '📎 data';
+  }
+  if (/^https?:\/\//i.test(value)) {
+    try { return '🔗 ' + new URL(value).hostname.replace(/^www\./, ''); } catch { /* fall through */ }
+  }
+  return value.length > 48 ? value.slice(0, 45) + '...' : value;
 }
 
 /* ---------- term helpers ---------- */

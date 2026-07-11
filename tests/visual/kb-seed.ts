@@ -89,23 +89,25 @@ export async function importKbFromTtl(
   await page.goto(`${APP}/ingest`);
   await page.waitForTimeout(1500);
 
-  // Click the "kb" tab — the button that sets mode='kb'.
+  // Click the graph-import tab — the button that sets mode='kb'. After the
+  // KB→graph terminology rename this tab is now LABELLED "graph" (with an SVG
+  // icon), though the internal mode value is still 'kb'. Accept either label so
+  // the helper survives the rename in both directions.
   // Must be precise: the tab bar has "triples ✎" and "extract triples →" too.
-  // The kb tab contains an SVG icon + literal text " kb".
+  const tabLabels = ['graph', 'kb'];
   const tabs = page.locator('.tabs button');
   const tabCount = await tabs.count();
   let clicked = false;
-  for (let i = 0; i < tabCount; i++) {
+  for (let i = 0; i < tabCount && !clicked; i++) {
     const text = (await tabs.nth(i).textContent())?.trim().toLowerCase();
-    if (text === 'kb') {
+    if (text && tabLabels.includes(text)) {
       await tabs.nth(i).click();
       clicked = true;
-      break;
     }
   }
   if (!clicked) {
-    // Fallback: look for any button whose text is exactly "kb"
-    await page.locator('button:text-is("kb")').first().click();
+    // Fallback: match either label exactly.
+    await page.locator('.tabs button', { hasText: /^\s*(graph|kb)\s*$/i }).first().click();
   }
   await page.waitForTimeout(500);
 
@@ -116,8 +118,8 @@ export async function importKbFromTtl(
   // Wait for parsing to complete
   await page.waitForTimeout(2000);
 
-  // Click "as new KB" button — this triggers a confirm() dialog
-  const asNewBtn = page.getByRole('button', { name: /as new kb/i });
+  // Click the "as new graph" button (formerly "as new KB") — triggers confirm()
+  const asNewBtn = page.getByRole('button', { name: /as new (graph|kb)/i });
   await expect(asNewBtn).toBeEnabled({ timeout: 10_000 });
 
   if (opts?.switchTo) {
