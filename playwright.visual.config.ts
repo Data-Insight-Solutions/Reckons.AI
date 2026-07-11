@@ -31,7 +31,13 @@ export default defineConfig({
   // vision-scoring / vision-vlm live in tests/visual/ but are vitest unit tests
   // (they use `describe` from vitest, run as part of `npx vitest run`). Playwright
   // must not collect them, or its whole run aborts at collection.
-  testIgnore: ['**/vision-scoring.test.ts', '**/vision-vlm.test.ts'],
+  // navigation-sweep is a 5-device × 5-destination matrix — heavy; it has its own
+  // runner (npm run test:workflows via playwright.workflows.config.ts).
+  testIgnore: [
+    '**/vision-scoring.test.ts',
+    '**/vision-vlm.test.ts',
+    '**/navigation-sweep.test.ts',
+  ],
   timeout: 60_000,
   fullyParallel: true,
 

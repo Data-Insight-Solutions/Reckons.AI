@@ -340,6 +340,13 @@ kb:visual-testing rdf:type  ktype:Feature ;
                kpred:has-status   "production" ;
                kpred:description  "5-tier visual QA: pixel analysis, DOM overlap, text extraction, Mistral OCR, Claude vision. 95%+ accuracy." .
 
+kb:visual-workflow-harness rdf:type ktype:Feature ;
+               rdfs:label   "Visual Workflow Harness (F42/F43)" ;
+               kpred:has-status   "functional" ;
+               kpred:relates-to   kb:visual-testing ;
+               kpred:description  "Workflow-level visual testing decoupled from Storybook (playwright.workflows.config.ts). A device-matrix harness (tests/visual/workflow-harness.ts: useDevice / screenshotStep / stepAudit) with a navigation-sweep exemplar auditing overflow + sub-44px touch targets across 5 devices. Two offline (local-VLM, no cloud) tools: scripts/visual-graph.ts turns the screenshot matrix into a browsable review-graph TTL (TestStep nodes + hnav tour + hover previews), and scripts/offline/visual-diff.ts (vision-vlm diffImagesVLM) diff-detects regressions between two deploys and queues each as a pending question. npm run test:workflows / visual:graph / offline:visual-diff." ;
+               kpred:tested-by    "tests/visual/user-stories/navigation-sweep.test.ts" .
+
 kb:entity-types rdf:type    ktype:Feature ;
                rdfs:label   "Entity Type System" ;
                kpred:has-status   "production" ;
