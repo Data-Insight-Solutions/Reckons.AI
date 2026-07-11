@@ -1,0 +1,55 @@
+{
+  "name": "Reckons.AI — Review notification → email (F73.1)",
+  "meta": { "templateof": "reckons-review-notify" },
+  "nodes": [
+    {
+      "parameters": { "content": "## Review notification → email (F73.1 kb:n8n-review-notifications)\n\nReckons.AI POSTs here whenever new facts land for review — a grant scrape, a subscribed publisher's pod, or any ingest — so you get an email instead of having to open the graph.\n\n**Setup:**\n1. Import this workflow, open the Webhook node, copy the **production** URL. Its path must be `reckons-review` so it matches `POST {n8nBaseUrl}/webhook/reckons-review`.\n2. In Reckons.AI → Settings → Integrations: set the n8n base URL and enable **Notify on review** (`n8nNotifyOnReview`).\n3. Set the Send Email credential + your address.\n\nPayload: `{ count, kind, source?, samples?[], at }`.", "height": 420, "width": 420 },
+      "id": "note-overview",
+      "name": "About",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-140, 40]
+    },
+    {
+      "parameters": { "httpMethod": "POST", "path": "reckons-review", "responseMode": "onReceived", "options": {} },
+      "id": "webhook",
+      "name": "Reckons review webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [360, 260],
+      "webhookId": "reckons-review"
+    },
+    {
+      "parameters": { "jsCode": "// Format the review summary into an email subject + body.\nconst b = $input.first().json.body ?? $json.body ?? $json;\nconst count = Number(b.count ?? 0);\nconst kind = b.kind ?? 'ingest';\nconst source = b.source ? ` from ${b.source}` : '';\nconst samples = Array.isArray(b.samples) ? b.samples : [];\nconst kindLabel = { pod: 'from a subscribed publisher', scrape: 'from a scheduled scrape', subscription: 'from a subscription', ingest: '' }[kind] ?? '';\nconst subject = `Reckons.AI: ${count} new fact${count === 1 ? '' : 's'} to review${source}`;\nconst sampleList = samples.length ? '\\n\\nExamples:\\n- ' + samples.slice(0, 5).join('\\n- ') : '';\nconst body = `You have ${count} new fact${count === 1 ? '' : 's'} waiting for review ${kindLabel}.${sampleList}\\n\\nOpen Reckons.AI → Review to accept, refine, or reject.\\n\\n(${b.at ?? new Date().toISOString()})`;\nreturn [{ json: { subject, body, count } }];" },
+      "id": "format",
+      "name": "Format email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [580, 260]
+    },
+    {
+      "parameters": { "conditions": { "options": { "caseSensitive": true }, "conditions": [{ "leftValue": "={{ $json.count }}", "rightValue": 0, "operator": { "type": "number", "operation": "gt" } }] } },
+      "id": "if-any",
+      "name": "Only if count > 0",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [800, 260]
+    },
+    {
+      "parameters": { "sendTo": "you@example.com", "subject": "={{ $json.subject }}", "emailFormat": "text", "message": "={{ $json.body }}", "options": {} },
+      "id": "send-email",
+      "name": "Send email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1040, 200],
+      "notes": "Set your SMTP credential + recipient. Swap for the Gmail/Slack/etc. node to change the channel — the app doesn't care how you're notified."
+    }
+  ],
+  "connections": {
+    "Reckons review webhook": { "main": [[{ "node": "Format email", "type": "main", "index": 0 }]] },
+    "Format email": { "main": [[{ "node": "Only if count > 0", "type": "main", "index": 0 }]] },
+    "Only if count > 0": { "main": [[{ "node": "Send email", "type": "main", "index": 0 }], []] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}
