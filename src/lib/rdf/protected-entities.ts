@@ -17,6 +17,7 @@ const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 const ENTITY_TYPE = 'urn:kbase:type/EntityType';
 const LEAP_PRED = 'urn:reckons:leap';
 const NAV_NS = 'urn:reckons:nav/';
+const HAS_MEMBER = 'urn:kbase:predicate/has-member';
 
 export type EntityProtection = { protected: boolean; reason?: string };
 
@@ -32,9 +33,13 @@ export function entityProtection(iri: string, statements: Statement[]): EntityPr
   let typedByCount = 0;
   let isEntityType = false;
   let isNavOrLeap = false;
+  let memberCount = 0;
 
   for (const s of statements) {
     if (!isActive(s)) continue;
+
+    // This entity is a SET that groups other nodes.
+    if (s.s.kind === 'iri' && s.s.value === iri && s.p.value === HAS_MEMBER) memberCount++;
 
     // Other nodes typed AS this entity → it's a type in use.
     if (s.p.value === RDF_TYPE && s.o.kind === 'iri' && s.o.value === iri && s.s.value !== iri) {
@@ -66,6 +71,9 @@ export function entityProtection(iri: string, statements: Statement[]): EntityPr
   }
   if (isNavOrLeap) {
     return { protected: true, reason: 'This is a navigation / leap node — deleting it can break graph navigation.' };
+  }
+  if (memberCount > 0) {
+    return { protected: true, reason: `This is a set grouping ${memberCount} node${memberCount !== 1 ? 's' : ''} — deleting it removes the grouping (the members stay).` };
   }
   return { protected: false };
 }

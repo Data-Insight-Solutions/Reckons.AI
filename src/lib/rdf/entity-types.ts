@@ -216,6 +216,19 @@ export const BUILT_IN_TYPES: EntityTypeDef[] = [
       'urn:reckons:leap'
     ],
     builtIn: true
+  },
+  {
+    iri: 'urn:kbase:type/EntitySet',
+    label: 'Set',
+    geometry: 'torus-knot',
+    color: '#a78bfa',
+    description: 'A user-defined grouping of entities and the relationships among them',
+    icon2d: '⬡',
+    schemaPredicates: [
+      'urn:kbase:predicate/has-member',
+      'urn:kbase:predicate/description'
+    ],
+    builtIn: true
   }
 ];
 

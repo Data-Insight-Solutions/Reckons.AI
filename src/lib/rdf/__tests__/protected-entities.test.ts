@@ -53,6 +53,15 @@ describe('entityProtection', () => {
     expect(r.protected).toBe(true);
   });
 
+  it('protects a set node that groups members', () => {
+    const r = entityProtection('urn:kbase:concept/set-1', [
+      st('urn:kbase:concept/set-1', 'urn:kbase:predicate/has-member', 'urn:kbase:concept/a'),
+      st('urn:kbase:concept/set-1', 'urn:kbase:predicate/has-member', 'urn:kbase:concept/b'),
+    ]);
+    expect(r.protected).toBe(true);
+    expect(r.reason).toMatch(/set grouping 2 nodes/);
+  });
+
   it('does NOT protect an ordinary node', () => {
     const stmts = [
       st('urn:kbase:concept/alex', RDF_TYPE, 'urn:kbase:type/Person'),

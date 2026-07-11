@@ -46,6 +46,7 @@
   import AdaptivePanel from '$lib/components/AdaptivePanel.svelte';
   import GraphPackagePanel from '$lib/components/GraphPackagePanel.svelte';
   import { entityProtection } from '$lib/rdf/protected-entities';
+  import { buildEntitySet, defaultSetName } from '$lib/rdf/entity-sets';
   import { isCompact } from '$lib/stores/viewport.svelte';
   import { Popover, ToggleGroup } from 'bits-ui';
   import { analysisRunning, lastAnalysisError } from '$lib/stores/auto-analyze.svelte';
@@ -1328,6 +1329,19 @@
       .filter(Boolean) as { key: string; label: string; iri: string }[]
   );
 
+  // Batch-select several nodes → group them into a reusable "set" (F65). The set
+  // is a first-class node (ktype:EntitySet) linked to each member via has-member,
+  // so it round-trips in TTL and can be re-selected to act on the whole group.
+  async function createSetFromSelection() {
+    const members = multiSelectedList.map(n => n.iri);
+    if (members.length < 2) return;
+    const name = defaultSetName(members, (iri) => multiSelectedList.find(n => n.iri === iri)?.label ?? iri);
+    const { setIri, statements } = buildEntitySet(name, members);
+    await addStatements(statements);
+    multiSelected = new Set();
+    selected = `i:${setIri}`;
+  }
+
   /**
    * Perform the merge after the user has reviewed conflicts in MergeReview.
    * keepKey  — termKey of the entity whose IRI is kept
@@ -1733,6 +1747,7 @@
         multiSelected = new Set();
         showRelationUI = true;
       }}>+ relate</button>
+      <button class="np-act-btn np-act-set" onclick={createSetFromSelection} title="group these nodes into a reusable set">⬡ group as set</button>
       <button class="np-act-btn" onclick={() => (multiSelected = new Set())}>✕ clear</button>
     </div>
   </div>
@@ -2796,6 +2811,12 @@
     background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
   }
   .np-act-primary:hover { background: var(--accent-soft); border-color: var(--accent); }
+  .np-act-set {
+    border-color: color-mix(in srgb, #a78bfa 50%, transparent);
+    color: #a78bfa;
+    background: color-mix(in srgb, #a78bfa 8%, var(--surface-2));
+  }
+  .np-act-set:hover { border-color: #a78bfa; background: color-mix(in srgb, #a78bfa 16%, var(--surface-2)); }
   .np-act-danger {
     border-color: color-mix(in srgb, var(--danger) 35%, transparent);
     color: var(--danger);
