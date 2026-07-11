@@ -1777,6 +1777,22 @@ kb:settings-polish rdf:type  ktype:Feature ;
                kpred:relates-to   kb:graph-publishing ;
                kpred:open-question "Which settings does the user consider 'semantic web' (to move into Publishing)? And which specific errors / older components are visible? Targeted fixes need these." .
 
+kb:local-ocr rdf:type        ktype:Feature ;
+               rdfs:label    "Local OCR (Ollama / WASM)" ;
+               kpred:feature-id   "F70" ;
+               kpred:has-status   "planned" ;
+               kpred:description  "Offline text-from-image, complementing the existing CLOUD OCR (Mistral, src/lib/integrations/parsers/mistral-ocr.ts — PDFs/images → markdown in ingest). Two local paths, both viable: (a) OLLAMA VLMs — PROVEN 2026-07-10: qwen2.5vl:7b (already installed for the VLM visual gate) OCR'd a full UI screenshot verbatim, every line correct, in ~78s at temp 0; qwen2.5vl:3b / granite3.2-vision are faster options. Reuses the VLM-gate plumbing (tests/visual/vision-local.ts). Slow for big images. (b) WASM — Tesseract.js (classic in-browser OCR, small ~2-4MB lang data, fast, fully offline) OR transformers.js OCR models (TrOCR / Florence-2 / GOT-OCR2 via @huggingface/transformers, already a dep). Use cases: an OFFLINE ingest OCR option (no Mistral key), and text extraction for the visual tests." ;
+               kpred:relates-to   kb:visual-testing ;
+               kpred:relates-to   kb:local-offload .
+
+kb:ocr-visual-testing rdf:type ktype:Feature ;
+               rdfs:label    "OCR in visual testing" ;
+               kpred:feature-id   "F70.1" ;
+               kpred:has-status   "planned" ;
+               kpred:part-of      kb:local-ocr ;
+               kpred:description  "Add OCR to the visual test harness so screenshots can be asserted on EXACT rendered text, not just the VLM 'does X appear' gate (F34). Recommended: Tesseract.js (WASM) for speed + determinism + offline; keep the qwen2.5vl VLM path (proven verbatim, but ~78s/image) for cases needing layout/semantic reading. E.g. assert the Publishing tab's nav reads 'backends publishing integrations turtle entity types' exactly — the qwen2.5vl OCR already did this correctly in the feasibility test. Complements analyzeText/analyzePixels in tests/visual/vision-local.ts." ;
+               kpred:relates-to   kb:visual-testing .
+
 # -- Infrastructure entities (completeness) -------------------------------------
 # Defined here because features depend-on them (F22 -> embedding-model,
 # local-offload -> llm-providers) but they had no entity — the graph pointed at
