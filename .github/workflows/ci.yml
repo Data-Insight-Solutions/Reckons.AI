@@ -6,6 +6,14 @@ on:
   pull_request:
     branches: [main, staging, dev]
 
+# onnxruntime-node's postinstall downloads optional native binaries from a CDN
+# that intermittently times out in CI (ETIMEDOUT). The app uses onnxruntime-web
+# (WASM) + a Vite stub, never the node build, and its CPU binary ships bundled —
+# so skip that download. The install script reads this env var directly, which
+# avoids the npm "unknown config" warning an .npmrc key would emit.
+env:
+  ONNXRUNTIME_NODE_INSTALL: skip
+
 jobs:
   check:
     name: Type check + Unit tests + Build
