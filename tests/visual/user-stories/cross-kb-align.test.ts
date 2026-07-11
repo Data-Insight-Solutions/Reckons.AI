@@ -224,7 +224,7 @@ test.describe('User Story: Cross-KB Alignment', () => {
       await page.waitForTimeout(300);
 
       // Switch to incoming tab
-      await page.locator('button').filter({ hasText: /^incoming$/i }).click();
+      await page.locator('.rp-tabs button').filter({ hasText: 'incoming' }).click();
       await page.waitForTimeout(300);
 
       await screenshotTo(page, 'cross-kb-align', '07a-switched-to-incoming');
