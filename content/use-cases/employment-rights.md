@@ -15,4 +15,4 @@ generated: "docs-kb"
 
 *Concept*
 
-Track your employment contract terms, company policies, HR correspondence, and performance records. When you need to assert your rights, your KB provides precise, documented, citable facts.
+Track your employment contract terms, company policies, HR correspondence, and performance records. When you need to assert your rights, your graph provides precise, documented, citable facts.

@@ -17,7 +17,7 @@ related:
 
 *Concept*
 
-Three tabs: Incoming (new triples), Deletions (removal proposals), Merges (duplicate entity suggestions). Confirm, reject, or refine each statement. Nothing enters your KB without your approval.
+Three tabs: Incoming (new triples), Deletions (removal proposals), Merges (duplicate entity suggestions). Confirm, reject, or refine each statement. Nothing enters your graph without your approval.
 
 ## Related
 

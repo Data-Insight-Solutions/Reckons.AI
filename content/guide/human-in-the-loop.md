@@ -7,7 +7,7 @@ parent: "what-is-reckons-ai"
 template: doc
 status: published
 nav: sidebar
-excerpt: "Nothing enters your confirmed knowledge base without your explicit review."
+excerpt: "Nothing enters your confirmed knowledge graph without your explicit review."
 generated: "docs-kb"
 related:
   - "review-system"
@@ -17,7 +17,7 @@ related:
 
 *Concept*
 
-Nothing enters your confirmed knowledge base without your explicit review. Every triple extracted by an LLM starts as 'pending' and must be confirmed, rejected, or refined by you. You are the authority.
+Nothing enters your confirmed knowledge graph without your explicit review. Every triple extracted by an LLM starts as 'pending' and must be confirmed, rejected, or refined by you. You are the authority.
 
 ## Related
 

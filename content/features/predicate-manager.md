@@ -7,7 +7,7 @@ parent: "what-is-reckons-ai"
 template: doc
 status: published
 nav: sidebar
-excerpt: "View all predicates in your KB with usage counts."
+excerpt: "View all predicates in your graph with usage counts."
 generated: "docs-kb"
 ---
 
@@ -15,4 +15,4 @@ generated: "docs-kb"
 
 *Concept*
 
-View all predicates in your KB with usage counts. Rename predicates across all statements or merge two predicates into one. Accessible from the KB page.
+View all predicates in your graph with usage counts. Rename predicates across all statements or merge two predicates into one. Accessible from the graph page.

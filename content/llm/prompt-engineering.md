@@ -17,7 +17,7 @@ related:
 
 *Concept*
 
-The art of structuring input to get useful output from a language model. A Reckoning is a structured prompt: Situation + Target + your KB context. The better the input, the better the output.
+The art of structuring input to get useful output from a language model. A Reckoning is a structured prompt: Situation + Target + your graph context. The better the input, the better the output.
 
 ## Related
 

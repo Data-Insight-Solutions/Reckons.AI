@@ -1,12 +1,12 @@
 ---
 title: "Integrations"
 slug: "integrations"
-order: 1008
+order: 1009
 section: "Integrations & Tech"
 template: doc
 status: published
 nav: sidebar
-excerpt: "Reckons.AI connects to external tools and data sources while keeping your KB local."
+excerpt: "Reckons.AI connects to external tools and data sources while keeping your graph local."
 generated: "docs-kb"
 related:
   - "what-is-reckons-ai"
@@ -16,7 +16,7 @@ related:
 
 *Concept*
 
-Reckons.AI connects to external tools and data sources while keeping your KB local. Every integration is optional -- the core app works with zero external dependencies.
+Reckons.AI connects to external tools and data sources while keeping your graph local. Every integration is optional -- the core app works with zero external dependencies.
 
 ## Related
 

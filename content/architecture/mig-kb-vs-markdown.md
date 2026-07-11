@@ -15,7 +15,7 @@ generated: "docs-kb"
 
 *Concept*
 
-docs/KB_VS_MARKDOWN.md (384 lines) is a meta-document comparing TTL vs markdown. Its content is now captured in this architecture KB (TtlFirstDocs section). Safe to delete.
+docs/KB_VS_MARKDOWN.md (384 lines) is a meta-document comparing TTL vs markdown. Its content is now captured in this architecture graph (TtlFirstDocs section). Safe to delete.
 
 ## Details
 

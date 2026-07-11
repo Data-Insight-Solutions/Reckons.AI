@@ -7,7 +7,7 @@ parent: "integrations"
 template: doc
 status: published
 nav: sidebar
-excerpt: "KB backup to Google Drive."
+excerpt: "Graph backup to Google Drive."
 generated: "docs-kb"
 ---
 
@@ -15,4 +15,4 @@ generated: "docs-kb"
 
 *Concept*
 
-KB backup to Google Drive. Export .ttl to a dedicated Drive folder. OAuth-authenticated. Privacy note: Google can access the stored file.
+Graph backup to Google Drive. Export .ttl to a dedicated Drive folder. OAuth-authenticated. Privacy note: Google can access the stored file.

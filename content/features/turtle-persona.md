@@ -7,7 +7,7 @@ parent: "shelly"
 template: doc
 status: published
 nav: sidebar
-excerpt: "Each KB can embed its own AI assistant personality using the shelly: vocabulary."
+excerpt: "Each graph can embed its own AI assistant personality using the shelly: vocabulary."
 generated: "docs-kb"
 ---
 
@@ -15,4 +15,4 @@ generated: "docs-kb"
 
 *Concept*
 
-Each KB can embed its own AI assistant personality using the shelly: vocabulary. A work KB might have a direct, technical persona while a personal KB has a calm guide. Persona travels with the .ttl file.
+Each graph can embed its own AI assistant personality using the shelly: vocabulary. A work graph might have a direct, technical persona while a personal graph has a calm guide. Persona travels with the .ttl file.

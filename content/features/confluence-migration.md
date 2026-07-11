@@ -23,4 +23,4 @@ Bulk import from Confluence spaces. Upload an HTML export ZIP, parse the page tr
 
 **Related**
 
-- [Entity Normalisation](../features/entity-normalisation)
+- [Entity Normalization](../features/entity-normalisation)

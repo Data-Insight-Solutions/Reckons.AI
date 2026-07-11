@@ -17,11 +17,11 @@ related:
 
 *Concept*
 
-The models people call 'AI' are trained statistical models built with human knowledge at every level. Humans wrote the training data, designed the architecture, labelled the fine-tuning examples, and aligned the outputs. These models predict likely text based on patterns -- they do not think, reason, or understand.
+The models people call 'AI' are trained statistical models built with human knowledge at every level. Humans wrote the training data, designed the architecture, labeled the fine-tuning examples, and aligned the outputs. These models predict likely text based on patterns -- they do not think, reason, or understand.
 
 ## Related
 
 **Related**
 
+- [Graph-Grounded Accuracy](../llm/kb-grounded-accuracy)
 - [Hallucination](../llm/hallucination)
-- [KB-Grounded Accuracy](../llm/kb-grounded-accuracy)

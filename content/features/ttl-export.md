@@ -7,7 +7,7 @@ parent: "what-is-reckons-ai"
 template: doc
 status: published
 nav: sidebar
-excerpt: "Export your KB as a .ttl file with full reification metadata (status, source, confidence, timestamps, excerpts)."
+excerpt: "Export your graph as a .ttl file with full reification metadata (status, source, confidence, timestamps, excerpts)."
 generated: "docs-kb"
 ---
 
@@ -15,4 +15,4 @@ generated: "docs-kb"
 
 *Concept*
 
-Export your KB as a .ttl file with full reification metadata (status, source, confidence, timestamps, excerpts). Roundtrip-safe. Clean export for interop or full export with all metadata.
+Export your graph as a .ttl file with full reification metadata (status, source, confidence, timestamps, excerpts). Roundtrip-safe. Clean export for interop or full export with all metadata.

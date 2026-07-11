@@ -7,7 +7,7 @@ parent: "tips"
 template: doc
 status: published
 nav: sidebar
-excerpt: "Export your KB and share the .ttl file."
+excerpt: "Export your graph and share the .ttl file."
 generated: "docs-kb"
 related:
   - "compare"
@@ -17,7 +17,7 @@ related:
 
 *Concept*
 
-Export your KB and share the .ttl file. Recipients can import it and see a semantic diff against their own KB. Collaboration through structured knowledge exchange -- no real-time sync needed.
+Export your graph and share the .ttl file. Recipients can import it and see a semantic diff against their own graph. Collaboration through structured knowledge exchange -- no real-time sync needed.
 
 ## Related
 

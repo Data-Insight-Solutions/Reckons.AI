@@ -15,4 +15,4 @@ generated: "docs-kb"
 
 *Knowledge Base*
 
-Click for test documentation as interactive stories. Walk through user story E2E tests step-by-step with screenshots attached to each node. Covers Dev Sprint Planning, User Docs Import, Cross-KB Alignment, and page-level visual regression.
+Click for test documentation as interactive stories. Walk through user story E2E tests step-by-step with screenshots attached to each node. Covers Dev Sprint Planning, User Docs Import, Cross-Graph Alignment, and page-level visual regression.

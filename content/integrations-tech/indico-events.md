@@ -1,7 +1,7 @@
 ---
 title: "Indico Events"
 slug: "indico-events"
-order: 1007
+order: 1008
 section: "Integrations & Tech"
 parent: "integrations"
 template: doc

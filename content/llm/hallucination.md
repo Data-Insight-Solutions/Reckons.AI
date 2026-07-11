@@ -1,7 +1,7 @@
 ---
 title: "Hallucination"
 slug: "hallucination"
-order: 1001
+order: 1002
 section: "LLM"
 parent: "what-ll-ms-are"
 template: doc

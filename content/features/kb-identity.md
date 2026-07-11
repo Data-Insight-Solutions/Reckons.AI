@@ -1,18 +1,18 @@
 ---
-title: "KB Identity"
+title: "Graph Identity"
 slug: "kb-identity"
-order: 1014
+order: 1012
 section: "Features"
 parent: "multi-kb"
 template: doc
 status: published
 nav: sidebar
-excerpt: "Each KB has a stable UUID (never changes, used for MCP routing and KB Leap) and a content fingerprint (SHA-256 of sorted N-Quads, changes with every edit)."
+excerpt: "Each graph has a stable UUID (never changes, used for MCP routing and graph Leap) and a content fingerprint (SHA-256 of sorted N-Quads, changes with every edit)."
 generated: "docs-kb"
 ---
 
-# KB Identity
+# Graph Identity
 
 *Concept*
 
-Each KB has a stable UUID (never changes, used for MCP routing and KB Leap) and a content fingerprint (SHA-256 of sorted N-Quads, changes with every edit). Both visible in Settings.
+Each graph has a stable UUID (never changes, used for MCP routing and graph Leap) and a content fingerprint (SHA-256 of sorted N-Quads, changes with every edit). Both visible in Settings.

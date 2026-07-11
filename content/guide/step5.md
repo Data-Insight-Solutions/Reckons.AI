@@ -17,7 +17,7 @@ related:
 
 *Document*
 
-Click the turtle icon in the search bar to chat with Shelly. Ask questions about your KB, play the story walkthrough, or request a Reckoning.
+Click the turtle icon in the search bar to chat with Shelly. Ask questions about your graph, play the story walkthrough, or request a Reckoning.
 
 ## Related
 

@@ -15,7 +15,7 @@ generated: "docs-kb"
 
 *Concept*
 
-End-to-end test scenarios that follow real user workflows. Each story imports KBs, navigates pages, takes screenshots at each step, and verifies UI state. Three stories: Dev Sprint Planning, User Docs Import, Cross-KB Alignment.
+End-to-end test scenarios that follow real user workflows. Each story imports graphs, navigates pages, takes screenshots at each step, and verifies UI state. Three stories: Dev Sprint Planning, User Docs Import, Cross-Graph Alignment.
 
 ## Details
 

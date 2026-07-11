@@ -1,13 +1,13 @@
 ---
 title: "Ingest Page"
 slug: "ingest-page"
-order: 1000
+order: 1001
 section: "Testing"
 parent: "page-screenshots"
 template: doc
 status: published
 nav: sidebar
-excerpt: "The /ingest page with text, URL, file, and KB import tabs."
+excerpt: "The /ingest page with text, URL, file, and graph import tabs."
 generated: "docs-kb"
 ---
 
@@ -15,7 +15,7 @@ generated: "docs-kb"
 
 *Concept*
 
-The /ingest page with text, URL, file, and KB import tabs. Verified for correct tab rendering and input field visibility.
+The /ingest page with text, URL, file, and graph import tabs. Verified for correct tab rendering and input field visibility.
 
 ## Details
 

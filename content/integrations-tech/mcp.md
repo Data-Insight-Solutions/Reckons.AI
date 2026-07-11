@@ -17,7 +17,7 @@ related:
 
 *Tool*
 
-An open protocol by Anthropic for connecting AI models to external data sources. Reckons.AI implements a standalone MCP server (Node.js) with 11 tools that reads workspace TTL files. Multi-KB support via MultiKBReader.
+An open protocol by Anthropic for connecting AI models to external data sources. Reckons.AI implements a standalone MCP server (Node.js) with 11 tools that reads workspace TTL files. Multi-Graph support via MultiKBReader.
 
 ## Related
 

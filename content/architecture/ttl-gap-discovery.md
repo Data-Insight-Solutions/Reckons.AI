@@ -15,4 +15,4 @@ generated: "docs-kb"
 
 *Concept*
 
-Markdown: Glob docs/*.md shows all docs. TTL via MCP: must know what to search for. Mitigation: kb_list_entities gives full entity list, kb_stats gives overview, CLAUDE.md lists which KBs exist and their purpose. The hub TTL (starter-guide.ttl) provides a table of contents.
+Markdown: Glob docs/*.md shows all docs. TTL via MCP: must know what to search for. Mitigation: kb_list_entities gives full entity list, kb_stats gives overview, CLAUDE.md lists which graphs exist and their purpose. The hub TTL (starter-guide.ttl) provides a table of contents.

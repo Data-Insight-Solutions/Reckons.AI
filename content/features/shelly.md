@@ -18,7 +18,7 @@ related:
 
 *Person*
 
-The turtle-shaped AI assistant. Three tabs: tutorial, chat (grounded in your KB), and explore (guided story tours). Each KB can embed its own Shelly persona via the shelly: vocabulary. Supports Whisper STT voice input and Kokoro TTS voice output.
+The turtle-shaped AI assistant. Three tabs: tutorial, chat (grounded in your graph), and explore (guided story tours). Each graph can embed its own Shelly persona via the shelly: vocabulary. Supports Whisper STT voice input and Kokoro TTS voice output.
 
 ## Related
 

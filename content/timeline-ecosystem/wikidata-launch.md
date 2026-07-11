@@ -6,7 +6,7 @@ section: "Timeline & Ecosystem"
 template: doc
 status: published
 nav: sidebar
-excerpt: "Wikimedia's free knowledge base."
+excerpt: "Wikimedia's free knowledge graph."
 generated: "docs-kb"
 related:
   - "d-bpedia-launch"
@@ -16,7 +16,7 @@ related:
 
 *Concept*
 
-Wikimedia's free knowledge base. Over 100 million items, all queryable via SPARQL. The largest collaboratively edited knowledge graph in the world. Powers infoboxes across all Wikipedia language editions.
+Wikimedia's free knowledge graph. Over 100 million items, all queryable via SPARQL. The largest collaboratively edited knowledge graph in the world. Powers infoboxes across all Wikipedia language editions.
 
 ## Details
 

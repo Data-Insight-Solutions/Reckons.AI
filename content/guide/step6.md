@@ -7,7 +7,7 @@ parent: "getting-started"
 template: doc
 status: published
 nav: sidebar
-excerpt: "Go to Settings -> Backup and Export to download your KB as Turtle."
+excerpt: "Go to Settings -> Backup and Export to download your graph as Turtle."
 generated: "docs-kb"
 related:
   - "ttl-export"
@@ -17,7 +17,7 @@ related:
 
 *Document*
 
-Go to Settings -&gt; Backup and Export to download your KB as Turtle. Share the .ttl file or set up workspace sync for MCP integration.
+Go to Settings -&gt; Backup and Export to download your graph as Turtle. Share the .ttl file or set up workspace sync for MCP integration.
 
 ## Related
 

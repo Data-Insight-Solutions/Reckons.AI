@@ -7,7 +7,7 @@ parent: "tips"
 template: doc
 status: published
 nav: sidebar
-excerpt: "The quality of your KB depends entirely on the quality of your review."
+excerpt: "The quality of your graph depends entirely on the quality of your review."
 generated: "docs-kb"
 ---
 
@@ -15,4 +15,4 @@ generated: "docs-kb"
 
 *Concept*
 
-The quality of your KB depends entirely on the quality of your review. Reject inaccurate triples. Refine ambiguous ones. A smaller KB of confirmed facts is far more valuable than a large KB of unreviewed noise.
+The quality of your graph depends entirely on the quality of your review. Reject inaccurate triples. Refine ambiguous ones. A smaller graph of confirmed facts is far more valuable than a large graph of unreviewed noise.
