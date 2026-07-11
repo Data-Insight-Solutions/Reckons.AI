@@ -230,7 +230,27 @@ kb:predicate-manager rdf:type ktype:Feature ;
 kb:content-safety rdf:type  ktype:Feature ;
                rdfs:label   "Content Safety" ;
                kpred:has-status   "production" ;
-               kpred:description  "Ethics preamble in all LLM prompts. Content classifier (blocked/mature/none). Export advisory." .
+               kpred:principle    "Ethics AND morals, not just law. Laws vary across borders and legality is a floor, not a ceiling — Reckons.AI applies a baseline ethical standard (no incitement, no hate, no sexualization of minors) regardless of local legality. Some things simply should not be broadcast publicly." ;
+               kpred:principle    "Responsibility model: Reckons.AI is a neutral, local-first TOOL — the user owns and is responsible for the content they create and share. The app makes a good-faith EFFORT to protect users and keep the worst content off the public web, but is not responsible for user-generated content. Documented for humans in SAFETY.md (repo root)." ;
+               kpred:description  "Ethics preamble in all LLM prompts (ETHICS_PREAMBLE, src/lib/safety/content-policy.ts). Content classifier (blocked/mature/none) filters blocked content on ingest; mature is flagged. Export advisory headers warn recipients. Local-first: nothing leaves the device unless the user connects an integration." ;
+               kpred:has-part     kb:publish-safety-gate ;
+               kpred:has-part     kb:verified-badge .
+
+kb:publish-safety-gate rdf:type ktype:Feature ;
+               rdfs:label   "Publish Safety Gate" ;
+               kpred:feature-id   "F66" ;
+               kpred:has-status   "planned" ;
+               kpred:part-of      kb:content-safety ;
+               kpred:principle    "PRIVATE sharing is the user's to manage (handing someone a .ttl is like emailing a file — the app doesn't police it). PUBLIC publishing to the open web is GATED: make a good-faith effort to block publicly sharing graphs that incite violence or are otherwise illegal or hateful." ;
+               kpred:description  "Before a graph is published to the open web (publishSiteToGitHub / any public target), run it through the same classifier (classifyStatement / filterBlockedStatements) and REFUSE to publish when blocked content is present — with a clear explanation, not a silent drop. Distinct from the existing export ADVISORY (which warns): the publish gate BLOCKS. Also leans on the natural barrier — Reckons.AI hosts nothing, so public publishing requires the user's OWN domain/hosting/file-sharing (Cloudflare, GitHub Pages, a Git host), which limits casual/anonymous abuse and makes the publisher accountable through their own provider. Builds on content-safety; extends site-export.ts." ;
+               kpred:relates-to   kb:graph-publishing .
+
+kb:verified-badge rdf:type  ktype:Feature ;
+               rdfs:label   "Verified Badge" ;
+               kpred:feature-id   "F67" ;
+               kpred:has-status   "speculative" ;
+               kpred:part-of      kb:content-safety ;
+               kpred:description  "A positive trust signal: a verified badge for a reviewed, accountable publisher or graph — distinct from the anonymous, un-hosted default. Rewards good-faith authors who put their name/domain behind a published graph, and gives readers a signal of provenance. Open question: what does verification attest (identity? a content review? a stable domain?) and who issues it." .
 
 kb:passage-grounding rdf:type ktype:Feature ;
                rdfs:label   "Passage Grounding" ;
@@ -1719,7 +1739,19 @@ kb:entity-sets rdf:type      ktype:Feature ;
                kpred:relates-to   kb:entity-types ;
                kpred:relates-to   kb:meta-visual-generation ;
                kpred:relates-to   kb:arrange-layout-builder ;
+               kpred:relates-to   kb:sets-xr ;
                kpred:open-question "Storage: is a set a first-class node (ktype:EntitySet) whose members are linked by a 'has-member' predicate, or a saved selection/template? First-class node makes it queryable + shareable and round-trips in TTL." .
+
+kb:sets-xr rdf:type          ktype:Feature ;
+               rdfs:label    "Sets in VR / AR / XR" ;
+               kpred:feature-id   "F65.1" ;
+               kpred:has-status   "speculative" ;
+               kpred:part-of      kb:entity-sets ;
+               kpred:principle    "Grouping nodes into a set is inherently SPATIAL — the natural gesture is to physically gather things. XR is where that becomes fluid: reach out, grab nodes, pull them into a pile, and that pile IS a set. It directly answers the 'multi-select is clunky' problem for sets." ;
+               kpred:description  "Consider VR/AR/XR as the premier UI/UX for sets: in an immersive 3D graph, batch-select by looking/pointing or a lasso volume, GRAB nodes and gather them with hand/controller gestures, and drop them into a set; manipulate, split, and re-arrange sets in space (ties to F59 spatial layout + F60 arrange). Builds on the existing VR/AR shells (F7, VRShell/ARShell + WebXR) and the game-engine option (F59.1) for richer spatial rendering. XR turns the clunky Ctrl+click multi-select into a direct, embodied action." ;
+               kpred:depends-on   kb:vr-ar-shells ;
+               kpred:relates-to   kb:spatial-force-layout ;
+               kpred:relates-to   kb:int-game-engine .
 
 # -- Infrastructure entities (completeness) -------------------------------------
 # Defined here because features depend-on them (F22 -> embedding-model,

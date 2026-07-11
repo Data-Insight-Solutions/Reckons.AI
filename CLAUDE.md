@@ -109,7 +109,7 @@ This project uses TTL knowledge bases as the primary documentation format. **Do 
 - **For code conventions**: Use inline code comments near the actual code
 - **Query before reading**: Use `kb_search` to find information before reading raw files
 - **Existing markdown**: `docs/*.md` files are being migrated to TTL. Check `kb_search("migration status", kb="architecture")` for current state
-- **Must stay markdown**: CLAUDE.md, MEMORY.md, .claude/commands/*.md, README.md, CONTRIBUTING.md (system requirements)
+- **Must stay markdown**: CLAUDE.md, MEMORY.md, .claude/commands/*.md, README.md, CONTRIBUTING.md, SAFETY.md (system/policy docs; SAFETY.md is the human-readable safety & responsibility statement — the graph mirrors it in kb:content-safety)
 
 ### KB predicates convention
 
