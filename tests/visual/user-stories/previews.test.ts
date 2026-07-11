@@ -40,12 +40,12 @@ test('always-on previews render local node photos', async ({ page }) => {
     await page.waitForTimeout(3000);
     const thumbs = page.locator('img.node-preview-thumb');
     await expect(thumbs.first()).toBeVisible({ timeout: 10_000 });
-    // The local starter photos are the source (not an external URL).
-    await expect(page.locator('img.node-preview-thumb[src*="alex.svg"]')).toHaveCount(1);
-    await expect(page.locator('img.node-preview-thumb[src*="jordan.svg"]')).toHaveCount(1);
+    // The starter people carry embedded face photos (self-contained data: URIs).
+    await expect(page.locator('img.node-preview-thumb[src^="data:image"]')).toHaveCount(2);
     // And they actually loaded (naturalWidth > 0), not broken-image icons.
     const loaded = await page
-      .locator('img.node-preview-thumb[src*="alex.svg"]')
+      .locator('img.node-preview-thumb[src^="data:image"]')
+      .first()
       .evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0);
     expect(loaded).toBe(true);
     await screenshotTo(page, 'previews', '01-always-on-previews');
