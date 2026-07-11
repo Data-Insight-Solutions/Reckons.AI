@@ -403,6 +403,7 @@
   <h1>system configuration</h1>
   <div class="settings-nav">
     <a href="/settings" class="nav-link">backends</a>
+    <a href="/settings/publishing" class="nav-link">publishing</a>
     <a href="/settings/integrations" class="nav-link active">integrations</a>
     <a href="/settings/turtle" class="nav-link">turtle</a>
     <a href="/settings/entity-types" class="nav-link">entity types</a>

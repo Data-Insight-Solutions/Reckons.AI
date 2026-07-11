@@ -29,7 +29,6 @@
     syncAllKbs, listKbFolders, lastSyncTime, syncedKbCount,
     importKbsFromWorkspace
   } from '$lib/stores/workspace.svelte';
-  import { exportJsonLd, exportLlmsTxt } from '$lib/storage/semantic-export';
 
   let key = $state(settings().claudeApiKey ?? '');
   let openaiKey = $state(settings().openaiApiKey ?? '');
@@ -309,8 +308,6 @@
   let exportingFull = $state(false);
   let exportingPending = $state(false);
   let exportingChangelog = $state(false);
-  let exportingJsonLd = $state(false);
-  let exportingLlmsTxt = $state(false);
   let autoSaveLinked = $state(hasAutoSaveFile());
   let autoSaveFileName = $state(getAutoSaveFileName());
 
@@ -334,17 +331,6 @@
     try { await exportChangelog(); } catch (e) { console.error(e); } finally { exportingChangelog = false; }
   }
 
-  async function handleExportJsonLd() {
-    exportingJsonLd = true;
-    try { await exportJsonLd({ kbTitle: settings().kbTitle, kbDescription: settings().kbDescription }); }
-    catch (e) { console.error(e); } finally { exportingJsonLd = false; }
-  }
-
-  async function handleExportLlmsTxt() {
-    exportingLlmsTxt = true;
-    try { await exportLlmsTxt({ kbTitle: settings().kbTitle, kbDescription: settings().kbDescription }); }
-    catch (e) { console.error(e); } finally { exportingLlmsTxt = false; }
-  }
 
   async function handlePickAutoSave() {
     const ok = await pickAutoSaveFile();
@@ -684,7 +670,8 @@
   <h1>system configuration</h1>
 
   <div class="settings-nav">
-    <a href="/settings" class:active={!page.url.pathname.includes('/turtle') && !page.url.pathname.includes('/entity-types') && !page.url.pathname.includes('/integrations')} class="nav-link">backends</a>
+    <a href="/settings" class:active={!page.url.pathname.includes('/turtle') && !page.url.pathname.includes('/entity-types') && !page.url.pathname.includes('/integrations') && !page.url.pathname.includes('/publishing')} class="nav-link">backends</a>
+    <a href="/settings/publishing" class:active={page.url.pathname.includes('/publishing')} class="nav-link">publishing</a>
     <a href="/settings/integrations" class:active={page.url.pathname.includes('/integrations')} class="nav-link">integrations</a>
     <a href="/settings/turtle" class:active={page.url.pathname.includes('/turtle')} class="nav-link">turtle</a>
     <a href="/settings/entity-types" class:active={page.url.pathname.includes('/entity-types')} class="nav-link">entity types</a>
@@ -1457,31 +1444,6 @@
       </div>
       <button onclick={handleExportChangelog} disabled={exportingChangelog}>
         {exportingChangelog ? '…' : '↓ .csv'}
-      </button>
-    </div>
-  </div>
-</section>
-
-<section class="settings-section">
-  <h2 class="section-title">Semantic Web &amp; LLM Search</h2>
-  <p class="section-desc">Export your graph in structured formats that help AI crawlers, LLM search systems, and Schema.org-aware tools understand your content.</p>
-  <div class="export-list">
-    <div class="export-item">
-      <div>
-        <strong>JSON-LD / Schema.org</strong>
-        <p class="check-hint">Structured data graph using Schema.org vocabulary. Embed in a <code>&lt;script type="application/ld+json"&gt;</code> tag on any web page for Google, Bing, and LLM crawlers.</p>
-      </div>
-      <button onclick={handleExportJsonLd} disabled={exportingJsonLd}>
-        {exportingJsonLd ? '…' : '↓ .jsonld'}
-      </button>
-    </div>
-    <div class="export-item">
-      <div>
-        <strong>llms.txt</strong>
-        <p class="check-hint">Plain-text graph summary for AI crawlers, following the <a href="https://llmstxt.org" target="_blank" rel="noopener">llmstxt.org</a> spec. Serve at <code>/llms.txt</code> on your site so LLMs can quickly understand your content during indexing or RAG retrieval.</p>
-      </div>
-      <button onclick={handleExportLlmsTxt} disabled={exportingLlmsTxt}>
-        {exportingLlmsTxt ? '…' : '↓ llms.txt'}
       </button>
     </div>
   </div>
