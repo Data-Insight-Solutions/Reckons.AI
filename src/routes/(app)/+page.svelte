@@ -46,7 +46,7 @@
   import AdaptivePanel from '$lib/components/AdaptivePanel.svelte';
   import GraphPackagePanel from '$lib/components/GraphPackagePanel.svelte';
   import { entityProtection } from '$lib/rdf/protected-entities';
-  import { buildEntitySet, defaultSetName } from '$lib/rdf/entity-sets';
+  import { buildEntitySet, defaultSetName, isEntitySet, setMembers } from '$lib/rdf/entity-sets';
   import { isCompact } from '$lib/stores/viewport.svelte';
   import { Popover, ToggleGroup } from 'bits-ui';
   import { analysisRunning, lastAnalysisError } from '$lib/stores/auto-analyze.svelte';
@@ -508,9 +508,19 @@
   // Node keys for entities with leap targets (used for highlighting)
   const leapKeys = $derived([...leapNodeKeys(statements())]);
 
+  // Selecting a SET node spotlights the set + its members (F65): the group lights
+  // up, everything else dims — so a set is something you can see and act on.
+  const selectedSetKeys = $derived.by(() => {
+    if (!selected?.startsWith('i:')) return [] as string[];
+    const iri = selected.slice(2);
+    if (!isEntitySet(iri, statements())) return [];
+    return [selected, ...setMembers(iri, statements()).map(m => `i:${m}`)];
+  });
+
   // Shared dim/highlight state — used by both the graph components and the label overlay
   const dimMode = $derived(
     activeFilters.has('hubs') || activeFilters.has('islands') || activeFilters.has('no-type') || activeFilters.has('leaps')
+    || selectedSetKeys.length > 0
   );
   const highlightedSet = $derived(new Set([
     ...Array.from(activeFilters).flatMap(f =>
@@ -520,7 +530,8 @@
       : f === 'leaps' ? leapKeys
       : [] as string[]
     ),
-    ...shellySpotlight()
+    ...shellySpotlight(),
+    ...selectedSetKeys
   ]));
 
   // Visible-accurate filter counts (exclude GRAPH_EXCLUDED_PREDICATES like the graph does)
@@ -1329,6 +1340,20 @@
       .filter(Boolean) as { key: string; label: string; iri: string }[]
   );
 
+  // Is the currently-selected node an entity set? (drives set-specific actions)
+  const selectedIsSet = $derived(selected != null && selected.startsWith('i:') && isEntitySet(selected.slice(2), statements()));
+  const selectedSetMemberCount = $derived(
+    selected != null && selected.startsWith('i:') ? setMembers(selected.slice(2), statements()).length : 0
+  );
+  /** Turn a selected set into a multi-selection of its members, to act on the group. */
+  function selectSetMembers() {
+    if (!selected?.startsWith('i:')) return;
+    const members = setMembers(selected.slice(2), statements());
+    if (members.length === 0) return;
+    multiSelected = new Set(members.map(m => `i:${m}`));
+    selected = null; // hand off to the multi-select action panel
+  }
+
   // Batch-select several nodes → group them into a reusable "set" (F65). The set
   // is a first-class node (ktype:EntitySet) linked to each member via has-member,
   // so it round-trips in TTL and can be re-selected to act on the whole group.
@@ -1938,6 +1963,9 @@
         </div>
       {:else}
         <div class="np-action-row">
+          {#if selectedIsSet}
+            <button class="np-act-btn np-act-set" onclick={selectSetMembers} title="multi-select this set's members to act on them">⬡ select {selectedSetMemberCount} members</button>
+          {/if}
           <button class="np-act-btn" onclick={() => (showMergeUI = true)}>⟷ merge</button>
           <button class="np-act-btn np-act-primary" onclick={() => (showRelationUI = true)}>+ relate</button>
           <button class="np-act-btn np-act-danger" onclick={deleteSelected}>✕ delete</button>

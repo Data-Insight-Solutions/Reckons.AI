@@ -83,6 +83,14 @@ kb:jordan
     p:considering   kb:oh-ridge ;
     p:leans-toward  kb:lake-george .
 
+## == A "set" grouping the two friends (demos entity sets, F65) ==============
+## Select this node and its members (Alex, Jordan) light up — a reusable group.
+kb:trip-crew
+    rdf:type        ktype:EntitySet ;
+    rdfs:label      "Trip crew" ;
+    p:has-member    kb:alex ;
+    p:has-member    kb:jordan .
+
 ## == Home cities =============================================================
 kb:san-francisco
     rdf:type        ktype:Place ;
