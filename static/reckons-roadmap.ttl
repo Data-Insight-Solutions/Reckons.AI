@@ -1768,6 +1768,15 @@ kb:agent-context-dogfooding rdf:type ktype:Feature ;
                kpred:relates-to   kb:local-offload ;
                kpred:relates-to   kb:context-compression .
 
+kb:settings-polish rdf:type  ktype:Feature ;
+               rdfs:label    "Settings polish + Publishing tab" ;
+               kpred:feature-id   "F69" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:description  "Refine ALL settings pages and add a PUBLISHING tab. Findings (2026-07-10): (1) the settings nav is COPY-PASTED across all 4 pages (backends / integrations / turtle / entity-types) with duplicated markup AND styles — extract a shared src/routes/(app)/settings/+layout.svelte so the nav/chrome live once; (2) the 'turtle' tab is MISLABELED — it's actually Shelly identity/personality/voice settings, not Turtle/RDF; rename it (e.g. 'shelly' or 'assistant'); (3) NEW 'publishing' tab to house the currently-scattered/absent publish settings — githubToken (used by publishSiteToGitHub, no UI today), site identity (kbTitle/kbDescription), and a link to Sveltia /admin; move 'semantic web' / publishing settings here; (4) audit for stale/older components + surfaced errors (user reports seeing some) — needs the specific errors/components identified. Do the shared-layout extraction FIRST so adding the tab doesn't multiply the duplication." ;
+               kpred:relates-to   kb:graph-publishing ;
+               kpred:open-question "Which settings does the user consider 'semantic web' (to move into Publishing)? And which specific errors / older components are visible? Targeted fixes need these." .
+
 # -- Infrastructure entities (completeness) -------------------------------------
 # Defined here because features depend-on them (F22 -> embedding-model,
 # local-offload -> llm-providers) but they had no entity — the graph pointed at
