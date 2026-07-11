@@ -118,9 +118,11 @@ export async function importKbFromTtl(
   // Wait for parsing to complete
   await page.waitForTimeout(2000);
 
-  // Click the "as new graph" button (formerly "as new KB") — triggers confirm()
+  // Click the "as new graph" button (formerly "as new KB") — triggers confirm().
+  // Generous timeout: parsing a large KB can lag when the full visual suite runs
+  // several imports in parallel (workers × projects all hitting the dev server).
   const asNewBtn = page.getByRole('button', { name: /as new (graph|kb)/i });
-  await expect(asNewBtn).toBeEnabled({ timeout: 10_000 });
+  await expect(asNewBtn).toBeEnabled({ timeout: 30_000 });
 
   if (opts?.switchTo) {
     // Accept: switch to the new KB (triggers page reload via switchToKb)
