@@ -669,13 +669,22 @@ kb:cross-kb-alignment rdf:type ktype:Feature ;
 # -- n8n Cloud Sync (F20) -------------------------------------------------------
 
 kb:n8n-cloud-sync rdf:type ktype:Feature ;
-               rdfs:label   "n8n Cloud Sync" ;
-               kpred:has-status   "scaffolded" ;
+               rdfs:label   "n8n Automation" ;
+               kpred:has-status   "functional" ;
                kpred:feature-id   "F20" ;
-               kpred:description  "Private, self-hosted cloud sync via n8n VPS. Upload, download, and monitor graphs from any device. No SaaS dependency." ;
+               kpred:description  "Route web integrations through a self-hosted n8n instance (open-source automation, no SaaS). The clean division of labour: the app stays static/offline-first and owns the VISUAL building; n8n owns the web side-effects (email, sheets, tickets, monitoring). settings.n8nBaseUrl (Settings → Integrations) points at the instance." ;
                kpred:has-workflow  kb:n8n-sync-hub ;
                kpred:has-workflow  kb:n8n-source-monitor ;
-               kpred:remaining    "APP-SIDE WIRING GAP (found 2026-07-10): the n8n workflows are deployed on the VPS and the integration code exists (src/lib/integrations/n8n/currents-sync.ts: registerCurrent / fetchCurrentItems / fetchCurrentDirect) plus a settings.n8nBaseUrl field, but NONE of it is called from the app outside tests — no Settings UI to set the n8n endpoint, no trigger to upload/download a graph via the Sync Hub, and currents don't register/pull through the n8n Currents Monitor. Status downgraded production -> scaffolded to reflect that the server side is done but the client side is not integrated. Remaining: (1) Settings → Integrations field for n8nBaseUrl; (2) wire graph upload/download to the Sync Hub webhooks; (3) wire currents register/items to the Currents Monitor (F29.2); (4) end-to-end verification against the live VPS." .
+               kpred:has-use-case  kb:n8n-contact-form ;
+               kpred:remaining    "PARTIALLY WIRED (2026-07-10). DONE: Settings → Integrations n8nBaseUrl field, and the first end-to-end app use case — the contact form (kb:n8n-contact-form). STILL UNWIRED: graph upload/download via the Sync Hub webhooks, and currents register/pull via the Currents Monitor (F29.2) — the integration code exists (src/lib/integrations/n8n/currents-sync.ts) but nothing calls it from the app yet. Status scaffolded -> functional now that one real path works. Remaining: wire graph sync + currents, and verify against the live VPS." .
+
+kb:n8n-contact-form rdf:type ktype:Concept ;
+               rdfs:label   "Contact form (n8n use case)" ;
+               kpred:has-status   "functional" ;
+               kpred:part-of      kb:n8n-cloud-sync ;
+               kpred:description  "A front-end contact form (src/lib/components/ContactForm.svelte, on the About page) that POSTs to /webhook/reckons-contact on the configured n8n instance — the user's workflow then routes it (email, sheet, ticket…). Degrades to a mailto link when no n8n instance is set, so it always works. src/lib/integrations/n8n/contact.ts (submitContactForm); tested (contact.test.ts + contact-form.test.ts). The template use case for 'visual building in-app, web side-effects via self-hosted automation'." ;
+               kpred:tested-by    "src/lib/integrations/n8n/__tests__/contact.test.ts" ;
+               kpred:tested-by    "tests/visual/user-stories/contact-form.test.ts" .
 
 kb:n8n-sync-hub rdf:type   ktype:Concept ;
                rdfs:label   "Graph Sync Hub" ;
@@ -952,6 +961,37 @@ kb:int-firecrawl rdf:type   ktype:Tool ;
                rdfs:label   "Firecrawl" ;
                kpred:has-status   "production" ;
                kpred:provides     "URL content extraction" .
+
+# Self-hostable integrations to round out the open-source stack (raised 2026-07-10).
+# The n8n contact form (F20) is the template; these extend the same "visual in-app,
+# side-effects via self-hosted service" pattern to home automation + a self-hosted
+# cloud. All should land via the Integration Plugin SDK (F61), not bespoke wiring.
+
+kb:int-homeassistant rdf:type ktype:Tool ;
+               rdfs:label   "Home Assistant" ;
+               kpred:feature-id   "F62" ;
+               kpred:has-status   "speculative" ;
+               kpred:provides     "home automation (self-hosted)" ;
+               kpred:description  "Integrate the popular self-hostable home-automation platform. Two directions: ingest HA entities/states/automations as graph facts (a queryable model of the home), and trigger HA automations from the graph (via HA's REST/websocket API or an n8n bridge). Self-hostable, local-first — fits the thesis. Rounds out the self-hosted integration set alongside n8n + Nextcloud." ;
+               kpred:relates-to   kb:n8n-cloud-sync ;
+               kpred:relates-to   kb:integration-plugin-sdk .
+
+kb:int-nextcloud rdf:type    ktype:Tool ;
+               rdfs:label   "Nextcloud" ;
+               kpred:feature-id   "F63" ;
+               kpred:has-status   "speculative" ;
+               kpred:provides     "self-hosted files / calendar / contacts" ;
+               kpred:description  "Integrate Nextcloud — the self-hostable cloud for files, calendar (CalDAV), and contacts (CardDAV). Two high-value roles: (a) a SELF-HOSTED folder-sync target — the local-first alternative to Google Drive (F56) for graphs + assets; and (b) calendar/contacts ingest, complementing Indico (also self-hostable). Uses the same two-way reconcile as folder sync via the Integration Plugin SDK's storage capability." ;
+               kpred:relates-to   kb:drive-folder-sync ;
+               kpred:relates-to   kb:int-indico ;
+               kpred:relates-to   kb:integration-plugin-sdk .
+
+kb:cloud-automation-providers rdf:type ktype:Concept ;
+               rdfs:label   "Cloud automation providers (future)" ;
+               kpred:has-status   "speculative" ;
+               kpred:description  "n8n (self-hosted, open-source) is the primary automation backend; the same contact-form / webhook pattern generalises to CLOUD automation providers for users who prefer managed services — Zapier, Microsoft Power Automate (M365), and others. Each becomes a webhook/connector plug-in under the Integration Plugin SDK (F61); the app posts the same payloads regardless of provider. Self-hosted n8n stays the default for the offline-first, no-SaaS stance." ;
+               kpred:relates-to   kb:n8n-cloud-sync ;
+               kpred:relates-to   kb:integration-plugin-sdk .
 
 kb:int-mistral-ocr rdf:type ktype:Tool ;
                rdfs:label   "Mistral OCR" ;
