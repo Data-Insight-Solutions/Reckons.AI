@@ -7,6 +7,7 @@
 @prefix ktype:  <urn:kbase:type/> .
 @prefix story:  <urn:reckons:story/> .
 @prefix train:  <urn:reckons:training/> .
+@prefix hnav:   <urn:reckons:nav/> .
 
 # ==============================================================================
 # Reckons.AI Product Design & Roadmap KB
@@ -1507,6 +1508,7 @@ kb:mvg-image-gen rdf:type ktype:Feature ;
                rdfs:label    "Image generation (recolor / combine / collage)" ;
                kpred:feature-id   "F58.2" ;
                kpred:has-status   "speculative" ;
+               hnav:order         "4"^^xsd:integer ;
                kpred:part-of      kb:meta-visual-generation ;
                kpred:description  "Generate a raster/vector image from the graph: recolor a single source image from a hex fact, merge two or more entity images toward a goal stated in facts or a prompt, or collage a subgraph's images with layout hints from relationships. Requires a text/image->image provider — a cloud image model first; LOCAL diffusion (e.g. SD via WASM/ONNX or Ollama-hosted) is a research question. Reuses the per-entity asset stores (icon2d / preview blobs) as inputs." ;
                kpred:open-question "Which image backend? Cloud (OpenAI Images / Stability / Replicate) for reach vs. a local diffusion model for the offline-first thesis — likely both, provider-pluggable like the LLM backends." .
@@ -1515,6 +1517,7 @@ kb:mvg-3d-gen rdf:type ktype:Feature ;
                rdfs:label    "3D asset generation (GLB) via Meshy" ;
                kpred:feature-id   "F58.3" ;
                kpred:has-status   "speculative" ;
+               hnav:order         "3"^^xsd:integer ;
                kpred:part-of      kb:meta-visual-generation ;
                kpred:depends-on   kb:int-meshy ;
                kpred:description  "Generate a GLB from the graph. Meshy text-to-3d is already integrated (startMeshyGeneration/pollMeshyTask, src/lib/integrations/meshy/meshy.ts) and produces per-entity models today; extend it to (a) build the generation prompt from a subgraph's facts + relationships and (b) use Meshy image-to-3d so an entity's existing image seeds the model. Local 3D generation feasibility is UNKNOWN — Meshy.AI is the near-term path." ;
@@ -1534,6 +1537,50 @@ kb:mvg-asset-assembly rdf:type ktype:Feature ;
                kpred:part-of      kb:meta-visual-generation ;
                kpred:description  "The pipeline that gathers, for a selected entity or subgraph, its visual assets (resolving icon2d / preview / glbModel refs to bytes) AND the facts + relationships among them, then serializes that into a generation context (prompt + reference images/models). This is the graph-side glue every output type shares — the 'describe the output in detail from the graph' step. Builds on context-compression (F25) for the fact side and kb-assets for the binary side." ;
                kpred:relates-to   kb:context-compression .
+
+# Asset-generation CAPABILITIES, arranged by feasibility (hnav:order = simplest
+# first). Orchestrating these via the plentiful open-source tooling is the theme:
+# most are cheap deterministic ops, one (splat) is an extreme research target.
+# The hnav:order here is deliberate — it dogfoods the arrange/order layout (F60)
+# ON the roadmap graph itself.
+
+kb:gen-color-modification rdf:type ktype:Feature ;
+               rdfs:label    "Color modification" ;
+               kpred:feature-id   "F58.6" ;
+               kpred:has-status   "speculative" ;
+               kpred:part-of      kb:meta-visual-generation ;
+               hnav:order         "1"^^xsd:integer ;
+               kpred:feasibility  "high — deterministic, no model. Recolor an entity's image from a hex/color fact via canvas or an OSS image lib (tint, hue-shift, palette swap). A red hex on a node -> its image recoloured. The cheapest, most immediately-shippable generation." ;
+               kpred:description  "Modify an existing image asset from graph facts: recolor from a hex value, adjust brightness/contrast, apply a tint. No generative model needed — pixel ops in-browser (canvas / WASM image lib)." .
+
+kb:gen-file-conversion rdf:type ktype:Feature ;
+               rdfs:label    "File-type conversion" ;
+               kpred:feature-id   "F58.7" ;
+               kpred:has-status   "speculative" ;
+               kpred:part-of      kb:meta-visual-generation ;
+               hnav:order         "2"^^xsd:integer ;
+               kpred:feasibility  "high — deterministic, wide OSS support. Image format conversion (PNG/JPG/WebP/SVG) in-browser; document composition to PDF; GLB<->other 3D formats via OSS libs. Bounded, testable, offline-capable for most raster/vector cases." ;
+               kpred:description  "Convert an asset between formats as a generation output type: raster<->raster, SVG->raster, images->PDF sheet, and (stretch) 3D format conversions. Leans on the plentiful open-source conversion tooling. Underpins F58.4 output-types." .
+
+kb:gen-orchestration rdf:type ktype:Feature ;
+               rdfs:label    "Asset-generation orchestration" ;
+               kpred:feature-id   "F58.8" ;
+               kpred:has-status   "speculative" ;
+               kpred:part-of      kb:meta-visual-generation ;
+               hnav:order         "5"^^xsd:integer ;
+               kpred:feasibility  "medium — the wiring is feasible; value depends on the underlying tools. A pipeline that CHAINS the cheap ops + model calls (convert -> recolor -> combine -> 3D) driven by the graph, plugging into open-source tooling. Ties directly to the Integration Plugin SDK (F61) so each tool is a plug-in step." ;
+               kpred:description  "Orchestrate multi-step asset generation — file conversions, color mods, image combines, 3D — as a graph-driven pipeline over the available (mostly open-source) tools. Complex outputs come from composing simple, feasible steps. Each step should be a plug-in via the Integration Plugin SDK (F61)." ;
+               kpred:relates-to   kb:integration-plugin-sdk .
+
+kb:gen-video-to-splat rdf:type ktype:Feature ;
+               rdfs:label    "360 video → 3D Gaussian splat" ;
+               kpred:feature-id   "F58.9" ;
+               kpred:has-status   "speculative" ;
+               kpred:part-of      kb:meta-visual-generation ;
+               hnav:order         "6"^^xsd:integer ;
+               kpred:feasibility  "LOW / extreme — the stretch target. Link a 360 video and reconstruct a 3D Gaussian splat (à la nerfstudio / gsplat). Compute-heavy, almost certainly a server/GPU or a hosted service — conflicts with the no-server, offline-first stance until a provider or heavy sidecar exists. Roadmap-first; revisit as OSS splat tooling matures." ;
+               kpred:description  "Extreme asset generation: ingest a 360 / spherical video reference and produce a 3D Gaussian splat viewable in the graph. Depends on external reconstruction tooling (GPU); relates to the game-engine integration (F59.1) for rendering splats." ;
+               kpred:relates-to   kb:int-game-engine .
 
 # -- Spatial / Map Force Layout (F59) ------------------------------------------
 # A new force mode that positions nodes by real-world LOCATION, not just graph
@@ -1579,6 +1626,25 @@ kb:arrange-layout-builder rdf:type ktype:Feature ;
                kpred:relates-to   kb:publishing-v2 ;
                kpred:open-question "Where is the arrangement stored — extend nodeOrder + the hnav ordering predicates (urn:reckons:nav/order|layer) with a row/column grouping, or a dedicated layout predicate? It must round-trip to the page block model." ;
                kpred:open-question "Full-screen vertical scroll implies a DOM/scroll surface, not the fixed canvas the other force modes use — is arrange a special non-canvas mode, or a canvas with virtual scroll? DOM makes the page-layout mapping far more direct." .
+
+# -- Integration Plugin SDK (F61) ----------------------------------------------
+# With so many integrations planned (LLM providers, Google, Meshy, Indico, n8n,
+# GitHub, GitLab, a game engine, image-gen, asset tooling …), formalise a
+# plug-in architecture + a documented process for adding one. Raised 2026-07-10.
+
+kb:integration-plugin-sdk rdf:type ktype:Feature ;
+               rdfs:label    "Integration Plugin SDK" ;
+               kpred:feature-id   "F61" ;
+               kpred:has-status   "speculative" ;
+               kpred:priority     "high" ;
+               kpred:principle    "The integration count is the product surface — it must scale by CONVENTION, not bespoke wiring each time. Separate integrations behind one plug-in contract so a new one is 'implement the interface + register', and the app discovers capabilities generically." ;
+               kpred:description  "Architecturally separate the integrations (today ad-hoc under src/lib/integrations/<company>/) behind a plug-in SDK: a typed contract each integration implements — id/label, declared CAPABILITIES (ingest / sync / storage / generation / auth), a config schema (keys, endpoints) that renders its own Settings UI, an auth lifecycle, and typed entry points. A registry discovers plug-ins and the app drives them by capability rather than by name. The LLM provider backends (claude/openai/gemini/ollama/wasm/…, already per-task-selectable) are the pattern to generalise across ALL integration kinds. Enables: swap GitHub<->GitLab (F55.3), plug-in asset-gen tools (F58.8 orchestration), a game-engine plug-in (F59.1), and cloud-storage providers (F55.2) without touching the core." ;
+               kpred:description  "DEVELOPMENT PROCESS (to be documented as part of this): (1) scaffold from an integration template; (2) implement the capability interface(s); (3) declare config schema + auth; (4) register the plug-in; (5) capability-level tests against a fake backend (the drive-sync fake-Drive test is the model); (6) a Settings→Integrations entry renders automatically from the config schema. Documented in the Architecture KB, not a new docs/*.md (TTL-first policy)." ;
+               kpred:relates-to   kb:llm-providers ;
+               kpred:relates-to   kb:gp-gitlab ;
+               kpred:relates-to   kb:gp-cloud-storage ;
+               kpred:relates-to   kb:gen-orchestration ;
+               kpred:relates-to   kb:int-game-engine .
 
 # -- Infrastructure entities (completeness) -------------------------------------
 # Defined here because features depend-on them (F22 -> embedding-model,
