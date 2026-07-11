@@ -145,6 +145,24 @@ describe('buildSiteFiles', () => {
     expect(Object.keys(files)).toContain('content/secret.md');
     expect(Object.keys(files)).not.toContain('admin/config.yml');
   });
+
+  it('emits a self-describing knowledge.ttl that parses and carries the published facts (F72)', async () => {
+    const files = buildSiteFiles(sampleSite());
+    expect(Object.keys(files)).toContain('knowledge.ttl');
+    const ttl = files['knowledge.ttl'];
+    // Parses as valid Turtle and contains a published page's facts.
+    const N3 = (await import('n3')).default;
+    const quads = new N3.Parser().parse(ttl);
+    expect(quads.length).toBeGreaterThan(0);
+    expect(ttl).toContain('Overview');
+  });
+
+  it('never emits publish-blocked statements into knowledge.ttl (safety gate)', () => {
+    // A hate/violence literal the content policy blocks (see content-policy tests).
+    const slur = 'kill all the jews';
+    const files = buildSiteFiles([...sampleSite(), st('kb:x', 'urn:kbase:predicate/note', slur)]);
+    expect(files['knowledge.ttl']).not.toContain(slur);
+  });
 });
 
 describe('zipSiteBytes', () => {
