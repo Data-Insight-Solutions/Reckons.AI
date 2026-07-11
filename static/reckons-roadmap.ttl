@@ -454,10 +454,19 @@ kb:published-graph-exchange rdf:type ktype:Feature ;
 
 kb:published-ttl rdf:type    ktype:Feature ;
                rdfs:label   "Self-describing published TTL" ;
-               kpred:has-status   "planned" ;
+               kpred:has-status   "functional" ;
                kpred:relates-to   kb:graph-publishing ;
-               kpred:description  "Publishing already emits graph.json; also emit a standard .ttl for the published subgraph and make every published page discoverable: a <link rel=\"alternate\" type=\"text/turtle\" href=\"…\"> in the page head (and/or a sibling <slug>.ttl next to <slug>.md). Serve with permissive CORS so another Reckons.AI can fetch it cross-origin. Extends site-export.ts; respects the publish-safety-gate (never emit blocked statements)." ;
+               kpred:description  "Publishing now emits a self-describing knowledge.ttl (publish-safety-filtered, confirmed facts) at the site root alongside graph.json, and every published /docs page advertises it via <link rel=\"alternate\" type=\"text/turtle\" href=\"/knowledge.ttl\">. A reader's Add-from-URL (kb:ttl-aware-ingest) discovers and imports it with no LLM. Remaining: permissive CORS headers on the deploy so another Reckons.AI can fetch cross-origin (a Cloudflare/host config, not app code), and optional per-page <slug>.ttl subgraphs." ;
+               kpred:done         "site-export.ts buildSiteFiles → knowledge.ttl (toTurtle + filterBlockedStatements); docs/+layout.svelte rel=alternate link." ;
                kpred:depends-on   kb:graph-publishing .
+
+kb:facebook-groups-ingest rdf:type ktype:Feature ;
+               rdfs:label   "Facebook Groups ingest" ;
+               kpred:has-status   "speculative" ;
+               kpred:relates-to   kb:ingest ;
+               kpred:description  "Import facts from Facebook Groups a user organizes in — a common real-world coordination surface. NOT a scrape: Meta's Groups API was largely deprecated in 2020 and the remaining endpoints need a Meta app + App Review with restricted permissions (e.g. groups_access_member_info), tied to a group admin's consent; unsanctioned scraping violates Meta ToS and risks blocks. Treat as an optional, per-user INTEGRATION behind settings (like n8n), not a core dependency: a user connects their own Meta app / an n8n or Zapier flow that has group access and posts events into their Reckons.AI (contact-form pattern). Feasible path: n8n Facebook node or Graph API with the user's approved app; surface imported posts/events as pending facts for review." ;
+               kpred:open-question "Which is the realistic first path — user's own approved Meta app, or an n8n/Zapier flow that already has group access? What group data is actually available post-2020 API deprecation (posts? events? member info)?" ;
+               kpred:depends-on   kb:n8n-integration .
 
 kb:ttl-aware-ingest rdf:type ktype:Feature ;
                rdfs:label   "Zero-LLM Add-from-URL (TTL)" ;

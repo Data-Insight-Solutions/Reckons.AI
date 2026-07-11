@@ -19,6 +19,13 @@ import { zipSync, strToU8 } from 'fflate';
 import type { Statement } from '../rdf/types';
 import { buildSitePages, publishablePages, slugify, type SitePage } from '../rdf/page';
 import { parseRepoUrl, type RepoRef } from '../integrations/github/repo-ingest';
+import { toTurtle } from '../rdf/serialize';
+import { filterBlockedStatements } from '../safety/content-policy';
+
+/** Root-relative path of the self-describing published graph (F72 kb:published-ttl).
+ * Every published page advertises it via <link rel="alternate" type="text/turtle">
+ * so another Reckons.AI can Add-from-URL and import the facts with no LLM. */
+export const PUBLISHED_TTL_PATH = 'knowledge.ttl';
 
 const GITHUB_API = 'https://api.github.com';
 
@@ -184,6 +191,14 @@ export function buildSiteFiles(stmts: Statement[], opts: SiteExportOptions = {})
     files[contentPath(page)] = pageToMarkdown(page, slugs);
   }
   files['graph.json'] = JSON.stringify(buildGraphJson(pages), null, 2);
+
+  // Self-describing graph (F72 kb:published-ttl): serialize the published facts to
+  // Turtle so a reader can Add-from-URL and import them directly (no LLM). Run the
+  // publish-safety filter first — never emit blocked statements to the open web.
+  const { allowed: safeStmts } = filterBlockedStatements(stmts);
+  files[PUBLISHED_TTL_PATH] = toTurtle(safeStmts, {
+    header: '# Reckons.AI published graph — import via Add-from-URL (no LLM extraction).\n',
+  });
 
   if (opts.includeAdmin !== false) {
     files['admin/config.yml'] = sveltiaConfig(opts);
