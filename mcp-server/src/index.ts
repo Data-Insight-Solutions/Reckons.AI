@@ -21,6 +21,7 @@ import { createInterface } from 'node:readline';
 import { appendFileSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { MultiKBReader, type Triple } from './kb-reader.js';
+import { compressTriples, estimateTokens } from './compress.js';
 import { bm25Search, invalidateCache } from './search.js';
 import { gitStatus, gitLog, gitChangedFiles } from './git-utils.js';
 import { ollamaEnabled, OLLAMA_DISABLED_MESSAGE, OLLAMA_MODEL } from './ollama-client.js';
@@ -1101,129 +1102,7 @@ function handleKbAlignmentScore(params: { ref?: string; work?: string; kb?: stri
 }
 
 // ── Context Compression ──────────────────────────────────────────────────────
-
-/** Rough token estimate (~1.33 tokens per word, matching the benchmark) */
-function estimateTokens(text: string): number {
-  return Math.round(text.split(/\s+/).filter(Boolean).length * 1.33);
-}
-
-/**
- * Compress a subgraph into a token-efficient format for LLM context.
- *
- * Format (entity-grouped, compact):
- *   # EntitySlug
- *     .predicate value
- *     .predicate "literal with spaces"
- *     < OtherEntity .refPredicate
- *
- * This achieves ~60-70% token reduction vs raw Turtle while preserving
- * all semantic content. Entities are ordered by relevance score.
- */
-function compressTriples(
-  triples: Triple[],
-  entityOrder: string[],
-  budget: number
-): { text: string; stats: { entities: number; facts: number; tokens: number } } {
-  // Group triples by subject
-  const bySubject = new Map<string, Triple[]>();
-  const asObject = new Map<string, Triple[]>();
-  for (const t of triples) {
-    const list = bySubject.get(t.subject) ?? [];
-    list.push(t);
-    bySubject.set(t.subject, list);
-
-    // Track inbound references (where this entity appears as object)
-    if (!t.objectIsLiteral && t.object.startsWith('urn:')) {
-      const refs = asObject.get(t.object) ?? [];
-      refs.push(t);
-      asObject.set(t.object, refs);
-    }
-  }
-
-  // Ordered entity list: prioritise by relevance, then by triple count
-  const allEntities = new Set<string>(entityOrder);
-  for (const iri of bySubject.keys()) allEntities.add(iri);
-
-  const orderedEntities = [...allEntities].filter(iri => bySubject.has(iri) || asObject.has(iri));
-
-  const slug = (iri: string) => localName(iri) || iri;
-
-  // Extract local name from IRI (handles both / and # separators)
-  const localName = (iri: string): string => {
-    const hash = iri.lastIndexOf('#');
-    if (hash >= 0) return iri.slice(hash + 1);
-    const slash = iri.lastIndexOf('/');
-    if (slash >= 0) return iri.slice(slash + 1);
-    return iri;
-  };
-
-  // Predicate abbreviations for common namespaces
-  const abbreviate = (pred: string): string => {
-    const local = localName(pred);
-    if (local === 'type' && pred.includes('rdf')) return 'a';
-    return local;
-  };
-
-  // Format a value: unquoted if numeric or single-word, quoted otherwise
-  const fmtValue = (obj: string, isLiteral: boolean): string => {
-    if (!isLiteral) return slug(obj);
-    if (/^-?[\d.]+$/.test(obj)) return obj;
-    if (/^\S+$/.test(obj) && obj.length < 40) return obj;
-    return `"${obj}"`;
-  };
-
-  const blocks: string[] = [];
-  let totalTokens = 0;
-  let factCount = 0;
-  let entityCount = 0;
-
-  for (const iri of orderedEntities) {
-    const outbound = bySubject.get(iri) ?? [];
-    const inbound = asObject.get(iri) ?? [];
-    if (outbound.length === 0 && inbound.length === 0) continue;
-
-    // Build entity block
-    const lines: string[] = [`# ${slug(iri)}`];
-
-    // Deduplicate predicates (same pred+obj)
-    const seen = new Set<string>();
-    for (const t of outbound) {
-      const key = `${t.predicate}\t${t.object}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      lines.push(`  .${abbreviate(t.predicate)} ${fmtValue(t.object, t.objectIsLiteral)}`);
-      factCount++;
-    }
-
-    // Inbound references (capped to avoid bloat)
-    const inboundCapped = inbound.slice(0, 5);
-    for (const t of inboundCapped) {
-      const key = `${t.subject}\t${t.predicate}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      lines.push(`  < ${slug(t.subject)} .${abbreviate(t.predicate)}`);
-      factCount++;
-    }
-    if (inbound.length > 5) {
-      lines.push(`  (+${inbound.length - 5} more refs)`);
-    }
-
-    const block = lines.join('\n');
-    const blockTokens = estimateTokens(block);
-
-    // Budget check — stop adding entities if we'd exceed
-    if (totalTokens + blockTokens > budget && entityCount > 0) break;
-
-    blocks.push(block);
-    totalTokens += blockTokens;
-    entityCount++;
-  }
-
-  return {
-    text: blocks.join('\n'),
-    stats: { entities: entityCount, facts: factCount, tokens: totalTokens }
-  };
-}
+// Extracted to compress.ts so the "60-70% token reduction" claim can actually be tested.
 
 function handleKbCompress(params: { query: string; budget?: number; hops?: number; kb?: string }): object {
   kb.reload();
