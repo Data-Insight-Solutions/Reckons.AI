@@ -1310,6 +1310,7 @@ kb:rdf-vocabulary-hygiene rdf:type ktype:Feature ;
                rdfs:label   "RDF vocabulary hygiene" ;
                kpred:feature-id   "F75.1" ;
                kpred:has-status   "in-progress" ;
+               kpred:honest-note  "in-progress means DETECTED, not FIXED (2026-07-12). graph-lint now catches every defect class below, but ZERO of the defects are repaired: the 3 duplicate feature-ids, 6 dangling refs, 4 dead has-file links, the kb:design-system IRI collision, the prefix aliasing, the untyped numerics, and urn:reckons:leap all still stand. The lint fails on them today, by design. (kb:honest-status)" ;
                kpred:part-of      kb:rdf-dataset-migration ;
                kpred:description  "Defects found by the 2026-07-12 spec audit. Turtle CONFORMANCE is fine (all 19 graphs parse under N3, the reference parser; 353 RDF tests green including a W3C suite) — the problems are semantic. (a) kb:design-system is one IRI naming two different things: a ktype:Concept (fonts/colors/components) and a ktype:Feature (the shadcn migration), with two labels and two conflicting statuses, so RDF merges them into one contradictory entity. (b) urn:kbase:predicate/ is bound to THREE prefix names (kpred:, pred:, p:) and urn:kbase:meta/ to two, and the app's DEFAULT_PREFIXES exports pred:/meta: while every hand-authored TTL uses kpred:/kmeta:. (c) 15 cardinality violations — single-valued predicates repeated on one subject. (d) kpred:order, kpred:pace, kpred:test-count are untyped strings where 95 other integers are xsd:integer, so they sort lexically ('10' < '9'). (e) urn:reckons:leap is used as a predicate but has no / or # separator, so it cannot be prefix-shortened and defeats the PREDICATE_PREFIX convention that decides whether a predicate renders as a graph edge. Each defect class gets a graph-lint check so it cannot recur." ;
                kpred:open-question "urn:kbase: is not a registered URN namespace (RFC 8141 requires a registered NID). It is a syntactically valid IRI so Turtle accepts it, but it is neither conformant nor dereferenceable. Migrate to https://reckons.ai/kb/ — worth the churn?" .
@@ -1317,7 +1318,8 @@ kb:rdf-vocabulary-hygiene rdf:type ktype:Feature ;
 kb:feature-lifecycle-vocab rdf:type ktype:Feature ;
                rdfs:label   "Feature lifecycle as a SKOS vocabulary" ;
                kpred:feature-id   "F75.2" ;
-               kpred:has-status   "in-progress" ;
+               kpred:has-status   "planned" ;
+               kpred:honest-note  "Status corrected planned<-in-progress (2026-07-12): NONE of this is built. No SKOS scheme exists; kpred:has-status is still a free-text literal everywhere. Decided, not started. (kb:honest-status)" ;
                kpred:part-of      kb:rdf-dataset-migration ;
                kpred:description  "kpred:has-status carried a free-text literal, which is how 'pending -> confirmed/rejected/refined' ended up in a feature's status slot. The lifecycle is a CLOSED vocabulary, so it is modeled as one: ktype:status/* skos:Concepts in the ktype:FeatureLifecycle scheme, ordered by hnav:order, referenced as IRIs rather than strings. This makes the lifecycle queryable (ask the graph for the stages, in order) instead of tacit, and makes an invalid status a broken reference that graph-lint catches structurally." ;
                kpred:relates-to   kb:rdf-vocabulary-hygiene .
