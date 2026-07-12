@@ -35,13 +35,11 @@ jobs:
           cache: npm
       - run: npm ci
 
-      # On PRs: report only. The egress-gate control legitimately FAILS today
-      # (publishing ships ahead of F66 publish-safety-gate), and an honest attestation
-      # must say so rather than be silenced. Flip continue-on-error off — making this a
-      # hard gate — once F66 lands.
+      # F66 has landed, so all six controls pass and this is now a HARD GATE: a PR that
+      # regresses a safety control fails CI. It was continue-on-error only while
+      # publishing legitimately shipped ahead of its own gate.
       - name: Verify safety controls
         id: verify
-        continue-on-error: true
         run: npx tsx scripts/offline/safety-attestation.ts | tee /tmp/attest.txt
 
       - name: Step summary

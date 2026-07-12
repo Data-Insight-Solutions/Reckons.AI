@@ -21,6 +21,7 @@ import { buildSitePages, publishablePages, slugify, type SitePage } from '../rdf
 import { parseRepoUrl, type RepoRef } from '../integrations/github/repo-ingest';
 import { toTurtle } from '../rdf/serialize';
 import { filterBlockedStatements } from '../safety/content-policy';
+import { gatePublish, PublishRefusedError } from './publish-gate';
 
 /** Root-relative path of the self-describing published graph (F72 kb:published-ttl).
  * Every published page advertises it via <link rel="alternate" type="text/turtle">
@@ -193,8 +194,13 @@ export function buildSiteFiles(stmts: Statement[], opts: SiteExportOptions = {})
   files['graph.json'] = JSON.stringify(buildGraphJson(pages), null, 2);
 
   // Self-describing graph (F72 kb:published-ttl): serialize the published facts to
-  // Turtle so a reader can Add-from-URL and import them directly (no LLM). Run the
-  // publish-safety filter first — never emit blocked statements to the open web.
+  // Turtle so a reader can Add-from-URL and import them directly (no LLM).
+  //
+  // This still filters, as a defence in depth for the OFFLINE zip path (which is
+  // user-export and therefore ungated by design). On the MEDIATED path,
+  // publishSiteToGitHub runs the F66 gate over the rendered bundle and refuses
+  // outright — so a blocked statement can never reach the open web via us, and the
+  // user is told, rather than having part of their graph silently disappear.
   const { allowed: safeStmts } = filterBlockedStatements(stmts);
   files[PUBLISHED_TTL_PATH] = toTurtle(safeStmts, {
     header: '# Reckons.AI published graph — import via Add-from-URL (no LLM extraction).\n',
@@ -286,6 +292,17 @@ export async function publishSiteToGitHub(
   const branch = ref.branch ?? opts.branch ?? 'main';
 
   const files = buildSiteFiles(stmts, { ...opts, repo: `${ref.owner}/${ref.repo}`, branch });
+
+  // F66 publish safety gate. This path is MEDIATED DISTRIBUTION — we perform the PUT,
+  // so we are the courier and we gate what we carry. The offline `exportSiteZip` path
+  // is user-export and is deliberately NOT gated: export is a right.
+  //
+  // Gate the RENDERED files, because that is what actually leaves. (The old code
+  // filtered only the published knowledge.ttl while building the markdown pages from
+  // unfiltered statements, so blocked content shipped in the page bodies regardless.)
+  const gate = gatePublish(stmts, files);
+  if (gate.verdict !== 'allow') throw new PublishRefusedError(gate);
+
   const written: string[] = [];
 
   for (const [path, content] of Object.entries(files)) {

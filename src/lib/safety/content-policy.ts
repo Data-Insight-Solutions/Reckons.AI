@@ -92,6 +92,45 @@ const BLOCKED_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
       /\b(plan(ning)?|going)\s+to\s+(kill|murder|assassinate|bomb|shoot\s+up|poison)\s+(my|the|a)\b/i,
     reason: "Planning specific acts of violence",
   },
+  // ── Coercion signature (F66.1 kb:adult-content-policy) ──────────────────────
+  //
+  // This is the pattern that separates a novelist from a blackmailer, and it is the
+  // reason we do NOT try to classify explicitness. Sextortion has a STRUCTURE —
+  // intimate material + a threat to expose it + a demand — and that structure is
+  // detectable independently of how graphic the prose is. Trying to detect "smut"
+  // instead would simultaneously over-block romance authors and under-block abuse.
+  //
+  // The harm here lands on a real, identifiable person who did not consent. That is
+  // the Tier 1 boundary, and no stated purpose unlocks it.
+  {
+    // The disclosure half of the threat may be ACTIVE ("I'll post them") or PASSIVE
+    // ("everyone will see them") — the coercive structure is identical either way, so
+    // both voices must match. Missing the passive form is how a real sextortion
+    // message slips through a filter that looks only for "leak"/"post".
+    pattern:
+      /\b(send|pay|give)\s+(me|us)\b[^.!?]{0,80}\b(or|otherwise|unless)\b[^.!?]{0,80}\b(post|publish|leak|release|send|share|expose|show|see|sees|view|receive|get)\b[^.!?]{0,40}\b(nudes?|photos?|pics?|images?|videos?|vids?|tape|footage)\b/i,
+    reason: "Sextortion: demand coupled with a threat to expose intimate material",
+  },
+  {
+    pattern:
+      /\b(i|we)\s+(will|'ll|am going to|gonna)\s+(post|publish|leak|release|share|expose|send)\b[^.!?]{0,60}\b(nudes?|naked|intimate|explicit)\b[^.!?]{0,60}\b(unless|if you (don'?t|do not|refuse)|until you)\b/i,
+    reason: "Sextortion: threat to expose intimate material unless a demand is met",
+  },
+  {
+    pattern:
+      /\b(unless|if)\s+you\s+(don'?t|do not|refuse to|fail to)\s+(pay|send|give|transfer)\b[^.!?]{0,80}\b(everyone|family|friends|boss|employer|wife|husband|school|colleagues)\b[^.!?]{0,40}\b(see|know|find out|receive)\b/i,
+    reason: "Extortion: threat to disclose to a victim's contacts unless a demand is met",
+  },
+  {
+    pattern:
+      /\b(non-?consensual|revenge)\s+(porn(ography)?|nudes?|intimate\s+images?|sexual\s+images?)\b/i,
+    reason: "Non-consensual intimate imagery",
+  },
+  {
+    pattern:
+      /\b(post(ing)?|publish(ing)?|leak(ing)?|shar(e|ing))\b[^.!?]{0,40}\b(her|his|their)\s+(nudes?|naked\s+photos?|intimate\s+(photos?|images?|videos?))\b[^.!?]{0,60}\b(without\s+(her|his|their)\s+(consent|permission|knowledge)|to\s+(humiliate|punish|shame|get back at))\b/i,
+    reason: "Non-consensual intimate imagery",
+  },
 ];
 
 const MATURE_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
@@ -109,6 +148,39 @@ const MATURE_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
     pattern:
       /\b(detailed|step[\s-]by[\s-]step)\s+(instructions?|guide|how[\s-]to)\s+(for|to)\s+(making|cook(ing)?|manufactur(e|ing))\s+(meth|methamphetamine|fentanyl|heroin)\b/i,
     reason: "Drug manufacturing instructions",
+  },
+];
+
+// ── Adult content (Tier 2) ───────────────────────────────────────────────────
+//
+// Used ONLY to decide whether Reckons.AI will act as the courier (F66.1, Option C:
+// "gate only what we carry"). Adult content is never blocked from being authored,
+// stored, or EXPORTED — export is a right. It is simply not carried by our mediated
+// distribution paths; the user exports and self-hosts.
+//
+// That asymmetry is what makes an imperfect detector acceptable. A false positive
+// costs the user one export and a self-host — not their work, not a ban, no appeal.
+// So this may be somewhat over-sensitive without doing real harm, whereas a filter
+// that BLOCKED authoring would have to be near-perfect to be tolerable.
+//
+// NOTE the difference from MATURE_PATTERNS above, which is the pre-existing bug this
+// fixes: those match *descriptions* of content (the literal phrase "sexually
+// explicit"), so actual prose sails through. These match the content itself.
+const ADULT_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
+  {
+    pattern:
+      /\b(sexually\s+explicit|pornographic|erotica|erotic\s+(content|fiction|story|scene)|graphic\s+sexual|explicit\s+sex\s+scene|nsfw)\b/i,
+    reason: "Adult content (self-described)",
+  },
+  {
+    pattern:
+      /\b(hardcore|xxx)\b[^.!?]{0,30}\b(porn|sex|scene|content)\b|\b(porn|sex)\s+(scene|story|fiction|content)\b/i,
+    reason: "Adult content",
+  },
+  {
+    pattern:
+      /\b(explicit|graphic|steamy|smutty|spicy)\s+(romance|scene|chapter|fiction|passage)\b/i,
+    reason: "Adult content (explicit fiction)",
   },
 ];
 
@@ -273,4 +345,67 @@ export function exportAdvisoryTriple(advisory: ExportAdvisory): string {
   if (advisory.rating === "none") return "";
   const themes = advisory.flags.join("; ");
   return `<urn:reckons:kb> <urn:reckons:meta/contentAdvisory> "${advisory.rating}: ${themes}" .\n`;
+}
+
+// ── Distribution gate (F66 / F66.1) ──────────────────────────────────────────
+//
+// EXPORT IS A RIGHT; DISTRIBUTION IS A PRIVILEGE. Nothing below is ever applied to
+// authoring, storage, or user-export — a user's own graph is theirs, whatever it
+// contains, and withholding it would be lock-in (and futile: it is readable straight
+// out of IndexedDB). This applies ONLY where Reckons.AI is the intermediary actually
+// carrying content to someone else: publishSiteToGitHub and friends.
+//
+// Three outcomes, and note what is deliberately ABSENT: there is no purpose field, no
+// attestation, no terms to accept. Context is never an input. A gate that accepts an
+// explanation is a gate anyone can talk their way past — so we ask nothing, and there
+// is nothing to lie about.
+
+export type DistributionVerdict =
+  /** Carry it. */
+  | "allow"
+  /** Lawful adult content. We decline to be the courier; the user may export + self-host. */
+  | "decline"
+  /** Refused everywhere we are in the loop. The harm lands on a non-consenting third party. */
+  | "refuse";
+
+export interface DistributionResult {
+  verdict: DistributionVerdict;
+  /** Human-readable reasons. Shown to the user verbatim — never a silent drop. */
+  reasons: string[];
+}
+
+/** Classify a single text for the DISTRIBUTION decision (not for ingest). */
+export function classifyForDistribution(text: string): DistributionResult {
+  if (!text) return { verdict: "allow", reasons: [] };
+
+  // Tier 1 — refused. No purpose, agreement, or context unlocks this.
+  const blocked = classifyText(text);
+  if (blocked.rating === "blocked") {
+    return { verdict: "refuse", reasons: blocked.flags };
+  }
+
+  // Tier 2 — adult. Lawful; we simply do not carry it.
+  const reasons: string[] = [];
+  for (const { pattern, reason } of ADULT_PATTERNS) {
+    if (pattern.test(text) && !reasons.includes(reason)) reasons.push(reason);
+  }
+  if (reasons.length > 0) return { verdict: "decline", reasons };
+
+  return { verdict: "allow", reasons: [] };
+}
+
+/** Worst verdict across every text field of a statement. */
+export function classifyStatementForDistribution(st: Statement): DistributionResult {
+  let verdict: DistributionVerdict = "allow";
+  const reasons: string[] = [];
+
+  for (const text of statementTexts(st)) {
+    const r = classifyForDistribution(text);
+    if (r.verdict === "refuse") return r; // short-circuit: nothing outranks Tier 1
+    if (r.verdict === "decline") {
+      verdict = "decline";
+      for (const reason of r.reasons) if (!reasons.includes(reason)) reasons.push(reason);
+    }
+  }
+  return { verdict, reasons };
 }
