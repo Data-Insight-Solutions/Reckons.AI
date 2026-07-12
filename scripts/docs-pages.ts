@@ -487,7 +487,12 @@ function main(): void {
   let unchanged = 0;
   for (const [rel, content] of newFiles) {
     const abs = join(ROOT, rel);
-    if (existsSync(abs) && readFileSync(abs, 'utf8') === content) { unchanged++; continue; }
+    // Read-and-catch rather than existsSync-then-read: the check-then-use pair is a race
+    // (the file can vanish between the two calls) and CodeQL flags it as js/file-system-race.
+    // Attempting the read directly is both correct and one syscall cheaper.
+    let existing: string | null = null;
+    try { existing = readFileSync(abs, 'utf8'); } catch { /* missing → write it */ }
+    if (existing === content) { unchanged++; continue; }
     mkdirSync(dirname(abs), { recursive: true });
     writeFileSync(abs, content, 'utf8');
     written++;
