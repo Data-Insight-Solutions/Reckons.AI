@@ -1073,6 +1073,17 @@
     </button>
   </div>
 
+  <label class="field">
+    <span class="lbl mono">node image size <span class="muted">({settings().nodePreviewSize ?? 120}px)</span></span>
+    <input
+      type="range"
+      min="48" max="320" step="8"
+      value={settings().nodePreviewSize ?? 120}
+      onchange={(e) => updateSettings({ nodePreviewSize: +(e.currentTarget as HTMLInputElement).value })}
+      style="flex: 1;"
+    />
+  </label>
+
   <div class="field row-field">
     <div>
       <span class="lbl mono">tutorial hints</span>

@@ -115,6 +115,13 @@ export type SettingsRecord = {
   prefer2D?: boolean;
   /** Always render entity preview images on nodes (no hover needed). Slower to paint. */
   alwaysShowPreviews?: boolean;
+  /** "Normal" node preview-image size in px (the thumbnail on selected/highlighted
+   * nodes). Click a thumbnail to expand large; adjustable so image-heavy graphs
+   * can read bigger by default. Default 120. */
+  nodePreviewSize?: number;
+  /** Auto-expand a node's asset to the large view whenever it becomes selected —
+   * e.g. as a story/explore walkthrough moves node to node. Off by default. */
+  autoExpandAssets?: boolean;
   /** Overall UI text scale. 'sm' = 14px, 'md' = 16px (default), 'lg' = 18px root font. */
   uiScale?: 'sm' | 'md' | 'lg';
   /**
