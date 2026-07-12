@@ -1,17 +1,23 @@
 {
-  "_comment": "Offline jobs run by `npm run offline:all` (scripts/offline/run-all.ts). Add/remove/toggle freely — each runs in order even if a prior one fails. Findings land in reckons-workspace/knowledge.pending.jsonl for review in Reckons.AI. cmd runs in bash, so ${VAR:-default} and pipes work.",
+  "_comment": "Offline jobs run by `npm run offline:all` (scripts/offline/run-all.ts). Add/remove/toggle freely \u2014 each runs in order even if a prior one fails. Findings land in reckons-workspace/knowledge.pending.jsonl for review in Reckons.AI. cmd runs in bash, so ${VAR:-default} and pipes work.",
   "jobs": [
     {
       "name": "alignment-sweep",
       "enabled": true,
       "cmd": "bash scripts/offline/alignment-sweep.sh",
-      "desc": "TTL parse / asset paths / namespace typos / stale LEAP + branch-align --suggest + kb-align → pending questions"
+      "desc": "TTL parse / asset paths / namespace typos / stale LEAP + branch-align --suggest + kb-align \u2192 pending questions"
+    },
+    {
+      "name": "code-review",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/code-review.ts --base=${CODE_REVIEW_BASE:-origin/dev}",
+      "desc": "Local coding model (qwen3-coder) reviews the branch diff \u2192 findings to pending review (needs OLLAMA_BASE_URL)"
     },
     {
       "name": "visual-diff",
       "enabled": false,
       "cmd": "npx tsx scripts/offline/visual-diff.ts --base=${VISUAL_DIFF_BASE:-https://reckons.ai} --head=${VISUAL_DIFF_HEAD:-https://dev.reckons-ai.pages.dev}",
-      "desc": "Local-VLM visual regression prod↔dev (needs OLLAMA_BASE_URL; set VISUAL_DIFF_BASE / VISUAL_DIFF_HEAD)"
+      "desc": "Local-VLM visual regression prod\u2194dev (needs OLLAMA_BASE_URL; set VISUAL_DIFF_BASE / VISUAL_DIFF_HEAD)"
     }
   ]
 }
