@@ -167,7 +167,7 @@
     gifActiveKey = null;
     gifTimer = setTimeout(() => {
       gifActiveKey = gifHoverKey;
-    }, 700);
+    }, 350);
   });
 
   /** Definition text for the selected entity (shown in node panel — essential on touch devices). */
@@ -844,6 +844,10 @@
   const PREVIEW_URL_PREDICATES = new Set([
     'urn:kbase:predicate/photo',
     'urn:kbase:meta/gifPreview',
+    // icon2d doubles as a node image (visual-review steps store their screenshot
+    // here). In 2D it draws as the canvas icon; feeding it to the preview map lets
+    // it also show as a hover/overlay thumbnail — the only image path in 3D.
+    'urn:kbase:predicate/icon2d',
   ]);
   const previewUrlMap = $derived.by(() => {
     const m = new Map<string, string>();
@@ -1794,10 +1798,13 @@
     transition:fade={{ duration: 220 }}
     style="transform: translate3d({n.x}px, {n.y}px, 0); --lfs: {labelFontSize}px; --lop: {n.opacity ?? 0.85};"
   >
-    {#if alwaysPreviews}
+    <!-- Show the node image when previews are forced on, OR for the focused/
+         selected/highlighted nodes (focus force + filtering), so an image-bearing
+         graph like the visual review shows its screenshots without hunting. -->
+    {#if alwaysPreviews || n.key === selected || highlightedSet.has(n.key)}
       {@const purl = previewUrlFor(iriFromNodeKey(n.key))}
       {#if purl}
-        <img class="node-preview-thumb" src={purl} alt="" loading="lazy" />
+        <img class="node-preview-thumb" class:sel={n.key === selected} src={purl} alt="" loading="lazy" />
       {/if}
     {/if}
     <span
@@ -3263,14 +3270,25 @@
     position: absolute;
     left: 0;
     top: 0;
-    width: 48px;
-    height: 48px;
+    width: 88px;
+    height: 88px;
     transform: translate(-50%, calc(-100% - 6px));
     object-fit: cover;
     border-radius: 8px;
     border: 1px solid var(--line);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
     background: var(--surface);
+    transition: width 0.18s ease, height 0.18s ease;
+  }
+  /* Selected/clicked node: expand the image large and uncropped so an
+     image-bearing graph (e.g. the visual review) reads at a glance. */
+  .node-preview-thumb.sel {
+    width: 240px;
+    height: 156px;
+    object-fit: contain;
+    background: var(--surface-2);
+    border-color: var(--accent);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.55);
   }
   /* Inner span: centering + hover scale — separate from position transition */
   .node-label {
@@ -3463,13 +3481,13 @@
     border: 1px solid var(--line);
     background: var(--surface-2);
     transform-origin: top left;
-    min-width: 160px;
-    max-width: 220px;
+    min-width: 200px;
+    max-width: 420px;
   }
   .gif-preview img {
     display: block;
-    max-width: 220px;
-    max-height: 180px;
+    max-width: 420px;
+    max-height: 300px;
     width: 100%;
     height: auto;
   }
