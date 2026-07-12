@@ -103,6 +103,15 @@ The TTL graphs in `static/` are the canonical plan and system description — co
 - **Findings and proposals** (discrepancies, suggestions, drift): don't just report in chat — propose them as pending graph entries for in-app review. Append JSONL lines to the app workspace's `knowledge.pending.jsonl` (`{ subject, predicate, object, note?, type?: observation|question|suggestion|status-update|drift-warning, agent?, priority? }` — see `drainWorkspacePending` in `src/lib/stores/workspace.svelte.ts`), or use `kb_add_note` when the MCP server is connected. The app imports them as pending facts for human review.
 - **Docs sections generated from graphs** (`content/` via `scripts/docs-pages.ts`): edit the TTL, regenerate, never hand-edit generated pages.
 
+### Honest status — always (kb:honest-status)
+
+**Never describe a control, feature, or capability that does not exist yet.** Distinguish what is BUILT from what is INTENDED *at the point of each claim*, not in a footnote. Aspiration written in the present tense is a lie with good manners.
+
+- This bites hardest in `SAFETY.md`, `COUNSEL-BRIEF.md`, and anything user-facing. Overclaiming a control we cannot exercise is itself a liability. (Real incident, 2026-07-12: `SAFETY.md` was written saying "we gate publishing" while F66 was merely `planned` — publishing is in fact ungated — and claimed the ethics preamble "cannot be overridden" when it is open-source code anyone can delete. Both fixed.)
+- `kpred:has-status` must reflect reality. A feature is not `functional` because we wish it were.
+- **Report failures as loudly as successes.** The safety attestation deliberately records its own failing control; a log that is always green is not a record. If tests fail, say so with the output. If a step was skipped, say that.
+- Say the weakness out loud, in the sentence that describes the thing.
+
 ### Work tiering — route the task before you do it (F74.3)
 
 Before doing any recurring task yourself, route it to the **cheapest tier that can do it correctly**. Take the first test it passes:

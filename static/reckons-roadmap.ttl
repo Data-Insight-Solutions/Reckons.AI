@@ -1339,6 +1339,23 @@ kb:feature-lifecycle-vocab rdf:type ktype:Feature ;
 # Compacted index of the decisions taken this session, so a future session can find
 # them without re-deriving. Each decision's full reasoning lives on the entity named.
 
+# -- Honest status (standing principle, 2026-07-12) ------------------------------
+# Caught in the act: SAFETY.md was written stating the publish gate in the PRESENT
+# TENSE ("we gate", "we refuse") while F66 is merely PLANNED — publishing is in fact
+# ungated today. The same document also claimed the ethics preamble "cannot be
+# overridden", when it is open-source client code anyone can delete. Both were fixed.
+# The lesson is cheap to state and expensive to forget: a safety document that
+# overclaims is worse than no document, because it converts a gap into a lie.
+
+kb:honest-status rdf:type      ktype:Concept ;
+               rdfs:label   "Honest status — always describe the current state truthfully" ;
+               kpred:part-of      kb:reckons-ai ;
+               kpred:description  "Every user-facing, legal, and internal document must distinguish WHAT IS BUILT from WHAT IS INTENDED, at the point of each claim — not in a footnote. Aspiration written in the present tense is a lie with good manners. This applies hardest to SAFETY.md, COUNSEL-BRIEF.md, and any status shown in the app: overclaiming a control we cannot exercise is itself a liability (and it is the specific failure the 2026-07-12 session committed and then corrected). It also applies to the roadmap: kpred:has-status must reflect reality, and a feature is not 'functional' because we wish it were." ;
+               kpred:principle    "Never describe a control we do not have. If a gate is planned, say PLANNED — in the sentence that mentions the gate." ;
+               kpred:principle    "Report failures as loudly as successes. The safety attestation records its own failing control on purpose: a log that only records success is worthless as evidence, and a status that is always green is not a status." ;
+               kpred:principle    "Say the weakness out loud. The content classifier matches descriptions of content rather than content, so SAFETY.md says exactly that, in the section that describes the classifier." ;
+               kpred:enforced-by  "scripts/offline/safety-attestation.ts (verifies controls against the live code rather than asserting them); scripts/offline/graph-lint.ts (a feature cannot ship ahead of its own gate)." .
+
 kb:session-2026-07-12 rdf:type ktype:Decision ;
                rdfs:label   "Decisions — 2026-07-12 (work tiering · RDF format · safety policy)" ;
                kpred:decided-on   "2026-07-12"^^xsd:date ;
