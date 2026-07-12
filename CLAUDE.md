@@ -103,6 +103,13 @@ The TTL graphs in `static/` are the canonical plan and system description — co
 - **Findings and proposals** (discrepancies, suggestions, drift): don't just report in chat — propose them as pending graph entries for in-app review. Append JSONL lines to the app workspace's `knowledge.pending.jsonl` (`{ subject, predicate, object, note?, type?: observation|question|suggestion|status-update|drift-warning, agent?, priority? }` — see `drainWorkspacePending` in `src/lib/stores/workspace.svelte.ts`), or use `kb_add_note` when the MCP server is connected. The app imports them as pending facts for human review.
 - **Docs sections generated from graphs** (`content/` via `scripts/docs-pages.ts`): edit the TTL, regenerate, never hand-edit generated pages.
 
+### Picking up mid-stream? Read `HANDOFF.md` FIRST
+
+If the user says "continue" (or a scheduled/cloud session starts with no context), read
+**`HANDOFF.md`** (repo root) before anything else. It names the active branch, the current
+task, what has already been found (so you don't re-derive it), and the decisions that are
+Matt's to make rather than yours. Keep it current when you hand off.
+
 ### Honest status — always (kb:honest-status)
 
 **Never describe a control, feature, or capability that does not exist yet.** Distinguish what is BUILT from what is INTENDED *at the point of each claim*, not in a footnote. Aspiration written in the present tense is a lie with good manners.
@@ -134,7 +141,7 @@ This project uses TTL knowledge bases as the primary documentation format. **Do 
 - **For code conventions**: Use inline code comments near the actual code
 - **Query before reading**: Use `kb_search` to find information before reading raw files
 - **Existing markdown**: `docs/*.md` files are being migrated to TTL. Check `kb_search("migration status", kb="architecture")` for current state
-- **Must stay markdown**: CLAUDE.md, MEMORY.md, .claude/commands/*.md, README.md, CONTRIBUTING.md, SAFETY.md (system/policy docs; SAFETY.md is the human-readable safety & responsibility statement — the graph mirrors it in kb:content-safety)
+- **Must stay markdown**: CLAUDE.md, HANDOFF.md, COUNSEL-BRIEF.md, MEMORY.md, .claude/commands/*.md, README.md, CONTRIBUTING.md, SAFETY.md (system/policy docs; SAFETY.md is the human-readable safety & responsibility statement — the graph mirrors it in kb:content-safety)
 
 ### KB predicates convention
 
