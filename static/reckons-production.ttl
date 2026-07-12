@@ -270,8 +270,9 @@ kb:hierarchy-nav    rdf:type     ktype:Feature ;
 
 kb:workspace-export rdf:type     ktype:Feature ;
                     rdfs:label   "Workspace Export" ;
+                    kpred:data-egress  "user-export" ;
                     kpred:has-status   "production" ;
-                    kpred:description  "Semantic TTL export with backup scheduling. Graph asset round-trip." ;
+                    kpred:description  "Semantic TTL export with backup scheduling. Graph asset round-trip. EXPORT IS A RIGHT (kb:data-egress-model): plain-text TTL of the user's own graph to the user's own disk is never blocked, whatever it contains — withholding it would be data lock-in, and it would be futile besides, since the graph is readable straight out of IndexedDB. A content ADVISORY header may be attached (scanForExportAdvisory); a blocking gate here would be a bug." ;
                     kpred:tested-by    "src/lib/storage/__tests__/semantic-export.test.ts" ;
                     kpred:tested-by    "src/lib/storage/__tests__/backup.test.ts" .
 

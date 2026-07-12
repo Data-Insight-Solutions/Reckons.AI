@@ -242,8 +242,80 @@ kb:publish-safety-gate rdf:type ktype:Feature ;
                kpred:has-status   "planned" ;
                kpred:part-of      kb:content-safety ;
                kpred:principle    "PRIVATE sharing is the user's to manage (handing someone a .ttl is like emailing a file — the app doesn't police it). PUBLIC publishing to the open web is GATED: make a good-faith effort to block publicly sharing graphs that incite violence or are otherwise illegal or hateful." ;
+               kpred:principle    "GATE ONLY WHAT WE CARRY (Option C, 2026-07-12 — see kb:adult-content-policy). The gate refuses to CARRY, it never refuses to LET THE USER HAVE: user-export is always available, whatever the graph contains. It also asks NO QUESTION — no purpose declaration, no attestation, no terms to accept — because a gate that accepts an explanation is a gate anyone can talk their way past." ;
+               kpred:scope        "Refuses at mediated distribution: (1) Tier 1 always — minors, NCII, sextortion/blackmail, incitement, mass-casualty weapons; (2) Tier 2 adult content — declined with a plain 'export it and self-host' message, no judgment and no appeal. Tier 3 passes." ;
                kpred:description  "Before a graph is published to the open web (publishSiteToGitHub / any public target), run it through the same classifier (classifyStatement / filterBlockedStatements) and REFUSE to publish when blocked content is present — with a clear explanation, not a silent drop. Distinct from the existing export ADVISORY (which warns): the publish gate BLOCKS. Also leans on the natural barrier — Reckons.AI hosts nothing, so public publishing requires the user's OWN domain/hosting/file-sharing (Cloudflare, GitHub Pages, a Git host), which limits casual/anonymous abuse and makes the publisher accountable through their own provider. Builds on content-safety; extends site-export.ts." ;
-               kpred:relates-to   kb:graph-publishing .
+               kpred:relates-to   kb:graph-publishing ;
+               kpred:gates        kb:graph-publishing ;
+               kpred:gates        kb:published-ttl ;
+               kpred:gates        kb:published-graph-exchange ;
+               kpred:gates        kb:share-links ;
+               kpred:gates        kb:read-only-guest ;
+               kpred:gates        kb:kb-publication .
+
+# -- Data egress model (2026-07-12) ---------------------------------------------
+# The audit asked a question the graph could not answer: "which features send user
+# data off-device?" — the single most important privacy question for a local-first,
+# privacy-by-default app. It was unanswerable because egress was never modeled.
+#
+# THE LINE IS EXPORT vs DISTRIBUTION, not private vs public:
+#
+#   EXPORT is a RIGHT. Plain-text/TTL export of your own graph to your own disk is
+#   NEVER blocked. Blocking it would be data lock-in, and it is futile anyway — the
+#   graph sits in IndexedDB and can be read out regardless. Advisory header only.
+#
+#   DISTRIBUTION is a PRIVILEGE. When Reckons.AI is the INTERMEDIARY that hands
+#   content to someone else — publish to the web, a share link, the exchange, a guest
+#   view, a third-party sync — the app is participating in delivery, so it gates.
+#
+# What the user does with an exported file afterwards is their business (F66's
+# principle, SAFETY.md). The gate binds where WE are in the loop, and nowhere else —
+# claiming otherwise would be overclaiming a control we cannot exercise.
+
+kb:data-egress-model rdf:type ktype:Concept ;
+               rdfs:label   "Data egress model (export is a right, distribution is a privilege)" ;
+               kpred:part-of      kb:content-safety ;
+               kpred:description  "Classifies every feature by where user data can travel, so the graph can answer 'what leaves the device, and are we the one carrying it?'. kpred:data-egress takes one of: none (stays in IndexedDB); user-export (plain text/TTL to the user's own disk — a RIGHT, never blocked, advisory header only, no lock-in); mediated-distribution (Reckons.AI is the intermediary delivering content to a third party or the open web — publish, share link, exchange, guest view — BLOCKING gate); third-party-service (an opt-in integration's servers, e.g. Drive/n8n/GitHub — gated by explicit user connect + advisory, blocking for public targets). Only mediated-distribution and third-party-service require kpred:gated-by; user-export must NOT be gated, and a lint that demanded one would be a bug." ;
+               kpred:egress-value "none" ;
+               kpred:egress-value "user-export" ;
+               kpred:egress-value "mediated-distribution" ;
+               kpred:egress-value "third-party-service" ;
+               kpred:principle    "Export is a RIGHT: the user's graph is the user's, in a plain, portable, non-proprietary format. Reckons.AI never withholds a user's own data from them, whatever it contains." ;
+               kpred:principle    "Distribution is a PRIVILEGE: when the app is the intermediary handing content to someone else, it is a participant in that delivery and gates accordingly. Once a file has left as a user-export, what happens next is the user's responsibility, not a control we pretend to have." ;
+               kpred:invariant    "data-egress in {mediated-distribution, third-party-service} => kpred:gated-by is required, and the gate's lifecycle status must be >= the gated feature's status." ;
+               kpred:invariant    "data-egress = user-export => NO blocking gate. Advisory only (scanForExportAdvisory)." .
+
+# -- Adult content policy (F66.1) — DECIDED 2026-07-12: OPTION C -----------------
+# The goal: DO NOT block a romance author writing explicit fiction, while refusing to
+# help distribute abuse material.
+#
+# WE GATE ONLY WHAT WE CARRY. Reckons.AI provides no mediated distribution channel for
+# adult content. Write it, keep it, export it, self-host it — all unimpeded. We simply
+# will not be the one handing it to strangers. That is a refusal to CARRY, not a
+# refusal to LET YOU HAVE, and the difference is the whole policy.
+#
+# The decisive property of Option C: it deletes the gameable attestation entirely.
+# There is NO purpose declaration, NO T&C tier-unlock, NO context field — because
+# CONTEXT IS NEVER AN INPUT TO THE GATE. Nobody can talk their way past a gate that
+# asks no question. The blackmailer who wraps their material in a plausible paragraph
+# about their novel has nothing to wrap it in. It also means no accounts, no server, no
+# PII, no retention duty, and no age-verification exposure — the app stays local-first.
+
+kb:adult-content-policy rdf:type ktype:Feature ;
+               rdfs:label   "Adult content policy (gate only what we carry)" ;
+               kpred:feature-id   "F66.1" ;
+               kpred:has-status   "planned" ;
+               kpred:part-of      kb:publish-safety-gate ;
+               kpred:relates-to   kb:data-egress-model ;
+               kpred:decided      "Option C (2026-07-12): Reckons.AI offers NO mediated distribution channel for adult content. Authoring, storage, and user-export are entirely unimpeded; only mediated distribution is refused." ;
+               kpred:description  "Applies at MEDIATED DISTRIBUTION only — never at authoring, never at storage, never at user-export. TIER 1 (refused everywhere we are in the loop, and refused at generation by the ETHICS_PREAMBLE): sexualization of minors; non-consensual intimate content of real people; sextortion/blackmail; incitement; mass-casualty weapons instructions. TIER 2 ADULT (explicit fiction between adults, graphic fictional violence): NOT MEDIATED. The publish gate declines to carry it and says so plainly — 'Reckons.AI won't publish this for you; export it and host it yourself.' No moral judgment, no accusation, no appeal process, and crucially no questionnaire to game. TIER 3: mediated freely. A false positive costs the user one export and a self-host, so over-blocking is cheap; that is what makes this workable with an imperfect classifier." ;
+               kpred:principle    "Gate only what we carry. Export is a right; distribution is a privilege; we decline to be the intermediary for adult material rather than pretending to adjudicate it." ;
+               kpred:principle    "Context is never an input to the gate. A gate that accepts a stated purpose is a gate anyone can talk their way past — so we ask nothing, and there is nothing to lie about." ;
+               kpred:principle    "Tier 1 is principled, not squeamish: it is exactly the set where the harm lands on a THIRD PARTY WHO DID NOT CONSENT. Fiction between consenting adults has no victim; content aimed at a real person does." ;
+               kpred:remaining    "Tier 1 detection should target the COERCION SIGNATURE (a real identifiable person + intimate material + a threat + a demand), which is structural and detectable independently of explicitness — unlike 'classify smut', which simultaneously over-blocks romance authors and under-blocks abuse." ;
+               kpred:known-gap    "The current classifier (content-policy.ts MATURE_PATTERNS) matches DESCRIPTIONS of content — the literal phrases 'sexually explicit', 'pornographic' — not content itself. Actual explicit prose is not detected, while a triple merely SAYING a document is erotic gets flagged. It must not be described as a content filter until rewritten." ;
+               kpred:consequence  "No accounts, no server, no attestation records, no PII retention, no age-verification surface. The traceability problem in COUNSEL-BRIEF.md §6 is DISSOLVED rather than solved: there is nothing to trace because there is no claim to lie about." ;
+               kpred:depends-on   kb:publish-safety-gate .
 
 kb:verified-badge rdf:type  ktype:Feature ;
                rdfs:label   "Verified Badge" ;
@@ -259,6 +331,8 @@ kb:passage-grounding rdf:type ktype:Feature ;
 
 kb:repo-ingest rdf:type     ktype:Feature ;
                rdfs:label   "Repository Ingest" ;
+               kpred:data-egress  "third-party-service" ;
+               kpred:gated-by     kb:content-safety ;
                kpred:has-status   "production" ;
                kpred:description  "GitHub REST API for tree walking and file content. Delta updates between commits." .
 
@@ -373,6 +447,8 @@ kb:voice-interface rdf:type ktype:Feature ;
 
 kb:google-drive-sync rdf:type ktype:Feature ;
                rdfs:label   "Google Drive Sync" ;
+               kpred:data-egress  "third-party-service" ;
+               kpred:gated-by     kb:content-safety ;
                kpred:has-status   "scaffolded" ;
                kpred:feature-id   "F6" ;
                kpred:description  "OAuth flow and file listing implemented. Auto-sync on mutation not wired." ;
@@ -388,6 +464,8 @@ kb:vr-ar-shells rdf:type    ktype:Feature ;
 
 kb:kb-publication rdf:type  ktype:Feature ;
                rdfs:label   "Graph Publication (GitHub Gist)" ;
+               kpred:data-egress  "mediated-distribution" ;
+               kpred:gated-by     kb:publish-safety-gate ;
                kpred:has-status   "planned" ;
                kpred:feature-id   "F2" ;
                kpred:description  "Publish graph to a static URL via GitHub Gist. Shareable read-only link with published GUID." ;
@@ -395,6 +473,8 @@ kb:kb-publication rdf:type  ktype:Feature ;
 
 kb:read-only-guest rdf:type ktype:Feature ;
                rdfs:label   "Read-Only Guest View" ;
+               kpred:data-egress  "mediated-distribution" ;
+               kpred:gated-by     kb:publish-safety-gate ;
                kpred:has-status   "planned" ;
                kpred:feature-id   "F3" ;
                kpred:description  "Open a published graph URL in read-only mode. Fork to own graph button." ;
@@ -420,6 +500,8 @@ kb:collaborative-kb rdf:type ktype:Feature ;
 
 kb:graph-publishing rdf:type ktype:Feature ;
                rdfs:label   "Graph Publishing (Sveltia CMS)" ;
+               kpred:data-egress  "mediated-distribution" ;
+               kpred:gated-by     kb:publish-safety-gate ;
                kpred:has-status   "in-progress" ;
                kpred:feature-id   "F27" ;
                kpred:description  "Publish WebPage graph nodes as a static, graph-powered docs site served at Reckons.AI/docs (self-contained, in the main app — not a separate repo). Graph-first: nodes export to content/<section>/<slug>.md (frontmatter + body) plus graph.json; Sveltia CMS (external bundle, un-forked) edits the files; a prerendered /docs route group renders them via mdsvex; Cloudflare Pages deploys. Hybrid body: excerpt in graph, long-form markdown in Git. Offline-capable authoring and .zip export. Future: docs.reckons.ai subdomain over the same build." ;
@@ -442,6 +524,8 @@ kb:graph-publishing rdf:type ktype:Feature ;
 ## no LLM extraction, and can subscribe so pods surface the publisher's new facts.
 kb:published-graph-exchange rdf:type ktype:Feature ;
                rdfs:label   "Published-Graph Exchange (F72)" ;
+               kpred:data-egress  "mediated-distribution" ;
+               kpred:gated-by     kb:publish-safety-gate ;
                kpred:feature-id   "F72" ;
                kpred:has-status   "planned" ;
                kpred:relates-to   kb:graph-publishing ;
@@ -454,6 +538,8 @@ kb:published-graph-exchange rdf:type ktype:Feature ;
 
 kb:published-ttl rdf:type    ktype:Feature ;
                rdfs:label   "Self-describing published TTL" ;
+               kpred:data-egress  "mediated-distribution" ;
+               kpred:gated-by     kb:publish-safety-gate ;
                kpred:has-status   "functional" ;
                kpred:relates-to   kb:graph-publishing ;
                kpred:description  "Publishing now emits a self-describing knowledge.ttl (publish-safety-filtered, confirmed facts) at the site root alongside graph.json, and every published /docs page advertises it via <link rel=\"alternate\" type=\"text/turtle\" href=\"/knowledge.ttl\">. A reader's Add-from-URL (kb:ttl-aware-ingest) discovers and imports it with no LLM. Remaining: permissive CORS headers on the deploy so another Reckons.AI can fetch cross-origin (a Cloudflare/host config, not app code), and optional per-page <slug>.ttl subgraphs." ;
@@ -792,6 +878,8 @@ kb:cross-kb-alignment rdf:type ktype:Feature ;
 
 kb:n8n-cloud-sync rdf:type ktype:Feature ;
                rdfs:label   "n8n Automation" ;
+               kpred:data-egress  "third-party-service" ;
+               kpred:gated-by     kb:content-safety ;
                kpred:has-status   "functional" ;
                kpred:feature-id   "F20" ;
                kpred:principle    "n8n is NOT a backend for all things Reckons.AI. It is an OPTIONAL, PER-USER automation layer: a user connects their OWN self-hosted n8n to enable personalized automation/integration flowing into AND out of their Reckons.AI. The app stays local-first with no general backend; n8n owns web side-effects, never core state. (Mirrored in CLAUDE.md → Integration Boundaries for coding agents.)" ;
@@ -1013,6 +1101,8 @@ kb:condition-triggers rdf:type ktype:Feature ;
 
 kb:share-links rdf:type     ktype:Feature ;
                rdfs:label   "TTL Share Links" ;
+               kpred:data-egress  "mediated-distribution" ;
+               kpred:gated-by     kb:publish-safety-gate ;
                kpred:has-status   "planned" ;
                kpred:description  "Generate a URL pointing to hosted TTL. Others paste URL to import. No accounts required." ;
                kpred:depends-on   kb:kb-publication .
@@ -1104,6 +1194,180 @@ kb:aggressive-local-offload rdf:type ktype:Feature ;
                kpred:relates-to   kb:local-offload ;
                kpred:description  "Push token savings hard so a subscription lasts all day: prefer LOCAL models (Ollama, WASM) for more per-task work by default — chat, diff-summary, merge analysis, extraction on trusted sources — reserving cloud/Opus for the hard cases and review. Coding + VLM local models have improved (recent benches), so raise how often they're the default. Surface a clear per-task 'local vs cloud' policy in Settings, and REPORT failures/low-confidence (fall back + flag for review) rather than silently degrading. Ties into per-task backends + kb:n8n-review-notifications for failure surfacing." ;
                kpred:open-question "Which tasks are safe to move to local-by-default without hurting quality (measure against the comparison bench)? A single 'maximize local' toggle vs. per-task control?" .
+
+# -- Work Tiering (F74.3) -------------------------------------------------------
+# The routing rule for HOW work gets done, not what. Offloading to a local model
+# is not free: a local job that emits 30 findings of which 25 are noise MOVES cost
+# from generation to triage rather than removing it. Deterministic checks have zero
+# triage cost because they are right by construction — so the token budget is served
+# better by growing the SCRIPT tier than the AGENT tier.
+
+kb:work-tiering rdf:type       ktype:Feature ;
+               rdfs:label   "Work tiering (script · local agent · Opus)" ;
+               kpred:feature-id   "F74.3" ;
+               kpred:has-status   "in-progress" ;
+               kpred:part-of      kb:aggressive-local-offload ;
+               kpred:relates-to   kb:offline-align-review ;
+               kpred:relates-to   kb:session-tokens ;
+               kpred:description  "Every recurring task is routed to the cheapest tier that can do it correctly, decided by the first test it passes: (1) SCRIPT — the answer is checkable by a rule (does this path exist, does this parse, is this status in the enum), so it is deterministic code, zero tokens, zero hallucination, runs in CI and fails loudly; (2) LOCAL AGENT — the answer is judgment over language and being wrong is cheap because the output is a PROPOSAL a human gates (first-pass code review, description drafting, staleness reads), always emitted to knowledge.pending.jsonl, never to source; (3) OPUS — cross-file architectural reasoning, deciding the process, triaging the queue the other tiers fill, and writing code that lands. Opus designs the harness; the local model is a plugin inside it (ground -> prompt -> validate -> emit-proposal, per the PR #43 devstral salvage). Promotion ladder: anything Opus does twice becomes an agent job or a script; anything an agent gets right RELIABLY is demoted to a script, because reliability proves the rule was expressible." ;
+               kpred:remaining    "Grow the script tier: graph-lint (dead has-file/tested-by links, status enum, feature-id collisions, dangling depends-on) + convention lint (ETHICS_PREAMBLE presence, CSS vars, americanize --check) + pending.jsonl schema/dedupe validation." ;
+               kpred:remaining    "Agent tier: local description drafting for entities whose kpred:description is missing or stale vs the code." ;
+               kpred:measured     "Tracked by npm run session:tokens (kb:session-tokens) — the metric that says whether a tier move actually saved anything." ;
+               kpred:has-tier     kb:tier-script ;
+               kpred:has-tier     kb:tier-local-agent ;
+               kpred:has-tier     kb:tier-claude-code .
+
+# The three tiers as first-class entities, so the PROCESS is queryable from the graph
+# rather than only prose in CLAUDE.md. Routing takes the first tier whose
+# kpred:admits-when test the task passes, cheapest first.
+
+kb:tier-script rdf:type        ktype:Concept ;
+               rdfs:label   "Tier 1 — deterministic script" ;
+               kpred:part-of      kb:work-tiering ;
+               hnav:order   1 ;
+               kpred:admits-when  "The answer is checkable by a rule: does this path exist, does this parse, is this value in the enum, are these two files in sync." ;
+               kpred:cost         "zero tokens, zero triage — right by construction" ;
+               kpred:runs-on      "any machine, including CI" ;
+               kpred:emits        "a pass/fail exit code, and optionally pending findings" ;
+               kpred:exemplar     "scripts/offline/graph-lint.ts" ;
+               kpred:description  "The default and preferred tier. Deterministic code with no model in the loop, so it can run in CI and fail loudly. Prefer growing this tier over the agent tier: a check that is right by construction costs nothing to triage, whereas a noisy model job merely moves cost from generation to review." .
+
+kb:tier-local-agent rdf:type   ktype:Concept ;
+               rdfs:label   "Tier 2 — local model agent" ;
+               kpred:part-of      kb:work-tiering ;
+               hnav:order   2 ;
+               kpred:admits-when  "The answer is judgment over language, AND being wrong is cheap because the output is a proposal a human gates. Drafting a description, first-pass code review, staleness reads." ;
+               kpred:cost         "zero cloud tokens; local GPU time; nonzero TRIAGE cost — this is the tier's real price" ;
+               kpred:runs-on      "a machine with Ollama and a model that fits in local VRAM (opt-in via OLLAMA_BASE_URL)" ;
+               kpred:emits        "PROPOSALS ONLY — pending entries in knowledge.pending.jsonl, never an edit to source or TTL" ;
+               kpred:exemplar     "scripts/offline/describe-entities.ts" ;
+               kpred:harness      "ground -> prompt -> validate -> emit-proposal. The model never runs free: the script grounds it in the graph, constrains the prompt, validates the output (rejecting hedges, placeholders, and invented file paths), and emits a reviewable proposal. Local models hallucinate conventions and mangle serialization (PR #43 devstral salvage), so the harness — not the model — is the deliverable." ;
+               kpred:description  "A local Ollama model fills a judgment hole inside a scripted harness. Because output is always a gated proposal, a wrong answer costs a click in the Review tab rather than a bad commit." .
+
+kb:tier-claude-code rdf:type   ktype:Concept ;
+               rdfs:label   "Tier 3 — Claude Code (Opus)" ;
+               kpred:part-of      kb:work-tiering ;
+               hnav:order   3 ;
+               kpred:admits-when  "The task exceeds local hardware, or needs cross-file architectural reasoning, or decides process, or writes code that lands." ;
+               kpred:cost         "cloud/session tokens — the scarce resource the other two tiers exist to protect" ;
+               kpred:runs-on      "Anthropic cloud; no local hardware ceiling" ;
+               kpred:emits        "code that lands, plan/TTL edits, and triage decisions on the queue the other tiers fill" ;
+               kpred:description  "Some work stays here permanently and that is correct — it is not a failure to offload. The binding constraint is HARDWARE: local models are capped by VRAM (this workstation tops out around a 33B model at Q4), so long-context synthesis across many files, high-fidelity vision, and frontier-quality coding judgment have no local equivalent. Claude Code also OWNS the process: it designs the harnesses the other two tiers run inside, decides the routing, and reviews their output. Delegation is downward-only — Opus decides, the lower tiers execute." ;
+               kpred:stays-here   "Architecture and design decisions; roadmap/TTL plan edits; triaging pending proposals; writing the script- and agent-tier harnesses themselves; any change that lands in main." ;
+               kpred:hardware-bound "Long-context synthesis (>32k of cross-file context); frontier coding judgment; final review of a local model's proposals. Local VRAM ceiling makes these infeasible offline, so they are NOT candidates for demotion." .
+
+kb:session-tokens rdf:type     ktype:Feature ;
+               rdfs:label   "Session token metric" ;
+               kpred:feature-id   "F74.4" ;
+               kpred:has-status   "functional" ;
+               kpred:part-of      kb:aggressive-local-offload ;
+               kpred:relates-to   kb:cost-awareness ;
+               kpred:description  "Makes local-offload measurable instead of assumed. scripts/session-tokens.ts parses this project's Claude Code transcripts (~/.claude/projects/<slug>/*.jsonl) into per-session token usage: run it before and after moving grunt work to a lower tier and watch the fresh-input + output lines drop. A weighted column (input + 1.25*cacheWrite + 0.1*cacheRead + 5*output, rough Opus ratios) ranks sessions by real consumption, and 'no-cache burn' sessions (lots of fresh input, little cache reuse) are flagged as the expensive pattern to avoid — cache-read is the cheap tier, so long cache-warm sessions are fine. Run: npm run session:tokens [-- --top=N] [--path=<dir>]." ;
+               kpred:done         "scripts/session-tokens.ts; npm run session:tokens." .
+
+# -- RDF Dataset Migration: Turtle -> TriG (F75) ---------------------------------
+# src/lib/rdf/types.ts opens by declaring the model: "a personal knowledge base is a
+# set of n-quads" where g carries provenance. But Turtle is a TRIPLES-ONLY format --
+# it cannot express the 4th element -- so every static/*.ttl silently drops g, and
+# import-ttl.ts assigns every imported triple one synthetic graph. The documentation
+# KBs are the only graphs in the system with no provenance, confidence, or review
+# status: second-class citizens in their own data model.
+
+kb:rdf-dataset-migration rdf:type ktype:Feature ;
+               rdfs:label   "RDF dataset capability (TriG-tolerant readers, Turtle on disk)" ;
+               kpred:feature-id   "F75" ;
+               kpred:has-status   "planned" ;
+               kpred:relates-to   kb:work-tiering ;
+               kpred:description  "Honor the n-quad model (src/lib/rdf/types.ts: 'a knowledge base is a set of n-quads', g = provenance) WITHOUT giving up Turtle's editability. TriG is a strict superset of Turtle — every .ttl is already legal TriG — but the superset runs ONE WAY: serializing back to Turtle/N-Triples silently drops the graph term. Verified with N3: reckons-roadmap.ttl parses identically under format 'TriG' (1526 quads, all default-graph), while the Turtle parser rejects a named graph outright. DECISION (2026-07-12): make every READER TriG-format (accepts both, zero behavior change) but keep the hand-authored KBs as default-graph .ttl. Rationale: default-graph Turtle concatenates textually and every triple lands in one place, so combining and editing graphs stays trivial; named graphs would make a merge semantic rather than textual. The .trig extension is reserved for files that genuinely need named graphs — the EXTENSION IS A CONTRACT, so a .ttl containing a graph block would be a lie that breaks any format:'Turtle' consumer." ;
+               kpred:done         "Readers switched to format 'TriG' (import-ttl.ts, multi-graph-parse.ts, mcp-server/kb-reader.ts) — zero behavior change, 383 RDF tests green, since every .ttl is already legal TriG." ;
+               kpred:remaining    "Add toTriG alongside toNQuads; mark toTurtle explicitly LOSSY; adopt .trig per-file only when a KB genuinely carries >1 source." ;
+               kpred:decided      "TRIG IN, TURTLE OUT (2026-07-12). Readers accept TriG; files stay .ttl with a default graph; a KB becomes .trig only when it genuinely has more than one source. Justified by kb:provenance-model below — not a marketing compromise: for a single-source graph a named graph is ceremony carrying zero information, so default-graph Turtle is the CORRECT model, and 'your data is a plain .ttl file' stays true for the overwhelming majority of cases." ;
+               kpred:bug          "toTurtle()'s provenance block is ORPHANED: it emits <urn:kbase:stmt/{id}> prov:wasDerivedFrom <source>, but the triples above carry no statement id and there is no rdf:Statement reification linking stmt/{id} back to its (s,p,o). The block is therefore unrecoverable decoration — it costs bytes and conveys nothing. toTurtleFull (proper reification) and toNQuads (native quads) are correct; plain toTurtle is the lossy path and must say so." ;
+               kpred:relates-to   kb:provenance-model .
+
+# -- Provenance model: when is a named graph worth it? ---------------------------
+# Raised 2026-07-12: "user-supplied info has no source, so the quad's 4th element is
+# a fiction anyway." Half right, and the half that is wrong matters.
+#
+# The source of a manually-typed fact is NOT undefined — it is THE USER, which is the
+# highest-trust source in the system (Source.trustLevel 'trusted' auto-confirms). What
+# is undefined is the EXTERNAL source. The single most valuable provenance distinction
+# in Reckons.AI is human-asserted vs machine-extracted — "I know this" vs "a 3B model
+# guessed this from a PDF" — and that is exactly what g encodes. Discarding it because
+# "manual has no source" would throw away the most useful provenance we have.
+#
+# But the CONCLUSION still holds, for a different reason: a named graph earns its keep
+# only when a graph has MORE THAN ONE source.
+
+kb:provenance-model rdf:type   ktype:Concept ;
+               rdfs:label   "Provenance model (when a named graph earns its keep)" ;
+               kpred:part-of      kb:rdf-dataset-migration ;
+               kpred:description  "A named graph carries information only when a KB has multiple sources. SINGLE-SOURCE graphs (the hand-authored static/*.ttl docs KBs — their one source IS the file) gain nothing from a graph term: default-graph Turtle is the correct model, not a compromise. MULTI-SOURCE graphs (an ingested user KB mixing three PDFs, a repo, two URLs, and the user's own typing) make g load-bearing, and dropping it destroys real information. Hence: TriG in, Turtle out, .trig only on genuine multi-source." ;
+               kpred:principle    "The source of manual input is the USER — the highest-trust source in the system — not 'nothing'. Human-asserted vs machine-extracted is the provenance distinction that actually pays rent." ;
+               kpred:principle    "A named graph on a single-source KB is ceremony carrying zero information. Ceremony that conveys nothing is cost without benefit." .
+
+kb:rdf-vocabulary-hygiene rdf:type ktype:Feature ;
+               rdfs:label   "RDF vocabulary hygiene" ;
+               kpred:feature-id   "F75.1" ;
+               kpred:has-status   "in-progress" ;
+               kpred:part-of      kb:rdf-dataset-migration ;
+               kpred:description  "Defects found by the 2026-07-12 spec audit. Turtle CONFORMANCE is fine (all 19 graphs parse under N3, the reference parser; 353 RDF tests green including a W3C suite) — the problems are semantic. (a) kb:design-system is one IRI naming two different things: a ktype:Concept (fonts/colors/components) and a ktype:Feature (the shadcn migration), with two labels and two conflicting statuses, so RDF merges them into one contradictory entity. (b) urn:kbase:predicate/ is bound to THREE prefix names (kpred:, pred:, p:) and urn:kbase:meta/ to two, and the app's DEFAULT_PREFIXES exports pred:/meta: while every hand-authored TTL uses kpred:/kmeta:. (c) 15 cardinality violations — single-valued predicates repeated on one subject. (d) kpred:order, kpred:pace, kpred:test-count are untyped strings where 95 other integers are xsd:integer, so they sort lexically ('10' < '9'). (e) urn:reckons:leap is used as a predicate but has no / or # separator, so it cannot be prefix-shortened and defeats the PREDICATE_PREFIX convention that decides whether a predicate renders as a graph edge. Each defect class gets a graph-lint check so it cannot recur." ;
+               kpred:open-question "urn:kbase: is not a registered URN namespace (RFC 8141 requires a registered NID). It is a syntactically valid IRI so Turtle accepts it, but it is neither conformant nor dereferenceable. Migrate to https://reckons.ai/kb/ — worth the churn?" .
+
+kb:feature-lifecycle-vocab rdf:type ktype:Feature ;
+               rdfs:label   "Feature lifecycle as a SKOS vocabulary" ;
+               kpred:feature-id   "F75.2" ;
+               kpred:has-status   "in-progress" ;
+               kpred:part-of      kb:rdf-dataset-migration ;
+               kpred:description  "kpred:has-status carried a free-text literal, which is how 'pending -> confirmed/rejected/refined' ended up in a feature's status slot. The lifecycle is a CLOSED vocabulary, so it is modeled as one: ktype:status/* skos:Concepts in the ktype:FeatureLifecycle scheme, ordered by hnav:order, referenced as IRIs rather than strings. This makes the lifecycle queryable (ask the graph for the stages, in order) instead of tacit, and makes an invalid status a broken reference that graph-lint catches structurally." ;
+               kpred:relates-to   kb:rdf-vocabulary-hygiene .
+
+# -- Bring-Your-Own Host: publish a static site in a handful of steps (F76) -------
+# The other half of Option C (kb:adult-content-policy). We tell the user "export it
+# and host it yourself" — and that is a BRUSH-OFF if self-hosting is a weekend of DNS
+# and CI config, but a genuine, dignified option if it is a handful of steps. Making
+# publishing easy is what makes the refusal-to-carry policy humane instead of hostile.
+#
+# It is also the same sentence as the policy itself: we are not a registrar and not a
+# host, and we decline to be the intermediary — while removing every obstacle to the
+# user being their own. GitHub Pages, Netlify, Cloudflare Pages and others are FREE.
+# Reckons.AI's job is to make the corpus, the portfolio, or the blog fall out of the
+# graph and land on the host of the user's choosing, with no lock-in and no account
+# with us.
+
+# -- Decision record: 2026-07-12 safety + tiering + RDF session ------------------
+# Compacted index of the decisions taken this session, so a future session can find
+# them without re-deriving. Each decision's full reasoning lives on the entity named.
+
+kb:session-2026-07-12 rdf:type ktype:Decision ;
+               rdfs:label   "Decisions — 2026-07-12 (work tiering · RDF format · safety policy)" ;
+               kpred:decided-on   "2026-07-12"^^xsd:date ;
+               kpred:decision     "WORK TIERING (kb:work-tiering, F74.3): route every recurring task to the cheapest tier that can do it correctly — script (rule-checkable, zero tokens, zero triage) > local agent (judgment over language, proposals only, inside a ground/prompt/validate/emit harness) > Claude Code (hardware-bound, cross-file reasoning, decides process, writes code that lands). Offloading is NOT free: a noisy local job moves cost from generation to triage. Prefer growing the SCRIPT tier. Promotion ladder: what Opus does twice becomes a job; what an agent gets right reliably becomes a script." ;
+               kpred:decision     "RDF FORMAT (kb:rdf-dataset-migration, F75): TriG in, Turtle out. Readers accept TriG (done); files stay .ttl with a default graph; .trig only when a KB genuinely carries >1 source. Grounded in kb:provenance-model — a named graph on a single-source KB is ceremony carrying zero information." ;
+               kpred:decision     "EGRESS (kb:data-egress-model): export is a RIGHT, distribution is a PRIVILEGE. Plain-text export of the user's own graph is never blocked; gates apply only where Reckons.AI is the intermediary carrying content to someone else. graph-lint enforces BOTH directions." ;
+               kpred:decision     "ADULT CONTENT — OPTION C (kb:adult-content-policy, F66.1): gate only what we carry. No mediated distribution channel for adult content; authoring, storage and export unimpeded. Deletes the gameable attestation entirely — context is never an input to the gate, so there is nothing to lie about. No accounts, no server, no PII, no age-verification surface." ;
+               kpred:decision     "SAFETY RECORD (scripts/offline/safety-attestation.ts): the app can retain no evidence about USERS (no server, no accounts, no logs), so it retains verified evidence about the SOFTWARE — a dated, git-chained, weekly attestation that the good-faith controls exist and still pass. Records failures deliberately; a log that only records success is worthless as evidence." ;
+               kpred:decision     "PUBLISHING (kb:byo-static-host, F76): never a registrar, never a host. Ease of self-hosting is a SAFETY-POLICY dependency — 'export it and self-host' is only a fair answer if self-hosting is genuinely easy." ;
+               kpred:relates-to   kb:work-tiering ;
+               kpred:relates-to   kb:rdf-dataset-migration ;
+               kpred:relates-to   kb:adult-content-policy ;
+               kpred:relates-to   kb:byo-static-host ;
+               kpred:relates-to   kb:data-egress-model ;
+               kpred:artifact     "COUNSEL-BRIEF.md — engineering brief for Data Insight Solutions LLC's counsel: what the software sees (nothing), what it controls (best-effort, bypassable by design), the tiers, and the surviving question (does 18 U.S.C. 2258A attach to a tool that hosts nothing?)." .
+
+kb:byo-static-host rdf:type    ktype:Feature ;
+               rdfs:label   "Bring-your-own static host (publish in a handful of steps)" ;
+               kpred:feature-id   "F76" ;
+               kpred:has-status   "planned" ;
+               kpred:relates-to   kb:graph-publishing ;
+               kpred:relates-to   kb:docs-pipeline ;
+               kpred:relates-to   kb:adult-content-policy ;
+               kpred:data-egress  "user-export" ;
+               kpred:description  "Turn a graph into a deployable static site and hand it to whichever free host the user already has — GitHub Pages, Netlify, Cloudflare Pages, Vercel, or a plain folder they drag anywhere. Reckons.AI is NOT a domain registrar and NOT a file host, and never will be: it generates the artifact and gets out of the way. Target: a handful of steps from graph to live URL. Three shapes must work equally well — a complicated corpus of information (docs/wiki, the F27.2 pipeline already does this), a portfolio of visual art (asset-heavy, F74 asset viewer), and a blog (chronological WebPage nodes). All three are the SAME machinery: WebPage entities in the graph -> content/*.md -> a static build. The host is a swappable target, not a dependency." ;
+               kpred:principle    "No registrar, no hosting, no accounts, no lock-in. The user's site lives on the user's host under the user's name. We remove obstacles to self-hosting; we do not become the host." ;
+               kpred:principle    "This is what makes Option C fair. 'Export it and self-host it' is only a real answer if self-hosting is genuinely easy — so ease of publishing is a SAFETY-POLICY dependency, not just a convenience feature." ;
+               kpred:remaining    "Host adapters (GitHub Pages / Netlify / Cloudflare / plain zip); a guided publish flow; per-shape templates (corpus · portfolio · blog); a preflight that runs the F66 gate before handing the artifact over." ;
+               kpred:open-question "How far do we go into the host's setup? A generated GitHub Action + a 'Deploy' button is a handful of steps; an OAuth app that pushes for them is fewer steps but makes us a mediated-distribution path (see kb:data-egress-model) and would pull the F66 gate into a flow we would rather keep as pure user-export. Where exactly is the line?" .
 
 kb:int-firecrawl rdf:type   ktype:Tool ;
                rdfs:label   "Firecrawl" ;
