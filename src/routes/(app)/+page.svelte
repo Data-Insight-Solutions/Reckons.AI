@@ -2028,7 +2028,7 @@
 <!-- Unified node panel — shown when a node is selected -->
 {#if selected && nodeDetails}
   {@const info = nodeDetails}
-  <AdaptivePanel corner="bottom-right" width={320} minWidth={240} maxWidth={800} zIndex={300} title={info.label} open={true} onOpenChange={(o) => { if (!o) { selected = null; editingLabel = false; showMergeUI = false; showRelationUI = false; showMergeReview = false; } }} extraStyle="max-height: calc(100vh - {124 + notificationStackHeight.get()}px)">
+  <AdaptivePanel corner="bottom-right" width={320} minWidth={240} maxWidth={800} zIndex={300} title={info.label} open={true} onOpenChange={(o) => { if (!o) { selected = null; editingLabel = false; showMergeUI = false; showRelationUI = false; showMergeReview = false; } }} extraStyle="max-height: calc(100vh - {132 + notificationStackHeight.get()}px)">
     {#snippet header()}
     <!-- Header: name + type + close -->
     <div class="np-header">
