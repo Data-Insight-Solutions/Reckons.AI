@@ -51,11 +51,24 @@ function termTTL(t: Term, prefixes: Record<string, string>): string {
 }
 
 /* ============================================================
- *  TURTLE EXPORT
+ *  TURTLE EXPORT  —  LOSSY BY CONSTRUCTION (see F75 / kb:provenance-model)
+ *
+ *  Turtle is a TRIPLES-only format: it cannot carry the graph term, so this drops
+ *  `g` (provenance) for every statement. That is fine for a single-source KB — its
+ *  one source is the file — and wrong for a multi-source one.
+ *
+ *  Use `toTurtleFull` (rdf:Statement reification) or `toNQuads` (native quads) when
+ *  provenance must survive the round-trip.
+ *
+ *  NOTE: the `includeProvenance` block below is ORPHANED — it emits
+ *  `<urn:kbase:stmt/{id}> prov:wasDerivedFrom <g>`, but the triples above carry no
+ *  statement id and nothing reifies them, so `stmt/{id}` cannot be mapped back to its
+ *  (s,p,o). It is unrecoverable decoration. Either reify properly or drop it; do not
+ *  mistake it for provenance that survives.
+ *
  *  - Includes prefix header.
  *  - Groups by subject for readability.
  *  - Confirmed and refined statements only (configurable).
- *  - Provenance preserved via a separate `prov:wasDerivedFrom` block.
  * ============================================================ */
 
 export type TurtleOptions = {
