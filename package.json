@@ -98,7 +98,9 @@
     "safety:attest": "npx tsx scripts/offline/safety-attestation.ts",
     "safety:attest:record": "npx tsx scripts/offline/safety-attestation.ts --record",
     "offline:describe": "npx tsx scripts/offline/describe-entities.ts",
-    "offline:script-tier": "npx tsx scripts/offline/run-all.ts --tier=script"
+    "offline:script-tier": "npx tsx scripts/offline/run-all.ts --tier=script",
+    "landing:features": "npx tsx scripts/landing-features.ts",
+    "landing:check": "npx tsx scripts/landing-features.ts --check"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.100.1",

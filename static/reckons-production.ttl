@@ -111,6 +111,9 @@ kb:visual-testing   rdf:type     ktype:Feature ;
 
 kb:mcp-server       rdf:type     ktype:Feature ;
                     rdfs:label   "MCP Server" ;
+                    kpred:show-on-landing "true" ;
+                    kpred:landing-label   "MCP server" ;
+                    kpred:landing-note    "Search, query, compress, align, run reckonings — your graph available to any AI agent" ;
                     kpred:has-status   "production" ;
                     kpred:has-tool     "kb_search" ;
                     kpred:has-tool     "kb_get_entity" ;

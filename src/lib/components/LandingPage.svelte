@@ -270,16 +270,19 @@
     }
   ];
 
-  const ROADMAP = [
-    { status: 'done',    label: 'MCP server (16 tools)',    note: 'Search, query, compress, align, run reckonings — your graph available to any AI agent' },
-    { status: 'done',    label: 'Cross-graph alignment',    note: 'Align entities across graphs with embedding similarity and IRI remapping' },
-    { status: 'done',    label: 'n8n cloud sync',           note: 'Private cloud sync via self-hosted n8n — upload, download, and monitor graphs from any device' },
-    { status: 'done',    label: 'Source monitoring',        note: 'Watch URLs for changes, detect diffs, queue pending notes automatically' },
-    { status: 'done',    label: 'Context compression',       note: 'Condense your knowledge graph for LLM context — semantic meaning preserved, tokens reduced' },
-    { status: 'next',    label: 'VS Code / Claude Code',    note: 'Auto-inject your graph into coding sessions via MCP bridge — zero config' },
-    { status: 'enterprise', label: 'People · Policy · Procedure', note: 'Structure graphs around the 3 Ps with RBAC, file-based TTL delivery, bring-your-own auth' },
-    { status: 'planned', label: 'Enrichment pipeline',      note: 'Progressive analysis — auto-categorize, cross-reference, and score entities over time' },
-  ];
+  // Generated FROM THE GRAPH by scripts/landing-features.ts (npm run landing:features).
+  // Do not hand-edit: this list used to be hardcoded and had already drifted, claiming
+  // "MCP server (16 tools)" when the graph said 20. The landing page is a public claim,
+  // so it is driven by kpred:has-status and cannot say "shipped" when the graph says
+  // "planned" (kb:honest-status). CI fails if this file goes stale.
+  import ROADMAP from '$lib/data/landing-roadmap.json';
+
+  const RM_LABEL: Record<string, string> = {
+    done: 'shipped',
+    building: 'building',
+    planned: 'planned',
+    exploring: 'exploring',
+  };
 </script>
 
 <div class="landing">
@@ -590,7 +593,7 @@
     <div class="roadmap-list">
       {#each ROADMAP as item}
         <div class="roadmap-row">
-          <span class="rm-status {item.status}">{item.status === 'done' ? 'shipped' : item.status === 'next' ? 'up next' : item.status === 'enterprise' ? 'enterprise' : 'planned'}</span>
+          <span class="rm-status {item.status}">{RM_LABEL[item.status] ?? item.status}</span>
           <div class="rm-body">
             <strong>{item.label}</strong>
             <span class="rm-note">{item.note}</span>
@@ -1185,12 +1188,14 @@
     border: 1px solid rgba(34, 197, 94, 0.3);
   }
 
+  .rm-status.building,
   .rm-status.next {
     background: var(--accent-soft);
     color: var(--accent);
     border: 1px solid var(--accent);
   }
 
+  .rm-status.exploring,
   .rm-status.enterprise {
     background: rgba(107, 67, 153, 0.1);
     color: #a78bfa;

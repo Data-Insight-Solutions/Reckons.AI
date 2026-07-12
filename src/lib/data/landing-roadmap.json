@@ -1,0 +1,42 @@
+[
+  {
+    "status": "done",
+    "label": "Context compression",
+    "note": "Condense your knowledge graph for LLM context — semantic meaning preserved, tokens reduced"
+  },
+  {
+    "status": "done",
+    "label": "Cross-graph alignment",
+    "note": "Align entities across graphs with embedding similarity and IRI remapping"
+  },
+  {
+    "status": "done",
+    "label": "Local model offload",
+    "note": "Run ingest, chat and review on your own Ollama or in-browser WASM — no cloud required"
+  },
+  {
+    "status": "done",
+    "label": "MCP server",
+    "note": "Search, query, compress, align, run reckonings — your graph available to any AI agent"
+  },
+  {
+    "status": "done",
+    "label": "n8n cloud sync",
+    "note": "Private cloud sync via self-hosted n8n — upload, download, and monitor graphs from any device"
+  },
+  {
+    "status": "done",
+    "label": "Publish safety gate",
+    "note": "We gate only what we carry — export is always yours, whatever it contains"
+  },
+  {
+    "status": "planned",
+    "label": "Bring-your-own host",
+    "note": "Publish a corpus, portfolio, or blog to GitHub Pages, Netlify or Cloudflare — free, yours, no lock-in"
+  },
+  {
+    "status": "planned",
+    "label": "People · Policy · Procedure",
+    "note": "Structure graphs around the 3 Ps with RBAC, file-based TTL delivery, bring-your-own auth"
+  }
+]

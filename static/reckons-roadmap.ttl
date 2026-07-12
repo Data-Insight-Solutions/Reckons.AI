@@ -237,6 +237,9 @@ kb:content-safety rdf:type  ktype:Feature ;
                kpred:has-part     kb:verified-badge .
 
 kb:publish-safety-gate rdf:type ktype:Feature ;
+               kpred:show-on-landing "true" ;
+               kpred:landing-label   "Publish safety gate" ;
+               kpred:landing-note    "We gate only what we carry — export is always yours, whatever it contains" ;
                rdfs:label   "Publish Safety Gate" ;
                kpred:feature-id   "F66" ;
                kpred:has-status   "functional" ;
@@ -867,6 +870,9 @@ kb:colab-notebook rdf:type  ktype:Feature ;
                kpred:description  "Companion notebook demonstrating MCP server integration from Python." .
 
 kb:cross-kb-alignment rdf:type ktype:Feature ;
+               kpred:show-on-landing "true" ;
+               kpred:landing-label   "Cross-graph alignment" ;
+               kpred:landing-note    "Align entities across graphs with embedding similarity and IRI remapping" ;
                rdfs:label   "Cross-Graph Alignment" ;
                kpred:has-status   "production" ;
                kpred:feature-id   "F16" ;
@@ -877,6 +883,9 @@ kb:cross-kb-alignment rdf:type ktype:Feature ;
 # -- n8n Cloud Sync (F20) -------------------------------------------------------
 
 kb:n8n-cloud-sync rdf:type ktype:Feature ;
+               kpred:show-on-landing "true" ;
+               kpred:landing-label   "n8n cloud sync" ;
+               kpred:landing-note    "Private cloud sync via self-hosted n8n — upload, download, and monitor graphs from any device" ;
                rdfs:label   "n8n Automation" ;
                kpred:data-egress  "third-party-service" ;
                kpred:gated-by     kb:content-safety ;
@@ -929,6 +938,9 @@ kb:n8n-currents-monitor rdf:type ktype:Concept ;
 # -- Context Compression --------------------------------------------------------
 
 kb:context-compression rdf:type ktype:Feature ;
+               kpred:show-on-landing "true" ;
+               kpred:landing-label   "Context compression" ;
+               kpred:landing-note    "Condense your knowledge graph for LLM context — semantic meaning preserved, tokens reduced" ;
                rdfs:label   "Context Compression" ;
                kpred:feature-id   "F25" ;
                kpred:has-status   "functional" ;
@@ -948,6 +960,9 @@ kb:vscode-extension rdf:type ktype:Feature ;
 # -- Enterprise: People · Policy · Procedure (F21) ------------------------------
 
 kb:enterprise-3ps rdf:type ktype:Feature ;
+               kpred:show-on-landing "true" ;
+               kpred:landing-label   "People · Policy · Procedure" ;
+               kpred:landing-note    "Structure graphs around the 3 Ps with RBAC, file-based TTL delivery, bring-your-own auth" ;
                rdfs:label   "Enterprise: People · Policy · Procedure" ;
                kpred:has-status   "planned" ;
                kpred:feature-id   "F21" ;
@@ -1377,6 +1392,9 @@ kb:session-2026-07-12 rdf:type ktype:Decision ;
                kpred:artifact     "COUNSEL-BRIEF.md — engineering brief for Data Insight Solutions LLC's counsel: what the software sees (nothing), what it controls (best-effort, bypassable by design), the tiers, and the surviving question (does 18 U.S.C. 2258A attach to a tool that hosts nothing?)." .
 
 kb:byo-static-host rdf:type    ktype:Feature ;
+               kpred:show-on-landing "true" ;
+               kpred:landing-label   "Bring-your-own host" ;
+               kpred:landing-note    "Publish a corpus, portfolio, or blog to GitHub Pages, Netlify or Cloudflare — free, yours, no lock-in" ;
                rdfs:label   "Bring-your-own static host (publish in a handful of steps)" ;
                kpred:feature-id   "F76" ;
                kpred:has-status   "planned" ;
@@ -1579,6 +1597,9 @@ kb:mcp-ollama-bridge rdf:type    ktype:Feature ;
 # -- Local Offload (parent) ------------------------------------------------------
 
 kb:local-offload rdf:type      ktype:Feature ;
+               kpred:show-on-landing "true" ;
+               kpred:landing-label   "Local model offload" ;
+               kpred:landing-note    "Run ingest, chat and review on your own Ollama or in-browser WASM — no cloud required" ;
                rdfs:label   "Local LLM Offload" ;
                kpred:has-status   "functional" ;
                kpred:description  "Offload token-heavy LLM work to local models (Ollama) with quality recovered through intelligent instruction. Schema-constrained decoding via Ollama's native /api/chat format parameter plus a compact few-shot extractor prompt for small models (src/lib/integrations/llm/ollama-extract.ts). Measured (2026-07-02, tests/bench/results): llama3.2:3b ingest F1 0.238 baseline -> 0.500 structured (combined 0.657 — the new best local score, surpassing devstral-small-2's 0.649 with a 2GB model); qwen3:4b 0.000 -> 0.263; devstral-small-2 structured ingest 0.486 (its chat leg did not run in that pass). Children: the MCP Ollama bridge and prefer-local routing (settings.preferLocal + VITE_PREFER_LOCAL: chat, diff summary, and merge analysis default to Ollama when reachable — probe cached 60s via src/lib/integrations/llm/prefer-local.ts — with explicit per-task overrides always winning)." ;
