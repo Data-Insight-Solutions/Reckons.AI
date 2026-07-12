@@ -58,16 +58,28 @@ const short = (iri: string) =>
 
 // ── Load the corpus. static/ is the source of truth; reckons-workspace/kbs/* are
 // copies made by setup-reckons-workspace.sh, so linting them would double-report.
+//
+// GENERATED graphs are skipped. static/knowledge.ttl is an exported snapshot (its
+// header says so), and linting a derived artifact reports every defect twice — once
+// where it must be fixed and once where it will be overwritten anyway. Fix the source;
+// regenerate the snapshot.
+const isGenerated = (text: string) => /^#\s*generated\b/im.test(text.slice(0, 200));
+
 const files = readdirSync('static')
-  .filter((f) => f.endsWith('.ttl'))
+  .filter((f) => f.endsWith('.ttl') || f.endsWith('.trig'))
   .sort()
   .map((f) => path.join('static', f));
 const quads: { q: Quad; file: string }[] = [];
+const skipped: string[] = [];
 for (const file of files) {
+  const text = readFileSync(file, 'utf8');
+  if (isGenerated(text)) { skipped.push(file); continue; }
   try {
-    for (const q of new Parser().parse(readFileSync(file, 'utf8'))) quads.push({ q, file });
+    // TriG, not Turtle: every .ttl is already legal TriG (F75), so this reads today's
+    // files unchanged while tolerating a named graph the day one appears.
+    for (const q of new Parser({ format: 'TriG' }).parse(text)) quads.push({ q, file });
   } catch (e) {
-    add('error', 'parse', file, file, `does not parse as TTL: ${e instanceof Error ? e.message : e}`);
+    add('error', 'parse', file, file, `does not parse: ${e instanceof Error ? e.message : e}`);
   }
 }
 

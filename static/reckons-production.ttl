@@ -215,8 +215,9 @@ kb:graph-alignment-setup rdf:type ktype:Concept ;
                     kpred:ci-variable  "APP_URL_DEV — dev app URL (default https://dev.reckons-ai.pages.dev)" ;
                     kpred:note         "The PR-comment step needs `permissions: pull-requests: write` (already set in kb-watch.yml)." .
 
-kb:entity-normalisation rdf:type ktype:Feature ;
+kb:entity-normalization rdf:type ktype:Feature ;
                     rdfs:label   "Entity Normalization" ;
+                    kpred:honest-note  "IRI corrected kb:entity-normalisation -> kb:entity-normalization (2026-07-12). The americanization sweep renamed the LABEL but not the IRI, leaving this graph pointing at a second, British-spelled entity that RDF treated as a different thing from the roadmap's kb:entity-normalization. Same feature, two IRIs, one of them claiming F22." ;
                     kpred:has-status   "production" ;
                     kpred:description  "Post-extraction IRI rewriting using embedding similarity. Prevents duplicate entities entering review queue." ;
                     kpred:uses         kb:bge-small ;

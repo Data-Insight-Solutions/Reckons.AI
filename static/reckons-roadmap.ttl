@@ -549,15 +549,15 @@ kb:published-ttl rdf:type    ktype:Feature ;
 kb:facebook-groups-ingest rdf:type ktype:Feature ;
                rdfs:label   "Facebook Groups ingest" ;
                kpred:has-status   "speculative" ;
-               kpred:relates-to   kb:ingest ;
+               kpred:relates-to   kb:ingest-pipeline ;
                kpred:description  "Import facts from Facebook Groups a user organizes in — a common real-world coordination surface. NOT a scrape: Meta's Groups API was largely deprecated in 2020 and the remaining endpoints need a Meta app + App Review with restricted permissions (e.g. groups_access_member_info), tied to a group admin's consent; unsanctioned scraping violates Meta ToS and risks blocks. Treat as an optional, per-user INTEGRATION behind settings (like n8n), not a core dependency: a user connects their own Meta app / an n8n or Zapier flow that has group access and posts events into their Reckons.AI (contact-form pattern). Feasible path: n8n Facebook node or Graph API with the user's approved app; surface imported posts/events as pending facts for review." ;
                kpred:open-question "Which is the realistic first path — user's own approved Meta app, or an n8n/Zapier flow that already has group access? What group data is actually available post-2020 API deprecation (posts? events? member info)?" ;
-               kpred:depends-on   kb:n8n-integration .
+               kpred:depends-on   kb:n8n-cloud-sync .
 
 kb:ttl-aware-ingest rdf:type ktype:Feature ;
                rdfs:label   "Zero-LLM Add-from-URL (TTL)" ;
                kpred:has-status   "planned" ;
-               kpred:relates-to   kb:ingest ;
+               kpred:relates-to   kb:ingest-pipeline ;
                kpred:description  "When Add-from-URL points at a Reckons.AI graph, import it DIRECTLY as pending facts with no LLM extraction. Detection: try a direct fetch and check content-type text/turtle, a .ttl extension, or an HTML <link rel=alternate type=text/turtle>; on hit, route the TTL through the existing importTurtleFull → pending statements (reuses the file/Drive import path). Falls back to the current firecrawl/jina + LLM flow when the URL is not a graph or is CORS-blocked. Cheaper, exact, and lossless vs. re-extracting prose the publisher already modelled." ;
                kpred:depends-on   kb:published-ttl .
 
@@ -585,7 +585,7 @@ kb:grant-discovery-currents rdf:type ktype:Feature ;
                kpred:feature-id   "F73" ;
                kpred:has-status   "planned" ;
                kpred:relates-to   kb:currents ;
-               kpred:relates-to   kb:n8n-integration ;
+               kpred:relates-to   kb:n8n-cloud-sync ;
                kpred:description  "Automatic web scraping for eligible grant CALLS, targeted by the org's own graph. n8n runs a scheduled workflow (cron) that reads the grant-seeker profile (kb:grant-seeker-profile) — mission, focus areas, populations, geography, budget band, org type/501c3, deadlines-watch — turns it into searches across grant sources (grants.gov, foundation/RFP pages, funder lists), filters to eligible calls, and posts each match back into Reckons.AI as PENDING facts (knowledge.pending.jsonl in the synced folder/Drive, or a webhook). They arrive as translucent pod currents for review. Two live examples exist (two nonprofits the operator works with) — each is its own graph with its own profile, so the same workflow serves both. Respects the Integration Boundaries: the scrape/schedule live in the user's n8n, never in the core app." ;
                kpred:has-part     kb:grant-seeker-profile ;
                kpred:depends-on   kb:n8n-review-notifications ;
@@ -611,11 +611,11 @@ kb:n8n-review-notifications rdf:type ktype:Feature ;
                rdfs:label   "n8n review notifications (email me when there's something to review)" ;
                kpred:feature-id   "F73.1" ;
                kpred:has-status   "functional" ;
-               kpred:relates-to   kb:n8n-integration ;
-               kpred:description  "One unified signal: whenever new PENDING facts land via addStatements — a scheduled grant scrape (currents), a subscribed publisher's pod (kb:publisher-subscriptions), or any ingest — the app fires a best-effort POST to the user's n8n review webhook (/webhook/reckons-review) with a small summary (count, kind, sample labels). n8n turns it into an email/Slack/digest however the user likes, so they don't have to keep opening the graph. Opt-in via settings.n8nNotifyOnReview + n8nBaseUrl; fire-and-forget so a slow/absent n8n never blocks an edit. Two n8n email automations round out the loop: this review notifier and the existing contact form (kb:n8n-integration). Pods reuse this exact hook." ;
+               kpred:relates-to   kb:n8n-cloud-sync ;
+               kpred:description  "One unified signal: whenever new PENDING facts land via addStatements — a scheduled grant scrape (currents), a subscribed publisher's pod (kb:publisher-subscriptions), or any ingest — the app fires a best-effort POST to the user's n8n review webhook (/webhook/reckons-review) with a small summary (count, kind, sample labels). n8n turns it into an email/Slack/digest however the user likes, so they don't have to keep opening the graph. Opt-in via settings.n8nNotifyOnReview + n8nBaseUrl; fire-and-forget so a slow/absent n8n never blocks an edit. Two n8n email automations round out the loop: this review notifier and the existing contact form (kb:n8n-cloud-sync). Pods reuse this exact hook." ;
                kpred:done         "src/lib/integrations/n8n/notify.ts (notifyReview); wired in kb.svelte addStatements; settings.n8nNotifyOnReview; unit-tested." ;
                kpred:template     "static/n8n/review-notify-email.workflow.json — importable n8n workflow: webhook /webhook/reckons-review → format → email." ;
-               kpred:depends-on   kb:n8n-integration .
+               kpred:depends-on   kb:n8n-cloud-sync .
 
 kb:webpage-entity rdf:type   ktype:Feature ;
                rdfs:label   "WebPage Entity" ;
@@ -813,8 +813,6 @@ train:phase-1  rdf:type     ktype:Concept ;
                rdfs:label   "Training Phase 1: Training Data Export" ;
                kpred:has-status   "planned" ;
                kpred:description  "Convert graph triples into instruction-tuning pairs. Entity QA, relationship QA, multi-hop reasoning, and subgraph summarization generation strategies. Augmentation with paraphrases and negative examples." ;
-               kpred:has-file     "src/lib/training/generate-pairs.ts" ;
-               kpred:has-file     "src/lib/training/export.ts" ;
                kpred:export-format "JSONL (instruction/response pairs)" ;
                kpred:export-format "Alpaca (instruction/input/output)" ;
                kpred:export-format "ShareGPT (multi-turn conversations)" ;
@@ -1006,12 +1004,13 @@ kb:ent-phase-4 rdf:type   ktype:Concept ;
                kpred:depends-on   kb:ent-phase-2 ;
                kpred:depends-on   kb:ent-phase-3 .
 
-# -- Confluence Migration (F26) -------------------------------------------------
+# -- Confluence Migration (F77) -------------------------------------------------
 
 kb:confluence-migration rdf:type ktype:Feature ;
                rdfs:label   "Confluence Migration" ;
                kpred:has-status   "planned" ;
-               kpred:feature-id   "F26" ;
+               kpred:feature-id   "F77" ;
+               kpred:honest-note  "Renumbered F26->F77 (2026-07-12): it collided with kb:ci-cd-kb-watch, which shipped as F26. The IRI was always the real identifier; feature-id is a second key that drifted." ;
                kpred:description  "Bulk import from Confluence spaces into Reckons.AI. Upload HTML export ZIP, parse page tree, chunk large pages, extract triples with local models. Pause/resume checkpoint, progress persistence, label-to-type mapping, page hierarchy as skos:broader." ;
                kpred:depends-on   kb:wf-ingest ;
                kpred:depends-on   kb:entity-normalization ;
@@ -1042,12 +1041,13 @@ kb:conf-phase-4 rdf:type   ktype:Concept ;
                kpred:has-status   "planned" ;
                kpred:depends-on   kb:conf-phase-1 .
 
-# -- Text Chunking (F27) -------------------------------------------------------
+# -- Text Chunking (F78) -------------------------------------------------------
 
 kb:text-chunking rdf:type ktype:Feature ;
                rdfs:label   "Text Chunking" ;
                kpred:has-status   "planned" ;
-               kpred:feature-id   "F27" ;
+               kpred:feature-id   "F78" ;
+               kpred:honest-note  "Renumbered F27->F78 (2026-07-12): it collided with kb:graph-publishing, which shipped as F27." ;
                kpred:description  "Sliding window chunking for sources exceeding the 12K char extraction limit. Context header per chunk (source title, chunk N of M). Cross-chunk deduplication by (subject, predicate, object). Benefits all source types, not just Confluence." ;
                kpred:depends-on   kb:wf-ingest .
 
@@ -1585,8 +1585,11 @@ kb:local-offload rdf:type      ktype:Feature ;
 
 # -- Design System (shadcn-svelte) -----------------------------------------------
 
-kb:design-system rdf:type      ktype:Feature ;
+kb:design-system-shadcn rdf:type ktype:Feature ;
                rdfs:label   "Design System (shadcn-svelte)" ;
+               kpred:feature-id   "F79" ;
+               kpred:part-of      kb:design-system ;
+               kpred:honest-note  "Split from kb:design-system (2026-07-12). One IRI was naming two different things: the visual design system (a ktype:Concept — fonts, colors, components) and the shadcn-svelte migration (a ktype:Feature). RDF merged them into one entity with two labels and two contradictory statuses." ;
                kpred:has-status   "scaffolded" ;
                kpred:description  "shadcn-svelte foundation on Tailwind v4, themed to the Liquid aesthetic. Preflight (Tailwind's CSS reset) is deliberately omitted — src/lib/styles/tailwind.css imports only the theme and utilities layers, so global.css remains the visual source of truth and the app renders unchanged. Every shadcn token is a var() reference into global.css (e.g. --color-primary -> --accent teal); shadcn's neutral 'accent' hover slot is kept inside @theme only, never clobbering the Liquid --accent custom property. Starter components: button, badge, card, separator, skeleton under src/lib/components/ui/. Pilot: the About-footer 'Send feedback' button." ;
                kpred:relates-to   kb:rebrand-kb-to-graph ;
