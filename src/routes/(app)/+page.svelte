@@ -241,6 +241,24 @@
     return 'text';
   }
   let nodeLabels = $state<Array<{ key: string; label: string; x: number; y: number; opacity: number }>>([]);
+  // Throttle the label/preview DOM overlay to ~30fps. The force sim emits new
+  // label positions every frame; re-rendering the overlay (and its preview
+  // images) that often is wasted work on image/GLB-heavy graphs. Leading + a
+  // trailing update so the final settled position always lands.
+  type NodeLabel = { key: string; label: string; x: number; y: number; opacity: number };
+  let _labelLast = 0;
+  let _labelTrail: ReturnType<typeof setTimeout> | null = null;
+  const LABEL_THROTTLE_MS = 33;
+  function setNodeLabels(labels: NodeLabel[]) {
+    const now = performance.now();
+    if (_labelTrail) { clearTimeout(_labelTrail); _labelTrail = null; }
+    if (now - _labelLast >= LABEL_THROTTLE_MS) {
+      _labelLast = now;
+      nodeLabels = labels;
+    } else {
+      _labelTrail = setTimeout(() => { _labelLast = performance.now(); nodeLabels = labels; _labelTrail = null; }, LABEL_THROTTLE_MS);
+    }
+  }
   let labelFontSize = $state(11);
   let markerLabels = $state<Array<{ key: string; label: string; color: string; x: number; y: number }>>([]);
   let navHistory = $state<string[]>([]);
@@ -868,7 +886,7 @@
   /** When on, preview images render on every node (no hover). Slower to paint. */
   const alwaysPreviews = $derived(settings().alwaysShowPreviews ?? false);
   /** "Normal" preview thumbnail size (px), adjustable in Settings. */
-  const nodePreviewSize = $derived(settings().nodePreviewSize ?? 120);
+  const nodePreviewSize = $derived(settings().nodePreviewSize ?? 96);
 
   // ── Asset viewer: normal thumbnail → large (covers most of graph) → fullscreen.
   // Click a node image to expand; click empty graph to collapse; fullscreen for
@@ -1538,7 +1556,7 @@
         }
       }}
       onhover={(k) => (hoverTarget = k)}
-      onlabelsmove={(labels) => { nodeLabels = labels; }}
+      onlabelsmove={setNodeLabels}
       onmarkersmove={(m) => { markerLabels = m; }}
       ontimelinepan={(c) => { timelineCenter = c; }}
       {nodeOrder}
@@ -1577,7 +1595,7 @@
         }
       }}
           onhover={(k) => (hoverTarget = k)}
-          onlabelsmove={(labels) => { nodeLabels = labels; }}
+          onlabelsmove={setNodeLabels}
           onmarkersmove={(m) => { markerLabels = m; }}
           ontimelinepan={(c) => { timelineCenter = c; }}
           highlighted={[...highlightedSet]}

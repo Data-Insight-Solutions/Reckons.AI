@@ -1074,11 +1074,11 @@
   </div>
 
   <label class="field">
-    <span class="lbl mono">node image size <span class="muted">({settings().nodePreviewSize ?? 120}px)</span></span>
+    <span class="lbl mono">node image size <span class="muted">({settings().nodePreviewSize ?? 96}px)</span></span>
     <input
       type="range"
       min="48" max="320" step="8"
-      value={settings().nodePreviewSize ?? 120}
+      value={settings().nodePreviewSize ?? 96}
       onchange={(e) => updateSettings({ nodePreviewSize: +(e.currentTarget as HTMLInputElement).value })}
       style="flex: 1;"
     />

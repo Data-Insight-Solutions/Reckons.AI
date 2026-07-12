@@ -117,7 +117,7 @@ export type SettingsRecord = {
   alwaysShowPreviews?: boolean;
   /** "Normal" node preview-image size in px (the thumbnail on selected/highlighted
    * nodes). Click a thumbnail to expand large; adjustable so image-heavy graphs
-   * can read bigger by default. Default 120. */
+   * can read bigger by default. Default 96. */
   nodePreviewSize?: number;
   /** Auto-expand a node's asset to the large view whenever it becomes selected —
    * e.g. as a story/explore walkthrough moves node to node. Off by default. */
