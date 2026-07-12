@@ -866,6 +866,27 @@
   }
   /** When on, preview images render on every node (no hover). Slower to paint. */
   const alwaysPreviews = $derived(settings().alwaysShowPreviews ?? false);
+  /** "Normal" preview thumbnail size (px), adjustable in Settings. */
+  const nodePreviewSize = $derived(settings().nodePreviewSize ?? 120);
+
+  // ── Asset viewer: normal thumbnail → large (covers most of graph) → fullscreen.
+  // Click a node image to expand; click empty graph to collapse; fullscreen for
+  // rich asset types. expandedAssetKey holds the node whose image is enlarged.
+  let expandedAssetKey = $state<string | null>(null);
+  let assetFullscreen = $state(false);
+  const expandedAssetUrl = $derived(expandedAssetKey ? previewUrlFor(iriFromNodeKey(expandedAssetKey)) : null);
+  function collapseAsset() { expandedAssetKey = null; assetFullscreen = false; }
+  const autoExpandAssets = $derived(settings().autoExpandAssets ?? false);
+
+  // Auto-expand: when on, the selected node's asset opens large automatically as
+  // navigation moves node to node (story/explore walkthroughs). Keeps fullscreen
+  // if the user went there. Manual mode leaves expansion to a thumbnail click.
+  $effect(() => {
+    if (!autoExpandAssets) return;
+    const url = selected ? previewUrlFor(iriFromNodeKey(selected)) : null;
+    if (url) expandedAssetKey = selected;
+    else { expandedAssetKey = null; assetFullscreen = false; }
+  });
 
   // ── GIF assignment ────────────────────────────────────────────────────────
   const entityGifUrl = $derived.by(() => {
@@ -1474,6 +1495,7 @@
       sources={sources()}
       targetKey={hoverTarget}
       onselect={(k, ctrlKey) => {
+        if (!autoExpandAssets) collapseAsset(); // manual mode: a graph click collapses; auto mode: the effect re-syncs
         if (ctrlKey && k) {
           const next = new Set(multiSelected);
           if (next.has(k)) next.delete(k); else next.add(k);
@@ -1512,6 +1534,7 @@
           sources={sources()}
           targetKey={hoverTarget}
           onselect={(k, ctrlKey) => {
+        if (!autoExpandAssets) collapseAsset(); // manual mode: a graph click collapses; auto mode: the effect re-syncs
         if (ctrlKey && k) {
           const next = new Set(multiSelected);
           if (next.has(k)) next.delete(k); else next.add(k);
@@ -1696,6 +1719,21 @@
     {/if}
   </div>
 
+  <!-- ASSETS -->
+  <div class="overlay-group">
+    <span class="group-label mono">assets</span>
+    <div class="chip-row">
+      <button
+        class="chip"
+        class:active={autoExpandAssets}
+        onclick={() => updateSettings({ autoExpandAssets: !autoExpandAssets })}
+        title="Auto-expand a node's image to the large view as you move through the graph (e.g. story explore). Off = click a thumbnail to expand."
+      >
+        <span class="lbl mono">auto-expand</span>
+      </button>
+    </div>
+  </div>
+
   <!-- TIMELINE CONTROLS (visible only when timeline layout is active) -->
   {#if layout === 'timeline'}
   <div class="overlay-group">
@@ -1799,12 +1837,20 @@
     style="transform: translate3d({n.x}px, {n.y}px, 0); --lfs: {labelFontSize}px; --lop: {n.opacity ?? 0.85};"
   >
     <!-- Show the node image when previews are forced on, OR for the focused/
-         selected/highlighted nodes (focus force + filtering), so an image-bearing
-         graph like the visual review shows its screenshots without hunting. -->
-    {#if alwaysPreviews || n.key === selected || highlightedSet.has(n.key)}
+         selected/highlighted nodes. Click it to expand large (→ fullscreen).
+         Hidden while this node's image is the expanded one. -->
+    {#if (alwaysPreviews || n.key === selected || highlightedSet.has(n.key)) && n.key !== expandedAssetKey}
       {@const purl = previewUrlFor(iriFromNodeKey(n.key))}
       {#if purl}
-        <img class="node-preview-thumb" class:sel={n.key === selected} src={purl} alt="" loading="lazy" />
+        <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
+        <img
+          class="node-preview-thumb"
+          src={purl}
+          alt=""
+          loading="lazy"
+          style="width: {nodePreviewSize}px; height: {nodePreviewSize}px;"
+          onclick={(e) => { e.stopPropagation(); expandedAssetKey = n.key; assetFullscreen = false; }}
+        />
       {/if}
     {/if}
     <span
@@ -1878,6 +1924,36 @@
     </div>
   {/if}
 {/if}
+
+<!-- Asset viewer — LARGE: covers most of the graph; clicking the surrounding
+     graph (not the image) collapses to normal; clicking the image → fullscreen. -->
+{#if expandedAssetUrl && !assetFullscreen}
+  <div class="asset-large" transition:fade={{ duration: 140 }}>
+    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
+    <img src={expandedAssetUrl} alt="expanded asset" onclick={() => (assetFullscreen = true)} />
+    <div class="asset-controls">
+      <button onclick={() => (assetFullscreen = true)} title="Fullscreen (or click the image)">⛶</button>
+      <button onclick={collapseAsset} title="Close">✕</button>
+    </div>
+  </div>
+{/if}
+
+<!-- Asset viewer — FULLSCREEN: for images and other rich asset types. Click the
+     backdrop to step back to large; ✕ or Esc closes. -->
+{#if expandedAssetUrl && assetFullscreen}
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+  <div class="asset-fullscreen" onclick={() => (assetFullscreen = false)} transition:fade={{ duration: 140 }}>
+    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
+    <img src={expandedAssetUrl} alt="fullscreen asset" onclick={(e) => e.stopPropagation()} />
+    <button class="asset-fs-close" onclick={collapseAsset} title="Close (Esc)">✕</button>
+  </div>
+{/if}
+
+<svelte:window onkeydown={(e) => {
+  if (e.key === 'Escape' && expandedAssetKey) {
+    if (assetFullscreen) assetFullscreen = false; else collapseAsset();
+  }
+}} />
 
 <!-- Keyboard nav hint (shown briefly when a node is selected) -->
 {#if selected && navHistory.length === 0}
@@ -3270,26 +3346,96 @@
     position: absolute;
     left: 0;
     top: 0;
-    width: 88px;
-    height: 88px;
     transform: translate(-50%, calc(-100% - 6px));
     object-fit: cover;
     border-radius: 8px;
     border: 1px solid var(--line);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
     background: var(--surface);
-    transition: width 0.18s ease, height 0.18s ease;
+    pointer-events: auto;
+    cursor: zoom-in;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
   }
-  /* Selected/clicked node: expand the image large and uncropped so an
-     image-bearing graph (e.g. the visual review) reads at a glance. */
-  .node-preview-thumb.sel {
-    width: 240px;
-    height: 156px;
-    object-fit: contain;
-    background: var(--surface-2);
+  .node-preview-thumb:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
     border-color: var(--accent);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.55);
   }
+
+  /* ── Asset viewer: large (covers most of graph) + fullscreen ── */
+  .asset-large {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none; /* clicks around the image fall through to the graph → collapse */
+    z-index: 380;
+  }
+  .asset-large img {
+    max-width: 80vw;
+    max-height: 78vh;
+    object-fit: contain;
+    border-radius: var(--rad);
+    border: 1px solid var(--line);
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+    background: var(--surface-2);
+    pointer-events: auto;
+    cursor: zoom-in;
+  }
+  .asset-controls {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(calc(40vw - 100%), calc(-39vh));
+    display: flex;
+    gap: 0.35rem;
+    pointer-events: auto;
+  }
+  .asset-controls button {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+  }
+  .asset-controls button:hover { border-color: var(--accent); }
+  .asset-fullscreen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(6, 6, 10, 0.92);
+    backdrop-filter: blur(4px);
+    z-index: 600;
+    cursor: zoom-out;
+  }
+  .asset-fullscreen img {
+    max-width: 96vw;
+    max-height: 94vh;
+    object-fit: contain;
+    border-radius: var(--rad-sm);
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.7);
+    cursor: default;
+  }
+  .asset-fs-close {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+    font-size: 1.1rem;
+  }
+  .asset-fs-close:hover { border-color: var(--accent); }
   /* Inner span: centering + hover scale — separate from position transition */
   .node-label {
     display: block;
