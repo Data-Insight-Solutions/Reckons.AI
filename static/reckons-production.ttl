@@ -99,6 +99,8 @@ kb:triple-extraction rdf:type    ktype:Feature ;
                     kpred:tested-by    "src/lib/integrations/llm/__tests__/extractor.test.ts" .
 
 kb:visual-testing   rdf:type     ktype:Feature ;
+                  kpred:tested-by    "tests/visual/vision-scoring.test.ts" ;
+                  kpred:tested-by    "tests/visual/vision-vlm.test.ts" ;
                     rdfs:label   "Visual Testing" ;
                     kpred:has-status   "production" ;
                     kpred:uses         kb:playwright ;
@@ -182,6 +184,8 @@ kb:mobile-auth      rdf:type     ktype:Feature ;
                     kpred:tested-by    "src/lib/utils/__tests__/mobile-auth.test.ts" .
 
 kb:n8n-cloud-sync   rdf:type     ktype:Feature ;
+               kpred:test-coverage "none" ;
+               kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
                     rdfs:label   "n8n Cloud Sync" ;
                     kpred:has-status   "production" ;
                     kpred:description  "Private cloud sync via self-hosted n8n VPS" ;
@@ -227,6 +231,8 @@ kb:entity-normalization rdf:type ktype:Feature ;
                     kpred:tested-by    "src/lib/rdf/__tests__/normalize-entities.test.ts" .
 
 kb:mcp-workspace    rdf:type     ktype:Feature ;
+                 kpred:tested-by    "src/lib/stores/__tests__/workspace-kb-file.test.ts" ;
+                 kpred:tested-by    "src/lib/stores/__tests__/workspace-sync.test.ts" ;
                     rdfs:label   "MCP Workspace (Self-Dogfooding)" ;
                     kpred:has-status   "production" ;
                     kpred:description  "Three internal graphs (Roadmap, Production, Features) symlinked from static/*.ttl. Claude Code queries via MCP server." .
@@ -311,6 +317,7 @@ kb:currents         rdf:type     ktype:Feature ;
                     kpred:tested-by    "src/lib/integrations/n8n/__tests__/currents-sync.test.ts" .
 
 kb:review-workbench rdf:type     ktype:Feature ;
+                    kpred:tested-by    "tests/e2e/review.test.ts" ;
                     rdfs:label   "Review Workbench" ;
                     kpred:has-status   "functional" ;
                     kpred:description  "F30 — /review browse controls, node-details + chat pane, per-item focus (clicking a review item flies the preview graph to its node), and edge highlighting." ;
@@ -403,6 +410,7 @@ kb:test-mcp         rdf:type     ktype:TestCategory ;
 # ── Ingest Source Types ──────────────────────────────────────────────────────
 
 kb:ingest-pipeline  rdf:type     ktype:Feature ;
+                   kpred:tested-by    "tests/e2e/ingest.test.ts" ;
                     rdfs:label   "Ingest Pipeline" ;
                     kpred:description  "Processes and integrates content from many source types into the graph: notes, URLs, documents, reminders, repositories, calendars, vaults, folders, raw RDF triples, and kb-imports. Each is transformed into structured RDF triples that can be queried and linked, so information from scattered origins consolidates into one personal knowledge graph." ;
                     kpred:has-status   "production" ;
@@ -427,6 +435,8 @@ kb:review-workflow  rdf:type     ktype:Concept ;
                     kpred:has-status "pending -> confirmed/rejected/refined" .
 
 kb:browser-extension rdf:type    ktype:Feature ;
+               kpred:tested-by    "tests/extension/extension-visual.spec.ts" ;
+               kpred:tested-by    "tests/extension/research-session.spec.ts" ;
                     rdfs:label   "Browser Extension" ;
                     kpred:has-status   "production" ;
                     kpred:has-tab  "compare" ;

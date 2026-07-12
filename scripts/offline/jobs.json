@@ -10,6 +10,13 @@
       "desc": "Graph invariants: dead has-file/tested-by links, bad status, duplicate feature-ids, dangling refs, incomplete features"
     },
     {
+      "name": "status-evidence",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/status-evidence.ts",
+      "desc": "Shipped features must link a test OR declare kpred:test-coverage \"none\" — you may ship untested code, but not silently"
+    },
+    {
       "name": "safety-attestation",
       "tier": "script",
       "enabled": true,

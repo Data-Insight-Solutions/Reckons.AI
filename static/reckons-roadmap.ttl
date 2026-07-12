@@ -183,6 +183,7 @@ kb:knowledge-graph rdf:type ktype:Feature ;
                kpred:has-capability "label overlap prevention" .
 
 kb:multi-kb    rdf:type     ktype:Feature ;
+               kpred:tested-by    "src/lib/storage/__tests__/kb-registry.test.ts" ;
                rdfs:label   "Multi-Graph Management" ;
                kpred:has-status   "production" ;
                kpred:description  "Create, switch, rename, delete graphs. Graph Leap cross-references. Import-as-new-Graph." ;
@@ -213,21 +214,27 @@ kb:mcp-server  rdf:type     ktype:Feature ;
                kpred:has-tool     "kb_request_refresh" .
 
 kb:comparison-view rdf:type ktype:Feature ;
+               kpred:test-coverage "none" ;
+               kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
                rdfs:label   "Comparison View" ;
                kpred:has-status   "production" ;
                kpred:description  "Semantic diff engine + Venn diagram UI. Categories: Add, Reinforce, Conflict, Merge, Remove." .
 
 kb:diff-summary rdf:type    ktype:Feature ;
+                kpred:tested-by    "src/lib/rdf/__tests__/diff-summary.test.ts" ;
                rdfs:label   "Diff Summary" ;
                kpred:has-status   "production" ;
                kpred:description  "LLM-generated 3-part summaries (new/reinforcing/conflicting) for compare, review, and extension." .
 
 kb:predicate-manager rdf:type ktype:Feature ;
+               kpred:test-coverage "none" ;
+               kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
                rdfs:label   "Predicate Manager" ;
                kpred:has-status   "production" ;
                kpred:description  "View all predicates with counts, rename, merge. Schema evolution tool." .
 
 kb:content-safety rdf:type  ktype:Feature ;
+               kpred:tested-by    "src/lib/safety/__tests__/content-policy.test.ts" ;
                rdfs:label   "Content Safety" ;
                kpred:has-status   "production" ;
                kpred:principle    "Ethics AND morals, not just law. Laws vary across borders and legality is a floor, not a ceiling — Reckons.AI applies a baseline ethical standard (no incitement, no hate, no sexualization of minors) regardless of local legality. Some things simply should not be broadcast publicly." ;
@@ -237,6 +244,7 @@ kb:content-safety rdf:type  ktype:Feature ;
                kpred:has-part     kb:verified-badge .
 
 kb:publish-safety-gate rdf:type ktype:Feature ;
+               kpred:tested-by    "src/lib/publish/__tests__/publish-gate.test.ts" ;
                kpred:show-on-landing "true" ;
                kpred:landing-label   "Publish safety gate" ;
                kpred:landing-note    "We gate only what we carry — export is always yours, whatever it contains" ;
@@ -306,6 +314,8 @@ kb:data-egress-model rdf:type ktype:Concept ;
 # PII, no retention duty, and no age-verification exposure — the app stays local-first.
 
 kb:adult-content-policy rdf:type ktype:Feature ;
+               kpred:tested-by    "src/lib/publish/__tests__/publish-gate.test.ts" ;
+               kpred:tested-by    "src/lib/safety/__tests__/content-policy.test.ts" ;
                rdfs:label   "Adult content policy (gate only what we carry)" ;
                kpred:feature-id   "F66.1" ;
                kpred:has-status   "functional" ;
@@ -330,6 +340,8 @@ kb:verified-badge rdf:type  ktype:Feature ;
                kpred:description  "A positive trust signal: a verified badge for a reviewed, accountable publisher or graph — distinct from the anonymous, un-hosted default. Rewards good-faith authors who put their name/domain behind a published graph, and gives readers a signal of provenance. Open question: what does verification attest (identity? a content review? a stable domain?) and who issues it." .
 
 kb:passage-grounding rdf:type ktype:Feature ;
+               kpred:test-coverage "none" ;
+               kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
                rdfs:label   "Passage Grounding" ;
                kpred:has-status   "production" ;
                kpred:description  "Excerpt field on triples with verbatim source sentence. Persists via meta:excerpt in TTL reification." .
@@ -342,21 +354,28 @@ kb:repo-ingest rdf:type     ktype:Feature ;
                kpred:description  "GitHub REST API for tree walking and file content. Delta updates between commits." .
 
 kb:source-refresh rdf:type  ktype:Feature ;
+               kpred:tested-by    "src/lib/stores/__tests__/source-refresh.test.ts" ;
                rdfs:label   "Source Refresh" ;
                kpred:has-status   "production" ;
                kpred:description  "Re-ingest URLs, repos, and calendars. Auto-refresh on graph open or on schedule." .
 
 kb:browser-extension rdf:type ktype:Feature ;
+               kpred:tested-by    "tests/extension/extension-visual.spec.ts" ;
+               kpred:tested-by    "tests/extension/research-session.spec.ts" ;
                rdfs:label   "Browser Extension" ;
                kpred:has-status   "production" ;
                kpred:description  "Research session accumulation, at-a-glance bar, batch ingest. Compare | Session | Ingest tabs." .
 
 kb:whisper-stt rdf:type     ktype:Feature ;
+               kpred:test-coverage "none" ;
+               kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
                rdfs:label   "Whisper STT" ;
                kpred:has-status   "production" ;
                kpred:description  "Local speech-to-text via transformers.js. Mic button in Shelly chat." .
 
 kb:kokoro-tts  rdf:type     ktype:Feature ;
+               kpred:test-coverage "none" ;
+               kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
                rdfs:label   "Kokoro TTS" ;
                kpred:has-status   "production" ;
                kpred:description  "Local text-to-speech for story walkthroughs." .
@@ -379,11 +398,15 @@ kb:cosmos-nano rdf:type     ktype:Feature ;
                kpred:open-question "Integration path: same Python sidecar as NeMo Speech? Separate container? Which Cosmos capabilities map to graph workflows (video→triples, entity→animation)?" .
 
 kb:model-cache rdf:type     ktype:Feature ;
+               kpred:test-coverage "none" ;
+               kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
                rdfs:label   "Model Cache Management" ;
                kpred:has-status   "production" ;
                kpred:description  "Inspect, sideload, purge locally cached WASM models. Offline-first with sideload for air-gapped installs." .
 
 kb:shelly-chat rdf:type     ktype:Feature ;
+               kpred:test-coverage "none" ;
+               kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
                rdfs:label   "Shelly Chat System" ;
                kpred:has-status   "production" ;
                kpred:description  "AI assistant with tutorial, chat, and explore tabs. Story playback with TTS. Graph-aware reasoning." .
@@ -415,6 +438,8 @@ kb:workspace-index rdf:type ktype:Feature ;
                kpred:relates-to   kb:drive-folder-sync .
 
 kb:visual-testing rdf:type  ktype:Feature ;
+                  kpred:tested-by    "tests/visual/vision-scoring.test.ts" ;
+                  kpred:tested-by    "tests/visual/vision-vlm.test.ts" ;
                rdfs:label   "Visual Testing" ;
                kpred:has-status   "production" ;
                kpred:description  "5-tier visual QA: pixel analysis, DOM overlap, text extraction, Mistral OCR, Claude vision. 95%+ accuracy." .
@@ -432,11 +457,15 @@ kb:entity-types rdf:type    ktype:Feature ;
                kpred:description  "Customizable entity types with colors and labels. Type selector in node panel." .
 
 kb:history-mode rdf:type    ktype:Feature ;
+               kpred:test-coverage "none" ;
+               kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
                rdfs:label   "History Mode" ;
                kpred:has-status   "production" ;
                kpred:description  "Timeline slider to view graph state at any past timestamp. Ghost mode in graph." .
 
 kb:trust-system rdf:type    ktype:Feature ;
+               kpred:test-coverage "none" ;
+               kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
                rdfs:label   "Trust System" ;
                kpred:has-status   "production" ;
                kpred:description  "Source trust levels (trusted/review). Auto-confirm for trusted sources." .
@@ -444,6 +473,8 @@ kb:trust-system rdf:type    ktype:Feature ;
 # -- Functional / Scaffolded Features -------------------------------------------
 
 kb:voice-interface rdf:type ktype:Feature ;
+               kpred:test-coverage "none" ;
+               kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
                rdfs:label   "Voice Interface (Hume.AI)" ;
                kpred:has-status   "functional" ;
                kpred:feature-id   "F5" ;
@@ -451,6 +482,7 @@ kb:voice-interface rdf:type ktype:Feature ;
                kpred:remaining    "Real-world testing, reconnection handling, animated voice indicator" .
 
 kb:google-drive-sync rdf:type ktype:Feature ;
+               kpred:tested-by    "src/lib/stores/__tests__/drive-sync.test.ts" ;
                rdfs:label   "Google Drive Sync" ;
                kpred:data-egress  "third-party-service" ;
                kpred:gated-by     kb:content-safety ;
@@ -542,6 +574,7 @@ kb:published-graph-exchange rdf:type ktype:Feature ;
                kpred:has-part     kb:calendar-management .
 
 kb:published-ttl rdf:type    ktype:Feature ;
+                 kpred:tested-by    "src/lib/publish/__tests__/site-export.test.ts" ;
                rdfs:label   "Self-describing published TTL" ;
                kpred:data-egress  "mediated-distribution" ;
                kpred:gated-by     kb:publish-safety-gate ;
@@ -613,6 +646,7 @@ kb:growing-filter-set rdf:type ktype:Feature ;
                kpred:depends-on   kb:partial-facts .
 
 kb:n8n-review-notifications rdf:type ktype:Feature ;
+               kpred:tested-by    "src/lib/integrations/n8n/__tests__/notify.test.ts" ;
                rdfs:label   "n8n review notifications (email me when there's something to review)" ;
                kpred:feature-id   "F73.1" ;
                kpred:has-status   "functional" ;
@@ -623,6 +657,7 @@ kb:n8n-review-notifications rdf:type ktype:Feature ;
                kpred:depends-on   kb:n8n-cloud-sync .
 
 kb:webpage-entity rdf:type   ktype:Feature ;
+                  kpred:tested-by    "src/lib/rdf/__tests__/page.test.ts" ;
                rdfs:label   "WebPage Entity" ;
                kpred:has-status   "functional" ;
                kpred:feature-id   "F27.0" ;
@@ -630,6 +665,7 @@ kb:webpage-entity rdf:type   ktype:Feature ;
                kpred:part-of      kb:graph-publishing .
 
 kb:post-template rdf:type    ktype:Feature ;
+                 kpred:tested-by    "src/lib/publish/__tests__/site-import.test.ts" ;
                rdfs:label   "Post Template (dated content)" ;
                kpred:has-status   "functional" ;
                kpred:feature-id   "F27.1" ;
@@ -669,6 +705,8 @@ kb:gp-phase-4  rdf:type      ktype:Phase ;
                kpred:depends-on   kb:gp-phase-3 .
 
 kb:docs-pipeline rdf:type    ktype:Feature ;
+                 kpred:tested-by    "src/lib/publish/__tests__/site-export.test.ts" ;
+                 kpred:tested-by    "src/lib/publish/__tests__/site-import.test.ts" ;
                rdfs:label    "Docs graph Publishing Pipeline" ;
                kpred:has-status   "functional" ;
                kpred:feature-id   "F27.2" ;
@@ -757,6 +795,7 @@ kb:pr-graph-overlay rdf:type ktype:Feature ;
                kpred:relates-to   kb:graph-publishing .
 
 kb:rebrand-kb-to-graph rdf:type ktype:Decision ;
+               kpred:tested-by    "src/lib/rdf/__tests__/terminology.test.ts" ;
                rdfs:label    "User-facing rename: Graph -> Graph" ;
                kpred:has-status   "production" ;
                kpred:decision     "Rename the user-facing label 'Graph' to 'Graph'; keep kb/graph in code, IDs, and MCP tool names (kb_*)." ;
@@ -772,6 +811,7 @@ kb:terminology-simplification rdf:type ktype:Decision ;
                kpred:done         "Triple/Statement -> 'Fact' in user copy (review cards, counts, ingest results, diff summaries, node panel, search bar, export hints); 'Graph Leap' -> 'Jump' (node panel section, add/remove buttons, graph filter chip, badge tooltips). Technical/docs TTL contexts keep triple/statement." .
 
 kb:feedback-channel rdf:type ktype:Feature ;
+               kpred:tested-by    "src/lib/integrations/n8n/__tests__/contact.test.ts" ;
                rdfs:label    "Feedback channel (suggestion box)" ;
                kpred:has-status   "functional" ;
                kpred:description  "MVP digital suggestion box: a 'Send feedback' mailto link (matthew.roe@data-insight.solutions) in the About footer. Offline-friendly, no backend. Future: route through the existing n8n pipeline." .
@@ -883,6 +923,8 @@ kb:cross-kb-alignment rdf:type ktype:Feature ;
 # -- n8n Cloud Sync (F20) -------------------------------------------------------
 
 kb:n8n-cloud-sync rdf:type ktype:Feature ;
+               kpred:test-coverage "none" ;
+               kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
                kpred:show-on-landing "true" ;
                kpred:landing-label   "n8n cloud sync" ;
                kpred:landing-note    "Private cloud sync via self-hosted n8n — upload, download, and monitor graphs from any device" ;
@@ -938,6 +980,8 @@ kb:n8n-currents-monitor rdf:type ktype:Concept ;
 # -- Context Compression --------------------------------------------------------
 
 kb:context-compression rdf:type ktype:Feature ;
+               kpred:test-coverage "none" ;
+               kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
                kpred:show-on-landing "true" ;
                kpred:landing-label   "Context compression" ;
                kpred:landing-note    "Condense your knowledge graph for LLM context — semantic meaning preserved, tokens reduced" ;
@@ -1071,6 +1115,7 @@ kb:text-chunking rdf:type ktype:Feature ;
 # -- Entity Normalization (F22) -------------------------------------------------
 
 kb:entity-normalization rdf:type ktype:Feature ;
+               kpred:tested-by    "src/lib/rdf/__tests__/normalize-entities.test.ts" ;
                rdfs:label   "Entity Normalization" ;
                kpred:has-status   "production" ;
                kpred:feature-id   "F22" ;
@@ -1081,6 +1126,8 @@ kb:entity-normalization rdf:type ktype:Feature ;
 # -- Self-Dogfooding MCP Workspace (F23) ----------------------------------------
 
 kb:mcp-workspace rdf:type ktype:Feature ;
+                 kpred:tested-by    "src/lib/stores/__tests__/workspace-kb-file.test.ts" ;
+                 kpred:tested-by    "src/lib/stores/__tests__/workspace-sync.test.ts" ;
                rdfs:label   "MCP Workspace (Self-Dogfooding)" ;
                kpred:has-status   "production" ;
                kpred:feature-id   "F23" ;
@@ -1090,6 +1137,8 @@ kb:mcp-workspace rdf:type ktype:Feature ;
 # -- Git Analysis (F24) --------------------------------------------------------
 
 kb:git-analysis rdf:type ktype:Feature ;
+               kpred:test-coverage "none" ;
+               kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
                rdfs:label   "Git Analysis" ;
                kpred:has-status   "production" ;
                kpred:feature-id   "F24" ;
@@ -1189,6 +1238,8 @@ kb:int-meshy   rdf:type     ktype:Tool ;
 
 ## -- F74: Asset viewer + generation (image · video · 3D/GLB) --------------------
 kb:asset-viewer rdf:type     ktype:Feature ;
+               kpred:test-coverage "none" ;
+               kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
                rdfs:label   "Asset viewer (image · video · 3D/GLB)" ;
                kpred:feature-id   "F74" ;
                kpred:has-status   "functional" ;
@@ -1274,6 +1325,8 @@ kb:tier-claude-code rdf:type   ktype:Concept ;
                kpred:hardware-bound "Long-context synthesis (>32k of cross-file context); frontier coding judgment; final review of a local model's proposals. Local VRAM ceiling makes these infeasible offline, so they are NOT candidates for demotion." .
 
 kb:session-tokens rdf:type     ktype:Feature ;
+               kpred:test-coverage "none" ;
+               kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
                rdfs:label   "Session token metric" ;
                kpred:feature-id   "F74.4" ;
                kpred:has-status   "functional" ;
@@ -1584,6 +1637,10 @@ story:rm-step-9  rdf:type         story:Step ;
 # entity to avoid clobbering any sibling kb:local-offload description.
 
 kb:mcp-ollama-bridge rdf:type    ktype:Feature ;
+               kpred:tested-by    "mcp-server/src/__tests__/local-llm.test.ts" ;
+               kpred:tested-by    "mcp-server/src/__tests__/ollama-client.test.ts" ;
+               kpred:tested-by    "mcp-server/src/__tests__/generate-page.test.ts" ;
+               kpred:tested-by    "mcp-server/src/__tests__/entity-markdown.test.ts" ;
                rdfs:label   "MCP Ollama Bridge" ;
                kpred:has-status   "functional" ;
                kpred:part-of      kb:local-offload ;
@@ -1597,6 +1654,8 @@ kb:mcp-ollama-bridge rdf:type    ktype:Feature ;
 # -- Local Offload (parent) ------------------------------------------------------
 
 kb:local-offload rdf:type      ktype:Feature ;
+               kpred:tested-by    "src/lib/integrations/llm/__tests__/prefer-local.test.ts" ;
+               kpred:tested-by    "src/lib/integrations/llm/__tests__/ollama-extract.test.ts" ;
                kpred:show-on-landing "true" ;
                kpred:landing-label   "Local model offload" ;
                kpred:landing-note    "Run ingest, chat and review on your own Ollama or in-browser WASM — no cloud required" ;
@@ -1633,6 +1692,9 @@ kb:design-system-shadcn rdf:type ktype:Feature ;
 # pending-review, previewed translucently in the pod.
 
 kb:currents    rdf:type      ktype:Feature ;
+               kpred:tested-by    "src/lib/rdf/__tests__/currents.test.ts" ;
+               kpred:tested-by    "src/lib/rdf/__tests__/currents-persist.test.ts" ;
+               kpred:tested-by    "src/lib/rdf/__tests__/current-ranking.test.ts" ;
                rdfs:label    "Currents — Streamed Ingest & Pod View" ;
                kpred:feature-id   "F29" ;
                kpred:has-status   "planned" ;
@@ -1687,6 +1749,7 @@ kb:currents-phase-4 rdf:type ktype:Phase ;
 # -- F30: Review Workbench -------------------------------------------------------
 
 kb:review-workbench rdf:type  ktype:Feature ;
+                    kpred:tested-by    "tests/e2e/review.test.ts" ;
                rdfs:label    "Review Workbench — browse while reviewing" ;
                kpred:feature-id   "F30" ;
                kpred:has-status   "functional" ;
@@ -1712,6 +1775,8 @@ kb:local-model-bench rdf:type ktype:Feature ;
 # -- F32: Partial Facts & Answer-Flow-Back ---------------------------------------
 
 kb:partial-facts rdf:type ktype:Feature ;
+               kpred:test-coverage "none" ;
+               kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
                rdfs:label    "Partial Facts & Answer-Flow-Back" ;
                kpred:feature-id   "F32" ;
                kpred:has-status   "functional" ;
@@ -1723,6 +1788,7 @@ kb:partial-facts rdf:type ktype:Feature ;
 # -- F33: Release Pipeline & Branch Alignment ------------------------------------
 
 kb:release-pipeline rdf:type ktype:Feature ;
+               kpred:tested-by    "tests/bench/scoring.test.ts" ;
                rdfs:label    "Release Pipeline & Branch Alignment" ;
                kpred:feature-id   "F33" ;
                kpred:has-status   "functional" ;
@@ -1791,6 +1857,8 @@ kb:use-case-matrix rdf:type ktype:Feature ;
                kpred:depends-on   kb:deep-testing .
 
 kb:offline-align-review rdf:type ktype:Feature ;
+               kpred:test-coverage "none" ;
+               kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
                rdfs:label    "Offline Alignment-Review Job" ;
                kpred:feature-id   "F41" ;
                kpred:has-status   "functional" ;
@@ -1967,6 +2035,7 @@ kb:review-attention rdf:type ktype:Feature ;
 # decision, not the concept-dense docs graph. Shipped 2026-07-09 (PR #79).
 
 kb:soft-onboarding rdf:type ktype:Feature ;
+               kpred:tested-by    "src/lib/stores/__tests__/official-kb.test.ts" ;
                rdfs:label    "Soft Onboarding — the everyday starter graph" ;
                kpred:feature-id   "F54" ;
                kpred:has-status   "functional" ;
@@ -2197,6 +2266,8 @@ kb:sets-xr rdf:type          ktype:Feature ;
 # sessions / local offline agents." Raised 2026-07-10.
 
 kb:agent-context-dogfooding rdf:type ktype:Feature ;
+               kpred:test-coverage "none" ;
+               kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
                rdfs:label    "Coding-agent context dogfooding" ;
                kpred:feature-id   "F68" ;
                kpred:has-status   "functional" ;
@@ -2272,12 +2343,15 @@ kb:content-orchestrator rdf:type ktype:Feature ;
 # nothing. Shipped/production infrastructure.
 
 kb:embedding-model rdf:type ktype:Feature ;
+               kpred:tested-by    "src/lib/__tests__/embed.test.ts" ;
                rdfs:label    "Embedding Model" ;
                kpred:has-status   "production" ;
                kpred:description  "In-browser semantic embeddings via BGE-small-en-v1.5 (33MB, 384d, q8) through @huggingface/transformers (src/lib/embed.ts). Runtime-switchable via VITE_EMBEDDING_MODEL (MODEL_SIZES table); powers similarity, entity normalization (F22), disambiguation, and search. Cached after first load — fully offline." ;
                kpred:relates-to   kb:knowledge-graph .
 
 kb:llm-providers rdf:type ktype:Feature ;
+               kpred:tested-by    "src/lib/integrations/llm/__tests__/prefer-local.test.ts" ;
+               kpred:tested-by    "src/lib/integrations/llm/__tests__/extractor.test.ts" ;
                rdfs:label    "LLM Providers" ;
                kpred:has-status   "production" ;
                kpred:description  "Pluggable LLM backends (src/lib/integrations/llm/): claude, openai, gemini, ollama, wasm (in-browser via @huggingface/transformers), reckons (hosted proxy), openrouter, chrome-ai, plus mock/manual. Per-task selection (ingest / analyze / chat / diffSummary / mergeAnalysis); wasm auto-fallback when a chosen cloud backend has no key. ETHICS_PREAMBLE is injected into every provider's system prompt." ;

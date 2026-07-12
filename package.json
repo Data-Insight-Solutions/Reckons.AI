@@ -100,7 +100,8 @@
     "offline:describe": "npx tsx scripts/offline/describe-entities.ts",
     "offline:script-tier": "npx tsx scripts/offline/run-all.ts --tier=script",
     "landing:features": "npx tsx scripts/landing-features.ts",
-    "landing:check": "npx tsx scripts/landing-features.ts --check"
+    "landing:check": "npx tsx scripts/landing-features.ts --check",
+    "offline:evidence": "npx tsx scripts/offline/status-evidence.ts"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
