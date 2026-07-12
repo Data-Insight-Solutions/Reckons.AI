@@ -92,7 +92,13 @@
     "kb:reckon": "npx tsx tests/bench/run-kb-workflow.ts reckon --save",
     "kb:search": "npx tsx tests/bench/run-kb-workflow.ts search",
     "session:tokens": "npx tsx scripts/session-tokens.ts",
-    "offline:review": "npx tsx scripts/offline/code-review.ts"
+    "offline:review": "npx tsx scripts/offline/code-review.ts",
+    "offline:lint": "npx tsx scripts/offline/graph-lint.ts",
+    "offline:prompt-audit": "npx tsx scripts/offline/prompt-audit.ts",
+    "safety:attest": "npx tsx scripts/offline/safety-attestation.ts",
+    "safety:attest:record": "npx tsx scripts/offline/safety-attestation.ts --record",
+    "offline:describe": "npx tsx scripts/offline/describe-entities.ts",
+    "offline:script-tier": "npx tsx scripts/offline/run-all.ts --tier=script"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.100.1",

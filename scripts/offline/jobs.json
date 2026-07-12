@@ -1,20 +1,52 @@
 {
   "_comment": "Offline jobs run by `npm run offline:all` (scripts/offline/run-all.ts). Add/remove/toggle freely \u2014 each runs in order even if a prior one fails. Findings land in reckons-workspace/knowledge.pending.jsonl for review in Reckons.AI. cmd runs in bash, so ${VAR:-default} and pipes work.",
+  "_tiers": "F74.3 work tiering. tier=script: deterministic, no LLM, zero tokens, right by construction \u2014 run these first and prefer growing this tier. tier=agent: a LOCAL model fills a judgment hole inside a scripted harness (ground \u2192 prompt \u2192 validate \u2192 emit-proposal) and only ever emits PROPOSALS a human gates. Opus is not a tier here: it designs the harness and triages the queue these jobs fill. Anything an agent job gets right reliably should be demoted to a script.",
   "jobs": [
     {
+      "name": "graph-lint",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/graph-lint.ts --pending",
+      "desc": "Graph invariants: dead has-file/tested-by links, bad status, duplicate feature-ids, dangling refs, incomplete features"
+    },
+    {
+      "name": "safety-attestation",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/safety-attestation.ts",
+      "desc": "Verify the good-faith safety controls still hold (preamble present/injected/undrifted, classifier, safety tests, egress gating). Add --record to append a dated entry to static/reckons-safety-log.ttl"
+    },
+    {
+      "name": "prompt-audit",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/prompt-audit.ts",
+      "desc": "System-prompt token cost, ETHICS_PREAMBLE share per prompt, preamble drift between app and mcp-server, ungated prompts"
+    },
+    {
       "name": "alignment-sweep",
+      "tier": "script",
       "enabled": true,
       "cmd": "bash scripts/offline/alignment-sweep.sh",
       "desc": "TTL parse / asset paths / namespace typos / stale LEAP + branch-align --suggest + kb-align \u2192 pending questions"
     },
     {
+      "name": "describe-entities",
+      "tier": "agent",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/describe-entities.ts",
+      "desc": "Local model drafts kpred:description for entities graph-lint found incomplete, grounded in their own subgraph + linked files (needs OLLAMA_BASE_URL)"
+    },
+    {
       "name": "code-review",
+      "tier": "agent",
       "enabled": true,
       "cmd": "npx tsx scripts/offline/code-review.ts --base=${CODE_REVIEW_BASE:-origin/dev}",
       "desc": "Local coding model (qwen3-coder) reviews the branch diff \u2192 findings to pending review (needs OLLAMA_BASE_URL)"
     },
     {
       "name": "visual-diff",
+      "tier": "agent",
       "enabled": false,
       "cmd": "npx tsx scripts/offline/visual-diff.ts --base=${VISUAL_DIFF_BASE:-https://reckons.ai} --head=${VISUAL_DIFF_HEAD:-https://dev.reckons-ai.pages.dev}",
       "desc": "Local-VLM visual regression prod\u2194dev (needs OLLAMA_BASE_URL; set VISUAL_DIFF_BASE / VISUAL_DIFF_HEAD)"

@@ -103,6 +103,20 @@ The TTL graphs in `static/` are the canonical plan and system description — co
 - **Findings and proposals** (discrepancies, suggestions, drift): don't just report in chat — propose them as pending graph entries for in-app review. Append JSONL lines to the app workspace's `knowledge.pending.jsonl` (`{ subject, predicate, object, note?, type?: observation|question|suggestion|status-update|drift-warning, agent?, priority? }` — see `drainWorkspacePending` in `src/lib/stores/workspace.svelte.ts`), or use `kb_add_note` when the MCP server is connected. The app imports them as pending facts for human review.
 - **Docs sections generated from graphs** (`content/` via `scripts/docs-pages.ts`): edit the TTL, regenerate, never hand-edit generated pages.
 
+### Work tiering — route the task before you do it (F74.3)
+
+Before doing any recurring task yourself, route it to the **cheapest tier that can do it correctly**. Take the first test it passes:
+
+1. **Script tier** — the answer is checkable by a rule ("does this path exist", "does this parse", "is this status in the enum"). Write deterministic code: zero tokens, zero hallucination, runs in CI, fails loudly. `scripts/offline/graph-lint.ts` is the model.
+2. **Agent tier** — the answer is judgment over language, and being wrong is cheap because the output is a **proposal a human gates** (first-pass code review, drafting a description, staleness reads). A local Ollama model, always inside a scripted harness: **ground → prompt → validate → emit-proposal**. It writes to `knowledge.pending.jsonl`, *never* to source or TTL. `scripts/offline/describe-entities.ts` is the model.
+3. **Opus** — cross-file architectural reasoning, deciding process, triaging the queue the other tiers fill, and writing code that lands.
+
+**Offloading is not free.** A local job that emits 30 findings of which 25 are noise moves cost from generation to *triage* rather than removing it; deterministic checks have zero triage cost because they're right by construction. So **prefer growing the script tier over the agent tier**, and measure with `npm run session:tokens`.
+
+**Promotion ladder**: anything Opus does twice becomes an agent job or a script; anything an agent gets right *reliably* is demoted to a script — reliability proves the rule was expressible. Opus designs the harness; the local model is a plugin inside it (the PR #43 devstral lesson: local models hallucinate conventions and mangle serialization, so ground-first and validate).
+
+Jobs live in `scripts/offline/jobs.json` with a `tier` field. `npm run offline:all` runs script tier first; `npm run offline:all -- --tier=script` runs only the free ones.
+
 ### TTL-first documentation policy
 
 This project uses TTL knowledge bases as the primary documentation format. **Do NOT create new docs/*.md files.** Instead:
