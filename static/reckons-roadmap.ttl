@@ -464,8 +464,10 @@ kb:history-mode rdf:type    ktype:Feature ;
                kpred:description  "Timeline slider to view graph state at any past timestamp. Ghost mode in graph." .
 
 kb:trust-system rdf:type    ktype:Feature ;
-               kpred:test-coverage "none" ;
-               kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
+               kpred:tested-by    "src/lib/storage/__tests__/trust.test.ts" ;
+               kpred:has-file     "src/lib/storage/trust.ts" ;
+               kpred:known-issue  "FIXED 2026-07-12 — CONFIRMING A FACT MADE ITS SOURCE LESS TRUSTED. Trust events are DELTAS (confirm +0.05, reject -0.1), but getTrustScore returned the baseline (0.3 review / 0.8 trusted) ONLY when there were zero events, and the bare SUM OF DELTAS as soon as any event existed. So the first confirmation DISCARDED the baseline: a review source fell 0.3 -> 0.05 for the crime of being confirmed, and a trusted source collapsed 0.8 -> 0.05. It took 16 confirmations just to climb back to where it started. Now: score = baseline + sum(delta * exp(-0.01 * ageDays)), clamped [0,1]. The scoring maths was extracted to src/lib/storage/trust.ts so it could be tested at all — the bug survived because it was tangled with Dexie access inside the store. This is exactly the class of defect the untested-production audit was looking for." ;
+               kpred:description  "Sources carry a trust score in [0,1]: a baseline (0.8 for a trusted source, 0.3 for one awaiting review) moved by the user's own judgements, with confirmations raising it and rejections lowering it roughly twice as hard. Judgements decay exponentially (~1%/day), so recent evidence dominates and a source can recover from a bad patch rather than being condemned forever — and cannot coast indefinitely on old approvals." ;
                rdfs:label   "Trust System" ;
                kpred:has-status   "production" ;
                kpred:description  "Source trust levels (trusted/review). Auto-confirm for trusted sources." .
