@@ -90,7 +90,8 @@
     "kb:stats": "npx tsx tests/bench/run-kb-workflow.ts stats",
     "kb:review": "npx tsx tests/bench/run-kb-workflow.ts review --save",
     "kb:reckon": "npx tsx tests/bench/run-kb-workflow.ts reckon --save",
-    "kb:search": "npx tsx tests/bench/run-kb-workflow.ts search"
+    "kb:search": "npx tsx tests/bench/run-kb-workflow.ts search",
+    "session:tokens": "npx tsx scripts/session-tokens.ts"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
