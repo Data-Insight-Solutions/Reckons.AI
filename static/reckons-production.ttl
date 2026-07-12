@@ -36,7 +36,7 @@ kb:reckons-ai  rdf:type          ktype:Application ;
                kpred:has-feature kb:source-refresh ;
                kpred:has-feature kb:cross-kb-alignment ;
                kpred:has-feature kb:n8n-cloud-sync ;
-               kpred:has-feature kb:entity-normalisation ;
+               kpred:has-feature kb:entity-normalization ;
                kpred:has-feature kb:mcp-workspace ;
                kpred:has-feature kb:graph-publishing ;
                kpred:has-feature kb:local-offload ;
@@ -217,7 +217,7 @@ kb:graph-alignment-setup rdf:type ktype:Concept ;
 
 kb:entity-normalization rdf:type ktype:Feature ;
                     rdfs:label   "Entity Normalization" ;
-                    kpred:honest-note  "IRI corrected kb:entity-normalisation -> kb:entity-normalization (2026-07-12). The americanization sweep renamed the LABEL but not the IRI, leaving this graph pointing at a second, British-spelled entity that RDF treated as a different thing from the roadmap's kb:entity-normalization. Same feature, two IRIs, one of them claiming F22." ;
+                    kpred:honest-note  "IRI corrected kb:entity-normalization -> kb:entity-normalization (2026-07-12). The americanization sweep renamed the LABEL but not the IRI, leaving this graph pointing at a second, British-spelled entity that RDF treated as a different thing from the roadmap's kb:entity-normalization. Same feature, two IRIs, one of them claiming F22." ;
                     kpred:has-status   "production" ;
                     kpred:description  "Post-extraction IRI rewriting using embedding similarity. Prevents duplicate entities entering review queue." ;
                     kpred:uses         kb:bge-small ;
@@ -401,6 +401,7 @@ kb:test-mcp         rdf:type     ktype:TestCategory ;
 
 kb:ingest-pipeline  rdf:type     ktype:Feature ;
                     rdfs:label   "Ingest Pipeline" ;
+                    kpred:description  "Processes and integrates content from many source types into the graph: notes, URLs, documents, reminders, repositories, calendars, vaults, folders, raw RDF triples, and kb-imports. Each is transformed into structured RDF triples that can be queried and linked, so information from scattered origins consolidates into one personal knowledge graph." ;
                     kpred:has-status   "production" ;
                     kpred:has-source-type "note" ;
                     kpred:has-source-type "url" ;

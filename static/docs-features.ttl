@@ -242,7 +242,7 @@ feat:ContextCompression
 ## Entity Normalisation
 ## =============================================================================
 
-feat:EntityNormalisation
+feat:EntityNormalization
     rdf:type            ktype:Concept ;
     rdfs:label          "Entity Normalization" ;
     skos:definition     "Post-extraction normalization that rewrites incoming IRIs to match existing graph entities and predicates using embedding similarity. Prevents duplicate entities like 'octopus-vulgaris' vs 'common-octopus' from entering the review queue. Two-pass matching: exact label (case-insensitive) then cosine similarity (0.90 entity, 0.88 predicate). Protected standard vocabularies (rdf:, rdfs:, skos:, xsd:) are never remapped." ;
@@ -267,13 +267,15 @@ feat:MCPWorkspace
 
 feat:ConfluenceMigration
     rdf:type            ktype:Feature ;
+    kpred:has-status    "planned" ;
     rdfs:label          "Confluence Migration" ;
     skos:definition     "Bulk import from Confluence spaces. Upload an HTML export ZIP, parse the page tree, chunk large pages with sliding window (10K chars, 2K overlap), and extract triples using local models (Ollama recommended). Preserves page hierarchy as skos:broader, converts Confluence labels to entity types, tracks provenance per page. Pause/resume checkpoint for overnight imports of large spaces." ;
     skos:broader        feat:Ingest ;
-    skos:related        feat:EntityNormalisation .
+    skos:related        feat:EntityNormalization .
 
 feat:TextChunking
     rdf:type            ktype:Feature ;
+    kpred:has-status    "planned" ;
     rdfs:label          "Text Chunking" ;
     skos:definition     "Sliding window chunking for sources exceeding the 12K character extraction limit. Each chunk gets a context header (source title, chunk N of M, parent page). Cross-chunk deduplication merges triples with identical (subject, predicate, object) after slugification. Benefits all source types, not just Confluence." ;
     skos:broader        feat:Ingest .
@@ -302,6 +304,7 @@ feat:TurtlePersona
 
 feat:GitAnalysis
     rdf:type            ktype:Feature ;
+    kpred:has-status    "functional" ;
     rdfs:label          "Git Analysis" ;
     skos:definition     "Git-aware MCP tools for agent plan alignment. Tools: kb_git_status (branch/commits), kb_check_plan (BM25 drift detection), kb_pending (review queue), kb_git_diff_triples (file-to-Graph cross-ref), kb_alignment_score (quantitative 0-1 score across 4 dimensions: coverage, status alignment, dependency respect, scope discipline). Enhanced kb_add_note supports type, priority, agent, and commit_sha metadata." ;
     skos:broader        feat:MCPWorkspace .

@@ -186,10 +186,20 @@ for (const { q, file } of quads) {
 }
 
 // ── incomplete: a feature nobody can act on.
+//
+// A description may be stated as kpred:description OR skos:definition — the docs KBs
+// use skos:definition, which is the STANDARD vocabulary and better practice than our
+// custom predicate. Demanding kpred:description specifically produced three phantom
+// findings, and the local describe-entities agent dutifully drafted descriptions for
+// entities that already had perfectly good ones. A lint that invents work is worse
+// than no lint: it spends the agent tier, and then it spends the reviewer.
+const SKOS_DEFINITION = 'http://www.w3.org/2004/02/skos/core#definition';
+const describes = (s: string) => has(s, KPRED + 'description') || has(s, SKOS_DEFINITION);
+
 for (const subject of features) {
   const missing = [
     !has(subject, RDFS_LABEL) && 'rdfs:label',
-    !has(subject, KPRED + 'description') && 'kpred:description',
+    !describes(subject) && 'a description (kpred:description or skos:definition)',
     !has(subject, KPRED + 'has-status') && 'kpred:has-status',
   ].filter(Boolean);
   if (missing.length) {
