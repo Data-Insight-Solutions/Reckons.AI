@@ -1,0 +1,46 @@
+## ---------------------------------------------------------------------------
+## Reckons.AI — Asset viewer demo (image · video · 3D/GLB)
+## ---------------------------------------------------------------------------
+## A tiny self-contained graph to try the asset viewer across types. Select a
+## node, click its thumbnail to expand large, click again for fullscreen. Turn on
+## "assets → auto-expand" in the graph menu to open each as you move node to node.
+##
+## Load it with Add-from-URL (no LLM): paste /starter-assets.ttl on the ingest tab.
+## ---------------------------------------------------------------------------
+
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ktype: <urn:kbase:type/> .
+@prefix kb:    <urn:kbase:concept/> .
+@prefix p:     <urn:kbase:predicate/> .
+@prefix kmeta: <urn:kbase:meta/> .
+
+ktype:Asset
+    rdf:type   ktype:EntityType ; rdfs:label "Asset" ;
+    p:icon "octahedron" ; p:color "#6dd3c4" .
+
+kb:asset-demo
+    rdf:type       ktype:Asset ;
+    rdfs:label     "Asset viewer demo" ;
+    rdfs:comment   "Three asset kinds, one viewer. Select each and expand it." ;
+    p:has          kb:demo-image ;
+    p:has          kb:demo-video ;
+    p:has          kb:demo-model .
+
+kb:demo-image
+    rdf:type       ktype:Asset ;
+    rdfs:label     "Image asset" ;
+    rdfs:comment   "A rooted image path resolves as a normal preview; click to expand." ;
+    p:photo        "/visual-review/01.png" .
+
+kb:demo-video
+    rdf:type       ktype:Asset ;
+    rdfs:label     "Video asset" ;
+    rdfs:comment   "A video plays inline in the large/fullscreen viewer." ;
+    p:video        "/video/turtle-sample.webm" .
+
+kb:demo-model
+    rdf:type       ktype:Asset ;
+    rdfs:label     "3D model (GLB)" ;
+    rdfs:comment   "A Meshy.ai-generated turtle. Renders in the graph and orbit-viewable fullscreen." ;
+    kmeta:glbModel "/glb/Meshy_AI_Turtle_1.glb" .

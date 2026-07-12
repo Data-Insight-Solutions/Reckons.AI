@@ -1080,6 +1080,31 @@ kb:int-meshy   rdf:type     ktype:Tool ;
                kpred:has-status   "production" ;
                kpred:provides     "3D model generation" .
 
+## -- F74: Asset viewer + generation (image · video · 3D/GLB) --------------------
+kb:asset-viewer rdf:type     ktype:Feature ;
+               rdfs:label   "Asset viewer (image · video · 3D/GLB)" ;
+               kpred:feature-id   "F74" ;
+               kpred:has-status   "functional" ;
+               kpred:description  "A node's asset opens in three levels — normal thumbnail (settings-adjustable) → large (covers most of the graph) → fullscreen. Renders per kind: <img>, <video controls>, and an orbitable GLB canvas (AssetGlbViewer, threlte). Resolves urn:kbase:meta/glbModel (3D), urn:kbase:predicate/video, then image previews. 'assets → auto-expand' in the graph menu opens each asset as you navigate (story/explore). GLB loading now wires a locally-served Draco decoder (static/draco/), so Meshy/compressed GLBs render everywhere (graph + viewer). Demo: static/starter-assets.ttl." ;
+               kpred:done         "AssetGlbViewer.svelte; +page.svelte asset viewer + kind resolution + auto-expand; nodePreviewSize setting; Draco decoder in GraphNode loader." .
+
+kb:asset-generation rdf:type ktype:Feature ;
+               rdfs:label   "Asset generation (video · 3D/GLB)" ;
+               kpred:feature-id   "F74.1" ;
+               kpred:has-status   "planned" ;
+               kpred:relates-to   kb:asset-viewer ;
+               kpred:relates-to   kb:int-meshy ;
+               kpred:description  "Generate the assets the viewer shows, local-first where feasible. 3D/GLB: Meshy.ai already integrated (kb:int-meshy) for text/image→3D; local open-source 3D-gen (e.g. TRELLIS/InstantMesh via a Python sidecar + GPU) is speculative and heavy. VIDEO: not WASM/browser-feasible today — text/image-to-video models (LTX-Video, CogVideoX, AnimateDiff) need a GPU sidecar (ComfyUI/diffusers) or a cloud API; transformers.js has no video-gen support. So: cloud/service for video now, local behind an optional GPU sidecar later (shares the NeMo/Cosmos sidecar direction). Keep everything opt-in per Integration Boundaries; report failures, never block." ;
+               kpred:open-question "First local path: a shared Python GPU sidecar (Cosmos/NeMo/ComfyUI) exposed like Ollama? Which is the realistic default for a subscription user with no local GPU — Meshy (3D) + a cloud video API?" .
+
+kb:aggressive-local-offload rdf:type ktype:Feature ;
+               rdfs:label   "Aggressive local-model offload (extend working time)" ;
+               kpred:feature-id   "F74.2" ;
+               kpred:has-status   "planned" ;
+               kpred:relates-to   kb:local-offload ;
+               kpred:description  "Push token savings hard so a subscription lasts all day: prefer LOCAL models (Ollama, WASM) for more per-task work by default — chat, diff-summary, merge analysis, extraction on trusted sources — reserving cloud/Opus for the hard cases and review. Coding + VLM local models have improved (recent benches), so raise how often they're the default. Surface a clear per-task 'local vs cloud' policy in Settings, and REPORT failures/low-confidence (fall back + flag for review) rather than silently degrading. Ties into per-task backends + kb:n8n-review-notifications for failure surfacing." ;
+               kpred:open-question "Which tasks are safe to move to local-by-default without hurting quality (measure against the comparison bench)? A single 'maximize local' toggle vs. per-task control?" .
+
 kb:int-firecrawl rdf:type   ktype:Tool ;
                rdfs:label   "Firecrawl" ;
                kpred:has-status   "production" ;

@@ -10,11 +10,19 @@
 
   export async function loadGltfTemplate(url: string): Promise<THREE.Object3D> {
     if (!_gltfCache.has(url)) {
-      const p = import('three/examples/jsm/loaders/GLTFLoader.js').then(({ GLTFLoader }) =>
-        new Promise<THREE.Object3D>((resolve, reject) =>
-          new GLTFLoader().load(url, (gltf) => resolve(gltf.scene), undefined, reject)
-        )
-      );
+      const p = (async () => {
+        const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
+        const loader = new GLTFLoader();
+        // Many GLBs (e.g. Meshy.ai exports) are Draco-compressed; wire a locally
+        // served decoder (static/draco/, CSP-safe) or they load to nothing.
+        const { DRACOLoader } = await import('three/examples/jsm/loaders/DRACOLoader.js');
+        const draco = new DRACOLoader();
+        draco.setDecoderPath('/draco/gltf/');
+        loader.setDRACOLoader(draco);
+        return new Promise<THREE.Object3D>((resolve, reject) =>
+          loader.load(url, (gltf) => resolve(gltf.scene), undefined, reject)
+        );
+      })();
       _gltfCache.set(url, p);
     }
     return _gltfCache.get(url)!;

@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
   import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
+  import AssetGlbViewer from '$lib/components/AssetGlbViewer.svelte';
   import StatementCard from '$lib/components/StatementCard.svelte';
   import LandingPage from '$lib/components/LandingPage.svelte';
   import SourcesPanel from '$lib/components/SourcesPanel.svelte';
@@ -874,7 +875,37 @@
   // rich asset types. expandedAssetKey holds the node whose image is enlarged.
   let expandedAssetKey = $state<string | null>(null);
   let assetFullscreen = $state(false);
-  const expandedAssetUrl = $derived(expandedAssetKey ? previewUrlFor(iriFromNodeKey(expandedAssetKey)) : null);
+  // Rich assets beyond images: 3D models (glbModel) and video. Resolved per node
+  // so the viewer can render <img> / <video> / a GLB canvas.
+  const glbModelMap = $derived.by(() => {
+    const m = new Map<string, string>();
+    for (const s of statements()) {
+      if (s.p.value === 'urn:kbase:meta/glbModel' && s.s.kind === 'iri' && s.o.kind === 'literal') {
+        const v = s.o.value;
+        if (v.startsWith('/') || v.startsWith('http') || v.startsWith('data:')) m.set(s.s.value, v);
+      }
+    }
+    return m;
+  });
+  const videoMap = $derived.by(() => {
+    const m = new Map<string, string>();
+    for (const s of statements()) {
+      if (s.p.value === 'urn:kbase:predicate/video' && s.s.kind === 'iri' && s.o.kind === 'literal') {
+        const v = s.o.value;
+        if (v.startsWith('/') || v.startsWith('http') || v.startsWith('data:')) m.set(s.s.value, v);
+      }
+    }
+    return m;
+  });
+  type NodeAsset = { kind: 'image' | 'video' | 'glb'; url: string };
+  function nodeAssetFor(iri: string | null): NodeAsset | null {
+    if (!iri) return null;
+    const glb = glbModelMap.get(iri); if (glb) return { kind: 'glb', url: glb };
+    const vid = videoMap.get(iri);   if (vid) return { kind: 'video', url: vid };
+    const img = previewUrlFor(iri);  if (img) return { kind: 'image', url: img };
+    return null;
+  }
+  const expandedAsset = $derived(nodeAssetFor(expandedAssetKey ? iriFromNodeKey(expandedAssetKey) : null));
   function collapseAsset() { expandedAssetKey = null; assetFullscreen = false; }
   const autoExpandAssets = $derived(settings().autoExpandAssets ?? false);
 
@@ -883,8 +914,8 @@
   // if the user went there. Manual mode leaves expansion to a thumbnail click.
   $effect(() => {
     if (!autoExpandAssets) return;
-    const url = selected ? previewUrlFor(iriFromNodeKey(selected)) : null;
-    if (url) expandedAssetKey = selected;
+    const a = selected ? nodeAssetFor(iriFromNodeKey(selected)) : null;
+    if (a) expandedAssetKey = selected;
     else { expandedAssetKey = null; assetFullscreen = false; }
   });
 
@@ -1840,17 +1871,20 @@
          selected/highlighted nodes. Click it to expand large (→ fullscreen).
          Hidden while this node's image is the expanded one. -->
     {#if (alwaysPreviews || n.key === selected || highlightedSet.has(n.key)) && n.key !== expandedAssetKey}
-      {@const purl = previewUrlFor(iriFromNodeKey(n.key))}
-      {#if purl}
-        <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
-        <img
-          class="node-preview-thumb"
-          src={purl}
-          alt=""
-          loading="lazy"
-          style="width: {nodePreviewSize}px; height: {nodePreviewSize}px;"
-          onclick={(e) => { e.stopPropagation(); expandedAssetKey = n.key; assetFullscreen = false; }}
-        />
+      {@const a = nodeAssetFor(iriFromNodeKey(n.key))}
+      {#if a}
+        {@const dims = `width: ${nodePreviewSize}px; height: ${nodePreviewSize}px;`}
+        <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions a11y_no_static_element_interactions a11y_media_has_caption -->
+        {#if a.kind === 'image'}
+          <img class="node-preview-thumb" src={a.url} alt="" loading="lazy" style={dims}
+            onclick={(e) => { e.stopPropagation(); expandedAssetKey = n.key; assetFullscreen = false; }} />
+        {:else if a.kind === 'video'}
+          <video class="node-preview-thumb" src={a.url} muted loop autoplay playsinline style={dims}
+            onclick={(e) => { e.stopPropagation(); expandedAssetKey = n.key; assetFullscreen = false; }}></video>
+        {:else}
+          <div class="node-preview-thumb glb-badge" style={dims}
+            onclick={(e) => { e.stopPropagation(); expandedAssetKey = n.key; assetFullscreen = false; }}>◈ 3D</div>
+        {/if}
       {/if}
     {/if}
     <span
@@ -1927,24 +1961,40 @@
 
 <!-- Asset viewer — LARGE: covers most of the graph; clicking the surrounding
      graph (not the image) collapses to normal; clicking the image → fullscreen. -->
-{#if expandedAssetUrl && !assetFullscreen}
+{#if expandedAsset && !assetFullscreen}
   <div class="asset-large" transition:fade={{ duration: 140 }}>
-    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
-    <img src={expandedAssetUrl} alt="expanded asset" onclick={() => (assetFullscreen = true)} />
+    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions a11y_media_has_caption a11y_no_static_element_interactions -->
+    {#if expandedAsset.kind === 'image'}
+      <img src={expandedAsset.url} alt="expanded asset" onclick={() => (assetFullscreen = true)} />
+    {:else if expandedAsset.kind === 'video'}
+      <video class="asset-media" src={expandedAsset.url} controls autoplay loop playsinline></video>
+    {:else}
+      <div class="asset-media asset-glb" onclick={() => (assetFullscreen = true)}>
+        {#key expandedAsset.url}<AssetGlbViewer url={expandedAsset.url} />{/key}
+      </div>
+    {/if}
     <div class="asset-controls">
-      <button onclick={() => (assetFullscreen = true)} title="Fullscreen (or click the image)">⛶</button>
+      <button onclick={() => (assetFullscreen = true)} title="Fullscreen">⛶</button>
       <button onclick={collapseAsset} title="Close">✕</button>
     </div>
   </div>
 {/if}
 
-<!-- Asset viewer — FULLSCREEN: for images and other rich asset types. Click the
-     backdrop to step back to large; ✕ or Esc closes. -->
-{#if expandedAssetUrl && assetFullscreen}
+<!-- Asset viewer — FULLSCREEN: images, video, and 3D/GLB. Click the backdrop to
+     step back to large; ✕ or Esc closes. -->
+{#if expandedAsset && assetFullscreen}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div class="asset-fullscreen" onclick={() => (assetFullscreen = false)} transition:fade={{ duration: 140 }}>
-    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
-    <img src={expandedAssetUrl} alt="fullscreen asset" onclick={(e) => e.stopPropagation()} />
+    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions a11y_media_has_caption -->
+    {#if expandedAsset.kind === 'image'}
+      <img src={expandedAsset.url} alt="fullscreen asset" onclick={(e) => e.stopPropagation()} />
+    {:else if expandedAsset.kind === 'video'}
+      <video class="asset-fs-media" src={expandedAsset.url} controls autoplay loop playsinline onclick={(e) => e.stopPropagation()}></video>
+    {:else}
+      <div class="asset-fs-media asset-glb" onclick={(e) => e.stopPropagation()}>
+        {#key expandedAsset.url}<AssetGlbViewer url={expandedAsset.url} />{/key}
+      </div>
+    {/if}
     <button class="asset-fs-close" onclick={collapseAsset} title="Close (Esc)">✕</button>
   </div>
 {/if}
@@ -3371,7 +3421,8 @@
     pointer-events: none; /* clicks around the image fall through to the graph → collapse */
     z-index: 380;
   }
-  .asset-large img {
+  .asset-large img,
+  .asset-large .asset-media {
     max-width: 80vw;
     max-height: 78vh;
     object-fit: contain;
@@ -3381,6 +3432,39 @@
     background: var(--surface-2);
     pointer-events: auto;
     cursor: zoom-in;
+  }
+  .asset-media { display: block; }
+  /* GLB canvas needs explicit dimensions (threlte fills its container). */
+  .asset-glb {
+    width: min(80vw, 900px);
+    height: 78vh;
+  }
+  .asset-fs-media {
+    max-width: 96vw;
+    max-height: 94vh;
+    border-radius: var(--rad-sm);
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.7);
+    pointer-events: auto;
+  }
+  .asset-fullscreen .asset-glb {
+    width: 96vw;
+    height: 94vh;
+    max-width: none;
+    max-height: none;
+  }
+  /* GLB thumbnail badge (nodes already render their model in-graph; this is the
+     click target to open the fullscreen 3D viewer). */
+  .node-preview-thumb.glb-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--accent);
+    background: var(--surface);
+    width: auto !important;
+    height: auto !important;
+    padding: 0.2rem 0.45rem;
   }
   .asset-controls {
     position: absolute;
