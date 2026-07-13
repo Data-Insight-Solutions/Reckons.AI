@@ -1559,8 +1559,17 @@ kb:local-orchestration rdf:type ktype:Feature ;
                kpred:description  "Tasks, schedules and outcomes live in the graph and run locally. A task is an entity (what to do, which TIER it belongs to, what it depends on, what question blocks it); a schedule is a triple; a run writes its result back as facts. That makes the whole loop QUERYABLE: what ran, what it found, what it is waiting on, what it never got to. Local Ollama/WASM agents drain the unblocked queue continuously; Claude Code takes what needs frontier reasoning; the human answers questions whenever they like. Nothing waits on anything it does not have to." ;
                kpred:principle    "A scheduler you cannot observe is not a scheduler, it is a rumour. Every run writes its outcome back to the graph — including 'I did nothing, and here is why'." ;
                kpred:principle    "Silence must never look like success. The cloud cron fired, produced nothing, and reported nothing; that is the failure mode to design against." ;
+               kpred:correction   "PRECISION, 2026-07-13: the cron did NOT fail. It fired on time (last_fired_at 20:40:18Z, exactly as scheduled). What failed was the RUNNER (the cloud agent produced no commits) and the OBSERVABILITY (nothing reported that). Blaming the scheduling primitive would lead to fixing the wrong component. The lesson is about runners and reporting, not about cron." ;
+               kpred:principle    "THE QUEUE IS THE CONTRACT; THE RUNNER IS PLUGGABLE. Do not choose between cron and the browser — they optimize different axes. cron gives RELIABLE TIMING on a NARROW set of machines (Unix-only; Windows needs Task Scheduler; it does not exist on phone or tablet; the machine must be awake). A Web Worker gives BROAD REACH with OPPORTUNISTIC timing (every device, one codebase, but only while the app is open). Put the task queue in the GRAPH, and let any runner drain it: the in-app Worker by default (all devices), an optional desktop process for wake-when-closed (driven by cron/launchd/Task Scheduler), the MCP server when an agent is already talking to it. Each runner claims tasks and writes outcomes back. No runner is load-bearing, so none of them failing silently can stop the system — and the queue tells you which ones are actually doing anything." ;
                kpred:remaining    "Task entities + kpred:runs-at / kpred:blocked-by; a local runner draining the unblocked queue; run outcomes written back as facts; surface the queue in-app." ;
-               kpred:open-question "Where does the runner live — a node process beside the workspace, a service worker in the app, or the MCP server? The MCP server is already the thing agents talk to, which argues for it." .
+               kpred:decided      "WEB WORKER IN THE APP (Matt, 2026-07-13), for cross-device reach. The browser is the most portable runtime there is, and it is already open all day — so the local tier lives where the user already is: desktop, laptop, tablet, phone, same code. WASM models (transformers.js) run inside a Worker, so the whole local tier ships with the app and needs nothing installed." ;
+               kpred:constraint   "HONEST LIMIT — A WORKER CANNOT BE A SCHEDULER. A Web Worker lives only while a tab is open. A Service Worker survives page close but browsers kill idle ones in ~30s, and true timed wakeup (Periodic Background Sync) is Chromium-only, needs an INSTALLED PWA, and is gated behind engagement heuristics — Safari and Firefox do not implement it. So 'fire at 3:40 with nothing open' is not something the browser will honestly deliver on every device, and designing as if it will is how you get another silent failure." ;
+               kpred:principle    "DO NOT SCHEDULE — DRAIN. Invert the model: a task carries a due-time, and whenever the app is open the Worker drains everything unblocked and due. 'Run at T' becomes 'the next time you are here, this is ready'. That is strictly MORE reliable than the cron that fired and silently did nothing, because the queue and its outcomes are visible in the app: the user can SEE what ran, what is waiting, and what it is waiting on." ;
+               kpred:principle    "Tiers by reach, not by preference. WASM-in-Worker is the only tier that runs on EVERY device, so it is the default local tier. Ollama is desktop-only (it needs localhost) and is an upgrade, not a requirement. Claude Code is the frontier tier. A task declares the weakest tier that can do it correctly, and the strongest available one takes it." ;
+               kpred:remaining    "Task entities + kpred:due-at / kpred:blocked-by / kpred:min-tier; a Web Worker queue drainer (WASM tier); run outcomes written back as facts; the queue surfaced in-app so it is observable." ;
+               kpred:decided      "INSTALLABLE PWA (Matt, 2026-07-13). Already configured (@vite-pwa/sveltekit, vite.config.ts) — installable, offline-capable, on the home screen. Worth it on its own merits regardless of scheduling." ;
+               kpred:constraint   "AN INSTALLED PWA IS STILL NOT A SCHEDULER. Periodic Background Sync unlocks on Chromium once installed, but the BROWSER decides whether and how often it fires, from engagement heuristics — commonly no more than once every ~12h, and never at a time you choose. Safari and Firefox do not implement it. So treat it as an OPPORTUNISTIC BONUS on top of drain-when-open, never a foundation. Building on it would reproduce exactly the failure we just had: a scheduler that looks armed and quietly does nothing." ;
+               kpred:open-question "For users who genuinely need wake-when-CLOSED at a chosen time: that is an OS capability, not a browser one. An optional desktop companion (or the existing MCP server) could do it. But for a local-first tool, 'work happens when the app is open' may simply be the honest bargain — and the app is open all day anyway." .
 
 # -- F82: Browser fact-finding sessions (extension) ------------------------------
 # The extension already has a Session tab. The missing half is the GRAPH: while you read,
@@ -1579,6 +1588,48 @@ kb:browser-fact-finding rdf:type ktype:Feature ;
                kpred:remaining    "Highlight → candidate triples with excerpts; on-demand deep analysis; graph query by key terms + page content; a link-confidence threshold below which we propose NO relation rather than a weak one." ;
                kpred:open-question "What similarity floor counts as 'genuinely overlapping'? Set it too low and every page connects to everything, which is the same as connecting to nothing — the graph becomes a hairball and its edges stop meaning anything." ;
                kpred:depends-on   kb:browser-extension .
+
+# -- Predicate economy: the edge TYPE is the signal ------------------------------
+# Matt, 2026-07-13, answering kpred:link-similarity-floor. Two claims, and the second
+# is the one that actually matters:
+#
+#   1. ~80% confidence is the bar, and it is SEMANTIC, not lexical — a synonym is a
+#      likely connection, so embeddings, not string equality.
+#   2. THE PREDICATE IS THE MAIN CLUE TO A VALID LINK. Not the entity labels.
+#
+# Two nodes whose labels are synonyms is weak evidence. Two nodes joined by a MEANINGFUL
+# predicate is strong evidence. And "is related to" is BS: it is a non-link wearing the
+# costume of a link. It adds an edge, adds no knowledge, and makes the graph look
+# connected while telling you nothing about HOW.
+#
+# The flip side is just as real. Graph value leans on the number of connection TYPES more
+# than the number of connections: a vocabulary that is reused generalizes, and one that
+# sprawls does not. Every predicate used exactly once is a private word — it cannot be
+# queried across, cannot be reasoned over, and cannot be learned from.
+#
+# WE ARE GUILTY OF BOTH (measured 2026-07-13 across static/*.ttl): 351 edges (5.8%) are
+# `related`/`relates-to` — and we say that same nothing in TWO vocabularies (skos:related
+# 219, kpred:relates-to 128). Meanwhile 49 of 237 predicate types (21%) are used exactly
+# once. Generic mush at one end, private sprawl at the other.
+
+kb:predicate-economy rdf:type  ktype:Concept ;
+               rdfs:label   "Predicate economy" ;
+               kpred:part-of      kb:knowledge-graph ;
+               kpred:description  "A link is judged by its PREDICATE, not by the similarity of the things it joins. Proposing an edge means proposing a specific relation; if no specific relation is true, the honest answer is no edge. The vocabulary of predicates should be small and heavily reused, because a graph's power comes from generalizing across shared relation types — an edge type used once explains nothing." ;
+               kpred:principle    "The predicate is the main clue to a valid link. Label similarity alone is weak evidence; a meaningful relation is strong evidence." ;
+               kpred:principle    "'is related to' is a non-link wearing the costume of a link. It adds an edge and no knowledge. Prefer NO edge to a generic one." ;
+               kpred:principle    "Prefer an EXISTING predicate. Mint a new one only when no existing predicate expresses the relation — and never fall back to relates-to when you cannot think of one. Not being able to name the relation IS the finding: it means there probably is not one." ;
+               kpred:principle    "Graph value leans on the number of connection TYPES more than the number of connections. A predicate used exactly once is a private word: unqueryable, ungeneralizable." ;
+               kpred:measured     "2026-07-13, static/*.ttl: 6016 edges across 237 predicate types (25.4 edges/type). 351 edges (5.8%) are relates-to/related — and in TWO vocabularies at once. 49 of 237 types (21%) are single-use. Enforced by scripts/offline/graph-lint.ts (predicate-economy)." ;
+               kpred:tension      "Both failure modes are real and they pull opposite ways: too few types and everything collapses into 'related-to' mush; too many and every edge is a private word. The target is a small vocabulary, heavily reused, each term earning its place." .
+
+kb:link-confidence rdf:type    ktype:Concept ;
+               rdfs:label   "Link confidence threshold" ;
+               kpred:part-of      kb:browser-fact-finding ;
+               kpred:decided      "~0.80 (Matt, 2026-07-13). SEMANTIC similarity, not lexical: the same word is not required, a synonym is a likely connection — so embeddings (kb:embedding-model), not string matching." ;
+               kpred:principle    "Below the bar, propose NOTHING. A forced link is worse than an orphan: disconnected data is merely less valuable, whereas an invented edge is a lie the graph tells itself — the same failure as a fabricated citation (kb:passage-grounding). It looks like knowledge and it is not." ;
+               kpred:principle    "Confidence in the ENTITY match is necessary but not sufficient. The link must also name a real relation (kb:predicate-economy). Two entities being 80% the same thing does not tell you HOW they connect." ;
+               kpred:relates-to   kb:predicate-economy .
 
 kb:int-firecrawl rdf:type   ktype:Tool ;
                rdfs:label   "Firecrawl" ;

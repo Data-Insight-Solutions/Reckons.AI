@@ -185,6 +185,44 @@ for (const { q, file } of quads) {
   }
 }
 
+// ── predicate-economy: the edge TYPE is the signal (kb:predicate-economy).
+//
+// Two failure modes, pulling opposite ways:
+//
+//   MUSH   — "is related to" is a non-link wearing the costume of a link. It adds an edge
+//            and no knowledge, and makes the graph LOOK connected while saying nothing
+//            about HOW. Prefer no edge to a generic one.
+//   SPRAWL — a predicate used exactly once is a private word: unqueryable, ungeneralizable.
+//            A graph's power comes from REUSING a small vocabulary, so every new predicate
+//            type must earn its place.
+//
+// This warns rather than errors: the right fix is usually "name the real relation", which
+// is a human judgement, not a mechanical one. But it must be VISIBLE, or it compounds.
+const LOW_INFORMATION = /^(relates?-to|related|is-related-to|associated-with|see-also|link|connected-to)$/i;
+const localName = (iri: string) => iri.split(/[/#]/).pop() ?? iri;
+
+const predCounts = new Map<string, number>();
+for (const { q } of quads) predCounts.set(q.predicate.value, (predCounts.get(q.predicate.value) ?? 0) + 1);
+
+const totalEdges = quads.length;
+for (const [pred, n] of predCounts) {
+  if (!LOW_INFORMATION.test(localName(pred))) continue;
+  const pct = ((100 * n) / totalEdges).toFixed(1);
+  add('warn', 'predicate-economy', fileOf(pred) === '?' ? 'static/' : fileOf(pred), pred,
+    `${n} edges (${pct}% of the graph) use "${localName(pred)}" — a generic relation that adds an edge and no knowledge. ` +
+    `Name the real relation, or drop the edge: a forced link is worse than an orphan.`);
+}
+
+const singleUse = [...predCounts].filter(([, n]) => n === 1);
+if (singleUse.length > 0 && predCounts.size > 0) {
+  const pct = Math.round((100 * singleUse.length) / predCounts.size);
+  if (pct >= 15) {
+    add('warn', 'predicate-economy', 'static/', 'urn:kbase:predicate/',
+      `${singleUse.length} of ${predCounts.size} predicate types (${pct}%) are used exactly ONCE — private words that generalize nothing. ` +
+      `Graph value leans on the number of connection TYPES more than the number of connections; prefer an existing predicate before minting a new one.`);
+  }
+}
+
 // ── incomplete: a feature nobody can act on.
 //
 // A description may be stated as kpred:description OR skos:definition — the docs KBs
@@ -216,7 +254,7 @@ if (JSON_OUT) {
 } else {
   const B = '\x1b[1m', D = '\x1b[2m', R = '\x1b[31m', Y = '\x1b[33m', G = '\x1b[32m', X = '\x1b[0m';
   console.log(`${B}Graph lint${X} — ${quads.length} quads across ${files.length} graph(s)\n`);
-  for (const group of ['parse', 'egress-gate', 'dead-link', 'bad-status', 'duplicate-id', 'dangling-ref', 'incomplete']) {
+  for (const group of ['parse', 'egress-gate', 'dead-link', 'bad-status', 'duplicate-id', 'dangling-ref', 'predicate-economy', 'incomplete']) {
     const hits = findings.filter((f) => f.check === group);
     if (!hits.length) continue;
     const c = hits[0].level === 'error' ? R : Y;
