@@ -1631,6 +1631,41 @@ kb:link-confidence rdf:type    ktype:Concept ;
                kpred:principle    "Confidence in the ENTITY match is necessary but not sufficient. The link must also name a real relation (kb:predicate-economy). Two entities being 80% the same thing does not tell you HOW they connect." ;
                kpred:relates-to   kb:predicate-economy .
 
+# -- F83: Graph legibility — a 1888-triple graph is not a 1234-node graph -------
+# Matt opened the roadmap graph and found it unusable: 1,888 triples, and on many devices
+# it would not render at all. The diagnosis is not performance. It is a MODELLING MISTAKE
+# IN THE VIEW: every object became a node, INCLUDING LITERALS — so a 265-character
+# kpred:description was drawn as a node on the canvas.
+#
+# Measured on reckons-roadmap.ttl: 990 distinct literal values, of which 953 (96%) appear
+# EXACTLY ONCE. Each is a leaf that can never link anything to anything. Meanwhile only 383
+# triples (20%) are entity->entity — the actual graph.
+#
+# THE RULE: A LITERAL EARNS A NODE BY BEING SHARED.
+#   "production" appears 53 times -> a category. Every production feature hangs off it.
+#   a description appears once    -> it connects nothing. It is an ATTRIBUTE of its subject.
+#
+# This is kb:predicate-economy applied to VALUES instead of edges: a graph's power comes
+# from what is SHARED. A unique value generalizes nothing, and an edge to it teaches nobody.
+#
+# RESULT on the real roadmap: 1,234 nodes -> 271 (78% fewer). 985 walls of text moved off
+# the canvas and into the node panel, where they can actually be read. The graph did not get
+# smaller — it stopped lying about what was in it.
+
+kb:graph-legibility rdf:type   ktype:Feature ;
+               rdfs:label   "Graph legibility (attributes vs structure, filters, focus)" ;
+               kpred:feature-id   "F83" ;
+               kpred:has-status   "in-progress" ;
+               kpred:tested-by    "src/lib/rdf/__tests__/graph-view.test.ts" ;
+               kpred:has-file     "src/lib/rdf/graph-view.ts" ;
+               kpred:relates-to   kb:predicate-economy ;
+               kpred:description  "Make a large graph readable rather than merely rendered. (1) LITERALS ARE ATTRIBUTES, NOT NODES, unless shared: a value used once connects nothing and belongs in the node panel; a value used 53 times is a category worth seeing. (2) FILTER BY PREDICATE — 'just show me the dependency graph' — with facets sorted by count so structural relations surface first. (3) FILTER BY TIME, so a graph can be read as it grew. (4) PROGRESSIVE DISCLOSURE via top-by-degree, keeping only edges whose BOTH endpoints survive, so the canvas never shows an edge vanishing into nothing." ;
+               kpred:principle    "A literal earns a node by being SHARED. Appearing once means it connects nothing." ;
+               kpred:principle    "A graph is a picture of RELATIONSHIPS. A value that relates nothing to nothing is not part of that picture, however important it is to read." ;
+               kpred:principle    "The human has a context window too. kb_compress already refuses to hand an LLM the whole graph and hands it the relevant part instead; 1,234 nodes overruns a person exactly as surely as 116k tokens overruns a model. Show the part that matters." ;
+               kpred:measured     "reckons-roadmap.ttl: 1888 triples, 1234 nodes -> 271 (78% fewer). 985 attributes moved to the node panel. 27 shared literals earned category nodes (production, planned, functional, high...). 903 edges drawn instead of 1888." ;
+               kpred:remaining    "Predicate + time filters in the UI (the pure functions exist and are tested); focus/expand interaction; REVIEW at entity granularity — 233 entity cards, not 1888 triple cards, because reviewing 1888 rows one at a time is its own unusability." .
+
 kb:int-firecrawl rdf:type   ktype:Tool ;
                rdfs:label   "Firecrawl" ;
                kpred:has-status   "production" ;

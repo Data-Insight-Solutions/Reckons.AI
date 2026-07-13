@@ -2,6 +2,7 @@
   import { Canvas } from '@threlte/core';
   import { goto } from '$app/navigation';
   import KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
+  import { buildGraphView } from '$lib/rdf/graph-view';
   import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
   import AssetGlbViewer from '$lib/components/AssetGlbViewer.svelte';
   import StatementCard from '$lib/components/StatementCard.svelte';
@@ -369,6 +370,9 @@
   // FAB (it's an always-on panel on desktop, which would block the graph on a
   // phone). Desktop keeps the SnapPanel always open. (F36 phase 2b)
   let filterSheetOpen = $state(false);
+  /** Show shared literal values ("production", "high") as category nodes. Unique literals
+   *  are NEVER nodes — they are attributes (F83). */
+  let showCategoryNodes = $state(true);
   // Graph-package/sync controls in the filter panel are collapsed by default so
   // the panel stays short (filters + force fit without an inner scroll).
   let packageOpen = $state(false);
@@ -428,13 +432,29 @@
     return filtered;
   });
 
+  // F83 graph legibility: LITERALS ARE ATTRIBUTES, NOT NODES — unless they are shared.
+  //
+  // Every object used to become a node, so a 265-character kpred:description became one.
+  // The roadmap has 1,888 triples but only 233 real entities, and it was rendering as
+  // ~1,234 nodes — most of them dangling walls of text. Unusable on a phone, and the
+  // roadmap is the first graph anyone opens.
+  //
+  // A literal earns a node by being SHARED ("production", 53 features — a real category).
+  // A value that appears once connects nothing; it belongs in the node panel, not on the
+  // canvas. Nodes: 1,234 -> 271, and every one of them means something.
+  const graphView = $derived(buildGraphView(visible, { categoryNodes: showCategoryNodes }));
+  /** Statements the canvas actually draws. */
+  const drawn = $derived(graphView.edges);
+  /** Literal facts that belong to a node rather than the canvas (node panel reads these). */
+  const nodeAttributes = $derived(graphView.attributes);
+
   // Compute node degrees and build adjacency
   const { nodeDegrees, adjacency, allNodes } = $derived.by(() => {
     const degrees = new Map<string, number>();
     const adj = new Map<string, Set<string>>();
     const nodes = new Set<string>();
 
-    for (const st of visible) {
+    for (const st of drawn) {
       const sk = termKey(st.s);
       const ok = termKey(st.o);
 
