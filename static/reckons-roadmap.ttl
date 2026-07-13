@@ -340,11 +340,14 @@ kb:verified-badge rdf:type  ktype:Feature ;
                kpred:description  "A positive trust signal: a verified badge for a reviewed, accountable publisher or graph — distinct from the anonymous, un-hosted default. Rewards good-faith authors who put their name/domain behind a published graph, and gives readers a signal of provenance. Open question: what does verification attest (identity? a content review? a stable domain?) and who issues it." .
 
 kb:passage-grounding rdf:type ktype:Feature ;
-               kpred:test-coverage "none" ;
-               kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
                rdfs:label   "Passage Grounding" ;
                kpred:has-status   "production" ;
-               kpred:description  "Excerpt field on triples with verbatim source sentence. Persists via meta:excerpt in TTL reification." .
+               kpred:tested-by    "src/lib/rdf/__tests__/grounding.test.ts" ;
+               kpred:tested-by    "src/lib/integrations/llm/__tests__/extractor.test.ts" ;
+               kpred:has-file     "src/lib/rdf/grounding.ts" ;
+               kpred:description  "Every extracted triple carries an excerpt: the verbatim source sentence it was derived from. The excerpt is now VERIFIED against the source text — if the quote does not occur there, it is dropped and the statement's confidence is penalised (x0.6). Matching forgives cosmetic differences a reasonable reader would ignore (smart quotes, en/em dashes, wrapped whitespace, case) but nothing else, so a changed word or an invented sentence still fails. Where no source text is available the excerpt is marked unverifiable rather than accused: silence is not evidence of forgery. Persists via meta:excerpt in TTL reification." ;
+               kpred:known-issue  "FIXED 2026-07-12 — CITATIONS WERE NEVER CHECKED. The extraction prompt instructs the model 'copy it exactly - do not paraphrase', and nothing in the pipeline ever verified that it had. triplesToStatements stored whatever excerpt the model returned, and did not even RECEIVE the source text, so it structurally could not check. A model that paraphrased or invented a quote had it rendered to the user as provenance. Small models paraphrase constantly, so this was not hypothetical. For an app whose pitch is 'knowledge graph - provenance - trust', a FABRICATED CITATION is the worst failure available: the user checks the receipt, the receipt looks right, and it is a forgery. Now verified at ingest; a fabricated excerpt is DROPPED rather than displayed, because showing no citation is honest and showing a forged one is not." ;
+               kpred:principle    "Show the user no citation rather than a forged one." .
 
 kb:repo-ingest rdf:type     ktype:Feature ;
                rdfs:label   "Repository Ingest" ;

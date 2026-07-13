@@ -27,15 +27,13 @@ Finding another is a win, not a setback. Assume more are there.
 (`kpred:tested-by`) or DECLARE it has none (`kpred:test-coverage "none"`).** You may ship
 untested code; you may not do it *silently*.
 
-Status: **48 tested · 17 declared-untested · 0 undeclared.**
+Status: **49 tested · 16 declared-untested · 0 undeclared.**
 
 Work down the 17. For each: read the code, write REAL tests, fix any bug the tests expose,
 link the test, remove the `test-coverage "none"` declaration.
 
 Remaining (roughly hardest-consequence first):
 
-- **Passage Grounding** — a bug here means citations pointing at text that does not
-  support them. Worst failure mode in the app.
 - **Predicate Manager**, **History Mode**, **Comparison View**, **Model Cache Management**
 - **n8n Cloud Sync**, **Whisper STT**, **Kokoro TTS**, **Voice Interface**, **Asset viewer**
 - **Partial Facts**, **Offline Alignment-Review**, **Session tokens**, **Git Analysis**
@@ -58,6 +56,7 @@ declared gap is fine. A fake test is not.
 | `kb_compress` | The headline "60–70% token reduction" claim was **false** — measured ~18% vs realistic grouped Turtle. The figure conflated the *encoding* with *subgraph selection*, which is where the real saving lives. Also: `stats.facts` counted facts from entities the budget had dropped. |
 | Trust System | **Confirming a fact made its source LESS trusted.** `getTrustScore` discarded the baseline the moment any event existed (0.8 → 0.05 on first confirm). |
 | Publish gate (F66) | Markdown pages were built from **unfiltered** statements, and blocked content was **silently dropped** rather than refused. |
+| Passage Grounding | **Citations were never verified.** The prompt says "copy it exactly — do not paraphrase"; nothing ever checked that it had. `triplesToStatements` did not even *receive* the source text, so it structurally could not. A fabricated quote was rendered to the user as provenance. Now verified at ingest; a forged excerpt is DROPPED, not displayed. |
 | `SAFETY.md` | Claimed a publish gate that did not exist, and that the ethics preamble "cannot be overridden" (it is open-source client code). |
 
 Pattern: the bugs survived because the logic was **tangled with I/O and therefore

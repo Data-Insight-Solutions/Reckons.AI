@@ -265,3 +265,44 @@ describe('triplesToStatements', () => {
     expect(triplesToStatements([], makeSource())).toHaveLength(0);
   });
 });
+
+// ── Passage grounding wired through the real conversion path (kb:passage-grounding) ──
+//
+// The pure verifier is tested in rdf/__tests__/grounding.test.ts. What matters HERE is
+// that the extraction pipeline actually calls it — a verifier nothing invokes is theatre.
+describe('triplesToStatements — excerpt grounding', () => {
+  const SOURCE_TEXT = 'The octopus has three hearts and blue blood.';
+
+  const withExcerpt = (excerpt: string) => ({
+    subject: 'octopus',
+    predicate: 'has-heart-count',
+    object: '3',
+    objectIsLiteral: true,
+    confidence: 0.95,
+    excerpt,
+  });
+
+  it('keeps and marks an excerpt that really is in the source', () => {
+    const [s] = triplesToStatements([withExcerpt('The octopus has three hearts')], makeSource(), SOURCE_TEXT);
+    expect(s.grounded).toBe(true);
+    expect(s.excerpt).toBe('The octopus has three hearts');
+    expect(s.confidence).toBe(0.95);
+  });
+
+  it('DROPS a fabricated excerpt and penalises confidence', () => {
+    const [s] = triplesToStatements(
+      [withExcerpt('The octopus has nine brains and a beak of iron.')], // invented
+      makeSource(),
+      SOURCE_TEXT,
+    );
+    expect(s.grounded).toBe(false);
+    expect(s.excerpt).toBeUndefined();      // never render a forged citation
+    expect(s.confidence).toBeLessThan(0.95); // and trust the model less here
+  });
+
+  it('leaves excerpts unverified when no source text is supplied — never a fabricated pass', () => {
+    const [s] = triplesToStatements([withExcerpt('anything')], makeSource());
+    expect(s.excerpt).toBe('anything');
+    expect(s.grounded).toBeUndefined();
+  });
+});

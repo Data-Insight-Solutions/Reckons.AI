@@ -1,5 +1,6 @@
 import type { Statement, Source } from '../../rdf/types';
 import { iri, lit } from '../../rdf/types';
+import { groundStatements } from '../../rdf/grounding';
 import { v4 as uuid } from 'uuid';
 import { ETHICS_PREAMBLE } from '../../safety/content-policy';
 
@@ -172,11 +173,26 @@ const XSD: Record<NonNullable<ExtractedTriple['datatype']>, string> = {
   boolean: 'http://www.w3.org/2001/XMLSchema#boolean'
 };
 
-/** Convert raw LLM output into typed Statements bound to a Source */
-export function triplesToStatements(triples: ExtractedTriple[], source: Source): Statement[] {
+/**
+ * Convert raw LLM output into typed Statements bound to a Source.
+ *
+ * Pass `sourceText` to VERIFY each excerpt against it (kb:passage-grounding). The prompt
+ * tells the model to quote the source verbatim, but until now nothing ever checked that
+ * it did — so a paraphrased or invented quote was stored and shown to the user as
+ * provenance. When an excerpt cannot be found in the source it is DROPPED and the
+ * statement's confidence is penalised: a missing citation is honest, a forged one is not.
+ *
+ * Omitting `sourceText` leaves excerpts unverified (verdict 'unverifiable') — used where
+ * the original text genuinely isn't available. It never fabricates a pass.
+ */
+export function triplesToStatements(
+  triples: ExtractedTriple[],
+  source: Source,
+  sourceText?: string,
+): Statement[] {
   const graph = iri(`urn:kbase:source/${source.id}`);
   const now = Date.now();
-  return triples.map((t) => {
+  const statements = triples.map((t) => {
     const s = iri(slugIRI(t.subject));
     const p = iri(predicateIRI(t.predicate));
     const o = t.objectIsLiteral
@@ -195,8 +211,10 @@ export function triplesToStatements(triples: ExtractedTriple[], source: Source):
       status: 'pending',
       createdAt: now,
       updatedAt: now
-    };
+    } as Statement;
   });
+
+  return sourceText === undefined ? statements : groundStatements(statements, sourceText);
 }
 
 /**

@@ -159,6 +159,12 @@ export type Statement = {
   gloss?: string;
   /** Verbatim source sentence/phrase the triple was derived from */
   excerpt?: string;
+  /**
+   * Did `excerpt` actually occur in the source text? (kb:passage-grounding)
+   * true  = verified quote.  false = the model fabricated or paraphrased it, and the
+   * excerpt has been DROPPED rather than shown.  undefined = not checked (no source text).
+   */
+  grounded?: boolean;
   /** Review state */
   status: ReviewStatus;
   /**
