@@ -165,3 +165,20 @@ describe('digest — one report that grows, instead of many that interrupt', () 
     expect(readFileSync(d, 'utf8')).toContain('## overnight sweep');
   });
 });
+
+describe('pending entries are addressed to a graph — misfiling loses them forever', () => {
+  it('ask() records the target graph so the app does not misfile the question', () => {
+    const pending = p('pending.jsonl');
+    askGraph(
+      { subject: 'kb:auto-merge', predicate: 'kpred:threshold', question: 'q?', kb: 'Reckons.AI Roadmap' },
+      pending,
+    );
+    expect(JSON.parse(readFileSync(pending, 'utf8').trim()).kb).toBe('Reckons.AI Roadmap');
+  });
+
+  it('omits `kb` when the question is not graph-specific — meaning "any graph"', () => {
+    const pending = p('pending.jsonl');
+    askGraph({ subject: 'kb:x', predicate: 'kpred:y', question: 'q?' }, pending);
+    expect('kb' in JSON.parse(readFileSync(pending, 'utf8').trim())).toBe(false);
+  });
+});

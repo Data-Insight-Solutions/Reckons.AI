@@ -57,6 +57,13 @@ export interface Question {
   subject: string;
   predicate: string;
   question: string;
+  /**
+   * Target graph, by name. A question about kb:auto-merge belongs in the Reckons.AI
+   * roadmap graph, NOT in whatever the user happens to have open. The app leaves entries
+   * addressed elsewhere in the file rather than misfiling them.
+   * Omit to mean "any graph".
+   */
+  kb?: string;
   /** The work this question blocks. Lets other agents pick up what is NOT waiting. */
   blocks?: string;
   agent?: string;
@@ -79,6 +86,7 @@ export function askGraph(q: Question, pendingPath = PENDING): { queued: boolean;
     // drainWorkspacePending() sees the missing object and sets needsObject:true, object '?'.
     question: q.question,
     note: q.note,
+    ...(q.kb ? { kb: q.kb } : {}),
     ...(q.blocks ? { blocks: expandIri(q.blocks) } : {}),
     type: 'question' as const,
     agent: q.agent ?? 'agent',
@@ -119,7 +127,7 @@ if (isMain) {
   const question = flag('question');
 
   if (!subject || !predicate || !question) {
-    console.error('Usage: ask.ts --subject <kb:x> --predicate <kpred:y> --question "..." [--blocks kb:z] [--agent name] [--priority high]');
+    console.error('Usage: ask.ts --subject <kb:x> --predicate <kpred:y> --question "..." [--kb <graph name>] [--blocks kb:z] [--agent name] [--priority high]');
     process.exit(2);
   }
 
@@ -128,6 +136,7 @@ if (isMain) {
     predicate,
     question,
     blocks: flag('blocks'),
+    kb: flag('kb'),
     agent: flag('agent'),
     priority: flag('priority') as Question['priority'],
     note: flag('note'),

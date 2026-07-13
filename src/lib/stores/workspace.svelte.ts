@@ -28,7 +28,7 @@
  */
 import { db, KBaseDB } from '../storage/db';
 import { updateSettings } from './settings.svelte';
-import { getRegistry, type KbEntry } from '../storage/kb-registry';
+import { getRegistry, getCurrentKbName, type KbEntry } from '../storage/kb-registry';
 import { collectAssets, assetTriples, type CollectedAsset, type AssetCategory } from '../storage/kb-assets';
 
 /** Filename written to the workspace dir on every KB mutation (read by the MCP server). */
@@ -548,6 +548,17 @@ export const WORKSPACE_PENDING_FILE = 'knowledge.pending.jsonl';
 type PendingEntry = {
   subject: string;
   predicate: string;
+  /**
+   * Target graph, by name (F80). An agent's question about kb:auto-merge belongs in the
+   * Reckons.AI roadmap graph, NOT in whatever the user happened to have open.
+   *
+   * Omit to mean "any graph" (legacy entries, and notes that are not graph-specific).
+   * Entries addressed to a DIFFERENT graph are put back in the file rather than consumed —
+   * see drainWorkspacePending. Draining used to be unconditionally destructive: it read the
+   * file, cleared it, and imported everything into the active graph, so a question could be
+   * misfiled into the wrong graph AND lost from the file, with no way to retry.
+   */
+  kb?: string;
   /** Omit (or leave empty) to denote a PARTIAL FACT whose object the reviewer must fill (F32). */
   object?: string;
   /** The sub-agent's question for a partial fact (F32). */
@@ -562,28 +573,40 @@ type PendingEntry = {
 };
 
 /**
- * Read knowledge.pending.jsonl from the workspace, convert each line to a
- * pending Statement, and return them. Clears the file after reading.
- * Returns an empty array if the file doesn't exist or no workspace is connected.
+ * Read knowledge.pending.jsonl, take the entries meant for the ACTIVE graph, and PUT THE
+ * REST BACK. Returns an empty array if the file doesn't exist or no workspace is connected.
+ *
+ * Draining is destructive — it consumes the file — so it must only consume what it can
+ * actually deliver. An entry addressed to another graph (`kb`) is left in the file for
+ * that graph to claim. Previously drain took everything and imported it into whatever
+ * graph happened to be open, so an agent's question about the roadmap could be silently
+ * misfiled into a user's personal notes AND erased from the file, with no way to retry.
  */
 export async function drainWorkspacePending(): Promise<PendingEntry[]> {
   const text = await readFromWorkspace(WORKSPACE_PENDING_FILE);
   if (!text?.trim()) return [];
 
+  const active = getCurrentKbName();
   const entries: PendingEntry[] = [];
+  const notMine: string[] = [];
+
   for (const line of text.split('\n')) {
     const trimmed = line.trim();
     if (!trimmed) continue;
     try {
-      entries.push(JSON.parse(trimmed) as PendingEntry);
+      const entry = JSON.parse(trimmed) as PendingEntry;
+      // No `kb` = any graph. Otherwise it must match the active one, or it waits.
+      if (entry.kb && entry.kb !== active) notMine.push(trimmed);
+      else entries.push(entry);
     } catch {
       // skip malformed lines
     }
   }
 
-  // Clear the file so we don't re-import on next load
+  // Consume ONLY what we took. Entries addressed to another graph are written back so
+  // that graph can claim them later — clearing the whole file would destroy them.
   if (entries.length > 0) {
-    await writeToWorkspace(WORKSPACE_PENDING_FILE, '');
+    await writeToWorkspace(WORKSPACE_PENDING_FILE, notMine.length ? notMine.join('\n') + '\n' : '');
   }
 
   return entries;
