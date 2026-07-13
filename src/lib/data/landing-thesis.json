@@ -10,6 +10,11 @@
     "status": "built"
   },
   {
+    "headline": "The most useful thing a graph can hold is a well-formed absence.",
+    "body": "You cannot ask a question you have not discovered you have. So a fact whose object is still unknown is not a gap in the graph — it is the point of it. Subject known, predicate known, object still open, and four things stalled behind it. That turns 'go find out what we are missing' into 'answer this one question'. The knowledge you need to decide is usually a few people away; the hard part was never reaching them, it was knowing what to ask.",
+    "status": "built"
+  },
+  {
     "headline": "A forced link is worse than an orphan.",
     "body": "Disconnected facts are merely less useful. An invented edge is a lie the graph tells itself — it LOOKS like knowledge and is not. So if a new fact does not genuinely connect to what you already know, we connect it to nothing and say so. 'Is related to' is a non-link wearing the costume of a link.",
     "status": "belief"

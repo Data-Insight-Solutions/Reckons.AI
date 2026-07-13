@@ -11,6 +11,28 @@ continue from. Do not re-derive it; do not re-audit what is already audited.
 2. `npx tsx scripts/offline/status-evidence.ts` — lists the shipped-but-untested features
 3. Work down that list. Details below.
 
+## Read the mission first: `kb:mission` + `kb:thesis` in the roadmap graph
+
+It is never about the tool. The knowledge needed to DECIDE is usually a few team members
+away — a DISTANCE problem, not an information problem. A document records conclusions, not
+the structure that produced them; two documents cannot be diffed for reasoning, two graphs
+can.
+
+**The thesis:** *an unverifiable claim, made by the party it benefits, is not evidence.*
+Arrived at three separate times from three unrelated directions (a stated purpose does not
+unlock a gate; a weak similarity does not justify a link; a source you control yourself is
+not a source), which is why it is the thesis and not a rule.
+
+**The invention is not what the graph stores — it is that the graph can hold the SHAPE OF
+WHAT IS MISSING.** A partial fact (subject + predicate known, object `?`, plus what it
+blocks) is the most useful node in the graph. You cannot ask a question you have not
+discovered you have. This is why F80 (agents ask the graph, not the human) matters more
+than it looks: it is the mission, not a workflow convenience.
+
+**Honest limit, do not overclaim past it:** the most decision-relevant knowledge is the
+stuff nobody wrote down, held by someone who does not know it is load-bearing. A graph
+cannot extract what nobody thought to say.
+
 ## The one rule everything else hangs off: `kb:honest-status`
 
 Never describe a control, feature, or capability that does not exist. Distinguish BUILT

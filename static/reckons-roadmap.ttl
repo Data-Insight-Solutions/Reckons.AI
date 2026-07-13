@@ -1761,7 +1761,7 @@ kb:tenet-link rdf:type         ktype:Tenet ;
                kpred:part-of      kb:thesis ;
                kpred:show-on-landing "true" ;
                kpred:tenet-status "belief" ;
-               hnav:order   3 ;
+               hnav:order   4 ;
                kpred:tenet-body   "Disconnected facts are merely less useful. An invented edge is a lie the graph tells itself — it LOOKS like knowledge and is not. So if a new fact does not genuinely connect to what you already know, we connect it to nothing and say so. 'Is related to' is a non-link wearing the costume of a link." .
 
 kb:tenet-export rdf:type       ktype:Tenet ;
@@ -1769,7 +1769,7 @@ kb:tenet-export rdf:type       ktype:Tenet ;
                kpred:part-of      kb:thesis ;
                kpred:show-on-landing "true" ;
                kpred:tenet-status "built" ;
-               hnav:order   4 ;
+               hnav:order   5 ;
                kpred:tenet-body   "Your graph is a plain text file on your machine, and we will never withhold it from you — whatever it contains. But when WE are the one carrying your content to someone else, we are a participant in that delivery, and we take responsibility for what we carry. We gate only what we carry." .
 
 kb:tenet-private rdf:type      ktype:Tenet ;
@@ -1777,7 +1777,7 @@ kb:tenet-private rdf:type      ktype:Tenet ;
                kpred:part-of      kb:thesis ;
                kpred:show-on-landing "true" ;
                kpred:tenet-status "built" ;
-               hnav:order   5 ;
+               hnav:order   6 ;
                kpred:tenet-body   "Think privately. Be wrong privately. Change your mind privately. Your own graph needs no permission, no account, and no provenance — because it makes no claim on anyone else. Provenance is a claim made TO SOMEONE; alone with your notes, there is nobody to substantiate it to, and no reason to pretend otherwise." .
 
 kb:tenet-honesty rdf:type      ktype:Tenet ;
@@ -1785,7 +1785,7 @@ kb:tenet-honesty rdf:type      ktype:Tenet ;
                kpred:part-of      kb:thesis ;
                kpred:show-on-landing "true" ;
                kpred:tenet-status "built" ;
-               hnav:order   6 ;
+               hnav:order   7 ;
                kpred:tenet-body   "Our safety documentation states plainly which protections exist and which do not, and an automated check verifies them against the live code every week — recording the failures too. We have already caught ourselves overclaiming, and corrected it in public. A safety promise you cannot verify is just marketing." .
 
 # -- F85: Context-aware view suggestions ----------------------------------------
@@ -1811,6 +1811,62 @@ kb:view-suggestions rdf:type   ktype:Feature ;
                kpred:principle    "At most ONE suggestion. A menu of five things to try is not help, it is homework — and it is how a helpful feature becomes one the user mutes." ;
                kpred:principle    "Show the evidence, never imply it. 'Trust me' is not a reason." ;
                kpred:known-issue  "FIXED 2026-07-12 — ViewAdjust.layout omitted 'timeline' and 'hierarchy' while KnowledgeGraph supported them, so SHELLY COULD NOT REQUEST A TIMELINE LAYOUT AT ALL: the single most obvious thing to offer someone staring at dated facts. A view-control API that cannot express the view is not an API. Now typed from the one GraphLayout union both sides share." .
+
+# == THE MISSION — arrived at 2026-07-13, and worth not losing ==================
+# "It's never about the tool, it's about the knowledge."
+#
+# The problem is not storage and it is not search. It is that the knowledge needed to
+# DECIDE something is usually a few team members away — which is a DISTANCE problem, not
+# an information problem. The knowledge exists. It is three hops of social latency away,
+# and every hop costs a meeting, a thread, a week.
+#
+# Full text fails at this for a specific reason: A DOCUMENT RECORDS CONCLUSIONS, NOT THE
+# STRUCTURE THAT PRODUCED THEM. You can read a design doc and still not know which
+# constraint was load-bearing, which option was already rejected and why, or which number
+# in it was measured rather than guessed. Two documents cannot be diffed for REASONING.
+# Two graphs can.
+#
+# And the honest, hard part: the most decision-relevant knowledge is usually the stuff
+# NOBODY WROTE DOWN, held by someone who does not know it is load-bearing. Nobody writes
+# "we tried that in 2019 and it broke because the vendor's clock drifted" — not because it
+# is secret, but because to the person holding it, it is not a fact, it is just obvious.
+# A knowledge graph cannot extract what nobody thought to say. Pretending otherwise would
+# be its own overclaim.
+#
+# WHICH IS WHY THE INVENTION IS NOT WHAT THE GRAPH STORES. IT IS WHAT THE GRAPH CAN HOLD
+# THE SHAPE OF WHEN IT IS MISSING.
+#
+# A partial fact — subject and predicate known, object '?', and here is what it BLOCKS —
+# is not a limitation of the model. It is the most useful node in the graph. It says:
+# there is a hole here, this is its exact shape, and four things are stalled behind it.
+#
+# Because the reason the knowledge is "a few team members away" is not that you cannot
+# reach them. IT IS THAT YOU DO NOT KNOW WHAT TO ASK. You cannot walk to someone's desk
+# with a question you have not yet discovered you have. A graph that can hold a WELL-FORMED
+# ABSENCE turns "go find out what we are missing" into "answer this one question, and four
+# blocked things unblock".
+
+kb:mission rdf:type            ktype:Concept ;
+               rdfs:label   "The mission" ;
+               kpred:part-of      kb:reckons-ai ;
+               kpred:relates-to   kb:thesis ;
+               kpred:relates-to   kb:partial-facts ;
+               kpred:relates-to   kb:async-orchestration ;
+               kpred:description  "It is never about the tool. It is about the knowledge — and specifically about the knowledge you need to DECIDE, which is usually a few team members away. That is a distance problem, not an information problem." ;
+               kpred:principle    "A document records CONCLUSIONS, not the structure that produced them. Two documents cannot be diffed for reasoning; two graphs can." ;
+               kpred:principle    "The most decision-relevant knowledge is the stuff nobody wrote down, held by someone who does not know it is load-bearing. A graph CANNOT extract what nobody thought to say — and claiming otherwise would be its own overclaim." ;
+               kpred:principle    "THE INVENTION IS NOT WHAT THE GRAPH STORES. It is that the graph can hold the SHAPE OF WHAT IS MISSING. A well-formed absence — subject and predicate known, object unknown, and here is what it blocks — is the most useful node in the graph." ;
+               kpred:principle    "You cannot ask a question you have not discovered you have. The value of a partial fact is that it turns 'go find out what we are missing' into 'answer this one question, and four blocked things unblock'." ;
+               kpred:principle    "A fact without its evidence — its excerpt, its diagram, its measurement — is a conclusion. It cannot be checked by anyone who was not there, which is everyone who matters." ;
+               kpred:principle    "Detection is an arms race; provenance is durable. Every forensic tell you publish becomes a term in the next model's objective. Attribution to an accountable party does not get outrun by better generators, because it was never about how convincing the artifact is." .
+
+kb:tenet-absence rdf:type      ktype:Tenet ;
+               rdfs:label   "The most useful thing a graph can hold is a well-formed absence." ;
+               kpred:part-of      kb:thesis ;
+               kpred:show-on-landing "true" ;
+               kpred:tenet-status "built" ;
+               hnav:order   3 ;
+               kpred:tenet-body   "You cannot ask a question you have not discovered you have. So a fact whose object is still unknown is not a gap in the graph — it is the point of it. Subject known, predicate known, object still open, and four things stalled behind it. That turns 'go find out what we are missing' into 'answer this one question'. The knowledge you need to decide is usually a few people away; the hard part was never reaching them, it was knowing what to ask." .
 
 kb:int-firecrawl rdf:type   ktype:Tool ;
                rdfs:label   "Firecrawl" ;

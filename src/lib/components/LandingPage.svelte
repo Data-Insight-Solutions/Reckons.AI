@@ -451,6 +451,14 @@
       treating it as a rule and started treating it as the point.
     </p>
 
+    <p class="thesis-mission">
+      It was never about the tool. The knowledge you need to <em>decide</em> something is usually
+      a few team members away — and that is a distance problem, not an information problem. A
+      document records <em>conclusions</em>, not the structure that produced them: you cannot tell
+      which constraint was load-bearing, which option was already rejected, or which number was
+      measured rather than guessed. Two documents cannot be diffed for reasoning. Two graphs can.
+    </p>
+
     <div class="thesis-list">
       {#each THESIS as t}
         <div class="tenet">
@@ -1188,6 +1196,13 @@
 
   /* ── Roadmap ─────────────────────────────────────────── */
   .thesis-section { max-width: 62rem; }
+  .thesis-mission {
+    max-width: 46rem;
+    margin: 1.6rem auto 0;
+    color: var(--text-2);
+    line-height: 1.7;
+    font-size: 0.98rem;
+  }
   .thesis-list {
     display: flex;
     flex-direction: column;
