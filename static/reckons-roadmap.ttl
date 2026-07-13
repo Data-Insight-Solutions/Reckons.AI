@@ -2182,15 +2182,17 @@ kb:local-model-bench rdf:type ktype:Feature ;
 # -- F32: Partial Facts & Answer-Flow-Back ---------------------------------------
 
 kb:partial-facts rdf:type ktype:Feature ;
-               kpred:test-coverage "none" ;
-               kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
-               rdfs:label    "Partial Facts & Answer-Flow-Back" ;
+               rdfs:label   "Partial Facts & Answer-Flow-Back" ;
                kpred:feature-id   "F32" ;
                kpred:has-status   "functional" ;
-               kpred:in-dev       "2026-07-07"^^xsd:date ;
-               kpred:description  "Human-in-the-loop completion of the F31 local-orchestration loop. When a local sub-agent is uncertain about the OBJECT of a fact it emits a PARTIAL FACT — subject + predicate known, object left as a loose end — together with its question, instead of guessing or spending Opus tokens to resolve it. In the review screen the reviewer FILLS the object rather than editing a guessed value: a search-while-typing picker over existing entities (reusing the RelationBuilder node-list pattern), or create-new (new entity IRI via labelToIri, or a plain text value). Accept is gated until the object is filled. On confirm the resolved fact flows BACK to the waiting sub-agent via knowledge.answers.jsonl in the workspace, so it can resume — closing the loop. Model: Statement gains optional needsObject + question fields (types.ts); pending JSONL lines may omit `object` (carrying a `question`) to denote a partial fact; drainAndImportPending maps these to needsObject statements; kb entityChoices() supplies the picker; workspace recordAnswer() appends the resolved triple to knowledge.answers.jsonl. UI in DiffEntry.svelte. Depends on F31 (Opus + local sub-agents + kb_add_note questions). SHIPPED 2026-07-07: demonstrated end-to-end — local agent hoisted a partial fact (embedding-model quantization ?), human filled it in the review picker as a new entity, the answer flowed back via knowledge.answers.jsonl, and the waiting agent resumed; two bugs found in testing and fixed (computeDiff crashed on placeholder objects; swipe-accept could confirm an unfilled ?)." ;
-               kpred:depends-on   kb:local-model-bench ;
-               kpred:relates-to   kb:review-workbench .
+               kpred:tested-by    "src/lib/rdf/__tests__/partial-facts.test.ts" ;
+               kpred:has-file     "src/lib/rdf/partial-facts.ts" ;
+               kpred:part-of      kb:mission ;
+               kpred:description  "A triple whose object is unknown: subject and predicate asserted, object '?', needsObject true. The Review tab renders an entity picker instead of accept/reject; answering it writes back to knowledge.answers.jsonl where the agent that asked resumes. A question now also carries WHAT IT BLOCKS and WHO ASKED, so the graph can answer the question that matters — not 'what don't we know?' (a list of holes, demoralizing and unactionable) but 'what would answering THIS unblock?'. questionsByImpact ranks open questions by how much they free up, breaking ties toward the OLDER question, because a hole nobody has filled in a week is evidence nobody will fill it by accident." ;
+               kpred:principle    "A partial fact is not a gap in the model. IT IS THE POINT OF IT. You cannot ask a question you have not discovered you have (kb:mission)." ;
+               kpred:principle    "A question with a price gets answered; one without does not. Always state what it blocks." ;
+               kpred:known-issue  "FIXED 2026-07-13 — THE FEATURE THE MISSION RESTS ON HAD NO TESTS, and two fields were being DROPPED on import. (1) `blocks` was discarded, so the graph knew it had a hole but not what the hole COST — which is the difference between a to-do and a priority, and it is the entire 'answer this one question and four blocked things unblock' value. The landing page was already claiming it worked. (2) `askedBy` was discarded, so an answer came back unattributed and could not be claimed by the agent waiting on it — which breaks the moment more than one agent is running. Both now survive drainWorkspacePending; DiffEntry builds the answer via resolvePartial() so the wiring cannot silently rot again." ;
+               kpred:known-issue  "GUARDED: computeDiff must never structurally diff a partial fact. Diffing '?' against an existing object compares a HOLE to a VALUE and produces a bogus conflict or refinement — the user would be asked to adjudicate nonsense. Now covered by a test." .
 
 # -- F33: Release Pipeline & Branch Alignment ------------------------------------
 

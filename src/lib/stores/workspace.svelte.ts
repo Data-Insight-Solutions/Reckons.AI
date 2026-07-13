@@ -563,6 +563,8 @@ type PendingEntry = {
   object?: string;
   /** The sub-agent's question for a partial fact (F32). */
   question?: string;
+  /** Entity IRIs this unanswered question blocks (F80). Carried onto the Statement. */
+  blocks?: string | string[];
   note?: string;
   addedByMcp?: boolean;
   addedAt?: string;
@@ -663,7 +665,18 @@ export async function drainAndImportPending(): Promise<number> {
       p: { kind: 'iri' as const, value: e.predicate },
       o: { kind: 'literal' as const, value: partial ? '?' : e.object! },
       g: { kind: 'iri' as const, value: `urn:mcp:pending:${sourceId}` },
-      ...(partial ? { needsObject: true, question } : {}),
+      // Carry BOTH through to the graph. Dropping `blocks` was the bug that made a partial
+      // fact merely a gap instead of a priority — the graph knew it had a hole but not what
+      // the hole cost. Dropping `agent` meant an answer could not be routed back to the
+      // agent that asked, which breaks the moment more than one is running.
+      ...(partial
+        ? {
+            needsObject: true,
+            question,
+            ...(e.blocks ? { blocks: Array.isArray(e.blocks) ? e.blocks : [e.blocks] } : {}),
+            ...(e.agent ? { askedBy: e.agent } : {}),
+          }
+        : {}),
       ...(gloss ? { gloss } : {}),
       ...(excerpt ? { excerpt } : {}),
       createdAt: e.addedAt ? new Date(e.addedAt).getTime() : now,

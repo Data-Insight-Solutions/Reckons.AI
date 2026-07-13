@@ -175,6 +175,21 @@ export type Statement = {
   needsObject?: boolean;
   /** The sub-agent's question that produced this partial fact (F32). */
   question?: string;
+  /**
+   * What this unanswered question BLOCKS — entity IRIs (F80 / kb:mission).
+   *
+   * This is the field that makes a partial fact more than a gap. "Subject known, predicate
+   * known, object open, and FOUR THINGS STALLED BEHIND IT" is the whole value: it turns
+   * "go find out what we're missing" into "answer this one question, and four blocked
+   * things unblock". Without it the graph knows it has a hole but not what the hole costs,
+   * which is the difference between a to-do and a priority.
+   */
+  blocks?: string[];
+  /**
+   * Which agent asked. Needed to route the answer BACK to it — with more than one agent
+   * running, an unattributed answer cannot be claimed by the one that is waiting.
+   */
+  askedBy?: string;
   /** Created / updated timestamps */
   createdAt: number;
   updatedAt: number;
