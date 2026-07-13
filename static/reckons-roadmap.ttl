@@ -227,11 +227,13 @@ kb:diff-summary rdf:type    ktype:Feature ;
                kpred:description  "LLM-generated 3-part summaries (new/reinforcing/conflicting) for compare, review, and extension." .
 
 kb:predicate-manager rdf:type ktype:Feature ;
-               kpred:test-coverage "none" ;
-               kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
                rdfs:label   "Predicate Manager" ;
                kpred:has-status   "production" ;
-               kpred:description  "View all predicates with counts, rename, merge. Schema evolution tool." .
+               kpred:tested-by    "src/lib/rdf/__tests__/predicates.test.ts" ;
+               kpred:has-file     "src/lib/rdf/predicates.ts" ;
+               kpred:description  "View all predicates with counts, rename, merge. Schema evolution tool. Rename and merge are PLANNED before they are applied (rdf/predicates.ts: planRename / planMerge), so the UI can warn before mutating: standard-vocabulary terms are refused, a rename that collides with an existing predicate is named as the merge it really is, and statements that would become exact twins are dropped rather than written." ;
+               kpred:known-issue  "FIXED 2026-07-12 — THREE defects, all found by the first test ever written for it. (1) RENAME DESTROYED STANDARD VOCABULARY: the new IRI's namespace was chosen as isMetaPredicate(old) ? META_PREFIX : PREDICATE_PREFIX, with no third case — so renaming rdfs:label, skos:broader or dcterms:created (all of which appear the moment a user imports real Turtle) rewrote them into urn:kbase:predicate/<slug>, silently converting an interoperable standard term into a private one. The graph stops meaning what it said, and no export carries that meaning anywhere. (2) RENAME ONTO AN EXISTING PREDICATE SILENTLY MERGED, irreversibly, from a control labelled 'rename'. (3) MERGE CREATED DUPLICATE STATEMENTS: merging likes into loves when both already asserted (x,.,y) left two identical triples. The logic lived inline in PredicateManager.svelte, which is why all three survived — extracting it to a pure module is what made them findable." ;
+               kpred:principle    "A destructive action must never be silent. Refuse, or warn, but never quietly do something other than what the control is labelled." .
 
 kb:content-safety rdf:type  ktype:Feature ;
                kpred:tested-by    "src/lib/safety/__tests__/content-policy.test.ts" ;
