@@ -148,6 +148,79 @@ export function toNQuads(statements: Statement[]): string {
 }
 
 /* ============================================================
+ *  TRIG EXPORT  —  the LOSSLESS text format (F75)
+ *
+ *  Turtle cannot carry the graph term, so `toTurtle` throws provenance away: you ingest
+ *  five PDFs, build a graph, export it, and "where did this fact come from?" becomes
+ *  unanswerable. Its `includeProvenance` block does not save you — it emits
+ *  `<stmt/id> prov:wasDerivedFrom <source>` while nothing labels the triples with that id,
+ *  so it is unrecoverable decoration.
+ *
+ *  TriG is Turtle plus named graphs. Every .ttl is already legal TriG, so nothing is given
+ *  up — and the 4th element survives.
+ *
+ *  THE GRAPH TERM IS THE SOURCE. That is what the data model already says (types.ts: "graph
+ *  carries the provenance: which document, which URL, when it was learned"). It is
+ *  deliberately NOT overloaded to mean "which KB" — TriG has only one graph slot, and
+ *  spending it on KB-bundling would silently destroy the provenance that is the entire
+ *  point of the product. Bundle multiple KBs with a graph package instead (which also
+ *  carries assets, as TriG cannot).
+ * ============================================================ */
+
+export interface TriGOptions {
+  header?: string;
+  prefixes?: Record<string, string>;
+  includeStatuses?: Statement['status'][];
+}
+
+/** Serialize statements to TriG, one named graph per SOURCE. Lossless: `g` survives. */
+export function toTriG(statements: Statement[], opts: TriGOptions = {}): string {
+  const prefixes = opts.prefixes ?? DEFAULT_PREFIXES;
+  const keep = opts.includeStatuses
+    ? statements.filter((st) => opts.includeStatuses!.includes(st.status))
+    : statements;
+
+  const lines: string[] = [];
+  if (opts.header) lines.push(opts.header);
+  for (const [p, ns] of Object.entries(prefixes)) lines.push(`@prefix ${p}: <${ns}> .`);
+  lines.push('');
+
+  // Group by graph (= source), then by subject inside it.
+  const byGraph = new Map<string, Statement[]>();
+  for (const st of keep) {
+    const g = st.g.value;
+    const list = byGraph.get(g) ?? [];
+    list.push(st);
+    byGraph.set(g, list);
+  }
+
+  for (const [graph, sts] of byGraph) {
+    lines.push(`${shorten(graph, prefixes)} {`);
+
+    const bySubject = new Map<string, Statement[]>();
+    for (const st of sts) {
+      const key = termTTL(st.s, prefixes);
+      const list = bySubject.get(key) ?? [];
+      list.push(st);
+      bySubject.set(key, list);
+    }
+
+    for (const [subj, group] of bySubject) {
+      lines.push(`  ${subj}`);
+      group.forEach((st, i) => {
+        const isLast = i === group.length - 1;
+        lines.push(`      ${termTTL(st.p, prefixes)} ${termTTL(st.o, prefixes)}${isLast ? ' .' : ' ;'}`);
+      });
+    }
+
+    lines.push('}');
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
+/* ============================================================
  *  N-QUADS PARSE
  *  Minimal parser sufficient for round-tripping our own output.
  *  Full Turtle parsing is delegated to the N3 library when needed.
