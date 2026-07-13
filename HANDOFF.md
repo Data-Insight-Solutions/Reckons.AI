@@ -88,6 +88,24 @@ Prefer growing the script tier.
   npx tsx scripts/md-align.ts                  # aligned
   ```
 
+## ⚡ The workflow has changed — do NOT summarize into chat
+
+Matt is the bottleneck, so he is no longer a blocking call (F80 / kb:async-orchestration).
+
+- **Need a decision?** Do NOT ask in chat and wait. Run:
+  `npx tsx scripts/agent/ask.ts --subject kb:x --predicate kpred:y --question "..." --blocks kb:z`
+  It lands in the Review tab as a **partial fact** (object `?`, entity picker). Then pick up
+  other work. Never guess — a guess entered into a knowledge graph is indistinguishable
+  from a fact, and that is worse than a stalled task.
+- **Answers come back** via `npm run agent:answers` (cursor-tracked; each answer seen once).
+  They may arrive days later, in a different session. The question outlives the conversation
+  because it lives in the graph.
+- **Findings go to the digest, not to chat:**
+  `npx tsx scripts/agent/digest.ts --type bug-found --about kb:x --headline "..." --detail "..."`
+  One report that GROWS (`reckons-workspace/DIGEST.md`) instead of twenty that interrupt.
+- Reckons.AI is the sounding board. A question left as a partial fact is reviewable,
+  searchable, dated and mergeable. A question asked in chat dies with the session.
+
 ## Open, needs Matt (do not decide unilaterally)
 
 - **F76 bring-your-own-host** — the other half of Option C ("export and self-host" is only

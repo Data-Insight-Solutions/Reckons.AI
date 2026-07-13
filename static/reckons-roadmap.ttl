@@ -1469,6 +1469,117 @@ kb:byo-static-host rdf:type    ktype:Feature ;
                kpred:remaining    "Host adapters (GitHub Pages / Netlify / Cloudflare / plain zip); a guided publish flow; per-shape templates (corpus · portfolio · blog); a preflight that runs the F66 gate before handing the artifact over." ;
                kpred:open-question "How far do we go into the host's setup? A generated GitHub Action + a 'Deploy' button is a handful of steps; an OAuth app that pushes for them is fewer steps but makes us a mediated-distribution path (see kb:data-egress-model) and would pull the F66 gate into a flow we would rather keep as pure user-export. Where exactly is the line?" .
 
+# -- F80: Async Orchestration — the user is the bottleneck, so remove them from it ----
+# The current loop is synchronous and it wastes the scarcest resource in the system:
+# the agent finishes a slice, writes a summary into chat, and BLOCKS until Matt reads it
+# and answers. Matt is AFK most of the time. Work stops for hours on a question that
+# takes him ten seconds.
+#
+# Invert it. The agent does not ask Matt — it asks THE GRAPH, and keeps going.
+# Reckons.AI already has every piece of this (F32 partial facts): a triple with no object
+# becomes needsObject:true with object '?', the Review tab shows an entity picker instead
+# of accept/reject, and recordAnswer() writes the answer to knowledge.answers.jsonl where
+# a polling agent picks it up. The substrate is BUILT. What is missing is the agent side
+# of it, a model of what a question BLOCKS, and a report that accumulates instead of
+# interrupting.
+#
+# This is also the sharpest possible dogfooding: the coordination layer for building
+# Reckons.AI becomes Reckons.AI.
+
+kb:async-orchestration rdf:type ktype:Feature ;
+               rdfs:label   "Async orchestration (agents ask the graph, not the human)" ;
+               kpred:feature-id   "F80" ;
+               kpred:has-status   "planned" ;
+               kpred:relates-to   kb:partial-facts ;
+               kpred:relates-to   kb:work-tiering ;
+               kpred:relates-to   kb:review-workbench ;
+               kpred:description  "Agents stop blocking on the human. When an agent needs a decision it EMITS A QUESTION AS A PARTIAL FACT (subject + predicate known, object '?') into knowledge.pending.jsonl, tags the work that question blocks, and moves to the next unblocked task. Matt answers whenever he likes — in the Review tab's entity picker, in Shelly chat, or by editing the triple directly — and recordAnswer() flows it back via knowledge.answers.jsonl, where the waiting agent resumes. Findings accumulate into a ROLLING DIGEST entity in the graph rather than a chat summary per task, so an AFK session produces one report that grew, not twenty that interrupted. The user becomes asynchronous; the pipeline never stalls on them." ;
+               kpred:principle    "The user is the bottleneck. Do not make them a blocking call." ;
+               kpred:principle    "An agent that cannot proceed should ASK THE GRAPH and pick up different work — never idle, never guess. A guess silently entered into a knowledge graph is worse than a stalled task." ;
+               kpred:principle    "Reckons.AI is the sounding board, not the chat window. A question left as a partial fact is reviewable, mergeable, searchable and dated. A question asked in chat is gone when the session ends." ;
+               kpred:has-phase    kb:async-ask ;
+               kpred:has-phase    kb:async-unblock ;
+               kpred:has-phase    kb:async-digest ;
+               kpred:has-phase    kb:async-visual-test ;
+               kpred:depends-on   kb:partial-facts .
+
+kb:async-ask rdf:type          ktype:Phase ;
+               rdfs:label   "Phase 1 — agents ask the graph" ;
+               kpred:part-of      kb:async-orchestration ;
+               hnav:order   1 ;
+               kpred:description  "An agent-side library + CLI (scripts/agent/) so asking is one call, not hand-rolled JSONL. ask() emits a partial fact (question, agent, priority, and the task it blocks). answers() polls knowledge.answers.jsonl and returns what has been resolved since a cursor. Deliberately a SCRIPT-tier primitive: deterministic, no model, usable by the local Ollama tier and by Claude Code alike." ;
+               kpred:remaining    "scripts/agent/ask.ts (emit question); scripts/agent/answers.ts (poll + cursor); npm run agent:ask / agent:answers." .
+
+kb:async-unblock rdf:type      ktype:Phase ;
+               rdfs:label   "Phase 2 — blocked vs unblocked work" ;
+               kpred:part-of      kb:async-orchestration ;
+               hnav:order   2 ;
+               kpred:description  "A question declares what it blocks (kpred:blocks -> a roadmap entity or task id). An agent asks the graph 'what can I work on that is NOT waiting on a human?' and gets a list. This is what lets the LOCAL tier keep working through the night on tasks whose details are already settled, while the questions queue up for Matt. Without it, one unanswered question stalls everything behind it." ;
+               kpred:remaining    "kpred:blocks on question entries; scripts/agent/unblocked.ts to list actionable work; graph-lint check that no task is silently blocked forever." .
+
+kb:async-digest rdf:type       ktype:Phase ;
+               rdfs:label   "Phase 3 — the rolling digest" ;
+               kpred:part-of      kb:async-orchestration ;
+               hnav:order   3 ;
+               kpred:description  "One report that GROWS, instead of many that interrupt. Agents append findings to a digest entity in the graph (dated, typed: bug-found / claim-falsified / test-added / question-raised / decision-needed). Matt reads one accumulating page when he returns, in the app, with the graph context attached — not twenty chat messages he must reconstruct. Renders through the existing WebPage/publish machinery, so it is just a graph node like anything else." ;
+               kpred:remaining    "kb:digest entity + append helper; render in-app; per-session sections." .
+
+kb:async-visual-test rdf:type  ktype:Phase ;
+               rdfs:label   "Phase 4 — visually test the ask/answer loop" ;
+               kpred:part-of      kb:async-orchestration ;
+               hnav:order   4 ;
+               kpred:description  "A Playwright user-story that drives the whole loop end to end: an agent emits a question -> it appears in the Review tab as a partial fact with an entity picker (not accept/reject) -> the user answers -> the answer lands in knowledge.answers.jsonl -> a waiting agent resumes. The loop is the product now, so it gets the same scrutiny as the product: if the question never reaches the user, or the answer never reaches the agent, the whole model silently degrades back to blocking." ;
+               kpred:remaining    "tests/visual/user-stories/async-questions.test.ts + screenshots." .
+
+kb:auto-merge rdf:type         ktype:Feature ;
+               rdfs:label   "Auto-merge of accumulated facts" ;
+               kpred:feature-id   "F80.1" ;
+               kpred:has-status   "planned" ;
+               kpred:part-of      kb:async-orchestration ;
+               kpred:description  "Facts pile up while the user is away, and many are the same fact said twice by different agents. Where two pending statements are confidently identical after entity normalization (F22) they should MERGE rather than both queue for review — the user should never triage the same finding twice. Merging is confidence-gated and always reviewable; an auto-merge is a suggestion the graph made, not a fact the graph invented." ;
+               kpred:open-question "What confidence threshold auto-merges without review? An over-eager merge quietly destroys a distinction the user cared about, which is exactly the class of silent-destructive-action the predicate manager just had to be cured of (kb:predicate-manager)." .
+
+# -- F81: Local task orchestration & scheduling (in Reckons.AI, not in a cloud cron) ---
+# The cloud cron FAILED in exactly the way that matters: it fired perfectly on schedule
+# (last_fired_at 2026-07-12T20:40:18Z) and produced NOTHING — no commits, no output, no
+# error anyone saw. Worse, afterwards next_run_at still displayed a future time while
+# enabled was false, so the UI said "armed" about a thing that would never run again.
+# A scheduler you cannot observe is not a scheduler, it is a rumour.
+#
+# So orchestration comes home. Reckons.AI already holds the work (the graph), the
+# questions (partial facts), and the findings (the digest). It should hold the SCHEDULE
+# too — locally, observably, and with the run's outcome written back as facts.
+
+kb:local-orchestration rdf:type ktype:Feature ;
+               rdfs:label   "Local task orchestration & scheduling" ;
+               kpred:feature-id   "F81" ;
+               kpred:has-status   "planned" ;
+               kpred:relates-to   kb:async-orchestration ;
+               kpred:relates-to   kb:work-tiering ;
+               kpred:description  "Tasks, schedules and outcomes live in the graph and run locally. A task is an entity (what to do, which TIER it belongs to, what it depends on, what question blocks it); a schedule is a triple; a run writes its result back as facts. That makes the whole loop QUERYABLE: what ran, what it found, what it is waiting on, what it never got to. Local Ollama/WASM agents drain the unblocked queue continuously; Claude Code takes what needs frontier reasoning; the human answers questions whenever they like. Nothing waits on anything it does not have to." ;
+               kpred:principle    "A scheduler you cannot observe is not a scheduler, it is a rumour. Every run writes its outcome back to the graph — including 'I did nothing, and here is why'." ;
+               kpred:principle    "Silence must never look like success. The cloud cron fired, produced nothing, and reported nothing; that is the failure mode to design against." ;
+               kpred:remaining    "Task entities + kpred:runs-at / kpred:blocked-by; a local runner draining the unblocked queue; run outcomes written back as facts; surface the queue in-app." ;
+               kpred:open-question "Where does the runner live — a node process beside the workspace, a service worker in the app, or the MCP server? The MCP server is already the thing agents talk to, which argues for it." .
+
+# -- F82: Browser fact-finding sessions (extension) ------------------------------
+# The extension already has a Session tab. The missing half is the GRAPH: while you read,
+# Reckons.AI should be quietly asking "do I already know about this?" — querying the graph
+# with the page's key terms and content, and offering the links it genuinely finds.
+
+kb:browser-fact-finding rdf:type ktype:Feature ;
+               rdfs:label   "Browser fact-finding sessions (highlight, analyze, link)" ;
+               kpred:feature-id   "F82" ;
+               kpred:has-status   "planned" ;
+               kpred:relates-to   kb:browser-extension ;
+               kpred:relates-to   kb:entity-normalization ;
+               kpred:description  "Research in the browser, grounded in what you already know. (1) HIGHLIGHT: key statements on the page are marked as candidate facts — a passage, not a vibe, so every proposed triple keeps its excerpt and is verifiable against the page (kb:passage-grounding). (2) DEEP ANALYSIS ON DEMAND: the user asks, and only then does the expensive pass run — never a background crawl of everything they read. (3) LINK TO WHAT WE KNOW: query the graph with the page's key terms AND its content, surface the entities that genuinely overlap, and offer to connect the new facts to them." ;
+               kpred:principle    "Disconnected data is less valuable — but a FORCED link is worse than an orphan. If the content genuinely does not overlap the graph, relate it to nothing and say so. An invented edge is a lie the graph tells itself, and it is the same failure as the fabricated citation in kb:passage-grounding: it looks like knowledge and it is not." ;
+               kpred:principle    "Deep analysis is opt-in. Reading is not consent to be indexed; the user asks, or it does not happen." ;
+               kpred:remaining    "Highlight → candidate triples with excerpts; on-demand deep analysis; graph query by key terms + page content; a link-confidence threshold below which we propose NO relation rather than a weak one." ;
+               kpred:open-question "What similarity floor counts as 'genuinely overlapping'? Set it too low and every page connects to everything, which is the same as connecting to nothing — the graph becomes a hairball and its edges stop meaning anything." ;
+               kpred:depends-on   kb:browser-extension .
+
 kb:int-firecrawl rdf:type   ktype:Tool ;
                rdfs:label   "Firecrawl" ;
                kpred:has-status   "production" ;

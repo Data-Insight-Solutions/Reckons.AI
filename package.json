@@ -101,7 +101,10 @@
     "offline:script-tier": "npx tsx scripts/offline/run-all.ts --tier=script",
     "landing:features": "npx tsx scripts/landing-features.ts",
     "landing:check": "npx tsx scripts/landing-features.ts --check",
-    "offline:evidence": "npx tsx scripts/offline/status-evidence.ts"
+    "offline:evidence": "npx tsx scripts/offline/status-evidence.ts",
+    "agent:ask": "npx tsx scripts/agent/ask.ts",
+    "agent:answers": "npx tsx scripts/agent/answers.ts",
+    "agent:digest": "npx tsx scripts/agent/digest.ts"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
