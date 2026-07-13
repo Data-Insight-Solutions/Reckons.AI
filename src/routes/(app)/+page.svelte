@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
   import { buildGraphView } from '$lib/rdf/graph-view';
+  import { bestSuggestion } from '$lib/rdf/view-suggestions';
   import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
   import AssetGlbViewer from '$lib/components/AssetGlbViewer.svelte';
   import StatementCard from '$lib/components/StatementCard.svelte';
@@ -443,6 +444,46 @@
   const drawn = $derived(graphView.edges);
   /** Literal facts that belong to a node rather than the canvas (node panel reads these). */
   const nodeAttributes = $derived(graphView.attributes);
+
+  // ── Context-aware view suggestions (F85) ───────────────────────────────────
+  //
+  // Offer the right force/filter for what is ACTUALLY on screen — "47 of these facts carry
+  // dates spanning 8 months; want a timeline?" — and say nothing otherwise.
+  //
+  // A suggestion must be EARNED BY THE DATA. An unearned one is corrosive: it teaches the
+  // user to ignore the suggester, and then the one good suggestion goes unread with all the
+  // rest. So: at most ONE at a time, it carries its evidence, and it is one-time
+  // dismissable. A menu of five things to try is not help, it is homework.
+  let suggestedId = $state<string | null>(null);
+
+  $effect(() => {
+    const suggestion = bestSuggestion({
+      visible: drawn,
+      nodeCount: allNodes.size,
+      layout,
+      selectedTypes,
+      sourceCount: selectedSources.size || new Set(drawn.map((s) => s.sourceId)).size,
+    });
+
+    if (!suggestion || suggestion.id === suggestedId) return;
+    suggestedId = suggestion.id;
+
+    pushNotification({
+      id: `view-suggestion:${suggestion.id}`,
+      type: 'info',
+      title: suggestion.headline,
+      body: suggestion.evidence,          // the evidence is SHOWN, never implied
+      oneTime: true,                       // dismissed once = never nagged again
+      action: {
+        label: 'apply',
+        onclick: () => {
+          if (suggestion.adjust.layout) layout = suggestion.adjust.layout;
+          if (suggestion.adjust.filters) activeFilters = new Set(suggestion.adjust.filters);
+          dismissNotification(`view-suggestion:${suggestion.id}`);
+        },
+      },
+    });
+  });
 
   // Compute node degrees and build adjacency
   const { nodeDegrees, adjacency, allNodes } = $derived.by(() => {

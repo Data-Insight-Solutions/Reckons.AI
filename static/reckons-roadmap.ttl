@@ -1788,6 +1788,30 @@ kb:tenet-honesty rdf:type      ktype:Tenet ;
                hnav:order   6 ;
                kpred:tenet-body   "Our safety documentation states plainly which protections exist and which do not, and an automated check verifies them against the live code every week — recording the failures too. We have already caught ourselves overclaiming, and corrected it in public. A safety promise you cannot verify is just marketing." .
 
+# -- F85: Context-aware view suggestions ----------------------------------------
+# Shelly and the notification stack should offer the RIGHT filter or force for what the
+# user is actually looking at — "47 of the facts on screen carry dates spanning 8 months;
+# want a timeline?" — and say NOTHING otherwise.
+#
+# A SUGGESTION MUST BE EARNED BY THE DATA. An unearned suggestion is not merely useless, it
+# is corrosive: it trains the user to ignore the suggester, and then the ONE good
+# suggestion — the one that would have saved them ten minutes in a 1,200-node hairball —
+# goes unread with all the rest. A nag that fires on a timer is a forced link wearing a
+# different costume: it looks like help and it is not.
+
+kb:view-suggestions rdf:type   ktype:Feature ;
+               rdfs:label   "Context-aware view suggestions" ;
+               kpred:feature-id   "F85" ;
+               kpred:has-status   "functional" ;
+               kpred:tested-by    "src/lib/rdf/__tests__/view-suggestions.test.ts" ;
+               kpred:has-file     "src/lib/rdf/view-suggestions.ts" ;
+               kpred:part-of      kb:graph-legibility ;
+               kpred:description  "Reads the REAL view context — the facts currently drawn, the entity types the user selected, the node count, the connectivity shape, the layout in use — and offers at most ONE warranted change. Rules fire only on evidence that genuinely exists: a timeline when the visible facts carry dates spanning real time (weighted higher when the user has selected event/calendar types); grouping by type when several kinds of thing are mixed; the hubs when the view is crowded AND hub-shaped; grouping by source when the facts came from several documents. Every suggestion carries its evidence, shown and not implied. Dismiss once and it never returns." ;
+               kpred:principle    "A suggestion must be EARNED BY THE DATA. Silence is the correct and common answer — six of the nineteen tests assert that we say nothing." ;
+               kpred:principle    "At most ONE suggestion. A menu of five things to try is not help, it is homework — and it is how a helpful feature becomes one the user mutes." ;
+               kpred:principle    "Show the evidence, never imply it. 'Trust me' is not a reason." ;
+               kpred:known-issue  "FIXED 2026-07-12 — ViewAdjust.layout omitted 'timeline' and 'hierarchy' while KnowledgeGraph supported them, so SHELLY COULD NOT REQUEST A TIMELINE LAYOUT AT ALL: the single most obvious thing to offer someone staring at dated facts. A view-control API that cannot express the view is not an API. Now typed from the one GraphLayout union both sides share." .
+
 kb:int-firecrawl rdf:type   ktype:Tool ;
                rdfs:label   "Firecrawl" ;
                kpred:has-status   "production" ;

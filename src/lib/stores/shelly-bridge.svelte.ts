@@ -5,6 +5,7 @@
  */
 
 import type { GraphFilter } from '$lib/types/turtle-chat';
+import type { GraphLayout } from '$lib/rdf/view-suggestions';
 
 // ── Chat open state ───────────────────────────────────────────────────────────
 
@@ -35,8 +36,15 @@ export function clearShellyOpen() {
 export interface ViewAdjust {
   /** IRI of entity to select in the graph */
   selectEntity?: string;
-  /** Graph layout mode */
-  layout?: 'force' | 'focus' | 'source' | 'type' | 'hub' | 'order';
+  /**
+   * Graph layout mode.
+   *
+   * Must stay in sync with KnowledgeGraph.svelte's `layout` prop. It previously omitted
+   * 'timeline' and 'hierarchy', so Shelly could not request a timeline layout AT ALL —
+   * the single most obvious thing to offer someone looking at dated facts. A view-control
+   * API that cannot express the view is not an API.
+   */
+  layout?: GraphLayout;
   /** Filter chips to activate (replaces current set) */
   filters?: GraphFilter[];
   /** Entity IRIs to spotlight (highlighted) in the graph — used by explore mode */
