@@ -1725,6 +1725,69 @@ kb:trig-enterprise-overlay rdf:type ktype:Feature ;
                kpred:description  "The institutional half of Reckons.AI, built on TriG's named graphs. A quad's 4th element becomes the join point for everything the enterprise cares about: WHO published it (identity), WHO may read it (RBAC), UNDER WHAT policy and procedure it was produced (the 3 Ps), and WHEN. Detailed provenance stops being metadata and becomes the access-control surface itself — you do not grant access to triples, you grant access to PUBLICATIONS. Entirely separate positioning from the private, offline, user-owned TTL side; likely a separate marketing angle and possibly a separate name." ;
                kpred:open-question "Does the enterprise side share a codebase with the private side, or diverge? The data model is the same (quads); the trust model is the opposite (nobody is the authority over their own facts). That tension is worth resolving deliberately rather than discovering later." .
 
+# == THE THESIS — what Reckons.AI actually believes ==============================
+# Surfaced on the landing page, GENERATED from these triples (scripts/landing-principles.ts)
+# so the marketing cannot drift from what the product actually does. Each tenet carries
+# kpred:tenet-status so the page can be honest about what is BUILT versus what is BELIEVED:
+# a principle we have not implemented is a commitment, and must not be dressed as a feature
+# (kb:honest-status).
+#
+# The spine of it, arrived at three separate times from three different directions:
+#   an unverifiable claim, made by the party it benefits, is not evidence.
+
+kb:thesis rdf:type             ktype:Concept ;
+               rdfs:label   "The thesis" ;
+               kpred:part-of      kb:reckons-ai ;
+               kpred:description  "Most knowledge tools store what you know. Reckons.AI stores HOW YOU KNOW IT — and refuses to fake it when it cannot." .
+
+kb:tenet-evidence rdf:type     ktype:Tenet ;
+               rdfs:label   "An unverifiable claim, made by the party it benefits, is not evidence." ;
+               kpred:part-of      kb:thesis ;
+               kpred:show-on-landing "true" ;
+               kpred:tenet-status "belief" ;
+               hnav:order   1 ;
+               kpred:tenet-body   "This is the spine. We arrived at it three separate times from three different directions: a stated purpose does not unlock a content gate, a weak similarity does not justify a link, and a source you control yourself is not a source. Each time the answer was the same — so we stopped treating it as a rule and started treating it as the thesis." .
+
+kb:tenet-citation rdf:type     ktype:Tenet ;
+               rdfs:label   "We would rather show you no citation than a forged one." ;
+               kpred:part-of      kb:thesis ;
+               kpred:show-on-landing "true" ;
+               kpred:tenet-status "built" ;
+               hnav:order   2 ;
+               kpred:tenet-body   "Every extracted fact quotes the sentence it came from — and we CHECK that the quote is really in your source. Language models paraphrase, and a paraphrased citation is a forgery that looks right. If we cannot find the quote, we drop it and lower our confidence. A missing receipt is honest. A convincing fake is not." .
+
+kb:tenet-link rdf:type         ktype:Tenet ;
+               rdfs:label   "A forced link is worse than an orphan." ;
+               kpred:part-of      kb:thesis ;
+               kpred:show-on-landing "true" ;
+               kpred:tenet-status "belief" ;
+               hnav:order   3 ;
+               kpred:tenet-body   "Disconnected facts are merely less useful. An invented edge is a lie the graph tells itself — it LOOKS like knowledge and is not. So if a new fact does not genuinely connect to what you already know, we connect it to nothing and say so. 'Is related to' is a non-link wearing the costume of a link." .
+
+kb:tenet-export rdf:type       ktype:Tenet ;
+               rdfs:label   "Export is a right. Distribution is a privilege." ;
+               kpred:part-of      kb:thesis ;
+               kpred:show-on-landing "true" ;
+               kpred:tenet-status "built" ;
+               hnav:order   4 ;
+               kpred:tenet-body   "Your graph is a plain text file on your machine, and we will never withhold it from you — whatever it contains. But when WE are the one carrying your content to someone else, we are a participant in that delivery, and we take responsibility for what we carry. We gate only what we carry." .
+
+kb:tenet-private rdf:type      ktype:Tenet ;
+               rdfs:label   "A private graph makes no claim on anybody." ;
+               kpred:part-of      kb:thesis ;
+               kpred:show-on-landing "true" ;
+               kpred:tenet-status "built" ;
+               hnav:order   5 ;
+               kpred:tenet-body   "Think privately. Be wrong privately. Change your mind privately. Your own graph needs no permission, no account, and no provenance — because it makes no claim on anyone else. Provenance is a claim made TO SOMEONE; alone with your notes, there is nobody to substantiate it to, and no reason to pretend otherwise." .
+
+kb:tenet-honesty rdf:type      ktype:Tenet ;
+               rdfs:label   "We will not describe a control we do not have." ;
+               kpred:part-of      kb:thesis ;
+               kpred:show-on-landing "true" ;
+               kpred:tenet-status "built" ;
+               hnav:order   6 ;
+               kpred:tenet-body   "Our safety documentation states plainly which protections exist and which do not, and an automated check verifies them against the live code every week — recording the failures too. We have already caught ourselves overclaiming, and corrected it in public. A safety promise you cannot verify is just marketing." .
+
 kb:int-firecrawl rdf:type   ktype:Tool ;
                rdfs:label   "Firecrawl" ;
                kpred:has-status   "production" ;

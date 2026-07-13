@@ -104,7 +104,9 @@
     "offline:evidence": "npx tsx scripts/offline/status-evidence.ts",
     "agent:ask": "npx tsx scripts/agent/ask.ts",
     "agent:answers": "npx tsx scripts/agent/answers.ts",
-    "agent:digest": "npx tsx scripts/agent/digest.ts"
+    "agent:digest": "npx tsx scripts/agent/digest.ts",
+    "landing:principles": "npx tsx scripts/landing-principles.ts",
+    "landing:principles:check": "npx tsx scripts/landing-principles.ts --check"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.100.1",

@@ -277,6 +277,13 @@
   // "planned" (kb:honest-status). CI fails if this file goes stale.
   import ROADMAP from '$lib/data/landing-roadmap.json';
 
+  // Generated FROM THE GRAPH by scripts/landing-principles.ts. Philosophy is worse than a
+  // feature list to get wrong: a principle we have quietly stopped honouring, still printed
+  // on the front page, is precisely the overclaim kb:honest-status exists to prevent. Each
+  // tenet is marked `built` (enforced by code today) or `belief` (a commitment, not yet a
+  // control) — and that distinction is RENDERED, not hidden. CI fails if this goes stale.
+  import THESIS from '$lib/data/landing-thesis.json';
+
   const RM_LABEL: Record<string, string> = {
     done: 'shipped',
     building: 'building',
@@ -433,6 +440,36 @@
         </div>
       {/each}
     </div>
+  </section>
+
+  <!-- THE THESIS — generated from kb:thesis in the graph -->
+  <section class="section thesis-section">
+    <p class="section-kicker mono">what we believe</p>
+    <h2>An unverifiable claim, made by the party it benefits,<br/><em>is not evidence.</em></h2>
+    <p class="section-sub">
+      We arrived at that three separate times, from three different directions — so we stopped
+      treating it as a rule and started treating it as the point.
+    </p>
+
+    <div class="thesis-list">
+      {#each THESIS as t}
+        <div class="tenet">
+          <div class="tenet-head">
+            <h3>{t.headline}</h3>
+            <span class="tenet-badge mono {t.status}">
+              {t.status === 'built' ? 'enforced in code' : 'what we believe'}
+            </span>
+          </div>
+          <p>{t.body}</p>
+        </div>
+      {/each}
+    </div>
+
+    <p class="thesis-foot mono">
+      Marked <strong>enforced in code</strong> where a test proves it, and <strong>what we
+      believe</strong> where it is a commitment we have not finished building. We would rather
+      tell you which is which.
+    </p>
   </section>
 
   <!-- Why not documents -->
@@ -1150,6 +1187,67 @@
   }
 
   /* ── Roadmap ─────────────────────────────────────────── */
+  .thesis-section { max-width: 62rem; }
+  .thesis-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.4rem;
+    margin-top: 2.2rem;
+    text-align: left;
+  }
+  .tenet {
+    padding: 1.25rem 1.4rem;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  .tenet-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+  }
+  .tenet h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    line-height: 1.35;
+  }
+  .tenet p {
+    margin: 0;
+    color: var(--text-2);
+    line-height: 1.6;
+    font-size: 0.95rem;
+  }
+  .tenet-badge {
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .tenet-badge.built {
+    color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+  .tenet-badge.belief {
+    color: var(--text-2);
+    border: 1px solid var(--border);
+  }
+  .thesis-foot {
+    margin-top: 1.6rem;
+    font-size: 0.78rem;
+    color: var(--text-2);
+    line-height: 1.6;
+  }
+  @media (max-width: 640px) {
+    .tenet-head { flex-direction: column; align-items: flex-start; gap: 0.35rem; }
+  }
+
   .roadmap-list {
     display: flex;
     flex-direction: column;
