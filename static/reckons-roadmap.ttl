@@ -1360,7 +1360,8 @@ kb:rdf-dataset-migration rdf:type ktype:Feature ;
                kpred:done         "Readers switched to format 'TriG' (import-ttl.ts, multi-graph-parse.ts, mcp-server/kb-reader.ts) — zero behavior change, 383 RDF tests green, since every .ttl is already legal TriG." ;
                kpred:done         "toTriG (src/lib/rdf/serialize.ts) — one named graph per SOURCE, lossless. Round-trip tested: parse our own output and every fact still knows which source it came from. A companion test PINS THE LOSS in toTurtle (its output round-trips with everything in the default graph), so nobody mistakes it for a lossless export." ;
                kpred:measured     "18 of 19 repo .ttl files declare 0-1 sources, so a named graph carries ZERO information for them — they stay .ttl forever. TriG earns its place at EXPORT, not in the repo: today toTurtle drops g, so after ingesting 5 PDFs and exporting, 'where did this fact come from?' is unanswerable." ;
-               kpred:decided      "THE GRAPH TERM IS THE SOURCE — not the KB. TriG has ONE graph slot; spending it on KB-bundling would silently destroy per-source provenance, which is the product's entire pitch. File = KB, named graph = source. Bundle multiple KBs with a graph package (which also carries assets, as TriG cannot)." ;
+               kpred:decided      "THE GRAPH TERM IS THE SOURCE — not the KB. TriG has ONE graph slot; spending it on KB-bundling would silently destroy per-source provenance. File = KB, named graph = source. Bundle multiple KBs with a graph package (which also carries assets, as TriG cannot)." ;
+               kpred:refined      "SUPERSEDED IN SCOPE by kb:ttl-trig-split (Matt, 2026-07-13). The question 'what does g mean?' was the wrong question, because it assumed one answer for one product. It has TWO answers, because there are two products. PRIVATE (.ttl): g means almost nothing — a source the user controls and can rewrite is self-attestation, not evidence, and a private graph needs no provenance because it makes no claim on anybody. PUBLISHED (.trig): g is a PUBLICATION — facts attributed to an accountable publisher, at a time, under a policy. THAT is what turns a source into provenance, because a publisher can be checked, cited, disputed and held responsible, and a private file cannot. So the format split is not a serialization preference; it is the boundary between the individual product and the institutional one." ;
                kpred:remaining    "Wire toTriG into the export UI; adopt .trig per-file only when a KB genuinely carries >1 source. OPEN (asked): whether a pure-text multi-KB meta-file is wanted enough to overload the graph term." ;
                kpred:decided      "TRIG IN, TURTLE OUT (2026-07-12). Readers accept TriG; files stay .ttl with a default graph; a KB becomes .trig only when it genuinely has more than one source. Justified by kb:provenance-model below — not a marketing compromise: for a single-source graph a named graph is ceremony carrying zero information, so default-graph Turtle is the CORRECT model, and 'your data is a plain .ttl file' stays true for the overwhelming majority of cases." ;
                kpred:bug          "toTurtle()'s provenance block is ORPHANED: it emits <urn:kbase:stmt/{id}> prov:wasDerivedFrom <source>, but the triples above carry no statement id and there is no rdf:Statement reification linking stmt/{id} back to its (s,p,o). The block is therefore unrecoverable decoration — it costs bytes and conveys nothing. toTurtleFull (proper reification) and toNQuads (native quads) are correct; plain toTurtle is the lossy path and must say so." ;
@@ -1669,6 +1670,60 @@ kb:graph-legibility rdf:type   ktype:Feature ;
                kpred:measured     "reckons-roadmap.ttl: 1888 triples, 1234 nodes -> 271 (78% fewer). 985 attributes moved to the node panel. 27 shared literals earned category nodes (production, planned, functional, high...). 903 edges drawn instead of 1888." ;
                kpred:remaining    "Predicate + time filters in the UI (the pure functions exist and are tested); focus/expand interaction; REVIEW at entity granularity — 233 entity cards, not 1888 triple cards, because reviewing 1888 rows one at a time is its own unusability." ;
                kpred:done         "Graph package & sync moved OUT of the canvas filter panel and INTO the Graphs tab (2026-07-13). It had been buried behind a disclosure, collapsed 'so the panel stays short' — which was the tell that it did not belong there. A filter panel should filter. Graph management has its own top-level tab precisely because it matters." .
+
+# == THE TTL / TRIG SPLIT — two products, not two file formats ==================
+# Matt, 2026-07-13, and it reframes everything above.
+#
+# PROVENANCE IS NOT A DATA STRUCTURE. IT IS AN ACCOUNTABILITY RELATION.
+#
+# A user writing g = urn:kbase:source/my-note is not asserting provenance. He is
+# SELF-ATTESTING, and he can edit it whenever he likes. It carries no epistemic weight
+# because there is nobody who can be held to it. "The user is a failure and a fool at
+# times" is not an insult — it is a THREAT MODEL. A graph whose only authority is its own
+# owner cannot be evidence of anything to anyone else.
+#
+# Note that this is the SAME PRINCIPLE Matt has now landed on three times, in three
+# different costumes:
+#   F66.1  a stated purpose is an attestation, not evidence — so the gate asks nothing.
+#   F82    an invented edge is a lie the graph tells itself — so we link nothing weakly.
+#   HERE   a self-asserted source is not a source — so a private graph has no provenance.
+# In every case: AN UNVERIFIABLE CLAIM, MADE BY THE PARTY IT BENEFITS, IS NOT EVIDENCE.
+#
+# So the split is not a file-format choice. It is two products.
+
+kb:ttl-trig-split rdf:type     ktype:Concept ;
+               rdfs:label   "The TTL / TriG split — private power vs published accountability" ;
+               kpred:part-of      kb:reckons-ai ;
+               kpred:principle    "PROVENANCE IS AN ACCOUNTABILITY RELATION, NOT A FIELD. It requires a party who can be held to it. A source the user controls and can rewrite is an attestation, not evidence." ;
+               kpred:principle    "A PRIVATE GRAPH HAS NO PROVENANCE, AND DOES NOT NEED ANY. It is the user's own reasoning, on the user's own device. He is the authority, and that is fine — because he is the only audience. Provenance is a claim made TO SOMEONE ELSE." ;
+               kpred:principle    "PUBLISHING IS THE MOMENT A GRAPH ACQUIRES AN OWNER, AND THEREFORE ACQUIRES PROVENANCE. Not manual file-sharing — handing someone a .ttl transfers no accountability. Official publication attributes the graph to a person or org who can be held to it." ;
+               kpred:description  "TTL is the PRIVATE side: offline-capable, plain-text, fully under the user's control, no accountability and none required. TriG is the PUBLISHED side: named graphs carry an attributed, accountable publication context, which is what makes provenance mean anything. The two are not competing serializations — they are the individual product and the institutional one." ;
+               kpred:relates-to   kb:data-egress-model ;
+               kpred:relates-to   kb:adult-content-policy .
+
+kb:ttl-private-side rdf:type   ktype:Concept ;
+               rdfs:label   "TTL — the private side (full power to the user)" ;
+               kpred:part-of      kb:ttl-trig-split ;
+               kpred:description  "Offline, local-first, plain text, editable by hand, exportable always (export is a RIGHT — kb:data-egress-model). The user is the sole authority over his own graph and needs no permission from anyone. There is no meaningful provenance here and none is claimed: g is a bookkeeping convenience, not evidence. This is the freedom half of the product, and it must stay uncompromised — the moment we require an account to reason privately, the thesis is dead." ;
+               kpred:principle    "Full power to the user, and no pretence of authority. A private graph makes no claim on anybody." .
+
+kb:trig-published-side rdf:type ktype:Concept ;
+               rdfs:label   "TriG — the published side (accountable provenance)" ;
+               kpred:part-of      kb:ttl-trig-split ;
+               kpred:relates-to   kb:enterprise-3ps ;
+               kpred:relates-to   kb:publish-safety-gate ;
+               kpred:description  "A named graph is a PUBLICATION: a set of facts attributed to an accountable publisher, at a time, under a policy. That attribution is what converts a self-asserted source into real provenance — because a publisher can be checked, cited, disputed, and held responsible, and a private file cannot. This is where TriG earns its keep, and it is a DIFFERENT PRODUCT from the private side: enterprise, institutional, governed." ;
+               kpred:principle    "The named graph is not 'my note'. It is 'published by X, at time T, under policy P'. That sentence is the provenance; the quad is merely how we store it." ;
+               kpred:remaining    "Publisher identity as a first-class entity; publication as an event (who, when, under what policy); RBAC + People/Policy/Procedure overlay (kb:enterprise-3ps); a distinct market position and marketing angle from the private side." .
+
+kb:trig-enterprise-overlay rdf:type ktype:Feature ;
+               rdfs:label   "TriG enterprise overlay (provenance + RBAC + 3Ps)" ;
+               kpred:feature-id   "F84" ;
+               kpred:has-status   "speculative" ;
+               kpred:part-of      kb:trig-published-side ;
+               kpred:depends-on   kb:enterprise-3ps ;
+               kpred:description  "The institutional half of Reckons.AI, built on TriG's named graphs. A quad's 4th element becomes the join point for everything the enterprise cares about: WHO published it (identity), WHO may read it (RBAC), UNDER WHAT policy and procedure it was produced (the 3 Ps), and WHEN. Detailed provenance stops being metadata and becomes the access-control surface itself — you do not grant access to triples, you grant access to PUBLICATIONS. Entirely separate positioning from the private, offline, user-owned TTL side; likely a separate marketing angle and possibly a separate name." ;
+               kpred:open-question "Does the enterprise side share a codebase with the private side, or diverge? The data model is the same (quads); the trust model is the opposite (nobody is the authority over their own facts). That tension is worth resolving deliberately rather than discovering later." .
 
 kb:int-firecrawl rdf:type   ktype:Tool ;
                rdfs:label   "Firecrawl" ;
