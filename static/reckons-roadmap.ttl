@@ -1664,7 +1664,8 @@ kb:graph-legibility rdf:type   ktype:Feature ;
                kpred:principle    "A graph is a picture of RELATIONSHIPS. A value that relates nothing to nothing is not part of that picture, however important it is to read." ;
                kpred:principle    "The human has a context window too. kb_compress already refuses to hand an LLM the whole graph and hands it the relevant part instead; 1,234 nodes overruns a person exactly as surely as 116k tokens overruns a model. Show the part that matters." ;
                kpred:measured     "reckons-roadmap.ttl: 1888 triples, 1234 nodes -> 271 (78% fewer). 985 attributes moved to the node panel. 27 shared literals earned category nodes (production, planned, functional, high...). 903 edges drawn instead of 1888." ;
-               kpred:remaining    "Predicate + time filters in the UI (the pure functions exist and are tested); focus/expand interaction; REVIEW at entity granularity — 233 entity cards, not 1888 triple cards, because reviewing 1888 rows one at a time is its own unusability." .
+               kpred:remaining    "Predicate + time filters in the UI (the pure functions exist and are tested); focus/expand interaction; REVIEW at entity granularity — 233 entity cards, not 1888 triple cards, because reviewing 1888 rows one at a time is its own unusability." ;
+               kpred:done         "Graph package & sync moved OUT of the canvas filter panel and INTO the Graphs tab (2026-07-13). It had been buried behind a disclosure, collapsed 'so the panel stays short' — which was the tell that it did not belong there. A filter panel should filter. Graph management has its own top-level tab precisely because it matters." .
 
 kb:int-firecrawl rdf:type   ktype:Tool ;
                rdfs:label   "Firecrawl" ;

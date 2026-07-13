@@ -10,6 +10,7 @@
   import { toTurtle, toNQuads, parseNQuads } from '$lib/rdf/serialize';
   import { merge, splitByConcept, closure } from '$lib/rdf/reasoning';
   import PredicateManager from '$lib/components/PredicateManager.svelte';
+  import GraphPackagePanel from '$lib/components/GraphPackagePanel.svelte';
   import { v4 as uuid } from 'uuid';
   import type { Statement } from '$lib/rdf/types';
   import type { KbStoryStep } from '$lib/storage/db';
@@ -907,6 +908,16 @@
 </section>
 
 <!-- ── Knowledge Bases ────────────────────────────────────────────────────── -->
+<!-- GRAPH PACKAGE & SYNC — this graph's .ttl, sidecars, story, currents & folder sync.
+     Belongs HERE, in the Graphs tab, not buried in the canvas's filter panel: this tab
+     exists as its own top-level tab precisely because graph management matters. -->
+<section class="section">
+  <div class="section-head">
+    <h3>graph package &amp; sync</h3>
+  </div>
+  <GraphPackagePanel statementCount={statements().length} />
+</section>
+
 <section class="section">
   <div class="section-head">
     <h3>graphs</h3>

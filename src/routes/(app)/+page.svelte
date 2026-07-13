@@ -46,7 +46,6 @@
   import { isIRI, isLit } from '$lib/rdf/types';
   import { requestShellyChat, setShellyChatOpen, shellyViewAdjust, clearShellyViewAdjust, shellySpotlight, exploreOpen, startExplore, stopExplore } from '$lib/stores/shelly-bridge.svelte';
   import AdaptivePanel from '$lib/components/AdaptivePanel.svelte';
-  import GraphPackagePanel from '$lib/components/GraphPackagePanel.svelte';
   import { entityProtection } from '$lib/rdf/protected-entities';
   import { buildEntitySet, defaultSetName, isEntitySet, setMembers } from '$lib/rdf/entity-sets';
   import { isCompact } from '$lib/stores/viewport.svelte';
@@ -373,9 +372,6 @@
   /** Show shared literal values ("production", "high") as category nodes. Unique literals
    *  are NEVER nodes — they are attributes (F83). */
   let showCategoryNodes = $state(true);
-  // Graph-package/sync controls in the filter panel are collapsed by default so
-  // the panel stays short (filters + force fit without an inner scroll).
-  let packageOpen = $state(false);
 
   // Build a set of subject IRIs matching the selected entity types
   const typedSubjects = $derived.by(() => {
@@ -1847,13 +1843,10 @@
   </div>
   {/if}
 
-  <!-- GRAPH PACKAGE — this graph's .ttl, sidecars, story, currents & folder sync.
-       Collapsed by default so the panel stays short (filters + force fit without
-       an inner scroll); expand for the package/sync controls on demand. -->
-  <details class="pkg-disclosure" bind:open={packageOpen}>
-    <summary class="group-label mono">graph package &amp; sync {packageOpen ? '▾' : '▸'}</summary>
-    <GraphPackagePanel statementCount={statements().length} />
-  </details>
+  <!-- Graph package & sync lives in the GRAPHS tab (/kb), alongside sources, predicates
+       and the graph registry. It was buried in this filter panel behind a disclosure,
+       collapsed "so the panel stays short" — which was the tell: it did not belong here.
+       A filter panel should filter. Graph management has its own tab because it matters. -->
 
 </div>
 </AdaptivePanel>
