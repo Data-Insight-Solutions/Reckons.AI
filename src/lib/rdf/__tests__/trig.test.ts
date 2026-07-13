@@ -75,7 +75,9 @@ describe('toTriG', () => {
     );
     expect(quads).toHaveLength(3);
     // Every quad landed in the DEFAULT graph. The sources did not survive.
-    expect(new Set(quads.map((q) => q.graph.value))).toEqual(new Set(['']));
+    expect(new Set(quads.map((q: (typeof quads)[number]) => q.graph.value))).toEqual(
+      new Set(['']),
+    );
   });
 
   it('filters by status when asked', () => {

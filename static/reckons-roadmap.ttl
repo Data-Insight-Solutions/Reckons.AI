@@ -462,11 +462,14 @@ kb:entity-types rdf:type    ktype:Feature ;
                kpred:description  "Customizable entity types with colors and labels. Type selector in node panel." .
 
 kb:history-mode rdf:type    ktype:Feature ;
-               kpred:test-coverage "none" ;
-               kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
+               kpred:tested-by    "src/lib/storage/__tests__/history.test.ts" ;
+               kpred:has-file     "src/lib/storage/history.ts" ;
+               kpred:known-issue  "FIXED 2026-07-13 — HISTORY MODE COULD NOT SHOW YOU ANYTHING YOU HAD DELETED. The past was rebuilt by FILTERING the current statement set, but deletion is a hard db.statements.delete(id), so a fact deleted since T is not in that set and could never be filtered back IN. Scrubbing to a time when a fact plainly existed showed a graph without it; the 'was it deleted before T?' branch was unreachable dead code. The one thing a history feature exists to do — show you what you have lost — was the one thing it could not do. It now replays the CHANGELOG and resurrects deleted facts from the tombstone ({s,p,o} snapshot written at delete time), so add → delete → re-add resolves correctly at every instant." ;
+               kpred:known-issue  "FIXED 2026-07-13 — TRUST SCORES IN HISTORY MODE USED A STALE COPY OF THE MATHS. The page carried its own inline scorer: score = Σ(delta · decay), with no baseline. That is the IDENTICAL bug fixed in trust.ts on 2026-07-12 (kb:trust-system) — it survived here because the logic was duplicated rather than imported, so the fix never reached the second copy. Every source in History Mode scored near zero. Now calls computeTrustScore: one implementation of trust in the codebase, not two. The lesson is the bug: a fix only propagates as far as the code that shares the function." ;
+               kpred:honest-note  "DECLARED LIMIT (not a bug): a statement with no add/ingest entry in the changelog cannot be dated — graphs seeded from TTL or ingested before the changelog existed have no arrival record. We refuse to guess in either direction: asserting it was present is an unverifiable claim, asserting it was absent is equally unfounded. Undated facts are COUNTED and shown in the UI ('N facts not shown — undateable') rather than silently dropped, which is what the old code did." ;
                rdfs:label   "History Mode" ;
                kpred:has-status   "production" ;
-               kpred:description  "Timeline slider to view graph state at any past timestamp. Ghost mode in graph." .
+               kpred:description  "Timeline slider to view graph state at any past timestamp, reconstructed by replaying the changelog — including facts you have since deleted, revived from their tombstones. Trust scores are recomputed as they stood at that instant. Ghost mode in graph." .
 
 kb:trust-system rdf:type    ktype:Feature ;
                kpred:tested-by    "src/lib/storage/__tests__/trust.test.ts" ;

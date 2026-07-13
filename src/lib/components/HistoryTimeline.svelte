@@ -50,25 +50,41 @@
     onTimestampChange(timestamp);
   }
 
+  let playbackInterval: ReturnType<typeof setInterval> | null = null;
+
+  function stopPlayback() {
+    if (playbackInterval === null) return;
+    clearInterval(playbackInterval);
+    playbackInterval = null;
+  }
+
   function handlePlayback() {
-    // Step through events one by one
+    // Step through events one by one. Restart cleanly if playback is already running —
+    // otherwise a second click leaves the first interval orphaned, and two of them fight
+    // over the timestamp.
     if (entries.length === 0) return;
+    stopPlayback();
+
     let idx = 0;
-    const interval = setInterval(() => {
-      if (idx < entries.length) {
-        currentTimestamp = entries[idx].timestamp;
-        onTimestampChange(entries[idx].timestamp);
-        idx++;
-      } else {
-        clearInterval(interval);
+    playbackInterval = setInterval(() => {
+      if (idx >= entries.length) {
+        stopPlayback();
+        return;
       }
+      currentTimestamp = entries[idx].timestamp;
+      onTimestampChange(entries[idx].timestamp);
+      idx++;
     }, 500);
   }
 
   function handleReset() {
+    stopPlayback();
     currentTimestamp = null;
     onTimestampChange(null);
   }
+
+  // The interval must not outlive the component: it calls back into a parent that is gone.
+  $effect(() => stopPlayback);
 </script>
 
 <div class="history-timeline">
