@@ -387,46 +387,70 @@
     return subjects;
   });
 
-  const visible = $derived.by(() => {
-    let filtered = statements().filter((s) =>
+  // A FILTER IS A LENS, NOT A DELETION.
+  //
+  // `visible` is the graph's TOPOLOGY: every statement that is part of the graph at all.
+  // Only structural exclusions are dropped here — rejected/superseded facts and meta
+  // predicates are not "filtered out", they are not graph content in the first place.
+  //
+  // User filters do NOT belong in this set. They used to be: each active filter spliced
+  // statements out of the array before buildGraphView, so the filtered nodes never reached
+  // the force simulation. Two things followed, both bad. The layout JUMPED — d3 re-solves a
+  // different graph, so the node you were looking at moved, and the shape you had learned
+  // was gone. And filtering to zero matches emptied `visible` entirely, which tripped the
+  // `visible.length === 0` branch below and drew the MARKETING LANDING PAGE over the user's
+  // own graph.
+  //
+  // Filters now resolve to a set of matching node KEYS (see filterMatch) and the graph dims
+  // the rest to 0.18 alpha — present, still pulling on their neighbours, just quiet. The
+  // hubs/islands/leaps filters already worked this way; the status/source/type ones did not.
+  // Now there is one mechanism.
+  const visible = $derived.by(() =>
+    statements().filter((s) =>
       s.status !== 'rejected' &&
       s.status !== 'superseded' &&
       !GRAPH_EXCLUDED_PREDICATES.has(s.p.value)
-    );
+    )
+  );
 
-    // Apply status filters
-    if (activeFilters.has('confirmed') || activeFilters.has('pending')) {
-      filtered = filtered.filter((s) => {
-        if (activeFilters.has('confirmed') && (s.status === 'confirmed' || s.status === 'refined')) return true;
-        if (activeFilters.has('pending') && s.status === 'pending') return true;
-        return false;
-      });
+  /**
+   * Statement-level filters (status · source · entity type · no-source · no-type), resolved
+   * to the node keys they keep. A node is kept if ANY statement touching it passes every
+   * active filter — the filters AND together, as they did when they were chained `.filter`s.
+   *
+   * null = no statement-level filter is active (everything matches; nothing to dim).
+   */
+  const filterMatch = $derived.by(() => {
+    const wantStatus = activeFilters.has('confirmed') || activeFilters.has('pending');
+    const wantSource = selectedSources.size > 0;
+    const wantType = typedSubjects !== null;
+    const wantNoSource = activeFilters.has('no-source');
+    const wantNoType = activeFilters.has('no-type');
+    if (!wantStatus && !wantSource && !wantType && !wantNoSource && !wantNoType) return null;
+
+    const keys = new Set<string>();
+    for (const s of visible) {
+      if (wantStatus) {
+        const ok =
+          (activeFilters.has('confirmed') && (s.status === 'confirmed' || s.status === 'refined')) ||
+          (activeFilters.has('pending') && s.status === 'pending');
+        if (!ok) continue;
+      }
+      if (wantSource && !selectedSources.has(s.sourceId)) continue;
+      if (wantNoSource && s.sourceId !== 'manual') continue;
+      if (wantType && !(typedSubjects!.has(s.s.value) || typedSubjects!.has(s.o.value))) continue;
+      if (
+        wantNoType &&
+        !(
+          (s.s.kind === 'iri' && untypedSubjectIris.has(s.s.value)) ||
+          (s.o.kind === 'iri' && untypedSubjectIris.has(s.o.value))
+        )
+      )
+        continue;
+      keys.add(termKey(s.s));
+      keys.add(termKey(s.o));
     }
-
-    // Apply source filters
-    if (selectedSources.size > 0) {
-      filtered = filtered.filter((s) => selectedSources.has(s.sourceId));
-    }
-
-    // Apply entity type filters — keep statements where subject matches typed subjects
-    if (typedSubjects !== null) {
-      filtered = filtered.filter((s) => typedSubjects.has(s.s.value) || typedSubjects.has(s.o.value));
-    }
-
-    // Apply no-type filter — show only nodes that have no rdf:type
-    if (activeFilters.has('no-type')) {
-      filtered = filtered.filter((s) =>
-        (s.s.kind === 'iri' && untypedSubjectIris.has(s.s.value)) ||
-        (s.o.kind === 'iri' && untypedSubjectIris.has(s.o.value))
-      );
-    }
-
-    // Apply no-source filter — show only manually added statements
-    if (activeFilters.has('no-source')) {
-      filtered = filtered.filter((s) => s.sourceId === 'manual');
-    }
-
-    return filtered;
+    return keys;
   });
 
   // F83 graph legibility: LITERALS ARE ATTRIBUTES, NOT NODES — unless they are shared.
@@ -579,11 +603,6 @@
     return new Set([...allEntityIris].filter(iri => !typedIris.has(iri)));
   });
 
-  // Node keys for untyped entities (used for highlighting)
-  const untypedNodeKeys = $derived(
-    [...untypedSubjectIris].map(iri => `i:${iri}`)
-  );
-
   // Node keys for entities with leap targets (used for highlighting)
   const leapKeys = $derived([...leapNodeKeys(statements())]);
 
@@ -596,19 +615,38 @@
     return [selected, ...setMembers(iri, statements()).map(m => `i:${m}`)];
   });
 
-  // Shared dim/highlight state — used by both the graph components and the label overlay
-  const dimMode = $derived(
-    activeFilters.has('hubs') || activeFilters.has('islands') || activeFilters.has('no-type') || activeFilters.has('leaps')
-    || selectedSetKeys.length > 0
-  );
+  /**
+   * Node-set filters (hubs · islands · leaps): properties of a node, not of a statement.
+   * UNIONed — "hubs + islands" asks for both kinds at once, which is how they have always
+   * behaved. null = none active.
+   */
+  const nodeSetMatch = $derived.by(() => {
+    if (!activeFilters.has('hubs') && !activeFilters.has('islands') && !activeFilters.has('leaps')) return null;
+    return new Set(
+      Array.from(activeFilters).flatMap((f) =>
+        f === 'hubs' ? hubs : f === 'islands' ? islandNodes : f === 'leaps' ? leapKeys : ([] as string[])
+      )
+    );
+  });
+
+  /**
+   * Every node that survives the active filters. The two mechanisms AND together: asking for
+   * "hubs" and "pending" means hubs that are pending, not hubs plus everything pending.
+   *
+   * null = no filter is active, so nothing is dimmed.
+   */
+  const matchedKeys = $derived.by(() => {
+    if (filterMatch === null) return nodeSetMatch;
+    if (nodeSetMatch === null) return filterMatch;
+    return new Set([...filterMatch].filter((k) => nodeSetMatch.has(k)));
+  });
+
+  // Shared dim/highlight state — used by both the graph components and the label overlay.
+  // Nothing here REMOVES a node: the unmatched keep their place in the force simulation and
+  // render at 0.18 alpha, so the graph's shape holds still while you look through the lens.
+  const dimMode = $derived(matchedKeys !== null || selectedSetKeys.length > 0);
   const highlightedSet = $derived(new Set([
-    ...Array.from(activeFilters).flatMap(f =>
-      f === 'hubs' ? hubs
-      : f === 'islands' ? islandNodes
-      : f === 'no-type' ? untypedNodeKeys
-      : f === 'leaps' ? leapKeys
-      : [] as string[]
-    ),
+    ...(matchedKeys ?? []),
     ...shellySpotlight(),
     ...selectedSetKeys
   ]));
