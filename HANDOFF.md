@@ -81,22 +81,25 @@ write the script — that IS the work.
 
 ## Next up (in priority order)
 
-1. **`npm run brief`** — a script-tier session-start dump (branch, open PRs, pending count,
-   what is unblocked, script-tier status). Replaces the few-thousand-token re-derivation Opus
-   performs at every single session start. **Highest token-leverage item on this list.**
-2. **KB gallery** — Matt asked for this early and it is still not built. A filterable gallery
-   of graphs with metadata (last edit, statement count) and previews if feasible, replacing the
-   current graph-selection experience.
-3. **Digest → graph-generated** (`kb:digest` entity → `DIGEST.md` via `docs-pages.ts`).
-   `reckons-workspace/DIGEST.md` is hand-appended and is a SECOND SOURCE OF TRUTH, inside a
-   product whose entire thesis is that there should not be one. F80 phase 3 specified the
-   entity; it was never built.
-4. **F87 remaining** — a `local-agent` tier runner (Ollama; `scripts/offline/code-review.ts`
-   already proves the ground→prompt→validate→propose harness), then the scheduled Opus
-   orchestrator that ASSIGNS rather than executes.
-5. **F90 Blender** (planned) — headless Blender over MCP. The trap is written into the roadmap:
+Everything on the previous list is DONE (brief, gallery, graph-first digest, local-agent tier).
+**CI on PR #101 is fully green** — all four jobs, including the blocking script tier.
+
+1. **The Opus orchestrator (F89)** — the last missing piece of the loop. A scheduled Opus
+   session that ASSIGNS rather than executes: triage the pending queue, write `AgentTask`
+   entities into `reckons-workspace/tasks.ttl` (with a `done-when`, or the runner refuses
+   them), and let the free runner drain them. Everything it needs now exists — tasks, leases,
+   outcomes, blast-radius ranking, gates, `kb_merge`, and a runner that asks instead of guessing.
+2. **Triage the queue.** `npm run brief` reports **156 pending facts, 35 drift-warnings, 37 open
+   questions**. That backlog is what the other two tiers exist to fill and Opus exists to judge.
+   Route it with F88: most of it is not Matt's to decide.
+3. **F90 Blender** (planned) — headless Blender over MCP. The trap is written into the roadmap:
    **Blender will render a black frame and exit 0.** Content is the first domain where
    `done-when` cannot be a passing test, which is precisely what F88 exists for.
+4. **Graph previews in the gallery** — deliberately not built. A thumbnail needs each graph's
+   statements loaded out of IndexedDB, which is a real cost across many graphs and deserves its
+   own decision (cache a thumbnail on save? render on hover?).
+5. **F27 / F34 / F79 / F83** are all still `in-progress` or `scaffolded` — see `npm run brief`,
+   which reads them from the graph rather than from anyone's memory.
 
 ## Decisions that are MATT'S, not yours
 
