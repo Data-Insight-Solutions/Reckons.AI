@@ -43,7 +43,29 @@
         window.CMS_MANUAL_INIT = true;
       }
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/@sveltia/cms@0.169.1/dist/sveltia-cms.js"></script>
+    <!--
+      SUBRESOURCE INTEGRITY IS NOT OPTIONAL HERE.
+
+      This page holds a GitHub OAuth token with write access to this repository, and
+      production deploys from `main`. A CDN that served different bytes than it promised
+      would therefore have a path to production — and version-pinning does NOT prevent that.
+      Pinning defends against an ACCIDENTAL breaking release; it is no defence at all
+      against a compromised or hijacked CDN response, which is free to return anything it
+      likes under the same URL.
+
+      The hash below was verified byte-for-byte against the npm-published artifact
+      (registry.npmjs.org/@sveltia/cms/-/cms-0.169.1.tgz) on 2026-07-14, so it pins the
+      real release rather than whatever the CDN happened to hand us. crossorigin is
+      required for the browser to check integrity on a cross-origin script.
+
+      When bumping the version, RECOMPUTE the hash from the npm tarball — never from the
+      CDN alone, or you will faithfully pin an attacker's bytes.
+    -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/@sveltia/cms@0.169.1/dist/sveltia-cms.js"
+      integrity="sha384-bZPXv5iCz/2JNwBehhFWqz6qWmJ0z9GrJYbWpm9S/YYviAs5yLypyxUp+U8ps7DP"
+      crossorigin="anonymous"
+    ></script>
     <script>
       // Only the dev/preview path took manual control; production already
       // auto-inited above. Keep everything from config.yml (load_config_file)
