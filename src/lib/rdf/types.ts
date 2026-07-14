@@ -137,6 +137,12 @@ export type TurtleSettings = {
   responseFrequency: number; // 0-100
 };
 
+/**
+ * What would SETTLE a fact — and therefore who is competent to approve it (F88).
+ * Defined here beside Statement; the routing logic lives in rdf/verifiability.ts.
+ */
+export type Verifiability = 'code' | 'test' | 'source' | 'user' | 'unknown';
+
 export type Statement = {
   /** Unique id (uuid) */
   id: string;
@@ -190,6 +196,20 @@ export type Statement = {
    * running, an unattributed answer cannot be claimed by the one that is waiting.
    */
   askedBy?: string;
+  /**
+   * HOW could this fact be checked — and therefore WHO is competent to approve it (F88).
+   *
+   * `code` | `test` a script or a suite settles it; the user need not be asked at all.
+   * `source`        a cited passage backs it.
+   * `user`          only the person knows: their business, their intent. Self-attested.
+   * `unknown`       nobody has established this. Unsettled, not false.
+   *
+   * Undefined means UNCLASSIFIED, which routes to the user — never auto-approve a fact whose
+   * verifiability nobody has established. See `gateFor()` in rdf/verifiability.ts, and note
+   * that AUTHORITY OVERRIDES THIS: a roadmap change or a core principle is the user's to
+   * decide however checkable it happens to be.
+   */
+  verifiableBy?: Verifiability;
   /** Created / updated timestamps */
   createdAt: number;
   updatedAt: number;
