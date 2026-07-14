@@ -106,7 +106,8 @@
     "agent:answers": "npx tsx scripts/agent/answers.ts",
     "agent:digest": "npx tsx scripts/agent/digest.ts",
     "landing:principles": "npx tsx scripts/landing-principles.ts",
-    "landing:principles:check": "npx tsx scripts/landing-principles.ts --check"
+    "landing:principles:check": "npx tsx scripts/landing-principles.ts --check",
+    "offline:competitors": "npx tsx scripts/offline/competitor-scan.ts"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.100.1",

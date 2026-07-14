@@ -47,6 +47,13 @@
       "desc": "TTL parse / asset paths / namespace typos / stale LEAP + branch-align --suggest + kb-align \u2192 pending questions"
     },
     {
+      "name": "competitor-scan",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/competitor-scan.ts --pending",
+      "desc": "F86: refresh competitor metadata + LICENSE from the GitHub API; flags license changes, copyleft (we are MIT), unlicensed repos, and abandoned projects. Add --discover to search for new competitors. Never edits the TTL — judgment stays human"
+    },
+    {
       "name": "button-crawl",
       "tier": "script",
       "enabled": false,
