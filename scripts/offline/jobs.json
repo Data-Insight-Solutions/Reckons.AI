@@ -12,6 +12,14 @@
       "desc": "static/knowledge.ttl IS the public graph (served at /knowledge.ttl). Checks it parses, is not suddenly empty, and holds no test debris. Was found gutted 1032 -> 45 statements, one `git add .` from publishing test junk to the world"
     },
     {
+      "name": "build-guard",
+      "tier": "script",
+      "enabled": false,
+      "blocking": true,
+      "cmd": "npx tsx scripts/offline/build-guard.ts",
+      "desc": "Is ./build actually a PRODUCTION build? No dev artifacts (@vite/client), minified, content-hashed, CSP present. Disabled here because it needs a build to exist — it runs in CI right after `npm run build` (npm run build:verify). Enable with --only=build-guard after building locally"
+    },
+    {
       "name": "graph-lint",
       "tier": "script",
       "enabled": true,
