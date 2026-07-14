@@ -1,7 +1,7 @@
 {
-  "_comment": "Offline jobs run by `npm run offline:all` (scripts/offline/run-all.ts). Add/remove/toggle freely \u2014 each runs in order even if a prior one fails. Findings land in reckons-workspace/knowledge.pending.jsonl for review in Reckons.AI. cmd runs in bash, so ${VAR:-default} and pipes work.",
-  "_tiers": "F74.3 work tiering. tier=script: deterministic, no LLM, zero tokens, right by construction \u2014 run these first and prefer growing this tier. tier=agent: a LOCAL model fills a judgment hole inside a scripted harness (ground \u2192 prompt \u2192 validate \u2192 emit-proposal) and only ever emits PROPOSALS a human gates. Opus is not a tier here: it designs the harness and triages the queue these jobs fill. Anything an agent job gets right reliably should be demoted to a script.",
-  "_blocking": "blocking=true means `run-all --ci` exits non-zero if this job fails. Reserve it for failures you cannot take back after a push. Everything else is ADVISORY: it reports and queues pending findings, and never blocks a merge \u2014 a gate that cries wolf gets switched off, and then it protects nothing.",
+  "_comment": "Offline jobs run by `npm run offline:all` (scripts/offline/run-all.ts). Add/remove/toggle freely — each runs in order even if a prior one fails. Findings land in reckons-workspace/knowledge.pending.jsonl for review in Reckons.AI. cmd runs in bash, so ${VAR:-default} and pipes work.",
+  "_tiers": "F74.3 work tiering. tier=script: deterministic, no LLM, zero tokens, right by construction — run these first and prefer growing this tier. tier=agent: a LOCAL model fills a judgment hole inside a scripted harness (ground → prompt → validate → emit-proposal) and only ever emits PROPOSALS a human gates. Opus is not a tier here: it designs the harness and triages the queue these jobs fill. Anything an agent job gets right reliably should be demoted to a script.",
+  "_blocking": "blocking=true means `run-all --ci` exits non-zero if this job fails. Reserve it for failures you cannot take back after a push. Everything else is ADVISORY: it reports and queues pending findings, and never blocks a merge — a gate that cries wolf gets switched off, and then it protects nothing.",
   "jobs": [
     {
       "name": "published-graph-guard",
@@ -18,6 +18,13 @@
       "blocking": true,
       "cmd": "npx tsx scripts/offline/build-guard.ts",
       "desc": "Is ./build actually a PRODUCTION build? No dev artifacts (@vite/client), minified, content-hashed, CSP present. Disabled here because it needs a build to exist — it runs in CI right after `npm run build` (npm run build:verify). Enable with --only=build-guard after building locally"
+    },
+    {
+      "name": "claim-audit",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/claim-audit.ts --pending",
+      "desc": "ASYNC alignment: sweeps the hand-written surfaces align(1) cannot generate (README, SAFETY.md, COUNSEL-BRIEF.md, app shell, landing copy) for claims the graph contradicts — an unbuilt feature described as working, or a countable claim that is simply wrong. Emits PROPOSALS for review; never gates a build, because 'is this sentence overclaiming' is a judgment"
     },
     {
       "name": "graph-lint",
@@ -52,7 +59,7 @@
       "tier": "script",
       "enabled": true,
       "cmd": "bash scripts/offline/alignment-sweep.sh",
-      "desc": "TTL parse / asset paths / namespace typos / stale LEAP + branch-align --suggest + kb-align \u2192 pending questions"
+      "desc": "TTL parse / asset paths / namespace typos / stale LEAP + branch-align --suggest + kb-align → pending questions"
     },
     {
       "name": "competitor-scan",
@@ -80,14 +87,14 @@
       "tier": "agent",
       "enabled": true,
       "cmd": "npx tsx scripts/offline/code-review.ts --base=${CODE_REVIEW_BASE:-origin/dev}",
-      "desc": "Local coding model (qwen3-coder) reviews the branch diff \u2192 findings to pending review (needs OLLAMA_BASE_URL)"
+      "desc": "Local coding model (qwen3-coder) reviews the branch diff → findings to pending review (needs OLLAMA_BASE_URL)"
     },
     {
       "name": "visual-diff",
       "tier": "agent",
       "enabled": false,
       "cmd": "npx tsx scripts/offline/visual-diff.ts --base=${VISUAL_DIFF_BASE:-https://reckons.ai} --head=${VISUAL_DIFF_HEAD:-https://dev.reckons-ai.pages.dev}",
-      "desc": "Local-VLM visual regression prod\u2194dev (needs OLLAMA_BASE_URL; set VISUAL_DIFF_BASE / VISUAL_DIFF_HEAD)"
+      "desc": "Local-VLM visual regression prod↔dev (needs OLLAMA_BASE_URL; set VISUAL_DIFF_BASE / VISUAL_DIFF_HEAD)"
     }
   ]
 }

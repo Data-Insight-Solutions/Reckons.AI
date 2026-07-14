@@ -109,7 +109,8 @@
     "landing:principles:check": "npx tsx scripts/landing-principles.ts --check",
     "offline:competitors": "npx tsx scripts/offline/competitor-scan.ts",
     "build:verify": "npx tsx scripts/offline/build-guard.ts",
-    "align": "npx tsx scripts/align.ts"
+    "align": "npx tsx scripts/align.ts",
+    "claim-audit": "npx tsx scripts/offline/claim-audit.ts"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
