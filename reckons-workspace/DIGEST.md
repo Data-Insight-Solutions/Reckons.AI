@@ -109,3 +109,9 @@ History Mode carried its own inline scorer — score = SUM(delta * decay), no ba
 `bug-found` · **kb:graph-publishing** · 2026-07-14T14:53:57.083Z · _claude-code_
 
 static/knowledge.ttl IS the public graph (served at /knowledge.ttl, PUBLISHED_TTL_PATH in site-export.ts). It currently carries 166 terms in the urn:reckons:story/ test-harness namespace, and the debris is COMMITTED on origin/dev, not working-tree churn. Its header also claims 1032 statements while the body parses to 3096, so the file misdescribes itself. Found by published-graph-guard.ts on its first run in the job registry — the script existed but was registered nowhere, so nothing had ever run it. A derived artifact with no guard is a derived artifact nobody is watching.
+
+### 🐛 The e2e smoke test has been failing on dev — and nothing was watching
+
+`bug-found` · **kb:deep-testing** · 2026-07-14T16:13:25.256Z · _claude-code_
+
+tests/e2e/graph-render.test.ts ('documentation graph renders nodes without a WebGL/renderer crash') fails with 'Failed to fetch dynamically imported module: http://localhost:4174/@vite/client'. Verified PRE-EXISTING: it fails identically on the untouched baseline dependency tree, so it is not fallout from the uuid/cookie security overrides. A smoke test is the one test whose whole job is to be trusted when it is green; this one is red and the signal was going nowhere. CI runs test:e2e — so either CI is red on dev and being ignored, or the smoke job is not gating what we think it gates. Find out which, because both answers are bad.
