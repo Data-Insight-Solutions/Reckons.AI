@@ -1314,13 +1314,13 @@ kb:tier-script rdf:type        ktype:Concept ;
 
 # The gate is not on yet, and the graph says so rather than implying otherwise.
 kb:tier-script-ci rdf:type     ktype:Phase ;
-               rdfs:label   "Script tier in CI — advisory now, blocking when clean" ;
+               rdfs:label   "Script tier in CI — blocking" ;
                kpred:part-of      kb:work-tiering ;
                hnav:order   4 ;
-               kpred:has-status   "in-progress" ;
-               kpred:description  "The script tier runs on every push/PR (ci.yml, job `script-tier`) and reports; it does not fail the build. jobs.json gains a `blocking` flag and run-all.ts a `--ci` mode that exits non-zero when a blocking job fails. Exactly one job is marked blocking — published-graph-guard — because a gutted or debris-filled static/knowledge.ttl is the one failure you cannot take back once pushed: it IS the public graph, and for a product whose thesis is that an unverifiable claim is not evidence, the graph we publish about ourselves is the receipt." ;
-               kpred:blocked-by   "static/knowledge.ttl is currently dirty: 166 terms in the urn:reckons:story/ test-harness namespace, COMMITTED on dev, and a header claiming 1032 statements against a body that parses to 3096. Turning the gate on today would paint CI red on arrival, and a gate that cries wolf gets switched off — after which it protects nothing." ;
-               kpred:remaining    "Regenerate static/knowledge.ttl clean of test-harness terms; stop the visual/story harness writing to it; then swap `|| true` for `--ci` in the ci.yml script-tier step." .
+               kpred:has-status   "functional" ;
+               kpred:description  "The script tier runs on every push/PR (ci.yml, job `script-tier`) and FAILS the build when a job marked blocking:true fails. jobs.json carries the `blocking` flag; run-all.ts has a `--ci` mode that exits non-zero. Blocking today: published-graph-guard (static/knowledge.ttl IS the public graph — the one failure you cannot take back once pushed) and build-guard (a dev-mode artifact must never deploy). Everything else reports and queues findings without gating, because a diagnostic that fails the build on every finding gets switched off, and then it protects nothing." ;
+               kpred:correction   "CORRECTED 2026-07-14, and the correction is the lesson. This shipped ADVISORY for one day because published-graph-guard reported '166 test-harness terms' in the published graph. THE FINDING WAS FALSE: the guard banned `urn:reckons:story/`, which is the PRODUCT'S OWN guided-story vocabulary (src/lib/rdf/story.ts, used by the landing page and TurtleChatPanel, declared in reckons-production.ttl). The real harness namespace is `urn:reckons:test/`, and it appears ZERO times. The published graph was clean the entire time. An unverified finding, believed and repeated across three commit messages, kept a real gate switched off — an unverifiable claim treated as evidence, which is the exact failure this product exists to refuse. We committed it against ourselves." ;
+               kpred:principle    "A finding is a CLAIM. A tool that reports a violation is a party with an interest in having found one. Verify the finding before you act on it — especially when acting on it means weakening a control." .
 
 kb:tier-local-agent rdf:type   ktype:Concept ;
                rdfs:label   "Tier 2 — local model agent" ;

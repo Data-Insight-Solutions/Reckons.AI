@@ -60,18 +60,20 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      # ADVISORY, deliberately. kb:tier-script claims these "run in CI and fail loudly";
-      # until now they ran nowhere, so the claim was false and the work fell to Opus at
-      # cloud rates. This makes the first half true.
+      # BLOCKING, as of 2026-07-14. kb:tier-script always claimed these "run in CI and fail
+      # loudly". They ran nowhere at all, so the claim was false and the work fell to Opus at
+      # cloud rates. Both halves are now true.
       #
-      # The second half — failing loudly — is NOT on yet, and saying so is the point:
-      # published-graph-guard is marked blocking:true in jobs.json and passes --ci here
-      # only once static/knowledge.ttl is clean. It currently is not (166 test-harness
-      # terms committed on dev), and a gate that is red the day it lands gets switched
-      # off, after which it protects nothing. Swap `|| true` for `--ci` when the guard
-      # goes green. See kb:tier-script-ci in reckons-roadmap.ttl.
-      - name: Run script tier (advisory)
-        run: npx tsx scripts/offline/run-all.ts --tier=script || true
+      # This shipped ADVISORY for exactly one day, because published-graph-guard reported 166
+      # "test-harness terms" in the published graph. That finding was WRONG: it banned
+      # `urn:reckons:story/`, which is the product's own guided-story vocabulary, not test
+      # debris. The graph was clean the whole time. An unverified finding kept a real gate
+      # switched off — the product's own thesis, demonstrated at our expense.
+      #
+      # Only jobs marked blocking:true in jobs.json can fail the build (--ci). Everything else
+      # still reports and queues findings without gating.
+      - name: Run script tier (blocking on jobs marked blocking:true)
+        run: npx tsx scripts/offline/run-all.ts --tier=script --ci
       - name: Upload findings
         if: always()
         uses: actions/upload-artifact@v7

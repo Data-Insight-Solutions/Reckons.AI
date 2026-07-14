@@ -98,12 +98,14 @@ write the script — that IS the work.
 
 ## Known-bad, already recorded — do not "discover" this again
 
-- **The published graph has test debris in it.** `static/knowledge.ttl` IS the public graph
-  (served at `/knowledge.ttl`). It carries 166 terms in the `urn:reckons:story/` test-harness
-  namespace, **committed on `dev`**, and its header claims 1032 statements against a body
-  that parses to 3096. `published-graph-guard` is `blocking: true` in `jobs.json`, but CI
-  runs the script tier **advisory** (`|| true`) precisely because this is red on arrival.
-  **Fix the graph, then swap `|| true` for `--ci` in `ci.yml`.**
+- **RESOLVED — and it was never true.** An earlier entry here said the published graph
+  (`static/knowledge.ttl`) carried "166 test-harness terms". **That finding was false.**
+  `published-graph-guard` banned `urn:reckons:story/`, which is the PRODUCT'S OWN guided-story
+  vocabulary (`src/lib/rdf/story.ts`; used by the landing page and TurtleChatPanel; declared in
+  `reckons-production.ttl`). The real harness namespace is `urn:reckons:test/` and it appears
+  **zero** times. The graph was clean all along. The guard is fixed, the stale header count was
+  a real finding and is fixed (1032 → 3096), and **the CI script tier is now BLOCKING** (`--ci`).
+  Do not "rediscover" the debris — there is none.
 - **The force simulation never converges.** Nodes drift continuously — a control run with no
   filter touched showed 234/336 nodes moving >12px in 2.5s. Do NOT write position-invariance
   tests; they measure noise and will fail whether or not the code is right. See the comment

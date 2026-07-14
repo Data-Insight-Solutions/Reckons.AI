@@ -1,5 +1,5 @@
 # generated 2026-07-09T22:42:35.775Z
-# 1032 statements
+# 3096 statements
 
 @prefix kb: <urn:kbase:concept/> .
 @prefix src: <urn:kbase:source/> .

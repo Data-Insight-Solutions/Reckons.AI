@@ -42,10 +42,27 @@ const MIN_STATEMENTS = 400;
 
 /**
  * Namespaces that belong to the TEST HARNESS, not to the product. Their presence in the
- * published graph means a test run wrote over it. This is the exact debris found in the
- * 45-statement version: `urn:reckons:test/VR-Step2  rdf:type  urn:reckons:story/Step`.
+ * published graph means a test run wrote over it. The debris found in the 45-statement
+ * version looked like: `urn:reckons:test/VR-Step2  rdf:type  urn:reckons:story/Step`.
+ *
+ * CORRECTED 2026-07-14 — this check was a FALSE POSITIVE and it cost real time.
+ *
+ * It used to ban `urn:reckons:story/` as well, and so reported 166 "test-harness terms" in
+ * the published graph. Those terms are not debris: `urn:reckons:story/` is the PRODUCT'S OWN
+ * guided-story vocabulary (src/lib/rdf/story.ts, used by the landing page, the about page,
+ * and TurtleChatPanel's step walkthrough, and declared in reckons-production.ttl itself).
+ *
+ * Read the incident line again and the mistake is visible in it: the debris was
+ * `urn:reckons:test/VR-Step2` — a TEST SUBJECT — that happened to be *typed* with
+ * `story:Step`. The test harness borrowed the product's vocabulary, as it should. Banning the
+ * vocabulary instead of the test subjects condemned the feature along with the debris.
+ *
+ * The lesson is the product's own: a finding is a CLAIM, and a claim you cannot verify is not
+ * evidence. This one was believed and repeated — it was used to justify keeping the CI script
+ * tier advisory rather than blocking — for as long as nobody checked whether
+ * `urn:reckons:story/` was ours. It was.
  */
-const TEST_NAMESPACES = ['urn:reckons:test/', 'urn:reckons:story/'];
+const TEST_NAMESPACES = ['urn:reckons:test/'];
 
 interface Finding {
   level: 'error' | 'warn';
