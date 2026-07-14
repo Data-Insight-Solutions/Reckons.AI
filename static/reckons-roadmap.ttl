@@ -1568,6 +1568,73 @@ kb:auto-merge rdf:type         ktype:Feature ;
 # questions (partial facts), and the findings (the digest). It should hold the SCHEDULE
 # too — locally, observably, and with the run's outcome written back as facts.
 
+# -- F87: Agent orchestration — the graph IS the orchestration config ------------
+#
+# F81 answered WHERE work executes (the runner: Worker, desktop process, MCP server).
+# It never named the other axis: WHAT AGENT DOES THE REASONING. Claude Code, Codex,
+# Qwen Code, a local Ollama script, a human in the Review tab — these are HARNESSES,
+# and they are not interchangeable with runners. Conflating them is why "bring your
+# own harness" was not expressible.
+#
+# Two axes, one queue:
+#   RUNNER  — where the process lives      (F81: Worker / desktop / MCP)
+#   HARNESS — who does the thinking        (F87: Claude Code / Codex / Ollama / human)
+#
+# pilotfish's real lesson is not its model routing, it is that its orchestration is
+# CONFIG, not runtime code — three files, no daemon. Reckons.AI already has the config
+# format, and it is the graph. So the graph does not need an orchestrator bolted on;
+# the graph IS the orchestrator, and a harness is a thing that drains it.
+
+kb:agent-orchestration rdf:type ktype:Feature ;
+               rdfs:label   "Agent orchestration — bring your own harness" ;
+               kpred:feature-id   "F87" ;
+               kpred:has-status   "planned" ;
+               kpred:part-of      kb:local-orchestration ;
+               kpred:relates-to   kb:work-tiering ;
+               kpred:relates-to   kb:async-orchestration ;
+               kpred:relates-to   kb:competitive-landscape ;
+               kpred:description  "A TASK IS A TRIPLE. Schedules, dependencies, tiers, prompts and outcomes live in the graph, and any harness can drain the queue: Claude Code, Codex, Qwen Code, a local Ollama script, or a human answering in the Review tab. The graph is the orchestration CONFIG — portable, diffable, reviewable, and outliving whichever agent CLI is fashionable this quarter. Reckons.AI does not become an agent; it becomes the thing agents agree on." ;
+               kpred:principle    "PORTABILITY IS THE PRODUCT. Claude Code is a harness, not a platform. An orchestration layer welded to one vendor's CLI dies with that CLI — and a knowledge graph whose task queue only one agent can read is a knowledge graph with a vendor lock in the middle of it." ;
+               kpred:principle    "The graph is the config. pilotfish orchestrates with three config files and NO runtime code; the reason that works is that the config is the whole design. We already have a config format with provenance, review status, diffing and a UI — it is the graph. Adding a second, private, YAML-shaped orchestration format would be a defeat." ;
+               kpred:principle    "A harness must be REPLACEABLE MID-TASK. If Claude Code hits a usage limit, the task returns to the queue and Codex — or the local model, or the human — can take it. This is only possible because the task's state is in the GRAPH, not in the agent's context window. An agent's context is not a database." ;
+               kpred:depends-on   kb:local-orchestration ;
+               kpred:depends-on   kb:partial-facts ;
+               kpred:has-phase    kb:orch-task-vocab ;
+               kpred:has-phase    kb:orch-harness-adapter ;
+               kpred:has-phase    kb:orch-claim-lease ;
+               kpred:has-phase    kb:orch-jobs-to-ttl .
+
+kb:orch-task-vocab rdf:type    ktype:Phase ;
+               rdfs:label   "Phase 1 — the task vocabulary (a task is a triple)" ;
+               kpred:part-of      kb:agent-orchestration ;
+               hnav:order   1 ;
+               kpred:description  "ktype:AgentTask with a defined vocabulary, so a schedule is a fact and not a config file: kpred:goal (what to do, in words a harness can act on), kpred:tier (script | local-agent | frontier — routes to the cheapest harness that can do it), kpred:harness (a PREFERENCE, not a requirement — 'any' is valid and is the default), kpred:due-at / kpred:every (drain-not-schedule, per F81), kpred:blocked-by (a partial fact, a question, or another task), kpred:writes-to (where the outcome lands: pending.jsonl, a branch, a PR), kpred:outcome (written back on completion, INCLUDING 'did nothing, and here is why')." ;
+               kpred:remaining    "Define the predicates in the graph; graph-lint checks (no task blocked forever, no task without a tier, no due-at in an unparseable format); render tasks in-app." .
+
+kb:orch-harness-adapter rdf:type ktype:Phase ;
+               rdfs:label   "Phase 2 — harness adapters (bring your own)" ;
+               kpred:part-of      kb:agent-orchestration ;
+               hnav:order   2 ;
+               kpred:description  "A thin adapter per harness: take a task, hand it to that agent in its native shape, capture the outcome as facts. The interface is deliberately tiny — canRun(task), run(task) -> outcome — because the harness is a PLUGIN, not a dependency. Adapters ship for Claude Code (a prompt + the graph context via kb_compress), a local Ollama script (the existing offline/ harness), and the human (a partial fact in the Review tab, which is already an adapter and was not recognized as one)." ;
+               kpred:learned-from "unsnooze (MIT) proves the shape at scale: ONE ledger, ONE daemon, and a per-CLI adapter for seven different agents (Claude Code, Codex, Grok, Qwen, Kimi, OpenCode, Antigravity). Detection and revival differ per CLI; the ledger does not. That is exactly the seam we need, and it is evidence the seam holds in practice rather than only in a design document." ;
+               kpred:remaining    "adapters/claude-code.ts, adapters/ollama.ts, adapters/human.ts; a registry keyed by kpred:harness; a runner that picks the cheapest adapter whose canRun() accepts the task." .
+
+kb:orch-claim-lease rdf:type   ktype:Phase ;
+               rdfs:label   "Phase 3 — claims, leases, and surviving a usage limit" ;
+               kpred:part-of      kb:agent-orchestration ;
+               hnav:order   3 ;
+               kpred:description  "The moment more than one runner drains one queue, two of them will take the same task. A task therefore carries kpred:claimed-by + kpred:claim-expires (a LEASE, not a lock — a runner that dies must not hold a task forever). When a harness stops on a usage limit, the lease lapses and the task returns to the queue for a different harness. This is the concrete mechanism behind 'a harness must be replaceable mid-task'." ;
+               kpred:learned-from "unsnooze exists ENTIRELY because agent sessions die on usage limits and nothing notices. Our queue currently has no concept of a harness running out of budget — a task handed to Claude Code at a limit boundary would simply stop, and the graph would say it was in progress forever. That is the same silent-failure class as the cron that fired and produced nothing." ;
+               kpred:remaining    "kpred:claimed-by / kpred:claim-expires; lease expiry sweep; graph-lint check for tasks claimed by a runner that has not reported in." .
+
+kb:orch-jobs-to-ttl rdf:type   ktype:Phase ;
+               rdfs:label   "Phase 4 — jobs.json becomes a graph" ;
+               kpred:part-of      kb:agent-orchestration ;
+               hnav:order   4 ;
+               kpred:description  "scripts/offline/jobs.json is ALREADY a task queue with tiers, enablement and a blocking flag — it is just written in the one format the product does not use. Migrating it to TTL makes the offline jobs first-class graph citizens: queryable, reviewable in-app, diffable, and schedulable by the same runner as everything else. It also dogfoods the vocabulary on a queue that already works, before betting anything new on it." ;
+               kpred:honest-note  "This is the tell that the design is right, and it is slightly embarrassing: we built a task registry with tiers and dependencies and put it in JSON, inside a product whose entire thesis is that this belongs in a graph." ;
+               kpred:remaining    "static/reckons-jobs.ttl; run-all.ts reads the graph; keep jobs.json working until the TTL path is proven." .
+
 kb:local-orchestration rdf:type ktype:Feature ;
                rdfs:label   "Local task orchestration & scheduling" ;
                kpred:feature-id   "F81" ;
