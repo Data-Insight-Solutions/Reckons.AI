@@ -117,21 +117,45 @@
   let editingName = $state('');
   let compareSelection = $state<Set<string>>(new Set());
   let kbFilter = $state<'all' | 'bookmarked'>('all');
+  /** Free-text filter across name, description and id. */
+  let kbQuery = $state('');
+  /** How to order the gallery. Recency is the default because it is the question you
+   *  actually have when you open this page: "where was I?" — not "what is alphabetically
+   *  first". A graph you touched an hour ago matters more than one named 'aardvark'. */
+  let kbSort = $state<'recent' | 'name' | 'size'>('recent');
+
+  const matchesQuery = (kb: KbEntry, q: string) => {
+    if (!q.trim()) return true;
+    const needle = q.trim().toLowerCase();
+    return (
+      kb.name.toLowerCase().includes(needle) ||
+      (kb.description ?? '').toLowerCase().includes(needle) ||
+      kb.id.toLowerCase().includes(needle)
+    );
+  };
 
   const sortedKbs = $derived(
     localKbs
       .filter(kb => kbFilter === 'all' || kb.bookmarked)
+      .filter(kb => matchesQuery(kb, kbQuery))
       .sort((a, b) => {
-        // Current KB first, then bookmarked, then by name
+        // The graph you are IN always comes first — it is the one you are looking at.
         if (a.id === currentKbId) return -1;
         if (b.id === currentKbId) return 1;
         if (a.bookmarked && !b.bookmarked) return -1;
         if (!a.bookmarked && b.bookmarked) return 1;
-        return a.name.localeCompare(b.name);
+        if (kbSort === 'name') return a.name.localeCompare(b.name);
+        if (kbSort === 'size') return (b.statementCount ?? 0) - (a.statementCount ?? 0);
+        // recent: a graph with no lastModified has never been written to — it sorts last,
+        // rather than pretending to be from 1970 and jumping to the top.
+        return (b.lastModified ?? 0) - (a.lastModified ?? 0);
       })
   );
 
   const bookmarkedCount = $derived(localKbs.filter(k => k.bookmarked).length);
+  const hiddenByQuery = $derived(
+    localKbs.filter(kb => (kbFilter === 'all' || kb.bookmarked) && !matchesQuery(kb, kbQuery)).length
+  );
 
   function handleCreateKb() {
     const name = newKbName.trim();
@@ -945,6 +969,29 @@
     >bookmarked ({bookmarkedCount})</button>
   </div>
 
+  <!-- Search + sort. The question you have when you open this page is "where was I?", so the
+       default order is RECENCY, not the alphabet. -->
+  <div class="kb-gallery-controls">
+    <input
+      type="search"
+      class="kb-search mono"
+      bind:value={kbQuery}
+      placeholder="filter graphs…"
+      aria-label="Filter graphs by name, description or id"
+    />
+    <div class="kb-sort" role="group" aria-label="Sort graphs">
+      <button class="kb-sort-btn mono" class:active={kbSort === 'recent'} onclick={() => (kbSort = 'recent')}
+        title="Most recently edited first">recent</button>
+      <button class="kb-sort-btn mono" class:active={kbSort === 'size'} onclick={() => (kbSort = 'size')}
+        title="Largest graph first">size</button>
+      <button class="kb-sort-btn mono" class:active={kbSort === 'name'} onclick={() => (kbSort = 'name')}
+        title="Alphabetical">name</button>
+    </div>
+  </div>
+  {#if kbQuery.trim() && hiddenByQuery > 0}
+    <p class="kb-hidden-note mono">{hiddenByQuery} hidden by filter</p>
+  {/if}
+
   {#if showNewKbForm}
     <div class="new-kb-form">
       <input
@@ -1018,6 +1065,18 @@
               <span class="kb-entry-id mono">{kb.id}</span>
               {#if kb.lastModified}
                 <span class="kb-entry-date mono">{relativeTime(kb.lastModified)}</span>
+              {/if}
+              <!-- Size, and the honest absence of it. A graph with no count has never been
+                   written to; saying "empty" is a claim we cannot support, so it says
+                   "not opened yet" instead. -->
+              {#if kb.statementCount != null}
+                <span class="kb-entry-size mono" title="{kb.statementCount} confirmed statements">
+                  {kb.statementCount.toLocaleString()} facts
+                </span>
+              {:else}
+                <span class="kb-entry-size mono muted-size" title="No statement count recorded — this graph has not been opened or saved yet">
+                  not opened yet
+                </span>
               {/if}
             </div>
             {#if kb.description}
@@ -1522,6 +1581,50 @@
   }
   .kb-entry-sub { display: flex; align-items: center; gap: 0.4rem; }
   .kb-entry-id { font-size: 0.6rem; color: var(--muted); }
+
+  /* ── Gallery controls (search + sort) ── */
+  .kb-gallery-controls {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin: 0.5rem 0 0.35rem;
+  }
+  .kb-search {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.7rem;
+    padding: 0.35rem 0.6rem;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--fg);
+  }
+  .kb-search:focus { outline: none; border-color: var(--accent); }
+  .kb-sort { display: flex; gap: 0.2rem; flex-shrink: 0; }
+  .kb-sort-btn {
+    font-size: 0.6rem;
+    padding: 0.3rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .kb-sort-btn:hover { border-color: var(--accent); color: var(--fg); }
+  .kb-sort-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+  .kb-hidden-note {
+    font-size: 0.6rem;
+    color: var(--muted);
+    margin: 0 0 0.35rem;
+  }
+  .kb-entry-size { font-size: 0.6rem; color: var(--muted); }
+  /* A graph with no recorded size has never been opened. Say that, rather than "0 facts" —
+     which would be a claim about its contents that we have not actually checked. */
+  .kb-entry-size.muted-size { opacity: 0.6; font-style: italic; }
   .kb-entry-date { font-size: 0.58rem; color: var(--muted-2); }
   .kb-entry-desc {
     font-size: 0.7rem; color: var(--muted); margin-top: 0.15rem;
