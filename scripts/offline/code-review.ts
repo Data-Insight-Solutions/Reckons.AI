@@ -40,14 +40,49 @@ function sh(cmd: string): string {
 }
 
 async function ollama(prompt: string): Promise<string> {
-  const res = await fetch(`${OLLAMA.replace(/\/+$/, '')}/api/generate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: MODEL, prompt, stream: false, options: { num_ctx: 16384, temperature: 0 } }),
-  });
-  if (!res.ok) throw new Error(`Ollama ${res.status} ${res.statusText}`);
-  const j = (await res.json()) as { response?: string };
-  return (j.response ?? '').trim();
+  try {
+    const res = await fetch(`${OLLAMA.replace(/\/+$/, '')}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: MODEL, prompt, stream: false, options: { num_ctx: 16384, temperature: 0 } }),
+    });
+    if (!res.ok) throw new Error(`Ollama ${res.status} ${res.statusText}`);
+    const j = (await res.json()) as { response?: string };
+    return (j.response ?? '').trim();
+  } catch (e: any) {
+    // Node's fetch reports every transport failure as the bare string "fetch failed" and
+    // hides the reason in .cause. That is how a COLD MODEL LOAD looked like 25 identical
+    // mystery failures (2026-07-14): every file "FAILED (fetch failed)", exit 0, zero
+    // findings — a review that reviewed nothing and said so quietly. Surface the cause.
+    const cause = e?.cause?.code ?? e?.cause?.message;
+    throw new Error(cause ? `${e.message} (${cause})` : String(e?.message ?? e));
+  }
+}
+
+/**
+ * Load the model BEFORE the loop.
+ *
+ * The first request to a cold model must pull it into VRAM — 18GB for qwen3-coder, which
+ * can outlast the HTTP client's patience. When that request died, the script did not stop:
+ * it logged "FAILED" and moved to the next file, and the next, reporting a clean exit
+ * having reviewed nothing. An agent tier that silently reviews zero files is worse than no
+ * agent tier, because the queue it feeds looks merely empty rather than broken.
+ *
+ * So: warm up first, with a trivial prompt, and REFUSE TO START if the model will not load.
+ * Loud beats quiet.
+ */
+async function warmUp(): Promise<void> {
+  process.stdout.write(`  warming ${MODEL} … `);
+  const t0 = Date.now();
+  try {
+    await ollama('Reply with exactly: OK');
+    console.log(`ready (${((Date.now() - t0) / 1000).toFixed(1)}s)\n`);
+  } catch (e) {
+    console.log('FAILED\n');
+    console.error(`Could not load ${MODEL} from ${OLLAMA}: ${e instanceof Error ? e.message : e}`);
+    console.error('Refusing to run: a review that reviews nothing must not report success.');
+    process.exit(1);
+  }
 }
 
 function queue(file: string, finding: string) {
@@ -76,6 +111,7 @@ if (files.length === 0) {
 }
 
 console.log(`Local code review — ${files.length} file(s) vs ${BASE} · ${MODEL}\n`);
+await warmUp();
 let flagged = 0, reviewed = 0, failed = 0;
 
 for (const file of files) {

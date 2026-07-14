@@ -126,22 +126,36 @@ Rules for the next one:
 - Pin the version AND an SRI hash computed from the **npm tarball**, never from the CDN
   alone — hashing whatever the CDN hands you faithfully pins an attacker's bytes.
 
-## unsnooze (auto-resume) — NOT INSTALLED, and this is why
+## unsnooze (auto-resume) — ARMED as of 2026-07-14
 
-Matt asked to wire in `saaranshM/unsnooze` (MIT, verified) so a limit-stopped session
-auto-resumes. **It is not installed, because its prerequisite is absent:** unsnooze resumes
-sessions *into tmux or Zellij*, and this machine has **neither**, and Claude Code here is not
-running inside a multiplexer.
+`saaranshM/unsnooze` (MIT, license verified) auto-resumes a session that stopped on a usage
+limit. It is installed and the revival path is live:
 
-Installing it as-is would register a `StopFailure` hook, record the stop, and then have
-nothing to wake into — it would *look* armed while being dead. That is the exact failure
-already recorded against `kb:local-orchestration` ("a scheduler you cannot observe is not a
-scheduler"). Repeating it knowingly would be worse than not having it.
+- unsnooze 1.10.0, global npm install
+- `StopFailure` hook in `~/.claude/settings.json` (backup: `settings.json.unsnooze-bak`)
+- shell wrappers for `claude`/`codex` in `~/.bashrc`
+- daemon running; `tmux 3.4` present, so there is a pane to revive INTO
+- `resumeMessages.claude` points a woken session at **this file**, then
+  `npm run offline:script-tier`, then the Next-up list, and restates the CLAUDE.md rules
+  (graphs are the plan; PRs target `dev`, never `main`; cheapest tier first)
 
-To actually enable it:
-1. `sudo apt install tmux` — needs Matt (sudo).
-2. `npm install -g unsnooze && unsnooze setup` — interactive wizard.
-3. Start Claude Code **inside tmux**, so there is a pane to resume into.
+**The one thing NOT verified:** whether the hook applies to a session that was ALREADY
+RUNNING when the hook was installed. It was installed mid-session on 2026-07-14, and Claude
+Code may only read hooks at session start. Sessions started afterwards are definitely
+covered. Do not assume the auto-resume caught a session — check `unsnooze status`.
 
-Until steps 1 and 3 are done, **this file is the continuation mechanism.** It needs no daemon,
-no hook, and no multiplexer.
+**This file remains the real continuation mechanism.** It needs no daemon, no hook, and no
+multiplexer, and it works when unsnooze does not.
+
+### Environment note — the CUDA repair (2026-07-14)
+
+`apt` was wedged and could install nothing (tmux included). Cause: NVIDIA's CUDA 13.1 debs
+changed `/usr/local/cuda-13.1/lib64` and `/include` from real DIRECTORIES into SYMLINKS
+(`-> targets/x86_64-linux/…`), and dpkg refuses to let one package replace a directory another
+package claims with a symlink. A packaging-transition bug, not local corruption.
+
+Fixed with `sudo apt -o Dpkg::Options::="--force-overwrite" --fix-broken install -y`, which is
+safe here because every conflicting package belongs to the same CUDA toolkit and the conflict
+was only in dpkg's ownership database. Toolkit restored (`nvcc` works, symlinks in place), zero
+packages left in `iU`. The GPU driver was never involved — both RTX 3090s and Ollama stayed up
+throughout. If `apt` wedges this way again, this is the fix.
