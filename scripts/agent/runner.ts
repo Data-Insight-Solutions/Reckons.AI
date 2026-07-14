@@ -220,6 +220,23 @@ function parseEvery(v: string | undefined): number | null {
 const now = Date.now();
 const doneIris = new Set(tasks.filter((t) => t.state === 'done').map((t) => t.iri));
 
+// ── Is the local agent tier available at all? ──────────────────────────────
+//
+// A local-agent task needs Ollama. If it is not up, the task is NOT failed — nothing is wrong
+// with it, the machine simply cannot run it right now. Marking it failed would burn an attempt
+// and eventually make the queue give up on perfectly good work because a service was down.
+//
+// This is the same distinction the whole system rests on: "could not run" is not "ran and did
+// not work", and a system that conflates them will quietly abandon things that were fine.
+const OLLAMA = process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434';
+let ollamaUp = false;
+try {
+  execSync(`curl -sf -m 3 -o /dev/null ${OLLAMA}/api/tags`, { stdio: 'ignore', shell: '/bin/bash' });
+  ollamaUp = true;
+} catch {
+  ollamaUp = false;
+}
+
 // ── What has the human actually answered? ──────────────────────────────────
 //
 // A question is a partial fact in the pending queue that names the work it BLOCKS. It is
@@ -269,7 +286,13 @@ function blockedReason(t: Task): string | null {
   if (!t.doneWhen?.trim()) {
     return 'NO done-when — a task with no machine-checkable acceptance criterion is a wish, not a task';
   }
-  if (t.tier !== 'script') return `tier "${t.tier}" — this runner is script tier only`;
+  if (t.tier !== 'script' && t.tier !== 'local-agent') {
+    return `tier "${t.tier}" — this runner handles script and local-agent only`;
+  }
+  if (t.tier === 'local-agent' && !ollamaUp) {
+    // NOT a failure. The work is fine; the machine is not ready. It waits.
+    return `local-agent tier, but Ollama is not reachable at ${OLLAMA} — waiting, not failing`;
+  }
   if (!t.command?.trim()) return 'no command to run';
   // Waiting on a human. Not failed, not done — ASKED. It comes back by itself when answered.
   const asked = openQuestionsFor.get(t.iri) ?? [];
