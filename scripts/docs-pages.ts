@@ -93,6 +93,7 @@ const SOURCES: ReadonlyArray<{ file: string; section: string }> = [
   { file: 'docs-tips-security.ttl', section: 'Tips' },
   { file: 'docs-timeline-ecosystem.ttl', section: 'Timeline & Ecosystem' },
   { file: 'docs-architecture.ttl', section: 'Architecture' },
+  { file: 'docs-coding-workflow.ttl', section: 'Coding Workflow' },
   { file: 'docs-testing.ttl', section: 'Testing' },
   { file: 'starter-guide.ttl', section: 'Guide' },
 ];

@@ -1,0 +1,134 @@
+@prefix kb:     <urn:kbase:concept/> .
+@prefix kpred:  <urn:kbase:predicate/> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix ktype:  <urn:kbase:type/> .
+@prefix hnav:   <urn:reckons:nav/> .
+@prefix cw:     <urn:reckons:docs/coding-workflow/> .
+
+## KB Identity
+<urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a0b-b00b-000000000011" .
+
+## =============================================================================
+## Coding Workflow — what Reckons.AI does for the people building software
+## =============================================================================
+##
+## THIS PAGE IS GENERATED FROM THE GRAPH (scripts/docs-pages.ts). Every capability
+## below carries its real kpred:has-status, and the status is RENDERED, not hidden
+## in a footnote. If a feature is planned, this page says planned — in the same
+## sentence that describes it.
+##
+## That is not modesty, it is the product. Reckons.AI exists because an
+## unverifiable claim, made by the party it benefits, is not evidence. A marketing
+## page that overclaims is that exact failure, committed by us, about us.
+##
+## Status values: production | functional | in-progress | planned | speculative
+## =============================================================================
+
+cw:CodingWorkflow rdf:type     ktype:Concept ;
+    rdfs:label          "Coding workflow" ;
+    hnav:order          1 ;
+    skos:definition     "Reckons.AI turns a codebase into a graph you can interrogate, and then keeps the code and the plan honest with each other. The plan lives in the graph; code is checked against it; agents propose, humans decide. This page is generated from that same graph, so it cannot claim a capability the graph does not have." ;
+    kpred:principle     "The graph is the plan. A feature must exist in the roadmap graph before it is built, and its status must reflect reality — not what we wish were true." ;
+    kpred:principle     "Agents propose; humans dispose. Every automated finding lands as a PENDING fact for review, never as a silent edit to source or to the graph." ;
+    kpred:principle     "Route work to the cheapest tier that can do it correctly. Most of what an AI coding assistant is asked to do is not judgment — it is a rule, and a rule should be a script." .
+
+## ── SHIPPING ────────────────────────────────────────────────────────────────
+
+cw:RepoIngest rdf:type         ktype:Concept ;
+    rdfs:label          "Ingest a repository into a graph" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          2 ;
+    kpred:has-status    "production" ;
+    skos:definition     "Point Reckons.AI at a repository and it builds a Codebase graph: modules, their source files (kpred:has-file), and the relationships between them. The result is queryable — 'which module owns this file', 'what does this depend on' — instead of grep and hope." ;
+    kpred:proof         "Reckons.AI's own codebase graph covers 100% of git-tracked source files (static/reckons-codebase.ttl)." .
+
+cw:GitAnalysis rdf:type        ktype:Concept ;
+    rdfs:label          "Check your work against the plan (git analysis)" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          3 ;
+    kpred:has-status    "production" ;
+    skos:definition     "The graph knows what you INTENDED. Git knows what you DID. Git analysis compares them: kb_check_plan tells you whether the work you are about to do matches something planned; kb_git_diff_triples finds which graph entities your diff actually touched; kb_alignment_score gives a 0-1 score across four dimensions (coverage, status alignment, dependency respect, scope discipline). Commits that match no planned work are flagged as unplanned — not blocked, but not invisible either." ;
+    kpred:proof         "Exposed as MCP tools, so any MCP-speaking agent can use them. Runs in CI (kb-watch.yml)." .
+
+cw:CiCdGraphWatch rdf:type     ktype:Concept ;
+    rdfs:label          "CI/CD graph watch — the plan reviews your PR" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          4 ;
+    kpred:has-status    "functional" ;
+    skos:definition     "On every push and pull request, CI compares the code changes against the plan in the graph and posts an alignment report as a PR comment: score, discrepancies, drift warnings, and a KB snapshot artifact. Drift is surfaced where the review already happens, rather than in a dashboard nobody opens." ;
+    kpred:proof         ".github/workflows/kb-watch.yml + scripts/kb-align.ts. Commands: /check-plan, /pre-review, /post-review." .
+
+cw:WorkTiering rdf:type        ktype:Concept ;
+    rdfs:label          "Work tiering — stop paying frontier prices for rules" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          5 ;
+    kpred:has-status    "in-progress" ;
+    skos:definition     "Every recurring task is routed to the cheapest tier that can do it correctly. SCRIPT: the answer is checkable by a rule ('does this path exist', 'is this status in the enum') — deterministic code, zero tokens, zero hallucination, runs in CI. LOCAL AGENT: the answer is judgment over language and being wrong is cheap, because the output is a proposal a human gates — a local model inside a scripted harness that grounds it, validates its output, and emits a reviewable proposal. FRONTIER: cross-file architectural reasoning, deciding process, and code that lands." ;
+    kpred:principle     "Offloading is not free. A local job that emits 30 findings of which 25 are noise moves cost from generation to TRIAGE rather than removing it. Deterministic checks have zero triage cost because they are right by construction — so grow the script tier before the agent tier." ;
+    kpred:honest-note   "IN PROGRESS, and the honest part is which half. The script tier runs in CI on every push, but it is ADVISORY — it reports and queues findings, it does not fail the build (one exception: the production-build guard, which blocks). Making it blocking is gated on cleaning our own published graph, which currently contains test debris. We are not going to describe a gate we do not yet exercise." .
+
+cw:ScriptTier rdf:type         ktype:Concept ;
+    rdfs:label          "The script tier — checks that cannot hallucinate" ;
+    kpred:part-of       cw:WorkTiering ;
+    hnav:order          6 ;
+    kpred:has-status    "functional" ;
+    skos:definition     "Deterministic checks that run on every push and cost nothing: graph invariants (dead file links, invalid statuses, duplicate IDs, dangling dependencies); evidence for status claims (a feature marked shipped must link a test or declare that it has none — you may ship untested code, but not silently); prompt/safety-preamble drift; production-build verification; and a license gate on every third-party dependency we study." ;
+    kpred:proof         "scripts/offline/*.ts, run by npm run offline:script-tier and by CI. ~40 seconds, zero tokens." ;
+    kpred:example       "A real catch: the production-build guard found that a stray NODE_ENV=development made `vite build` emit a DEV build — which meant the deploy-gate smoke test had been guarding an artifact that could not exhibit the bug it was written to catch." .
+
+cw:AgentTier rdf:type          ktype:Concept ;
+    rdfs:label          "The local agent tier — a first pass that never touches your source" ;
+    kpred:part-of       cw:WorkTiering ;
+    hnav:order          7 ;
+    kpred:has-status    "functional" ;
+    skos:definition     "A local model (via Ollama, on your own hardware) reviews a diff, drafts a missing description, or reads for staleness — always inside a scripted harness: ground it in the graph, constrain the prompt, validate the output, emit a PROPOSAL. It writes to the review queue. It never writes to source, and it never writes to the graph." ;
+    kpred:principle     "Local models hallucinate conventions and mangle serialization. The harness — not the model — is the deliverable." ;
+    kpred:honest-note   "The harness must fail LOUDLY. Ours did not, once: a cold 18GB model load failed, and the review reported a clean run having reviewed nothing. It now refuses to start rather than silently review zero files. An agent tier that quietly does nothing is worse than none, because the queue it feeds looks empty rather than broken." .
+
+cw:AgentsAskTheGraph rdf:type  ktype:Concept ;
+    rdfs:label          "Agents ask the graph, not you" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          8 ;
+    kpred:has-status    "functional" ;
+    skos:definition     "When an agent needs a decision it cannot make, it does not stop and wait for you. It emits the question AS A PARTIAL FACT into the graph — subject and predicate known, object '?', plus a note on what the question blocks — and moves to the next unblocked task. You answer whenever you like, in the review queue. The answer flows back and the waiting work resumes." ;
+    kpred:principle     "The user is the bottleneck. Do not make them a blocking call." ;
+    kpred:principle     "A question asked in a chat window is gone when the session ends. A question left as a partial fact is dated, reviewable, searchable, and attached to the thing it is about." ;
+    kpred:proof         "scripts/agent/ask.ts + answers.ts, 15 tests." .
+
+cw:RollingDigest rdf:type      ktype:Concept ;
+    rdfs:label          "One report that grows, instead of twenty that interrupt" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          9 ;
+    kpred:has-status    "functional" ;
+    skos:definition     "Agents append findings — bug found, claim falsified, shipped, decision needed — to a single dated digest while you are away, and each finding is also written into the graph as a pending fact on the entity it concerns. You come back to one accumulating page, not a scrollback to reconstruct." ;
+    kpred:honest-note   "PARTIAL. The findings do reach the graph, but the digest's primary artifact is still a markdown file rather than a graph node — a second source of truth in a product whose whole argument is that there should not be one. Recorded, not hidden." .
+
+cw:ContextCompression rdf:type ktype:Concept ;
+    rdfs:label          "Feed an agent the graph, not the repo" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          10 ;
+    kpred:has-status    "functional" ;
+    skos:definition     "kb_compress selects the relevant subgraph for a question and serializes it compactly, so an agent gets grounded context instead of a directory listing." ;
+    kpred:honest-note   "CORRECTED CLAIM. This was marketed as '60-70% token reduction'. The first test ever written for it FALSIFIED that: the encoding saves roughly 18% against grouped Turtle (what a real .ttl actually looks like). The 60-70% figure conflated the ENCODING with SUBGRAPH SELECTION — and selection is where the real saving lives, because the alternative is pasting whole files. The corrected number is in the roadmap, the architecture graph, and here. We do not get to quietly keep the better number." .
+
+## ── NOT BUILT — and said so in the same breath ──────────────────────────────
+
+cw:AgentOrchestration rdf:type ktype:Concept ;
+    rdfs:label          "Agent orchestration — bring your own harness (PLANNED, not built)" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          11 ;
+    kpred:has-status    "planned" ;
+    skos:definition     "THIS DOES NOT EXIST YET. The design: a task is a triple — goal, tier, harness preference, due-at, blocked-by, outcome — and any harness can drain the queue: Claude Code, Codex, a local Ollama script, or a human in the review queue. The graph becomes the orchestration config, so the queue outlives whichever agent CLI is fashionable this quarter, and a harness that hits a usage limit hands its task back rather than stalling it forever." ;
+    kpred:principle     "Portability is the product. An orchestration layer welded to one vendor's CLI dies with that CLI — and a task queue only one agent can read is a vendor lock in the middle of your knowledge graph." ;
+    kpred:honest-note   "Status is `planned`. Not a line of it is built. It is described here because the plan is public and reviewable, which is the point — but nobody should choose Reckons.AI today expecting this to work today." .
+
+cw:Scheduling rdf:type         ktype:Concept ;
+    rdfs:label          "Task scheduling in the graph (PLANNED, not built)" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          12 ;
+    kpred:has-status    "planned" ;
+    skos:definition     "THIS DOES NOT EXIST YET. Tasks, schedules and outcomes as graph facts, drained by whichever runner is available — the in-app worker on any device, an optional desktop process, or the MCP server when an agent is already connected." ;
+    kpred:principle     "A scheduler you cannot observe is not a scheduler, it is a rumour. Every run must write its outcome back — including 'I did nothing, and here is why'." ;
+    kpred:honest-note   "Status is `planned`. We have already been burned once by the opposite: a cloud cron fired exactly on schedule, produced nothing, reported nothing, and still displayed a future run time — it LOOKED armed while being dead. That failure is why this is designed around an observable queue rather than a timer." .
