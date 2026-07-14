@@ -46,6 +46,7 @@
   import { replaceCurrentsSettings } from '$lib/rdf/currents-persist';
   import { podViewEnabled, setPodViewEnabled } from '$lib/stores/pod-view.svelte';
   import { allTypes } from '$lib/stores/entity-types.svelte';
+  import GraphPreview from '$lib/components/GraphPreview.svelte';
 
   // ── KB identity ────────────────────────────────────────────────────────────
   const currentKbId = getCurrentKbId();
@@ -1035,6 +1036,9 @@
         class:compare-selected={isCompareSelected}
       >
         <div class="kb-entry-left">
+          <!-- Lazy fingerprint: loads only when the card is on screen AND the browser is idle,
+               so the gallery paints first and previews trickle in behind it. -->
+          <GraphPreview kbId={kb.id} width={72} height={48} />
           <button
             class="bookmark-btn"
             class:bookmarked={kb.bookmarked}
