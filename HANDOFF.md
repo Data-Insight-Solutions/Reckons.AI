@@ -70,8 +70,15 @@ write the script — that IS the work.
 4. **Digest → graph-generated.** `reckons-workspace/DIGEST.md` is hand-appended and is a
    second source of truth. F80 phase 3 (`kb:async-digest`) specified a `kb:digest` ENTITY
    rendered through the WebPage/publish machinery. That entity does not exist. Close the gap.
-5. **Agent-tier code review first.** `scripts/offline/code-review.ts` (qwen3-coder) exists;
-   Opus still reviews diffs by hand. Run it first; triage its output.
+5. **Agent-tier code review first.** `scripts/offline/code-review.ts` (qwen3-coder) exists and
+   now warms the model + refuses to run rather than silently reviewing nothing. Run it FIRST
+   on any diff; Opus triages its output rather than reading the diff cold.
+6. **F87 agent orchestration — build phase 1.** The plan is written
+   (`kb:agent-orchestration` in the roadmap): the graph IS the orchestration config, and a
+   HARNESS (Claude Code / Codex / Ollama / human) is a distinct axis from F81's RUNNER
+   (Worker / desktop / MCP). Start with `kb:orch-task-vocab` (a task is a triple), then
+   `kb:orch-jobs-to-ttl` — migrating `jobs.json` dogfoods the vocabulary on a queue that
+   already works. Do NOT invent a second YAML-shaped config format; that is the whole point.
 
 ## Decisions that are MATT'S, not yours
 
