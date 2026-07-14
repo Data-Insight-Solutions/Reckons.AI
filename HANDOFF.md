@@ -54,14 +54,27 @@ write the script — that IS the work.
 
 ## Done (committed AND pushed — PR #101 → dev). Do not redo.
 
-**The orchestration loop now closes.** That is the headline; everything else served it.
+**The orchestration loop now closes end to end.** That is the headline; everything else served it.
+The whole pipeline is: `npm run schedule` (reads schedules from TTL) → `reconcile` (drop resolved
+findings) → `runner` (drain tasks, script + local-agent) → `orchestrate` (triage the residue for
+Opus). Every stage reads and writes the graph; none of it costs a cloud token except the Opus
+triage at the very end.
 
 - **The task queue is a graph.** `src/lib/rdf/agent-task.ts` + `scripts/agent/runner.ts`.
   `npm run agent:run` drains `reckons-workspace/tasks.ttl`: claim (a LEASE, not a lock) →
   execute → **verify INDEPENDENTLY** → write the outcome back. A task with no `done-when` is
-  REFUSED ("a wish, not a task"). A recurring task (`kpred:every "7d"`) is never *done*, it is
-  *due again*. An expired lease with no outcome is detected and requeued — the "fired on
-  schedule, produced nothing, still showed a future run time" failure, made queryable.
+  REFUSED ("a wish, not a task"). Handles `script` AND `local-agent` tiers; a local-agent task
+  with Ollama down WAITS (not fails). A recurring task (`kpred:every "7d"`) is never *done*, it
+  is *due again*. An expired lease with no outcome is detected and requeued.
+- **Schedules live in the graph** (`scripts/agent/schedule.ts`, `reckons-workspace/schedules.ttl`).
+  `npm run schedule` reports what is due and runs it; the trigger (cron/systemd/unsnooze/human)
+  reads the graph, not a crontab. Intervals, not cron — drain, do not schedule.
+- **The orchestrator** (`npm run orchestrate`) splits the pending queue into RE-DERIVABLE (a
+  script regenerates it — fix the source), REMEDIABLE (draft one task for the cluster), and
+  JUDGMENT (Opus/Matt). Drafts are proposals, never auto-queued. Opus is the judgment tier and
+  cannot be a script — this is the harness it runs inside.
+- **`npm run reconcile`** drops queued findings whose deterministic check no longer fires. The
+  queue was 18% ghosts (resolved graph-lint findings lingering); now 139 and every item is open.
 - **A task can ASK instead of guessing.** It emits a partial fact naming what it needs and
   what it blocks, exits `42`, and the runner marks it **WAITING** — not done, not failed. It
   resumes by itself when Matt answers, in the review queue *or* via Shelly (both resolve the
@@ -81,25 +94,32 @@ write the script — that IS the work.
 
 ## Next up (in priority order)
 
-Everything on the previous list is DONE (brief, gallery, graph-first digest, local-agent tier).
-**CI on PR #101 is fully green** — all four jobs, including the blocking script tier.
+The orchestration loop is BUILT (schedule → reconcile → runner → orchestrate). What remains is
+using it and extending it.
 
-1. **The Opus orchestrator (F89)** — the last missing piece of the loop. A scheduled Opus
-   session that ASSIGNS rather than executes: triage the pending queue, write `AgentTask`
-   entities into `reckons-workspace/tasks.ttl` (with a `done-when`, or the runner refuses
-   them), and let the free runner drain them. Everything it needs now exists — tasks, leases,
-   outcomes, blast-radius ranking, gates, `kb_merge`, and a runner that asks instead of guessing.
-2. **Triage the queue.** `npm run brief` reports **156 pending facts, 35 drift-warnings, 37 open
-   questions**. That backlog is what the other two tiers exist to fill and Opus exists to judge.
-   Route it with F88: most of it is not Matt's to decide.
-3. **F90 Blender** (planned) — headless Blender over MCP. The trap is written into the roadmap:
-   **Blender will render a black frame and exit 0.** Content is the first domain where
-   `done-when` cannot be a passing test, which is precisely what F88 exists for.
-4. **Graph previews in the gallery** — deliberately not built. A thumbnail needs each graph's
-   statements loaded out of IndexedDB, which is a real cost across many graphs and deserves its
-   own decision (cache a thumbnail on save? render on hover?).
-5. **F27 / F34 / F79 / F83** are all still `in-progress` or `scaffolded` — see `npm run brief`,
-   which reads them from the graph rather than from anyone's memory.
+1. **Actually run the triage.** `npm run orchestrate` splits the queue: ~24 re-derivable (leave
+   to reconcile), 5 remediable (drafted tasks — promote the good ones into `tasks.ttl`), and the
+   rest JUDGMENT. That judgment residue is real Opus work — route it with F88, most is not Matt's.
+   **This is the frontier task the whole session was building toward.**
+2. **F90 Blender** (planned) — headless Blender over MCP. The trap is in the roadmap:
+   **Blender renders a black frame and exits 0.** First domain where `done-when` cannot be a
+   passing test — exactly what F88's `verifiable-by` exists for (deterministic image check →
+   VLM proposal → user, in that order).
+3. **Wire the review queue's gate routing to F88's authority rules end-to-end** — the routing
+   is built (`review-routing.ts`) and defaults to "yours"; confirm the UI honours it against a
+   real pending queue (I unit-tested it but did not watch it render loaded).
+4. **F27 / F34 / F79 / F83** — still `in-progress`/`scaffolded`. `npm run brief` reads their real
+   status from the graph.
+
+## The pattern that ran through this whole session (read before you trust a check)
+
+Nearly every bug this session was a CHECK THAT WAS CONFIDENTLY WRONG — and I made the mistake
+myself repeatedly, hours apart: `published-graph-guard` banned the product's own vocabulary;
+`graph-lint` counted errors it refused to print, missed conflicting statuses, and asked "is this
+on my disk" instead of "is this in the repo"; the digest generator was non-deterministic; the
+reconciler read the wrong JSON key and nearly deleted live findings. **Determinism buys "the rule
+fired", never "the rule was right."** Test the checker against a known-bad input before trusting
+it — every one of these was caught only by doing that, and shipped only when I didn't.
 
 ## Decisions that are MATT'S, not yours
 
