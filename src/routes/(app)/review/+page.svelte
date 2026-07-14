@@ -42,6 +42,7 @@
     KB_COLOR, KB_DESCRIPTION, KB_SCHEMA_PREDICATE
   } from '$lib/rdf/entity-types';
   import { allTypes } from '$lib/stores/entity-types.svelte';
+  import { routeQueue, routingSummary } from '$lib/rdf/review-routing';
   import { LEAP_PRED, LEAP_LABEL_PRED } from '$lib/rdf/kb-leap';
   import { requestShellyChat } from '$lib/stores/shelly-bridge.svelte';
   import { ToggleGroup } from 'bits-ui';
@@ -99,7 +100,59 @@
   const diff = $derived(semanticDiff ?? structuralDiff);
   // F32: partial "? question" facts, and the list actually shown (optionally filtered).
   const questionEntries = $derived(diff.entries.filter((e) => e.incoming.needsObject));
-  const shownEntries = $derived(questionsOnly ? questionEntries : diff.entries);
+
+  // ── F88: route by GATE, rank by BLAST RADIUS ───────────────────────────────
+  //
+  // The queue used to be one undifferentiated list in arrival order, which quietly asserts
+  // two false things: that the user is the competent reviewer for every fact, and that the
+  // newest item is the most important one.
+  //
+  // Neither survives contact with a real graph. "Does src/lib/foo.ts exist" is settled by a
+  // script; putting it to a human doesn't just waste their time, it teaches them the queue
+  // is mostly noise — and then they click Accept on the one item that mattered. Meanwhile a
+  // question with four things stalled behind it sits below fifty pieces of trivia because
+  // the trivia arrived later.
+  //
+  // So: split by who is COMPETENT to judge (rdf/verifiability.ts), rank each lane by how
+  // much is actually waiting on it, and default the user's view to THEIRS.
+  // subject IRI -> its rdf:type. Needed because AUTHORITY overrides verifiability: every fact
+  // about a Tenet or a Decision is the user's to approve, however checkable it looks.
+  const subjectTypes = $derived.by(() => {
+    const m = new Map<string, string>();
+    for (const st of [...existing, ...incoming]) {
+      if (st.p.value === RDF_TYPE && st.s.kind === 'iri') m.set(st.s.value, st.o.value);
+    }
+    return m;
+  });
+  const routed = $derived(
+    routeQueue(diff.entries.map((e) => e.incoming), (iri) => subjectTypes.get(iri)),
+  );
+  const routingLine = $derived(routingSummary(routed));
+  /** statement id -> blast radius, so a card can show what is stalled behind it. */
+  const impactById = $derived(
+    new Map([...routed.machine, ...routed.agent, ...routed.user].map((i) => [i.statement.id, i.impact])),
+  );
+  /** statement id -> the gate that should judge it. */
+  const gateById = $derived(
+    new Map([...routed.machine, ...routed.agent, ...routed.user].map((i) => [i.statement.id, i.gate])),
+  );
+
+  /** Which lane the user is looking at. Defaults to `user` — the point is to show them less. */
+  let gateFilter = $state<'user' | 'machine' | 'agent' | 'all'>('user');
+
+  const shownEntries = $derived.by(() => {
+    let list = questionsOnly ? questionEntries : diff.entries;
+    if (gateFilter !== 'all') {
+      list = list.filter((e) => (gateById.get(e.incoming.id) ?? 'user') === gateFilter);
+    }
+    // Most-blocking first. An item with four things stalled behind it is not "newer" or
+    // "older" than a curiosity — it is a different kind of item.
+    return [...list].sort(
+      (a, b) =>
+        (impactById.get(b.incoming.id) ?? 0) - (impactById.get(a.incoming.id) ?? 0) ||
+        a.incoming.createdAt - b.incoming.createdAt,
+    );
+  });
 
   $effect(() => {
     const inc = incoming;
@@ -966,6 +1019,35 @@
           {/if}
         </div>
 
+        <!-- F88: who is competent to judge this, and what is stalled behind it.
+             Defaults to `yours` — the whole point is to show the user LESS, not more. -->
+        {#if diff.entries.length > 0}
+          <div class="gates">
+            <span class="gate-line mono">{routingLine}</span>
+            <div class="gate-chips">
+              <button class="gc" class:active={gateFilter === 'user'} onclick={() => (gateFilter = 'user')}
+                title="Only you can settle these — your domain, your decision, your principles">
+                yours <span class="gc-n">{routed.user.length}</span>
+              </button>
+              {#if routed.machine.length > 0}
+                <button class="gc gc-machine" class:active={gateFilter === 'machine'} onclick={() => (gateFilter = 'machine')}
+                  title="A script settles these — a path either exists or it does not. They should never have needed you.">
+                  a script can settle <span class="gc-n">{routed.machine.length}</span>
+                </button>
+              {/if}
+              {#if routed.agent.length > 0}
+                <button class="gc gc-agent" class:active={gateFilter === 'agent'} onclick={() => (gateFilter = 'agent')}
+                  title="A reviewing agent settles these — did the cited passage actually say this?">
+                  an agent can settle <span class="gc-n">{routed.agent.length}</span>
+                </button>
+              {/if}
+              <button class="gc gc-all" class:active={gateFilter === 'all'} onclick={() => (gateFilter = 'all')}>
+                all <span class="gc-n">{diff.entries.length}</span>
+              </button>
+            </div>
+          </div>
+        {/if}
+
         {#if diffSummary}
           <div class="ds-cards">
             {#if diffSummary.newSummary && diffSummary.newSummary !== 'None.'}
@@ -1698,6 +1780,43 @@
     border: 1px solid var(--line);
     color: var(--muted);
   }
+
+  /* ── F88 gate routing ── */
+  .gates {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin: 0.5rem 0 0.75rem;
+  }
+  .gate-line {
+    font-size: 0.62rem;
+    color: var(--muted);
+  }
+  .gate-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+  .gc {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .gc:hover { border-color: var(--accent); color: var(--fg); }
+  .gc.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+  .gc-n { opacity: 0.75; margin-left: 0.2rem; }
+  /* The two lanes that are NOT the user's are deliberately quiet — they are what the
+     queue is sparing them, not another thing demanding attention. */
+  .gc-machine, .gc-agent { opacity: 0.75; }
   .sc.question-filter {
     cursor: pointer;
     background: transparent;
