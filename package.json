@@ -117,7 +117,8 @@
     "schedule": "npx tsx scripts/agent/schedule.ts --graph reckons-workspace/schedules.ttl",
     "orchestrate": "npx tsx scripts/agent/orchestrate.ts",
     "reconcile": "npx tsx scripts/agent/reconcile.ts",
-    "blender:render": "npx tsx scripts/content/blender-render.ts"
+    "blender:render": "npx tsx scripts/content/blender-render.ts",
+    "split": "npx tsx scripts/agent/split.ts"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
