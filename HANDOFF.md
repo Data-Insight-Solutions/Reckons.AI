@@ -6,12 +6,26 @@
 If you are a fresh session (local, cloud, resumed, or scheduled) and Matt says "continue",
 this is where you continue from. Do not re-derive it; do not re-audit what is already audited.
 
-## Do this now
+## Do this now — SPEND NO TOKENS BEFORE YOU HAVE TO
 
-1. `git fetch && git checkout feat/work-tiering-ci`
-2. `npm run offline:script-tier` — free, deterministic, ~40s. It tells you the current state
-   without spending a token.
-3. Pick up the **Next up** list below. Everything in **Done this session** is committed.
+1. `git fetch && git checkout feat/work-tiering-ci` (open as **PR #101 → `dev`**)
+2. **`npm run agent:run`** — drains the script-tier task queue (`reckons-workspace/tasks.ttl`).
+   Deterministic, **zero tokens**. It writes its outcomes INTO the graph, so read
+   `reckons-workspace/tasks.state.ttl` to see what it actually did. A task reported as
+   `WAITING` is asking Matt something — leave it; it resumes by itself when he answers.
+3. `npm run offline:script-tier` — the free checks (~40s, zero tokens).
+4. `npm run align` — must be green. It **blocks CI**.
+5. Only now start reasoning. Work the **Next up** list below, in order.
+
+Everything under **Done** is committed and pushed. Do not redo it.
+
+## The whole point of this session, in one line
+
+**Route every task to the cheapest tier that can do it correctly** (script → local agent →
+Opus). If you catch yourself doing what a script could do, stop and write the script — that
+IS the work. And if you meet an ambiguity: **ASK** (`scripts/agent/ask.ts`), never guess. A
+guess silently entered into a knowledge graph is worse than a stalled task — it is a lie the
+graph will repeat in Matt's name.
 
 ## Read the mission first: `kb:mission` + `kb:thesis` in the roadmap graph
 
@@ -38,47 +52,32 @@ that can do it correctly: script → local agent → Opus. Opus is for orchestra
 judgment, and code that lands. If you catch yourself doing what a script could do, stop and
 write the script — that IS the work.
 
-## Done this session (committed, do not redo)
+## Done (committed AND pushed — PR #101 → dev). Do not redo.
 
-- **`44445ce` — the free tier ran nowhere, so it displaced nothing.** `kb:tier-script`
-  claimed it "runs in CI and fails loudly"; only safety-attestation was ever wired. Now
-  `ci.yml` has a `script-tier` job on every push/PR. `published-graph-guard` and
-  `button-crawl` existed with npm scripts but sat in NO registry — `offline:all` had never
-  once run them. Registered. `run-all.ts` gained a `blocking` flag + `--ci` mode.
-- **`e331145` / `3f366f7` — a filter is a lens, not a deletion.** Filters used to splice
-  statements out before `buildGraphView`, so filtered nodes never reached the force sim and
-  the layout re-solved under the user. Now every node stays in the simulation and unmatched
-  ones render at `GHOST_ALPHA`. Verified in a browser: a filter matching 0 of 2027
-  statements leaves 383 nodes present, 383/383 ghosted, and the marketing landing page does
-  NOT replace the graph (it used to).
-- **`af6166a` — competitive research graph (F86).** `static/reckons-competitive.ttl`, 13
-  projects, plus `scripts/offline/competitor-scan.ts` (script tier, zero tokens) which
-  verifies every LICENSE against the GitHub API and flags copyleft (we are MIT).
-- **`ad2bbb3` — SRI on the Sveltia CDN bundle.** `/admin` holds a GitHub token that can
-  reach production; the script tag had no integrity hash.
+**The orchestration loop now closes.** That is the headline; everything else served it.
 
-## Next up (in priority order)
-
-1. **Push this branch and open a PR → `dev`** (NOT `main`; verify with
-   `gh pr view <n> --json baseRefName`). Nothing here has been pushed yet.
-2. **KB gallery (Matt asked for it).** A filterable gallery of graphs with metadata (last
-   edit, statement count) and previews if feasible, replacing the current graph-selection
-   experience. Not started.
-3. **`npm run brief`** — a script-tier session-start context dump (branch, open PRs, pending
-   count, script-tier status, what is unblocked). Replaces the few-thousand-token
-   re-derivation Opus does at every session start. Not started.
-4. **Digest → graph-generated.** `reckons-workspace/DIGEST.md` is hand-appended and is a
-   second source of truth. F80 phase 3 (`kb:async-digest`) specified a `kb:digest` ENTITY
-   rendered through the WebPage/publish machinery. That entity does not exist. Close the gap.
-5. **Agent-tier code review first.** `scripts/offline/code-review.ts` (qwen3-coder) exists and
-   now warms the model + refuses to run rather than silently reviewing nothing. Run it FIRST
-   on any diff; Opus triages its output rather than reading the diff cold.
-6. **F87 agent orchestration — build phase 1.** The plan is written
-   (`kb:agent-orchestration` in the roadmap): the graph IS the orchestration config, and a
-   HARNESS (Claude Code / Codex / Ollama / human) is a distinct axis from F81's RUNNER
-   (Worker / desktop / MCP). Start with `kb:orch-task-vocab` (a task is a triple), then
-   `kb:orch-jobs-to-ttl` — migrating `jobs.json` dogfoods the vocabulary on a queue that
-   already works. Do NOT invent a second YAML-shaped config format; that is the whole point.
+- **The task queue is a graph.** `src/lib/rdf/agent-task.ts` + `scripts/agent/runner.ts`.
+  `npm run agent:run` drains `reckons-workspace/tasks.ttl`: claim (a LEASE, not a lock) →
+  execute → **verify INDEPENDENTLY** → write the outcome back. A task with no `done-when` is
+  REFUSED ("a wish, not a task"). A recurring task (`kpred:every "7d"`) is never *done*, it is
+  *due again*. An expired lease with no outcome is detected and requeued — the "fired on
+  schedule, produced nothing, still showed a future run time" failure, made queryable.
+- **A task can ASK instead of guessing.** It emits a partial fact naming what it needs and
+  what it blocks, exits `42`, and the runner marks it **WAITING** — not done, not failed. It
+  resumes by itself when Matt answers, in the review queue *or* via Shelly (both resolve the
+  same fact). `MAX_ATTEMPTS` bounds it: patience is not infinite retry of a broken thing.
+- **`kb_merge` MCP tool** — an orchestrator can now merge a sub-agent's graph. Proposals only;
+  CONFLICTS sort first. Found 23 real ones on its first run (the roadmap thinks the MCP server
+  has 10 tools; production says 20).
+- **F88 verifiability axis** — `verifiable-by` (code|test|source|user|unknown) decides WHO may
+  approve a fact. Code/tests never reach Matt. **Authority overrides verifiability**: roadmap
+  and principles are his however checkable they are. Unclassified fails toward the human.
+- **Review queue routes by gate**, ranked by TRANSITIVE blast radius. Defaults to "yours".
+- **`npm run align` BLOCKS in CI** — the graph→site generators all had `--check` modes and none
+  gated anything. `landing-features.ts` was HARD BROKEN (it could not regenerate at all).
+- **Script tier BLOCKS in CI** (`--ci`). Docs generated from the graph (`docs-coding-workflow`).
+  `claim-audit` sweeps hand-written copy for claims the graph denies. SRI on the Sveltia bundle.
+  Both dependabot alerts closed. Filters ghost instead of deleting. CUDA repaired; Ollama 100% GPU.
 
 ## Decisions that are MATT'S, not yours
 
