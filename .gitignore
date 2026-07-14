@@ -32,6 +32,12 @@ Thumbs.db
 
 # Claude Code sessions
 .claude/
+# …but the slash commands ARE project files. CLAUDE.md lists them as project docs, and
+# reckons-codebase.ttl claims them with kpred:has-file — a claim that was TRUE on the author's
+# laptop and FALSE in every other checkout, which is the worst shape a claim can have.
+# Track them; keep the local/private .claude state ignored.
+!.claude/commands/
+!.claude/commands/*.md
 
 # Local data / workspace
 mnt/

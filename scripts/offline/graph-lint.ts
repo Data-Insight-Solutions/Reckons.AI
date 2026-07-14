@@ -23,6 +23,7 @@
  *   npm run offline:lint -- --json       machine-readable (CI)
  */
 import { readFileSync, existsSync, appendFileSync, readdirSync } from 'fs';
+import { execSync } from 'child_process';
 import path from 'path';
 import { Parser, type Quad } from 'n3';
 
@@ -94,15 +95,44 @@ const objects = (subject: string, pred: string) =>
   quads.filter(({ q }) => q.subject.value === subject && q.predicate.value === pred).map(({ q }) => q.object.value);
 const fileOf = (subject: string) => quads.find(({ q }) => q.subject.value === subject)?.file ?? '?';
 
-// ── dead-link: a path predicate pointing at a file that no longer exists.
+// ── dead-link: a path predicate pointing at a file the REPOSITORY does not have.
+//
+// This used to ask `existsSync(p)` — "is this file on my disk?" — which is the wrong question,
+// and it cost a red CI run to notice. The graph describes the REPOSITORY, not one laptop. A
+// file that exists only in a working tree (gitignored, or never committed) is a file that
+// EVERY OTHER CHECKOUT WILL NOT HAVE, and a graph that claims it is lying to everyone except
+// the person who wrote it.
+//
+// That is the worst possible failure shape for a linter: green for the author, red for
+// everyone else. It passed here and failed in CI — .claude/commands/*.md exist locally and are
+// gitignored, so reckons-codebase.ttl claimed four files a fresh checkout does not have.
+//
+// Ask git, not the filesystem. Then local and CI agree by construction.
+let tracked: Set<string> | null = null;
+try {
+  tracked = new Set(
+    execSync('git ls-files', { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }).trim().split('\n').filter(Boolean),
+  );
+} catch {
+  tracked = null; // not a git checkout — fall back to the filesystem rather than failing.
+}
+
 for (const { q, file } of quads) {
   if (!PATH_PREDS.includes(q.predicate.value)) continue;
   const p = q.object.value;
   if (!p || p.startsWith('http')) continue;
-  if (!existsSync(p)) {
-    add('error', 'dead-link', file, q.subject.value,
-      `${short(q.predicate.value)} → "${p}" does not exist on disk (moved, renamed, or deleted).`);
-  }
+
+  const inRepo = tracked ? tracked.has(p) : existsSync(p);
+  if (inRepo) continue;
+
+  // Distinguish the two failures, because they have different fixes: a file that is GONE is a
+  // stale graph; a file that is merely UNTRACKED is a graph claiming something the repo will
+  // not ship. Both are errors; conflating them wastes the reader's time.
+  const onDisk = existsSync(p);
+  add('error', 'dead-link', file, q.subject.value,
+    onDisk
+      ? `${short(q.predicate.value)} → "${p}" exists on THIS machine but is NOT IN THE REPOSITORY (gitignored or never committed). Every other checkout — and CI — sees a dead link.`
+      : `${short(q.predicate.value)} → "${p}" does not exist (moved, renamed, or deleted).`);
 }
 
 // ── bad-status: scoped to ktype:Feature — a Concept may legitimately use has-status
