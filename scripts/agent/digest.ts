@@ -26,6 +26,7 @@
 import { appendFileSync, existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import path from 'path';
 import { askGraph, expandIri } from './ask.js';
+import { addFinding, readFindings, renderMarkdown } from './digest-graph.js';
 
 const DIGEST = 'reckons-workspace/DIGEST.md';
 const PENDING = 'reckons-workspace/knowledge.pending.jsonl';
@@ -60,35 +61,20 @@ export interface Finding {
 }
 
 export function appendFinding(f: Finding, digestPath = DIGEST): string {
-  mkdirSync(path.dirname(digestPath), { recursive: true });
-
-  if (!existsSync(digestPath)) {
-    writeFileSync(
-      digestPath,
-      `# Reckons.AI — rolling agent digest\n\n` +
-        `One report that GROWS, instead of many that interrupt (F80 / kb:async-digest).\n` +
-        `Agents append here while you are away. Nothing in this file waited on you.\n\n` +
-        `Questions needing your answer appear in the app's **Review tab** as partial facts\n` +
-        `(object \`?\`, with an entity picker). Answering one unblocks whatever it was holding up.\n\n` +
-        `---\n`,
-    );
-  }
-
   const when = new Date().toISOString();
-  const lines = [
-    ``,
-    `### ${ICON[f.type]} ${f.headline}`,
-    ``,
-    `\`${f.type}\`${f.about ? ` · **${f.about}**` : ''} · ${when}${f.agent ? ` · _${f.agent}_` : ''}`,
-    ``,
-  ];
-  if (f.detail) lines.push(f.detail, ``);
 
-  appendFileSync(digestPath, lines.join('\n'));
+  // THE GRAPH IS THE SOURCE. DIGEST.md is generated from it (scripts/agent/digest-graph.ts).
+  //
+  // This used to append markdown directly and write the graph fact as an afterthought — a
+  // SECOND SOURCE OF TRUTH, in a product whose whole argument is that there should not be one.
+  // And of all the files to keep dishonestly, the digest is the worst: it is where we record
+  // our own failures.
+  addFinding({ type: f.type, about: f.about, headline: f.headline, detail: f.detail, agent: f.agent, at: when });
+  writeFileSync(digestPath, renderMarkdown(readFindings()));
 
-  // A finding that only exists in a markdown file is not in the graph, and therefore is
-  // not searchable, mergeable, or attached to the feature it concerns. Emit it as a fact
-  // too — pending, because a finding is a proposal until a human confirms it.
+  // A finding is also a PROPOSAL on the entity it concerns, so it is searchable, mergeable,
+  // and shows up next to the feature it is about — pending, because a finding is a claim
+  // until a human confirms it.
   if (f.about) {
     const line = JSON.stringify({
       subject: expandIri(f.about),

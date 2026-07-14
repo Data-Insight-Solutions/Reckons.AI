@@ -57,6 +57,12 @@ const GATES: Gate[] = [
     fix: 'npx tsx scripts/landing-features.ts',
   },
   {
+    name: 'digest',
+    why: 'DIGEST.md is GENERATED from reckons-workspace/digest.ttl — the digest records our own failures, and keeping THAT as a second source of truth was the sharpest hypocrisy in the repo',
+    check: 'npx tsx scripts/agent/digest-graph.ts --check',
+    fix: 'npx tsx scripts/agent/digest-graph.ts --render',
+  },
+  {
     name: 'landing principles',
     why: 'the tenets on the front page are marked "enforced in code" or "what we believe" — that distinction must come from the graph, not from memory',
     check: 'npx tsx scripts/landing-principles.ts --check',

@@ -1,6 +1,17 @@
+<!-- GENERATED from reckons-workspace/digest.ttl by scripts/agent/digest-graph.ts.
+     DO NOT HAND-EDIT — 'npm run align' will fail. Edit the graph, then regenerate. -->
 
+# Reckons.AI — rolling agent digest
 
-## Pre-announcement sweep — untested production features — 2026-07-13 02:23
+One report that GROWS, instead of many that interrupt (F80 / kb:async-digest).
+Agents append here while you are away. **Nothing in this file waited on you.**
+
+Questions needing your answer appear in the app's **Review tab** as partial facts
+(object `?`, with an entity picker). Answering one unblocks whatever it was holding up.
+
+21 finding(s).
+
+---
 
 ### ❌ The '60-70% token reduction' claim was false — measured ~18%
 
@@ -121,3 +132,9 @@ tests/e2e/graph-render.test.ts ('documentation graph renders nodes without a Web
 `note` · **kb:graph-publishing** · 2026-07-14T17:21:23.835Z · _claude-code_
 
 On 2026-07-14 I reported that static/knowledge.ttl carried 166 urn:reckons:story/ test-harness terms, committed on dev. THAT WAS FALSE, and I repeated it in three commit messages and used it to justify keeping the CI script tier ADVISORY instead of blocking. urn:reckons:story/ is the PRODUCT'S OWN guided-story vocabulary — src/lib/rdf/story.ts, used by the landing page, the about page and TurtleChatPanel's step walkthrough, and declared in reckons-production.ttl. The actual test-harness namespace is urn:reckons:test/, and it appears ZERO times in the published graph. published-graph-guard.ts banned both namespaces because the original incident (urn:reckons:test/VR-Step2 rdf:type story:Step) had test SUBJECTS wearing story TYPES — the harness borrowed the product's vocabulary, as it should, and the guard condemned the vocabulary along with the debris. Guard corrected; header count corrected (1032 -> 3096, which WAS a real finding); script tier is now BLOCKING. The lesson is the thesis: a finding is a claim, and a tool reporting a violation is a party with an interest in having found one. I did not verify it, and an unverified claim kept a real control switched off.
+
+### 🚢 The digest is a graph now — the file that records our failures was itself a second source of truth
+
+`shipped` · **kb:async-digest** · 2026-07-14T20:18:57.093Z · _claude-code_
+
+Matt's first question this session was 'why was DIGEST.md made? Why not record in turtle?' The honest answer was that it should have been. kb:async-digest specified 'a digest ENTITY in the graph, rendered through the existing WebPage machinery, just a graph node like anything else'. What shipped was a hand-appended markdown file with a graph write bolted on the side. Findings now live in reckons-workspace/digest.ttl as ktype:Finding entities; DIGEST.md is GENERATED from them and npm run align fails if it drifts. Of all the files to keep as a second source of truth, the one where we record our own failures was the worst choice.
