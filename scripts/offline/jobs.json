@@ -27,6 +27,13 @@
       "desc": "ASYNC alignment: sweeps the hand-written surfaces align(1) cannot generate (README, SAFETY.md, COUNSEL-BRIEF.md, app shell, landing copy) for claims the graph contradicts — an unbuilt feature described as working, or a countable claim that is simply wrong. Emits PROPOSALS for review; never gates a build, because 'is this sentence overclaiming' is a judgment"
     },
     {
+      "name": "history-lessons",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/history-lessons.ts --pending",
+      "desc": "Mines this repo's OWN history for how it fails: fixes that shipped with no test (a bug with a return ticket — in a semantic system the regression will not crash, it will quietly go back to being wrong) and fragility hotspots. Evidence, not opinion"
+    },
+    {
       "name": "graph-lint",
       "tier": "script",
       "enabled": true,

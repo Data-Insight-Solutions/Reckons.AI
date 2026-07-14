@@ -1603,13 +1603,15 @@ kb:autonomous-loop rdf:type    ktype:Feature ;
                kpred:has-phase    kb:loop-safety .
 
 kb:loop-idea-inbox rdf:type    ktype:Phase ;
-               rdfs:label   "Phase 1 — catch the wave (the idea inbox)" ;
+               rdfs:label   "Phase 1 — ideas are a GRAPH, diffed against the roadmap" ;
                kpred:part-of      kb:autonomous-loop ;
                hnav:order   1 ;
-               kpred:description  "Matt: 'I end up having ideas in waves. I'd rather let those waves flow, and let the orchestration agent ask for more details or decisions where necessary.' Today an idea said in chat is GONE when the session ends — by our own principle. The inbox is the fix: a raw idea lands as an entity with status `speculative` and verifiable-by `user`, with NO structure demanded at capture time. The orchestrator triages it later, and where it cannot proceed it emits a partial fact (object '?') naming exactly what it needs. The wave is never interrupted to fill in a form." ;
-               kpred:principle    "CAPTURE MUST COST NOTHING OR IT WILL NOT HAPPEN. Any friction at the moment of the idea — a required field, a type, a parent — trades the idea for the metadata, and the idea was the valuable half." ;
-               kpred:principle    "This IS the mission, not a convenience. An idea half-expressed is a well-formed absence: subject and predicate known, object open. Holding the shape of what is missing is the invention (kb:mission)." ;
-               kpred:remaining    "An inbox surface (chat, CLI, voice) that writes speculative entities + open questions; orchestrator triage that converts them into tasks or asks." .
+               kpred:has-status   "planned" ;
+               kpred:description  "Matt: 'ideas could be a separate graph and diff against roadmap'. That is the right shape, and it is better than an inbox — because it REUSES THE PRODUCT instead of inventing a sidecar. Ideas land in their own graph with no structure demanded at capture. Diffing that graph against the roadmap then answers, for free, the three questions that matter: what here is NEW, what REINFORCES something already planned, and what CONFLICTS with something we have already decided. That third one is the payoff, and an inbox could never give it: 'this idea contradicts a principle you hold' is precisely the thing you want said back to you, and precisely the thing a list of notes cannot say." ;
+               kpred:principle    "CAPTURE MUST COST NOTHING OR IT WILL NOT HAPPEN. Friction at the moment of the idea — a required field, a type, a parent — trades the idea for the metadata, and the idea was the valuable half. The structure is recovered later, by DIFFING, not demanded up front." ;
+               kpred:principle    "An idea graph is the mission in miniature: it is mostly well-formed absences. Subject and predicate known, object open. The orchestrator's job is to ask about the objects — not to invent them." ;
+               kpred:reuses       "The machinery already exists and is shipped: multi-graph registry, importAsNewKb, computeDiff/semanticDiff (new · reinforces · conflicts · refines), cross-graph align (F16), and the MergeReview UI. An idea graph is just another graph, which is the whole point." ;
+               kpred:remaining    "A low-friction capture surface (chat, CLI, voice) writing to an `ideas` graph; scheduled diff of ideas -> roadmap; conflicts surfaced as questions the orchestrator asks; accepted ideas promoted into the roadmap as planned features (a USER-AUTHORITY act, per F88 — minting a feature is authorship, not observation)." .
 
 kb:loop-subagent-graphs rdf:type ktype:Phase ;
                rdfs:label   "Phase 2 — sub-agents write their own graphs; Opus merges" ;

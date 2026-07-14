@@ -62,7 +62,8 @@ const MIN_STATEMENTS = 400;
  * tier advisory rather than blocking — for as long as nobody checked whether
  * `urn:reckons:story/` was ours. It was.
  */
-const TEST_NAMESPACES = ['urn:reckons:test/'];
+// The rule lives in lib/namespaces.ts, WITH TESTS — see that file for why.
+import { TEST_NAMESPACES } from './lib/namespaces';
 
 interface Finding {
   level: 'error' | 'warn';
