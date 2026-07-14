@@ -77,3 +77,7 @@ eng.traineddata
 # this is only the machine's record of what it claimed and what came of it. Delete to reset.
 reckons-workspace/*.state.ttl
 reckons-workspace/runner.log.jsonl
+
+reckons-workspace/schedules.state.ttl
+reckons-workspace/schedule.log.jsonl
+reckons-workspace/task-drafts.ttl

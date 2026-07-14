@@ -113,7 +113,9 @@
     "claim-audit": "npx tsx scripts/offline/claim-audit.ts",
     "history:lessons": "npx tsx scripts/offline/history-lessons.ts",
     "agent:run": "npx tsx scripts/agent/runner.ts --graph reckons-workspace/tasks.ttl",
-    "brief": "npx tsx scripts/brief.ts"
+    "brief": "npx tsx scripts/brief.ts",
+    "schedule": "npx tsx scripts/agent/schedule.ts --graph reckons-workspace/schedules.ttl",
+    "orchestrate": "npx tsx scripts/agent/orchestrate.ts"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
