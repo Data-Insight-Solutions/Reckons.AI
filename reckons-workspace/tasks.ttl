@@ -62,6 +62,48 @@ task:claim-audit rdf:type     ktype:AgentTask ;
     kpred:blocked-by task:published-graph ;
     kpred:task-state "open" .
 
+# ── RECURRING PLANS ──────────────────────────────────────────────────────────
+#
+# Scheduling lives HERE, in the graph, not in a crontab. `kpred:every` is an INTERVAL, not a
+# cron expression, and the difference is a promise we can actually keep.
+#
+# Cron says "at 03:40 on Tuesdays". That assumes a machine that is awake, in a timezone, with
+# a daemon that fires — and we already know exactly what that promise is worth: the cloud cron
+# fired precisely on schedule, produced nothing, reported nothing, and went on displaying a
+# future run time. It looked armed while being dead.
+#
+# An interval says only "not more often than this". Whichever runner wakes next drains whatever
+# is due. Nothing is missed because a laptop was shut; the work is simply done when someone next
+# shows up. DRAIN, DO NOT SCHEDULE. And the next due time is computed from when the run actually
+# happened — so a machine asleep for a week wakes owing ONE run, not seven.
+
+task:history-lessons rdf:type ktype:AgentTask ;
+    rdfs:label      "Learn from our own failures, weekly" ;
+    kpred:goal      "Mine the repo's history for fixes that shipped with no test (a bug with a return ticket) and for files where fixes cluster (fragility is a design signal)." ;
+    kpred:tier      "script" ;
+    kpred:every     "7d" ;
+    kpred:command   "npx tsx scripts/offline/history-lessons.ts --pending" ;
+    kpred:done-when "npx tsx scripts/offline/history-lessons.ts --json > /dev/null" ;
+    kpred:task-state "open" .
+
+task:competitor-scan rdf:type ktype:AgentTask ;
+    rdfs:label      "Watch the neighbourhood, and the licences" ;
+    kpred:goal      "Refresh every competitor's metadata and LICENCE from the GitHub API. A licence that moved under us changes what we are ALLOWED to do, and the graph's copy-permitted claims would be lying about it." ;
+    kpred:tier      "script" ;
+    kpred:every     "7d" ;
+    kpred:command   "npx tsx scripts/offline/competitor-scan.ts --pending" ;
+    kpred:done-when "npx tsx scripts/offline/competitor-scan.ts" ;
+    kpred:task-state "open" .
+
+task:prompt-audit rdf:type    ktype:AgentTask ;
+    rdfs:label      "The ethics preamble must not drift" ;
+    kpred:goal      "Check ETHICS_PREAMBLE is present, injected into every LLM prompt, and identical between the app and the MCP server. A safety control that silently drifts is not a control." ;
+    kpred:tier      "script" ;
+    kpred:every     "24h" ;
+    kpred:command   "npx tsx scripts/offline/prompt-audit.ts" ;
+    kpred:done-when "npx tsx scripts/offline/prompt-audit.ts" ;
+    kpred:task-state "open" .
+
 # A task the runner must REFUSE, on purpose — it has no done-when. Left here deliberately:
 # the queue should demonstrate its own guardrail, not just describe it. "Make the code better"
 # is a wish, and its completion would be an agent's opinion of its own work.

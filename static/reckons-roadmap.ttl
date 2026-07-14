@@ -1577,6 +1577,53 @@ kb:auto-merge rdf:type         ktype:Feature ;
 # questions (partial facts), and the findings (the digest). It should hold the SCHEDULE
 # too — locally, observably, and with the run's outcome written back as facts.
 
+# -- F90: Content generation — the first domain where "done" is not a test ------
+#
+# Coding orchestration is the EASY case, and it is worth saying so plainly before generalizing
+# from it. Code is machine-verifiable: does it compile, do the tests pass, does align stay
+# green. `done-when` is a command with an exit code, and the whole loop (F87/F89) leans on that.
+#
+# Content generation breaks it. "Render the hero asset" has no exit code. A Blender script that
+# completes successfully and emits a black frame has "passed". The acceptance criterion is not
+# a test — it is a LOOK, and a look is judgment.
+#
+# This is exactly the verifiability axis (F88) meeting a domain where the honest answer is not
+# `code`. It is where the orchestration stops being about coding and starts being general — and
+# where it would be easiest to quietly lie to ourselves that a green exit code means the asset
+# is good.
+
+kb:content-orchestration rdf:type ktype:Feature ;
+               rdfs:label   "Content generation orchestration (Blender, headless, over MCP)" ;
+               kpred:feature-id   "F90" ;
+               kpred:has-status   "planned" ;
+               kpred:relates-to   kb:agent-orchestration ;
+               kpred:relates-to   kb:verifiability-axis ;
+               kpred:relates-to   kb:asset-viewer ;
+               kpred:description  "Headless Blender (`blender --background --python`) exposed as an MCP tool, so an agent can generate, render and inspect 3D content the same way it queries the graph. The scene is DESCRIBED IN THE GRAPH — objects, materials, camera, lights as entities — and the Blender script is GENERATED from it. That means an asset has provenance: you can ask why a thing is the colour it is, diff two scenes, and regenerate one from a graph rather than from a .blend nobody can read." ;
+               kpred:principle    "THE SCENE IS A GRAPH, NOT A SCRIPT. A generated .blend or .py is a derived artifact; the graph is the source. Otherwise the asset pipeline becomes exactly the thing this product exists to replace — a binary blob whose reasoning is lost." ;
+               kpred:principle    "A GREEN EXIT CODE IS NOT A GOOD IMAGE. Blender will happily render a black frame and exit 0. Any `done-when` that only checks the process succeeded is a lie the loop will tell itself at scale." ;
+               kpred:depends-on   kb:agent-orchestration ;
+               kpred:depends-on   kb:verifiability-axis ;
+               kpred:has-phase    kb:blender-mcp ;
+               kpred:has-phase    kb:visual-acceptance .
+
+kb:blender-mcp rdf:type        ktype:Phase ;
+               rdfs:label   "Phase 1 — headless Blender over MCP" ;
+               kpred:part-of      kb:content-orchestration ;
+               hnav:order   1 ;
+               kpred:description  "An MCP tool surface over `blender --background --python`: render a scene described in the graph, export GLB, inspect the result. Runs LOCALLY — Blender is free, offline and installed on the user's machine, which fits the thesis exactly: no operator, no API key, no upload of your work to someone else's renderer. The existing GLB asset viewer already consumes the output, and qwen2.5vl is already the visual gate." ;
+               kpred:principle    "Local by default, and the reason is the thesis, not thrift. A cloud renderer means your unreleased work sits on someone else's disk — the same objection as hosted sync (kb:avoid-hosted-sync)." ;
+               kpred:remaining    "mcp-server: blender_render (scene entity -> image/GLB), blender_inspect (what is actually IN this file). Scene vocabulary: ktype:Scene, kpred:has-object / material / camera / light. Generate the .py FROM the graph; never hand-maintain the script." .
+
+kb:visual-acceptance rdf:type  ktype:Phase ;
+               rdfs:label   "Phase 2 — done-when for things that have no exit code" ;
+               kpred:part-of      kb:content-orchestration ;
+               hnav:order   2 ;
+               kpred:description  "The generalization the whole orchestration needs. A content task's acceptance criterion cannot be a test, so it is one of: a DETERMINISTIC check (the image is not uniformly one colour; the GLB parses; the file is not 0 bytes; the frame is not empty) — cheap, script tier, and it catches the black-frame class outright; a VLM JUDGMENT (qwen2.5vl scores the render against the brief and the design rubric) — agent tier, a PROPOSAL, never an auto-accept; or THE USER (verifiable-by `user` — taste is not delegable, and pretending otherwise is how you ship forty assets nobody likes)." ;
+               kpred:principle    "Push as much as possible into the deterministic check FIRST. A black frame, an empty scene and a 0-byte export are RULES, and rules cost nothing to triage. Sending those to a VLM moves cost from generation to review rather than removing it (F74.3)." ;
+               kpred:principle    "Taste routes to the user, and it must be ALLOWED to. The verifiability axis exists precisely so a domain like this can say `user` out loud instead of dressing a preference up as a passing check." ;
+               kpred:remaining    "kpred:done-when accepting a non-command criterion; deterministic image checks (non-uniform, non-empty, parses); VLM scoring harness against kb:web-uiux-rubric; asset review in the queue, gated by F88." .
+
 # -- F89: The loop — plan, assign, code, review, merge, repeat ------------------
 #
 # Matt's flow: wake Opus on a schedule -> review pending work -> assign -> sub-agents code
@@ -1747,6 +1794,7 @@ kb:agent-orchestration rdf:type ktype:Feature ;
 
 kb:orch-task-vocab rdf:type    ktype:Phase ;
                rdfs:label   "Phase 1 — the task vocabulary (a task is a triple)" ;
+               kpred:schedules    "Scheduling lives in the GRAPH, as kpred:every — an INTERVAL, not a cron expression. Cron says 'at 03:40 on Tuesdays', which assumes a machine that is awake with a daemon that fires; we know what that promise is worth, because the cloud cron fired exactly on schedule, produced nothing, reported nothing, and went on showing a future run time. An interval claims only 'not more often than this', and whichever runner wakes next drains what is due. The next due time is computed from when the run ACTUALLY happened, so a machine asleep for a week wakes owing one run, not seven. DRAIN, DO NOT SCHEDULE." ;
                kpred:part-of      kb:agent-orchestration ;
                kpred:has-status   "functional" ;
                kpred:has-file     "src/lib/rdf/agent-task.ts" ;

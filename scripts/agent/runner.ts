@@ -134,6 +134,11 @@ interface Task {
   claimedBy?: string;
   claimExpires?: number;
   outcome?: string;
+  /** Recurrence, e.g. "30m", "6h", "7d". A recurring task is never "done" — it is DUE AGAIN. */
+  every?: string;
+  /** Epoch ms. Not runnable before this. */
+  dueAt?: number;
+  lastRun?: number;
 }
 
 const taskIris = new Set(
@@ -160,7 +165,31 @@ const tasks: Task[] = [...taskIris].map((iri) => ({
   claimedBy: one(iri, 'claimed-by'),
   claimExpires: Number(one(iri, 'claim-expires') ?? 0) || undefined,
   outcome: one(iri, 'outcome'),
+  every: one(iri, 'every'),
+  dueAt: Number(one(iri, 'due-at') ?? 0) || undefined,
+  lastRun: Number(one(iri, 'last-run') ?? 0) || undefined,
 }));
+
+/**
+ * "30m" | "6h" | "7d" -> milliseconds.
+ *
+ * DELIBERATELY NOT CRON. Cron expresses "at 03:40 on Tuesdays", which is a promise this system
+ * cannot keep: it assumes a machine that is awake, in a timezone, with a scheduler that fires.
+ * We already learned what that promise is worth — the cron fired exactly on schedule, produced
+ * nothing, reported nothing, and still displayed a future run time (kb:local-orchestration).
+ *
+ * An INTERVAL makes a weaker and therefore honest claim: "not more often than this". Whichever
+ * runner wakes next drains whatever is due. Nothing is missed by a machine being asleep; the
+ * work is simply done when someone next shows up. Drain, do not schedule.
+ */
+function parseEvery(v: string | undefined): number | null {
+  if (!v) return null;
+  const m = v.trim().match(/^(\d+)\s*(m|h|d)$/i);
+  if (!m) return null;
+  const n = Number(m[1]);
+  const unit = m[2].toLowerCase();
+  return n * (unit === 'm' ? 60_000 : unit === 'h' ? 3_600_000 : 86_400_000);
+}
 
 const now = Date.now();
 const doneIris = new Set(tasks.filter((t) => t.state === 'done').map((t) => t.iri));
@@ -168,7 +197,19 @@ const resolved = (iri: string) => doneIris.has(iri);
 
 /** Why this task cannot run right now — the same rules as rdf/agent-task.ts. */
 function blockedReason(t: Task): string | null {
-  if (t.state === 'done') return 'already done';
+  const interval = parseEvery(t.every);
+
+  // A RECURRING TASK IS NEVER "DONE" — IT IS DUE AGAIN. Treating a completed run as terminal
+  // is how a schedule silently becomes a one-shot.
+  if (t.state === 'done' && interval === null) return 'already done';
+
+  // Not yet due. This is the whole of "scheduling" here: no cron, no daemon, no timer — the
+  // task simply is not ready, and whichever runner wakes next will find it when it is.
+  if (t.dueAt !== undefined && now < t.dueAt) {
+    const mins = Math.ceil((t.dueAt - now) / 60000);
+    return `not due for ${mins}m${t.every ? ` (every ${t.every})` : ''}`;
+  }
+
   if (!t.goal.trim()) return 'no goal';
   if (!t.doneWhen?.trim()) {
     return 'NO done-when — a task with no machine-checkable acceptance criterion is a wish, not a task';
@@ -297,14 +338,28 @@ for (const t of runnable) {
     : `FAILED — the work ran${execOk ? '' : ' (and exited non-zero)'} but the acceptance check did not pass: ${t.doneWhen}. ` +
       `Last output: ${verifyOut.trim().split('\n').slice(-2).join(' / ').slice(0, 200)}`;
 
-  setFacts(t.iri, {
+  const interval = parseEvery(t.every);
+  const facts: Record<string, string> = {
     outcome,
-    'task-state': verified ? 'done' : 'failed',
     'claim-expires': '0',
-  });
+    'last-run': String(now),
+  };
+  if (interval !== null) {
+    // Recurring: it is not finished, it is due again. The next due time is computed from NOW,
+    // not from the scheduled time — so a machine that was asleep for a week does not wake up
+    // owing seven runs. It owes one. Drain, do not schedule.
+    facts['task-state'] = 'open';
+    facts['due-at'] = String(now + interval);
+  } else {
+    facts['task-state'] = verified ? 'done' : 'failed';
+  }
+  setFacts(t.iri, facts);
   journal({ event: verified ? 'done' : 'failed', task: t.iri, outcome });
 
   console.log(`  ${verified ? G + '✓ verified' : R + '✗ NOT verified'}${X} ${D}${t.doneWhen}${X}`);
+  if (interval !== null) {
+    console.log(`  ${D}recurring — due again in ${t.every}${X}`);
+  }
   console.log('');
 
   ran++;
