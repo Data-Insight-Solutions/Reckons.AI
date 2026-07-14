@@ -115,6 +115,53 @@ for (const { q, file } of quads) {
   }
 }
 
+// ── conflicting-status: an entity in two lifecycle states at once is UNDEFINED.
+//
+// This check exists because the linter did not have it, and the gap shipped: an entity was
+// left asserting has-status "scaffolded" AND has-status "functional" simultaneously, and
+// graph-lint passed it without a word. Everything downstream reads the status — the landing
+// page, the generated docs, the claim audit, the review router — and every one of them takes
+// the FIRST value it finds. So the graph did not merely contradict itself, it quietly picked
+// a winner, and which one depended on parse order.
+//
+// A feature is not two things. Say one.
+//
+// SCOPED PER FILE, and the first version of this check was not — which made it wrong, and it
+// was wrong in the most instructive way. Merging every .ttl into one graph, it reported that
+// kb:currents was both "functional" and "planned" and called it a violation. It is not:
+// reckons-production.ttl describes what is DEPLOYED and reckons-roadmap.ttl describes what is
+// INTENDED, and a feature is quite legitimately functional in production while still being
+// in-progress on the roadmap. Those are two graphs answering two questions.
+//
+// Cross-file disagreement is DRIFT, not a lint error, and drift is kb_merge's job — it found
+// exactly these three on its first run. A linter that cannot tell a contradiction from a
+// difference of scope will cry wolf, and a gate that cries wolf gets switched off.
+//
+// Scoped to Features AND PHASES. `bad-status` above only looks at Features, and that gap is
+// precisely how the duplicate which prompted this check went unseen: it was on a ktype:Phase.
+// A phase asserting two lifecycle states is exactly as undefined as a feature doing it.
+const PHASE = 'urn:kbase:type/Phase';
+const phases = new Set(
+  quads.filter(({ q }) => q.predicate.value === RDF_TYPE && q.object.value === PHASE).map(({ q }) => q.subject.value),
+);
+const lifecycled = new Set([...features, ...phases]);
+
+const statusesOf = new Map<string, Set<string>>();
+for (const { q, file } of quads) {
+  if (q.predicate.value !== KPRED + 'has-status' || !lifecycled.has(q.subject.value)) continue;
+  const key = `${file} ${q.subject.value}`;
+  const set = statusesOf.get(key) ?? new Set<string>();
+  set.add(q.object.value);
+  statusesOf.set(key, set);
+}
+for (const [key, values] of statusesOf) {
+  if (values.size <= 1) continue;
+  const [file, subject] = key.split(' ');
+  add('error', 'conflicting-status', file, subject,
+    `has-status is asserted ${values.size} times IN THE SAME FILE with different values: ${[...values].map((v) => `"${v}"`).join(' and ')}. ` +
+    `An entity in two lifecycle states is undefined — and every consumer silently takes the FIRST one it parses.`);
+}
+
 // ── duplicate-id: two features claiming the same feature-id silently collide.
 const byId = new Map<string, string[]>();
 for (const { q } of quads) {
@@ -254,7 +301,20 @@ if (JSON_OUT) {
 } else {
   const B = '\x1b[1m', D = '\x1b[2m', R = '\x1b[31m', Y = '\x1b[33m', G = '\x1b[32m', X = '\x1b[0m';
   console.log(`${B}Graph lint${X} — ${quads.length} quads across ${files.length} graph(s)\n`);
-  for (const group of ['parse', 'egress-gate', 'dead-link', 'bad-status', 'duplicate-id', 'dangling-ref', 'predicate-economy', 'incomplete']) {
+
+  // The report used to iterate a HARDCODED list of check names. Any check not on that list was
+  // counted in the totals and then never printed — so the linter would say "3 error(s)" and
+  // show you nothing, which is worse than not checking at all: it tells you something is
+  // wrong and refuses to say what. Exactly what happened when conflicting-status was added.
+  //
+  // The display is now DERIVED from the findings. A new check cannot be invisible, because
+  // nothing has to remember to list it. Errors first — a warning must never push an error off
+  // the top of the report.
+  const groups = [
+    ...new Set(findings.filter((f) => f.level === 'error').map((f) => f.check)),
+    ...new Set(findings.filter((f) => f.level !== 'error').map((f) => f.check)),
+  ];
+  for (const group of groups) {
     const hits = findings.filter((f) => f.check === group);
     if (!hits.length) continue;
     const c = hits[0].level === 'error' ? R : Y;
