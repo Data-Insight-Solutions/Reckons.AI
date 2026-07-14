@@ -104,6 +104,32 @@ task:prompt-audit rdf:type    ktype:AgentTask ;
     kpred:done-when "npx tsx scripts/offline/prompt-audit.ts" ;
     kpred:task-state "open" .
 
+# ── A TASK THAT ASKS RATHER THAN GUESSES ────────────────────────────────────
+#
+# This is the mechanism behind "let a user define it, and it asks refining questions if
+# necessary to complete". Without it, a task that meets an ambiguity has two bad options:
+# GUESS, or FAIL. A guess silently entered into a knowledge graph is worse than a stalled task
+# — it is a lie the graph will now repeat on your behalf, in your name.
+#
+# So there is a third option: SUSPEND. The command emits a partial fact naming what it needs
+# and what it blocks, then exits 42 (NEEDS_ANSWER). The runner marks it WAITING — not done,
+# not failed, because neither is true — and moves on to work that is not stuck. It resumes by
+# itself when the answer lands, whether you answered in the review queue or by talking to
+# Shelly. Both routes resolve the same underlying fact.
+#
+# The user is never a blocking call, and the agent never guesses. Both, at the same time.
+
+task:needs-decision rdf:type  ktype:AgentTask ;
+    rdfs:label      "A task that asks instead of guessing" ;
+    kpred:goal      "Set the auto-merge confidence threshold. The right value is a judgment about how much risk the user is willing to accept — nothing in the code can answer it, and no amount of reasoning will make it a fact." ;
+    kpred:tier      "script" ;
+    # THE PATTERN, and it is worth copying exactly: CHECK FOR THE ANSWER FIRST, and only ask if
+    # it is missing. A command that asks unconditionally will ask again the moment it resumes,
+    # and suspend itself forever — which is what the first draft of this task did.
+    kpred:command   "grep -q auto-merge reckons-workspace/knowledge.answers.jsonl || { npx tsx scripts/agent/ask.ts --subject kb:auto-merge --predicate confidence-threshold --question 'What confidence should auto-merge at, without review?' --blocks urn:reckons:task/needs-decision --agent runner ; exit 42 ; }" ;
+    kpred:done-when "grep -q auto-merge reckons-workspace/knowledge.answers.jsonl" ;
+    kpred:task-state "open" .
+
 # A task the runner must REFUSE, on purpose — it has no done-when. Left here deliberately:
 # the queue should demonstrate its own guardrail, not just describe it. "Make the code better"
 # is a wish, and its completion would be an agent's opinion of its own work.

@@ -46,7 +46,30 @@ const KTYPE = 'urn:kbase:type/';
 const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 const AGENT_TASK = `${KTYPE}AgentTask`;
 const JOURNAL = 'reckons-workspace/runner.log.jsonl';
+const PENDING = 'reckons-workspace/knowledge.pending.jsonl';
+const ANSWERS = 'reckons-workspace/knowledge.answers.jsonl';
 const LEASE_MS = 30 * 60 * 1000;
+
+/**
+ * A task's command exits with this when it cannot proceed WITHOUT A HUMAN DECISION.
+ *
+ * This is the mechanism behind "let a user define it, and it asks refining questions if
+ * necessary". Without it, a task that meets an ambiguity has exactly two bad options: GUESS,
+ * or FAIL. A guess silently entered into a knowledge graph is worse than a stalled task — it
+ * is a lie the graph will now repeat on your behalf. So there is a third option: SUSPEND.
+ *
+ * The command emits a partial fact (scripts/agent/ask.ts) naming what it needs and what it
+ * blocks, then exits 42. The runner does not mark it done, and does not mark it failed —
+ * neither is true. It marks it WAITING, and moves on to work that is not stuck. When the
+ * answer lands, the task becomes runnable again on its own.
+ *
+ * The user is never a blocking call, and the agent never guesses. Both, at once.
+ */
+const NEEDS_ANSWER = 42;
+
+/** Max times a task may fail before the queue stops offering it. "However long it takes" is
+ *  a promise about PATIENCE, not about retrying a broken thing until the end of the world. */
+const MAX_ATTEMPTS = 3;
 
 const B = '\x1b[1m', D = '\x1b[2m', G = '\x1b[32m', R = '\x1b[31m', Y = '\x1b[33m', X = '\x1b[0m';
 
@@ -139,6 +162,8 @@ interface Task {
   /** Epoch ms. Not runnable before this. */
   dueAt?: number;
   lastRun?: number;
+  /** Consecutive failures. Bounded by MAX_ATTEMPTS. */
+  attempts?: number;
 }
 
 const taskIris = new Set(
@@ -168,6 +193,7 @@ const tasks: Task[] = [...taskIris].map((iri) => ({
   every: one(iri, 'every'),
   dueAt: Number(one(iri, 'due-at') ?? 0) || undefined,
   lastRun: Number(one(iri, 'last-run') ?? 0) || undefined,
+  attempts: Number(one(iri, 'attempts') ?? 0) || 0,
 }));
 
 /**
@@ -193,6 +219,35 @@ function parseEvery(v: string | undefined): number | null {
 
 const now = Date.now();
 const doneIris = new Set(tasks.filter((t) => t.state === 'done').map((t) => t.iri));
+
+// ── What has the human actually answered? ──────────────────────────────────
+//
+// A question is a partial fact in the pending queue that names the work it BLOCKS. It is
+// answered when a line for the same subject+predicate appears in the answers file — which is
+// what the app writes when someone fills the object in, whether they did it in the review
+// queue or by talking to Shelly. Both routes resolve the same underlying fact, which is the
+// whole point of F32/F80: the user chooses the interface, not the mechanism.
+const readJsonl = (f: string): any[] => {
+  if (!existsSync(f)) return [];
+  return readFileSync(f, 'utf8')
+    .split('\n')
+    .filter(Boolean)
+    .flatMap((l) => {
+      try { return [JSON.parse(l)]; } catch { return []; }
+    });
+};
+
+const answeredKeys = new Set(readJsonl(ANSWERS).map((a) => `${a.subject}|${a.predicate}`));
+/** taskIri -> the questions blocking it that are still UNANSWERED. */
+const openQuestionsFor = new Map<string, string[]>();
+for (const q of readJsonl(PENDING)) {
+  if (q.type !== 'question' || !q.blocks) continue;
+  if (answeredKeys.has(`${q.subject}|${q.predicate}`)) continue;
+  const list = openQuestionsFor.get(q.blocks) ?? [];
+  list.push(q.question ?? `${q.subject} ${q.predicate} ?`);
+  openQuestionsFor.set(q.blocks, list);
+}
+
 const resolved = (iri: string) => doneIris.has(iri);
 
 /** Why this task cannot run right now — the same rules as rdf/agent-task.ts. */
@@ -216,6 +271,14 @@ function blockedReason(t: Task): string | null {
   }
   if (t.tier !== 'script') return `tier "${t.tier}" — this runner is script tier only`;
   if (!t.command?.trim()) return 'no command to run';
+  // Waiting on a human. Not failed, not done — ASKED. It comes back by itself when answered.
+  const asked = openQuestionsFor.get(t.iri) ?? [];
+  if (asked.length) return `WAITING on you — ${asked[0].slice(0, 90)}`;
+
+  if ((t.attempts ?? 0) >= MAX_ATTEMPTS) {
+    return `gave up after ${t.attempts} attempts — "however long it takes" is patience, not an infinite retry of a broken thing`;
+  }
+
   const unresolved = t.blockedBy.filter((b) => !resolved(b));
   if (unresolved.length) return `blocked by ${unresolved.length}: ${unresolved.slice(0, 2).join(', ')}`;
   // An EXPIRED claim is not a blocker. That is the point of a lease: the runner died, and the
@@ -312,12 +375,33 @@ for (const t of runnable) {
   // 2. EXECUTE
   let execOk = true;
   let execOut = '';
+  let execCode = 0;
   try {
     execOut = execSync(t.command!, { encoding: 'utf8', stdio: 'pipe', shell: '/bin/bash', timeout: 15 * 60 * 1000 });
   } catch (e: any) {
     execOk = false;
+    execCode = typeof e?.status === 'number' ? e.status : 1;
     execOut = (e?.stdout ?? '') + (e?.stderr ?? '') || String(e?.message ?? e);
   }
+
+  // THE TASK ASKED, RATHER THAN GUESSED. It is not done and it is not failed — neither would
+  // be true, and recording either would be a lie. It is WAITING, and it will come back on its
+  // own when the answer lands. Nothing else in the queue is held up by it.
+  if (execCode === NEEDS_ANSWER) {
+    setFacts(t.iri, {
+      'task-state': 'waiting',
+      'claim-expires': '0',
+      outcome: `WAITING on a human decision. The task asked rather than guessing — a guess ` +
+        `silently entered into a knowledge graph is worse than a stalled task. It resumes by itself ` +
+        `when the question is answered (review queue, or Shelly — either resolves the same fact).`,
+    });
+    journal({ event: 'waiting', task: t.iri });
+    console.log(`  ${Y}?${X} ${D}asked a question and suspended — it will resume when you answer.${X}\n`);
+    ran++;
+    if (ONCE) break;
+    continue;
+  }
+
   console.log(`  ${execOk ? G + 'ran' : Y + 'command exited non-zero'}${X}`);
 
   // 3. VERIFY — independently. The command's own opinion of itself is not evidence: a thing
@@ -353,6 +437,8 @@ for (const t of runnable) {
   } else {
     facts['task-state'] = verified ? 'done' : 'failed';
   }
+  // A failure counts against the attempt budget; a success clears it. Bounded patience.
+  facts['attempts'] = String(verified ? 0 : (t.attempts ?? 0) + 1);
   setFacts(t.iri, facts);
   journal({ event: verified ? 'done' : 'failed', task: t.iri, outcome });
 
