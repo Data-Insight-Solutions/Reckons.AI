@@ -9,7 +9,7 @@ Agents append here while you are away. **Nothing in this file waited on you.**
 Questions needing your answer appear in the app's **Review tab** as partial facts
 (object `?`, with an entity picker). Answering one unblocks whatever it was holding up.
 
-21 finding(s).
+25 finding(s).
 
 ---
 
@@ -138,3 +138,19 @@ On 2026-07-14 I reported that static/knowledge.ttl carried 166 urn:reckons:story
 `shipped` · **kb:async-digest** · 2026-07-14T20:18:57.093Z · _claude-code_
 
 Matt's first question this session was 'why was DIGEST.md made? Why not record in turtle?' The honest answer was that it should have been. kb:async-digest specified 'a digest ENTITY in the graph, rendered through the existing WebPage machinery, just a graph node like anything else'. What shipped was a hand-appended markdown file with a graph write bolted on the side. Findings now live in reckons-workspace/digest.ttl as ktype:Finding entities; DIGEST.md is GENERATED from them and npm run align fails if it drifts. Of all the files to keep as a second source of truth, the one where we record our own failures was the worst choice.
+
+### 🐛 First bug
+
+`bug-found` · **kb:a** · 2026-07-14T20:19:16.662Z
+
+### ✅ Second thing
+
+`test-added` · **kb:b** · 2026-07-14T20:19:16.691Z
+
+### · x
+
+`note` · 2026-07-14T20:19:16.698Z
+
+### ❌ The 60-70% claim was false
+
+`claim-falsified` · **kb:c** · 2026-07-14T20:19:16.704Z

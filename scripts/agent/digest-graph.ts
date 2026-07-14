@@ -88,7 +88,14 @@ export function readFindings(file = TTL): Finding[] {
       agent: one(iri, 'agent'),
       at: one(iri, 'found-at') ?? '',
     }))
-    .sort((a, b) => a.at.localeCompare(b.at));
+    // Sort by time, THEN BY ID. The id tiebreak is not decoration — several migrated findings
+    // carry an identical timestamp (they had no parseable date in the old markdown), and a sort
+    // on `at` alone is UNSTABLE. The render then came out in a different order on each run, so
+    // `align` would fail at random, on a file nobody had touched.
+    //
+    // A generator that is not deterministic makes its own gate worthless: the first time it
+    // cries wolf, someone switches it off, and then it protects nothing.
+    .sort((a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id));
 }
 
 export function writeFindings(findings: Finding[], file = TTL): void {
