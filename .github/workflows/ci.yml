@@ -35,6 +35,18 @@ jobs:
       # minification-only crash was running against an unminifiable artifact.
       # This is a rule, not a judgment, so it is script tier and it BLOCKS.
       - run: npm run build:verify
+      # THE PREMISE: update the graph, and the changes follow. That is only true if it is
+      # ENFORCED. Every generator (docs pages, landing features, landing principles) already
+      # had a --check mode, and not one of them gated anything — md-align even ran with
+      # continue-on-error, "a hygiene signal, not a gate". So "our site is generated from our
+      # graph" was itself an unverified claim, made by the party it benefits.
+      #
+      # It had already rotted: landing-features.ts was HARD BROKEN (it scooped up the thesis
+      # tenets and refused to run), so the landing page could not be regenerated from the
+      # graph at all — and nothing said so.
+      #
+      # Decidable by a rule, so it blocks.
+      - run: npm run align
 
   script-tier:
     name: Script tier (F74.3 — deterministic, zero tokens)

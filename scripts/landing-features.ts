@@ -29,6 +29,8 @@ const CHECK = process.argv.includes('--check');
 const OUT = 'src/lib/data/landing-roadmap.json';
 
 const KPRED = 'urn:kbase:predicate/';
+const KTYPE = 'urn:kbase:type/';
+const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
 
 /** Lifecycle → the badge the landing page shows. Honest by construction. */
@@ -60,11 +62,29 @@ const quads = files.flatMap((f) => {
 const obj = (s: string, p: string) =>
   quads.find((q) => q.subject.value === s && q.predicate.value === p)?.object.value;
 
+// `show-on-landing` is claimed by TWO generators, and they were fighting over it.
+//
+// The thesis tenets (ktype:Tenet) are also marked show-on-landing — they are rendered by
+// landing-principles.ts, which reads a different predicate set (kpred:tenet-basis, etc.).
+// This generator scanned every .ttl, scooped the tenets up too, and then refused to run
+// because they carry no kpred:landing-label. So `npm run landing:features` was HARD BROKEN:
+// the landing page could not be regenerated from the graph at all.
+//
+// Nobody noticed, because landing:check was never wired into CI — which is the same lesson
+// as the script tier and md-align. A check that runs nowhere protects nothing.
+//
+// Fix: a feature list contains FEATURES. Tenets are the principles generator's business.
+const TENET = KTYPE + 'Tenet';
+const isTenet = new Set(
+  quads.filter((q) => q.predicate.value === RDF_TYPE && q.object.value === TENET).map((q) => q.subject.value),
+);
+
 const marked = [
   ...new Set(
     quads
       .filter((q) => q.predicate.value === KPRED + 'show-on-landing' && q.object.value === 'true')
-      .map((q) => q.subject.value),
+      .map((q) => q.subject.value)
+      .filter((iri) => !isTenet.has(iri)),
   ),
 ];
 
