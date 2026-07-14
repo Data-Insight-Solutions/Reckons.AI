@@ -79,6 +79,25 @@ write the script — that IS the work.
   `claim-audit` sweeps hand-written copy for claims the graph denies. SRI on the Sveltia bundle.
   Both dependabot alerts closed. Filters ghost instead of deleting. CUDA repaired; Ollama 100% GPU.
 
+## Next up (in priority order)
+
+1. **`npm run brief`** — a script-tier session-start dump (branch, open PRs, pending count,
+   what is unblocked, script-tier status). Replaces the few-thousand-token re-derivation Opus
+   performs at every single session start. **Highest token-leverage item on this list.**
+2. **KB gallery** — Matt asked for this early and it is still not built. A filterable gallery
+   of graphs with metadata (last edit, statement count) and previews if feasible, replacing the
+   current graph-selection experience.
+3. **Digest → graph-generated** (`kb:digest` entity → `DIGEST.md` via `docs-pages.ts`).
+   `reckons-workspace/DIGEST.md` is hand-appended and is a SECOND SOURCE OF TRUTH, inside a
+   product whose entire thesis is that there should not be one. F80 phase 3 specified the
+   entity; it was never built.
+4. **F87 remaining** — a `local-agent` tier runner (Ollama; `scripts/offline/code-review.ts`
+   already proves the ground→prompt→validate→propose harness), then the scheduled Opus
+   orchestrator that ASSIGNS rather than executes.
+5. **F90 Blender** (planned) — headless Blender over MCP. The trap is written into the roadmap:
+   **Blender will render a black frame and exit 0.** Content is the first domain where
+   `done-when` cannot be a passing test, which is precisely what F88 exists for.
+
 ## Decisions that are MATT'S, not yours
 
 - **`kb:adopt-user-owned-sync`** — the biggest finding of the competitive scan. SiYuan (45k
