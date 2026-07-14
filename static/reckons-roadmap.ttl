@@ -1577,6 +1577,73 @@ kb:auto-merge rdf:type         ktype:Feature ;
 # questions (partial facts), and the findings (the digest). It should hold the SCHEDULE
 # too — locally, observably, and with the run's outcome written back as facts.
 
+# -- F89: The loop — plan, assign, code, review, merge, repeat ------------------
+#
+# Matt's flow: wake Opus on a schedule -> review pending work -> assign -> sub-agents code
+# -> review results (TTL and code) -> merge both (git for code, MCP merge for the graph).
+#
+# That flow is right. What follows is what it does not yet say, because the gaps are where
+# a loop like this fails silently — and a loop that fails silently at 3am is worse than no
+# loop, since you will trust it.
+
+kb:autonomous-loop rdf:type    ktype:Feature ;
+               rdfs:label   "The loop — plan, assign, code, review, merge, repeat" ;
+               kpred:feature-id   "F89" ;
+               kpred:has-status   "planned" ;
+               kpred:relates-to   kb:agent-orchestration ;
+               kpred:relates-to   kb:co-orchestration ;
+               kpred:relates-to   kb:work-tiering ;
+               kpred:description  "A scheduled Opus orchestrator drains the task queue: it triages what is pending, assigns unblocked work to the cheapest competent harness, waits, then reviews what came back. Code merges through git behind the existing gates (align, tests, build-guard, script tier). Graph changes merge through Reckons.AI's own cross-graph merge, because a sub-agent's findings are a GRAPH, not a diff — and merging graphs is the thing this product is for. The user is never the bottleneck and never the rubber stamp: they are asked only what only they can answer." ;
+               kpred:depends-on   kb:agent-orchestration ;
+               kpred:depends-on   kb:verifiability-axis ;
+               kpred:has-phase    kb:loop-idea-inbox ;
+               kpred:has-phase    kb:loop-subagent-graphs ;
+               kpred:has-phase    kb:loop-definition-of-done ;
+               kpred:has-phase    kb:loop-job-grouping ;
+               kpred:has-phase    kb:loop-safety .
+
+kb:loop-idea-inbox rdf:type    ktype:Phase ;
+               rdfs:label   "Phase 1 — catch the wave (the idea inbox)" ;
+               kpred:part-of      kb:autonomous-loop ;
+               hnav:order   1 ;
+               kpred:description  "Matt: 'I end up having ideas in waves. I'd rather let those waves flow, and let the orchestration agent ask for more details or decisions where necessary.' Today an idea said in chat is GONE when the session ends — by our own principle. The inbox is the fix: a raw idea lands as an entity with status `speculative` and verifiable-by `user`, with NO structure demanded at capture time. The orchestrator triages it later, and where it cannot proceed it emits a partial fact (object '?') naming exactly what it needs. The wave is never interrupted to fill in a form." ;
+               kpred:principle    "CAPTURE MUST COST NOTHING OR IT WILL NOT HAPPEN. Any friction at the moment of the idea — a required field, a type, a parent — trades the idea for the metadata, and the idea was the valuable half." ;
+               kpred:principle    "This IS the mission, not a convenience. An idea half-expressed is a well-formed absence: subject and predicate known, object open. Holding the shape of what is missing is the invention (kb:mission)." ;
+               kpred:remaining    "An inbox surface (chat, CLI, voice) that writes speculative entities + open questions; orchestrator triage that converts them into tasks or asks." .
+
+kb:loop-subagent-graphs rdf:type ktype:Phase ;
+               rdfs:label   "Phase 2 — sub-agents write their own graphs; Opus merges" ;
+               kpred:part-of      kb:autonomous-loop ;
+               hnav:order   2 ;
+               kpred:description  "A sub-agent does not return a chat summary; it returns a GRAPH — its findings, its claims, and its open questions, in its own namespace. Opus then merges those graphs into the trunk. This is the sharpest possible dogfooding: merging independent graphs, with provenance and a review status per fact, is the product. The primitives already exist (multi-graph registry, importAsNewKb, cross-graph align F16, MergeReview UI); what is missing is an MCP tool so an ORCHESTRATOR can drive the merge, not just a human clicking." ;
+               kpred:principle    "A sub-agent's output is a CLAIM, not a fact. It arrives as pending, in its own graph, and becomes trunk only by passing a competent gate. An agent that can write directly to the trunk is not a sub-agent, it is an unreviewed committer." ;
+               kpred:remaining    "kb_merge MCP tool (align two graphs -> proposals); per-agent graph namespaces; conflict surfacing when two agents assert different objects for the same subject+predicate." .
+
+kb:loop-definition-of-done rdf:type ktype:Phase ;
+               rdfs:label   "Phase 3 — a task must carry how it will be checked" ;
+               kpred:part-of      kb:autonomous-loop ;
+               hnav:order   3 ;
+               kpred:description  "'Review results' is unbounded unless the task said, before it started, what would count as done. Every task carries an acceptance criterion that a MACHINE can evaluate — a test that must pass, `npm run align` green, a named assertion — and its verifiable-by class decides who signs off: code/test go to the script tier and to Opus, never to Matt; a roadmap or principle change goes to Matt however checkable it is." ;
+               kpred:principle    "A task without a machine-checkable definition of done is not a task, it is a wish. Its 'completion' will be an agent's opinion of its own work — an unverifiable claim, made by the party it benefits." ;
+               kpred:remaining    "kpred:done-when on AgentTask; the orchestrator refuses to assign a task that has none." .
+
+kb:loop-job-grouping rdf:type  ktype:Phase ;
+               rdfs:label   "Phase 4 — group the queue so it can be judged in one pass" ;
+               kpred:part-of      kb:autonomous-loop ;
+               hnav:order   4 ;
+               kpred:description  "Review cost scales with the number of DECISIONS, not the number of facts. Forty facts from one agent about one entity, all of the same kind, are ONE decision presented forty times. Group the queue by (task, agent, subject, gate) and let a group be accepted, rejected, or opened in a single act — with the outliers in a group surfaced rather than hidden, because a batch accept is exactly where a bad fact slips through." ;
+               kpred:principle    "Batching must make the ODD ONE OUT more visible, not less. A group that hides its dissenter has converted review into rubber-stamping." ;
+               kpred:remaining    "Grouping in the review queue; batch accept/reject; outlier highlighting within a group." .
+
+kb:loop-safety rdf:type        ktype:Phase ;
+               rdfs:label   "Phase 5 — the ways this loop fails silently" ;
+               kpred:part-of      kb:autonomous-loop ;
+               hnav:order   5 ;
+               kpred:description  "A loop that fails silently at 3am is worse than no loop, because you will trust it. The known failure modes, each of which has already bitten this project once: (1) THE RUNNER DIED — a cron fired exactly on schedule, produced nothing, reported nothing, and still displayed a future run time. (2) THE HARNESS RAN OUT OF BUDGET — Opus hits a usage limit mid-orchestration and the task is 'in progress' forever; leases (F87 phase 3) hand it back. (3) DOUBLE ASSIGNMENT — two woken orchestrators take the same task; claims fix it. (4) THE TOOL WAS WRONG — published-graph-guard reported 166 phantom violations and kept a real gate switched off for a day. (5) THE AGENT REVIEWED NOTHING — a cold model load failed and the code review reported a clean run having read zero files." ;
+               kpred:principle    "SILENCE MUST NEVER LOOK LIKE SUCCESS. Every run writes its outcome back, including 'I did nothing, and here is why'. A green log that is always green is not a record." ;
+               kpred:principle    "A FINDING IS A CLAIM. A tool reporting a violation is a party with an interest in having found one. Verify the finding before acting on it — especially when acting on it means weakening a control." ;
+               kpred:remaining    "Run outcomes as facts; lease expiry sweep; a rollback path for a merge that lands broken on main (production deploys from main)." .
+
 # -- F88: Co-orchestration — Shelly and Claude Code, either side of the user -----
 #
 # Shelly does not need to become Claude Code. That would be a worse Claude Code, and it
