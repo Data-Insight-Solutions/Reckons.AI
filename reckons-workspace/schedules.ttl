@@ -22,6 +22,13 @@ sched:drain-queue rdf:type    ktype:Schedule ;
     kpred:enabled   "true" ;
     kpred:description "Run the script- and local-agent-tier task runner. Zero cloud tokens. This is the free tier that should fire as often as the machine is awake." .
 
+sched:reconcile rdf:type      ktype:Schedule ;
+    rdfs:label      "Drop findings that fixed themselves" ;
+    kpred:every     "6h" ;
+    kpred:command   "npx tsx scripts/agent/reconcile.ts --apply" ;
+    kpred:enabled   "true" ;
+    kpred:description "Re-run the deterministic checks and drop pending entries whose finding no longer reproduces. A review queue is an attention budget; padding it with resolved findings is how the one real item gets skipped. Conservative: only touches sources it can re-run and verify, never a question or a judgment. Runs BEFORE orchestrate so the triage sees a queue that reflects reality." .
+
 sched:orchestrate rdf:type    ktype:Schedule ;
     rdfs:label      "Triage the queue for Opus" ;
     kpred:every     "24h" ;
