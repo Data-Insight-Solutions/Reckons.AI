@@ -1,7 +1,16 @@
 {
   "_comment": "Offline jobs run by `npm run offline:all` (scripts/offline/run-all.ts). Add/remove/toggle freely \u2014 each runs in order even if a prior one fails. Findings land in reckons-workspace/knowledge.pending.jsonl for review in Reckons.AI. cmd runs in bash, so ${VAR:-default} and pipes work.",
   "_tiers": "F74.3 work tiering. tier=script: deterministic, no LLM, zero tokens, right by construction \u2014 run these first and prefer growing this tier. tier=agent: a LOCAL model fills a judgment hole inside a scripted harness (ground \u2192 prompt \u2192 validate \u2192 emit-proposal) and only ever emits PROPOSALS a human gates. Opus is not a tier here: it designs the harness and triages the queue these jobs fill. Anything an agent job gets right reliably should be demoted to a script.",
+  "_blocking": "blocking=true means `run-all --ci` exits non-zero if this job fails. Reserve it for failures you cannot take back after a push. Everything else is ADVISORY: it reports and queues pending findings, and never blocks a merge \u2014 a gate that cries wolf gets switched off, and then it protects nothing.",
   "jobs": [
+    {
+      "name": "published-graph-guard",
+      "tier": "script",
+      "enabled": true,
+      "blocking": true,
+      "cmd": "npx tsx scripts/offline/published-graph-guard.ts",
+      "desc": "static/knowledge.ttl IS the public graph (served at /knowledge.ttl). Checks it parses, is not suddenly empty, and holds no test debris. Was found gutted 1032 -> 45 statements, one `git add .` from publishing test junk to the world"
+    },
     {
       "name": "graph-lint",
       "tier": "script",
@@ -36,6 +45,13 @@
       "enabled": true,
       "cmd": "bash scripts/offline/alignment-sweep.sh",
       "desc": "TTL parse / asset paths / namespace typos / stale LEAP + branch-align --suggest + kb-align \u2192 pending questions"
+    },
+    {
+      "name": "button-crawl",
+      "tier": "script",
+      "enabled": false,
+      "cmd": "npx tsx scripts/offline/button-crawl.ts",
+      "desc": "F34: clicks every interactive element on every route; flags crashes, blank screens, SILENT no-ops, and sub-44px touch targets. Pure local JS (no Ollama). Disabled by default because it needs a server already running — `npm run dev`, then enable this or run `npm run offline:all -- --only=button-crawl`"
     },
     {
       "name": "describe-entities",

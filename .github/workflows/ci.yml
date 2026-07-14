@@ -29,6 +29,39 @@ jobs:
       - run: npm run test:run
       - run: npm run build
 
+  script-tier:
+    name: Script tier (F74.3 — deterministic, zero tokens)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # alignment-sweep diffs against a ref
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # ADVISORY, deliberately. kb:tier-script claims these "run in CI and fail loudly";
+      # until now they ran nowhere, so the claim was false and the work fell to Opus at
+      # cloud rates. This makes the first half true.
+      #
+      # The second half — failing loudly — is NOT on yet, and saying so is the point:
+      # published-graph-guard is marked blocking:true in jobs.json and passes --ci here
+      # only once static/knowledge.ttl is clean. It currently is not (166 test-harness
+      # terms committed on dev), and a gate that is red the day it lands gets switched
+      # off, after which it protects nothing. Swap `|| true` for `--ci` when the guard
+      # goes green. See kb:tier-script-ci in reckons-roadmap.ttl.
+      - name: Run script tier (advisory)
+        run: npx tsx scripts/offline/run-all.ts --tier=script || true
+      - name: Upload findings
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: script-tier-findings
+          path: reckons-workspace/knowledge.pending.jsonl
+          retention-days: 14
+          if-no-files-found: ignore
+
   e2e:
     name: E2E (Desktop Chrome)
     runs-on: ubuntu-latest

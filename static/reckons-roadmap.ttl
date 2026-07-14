@@ -1306,10 +1306,21 @@ kb:tier-script rdf:type        ktype:Concept ;
                hnav:order   1 ;
                kpred:admits-when  "The answer is checkable by a rule: does this path exist, does this parse, is this value in the enum, are these two files in sync." ;
                kpred:cost         "zero tokens, zero triage — right by construction" ;
-               kpred:runs-on      "any machine, including CI" ;
+               kpred:runs-on      "any machine; runs in CI as of 2026-07-14 (ci.yml script-tier job), ADVISORY — see kb:tier-script-ci" ;
                kpred:emits        "a pass/fail exit code, and optionally pending findings" ;
                kpred:exemplar     "scripts/offline/graph-lint.ts" ;
-               kpred:description  "The default and preferred tier. Deterministic code with no model in the loop, so it can run in CI and fail loudly. Prefer growing this tier over the agent tier: a check that is right by construction costs nothing to triage, whereas a noisy model job merely moves cost from generation to review." .
+               kpred:honest-note  "Until 2026-07-14 this entity claimed the tier 'runs in CI and fails loudly'. It ran in CI nowhere: only safety-attestation was wired, so graph-lint, status-evidence, prompt-audit and alignment-sweep executed only when someone remembered to run them locally — and when nobody did, the work fell to Opus at cloud rates. A free tier that no trigger invokes displaces no tokens. The CI half is now true; the FAIL-LOUDLY half is not yet (advisory only, kb:tier-script-ci)." ;
+               kpred:description  "The default and preferred tier. Deterministic code with no model in the loop, so it can run in CI. Prefer growing this tier over the agent tier: a check that is right by construction costs nothing to triage, whereas a noisy model job merely moves cost from generation to review." .
+
+# The gate is not on yet, and the graph says so rather than implying otherwise.
+kb:tier-script-ci rdf:type     ktype:Phase ;
+               rdfs:label   "Script tier in CI — advisory now, blocking when clean" ;
+               kpred:part-of      kb:work-tiering ;
+               hnav:order   4 ;
+               kpred:has-status   "in-progress" ;
+               kpred:description  "The script tier runs on every push/PR (ci.yml, job `script-tier`) and reports; it does not fail the build. jobs.json gains a `blocking` flag and run-all.ts a `--ci` mode that exits non-zero when a blocking job fails. Exactly one job is marked blocking — published-graph-guard — because a gutted or debris-filled static/knowledge.ttl is the one failure you cannot take back once pushed: it IS the public graph, and for a product whose thesis is that an unverifiable claim is not evidence, the graph we publish about ourselves is the receipt." ;
+               kpred:blocked-by   "static/knowledge.ttl is currently dirty: 166 terms in the urn:reckons:story/ test-harness namespace, COMMITTED on dev, and a header claiming 1032 statements against a body that parses to 3096. Turning the gate on today would paint CI red on arrival, and a gate that cries wolf gets switched off — after which it protects nothing." ;
+               kpred:remaining    "Regenerate static/knowledge.ttl clean of test-harness terms; stop the visual/story harness writing to it; then swap `|| true` for `--ci` in the ci.yml script-tier step." .
 
 kb:tier-local-agent rdf:type   ktype:Concept ;
                rdfs:label   "Tier 2 — local model agent" ;
