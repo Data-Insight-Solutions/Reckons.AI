@@ -1577,6 +1577,59 @@ kb:auto-merge rdf:type         ktype:Feature ;
 # questions (partial facts), and the findings (the digest). It should hold the SCHEDULE
 # too — locally, observably, and with the run's outcome written back as facts.
 
+# -- F88: Co-orchestration — Shelly and Claude Code, either side of the user -----
+#
+# Shelly does not need to become Claude Code. That would be a worse Claude Code, and it
+# would abandon the one thing Shelly has that Claude Code does not: THE USER IS PRESENT.
+#
+# The two are co-orchestrators, and they are divided by their RELATIONSHIP TO TRUTH:
+#
+#   CLAUDE CODE works where the source of truth is IN THE REPOSITORY. "Does this file
+#   exist", "does this test pass", "does this status match the code" — all checkable, all
+#   verifiable, no human needed. It should never ask the user what it can verify itself.
+#
+#   SHELLY works where THERE IS NO SUCH SOURCE. A person's business, their research, their
+#   organization — the truth is not in a file anyone can grep. It is in the user's head, or
+#   in a document only they can vouch for, or it is genuinely unknown. Shelly cannot verify
+#   it and must not pretend to. Its job is to ELICIT it, LABEL it honestly as attested, and
+#   mark clearly what is still missing.
+#
+# This is the thesis applied to ourselves: an unverifiable claim, made by the party it
+# benefits, is not evidence. A user-attested fact is not worthless — it is just not the
+# same KIND of fact as a verified one, and the graph must never launder one into the other.
+
+kb:co-orchestration rdf:type   ktype:Feature ;
+               rdfs:label   "Co-orchestration — Shelly and Claude Code either side of the user" ;
+               kpred:feature-id   "F88" ;
+               kpred:has-status   "planned" ;
+               kpred:relates-to   kb:shelly-chat ;
+               kpred:relates-to   kb:agent-orchestration ;
+               kpred:relates-to   kb:partial-facts ;
+               kpred:description  "Two agents, one graph, and a human between them. Claude Code holds the CODE, where truth is verifiable and no one need be asked. Shelly holds the CONVERSATION, where truth lives in the user and can only be attested. Neither is the orchestrator; the graph is, and all three drain it. Shelly is not being grown into a coding agent — it is being given the skills that only make sense with a person in the room." ;
+               kpred:principle    "SHELLY IS NOT A SMALLER CLAUDE CODE. It is the agent that can ask. Making it write code would trade the one advantage it has — the user is present — for a capability that is already covered better elsewhere." ;
+               kpred:principle    "AN AGENT MUST NOT ASK WHAT IT CAN VERIFY, AND MUST NOT ASSERT WHAT IT CANNOT. Asking the user something the repo already answers wastes the scarcest resource in the system. Asserting something only the user could know is a fabrication with good manners." ;
+               kpred:principle    "Where there is no source of truth, say so. A well-formed absence — subject and predicate known, object '?' — is the most useful node in the graph, and it is the only honest thing to write when nobody knows the answer yet." ;
+               kpred:depends-on   kb:partial-facts ;
+               kpred:has-phase    kb:verifiability-axis ;
+               kpred:has-phase    kb:shelly-skills .
+
+kb:verifiability-axis rdf:type ktype:Phase ;
+               rdfs:label   "Phase 1 — record HOW a fact could be checked" ;
+               kpred:part-of      kb:co-orchestration ;
+               hnav:order   1 ;
+               kpred:description  "Every fact gains kpred:verifiable-by, naming what would settle it: `code` (a file, a symbol — a script can check it), `test` (a suite asserts it), `source` (a cited passage in an ingested document), `user` (attested by the person; nothing else backs it), or `unknown` (nobody has established this, and pretending otherwise is the failure). This is what lets an agent ROUTE: a `code` fact belongs to Claude Code and the script tier and should never be put to a human; a `user` fact belongs to Shelly and must never be quietly invented." ;
+               kpred:principle    "Provenance answers WHERE a fact came from. Verifiability answers WHETHER ANYONE COULD CHECK IT. They are different questions, and the second is the one that decides who should be handling the fact." ;
+               kpred:example      "In the Reckons.AI repo almost every fact is `code` or `test` — which is exactly why this project can be aggressively automated, and why a user's business graph cannot. The tooling must not assume its own conditions generalize." ;
+               kpred:remaining    "kpred:verifiable-by on the statement model; render it in the review queue; graph-lint check that a `code`-verifiable fact actually names a file that exists." .
+
+kb:shelly-skills rdf:type      ktype:Phase ;
+               rdfs:label   "Phase 2 — the skills that need a person in the room" ;
+               kpred:part-of      kb:co-orchestration ;
+               hnav:order   2 ;
+               kpred:description  "Shelly's action vocabulary grows along ONE axis: things that require the user. ASK — when Shelly does not know, it emits a partial fact (object '?', plus what it blocks) rather than guessing; a guess silently entered into a knowledge graph is worse than a stalled task. ANSWER — Shelly walks the user through the pending queue conversationally, so the review backlog can be cleared by talking instead of clicking. ATTEST — a fact the user supplies is written with verifiable-by `user`, never laundered into looking verified. It does NOT gain: a shell, a file editor, or a code writer." ;
+               kpred:learned-from "Shelly is already the HUMAN ADAPTER of F87 and nobody had noticed. F87 phase 2 lists adapters for Claude Code, for a local Ollama script, and for 'the human (a partial fact in the review queue, which is already an adapter and was not recognized as one)'. Shelly is the conversational face of that adapter." ;
+               kpred:remaining    "KBAction: ask_question (emit partial fact) + answer_question (resolve one from the queue). adjust_view already fixed to expose timeline + hierarchy — the view-control API could not previously express two layouts the graph renders." .
+
 # -- F87: Agent orchestration — the graph IS the orchestration config ------------
 #
 # F81 answered WHERE work executes (the runner: Worker, desktop process, MCP server).
