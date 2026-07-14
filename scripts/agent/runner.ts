@@ -1,0 +1,321 @@
+#!/usr/bin/env npx tsx
+/**
+ * The runner (F87 / kb:orch-task-vocab) — drain the task queue.
+ *
+ * The queue is the contract and the runner is pluggable. This is the FIRST runner and
+ * deliberately the dumbest one: script tier, deterministic, no model, no cloud. It exists to
+ * prove the loop closes — claim, execute, verify, write the outcome back — before anything
+ * expensive is allowed near it.
+ *
+ * ┌─ SECURITY: EXECUTING A GRAPH IS EXECUTING DATA ────────────────────────────────────────┐
+ * │                                                                                        │
+ * │ A task carries a shell command. Running commands out of a graph is fine for a graph    │
+ * │ that lives in this repo — anyone who can write static/*.ttl can already commit code, so │
+ * │ it opens no new door. It is CATASTROPHIC for a graph a user imported from someone else:│
+ * │ "here is an interesting knowledge base" would become remote code execution.            │
+ * │                                                                                        │
+ * │ So the runner executes tasks ONLY from a local file passed explicitly on the command    │
+ * │ line, and it will not read a task queue out of the app's IndexedDB, an imported graph,  │
+ * │ or anything a user could have been handed. That boundary is the whole safety argument   │
+ * │ and it must not be widened without a better one.                                        │
+ * └────────────────────────────────────────────────────────────────────────────────────────┘
+ *
+ * What it does, per task:
+ *   1. CLAIM      take a lease. A second runner must not take the same task.
+ *   2. EXECUTE    run kpred:command.
+ *   3. VERIFY     run kpred:done-when. Exit 0 means done. THE COMMAND'S OWN OPINION OF
+ *                 ITSELF IS NOT EVIDENCE — a task is complete when an independent check
+ *                 says so, not when the thing that did the work says it worked.
+ *   4. REPORT     write kpred:outcome back into the graph, INCLUDING failure and including
+ *                 "I did nothing, and here is why". Silence must never look like success.
+ *
+ * Usage:
+ *   npx tsx scripts/agent/runner.ts --graph reckons-workspace/tasks.ttl
+ *   npx tsx scripts/agent/runner.ts --graph … --dry-run    show what would run, run nothing
+ *   npx tsx scripts/agent/runner.ts --graph … --once       take a single task and stop
+ */
+import { execSync } from 'child_process';
+import { readFileSync, writeFileSync, existsSync, appendFileSync } from 'fs';
+import path from 'path';
+import { Parser, Writer, DataFactory, type Quad } from 'n3';
+
+const { namedNode, literal, quad } = DataFactory;
+
+const KPRED = 'urn:kbase:predicate/';
+const KTYPE = 'urn:kbase:type/';
+const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
+const AGENT_TASK = `${KTYPE}AgentTask`;
+const JOURNAL = 'reckons-workspace/runner.log.jsonl';
+const LEASE_MS = 30 * 60 * 1000;
+
+const B = '\x1b[1m', D = '\x1b[2m', G = '\x1b[32m', R = '\x1b[31m', Y = '\x1b[33m', X = '\x1b[0m';
+
+const argv = process.argv.slice(2);
+const flag = (n: string) => {
+  const hit = argv.find((a) => a.startsWith(`--${n}=`));
+  if (hit) return hit.split('=').slice(1).join('=');
+  const i = argv.indexOf(`--${n}`);
+  return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : undefined;
+};
+const DRY = argv.includes('--dry-run');
+const ONCE = argv.includes('--once');
+const GRAPH = flag('graph');
+const RUNNER_ID = flag('id') ?? `script-runner@${process.pid}`;
+
+// ── The trust boundary, enforced rather than documented ─────────────────────
+if (!GRAPH) {
+  console.error(`${R}--graph <file.ttl> is required.${X}`);
+  console.error(
+    `${D}The runner executes commands out of a graph. It will only do that for a LOCAL file you\n` +
+      `name explicitly — never an imported or user-supplied graph, where that would be remote\n` +
+      `code execution dressed up as a knowledge base.${X}`,
+  );
+  process.exit(2);
+}
+if (!existsSync(GRAPH)) {
+  console.error(`${R}No such graph: ${GRAPH}${X}`);
+  process.exit(2);
+}
+
+// ── Read the queue, then the state, layered on top ─────────────────────────
+//
+// THE AUTHORED QUEUE AND THE MACHINE-WRITTEN STATE ARE DIFFERENT FILES, and the first version
+// of this runner proved why. It rewrote outcomes into the authored .ttl with a regex, which
+// could not see `kpred:task-state "open"` inside a prefixed predicate-list — so the graph ended
+// up asserting BOTH "open" and "done", the parser read the first, and the runner cheerfully
+// re-ran every completed task forever.
+//
+// It is the project's own rule, learned again the hard way: never hand-edit (or machine-edit)
+// a file that a human authors. State goes in its own file and is layered over the top. The
+// authored queue keeps its comments and stays readable; the state file is disposable.
+const STATE = GRAPH.replace(/\.ttl$/, '.state.ttl');
+
+let quads: Quad[];
+try {
+  quads = new Parser().parse(readFileSync(GRAPH, 'utf8')) as Quad[];
+} catch (e) {
+  console.error(`${R}The task queue does not parse: ${GRAPH}${X}`);
+  console.error(`${D}${e instanceof Error ? e.message : e}${X}`);
+  process.exit(2);
+}
+
+// A CORRUPT STATE FILE MUST NOT KILL THE RUNNER.
+//
+// It did, once, and the stack trace was the whole output. That is the failure class this
+// project keeps meeting: the thing that was supposed to keep watch is the thing that died,
+// and it died loudly enough to look like a crash rather than a condition to handle. The state
+// file is DERIVED — the authored queue is the truth — so an unreadable one is a recoverable
+// problem: say so, treat the state as empty, and re-derive it. Never take the queue down
+// because the notebook got smudged.
+let stateQuads: Quad[] = [];
+if (existsSync(STATE)) {
+  try {
+    stateQuads = new Parser().parse(readFileSync(STATE, 'utf8')) as Quad[];
+  } catch (e) {
+    console.log(
+      `${Y}!${X} state file is unreadable (${STATE}) — ${D}${e instanceof Error ? e.message.split('\n')[0] : e}${X}`,
+    );
+    console.log(
+      `${D}  It is derived, not authored, so it is being IGNORED and rebuilt. Tasks may re-run.\n` +
+        `  If that is wrong, stop and look — do not let a smudged notebook decide what work happens.${X}\n`,
+    );
+    stateQuads = [];
+  }
+}
+
+interface Task {
+  iri: string;
+  goal: string;
+  tier: string;
+  command?: string;
+  doneWhen?: string;
+  blockedBy: string[];
+  state: string;
+  claimedBy?: string;
+  claimExpires?: number;
+  outcome?: string;
+}
+
+const taskIris = new Set(
+  quads.filter((q) => q.predicate.value === RDF_TYPE && q.object.value === AGENT_TASK).map((q) => q.subject.value),
+);
+
+/** State WINS over the authored queue — that is what makes it state. */
+const one = (iri: string, p: string) => {
+  const fromState = stateQuads.find((q) => q.subject.value === iri && q.predicate.value === `${KPRED}${p}`);
+  if (fromState) return fromState.object.value;
+  return quads.find((q) => q.subject.value === iri && q.predicate.value === `${KPRED}${p}`)?.object.value;
+};
+const many = (iri: string, p: string) =>
+  quads.filter((q) => q.subject.value === iri && q.predicate.value === `${KPRED}${p}`).map((q) => q.object.value);
+
+const tasks: Task[] = [...taskIris].map((iri) => ({
+  iri,
+  goal: one(iri, 'goal') ?? '',
+  tier: one(iri, 'tier') ?? 'frontier',
+  command: one(iri, 'command'),
+  doneWhen: one(iri, 'done-when'),
+  blockedBy: many(iri, 'blocked-by'),
+  state: one(iri, 'task-state') ?? 'open',
+  claimedBy: one(iri, 'claimed-by'),
+  claimExpires: Number(one(iri, 'claim-expires') ?? 0) || undefined,
+  outcome: one(iri, 'outcome'),
+}));
+
+const now = Date.now();
+const doneIris = new Set(tasks.filter((t) => t.state === 'done').map((t) => t.iri));
+const resolved = (iri: string) => doneIris.has(iri);
+
+/** Why this task cannot run right now — the same rules as rdf/agent-task.ts. */
+function blockedReason(t: Task): string | null {
+  if (t.state === 'done') return 'already done';
+  if (!t.goal.trim()) return 'no goal';
+  if (!t.doneWhen?.trim()) {
+    return 'NO done-when — a task with no machine-checkable acceptance criterion is a wish, not a task';
+  }
+  if (t.tier !== 'script') return `tier "${t.tier}" — this runner is script tier only`;
+  if (!t.command?.trim()) return 'no command to run';
+  const unresolved = t.blockedBy.filter((b) => !resolved(b));
+  if (unresolved.length) return `blocked by ${unresolved.length}: ${unresolved.slice(0, 2).join(', ')}`;
+  // An EXPIRED claim is not a blocker. That is the point of a lease: the runner died, and the
+  // work must not die with it.
+  if (t.claimedBy && t.claimExpires && now < t.claimExpires) return `claimed by ${t.claimedBy}`;
+  return null;
+}
+
+// ── Write outcomes back into the graph ─────────────────────────────────────
+//
+// The graph is the record. A run that leaves no trace in it did not happen, as far as anyone
+// looking at the queue tomorrow is concerned.
+function setFacts(iri: string, facts: Record<string, string>) {
+  if (DRY) return;
+  // Rebuild the state file from parsed quads — no text surgery on anything, ever.
+  const keep = (existsSync(STATE) ? (new Parser().parse(readFileSync(STATE, 'utf8')) as Quad[]) : []).filter(
+    (q) => !(q.subject.value === iri && Object.keys(facts).some((p) => q.predicate.value === `${KPRED}${p}`)),
+  );
+  for (const [p, v] of Object.entries(facts)) {
+    keep.push(quad(namedNode(iri), namedNode(`${KPRED}${p}`), literal(v)) as Quad);
+  }
+  const writer = new Writer({ format: 'Turtle' });
+  writer.addQuads(keep);
+  writer.end((err, result: string) => {
+    if (err) throw err;
+    writeFileSync(
+      STATE,
+      `# GENERATED by scripts/agent/runner.ts — do not hand-edit.\n` +
+        `# The authored queue is ${path.basename(GRAPH!)}; this is only the machine's record of\n` +
+        `# what it claimed, ran, and what came of it. Delete it to reset the queue.\n\n` +
+        result,
+    );
+  });
+}
+
+function journal(entry: object) {
+  try {
+    appendFileSync(JOURNAL, JSON.stringify({ at: new Date().toISOString(), runner: RUNNER_ID, ...entry }) + '\n');
+  } catch {
+    /* the journal is a convenience; the graph is the record */
+  }
+}
+
+// ── Drain ──────────────────────────────────────────────────────────────────
+console.log(`${B}Runner${X} ${D}— ${GRAPH} · ${RUNNER_ID}${D}${DRY ? ' · DRY RUN' : ''}${X}\n`);
+
+const runnable = tasks.filter((t) => blockedReason(t) === null);
+const blocked = tasks.filter((t) => blockedReason(t) !== null && t.state !== 'done');
+
+if (blocked.length) {
+  console.log(`${D}not runnable:${X}`);
+  for (const t of blocked) console.log(`  ${D}·${X} ${t.iri.split('/').pop()} ${D}— ${blockedReason(t)}${X}`);
+  console.log('');
+}
+
+// Abandoned work: a claim that lapsed and nobody ever reported an outcome. This is the exact
+// failure that already bit us — a scheduler that fired, produced nothing, said nothing, and
+// still displayed a future run time. It looked armed while being dead.
+const abandoned = tasks.filter((t) => t.state === 'claimed' && t.claimExpires && now >= t.claimExpires && !t.outcome);
+for (const t of abandoned) {
+  console.log(`${Y}!${X} ${t.iri.split('/').pop()} ${D}— lease lapsed with NO outcome. Its runner died. Requeued.${X}`);
+  journal({ event: 'abandoned', task: t.iri, previousRunner: t.claimedBy });
+}
+if (abandoned.length) console.log('');
+
+if (runnable.length === 0) {
+  console.log(`${G}Nothing to run.${X} ${D}${tasks.length} task(s) in the queue.${X}`);
+  process.exit(0);
+}
+
+let ran = 0;
+let failed = 0;
+
+for (const t of runnable) {
+  const short = t.iri.split('/').pop();
+  console.log(`${B}▶ ${short}${X} ${D}— ${t.goal}${X}`);
+
+  if (DRY) {
+    console.log(`  ${D}would run:  ${t.command}${X}`);
+    console.log(`  ${D}would verify: ${t.doneWhen}${X}\n`);
+    ran++;
+    if (ONCE) break;
+    continue;
+  }
+
+  // 1. CLAIM — a lease, so a second runner cannot take the same task.
+  setFacts(t.iri, {
+    'claimed-by': RUNNER_ID,
+    'claim-expires': String(now + LEASE_MS),
+    'task-state': 'claimed',
+  });
+  journal({ event: 'claimed', task: t.iri });
+
+  // 2. EXECUTE
+  let execOk = true;
+  let execOut = '';
+  try {
+    execOut = execSync(t.command!, { encoding: 'utf8', stdio: 'pipe', shell: '/bin/bash', timeout: 15 * 60 * 1000 });
+  } catch (e: any) {
+    execOk = false;
+    execOut = (e?.stdout ?? '') + (e?.stderr ?? '') || String(e?.message ?? e);
+  }
+  console.log(`  ${execOk ? G + 'ran' : Y + 'command exited non-zero'}${X}`);
+
+  // 3. VERIFY — independently. The command's own opinion of itself is not evidence: a thing
+  //    that did the work is the party with an interest in believing it worked.
+  let verified = false;
+  let verifyOut = '';
+  try {
+    verifyOut = execSync(t.doneWhen!, { encoding: 'utf8', stdio: 'pipe', shell: '/bin/bash', timeout: 15 * 60 * 1000 });
+    verified = true;
+  } catch (e: any) {
+    verified = false;
+    verifyOut = (e?.stdout ?? '') + (e?.stderr ?? '') || String(e?.message ?? e);
+  }
+
+  // 4. REPORT — the outcome goes into the graph either way.
+  const outcome = verified
+    ? `done — verified by: ${t.doneWhen}`
+    : `FAILED — the work ran${execOk ? '' : ' (and exited non-zero)'} but the acceptance check did not pass: ${t.doneWhen}. ` +
+      `Last output: ${verifyOut.trim().split('\n').slice(-2).join(' / ').slice(0, 200)}`;
+
+  setFacts(t.iri, {
+    outcome,
+    'task-state': verified ? 'done' : 'failed',
+    'claim-expires': '0',
+  });
+  journal({ event: verified ? 'done' : 'failed', task: t.iri, outcome });
+
+  console.log(`  ${verified ? G + '✓ verified' : R + '✗ NOT verified'}${X} ${D}${t.doneWhen}${X}`);
+  console.log('');
+
+  ran++;
+  if (!verified) failed++;
+  if (ONCE) break;
+}
+
+console.log(
+  `${B}══${X} ${ran} task(s) ${DRY ? 'would run' : 'run'}, ${failed ? R + failed + ' failed' + X : G + '0 failed' + X}. ` +
+    `${D}Outcomes written to the graph.${X}`,
+);
+
+// A failed task is a reported fact, not a crashed runner. The queue keeps moving.
+process.exit(0);

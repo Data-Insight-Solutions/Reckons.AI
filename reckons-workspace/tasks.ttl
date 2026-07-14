@@ -1,0 +1,73 @@
+@prefix kpred: <urn:kbase:predicate/> .
+@prefix ktype: <urn:kbase:type/> .
+@prefix task:  <urn:reckons:task/> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+
+# =============================================================================
+# The task queue (F87 / kb:orch-task-vocab)
+# =============================================================================
+#
+# The queue is the contract; the runner is pluggable. This file IS the queue.
+#
+# TRUST: scripts/agent/runner.ts executes `kpred:command` out of this file, and will only do
+# that for a local graph named explicitly on the command line. It must never be pointed at an
+# imported or user-supplied graph — "here is an interesting knowledge base" would become
+# remote code execution.
+#
+# EVERY TASK MUST CARRY `kpred:done-when`. The runner REFUSES to run a task without one. An
+# agent left to judge whether its own work is finished will decide that it is — so completion
+# is asserted by an INDEPENDENT check, not by the thing that did the work.
+#
+#   npx tsx scripts/agent/runner.ts --graph reckons-workspace/tasks.ttl --dry-run
+#
+# The runner writes kpred:outcome and kpred:task-state back into this file. That is the
+# record: a run that leaves no trace in the graph did not happen, as far as tomorrow is
+# concerned.
+# =============================================================================
+
+task:align-site rdf:type      ktype:AgentTask ;
+    rdfs:label      "Keep the site aligned with the graph" ;
+    kpred:goal      "Regenerate every surface that is generated from the graph, so the site says exactly what the graph says." ;
+    kpred:tier      "script" ;
+    kpred:command   "npx tsx scripts/align.ts --fix" ;
+    kpred:done-when "npx tsx scripts/align.ts" ;
+    kpred:task-state "open" .
+
+task:graph-invariants rdf:type ktype:AgentTask ;
+    rdfs:label      "The graph must be internally consistent" ;
+    kpred:goal      "Check graph invariants: dead file links, invalid statuses, duplicate feature ids, dangling dependencies." ;
+    kpred:tier      "script" ;
+    kpred:command   "npx tsx scripts/offline/graph-lint.ts --pending" ;
+    kpred:done-when "npx tsx scripts/offline/graph-lint.ts" ;
+    kpred:task-state "open" .
+
+task:published-graph rdf:type ktype:AgentTask ;
+    rdfs:label      "The published graph is the receipt" ;
+    kpred:goal      "static/knowledge.ttl is served at /knowledge.ttl and IS the public graph. Verify it parses, is not gutted, carries no test debris, and does not lie in its own header." ;
+    kpred:tier      "script" ;
+    kpred:command   "npx tsx scripts/offline/published-graph-guard.ts" ;
+    kpred:done-when "npx tsx scripts/offline/published-graph-guard.ts" ;
+    kpred:task-state "open" .
+
+# A task that is BLOCKED, on purpose — proof that the queue actually holds work back rather
+# than running everything it can see. It waits on the published graph being sound, because
+# there is no point auditing the claims on a graph that is not even intact.
+task:claim-audit rdf:type     ktype:AgentTask ;
+    rdfs:label      "No hand-written surface may claim what the graph denies" ;
+    kpred:goal      "Sweep README, SAFETY.md, COUNSEL-BRIEF.md and the app shell for capabilities described as working that the graph says are unbuilt." ;
+    kpred:tier      "script" ;
+    kpred:command   "npx tsx scripts/offline/claim-audit.ts --pending" ;
+    kpred:done-when "npx tsx scripts/offline/claim-audit.ts" ;
+    kpred:blocked-by task:published-graph ;
+    kpred:task-state "open" .
+
+# A task the runner must REFUSE, on purpose — it has no done-when. Left here deliberately:
+# the queue should demonstrate its own guardrail, not just describe it. "Make the code better"
+# is a wish, and its completion would be an agent's opinion of its own work.
+task:no-acceptance rdf:type   ktype:AgentTask ;
+    rdfs:label      "A wish, not a task (deliberately unrunnable)" ;
+    kpred:goal      "Make the codebase better." ;
+    kpred:tier      "script" ;
+    kpred:command   "echo improving" ;
+    kpred:task-state "open" .

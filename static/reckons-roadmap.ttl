@@ -1751,7 +1751,9 @@ kb:orch-task-vocab rdf:type    ktype:Phase ;
                kpred:has-status   "scaffolded" ;
                kpred:has-file     "src/lib/rdf/agent-task.ts" ;
                kpred:tested-by    "src/lib/rdf/__tests__/agent-task.test.ts" ;
-               kpred:honest-note  "SCAFFOLDED — the vocabulary, the runnability rules, leases and outcomes exist and are tested (13 tests). NO RUNNER DRAINS IT YET, and no task has been written into a graph. It is the keystone, not the loop." ;
+               kpred:has-status   "functional" ;
+               kpred:has-file     "scripts/agent/runner.ts" ;
+               kpred:proof        "The loop closes, demonstrated end to end on reckons-workspace/tasks.ttl. Run 1: three tasks claimed, executed, INDEPENDENTLY verified, outcomes written back. A task with no done-when was REFUSED; a task with an unmet dependency was HELD. Run 2: the finished tasks were skipped and the blocked task UNBLOCKED ITSELF and ran, because its dependency had completed. Run 3: idle. An expired lease with no outcome is detected and requeued." ;
                hnav:order   1 ;
                kpred:description  "ktype:AgentTask with a defined vocabulary, so a schedule is a fact and not a config file: kpred:goal (what to do, in words a harness can act on), kpred:tier (script | local-agent | frontier — routes to the cheapest harness that can do it), kpred:harness (a PREFERENCE, not a requirement — 'any' is valid and is the default), kpred:due-at / kpred:every (drain-not-schedule, per F81), kpred:blocked-by (a partial fact, a question, or another task), kpred:writes-to (where the outcome lands: pending.jsonl, a branch, a PR), kpred:outcome (written back on completion, INCLUDING 'did nothing, and here is why')." ;
                kpred:remaining    "Define the predicates in the graph; graph-lint checks (no task blocked forever, no task without a tier, no due-at in an unparseable format); render tasks in-app." .
