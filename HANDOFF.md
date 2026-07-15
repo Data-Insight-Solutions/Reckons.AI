@@ -6,6 +6,38 @@
 If you are a fresh session (local, cloud, resumed, or scheduled) and Matt says "continue",
 this is where you continue from. Do not re-derive it; do not re-audit what is already audited.
 
+## ✓ LANDED (2026-07-15): F91 phase-2 completion — commit `284a532`
+
+The question-router throw-and-forget loop is COMMITTED and VERIFIED. Do not redo it. Approved
+plan was `~/.claude/plans/glittery-singing-pine.md`. Decisions (Matt, 2026-07-15), now recorded
+as `kpred:decided` on `kb:qr-throw-forget`: transport = reuse n8n + pub-sub (later); reach =
+subscribed + opt-in; answers = pending + provenance, always reviewed; RBAC = finish local loop
+first, F84 later.
+
+Verified before commit: `npm run check` 0 errors, `npx vitest run` 956 pass (31 router/reach/
+verifiability), `npm run align` green, `graph-lint` 0 errors (the dead-link check correctly
+flagged the two NEW files until they were staged — it is git-aware). Roadmap updated in the same
+commit: `kb:qr-throw-forget` scaffolded → **functional**, `kb:question-router` planned →
+**in-progress**, both with honest-notes scoping the claim to the LOCAL loop.
+
+**Still TODO (NOT done — genuinely remaining, honest scope):**
+- **The "ask another graph" review-UI entry** (plan task #17). Phase-1 `remaining` also names
+  this ("expose in review/reckoning UI as 'ask another graph'"). No UI yet exposes routing OR
+  the opt-in consent marker — the marker is honoured but there is no way to SET it in-app.
+- **Real cross-boundary transport.** Today one process's pending queue stands in for two graphs.
+  n8n + pub-sub is the decided direction (later).
+- **Phase 3 RBAC daisy-chain** (`kb:qr-rbac-chain`) — gated on F84.
+
+Branch is **PR #101 → dev**. Push the commit; do not merge to `main`.
+
+## AWAKEN OPUS TO ORCHESTRATE (Matt asked, session-limit)
+
+On resume (unsnooze fires on limit-reset), after committing the above and draining the free
+queue: **run `npm run orchestrate`** — triage the pending queue (re-derivable / remediable /
+judgment), promote worthwhile drafts into `tasks.ttl`, and work the judgment residue. That is the
+Opus-tier orchestration Matt wants resumed. The 13 standing offline jobs drain for free via the
+runner before you spend a token.
+
 ## Recently landed (do not redo)
 
 - **Dichotomy detection** (`src/lib/rdf/dichotomy.ts`) — one entity, two truths; CONFLICT
