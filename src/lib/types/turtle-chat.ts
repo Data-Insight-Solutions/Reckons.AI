@@ -4,7 +4,7 @@ export interface TurtleChatMessage {
   actions?: KBAction[];
 }
 
-export type GraphFilter = 'hubs' | 'islands' | 'leaps' | 'confirmed' | 'pending' | 'no-type' | 'no-source';
+export type GraphFilter = 'hubs' | 'islands' | 'leaps' | 'confirmed' | 'pending' | 'no-type' | 'no-source' | 'dichotomy';
 
 export type KBAction =
   | { type: 'add_triple'; s: string; p: string; o: string; label: string }

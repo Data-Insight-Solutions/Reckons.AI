@@ -36,6 +36,7 @@
   import { gifOverrides, setGif, clearGif } from '$lib/stores/gif-overrides.svelte';
   import { icon2dOverrides, setIcon2d, clearIcon2d } from '$lib/stores/icon2d-overrides.svelte';
   import { LEAP_PRED, LEAP_LABEL_PRED, getLeap, leapNodeKeys } from '$lib/rdf/kb-leap';
+  import { findDichotomies } from '$lib/rdf/dichotomy';
   import { findKbByStableId, switchToKb, createKb, registerStableId, getCurrentKbId, getRegistry } from '$lib/storage/kb-registry';
 
   // Predicates that are internal KB metadata — never shown as graph edges/nodes
@@ -535,6 +536,13 @@
   });
 
   // Find connected components using BFS
+  // kb:dichotomy — entities that say drastically different things about themselves. A CONFLICT
+  // to fix before merge, or a natural dichotomy (was sales, now technical) to preserve through
+  // one. Filterable like hubs/islands because these tensions are where review pays off most.
+  const dichotomyList = $derived(findDichotomies(visible));
+  const dichotomyKeys = $derived([...new Set(dichotomyList.map((d) => d.key))]);
+  const conflictCount = $derived(dichotomyList.filter((d) => d.kind === 'conflict').length);
+
   const islandNodes = $derived.by(() => {
     const visited = new Set<string>();
     const smallComponentNodes = new Set<string>();
@@ -621,10 +629,10 @@
    * behaved. null = none active.
    */
   const nodeSetMatch = $derived.by(() => {
-    if (!activeFilters.has('hubs') && !activeFilters.has('islands') && !activeFilters.has('leaps')) return null;
+    if (!activeFilters.has('hubs') && !activeFilters.has('islands') && !activeFilters.has('leaps') && !activeFilters.has('dichotomy')) return null;
     return new Set(
       Array.from(activeFilters).flatMap((f) =>
-        f === 'hubs' ? hubs : f === 'islands' ? islandNodes : f === 'leaps' ? leapKeys : ([] as string[])
+        f === 'hubs' ? hubs : f === 'islands' ? islandNodes : f === 'leaps' ? leapKeys : f === 'dichotomy' ? dichotomyKeys : ([] as string[])
       )
     );
   });
@@ -1731,6 +1739,13 @@
         <span class="num">{islandNodes.length}</span>
         <span class="lbl mono">islands</span>
       </button>
+      {#if dichotomyKeys.length > 0}
+        <button class="chip" class:active={activeFilters.has('dichotomy')} onclick={() => toggleFilter('dichotomy')}
+          title="Entities that say drastically different things about themselves — conflicts to fix, or natural dichotomies to preserve. The best place to look before a merge.">
+          <span class="num" class:has-conflict={conflictCount > 0}>{dichotomyKeys.length}</span>
+          <span class="lbl mono">dichotomy{conflictCount > 0 ? ` (${conflictCount}⚠)` : ''}</span>
+        </button>
+      {/if}
       {#if leapKeys.length > 0}
         <button class="chip" class:active={activeFilters.has('leaps')} onclick={() => toggleFilter('leaps')} title="Cross-graph leap nodes — jump to another graph">
           <span class="num">{leapKeys.length}</span>

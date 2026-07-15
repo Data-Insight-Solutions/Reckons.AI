@@ -6,6 +6,43 @@
 If you are a fresh session (local, cloud, resumed, or scheduled) and Matt says "continue",
 this is where you continue from. Do not re-derive it; do not re-audit what is already audited.
 
+## ⚠ UNCOMMITTED WORK TO VERIFY + COMMIT FIRST (session ended with Bash unavailable)
+
+The previous session hit a tooling outage (the Bash safety classifier went down) with real work
+UNCOMMITTED on `feat/work-tiering-ci`. Before anything else, verify and commit it:
+
+1. `npm run check` — expect 0 errors. If `src/routes/(app)/+page.svelte` errors, it is the
+   dichotomy filter wiring (`dichotomyKeys`, `dichotomyList`, `conflictCount`, the import of
+   `findDichotomies`, and the `dichotomy` chip) — fix the type/reference, do not revert the feature.
+2. `npx vitest run` — expect all green. `src/lib/rdf/__tests__/dichotomy.test.ts` (8 tests) already
+   passed in isolation before the outage.
+3. `npm run align && npx tsx scripts/offline/graph-lint.ts` — expect clean.
+4. Commit the batch:
+   - **`src/lib/rdf/dichotomy.ts` + its test** — NEW. Detects one entity that says drastically
+     different things about itself; classifies CONFLICT (single-valued predicate, one is wrong)
+     vs natural DICHOTOMY (multi-valued, e.g. was-sales-now-technical, preserve it). Two gates:
+     well-identified entity + describing (not structural) predicate. Matt's feature.
+   - **`src/routes/(app)/+page.svelte` + `src/lib/types/turtle-chat.ts`** — wires `dichotomy` as
+     a graph filter like hubs/islands, chip shows conflict count with ⚠.
+   - **`reckons-workspace/tasks.ttl`** — 13 standing offline jobs added (status-evidence,
+     safety-attestation, alignment-sweep, unit-tests, mcp-tests, reconcile, orchestrate,
+     token-metric, competitor-discover, PLUS deep visual testing: visual-smoke, button-crawl,
+     visual-regression) — all recurring, all with done-when. These drain via the `drain-queue`
+     schedule → runner. NOTE: a runner already ran once during the outage and its `align --fix`
+     regenerated docs — `content/features/{context-compression,git-analysis}.md` show as DELETED
+     because those features moved to `reckons-shipped.ttl` in the split. Confirm `npm run align`
+     is green (it regenerates from the current graph) and commit those deletions too.
+   - **`reckons-workspace/ideas.ttl`** — captured Matt's full session-end idea wave:
+     meta-graph-flows (feedback graph → roadmap; user-defined graph-to-graph flows; subscriber
+     graphs auto-fed from published source; live nodes auto-e2e), gamified full-screen review
+     (this-or-that meme-esque decisions with generated Blender/image backgrounds to cut review
+     dread; consumes the dichotomy detector + Blender harness), and story-mode-in-review (one
+     message to intro the context, then step into the highest-blast-radius decisions).
+     **These want to become roadmap FEATURES with phases — promote them (a user-authority act).**
+
+Suggested message: `feat(dichotomy): detect one-entity-two-truths, filterable like hubs/islands
++ load the offline queue`.
+
 ## Do this now — SPEND NO TOKENS BEFORE YOU HAVE TO
 
 1. `git fetch && git checkout feat/work-tiering-ci` (open as **PR #101 → `dev`**)
