@@ -3,6 +3,7 @@
  * Boundaries are the whole point: >=0.90 auto, [0.50, 0.90) suggest, <0.50 nothing.
  */
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
 import {
   classifyMerge,
   isAutoMerge,
@@ -54,5 +55,27 @@ describe('classifyMerge — the decided band', () => {
     expect(MERGE_VERDICT_LABEL.auto).toContain('auto-merge');
     expect(MERGE_VERDICT_LABEL.suggest).toContain('review');
     expect(MERGE_VERDICT_LABEL.none).toContain('orphan');
+  });
+});
+
+describe('the code mirrors the graph — no silent drift (kb:auto-merge is the source of truth)', () => {
+  // The graph decided these thresholds; merge-band.ts is the executable COPY. If the graph
+  // changes and the code does not follow, this fails — so the decision cannot drift out from
+  // under the code that acts on it. (Determinism buys "the rule fired"; this is that rule.)
+  // Vitest runs from the repo root, so the cwd-relative path is reliable.
+  const roadmap = readFileSync('static/reckons-roadmap.ttl', 'utf8');
+
+  const graphValue = (predicate: string): number => {
+    const m = roadmap.match(new RegExp(`kpred:${predicate}\\s+"([0-9.]+)"`));
+    if (!m) throw new Error(`kpred:${predicate} not found in the roadmap graph`);
+    return Number(m[1]);
+  };
+
+  it('MERGE_AUTO_THRESHOLD matches kb:auto-merge kpred:auto-merge-threshold', () => {
+    expect(MERGE_AUTO_THRESHOLD).toBe(graphValue('auto-merge-threshold'));
+  });
+
+  it('MERGE_SUGGEST_FLOOR matches kb:auto-merge kpred:suggest-merge-floor', () => {
+    expect(MERGE_SUGGEST_FLOOR).toBe(graphValue('suggest-merge-floor'));
   });
 });
