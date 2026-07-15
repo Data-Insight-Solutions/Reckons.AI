@@ -172,6 +172,26 @@ using it and extending it.
    split by USE (private export = TTL no publisher; publishing = TriG + owner/publisher REQUIRED).
    All `planned`/spec, marked not-yet-wired. What remains is the BIG judgment clusters
    (history-lessons 31, competitor-scan 18, graph-lint 14, alignment-sweep 12) — mostly Matt's.
+
+   **AUTONOMOUS STRETCH (2026-07-15, "work unblocked roadmap by priority") — 4 features advanced,
+   all with tested pure cores + honest status, forming one coherent REVIEW-AT-SCALE system:**
+   - **F80.1 auto-merge** planned→scaffolded (3ee1cc6, 371b3f1): `merge-band.ts` (the one
+     executable copy of the 0.9/0.5 band) + `pending-dedup.ts` (fold exact-dupe pending facts;
+     semantic suggest tier injected) + wired into `drainAndImportPending` (within-batch, complete
+     facts only — partials left alone so blocks/question isn't dropped).
+   - **F52 control-model** planned→scaffolded (e977314): `agent-edit-boundary.ts` — the wall.
+     `gateFactWrite` downgrades any agent attempt to settle a fact to a proposal; enforced via
+     `addStatements({origin:'agent'})` on the drain path. Composes with F88.
+   - **F53 review-attention** planned→scaffolded (5f3513a): `review-attention.ts` —
+     `spotlightUserQueue` splits the F88 user lane into a capped spotlight (conflicts + decisions)
+     and a quiet flow; over-cap contested items HELD BACK, never quieted.
+   - **F83 graph-legibility** (in-progress, 156a17a): `entity-review.ts` — `groupPendingByEntity`
+     condenses 1888 triple-rows to ~233 entity cards, each carrying its strongest F88 gate.
+   These four COMPOSE: dedup removes noise → the wall ensures proposals → entity-review condenses
+   to cards → attention spotlights the contested. NONE are wired into the review UI yet (that is
+   the functional step, and it needs browser verification this headless env can't give) — the
+   next session's highest-leverage move is wiring them into the Review surface and watching it
+   render. 997 tests pass; align green; all on PR #101.
 2. **F90 Blender** (planned) — headless Blender over MCP. The trap is in the roadmap:
    **Blender renders a black frame and exits 0.** First domain where `done-when` cannot be a
    passing test — exactly what F88's `verifiable-by` exists for (deterministic image check →
