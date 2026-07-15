@@ -119,4 +119,22 @@ export function duplicatesRemoved(groups: DuplicateGroup[]): number {
   return groups.reduce((n, g) => n + g.duplicates.length, 0);
 }
 
+/**
+ * Fold exact-duplicate COMPLETE facts, returning the reduced list. PARTIAL facts (F32 questions,
+ * object '?') are deliberately excluded from folding: two questions on the same subject+predicate
+ * can carry different `blocks`/`question` metadata, and dropping one would silently lose what the
+ * hole costs. This is the one place that rule lives — both the MCP drain and the review pipeline
+ * call it, so they cannot disagree about what "duplicate" means.
+ */
+export function dedupeCompletePending(
+  statements: Statement[],
+  opts: DedupeOptions = {},
+): { kept: Statement[]; folded: number; groups: DuplicateGroup[] } {
+  const complete = statements.filter((s) => !s.needsObject);
+  const groups = findPendingDuplicates(complete, opts);
+  const dropped = new Set(groups.flatMap((g) => g.duplicates.map((d) => d.id)));
+  const kept = dropped.size ? statements.filter((s) => !dropped.has(s.id)) : statements;
+  return { kept, folded: dropped.size, groups };
+}
+
 export { MERGE_AUTO_THRESHOLD, MERGE_SUGGEST_FLOOR };

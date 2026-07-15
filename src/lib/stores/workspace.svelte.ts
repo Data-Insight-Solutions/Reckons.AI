@@ -30,7 +30,7 @@ import { db, KBaseDB } from '../storage/db';
 import { updateSettings } from './settings.svelte';
 import { getRegistry, getCurrentKbName, type KbEntry } from '../storage/kb-registry';
 import { collectAssets, assetTriples, type CollectedAsset, type AssetCategory } from '../storage/kb-assets';
-import { findPendingDuplicates } from '../rdf/pending-dedup';
+import { dedupeCompletePending } from '../rdf/pending-dedup';
 
 /** Filename written to the workspace dir on every KB mutation (read by the MCP server). */
 export const WORKSPACE_KB_FILE = 'knowledge.ttl';
@@ -693,11 +693,8 @@ export async function drainAndImportPending(): Promise<number> {
   // and folding them would silently drop what the hole costs — a destructive action must never be
   // silent. Cross-batch dedupe (against already-imported pending) also remains — that needs a
   // graph read, not just this batch.
-  const completeFacts = sts.filter((s) => !s.needsObject);
-  const dupeGroups = findPendingDuplicates(completeFacts);
-  const dropped = new Set(dupeGroups.flatMap((g) => g.duplicates.map((d) => d.id)));
-  const deduped = dropped.size ? sts.filter((s) => !dropped.has(s.id)) : sts;
-  if (dropped.size) console.info(`[F80.1] folded ${dropped.size} duplicate pending note(s) before review`);
+  const { kept: deduped, folded } = dedupeCompletePending(sts);
+  if (folded) console.info(`[F80.1] folded ${folded} duplicate pending note(s) before review`);
 
   // Origin 'agent' engages the F52 boundary in addStatements: these are agent-queued notes, so
   // any settled status is downgraded to a proposal — agents propose, the human settles.
