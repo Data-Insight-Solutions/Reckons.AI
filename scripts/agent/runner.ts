@@ -400,7 +400,13 @@ for (const t of runnable) {
   let execOut = '';
   let execCode = 0;
   try {
-    execOut = execSync(t.command!, { encoding: 'utf8', stdio: 'pipe', shell: '/bin/bash', timeout: 15 * 60 * 1000 });
+    // Pass the SAME Ollama URL the runner just up-checked (line ~231) into the child. Without
+    // this the runner and the child disagree on the default: the runner falls back to
+    // localhost:11434 and sees Ollama up, runs the task — but a child that falls back to '' (as
+    // code-review.ts did) hard-exits "OLLAMA_BASE_URL not set" even though Ollama is running.
+    // The runner is the source of truth for the URL it verified; the child inherits it.
+    const childEnv = { ...process.env, OLLAMA_BASE_URL: OLLAMA };
+    execOut = execSync(t.command!, { encoding: 'utf8', stdio: 'pipe', shell: '/bin/bash', timeout: 15 * 60 * 1000, env: childEnv });
   } catch (e: any) {
     execOk = false;
     execCode = typeof e?.status === 'number' ? e.status : 1;
