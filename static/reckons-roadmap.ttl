@@ -1565,14 +1565,17 @@ kb:graph-legibility rdf:type   ktype:Feature ;
                kpred:feature-id   "F83" ;
                kpred:has-status   "in-progress" ;
                kpred:tested-by    "src/lib/rdf/__tests__/graph-view.test.ts" ;
+               kpred:tested-by    "src/lib/rdf/__tests__/entity-review.test.ts" ;
                kpred:has-file     "src/lib/rdf/graph-view.ts" ;
+               kpred:has-file     "src/lib/rdf/entity-review.ts" ;
                kpred:relates-to   kb:predicate-economy ;
+               kpred:relates-to   kb:review-attention ;
                kpred:description  "Make a large graph readable rather than merely rendered. (1) LITERALS ARE ATTRIBUTES, NOT NODES, unless shared: a value used once connects nothing and belongs in the node panel; a value used 53 times is a category worth seeing. (2) FILTER BY PREDICATE — 'just show me the dependency graph' — with facets sorted by count so structural relations surface first. (3) FILTER BY TIME, so a graph can be read as it grew. (4) PROGRESSIVE DISCLOSURE via top-by-degree, keeping only edges whose BOTH endpoints survive, so the canvas never shows an edge vanishing into nothing." ;
                kpred:principle    "A literal earns a node by being SHARED. Appearing once means it connects nothing." ;
                kpred:principle    "A graph is a picture of RELATIONSHIPS. A value that relates nothing to nothing is not part of that picture, however important it is to read." ;
                kpred:principle    "The human has a context window too. kb_compress already refuses to hand an LLM the whole graph and hands it the relevant part instead; 1,234 nodes overruns a person exactly as surely as 116k tokens overruns a model. Show the part that matters." ;
                kpred:measured     "reckons-roadmap.ttl: 1888 triples, 1234 nodes -> 271 (78% fewer). 985 attributes moved to the node panel. 27 shared literals earned category nodes (production, planned, functional, high...). 903 edges drawn instead of 1888." ;
-               kpred:remaining    "Predicate + time filters in the UI (the pure functions exist and are tested); focus/expand interaction; REVIEW at entity granularity — 233 entity cards, not 1888 triple cards, because reviewing 1888 rows one at a time is its own unusability." ;
+               kpred:remaining    "Predicate + time filters in the UI (the pure functions exist and are tested); focus/expand interaction; wiring the entity-granularity review cards into the Review UI. The entity-review CORE now exists (src/lib/rdf/entity-review.ts, 9 tests, 2026-07-15): groupPendingByEntity() bundles pending facts into one card per subject (additions/removals/questions counted), each carrying the STRONGEST F88 gate so it lands in the right lane as a unit, ranked human-lane-first — 1888 triple rows condense to ~233 entity cards. Composes with F53 review-attention. Still to do: render the cards; the graph-view filters still need their UI." ;
                kpred:done         "Graph package & sync moved OUT of the canvas filter panel and INTO the Graphs tab (2026-07-13). It had been buried behind a disclosure, collapsed 'so the panel stays short' — which was the tell that it did not belong there. A filter panel should filter. Graph management has its own top-level tab precisely because it matters." .
 
 # == THE TTL / TRIG SPLIT — two products, not two file formats ==================
