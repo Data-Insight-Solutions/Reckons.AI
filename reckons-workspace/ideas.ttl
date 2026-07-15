@@ -1,0 +1,29 @@
+@prefix kpred: <urn:kbase:predicate/> .
+@prefix ktype: <urn:kbase:type/> .
+@prefix idea: <urn:reckons:idea/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Ideas — the WIP capture surface (F89 / kb:loop-idea-inbox).
+# Jot with: npm run idea -- "…". Zero friction on purpose. The orchestrator triages these;
+# it asks for detail via partial facts rather than demanding a form at the moment of the idea.
+# A real graph: import it into Reckons.AI to review, or read it here.
+
+idea:let-sub-agents-negotiate-merge-conflicts-v0sh rdf:type ktype:Idea ;
+    rdfs:label "let sub-agents negotiate merge conflicts locally before surfacing them to review" ;
+    kpred:has-status "speculative" ;
+    kpred:verifiable-by "user" ;
+    kpred:captured-at "2026-07-15T00:14:06.017Z" .
+
+idea:reconciler-should-cover-branch-align-sug-v2c3 rdf:type ktype:Idea ;
+    rdfs:label "reconciler should cover branch-align suggestions once they are confirmed deterministic" ;
+    kpred:has-status "speculative" ;
+    kpred:verifiable-by "user" ;
+    kpred:captured-at "2026-07-15T00:14:08.019Z" .
+
+idea:dichotomy-metric-detect-one-entity-with--w785 rdf:type ktype:Idea ;
+    rdfs:label "dichotomy metric: detect one entity with divergent descriptions across its triples (was sales, now technical) - classify conflicting vs natural-unresolvable, gate on strong shared identity, make filterable like hubs/islands for review-before-merge" ;
+    kpred:has-status "speculative" ;
+    kpred:verifiable-by "user" ;
+    kpred:captured-at "2026-07-15T00:15:01.013Z" .
+
