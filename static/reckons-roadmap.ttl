@@ -1105,6 +1105,9 @@ kb:qr-relevance rdf:type       ktype:Phase ;
 kb:qr-throw-forget rdf:type    ktype:Phase ;
                rdfs:label   "Phase 2 — throw the question, resume on the answer" ;
                kpred:part-of      kb:question-router ;
+               kpred:has-status   "scaffolded" ;
+               kpred:has-file     "scripts/agent/route-question.ts" ;
+               kpred:proof        "route-question.ts loads the repo's graphs, runs the relevance router, and THROWS the question addressed (kb / asked-of) to the top-related graph via ask.ts — routing to the threshold, never broadcasting. Verified: a question about kb:trust-system routed to reckons-shipped.ttl (0.69, 'already has facts about this exact entity') and would throw only there. OUTSTANDING: the answer-return path ACROSS a graph boundary (the F80 loop extended) — today the throw lands in the shared pending queue; true cross-graph delivery + return is the remaining work." ;
                hnav:order   2 ;
                kpred:description  "Emit the question to the top-ranked graph(s) as a partial fact addressed to them (kpred:asked-of), and let the existing F80 answer-loop carry the reply back across the graph boundary. The asker never waits. Reuses ask.ts / answers.ts, extended with a destination and a return path." ;
                kpred:remaining    "kpred:asked-of on a question; cross-graph delivery of the partial fact; answer routed back to the origin graph." .
