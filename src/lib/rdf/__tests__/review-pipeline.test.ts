@@ -97,5 +97,15 @@ describe('buildReviewPlan — the four stages compose', () => {
     expect(plan.deduped).toHaveLength(0);
     expect(plan.entityCards).toHaveLength(0);
     expect(plan.folded).toBe(0);
+    expect(plan.mergeSuggestions).toHaveLength(0);
+  });
+
+  it('the suggest tier is off unless a similarity function is supplied', () => {
+    const pending = [st(A, NOTE, 'v1', { id: '1' }), st(B, NOTE, 'v2', { id: '2' })];
+    expect(buildReviewPlan(pending).mergeSuggestions).toHaveLength(0); // no similarity -> off
+    // With a similarity that puts them in the suggest band, they surface (same predicate).
+    const withSim = buildReviewPlan(pending, { similarity: () => 0.7 });
+    expect(withSim.mergeSuggestions).toHaveLength(1);
+    expect(withSim.mergeSuggestions[0].verdict).toBe('suggest');
   });
 });

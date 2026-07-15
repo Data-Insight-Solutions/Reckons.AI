@@ -17,7 +17,7 @@
  * site.
  */
 import type { Statement } from './types';
-import { dedupeCompletePending } from './pending-dedup';
+import { dedupeCompletePending, findMergeSuggestions, type DuplicateGroup } from './pending-dedup';
 import { routeQueue, type RoutedQueue } from './review-routing';
 import { spotlightUserQueue, type AttentionQueue } from './review-attention';
 import { groupPendingByEntity, type EntityReviewCard } from './entity-review';
@@ -33,6 +33,12 @@ export interface ReviewPlan {
   attention: AttentionQueue;
   /** The user lane grouped into per-entity cards (decide about things, not rows). */
   entityCards: EntityReviewCard[];
+  /**
+   * Near-duplicate merge SUGGESTIONS (F80.1 suggest tier, the 0.5-0.9 band) — same-predicate
+   * facts a human might want to merge. Empty unless a `similarity` function is supplied; these are
+   * surfaced for review, never acted on.
+   */
+  mergeSuggestions: DuplicateGroup[];
 }
 
 export interface ReviewPlanOptions {
@@ -40,6 +46,12 @@ export interface ReviewPlanOptions {
   typeOf?: (subjectIri: string) => string | undefined;
   /** Cap on spotlighted decisions (F53). */
   maxSpotlight?: number;
+  /**
+   * Semantic similarity between two facts (embeddings, injected so the pipeline stays pure). When
+   * given, the suggest tier runs and populates `mergeSuggestions`; when omitted, only exact
+   * duplicates are handled and `mergeSuggestions` is empty.
+   */
+  similarity?: (a: Statement, b: Statement) => number;
 }
 
 /**
@@ -69,7 +81,10 @@ export function buildReviewPlan(
     typeOf,
   );
 
-  return { deduped, folded, routed, attention, entityCards };
+  // 5. SUGGEST tier (optional): near-duplicate merges, only when a similarity source is supplied.
+  const mergeSuggestions = opts.similarity ? findMergeSuggestions(deduped, opts.similarity) : [];
+
+  return { deduped, folded, routed, attention, entityCards, mergeSuggestions };
 }
 
 /** One honest headline for the whole plan: what was spared, what needs you. */
