@@ -1056,6 +1056,67 @@ kb:byo-static-host rdf:type    ktype:Feature ;
 # This is also the sharpest possible dogfooding: the coordination layer for building
 # Reckons.AI becomes Reckons.AI.
 
+# -- F91: Question router — throw a question to the graph most likely to answer it ----
+#
+# F80 taught an agent to ASK THE GRAPH instead of blocking the human, WITHIN one graph. F91 is
+# the outward version: a question the local graph cannot answer is ROUTED to the graph(s) most
+# RELATED to it — the ones whose knowledge overlaps the question's subject. "WHO, in the world,
+# could answer this?" becomes a computed ranking, not a guess.
+#
+# THROW AND FORGET. The asker does not wait. It emits the question, the router addresses it to
+# the best-related graphs, and the answer flows back whenever it arrives (the F80 answer-loop,
+# across graphs rather than within one). Decision-making does not stall on reachability.
+#
+# ACROSS ENTERPRISE BOUNDARIES, this DAISY-CHAINS under RBAC (F84). A proposed Reckoning is not
+# public — it is a private deliberation gathering the facts it needs — so a question cannot be
+# broadcast. It hops graph to graph along ALLOWED edges only: graph A asks graph B; if B cannot
+# answer but is related to C and the policy permits, B forwards it. Each hop is authorized, each
+# hop records provenance, and the answer returns along the chain it came.
+
+kb:question-router rdf:type    ktype:Feature ;
+               rdfs:label   "Question router (throw a question to whoever can answer it)" ;
+               kpred:feature-id   "F91" ;
+               kpred:has-status   "planned" ;
+               kpred:relates-to   kb:async-orchestration ;
+               kpred:relates-to   kb:publisher-subscriptions ;
+               kpred:relates-to   kb:cross-kb-alignment ;
+               kpred:description  "A question the local graph cannot settle is addressed OUTWARD, to the graphs most related to its subject. Relatedness is computed (shared entities, shared predicates, subject overlap) so 'who could answer this?' is a ranking, not a hunch. The asker throws and forgets; the answer returns asynchronously along the F80 answer-loop, extended across graphs. Across enterprise boundaries it daisy-chains under RBAC: each hop is an ALLOWED edge, authorized and provenance-stamped, because a proposed Reckoning is a private deliberation, not a broadcast." ;
+               kpred:principle    "A question is addressed by RELATEDNESS, not by broadcast. Sending every question to every graph is spam and a privacy leak; sending it to the graph whose knowledge overlaps the subject is routing. The router's whole value is picking WHO." ;
+               kpred:principle    "THROW AND FORGET. Decision-making must not stall on whether the answerer is reachable right now. The question is durable (a partial fact); the answer arrives when it arrives; the asker never blocks." ;
+               kpred:principle    "DAISY-CHAIN ONLY ALONG ALLOWED EDGES. A non-public Reckoning gathers its facts privately. A hop that policy does not permit does not happen — a question must never leak to a graph its owner did not authorize. RBAC is the routing table, not an afterthought." ;
+               kpred:principle    "Every hop records provenance. A question that arrived via A→B→C carries that chain, and the answer returns along it. Provenance is an accountability relation (the thesis): you must be able to say WHERE a gathered fact came from and by whose leave." ;
+               kpred:depends-on   kb:async-orchestration ;
+               kpred:depends-on   kb:cross-kb-alignment ;
+               kpred:has-phase    kb:qr-relevance ;
+               kpred:has-phase    kb:qr-throw-forget ;
+               kpred:has-phase    kb:qr-rbac-chain .
+
+kb:qr-relevance rdf:type       ktype:Phase ;
+               rdfs:label   "Phase 1 — rank which graphs are most related to a question" ;
+               kpred:part-of      kb:question-router ;
+               kpred:has-status   "scaffolded" ;
+               kpred:has-file     "src/lib/rdf/question-router.ts" ;
+               kpred:tested-by    "src/lib/rdf/__tests__/question-router.test.ts" ;
+               kpred:proof        "routeQuestion(question, graphs) ranks candidates by relatedness (knows-the-subject strongest, then predicate familiarity, then neighbourhood overlap); addressees() thresholds so we route rather than broadcast. 7 tests: the graph that already knows the subject ranks first, a graph with no overlap is never addressed, neighbourhood overlap works when the exact subject is absent. NOT yet wired into the review/reckoning UI — that is the remaining work." ;
+               hnav:order   1 ;
+               kpred:description  "Given a question (subject + predicate, object open) and a set of candidate graphs, score each by how RELATED it is to the question: does it contain the subject entity, entities that align to it (cross-kb-align), or heavy use of the question's predicate? Output a ranking — the deterministic core of 'who could answer this'. Script tier: the relatedness signals are countable, no model required for the first cut; embeddings refine it later." ;
+               kpred:remaining    "src/lib/rdf/question-router.ts: score(question, graphs) -> ranked candidates; tests; expose in the review/reckoning UI as 'ask another graph'." .
+
+kb:qr-throw-forget rdf:type    ktype:Phase ;
+               rdfs:label   "Phase 2 — throw the question, resume on the answer" ;
+               kpred:part-of      kb:question-router ;
+               hnav:order   2 ;
+               kpred:description  "Emit the question to the top-ranked graph(s) as a partial fact addressed to them (kpred:asked-of), and let the existing F80 answer-loop carry the reply back across the graph boundary. The asker never waits. Reuses ask.ts / answers.ts, extended with a destination and a return path." ;
+               kpred:remaining    "kpred:asked-of on a question; cross-graph delivery of the partial fact; answer routed back to the origin graph." .
+
+kb:qr-rbac-chain rdf:type      ktype:Phase ;
+               rdfs:label   "Phase 3 — daisy-chain under RBAC, with provenance per hop" ;
+               kpred:part-of      kb:question-router ;
+               hnav:order   3 ;
+               kpred:description  "The enterprise case. A question hops graph to graph along edges RBAC permits: if the best-related graph cannot answer but is related to another the policy allows, it forwards. Each hop authorizes, records who forwarded to whom, and the answer returns along the chain. Depends on the TriG enterprise overlay (F84) for the RBAC/provenance model. A proposed Reckoning gathers its facts this way — privately, accountably, and never by broadcast." ;
+               kpred:depends-on   kb:trig-enterprise-overlay ;
+               kpred:remaining    "kpred:hop-chain provenance; policy check per hop; forward-if-allowed; return-along-chain. Gated on F84." .
+
 kb:async-orchestration rdf:type ktype:Feature ;
                rdfs:label   "Async orchestration (agents ask the graph, not the human)" ;
                kpred:feature-id   "F80" ;
