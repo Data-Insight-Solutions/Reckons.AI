@@ -14,6 +14,7 @@
  */
 import { existsSync, readFileSync } from 'fs';
 import { buildReviewPlan, reviewPlanSummary } from '../src/lib/rdf/review-pipeline.js';
+import { lexicalFactSimilarity } from '../src/lib/rdf/lexical-similarity.js';
 import type { Statement, ReviewStatus } from '../src/lib/rdf/types.js';
 
 const FILE = process.argv[2] ?? 'reckons-workspace/knowledge.pending.jsonl';
@@ -52,7 +53,8 @@ const statements: Statement[] = readFileSync(FILE, 'utf8')
     }
   });
 
-const plan = buildReviewPlan(statements);
+// Use the free lexical similarity for the suggest tier (embeddings would refine it at runtime).
+const plan = buildReviewPlan(statements, { similarity: lexicalFactSimilarity });
 
 console.log(`${B}Review plan${X} ${D}— ${statements.length} pending fact(s) from ${FILE}${X}\n`);
 console.log(`  ${reviewPlanSummary(plan)}\n`);
@@ -84,3 +86,14 @@ for (const card of plan.entityCards.slice(0, 10)) {
   console.log(`  ${D}[${card.gate}]${X} ${card.label} ${D}— ${card.facts.length} fact(s): ${bits}${X}`);
 }
 if (plan.entityCards.length > 10) console.log(`  ${D}… and ${plan.entityCards.length - 10} more${X}`);
+
+if (plan.mergeSuggestions.length > 0) {
+  console.log(`\n${B}merge suggestions${X} ${D}— near-duplicate facts (lexical; review before merging)${X}`);
+  for (const g of plan.mergeSuggestions.slice(0, 8)) {
+    const a = g.keep.s.value.split('/').pop();
+    const b = g.duplicates[0].s.value.split('/').pop();
+    const pred = g.keep.p.value.split('/').pop();
+    console.log(`  ${G}~${X} ${a} ${D}≈${X} ${b}  ${D}on ${pred} (sim ${g.similarity.toFixed(2)})${X}`);
+  }
+  if (plan.mergeSuggestions.length > 8) console.log(`  ${D}… and ${plan.mergeSuggestions.length - 8} more${X}`);
+}
