@@ -105,6 +105,12 @@ export function competentGate(v: Verifiability | undefined, opts?: { userAuthori
       // Did the cited passage ACTUALLY say this? A model can read the excerpt and judge;
       // a human spot-checks. It is judgment over language, so it is the agent tier (F74.3).
       return 'agent';
+    case 'external-graph':
+      // An answer another graph returned to a routed question (F91). It is that party's CLAIM,
+      // not our verified knowledge — an unverifiable claim, made by the party it benefits, is
+      // not evidence. NEVER machine-settled: a human owns whether to accept another graph's
+      // word into their own. This is the thesis, applied to federated answers.
+      return 'user';
     case 'user':
     case 'unknown':
       return 'user';
@@ -156,6 +162,11 @@ export function inferVerifiability(st: Statement): Verifiability {
   const p = st.p.value;
   const o = st.o.value;
 
+  // An answer another graph returned to a routed question (F91). Whatever it looks like, it is
+  // that party's claim — classify it as such so it can never be machine-settled. Checked FIRST
+  // because provenance about WHO said it outranks what the value happens to resemble.
+  if (st.answeredByGraph) return 'external-graph';
+
   // A path is a path. A script opens it or it does not.
   if (PATH_PREDICATES.has(p) && looksLikePath(o)) return 'code';
   if (TEST_PREDICATES.has(p)) return 'test';
@@ -181,6 +192,7 @@ export const VERIFIABILITY_LABEL: Record<Verifiability, string> = {
   source: 'backed by a cited passage',
   user: 'attested by you — nothing else backs it',
   unknown: 'unsettled — nobody has established this',
+  'external-graph': "another graph's answer — their claim, review before accepting",
 };
 
 export const GATE_LABEL: Record<Gate, string> = {

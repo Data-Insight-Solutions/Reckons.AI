@@ -66,6 +66,12 @@ export interface Question {
   kb?: string;
   /** The work this question blocks. Lets other agents pick up what is NOT waiting. */
   blocks?: string;
+  /**
+   * F91: the RETURN ADDRESS. When the router throws a question to another graph (`kb` = the
+   * target), this records the ORIGIN — the graph that could not answer. The answer routes back
+   * here, so the reply lands where the question came from rather than in a shared void.
+   */
+  askedByGraph?: string;
   agent?: string;
   priority?: 'low' | 'medium' | 'high';
   note?: string;
@@ -88,6 +94,7 @@ export function askGraph(q: Question, pendingPath = PENDING): { queued: boolean;
     note: q.note,
     ...(q.kb ? { kb: q.kb } : {}),
     ...(q.blocks ? { blocks: expandIri(q.blocks) } : {}),
+    ...(q.askedByGraph ? { askedByGraph: q.askedByGraph } : {}),
     type: 'question' as const,
     agent: q.agent ?? 'agent',
     priority: q.priority ?? 'medium',

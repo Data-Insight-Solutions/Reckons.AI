@@ -18,7 +18,7 @@
 import { readFileSync, readdirSync } from 'fs';
 import path from 'path';
 import { Parser } from 'n3';
-import { routeQuestion, questionContext, addressees, type CandidateGraph } from '../../src/lib/rdf/question-router.js';
+import { routeQuestion, questionContext, addressees, graphAnswersQuestions, type CandidateGraph } from '../../src/lib/rdf/question-router.js';
 import type { Statement } from '../../src/lib/rdf/types.js';
 import { askGraph } from './ask.js';
 
@@ -69,10 +69,17 @@ const q = source
   ? questionContext(subject, predicate, source.statements)
   : { subject, predicate };
 
+// Reach by CONSENT: only graphs that opted in (kpred:answers-questions "true") are candidates.
+// A graph that has not said "you may ask me" is never addressed, however related. The source is
+// exempt from this — it is being excluded anyway, not asked.
+const reachable = candidates.filter((c) => c.id === source?.id || graphAnswersQuestions(c));
+const optedOut = candidates.length - reachable.length;
+
 // Do not route back to the source — it is the graph that could not answer.
-const others = candidates.map((c) => (c.id === source?.id ? { ...c, id: '__source__' } : c));
+const others = reachable.map((c) => (c.id === source?.id ? { ...c, id: '__source__' } : c));
 const ranked = routeQuestion(q, others);
 const targets = addressees(ranked);
+if (optedOut > 0) console.log(`${D}${optedOut} graph(s) not opted in to answering — excluded by consent.${X}\n`);
 
 console.log(`${B}Who could answer:${X} ${D}${subjectRaw} · ${predicateRaw}${X}\n`);
 if (source) console.log(`  ${D}source (excluded): ${source.name}${X}\n`);
@@ -92,9 +99,18 @@ if (!THROW) {
   process.exit(0);
 }
 
-// Throw and forget: emit the question addressed to the top graph(s).
+// Throw and forget: emit the question addressed to the top graph(s), with a RETURN ADDRESS
+// (the source graph) so the answer comes back to where the question came from — not a shared void.
 for (const t of targets) {
-  askGraph({ subject: subjectRaw, predicate: predicateRaw, question, kb: t.id, agent: 'question-router', note: `routed by relatedness (${t.reason})` });
+  askGraph({
+    subject: subjectRaw,
+    predicate: predicateRaw,
+    question,
+    kb: t.id,
+    askedByGraph: source?.id ?? '__unknown-origin__',
+    agent: 'question-router',
+    note: `routed by relatedness (${t.reason})`,
+  });
 }
 console.log(`${G}Thrown to ${targets.length} graph(s): ${targets.map((t) => t.name ?? t.id).join(', ')}.${X}`);
 console.log(`${D}The answer returns via the review queue when it arrives. Nobody waited.${X}`);

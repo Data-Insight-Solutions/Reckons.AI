@@ -1076,7 +1076,8 @@ kb:byo-static-host rdf:type    ktype:Feature ;
 kb:question-router rdf:type    ktype:Feature ;
                rdfs:label   "Question router (throw a question to whoever can answer it)" ;
                kpred:feature-id   "F91" ;
-               kpred:has-status   "planned" ;
+               kpred:has-status   "in-progress" ;
+               kpred:honest-note  "in-progress (2026-07-15): phase 1 scaffolded, phase 2 (throw-and-forget) functional — the local answer-return loop closes with opt-in consent and external-graph provenance. NOT done: a UI to set consent, real cross-boundary transport, and phase 3 RBAC (gated on F84). One process's pending queue stands in for two graphs today." ;
                kpred:relates-to   kb:async-orchestration ;
                kpred:relates-to   kb:publisher-subscriptions ;
                kpred:relates-to   kb:cross-kb-alignment ;
@@ -1105,12 +1106,15 @@ kb:qr-relevance rdf:type       ktype:Phase ;
 kb:qr-throw-forget rdf:type    ktype:Phase ;
                rdfs:label   "Phase 2 — throw the question, resume on the answer" ;
                kpred:part-of      kb:question-router ;
-               kpred:has-status   "scaffolded" ;
+               kpred:has-status   "functional" ;
                kpred:has-file     "scripts/agent/route-question.ts" ;
-               kpred:proof        "route-question.ts loads the repo's graphs, runs the relevance router, and THROWS the question addressed (kb / asked-of) to the top-related graph via ask.ts — routing to the threshold, never broadcasting. Verified: a question about kb:trust-system routed to reckons-shipped.ttl (0.69, 'already has facts about this exact entity') and would throw only there. OUTSTANDING: the answer-return path ACROSS a graph boundary (the F80 loop extended) — today the throw lands in the shared pending queue; true cross-graph delivery + return is the remaining work." ;
+               kpred:has-file     "scripts/agent/return-answer.ts" ;
+               kpred:tested-by    "src/lib/rdf/__tests__/question-router-reach.test.ts" ;
+               kpred:proof        "The local loop closes end to end. route-question.ts runs the relevance router and THROWS the question to the top-related graph via ask.ts — but now (a) only to graphs that OPTED IN (kpred:answers-questions \"true\"): reach by consent, not by relatedness, so a graph that never said 'you may ask me' is never addressed however related; and (b) stamped with a RETURN ADDRESS (askedByGraph = the origin that could not answer). return-answer.ts correlates each new answer back to its routed question and delivers it to the ORIGIN graph's pending queue as an external-graph fact (answered-by-graph + hop-chain [origin, answerer]), always reviewed, never machine-settled (F88 competentGate('external-graph')='user' — another party's claim, the thesis applied to federated answers). 31 tests pass (router + reach + verifiability). OUTSTANDING: this is one PROCESS's queue standing in for two graphs — real cross-boundary transport (decided: reuse n8n + pub-sub, later) and the RBAC per-hop authorization (phase 3, gated on F84) are not built. The consent marker is honoured but there is no UI to SET it yet." ;
                hnav:order   2 ;
-               kpred:description  "Emit the question to the top-ranked graph(s) as a partial fact addressed to them (kpred:asked-of), and let the existing F80 answer-loop carry the reply back across the graph boundary. The asker never waits. Reuses ask.ts / answers.ts, extended with a destination and a return path." ;
-               kpred:remaining    "kpred:asked-of on a question; cross-graph delivery of the partial fact; answer routed back to the origin graph." .
+               kpred:description  "Emit the question to the top-ranked graph(s) that opted in, as a partial fact carrying a return address (askedByGraph). The existing F80 answer-loop, extended by return-answer.ts, carries the reply back to the ORIGIN graph as a reviewable external-graph claim. The asker never waits. Reuses ask.ts / answers.ts." ;
+               kpred:decided      "Reach = subscribed + opt-in (kpred:answers-questions). Transport = reuse n8n + pub-sub, later. Answers = pending + provenance, ALWAYS reviewed (external-graph is never machine-settled). RBAC = finish the local loop first, F84 later. (Matt, 2026-07-15.)" ;
+               kpred:remaining    "A UI to SET the opt-in consent marker; real cross-process/cross-boundary transport (n8n + pub-sub); the 'ask another graph' review-UI entry (shared with phase 1)." .
 
 kb:qr-rbac-chain rdf:type      ktype:Phase ;
                rdfs:label   "Phase 3 — daisy-chain under RBAC, with provenance per hop" ;

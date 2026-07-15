@@ -140,8 +140,13 @@ export type TurtleSettings = {
 /**
  * What would SETTLE a fact — and therefore who is competent to approve it (F88).
  * Defined here beside Statement; the routing logic lives in rdf/verifiability.ts.
+ *
+ * `external-graph` (F91): the fact is an ANSWER another graph gave to a routed question. It is
+ * that party's claim, not our verified knowledge — an unverifiable claim made by the party it
+ * benefits is not evidence (the thesis), so it enters pending and is always reviewed, never
+ * machine-settled. It carries who answered and the hop chain it came back along.
  */
-export type Verifiability = 'code' | 'test' | 'source' | 'user' | 'unknown';
+export type Verifiability = 'code' | 'test' | 'source' | 'user' | 'unknown' | 'external-graph';
 
 export type Statement = {
   /** Unique id (uuid) */
@@ -210,6 +215,18 @@ export type Statement = {
    * decide however checkable it happens to be.
    */
   verifiableBy?: Verifiability;
+  /**
+   * F91 question router: when this fact is an ANSWER another graph returned to a routed
+   * question, the graph that answered it. Its presence makes the fact `external-graph`
+   * verifiable (another party's claim — always reviewed, never machine-settled).
+   */
+  answeredByGraph?: string;
+  /**
+   * The chain of graphs the question travelled and the answer returned along — [origin, …,
+   * answerer]. One hop today ([origin, target]); the list is the forward-compatible seed of the
+   * F84 RBAC daisy-chain, where each hop is authorized and provenance-stamped.
+   */
+  hopChain?: string[];
   /** Created / updated timestamps */
   createdAt: number;
   updatedAt: number;

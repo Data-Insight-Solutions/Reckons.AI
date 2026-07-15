@@ -137,3 +137,25 @@ export function routeQuestion(question: Question, candidates: CandidateGraph[]):
 export function addressees(scores: RoutingScore[], minScore = 0.15, max = 3): RoutingScore[] {
   return scores.filter((s) => s.score >= minScore).slice(0, max);
 }
+
+const ANSWERS_QUESTIONS = 'urn:kbase:predicate/answers-questions';
+
+/**
+ * Has this graph OPTED IN to answering routed questions? (F91 — reach by consent, not discovery.)
+ *
+ * A graph declares it by carrying `kpred:answers-questions "true"`. Reach must grow by consent:
+ * a graph that has not said "you may ask me" is never addressed, however related it is. A
+ * proposed Reckoning gathering facts privately must not leak a question to a graph whose owner
+ * did not agree to receive it — that is the difference between routing and trespass.
+ */
+export function graphAnswersQuestions(g: CandidateGraph): boolean {
+  return g.statements.some(
+    (s) => s.p.value === ANSWERS_QUESTIONS && s.o.value === 'true' && s.status !== 'rejected' && s.status !== 'superseded',
+  );
+}
+
+/** Keep only candidates that have opted in. The source graph (id '__source__') is always kept
+ *  out by routeQuestion; this filters the REACHABLE set to consenting graphs. */
+export function optedInCandidates(candidates: CandidateGraph[]): CandidateGraph[] {
+  return candidates.filter(graphAnswersQuestions);
+}
