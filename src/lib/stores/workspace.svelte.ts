@@ -699,7 +699,9 @@ export async function drainAndImportPending(): Promise<number> {
   const deduped = dropped.size ? sts.filter((s) => !dropped.has(s.id)) : sts;
   if (dropped.size) console.info(`[F80.1] folded ${dropped.size} duplicate pending note(s) before review`);
 
-  await addStatements(deduped, sourceId);
+  // Origin 'agent' engages the F52 boundary in addStatements: these are agent-queued notes, so
+  // any settled status is downgraded to a proposal — agents propose, the human settles.
+  await addStatements(deduped, sourceId, { origin: 'agent' });
   return deduped.length;
 }
 
