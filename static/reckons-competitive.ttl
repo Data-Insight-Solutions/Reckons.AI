@@ -351,6 +351,8 @@ kb:competitor-scan rdf:type    ktype:Feature ;
                kpred:feature-id   "F86" ;
                kpred:has-status   "functional" ;
                kpred:has-file     "scripts/offline/competitor-scan.ts" ;
+               kpred:test-coverage "none" ;
+               kpred:honest-note  "Untested, declared (2026-07-15): the fetch is deterministic and runs daily via the offline runner, but there is no unit test — a real one needs the GitHub API mocked, which is proper task work, not a drive-by. Declaring 'none' rather than shipping the gap silently (kb:honest-status)." ;
                kpred:description  "Refreshes every kb:Competitor's metadata and LICENSE from the GitHub API, and discovers candidate new competitors by topic search. Deterministic, zero tokens, no model: stars, license SPDX, last push and archived status are facts, not judgments. Drift (a license change, a new candidate, an abandoned project) is emitted to knowledge.pending.jsonl as a proposal for human review — the script never edits this TTL." ;
                kpred:principle    "The FETCH is script tier because it is checkable by a rule. The JUDGMENT — is this a competitor, do we want this feature, why do we decline it — stays with a human. Automating the judgment would fill the graph with confident nonsense." ;
                kpred:relates-to   kb:work-tiering ;
