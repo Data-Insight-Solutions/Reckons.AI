@@ -589,6 +589,226 @@
   {#if guidanceSaving}<span class="saving mono" style="font-size:0.7rem">saving…</span>{/if}
 </div>
 
+<section class="section">
+  <div class="section-head">
+    <h3>other graphs</h3>
+    <div class="section-head-actions">
+      <button class="ghost sm mono" onclick={() => (showNewKbForm = !showNewKbForm)}>+ new</button>
+    </div>
+  </div>
+  <p class="section-hint">switch to another graph, compare two, or start a new one. The section above edits the one you are in now.</p>
+
+  <!-- Filter tabs -->
+  <div class="kb-filter-tabs" role="tablist" aria-label="Graph filter">
+    <button
+      role="tab"
+      aria-selected={kbFilter === 'all'}
+      class="kb-tab"
+      class:active={kbFilter === 'all'}
+      onclick={() => (kbFilter = 'all')}
+    >all ({localKbs.length})</button>
+    <button
+      role="tab"
+      aria-selected={kbFilter === 'bookmarked'}
+      class="kb-tab"
+      class:active={kbFilter === 'bookmarked'}
+      onclick={() => (kbFilter = 'bookmarked')}
+      disabled={bookmarkedCount === 0}
+    >bookmarked ({bookmarkedCount})</button>
+  </div>
+
+  <!-- Search + sort. The question you have when you open this page is "where was I?", so the
+       default order is RECENCY, not the alphabet. -->
+  <div class="kb-gallery-controls">
+    <input
+      type="search"
+      class="kb-search mono"
+      bind:value={kbQuery}
+      placeholder="filter graphs…"
+      aria-label="Filter graphs by name, description or id"
+    />
+    <div class="kb-sort" role="group" aria-label="Sort graphs">
+      <button class="kb-sort-btn mono" class:active={kbSort === 'recent'} onclick={() => (kbSort = 'recent')}
+        title="Most recently edited first">recent</button>
+      <button class="kb-sort-btn mono" class:active={kbSort === 'size'} onclick={() => (kbSort = 'size')}
+        title="Largest graph first">size</button>
+      <button class="kb-sort-btn mono" class:active={kbSort === 'name'} onclick={() => (kbSort = 'name')}
+        title="Alphabetical">name</button>
+    </div>
+  </div>
+  {#if kbQuery.trim() && hiddenByQuery > 0}
+    <p class="kb-hidden-note mono">{hiddenByQuery} hidden by filter</p>
+  {/if}
+
+  {#if showNewKbForm}
+    <div class="new-kb-form">
+      <input
+        type="text"
+        bind:value={newKbName}
+        placeholder="new graph name…"
+        aria-label="New graph name"
+        onkeydown={(e) => { if (e.key === 'Enter') handleCreateKb(); if (e.key === 'Escape') showNewKbForm = false; }}
+        autofocus
+      />
+      <button class="primary sm" onclick={handleCreateKb} disabled={!newKbName.trim()}>create &amp; switch</button>
+      <button class="sm" onclick={() => (showNewKbForm = false)}>cancel</button>
+    </div>
+  {/if}
+
+  <!-- Compare toolbar (shows when 2 KBs selected) -->
+  {#if compareSelection.size > 0}
+    <div class="compare-toolbar">
+      <span class="mono compare-label">
+        {compareSelection.size}/2 selected for comparison
+      </span>
+      {#if compareSelection.size === 2}
+        <a
+          href="/review?align={[...compareSelection].join(',')}"
+          class="sm compare-link"
+        >
+          align these graphs
+        </a>
+      {/if}
+      <button class="sm" onclick={() => (compareSelection = new Set())}>clear</button>
+    </div>
+  {/if}
+
+  <div class="kb-list">
+    {#each sortedKbs as kb (kb.id)}
+      {@const isCurrent = kb.id === currentKbId}
+      {@const isCompareSelected = compareSelection.has(kb.id)}
+      <div
+        class="kb-entry"
+        class:current={isCurrent}
+        class:compare-selected={isCompareSelected}
+      >
+        <div class="kb-entry-left">
+          <!-- Lazy fingerprint: loads only when the card is on screen AND the browser is idle,
+               so the gallery paints first and previews trickle in behind it. -->
+          <GraphPreview kbId={kb.id} width={72} height={48} />
+          <button
+            class="bookmark-btn"
+            class:bookmarked={kb.bookmarked}
+            onclick={() => handleBookmark(kb.id)}
+            aria-label={kb.bookmarked ? `Remove ${kb.name} from bookmarks` : `Bookmark ${kb.name}`}
+            title={kb.bookmarked ? 'Remove bookmark' : 'Bookmark'}
+          >
+            {kb.bookmarked ? '★' : '☆'}
+          </button>
+          <div class="kb-entry-meta">
+            {#if editingKbId === kb.id}
+              <input
+                class="kb-rename-input"
+                bind:value={editingName}
+                onblur={commitRename}
+                onkeydown={(e) => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') { editingKbId = null; } }}
+                autofocus
+                aria-label="Rename graph"
+              />
+            {:else}
+              <span
+                class="kb-entry-name"
+                ondblclick={() => startRename(kb)}
+                title="Double-click to rename"
+              >{kb.name}</span>
+            {/if}
+            <div class="kb-entry-sub">
+              <span class="kb-entry-id mono">{kb.id}</span>
+              {#if kb.lastModified}
+                <span class="kb-entry-date mono">{relativeTime(kb.lastModified)}</span>
+              {/if}
+              <!-- Size, and the honest absence of it. A graph with no count has never been
+                   written to; saying "empty" is a claim we cannot support, so it says
+                   "not opened yet" instead. -->
+              {#if kb.statementCount != null}
+                <span class="kb-entry-size mono" title="{kb.statementCount} confirmed statements">
+                  {kb.statementCount.toLocaleString()} facts
+                </span>
+              {:else}
+                <span class="kb-entry-size mono muted-size" title="No statement count recorded — this graph has not been opened or saved yet">
+                  not opened yet
+                </span>
+              {/if}
+            </div>
+            {#if kb.description}
+              <span class="kb-entry-desc">{kb.description}</span>
+            {/if}
+          </div>
+        </div>
+        <div class="kb-entry-actions">
+          {#if isCurrent}
+            <span class="current-badge mono">current</span>
+          {:else}
+            <button class="sm primary" onclick={() => handleSwitch(kb.id)}>switch</button>
+            <a
+              href={kbUrl(kb.id)}
+              target="_blank"
+              rel="noopener"
+              class="sm-link"
+              title="Open in new tab"
+              aria-label="Open {kb.name} in a new browser tab"
+            >tab</a>
+          {/if}
+          <button
+            class="sm compare-toggle"
+            class:active={isCompareSelected}
+            onclick={() => toggleCompareSelect(kb.id)}
+            disabled={!isCompareSelected && compareSelection.size >= 2}
+            aria-label={isCompareSelected ? 'Deselect for comparison' : 'Select for comparison'}
+            title="Select for comparison"
+          >
+            {isCompareSelected ? '☑' : '☐'}
+          </button>
+          {#if !isCurrent && kb.id !== 'kbase'}
+            <button class="sm danger" onclick={() => handleDeleteKb(kb.id)}>remove</button>
+          {/if}
+        </div>
+      </div>
+    {/each}
+    {#if sortedKbs.length === 0}
+      <p class="filter-empty mono">no bookmarked graphs yet. star a graph to bookmark it.</p>
+    {/if}
+  </div>
+
+  <!-- GDrive files -->
+  <div class="drive-section">
+    <div class="drive-head">
+      <span class="mono" style="font-size:0.75rem; color:var(--muted);">google drive .ttl files</span>
+      {#if googleReady}
+        <button class="ghost sm mono" onclick={loadDriveFiles} disabled={driveLoading}>
+          {driveLoading ? 'loading…' : driveLoaded ? 'refresh' : 'browse drive'}
+        </button>
+      {:else}
+        <a href="/settings" class="hint-link mono">connect Google →</a>
+      {/if}
+    </div>
+
+    {#if driveError}
+      <p class="err mono">{driveError}</p>
+    {/if}
+
+    {#if driveLoaded}
+      {#if driveFiles.length === 0}
+        <p class="hint">no .ttl files found in Drive.</p>
+      {:else}
+        <div class="drive-list">
+          {#each driveFiles as f (f.id)}
+            <div class="drive-file">
+              <div class="drive-file-meta">
+                <span class="drive-file-name">{f.name}</span>
+                <span class="drive-file-date mono">{new Date(f.modifiedTime).toLocaleDateString()}</span>
+              </div>
+              <a href="/ingest">
+                <button class="sm">import →</button>
+              </a>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    {/if}
+  </div>
+</section>
+
 <!-- ── Sources ────────────────────────────────────────────────────────────── -->
 <section class="section">
   <div class="section-head">
@@ -943,224 +1163,6 @@
   <GraphPackagePanel statementCount={statements().length} />
 </section>
 
-<section class="section">
-  <div class="section-head">
-    <h3>graphs</h3>
-    <div class="section-head-actions">
-      <button class="ghost sm mono" onclick={() => (showNewKbForm = !showNewKbForm)}>+ new</button>
-    </div>
-  </div>
-
-  <!-- Filter tabs -->
-  <div class="kb-filter-tabs" role="tablist" aria-label="Graph filter">
-    <button
-      role="tab"
-      aria-selected={kbFilter === 'all'}
-      class="kb-tab"
-      class:active={kbFilter === 'all'}
-      onclick={() => (kbFilter = 'all')}
-    >all ({localKbs.length})</button>
-    <button
-      role="tab"
-      aria-selected={kbFilter === 'bookmarked'}
-      class="kb-tab"
-      class:active={kbFilter === 'bookmarked'}
-      onclick={() => (kbFilter = 'bookmarked')}
-      disabled={bookmarkedCount === 0}
-    >bookmarked ({bookmarkedCount})</button>
-  </div>
-
-  <!-- Search + sort. The question you have when you open this page is "where was I?", so the
-       default order is RECENCY, not the alphabet. -->
-  <div class="kb-gallery-controls">
-    <input
-      type="search"
-      class="kb-search mono"
-      bind:value={kbQuery}
-      placeholder="filter graphs…"
-      aria-label="Filter graphs by name, description or id"
-    />
-    <div class="kb-sort" role="group" aria-label="Sort graphs">
-      <button class="kb-sort-btn mono" class:active={kbSort === 'recent'} onclick={() => (kbSort = 'recent')}
-        title="Most recently edited first">recent</button>
-      <button class="kb-sort-btn mono" class:active={kbSort === 'size'} onclick={() => (kbSort = 'size')}
-        title="Largest graph first">size</button>
-      <button class="kb-sort-btn mono" class:active={kbSort === 'name'} onclick={() => (kbSort = 'name')}
-        title="Alphabetical">name</button>
-    </div>
-  </div>
-  {#if kbQuery.trim() && hiddenByQuery > 0}
-    <p class="kb-hidden-note mono">{hiddenByQuery} hidden by filter</p>
-  {/if}
-
-  {#if showNewKbForm}
-    <div class="new-kb-form">
-      <input
-        type="text"
-        bind:value={newKbName}
-        placeholder="new graph name…"
-        aria-label="New graph name"
-        onkeydown={(e) => { if (e.key === 'Enter') handleCreateKb(); if (e.key === 'Escape') showNewKbForm = false; }}
-        autofocus
-      />
-      <button class="primary sm" onclick={handleCreateKb} disabled={!newKbName.trim()}>create &amp; switch</button>
-      <button class="sm" onclick={() => (showNewKbForm = false)}>cancel</button>
-    </div>
-  {/if}
-
-  <!-- Compare toolbar (shows when 2 KBs selected) -->
-  {#if compareSelection.size > 0}
-    <div class="compare-toolbar">
-      <span class="mono compare-label">
-        {compareSelection.size}/2 selected for comparison
-      </span>
-      {#if compareSelection.size === 2}
-        <a
-          href="/review?align={[...compareSelection].join(',')}"
-          class="sm compare-link"
-        >
-          align these graphs
-        </a>
-      {/if}
-      <button class="sm" onclick={() => (compareSelection = new Set())}>clear</button>
-    </div>
-  {/if}
-
-  <div class="kb-list">
-    {#each sortedKbs as kb (kb.id)}
-      {@const isCurrent = kb.id === currentKbId}
-      {@const isCompareSelected = compareSelection.has(kb.id)}
-      <div
-        class="kb-entry"
-        class:current={isCurrent}
-        class:compare-selected={isCompareSelected}
-      >
-        <div class="kb-entry-left">
-          <!-- Lazy fingerprint: loads only when the card is on screen AND the browser is idle,
-               so the gallery paints first and previews trickle in behind it. -->
-          <GraphPreview kbId={kb.id} width={72} height={48} />
-          <button
-            class="bookmark-btn"
-            class:bookmarked={kb.bookmarked}
-            onclick={() => handleBookmark(kb.id)}
-            aria-label={kb.bookmarked ? `Remove ${kb.name} from bookmarks` : `Bookmark ${kb.name}`}
-            title={kb.bookmarked ? 'Remove bookmark' : 'Bookmark'}
-          >
-            {kb.bookmarked ? '★' : '☆'}
-          </button>
-          <div class="kb-entry-meta">
-            {#if editingKbId === kb.id}
-              <input
-                class="kb-rename-input"
-                bind:value={editingName}
-                onblur={commitRename}
-                onkeydown={(e) => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') { editingKbId = null; } }}
-                autofocus
-                aria-label="Rename graph"
-              />
-            {:else}
-              <span
-                class="kb-entry-name"
-                ondblclick={() => startRename(kb)}
-                title="Double-click to rename"
-              >{kb.name}</span>
-            {/if}
-            <div class="kb-entry-sub">
-              <span class="kb-entry-id mono">{kb.id}</span>
-              {#if kb.lastModified}
-                <span class="kb-entry-date mono">{relativeTime(kb.lastModified)}</span>
-              {/if}
-              <!-- Size, and the honest absence of it. A graph with no count has never been
-                   written to; saying "empty" is a claim we cannot support, so it says
-                   "not opened yet" instead. -->
-              {#if kb.statementCount != null}
-                <span class="kb-entry-size mono" title="{kb.statementCount} confirmed statements">
-                  {kb.statementCount.toLocaleString()} facts
-                </span>
-              {:else}
-                <span class="kb-entry-size mono muted-size" title="No statement count recorded — this graph has not been opened or saved yet">
-                  not opened yet
-                </span>
-              {/if}
-            </div>
-            {#if kb.description}
-              <span class="kb-entry-desc">{kb.description}</span>
-            {/if}
-          </div>
-        </div>
-        <div class="kb-entry-actions">
-          {#if isCurrent}
-            <span class="current-badge mono">current</span>
-          {:else}
-            <button class="sm primary" onclick={() => handleSwitch(kb.id)}>switch</button>
-            <a
-              href={kbUrl(kb.id)}
-              target="_blank"
-              rel="noopener"
-              class="sm-link"
-              title="Open in new tab"
-              aria-label="Open {kb.name} in a new browser tab"
-            >tab</a>
-          {/if}
-          <button
-            class="sm compare-toggle"
-            class:active={isCompareSelected}
-            onclick={() => toggleCompareSelect(kb.id)}
-            disabled={!isCompareSelected && compareSelection.size >= 2}
-            aria-label={isCompareSelected ? 'Deselect for comparison' : 'Select for comparison'}
-            title="Select for comparison"
-          >
-            {isCompareSelected ? '☑' : '☐'}
-          </button>
-          {#if !isCurrent && kb.id !== 'kbase'}
-            <button class="sm danger" onclick={() => handleDeleteKb(kb.id)}>remove</button>
-          {/if}
-        </div>
-      </div>
-    {/each}
-    {#if sortedKbs.length === 0}
-      <p class="filter-empty mono">no bookmarked graphs yet. star a graph to bookmark it.</p>
-    {/if}
-  </div>
-
-  <!-- GDrive files -->
-  <div class="drive-section">
-    <div class="drive-head">
-      <span class="mono" style="font-size:0.75rem; color:var(--muted);">google drive .ttl files</span>
-      {#if googleReady}
-        <button class="ghost sm mono" onclick={loadDriveFiles} disabled={driveLoading}>
-          {driveLoading ? 'loading…' : driveLoaded ? 'refresh' : 'browse drive'}
-        </button>
-      {:else}
-        <a href="/settings" class="hint-link mono">connect Google →</a>
-      {/if}
-    </div>
-
-    {#if driveError}
-      <p class="err mono">{driveError}</p>
-    {/if}
-
-    {#if driveLoaded}
-      {#if driveFiles.length === 0}
-        <p class="hint">no .ttl files found in Drive.</p>
-      {:else}
-        <div class="drive-list">
-          {#each driveFiles as f (f.id)}
-            <div class="drive-file">
-              <div class="drive-file-meta">
-                <span class="drive-file-name">{f.name}</span>
-                <span class="drive-file-date mono">{new Date(f.modifiedTime).toLocaleDateString()}</span>
-              </div>
-              <a href="/ingest">
-                <button class="sm">import →</button>
-              </a>
-            </div>
-          {/each}
-        </div>
-      {/if}
-    {/if}
-  </div>
-</section>
 
 <!-- ── Entity Types ────────────────────────────────────────────────────── -->
 <section class="section">
