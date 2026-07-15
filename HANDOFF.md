@@ -187,11 +187,18 @@ using it and extending it.
      and a quiet flow; over-cap contested items HELD BACK, never quieted.
    - **F83 graph-legibility** (in-progress, 156a17a): `entity-review.ts` — `groupPendingByEntity`
      condenses 1888 triple-rows to ~233 entity cards, each carrying its strongest F88 gate.
-   These four COMPOSE: dedup removes noise → the wall ensures proposals → entity-review condenses
-   to cards → attention spotlights the contested. NONE are wired into the review UI yet (that is
-   the functional step, and it needs browser verification this headless env can't give) — the
-   next session's highest-leverage move is wiring them into the Review surface and watching it
-   render. 997 tests pass; align green; all on PR #101.
+   These four COMPOSE, and now have a single FRONT DOOR: `review-pipeline.ts` `buildReviewPlan()`
+   (dd25471) runs dedup → route (F88) → spotlight (F53) → entity cards (F83) and returns the whole
+   plan; `reviewPlanSummary()` is the honest headline. Integration-tested end to end.
+   `dedupeCompletePending()` is the ONE shared "exclude partials, fold dupes" rule (drain + pipeline
+   both call it). A DRIFT GUARD (7d5e8bb) makes `merge-band.ts` fail if its constants diverge from
+   the graph's decided thresholds. DOGFOODED: `npm run review:plan` (2227deb) runs the pipeline on
+   the real 186-item queue → 57 entity cards, 7 decisions spotlighted; confirmed all 186 correctly
+   route to the user lane (F88 fails unclassified toward the human — these are questions/observations
+   with no code/test predicate). ~1005 tests; align green; all on PR #101.
+   **NEXT SESSION, highest leverage: WIRE `buildReviewPlan` into the Review UI and watch it render**
+   (moves F53/F83 scaffolded→functional with real evidence — needs a browser, which the headless
+   autonomous env can't give). The plumbing is done and tested; only the render + observation remain.
 2. **F90 Blender** (planned) — headless Blender over MCP. The trap is in the roadmap:
    **Blender renders a black frame and exits 0.** First domain where `done-when` cannot be a
    passing test — exactly what F88's `verifiable-by` exists for (deterministic image check →
