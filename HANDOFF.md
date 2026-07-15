@@ -199,6 +199,21 @@ using it and extending it.
    **NEXT SESSION, highest leverage: WIRE `buildReviewPlan` into the Review UI and watch it render**
    (moves F53/F83 scaffolded→functional with real evidence — needs a browser, which the headless
    autonomous env can't give). The plumbing is done and tested; only the render + observation remain.
+
+   **STRETCH CONTINUED (still 2026-07-15) — 2 more features + the suggest tier made real:**
+   - **F51 review-anchored-generation** planned→scaffolded (dd25c0b): `generation-grounding.ts`
+     `validateGeneration()` — the MOAT, the grounding constraint: every generated sentence must
+     cite >=1 statement and >=1 must be CONFIRMED; catches uncited/dangling/unconfirmed. The
+     generation-side analog of `grounding.ts` (ingest passage-grounding). Enforcer built; the
+     grounded GENERATOR (prose with per-sentence citations) + render-path wiring remain.
+   - **F80.1 suggest tier now works OFFLINE** (1f2b18f): `lexical-similarity.ts` (token Jaccard,
+     subject & object compared separately then min — so an identical subject can't inflate a
+     different-object pair) gives the suggest tier a free similarity source; `buildReviewPlan` gained
+     an optional `similarity` fn; `npm run review:plan` wires it and surfaces real near-dupes on the
+     186-item queue. DOGFOODING CAUGHT A REAL BUG (subject-inflation), now fixed + regression-tested
+     — the honest-verification discipline working.
+   Running tally: **~1024 tests** (from 956 at session start), align green, ~20 commits on PR #101.
+   The review-at-scale subsystem is COMPLETE and internally consistent; remaining is UI wiring.
 2. **F90 Blender** (planned) — headless Blender over MCP. The trap is in the roadmap:
    **Blender renders a black frame and exits 0.** First domain where `done-when` cannot be a
    passing test — exactly what F88's `verifiable-by` exists for (deterministic image check →
