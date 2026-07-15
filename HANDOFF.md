@@ -148,10 +148,20 @@ triage at the very end.
 The orchestration loop is BUILT (schedule → reconcile → runner → orchestrate). What remains is
 using it and extending it.
 
-1. **Actually run the triage.** `npm run orchestrate` splits the queue: ~24 re-derivable (leave
-   to reconcile), 5 remediable (drafted tasks — promote the good ones into `tasks.ttl`), and the
-   rest JUDGMENT. That judgment residue is real Opus work — route it with F88, most is not Matt's.
-   **This is the frontier task the whole session was building toward.**
+1. **Triage RAN (2026-07-15).** `npm run orchestrate` on a 186-item queue: **14 re-derivable**
+   (all `graph-lint/predicate-economy` — a standing design nudge that fires every run; reconcile
+   will NOT clear it, only naming real relations in the TTL or accepting it will), **0 remediable**,
+   **172 judgment**. The judgment residue is dominated by MATT-authority / route-to-a-human
+   clusters, not Opus grind: 54 branch-align/suggestion, 24 history-lessons/fix-without-test (a
+   test-writing backlog — judgment which to write), 16 branch-align/status-update, 16
+   claude-code/observation, 14 competitor-scan/candidate (his rule: the *judgment* stays human),
+   12 alignment-sweep/question, plus smaller question clusters agents threw (runner/1,
+   code-review/2, button-crawl/2, claude-code/8). **Not grinding these autonomously was deliberate:**
+   a wrong answer written to the graph is a lie it repeats in Matt's name, and most of this queue
+   is explicitly his. Next Opus pass: pick the small QUESTION clusters you can answer with
+   certainty (they feed the F91 answer-loop), and propose graph edits for the predicate-economy 14.
+   Also landed this session: `fix(runner)` Ollama-URL propagation (3893f05), competitor-scan
+   honest-status declaration (aae682b).
 2. **F90 Blender** (planned) — headless Blender over MCP. The trap is in the roadmap:
    **Blender renders a black frame and exits 0.** First domain where `done-when` cannot be a
    passing test — exactly what F88's `verifiable-by` exists for (deterministic image check →
