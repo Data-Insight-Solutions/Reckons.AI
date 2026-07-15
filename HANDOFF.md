@@ -162,6 +162,16 @@ using it and extending it.
    certainty (they feed the F91 answer-loop), and propose graph edits for the predicate-economy 14.
    Also landed this session: `fix(runner)` Ollama-URL propagation (3893f05), competitor-scan
    honest-status declaration (aae682b).
+   **The small QUESTION clusters are now RESOLVED (2026-07-15, commits ac3bdaa + 72f5a33):**
+   answered the code-verified ones (runner = node process; `g` = source/provenance), rejected 3
+   verified-false findings (2 local code-review false positives + the button-crawl "bookmarked(0)"
+   which is correctly disabled at 0), and recorded Matt's design calls in the graph — a single
+   MERGE BAND (auto >=0.90 / suggest 0.50-0.90 / below 0.50 nothing) now governs entity merge,
+   predicate-sameness AND linking (superseded the 2026-07-13 ~0.80 link floor — conflict surfaced,
+   not overwritten); PWA orientation portrait->any (+F34 must test both orientations); TTL/TriG
+   split by USE (private export = TTL no publisher; publishing = TriG + owner/publisher REQUIRED).
+   All `planned`/spec, marked not-yet-wired. What remains is the BIG judgment clusters
+   (history-lessons 31, competitor-scan 18, graph-lint 14, alignment-sweep 12) — mostly Matt's.
 2. **F90 Blender** (planned) — headless Blender over MCP. The trap is in the roadmap:
    **Blender renders a black frame and exits 0.** First domain where `done-when` cannot be a
    passing test — exactly what F88's `verifiable-by` exists for (deterministic image check →
