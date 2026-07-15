@@ -1497,15 +1497,16 @@ kb:browser-fact-finding rdf:type ktype:Feature ;
                kpred:principle    "Disconnected data is less valuable — but a FORCED link is worse than an orphan. If the content genuinely does not overlap the graph, relate it to nothing and say so. An invented edge is a lie the graph tells itself, and it is the same failure as the fabricated citation in kb:passage-grounding: it looks like knowledge and it is not." ;
                kpred:principle    "Deep analysis is opt-in. Reading is not consent to be indexed; the user asks, or it does not happen." ;
                kpred:remaining    "Highlight → candidate triples with excerpts; on-demand deep analysis; graph query by key terms + page content; a link-confidence threshold below which we propose NO relation rather than a weak one." ;
-               kpred:open-question "What similarity floor counts as 'genuinely overlapping'? Set it too low and every page connects to everything, which is the same as connecting to nothing — the graph becomes a hairball and its edges stop meaning anything." ;
+               kpred:decided      "Similarity floor RESOLVED (Matt, 2026-07-15): the shared merge band — link at >=0.90, suggest 0.50-0.90, below 0.50 nothing (kb:link-confidence, kb:auto-merge). Semantic, and the predicate carries the signal." ;
                kpred:depends-on   kb:browser-extension .
 
 # -- Predicate economy: the edge TYPE is the signal ------------------------------
 # Matt, 2026-07-13, answering kpred:link-similarity-floor. Two claims, and the second
 # is the one that actually matters:
 #
-#   1. ~80% confidence is the bar, and it is SEMANTIC, not lexical — a synonym is a
-#      likely connection, so embeddings, not string equality.
+#   1. The bar is SEMANTIC, not lexical — a synonym is a likely connection, so embeddings,
+#      not string equality. (The NUMBER moved 2026-07-15: ~0.80 -> the shared 0.90 merge
+#      band, so merge, link, and predicate-sameness all use one rule. See kb:link-confidence.)
 #   2. THE PREDICATE IS THE MAIN CLUE TO A VALID LINK. Not the entity labels.
 #
 # Two nodes whose labels are synonyms is weak evidence. Two nodes joined by a MEANINGFUL
@@ -1526,10 +1527,11 @@ kb:browser-fact-finding rdf:type ktype:Feature ;
 kb:link-confidence rdf:type    ktype:Concept ;
                rdfs:label   "Link confidence threshold" ;
                kpred:part-of      kb:browser-fact-finding ;
-               kpred:decided      "~0.80 (Matt, 2026-07-13). SEMANTIC similarity, not lexical: the same word is not required, a synonym is a likely connection — so embeddings (kb:embedding-model), not string matching." ;
+               kpred:decided      "MOVED to the shared merge band (Matt, 2026-07-15), SUPERSEDING the ~0.80 of 2026-07-13: link at >=0.90, SUGGEST a link (reviewable) in 0.50-0.90, below 0.50 propose nothing — the same auto/suggest band as entity merge and predicate-sameness (kb:auto-merge). Still SEMANTIC, not lexical (embeddings, kb:embedding-model, a synonym is a likely connection), and the PREDICATE is still the main clue to a valid link, not the entity labels — only the numeric floor changed, to one rule across merge, link, and predicate-sameness." ;
                kpred:principle    "Below the bar, propose NOTHING. A forced link is worse than an orphan: disconnected data is merely less valuable, whereas an invented edge is a lie the graph tells itself — the same failure as a fabricated citation (kb:passage-grounding). It looks like knowledge and it is not." ;
-               kpred:principle    "Confidence in the ENTITY match is necessary but not sufficient. The link must also name a real relation (kb:predicate-economy). Two entities being 80% the same thing does not tell you HOW they connect." ;
-               kpred:relates-to   kb:predicate-economy .
+               kpred:principle    "Confidence in the ENTITY match is necessary but not sufficient. The link must also name a real relation (kb:predicate-economy). Two entities being 90% the same thing does not tell you HOW they connect." ;
+               kpred:relates-to   kb:predicate-economy ;
+               kpred:relates-to   kb:auto-merge .
 
 # -- F83: Graph legibility — a 1888-triple graph is not a 1234-node graph -------
 # Matt opened the roadmap graph and found it unusable: 1,888 triples, and on many devices
