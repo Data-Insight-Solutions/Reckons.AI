@@ -273,7 +273,10 @@ export function parseAssetRefs(ttl: string): AssetRef[] {
   };
 
   for (const [pred, cat] of Object.entries(allPredicates)) {
-    const escaped = pred.replace(/[/]/g, '\\/');
+    // Escape ALL regex metacharacters in the predicate IRI, not just '/' — otherwise a '.' or '('
+    // in a predicate would be interpreted as regex syntax, mis-matching or breaking the pattern.
+    // Fixes js/incomplete-sanitization (CodeQL).
+    const escaped = pred.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
     const re = new RegExp(`<([^>]+)>\\s+<${escaped}>\\s+"([^"]+)"\\s*\\.`, 'g');
     let m: RegExpExecArray | null;
     while ((m = re.exec(ttl)) !== null) {
