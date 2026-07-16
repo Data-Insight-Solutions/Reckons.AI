@@ -1586,6 +1586,28 @@ kb:graph-legibility rdf:type   ktype:Feature ;
                kpred:remaining    "Predicate + time filters in the UI (the pure functions exist and are tested); focus/expand interaction. The entity-granularity review cards are now RENDERED in /review and verified in a browser (via F53's buildReviewPlan wiring; tests/e2e/review.test.ts, 2026-07-15) — groupPendingByEntity() condenses the flat row list into per-entity cards carrying their strongest F88 gate, with a by-entity/flat toggle. Still to do here: the graph-view predicate/time filters still need their UI on the canvas side." ;
                kpred:done         "Graph package & sync moved OUT of the canvas filter panel and INTO the Graphs tab (2026-07-13). It had been buried behind a disclosure, collapsed 'so the panel stays short' — which was the tell that it did not belong there. A filter panel should filter. Graph management has its own top-level tab precisely because it matters." .
 
+# -- F92: One graph canvas — review as overlays, adaptive LOD --------------------
+# Matt, 2026-07-15, after a cluster of review-graph bugs (missing 3D labels, dead overlay
+# node-details, doubled 2D/3D toggles) that were ALL the same root cause: /review reimplements
+# the graph render as a divergent COPY of the main graph at /. Two renders drift; fixing a bug in
+# one leaves it live in the other. The decision: ONE canonical graph canvas; review is panels,
+# sidebars and overlays ON TOP OF it, not a separate render. And rendering degrades by FRAMERATE,
+# not a hard 2D/3D switch: full 3D -> lower-poly 3D -> 2D, adaptively, so a heavy graph stays usable.
+
+kb:one-graph-canvas rdf:type   ktype:Feature ;
+               rdfs:label   "One graph canvas — review as overlays, adaptive LOD" ;
+               kpred:feature-id   "F92" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:relates-to   kb:graph-legibility ;
+               kpred:relates-to   kb:review-workbench ;
+               kpred:relates-to   kb:undersea-pod-ui ;
+               kpred:description  "Retire the SECOND graph render. /review currently imports its own KnowledgeGraph/2D/Overlay/Compare instances and reimplements labels, node-details and mode toggles — a divergent copy of the main graph at / (measured 2026-07-15: both pages import the render directly; there is no shared canvas). Extract ONE GraphCanvas component that owns the render, adaptive level-of-detail, labels, node-details and a panel/overlay SLOT API; / and /review both mount it. Review's incoming/deletions/merges/align become panels/sidebars/overlays over that one canvas, highlighting pending nodes IN PLACE, instead of a separate preview render." ;
+               kpred:principle    "Two renders of the same thing WILL drift, and a bug fixed in one stays live in the other. The review-graph bug cluster (3D labels, overlay node-details, doubled toggles) was drift, not three bugs. One canonical render, reused, is the fix — and it is cheaper than maintaining the divergence." ;
+               kpred:principle    "Degrade by FRAMERATE, not by a hard 2D/3D switch. A graph that drops frames should shed detail gracefully — full 3D -> lower-poly 3D (simpler geometry/materials, fewer labels) -> 2D — measured from real frame timing with hysteresis so it does not flap. Falling all the way to 2D on the first stutter throws away depth the user wanted." ;
+               kpred:depends-on   kb:graph-legibility ;
+               kpred:remaining    "Extract GraphCanvas (render + LOD + labels + node-details + overlay slots) from the main page; adopt it on / with no behaviour change; migrate /review to mount it with review panels as overlays; add framerate-driven LOD tiers (full-3D / low-poly-3D / 2D) with hysteresis; retire /review's duplicate render components." .
+
 # == THE TTL / TRIG SPLIT — two products, not two file formats ==================
 # Matt, 2026-07-13, and it reframes everything above.
 #
