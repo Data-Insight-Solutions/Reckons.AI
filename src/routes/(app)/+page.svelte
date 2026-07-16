@@ -5,6 +5,7 @@
   import { buildGraphView } from '$lib/rdf/graph-view';
   import { bestSuggestion } from '$lib/rdf/view-suggestions';
   import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
+  import GraphLabels from '$lib/components/GraphLabels.svelte';
   import AssetGlbViewer from '$lib/components/AssetGlbViewer.svelte';
   import StatementCard from '$lib/components/StatementCard.svelte';
   import LandingPage from '$lib/components/LandingPage.svelte';
@@ -1986,15 +1987,12 @@
 
 <!-- Always-visible node labels — outer wrapper positions (GPU), inner handles hover scale -->
 <!-- transition:fade handles distance-culling enter/exit; dim-hidden handles dimMode + selected -->
-{#each nodeLabels as n (n.key)}
-  <div
-    class="node-label-wrap"
-    transition:fade={{ duration: 220 }}
-    style="transform: translate3d({n.x}px, {n.y}px, 0); --lfs: {labelFontSize}px; --lop: {n.opacity ?? 0.85};"
-  >
-    <!-- Show the node image when previews are forced on, OR for the focused/
-         selected/highlighted nodes. Click it to expand large (→ fullscreen).
-         Hidden while this node's image is the expanded one. -->
+<!-- Always-visible node labels — shared GraphLabels overlay (F92). The asset thumbnail and leap
+     badge are page-specific, passed as snippets so this page keeps them and their styling. -->
+<GraphLabels labels={nodeLabels} {selected} {hoverTarget} {dimMode} {highlightedSet} {labelFontSize}>
+  {#snippet preview(n)}
+    <!-- Show the node image when previews are forced on, OR for the focused/selected/highlighted
+         nodes. Click it to expand large (→ fullscreen). Hidden while it is the expanded one. -->
     {#if (alwaysPreviews || n.key === selected || highlightedSet.has(n.key)) && n.key !== expandedAssetKey}
       {@const a = nodeAssetFor(iriFromNodeKey(n.key))}
       {#if a}
@@ -2012,12 +2010,8 @@
         {/if}
       {/if}
     {/if}
-    <span
-      class="node-label mono"
-      class:hovered={n.key === hoverTarget}
-      class:selected-node={n.key === selected}
-      class:dim-hidden={dimMode && !highlightedSet.has(n.key) && n.key !== hoverTarget && n.key !== selected}
-    >{n.label}</span>
+  {/snippet}
+  {#snippet after(n)}
     {#if n.key === selected && entityLeap}
       <button
         class="leap-badge mono"
@@ -2030,8 +2024,8 @@
         <span class="leap-badge-label">{entityLeap.label ?? (entityLeap.kind === 'kb' ? entityLeap.target.slice(0, 8).toUpperCase() : entityLeap.target)}</span>
       </button>
     {/if}
-  </div>
-{/each}
+  {/snippet}
+</GraphLabels>
 
 <!-- Layout anchor labels (source/type/hub cluster markers) -->
 {#each markerLabels as m (m.key)}
@@ -4058,8 +4052,8 @@
     .kb-hint { display: none; } /* keyboard nav hint not useful on touch devices */
     .gif-preview { display: none; } /* hover-triggered GIF preview not useful on touch */
     .hover-content-tooltip { display: none; } /* hover tooltip not useful on touch — use node panel preview instead */
-    .node-label-wrap { pointer-events: none; } /* prevent label divs from stealing touch events */
-    .node-label-wrap .leap-badge { pointer-events: auto; } /* but keep leap badges tappable */
+    /* .node-label-wrap now lives in GraphLabels (pointer-events:none there); .leap-badge sets
+       its own pointer-events:auto, so the mobile overrides here are redundant. */
     .np-preview-img { max-height: 160px; } /* slightly taller on mobile since it's the primary preview */
   }
 </style>

@@ -3,6 +3,7 @@
   import KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
   import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
   import CompareGraph from '$lib/components/CompareGraph.svelte';
+  import GraphLabels from '$lib/components/GraphLabels.svelte';
   import OverlayGraph from '$lib/components/OverlayGraph.svelte';
   import OverlayGraph3D from '$lib/components/OverlayGraph3D.svelte';
   import DiffEntry from '$lib/components/DiffEntry.svelte';
@@ -1035,17 +1036,10 @@
         {/if}
       {/if}
 
-      <!-- 3D node labels: the preview 3D scene draws no text, so render the viewport-space labels
-           it emits as fixed HTML overlays. Without this, 3D had no labels at all. -->
+      <!-- 3D node labels via the SHARED GraphLabels overlay (F92) — same component the main graph
+           uses, so review's labels can no longer drift from it. Review needs no asset/leap snippets. -->
       {#if graphMode === 'preview' && !use2D}
-        {#each nodeLabels as n (n.key)}
-          <div
-            class="r3d-label-wrap"
-            style="transform: translate3d({n.x}px, {n.y}px, 0); --lop: {n.opacity ?? 0.85};"
-          >
-            <span class="r3d-label mono" class:selected-node={n.key === selected}>{n.label}</span>
-          </div>
-        {/each}
+        <GraphLabels labels={nodeLabels} {selected} />
       {/if}
     </div>
 
@@ -1511,34 +1505,6 @@
   }
   .mode-spacer { flex: 1; }
   .dim-toggle { margin-left: 0.2rem; }
-
-  /* 3D node labels (fixed to the viewport; the component emits viewport-space coords) */
-  .r3d-label-wrap {
-    position: fixed;
-    left: 0;
-    top: 0;
-    pointer-events: none;
-    z-index: 10;
-    will-change: transform;
-    transition: transform 35ms linear;
-  }
-  .r3d-label {
-    display: inline-block;
-    transform: translate(-50%, -50%);
-    font-size: 11px;
-    line-height: 1;
-    padding: 1px 4px;
-    border-radius: 4px;
-    white-space: nowrap;
-    color: var(--fg, #e8e8e8);
-    background: color-mix(in srgb, var(--surface, #111) 78%, transparent);
-    opacity: var(--lop, 0.85);
-  }
-  .r3d-label.selected-node {
-    color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 18%, var(--surface, #111));
-    opacity: 1;
-  }
 
   .graph-render {
     flex: 1;
