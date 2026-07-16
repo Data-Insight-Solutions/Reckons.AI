@@ -2806,6 +2806,17 @@ kb:shelly-matrix-builder rdf:type ktype:Feature ;
     kpred:principle "A matrix creates MANY edges at once, so the confirmation gate is not optional — showing the interpreted matrix back and getting a yes is the difference between a power tool and a way to silently fill a graph with wrong relations (kb:predicate-manager's lesson at scale). And a forced link is worse than an orphan: an empty cell means NO edge, not a weak one." ;
     kpred:decided "EXPOSE VIA MCP TOO (Matt, 2026-07-15): the matrix slice-and-dice of complex intertwined relationships is not only a Shelly chat function — an MCP tool takes/returns the relation matrix so an external agent can propose a whole sub-lattice of relations at once (still as pending, still confirmed). The matrix IS the interchange format: read a region of the graph AS a matrix, edit it, write it back as proposed edges." .
 
+# -- F96: Shelly as graph-control persona + quick graph settings -----------------
+kb:shelly-graph-control rdf:type ktype:Feature ;
+    rdfs:label "Shelly graph-control persona + quick graph settings" ;
+    kpred:feature-id "F96" ;
+    kpred:has-status "speculative" ;
+    kpred:relates-to kb:shelly-chat ;
+    kpred:relates-to kb:one-graph-canvas ;
+    kpred:relates-to kb:graph-legibility ;
+    kpred:description "Two intertwined moves on the Shelly panel and the graph controls (Matt, 2026-07-15). (1) SHELLY DRIVES THE VIEW: a persona that REPLACES the default Shelly and whose primary job is the GRAPH VIEW SETTINGS — force strength, layout, filters and other view settings changed AUTOMATICALLY by Shelly from a plain-language request ('spread these out', 'just show dependencies', 'focus on Alex'). Plus interpreting the user's DESCRIPTION of a graph EDIT (NL -> proposed triples, pending) and the specialty matrix functions (F95). Aim for QUICK review and small add-ons to the chat panel, not a redesign. (2) QUICK GRAPH SETTINGS: the review overlay-type panel JOINS filters and forces in one place; a quick-set graph-options control appears on HOVER (desktop) or SINGLE-SELECT (mobile) offering All / Sets / Default / Settings — where Settings on mobile opens the full graph KB page. Ties directly to F92 (review is a mode with its own panels) — the force/filter panel is that mode's configurable surface, and Shelly is its natural-language driver." ;
+    kpred:principle "Shelly changing the VIEW is safe to do live (it rearranges pixels, settles nothing); Shelly changing the GRAPH still proposes pending facts the human confirms. The persona swap is scoped: a graph-control Shelly is not licensed to write facts unreviewed just because it can rearrange the view." .
+
 kb:n8n-sync-hub rdf:type ktype:Concept ;
     rdfs:label "Graph Sync Hub" ;
     kpred:moved-to "static/reckons-shipped.ttl" .
