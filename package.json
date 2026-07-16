@@ -119,6 +119,7 @@
     "review:plan": "npx tsx scripts/review-plan.ts",
     "deps:shared": "npx tsx scripts/offline/shared-deps.ts",
     "code:sprawl": "npx tsx scripts/offline/code-sprawl.ts",
+    "publish": "npx tsx scripts/publish-site.ts",
     "reconcile": "npx tsx scripts/agent/reconcile.ts",
     "blender:render": "npx tsx scripts/content/blender-render.ts",
     "split": "npx tsx scripts/agent/split.ts",
