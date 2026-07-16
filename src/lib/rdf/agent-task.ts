@@ -37,6 +37,9 @@ export interface AgentTask {
   tier: Tier;
   /** Preferred harness ('any' = whatever is cheapest and competent). */
   harness: string;
+  /** The local model this task loads (e.g. "qwen3-coder", "qwen2.5vl"). Drives model BATCHING:
+   *  Ollama + RAM cannot switch models cheaply, so the runner keeps same-model tasks together. */
+  model?: string;
   /** Machine-checkable acceptance criterion. A task without one must never be assigned. */
   doneWhen?: string;
   /** IRIs of questions/partial-facts/tasks that must resolve first. */
@@ -84,6 +87,7 @@ export function parseTasks(statements: Statement[]): AgentTask[] {
       goal: one('goal') ?? '',
       tier: isTier(tierRaw) ? tierRaw : 'frontier',
       harness: one('harness') ?? 'any',
+      model: one('model'),
       doneWhen: one('done-when'),
       blockedBy: many('blocked-by'),
       dueAt: num(one('due-at')),
@@ -128,15 +132,27 @@ export function blockedReason(
   return null;
 }
 
-/** Tasks a runner may take right now, cheapest tier first. */
+/**
+ * Order tasks to minimize local-model RELOAD THRASH. Ollama + RAM cannot switch models cheaply, so
+ * running tasks in an order that keeps one model warm across its whole batch — instead of paying a
+ * reload between every task — is real wall-clock savings on a busy queue.
+ *
+ * Order: script tier first (no model, zero cost, run the free ones first), then local-agent tasks
+ * GROUPED BY MODEL (all of one model consecutively), then frontier. The sort is STABLE, so any
+ * existing priority within a model group (blast radius, authoring order) is preserved. Generic over
+ * anything with a tier and an optional model, so the runner (its own Task shape) can reuse it.
+ */
+export function orderForModelBatching<T extends { tier: string; model?: string }>(tasks: T[]): T[] {
+  const rank = (t: T) => (t.tier === 'script' ? 0 : t.tier === 'local-agent' ? 1 : 2);
+  return [...tasks].sort((a, b) => rank(a) - rank(b) || (a.model ?? '').localeCompare(b.model ?? ''));
+}
+
+/** Tasks a runner may take right now — cheapest tier first, then batched by local model. */
 export function runnableTasks(
   tasks: AgentTask[],
   opts: { now: number; resolved: (iri: string) => boolean },
 ): AgentTask[] {
-  const order: Record<Tier, number> = { script: 0, 'local-agent': 1, frontier: 2 };
-  return tasks
-    .filter((t) => blockedReason(t, opts) === null)
-    .sort((a, b) => order[a.tier] - order[b.tier]);
+  return orderForModelBatching(tasks.filter((t) => blockedReason(t, opts) === null));
 }
 
 /**

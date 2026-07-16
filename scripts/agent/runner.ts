@@ -38,6 +38,7 @@ import { execSync } from 'child_process';
 import { readFileSync, writeFileSync, existsSync, appendFileSync } from 'fs';
 import path from 'path';
 import { Parser, Writer, DataFactory, type Quad } from 'n3';
+import { orderForModelBatching } from '../../src/lib/rdf/agent-task.js';
 
 const { namedNode, literal, quad } = DataFactory;
 
@@ -157,6 +158,10 @@ interface Task {
   claimedBy?: string;
   claimExpires?: number;
   outcome?: string;
+  /** The local model this task loads (e.g. "qwen3-coder", "qwen2.5vl"). Used to BATCH same-model
+   *  tasks consecutively — Ollama + RAM cannot switch models cheaply, so reordering to keep one
+   *  model warm across its tasks avoids reload thrash. Optional; script tier has none. */
+  model?: string;
   /** Recurrence, e.g. "30m", "6h", "7d". A recurring task is never "done" — it is DUE AGAIN. */
   every?: string;
   /** Epoch ms. Not runnable before this. */
@@ -190,6 +195,7 @@ const tasks: Task[] = [...taskIris].map((iri) => ({
   claimedBy: one(iri, 'claimed-by'),
   claimExpires: Number(one(iri, 'claim-expires') ?? 0) || undefined,
   outcome: one(iri, 'outcome'),
+  model: one(iri, 'model'),
   every: one(iri, 'every'),
   dueAt: Number(one(iri, 'due-at') ?? 0) || undefined,
   lastRun: Number(one(iri, 'last-run') ?? 0) || undefined,
@@ -348,7 +354,9 @@ function journal(entry: object) {
 // ── Drain ──────────────────────────────────────────────────────────────────
 console.log(`${B}Runner${X} ${D}— ${GRAPH} · ${RUNNER_ID}${D}${DRY ? ' · DRY RUN' : ''}${X}\n`);
 
-const runnable = tasks.filter((t) => blockedReason(t) === null);
+// Batch by local model so Ollama keeps one model warm across its tasks instead of thrashing
+// reloads between them (RAM cannot switch models cheaply). Script tier stays first (free).
+const runnable = orderForModelBatching(tasks.filter((t) => blockedReason(t) === null));
 const blocked = tasks.filter((t) => blockedReason(t) !== null && t.state !== 'done');
 
 if (blocked.length) {
@@ -374,9 +382,16 @@ if (runnable.length === 0) {
 
 let ran = 0;
 let failed = 0;
+let warmModel: string | undefined; // the model currently kept warm, for batch-boundary logging
 
 for (const t of runnable) {
   const short = t.iri.split('/').pop();
+  // Announce a model batch boundary — the whole point of the ordering is that this fires as few
+  // times as possible, because each firing is a real Ollama reload.
+  if (t.model && t.model !== warmModel) {
+    console.log(`${D}◆ loading model ${t.model} — kept warm for its batch${X}`);
+    warmModel = t.model;
+  }
   console.log(`${B}▶ ${short}${X} ${D}— ${t.goal}${X}`);
 
   if (DRY) {

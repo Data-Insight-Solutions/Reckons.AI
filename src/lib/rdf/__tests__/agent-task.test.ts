@@ -14,6 +14,7 @@ import { describe, it, expect } from 'vitest';
 import {
   parseTasks,
   runnableTasks,
+  orderForModelBatching,
   blockedReason,
   abandonedTasks,
   claimTriples,
@@ -150,6 +151,49 @@ describe('routing', () => {
       allResolved,
     ).map((t) => t.tier);
     expect(order).toEqual(['script', 'local-agent', 'frontier']);
+  });
+});
+
+describe('model batching — Ollama cannot switch models cheaply', () => {
+  it('groups same-model local-agent tasks CONSECUTIVELY (no interleave = no reload thrash)', () => {
+    const order = orderForModelBatching([
+      task({ iri: 'a', tier: 'local-agent', model: 'qwen3-coder' }),
+      task({ iri: 'b', tier: 'local-agent', model: 'qwen2.5vl' }),
+      task({ iri: 'c', tier: 'local-agent', model: 'qwen3-coder' }),
+      task({ iri: 'd', tier: 'local-agent', model: 'qwen2.5vl' }),
+    ]).map((t) => t.model);
+    // each model appears in one unbroken run, not interleaved
+    expect(order).toEqual(['qwen2.5vl', 'qwen2.5vl', 'qwen3-coder', 'qwen3-coder']);
+  });
+
+  it('script tier still runs first (free, no model), frontier last', () => {
+    const order = orderForModelBatching([
+      task({ iri: 'f', tier: 'frontier' }),
+      task({ iri: 'la', tier: 'local-agent', model: 'qwen3-coder' }),
+      task({ iri: 's', tier: 'script' }),
+    ]).map((t) => t.tier);
+    expect(order).toEqual(['script', 'local-agent', 'frontier']);
+  });
+
+  it('is STABLE within a model group — existing priority is preserved', () => {
+    const order = orderForModelBatching([
+      task({ iri: 'first', tier: 'local-agent', model: 'm' }),
+      task({ iri: 'second', tier: 'local-agent', model: 'm' }),
+      task({ iri: 'third', tier: 'local-agent', model: 'm' }),
+    ]).map((t) => t.iri);
+    expect(order).toEqual(['first', 'second', 'third']);
+  });
+
+  it('runnableTasks applies the batching after filtering blocked tasks', () => {
+    const order = runnableTasks(
+      [
+        task({ iri: 'a', tier: 'local-agent', model: 'zebra' }),
+        task({ iri: 'b', tier: 'local-agent', model: 'alpha' }),
+        task({ iri: 'c', tier: 'local-agent', model: 'zebra' }),
+      ],
+      allResolved,
+    ).map((t) => t.model);
+    expect(order).toEqual(['alpha', 'zebra', 'zebra']);
   });
 });
 
