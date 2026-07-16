@@ -1152,7 +1152,9 @@ kb:async-orchestration rdf:type ktype:Feature ;
                kpred:has-phase    kb:async-unblock ;
                kpred:has-phase    kb:async-digest ;
                kpred:has-phase    kb:async-visual-test ;
-               kpred:depends-on   kb:partial-facts .
+               kpred:has-phase    kb:async-desk ;
+               kpred:depends-on   kb:partial-facts ;
+               kpred:landscape    "vs the new open-source agent SDKs (analysed 2026-07-16). Microsoft Agent Framework (Azure AI Foundry; AutoGen + Semantic Kernel; multi-agent orchestration, memory modules, Entra Agent ID) and AWS Strands + AgentCore (Bedrock; model-driven — system prompt + tools + model let the LLM DECIDE autonomously) are both LLM-DRIVEN and CLOUD-TIED: trust the model, run it on the vendor's cloud. Reckons.AI's framework is the near-opposite bet — GRAPH-NATIVE (the queue, schedules, provenance and outcomes ARE triples in the user's own file, not a bolted-on memory store), LOCAL-FIRST (no cloud lock; Ollama local + optional cloud), and deliberately LLM-DISTRUSTFUL: route to the CHEAPEST tier that is correct (deterministic script > local-model PROPOSAL a human gates > Opus), enforce done-when (an agent never judges its own work done), and treat provenance as ACCOUNTABILITY (agents propose, humans settle — F52/F88). Differentiators to KEEP: graph-native state, the tiering ethos, done-when independent verification, ask-the-graph-not-the-human (F80/F91). Worth ADOPTING (ergonomics, not philosophy): MAF's multi-agent orchestration + memory patterns to enrich orchestrate.ts (our orchestration is nascent); Strands' typed system-prompt+tools contract to cut the local-agent harness boilerplate — but NEVER let the local model decide freely (proposals only). Map, don't adopt: Entra Agent ID -> our F84 RBAC / publisher-identity. Interop, not replacement: the MCP server is the surface to expose our graph-native agents to MAF/Strands and consume theirs, rather than becoming one of them." .
 
 kb:async-ask rdf:type          ktype:Phase ;
                rdfs:label   "Phase 1 — agents ask the graph" ;
@@ -1189,6 +1191,18 @@ kb:async-visual-test rdf:type  ktype:Phase ;
                hnav:order   4 ;
                kpred:description  "A Playwright user-story that drives the whole loop end to end: an agent emits a question -> it appears in the Review tab as a partial fact with an entity picker (not accept/reject) -> the user answers -> the answer lands in knowledge.answers.jsonl -> a waiting agent resumes. The loop is the product now, so it gets the same scrutiny as the product: if the question never reaches the user, or the answer never reaches the agent, the whole model silently degrades back to blocking." ;
                kpred:remaining    "tests/visual/user-stories/async-questions.test.ts + screenshots." .
+
+kb:async-desk rdf:type         ktype:Phase ;
+               rdfs:label   "Phase 5 — the terminal question desk (a second terminal that interviews Matt)" ;
+               kpred:part-of      kb:async-orchestration ;
+               kpred:has-status   "functional" ;
+               kpred:tested-by    "scripts/agent/__tests__/interview.test.ts" ;
+               kpred:has-file     "scripts/agent/interview.ts" ;
+               kpred:has-file     "scripts/agent/desk.sh" ;
+               hnav:order   5 ;
+               kpred:description  "The human side of the loop, on demand. The MAIN terminal keeps building; when agents have left open questions and Matt is not in the web UI answering them, `npm run desk` opens a SECOND terminal — a short-lived Claude Code side-chat (falls back to a scripted interview) whose only job is to ask him those questions ONE AT A TIME and keep nudging him to open the graph view of the fact in question. `scripts/agent/interview.ts` is the deterministic core: openQuestions() = pending partial facts minus anything already answered (in the UI or here), sorted by priority then age; recordAnswer() writes knowledge.answers.jsonl in the EXACT shape the UI writes, so a waiting agent resumes without knowing which channel replied. Matt chose this (2026-07-16): one build terminal + one question terminal, and the chat should often suggest opening the UI because he sees more in the graph than in a chat line." ;
+               kpred:decided      "Matt (2026-07-16): work continues in ONE Claude Code build terminal; a NEW terminal opens to ask questions when he is not answering in the web UI; the side chat should OFTEN suggest opening the UI for a view of the graph and the facts in question. Answers here and answers in the UI are the same file — neither channel is authoritative over the other." ;
+               kpred:remaining    "ENTITY-FOCUS DEEP-LINK: the UI reads only ?kb=<graph> today (no entity-focus param exists — verified 2026-07-16), so the desk links to the graph's Review tab and names the subject to look for. Add ?review=<subject-iri> to routes/(app)/review/+page.svelte to scroll/highlight the exact pending triple, and have uiLink() emit it — then the nudge lands Matt on the fact itself, not just its graph. Also: auto-open the desk from the build session / routine when openQuestions() is non-empty." .
 
 kb:auto-merge rdf:type         ktype:Feature ;
                rdfs:label   "Auto-merge of accumulated facts" ;
