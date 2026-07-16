@@ -6,6 +6,7 @@
   import { bestSuggestion } from '$lib/rdf/view-suggestions';
   import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
   import GraphLabels from '$lib/components/GraphLabels.svelte';
+  import { copyText } from '$lib/utils/clipboard';
   import AssetGlbViewer from '$lib/components/AssetGlbViewer.svelte';
   import StatementCard from '$lib/components/StatementCard.svelte';
   import LandingPage from '$lib/components/LandingPage.svelte';
@@ -2504,7 +2505,7 @@
             <button class="leap-id mono" title={`${entityLeap.target}\nClick to navigate`} onclick={jumpToLeap} disabled={leapImporting || flyToGhost}>
               {entityLeap.label ?? (entityLeap.kind === 'kb' ? entityLeap.target.slice(0, 8).toUpperCase() : entityLeap.target)}
             </button>
-            <button class="link-rm" onclick={() => navigator.clipboard.writeText(entityLeap!.target)} title="copy target">⎘</button>
+            <button class="link-rm" onclick={() => copyText(entityLeap!.target)} title="copy target">⎘</button>
             <button class="link-rm" onclick={removeLeap} title="remove jump">✕</button>
           </div>
           {#if entityLeap.label && entityLeap.kind === 'kb'}

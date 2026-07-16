@@ -1,5 +1,6 @@
 <script lang="ts">
   import { settings, updateSettings } from '$lib/stores/settings.svelte';
+  import { copyText } from '$lib/utils/clipboard';
   import { ensureWasmReady, onWasmProgress } from '$lib/integrations/llm/wasm';
   import { providerStatus, warmProviderSdk, type ProviderInfo } from '$lib/integrations/llm/provider-status.svelte';
   import {
@@ -289,9 +290,12 @@
   }
 
   async function copyToClipboard(text: string, which: 'id' | 'hash') {
-    await navigator.clipboard.writeText(text);
-    copied = which;
-    setTimeout(() => { copied = null; }, 1800);
+    // copyText never throws (falls back on insecure contexts / blocked clipboard) — the button-crawl
+    // caught this awaiting navigator.clipboard.writeText unguarded and crashing on permission denied.
+    if (await copyText(text)) {
+      copied = which;
+      setTimeout(() => { copied = null; }, 1800);
+    }
   }
 
   // Extension highlight settings

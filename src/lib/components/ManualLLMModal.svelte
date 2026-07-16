@@ -5,6 +5,7 @@
     cancelManualLLM,
   } from '$lib/stores/manual-llm.svelte';
   import { Dialog } from 'bits-ui';
+  import { copyText } from '$lib/utils/clipboard';
 
   let response = $state('');
   let copied = $state(false);
@@ -14,9 +15,10 @@
 
   async function copyPrompt() {
     if (!prompt) return;
-    await navigator.clipboard.writeText(prompt);
-    copied = true;
-    setTimeout(() => { copied = false; }, 2000);
+    if (await copyText(prompt)) {
+      copied = true;
+      setTimeout(() => { copied = false; }, 2000);
+    }
   }
 
   function submit() {
