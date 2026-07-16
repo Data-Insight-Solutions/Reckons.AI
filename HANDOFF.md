@@ -225,6 +225,32 @@ using it and extending it.
    UI can now be verified here after all. F49 also has a `functional` UI seam untouched; F51/F52
    remain logic-only. Remaining on F53: tenure-drift signal + surfacing the merge-suggest tier in
    this UI. F83 stays in-progress (canvas-side predicate/time filters still need UI).
+
+   **2026-07-15 CONTINUED (a long live-driving + brainstorm session). MORE BUILT + VERIFIED:**
+   - **F81 model-batching** (6f8d9af): tasks declare `kpred:model`; `orderForModelBatching` runs
+     same-model local-agent tasks consecutively so Ollama stops reload-thrashing. 5 tests.
+   - **Ground-first agents** (8df8ee2): `scripts/offline/lib/graph-grounding.ts` — agents QUERY the
+     graph (reverse has-file/tested-by → owning feature + purpose) before judging; wired into
+     `code-review.ts`, verified with a live qwen3-coder run. 7 tests.
+   - **4 review-graph bugs fixed** (3950892, 61fe7cb): overlay node-details (overlay-aware
+     `panelDetails`), one 2D/3D toggle per mode, 3D labels (were a no-op `onlabelsmove`), and
+     `wasDerivedFrom` UUID nodes (PROV-O now `isMetaPredicate` → suppressed from 2D/3D).
+   - **F92 GraphLabels** (2a9f641): first shared piece — one label overlay both `/` and `/review`
+     mount (main's asset thumbnail + leap badge passed as snippets). Drift killed.
+   - **Automated visual verification** (a60baa9): `tests/visual/user-stories/graph-labels.test.ts`
+     — seeds a graph, screenshots, DOM-asserts the GraphLabels overlays (reliable gate: 27 labels,
+     alex/jordan/lake george) + OCRs the screenshot (proves the pixel pipeline; tiny-label OCR is
+     flaky → logged not gated). **This removes the "can't verify UI headlessly" excuse — the e2e AND
+     the visual/OCR harness both work in this env.** ~1042 tests.
+
+   **BIG IDEA BACKLOG captured this session (Matt streaming; all in the roadmap, NONE built yet):**
+   F92 (one canvas, adaptive LOD, progressive/ghost render + flicker-vs-LOD risk; review is a MODE
+   with own panels+Shelly settings), F93 (video frame-sampling + local video models + auto-cut/
+   MoviePy), F94 (**MCP/CLI follow leaps — cross-graph query with bounded leap-depth + per-hop
+   provenance**), F95 (Shelly+MCP relation-matrix builder, confirm-before-create), F96 (Shelly as
+   graph-control persona + quick graph settings All/Sets/Default/Settings). Matt picks the build
+   target; the graph holds the plan. Next F92 shared piece = the node-details panel (bigger: main's
+   is rich/editable, review's read-only+chat).
 2. **F90 Blender** (planned) — headless Blender over MCP. The trap is in the roadmap:
    **Blender renders a black frame and exits 0.** First domain where `done-when` cannot be a
    passing test — exactly what F88's `verifiable-by` exists for (deterministic image check →
