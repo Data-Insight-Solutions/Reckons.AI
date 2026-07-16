@@ -263,6 +263,14 @@
   /** The specific triple a review card is showing, so its edge (not just its nodes) can be highlighted. */
   let focusedEdge = $state<{ s: string; o: string; p?: string } | null>(null);
 
+  /** 3D node labels — the preview 3D graph emits viewport-space positions via onlabelsmove, and we
+   *  render them as fixed HTML overlays (the 3D scene draws no text itself). Without this the 3D
+   *  view had NO labels. Cleared whenever we are not in the 3D preview so none linger. */
+  let nodeLabels = $state<Array<{ key: string; label: string; x: number; y: number; opacity: number }>>([]);
+  $effect(() => {
+    if (use2D || graphMode !== 'preview') nodeLabels = [];
+  });
+
   /** Focus the preview graph on a statement's subject node (called from review cards — incoming, deletions, merges, align). */
   function focusStatement(st: Statement) {
     const key = termKey(st.s);
@@ -350,14 +358,14 @@
   // and auto-sends the message) rather than building a separate chat stack.
   let nodeChatDraft = $state('');
   function sendNodeChat() {
-    if (!nodeDetails || !nodeChatDraft.trim()) return;
-    const ctx = `About the node "${nodeDetails.label}"${nodeDetails.typeLabel ? ` (${nodeDetails.typeLabel})` : ''}: `;
+    if (!panelDetails || !nodeChatDraft.trim()) return;
+    const ctx = `About the node "${panelDetails.label}"${panelDetails.typeLabel ? ` (${panelDetails.typeLabel})` : ''}: `;
     requestShellyChat(ctx + nodeChatDraft.trim());
     nodeChatDraft = '';
   }
   function openNodeInShelly() {
-    if (!nodeDetails) return;
-    requestShellyChat(`Tell me about "${nodeDetails.label}"${nodeDetails.typeLabel ? `, a ${nodeDetails.typeLabel}` : ''}.`);
+    if (!panelDetails) return;
+    requestShellyChat(`Tell me about "${panelDetails.label}"${panelDetails.typeLabel ? `, a ${panelDetails.typeLabel}` : ''}.`);
   }
 
   /** Human-readable name of the selected node, shown as a caption over the graph. */
@@ -438,6 +446,45 @@
   let overlayActivePredicates = $state(new Set<string>([...MEMBERSHIP_PREDICATES, ...OVERLAY_STRUCTURAL]));
   let overlaySelectedKey = $state<string | null>(null);
   let overlayViewIs3D = $state(false);
+
+  /** Node details for OVERLAY mode — the clicked node in the combined multi-graph view. Mirrors
+   *  the preview `nodeDetails` shape, but reads from overlayData (which spans several graphs) since
+   *  the overlay's nodes are not all in the current KB's statement list. */
+  const overlayNodeDetails = $derived.by(() => {
+    if (graphMode !== 'overlay' || !overlaySelectedKey || !overlayData) return null;
+    const node = overlayData.nodes.get(overlaySelectedKey);
+    if (!node) return null;
+    const related = overlayData.edges
+      .filter((e) => e.sourceKey === overlaySelectedKey || e.targetKey === overlaySelectedKey)
+      .map((e, i) => {
+        const isSubject = e.sourceKey === overlaySelectedKey;
+        const otherKey = isSubject ? e.targetKey : e.sourceKey;
+        const other = overlayData!.nodes.get(otherKey);
+        const fallback = otherKey.startsWith('i:') ? (otherKey.slice(2).split('/').pop() ?? otherKey) : otherKey;
+        return {
+          id: `${e.sourceKey}|${e.predicateIri}|${e.targetKey}|${i}`,
+          predicate: e.predicate,
+          isSubject,
+          otherLabel: other?.label ?? fallback,
+          pending: false,
+          status: 'confirmed' as const,
+        };
+      })
+      .slice(0, 40);
+    const typeLabel = node.rdfType ? (node.rdfType.split('/').pop() ?? node.rdfType) : null;
+    return { label: node.label, typeLabel, related };
+  });
+
+  /** The details the node panel shows — preview OR overlay, whichever mode is active. */
+  const panelDetails = $derived(
+    graphMode === 'overlay' ? overlayNodeDetails : graphMode === 'preview' ? nodeDetails : null,
+  );
+
+  /** Close the node panel, clearing whichever selection drives the active mode. */
+  function closeNodePanel() {
+    if (graphMode === 'overlay') overlaySelectedKey = null;
+    else { selected = null; focusedEdge = null; }
+  }
 
   // KB-based overlay sources
   let overlayKbEntries = $state(getRegistry());
@@ -728,13 +775,15 @@
         <span class="mode-lbl mono">overlay</span>
       </button>
       <span class="mode-spacer"></span>
-      {#if graphMode !== 'compare'}
-        <button class="mode-btn dim-toggle" class:active={use2D} onclick={() => use2D = !use2D}>
+      {#if graphMode === 'preview'}
+        <button class="mode-btn dim-toggle" class:active={!use2D} onclick={() => use2D = !use2D}
+          title="Switch between 2D and 3D">
           <span class="mode-lbl mono">{use2D ? '2D' : '3D'}</span>
         </button>
       {/if}
       {#if graphMode === 'overlay'}
-        <button class="mode-btn dim-toggle" class:active={overlayViewIs3D} onclick={() => overlayViewIs3D = !overlayViewIs3D}>
+        <button class="mode-btn dim-toggle" class:active={overlayViewIs3D} onclick={() => overlayViewIs3D = !overlayViewIs3D}
+          title="Switch between 2D and 3D">
           <span class="mode-lbl mono">{overlayViewIs3D ? '3D' : '2D'}</span>
         </button>
       {/if}
@@ -863,21 +912,21 @@
         <span class="focus-badge" title={focusedLabel}>◉ {focusedLabel}</span>
       {/if}
 
-      <!-- Node details (left) + scoped chat (below it) — shown when a node is selected in the preview -->
-      {#if graphMode === 'preview' && nodeDetails}
+      <!-- Node details (left) + scoped chat — shown when a node is selected in preview OR overlay -->
+      {#if panelDetails}
         <div class="node-details-pane">
           <div class="ndp-header">
             <div class="ndp-title">
-              <span class="ndp-label">{nodeDetails.label}</span>
-              {#if nodeDetails.typeLabel}<span class="ndp-type mono">{nodeDetails.typeLabel}</span>{/if}
+              <span class="ndp-label">{panelDetails.label}</span>
+              {#if panelDetails.typeLabel}<span class="ndp-type mono">{panelDetails.typeLabel}</span>{/if}
             </div>
-            <button class="ndp-close" onclick={() => { selected = null; focusedEdge = null; }} title="close">✕</button>
+            <button class="ndp-close" onclick={closeNodePanel} title="close">✕</button>
           </div>
           <div class="ndp-stmts">
-            {#if nodeDetails.related.length === 0}
+            {#if panelDetails.related.length === 0}
               <p class="ndp-empty mono">no facts yet</p>
             {:else}
-              {#each nodeDetails.related as r (r.id)}
+              {#each panelDetails.related as r (r.id)}
                 <div class="ndp-stmt" class:ndp-pending={r.pending}>
                   {#if r.pending}<span class="ndp-pending-tag mono">pending</span>{/if}
                   <span class="ndp-pred mono">{r.isSubject ? r.predicate : `← ${r.predicate}`}</span>
@@ -932,7 +981,7 @@
                 sources={sources()}
                 onselect={(k) => { selected = k; focusedEdge = null; }}
                 onhover={() => {}}
-                onlabelsmove={() => {}}
+                onlabelsmove={(labels) => { nodeLabels = labels; }}
                 onmarkersmove={() => {}}
                 highlighted={[...pendingKeys]}
               />
@@ -984,6 +1033,19 @@
             <p class="mono">{overlayLoading ? 'loading...' : 'select graphs above to compare'}</p>
           </div>
         {/if}
+      {/if}
+
+      <!-- 3D node labels: the preview 3D scene draws no text, so render the viewport-space labels
+           it emits as fixed HTML overlays. Without this, 3D had no labels at all. -->
+      {#if graphMode === 'preview' && !use2D}
+        {#each nodeLabels as n (n.key)}
+          <div
+            class="r3d-label-wrap"
+            style="transform: translate3d({n.x}px, {n.y}px, 0); --lop: {n.opacity ?? 0.85};"
+          >
+            <span class="r3d-label mono" class:selected-node={n.key === selected}>{n.label}</span>
+          </div>
+        {/each}
       {/if}
     </div>
 
@@ -1449,6 +1511,34 @@
   }
   .mode-spacer { flex: 1; }
   .dim-toggle { margin-left: 0.2rem; }
+
+  /* 3D node labels (fixed to the viewport; the component emits viewport-space coords) */
+  .r3d-label-wrap {
+    position: fixed;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+    z-index: 10;
+    will-change: transform;
+    transition: transform 35ms linear;
+  }
+  .r3d-label {
+    display: inline-block;
+    transform: translate(-50%, -50%);
+    font-size: 11px;
+    line-height: 1;
+    padding: 1px 4px;
+    border-radius: 4px;
+    white-space: nowrap;
+    color: var(--fg, #e8e8e8);
+    background: color-mix(in srgb, var(--surface, #111) 78%, transparent);
+    opacity: var(--lop, 0.85);
+  }
+  .r3d-label.selected-node {
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 18%, var(--surface, #111));
+    opacity: 1;
+  }
 
   .graph-render {
     flex: 1;
