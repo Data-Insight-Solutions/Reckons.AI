@@ -288,6 +288,24 @@ kb:calendar-management rdf:type ktype:Feature ;
                kpred:description  "Beyond add/incoming calendar events: a management surface for calendars themselves — list connected/subscribed calendars, enable/disable, choose which sync into the graph, and treat a published calendar as a subscription (kb:publisher-subscriptions) so new events flow in via pods. Builds on the existing calendar ingest source." ;
                kpred:relates-to   kb:publisher-subscriptions .
 
+kb:personal-assistant rdf:type ktype:Feature ;
+               rdfs:label   "Personal assistant — calendar, tasks, 'what is my priority today?'" ;
+               kpred:feature-id   "F99" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:relates-to   kb:currents ;
+               kpred:relates-to   kb:calendar-management ;
+               kpred:description  "Turn the personal graph into an assistant. The SUBSTRATE ALREADY EXISTS — Indico (iCal -> RDF, src/lib/integrations/indico/*), Google Calendar (MCP connector), the CLI audio REPL (cli/, reckons --listen over bluetooth), and `npm run brief` — so this is composition, not greenfield: model today's calendar events + open tasks + deadlines as graph entities, and answer questions like 'WHAT IS MY PRIORITY TODAY?' as a RECKONING (Situation-Target-Proposal, kb_reckoning) over that graph, delivered as a short spoken or printed brief. Personal TASK management reuses the task-as-entity shape (like AgentTask/tasks.ttl but human-owned) with due dates + priority. The assistant reads the graph the user actually owns — it never invents an obligation, and (honest-status) it can only answer from calendars/tasks the user has actually connected." ;
+               kpred:decided      "Matt (2026-07-16): return to personal-assistant / calendar / task management; 'what is my priority today?' workflows. TWO NEW AUDIO DEVICES incoming — SMART RING = always-on personal assistant (minimal: terse ask/answer, priority, reminders); SMART GLASSES = multi-purpose (music, audio, richer output). Both extend the CLI --listen audio loop with DEVICE PROFILES (ring = always-listening terse voice Q&A; glasses = fuller, media-capable), over bluetooth — audio.ts already targets bluetooth glasses." ;
+               kpred:has-part     kb:priority-today .
+
+kb:priority-today rdf:type     ktype:Feature ;
+               rdfs:label   "'What is my priority today?'" ;
+               kpred:feature-id   "F99.1" ;
+               kpred:has-status   "planned" ;
+               kpred:part-of      kb:personal-assistant ;
+               kpred:description  "One question, answered from the graph: rank today's commitments — calendar events by time, open tasks by due date + priority, and anything a current flagged urgent — into a single 'here is what matters today'. A RECKONING, not a list dump: it leads with the ONE thing that matters most and why, then the rest. Spoken tersely on the ring, printed fuller in the CLI/app. Reuses `npm run brief` (the session-brief pattern) turned on the personal graph instead of the repo." .
+
 ## -- F73: Grant discovery via scheduled currents + n8n review notifications ------
 ## Real use-case (two nonprofits): the graph holds each org's grant-seeker profile;
 ## a scheduled n8n scrape uses it to find eligible grant CALLS online and posts them
@@ -1772,6 +1790,15 @@ kb:backend-services rdf:type   ktype:Feature ;
                kpred:description  "A future SERVER side of Reckons.AI, offered by Data Insight Solutions as a PAID service — the home for anything that needs a trusted authority the offline client cannot be: RBAC/enforcement, multi-user identity, and institutional provenance (the F84 enterprise overlay depends on this). The local-first app stays free, offline, and user-owned; the server is opt-in and additive, never a hard dependency (integration-boundaries)." ;
                kpred:open-question "BUSINESS MODEL UNCERTAIN (Matt, 2026-07-16): possibly resell metered API usage of Anthropic / other providers; possibly hosted RBAC + team graphs; possibly both — not decided. Recorded so RBAC is not built before the model that pays for it exists." ;
                kpred:relates-to   kb:enterprise-3ps .
+
+kb:graph-db-connectors rdf:type ktype:Feature ;
+               rdfs:label   "Graph-database connectors (TriG in/out to open-source stores)" ;
+               kpred:feature-id   "F84.3" ;
+               kpred:has-status   "speculative" ;
+               kpred:part-of      kb:trig-enterprise-overlay ;
+               kpred:description  "An OPTIONAL, per-user Enterprise integration: sync a Reckons graph in and out of a standard RDF/graph database, so a team's store-of-record and the local-first app speak the same triples. THE KEY ARCHITECTURAL DECISION — do NOT build one connector per product. Most open-source RDF stores implement the SAME two W3C protocols: the SPARQL 1.1 Graph Store HTTP Protocol (GSP) for whole-graph GET/PUT/POST, and SPARQL 1.1 Query/Update for everything else. ONE GSP+SPARQL connector therefore covers Apache Jena Fuseki, RDF4J, Oxigraph, Blazegraph, GraphDB, Virtuoso and QLever at once — 'several options' from a single adapter. TriG is the wire format: its named graphs map directly onto GSP named-graph slots (a published graph carries its PUBLISHER in the 4th position, F84), so TriG-in/out is lossless where a bare-triples POST would drop the graph context. Outliers get thin adapters: Neo4j via the neosemantics (n10s) RDF plugin; TerminusDB via its own document/WOQL API. Stays inside integration-boundaries: opt-in, per-user, behind settings.* and the F61 Integration Plugin SDK — never a hard dependency of the offline-first core." ;
+               kpred:decided      "Matt (2026-07-16): Enterprise features must connect to open-source graph databases, with TriG in/out working for several options. Recorded as one-protocol-covers-many (SPARQL GSP) rather than N bespoke connectors." ;
+               kpred:remaining    "A SPARQL 1.1 GSP + Update client (fetch-based; auth via a settings token / basic-auth): export -> PUT named graph, import -> GET / CONSTRUCT. Round-trip TriG test against a local Fuseki or Oxigraph in CI (docker). Neo4j (n10s) + TerminusDB adapters as follow-ons. UI: pick store type + endpoint + credentials in graph settings, exactly like the n8n / Indico integrations. Reuses the existing TriG serialize (F75)." .
 
 # == THE THESIS — what Reckons.AI actually believes ==============================
 # Surfaced on the landing page, GENERATED from these triples (scripts/landing-principles.ts)
