@@ -3,6 +3,23 @@
 **Last updated: 2026-07-16.** Branch: **`feat/work-tiering-ci`** (branched off
 `fix/production-claim-evidence`, which is open as **PR #100 → `dev`**).
 
+## ✓ LANDED (2026-07-16): F84.1 roles + F80 p6 triage/backlog — commits `307b166`, `28c3ffd`
+
+**Roles (F84.1, functional):** `src/lib/rdf/roles.ts` — descriptive identity metadata, customizable
+like entity types (custom roles = RDF statements `rdf:type ktype:Role`). NOT RBAC — that's gated on
+`kb:backend-services` (F84.2, speculative, paid tier, business model UNCERTAIN). Seeded `kb:matthew-roe`
+(Owner Operator + Technical Solutions Architect). 6 tests. Optional node-panel UI deferred (Matt: "not
+really affecting core experience currently").
+
+**Triage/backlog (F80 p6, functional):** `scripts/agent/triage.ts` is the shared classifier
+(rederivable/remediable/judgment) both the desk and orchestrator now use. The desk (`npm run interview`)
+filters to `isDeskQuestion` at read time → **83 → 28, no data deleted**. `npm run backlog` ranks judgment
+items by blocking then age. Emitters fixed (code-review + competitor-scan emit `suggestion`, not `question`).
+**DECISION PENDING FOR MATT:** an explicit prune of the 28 pre-existing mis-typed `type:question` entries
+(competitor-scan/code-review) — an agent must not auto-delete the shared queue; backup at
+`$CLAUDE_JOB_DIR/tmp/pending.backup.jsonl` this session. The read-time filter already hides them, so the
+prune is hygiene, not urgent.
+
 ## ✓ LANDED (2026-07-16): F80 phase 5 — the question desk — commit `4244b78`
 
 `npm run desk` opens a SECOND terminal (a Claude Code side-chat, or a scripted interview)
