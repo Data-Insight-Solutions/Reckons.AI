@@ -1717,7 +1717,48 @@ kb:trig-enterprise-overlay rdf:type ktype:Feature ;
                kpred:part-of      kb:trig-published-side ;
                kpred:depends-on   kb:enterprise-3ps ;
                kpred:description  "The institutional half of Reckons.AI, built on TriG's named graphs. A quad's 4th element becomes the join point for everything the enterprise cares about: WHO published it (identity), WHO may read it (RBAC), UNDER WHAT policy and procedure it was produced (the 3 Ps), and WHEN. Detailed provenance stops being metadata and becomes the access-control surface itself — you do not grant access to triples, you grant access to PUBLICATIONS. Entirely separate positioning from the private, offline, user-owned TTL side; likely a separate marketing angle and possibly a separate name." ;
-               kpred:open-question "Does the enterprise side share a codebase with the private side, or diverge? The data model is the same (quads); the trust model is the opposite (nobody is the authority over their own facts). That tension is worth resolving deliberately rather than discovering later." .
+               kpred:open-question "Does the enterprise side share a codebase with the private side, or diverge? The data model is the same (quads); the trust model is the opposite (nobody is the authority over their own facts). That tension is worth resolving deliberately rather than discovering later." ;
+               kpred:depends-on   kb:backend-services .
+
+# ── Identity & roles (descriptive metadata — NOT access control) ───────────────
+# Roles say WHO someone is to a graph. They grant nothing and gate nothing — customizable
+# metadata like entity types. RBAC/enforcement is deferred to kb:backend-services, because
+# access control over an offline, user-owned .ttl file without a trusted server is theatre
+# (kb:honest-status). Roles ship now; RBAC waits for the server.
+
+kb:roles rdf:type              ktype:Feature ;
+               rdfs:label   "Roles (descriptive identity metadata)" ;
+               kpred:feature-id   "F84.1" ;
+               kpred:has-status   "functional" ;
+               kpred:part-of      kb:trig-enterprise-overlay ;
+               kpred:has-file     "src/lib/rdf/roles.ts" ;
+               kpred:tested-by    "src/lib/rdf/__tests__/roles.test.ts" ;
+               kpred:description  "A person entity carries ROLES via kpred:has-role — Owner Operator, Technical Solutions Architect, Reviewer, Steward, Publisher, and any the user invents. Customizable exactly like entity types: built-ins live in src/lib/rdf/roles.ts; CUSTOM roles live as confirmed RDF statements (rdf:type ktype:Role + rdfs:label), so they travel with the graph on export and are versioned like any fact. Roles are the 'who' that feeds provenance (F80/F91) and publisher identity (F75) — they are metadata, not a control." ;
+               kpred:decided      "Matt (2026-07-16): roles are customizable metadata, similar to entity types, and do NOT much affect the core app experience yet. Build the DESCRIPTIVE layer now; do NOT build RBAC until the backend-services side is defined. Matt's own roles seeded as the worked example." ;
+               kpred:remaining    "Optional UI: pick/add a role in the node detail panel like entity types (deferred — 'not really affecting core experience currently'). Wire rolesForEntity into publisher-identity so publishing (F75) can require a Publisher-role'd owner." .
+
+<urn:kbase:role/owner-operator> rdf:type ktype:Role ;
+               rdfs:label   "Owner Operator" ;
+               kpred:description  "Runs and is accountable for the graph — the buck stops here." .
+
+<urn:kbase:role/technical-solutions-architect> rdf:type ktype:Role ;
+               rdfs:label   "Technical Solutions Architect" ;
+               kpred:description  "Designs the system and its integrations." .
+
+kb:matthew-roe rdf:type        ktype:Person ;
+               rdfs:label   "Matthew Roe" ;
+               kpred:has-role     <urn:kbase:role/owner-operator> ;
+               kpred:has-role     <urn:kbase:role/technical-solutions-architect> ;
+               kpred:affiliation  "Data Insight Solutions" ;
+               kpred:description  "Owner-operator and technical solutions architect of Reckons.AI (under Data Insight Solutions). Seeded 2026-07-16 as the worked example of descriptive roles — and as the accountable 'who' for provenance and publishing." .
+
+kb:backend-services rdf:type   ktype:Feature ;
+               rdfs:label   "Backend services (paid tier — gates RBAC)" ;
+               kpred:feature-id   "F84.2" ;
+               kpred:has-status   "speculative" ;
+               kpred:description  "A future SERVER side of Reckons.AI, offered by Data Insight Solutions as a PAID service — the home for anything that needs a trusted authority the offline client cannot be: RBAC/enforcement, multi-user identity, and institutional provenance (the F84 enterprise overlay depends on this). The local-first app stays free, offline, and user-owned; the server is opt-in and additive, never a hard dependency (integration-boundaries)." ;
+               kpred:open-question "BUSINESS MODEL UNCERTAIN (Matt, 2026-07-16): possibly resell metered API usage of Anthropic / other providers; possibly hosted RBAC + team graphs; possibly both — not decided. Recorded so RBAC is not built before the model that pays for it exists." ;
+               kpred:relates-to   kb:enterprise-3ps .
 
 # == THE THESIS — what Reckons.AI actually believes ==============================
 # Surfaced on the landing page, GENERATED from these triples (scripts/landing-principles.ts)
