@@ -16,6 +16,7 @@
  */
 import { appendFileSync } from 'fs';
 import { execSync } from 'child_process';
+import { groundFile } from './lib/graph-grounding.js';
 
 const raw = process.argv.slice(2);
 const flag = (n: string) => raw.find((a) => a.startsWith(`--${n}=`))?.split('=').slice(1).join('=');
@@ -120,10 +121,16 @@ for (const file of files) {
   if (!diff.trim()) { console.log('no diff'); continue; }
   if (diff.length > MAX_DIFF_CHARS) diff = diff.slice(0, MAX_DIFF_CHARS) + '\n… [diff truncated]';
 
+  // GROUND: ask the graph what this file is supposed to be before judging the diff. A reviewer
+  // that knows the file's owning feature and purpose can catch a change that contradicts intent,
+  // not just one that is syntactically broken. Empty when the graph knows nothing — harmless.
+  const grounding = groundFile(file);
+
   const prompt =
     `You are a careful senior reviewer. Review ONLY this unified diff for real defects: ` +
     `correctness bugs, security issues, missed edge cases, resource leaks, or clearly broken logic. ` +
     `Ignore style/formatting/nits. Be conservative — only flag issues you are confident are real.\n\n` +
+    (grounding ? `Context from the project's knowledge graph (what this file is FOR — flag changes that contradict it):\n${grounding}\n\n` : '') +
     `Output one finding per line as: "<file>:<line-ish> — <concise issue>". ` +
     `If there are no real defects, reply with exactly: NONE\n\n` +
     `File: ${file}\n\`\`\`diff\n${diff}\n\`\`\``;

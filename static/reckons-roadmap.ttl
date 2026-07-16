@@ -844,6 +844,9 @@ kb:work-tiering rdf:type       ktype:Feature ;
                kpred:remaining    "Grow the script tier: graph-lint (dead has-file/tested-by links, status enum, feature-id collisions, dangling depends-on) + convention lint (ETHICS_PREAMBLE presence, CSS vars, americanize --check) + pending.jsonl schema/dedupe validation." ;
                kpred:remaining    "Agent tier: local description drafting for entities whose kpred:description is missing or stale vs the code." ;
                kpred:measured     "Tracked by npm run session:tokens (kb:session-tokens) — the metric that says whether a tier move actually saved anything." ;
+               kpred:has-file     "scripts/offline/lib/graph-grounding.ts" ;
+               kpred:tested-by    "scripts/offline/lib/__tests__/graph-grounding.test.ts" ;
+               kpred:proof        "GROUND-FIRST is now real for the agent tier (2026-07-15): the local agents QUERY THE GRAPH before judging, the same knowledge the MCP kb_* tools expose, reused directly (no server spawn). graph-grounding.ts ownerOfFile()/groundFile() reverse the has-file/tested-by links so a job knows which feature owns a file, its status and its PURPOSE. code-review.ts now feeds each file's owning-feature context into the prompt, so the reviewer can flag a change that contradicts intent, not just one that is syntactically broken (describe-entities.ts already grounded in the entity's own subgraph + linked files). 7 tests; verified on real graph data. The reviewer no longer reads the diff cold." ;
                kpred:has-tier     kb:tier-script ;
                kpred:has-tier     kb:tier-local-agent ;
                kpred:has-tier     kb:tier-claude-code .
