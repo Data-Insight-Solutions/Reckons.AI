@@ -1833,6 +1833,12 @@
     background: var(--surface);
     flex-shrink: 0;
     min-width: 0;
+    /* The 3D node labels are position:fixed (viewport coords) at z-index 10, so on this split
+       layout they spill over the side panel. The panel is opaque — sit it ABOVE the labels (but
+       below the z-20 resize handle) so spilled labels are occluded by the panel instead of
+       bleeding across it. */
+    position: relative;
+    z-index: 15;
   }
   .rp-header {
     padding: 0.75rem 1rem 0.5rem;
