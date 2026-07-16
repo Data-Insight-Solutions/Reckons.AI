@@ -320,7 +320,9 @@ if (PENDING_OUT && findings.length) {
         subject: f.subject,
         predicate: `${KPRED}competitor-scan`,
         question,
-        type: f.level === 'error' ? 'drift-warning' : 'question',
+        // A license verdict / candidate is a standing constraint to KNOW or a light confirm —
+        // it blocks nothing, so it is a suggestion for the backlog, never a desk question.
+        type: f.level === 'error' ? 'drift-warning' : 'suggestion',
         agent: 'offline:competitor-scan',
         priority: f.level === 'error' ? 'high' : 'medium',
         addedAt: now,

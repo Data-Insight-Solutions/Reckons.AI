@@ -91,7 +91,9 @@ function queue(file: string, finding: string) {
     subject: `urn:sweep:review/${file.replace(/[^a-z0-9]+/gi, '-')}`,
     predicate: 'urn:sweep:pred/code-review',
     question: `[local review] ${file}: ${finding.slice(0, 600)}`,
-    type: 'question',
+    // A local-model review finding is a PROPOSAL to verify then fix or dismiss (some are false
+    // positives) — reviewed in the Review tab, not a blocking decision for the question desk.
+    type: 'suggestion',
     agent: `offline:code-review (${MODEL})`,
     priority: 'medium',
     addedAt: new Date().toISOString(),
