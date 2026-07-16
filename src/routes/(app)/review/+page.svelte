@@ -33,7 +33,8 @@
   import { termKey, isIRI, isLit, isMetaPredicate, type Statement } from '$lib/rdf/types';
   import { computeDiff } from '$lib/rdf/diff';
   import { generateDiffSummary, type DiffSummary } from '$lib/rdf/diff-summary';
-  import { semanticEnrichDiff } from '$lib/rdf/semantic-diff';
+  import { semanticEnrichDiff, labelFromIRI } from '$lib/rdf/semantic-diff';
+  import { buildReviewPlan, reviewPlanSummary } from '$lib/rdf/review-pipeline';
   import { settings } from '$lib/stores/settings.svelte';
   import { parseMultipleGraphs, MEMBERSHIP_PREDICATES, MEMBERSHIP_LABELS, isProjectIri, type OverlayData, type GraphDef } from '$lib/rdf/multi-graph-parse';
   import {
@@ -152,6 +153,42 @@
         (impactById.get(b.incoming.id) ?? 0) - (impactById.get(a.incoming.id) ?? 0) ||
         a.incoming.createdAt - b.incoming.createdAt,
     );
+  });
+
+  // Review-at-scale (F53/F83/F80.1) — the whole pending set run through the pipeline: dedupe ->
+  // route -> spotlight the contested few -> entity cards. Used for the SPOTLIGHT strip and the
+  // headline; the actual per-fact controls below still act on shownEntries so nothing is hidden.
+  const reviewPlan = $derived(
+    buildReviewPlan(incoming, { typeOf: (iri) => subjectTypes.get(iri) }, [...existing, ...incoming]),
+  );
+  const planHeadline = $derived(reviewPlanSummary(reviewPlan));
+  /** subject IRI -> true when it holds a spotlighted (contested) decision, for the entity headers. */
+  const spotlightSubjects = $derived(
+    new Set(reviewPlan.attention.spotlight.map((i) => i.statement.s.value)),
+  );
+
+  /** F83: group the SHOWN entries into per-entity cards so the user decides about things, not rows. */
+  let groupByEntity = $state(true);
+  const entityGroups = $derived.by(() => {
+    const m = new Map<string, typeof shownEntries>();
+    for (const e of shownEntries) {
+      const k = e.incoming.s.value;
+      const g = m.get(k);
+      if (g) g.push(e);
+      else m.set(k, [e]);
+    }
+    return [...m.entries()].map(([iri, entries]) => {
+      const labelStmt = entries.find(
+        (e) => e.incoming.p.value === 'http://www.w3.org/2000/01/rdf-schema#label' && e.incoming.o.kind === 'literal',
+      );
+      return {
+        iri,
+        label: labelStmt ? labelStmt.incoming.o.value : labelFromIRI(iri),
+        entries,
+        gate: gateById.get(entries[0].incoming.id) ?? 'user',
+        spotlight: spotlightSubjects.has(iri),
+      };
+    });
   });
 
   $effect(() => {
@@ -1072,38 +1109,90 @@
             <a href="/ingest">ingest something →</a>
           </div>
         {:else}
+          {#snippet entryCard(e: typeof shownEntries[number])}
+            <SwipeCard
+              acceptLabel={e.incoming.needsObject ? 'fill first' : 'confirm'}
+              rejectLabel="reject"
+              onaccept={async () => {
+                // Partial facts must be filled via the card's picker, not swipe-confirmed.
+                if (e.incoming.needsObject) return;
+                await setStatus(e.incoming.id, 'confirmed'); refresh();
+              }}
+              onreject={async () => { await setStatus(e.incoming.id, 'rejected'); refresh(); }}
+            >
+              <!-- Clicking a review card flies the preview graph to its node -->
+              <div
+                class="entry-focus-wrap"
+                class:entry-focused={selected === termKey(e.incoming.s)}
+                role="button"
+                tabindex="0"
+                onclick={() => focusStatement(e.incoming)}
+                onkeydown={(ev) => { if (ev.key === 'Enter') focusStatement(e.incoming); }}
+              >
+                <DiffEntry entry={e} sourceLabel={sourceLabel(e.incoming.sourceId)} onresolved={refresh} />
+              </div>
+            </SwipeCard>
+          {/snippet}
+
+          <!-- F53/F83/F80.1 review-at-scale: an honest headline, then the contested few, then
+               facts grouped into entity cards (decide about things, not rows). The per-fact
+               confirm/reject controls are unchanged — nothing is hidden, only better ordered. -->
+          <div class="ras-headline mono">{planHeadline}</div>
+
+          {#if reviewPlan.attention.spotlight.length > 0}
+            <div class="spotlight" data-testid="spotlight">
+              <span class="spotlight-h mono">spotlight — decide these first</span>
+              {#each reviewPlan.attention.spotlight as item (item.statement.id)}
+                <button class="spot-item" onclick={() => focusStatement(item.statement)}>
+                  <span class="spot-flag" class:conflict={item.conflict} class:decision={item.decision}>
+                    {item.conflict ? 'conflict' : item.decision ? 'decision' : 'high impact'}
+                  </span>
+                  <span class="spot-label">{labelFromIRI(item.statement.s.value)}</span>
+                  <span class="spot-pred mono">{labelFromIRI(item.statement.p.value)}</span>
+                </button>
+              {/each}
+              {#if reviewPlan.attention.heldBack > 0}
+                <span class="spot-held mono">+{reviewPlan.attention.heldBack} more waiting</span>
+              {/if}
+            </div>
+          {/if}
+
           <div class="bulk-bar">
             <button class="bulk-btn" onclick={acceptAll} disabled={isProcessing}>
               {isProcessing ? 'accepting...' : 'accept all new'}
             </button>
+            <button class="group-toggle" class:active={groupByEntity}
+              onclick={() => (groupByEntity = !groupByEntity)}
+              title="Group facts by the entity they describe">
+              {groupByEntity ? 'by entity' : 'flat list'}
+            </button>
             {#if error}<p class="error-text">{error}</p>{/if}
           </div>
-          <div class="entry-list">
-            {#each shownEntries as e (e.incoming.id)}
-              <SwipeCard
-                acceptLabel={e.incoming.needsObject ? 'fill first' : 'confirm'}
-                rejectLabel="reject"
-                onaccept={async () => {
-                  // Partial facts must be filled via the card's picker, not swipe-confirmed.
-                  if (e.incoming.needsObject) return;
-                  await setStatus(e.incoming.id, 'confirmed'); refresh();
-                }}
-                onreject={async () => { await setStatus(e.incoming.id, 'rejected'); refresh(); }}
-              >
-                <!-- Clicking a review card flies the preview graph to its node -->
-                <div
-                  class="entry-focus-wrap"
-                  class:entry-focused={selected === termKey(e.incoming.s)}
-                  role="button"
-                  tabindex="0"
-                  onclick={() => focusStatement(e.incoming)}
-                  onkeydown={(ev) => { if (ev.key === 'Enter') focusStatement(e.incoming); }}
-                >
-                  <DiffEntry entry={e} sourceLabel={sourceLabel(e.incoming.sourceId)} onresolved={refresh} />
+
+          {#if groupByEntity}
+            <div class="entity-cards" data-testid="entity-cards">
+              {#each entityGroups as g (g.iri)}
+                <div class="entity-card" class:spotlit={g.spotlight}>
+                  <div class="entity-head">
+                    <span class="entity-label">{g.label}</span>
+                    <span class="entity-count mono">{g.entries.length} fact{g.entries.length === 1 ? '' : 's'}</span>
+                    <span class="entity-gate mono gate-{g.gate}">{g.gate}</span>
+                  </div>
+                  <div class="entry-list">
+                    {#each g.entries as e (e.incoming.id)}
+                      {@render entryCard(e)}
+                    {/each}
+                  </div>
                 </div>
-              </SwipeCard>
-            {/each}
-          </div>
+              {/each}
+            </div>
+          {:else}
+            <div class="entry-list">
+              {#each shownEntries as e (e.incoming.id)}
+                {@render entryCard(e)}
+              {/each}
+            </div>
+          {/if}
         {/if}
       {/if}
 
@@ -1925,6 +2014,91 @@
     flex-direction: column;
     gap: 0.4rem;
   }
+
+  /* F53/F83 review-at-scale surface */
+  .ras-headline {
+    font-size: 0.8rem;
+    color: var(--muted, #888);
+    margin: 0.2rem 0 0.6rem;
+  }
+  .spotlight {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.6rem;
+    margin-bottom: 0.6rem;
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+    border-radius: 0.5rem;
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
+  }
+  .spotlight-h {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+    width: 100%;
+  }
+  .spot-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.45rem;
+    border: 1px solid var(--line);
+    border-radius: 0.4rem;
+    background: var(--surface, transparent);
+    cursor: pointer;
+    font-size: 0.8rem;
+  }
+  .spot-item:hover { border-color: var(--accent); }
+  .spot-flag {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.05rem 0.3rem;
+    border-radius: 0.3rem;
+    background: color-mix(in srgb, var(--muted, #888) 18%, transparent);
+    color: var(--muted, #888);
+  }
+  .spot-flag.conflict { background: color-mix(in srgb, var(--danger) 22%, transparent); color: var(--danger); }
+  .spot-flag.decision { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); }
+  .spot-pred { font-size: 0.72rem; color: var(--muted, #888); }
+  .spot-held { font-size: 0.72rem; color: var(--muted, #888); }
+  .group-toggle {
+    padding: 0.25rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 0.4rem;
+    background: transparent;
+    cursor: pointer;
+    font-size: 0.78rem;
+  }
+  .group-toggle.active { border-color: var(--accent); color: var(--accent); }
+  .entity-cards { display: flex; flex-direction: column; gap: 0.7rem; }
+  .entity-card {
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+    padding: 0.4rem 0.5rem 0.5rem;
+  }
+  .entity-card.spotlit { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .entity-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.1rem 0.15rem 0.45rem;
+  }
+  .entity-label { font-weight: 600; font-size: 0.9rem; }
+  .entity-count { font-size: 0.72rem; color: var(--muted, #888); }
+  .entity-gate {
+    margin-left: auto;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.05rem 0.35rem;
+    border-radius: 0.3rem;
+    background: color-mix(in srgb, var(--muted, #888) 15%, transparent);
+    color: var(--muted, #888);
+  }
+  .entity-gate.gate-user { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
 
   /* Deletion cards */
   .del-card {
