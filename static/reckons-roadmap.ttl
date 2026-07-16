@@ -2780,6 +2780,21 @@ kb:cross-kb-alignment rdf:type ktype:Feature ;
     rdfs:label "Cross-Graph Alignment" ;
     kpred:moved-to "static/reckons-shipped.ttl" .
 
+# -- F94: MCP/CLI follow leaps — cross-graph query with a leap-depth setting -----
+# Matt, 2026-07-15: "we verify specific graphs well, but connections BETWEEN graphs need work."
+# The UI's leap badge lets a USER jump graph-to-graph (urn:reckons:leap -> switchToKb); the MCP
+# has no equivalent. An agent that hits a leap node cannot follow it. Give queries a LEAP-DEPTH.
+kb:mcp-leap-traversal rdf:type ktype:Feature ;
+    rdfs:label "MCP/CLI follow leaps — cross-graph query (leap-depth)" ;
+    kpred:feature-id "F94" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:relates-to kb:question-router ;
+    kpred:description "The MCP reads across graphs but no tool FOLLOWS a leap. Add a LEAP-DEPTH parameter to the traversal/query tools (kb_subgraph, kb_search, kb_get_entity, kb_reckoning): follow urn:reckons:leap edges up to N hops into connected graphs, so a query can gather context across the jumps a user would take by hand — like kb_subgraph's `hops`, but the hop crosses a GRAPH boundary via a leap rather than an in-graph edge. Exposed as an MCP tool parameter AND a CLI setting (a default depth, overridable per call). Depth 0 = current behaviour (this graph only); depth 1 = this graph + graphs it leaps to; and so on, bounded so a query cannot walk the whole federation by accident." ;
+    kpred:principle "A leap hop is not a normal hop — it crosses into another party's graph, so provenance must record WHICH leap was followed and DEPTH must be bounded and explicit. Following a leap is consent-and-accountability territory (the F91 thesis): the answer must carry the chain of graphs it walked." ;
+    kpred:depends-on kb:question-router ;
+    kpred:remaining "leap-depth param on kb_subgraph/kb_search/kb_get_entity/kb_reckoning; a resolver that follows urn:reckons:leap edges to the target graph's stable-id and continues the query there (reusing the app's leap → switchToKb stable-id lookup); per-hop provenance on returned triples; a CLI default-depth setting; a bound so depth cannot explode the query." .
+
 kb:n8n-sync-hub rdf:type ktype:Concept ;
     rdfs:label "Graph Sync Hub" ;
     kpred:moved-to "static/reckons-shipped.ttl" .
