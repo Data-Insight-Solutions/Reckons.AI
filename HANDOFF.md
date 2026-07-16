@@ -214,6 +214,17 @@ using it and extending it.
      — the honest-verification discipline working.
    Running tally: **~1024 tests** (from 956 at session start), align green, ~20 commits on PR #101.
    The review-at-scale subsystem is COMPLETE and internally consistent; remaining is UI wiring.
+
+   **UI WIRING DONE + BROWSER-VERIFIED (68357d5) — F53 scaffolded→FUNCTIONAL.** `buildReviewPlan`
+   now drives `/review`'s incoming tab: honest headline + SPOTLIGHT strip (contested few) + pending
+   facts grouped into per-entity CARDS (F83) with a by-entity/flat toggle; per-fact confirm/reject
+   unchanged (SwipeCard extracted to a snippet). Proven end to end: the review e2e seeds a real
+   ingest, opens /review, asserts entity-cards + headline + toggle + confirm reachable — **6/6
+   review e2e pass** (`tests/e2e/review.test.ts`), 1030 unit tests, align green. The e2e harness
+   works in this env (`npx playwright test tests/e2e/review.test.ts --project=desktop-chrome`), so
+   UI can now be verified here after all. F49 also has a `functional` UI seam untouched; F51/F52
+   remain logic-only. Remaining on F53: tenure-drift signal + surfacing the merge-suggest tier in
+   this UI. F83 stays in-progress (canvas-side predicate/time filters still need UI).
 2. **F90 Blender** (planned) — headless Blender over MCP. The trap is in the roadmap:
    **Blender renders a black frame and exits 0.** First domain where `done-when` cannot be a
    passing test — exactly what F88's `verifiable-by` exists for (deterministic image check →
