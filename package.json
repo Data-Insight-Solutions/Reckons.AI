@@ -126,7 +126,8 @@
     "idea": "npx tsx scripts/agent/idea.ts",
     "interview": "npx tsx scripts/agent/interview.ts",
     "desk": "bash scripts/agent/desk.sh",
-    "backlog": "npx tsx scripts/agent/backlog.ts"
+    "backlog": "npx tsx scripts/agent/backlog.ts",
+    "prune": "npx tsx scripts/agent/prune-queue.ts"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.100.1",

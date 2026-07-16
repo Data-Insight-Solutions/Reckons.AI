@@ -1218,6 +1218,19 @@ kb:async-backlog rdf:type      ktype:Phase ;
                kpred:decided      "Matt's framing (2026-07-16): the backlog is 'not-confidently-answered open items that have been CARRIED OVER and/or are BLOCKING something' — so carried-over (age) and blocking are first-class, and a stale item that blocks nothing is a drop candidate, not a standing question." ;
                kpred:remaining    "Explicit prune command Matt runs (delete the pre-existing type:question entries from competitor-scan/code-review now re-typed at source; back up first — an agent must not auto-delete the shared queue). Populate kpred:blocks on more questions so the blocking lane is real, not empty. Fold `npm run backlog` into the routine's report." .
 
+kb:prune-analysis rdf:type     ktype:Feature ;
+               rdfs:label   "Prune analysis — declutter, two lenses" ;
+               kpred:feature-id   "F98" ;
+               kpred:has-status   "functional" ;
+               kpred:relates-to   kb:review-workbench ;
+               kpred:relates-to   kb:async-backlog ;
+               kpred:has-file     "src/lib/rdf/prune.ts" ;
+               kpred:tested-by    "src/lib/rdf/__tests__/prune.test.ts" ;
+               kpred:has-file     "scripts/agent/prune-queue.ts" ;
+               kpred:description  "What does this graph carry that it does not need? Two lenses, one idea (src/lib/rdf/prune.ts). MAIN-GRAPH prune (analyzeNodePrune): a node earns its place by RELATIONAL STRENGTH (degree — how connected it is to the rest) and by RELEVANCE (fit to the graph's title + description); a node that is weakly connected AND off-theme is clutter and is flagged — as a REVIEWABLE suggestion, never a silent delete, because pruning a node the user cared about destroys the one thing this app protects. REVIEW-MODE prune (analyzeSuggestionPrune): scores each pending SUGGESTION for pruning — re-derivable (a check regenerates it), empty/malformed, or stale (old, blocks nothing, low priority) — sharing the triage classifier so 're-derivable' means the same everywhere. Both cores are DETERMINISTIC and model-free (degree + lexical overlap), so they run offline/in CI; embedding relevance is an optional plug-in (opts.relevance) exactly as current-ranking.ts anchors on top-degree entities. `npm run prune` applies the review-mode prune to knowledge.pending.jsonl (dry-run by default; --apply backs up first). First run cleared 17 re-derivable graph-lint dupes." ;
+               kpred:decided      "Matt (2026-07-16): the app needs a prune analysis in review. MAIN-graph prune weighs all nodes by relational strength to each other AND relevance to graph title/description; REVIEW-mode prune prunes suggestions. Prune proposes; the human disposes — a node prune is a suggestion, not a deletion." ;
+               kpred:remaining    "REVIEW UI: surface node-prune as a Review analysis tab (candidates ranked most-prunable first, each a reviewable suggestion), alongside incoming/deletions/merges/align — the primitive + suggestion-prune CLI are built, the node-prune UI tab is not. Wire the in-app embedding relevance (embed.ts) as opts.relevance so the main-graph lens uses semantic, not just lexical, fit. One-time normalize of pre-existing competitor-scan/code-review entries mis-typed 'question' -> 'suggestion' (emitters already fixed at source)." .
+
 kb:auto-merge rdf:type         ktype:Feature ;
                rdfs:label   "Auto-merge of accumulated facts" ;
                kpred:feature-id   "F80.1" ;
