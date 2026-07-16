@@ -48,6 +48,13 @@
       "desc": "Shipped features must link a test OR declare kpred:test-coverage \"none\" — you may ship untested code, but not silently"
     },
     {
+      "name": "shared-deps",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/shared-deps.ts --top=10",
+      "desc": "Whole-roadmap shared-dependency scan — dependency hubs (build once), shared files, and overlap warnings (features that need the same thing but touch no common file). Avoid separate code for nearly the same task."
+    },
+    {
       "name": "safety-attestation",
       "tier": "script",
       "enabled": true,
