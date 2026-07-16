@@ -1,7 +1,26 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-07-14.** Branch: **`feat/work-tiering-ci`** (branched off
+**Last updated: 2026-07-16.** Branch: **`feat/work-tiering-ci`** (branched off
 `fix/production-claim-evidence`, which is open as **PR #100 → `dev`**).
+
+## ✓ LANDED (2026-07-16): F80 phase 5 — the question desk — commit `4244b78`
+
+`npm run desk` opens a SECOND terminal (a Claude Code side-chat, or a scripted interview)
+that asks Matt the open questions agents left, whenever he isn't answering them in the web
+UI, and keeps nudging him to open the graph view of the fact. `scripts/agent/interview.ts`
+is the deterministic core (openQuestions / recordAnswer — writes the SAME knowledge.answers.jsonl
+the UI writes); `scripts/agent/desk.sh` is the launcher. 9 tests pass; recorded as `kb:async-desk`
+(functional). **Note: the queue currently has 83 open questions — mostly stale sweep findings
+from 2026-07-12 (parse errors, urn:kabase typos); they want draining/triage, not just answering.**
+Remaining on this: an entity-focus `?review=<iri>` deep-link — only `?kb=<graph>` exists in the
+UI today (verified), so the desk links to the graph's Review tab and names the subject to find.
+Also on F80: `kpred:landscape` records the Reckons.AI-vs-MAF/Strands framework analysis (graph-native
++ local-first + LLM-distrustful vs their LLM-driven/cloud-tied bet).
+
+## ✓ LANDED (2026-07-16): F81 cadence right-size + parallel-GPU model — commit `31ac315`
+
+Local-agent job cadence bumped to a few times/day (8h); F81 records opportunistic scheduling +
+the two-3090Ti PARALLEL local-agent runner as its next build (`kpred:remaining`).
 
 If you are a fresh session (local, cloud, resumed, or scheduled) and Matt says "continue",
 this is where you continue from. Do not re-derive it; do not re-audit what is already audited.
