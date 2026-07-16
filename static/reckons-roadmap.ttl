@@ -2818,6 +2818,16 @@ kb:shelly-graph-control rdf:type ktype:Feature ;
     kpred:description "Two intertwined moves on the Shelly panel and the graph controls (Matt, 2026-07-15). (1) SHELLY DRIVES THE VIEW: a persona that REPLACES the default Shelly and whose primary job is the GRAPH VIEW SETTINGS — force strength, layout, filters and other view settings changed AUTOMATICALLY by Shelly from a plain-language request ('spread these out', 'just show dependencies', 'focus on Alex'). Plus interpreting the user's DESCRIPTION of a graph EDIT (NL -> proposed triples, pending) and the specialty matrix functions (F95). Aim for QUICK review and small add-ons to the chat panel, not a redesign. (2) QUICK GRAPH SETTINGS: the review overlay-type panel JOINS filters and forces in one place; a quick-set graph-options control appears on HOVER (desktop) or SINGLE-SELECT (mobile) offering All / Sets / Default / Settings — where Settings on mobile opens the full graph KB page. Ties directly to F92 (review is a mode with its own panels) — the force/filter panel is that mode's configurable surface, and Shelly is its natural-language driver." ;
     kpred:principle "Shelly changing the VIEW is safe to do live (it rearranges pixels, settles nothing); Shelly changing the GRAPH still proposes pending facts the human confirms. The persona swap is scoped: a graph-control Shelly is not licensed to write facts unreviewed just because it can rearrange the view." .
 
+# -- F97: Auto-archive by age — a 'current' graph trimmed to the relevant window -
+kb:auto-archive rdf:type ktype:Feature ;
+    rdfs:label "Auto-archive by age — a 'current' graph trimmed to the relevant timeframe" ;
+    kpred:feature-id "F97" ;
+    kpred:has-status "speculative" ;
+    kpred:relates-to kb:currents ;
+    kpred:relates-to kb:graph-legibility ;
+    kpred:description "Easy auto-archive of time-stamped events older than a configurable threshold (X days, or however the user sets it), so a graph stays a CURRENT graph — adjusted to context, trimmed to the most relevant timeframe (Matt, 2026-07-15). Archived is NOT deleted: the facts move out of the active/current view into an archive the user can restore or query, so history is preserved but the working graph stays focused. This is the TIME axis of the F83/condensation focus story: large graphs (timelines especially) are answered by trimming to a window, not a hard cap. Ties to kb:currents (the 'current' concept), the F83 time filter, and F97-style proactive suggestion (nudge to archive when the graph spans far more time than the user is working in)." ;
+    kpred:principle "Archive is reversible and non-destructive — trimming the CURRENT view must never lose the fact. An auto-archive that quietly deleted history would be the silent-destruction failure again; it MOVES facts, it does not erase them, and the threshold is the user's to set." .
+
 kb:n8n-sync-hub rdf:type ktype:Concept ;
     rdfs:label "Graph Sync Hub" ;
     kpred:moved-to "static/reckons-shipped.ttl" .
