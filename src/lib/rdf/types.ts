@@ -248,6 +248,15 @@ export const PAGE_PREFIX = 'urn:reckons:page/';
 /** Predicates under this prefix are graph-level currents settings (F29) */
 export const CURRENTS_PREFIX = 'urn:reckons:meta/currents/';
 
+/** PROV-O provenance (wasDerivedFrom, startedAtTime, endedAtTime, …). This is accountability
+ * METADATA about a statement — where it came from, when — not knowledge the graph is about. It is
+ * materialized as reification triples (<urn:kbase:stmt/{id}> prov:wasDerivedFrom <source>) for
+ * round-tripping; rendered as edges it fills the canvas with UUID nodes joined by "wasDerivedFrom",
+ * which is exactly the unreadable noise the graph must not show (kb:graph-legibility, F83). */
+export const PROV_PREFIX = 'http://www.w3.org/ns/prov#';
+/** Statement-reification subjects (urn:kbase:stmt/{id}) — the id-nodes provenance hangs off. */
+export const STMT_PREFIX = 'urn:kbase:stmt/';
+
 /** Predicates whose object is a presentation image (2D icon / preview photo).
  * They're consumed directly by the icon/preview maps; as edges they'd render
  * the raw data-URI or URL as a junk literal node, so they're metadata here. */
@@ -269,6 +278,9 @@ export function isMetaPredicate(predicateIri: string): boolean {
   if (predicateIri.startsWith(PAGE_PREFIX)) return true;
   // currents settings are graph-level config, never edges
   if (predicateIri.startsWith(CURRENTS_PREFIX)) return true;
+  // PROV-O provenance is accountability metadata, not a semantic edge — otherwise the graph fills
+  // with UUID statement-nodes joined by "wasDerivedFrom" (kb:graph-legibility, F83).
+  if (predicateIri.startsWith(PROV_PREFIX)) return true;
   return false;
 }
 

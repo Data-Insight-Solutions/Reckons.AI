@@ -186,6 +186,14 @@ describe('isMetaPredicate', () => {
     expect(isMetaPredicate('http://www.w3.org/1999/02/22-rdf-syntax-ns#type')).toBe(false);
   });
 
+  it('treats PROV-O provenance as metadata (not a rendered edge)', () => {
+    // Otherwise a round-tripped graph fills the canvas with UUID stmt-nodes joined by
+    // "wasDerivedFrom" — unreadable provenance noise (kb:graph-legibility, F83).
+    expect(isMetaPredicate('http://www.w3.org/ns/prov#wasDerivedFrom')).toBe(true);
+    expect(isMetaPredicate('http://www.w3.org/ns/prov#startedAtTime')).toBe(true);
+    expect(isMetaPredicate('http://www.w3.org/ns/prov#endedAtTime')).toBe(true);
+  });
+
   it('hides presentation image predicates (icon2d / photo) so their data-URI/URL object never becomes a node', () => {
     expect(isMetaPredicate('urn:kbase:predicate/icon2d')).toBe(true);
     expect(isMetaPredicate('urn:kbase:predicate/photo')).toBe(true);
