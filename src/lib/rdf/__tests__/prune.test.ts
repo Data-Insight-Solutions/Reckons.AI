@@ -8,9 +8,9 @@
  */
 import { describe, it, expect } from 'vitest';
 import { analyzeNodePrune, analyzeSuggestionPrune, tokenize } from '../prune';
-import type { Statement, Term } from '../types';
+import type { Statement, Term, NamedNode } from '../types';
 
-const iri = (value: string): Term => ({ kind: 'iri', value });
+const iri = (value: string): NamedNode => ({ kind: 'iri', value });
 const lit = (value: string): Term => ({ kind: 'literal', value });
 let n = 0;
 const st = (s: string, p: string, o: Term, status: Statement['status'] = 'confirmed'): Statement => ({
