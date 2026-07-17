@@ -77,3 +77,17 @@ kb:attestation-2026-07-16-61fe7cb rdf:type ktype:SafetyAttestation ;
     kpred:control     "egress-model-enforced=PASS — Every feature that DISTRIBUTES user data (Reckons.AI as intermediary) declares a safety gate and does not ship ahead of it; user-export paths carry no blocking gate (export is a right). Enforced by graph-lint. [no egress-gate violations]" ;
     kpred:disclaimer  "Good-faith effort, not enforcement. Client-side, open-source, bypassable by design. Records software state only; no user data is retained." .
 
+kb:attestation-2026-07-17-6e0fe6d rdf:type ktype:SafetyAttestation ;
+    rdfs:label        "Safety attestation 2026-07-17" ;
+    kpred:attested-at "2026-07-17T17:32:51.302Z"^^xsd:dateTime ;
+    kpred:git-commit  "6e0fe6d5390cfff5797fe238862762fea4ef572a" ;
+    kpred:controls-verified 6 ;
+    kpred:controls-total    6 ;
+    kpred:control     "ethics-preamble-present=PASS — An ETHICS_PREAMBLE refusing incitement, mass-casualty weapons instructions, sexualization of minors, and promotion of slavery/trafficking is defined in the codebase. [658 chars; 4/4 required prohibitions present]" ;
+    kpred:control     "ethics-preamble-injected=PASS — Every code path that sends a system prompt to an LLM prepends the ETHICS_PREAMBLE. Verified by static analysis of the prompt sites, not by assertion. [5/5 prompt modules inject the preamble]" ;
+    kpred:control     "preamble-no-drift=PASS — The MCP server carries a byte-identical copy of the preamble; the two cannot silently diverge. [identical (658 chars)]" ;
+    kpred:control     "classifier-blocks-on-ingest=PASS — classifyText / classifyStatement rate content none|mature|blocked, and filterBlockedStatements removes blocked content during ingest. [4/4 classifier exports present]" ;
+    kpred:control     "safety-tests-pass=PASS — The content-policy test suite is green as of this attestation. [28 tests passed]" ;
+    kpred:control     "egress-model-enforced=PASS — Every feature that DISTRIBUTES user data (Reckons.AI as intermediary) declares a safety gate and does not ship ahead of it; user-export paths carry no blocking gate (export is a right). Enforced by graph-lint. [no egress-gate violations]" ;
+    kpred:disclaimer  "Good-faith effort, not enforcement. Client-side, open-source, bypassable by design. Records software state only; no user data is retained." .
+
