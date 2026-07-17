@@ -11,11 +11,15 @@
 
 import { setDownloadConsentHandler } from '$lib/integrations/llm/wasm';
 import { setEmbedConsentHandler, setEmbeddingModel } from '$lib/embed';
+import { shouldAvoidInBrowserModel } from '$lib/integrations/llm/device-capability';
 
 /** Pending consent request — when non-null, the dialog should be shown. */
 let _pending = $state<{
   model: string;
   approxMB: number;
+  /** True on a memory-constrained device (iOS) for a model big enough to risk an OOM tab-crash.
+   *  The dialog shows the graceful "try tiny / Ollama / API key" offer instead of a plain download. */
+  constrained: boolean;
   resolve: (ok: boolean) => void;
 } | null>(null);
 
@@ -30,7 +34,9 @@ export function resolveConsent(ok: boolean) {
 
 function makeHandler(model: string, approxMB: number): Promise<boolean> {
   return new Promise<boolean>((resolve) => {
-    _pending = { model, approxMB, resolve };
+    // Only the large in-browser LLM (~500MB) trips this on a constrained device; the small
+    // embedding (~33MB) / whisper (~40MB) models stay under the cap and get the normal prompt.
+    _pending = { model, approxMB, constrained: shouldAvoidInBrowserModel(approxMB), resolve };
   });
 }
 
