@@ -49,15 +49,15 @@ export async function clearStorage(page: Page): Promise<void> {
  * (embedding model / WASM model) that would otherwise block ingest flow.
  */
 export async function waitForApp(page: Page): Promise<void> {
-  const url = page.url();
-  if (!url.startsWith('http://localhost') || url.includes('about:blank')) {
-    await page.goto('/');
-  } else if (!url.endsWith('/') && !url.includes('/ingest') && !url.includes('/review') && !url.includes('/settings')) {
-    await page.goto('/');
-  }
-  // Reload to ensure a clean post-clearStorage state
-  if (url.startsWith('http://localhost')) {
-    await page.goto('/');
+  // A single fresh load of the app root. In dev, HMR or the service worker can abort an in-flight
+  // navigation (net::ERR_ABORTED) — and the old code fired goto('/') up to three times in a row,
+  // which made that abort likely. One navigation, retried on abort, is both simpler and reliable.
+  for (let i = 0; ; i++) {
+    try { await page.goto('/', { waitUntil: 'domcontentloaded' }); break; }
+    catch (e) {
+      if (i >= 2) throw e;
+      await page.waitForTimeout(400);
+    }
   }
   await page.locator('nav').waitFor({ timeout: 15_000 });
 
