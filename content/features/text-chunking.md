@@ -15,4 +15,6 @@ generated: "docs-kb"
 
 *Feature*
 
+> **Planned** — on the roadmap, **not yet built**. Described here as intended, not as shipped.
+
 Sliding window chunking for sources exceeding the 12K character extraction limit. Each chunk gets a context header (source title, chunk N of M, parent page). Cross-chunk deduplication merges triples with identical (subject, predicate, object) after slugification. Benefits all source types, not just Confluence.

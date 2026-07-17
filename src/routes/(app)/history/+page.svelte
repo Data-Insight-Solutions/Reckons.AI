@@ -2,78 +2,29 @@
   import { db } from '$lib/storage/db';
   import { statements, sources } from '$lib/stores/kb.svelte';
   import type { Statement, Source } from '$lib/rdf/types';
-  import type { TrustEvent } from '$lib/storage/types';
+  import { reconstructStatementsAt, reconstructSourcesAt } from '$lib/storage/history';
   import KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
   import HistoryTimeline from '$lib/components/HistoryTimeline.svelte';
 
   let historyTimestamp = $state<number | null>(null);
   let historyStatements = $state<Statement[]>([]);
   let historySources = $state<Source[]>([]);
+  /** Facts with no arrival record — we cannot date them, so we say so rather than guess. */
+  let undatedCount = $state(0);
 
   async function reconstructKBAtTime(timestamp: number | null) {
-    if (timestamp === null) {
-      // Show current state
-      historyStatements = statements();
-      historySources = sources();
-      return;
-    }
+    // The reconstruction itself is pure and tested (storage/history.ts). This function
+    // does the I/O and nothing else — that separation is what made two bugs findable:
+    // deleted facts could never reappear, and trust scores used a stale copy of the maths.
+    const [changelog, trustEvents] = await Promise.all([
+      db.changelog.toArray(),
+      db.trustEvents.toArray()
+    ]);
 
-    // Reconstruct KB at timestamp
-    // Statements: added before T, not deleted before T
-    const allStmts = statements();
-    const reconstructed: Statement[] = [];
-
-    for (const st of allStmts) {
-      // Check if statement was added before T
-      const addLog = await db.changelog
-        .where('statementId')
-        .equals(st.id)
-        .filter((e) => e.action === 'add' || e.action === 'ingest')
-        .first();
-
-      if (!addLog || addLog.timestamp > timestamp) {
-        continue; // Not added yet at T
-      }
-
-      // Check if statement was deleted before T
-      const deleteLog = await db.changelog
-        .where('statementId')
-        .equals(st.id)
-        .filter((e) => e.action === 'delete')
-        .first();
-
-      if (deleteLog && deleteLog.timestamp <= timestamp) {
-        continue; // Was deleted before T
-      }
-
-      reconstructed.push(st);
-    }
-
-    // Reconstruct trust scores
-    const allSources = sources();
-    const reconstructedSources = await Promise.all(
-      allSources.map(async (src) => {
-        const trustEvents = await db.trustEvents
-          .where('sourceId')
-          .equals(src.id)
-          .filter((e) => e.timestamp <= timestamp)
-          .toArray();
-
-        // Recalculate trustScore at this time with decay
-        let score = 0;
-        for (const ev of trustEvents) {
-          const ageDays = (timestamp - ev.timestamp) / (1000 * 60 * 60 * 24);
-          const decayFactor = Math.exp(-0.01 * ageDays);
-          score += ev.delta * decayFactor;
-        }
-        score = Math.max(0, Math.min(1, score));
-
-        return { ...src, trustScore: score };
-      })
-    );
-
-    historyStatements = reconstructed;
-    historySources = reconstructedSources;
+    const rebuilt = reconstructStatementsAt(statements(), changelog, timestamp);
+    historyStatements = rebuilt.statements;
+    undatedCount = rebuilt.undated.length;
+    historySources = reconstructSourcesAt(sources(), trustEvents, timestamp);
   }
 
   function handleTimestampChange(timestamp: number | null) {
@@ -86,7 +37,9 @@
   <div class="header">
     <h1>Graph History</h1>
     <p>
-      Scrub through past graph states. The graph shows only facts that existed at the selected time.
+      Scrub through past graph states. The graph shows the facts that existed at the selected
+      time — including ones you have since deleted. Facts with no recorded arrival cannot be
+      dated, and are counted rather than guessed at.
     </p>
   </div>
 
@@ -100,6 +53,14 @@
         <div class="history-badge">
           History Mode: {new Date(historyTimestamp).toLocaleString()}
         </div>
+        {#if undatedCount > 0}
+          <!-- Say the gap out loud. These facts have no arrival record (seeded from TTL,
+               or ingested before the changelog), so we cannot honestly place them in time
+               — and we will not quietly assume them in or out of the past. -->
+          <div class="undated-badge" title="No arrival record in the changelog, so these facts cannot be dated. They are excluded from the reconstruction rather than guessed at.">
+            {undatedCount} fact{undatedCount === 1 ? '' : 's'} not shown — undateable
+          </div>
+        {/if}
       {/if}
 
       <KnowledgeGraph
@@ -170,6 +131,20 @@
     color: var(--accent);
     font-size: 0.8rem;
     font-weight: 500;
+  }
+
+  .undated-badge {
+    position: absolute;
+    top: calc(var(--space-md) + 2.25rem);
+    left: var(--space-md);
+    z-index: 10;
+    padding: var(--space-sm) var(--space-md);
+    background: var(--surface);
+    border: 1px dashed var(--line);
+    border-radius: var(--rad-sm);
+    color: var(--muted);
+    font-size: 0.75rem;
+    cursor: help;
   }
 
   @media (max-width: 900px) {

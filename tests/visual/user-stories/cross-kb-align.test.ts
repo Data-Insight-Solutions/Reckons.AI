@@ -64,7 +64,7 @@ test.describe('User Story: Cross-KB Alignment', () => {
     await page.goto(`${APP}/review`);
     await page.waitForTimeout(1500);
 
-    await page.locator('button').filter({ hasText: /^align$/i }).click();
+    await page.locator('.rp-tabs button').filter({ hasText: 'align' }).click();
     await page.waitForTimeout(500);
 
     const chips = page.locator('.kp-chip');
@@ -93,7 +93,7 @@ test.describe('User Story: Cross-KB Alignment', () => {
     await page.goto(`${APP}/review`);
     await page.waitForTimeout(1500);
 
-    await page.locator('button').filter({ hasText: /^align$/i }).click();
+    await page.locator('.rp-tabs button').filter({ hasText: 'align' }).click();
     await page.waitForTimeout(500);
 
     // Select up to 2 KBs
@@ -136,7 +136,7 @@ test.describe('User Story: Cross-KB Alignment', () => {
     await page.goto(`${APP}/review`);
     await page.waitForTimeout(1500);
 
-    await page.locator('button').filter({ hasText: /^align$/i }).click();
+    await page.locator('.rp-tabs button').filter({ hasText: 'align' }).click();
     await page.waitForTimeout(500);
 
     // Select first KB
@@ -177,7 +177,7 @@ test.describe('User Story: Cross-KB Alignment', () => {
     await page.goto(`${APP}/review`);
     await page.waitForTimeout(1500);
 
-    await page.locator('button').filter({ hasText: /^align$/i }).click();
+    await page.locator('.rp-tabs button').filter({ hasText: 'align' }).click();
     await page.waitForTimeout(500);
 
     const chips = page.locator('.kp-chip');
@@ -215,7 +215,7 @@ test.describe('User Story: Cross-KB Alignment', () => {
     await page.waitForTimeout(1500);
 
     // Go to align tab, select a KB
-    await page.locator('button').filter({ hasText: /^align$/i }).click();
+    await page.locator('.rp-tabs button').filter({ hasText: 'align' }).click();
     await page.waitForTimeout(500);
 
     const chips = page.locator('.kp-chip');
@@ -224,13 +224,13 @@ test.describe('User Story: Cross-KB Alignment', () => {
       await page.waitForTimeout(300);
 
       // Switch to incoming tab
-      await page.locator('button').filter({ hasText: /^incoming$/i }).click();
+      await page.locator('.rp-tabs button').filter({ hasText: 'incoming' }).click();
       await page.waitForTimeout(300);
 
       await screenshotTo(page, 'cross-kb-align', '07a-switched-to-incoming');
 
       // Switch back to align tab
-      await page.locator('button').filter({ hasText: /^align$/i }).click();
+      await page.locator('.rp-tabs button').filter({ hasText: 'align' }).click();
       await page.waitForTimeout(300);
 
       // The KB chip should still be selected
@@ -260,7 +260,7 @@ test.describe('Cross-KB Alignment — Mobile', () => {
     await page.waitForTimeout(1500);
 
     // Click align tab
-    const alignTab = page.locator('button').filter({ hasText: /^align$/i });
+    const alignTab = page.locator('.rp-tabs button').filter({ hasText: 'align' });
     if (await alignTab.count() > 0) {
       await alignTab.click();
       await page.waitForTimeout(500);

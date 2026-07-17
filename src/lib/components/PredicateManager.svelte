@@ -1,35 +1,12 @@
 <script lang="ts">
-  import { statements, updateStatement } from '$lib/stores/kb.svelte';
-  import { PREDICATE_PREFIX, META_PREFIX, isMetaPredicate } from '$lib/rdf/types';
-  import type { Statement } from '$lib/rdf/types';
+  import { statements, updateStatement, deleteStatement } from '$lib/stores/kb.svelte';
+  // Rename/merge logic lives in rdf/predicates.ts so it can be tested. It used to be
+  // inline here, which is why three real defects survived in a `production` feature:
+  // renaming a standard-vocabulary term rewrote it into our namespace, renaming onto an
+  // existing predicate silently merged, and merging created duplicate statements.
+  import { listPredicates, planRename, planMerge, type PredicateInfo } from '$lib/rdf/predicates';
 
-  type PredicateInfo = {
-    iri: string;
-    slug: string;
-    count: number;
-    isMeta: boolean;
-  };
-
-  const predicates = $derived.by(() => {
-    const map = new Map<string, number>();
-    for (const st of statements()) {
-      if (st.status === 'rejected' || st.status === 'superseded') continue;
-      const iri = st.p.value;
-      map.set(iri, (map.get(iri) ?? 0) + 1);
-    }
-    const list: PredicateInfo[] = [];
-    for (const [iri, count] of map) {
-      const isMeta = isMetaPredicate(iri);
-      const slug = iri.startsWith(PREDICATE_PREFIX)
-        ? iri.slice(PREDICATE_PREFIX.length)
-        : iri.startsWith(META_PREFIX)
-          ? iri.slice(META_PREFIX.length)
-          : iri.split('/').pop() ?? iri;
-      list.push({ iri, slug, count, isMeta });
-    }
-    list.sort((a, b) => b.count - a.count);
-    return list;
-  });
+  const predicates = $derived(listPredicates(statements()));
 
   const edgePredicates = $derived(predicates.filter(p => !p.isMeta));
   const metaPredicates = $derived(predicates.filter(p => p.isMeta));
@@ -49,26 +26,33 @@
     renameValue = '';
   }
 
+  let warning = $state<string | null>(null);
+
   async function commitRename() {
     if (!renaming || processing) return;
-    const oldIri = renaming;
-    const newSlug = renameValue.trim().toLowerCase()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '');
-    if (!newSlug) return;
+    warning = null;
 
-    const prefix = isMetaPredicate(oldIri) ? META_PREFIX : PREDICATE_PREFIX;
-    const newIri = prefix + newSlug;
-    if (newIri === oldIri) { cancelRename(); return; }
+    const plan = planRename(statements(), renaming, renameValue);
+
+    if (plan.unchanged) { cancelRename(); return; }
+    if (plan.blocked === 'empty') return;
+    if (plan.blocked === 'external-vocabulary') {
+      warning = `"${renaming}" is a standard vocabulary term, not one of yours. Renaming it would rewrite it into Reckons.AI's namespace and the graph would stop meaning what it says.`;
+      return;
+    }
+    // Renaming ONTO an existing predicate is a merge. Say so; never do it silently.
+    if (plan.collidesWith) {
+      const dupes = plan.duplicates?.length ?? 0;
+      warning = `"${plan.collidesWith.slug}" already exists (${plan.collidesWith.count} uses). This would MERGE the two`
+        + (dupes ? `, discarding ${dupes} duplicate statement${dupes === 1 ? '' : 's'}` : '')
+        + `. Use merge if that is what you want.`;
+      return;
+    }
+    if (!plan.ok || !plan.newIri) return;
 
     processing = true;
-    const affected = statements().filter(
-      s => s.p.value === oldIri && s.status !== 'rejected' && s.status !== 'superseded'
-    );
-    for (const st of affected) {
-      await updateStatement(st.id, { p: { kind: 'iri', value: newIri } });
+    for (const st of plan.affected) {
+      await updateStatement(st.id, { p: { kind: 'iri', value: plan.newIri } });
     }
     processing = false;
     cancelRename();
@@ -95,12 +79,22 @@
 
   async function commitMerge() {
     if (!mergeSource || !mergeTarget || processing) return;
+    warning = null;
+
+    const plan = planMerge(statements(), mergeSource, mergeTarget);
+    if (plan.blocked === 'external-vocabulary') {
+      warning = `"${mergeSource}" is a standard vocabulary term and cannot be merged away.`;
+      return;
+    }
+    if (!plan.ok) return;
+
     processing = true;
-    const affected = statements().filter(
-      s => s.p.value === mergeSource && s.status !== 'rejected' && s.status !== 'superseded'
-    );
-    for (const st of affected) {
-      await updateStatement(st.id, { p: { kind: 'iri', value: mergeTarget } });
+    const dupeIds = new Set(plan.duplicates.map((s) => s.id));
+    for (const st of plan.affected) {
+      // A statement that would become an exact twin of one already on the target is
+      // DROPPED, not rewritten — otherwise the merge quietly doubles the graph.
+      if (dupeIds.has(st.id)) await deleteStatement(st.id);
+      else await updateStatement(st.id, { p: { kind: 'iri', value: mergeTarget } });
     }
     processing = false;
     cancelMerge();
@@ -111,6 +105,15 @@
 </script>
 
 <div class="pred-mgr">
+  <!-- A refusal the user cannot see is as bad as a silent merge. Always say why. -->
+  {#if warning}
+    <div class="pred-warning" role="alert">
+      <span aria-hidden="true">⚠</span>
+      <p>{warning}</p>
+      <button class="ghost sm mono" onclick={() => (warning = null)}>dismiss</button>
+    </div>
+  {/if}
+
   {#if mergeSource && mergeTarget}
     <div class="merge-confirm">
       <p class="merge-msg">
@@ -207,6 +210,23 @@
 </div>
 
 <style>
+  .pred-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.7rem 0.85rem;
+    margin-bottom: 0.85rem;
+    border: 1px solid var(--warn, #b8860b);
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--warn, #b8860b) 10%, transparent);
+  }
+  .pred-warning p {
+    margin: 0;
+    flex: 1;
+    font-size: 0.85rem;
+    line-height: 1.45;
+  }
+
   .pred-mgr {
     display: flex;
     flex-direction: column;

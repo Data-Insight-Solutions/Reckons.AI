@@ -137,6 +137,17 @@ export type TurtleSettings = {
   responseFrequency: number; // 0-100
 };
 
+/**
+ * What would SETTLE a fact — and therefore who is competent to approve it (F88).
+ * Defined here beside Statement; the routing logic lives in rdf/verifiability.ts.
+ *
+ * `external-graph` (F91): the fact is an ANSWER another graph gave to a routed question. It is
+ * that party's claim, not our verified knowledge — an unverifiable claim made by the party it
+ * benefits is not evidence (the thesis), so it enters pending and is always reviewed, never
+ * machine-settled. It carries who answered and the hop chain it came back along.
+ */
+export type Verifiability = 'code' | 'test' | 'source' | 'user' | 'unknown' | 'external-graph';
+
 export type Statement = {
   /** Unique id (uuid) */
   id: string;
@@ -159,6 +170,12 @@ export type Statement = {
   gloss?: string;
   /** Verbatim source sentence/phrase the triple was derived from */
   excerpt?: string;
+  /**
+   * Did `excerpt` actually occur in the source text? (kb:passage-grounding)
+   * true  = verified quote.  false = the model fabricated or paraphrased it, and the
+   * excerpt has been DROPPED rather than shown.  undefined = not checked (no source text).
+   */
+  grounded?: boolean;
   /** Review state */
   status: ReviewStatus;
   /**
@@ -169,6 +186,47 @@ export type Statement = {
   needsObject?: boolean;
   /** The sub-agent's question that produced this partial fact (F32). */
   question?: string;
+  /**
+   * What this unanswered question BLOCKS — entity IRIs (F80 / kb:mission).
+   *
+   * This is the field that makes a partial fact more than a gap. "Subject known, predicate
+   * known, object open, and FOUR THINGS STALLED BEHIND IT" is the whole value: it turns
+   * "go find out what we're missing" into "answer this one question, and four blocked
+   * things unblock". Without it the graph knows it has a hole but not what the hole costs,
+   * which is the difference between a to-do and a priority.
+   */
+  blocks?: string[];
+  /**
+   * Which agent asked. Needed to route the answer BACK to it — with more than one agent
+   * running, an unattributed answer cannot be claimed by the one that is waiting.
+   */
+  askedBy?: string;
+  /**
+   * HOW could this fact be checked — and therefore WHO is competent to approve it (F88).
+   *
+   * `code` | `test` a script or a suite settles it; the user need not be asked at all.
+   * `source`        a cited passage backs it.
+   * `user`          only the person knows: their business, their intent. Self-attested.
+   * `unknown`       nobody has established this. Unsettled, not false.
+   *
+   * Undefined means UNCLASSIFIED, which routes to the user — never auto-approve a fact whose
+   * verifiability nobody has established. See `gateFor()` in rdf/verifiability.ts, and note
+   * that AUTHORITY OVERRIDES THIS: a roadmap change or a core principle is the user's to
+   * decide however checkable it happens to be.
+   */
+  verifiableBy?: Verifiability;
+  /**
+   * F91 question router: when this fact is an ANSWER another graph returned to a routed
+   * question, the graph that answered it. Its presence makes the fact `external-graph`
+   * verifiable (another party's claim — always reviewed, never machine-settled).
+   */
+  answeredByGraph?: string;
+  /**
+   * The chain of graphs the question travelled and the answer returned along — [origin, …,
+   * answerer]. One hop today ([origin, target]); the list is the forward-compatible seed of the
+   * F84 RBAC daisy-chain, where each hop is authorized and provenance-stamped.
+   */
+  hopChain?: string[];
   /** Created / updated timestamps */
   createdAt: number;
   updatedAt: number;
@@ -190,9 +248,29 @@ export const PAGE_PREFIX = 'urn:reckons:page/';
 /** Predicates under this prefix are graph-level currents settings (F29) */
 export const CURRENTS_PREFIX = 'urn:reckons:meta/currents/';
 
+/** PROV-O provenance (wasDerivedFrom, startedAtTime, endedAtTime, …). This is accountability
+ * METADATA about a statement — where it came from, when — not knowledge the graph is about. It is
+ * materialized as reification triples (<urn:kbase:stmt/{id}> prov:wasDerivedFrom <source>) for
+ * round-tripping; rendered as edges it fills the canvas with UUID nodes joined by "wasDerivedFrom",
+ * which is exactly the unreadable noise the graph must not show (kb:graph-legibility, F83). */
+export const PROV_PREFIX = 'http://www.w3.org/ns/prov#';
+/** Statement-reification subjects (urn:kbase:stmt/{id}) — the id-nodes provenance hangs off. */
+export const STMT_PREFIX = 'urn:kbase:stmt/';
+
+/** Predicates whose object is a presentation image (2D icon / preview photo).
+ * They're consumed directly by the icon/preview maps; as edges they'd render
+ * the raw data-URI or URL as a junk literal node, so they're metadata here. */
+export const PRESENTATION_IMAGE_PREDICATES = new Set([
+  'urn:kbase:predicate/icon2d',
+  'urn:kbase:predicate/photo',
+]);
+
 /** Returns true if the predicate is metadata (should not render as a graph edge/node) */
 export function isMetaPredicate(predicateIri: string): boolean {
   if (predicateIri.startsWith(META_PREFIX)) return true;
+  // Icon/preview image predicates are presentation metadata, not semantic edges —
+  // otherwise their data-URI/URL object becomes a junk literal node in the graph.
+  if (PRESENTATION_IMAGE_PREDICATES.has(predicateIri)) return true;
   // nav:order and nav:layer are node metadata, not graph edges
   if (predicateIri === `${NAV_PREFIX}order` || predicateIri === `${NAV_PREFIX}layer`) return true;
   // page:* are per-page publishing metadata (literals) — the site tree still renders
@@ -200,7 +278,26 @@ export function isMetaPredicate(predicateIri: string): boolean {
   if (predicateIri.startsWith(PAGE_PREFIX)) return true;
   // currents settings are graph-level config, never edges
   if (predicateIri.startsWith(CURRENTS_PREFIX)) return true;
+  // PROV-O provenance is accountability metadata, not a semantic edge — otherwise the graph fills
+  // with UUID statement-nodes joined by "wasDerivedFrom" (kb:graph-legibility, F83).
+  if (predicateIri.startsWith(PROV_PREFIX)) return true;
   return false;
+}
+
+/** Friendly one-line label for a literal object node: URLs collapse to their
+ * host, data: URIs to a type glyph, everything else truncates. Keeps long links
+ * and stray data-URIs from rendering as unreadable node labels. */
+export function displayLiteralLabel(value: string): string {
+  if (!value) return value;
+  if (value.startsWith('data:')) {
+    const semi = value.indexOf(';');
+    const mime = value.slice(5, semi > 0 ? semi : 5);
+    return mime.startsWith('image/') ? '🖼 image' : '📎 data';
+  }
+  if (/^https?:\/\//i.test(value)) {
+    try { return '🔗 ' + new URL(value).hostname.replace(/^www\./, ''); } catch { /* fall through */ }
+  }
+  return value.length > 48 ? value.slice(0, 45) + '...' : value;
 }
 
 /* ---------- term helpers ---------- */

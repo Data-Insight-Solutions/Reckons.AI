@@ -80,14 +80,26 @@ export async function uploadTurtle(
 
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 
+/**
+ * Escape a value for interpolation into a Drive `q` search query.
+ *
+ * The BACKSLASH must be escaped FIRST, then the quote. Escaping only the quote — as
+ * this did — is incomplete: a name containing a backslash (`foo\`) emits `'foo\'`,
+ * whose trailing `\'` reads as an escaped quote, so the string never closes and the
+ * rest of the name is parsed as query syntax. Flagged by CodeQL (js/incomplete-sanitization).
+ */
+function escapeDriveQueryValue(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
 /** Find a folder by name (optionally within a parent), or create it. Returns its id. */
 export async function ensureFolder(name: string, parentId?: string): Promise<string> {
   const clauses = [
     `mimeType = '${FOLDER_MIME}'`,
-    `name = '${name.replace(/'/g, "\\'")}'`,
+    `name = '${escapeDriveQueryValue(name)}'`,
     'trashed = false',
   ];
-  if (parentId) clauses.push(`'${parentId}' in parents`);
+  if (parentId) clauses.push(`'${escapeDriveQueryValue(parentId)}' in parents`);
   const params = new URLSearchParams({ q: clauses.join(' and '), fields: 'files(id,name)', pageSize: '1' });
   const found = await (await driveFetch(`${DRIVE}/files?${params}`)).json();
   if (found.files?.length) return found.files[0].id as string;
@@ -105,7 +117,7 @@ export async function ensureFolder(name: string, parentId?: string): Promise<str
 /** List `.ttl` files that are DIRECT children of a folder. */
 export async function listFolderTurtles(folderId: string): Promise<DriveFile[]> {
   const params = new URLSearchParams({
-    q: `'${folderId}' in parents and name contains '.ttl' and trashed = false`,
+    q: `'${escapeDriveQueryValue(folderId)}' in parents and name contains '.ttl' and trashed = false`,
     fields: 'files(id,name,modifiedTime,size)',
     orderBy: 'name',
     pageSize: '200',
@@ -117,7 +129,7 @@ export async function listFolderTurtles(folderId: string): Promise<DriveFile[]> 
 /** List ALL (non-trashed) files that are direct children of a folder. */
 export async function listFolderFiles(folderId: string): Promise<DriveFile[]> {
   const params = new URLSearchParams({
-    q: `'${folderId}' in parents and trashed = false`,
+    q: `'${escapeDriveQueryValue(folderId)}' in parents and trashed = false`,
     fields: 'files(id,name,modifiedTime,size)',
     pageSize: '400',
   });

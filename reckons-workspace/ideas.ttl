@@ -1,0 +1,91 @@
+@prefix kpred: <urn:kbase:predicate/> .
+@prefix ktype: <urn:kbase:type/> .
+@prefix idea: <urn:reckons:idea/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Ideas — the WIP capture surface (F89 / kb:loop-idea-inbox).
+# Jot with: npm run idea -- "…". Zero friction on purpose. The orchestrator triages these;
+# it asks for detail via partial facts rather than demanding a form at the moment of the idea.
+# A real graph: import it into Reckons.AI to review, or read it here.
+
+idea:let-sub-agents-negotiate-merge-conflicts-v0sh rdf:type ktype:Idea ;
+    rdfs:label "let sub-agents negotiate merge conflicts locally before surfacing them to review" ;
+    kpred:has-status "speculative" ;
+    kpred:verifiable-by "user" ;
+    kpred:captured-at "2026-07-15T00:14:06.017Z" .
+
+idea:reconciler-should-cover-branch-align-sug-v2c3 rdf:type ktype:Idea ;
+    rdfs:label "reconciler should cover branch-align suggestions once they are confirmed deterministic" ;
+    kpred:has-status "speculative" ;
+    kpred:verifiable-by "user" ;
+    kpred:captured-at "2026-07-15T00:14:08.019Z" .
+
+idea:dichotomy-metric-detect-one-entity-with--w785 rdf:type ktype:Idea ;
+    rdfs:label "dichotomy metric: detect one entity with divergent descriptions across its triples (was sales, now technical) - classify conflicting vs natural-unresolvable, gate on strong shared identity, make filterable like hubs/islands for review-before-merge" ;
+    kpred:has-status "speculative" ;
+    kpred:verifiable-by "user" ;
+    kpred:captured-at "2026-07-15T00:15:01.013Z" .
+
+idea:flow-state-mode-extreme-focus-free-form--yr08 rdf:type ktype:Idea ;
+    rdfs:label "Flow State mode: extreme-focus free-form conversation that builds a STORY from mixed-up comments/thoughts; user reviews and adjusts emphasis + story settings. Pairs with dichotomy/island detection to see which features merge vs stray into disconnected islands" ;
+    kpred:has-status "speculative" ;
+    kpred:verifiable-by "user" ;
+    kpred:captured-at "2026-07-15T00:16:59.960Z" .
+
+idea:meta-double-down-on-features-measure-whi-ysib rdf:type ktype:Idea ;
+    rdfs:label "meta: double down on features - measure which ones merge with others vs strand as unused islands (dichotomy + island metrics as a product-direction signal, not just a graph filter)" ;
+    kpred:has-status "speculative" ;
+    kpred:verifiable-by "user" ;
+    kpred:captured-at "2026-07-15T00:17:01.907Z" .
+
+# ── Meta-graph flows (a large connected vision — Matt, session-limit wave) ──────
+# Captured verbatim-ish; these want to become a roadmap FEATURE (kb:meta-graph-flows) with
+# phases, not stay as loose ideas. The through-line: graphs feed graphs, the user defines the
+# wiring, provenance is tracked across the hops.
+
+idea:feedback-graph rdf:type ktype:Idea ;
+    rdfs:label "User feedback graph: not a lame web form. Capture user-allowed feedback in-app (especially via Shelly asking), plus anything emailed/n8n-routed, ALL flowing into a dedicated feedback graph for MASS MERGE with provenance tracking. Natural usage frustration is the primary UX-improvement signal." ;
+    kpred:has-status "speculative" ;
+    kpred:verifiable-by "user" ;
+    kpred:relates-to "kb:n8n-cloud-sync" ;
+    kpred:captured-at "2026-07-15T00:20:00.000Z" .
+
+idea:feedback-feeds-roadmap rdf:type ktype:Idea ;
+    rdfs:label "The feedback graph + the ideas graph FEED the roadmap. Frustration and ideas become planned work through a reviewed merge, not a maintainer manually reading a form inbox." ;
+    kpred:has-status "speculative" ;
+    kpred:verifiable-by "user" ;
+    kpred:captured-at "2026-07-15T00:20:01.000Z" .
+
+idea:meta-graph-flows rdf:type ktype:Idea ;
+    rdfs:label "META-GRAPH FLOW, user-defined: graphs feed other graphs along wiring the USER controls. A published SOURCE graph automatically feeds a SUBSCRIBER graph. Currents + Pods already handle part of this (streamed arrivals). The flows must be FILTER-CAPABLE with control features — the same filter/control vocabulary as the canvas, applied to inter-graph flow." ;
+    kpred:has-status "speculative" ;
+    kpred:verifiable-by "user" ;
+    kpred:relates-to "kb:currents" ;
+    kpred:relates-to "kb:publisher-subscriptions" ;
+    kpred:captured-at "2026-07-15T00:20:02.000Z" .
+
+idea:live-nodes-auto-e2e rdf:type ktype:Idea ;
+    rdfs:label "Production graph nodes with status LIVE must have an e2e visual test; if none exists, one is generated. The TESTING graph then automatically tests those features and reports TOP-LEVEL STATUS to maintainers. Closes the loop between the production graph's claims and the testing graph's evidence (ties to F34 deep testing + kpred:tested-by)." ;
+    kpred:has-status "speculative" ;
+    kpred:verifiable-by "user" ;
+    kpred:relates-to "kb:deep-testing" ;
+    kpred:captured-at "2026-07-15T00:20:03.000Z" .
+
+# ── Gamified full-screen review (ties dichotomy + Blender + story-mode together) ──
+idea:playful-review-mode rdf:type ktype:Idea ;
+    rdfs:label "Full-screen 'this-or-that' review: generated asset BACKGROUNDS, meme-esque decisions, engaging/entertaining to REDUCE USER DREAD of manually reviewing a few-hundred-item queue (past ~a few hundred the task is daunting). Generate an engaging image/3D that DEPICTS the conflict/dichotomy for the person to decide on. Not everything can be visual/3D, so it degrades gracefully to the plain list. Directly consumes the dichotomy detector (the decisions) + the Blender render harness (the visuals)." ;
+    kpred:has-status "speculative" ;
+    kpred:verifiable-by "user" ;
+    kpred:relates-to "kb:dichotomy" ;
+    kpred:relates-to "kb:content-orchestration" ;
+    kpred:captured-at "2026-07-15T00:24:00.000Z" .
+
+idea:story-mode-review-intro rdf:type ktype:Idea ;
+    rdfs:label "Story mode used INSIDE Review: one quick message to intro the user to THIS specific context (what graph, what is at stake), then step them into the most important decisions to settle facts first. Blast-radius ordering already picks 'most important'; story-mode narrates the entry. Reduces over-analyzing before a human just decides." ;
+    kpred:has-status "speculative" ;
+    kpred:verifiable-by "user" ;
+    kpred:relates-to "kb:view-suggestions" ;
+    kpred:relates-to "kb:dichotomy" ;
+    kpred:captured-at "2026-07-15T00:24:01.000Z" .
+

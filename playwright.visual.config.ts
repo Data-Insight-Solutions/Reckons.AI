@@ -28,6 +28,16 @@ const sharedEnv = {
 export default defineConfig({
   testDir: './tests/visual',
   testMatch: '**/*.test.ts',
+  // vision-scoring / vision-vlm live in tests/visual/ but are vitest unit tests
+  // (they use `describe` from vitest, run as part of `npx vitest run`). Playwright
+  // must not collect them, or its whole run aborts at collection.
+  // navigation-sweep is a 5-device × 5-destination matrix — heavy; it has its own
+  // runner (npm run test:workflows via playwright.workflows.config.ts).
+  testIgnore: [
+    '**/vision-scoring.test.ts',
+    '**/vision-vlm.test.ts',
+    '**/navigation-sweep.test.ts',
+  ],
   timeout: 60_000,
   fullyParallel: true,
 
@@ -41,6 +51,16 @@ export default defineConfig({
     {
       name: 'chromium',
       testMatch: '*.test.ts', // top-level visual tests only
+      // The glob above matches recursively, so explicitly exclude the subdir
+      // projects — otherwise mobile/ tests run under a desktop viewport (false
+      // failures) and user-stories/ run twice. A project-level testIgnore
+      // overrides the top-level one, so re-list the vitest files here too.
+      testIgnore: [
+        '**/mobile/**',
+        '**/user-stories/**',
+        '**/vision-scoring.test.ts',
+        '**/vision-vlm.test.ts',
+      ],
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: { args: ['--no-sandbox', '--disable-dev-shm-usage'] },

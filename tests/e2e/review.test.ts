@@ -71,6 +71,27 @@ test('confirm button marks statement confirmed', async ({ page }) => {
   ).toBeVisible({ timeout: 5_000 });
 });
 
+test('review-at-scale: pending facts group into entity cards with a plan headline and a toggle', async ({ page }) => {
+  await seedPendingStatement(page);
+  await page.goto('/review');
+
+  // F83 — pending facts are grouped into per-entity cards, not a flat list of rows.
+  await expect(page.getByTestId('entity-cards')).toBeVisible({ timeout: 8_000 });
+
+  // The review pipeline's honest headline is shown (what is spared / what is yours).
+  await expect(page.locator('.ras-headline')).toBeVisible({ timeout: 5_000 });
+
+  // The seeded fact is still visible inside a card, and confirm is still reachable (nothing hidden).
+  await expect(page.getByText(/company.alpha|employee|50|2020/i).first()).toBeVisible({ timeout: 5_000 });
+  await expect(page.getByRole('button', { name: /confirm|✓|accept/i }).first()).toBeVisible();
+
+  // The by-entity / flat toggle switches the grouping off.
+  const toggle = page.getByRole('button', { name: /^(by entity|flat list)$/i });
+  await expect(toggle).toBeVisible();
+  await toggle.click();
+  await expect(page.getByTestId('entity-cards')).toHaveCount(0);
+});
+
 test('reject button removes statement from review', async ({ page }) => {
   await seedPendingStatement(page);
 

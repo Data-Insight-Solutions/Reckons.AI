@@ -7,6 +7,9 @@
 
 <svelte:head>
   <title>Docs — Reckons.AI</title>
+  <!-- Self-describing graph (F72 kb:published-ttl): advertise the source TTL so
+       another Reckons.AI can Add-from-URL and import these facts with no LLM. -->
+  <link rel="alternate" type="text/turtle" href="/knowledge.ttl" title="Reckons.AI graph (Turtle)" />
 </svelte:head>
 
 <div class="docs-shell">

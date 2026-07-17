@@ -14,6 +14,7 @@
   import { settings } from '$lib/stores/settings.svelte';
   import { RDF_TYPE } from '$lib/rdf/entity-types';
   import type { TurtleChatMessage, KBAction, KBContext } from '$lib/types/turtle-chat';
+  import { buildKBContext as buildKBContextShared } from '$lib/rdf/kb-context';
   import { turtleChat, resolveChatProvider as _resolveProvider, type TurtleChatProvider } from '$lib/integrations/llm/turtle-chat';
   import type { Statement, Source } from '$lib/rdf/types';
   import { v4 as uuid } from 'uuid';
@@ -225,74 +226,26 @@
   }
 
   function buildKBContext(): KBContext {
-    const stmts = confirmedStatements();
-    const allStmts = statements();
-    const tm = typeMap();
+    // Shared summarizer (src/lib/rdf/kb-context.ts) — chat panels sort untyped-first, no degree prefix.
+    const core = buildKBContextShared({
+      confirmed: confirmedStatements(),
+      all: statements(),
+      sourceCount: sources().length,
+      typeLabelOf: (t) => typeMap().get(t)?.label ?? null,
+    });
 
-    // Group by subject, find types
+    // F34: TurtleChat ALSO surfaces visual-test STORY steps (TestStep / story:Step nodes carrying a
+    // screenshot + assertion + verdict) so Shelly reviews screen-by-screen. TurtleChat-only, so it
+    // stays here rather than in the shared core.
+    const STEP_TYPES = new Set(['urn:reckons:story/Step', 'urn:kbase:type/TestStep']);
+    const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
     const bySubject = new Map<string, Statement[]>();
-    const typedIris = new Set<string>();
-    const typeDefIris = new Set<string>(); // objects of rdf:type — type IRIs, not entities
-    const objectOnlyIris = new Set<string>(); // IRIs appearing only as objects (no subject statements)
-    for (const st of stmts) {
+    for (const st of confirmedStatements()) {
       if (st.s.kind === 'iri') {
         if (!bySubject.has(st.s.value)) bySubject.set(st.s.value, []);
         bySubject.get(st.s.value)!.push(st);
-        if (st.p.value === RDF_TYPE) typedIris.add(st.s.value);
-      }
-      if (st.o.kind === 'iri') {
-        if (st.p.value === RDF_TYPE) typeDefIris.add(st.o.value);
-        else if (!bySubject.has(st.o.value)) objectOnlyIris.add(st.o.value);
       }
     }
-    // Remove type definition IRIs and any that turned out to also be subjects
-    for (const iri of typeDefIris) objectOnlyIris.delete(iri);
-    for (const iri of bySubject.keys()) objectOnlyIris.delete(iri);
-
-    const untypedEntityCount =
-      [...bySubject.keys()].filter(iri => !typedIris.has(iri)).length +
-      objectOnlyIris.size;
-    const manualStatementCount = allStmts.filter(s =>
-      (s.status === 'confirmed' || s.status === 'refined') && s.sourceId === 'manual'
-    ).length;
-
-    const typesPresent = new Set<string>();
-    const sampleEntities: KBContext['sampleEntities'] = [];
-
-    // Sort: untyped entities first (so Shelly sees them in the sample)
-    const sorted = [...bySubject.entries()]
-      .sort(([iriA, a], [iriB, b]) => {
-        const aUntyped = !typedIris.has(iriA) ? -1 : 0;
-        const bUntyped = !typedIris.has(iriB) ? -1 : 0;
-        return aUntyped - bUntyped || b.length - a.length;
-      })
-      .slice(0, 20);
-
-    for (const [iri, sts] of sorted) {
-      const typeStmt = sts.find((s) => s.p.value === RDF_TYPE);
-      const typeIri = typeStmt?.o.value ?? null;
-      const typeDef = typeIri ? tm.get(typeIri) : null;
-      if (typeDef) typesPresent.add(typeDef.label);
-
-      const labelStmt = sts.find((s) => s.p.value === 'http://www.w3.org/2000/01/rdf-schema#label');
-      const label = labelStmt?.o.value ?? iri.split('/').pop() ?? iri;
-
-      sampleEntities.push({
-        iri,
-        label,
-        type: typeDef?.label ?? null,
-        predicates: sts
-          .filter((s) => s.p.value !== RDF_TYPE)
-          .slice(0, 4)
-          .map((s) => `${s.p.value.split('/').pop()} → ${s.o.value.slice(0, 40)}`)
-      });
-    }
-
-    // F34: detect a visual-test story (TestStep / story:Step nodes carrying a
-    // screenshot + assertion + verdict) so Shelly reviews it screen-by-screen
-    // instead of describing the graph generically.
-    const STEP_TYPES = new Set(['urn:reckons:story/Step', 'urn:kbase:type/TestStep']);
-    const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
     const reviewSteps: NonNullable<KBContext['reviewSteps']> = [];
     for (const [iri, sts] of bySubject) {
       if (!sts.some((s) => s.p.value === RDF_TYPE && STEP_TYPES.has(s.o.value))) continue;
@@ -310,15 +263,7 @@
     }
     reviewSteps.sort((a, b) => a.order - b.order);
 
-    return {
-      statementCount: stmts.length,
-      sourceCount: sources().length,
-      typesPresent: [...typesPresent],
-      untypedEntityCount,
-      manualStatementCount,
-      sampleEntities,
-      reviewSteps: reviewSteps.length ? reviewSteps : undefined
-    };
+    return reviewSteps.length ? { ...core, reviewSteps } : core;
   }
 
   // ── KB query (for query_kb action) ────────────────────────────────────────
@@ -2269,7 +2214,18 @@
 
   /* ── Mobile: prevent overlap with NavBar, enlarge touch targets ── */
   @media (max-width: 600px) {
-    .panel-header { padding: 0.5rem 0.6rem; gap: 0.3rem; }
+    .panel-header { padding: 0.5rem 0.55rem; gap: 0.4rem; }
+    /* Give the three tabs the whole middle and split it evenly, so the header reads as one tidy
+       row (icon · learn | chat | explore · ✕) instead of cramped pills bunched to one side. */
+    .turtle-icon { height: 1rem; flex: 0 0 auto; }
+    :global(.tcp-tab-list) { flex: 1; gap: 0.3rem; min-width: 0; }
+    :global(.tcp-tab) {
+      flex: 1;
+      text-align: center;
+      padding: 0.4rem 0.2rem;
+      font-size: 0.72rem;
+      min-height: 36px;
+    }
     .close {
       font-size: 1.1rem;
       min-width: 44px;
@@ -2277,11 +2233,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-    }
-    :global(.tcp-tab) {
-      padding: 0.4rem 0.55rem;
-      font-size: 0.72rem;
-      min-height: 36px;
+      flex: 0 0 auto;
     }
     /* Story controls: wrap onto two lines so exit button stays visible */
     .story-controls {

@@ -49,7 +49,15 @@ chrome.runtime.onMessage.addListener((event: BackgroundEvent) => {
 });
 
 function esc(s: string) {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // Escape for BOTH text and attribute contexts: this value is interpolated into
+  // data-…="${esc(url)}" attributes, so quotes must be escaped too — otherwise a URL
+  // containing a quote breaks out of the attribute (js/incomplete-html-attribute-sanitization).
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
