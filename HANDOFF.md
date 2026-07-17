@@ -3,6 +3,17 @@
 **Last updated: 2026-07-16.** Branch: **`feat/work-tiering-ci`** (branched off
 `fix/production-claim-evidence`, which is open as **PR #100 → `dev`**).
 
+## ✓ LANDED (2026-07-16): batch — footer, shelly mobile, source-validation, captures — commits `3c5f1c3`…`884ab50`
+
+- **GitHub link** in the settings support footer. **Shelly chat header on mobile**: 3 tabs flex-split
+  evenly between icon + close (was cramped). **F98 prune analysis** (`npm run prune`, applied: −17 dupes).
+- **F100 source-validation** (`src/lib/rdf/source-validation.ts`, scaffolded): check a fact against the
+  open web — corroborate + flag CONFLICT (verdict 'mixed' = the contradiction the graph can't self-see),
+  surfaced for review never auto-resolved. Harness + 9 tests; live wiring (tavily+LLM→pending, setting +
+  Pod mode) is remaining. **Captures:** kb:graph-db-connectors (F84.3, one SPARQL-GSP adapter → many
+  stores), kb:personal-assistant (F99, "priority today" reckoning + ring/glasses profiles), kb:fiftyone
+  (reference, multimodal thread). `npm run check` 0 errors.
+
 ## ✓ LANDED (2026-07-16): F84.1 roles + F80 p6 triage/backlog — commits `307b166`, `28c3ffd`
 
 **Roles (F84.1, functional):** `src/lib/rdf/roles.ts` — descriptive identity metadata, customizable
