@@ -1,0 +1,37 @@
+@prefix kpred: <urn:kbase:predicate/> .
+@prefix ktype: <urn:kbase:type/> .
+@prefix sched: <urn:reckons:schedule/> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+
+# =============================================================================
+# Schedules (F81 / kb:local-orchestration) — the plan for WHEN, in the graph
+# =============================================================================
+#
+# Whatever triggers work — cron, a systemd timer, unsnooze, or a human running
+# `npm run schedule -- --run` — reads THIS file to find out what to do. The plan is not baked
+# into a crontab nobody can see; it is a set of graph entities you can search, diff and review.
+#
+# `kpred:every` is an INTERVAL, not a cron expression. Drain, do not schedule.
+# =============================================================================
+
+sched:drain-queue rdf:type    ktype:Schedule ;
+    rdfs:label      "Drain the task queue" ;
+    kpred:every     "1h" ;
+    kpred:command   "npx tsx scripts/agent/runner.ts --graph reckons-workspace/tasks.ttl" ;
+    kpred:enabled   "true" ;
+    kpred:description "Run the script- and local-agent-tier task runner. Zero cloud tokens. This is the free tier that should fire as often as the machine is awake." .
+
+sched:reconcile rdf:type      ktype:Schedule ;
+    rdfs:label      "Drop findings that fixed themselves" ;
+    kpred:every     "6h" ;
+    kpred:command   "npx tsx scripts/agent/reconcile.ts --apply" ;
+    kpred:enabled   "true" ;
+    kpred:description "Re-run the deterministic checks and drop pending entries whose finding no longer reproduces. A review queue is an attention budget; padding it with resolved findings is how the one real item gets skipped. Conservative: only touches sources it can re-run and verify, never a question or a judgment. Runs BEFORE orchestrate so the triage sees a queue that reflects reality." .
+
+sched:orchestrate rdf:type    ktype:Schedule ;
+    rdfs:label      "Triage the queue for Opus" ;
+    kpred:every     "24h" ;
+    kpred:command   "npx tsx scripts/agent/orchestrate.ts" ;
+    kpred:enabled   "true" ;
+    kpred:description "Prepare an orchestration briefing: route the pending queue by gate, draft candidate tasks for the machine-settleable work, and surface what actually needs a frontier decision. The output is a PROPOSAL an Opus session (or Matt) acts on — the script does the routing, the frontier tier does the judgment." .

@@ -1,6 +1,6 @@
 import {
   EXTRACTION_SYSTEM_PROMPT,
-  EXTRACTION_SYSTEM_PROMPT_COMPACT,
+  EXTRACTION_SYSTEM_PROMPT_FEWSHOT,
   buildExtractionUserPrompt,
   buildExtractedTripleSchema,
   parseTriplesJSON,
@@ -40,7 +40,7 @@ export function resolveOllamaSystemPrompt(opts: OllamaExtractOptions): string {
   if (opts.systemPromptOverride) return opts.systemPromptOverride;
   const mode = opts.promptMode ?? 'auto';
   const useCompact = mode === 'compact' || (mode === 'auto' && isSmallOllamaModel(opts.model));
-  return useCompact ? EXTRACTION_SYSTEM_PROMPT_COMPACT : EXTRACTION_SYSTEM_PROMPT;
+  return useCompact ? EXTRACTION_SYSTEM_PROMPT_FEWSHOT : EXTRACTION_SYSTEM_PROMPT;
 }
 
 type ParseResult =

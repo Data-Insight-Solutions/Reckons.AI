@@ -235,9 +235,12 @@ export async function ingest(
 
   // Direct-imported graphs land as PENDING facts for review (no LLM); otherwise
   // convert the extracted triples as usual.
+  // `text` is the source the model actually read, so pass it: every excerpt is verified
+  // against it, and a fabricated citation is dropped rather than shown as provenance
+  // (kb:passage-grounding).
   let newStatements = turtleStatements
     ? turtleStatements.map((st) => ({ ...st, status: 'pending' as const }))
-    : triplesToStatements(triples, source);
+    : triplesToStatements(triples, source, text);
 
   // Record the backend and exact model that performed extraction.
   // Useful for provenance, re-extraction decisions, and explaining confidence variance.

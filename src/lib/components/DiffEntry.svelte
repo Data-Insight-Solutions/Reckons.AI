@@ -4,6 +4,7 @@
   import { setStatus, supersede, updateStatement, entityChoices } from '$lib/stores/kb.svelte';
   import { recordAnswer } from '$lib/stores/workspace.svelte';
   import type { Statement, Term } from '$lib/rdf/types';
+  import { resolvePartial } from '$lib/rdf/partial-facts';
   import { isLit, iri, lit } from '$lib/rdf/types';
   import { v4 as uuid } from 'uuid';
 
@@ -46,16 +47,14 @@
     if (!chosen) return;
     error = null; processing = true;
     try {
-      await updateStatement(entry.incoming.id, { o: chosen.term, needsObject: false });
+      // resolvePartial builds BOTH the patch and the answer (rdf/partial-facts.ts), so the
+      // answer carries `agent` — who asked. That was previously dropped, and an
+      // unattributed answer cannot be claimed by the agent waiting on it.
+      const { patch, answer } = resolvePartial(entry.incoming, chosen.term);
+      await updateStatement(entry.incoming.id, patch);
       await setStatus(entry.incoming.id, 'confirmed');
       // Flow the answer back to the waiting sub-agent (F32).
-      await recordAnswer({
-        subject: entry.incoming.s.value,
-        predicate: entry.incoming.p.value,
-        object: chosen.term.value,
-        objectKind: chosen.term.kind === 'iri' ? 'iri' : 'literal',
-        question: entry.incoming.question,
-      });
+      await recordAnswer(answer);
       onresolved();
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);

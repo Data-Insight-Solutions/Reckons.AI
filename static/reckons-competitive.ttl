@@ -1,0 +1,359 @@
+@prefix kb:     <urn:kbase:concept/> .
+@prefix kpred:  <urn:kbase:predicate/> .
+@prefix kmeta:  <urn:kbase:meta/> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix ktype:  <urn:kbase:type/> .
+@prefix hnav:   <urn:reckons:nav/> .
+
+# ==============================================================================
+# Reckons.AI — Competitive Research KB
+# ==============================================================================
+# The neighbourhood, mapped. This graph exists to LEARN, not to score points.
+#
+# Competition here is healthy and open: almost every project below is
+# permissively licensed, several are solving our problems better than we are,
+# and at least one (codeflow) holds our own local-first thesis more purely than
+# we do. A competitive graph that only flatters its owner is not research, it is
+# marketing — and per kb:honest-status, marketing written in the present tense is
+# a lie with good manners.
+#
+# The graph records three things about each project:
+#   1. WHAT IT IS          — metadata, refreshed deterministically by
+#                            scripts/offline/competitor-scan.ts (script tier, zero tokens)
+#   2. WHAT WE COULD TAKE  — kpred:worth-adopting, linked to the roadmap entity it serves
+#   3. WHAT WE WON'T TAKE  — kpred:we-avoid + kpred:avoid-reason. This is the important
+#                            half. A feature we decline is a DESIGN DECISION with a reason,
+#                            not an oversight, and writing the reason down is what stops us
+#                            drifting into it later by accident.
+#
+# LICENSE IS A GATE, NOT A FOOTNOTE. kpred:copy-permitted is computed from the
+# GitHub license field and is the ONLY thing that authorizes copying code. Ideas
+# are not copyrightable and may always be learned from; expression is. A repo with
+# NO license is all-rights-reserved by default — read it, learn from it, copy
+# nothing.
+#
+# Metadata scanned: 2026-07-14. Re-run `npm run offline:competitors` to refresh.
+# ==============================================================================
+
+kb:competitive-landscape rdf:type ktype:Concept ;
+               rdfs:label   "Competitive landscape" ;
+               kpred:description  "The open-source neighbourhood around Reckons.AI: code-to-graph tools, local-first analyzers, agent orchestration layers, crawlers, and on-device speech. Mapped to learn from, and to record what we deliberately decline." ;
+               kpred:principle    "Competition is healthy and open. Most of this neighbourhood is MIT or Apache-2.0, and several projects do a specific thing better than we do. Say so." ;
+               kpred:principle    "The features we AVOID are the ones that define the product. Anyone can add a cloud share button; refusing to is the thesis." ;
+               kpred:scanned-at   "2026-07-14"^^xsd:date .
+
+# ── The license gate ──────────────────────────────────────────────────────────
+# Deterministic, script-checkable, and load-bearing before a single line is copied.
+
+kb:license-gate rdf:type       ktype:Concept ;
+               rdfs:label   "License gate — confirm before any copy" ;
+               kpred:part-of      kb:competitive-landscape ;
+               kpred:description  "No code, asset, or prose is copied from a competitor until kpred:copy-permitted says so. Computed from the GitHub license field by competitor-scan.ts, never asserted by hand. MIT/Apache-2.0 permit reuse WITH attribution (Apache-2.0 additionally requires a NOTICE and carries an express patent grant). Absent a license file, default copyright applies and the answer is NO — regardless of how public the repo is, or how many stars it has." ;
+               kpred:principle    "Ideas are not copyrightable; expression is. You may always learn the concept. You may not always take the code." ;
+               kpred:enforced-by  "scripts/offline/competitor-scan.ts" .
+
+# ── Direct adjacency: code/knowledge → interactive graph ──────────────────────
+
+kb:comp-understand-anything rdf:type ktype:Competitor ;
+               rdfs:label   "Understand Anything (Egonex-AI)" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   1 ;
+               kpred:repo-url     "https://github.com/Egonex-AI/Understand-Anything" ;
+               kpred:license      "MIT" ;
+               kpred:copy-permitted "yes — MIT, attribution required" ;
+               kpred:stars        73993 ;
+               kpred:language     "TypeScript" ;
+               kpred:last-push    "2026-07-14"^^xsd:date ;
+               kpred:description  "Claude Code plugin: analyzes a project with a multi-agent pipeline, builds a knowledge graph of every file/function/class/dependency, and serves an interactive dashboard. Also ingests Karpathy-pattern LLM wikis. Its stated goal — 'a graph that quietly teaches you how every piece fits together', not one that 'wows you with how complex your codebase is' — is very close to our own graph-legibility position (F83)." ;
+               kpred:closest-to   kb:repo-ingest ;
+               kpred:closest-to   kb:graph-legibility ;
+               kpred:honest-note  "73,993 stars against our zero. This is the most successful project in the neighbourhood and it overlaps our Codebase KB directly. Pretending otherwise in our own graph would be exactly the self-serving claim the product exists to reject." ;
+               kpred:worth-adopting kb:adopt-blast-radius ;
+               kpred:worth-adopting kb:adopt-guided-tours ;
+               kpred:validates    "Its pipeline is deterministic-parser-FIRST (wikilinks, categories) and only then LLM agents for implicit relationships — the same ground-then-model harness as F74.3 work tiering. Independent arrival at our architecture is evidence the architecture is right." ;
+               kpred:we-avoid     "Hosted dashboard + demo site (understand-anything.com)" ;
+               kpred:avoid-reason "Their graph is served from a website. Ours must open with no network, no account, and no operator — a graph you can only see on someone else's server is a graph they can withdraw." .
+
+kb:comp-codeflow rdf:type      ktype:Competitor ;
+               rdfs:label   "CodeFlow (braedonsaunders)" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   2 ;
+               kpred:repo-url     "https://github.com/braedonsaunders/codeflow" ;
+               kpred:license      "NONE" ;
+               kpred:copy-permitted "NO — unlicensed, all rights reserved. Ideas only; copy no code, assets, or text." ;
+               kpred:stars        4424 ;
+               kpred:language     "HTML" ;
+               kpred:last-push    "2026-07-14"^^xsd:date ;
+               kpred:description  "Paste a GitHub URL, get an interactive architecture map. Single-file, browser-only, no install, no accounts, no data collection, works offline on local files. Features: dependency graph, blast-radius analysis, code ownership from git history, and a security scanner." ;
+               kpred:closest-to   kb:repo-ingest ;
+               kpred:honest-note  "This project holds the local-first thesis more purely than we do: a single HTML file, no build, no server, offline by default. 4,424 stars with no license at all, which is itself a finding — permissionless popularity is not the same as a permissive license." ;
+               kpred:worth-adopting kb:adopt-blast-radius ;
+               kpred:worth-adopting kb:adopt-code-ownership ;
+               kpred:blocked-by   "kpred:copy-permitted = NO. Any adoption must be a clean-room reimplementation from the CONCEPT, with no reference to their source." .
+
+# ── Agent orchestration: the tier we just built ──────────────────────────────
+
+kb:comp-pilotfish rdf:type     ktype:Competitor ;
+               rdfs:label   "pilotfish (Nanako0129)" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   3 ;
+               kpred:repo-url     "https://github.com/Nanako0129/pilotfish" ;
+               kpred:license      "MIT" ;
+               kpred:copy-permitted "yes — MIT, attribution required" ;
+               kpred:stars        441 ;
+               kpred:language     "Python" ;
+               kpred:last-push    "2026-07-14"^^xsd:date ;
+               kpred:description  "Multi-model orchestration for Claude Code: the frontier model plans, decides, and reviews; cheaper models execute the volume work through subagents. Three config files, no runtime code. Quality is protected by FRESH-CONTEXT VERIFICATION rather than by using the biggest model everywhere." ;
+               kpred:closest-to   kb:work-tiering ;
+               kpred:validates    "This is F74.3 arrived at independently, and it carries the benchmark numbers we never gathered: Anthropic's own tests put a frontier orchestrator with Sonnet workers at 96% of all-frontier performance for 46% of the cost, and the docs state that independent fresh-context verifier subagents outperform self-critique." ;
+               kpred:worth-adopting kb:adopt-fresh-context-verify ;
+               kpred:worth-adopting kb:adopt-sonnet-bucket ;
+               kpred:honest-note  "Our tiering doc reasons about local-vs-cloud but says nothing about CLOUD-to-CLOUD tiering (Opus orchestrator, Sonnet/Haiku executors), which is where the measured savings actually are. That is a gap in F74.3, not a difference of opinion." .
+
+kb:comp-quantamind rdf:type    ktype:Competitor ;
+               rdfs:label   "QuantaMind (QuantaMinds)" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   4 ;
+               kpred:repo-url     "https://github.com/QuantaMinds/QuantaMind" ;
+               kpred:license      "Apache-2.0" ;
+               kpred:copy-permitted "yes — Apache-2.0: attribution + NOTICE, express patent grant" ;
+               kpred:stars        8 ;
+               kpred:language     "Rust" ;
+               kpred:last-push    "2026-07-13"^^xsd:date ;
+               kpred:description  "Tests whether self-hosted LLMs can actually run agents. Directly relevant to the agent tier (kb:tier-local-agent), which rests on exactly that assumption." ;
+               kpred:closest-to   kb:tier-local-agent ;
+               kpred:honest-note  "8 stars and early, but it is measuring the premise our whole agent tier depends on. Worth watching rather than adopting." .
+
+kb:comp-unsnooze rdf:type      ktype:Competitor ;
+               rdfs:label   "unsnooze (saaranshM)" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   5 ;
+               kpred:repo-url     "https://github.com/saaranshM/unsnooze" ;
+               kpred:license      "MIT" ;
+               kpred:copy-permitted "yes — MIT, attribution required" ;
+               kpred:stars        35 ;
+               kpred:language     "JavaScript" ;
+               kpred:last-push    "2026-07-14"^^xsd:date ;
+               kpred:description  "Auto-resumes coding agents (Claude Code, Codex, Qwen, Kimi, OpenCode) when they stall or hit a limit." ;
+               kpred:closest-to   kb:local-orchestration ;
+               kpred:validates    "A stalled agent that surfaces nothing is precisely the failure kb:local-orchestration recorded on 2026-07-12: the cron fired on time and produced zero commits, silently. An external watchdog is one answer to it." .
+
+# ── Ingest & crawling ────────────────────────────────────────────────────────
+
+kb:comp-crawlberg rdf:type     ktype:Competitor ;
+               rdfs:label   "crawlberg (xberg-io)" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   6 ;
+               kpred:repo-url     "https://github.com/xberg-io/crawlberg" ;
+               kpred:license      "MIT" ;
+               kpred:copy-permitted "yes — MIT, attribution required" ;
+               kpred:stars        140 ;
+               kpred:language     "Rust" ;
+               kpred:last-push    "2026-07-09"^^xsd:date ;
+               kpred:description  "High-performance web crawling engine with bindings for 11 languages." ;
+               kpred:closest-to   kb:source-refresh ;
+               kpred:honest-note  "A crawler is a SERVER-SIDE capability. It fits the competitor-scan job (a dev-time script) but must not become a runtime dependency of the app — see kb:avoid-hosted-sync." .
+
+# ── Adjacent capability ──────────────────────────────────────────────────────
+
+kb:comp-pocket-tts rdf:type    ktype:Competitor ;
+               rdfs:label   "pocket-tts (kyutai-labs)" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   7 ;
+               kpred:repo-url     "https://github.com/kyutai-labs/pocket-tts" ;
+               kpred:license      "MIT" ;
+               kpred:copy-permitted "yes — MIT, attribution required" ;
+               kpred:stars        7529 ;
+               kpred:language     "Python" ;
+               kpred:last-push    "2026-06-23"^^xsd:date ;
+               kpred:description  "A text-to-speech model that runs on CPU. Directly comparable to our Kokoro-82M TTS in the CLI listen mode." ;
+               kpred:closest-to   kb:shelly-voice ;
+               kpred:validates    "On-device speech with no cloud call is the same commitment we make for embeddings and the WASM LLM — the local-first stack is viable across the whole modality range, not just text." .
+
+kb:comp-open3dinspection rdf:type ktype:Competitor ;
+               rdfs:label   "Open3DInspection (zawawiAI)" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   8 ;
+               kpred:repo-url     "https://github.com/zawawiAI/Open3DInspection" ;
+               kpred:license      "Apache-2.0" ;
+               kpred:copy-permitted "yes — Apache-2.0: attribution + NOTICE, express patent grant" ;
+               kpred:stars        16 ;
+               kpred:language     "TypeScript" ;
+               kpred:last-push    "2026-07-03"^^xsd:date ;
+               kpred:description  "Open-source 3D inspection platform for geospatial and 3D models (PLY, LAS, glTF, FBX)." ;
+               kpred:closest-to   kb:asset-viewer ;
+               kpred:honest-note  "Handles point-cloud and geospatial formats our GLB asset viewer does not. Relevant only if 3D assets become a real user need rather than a demo surface." .
+
+kb:comp-pagecast rdf:type      ktype:Competitor ;
+               rdfs:label   "pagecast (Amal-David)" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   9 ;
+               kpred:repo-url     "https://github.com/Amal-David/pagecast" ;
+               kpred:license      "MIT" ;
+               kpred:copy-permitted "yes — MIT, attribution required" ;
+               kpred:stars        171 ;
+               kpred:language     "JavaScript" ;
+               kpred:last-push    "2026-07-14"^^xsd:date ;
+               kpred:description  "Publishes HTML/Markdown/static mini-apps to shareable Cloudflare Pages URLs from the terminal." ;
+               kpred:closest-to   kb:graph-publishing ;
+               kpred:we-avoid     "One-command publish to a third-party hosted URL" ;
+               kpred:avoid-reason "This is the cleanest example of the thing we decline. See kb:avoid-hosted-sync — the convenience is real and we are refusing it on purpose." .
+
+# ── THE ACTUAL CATEGORY LEADERS ──────────────────────────────────────────────
+# Not on the original review list, and found by the scan's own --discover pass on
+# 2026-07-14 — which is the argument for automating discovery. These three are
+# local-first personal knowledge bases with ~126k stars between them. They are
+# Reckons.AI's category, and we were not looking at them.
+#
+# All three are AGPL-3.0. Reckons.AI is MIT. That means COPY NOTHING: pulling AGPL
+# code into an MIT project forces AGPL onto the whole of Reckons.AI. Read them,
+# learn from them, take no expression. The license gate exists for exactly this.
+
+kb:comp-logseq rdf:type        ktype:Competitor ;
+               rdfs:label   "Logseq" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   10 ;
+               kpred:repo-url     "https://github.com/logseq/logseq" ;
+               kpred:license      "AGPL-3.0" ;
+               kpred:copy-permitted "NO — AGPL-3.0 is copyleft and Reckons.AI is MIT. Copying would force AGPL-3.0 on the whole project. Ideas only." ;
+               kpred:stars        43855 ;
+               kpred:last-push    "2026-07-14"^^xsd:date ;
+               kpred:description  "Privacy-first, open-source platform for knowledge management. Outliner-based, local files (markdown/org), bidirectional links, an in-app query language over the block graph." ;
+               kpred:closest-to   kb:core-product ;
+               kpred:honest-note  "This is the closest thing to a direct competitor in the whole graph and it was not on the list we were asked to review. Its local-first commitment matches ours and its user base dwarfs ours." ;
+               kpred:differs-from "Logseq's graph is a BACKLINK graph over documents — the nodes are pages and blocks. Ours is an RDF statement graph: the nodes are entities and the edges are typed predicates with provenance and a review status. Theirs is easier to write into; ours is the one you can interrogate, diff, and cite." .
+
+kb:comp-siyuan rdf:type        ktype:Competitor ;
+               rdfs:label   "SiYuan" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   11 ;
+               kpred:repo-url     "https://github.com/siyuan-note/siyuan" ;
+               kpred:license      "AGPL-3.0" ;
+               kpred:copy-permitted "NO — AGPL-3.0 is copyleft and Reckons.AI is MIT. Ideas only." ;
+               kpred:stars        45111 ;
+               kpred:last-push    "2026-07-14"^^xsd:date ;
+               kpred:description  "Privacy-first, self-hosted, fully open-source personal knowledge management. Block-level references, self-hosted sync." ;
+               kpred:closest-to   kb:core-product ;
+               kpred:validates    "SELF-HOSTED SYNC, not hosted sync. It is proof that 'the user controls where their knowledge lives' and 'the knowledge syncs across my devices' are not in conflict — which is the strongest challenge to our current position that sync must simply be declined (kb:avoid-hosted-sync)." .
+
+kb:comp-trilium rdf:type       ktype:Competitor ;
+               rdfs:label   "Trilium Notes (TriliumNext)" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   12 ;
+               kpred:repo-url     "https://github.com/TriliumNext/Trilium" ;
+               kpred:license      "AGPL-3.0" ;
+               kpred:copy-permitted "NO — AGPL-3.0 is copyleft and Reckons.AI is MIT. Ideas only." ;
+               kpred:stars        36867 ;
+               kpred:last-push    "2026-07-14"^^xsd:date ;
+               kpred:description  "Personal knowledge base with hierarchical notes, relation maps, scripting, and an optional self-hosted server." ;
+               kpred:closest-to   kb:core-product ;
+               kpred:validates    "Trilium's RELATION MAPS are typed edges between notes — the closest thing in the mainstream PKM world to what we do with predicates. Evidence that the demand for typed relations exists outside the RDF niche." .
+
+kb:comp-rxdb rdf:type          ktype:Competitor ;
+               rdfs:label   "RxDB" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   13 ;
+               kpred:repo-url     "https://github.com/pubkey/rxdb" ;
+               kpred:license      "Apache-2.0" ;
+               kpred:copy-permitted "yes — Apache-2.0: attribution + NOTICE, express patent grant" ;
+               kpred:stars        23270 ;
+               kpred:last-push    "2026-07-14"^^xsd:date ;
+               kpred:description  "A local-first database for every JS runtime, with replication against a backend the USER supplies. Not a competitor — a possible component." ;
+               kpred:closest-to   kb:avoid-hosted-sync ;
+               kpred:worth-adopting kb:adopt-user-owned-sync ;
+               kpred:honest-note  "Permissively licensed, and it solves the exact problem kb:avoid-hosted-sync currently answers with 'no'. This is the one candidate in the graph that could change a design decision rather than add a feature." .
+
+# ── WHAT WE ADOPT ────────────────────────────────────────────────────────────
+# Each is a proposal against a roadmap entity, not a decision. Status stays
+# speculative until Matt rules on it (kb:honest-status).
+
+kb:adopt-blast-radius rdf:type ktype:Feature ;
+               rdfs:label   "Blast radius — what breaks if I change this?" ;
+               kpred:part-of      kb:competitive-landscape ;
+               kpred:has-status   "speculative" ;
+               kpred:seen-in      kb:comp-codeflow ;
+               kpred:seen-in      kb:comp-understand-anything ;
+               kpred:description  "Select an entity, see everything that transitively depends on it. We already hold the edges this needs — kpred:depends-on in the roadmap, kpred:has-file in the Codebase KB — so this is a TRAVERSAL over data we have, not new data. It is the highest-value/lowest-cost item in this graph." ;
+               kpred:serves       kb:repo-ingest ;
+               kpred:honest-note  "Concept only. codeflow is unlicensed (kpred:copy-permitted = NO), so any implementation must be clean-room from the idea." .
+
+kb:adopt-code-ownership rdf:type ktype:Feature ;
+               rdfs:label   "Code ownership from git history" ;
+               kpred:part-of      kb:competitive-landscape ;
+               kpred:has-status   "speculative" ;
+               kpred:seen-in      kb:comp-codeflow ;
+               kpred:description  "Top contributors per file, derived from git log. Script tier: deterministic, zero tokens, no model. Would attach kpred:owned-by to the Codebase KB's has-file links." ;
+               kpred:serves       kb:codebase-kb .
+
+kb:adopt-guided-tours rdf:type ktype:Feature ;
+               rdfs:label   "Guided tours — walk the graph in dependency order" ;
+               kpred:part-of      kb:competitive-landscape ;
+               kpred:has-status   "speculative" ;
+               kpred:seen-in      kb:comp-understand-anything ;
+               kpred:description  "An auto-generated walkthrough that orders entities by dependency so a newcomer meets them in the order that makes them make sense. We already have the ordering primitives (hnav:order, hnav:next/prev, skos:broader) and the leap machinery; this is a reading of the graph we do not currently offer." ;
+               kpred:serves       kb:hierarchical-nav .
+
+kb:adopt-fresh-context-verify rdf:type ktype:Feature ;
+               rdfs:label   "Fresh-context verification beats self-critique" ;
+               kpred:part-of      kb:competitive-landscape ;
+               kpred:has-status   "speculative" ;
+               kpred:seen-in      kb:comp-pilotfish ;
+               kpred:description  "A verifier with a FRESH context outperforms the author re-reading their own work — the author is anchored by the reasoning that produced the error. Applies directly to the agent tier: describe-entities.ts and code-review.ts currently emit proposals with no independent check." ;
+               kpred:serves       kb:work-tiering .
+
+kb:adopt-sonnet-bucket rdf:type ktype:Feature ;
+               rdfs:label   "Cloud-to-cloud tiering — Opus orchestrates, Sonnet executes" ;
+               kpred:part-of      kb:competitive-landscape ;
+               kpred:has-status   "speculative" ;
+               kpred:seen-in      kb:comp-pilotfish ;
+               kpred:description  "F74.3 tiers SCRIPT -> LOCAL AGENT -> OPUS and stops. It has no account of Opus-vs-Sonnet-vs-Haiku, which is where the measured savings actually sit: an orchestrator with Sonnet workers benchmarks at 96% of all-frontier quality for 46% of the cost, and Claude subscriptions carry an ADDITIONAL Sonnet-only weekly bucket, so routing execution to Sonnet draws on headroom the all-models bucket never sees." ;
+               kpred:serves       kb:work-tiering ;
+               kpred:honest-note  "This is a real hole in our tiering model, found by reading someone else's README. The tier ladder treats 'Opus' as one rung when it is three." .
+
+# ── WHAT WE AVOID, AND WHY ───────────────────────────────────────────────────
+# The load-bearing half of this graph. A declined feature is a decision.
+
+kb:avoid-hosted-sync rdf:type  ktype:Decision ;
+               rdfs:label   "No OPERATOR-hosted share/sync — the graph is yours, offline, self-controlled" ;
+               kpred:part-of      kb:competitive-landscape ;
+               kpred:description  "Competitors publish to a URL on infrastructure THEY operate (pagecast -> Cloudflare Pages; Understand Anything -> a hosted dashboard). It is genuinely more convenient, and we decline it. Reckons.AI is local-first with no general backend: sharing is an EXPORT the user performs and controls (TTL/TriG, markdown, a file, a QR code), not an upload to an operator who can rate-limit, deplatform, mine, or shut down." ;
+               kpred:reason       "A graph you can only see on someone else's server is a graph they can withdraw. Provenance is an accountability relation: the moment a third party hosts your knowledge, they acquire power over it that you did not grant and cannot revoke." ;
+               kpred:reason       "It is the thesis. An unverifiable claim, made by the party it benefits, is not evidence — and a knowledge tool that phones home is asking you to take its word for what it does with your knowledge." ;
+               kpred:consistent-with kb:integration-boundaries ;
+               kpred:scope        "What is refused is the OPERATOR, not the sync. See kb:adopt-user-owned-sync — this decision was stated too broadly before the scan, and SiYuan is the counter-example that forced the distinction." ;
+               kpred:honest-note  "This costs us. One-command share is the most requested affordance in this category and we do not have it. The honest position is 'we refuse the hosted form', not 'we haven't got to it yet'." .
+
+kb:adopt-user-owned-sync rdf:type ktype:Feature ;
+               rdfs:label   "User-owned sync — self-hosted, not operator-hosted" ;
+               kpred:part-of      kb:competitive-landscape ;
+               kpred:has-status   "speculative" ;
+               kpred:seen-in      kb:comp-siyuan ;
+               kpred:seen-in      kb:comp-rxdb ;
+               kpred:description  "SiYuan (45k stars) ships SELF-HOSTED sync and remains privacy-first; RxDB (Apache-2.0) replicates to a backend the USER supplies. Together they show that 'the user controls where their knowledge lives' and 'my knowledge follows me across devices' are not actually in conflict — the conflict is only with an OPERATOR-owned server." ;
+               kpred:serves       kb:avoid-hosted-sync ;
+               kpred:honest-note  "This is the most consequential finding in the scan, and it is a challenge to our own position rather than a feature request. We wrote 'no sync' when what we meant was 'no sync THROUGH US'. A user pointing Reckons.AI at their own storage is not a betrayal of local-first — it is local-first working across two machines. Whether to build it is Matt's call; the graph should stop implying the question is settled." ;
+               kpred:decision-owner "Matt" .
+
+kb:avoid-cloud-only-pipeline rdf:type ktype:Decision ;
+               rdfs:label   "No cloud-only analysis pipeline" ;
+               kpred:part-of      kb:competitive-landscape ;
+               kpred:description  "Understand Anything's multi-agent pipeline assumes a frontier model is available and paid for. Ours must degrade to a local model, and below that to a deterministic script, and below that to manual entry — the graph must still be usable when no model is available at all." ;
+               kpred:reason       "A knowledge base that cannot be read without an API key is a rental, not a possession." ;
+               kpred:consistent-with kb:work-tiering .
+
+# ── Automated scanning ───────────────────────────────────────────────────────
+
+kb:competitor-scan rdf:type    ktype:Feature ;
+               rdfs:label   "Automated competitor scan (script tier)" ;
+               kpred:part-of      kb:competitive-landscape ;
+               kpred:feature-id   "F86" ;
+               kpred:has-status   "functional" ;
+               kpred:has-file     "scripts/offline/competitor-scan.ts" ;
+               kpred:test-coverage "none" ;
+               kpred:honest-note  "Untested, declared (2026-07-15): the fetch is deterministic and runs daily via the offline runner, but there is no unit test — a real one needs the GitHub API mocked, which is proper task work, not a drive-by. Declaring 'none' rather than shipping the gap silently (kb:honest-status)." ;
+               kpred:description  "Refreshes every kb:Competitor's metadata and LICENSE from the GitHub API, and discovers candidate new competitors by topic search. Deterministic, zero tokens, no model: stars, license SPDX, last push and archived status are facts, not judgments. Drift (a license change, a new candidate, an abandoned project) is emitted to knowledge.pending.jsonl as a proposal for human review — the script never edits this TTL." ;
+               kpred:principle    "The FETCH is script tier because it is checkable by a rule. The JUDGMENT — is this a competitor, do we want this feature, why do we decline it — stays with a human. Automating the judgment would fill the graph with confident nonsense." ;
+               kpred:relates-to   kb:work-tiering ;
+               kpred:relates-to   kb:license-gate .

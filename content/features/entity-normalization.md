@@ -1,6 +1,6 @@
 ---
 title: "Entity Normalization"
-slug: "entity-normalisation"
+slug: "entity-normalization"
 order: 1009
 section: "Features"
 parent: "ingest"

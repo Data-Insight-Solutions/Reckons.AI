@@ -48,7 +48,7 @@ function parseTtl(text: string): Quad[] {
   } catch { /* try plain Turtle */ }
 
   try {
-    const parser = new Parser({ format: 'Turtle' });
+    const parser = new Parser({ format: 'TriG' }); // superset of Turtle — see F75
     return parser.parse(text);
   } catch { /* return empty */ }
 

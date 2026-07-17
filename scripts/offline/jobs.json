@@ -1,14 +1,118 @@
 {
   "_comment": "Offline jobs run by `npm run offline:all` (scripts/offline/run-all.ts). Add/remove/toggle freely — each runs in order even if a prior one fails. Findings land in reckons-workspace/knowledge.pending.jsonl for review in Reckons.AI. cmd runs in bash, so ${VAR:-default} and pipes work.",
+  "_tiers": "F74.3 work tiering. tier=script: deterministic, no LLM, zero tokens, right by construction — run these first and prefer growing this tier. tier=agent: a LOCAL model fills a judgment hole inside a scripted harness (ground → prompt → validate → emit-proposal) and only ever emits PROPOSALS a human gates. Opus is not a tier here: it designs the harness and triages the queue these jobs fill. Anything an agent job gets right reliably should be demoted to a script.",
+  "_blocking": "blocking=true means `run-all --ci` exits non-zero if this job fails. Reserve it for failures you cannot take back after a push. Everything else is ADVISORY: it reports and queues pending findings, and never blocks a merge — a gate that cries wolf gets switched off, and then it protects nothing.",
   "jobs": [
     {
+      "name": "published-graph-guard",
+      "tier": "script",
+      "enabled": true,
+      "blocking": true,
+      "cmd": "npx tsx scripts/offline/published-graph-guard.ts",
+      "desc": "static/knowledge.ttl IS the public graph (served at /knowledge.ttl). Checks it parses, is not suddenly empty, and holds no test debris. Was found gutted 1032 -> 45 statements, one `git add .` from publishing test junk to the world"
+    },
+    {
+      "name": "build-guard",
+      "tier": "script",
+      "enabled": false,
+      "blocking": true,
+      "cmd": "npx tsx scripts/offline/build-guard.ts",
+      "desc": "Is ./build actually a PRODUCTION build? No dev artifacts (@vite/client), minified, content-hashed, CSP present. Disabled here because it needs a build to exist — it runs in CI right after `npm run build` (npm run build:verify). Enable with --only=build-guard after building locally"
+    },
+    {
+      "name": "claim-audit",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/claim-audit.ts --pending",
+      "desc": "ASYNC alignment: sweeps the hand-written surfaces align(1) cannot generate (README, SAFETY.md, COUNSEL-BRIEF.md, app shell, landing copy) for claims the graph contradicts — an unbuilt feature described as working, or a countable claim that is simply wrong. Emits PROPOSALS for review; never gates a build, because 'is this sentence overclaiming' is a judgment"
+    },
+    {
+      "name": "history-lessons",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/history-lessons.ts --pending",
+      "desc": "Mines this repo's OWN history for how it fails: fixes that shipped with no test (a bug with a return ticket — in a semantic system the regression will not crash, it will quietly go back to being wrong) and fragility hotspots. Evidence, not opinion"
+    },
+    {
+      "name": "graph-lint",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/graph-lint.ts --pending",
+      "desc": "Graph invariants: dead has-file/tested-by links, bad status, duplicate feature-ids, dangling refs, incomplete features"
+    },
+    {
+      "name": "status-evidence",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/status-evidence.ts",
+      "desc": "Shipped features must link a test OR declare kpred:test-coverage \"none\" — you may ship untested code, but not silently"
+    },
+    {
+      "name": "shared-deps",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/shared-deps.ts --top=10",
+      "desc": "Whole-roadmap shared-dependency scan — dependency hubs (build once), shared files, and overlap warnings (features that need the same thing but touch no common file). Avoid separate code for nearly the same task."
+    },
+    {
+      "name": "code-sprawl",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/code-sprawl.ts",
+      "desc": "Copy-paste / duplication detector — the same block of code in >1 file (the disease behind the clipboard crash and the label-overlay drift), plus file-size sprawl. The code-level companion to shared-deps."
+    },
+    {
+      "name": "safety-attestation",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/safety-attestation.ts",
+      "desc": "Verify the good-faith safety controls still hold (preamble present/injected/undrifted, classifier, safety tests, egress gating). Add --record to append a dated entry to static/reckons-safety-log.ttl"
+    },
+    {
+      "name": "prompt-audit",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/prompt-audit.ts",
+      "desc": "System-prompt token cost, ETHICS_PREAMBLE share per prompt, preamble drift between app and mcp-server, ungated prompts"
+    },
+    {
       "name": "alignment-sweep",
+      "tier": "script",
       "enabled": true,
       "cmd": "bash scripts/offline/alignment-sweep.sh",
       "desc": "TTL parse / asset paths / namespace typos / stale LEAP + branch-align --suggest + kb-align → pending questions"
     },
     {
+      "name": "competitor-scan",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/competitor-scan.ts --pending",
+      "desc": "F86: refresh competitor metadata + LICENSE from the GitHub API; flags license changes, copyleft (we are MIT), unlicensed repos, and abandoned projects. Add --discover to search for new competitors. Never edits the TTL — judgment stays human"
+    },
+    {
+      "name": "button-crawl",
+      "tier": "script",
+      "enabled": false,
+      "cmd": "npx tsx scripts/offline/button-crawl.ts",
+      "desc": "F34: clicks every interactive element on every route; flags crashes, blank screens, SILENT no-ops, and sub-44px touch targets. Pure local JS (no Ollama). Disabled by default because it needs a server already running — `npm run dev`, then enable this or run `npm run offline:all -- --only=button-crawl`"
+    },
+    {
+      "name": "describe-entities",
+      "tier": "agent",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/describe-entities.ts",
+      "desc": "Local model drafts kpred:description for entities graph-lint found incomplete, grounded in their own subgraph + linked files (needs OLLAMA_BASE_URL)"
+    },
+    {
+      "name": "code-review",
+      "tier": "agent",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/code-review.ts --base=${CODE_REVIEW_BASE:-origin/dev}",
+      "desc": "Local coding model (qwen3-coder) reviews the branch diff → findings to pending review (needs OLLAMA_BASE_URL)"
+    },
+    {
       "name": "visual-diff",
+      "tier": "agent",
       "enabled": false,
       "cmd": "npx tsx scripts/offline/visual-diff.ts --base=${VISUAL_DIFF_BASE:-https://reckons.ai} --head=${VISUAL_DIFF_HEAD:-https://dev.reckons-ai.pages.dev}",
       "desc": "Local-VLM visual regression prod↔dev (needs OLLAMA_BASE_URL; set VISUAL_DIFF_BASE / VISUAL_DIFF_HEAD)"

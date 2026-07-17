@@ -2,7 +2,9 @@ import { db } from '../storage/db';
 import type { Statement, Source, ReviewStatus } from '../rdf/types';
 import { isIRI, termKey } from '../rdf/types';
 import { labelFromIRI } from '../rdf/semantic-diff';
+import { gateFactWrite } from '../rdf/agent-edit-boundary';
 import type { ChangeLogEntry, TrustEvent } from '../storage/types';
+import { computeTrustScore } from '../storage/trust';
 import { scheduleAutoSave } from '../storage/backup';
 import { scheduleWorkspaceTtlExport } from './workspace.svelte';
 import { scheduleDrivePush } from './drive-sync.svelte';
@@ -38,26 +40,15 @@ async function logTrustEvent(event: Omit<TrustEvent, 'timestamp' | 'id'>) {
 }
 
 /**
- * Calculate the current trust score for a source based on time-decayed TrustEvents.
- * Formula: score = Σ(delta * e^(-0.01 * age_days)) normalized to 0–1
+ * Current trust score for a source: its baseline, moved by time-decayed user
+ * judgements. The maths lives in storage/trust.ts so it can be tested — see the bug
+ * documented there (the old version discarded the baseline the moment any event
+ * existed, so CONFIRMING a fact made its source less trusted).
  */
 export async function getTrustScore(sourceId: string): Promise<number> {
   const events = await db.trustEvents.where('sourceId').equals(sourceId).toArray();
-  if (events.length === 0) {
-    // Default based on trustLevel if available
-    const src = _sources.find(s => s.id === sourceId);
-    return src?.trustLevel === 'trusted' ? 0.8 : 0.3;
-  }
-
-  const now = Date.now();
-  let score = 0;
-  for (const ev of events) {
-    const ageDays = (now - ev.timestamp) / (1000 * 60 * 60 * 24);
-    const decayFactor = Math.exp(-0.01 * ageDays);
-    score += ev.delta * decayFactor;
-  }
-  // Clamp to [0, 1]
-  return Math.max(0, Math.min(1, score));
+  const src = _sources.find((s) => s.id === sourceId);
+  return computeTrustScore(events, src?.trustLevel);
 }
 
 export function sources(): Source[] {
@@ -210,7 +201,7 @@ export async function autoConfirmTrustedSources() {
 export async function addStatements(
   sts: Statement[],
   sourceId?: string,
-  opts?: { origin?: 'manual' | 'current' }
+  opts?: { origin?: 'manual' | 'current' | 'agent' }
 ) {
   if (isReadOnly() || sts.length === 0) return;
 
@@ -253,8 +244,27 @@ export async function addStatements(
   }
   if (allowed.length === 0) return;
 
+  // F52 agent-edit boundary (kb:control-model): the human holds the fact-edit right; an agent may
+  // only PROPOSE. When this batch is agent-originated, run every status through the boundary so a
+  // settled write (confirmed/refined) is downgraded to a proposal. Today the agent paths already
+  // write 'pending', so this is a no-op in practice — but it moves the rule from CONVENTION to an
+  // enforced WALL in the code path: a future change that tried to land an agent-settled fact
+  // would be caught here, not trusted to remember the convention.
+  let gated = allowed;
+  if (opts?.origin === 'agent') {
+    let coercedCount = 0;
+    gated = allowed.map((st) => {
+      const decision = gateFactWrite('agent', st.status);
+      if (decision.coerced) coercedCount++;
+      return decision.coerced ? { ...st, status: decision.status } : st;
+    });
+    if (coercedCount > 0) {
+      console.warn(`[F52] agent-edit boundary: downgraded ${coercedCount} settled write(s) to pending — agents propose, they do not settle.`);
+    }
+  }
+
   // Clean statements via JSON round-trip to ensure IndexedDB compatibility
-  const cleanedSts = allowed.map(st => JSON.parse(JSON.stringify(st)) as Statement);
+  const cleanedSts = gated.map(st => JSON.parse(JSON.stringify(st)) as Statement);
   await db.statements.bulkPut(cleanedSts);
   _statements = [..._statements, ...cleanedSts];
 

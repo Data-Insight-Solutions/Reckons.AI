@@ -32,6 +32,12 @@ Thumbs.db
 
 # Claude Code sessions
 .claude/
+# …but the slash commands ARE project files. CLAUDE.md lists them as project docs, and
+# reckons-codebase.ttl claims them with kpred:has-file — a claim that was TRUE on the author's
+# laptop and FALSE in every other checkout, which is the worst shape a claim can have.
+# Track them; keep the local/private .claude state ignored.
+!.claude/commands/
+!.claude/commands/*.md
 
 # Local data / workspace
 mnt/
@@ -66,3 +72,12 @@ tests/visual/screenshots/button-crawl/
 # tesseract.js OCR language data (downloaded at runtime)
 eng.traineddata
 *.traineddata
+
+# Runner state — DERIVED, not authored. The queue (reckons-workspace/tasks.ttl) is the truth;
+# this is only the machine's record of what it claimed and what came of it. Delete to reset.
+reckons-workspace/*.state.ttl
+reckons-workspace/runner.log.jsonl
+
+reckons-workspace/schedules.state.ttl
+reckons-workspace/schedule.log.jsonl
+reckons-workspace/task-drafts.ttl

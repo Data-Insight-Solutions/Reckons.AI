@@ -50,7 +50,7 @@ arch:TtlFirstDocs
 arch:TtlVsMarkdownGaps
     rdf:type            ktype:Concept ;
     rdfs:label          "TTL vs Markdown Gap Analysis" ;
-    skos:definition     "Ongoing evaluation of what TTL handles well vs where markdown is still needed. Key gaps: procedural sequences (step-by-step), code block formatting, ASCII diagrams, long-form rationale prose. Key advantages: MCP queryability, cross-Graph linking, type system, semantic diff, compression (60-70% token reduction), graph visualization." ;
+    skos:definition     "Ongoing evaluation of what TTL handles well vs where markdown is still needed. Key gaps: procedural sequences (step-by-step), code block formatting, ASCII diagrams, long-form rationale prose. Key advantages: MCP queryability, cross-Graph linking, type system, semantic diff, compression (a relevant subgraph instead of the whole graph; the compact encoding adds ~18% on top — measured), graph visualization." ;
     skos:broader        arch:TtlFirstDocs .
 
 arch:MustStayMarkdown
@@ -93,7 +93,7 @@ arch:TtlGapContextLoading
 arch:TtlAdvantageQuery
     rdf:type            ktype:Concept ;
     rdfs:label          "Advantage: MCP Queryability" ;
-    skos:definition     "kb_search finds relevant entities across all graphs with a single query. No need to know which file to read. kb_compress reduces tokens by 60-70%. kb_reckoning gives grounded STP analysis. This is fundamentally better than reading 15 markdown files." ;
+    skos:definition     "kb_search finds relevant entities across all graphs with a single query. No need to know which file to read. kb_compress cuts the tokens you feed an LLM, mostly by SELECTING a relevant subgraph rather than handing over the whole graph (the compact encoding itself is worth a further ~18% — measured, not estimated). kb_reckoning gives grounded STP analysis. This is fundamentally better than reading 15 markdown files." ;
     skos:broader        arch:TtlVsMarkdownGaps .
 
 arch:TtlAdvantageLinking

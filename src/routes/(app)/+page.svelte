@@ -2,7 +2,11 @@
   import { Canvas } from '@threlte/core';
   import { goto } from '$app/navigation';
   import KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
+  import { buildGraphView } from '$lib/rdf/graph-view';
+  import { bestSuggestion } from '$lib/rdf/view-suggestions';
   import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
+  import GraphLabels from '$lib/components/GraphLabels.svelte';
+  import { copyText } from '$lib/utils/clipboard';
   import AssetGlbViewer from '$lib/components/AssetGlbViewer.svelte';
   import StatementCard from '$lib/components/StatementCard.svelte';
   import LandingPage from '$lib/components/LandingPage.svelte';
@@ -34,6 +38,7 @@
   import { gifOverrides, setGif, clearGif } from '$lib/stores/gif-overrides.svelte';
   import { icon2dOverrides, setIcon2d, clearIcon2d } from '$lib/stores/icon2d-overrides.svelte';
   import { LEAP_PRED, LEAP_LABEL_PRED, getLeap, leapNodeKeys } from '$lib/rdf/kb-leap';
+  import { findDichotomies } from '$lib/rdf/dichotomy';
   import { findKbByStableId, switchToKb, createKb, registerStableId, getCurrentKbId, getRegistry } from '$lib/storage/kb-registry';
 
   // Predicates that are internal KB metadata — never shown as graph edges/nodes
@@ -45,7 +50,6 @@
   import { isIRI, isLit } from '$lib/rdf/types';
   import { requestShellyChat, setShellyChatOpen, shellyViewAdjust, clearShellyViewAdjust, shellySpotlight, exploreOpen, startExplore, stopExplore } from '$lib/stores/shelly-bridge.svelte';
   import AdaptivePanel from '$lib/components/AdaptivePanel.svelte';
-  import GraphPackagePanel from '$lib/components/GraphPackagePanel.svelte';
   import { entityProtection } from '$lib/rdf/protected-entities';
   import { buildEntitySet, defaultSetName, isEntitySet, setMembers } from '$lib/rdf/entity-sets';
   import { isCompact } from '$lib/stores/viewport.svelte';
@@ -369,9 +373,9 @@
   // FAB (it's an always-on panel on desktop, which would block the graph on a
   // phone). Desktop keeps the SnapPanel always open. (F36 phase 2b)
   let filterSheetOpen = $state(false);
-  // Graph-package/sync controls in the filter panel are collapsed by default so
-  // the panel stays short (filters + force fit without an inner scroll).
-  let packageOpen = $state(false);
+  /** Show shared literal values ("production", "high") as category nodes. Unique literals
+   *  are NEVER nodes — they are attributes (F83). */
+  let showCategoryNodes = $state(true);
 
   // Build a set of subject IRIs matching the selected entity types
   const typedSubjects = $derived.by(() => {
@@ -386,46 +390,126 @@
     return subjects;
   });
 
-  const visible = $derived.by(() => {
-    let filtered = statements().filter((s) =>
+  // A FILTER IS A LENS, NOT A DELETION.
+  //
+  // `visible` is the graph's TOPOLOGY: every statement that is part of the graph at all.
+  // Only structural exclusions are dropped here — rejected/superseded facts and meta
+  // predicates are not "filtered out", they are not graph content in the first place.
+  //
+  // User filters do NOT belong in this set. They used to be: each active filter spliced
+  // statements out of the array before buildGraphView, so the filtered nodes never reached
+  // the force simulation. Two things followed, both bad. The layout JUMPED — d3 re-solves a
+  // different graph, so the node you were looking at moved, and the shape you had learned
+  // was gone. And filtering to zero matches emptied `visible` entirely, which tripped the
+  // `visible.length === 0` branch below and drew the MARKETING LANDING PAGE over the user's
+  // own graph.
+  //
+  // Filters now resolve to a set of matching node KEYS (see filterMatch) and the graph dims
+  // the rest to 0.18 alpha — present, still pulling on their neighbours, just quiet. The
+  // hubs/islands/leaps filters already worked this way; the status/source/type ones did not.
+  // Now there is one mechanism.
+  const visible = $derived.by(() =>
+    statements().filter((s) =>
       s.status !== 'rejected' &&
       s.status !== 'superseded' &&
       !GRAPH_EXCLUDED_PREDICATES.has(s.p.value)
-    );
+    )
+  );
 
-    // Apply status filters
-    if (activeFilters.has('confirmed') || activeFilters.has('pending')) {
-      filtered = filtered.filter((s) => {
-        if (activeFilters.has('confirmed') && (s.status === 'confirmed' || s.status === 'refined')) return true;
-        if (activeFilters.has('pending') && s.status === 'pending') return true;
-        return false;
-      });
+  /**
+   * Statement-level filters (status · source · entity type · no-source · no-type), resolved
+   * to the node keys they keep. A node is kept if ANY statement touching it passes every
+   * active filter — the filters AND together, as they did when they were chained `.filter`s.
+   *
+   * null = no statement-level filter is active (everything matches; nothing to dim).
+   */
+  const filterMatch = $derived.by(() => {
+    const wantStatus = activeFilters.has('confirmed') || activeFilters.has('pending');
+    const wantSource = selectedSources.size > 0;
+    const wantType = typedSubjects !== null;
+    const wantNoSource = activeFilters.has('no-source');
+    const wantNoType = activeFilters.has('no-type');
+    if (!wantStatus && !wantSource && !wantType && !wantNoSource && !wantNoType) return null;
+
+    const keys = new Set<string>();
+    for (const s of visible) {
+      if (wantStatus) {
+        const ok =
+          (activeFilters.has('confirmed') && (s.status === 'confirmed' || s.status === 'refined')) ||
+          (activeFilters.has('pending') && s.status === 'pending');
+        if (!ok) continue;
+      }
+      if (wantSource && !selectedSources.has(s.sourceId)) continue;
+      if (wantNoSource && s.sourceId !== 'manual') continue;
+      if (wantType && !(typedSubjects!.has(s.s.value) || typedSubjects!.has(s.o.value))) continue;
+      if (
+        wantNoType &&
+        !(
+          (s.s.kind === 'iri' && untypedSubjectIris.has(s.s.value)) ||
+          (s.o.kind === 'iri' && untypedSubjectIris.has(s.o.value))
+        )
+      )
+        continue;
+      keys.add(termKey(s.s));
+      keys.add(termKey(s.o));
     }
+    return keys;
+  });
 
-    // Apply source filters
-    if (selectedSources.size > 0) {
-      filtered = filtered.filter((s) => selectedSources.has(s.sourceId));
-    }
+  // F83 graph legibility: LITERALS ARE ATTRIBUTES, NOT NODES — unless they are shared.
+  //
+  // Every object used to become a node, so a 265-character kpred:description became one.
+  // The roadmap has 1,888 triples but only 233 real entities, and it was rendering as
+  // ~1,234 nodes — most of them dangling walls of text. Unusable on a phone, and the
+  // roadmap is the first graph anyone opens.
+  //
+  // A literal earns a node by being SHARED ("production", 53 features — a real category).
+  // A value that appears once connects nothing; it belongs in the node panel, not on the
+  // canvas. Nodes: 1,234 -> 271, and every one of them means something.
+  const graphView = $derived(buildGraphView(visible, { categoryNodes: showCategoryNodes }));
+  /** Statements the canvas actually draws. */
+  const drawn = $derived(graphView.edges);
+  /** Literal facts that belong to a node rather than the canvas (node panel reads these). */
+  const nodeAttributes = $derived(graphView.attributes);
 
-    // Apply entity type filters — keep statements where subject matches typed subjects
-    if (typedSubjects !== null) {
-      filtered = filtered.filter((s) => typedSubjects.has(s.s.value) || typedSubjects.has(s.o.value));
-    }
+  // ── Context-aware view suggestions (F85) ───────────────────────────────────
+  //
+  // Offer the right force/filter for what is ACTUALLY on screen — "47 of these facts carry
+  // dates spanning 8 months; want a timeline?" — and say nothing otherwise.
+  //
+  // A suggestion must be EARNED BY THE DATA. An unearned one is corrosive: it teaches the
+  // user to ignore the suggester, and then the one good suggestion goes unread with all the
+  // rest. So: at most ONE at a time, it carries its evidence, and it is one-time
+  // dismissable. A menu of five things to try is not help, it is homework.
+  let suggestedId = $state<string | null>(null);
 
-    // Apply no-type filter — show only nodes that have no rdf:type
-    if (activeFilters.has('no-type')) {
-      filtered = filtered.filter((s) =>
-        (s.s.kind === 'iri' && untypedSubjectIris.has(s.s.value)) ||
-        (s.o.kind === 'iri' && untypedSubjectIris.has(s.o.value))
-      );
-    }
+  $effect(() => {
+    const suggestion = bestSuggestion({
+      visible: drawn,
+      nodeCount: allNodes.size,
+      layout,
+      selectedTypes,
+      sourceCount: selectedSources.size || new Set(drawn.map((s) => s.sourceId)).size,
+    });
 
-    // Apply no-source filter — show only manually added statements
-    if (activeFilters.has('no-source')) {
-      filtered = filtered.filter((s) => s.sourceId === 'manual');
-    }
+    if (!suggestion || suggestion.id === suggestedId) return;
+    suggestedId = suggestion.id;
 
-    return filtered;
+    pushNotification({
+      id: `view-suggestion:${suggestion.id}`,
+      type: 'info',
+      title: suggestion.headline,
+      body: suggestion.evidence,          // the evidence is SHOWN, never implied
+      oneTime: true,                       // dismissed once = never nagged again
+      action: {
+        label: 'apply',
+        onclick: () => {
+          if (suggestion.adjust.layout) layout = suggestion.adjust.layout;
+          if (suggestion.adjust.filters) activeFilters = new Set(suggestion.adjust.filters);
+          dismissNotification(`view-suggestion:${suggestion.id}`);
+        },
+      },
+    });
   });
 
   // Compute node degrees and build adjacency
@@ -434,7 +518,7 @@
     const adj = new Map<string, Set<string>>();
     const nodes = new Set<string>();
 
-    for (const st of visible) {
+    for (const st of drawn) {
       const sk = termKey(st.s);
       const ok = termKey(st.o);
 
@@ -454,6 +538,13 @@
   });
 
   // Find connected components using BFS
+  // kb:dichotomy — entities that say drastically different things about themselves. A CONFLICT
+  // to fix before merge, or a natural dichotomy (was sales, now technical) to preserve through
+  // one. Filterable like hubs/islands because these tensions are where review pays off most.
+  const dichotomyList = $derived(findDichotomies(visible));
+  const dichotomyKeys = $derived([...new Set(dichotomyList.map((d) => d.key))]);
+  const conflictCount = $derived(dichotomyList.filter((d) => d.kind === 'conflict').length);
+
   const islandNodes = $derived.by(() => {
     const visited = new Set<string>();
     const smallComponentNodes = new Set<string>();
@@ -522,11 +613,6 @@
     return new Set([...allEntityIris].filter(iri => !typedIris.has(iri)));
   });
 
-  // Node keys for untyped entities (used for highlighting)
-  const untypedNodeKeys = $derived(
-    [...untypedSubjectIris].map(iri => `i:${iri}`)
-  );
-
   // Node keys for entities with leap targets (used for highlighting)
   const leapKeys = $derived([...leapNodeKeys(statements())]);
 
@@ -539,19 +625,38 @@
     return [selected, ...setMembers(iri, statements()).map(m => `i:${m}`)];
   });
 
-  // Shared dim/highlight state — used by both the graph components and the label overlay
-  const dimMode = $derived(
-    activeFilters.has('hubs') || activeFilters.has('islands') || activeFilters.has('no-type') || activeFilters.has('leaps')
-    || selectedSetKeys.length > 0
-  );
+  /**
+   * Node-set filters (hubs · islands · leaps): properties of a node, not of a statement.
+   * UNIONed — "hubs + islands" asks for both kinds at once, which is how they have always
+   * behaved. null = none active.
+   */
+  const nodeSetMatch = $derived.by(() => {
+    if (!activeFilters.has('hubs') && !activeFilters.has('islands') && !activeFilters.has('leaps') && !activeFilters.has('dichotomy')) return null;
+    return new Set(
+      Array.from(activeFilters).flatMap((f) =>
+        f === 'hubs' ? hubs : f === 'islands' ? islandNodes : f === 'leaps' ? leapKeys : f === 'dichotomy' ? dichotomyKeys : ([] as string[])
+      )
+    );
+  });
+
+  /**
+   * Every node that survives the active filters. The two mechanisms AND together: asking for
+   * "hubs" and "pending" means hubs that are pending, not hubs plus everything pending.
+   *
+   * null = no filter is active, so nothing is dimmed.
+   */
+  const matchedKeys = $derived.by(() => {
+    if (filterMatch === null) return nodeSetMatch;
+    if (nodeSetMatch === null) return filterMatch;
+    return new Set([...filterMatch].filter((k) => nodeSetMatch.has(k)));
+  });
+
+  // Shared dim/highlight state — used by both the graph components and the label overlay.
+  // Nothing here REMOVES a node: the unmatched keep their place in the force simulation and
+  // render at 0.18 alpha, so the graph's shape holds still while you look through the lens.
+  const dimMode = $derived(matchedKeys !== null || selectedSetKeys.length > 0);
   const highlightedSet = $derived(new Set([
-    ...Array.from(activeFilters).flatMap(f =>
-      f === 'hubs' ? hubs
-      : f === 'islands' ? islandNodes
-      : f === 'no-type' ? untypedNodeKeys
-      : f === 'leaps' ? leapKeys
-      : [] as string[]
-    ),
+    ...(matchedKeys ?? []),
     ...shellySpotlight(),
     ...selectedSetKeys
   ]));
@@ -1636,6 +1741,13 @@
         <span class="num">{islandNodes.length}</span>
         <span class="lbl mono">islands</span>
       </button>
+      {#if dichotomyKeys.length > 0}
+        <button class="chip" class:active={activeFilters.has('dichotomy')} onclick={() => toggleFilter('dichotomy')}
+          title="Entities that say drastically different things about themselves — conflicts to fix, or natural dichotomies to preserve. The best place to look before a merge.">
+          <span class="num" class:has-conflict={conflictCount > 0}>{dichotomyKeys.length}</span>
+          <span class="lbl mono">dichotomy{conflictCount > 0 ? ` (${conflictCount}⚠)` : ''}</span>
+        </button>
+      {/if}
       {#if leapKeys.length > 0}
         <button class="chip" class:active={activeFilters.has('leaps')} onclick={() => toggleFilter('leaps')} title="Cross-graph leap nodes — jump to another graph">
           <span class="num">{leapKeys.length}</span>
@@ -1827,13 +1939,10 @@
   </div>
   {/if}
 
-  <!-- GRAPH PACKAGE — this graph's .ttl, sidecars, story, currents & folder sync.
-       Collapsed by default so the panel stays short (filters + force fit without
-       an inner scroll); expand for the package/sync controls on demand. -->
-  <details class="pkg-disclosure" bind:open={packageOpen}>
-    <summary class="group-label mono">graph package &amp; sync {packageOpen ? '▾' : '▸'}</summary>
-    <GraphPackagePanel statementCount={statements().length} />
-  </details>
+  <!-- Graph package & sync lives in the GRAPHS tab (/kb), alongside sources, predicates
+       and the graph registry. It was buried in this filter panel behind a disclosure,
+       collapsed "so the panel stays short" — which was the tell: it did not belong here.
+       A filter panel should filter. Graph management has its own tab because it matters. -->
 
 </div>
 </AdaptivePanel>
@@ -1879,15 +1988,12 @@
 
 <!-- Always-visible node labels — outer wrapper positions (GPU), inner handles hover scale -->
 <!-- transition:fade handles distance-culling enter/exit; dim-hidden handles dimMode + selected -->
-{#each nodeLabels as n (n.key)}
-  <div
-    class="node-label-wrap"
-    transition:fade={{ duration: 220 }}
-    style="transform: translate3d({n.x}px, {n.y}px, 0); --lfs: {labelFontSize}px; --lop: {n.opacity ?? 0.85};"
-  >
-    <!-- Show the node image when previews are forced on, OR for the focused/
-         selected/highlighted nodes. Click it to expand large (→ fullscreen).
-         Hidden while this node's image is the expanded one. -->
+<!-- Always-visible node labels — shared GraphLabels overlay (F92). The asset thumbnail and leap
+     badge are page-specific, passed as snippets so this page keeps them and their styling. -->
+<GraphLabels labels={nodeLabels} {selected} {hoverTarget} {dimMode} {highlightedSet} {labelFontSize}>
+  {#snippet preview(n)}
+    <!-- Show the node image when previews are forced on, OR for the focused/selected/highlighted
+         nodes. Click it to expand large (→ fullscreen). Hidden while it is the expanded one. -->
     {#if (alwaysPreviews || n.key === selected || highlightedSet.has(n.key)) && n.key !== expandedAssetKey}
       {@const a = nodeAssetFor(iriFromNodeKey(n.key))}
       {#if a}
@@ -1905,12 +2011,8 @@
         {/if}
       {/if}
     {/if}
-    <span
-      class="node-label mono"
-      class:hovered={n.key === hoverTarget}
-      class:selected-node={n.key === selected}
-      class:dim-hidden={dimMode && !highlightedSet.has(n.key) && n.key !== hoverTarget && n.key !== selected}
-    >{n.label}</span>
+  {/snippet}
+  {#snippet after(n)}
     {#if n.key === selected && entityLeap}
       <button
         class="leap-badge mono"
@@ -1923,8 +2025,8 @@
         <span class="leap-badge-label">{entityLeap.label ?? (entityLeap.kind === 'kb' ? entityLeap.target.slice(0, 8).toUpperCase() : entityLeap.target)}</span>
       </button>
     {/if}
-  </div>
-{/each}
+  {/snippet}
+</GraphLabels>
 
 <!-- Layout anchor labels (source/type/hub cluster markers) -->
 {#each markerLabels as m (m.key)}
@@ -2403,7 +2505,7 @@
             <button class="leap-id mono" title={`${entityLeap.target}\nClick to navigate`} onclick={jumpToLeap} disabled={leapImporting || flyToGhost}>
               {entityLeap.label ?? (entityLeap.kind === 'kb' ? entityLeap.target.slice(0, 8).toUpperCase() : entityLeap.target)}
             </button>
-            <button class="link-rm" onclick={() => navigator.clipboard.writeText(entityLeap!.target)} title="copy target">⎘</button>
+            <button class="link-rm" onclick={() => copyText(entityLeap!.target)} title="copy target">⎘</button>
             <button class="link-rm" onclick={removeLeap} title="remove jump">✕</button>
           </div>
           {#if entityLeap.label && entityLeap.kind === 'kb'}
@@ -3951,8 +4053,8 @@
     .kb-hint { display: none; } /* keyboard nav hint not useful on touch devices */
     .gif-preview { display: none; } /* hover-triggered GIF preview not useful on touch */
     .hover-content-tooltip { display: none; } /* hover tooltip not useful on touch — use node panel preview instead */
-    .node-label-wrap { pointer-events: none; } /* prevent label divs from stealing touch events */
-    .node-label-wrap .leap-badge { pointer-events: auto; } /* but keep leap badges tappable */
+    /* .node-label-wrap now lives in GraphLabels (pointer-events:none there); .leap-badge sets
+       its own pointer-events:auto, so the mobile overrides here are redundant. */
     .np-preview-img { max-height: 160px; } /* slightly taller on mobile since it's the primary preview */
   }
 </style>

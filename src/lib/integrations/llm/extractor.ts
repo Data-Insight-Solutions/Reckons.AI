@@ -1,5 +1,6 @@
 import type { Statement, Source } from '../../rdf/types';
 import { iri, lit } from '../../rdf/types';
+import { groundStatements } from '../../rdf/grounding';
 import { v4 as uuid } from 'uuid';
 import { ETHICS_PREAMBLE } from '../../safety/content-policy';
 
@@ -63,7 +64,20 @@ Extract triples now. Respond with a JSON array only.`;
  * EXTRACTION_SYSTEM_PROMPT (including `excerpt`) so downstream parsing is
  * identical either way.
  */
-export const EXTRACTION_SYSTEM_PROMPT_COMPACT = ETHICS_PREAMBLE + `Extract facts from text as a JSON array of triples.
+/**
+ * Few-shot extraction prompt for SMALL local models (see `isSmallOllamaModel`).
+ *
+ * Renamed from ..._COMPACT (2026-07-12) because that name was actively misleading: it
+ * is the LARGEST prompt in the app (~301 body tokens vs ~257 for the full one), and
+ * the name invited exactly the wrong "optimization". The extra tokens are three
+ * worked examples, and they are the whole point — few-shot examples take llama3.2:3b
+ * from F1 0.238 to 0.500 on ingest (tests/bench). They are not bloat; they are the
+ * cheapest quality we buy anywhere.
+ *
+ * "Compact" was only ever true of the OUTPUT it asks for, never of the prompt itself.
+ * Do not shrink this without re-running the ingest bench.
+ */
+export const EXTRACTION_SYSTEM_PROMPT_FEWSHOT = ETHICS_PREAMBLE + `Extract facts from text as a JSON array of triples.
 
 Output schema — each array item is an object with these fields:
 {"subject": "kebab-case-slug", "predicate": "kebab-case-verb-phrase", "object": "kebab-case-slug-or-literal", "objectIsLiteral": true|false, "datatype": "string|number|date|boolean", "gloss": "one short sentence", "confidence": 0.0-1.0, "excerpt": "verbatim source sentence"}
@@ -159,11 +173,26 @@ const XSD: Record<NonNullable<ExtractedTriple['datatype']>, string> = {
   boolean: 'http://www.w3.org/2001/XMLSchema#boolean'
 };
 
-/** Convert raw LLM output into typed Statements bound to a Source */
-export function triplesToStatements(triples: ExtractedTriple[], source: Source): Statement[] {
+/**
+ * Convert raw LLM output into typed Statements bound to a Source.
+ *
+ * Pass `sourceText` to VERIFY each excerpt against it (kb:passage-grounding). The prompt
+ * tells the model to quote the source verbatim, but until now nothing ever checked that
+ * it did — so a paraphrased or invented quote was stored and shown to the user as
+ * provenance. When an excerpt cannot be found in the source it is DROPPED and the
+ * statement's confidence is penalised: a missing citation is honest, a forged one is not.
+ *
+ * Omitting `sourceText` leaves excerpts unverified (verdict 'unverifiable') — used where
+ * the original text genuinely isn't available. It never fabricates a pass.
+ */
+export function triplesToStatements(
+  triples: ExtractedTriple[],
+  source: Source,
+  sourceText?: string,
+): Statement[] {
   const graph = iri(`urn:kbase:source/${source.id}`);
   const now = Date.now();
-  return triples.map((t) => {
+  const statements = triples.map((t) => {
     const s = iri(slugIRI(t.subject));
     const p = iri(predicateIRI(t.predicate));
     const o = t.objectIsLiteral
@@ -182,8 +211,10 @@ export function triplesToStatements(triples: ExtractedTriple[], source: Source):
       status: 'pending',
       createdAt: now,
       updatedAt: now
-    };
+    } as Statement;
   });
+
+  return sourceText === undefined ? statements : groundStatements(statements, sourceText);
 }
 
 /**

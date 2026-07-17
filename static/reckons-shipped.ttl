@@ -1,0 +1,361 @@
+# Shipped work, split out of the roadmap (scripts/agent/split.ts) so the plan stays legible.
+# A real content graph, linted like any other — NOT a docs artifact.
+
+@prefix kb: <urn:kbase:concept/>.
+@prefix kpred: <urn:kbase:predicate/>.
+@prefix ktype: <urn:kbase:type/>.
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+@prefix hnav: <urn:reckons:nav/>.
+
+kb:wf-ingest a ktype:Concept;
+    rdfs:label "Ingest Workflow";
+    kpred:description "Add knowledge from notes, URLs, documents, calendars, repos, or Turtle files. LLM extracts semantic triples.";
+    kpred:has-status "production";
+    kpred:has-source-type "note", "url", "document", "reminder", "repository", "calendar", "vault", "folder", "triples", "kb-import".
+kb:wf-review a ktype:Concept;
+    rdfs:label "Review Workflow";
+    kpred:description "Three-tab review: incoming triples, deletion proposals, entity merge suggestions. Human-in-the-loop curation.";
+    kpred:has-status "production";
+    kpred:has-tab "incoming", "deletions", "merges".
+kb:wf-explore a ktype:Concept;
+    rdfs:label "Explore Workflow";
+    kpred:description "Interactive graph visualization (2D/3D), entity navigation, story-driven tours, AI-guided exploration via Shelly.";
+    kpred:has-status "production".
+kb:wf-compare a ktype:Concept;
+    rdfs:label "Compare Workflow";
+    kpred:description "Semantic diff engine comparing two graph snapshots. Categories: Add, Reinforce, Conflict, Merge, Remove.";
+    kpred:has-status "production".
+kb:wf-reckon a ktype:Concept;
+    rdfs:label "Reckon Workflow";
+    kpred:description "AI-powered reasoning over graph contents. Shelly synthesizes facts, identifies conflicts, and suggests actions.";
+    kpred:has-status "production".
+kb:llm-design a ktype:Concept;
+    rdfs:label "LLM Backend System";
+    kpred:has-status "production";
+    kpred:description "Per-task backend overrides. Provider abstraction supports 9 backends.";
+    kpred:has-backend kb:backend-wasm, kb:backend-ollama, kb:backend-chrome-ai, kb:backend-claude, kb:backend-openai, kb:backend-gemini, kb:backend-openrouter, kb:backend-manual, kb:backend-mock;
+    kpred:has-task-override "ingestBackend", "analyzeBackend", "chatBackend", "diffSummaryBackend", "mergeAnalysisBackend".
+kb:backend-wasm a ktype:Tool;
+    rdfs:label "WASM Backend";
+    kpred:has-status "production";
+    kpred:model "SmolLM2-360M";
+    kpred:locality "browser".
+kb:backend-ollama a ktype:Tool;
+    rdfs:label "Ollama Backend";
+    kpred:has-status "production";
+    kpred:locality "local-server".
+kb:backend-chrome-ai a ktype:Tool;
+    rdfs:label "Chrome AI Backend";
+    kpred:has-status "production";
+    kpred:locality "browser".
+kb:backend-claude a ktype:Tool;
+    rdfs:label "Claude Backend";
+    kpred:has-status "production";
+    kpred:locality "cloud".
+kb:backend-openai a ktype:Tool;
+    rdfs:label "OpenAI Backend";
+    kpred:has-status "production";
+    kpred:locality "cloud".
+kb:backend-gemini a ktype:Tool;
+    rdfs:label "Gemini Backend";
+    kpred:has-status "production";
+    kpred:locality "cloud".
+kb:backend-openrouter a ktype:Tool;
+    rdfs:label "OpenRouter Backend";
+    kpred:has-status "production";
+    kpred:locality "cloud".
+kb:backend-manual a ktype:Tool;
+    rdfs:label "Manual Paste Backend";
+    kpred:has-status "production";
+    kpred:locality "user".
+kb:backend-mock a ktype:Tool;
+    rdfs:label "Mock Backend";
+    kpred:has-status "production";
+    kpred:locality "testing".
+kb:knowledge-graph a ktype:Feature;
+    rdfs:label "Knowledge Graph";
+    kpred:has-status "production";
+    kpred:description "2D force-directed + 3D Three.js graph. Per-entity GLB models, image icons, label overlap prevention.";
+    kpred:has-capability "2D canvas rendering", "3D WebGL rendering", "entity type coloring", "per-entity 3D models", "per-entity image icons", "label overlap prevention".
+kb:multi-kb a ktype:Feature;
+    kpred:tested-by "src/lib/storage/__tests__/kb-registry.test.ts";
+    rdfs:label "Multi-Graph Management";
+    kpred:has-status "production";
+    kpred:description "Create, switch, rename, delete graphs. Graph Leap cross-references. Import-as-new-Graph.";
+    kpred:has-capability "kb-registry", "kb-leap", "import-as-new-kb", "url-based-kb-switching".
+kb:triple-extraction a ktype:Feature;
+    rdfs:label "Triple Extraction";
+    kpred:has-status "production";
+    kpred:description "LLM-powered extraction of subject-predicate-object triples from unstructured text.";
+    kpred:has-capability "passage grounding", "code-aware extraction".
+kb:mcp-server a ktype:Feature;
+    rdfs:label "MCP Server";
+    kpred:has-status "production";
+    kpred:description "Standalone Node.js server. 10 tools over JSON-RPC stdio. Multi-Graph workspace support.";
+    kpred:has-tool "kb_search", "kb_get_entity", "kb_stats", "kb_list_entities", "kb_add_note", "kb_subgraph", "kb_reckoning", "kb_list_sources", "kb_request_refresh".
+kb:comparison-view a ktype:Feature;
+    kpred:test-coverage "none";
+    kpred:honest-note "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent.";
+    rdfs:label "Comparison View";
+    kpred:has-status "production";
+    kpred:description "Semantic diff engine + Venn diagram UI. Categories: Add, Reinforce, Conflict, Merge, Remove.".
+kb:diff-summary a ktype:Feature;
+    kpred:tested-by "src/lib/rdf/__tests__/diff-summary.test.ts";
+    rdfs:label "Diff Summary";
+    kpred:has-status "production";
+    kpred:description "LLM-generated 3-part summaries (new/reinforcing/conflicting) for compare, review, and extension.".
+kb:predicate-manager a ktype:Feature;
+    rdfs:label "Predicate Manager";
+    kpred:has-status "production";
+    kpred:tested-by "src/lib/rdf/__tests__/predicates.test.ts";
+    kpred:has-file "src/lib/rdf/predicates.ts";
+    kpred:description "View all predicates with counts, rename, merge. Schema evolution tool. Rename and merge are PLANNED before they are applied (rdf/predicates.ts: planRename / planMerge), so the UI can warn before mutating: standard-vocabulary terms are refused, a rename that collides with an existing predicate is named as the merge it really is, and statements that would become exact twins are dropped rather than written.";
+    kpred:known-issue "FIXED 2026-07-12 — THREE defects, all found by the first test ever written for it. (1) RENAME DESTROYED STANDARD VOCABULARY: the new IRI's namespace was chosen as isMetaPredicate(old) ? META_PREFIX : PREDICATE_PREFIX, with no third case — so renaming rdfs:label, skos:broader or dcterms:created (all of which appear the moment a user imports real Turtle) rewrote them into urn:kbase:predicate/<slug>, silently converting an interoperable standard term into a private one. The graph stops meaning what it said, and no export carries that meaning anywhere. (2) RENAME ONTO AN EXISTING PREDICATE SILENTLY MERGED, irreversibly, from a control labelled 'rename'. (3) MERGE CREATED DUPLICATE STATEMENTS: merging likes into loves when both already asserted (x,.,y) left two identical triples. The logic lived inline in PredicateManager.svelte, which is why all three survived — extracting it to a pure module is what made them findable.";
+    kpred:principle "A destructive action must never be silent. Refuse, or warn, but never quietly do something other than what the control is labelled.".
+kb:content-safety a ktype:Feature;
+    kpred:tested-by "src/lib/safety/__tests__/content-policy.test.ts";
+    rdfs:label "Content Safety";
+    kpred:has-status "production";
+    kpred:principle "Ethics AND morals, not just law. Laws vary across borders and legality is a floor, not a ceiling — Reckons.AI applies a baseline ethical standard (no incitement, no hate, no sexualization of minors) regardless of local legality. Some things simply should not be broadcast publicly.", "Responsibility model: Reckons.AI is a neutral, local-first TOOL — the user owns and is responsible for the content they create and share. The app makes a good-faith EFFORT to protect users and keep the worst content off the public web, but is not responsible for user-generated content. Documented for humans in SAFETY.md (repo root).";
+    kpred:description "Ethics preamble in all LLM prompts (ETHICS_PREAMBLE, src/lib/safety/content-policy.ts). Content classifier (blocked/mature/none) filters blocked content on ingest; mature is flagged. Export advisory headers warn recipients. Local-first: nothing leaves the device unless the user connects an integration.";
+    kpred:has-part kb:publish-safety-gate, kb:verified-badge.
+kb:publish-safety-gate a ktype:Feature;
+    kpred:tested-by "src/lib/publish/__tests__/publish-gate.test.ts";
+    kpred:show-on-landing "true";
+    kpred:landing-label "Publish safety gate";
+    kpred:landing-note "We gate only what we carry — export is always yours, whatever it contains";
+    rdfs:label "Publish Safety Gate";
+    kpred:feature-id "F66";
+    kpred:has-status "functional";
+    kpred:done "src/lib/publish/publish-gate.ts (gatePublish, PublishRefusedError); wired into publishSiteToGitHub — the MEDIATED path — and deliberately NOT into exportSiteZip, which is user-export. Coercion-signature + adult detection in safety/content-policy.ts (classifyForDistribution). 11 tests.";
+    kpred:part-of kb:content-safety;
+    kpred:principle "PRIVATE sharing is the user's to manage (handing someone a .ttl is like emailing a file — the app doesn't police it). PUBLIC publishing to the open web is GATED: make a good-faith effort to block publicly sharing graphs that incite violence or are otherwise illegal or hateful.", "GATE ONLY WHAT WE CARRY (Option C, 2026-07-12 — see kb:adult-content-policy). The gate refuses to CARRY, it never refuses to LET THE USER HAVE: user-export is always available, whatever the graph contains. It also asks NO QUESTION — no purpose declaration, no attestation, no terms to accept — because a gate that accepts an explanation is a gate anyone can talk their way past.";
+    kpred:scope "Refuses at mediated distribution: (1) Tier 1 always — minors, NCII, sextortion/blackmail, incitement, mass-casualty weapons; (2) Tier 2 adult content — declined with a plain 'export it and self-host' message, no judgment and no appeal. Tier 3 passes.";
+    kpred:description "Before a graph is published to the open web (publishSiteToGitHub / any public target), run it through the same classifier (classifyStatement / filterBlockedStatements) and REFUSE to publish when blocked content is present — with a clear explanation, not a silent drop. Distinct from the existing export ADVISORY (which warns): the publish gate BLOCKS. Also leans on the natural barrier — Reckons.AI hosts nothing, so public publishing requires the user's OWN domain/hosting/file-sharing (Cloudflare, GitHub Pages, a Git host), which limits casual/anonymous abuse and makes the publisher accountable through their own provider. Builds on content-safety; extends site-export.ts.";
+    kpred:relates-to kb:graph-publishing;
+    kpred:gates kb:graph-publishing, kb:published-ttl, kb:published-graph-exchange, kb:share-links, kb:read-only-guest, kb:kb-publication.
+kb:data-egress-model a ktype:Concept;
+    rdfs:label "Data egress model (export is a right, distribution is a privilege)";
+    kpred:part-of kb:content-safety;
+    kpred:description "Classifies every feature by where user data can travel, so the graph can answer 'what leaves the device, and are we the one carrying it?'. kpred:data-egress takes one of: none (stays in IndexedDB); user-export (plain text/TTL to the user's own disk — a RIGHT, never blocked, advisory header only, no lock-in); mediated-distribution (Reckons.AI is the intermediary delivering content to a third party or the open web — publish, share link, exchange, guest view — BLOCKING gate); third-party-service (an opt-in integration's servers, e.g. Drive/n8n/GitHub — gated by explicit user connect + advisory, blocking for public targets). Only mediated-distribution and third-party-service require kpred:gated-by; user-export must NOT be gated, and a lint that demanded one would be a bug.";
+    kpred:egress-value "none", "user-export", "mediated-distribution", "third-party-service";
+    kpred:principle "Export is a RIGHT: the user's graph is the user's, in a plain, portable, non-proprietary format. Reckons.AI never withholds a user's own data from them, whatever it contains.", "Distribution is a PRIVILEGE: when the app is the intermediary handing content to someone else, it is a participant in that delivery and gates accordingly. Once a file has left as a user-export, what happens next is the user's responsibility, not a control we pretend to have.";
+    kpred:invariant "data-egress in {mediated-distribution, third-party-service} => kpred:gated-by is required, and the gate's lifecycle status must be >= the gated feature's status.", "data-egress = user-export => NO blocking gate. Advisory only (scanForExportAdvisory).".
+kb:adult-content-policy a ktype:Feature;
+    kpred:tested-by "src/lib/publish/__tests__/publish-gate.test.ts", "src/lib/safety/__tests__/content-policy.test.ts";
+    rdfs:label "Adult content policy (gate only what we carry)";
+    kpred:feature-id "F66.1";
+    kpred:has-status "functional";
+    kpred:done "classifyForDistribution: allow | decline (Tier 2 adult — we do not carry it, user exports and self-hosts) | refuse (Tier 1 — coercion signature, CSAM, NCII). Detection targets STRUCTURE not explicitness, so a novelist is never treated as a blackmailer. No purpose field, no attestation, no terms: context is never an input to the gate.";
+    kpred:part-of kb:publish-safety-gate;
+    kpred:relates-to kb:data-egress-model;
+    kpred:decided "Option C (2026-07-12): Reckons.AI offers NO mediated distribution channel for adult content. Authoring, storage, and user-export are entirely unimpeded; only mediated distribution is refused.";
+    kpred:description "Applies at MEDIATED DISTRIBUTION only — never at authoring, never at storage, never at user-export. TIER 1 (refused everywhere we are in the loop, and refused at generation by the ETHICS_PREAMBLE): sexualization of minors; non-consensual intimate content of real people; sextortion/blackmail; incitement; mass-casualty weapons instructions. TIER 2 ADULT (explicit fiction between adults, graphic fictional violence): NOT MEDIATED. The publish gate declines to carry it and says so plainly — 'Reckons.AI won't publish this for you; export it and host it yourself.' No moral judgment, no accusation, no appeal process, and crucially no questionnaire to game. TIER 3: mediated freely. A false positive costs the user one export and a self-host, so over-blocking is cheap; that is what makes this workable with an imperfect classifier.";
+    kpred:principle "Gate only what we carry. Export is a right; distribution is a privilege; we decline to be the intermediary for adult material rather than pretending to adjudicate it.", "Context is never an input to the gate. A gate that accepts a stated purpose is a gate anyone can talk their way past — so we ask nothing, and there is nothing to lie about.", "Tier 1 is principled, not squeamish: it is exactly the set where the harm lands on a THIRD PARTY WHO DID NOT CONSENT. Fiction between consenting adults has no victim; content aimed at a real person does.";
+    kpred:remaining "Tier 1 detection should target the COERCION SIGNATURE (a real identifiable person + intimate material + a threat + a demand), which is structural and detectable independently of explicitness — unlike 'classify smut', which simultaneously over-blocks romance authors and under-blocks abuse.";
+    kpred:known-gap "The current classifier (content-policy.ts MATURE_PATTERNS) matches DESCRIPTIONS of content — the literal phrases 'sexually explicit', 'pornographic' — not content itself. Actual explicit prose is not detected, while a triple merely SAYING a document is erotic gets flagged. It must not be described as a content filter until rewritten.";
+    kpred:consequence "No accounts, no server, no attestation records, no PII retention, no age-verification surface. The traceability problem in COUNSEL-BRIEF.md §6 is DISSOLVED rather than solved: there is nothing to trace because there is no claim to lie about.";
+    kpred:depends-on kb:publish-safety-gate.
+kb:verified-badge a ktype:Feature;
+    rdfs:label "Verified Badge";
+    kpred:feature-id "F67";
+    kpred:has-status "speculative";
+    kpred:part-of kb:content-safety;
+    kpred:description "A positive trust signal: a verified badge for a reviewed, accountable publisher or graph — distinct from the anonymous, un-hosted default. Rewards good-faith authors who put their name/domain behind a published graph, and gives readers a signal of provenance. Open question: what does verification attest (identity? a content review? a stable domain?) and who issues it.".
+kb:passage-grounding a ktype:Feature;
+    rdfs:label "Passage Grounding";
+    kpred:has-status "production";
+    kpred:tested-by "src/lib/rdf/__tests__/grounding.test.ts", "src/lib/integrations/llm/__tests__/extractor.test.ts";
+    kpred:has-file "src/lib/rdf/grounding.ts";
+    kpred:description "Every extracted triple carries an excerpt: the verbatim source sentence it was derived from. The excerpt is now VERIFIED against the source text — if the quote does not occur there, it is dropped and the statement's confidence is penalised (x0.6). Matching forgives cosmetic differences a reasonable reader would ignore (smart quotes, en/em dashes, wrapped whitespace, case) but nothing else, so a changed word or an invented sentence still fails. Where no source text is available the excerpt is marked unverifiable rather than accused: silence is not evidence of forgery. Persists via meta:excerpt in TTL reification.";
+    kpred:known-issue "FIXED 2026-07-12 — CITATIONS WERE NEVER CHECKED. The extraction prompt instructs the model 'copy it exactly - do not paraphrase', and nothing in the pipeline ever verified that it had. triplesToStatements stored whatever excerpt the model returned, and did not even RECEIVE the source text, so it structurally could not check. A model that paraphrased or invented a quote had it rendered to the user as provenance. Small models paraphrase constantly, so this was not hypothetical. For an app whose pitch is 'knowledge graph - provenance - trust', a FABRICATED CITATION is the worst failure available: the user checks the receipt, the receipt looks right, and it is a forgery. Now verified at ingest; a fabricated excerpt is DROPPED rather than displayed, because showing no citation is honest and showing a forged one is not.";
+    kpred:principle "Show the user no citation rather than a forged one.".
+kb:repo-ingest a ktype:Feature;
+    rdfs:label "Repository Ingest";
+    kpred:data-egress "third-party-service";
+    kpred:gated-by kb:content-safety;
+    kpred:has-status "production";
+    kpred:description "GitHub REST API for tree walking and file content. Delta updates between commits.".
+kb:source-refresh a ktype:Feature;
+    kpred:tested-by "src/lib/stores/__tests__/source-refresh.test.ts";
+    rdfs:label "Source Refresh";
+    kpred:has-status "production";
+    kpred:description "Re-ingest URLs, repos, and calendars. Auto-refresh on graph open or on schedule.".
+kb:browser-extension a ktype:Feature;
+    kpred:tested-by "tests/extension/extension-visual.spec.ts", "tests/extension/research-session.spec.ts";
+    rdfs:label "Browser Extension";
+    kpred:has-status "production";
+    kpred:description "Research session accumulation, at-a-glance bar, batch ingest. Compare | Session | Ingest tabs.".
+kb:whisper-stt a ktype:Feature;
+    kpred:test-coverage "none";
+    kpred:honest-note "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent.";
+    rdfs:label "Whisper STT";
+    kpred:has-status "production";
+    kpred:description "Local speech-to-text via transformers.js. Mic button in Shelly chat.".
+kb:kokoro-tts a ktype:Feature;
+    kpred:test-coverage "none";
+    kpred:honest-note "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent.";
+    rdfs:label "Kokoro TTS";
+    kpred:has-status "production";
+    kpred:description "Local text-to-speech for story walkthroughs.".
+kb:model-cache a ktype:Feature;
+    kpred:test-coverage "none";
+    kpred:honest-note "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent.";
+    rdfs:label "Model Cache Management";
+    kpred:has-status "production";
+    kpred:description "Inspect, sideload, purge locally cached WASM models. Offline-first with sideload for air-gapped installs.".
+kb:shelly-chat a ktype:Feature;
+    kpred:test-coverage "none";
+    kpred:honest-note "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent.";
+    rdfs:label "Shelly Chat System";
+    kpred:has-status "production";
+    kpred:description "AI assistant with tutorial, chat, and explore tabs. Story playback with TTS. Graph-aware reasoning.".
+kb:workspace-sync a ktype:Feature;
+    rdfs:label "Workspace Folder Sync";
+    kpred:has-status "production";
+    kpred:description "Two-way local folder sync. Link a folder; the app auto-exports TTL on every mutation (push) AND polls the folder (~10s) to pull external edits and new graphs — recursively discovering any .ttl anywhere under the folder. A content-hash loop guard stops the app re-importing its own writes. Controls live in the graph menu's 'graph package' section (this graph's .ttl, sidecar assets, story, currents, folder sync); an auto-sync toggle + 'resync now' are surfaced there. MCP server reads from the workspace.";
+    kpred:tested-by "src/lib/stores/__tests__/workspace-sync.test.ts", "tests/visual/user-stories/graph-sync.test.ts".
+kb:visual-testing a ktype:Feature;
+    kpred:tested-by "tests/visual/vision-scoring.test.ts", "tests/visual/vision-vlm.test.ts";
+    rdfs:label "Visual Testing";
+    kpred:has-status "production";
+    kpred:description "5-tier visual QA: pixel analysis, DOM overlap, text extraction, Mistral OCR, Claude vision. 95%+ accuracy.".
+kb:entity-types a ktype:Feature;
+    rdfs:label "Entity Type System";
+    kpred:has-status "production";
+    kpred:description "Customizable entity types with colors and labels. Type selector in node panel.".
+kb:history-mode a ktype:Feature;
+    kpred:tested-by "src/lib/storage/__tests__/history.test.ts";
+    kpred:has-file "src/lib/storage/history.ts";
+    kpred:known-issue "FIXED 2026-07-13 — HISTORY MODE COULD NOT SHOW YOU ANYTHING YOU HAD DELETED. The past was rebuilt by FILTERING the current statement set, but deletion is a hard db.statements.delete(id), so a fact deleted since T is not in that set and could never be filtered back IN. Scrubbing to a time when a fact plainly existed showed a graph without it; the 'was it deleted before T?' branch was unreachable dead code. The one thing a history feature exists to do — show you what you have lost — was the one thing it could not do. It now replays the CHANGELOG and resurrects deleted facts from the tombstone ({s,p,o} snapshot written at delete time), so add → delete → re-add resolves correctly at every instant.", "FIXED 2026-07-13 — TRUST SCORES IN HISTORY MODE USED A STALE COPY OF THE MATHS. The page carried its own inline scorer: score = Σ(delta · decay), with no baseline. That is the IDENTICAL bug fixed in trust.ts on 2026-07-12 (kb:trust-system) — it survived here because the logic was duplicated rather than imported, so the fix never reached the second copy. Every source in History Mode scored near zero. Now calls computeTrustScore: one implementation of trust in the codebase, not two. The lesson is the bug: a fix only propagates as far as the code that shares the function.";
+    kpred:honest-note "DECLARED LIMIT (not a bug): a statement with no add/ingest entry in the changelog cannot be dated — graphs seeded from TTL or ingested before the changelog existed have no arrival record. We refuse to guess in either direction: asserting it was present is an unverifiable claim, asserting it was absent is equally unfounded. Undated facts are COUNTED and shown in the UI ('N facts not shown — undateable') rather than silently dropped, which is what the old code did.";
+    rdfs:label "History Mode";
+    kpred:has-status "production";
+    kpred:description "Timeline slider to view graph state at any past timestamp, reconstructed by replaying the changelog — including facts you have since deleted, revived from their tombstones. Trust scores are recomputed as they stood at that instant. Ghost mode in graph.".
+kb:trust-system a ktype:Feature;
+    kpred:tested-by "src/lib/storage/__tests__/trust.test.ts";
+    kpred:has-file "src/lib/storage/trust.ts";
+    kpred:known-issue "FIXED 2026-07-12 — CONFIRMING A FACT MADE ITS SOURCE LESS TRUSTED. Trust events are DELTAS (confirm +0.05, reject -0.1), but getTrustScore returned the baseline (0.3 review / 0.8 trusted) ONLY when there were zero events, and the bare SUM OF DELTAS as soon as any event existed. So the first confirmation DISCARDED the baseline: a review source fell 0.3 -> 0.05 for the crime of being confirmed, and a trusted source collapsed 0.8 -> 0.05. It took 16 confirmations just to climb back to where it started. Now: score = baseline + sum(delta * exp(-0.01 * ageDays)), clamped [0,1]. The scoring maths was extracted to src/lib/storage/trust.ts so it could be tested at all — the bug survived because it was tangled with Dexie access inside the store. This is exactly the class of defect the untested-production audit was looking for.";
+    kpred:description "Sources carry a trust score in [0,1]: a baseline (0.8 for a trusted source, 0.3 for one awaiting review) moved by the user's own judgements, with confirmations raising it and rejections lowering it roughly twice as hard. Judgements decay exponentially (~1%/day), so recent evidence dominates and a source can recover from a bad patch rather than being condemned forever — and cannot coast indefinitely on old approvals.";
+    rdfs:label "Trust System";
+    kpred:has-status "production";
+    kpred:description "Source trust levels (trusted/review). Auto-confirm for trusted sources.".
+kb:rebrand-kb-to-graph a ktype:Decision;
+    kpred:tested-by "src/lib/rdf/__tests__/terminology.test.ts";
+    rdfs:label "User-facing rename: Graph -> Graph";
+    kpred:has-status "production";
+    kpred:decision "Rename the user-facing label 'Graph' to 'Graph'; keep kb/graph in code, IDs, and MCP tool names (kb_*).", "Nav label collision resolved: home 3D view nav label -> 'view'; /kb management page nav label -> 'graph'.";
+    kpred:done "Applied to the 'Reckons.AI Graph Alignment Check' and to graph-named TTL export filenames.", "Full user-facing sweep applied: nav labels (home 'view', /kb 'graph'), kb page ('graphs' section, switch/rename/bookmark copy), ingest page (tab + import buttons), review page (align tab, overlay picker), compare, overlay, reckoning, history, settings pages, landing/about pages, Shelly tutorial, browser extension (popup, sidepanel, content-script, background errors), export defaults, and notification toasts. Code identifiers, routes, MCP tool names, and TTL IRIs untouched.".
+kb:terminology-simplification a ktype:Decision;
+    rdfs:label "Friendlier terminology";
+    kpred:has-status "production";
+    kpred:decision "Simplify jargon in user-facing copy while keeping technical terms in code/docs.";
+    kpred:done "Ingest -> 'Add' (nav + ingest kicker); Warming -> 'Preparing' (WASM model button).", "Triple/Statement -> 'Fact' in user copy (review cards, counts, ingest results, diff summaries, node panel, search bar, export hints); 'Graph Leap' -> 'Jump' (node panel section, add/remove buttons, graph filter chip, badge tooltips). Technical/docs TTL contexts keep triple/statement.".
+kb:cross-kb-alignment a ktype:Feature;
+    kpred:show-on-landing "true";
+    kpred:landing-label "Cross-graph alignment";
+    kpred:landing-note "Align entities across graphs with embedding similarity and IRI remapping";
+    rdfs:label "Cross-Graph Alignment";
+    kpred:has-status "production";
+    kpred:feature-id "F16";
+    kpred:description "Align entities across graphs with embedding similarity and IRI remapping. Align tab in review page. Entity matching (exact IRI + embedding), computeDiff(), applyAlignmentToActiveKb().";
+    kpred:depends-on kb:multi-kb, kb:comparison-view.
+kb:n8n-sync-hub a ktype:Concept;
+    rdfs:label "Graph Sync Hub";
+    kpred:description "n8n workflow with 4 webhook endpoints: upload (POST), download (GET), status (GET), pending notes (GET). Content-hash deduplication via SHA-256.";
+    kpred:has-status "production";
+    kpred:workflow-id "gzL6AXn9iWo4GZxN";
+    kpred:has-endpoint "/webhook/reckons-kb-upload", "/webhook/reckons-kb-download", "/webhook/reckons-kb-status", "/webhook/reckons-kb-pending".
+kb:n8n-source-monitor a ktype:Concept;
+    rdfs:label "Source Monitor";
+    kpred:description "n8n workflow that watches URLs for content changes every 6 hours. Detects diffs via content hash, queues pending notes for review.";
+    kpred:has-status "production";
+    kpred:workflow-id "CvbUNSZkZVf4hJFG";
+    kpred:has-endpoint "/webhook/reckons-watch-url".
+kb:entity-normalization a ktype:Feature;
+    kpred:tested-by "src/lib/rdf/__tests__/normalize-entities.test.ts";
+    rdfs:label "Entity Normalization";
+    kpred:has-status "production";
+    kpred:feature-id "F22";
+    kpred:description "Post-extraction, pre-review IRI rewriting using embedding similarity. Two-pass: exact label match then cosine (0.90 entity, 0.88 predicate). Prevents duplicate entities from entering review queue. Protects standard vocabularies. Perf guard at 500 entities.";
+    kpred:depends-on kb:embedding-model;
+    kpred:related kb:cross-kb-alignment.
+kb:mcp-workspace a ktype:Feature;
+    kpred:tested-by "src/lib/stores/__tests__/workspace-kb-file.test.ts", "src/lib/stores/__tests__/workspace-sync.test.ts";
+    rdfs:label "MCP Workspace (Self-Dogfooding)";
+    kpred:has-status "production";
+    kpred:feature-id "F23";
+    kpred:description "Reckons.AI uses its own MCP server to track product state. Three internal graphs (Roadmap, Production, Features) symlinked from static/*.ttl into mcp-workspace/kbs/. Claude Code configured via CLAUDE.md + .claude/settings.local.json. Setup: scripts/setup-mcp-workspace.sh.";
+    kpred:depends-on kb:mcp-server.
+kb:git-analysis a ktype:Feature;
+    kpred:test-coverage "none";
+    kpred:honest-note "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent.";
+    rdfs:label "Git Analysis";
+    kpred:has-status "production";
+    kpred:feature-id "F24";
+    kpred:description "Git-aware MCP tools for agent plan alignment. Agents can check git status, cross-reference code changes against graph entities, review pending proposals, verify work alignment against the roadmap, and compute a quantitative alignment score (0-1) across 4 dimensions: coverage, status alignment, dependency respect, and scope discipline.";
+    kpred:has-tool "kb_git_status", "kb_check_plan", "kb_pending", "kb_git_diff_triples", "kb_alignment_score";
+    kpred:depends-on kb:mcp-server, kb:mcp-workspace;
+    kpred:related kb:entity-normalization.
+kb:design-system a ktype:Concept;
+    rdfs:label "Design System";
+    kpred:has-status "production";
+    kpred:has-font "Bespoke Stencil Bold (display)", "Supreme Regular (body/mono)";
+    kpred:accent-color "#1a9b8e";
+    kpred:data-color "#6b4399";
+    kpred:bg-color "#0a0f14";
+    kpred:has-component "SnapPanel", "NavBar", "SearchBar", "StatementCard", "TurtleChatPanel", "MergeReview", "NotificationStack";
+    kpred:ui-library "bits-ui v2".
+kb:int-google a ktype:Tool;
+    rdfs:label "Google (Calendar + Drive)";
+    kpred:has-status "production";
+    kpred:provides "calendar ingest", "iCal feed ingest", "drive file listing".
+kb:int-github a ktype:Tool;
+    rdfs:label "GitHub";
+    kpred:has-status "production";
+    kpred:provides "repo tree walking", "delta updates", "private repo access".
+kb:int-meshy a ktype:Tool;
+    rdfs:label "Meshy.AI";
+    kpred:has-status "production";
+    kpred:provides "3D model generation".
+kb:predicate-economy a ktype:Concept;
+    rdfs:label "Predicate economy";
+    kpred:part-of kb:knowledge-graph;
+    kpred:description "A link is judged by its PREDICATE, not by the similarity of the things it joins. Proposing an edge means proposing a specific relation; if no specific relation is true, the honest answer is no edge. The vocabulary of predicates should be small and heavily reused, because a graph's power comes from generalizing across shared relation types — an edge type used once explains nothing.";
+    kpred:principle "The predicate is the main clue to a valid link. Label similarity alone is weak evidence; a meaningful relation is strong evidence.", "'is related to' is a non-link wearing the costume of a link. It adds an edge and no knowledge. Prefer NO edge to a generic one.", "Prefer an EXISTING predicate. Mint a new one only when no existing predicate expresses the relation — and never fall back to relates-to when you cannot think of one. Not being able to name the relation IS the finding: it means there probably is not one.", "Graph value leans on the number of connection TYPES more than the number of connections. A predicate used exactly once is a private word: unqueryable, ungeneralizable.";
+    kpred:measured "2026-07-13, static/*.ttl: 6016 edges across 237 predicate types (25.4 edges/type). 351 edges (5.8%) are relates-to/related — and in TWO vocabularies at once. 49 of 237 types (21%) are single-use. Enforced by scripts/offline/graph-lint.ts (predicate-economy).";
+    kpred:tension "Both failure modes are real and they pull opposite ways: too few types and everything collapses into 'related-to' mush; too many and every edge is a private word. The target is a small vocabulary, heavily reused, each term earning its place.".
+kb:int-firecrawl a ktype:Tool;
+    rdfs:label "Firecrawl";
+    kpred:has-status "production";
+    kpred:provides "URL content extraction".
+kb:int-mistral-ocr a ktype:Tool;
+    rdfs:label "Mistral OCR";
+    kpred:has-status "production";
+    kpred:provides "document OCR", "visual test scoring".
+kb:int-n8n a ktype:Tool;
+    rdfs:label "n8n";
+    kpred:has-status "production";
+    kpred:provides "cloud graph sync", "URL source monitoring", "pending note queuing";
+    kpred:description "Self-hosted workflow automation. Two workflows: Sync Hub (upload/download/status/pending) and Source Monitor (URL watching, change detection).".
+kb:design-system-shadcn a ktype:Feature;
+    rdfs:label "Design System (shadcn-svelte)";
+    kpred:feature-id "F79";
+    kpred:part-of kb:design-system;
+    kpred:honest-note "Split from kb:design-system (2026-07-12). One IRI was naming two different things: the visual design system (a ktype:Concept — fonts, colors, components) and the shadcn-svelte migration (a ktype:Feature). RDF merged them into one entity with two labels and two contradictory statuses.";
+    kpred:has-status "scaffolded";
+    kpred:description "shadcn-svelte foundation on Tailwind v4, themed to the Liquid aesthetic. Preflight (Tailwind's CSS reset) is deliberately omitted — src/lib/styles/tailwind.css imports only the theme and utilities layers, so global.css remains the visual source of truth and the app renders unchanged. Every shadcn token is a var() reference into global.css (e.g. --color-primary -> --accent teal); shadcn's neutral 'accent' hover slot is kept inside @theme only, never clobbering the Liquid --accent custom property. Starter components: button, badge, card, separator, skeleton under src/lib/components/ui/. Pilot: the About-footer 'Send feedback' button.";
+    kpred:relates-to kb:rebrand-kb-to-graph;
+    kpred:candidate "P1 Settings forms: unify the three settings pages' inputs/selects/switches on shadcn form controls — the largest consistency win.", "P2 Review cards: Card + color-coded status Badge (pending/confirmed/refined/rejected/superseded) across StatementCard, DiffEntry, AlignmentCard.", "P3 Loading states: Skeleton placeholders for graph load, extraction progress, and model downloads instead of text spinners.", "P4 Toasts: adopt svelte-sonner for tutorial/WASM-fallback/sync notifications, replacing ad-hoc toast implementations.", "P5 Menus & dialogs: shared Dialog/DropdownMenu wrappers that respect the app z-index scale (panels=300, NavBar=400, MergeReview=500); NavBar analyze menu first.", "P6 Button hierarchy: audit primary (teal) vs outline vs ghost usage on ingest and kb pages for consistent affordance weight.".
+kb:embedding-model a ktype:Feature;
+    kpred:tested-by "src/lib/__tests__/embed.test.ts";
+    rdfs:label "Embedding Model";
+    kpred:has-status "production";
+    kpred:description "In-browser semantic embeddings via BGE-small-en-v1.5 (33MB, 384d, q8) through @huggingface/transformers (src/lib/embed.ts). Runtime-switchable via VITE_EMBEDDING_MODEL (MODEL_SIZES table); powers similarity, entity normalization (F22), disambiguation, and search. Cached after first load — fully offline.";
+    kpred:relates-to kb:knowledge-graph.
+kb:llm-providers a ktype:Feature;
+    kpred:tested-by "src/lib/integrations/llm/__tests__/prefer-local.test.ts", "src/lib/integrations/llm/__tests__/extractor.test.ts";
+    rdfs:label "LLM Providers";
+    kpred:has-status "production";
+    kpred:description "Pluggable LLM backends (src/lib/integrations/llm/): claude, openai, gemini, ollama, wasm (in-browser via @huggingface/transformers), reckons (hosted proxy), openrouter, chrome-ai, plus mock/manual. Per-task selection (ingest / analyze / chat / diffSummary / mergeAnalysis); wasm auto-fallback when a chosen cloud backend has no key. ETHICS_PREAMBLE is injected into every provider's system prompt.";
+    kpred:relates-to kb:knowledge-graph.

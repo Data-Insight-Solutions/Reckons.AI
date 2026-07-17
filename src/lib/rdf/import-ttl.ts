@@ -80,7 +80,9 @@ function n3ToTerm(term: any): Term | null {
 export async function importTurtleFull(turtle: string): Promise<ImportResult> {
   // Dynamic import keeps N3 out of SSR / initial bundle
   const { Parser } = await import('n3');
-  const parser = new Parser({ format: 'Turtle' });
+  // TriG, not Turtle: TriG is a strict superset (every .ttl is legal TriG), so this
+  // reads today's default-graph files unchanged while tolerating named graphs (F75).
+  const parser = new Parser({ format: 'TriG' });
 
   // Use synchronous overload — callback version is async in N3 v1.26+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
