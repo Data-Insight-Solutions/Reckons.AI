@@ -1620,7 +1620,11 @@
 
 <!-- ── Support footer ───────────────────────────────────────────────────── -->
 <footer class="settings-support-footer">
-  <a href="https://www.paypal.com/ncp/payment/KH5J484QMVFS2" target="_blank" rel="noopener noreferrer" class="support-link mono">☕ buy me a coffee</a>
+  <div class="support-links">
+    <a href="https://github.com/Data-Insight-Solutions/Reckons.AI" target="_blank" rel="noopener noreferrer" class="support-link mono">★ GitHub</a>
+    <span class="support-sep" aria-hidden="true">·</span>
+    <a href="https://www.paypal.com/ncp/payment/KH5J484QMVFS2" target="_blank" rel="noopener noreferrer" class="support-link mono">☕ buy me a coffee</a>
+  </div>
   <p class="mono support-sub">Reckons.AI is free, open source, and self-funded.</p>
 </footer>
 
@@ -2266,6 +2270,14 @@
     margin-top: 0.5rem;
     border-top: 1px solid var(--line);
   }
+  .support-links {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+  .support-sep { color: var(--muted); }
   .support-link {
     font-size: 0.8rem;
     color: var(--accent);

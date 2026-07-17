@@ -118,7 +118,16 @@ kb:cosmos-nano rdf:type     ktype:Feature ;
                kpred:description  "16B-parameter omnimodal world foundation model for Physical AI. Generates and reasons over video, images, audio, and robot actions. OpenMDW 1.1 license (commercial use). Requires NVIDIA GPU (Ampere/Hopper/Blackwell), BF16 precision, Linux. Potential uses: generate preview animations from entity descriptions, 3D scene understanding for graph visualization, multimodal graph ingest (video/image/audio sources). Shares NVIDIA GPU sidecar infrastructure with NeMo Speech." ;
                kpred:depends-on   kb:nemo-speech ;
                kpred:open-question "Massive resource requirements (16B params, BF16) — viable only for users with high-end NVIDIA GPUs. Evaluate smaller distilled variants when available." ;
-               kpred:open-question "Integration path: same Python sidecar as NeMo Speech? Separate container? Which Cosmos capabilities map to graph workflows (video→triples, entity→animation)?" .
+               kpred:open-question "Integration path: same Python sidecar as NeMo Speech? Separate container? Which Cosmos capabilities map to graph workflows (video→triples, entity→animation)?" ;
+               kpred:relates-to   kb:fiftyone .
+
+kb:fiftyone rdf:type           ktype:Reference ;
+               rdfs:label   "FiftyOne (Voxel51)" ;
+               kpred:relates-to   kb:cosmos-nano ;
+               kpred:relates-to   kb:visual-testing ;
+               kpred:relates-to   kb:asset-viewer ;
+               kpred:description  "Open-source tool (Voxel51) for building, curating, and VISUALIZING datasets for multimodal and Physical AI — images, video, point clouds, embeddings — with an app for exploring samples and their model predictions. Noted by Matt (2026-07-16) as relevant to Reckons.AI's multimodal direction. WHY IT MATTERS HERE: (1) the visual-testing device-matrix (F34) and VLM gate produce exactly the kind of image/screenshot + model-verdict dataset FiftyOne is built to curate and inspect; (2) multimodal graph ingest (video/image → triples, the Cosmos direction) needs sample curation before it needs a foundation model; (3) FiftyOne's embeddings-visualization mirrors our own embed.ts affinity work. Reference/inspiration for now — NOT a committed integration; if adopted it would be an opt-in per-user tool (integration-boundaries), likely a local Python sidecar like the NeMo/Cosmos direction." ;
+               kpred:open-question "Adopt as an optional integration for visual-test dataset curation, or keep as inspiration only? What is the graph <-> FiftyOne bridge — export screenshots + VLM verdicts as a FiftyOne dataset, or ingest its findings back as triples?" .
 
 # The two-way local folder sync is done; these are the planned next steps for it.
 kb:drive-folder-sync rdf:type ktype:Feature ;
@@ -514,7 +523,20 @@ kb:enrichment-pipeline rdf:type ktype:Feature ;
                rdfs:label   "Enrichment Pipeline" ;
                kpred:has-status   "planned" ;
                kpred:feature-id   "F10" ;
-               kpred:description  "Progressive analysis inspired by Semiont. Multi-pass enrichment of extracted triples." .
+               kpred:description  "Progressive analysis inspired by Semiont. Multi-pass enrichment of extracted triples." ;
+               kpred:relates-to   kb:source-validation .
+
+kb:source-validation rdf:type  ktype:Feature ;
+               rdfs:label   "Source validation — check a fact against the open web" ;
+               kpred:feature-id   "F100" ;
+               kpred:has-status   "scaffolded" ;
+               kpred:relates-to   kb:enrichment-pipeline ;
+               kpred:relates-to   kb:tenet-evidence ;
+               kpred:has-file     "src/lib/rdf/source-validation.ts" ;
+               kpred:tested-by    "src/lib/rdf/__tests__/source-validation.test.ts" ;
+               kpred:description  "The thesis, made operational: an unverifiable claim, made by the party it benefits, is not evidence — so take a fact the graph asserts, SEARCH THE WEB for INDEPENDENT sources, and judge each as supporting, contradicting, or neither. Two outcomes matter and the second is the rare, valuable one: CORROBORATION (an outside source agrees → the fact earns provenance it never had) and CONFLICT (an outside source DISAGREES → the well-formed absence made visible, a contradiction the graph could not see from inside). Distinct from the enrichment pipeline, which ADDS facts from the web; this CHECKS facts already in the graph. Conflicts are NEVER auto-resolved — which source to believe is judgment, surfaced for review. src/lib/rdf/source-validation.ts is the deterministic harness (buildValidationQuery + verdictFromJudgments + validateFact); the two judgment plugins are injected: WHERE to search (tavily.ts, already in-repo) and WHETHER a source supports/contradicts (an LLM/NLI call, re-analyze.ts pattern). Runs in CI on mocks; provider-agnostic." ;
+               kpred:decided      "Matt (2026-07-16): yes — validate graph information against new sources, and flag CONFLICTING sources. Delivery = a per-graph SETTING (validate on/off) AND an optional POD MODE that validates facts in the background over time (like currents), so a graph can be continuously checked, not just on demand. Corroboration and conflict both emit as PROPOSALS for review — corroboration → a sourced suggestion; conflict → a drift-warning — never a silent write." ;
+               kpred:remaining    "Wire the harness to live plugins: search=tavily (settings key), judge=LLM (ETHICS_PREAMBLE injected). Emit results to knowledge.pending.jsonl — corroboration as a suggestion carrying the source URL as provenance; conflict as a drift-warning naming the disagreeing source. Review-tab surface (a 'validate' action per fact + a results view). Pod/background mode reusing the currents scheduler. Rate/cost guard (web search is metered)." .
 
 kb:model-training rdf:type  ktype:Feature ;
                rdfs:label   "Model Training" ;

@@ -2214,7 +2214,18 @@
 
   /* ── Mobile: prevent overlap with NavBar, enlarge touch targets ── */
   @media (max-width: 600px) {
-    .panel-header { padding: 0.5rem 0.6rem; gap: 0.3rem; }
+    .panel-header { padding: 0.5rem 0.55rem; gap: 0.4rem; }
+    /* Give the three tabs the whole middle and split it evenly, so the header reads as one tidy
+       row (icon · learn | chat | explore · ✕) instead of cramped pills bunched to one side. */
+    .turtle-icon { height: 1rem; flex: 0 0 auto; }
+    :global(.tcp-tab-list) { flex: 1; gap: 0.3rem; min-width: 0; }
+    :global(.tcp-tab) {
+      flex: 1;
+      text-align: center;
+      padding: 0.4rem 0.2rem;
+      font-size: 0.72rem;
+      min-height: 36px;
+    }
     .close {
       font-size: 1.1rem;
       min-width: 44px;
@@ -2222,11 +2233,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-    }
-    :global(.tcp-tab) {
-      padding: 0.4rem 0.55rem;
-      font-size: 0.72rem;
-      min-height: 36px;
+      flex: 0 0 auto;
     }
     /* Story controls: wrap onto two lines so exit button stays visible */
     .story-controls {
