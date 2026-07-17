@@ -10,7 +10,7 @@
  */
 
 import { execSync, execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, unlinkSync, writeFileSync, mkdtempSync } from 'node:fs';
+import { existsSync, readFileSync, unlinkSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -252,7 +252,9 @@ export function chime(caps: AudioCaps): void {
 
 export function cleanup(): void {
   if (_tmpDir) {
-    try { execSync(`rm -rf ${_tmpDir}`, { stdio: 'pipe' }); } catch {}
+    // rmSync, not a shell `rm -rf ${_tmpDir}` — no shell means no command injection, even though
+    // _tmpDir comes from mkdtempSync and is not attacker-controlled (CodeQL js/command-line-injection).
+    try { rmSync(_tmpDir, { recursive: true, force: true }); } catch {}
     _tmpDir = null;
   }
 }
