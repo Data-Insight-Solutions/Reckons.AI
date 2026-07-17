@@ -28,7 +28,7 @@
       id: 'switched-tiny-model',
       type: 'info',
       title: 'Switched to the tiny model',
-      body: 'Tap Extract (or send) again to use it. It’s small enough to run on more devices, but quality is limited — model performance depends on your device hardware.',
+      body: 'Tap send again to try it in chat. Heads up: tiny in-browser models are basic chat only and can be slow — they don’t reliably extract facts. For ingest/extraction, connect Ollama or add an API key.',
     });
   }
   function goSettings(path: string) {
@@ -51,22 +51,23 @@
           crash the tab. Pick a path that fits:
         </Dialog.Description>
         <div class="consent-stack">
-          <button type="button" class="consent-btn primary" onclick={tryTiny}>
-            Try a tiny model (~180 MB)
-          </button>
           <button type="button" class="consent-btn" onclick={() => goSettings('/settings/integrations#s-ollama')}>
             Connect your own Ollama server
           </button>
           <button type="button" class="consent-btn" onclick={() => goSettings('/settings')}>
             Add an API key (cloud)
           </button>
+          <button type="button" class="consent-btn" onclick={tryTiny}>
+            Try a tiny model (chat only · ~180 MB)
+          </button>
           <button type="button" class="consent-btn danger" onclick={() => resolveConsent(true)}>
             Download anyway ({pending.approxMB} MB — may crash)
           </button>
         </div>
         <p class="consent-hint">
-          Tiny models run on more devices but give a weaker experience — model performance depends on
-          your device hardware. Ollama and cloud keys stay full-quality.
+          For extracting facts, connect Ollama or add a cloud key — those stay full-quality. A tiny
+          in-browser model is basic chat only, can be slow, and won’t reliably extract; performance
+          depends on your device hardware.
         </p>
       {:else if pending}
         <Dialog.Title class="consent-title mono">download model?</Dialog.Title>
