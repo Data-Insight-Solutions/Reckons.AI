@@ -66,7 +66,8 @@
     aria-expanded={!collapsed}
     title={collapsed ? 'Show notifications' : 'Collapse notifications'}
   >
-    <span class="bell-glyph" aria-hidden="true">🔔</span>
+    <!-- Undersea theme (first piece): a conch shell — "hear the call" — for notifications. -->
+    <span class="bell-glyph" aria-hidden="true">🐚</span>
     <span class="bell-badge mono">{notifications().length > 99 ? '99+' : notifications().length}</span>
   </button>
 
@@ -124,7 +125,7 @@
   }
   .notif-bell:hover { transform: scale(1.08); }
   .notif-bell.has-open { border-color: var(--bell-c, var(--accent)); }
-  .bell-glyph { font-size: 0.9rem; line-height: 1; filter: grayscale(0.1); }
+  .bell-glyph { font-size: 0.95rem; line-height: 1; }
   .bell-badge {
     position: absolute;
     top: -0.3rem;
