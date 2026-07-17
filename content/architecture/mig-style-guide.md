@@ -15,7 +15,7 @@ generated: "docs-kb"
 
 *Concept*
 
-docs/STYLE_GUIDE.md (226 lines) contains CSS variable tables and component patterns. The conceptual summary belongs in TTL (this KB). The literal CSS values (hex codes, font stacks, z-index numbers) should live as code comments in the CSS source files. A TTL entity with the key conventions exists here (arch:StyleConventions).
+docs/STYLE_GUIDE.md (226 lines) contains CSS variable tables and component patterns. The conceptual summary belongs in TTL (this graph). The literal CSS values (hex codes, font stacks, z-index numbers) should live as code comments in the CSS source files. A TTL entity with the key conventions exists here (arch:StyleConventions).
 
 ## Details
 

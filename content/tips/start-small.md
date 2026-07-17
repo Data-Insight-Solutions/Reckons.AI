@@ -15,4 +15,4 @@ generated: "docs-kb"
 
 *Concept*
 
-Begin with one document or topic you care about. Ingest it, review the triples, confirm the accurate ones. Your KB grows naturally with each source you add. Over time, connections emerge that you never would have seen reading documents linearly.
+Begin with one document or topic you care about. Ingest it, review the triples, confirm the accurate ones. Your graph grows naturally with each source you add. Over time, connections emerge that you never would have seen reading documents linearly.

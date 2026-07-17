@@ -17,7 +17,7 @@ related:
 
 *Concept*
 
-Every triple in Reckons.AI carries its source. You always know where a fact came from, how trusted that source is, and when it was added. Metadata about metadata -- this is what makes a KB trustworthy.
+Every triple in Reckons.AI carries its source. You always know where a fact came from, how trusted that source is, and when it was added. Metadata about metadata -- this is what makes a graph trustworthy.
 
 ## Related
 

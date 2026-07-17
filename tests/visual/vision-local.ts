@@ -410,3 +410,61 @@ export async function runLocalAnalysis(
     durationMs: Date.now() - start,
   };
 }
+
+// ── Tier 4: OCR (tesseract.js) ────────────────────────────────────────────────
+//
+// Read the actual RENDERED text off a screenshot, for exact-text assertions the
+// DOM can't give you (canvas labels, and confirming what a user really sees).
+// Dark-theme UIs are low-contrast for Tesseract, so `invert` (default) flips to
+// dark-on-light + upscales 2x — which recovers body text reliably. Stylized
+// display fonts stay noisy, so assert on SUBSTRINGS via screenshotHasText, not
+// exact matches.
+
+/** Invert → grayscale → 2x upscale a PNG in-memory (helps Tesseract on dark UIs). */
+async function preprocessForOcr(screenshot: Buffer): Promise<Buffer> {
+  // @ts-expect-error pngjs has no bundled type declarations
+  const pngjs = await import('pngjs');
+  const png = pngjs.PNG.sync.read(screenshot) as { width: number; height: number; data: Buffer };
+  const { width, height, data } = png;
+  const scale = 2;
+  const out = new pngjs.PNG({ width: width * scale, height: height * scale });
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      const g = 255 - Math.round((data[i] + data[i + 1] + data[i + 2]) / 3); // invert to dark-on-light
+      for (let dy = 0; dy < scale; dy++) {
+        for (let dx = 0; dx < scale; dx++) {
+          const oi = (((y * scale + dy) * width * scale) + (x * scale + dx)) * 4;
+          out.data[oi] = out.data[oi + 1] = out.data[oi + 2] = g;
+          out.data[oi + 3] = 255;
+        }
+      }
+    }
+  }
+  return pngjs.PNG.sync.write(out);
+}
+
+/** OCR a screenshot buffer → raw text. `invert` (default true) preprocesses for dark UIs. */
+export async function ocrScreenshot(screenshot: Buffer, opts: { invert?: boolean } = {}): Promise<string> {
+  const input = opts.invert === false ? screenshot : await preprocessForOcr(screenshot);
+  const { createWorker } = await import('tesseract.js');
+  const worker = await createWorker('eng');
+  try {
+    const { data } = await worker.recognize(input);
+    return data.text;
+  } finally {
+    await worker.terminate();
+  }
+}
+
+/** Normalize OCR text for robust substring matching (lowercase, alnum, collapsed spaces). */
+export function normalizeOcr(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+/** True when every `needle` appears in the screenshot's OCR'd text (order-independent). */
+export async function screenshotHasText(screenshot: Buffer, needles: string | string[]): Promise<boolean> {
+  const text = normalizeOcr(await ocrScreenshot(screenshot));
+  const list = Array.isArray(needles) ? needles : [needles];
+  return list.every((n) => text.includes(normalizeOcr(n)));
+}

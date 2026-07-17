@@ -37,7 +37,7 @@ nav:BackToHub
 int:Integrations
     rdf:type            ktype:Concept ;
     rdfs:label          "Integrations" ;
-    skos:definition     "Reckons.AI connects to external tools and data sources while keeping your KB local. Every integration is optional -- the core app works with zero external dependencies." ;
+    skos:definition     "Reckons.AI connects to external tools and data sources while keeping your graph local. Every integration is optional -- the core app works with zero external dependencies." ;
     skos:related        guide:WhatIsReckonsAI .
 
 int:GoogleCalendar
@@ -61,7 +61,7 @@ int:IndicoEvents
 int:MCPServer
     rdf:type            ktype:Concept ;
     rdfs:label          "MCP Server" ;
-    skos:definition     "Standalone Node.js MCP server exposing your graph to AI agents (Claude Desktop, Cursor, Claude Code). 20 tools over JSON-RPC stdio: search and read (kb_search, kb_get_entity, kb_list_entities, kb_stats, kb_subgraph, kb_list_kbs, kb_compress), write proposals (kb_add_note), reasoning (kb_reckoning), source management (kb_list_sources, kb_request_refresh), git-aware alignment (kb_git_status, kb_check_plan, kb_pending, kb_git_diff_triples, kb_alignment_score), and the local Ollama bridge (kb_local_extract, kb_local_summarize, kb_generate_page, kb_entity_markdown). Reads workspace TTL files (kbs/<name>/<name>.ttl), with multi-KB support via MultiKBReader." ;
+    skos:definition     "Standalone Node.js MCP server exposing your graph to AI agents (Claude Desktop, Cursor, Claude Code). 20 tools over JSON-RPC stdio: search and read (kb_search, kb_get_entity, kb_list_entities, kb_stats, kb_subgraph, kb_list_kbs, kb_compress), write proposals (kb_add_note), reasoning (kb_reckoning), source management (kb_list_sources, kb_request_refresh), git-aware alignment (kb_git_status, kb_check_plan, kb_pending, kb_git_diff_triples, kb_alignment_score), and the local Ollama bridge (kb_local_extract, kb_local_summarize, kb_generate_page, kb_entity_markdown). Reads workspace TTL files (kbs/<name>/<name>.ttl), with multi-Graph support via MultiKBReader." ;
     skos:broader        int:Integrations ;
     skos:related        int:WorkspaceSync ;
     skos:related        int:Ollama .
@@ -82,7 +82,7 @@ int:WorkspaceSync
 int:BrowserExtension
     rdf:type            ktype:Concept ;
     rdfs:label          "Browser Extension" ;
-    skos:definition     "Manifest V3 extension with three tabs: Compare (page vs KB with at-a-glance bar), Session (multi-page research accumulation with aggregate summaries), Ingest (batch send to app). Supports Chrome, Firefox desktop, and Firefox for Android with mobile-optimized UI." ;
+    skos:definition     "Manifest V3 extension with three tabs: Compare (page vs graph with at-a-glance bar), Session (multi-page research accumulation with aggregate summaries), Ingest (batch send to app). Supports Chrome, Firefox desktop, and Firefox for Android with mobile-optimized UI." ;
     skos:broader        int:Integrations .
 
 int:WebScraping
@@ -120,7 +120,7 @@ int:NemoSpeech
 int:Cosmos3Nano
     rdf:type            ktype:Tool ;
     rdfs:label          "NVIDIA Cosmos3-Nano (Speculative)" ;
-    skos:definition     "16B-parameter omnimodal world foundation model for Physical AI by NVIDIA. Generates and reasons over video, images, audio, and robot actions. OpenMDW 1.1 licence (commercial use). Requires NVIDIA GPU (Ampere/Hopper/Blackwell) with BF16 precision, Linux only. Potential uses: generate preview animations from entity descriptions, multimodal KB ingest (video/image/audio sources), 3D scene understanding. Shares NVIDIA GPU sidecar infrastructure with NeMo Speech." ;
+    skos:definition     "16B-parameter omnimodal world foundation model for Physical AI by NVIDIA. Generates and reasons over video, images, audio, and robot actions. OpenMDW 1.1 license (commercial use). Requires NVIDIA GPU (Ampere/Hopper/Blackwell) with BF16 precision, Linux only. Potential uses: generate preview animations from entity descriptions, multimodal graph ingest (video/image/audio sources), 3D scene understanding. Shares NVIDIA GPU sidecar infrastructure with NeMo Speech." ;
     skos:broader        int:Integrations ;
     skos:related        int:NemoSpeech ;
     skos:related        int:Meshy3D .
@@ -134,7 +134,7 @@ int:Meshy3D
 int:GoogleDrive
     rdf:type            ktype:Concept ;
     rdfs:label          "Google Drive" ;
-    skos:definition     "KB backup to Google Drive. Export .ttl to a dedicated Drive folder. OAuth-authenticated. Privacy note: Google can access the stored file." ;
+    skos:definition     "Graph backup to Google Drive. Export .ttl to a dedicated Drive folder. OAuth-authenticated. Privacy note: Google can access the stored file." ;
     skos:broader        int:Integrations .
 
 int:ModelCache
@@ -147,13 +147,13 @@ int:ModelCache
 int:N8nCloudSync
     rdf:type            ktype:Concept ;
     rdfs:label          "n8n Cloud Sync" ;
-    skos:definition     "Private, self-hosted cloud sync via n8n workflow automation on a self-hosted VPS. Two workflows: KB Sync Hub (workflow gzL6AXn9iWo4GZxN — upload/download/status/pending via webhooks with SHA-256 content-hash deduplication) and Source Monitor (workflow CvbUNSZkZVf4hJFG — watches URLs every 6 hours, detects content changes via hash comparison, queues pending notes). Three data tables: reckons_kb_store (snapshots), reckons_watched_urls (monitored URLs), reckons_pending_notes (change notifications). Security via n8n Header Auth on webhook trigger nodes. No SaaS dependency — your n8n VPS is the cloud backend. Air-gapped operation supported." ;
+    skos:definition     "Private, self-hosted cloud sync via n8n workflow automation on a self-hosted VPS. Two workflows: Graph Sync Hub (workflow gzL6AXn9iWo4GZxN — upload/download/status/pending via webhooks with SHA-256 content-hash deduplication) and Source Monitor (workflow CvbUNSZkZVf4hJFG — watches URLs every 6 hours, detects content changes via hash comparison, queues pending notes). Three data tables: reckons_kb_store (snapshots), reckons_watched_urls (monitored URLs), reckons_pending_notes (change notifications). Security via n8n Header Auth on webhook trigger nodes. No SaaS dependency — your n8n VPS is the cloud backend. Air-gapped operation supported." ;
     skos:broader        int:Integrations .
 
 int:N8nSyncHub
     rdf:type            ktype:Concept ;
-    rdfs:label          "KB Sync Hub (n8n)" ;
-    skos:definition     "n8n workflow gzL6AXn9iWo4GZxN with 4 webhook endpoints: POST /webhook/reckons-kb-upload (accepts JSON with kb_name and ttl_content, SHA-256 content-hash deduplication via upsert into reckons_kb_store data table), GET /webhook/reckons-kb-download?kb=name (serves text/turtle Content-Type), GET /webhook/reckons-kb-status (JSON summary of all stored KBs with names, hashes, and content lengths), GET /webhook/reckons-kb-pending?kb=name (pending notes from source monitors). Security: Header Auth credential on each webhook trigger node, pass token via Authorization header." ;
+    rdfs:label          "Graph Sync Hub (n8n)" ;
+    skos:definition     "n8n workflow gzL6AXn9iWo4GZxN with 4 webhook endpoints: POST /webhook/reckons-kb-upload (accepts JSON with kb_name and ttl_content, SHA-256 content-hash deduplication via upsert into reckons_kb_store data table), GET /webhook/reckons-kb-download?kb=name (serves text/turtle Content-Type), GET /webhook/reckons-kb-status (JSON summary of all stored graphs with names, hashes, and content lengths), GET /webhook/reckons-kb-pending?kb=name (pending notes from source monitors). Security: Header Auth credential on each webhook trigger node, pass token via Authorization header." ;
     skos:broader        int:N8nCloudSync .
 
 int:N8nSourceMonitor
@@ -172,13 +172,13 @@ int:N8nCurrentsMonitor
 int:N8nDataTables
     rdf:type            ktype:Concept ;
     rdfs:label          "n8n Data Tables" ;
-    skos:definition     "Three n8n data tables back the cloud sync system. reckons_kb_store (ID: JgzUd876HO7ZAHNY) — KB snapshots with columns: kb_name, content_hash (SHA-256), ttl_content (full Turtle text), uploaded_at (timestamp); uses content-hash upsert for deduplication. reckons_watched_urls (ID: JIsQ1QfsKkUAvMCh) — monitored URLs with columns: url, kb_name, content_hash (last known SHA-256), last_checked (timestamp). reckons_pending_notes (ID: irPqWecUHYIppq04) — change notifications with columns: kb_name, subject (URN derived from URL), predicate (e.g. source-content-changed), object_value (description with byte count and new hash), note (review instruction), status (pending/processed)." ;
+    skos:definition     "Three n8n data tables back the cloud sync system. reckons_kb_store (ID: JgzUd876HO7ZAHNY) — Graph snapshots with columns: kb_name, content_hash (SHA-256), ttl_content (full Turtle text), uploaded_at (timestamp); uses content-hash upsert for deduplication. reckons_watched_urls (ID: JIsQ1QfsKkUAvMCh) — monitored URLs with columns: url, kb_name, content_hash (last known SHA-256), last_checked (timestamp). reckons_pending_notes (ID: irPqWecUHYIppq04) — change notifications with columns: kb_name, subject (URN derived from URL), predicate (e.g. source-content-changed), object_value (description with byte count and new hash), note (review instruction), status (pending/processed)." ;
     skos:broader        int:N8nCloudSync .
 
 int:VSCodeExtension
     rdf:type            ktype:Concept ;
     rdfs:label          "VS Code Extension (Planned)" ;
-    skos:definition     "Auto-inject KB into coding sessions via MCP bridge. Wraps reckons-ai-mcp as child process with stdio transport. Phase 1: MCP bridge + auto-inject. Phase 2: live updates from editor actions. Phase 3: sidebar KB browser with webview graph. Zero config — activates when it detects kbs/*/*.ttl in workspace (legacy kbs/*/kb.ttl also recognised)." ;
+    skos:definition     "Auto-inject graph into coding sessions via MCP bridge. Wraps reckons-ai-mcp as child process with stdio transport. Phase 1: MCP bridge + auto-inject. Phase 2: live updates from editor actions. Phase 3: sidebar graph browser with webview graph. Zero config — activates when it detects kbs/*/*.ttl in workspace (legacy kbs/*/kb.ttl also recognized)." ;
     skos:broader        int:Integrations ;
     skos:related        int:MCPServer .
 
@@ -234,13 +234,13 @@ tech:ShadcnSvelte
 tech:Dexie
     rdf:type            ktype:Tool ;
     rdfs:label          "Dexie.js + IndexedDB" ;
-    skos:definition     "Promise-based wrapper around IndexedDB. All KB data (statements, sources, changelog, settings) stored locally. Each KB is a separate Dexie database instance." ;
+    skos:definition     "Promise-based wrapper around IndexedDB. All graph data (statements, sources, changelog, settings) stored locally. Each graph is a separate Dexie database instance." ;
     skos:broader        tech:Architecture .
 
 tech:MCP
     rdf:type            ktype:Tool ;
     rdfs:label          "Model Context Protocol" ;
-    skos:definition     "An open protocol by Anthropic for connecting AI models to external data sources. Reckons.AI implements a standalone MCP server (Node.js) with 11 tools that reads workspace TTL files. Multi-KB support via MultiKBReader." ;
+    skos:definition     "An open protocol by Anthropic for connecting AI models to external data sources. Reckons.AI implements a standalone MCP server (Node.js) with 11 tools that reads workspace TTL files. Multi-Graph support via MultiKBReader." ;
     skos:broader        tech:Architecture ;
     skos:related        int:MCPServer .
 

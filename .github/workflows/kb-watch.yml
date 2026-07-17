@@ -10,6 +10,12 @@ permissions:
   contents: write  # docs KB regeneration commits content/ back to main (see "Commit regenerated docs pages")
   pull-requests: write
 
+# See ci.yml: skip onnxruntime-node's flaky optional-binary download. Doing this
+# via env (not .npmrc) also keeps npm silent — an npm warning here would leak
+# backtick-containing text into the alignment PR-comment template literal below.
+env:
+  ONNXRUNTIME_NODE_INSTALL: skip
+
 jobs:
   alignment:
     name: Reckons.AI Graph Alignment Check

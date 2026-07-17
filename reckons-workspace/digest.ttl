@@ -1,0 +1,179 @@
+# The rolling agent digest — THE SOURCE (F80 / kb:async-digest).
+#
+# Findings live HERE, as graph entities. reckons-workspace/DIGEST.md is GENERATED from
+# this file and must never be hand-edited — 'npm run align' fails if it drifts.
+#
+# The digest is where we record our own failures. A record of honesty kept as a second
+# source of truth, in a product whose thesis is that there should not be one, was a
+# hypocrisy worth fixing.
+#
+# Append with: npx tsx scripts/agent/digest.ts --type bug-found --headline "…"
+
+@prefix kpred: <urn:kbase:predicate/>.
+@prefix ktype: <urn:kbase:type/>.
+@prefix f: <urn:reckons:finding/>.
+
+f:fvwv2cg a ktype:Finding;
+    kpred:finding-type "claim-falsified";
+    kpred:headline "The '60-70% token reduction' claim was false — measured ~18%";
+    kpred:found-at "2026-07-13T02:23:34.835Z";
+    kpred:about "kb:context-compression";
+    kpred:detail "First test ever written for kb_compress falsified its headline claim. The format saves ~18% vs grouped Turtle (what a real .ttl looks like), ~29% vs flat. The 60-70% figure conflated the ENCODING with SUBGRAPH SELECTION, which is where the real saving lives. Corrected in the roadmap, the architecture graph, and the PUBLISHED docs.";
+    kpred:agent "claude-code".
+f:f1ei884p a ktype:Finding;
+    kpred:finding-type "bug-found";
+    kpred:headline "Confirming a fact made its source LESS trusted";
+    kpred:found-at "2026-07-13T02:23:36.526Z";
+    kpred:about "kb:trust-system";
+    kpred:detail "getTrustScore discarded the baseline the moment any event existed. A trusted source collapsed 0.8 -> 0.05 on its first confirmation; 16 confirmations to recover. Using the review workflow correctly degraded your trust scores. Fixed: score = baseline + sum(delta * decay).";
+    kpred:agent "claude-code".
+f:fzoucrd a ktype:Finding;
+    kpred:finding-type "bug-found";
+    kpred:headline "Citations were never verified — a fabricated quote shipped as provenance";
+    kpred:found-at "2026-07-13T02:23:38.292Z";
+    kpred:about "kb:passage-grounding";
+    kpred:detail "The prompt says 'copy it exactly, do not paraphrase'. Nothing ever checked. triplesToStatements did not even RECEIVE the source text, so it structurally could not. Small models paraphrase constantly. For an app selling provenance, the user checks the receipt, it looks right, and it is a forgery. Now verified; a forged excerpt is DROPPED, not shown.";
+    kpred:agent "claude-code".
+f:f7te6bp a ktype:Finding;
+    kpred:finding-type "bug-found";
+    kpred:headline "Rename destroyed standard vocabulary; merge doubled the graph";
+    kpred:found-at "2026-07-13T02:23:40.002Z";
+    kpred:about "kb:predicate-manager";
+    kpred:detail "Three defects. Renaming rdfs:label or skos:broader rewrote them into urn:kbase:predicate/ — an interoperable term silently became a private one. Renaming onto an existing predicate silently MERGED. Merging created duplicate triples.";
+    kpred:agent "claude-code".
+f:fpoc8yc a ktype:Finding;
+    kpred:finding-type "shipped";
+    kpred:headline "F66 publish gate built — publishing was ungated";
+    kpred:found-at "2026-07-13T02:23:41.716Z";
+    kpred:about "kb:publish-safety-gate";
+    kpred:detail "Markdown pages were built from UNFILTERED statements, and blocked content was SILENTLY DROPPED rather than refused. Now refuses and explains, on the mediated path only. Export stays a right.";
+    kpred:agent "claude-code".
+f:fixuk8l a ktype:Finding;
+    kpred:finding-type "decision-needed";
+    kpred:headline "What confidence should auto-merge at, without review?";
+    kpred:found-at "2026-07-13T02:23:43.392Z";
+    kpred:about "kb:auto-merge";
+    kpred:detail "Queued as a partial fact in the Review tab — answer it there, in Shelly, or by editing the triple. It blocks F80.1 only; everything else continues.";
+    kpred:agent "claude-code".
+f:f17j9p4o a ktype:Finding;
+    kpred:finding-type "bug-found";
+    kpred:headline "The cloud cron fired on time and produced nothing — silently";
+    kpred:found-at "2026-07-13T02:25:45.335Z";
+    kpred:about "kb:local-orchestration";
+    kpred:detail "last_fired_at 2026-07-12T20:40:18Z, exactly on schedule. Zero commits, no error surfaced. Afterwards next_run_at still displayed a future time while enabled was false, so it LOOKED armed while being dead. A scheduler you cannot observe is not a scheduler. This is why orchestration comes home (F81).";
+    kpred:agent "claude-code".
+f:fzeejji a ktype:Finding;
+    kpred:finding-type "bug-found";
+    kpred:headline "PWA manifest locks orientation to portrait — on a graph app";
+    kpred:found-at "2026-07-13T02:34:21.054Z";
+    kpred:about "kb:mobile-ui";
+    kpred:detail "vite.config.ts sets orientation:'portrait'. On a tablet this ruins the force-directed graph, which is the core surface. Raised as a question rather than changed unilaterally; it may be deliberate for phone onboarding.";
+    kpred:agent "claude-code".
+f:fz4lkfp a ktype:Finding;
+    kpred:finding-type "note";
+    kpred:headline "Correction: the cron did not fail — the runner and the reporting did";
+    kpred:found-at "2026-07-13T02:35:54.509Z";
+    kpred:about "kb:local-orchestration";
+    kpred:detail "The cron fired at exactly 20:40:18Z as scheduled. The cloud AGENT produced no commits, and nothing surfaced that. Calling it 'the cron failed' would send us to fix the wrong component. Design conclusion: the QUEUE is the contract and the RUNNER is pluggable — in-app Web Worker for reach (every device), an optional desktop process driven by cron/launchd/Task Scheduler for wake-when-closed, MCP server when an agent is already connected. No single runner is load-bearing, so none can silently stop the system.";
+    kpred:agent "claude-code".
+f:fpjdyho a ktype:Finding;
+    kpred:finding-type "bug-found";
+    kpred:headline "The graph view drew literals as nodes — 1234 nodes for a 233-entity graph";
+    kpred:found-at "2026-07-13T02:51:48.077Z";
+    kpred:about "kb:graph-legibility";
+    kpred:detail "Not a perf problem: a modelling mistake in the view. 96% of distinct literal values in the roadmap appear exactly ONCE — leaves that connect nothing. A literal earns a node by being SHARED. Fixed: 1234 nodes -> 271 (78% fewer); 985 walls of text moved to the node panel.";
+    kpred:agent "claude-code".
+f:fy8x78g a ktype:Finding;
+    kpred:finding-type "decision-needed";
+    kpred:headline "TriG: what does the 4th element MEAN? (source vs KB — it cannot be both)";
+    kpred:found-at "2026-07-13T02:55:37.538Z";
+    kpred:about "kb:rdf-dataset-migration";
+    kpred:detail "Measured: 18 of 19 repo .ttl files declare 0-1 sources, so a named graph carries ZERO information for them — they stay .ttl forever. TriG earns its place at EXPORT: toTurtle() currently DROPS g, so after ingesting 5 PDFs and exporting, 'where did this fact come from?' is unanswerable. Its prov block is orphaned decoration. That is the real bug TriG fixes.";
+    kpred:agent "claude-code".
+f:fqrih5o a ktype:Finding;
+    kpred:finding-type "decision-needed";
+    kpred:headline "TTL/TriG is not a format choice — it is two products";
+    kpred:found-at "2026-07-13T03:16:07.647Z";
+    kpred:about "kb:ttl-trig-split";
+    kpred:detail "PROVENANCE IS AN ACCOUNTABILITY RELATION, NOT A FIELD. A source the user controls and can rewrite is self-attestation, not evidence — 'the user is a failure and a fool at times' is a THREAT MODEL, not an insult. A private graph therefore has NO provenance and needs none: it makes no claim on anybody. Publishing is the moment a graph acquires an OWNER and therefore acquires provenance — official publication, not manual file-sharing, which transfers no accountability. TTL = private, offline, full user power. TriG = published, attributed, governed; RBAC + 3Ps overlay (F84). Separate market, separate marketing angle. NOTE: this is the third time the same principle has surfaced — an unverifiable claim, made by the party it benefits, is not evidence (cf. F66.1 attestation, F82 forced links).";
+    kpred:agent "claude-code".
+f:f1bmvd1l a ktype:Finding;
+    kpred:finding-type "shipped";
+    kpred:headline "The thesis is on the landing page — generated from the graph, not hand-written";
+    kpred:found-at "2026-07-13T03:20:22.932Z";
+    kpred:about "kb:thesis";
+    kpred:detail "6 tenets, each marked 'enforced in code' or 'what we believe', and the distinction is RENDERED rather than hidden. A belief dressed as a feature is a lie with good manners — and the landing page has already drifted once (it claimed 16 MCP tools when the graph said 20). CI fails if the copy goes stale.";
+    kpred:agent "claude-code".
+f:fhtduzi a ktype:Finding;
+    kpred:finding-type "bug-found";
+    kpred:headline "Shelly could not request a timeline layout at all";
+    kpred:found-at "2026-07-13T03:26:51.988Z";
+    kpred:about "kb:view-suggestions";
+    kpred:detail "ViewAdjust.layout omitted 'timeline' and 'hierarchy' while KnowledgeGraph supported them. So the single most obvious thing to offer someone staring at dated facts was not expressible in the view-control API. A view-control API that cannot express the view is not an API. Found while building F85.";
+    kpred:agent "claude-code".
+f:f1v9zwr9 a ktype:Finding;
+    kpred:finding-type "bug-found";
+    kpred:headline "The feature the mission rests on had no tests — and was dropping the field that makes it work";
+    kpred:found-at "2026-07-13T04:02:52.661Z";
+    kpred:about "kb:partial-facts";
+    kpred:detail "Partial facts: 'blocks' was discarded on import, so the graph knew it had a hole but not what the hole COST — the difference between a to-do and a priority, and the entire 'answer this one question and four things unblock' value. The landing page was already claiming it worked (I shipped that tenet the same evening). 'askedBy' was also dropped, so answers came back unattributable. Both fixed; 16 tests.";
+    kpred:agent "claude-code".
+f:fl75hnw a ktype:Finding;
+    kpred:finding-type "bug-found";
+    kpred:headline "History Mode could not show you anything you had deleted";
+    kpred:found-at "2026-07-13T15:25:44.034Z";
+    kpred:about "kb:history-mode";
+    kpred:detail "The past was rebuilt by FILTERING the current statement set, but deletion is a hard db.statements.delete(id) — a fact deleted since T is not in that set, so it could never be filtered back IN. Scrubbing to a time when a fact plainly existed showed a graph without it, and the 'was it deleted before T?' branch was unreachable dead code. The one thing a history feature exists to do — show you what you lost — was the one thing it could not do. Now replays the changelog and revives deleted facts from their tombstones.".
+f:f1snsvqu a ktype:Finding;
+    kpred:finding-type "bug-found";
+    kpred:headline "The trust fix did not reach the second copy of the trust maths";
+    kpred:found-at "2026-07-13T15:25:45.720Z";
+    kpred:about "kb:history-mode";
+    kpred:detail "History Mode carried its own inline scorer — score = SUM(delta * decay), no baseline. That is the IDENTICAL bug fixed in trust.ts on 2026-07-12; it survived because the logic was DUPLICATED rather than imported, so every source in History Mode scored near zero. A fix only propagates as far as the code that shares the function. Now calls computeTrustScore: one implementation of trust, not two.".
+f:f1xver8e a ktype:Finding;
+    kpred:finding-type "bug-found";
+    kpred:headline "The published graph has test debris in it — on dev, committed";
+    kpred:found-at "2026-07-14T14:53:57.083Z";
+    kpred:about "kb:graph-publishing";
+    kpred:detail "static/knowledge.ttl IS the public graph (served at /knowledge.ttl, PUBLISHED_TTL_PATH in site-export.ts). It currently carries 166 terms in the urn:reckons:story/ test-harness namespace, and the debris is COMMITTED on origin/dev, not working-tree churn. Its header also claims 1032 statements while the body parses to 3096, so the file misdescribes itself. Found by published-graph-guard.ts on its first run in the job registry — the script existed but was registered nowhere, so nothing had ever run it. A derived artifact with no guard is a derived artifact nobody is watching.";
+    kpred:agent "claude-code".
+f:f1qt04l6 a ktype:Finding;
+    kpred:finding-type "bug-found";
+    kpred:headline "The e2e smoke test has been failing on dev — and nothing was watching";
+    kpred:found-at "2026-07-14T16:13:25.256Z";
+    kpred:about "kb:deep-testing";
+    kpred:detail "tests/e2e/graph-render.test.ts ('documentation graph renders nodes without a WebGL/renderer crash') fails with 'Failed to fetch dynamically imported module: http://localhost:4174/@vite/client'. Verified PRE-EXISTING: it fails identically on the untouched baseline dependency tree, so it is not fallout from the uuid/cookie security overrides. A smoke test is the one test whose whole job is to be trusted when it is green; this one is red and the signal was going nowhere. CI runs test:e2e — so either CI is red on dev and being ignored, or the smoke job is not gating what we think it gates. Find out which, because both answers are bad.";
+    kpred:agent "claude-code".
+f:f7ms6jk a ktype:Finding;
+    kpred:finding-type "note";
+    kpred:headline "RETRACTION: the published graph never had test debris — the guard was wrong";
+    kpred:found-at "2026-07-14T17:21:23.835Z";
+    kpred:about "kb:graph-publishing";
+    kpred:detail "On 2026-07-14 I reported that static/knowledge.ttl carried 166 urn:reckons:story/ test-harness terms, committed on dev. THAT WAS FALSE, and I repeated it in three commit messages and used it to justify keeping the CI script tier ADVISORY instead of blocking. urn:reckons:story/ is the PRODUCT'S OWN guided-story vocabulary — src/lib/rdf/story.ts, used by the landing page, the about page and TurtleChatPanel's step walkthrough, and declared in reckons-production.ttl. The actual test-harness namespace is urn:reckons:test/, and it appears ZERO times in the published graph. published-graph-guard.ts banned both namespaces because the original incident (urn:reckons:test/VR-Step2 rdf:type story:Step) had test SUBJECTS wearing story TYPES — the harness borrowed the product's vocabulary, as it should, and the guard condemned the vocabulary along with the debris. Guard corrected; header count corrected (1032 -> 3096, which WAS a real finding); script tier is now BLOCKING. The lesson is the thesis: a finding is a claim, and a tool reporting a violation is a party with an interest in having found one. I did not verify it, and an unverified claim kept a real control switched off.";
+    kpred:agent "claude-code".
+f:f1anjs7v a ktype:Finding;
+    kpred:finding-type "shipped";
+    kpred:headline "The digest is a graph now — the file that records our failures was itself a second source of truth";
+    kpred:found-at "2026-07-14T20:18:57.093Z";
+    kpred:about "kb:async-digest";
+    kpred:detail "Matt's first question this session was 'why was DIGEST.md made? Why not record in turtle?' The honest answer was that it should have been. kb:async-digest specified 'a digest ENTITY in the graph, rendered through the existing WebPage machinery, just a graph node like anything else'. What shipped was a hand-appended markdown file with a graph write bolted on the side. Findings now live in reckons-workspace/digest.ttl as ktype:Finding entities; DIGEST.md is GENERATED from them and npm run align fails if it drifts. Of all the files to keep as a second source of truth, the one where we record our own failures was the worst choice.";
+    kpred:agent "claude-code".
+f:fzbdrs4 a ktype:Finding;
+    kpred:finding-type "bug-found";
+    kpred:headline "First bug";
+    kpred:found-at "2026-07-14T20:19:16.662Z";
+    kpred:about "kb:a".
+f:f11y5jz6 a ktype:Finding;
+    kpred:finding-type "test-added";
+    kpred:headline "Second thing";
+    kpred:found-at "2026-07-14T20:19:16.691Z";
+    kpred:about "kb:b".
+f:f3c a ktype:Finding;
+    kpred:finding-type "note";
+    kpred:headline "x";
+    kpred:found-at "2026-07-14T20:19:16.698Z".
+f:f9s8k34 a ktype:Finding;
+    kpred:finding-type "claim-falsified";
+    kpred:headline "The 60-70% claim was false";
+    kpred:found-at "2026-07-14T20:19:16.704Z";
+    kpred:about "kb:c".

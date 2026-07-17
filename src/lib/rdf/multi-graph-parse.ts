@@ -92,7 +92,7 @@ export async function parseMultipleGraphs(
 
   for (let gi = 0; gi < files.length; gi++) {
     const file = files[gi];
-    const parser = new Parser({ format: 'Turtle' });
+    const parser = new Parser({ format: 'TriG' }); // superset of Turtle — see F75
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let quads: any[];
     try {

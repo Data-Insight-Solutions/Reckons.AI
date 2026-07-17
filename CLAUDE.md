@@ -92,6 +92,8 @@ The alignment score is a composite of 4 dimensions (30% coverage, 30% status ali
 
 Production deploys from `main` on every push — an unreviewed push is an unreviewed deploy.
 
+**Default PR base is `dev`, NOT `main`.** The pipeline is `dev → staging → main` (F33). Feature PRs target **`dev`**; only deliberate, approved promotions go to `main`. Branch protection is **not yet enforced** on any branch (audited 2026-07-11) and will be enabled at launch (see F33 `enforcement-plan`) — so until then the guardrail is behavioral: **before merging any PR, verify its resolved base branch** (`gh pr view <n> --json baseRefName`) — `gh pr edit --base` can silently fail, and a mis-targeted merge to `main` deploys straight to production. Never merge to `main` without explicit production intent.
+
 ### Graphs are the plan and source of truth
 
 The TTL graphs in `static/` are the canonical plan and system description — code follows the graphs, not the other way around:
@@ -101,6 +103,36 @@ The TTL graphs in `static/` are the canonical plan and system description — co
 - **Findings and proposals** (discrepancies, suggestions, drift): don't just report in chat — propose them as pending graph entries for in-app review. Append JSONL lines to the app workspace's `knowledge.pending.jsonl` (`{ subject, predicate, object, note?, type?: observation|question|suggestion|status-update|drift-warning, agent?, priority? }` — see `drainWorkspacePending` in `src/lib/stores/workspace.svelte.ts`), or use `kb_add_note` when the MCP server is connected. The app imports them as pending facts for human review.
 - **Docs sections generated from graphs** (`content/` via `scripts/docs-pages.ts`): edit the TTL, regenerate, never hand-edit generated pages.
 
+### Picking up mid-stream? Read `HANDOFF.md` FIRST
+
+If the user says "continue" (or a scheduled/cloud session starts with no context), read
+**`HANDOFF.md`** (repo root) before anything else. It names the active branch, the current
+task, what has already been found (so you don't re-derive it), and the decisions that are
+Matt's to make rather than yours. Keep it current when you hand off.
+
+### Honest status — always (kb:honest-status)
+
+**Never describe a control, feature, or capability that does not exist yet.** Distinguish what is BUILT from what is INTENDED *at the point of each claim*, not in a footnote. Aspiration written in the present tense is a lie with good manners.
+
+- This bites hardest in `SAFETY.md`, `COUNSEL-BRIEF.md`, and anything user-facing. Overclaiming a control we cannot exercise is itself a liability. (Real incident, 2026-07-12: `SAFETY.md` was written saying "we gate publishing" while F66 was merely `planned` — publishing is in fact ungated — and claimed the ethics preamble "cannot be overridden" when it is open-source code anyone can delete. Both fixed.)
+- `kpred:has-status` must reflect reality. A feature is not `functional` because we wish it were.
+- **Report failures as loudly as successes.** The safety attestation deliberately records its own failing control; a log that is always green is not a record. If tests fail, say so with the output. If a step was skipped, say that.
+- Say the weakness out loud, in the sentence that describes the thing.
+
+### Work tiering — route the task before you do it (F74.3)
+
+Before doing any recurring task yourself, route it to the **cheapest tier that can do it correctly**. Take the first test it passes:
+
+1. **Script tier** — the answer is checkable by a rule ("does this path exist", "does this parse", "is this status in the enum"). Write deterministic code: zero tokens, zero hallucination, runs in CI, fails loudly. `scripts/offline/graph-lint.ts` is the model.
+2. **Agent tier** — the answer is judgment over language, and being wrong is cheap because the output is a **proposal a human gates** (first-pass code review, drafting a description, staleness reads). A local Ollama model, always inside a scripted harness: **ground → prompt → validate → emit-proposal**. It writes to `knowledge.pending.jsonl`, *never* to source or TTL. `scripts/offline/describe-entities.ts` is the model.
+3. **Opus** — cross-file architectural reasoning, deciding process, triaging the queue the other tiers fill, and writing code that lands.
+
+**Offloading is not free.** A local job that emits 30 findings of which 25 are noise moves cost from generation to *triage* rather than removing it; deterministic checks have zero triage cost because they're right by construction. So **prefer growing the script tier over the agent tier**, and measure with `npm run session:tokens`.
+
+**Promotion ladder**: anything Opus does twice becomes an agent job or a script; anything an agent gets right *reliably* is demoted to a script — reliability proves the rule was expressible. Opus designs the harness; the local model is a plugin inside it (the PR #43 devstral lesson: local models hallucinate conventions and mangle serialization, so ground-first and validate).
+
+Jobs live in `scripts/offline/jobs.json` with a `tier` field. `npm run offline:all` runs script tier first; `npm run offline:all -- --tier=script` runs only the free ones.
+
 ### TTL-first documentation policy
 
 This project uses TTL knowledge bases as the primary documentation format. **Do NOT create new docs/*.md files.** Instead:
@@ -109,7 +141,7 @@ This project uses TTL knowledge bases as the primary documentation format. **Do 
 - **For code conventions**: Use inline code comments near the actual code
 - **Query before reading**: Use `kb_search` to find information before reading raw files
 - **Existing markdown**: `docs/*.md` files are being migrated to TTL. Check `kb_search("migration status", kb="architecture")` for current state
-- **Must stay markdown**: CLAUDE.md, MEMORY.md, .claude/commands/*.md, README.md, CONTRIBUTING.md (system requirements)
+- **Must stay markdown**: CLAUDE.md, HANDOFF.md, COUNSEL-BRIEF.md, MEMORY.md, .claude/commands/*.md, README.md, CONTRIBUTING.md, SAFETY.md (system/policy docs; SAFETY.md is the human-readable safety & responsibility statement — the graph mirrors it in kb:content-safety)
 
 ### KB predicates convention
 
@@ -127,6 +159,12 @@ This project uses TTL knowledge bases as the primary documentation format. **Do 
 - **Review statuses**: pending, pending-removal, confirmed, refined, rejected, superseded
 - **Embedding model**: BGE-small-en-v1.5 (33MB, 384d, q8) via `src/lib/embed.ts`
 - **Content safety**: `ETHICS_PREAMBLE` injected into ALL LLM system prompts — never remove
+
+## Integration Boundaries (read before adding a "backend")
+
+- **Reckons.AI is local-first with NO general backend.** Do not treat n8n (or any single service) as *the* backend for all things Reckons.AI. n8n is an **optional, per-user automation layer**: a user connects their own self-hosted n8n instance to enable *personalized* automation/integration flowing **into and out of** their Reckons.AI — e.g. the contact form (`src/lib/integrations/n8n/contact.ts`) posts to *their* webhook. The app itself stays static/offline-first; n8n owns web *side-effects*, not core state.
+- **All integrations are optional and per-user, behind `settings.*`** and (eventually) the Integration Plugin SDK (roadmap F61). When a feature "needs a server", first ask whether it can be local/offline; if not, make it an opt-in integration, never a hard dependency of the core app.
+- Cloud-automation providers (Zapier, Power Automate, …) are *future alternatives* to self-hosted n8n, not replacements for local-first behavior.
 
 ## Testing
 

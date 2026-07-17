@@ -10,7 +10,7 @@
  */
 
 import { execSync, execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, unlinkSync, writeFileSync, mkdtempSync } from 'node:fs';
+import { existsSync, readFileSync, unlinkSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -205,12 +205,14 @@ export function speak(text: string, caps: AudioCaps, voice?: string): void {
   if (caps.tts === 'piper') {
     try {
       const wavPath = join(getTmpDir(), `speak-${Date.now()}.wav`);
-      execSync(`echo ${JSON.stringify(clean)} | piper --output_file ${wavPath}`, { timeout: 15_000, stdio: 'pipe' });
+      // Pass the text via STDIN and the path as an ARG (no shell) — spoken text like "$(rm -rf ~)"
+      // can no longer be interpreted by a shell. Fixes js/command-line-injection (CodeQL, critical).
+      spawnSync('piper', ['--output_file', wavPath], { input: clean, timeout: 15_000, stdio: ['pipe', 'pipe', 'pipe'] });
       if (existsSync(wavPath)) {
-        // Play the WAV
-        if (which('aplay')) execSync(`aplay ${wavPath}`, { stdio: 'pipe', timeout: 30_000 });
-        else if (which('play')) execSync(`play ${wavPath}`, { stdio: 'pipe', timeout: 30_000 });
-        else if (which('afplay')) execSync(`afplay ${wavPath}`, { stdio: 'pipe', timeout: 30_000 });
+        // Play the WAV via argv, not a shell string.
+        if (which('aplay')) spawnSync('aplay', [wavPath], { stdio: 'pipe', timeout: 30_000 });
+        else if (which('play')) spawnSync('play', [wavPath], { stdio: 'pipe', timeout: 30_000 });
+        else if (which('afplay')) spawnSync('afplay', [wavPath], { stdio: 'pipe', timeout: 30_000 });
         try { unlinkSync(wavPath); } catch {}
       }
       return;
@@ -250,7 +252,9 @@ export function chime(caps: AudioCaps): void {
 
 export function cleanup(): void {
   if (_tmpDir) {
-    try { execSync(`rm -rf ${_tmpDir}`, { stdio: 'pipe' }); } catch {}
+    // rmSync, not a shell `rm -rf ${_tmpDir}` — no shell means no command injection, even though
+    // _tmpDir comes from mkdtempSync and is not attacker-controlled (CodeQL js/command-line-injection).
+    try { rmSync(_tmpDir, { recursive: true, force: true }); } catch {}
     _tmpDir = null;
   }
 }

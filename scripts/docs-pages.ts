@@ -62,6 +62,7 @@ const RDFS_LABEL       = 'http://www.w3.org/2000/01/rdf-schema#label';
 const SKOS_DEFINITION  = 'http://www.w3.org/2004/02/skos/core#definition';
 const SKOS_BROADER     = 'http://www.w3.org/2004/02/skos/core#broader';
 const SKOS_RELATED     = 'http://www.w3.org/2004/02/skos/core#related';
+const HAS_STATUS       = 'urn:kbase:predicate/has-status';
 const KTYPE_NS          = 'urn:kbase:type/';
 const NAV_DOCS_NS       = 'urn:reckons:docs/nav/'; // per-sub-graph "back to hub" stub namespace
 
@@ -92,6 +93,7 @@ const SOURCES: ReadonlyArray<{ file: string; section: string }> = [
   { file: 'docs-tips-security.ttl', section: 'Tips' },
   { file: 'docs-timeline-ecosystem.ttl', section: 'Timeline & Ecosystem' },
   { file: 'docs-architecture.ttl', section: 'Architecture' },
+  { file: 'docs-coding-workflow.ttl', section: 'Coding Workflow' },
   { file: 'docs-testing.ttl', section: 'Testing' },
   { file: 'starter-guide.ttl', section: 'Guide' },
 ];
@@ -317,13 +319,38 @@ function assignSlugs(entities: Entity[]): Map<string, string> {
 
 interface PageRef { slug: string; section: string; title: string }
 
+/**
+ * Lifecycle status banner (kb:honest-status).
+ *
+ * Published docs that describe a PLANNED feature in confident prose read as though the
+ * feature exists. That is the overclaiming failure, at documentation scale — a reader
+ * lands on /docs/features/x, sees a fluent description, and reasonably concludes they
+ * can go use it. So the status leads the page, before the description, rather than
+ * being buried in a Details list at the bottom where nobody reads it.
+ */
+const STATUS_BANNER: Record<string, string> = {
+  speculative: '> **Speculative** — an idea under consideration. Not planned, not built.',
+  planned: '> **Planned** — on the roadmap, **not yet built**. Described here as intended, not as shipped.',
+  'in-progress': '> **In progress** — actively being built. Parts of what follows may not work yet.',
+  scaffolded: '> **Scaffolded** — the structure exists, but it is incomplete. Expect gaps.',
+  functional: '> **Functional** — built and working, with rough edges still being smoothed.',
+  production: '> **Production** — built, tested, and in use.',
+};
+
 function renderBody(e: Entity, refs: Map<string, PageRef>): string {
   const lines: string[] = [`# ${escapeMdText(e.title)}`, ''];
   if (e.types.length) { lines.push(`*${escapeMdText(e.types.join(', '))}*`, ''); }
+
+  // Status first — before the prose that would otherwise imply the thing exists.
+  const status = e.literalProps.get(HAS_STATUS)?.[0];
+  if (status && STATUS_BANNER[status]) lines.push(STATUS_BANNER[status], '');
+
   if (e.definition) { lines.push(escapeMdText(e.definition), ''); }
 
-  const literalKeys = [...e.literalProps.keys()].sort((a, b) =>
-    humanize(localName(a)).localeCompare(humanize(localName(b))));
+  // has-status is rendered as the banner above; don't repeat it in Details.
+  const literalKeys = [...e.literalProps.keys()]
+    .filter((p) => p !== HAS_STATUS)
+    .sort((a, b) => humanize(localName(a)).localeCompare(humanize(localName(b))));
   if (literalKeys.length) {
     lines.push('## Details', '');
     for (const p of literalKeys) {
@@ -461,7 +488,12 @@ function main(): void {
   let unchanged = 0;
   for (const [rel, content] of newFiles) {
     const abs = join(ROOT, rel);
-    if (existsSync(abs) && readFileSync(abs, 'utf8') === content) { unchanged++; continue; }
+    // Read-and-catch rather than existsSync-then-read: the check-then-use pair is a race
+    // (the file can vanish between the two calls) and CodeQL flags it as js/file-system-race.
+    // Attempting the read directly is both correct and one syscall cheaper.
+    let existing: string | null = null;
+    try { existing = readFileSync(abs, 'utf8'); } catch { /* missing → write it */ }
+    if (existing === content) { unchanged++; continue; }
     mkdirSync(dirname(abs), { recursive: true });
     writeFileSync(abs, content, 'utf8');
     written++;

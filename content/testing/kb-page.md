@@ -1,21 +1,21 @@
 ---
-title: "KB Management Page"
+title: "Graph Management Page"
 slug: "kb-page"
-order: 1001
+order: 1000
 section: "Testing"
 parent: "page-screenshots"
 template: doc
 status: published
 nav: sidebar
-excerpt: "The /kb page showing the KB registry, predicate manager, and workspace controls."
+excerpt: "The /kb page showing the graph registry, predicate manager, and workspace controls."
 generated: "docs-kb"
 ---
 
-# KB Management Page
+# Graph Management Page
 
 *Concept*
 
-The /kb page showing the KB registry, predicate manager, and workspace controls.
+The /kb page showing the graph registry, predicate manager, and workspace controls.
 
 ## Details
 

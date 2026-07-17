@@ -6,6 +6,14 @@ on:
   pull_request:
     branches: [main, staging, dev]
 
+# onnxruntime-node's postinstall downloads optional native binaries from a CDN
+# that intermittently times out in CI (ETIMEDOUT). The app uses onnxruntime-web
+# (WASM) + a Vite stub, never the node build, and its CPU binary ships bundled —
+# so skip that download. The install script reads this env var directly, which
+# avoids the npm "unknown config" warning an .npmrc key would emit.
+env:
+  ONNXRUNTIME_NODE_INSTALL: skip
+
 jobs:
   check:
     name: Type check + Unit tests + Build
@@ -20,6 +28,60 @@ jobs:
       - run: npm run check
       - run: npm run test:run
       - run: npm run build
+      # Narrow, deterministic, sub-second: is this ACTUALLY a production build?
+      # On 2026-07-14 a stray NODE_ENV=development made `vite build` emit a DEV build with
+      # import('/@vite/client') in index.html. It broke the deploy-gate smoke test — and,
+      # worse, meant no local build was ever minified, so the one gate guarding a
+      # minification-only crash was running against an unminifiable artifact.
+      # This is a rule, not a judgment, so it is script tier and it BLOCKS.
+      - run: npm run build:verify
+      # THE PREMISE: update the graph, and the changes follow. That is only true if it is
+      # ENFORCED. Every generator (docs pages, landing features, landing principles) already
+      # had a --check mode, and not one of them gated anything — md-align even ran with
+      # continue-on-error, "a hygiene signal, not a gate". So "our site is generated from our
+      # graph" was itself an unverified claim, made by the party it benefits.
+      #
+      # It had already rotted: landing-features.ts was HARD BROKEN (it scooped up the thesis
+      # tenets and refused to run), so the landing page could not be regenerated from the
+      # graph at all — and nothing said so.
+      #
+      # Decidable by a rule, so it blocks.
+      - run: npm run align
+
+  script-tier:
+    name: Script tier (F74.3 — deterministic, zero tokens)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # alignment-sweep diffs against a ref
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # BLOCKING, as of 2026-07-14. kb:tier-script always claimed these "run in CI and fail
+      # loudly". They ran nowhere at all, so the claim was false and the work fell to Opus at
+      # cloud rates. Both halves are now true.
+      #
+      # This shipped ADVISORY for exactly one day, because published-graph-guard reported 166
+      # "test-harness terms" in the published graph. That finding was WRONG: it banned
+      # `urn:reckons:story/`, which is the product's own guided-story vocabulary, not test
+      # debris. The graph was clean the whole time. An unverified finding kept a real gate
+      # switched off — the product's own thesis, demonstrated at our expense.
+      #
+      # Only jobs marked blocking:true in jobs.json can fail the build (--ci). Everything else
+      # still reports and queues findings without gating.
+      - name: Run script tier (blocking on jobs marked blocking:true)
+        run: npx tsx scripts/offline/run-all.ts --tier=script --ci
+      - name: Upload findings
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: script-tier-findings
+          path: reckons-workspace/knowledge.pending.jsonl
+          retention-days: 14
+          if-no-files-found: ignore
 
   e2e:
     name: E2E (Desktop Chrome)

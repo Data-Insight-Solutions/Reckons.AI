@@ -6,7 +6,7 @@ section: "Timeline & Ecosystem"
 template: doc
 status: published
 nav: sidebar
-excerpt: "Public launch of Reckons.AI -- a local-first personal knowledge base built on RDF Turtle."
+excerpt: "Public launch of Reckons.AI -- a local-first personal knowledge graph built on RDF Turtle."
 generated: "docs-kb"
 related:
   - "data-insight-solutions-timeline-ecosystem"
@@ -19,7 +19,7 @@ related:
 
 *Concept*
 
-Public launch of Reckons.AI -- a local-first personal knowledge base built on RDF Turtle. Created by Matthew Roe at Data Insight Solutions LLC. Runs entirely in the browser. LLM-powered triple extraction, 3D graph visualization, browser extension for research sessions, and MCP server for AI agent integration.
+Public launch of Reckons.AI -- a local-first personal knowledge graph built on RDF Turtle. Created by Matthew Roe at Data Insight Solutions LLC. Runs entirely in the browser. LLM-powered triple extraction, 3D graph visualization, browser extension for research sessions, and MCP server for AI agent integration.
 
 ## Details
 

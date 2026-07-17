@@ -16,7 +16,7 @@
  * Requires: Ollama running with the models pulled.
  */
 
-import { writeFileSync, mkdirSync, existsSync, rmSync } from 'fs';
+import { writeFileSync, mkdirSync, existsSync, rmSync, mkdtempSync } from 'fs';
 import { execFileSync } from 'child_process';
 import { join, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -87,8 +87,11 @@ interface ModelReport {
 }
 
 function runDriver(task: CodingTask, code: string): { pass: boolean; detail: string } {
-  const dir = join(tmpdir(), `codebench-${task.id}-${Math.random().toString(36).slice(2, 8)}`);
-  mkdirSync(dir, { recursive: true });
+  // mkdtempSync, not mkdirSync+Math.random: it creates the directory ATOMICALLY with a
+  // unique, unpredictable suffix. The old form was guessable and racy — another process
+  // could pre-create the path and have our code write into a directory it controls,
+  // which matters because we then EXECUTE a file from it (CodeQL js/insecure-temporary-file).
+  const dir = mkdtempSync(join(tmpdir(), `codebench-${task.id}-`));
   try {
     writeFileSync(join(dir, 'solution.ts'), code);
     writeFileSync(join(dir, 'driver.ts'), task.driver);

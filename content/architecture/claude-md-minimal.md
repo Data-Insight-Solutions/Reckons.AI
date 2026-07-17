@@ -15,4 +15,4 @@ generated: "docs-kb"
 
 *Concept*
 
-Keep CLAUDE.md as small as possible — only hard constraints (file format rules, test commands, key directories) and MCP instructions. All feature docs, roadmap, architecture, and design decisions live in TTL KBs. CLAUDE.md tells Claude HOW to find information (use kb_search), not what the information IS.
+Keep CLAUDE.md as small as possible — only hard constraints (file format rules, test commands, key directories) and MCP instructions. All feature docs, roadmap, architecture, and design decisions live in TTL graphs. CLAUDE.md tells Claude HOW to find information (use kb_search), not what the information IS.

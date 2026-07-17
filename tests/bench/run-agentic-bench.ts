@@ -23,7 +23,7 @@
  *   npx tsx tests/bench/run-agentic-bench.ts --save --max-turns 14
  */
 
-import { writeFileSync, readFileSync, mkdirSync, existsSync, rmSync, readdirSync } from 'fs';
+import { writeFileSync, readFileSync, mkdirSync, existsSync, rmSync, readdirSync, mkdtempSync } from 'fs';
 import { execFileSync } from 'child_process';
 import { join, resolve, dirname, relative, isAbsolute } from 'path';
 import { fileURLToPath } from 'url';
@@ -114,8 +114,9 @@ interface TaskOutcome {
 }
 
 async function runTask(model: string, task: AgenticTask): Promise<TaskOutcome> {
-  const sandbox = join(tmpdir(), `agentbench-${task.id}-${Math.random().toString(36).slice(2, 8)}`);
-  mkdirSync(sandbox, { recursive: true });
+  // Atomic + unpredictable: see run-coding-bench.ts. This sandbox is written to and read
+  // back by a model-driven tool loop, so a guessable path is a real foothold.
+  const sandbox = mkdtempSync(join(tmpdir(), `agentbench-${task.id}-`));
   for (const [name, content] of Object.entries(task.files)) writeFileSync(join(sandbox, name), content);
 
   const messages: unknown[] = [

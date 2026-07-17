@@ -15,4 +15,4 @@ generated: "docs-kb"
 
 *Concept*
 
-After first load, the app works without internet. Use Ollama or the WASM model and zero inference traffic leaves your machine. Your KB is fully usable offline.
+After first load, the app works without internet. Use Ollama or the WASM model and zero inference traffic leaves your machine. Your graph is fully usable offline.

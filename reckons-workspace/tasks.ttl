@@ -1,0 +1,288 @@
+@prefix kpred: <urn:kbase:predicate/> .
+@prefix ktype: <urn:kbase:type/> .
+@prefix task:  <urn:reckons:task/> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+
+# =============================================================================
+# The task queue (F87 / kb:orch-task-vocab)
+# =============================================================================
+#
+# The queue is the contract; the runner is pluggable. This file IS the queue.
+#
+# TRUST: scripts/agent/runner.ts executes `kpred:command` out of this file, and will only do
+# that for a local graph named explicitly on the command line. It must never be pointed at an
+# imported or user-supplied graph — "here is an interesting knowledge base" would become
+# remote code execution.
+#
+# EVERY TASK MUST CARRY `kpred:done-when`. The runner REFUSES to run a task without one. An
+# agent left to judge whether its own work is finished will decide that it is — so completion
+# is asserted by an INDEPENDENT check, not by the thing that did the work.
+#
+#   npx tsx scripts/agent/runner.ts --graph reckons-workspace/tasks.ttl --dry-run
+#
+# The runner writes kpred:outcome and kpred:task-state back into this file. That is the
+# record: a run that leaves no trace in the graph did not happen, as far as tomorrow is
+# concerned.
+# =============================================================================
+
+task:align-site rdf:type      ktype:AgentTask ;
+    rdfs:label      "Keep the site aligned with the graph" ;
+    kpred:goal      "Regenerate every surface that is generated from the graph, so the site says exactly what the graph says." ;
+    kpred:tier      "script" ;
+    kpred:command   "npx tsx scripts/align.ts --fix" ;
+    kpred:done-when "npx tsx scripts/align.ts" ;
+    kpred:task-state "open" .
+
+task:graph-invariants rdf:type ktype:AgentTask ;
+    rdfs:label      "The graph must be internally consistent" ;
+    kpred:goal      "Check graph invariants: dead file links, invalid statuses, duplicate feature ids, dangling dependencies." ;
+    kpred:tier      "script" ;
+    kpred:command   "npx tsx scripts/offline/graph-lint.ts --pending" ;
+    kpred:done-when "npx tsx scripts/offline/graph-lint.ts" ;
+    kpred:task-state "open" .
+
+task:published-graph rdf:type ktype:AgentTask ;
+    rdfs:label      "The published graph is the receipt" ;
+    kpred:goal      "static/knowledge.ttl is served at /knowledge.ttl and IS the public graph. Verify it parses, is not gutted, carries no test debris, and does not lie in its own header." ;
+    kpred:tier      "script" ;
+    kpred:command   "npx tsx scripts/offline/published-graph-guard.ts" ;
+    kpred:done-when "npx tsx scripts/offline/published-graph-guard.ts" ;
+    kpred:task-state "open" .
+
+# ── STANDING OFFLINE JOBS (added near session limit — drain these autonomously) ──
+# All script- or local-agent-tier, all with a machine-checkable done-when, all recurring on an
+# interval. The runner drains whatever is due whenever it wakes; nothing here needs a human.
+
+task:status-evidence rdf:type ktype:AgentTask ;
+    rdfs:label      "Shipped features must show their evidence" ;
+    kpred:goal      "Every feature marked shipped/functional/production must link a test OR declare kpred:test-coverage none. You may ship untested code, but not silently." ;
+    kpred:tier      "script" ;
+    kpred:every     "24h" ;
+    kpred:command   "npx tsx scripts/offline/status-evidence.ts" ;
+    kpred:done-when "npx tsx scripts/offline/status-evidence.ts" ;
+    kpred:task-state "open" .
+
+task:safety-attestation rdf:type ktype:AgentTask ;
+    rdfs:label      "The good-faith safety controls still hold" ;
+    kpred:goal      "Verify the ETHICS_PREAMBLE is present/injected/undrifted, the classifier and safety tests pass, and egress gating holds. Record a dated attestation entry." ;
+    kpred:tier      "script" ;
+    kpred:every     "24h" ;
+    kpred:command   "npx tsx scripts/offline/safety-attestation.ts --record" ;
+    kpred:done-when "npx tsx scripts/offline/safety-attestation.ts" ;
+    kpred:task-state "open" .
+
+task:alignment-sweep rdf:type ktype:AgentTask ;
+    rdfs:label      "TTL parse, asset paths, namespace typos, stale LEAPs" ;
+    kpred:goal      "Sweep every TTL for parse errors, bad asset paths, namespace typos, and stale LEAP references; queue findings for review." ;
+    kpred:tier      "script" ;
+    kpred:every     "12h" ;
+    kpred:command   "bash scripts/offline/alignment-sweep.sh" ;
+    kpred:done-when "npx tsx scripts/offline/graph-lint.ts" ;
+    kpred:task-state "open" .
+
+task:unit-tests rdf:type      ktype:AgentTask ;
+    rdfs:label      "The unit suite stays green" ;
+    kpred:goal      "Run the full unit test suite. A regression that lands silently is the failure this project fears most; catch it on a schedule, not at a deadline." ;
+    kpred:tier      "script" ;
+    kpred:every     "6h" ;
+    kpred:command   "npx vitest run" ;
+    kpred:done-when "npx vitest run" ;
+    kpred:task-state "open" .
+
+task:mcp-tests rdf:type       ktype:AgentTask ;
+    rdfs:label      "The MCP server suite stays green" ;
+    kpred:goal      "Build and test the standalone MCP server — kb_merge and the rest must keep working for any connected agent." ;
+    kpred:tier      "script" ;
+    kpred:every     "24h" ;
+    kpred:command   "cd mcp-server && npm run build && npm test" ;
+    kpred:done-when "cd mcp-server && npm test" ;
+    kpred:task-state "open" .
+
+task:reconcile-queue rdf:type ktype:AgentTask ;
+    rdfs:label      "Drop findings that fixed themselves" ;
+    kpred:goal      "Re-run the deterministic checks and drop pending entries whose finding no longer reproduces, so the review queue reflects reality, not history." ;
+    kpred:tier      "script" ;
+    kpred:every     "6h" ;
+    kpred:command   "npx tsx scripts/agent/reconcile.ts --apply" ;
+    kpred:done-when "npx tsx scripts/agent/reconcile.ts" ;
+    kpred:task-state "open" .
+
+task:orchestrate-triage rdf:type ktype:AgentTask ;
+    rdfs:label      "Triage the queue for Opus and draft tasks" ;
+    kpred:goal      "Split the pending queue into re-derivable / remediable / judgment, and draft candidate tasks for the remediable clusters, so a returning Opus session sees a triaged queue not a pile." ;
+    kpred:tier      "script" ;
+    kpred:every     "12h" ;
+    kpred:command   "npx tsx scripts/agent/orchestrate.ts --draft" ;
+    kpred:done-when "npx tsx scripts/agent/orchestrate.ts --json > /dev/null" ;
+    kpred:task-state "open" .
+
+task:token-metric rdf:type    ktype:AgentTask ;
+    rdfs:label      "Track session token usage" ;
+    kpred:goal      "Record the weighted session-token metric — the number that says whether a tier move actually saved anything (F74.4)." ;
+    kpred:tier      "script" ;
+    kpred:every     "24h" ;
+    kpred:command   "npx tsx scripts/session-tokens.ts > /dev/null" ;
+    kpred:done-when "npx tsx scripts/session-tokens.ts > /dev/null" ;
+    kpred:task-state "open" .
+
+task:competitor-discover rdf:type ktype:AgentTask ;
+    rdfs:label      "Discover new competitors, weekly" ;
+    kpred:goal      "Search the neighbourhood for new competitors by topic and license, and queue candidates for review — the review list will always be stale; discovery should not be." ;
+    kpred:tier      "script" ;
+    kpred:every     "7d" ;
+    kpred:command   "npx tsx scripts/offline/competitor-scan.ts --discover --pending" ;
+    kpred:done-when "npx tsx scripts/offline/competitor-scan.ts" ;
+    kpred:task-state "open" .
+
+# ── DEEP VISUAL TESTING (offline, F34) — Matt asked for this near the limit ─────
+# These need a running server; the command boots one, runs, and tears it down, so the runner
+# can drive them unattended. done-when re-runs the same check independently.
+
+task:visual-smoke rdf:type    ktype:AgentTask ;
+    rdfs:label      "Deploy-gate visual smoke (production build, black-graph guard)" ;
+    kpred:goal      "Build a real production bundle, serve it, and confirm the documentation graph renders nodes without a WebGL/renderer crash — the black-graph regression only reproduces in a minified build." ;
+    kpred:tier      "script" ;
+    kpred:every     "24h" ;
+    kpred:command   "npm run test:e2e:smoke" ;
+    kpred:done-when "npm run test:e2e:smoke" ;
+    kpred:task-state "open" .
+
+task:button-crawl rdf:type    ktype:AgentTask ;
+    rdfs:label      "Crawl every interactive element on every route (F34)" ;
+    kpred:goal      "Click every interactive element on every route and flag crashes, blank screens, SILENT no-ops, and sub-44px touch targets. Pure local JS, no model. Findings queue for review." ;
+    kpred:tier      "script" ;
+    kpred:every     "24h" ;
+    kpred:command   "npm run dev:test & DEV=$!; sleep 12; BASE_URL=http://localhost:5174 npx tsx scripts/offline/button-crawl.ts; kill $DEV 2>/dev/null || true" ;
+    kpred:done-when "test -f reckons-workspace/knowledge.pending.jsonl" ;
+    kpred:task-state "open" .
+
+task:visual-regression rdf:type ktype:AgentTask ;
+    rdfs:label      "Local-VLM visual regression prod↔dev" ;
+    kpred:goal      "A local vision model compares production against a dev build and flags visual regressions. Agent tier — proposals only, needs Ollama (waits if it is down, never fails for that)." ;
+    kpred:tier      "local-agent" ;
+    kpred:model     "qwen2.5vl" ;
+    kpred:every     "8h" ;
+    kpred:command   "npx tsx scripts/offline/visual-diff.ts --base=${VISUAL_DIFF_BASE:-https://reckons.ai} --head=${VISUAL_DIFF_HEAD:-http://localhost:5174}" ;
+    kpred:done-when "test -f reckons-workspace/knowledge.pending.jsonl" ;
+    kpred:task-state "open" .
+
+# A task that is BLOCKED, on purpose — proof that the queue actually holds work back rather
+# than running everything it can see. It waits on the published graph being sound, because
+# there is no point auditing the claims on a graph that is not even intact.
+task:claim-audit rdf:type     ktype:AgentTask ;
+    rdfs:label      "No hand-written surface may claim what the graph denies" ;
+    kpred:goal      "Sweep README, SAFETY.md, COUNSEL-BRIEF.md and the app shell for capabilities described as working that the graph says are unbuilt." ;
+    kpred:tier      "script" ;
+    kpred:command   "npx tsx scripts/offline/claim-audit.ts --pending" ;
+    kpred:done-when "npx tsx scripts/offline/claim-audit.ts" ;
+    kpred:blocked-by task:published-graph ;
+    kpred:task-state "open" .
+
+# ── RECURRING PLANS ──────────────────────────────────────────────────────────
+#
+# Scheduling lives HERE, in the graph, not in a crontab. `kpred:every` is an INTERVAL, not a
+# cron expression, and the difference is a promise we can actually keep.
+#
+# Cron says "at 03:40 on Tuesdays". That assumes a machine that is awake, in a timezone, with
+# a daemon that fires — and we already know exactly what that promise is worth: the cloud cron
+# fired precisely on schedule, produced nothing, reported nothing, and went on displaying a
+# future run time. It looked armed while being dead.
+#
+# An interval says only "not more often than this". Whichever runner wakes next drains whatever
+# is due. Nothing is missed because a laptop was shut; the work is simply done when someone next
+# shows up. DRAIN, DO NOT SCHEDULE. And the next due time is computed from when the run actually
+# happened — so a machine asleep for a week wakes owing ONE run, not seven.
+
+task:history-lessons rdf:type ktype:AgentTask ;
+    rdfs:label      "Learn from our own failures, weekly" ;
+    kpred:goal      "Mine the repo's history for fixes that shipped with no test (a bug with a return ticket) and for files where fixes cluster (fragility is a design signal)." ;
+    kpred:tier      "script" ;
+    kpred:every     "7d" ;
+    kpred:command   "npx tsx scripts/offline/history-lessons.ts --pending" ;
+    kpred:done-when "npx tsx scripts/offline/history-lessons.ts --json > /dev/null" ;
+    kpred:task-state "open" .
+
+task:competitor-scan rdf:type ktype:AgentTask ;
+    rdfs:label      "Watch the neighbourhood, and the licences" ;
+    kpred:goal      "Refresh every competitor's metadata and LICENCE from the GitHub API. A licence that moved under us changes what we are ALLOWED to do, and the graph's copy-permitted claims would be lying about it." ;
+    kpred:tier      "script" ;
+    kpred:every     "7d" ;
+    kpred:command   "npx tsx scripts/offline/competitor-scan.ts --pending" ;
+    kpred:done-when "npx tsx scripts/offline/competitor-scan.ts" ;
+    kpred:task-state "open" .
+
+task:prompt-audit rdf:type    ktype:AgentTask ;
+    rdfs:label      "The ethics preamble must not drift" ;
+    kpred:goal      "Check ETHICS_PREAMBLE is present, injected into every LLM prompt, and identical between the app and the MCP server. A safety control that silently drifts is not a control." ;
+    kpred:tier      "script" ;
+    kpred:every     "24h" ;
+    kpred:command   "npx tsx scripts/offline/prompt-audit.ts" ;
+    kpred:done-when "npx tsx scripts/offline/prompt-audit.ts" ;
+    kpred:task-state "open" .
+
+# ── A TASK THAT ASKS RATHER THAN GUESSES ────────────────────────────────────
+#
+# This is the mechanism behind "let a user define it, and it asks refining questions if
+# necessary to complete". Without it, a task that meets an ambiguity has two bad options:
+# GUESS, or FAIL. A guess silently entered into a knowledge graph is worse than a stalled task
+# — it is a lie the graph will now repeat on your behalf, in your name.
+#
+# So there is a third option: SUSPEND. The command emits a partial fact naming what it needs
+# and what it blocks, then exits 42 (NEEDS_ANSWER). The runner marks it WAITING — not done,
+# not failed, because neither is true — and moves on to work that is not stuck. It resumes by
+# itself when the answer lands, whether you answered in the review queue or by talking to
+# Shelly. Both routes resolve the same underlying fact.
+#
+# The user is never a blocking call, and the agent never guesses. Both, at the same time.
+
+task:needs-decision rdf:type  ktype:AgentTask ;
+    rdfs:label      "A task that asks instead of guessing" ;
+    kpred:goal      "Set the auto-merge confidence threshold. The right value is a judgment about how much risk the user is willing to accept — nothing in the code can answer it, and no amount of reasoning will make it a fact." ;
+    kpred:tier      "script" ;
+    # THE PATTERN, and it is worth copying exactly: CHECK FOR THE ANSWER FIRST, and only ask if
+    # it is missing. A command that asks unconditionally will ask again the moment it resumes,
+    # and suspend itself forever — which is what the first draft of this task did.
+    kpred:command   "grep -q auto-merge reckons-workspace/knowledge.answers.jsonl || { npx tsx scripts/agent/ask.ts --subject kb:auto-merge --predicate confidence-threshold --question 'What confidence should auto-merge at, without review?' --blocks urn:reckons:task/needs-decision --agent runner ; exit 42 ; }" ;
+    kpred:done-when "grep -q auto-merge reckons-workspace/knowledge.answers.jsonl" ;
+    kpred:task-state "open" .
+
+# ── LOCAL-AGENT TIER ────────────────────────────────────────────────────────
+#
+# A local model (Ollama, on this machine) does the judgment work Opus would otherwise be paid
+# frontier rates for — and it ONLY ever emits PROPOSALS into the review queue. It never writes
+# to source and never writes to a graph.
+#
+# If Ollama is down, these tasks are NOT failed. Nothing is wrong with them; the machine simply
+# cannot run them right now, so they WAIT. "Could not run" is not "ran and did not work", and a
+# system that conflates the two will quietly give up on work that was perfectly fine.
+
+task:local-code-review rdf:type ktype:AgentTask ;
+    rdfs:label      "First-pass code review, for free" ;
+    kpred:goal      "A local coding model (qwen3-coder) reviews the branch diff and queues its findings for review. Opus triages the output rather than reading the diff cold — which is the whole point: the reading is not judgment, and the reading is most of the tokens." ;
+    kpred:tier      "local-agent" ;
+    kpred:model     "qwen3-coder" ;
+    kpred:every     "8h" ;
+    kpred:command   "npx tsx scripts/offline/code-review.ts --base=origin/dev" ;
+    kpred:done-when "npx tsx scripts/offline/code-review.ts --base=HEAD~1" ;
+    kpred:task-state "open" .
+
+task:describe-entities rdf:type ktype:AgentTask ;
+    rdfs:label      "Draft the descriptions nobody wrote" ;
+    kpred:goal      "A local model drafts kpred:description for entities graph-lint found incomplete, grounded in their own subgraph and linked files. Proposals only — a description the model invented is a claim, not a fact." ;
+    kpred:tier      "local-agent" ;
+    kpred:model     "qwen3-coder" ;
+    kpred:every     "24h" ;
+    kpred:command   "npx tsx scripts/offline/describe-entities.ts" ;
+    kpred:done-when "npx tsx scripts/offline/graph-lint.ts" ;
+    kpred:task-state "open" .
+
+# A task the runner must REFUSE, on purpose — it has no done-when. Left here deliberately:
+# the queue should demonstrate its own guardrail, not just describe it. "Make the code better"
+# is a wish, and its completion would be an agent's opinion of its own work.
+task:no-acceptance rdf:type   ktype:AgentTask ;
+    rdfs:label      "A wish, not a task (deliberately unrunnable)" ;
+    kpred:goal      "Make the codebase better." ;
+    kpred:tier      "script" ;
+    kpred:command   "echo improving" ;
+    kpred:task-state "open" .

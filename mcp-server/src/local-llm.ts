@@ -73,6 +73,27 @@ function slugify(s: string): string {
   );
 }
 
+/**
+ * Escape a value for a quoted Turtle literal.
+ *
+ * The BACKSLASH must be escaped FIRST, then the quote — escaping only the quote (as
+ * this did) is incomplete: a value ending in `\` emits `"...\"`, whose trailing `\"`
+ * reads as an ESCAPED quote, so the literal never closes and the rest of the document
+ * is swallowed. Raw newlines and tabs are illegal inside a short-form literal too.
+ *
+ * This matters more here than almost anywhere else in the codebase: the input is a
+ * LOCAL MODEL'S RAW OUTPUT — exactly the untrusted, malformed-by-default text this
+ * function exists to contain. Flagged by CodeQL (js/incomplete-sanitization).
+ */
+export function escapeTurtleLiteral(value: string): string {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/\t/g, '\\t');
+}
+
 /** Render extracted triples as Turtle, matching the urn:kbase:* vocabulary. */
 export function renderLocalTriplesAsTurtle(triples: LocalTriple[]): string {
   const lines = ['@prefix kb: <urn:kbase:concept/> .', '@prefix kpred: <urn:kbase:predicate/> .', ''];
@@ -80,7 +101,7 @@ export function renderLocalTriplesAsTurtle(triples: LocalTriple[]): string {
     const s = `kb:${slugify(t.subject)}`;
     const p = `kpred:${slugify(t.predicate)}`;
     const isLiteral = /^-?[\d.]+$/.test(t.object) || /\s/.test(t.object);
-    const o = isLiteral ? `"${t.object.replace(/"/g, '\\"')}"` : `kb:${slugify(t.object)}`;
+    const o = isLiteral ? `"${escapeTurtleLiteral(t.object)}"` : `kb:${slugify(t.object)}`;
     lines.push(`${s} ${p} ${o} .`);
   }
   return lines.join('\n');

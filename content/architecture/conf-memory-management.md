@@ -15,4 +15,4 @@ generated: "docs-kb"
 
 *Concept*
 
-For large spaces (500+ pages): write each page's triples to IndexedDB immediately after extraction (already done via addStatements). Run normalisation in batches of 50 pages. Throttle queue with configurable delay between pages (default 600ms, same as vault mode).
+For large spaces (500+ pages): write each page's triples to IndexedDB immediately after extraction (already done via addStatements). Run normalization in batches of 50 pages. Throttle queue with configurable delay between pages (default 600ms, same as vault mode).

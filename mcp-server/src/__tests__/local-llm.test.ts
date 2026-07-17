@@ -68,6 +68,42 @@ describe('renderLocalTriplesAsTurtle', () => {
     expect(turtle).toContain('kb:mcp-server kpred:has-tool-count "16" .');
     expect(turtle).toContain('kb:ada-lovelace kpred:wrote "first algorithm" .');
   });
+
+  // The input here is a LOCAL MODEL'S RAW OUTPUT — untrusted and malformed by default.
+  // Escaping the quote but not the backslash (as this did) means a value ending in `\`
+  // emits `"...\"`, whose trailing \" reads as an ESCAPED quote: the literal never
+  // closes and the rest of the document is swallowed. The output must still PARSE.
+  it('escapes backslashes, quotes, and newlines so model output cannot break the Turtle', async () => {
+    const { Parser } = await import('n3');
+    // NOTE: objects go down the LITERAL path only when they contain whitespace (or are
+    // numeric) — see the isLiteral heuristic. A bare `C:\\Users\\me` has no space, so it is
+    // slugified into an IRI and never reaches the escaper. These values all contain a
+    // space, so they exercise the path this test is actually about.
+    const turtle = renderLocalTriplesAsTurtle([
+      { subject: 'windows-path', predicate: 'has-value', object: 'the path C:\\Users\\me\\' },
+      { subject: 'quoted', predicate: 'has-value', object: 'she said "hello" to me' },
+      { subject: 'multiline', predicate: 'has-value', object: 'line one\nline two' },
+    ]);
+    // The real assertion: a reference parser accepts it.
+    expect(() => new Parser({ format: 'Turtle' }).parse(turtle)).not.toThrow();
+
+    const quads = new Parser({ format: 'Turtle' }).parse(turtle);
+    expect(quads).toHaveLength(3);
+    // And the values survive the round trip unmangled.
+    expect(quads.map((q) => q.object.value)).toContain('the path C:\\Users\\me\\');
+    expect(quads.map((q) => q.object.value)).toContain('she said "hello" to me');
+    expect(quads.map((q) => q.object.value)).toContain('line one\nline two');
+  });
+
+  it('a trailing backslash previously broke the literal — regression guard', async () => {
+    const { Parser } = await import('n3');
+    const turtle = renderLocalTriplesAsTurtle([
+      { subject: 'x', predicate: 'p', object: 'ends with backslash \\' },
+      { subject: 'y', predicate: 'p', object: 'this must not be swallowed' },
+    ]);
+    const quads = new Parser({ format: 'Turtle' }).parse(turtle);
+    expect(quads).toHaveLength(2); // both survive; the first no longer eats the second
+  });
 });
 
 describe('summarizeLocally', () => {

@@ -113,6 +113,15 @@ export type SettingsRecord = {
   nodeLabelFontSize?: number;
   /** Prefer 2D canvas renderer over 3D WebGL */
   prefer2D?: boolean;
+  /** Always render entity preview images on nodes (no hover needed). Slower to paint. */
+  alwaysShowPreviews?: boolean;
+  /** "Normal" node preview-image size in px (the thumbnail on selected/highlighted
+   * nodes). Click a thumbnail to expand large; adjustable so image-heavy graphs
+   * can read bigger by default. Default 96. */
+  nodePreviewSize?: number;
+  /** Auto-expand a node's asset to the large view whenever it becomes selected —
+   * e.g. as a story/explore walkthrough moves node to node. Off by default. */
+  autoExpandAssets?: boolean;
   /** Overall UI text scale. 'sm' = 14px, 'md' = 16px (default), 'lg' = 18px root font. */
   uiScale?: 'sm' | 'md' | 'lg';
   /**
@@ -151,6 +160,14 @@ export type SettingsRecord = {
    * no /webhook suffix (callers append that per-endpoint).
    */
   n8nBaseUrl?: string;
+  /**
+   * When set, POST a small summary to the n8n review webhook
+   * (/webhook/reckons-review) whenever new facts land for review — so n8n can
+   * email you instead of you having to open the graph. Covers scraped grant
+   * calls (currents), pod arrivals, and any pending ingest. Opt-in; needs
+   * n8nBaseUrl. See src/lib/integrations/n8n/notify.ts.
+   */
+  n8nNotifyOnReview?: boolean;
 };
 
 export const DEFAULT_TURTLE_SETTINGS: TurtleSettings = {
@@ -220,6 +237,7 @@ export const DEFAULT_SETTINGS: SettingsRecord = {
   shellyCustomPrompt: import.meta.env.VITE_SHELLY_PROMPT || undefined,
   embeddingModel: import.meta.env.VITE_EMBEDDING_MODEL ?? 'Xenova/bge-small-en-v1.5',
   n8nBaseUrl: import.meta.env.VITE_N8N_BASE_URL || undefined,
+  n8nNotifyOnReview: false,
   embeddingThreshold: 0.85,
   autoConfirmHighConfidence: false,
   turtleSettings: { ...DEFAULT_TURTLE_SETTINGS }
@@ -362,8 +380,12 @@ export async function getSettings(): Promise<SettingsRecord> {
     if (testBackend) {
       base.preferredBackend = testBackend;
       base.ingestBackend = testBackend as SettingsRecord['ingestBackend'];
+      base.analyzeBackend = testBackend as SettingsRecord['analyzeBackend'];
       base.chatBackend = testBackend as SettingsRecord['chatBackend'];
     }
+    // Pin the Ollama model for live-LLM tests (installed tags differ per machine).
+    const testOllamaModel = localStorage.getItem('__reckons_test_ollama_model__');
+    if (testOllamaModel) base.ollamaModel = testOllamaModel;
   }
   return base;
 }
@@ -440,6 +462,7 @@ export async function saveSettings(patch: Partial<SettingsRecord>): Promise<void
       meshyApiKey: m.meshyApiKey,
       nodeLabelFontSize: m.nodeLabelFontSize,
       prefer2D: m.prefer2D,
+      alwaysShowPreviews: m.alwaysShowPreviews,
       uiScale: m.uiScale,
       autoSaveEnabled: m.autoSaveEnabled,
       workspaceName: m.workspaceName,

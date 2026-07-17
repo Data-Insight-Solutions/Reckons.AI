@@ -3,7 +3,7 @@ import {
   buildExtractedTripleSchema,
   isSmallOllamaModel,
   EXTRACTION_SYSTEM_PROMPT,
-  EXTRACTION_SYSTEM_PROMPT_COMPACT
+  EXTRACTION_SYSTEM_PROMPT_FEWSHOT
 } from '../extractor';
 import { extractWithOllama, resolveOllamaSystemPrompt } from '../ollama-extract';
 
@@ -70,7 +70,7 @@ describe('isSmallOllamaModel', () => {
 
 describe('resolveOllamaSystemPrompt', () => {
   it('picks the compact prompt for small models in auto mode', () => {
-    expect(resolveOllamaSystemPrompt({ model: 'llama3.2:3b' })).toBe(EXTRACTION_SYSTEM_PROMPT_COMPACT);
+    expect(resolveOllamaSystemPrompt({ model: 'llama3.2:3b' })).toBe(EXTRACTION_SYSTEM_PROMPT_FEWSHOT);
   });
 
   it('picks the full prompt for large models in auto mode', () => {
@@ -78,7 +78,7 @@ describe('resolveOllamaSystemPrompt', () => {
   });
 
   it('forces the compact prompt when promptMode is "compact"', () => {
-    expect(resolveOllamaSystemPrompt({ model: 'devstral-small-2', promptMode: 'compact' })).toBe(EXTRACTION_SYSTEM_PROMPT_COMPACT);
+    expect(resolveOllamaSystemPrompt({ model: 'devstral-small-2', promptMode: 'compact' })).toBe(EXTRACTION_SYSTEM_PROMPT_FEWSHOT);
   });
 
   it('forces the full prompt when promptMode is "full"', () => {
@@ -181,7 +181,7 @@ describe('extractWithOllama', () => {
 
     await extractWithOllama('text', 'Test', { model: 'llama3.2:3b' });
     let body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
-    expect(body.messages[0].content).toBe(EXTRACTION_SYSTEM_PROMPT_COMPACT);
+    expect(body.messages[0].content).toBe(EXTRACTION_SYSTEM_PROMPT_FEWSHOT);
 
     fetchMock.mockClear();
     fetchMock.mockResolvedValue(jsonResponse({ message: { content: JSON.stringify([VALID_TRIPLE]) } }));

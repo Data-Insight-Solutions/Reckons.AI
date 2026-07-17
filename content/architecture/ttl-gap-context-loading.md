@@ -15,4 +15,4 @@ generated: "docs-kb"
 
 *Concept*
 
-Reading a markdown file puts full content in context. MCP kb_search returns BM25 results — good for targeted queries, incomplete for broad understanding. Mitigation: kb_compress gives a budget-capped summary, kb_subgraph gives entity neighbourhood, reading the TTL file directly is always possible as fallback.
+Reading a markdown file puts full content in context. MCP kb_search returns BM25 results — good for targeted queries, incomplete for broad understanding. Mitigation: kb_compress gives a budget-capped summary, kb_subgraph gives entity neighborhood, reading the TTL file directly is always possible as fallback.

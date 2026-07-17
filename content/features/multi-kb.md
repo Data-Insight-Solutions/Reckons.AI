@@ -1,5 +1,5 @@
 ---
-title: "Multi-KB Management"
+title: "Multi-Graph Management"
 slug: "multi-kb"
 order: 1020
 section: "Features"
@@ -7,20 +7,20 @@ parent: "what-is-reckons-ai"
 template: doc
 status: published
 nav: sidebar
-excerpt: "Create, switch, rename, and delete independent knowledge bases."
+excerpt: "Create, switch, rename, and delete independent knowledge graphs."
 generated: "docs-kb"
 related:
   - "kb-leap"
 ---
 
-# Multi-KB Management
+# Multi-Graph Management
 
 *Concept*
 
-Create, switch, rename, and delete independent knowledge bases. Each KB has its own IndexedDB store, stable UUID, content fingerprint, and optional accent color. Per-tab KB support via URL ?kb= parameter.
+Create, switch, rename, and delete independent knowledge graphs. Each graph has its own IndexedDB store, stable UUID, content fingerprint, and optional accent color. Per-tab graph support via URL ?kb= parameter.
 
 ## Related
 
 **Related**
 
-- [KB Leap](../features/kb-leap)
+- [Graph Leap](../features/kb-leap)

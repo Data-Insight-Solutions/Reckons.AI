@@ -17,14 +17,22 @@
 
   let stackEl: HTMLDivElement | undefined;
 
-  // Keep the reactive store in sync with actual rendered height
+  // Keep the reactive store in sync with the ACTUAL rendered height. A single
+  // rAF after a notifications() change goes stale when the stack keeps resizing
+  // between events (enter/exit transitions, the perf "fps" notification popping
+  // in) — leaving the node panel's max-height wrong and overlapping. A
+  // ResizeObserver tracks every size change; re-armed whenever the stack mounts.
   $effect(() => {
-    // re-run whenever notifications change
-    const _ = notifications();
-    // Wait a tick for DOM to update
-    requestAnimationFrame(() => {
-      notificationStackHeight.set(stackEl?.offsetHeight ?? 0);
+    notifications(); // re-run on add/remove (the stack element mounts/unmounts)
+    let ro: ResizeObserver | undefined;
+    const id = requestAnimationFrame(() => {
+      const el = stackEl;
+      if (!el) { notificationStackHeight.set(0); return; }
+      notificationStackHeight.set(el.offsetHeight);
+      ro = new ResizeObserver(() => notificationStackHeight.set(el.offsetHeight));
+      ro.observe(el);
     });
+    return () => { cancelAnimationFrame(id); ro?.disconnect(); };
   });
 </script>
 

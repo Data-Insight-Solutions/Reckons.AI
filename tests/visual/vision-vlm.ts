@@ -58,6 +58,46 @@ export async function vlmGate(imgB64: string, criteria: string, model = VLM_MODE
   return { pass, notes: raw };
 }
 
+export interface VlmDiff {
+  changed: boolean;
+  notes: string;
+}
+
+/**
+ * Compare two screenshots of the same page (baseline vs candidate) with the local
+ * VLM and report meaningful visual differences. Used by the offline branch/env
+ * diff to catch regressions between deploys (prod->dev / staging->dev).
+ */
+export async function diffImagesVLM(
+  baseB64: string,
+  headB64: string,
+  label = 'page',
+  model = VLM_MODEL,
+): Promise<VlmDiff> {
+  if (!OLLAMA_URL) throw new Error('OLLAMA_BASE_URL not set — local VLM review is opt-in');
+  const prompt =
+    `Two screenshots of the same ${label}: image 1 is the BASELINE, image 2 is the ` +
+    'CANDIDATE. List meaningful VISUAL differences (layout shifts, missing/extra/moved ' +
+    'elements, broken or overlapping rendering, colour/text changes). Ignore tiny ' +
+    'anti-aliasing noise. If there are no meaningful differences reply exactly ' +
+    '"IDENTICAL"; otherwise start with "CHANGED:" then a short bulleted list.';
+  const res = await fetch(`${OLLAMA_URL}/api/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model,
+      prompt,
+      images: [baseB64, headB64],
+      stream: false,
+      options: { num_ctx: 8192, temperature: 0 },
+    }),
+  });
+  if (!res.ok) throw new Error(`Ollama VLM ${res.status} ${res.statusText}`);
+  const json = (await res.json()) as { response?: string };
+  const raw = (json.response ?? '').trim();
+  return { changed: !/^\s*identical\b/i.test(raw), notes: raw };
+}
+
 /** Free the model from VRAM between runs (keep_alive: 0). Best-effort. */
 export async function unloadVlm(model = VLM_MODEL): Promise<void> {
   if (!OLLAMA_URL) return;

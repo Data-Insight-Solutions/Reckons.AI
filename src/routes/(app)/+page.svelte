@@ -2,7 +2,12 @@
   import { Canvas } from '@threlte/core';
   import { goto } from '$app/navigation';
   import KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
+  import { buildGraphView } from '$lib/rdf/graph-view';
+  import { bestSuggestion } from '$lib/rdf/view-suggestions';
   import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
+  import GraphLabels from '$lib/components/GraphLabels.svelte';
+  import { copyText } from '$lib/utils/clipboard';
+  import AssetGlbViewer from '$lib/components/AssetGlbViewer.svelte';
   import StatementCard from '$lib/components/StatementCard.svelte';
   import LandingPage from '$lib/components/LandingPage.svelte';
   import SourcesPanel from '$lib/components/SourcesPanel.svelte';
@@ -33,6 +38,7 @@
   import { gifOverrides, setGif, clearGif } from '$lib/stores/gif-overrides.svelte';
   import { icon2dOverrides, setIcon2d, clearIcon2d } from '$lib/stores/icon2d-overrides.svelte';
   import { LEAP_PRED, LEAP_LABEL_PRED, getLeap, leapNodeKeys } from '$lib/rdf/kb-leap';
+  import { findDichotomies } from '$lib/rdf/dichotomy';
   import { findKbByStableId, switchToKb, createKb, registerStableId, getCurrentKbId, getRegistry } from '$lib/storage/kb-registry';
 
   // Predicates that are internal KB metadata — never shown as graph edges/nodes
@@ -44,6 +50,8 @@
   import { isIRI, isLit } from '$lib/rdf/types';
   import { requestShellyChat, setShellyChatOpen, shellyViewAdjust, clearShellyViewAdjust, shellySpotlight, exploreOpen, startExplore, stopExplore } from '$lib/stores/shelly-bridge.svelte';
   import AdaptivePanel from '$lib/components/AdaptivePanel.svelte';
+  import { entityProtection } from '$lib/rdf/protected-entities';
+  import { buildEntitySet, defaultSetName, isEntitySet, setMembers } from '$lib/rdf/entity-sets';
   import { isCompact } from '$lib/stores/viewport.svelte';
   import { Popover, ToggleGroup } from 'bits-ui';
   import { analysisRunning, lastAnalysisError } from '$lib/stores/auto-analyze.svelte';
@@ -148,7 +156,7 @@
   $effect(() => {
     const key = hoverTarget;
     const iri = iriFromNodeKey(key);
-    const hasGif = iri != null && gifOverrides().has(iri);
+    const hasGif = previewUrlFor(iri) != null;
     const hasMeta = hoverMeta != null;
 
     if (gifTimer) { clearTimeout(gifTimer); gifTimer = null; }
@@ -164,7 +172,7 @@
     gifActiveKey = null;
     gifTimer = setTimeout(() => {
       gifActiveKey = gifHoverKey;
-    }, 700);
+    }, 350);
   });
 
   /** Definition text for the selected entity (shown in node panel — essential on touch devices). */
@@ -237,6 +245,24 @@
     return 'text';
   }
   let nodeLabels = $state<Array<{ key: string; label: string; x: number; y: number; opacity: number }>>([]);
+  // Throttle the label/preview DOM overlay to ~30fps. The force sim emits new
+  // label positions every frame; re-rendering the overlay (and its preview
+  // images) that often is wasted work on image/GLB-heavy graphs. Leading + a
+  // trailing update so the final settled position always lands.
+  type NodeLabel = { key: string; label: string; x: number; y: number; opacity: number };
+  let _labelLast = 0;
+  let _labelTrail: ReturnType<typeof setTimeout> | null = null;
+  const LABEL_THROTTLE_MS = 33;
+  function setNodeLabels(labels: NodeLabel[]) {
+    const now = performance.now();
+    if (_labelTrail) { clearTimeout(_labelTrail); _labelTrail = null; }
+    if (now - _labelLast >= LABEL_THROTTLE_MS) {
+      _labelLast = now;
+      nodeLabels = labels;
+    } else {
+      _labelTrail = setTimeout(() => { _labelLast = performance.now(); nodeLabels = labels; _labelTrail = null; }, LABEL_THROTTLE_MS);
+    }
+  }
   let labelFontSize = $state(11);
   let markerLabels = $state<Array<{ key: string; label: string; color: string; x: number; y: number }>>([]);
   let navHistory = $state<string[]>([]);
@@ -347,6 +373,9 @@
   // FAB (it's an always-on panel on desktop, which would block the graph on a
   // phone). Desktop keeps the SnapPanel always open. (F36 phase 2b)
   let filterSheetOpen = $state(false);
+  /** Show shared literal values ("production", "high") as category nodes. Unique literals
+   *  are NEVER nodes — they are attributes (F83). */
+  let showCategoryNodes = $state(true);
 
   // Build a set of subject IRIs matching the selected entity types
   const typedSubjects = $derived.by(() => {
@@ -361,46 +390,126 @@
     return subjects;
   });
 
-  const visible = $derived.by(() => {
-    let filtered = statements().filter((s) =>
+  // A FILTER IS A LENS, NOT A DELETION.
+  //
+  // `visible` is the graph's TOPOLOGY: every statement that is part of the graph at all.
+  // Only structural exclusions are dropped here — rejected/superseded facts and meta
+  // predicates are not "filtered out", they are not graph content in the first place.
+  //
+  // User filters do NOT belong in this set. They used to be: each active filter spliced
+  // statements out of the array before buildGraphView, so the filtered nodes never reached
+  // the force simulation. Two things followed, both bad. The layout JUMPED — d3 re-solves a
+  // different graph, so the node you were looking at moved, and the shape you had learned
+  // was gone. And filtering to zero matches emptied `visible` entirely, which tripped the
+  // `visible.length === 0` branch below and drew the MARKETING LANDING PAGE over the user's
+  // own graph.
+  //
+  // Filters now resolve to a set of matching node KEYS (see filterMatch) and the graph dims
+  // the rest to 0.18 alpha — present, still pulling on their neighbours, just quiet. The
+  // hubs/islands/leaps filters already worked this way; the status/source/type ones did not.
+  // Now there is one mechanism.
+  const visible = $derived.by(() =>
+    statements().filter((s) =>
       s.status !== 'rejected' &&
       s.status !== 'superseded' &&
       !GRAPH_EXCLUDED_PREDICATES.has(s.p.value)
-    );
+    )
+  );
 
-    // Apply status filters
-    if (activeFilters.has('confirmed') || activeFilters.has('pending')) {
-      filtered = filtered.filter((s) => {
-        if (activeFilters.has('confirmed') && (s.status === 'confirmed' || s.status === 'refined')) return true;
-        if (activeFilters.has('pending') && s.status === 'pending') return true;
-        return false;
-      });
+  /**
+   * Statement-level filters (status · source · entity type · no-source · no-type), resolved
+   * to the node keys they keep. A node is kept if ANY statement touching it passes every
+   * active filter — the filters AND together, as they did when they were chained `.filter`s.
+   *
+   * null = no statement-level filter is active (everything matches; nothing to dim).
+   */
+  const filterMatch = $derived.by(() => {
+    const wantStatus = activeFilters.has('confirmed') || activeFilters.has('pending');
+    const wantSource = selectedSources.size > 0;
+    const wantType = typedSubjects !== null;
+    const wantNoSource = activeFilters.has('no-source');
+    const wantNoType = activeFilters.has('no-type');
+    if (!wantStatus && !wantSource && !wantType && !wantNoSource && !wantNoType) return null;
+
+    const keys = new Set<string>();
+    for (const s of visible) {
+      if (wantStatus) {
+        const ok =
+          (activeFilters.has('confirmed') && (s.status === 'confirmed' || s.status === 'refined')) ||
+          (activeFilters.has('pending') && s.status === 'pending');
+        if (!ok) continue;
+      }
+      if (wantSource && !selectedSources.has(s.sourceId)) continue;
+      if (wantNoSource && s.sourceId !== 'manual') continue;
+      if (wantType && !(typedSubjects!.has(s.s.value) || typedSubjects!.has(s.o.value))) continue;
+      if (
+        wantNoType &&
+        !(
+          (s.s.kind === 'iri' && untypedSubjectIris.has(s.s.value)) ||
+          (s.o.kind === 'iri' && untypedSubjectIris.has(s.o.value))
+        )
+      )
+        continue;
+      keys.add(termKey(s.s));
+      keys.add(termKey(s.o));
     }
+    return keys;
+  });
 
-    // Apply source filters
-    if (selectedSources.size > 0) {
-      filtered = filtered.filter((s) => selectedSources.has(s.sourceId));
-    }
+  // F83 graph legibility: LITERALS ARE ATTRIBUTES, NOT NODES — unless they are shared.
+  //
+  // Every object used to become a node, so a 265-character kpred:description became one.
+  // The roadmap has 1,888 triples but only 233 real entities, and it was rendering as
+  // ~1,234 nodes — most of them dangling walls of text. Unusable on a phone, and the
+  // roadmap is the first graph anyone opens.
+  //
+  // A literal earns a node by being SHARED ("production", 53 features — a real category).
+  // A value that appears once connects nothing; it belongs in the node panel, not on the
+  // canvas. Nodes: 1,234 -> 271, and every one of them means something.
+  const graphView = $derived(buildGraphView(visible, { categoryNodes: showCategoryNodes }));
+  /** Statements the canvas actually draws. */
+  const drawn = $derived(graphView.edges);
+  /** Literal facts that belong to a node rather than the canvas (node panel reads these). */
+  const nodeAttributes = $derived(graphView.attributes);
 
-    // Apply entity type filters — keep statements where subject matches typed subjects
-    if (typedSubjects !== null) {
-      filtered = filtered.filter((s) => typedSubjects.has(s.s.value) || typedSubjects.has(s.o.value));
-    }
+  // ── Context-aware view suggestions (F85) ───────────────────────────────────
+  //
+  // Offer the right force/filter for what is ACTUALLY on screen — "47 of these facts carry
+  // dates spanning 8 months; want a timeline?" — and say nothing otherwise.
+  //
+  // A suggestion must be EARNED BY THE DATA. An unearned one is corrosive: it teaches the
+  // user to ignore the suggester, and then the one good suggestion goes unread with all the
+  // rest. So: at most ONE at a time, it carries its evidence, and it is one-time
+  // dismissable. A menu of five things to try is not help, it is homework.
+  let suggestedId = $state<string | null>(null);
 
-    // Apply no-type filter — show only nodes that have no rdf:type
-    if (activeFilters.has('no-type')) {
-      filtered = filtered.filter((s) =>
-        (s.s.kind === 'iri' && untypedSubjectIris.has(s.s.value)) ||
-        (s.o.kind === 'iri' && untypedSubjectIris.has(s.o.value))
-      );
-    }
+  $effect(() => {
+    const suggestion = bestSuggestion({
+      visible: drawn,
+      nodeCount: allNodes.size,
+      layout,
+      selectedTypes,
+      sourceCount: selectedSources.size || new Set(drawn.map((s) => s.sourceId)).size,
+    });
 
-    // Apply no-source filter — show only manually added statements
-    if (activeFilters.has('no-source')) {
-      filtered = filtered.filter((s) => s.sourceId === 'manual');
-    }
+    if (!suggestion || suggestion.id === suggestedId) return;
+    suggestedId = suggestion.id;
 
-    return filtered;
+    pushNotification({
+      id: `view-suggestion:${suggestion.id}`,
+      type: 'info',
+      title: suggestion.headline,
+      body: suggestion.evidence,          // the evidence is SHOWN, never implied
+      oneTime: true,                       // dismissed once = never nagged again
+      action: {
+        label: 'apply',
+        onclick: () => {
+          if (suggestion.adjust.layout) layout = suggestion.adjust.layout;
+          if (suggestion.adjust.filters) activeFilters = new Set(suggestion.adjust.filters);
+          dismissNotification(`view-suggestion:${suggestion.id}`);
+        },
+      },
+    });
   });
 
   // Compute node degrees and build adjacency
@@ -409,7 +518,7 @@
     const adj = new Map<string, Set<string>>();
     const nodes = new Set<string>();
 
-    for (const st of visible) {
+    for (const st of drawn) {
       const sk = termKey(st.s);
       const ok = termKey(st.o);
 
@@ -429,6 +538,13 @@
   });
 
   // Find connected components using BFS
+  // kb:dichotomy — entities that say drastically different things about themselves. A CONFLICT
+  // to fix before merge, or a natural dichotomy (was sales, now technical) to preserve through
+  // one. Filterable like hubs/islands because these tensions are where review pays off most.
+  const dichotomyList = $derived(findDichotomies(visible));
+  const dichotomyKeys = $derived([...new Set(dichotomyList.map((d) => d.key))]);
+  const conflictCount = $derived(dichotomyList.filter((d) => d.kind === 'conflict').length);
+
   const islandNodes = $derived.by(() => {
     const visited = new Set<string>();
     const smallComponentNodes = new Set<string>();
@@ -497,27 +613,52 @@
     return new Set([...allEntityIris].filter(iri => !typedIris.has(iri)));
   });
 
-  // Node keys for untyped entities (used for highlighting)
-  const untypedNodeKeys = $derived(
-    [...untypedSubjectIris].map(iri => `i:${iri}`)
-  );
-
   // Node keys for entities with leap targets (used for highlighting)
   const leapKeys = $derived([...leapNodeKeys(statements())]);
 
-  // Shared dim/highlight state — used by both the graph components and the label overlay
-  const dimMode = $derived(
-    activeFilters.has('hubs') || activeFilters.has('islands') || activeFilters.has('no-type') || activeFilters.has('leaps')
-  );
+  // Selecting a SET node spotlights the set + its members (F65): the group lights
+  // up, everything else dims — so a set is something you can see and act on.
+  const selectedSetKeys = $derived.by(() => {
+    if (!selected?.startsWith('i:')) return [] as string[];
+    const iri = selected.slice(2);
+    if (!isEntitySet(iri, statements())) return [];
+    return [selected, ...setMembers(iri, statements()).map(m => `i:${m}`)];
+  });
+
+  /**
+   * Node-set filters (hubs · islands · leaps): properties of a node, not of a statement.
+   * UNIONed — "hubs + islands" asks for both kinds at once, which is how they have always
+   * behaved. null = none active.
+   */
+  const nodeSetMatch = $derived.by(() => {
+    if (!activeFilters.has('hubs') && !activeFilters.has('islands') && !activeFilters.has('leaps') && !activeFilters.has('dichotomy')) return null;
+    return new Set(
+      Array.from(activeFilters).flatMap((f) =>
+        f === 'hubs' ? hubs : f === 'islands' ? islandNodes : f === 'leaps' ? leapKeys : f === 'dichotomy' ? dichotomyKeys : ([] as string[])
+      )
+    );
+  });
+
+  /**
+   * Every node that survives the active filters. The two mechanisms AND together: asking for
+   * "hubs" and "pending" means hubs that are pending, not hubs plus everything pending.
+   *
+   * null = no filter is active, so nothing is dimmed.
+   */
+  const matchedKeys = $derived.by(() => {
+    if (filterMatch === null) return nodeSetMatch;
+    if (nodeSetMatch === null) return filterMatch;
+    return new Set([...filterMatch].filter((k) => nodeSetMatch.has(k)));
+  });
+
+  // Shared dim/highlight state — used by both the graph components and the label overlay.
+  // Nothing here REMOVES a node: the unmatched keep their place in the force simulation and
+  // render at 0.18 alpha, so the graph's shape holds still while you look through the lens.
+  const dimMode = $derived(matchedKeys !== null || selectedSetKeys.length > 0);
   const highlightedSet = $derived(new Set([
-    ...Array.from(activeFilters).flatMap(f =>
-      f === 'hubs' ? hubs
-      : f === 'islands' ? islandNodes
-      : f === 'no-type' ? untypedNodeKeys
-      : f === 'leaps' ? leapKeys
-      : [] as string[]
-    ),
-    ...shellySpotlight()
+    ...(matchedKeys ?? []),
+    ...shellySpotlight(),
+    ...selectedSetKeys
   ]));
 
   // Visible-accurate filter counts (exclude GRAPH_EXCLUDED_PREDICATES like the graph does)
@@ -727,9 +868,17 @@
     selected = null;
   }
 
+  // Deleting some nodes would break features (a type others use, a type
+  // definition, a nav/leap node). Flag those so we always confirm first.
+  const deleteProtection = $derived.by(() =>
+    selected?.startsWith('i:')
+      ? entityProtection(selected.slice(2), statements())
+      : { protected: false as const }
+  );
+
   function deleteSelected() {
     if (!selected) return;
-    if (deleteTargets.length > 1) {
+    if (deleteTargets.length > 1 || deleteProtection.protected) {
       confirmingDelete = true;
     } else {
       confirmDelete();
@@ -810,11 +959,93 @@
     editingIcon3d = false;
   }
 
+  // ── Preview images ──────────────────────────────────────────────────────────
+  // Two sources: editor-assigned blobs (gifOverrides, IndexedDB) and graph-declared
+  // image URLs/paths — a `p:photo` or `meta/gifPreview` literal whose value is a
+  // rooted path ("/starter-assets/alex.svg"), http(s) URL, or data: URI. The latter
+  // lets a plain static .ttl (e.g. the starter graph) ship local photos with no
+  // binary bundling.
+  const PREVIEW_URL_PREDICATES = new Set([
+    'urn:kbase:predicate/photo',
+    'urn:kbase:meta/gifPreview',
+    // icon2d doubles as a node image (visual-review steps store their screenshot
+    // here). In 2D it draws as the canvas icon; feeding it to the preview map lets
+    // it also show as a hover/overlay thumbnail — the only image path in 3D.
+    'urn:kbase:predicate/icon2d',
+  ]);
+  const previewUrlMap = $derived.by(() => {
+    const m = new Map<string, string>();
+    for (const s of statements()) {
+      if (!PREVIEW_URL_PREDICATES.has(s.p.value)) continue;
+      if (s.s.kind !== 'iri' || s.o.kind !== 'literal') continue;
+      const v = s.o.value;
+      if (v.startsWith('/') || v.startsWith('http') || v.startsWith('data:')) m.set(s.s.value, v);
+    }
+    return m;
+  });
+  /** Resolve an entity's preview image src: editor blob first, then a graph URL. */
+  function previewUrlFor(iri: string | null): string | null {
+    if (!iri) return null;
+    return gifOverrides().get(iri) ?? previewUrlMap.get(iri) ?? null;
+  }
+  /** When on, preview images render on every node (no hover). Slower to paint. */
+  const alwaysPreviews = $derived(settings().alwaysShowPreviews ?? false);
+  /** "Normal" preview thumbnail size (px), adjustable in Settings. */
+  const nodePreviewSize = $derived(settings().nodePreviewSize ?? 96);
+
+  // ── Asset viewer: normal thumbnail → large (covers most of graph) → fullscreen.
+  // Click a node image to expand; click empty graph to collapse; fullscreen for
+  // rich asset types. expandedAssetKey holds the node whose image is enlarged.
+  let expandedAssetKey = $state<string | null>(null);
+  let assetFullscreen = $state(false);
+  // Rich assets beyond images: 3D models (glbModel) and video. Resolved per node
+  // so the viewer can render <img> / <video> / a GLB canvas.
+  const glbModelMap = $derived.by(() => {
+    const m = new Map<string, string>();
+    for (const s of statements()) {
+      if (s.p.value === 'urn:kbase:meta/glbModel' && s.s.kind === 'iri' && s.o.kind === 'literal') {
+        const v = s.o.value;
+        if (v.startsWith('/') || v.startsWith('http') || v.startsWith('data:')) m.set(s.s.value, v);
+      }
+    }
+    return m;
+  });
+  const videoMap = $derived.by(() => {
+    const m = new Map<string, string>();
+    for (const s of statements()) {
+      if (s.p.value === 'urn:kbase:predicate/video' && s.s.kind === 'iri' && s.o.kind === 'literal') {
+        const v = s.o.value;
+        if (v.startsWith('/') || v.startsWith('http') || v.startsWith('data:')) m.set(s.s.value, v);
+      }
+    }
+    return m;
+  });
+  type NodeAsset = { kind: 'image' | 'video' | 'glb'; url: string };
+  function nodeAssetFor(iri: string | null): NodeAsset | null {
+    if (!iri) return null;
+    const glb = glbModelMap.get(iri); if (glb) return { kind: 'glb', url: glb };
+    const vid = videoMap.get(iri);   if (vid) return { kind: 'video', url: vid };
+    const img = previewUrlFor(iri);  if (img) return { kind: 'image', url: img };
+    return null;
+  }
+  const expandedAsset = $derived(nodeAssetFor(expandedAssetKey ? iriFromNodeKey(expandedAssetKey) : null));
+  function collapseAsset() { expandedAssetKey = null; assetFullscreen = false; }
+  const autoExpandAssets = $derived(settings().autoExpandAssets ?? false);
+
+  // Auto-expand: when on, the selected node's asset opens large automatically as
+  // navigation moves node to node (story/explore walkthroughs). Keeps fullscreen
+  // if the user went there. Manual mode leaves expansion to a thumbnail click.
+  $effect(() => {
+    if (!autoExpandAssets) return;
+    const a = selected ? nodeAssetFor(iriFromNodeKey(selected)) : null;
+    if (a) expandedAssetKey = selected;
+    else { expandedAssetKey = null; assetFullscreen = false; }
+  });
+
   // ── GIF assignment ────────────────────────────────────────────────────────
   const entityGifUrl = $derived.by(() => {
     if (!selected?.startsWith('i:')) return null;
-    const iri = selected.slice(2);
-    return gifOverrides().get(iri) ?? null;
+    return previewUrlFor(selected.slice(2));
   });
 
   async function assignEntityGif(file: File) {
@@ -1291,6 +1522,33 @@
       .filter(Boolean) as { key: string; label: string; iri: string }[]
   );
 
+  // Is the currently-selected node an entity set? (drives set-specific actions)
+  const selectedIsSet = $derived(selected != null && selected.startsWith('i:') && isEntitySet(selected.slice(2), statements()));
+  const selectedSetMemberCount = $derived(
+    selected != null && selected.startsWith('i:') ? setMembers(selected.slice(2), statements()).length : 0
+  );
+  /** Turn a selected set into a multi-selection of its members, to act on the group. */
+  function selectSetMembers() {
+    if (!selected?.startsWith('i:')) return;
+    const members = setMembers(selected.slice(2), statements());
+    if (members.length === 0) return;
+    multiSelected = new Set(members.map(m => `i:${m}`));
+    selected = null; // hand off to the multi-select action panel
+  }
+
+  // Batch-select several nodes → group them into a reusable "set" (F65). The set
+  // is a first-class node (ktype:EntitySet) linked to each member via has-member,
+  // so it round-trips in TTL and can be re-selected to act on the whole group.
+  async function createSetFromSelection() {
+    const members = multiSelectedList.map(n => n.iri);
+    if (members.length < 2) return;
+    const name = defaultSetName(members, (iri) => multiSelectedList.find(n => n.iri === iri)?.label ?? iri);
+    const { setIri, statements } = buildEntitySet(name, members);
+    await addStatements(statements);
+    multiSelected = new Set();
+    selected = `i:${setIri}`;
+  }
+
   /**
    * Perform the merge after the user has reviewed conflicts in MergeReview.
    * keepKey  — termKey of the entity whose IRI is kept
@@ -1391,6 +1649,7 @@
       sources={sources()}
       targetKey={hoverTarget}
       onselect={(k, ctrlKey) => {
+        if (!autoExpandAssets) collapseAsset(); // manual mode: a graph click collapses; auto mode: the effect re-syncs
         if (ctrlKey && k) {
           const next = new Set(multiSelected);
           if (next.has(k)) next.delete(k); else next.add(k);
@@ -1402,7 +1661,7 @@
         }
       }}
       onhover={(k) => (hoverTarget = k)}
-      onlabelsmove={(labels) => { nodeLabels = labels; }}
+      onlabelsmove={setNodeLabels}
       onmarkersmove={(m) => { markerLabels = m; }}
       ontimelinepan={(c) => { timelineCenter = c; }}
       {nodeOrder}
@@ -1429,6 +1688,7 @@
           sources={sources()}
           targetKey={hoverTarget}
           onselect={(k, ctrlKey) => {
+        if (!autoExpandAssets) collapseAsset(); // manual mode: a graph click collapses; auto mode: the effect re-syncs
         if (ctrlKey && k) {
           const next = new Set(multiSelected);
           if (next.has(k)) next.delete(k); else next.add(k);
@@ -1440,7 +1700,7 @@
         }
       }}
           onhover={(k) => (hoverTarget = k)}
-          onlabelsmove={(labels) => { nodeLabels = labels; }}
+          onlabelsmove={setNodeLabels}
           onmarkersmove={(m) => { markerLabels = m; }}
           ontimelinepan={(c) => { timelineCenter = c; }}
           highlighted={[...highlightedSet]}
@@ -1473,25 +1733,32 @@
   <div class="overlay-group">
     <span class="group-label mono">filters</span>
     <div class="chip-row">
-      <button class="chip" class:active={activeFilters.has('hubs')} onclick={() => toggleFilter('hubs')}>
+      <button class="chip" class:active={activeFilters.has('hubs')} onclick={() => toggleFilter('hubs')} title="Show only highly-connected hub nodes">
         <span class="num">{hubs.length}</span>
         <span class="lbl mono">hubs</span>
       </button>
-      <button class="chip" class:active={activeFilters.has('islands')} onclick={() => toggleFilter('islands')}>
+      <button class="chip" class:active={activeFilters.has('islands')} onclick={() => toggleFilter('islands')} title="Show only isolated nodes with no connections">
         <span class="num">{islandNodes.length}</span>
         <span class="lbl mono">islands</span>
       </button>
+      {#if dichotomyKeys.length > 0}
+        <button class="chip" class:active={activeFilters.has('dichotomy')} onclick={() => toggleFilter('dichotomy')}
+          title="Entities that say drastically different things about themselves — conflicts to fix, or natural dichotomies to preserve. The best place to look before a merge.">
+          <span class="num" class:has-conflict={conflictCount > 0}>{dichotomyKeys.length}</span>
+          <span class="lbl mono">dichotomy{conflictCount > 0 ? ` (${conflictCount}⚠)` : ''}</span>
+        </button>
+      {/if}
       {#if leapKeys.length > 0}
-        <button class="chip" class:active={activeFilters.has('leaps')} onclick={() => toggleFilter('leaps')}>
+        <button class="chip" class:active={activeFilters.has('leaps')} onclick={() => toggleFilter('leaps')} title="Cross-graph leap nodes — jump to another graph">
           <span class="num">{leapKeys.length}</span>
           <span class="lbl mono">jumps</span>
         </button>
       {/if}
-      <button class="chip" class:active={activeFilters.has('confirmed')} onclick={() => toggleFilter('confirmed')}>
+      <button class="chip" class:active={activeFilters.has('confirmed')} onclick={() => toggleFilter('confirmed')} title="Show confirmed facts">
         <span class="num">{visibleConfirmedCount}</span>
         <span class="lbl mono">confirmed</span>
       </button>
-      <button class="chip" class:active={activeFilters.has('pending')} onclick={() => toggleFilter('pending')}>
+      <button class="chip" class:active={activeFilters.has('pending')} onclick={() => toggleFilter('pending')} title="Show pending facts awaiting your review">
         <span class="num">{visiblePendingCount}</span>
         <span class="lbl mono">pending</span>
       </button>
@@ -1593,24 +1860,39 @@
       onValueChange={(v) => { if (v) layout = v as typeof layout; }}
       class="tg-row"
     >
-      <ToggleGroup.Item value="force" class="tg-chip"><span class="lbl mono">free</span></ToggleGroup.Item>
-      <ToggleGroup.Item value="focus" class="tg-chip"><span class="lbl mono">focus</span></ToggleGroup.Item>
+      <ToggleGroup.Item value="force" class="tg-chip" title="Free force layout — nodes repel, links pull them together"><span class="lbl mono">free</span></ToggleGroup.Item>
+      <ToggleGroup.Item value="focus" class="tg-chip" title="Focus the selected node and its neighbours; push the rest away"><span class="lbl mono">focus</span></ToggleGroup.Item>
       {#if sources().filter(s => s.kind !== 'analysis').length > 1}
-        <ToggleGroup.Item value="source" class="tg-chip"><span class="lbl mono">source</span></ToggleGroup.Item>
+        <ToggleGroup.Item value="source" class="tg-chip" title="Cluster nodes by the source they came from"><span class="lbl mono">source</span></ToggleGroup.Item>
       {/if}
       {#if activeEntityTypes.length > 0}
-        <ToggleGroup.Item value="type" class="tg-chip"><span class="lbl mono">type</span></ToggleGroup.Item>
+        <ToggleGroup.Item value="type" class="tg-chip" title="Cluster nodes by entity type"><span class="lbl mono">type</span></ToggleGroup.Item>
       {/if}
-      <ToggleGroup.Item value="hub" class="tg-chip"><span class="lbl mono">hub</span></ToggleGroup.Item>
-      <ToggleGroup.Item value="timeline" class="tg-chip"><span class="lbl mono">time</span></ToggleGroup.Item>
+      <ToggleGroup.Item value="hub" class="tg-chip" title="Pull the most-connected hubs toward the centre"><span class="lbl mono">hub</span></ToggleGroup.Item>
+      <ToggleGroup.Item value="timeline" class="tg-chip" title="Lay nodes out left-to-right on a timeline by date"><span class="lbl mono">time</span></ToggleGroup.Item>
       <!-- value stays "order" (URL/state); label is "arrange" so it isn't
            confused with structural hnav ordering — this is a manual drag grid. -->
-      <ToggleGroup.Item value="order" class="tg-chip"><span class="lbl mono">arrange</span></ToggleGroup.Item>
-      <ToggleGroup.Item value="hierarchy" class="tg-chip"><span class="lbl mono">tree</span></ToggleGroup.Item>
+      <ToggleGroup.Item value="order" class="tg-chip" title="Hand-arrange nodes on a grid — drag to reorder (basis for page layout)"><span class="lbl mono">arrange</span></ToggleGroup.Item>
+      <ToggleGroup.Item value="hierarchy" class="tg-chip" title="Hierarchical tree from broader/narrower and nav order"><span class="lbl mono">tree</span></ToggleGroup.Item>
     </ToggleGroup.Root>
     {#if podMode}
       <span class="pod-indicator mono" title="Pod view is on — arrivals from your currents drift in translucent until you accept them. Toggle it on the Graph tab.">🐋 pod</span>
     {/if}
+  </div>
+
+  <!-- ASSETS -->
+  <div class="overlay-group">
+    <span class="group-label mono">assets</span>
+    <div class="chip-row">
+      <button
+        class="chip"
+        class:active={autoExpandAssets}
+        onclick={() => updateSettings({ autoExpandAssets: !autoExpandAssets })}
+        title="Auto-expand a node's image to the large view as you move through the graph (e.g. story explore). Off = click a thumbnail to expand."
+      >
+        <span class="lbl mono">auto-expand</span>
+      </button>
+    </div>
   </div>
 
   <!-- TIMELINE CONTROLS (visible only when timeline layout is active) -->
@@ -1657,7 +1939,10 @@
   </div>
   {/if}
 
-
+  <!-- Graph package & sync lives in the GRAPHS tab (/kb), alongside sources, predicates
+       and the graph registry. It was buried in this filter panel behind a disclosure,
+       collapsed "so the panel stays short" — which was the tell: it did not belong here.
+       A filter panel should filter. Graph management has its own tab because it matters. -->
 
 </div>
 </AdaptivePanel>
@@ -1695,6 +1980,7 @@
         multiSelected = new Set();
         showRelationUI = true;
       }}>+ relate</button>
+      <button class="np-act-btn np-act-set" onclick={createSetFromSelection} title="group these nodes into a reusable set">⬡ group as set</button>
       <button class="np-act-btn" onclick={() => (multiSelected = new Set())}>✕ clear</button>
     </div>
   </div>
@@ -1702,18 +1988,31 @@
 
 <!-- Always-visible node labels — outer wrapper positions (GPU), inner handles hover scale -->
 <!-- transition:fade handles distance-culling enter/exit; dim-hidden handles dimMode + selected -->
-{#each nodeLabels as n (n.key)}
-  <div
-    class="node-label-wrap"
-    transition:fade={{ duration: 220 }}
-    style="transform: translate3d({n.x}px, {n.y}px, 0); --lfs: {labelFontSize}px; --lop: {n.opacity ?? 0.85};"
-  >
-    <span
-      class="node-label mono"
-      class:hovered={n.key === hoverTarget}
-      class:selected-node={n.key === selected}
-      class:dim-hidden={dimMode && !highlightedSet.has(n.key) && n.key !== hoverTarget && n.key !== selected}
-    >{n.label}</span>
+<!-- Always-visible node labels — shared GraphLabels overlay (F92). The asset thumbnail and leap
+     badge are page-specific, passed as snippets so this page keeps them and their styling. -->
+<GraphLabels labels={nodeLabels} {selected} {hoverTarget} {dimMode} {highlightedSet} {labelFontSize}>
+  {#snippet preview(n)}
+    <!-- Show the node image when previews are forced on, OR for the focused/selected/highlighted
+         nodes. Click it to expand large (→ fullscreen). Hidden while it is the expanded one. -->
+    {#if (alwaysPreviews || n.key === selected || highlightedSet.has(n.key)) && n.key !== expandedAssetKey}
+      {@const a = nodeAssetFor(iriFromNodeKey(n.key))}
+      {#if a}
+        {@const dims = `width: ${nodePreviewSize}px; height: ${nodePreviewSize}px;`}
+        <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions a11y_no_static_element_interactions a11y_media_has_caption -->
+        {#if a.kind === 'image'}
+          <img class="node-preview-thumb" src={a.url} alt="" loading="lazy" style={dims}
+            onclick={(e) => { e.stopPropagation(); expandedAssetKey = n.key; assetFullscreen = false; }} />
+        {:else if a.kind === 'video'}
+          <video class="node-preview-thumb" src={a.url} muted loop autoplay playsinline style={dims}
+            onclick={(e) => { e.stopPropagation(); expandedAssetKey = n.key; assetFullscreen = false; }}></video>
+        {:else}
+          <div class="node-preview-thumb glb-badge" style={dims}
+            onclick={(e) => { e.stopPropagation(); expandedAssetKey = n.key; assetFullscreen = false; }}>◈ 3D</div>
+        {/if}
+      {/if}
+    {/if}
+  {/snippet}
+  {#snippet after(n)}
     {#if n.key === selected && entityLeap}
       <button
         class="leap-badge mono"
@@ -1726,8 +2025,8 @@
         <span class="leap-badge-label">{entityLeap.label ?? (entityLeap.kind === 'kb' ? entityLeap.target.slice(0, 8).toUpperCase() : entityLeap.target)}</span>
       </button>
     {/if}
-  </div>
-{/each}
+  {/snippet}
+</GraphLabels>
 
 <!-- Layout anchor labels (source/type/hub cluster markers) -->
 {#each markerLabels as m (m.key)}
@@ -1753,7 +2052,7 @@
 <!-- Long-hover preview (GIF and/or metadata card) -->
 {#if gifActiveKey}
   {@const activeIri = iriFromNodeKey(gifActiveKey)}
-  {@const gifSrc = activeIri ? gifOverrides().get(activeIri) : null}
+  {@const gifSrc = previewUrlFor(activeIri)}
   {@const activeMeta = hoverMeta?.iri === activeIri ? hoverMeta : null}
   {#if gifSrc || activeMeta}
     <div
@@ -1780,6 +2079,52 @@
   {/if}
 {/if}
 
+<!-- Asset viewer — LARGE: covers most of the graph; clicking the surrounding
+     graph (not the image) collapses to normal; clicking the image → fullscreen. -->
+{#if expandedAsset && !assetFullscreen}
+  <div class="asset-large" transition:fade={{ duration: 140 }}>
+    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions a11y_media_has_caption a11y_no_static_element_interactions -->
+    {#if expandedAsset.kind === 'image'}
+      <img src={expandedAsset.url} alt="expanded asset" onclick={() => (assetFullscreen = true)} />
+    {:else if expandedAsset.kind === 'video'}
+      <video class="asset-media" src={expandedAsset.url} controls autoplay loop playsinline></video>
+    {:else}
+      <div class="asset-media asset-glb" onclick={() => (assetFullscreen = true)}>
+        {#key expandedAsset.url}<AssetGlbViewer url={expandedAsset.url} />{/key}
+      </div>
+    {/if}
+    <div class="asset-controls">
+      <button onclick={() => (assetFullscreen = true)} title="Fullscreen">⛶</button>
+      <button onclick={collapseAsset} title="Close">✕</button>
+    </div>
+  </div>
+{/if}
+
+<!-- Asset viewer — FULLSCREEN: images, video, and 3D/GLB. Click the backdrop to
+     step back to large; ✕ or Esc closes. -->
+{#if expandedAsset && assetFullscreen}
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+  <div class="asset-fullscreen" onclick={() => (assetFullscreen = false)} transition:fade={{ duration: 140 }}>
+    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions a11y_media_has_caption -->
+    {#if expandedAsset.kind === 'image'}
+      <img src={expandedAsset.url} alt="fullscreen asset" onclick={(e) => e.stopPropagation()} />
+    {:else if expandedAsset.kind === 'video'}
+      <video class="asset-fs-media" src={expandedAsset.url} controls autoplay loop playsinline onclick={(e) => e.stopPropagation()}></video>
+    {:else}
+      <div class="asset-fs-media asset-glb" onclick={(e) => e.stopPropagation()}>
+        {#key expandedAsset.url}<AssetGlbViewer url={expandedAsset.url} />{/key}
+      </div>
+    {/if}
+    <button class="asset-fs-close" onclick={collapseAsset} title="Close (Esc)">✕</button>
+  </div>
+{/if}
+
+<svelte:window onkeydown={(e) => {
+  if (e.key === 'Escape' && expandedAssetKey) {
+    if (assetFullscreen) assetFullscreen = false; else collapseAsset();
+  }
+}} />
+
 <!-- Keyboard nav hint (shown briefly when a node is selected) -->
 {#if selected && navHistory.length === 0}
   <div class="kb-hint mono">
@@ -1803,7 +2148,7 @@
 <!-- Unified node panel — shown when a node is selected -->
 {#if selected && nodeDetails}
   {@const info = nodeDetails}
-  <AdaptivePanel corner="bottom-right" width={320} minWidth={240} maxWidth={800} zIndex={300} title={info.label} open={true} onOpenChange={(o) => { if (!o) { selected = null; editingLabel = false; showMergeUI = false; showRelationUI = false; showMergeReview = false; } }} extraStyle="max-height: calc(100vh - {124 + notificationStackHeight.get()}px)">
+  <AdaptivePanel corner="bottom-right" width={320} minWidth={240} maxWidth={800} zIndex={300} title={info.label} open={true} onOpenChange={(o) => { if (!o) { selected = null; editingLabel = false; showMergeUI = false; showRelationUI = false; showMergeReview = false; } }} extraStyle="max-height: calc(100vh - {132 + notificationStackHeight.get()}px)">
     {#snippet header()}
     <!-- Header: name + type + close -->
     <div class="np-header">
@@ -1869,13 +2214,19 @@
     <!-- Action row — always visible, at the top (not for source nodes) -->
     {#if !showMergeUI && !showRelationUI && !selected?.startsWith('src:')}
       {#if confirmingDelete}
-        <div class="np-action-row np-action-confirm">
+        <div class="np-action-row np-action-confirm" class:np-action-protected={deleteProtection.protected}>
+          {#if deleteProtection.protected}
+            <span class="np-confirm-warn mono">⚠ are you sure? {deleteProtection.reason}</span>
+          {/if}
           <span class="np-confirm-label mono">delete {deleteTargets.length} fact{deleteTargets.length !== 1 ? 's' : ''}?</span>
-          <button class="np-act-btn np-act-danger" onclick={confirmDelete}>confirm</button>
+          <button class="np-act-btn np-act-danger" onclick={confirmDelete}>{deleteProtection.protected ? 'delete anyway' : 'confirm'}</button>
           <button class="np-act-btn" onclick={() => (confirmingDelete = false)}>cancel</button>
         </div>
       {:else}
         <div class="np-action-row">
+          {#if selectedIsSet}
+            <button class="np-act-btn np-act-set" onclick={selectSetMembers} title="multi-select this set's members to act on them">⬡ select {selectedSetMemberCount} members</button>
+          {/if}
           <button class="np-act-btn" onclick={() => (showMergeUI = true)}>⟷ merge</button>
           <button class="np-act-btn np-act-primary" onclick={() => (showRelationUI = true)}>+ relate</button>
           <button class="np-act-btn np-act-danger" onclick={deleteSelected}>✕ delete</button>
@@ -2154,7 +2505,7 @@
             <button class="leap-id mono" title={`${entityLeap.target}\nClick to navigate`} onclick={jumpToLeap} disabled={leapImporting || flyToGhost}>
               {entityLeap.label ?? (entityLeap.kind === 'kb' ? entityLeap.target.slice(0, 8).toUpperCase() : entityLeap.target)}
             </button>
-            <button class="link-rm" onclick={() => navigator.clipboard.writeText(entityLeap!.target)} title="copy target">⎘</button>
+            <button class="link-rm" onclick={() => copyText(entityLeap!.target)} title="copy target">⎘</button>
             <button class="link-rm" onclick={removeLeap} title="remove jump">✕</button>
           </div>
           {#if entityLeap.label && entityLeap.kind === 'kb'}
@@ -2394,6 +2745,25 @@
     flex-direction: column;
     gap: 0.35rem;
   }
+
+  /* Collapsible graph-package / sync section — keeps the panel short by default */
+  .pkg-disclosure {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    border-top: 1px solid var(--line);
+    padding-top: 0.5rem;
+  }
+  .pkg-disclosure > summary {
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .pkg-disclosure > summary::-webkit-details-marker { display: none; }
+  .pkg-disclosure > summary:hover { color: var(--accent); }
 
   .group-label {
     font-size: 0.52rem;
@@ -2708,6 +3078,18 @@
     align-items: center;
     flex-wrap: nowrap;
   }
+  /* Protected-entity delete: warn spans a first line, buttons wrap below. */
+  .np-action-protected {
+    flex-wrap: wrap;
+  }
+  .np-confirm-warn {
+    flex-basis: 100%;
+    font-size: 0.64rem;
+    line-height: 1.3;
+    color: #e0a13c;
+    white-space: normal;
+    margin-bottom: 0.3rem;
+  }
   .np-confirm-label {
     font-size: 0.67rem;
     color: var(--danger);
@@ -2737,6 +3119,12 @@
     background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
   }
   .np-act-primary:hover { background: var(--accent-soft); border-color: var(--accent); }
+  .np-act-set {
+    border-color: color-mix(in srgb, #a78bfa 50%, transparent);
+    color: #a78bfa;
+    background: color-mix(in srgb, #a78bfa 8%, var(--surface-2));
+  }
+  .np-act-set:hover { border-color: #a78bfa; background: color-mix(in srgb, #a78bfa 16%, var(--surface-2)); }
   .np-act-danger {
     border-color: color-mix(in srgb, var(--danger) 35%, transparent);
     color: var(--danger);
@@ -3123,6 +3511,135 @@
     will-change: transform;
     transition: transform 35ms linear;
   }
+  /* Always-on preview thumbnail: sits centered above the node label. */
+  .node-preview-thumb {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform: translate(-50%, calc(-100% - 6px));
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    background: var(--surface);
+    pointer-events: auto;
+    cursor: zoom-in;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .node-preview-thumb:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
+    border-color: var(--accent);
+  }
+
+  /* ── Asset viewer: large (covers most of graph) + fullscreen ── */
+  .asset-large {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none; /* clicks around the image fall through to the graph → collapse */
+    z-index: 380;
+  }
+  .asset-large img,
+  .asset-large .asset-media {
+    max-width: 80vw;
+    max-height: 78vh;
+    object-fit: contain;
+    border-radius: var(--rad);
+    border: 1px solid var(--line);
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+    background: var(--surface-2);
+    pointer-events: auto;
+    cursor: zoom-in;
+  }
+  .asset-media { display: block; }
+  /* GLB canvas needs explicit dimensions (threlte fills its container). */
+  .asset-glb {
+    width: min(80vw, 900px);
+    height: 78vh;
+  }
+  .asset-fs-media {
+    max-width: 96vw;
+    max-height: 94vh;
+    border-radius: var(--rad-sm);
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.7);
+    pointer-events: auto;
+  }
+  .asset-fullscreen .asset-glb {
+    width: 96vw;
+    height: 94vh;
+    max-width: none;
+    max-height: none;
+  }
+  /* GLB thumbnail badge (nodes already render their model in-graph; this is the
+     click target to open the fullscreen 3D viewer). */
+  .node-preview-thumb.glb-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--accent);
+    background: var(--surface);
+    width: auto !important;
+    height: auto !important;
+    padding: 0.2rem 0.45rem;
+  }
+  .asset-controls {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(calc(40vw - 100%), calc(-39vh));
+    display: flex;
+    gap: 0.35rem;
+    pointer-events: auto;
+  }
+  .asset-controls button {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+  }
+  .asset-controls button:hover { border-color: var(--accent); }
+  .asset-fullscreen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(6, 6, 10, 0.92);
+    backdrop-filter: blur(4px);
+    z-index: 600;
+    cursor: zoom-out;
+  }
+  .asset-fullscreen img {
+    max-width: 96vw;
+    max-height: 94vh;
+    object-fit: contain;
+    border-radius: var(--rad-sm);
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.7);
+    cursor: default;
+  }
+  .asset-fs-close {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+    font-size: 1.1rem;
+  }
+  .asset-fs-close:hover { border-color: var(--accent); }
   /* Inner span: centering + hover scale — separate from position transition */
   .node-label {
     display: block;
@@ -3314,13 +3831,13 @@
     border: 1px solid var(--line);
     background: var(--surface-2);
     transform-origin: top left;
-    min-width: 160px;
-    max-width: 220px;
+    min-width: 200px;
+    max-width: 420px;
   }
   .gif-preview img {
     display: block;
-    max-width: 220px;
-    max-height: 180px;
+    max-width: 420px;
+    max-height: 300px;
     width: 100%;
     height: auto;
   }
@@ -3536,8 +4053,8 @@
     .kb-hint { display: none; } /* keyboard nav hint not useful on touch devices */
     .gif-preview { display: none; } /* hover-triggered GIF preview not useful on touch */
     .hover-content-tooltip { display: none; } /* hover tooltip not useful on touch — use node panel preview instead */
-    .node-label-wrap { pointer-events: none; } /* prevent label divs from stealing touch events */
-    .node-label-wrap .leap-badge { pointer-events: auto; } /* but keep leap badges tappable */
+    /* .node-label-wrap now lives in GraphLabels (pointer-events:none there); .leap-badge sets
+       its own pointer-events:auto, so the mobile overrides here are redundant. */
     .np-preview-img { max-height: 160px; } /* slightly taller on mobile since it's the primary preview */
   }
 </style>

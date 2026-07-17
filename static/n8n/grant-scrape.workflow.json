@@ -1,0 +1,89 @@
+{
+  "name": "Reckons.AI — Grant scrape → pending review (F73)",
+  "meta": { "templateof": "reckons-grant-scrape" },
+  "nodes": [
+    {
+      "parameters": { "content": "## Grant discovery scrape (F73 kb:grant-discovery-currents)\n\nReads a Reckons.AI grant-seeker profile, searches Grants.gov for matching CALLS, and appends each match to `knowledge.pending.jsonl` in your synced Drive folder — where Reckons.AI imports it as a pending fact for review.\n\n**Before enabling:**\n1. Set the profile URL (Fetch profile node) to your published graph, e.g. `https://<your-site>/knowledge.ttl`, or a Drive/HTTP source of the profile TTL.\n2. Set the Google Drive credential + the `knowledge.pending.jsonl` file ID (Append node).\n3. Tune the schedule + Grants.gov keywords.\n\nThe scrape/schedule live here in n8n; Reckons.AI stays local-first and just imports the results.", "height": 460, "width": 420 },
+      "id": "note-overview",
+      "name": "About",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-140, 40]
+    },
+    {
+      "parameters": { "rule": { "interval": [{ "field": "days", "triggerAtHour": 7 }] } },
+      "id": "schedule",
+      "name": "Every morning",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [340, 240]
+    },
+    {
+      "parameters": { "url": "https://YOUR-SITE.example.com/knowledge.ttl", "options": { "response": { "response": { "responseFormat": "text" } } } },
+      "id": "fetch-profile",
+      "name": "Fetch profile TTL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [560, 240],
+      "notes": "GET your published knowledge.ttl (F72 kb:published-ttl) or any TTL source of the grant-seeker profile."
+    },
+    {
+      "parameters": { "jsCode": "// Pull the grant-seeker profile's search dimensions out of the TTL.\n// Looks for p:focus-area / p:geography / p:funding-need literals.\nconst ttl = $input.first().json.data ?? $input.first().json.body ?? $json.data ?? '';\nconst grab = (pred) => [...String(ttl).matchAll(new RegExp('p:' + pred + '\\\\s+\"([^\"]+)\"', 'g'))].map(m => m[1]);\nconst focus = grab('focus-area');\nconst geography = grab('geography');\nconst fundingNeed = grab('funding-need');\n// Build a keyword string for the Grants.gov search.\nconst keyword = [...focus, ...fundingNeed].join(' ') || 'community nonprofit';\nreturn [{ json: { focus, geography, fundingNeed, keyword } }];" },
+      "id": "profile-to-query",
+      "name": "Profile → search query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [780, 240]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.grants.gov/grantsws/rest/opportunities/search/",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"keyword\": \"{{ $json.keyword }}\",\n  \"oppStatuses\": \"forecasted|posted\",\n  \"rows\": 25\n}",
+        "options": {}
+      },
+      "id": "search-grants",
+      "name": "Search Grants.gov",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 240],
+      "notes": "Grants.gov public search. Swap for a foundation/RFP source or the Simpler.Grants.gov API as needed."
+    },
+    {
+      "parameters": { "jsCode": "// Map each opportunity to a Reckons.AI pending.jsonl line.\n// Shape (drainWorkspacePending): { subject, predicate, object, note?, type?, agent?, priority? }\nconst res = $input.first().json;\nconst list = res.oppHits ?? res.opportunities ?? res.data ?? [];\nconst geography = ($('Profile → search query').first().json.geography ?? []).map(s => s.toLowerCase());\nconst lines = [];\nfor (const o of list) {\n  const id = o.id ?? o.oppNumber ?? o.number ?? Math.random().toString(36).slice(2);\n  const title = o.title ?? o.oppTitle ?? 'Untitled call';\n  const agency = o.agency ?? o.agencyName ?? '';\n  const close = o.closeDate ?? o.oppCloseDate ?? '';\n  const subj = `urn:kbase:concept/grant-call/${String(id).replace(/[^A-Za-z0-9_-]/g, '-')}`;\n  const add = (predicate, object, note) => lines.push(JSON.stringify({ subject: subj, predicate, object, note, type: 'suggestion', agent: 'n8n-grant-scrape', priority: 'normal' }));\n  add('http://www.w3.org/2000/01/rdf-schema#label', title, `From Grants.gov — ${agency}`);\n  add('urn:kbase:predicate/matches', 'urn:kbase:concept/your-profile', 'auto-matched by scrape — confirm eligibility');\n  if (close) add('urn:kbase:predicate/deadline', String(close));\n  if (agency) add('urn:kbase:predicate/funder', agency);\n  add('urn:kbase:predicate/link', o.url ?? `https://www.grants.gov/search-results-detail/${id}`);\n  // Growing-filter question: ask for anything the profile likely can't answer yet.\n  lines.push(JSON.stringify({ subject: 'urn:kbase:concept/your-profile', predicate: 'urn:kbase:predicate/annual-budget', note: `Required by \"${title}\" — what is your annual operating budget?`, type: 'question', agent: 'n8n-grant-scrape', priority: 'normal' }));\n}\nreturn [{ json: { jsonl: lines.join('\\n') + (lines.length ? '\\n' : ''), count: lines.length } }];" },
+      "id": "match-to-pending",
+      "name": "Matches → pending.jsonl",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1220, 240]
+    },
+    {
+      "parameters": { "content": "### Append step\n\nReckons.AI drains `knowledge.pending.jsonl` from your synced folder/Drive (`drainWorkspacePending`).\n\nThis node writes the JSONL. For **append** semantics, either:\n- Google Drive: download the file → concatenate → update (2 nodes), or\n- Read/Write Files From Disk (append) if n8n shares the synced folder.\n\nWire your credential + the pending.jsonl file location here.", "height": 300, "width": 320 },
+      "id": "note-append",
+      "name": "Append notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1440, 40]
+    },
+    {
+      "parameters": { "operation": "write", "fileName": "=knowledge.pending.jsonl", "dataPropertyName": "jsonl", "options": { "append": true } },
+      "id": "append-pending",
+      "name": "Append to knowledge.pending.jsonl",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [1460, 360],
+      "notes": "Append to the pending file in the folder Reckons.AI syncs. Swap for a Google Drive update if you sync via Drive."
+    }
+  ],
+  "connections": {
+    "Every morning": { "main": [[{ "node": "Fetch profile TTL", "type": "main", "index": 0 }]] },
+    "Fetch profile TTL": { "main": [[{ "node": "Profile → search query", "type": "main", "index": 0 }]] },
+    "Profile → search query": { "main": [[{ "node": "Search Grants.gov", "type": "main", "index": 0 }]] },
+    "Search Grants.gov": { "main": [[{ "node": "Matches → pending.jsonl", "type": "main", "index": 0 }]] },
+    "Matches → pending.jsonl": { "main": [[{ "node": "Append to knowledge.pending.jsonl", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

@@ -8,6 +8,7 @@ import { triplesToStatements, extractMock, parseTriplesJSON, EXTRACTION_SYSTEM_P
 import { computeDiff, type Diff } from '../rdf/diff';
 import { semanticEnrichDiff, labelFromIRI } from '../rdf/semantic-diff';
 import { normalizeEntities } from '../rdf/normalize-entities';
+import { fetchTurtleFromUrl } from '../integrations/parsers/turtle-url';
 import { addSource, addStatements, statements as allStatements } from './kb.svelte';
 import { settings } from './settings.svelte';
 import { addSuggestion } from './disambiguation.svelte';
@@ -65,11 +66,23 @@ export async function ingest(
   // Extra metadata for repository sources
   let repoMeta: { owner: string; repo: string; branch: string; headSha: string; fileCount: number } | undefined;
 
+  // Set when the URL is a Reckons.AI graph: its own TTL is imported directly as
+  // pending facts, skipping LLM extraction entirely (F72 kb:ttl-aware-ingest).
+  let turtleStatements: Statement[] | null = null;
+
   if (input.kind === 'url') {
     onProgress?.({ phase: 'fetching' });
-    const fetched = await fetchReadable(input.url);
-    title = fetched.title;
-    text = fetched.text;
+    const ttl = await fetchTurtleFromUrl(input.url);
+    if (ttl) {
+      const { importTurtleFull } = await import('../rdf/import-ttl');
+      turtleStatements = (await importTurtleFull(ttl)).statements;
+      title = input.url.split('/').filter(Boolean).pop() || input.url;
+      text = ttl;
+    } else {
+      const fetched = await fetchReadable(input.url);
+      title = fetched.title;
+      text = fetched.text;
+    }
     uri = input.url;
     kind = 'url';
   } else if (input.kind === 'repository') {
@@ -143,8 +156,10 @@ export async function ingest(
     systemPrompt = EXTRACTION_SYSTEM_PROMPT + CODE_EXTRACTION_SUPPLEMENT;
   }
 
-  let triples: ExtractedTriple[];
-  if (backend === 'openai') {
+  let triples: ExtractedTriple[] = [];
+  if (turtleStatements) {
+    // Direct TTL import (F72) — the graph is already parsed; no LLM extraction.
+  } else if (backend === 'openai') {
     const raw = await chatOpenAI(
       [{ role: 'user', content: buildExtractionUserPrompt(text, title) }],
       systemPrompt,
@@ -218,12 +233,19 @@ export async function ingest(
     triples = extractMock(text, title);
   }
 
-  let newStatements = triplesToStatements(triples, source);
+  // Direct-imported graphs land as PENDING facts for review (no LLM); otherwise
+  // convert the extracted triples as usual.
+  // `text` is the source the model actually read, so pass it: every excerpt is verified
+  // against it, and a fabricated citation is dropped rather than shown as provenance
+  // (kb:passage-grounding).
+  let newStatements = turtleStatements
+    ? turtleStatements.map((st) => ({ ...st, status: 'pending' as const }))
+    : triplesToStatements(triples, source, text);
 
   // Record the backend and exact model that performed extraction.
   // Useful for provenance, re-extraction decisions, and explaining confidence variance.
-  source.extractionBackend = backend;
-  source.extractionModel =
+  source.extractionBackend = turtleStatements ? 'manual' : backend;
+  source.extractionModel = turtleStatements ? 'turtle-import' :
     backend === 'claude'     ? (s.claudeModel     ?? 'claude-opus-4-7')                        :
     backend === 'openai'     ? (s.openaiModel     ?? 'gpt-4o-mini')                            :
     backend === 'gemini'     ? (s.geminiModel     ?? 'gemini-2.0-flash')                       :

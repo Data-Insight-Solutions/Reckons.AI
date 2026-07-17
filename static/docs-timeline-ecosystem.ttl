@@ -194,7 +194,7 @@ tl:WikidataLaunch
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Wikidata Launch" ;
-    skos:definition     "Wikimedia's free knowledge base. Over 100 million items, all queryable via SPARQL. The largest collaboratively edited knowledge graph in the world. Powers infoboxes across all Wikipedia language editions." ;
+    skos:definition     "Wikimedia's free knowledge graph. Over 100 million items, all queryable via SPARQL. The largest collaboratively edited knowledge graph in the world. Powers infoboxes across all Wikipedia language editions." ;
     kpred:date          "2012-10-29"^^xsd:date ;
     kpred:publishedBy   "Wikimedia Foundation" ;
     skos:related        tl:DBpediaLaunch ;
@@ -246,7 +246,7 @@ tl:MCPSpec
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Model Context Protocol (MCP)" ;
-    skos:definition     "An open protocol by Anthropic for connecting AI models to external data sources and tools. Reckons.AI implements an MCP server so Claude Desktop, Cursor, and other agents can query your knowledge base." ;
+    skos:definition     "An open protocol by Anthropic for connecting AI models to external data sources and tools. Reckons.AI implements an MCP server so Claude Desktop, Cursor, and other agents can query your knowledge graph." ;
     kpred:date          "2024-11-25"^^xsd:date ;
     kpred:publishedBy   org:Anthropic ;
     skos:related        guide:WhatIsReckonsAI .
@@ -266,7 +266,7 @@ tl:ReckonsAILaunch
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Reckons.AI Launch" ;
-    skos:definition     "Public launch of Reckons.AI -- a local-first personal knowledge base built on RDF Turtle. Created by Matthew Roe at Data Insight Solutions LLC. Runs entirely in the browser. LLM-powered triple extraction, 3D graph visualization, browser extension for research sessions, and MCP server for AI agent integration." ;
+    skos:definition     "Public launch of Reckons.AI -- a local-first personal knowledge graph built on RDF Turtle. Created by Matthew Roe at Data Insight Solutions LLC. Runs entirely in the browser. LLM-powered triple extraction, 3D graph visualization, browser extension for research sessions, and MCP server for AI agent integration." ;
     kpred:date          "2026-06-01"^^xsd:date ;
     kpred:createdBy     person:MatthewRoe ;
     skos:related        guide:WhatIsReckonsAI ;
@@ -285,7 +285,7 @@ person:MatthewRoe
     rdf:type            ktype:Person ;
     rdf:type            skos:Concept ;
     rdfs:label          "Matthew Roe" ;
-    skos:definition     "Owner-operator of Data Insight Solutions LLC. Creator of Reckons.AI. Designed the local-first architecture, human-in-the-loop review workflow, and the KB Leap cross-referencing system." ;
+    skos:definition     "Owner-operator of Data Insight Solutions LLC. Creator of Reckons.AI. Designed the local-first architecture, human-in-the-loop review workflow, and the graph Leap cross-referencing system." ;
     kpred:role          "Founder & Developer" ;
     kpred:worksAt       org:DataInsightSolutions ;
     skos:related        tl:ReckonsAILaunch .
@@ -314,7 +314,7 @@ tl:SemiontRelease skos:related  tl:ReckonsAILaunch .
 
 shelly:persona
     shelly:name             "Shelly" ;
-    shelly:greeting         "This KB covers the RDF ecosystem timeline -- from RDF 1.0 in 1999 to the Reckons.AI launch in 2026. I can walk you through the standards, the people, or the organizations. Where should we start?" ;
+    shelly:greeting         "This graph covers the RDF ecosystem timeline -- from RDF 1.0 in 1999 to the Reckons.AI launch in 2026. I can walk you through the standards, the people, or the organizations. Where should we start?" ;
     shelly:personality      "historically informed, connecting past to present" ;
     shelly:responseStyle    "concise" ;
     shelly:systemPrompt     "You are guiding someone through the history and ecosystem of RDF, knowledge graphs, and semantic web technology. Connect historical milestones to present-day features in Reckons.AI. Use dates to ground the narrative." .

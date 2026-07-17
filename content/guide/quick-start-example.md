@@ -1,5 +1,5 @@
 ---
-title: "Quick-Start Example KB"
+title: "Quick-Start Example graph"
 slug: "quick-start-example"
 order: 1006
 section: "Guide"
@@ -11,7 +11,7 @@ excerpt: "A practical knowledge graph with people, projects, research notes, dec
 generated: "docs-kb"
 ---
 
-# Quick-Start Example KB
+# Quick-Start Example graph
 
 *Document*
 

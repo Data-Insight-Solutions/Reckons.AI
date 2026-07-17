@@ -7,7 +7,7 @@ parent: "what-is-reckons-ai"
 template: doc
 status: published
 nav: sidebar
-excerpt: "Click to learn what LLMs actually are, why they hallucinate, how RAG works, and why your curated KB makes AI dramatically more accurate."
+excerpt: "Click to learn what LLMs actually are, why they hallucinate, how RAG works, and why your curated graph makes AI dramatically more accurate."
 generated: "docs-kb"
 ---
 
@@ -15,4 +15,4 @@ generated: "docs-kb"
 
 *Knowledge Base*
 
-Click to learn what LLMs actually are, why they hallucinate, how RAG works, and why your curated KB makes AI dramatically more accurate.
+Click to learn what LLMs actually are, why they hallucinate, how RAG works, and why your curated graph makes AI dramatically more accurate.

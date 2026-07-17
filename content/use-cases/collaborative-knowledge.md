@@ -6,7 +6,7 @@ section: "Use Cases"
 template: doc
 status: published
 nav: sidebar
-excerpt: "One person organizes a KB around a shared topic, exports a .ttl file, and distributes it."
+excerpt: "One person organizes a graph around a shared topic, exports a .ttl file, and distributes it."
 generated: "docs-kb"
 related:
   - "personal-empowerment"
@@ -17,7 +17,7 @@ related:
 
 *Concept*
 
-One person organizes a KB around a shared topic, exports a .ttl file, and distributes it. Others import it as a source in their own KB. Each person uses Shelly and the Reckoning to ask questions relevant to them. Decisions are annotated with the sources that informed them. When things change, the organizer re-exports and importers see the diff in Compare.
+One person organizes a graph around a shared topic, exports a .ttl file, and distributes it. Others import it as a source in their own graph. Each person uses Shelly and the Reckoning to ask questions relevant to them. Decisions are annotated with the sources that informed them. When things change, the organizer re-exports and importers see the diff in Compare.
 
 ## Related
 

@@ -19,8 +19,10 @@
 
 import { createInterface } from 'node:readline';
 import { appendFileSync, readFileSync, existsSync } from 'node:fs';
+import { mergeGraphs, mergeToPending } from './merge.js';
 import { join } from 'node:path';
 import { MultiKBReader, type Triple } from './kb-reader.js';
+import { compressTriples, estimateTokens } from './compress.js';
 import { bm25Search, invalidateCache } from './search.js';
 import { gitStatus, gitLog, gitChangedFiles } from './git-utils.js';
 import { ollamaEnabled, OLLAMA_DISABLED_MESSAGE, OLLAMA_MODEL } from './ollama-client.js';
@@ -136,6 +138,25 @@ const TOOLS = [
       type: 'object',
       properties: { ...KB_PARAM }
     }
+  },
+  {
+    name: 'kb_merge',
+    description:
+      'PROPOSAL ONLY: merge one graph into another and report what it would change. Use this when a sub-agent has written its findings into its OWN graph and an orchestrator needs to fold them into the trunk. Returns additions, reinforcements, and — most importantly — CONFLICTS (same subject and predicate, different object: two parties disagreeing about the world). Never writes to any graph; pass write_pending to queue the proposals for human/agent review. Entity matching is exact (no embeddings) on purpose: a fuzzy match that is wrong silently unifies two different things, which is the most destructive thing you can do to a knowledge graph.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        source: { type: 'string', description: 'Name of the graph to merge FROM (e.g. a sub-agent\'s graph).' },
+        target: { type: 'string', description: 'Name of the graph to merge INTO (the trunk).' },
+        write_pending: {
+          type: 'boolean',
+          description: 'Also queue the proposals to knowledge.pending.jsonl for review (default false). Still never writes to a graph.',
+          default: false,
+        },
+        agent: { type: 'string', description: 'Who is proposing the merge (recorded on each proposal).', default: 'mcp' },
+      },
+      required: ['source', 'target'],
+    },
   },
   {
     name: 'kb_list_entities',
@@ -416,6 +437,79 @@ function handleKbGetEntity(params: { entity: string; kb?: string }): object {
     }
   }
   if (triples.length > MAX) lines.push(`(+${triples.length - MAX} more)`);
+
+  return { content: [{ type: 'text', text: lines.join('\n') }] };
+}
+
+/**
+ * kb_merge — fold a sub-agent's graph into the trunk (F89 phase 2).
+ *
+ * PROPOSALS ONLY. A sub-agent's output is a CLAIM, not a fact: it becomes trunk by passing a
+ * competent gate (F88), never by an agent asserting it. An agent that can write to the trunk
+ * is not a sub-agent, it is an unreviewed committer.
+ *
+ * Existed because an orchestrator previously could not merge at all — only a human clicking
+ * MergeReview could. The primitives were all there; the seam for an agent was not.
+ */
+function handleKbMerge(params: { source: string; target: string; write_pending?: boolean; agent?: string }): object {
+  kb.reload();
+
+  const src = kb.allTriples(params.source);
+  const dst = kb.allTriples(params.target);
+
+  if (src.length === 0) {
+    return {
+      content: [{ type: 'text', text: `Graph "${params.source}" has no triples (or does not exist). Nothing to merge.` }],
+    };
+  }
+
+  const toMerge = (t: Triple) => ({ subject: t.subject, predicate: t.predicate, object: t.object });
+  const result = mergeGraphs(src.map(toMerge), dst.map(toMerge));
+  const agent = params.agent ?? 'mcp';
+
+  const lines: string[] = [
+    `Merge proposal — "${params.source}" → "${params.target}"`,
+    ``,
+    `  ${result.summary.conflict} conflict(s)   ${result.summary.add} addition(s)   ${result.summary.reinforce} reinforcement(s)`,
+    ``,
+  ];
+
+  // Conflicts first and loudest. They are the reason to run this at all — two parties
+  // disagreeing about the world — and burying them under additions makes a merge a rubber stamp.
+  const conflicts = result.proposals.filter((p) => p.kind === 'conflict');
+  if (conflicts.length > 0) {
+    lines.push(`CONFLICTS — do not merge either way without a decision:`);
+    for (const c of conflicts.slice(0, 20)) {
+      lines.push(`  ✗ ${c.triple.subject}`);
+      lines.push(`      ${c.triple.predicate}`);
+      lines.push(`      trunk: "${c.existing?.[0]}"   incoming: "${c.triple.object}"`);
+    }
+    if (conflicts.length > 20) lines.push(`  … and ${conflicts.length - 20} more`);
+    lines.push('');
+  }
+
+  const adds = result.proposals.filter((p) => p.kind === 'add');
+  if (adds.length > 0) {
+    lines.push(`ADDITIONS (${adds.length}):`);
+    for (const a of adds.slice(0, 15)) {
+      lines.push(`  + ${a.triple.subject} ${a.triple.predicate} "${a.triple.object.slice(0, 60)}"`);
+    }
+    if (adds.length > 15) lines.push(`  … and ${adds.length - 15} more`);
+    lines.push('');
+  }
+
+  if (params.write_pending) {
+    const entries = mergeToPending(result, { sourceGraph: params.source, agent });
+    const kbFolder = kb.getKbFolderPath(params.target);
+    const pendingPath = kbFolder
+      ? join(kbFolder, 'pending.jsonl')
+      : kbPath.replace(/\.ttl$/, '.pending.jsonl');
+    for (const e of entries) appendFileSync(pendingPath, e + '\n', 'utf8');
+    lines.push(`${entries.length} proposal(s) queued → ${pendingPath}`);
+    lines.push(`Nothing was written to a graph. Accept or reject them in the Reckons.AI review queue.`);
+  } else {
+    lines.push(`Nothing written. Pass write_pending=true to queue these for review.`);
+  }
 
   return { content: [{ type: 'text', text: lines.join('\n') }] };
 }
@@ -1101,129 +1195,7 @@ function handleKbAlignmentScore(params: { ref?: string; work?: string; kb?: stri
 }
 
 // ── Context Compression ──────────────────────────────────────────────────────
-
-/** Rough token estimate (~1.33 tokens per word, matching the benchmark) */
-function estimateTokens(text: string): number {
-  return Math.round(text.split(/\s+/).filter(Boolean).length * 1.33);
-}
-
-/**
- * Compress a subgraph into a token-efficient format for LLM context.
- *
- * Format (entity-grouped, compact):
- *   # EntitySlug
- *     .predicate value
- *     .predicate "literal with spaces"
- *     < OtherEntity .refPredicate
- *
- * This achieves ~60-70% token reduction vs raw Turtle while preserving
- * all semantic content. Entities are ordered by relevance score.
- */
-function compressTriples(
-  triples: Triple[],
-  entityOrder: string[],
-  budget: number
-): { text: string; stats: { entities: number; facts: number; tokens: number } } {
-  // Group triples by subject
-  const bySubject = new Map<string, Triple[]>();
-  const asObject = new Map<string, Triple[]>();
-  for (const t of triples) {
-    const list = bySubject.get(t.subject) ?? [];
-    list.push(t);
-    bySubject.set(t.subject, list);
-
-    // Track inbound references (where this entity appears as object)
-    if (!t.objectIsLiteral && t.object.startsWith('urn:')) {
-      const refs = asObject.get(t.object) ?? [];
-      refs.push(t);
-      asObject.set(t.object, refs);
-    }
-  }
-
-  // Ordered entity list: prioritise by relevance, then by triple count
-  const allEntities = new Set<string>(entityOrder);
-  for (const iri of bySubject.keys()) allEntities.add(iri);
-
-  const orderedEntities = [...allEntities].filter(iri => bySubject.has(iri) || asObject.has(iri));
-
-  const slug = (iri: string) => localName(iri) || iri;
-
-  // Extract local name from IRI (handles both / and # separators)
-  const localName = (iri: string): string => {
-    const hash = iri.lastIndexOf('#');
-    if (hash >= 0) return iri.slice(hash + 1);
-    const slash = iri.lastIndexOf('/');
-    if (slash >= 0) return iri.slice(slash + 1);
-    return iri;
-  };
-
-  // Predicate abbreviations for common namespaces
-  const abbreviate = (pred: string): string => {
-    const local = localName(pred);
-    if (local === 'type' && pred.includes('rdf')) return 'a';
-    return local;
-  };
-
-  // Format a value: unquoted if numeric or single-word, quoted otherwise
-  const fmtValue = (obj: string, isLiteral: boolean): string => {
-    if (!isLiteral) return slug(obj);
-    if (/^-?[\d.]+$/.test(obj)) return obj;
-    if (/^\S+$/.test(obj) && obj.length < 40) return obj;
-    return `"${obj}"`;
-  };
-
-  const blocks: string[] = [];
-  let totalTokens = 0;
-  let factCount = 0;
-  let entityCount = 0;
-
-  for (const iri of orderedEntities) {
-    const outbound = bySubject.get(iri) ?? [];
-    const inbound = asObject.get(iri) ?? [];
-    if (outbound.length === 0 && inbound.length === 0) continue;
-
-    // Build entity block
-    const lines: string[] = [`# ${slug(iri)}`];
-
-    // Deduplicate predicates (same pred+obj)
-    const seen = new Set<string>();
-    for (const t of outbound) {
-      const key = `${t.predicate}\t${t.object}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      lines.push(`  .${abbreviate(t.predicate)} ${fmtValue(t.object, t.objectIsLiteral)}`);
-      factCount++;
-    }
-
-    // Inbound references (capped to avoid bloat)
-    const inboundCapped = inbound.slice(0, 5);
-    for (const t of inboundCapped) {
-      const key = `${t.subject}\t${t.predicate}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      lines.push(`  < ${slug(t.subject)} .${abbreviate(t.predicate)}`);
-      factCount++;
-    }
-    if (inbound.length > 5) {
-      lines.push(`  (+${inbound.length - 5} more refs)`);
-    }
-
-    const block = lines.join('\n');
-    const blockTokens = estimateTokens(block);
-
-    // Budget check — stop adding entities if we'd exceed
-    if (totalTokens + blockTokens > budget && entityCount > 0) break;
-
-    blocks.push(block);
-    totalTokens += blockTokens;
-    entityCount++;
-  }
-
-  return {
-    text: blocks.join('\n'),
-    stats: { entities: entityCount, facts: factCount, tokens: totalTokens }
-  };
-}
+// Extracted to compress.ts so the "60-70% token reduction" claim can actually be tested.
 
 function handleKbCompress(params: { query: string; budget?: number; hops?: number; kb?: string }): object {
   kb.reload();
@@ -1464,6 +1436,7 @@ rl.on('line', (line) => {
           case 'kb_search':      respond(id ?? null, handleKbSearch(toolArgs as { query: string; limit?: number; kb?: string })); break;
           case 'kb_get_entity':  respond(id ?? null, handleKbGetEntity(toolArgs as { entity: string; kb?: string })); break;
           case 'kb_stats':       respond(id ?? null, handleKbStats(toolArgs as { kb?: string })); break;
+          case 'kb_merge':       respond(id ?? null, handleKbMerge(toolArgs as { source: string; target: string; write_pending?: boolean; agent?: string })); break;
           case 'kb_list_entities': respond(id ?? null, handleKbListEntities(toolArgs as { limit?: number; kb?: string })); break;
           case 'kb_add_note':    respond(id ?? null, handleKbAddNote(toolArgs as AddNoteParams)); break;
           case 'kb_subgraph':    respond(id ?? null, handleKbSubgraph(toolArgs as { entity: string; hops?: number; limit?: number; kb?: string })); break;

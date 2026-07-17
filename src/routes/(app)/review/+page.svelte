@@ -3,6 +3,7 @@
   import KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
   import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
   import CompareGraph from '$lib/components/CompareGraph.svelte';
+  import GraphLabels from '$lib/components/GraphLabels.svelte';
   import OverlayGraph from '$lib/components/OverlayGraph.svelte';
   import OverlayGraph3D from '$lib/components/OverlayGraph3D.svelte';
   import DiffEntry from '$lib/components/DiffEntry.svelte';
@@ -33,7 +34,8 @@
   import { termKey, isIRI, isLit, isMetaPredicate, type Statement } from '$lib/rdf/types';
   import { computeDiff } from '$lib/rdf/diff';
   import { generateDiffSummary, type DiffSummary } from '$lib/rdf/diff-summary';
-  import { semanticEnrichDiff } from '$lib/rdf/semantic-diff';
+  import { semanticEnrichDiff, labelFromIRI } from '$lib/rdf/semantic-diff';
+  import { buildReviewPlan, reviewPlanSummary } from '$lib/rdf/review-pipeline';
   import { settings } from '$lib/stores/settings.svelte';
   import { parseMultipleGraphs, MEMBERSHIP_PREDICATES, MEMBERSHIP_LABELS, isProjectIri, type OverlayData, type GraphDef } from '$lib/rdf/multi-graph-parse';
   import {
@@ -42,6 +44,7 @@
     KB_COLOR, KB_DESCRIPTION, KB_SCHEMA_PREDICATE
   } from '$lib/rdf/entity-types';
   import { allTypes } from '$lib/stores/entity-types.svelte';
+  import { routeQueue, routingSummary } from '$lib/rdf/review-routing';
   import { LEAP_PRED, LEAP_LABEL_PRED } from '$lib/rdf/kb-leap';
   import { requestShellyChat } from '$lib/stores/shelly-bridge.svelte';
   import { ToggleGroup } from 'bits-ui';
@@ -99,7 +102,95 @@
   const diff = $derived(semanticDiff ?? structuralDiff);
   // F32: partial "? question" facts, and the list actually shown (optionally filtered).
   const questionEntries = $derived(diff.entries.filter((e) => e.incoming.needsObject));
-  const shownEntries = $derived(questionsOnly ? questionEntries : diff.entries);
+
+  // ── F88: route by GATE, rank by BLAST RADIUS ───────────────────────────────
+  //
+  // The queue used to be one undifferentiated list in arrival order, which quietly asserts
+  // two false things: that the user is the competent reviewer for every fact, and that the
+  // newest item is the most important one.
+  //
+  // Neither survives contact with a real graph. "Does src/lib/foo.ts exist" is settled by a
+  // script; putting it to a human doesn't just waste their time, it teaches them the queue
+  // is mostly noise — and then they click Accept on the one item that mattered. Meanwhile a
+  // question with four things stalled behind it sits below fifty pieces of trivia because
+  // the trivia arrived later.
+  //
+  // So: split by who is COMPETENT to judge (rdf/verifiability.ts), rank each lane by how
+  // much is actually waiting on it, and default the user's view to THEIRS.
+  // subject IRI -> its rdf:type. Needed because AUTHORITY overrides verifiability: every fact
+  // about a Tenet or a Decision is the user's to approve, however checkable it looks.
+  const subjectTypes = $derived.by(() => {
+    const m = new Map<string, string>();
+    for (const st of [...existing, ...incoming]) {
+      if (st.p.value === RDF_TYPE && st.s.kind === 'iri') m.set(st.s.value, st.o.value);
+    }
+    return m;
+  });
+  const routed = $derived(
+    routeQueue(diff.entries.map((e) => e.incoming), (iri) => subjectTypes.get(iri)),
+  );
+  const routingLine = $derived(routingSummary(routed));
+  /** statement id -> blast radius, so a card can show what is stalled behind it. */
+  const impactById = $derived(
+    new Map([...routed.machine, ...routed.agent, ...routed.user].map((i) => [i.statement.id, i.impact])),
+  );
+  /** statement id -> the gate that should judge it. */
+  const gateById = $derived(
+    new Map([...routed.machine, ...routed.agent, ...routed.user].map((i) => [i.statement.id, i.gate])),
+  );
+
+  /** Which lane the user is looking at. Defaults to `user` — the point is to show them less. */
+  let gateFilter = $state<'user' | 'machine' | 'agent' | 'all'>('user');
+
+  const shownEntries = $derived.by(() => {
+    let list = questionsOnly ? questionEntries : diff.entries;
+    if (gateFilter !== 'all') {
+      list = list.filter((e) => (gateById.get(e.incoming.id) ?? 'user') === gateFilter);
+    }
+    // Most-blocking first. An item with four things stalled behind it is not "newer" or
+    // "older" than a curiosity — it is a different kind of item.
+    return [...list].sort(
+      (a, b) =>
+        (impactById.get(b.incoming.id) ?? 0) - (impactById.get(a.incoming.id) ?? 0) ||
+        a.incoming.createdAt - b.incoming.createdAt,
+    );
+  });
+
+  // Review-at-scale (F53/F83/F80.1) — the whole pending set run through the pipeline: dedupe ->
+  // route -> spotlight the contested few -> entity cards. Used for the SPOTLIGHT strip and the
+  // headline; the actual per-fact controls below still act on shownEntries so nothing is hidden.
+  const reviewPlan = $derived(
+    buildReviewPlan(incoming, { typeOf: (iri) => subjectTypes.get(iri) }, [...existing, ...incoming]),
+  );
+  const planHeadline = $derived(reviewPlanSummary(reviewPlan));
+  /** subject IRI -> true when it holds a spotlighted (contested) decision, for the entity headers. */
+  const spotlightSubjects = $derived(
+    new Set(reviewPlan.attention.spotlight.map((i) => i.statement.s.value)),
+  );
+
+  /** F83: group the SHOWN entries into per-entity cards so the user decides about things, not rows. */
+  let groupByEntity = $state(true);
+  const entityGroups = $derived.by(() => {
+    const m = new Map<string, typeof shownEntries>();
+    for (const e of shownEntries) {
+      const k = e.incoming.s.value;
+      const g = m.get(k);
+      if (g) g.push(e);
+      else m.set(k, [e]);
+    }
+    return [...m.entries()].map(([iri, entries]) => {
+      const labelStmt = entries.find(
+        (e) => e.incoming.p.value === 'http://www.w3.org/2000/01/rdf-schema#label' && e.incoming.o.kind === 'literal',
+      );
+      return {
+        iri,
+        label: labelStmt ? labelStmt.incoming.o.value : labelFromIRI(iri),
+        entries,
+        gate: gateById.get(entries[0].incoming.id) ?? 'user',
+        spotlight: spotlightSubjects.has(iri),
+      };
+    });
+  });
 
   $effect(() => {
     const inc = incoming;
@@ -172,6 +263,14 @@
   let focusKey = $state<string | null>(null);
   /** The specific triple a review card is showing, so its edge (not just its nodes) can be highlighted. */
   let focusedEdge = $state<{ s: string; o: string; p?: string } | null>(null);
+
+  /** 3D node labels — the preview 3D graph emits viewport-space positions via onlabelsmove, and we
+   *  render them as fixed HTML overlays (the 3D scene draws no text itself). Without this the 3D
+   *  view had NO labels. Cleared whenever we are not in the 3D preview so none linger. */
+  let nodeLabels = $state<Array<{ key: string; label: string; x: number; y: number; opacity: number }>>([]);
+  $effect(() => {
+    if (use2D || graphMode !== 'preview') nodeLabels = [];
+  });
 
   /** Focus the preview graph on a statement's subject node (called from review cards — incoming, deletions, merges, align). */
   function focusStatement(st: Statement) {
@@ -260,14 +359,14 @@
   // and auto-sends the message) rather than building a separate chat stack.
   let nodeChatDraft = $state('');
   function sendNodeChat() {
-    if (!nodeDetails || !nodeChatDraft.trim()) return;
-    const ctx = `About the node "${nodeDetails.label}"${nodeDetails.typeLabel ? ` (${nodeDetails.typeLabel})` : ''}: `;
+    if (!panelDetails || !nodeChatDraft.trim()) return;
+    const ctx = `About the node "${panelDetails.label}"${panelDetails.typeLabel ? ` (${panelDetails.typeLabel})` : ''}: `;
     requestShellyChat(ctx + nodeChatDraft.trim());
     nodeChatDraft = '';
   }
   function openNodeInShelly() {
-    if (!nodeDetails) return;
-    requestShellyChat(`Tell me about "${nodeDetails.label}"${nodeDetails.typeLabel ? `, a ${nodeDetails.typeLabel}` : ''}.`);
+    if (!panelDetails) return;
+    requestShellyChat(`Tell me about "${panelDetails.label}"${panelDetails.typeLabel ? `, a ${panelDetails.typeLabel}` : ''}.`);
   }
 
   /** Human-readable name of the selected node, shown as a caption over the graph. */
@@ -348,6 +447,45 @@
   let overlayActivePredicates = $state(new Set<string>([...MEMBERSHIP_PREDICATES, ...OVERLAY_STRUCTURAL]));
   let overlaySelectedKey = $state<string | null>(null);
   let overlayViewIs3D = $state(false);
+
+  /** Node details for OVERLAY mode — the clicked node in the combined multi-graph view. Mirrors
+   *  the preview `nodeDetails` shape, but reads from overlayData (which spans several graphs) since
+   *  the overlay's nodes are not all in the current KB's statement list. */
+  const overlayNodeDetails = $derived.by(() => {
+    if (graphMode !== 'overlay' || !overlaySelectedKey || !overlayData) return null;
+    const node = overlayData.nodes.get(overlaySelectedKey);
+    if (!node) return null;
+    const related = overlayData.edges
+      .filter((e) => e.sourceKey === overlaySelectedKey || e.targetKey === overlaySelectedKey)
+      .map((e, i) => {
+        const isSubject = e.sourceKey === overlaySelectedKey;
+        const otherKey = isSubject ? e.targetKey : e.sourceKey;
+        const other = overlayData!.nodes.get(otherKey);
+        const fallback = otherKey.startsWith('i:') ? (otherKey.slice(2).split('/').pop() ?? otherKey) : otherKey;
+        return {
+          id: `${e.sourceKey}|${e.predicateIri}|${e.targetKey}|${i}`,
+          predicate: e.predicate,
+          isSubject,
+          otherLabel: other?.label ?? fallback,
+          pending: false,
+          status: 'confirmed' as const,
+        };
+      })
+      .slice(0, 40);
+    const typeLabel = node.rdfType ? (node.rdfType.split('/').pop() ?? node.rdfType) : null;
+    return { label: node.label, typeLabel, related };
+  });
+
+  /** The details the node panel shows — preview OR overlay, whichever mode is active. */
+  const panelDetails = $derived(
+    graphMode === 'overlay' ? overlayNodeDetails : graphMode === 'preview' ? nodeDetails : null,
+  );
+
+  /** Close the node panel, clearing whichever selection drives the active mode. */
+  function closeNodePanel() {
+    if (graphMode === 'overlay') overlaySelectedKey = null;
+    else { selected = null; focusedEdge = null; }
+  }
 
   // KB-based overlay sources
   let overlayKbEntries = $state(getRegistry());
@@ -638,13 +776,15 @@
         <span class="mode-lbl mono">overlay</span>
       </button>
       <span class="mode-spacer"></span>
-      {#if graphMode !== 'compare'}
-        <button class="mode-btn dim-toggle" class:active={use2D} onclick={() => use2D = !use2D}>
+      {#if graphMode === 'preview'}
+        <button class="mode-btn dim-toggle" class:active={!use2D} onclick={() => use2D = !use2D}
+          title="Switch between 2D and 3D">
           <span class="mode-lbl mono">{use2D ? '2D' : '3D'}</span>
         </button>
       {/if}
       {#if graphMode === 'overlay'}
-        <button class="mode-btn dim-toggle" class:active={overlayViewIs3D} onclick={() => overlayViewIs3D = !overlayViewIs3D}>
+        <button class="mode-btn dim-toggle" class:active={overlayViewIs3D} onclick={() => overlayViewIs3D = !overlayViewIs3D}
+          title="Switch between 2D and 3D">
           <span class="mode-lbl mono">{overlayViewIs3D ? '3D' : '2D'}</span>
         </button>
       {/if}
@@ -773,21 +913,21 @@
         <span class="focus-badge" title={focusedLabel}>◉ {focusedLabel}</span>
       {/if}
 
-      <!-- Node details (left) + scoped chat (below it) — shown when a node is selected in the preview -->
-      {#if graphMode === 'preview' && nodeDetails}
+      <!-- Node details (left) + scoped chat — shown when a node is selected in preview OR overlay -->
+      {#if panelDetails}
         <div class="node-details-pane">
           <div class="ndp-header">
             <div class="ndp-title">
-              <span class="ndp-label">{nodeDetails.label}</span>
-              {#if nodeDetails.typeLabel}<span class="ndp-type mono">{nodeDetails.typeLabel}</span>{/if}
+              <span class="ndp-label">{panelDetails.label}</span>
+              {#if panelDetails.typeLabel}<span class="ndp-type mono">{panelDetails.typeLabel}</span>{/if}
             </div>
-            <button class="ndp-close" onclick={() => { selected = null; focusedEdge = null; }} title="close">✕</button>
+            <button class="ndp-close" onclick={closeNodePanel} title="close">✕</button>
           </div>
           <div class="ndp-stmts">
-            {#if nodeDetails.related.length === 0}
+            {#if panelDetails.related.length === 0}
               <p class="ndp-empty mono">no facts yet</p>
             {:else}
-              {#each nodeDetails.related as r (r.id)}
+              {#each panelDetails.related as r (r.id)}
                 <div class="ndp-stmt" class:ndp-pending={r.pending}>
                   {#if r.pending}<span class="ndp-pending-tag mono">pending</span>{/if}
                   <span class="ndp-pred mono">{r.isSubject ? r.predicate : `← ${r.predicate}`}</span>
@@ -842,7 +982,7 @@
                 sources={sources()}
                 onselect={(k) => { selected = k; focusedEdge = null; }}
                 onhover={() => {}}
-                onlabelsmove={() => {}}
+                onlabelsmove={(labels) => { nodeLabels = labels; }}
                 onmarkersmove={() => {}}
                 highlighted={[...pendingKeys]}
               />
@@ -891,9 +1031,15 @@
           {/if}
         {:else}
           <div class="graph-empty">
-            <p class="mono">{overlayLoading ? 'loading...' : 'select KBs above to compare'}</p>
+            <p class="mono">{overlayLoading ? 'loading...' : 'select graphs above to compare'}</p>
           </div>
         {/if}
+      {/if}
+
+      <!-- 3D node labels via the SHARED GraphLabels overlay (F92) — same component the main graph
+           uses, so review's labels can no longer drift from it. Review needs no asset/leap snippets. -->
+      {#if graphMode === 'preview' && !use2D}
+        <GraphLabels labels={nodeLabels} {selected} />
       {/if}
     </div>
 
@@ -966,6 +1112,35 @@
           {/if}
         </div>
 
+        <!-- F88: who is competent to judge this, and what is stalled behind it.
+             Defaults to `yours` — the whole point is to show the user LESS, not more. -->
+        {#if diff.entries.length > 0}
+          <div class="gates">
+            <span class="gate-line mono">{routingLine}</span>
+            <div class="gate-chips">
+              <button class="gc" class:active={gateFilter === 'user'} onclick={() => (gateFilter = 'user')}
+                title="Only you can settle these — your domain, your decision, your principles">
+                yours <span class="gc-n">{routed.user.length}</span>
+              </button>
+              {#if routed.machine.length > 0}
+                <button class="gc gc-machine" class:active={gateFilter === 'machine'} onclick={() => (gateFilter = 'machine')}
+                  title="A script settles these — a path either exists or it does not. They should never have needed you.">
+                  a script can settle <span class="gc-n">{routed.machine.length}</span>
+                </button>
+              {/if}
+              {#if routed.agent.length > 0}
+                <button class="gc gc-agent" class:active={gateFilter === 'agent'} onclick={() => (gateFilter = 'agent')}
+                  title="A reviewing agent settles these — did the cited passage actually say this?">
+                  an agent can settle <span class="gc-n">{routed.agent.length}</span>
+                </button>
+              {/if}
+              <button class="gc gc-all" class:active={gateFilter === 'all'} onclick={() => (gateFilter = 'all')}>
+                all <span class="gc-n">{diff.entries.length}</span>
+              </button>
+            </div>
+          </div>
+        {/if}
+
         {#if diffSummary}
           <div class="ds-cards">
             {#if diffSummary.newSummary && diffSummary.newSummary !== 'None.'}
@@ -990,38 +1165,90 @@
             <a href="/ingest">ingest something →</a>
           </div>
         {:else}
+          {#snippet entryCard(e: typeof shownEntries[number])}
+            <SwipeCard
+              acceptLabel={e.incoming.needsObject ? 'fill first' : 'confirm'}
+              rejectLabel="reject"
+              onaccept={async () => {
+                // Partial facts must be filled via the card's picker, not swipe-confirmed.
+                if (e.incoming.needsObject) return;
+                await setStatus(e.incoming.id, 'confirmed'); refresh();
+              }}
+              onreject={async () => { await setStatus(e.incoming.id, 'rejected'); refresh(); }}
+            >
+              <!-- Clicking a review card flies the preview graph to its node -->
+              <div
+                class="entry-focus-wrap"
+                class:entry-focused={selected === termKey(e.incoming.s)}
+                role="button"
+                tabindex="0"
+                onclick={() => focusStatement(e.incoming)}
+                onkeydown={(ev) => { if (ev.key === 'Enter') focusStatement(e.incoming); }}
+              >
+                <DiffEntry entry={e} sourceLabel={sourceLabel(e.incoming.sourceId)} onresolved={refresh} />
+              </div>
+            </SwipeCard>
+          {/snippet}
+
+          <!-- F53/F83/F80.1 review-at-scale: an honest headline, then the contested few, then
+               facts grouped into entity cards (decide about things, not rows). The per-fact
+               confirm/reject controls are unchanged — nothing is hidden, only better ordered. -->
+          <div class="ras-headline mono">{planHeadline}</div>
+
+          {#if reviewPlan.attention.spotlight.length > 0}
+            <div class="spotlight" data-testid="spotlight">
+              <span class="spotlight-h mono">spotlight — decide these first</span>
+              {#each reviewPlan.attention.spotlight as item (item.statement.id)}
+                <button class="spot-item" onclick={() => focusStatement(item.statement)}>
+                  <span class="spot-flag" class:conflict={item.conflict} class:decision={item.decision}>
+                    {item.conflict ? 'conflict' : item.decision ? 'decision' : 'high impact'}
+                  </span>
+                  <span class="spot-label">{labelFromIRI(item.statement.s.value)}</span>
+                  <span class="spot-pred mono">{labelFromIRI(item.statement.p.value)}</span>
+                </button>
+              {/each}
+              {#if reviewPlan.attention.heldBack > 0}
+                <span class="spot-held mono">+{reviewPlan.attention.heldBack} more waiting</span>
+              {/if}
+            </div>
+          {/if}
+
           <div class="bulk-bar">
             <button class="bulk-btn" onclick={acceptAll} disabled={isProcessing}>
               {isProcessing ? 'accepting...' : 'accept all new'}
             </button>
+            <button class="group-toggle" class:active={groupByEntity}
+              onclick={() => (groupByEntity = !groupByEntity)}
+              title="Group facts by the entity they describe">
+              {groupByEntity ? 'by entity' : 'flat list'}
+            </button>
             {#if error}<p class="error-text">{error}</p>{/if}
           </div>
-          <div class="entry-list">
-            {#each shownEntries as e (e.incoming.id)}
-              <SwipeCard
-                acceptLabel={e.incoming.needsObject ? 'fill first' : 'confirm'}
-                rejectLabel="reject"
-                onaccept={async () => {
-                  // Partial facts must be filled via the card's picker, not swipe-confirmed.
-                  if (e.incoming.needsObject) return;
-                  await setStatus(e.incoming.id, 'confirmed'); refresh();
-                }}
-                onreject={async () => { await setStatus(e.incoming.id, 'rejected'); refresh(); }}
-              >
-                <!-- Clicking a review card flies the preview graph to its node -->
-                <div
-                  class="entry-focus-wrap"
-                  class:entry-focused={selected === termKey(e.incoming.s)}
-                  role="button"
-                  tabindex="0"
-                  onclick={() => focusStatement(e.incoming)}
-                  onkeydown={(ev) => { if (ev.key === 'Enter') focusStatement(e.incoming); }}
-                >
-                  <DiffEntry entry={e} sourceLabel={sourceLabel(e.incoming.sourceId)} onresolved={refresh} />
+
+          {#if groupByEntity}
+            <div class="entity-cards" data-testid="entity-cards">
+              {#each entityGroups as g (g.iri)}
+                <div class="entity-card" class:spotlit={g.spotlight}>
+                  <div class="entity-head">
+                    <span class="entity-label">{g.label}</span>
+                    <span class="entity-count mono">{g.entries.length} fact{g.entries.length === 1 ? '' : 's'}</span>
+                    <span class="entity-gate mono gate-{g.gate}">{g.gate}</span>
+                  </div>
+                  <div class="entry-list">
+                    {#each g.entries as e (e.incoming.id)}
+                      {@render entryCard(e)}
+                    {/each}
+                  </div>
                 </div>
-              </SwipeCard>
-            {/each}
-          </div>
+              {/each}
+            </div>
+          {:else}
+            <div class="entry-list">
+              {#each shownEntries as e (e.incoming.id)}
+                {@render entryCard(e)}
+              {/each}
+            </div>
+          {/if}
         {/if}
       {/if}
 
@@ -1606,6 +1833,12 @@
     background: var(--surface);
     flex-shrink: 0;
     min-width: 0;
+    /* The 3D node labels are position:fixed (viewport coords) at z-index 10, so on this split
+       layout they spill over the side panel. The panel is opaque — sit it ABOVE the labels (but
+       below the z-20 resize handle) so spilled labels are occluded by the panel instead of
+       bleeding across it. */
+    position: relative;
+    z-index: 15;
   }
   .rp-header {
     padding: 0.75rem 1rem 0.5rem;
@@ -1698,6 +1931,43 @@
     border: 1px solid var(--line);
     color: var(--muted);
   }
+
+  /* ── F88 gate routing ── */
+  .gates {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin: 0.5rem 0 0.75rem;
+  }
+  .gate-line {
+    font-size: 0.62rem;
+    color: var(--muted);
+  }
+  .gate-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+  .gc {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .gc:hover { border-color: var(--accent); color: var(--fg); }
+  .gc.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+  .gc-n { opacity: 0.75; margin-left: 0.2rem; }
+  /* The two lanes that are NOT the user's are deliberately quiet — they are what the
+     queue is sparing them, not another thing demanding attention. */
+  .gc-machine, .gc-agent { opacity: 0.75; }
   .sc.question-filter {
     cursor: pointer;
     background: transparent;
@@ -1806,6 +2076,91 @@
     flex-direction: column;
     gap: 0.4rem;
   }
+
+  /* F53/F83 review-at-scale surface */
+  .ras-headline {
+    font-size: 0.8rem;
+    color: var(--muted, #888);
+    margin: 0.2rem 0 0.6rem;
+  }
+  .spotlight {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.6rem;
+    margin-bottom: 0.6rem;
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+    border-radius: 0.5rem;
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
+  }
+  .spotlight-h {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+    width: 100%;
+  }
+  .spot-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.45rem;
+    border: 1px solid var(--line);
+    border-radius: 0.4rem;
+    background: var(--surface, transparent);
+    cursor: pointer;
+    font-size: 0.8rem;
+  }
+  .spot-item:hover { border-color: var(--accent); }
+  .spot-flag {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.05rem 0.3rem;
+    border-radius: 0.3rem;
+    background: color-mix(in srgb, var(--muted, #888) 18%, transparent);
+    color: var(--muted, #888);
+  }
+  .spot-flag.conflict { background: color-mix(in srgb, var(--danger) 22%, transparent); color: var(--danger); }
+  .spot-flag.decision { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); }
+  .spot-pred { font-size: 0.72rem; color: var(--muted, #888); }
+  .spot-held { font-size: 0.72rem; color: var(--muted, #888); }
+  .group-toggle {
+    padding: 0.25rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 0.4rem;
+    background: transparent;
+    cursor: pointer;
+    font-size: 0.78rem;
+  }
+  .group-toggle.active { border-color: var(--accent); color: var(--accent); }
+  .entity-cards { display: flex; flex-direction: column; gap: 0.7rem; }
+  .entity-card {
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+    padding: 0.4rem 0.5rem 0.5rem;
+  }
+  .entity-card.spotlit { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .entity-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.1rem 0.15rem 0.45rem;
+  }
+  .entity-label { font-weight: 600; font-size: 0.9rem; }
+  .entity-count { font-size: 0.72rem; color: var(--muted, #888); }
+  .entity-gate {
+    margin-left: auto;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.05rem 0.35rem;
+    border-radius: 0.3rem;
+    background: color-mix(in srgb, var(--muted, #888) 15%, transparent);
+    color: var(--muted, #888);
+  }
+  .entity-gate.gate-user { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
 
   /* Deletion cards */
   .del-card {

@@ -65,7 +65,7 @@ kb:guideline-visual-hierarchy a ktype:Guideline ;
 kb:guideline-legibility a ktype:Guideline ;
     rdfs:label          "Legibility & Contrast" ;
     kpred:derives-from  kb:principle-contrast ;
-    kpred:recommendation "Body text >= 4.5:1 contrast and >= 16px on mobile; never convey state by colour alone." ;
+    kpred:recommendation "Body text >= 4.5:1 contrast and >= 16px on mobile; never convey state by color alone." ;
     kpred:checks-surface "both" .
 
 kb:guideline-touch-targets a ktype:Guideline ;

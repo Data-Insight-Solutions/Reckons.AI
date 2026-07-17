@@ -28,8 +28,9 @@
  */
 import { db, KBaseDB } from '../storage/db';
 import { updateSettings } from './settings.svelte';
-import { getRegistry, type KbEntry } from '../storage/kb-registry';
+import { getRegistry, getCurrentKbName, type KbEntry } from '../storage/kb-registry';
 import { collectAssets, assetTriples, type CollectedAsset, type AssetCategory } from '../storage/kb-assets';
+import { dedupeCompletePending } from '../rdf/pending-dedup';
 
 /** Filename written to the workspace dir on every KB mutation (read by the MCP server). */
 export const WORKSPACE_KB_FILE = 'knowledge.ttl';
@@ -40,14 +41,51 @@ let _state  = $state<'none' | 'disconnected' | 'connected'>('none');
 let _lastSyncTime = $state<number | null>(null);
 let _syncedKbCount = $state(0);
 
+// ── Two-way sync state ───────────────────────────────────────────────────────
+//
+// Sync used to be one-way (app → disk). We now also PULL: poll the linked folder
+// and import new `.ttl` files / update KBs whose file changed on disk. To avoid a
+// write→read feedback loop, every file the app writes has its content hash
+// recorded in `_seenHashes`; a poll skips any file whose hash already matches.
+
+const AUTOSYNC_KEY = 'reckons:ws-autosync';
+const POLL_INTERVAL_MS = 10_000;
+
+/** path-key ("kbs/foo/foo.ttl") → last-seen content hash of that file. */
+const _seenHashes = new Map<string, string>();
+let _autoSyncEnabled = $state<boolean>(readAutoSyncPref());
+let _pollTimer: ReturnType<typeof setInterval> | null = null;
+let _pulling = false;
+
 export function workspaceHandle(): FileSystemDirectoryHandle | null { return _handle; }
 export function workspaceName(): string | null { return _name; }
 export function workspaceState(): 'none' | 'disconnected' | 'connected' { return _state; }
 export function lastSyncTime(): number | null { return _lastSyncTime; }
 export function syncedKbCount(): number { return _syncedKbCount; }
+export function autoSyncEnabled(): boolean { return _autoSyncEnabled; }
 
 export function supportsWorkspace(): boolean {
   return typeof window !== 'undefined' && 'showDirectoryPicker' in window;
+}
+
+/** FNV-1a 32-bit hash of a string → hex. Cheap change-detection for file text. */
+function hashString(s: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16);
+}
+
+/** Record the hash of content the app itself wrote, so a poll never re-pulls it. */
+function markWritten(pathKey: string, content: string): void {
+  _seenHashes.set(pathKey, hashString(content));
+}
+
+function readAutoSyncPref(): boolean {
+  if (typeof localStorage === 'undefined') return true; // default on
+  return localStorage.getItem(AUTOSYNC_KEY) !== 'false';
 }
 
 /** Called on app startup — loads the stored handle and checks current permission. */
@@ -60,12 +98,22 @@ export async function loadWorkspace(): Promise<void> {
     if (perm === 'granted') {
       _handle = row.handle;
       _state = 'connected';
+      onWorkspaceConnected();
     } else {
       _state = 'disconnected';
     }
   } catch {
     _state = 'disconnected';
   }
+}
+
+/** Kick off auto-sync after a handle becomes connected (load/pick/reconnect).
+ *  Pulls once to catch changes made on disk while the app was closed, then
+ *  starts polling if auto-sync is enabled. Best-effort; never throws. */
+function onWorkspaceConnected(): void {
+  if (!_autoSyncEnabled) return;
+  // Fire-and-forget: an initial pull followed by the polling loop.
+  void pullFromWorkspace().finally(() => startWorkspacePolling());
 }
 
 /** Ask the user to pick a directory. Returns true on success. */
@@ -79,6 +127,9 @@ export async function pickWorkspace(): Promise<boolean> {
     _name = handle.name;
     _state = 'connected';
     await updateSettings({ workspaceName: handle.name });
+    // Polling starts via handlePickWorkspace after its initial import/sync so we
+    // don't race that flow; enable it here for the reconnect-less first link.
+    if (_autoSyncEnabled) startWorkspacePolling();
     return true;
   } catch (e) {
     // AbortError = user cancelled, or the OS directory picker was unavailable — e.g.
@@ -100,6 +151,7 @@ export async function reconnectWorkspace(): Promise<boolean> {
       _handle = row.handle;
       _name = row.name;
       _state = 'connected';
+      onWorkspaceConnected();
       return true;
     }
     return false;
@@ -110,6 +162,8 @@ export async function reconnectWorkspace(): Promise<boolean> {
 
 /** Remove the workspace from storage and memory. */
 export async function clearWorkspace(): Promise<void> {
+  stopWorkspacePolling();
+  _seenHashes.clear();
   await db.workspace.delete('main');
   _handle = null;
   _name = null;
@@ -221,6 +275,9 @@ export async function writeKbToFolder(
     const kbDir = await getOrCreateDir(kbsDir, folderName);
 
     await writeToDir(kbDir, `${folderName}.ttl`, ttl);
+    // Remember what we wrote so the poll loop doesn't treat our own write as an
+    // external change and re-import it (write→read feedback loop).
+    markWritten(`kbs/${folderName}/${folderName}.ttl`, ttl);
 
     // Write binary assets to structured directories (only populated categories)
     if (assets && assets.length > 0) {
@@ -492,10 +549,23 @@ export const WORKSPACE_PENDING_FILE = 'knowledge.pending.jsonl';
 type PendingEntry = {
   subject: string;
   predicate: string;
+  /**
+   * Target graph, by name (F80). An agent's question about kb:auto-merge belongs in the
+   * Reckons.AI roadmap graph, NOT in whatever the user happened to have open.
+   *
+   * Omit to mean "any graph" (legacy entries, and notes that are not graph-specific).
+   * Entries addressed to a DIFFERENT graph are put back in the file rather than consumed —
+   * see drainWorkspacePending. Draining used to be unconditionally destructive: it read the
+   * file, cleared it, and imported everything into the active graph, so a question could be
+   * misfiled into the wrong graph AND lost from the file, with no way to retry.
+   */
+  kb?: string;
   /** Omit (or leave empty) to denote a PARTIAL FACT whose object the reviewer must fill (F32). */
   object?: string;
   /** The sub-agent's question for a partial fact (F32). */
   question?: string;
+  /** Entity IRIs this unanswered question blocks (F80). Carried onto the Statement. */
+  blocks?: string | string[];
   note?: string;
   addedByMcp?: boolean;
   addedAt?: string;
@@ -506,28 +576,40 @@ type PendingEntry = {
 };
 
 /**
- * Read knowledge.pending.jsonl from the workspace, convert each line to a
- * pending Statement, and return them. Clears the file after reading.
- * Returns an empty array if the file doesn't exist or no workspace is connected.
+ * Read knowledge.pending.jsonl, take the entries meant for the ACTIVE graph, and PUT THE
+ * REST BACK. Returns an empty array if the file doesn't exist or no workspace is connected.
+ *
+ * Draining is destructive — it consumes the file — so it must only consume what it can
+ * actually deliver. An entry addressed to another graph (`kb`) is left in the file for
+ * that graph to claim. Previously drain took everything and imported it into whatever
+ * graph happened to be open, so an agent's question about the roadmap could be silently
+ * misfiled into a user's personal notes AND erased from the file, with no way to retry.
  */
 export async function drainWorkspacePending(): Promise<PendingEntry[]> {
   const text = await readFromWorkspace(WORKSPACE_PENDING_FILE);
   if (!text?.trim()) return [];
 
+  const active = getCurrentKbName();
   const entries: PendingEntry[] = [];
+  const notMine: string[] = [];
+
   for (const line of text.split('\n')) {
     const trimmed = line.trim();
     if (!trimmed) continue;
     try {
-      entries.push(JSON.parse(trimmed) as PendingEntry);
+      const entry = JSON.parse(trimmed) as PendingEntry;
+      // No `kb` = any graph. Otherwise it must match the active one, or it waits.
+      if (entry.kb && entry.kb !== active) notMine.push(trimmed);
+      else entries.push(entry);
     } catch {
       // skip malformed lines
     }
   }
 
-  // Clear the file so we don't re-import on next load
+  // Consume ONLY what we took. Entries addressed to another graph are written back so
+  // that graph can claim them later — clearing the whole file would destroy them.
   if (entries.length > 0) {
-    await writeToWorkspace(WORKSPACE_PENDING_FILE, '');
+    await writeToWorkspace(WORKSPACE_PENDING_FILE, notMine.length ? notMine.join('\n') + '\n' : '');
   }
 
   return entries;
@@ -584,15 +666,40 @@ export async function drainAndImportPending(): Promise<number> {
       p: { kind: 'iri' as const, value: e.predicate },
       o: { kind: 'literal' as const, value: partial ? '?' : e.object! },
       g: { kind: 'iri' as const, value: `urn:mcp:pending:${sourceId}` },
-      ...(partial ? { needsObject: true, question } : {}),
+      // Carry BOTH through to the graph. Dropping `blocks` was the bug that made a partial
+      // fact merely a gap instead of a priority — the graph knew it had a hole but not what
+      // the hole cost. Dropping `agent` meant an answer could not be routed back to the
+      // agent that asked, which breaks the moment more than one is running.
+      ...(partial
+        ? {
+            needsObject: true,
+            question,
+            ...(e.blocks ? { blocks: Array.isArray(e.blocks) ? e.blocks : [e.blocks] } : {}),
+            ...(e.agent ? { askedBy: e.agent } : {}),
+          }
+        : {}),
       ...(gloss ? { gloss } : {}),
       ...(excerpt ? { excerpt } : {}),
       createdAt: e.addedAt ? new Date(e.addedAt).getTime() : now,
       updatedAt: now,
     };
   });
-  await addStatements(sts, sourceId);
-  return sts.length;
+  // F80.1 (kb:auto-merge): fold exact-identical notes in THIS batch so the user never triages
+  // the same finding twice — the same COMPLETE fact said twice by different agents becomes one
+  // review item. Only EXACT triple duplicates are dropped (the dedupe is unit-verified never to
+  // touch distinct facts) and the highest-confidence copy is kept, so the blast radius is bounded
+  // to removing noise. PARTIAL facts (F32 questions, object '?') are deliberately NOT deduped:
+  // two questions on the same subject+predicate can carry different `blocks`/`question` metadata,
+  // and folding them would silently drop what the hole costs — a destructive action must never be
+  // silent. Cross-batch dedupe (against already-imported pending) also remains — that needs a
+  // graph read, not just this batch.
+  const { kept: deduped, folded } = dedupeCompletePending(sts);
+  if (folded) console.info(`[F80.1] folded ${folded} duplicate pending note(s) before review`);
+
+  // Origin 'agent' engages the F52 boundary in addStatements: these are agent-queued notes, so
+  // any settled status is downgraded to a proposal — agents propose, the human settles.
+  await addStatements(deduped, sourceId, { origin: 'agent' });
+  return deduped.length;
 }
 
 /**
@@ -611,33 +718,63 @@ export async function recordAnswer(answer: {
 
 // ── Import KBs from workspace ────────────────────────────────────────────────
 
+/** A `.ttl` discovered under the workspace, with its parsed metadata. */
+type FolderEntry = { folderName: string; path: string[]; meta: KbMeta };
+
+/** Read a folder entry's TTL + assets (conventional folders carry binary assets;
+ *  loose `.ttl` files anywhere are inline-only). */
+async function readFolderData(
+  folder: FolderEntry
+): Promise<{ ttl: string; assets: Map<string, Uint8Array> } | null> {
+  const conventional = folder.path.length === 3 && folder.path[0] === 'kbs';
+  if (conventional) {
+    const d = await readKbFromFolder(folder.folderName);
+    return d ? { ttl: d.ttl, assets: d.assets } : null;
+  }
+  const ttl = await readTtlByPath(folder.path);
+  return ttl ? { ttl, assets: new Map<string, Uint8Array>() } : null;
+}
+
+/** Import ONE freshly-discovered folder as a new KB. Returns statements written,
+ *  or 0 if empty/unreadable. */
+async function importNewKb(folder: FolderEntry): Promise<number> {
+  const data = await readFolderData(folder);
+  if (!data?.ttl) return 0;
+  const { ingestNewKb } = await import('./kb-import');
+  const uri = `workspace://${folder.folderName}/${folder.folderName}.ttl`;
+  const res = await ingestNewKb(data, folder.meta, uri);
+  return res?.count ?? 0;
+}
+
+/** Re-import a changed folder into the EXISTING KB `kbId` (in place). */
+async function updateExistingKb(kbId: string, folder: FolderEntry): Promise<number> {
+  const data = await readFolderData(folder);
+  if (!data?.ttl) return 0;
+  const { ingestExistingKb } = await import('./kb-import');
+  const uri = `workspace://${folder.folderName}/${folder.folderName}.ttl`;
+  return ingestExistingKb(kbId, data, folder.meta, uri);
+}
+
 /**
  * Import KBs found in the workspace folder that don't exist in IndexedDB.
  * Reads each kbs/{name}/{name}.ttl (or legacy kbs/{name}/kb.ttl), parses it,
- * creates a Dexie DB, and registers the KB. Returns the number of KBs imported.
+ * creates a Dexie DB, and registers the KB. Returns names imported/skipped.
  */
 export async function importKbsFromWorkspace(): Promise<{ imported: string[]; skipped: string[] }> {
   const folders = await listKbFolders();
   if (folders.length === 0) return { imported: [], skipped: [] };
 
-  const { importTurtleFull } = await import('../rdf/import-ttl');
-  const { createKb, registerStableId, getRegistry, findKbByStableId } = await import('../storage/kb-registry');
-  const { v4: uuid } = await import('uuid');
-  const { DEFAULT_SETTINGS } = await import('../storage/db');
-
+  const { getRegistry, findKbByStableId } = await import('../storage/kb-registry');
   const registry = getRegistry();
   const existing = new Set(registry.map(e => e.name.toLowerCase()));
-  // Also check by stableId
   const existingStableIds = new Set<string>();
-  for (const e of registry) {
-    if (e.stableId) existingStableIds.add(e.stableId);
-  }
+  for (const e of registry) if (e.stableId) existingStableIds.add(e.stableId);
 
   const imported: string[] = [];
   const skipped: string[] = [];
 
-  for (const { folderName, path, meta } of folders) {
-    // Skip if a KB with the same name or stableId already exists
+  for (const folder of folders) {
+    const { folderName, meta } = folder;
     if (existing.has(meta.name.toLowerCase()) || existing.has(folderName.toLowerCase())) {
       skipped.push(meta.name);
       continue;
@@ -646,94 +783,12 @@ export async function importKbsFromWorkspace(): Promise<{ imported: string[]; sk
       skipped.push(meta.name);
       continue;
     }
-
-    // Read the TTL. Conventional kbs/{name}/ folders read their assets too;
-    // a loose .ttl anywhere reads just the graph (inline data — no asset dir).
-    const conventional = path.length === 3 && path[0] === 'kbs';
-    const data = conventional
-      ? await readKbFromFolder(folderName)
-      : await readTtlByPath(path).then((ttl) => (ttl ? { ttl, meta, assets: new Map<string, Uint8Array>() } : null));
-    if (!data?.ttl) {
-      skipped.push(meta.name);
-      continue;
-    }
-
     try {
-      const { statements: rawStmts } = await importTurtleFull(data.ttl);
-      if (rawStmts.length === 0) {
-        skipped.push(`${meta.name} (empty)`);
-        continue;
-      }
-
-      // Create the KB
-      const newKb = createKb(meta.name);
-
-      // Open a temporary Dexie instance
-      const tempDb = new KBaseDB(newKb.id);
-      await tempDb.open();
-      await tempDb.settings.put({ ...DEFAULT_SETTINGS, kbTitle: meta.name });
-
-      const now = Date.now();
-      const sourceId = uuid();
-      await tempDb.sources.put({
-        id: sourceId,
-        title: meta.name,
-        uri: `workspace://${folderName}/${folderName}.ttl`,
-        kind: 'document' as const,
-        trustLevel: 'trusted' as const,
-        ingestedAt: now,
-      });
-
-      const stmts = rawStmts
-        .filter(s => s.status === 'confirmed' || s.status === 'refined' || s.status === 'pending')
-        .map(s => ({
-          ...s,
-          id: uuid(),
-          sourceId,
-          g: { kind: 'iri' as const, value: `urn:kbase:source/${sourceId}` },
-          status: 'confirmed' as const,
-          createdAt: now,
-          updatedAt: now,
-        }));
-      await tempDb.statements.bulkPut(stmts);
-
-      // Import binary assets into IndexedDB override tables
-      if (data.assets.size > 0) {
-        const { parseAssetRefs, isAssetPath, extToMime } = await import('../storage/kb-assets');
-        const refs = parseAssetRefs(data.ttl);
-        for (const ref of refs) {
-          if (!isAssetPath(ref.value)) continue;
-          const bytes = data.assets.get(ref.value);
-          if (!bytes) continue;
-
-          if (ref.category === 'previews') {
-            const filename = ref.value.split('/').pop() ?? 'preview';
-            const mime = extToMime(ref.value);
-            await tempDb.entityGifs.put({
-              id: ref.entityIri,
-              blob: new Blob([bytes.buffer as ArrayBuffer], { type: mime }),
-              filename,
-            });
-          } else if (ref.category === 'models') {
-            // Convert to data URL for glbOverrides
-            const b64 = btoa(String.fromCharCode(...bytes));
-            await tempDb.glbOverrides.put({ id: ref.entityIri, url: `data:model/gltf-binary;base64,${b64}` });
-          } else if (ref.category === 'icons') {
-            const mime = extToMime(ref.value);
-            const b64 = btoa(String.fromCharCode(...bytes));
-            await tempDb.icon2dOverrides.put({ id: ref.entityIri, url: `data:${mime};base64,${b64}` });
-          }
-        }
-      }
-
-      // Register stable ID
-      if (meta.stableId) {
-        await tempDb.settings.update('main', { kbStableId: meta.stableId });
-        registerStableId(newKb.id, meta.stableId, stmts.length);
-      }
-
-      tempDb.close();
-      imported.push(`${meta.name} (${stmts.length} statements)`);
+      const count = await importNewKb(folder);
+      if (count === 0) { skipped.push(`${meta.name} (empty)`); continue; }
+      // Baseline the hash so the poll loop won't immediately re-import it.
+      markWritten(folder.path.join('/'), (await readTtlByPath(folder.path)) ?? '');
+      imported.push(`${meta.name} (${count} statements)`);
     } catch (err) {
       console.warn(`[workspace] Failed to import ${meta.name}:`, err);
       skipped.push(`${meta.name} (parse error)`);
@@ -741,6 +796,122 @@ export async function importKbsFromWorkspace(): Promise<{ imported: string[]; sk
   }
 
   return { imported, skipped };
+}
+
+// ── Pull: import new / update changed .ttl from disk ─────────────────────────
+
+/**
+ * Scan the linked folder for `.ttl` changes and reconcile them into IndexedDB:
+ *  - a file with no matching KB → imported as a new KB;
+ *  - a file whose content changed since we last saw it → re-imported into the
+ *    existing KB (matched by stableId, else by name);
+ *  - a file we ourselves just wrote (hash already seen) → skipped.
+ * If the active KB is updated, its in-memory store is reloaded so the graph
+ * reflects the change without a page reload.
+ */
+export async function pullFromWorkspace(): Promise<{ imported: string[]; updated: string[] }> {
+  if (!_handle || _pulling) return { imported: [], updated: [] };
+  _pulling = true;
+  const imported: string[] = [];
+  const updated: string[] = [];
+  try {
+    const folders = await listKbFolders();
+    const { getRegistry, findKbByStableId, getCurrentKbId } = await import('../storage/kb-registry');
+    const registry = getRegistry();
+    const currentId = getCurrentKbId();
+    let activeChanged = false;
+
+    for (const folder of folders) {
+      const key = folder.path.join('/');
+      const ttl = await readTtlByPath(folder.path);
+      if (!ttl) continue;
+      const h = hashString(ttl);
+      if (_seenHashes.get(key) === h) continue; // unchanged or our own write
+
+      const match =
+        (folder.meta.stableId
+          ? (findKbByStableId(folder.meta.stableId) ?? registry.find(e => e.stableId === folder.meta.stableId))
+          : undefined) ??
+        registry.find(
+          e =>
+            e.name.toLowerCase() === folder.meta.name.toLowerCase() ||
+            e.name.toLowerCase() === folder.folderName.toLowerCase()
+        );
+
+      try {
+        if (match) {
+          const count = await updateExistingKb(match.id, folder);
+          if (count > 0) {
+            updated.push(folder.meta.name);
+            if (match.id === currentId) activeChanged = true;
+          }
+        } else {
+          const count = await importNewKb(folder);
+          if (count > 0) imported.push(folder.meta.name);
+        }
+        _seenHashes.set(key, h);
+      } catch (err) {
+        console.warn(`[workspace] pull failed for ${folder.meta.name}:`, err);
+      }
+    }
+
+    if (imported.length || updated.length) {
+      _lastSyncTime = Date.now();
+      _syncedKbCount = folders.length;
+      if (activeChanged) {
+        const { loadAll } = await import('./kb.svelte');
+        await loadAll();
+      }
+    }
+  } finally {
+    _pulling = false;
+  }
+  return { imported, updated };
+}
+
+/** Manual "resync now": pull disk→app, then push app→disk. */
+export async function resyncNow(): Promise<{ imported: string[]; updated: string[]; pushed: number }> {
+  const pulled = await pullFromWorkspace();
+  const pushed = await syncAllKbs();
+  return { ...pulled, pushed };
+}
+
+// ── Polling ──────────────────────────────────────────────────────────────────
+
+/** Start the background poll loop (idempotent). No-op without a handle. */
+export function startWorkspacePolling(ms: number = POLL_INTERVAL_MS): void {
+  if (_pollTimer || !_handle || typeof setInterval === 'undefined') return;
+  _pollTimer = setInterval(() => { void pullFromWorkspace(); }, ms);
+}
+
+export function stopWorkspacePolling(): void {
+  if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+}
+
+/** Toggle auto-sync (persisted). Starts/stops polling to match. */
+export function setAutoSync(on: boolean): void {
+  _autoSyncEnabled = on;
+  if (typeof localStorage !== 'undefined') localStorage.setItem(AUTOSYNC_KEY, on ? 'true' : 'false');
+  if (on) { if (_handle) { void pullFromWorkspace().finally(() => startWorkspacePolling()); } }
+  else stopWorkspacePolling();
+}
+
+/** TEST ONLY: link an already-obtained handle (e.g. an OPFS dir) without the
+ *  native picker, so folder sync can be exercised in Playwright/headless. */
+export function __linkHandleForTest(handle: FileSystemDirectoryHandle): void {
+  _handle = handle;
+  _name = handle.name;
+  _state = 'connected';
+}
+
+// DEV/test-only: expose the sync internals on window so Playwright can exercise
+// the two-way folder sync against a real (OPFS) directory handle — the native
+// showDirectoryPicker can't be driven headless. Never attached in production.
+if (typeof window !== 'undefined' && import.meta.env?.DEV) {
+  (window as unknown as { __reckonsWorkspace?: unknown }).__reckonsWorkspace = {
+    __linkHandleForTest, pullFromWorkspace, resyncNow,
+    workspaceState, workspaceName, syncedKbCount, autoSyncEnabled, setAutoSync,
+  };
 }
 
 // ── Model folder persistence ────────────────────────────────────────────────

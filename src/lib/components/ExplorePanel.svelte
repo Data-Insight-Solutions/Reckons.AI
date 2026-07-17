@@ -16,6 +16,7 @@
   import { turtleChat, resolveChatProvider, type TurtleChatProvider } from '$lib/integrations/llm/turtle-chat';
   import type { KBAction, KBContext } from '$lib/types/turtle-chat';
   import type { Statement } from '$lib/rdf/types';
+  import { buildKBContext as buildKBContextShared } from '$lib/rdf/kb-context';
 
   let { onclose } = $props<{ onclose: () => void }>();
 
@@ -33,92 +34,17 @@
     }
   });
 
-  // ── KB context (adapted from TurtleChatPanel) ─────────────────────────────
-
+  // ── KB context (shared summarizer — src/lib/rdf/kb-context.ts) ─────────────
+  // Explore surfaces hubs first (degree) and prefixes each entity with degree:N.
   function buildKBContext(): KBContext {
-    const stmts = confirmedStatements();
-    const allStmts = statements();
-    const tm = typeMap();
-
-    const bySubject = new Map<string, Statement[]>();
-    const typedIris = new Set<string>();
-    const typeDefIris = new Set<string>();
-    const objectOnlyIris = new Set<string>();
-
-    for (const st of stmts) {
-      if (st.s.kind === 'iri') {
-        if (!bySubject.has(st.s.value)) bySubject.set(st.s.value, []);
-        bySubject.get(st.s.value)!.push(st);
-        if (st.p.value === RDF_TYPE) typedIris.add(st.s.value);
-      }
-      if (st.o.kind === 'iri') {
-        if (st.p.value === RDF_TYPE) typeDefIris.add(st.o.value);
-        else if (!bySubject.has(st.o.value)) objectOnlyIris.add(st.o.value);
-      }
-    }
-    for (const iri of typeDefIris) objectOnlyIris.delete(iri);
-    for (const iri of bySubject.keys()) objectOnlyIris.delete(iri);
-
-    const untypedEntityCount =
-      [...bySubject.keys()].filter(iri => !typedIris.has(iri)).length + objectOnlyIris.size;
-    const manualStatementCount = allStmts.filter(s =>
-      (s.status === 'confirmed' || s.status === 'refined') && s.sourceId === 'manual'
-    ).length;
-
-    const typesPresent = new Set<string>();
-    const sampleEntities: KBContext['sampleEntities'] = [];
-
-    // Compute degree (edge count) per entity to surface hubs at the top
-    const degrees = new Map<string, number>();
-    for (const st of stmts) {
-      if (st.s.kind === 'iri') degrees.set(st.s.value, (degrees.get(st.s.value) ?? 0) + 1);
-      if (st.o.kind === 'iri') degrees.set(st.o.value, (degrees.get(st.o.value) ?? 0) + 1);
-    }
-
-    // Sort: hubs first (high degree), then untyped, then by statement count
-    const sorted = [...bySubject.entries()]
-      .sort(([iriA, a], [iriB, b]) => {
-        const degA = degrees.get(iriA) ?? 0;
-        const degB = degrees.get(iriB) ?? 0;
-        if (degB !== degA) return degB - degA;
-        const aUntyped = !typedIris.has(iriA) ? -1 : 0;
-        const bUntyped = !typedIris.has(iriB) ? -1 : 0;
-        return aUntyped - bUntyped || b.length - a.length;
-      })
-      .slice(0, 20);
-
-    for (const [iri, sts] of sorted) {
-      const typeStmt = sts.find(s => s.p.value === RDF_TYPE);
-      const typeIri = typeStmt?.o.value ?? null;
-      const typeDef = typeIri ? tm.get(typeIri) : null;
-      if (typeDef) typesPresent.add(typeDef.label);
-
-      const labelStmt = sts.find(s => s.p.value === 'http://www.w3.org/2000/01/rdf-schema#label');
-      const label = labelStmt?.o.value ?? iri.split('/').pop() ?? iri;
-      const degree = degrees.get(iri) ?? 0;
-
-      sampleEntities.push({
-        iri,
-        label,
-        type: typeDef?.label ?? null,
-        predicates: [
-          `degree:${degree}`,
-          ...sts
-            .filter(s => s.p.value !== RDF_TYPE)
-            .slice(0, 3)
-            .map(s => `${s.p.value.split('/').pop()} → ${s.o.value.slice(0, 40)}`)
-        ]
-      });
-    }
-
-    return {
-      statementCount: stmts.length,
+    return buildKBContextShared({
+      confirmed: confirmedStatements(),
+      all: statements(),
       sourceCount: sources().length,
-      typesPresent: [...typesPresent],
-      untypedEntityCount,
-      manualStatementCount,
-      sampleEntities
-    };
+      typeLabelOf: (t) => typeMap().get(t)?.label ?? null,
+      hubFirst: true,
+      includeDegree: true,
+    });
   }
 
   // ── Provider resolution ───────────────────────────────────────────────────

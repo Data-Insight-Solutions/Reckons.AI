@@ -15,4 +15,4 @@ generated: "docs-kb"
 
 *Tool*
 
-Promise-based wrapper around IndexedDB. All KB data (statements, sources, changelog, settings) stored locally. Each KB is a separate Dexie database instance.
+Promise-based wrapper around IndexedDB. All graph data (statements, sources, changelog, settings) stored locally. Each graph is a separate Dexie database instance.

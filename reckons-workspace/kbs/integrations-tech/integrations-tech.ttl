@@ -52,20 +52,20 @@
 <urn:reckons:integration/BrowserExtension>
     rdfs:label "Browser Extension" ;
     rdfs:label "Browser Extension" ;
-    <http://www.w3.org/2004/02/skos/core#definition> "Manifest V3 extension with three tabs: Compare (page vs KB with at-a-glance bar), Session (multi-page research accumulation with aggregate summaries), Ingest (batch send to app). Supports Chrome, Firefox desktop, and Firefox for Android with mobile-optimized UI." ;
-    <http://www.w3.org/2004/02/skos/core#definition> "Manifest V3 extension with three tabs: Compare (page vs KB with at-a-glance bar), Session (multi-page research accumulation with aggregate summaries), Ingest (batch send to app). Supports Chrome, Firefox desktop, and Firefox for Android with mobile-optimized UI." ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Manifest V3 extension with three tabs: Compare (page vs graph with at-a-glance bar), Session (multi-page research accumulation with aggregate summaries), Ingest (batch send to app). Supports Chrome, Firefox desktop, and Firefox for Android with mobile-optimized UI." ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Manifest V3 extension with three tabs: Compare (page vs graph with at-a-glance bar), Session (multi-page research accumulation with aggregate summaries), Ingest (batch send to app). Supports Chrome, Firefox desktop, and Firefox for Android with mobile-optimized UI." ;
     rdf:type <urn:kbase:type/Concept> ;
     <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:integration/Integrations> ;
     rdf:type <urn:kbase:type/Concept> ;
     <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:integration/Integrations> .
 
 <urn:reckons:integration/N8nSyncHub>
-    rdfs:label "KB Sync Hub (n8n)" ;
+    rdfs:label "Graph Sync Hub (n8n)" ;
     rdf:type <urn:kbase:type/Concept> ;
-    <http://www.w3.org/2004/02/skos/core#definition> "n8n workflow with 4 webhook endpoints: POST upload (SHA-256 dedup), GET download (serves text/turtle), GET status (JSON summary of all KBs), GET pending (pending notes from source monitors). Data stored in n8n Data Tables." ;
-    rdfs:label "KB Sync Hub (n8n)" ;
+    <http://www.w3.org/2004/02/skos/core#definition> "n8n workflow with 4 webhook endpoints: POST upload (SHA-256 dedup), GET download (serves text/turtle), GET status (JSON summary of all graphs), GET pending (pending notes from source monitors). Data stored in n8n Data Tables." ;
+    rdfs:label "Graph Sync Hub (n8n)" ;
     <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:integration/N8nCloudSync> ;
-    <http://www.w3.org/2004/02/skos/core#definition> "n8n workflow with 4 webhook endpoints: POST upload (SHA-256 dedup), GET download (serves text/turtle), GET status (JSON summary of all KBs), GET pending (pending notes from source monitors). Data stored in n8n Data Tables." ;
+    <http://www.w3.org/2004/02/skos/core#definition> "n8n workflow with 4 webhook endpoints: POST upload (SHA-256 dedup), GET download (serves text/turtle), GET status (JSON summary of all graphs), GET pending (pending notes from source monitors). Data stored in n8n Data Tables." ;
     <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:integration/N8nCloudSync> ;
     rdf:type <urn:kbase:type/Concept> .
 
@@ -83,22 +83,22 @@
     <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:integration/Integrations> ;
     rdfs:label "n8n Cloud Sync" ;
     <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:integration/Integrations> ;
-    <http://www.w3.org/2004/02/skos/core#definition> "Private, self-hosted cloud sync via n8n workflow automation. Two workflows: KB Sync Hub (upload/download/status/pending via webhooks with content-hash deduplication) and Source Monitor (watches URLs every 6 hours, detects content changes, queues pending notes). No SaaS dependency — your n8n VPS is the cloud backend." ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Private, self-hosted cloud sync via n8n workflow automation. Two workflows: Graph Sync Hub (upload/download/status/pending via webhooks with content-hash deduplication) and Source Monitor (watches URLs every 6 hours, detects content changes, queues pending notes). No SaaS dependency — your n8n VPS is the cloud backend." ;
     rdf:type <urn:kbase:type/Concept> ;
     rdfs:label "n8n Cloud Sync" ;
-    <http://www.w3.org/2004/02/skos/core#definition> "Private, self-hosted cloud sync via n8n workflow automation. Two workflows: KB Sync Hub (upload/download/status/pending via webhooks with content-hash deduplication) and Source Monitor (watches URLs every 6 hours, detects content changes, queues pending notes). No SaaS dependency — your n8n VPS is the cloud backend." ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Private, self-hosted cloud sync via n8n workflow automation. Two workflows: Graph Sync Hub (upload/download/status/pending via webhooks with content-hash deduplication) and Source Monitor (watches URLs every 6 hours, detects content changes, queues pending notes). No SaaS dependency — your n8n VPS is the cloud backend." ;
     rdf:type <urn:kbase:type/Concept> .
 
 <urn:reckons:tech/MCP>
     rdfs:label "Model Context Protocol" ;
-    <http://www.w3.org/2004/02/skos/core#definition> "An open protocol by Anthropic for connecting AI models to external data sources. Reckons.AI implements a standalone MCP server (Node.js) with 11 tools that reads workspace TTL files. Multi-KB support via MultiKBReader." ;
+    <http://www.w3.org/2004/02/skos/core#definition> "An open protocol by Anthropic for connecting AI models to external data sources. Reckons.AI implements a standalone MCP server (Node.js) with 11 tools that reads workspace TTL files. Multi-Graph support via MultiKBReader." ;
     rdfs:label "Model Context Protocol" ;
     rdf:type <urn:kbase:type/Tool> ;
     <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:tech/Architecture> ;
     <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:integration/MCPServer> ;
     rdf:type <urn:kbase:type/Tool> ;
     <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:tech/Architecture> ;
-    <http://www.w3.org/2004/02/skos/core#definition> "An open protocol by Anthropic for connecting AI models to external data sources. Reckons.AI implements a standalone MCP server (Node.js) with 11 tools that reads workspace TTL files. Multi-KB support via MultiKBReader." ;
+    <http://www.w3.org/2004/02/skos/core#definition> "An open protocol by Anthropic for connecting AI models to external data sources. Reckons.AI implements a standalone MCP server (Node.js) with 11 tools that reads workspace TTL files. Multi-Graph support via MultiKBReader." ;
     <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:integration/MCPServer> .
 
 kb:docs-pipeline
@@ -131,9 +131,9 @@ kb:docs-pipeline
     <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:integration/Integrations> ;
     rdf:type <urn:kbase:type/Tool> ;
     <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:integration/WorkspaceSync> ;
-    <http://www.w3.org/2004/02/skos/core#definition> "Standalone Node.js MCP server exposing your KB to AI agents (Claude Desktop, Cursor). 6 tools: kb_search (BM25), kb_get_entity, kb_list_entities, kb_stats, kb_add_note, kb_reckoning. Reads knowledge.ttl from workspace folder." ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Standalone Node.js MCP server exposing your graph to AI agents (Claude Desktop, Cursor). 6 tools: kb_search (BM25), kb_get_entity, kb_list_entities, kb_stats, kb_add_note, kb_reckoning. Reads knowledge.ttl from workspace folder." ;
     rdf:type <urn:kbase:type/Concept> ;
-    <http://www.w3.org/2004/02/skos/core#definition> "Standalone Node.js MCP server exposing your KB to AI agents (Claude Desktop, Cursor). 6 tools: kb_search (BM25), kb_get_entity, kb_list_entities, kb_stats, kb_add_note, kb_reckoning. Reads knowledge.ttl from workspace folder." ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Standalone Node.js MCP server exposing your graph to AI agents (Claude Desktop, Cursor). 6 tools: kb_search (BM25), kb_get_entity, kb_list_entities, kb_stats, kb_add_note, kb_reckoning. Reads knowledge.ttl from workspace folder." ;
     rdf:type <urn:kbase:type/Concept> ;
     rdfs:label "MCP Server" ;
     rdfs:label "MCP Server" ;
@@ -165,9 +165,9 @@ kb:docs-pipeline
 
 <urn:reckons:integration/GoogleDrive>
     rdfs:label "Google Drive" ;
-    <http://www.w3.org/2004/02/skos/core#definition> "KB backup to Google Drive. Export .ttl to a dedicated Drive folder. OAuth-authenticated. Privacy note: Google can access the stored file." ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Graph backup to Google Drive. Export .ttl to a dedicated Drive folder. OAuth-authenticated. Privacy note: Google can access the stored file." ;
     rdf:type <urn:kbase:type/Concept> ;
-    <http://www.w3.org/2004/02/skos/core#definition> "KB backup to Google Drive. Export .ttl to a dedicated Drive folder. OAuth-authenticated. Privacy note: Google can access the stored file." ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Graph backup to Google Drive. Export .ttl to a dedicated Drive folder. OAuth-authenticated. Privacy note: Google can access the stored file." ;
     <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:integration/Integrations> ;
     rdfs:label "Google Drive" ;
     <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:integration/Integrations> ;
@@ -199,8 +199,8 @@ kb:webpage-entity
     <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:integration/MCPServer> ;
     rdf:type <urn:kbase:type/Concept> ;
     rdfs:label "VS Code Extension (Planned)" ;
-    <http://www.w3.org/2004/02/skos/core#definition> "Auto-inject KB into coding sessions via MCP bridge. Wraps reckons-ai-mcp as child process with stdio transport. Phase 1: MCP bridge + auto-inject. Phase 2: live updates from editor actions. Phase 3: sidebar KB browser with webview graph. Zero config — activates when it detects kbs/*/kb.ttl in workspace." ;
-    <http://www.w3.org/2004/02/skos/core#definition> "Auto-inject KB into coding sessions via MCP bridge. Wraps reckons-ai-mcp as child process with stdio transport. Phase 1: MCP bridge + auto-inject. Phase 2: live updates from editor actions. Phase 3: sidebar KB browser with webview graph. Zero config — activates when it detects kbs/*/kb.ttl in workspace." ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Auto-inject graph into coding sessions via MCP bridge. Wraps reckons-ai-mcp as child process with stdio transport. Phase 1: MCP bridge + auto-inject. Phase 2: live updates from editor actions. Phase 3: sidebar graph browser with webview graph. Zero config — activates when it detects kbs/*/kb.ttl in workspace." ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Auto-inject graph into coding sessions via MCP bridge. Wraps reckons-ai-mcp as child process with stdio transport. Phase 1: MCP bridge + auto-inject. Phase 2: live updates from editor actions. Phase 3: sidebar graph browser with webview graph. Zero config — activates when it detects kbs/*/kb.ttl in workspace." ;
     rdfs:label "VS Code Extension (Planned)" ;
     <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:integration/Integrations> ;
     <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:integration/MCPServer> ;
@@ -269,12 +269,12 @@ kb:context-compression
     pred:in-production "2026-07-08" .
 
 <urn:reckons:tech/Dexie>
-    <http://www.w3.org/2004/02/skos/core#definition> "Promise-based wrapper around IndexedDB. All KB data (statements, sources, changelog, settings) stored locally. Each KB is a separate Dexie database instance." ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Promise-based wrapper around IndexedDB. All graph data (statements, sources, changelog, settings) stored locally. Each graph is a separate Dexie database instance." ;
     <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:tech/Architecture> ;
     rdfs:label "Dexie.js + IndexedDB" ;
     rdfs:label "Dexie.js + IndexedDB" ;
     rdf:type <urn:kbase:type/Tool> ;
-    <http://www.w3.org/2004/02/skos/core#definition> "Promise-based wrapper around IndexedDB. All KB data (statements, sources, changelog, settings) stored locally. Each KB is a separate Dexie database instance." ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Promise-based wrapper around IndexedDB. All graph data (statements, sources, changelog, settings) stored locally. Each graph is a separate Dexie database instance." ;
     <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:tech/Architecture> ;
     rdf:type <urn:kbase:type/Tool> .
 
@@ -333,11 +333,11 @@ kb:context-compression
     rdf:type <urn:kbase:type/Concept> ;
     rdfs:label "Integrations" ;
     rdfs:label "Integrations" ;
-    <http://www.w3.org/2004/02/skos/core#definition> "Reckons.AI connects to external tools and data sources while keeping your KB local. Every integration is optional -- the core app works with zero external dependencies." ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Reckons.AI connects to external tools and data sources while keeping your graph local. Every integration is optional -- the core app works with zero external dependencies." ;
     <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:guide/WhatIsReckonsAI> ;
     rdf:type <urn:kbase:type/Concept> ;
     <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:guide/WhatIsReckonsAI> ;
-    <http://www.w3.org/2004/02/skos/core#definition> "Reckons.AI connects to external tools and data sources while keeping your KB local. Every integration is optional -- the core app works with zero external dependencies." .
+    <http://www.w3.org/2004/02/skos/core#definition> "Reckons.AI connects to external tools and data sources while keeping your graph local. Every integration is optional -- the core app works with zero external dependencies." .
 
 <urn:reckons:tech/SvelteKit>
     <http://www.w3.org/2004/02/skos/core#definition> "Web framework with adapter-static for fully client-side deployment. Svelte 5 runes ($state, $derived, $effect) for reactive state management." ;

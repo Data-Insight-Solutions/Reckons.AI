@@ -7,7 +7,7 @@ parent: "collaborative-knowledge"
 template: doc
 status: published
 nav: sidebar
-excerpt: "When a Reckoning produces a recommendation and the user accepts it, the resulting KB statements are automatically annotated with the source IRIs, Reckoning timestamp, and confidence level."
+excerpt: "When a Reckoning produces a recommendation and the user accepts it, the resulting graph statements are automatically annotated with the source IRIs, Reckoning timestamp, and confidence level."
 generated: "docs-kb"
 related:
   - "personal-empowerment"
@@ -17,7 +17,7 @@ related:
 
 *Concept*
 
-When a Reckoning produces a recommendation and the user accepts it, the resulting KB statements are automatically annotated with the source IRIs, Reckoning timestamp, and confidence level. Anyone reading the triple later can see it was added by a Reckoning on a specific date, informed by specific sources. The KB becomes self-documenting.
+When a Reckoning produces a recommendation and the user accepts it, the resulting graph statements are automatically annotated with the source IRIs, Reckoning timestamp, and confidence level. Anyone reading the triple later can see it was added by a Reckoning on a specific date, informed by specific sources. The graph becomes self-documenting.
 
 ## Related
 

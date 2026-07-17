@@ -15,7 +15,7 @@ generated: "docs-kb"
 
 *Concept*
 
-Everything runs in the browser. Your KB is stored in IndexedDB, API keys never leave your device, and the app works offline after first load. No server means no data breaches, no vendor lock-in, and no monthly subscription.
+Everything runs in the browser. Your graph is stored in IndexedDB, API keys never leave your device, and the app works offline after first load. No server means no data breaches, no vendor lock-in, and no monthly subscription.
 
 ## Details
 

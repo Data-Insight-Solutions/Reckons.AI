@@ -15,7 +15,7 @@ generated: "docs-kb"
 
 *Concept*
 
-docs/ENTERPRISE.md (242 lines) covers F21 People/Policy/Procedure. Already has entity in reckons-roadmap.ttl. Four phase entities need to be added (RBAC, auth gateway, policy modelling, team workflows). Safe to delete after expansion.
+docs/ENTERPRISE.md (242 lines) covers F21 People/Policy/Procedure. Already has entity in reckons-roadmap.ttl. Four phase entities need to be added (RBAC, auth gateway, policy modeling, team workflows). Safe to delete after expansion.
 
 ## Details
 

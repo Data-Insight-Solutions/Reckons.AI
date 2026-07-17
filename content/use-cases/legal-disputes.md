@@ -15,4 +15,4 @@ generated: "docs-kb"
 
 *Concept*
 
-Build a timeline of events, contracts, correspondence, and obligations. Your KB becomes a structured evidence base that you can query: 'What did the landlord promise regarding repairs, and when?' Every answer traces back to a source document.
+Build a timeline of events, contracts, correspondence, and obligations. Your graph becomes a structured evidence base that you can query: 'What did the landlord promise regarding repairs, and when?' Every answer traces back to a source document.

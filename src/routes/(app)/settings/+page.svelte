@@ -1,5 +1,6 @@
 <script lang="ts">
   import { settings, updateSettings } from '$lib/stores/settings.svelte';
+  import { copyText } from '$lib/utils/clipboard';
   import { ensureWasmReady, onWasmProgress } from '$lib/integrations/llm/wasm';
   import { providerStatus, warmProviderSdk, type ProviderInfo } from '$lib/integrations/llm/provider-status.svelte';
   import {
@@ -29,7 +30,6 @@
     syncAllKbs, listKbFolders, lastSyncTime, syncedKbCount,
     importKbsFromWorkspace
   } from '$lib/stores/workspace.svelte';
-  import { exportJsonLd, exportLlmsTxt } from '$lib/storage/semantic-export';
 
   let key = $state(settings().claudeApiKey ?? '');
   let openaiKey = $state(settings().openaiApiKey ?? '');
@@ -290,9 +290,12 @@
   }
 
   async function copyToClipboard(text: string, which: 'id' | 'hash') {
-    await navigator.clipboard.writeText(text);
-    copied = which;
-    setTimeout(() => { copied = null; }, 1800);
+    // copyText never throws (falls back on insecure contexts / blocked clipboard) — the button-crawl
+    // caught this awaiting navigator.clipboard.writeText unguarded and crashing on permission denied.
+    if (await copyText(text)) {
+      copied = which;
+      setTimeout(() => { copied = null; }, 1800);
+    }
   }
 
   // Extension highlight settings
@@ -309,8 +312,6 @@
   let exportingFull = $state(false);
   let exportingPending = $state(false);
   let exportingChangelog = $state(false);
-  let exportingJsonLd = $state(false);
-  let exportingLlmsTxt = $state(false);
   let autoSaveLinked = $state(hasAutoSaveFile());
   let autoSaveFileName = $state(getAutoSaveFileName());
 
@@ -334,17 +335,6 @@
     try { await exportChangelog(); } catch (e) { console.error(e); } finally { exportingChangelog = false; }
   }
 
-  async function handleExportJsonLd() {
-    exportingJsonLd = true;
-    try { await exportJsonLd({ kbTitle: settings().kbTitle, kbDescription: settings().kbDescription }); }
-    catch (e) { console.error(e); } finally { exportingJsonLd = false; }
-  }
-
-  async function handleExportLlmsTxt() {
-    exportingLlmsTxt = true;
-    try { await exportLlmsTxt({ kbTitle: settings().kbTitle, kbDescription: settings().kbDescription }); }
-    catch (e) { console.error(e); } finally { exportingLlmsTxt = false; }
-  }
 
   async function handlePickAutoSave() {
     const ok = await pickAutoSaveFile();
@@ -670,7 +660,7 @@
     const parts: string[] = [];
     if (imported.length > 0) parts.push(`Imported: ${imported.join(', ')}`);
     if (skipped.length > 0) parts.push(`Skipped: ${skipped.join(', ')}`);
-    wsImportMsg = parts.join('. ') || 'No new KBs found.';
+    wsImportMsg = parts.join('. ') || 'No new graphs found.';
     wsImporting = false;
     // Refresh folder count
     const folders = await listKbFolders();
@@ -684,7 +674,8 @@
   <h1>system configuration</h1>
 
   <div class="settings-nav">
-    <a href="/settings" class:active={!page.url.pathname.includes('/turtle') && !page.url.pathname.includes('/entity-types') && !page.url.pathname.includes('/integrations')} class="nav-link">backends</a>
+    <a href="/settings" class:active={!page.url.pathname.includes('/turtle') && !page.url.pathname.includes('/entity-types') && !page.url.pathname.includes('/integrations') && !page.url.pathname.includes('/publishing')} class="nav-link">backends</a>
+    <a href="/settings/publishing" class:active={page.url.pathname.includes('/publishing')} class="nav-link">publishing</a>
     <a href="/settings/integrations" class:active={page.url.pathname.includes('/integrations')} class="nav-link">integrations</a>
     <a href="/settings/turtle" class:active={page.url.pathname.includes('/turtle')} class="nav-link">turtle</a>
     <a href="/settings/entity-types" class:active={page.url.pathname.includes('/entity-types')} class="nav-link">entity types</a>
@@ -1074,6 +1065,31 @@
 
   <div class="field row-field">
     <div>
+      <span class="lbl mono">always-on previews</span>
+      <p class="hint" style="margin: 0.1rem 0 0;">Show every node's preview image at all times, instead of only on hover or during the story. The graph paints slower with many images.</p>
+    </div>
+    <button
+      class="toggle-btn"
+      class:on={settings().alwaysShowPreviews === true}
+      onclick={() => updateSettings({ alwaysShowPreviews: settings().alwaysShowPreviews !== true })}
+    >
+      {settings().alwaysShowPreviews === true ? 'on' : 'off'}
+    </button>
+  </div>
+
+  <label class="field">
+    <span class="lbl mono">node image size <span class="muted">({settings().nodePreviewSize ?? 96}px)</span></span>
+    <input
+      type="range"
+      min="48" max="320" step="8"
+      value={settings().nodePreviewSize ?? 96}
+      onchange={(e) => updateSettings({ nodePreviewSize: +(e.currentTarget as HTMLInputElement).value })}
+      style="flex: 1;"
+    />
+  </label>
+
+  <div class="field row-field">
+    <div>
       <span class="lbl mono">tutorial hints</span>
       <p class="hint" style="margin: 0.1rem 0 0;">Show contextual nudges as you use the app for the first time. Dismiss any hint to permanently hide it.</p>
     </div>
@@ -1448,31 +1464,6 @@
   </div>
 </section>
 
-<section class="settings-section">
-  <h2 class="section-title">Semantic Web &amp; LLM Search</h2>
-  <p class="section-desc">Export your graph in structured formats that help AI crawlers, LLM search systems, and Schema.org-aware tools understand your content.</p>
-  <div class="export-list">
-    <div class="export-item">
-      <div>
-        <strong>JSON-LD / Schema.org</strong>
-        <p class="check-hint">Structured data graph using Schema.org vocabulary. Embed in a <code>&lt;script type="application/ld+json"&gt;</code> tag on any web page for Google, Bing, and LLM crawlers.</p>
-      </div>
-      <button onclick={handleExportJsonLd} disabled={exportingJsonLd}>
-        {exportingJsonLd ? '…' : '↓ .jsonld'}
-      </button>
-    </div>
-    <div class="export-item">
-      <div>
-        <strong>llms.txt</strong>
-        <p class="check-hint">Plain-text graph summary for AI crawlers, following the <a href="https://llmstxt.org" target="_blank" rel="noopener">llmstxt.org</a> spec. Serve at <code>/llms.txt</code> on your site so LLMs can quickly understand your content during indexing or RAG retrieval.</p>
-      </div>
-      <button onclick={handleExportLlmsTxt} disabled={exportingLlmsTxt}>
-        {exportingLlmsTxt ? '…' : '↓ llms.txt'}
-      </button>
-    </div>
-  </div>
-</section>
-
 <!-- ── Workspace ──────────────────────────────────────────────────────────── -->
 <section id="s-workspace" class="card">
   <h3>local workspace</h3>
@@ -1629,7 +1620,11 @@
 
 <!-- ── Support footer ───────────────────────────────────────────────────── -->
 <footer class="settings-support-footer">
-  <a href="https://www.paypal.com/ncp/payment/KH5J484QMVFS2" target="_blank" rel="noopener noreferrer" class="support-link mono">☕ buy me a coffee</a>
+  <div class="support-links">
+    <a href="https://github.com/Data-Insight-Solutions/Reckons.AI" target="_blank" rel="noopener noreferrer" class="support-link mono">★ GitHub</a>
+    <span class="support-sep" aria-hidden="true">·</span>
+    <a href="https://www.paypal.com/ncp/payment/KH5J484QMVFS2" target="_blank" rel="noopener noreferrer" class="support-link mono">☕ buy me a coffee</a>
+  </div>
   <p class="mono support-sub">Reckons.AI is free, open source, and self-funded.</p>
 </footer>
 
@@ -2275,6 +2270,14 @@
     margin-top: 0.5rem;
     border-top: 1px solid var(--line);
   }
+  .support-links {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+  .support-sep { color: var(--muted); }
   .support-link {
     font-size: 0.8rem;
     color: var(--accent);

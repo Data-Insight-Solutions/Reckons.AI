@@ -6,7 +6,7 @@
    */
   import { onMount, onDestroy } from 'svelte';
   import type { Statement } from '$lib/rdf/types';
-  import { termKey, isIRI, isLit, isMetaPredicate } from '$lib/rdf/types';
+  import { termKey, isIRI, isLit, isMetaPredicate, displayLiteralLabel } from '$lib/rdf/types';
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { RDF_TYPE, RDFS_LABEL, type EntityTypeDef, type GeometryName } from '$lib/rdf/entity-types';
   import { leapNodeKeys } from '$lib/rdf/kb-leap';
@@ -78,6 +78,17 @@
   }>();
 
   const isHistoryMode = $derived(historyTimestamp !== null);
+
+  /**
+   * A filtered-out node is GHOSTED, not removed: it keeps its place in the force simulation
+   * — still repelling, still pulled by its links — and renders at this alpha. The graph's
+   * shape therefore holds still while you filter, instead of d3 re-solving a different graph
+   * under your cursor and throwing away the layout you had learned.
+   */
+  const GHOST_ALPHA = 0.18;
+
+  /** Set, not the array: the draw loop tests this per node per frame (was O(n²) via .includes). */
+  const highlightSet = $derived(new Set(highlighted as string[]));
 
   // ── Types ────────────────────────────────────────────────────────────────────
   type Node = {
@@ -230,7 +241,7 @@
           const val = term.value ?? '';
           const fullVal = isLiteral ? val : undefined;
           const label = isIRI(term) ? val.split('/').pop() ?? val
-            : isLiteral ? (val.length > 48 ? val.slice(0, 45) + '...' : val)
+            : isLiteral ? displayLiteralLabel(val)
             : `_:${val}`;
           const c = nodePositionCache.get(k);
           const x = c?.x ?? (spawnCenter?.x ?? 0) + (Math.random() - 0.5) * 8;
@@ -874,7 +885,12 @@
     ctx2d.scale(camScale, camScale);
 
     const isHistory = isHistoryMode;
-    const baseAlpha = (dimMode || isHistory) ? 0.45 : 1.0;
+    // History washes the WHOLE canvas — you are looking at the past, and all of it is past.
+    // A filter does not: it is a lens over the present, so the matched nodes stay at full
+    // strength and only the unmatched go quiet (per-node, below). Folding dimMode in here
+    // dimmed the matches too, which is why filtering used to grey out the entire graph
+    // instead of picking something out of it.
+    const baseAlpha = isHistory ? 0.45 : 1.0;
 
     // Draw layout markers
     if (layout === 'timeline' && markerData.length > 0) {
@@ -921,7 +937,15 @@
         ctx2d.strokeStyle = isSel ? 'rgba(255,107,53,0.65)' : isHov ? 'rgba(255,107,53,0.40)' : 'rgba(255,107,53,0.20)';
         ctx2d.lineWidth = (isSel ? 0.06 : 0.035) / camScale * 40;
       }
-      ctx2d.globalAlpha = isEdgeHL ? 1 : baseAlpha;
+      // A ghosted node keeps its PLACE in the simulation but must not keep its VOICE. An edge
+      // is only as loud as its quieter endpoint: unless both ends survive the filter, the edge
+      // is scenery — it shows you the graph's shape is still there without competing with the
+      // thing you asked to see. Selection and hover always cut through.
+      const edgeLive =
+        !dimMode ||
+        (highlightSet.has(e.a.key) && highlightSet.has(e.b.key)) ||
+        isSel || isHov;
+      ctx2d.globalAlpha = isEdgeHL ? 1 : edgeLive ? baseAlpha : GHOST_ALPHA * baseAlpha;
       ctx2d.stroke();
     }
 
@@ -1030,7 +1054,7 @@
       const r        = nodeRadius(n) / camScale * 40 * 0.1; // world units
       const isSel    = n.key === selected;
       const isHov    = n.key === hoveredKey;
-      const isHL     = highlighted.includes(n.key);
+      const isHL     = highlightSet.has(n.key);
       const isDimmed = dimMode && !isHL && !isSel;
       const typeDef  = tm.get(n.key);
       const overrideColor = nodeColorMap.get(n.key);
@@ -1051,7 +1075,7 @@
       ctx2d.save();
       if (isArrival) ctx2d.translate(0, podBob);
 
-      ctx2d.globalAlpha = (isDimmed ? 0.18 * baseAlpha : baseAlpha) * podAlphaScale;
+      ctx2d.globalAlpha = (isDimmed ? GHOST_ALPHA * baseAlpha : baseAlpha) * podAlphaScale;
 
       // Pod arrival ring — soft sky-blue dashed halo (a current carried it in)
       if (isArrival) {
@@ -1061,7 +1085,7 @@
         ctx2d.globalAlpha = 0.55 * baseAlpha;
         ctx2d.stroke();
         ctx2d.setLineDash([]);
-        ctx2d.globalAlpha = (isDimmed ? 0.18 * baseAlpha : baseAlpha) * podAlphaScale;
+        ctx2d.globalAlpha = (isDimmed ? GHOST_ALPHA * baseAlpha : baseAlpha) * podAlphaScale;
       }
 
       // Leap ring (amber dashed ring for KB Leap nodes)

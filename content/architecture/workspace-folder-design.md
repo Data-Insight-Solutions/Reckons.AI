@@ -18,11 +18,11 @@ related:
 
 *Concept*
 
-User-selected directory via File System Access API (Chrome/Edge only). Structure: knowledge.ttl (legacy single-KB), kbs/{String.fromCharCode(123)}name{String.fromCharCode(125)}/{String.fromCharCode(123)}name{String.fromCharCode(125)}.ttl + meta.json (multi-KB; legacy kbs/{String.fromCharCode(123)}name{String.fromCharCode(125)}/kb.ttl still read as a fallback), knowledge.pending.jsonl (MCP inbox), settings_profile.json. Auto-exports on every KB mutation (2s debounce). sources.json was removed: it was written on export but never consumed on import, so it added disk writes without a reader.
+User-selected directory via File System Access API (Chrome/Edge only). Structure: knowledge.ttl (legacy single-Graph), kbs/{String.fromCharCode(123)}name{String.fromCharCode(125)}/{String.fromCharCode(123)}name{String.fromCharCode(125)}.ttl + meta.json (multi-Graph; legacy kbs/{String.fromCharCode(123)}name{String.fromCharCode(125)}/kb.ttl still read as a fallback), knowledge.pending.jsonl (MCP inbox), settings_profile.json. Auto-exports on every graph mutation (2s debounce). sources.json was removed: it was written on export but never consumed on import, so it added disk writes without a reader.
 
 ## Related
 
 **Related**
 
-- [Multi-KB Management](../features/multi-kb)
+- [Multi-Graph Management](../features/multi-kb)
 - [Workspace TTL Naming Convention](../architecture/workspace-ttl-naming)

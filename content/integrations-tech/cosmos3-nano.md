@@ -18,7 +18,7 @@ related:
 
 *Tool*
 
-16B-parameter omnimodal world foundation model for Physical AI by NVIDIA. Generates and reasons over video, images, audio, and robot actions. OpenMDW 1.1 licence (commercial use). Requires NVIDIA GPU (Ampere/Hopper/Blackwell) with BF16 precision, Linux only. Potential uses: generate preview animations from entity descriptions, multimodal KB ingest (video/image/audio sources), 3D scene understanding. Shares NVIDIA GPU sidecar infrastructure with NeMo Speech.
+16B-parameter omnimodal world foundation model for Physical AI by NVIDIA. Generates and reasons over video, images, audio, and robot actions. OpenMDW 1.1 license (commercial use). Requires NVIDIA GPU (Ampere/Hopper/Blackwell) with BF16 precision, Linux only. Potential uses: generate preview animations from entity descriptions, multimodal graph ingest (video/image/audio sources), 3D scene understanding. Shares NVIDIA GPU sidecar infrastructure with NeMo Speech.
 
 ## Related
 
