@@ -1,7 +1,28 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-07-16.** Branch: **`feat/work-tiering-ci`** (branched off
-`fix/production-claim-evidence`, which is open as **PR #100 → `dev`**).
+**Last updated: 2026-07-17.** Branch: **`feat/work-tiering-ci`** — **NOW MERGED to main via
+dev→staging→main**. Start new work on a FRESH branch off `dev`; do not keep committing to the
+merged feat branch.
+
+## 🚀 PRODUCTION DEPLOYED (2026-07-17)
+
+Matt pushed all changes to prod. The full pipeline ran: **#101 feat→dev**, **#106 dev→staging**,
+**#107 staging→main** (all base-verified before merge). `main` HEAD carries this session's work;
+**Cloudflare Pages deploy = success**, **CodeQL on main = green** (the in-branch security fixes
+closed the alerts once they landed — as predicted; the PR-level red was a large-PR mis-attribution).
+Reckons.AI is live. Matt has NOT done a full launch announcement (only a LinkedIn comment link).
+
+**Post-deploy verified:** `align` green, offline script-tier 11/11 clean.
+
+**⚠ Two workflows RED on main — PRE-EXISTING (failing the last 4 main runs, NOT caused by this
+deploy), now recorded so they are not rediscovered:**
+- **Extension Build & Sign** — fails at the `Build extension` / sign step in CI, though
+  `npm run build:extension` succeeds LOCALLY (1.4s, sidepanel.js included). Likely a CI-env / AMO
+  signing-secret issue (Matt's action if a secret). Not a code regression.
+- **Safety Attestation** — fails at `Commit attestation` on main only (passes on staging). Git-push
+  plumbing: the workflow commits the updated safety-log back to main and the commit/push step exits 1
+  (probably unhandled "nothing to commit" or a token/permission issue). A small workflow-YAML fix.
+  Do these on a fresh branch off dev.
 
 ## ✓ LANDED (2026-07-16): batch — footer, shelly mobile, source-validation, captures — commits `3c5f1c3`…`884ab50`
 
