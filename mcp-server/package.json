@@ -14,13 +14,13 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "n3": "^2.1.0"
+    "n3": "^2.1.1"
   },
   "devDependencies": {
-    "@types/node": "^26.1.0",
+    "@types/node": "^26.1.1",
     "@types/n3": "^1.21.3",
-    "typescript": "^6.0.3",
-    "vitest": "^4.1.7"
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
   },
   "engines": {
     "node": ">=22"
