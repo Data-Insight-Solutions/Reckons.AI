@@ -6,7 +6,11 @@
    * correctly and consistently.
    */
   import { Dialog } from 'bits-ui';
+  import { goto } from '$app/navigation';
   import { pendingConsent, resolveConsent } from '$lib/stores/download-consent.svelte';
+  import { updateSettings } from '$lib/stores/settings.svelte';
+  import { pushNotification } from '$lib/stores/notifications.svelte';
+  import { TINY_WASM_MODEL } from '$lib/integrations/llm/device-capability';
 
   const pending = $derived(pendingConsent());
 
@@ -14,13 +18,58 @@
     const parts = model.split('/');
     return parts[parts.length - 1] || model;
   }
+
+  // Graceful offer on a constrained device (iOS): switch to the tiny model, then let the user
+  // re-trigger. Cancels the big download that would otherwise OOM-crash the tab.
+  function tryTiny() {
+    updateSettings({ wasmModel: TINY_WASM_MODEL });
+    resolveConsent(false);
+    pushNotification({
+      id: 'switched-tiny-model',
+      type: 'info',
+      title: 'Switched to the tiny model',
+      body: 'Tap send again to try it in chat. Heads up: tiny in-browser models are basic chat only and can be slow — they don’t reliably extract facts. For ingest/extraction, connect Ollama or add an API key.',
+    });
+  }
+  function goSettings(path: string) {
+    resolveConsent(false);
+    goto(path);
+  }
 </script>
 
 <Dialog.Root open={!!pending} onOpenChange={(o) => { if (!o) resolveConsent(false); }}>
   <Dialog.Portal>
     <Dialog.Overlay class="consent-overlay" />
     <Dialog.Content class="consent-dialog">
-      {#if pending}
+      {#if pending && pending.constrained}
+        <!-- Constrained device (iOS/low-RAM): a ~{pending.approxMB}MB in-browser model can OOM-crash
+             the tab, so offer the graceful paths instead of a download that might kill the page. -->
+        <Dialog.Title class="consent-title mono">in-browser AI may not fit this device</Dialog.Title>
+        <Dialog.Description class="consent-body">
+          <strong>{shortName(pending.model)}</strong> is <strong>~{pending.approxMB} MB</strong>.
+          On this device (iOS and low-memory browsers share a tight memory limit) loading it can
+          crash the tab. Pick a path that fits:
+        </Dialog.Description>
+        <div class="consent-stack">
+          <button type="button" class="consent-btn" onclick={() => goSettings('/settings/integrations#s-ollama')}>
+            Connect your own Ollama server
+          </button>
+          <button type="button" class="consent-btn" onclick={() => goSettings('/settings')}>
+            Add an API key (cloud)
+          </button>
+          <button type="button" class="consent-btn" onclick={tryTiny}>
+            Try a tiny model (chat only · ~180 MB)
+          </button>
+          <button type="button" class="consent-btn danger" onclick={() => resolveConsent(true)}>
+            Download anyway ({pending.approxMB} MB — may crash)
+          </button>
+        </div>
+        <p class="consent-hint">
+          For extracting facts, connect Ollama or add a cloud key — those stay full-quality. A tiny
+          in-browser model is basic chat only, can be slow, and won’t reliably extract; performance
+          depends on your device hardware.
+        </p>
+      {:else if pending}
         <Dialog.Title class="consent-title mono">download model?</Dialog.Title>
         <Dialog.Description class="consent-body">
           <strong>{shortName(pending.model)}</strong> needs to download
@@ -83,6 +132,19 @@
     display: flex;
     gap: 0.5rem;
   }
+  /* Constrained-device offer: stack the paths vertically so each is a full-width tap target. */
+  .consent-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .consent-stack .consent-btn { flex: none; text-align: center; }
+  .consent-btn.danger {
+    color: var(--danger, #e06c6c);
+    border-color: color-mix(in srgb, var(--danger, #e06c6c) 45%, var(--line));
+    font-size: 0.78rem;
+  }
+  .consent-btn.danger:hover { background: color-mix(in srgb, var(--danger, #e06c6c) 12%, var(--surface-2)); }
   .consent-btn {
     flex: 1;
     /* >= 44px touch target (kb:web-uiux-rubric) */

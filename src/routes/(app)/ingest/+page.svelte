@@ -41,7 +41,39 @@
   let busy = $state(false);
   let phase = $state<string>('');
   let wasmStatus = $state('');
+  let wasmPct = $state<number | null>(null);
   let error = $state<string | null>(null);
+
+  // ── Crash-safe draft ──────────────────────────────────────────────────────
+  // Loading a local WASM model can OOM-crash the tab (esp. iOS Safari/WebKit). If it does, the
+  // user's typed note must survive the reload — persist it and restore on mount, clear on success.
+  const DRAFT_KEY = 'reckons:ingest-draft';
+  let draftRestored = $state(false);
+  function clearDraft() {
+    try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+  }
+  // Restore once, only if the fields are still empty (don't clobber in-progress typing).
+  $effect(() => {
+    if (draftRestored || typeof localStorage === 'undefined') return;
+    draftRestored = true;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      if (!title && !body && !url && !dueAt) {
+        if (d.mode) mode = d.mode;
+        title = d.title ?? ''; body = d.body ?? ''; url = d.url ?? ''; dueAt = d.dueAt ?? '';
+      }
+    } catch { /* ignore */ }
+  });
+  // Persist the user-typed fields whenever they change (small; the note is the thing worth saving).
+  $effect(() => {
+    const d = { mode, title, body, url, dueAt };
+    if (typeof localStorage === 'undefined') return;
+    try {
+      if (title || body || url || dueAt) localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+    } catch { /* quota — ignore */ }
+  });
 
   // Manual triples entry
   let manualTriples = $state<Array<{ subject: string; predicate: string; object: string }>>([
@@ -130,7 +162,14 @@
   let unsubWasm: (() => void) | null = null;
   $effect(() => {
     unsubWasm = onWasmProgress((status, p) => {
-      wasmStatus = p != null ? `${status} ${(p * 100).toFixed(0)}%` : status;
+      // transformers.js reports progress as a PERCENTAGE (0–100), not a 0–1 fraction —
+      // multiplying by 100 showed "…4200%". Round it and give the raw status a human label.
+      wasmPct = p != null ? Math.min(100, Math.max(0, Math.round(p))) : null;
+      const label = status === 'ready' ? 'model ready'
+        : /download|progress/i.test(status) ? 'downloading model (first run, then cached)'
+        : /initiate|load|init/i.test(status) ? 'loading model'
+        : status;
+      wasmStatus = wasmPct != null ? `${label} — ${wasmPct}%` : `${label}…`;
     });
     return () => unsubWasm?.();
   });
@@ -208,6 +247,7 @@
       const result = await ingest(input, (p: IngestProgress) => {
         phase = p.phase;
       });
+      clearDraft(); // extraction succeeded — the note is safely in the graph now
       goto(`/compare?source=${result.source.id}`);
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
@@ -1119,8 +1159,13 @@
     </div>
   {/if}
 
-  {#if busy && wasmStatus && settings().preferredBackend === 'wasm'}
-    <p class="hint mono">{wasmStatus}</p>
+  {#if busy && wasmStatus && (settings().ingestBackend ?? settings().preferredBackend) === 'wasm'}
+    <div class="wasm-progress">
+      <p class="hint mono">{wasmStatus}</p>
+      <div class="wasm-bar" class:indeterminate={wasmPct == null}>
+        <div class="wasm-fill" style={wasmPct != null ? `width:${wasmPct}%` : ''}></div>
+      </div>
+    </div>
   {/if}
   {#if copyBusy && mode === 'url'}
     <p class="hint mono">fetching page…</p>
@@ -1420,6 +1465,30 @@
   .add-triple-btn:hover { background: var(--accent); color: #fff; }
   .hint { color: var(--muted); font-size: 0.75rem; margin: 0; }
   .err { color: var(--danger); font-family: var(--font-mono); font-size: 0.85rem; }
+
+  /* WASM model-load progress during extraction (Matt: "it says nothing about progress") */
+  .wasm-progress { margin-top: 0.4rem; display: flex; flex-direction: column; gap: 0.3rem; }
+  .wasm-bar {
+    height: 4px;
+    background: var(--line);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .wasm-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.2s ease-out;
+  }
+  /* Before any percentage arrives (init/compute with no % signal), sweep so it never looks frozen. */
+  .wasm-bar.indeterminate .wasm-fill {
+    width: 35%;
+    animation: wasm-sweep 1.1s ease-in-out infinite;
+  }
+  @keyframes wasm-sweep {
+    0%   { margin-left: -35%; }
+    100% { margin-left: 100%; }
+  }
 
   /* KB file panel */
   .kb-file-label { display: flex; flex-direction: column; gap: 0.35rem; }

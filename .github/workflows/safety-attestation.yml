@@ -71,4 +71,12 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add static/reckons-safety-log.ttl
           git commit -m "chore(safety): recurring safety attestation $(date -u +%Y-%m-%d)"
-          git push
+          # Rebase onto the latest main before pushing: this job runs on every push to main, so a
+          # busy day (many merges) moves the branch tip between checkout and push, and a bare
+          # `git push` then fails non-fast-forward. Rebase + a short retry makes the append resilient
+          # to that race instead of going red for a reason that has nothing to do with safety.
+          for attempt in 1 2 3; do
+            git pull --rebase origin main && git push && break
+            echo "push attempt $attempt lost a race; retrying…"
+            sleep 3
+          done

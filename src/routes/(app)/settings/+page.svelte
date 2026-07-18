@@ -40,6 +40,31 @@
   let chatBackend         = $state(settings().chatBackend         ?? settings().preferredBackend);
   let diffSummaryBackend  = $state(settings().diffSummaryBackend  ?? '');
   let mergeAnalysisBackend = $state(settings().mergeAnalysisBackend ?? '');
+
+  // ── Quick setup — "one model for everything" (Matt: LLM config is painfully difficult) ──
+  // The per-task grid below is powerful but overwhelming. This sets every task to one backend at
+  // once and tells you plainly whether it's ready (a local backend needs no key; a cloud one does).
+  let quickBackend = $state(settings().preferredBackend);
+  const NEEDS_KEY = new Set(['claude', 'openai', 'gemini', 'openrouter', 'reckons']);
+  function providerKey(v: string): string {
+    return v === 'claude' ? key : v === 'openai' ? openaiKey : v === 'gemini' ? geminiKey
+      : v === 'openrouter' ? openrouterKey : ''; // reckons key lives in the managed-service flow
+  }
+  const quickReady = $derived(!NEEDS_KEY.has(quickBackend) || providerKey(quickBackend).trim().length > 0);
+  /** Point every task at one backend; clear the sub-overrides so they inherit. */
+  function applyQuickBackend(v: string) {
+    if (!v) return;
+    const b = v as typeof backend;
+    backend = b; ingestBackend = b; analyzeBackend = b; chatBackend = b;
+    mergeAnalysisBackend = ''; diffSummaryBackend = '';
+  }
+  // Apply on USER change only — skip the first (mount) run so we never wipe saved per-task overrides.
+  let quickInit = $state(false);
+  $effect(() => {
+    const v = quickBackend;
+    if (!quickInit) { quickInit = true; return; }
+    applyQuickBackend(v);
+  });
   let claudeModel = $state(settings().claudeModel);
   let openaiModel = $state(settings().openaiModel);
   let geminiModel = $state(settings().geminiModel);
@@ -729,8 +754,29 @@
 </section>
 
 <section id="s-backends" class="card">
-  <h3>AI backends per task</h3>
-  <p class="sub">each task uses its own model — mix a fast free model for ingestion with a smarter cloud model for analysis. provider keys and model names are set in the sections below. if a cloud backend has no key configured, ingest and chat fall back to WASM automatically.</p>
+  <h3>AI backend</h3>
+  <p class="sub">Pick one model for everything, or fine-tune each task under Advanced. A local backend (WASM / Ollama / Chrome AI) needs no key; a cloud backend needs its API key set in the section below.</p>
+
+  <div class="quick-setup">
+    <div class="quick-row">
+      <div class="quick-info">
+        <strong class="mono">use one model for everything</strong>
+        <p class="quick-hint">sets ingest, analysis and chat to the same backend in one step.</p>
+      </div>
+      <div class="backend-sel-wrap"><Select bind:value={quickBackend} groups={ALL_GROUPS} /></div>
+    </div>
+    <p class="quick-status mono" class:ok={quickReady}>
+      {#if quickReady}
+        ✓ ready{NEEDS_KEY.has(quickBackend) ? ' — key is set' : ' — no key needed'}. Save at the bottom to apply.
+      {:else}
+        ⚠ {quickBackend} needs an API key — <a href="#s-{quickBackend}">add it below</a>, then Save.
+      {/if}
+    </p>
+  </div>
+
+  <details class="advanced-backends">
+    <summary class="mono">Advanced — set a different model per task</summary>
+    <p class="sub">each task can use its own model — mix a fast free model for ingestion with a smarter cloud model for analysis. if a cloud backend has no key configured, ingest and chat fall back to WASM automatically.</p>
 
   <label class="check-row">
     <input type="checkbox" bind:checked={preferLocal} />
@@ -828,6 +874,7 @@
       <span class="task-inherits mono">← diff summary</span>
     </div>
   </div>
+  </details>
 
   <details class="backend-detail">
     <summary class="mono">provider descriptions</summary>
@@ -1879,6 +1926,25 @@
   .badge.gemini { color: #60a5fa; border: 1px solid #60a5fa; }
   .badge.paid { color: var(--muted); border: 1px solid var(--muted); }
   /* Task backends */
+  /* Quick setup — one model for everything (the simple path over the per-task grid) */
+  .quick-setup {
+    border: 1px solid var(--accent);
+    background: var(--accent-soft, color-mix(in srgb, var(--accent) 8%, transparent));
+    border-radius: var(--rad-sm);
+    padding: 0.85rem;
+    margin-bottom: 0.9rem;
+  }
+  .quick-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+  .quick-info { min-width: 0; }
+  .quick-info strong { display: block; font-size: 0.85rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.03em; }
+  .quick-hint { color: var(--muted); font-size: 0.75rem; margin: 0.2rem 0 0; }
+  .quick-status { font-size: 0.75rem; margin: 0.6rem 0 0; color: #f59e0b; }
+  .quick-status.ok { color: var(--ok, #4caf50); }
+  .quick-status a { color: var(--accent); }
+  .advanced-backends { margin-bottom: 0.9rem; }
+  .advanced-backends > summary { cursor: pointer; color: var(--muted); font-size: 0.8rem; padding: 0.3rem 0; }
+  .advanced-backends > summary:hover { color: var(--ink); }
+  .advanced-backends[open] > summary { color: var(--ink); margin-bottom: 0.5rem; }
   .task-backends { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.9rem; }
   .task-category-header {
     display: flex;

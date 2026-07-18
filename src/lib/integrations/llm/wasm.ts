@@ -124,7 +124,9 @@ export async function ensureWasmReady(model = DEFAULT_MODEL): Promise<void> {
     const cached = await isModelCached(model);
     if (!cached) {
       const approxMB = model.includes('SmolLM2-1.7B') ? 900
+        : model.includes('Qwen2.5-0.5B') ? 500  // the default q4 LLM (matches model-cache manifest)
         : model.includes('SmolLM2-360M') ? 370
+        : model.includes('SmolLM2-135M') ? 180  // the tiny model — under the constrained-device cap
         : 300; // conservative default
       const ok = await consentHandler(model, approxMB);
       if (!ok) throw new Error('Model download declined by user.');
