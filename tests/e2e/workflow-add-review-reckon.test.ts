@@ -65,18 +65,26 @@ test('Add → Review → Add → Review → Reckon: the full knowledge-building 
 
   // ── 5. RECKON — ask the accumulated graph to help decide (STP flow) ────────
   await page.goto('/reckoning');
+  // The reckoning is a step machine (situation → target → confirm → proposal); only one step's
+  // controls are mounted at a time, so the step-advance buttons are targeted by class (.btn-next /
+  // .btn-reckon) and we wait for each to be ENABLED — the "Continue" button is disabled until its
+  // field has >=10 chars, and a race there was the CI flake (a click on a disabled button no-ops).
   // 5a. Situation
   const situation = page.getByPlaceholder(/evaluating|situation/i).first();
   await expect(situation).toBeVisible({ timeout: 8_000 });
   await situation.fill('I am choosing between Company Alpha and Company Beta as a battery-software vendor.');
-  await page.getByRole('button', { name: /continue|next|→/i }).first().click();
+  const next1 = page.locator('.btn-next');
+  await expect(next1).toBeEnabled({ timeout: 5_000 });
+  await next1.click();
   // 5b. Target
   const target = page.getByPlaceholder(/choose|achieve|minimis/i).first();
   await expect(target).toBeVisible({ timeout: 5_000 });
   await target.fill('Pick the vendor that best fits a long-term, scalable battery-software partnership.');
-  await page.getByRole('button', { name: /continue|next|review|→/i }).first().click();
+  const next2 = page.locator('.btn-next');
+  await expect(next2).toBeEnabled({ timeout: 5_000 });
+  await next2.click();
   // 5c. Run the reckoning
-  const reckonBtn = page.getByRole('button', { name: /reckon|generate|proposal/i }).first();
+  const reckonBtn = page.locator('.btn-reckon');
   await expect(reckonBtn).toBeVisible({ timeout: 5_000 });
   await reckonBtn.click();
 
