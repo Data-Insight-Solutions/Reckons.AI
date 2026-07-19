@@ -953,6 +953,67 @@ kb:session-tokens rdf:type     ktype:Feature ;
                kpred:description  "Makes local-offload measurable instead of assumed. scripts/session-tokens.ts parses this project's Claude Code transcripts (~/.claude/projects/<slug>/*.jsonl) into per-session token usage: run it before and after moving grunt work to a lower tier and watch the fresh-input + output lines drop. A weighted column (input + 1.25*cacheWrite + 0.1*cacheRead + 5*output, rough Opus ratios) ranks sessions by real consumption, and 'no-cache burn' sessions (lots of fresh input, little cache reuse) are flagged as the expensive pattern to avoid — cache-read is the cheap tier, so long cache-warm sessions are fine. Run: npm run session:tokens [-- --top=N] [--path=<dir>]." ;
                kpred:done         "scripts/session-tokens.ts; npm run session:tokens." .
 
+# -- Graph economics ledger (F74.5) ---------------------------------------------
+# The project asserts the graph pays for itself, but only the CREDIT side has ever
+# been measured. kb:agent-context-dogfooding carries real per-query numbers AND a
+# correction (the old "60-70%" conflated format with subgraph selection). Its
+# headline 80-90% figure is explicitly an ESTIMATE, taken in a session where the
+# MCP was not even connected. Nobody has ever counted the DEBIT: 215 of 506 commits
+# since 2026-05-01 touched static/*.ttl. Without that, "it pays for itself" is
+# aspiration in the present tense, which kb:honest-status forbids.
+kb:graph-economics rdf:type    ktype:Feature ;
+               rdfs:label         "Graph economics ledger (break-even + compounding)" ;
+               kpred:feature-id   "F74.5" ;
+               kpred:has-status   "planned" ;
+               kpred:part-of      kb:work-tiering ;
+               kpred:relates-to   kb:session-tokens ;
+               kpred:relates-to   kb:agent-context-dogfooding ;
+               kpred:relates-to   kb:context-compression ;
+               kpred:relates-to   kb:cost-awareness ;
+               kpred:principle    "A saving claimed without its cost is not a measurement, it is marketing. The graph's DEBIT — TTL authoring and maintenance churn, MCP tool-schema tax paid on every request, and the triage cost of agent-tier proposals — must be counted in the same ledger as its credit, or the threshold cannot be stated at all." ;
+               kpred:description  "SCRIPT tier (F74.3): deterministic, zero tokens, zero triage. scripts/offline/graph-economics.ts assembles both sides of the ledger and prints the break-even. DEBIT: TTL churn from git log --numstat over static/*.ttl (commits, lines, tokens written); the MCP tool-schema tax summed from the kb_* tool definitions, reported in BOTH modes (eager — paid every request — and deferred/ToolSearch, which give very different break-evens); and the agent-tier triage cost, which is DECLARED UNMEASURED rather than silently omitted. CREDIT: compressed-subgraph vs whole-corpus tokens recomputed from the live corpus (not quoted), plus an avoided-rework ledger. OUTPUTS: break-even in queries-before-payback per mode, and a compounding curve walking git history monthly (corpus triples vs cumulative maintenance churn vs cumulative modelled saving) — the first actual evidence for or against the compounding claim." ;
+               kpred:constraint    "words * 1.33 — the project's own estimateTokens (mcp-server/src/index.ts, mirrored at scripts/offline/prompt-audit.ts:27). Every figure must use it so results stay comparable with the compression bench." ;
+               kpred:open-question "Avoided rework — the likely LARGEST benefit (a duplicate feature not built costs nothing forever) — cannot be derived from git. Backed instead by an append-only ledger at reckons-workspace/graph-economics.jsonl, one entry per avoided duplicate, each CITING the entity that prevented it. Semi-manual and honest; a fabricated automatic count would be worse than none." ;
+               kpred:measured     "2026-07-19: a request for a 'new' node-summarization feature was resolved by ~2k tokens of kb_search onto existing F65 / F96 / kb:graph-legibility, instead of building a parallel feature under a different name. First entry in the avoided-rework ledger." ;
+               kpred:honest-note  "Report the result whichever way it falls. If the threshold is not yet crossed on tokens alone, say so plainly and let the avoided-rework ledger carry the argument — a ledger that always shows a profit is not a record." ;
+               kpred:remaining    "Not built. scripts/offline/graph-economics.ts, its jobs.json entry (tier=script, non-blocking — a ledger is advisory), and the seeded JSONL ledger." .
+
+# -- Set summarization + Shelly curation (F101) ----------------------------------
+# NOT greenfield: the unbuilt remainder of F65 (entity sets), F96 (quick graph
+# settings joining filters + forces) and kb:graph-legibility's GO/SUMMARIZE/STAY
+# condensation idea. Recorded as one feature so it is not rebuilt a third time
+# under a fourth name.
+kb:set-summarization rdf:type  ktype:Feature ;
+               rdfs:label         "Set summarization (Shelly) + set controls" ;
+               kpred:feature-id   "F101" ;
+               kpred:has-status   "planned" ;
+               kpred:depends-on   kb:entity-sets ;
+               kpred:depends-on   kb:shelly-chat ;
+               kpred:depends-on   kb:archive-foundation ;
+               kpred:relates-to   kb:shelly-graph-control ;
+               kpred:relates-to   kb:graph-legibility ;
+               kpred:relates-to   kb:loop-job-grouping ;
+               kpred:relates-to   kb:review-attention ;
+               kpred:principle    "A summary is EDUCATION, not a fact. It streams into the Shelly chat and is not persisted — many set summaries are read once and discarded, like story mode. Only where the summary asserts something the graph does not already contain is a triple offered, and then only as pending. Auto-queueing every emergent claim floods review, which is the triage-cost trap F74.3 warns about." ;
+               kpred:description  "Select a node and its related triples as a transient working SET (1-3 hops, default 1), filter the set, and summarize it. Filters NARROW THE SET SCOPE (the summary covers only matching members) while the canvas keeps DIMMING rather than removing — the existing force-stability doctrine at src/routes/(app)/+page.svelte is load-bearing and must not be broken. The working set reuses multiSelected and only persists via the existing 'group as set' -> buildEntitySet. Adds ONE new force (set cohesion, members attract so a selection visibly clumps) rather than exposing the hardcoded REPEL/SPRING/CENTER/DAMP constants, which destabilize the layout at bad values. Summary is delivered as a Shelly chat message via requestShellyChat, ephemeral, with '[keep as pending]' on non-grounded claims only." ;
+               kpred:decision     "Set controls live in the existing 'Filters & layout' AdaptivePanel — this IS F96's 'the review overlay-type panel JOINS filters and forces in one place', so it ships there rather than as a new surface. Mobile inherits the Sheet path free." ;
+               kpred:principle    "HNSW ALL THE WAY DOWN (Matt, 2026-07-19). A graph must offer JUMPS INTO SUB-GRAPHS that carry the specific detail, exactly as a hierarchical navigable small world searches a coarse upper layer and descends. Two halves of this already exist and do not meet: kb:hierarchy-nav gives LAYERS WITHIN a graph (skos:broader trees, hnav:order / hnav:layer, sibling links), and kb:KBLeap gives jumps BETWEEN WHOLE graphs (urn:reckons:leap stable-id -> switchToKb). The missing middle rung is a jump into a sub-graph WITHIN the current graph. A summarized set is the natural upper-layer node for that descent — which reconciles the ephemeral-summary decision with kb:graph-legibility's SUMMARIZE/condense idea: the summary does not REPLACE the detail, it is the layer you navigate FROM. Coarse layer to orient, descend for specifics." ;
+               kpred:open-question "Does descending into a set's sub-graph reuse the KBLeap mechanism (which today switches graphs entirely) scoped to a subgraph, or does it become a view-state zoom that keeps one graph loaded? Leap semantics carry a stable-id lookup and a full store switch, which is heavier than a within-graph descent needs — but two navigation mechanisms that look identical to the user and behave differently is its own trap." ;
+               kpred:remaining    "Not built. (1) extract nHopNeighbours into src/lib/rdf/ — three private BFS copies exist today (2D focus, 3D focus, islands) plus uncapped splitByConcept; (2) working-set scope + filter intersection; (3) set-cohesion force; (4) a setSummary LLM task, which must be threaded through ~6 sites because there is no central task registry; (5) scope buildKBContext to a subset — untypedEntityCount and manualStatementCount derive from `all` and would otherwise stay whole-graph." .
+
+# -- Shelly as graph curator (F101.1) -------------------------------------------
+kb:shelly-curation rdf:type    ktype:Feature ;
+               rdfs:label         "Shelly curation modes (suggest / auto-safe / auto-all)" ;
+               kpred:feature-id   "F101.1" ;
+               kpred:has-status   "planned" ;
+               kpred:part-of      kb:set-summarization ;
+               kpred:depends-on   kb:archive-foundation ;
+               kpred:depends-on   kb:archive-revert ;
+               kpred:relates-to   kb:auto-archive ;
+               kpred:principle    "CLEANING IS ITSELF DAMAGING. Dirty data is the stated fear, but an automated tidy-up that silently drops a fact the user needed is worse than the mess it removed. Therefore no destructive edit may be unreachable from the archive journal — autonomy is bounded by reversibility, not by confidence." ;
+               kpred:description  "Three autonomy tiers modelled on Claude Code's permission modes, default SUGGEST. suggest = pending facts only (today's behavior). auto-safe = Shelly applies reversible mechanical edits (exact-duplicate triples, type fills). auto-all = adds merges and prunes. EVERY automated edit writes an archive journal event carrying timestamp, actor=agent, and payload — which is exactly kb:auto-archive's existing scope-decision ('EDIT JOURNAL, not just aged-out facts... what makes revert possible at all'), so it builds on src/lib/rdf/archive.ts rather than inventing a second mechanism. Restore = merge a set from the archive graph back into the working graph (kb:archive-revert)." ;
+               kpred:remaining    "Not built. settings key shellyCuration; the auto-safe edit classifier; journal-on-every-automated-edit; restore-a-set-from-archive path." .
+
 # -- RDF Dataset Migration: Turtle -> TriG (F75) ---------------------------------
 # src/lib/rdf/types.ts opens by declaring the model: "a personal knowledge base is a
 # set of n-quads" where g carries provenance. But Turtle is a TRIPLES-ONLY format --
@@ -1418,7 +1479,10 @@ kb:loop-job-grouping rdf:type  ktype:Phase ;
                hnav:order   4 ;
                kpred:description  "Review cost scales with the number of DECISIONS, not the number of facts. Forty facts from one agent about one entity, all of the same kind, are ONE decision presented forty times. Group the queue by (task, agent, subject, gate) and let a group be accepted, rejected, or opened in a single act — with the outliers in a group surfaced rather than hidden, because a batch accept is exactly where a bad fact slips through." ;
                kpred:principle    "Batching must make the ODD ONE OUT more visible, not less. A group that hides its dissenter has converted review into rubber-stamping." ;
-               kpred:remaining    "Grouping in the review queue; batch accept/reject; outlier highlighting within a group." .
+               kpred:grouping-axis "PROVENANCE — (task, agent, subject, gate). Groups facts by where they came from and what produced them." ;
+               kpred:grouping-axis "TOPICAL RELEVANCE (Matt, 2026-07-19) — a SECOND, independent axis. One ingested article carries several subjects, and the ones incidental to the article's own core points are noise against the graph's goal. Cluster a single source's extracted triples by subject cluster so an off-topic cluster can be rejected wholesale, rather than declined one triple at a time. Reuses the embedding path already in the app (src/lib/embed.ts, BGE-small-en-v1.5) — the same similarity machinery kb:entity-normalization uses — so no new model is introduced." ;
+               kpred:constraint   "Outlier highlighting is a PRECONDITION of accept-all, not a follow-up. kb:review-attention holds the opposing principle ('granularity breeds rubber-stamping... trains the human to accept all'), and this entity's own principle says a group that hides its dissenter has converted review into rubber-stamping. So a group surfaces its off-centroid / low-confidence members BEFORE the accept-all control is offered, and accept-all applies only to the currently FILTERED group, stating the count it is about to confirm." ;
+               kpred:remaining    "Grouping in the review queue; batch accept/reject; outlier highlighting within a group; the topical-relevance axis above." .
 
 kb:loop-safety rdf:type        ktype:Phase ;
                rdfs:label   "Phase 5 — the ways this loop fails silently" ;
@@ -2958,7 +3022,9 @@ kb:shelly-matrix-builder rdf:type ktype:Feature ;
 kb:shelly-graph-control rdf:type ktype:Feature ;
     rdfs:label "Shelly graph-control persona + quick graph settings" ;
     kpred:feature-id "F96" ;
-    kpred:has-status "speculative" ;
+    kpred:has-status "planned" ;
+    kpred:honest-note "speculative -> planned (2026-07-19): part (2), the panel that joins filters and forces in one place, is being built as the set-controls surface of F101 kb:set-summarization. Part (1), the view-driving persona, remains unstarted — the status move covers the half now scheduled, not the whole entity." ;
+    kpred:relates-to kb:set-summarization ;
     kpred:relates-to kb:shelly-chat ;
     kpred:relates-to kb:one-graph-canvas ;
     kpred:relates-to kb:graph-legibility ;
