@@ -11,11 +11,15 @@
  * "Cannot read properties of undefined (reading 'registerBackend')" crash.
  */
 
+import { loadWithDeviceFallback, type InferenceDevice } from './device-select';
+
 const FALLBACK_MODEL = 'onnx-community/Qwen2.5-0.5B-Instruct';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let generator: any = null;
 let loadedModel = '';
+/** Provider the model actually loaded on — reported, never assumed. */
+let activeDevice: InferenceDevice = 'wasm';
 
 type Inbound =
   | { id: number; type: 'init'; model: string }
@@ -55,15 +59,26 @@ async function initPipeline(id: number, model: string): Promise<void> {
   env.allowLocalModels = false;
   env.useBrowserCache = true;
   if (env.backends?.onnx?.wasm) {
+    // Single-threaded: multi-threaded WASM needs SharedArrayBuffer, which needs COOP/COEP
+    // cross-origin-isolation headers this app does not set. Only binds on the WASM path —
+    // WebGPU sidesteps it entirely.
     env.backends.onnx.wasm.numThreads = 1;
   }
 
-  generator = await pipeline('text-generation', model, {
-    dtype: 'q4',
-    progress_callback: (p: { status: string; progress?: number }) => {
-      post({ id, type: 'progress', status: p.status, progress: p.progress });
-    }
-  });
+  // WebGPU when a real adapter exists, WASM otherwise — and WASM anyway if WebGPU fails to build.
+  // wasm.ts's header claimed this switching for months while nothing implemented it.
+  const loaded = await loadWithDeviceFallback((device) =>
+    pipeline('text-generation', model, {
+      device,
+      dtype: 'q4',
+      progress_callback: (p: { status: string; progress?: number }) => {
+        post({ id, type: 'progress', status: p.status, progress: p.progress });
+      },
+    }),
+  );
+  generator = loaded.value;
+  activeDevice = loaded.device;
+  post({ id, type: 'progress', status: `ready on ${activeDevice}`, progress: 100 });
   loadedModel = model;
 }
 

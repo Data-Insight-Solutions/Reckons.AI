@@ -18,7 +18,11 @@
  * 'onnxruntime-web' here — even `import type` can cause Vite to include
  * ort-web in the main-thread bundle, which crashes with
  * "Cannot read properties of undefined (reading 'registerBackend')".
+ *
+ * device-select.ts is safe to import statically: it touches only `navigator.gpu`
+ * and has no transformers/ort dependency of its own.
  */
+import { loadWithDeviceFallback, type InferenceDevice } from '$lib/integrations/llm/device-select';
 
 /** Local alias — cannot import type from @huggingface/transformers (see note above) */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -83,7 +87,22 @@ async function isEmbedCached(model: string): Promise<boolean> {
   }
 }
 
-export async function ensureEmbedder(): Promise<FeatureExtractionPipeline> {
+export /** How long to wait for an embedding model load before giving up (ms). Mirrors wasm.ts. */
+const EMBED_INIT_TIMEOUT_MS = 90_000;
+
+type EmbedProgressCallback = (status: string, progress: number) => void;
+const embedProgressCallbacks = new Set<EmbedProgressCallback>();
+/** Subscribe to embedding-model load progress (parity with the LLM worker, which always had it). */
+export function onEmbedProgress(cb: EmbedProgressCallback): () => void {
+  embedProgressCallbacks.add(cb);
+  return () => embedProgressCallbacks.delete(cb);
+}
+
+/** Provider the embedder actually loaded on. */
+let activeEmbedDevice: InferenceDevice = 'wasm';
+export function currentEmbedDevice(): InferenceDevice { return activeEmbedDevice; }
+
+async function ensureEmbedder(): Promise<FeatureExtractionPipeline> {
   const MODEL = resolveModel();
 
   // If same model is already loaded, reuse
@@ -111,11 +130,40 @@ export async function ensureEmbedder(): Promise<FeatureExtractionPipeline> {
   const { pipeline, env } = await import('@huggingface/transformers');
   env.allowLocalModels = false;
   env.useBrowserCache = true;
-  extractor = (await pipeline(
-    'feature-extraction',
-    MODEL,
-    { dtype: 'q8' }
-  )) as FeatureExtractionPipeline;
+
+  // TIMEOUT (added 2026-07-18). wasm.ts has guarded its load with a 90s Promise.race for a long
+  // time; this path had NO bound at all, so a stalled LOAD would hang forever with no error and no
+  // progress. Closing that gap is worth doing on its own merits.
+  //
+  // HONEST SCOPE: this does NOT fix the first-run stall recorded in HANDOFF.md. That was measured
+  // and the timeout does not fire, which proves the load RESOLVES — the 44.4MB arrives and the
+  // pipeline builds. Whatever stalls happens AFTER, on the WASM execution provider, and is still
+  // unlocalized (embedding inference over the diff? semantic-diff itself? the awaited pipeline?).
+  // Do not read this guard as a fix for that bug.
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(
+      () => reject(new Error(
+        `Embedding model load timed out after ${EMBED_INIT_TIMEOUT_MS / 1000}s. ` +
+        `Check your connection, or switch embedding off / choose a different model in Settings.`,
+      )),
+      EMBED_INIT_TIMEOUT_MS,
+    ),
+  );
+
+  // WebGPU when a real adapter exists, WASM otherwise — falling back if WebGPU fails to build.
+  const load = loadWithDeviceFallback((device) =>
+    pipeline('feature-extraction', MODEL, {
+      device,
+      dtype: 'q8',
+      progress_callback: (p: { status: string; progress?: number }) => {
+        for (const cb of embedProgressCallbacks) cb(p.status, p.progress ?? 0);
+      },
+    }),
+  );
+
+  const loaded = await Promise.race([load, timeout]);
+  extractor = loaded.value as FeatureExtractionPipeline;
+  activeEmbedDevice = loaded.device;
   loadedModel = MODEL;
   return extractor;
 }
