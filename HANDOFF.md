@@ -120,16 +120,48 @@ model is already downloaded.
 For a first-time user this is the worst-shaped bug available: consent to a large download, pay for
 it, get a frozen screen that never explains itself.
 
-**NOT localized** — could be embedding inference, semantic-diff, or the awaited pipeline. **NOT
-reproduced against a production build**; dev-mode ONNX/WASM behavior can differ. Both worth
-establishing before fixing. Reproduce:
-`RECKONS_TEST_WASM=1 npx playwright test first-run-model --project=desktop-chrome`
+**Still NOT localized, and one hypothesis is now RULED OUT.** `embed.ts` had no load timeout
+(wasm.ts has had a 90 s one for ages) — that gap is real and is now fixed, but it is **not this
+bug**: the timeout does not fire, which proves the load RESOLVES (44.4 MB arrives, pipeline
+builds) and the stall is downstream on the WASM execution provider.
+
+Also ruled out: **WebGPU is not involved.** Verified with a software-GPU chromium
+(`--enable-unsafe-swiftshader`) — `requestAdapter()` returns null there, so the run never touched
+WebGPU. The `No available adapters.` console line is ORT bundle noise, not the fault.
+
+**Still open**: embedding inference over the diff? semantic-diff itself? the awaited pipeline?
+And still **NOT reproduced against a production build or a real GPU browser** — worth doing FIRST,
+since every measurement so far is headless dev-mode. One later observation: the UI returns to the
+empty ingest FORM rather than sitting on a spinner, so it may be a silent abort rather than a hang
+— which would be worse, since the user's input appears to vanish.
+
+Reproduce: `RECKONS_TEST_WASM=1 npx playwright test first-run-model --project=desktop-chrome`
 
 **Related, queued as an observation:** transformers.js fetches the ONNX runtime from
 **cdn.jsdelivr.net at runtime**, even though the PWA precaches ~67 MB of ort-wasm locally
 (`vite.config.ts` globPatterns). If the precached copy is not the one being used, that precache is
 dead weight AND offline-first WASM inference does not work offline. Check this before the
 PWA-precache toggle work lands.
+
+## ⚡ LOCAL-MODEL EXECUTION PROVIDER (2026-07-18)
+
+**WASM is the ceiling, not the escape hatch.** ONNX Runtime is the engine; WASM/WebGPU/WebNN are
+its execution providers. wasm32 linear memory is bounded by a 32-bit address space (browsers land
+well below it; iOS tighter still). **WebGPU is how you run larger models** — weights live in GPU
+buffers outside wasm linear memory.
+
+The app was on neither optimal path until now: `numThreads = 1` (multi-threaded WASM needs
+SharedArrayBuffer → COOP/COEP headers, **not set anywhere**), and no `device` was ever specified,
+so both paths defaulted to WASM — while the build already shipped `ort.webgpu.bundle.min.mjs`.
+
+`src/lib/integrations/llm/device-select.ts` (13 tests) now picks WebGPU **only when a real ADAPTER
+exists** — not `'gpu' in navigator`, since WebGPU is routinely present-but-unusable — and wraps
+construction too, because an adapter can appear and still fail at build time. It reports the device
+that SUCCEEDED, never the intended one. Wired into `wasm-worker.ts` and `embed.ts`.
+
+**Still on the table:** multi-threaded WASM via COOP/COEP. Big CPU win, no GPU needed, but the
+headers break cross-origin embeds — and note the runtime currently fetches ort-wasm from
+**cdn.jsdelivr.net**, which such an audit would have to cover.
 
 ## 👆 FIRST-RUN CONSENT GATE — now covered (2026-07-18)
 
