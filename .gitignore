@@ -81,3 +81,9 @@ reckons-workspace/runner.log.jsonl
 reckons-workspace/schedules.state.ttl
 reckons-workspace/schedule.log.jsonl
 reckons-workspace/task-drafts.ttl
+
+# Local app workspace — the folder-sync target writes copies of every graph here.
+# Only default-kb is a real repo asset; the rest are duplicates of static/*.ttl and
+# were once swept into a commit by `git add -A static/` (15,093 lines, 2026-07-19).
+static/kbs/*
+!static/kbs/default-kb/
