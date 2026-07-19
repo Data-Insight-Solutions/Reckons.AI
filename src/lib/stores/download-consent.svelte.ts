@@ -34,6 +34,31 @@ export function resolveConsent(ok: boolean) {
 
 function makeHandler(model: string, approxMB: number): Promise<boolean> {
   return new Promise<boolean>((resolve) => {
+    // A SECOND request while one is already pending used to silently overwrite `_pending`,
+    // discarding the first `resolve` — the caller behind it then awaited a promise that could
+    // never settle. That caused the first-run ingest hang (2026-07-18): semanticEnrichDiff embeds
+    // subjects and predicates in parallel, so two consent requests raced and one was orphaned
+    // forever, with no error and no log.
+    //
+    // embed.ts now shares one in-flight load so the race should not recur, but a single-slot
+    // queue that DROPS callers is a trap for the next caller too. Same model: piggy-back on the
+    // dialog already showing. Different model: resolve the older one false so its caller fails
+    // fast and visibly, rather than hanging.
+    if (_pending) {
+      if (_pending.model === model) {
+        const previous = _pending.resolve;
+        const merged = _pending;
+        merged.resolve = (ok: boolean) => { previous(ok); resolve(ok); };
+        _pending = merged;
+        return;
+      }
+      console.warn(
+        `[download-consent] a consent for "${_pending.model}" was superseded by "${model}"; ` +
+        `declining the first so its caller does not hang.`,
+      );
+      _pending.resolve(false);
+    }
+
     // Only the large in-browser LLM (~500MB) trips this on a constrained device; the small
     // embedding (~33MB) / whisper (~40MB) models stay under the cap and get the normal prompt.
     _pending = { model, approxMB, constrained: shouldAvoidInBrowserModel(approxMB), resolve };

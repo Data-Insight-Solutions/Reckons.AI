@@ -87,7 +87,7 @@ async function isEmbedCached(model: string): Promise<boolean> {
   }
 }
 
-export /** How long to wait for an embedding model load before giving up (ms). Mirrors wasm.ts. */
+/** How long to wait for an embedding model load before giving up (ms). Mirrors wasm.ts. */
 const EMBED_INIT_TIMEOUT_MS = 90_000;
 
 type EmbedProgressCallback = (status: string, progress: number) => void;
@@ -102,7 +102,36 @@ export function onEmbedProgress(cb: EmbedProgressCallback): () => void {
 let activeEmbedDevice: InferenceDevice = 'wasm';
 export function currentEmbedDevice(): InferenceDevice { return activeEmbedDevice; }
 
+/**
+ * In-flight load, shared by every concurrent caller.
+ *
+ * THE FIRST-RUN HANG (found 2026-07-18) lived here. `semanticEnrichDiff` calls embedMany TWICE in
+ * parallel (subjects and predicates via Promise.all), so two callers reached ensureEmbedder at
+ * once, neither found a loaded model, and BOTH requested download consent. The consent store holds
+ * a SINGLE `_pending` slot — the second request overwrote the first, discarding its `resolve`.
+ * The user saw one dialog, clicked Download, resolved the second caller... and the first was
+ * orphaned FOREVER. Promise.all then waited on a promise that could never settle: no error, no
+ * log, no spinner, just an ingest that never finished.
+ *
+ * Sharing one in-flight promise fixes it at the root: one consent request, one download, one
+ * session — and it stops two callers racing to load the same model twice, which was wasteful even
+ * when it happened to work.
+ */
+let loadingPromise: Promise<FeatureExtractionPipeline> | null = null;
+
 async function ensureEmbedder(): Promise<FeatureExtractionPipeline> {
+  if (extractor && loadedModel === resolveModel()) return extractor;
+  if (loadingPromise) return loadingPromise;
+  loadingPromise = loadEmbedder();
+  try {
+    return await loadingPromise;
+  } finally {
+    // Cleared on success AND failure: a failed load must not poison every later attempt.
+    loadingPromise = null;
+  }
+}
+
+async function loadEmbedder(): Promise<FeatureExtractionPipeline> {
   const MODEL = resolveModel();
 
   // If same model is already loaded, reuse

@@ -301,30 +301,22 @@ test.describe('real in-browser model load (33 MB embedding)', () => {
   test.setTimeout(10 * 60_000);
 
   /**
-   * KNOWN DEFECT, measured 2026-07-18 (vite dev, chromium, mock extraction backend).
+   * REGRESSION GUARD for a real shipped first-run hang, found and fixed 2026-07-18.
    *
-   * Accepting the download WORKS at the network layer — 44.4 MB arrives, all HTTP 200:
-   *   34.0 MB  model_quantized.onnx      (huggingface xet CDN)
-   *    4.7 MB  ort-wasm-simd-threaded    (cdn.jsdelivr.net)
-   *    + tokenizer.json / config.json / tokenizer_config.json
+   * Accepting the download used to leave the user on /ingest FOREVER — verified past 240 s in a
+   * real visible browser, with zero console output and the UI back on an empty form. The download
+   * itself always worked (44.4 MB, all HTTP 200); the stall was after it.
    *
-   * ...and then the ingest pipeline NEVER PROCEEDS. Still parked on /ingest after 240 s, with no
-   * error, no console output, no progress indicator, and no way for the user to recover. Declining
-   * the same prompt completes in seconds via the structural fallback, so the failure is specific to
-   * the accept path AFTER the model has downloaded.
+   * Cause: `semanticEnrichDiff` embeds subjects and predicates in parallel, so two callers reached
+   * `ensureEmbedder()` at once and BOTH requested consent. The consent store had a single
+   * `_pending` slot, so the second request overwrote the first and discarded its `resolve` — the
+   * user saw one dialog, accepted, and the first caller awaited a promise that could never settle.
+   * `Promise.all` then hung with nothing to report.
    *
-   * For a first-time user this is the worst-shaped bug available: they consent to a large download,
-   * pay for it, and get a frozen screen that never explains itself.
-   *
-   * NOT yet localized — could be embedding inference, semantic-diff, or the awaited pipeline. Also
-   * NOT yet reproduced against a production build; dev-mode ONNX/WASM behavior can differ.
-   *
-   * SEPARATELY WORTH NOTING: the ONNX runtime is fetched from cdn.jsdelivr.net at runtime even
-   * though the PWA precaches ~67 MB of ort-wasm locally (vite.config.ts globPatterns). If the
-   * precached copy is not being used, that precache is dead weight AND offline-first WASM
-   * inference does not actually work offline.
+   * Fixed by sharing one in-flight load in embed.ts (plus a store that no longer drops callers).
+   * Now completes in ~20 s. Unit-level regressions live in
+   * src/lib/stores/__tests__/download-consent.test.ts; this is the end-to-end proof.
    */
-  test.fail();
   test('accepting the embedding download loads it and the pipeline continues', async ({ page }) => {
     const consoleLines: string[] = [];
     page.on('console', (m) => consoleLines.push(m.text()));
