@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
   import { buildGraphView } from '$lib/rdf/graph-view';
+  import { connectedComponents, nHopNeighbours } from '$lib/rdf/n-hop';
   import { bestSuggestion } from '$lib/rdf/view-suggestions';
   import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
   import GraphLabels from '$lib/components/GraphLabels.svelte';
@@ -546,35 +547,14 @@
   const conflictCount = $derived(dichotomyList.filter((d) => d.kind === 'conflict').length);
 
   const islandNodes = $derived.by(() => {
-    const visited = new Set<string>();
     const smallComponentNodes = new Set<string>();
 
-    for (const node of allNodes) {
-      if (visited.has(node)) continue;
-
-      // BFS to find component
-      const component = new Set<string>();
-      const queue = [node];
-      visited.add(node);
-      component.add(node);
-
-      let i = 0;
-      while (i < queue.length) {
-        const current = queue[i++];
-        const neighbors = adjacency.get(current) || new Set();
-
-        for (const neighbor of neighbors) {
-          if (!visited.has(neighbor)) {
-            visited.add(neighbor);
-            component.add(neighbor);
-            queue.push(neighbor);
-          }
-        }
-      }
-
-      // Mark nodes in small components as islands
+    // Shared traversal (rdf/n-hop.ts). allNodes is passed explicitly because an isolated
+    // node has no adjacency entry and would otherwise vanish — and isolated nodes are
+    // exactly what this filter exists to surface.
+    for (const component of connectedComponents(adjacency, allNodes)) {
       if (component.size <= 3) {
-        component.forEach(n => smallComponentNodes.add(n));
+        component.forEach((n) => smallComponentNodes.add(n));
       }
     }
 

@@ -20,6 +20,7 @@
   import { glbOverrides } from '$lib/stores/glb-overrides.svelte';
   import { recordFrame } from '$lib/stores/perf-monitor.svelte';
   import { leapNodeKeys } from '$lib/rdf/kb-leap';
+  import { hopDistances, adjacencyFromPairs } from '$lib/rdf/n-hop';
   import { SKOS_BROADER, NAV_ORDER, NAV_LAYER } from '$lib/rdf/hierarchy';
 
   interactivity();
@@ -260,21 +261,10 @@
     if (!selected) return { anchors: new Map(), radii: [], distances: new Map() };
 
     // ── 1. BFS hop distances ─────────────────────────────────────────────────
-    const distances = new Map<string, number>();
-    distances.set(selected, 0);
-    const queue = [selected];
-    let qi = 0;
-    while (qi < queue.length) {
-      const cur = queue[qi++];
-      const d = distances.get(cur)!;
-      for (const e of edges) {
-        const other = e.a.key === cur ? e.b.key : e.b.key === cur ? e.a.key : null;
-        if (other && !distances.has(other)) {
-          distances.set(other, d + 1);
-          queue.push(other);
-        }
-      }
-    }
+    // Shared traversal (rdf/n-hop.ts) — this was a verbatim copy of the 2D version, and
+    // both rescanned the entire EDGE LIST per dequeued node (O(V*E)). Building an
+    // adjacency map first makes it O(V+E).
+    const distances = hopDistances(adjacencyFromPairs(edges.map((e) => [e.a.key, e.b.key] as const)), selected);
 
     // ── 2. Classify hop-1 neighbors by predicate + direction ────────────────
     // 'out' = selected is the subject (→ target)
