@@ -1,0 +1,318 @@
+# generated 2026-07-13T02:38:35.625Z
+# 91 statements
+
+@prefix kb: <urn:kbase:concept/> .
+@prefix src: <urn:kbase:source/> .
+@prefix pred: <urn:kbase:predicate/> .
+@prefix meta: <urn:kbase:meta/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix dc: <http://purl.org/dc/terms/> .
+
+kb:Q2-ConversionRate
+    pred:relatedTo kb:ProjectPhoenix ;
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> ;
+    pred:value "3.2%" ;
+    pred:target "3.7%" ;
+    rdfs:label "Q2 2026 Conversion Rate" ;
+    pred:measuredAt "2026-06-01"^^xsd:date .
+
+kb:DataPipeline
+    pred:status "blocked" ;
+    rdfs:label "Data Pipeline v2" ;
+    pred:owner kb:Carol ;
+    dc:description "Streaming pipeline replacing the nightly batch ETL. Depends on new vendor data feed." ;
+    pred:blockedBy kb:VendorContract ;
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> .
+
+kb:ContentBasedFiltering
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> ;
+    pred:strength "no cold-start for new items" ;
+    <http://www.w3.org/2004/02/skos/core#broader> kb:RecommendationSystems ;
+    pred:weakness "limited serendipity — only finds similar items" ;
+    rdfs:label "Content-Based Filtering" ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Recommendations based on item attributes and user profile matching. No cold-start for items, but requires good feature engineering." .
+
+kb:CollaborativeFiltering
+    rdfs:label "Collaborative Filtering" ;
+    <http://www.w3.org/2004/02/skos/core#broader> kb:RecommendationSystems ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Recommendation approach using user-item interaction patterns. Effective when interaction data is abundant." ;
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> ;
+    pred:strength "works well with sparse item features" ;
+    pred:weakness "cold-start problem for new users/items" .
+
+kb:HybridApproach
+    <http://www.w3.org/2004/02/skos/core#related> kb:CollaborativeFiltering ;
+    <http://www.w3.org/2004/02/skos/core#related> kb:ContentBasedFiltering ;
+    <http://www.w3.org/2004/02/skos/core#broader> kb:RecommendationSystems ;
+    rdfs:label "Hybrid Recommendation" ;
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> ;
+    pred:adoptedBy kb:ProjectPhoenix ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Combining collaborative and content-based methods to get the benefits of both." .
+
+kb:RecommendationSystems
+    <http://www.w3.org/2004/02/skos/core#related> kb:ProjectPhoenix ;
+    rdfs:label "Recommendation Systems" ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Algorithms that predict user preferences based on past behavior, content features, or collaborative filtering." ;
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> .
+
+kb:VendorContract
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> ;
+    pred:status "pending-legal" ;
+    pred:owner kb:Bob ;
+    rdfs:label "Vendor Contract Renewal" ;
+    pred:deadline "2026-07-01"^^xsd:date .
+
+kb:Carol
+    rdf:type <http://xmlns.com/foaf/0.1/Person> ;
+    rdfs:label "Carol" ;
+    pred:knows kb:Alice ;
+    <http://xmlns.com/foaf/0.1/name> "Carol Okafor" ;
+    pred:worksAt kb:AcmeCorp ;
+    pred:role "data scientist" .
+
+kb:ProjectPhoenix
+    rdfs:label "Project Phoenix" ;
+    dc:description "Rebuild the recommendation engine with real-time signals. Target: 15% lift in conversion by Q4." ;
+    pred:stakeholder kb:Bob ;
+    pred:status "in-progress" ;
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> ;
+    pred:deadline "2026-09-15"^^xsd:date ;
+    pred:dependsOn kb:DataPipeline ;
+    pred:lead kb:Alice .
+
+kb:Bob
+    rdf:type <http://xmlns.com/foaf/0.1/Person> ;
+    pred:role "product manager" ;
+    pred:worksAt kb:AcmeCorp ;
+    <http://xmlns.com/foaf/0.1/name> "Bob Martinez" ;
+    rdfs:label "Bob" ;
+    pred:knows kb:Alice .
+
+kb:Decision-UseHybrid
+    pred:supports kb:ProjectPhoenix ;
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> ;
+    pred:implements kb:HybridApproach ;
+    pred:decidedBy kb:Alice ;
+    pred:rationale "Cold-start is our biggest problem (30% of users are new monthly). Hybrid model handles both new and returning users." ;
+    pred:decidedOn "2026-05-20"^^xsd:date ;
+    rdfs:label "Decision: Use Hybrid Approach" .
+
+kb:Q1-ConversionRate
+    pred:measuredAt "2026-03-31"^^xsd:date ;
+    pred:trend "up 14% from Q4 2025" ;
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> ;
+    rdfs:label "Q1 2026 Conversion Rate" ;
+    pred:value "2.8%" ;
+    pred:relatedTo kb:ProjectPhoenix .
+
+kb:Decision-StreamingArch
+    pred:decidedBy kb:Carol ;
+    pred:decidedOn "2026-04-10"^^xsd:date ;
+    rdf:type <http://www.w3.org/2004/02/skos/core#Concept> ;
+    pred:supports kb:DataPipeline ;
+    rdfs:label "Decision: Move to Streaming" ;
+    pred:rationale "Batch ETL has 24h latency. Real-time signals improve recommendation freshness by estimated 40%." .
+
+kb:AcmeCorp
+    rdfs:label "Acme Corp" ;
+    pred:founded "2018"^^xsd:gYear ;
+    pred:industry "technology" ;
+    pred:teamSize "42"^^xsd:integer ;
+    rdf:type <http://xmlns.com/foaf/0.1/Organization> .
+
+kb:Alice
+    pred:knows kb:Bob ;
+    <http://xmlns.com/foaf/0.1/name> "Alice Chen" ;
+    pred:role "lead engineer" ;
+    rdfs:label "Alice" ;
+    rdf:type <http://xmlns.com/foaf/0.1/Person> ;
+    pred:worksAt kb:AcmeCorp ;
+    pred:knows kb:Carol .
+
+# ---- provenance ----
+<urn:kbase:stmt/03130e0d-c284-4879-9004-43aabbef93e9> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/043640ef-8a26-4d36-87e2-a243f351dfa3> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/04b6bb00-0fc2-4609-8874-9dddfed59aff> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/0737ad23-28d4-4612-a644-d956371107aa> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/084ab2f0-c8b7-4c1e-a489-a857a9c8a727> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/0b60e240-1b11-4cb9-8657-5fa91a170894> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/10cdd897-a6ae-4dac-b834-86e8adc8bede> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/15a21881-59d8-4be8-8866-fb045b6aba6c> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/15a7b407-1d68-4ff5-b190-0368ad0f6431> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/16a6e925-30c6-4d91-81a1-55479e1098a9> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/186347a1-6911-49cb-a7d3-c2c4743066e0> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/1bf5bc47-645a-43ec-82b8-9743de563166> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/1d96fe4a-f25e-424f-b1be-6fa9a2691c47> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/1db0943a-1cb2-424a-9e00-cdd919c38dbc> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/2012ac37-de1c-4716-be13-de6598df2d30> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/2900e3a0-b8f8-403c-bb57-4f1b5060aa23> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/2bbe8417-8398-438c-971d-e610d95aac89> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/2d7f9bc2-404f-4fb8-9960-8a20a1ceb89e> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/2df51e9b-d96a-48cf-81f6-2d143de49328> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/318c96a9-900f-4082-a730-5b5f1aaf6611> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/389bd3a6-502e-4418-8301-d3595ec506c1> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/3bad6dc9-ab9b-4ff5-b104-f5fa7b051b96> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/3bef2444-1ff0-46ea-8f57-8975102e96fd> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/3c176ad7-1c77-40e4-ae0a-d979f6cdee70> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/3d16ec2f-46bf-43bc-aa3f-eeea802a4d2c> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/435e97ef-e076-49d3-8512-bf9726ceb759> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/44c422d2-1ad4-4485-b4b9-c14c840c2271> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/4a93bd3d-8e9d-4b26-8f5d-af29382ca2c7> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/4efce03d-f0b9-43ae-8c6f-c8fd7736cf06> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/53137511-a6d1-42c6-89c7-b25d9582dd75> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/53f1c7d7-8c5e-45ec-936c-695d99e6ec86> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/54737650-3fcf-4fa3-ae3a-7461bc393243> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/56bdfab5-4bb9-4495-beae-987e69718169> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/5baaf245-c798-4174-94ef-2ffa2cace6be> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/62a97cde-5597-45b0-8f49-d88bd0a81f60> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/668a587a-ae08-4758-883b-ff303a369845> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/672cb87b-089b-4924-b7c4-4736a875c88f> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/674a04c2-0aec-4ec9-918a-04619080ba4b> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/6b49bce6-f86b-4964-85fc-422b8490cdc5> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/6c2c8a5c-dccb-41fb-8898-0bd2bc8579da> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/6c83a1c5-caeb-4ec2-bae6-4c2bab2cbc70> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/6f89f285-a47d-4ba6-aab1-49aac0ccca79> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/700adf96-714d-48dd-8aee-873ced36bbcd> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/73cab6bf-39f4-422b-8b63-ea7732140e8a> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/7be7bcd0-2ed4-4449-9d64-64ea5796fac4> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/81bd1bd8-01f7-4759-8fa5-3ae7a82a6a00> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/84a1a33e-7892-455d-8e7d-e208dc2e37f8> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/868124d5-48b8-48bf-aa12-859e95987333> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/86aaf488-e303-4f71-87d8-207a22751adc> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/8f171828-751d-4f88-8446-ba42eab050a0> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/8f250f9e-523b-4a00-a849-523b765ca833> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/919f83b1-f937-4ccc-9ea9-d675753487f9> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/91bf79cb-b0a1-4212-aae1-5b17f5ecb2e7> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/949fb48c-0219-4ebb-89cf-19e715df5c96> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/979e43f3-eede-4422-aa46-4b1e289b90f1> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/97de63f7-4866-4192-8ff6-67acf44c2a82> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/993446b1-d89e-4707-aab6-ebb6a778a3a1> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/99386b96-8efd-43d0-bd66-dcaa93f1f598> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/99747a3a-ea8c-476c-ad39-511e84e7151f> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/9e33ae5f-8748-46a6-b5ed-65382a0318f0> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/a419ec82-211f-4b5e-926a-00c3cf07efb1> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/a5dd0de6-fe4f-43e1-abb7-2834bcae605a> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/a71a9725-45b1-4e08-8238-d12b397b0f89> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/a725707e-32f5-4827-b5a6-d2437b479366> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/a7f291dc-f909-4c66-a053-23528f70076b> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/aafe50f9-c78d-4057-b4d8-dcdf518ba665> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/ad312a5c-5d5a-44f0-80ab-9215c4705b2e> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/af06e52a-d8fd-48bf-878e-b4d187034fcf> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/b0da3732-4f59-4b7f-88a0-e65191b313f7> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/b166c301-9212-42b9-9c9a-f63c7daef984> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/b3965777-f803-48a2-8b96-97513920ae1e> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/b3def038-007f-4363-ba80-d93a128bbb82> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/b784901d-7160-415c-87c0-4acc31a67f32> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/bbf4bb9b-bffc-4a3d-ad81-e7f8219c310d> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/be04b69e-62ed-406f-90ca-2bb5f766be80> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/bfaa191b-677a-4ac0-91f8-77d752241a79> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/c01cfbac-fca2-4488-b9f5-4b9d6ffd3d62> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/c095b3c6-cf96-4692-876a-4168ed8ca6e7> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/c18d15cc-b65b-4e4f-a3aa-a287f0457f00> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/c92a4e48-9007-40ae-b6c6-08926ea3d220> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/cf1eb790-e059-4583-a4c9-f4e015ed19b3> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/cfaded0b-2ec0-4f23-9da8-e88f66a88ff2> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/d526fb90-958c-4551-8be5-de4f708aa05f> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/d8e5fe51-4a00-43dd-bf8d-47131ec88277> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/e3543a3c-f56d-43fe-96db-71b70c255624> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/e8859d0c-ca4b-4bdc-88b5-2b85fd02a554> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/ecc02b31-8807-4fc1-91e5-23829f3a1537> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/ee81b35e-96ee-4537-a714-8c001e838b38> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/fa575360-cc98-419f-abd9-80006d8caee4> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/fbdb9027-e071-4125-a91f-e75d807b0692> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .
+<urn:kbase:stmt/fd6b87ae-9adf-4ada-b0fa-fd14f2728505> prov:wasDerivedFrom src:fab66cc4-9f69-457d-bcee-7cc75cbd973e ;
+    dc:created "2026-07-11T00:57:07.880Z"^^xsd:dateTime .

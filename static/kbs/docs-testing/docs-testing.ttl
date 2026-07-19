@@ -1,0 +1,948 @@
+# generated 2026-07-13T02:38:34.735Z
+# 283 statements
+
+@prefix kb: <urn:kbase:concept/> .
+@prefix src: <urn:kbase:source/> .
+@prefix pred: <urn:kbase:predicate/> .
+@prefix meta: <urn:kbase:meta/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix dc: <http://purl.org/dc/terms/> .
+
+<urn:reckons:test/UserDocs-Step2>
+    <urn:reckons:story/order> "2"^^xsd:integer ;
+    <urn:reckons:story/title> "Import Production graph" ;
+    <urn:reckons:story/partOf> <urn:reckons:test/UserDocsStory> ;
+    <urn:reckons:story/content> "Import the production status graph alongside the docs graph. This contains the real test suite entities, architecture, and MCP tool documentation." ;
+    pred:icon2d "/tests/visual/screenshots/user-docs/02-production-kb-imported.png" ;
+    pred:page "/" ;
+    rdf:type <urn:reckons:story/Step> .
+
+<urn:reckons:kb>
+    <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a09-b009-000000000009" .
+
+<urn:reckons:test/ReviewSplitView>
+    rdfs:label "Review Split View" ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:test/PageScreenshots> ;
+    pred:icon2d "/tests/visual/screenshots/review-split-view.png" ;
+    <http://www.w3.org/2004/02/skos/core#definition> "The /review page with the graph preview and review panel side by side. Diff entries, summary chips, and tab navigation all visible." ;
+    rdf:type <urn:kbase:type/Concept> ;
+    pred:page "/review" .
+
+<urn:reckons:test/GraphReview-Step2>
+    pred:assertion "node-label count > 0 after click" ;
+    <urn:reckons:story/content> "Click the hero 'Getting started' button and assert the docs graph actually activates — 119 nodes laid out, not a silent no-op. A click that fires without changing anything observable is a finding." ;
+    <urn:reckons:story/title> "Act and assert a delta" ;
+    pred:icon2d "/tests/visual/screenshots/graph-review/02-getting-started-graph.png" ;
+    rdf:type <urn:reckons:story/Step> ;
+    pred:page "/" ;
+    <urn:reckons:story/order> "2"^^xsd:integer ;
+    <urn:reckons:story/partOf> <urn:reckons:test/GraphReviewFlow> .
+
+<urn:reckons:test/KBPage>
+    rdf:type <urn:kbase:type/Concept> ;
+    pred:icon2d "/tests/visual/screenshots/kb-page.png" ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:test/PageScreenshots> ;
+    pred:page "/kb" ;
+    <http://www.w3.org/2004/02/skos/core#definition> "The /kb page showing the graph registry, predicate manager, and workspace controls." ;
+    rdfs:label "Graph Management Page" .
+
+<urn:reckons:test/UserDocsStory>
+    pred:screenshot-dir "tests/visual/screenshots/user-docs/" ;
+    <urn:reckons:story/autoplay> "false" ;
+    pred:test-file "tests/visual/user-stories/user-docs.test.ts" ;
+    <urn:reckons:story/pace> "10" ;
+    <urn:reckons:story/description> "A new user imports the documentation graphs to learn about Reckons.AI. They start with the starter guide, then import the production graph, and verify both appear in the graph registry." ;
+    rdf:type <urn:reckons:story/Story> ;
+    rdfs:label "User Docs Import" ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:test/UserStoryTests> .
+
+<urn:reckons:test/DevSprint-Step4>
+    rdf:type <urn:reckons:story/Step> ;
+    <urn:reckons:story/order> "4"^^xsd:integer ;
+    pred:assertion "align link is visible" ;
+    <urn:reckons:story/partOf> <urn:reckons:test/DevSprintStory> ;
+    <urn:reckons:story/content> "After selecting two graphs for comparison, an 'align these graphs' link appears. This link navigates to the Review page with the align tab pre-selected." ;
+    pred:page "/kb" ;
+    <urn:reckons:story/title> "Align Link Appears" .
+
+<urn:reckons:test/GraphReview-Step3>
+    <urn:reckons:story/content> "Follow a graph leap and assert the graph swapped to the target sub-graph — currentKbId changed and 39 new nodes rendered. This is the exact silent-no-op class a crash-only crawler misses (the docs-hub leap regression fixed this session)." ;
+    pred:page "/" ;
+    <urn:reckons:story/title> "Catch the silent no-op" ;
+    <urn:reckons:story/partOf> <urn:reckons:test/GraphReviewFlow> ;
+    pred:icon2d "/tests/visual/screenshots/graph-review/03-leap-jump-subgraph.png" ;
+    rdf:type <urn:reckons:story/Step> ;
+    pred:assertion "currentKbId changed after leap" ;
+    <urn:reckons:story/order> "3"^^xsd:integer .
+
+<urn:reckons:test/CrossKB-Step2>
+    pred:page "/kb" ;
+    pred:assertion "Graph entry count >= 3" ;
+    <urn:reckons:story/title> "Graph Registry Shows Three" ;
+    <urn:reckons:story/partOf> <urn:reckons:test/CrossKBStory> ;
+    <urn:reckons:story/content> "The graph page lists all three imported graphs. Each shows its name, entity count, and stable ID. This validates multi-Graph management." ;
+    <urn:reckons:story/order> "2"^^xsd:integer ;
+    rdf:type <urn:reckons:story/Step> ;
+    pred:icon2d "/tests/visual/screenshots/cross-kb-align/02-kb-registry-three.png" .
+
+<urn:reckons:test/GraphReviewStory>
+    <http://www.w3.org/2004/02/skos/core#definition> "The Reckons.AI Graph Review is an offline, exhaustive audit of the whole app treated as a graph: every button is clicked, every screen is visually checked, and every finding is tied back to the graph for human review. It runs locally and Opus-reviewed — no cloud dependency — and scores against the Web/Mobile UI-UX rubric.\n\n### The goal\n\nCatch the failures a \"click everything, flag crashes\" pass misses — silent no-ops (a control that fires, throws nothing, and does nothing) and stale-cache regressions — while producing a reviewable, graph-native record rather than a throwaway log.\n\n### Workflow overview\n\n1. **Enumerate** — collect every interactive element on every route (buttons, tabs, leap badges, sheets).\n2. **Act and assert a delta** — click each, then check that something observable actually changed (URL, node count, graph id, open panels, title, visible text). This is what catches silent no-ops.\n3. **Visual check** — pixel, DOM-overlap and touch-target checks run locally; a local VLM scores each screenshot against the rubric.\n4. **Persistent-context pass** — replay against a warm service worker to surface stale-cache regressions that fresh runs never reproduce.\n5. **Tie to the graph** — each route becomes a TestWorkflow and each click a TestStep, carrying its screenshot, a pass/fail verdict, and a citation to any rubric guideline it violates; findings queue as pending facts for review.\n6. **Review and grow** — Opus reads the coverage gaps and authors new predetermined paths, so the library grows over time.\n\nThis page is the goal and workflow overview; the stepped review itself is generated as a TestWorkflow story." ;
+    <urn:reckons:nav/order> "0"^^xsd:integer ;
+    rdfs:label "Reckons.AI Graph Review — Goal & Workflow" ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:test/TestSuite> ;
+    rdf:type <urn:kbase:type/Concept> .
+
+<urn:reckons:test/GraphReviewFlow>
+    <urn:reckons:story/autoplay> "false" ;
+    <urn:reckons:story/pace> "10" ;
+    <urn:reckons:story/description> "Walk the offline exhaustive graph review as it runs against the app: enumerate every control, click each, and assert an observable delta so silent no-ops are caught — then tie every finding back to the graph for review." ;
+    pred:screenshot-dir "tests/visual/screenshots/graph-review/" ;
+    rdfs:label "Reckons.AI Graph Review" ;
+    rdf:type <urn:reckons:story/Story> ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:test/GraphReviewStory> .
+
+<urn:reckons:test/MainPageMobile>
+    <http://www.w3.org/2004/02/skos/core#definition> "Main graph view on mobile viewport (375x812). NavBar collapses to hamburger, graph fills screen, touch targets are 44px minimum." ;
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:test/PageScreenshots> ;
+    pred:icon2d "/tests/visual/screenshots/main-page-mobile.png" ;
+    rdfs:label "Main Page (Mobile)" ;
+    pred:viewport "375x812" ;
+    pred:page "/" .
+
+<urn:reckons:test/DevSprint-Step7>
+    <urn:reckons:story/order> "7"^^xsd:integer ;
+    <urn:reckons:story/content> "After alignment, summary chips show the breakdown: add (new entities), reinforce (matching entities), conflict (contradictions). These chips use the same diff categories as the incoming tab." ;
+    pred:assertion "summary chips include add/reinforce/conflict" ;
+    pred:page "/review?tab=align" ;
+    rdf:type <urn:reckons:story/Step> ;
+    <urn:reckons:story/partOf> <urn:reckons:test/DevSprintStory> ;
+    <urn:reckons:story/title> "Summary Chips Render" .
+
+<urn:reckons:test/DevSprint-Step5>
+    <urn:reckons:story/partOf> <urn:reckons:test/DevSprintStory> ;
+    <urn:reckons:story/content> "Navigate to /review and switch to the align tab. The graph picker component renders with chips for each available graph. Select a source graph to align against the active graph." ;
+    <urn:reckons:story/title> "Review Align Tab with graph Picker" ;
+    pred:assertion "Graph picker chip count >= 1" ;
+    pred:page "/review?tab=align" ;
+    rdf:type <urn:reckons:story/Step> ;
+    <urn:reckons:story/order> "5"^^xsd:integer .
+
+<urn:reckons:test/DevSprint-Step6>
+    <urn:reckons:story/order> "6"^^xsd:integer ;
+    pred:page "/review?tab=align" ;
+    <urn:reckons:story/content> "Click the first graph chip, then click the align button. Wait for alignment to complete (entity matching via exact IRI + embedding similarity). Results appear as AlignmentCards showing source→target entity matches." ;
+    <urn:reckons:story/title> "Run Alignment" ;
+    pred:assertion "alignment results render" ;
+    <urn:reckons:story/partOf> <urn:reckons:test/DevSprintStory> ;
+    rdf:type <urn:reckons:story/Step> .
+
+<urn:reckons:test/SettingsPage>
+    <http://www.w3.org/2004/02/skos/core#definition> "The /settings page with LLM backend selection, API key inputs, model configuration, and export options." ;
+    rdf:type <urn:kbase:type/Concept> ;
+    rdfs:label "Settings Page" ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:test/PageScreenshots> ;
+    pred:icon2d "/tests/visual/screenshots/settings-page.png" ;
+    pred:page "/settings" .
+
+<urn:reckons:test/DevSprint-Step3>
+    pred:assertion "Graph entry count >= 2" ;
+    <urn:reckons:story/title> "Graph Page Shows Both graphs" ;
+    <urn:reckons:story/partOf> <urn:reckons:test/DevSprintStory> ;
+    rdf:type <urn:reckons:story/Step> ;
+    pred:icon2d "/tests/visual/screenshots/dev-sprint/03-kb-page-both.png" ;
+    pred:page "/kb" ;
+    <urn:reckons:story/content> "Navigate to /kb. Both imported graphs appear in the registry list. Select two graphs for comparison using the compare checkboxes." ;
+    <urn:reckons:story/order> "3"^^xsd:integer .
+
+<urn:reckons:test/GraphReview-Step6>
+    <urn:reckons:story/highlight> <urn:reckons:test/GraphReviewStory> ;
+    pred:page "/review" ;
+    <urn:reckons:story/order> "6"^^xsd:integer ;
+    <urn:reckons:story/title> "Review and grow" ;
+    <urn:reckons:story/content> "Opus reads the coverage gaps and authors new predetermined paths, so the story library grows over time — the 'living coverage' in F34." ;
+    <urn:reckons:story/partOf> <urn:reckons:test/GraphReviewFlow> ;
+    rdf:type <urn:reckons:story/Step> .
+
+<urn:reckons:test/UserDocs-Step3>
+    pred:icon2d "/tests/visual/screenshots/user-docs/03-kb-registry-both.png" ;
+    rdf:type <urn:reckons:story/Step> ;
+    <urn:reckons:story/title> "Graph Registry Shows Both" ;
+    <urn:reckons:story/order> "3"^^xsd:integer ;
+    <urn:reckons:story/content> "Navigate to /kb. Both graphs appear in the registry with their names, entity counts, and accent colors. The user can switch between them or select multiple for comparison." ;
+    pred:page "/kb" ;
+    pred:assertion "Graph entry count >= 2" ;
+    <urn:reckons:story/partOf> <urn:reckons:test/UserDocsStory> .
+
+<urn:reckons:test/MainPageEmpty>
+    pred:page "/" ;
+    rdfs:label "Main Page (Empty graph)" ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:test/PageScreenshots> ;
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "The graph view with an empty knowledge graph. Should show the empty state message and Shelly greeting, not a blank screen." ;
+    pred:icon2d "/tests/visual/screenshots/main-page-empty.png" .
+
+<urn:reckons:test/CrossKB-Step1>
+    <urn:reckons:story/content> "Clear all graphs, then import docs, production, and roadmap graphs in sequence. All three coexist in IndexedDB with separate Dexie databases." ;
+    pred:icon2d "/tests/visual/screenshots/cross-kb-align/01-all-three-imported.png" ;
+    pred:page "/" ;
+    <urn:reckons:story/partOf> <urn:reckons:test/CrossKBStory> ;
+    <urn:reckons:story/order> "1"^^xsd:integer ;
+    rdf:type <urn:reckons:story/Step> ;
+    <urn:reckons:story/title> "Import All Three graphs" .
+
+<urn:reckons:test/ReviewMobile>
+    rdf:type <urn:kbase:type/Concept> ;
+    pred:page "/review" ;
+    <http://www.w3.org/2004/02/skos/core#definition> "The /review page on mobile viewport. Stacked layout with review panel full-width above graph. Touch-friendly card actions." ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:test/PageScreenshots> ;
+    pred:icon2d "/tests/visual/screenshots/review-page-mobile.png" ;
+    rdfs:label "Review Page (Mobile)" ;
+    pred:viewport "375x812" .
+
+<urn:reckons:test/DevSprint-Step9>
+    pred:assertion "pixel.isSolidFill === false, pixel.hasColorAnomaly === false" ;
+    pred:page "/review" ;
+    rdf:type <urn:reckons:story/Step> ;
+    <urn:reckons:story/order> "9"^^xsd:integer ;
+    <urn:reckons:story/content> "Final check: the review page renders without solid fills, color anomalies, or visual artifacts. This validates the entire flow completed without rendering errors." ;
+    <urn:reckons:story/title> "No Rendering Artifacts" ;
+    <urn:reckons:story/partOf> <urn:reckons:test/DevSprintStory> ;
+    pred:icon2d "/tests/visual/screenshots/dev-sprint/09-no-artifacts.png" .
+
+<urn:reckons:test/DevSprint-Step8>
+    <urn:reckons:story/order> "8"^^xsd:integer ;
+    <urn:reckons:story/content> "Each AlignmentCard shows the source→target graph entity flow with accept and reject buttons. The developer can approve matches (remapping the entity IRI) or reject them (keeping separate entities)." ;
+    <urn:reckons:story/partOf> <urn:reckons:test/DevSprintStory> ;
+    pred:assertion "ac-flow, ac-accept, ac-reject visible" ;
+    <urn:reckons:story/title> "AlignmentCard Shows Flow" ;
+    pred:page "/review?tab=align" ;
+    rdf:type <urn:reckons:story/Step> .
+
+<urn:reckons:test/MainPageTablet>
+    pred:page "/" ;
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:test/PageScreenshots> ;
+    rdfs:label "Main Page (Tablet)" ;
+    pred:viewport "768x1024" ;
+    pred:icon2d "/tests/visual/screenshots/main-page-tablet.png" ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Main graph view on tablet viewport (768x1024). Intermediate layout between mobile and desktop." .
+
+<urn:reckons:test/GraphReview-Step5>
+    pred:page "/review" ;
+    <urn:reckons:story/partOf> <urn:reckons:test/GraphReviewFlow> ;
+    <urn:reckons:story/title> "Tie every finding to the graph" ;
+    pred:assertion "findings queued to knowledge.pending.jsonl" ;
+    <urn:reckons:story/content> "Each route becomes a TestWorkflow and each click a TestStep carrying its screenshot, a pass/fail verdict, and a citation to any rubric guideline it violates; the worst findings queue as pending facts for human review." ;
+    rdf:type <urn:reckons:story/Step> ;
+    <urn:reckons:story/order> "5"^^xsd:integer .
+
+<urn:reckons:test/DevSprint-Step1>
+    rdf:type <urn:reckons:story/Step> ;
+    <urn:reckons:story/order> "1"^^xsd:integer ;
+    <urn:reckons:story/title> "Import Production graph" ;
+    <urn:reckons:story/highlight> <urn:reckons:test/UnitTests> ;
+    pred:page "/" ;
+    <urn:reckons:story/partOf> <urn:reckons:test/DevSprintStory> ;
+    pred:assertion "pixel.isSolidFill === false" ;
+    pred:icon2d "/tests/visual/screenshots/dev-sprint/01-production-imported.png" ;
+    <urn:reckons:story/content> "Clear all graphs, then import the Production Status graph. Navigate to the main page. Verify the graph renders (not a solid fill). The Production graph contains test suite entities, architecture components, and MCP tools." .
+
+<urn:reckons:test/DevSprintStory>
+    rdfs:label "Developer Sprint Planning" ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:test/UserStoryTests> ;
+    <urn:reckons:story/pace> "10" ;
+    <urn:reckons:story/description> "A developer uses the Production and Roadmap graphs to plan a sprint. They import both graphs, compare them on the graph page, navigate to the align tab, run alignment, and verify the suggestions render correctly." ;
+    <urn:reckons:story/autoplay> "false" ;
+    pred:screenshot-dir "tests/visual/screenshots/dev-sprint/" ;
+    rdf:type <urn:reckons:story/Story> ;
+    pred:test-file "tests/visual/user-stories/dev-sprint.test.ts" .
+
+<urn:reckons:test/CrossKB-Step9>
+    <urn:reckons:story/partOf> <urn:reckons:test/CrossKBStory> ;
+    pred:assertion "no horizontal overflow on 375px viewport" ;
+    pred:icon2d "/tests/visual/screenshots/cross-kb-align/09-mobile-stacked-layout.png" ;
+    <urn:reckons:story/content> "Verify the review page renders correctly on mobile viewport (375x812). The stacked layout should show the review panel full-width with no horizontal overflow." ;
+    rdf:type <urn:reckons:story/Step> ;
+    <urn:reckons:story/title> "Mobile Responsive Layout" ;
+    pred:page "/review" ;
+    <urn:reckons:story/order> "9"^^xsd:integer .
+
+<urn:reckons:test/IngestPage>
+    <http://www.w3.org/2004/02/skos/core#definition> "The /ingest page with text, URL, file, and graph import tabs. Verified for correct tab rendering and input field visibility." ;
+    rdfs:label "Ingest Page" ;
+    pred:icon2d "/tests/visual/screenshots/ingest-page.png" ;
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:test/PageScreenshots> ;
+    pred:page "/ingest" .
+
+<urn:reckons:test/GraphReview-Step1>
+    pred:page "/" ;
+    <urn:reckons:story/partOf> <urn:reckons:test/GraphReviewFlow> ;
+    <urn:reckons:story/order> "1"^^xsd:integer ;
+    <urn:reckons:story/content> "The review starts on the landing route and enumerates every interactive element — buttons, tabs, leap badges, sheets. The landing page alone exposes 18 controls; the crawl repeats this per route." ;
+    rdf:type <urn:reckons:story/Step> ;
+    <urn:reckons:story/title> "Enumerate every control" ;
+    pred:icon2d "/tests/visual/screenshots/graph-review/01-enumerate-landing.png" ;
+    pred:assertion "interactive element count > 0" ;
+    <urn:reckons:story/highlight> <urn:reckons:test/GraphReviewStory> .
+
+<urn:reckons:test/CrossKBStory>
+    <urn:reckons:story/pace> "10" ;
+    <urn:reckons:story/autoplay> "false" ;
+    pred:test-file "tests/visual/user-stories/cross-kb-align.test.ts" ;
+    rdfs:label "Cross-Graph Alignment" ;
+    rdf:type <urn:reckons:story/Story> ;
+    pred:screenshot-dir "tests/visual/screenshots/cross-kb-align/" ;
+    <urn:reckons:story/description> "Tests the full cross-Graph alignment workflow: import all three self-dogfooding graphs (docs, production, roadmap), verify the graph registry, run alignment, and check mobile responsive layout." ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:test/UserStoryTests> .
+
+<urn:reckons:test/VisualTests>
+    pred:command "npm run test:visual" ;
+    rdf:type <urn:kbase:type/Concept> ;
+    rdfs:label "Visual Regression Tests" ;
+    pred:framework "playwright" ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Playwright-based visual regression. 5 analysis layers (cheapest first): pixel analysis (solid fill, color anomaly), DOM overlap detection, text presence checks, Mistral OCR (if API key), Claude Vision semantic analysis (if API key). Screenshots saved to tests/visual/screenshots/." ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:test/TestSuite> .
+
+<urn:reckons:test/TestSuite>
+    <http://www.w3.org/2004/02/skos/core#definition> "Reckons.AI test infrastructure: 336+ unit tests (Vitest + jsdom), Playwright E2E with 6 device profiles, visual regression with pixel analysis + DOM overlap + text presence checks, optional Mistral OCR and Claude Vision tiers. All tests run locally without API keys." ;
+    rdfs:label "Test Suite" ;
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:guide/WhatIsReckonsAI> .
+
+<urn:reckons:test/UnitTests>
+    pred:framework "vitest" ;
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "336+ tests via Vitest with jsdom environment. Coverage: RDF serialize/import, temporal conflict detection, semantic diff, merge analysis, content safety (28 tests), embedding, mobile auth. Run: npx vitest run." ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:test/TestSuite> ;
+    pred:test-count "336" ;
+    pred:command "npx vitest run" ;
+    rdfs:label "Unit Tests" .
+
+<urn:reckons:test/UserDocs-Step1>
+    rdf:type <urn:reckons:story/Step> ;
+    <urn:reckons:story/order> "1"^^xsd:integer ;
+    <urn:reckons:story/title> "Import Docs graph" ;
+    pred:page "/" ;
+    pred:icon2d "/tests/visual/screenshots/user-docs/01-docs-kb-imported.png" ;
+    <urn:reckons:story/content> "Clear all existing graphs, then import the starter-guide.ttl documentation graph. This is the hub with leap nodes to sub-graphs. The graph should render with Reckons.AI at the center." ;
+    <urn:reckons:story/partOf> <urn:reckons:test/UserDocsStory> .
+
+<urn:reckons:docs/nav/BackToHub>
+    rdf:type <urn:kbase:type/KnowledgeBase> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Return to the main documentation hub." ;
+    <urn:reckons:leap/label> "Documentation Hub" ;
+    rdfs:label "Back to Documentation Hub" ;
+    <urn:reckons:leap> "a1b2c3d4-e5f6-4a00-b000-000000000000" .
+
+<urn:reckons:test/UserStoryTests>
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:test/VisualTests> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "End-to-end test scenarios that follow real user workflows. Each story imports graphs, navigates pages, takes screenshots at each step, and verifies UI state. Three stories: Dev Sprint Planning, User Docs Import, Cross-Graph Alignment." ;
+    pred:command "npm run test:stories" ;
+    rdfs:label "User Story Tests" ;
+    rdf:type <urn:kbase:type/Concept> .
+
+<urn:reckons:test/DevSprint-Step2>
+    rdf:type <urn:reckons:story/Step> ;
+    <urn:reckons:story/order> "2"^^xsd:integer ;
+    pred:icon2d "/tests/visual/screenshots/dev-sprint/02-roadmap-imported.png" ;
+    pred:page "/" ;
+    <urn:reckons:story/partOf> <urn:reckons:test/DevSprintStory> ;
+    <urn:reckons:story/title> "Import Roadmap graph" ;
+    <urn:reckons:story/content> "Import the Roadmap graph alongside the Production graph. Both graphs now coexist. The roadmap contains planned features with statuses (done, in-progress, planned)." .
+
+<urn:reckons:test/PageScreenshots>
+    rdfs:label "Page Screenshots" ;
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Baseline visual regression screenshots for each major page. These are not stories but single-page captures used for pixel analysis and DOM overlap detection." ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:test/VisualTests> .
+
+<urn:reckons:test/GraphReview-Step4>
+    pred:page "/review" ;
+    rdf:type <urn:reckons:story/Step> ;
+    pred:icon2d "/tests/visual/screenshots/graph-review/04-review-visual-check.png" ;
+    pred:assertion "pixel.isSolidFill === false" ;
+    <urn:reckons:story/content> "On each screen run the offline pixel, DOM-overlap and touch-target checks — no blank/solid-fill, targets at least 44px — before any VLM scoring. Cheapest checks first, no API keys." ;
+    <urn:reckons:story/order> "4"^^xsd:integer ;
+    <urn:reckons:story/partOf> <urn:reckons:test/GraphReviewFlow> ;
+    <urn:reckons:story/title> "Visual check, locally" .
+
+<urn:reckons:shelly/persona>
+    <urn:reckons:shelly/responseStyle> "concise" ;
+    <urn:reckons:shelly/personality> "methodical, visual, precise" ;
+    <urn:reckons:shelly/name> "Shelly" ;
+    <urn:reckons:shelly/greeting> "This is the test documentation! I can walk you through any test story step-by-step, show you screenshots, or explain the test infrastructure. The Dev Sprint story is a great place to start!" ;
+    <urn:reckons:shelly/systemPrompt> "You are helping someone understand the Reckons.AI test suite. Walk through stories in order, reference screenshots, and explain what each step verifies. The stories are ordered — follow the sequence." .
+
+# ---- provenance ----
+<urn:kbase:stmt/001c5864-1dda-4543-91e1-6bdcd6a72be7> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/004965a3-7591-40cd-baa6-b4882b674037> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/00687e13-798b-4f22-8dd2-82c8a6d8879a> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/010253a2-b71d-4caa-a691-feeeb20db5f7> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/010a29b9-d297-4e6b-9c38-49bb6e07611d> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/0410a6d6-30ba-4901-b24c-f1b0bb67c0ea> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/05aae4a6-9204-4d85-ade4-10b06ab445ee> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/07c48295-8b39-4abf-890f-b09ff4ba93c5> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/07cb28ec-56bb-4670-b643-ce839a282953> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/0858fb2d-d6d1-4ab6-a571-9f7902e8f794> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/08c1b69d-353b-46a6-a0a3-3ea1b445fdb9> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/0a0029b7-bb06-4e7a-bce2-c94fe1da1fff> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/0b8ef65d-34ab-4f55-ac1d-1bab858763c0> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/0c1ed2e4-37c9-4081-bb53-de6a9754d44e> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/0d3b8a5d-f95b-4211-8067-ad925f2bbaa4> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/0d94da0d-d287-4023-99a0-d29237813b62> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/0f0f20d4-5527-401d-b8f2-0ba4b5456df6> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/11f655d0-2ea7-4813-9942-f7faaad89f13> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/12aee2c0-4a9f-4a52-b233-d52ae942e55e> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/141e4334-4221-4d74-b634-30113940430b> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/14917558-7426-4d95-a149-9e4060376990> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/17a58c5d-7eec-42a7-a304-3b65ec6db8df> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/17d11574-197b-4dbc-9136-127e671b0868> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/187f039c-8af8-43af-ba62-f86fb0795f0e> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/1b3ac144-ecd5-45f0-81c0-b5f7d7fd6df8> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/1bca988d-49dc-4bda-9040-079d0e27186d> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/1bf0fc24-d257-40b6-a68b-3a9a453c684f> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/1c276b4e-efc3-4046-8ea5-080e8120fddd> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/1ce13d09-93f2-444b-83b0-7580193b3b1a> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/1d3e4c42-2bf0-468d-ad1c-c9696fc5765d> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/1ed09da0-27ad-4847-8619-1b80c9d06bcb> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/1f4a0b83-7cff-42b5-a57b-32591a6abeee> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/1f79aa53-95d1-465f-9f5f-b1fe9e2daa8f> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/2116a0a0-dded-4e63-b553-cda5d629a0a2> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/21a0e9c6-f301-4196-984b-df5b481f210b> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/221c122f-0fd9-46a4-a73d-ecbd3970a4fb> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/2239eee2-6aab-4e53-9628-d43bfff6bac9> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/24e5cc46-101b-4bb7-aef6-4432c0f03d8a> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/257ecf6e-7c2e-4615-8e98-612e042524ba> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/25dc9ae8-bca4-46c8-962b-497109d73eaf> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/26c6dd51-fc1b-4d75-a38b-5acad71cc6f5> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/2715d60f-4e2c-419c-97c3-7c57007db563> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/2843e0a9-8a0d-4a21-807d-5ae64dffca0a> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/2a31d809-1bd3-49d0-a16a-7e4c272fb7ca> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/2a553894-be47-467c-bce0-7c3792232b29> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/2a5d20c0-9fa7-4994-bdb1-d90766a56459> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/2a625205-9fed-43c1-926e-bc05eadfae63> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/2ada25ee-bfde-4f0a-943e-e91886d64fac> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/2b386392-06aa-477c-9076-a78de343f64f> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/2b93cc22-6dce-439e-8487-ea7f908a880e> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/2d6819a0-69e6-453a-83b9-30b2c318745b> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/30497af7-1948-46af-9f5b-6df9ca675f36> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/305de256-5020-477c-b541-94aa8cc8d613> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/30d95bcd-c9ea-4932-84e8-d39443051cc1> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/3101ec1e-6a6f-47b5-b300-e7d1cd875f21> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/32055cad-ea1e-4ff2-a5be-4d99b414e798> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/3438af69-1717-4475-88ef-21586e3f0658> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/345acf26-6e5a-4538-b213-c3e1f78d7410> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/3478e257-f024-4351-8c76-b766e691bd17> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/34a5e8e4-90a9-46d8-be04-68499ddc513c> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/36304945-46c2-45ce-aa57-9fa280da5bcb> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/36b1207b-bd83-41d6-b31d-81b5ebf1a58c> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/36d43061-b75d-40f3-aeac-de8062a00f93> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/3715f89f-d4a9-4a0f-90d0-75dbba44bd26> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/39b8c6e5-35fc-4f5f-8ca8-fcad3ce75923> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/3a45c447-f0a3-4dea-8c50-83ef0f0257d1> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/3b933cd3-e69e-44c1-acac-691b2f2fe43a> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/3bdb077a-8068-4453-964a-8efce51bddd0> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/3c671b08-45f1-43ca-b254-ba2977ab1d03> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/3eec5da4-2d00-4b3b-bfc9-b8f0b19279e8> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/3f3f8095-5dd0-4ad2-8e93-83da942e0873> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/3f4e550c-376b-454e-ac2b-6377e2b9f067> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/40890305-1030-417d-bb77-4dcef920d559> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/40ffcd0d-b430-4135-bb12-e78b696ca25f> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/4130735d-0f11-4822-a862-8ef25d8d0139> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/427a3173-d6c2-4377-a7c6-d5542b80f9df> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/43509b00-b4ab-4c92-af60-f57bbf11915c> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/43722f17-3ba9-419f-8f99-882020cba7c5> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/43aeeb77-8788-4be8-8710-49ac9d5a9ef4> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/442f54cf-3e42-4382-aed4-885b88d8fdb0> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/44bfe4b8-7a70-4a70-8002-def2017402f6> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/44c57c53-87d8-4022-b384-046ad5f72aeb> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/478ed77d-4a1b-4499-8012-4e3a7ea496a2> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/48fa810d-1f19-4256-a975-c5a9d596520f> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/49546fc2-48b4-4f22-a555-67d61e12e47a> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/4c545883-3cb3-44e0-b404-687fa49f7654> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/4d71bf76-dd65-4a20-b15b-03aeac37c17e> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/4e810489-1b16-47fd-bdfe-657a039a0061> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/4f8f3638-3a06-4857-b79f-c2033652dca1> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/503b685f-d7e9-4d50-b9a8-64c6775d0a81> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/504300b0-cfa0-46e2-8967-4fa563835146> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/506b53db-9433-4747-bbc5-95b4865be66e> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/511c9b0e-9c60-4981-ab93-a70221cd53c7> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/51cb8eeb-e001-4141-a976-d96e66879a3b> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/525ed2eb-6caf-4d2f-a332-bc99d7ffc4fd> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/526bb478-3c49-4d38-9f34-d9e047ceabfc> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/527da5d0-7a62-45de-95e0-aa2786001175> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/5322c7d8-db4e-4571-b47d-d492902882a4> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/542715aa-d164-47c6-a28b-f3e166877a49> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/5475e678-b15c-4997-80a8-872b5b53b844> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/54e675ea-16d0-4442-b873-820d20a02927> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/5524e8ac-a3b7-4896-819c-646a9ac799fb> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/5670a2a5-b533-4764-9e94-443586b5e6da> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/57199dc6-92bc-437f-ae25-850ca9e8ab81> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/573bce61-6396-40de-94c4-302df1871728> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/576a6bec-3784-4c55-a922-f788fc9eb1dd> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/57e8100a-a707-45e5-b3b5-f9ee554a22a3> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/5810cff4-cdb5-41e5-8f14-0561619985f8> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/58fbc362-e726-46f5-b6ae-e03c8f2664ae> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/59acd965-fad4-4f8f-a49b-71dd437ddba6> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/59cee313-5bc2-45e8-9448-fff7f1b52192> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/5ab3fc48-df42-4584-bdfd-a5d4cc18c2af> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/5b13e182-997b-4add-83fd-88b89204cd1d> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/5b5480b9-ffe7-4027-b416-f73894bb1ad8> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/5c1c89e6-9381-49ef-94cc-5447eb9d58e7> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/5c8f30ea-9fd2-43e9-a4bd-977cf7e191d7> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/5cf3feb5-4450-471d-833d-b8f275aa8fd9> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/5e217ab8-ca73-475b-91b0-2757ec50bfcb> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/60886675-3e50-466f-84f0-232944df9885> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/6343153f-5d29-4328-870b-6d5521a5aef3> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/634325bc-61b5-4154-a991-ef6b13816b49> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/635d8fc1-d905-4a9f-99b5-6619a0289891> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/643a83e8-0230-4d99-b799-0bc993ea8d74> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/6462d149-791d-497a-9871-115587391268> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/65d64937-263b-4116-8ad5-d3f94342b56f> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/668aa00a-6d75-421e-ad06-c39eecfffae9> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/69b66dd2-6e35-4f7b-b776-36057d98a00b> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/69fec28a-7d2c-446f-aa32-efa5c3da5ef1> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/6a2ad8e7-6c5b-4771-bbdf-4604cb441319> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/6ad3d8f7-8ea6-4151-adc6-ffcdfc08f248> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/6b8d8613-603b-4f71-a120-cf8dffbb657b> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/6cbe32a9-a80a-457d-962c-a192113fd93b> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/6d0b5ec2-d6cc-4ee6-8f2b-4da8773b451d> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/6d7b6375-a007-4f0d-b770-66bf2c9da78a> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/6da78dbc-c498-4183-9e8d-bf10dbf3baa9> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/6ea43a78-6bf9-4c97-a850-a7d09f40e39f> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/6f9dc003-9f46-4c32-b62f-6b54b1fddad7> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/6fb2cba6-3e53-43a1-a968-a882c8ae64ed> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/76750d35-2208-4922-9cb2-900cdb474105> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/76ea0d7a-a0dc-4609-8195-f0fb0c5a5b37> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/77084d96-ac9c-4de0-9df5-833b2250cf20> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/7a63eeed-f694-41e0-9384-0fc72bf0578c> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/7a9d2b4f-c2d1-4221-bf8c-eb6a85a091b3> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/7af1bcf7-16c5-468e-afe8-a65fc982eadb> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/7c0903cc-a293-4a7d-93c3-2773b11d4586> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/7ddf5a89-e91f-45a9-b913-cefc7a188d07> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/7edf2c1a-a8e7-4081-ac59-c69fad499b7a> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/7f80e215-e2ae-454d-8325-a2dd5a3748e9> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/8047cfe2-ea22-484d-919d-c7984064d233> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/81b0e736-c4fd-4dc9-8740-8128bc81bc89> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/830bd347-5406-42df-81e9-c61ee1664c38> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/8601948c-8bd1-48fe-80f8-a0aa71f4b753> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/875e25e6-9e08-49c5-a4b9-12b49a901560> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/876599be-7667-447a-9a82-24697bffa9d2> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/87a37997-0e11-4d8a-b6a9-d9b97b7463d9> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/8abca055-2c84-4f8c-a20d-e2b4d8c413af> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/8b56feee-19a8-491d-9c4c-34dd868c7b09> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/8c27b570-9e57-43c4-ad89-d72d4b16ad48> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/8c43d8a7-5f07-480e-8976-7f1376fd5f9b> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/8ce0eb52-979c-4f4d-8114-7ba056e737e7> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/8d178570-9d10-48cb-be3d-5f70bb0382ce> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/8df34849-760b-4d11-a7d7-5fc52f05c15c> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/90fafc6e-b13a-41bf-9542-ee8cb789721c> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/912eb727-5c30-4fe5-931d-ab13553bf7ab> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/9235f34f-1845-4e8b-b14e-14cfd53423e4> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/927d76d8-0502-4d92-9122-e7b1f70b3a18> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/93142159-0332-4d4c-a4d2-29e774b2aad2> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/93d79565-50cd-43ce-b113-c75443c2f7ad> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/9432180d-1689-49bf-83bc-2b483b9cce1e> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/943c5979-5d77-452c-82e6-9cf91b5775b3> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/94c69f0a-1c4d-477b-bb2a-d38b8068b49e> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/94d2b355-6710-4746-b969-6e20a3d565a3> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/95527afa-2cd8-4008-b371-335630460832> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/9657ddf5-320a-44ed-8496-fa301a8abb67> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/97f806e8-a70f-484f-a16f-a0cfa0cf0b07> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/98c92c8d-375d-4de5-b041-f25e4b6d6fb8> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/98d02e89-0006-4072-8089-ce467eaf5fc0> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/9a208f6a-1359-4df8-b39e-00ba0cb9eacf> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/9c0ecfc5-64ed-4ca0-ad2a-8a2ecd5f3e4d> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/9c63d7e4-c9b3-4703-9adc-84e628808f5a> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/9d0313f1-9a47-4764-842c-a257b950a7a6> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/9d39e565-b789-4503-9f1b-6407bacbd092> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/9d3fea82-c31f-4d58-af68-45ffd9c3793e> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/9d895a01-a976-48aa-a332-e3d103c2910d> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/9e046bfd-75d6-440b-bcea-7b5661468602> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/9ef6f45c-417f-45fc-9e4f-a58043519f62> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/9f801c58-94d4-438d-b3cf-cb556f7b1a63> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/a02e7b0a-d343-494d-8d8b-544992af81e3> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/a1d3bb31-23ec-4286-9d26-13269e26652d> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/a1f7fce7-3cc4-4175-a128-77865549442c> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/a356a72c-7aad-4c6e-b035-3bd27b8feaa5> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/a37e482b-6793-454c-8d37-587274cfee8e> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/a51d24a2-9193-493f-9f79-a42567dd98f4> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/a9300d3a-d1d2-48aa-abbb-25afb1fa358f> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/aa21f39f-f7a4-4d35-a9a5-7f8a4e80d65f> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/ade599cb-371b-4e79-b681-f24bc6e7e885> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/ae4da8a3-2e05-45b5-867f-6535b9861b13> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/aef5b142-d8a3-44c5-b795-69e71d373cad> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/af57bf5f-48bc-4b7d-8e4a-165b932cdaa8> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/b00dd8b0-62fe-48c9-860d-4550b51a0e1a> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/b0c02919-d011-4ffc-9ce0-a87492a96a21> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/b1a795da-ee36-4470-b085-2df34193a34d> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/b21ecc67-55b7-4427-a3ba-41f92ca18c07> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/b2619ac2-2f30-47e9-982f-fcb3c171b117> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/b2c61946-8ed3-44b7-a6dc-3d87b435282a> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/b465e481-3692-46d6-91aa-90f22aaf74c7> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/b60fddc1-699e-4753-8c2c-12ef6bb5b0ef> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/b65ee37a-3eae-4838-b85f-4425df1e5766> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/b6fe5dfa-db51-4648-9eba-5a301a92328d> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/b7ed0fe0-27b8-488d-81f6-cd1dbb0cf8e4> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/b8a8035c-9a91-4c6c-af4e-51b4186bee52> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/ba9eb95f-e431-48d9-9a5e-348d4d9afdd7> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/be152128-79c3-4fb0-8608-14485fe5143e> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/be24620e-6ba2-44d3-894c-f5e34a0744b9> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/be5ec54c-b97c-4b47-9c72-34ac7c658a90> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/bf823d03-19ce-4b68-9a05-5685175d75ed> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/c26f6aab-cb93-420b-b247-dd1a2facdc96> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/c28b8542-9c53-46cd-80e6-59d0177e0407> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/c3f49d5b-e759-498c-ad57-b152b7ebd83d> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/c5172d46-dce3-4cb0-a682-b826f60d41c5> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/c57eb816-bfe7-4d3d-82d0-86a63a63146c> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/c6472f45-e348-42e3-98d2-882351cc21b1> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/c79868a1-aab4-43d7-96fb-a15f9e523cf2> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/c8885b87-12f9-4540-bc13-39c455dbf6ed> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/cad89067-04dc-4509-9295-ab4c4f3641cc> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/cb7a555c-3478-4bfc-b2c9-389af53f096a> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/ccd21631-a75d-4f2d-9e6e-3de6e866a981> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/cd039000-f357-4e16-be0a-04a6bd1515b8> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/cd1ea9ba-016e-4cc7-ba62-9d158aff7f80> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/cde125b7-29ad-43d3-ba26-ce04db9bc424> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/cdee8b7e-cb89-4748-95f9-5726b4c31f96> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/ce37705f-56ca-453c-ad6f-3b3e47542487> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/cf10c720-4cde-4114-bf1d-8fd5a88cd7be> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/d0329ee3-87f2-4bca-a4d6-aeeb1823921b> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/d1ef0ec9-cad7-405e-b95e-dd87c64a9aed> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/d2148b2e-69a7-4229-a05d-62c1f82b9fe7> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/d23ce2b1-1623-493b-80ba-3258c3cc061b> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/d2400383-315b-4476-b3ef-afdf66a3b05b> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/d25edfe0-3389-440b-8673-09ecd020ccb1> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/d2d795ae-1f41-473f-983d-4cd4b941a337> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/d3266dea-5ba1-4781-a00f-34329d8f2f37> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/d46ca89c-2c22-4e13-b6f3-662d71992474> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/d4ebb588-6e20-4094-8487-9d6dedd14c09> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/d7407b15-ba44-40d3-b2e5-9223e45f6047> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/d7c2940d-9f5d-4d40-9dd7-71b285a29d9c> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/d8b3f1f5-011a-472f-8007-98f5e32b7bf5> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/d8deee39-7809-43a9-b8c0-e0c0ba7162a3> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/d9599918-70db-465f-ad11-d9bd31499467> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/d96fa65b-d843-43cc-a9cc-b79e165f8941> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/db5c76eb-d03e-4a71-9cab-22bb831076e6> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/dd2d38d2-6854-4f6d-84cf-8810bc6fc2de> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/de138302-93c5-4904-b316-12c11f020efc> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/dfca2cd6-92a4-4d34-9460-3b0992acc03f> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/dfd04ad9-17b0-427c-9fda-24dfadb31a15> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/e18c3967-1739-4a56-88f3-d89a30165e3f> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/e1d993a5-e425-4b35-80a3-9f3cda791b79> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/e2e3005a-8128-4f7c-9f26-2ca5a4eb8552> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/e380acc8-9566-4751-8100-7d43d5160e41> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/e4f6e38a-033b-4cf7-9db6-e998aad098eb> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/e68f6d63-ea59-4f92-85e4-b7d7ffda048e> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/e701a1e8-54ba-4a92-a4a9-4d80deebb2bc> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/e714bb88-9693-4ca4-8d92-0b3d45b70027> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/e722151f-fd6e-472c-bc50-e73a570bc6b5> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/e8486e39-4c5f-4fc2-b622-210faf689b16> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/ebd988ed-ea89-46c0-98d9-5003ce08bb23> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/ec9f1429-475b-4445-9af1-688996ecdc40> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/eca75a42-ceb2-415d-b293-420cd29179c5> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/ecd34a93-b6ef-433c-bcae-eac14b9d55f6> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/edfc6bf8-829f-422a-96e1-58d26a0d4e57> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/ee26d34d-d75e-4344-a7b8-dde7b568d517> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/f2209f87-83c0-4ba5-8daa-dd07ab6dcddf> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/f3c14516-e2b8-4394-bcdf-8fadedfe6fc4> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/f4431dd3-2438-4ad8-9f0f-7d226b10afcc> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/f58560f1-f64e-4259-bfe7-9f988df2762e> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/f6439b90-6960-4e16-b5ce-e32aa229d792> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/f72b8965-f8ea-4c24-935e-696db294d5ff> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/f9b3e3f4-421f-4416-abd9-622dbd3e5538> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/fac27ce3-5faf-4dfc-af42-6ad328a9061f> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/fdd5b3c4-1a0e-4303-8124-9b9eab8468d0> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/fe03c51d-812a-45be-84bd-8b91118493cf> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/ff429a1a-d510-4708-a8bd-ed90500508e7> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/ffae8fa0-25fa-4563-9982-9a9275381a2f> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .
+<urn:kbase:stmt/fff9dda1-3b75-4729-bfea-9ac7e6b3dea9> prov:wasDerivedFrom <urn:kbase:source/94d24b1d-0cce-45ec-af96-3512897fe9ab> ;
+    dc:created "2026-07-11T00:57:15.952Z"^^xsd:dateTime .

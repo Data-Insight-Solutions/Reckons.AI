@@ -1,0 +1,660 @@
+# generated 2026-07-15T00:07:03.822Z
+# 187 statements
+
+@prefix kb: <urn:kbase:concept/> .
+@prefix src: <urn:kbase:source/> .
+@prefix pred: <urn:kbase:predicate/> .
+@prefix meta: <urn:kbase:meta/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix dc: <http://purl.org/dc/terms/> .
+
+<urn:reckons:feature/Ingest>
+    rdfs:label "Ingest" ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Add knowledge from text, URLs, documents, calendars, iCal feeds, Indico events, or Turtle files. An LLM extracts semantic triples from unstructured input. Every extracted triple starts as pending for your review." ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:guide/WhatIsReckonsAI> ;
+    rdf:type <urn:kbase:type/Concept> .
+
+<urn:reckons:feature/PredicateManager>
+    <http://www.w3.org/2004/02/skos/core#definition> "View all predicates in your graph with usage counts. Rename predicates across all statements or merge two predicates into one. Accessible from the graph page." ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:guide/WhatIsReckonsAI> ;
+    rdf:type <urn:kbase:type/Concept> ;
+    rdfs:label "Predicate Manager" .
+
+<urn:reckons:feature/Currents>
+    <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:feature/PodView> ;
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:guide/WhatIsReckonsAI> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Streamed ingest: point a current at an RSS feed, URL, or topic and it brings recurring external content into your graph on a schedule. Items arrive via the n8n Currents Monitor (or a direct in-browser RSS fetch as fallback) and are ranked by affinity to your graph's most-connected entities, with near-duplicates collapsed and content-policy filtering applied. New facts always land as pending — a current never bypasses review. An entity-type gate (set in graph settings) restricts which types a current may CREATE; facts attaching to entities already in the graph always flow through. Configure currents and the type gate from the graph page." ;
+    rdfs:label "Currents" .
+
+<urn:reckons:feature/GitAnalysis>
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:feature/MCPWorkspace> ;
+    pred:test-coverage "none" ;
+    pred:has-status "functional" ;
+    rdf:type <urn:kbase:type/Feature> ;
+    rdfs:label "Git Analysis" ;
+    pred:honest-note "No automated test covers this (audited 2026-07-12). Shipped and in use; the coverage gap is declared rather than hidden (kb:honest-status). NOTE: this entity duplicates kb:git-analysis in the roadmap under a different IRI — same feature, split identity." ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Git-aware MCP tools for agent plan alignment. Tools: kb_git_status (branch/commits), kb_check_plan (BM25 drift detection), kb_pending (review queue), kb_git_diff_triples (file-to-Graph cross-ref), kb_alignment_score (quantitative 0-1 score across 4 dimensions: coverage, status alignment, dependency respect, scope discipline). Enhanced kb_add_note supports type, priority, agent, and commit_sha metadata." .
+
+<urn:reckons:feature/Graph3D>
+    <http://www.w3.org/2004/02/skos/core#definition> "Interactive force-directed graph in WebGL (3D) or Canvas (2D fallback). Per-entity icons from urn:kbase:predicate/icon2d statements with emoji fallback. Label overlap prevention sorts by degree and hides collisions. Hub emphasis, layout modes (force/focus/source/type/hub), filter chips." ;
+    rdfs:label "3D / 2D Knowledge Graph" ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:guide/WhatIsReckonsAI> ;
+    <http://www.w3.org/2004/02/skos/core#note> "Fixed known issue (PR #21): production builds rendered a black graph while hit-testing still worked. Root cause was Threlte's <T.BufferAttribute> resolving its THREE class by function name, which minification mangled, so the geometry got the class instead of an instance and the WebGL renderer threw every frame. A minified-build deploy gate (PR #24, tests/e2e/graph-render.test.ts + playwright.smoke.config.ts) now guards against regressions, since the bug only reproduces in a minified production build, never under `vite dev`." ;
+    rdf:type <urn:kbase:type/Concept> .
+
+<urn:reckons:feature/Shelly>
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:guide/WhatIsReckonsAI> ;
+    <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:feature/KokoroTTS> ;
+    <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:feature/WhisperSTT> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "The turtle-shaped AI assistant. Three tabs: tutorial, chat (grounded in your graph), and explore (guided story tours). Each graph can embed its own Shelly persona via the shelly: vocabulary. Supports Whisper STT voice input and Kokoro TTS voice output." ;
+    rdf:type <urn:kbase:type/Person> ;
+    rdfs:label "Shelly (AI Assistant)" .
+
+<urn:reckons:feature/HistoryMode>
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:guide/WhatIsReckonsAI> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Time-travel through your graph at /history. Scrub a timeline to see the graph at any past point. All mutations are logged in the changelog." ;
+    rdfs:label "History Mode" .
+
+<urn:reckons:feature/LLMBackends>
+    rdfs:label "LLM Backends" ;
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:guide/WhatIsReckonsAI> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "9 providers: Claude, OpenAI, Gemini, Ollama (local), OpenRouter (free tier), WASM (offline, Qwen2.5-0.5B-Instruct), Chrome AI (Gemini Nano), Manual paste, Mock. Per-task backend overrides let you use different providers for ingest, chat, analysis, diff summary, and merge analysis. Prefer-local routing can redirect chat, diff summary, and merge analysis to a reachable local Ollama server." .
+
+<urn:reckons:feature/SourceMonitoring>
+    rdfs:label "Source Monitoring" ;
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:feature/SourceRefresh> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Watch URLs for content changes. The n8n Source Monitor workflow checks every 6 hours, detects diffs via content hash, and queues pending notes for review. Surfaces via /webhook/reckons-kb-pending endpoint." .
+
+<urn:reckons:feature/PassageGrounding>
+    rdf:type <urn:kbase:type/Concept> ;
+    rdfs:label "Passage Grounding" ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:guide/WhatIsReckonsAI> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Verbatim source excerpts attached to extracted triples. LLM prompt rule requests the exact source sentence. Persists via meta:excerpt in TTL reification. Displayed in StatementCard and DiffEntry." .
+
+<urn:reckons:feature/MultiKB>
+    rdfs:label "Multi-Graph Management" ;
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Create, switch, rename, and delete independent knowledge graphs. Each graph has its own IndexedDB store, stable UUID, content fingerprint, and optional accent color. Per-tab graph support via URL ?kb= parameter." ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:guide/WhatIsReckonsAI> ;
+    <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:feature/KBLeap> .
+
+<urn:reckons:shelly/persona>
+    <urn:reckons:shelly/greeting> "This is the Features documentation! I can explain any Reckons.AI feature in detail -- Ingest, Review, Compare, Multi-Graph, Leap, Shelly, Reckonings, Content Safety, and more. What would you like to know?" ;
+    <urn:reckons:shelly/name> "Shelly" ;
+    <urn:reckons:shelly/responseStyle> "concise" ;
+    <urn:reckons:shelly/systemPrompt> "You are helping someone learn about Reckons.AI features. Explain how each feature works and give practical usage tips. Reference the feature entities in this graph." ;
+    <urn:reckons:shelly/personality> "knowledgeable, enthusiastic, practical" .
+
+<urn:reckons:feature/PublishedDocs>
+    rdfs:label "Published Graph Site" ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:guide/WhatIsReckonsAI> ;
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Any graph can publish itself as a browsable website. Entities typed as a web page export to markdown with frontmatter (title, section, order, excerpt) via the graph's structure -- skos:broader for parent/child, nav:order and nav:next/nav:prev for sequence. The generated site is served at /docs. The graph stays the source of truth: generated pages are regenerated from the graph, and hand-edits to them are overwritten by the next regeneration by design. A Git-backed admin UI edits non-generated content (like release posts); a drift check flags generated pages that no longer match their graph." ;
+    <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:feature/ReleaseNotes> .
+
+<urn:reckons:feature/Disambiguation>
+    rdfs:label "Disambiguation" ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:guide/WhatIsReckonsAI> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Automatic detection of duplicate or similar entities using text embeddings and cosine similarity. Suggests merges for your review in the Merges tab." ;
+    rdf:type <urn:kbase:type/Concept> .
+
+<urn:reckons:feature/Compare>
+    <http://www.w3.org/2004/02/skos/core#definition> "Compare two knowledge graphs or snapshots at /compare. Diff engine categorizes changes as Add, Reinforce, Conflict, Merge, Remove. Visual Venn diagram and diff table with bulk accept/reject." ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:guide/WhatIsReckonsAI> ;
+    rdfs:label "Compare / Diff Engine" ;
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:feature/DiffSummary> .
+
+<urn:reckons:feature/ContextCompression>
+    pred:has-tool "kb_compress" ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Condense your context. Keep the meaning. Knowledge graphs are dense by nature — a page of prose becomes a handful of triples. Semantic meaning preserved, tokens reduced. Feed compressed graph directly to AI agents via MCP. Structured triples outperform summaries because no relationships are paraphrased away." ;
+    pred:has-param "kb — target a specific knowledge graph" ;
+    pred:has-param "hops (default 1, max 2) — neighborhood expansion depth" ;
+    pred:has-param "budget (default 2000, max 8000) — approximate token budget" ;
+    rdfs:label "Context Compression" ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:guide/WhatIsReckonsAI> ;
+    rdf:type <urn:kbase:type/Concept> ;
+    pred:has-param "query (required) — topic to extract context for" .
+
+<urn:reckons:docs/nav/BackToHub>
+    <urn:reckons:leap/label> "Documentation Hub" ;
+    <urn:reckons:leap> "a1b2c3d4-e5f6-4a00-b000-000000000000" ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Return to the main documentation hub with all leap nodes and the Reckons.AI story." ;
+    rdfs:label "Back to Documentation Hub" ;
+    rdf:type <urn:kbase:type/KnowledgeBase> .
+
+<urn:reckons:feature/ConfluenceMigration>
+    rdfs:label "Confluence Migration" ;
+    <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:feature/EntityNormalization> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Bulk import from Confluence spaces. Upload an HTML export ZIP, parse the page tree, chunk large pages with sliding window (10K chars, 2K overlap), and extract triples using local models (Ollama recommended). Preserves page hierarchy as skos:broader, converts Confluence labels to entity types, tracks provenance per page. Pause/resume checkpoint for overnight imports of large spaces." ;
+    rdf:type <urn:kbase:type/Feature> ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:feature/Ingest> ;
+    pred:has-status "planned" .
+
+<urn:reckons:feature/ReleaseNotes>
+    <http://www.w3.org/2004/02/skos/core#definition> "Versioned release posts (starting with v0.1.0) authored as graph facts and published through the docs site, using the same web-page model as the rest of /docs." ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:feature/PublishedDocs> ;
+    rdfs:label "Release Notes" ;
+    rdf:type <urn:kbase:type/Concept> .
+
+<urn:reckons:feature/ReviewWorkbench>
+    <http://www.w3.org/2004/02/skos/core#definition> "The review page pairs its four tabs (incoming, deletions, merges, align) with a preview graph: browse controls step through items, a node-details + chat pane explains the selected fact in context, and clicking a review item flies the preview graph to its node with the relevant edge highlighted." ;
+    rdf:type <urn:kbase:type/Concept> ;
+    rdfs:label "Review Workbench" ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:feature/ReviewSystem> .
+
+<urn:reckons:feature/TextChunking>
+    pred:has-status "planned" ;
+    rdf:type <urn:kbase:type/Feature> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Sliding window chunking for sources exceeding the 12K character extraction limit. Each chunk gets a context header (source title, chunk N of M, parent page). Cross-chunk deduplication merges triples with identical (subject, predicate, object) after slugification. Benefits all source types, not just Confluence." ;
+    rdfs:label "Text Chunking" ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:feature/Ingest> .
+
+<urn:reckons:feature/KBLeap>
+    <http://www.w3.org/2004/02/skos/core#definition> "Cross-reference entities between graphs. A leap node stores a target (Graph stable ID, app path, or URL) as an ordinary RDF triple. Nodes with leaps show an amber ring. Click to jump to the target graph, navigate within the app, or open an external URL. Docs sub-graphs auto-import on first click." ;
+    rdf:type <urn:kbase:type/Concept> ;
+    rdfs:label "Graph Leap" ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:feature/MultiKB> .
+
+<urn:reckons:feature/WhisperSTT>
+    <http://www.w3.org/2004/02/skos/core#definition> "Local speech-to-text via transformers.js using whisper-tiny (42MB). Mic button in the chat tab. Runs entirely in-browser -- no cloud, no API key." ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:feature/Shelly> ;
+    rdfs:label "Whisper STT" ;
+    rdf:type <urn:kbase:type/Concept> .
+
+<urn:reckons:feature/EntityNormalization>
+    <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:feature/Disambiguation> ;
+    rdf:type <urn:kbase:type/Concept> ;
+    rdfs:label "Entity Normalization" ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:feature/Ingest> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Post-extraction normalization that rewrites incoming IRIs to match existing graph entities and predicates using embedding similarity. Prevents duplicate entities like 'octopus-vulgaris' vs 'common-octopus' from entering the review queue. Two-pass matching: exact label (case-insensitive) then cosine similarity (0.90 entity, 0.88 predicate). Protected standard vocabularies (rdf:, rdfs:, skos:, xsd:) are never remapped." .
+
+<urn:reckons:feature/DiffSummary>
+    rdfs:label "Diff Summary" ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:feature/Compare> ;
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "LLM-generated 3-part summaries of diffs: what is new, what reinforces existing knowledge, and what conflicts. Integrated in /compare, /review, and the browser extension sidepanel." .
+
+<urn:reckons:feature/CrossKBAlignment>
+    <http://www.w3.org/2004/02/skos/core#definition> "Align entities across knowledge graphs. Entity matching via exact IRI match and embedding similarity. IRI remapping for entities that represent the same concept across graphs. Align tab in review page. KbPicker selects source graph, AlignmentCard shows each match with accept/reject." ;
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:guide/WhatIsReckonsAI> ;
+    rdfs:label "Cross-Graph Alignment" .
+
+<urn:reckons:feature/ModelCache>
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:feature/LLMBackends> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Inspect, sideload, and purge locally cached WASM models. Manifests for Qwen2.5-0.5B (500MB), BGE-small-en-v1.5 (33MB), MiniLM-L6-v2 (22MB), Kokoro 82M (88MB), Whisper Tiny (42MB). Settings > Integrations > local model cache." ;
+    rdfs:label "Model Cache Management" .
+
+<urn:reckons:kb>
+    <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a04-b004-000000000004" .
+
+<urn:reckons:feature/ReviewSystem>
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#related> <urn:reckons:feature/TrustSystem> ;
+    rdfs:label "Review System" ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Three tabs: Incoming (new triples), Deletions (removal proposals), Merges (duplicate entity suggestions). Confirm, reject, or refine each statement. Nothing enters your graph without your approval." ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:guide/WhatIsReckonsAI> .
+
+<urn:reckons:feature/MCPWorkspace>
+    rdfs:label "MCP Workspace" ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Reckons.AI uses its own MCP server to track product state. Three internal graphs (Roadmap, Production, Features) are symlinked from static/*.ttl into mcp-workspace/kbs/. Claude Code queries these graphs before planning work. Edit a TTL file and the MCP server auto-reloads. Setup: bash scripts/setup-mcp-workspace.sh." ;
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:guide/WhatIsReckonsAI> .
+
+<urn:reckons:feature/KokoroTTS>
+    rdf:type <urn:kbase:type/Concept> ;
+    rdfs:label "Kokoro TTS" ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:feature/Shelly> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Local text-to-speech for story walkthroughs. 82M model cached in browser. Falls back to browser speech synthesis if unavailable." .
+
+<urn:reckons:feature/KBIdentity>
+    <http://www.w3.org/2004/02/skos/core#definition> "Each graph has a stable UUID (never changes, used for MCP routing and graph Leap) and a content fingerprint (SHA-256 of sorted N-Quads, changes with every edit). Both visible in Settings." ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:feature/MultiKB> ;
+    rdfs:label "Graph Identity" ;
+    rdf:type <urn:kbase:type/Concept> .
+
+<urn:reckons:feature/StorySystem>
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:feature/Shelly> ;
+    rdfs:label "Story System" ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Guided walkthroughs defined as triples using the story: vocabulary. Steps can highlight entities, trigger prompts, and pose questions. Playback with countdown timer and TTS. Shareable via .ttl files." .
+
+<urn:reckons:feature/ContentSafety>
+    rdf:type <urn:kbase:type/Concept> ;
+    rdfs:label "Content Safety" ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:guide/WhatIsReckonsAI> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Ethics preamble injected into ALL LLM system prompts. Content classifier with two levels: blocked (filtered out on ingest) and mature (flagged on export with advisory). Discourse, disagreement, and academic content pass freely." .
+
+<urn:reckons:feature/SourceRefresh>
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:guide/WhatIsReckonsAI> ;
+    rdfs:label "Source Refresh" ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Generic refresh for url, repository, and calendar sources. Auto-refresh on open and on interval (configurable). Graph page refresh button. MCP tools: kb_list_sources and kb_request_refresh. Delta comparison shows what changed since last ingest." .
+
+<urn:reckons:feature/TurtlePersona>
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Each graph can embed its own AI assistant personality using the shelly: vocabulary. A work graph might have a direct, technical persona while a personal graph has a calm guide. Persona travels with the .ttl file." ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:feature/Shelly> ;
+    rdfs:label "Persona System" .
+
+<urn:reckons:feature/TrustSystem>
+    <http://www.w3.org/2004/02/skos/core#definition> "Sources accumulate trust scores based on your review decisions. Trusted sources can be auto-confirmed. A time-decay formula prevents stale trust from persisting." ;
+    rdf:type <urn:kbase:type/Concept> ;
+    rdfs:label "Source Trust System" ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:guide/WhatIsReckonsAI> .
+
+<urn:reckons:feature/PodView>
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:feature/Currents> ;
+    rdfs:label "Pod View" ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Turn on the pod view from the Graph tab (currents section) to see arrivals -- nodes touched only by pending facts from a current -- drift gently at reduced opacity with a dashed halo, kept visually distinct until you accept or dismiss them from the node. Accept folds an arrival into the graph for normal review; dismiss clears it. It is a per-device view preference (stored locally, not in the graph) and is honoured by the home graph view." .
+
+<urn:reckons:feature/PreferLocal>
+    <http://www.w3.org/2004/02/skos/core#definition> "Opt-in setting that redirects chat, diff-summary, and merge-analysis to a local Ollama model whenever it is reachable, instead of your chosen cloud backend. Falls back to your normal backend chain the moment Ollama is unreachable -- no extraction quality is sacrificed silently. A companion structured-extraction mode uses a compact, schema-constrained prompt so small local models still produce clean facts." ;
+    rdfs:label "Prefer-Local Routing" ;
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:feature/LLMBackends> .
+
+<urn:reckons:feature/TTLExport>
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Export your graph as a .ttl file with full reification metadata (status, source, confidence, timestamps, excerpts). Roundtrip-safe. Clean export for interop or full export with all metadata." ;
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:guide/WhatIsReckonsAI> ;
+    rdfs:label "Turtle Export" .
+
+<urn:reckons:feature/Reckoning>
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:guide/WhatIsReckonsAI> ;
+    rdfs:label "Reckoning (STP)" ;
+    rdf:type <urn:kbase:type/Concept> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Situation-Target-Proposal: describe your situation, state your goal, and the AI synthesizes options grounded ONLY in your confirmed triples. Every option cites its sources." .
+
+<urn:reckons:feature/EntityTypes>
+    <http://www.w3.org/2004/02/skos/core#broader> <urn:reckons:guide/WhatIsReckonsAI> ;
+    <http://www.w3.org/2004/02/skos/core#definition> "Categorize entities (Person, Place, Concept, Tool, Document, Organization, Event) with custom colors and 3D shapes. Types assigned via rdf:type statements." ;
+    rdfs:label "Entity Type System" ;
+    rdf:type <urn:kbase:type/Concept> .
+
+# ---- provenance ----
+<urn:kbase:stmt/02de9788-1bad-469e-896e-aef324edc7f3> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/03a8e184-b11d-4578-996c-8c6e5873859c> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/03b29871-25a3-4fd1-8d55-fe39837166af> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/06d91741-810c-45d1-a517-d64c9a938717> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/06e71bf2-5e7b-4332-8cb7-e5182127c963> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/07494c18-0acf-49d8-b8c5-e02fe608ea6f> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/079fb935-f8e5-4c4a-a3a3-b5185b1499ff> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/0a93bee2-717d-43a9-a98e-056fd659cde0> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/0acb477d-fc85-4386-82e0-4922837cf3b8> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/0b022ddf-9c1c-4d28-bca2-19251c29d92e> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/0b8d13ad-6b0f-4be2-bdf1-ae3f9044be81> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/0f18a057-1d6d-41f0-baac-1b139c15ddbc> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/10ca233d-f185-49b1-8c48-bff9980faa3d> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/12e4ad9a-ac61-48c5-bdc5-71923b7dcae8> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/154f7e0a-8512-4fb1-8660-eccb56720083> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/1659a1c1-7cf2-46bd-be9a-495a60e0dd9c> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/16b9221f-5f95-43a3-861b-5c47aa314a25> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/16d9281e-9cdf-472d-a6a2-132b05eb0d27> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/17aeb897-9db0-4d6b-b0b2-9044958a792b> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/192a695a-a440-43e7-845d-40691616862f> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/1999cefb-1aa2-4134-a900-f46ff08b8187> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/1bbe485d-242f-45d0-baa0-e1d0b53eb6a1> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/1c0cc7a6-59dd-4697-af30-1289bc91170f> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/1f880cdd-7759-4192-be60-b0cf20d8e88a> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/2024b8bc-28a3-4060-bdfc-717a92d3092d> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/2042df6c-7d8a-43c8-97c6-8edb576ff074> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/226fe6a5-f970-4015-a4e8-69ca0d509bcd> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/233aa05d-90ac-4f7c-bba1-5d97ea5f3658> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/242f6f26-aa0c-42c6-aa91-4203d50c2a4e> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/2982f482-fcb9-492e-882a-4479f0ef45fd> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/2b138b77-658c-406f-8ac0-8699a40746b9> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/2c2b728a-b516-46d6-b22f-c2ecdc02691c> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/2c65bc71-7072-49e3-99ac-566e52019342> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/2ec2da7d-1ba2-4f97-8744-c665ea03cf78> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/2f32ffae-6927-4959-a5ff-796b1a58e64f> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/2f347d7d-4082-4a73-b33b-e9d0816582a3> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/2f4cfc9e-14da-4291-ab3c-b91b52df6b1e> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/2fe86f34-00b0-4b59-8c5f-d0b74e0dc195> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/352fe1c1-0819-4aaf-b220-ad5a74050eca> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/362dec89-7e25-4b79-99ee-c21bcd985004> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/36661029-9943-4993-8aa7-e3bceb2f998e> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/368b3b1d-c278-4bab-848e-dd80626f3017> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/36a242e9-d766-4317-9c93-0b46971c06dd> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/37e13257-0d71-40ce-a4ba-5811be552212> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/38a2e510-f379-4e1e-9694-c847ddc49324> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/39117cdd-5968-42e4-a6af-e2d052c0d0a0> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/3af3fdba-4436-426c-a037-dba8f2394efd> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/3b37ab37-8a20-4b7e-8ec6-419551d714fe> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/3b3ba199-1447-49d0-b696-36addcf6c9b0> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/3b8b14c8-6bd3-4dc1-ad02-76ad56f3c4ae> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/3bf676fc-c9c3-40ac-9b26-6d40b9205f45> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/3e7cec7f-24d8-4672-a6ad-33d10586fb76> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/3e9f3f93-5004-4b75-a0c7-0f05928da6c7> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/41a64d0e-d505-43f0-b238-4f08ce47c8f6> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/422cda71-6160-4a15-81d0-005601a76d86> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/42ae6401-2dd5-46c8-a980-bc31cf516401> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/44a9b64d-da99-49bd-90aa-2c2f1a197cc0> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/47ecca46-bc99-4fa1-8cb0-e3f969fbb025> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/4e45ac07-3e00-47cc-b57a-1d3cb28852a7> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/4e4f0b5f-54a1-4a4b-8c07-d20a809ec6f3> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/50b8bb90-aafa-4952-9d25-03be1906f34e> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/51625b3d-f131-43c8-9c1e-9341a82097e9> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/51f90960-e11b-4d61-8d5c-83a03aa7480c> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/5438162a-e9e0-47d5-b957-f6b408f64072> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/55ad4f82-acc2-4f59-8d61-21ad7a4a5634> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/56901a67-2ddd-42be-b796-62814a602aa5> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/57a91270-2fc4-409b-9ee7-b034a3015dd5> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/58a016a2-91c6-4c62-97d2-acb79a5feb64> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/58ac35ad-d6ff-4e9b-b32a-691486439694> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/5992fdc5-e12c-42a9-8f75-495a72838b05> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/59ccd925-1672-4039-960f-93ebd16190c9> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/5a20dffa-79ff-4320-84f7-a7262d0eafe1> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/5fa75185-ead4-4492-bb0c-d81325a024a4> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/640342f1-996b-4038-81a9-d88dc0390309> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/6719e2eb-0f19-4e95-b1c0-691fbbaa327d> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/67c9a697-6104-467a-9266-ed7b1c610afd> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/684fffd8-33ea-4b61-8b24-0f92e537fe4d> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/6a40b7d1-43bc-43f1-bc33-bc8825cfae9c> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/6c9f99b6-c570-4fa6-b833-1a2531c0e063> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/6cb8c066-9fd8-4b06-bd37-b41f6ab40698> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/6e121ddc-d197-4e7b-936c-23ecf6708775> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/7089b13c-e5e9-40a3-a8e7-56a3ce991629> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/71719bd9-c511-43dc-95f8-a07231d52a20> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/75e2fb35-3a90-4b8d-8d79-845beb70f8c7> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/75eaeff9-6df2-4f9e-97a0-ebfb0ed37b19> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/77a25695-00e7-4b83-9edb-eed5353c426c> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/77e901db-00e5-4dff-add0-026eb2e1f2a9> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/7a7ac9e6-0084-4964-b695-af91688024df> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/7c899f44-39c0-42d0-bd59-a9cd9bffd0b3> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/7d0cf3df-26e1-4647-bf99-afc4912a99e1> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/7e64821b-2461-4723-a083-b16918de56d3> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/801459fb-e2eb-46c4-9d8c-057e8cb144c8> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/8173dc04-7068-4093-82d1-3bf9c28cf40a> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/822dac3a-aa1f-4951-9091-df220329c185> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/82fee48a-0ab3-4cfe-be7d-2f7fcd502801> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/8379f4f9-2ddf-4913-95e6-5a311db1d001> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/8557c71c-7b35-4406-a490-25bb3584e2fa> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/87678209-41b2-4743-b5b2-66227a4bab8c> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/876dfc01-a5d9-40c4-a1ce-50230d7fc489> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/89975d49-5a20-4da4-97d9-7d292a2a6b8e> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/8bdb42a2-3ead-4562-94be-1d57f792f1bd> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/8c7cc454-03a0-4da0-97fa-5c65e2d6a06c> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/8cc61a07-3850-4c7d-82b3-06133a3dd391> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/8da64729-95fc-4137-bac3-0d7a20de792a> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/8df5a4a1-f7cd-4cdc-957c-78c7ca033756> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/916cdb69-e040-4e36-8ca8-f7194cfa298b> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/91e05c25-f2d9-42cc-97aa-a1a6ec9469bd> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/966ad000-073e-40bb-a496-8725cab42cea> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/96bb2db3-f087-4e5f-9b58-a5be11b023aa> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/99131424-424d-4803-9f40-c0fc545588bc> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/9b0066ae-82f8-44e9-955c-5f60d64d1265> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/9b0beb4a-f028-492a-8bb5-d6009a0cbeb6> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/9bdf5277-dc1a-4153-a628-0335269356b2> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/9c19a81a-f342-468b-b464-c7d801d443ce> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/9c9686c4-00a9-4e6b-ae0a-4d12b046b629> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/9caa12ff-2e06-481b-98d7-c32cffc999f5> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/9cbcbea6-dcb9-464b-92b9-5a1f2c774b98> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/9db170dd-bcb2-4970-ab38-085abdb4735e> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/a44ddc78-a1c0-4763-9eee-9c0c4385eaf2> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/a502ae18-2eed-4423-91d5-ca5f7195af65> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/a579acab-5c0e-4139-9581-183570947bc8> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/a5f08c09-d30d-4fd2-8934-c02c10c0b180> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/a6154af0-d295-4924-bf0b-10340874fb47> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/a6dfe066-8e74-40de-b63e-7bfd9d1cdf20> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/a6f05061-c1c3-44e2-a94d-ec3b5d3598e4> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/ad30d1ef-4e28-44d8-b482-b9a36fa5218b> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/ad81bf3f-b3d0-4d2a-a0ed-69a79b00665a> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/aeb67284-6065-4a28-bd50-815ce44d58de> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/aec210f3-4d80-4456-8e4f-cfcff25cd4f5> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/af29c26e-0510-4904-b49d-0173d3ac52f8> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/afa364e4-97bf-42b7-a125-434cf00a59a8> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/afab7e75-1636-41f6-ae70-013acb88650d> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/afadd094-2f6b-4214-8618-65e3be74f886> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/afd5a51d-da8d-480b-9786-e3c04317e7a9> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/afd91fd5-d3bb-4c80-a20e-7dc5a7665388> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/b0a2db29-f815-48f9-a77f-2be97886fa18> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/b0bdc83e-a994-499d-8973-280cb717e574> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/b249bd9e-e408-4b1c-a54b-e46da79d95f2> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/b35827b0-0e4a-4b51-b807-f209d444dfbf> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/b415d36c-4173-490c-b4b2-9b4845e65cb5> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/b44bd0d6-d617-4ae6-bba8-598cfbe3509b> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/b4d8bd89-1e5f-412e-9da8-75c9ec86bad9> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/b518b0f1-8eaa-4c13-b6e2-9480edd0a087> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/b5e85f29-2527-4c00-bcc3-021df8500848> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/b8e118b1-b705-4de6-a517-5fcbd0d27eb4> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/ba408479-419c-4246-8d8d-47df20e4c622> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/baea60a2-88f6-4791-9831-1aabb8216856> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/bbea64b6-d98d-4bc5-99fc-623724cde7e0> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/be1342b3-0eb1-4dab-8c6e-ffffcd8d91e1> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/bf0bfa1f-6650-41ee-a636-6e2ebffcc03e> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/c04d665d-0f06-41d3-a1e3-94f0d6ba6317> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/c223861a-8cc7-4140-9985-74f12ff3177f> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/c3c7d7b0-6cb6-4215-8c3f-cdb176f133da> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/c4a45bf4-efe2-4300-a760-cfbfb46a2c88> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/c4ae6174-f2f7-4be7-a220-39b070723efb> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/c64e2c31-0781-46f4-ae63-e8cf6a84042e> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/c70a6104-522d-4def-8f6e-917637407364> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/cacf293f-8d85-4602-8b1e-fe495d3064c2> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/cd9af0bb-586e-45e0-b57a-d977fc0192d0> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/cdb2ce42-882b-4633-9392-067f295c0516> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/cdc147bb-8dad-4597-b6af-c6c3a02e0601> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/d1377da2-6e4e-4f1f-ba93-cf260cc1dcfd> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/d2fb4eb9-8f64-45f8-bb51-f25d8e0dcdb6> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/d32919d7-e4ac-4192-9271-e8df05811323> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/d38eb481-b969-43f9-bd13-eb46a4fdb51b> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/d45d4f03-17c0-4334-b8eb-3fcbbc706268> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/d96d04c3-7578-402b-82ee-ee55b17a9209> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/daf918b2-6dda-489a-9a2c-b9b633c93e28> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/db2e97bd-e632-42f8-ac17-be086705d5b6> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/dc69799b-11f5-4039-b431-f43bc3ca1fea> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/ddf0b142-bf98-42eb-8350-466272660a36> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/dffe4919-74d8-467f-b1b9-9f5ffcda85ff> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/e14e00bf-845a-4f71-90e5-2a8dfe1a4cfe> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/e3a7472c-060d-4674-a05e-2f64473cc2d4> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/e561fcbd-dff7-4773-a452-47fb36f965c6> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/e5a5541b-1229-4bf2-9a5d-25608ce4a8e3> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/e79463fa-7edc-4155-a6e2-8cc5173b0f98> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/eb0f6e44-d3b8-4c96-b055-461d552e2b6b> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/ee0a407e-00ae-4d7a-a3ba-400608c711dd> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/ef7a197c-892a-40ec-a929-3de46a3075a4> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/f55d8f78-71e0-4c02-bfe5-8c40ccf0590b> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/f6029155-3001-4a20-b91c-75af8ed697fa> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/f6054c79-33c5-4164-ad6c-27fb37565875> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/f6c794d7-a154-4d3f-bd70-74e3793f59b1> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/f6f98378-2bea-44e6-bcec-8f521e05df8f> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/fe11f303-9347-4254-bb6a-b8e354960753> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
+<urn:kbase:stmt/ff46d395-85d5-4494-a84f-4f29773ad824> prov:wasDerivedFrom <urn:kbase:source/8d6a4bc5-076c-4590-b20a-7f66f474edc7> ;
+    dc:created "2026-07-13T02:41:19.012Z"^^xsd:dateTime .
