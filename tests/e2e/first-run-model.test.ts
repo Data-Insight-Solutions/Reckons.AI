@@ -282,3 +282,69 @@ test.describe('real WASM model load (opt-in)', () => {
     await expect(page.getByText(/first run co/i).first()).toBeVisible({ timeout: 60_000 });
   });
 });
+
+/**
+ * REAL in-browser model load — the 33 MB embedding model, not the 500 MB LLM.
+ *
+ * Same transformers.js runtime, same ONNX WASM backend, same consent plumbing, at 33 MB instead of
+ * 500 MB. Everything above tests the GATE; this tests the DOOR.
+ *
+ * Uses MOCK extraction and a REAL embedding model: the embedding consent is independent of the LLM
+ * backend, so this isolates the model load. (Declining the 500 MB LLM instead leaves the ingest
+ * with nothing to extract and it never leaves /ingest — a earlier version of this test made that
+ * mistake and looked like an app bug.)
+ *
+ * Skipped by default: it fetches ~44 MB. RECKONS_TEST_WASM=1 to run.
+ */
+test.describe('real in-browser model load (33 MB embedding)', () => {
+  test.skip(!process.env.RECKONS_TEST_WASM, 'set RECKONS_TEST_WASM=1 to run a real model download');
+  test.setTimeout(10 * 60_000);
+
+  /**
+   * KNOWN DEFECT, measured 2026-07-18 (vite dev, chromium, mock extraction backend).
+   *
+   * Accepting the download WORKS at the network layer — 44.4 MB arrives, all HTTP 200:
+   *   34.0 MB  model_quantized.onnx      (huggingface xet CDN)
+   *    4.7 MB  ort-wasm-simd-threaded    (cdn.jsdelivr.net)
+   *    + tokenizer.json / config.json / tokenizer_config.json
+   *
+   * ...and then the ingest pipeline NEVER PROCEEDS. Still parked on /ingest after 240 s, with no
+   * error, no console output, no progress indicator, and no way for the user to recover. Declining
+   * the same prompt completes in seconds via the structural fallback, so the failure is specific to
+   * the accept path AFTER the model has downloaded.
+   *
+   * For a first-time user this is the worst-shaped bug available: they consent to a large download,
+   * pay for it, and get a frozen screen that never explains itself.
+   *
+   * NOT yet localized — could be embedding inference, semantic-diff, or the awaited pipeline. Also
+   * NOT yet reproduced against a production build; dev-mode ONNX/WASM behavior can differ.
+   *
+   * SEPARATELY WORTH NOTING: the ONNX runtime is fetched from cdn.jsdelivr.net at runtime even
+   * though the PWA precaches ~67 MB of ort-wasm locally (vite.config.ts globPatterns). If the
+   * precached copy is not being used, that precache is dead weight AND offline-first WASM
+   * inference does not actually work offline.
+   */
+  test.fail();
+  test('accepting the embedding download loads it and the pipeline continues', async ({ page }) => {
+    const consoleLines: string[] = [];
+    page.on('console', (m) => consoleLines.push(m.text()));
+
+    await firstRun(page, 'mock');
+    await startIngest(page);
+
+    const dialog = consentDialog(page);
+    await expect(dialog).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('.consent-body')).toContainText(/bge-small|33/i);
+    await page.getByRole('button', { name: /^download/i }).first().click();
+    await expect(dialog).toBeHidden({ timeout: 30_000 });
+
+    // THIS is the assertion that fails: the download succeeds, the pipeline does not continue.
+    await page.waitForURL((u) => !u.pathname.startsWith('/ingest'), { timeout: 5 * 60_000 });
+
+    const declined = consoleLines.filter((l) => /declined by user/i.test(l));
+    expect(declined, 'consent was granted, so nothing should report a decline').toEqual([]);
+
+    await gotoRetry(page, '/review');
+    await expect(page.getByText(/first run co/i).first()).toBeVisible({ timeout: 60_000 });
+  });
+});
