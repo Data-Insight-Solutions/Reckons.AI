@@ -129,11 +129,31 @@ Also ruled out: **WebGPU is not involved.** Verified with a software-GPU chromiu
 (`--enable-unsafe-swiftshader`) — `requestAdapter()` returns null there, so the run never touched
 WebGPU. The `No available adapters.` console line is ORT bundle noise, not the fault.
 
-**Still open**: embedding inference over the diff? semantic-diff itself? the awaited pipeline?
-And still **NOT reproduced against a production build or a real GPU browser** — worth doing FIRST,
-since every measurement so far is headless dev-mode. One later observation: the UI returns to the
-empty ingest FORM rather than sitting on a spinner, so it may be a silent abort rather than a hang
-— which would be worse, since the user's input appears to vanish.
+**✓ REPRODUCED IN A REAL, VISIBLE BROWSER (2026-07-18).** Headed chromium on X11 (:1), machine has
+two RTX 3090s, launched with `--enable-unsafe-webgpu` so `requestAdapter()` returns a genuine
+adapter. Stalls identically past 240 s. **So this is NOT a headless artifact** — my earlier caveat
+is resolved and the blocker is real.
+
+Two things ruled out along the way:
+- **Not the embed load.** `embed.ts` had no timeout (now added, 90 s, mirroring wasm.ts). It does
+  NOT fire — proving the load resolves and the stall is downstream.
+- **Not WebGPU.** Reproduces both with no adapter and with a working one.
+
+**The sharpest clue: ZERO console output for 150 s after accepting.** No error, no warning, no
+failed request, nothing. Combined with the UI returning to an EMPTY INGEST FORM rather than showing
+a spinner, this looks like a silently-pending promise or a swallowed rejection, not a busy loop.
+Whatever awaits never settles and nothing reports it.
+
+**Still open**: embedding inference over the diff? semantic-diff? the awaited ingest pipeline?
+Localizing needs source instrumentation (temporary logs through `ingest.svelte.ts` →
+`semanticEnrichDiff` → `embedMany`), which is the obvious next step. Still **NOT reproduced against
+a production build** — worth confirming, since dev-mode module loading differs.
+
+**Also found, not acted on:** with `--enable-unsafe-webgpu` the adapter that appears is
+**swiftshader (software)**, vendor "google", not the NVIDIA hardware. `device-select.ts` currently
+accepts ANY adapter — and a software WebGPU adapter may well be SLOWER than WASM, which would make
+selecting it a pessimization. Worth benchmarking and, if confirmed, preferring hardware adapters
+(`adapter.info.architecture !== 'swiftshader'`) before shipping WebGPU as a default win.
 
 Reproduce: `RECKONS_TEST_WASM=1 npx playwright test first-run-model --project=desktop-chrome`
 
