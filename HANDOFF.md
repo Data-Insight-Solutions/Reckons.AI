@@ -64,10 +64,19 @@ routes. `gotoStable()` retries the vite/service-worker `net::ERR_ABORTED` that
 **Workflow suite: 37 passed/10 failed → 42 passed/5 failed.**
 
 **⚠ 5 workflow tests still fail** with `expect(locator).toBeVisible()` — genuine assertion
-failures, not infrastructure. **They are NOT yet identified by name** (the run that found them was
-piped through a filter that ate the test names). Re-run
-`npx playwright test --config=playwright.workflows.config.ts --reporter=list` and name them before
-assuming they are stale selectors — they may be real regressions.
+failures, not infrastructure, and **not yet diagnosed**:
+
+1. `context-gathering.test.ts:45` — "gather context from a note — mock extraction into the graph"
+2. `context-gathering.test.ts:87` — "gather structured facts manually — no AI"
+3. `async-questions.test.ts:99` — "a question reaches the Review tab as a partial fact" (F32)
+4. `graph-sync.test.ts:61` — "graph-package menu shows folder-sync controls"
+5. `graph-sync.test.ts:75` — "links an OPFS folder and pulls a new graph from disk"
+
+**Start with the two `context-gathering` ones.** That is the PRIMARY user path — note in, facts
+into the graph — and a real failure there matters more than everything else in this file. Do not
+assume they are stale selectors: find out whether the flow is actually broken first. Unit tests
+(1201) all pass, so if the flow IS broken it is broken at a level unit tests do not reach, which
+is exactly why these workflow tests exist.
 
 **Button crawler (`scripts/offline/button-crawl.ts`, still `enabled:false` — needs a live server):**
 - Coverage 2/6 → **6/6 routes**, 32 → 133 clicks. It used to skip failed routes and still print
