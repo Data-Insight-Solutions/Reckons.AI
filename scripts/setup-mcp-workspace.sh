@@ -75,11 +75,23 @@ PRUNED=$(find "$WORKSPACE" -xtype l -print -delete 2>/dev/null | wc -l)
 # `|| true` keeps set -e/pipefail from silently aborting when grep finds nothing.
 TRIPLE_COUNT=$(cd mcp-server && echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"kb_stats","arguments":{}}}' | timeout 15 node dist/index.js --kb ../mcp-workspace 2>/dev/null | grep -oE 'Triples: *[0-9]+' | grep -oE '[0-9]+' | head -1 || true)
 
+# Read the KB count the SERVER reports, not the number of symlinks we made. Those differ
+# whenever a graph fails to parse — and a coverage script that reports its own intent rather
+# than the observed result is the exact failure it exists to prevent.
+KB_COUNT=$(cd mcp-server && echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"kb_stats","arguments":{}}}' | timeout 15 node dist/index.js --kb ../mcp-workspace 2>/dev/null | grep -oE 'KBs: *[0-9]+' | grep -oE '[0-9]+' | head -1 || true)
+
 if [ -n "$TRIPLE_COUNT" ] && [ "$TRIPLE_COUNT" -gt 0 ]; then
-  echo "MCP workspace ready: $TRIPLE_COUNT triples across $LINKED KBs"
+  echo "MCP workspace ready: $TRIPLE_COUNT triples across ${KB_COUNT:-?} KBs"
+  if [ -n "$KB_COUNT" ] && [ "$KB_COUNT" -ne "$LINKED" ]; then
+    echo "WARNING: linked $LINKED graph(s) but the server loaded $KB_COUNT — $((LINKED - KB_COUNT)) failed to parse or were skipped."
+    exit 1
+  fi
   echo ""
   echo "Claude Code will auto-detect the MCP server on next session."
   echo "To test manually: cd mcp-server && echo '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"kb_list_kbs\",\"arguments\":{}}}' | node dist/index.js --kb ../mcp-workspace"
 else
-  echo "Warning: MCP server test returned no triples. Check mcp-server/dist/ exists (run: cd mcp-server && npm run build)"
+  # Do not blame dist/ specifically — a 15s timeout on a cold/large load looks identical here,
+  # and misattributing the cause sends people to fix the wrong thing.
+  echo "Warning: MCP server test returned no triples. Either the build is missing (cd mcp-server && npm run build) or the load exceeded the 15s timeout."
+  exit 1
 fi

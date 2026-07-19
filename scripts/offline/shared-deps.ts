@@ -133,14 +133,18 @@ for (const [term, owners] of distinctive) {
   for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
     const [a, b] = [list[i], list[j]].sort();
     if (feats.get(a)!.links.has(b) || feats.get(b)!.links.has(a)) continue; // already related — fine
-    (pairTerms.get(`${a} ${b}`) ?? pairTerms.set(`${a} ${b}`, []).get(`${a} ${b}`)!).push(term);
+    // Tab, not a space: the key is split back apart when rendering, and an IRI containing
+    // a space would silently mis-split. IRIs should not contain raw spaces — but a composite
+    // key that is only correct while that holds is a latent bug, not a guarantee.
+    const key = `${a}\t${b}`;
+    (pairTerms.get(key) ?? pairTerms.set(key, []).get(key)!).push(term);
   }
 }
 const vocabPairs = [...pairTerms.entries()].filter(([, t]) => t.length >= 3).sort((a, b) => b[1].length - a[1].length);
 console.log(`\n${B}${Y}vocabulary overlap${X} ${D}— ${'>='}3 distinctive terms in common, but NO link between them${X}`);
 if (vocabPairs.length === 0) console.log(`  ${G}none${X}`);
 for (const [key, terms] of vocabPairs.slice(0, TOP)) {
-  const [a, b] = key.split(' ');
+  const [a, b] = key.split('\t');
   console.log(`  ${Y}·${X} ${feats.get(a)!.label} ${D}⋈${X} ${feats.get(b)!.label}`);
   console.log(`     ${D}${terms.slice(0, 6).join(', ')}${terms.length > 6 ? ` +${terms.length - 6}` : ''}${X}`);
 }
