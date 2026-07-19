@@ -51,6 +51,42 @@ runs, **26 findings, 1 genuinely actionable** — but that one was a real graph-
 that already existed four lines away. So the tier IS worth running before a PR, and its output is
 NOT worth accepting wholesale. Triage every finding out loud.
 
+## 👆 VISUAL / CLICK-WALKTHROUGH GROUNDING (2026-07-18)
+
+The visual suite had been **unrunnable locally** since the dep upgrade (missing Playwright
+browsers), so its reported state was fiction. Now runnable and much healthier — but read the
+numbers carefully.
+
+**Fixed:** `tests/visual/eval-stable.ts` retries the SvelteKit navigation race
+("Execution context was destroyed") that was killing 10 of 47 workflow tests AND 4 of 6 crawler
+routes. `gotoStable()` retries the vite/service-worker `net::ERR_ABORTED` that
+`tests/e2e/helpers.ts` already handled but the visual harness did not.
+**Workflow suite: 37 passed/10 failed → 42 passed/5 failed.**
+
+**⚠ 5 workflow tests still fail** with `expect(locator).toBeVisible()` — genuine assertion
+failures, not infrastructure. **They are NOT yet identified by name** (the run that found them was
+piped through a filter that ate the test names). Re-run
+`npx playwright test --config=playwright.workflows.config.ts --reporter=list` and name them before
+assuming they are stale selectors — they may be real regressions.
+
+**Button crawler (`scripts/offline/button-crawl.ts`, still `enabled:false` — needs a live server):**
+- Coverage 2/6 → **6/6 routes**, 32 → 133 clicks. It used to skip failed routes and still print
+  "crashes: 0"; it now reports COVERAGE FIRST and names every route it could not crawl.
+- Silent no-ops **21 → 2** by learning what a working button looks like: downloads, native file
+  pickers, already-active toggles, and — the big one — an active-control fingerprint, because
+  bits-ui marks selection with `data-state="on"`/`aria-checked`, not `.active`, so every working
+  toggle in the app read as dead. Verified against `/review` layout chips.
+- Both survivors are explainable: `📁 link a folder` uses `showDirectoryPicker()` (not automatable
+  headless) and `export subset` still wants a look.
+- `--device=pixel|iphone|ipad|desktop` added. **The 44px rule is a TOUCH rule** — desktop counts
+  are advisory and the report now says so via `touchTargetsMeaningful`.
+
+**▶ REAL FINDING, NOT FIXED: 58 sub-44px touch targets at Pixel (412×915)** — `/ingest` 13,
+`/about` 12, `/settings` 11, `/kb` 10, `/review` 9, `/` 3. Systemic: the chip/tab controls across
+the app are under the touch minimum. This is an **F36 mobile blocker** and maps to the
+`touch-targets` guideline in `kb:web-uiux-rubric`. Reproduce with:
+`BASE_URL=http://localhost:5174 npx tsx scripts/offline/button-crawl.ts --device=pixel`
+
 ## ⚠ ALSO OPEN, NOT FIXED (2026-07-18)
 
 - **Multi-tab sync — 3 CONFIRMED defects.** `tests/e2e/multi-session.test.ts` proves them; they are
