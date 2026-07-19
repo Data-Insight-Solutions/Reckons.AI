@@ -319,11 +319,31 @@ export function archiveEntities(input: ArchiveMoveInput): ArchiveMoveResult {
  * destructive operation like any other, and an undo that cannot be undone is a trap. The revert
  * event carries the pre-revert state as its own snapshot, so redo is just another restore.
  */
+export class SnapshotRestoreError extends Error {}
+
 export function restoreSnapshot(
   currentStatements: Statement[],
   snapshot: Statement[],
-  meta: { eventId: string; at: number; actor: ArchiveActor; parentStableId?: string; note?: string },
+  meta: {
+    eventId: string; at: number; actor: ArchiveActor; parentStableId?: string; note?: string;
+    /** Required to restore an EMPTY snapshot over a non-empty graph. See below. */
+    force?: boolean;
+  },
 ): { restored: Statement[]; event: ArchiveEvent } {
+  // GUARD (raised by the local code-review agent, 2026-07-18): restoring blindly makes this
+  // function a graph-wiper. An empty snapshot over a non-empty graph is the dangerous case — it
+  // is indistinguishable from "restore a snapshot that failed to load", and silently erasing a
+  // populated graph is precisely the silent-destruction failure this feature exists to prevent.
+  //
+  // An empty snapshot IS legitimate when the graph really was empty before the operation, so this
+  // is not a hard ban: it demands an explicit `force`, which makes the destructive read deliberate
+  // rather than accidental.
+  if (snapshot.length === 0 && currentStatements.length > 0 && !meta.force) {
+    throw new SnapshotRestoreError(
+      `Refusing to restore an empty snapshot over a graph holding ${currentStatements.length} statement(s). ` +
+      `If the graph really was empty before this operation, pass force: true.`,
+    );
+  }
   const restoredEntities = new Set<string>();
   for (const st of snapshot) if (st.s.kind === 'iri') restoredEntities.add(st.s.value);
 

@@ -211,6 +211,21 @@ export class MultiKBReader {
   private legacyReader: KBReader | null = null;
 
   constructor(kbPath: string) {
+    // A missing path is the FIRST thing anyone wiring this server up hits (the default is
+    // ./knowledge.ttl relative to cwd, which is almost never right). An unhandled ENOENT here
+    // surfaced as a raw statSync stack trace with no mention of --kb or RECKONS_KB, which reads
+    // as "this server is broken" rather than "point me at a graph" — and is plausibly why the
+    // server sat unconfigured. Fail with the fix in the message instead.
+    if (!existsSync(kbPath)) {
+      throw new Error(
+        `[kb-reader] No graph found at "${resolve(kbPath)}".\n` +
+        `  Point the server at a workspace directory or a .ttl file:\n` +
+        `    --kb /path/to/reckons-workspace     (multi-graph: reads <dir>/kbs/*/<name>.ttl)\n` +
+        `    --kb /path/to/graph.ttl             (single file)\n` +
+        `  or set RECKONS_KB to the same value.`,
+      );
+    }
+
     const stat = statSync(kbPath);
 
     if (!stat.isDirectory()) {

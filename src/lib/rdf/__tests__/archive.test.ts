@@ -226,6 +226,24 @@ describe('restoreSnapshot — revert', () => {
     expect(event.snapshot).toEqual(current);
   });
 
+  // Raised by the local code-review agent (qwen3-coder), 2026-07-18: an unvalidated restore
+  // makes this function a graph-wiper.
+  it('refuses to wipe a populated graph with an empty snapshot', () => {
+    expect(() => restoreSnapshot(current, [], { eventId: 'r1', at: T0, actor: 'human' }))
+      .toThrow(/Refusing to restore an empty snapshot/);
+  });
+
+  it('allows an empty restore when the caller explicitly forces it', () => {
+    const { restored } = restoreSnapshot(current, [], { eventId: 'r1', at: T0, actor: 'human', force: true });
+    expect(restored).toEqual([]);
+  });
+
+  it('allows an empty restore onto an already-empty graph without force', () => {
+    // The graph really was empty before the operation — a legitimate, non-destructive case.
+    const { restored } = restoreSnapshot([], [], { eventId: 'r1', at: T0, actor: 'human' });
+    expect(restored).toEqual([]);
+  });
+
   it('a revert of a revert returns to the original state', () => {
     const first = restoreSnapshot(current, snapshot, { eventId: 'r1', at: T0, actor: 'human' });
     const second = restoreSnapshot(first.restored, first.event.snapshot!, { eventId: 'r2', at: T0 + 1, actor: 'human' });
