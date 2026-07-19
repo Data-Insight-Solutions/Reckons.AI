@@ -63,20 +63,25 @@ routes. `gotoStable()` retries the vite/service-worker `net::ERR_ABORTED` that
 `tests/e2e/helpers.ts` already handled but the visual harness did not.
 **Workflow suite: 37 passed/10 failed → 42 passed/5 failed.**
 
-**⚠ 5 workflow tests still fail** with `expect(locator).toBeVisible()` — genuine assertion
-failures, not infrastructure, and **not yet diagnosed**:
+**✓ ALL 5 remaining failures FIXED — suite is 47/47 green** (verified on a full run, not per-file).
+They were stale TESTS, not app bugs. The app was fine; the tests had drifted:
 
-1. `context-gathering.test.ts:45` — "gather context from a note — mock extraction into the graph"
-2. `context-gathering.test.ts:87` — "gather structured facts manually — no AI"
-3. `async-questions.test.ts:99` — "a question reaches the Review tab as a partial fact" (F32)
-4. `graph-sync.test.ts:61` — "graph-package menu shows folder-sync controls"
-5. `graph-sync.test.ts:75` — "links an OPFS folder and pulls a new graph from disk"
+- **Four shared one cause**: `getByText(/graph package/i)`. That panel MOVED from the main graph
+  view to the GRAPHS tab — `routes/(app)/+page.svelte:1942` says so, and `svelte-check` had been
+  reporting `.pkg-disclosure > summary` as an unused selector ever since (markup left, dead CSS
+  stayed). The two `context-gathering` tests were proving "facts appear in the graph" by looking
+  for an unrelated panel's LABEL; they now assert `.node-label`. The two `graph-sync` tests now
+  navigate to `/kb`, and the OPFS one had to be REORDERED — `__linkHandleForTest` holds the handle
+  in memory, so navigating after linking silently dropped it.
+- **The fifth was two bugs stacked**: the navigation race inside the test's own `page.evaluate`
+  (evalStable only covered the harness), and behind it `.diff-entry` — a selector that could never
+  match, since `DiffEntry.svelte`'s root is `.entry`.
 
-**Start with the two `context-gathering` ones.** That is the PRIMARY user path — note in, facts
-into the graph — and a real failure there matters more than everything else in this file. Do not
-assume they are stale selectors: find out whether the flow is actually broken first. Unit tests
-(1201) all pass, so if the flow IS broken it is broken at a level unit tests do not reach, which
-is exactly why these workflow tests exist.
+**Lesson worth keeping:** a test that proves X by asserting Y breaks when Y moves, and tells you
+nothing about X. Assert the behavior the step claims to prove.
+
+**⚠ Dead CSS still to remove:** `.pkg-disclosure` rules at `routes/(app)/+page.svelte:2750-2766`
+have no markup left. Part of the 81 `svelte-check` warnings.
 
 **Button crawler (`scripts/offline/button-crawl.ts`, still `enabled:false` — needs a live server):**
 - Coverage 2/6 → **6/6 routes**, 32 → 133 clicks. It used to skip failed routes and still print
