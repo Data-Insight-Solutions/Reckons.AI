@@ -1,8 +1,68 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-07-17.** Branch: **`feat/work-tiering-ci`** — **NOW MERGED to main via
-dev→staging→main**. Start new work on a FRESH branch off `dev`; do not keep committing to the
-merged feat branch.
+**Last updated: 2026-07-18.** Branch: **`feat/archive-graph`** → **PR #119 open against `dev`**
+(base verified). Continue F97 on that branch, or branch fresh off `dev` if #119 has merged.
+
+## ▶ NEXT TASK (2026-07-18): F97 next phases — wire the archive core into the app
+
+The PURE CORE is built, tested and merged into PR #119. What remains is the ADAPTER + UI layer.
+Read `src/lib/rdf/archive.ts` first — it is fully commented and the design rationale is in the
+roadmap under F97 `kpred:scope-decision`.
+
+**Do NOT redesign the core.** These decisions are Matt's and are already recorded in
+`static/reckons-roadmap.ttl` (F97):
+- Archive is a **separate graph** named `"<parent> (archives)"`, shown on the graph settings page,
+  linked to its parent by `stableId`. ON BY DEFAULT.
+- The archive is an **edit journal**: events (delete/merge/prune/age-drop/revert) with actor +
+  timestamp + a **FULL pre-operation snapshot**.
+- Full snapshots were chosen knowing the storage cost. **Retention is load-bearing**, already
+  implemented as `applyRetention` — wire it in, do not defer it.
+
+**Build next, in this order:**
+1. **Store adapter** — a thin layer over `kb-registry.ts` + `db.ts` that creates the `(archives)`
+   graph on demand (`archiveGraphName`), writes `archiveEntities()` output to both graphs, and
+   persists journal events via `eventToStatements`. The core is pure and returns `{kept, archived,
+   event}` — the adapter owns the two-graph write and must handle partial failure explicitly.
+2. **Settings-page display** — show the archive graph beside its parent in `/kb`.
+3. **F97.3 restore-on-reference** — wire `findArchivedReferences` into the ingest path. This is a
+   REQUIREMENT: without it every archive sweep seeds the next round of duplicates.
+4. **F97.7 archive search**, **F97.5 time-travel**, **F97.4 recurrence** (reuse `recurrence.ts`).
+
+`detectChurn` (F97.6) already routes into `analysis-advisor.ts` via `churningEntities` — the
+advisor just needs the archive journal passed to it at the call site.
+
+## ⚠ ALSO OPEN, NOT FIXED (2026-07-18)
+
+- **Multi-tab sync — 3 CONFIRMED defects.** `tests/e2e/multi-session.test.ts` proves them; they are
+  marked `test.fail()` so the suite is green. Root cause is ONE gap: no `storage` listener, no
+  `BroadcastChannel`, no Dexie `liveQuery` anywhere in `src/`. A control test passes, so persistence
+  is fine — it is purely live sync. Fixing it means deleting the `test.fail()` lines as each goes green.
+- **`static/kbs/` — 18 untracked duplicate TTL dirs, all drifted, shipped into `build/`.** Triple-level
+  diff done: 13 are safe supersets (extra content is regenerable `prov:wasDerivedFrom` /
+  `dcterms:created` provenance). **5 need REAL merges — do not blind-delete:** `reckons-roadmap`
+  (2976 copy-only / 1104 root-only), `docs-all` (copy is STALE: 931 root-only), `docs-architecture`
+  (466 copy-only incl. real concepts), `default-graph` (324 triples, no root counterpart),
+  `default-kb` (parses to 0 triples — empty/broken).
+- **PWA precaches ~90MB**, ~67MB of it ONNX wasm (`vite.config.ts:33-34`, `globPatterns` includes
+  `wasm`, 50MB cap). Matt chose: runtime-cache it + a **settings toggle** to pre-download for
+  offline use. Needs a roadmap entry before building. Not started.
+- **`reckons` MCP server is NOT configured** in this checkout (no `.mcp.json`; `claude mcp list`
+  shows only claude.ai remotes) — CLAUDE.md's claim that it is configured is an overclaim. Also
+  `node mcp-server/dist/index.js` dies with a raw `ENOENT ./knowledge.ttl` from `kb-reader.js:184`
+  instead of a diagnostic, which is plausibly why nobody wired it up.
+- **Playwright browsers were missing** after the `3c3c2ba` dep upgrade (`chromium_headless_shell-1228`);
+  the whole e2e/visual suite could not run until `npx playwright install chromium`. Worth a CI guard.
+- **81 a11y warnings** (0 errors), concentrated in `settings/turtle/+page.svelte` (14 unassociated
+  `<label>`s) and `(app)/+page.svelte` (autofocus).
+
+## ▶ AGREED BUT NOT STARTED (2026-07-18)
+
+- **Analysis benchmark**: fixture-replay across the 5 `AnalysisType`s (`enrich`/`merge`/
+  `entity-types`/`delete`/`align`), real Claude API but capped to cents per run, recording tokens/
+  cost/latency/accept-rate. Intended as a per-PR regression gate, not a one-off study.
+- **Instrumented task races** for real-world time savings: ~6 workflows run with Reckons.AI vs a
+  scripted manual baseline under Playwright, measuring wall-clock, clicks and steps-to-answer.
+  Per `kb:honest-status`, losses get recorded as loudly as wins.
 
 ## 🚀 PRODUCTION DEPLOYED (2026-07-17)
 
