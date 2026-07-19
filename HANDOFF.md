@@ -19,17 +19,37 @@ roadmap under F97 `kpred:scope-decision`.
   implemented as `applyRetention` — wire it in, do not defer it.
 
 **Build next, in this order:**
-1. **Store adapter** — a thin layer over `kb-registry.ts` + `db.ts` that creates the `(archives)`
-   graph on demand (`archiveGraphName`), writes `archiveEntities()` output to both graphs, and
-   persists journal events via `eventToStatements`. The core is pure and returns `{kept, archived,
-   event}` — the adapter owns the two-graph write and must handle partial failure explicitly.
-2. **Settings-page display** — show the archive graph beside its parent in `/kb`.
+1. ~~**Store adapter**~~ — **DONE** (`src/lib/storage/archive-store.ts`, 11 tests). Ordering is the
+   design: archive write FIRST (bulkPut, so a retried partial archive converges), working-graph
+   delete SECOND. A crash between them duplicates facts (recoverable) instead of destroying them.
+   A test pins that order — do not invert it. `KbEntry.archiveOf` links archive → parent.
+   **It also exposed a real bug, now fixed:** `createKb` used `kbase_${Date.now()}`, so two graphs
+   created in the same millisecond shared ONE Dexie database. Regression test creates 25 in a tick.
+2. **Settings-page display** — show the archive graph beside its parent in `/kb`, using
+   `KbEntry.archiveOf`. **NEXT UP — start here.**
 3. **F97.3 restore-on-reference** — wire `findArchivedReferences` into the ingest path. This is a
    REQUIREMENT: without it every archive sweep seeds the next round of duplicates.
 4. **F97.7 archive search**, **F97.5 time-travel**, **F97.4 recurrence** (reuse `recurrence.ts`).
 
 `detectChurn` (F97.6) already routes into `analysis-advisor.ts` via `churningEntities` — the
 advisor just needs the archive journal passed to it at the call site.
+
+## 🔧 OFFLINE TIERS ARE NOW WIRED — USE THEM (2026-07-18)
+
+CLAUDE.md now has a **RUN-THESE table** of literal commands. Use it. This session read the tiering
+doctrine at startup and still did hours of work at Opus tier with Ollama idle — the fix was
+commands, not more philosophy.
+
+- `.mcp.json` is now committed, so the `reckons` MCP server connects on next start (6 graphs,
+  3946 triples). `mcp-workspace/` is gitignored but `bash scripts/setup-reckons-workspace.sh`
+  rebuilds it and **exits non-zero on a dangling link** — it had silently drifted to 3 graphs.
+- `mcp-server` no longer dies on a missing `--kb` with a raw ENOENT; it prints the fix.
+
+**MEASURED agent-tier hit rate (be realistic about triage cost):** across two local `code-review`
+runs, **26 findings, 1 genuinely actionable** — but that one was a real graph-wipe path in
+`restoreSnapshot` that Opus wrote and missed. The rest were rejections: misread intent, or checks
+that already existed four lines away. So the tier IS worth running before a PR, and its output is
+NOT worth accepting wholesale. Triage every finding out loud.
 
 ## ⚠ ALSO OPEN, NOT FIXED (2026-07-18)
 
