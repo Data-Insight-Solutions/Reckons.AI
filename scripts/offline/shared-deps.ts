@@ -41,25 +41,32 @@ for (const f of readdirSync('static').filter((x) => x.endsWith('.ttl')).sort()) 
 }
 
 const short = (iri: string) => iri.replace(KPRED, 'kpred:').replace('urn:kbase:concept/', 'kb:').replace('urn:kbase:type/', 'ktype:');
-const featureIris = new Set(quads.filter((q) => q.predicate.value === RDF_TYPE && q.object.value === FEATURE).map((q) => q.subject.value));
+const PHASE = 'urn:kbase:type/Phase';
+/** Features AND Phases. Phases were invisible here until 2026-07-19, which meant a whole
+ *  class of planned work could not be compared against anything. */
+const featureIris = new Set(
+  quads.filter((q) => q.predicate.value === RDF_TYPE && (q.object.value === FEATURE || q.object.value === PHASE)).map((q) => q.subject.value)
+);
 
 interface Feat {
   iri: string;
   label: string;
   files: Set<string>;
   links: Set<string>; // depends-on ∪ relates-to targets
+  text: string;       // label + literal objects, for vocabulary overlap
 }
 const LINK_PREDS = new Set([`${KPRED}depends-on`, `${KPRED}relates-to`, `${KPRED}part-of`]);
 const FILE_PREDS = new Set([`${KPRED}has-file`, `${KPRED}tested-by`]);
 
 const feats = new Map<string, Feat>();
-for (const iri of featureIris) feats.set(iri, { iri, label: iri, files: new Set(), links: new Set() });
+for (const iri of featureIris) feats.set(iri, { iri, label: iri, files: new Set(), links: new Set(), text: '' });
 for (const q of quads) {
   const f = feats.get(q.subject.value);
   if (!f) continue;
-  if (q.predicate.value === RDFS_LABEL) f.label = q.object.value;
+  if (q.predicate.value === RDFS_LABEL) { f.label = q.object.value; f.text += ' ' + q.object.value; }
   else if (FILE_PREDS.has(q.predicate.value)) f.files.add(q.object.value);
   else if (LINK_PREDS.has(q.predicate.value)) f.links.add(q.object.value);
+  else if (q.object.termType === 'Literal') f.text += ' ' + q.object.value;
 }
 
 // ── 1. Dependency hubs: targets many features point at ──────────────────────
@@ -100,4 +107,42 @@ for (const [target, owners] of hubs) {
     }
 }
 if (warned === 0) console.log(`  ${G}none — every co-dependent feature pair shares at least one file${X}`);
-console.log(`\n${D}${warned} overlap pair(s), ${hubs.length} hub(s), ${sharedFiles.length} shared file(s). Read a warning as "should these share a module?", not "bug".${X}`);
+
+// ── 4. Vocabulary overlap: same distinctive words, NO link between them ─────
+// Added 2026-07-19 after a MISS. Matt spotted that kb:loop-job-grouping and kb:entity-sets
+// are the same primitive; section 3 could never have found it, because they share no hub —
+// and a hub is the only thing section 3 compares. Conceptual duplication does not announce
+// itself as a shared dependency. It announces itself as the same NOUN in two descriptions.
+const STOP = new Set(('the a an and or of to in is it be that this for on with as by not are was ' +
+  'from at which one you your they their there here what when how why can will would should could ' +
+  'graph feature user users work works make makes made into out over under than then them these those ' +
+  'reckons kb its it own only same each per any all more most less no yes but so if we our us new').split(/\s+/));
+const termOwners = new Map<string, Set<string>>();
+for (const f of feats.values()) {
+  const terms = new Set(f.text.toLowerCase().match(/[a-z][a-z-]{4,}/g) ?? []);
+  for (const t of terms) {
+    if (STOP.has(t)) continue;
+    (termOwners.get(t) ?? termOwners.set(t, new Set()).get(t)!).add(f.iri);
+  }
+}
+/** A term shared by 2-4 entities is DISTINCTIVE; one in 20 is just project vocabulary. */
+const distinctive = [...termOwners.entries()].filter(([, o]) => o.size >= 2 && o.size <= 4);
+const pairTerms = new Map<string, string[]>();
+for (const [term, owners] of distinctive) {
+  const list = [...owners];
+  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+    const [a, b] = [list[i], list[j]].sort();
+    if (feats.get(a)!.links.has(b) || feats.get(b)!.links.has(a)) continue; // already related — fine
+    (pairTerms.get(`${a} ${b}`) ?? pairTerms.set(`${a} ${b}`, []).get(`${a} ${b}`)!).push(term);
+  }
+}
+const vocabPairs = [...pairTerms.entries()].filter(([, t]) => t.length >= 3).sort((a, b) => b[1].length - a[1].length);
+console.log(`\n${B}${Y}vocabulary overlap${X} ${D}— ${'>='}3 distinctive terms in common, but NO link between them${X}`);
+if (vocabPairs.length === 0) console.log(`  ${G}none${X}`);
+for (const [key, terms] of vocabPairs.slice(0, TOP)) {
+  const [a, b] = key.split(' ');
+  console.log(`  ${Y}·${X} ${feats.get(a)!.label} ${D}⋈${X} ${feats.get(b)!.label}`);
+  console.log(`     ${D}${terms.slice(0, 6).join(', ')}${terms.length > 6 ? ` +${terms.length - 6}` : ''}${X}`);
+}
+console.log(`\n${D}${warned} hub-overlap pair(s), ${vocabPairs.length} vocabulary pair(s), ${hubs.length} hub(s), ${sharedFiles.length} shared file(s).${X}`);
+console.log(`${D}Read a warning as "should these share a module?", not "bug". Vocabulary overlap is LEXICAL — it finds candidates, it does not judge them.${X}`);

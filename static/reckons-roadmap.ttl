@@ -1485,7 +1485,8 @@ kb:loop-job-grouping rdf:type  ktype:Phase ;
                kpred:grouping-axis "PROVENANCE — (task, agent, subject, gate). Groups facts by where they came from and what produced them." ;
                kpred:grouping-axis "TOPICAL RELEVANCE (Matt, 2026-07-19) — a SECOND, independent axis. One ingested article carries several subjects, and the ones incidental to the article's own core points are noise against the graph's goal. Cluster a single source's extracted triples by subject cluster so an off-topic cluster can be rejected wholesale, rather than declined one triple at a time. Reuses the embedding path already in the app (src/lib/embed.ts, BGE-small-en-v1.5) — the same similarity machinery kb:entity-normalization uses — so no new model is introduced." ;
                kpred:constraint   "Outlier highlighting is a PRECONDITION of accept-all, not a follow-up. kb:review-attention holds the opposing principle ('granularity breeds rubber-stamping... trains the human to accept all'), and this entity's own principle says a group that hides its dissenter has converted review into rubber-stamping. So a group surfaces its off-centroid / low-confidence members BEFORE the accept-all control is offered, and accept-all applies only to the currently FILTERED group, stating the count it is about to confirm." ;
-               kpred:remaining    "Grouping in the review queue; batch accept/reject; outlier highlighting within a group; the topical-relevance axis above." .
+               kpred:constraint   "A JOB GROUP IS A SET (Matt, 2026-07-19). This phase does not get its own grouping mechanism: it instantiates ktype:EntitySet + has-member over PENDING STATEMENTS, the same primitive kb:entity-sets uses over entities and kb:agent-orchestration will use over tasks. See kb:entity-sets for the one-primitive-three-consumers principle. Consequence: a review group is queryable, round-trips in TTL, and can be spotlighted on the canvas for free — because it is the same node type the graph already renders." ;
+               kpred:remaining    "Grouping in the review queue; batch accept/reject; outlier highlighting within a group; the topical-relevance axis above. Implemented over src/lib/rdf/entity-sets.ts, NOT as a parallel grouping mechanism." .
 
 kb:loop-safety rdf:type        ktype:Phase ;
                rdfs:label   "Phase 5 — the ways this loop fails silently" ;
@@ -1589,7 +1590,8 @@ kb:agent-orchestration rdf:type ktype:Feature ;
                kpred:has-phase    kb:orch-task-vocab ;
                kpred:has-phase    kb:orch-harness-adapter ;
                kpred:has-phase    kb:orch-claim-lease ;
-               kpred:has-phase    kb:orch-jobs-to-ttl .
+               kpred:has-phase    kb:orch-jobs-to-ttl ;
+               kpred:has-phase    kb:orch-control-layers .
 
 kb:orch-task-vocab rdf:type    ktype:Phase ;
                rdfs:label   "Phase 1 — the task vocabulary (a task is a triple)" ;
@@ -1627,6 +1629,23 @@ kb:orch-jobs-to-ttl rdf:type   ktype:Phase ;
                kpred:description  "scripts/offline/jobs.json is ALREADY a task queue with tiers, enablement and a blocking flag — it is just written in the one format the product does not use. Migrating it to TTL makes the offline jobs first-class graph citizens: queryable, reviewable in-app, diffable, and schedulable by the same runner as everything else. It also dogfoods the vocabulary on a queue that already works, before betting anything new on it." ;
                kpred:honest-note  "This is the tell that the design is right, and it is slightly embarrassing: we built a task registry with tiers and dependencies and put it in JSON, inside a product whose entire thesis is that this belongs in a graph." ;
                kpred:remaining    "static/reckons-jobs.ttl; run-all.ts reads the graph; keep jobs.json working until the TTL path is proven." .
+
+kb:orch-control-layers rdf:type ktype:Phase ;
+               rdfs:label   "Phase 5 — the layers a human steers the orchestrator by" ;
+               kpred:part-of      kb:agent-orchestration ;
+               hnav:order   5 ;
+               kpred:has-status   "planned" ;
+               kpred:principle    "CONTROL IS LAYERED, NOT BINARY (Matt, 2026-07-19). 'Approve / don't approve' is not steering — by the time a diff arrives the direction was already chosen. A human must be able to intervene at the level where the decision actually lives: what gets worked on at all, how a task is framed, which tier runs it, and only lastly whether the result lands. Autonomy settings that only guard the LAST layer feel safe and change nothing." ;
+               kpred:principle    "EACH LAYER IS THE SAME VERB AT A DIFFERENT ALTITUDE: guide (set direction), refine (reshape a task in flight), redirect (pull work back and re-aim it). The lower the layer a human can act at, the less rework the loop generates — which is the same compounding argument kb:graph-economics makes about avoided duplication." ;
+               kpred:description  "Names the control surface the loop already implies but never gathered in one place. LAYER 1 DIRECTION — the ideas graph (kb:loop-idea-inbox): humans create new direction with zero-friction capture, diffed against the roadmap; promotion to a planned feature is a USER-AUTHORITY act (F88 — minting a feature is authorship, not observation). LAYER 2 FRAMING — a task is a triple (F87), so a human edits the task itself: its prompt, tier, dependencies and definition-of-done, in the Review tab, before or during the run. LAYER 3 SCOPE — work is claimed and steered as a SET (kb:entity-sets), not one task at a time: approve a batch, re-aim a batch, park a batch. LAYER 4 TIER — which harness runs it (kb:work-tiering), overridable per task. LAYER 5 LANDING — the existing merge gates; a sub-agent returns a graph and Opus merges it (kb:loop-subagent-graphs). Autonomy modes (kb:shelly-curation: suggest / auto-safe / auto-all) apply PER LAYER, not globally." ;
+               kpred:constraint   "Whatever the autonomy level, layers 1 and 2 stay human-writable at all times. An orchestrator that can rewrite its own direction and its own definition-of-done is not being supervised, it is being watched." ;
+               kpred:relates-to   kb:loop-idea-inbox ;
+               kpred:relates-to   kb:co-orchestration ;
+               kpred:relates-to   kb:shelly-curation ;
+               kpred:relates-to   kb:entity-sets ;
+               kpred:relates-to   kb:work-tiering ;
+               kpred:open-question "Does a human intervention at layer 2 or 3 become a FACT in the graph (an event with actor=human, joining the archive journal alongside actor=agent edits), or is it ordinary task-state mutation? Recording it makes the loop auditable — 'who re-aimed this, and when' — and costs one triple. Not recording it means the loop's own history is the one thing it cannot answer questions about." ;
+               kpred:remaining    "Not built. The layer vocabulary on the task model; per-layer autonomy settings; a Review-tab surface for editing a task's framing mid-flight; batch (set-scoped) steering actions." .
 
 kb:local-orchestration rdf:type ktype:Feature ;
                rdfs:label   "Local task orchestration & scheduling" ;
@@ -2810,7 +2829,10 @@ kb:entity-sets rdf:type      ktype:Feature ;
                kpred:relates-to   kb:meta-visual-generation ;
                kpred:relates-to   kb:arrange-layout-builder ;
                kpred:relates-to   kb:sets-xr ;
-               kpred:open-question "Storage: is a set a first-class node (ktype:EntitySet) whose members are linked by a 'has-member' predicate, or a saved selection/template? First-class node makes it queryable + shareable and round-trips in TTL." .
+               kpred:open-question "Storage: is a set a first-class node (ktype:EntitySet) whose members are linked by a 'has-member' predicate, or a saved selection/template? First-class node makes it queryable + shareable and round-trips in TTL." ;
+               kpred:principle    "ONE GROUPING PRIMITIVE, THREE CONSUMERS (Matt, 2026-07-19: 'job grouping may be the same thing as sets'). ktype:EntitySet + has-member is not a graph-canvas feature that happens to group nodes — it is THE grouping primitive, and three separate features need it: (1) kb:entity-sets, grouping ENTITIES on the canvas; (2) kb:loop-job-grouping, grouping PENDING STATEMENTS into one review decision; (3) kb:agent-orchestration, grouping TASKS into a batch a harness claims and a human steers. They differ only in member TYPE. All three need the same things: membership, a label, scoping/spotlight, a batch action, and provenance. Building three grouping mechanisms would be exactly the 'separate code for nearly the same task' that scripts/offline/shared-deps.ts exists to catch — so review grouping and task batching REUSE src/lib/rdf/entity-sets.ts rather than reimplementing it." ;
+               kpred:honest-note  "THE DETECTOR MISSED THIS, and a human found it (2026-07-19). shared-deps.ts reported 67 overlap pairs and none was entity-sets vs loop-job-grouping. Two causes, and the second is the real one. (1) It only saw ktype:Feature entities with kpred:has-file, so loop-job-grouping — a ktype:Phase with no files — was invisible. Fixed: Phases are now included. (2) FUNDAMENTAL: section 3 pairs entities that share a dependency HUB, and these two share none. Conceptual duplication does not announce itself as a shared dependency. A new lexical check (vocabulary overlap) was added and DOES now flag the pair — but that result is CIRCULAR and must not be read as vindication: verified by stashing the TTL edits and re-running, the check does NOT detect the pair on the pre-edit graph. It only works now because the unification was already written into both descriptions." ;
+               kpred:open-question "The undetected class is: SAME CONCEPT, DIFFERENT VOCABULARY, NO SHARED DEPENDENCY. Before the edits, one entity said 'group nodes into a set' and the other said 'group the queue into one decision' — synonyms, zero lexical overlap. No keyword rule can bridge a synonym gap, so this needs EMBEDDING similarity over entity descriptions — the same BGE-small machinery kb:entity-normalization already uses for duplicate entities (0.90 threshold). That is still SCRIPT tier: embeddings are local and deterministic, no cloud tokens and no judgment call. Until it exists, this class is found by humans reading the graph, which is not a control." .
 
 kb:sets-xr rdf:type          ktype:Feature ;
                rdfs:label    "Sets in VR / AR / XR" ;
