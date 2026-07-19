@@ -94,6 +94,7 @@
     "session:tokens": "npx tsx scripts/session-tokens.ts",
     "offline:review": "npx tsx scripts/offline/code-review.ts",
     "offline:lint": "npx tsx scripts/offline/graph-lint.ts",
+    "offline:economics": "npx tsx scripts/offline/graph-economics.ts",
     "offline:prompt-audit": "npx tsx scripts/offline/prompt-audit.ts",
     "safety:attest": "npx tsx scripts/offline/safety-attestation.ts",
     "safety:attest:record": "npx tsx scripts/offline/safety-attestation.ts --record",
