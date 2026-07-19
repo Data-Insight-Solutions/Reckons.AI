@@ -42,6 +42,23 @@ const BASE_URL = process.env.BASE_URL ?? 'http://localhost:5173';
 const ONLY_ROUTE = arg('route');
 const MAX_PER_ROUTE = Number(arg('max') ?? 60);
 
+/**
+ * Viewport to crawl at. Defaults to desktop, but the 44px TOUCH-TARGET rule only means anything on
+ * a touch screen — a 30px chip is fine under a mouse pointer and a defect under a thumb. Crawling
+ * only at 1280x900 produced 66 "sub-44px" findings that no touch user would ever meet, which is
+ * the same cry-wolf problem as the no-ops. Pass --device=pixel (or iphone/ipad) to audit at a size
+ * where the rule applies; `touchTargetsMeaningful` records which it was, so a reader can tell
+ * whether the count is advisory or real.
+ */
+const DEVICES: Record<string, { width: number; height: number; touch: boolean }> = {
+  desktop: { width: 1280, height: 900, touch: false },
+  ipad:    { width: 834,  height: 1194, touch: true },
+  pixel:   { width: 412,  height: 915,  touch: true },
+  iphone:  { width: 390,  height: 844,  touch: true },
+};
+const DEVICE_NAME = arg('device') ?? 'desktop';
+const DEVICE = DEVICES[DEVICE_NAME] ?? DEVICES.desktop;
+
 /** Routes to crawl. Keep in sync with src/routes/(app). */
 const ROUTES = ['/', '/ingest', '/review', '/kb', '/settings', '/about'];
 
@@ -225,7 +242,7 @@ async function gotoRoute(page: Page, route: string) {
 async function crawlRoute(browser: Browser, route: string): Promise<Finding[]> {
   const findings: Finding[] = [];
   const page = await browser.newPage();
-  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.setViewportSize({ width: DEVICE.width, height: DEVICE.height });
 
   // First visit: clean slate so every run starts identically.
   await page.goto(BASE_URL + route, { waitUntil: 'domcontentloaded' }).catch(() => {});
@@ -519,7 +536,18 @@ async function main() {
   const crawled = [...new Set(all.map((f) => f.route))];
   writeFileSync(
     reportPath,
-    JSON.stringify({ baseUrl: BASE_URL, routes, crawled, skipped, findings: all }, null, 2),
+    JSON.stringify(
+      {
+        baseUrl: BASE_URL,
+        device: DEVICE_NAME,
+        viewport: { width: DEVICE.width, height: DEVICE.height },
+        // False when crawled on desktop: sub-44px counts below are advisory only.
+        touchTargetsMeaningful: DEVICE.touch,
+        routes, crawled, skipped, findings: all,
+      },
+      null,
+      2,
+    ),
   );
 
   const crashes = all.filter((f) => f.errors.length);
@@ -532,6 +560,9 @@ async function main() {
   // COVERAGE FIRST. Every count below is only meaningful over the routes actually reached, so say
   // what was reached before saying what was found — otherwise "crashes: 0" reads as "the app is
   // fine" when it may mean "we never got there".
+  console.log(
+    `  ${C.d}device:       ${DEVICE_NAME} (${DEVICE.width}x${DEVICE.height})${DEVICE.touch ? '' : ' — touch-target counts ADVISORY'}${C.x}`,
+  );
   console.log(
     `  ${skipped.length ? C.r : C.d}coverage:     ${crawled.length}/${routes.length} route(s)${C.x}`,
   );
