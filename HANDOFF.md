@@ -101,6 +101,58 @@ the app are under the touch minimum. This is an **F36 mobile blocker** and maps 
 `touch-targets` guideline in `kb:web-uiux-rubric`. Reproduce with:
 `BASE_URL=http://localhost:5174 npx tsx scripts/offline/button-crawl.ts --device=pixel`
 
+## 🚨 FIRST-RUN BLOCKER — ingest hangs AFTER a successful model download (2026-07-18)
+
+**The highest-priority open item in this file.** Found by the new
+`tests/e2e/first-run-model.test.ts`. Measured on vite dev + chromium + mock extraction backend:
+
+Accepting the 33 MB embedding-model download **succeeds at the network layer** — 44.4 MB arrives,
+all HTTP 200:
+- 34.0 MB `model_quantized.onnx` (huggingface xet CDN)
+- 4.7 MB `ort-wasm-simd-threaded.asyncify.wasm` (**cdn.jsdelivr.net**)
+- tokenizer.json / config.json / tokenizer_config.json
+
+…and then **the ingest pipeline never proceeds.** Still on `/ingest` after 240 s: no error, no
+console output, no progress indicator, no recovery. **Declining** the same prompt finishes in
+seconds via the structural fallback — so the fault is specific to the ACCEPT path, *after* the
+model is already downloaded.
+
+For a first-time user this is the worst-shaped bug available: consent to a large download, pay for
+it, get a frozen screen that never explains itself.
+
+**NOT localized** — could be embedding inference, semantic-diff, or the awaited pipeline. **NOT
+reproduced against a production build**; dev-mode ONNX/WASM behavior can differ. Both worth
+establishing before fixing. Reproduce:
+`RECKONS_TEST_WASM=1 npx playwright test first-run-model --project=desktop-chrome`
+
+**Related, queued as an observation:** transformers.js fetches the ONNX runtime from
+**cdn.jsdelivr.net at runtime**, even though the PWA precaches ~67 MB of ort-wasm locally
+(`vite.config.ts` globPatterns). If the precached copy is not the one being used, that precache is
+dead weight AND offline-first WASM inference does not work offline. Check this before the
+PWA-precache toggle work lands.
+
+## 👆 FIRST-RUN CONSENT GATE — now covered (2026-07-18)
+
+`tests/e2e/first-run-model.test.ts` — 12 passing, no network. Previously **zero** coverage: every
+other suite runs on mock backends AND `helpers.ts` installs a consent dismisser that clicks
+"Not now" the instant a prompt appears, so the first thing a real user meets was the one thing the
+tests stepped around.
+
+Covers: the gate appears before anything downloads; it names the model and MB; declining and
+Escape both resolve without wedging the awaited pipeline; the sideload hatch exists. Constrained
+device (iOS UA): graceful Ollama / API-key / tiny-model offers instead of a ~500 MB load that can
+OOM-crash the tab, the risky option honestly labelled "may crash", and the chat-only warning.
+
+**Behavior worth knowing:** a keyless first run asks **twice** — Qwen2.5-0.5B (~500 MB) then
+bge-small-en-v1.5 (~33 MB). Correct (separate models, separate consent), but tests must drain the
+QUEUE. Two of mine assumed a single dialog, and one was *flaky rather than failing* because
+resolving the first consent re-shows the shared `.consent-dialog` selector almost instantly. Assert
+that the queue ADVANCED, not that the dialog vanished.
+
+**DEFECT pinned (test.fail):** on the constrained path, "Try a tiny model" pushes guidance saying
+the model switched and that a tiny model cannot reliably extract facts — then the next consent
+modal immediately covers it. The user is told something important and cannot read it.
+
 ## ⚠ ALSO OPEN, NOT FIXED (2026-07-18)
 
 - **Multi-tab sync — 3 CONFIRMED defects.** `tests/e2e/multi-session.test.ts` proves them; they are
