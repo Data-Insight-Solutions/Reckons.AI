@@ -3186,3 +3186,52 @@ kb:adult-content-policy rdf:type ktype:Feature ;
 kb:predicate-economy rdf:type ktype:Concept ;
     rdfs:label "Predicate economy" ;
     kpred:moved-to "static/reckons-shipped.ttl" .
+
+# -- Poseidon's Council (F102) ---------------------------------------------------
+# Multi-model corroboration. The name is Matt's, in the undersea line alongside
+# Shelly, Currents and Pod View. Poseidon, not Posiedon.
+#
+# THE CENTRAL RISK IS STATISTICAL AND IT IS NOT OBVIOUS: agreement between LLMs is
+# NOT independent evidence. Five models raise accuracy only if their errors are
+# independent, and they are not — overlapping web corpora, shared RLHF conventions,
+# several distilled from one another. 5/5 agreement mostly measures how COMMON a
+# claim is in training data. Confidently-wrong facts are precisely the ones every
+# model shares. kb:mission already rules on this: an unverifiable claim, made by
+# the party it benefits, is not evidence.
+kb:poseidons-council rdf:type  ktype:Feature ;
+               rdfs:label         "Poseidon's Council — multi-model corroboration" ;
+               kpred:feature-id   "F102" ;
+               kpred:has-status   "planned" ;
+               kpred:depends-on   kb:llm-providers ;
+               kpred:depends-on   kb:verifiability-axis ;
+               kpred:relates-to   kb:source-validation ;
+               kpred:relates-to   kb:review-attention ;
+               kpred:relates-to   kb:control-model ;
+               kpred:relates-to   kb:entity-sets ;
+               kpred:principle    "MODEL AGREEMENT IS NOT INDEPENDENT EVIDENCE. Corroboration requires independent error, and models sharing corpora and lineage do not have it. A council vote is a record of WHO ASSERTED WHAT — provenance — and never a probability that the fact is true. Source diversity is the defensible half of the idea: independent SOURCES can have independent errors; independent MODELS mostly cannot." ;
+               kpred:principle    "SOURCES OUTRANK THE COUNCIL. One cited passage beats 5/5 unanimity. The council is a HYPOTHESIS GENERATOR; a source is evidence. Where the council splits and a source settles it, the source wins and the split is recorded as history." ;
+               kpred:principle    "LEAD WITH DISAGREEMENT (kb:review-attention: 'spend attention on disagreement, not agreement'). The council's valuable output is the SPLIT, not the consensus. Unanimous statements flow through quietly as ordinary pending facts; contested ones get the spotlight, the per-model reasoning, and an 'ask a source' action. A UI that leads with the agreed list trains the eye past the only rows carrying information." ;
+               kpred:description  "Convene N high-capability models over the same text; each returns triples; merge the results and record the vote. Configuration is a list of provider/model pairs — the plumbing largely exists (9 providers incl. OpenRouter, which fronts many models under one key; per-task backends; src/lib/integrations/llm/providers.ts). Merge reuses the product's own machinery: a council member's output is a GRAPH, and merging independent graphs with provenance and per-fact review status is what this product does (see kb:loop-subagent-graphs, which already establishes sub-agent-returns-a-graph). A council statement carries kpred:asserted-by per model and a recorded split; its kpred:verifiable-by is 'unknown' unless a source grounds it — and per kb:verifiability-axis, UNCLASSIFIED FAILS TOWARD THE HUMAN, so a council verdict is never machine-approved however unanimous." ;
+               kpred:decision     "STORAGE NEVER BLENDS, DISPLAY MAY (2026-07-19, reconciling two of Matt's answers that conflicted). Asked whether agreement produces a truth score he said NO — it is a corroboration record; asked how sources and models weight together he chose a single blended confidence. Both cannot hold: a signal that is not a truth score cannot be an input to a blended truth score, and blending destroys the ability to tell which did the work. Reconciliation: source evidence and council split are stored as SEPARATE triples and never merged; the UI may show ONE derived indicator, always decomposable on click ('0.8 — source cites it, council 4/5'), computed on the fly and never stored; and NOTHING AUTOMATIC may read that number — no auto-approve threshold keys off it, per kb:control-model (the instant an agent can edit the graph to raise its own score, the score measures nothing)." ;
+               kpred:constraint   "COST: a council call is N times one call. Default remains single-model extraction. The council escalates only on statements a cheap first pass flags low-confidence or contested (~10-15% in practice), or when convened deliberately over a selected set (kb:entity-sets). Cost is then ~1x + Nx on the minority, not Nx on everything." ;
+               kpred:open-question "Does 'council' warrant a new kpred:verifiable-by value, or stay 'unknown'? A new value is honest — it is genuinely not code/test/source/user — but every added value weakens the axis's routing guarantee unless the gate treats it exactly as unclassified. Leaning: no new value; record the vote in provenance and leave verifiability 'unknown' until a source lands." ;
+               kpred:open-question "Do we attempt independence weighting (discounting models of shared lineage)? Statistically it is the right correction, but the independence estimates are themselves unverifiable guesses — a number that looks rigorous and is not. Recorded UNDECIDED rather than shipped as false precision." ;
+               kpred:honest-note  "Nothing is built. The plumbing (providers, merge, review queue) exists; the council does not. Note also that this feature can only ever reduce a KNOWN failure mode — models agreeing wrongly — it cannot detect a fact that every model and every available source gets wrong together. That limit should be stated in the UI, not buried here." ;
+               kpred:remaining    "Not built. Council config (provider/model list + convene policy); parallel fan-out with per-member graph namespaces; merge + vote recording; the disagreement-first review surface; the escalation trigger from the cheap first pass." .
+
+# -- Ingest graph routing (F103) --------------------------------------------------
+# "Deselect the current graph and find the most relevant graph for this ingest."
+# This is NOT a new relevance engine. routeQuestion() already exists, is tested
+# (7 tests), and ranks graphs by exactly the signals this needs.
+kb:ingest-routing rdf:type     ktype:Feature ;
+               rdfs:label         "Route an ingest to the most relevant graph" ;
+               kpred:feature-id   "F103" ;
+               kpred:has-status   "planned" ;
+               kpred:depends-on   kb:question-router ;
+               kpred:relates-to   kb:multi-kb ;
+               kpred:relates-to   kb:entity-normalization ;
+               kpred:principle    "THE DESTINATION IS A DECISION, NOT A DEFAULT. Today an ingest lands wherever the user happens to be standing, which silently makes 'the graph I last opened' the filing system. Offering a ranked destination turns an accident into a choice — but it must remain a CHOICE: the router proposes, the human disposes, because filing a fact in the wrong graph is a quiet error that compounds (it is not wrong, just unfindable)." ;
+               kpred:description  "On the Add page, allow DESELECTING the current graph so an ingest is not implicitly filed into it, and rank the registry by how related each graph is to the extracted triples. Reuses src/lib/rdf/question-router.ts: routeQuestion() already scores candidate graphs by knows-the-subject (strongest), predicate familiarity, and neighbourhood overlap, and addressees() already thresholds so we route rather than broadcast. The generalization is the INPUT — one Question (subject + predicate, object open) becomes N extracted statements — so the work is to factor the scoring over a set of signals and call it with the ingest's subjects/predicates, NOT to write a second relevance engine." ;
+               kpred:constraint   "REUSE routeQuestion's scoring. A parallel ingest-relevance scorer would be the fourth instance this session of the duplication kb:entity-sets now warns about, and would diverge from the question path the first time either is tuned. Factor a shared scorer; keep the 7 existing tests passing as the regression gate." ;
+               kpred:open-question "What happens when NO graph scores above the threshold? Options: create a new graph named from the content (importAsNewKb already exists), fall back to the current graph, or leave the destination unset and make the user pick. Leaning: offer 'new graph' as a first-class outcome — a genuinely unrelated ingest is evidence that a new graph is wanted, and forcing it into the nearest existing one is how graphs become junk drawers." ;
+               kpred:remaining    "Not built. Factor routeQuestion's scorer to accept N statements; a deselect affordance on Add; a ranked destination picker showing WHY each graph ranked (which subjects/predicates matched); the no-match outcome above." .
