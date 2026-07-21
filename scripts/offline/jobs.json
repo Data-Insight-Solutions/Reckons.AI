@@ -118,6 +118,13 @@
       "desc": "Local coding model (qwen3-coder) reviews the branch diff → findings to pending review (needs OLLAMA_BASE_URL)"
     },
     {
+      "name": "code-review-council",
+      "tier": "agent",
+      "enabled": false,
+      "cmd": "npx tsx scripts/offline/code-review-council.ts --base=${CODE_REVIEW_BASE:-origin/dev}",
+      "desc": "Tri-party council (F102): free local first pass, then escalates ONLY flagged files to Codex (Claude Code adds the third voice in-session). Disabled by default — convene-only; needs OLLAMA_BASE_URL and a live `codex login`"
+    },
+    {
       "name": "visual-diff",
       "tier": "agent",
       "enabled": false,

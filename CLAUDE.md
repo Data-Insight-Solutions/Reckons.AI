@@ -148,9 +148,17 @@ it.** Ollama is opt-in per-command via `OLLAMA_BASE_URL=http://localhost:11434` 
 | **MCP graphs missing/empty, or fresh clone** | `bash scripts/setup-reckons-workspace.sh` | script — rebuilds both workspaces, fails loudly on dangling links |
 | **Before opening a PR / after writing code** | `OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/code-review.ts --base=origin/dev` | agent — local first-pass review |
 | **Entities missing `kpred:description`** | `OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/describe-entities.ts --limit=10` | agent — drafts prose |
+| **Council code review (2 frontier voices)** | `OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/code-review-council.ts --base=origin/dev` | agent — local flags → Codex escalates; Claude Code adds the 3rd voice |
+| **Council design/architecture decision** | `npm run council:design -- --question="…" [--target=kb:entity]` | agent — Codex's grounded position; Claude + Matt decide the split |
 | **Visual regression prod↔dev** | `npx tsx scripts/offline/visual-diff.ts --base=… --head=…` | agent — local VLM |
 | **Checking a TTL parses / graph invariants** | `npx tsx scripts/offline/graph-lint.ts` | script |
 | **"Is this claim true?" in README/SAFETY.md** | `npx tsx scripts/offline/claim-audit.ts --pending` | script |
+
+The two `council:*` jobs are the **tri-party orchestrator council** (F102: Matt + Claude + Codex).
+Codex (OpenAI Codex CLI, on Matt's ChatGPT subscription) is a **read-only ADVISORY** voice — it runs
+`codex exec --sandbox read-only`, proposes, and never writes. Claude Code is the other voice and the
+orchestrator; Matt decides. A council verdict is provenance (`asserted-by` + the split), never a
+score, and stays `verifiable-by "unknown"` so it fails toward the human (F102 decision, 2026-07-21).
 
 Agent-tier jobs emit **proposals only**, into `reckons-workspace/knowledge.pending.jsonl` — they
 never edit source or TTL. **Triaging that queue is Opus's job, and it is real work**: a local review
@@ -185,7 +193,13 @@ This project uses TTL knowledge bases as the primary documentation format. **Do 
 
 - **CSS**: Use CSS variables (`--accent`, `--surface`, `--font-mono`, etc.) from `docs/STYLE_GUIDE.md`
 - **bits-ui**: Always `:global(.unique-class)` for CSS targeting
-- **Z-index scale**: node-labels=10, panels=300, Shelly=350, SearchBar=390, NavBar=400, MergeReview=500
+- **Z-index scale**: node-labels=10, panels=300, Shelly=350, SearchBar=390, NavBar=400,
+  MergeReview=500, **consent/modal dialogs=600/601, notifications=700/701**.
+  Notifications sit ABOVE modals deliberately: they are transient system feedback and are useless
+  if a dialog can cover them. Notifications and the consent dialog both used 600/601 until
+  2026-07-18, so DOM order decided and the portaled dialog always won — that hid the
+  "switched to the tiny model" guidance on the first-run constrained-device path. **Equal z-index
+  is not a tie, it is a silent loss for whichever element mounts first.**
 - **LLM providers**: claude, openai, gemini, ollama, wasm, mock, manual, openrouter, chrome-ai
 - **Review statuses**: pending, pending-removal, confirmed, refined, rejected, superseded
 - **Embedding model**: BGE-small-en-v1.5 (33MB, 384d, q8) via `src/lib/embed.ts`
