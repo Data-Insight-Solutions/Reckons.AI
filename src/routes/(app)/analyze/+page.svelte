@@ -33,7 +33,11 @@
     margin-top: 1rem;
     border-bottom: 1px solid var(--line);
     padding-bottom: 0.75rem;
+    /* Scroll rather than clip the section tabs on narrow viewports (mobile). */
+    overflow-x: auto;
+    scrollbar-width: none;
   }
+  .settings-nav::-webkit-scrollbar { display: none; }
   .nav-link {
     padding: 0.35rem 0.75rem;
     border-radius: var(--rad-sm);
@@ -45,6 +49,8 @@
     border: 1px solid transparent;
     transition: all 0.15s;
     text-decoration: none;
+    white-space: nowrap;
+    flex: 0 0 auto;
   }
   .nav-link:hover { color: var(--ink); background: var(--surface-2); }
   .nav-link.active { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
