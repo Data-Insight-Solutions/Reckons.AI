@@ -1725,7 +1725,11 @@
   /* ── Mobile ── */
   @media (max-width: 500px) {
     .tabs { gap: 0.2rem; }
-    .tabs button { padding: 0.35rem 0.65rem; font-size: 0.68rem; }
+    /* F36: the source-type chips are primary controls on the core add flow.
+       Keep the compact padding/size but guarantee a 44px tap target on touch
+       (they were ~28px tall — under the touch minimum). Matches the NavBar/Sheet
+       min-height:44px convention. */
+    .tabs button { padding: 0.35rem 0.65rem; font-size: 0.68rem; min-height: 44px; }
     .triple-entry { grid-template-columns: 1fr; }
     .row { flex-direction: column; align-items: stretch; gap: 0.5rem; }
     .action-group { justify-content: stretch; }
