@@ -1,5 +1,10 @@
 import type { StorybookConfig } from '@storybook/sveltekit';
 import path from 'path';
+import { fileURLToPath } from 'node:url';
+
+// Storybook 10 loads this config as ESM, where __dirname does not exist.
+// Reconstruct it from import.meta.url so the viteFinal aliases below resolve.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * Storybook 8 config for Reckons.AI.
@@ -14,9 +19,12 @@ import path from 'path';
  */
 const config: StorybookConfig = {
   stories: ['../src/stories/**/*.stories.@(ts|svelte)'],
-  addons: [
-    '@storybook/addon-essentials',
-  ],
+  // Storybook 10: the former "essentials" addons (controls, actions, viewport,
+  // backgrounds, toolbars, docs) are built into core and enabled by default.
+  // Listing @storybook/addon-essentials@8.x here dragged in the stale
+  // addon-toolbars, which imports `Icons` from storybook/internal/components —
+  // an export removed in v10 — and broke Storybook boot entirely (2026-07-21).
+  addons: [],
   framework: {
     name: '@storybook/sveltekit',
     options: {},

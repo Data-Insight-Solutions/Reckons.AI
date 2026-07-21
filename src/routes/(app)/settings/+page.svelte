@@ -1709,7 +1709,12 @@
     margin-top: 1rem;
     border-bottom: 1px solid var(--line);
     padding-bottom: 0.75rem;
+    /* On narrow viewports the section tabs used to clip (e.g. "turtle" cut off at
+       the edge on mobile). Scroll horizontally instead of clipping. */
+    overflow-x: auto;
+    scrollbar-width: none;
   }
+  .settings-nav::-webkit-scrollbar { display: none; }
   .section-toc {
     display: flex;
     flex-wrap: wrap;
@@ -1746,6 +1751,8 @@
     color: var(--muted);
     border: 1px solid transparent;
     transition: all 0.15s;
+    white-space: nowrap;
+    flex: 0 0 auto;
   }
   .nav-link:hover {
     color: var(--ink-2);
