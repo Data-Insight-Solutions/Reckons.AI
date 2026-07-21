@@ -3,7 +3,12 @@
   import { statements, sources } from '$lib/stores/kb.svelte';
   import type { Statement, Source } from '$lib/rdf/types';
   import { reconstructStatementsAt, reconstructSourcesAt } from '$lib/storage/history';
-  import KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
+  // KnowledgeGraph2D (not the 3D KnowledgeGraph): the 3D component calls Threlte's
+  // useDOM, which throws "can only be used in a child component to <Canvas>" unless
+  // wrapped in <Canvas> — which /history was not, so the whole page failed to render
+  // and stuck on the loading splash (fixed 2026-07-21). The 2D graph needs no Canvas
+  // or WebGL, works headless, and explicitly supports history mode (historyTimestamp).
+  import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
   import HistoryTimeline from '$lib/components/HistoryTimeline.svelte';
 
   let historyTimestamp = $state<number | null>(null);
@@ -63,7 +68,7 @@
         {/if}
       {/if}
 
-      <KnowledgeGraph
+      <KnowledgeGraph2D
         statements={historyStatements}
         sources={historySources}
         historyTimestamp={historyTimestamp}
