@@ -93,6 +93,8 @@
     "kb:search": "npx tsx tests/bench/run-kb-workflow.ts search",
     "session:tokens": "npx tsx scripts/session-tokens.ts",
     "offline:review": "npx tsx scripts/offline/code-review.ts",
+    "council:design": "npx tsx scripts/agent/council-design.ts",
+    "council:review": "npx tsx scripts/offline/code-review-council.ts",
     "offline:lint": "npx tsx scripts/offline/graph-lint.ts",
     "offline:economics": "npx tsx scripts/offline/graph-economics.ts",
     "offline:prompt-audit": "npx tsx scripts/offline/prompt-audit.ts",
