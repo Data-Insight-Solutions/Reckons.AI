@@ -4,6 +4,7 @@
   // preflight so global.css base styles are untouched (see tailwind.css header).
   import '$lib/styles/tailwind.css';
   import { onMount } from 'svelte';
+  import { page } from '$app/state';
 
   import NavBar from '$lib/components/NavBar.svelte';
   import TurtleChatPanel from '$lib/components/TurtleChatPanel.svelte';
@@ -35,6 +36,12 @@
   let { children } = $props();
   let error = $state<string | null>(null);
   let forceShow = $state(false);
+  // Document/form routes scroll inside a viewport that ends above the fixed
+  // mobile nav. Full-bleed graph/workspace routes keep owning the viewport.
+  const reservedNavRoutes = ['/ingest', '/kb', '/settings', '/reckoning', '/analyze', '/compare', '/about'];
+  const usesReservedNavShell = $derived(
+    reservedNavRoutes.some((route) => page.url.pathname === route || page.url.pathname.startsWith(`${route}/`))
+  );
 
   // Track viewport (breakpoint + coarse pointer) app-wide for responsive
   // behaviour (F36). Client-only; the returned teardown removes matchMedia
@@ -153,7 +160,7 @@
 
 <div class="bg"></div>
 
-<main id="main-content" role="main">
+<main id="main-content" role="main" class:reserved-nav-shell={usesReservedNavShell}>
   {#if loaded() && settingsLoaded() || forceShow}
     {@render children()}
     {#if error}
@@ -256,12 +263,24 @@
     position: relative;
     max-width: 720px;
     margin: 0 auto;
-    padding: 2rem 1.1rem max(7rem, calc(5.5rem + env(safe-area-inset-bottom)));
+    padding: 2rem 1.1rem var(--app-nav-clearance);
     min-height: 100dvh;
+    scroll-padding-bottom: var(--app-nav-clearance);
   }
   @media (max-width: 500px) {
     main {
-      padding: 1rem 0.6rem max(6rem, calc(4.5rem + env(safe-area-inset-bottom)));
+      padding: 1rem 0.6rem var(--app-nav-clearance);
+    }
+  }
+  @media (max-width: 640px) {
+    main.reserved-nav-shell {
+      height: calc(100dvh - var(--app-nav-clearance));
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior-y: contain;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 1rem;
+      scroll-padding-bottom: 1rem;
     }
   }
   .boot {

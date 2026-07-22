@@ -43,7 +43,8 @@
     onhovermove = () => {},
     onmarkersmove = () => {},
     onlabelsmove = () => {},
-    ontimelinepan = () => {}
+    ontimelinepan = () => {},
+    onready = () => {}
   } = $props<{
     statements?: Statement[];
     selected?: string | null;
@@ -63,6 +64,8 @@
     onmarkersmove?: (markers: Array<{ key: string; label: string; color: string; x: number; y: number }>) => void;
     onlabelsmove?: (labels: Array<{ key: string; label: string; x: number; y: number; opacity: number }>) => void;
     ontimelinepan?: (center: number) => void;
+    /** Fired after a non-empty scene has completed at least one animation frame. */
+    onready?: () => void;
   }>();
 
   const isHistoryMode = $derived(historyTimestamp !== null);
@@ -916,6 +919,7 @@
   const linePositions = new Float32Array(MAX_EDGES * 6);
   const hlLinePositions = new Float32Array(MAX_EDGES * 6); // highlighted edges (selected node)
   let lineGeomHl: THREE.BufferGeometry | undefined = $state();
+  let reportedReady = false;
 
   // Attach position attributes imperatively with a direct THREE import — survives
   // minification, unlike <T.BufferAttribute> (see comment at the template markup).
@@ -1005,6 +1009,13 @@
 
     if (renderer && camera.current) {
       const canvas = renderer.domElement;
+
+      if (!reportedReady && nodes.length > 0 && canvas.width > 0 && canvas.height > 0) {
+        reportedReady = true;
+        // Threlte renders after its update tasks. Report on the following
+        // browser frame so this signal cannot mean only "the branch mounted".
+        requestAnimationFrame(onready);
+      }
 
       // Project selected node for overlay positioning
       if (selected) {

@@ -214,20 +214,19 @@ test.describe('first run on a memory-constrained device (iOS)', () => {
   });
 
   /**
-   * KNOWN UX DEFECT, found 2026-07-18 by this suite.
+   * REGRESSION GUARD — guidance the user must read must actually be readable.
    *
-   * `tryTiny()` (DownloadConsentDialog.svelte) pushes a notification explaining that the model was
-   * switched and that a tiny model is chat-only — genuinely important guidance, since the user just
-   * chose a model that will not extract facts. But resolving the consent immediately raises the
-   * NEXT consent (the embedding model), whose modal covers the notification. The user is told
-   * something they cannot read.
+   * `tryTiny()` warns that a tiny in-browser model is chat-only and will not reliably extract
+   * facts. That warning was invisible: NotificationStack collapses to a corner bell on every
+   * non-home route, so a notification pushed from /ingest landed in a tray the user had no reason
+   * to open — at exactly the moment they chose a model that cannot do the app's main job. (A
+   * z-index collision with the dialog, both at 600/601, hid it further.)
    *
-   * Marked test.fail() so it is recorded rather than lost, and flags the moment it is fixed.
-   * A fix would defer the notification until no consent is pending, or fold the guidance into the
-   * next dialog.
+   * Fixed 2026-07-18 via `important: true`, which forces the stack open, plus lifting
+   * notifications above modals (z-700/701). Use `important` sparingly: if everything is
+   * important, nothing is.
    */
-  test('DEFECT — the "switched to tiny model" guidance is readable, not buried by the next modal', async ({ page }) => {
-    test.fail();
+  test('the "switched to tiny model" guidance is readable, not buried', async ({ page }) => {
     await firstRun(page);
     await startIngest(page);
     await expect(consentDialog(page)).toBeVisible({ timeout: 30_000 });

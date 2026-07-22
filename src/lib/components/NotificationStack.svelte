@@ -1,6 +1,8 @@
 <script lang="ts">
   import { page } from '$app/state';
   import { notifications, dismissNotification, notificationStackHeight } from '$lib/stores/notifications.svelte';
+  import { shellyChatOpen } from '$lib/stores/shelly-bridge.svelte';
+  import { isMobile } from '$lib/stores/viewport.svelte';
 
   const MAX_VISIBLE = 3;
 
@@ -26,7 +28,28 @@
     if (page.url.pathname !== lastPath) { lastPath = page.url.pathname; userToggle = null; }
   });
   const routeWantsCollapse = $derived(page.url.pathname !== '/');
-  const collapsed = $derived(userToggle ?? routeWantsCollapse);
+  // An `important` notification forces the stack open: it is guidance the user must read NOW,
+  // and a corner bell they have no reason to click is the same as not telling them.
+  // An explicit user toggle still wins — if they closed it, respect that.
+  const hasImportant = $derived(notifications().some((n) => n.important));
+  // A phone cannot afford a notification stack above Shelly's bottom sheet. Collapse ordinary
+  // notices while the sheet is open; truly time-sensitive notices still surface, and an explicit
+  // bell click still lets the user reopen the tray.
+  const mobileSheetWantsCollapse = $derived(isMobile() && shellyChatOpen() && !hasImportant);
+  const collapsed = $derived(
+    userToggle ?? (mobileSheetWantsCollapse || (routeWantsCollapse && !hasImportant))
+  );
+  const visibleLimit = $derived(isMobile() ? 1 : MAX_VISIBLE);
+  // Apply the mobile limit only after promoting urgent guidance. Otherwise an
+  // older ordinary notice can occupy the single visible slot while the alert
+  // that forced the tray open remains hidden behind "+N more".
+  const visibleNotifications = $derived.by(() => {
+    const list = notifications();
+    return [
+      ...list.filter((notification) => notification.important),
+      ...list.filter((notification) => !notification.important),
+    ].slice(0, visibleLimit);
+  });
 
   // Highest-severity type present, for the bell tint (warn > success > info).
   const bellColor = $derived.by(() => {
@@ -73,7 +96,7 @@
 
   {#if !collapsed}
     <div class="notification-stack" aria-live="polite" bind:this={stackEl}>
-      {#each notifications().slice(0, MAX_VISIBLE) as n (n.id)}
+      {#each visibleNotifications as n (n.id)}
         <div class="notification" style:--nc={typeColor[n.type]}>
           <span class="notif-icon" style:color={typeColor[n.type]}>{typeIcon[n.type]}</span>
           <div class="notif-body">
@@ -92,9 +115,9 @@
           <button class="notif-close" onclick={() => dismissNotification(n.id)} aria-label="dismiss">✕</button>
         </div>
       {/each}
-      {#if notifications().length > MAX_VISIBLE}
+      {#if notifications().length > visibleLimit}
         <div class="notif-overflow mono">
-          +{notifications().length - MAX_VISIBLE} more
+          +{notifications().length - visibleLimit} more
         </div>
       {/if}
     </div>
@@ -102,12 +125,16 @@
 {/if}
 
 <style>
-  /* Corner bell: the very top-right, above the stack (z-600) and everything else. */
+  /* Corner bell: top-right, above the stack and above modal dialogs.
+     z-701. Notifications must outrank MODALS (consent dialog is 600/601): they are transient
+     system feedback and are useless if a dialog can cover them. This exact collision hid the
+     "switched to the tiny model" guidance on the constrained-device first-run path — same z-index
+     as the dialog meant DOM order decided, and a portaled dialog always wins. */
   .notif-bell {
     position: fixed;
     top: 0.75rem;
     right: 0.75rem;
-    z-index: 601;
+    z-index: 701;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -148,7 +175,7 @@
     position: fixed;
     top: 3rem; /* below the corner bell */
     right: 0.75rem;
-    z-index: 600;
+    z-index: 700; /* above modals — see the bell comment above */
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -240,5 +267,29 @@
     text-align: right;
     padding: 0.15rem 0.5rem;
     pointer-events: none;
+  }
+
+  @media (max-width: 640px) {
+    .notif-bell {
+      top: 0.5rem;
+      right: 0.5rem;
+      width: 44px;
+      height: 44px;
+    }
+    .notification-stack {
+      top: 3.75rem;
+      right: 0.5rem;
+      width: calc(100vw - 1rem);
+      max-width: 360px;
+    }
+    .notif-action,
+    .notif-close {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .notif-action { padding-inline: 0.25rem; }
+    .notif-close { min-width: 44px; padding: 0; }
   }
 </style>

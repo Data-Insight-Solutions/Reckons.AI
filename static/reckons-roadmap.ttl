@@ -138,7 +138,10 @@ kb:drive-folder-sync rdf:type ktype:Feature ;
                kpred:depends-on   kb:workspace-sync ;
                kpred:depends-on   kb:google-drive-sync ;
                kpred:tested-by    "src/lib/stores/__tests__/drive-sync.test.ts" ;
-               kpred:relates-to   kb:workspace-index .
+               kpred:relates-to   kb:workspace-index ;
+               kpred:relates-to   kb:canonical-graph-package ;
+               kpred:relates-to   kb:transactional-sync-protocol ;
+               kpred:known-issue  "AUDIT 2026-07-21: 'feature-complete' above describes surface coverage, NOT data safety. Sync exports a lossy confirmed/refined-only Turtle projection; last-seen hashes are session-memory only; reconnect can treat that projection as authoritative and replace richer IndexedDB state, clearing sources and losing pending/rejected statuses and provenance. Local workspace sync shares the same reconcile path. Until F107.3 and F107.4 land, sync is NOT a trustworthy backup and destructive auto-pull is a release blocker." .
 
 kb:workspace-index rdf:type ktype:Feature ;
                rdfs:label   "Workspace index + session recovery" ;
@@ -3312,3 +3315,266 @@ kb:device-graph rdf:type       ktype:Feature ;
                kpred:constraint   "REUSE src/lib/integrations/llm/device-capability.ts. It already detects iOS WebKit, memory constraint via navigator.deviceMemory, and whether an in-browser model should be avoided (TINY_WASM_MODEL, CONSTRAINED_MODEL_MB_CAP). That is a narrow GATE today, not a profile — extend it into one rather than writing a second detector." ;
                kpred:measured     "Method proven 2026-07-19 by scripts/offline/energy-bench.ts on 2x RTX 3090 / Ryzen 9 3900X, marginal GPU energy above idle, warm model, three sizes: llama3.2:3b ~0.68-1.00 Wh per 1k output tokens; mistral-nemo 12.2B ~2.66-3.09; qwen3-coder 30.5B ~1.31. Two findings. (1) The phone-class 3B is 3-4x more energy-efficient per token than the 12B — the capability/energy frontier moving down-market is measurable, not just assertable. (2) The 30.5B beat the 12.2B, almost certainly because it is mixture-of-experts with far fewer ACTIVE parameters — which is Matt's trajectory thesis (capability packed into fewer active params) showing up directly in the numbers. Spread across tasks is 4.6x, so no mean is quotable yet." ;
                kpred:remaining    "Not built. Extend device-capability.ts into a profile emitter; a one-click 'describe this device' action writing a device graph; in-browser throughput measurement (WebGPU/WASM) since nvidia-smi is desktop-only; opt-in share via folder sync; a device-comparison view over the existing compare path." .
+
+# -- Production stabilization: integrity, trust boundaries, delivery (F107) ------
+# Comprehensive codebase review, 2026-07-21. The semantic model is strong; the
+# release blocker is that execution, persistence, secret, and publishing boundaries
+# do not yet uphold the product's own local-first and review-before-confirm promises.
+# This is ONE ordered stabilization programme, not nine disconnected cleanup tickets.
+
+kb:stabilization-trust-boundaries rdf:type ktype:Feature ;
+               rdfs:label         "Production stabilization — integrity, trust boundaries, and maintainable delivery" ;
+               kpred:feature-id   "F107" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:decided-on   "2026-07-21"^^xsd:date ;
+               kpred:relates-to   kb:mission ;
+               kpred:relates-to   kb:honest-status ;
+               kpred:has-part     kb:mcp-process-safety ;
+               kpred:has-part     kb:reproducible-delivery ;
+               kpred:has-part     kb:canonical-graph-package ;
+               kpred:has-part     kb:transactional-sync-protocol ;
+               kpred:has-part     kb:credential-boundary ;
+               kpred:has-part     kb:settings-schema-roundtrip ;
+               kpred:has-part     kb:untrusted-output-hardening ;
+               kpred:has-part     kb:application-boundary-decomposition ;
+               kpred:has-part     kb:pwa-delivery-budget ;
+               kpred:description  "A stabilization programme that makes the complete Reckons.AI product earn the trust already expressed by its RDF model. It closes the critical command-execution and sync-loss paths first, then establishes one lossless graph package, one secret/settings schema, safe publishing and extension boundaries, transactional mutation architecture, reproducible quality gates, and a measured offline-delivery budget. It EXTENDS F75/F57/F56, F69, F27/F55/F66, F92, and F33/F34 rather than replacing or duplicating them." ;
+               kpred:principle    "DATA LOSS AND SECRET EXPOSURE OUTRANK FEATURE VELOCITY. A local-first graph that can erase review history, and a safe-to-share profile that can carry a secret, violate the product thesis more deeply than any missing feature." ;
+               kpred:principle    "PRODUCTION IS A CLAIM THAT REQUIRES INDEPENDENT EVIDENCE. A passing unit suite or a graph status cannot substitute for adversarial boundary tests, lossless round trips, and observed production-build behaviour." ;
+               kpred:constraint   "STABILIZATION BEFORE EXPANSION: do not promote additional product surfaces to production while F107.1, F107.3, F107.4, F107.5, or F107.7 remain open. Work outside this programme must not weaken or bypass those gates." ;
+               kpred:remaining    "DONE WHEN all nine parts meet their stated completion conditions; an independent review reproduces no command injection, status/provenance loss, secret leakage, active-content execution, or output-path escape; check/test/build/align and every deliverable-specific CI suite pass; warning, coverage, bundle, and precache budgets are blocking; and only then is the application's alpha/production-readiness claim reassessed." .
+
+kb:mcp-process-safety rdf:type ktype:Feature ;
+               rdfs:label         "MCP process execution containment and protocol health" ;
+               kpred:feature-id   "F107.1" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:stabilization-trust-boundaries ;
+               hnav:order         "1"^^xsd:integer ;
+               kpred:relates-to   kb:mcp-server ;
+               kpred:relates-to   kb:git-analysis ;
+               kpred:relates-to   kb:control-model ;
+               kpred:description  "Close the MCP's local-code-execution boundary and make reader failure explicit. Replace shell-string child processes with argument-vector APIs; validate Git refs and tool arguments at runtime; audit every process-spawning path; distinguish invalid, empty, stale, and deleted graphs; and reconcile vanished readers instead of serving plausible old facts. MCP is local, but an LLM-controlled tool argument is still untrusted input." ;
+               kpred:constraint   "The vulnerable Git-diff/alignment tools stay disabled until hostile-ref tests prove shell metacharacters, newlines, command substitutions, and option-like refs cannot execute or reshape a command." ;
+               kpred:remaining    "DONE WHEN every MCP child process uses execFile/spawn-style argument arrays with no shell interpolation; refs are validated and separated from options; runtime schemas reject malformed tool arguments; parse/deletion health is surfaced to callers; repository-wide process audit and adversarial injection tests block regressions; and the full MCP test suite runs as a required CI job." .
+
+kb:reproducible-delivery rdf:type ktype:Feature ;
+               rdfs:label         "Reproducible toolchain, blocking quality gates, and executable documentation" ;
+               kpred:feature-id   "F107.2" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:stabilization-trust-boundaries ;
+               hnav:order         "2"^^xsd:integer ;
+               kpred:relates-to   kb:release-pipeline ;
+               kpred:relates-to   kb:deep-testing ;
+               kpred:relates-to   kb:work-tiering ;
+               kpred:relates-to   kb:tier-script-ci ;
+               kpred:description  "Make a clean checkout behave like CI without hidden downloads or contradictory instructions. Pin one package manager and Node source across package metadata, lockfile, NVM and CI; make tsx a direct pinned dependency instead of an implicit npx fetch; gate Svelte warnings and meaningful coverage; run tests for the web app, MCP, CLI, extension, production build, and supported browser/device projects; and make README/SETUP/deploy commands executable rather than aspirational." ;
+               kpred:principle    "A gate that downloads an undeclared executable is not deterministic, and documentation for files that do not exist is not documentation." ;
+               kpred:remaining    "DONE WHEN a clean npm/pnpm install followed by check, test, build and align succeeds without network access after dependency installation; no script relies on an undeclared npx package; Svelte warnings are ratcheted to zero; coverage includes rune stores, routes, components and persistence boundaries with blocking thresholds; MCP/CLI/extension and cross-browser production tests run in CI; and generated checks catch MCP tool/graph-count plus setup-documentation drift." .
+
+kb:canonical-graph-package rdf:type ktype:Feature ;
+               rdfs:label         "Versioned, lossless graph package contract" ;
+               kpred:feature-id   "F107.3" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:stabilization-trust-boundaries ;
+               hnav:order         "3"^^xsd:integer ;
+               kpred:depends-on   kb:rdf-dataset-migration ;
+               kpred:relates-to   kb:workspace-index ;
+               kpred:relates-to   kb:import-workspace-ux ;
+               kpred:description  "Finish F75's existing decision that multiple KBs and sidecars travel as a GRAPH PACKAGE. One versioned manifest names immutable graph ID, display name, revision, payload paths, sources, assets, pending inbox, and integrity hashes; the payload preserves every statement status and review/provenance field through toTriG/toTurtleFull or an equivalently lossless representation. The app, MCP, Drive and CLI consume the same package schema and conformance fixtures." ;
+               kpred:principle    "A clean Turtle projection is an export VIEW, never an authoritative backup of a richer reviewed graph." ;
+               kpred:remaining    "DONE WHEN export to an empty database and re-import is semantically identical for confirmed, refined, pending, rejected and superseded statements, source records, stable IDs, review metadata and assets; malformed/partial packages fail validation without touching live data; format/version migration fixtures pass; and app, MCP, Drive and CLI use one shared parser/writer contract." .
+
+kb:transactional-sync-protocol rdf:type ktype:Feature ;
+               rdfs:label         "Transactional workspace, Drive, and MCP interoperability" ;
+               kpred:feature-id   "F107.4" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:stabilization-trust-boundaries ;
+               hnav:order         "4"^^xsd:integer ;
+               kpred:depends-on   kb:canonical-graph-package ;
+               kpred:relates-to   kb:workspace-sync ;
+               kpred:relates-to   kb:drive-folder-sync ;
+               kpred:relates-to   kb:mcp-workspace ;
+               kpred:relates-to   kb:import-workspace-ux ;
+               kpred:description  "Replace content-hash guesswork and destructive replacement with durable revisions, staged reconciliation, explicit direction/conflict UI, backup, and atomic commit/rollback. Local folder, Drive and MCP must agree on stable identity, graph discovery, source metadata, assets, and one pending-inbox path. Read/write/parse failures are surfaced as failures and never disguised as empty data or a successful sync count." ;
+               kpred:constraint   "Automatic pull remains off for an existing graph until a durable baseline and lossless reconcile path exist. First attach, reconnect, divergent revisions, malformed input, cancellation and mid-write failure are required test cases." ;
+               kpred:remaining    "DONE WHEN last-seen revision state survives reload; first attach/reconnect shows direction and diff before destructive action; imports parse and validate into staging, back up live state, then commit all affected tables atomically with rollback; failures are user-visible; and shared contract tests drive the same fixtures through local folder, Drive and MCP while proving no statement status, source, provenance, changelog reference or asset is lost." .
+
+kb:credential-boundary rdf:type ktype:Feature ;
+               rdfs:label         "Credential classification and secret-safe exports" ;
+               kpred:feature-id   "F107.5" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:stabilization-trust-boundaries ;
+               hnav:order         "5"^^xsd:integer ;
+               kpred:relates-to   kb:data-egress-model ;
+               kpred:relates-to   kb:settings-polish ;
+               kpred:relates-to   kb:settings-unified-integrations ;
+               kpred:relates-to   kb:integration-plugin-sdk ;
+               kpred:description  "Give every setting a security classification and enforce it recursively at every boundary. The current safe-to-share profile serializes nested Turtle/Hume credentials, while build-time VITE provider keys become public bundle defaults. Profiles, backups, logs, workspace files and production bundles need positive allowlists and sentinel-secret tests, not comments or TypeScript interfaces that disappear at runtime." ;
+               kpred:principle    "A static client cannot keep an operator-wide secret. Runtime user-supplied credentials may be browser-persisted by explicit choice; real deployment credentials must never be compiled into a distributed bundle." ;
+               kpred:remaining    "DONE WHEN every settings field is classified secret/sensitive/public; recursive schema-driven redaction covers every export, backup, log and workspace-profile path; sentinel-secret tests prove nested credentials cannot escape; a build guard rejects real provider secrets in app and extension bundles; legacy credentials migrate safely; and UI/docs state where each credential lives, where it is sent, and what a static client cannot protect." .
+
+kb:settings-schema-roundtrip rdf:type ktype:Feature ;
+               rdfs:label         "Schema-driven settings persistence and migration" ;
+               kpred:feature-id   "F107.6" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:stabilization-trust-boundaries ;
+               hnav:order         "6"^^xsd:integer ;
+               kpred:depends-on   kb:credential-boundary ;
+               kpred:relates-to   kb:settings-polish ;
+               kpred:relates-to   kb:settings-unified-integrations ;
+               kpred:description  "Replace the manually reconstructed partial SettingsRecord with one authoritative runtime schema that drives defaults, validation, persistence, versioned migration, profile allowlists, secret classification and—where useful—UI metadata. Adding a field must make omission impossible or make an exhaustive test fail." ;
+               kpred:remaining    "DONE WHEN save(load(x)) preserves every non-ephemeral supported field; preferLocal, embedding model, analysis guidance/prompts, story, preview/asset settings, integrations, refresh, tutorial and n8n values all round-trip; old-version migrations pass fixtures; crafted profile keys cannot overwrite secrets; unknown future fields are preserved through a defined extension area or rejected loudly; and the manual partial-object persistence list is gone." .
+
+kb:untrusted-output-hardening rdf:type ktype:Feature ;
+               rdfs:label         "Publisher, extension, QR, and CLI untrusted-input hardening" ;
+               kpred:feature-id   "F107.7" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:stabilization-trust-boundaries ;
+               hnav:order         "7"^^xsd:integer ;
+               kpred:relates-to   kb:graph-publishing ;
+               kpred:relates-to   kb:publishing-v2 ;
+               kpred:relates-to   kb:browser-extension ;
+               kpred:relates-to   kb:publish-safety-gate ;
+               kpred:description  "Treat graph content, Markdown, themes, slugs, page titles, LLM responses, archive contents and CLI arguments as untrusted. Harden generated sites against stored XSS/CSS and remote-asset tracking; constrain every output path and destructive cleanup target; generate extension reports with safe DOM/text rather than active HTML; pin/self-host CMS code with integrity policy; use argument-vector deploy processes; and either implement real revocable mobile authentication or remove the QR access claim." ;
+               kpred:principle    "The content-policy publish gate decides WHAT Reckons.AI will carry; technical sanitization decides WHETHER content can take control of the carrier. Neither replaces the other." ;
+               kpred:remaining    "DONE WHEN generated HTML uses an allowlist sanitizer and effective CSP; theme/URL values are validated; extension and report fields are schema-validated and escaped or assigned through safe DOM APIs; slugs and all output paths resolve beneath an explicit safe root; cleanup refuses dot, repository root, home and ambiguous targets; deployment processes use argument arrays; CMS dependencies are pinned with integrity protection; QR revocation is enforceable if mobile access remains; and adversarial suites block script/event/javascript/CSS injection, archive bombs, path/symlink traversal, hostile titles and shell-shaped CLI values." .
+
+kb:application-boundary-decomposition rdf:type ktype:Feature ;
+               rdfs:label         "Transactional graph commands and application-controller decomposition" ;
+               kpred:feature-id   "F107.8" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:stabilization-trust-boundaries ;
+               hnav:order         "8"^^xsd:integer ;
+               kpred:depends-on   kb:canonical-graph-package ;
+               kpred:depends-on   kb:settings-schema-roundtrip ;
+               kpred:relates-to   kb:one-graph-canvas ;
+               kpred:description  "Establish one transactional GraphCommand boundary for mutations and a durable outbox consumed by local/Drive sync, audit history and reactive state. Split workspace sync into serialization, reconciliation, transport and coordination modules; make routes composition surfaces rather than database/network controllers; move TurtleChatPanel provider, Markdown, voice and graph actions into typed services; and remove the production 100ms force-show path so children cannot act before required state is ready. F92 still owns renderer consolidation; this work owns mutation and controller boundaries around it." ;
+               kpred:principle    "One user action must have one authoritative mutation path. Side effects scattered across UI callers cannot keep IndexedDB, files, Drive, audit history and the rendered graph consistent." ;
+               kpred:remaining    "DONE WHEN every graph mutation goes through a transactionally tested command API that emits one durable outbox event; direct UI imports of database/provider transports are forbidden by dependency lint; workspace and chat responsibilities are split into bounded modules; the 2D/3D scene model is renderer-neutral under F92; startup has a real loading/error boundary; and behavioural plus E2E parity tests cover the extracted controllers." .
+
+kb:pwa-delivery-budget rdf:type ktype:Feature ;
+               rdfs:label         "Offline shell and model-runtime delivery budgets" ;
+               kpred:feature-id   "F107.9" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:stabilization-trust-boundaries ;
+               hnav:order         "9"^^xsd:integer ;
+               kpred:depends-on   kb:reproducible-delivery ;
+               kpred:relates-to   kb:model-cache ;
+               kpred:relates-to   kb:mobile-uiux ;
+               kpred:relates-to   kb:local-offload ;
+               kpred:relates-to   kb:deep-testing ;
+               kpred:description  "Restore the distinction between an installable offline SHELL and optional model/media payloads. The current Workbox glob eagerly precaches roughly 90 MiB and duplicates ONNX/WASM runtimes, undermining lazy model loading, mobile storage and reliable updates. Optional models, demo assets and large media download only after explicit use, remain purgeable, and still work offline after their first successful cache." ;
+               kpred:constraint   "Set the core-shell, chunk and duplicate-byte budgets from measured constrained-device install/update tests before implementation; model weights and user-opted assets never count as shell prerequisites." ;
+               kpred:remaining    "DONE WHEN the core precache excludes optional models, demo media and other on-demand assets; ONNX/WASM bytes are not duplicated; model runtimes download only after explicit consent and can be inspected/purged; route/provider chunks are deliberately split; CI publishes and blocks on precache, chunk and duplicate-byte reports; and install, offline reuse and update recovery pass on constrained mobile-storage fixtures." .
+
+# -- UI experience and visual assurance programme (F108) -----------------------
+# Full desktop/mobile UI and visual-evidence review, 2026-07-22. This programme
+# turns the review into one ordered delivery contract. It extends the existing
+# release, deep-testing, mobile, legibility, and one-canvas work instead of
+# creating parallel versions of F33, F34, F36, F83, or F92.
+
+kb:ui-visual-assurance rdf:type ktype:Feature ;
+               rdfs:label         "UI experience and trustworthy visual assurance" ;
+               kpred:feature-id   "F108" ;
+               kpred:has-status   "in-progress" ;
+               kpred:priority     "high" ;
+               kpred:decided-on   "2026-07-22"^^xsd:date ;
+               kpred:has-part     kb:visual-evidence-integrity ;
+               kpred:has-part     kb:immediate-mobile-correctness ;
+               kpred:has-part     kb:responsive-application-shell ;
+               kpred:has-part     kb:graph-density-legibility ;
+               kpred:has-part     kb:accessible-interaction-contract ;
+               kpred:relates-to   kb:release-pipeline ;
+               kpred:relates-to   kb:deep-testing ;
+               kpred:relates-to   kb:mobile-uiux ;
+               kpred:relates-to   kb:graph-legibility ;
+               kpred:relates-to   kb:one-graph-canvas ;
+               kpred:description  "Make the distinctive Reckons.AI visual system dependable at phone, tablet, and desktop sizes, and make every UI-change claim rest on reproducible visual evidence. The ordered work first repairs the evidence contract, closes observed mobile correctness defects, establishes one responsive shell, makes populated graphs readable, and then ratchets accessibility and interaction quality across every route. This is the UI delivery layer over F33/F34/F36/F83/F92, not a replacement for those features." ;
+               kpred:principle    "A screenshot is evidence only when its build, commit, route state, renderer, device context, and failures are known. A clean image produced after swallowed setup or readiness errors is not a passing test." ;
+               kpred:principle    "MOBILE IS A PRIMARY LAYOUT, NOT A SHRUNK DESKTOP. Content order, navigation, panels, notifications, and touch interactions must be deliberately composed for the narrow viewport." ;
+               kpred:constraint   "Build-time checks stay quick and deterministic. Exhaustive workflows, device/orientation matrices, screenshot review, and local-VLM/Ollama analysis run through explicit local scripts and publish reviewable artifacts; they do not silently become a multi-hour build gate." ;
+               kpred:remaining    "DONE WHEN all five ordered parts meet their stated completion conditions; affected routes are reviewed from fresh production-build artifacts on desktop and Pixel-class mobile contexts; shell, graph, navigation, or typography changes pass the full local device/workflow suite; and no completion claim depends on swallowed browser errors, empty fixtures, stale screenshots, or an unreviewed VLM verdict." .
+
+kb:visual-evidence-integrity rdf:type ktype:Feature ;
+               rdfs:label         "Visual evidence integrity — quick build contract and full local review" ;
+               kpred:feature-id   "F108.1" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:ui-visual-assurance ;
+               hnav:order         "1"^^xsd:integer ;
+               kpred:relates-to   kb:release-pipeline ;
+               kpred:relates-to   kb:deep-testing ;
+               kpred:relates-to   kb:visual-testing ;
+               kpred:relates-to   kb:visual-workflow-harness ;
+               kpred:relates-to   kb:reproducible-delivery ;
+               kpred:description  "Repair the trust contract beneath F33/F34. The per-build browser gate is a deliberately small production-build contract: prove an exact 3D success state on a selected nonempty graph, prove forced no-WebGL fallback reaches exact 2D, and prove one Pixel ingest/layout state without runtime errors. The full local script owns real Playwright device projects, populated end-to-end workflows, screenshot comparison, orientations, accessibility evidence, and structured Ollama/VLM review. Both tiers fail on setup, seed, readiness, console, page, or audit errors instead of substituting an empty clean result." ;
+               kpred:constraint   "The quick gate has a measured browser-time budget and may not absorb the exhaustive F34 matrix. Local VLM output is advisory until it is schema-validated and attached to the exact screenshots it judged; deterministic assertions remain authoritative for renderer state, overflow, errors, and known layout contracts." ;
+               kpred:measured     "AUDIT 2026-07-22: the current full sweep has no screenshot regression assertion, catches setup/readiness/audit failures, captures empty graph/review states, and emulates workflow devices by viewport alone. Existing artifacts span different source revisions and do not record enough provenance to certify the current code." ;
+               kpred:remaining    "DONE WHEN the quick production-build contract is timed and blocking; 3D success cannot pass as 2D and fallback cannot pass as 3D; every visual run uses deterministic nonempty fixtures and fatal setup/readiness/browser errors; full workflows use true device/touch contexts; screenshot baselines have an explicit review/update procedure; run manifests record commit SHA, dirty state, URL, build mode, browser/device, orientation, renderer, timestamp, screenshot hashes and tool/model versions; and one local command generates a complete human-reviewable desktop/mobile report with structured Ollama findings." .
+
+kb:immediate-mobile-correctness rdf:type ktype:Feature ;
+               rdfs:label         "Immediate mobile correctness — Docs, graph cards, Facts, notices, and nav clearance" ;
+               kpred:feature-id   "F108.2" ;
+               kpred:has-status   "in-progress" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:ui-visual-assurance ;
+               hnav:order         "2"^^xsd:integer ;
+               kpred:relates-to   kb:mobile-uiux ;
+               kpred:relates-to   kb:deep-testing ;
+               kpred:description  "Fix the concrete phone defects confirmed by the 2026-07-22 review before undertaking the broader shell redesign. Docs must show the current document before its enormous navigation index; graph-management cards must reflow without switch/tab/remove collisions; Manual Facts inputs must inherit the dark readable field contract; mobile notifications must queue or collapse rather than stack over the working surface; and fixed navigation must reserve enough safe-area-aware space that it never covers page content or actions." ;
+               kpred:measured     "Pixel review evidence: Docs placed roughly 38,700px of link navigation ahead of content; seeded graph cards visibly overlapped metadata and actions; untyped Manual Facts inputs escaped the global dark input selector; notification stacks could consume the upper screen while another panel consumed the lower half; and the fixed navigation obscured content on KB, Settings, Ingest, and workflow captures." ;
+               kpred:remaining    "IN PROGRESS 2026-07-22. DONE WHEN the Docs navigation is a searchable drawer/disclosure with the active document rendered first; KB cards use a stable narrow-screen grid with readable identity and a separate action row/menu; Facts subject/predicate/object fields are explicit, labeled, readable in every state, and keyboard-friendly; only one mobile notice is expanded while dialogs/sheets are active; shared bottom clearance includes the nav and env(safe-area-inset-bottom); and fresh Pixel plus desktop production-build captures and focused interaction tests verify every affected route without overlap or regression." .
+
+kb:responsive-application-shell rdf:type ktype:Feature ;
+               rdfs:label         "Responsive application shell, navigation, and workspace layouts" ;
+               kpred:feature-id   "F108.3" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:ui-visual-assurance ;
+               hnav:order         "3"^^xsd:integer ;
+               kpred:depends-on   kb:immediate-mobile-correctness ;
+               kpred:relates-to   kb:mobile-uiux ;
+               kpred:relates-to   kb:one-graph-canvas ;
+               kpred:relates-to   kb:application-boundary-decomposition ;
+               kpred:description  "Implement F36's responsive architecture as one application shell rather than route-specific media-query patches. Give phones four or five labeled primary destinations plus an explicit More surface; use a reserved navigation row or rail on documents/forms and floating controls only on full-bleed canvases; share one Settings shell; and give Review and History deliberate workspace layouts instead of placing viewport-sized tools inside the narrow document container. Tablet and landscape are first-class compositions, not enlarged phone or shrunken desktop screenshots." ;
+               kpred:constraint   "The current F108.2 nav-clearance repair is a correctness patch, not approval of the existing eight-glyph information architecture. The broader navigation redesign requires route/task evidence and must preserve direct access to core ingest, graph, review, and reckoning workflows." ;
+               kpred:remaining    "DONE WHEN breakpoint and coarse-pointer state come from one shared source; mobile primary destinations are labeled and secondary destinations remain discoverable; Settings root and child routes use one responsive tab/drawer shell; Review provides a useful nonempty mobile/tablet composition with an operable divider or sheet; History uses the available workspace width without content collisions; keyboard, viewport resize, orientation and safe-area changes preserve the active task; and desktop, tablet portrait/landscape, and phone portrait/landscape workflows pass focused visual review." .
+
+kb:graph-density-legibility rdf:type ktype:Feature ;
+               rdfs:label         "Populated-graph legibility and density-aware rendering" ;
+               kpred:feature-id   "F108.4" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:ui-visual-assurance ;
+               hnav:order         "4"^^xsd:integer ;
+               kpred:relates-to   kb:graph-legibility ;
+               kpred:relates-to   kb:one-graph-canvas ;
+               kpred:relates-to   kb:deep-testing ;
+               kpred:description  "Extend F83's semantic condensation and F92's shared adaptive canvas into a visible density contract. Sparse graphs keep the current expressive 3D treatment; populated graphs clamp node scale, avoid label collisions, prioritize selected/hovered/neighbour labels, fade non-neighbour edges, and offer progressive focus, clustering, or a 2D overview before the canvas becomes a wall of text and crossings. Legibility decisions use the same shared scene model in main and Review modes." ;
+               kpred:principle    "RENDERED IS NOT READABLE. A canvas containing every node and label has failed if the user cannot identify structure, selection, or the next useful action." ;
+               kpred:remaining    "DONE WHEN deterministic small, medium, and large real-graph fixtures define acceptance thresholds; label placement and visibility are density/selection aware; node sizes are bounded; non-neighbour edges de-emphasize without erasing provenance; focus/cluster/overview transitions preserve selection and orientation; frame-budget-driven LOD follows F92 without oscillation; main and Review render parity is proven; and reviewed desktop plus mobile screenshots demonstrate meaningful structure rather than merely a nonblank canvas." .
+
+kb:accessible-interaction-contract rdf:type ktype:Feature ;
+               rdfs:label         "Accessible interaction, contrast, and target-size contract" ;
+               kpred:feature-id   "F108.5" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:ui-visual-assurance ;
+               hnav:order         "5"^^xsd:integer ;
+               kpred:relates-to   kb:mobile-uiux ;
+               kpred:relates-to   kb:deep-testing ;
+               kpred:relates-to   kb:reproducible-delivery ;
+               kpred:description  "Turn the existing UI rubric and compiler diagnostics into a blocking interaction contract. Interactive controls need sufficient target size and visible focus; small semantic text needs a contrast-safe token rather than the decorative purple data color; dialogs, menus, disclosures, dividers, graph controls, and mobile sheets must be operable by keyboard and coarse pointer; labels must name controls; and motion/media need appropriate alternatives. Deterministic audits identify candidates, while focused semantic tests and human visual review decide whether each candidate is a real defect." ;
+               kpred:constraint   "Do not treat the current raw sub-44px count as a pass/fail total: it includes noninteractive and intentionally compact elements. First repair audit classification, then ratchet verified interactive violations to zero without inflating visual density indiscriminately." ;
+               kpred:measured     "AUDIT 2026-07-22: mobile routes contain many verified compact glyph controls, the fixed navigation reaches 28-36px controls at narrow widths, small purple semantic text has weak contrast on common dark surfaces, and current Svelte diagnostics include static-element click handlers, unfocusable menu roles, unassociated labels, and media without captions." ;
+               kpred:remaining    "DONE WHEN token-level contrast tests cover text roles; verified interactive targets meet the chosen mobile target-size standard or carry a documented exception; every primary workflow is keyboard-completable with visible focus; touch-only and pointer-only controls have equivalents; labels, roles, dialog focus management, dividers, motion preferences and media alternatives pass automated and manual checks; Svelte accessibility warnings are ratcheted to zero; and the corrected device audit reports no unexplained target, overlap, clipping, or focus violations on supported routes." .

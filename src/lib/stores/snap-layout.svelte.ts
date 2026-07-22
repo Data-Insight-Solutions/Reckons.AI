@@ -12,7 +12,6 @@ type Corner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 const TOP_MARGIN = 60;   // SearchBar / top chrome
 const BOT_MARGIN = 52;   // NavBar + breathing room
 const COL_GAP    = 8;    // gap between top and bottom panel in same column
-const TOP_MAX    = 260;  // top panel caps at this height — rest goes to bottom
 const TOP_MAX_MOBILE = 180; // tighter cap on mobile — leave room for graph + node panel
 
 // Plain Map for data storage. _tick is the reactive signal — replaced with a new
@@ -54,9 +53,13 @@ export function getColumnMaxH(id: string, vh: number): number | null {
   if (!hasPartner) return null;
   const available = vh - TOP_MARGIN - BOT_MARGIN - COL_GAP;
   const isTop = corner === 'top-left' || corner === 'top-right';
-  // On mobile viewports, use a tighter cap so both panels + graph canvas fit
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 600;
-  const topCap = isMobile ? TOP_MAX_MOBILE : TOP_MAX;
-  const topH = Math.min(topCap, Math.floor(available * (isMobile ? 0.3 : 0.4)));
+  // Desktop: scale the top panel's share with the viewport (40%), so a large screen
+  // gives it room instead of the old fixed 260px cap that left big screens with a
+  // tiny scrolling panel. Mobile keeps a tight absolute cap so the graph + node
+  // panel still fit. Panels use max-height, so a panel still shrinks to its content.
+  const topH = isMobile
+    ? Math.min(TOP_MAX_MOBILE, Math.floor(available * 0.3))
+    : Math.floor(available * 0.4);
   return isTop ? topH : available - topH;
 }

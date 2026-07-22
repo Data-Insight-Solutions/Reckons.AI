@@ -15,6 +15,19 @@ import { loadWithDeviceFallback, type InferenceDevice } from './device-select';
 
 const FALLBACK_MODEL = 'onnx-community/Qwen2.5-0.5B-Instruct';
 
+/**
+ * Trim a raw generation to just the assistant's turn. Small models frequently run
+ * PAST their <|im_end|> — repeating, or hallucinating further <|im_start|>user /
+ * assistant turns — and that trailing text was being returned verbatim as "odd
+ * responses". Cut at the first stop token / next-turn marker and trim. A clean
+ * generation has none of these, so this is a no-op there.
+ */
+function cleanGeneration(text: string): string {
+  return text
+    .split(/<\|im_end\|>|<\|endoftext\|>|<\|im_start\|>/)[0]
+    .trim();
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let generator: any = null;
 let loadedModel = '';
@@ -140,7 +153,7 @@ self.addEventListener('message', async (ev: MessageEvent<Inbound>) => {
         do_sample: false,
         return_full_text: false
       })) as Array<{ generated_text: string }>;
-      post({ id: msg.id, type: 'result', text: out[0]?.generated_text ?? '' });
+      post({ id: msg.id, type: 'result', text: cleanGeneration(out[0]?.generated_text ?? '') });
     }
 
     if (msg.type === 'chat') {
@@ -154,7 +167,7 @@ self.addEventListener('message', async (ev: MessageEvent<Inbound>) => {
         do_sample: true,
         return_full_text: false
       })) as Array<{ generated_text: string }>;
-      post({ id: msg.id, type: 'result', text: out[0]?.generated_text ?? '' });
+      post({ id: msg.id, type: 'result', text: cleanGeneration(out[0]?.generated_text ?? '') });
     }
   } catch (err) {
     post({ id: msg.id, type: 'error', message: err instanceof Error ? err.message : String(err) });
