@@ -70,8 +70,11 @@
     if (typeof window === 'undefined') return false;
     try {
       const c = document.createElement('canvas');
-      return !!(window.WebGLRenderingContext &&
-        (c.getContext('webgl') || c.getContext('experimental-webgl')));
+      // Threlte/Three render on WebGL2 by default, so test that first, then fall back
+      // to WebGL1. The old check required window.WebGLRenderingContext AND only tried
+      // 'webgl', so a browser offering webgl2 could still read as "unavailable" and
+      // force the graph to 2D.
+      return !!(c.getContext('webgl2') || c.getContext('webgl') || c.getContext('experimental-webgl'));
     } catch { return false; }
   }
   let webglAvailable = $state(checkWebGL()); // synchronous — no Canvas mounted if false
@@ -282,7 +285,17 @@
 
   // Keep labelFontSize and renderer in sync with settings (e.g. changed from settings page)
   $effect(() => { const sz = settings().nodeLabelFontSize; if (sz != null) labelFontSize = sz; });
-  $effect(() => { const p = settings().prefer2D; if (p != null) use2D = p; });
+  $effect(() => {
+    const p = settings().prefer2D;
+    if (p != null) {
+      use2D = p;
+      // webglAvailable is otherwise a one-way latch — only ever set false (by "switch
+      // to 2D", the perf prompt, or a 3D error), never back true. Without re-detecting
+      // here, choosing 3D updates use2D but a stale !webglAvailable keeps the view in
+      // 2D, so the 3D preference is silently ignored. Re-check WebGL when 3D is chosen.
+      if (!p) webglAvailable = checkWebGL();
+    }
+  });
 
   // ── URL query param sync ──────────────────────────────────────────────────
   // Read initial view state from URL params (enables Shelly-recommended views
