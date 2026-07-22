@@ -77,14 +77,14 @@
       return !!(c.getContext('webgl2') || c.getContext('webgl') || c.getContext('experimental-webgl'));
     } catch { return false; }
   }
-  // WebGL capability at load. This is NOT the render gate (that is `use2D`), so it can
-  // never latch the view into 2D — it only seeds the initial default below and the
-  // "suggest 2D when fps is low" prompt.
+  // WebGL capability. Reactive: false during SSR, re-detected true on the client in
+  // onMount below, so the gate flips to 3D after hydration. Pure capability flag —
+  // NEVER set false by a user action (that was the latch bug).
   let webglAvailable = $state(checkWebGL());
-  // Default to 3D, unless the user saved a preference, or WebGL is genuinely
-  // unavailable (then default to 2D). An EXPLICIT 3D choice is always honoured and
-  // attempts the 3D canvas — the <Canvas> boundary is the real safety net if it fails.
-  let use2D = $state(settings().prefer2D ?? !webglAvailable);
+  // Default to attempting 3D. Do NOT seed this from webglAvailable — that value is
+  // false during SSR, which would stick use2D=true (2D) on a fresh load. The gate
+  // (use2D || !webglAvailable) handles the no-WebGL case reactively instead.
+  let use2D = $state(settings().prefer2D ?? false);
 
   let selected = $state<string | null>(null);
   let hoverTarget = $state<string | null>(null);
@@ -303,6 +303,10 @@
   // Read initial view state from URL params (enables Shelly-recommended views
   // to be bookmarked and shared within the same browser/device).
   onMount(async () => {
+    // Re-detect WebGL on the CLIENT — the $state initializer can carry a stale SSR
+    // value (false), which would keep the gate in 2D on a fresh load even when the
+    // browser supports WebGL. Guarantees a real check.
+    webglAvailable = checkWebGL();
     const params = $page.url.searchParams;
     const l = params.get('layout');
     if (l && ['force','focus','source','type','hub','timeline','order','hierarchy'].includes(l)) layout = l as typeof layout;
@@ -1653,7 +1657,7 @@
   <section class="graph" class:graph-landing={visible.length === 0}>
   {#if visible.length === 0}
     <LandingPage />
-  {:else if use2D}
+  {:else if use2D || !webglAvailable}
     <KnowledgeGraph2D
       statements={visible}
       {selected}
