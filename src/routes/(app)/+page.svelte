@@ -77,8 +77,14 @@
       return !!(c.getContext('webgl2') || c.getContext('webgl') || c.getContext('experimental-webgl'));
     } catch { return false; }
   }
-  let webglAvailable = $state(checkWebGL()); // synchronous — no Canvas mounted if false
-  let use2D = $state(settings().prefer2D ?? false);
+  // WebGL capability at load. This is NOT the render gate (that is `use2D`), so it can
+  // never latch the view into 2D — it only seeds the initial default below and the
+  // "suggest 2D when fps is low" prompt.
+  let webglAvailable = $state(checkWebGL());
+  // Default to 3D, unless the user saved a preference, or WebGL is genuinely
+  // unavailable (then default to 2D). An EXPLICIT 3D choice is always honoured and
+  // attempts the 3D canvas — the <Canvas> boundary is the real safety net if it fails.
+  let use2D = $state(settings().prefer2D ?? !webglAvailable);
 
   let selected = $state<string | null>(null);
   let hoverTarget = $state<string | null>(null);
@@ -285,16 +291,12 @@
 
   // Keep labelFontSize and renderer in sync with settings (e.g. changed from settings page)
   $effect(() => { const sz = settings().nodeLabelFontSize; if (sz != null) labelFontSize = sz; });
+  // Keep the render mode in sync with the saved preference (e.g. changed on the
+  // settings page). Because the render gate is `use2D` alone, setting this back to
+  // false reliably returns to 3D — there is no webglAvailable latch to fight.
   $effect(() => {
     const p = settings().prefer2D;
-    if (p != null) {
-      use2D = p;
-      // webglAvailable is otherwise a one-way latch — only ever set false (by "switch
-      // to 2D", the perf prompt, or a 3D error), never back true. Without re-detecting
-      // here, choosing 3D updates use2D but a stale !webglAvailable keeps the view in
-      // 2D, so the 3D preference is silently ignored. Re-check WebGL when 3D is chosen.
-      if (!p) webglAvailable = checkWebGL();
-    }
+    if (p != null) use2D = p;
   });
 
   // ── URL query param sync ──────────────────────────────────────────────────
@@ -1651,7 +1653,7 @@
   <section class="graph" class:graph-landing={visible.length === 0}>
   {#if visible.length === 0}
     <LandingPage />
-  {:else if use2D || !webglAvailable}
+  {:else if use2D}
     <KnowledgeGraph2D
       statements={visible}
       {selected}
@@ -1724,7 +1726,7 @@
         <div class="no-webgl">
           <p class="no-webgl-title mono">3D graph error</p>
           <p class="no-webgl-sub">{(error as Error)?.message ?? 'WebGL context could not be created.'}</p>
-          <button class="cta" style="margin-top:0.75rem;" onclick={() => { use2D = true; webglAvailable = false; resetPerfMonitor(); updateSettings({ prefer2D: true }); }}>switch to 2D view →</button>
+          <button class="cta" style="margin-top:0.75rem;" onclick={() => { use2D = true; resetPerfMonitor(); updateSettings({ prefer2D: true }); }}>switch to 2D view →</button>
         </div>
       {/snippet}
     </svelte:boundary>
