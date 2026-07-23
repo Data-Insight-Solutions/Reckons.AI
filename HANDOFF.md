@@ -1,7 +1,61 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-07-18.** Branch: **`feat/archive-graph`** → **PR #119 open against `dev`**
-(base verified). Continue F97 on that branch, or branch fresh off `dev` if #119 has merged.
+**Last updated: 2026-07-23.** Working branch this session: `fix/stabilization-sweep` (merged).
+Everything below the "SESSION 2026-07-23" block is the older F97 context and is still live
+(PR #119 is still open) — read it after the current standing.
+
+## ▶ CURRENT STANDING (2026-07-23) — pre-announcement push
+
+Goal: comfortable announcement by end of week. Seven PRs landed on `dev` this session; two
+things now block a fully-working announcement and BOTH are Matt's to do (not code):
+
+**Merged to `dev` today:**
+- #138 Blender GLB export + `checkGlb` emptiness guard (F90 scaffolded→ GLB done; still not an
+  MCP tool, still can't be spawned from the browser — needs an agent/sidecar path).
+- #139 Landing "what we believe": 7 tenets → 3 + "Show 4 more".
+- #140 F58.4 roadmap decision: Reckoning output-type selector + target-node picker; asset
+  outputs land as PENDING (Matt's call), needs a review-queue preview affordance that doesn't exist.
+- #141 gitignore `tests/visual/results/button-crawl_*.json` — 577MB was untracked+unignored.
+- #142 + #144 FEEDBACK: in-app form → n8n webhook → email, reachable from every page (nav ✎),
+  opens in place, captures coarse source route (privacy: first path segment only).
+- #143 stabilization sweep (F107.1 MCP trust boundary, F107.4/.5 sync, **F107.6 delegated Hume
+  token** — was uncommitted, now in). CodeQL caught a real HIGH in this branch: a TOCTOU in
+  `mcp-server/src/kb-reader.ts` (statSync+readFileSync → stale triples served forever); fixed
+  with a single fd. Plus a shell-injection in `graph-economics.ts --since=`, fixed.
+
+**BLOCKING the feedback announcement — Matt only, I cannot do these:**
+1. **SMTP credential** on the n8n workflow. Workflow built + created (unpublished):
+   https://n8n.srv814827.hstgr.cloud/workflow/93gfOyLx8pzcMoka — Send node wants an "Outlook SMTP"
+   cred (smtp.office365.com:587, STARTTLS, mailbox login / app password). Then ACTIVATE it.
+2. **`VITE_FEEDBACK_WEBHOOK_URL`** in Cloudflare Pages env = the webhook URL, then redeploy.
+   Until set, the LIVE site's feedback still falls back to mailto — the endpoint is build-time
+   product config, deliberately NOT the user's own `n8nBaseUrl` (routing that through the user's
+   instance silently 404'd feedback from anyone running their own n8n — fixed in #144).
+   Once both are done, ping me and I'll fire a test submission through the production webhook.
+
+**Salvage — pushed, deliberately UNMERGED:** `salvage/codex-orphaned-tests` holds ~1200 lines of
+Codex test/bench work that existed only inside two abandoned worktrees (now removed). The bench
+suite is fixed (a hallucinated `EXTRACTION_SYSTEM_PROMPT_COMPACT` import — renamed to `_FEWSHOT`
+2026-07-12 — meant a safety-preamble test had NEVER passed). The 4 VISUAL specs are UNRUN; the
+`docs-testing.ttl` rewrite is unreviewed. Triage before merging. A `kb-seed.ts` regression (reverted
+a rename-tolerant tab lookup) was dropped, not salvaged.
+
+**MERGE LANDSCAPE (as of 2026-07-23, for the dev→main promotion question):**
+- `dev` is 23 commits ahead of `main`; `main` is 11 AHEAD of dev (hotfixes applied directly:
+  3D webgl toggle 7a74326, mobile 44px, /history hang, + recurring safety attestations). A
+  dev→main promotion must reconcile those — and 7a74326 touches the SAME `+page.svelte` WebGL
+  block a #143 conflict already resolved, so expect that file to need attention.
+- Open PRs: #119 (F97 archive → dev, large, prior work — see below), #136 (filter panel → dev),
+  #137 (wasm cleanup → dev), #131/#132/#133 (dependabot → **main**), #120 (council → a feature
+  base, not dev/main).
+- **NEVER merge to main without explicit production intent; verify resolved base first** (CLAUDE.md).
+
+---
+
+## OLDER CONTEXT (2026-07-18) — F97 archive, PR #119 still open
+
+**Branch: `feat/archive-graph`** → **PR #119 open against `dev`** (base verified). Continue F97
+on that branch, or branch fresh off `dev` if #119 has merged.
 
 ## ▶ NEXT TASK (2026-07-18): F97 next phases — wire the archive core into the app
 
