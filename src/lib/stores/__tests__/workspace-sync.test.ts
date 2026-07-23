@@ -21,9 +21,13 @@ class FakeTable {
   async toArray() { return [...this.rows.values()]; }
   async put(r: any) { this.rows.set(r.id, r); }
   async bulkPut(rs: any[]) { for (const r of rs) this.rows.set(r.id, r); }
+  async bulkDelete(ks: string[]) { for (const k of ks) this.rows.delete(k); }
   async clear() { this.rows.clear(); }
   async get(k: string) { return this.rows.get(k); }
   async update(k: string, patch: any) { const r = this.rows.get(k); if (r) this.rows.set(k, { ...r, ...patch }); }
+  where(field: string) {
+    return { equals: (v: any) => ({ toArray: async () => [...this.rows.values()].filter((r) => r[field] === v) }) };
+  }
 }
 class FakeDB {
   name: string;
@@ -34,9 +38,12 @@ class FakeDB {
   glbOverrides = new FakeTable();
   icon2dOverrides = new FakeTable();
   workspace = new FakeTable();
+  kbSnapshots = new FakeTable();
   constructor(name = 'kbase') { this.name = name; }
   async open() { return this; }
   close() {}
+  // Passthrough: the real Dexie transaction gives atomicity; the fake just runs the body.
+  async transaction(_mode: string, _tables: unknown, cb: () => Promise<unknown>) { return cb(); }
 }
 const fakeDb = new FakeDB('kbase');
 
@@ -66,7 +73,9 @@ vi.mock('../../storage/kb-assets', () => ({
   extToMime: () => 'image/png',
 }));
 
-// importTurtleFull → one confirmed statement per " ." terminator in the text.
+// importTurtleFull → one confirmed statement per " ." terminator in the text. `cleanImportCount:
+// 0` marks this as an annotated (lossless) import, so populateKbFromTtl preserves the statements
+// verbatim rather than coercing them.
 vi.mock('../../rdf/import-ttl', () => ({
   importTurtleFull: async (ttl: string) => ({
     statements: (ttl.match(/\./g) ?? []).map((_, i) => ({
@@ -76,10 +85,15 @@ vi.mock('../../rdf/import-ttl', () => ({
       o: { kind: 'literal', value: `v${i}`, datatype: null, lang: null },
       status: 'confirmed',
     })),
+    sources: [],
+    cleanImportCount: 0,
   }),
 }));
 
-vi.mock('../../rdf/serialize', () => ({ toTurtle: () => '<a> <b> <c> .' }));
+vi.mock('../../rdf/serialize', () => ({
+  toTurtle: () => '<a> <b> <c> .',
+  toTurtleFull: () => '<a> <b> <c> .',
+}));
 
 // ── Fake File System Access API ──────────────────────────────────────────────
 

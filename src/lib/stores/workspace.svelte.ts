@@ -444,7 +444,7 @@ export async function readKbFromFolder(folderName: string): Promise<{
  */
 export async function syncAllKbs(): Promise<number> {
   if (!_handle) return 0;
-  const { toTurtle } = await import('../rdf/serialize');
+  const { toTurtle, toTurtleFull } = await import('../rdf/serialize');
   const registry = getRegistry();
   let synced = 0;
 
@@ -453,6 +453,7 @@ export async function syncAllKbs(): Promise<number> {
       // Open a temporary DB connection for this KB
       const kbDb = new KBaseDB(entry.id);
       const statements = await kbDb.statements.toArray();
+      const sources = await kbDb.sources.toArray();
       const settings = await kbDb.settings.get('main');
       const stableId = settings?.kbStableId;
 
@@ -462,10 +463,11 @@ export async function syncAllKbs(): Promise<number> {
         continue;
       }
 
-      // Collect binary assets and generate TTL with asset references
+      // Collect binary assets and generate LOSSLESS TTL (all statuses + provenance) so the
+      // per-KB folder file round-trips without dropping review state on a later re-pull.
       const assets = await collectAssets(kbDb);
       const assetTtl = await assetTriples(kbDb, assets);
-      const ttl = toTurtle(statements) + assetTtl;
+      const ttl = toTurtleFull(statements, sources, { kbStableId: stableId }) + assetTtl;
 
       await writeKbToFolder(entry, ttl, stableId, assets);
       synced++;
@@ -477,7 +479,7 @@ export async function syncAllKbs(): Promise<number> {
     }
   }
 
-  // Also write legacy knowledge.ttl for MCP server backward compat
+  // Also write legacy knowledge.ttl for the MCP server — kept LOSSY on purpose (see export note).
   try {
     const statements = await db.statements.toArray();
     const ttl = toTurtle(statements);
@@ -514,15 +516,17 @@ export function scheduleWorkspaceTtlExport(): void {
 async function _triggerWorkspaceTtlExport(): Promise<void> {
   if (!_handle) return;
   try {
-    const { toTurtle } = await import('../rdf/serialize');
+    const { toTurtle, toTurtleFull } = await import('../rdf/serialize');
     const statements = await db.statements.toArray();
+    const sources = await db.sources.toArray();
     const settings = await db.settings.get('main');
-    const baseTtl = toTurtle(statements);
 
-    // Write legacy flat file for MCP server
-    await writeToWorkspace(WORKSPACE_KB_FILE, baseTtl);
+    // Legacy flat file for the MCP server stays a LOSSY confirmed/refined projection —
+    // reification `stmt:` nodes would otherwise surface as spurious entities in the reader.
+    await writeToWorkspace(WORKSPACE_KB_FILE, toTurtle(statements));
 
-    // Write to multi-KB folder structure with assets
+    // The per-KB folder file is the one that gets re-imported, so it must be LOSSLESS
+    // (all statuses + provenance) or a re-pull silently drops review state (F107.4).
     const { getCurrentKbId } = await import('../storage/kb-registry');
     const currentId = getCurrentKbId();
     const registry = getRegistry();
@@ -530,7 +534,8 @@ async function _triggerWorkspaceTtlExport(): Promise<void> {
     if (entry) {
       const assets = await collectAssets(db);
       const assetTtl = await assetTriples(db, assets);
-      await writeKbToFolder(entry, baseTtl + assetTtl, settings?.kbStableId, assets);
+      const fullTtl = toTurtleFull(statements, sources, { kbStableId: settings?.kbStableId });
+      await writeKbToFolder(entry, fullTtl + assetTtl, settings?.kbStableId, assets);
       _lastSyncTime = Date.now();
     }
   } catch (err) {

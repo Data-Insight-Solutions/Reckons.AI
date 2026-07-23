@@ -141,7 +141,7 @@ kb:drive-folder-sync rdf:type ktype:Feature ;
                kpred:relates-to   kb:workspace-index ;
                kpred:relates-to   kb:canonical-graph-package ;
                kpred:relates-to   kb:transactional-sync-protocol ;
-               kpred:known-issue  "AUDIT 2026-07-21: 'feature-complete' above describes surface coverage, NOT data safety. Sync exports a lossy confirmed/refined-only Turtle projection; last-seen hashes are session-memory only; reconnect can treat that projection as authoritative and replace richer IndexedDB state, clearing sources and losing pending/rejected statuses and provenance. Local workspace sync shares the same reconcile path. Until F107.3 and F107.4 land, sync is NOT a trustworthy backup and destructive auto-pull is a release blocker." .
+               kpred:known-issue  "AUDIT 2026-07-21: 'feature-complete' above described surface coverage, NOT data safety. Sync exported a lossy confirmed/refined-only projection and reconnect could treat it as authoritative, clearing sources and losing pending/rejected statuses and provenance. PARTLY RESOLVED 2026-07-22 (F107.4 data-safety core): both backends now export lossless toTurtleFull for the round-tripped per-KB file, the shared import preserves all statuses + provenance, and any replace is snapshotted + transactional — so a reconnect no longer silently erases review state. REMAINING: last-seen hashes are still session-memory (no durable baseline) and there is no staged direction/diff before an existing-graph replace; sync is safer but not yet a fully trustworthy multi-writer backup until those Stage-2 pieces land." .
 
 kb:workspace-index rdf:type ktype:Feature ;
                rdfs:label   "Workspace index + session recovery" ;
@@ -3392,17 +3392,18 @@ kb:canonical-graph-package rdf:type ktype:Feature ;
 kb:transactional-sync-protocol rdf:type ktype:Feature ;
                rdfs:label         "Transactional workspace, Drive, and MCP interoperability" ;
                kpred:feature-id   "F107.4" ;
-               kpred:has-status   "planned" ;
+               kpred:has-status   "scaffolded" ;
                kpred:priority     "high" ;
                kpred:part-of      kb:stabilization-trust-boundaries ;
                hnav:order         "4"^^xsd:integer ;
                kpred:depends-on   kb:canonical-graph-package ;
                kpred:relates-to   kb:workspace-sync ;
                kpred:relates-to   kb:drive-folder-sync ;
+               kpred:progress     "DONE 2026-07-22 (data-safety core): the silent-erase-on-reconnect path is closed. Both sync backends now EXPORT lossless toTurtleFull (all statuses + provenance) for the round-tripped per-KB folder file (knowledge.ttl stays a lossy projection for the MCP reader), and the shared IMPORT (populateKbFromTtl) preserves parsed statuses + sources verbatim for an annotated file while still treating a plain external/legacy TTL as confirmed. Before any destructive replace it captures a full-fidelity recovery snapshot (new Dexie v7 kbSnapshots store + src/lib/storage/kb-snapshots.ts, restoreKbSnapshot), and the clear+repopulate runs in one Dexie transaction (mid-write failure rolls back). Round-trip test proves every status (confirmed/refined/pending/pending-removal/rejected/superseded) + provenance survive export->import (src/lib/stores/__tests__/kb-import-roundtrip.test.ts). STILL OPEN: durable persisted last-seen revisions (still session-memory), staged direction/conflict diff UI before an existing-graph replace, MCP as a third contract participant, and a cross-backend contract-test harness." ;
                kpred:relates-to   kb:mcp-workspace ;
                kpred:relates-to   kb:import-workspace-ux ;
                kpred:description  "Replace content-hash guesswork and destructive replacement with durable revisions, staged reconciliation, explicit direction/conflict UI, backup, and atomic commit/rollback. Local folder, Drive and MCP must agree on stable identity, graph discovery, source metadata, assets, and one pending-inbox path. Read/write/parse failures are surfaced as failures and never disguised as empty data or a successful sync count." ;
-               kpred:constraint   "Automatic pull remains off for an existing graph until a durable baseline and lossless reconcile path exist. First attach, reconnect, divergent revisions, malformed input, cancellation and mid-write failure are required test cases." ;
+               kpred:constraint   "Auto-pull is NOT gated off — instead the destructive concern it guarded against was removed at the reconcile itself: re-importing the app's own lossless export is now semantically a no-op, and any replace is snapshotted + transactional, so a reconnect can no longer silently erase review state. Durable last-seen revisions and a staged direction/diff before an existing-graph replace remain the required refinement (Stage 2); reconnect, divergent revisions, malformed input, cancellation and mid-write failure remain required test cases as that lands." ;
                kpred:remaining    "DONE WHEN last-seen revision state survives reload; first attach/reconnect shows direction and diff before destructive action; imports parse and validate into staging, back up live state, then commit all affected tables atomically with rollback; failures are user-visible; and shared contract tests drive the same fixtures through local folder, Drive and MCP while proving no statement status, source, provenance, changelog reference or asset is lost." .
 
 kb:credential-boundary rdf:type ktype:Feature ;
