@@ -4,6 +4,7 @@
   import { pendingStatements } from '$lib/stores/kb.svelte';
   import { analysisRunning, runAndStoreAnalysis } from '$lib/stores/auto-analyze.svelte';
   import type { AnalysisType } from '$lib/integrations/llm/re-analyze';
+  import { openFeedback } from '$lib/stores/feedback.svelte';
 
   const items: { href: string; label: string; glyph?: string; svg?: string; img?: string; small?: boolean }[] = [
     { href: '/', label: 'view' },
@@ -152,6 +153,17 @@
         <div class="pair-divider"></div>
       {/if}
     {/each}
+    <div class="pair-divider"></div>
+    <!-- Feedback from ANY page. Opens in place rather than navigating to /about, so the user
+         keeps the state they were annoyed about and we learn which page the friction was on. -->
+    <button
+      class="nav-pair-item nav-feedback"
+      title="send feedback"
+      aria-label="send feedback"
+      onclick={() => openFeedback(page.url.pathname)}
+    >
+      <span class="glyph nav-pair-glyph">✎</span>
+    </button>
   </div>
 </nav>
 
@@ -383,6 +395,15 @@
   }
   .nav-pair-item:hover { color: var(--ink); background: var(--surface-2); }
   .nav-pair-item.active { color: var(--accent); background: var(--accent-soft); }
+  /* The feedback item is a <button> among <a> siblings — strip the UA button styling so it is
+     visually indistinguishable from them. It has no .active state: it opens a dialog rather
+     than navigating, so there is no route for it to be "on". */
+  .nav-feedback {
+    background: none;
+    font: inherit;
+    cursor: pointer;
+    appearance: none;
+  }
   .nav-pair-glyph {
     font-size: 0.88rem;
     line-height: 1;
