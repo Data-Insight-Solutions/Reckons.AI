@@ -26,6 +26,7 @@
   import { RDF_TYPE } from '$lib/rdf/entity-types';
   import type { KBContext, KBAction } from '$lib/types/turtle-chat';
   import { buildKBContext as buildKBContextShared } from '$lib/rdf/kb-context';
+  import { planHumeAuth, fetchHumeTokenFromUrl } from '$lib/integrations/hume/token';
   import type { Statement, Source } from '$lib/rdf/types';
   import { v4 as uuid } from 'uuid';
 
@@ -46,7 +47,9 @@
 
   type VoiceState = 'setup' | 'idle' | 'requesting' | 'connecting' | 'listening' | 'thinking' | 'speaking' | 'error';
 
-  const isConfigured = $derived(!!(turtleSettings().humeApiKey || settings().humeAiApiKey));
+  // Configured if the caller has their own Hume key OR the persona carries a shared token
+  // endpoint (F107.6) — the latter lets a viewer hear the voice without any Hume setup.
+  const isConfigured = $derived(!!(turtleSettings().humeApiKey || settings().humeAiApiKey || turtleSettings().humeTokenUrl));
   let voiceState = $state<VoiceState>(isConfigured ? 'idle' : 'setup');
   let errorMsg = $state('');
 
@@ -248,14 +251,27 @@
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let clientOpts: Record<string, any>;
       const ts = turtleSettings();
-      const humeKey = ts.humeApiKey || s.humeAiApiKey;
-      const humeSecret = ts.humeSecretKey || s.humeSecretKey;
       const humeConfig = ts.humeConfigId || s.humeConfigId;
-      if (humeKey && humeSecret) {
-        const accessToken = await fetchAccessToken({ apiKey: humeKey, secretKey: humeSecret });
+      // Prefer the caller's own credentials; fall back to a shared token endpoint so a viewer
+      // with no Hume config can still hear the persona (F107.6). The secret key never leaves
+      // the owner — the viewer only ever gets a short-lived token.
+      const plan = planHumeAuth({
+        apiKey: ts.humeApiKey || s.humeAiApiKey,
+        secretKey: ts.humeSecretKey || s.humeSecretKey,
+        tokenUrl: ts.humeTokenUrl,
+      });
+      if (plan.method === 'mint-local') {
+        const accessToken = await fetchAccessToken({ apiKey: plan.apiKey, secretKey: plan.secretKey });
         clientOpts = { accessToken };
+      } else if (plan.method === 'token-url') {
+        clientOpts = { accessToken: await fetchHumeTokenFromUrl(plan.tokenUrl) };
+      } else if (plan.method === 'api-key') {
+        clientOpts = { apiKey: plan.apiKey };
       } else {
-        clientOpts = { apiKey: humeKey };
+        errorMsg = 'Voice needs a Hume API key, or a shared voice token endpoint.';
+        voiceState = 'error';
+        stopMic();
+        return;
       }
 
       const client = new HumeClient(clientOpts);

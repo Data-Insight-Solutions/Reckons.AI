@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "reckons": {
+      "command": "node",
+      "args": [
+        "mcp-server/dist/index.js",
+        "--kb",
+        "mcp-workspace"
+      ]
+    }
+  }
+}

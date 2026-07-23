@@ -11,6 +11,7 @@
   import { RDF_TYPE, RDFS_LABEL, type EntityTypeDef, type GeometryName } from '$lib/rdf/entity-types';
   import { leapNodeKeys } from '$lib/rdf/kb-leap';
   import { buildHierarchyAnchors } from '$lib/rdf/hierarchy';
+  import { hopDistances, adjacencyFromPairs } from '$lib/rdf/n-hop';
   import { icon2dOverrides } from '$lib/stores/icon2d-overrides.svelte';
   import type { GhostGraph, GhostNode } from '$lib/rdf/ghost-graph';
 
@@ -447,15 +448,10 @@
 
   function buildFocusAnchors(): Map<string, { x: number; y: number }> {
     if (!selected) return new Map();
-    const dist = new Map<string, number>([[selected, 0]]);
-    const queue = [selected]; let qi = 0;
-    while (qi < queue.length) {
-      const cur = queue[qi++]; const d = dist.get(cur)!;
-      for (const e of edges) {
-        const other = e.a.key === cur ? e.b.key : e.b.key === cur ? e.a.key : null;
-        if (other && !dist.has(other)) { dist.set(other, d + 1); queue.push(other); }
-      }
-    }
+    // Shared traversal (rdf/n-hop.ts). This used to walk the whole EDGE LIST for every
+    // dequeued node — O(V*E) — because no adjacency map existed. Building one first makes
+    // it O(V+E), which matters on the large graphs the focus layout is most useful on.
+    const dist = hopDistances(adjacencyFromPairs(edges.map((e) => [e.a.key, e.b.key] as const)), selected);
     const anchors = new Map<string, { x: number; y: number }>([[selected, { x: 0, y: 0 }]]);
     const angleMap = new Map<string, number>();
     const maxD = dist.size > 0 ? Math.max(...dist.values()) : 0;

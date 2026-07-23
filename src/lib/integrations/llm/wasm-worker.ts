@@ -11,11 +11,28 @@
  * "Cannot read properties of undefined (reading 'registerBackend')" crash.
  */
 
+import { loadWithDeviceFallback, type InferenceDevice } from './device-select';
+
 const FALLBACK_MODEL = 'onnx-community/Qwen2.5-0.5B-Instruct';
+
+/**
+ * Trim a raw generation to just the assistant's turn. Small models frequently run
+ * PAST their <|im_end|> — repeating, or hallucinating further <|im_start|>user /
+ * assistant turns — and that trailing text was being returned verbatim as "odd
+ * responses". Cut at the first stop token / next-turn marker and trim. A clean
+ * generation has none of these, so this is a no-op there.
+ */
+function cleanGeneration(text: string): string {
+  return text
+    .split(/<\|im_end\|>|<\|endoftext\|>|<\|im_start\|>/)[0]
+    .trim();
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let generator: any = null;
 let loadedModel = '';
+/** Provider the model actually loaded on — reported, never assumed. */
+let activeDevice: InferenceDevice = 'wasm';
 
 type Inbound =
   | { id: number; type: 'init'; model: string }
@@ -55,15 +72,26 @@ async function initPipeline(id: number, model: string): Promise<void> {
   env.allowLocalModels = false;
   env.useBrowserCache = true;
   if (env.backends?.onnx?.wasm) {
+    // Single-threaded: multi-threaded WASM needs SharedArrayBuffer, which needs COOP/COEP
+    // cross-origin-isolation headers this app does not set. Only binds on the WASM path —
+    // WebGPU sidesteps it entirely.
     env.backends.onnx.wasm.numThreads = 1;
   }
 
-  generator = await pipeline('text-generation', model, {
-    dtype: 'q4',
-    progress_callback: (p: { status: string; progress?: number }) => {
-      post({ id, type: 'progress', status: p.status, progress: p.progress });
-    }
-  });
+  // WebGPU when a real adapter exists, WASM otherwise — and WASM anyway if WebGPU fails to build.
+  // wasm.ts's header claimed this switching for months while nothing implemented it.
+  const loaded = await loadWithDeviceFallback((device) =>
+    pipeline('text-generation', model, {
+      device,
+      dtype: 'q4',
+      progress_callback: (p: { status: string; progress?: number }) => {
+        post({ id, type: 'progress', status: p.status, progress: p.progress });
+      },
+    }),
+  );
+  generator = loaded.value;
+  activeDevice = loaded.device;
+  post({ id, type: 'progress', status: `ready on ${activeDevice}`, progress: 100 });
   loadedModel = model;
 }
 
@@ -125,7 +153,7 @@ self.addEventListener('message', async (ev: MessageEvent<Inbound>) => {
         do_sample: false,
         return_full_text: false
       })) as Array<{ generated_text: string }>;
-      post({ id: msg.id, type: 'result', text: out[0]?.generated_text ?? '' });
+      post({ id: msg.id, type: 'result', text: cleanGeneration(out[0]?.generated_text ?? '') });
     }
 
     if (msg.type === 'chat') {
@@ -139,7 +167,7 @@ self.addEventListener('message', async (ev: MessageEvent<Inbound>) => {
         do_sample: true,
         return_full_text: false
       })) as Array<{ generated_text: string }>;
-      post({ id: msg.id, type: 'result', text: out[0]?.generated_text ?? '' });
+      post({ id: msg.id, type: 'result', text: cleanGeneration(out[0]?.generated_text ?? '') });
     }
   } catch (err) {
     post({ id: msg.id, type: 'error', message: err instanceof Error ? err.message : String(err) });

@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
   import { buildGraphView } from '$lib/rdf/graph-view';
+  import { connectedComponents, nHopNeighbours } from '$lib/rdf/n-hop';
   import { bestSuggestion } from '$lib/rdf/view-suggestions';
   import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
   import GraphLabels from '$lib/components/GraphLabels.svelte';
@@ -85,6 +86,7 @@
   // false during SSR, which would stick use2D=true (2D) on a fresh load. The gate
   // (use2D || !webglAvailable) handles the no-WebGL case reactively instead.
   let use2D = $state(settings().prefer2D ?? false);
+  let graph3DReady = $state(false);
 
   let selected = $state<string | null>(null);
   let hoverTarget = $state<string | null>(null);
@@ -434,6 +436,9 @@
       !GRAPH_EXCLUDED_PREDICATES.has(s.p.value)
     )
   );
+  $effect(() => {
+    if (visible.length === 0 || use2D || !webglAvailable) graph3DReady = false;
+  });
 
   /**
    * Statement-level filters (status · source · entity type · no-source · no-type), resolved
@@ -565,35 +570,14 @@
   const conflictCount = $derived(dichotomyList.filter((d) => d.kind === 'conflict').length);
 
   const islandNodes = $derived.by(() => {
-    const visited = new Set<string>();
     const smallComponentNodes = new Set<string>();
 
-    for (const node of allNodes) {
-      if (visited.has(node)) continue;
-
-      // BFS to find component
-      const component = new Set<string>();
-      const queue = [node];
-      visited.add(node);
-      component.add(node);
-
-      let i = 0;
-      while (i < queue.length) {
-        const current = queue[i++];
-        const neighbors = adjacency.get(current) || new Set();
-
-        for (const neighbor of neighbors) {
-          if (!visited.has(neighbor)) {
-            visited.add(neighbor);
-            component.add(neighbor);
-            queue.push(neighbor);
-          }
-        }
-      }
-
-      // Mark nodes in small components as islands
+    // Shared traversal (rdf/n-hop.ts). allNodes is passed explicitly because an isolated
+    // node has no adjacency entry and would otherwise vanish — and isolated nodes are
+    // exactly what this filter exists to surface.
+    for (const component of connectedComponents(adjacency, allNodes)) {
       if (component.size <= 3) {
-        component.forEach(n => smallComponentNodes.add(n));
+        component.forEach((n) => smallComponentNodes.add(n));
       }
     }
 
@@ -1654,7 +1638,12 @@
 </script>
 
 <div class="viewport" onpointermove={onGraphPointerMove}>
-  <section class="graph" class:graph-landing={visible.length === 0}>
+  <section
+    class="graph"
+    class:graph-landing={visible.length === 0}
+    data-graph-renderer={visible.length === 0 ? 'landing' : use2D || !webglAvailable ? '2d' : '3d'}
+    data-graph-ready={graph3DReady}
+  >
   {#if visible.length === 0}
     <LandingPage />
   {:else if use2D || !webglAvailable}
@@ -1722,6 +1711,7 @@
           onlabelsmove={setNodeLabels}
           onmarkersmove={(m) => { markerLabels = m; }}
           ontimelinepan={(c) => { timelineCenter = c; }}
+          onready={() => (graph3DReady = true)}
           highlighted={[...highlightedSet]}
           {dimMode}
         />
