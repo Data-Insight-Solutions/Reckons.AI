@@ -45,105 +45,6 @@ test:TestSuite
     skos:definition     "Reckons.AI test infrastructure: 336+ unit tests (Vitest + jsdom), Playwright E2E with 6 device profiles, visual regression with pixel analysis + DOM overlap + text presence checks, optional Mistral OCR and Claude Vision tiers. All tests run locally without API keys." ;
     skos:related        guide:WhatIsReckonsAI .
 
-test:GraphReviewStory
-    rdf:type            ktype:Concept ;
-    rdfs:label          "Reckons.AI Graph Review — Goal & Workflow" ;
-    <urn:reckons:nav/order> "0"^^xsd:integer ;
-    skos:definition     """The Reckons.AI Graph Review is an offline, exhaustive audit of the whole app treated as a graph: every button is clicked, every screen is visually checked, and every finding is tied back to the graph for human review. It runs locally and Opus-reviewed — no cloud dependency — and scores against the Web/Mobile UI-UX rubric.
-
-### The goal
-
-Catch the failures a "click everything, flag crashes" pass misses — silent no-ops (a control that fires, throws nothing, and does nothing) and stale-cache regressions — while producing a reviewable, graph-native record rather than a throwaway log.
-
-### Workflow overview
-
-1. **Enumerate** — collect every interactive element on every route (buttons, tabs, leap badges, sheets).
-2. **Act and assert a delta** — click each, then check that something observable actually changed (URL, node count, graph id, open panels, title, visible text). This is what catches silent no-ops.
-3. **Visual check** — pixel, DOM-overlap and touch-target checks run locally; a local VLM scores each screenshot against the rubric.
-4. **Persistent-context pass** — replay against a warm service worker to surface stale-cache regressions that fresh runs never reproduce.
-5. **Tie to the graph** — each route becomes a TestWorkflow and each click a TestStep, carrying its screenshot, a pass/fail verdict, and a citation to any rubric guideline it violates; findings queue as pending facts for review.
-6. **Review and grow** — Opus reads the coverage gaps and authors new predetermined paths, so the library grows over time.
-
-This page is the goal and workflow overview; the stepped review itself is generated as a TestWorkflow story.""" ;
-    skos:broader        test:TestSuite .
-
-
-## =============================================================================
-## Story: Reckons.AI Graph Review
-## =============================================================================
-## The stepped, in-app story for the offline exhaustive graph review — grounded
-## in the "Goal & Workflow" overview (test:GraphReviewStory). Steps 1–4 carry
-## real screenshots captured while driving the app; each step names the delta it
-## asserts, so the story shows WHY a crash-only crawl is not enough.
-
-test:GraphReviewFlow
-    rdf:type            story:Story ;
-    rdfs:label          "Reckons.AI Graph Review" ;
-    story:description   "Walk the offline exhaustive graph review as it runs against the app: enumerate every control, click each, and assert an observable delta so silent no-ops are caught — then tie every finding back to the graph for review." ;
-    story:autoplay      "false" ;
-    story:pace          "10" ;
-    kpred:screenshot-dir "tests/visual/screenshots/graph-review/" ;
-    skos:broader        test:GraphReviewStory .
-
-test:GraphReview-Step1
-    rdf:type            story:Step ;
-    story:partOf        test:GraphReviewFlow ;
-    story:order         "1"^^xsd:integer ;
-    story:title         "Enumerate every control" ;
-    story:content       "The review starts on the landing route and enumerates every interactive element — buttons, tabs, leap badges, sheets. The landing page alone exposes 18 controls; the crawl repeats this per route." ;
-    story:highlight     test:GraphReviewStory ;
-    kpred:icon2d        "/tests/visual/screenshots/graph-review/01-enumerate-landing.png" ;
-    kpred:assertion     "interactive element count > 0" ;
-    kpred:page          "/" .
-
-test:GraphReview-Step2
-    rdf:type            story:Step ;
-    story:partOf        test:GraphReviewFlow ;
-    story:order         "2"^^xsd:integer ;
-    story:title         "Act and assert a delta" ;
-    story:content       "Click the hero 'Getting started' button and assert the docs graph actually activates — 119 nodes laid out, not a silent no-op. A click that fires without changing anything observable is a finding." ;
-    kpred:icon2d        "/tests/visual/screenshots/graph-review/02-getting-started-graph.png" ;
-    kpred:assertion     "node-label count > 0 after click" ;
-    kpred:page          "/" .
-
-test:GraphReview-Step3
-    rdf:type            story:Step ;
-    story:partOf        test:GraphReviewFlow ;
-    story:order         "3"^^xsd:integer ;
-    story:title         "Catch the silent no-op" ;
-    story:content       "Follow a graph leap and assert the graph swapped to the target sub-graph — currentKbId changed and 39 new nodes rendered. This is the exact silent-no-op class a crash-only crawler misses (the docs-hub leap regression fixed this session)." ;
-    kpred:icon2d        "/tests/visual/screenshots/graph-review/03-leap-jump-subgraph.png" ;
-    kpred:assertion     "currentKbId changed after leap" ;
-    kpred:page          "/" .
-
-test:GraphReview-Step4
-    rdf:type            story:Step ;
-    story:partOf        test:GraphReviewFlow ;
-    story:order         "4"^^xsd:integer ;
-    story:title         "Visual check, locally" ;
-    story:content       "On each screen run the offline pixel, DOM-overlap and touch-target checks — no blank/solid-fill, targets at least 44px — before any VLM scoring. Cheapest checks first, no API keys." ;
-    kpred:icon2d        "/tests/visual/screenshots/graph-review/04-review-visual-check.png" ;
-    kpred:assertion     "pixel.isSolidFill === false" ;
-    kpred:page          "/review" .
-
-test:GraphReview-Step5
-    rdf:type            story:Step ;
-    story:partOf        test:GraphReviewFlow ;
-    story:order         "5"^^xsd:integer ;
-    story:title         "Tie every finding to the graph" ;
-    story:content       "Each route becomes a TestWorkflow and each click a TestStep carrying its screenshot, a pass/fail verdict, and a citation to any rubric guideline it violates; the worst findings queue as pending facts for human review." ;
-    kpred:assertion     "findings queued to knowledge.pending.jsonl" ;
-    kpred:page          "/review" .
-
-test:GraphReview-Step6
-    rdf:type            story:Step ;
-    story:partOf        test:GraphReviewFlow ;
-    story:order         "6"^^xsd:integer ;
-    story:title         "Review and grow" ;
-    story:content       "Opus reads the coverage gaps and authors new predetermined paths, so the story library grows over time — the 'living coverage' in F34." ;
-    story:highlight     test:GraphReviewStory ;
-    kpred:page          "/review" .
-
 test:UnitTests
     rdf:type            ktype:Concept ;
     rdfs:label          "Unit Tests" ;
@@ -164,7 +65,7 @@ test:VisualTests
 test:UserStoryTests
     rdf:type            ktype:Concept ;
     rdfs:label          "User Story Tests" ;
-    skos:definition     "End-to-end test scenarios that follow real user workflows. Each story imports graphs, navigates pages, takes screenshots at each step, and verifies UI state. Three stories: Dev Sprint Planning, User Docs Import, Cross-Graph Alignment." ;
+    skos:definition     "End-to-end test scenarios that follow real user workflows. Each story imports KBs, navigates pages, takes screenshots at each step, and verifies UI state. Three stories: Dev Sprint Planning, User Docs Import, Cross-KB Alignment." ;
     kpred:command       "npm run test:stories" ;
     skos:broader        test:VisualTests .
 
@@ -179,7 +80,7 @@ test:UserStoryTests
 test:DevSprintStory
     rdf:type            story:Story ;
     rdfs:label          "Developer Sprint Planning" ;
-    story:description   "A developer uses the Production and Roadmap graphs to plan a sprint. They import both graphs, compare them on the graph page, navigate to the align tab, run alignment, and verify the suggestions render correctly." ;
+    story:description   "A developer uses the Production and Roadmap KBs to plan a sprint. They import both KBs, compare them on the KB page, navigate to the align tab, run alignment, and verify the suggestions render correctly." ;
     story:autoplay      "false" ;
     story:pace          "10" ;
     kpred:test-file     "tests/visual/user-stories/dev-sprint.test.ts" ;
@@ -190,8 +91,8 @@ test:DevSprint-Step1
     rdf:type            story:Step ;
     story:partOf        test:DevSprintStory ;
     story:order         "1"^^xsd:integer ;
-    story:title         "Import Production graph" ;
-    story:content       "Clear all graphs, then import the Production Status graph. Navigate to the main page. Verify the graph renders (not a solid fill). The Production graph contains test suite entities, architecture components, and MCP tools." ;
+    story:title         "Import Production KB" ;
+    story:content       "Clear all KBs, then import the Production Status KB. Navigate to the main page. Verify the graph renders (not a solid fill). The Production KB contains test suite entities, architecture components, and MCP tools." ;
     story:highlight     test:UnitTests ;
     kpred:icon2d        "/tests/visual/screenshots/dev-sprint/01-production-imported.png" ;
     kpred:assertion     "pixel.isSolidFill === false" ;
@@ -201,8 +102,8 @@ test:DevSprint-Step2
     rdf:type            story:Step ;
     story:partOf        test:DevSprintStory ;
     story:order         "2"^^xsd:integer ;
-    story:title         "Import Roadmap graph" ;
-    story:content       "Import the Roadmap graph alongside the Production graph. Both graphs now coexist. The roadmap contains planned features with statuses (done, in-progress, planned)." ;
+    story:title         "Import Roadmap KB" ;
+    story:content       "Import the Roadmap KB alongside the Production KB. Both KBs now coexist. The roadmap contains planned features with statuses (done, in-progress, planned)." ;
     kpred:icon2d        "/tests/visual/screenshots/dev-sprint/02-roadmap-imported.png" ;
     kpred:page          "/" .
 
@@ -210,10 +111,10 @@ test:DevSprint-Step3
     rdf:type            story:Step ;
     story:partOf        test:DevSprintStory ;
     story:order         "3"^^xsd:integer ;
-    story:title         "Graph Page Shows Both graphs" ;
-    story:content       "Navigate to /kb. Both imported graphs appear in the registry list. Select two graphs for comparison using the compare checkboxes." ;
+    story:title         "KB Page Shows Both KBs" ;
+    story:content       "Navigate to /kb. Both imported KBs appear in the registry list. Select two KBs for comparison using the compare checkboxes." ;
     kpred:icon2d        "/tests/visual/screenshots/dev-sprint/03-kb-page-both.png" ;
-    kpred:assertion     "Graph entry count >= 2" ;
+    kpred:assertion     "KB entry count >= 2" ;
     kpred:page          "/kb" .
 
 test:DevSprint-Step4
@@ -221,7 +122,7 @@ test:DevSprint-Step4
     story:partOf        test:DevSprintStory ;
     story:order         "4"^^xsd:integer ;
     story:title         "Align Link Appears" ;
-    story:content       "After selecting two graphs for comparison, an 'align these graphs' link appears. This link navigates to the Review page with the align tab pre-selected." ;
+    story:content       "After selecting two KBs for comparison, an 'align these KBs' link appears. This link navigates to the Review page with the align tab pre-selected." ;
     kpred:assertion     "align link is visible" ;
     kpred:page          "/kb" .
 
@@ -229,9 +130,9 @@ test:DevSprint-Step5
     rdf:type            story:Step ;
     story:partOf        test:DevSprintStory ;
     story:order         "5"^^xsd:integer ;
-    story:title         "Review Align Tab with graph Picker" ;
-    story:content       "Navigate to /review and switch to the align tab. The graph picker component renders with chips for each available graph. Select a source graph to align against the active graph." ;
-    kpred:assertion     "Graph picker chip count >= 1" ;
+    story:title         "Review Align Tab with KB Picker" ;
+    story:content       "Navigate to /review and switch to the align tab. The KB picker component renders with chips for each available KB. Select a source KB to align against the active KB." ;
+    kpred:assertion     "KB picker chip count >= 1" ;
     kpred:page          "/review?tab=align" .
 
 test:DevSprint-Step6
@@ -239,7 +140,7 @@ test:DevSprint-Step6
     story:partOf        test:DevSprintStory ;
     story:order         "6"^^xsd:integer ;
     story:title         "Run Alignment" ;
-    story:content       "Click the first graph chip, then click the align button. Wait for alignment to complete (entity matching via exact IRI + embedding similarity). Results appear as AlignmentCards showing source→target entity matches." ;
+    story:content       "Click the first KB chip, then click the align button. Wait for alignment to complete (entity matching via exact IRI + embedding similarity). Results appear as AlignmentCards showing source→target entity matches." ;
     kpred:assertion     "alignment results render" ;
     kpred:page          "/review?tab=align" .
 
@@ -257,7 +158,7 @@ test:DevSprint-Step8
     story:partOf        test:DevSprintStory ;
     story:order         "8"^^xsd:integer ;
     story:title         "AlignmentCard Shows Flow" ;
-    story:content       "Each AlignmentCard shows the source→target graph entity flow with accept and reject buttons. The developer can approve matches (remapping the entity IRI) or reject them (keeping separate entities)." ;
+    story:content       "Each AlignmentCard shows the source→target KB entity flow with accept and reject buttons. The developer can approve matches (remapping the entity IRI) or reject them (keeping separate entities)." ;
     kpred:assertion     "ac-flow, ac-accept, ac-reject visible" ;
     kpred:page          "/review?tab=align" .
 
@@ -279,7 +180,7 @@ test:DevSprint-Step9
 test:UserDocsStory
     rdf:type            story:Story ;
     rdfs:label          "User Docs Import" ;
-    story:description   "A new user imports the documentation graphs to learn about Reckons.AI. They start with the starter guide, then import the production graph, and verify both appear in the graph registry." ;
+    story:description   "A new user imports the documentation KBs to learn about Reckons.AI. They start with the starter guide, then import the production KB, and verify both appear in the KB registry." ;
     story:autoplay      "false" ;
     story:pace          "10" ;
     kpred:test-file     "tests/visual/user-stories/user-docs.test.ts" ;
@@ -290,8 +191,8 @@ test:UserDocs-Step1
     rdf:type            story:Step ;
     story:partOf        test:UserDocsStory ;
     story:order         "1"^^xsd:integer ;
-    story:title         "Import Docs graph" ;
-    story:content       "Clear all existing graphs, then import the starter-guide.ttl documentation graph. This is the hub with leap nodes to sub-graphs. The graph should render with Reckons.AI at the center." ;
+    story:title         "Import Docs KB" ;
+    story:content       "Clear all existing KBs, then import the starter-guide.ttl documentation KB. This is the hub with leap nodes to sub-graphs. The graph should render with Reckons.AI at the center." ;
     kpred:icon2d        "/tests/visual/screenshots/user-docs/01-docs-kb-imported.png" ;
     kpred:page          "/" .
 
@@ -299,8 +200,8 @@ test:UserDocs-Step2
     rdf:type            story:Step ;
     story:partOf        test:UserDocsStory ;
     story:order         "2"^^xsd:integer ;
-    story:title         "Import Production graph" ;
-    story:content       "Import the production status graph alongside the docs graph. This contains the real test suite entities, architecture, and MCP tool documentation." ;
+    story:title         "Import Production KB" ;
+    story:content       "Import the production status KB alongside the docs KB. This contains the real test suite entities, architecture, and MCP tool documentation." ;
     kpred:icon2d        "/tests/visual/screenshots/user-docs/02-production-kb-imported.png" ;
     kpred:page          "/" .
 
@@ -308,10 +209,10 @@ test:UserDocs-Step3
     rdf:type            story:Step ;
     story:partOf        test:UserDocsStory ;
     story:order         "3"^^xsd:integer ;
-    story:title         "Graph Registry Shows Both" ;
-    story:content       "Navigate to /kb. Both graphs appear in the registry with their names, entity counts, and accent colors. The user can switch between them or select multiple for comparison." ;
+    story:title         "KB Registry Shows Both" ;
+    story:content       "Navigate to /kb. Both KBs appear in the registry with their names, entity counts, and accent colors. The user can switch between them or select multiple for comparison." ;
     kpred:icon2d        "/tests/visual/screenshots/user-docs/03-kb-registry-both.png" ;
-    kpred:assertion     "Graph entry count >= 2" ;
+    kpred:assertion     "KB entry count >= 2" ;
     kpred:page          "/kb" .
 
 
@@ -321,8 +222,8 @@ test:UserDocs-Step3
 
 test:CrossKBStory
     rdf:type            story:Story ;
-    rdfs:label          "Cross-Graph Alignment" ;
-    story:description   "Tests the full cross-Graph alignment workflow: import all three self-dogfooding graphs (docs, production, roadmap), verify the graph registry, run alignment, and check mobile responsive layout." ;
+    rdfs:label          "Cross-KB Alignment" ;
+    story:description   "Tests the full cross-KB alignment workflow: import all three self-dogfooding KBs (docs, production, roadmap), verify the KB registry, run alignment, and check mobile responsive layout." ;
     story:autoplay      "false" ;
     story:pace          "10" ;
     kpred:test-file     "tests/visual/user-stories/cross-kb-align.test.ts" ;
@@ -333,8 +234,8 @@ test:CrossKB-Step1
     rdf:type            story:Step ;
     story:partOf        test:CrossKBStory ;
     story:order         "1"^^xsd:integer ;
-    story:title         "Import All Three graphs" ;
-    story:content       "Clear all graphs, then import docs, production, and roadmap graphs in sequence. All three coexist in IndexedDB with separate Dexie databases." ;
+    story:title         "Import All Three KBs" ;
+    story:content       "Clear all KBs, then import docs, production, and roadmap KBs in sequence. All three coexist in IndexedDB with separate Dexie databases." ;
     kpred:icon2d        "/tests/visual/screenshots/cross-kb-align/01-all-three-imported.png" ;
     kpred:page          "/" .
 
@@ -342,10 +243,10 @@ test:CrossKB-Step2
     rdf:type            story:Step ;
     story:partOf        test:CrossKBStory ;
     story:order         "2"^^xsd:integer ;
-    story:title         "Graph Registry Shows Three" ;
-    story:content       "The graph page lists all three imported graphs. Each shows its name, entity count, and stable ID. This validates multi-Graph management." ;
+    story:title         "KB Registry Shows Three" ;
+    story:content       "The KB page lists all three imported KBs. Each shows its name, entity count, and stable ID. This validates multi-KB management." ;
     kpred:icon2d        "/tests/visual/screenshots/cross-kb-align/02-kb-registry-three.png" ;
-    kpred:assertion     "Graph entry count >= 3" ;
+    kpred:assertion     "KB entry count >= 3" ;
     kpred:page          "/kb" .
 
 test:CrossKB-Step9
@@ -360,6 +261,160 @@ test:CrossKB-Step9
 
 
 ## =============================================================================
+## Story: Pod View Arrivals
+## =============================================================================
+
+test:PodViewStory
+    rdf:type            story:Story ;
+    rdfs:label          "Pod View Arrivals" ;
+    story:description   "Tests the pod view (F29.3): a pending fact seeded through the extension bridge becomes a translucent drifting arrival node. The user toggles the pod chip, selects the arrival, and accepts it — confirming every pending statement touching the node." ;
+    story:autoplay      "false" ;
+    story:pace          "10" ;
+    kpred:test-file     "tests/visual/user-stories/pod-view.test.ts" ;
+    kpred:screenshot-dir "tests/visual/screenshots/pod-view/" ;
+    skos:broader        test:UserStoryTests .
+
+test:PodView-Step1
+    rdf:type            story:Step ;
+    story:partOf        test:PodViewStory ;
+    story:order         "1"^^xsd:integer ;
+    story:title         "Pod Chip Inactive by Default" ;
+    story:content       "Seed a pending fact via window.__reckonsKB.ingestTriples (the extension bridge path — statements land with status pending). On the home graph the 🐋 pod chip sits next to the layout toggle group, present but inactive." ;
+    kpred:icon2d        "/tests/visual/screenshots/pod-view/01-pod-off.png" ;
+    kpred:assertion     ".pod-chip visible, no .pod-active class" ;
+    kpred:page          "/" .
+
+test:PodView-Step2
+    rdf:type            story:Step ;
+    story:partOf        test:PodViewStory ;
+    story:order         "2"^^xsd:integer ;
+    story:title         "Toggle Pod View On" ;
+    story:content       "Clicking the pod chip activates pod mode. Pending-only 'arrival' nodes now render translucent and drifting with sky-blue (#38bdf8) dashed halos. The chip takes the pod-active accent." ;
+    kpred:icon2d        "/tests/visual/screenshots/pod-view/02-pod-on.png" ;
+    kpred:assertion     ".pod-chip has .pod-active class, no rendering artifacts" ;
+    kpred:page          "/" .
+
+test:PodView-Step3
+    rdf:type            story:Step ;
+    story:partOf        test:PodViewStory ;
+    story:order         "3"^^xsd:integer ;
+    story:title         "Select an Arrival" ;
+    story:content       "Selecting the arrival node (via the search bar) opens the node panel with a '🐋 arrival' row offering ✓ accept and ✕ dismiss. This row appears only in pod mode for nodes touched exclusively by pending statements." ;
+    kpred:icon2d        "/tests/visual/screenshots/pod-view/03-arrival-selected.png" ;
+    kpred:assertion     ".np-pod-actions visible with .np-pod-accept and .np-pod-dismiss" ;
+    kpred:page          "/" .
+
+test:PodView-Step4
+    rdf:type            story:Step ;
+    story:partOf        test:PodViewStory ;
+    story:order         "4"^^xsd:integer ;
+    story:title         "Accept the Arrival" ;
+    story:content       "Clicking ✓ accept confirms every pending statement touching the node and closes the panel. Re-selecting the same node shows no arrival row — it has been accepted into the graph." ;
+    kpred:icon2d        "/tests/visual/screenshots/pod-view/04-after-accept.png" ;
+    kpred:assertion     "statement confirmed; .np-pod-actions absent on re-select" ;
+    kpred:page          "/" .
+
+
+## =============================================================================
+## Story: Review Workbench
+## =============================================================================
+
+test:ReviewWorkbenchStory
+    rdf:type            story:Story ;
+    rdfs:label          "Review Workbench" ;
+    story:description   "Tests the F30 review workbench: browse controls on the preview pane (layout chips + node search), click-to-focus on review cards (accent border, camera fly, ◉ name badge, edge highlight), and the node-details panel with facts and a mini Shelly chat." ;
+    story:autoplay      "false" ;
+    story:pace          "10" ;
+    kpred:test-file     "tests/visual/user-stories/review-workbench.test.ts" ;
+    kpred:screenshot-dir "tests/visual/screenshots/review-workbench/" ;
+    skos:broader        test:UserStoryTests .
+
+test:ReviewWorkbench-Step1
+    rdf:type            story:Step ;
+    story:partOf        test:ReviewWorkbenchStory ;
+    story:order         "1"^^xsd:integer ;
+    story:title         "Browse Controls on the Preview Pane" ;
+    story:content       "With a pending fact seeded, the /review preview pane shows browse controls: free/focus/hub layout chips and a 'find node…' search input, ported from the home graph page." ;
+    kpred:icon2d        "/tests/visual/screenshots/review-workbench/01-browse-controls.png" ;
+    kpred:assertion     ".browse-controls visible with free/focus/hub chips and .node-search-input" ;
+    kpred:page          "/review" .
+
+test:ReviewWorkbench-Step2
+    rdf:type            story:Step ;
+    story:partOf        test:ReviewWorkbenchStory ;
+    story:order         "2"^^xsd:integer ;
+    story:title         "Click a Review Card to Focus" ;
+    story:content       "Clicking an incoming review card flies the preview camera to its subject node. The card gets an accent left border, a ◉ name badge appears over the graph, and the node-details panel opens with the node's facts (pending ones tagged) plus a mini Shelly chat." ;
+    kpred:icon2d        "/tests/visual/screenshots/review-workbench/02-card-focused.png" ;
+    kpred:assertion     ".entry-focused class set; .focus-badge shows node label; .node-details-pane visible" ;
+    kpred:page          "/review" .
+
+test:ReviewWorkbench-Step3
+    rdf:type            story:Step ;
+    story:partOf        test:ReviewWorkbenchStory ;
+    story:order         "3"^^xsd:integer ;
+    story:title         "Node Search Focuses a Node" ;
+    story:content       "Typing in the node search box lists matching nodes; picking one focuses it the same way a card click does — badge over the graph and details panel open." ;
+    kpred:icon2d        "/tests/visual/screenshots/review-workbench/03-node-search-focus.png" ;
+    kpred:assertion     ".focus-badge and .node-details-pane visible after search pick" ;
+    kpred:page          "/review" .
+
+test:ReviewWorkbench-Step4
+    rdf:type            story:Step ;
+    story:partOf        test:ReviewWorkbenchStory ;
+    story:order         "4"^^xsd:integer ;
+    story:title         "Close Clears the Focus State" ;
+    story:content       "Closing the node-details panel deselects the node: the badge disappears and the review card loses its focused accent border." ;
+    kpred:assertion     "badge, panel, and .entry-focused all cleared" ;
+    kpred:page          "/review" .
+
+
+## =============================================================================
+## Story: Currents Settings
+## =============================================================================
+
+test:CurrentsSettingsStory
+    rdf:type            story:Story ;
+    rdfs:label          "Currents Settings" ;
+    story:description   "Tests the F29.3 currents section on the /kb page: empty state, adding a current definition, and the save → reload round-trip. Settings persist as urn:reckons:meta/currents/* statements inside the graph itself." ;
+    story:autoplay      "false" ;
+    story:pace          "10" ;
+    kpred:test-file     "tests/visual/currents-settings.test.ts" ;
+    kpred:screenshot-dir "tests/visual/screenshots/currents/" ;
+    skos:broader        test:VisualTests .
+
+test:Currents-Step1
+    rdf:type            story:Step ;
+    story:partOf        test:CurrentsSettingsStory ;
+    story:order         "1"^^xsd:integer ;
+    story:title         "Empty State" ;
+    story:content       "With no currents configured, the section shows a '+ configure' button. Opening the editor reveals the location field, entity-type gate chips, and the 'no currents configured yet' message." ;
+    kpred:icon2d        "/tests/visual/screenshots/currents/02-empty-editor-open.png" ;
+    kpred:assertion     "#currents-location visible, type chips present, empty-list message shown" ;
+    kpred:page          "/kb" .
+
+test:Currents-Step2
+    rdf:type            story:Step ;
+    story:partOf        test:CurrentsSettingsStory ;
+    story:order         "2"^^xsd:integer ;
+    story:title         "Add a Current" ;
+    story:content       "Clicking '+ add current' creates an editable card: label, kind (rss/url/topic), enabled toggle, source URL, and cadence. Label edits recompute the urn:reckons:currents/<slug> subject shown under the card." ;
+    kpred:icon2d        "/tests/visual/screenshots/currents/03-one-current.png" ;
+    kpred:assertion     "slug derived from label (arxiv ai feed → arxiv-ai-feed)" ;
+    kpred:page          "/kb" .
+
+test:Currents-Step3
+    rdf:type            story:Step ;
+    story:partOf        test:CurrentsSettingsStory ;
+    story:order         "3"^^xsd:integer ;
+    story:title         "Save and Reload Round-Trip" ;
+    story:content       "Saving writes the settings as meta statements into the graph. After a full page reload the section reads 'edit (1)', and reopening the editor shows the location, label, and source URL exactly as saved." ;
+    kpred:icon2d        "/tests/visual/screenshots/currents/04-persisted-after-reload.png" ;
+    kpred:assertion     "location, label, sourceUrl, and slug survive reload" ;
+    kpred:page          "/kb" .
+
+
+## =============================================================================
 ## Static Page Screenshots
 ## =============================================================================
 
@@ -371,8 +426,8 @@ test:PageScreenshots
 
 test:MainPageEmpty
     rdf:type            ktype:Concept ;
-    rdfs:label          "Main Page (Empty graph)" ;
-    skos:definition     "The graph view with an empty knowledge graph. Should show the empty state message and Shelly greeting, not a blank screen." ;
+    rdfs:label          "Main Page (Empty KB)" ;
+    skos:definition     "The graph view with an empty knowledge base. Should show the empty state message and Shelly greeting, not a blank screen." ;
     kpred:icon2d        "/tests/visual/screenshots/main-page-empty.png" ;
     kpred:page          "/" ;
     skos:broader        test:PageScreenshots .
@@ -398,7 +453,7 @@ test:MainPageTablet
 test:IngestPage
     rdf:type            ktype:Concept ;
     rdfs:label          "Ingest Page" ;
-    skos:definition     "The /ingest page with text, URL, file, and graph import tabs. Verified for correct tab rendering and input field visibility." ;
+    skos:definition     "The /ingest page with text, URL, file, and KB import tabs. Verified for correct tab rendering and input field visibility." ;
     kpred:icon2d        "/tests/visual/screenshots/ingest-page.png" ;
     kpred:page          "/ingest" ;
     skos:broader        test:PageScreenshots .
@@ -422,8 +477,8 @@ test:ReviewMobile
 
 test:KBPage
     rdf:type            ktype:Concept ;
-    rdfs:label          "Graph Management Page" ;
-    skos:definition     "The /kb page showing the graph registry, predicate manager, and workspace controls." ;
+    rdfs:label          "KB Management Page" ;
+    skos:definition     "The /kb page showing the KB registry, predicate manager, and workspace controls." ;
     kpred:icon2d        "/tests/visual/screenshots/kb-page.png" ;
     kpred:page          "/kb" ;
     skos:broader        test:PageScreenshots .
