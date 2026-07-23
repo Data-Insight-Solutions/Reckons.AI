@@ -97,6 +97,13 @@
       "desc": "F34: clicks every interactive element on every route; flags crashes, blank screens, SILENT no-ops, and sub-44px touch targets. Pure local JS (no Ollama). Disabled by default because it needs a server already running — `npm run dev`, then enable this or run `npm run offline:all -- --only=button-crawl`"
     },
     {
+      "name": "graph-economics",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/graph-economics.ts",
+      "desc": "F74.5: both sides of the token ledger — TTL maintenance churn and MCP tool-schema tax (debit) against compressed-context saving, cited avoided-rework, and the extend-vs-add cohesion ratio (credit) — plus break-even and the compounding curve. Advisory, never blocking: a ledger reports, it does not gate. Reports correlation and cited events only; there is no repo built without a graph to compare against"
+    },
+    {
       "name": "describe-entities",
       "tier": "agent",
       "enabled": true,

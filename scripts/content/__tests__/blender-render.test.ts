@@ -13,7 +13,7 @@ import { deflateSync, crc32 } from 'zlib';
 import { writeFileSync, mkdtempSync } from 'fs';
 import { tmpdir } from 'os';
 import path from 'path';
-import { checkImage, sceneToPython } from '../blender-render';
+import { checkImage, checkGlb, sceneToPython } from '../blender-render';
 
 /** Minimal 8-bit RGB PNG encoder — enough to exercise the decoder in checkImage. */
 function makePng(width: number, height: number, pixel: (x: number, y: number) => [number, number, number]): Buffer {
@@ -109,5 +109,95 @@ describe('sceneToPython — deterministic and grounded', () => {
 
   it('clamps samples so a hostile scene cannot ask for a million-sample render', () => {
     expect(sceneToPython({ objects: [], samples: 999999 }, '/tmp/a.png')).toContain('samples = 128');
+  });
+
+  it('GLB mode exports and adds NO camera or lights — the app lights its own scene', () => {
+    const py = sceneToPython({ objects: [{ shape: 'ico' }] }, '/tmp/a.glb', 'glb');
+    expect(py).toContain('export_scene.gltf');
+    expect(py).toContain("export_format='GLB'");
+    expect(py).not.toContain('bpy.ops.render.render');
+    expect(py).not.toContain('bpy.data.lights.new');
+    expect(py).not.toContain('bpy.data.cameras.new');
+  });
+
+  it('clamps ico subdivisions — a node model is drawn hundreds of times', () => {
+    expect(sceneToPython({ objects: [{ shape: 'ico', subdivisions: 99 }] }, '/tmp/a.glb', 'glb')).toContain('subdivisions=3');
+  });
+});
+
+/**
+ * The GLB counterpart of the black-frame guard. `bpy.ops.export_scene.gltf` writes a perfectly
+ * valid, entirely EMPTY .glb and exits 0 when the scene had no meshes — verified against real
+ * Blender 5.2, which produced exactly that. These build the container by hand so the guard is
+ * tested against a real empty export, not a hypothetical one.
+ */
+function makeGlb(json: unknown, opts: { magic?: number; version?: number; declaredLength?: number } = {}): Buffer {
+  let jsonBuf = Buffer.from(JSON.stringify(json), 'utf8');
+  // glTF requires chunks padded to 4-byte boundaries — JSON pads with spaces.
+  while (jsonBuf.length % 4 !== 0) jsonBuf = Buffer.concat([jsonBuf, Buffer.from(' ')]);
+
+  const header = Buffer.alloc(12);
+  header.writeUInt32LE(opts.magic ?? 0x46546c67, 0);
+  header.writeUInt32LE(opts.version ?? 2, 4);
+  header.writeUInt32LE(opts.declaredLength ?? 12 + 8 + jsonBuf.length, 8);
+
+  const chunkHeader = Buffer.alloc(8);
+  chunkHeader.writeUInt32LE(jsonBuf.length, 0);
+  chunkHeader.writeUInt32LE(0x4e4f534a, 4); // 'JSON'
+  return Buffer.concat([header, chunkHeader, jsonBuf]);
+}
+
+/** A glTF doc with one mesh whose POSITION accessor has `count` vertices. */
+const gltfWith = (count: number) => ({
+  asset: { version: '2.0' },
+  meshes: [{ primitives: [{ attributes: { POSITION: 0 } }] }],
+  accessors: [{ count, type: 'VEC3', componentType: 5126 }],
+});
+
+describe('checkGlb — the empty-export guard', () => {
+  it('PASSES a model that actually contains geometry', () => {
+    const p = write('real.glb', makeGlb(gltfWith(572)));
+    const c = checkGlb(p);
+    expect(c.ok).toBe(true);
+    expect(c.meshes).toBe(1);
+    expect(c.vertices).toBe(572);
+  });
+
+  it('CATCHES an empty export — valid GLB, zero meshes, exit code 0. The whole point.', () => {
+    const p = write('empty.glb', makeGlb({ asset: { version: '2.0' }, meshes: [] }));
+    const c = checkGlb(p);
+    expect(c.ok).toBe(false);
+    expect(c.reason).toMatch(/no meshes|empty/i);
+  });
+
+  it('CATCHES a mesh that declares no vertices — present but undrawable', () => {
+    const p = write('novert.glb', makeGlb(gltfWith(0)));
+    const c = checkGlb(p);
+    expect(c.ok).toBe(false);
+    expect(c.reason).toMatch(/0 vertices|nothing to draw/i);
+  });
+
+  it('CATCHES a truncated export — the JSON chunk comes first, so it otherwise looks fine', () => {
+    // Declare a much larger file than we actually wrote: a killed export mid-write.
+    const p = write('trunc.glb', makeGlb(gltfWith(572), { declaredLength: 999999 }));
+    const c = checkGlb(p);
+    expect(c.ok).toBe(false);
+    expect(c.reason).toMatch(/truncated/i);
+  });
+
+  it('catches a non-GLB masquerading as a model', () => {
+    const p = write('fake.glb', Buffer.from('this is not a glb, it is a lie'.repeat(10)));
+    expect(checkGlb(p).ok).toBe(false);
+  });
+
+  it('rejects glTF 1.0 — the app only loads 2.0', () => {
+    const p = write('v1.glb', makeGlb(gltfWith(572), { version: 1 }));
+    expect(checkGlb(p).ok).toBe(false);
+  });
+
+  it('catches a file Blender never wrote', () => {
+    const c = checkGlb(path.join(dir, 'does-not-exist.glb'));
+    expect(c.ok).toBe(false);
+    expect(c.reason).toMatch(/no file|never wrote/i);
   });
 });

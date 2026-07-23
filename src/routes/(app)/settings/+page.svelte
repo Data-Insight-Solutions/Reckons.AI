@@ -2318,7 +2318,7 @@
   /* ── Auto-save indicator ── */
   .autosave-indicator {
     position: fixed;
-    bottom: 1rem;
+    bottom: var(--app-nav-clearance);
     right: 1rem;
     font-family: var(--font-mono);
     font-size: 0.7rem;

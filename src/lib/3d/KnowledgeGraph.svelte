@@ -20,6 +20,7 @@
   import { glbOverrides } from '$lib/stores/glb-overrides.svelte';
   import { recordFrame } from '$lib/stores/perf-monitor.svelte';
   import { leapNodeKeys } from '$lib/rdf/kb-leap';
+  import { hopDistances, adjacencyFromPairs } from '$lib/rdf/n-hop';
   import { SKOS_BROADER, NAV_ORDER, NAV_LAYER } from '$lib/rdf/hierarchy';
 
   interactivity();
@@ -42,7 +43,8 @@
     onhovermove = () => {},
     onmarkersmove = () => {},
     onlabelsmove = () => {},
-    ontimelinepan = () => {}
+    ontimelinepan = () => {},
+    onready = () => {}
   } = $props<{
     statements?: Statement[];
     selected?: string | null;
@@ -62,6 +64,8 @@
     onmarkersmove?: (markers: Array<{ key: string; label: string; color: string; x: number; y: number }>) => void;
     onlabelsmove?: (labels: Array<{ key: string; label: string; x: number; y: number; opacity: number }>) => void;
     ontimelinepan?: (center: number) => void;
+    /** Fired after a non-empty scene has completed at least one animation frame. */
+    onready?: () => void;
   }>();
 
   const isHistoryMode = $derived(historyTimestamp !== null);
@@ -260,21 +264,10 @@
     if (!selected) return { anchors: new Map(), radii: [], distances: new Map() };
 
     // ── 1. BFS hop distances ─────────────────────────────────────────────────
-    const distances = new Map<string, number>();
-    distances.set(selected, 0);
-    const queue = [selected];
-    let qi = 0;
-    while (qi < queue.length) {
-      const cur = queue[qi++];
-      const d = distances.get(cur)!;
-      for (const e of edges) {
-        const other = e.a.key === cur ? e.b.key : e.b.key === cur ? e.a.key : null;
-        if (other && !distances.has(other)) {
-          distances.set(other, d + 1);
-          queue.push(other);
-        }
-      }
-    }
+    // Shared traversal (rdf/n-hop.ts) — this was a verbatim copy of the 2D version, and
+    // both rescanned the entire EDGE LIST per dequeued node (O(V*E)). Building an
+    // adjacency map first makes it O(V+E).
+    const distances = hopDistances(adjacencyFromPairs(edges.map((e) => [e.a.key, e.b.key] as const)), selected);
 
     // ── 2. Classify hop-1 neighbors by predicate + direction ────────────────
     // 'out' = selected is the subject (→ target)
@@ -926,6 +919,7 @@
   const linePositions = new Float32Array(MAX_EDGES * 6);
   const hlLinePositions = new Float32Array(MAX_EDGES * 6); // highlighted edges (selected node)
   let lineGeomHl: THREE.BufferGeometry | undefined = $state();
+  let reportedReady = false;
 
   // Attach position attributes imperatively with a direct THREE import — survives
   // minification, unlike <T.BufferAttribute> (see comment at the template markup).
@@ -1015,6 +1009,13 @@
 
     if (renderer && camera.current) {
       const canvas = renderer.domElement;
+
+      if (!reportedReady && nodes.length > 0 && canvas.width > 0 && canvas.height > 0) {
+        reportedReady = true;
+        // Threlte renders after its update tasks. Report on the following
+        // browser frame so this signal cannot mean only "the branch mounted".
+        requestAnimationFrame(onready);
+      }
 
       // Project selected node for overlay positioning
       if (selected) {

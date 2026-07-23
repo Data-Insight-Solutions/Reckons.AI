@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { analyzePixels } from '../visual/vision-local';
 
 /**
  * Deploy gate — smoke test for the "black graph" production bug (see PR #21 /
@@ -19,7 +20,7 @@ import { test, expect } from '@playwright/test';
  * is wired into CI as its own gate (`.github/workflows/ci.yml`, job `smoke`).
  */
 
-test('documentation graph renders nodes without a WebGL/renderer crash', async ({ page }) => {
+test('documentation graph renders nodes without a WebGL/renderer crash', async ({ page }, testInfo) => {
   const pageErrors: string[] = [];
   const consoleErrors: string[] = [];
   page.on('pageerror', (err) => pageErrors.push(err.message + '\n' + (err.stack ?? '')));
@@ -73,13 +74,24 @@ test('documentation graph renders nodes without a WebGL/renderer crash', async (
   // every frame, so a short observation window is enough to catch it.
   await page.waitForTimeout(1_500);
 
-  // A visible canvas with a real, non-zero size must be present (2D or 3D
-  // renderer — either way there is a <canvas>).
-  const canvas = page.locator('canvas').first();
+  // This deploy gate is specifically a 3D guarantee. A 2D fallback still draws a
+  // canvas and labels, so accepting either renderer let a broken/disabled WebGL
+  // path report success. The route exposes its actual renderer choice as stable
+  // DOM state so the assertion does not depend on implementation-only classes.
+  await expect(page.locator('[data-graph-renderer="3d"][data-graph-ready="true"]')).toBeVisible();
+
+  // A visible 3D canvas with a real, non-zero size must be present.
+  const canvas = page.locator('[data-graph-renderer="3d"] canvas').first();
   await expect(canvas).toBeVisible({ timeout: 10_000 });
   const box = await canvas.boundingBox();
   expect(box?.width ?? 0).toBeGreaterThan(0);
   expect(box?.height ?? 0).toBeGreaterThan(0);
+  const renderedFrame = await canvas.screenshot();
+  await testInfo.attach('production-3d-canvas', { body: renderedFrame, contentType: 'image/png' });
+  const framePixels = await analyzePixels(renderedFrame);
+  expect(framePixels.isBlank, framePixels.anomalyDetails.join('; ')).toBe(false);
+  expect(framePixels.uniqueColorCount).toBeGreaterThan(20);
+  expect(framePixels.dominantColorRatio).toBeLessThan(0.995);
 
   // The 3D renderer's error boundary fallback (`.no-webgl`, the svelte:boundary
   // `failed` snippet in routes/(app)/+page.svelte) must never appear.
@@ -91,6 +103,44 @@ test('documentation graph renders nodes without a WebGL/renderer crash', async (
   expect(pageErrors, `Uncaught page errors:\n${pageErrors.join('\n---\n')}`).toHaveLength(0);
   const matchingConsoleErrors = consoleErrors.filter((e) => rendererErrorPattern.test(e));
   expect(matchingConsoleErrors, `Renderer errors in console:\n${matchingConsoleErrors.join('\n---\n')}`).toHaveLength(0);
+});
+
+test('documentation graph uses the intentional 2D fallback when WebGL is unavailable', async ({ page }, testInfo) => {
+  // Remove only WebGL contexts before any application code runs. The ordinary
+  // 2D canvas context remains available, making this a deterministic capability
+  // fallback check rather than a browser/CI hardware accident.
+  await page.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (
+      this: HTMLCanvasElement,
+      contextId: string,
+      ...args: unknown[]
+    ) {
+      if (['webgl', 'webgl2', 'experimental-webgl'].includes(contextId.toLowerCase())) return null;
+      return (original as (...values: unknown[]) => RenderingContext | null).call(this, contextId, ...args);
+    } as typeof HTMLCanvasElement.prototype.getContext;
+  });
+
+  const pageErrors: string[] = [];
+  page.on('pageerror', (err) => pageErrors.push(err.message));
+
+  await page.goto('/');
+  await page.locator('nav').waitFor({ timeout: 15_000 });
+  await page.getByRole('button', { name: /documentation graph/i }).click();
+
+  await expect(page.locator('[data-graph-renderer="2d"]')).toBeVisible({ timeout: 30_000 });
+  const canvas = page.locator('[data-graph-renderer="2d"] canvas').first();
+  await expect(canvas).toBeVisible();
+  const box = await canvas.boundingBox();
+  expect(box?.width ?? 0).toBeGreaterThan(0);
+  expect(box?.height ?? 0).toBeGreaterThan(0);
+  const fallbackFrame = await canvas.screenshot();
+  await testInfo.attach('production-2d-fallback-canvas', { body: fallbackFrame, contentType: 'image/png' });
+  const fallbackPixels = await analyzePixels(fallbackFrame);
+  expect(fallbackPixels.isBlank, fallbackPixels.anomalyDetails.join('; ')).toBe(false);
+  expect(fallbackPixels.uniqueColorCount).toBeGreaterThan(20);
+  await expect(page.locator('.no-webgl')).toHaveCount(0);
+  expect(pageErrors, `Uncaught page errors:\n${pageErrors.join('\n---\n')}`).toHaveLength(0);
 });
 
 /**

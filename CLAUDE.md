@@ -133,6 +133,37 @@ Before doing any recurring task yourself, route it to the **cheapest tier that c
 
 Jobs live in `scripts/offline/jobs.json` with a `tier` field. `npm run offline:all` runs script tier first; `npm run offline:all -- --tier=script` runs only the free ones.
 
+### RUN THESE — the offline tools are not optional reading
+
+**This section exists because the doctrine above did not work on its own.** On 2026-07-18 a session
+read the tiering rules at startup and then did an entire multi-hour analysis at Opus tier anyway —
+never once invoking the local models sitting idle on `localhost:11434`. Philosophy does not change
+behavior; commands do. So: **before doing a recurring task yourself, run the job that already does
+it.** Ollama is opt-in per-command via `OLLAMA_BASE_URL=http://localhost:11434` (check it is up with
+`curl -s localhost:11434/api/tags`; if it is down, say so rather than silently falling back to Opus).
+
+| When | Run | Tier |
+|---|---|---|
+| **Start of any work session** | `npm run offline:all -- --tier=script` | script — 11 checks, ~60s, zero tokens |
+| **MCP graphs missing/empty, or fresh clone** | `bash scripts/setup-reckons-workspace.sh` | script — rebuilds both workspaces, fails loudly on dangling links |
+| **Before opening a PR / after writing code** | `OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/code-review.ts --base=origin/dev` | agent — local first-pass review |
+| **Entities missing `kpred:description`** | `OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/describe-entities.ts --limit=10` | agent — drafts prose |
+| **Visual regression prod↔dev** | `npx tsx scripts/offline/visual-diff.ts --base=… --head=…` | agent — local VLM |
+| **Checking a TTL parses / graph invariants** | `npx tsx scripts/offline/graph-lint.ts` | script |
+| **"Is this claim true?" in README/SAFETY.md** | `npx tsx scripts/offline/claim-audit.ts --pending` | script |
+
+Agent-tier jobs emit **proposals only**, into `reckons-workspace/knowledge.pending.jsonl` — they
+never edit source or TTL. **Triaging that queue is Opus's job, and it is real work**: a local review
+of one branch produced 22 findings of which roughly a third were actionable, so read them, accept
+the real ones, and reject the rest out loud rather than merging them wholesale. A worked example —
+qwen3-coder flagged `restoreSnapshot` for trusting its input unvalidated (accepted: it was a
+graph-wipe path, now guarded and tested), while two other findings on the same file misread
+deliberate design and were rejected.
+
+Local models available here (2026-07-18): `qwen3-coder:latest` and `devstral-small-2` for code,
+`qwen2.5vl:7b` for visual, `nemotron3:33b` / `qwen3.6` for general reasoning, `nomic-embed-text`
+for embeddings.
+
 ### TTL-first documentation policy
 
 This project uses TTL knowledge bases as the primary documentation format. **Do NOT create new docs/*.md files.** Instead:

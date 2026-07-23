@@ -78,8 +78,12 @@ test.describe('Context Gathering', () => {
     await test.step('the gathered facts appear in the graph', async () => {
       await page.goto(`${APP}/`);
       await page.waitForTimeout(2500);
-      // The graph view (not the empty landing page) is showing.
-      await expect(page.getByText(/graph package/i).first()).toBeVisible({ timeout: 10_000 });
+      // The gathered facts are actually IN the graph — assert rendered nodes, which is what
+      // this step claims to prove. It used to look for the "graph package" panel label, which
+      // (a) proved the graph rendered only by proxy and (b) broke the moment that panel moved
+      // to the GRAPHS tab (+page.svelte:1942). A test should fail when the BEHAVIOR changes,
+      // not when an unrelated panel is rehoused.
+      await expect(page.locator('.node-label').first()).toBeVisible({ timeout: 10_000 });
       await screenshotTo(page, 'context-gathering', '03-note-graph');
     });
   });
@@ -117,7 +121,8 @@ test.describe('Context Gathering', () => {
     await test.step('the facts appear in the graph', async () => {
       await page.goto(`${APP}/`);
       await page.waitForTimeout(2500);
-      await expect(page.getByText(/graph package/i).first()).toBeVisible({ timeout: 10_000 });
+      // See above: assert rendered nodes, not the relocated panel label.
+      await expect(page.locator('.node-label').first()).toBeVisible({ timeout: 10_000 });
       await screenshotTo(page, 'context-gathering', '06-facts-graph');
     });
   });
