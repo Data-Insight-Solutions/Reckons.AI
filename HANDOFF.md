@@ -1,8 +1,296 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-07-17.** Branch: **`feat/work-tiering-ci`** — **NOW MERGED to main via
-dev→staging→main**. Start new work on a FRESH branch off `dev`; do not keep committing to the
-merged feat branch.
+**Last updated: 2026-07-23.** Working branch this session: `fix/stabilization-sweep` (merged).
+Everything below the "SESSION 2026-07-23" block is the older F97 context and is still live
+(PR #119 is still open) — read it after the current standing.
+
+## ▶ CURRENT STANDING (2026-07-23) — pre-announcement push
+
+Goal: comfortable announcement by end of week. Seven PRs landed on `dev` this session; two
+things now block a fully-working announcement and BOTH are Matt's to do (not code):
+
+**Merged to `dev` today:**
+- #138 Blender GLB export + `checkGlb` emptiness guard (F90 scaffolded→ GLB done; still not an
+  MCP tool, still can't be spawned from the browser — needs an agent/sidecar path).
+- #139 Landing "what we believe": 7 tenets → 3 + "Show 4 more".
+- #140 F58.4 roadmap decision: Reckoning output-type selector + target-node picker; asset
+  outputs land as PENDING (Matt's call), needs a review-queue preview affordance that doesn't exist.
+- #141 gitignore `tests/visual/results/button-crawl_*.json` — 577MB was untracked+unignored.
+- #142 + #144 FEEDBACK: in-app form → n8n webhook → email, reachable from every page (nav ✎),
+  opens in place, captures coarse source route (privacy: first path segment only).
+- #143 stabilization sweep (F107.1 MCP trust boundary, F107.4/.5 sync, **F107.6 delegated Hume
+  token** — was uncommitted, now in). CodeQL caught a real HIGH in this branch: a TOCTOU in
+  `mcp-server/src/kb-reader.ts` (statSync+readFileSync → stale triples served forever); fixed
+  with a single fd. Plus a shell-injection in `graph-economics.ts --since=`, fixed.
+
+**BLOCKING the feedback announcement — Matt only, I cannot do these:**
+1. **SMTP credential** on the n8n workflow. Workflow built + created (unpublished):
+   https://n8n.srv814827.hstgr.cloud/workflow/93gfOyLx8pzcMoka — Send node wants an "Outlook SMTP"
+   cred (smtp.office365.com:587, STARTTLS, mailbox login / app password). Then ACTIVATE it.
+2. **`VITE_FEEDBACK_WEBHOOK_URL`** in Cloudflare Pages env = the webhook URL, then redeploy.
+   Until set, the LIVE site's feedback still falls back to mailto — the endpoint is build-time
+   product config, deliberately NOT the user's own `n8nBaseUrl` (routing that through the user's
+   instance silently 404'd feedback from anyone running their own n8n — fixed in #144).
+   Once both are done, ping me and I'll fire a test submission through the production webhook.
+
+**Salvage — pushed, deliberately UNMERGED:** `salvage/codex-orphaned-tests` holds ~1200 lines of
+Codex test/bench work that existed only inside two abandoned worktrees (now removed). The bench
+suite is fixed (a hallucinated `EXTRACTION_SYSTEM_PROMPT_COMPACT` import — renamed to `_FEWSHOT`
+2026-07-12 — meant a safety-preamble test had NEVER passed). The 4 VISUAL specs are UNRUN; the
+`docs-testing.ttl` rewrite is unreviewed. Triage before merging. A `kb-seed.ts` regression (reverted
+a rename-tolerant tab lookup) was dropped, not salvaged.
+
+**MERGE LANDSCAPE (as of 2026-07-23, for the dev→main promotion question):**
+- `dev` is 23 commits ahead of `main`; `main` is 11 AHEAD of dev (hotfixes applied directly:
+  3D webgl toggle 7a74326, mobile 44px, /history hang, + recurring safety attestations). A
+  dev→main promotion must reconcile those — and 7a74326 touches the SAME `+page.svelte` WebGL
+  block a #143 conflict already resolved, so expect that file to need attention.
+- Open PRs: #119 (F97 archive → dev, large, prior work — see below), #136 (filter panel → dev),
+  #137 (wasm cleanup → dev), #131/#132/#133 (dependabot → **main**), #120 (council → a feature
+  base, not dev/main).
+- **NEVER merge to main without explicit production intent; verify resolved base first** (CLAUDE.md).
+
+---
+
+## OLDER CONTEXT (2026-07-18) — F97 archive, PR #119 still open
+
+**Branch: `feat/archive-graph`** → **PR #119 open against `dev`** (base verified). Continue F97
+on that branch, or branch fresh off `dev` if #119 has merged.
+
+## ▶ NEXT TASK (2026-07-18): F97 next phases — wire the archive core into the app
+
+The PURE CORE is built, tested and merged into PR #119. What remains is the ADAPTER + UI layer.
+Read `src/lib/rdf/archive.ts` first — it is fully commented and the design rationale is in the
+roadmap under F97 `kpred:scope-decision`.
+
+**Do NOT redesign the core.** These decisions are Matt's and are already recorded in
+`static/reckons-roadmap.ttl` (F97):
+- Archive is a **separate graph** named `"<parent> (archives)"`, shown on the graph settings page,
+  linked to its parent by `stableId`. ON BY DEFAULT.
+- The archive is an **edit journal**: events (delete/merge/prune/age-drop/revert) with actor +
+  timestamp + a **FULL pre-operation snapshot**.
+- Full snapshots were chosen knowing the storage cost. **Retention is load-bearing**, already
+  implemented as `applyRetention` — wire it in, do not defer it.
+
+**Build next, in this order:**
+1. ~~**Store adapter**~~ — **DONE** (`src/lib/storage/archive-store.ts`, 11 tests). Ordering is the
+   design: archive write FIRST (bulkPut, so a retried partial archive converges), working-graph
+   delete SECOND. A crash between them duplicates facts (recoverable) instead of destroying them.
+   A test pins that order — do not invert it. `KbEntry.archiveOf` links archive → parent.
+   **It also exposed a real bug, now fixed:** `createKb` used `kbase_${Date.now()}`, so two graphs
+   created in the same millisecond shared ONE Dexie database. Regression test creates 25 in a tick.
+2. **Settings-page display** — show the archive graph beside its parent in `/kb`, using
+   `KbEntry.archiveOf`. **NEXT UP — start here.**
+3. **F97.3 restore-on-reference** — wire `findArchivedReferences` into the ingest path. This is a
+   REQUIREMENT: without it every archive sweep seeds the next round of duplicates.
+4. **F97.7 archive search**, **F97.5 time-travel**, **F97.4 recurrence** (reuse `recurrence.ts`).
+
+`detectChurn` (F97.6) already routes into `analysis-advisor.ts` via `churningEntities` — the
+advisor just needs the archive journal passed to it at the call site.
+
+## 🔧 OFFLINE TIERS ARE NOW WIRED — USE THEM (2026-07-18)
+
+CLAUDE.md now has a **RUN-THESE table** of literal commands. Use it. This session read the tiering
+doctrine at startup and still did hours of work at Opus tier with Ollama idle — the fix was
+commands, not more philosophy.
+
+- `.mcp.json` is now committed, so the `reckons` MCP server connects on next start (6 graphs,
+  3946 triples). `mcp-workspace/` is gitignored but `bash scripts/setup-reckons-workspace.sh`
+  rebuilds it and **exits non-zero on a dangling link** — it had silently drifted to 3 graphs.
+- `mcp-server` no longer dies on a missing `--kb` with a raw ENOENT; it prints the fix.
+
+**MEASURED agent-tier hit rate (be realistic about triage cost):** across two local `code-review`
+runs, **26 findings, 1 genuinely actionable** — but that one was a real graph-wipe path in
+`restoreSnapshot` that Opus wrote and missed. The rest were rejections: misread intent, or checks
+that already existed four lines away. So the tier IS worth running before a PR, and its output is
+NOT worth accepting wholesale. Triage every finding out loud.
+
+## 👆 VISUAL / CLICK-WALKTHROUGH GROUNDING (2026-07-18)
+
+The visual suite had been **unrunnable locally** since the dep upgrade (missing Playwright
+browsers), so its reported state was fiction. Now runnable and much healthier — but read the
+numbers carefully.
+
+**Fixed:** `tests/visual/eval-stable.ts` retries the SvelteKit navigation race
+("Execution context was destroyed") that was killing 10 of 47 workflow tests AND 4 of 6 crawler
+routes. `gotoStable()` retries the vite/service-worker `net::ERR_ABORTED` that
+`tests/e2e/helpers.ts` already handled but the visual harness did not.
+**Workflow suite: 37 passed/10 failed → 42 passed/5 failed.**
+
+**✓ ALL 5 remaining failures FIXED — suite is 47/47 green** (verified on a full run, not per-file).
+They were stale TESTS, not app bugs. The app was fine; the tests had drifted:
+
+- **Four shared one cause**: `getByText(/graph package/i)`. That panel MOVED from the main graph
+  view to the GRAPHS tab — `routes/(app)/+page.svelte:1942` says so, and `svelte-check` had been
+  reporting `.pkg-disclosure > summary` as an unused selector ever since (markup left, dead CSS
+  stayed). The two `context-gathering` tests were proving "facts appear in the graph" by looking
+  for an unrelated panel's LABEL; they now assert `.node-label`. The two `graph-sync` tests now
+  navigate to `/kb`, and the OPFS one had to be REORDERED — `__linkHandleForTest` holds the handle
+  in memory, so navigating after linking silently dropped it.
+- **The fifth was two bugs stacked**: the navigation race inside the test's own `page.evaluate`
+  (evalStable only covered the harness), and behind it `.diff-entry` — a selector that could never
+  match, since `DiffEntry.svelte`'s root is `.entry`.
+
+**Lesson worth keeping:** a test that proves X by asserting Y breaks when Y moves, and tells you
+nothing about X. Assert the behavior the step claims to prove.
+
+**⚠ Dead CSS still to remove:** `.pkg-disclosure` rules at `routes/(app)/+page.svelte:2750-2766`
+have no markup left. Part of the 81 `svelte-check` warnings.
+
+**Button crawler (`scripts/offline/button-crawl.ts`, still `enabled:false` — needs a live server):**
+- Coverage 2/6 → **6/6 routes**, 32 → 133 clicks. It used to skip failed routes and still print
+  "crashes: 0"; it now reports COVERAGE FIRST and names every route it could not crawl.
+- Silent no-ops **21 → 2** by learning what a working button looks like: downloads, native file
+  pickers, already-active toggles, and — the big one — an active-control fingerprint, because
+  bits-ui marks selection with `data-state="on"`/`aria-checked`, not `.active`, so every working
+  toggle in the app read as dead. Verified against `/review` layout chips.
+- Both survivors are explainable: `📁 link a folder` uses `showDirectoryPicker()` (not automatable
+  headless) and `export subset` still wants a look.
+- `--device=pixel|iphone|ipad|desktop` added. **The 44px rule is a TOUCH rule** — desktop counts
+  are advisory and the report now says so via `touchTargetsMeaningful`.
+
+**▶ REAL FINDING, NOT FIXED: 58 sub-44px touch targets at Pixel (412×915)** — `/ingest` 13,
+`/about` 12, `/settings` 11, `/kb` 10, `/review` 9, `/` 3. Systemic: the chip/tab controls across
+the app are under the touch minimum. This is an **F36 mobile blocker** and maps to the
+`touch-targets` guideline in `kb:web-uiux-rubric`. Reproduce with:
+`BASE_URL=http://localhost:5174 npx tsx scripts/offline/button-crawl.ts --device=pixel`
+
+## 🚨 FIRST-RUN BLOCKER — ingest hangs AFTER a successful model download (2026-07-18)
+
+**The highest-priority open item in this file.** Found by the new
+`tests/e2e/first-run-model.test.ts`. Measured on vite dev + chromium + mock extraction backend:
+
+Accepting the 33 MB embedding-model download **succeeds at the network layer** — 44.4 MB arrives,
+all HTTP 200:
+- 34.0 MB `model_quantized.onnx` (huggingface xet CDN)
+- 4.7 MB `ort-wasm-simd-threaded.asyncify.wasm` (**cdn.jsdelivr.net**)
+- tokenizer.json / config.json / tokenizer_config.json
+
+…and then **the ingest pipeline never proceeds.** Still on `/ingest` after 240 s: no error, no
+console output, no progress indicator, no recovery. **Declining** the same prompt finishes in
+seconds via the structural fallback — so the fault is specific to the ACCEPT path, *after* the
+model is already downloaded.
+
+For a first-time user this is the worst-shaped bug available: consent to a large download, pay for
+it, get a frozen screen that never explains itself.
+
+**Still NOT localized, and one hypothesis is now RULED OUT.** `embed.ts` had no load timeout
+(wasm.ts has had a 90 s one for ages) — that gap is real and is now fixed, but it is **not this
+bug**: the timeout does not fire, which proves the load RESOLVES (44.4 MB arrives, pipeline
+builds) and the stall is downstream on the WASM execution provider.
+
+Also ruled out: **WebGPU is not involved.** Verified with a software-GPU chromium
+(`--enable-unsafe-swiftshader`) — `requestAdapter()` returns null there, so the run never touched
+WebGPU. The `No available adapters.` console line is ORT bundle noise, not the fault.
+
+**✓ REPRODUCED IN A REAL, VISIBLE BROWSER (2026-07-18).** Headed chromium on X11 (:1), machine has
+two RTX 3090s, launched with `--enable-unsafe-webgpu` so `requestAdapter()` returns a genuine
+adapter. Stalls identically past 240 s. **So this is NOT a headless artifact** — my earlier caveat
+is resolved and the blocker is real.
+
+Two things ruled out along the way:
+- **Not the embed load.** `embed.ts` had no timeout (now added, 90 s, mirroring wasm.ts). It does
+  NOT fire — proving the load resolves and the stall is downstream.
+- **Not WebGPU.** Reproduces both with no adapter and with a working one.
+
+**The sharpest clue: ZERO console output for 150 s after accepting.** No error, no warning, no
+failed request, nothing. Combined with the UI returning to an EMPTY INGEST FORM rather than showing
+a spinner, this looks like a silently-pending promise or a swallowed rejection, not a busy loop.
+Whatever awaits never settles and nothing reports it.
+
+**Still open**: embedding inference over the diff? semantic-diff? the awaited ingest pipeline?
+Localizing needs source instrumentation (temporary logs through `ingest.svelte.ts` →
+`semanticEnrichDiff` → `embedMany`), which is the obvious next step. Still **NOT reproduced against
+a production build** — worth confirming, since dev-mode module loading differs.
+
+**Also found, not acted on:** with `--enable-unsafe-webgpu` the adapter that appears is
+**swiftshader (software)**, vendor "google", not the NVIDIA hardware. `device-select.ts` currently
+accepts ANY adapter — and a software WebGPU adapter may well be SLOWER than WASM, which would make
+selecting it a pessimization. Worth benchmarking and, if confirmed, preferring hardware adapters
+(`adapter.info.architecture !== 'swiftshader'`) before shipping WebGPU as a default win.
+
+Reproduce: `RECKONS_TEST_WASM=1 npx playwright test first-run-model --project=desktop-chrome`
+
+**Related, queued as an observation:** transformers.js fetches the ONNX runtime from
+**cdn.jsdelivr.net at runtime**, even though the PWA precaches ~67 MB of ort-wasm locally
+(`vite.config.ts` globPatterns). If the precached copy is not the one being used, that precache is
+dead weight AND offline-first WASM inference does not work offline. Check this before the
+PWA-precache toggle work lands.
+
+## ⚡ LOCAL-MODEL EXECUTION PROVIDER (2026-07-18)
+
+**WASM is the ceiling, not the escape hatch.** ONNX Runtime is the engine; WASM/WebGPU/WebNN are
+its execution providers. wasm32 linear memory is bounded by a 32-bit address space (browsers land
+well below it; iOS tighter still). **WebGPU is how you run larger models** — weights live in GPU
+buffers outside wasm linear memory.
+
+The app was on neither optimal path until now: `numThreads = 1` (multi-threaded WASM needs
+SharedArrayBuffer → COOP/COEP headers, **not set anywhere**), and no `device` was ever specified,
+so both paths defaulted to WASM — while the build already shipped `ort.webgpu.bundle.min.mjs`.
+
+`src/lib/integrations/llm/device-select.ts` (13 tests) now picks WebGPU **only when a real ADAPTER
+exists** — not `'gpu' in navigator`, since WebGPU is routinely present-but-unusable — and wraps
+construction too, because an adapter can appear and still fail at build time. It reports the device
+that SUCCEEDED, never the intended one. Wired into `wasm-worker.ts` and `embed.ts`.
+
+**Still on the table:** multi-threaded WASM via COOP/COEP. Big CPU win, no GPU needed, but the
+headers break cross-origin embeds — and note the runtime currently fetches ort-wasm from
+**cdn.jsdelivr.net**, which such an audit would have to cover.
+
+## 👆 FIRST-RUN CONSENT GATE — now covered (2026-07-18)
+
+`tests/e2e/first-run-model.test.ts` — 12 passing, no network. Previously **zero** coverage: every
+other suite runs on mock backends AND `helpers.ts` installs a consent dismisser that clicks
+"Not now" the instant a prompt appears, so the first thing a real user meets was the one thing the
+tests stepped around.
+
+Covers: the gate appears before anything downloads; it names the model and MB; declining and
+Escape both resolve without wedging the awaited pipeline; the sideload hatch exists. Constrained
+device (iOS UA): graceful Ollama / API-key / tiny-model offers instead of a ~500 MB load that can
+OOM-crash the tab, the risky option honestly labelled "may crash", and the chat-only warning.
+
+**Behavior worth knowing:** a keyless first run asks **twice** — Qwen2.5-0.5B (~500 MB) then
+bge-small-en-v1.5 (~33 MB). Correct (separate models, separate consent), but tests must drain the
+QUEUE. Two of mine assumed a single dialog, and one was *flaky rather than failing* because
+resolving the first consent re-shows the shared `.consent-dialog` selector almost instantly. Assert
+that the queue ADVANCED, not that the dialog vanished.
+
+**DEFECT pinned (test.fail):** on the constrained path, "Try a tiny model" pushes guidance saying
+the model switched and that a tiny model cannot reliably extract facts — then the next consent
+modal immediately covers it. The user is told something important and cannot read it.
+
+## ⚠ ALSO OPEN, NOT FIXED (2026-07-18)
+
+- **Multi-tab sync — 3 CONFIRMED defects.** `tests/e2e/multi-session.test.ts` proves them; they are
+  marked `test.fail()` so the suite is green. Root cause is ONE gap: no `storage` listener, no
+  `BroadcastChannel`, no Dexie `liveQuery` anywhere in `src/`. A control test passes, so persistence
+  is fine — it is purely live sync. Fixing it means deleting the `test.fail()` lines as each goes green.
+- **`static/kbs/` — 18 untracked duplicate TTL dirs, all drifted, shipped into `build/`.** Triple-level
+  diff done: 13 are safe supersets (extra content is regenerable `prov:wasDerivedFrom` /
+  `dcterms:created` provenance). **5 need REAL merges — do not blind-delete:** `reckons-roadmap`
+  (2976 copy-only / 1104 root-only), `docs-all` (copy is STALE: 931 root-only), `docs-architecture`
+  (466 copy-only incl. real concepts), `default-graph` (324 triples, no root counterpart),
+  `default-kb` (parses to 0 triples — empty/broken).
+- **PWA precaches ~90MB**, ~67MB of it ONNX wasm (`vite.config.ts:33-34`, `globPatterns` includes
+  `wasm`, 50MB cap). Matt chose: runtime-cache it + a **settings toggle** to pre-download for
+  offline use. Needs a roadmap entry before building. Not started.
+- **`reckons` MCP server is NOT configured** in this checkout (no `.mcp.json`; `claude mcp list`
+  shows only claude.ai remotes) — CLAUDE.md's claim that it is configured is an overclaim. Also
+  `node mcp-server/dist/index.js` dies with a raw `ENOENT ./knowledge.ttl` from `kb-reader.js:184`
+  instead of a diagnostic, which is plausibly why nobody wired it up.
+- **Playwright browsers were missing** after the `3c3c2ba` dep upgrade (`chromium_headless_shell-1228`);
+  the whole e2e/visual suite could not run until `npx playwright install chromium`. Worth a CI guard.
+- **81 a11y warnings** (0 errors), concentrated in `settings/turtle/+page.svelte` (14 unassociated
+  `<label>`s) and `(app)/+page.svelte` (autofocus).
+
+## ▶ AGREED BUT NOT STARTED (2026-07-18)
+
+- **Analysis benchmark**: fixture-replay across the 5 `AnalysisType`s (`enrich`/`merge`/
+  `entity-types`/`delete`/`align`), real Claude API but capped to cents per run, recording tokens/
+  cost/latency/accept-rate. Intended as a per-PR regression gate, not a one-off study.
+- **Instrumented task races** for real-world time savings: ~6 workflows run with Reckons.AI vs a
+  scripted manual baseline under Playwright, measuring wall-clock, clicks and steps-to-answer.
+  Per `kb:honest-status`, losses get recorded as loudly as wins.
 
 ## 🚀 PRODUCTION DEPLOYED (2026-07-17)
 

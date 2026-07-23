@@ -28,6 +28,12 @@ export type KbEntry = {
   stableId?: string;
   /** Approximate confirmed statement count (updated on save) */
   statementCount?: number;
+  /**
+   * Set on an ARCHIVE graph (F97): the stableId (or failing that, the name) of the graph whose
+   * history it holds. Present only on graphs named "<parent> (archives)", and what lets the
+   * settings page show an archive beside its parent rather than as an unexplained sibling.
+   */
+  archiveOf?: string;
 };
 
 const REGISTRY_KEY = 'kbRegistry';
@@ -130,9 +136,19 @@ export function kbUrl(id: string, path = '/'): string {
 }
 
 export function createKb(name: string): KbEntry {
-  const id = `kbase_${Date.now()}`;
-  const entry: KbEntry = { id, name, createdAt: Date.now() };
   const reg = getRegistry();
+
+  // Date.now() has MILLISECOND resolution, so two graphs created in the same tick used to collide
+  // on id — and a colliding id means two different graphs silently share ONE Dexie database, which
+  // corrupts both. Rare when a human clicks "create"; routine once anything creates graphs
+  // programmatically (F97 ensureArchiveKb) or when two tabs race. Found by an archive-store test
+  // that created two archives in a single tick, 2026-07-18.
+  const taken = new Set(reg.map((k) => k.id));
+  const base = `kbase_${Date.now()}`;
+  let id = base;
+  for (let n = 1; taken.has(id); n++) id = `${base}_${n}`;
+
+  const entry: KbEntry = { id, name, createdAt: Date.now() };
   reg.push(entry);
   saveRegistry(reg);
   return entry;

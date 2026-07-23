@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
   import { buildGraphView } from '$lib/rdf/graph-view';
+  import { connectedComponents, nHopNeighbours } from '$lib/rdf/n-hop';
   import { bestSuggestion } from '$lib/rdf/view-suggestions';
   import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
   import GraphLabels from '$lib/components/GraphLabels.svelte';
@@ -77,8 +78,15 @@
       return !!(c.getContext('webgl2') || c.getContext('webgl') || c.getContext('experimental-webgl'));
     } catch { return false; }
   }
-  let webglAvailable = $state(checkWebGL()); // synchronous — no Canvas mounted if false
+  // WebGL capability. Reactive: false during SSR, re-detected true on the client in
+  // onMount below, so the gate flips to 3D after hydration. Pure capability flag —
+  // NEVER set false by a user action (that was the latch bug).
+  let webglAvailable = $state(checkWebGL());
+  // Default to attempting 3D. Do NOT seed this from webglAvailable — that value is
+  // false during SSR, which would stick use2D=true (2D) on a fresh load. The gate
+  // (use2D || !webglAvailable) handles the no-WebGL case reactively instead.
   let use2D = $state(settings().prefer2D ?? false);
+  let graph3DReady = $state(false);
 
   let selected = $state<string | null>(null);
   let hoverTarget = $state<string | null>(null);
@@ -301,6 +309,10 @@
   // Read initial view state from URL params (enables Shelly-recommended views
   // to be bookmarked and shared within the same browser/device).
   onMount(async () => {
+    // Re-detect WebGL on the CLIENT — the $state initializer can carry a stale SSR
+    // value (false), which would keep the gate in 2D on a fresh load even when the
+    // browser supports WebGL. Guarantees a real check.
+    webglAvailable = checkWebGL();
     const params = $page.url.searchParams;
     const l = params.get('layout');
     if (l && ['force','focus','source','type','hub','timeline','order','hierarchy'].includes(l)) layout = l as typeof layout;
@@ -428,6 +440,9 @@
       !GRAPH_EXCLUDED_PREDICATES.has(s.p.value)
     )
   );
+  $effect(() => {
+    if (visible.length === 0 || use2D || !webglAvailable) graph3DReady = false;
+  });
 
   /**
    * Statement-level filters (status · source · entity type · no-source · no-type), resolved
@@ -559,35 +574,14 @@
   const conflictCount = $derived(dichotomyList.filter((d) => d.kind === 'conflict').length);
 
   const islandNodes = $derived.by(() => {
-    const visited = new Set<string>();
     const smallComponentNodes = new Set<string>();
 
-    for (const node of allNodes) {
-      if (visited.has(node)) continue;
-
-      // BFS to find component
-      const component = new Set<string>();
-      const queue = [node];
-      visited.add(node);
-      component.add(node);
-
-      let i = 0;
-      while (i < queue.length) {
-        const current = queue[i++];
-        const neighbors = adjacency.get(current) || new Set();
-
-        for (const neighbor of neighbors) {
-          if (!visited.has(neighbor)) {
-            visited.add(neighbor);
-            component.add(neighbor);
-            queue.push(neighbor);
-          }
-        }
-      }
-
-      // Mark nodes in small components as islands
+    // Shared traversal (rdf/n-hop.ts). allNodes is passed explicitly because an isolated
+    // node has no adjacency entry and would otherwise vanish — and isolated nodes are
+    // exactly what this filter exists to surface.
+    for (const component of connectedComponents(adjacency, allNodes)) {
       if (component.size <= 3) {
-        component.forEach(n => smallComponentNodes.add(n));
+        component.forEach((n) => smallComponentNodes.add(n));
       }
     }
 
@@ -1648,7 +1642,12 @@
 </script>
 
 <div class="viewport" onpointermove={onGraphPointerMove}>
-  <section class="graph" class:graph-landing={visible.length === 0}>
+  <section
+    class="graph"
+    class:graph-landing={visible.length === 0}
+    data-graph-renderer={visible.length === 0 ? 'landing' : use2D || !webglAvailable ? '2d' : '3d'}
+    data-graph-ready={graph3DReady}
+  >
   {#if visible.length === 0}
     <LandingPage />
   {:else if use2D || !webglAvailable}
@@ -1716,6 +1715,7 @@
           onlabelsmove={setNodeLabels}
           onmarkersmove={(m) => { markerLabels = m; }}
           ontimelinepan={(c) => { timelineCenter = c; }}
+          onready={() => (graph3DReady = true)}
           highlighted={[...highlightedSet]}
           {dimMode}
         />
@@ -1724,7 +1724,7 @@
         <div class="no-webgl">
           <p class="no-webgl-title mono">3D graph error</p>
           <p class="no-webgl-sub">{(error as Error)?.message ?? 'WebGL context could not be created.'}</p>
-          <button class="cta" style="margin-top:0.75rem;" onclick={() => { use2D = true; webglAvailable = false; resetPerfMonitor(); updateSettings({ prefer2D: true }); }}>switch to 2D view →</button>
+          <button class="cta" style="margin-top:0.75rem;" onclick={() => { use2D = true; resetPerfMonitor(); updateSettings({ prefer2D: true }); }}>switch to 2D view →</button>
         </div>
       {/snippet}
     </svelte:boundary>

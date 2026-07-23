@@ -38,7 +38,7 @@ const FC_DEDUP_MS = 120000;
 // ── Persistence ───────────────────────────────────────────────────────────────
 
 async function loadState() {
-  const stored = await chrome.storage.local.get(['settings', 'snapshot', 'result', 'session', 'fcSession']);
+  const stored = await chrome.storage.local.get(['settings', 'snapshot', 'result', 'session', 'fcSession']) as Record<string, any>;
   if (stored.settings) settings = { ...DEFAULT_SETTINGS, ...stored.settings };
   if (stored.snapshot) snapshot = stored.snapshot;
   if (stored.result) result = stored.result;

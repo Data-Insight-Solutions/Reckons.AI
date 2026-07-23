@@ -110,6 +110,14 @@ export type TurtleSettings = {
   humeSecretKey: string;
   /** Hume.AI EVI Config ID (voice persona config) */
   humeConfigId: string;
+  /**
+   * Opt-in endpoint that mints a SHORT-LIVED Hume EVI access token (F107.6). Lets a shared
+   * voice persona be heard by someone who has not configured their own Hume: the sharer runs
+   * this endpoint, the viewer's client fetches a scoped, expiring token from it at play-time,
+   * and the sharer's secret key never leaves their control. Unlike an API/secret key this is a
+   * revocable, rate-limitable delegation — so it is safe to travel with a shared persona.
+   */
+  humeTokenUrl?: string;
   /** Whisper model for local speech-to-text (e.g. 'onnx-community/whisper-tiny') */
   whisperModel: string;
 

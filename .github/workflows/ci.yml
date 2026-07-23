@@ -27,6 +27,8 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run test:run
+      # F107.5: fail if a provider secret is set to inline into the public bundle at build.
+      - run: npm run secret:scan
       - run: npm run build
       # Narrow, deterministic, sub-second: is this ACTUALLY a production build?
       # On 2026-07-14 a stray NODE_ENV=development made `vite build` emit a DEV build with
@@ -47,6 +49,26 @@ jobs:
       #
       # Decidable by a rule, so it blocks.
       - run: npm run align
+
+  mcp:
+    name: MCP server (build + tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: mcp-server/package-lock.json
+      # The MCP server is a separate package. Its suite covers the local-code-execution boundary
+      # (git-utils command-injection), tool-argument validation, and graph parse/deletion health
+      # — F107.1 guarantees that must not silently regress. `npm test` builds, then runs vitest and
+      # the node --test reader suite.
+      - name: Install and test MCP server
+        working-directory: mcp-server
+        run: |
+          npm ci
+          npm test
 
   script-tier:
     name: Script tier (F74.3 — deterministic, zero tokens)

@@ -27,6 +27,7 @@
     pushNotification({
       id: 'switched-tiny-model',
       type: 'info',
+      important: true, // must be readable on /ingest, where the stack collapses by default
       title: 'Switched to the tiny model',
       body: 'Tap send again to try it in chat. Heads up: tiny in-browser models are basic chat only and can be slow — they don’t reliably extract facts. For ingest/extraction, connect Ollama or add an API key.',
     });
