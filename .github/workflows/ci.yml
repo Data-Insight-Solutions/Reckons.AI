@@ -27,6 +27,8 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run test:run
+      # F107.5: fail if a provider secret is set to inline into the public bundle at build.
+      - run: npm run secret:scan
       - run: npm run build
       # Narrow, deterministic, sub-second: is this ACTUALLY a production build?
       # On 2026-07-14 a stray NODE_ENV=development made `vite build` emit a DEV build with
