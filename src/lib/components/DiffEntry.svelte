@@ -226,7 +226,7 @@
         </div>
       {:else}
         <div class="pf-picker">
-          <input class="pf-input" bind:value={fillQuery}
+          <input type="text" class="pf-input" bind:value={fillQuery}
             oninput={() => (fillOpen = true)} onfocus={() => (fillOpen = true)}
             placeholder="search existing entities or type a new value…" />
           {#if fillOpen && (fillMatches.length > 0 || showFillNew)}

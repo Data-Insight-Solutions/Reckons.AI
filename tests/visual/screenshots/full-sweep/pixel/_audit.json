@@ -1,0 +1,128 @@
+[
+  {
+    "route": "/",
+    "label": "graph-main",
+    "overflow": false,
+    "smallTargets": 11,
+    "overlaps": 0
+  },
+  {
+    "route": "/ingest",
+    "label": "ingest",
+    "overflow": false,
+    "smallTargets": 13,
+    "overlaps": 0
+  },
+  {
+    "route": "/review",
+    "label": "review",
+    "overflow": false,
+    "smallTargets": 14,
+    "overlaps": 0
+  },
+  {
+    "route": "/reckoning",
+    "label": "reckoning",
+    "overflow": false,
+    "smallTargets": 4,
+    "overlaps": 0
+  },
+  {
+    "route": "/kb",
+    "label": "kb",
+    "overflow": false,
+    "smallTargets": 42,
+    "overlaps": 0
+  },
+  {
+    "route": "/analyze",
+    "label": "analyze",
+    "overflow": false,
+    "smallTargets": 6,
+    "overlaps": 0
+  },
+  {
+    "route": "/compare",
+    "label": "compare",
+    "overflow": false,
+    "smallTargets": 1,
+    "overlaps": 0
+  },
+  {
+    "route": "/history",
+    "label": "history",
+    "overflow": false,
+    "smallTargets": 1,
+    "overlaps": 0
+  },
+  {
+    "route": "/about",
+    "label": "about",
+    "overflow": false,
+    "smallTargets": 20,
+    "overlaps": 1
+  },
+  {
+    "route": "/about/case-study-0",
+    "label": "case-study",
+    "overflow": false,
+    "smallTargets": 8,
+    "overlaps": 0
+  },
+  {
+    "route": "/settings",
+    "label": "settings",
+    "overflow": false,
+    "smallTargets": 66,
+    "overlaps": 0
+  },
+  {
+    "route": "/settings/entity-types",
+    "label": "settings-entity-types",
+    "overflow": false,
+    "smallTargets": 41,
+    "overlaps": 0
+  },
+  {
+    "route": "/settings/integrations",
+    "label": "settings-integrations",
+    "overflow": false,
+    "smallTargets": 115,
+    "overlaps": 0
+  },
+  {
+    "route": "/settings/publishing",
+    "label": "settings-publishing",
+    "overflow": false,
+    "smallTargets": 10,
+    "overlaps": 0
+  },
+  {
+    "route": "/settings/turtle",
+    "label": "settings-turtle",
+    "overflow": false,
+    "smallTargets": 37,
+    "overlaps": 0
+  },
+  {
+    "route": "/mobile",
+    "label": "mobile",
+    "overflow": false,
+    "smallTargets": 1,
+    "overlaps": 0
+  },
+  {
+    "route": "/overlay",
+    "label": "overlay",
+    "overflow": false,
+    "smallTargets": 10,
+    "overlaps": 0
+  },
+  {
+    "route": "/docs",
+    "label": "docs",
+    "overflow": false,
+    "smallTargets": 534,
+    "overlaps": 0
+  }
+]

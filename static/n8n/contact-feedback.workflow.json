@@ -1,0 +1,56 @@
+{
+  "name": "Reckons.AI — Contact / feedback → email (F20)",
+  "meta": { "templateof": "reckons-contact-feedback" },
+  "nodes": [
+    {
+      "parameters": { "content": "## Contact / feedback → email (kb:feedback-channel)\n\nThe in-app contact + feedback form POSTs here, so a submission arrives as an email instead of the user having to open their own mail client. `src/lib/integrations/n8n/contact.ts` does the POST.\n\n**Setup:**\n1. Import this workflow, open the Webhook node, copy the **production** URL. Its path must be `reckons-contact` so it matches `POST {n8nBaseUrl}/webhook/reckons-contact`.\n2. In Reckons.AI → Settings → Integrations: set the n8n base URL. That alone switches the form from mailto to direct submit — `n8nConfigured()` checks nothing else.\n3. Set the Send Email credential. The recipient is already matthew.roe@data-insight.solutions; change it there.\n\n**Reply-To is the submitter**, so replying to the notification reaches the person who wrote in.\n\nPayload: `{ name, email, message, source?, submittedAt }`.\n\n**THIS WEBHOOK IS PUBLIC AND UNAUTHENTICATED.** Anyone who learns the URL can post to it, so treat it as a spam-capable inbox: the Validate node drops empty and oversized messages, but it is not a spam filter. If it gets abused, put n8n behind Cloudflare/rate-limiting or add a shared secret header — the app does not send one today.", "height": 620, "width": 460 },
+      "id": "note-overview",
+      "name": "About",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-160, 40]
+    },
+    {
+      "parameters": { "httpMethod": "POST", "path": "reckons-contact", "responseMode": "onReceived", "options": {} },
+      "id": "webhook",
+      "name": "Reckons contact webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [360, 260],
+      "webhookId": "reckons-contact",
+      "notes": "responseMode onReceived returns 200 immediately, which is what makes the form show '✓ Sent' — the app treats any non-2xx as a failure and tells the user to email instead."
+    },
+    {
+      "parameters": { "jsCode": "// Build the email from a submission that arrived over the OPEN INTERNET — every\n// field here is untrusted input, so nothing is interpolated without cleaning.\nconst b = $input.first().json.body ?? $json.body ?? $json;\n\n// Strip CR/LF before anything reaches a mail HEADER (subject, reply-to). A newline\n// in a header field is how you inject extra headers — a Bcc, a forged From. The\n// body is free to keep its newlines; headers are not.\nconst header = (v, max) => String(v ?? '').replace(/[\\r\\n]+/g, ' ').trim().slice(0, max);\n\nconst name = header(b.name, 120) || 'anonymous';\nconst email = header(b.email, 200);\nconst source = header(b.source, 60) || 'unknown';\nconst message = String(b.message ?? '').trim();\n\n// A plausible address, checked only so Reply-To cannot be turned into a header\n// payload. This is NOT verification that the address exists or belongs to them.\nconst emailOk = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email);\n\nconst subject = `Reckons.AI feedback from ${name} (${source})`;\nconst body = [\n  `From:    ${name} <${emailOk ? email : 'no usable address supplied'}>`,\n  `Source:  ${source}`,\n  `Sent:    ${header(b.submittedAt, 40) || new Date().toISOString()}`,\n  '',\n  '---',\n  '',\n  message,\n].join('\\n');\n\n// Drop the junk the open webhook will inevitably attract. Length caps are the\n// cheap deterministic rule; they are not a spam filter and do not pretend to be.\nconst valid = message.length > 0 && message.length <= 20000;\n\nreturn [{ json: { subject, body, replyTo: emailOk ? email : '', valid } }];" },
+      "id": "format",
+      "name": "Validate + format",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [580, 260]
+    },
+    {
+      "parameters": { "conditions": { "options": { "caseSensitive": true }, "conditions": [{ "leftValue": "={{ $json.valid }}", "rightValue": true, "operator": { "type": "boolean", "operation": "true" } }] } },
+      "id": "if-valid",
+      "name": "Only if a real message",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [800, 260]
+    },
+    {
+      "parameters": { "sendTo": "matthew.roe@data-insight.solutions", "subject": "={{ $json.subject }}", "emailFormat": "text", "message": "={{ $json.body }}", "options": { "replyTo": "={{ $json.replyTo }}" } },
+      "id": "send-email",
+      "name": "Send feedback email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1040, 200],
+      "notes": "Set your SMTP credential. Reply-To is the submitter's address, so hitting reply answers them directly. Swap for the Gmail/Slack/ticket node to change channel — the app does not care how the feedback reaches you."
+    }
+  ],
+  "connections": {
+    "Reckons contact webhook": { "main": [[{ "node": "Validate + format", "type": "main", "index": 0 }]] },
+    "Validate + format": { "main": [[{ "node": "Only if a real message", "type": "main", "index": 0 }]] },
+    "Only if a real message": { "main": [[{ "node": "Send feedback email", "type": "main", "index": 0 }], []] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

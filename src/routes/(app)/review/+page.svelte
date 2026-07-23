@@ -2278,6 +2278,9 @@
       min-width: 0;
       border-top: 1px solid var(--line);
       flex: 1;
+      /* This route is a fixed full-viewport workspace, so the app shell's main
+         padding cannot protect its scrollable decision surface from the nav. */
+      padding-bottom: var(--app-nav-clearance);
     }
     .node-details-pane {
       width: calc(100% - 1.5rem);

@@ -8,14 +8,28 @@
  * and only differ in how they read/write files.
  */
 import { db, KBaseDB, DEFAULT_SETTINGS } from '../storage/db';
+import type { Statement, Source } from '../rdf/types';
 
 export type KbImportMeta = { name: string; stableId?: string };
 export type KbImportData = { ttl: string; assets: Map<string, Uint8Array> };
 
+/** A per-entity asset override decoded from the sidecar bytes, ready to write. */
+type DecodedAsset =
+  | { kind: 'gif'; id: string; blob: Blob; filename: string }
+  | { kind: 'glb'; id: string; url: string }
+  | { kind: 'icon'; id: string; url: string };
+
 /**
- * Parse TTL + assets into `target`, REPLACING any existing statements/sources.
- * Used both for a fresh KB (empty target) and to update one whose file changed.
- * Returns the number of statements written (0 for an empty/unparseable graph).
+ * Parse TTL + assets into `target`, REPLACING its statements/sources.
+ *
+ * LOSSLESS + NON-DESTRUCTIVE (F107.4): a full annotated export (`toTurtleFull`) round-trips
+ * with every status (pending, rejected, superseded, …) and its provenance intact; a plain
+ * external/legacy TTL still imports as confirmed knowledge. Before the replace, the KB's
+ * current state is captured as a recovery snapshot, and the clear+repopulate runs in one Dexie
+ * transaction so a mid-write failure rolls back instead of leaving a half-cleared KB.
+ *
+ * Used for a fresh KB (empty target) and to update one whose file changed. Returns the number
+ * of statements written (0 for an empty/unparseable graph).
  */
 export async function populateKbFromTtl(
   target: KBaseDB,
@@ -27,27 +41,34 @@ export async function populateKbFromTtl(
   const { importTurtleFull } = await import('../rdf/import-ttl');
   const { v4: uuid } = await import('uuid');
 
-  const { statements: rawStmts } = await importTurtleFull(ttl);
+  const { statements: rawStmts, sources: rawSources, cleanImportCount } = await importTurtleFull(ttl);
   if (rawStmts.length === 0) return 0;
 
   const now = Date.now();
-  const sourceId = uuid();
 
-  // The file is authoritative on (re)import — clear prior data before repopulating.
-  await target.statements.clear();
-  await target.sources.clear();
-  await target.sources.put({
-    id: sourceId,
-    title: name,
-    uri: sourceUri,
-    kind: 'document' as const,
-    trustLevel: 'trusted' as const,
-    ingestedAt: now,
-  });
+  // Decide what to write. An annotated file (no plain-triple fallback ran) carries real review
+  // state and provenance — preserve them verbatim. A plain/legacy/external file has none, so
+  // keep the historical behavior of treating it as confirmed knowledge under one synthetic
+  // source; trusting the fallback's `pending` default would wrongly flip legacy files to pending.
+  const isAnnotated = cleanImportCount === 0;
 
-  const stmts = rawStmts
-    .filter((s) => s.status === 'confirmed' || s.status === 'refined' || s.status === 'pending')
-    .map((s) => ({
+  let outStatements: Statement[];
+  let outSources: Source[];
+
+  if (isAnnotated) {
+    outSources = rawSources;
+    outStatements = rawStmts;
+  } else {
+    const sourceId = uuid();
+    outSources = [{
+      id: sourceId,
+      title: name,
+      uri: sourceUri,
+      kind: 'document',
+      trustLevel: 'trusted',
+      ingestedAt: now,
+    }];
+    outStatements = rawStmts.map((s) => ({
       ...s,
       id: uuid(),
       sourceId,
@@ -56,9 +77,10 @@ export async function populateKbFromTtl(
       createdAt: now,
       updatedAt: now,
     }));
-  await target.statements.bulkPut(stmts);
+  }
 
-  // Import binary assets into the per-entity override tables.
+  // Decode binary assets OUTSIDE the transaction (btoa/Blob work is not a Dexie op).
+  const decoded: DecodedAsset[] = [];
   if (assets.size > 0) {
     const { parseAssetRefs, isAssetPath, extToMime } = await import('../storage/kb-assets');
     for (const ref of parseAssetRefs(ttl)) {
@@ -67,22 +89,43 @@ export async function populateKbFromTtl(
       if (!bytes) continue;
       if (ref.category === 'previews') {
         const filename = ref.value.split('/').pop() ?? 'preview';
-        await target.entityGifs.put({
-          id: ref.entityIri,
-          blob: new Blob([bytes.buffer as ArrayBuffer], { type: extToMime(ref.value) }),
-          filename,
-        });
+        decoded.push({ kind: 'gif', id: ref.entityIri, filename, blob: new Blob([bytes.buffer as ArrayBuffer], { type: extToMime(ref.value) }) });
       } else if (ref.category === 'models') {
         const b64 = btoa(String.fromCharCode(...bytes));
-        await target.glbOverrides.put({ id: ref.entityIri, url: `data:model/gltf-binary;base64,${b64}` });
+        decoded.push({ kind: 'glb', id: ref.entityIri, url: `data:model/gltf-binary;base64,${b64}` });
       } else if (ref.category === 'icons') {
         const b64 = btoa(String.fromCharCode(...bytes));
-        await target.icon2dOverrides.put({ id: ref.entityIri, url: `data:${extToMime(ref.value)};base64,${b64}` });
+        decoded.push({ kind: 'icon', id: ref.entityIri, url: `data:${extToMime(ref.value)};base64,${b64}` });
       }
     }
   }
 
-  return stmts.length;
+  // Build the pre-replace recovery snapshot BEFORE the transaction (serialization awaits would
+  // otherwise commit the transaction early), then persist it inside the same atomic replace.
+  const { buildKbSnapshot, pruneSnapshots } = await import('../storage/kb-snapshots');
+  const snapshot = await buildKbSnapshot(target, `reconcile: ${sourceUri}`);
+
+  await target.transaction(
+    'rw',
+    [target.statements, target.sources, target.entityGifs, target.glbOverrides, target.icon2dOverrides, target.kbSnapshots],
+    async () => {
+      if (snapshot) await target.kbSnapshots.put(snapshot);
+      await target.statements.clear();
+      await target.sources.clear();
+      await target.sources.bulkPut(outSources);
+      await target.statements.bulkPut(outStatements);
+      for (const a of decoded) {
+        if (a.kind === 'gif') await target.entityGifs.put({ id: a.id, blob: a.blob, filename: a.filename });
+        else if (a.kind === 'glb') await target.glbOverrides.put({ id: a.id, url: a.url });
+        else await target.icon2dOverrides.put({ id: a.id, url: a.url });
+      }
+    }
+  );
+
+  // Prune old snapshots after the atomic replace has committed (housekeeping, not safety-critical).
+  if (snapshot) await pruneSnapshots(target, target.name).catch(() => {});
+
+  return outStatements.length;
 }
 
 /** Create a brand-new KB from graph data. Returns the new KB id + statement count. */

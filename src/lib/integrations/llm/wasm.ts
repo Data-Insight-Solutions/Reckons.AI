@@ -9,8 +9,13 @@ import type { ChatMessage } from './providers';
 /**
  * Local extraction backend running entirely in the browser via Transformers.js.
  * The model runs in a Web Worker so the UI thread is never blocked, and the
- * pipeline is lazily instantiated on first use. On WebGPU-capable browsers the
- * worker will switch to the WebGPU backend automatically; CPU otherwise.
+ * pipeline is lazily instantiated on first use. On browsers with a usable WebGPU
+ * ADAPTER the worker loads on the WebGPU execution provider, falling back to WASM
+ * if none exists or if the WebGPU build fails (device-select.ts).
+ *
+ * This comment claimed that automatic switching from 2026 until 2026-07-18 while NO
+ * such code existed anywhere — both paths silently ran single-threaded WASM. It is
+ * true as of the device-select.ts wiring; kb:honest-status, applied to a comment.
  *
  * Notes:
  *  - The default model is small to keep first-load reasonable. Users can switch

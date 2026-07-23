@@ -138,7 +138,10 @@ kb:drive-folder-sync rdf:type ktype:Feature ;
                kpred:depends-on   kb:workspace-sync ;
                kpred:depends-on   kb:google-drive-sync ;
                kpred:tested-by    "src/lib/stores/__tests__/drive-sync.test.ts" ;
-               kpred:relates-to   kb:workspace-index .
+               kpred:relates-to   kb:workspace-index ;
+               kpred:relates-to   kb:canonical-graph-package ;
+               kpred:relates-to   kb:transactional-sync-protocol ;
+               kpred:known-issue  "AUDIT 2026-07-21: 'feature-complete' above described surface coverage, NOT data safety. Sync exported a lossy confirmed/refined-only projection and reconnect could treat it as authoritative, clearing sources and losing pending/rejected statuses and provenance. PARTLY RESOLVED 2026-07-22 (F107.4 data-safety core): both backends now export lossless toTurtleFull for the round-tripped per-KB file, the shared import preserves all statuses + provenance, and any replace is snapshotted + transactional — so a reconnect no longer silently erases review state. REMAINING: last-seen hashes are still session-memory (no durable baseline) and there is no staged direction/diff before an existing-graph replace; sync is safer but not yet a fully trustworthy multi-writer backup until those Stage-2 pieces land." .
 
 kb:workspace-index rdf:type ktype:Feature ;
                rdfs:label   "Workspace index + session recovery" ;
@@ -501,7 +504,11 @@ kb:feedback-channel rdf:type ktype:Feature ;
                kpred:tested-by    "src/lib/integrations/n8n/__tests__/contact.test.ts" ;
                rdfs:label    "Feedback channel (suggestion box)" ;
                kpred:has-status   "functional" ;
-               kpred:description  "MVP digital suggestion box: a 'Send feedback' mailto link (matthew.roe@data-insight.solutions) in the About footer. Offline-friendly, no backend. Future: route through the existing n8n pipeline." .
+               kpred:description  "Digital suggestion box on /about: a name/email/message form (ContactForm.svelte) that POSTs to the user's own n8n instance at /webhook/reckons-contact when one is configured (Settings -> Integrations), and degrades to a mailto link to matthew.roe@data-insight.solutions when it is not. An importable workflow (static/n8n/contact-feedback.workflow.json) routes a submission to email with Reply-To set to the submitter." ;
+               kpred:tested-by    "src/lib/integrations/n8n/__tests__/contact-workflow.test.ts" ;
+               kpred:honest-note  "The DELIVERY path is built and tested; whether it is CONNECTED is a BUILD-TIME setting (VITE_FEEDBACK_WEBHOOK_URL) and not something the code can assert. Unset, every submission goes via the user's mail client — a fallback, not an automation, which fails silently if they have no mail client configured. The webhook is also PUBLIC and UNAUTHENTICATED: the workflow drops empty and oversized messages and keeps CR/LF out of mail headers, but nothing rate-limits it and the app sends no shared secret." ;
+               kpred:scope-decision "The feedback endpoint is PRODUCT config, NOT the user's own n8n (settings.n8nBaseUrl). It briefly was the latter, which silently lost feedback from anyone running their own n8n: the POST went to THEIR server, which has no reckons-contact workflow, 404ed, and the maintainers never saw it — hitting exactly the technical users most likely to have something worth saying. Every OTHER n8n feature (currents sync, review notifications) correctly uses the user's instance, because those fire into the user's systems. Feedback travels the other way." ;
+               kpred:remaining    "Capture into a dedicated FEEDBACK GRAPH with provenance (see the ideas graph, idea:feedback-graph) so feedback and the ideas graph feed the roadmap through a reviewed merge rather than a maintainer reading an inbox. Also: the source label is a coarse route only ('review', 'kb') — deliberately, since a full path can carry private graph names, but it means a report cannot yet be tied to the specific state that caused it." .
 
 kb:launch-prep rdf:type      ktype:Concept ;
                rdfs:label    "Pre-launch (LinkedIn) checklist" ;
@@ -926,6 +933,7 @@ kb:tier-local-agent rdf:type   ktype:Concept ;
                kpred:runs-on      "a machine with Ollama and a model that fits in local VRAM (opt-in via OLLAMA_BASE_URL)" ;
                kpred:emits        "PROPOSALS ONLY — pending entries in knowledge.pending.jsonl, never an edit to source or TTL" ;
                kpred:exemplar     "scripts/offline/describe-entities.ts" ;
+               kpred:honest-note  "THE TIER'S REAL FAILURE MODE IS NOT BEING INVOKED. On 2026-07-18 a session read the tiering doctrine in CLAUDE.md at startup and then ran an entire multi-hour audit, test-authoring and feature build at Opus tier — with Ollama up on localhost:11434 the whole time and qwen3-coder idle. This is the SAME shape as the 2026-07-14 note on kb:tier-script ('a free tier that no trigger invokes displaces no tokens'), recurring one tier down: the doctrine was written, agreed and ignored, because prose describing a principle does not cause a command to be run. Fixed by giving CLAUDE.md a RUN-THESE table of literal commands with triggers rather than philosophy. Measured value when it finally ran: 22 findings on one branch, roughly a third actionable — including a genuine graph-wipe path in restoreSnapshot that Opus wrote and missed." ;
                kpred:harness      "ground -> prompt -> validate -> emit-proposal. The model never runs free: the script grounds it in the graph, constrains the prompt, validates the output (rejecting hedges, placeholders, and invented file paths), and emits a reviewable proposal. Local models hallucinate conventions and mangle serialization (PR #43 devstral salvage), so the harness — not the model — is the deliverable." ;
                kpred:description  "A local Ollama model fills a judgment hole inside a scripted harness. Because output is always a gated proposal, a wrong answer costs a click in the Review tab rather than a bad commit." .
 
@@ -951,6 +959,70 @@ kb:session-tokens rdf:type     ktype:Feature ;
                kpred:relates-to   kb:cost-awareness ;
                kpred:description  "Makes local-offload measurable instead of assumed. scripts/session-tokens.ts parses this project's Claude Code transcripts (~/.claude/projects/<slug>/*.jsonl) into per-session token usage: run it before and after moving grunt work to a lower tier and watch the fresh-input + output lines drop. A weighted column (input + 1.25*cacheWrite + 0.1*cacheRead + 5*output, rough Opus ratios) ranks sessions by real consumption, and 'no-cache burn' sessions (lots of fresh input, little cache reuse) are flagged as the expensive pattern to avoid — cache-read is the cheap tier, so long cache-warm sessions are fine. Run: npm run session:tokens [-- --top=N] [--path=<dir>]." ;
                kpred:done         "scripts/session-tokens.ts; npm run session:tokens." .
+
+# -- Graph economics ledger (F74.5) ---------------------------------------------
+# The project asserts the graph pays for itself, but only the CREDIT side has ever
+# been measured. kb:agent-context-dogfooding carries real per-query numbers AND a
+# correction (the old "60-70%" conflated format with subgraph selection). Its
+# headline 80-90% figure is explicitly an ESTIMATE, taken in a session where the
+# MCP was not even connected. Nobody has ever counted the DEBIT: 215 of 506 commits
+# since 2026-05-01 touched static/*.ttl. Without that, "it pays for itself" is
+# aspiration in the present tense, which kb:honest-status forbids.
+kb:graph-economics rdf:type    ktype:Feature ;
+               rdfs:label         "Graph economics ledger (break-even + compounding)" ;
+               kpred:feature-id   "F74.5" ;
+               kpred:has-status   "planned" ;
+               kpred:part-of      kb:work-tiering ;
+               kpred:relates-to   kb:session-tokens ;
+               kpred:relates-to   kb:agent-context-dogfooding ;
+               kpred:relates-to   kb:context-compression ;
+               kpred:relates-to   kb:cost-awareness ;
+               kpred:principle    "A saving claimed without its cost is not a measurement, it is marketing. The graph's DEBIT — TTL authoring and maintenance churn, MCP tool-schema tax paid on every request, and the triage cost of agent-tier proposals — must be counted in the same ledger as its credit, or the threshold cannot be stated at all." ;
+               kpred:description  "SCRIPT tier (F74.3): deterministic, zero tokens, zero triage. scripts/offline/graph-economics.ts assembles both sides of the ledger and prints the break-even. DEBIT: TTL churn from git log --numstat over static/*.ttl (commits, lines, tokens written); the MCP tool-schema tax summed from the kb_* tool definitions, reported in BOTH modes (eager — paid every request — and deferred/ToolSearch, which give very different break-evens); and the agent-tier triage cost, which is DECLARED UNMEASURED rather than silently omitted. CREDIT: compressed-subgraph vs whole-corpus tokens recomputed from the live corpus (not quoted), plus an avoided-rework ledger. OUTPUTS: break-even in queries-before-payback per mode, and a compounding curve walking git history monthly (corpus triples vs cumulative maintenance churn vs cumulative modelled saving) — the first actual evidence for or against the compounding claim." ;
+               kpred:constraint    "words * 1.33 — the project's own estimateTokens (mcp-server/src/index.ts, mirrored at scripts/offline/prompt-audit.ts:27). Every figure must use it so results stay comparable with the compression bench." ;
+               kpred:open-question "Avoided rework — the likely LARGEST benefit (a duplicate feature not built costs nothing forever) — cannot be derived from git. Backed instead by an append-only ledger at reckons-workspace/graph-economics.jsonl, one entry per avoided duplicate, each CITING the entity that prevented it. Semi-manual and honest; a fabricated automatic count would be worse than none." ;
+               kpred:measured     "2026-07-19: a request for a 'new' node-summarization feature was resolved by ~2k tokens of kb_search onto existing F65 / F96 / kb:graph-legibility, instead of building a parallel feature under a different name. First entry in the avoided-rework ledger." ;
+               kpred:honest-note  "Report the result whichever way it falls. If the threshold is not yet crossed on tokens alone, say so plainly and let the avoided-rework ledger carry the argument — a ledger that always shows a profit is not a record." ;
+               kpred:dimension    "COHESION (Matt, 2026-07-19) — for a software project the gain is not only rework avoided but code that stays INTEGRATED: the graph steers a session into extending an existing module rather than adding a parallel one. Four deterministic signals, three of which are already built. (1) EXTEND-VS-ADD RATIO — per feature commit, lines added to EXISTING files vs lines in NEWLY CREATED files, from git --numstat. This is the direct measure of 'enhanced the current feature instead of writing a new one' and is the one signal not yet computed anywhere. (2) DUPLICATED BLOCK-GROUPS over time, from scripts/offline/code-sprawl.ts. (3) PLAN-LEVEL OVERLAP WARNINGS — features sharing a hub but no file — from scripts/offline/shared-deps.ts. (4) THE GRAPH'S OWN COHESION — singleton predicate-type share from graph-lint, since a graph whose predicates generalize is itself more navigable." ;
+               kpred:constraint   "REUSE THE EXISTING DETECTORS. code-sprawl.ts and shared-deps.ts already compute (2) and (3) deterministically; graph-economics.ts must INVOKE them (adding --json output to each) rather than reimplement their logic. Reimplementing a duplication detector inside the economics script would be precisely the sprawl code-sprawl.ts exists to catch — and the harness would fail its own metric." ;
+               kpred:honest-note  "CAUSATION IS NOT AVAILABLE HERE, and the report must not imply it. Cohesion improves for many reasons — refactors, review, taste, a quiet week — and there is NO COUNTERFACTUAL: no control repo built without a graph, and n=1. So the harness reports (a) the trend, and (b) per-event attribution where a commit or session actually CITES the entity that redirected it, and never a bare causal claim that the graph produced the trend. An honest correlation plus a handful of attributed events is worth more than a confident number that cannot survive the question 'compared to what?'." ;
+               kpred:remaining    "Not built. scripts/offline/graph-economics.ts, its jobs.json entry (tier=script, non-blocking — a ledger is advisory), and the seeded JSONL ledger." .
+
+# -- Set summarization + Shelly curation (F101) ----------------------------------
+# NOT greenfield: the unbuilt remainder of F65 (entity sets), F96 (quick graph
+# settings joining filters + forces) and kb:graph-legibility's GO/SUMMARIZE/STAY
+# condensation idea. Recorded as one feature so it is not rebuilt a third time
+# under a fourth name.
+kb:set-summarization rdf:type  ktype:Feature ;
+               rdfs:label         "Set summarization (Shelly) + set controls" ;
+               kpred:feature-id   "F101" ;
+               kpred:has-status   "planned" ;
+               kpred:depends-on   kb:entity-sets ;
+               kpred:depends-on   kb:shelly-chat ;
+               kpred:depends-on   kb:archive-foundation ;
+               kpred:relates-to   kb:shelly-graph-control ;
+               kpred:relates-to   kb:graph-legibility ;
+               kpred:relates-to   kb:loop-job-grouping ;
+               kpred:relates-to   kb:review-attention ;
+               kpred:principle    "A summary is EDUCATION, not a fact. It streams into the Shelly chat and is not persisted — many set summaries are read once and discarded, like story mode. Only where the summary asserts something the graph does not already contain is a triple offered, and then only as pending. Auto-queueing every emergent claim floods review, which is the triage-cost trap F74.3 warns about." ;
+               kpred:description  "Select a node and its related triples as a transient working SET (1-3 hops, default 1), filter the set, and summarize it. Filters NARROW THE SET SCOPE (the summary covers only matching members) while the canvas keeps DIMMING rather than removing — the existing force-stability doctrine at src/routes/(app)/+page.svelte is load-bearing and must not be broken. The working set reuses multiSelected and only persists via the existing 'group as set' -> buildEntitySet. Adds ONE new force (set cohesion, members attract so a selection visibly clumps) rather than exposing the hardcoded REPEL/SPRING/CENTER/DAMP constants, which destabilize the layout at bad values. Summary is delivered as a Shelly chat message via requestShellyChat, ephemeral, with '[keep as pending]' on non-grounded claims only." ;
+               kpred:decision     "Set controls live in the existing 'Filters & layout' AdaptivePanel — this IS F96's 'the review overlay-type panel JOINS filters and forces in one place', so it ships there rather than as a new surface. Mobile inherits the Sheet path free." ;
+               kpred:principle    "HNSW ALL THE WAY DOWN (Matt, 2026-07-19). A graph must offer JUMPS INTO SUB-GRAPHS that carry the specific detail, exactly as a hierarchical navigable small world searches a coarse upper layer and descends. Two halves of this already exist and do not meet: kb:hierarchy-nav gives LAYERS WITHIN a graph (skos:broader trees, hnav:order / hnav:layer, sibling links), and kb:KBLeap gives jumps BETWEEN WHOLE graphs (urn:reckons:leap stable-id -> switchToKb). The missing middle rung is a jump into a sub-graph WITHIN the current graph. A summarized set is the natural upper-layer node for that descent — which reconciles the ephemeral-summary decision with kb:graph-legibility's SUMMARIZE/condense idea: the summary does not REPLACE the detail, it is the layer you navigate FROM. Coarse layer to orient, descend for specifics." ;
+               kpred:open-question "Does descending into a set's sub-graph reuse the KBLeap mechanism (which today switches graphs entirely) scoped to a subgraph, or does it become a view-state zoom that keeps one graph loaded? Leap semantics carry a stable-id lookup and a full store switch, which is heavier than a within-graph descent needs — but two navigation mechanisms that look identical to the user and behave differently is its own trap." ;
+               kpred:remaining    "Not built. (1) extract nHopNeighbours into src/lib/rdf/ — three private BFS copies exist today (2D focus, 3D focus, islands) plus uncapped splitByConcept; (2) working-set scope + filter intersection; (3) set-cohesion force; (4) a setSummary LLM task, which must be threaded through ~6 sites because there is no central task registry; (5) scope buildKBContext to a subset — untypedEntityCount and manualStatementCount derive from `all` and would otherwise stay whole-graph." .
+
+# -- Shelly as graph curator (F101.1) -------------------------------------------
+kb:shelly-curation rdf:type    ktype:Feature ;
+               rdfs:label         "Shelly curation modes (suggest / auto-safe / auto-all)" ;
+               kpred:feature-id   "F101.1" ;
+               kpred:has-status   "planned" ;
+               kpred:part-of      kb:set-summarization ;
+               kpred:depends-on   kb:archive-foundation ;
+               kpred:depends-on   kb:archive-revert ;
+               kpred:relates-to   kb:auto-archive ;
+               kpred:principle    "CLEANING IS ITSELF DAMAGING. Dirty data is the stated fear, but an automated tidy-up that silently drops a fact the user needed is worse than the mess it removed. Therefore no destructive edit may be unreachable from the archive journal — autonomy is bounded by reversibility, not by confidence." ;
+               kpred:description  "Three autonomy tiers modelled on Claude Code's permission modes, default SUGGEST. suggest = pending facts only (today's behavior). auto-safe = Shelly applies reversible mechanical edits (exact-duplicate triples, type fills). auto-all = adds merges and prunes. EVERY automated edit writes an archive journal event carrying timestamp, actor=agent, and payload — which is exactly kb:auto-archive's existing scope-decision ('EDIT JOURNAL, not just aged-out facts... what makes revert possible at all'), so it builds on src/lib/rdf/archive.ts rather than inventing a second mechanism. Restore = merge a set from the archive graph back into the working graph (kb:archive-revert)." ;
+               kpred:remaining    "Not built. settings key shellyCuration; the auto-safe edit classifier; journal-on-every-automated-edit; restore-a-set-from-archive path." .
 
 # -- RDF Dataset Migration: Turtle -> TriG (F75) ---------------------------------
 # src/lib/rdf/types.ts opens by declaring the model: "a personal knowledge base is a
@@ -1337,11 +1409,12 @@ kb:blender-mcp rdf:type        ktype:Phase ;
                kpred:has-status   "scaffolded" ;
                kpred:has-file     "scripts/content/blender-render.ts" ;
                kpred:tested-by    "scripts/content/__tests__/blender-render.test.ts" ;
-               kpred:honest-note  "SCAFFOLDED, not functional. The render harness works — scene -> deterministic Python -> headless Cycles render, verified against real Blender 5.2. NOT yet an MCP tool and NOT yet driven from the graph (scene is a plain object, not a ktype:Scene subgraph). Those are the remaining work." ;
+               kpred:honest-note  "SCAFFOLDED, not functional. Render AND GLB export both work — scene -> deterministic Python -> headless Blender, verified against real Blender 5.2. NOT yet an MCP tool and NOT yet driven from the graph (scene is a plain object, not a ktype:Scene subgraph), and NOT reachable from the app: a browser cannot spawn Blender, so in-app generation still needs an agent/MCP path or a localhost sidecar. Those are the remaining work." ;
                hnav:order   1 ;
                kpred:description  "An MCP tool surface over `blender --background --python`: render a scene described in the graph, export GLB, inspect the result. Runs LOCALLY — Blender is free, offline and installed on the user's machine, which fits the thesis exactly: no operator, no API key, no upload of your work to someone else's renderer. The existing GLB asset viewer already consumes the output, and qwen2.5vl is already the visual gate." ;
                kpred:principle    "Local by default, and the reason is the thesis, not thrift. A cloud renderer means your unreleased work sits on someone else's disk — the same objection as hosted sync (kb:avoid-hosted-sync)." ;
-               kpred:remaining    "mcp-server: blender_render (scene entity -> image/GLB), blender_inspect (what is actually IN this file). Scene vocabulary: ktype:Scene, kpred:has-object / material / camera / light. Generate the .py FROM the graph; never hand-maintain the script." .
+               kpred:progress     "2026-07-23: GLB export built (`--format glb`), with checkGlb as its acceptance gate. The predicted failure reproduced exactly — an empty scene made Blender write a VALID .glb and exit 0; the guard rejected it on zero meshes. checkGlb reads the glTF JSON chunk and rejects bad magic, non-2.0 versions, truncated files (declared length > bytes on disk), zero meshes, and meshes with zero POSITION vertices. It does NOT validate binary buffer contents — an accessor could still lie about its data. Exported models carry NO camera and NO lights: the app lights its own scene. 18 tests." ;
+               kpred:remaining    "mcp-server: blender_render (scene entity -> image/GLB), blender_inspect (what is actually IN this file). Scene vocabulary: ktype:Scene, kpred:has-object / material / camera / light. Generate the .py FROM the graph; never hand-maintain the script. Then the app path: write the GLB into the workspace as assets/models/<slug>.glb + a kasset:model triple, which kb-assets already round-trips and the 3D view already renders — so no new backend is required for a first cut." .
 
 kb:visual-acceptance rdf:type  ktype:Phase ;
                rdfs:label   "Phase 2 — done-when for things that have no exit code" ;
@@ -1417,7 +1490,11 @@ kb:loop-job-grouping rdf:type  ktype:Phase ;
                hnav:order   4 ;
                kpred:description  "Review cost scales with the number of DECISIONS, not the number of facts. Forty facts from one agent about one entity, all of the same kind, are ONE decision presented forty times. Group the queue by (task, agent, subject, gate) and let a group be accepted, rejected, or opened in a single act — with the outliers in a group surfaced rather than hidden, because a batch accept is exactly where a bad fact slips through." ;
                kpred:principle    "Batching must make the ODD ONE OUT more visible, not less. A group that hides its dissenter has converted review into rubber-stamping." ;
-               kpred:remaining    "Grouping in the review queue; batch accept/reject; outlier highlighting within a group." .
+               kpred:grouping-axis "PROVENANCE — (task, agent, subject, gate). Groups facts by where they came from and what produced them." ;
+               kpred:grouping-axis "TOPICAL RELEVANCE (Matt, 2026-07-19) — a SECOND, independent axis. One ingested article carries several subjects, and the ones incidental to the article's own core points are noise against the graph's goal. Cluster a single source's extracted triples by subject cluster so an off-topic cluster can be rejected wholesale, rather than declined one triple at a time. Reuses the embedding path already in the app (src/lib/embed.ts, BGE-small-en-v1.5) — the same similarity machinery kb:entity-normalization uses — so no new model is introduced." ;
+               kpred:constraint   "Outlier highlighting is a PRECONDITION of accept-all, not a follow-up. kb:review-attention holds the opposing principle ('granularity breeds rubber-stamping... trains the human to accept all'), and this entity's own principle says a group that hides its dissenter has converted review into rubber-stamping. So a group surfaces its off-centroid / low-confidence members BEFORE the accept-all control is offered, and accept-all applies only to the currently FILTERED group, stating the count it is about to confirm." ;
+               kpred:constraint   "A JOB GROUP IS A SET (Matt, 2026-07-19). This phase does not get its own grouping mechanism: it instantiates ktype:EntitySet + has-member over PENDING STATEMENTS, the same primitive kb:entity-sets uses over entities and kb:agent-orchestration will use over tasks. See kb:entity-sets for the one-primitive-three-consumers principle. Consequence: a review group is queryable, round-trips in TTL, and can be spotlighted on the canvas for free — because it is the same node type the graph already renders." ;
+               kpred:remaining    "Grouping in the review queue; batch accept/reject; outlier highlighting within a group; the topical-relevance axis above. Implemented over src/lib/rdf/entity-sets.ts, NOT as a parallel grouping mechanism." .
 
 kb:loop-safety rdf:type        ktype:Phase ;
                rdfs:label   "Phase 5 — the ways this loop fails silently" ;
@@ -1521,7 +1598,8 @@ kb:agent-orchestration rdf:type ktype:Feature ;
                kpred:has-phase    kb:orch-task-vocab ;
                kpred:has-phase    kb:orch-harness-adapter ;
                kpred:has-phase    kb:orch-claim-lease ;
-               kpred:has-phase    kb:orch-jobs-to-ttl .
+               kpred:has-phase    kb:orch-jobs-to-ttl ;
+               kpred:has-phase    kb:orch-control-layers .
 
 kb:orch-task-vocab rdf:type    ktype:Phase ;
                rdfs:label   "Phase 1 — the task vocabulary (a task is a triple)" ;
@@ -1559,6 +1637,23 @@ kb:orch-jobs-to-ttl rdf:type   ktype:Phase ;
                kpred:description  "scripts/offline/jobs.json is ALREADY a task queue with tiers, enablement and a blocking flag — it is just written in the one format the product does not use. Migrating it to TTL makes the offline jobs first-class graph citizens: queryable, reviewable in-app, diffable, and schedulable by the same runner as everything else. It also dogfoods the vocabulary on a queue that already works, before betting anything new on it." ;
                kpred:honest-note  "This is the tell that the design is right, and it is slightly embarrassing: we built a task registry with tiers and dependencies and put it in JSON, inside a product whose entire thesis is that this belongs in a graph." ;
                kpred:remaining    "static/reckons-jobs.ttl; run-all.ts reads the graph; keep jobs.json working until the TTL path is proven." .
+
+kb:orch-control-layers rdf:type ktype:Phase ;
+               rdfs:label   "Phase 5 — the layers a human steers the orchestrator by" ;
+               kpred:part-of      kb:agent-orchestration ;
+               hnav:order   5 ;
+               kpred:has-status   "planned" ;
+               kpred:principle    "CONTROL IS LAYERED, NOT BINARY (Matt, 2026-07-19). 'Approve / don't approve' is not steering — by the time a diff arrives the direction was already chosen. A human must be able to intervene at the level where the decision actually lives: what gets worked on at all, how a task is framed, which tier runs it, and only lastly whether the result lands. Autonomy settings that only guard the LAST layer feel safe and change nothing." ;
+               kpred:principle    "EACH LAYER IS THE SAME VERB AT A DIFFERENT ALTITUDE: guide (set direction), refine (reshape a task in flight), redirect (pull work back and re-aim it). The lower the layer a human can act at, the less rework the loop generates — which is the same compounding argument kb:graph-economics makes about avoided duplication." ;
+               kpred:description  "Names the control surface the loop already implies but never gathered in one place. LAYER 1 DIRECTION — the ideas graph (kb:loop-idea-inbox): humans create new direction with zero-friction capture, diffed against the roadmap; promotion to a planned feature is a USER-AUTHORITY act (F88 — minting a feature is authorship, not observation). LAYER 2 FRAMING — a task is a triple (F87), so a human edits the task itself: its prompt, tier, dependencies and definition-of-done, in the Review tab, before or during the run. LAYER 3 SCOPE — work is claimed and steered as a SET (kb:entity-sets), not one task at a time: approve a batch, re-aim a batch, park a batch. LAYER 4 TIER — which harness runs it (kb:work-tiering), overridable per task. LAYER 5 LANDING — the existing merge gates; a sub-agent returns a graph and Opus merges it (kb:loop-subagent-graphs). Autonomy modes (kb:shelly-curation: suggest / auto-safe / auto-all) apply PER LAYER, not globally." ;
+               kpred:constraint   "Whatever the autonomy level, layers 1 and 2 stay human-writable at all times. An orchestrator that can rewrite its own direction and its own definition-of-done is not being supervised, it is being watched." ;
+               kpred:relates-to   kb:loop-idea-inbox ;
+               kpred:relates-to   kb:co-orchestration ;
+               kpred:relates-to   kb:shelly-curation ;
+               kpred:relates-to   kb:entity-sets ;
+               kpred:relates-to   kb:work-tiering ;
+               kpred:open-question "Does a human intervention at layer 2 or 3 become a FACT in the graph (an event with actor=human, joining the archive journal alongside actor=agent edits), or is it ordinary task-state mutation? Recording it makes the loop auditable — 'who re-aimed this, and when' — and costs one triple. Not recording it means the loop's own history is the one thing it cannot answer questions about." ;
+               kpred:remaining    "Not built. The layer vocabulary on the task model; per-layer autonomy settings; a Review-tab surface for editing a task's framing mid-flight; batch (set-scoped) steering actions." .
 
 kb:local-orchestration rdf:type ktype:Feature ;
                rdfs:label   "Local task orchestration & scheduling" ;
@@ -2583,15 +2678,20 @@ kb:mvg-3d-gen rdf:type ktype:Feature ;
                hnav:order         "3"^^xsd:integer ;
                kpred:part-of      kb:meta-visual-generation ;
                kpred:depends-on   kb:int-meshy ;
-               kpred:description  "Generate a GLB from the graph. Meshy text-to-3d is already integrated (startMeshyGeneration/pollMeshyTask, src/lib/integrations/meshy/meshy.ts) and produces per-entity models today; extend it to (a) build the generation prompt from a subgraph's facts + relationships and (b) use Meshy image-to-3d so an entity's existing image seeds the model. Local 3D generation feasibility is UNKNOWN — Meshy.AI is the near-term path." ;
-               kpred:open-question "Is any local text/image-to-3D model viable in-browser or via a sidecar, or is Meshy (cloud) the only realistic path for now?" .
+               kpred:description  "Generate a GLB from the graph. Two paths now exist. (1) Meshy text-to-3d (cloud) is integrated (startMeshyGeneration/pollMeshyTask, src/lib/integrations/meshy/meshy.ts) and produces per-entity models today; extend it to build the prompt from a subgraph's facts and to use image-to-3d so an entity's existing image seeds the model. (2) LOCAL headless Blender (kb:blender-mcp) exports a verified GLB with no API key and no upload — parametric/preset geometry rather than a generative model, so it cannot invent an arbitrary shape from prose, but it is offline, free, deterministic and reproducible from the graph." ;
+               kpred:progress     "ANSWERED 2026-07-23: local 3D generation IS viable — not via a local text-to-3D model, but via headless Blender driven by a deterministic script generated FROM the graph (kb:blender-mcp, GLB export proven against Blender 5.2). The honest limit: this is PARAMETRIC generation from presets and entity facts, not free-form text-to-3D. Prose like 'a weathered brass diving helmet' still needs Meshy. Presets keyed off the existing entity-type geometry vocabulary cover the node-shape case, which is the common one." ;
+               kpred:depends-on   kb:blender-mcp ;
+               kpred:open-question "Is a free-form local text-to-3D model (not preset-parametric) viable in-browser or via a sidecar, or is Meshy (cloud) the only path for arbitrary prose prompts?" .
 
 kb:mvg-output-types rdf:type ktype:Feature ;
                rdfs:label    "Maximal output types (PNG / PDF / GLB)" ;
                kpred:feature-id   "F58.4" ;
                kpred:has-status   "speculative" ;
                kpred:part-of      kb:meta-visual-generation ;
-               kpred:description  "The generation box lets the user select an output type, aiming for maximal coverage: PNG (image), PDF (composed document — could reuse graph facts + images as a laid-out sheet), and GLB (3D). The chosen type routes to the matching backend (image-gen for PNG, a doc composer for PDF, Meshy for GLB). Outputs land back in the graph as a new entity's asset so they are themselves reviewable and re-usable." .
+               kpred:description  "The generation box lets the user select an output type, aiming for maximal coverage: FACTS (the existing text proposal), PNG (image), PDF (composed document — could reuse graph facts + images as a laid-out sheet), and GLB (3D). The chosen type routes to the matching backend (image-gen for PNG, a doc composer for PDF, Meshy or local Blender for GLB). Facts remain the default so the existing Reckoning behaviour is one output type among several, not a special case." ;
+               kpred:scope-decision "MATT 2026-07-23: the output-type selector is THE generation surface, and it is what makes generation semi-consistent — one place, one control, every backend behind it. When the selected output is a DIGITAL ASSET (PNG/PDF/GLB) rather than facts, the user must also SELECT A TARGET NODE to receive the output; the asset attaches to that node's asset slot (kasset:icon / preview / model per kb-assets). This REPLACES the earlier 'outputs land back as a NEW entity's asset' wording: a user-chosen target is explicit and reviewable, where an auto-created entity is a second thing to clean up. Asset outputs therefore need a node picker in the Reckoning UI, and the selector must disable/hide the picker when output type is FACTS." ;
+               kpred:scope-decision "MATT 2026-07-23: an asset output LANDS AS PENDING, never overwriting the target node's existing slot. This keeps one review model for everything the system proposes — a generated asset is a proposal exactly as a generated fact is, and the graph's existing pending/confirmed lifecycle already carries it. CONSEQUENCE, and it is real work rather than a detail: the review queue currently renders TEXT triples, so a pending binary asset needs a preview affordance (thumbnail for PNG, model viewer for GLB, page-1 render for PDF) that does not exist today. A pending asset a reviewer cannot SEE is a fact they cannot judge, so the preview is part of the feature, not a polish item after it." ;
+               kpred:remaining    "Output-type selector on the Reckoning surface (FACTS default); target-node picker shown only for asset outputs; asset-aware review-queue rows with per-type previews; routing to the matching backend per type." .
 
 kb:mvg-asset-assembly rdf:type ktype:Feature ;
                rdfs:label    "Asset + fact assembly for generation" ;
@@ -2742,7 +2842,10 @@ kb:entity-sets rdf:type      ktype:Feature ;
                kpred:relates-to   kb:meta-visual-generation ;
                kpred:relates-to   kb:arrange-layout-builder ;
                kpred:relates-to   kb:sets-xr ;
-               kpred:open-question "Storage: is a set a first-class node (ktype:EntitySet) whose members are linked by a 'has-member' predicate, or a saved selection/template? First-class node makes it queryable + shareable and round-trips in TTL." .
+               kpred:open-question "Storage: is a set a first-class node (ktype:EntitySet) whose members are linked by a 'has-member' predicate, or a saved selection/template? First-class node makes it queryable + shareable and round-trips in TTL." ;
+               kpred:principle    "ONE GROUPING PRIMITIVE, THREE CONSUMERS (Matt, 2026-07-19: 'job grouping may be the same thing as sets'). ktype:EntitySet + has-member is not a graph-canvas feature that happens to group nodes — it is THE grouping primitive, and three separate features need it: (1) kb:entity-sets, grouping ENTITIES on the canvas; (2) kb:loop-job-grouping, grouping PENDING STATEMENTS into one review decision; (3) kb:agent-orchestration, grouping TASKS into a batch a harness claims and a human steers. They differ only in member TYPE. All three need the same things: membership, a label, scoping/spotlight, a batch action, and provenance. Building three grouping mechanisms would be exactly the 'separate code for nearly the same task' that scripts/offline/shared-deps.ts exists to catch — so review grouping and task batching REUSE src/lib/rdf/entity-sets.ts rather than reimplementing it." ;
+               kpred:honest-note  "THE DETECTOR MISSED THIS, and a human found it (2026-07-19). shared-deps.ts reported 67 overlap pairs and none was entity-sets vs loop-job-grouping. Two causes, and the second is the real one. (1) It only saw ktype:Feature entities with kpred:has-file, so loop-job-grouping — a ktype:Phase with no files — was invisible. Fixed: Phases are now included. (2) FUNDAMENTAL: section 3 pairs entities that share a dependency HUB, and these two share none. Conceptual duplication does not announce itself as a shared dependency. A new lexical check (vocabulary overlap) was added and DOES now flag the pair — but that result is CIRCULAR and must not be read as vindication: verified by stashing the TTL edits and re-running, the check does NOT detect the pair on the pre-edit graph. It only works now because the unification was already written into both descriptions." ;
+               kpred:open-question "The undetected class is: SAME CONCEPT, DIFFERENT VOCABULARY, NO SHARED DEPENDENCY. Before the edits, one entity said 'group nodes into a set' and the other said 'group the queue into one decision' — synonyms, zero lexical overlap. No keyword rule can bridge a synonym gap, so this needs EMBEDDING similarity over entity descriptions — the same BGE-small machinery kb:entity-normalization already uses for duplicate entities (0.90 threshold). That is still SCRIPT tier: embeddings are local and deterministic, no cloud tokens and no judgment call. Until it exists, this class is found by humans reading the graph, which is not a control." .
 
 kb:sets-xr rdf:type          ktype:Feature ;
                rdfs:label    "Sets in VR / AR / XR" ;
@@ -2763,6 +2866,8 @@ kb:sets-xr rdf:type          ktype:Feature ;
 kb:agent-context-dogfooding rdf:type ktype:Feature ;
                kpred:test-coverage "none" ;
                kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
+               kpred:evidence     "FIRST CITED EVIDENCE, 2026-07-19 — previously this feature rested only on the directional kpred:estimate below, taken in a session where the MCP was not even connected. In one session five requests arrived framed as new work and all five were already decided: F65+F96+graph-legibility (node summarization), loop-job-grouping (review set grouping), hierarchy-nav+KBLeap (HNSW sub-graph jumps), routeQuestion (ingest routing), loop-subagent-graphs (council merge). Twenty MCP calls, the pattern being kb_search to find the name then kb_get_entity to read the ruling — the decisive text (a corrected measurement, a principle forbidding an approach) only ever appeared on the full entity, never in the search fragment. NO prior-session conversation history was read or available; the continuity came entirely from the graph. Recorded in reckons-workspace/graph-economics.jsonl and documented for users at cw:CaseStudyOneSession." ;
+               kpred:honest-note  "The 2026-07-19 evidence has three limits that belong beside it. (1) The ~93K token figure sums CITED ESTIMATES of builds that did not happen — unfalsifiable by construction, which is why each ledger entry names the entity that prevented it so the reasoning can be audited even when the number cannot. (2) One feature-dense session is not a rate. (3) The graph only did half the work: it supplied the PLAN (decided/planned/forbidden) while grep and file reading supplied the CODE — it could say F65 already specified set-grouping, but not that buildFocusAnchors() computes a hop map and discards it. Also: kb_stats reports ~3.9K triples over 6 KBs from mcp-workspace while the full static/ corpus is ~7.3K quads over 23 graphs, so the MCP server sees roughly HALF the corpus and 'not in the graph' was never safely concluded from kb_search alone." ;
                rdfs:label    "Coding-agent context dogfooding" ;
                kpred:feature-id   "F68" ;
                kpred:has-status   "functional" ;
@@ -2957,7 +3062,9 @@ kb:shelly-matrix-builder rdf:type ktype:Feature ;
 kb:shelly-graph-control rdf:type ktype:Feature ;
     rdfs:label "Shelly graph-control persona + quick graph settings" ;
     kpred:feature-id "F96" ;
-    kpred:has-status "speculative" ;
+    kpred:has-status "planned" ;
+    kpred:honest-note "speculative -> planned (2026-07-19): part (2), the panel that joins filters and forces in one place, is being built as the set-controls surface of F101 kb:set-summarization. Part (1), the view-driving persona, remains unstarted — the status move covers the half now scheduled, not the whole entity." ;
+    kpred:relates-to kb:set-summarization ;
     kpred:relates-to kb:shelly-chat ;
     kpred:relates-to kb:one-graph-canvas ;
     kpred:relates-to kb:graph-legibility ;
@@ -2968,11 +3075,68 @@ kb:shelly-graph-control rdf:type ktype:Feature ;
 kb:auto-archive rdf:type ktype:Feature ;
     rdfs:label "Auto-archive by age — a 'current' graph trimmed to the relevant timeframe" ;
     kpred:feature-id "F97" ;
-    kpred:has-status "speculative" ;
+    kpred:has-status "planned" ;
     kpred:relates-to kb:currents ;
     kpred:relates-to kb:graph-legibility ;
+    kpred:relates-to kb:multi-kb ;
+    kpred:scope-decision "SEPARATE ARCHIVE GRAPH, not an archived flag (Matt, 2026-07-18). The archive is its own graph in the registry, named '<parent name> (archives)' and shown alongside the parent on the graph settings page, linked back by the parent's stableId. This is what makes the node-count win real: archived facts leave the working graph's Dexie store entirely rather than being filtered out of a view. ON BY DEFAULT — the reduction in node count is the point, and a default-off archive would be a feature nobody discovers." ;
+    kpred:scope-decision "EDIT JOURNAL, not just aged-out facts (Matt, 2026-07-18). The archive records EVENTS — deletes, merges, prune runs, age-drop sweeps — each as a reified entity carrying timestamp, actor (human vs agent), and payload. That turns the archive from a graveyard into the graph's edit history, and is what makes revert possible at all." ;
+    kpred:scope-decision "FULL SNAPSHOTS for revert (Matt, 2026-07-18). Each destructive operation stores a complete pre-operation graph snapshot rather than a diff or a per-statement log. Chosen for trivially-correct revert and true time-travel (graph as-of a date). ACCEPTED COST: snapshot storage grows with graph size × operation count, which cuts against the node-count goal that motivates the feature — so RETENTION IS LOAD-BEARING here, not an optional extra, and ships with phase 1 rather than after it." ;
     kpred:description "Easy auto-archive of time-stamped events older than a configurable threshold (X days, or however the user sets it), so a graph stays a CURRENT graph — adjusted to context, trimmed to the most relevant timeframe (Matt, 2026-07-15). Archived is NOT deleted: the facts move out of the active/current view into an archive the user can restore or query, so history is preserved but the working graph stays focused. This is the TIME axis of the F83/condensation focus story: large graphs (timelines especially) are answered by trimming to a window, not a hard cap. Ties to kb:currents (the 'current' concept), the F83 time filter, and F97-style proactive suggestion (nudge to archive when the graph spans far more time than the user is working in)." ;
     kpred:principle "Archive is reversible and non-destructive — trimming the CURRENT view must never lose the fact. An auto-archive that quietly deleted history would be the silent-destruction failure again; it MOVES facts, it does not erase them, and the threshold is the user's to set." .
+
+# -- F97 phases -----------------------------------------------------------------
+kb:archive-foundation rdf:type ktype:Feature ;
+    rdfs:label "Archive graph + snapshot journal + retention" ;
+    kpred:feature-id "F97.1" ;
+    kpred:has-status "planned" ;
+    kpred:depends-on kb:auto-archive ;
+    kpred:depends-on kb:multi-kb ;
+    kpred:description "Foundation phase. Creates the '<name> (archives)' graph on demand via the existing kb-registry, links it to its parent by stableId, and writes an event journal: one reified event per destructive operation (delete, merge, prune, age-drop) carrying timestamp, actor, affected entities, and a FULL pre-operation graph snapshot. Retention ships in this phase, not after it — full snapshots make unbounded growth a certainty, so the writer enforces a policy (keep last N + milestone snapshots) from the first commit." ;
+    kpred:principle "Retention is part of the foundation because the storage cost is structural, not incidental. Shipping snapshots without a bound would trade a node-count problem for a bigger storage problem and call it an improvement." .
+
+kb:archive-revert rdf:type ktype:Feature ;
+    rdfs:label "Revert the main graph from an archive snapshot" ;
+    kpred:feature-id "F97.2" ;
+    kpred:has-status "planned" ;
+    kpred:depends-on kb:archive-foundation ;
+    kpred:description "Restore the main graph to a chosen journal snapshot, and restore individual archived entities back into the working graph. Revert is itself a journalled event — reverting a revert must be possible, and an undo that cannot be undone is a trap." .
+
+kb:archive-restore-on-reference rdf:type ktype:Feature ;
+    rdfs:label "Restore-on-reference — archived entities are not silently duplicated" ;
+    kpred:feature-id "F97.3" ;
+    kpred:has-status "planned" ;
+    kpred:depends-on kb:archive-foundation ;
+    kpred:description "When an ingest mentions an entity that currently lives in the archive, offer to restore it rather than minting a duplicate node. REQUIREMENT, not an enhancement: without it, archiving actively worsens the duplicate problem that the merge analysis exists to solve, and every archive sweep seeds the next round of duplicates." .
+
+kb:archive-recurrence rdf:type ktype:Feature ;
+    rdfs:label "Recurring-event lifecycle across archive boundaries" ;
+    kpred:feature-id "F97.4" ;
+    kpred:has-status "planned" ;
+    kpred:depends-on kb:archive-restore-on-reference ;
+    kpred:relates-to kb:currents ;
+    kpred:description "A recurring event that drops off the current window and later returns is recognized as the SAME recurring thing, not a new node — reusing recurrence.ts (RRULE parsing + detectRecurrenceFromInstances) and the F29 currents arrival path. This is the strongest case for archive-on-by-default: recurring data is exactly what should cycle out of a current graph without accumulating." .
+
+kb:archive-time-travel rdf:type ktype:Feature ;
+    rdfs:label "Time travel — view the graph as of a past date" ;
+    kpred:feature-id "F97.5" ;
+    kpred:has-status "planned" ;
+    kpred:depends-on kb:archive-foundation ;
+    kpred:description "Reconstruct and view the main graph as it stood at any journalled point, replaying snapshots. Finishes the temporal foundation already built and tested in rdf/temporal.ts (buildEntityTimeline, findTemporalConflicts) but currently surfaced nowhere outside merge analysis. Full snapshots were chosen partly to make this cheap to compute." .
+
+kb:archive-churn rdf:type ktype:Feature ;
+    rdfs:label "Churn insight — what keeps getting added and archived" ;
+    kpred:feature-id "F97.6" ;
+    kpred:has-status "planned" ;
+    kpred:depends-on kb:archive-foundation ;
+    kpred:description "Surface entities repeatedly added then archived. High churn is a signal that a SOURCE or an extraction prompt is noisy, not that the user is indecisive — so the finding routes into the analysis advisor (rdf/analysis-advisor.ts) as a recommendation, turning the archive into a diagnostic instrument rather than a graveyard." .
+
+kb:archive-search rdf:type ktype:Feature ;
+    rdfs:label "Search the archive without loading it" ;
+    kpred:feature-id "F97.7" ;
+    kpred:has-status "planned" ;
+    kpred:depends-on kb:archive-foundation ;
+    kpred:description "Query the archive graph from the main graph's search without importing it back into the working store. Keeps the node-count win intact while making history genuinely reachable — retained-but-unreachable history is only technically preserved." .
 
 kb:n8n-sync-hub rdf:type ktype:Concept ;
     rdfs:label "Graph Sync Hub" ;
@@ -3037,3 +3201,396 @@ kb:adult-content-policy rdf:type ktype:Feature ;
 kb:predicate-economy rdf:type ktype:Concept ;
     rdfs:label "Predicate economy" ;
     kpred:moved-to "static/reckons-shipped.ttl" .
+
+# -- Poseidon's Council (F102) ---------------------------------------------------
+# Multi-model corroboration. The name is Matt's, in the undersea line alongside
+# Shelly, Currents and Pod View. Poseidon, not Posiedon.
+#
+# THE CENTRAL RISK IS STATISTICAL AND IT IS NOT OBVIOUS: agreement between LLMs is
+# NOT independent evidence. Five models raise accuracy only if their errors are
+# independent, and they are not — overlapping web corpora, shared RLHF conventions,
+# several distilled from one another. 5/5 agreement mostly measures how COMMON a
+# claim is in training data. Confidently-wrong facts are precisely the ones every
+# model shares. kb:mission already rules on this: an unverifiable claim, made by
+# the party it benefits, is not evidence.
+kb:poseidons-council rdf:type  ktype:Feature ;
+               rdfs:label         "Poseidon's Council — multi-model corroboration" ;
+               kpred:feature-id   "F102" ;
+               kpred:has-status   "planned" ;
+               kpred:depends-on   kb:llm-providers ;
+               kpred:depends-on   kb:verifiability-axis ;
+               kpred:relates-to   kb:source-validation ;
+               kpred:relates-to   kb:review-attention ;
+               kpred:relates-to   kb:control-model ;
+               kpred:relates-to   kb:entity-sets ;
+               kpred:principle    "MODEL AGREEMENT IS NOT INDEPENDENT EVIDENCE. Corroboration requires independent error, and models sharing corpora and lineage do not have it. A council vote is a record of WHO ASSERTED WHAT — provenance — and never a probability that the fact is true. Source diversity is the defensible half of the idea: independent SOURCES can have independent errors; independent MODELS mostly cannot." ;
+               kpred:principle    "SOURCES OUTRANK THE COUNCIL. One cited passage beats 5/5 unanimity. The council is a HYPOTHESIS GENERATOR; a source is evidence. Where the council splits and a source settles it, the source wins and the split is recorded as history." ;
+               kpred:principle    "LEAD WITH DISAGREEMENT (kb:review-attention: 'spend attention on disagreement, not agreement'). The council's valuable output is the SPLIT, not the consensus. Unanimous statements flow through quietly as ordinary pending facts; contested ones get the spotlight, the per-model reasoning, and an 'ask a source' action. A UI that leads with the agreed list trains the eye past the only rows carrying information." ;
+               kpred:description  "Convene N high-capability models over the same text; each returns triples; merge the results and record the vote. Configuration is a list of provider/model pairs — the plumbing largely exists (9 providers incl. OpenRouter, which fronts many models under one key; per-task backends; src/lib/integrations/llm/providers.ts). Merge reuses the product's own machinery: a council member's output is a GRAPH, and merging independent graphs with provenance and per-fact review status is what this product does (see kb:loop-subagent-graphs, which already establishes sub-agent-returns-a-graph). A council statement carries kpred:asserted-by per model and a recorded split; its kpred:verifiable-by is 'unknown' unless a source grounds it — and per kb:verifiability-axis, UNCLASSIFIED FAILS TOWARD THE HUMAN, so a council verdict is never machine-approved however unanimous." ;
+               kpred:decision     "STORAGE NEVER BLENDS, DISPLAY MAY (2026-07-19, reconciling two of Matt's answers that conflicted). Asked whether agreement produces a truth score he said NO — it is a corroboration record; asked how sources and models weight together he chose a single blended confidence. Both cannot hold: a signal that is not a truth score cannot be an input to a blended truth score, and blending destroys the ability to tell which did the work. Reconciliation: source evidence and council split are stored as SEPARATE triples and never merged; the UI may show ONE derived indicator, always decomposable on click ('0.8 — source cites it, council 4/5'), computed on the fly and never stored; and NOTHING AUTOMATIC may read that number — no auto-approve threshold keys off it, per kb:control-model (the instant an agent can edit the graph to raise its own score, the score measures nothing)." ;
+               kpred:constraint   "COST: a council call is N times one call. Default remains single-model extraction. The council escalates only on statements a cheap first pass flags low-confidence or contested (~10-15% in practice), or when convened deliberately over a selected set (kb:entity-sets). Cost is then ~1x + Nx on the minority, not Nx on everything." ;
+               kpred:open-question "Does 'council' warrant a new kpred:verifiable-by value, or stay 'unknown'? A new value is honest — it is genuinely not code/test/source/user — but every added value weakens the axis's routing guarantee unless the gate treats it exactly as unclassified. Leaning: no new value; record the vote in provenance and leave verifiability 'unknown' until a source lands." ;
+               kpred:open-question "Do we attempt independence weighting (discounting models of shared lineage)? Statistically it is the right correction, but the independence estimates are themselves unverifiable guesses — a number that looks rigorous and is not. Recorded UNDECIDED rather than shipped as false precision." ;
+               kpred:honest-note  "Nothing is built. The plumbing (providers, merge, review queue) exists; the council does not. Note also that this feature can only ever reduce a KNOWN failure mode — models agreeing wrongly — it cannot detect a fact that every model and every available source gets wrong together. That limit should be stated in the UI, not buried here." ;
+               kpred:remaining    "Not built. Council config (provider/model list + convene policy); parallel fan-out with per-member graph namespaces; merge + vote recording; the disagreement-first review surface; the escalation trigger from the cheap first pass." .
+
+# -- Ingest graph routing (F103) --------------------------------------------------
+# "Deselect the current graph and find the most relevant graph for this ingest."
+# This is NOT a new relevance engine. routeQuestion() already exists, is tested
+# (7 tests), and ranks graphs by exactly the signals this needs.
+kb:ingest-routing rdf:type     ktype:Feature ;
+               rdfs:label         "Route an ingest to the most relevant graph" ;
+               kpred:feature-id   "F103" ;
+               kpred:has-status   "planned" ;
+               kpred:depends-on   kb:question-router ;
+               kpred:relates-to   kb:multi-kb ;
+               kpred:relates-to   kb:entity-normalization ;
+               kpred:principle    "THE DESTINATION IS A DECISION, NOT A DEFAULT. Today an ingest lands wherever the user happens to be standing, which silently makes 'the graph I last opened' the filing system. Offering a ranked destination turns an accident into a choice — but it must remain a CHOICE: the router proposes, the human disposes, because filing a fact in the wrong graph is a quiet error that compounds (it is not wrong, just unfindable)." ;
+               kpred:description  "On the Add page, allow DESELECTING the current graph so an ingest is not implicitly filed into it, and rank the registry by how related each graph is to the extracted triples. Reuses src/lib/rdf/question-router.ts: routeQuestion() already scores candidate graphs by knows-the-subject (strongest), predicate familiarity, and neighbourhood overlap, and addressees() already thresholds so we route rather than broadcast. The generalization is the INPUT — one Question (subject + predicate, object open) becomes N extracted statements — so the work is to factor the scoring over a set of signals and call it with the ingest's subjects/predicates, NOT to write a second relevance engine." ;
+               kpred:constraint   "REUSE routeQuestion's scoring. A parallel ingest-relevance scorer would be the fourth instance this session of the duplication kb:entity-sets now warns about, and would diverge from the question path the first time either is tuned. Factor a shared scorer; keep the 7 existing tests passing as the regression gate." ;
+               kpred:open-question "What happens when NO graph scores above the threshold? Options: create a new graph named from the content (importAsNewKb already exists), fall back to the current graph, or leave the destination unset and make the user pick. Leaning: offer 'new graph' as a first-class outcome — a genuinely unrelated ingest is evidence that a new graph is wanted, and forcing it into the nearest existing one is how graphs become junk drawers." ;
+               kpred:remaining    "Not built. Factor routeQuestion's scorer to accept N statements; a deselect affordance on Add; a ranked destination picker showing WHY each graph ranked (which subjects/predicates matched); the no-match outcome above." .
+
+# -- Search consistency: coverage, then vocabulary (F104) -------------------------
+# Prompted by a real failure: during the 2026-07-19 session kb_search repeatedly had
+# to be backstopped with grep. Matt: "lets keep working to avoid requiring a grep
+# fallback, the consistency of search results proving effective is a big thing."
+# Diagnosis found TWO causes, and only the second is a search-quality problem.
+kb:search-consistency rdf:type ktype:Feature ;
+               rdfs:label         "Search consistency — coverage first, then a user taxonomy" ;
+               kpred:feature-id   "F104" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:description  "Make kb_search reliable enough that grep is not needed as a backstop. Two independent causes were measured on 2026-07-19 and they need fixing in cost order: a COVERAGE gap (the MCP server is symlinked to only 6 of 23 graphs, so shipped features and most docs are simply unindexed) and a VOCABULARY gap (BM25 does no synonym expansion, so 'set' cannot match 'group'). Coverage is a symlink change with no new concepts; vocabulary needs skos:altLabel plus query expansion, then embeddings for the synonyms nobody listed. A user-defined taxonomy sits on top, with PoolParty as SKOS interop rather than a dependency." ;
+               kpred:relates-to   kb:agent-context-dogfooding ;
+               kpred:relates-to   kb:entity-normalization ;
+               kpred:relates-to   kb:predicate-economy ;
+               kpred:principle    "A SILENT EMPTY RESULT IS THE DANGEROUS FAILURE. Search returning nothing looks identical whether the fact is absent or merely unindexed — and an agent that reads 'not found' as 'does not exist' rebuilds what already exists. That is precisely the duplication this graph is supposed to prevent, so a coverage gap in search is not a search bug, it is a hole in the product's core claim." ;
+               kpred:measured     "CAUSE 1, COVERAGE (the big one, measured 2026-07-19): the MCP server sees 6 of 23 graphs. mcp-workspace/kbs symlinks only roadmap, production, codebase, docs-architecture, docs-features and docs-testing — kb_stats reports ~3.9K triples against a static/ corpus of ~7.3K quads. INVISIBLE to kb_search: reckons-shipped.ttl (the SHIPPED, production-status features — so a search for completed work can return nothing and invite a rebuild), reckons-competitive.ttl, knowledge.ttl (3.4K lines), and 8 of the docs-*.ttl graphs including docs-coding-workflow.ttl. The 2026-07-19 case study documenting how well the graph prevents duplication was itself written into a graph kb_search cannot see." ;
+               kpred:measured     "CAUSE 2, VOCABULARY: BM25 (mcp-server/src/search.ts) indexes subjectSlug + predicateSlug + object with no expansion, so a synonym gap is fatal — 'group nodes into a set' and 'group the queue into one decision' share no term. This is the class scripts/offline/shared-deps.ts also cannot detect (see kb:entity-sets honest-note), and it is what a thesaurus fixes." ;
+               kpred:decision     "FIX IN COST ORDER, AND DO NOT START WITH THE INTERESTING ONE. (1) COVERAGE — symlink the remaining graphs into the MCP workspace (scripts/setup-reckons-workspace.sh). No taxonomy, no new dependency, likely removes most grep fallbacks on its own. Ship this before anything else, or the taxonomy work will be measured against a broken baseline. (2) SKOS THESAURUS — skos:altLabel / skos:prefLabel / skos:hiddenLabel on entities, plus query expansion in BM25. Note the graph is ALREADY SKOS: skos:definition 517 uses, skos:broader 420, skos:related 233 — but altLabel, prefLabel and hiddenLabel are used ZERO times. The thesaurus half of the standard we already run is simply unused, so this needs no new vocabulary and no new tool. (3) EMBEDDINGS — BGE-small already ships in-app (src/lib/embed.ts) and catches synonyms nobody thought to list, which is the limit of any hand-written thesaurus." ;
+               kpred:decision     "POOLPARTY IS INTEROP, NOT A DEPENDENCY. PoolParty is a SKOS thesaurus manager, and SKOS is exactly what steps 2 and 3 produce — so the integration is IMPORT/EXPORT of a SKOS concept scheme, letting an enterprise bring a thesaurus they already maintain. It must never become required to search your own graph. ELASTICSEARCH IS REJECTED FOR CORE: Reckons.AI is local-first with no general backend (see the integration-boundaries rule), and a search server would make a network service mandatory for the most basic operation in the product. As an optional per-user integration for very large graphs it is defensible; as the search layer it is not." ;
+               kpred:open-question "Is a user-defined taxonomy an enterprise feature or a core one? UNDECIDED (Matt, 2026-07-19). Argument for core: the synonym problem bites a single user with one graph, and a personal vocabulary ('my clients' = 'accounts') is exactly the personal context this product claims to hold. Argument for enterprise: maintaining a controlled vocabulary is real work most individuals will not do, and it overlaps RBAC/governance territory. Leaning core-but-optional, with PoolParty import as the enterprise on-ramp." ;
+               kpred:honest-note  "A THESAURUS NOBODY MAINTAINS IS WORSE THAN NONE — it silently expands queries along relationships that are stale, and the user cannot see why a search returned what it did. So altLabels must be inspectable, attributable, and reviewable like any other fact (they ARE facts), and query expansion must be able to show which term matched via which alias. Unexplained recall is not an improvement over unexplained silence." ;
+               kpred:remaining    "Not built. (1) workspace symlink coverage + a script-tier check that every static/*.ttl is reachable by MCP; (2) skos:altLabel authoring UI + BM25 query expansion; (3) embedding-backed fallback ranking; (4) SKOS concept-scheme import/export for PoolParty interop." .
+
+kb:node-synonyms rdf:type      ktype:Phase ;
+               rdfs:label         "Phase 2 — user-managed synonyms on each node (skos:altLabel)" ;
+               kpred:part-of      kb:search-consistency ;
+               hnav:order         2 ;
+               kpred:has-status   "planned" ;
+               kpred:principle    "PUT THE VOCABULARY WHERE THE USER ALREADY IS (Matt, 2026-07-19: 'user managed synonyms on each node might be good'). A synonym added while looking at the node costs nothing; the same synonym added in a separate taxonomy manager costs a context switch, and will therefore not be added. This is kb:loop-idea-inbox's rule applied to vocabulary — capture must cost nothing or it will not happen — and it is why per-node aliases beat a standalone thesaurus tool for the first cut, even though the standalone tool is more powerful." ;
+               kpred:description  "Each entity may carry skos:altLabel values the user writes, and BM25 expands queries across them. Standards-native, not a custom field: the graph is ALREADY SKOS (skos:definition 517 uses, skos:broader 420), while altLabel/prefLabel/hiddenLabel are used ZERO times and nothing in src/ or mcp-server/ reads them — so this activates an unused half of a standard already in play, and it round-trips in TTL and exports to any SKOS tool for free. UI home is obvious: the node detail panel already does inline label editing (saveLabel, src/routes/(app)/+page.svelte:1409), so aliases sit beside the label rather than in a new surface." ;
+               kpred:constraint   "PER-NODE IS NOT ENOUGH ON ITS OWN, and the gap is already live in this project. Entity-specific aliases ('entity set' = 'group' = 'batch') belong on the node. GLOBAL vocabulary equivalences do not: the KB -> graph terminology migration means 'graph' = 'KB' = 'knowledge base' across essentially every entity, and writing that onto 1,789 nodes is absurd. So a graph-level synonym set is needed as well. Build per-node FIRST (it is the one the user will actually maintain), and treat the global set as a second tier rather than pretending one mechanism covers both." ;
+               kpred:constraint   "AN ALIAS COLLISION IS A DUPLICATE SIGNAL, NOT A CONFLICT TO RESOLVE SILENTLY. If two entities claim the same altLabel they are probably the same thing — which is exactly what kb:entity-normalization already detects by embedding similarity. Route collisions into the existing merge-suggestion path rather than letting search quietly return both and calling it recall." ;
+               kpred:constraint   "ALIASES ARE FACTS. They carry provenance and review status like any other statement, so an embedding-PROPOSED alias (normalizeEntities already computes the similarity) lands as PENDING for review and is never auto-applied. A vocabulary the user did not agree to is not user-managed." ;
+               kpred:honest-note  "Synonyms trade PRECISION for recall, and the cost is not zero: expanding 'set' to 'group' will surface rows the user did not want. So the result must show WHICH ALIAS MATCHED — unexplained recall is no better than unexplained silence, and it is worse in one way, because it looks like it worked. Also note per-node aliases would NOT have caught the F65/loop-job-grouping duplication on their own unless someone had already thought to add 'group' to the set entity; embeddings (phase 3) are what catch the synonym nobody anticipated." ;
+               kpred:remaining    "Not built. altLabel editing in the node panel; BM25 query expansion over altLabels with match attribution; alias-collision -> merge suggestion; embedding-proposed aliases as pending facts; graph-level synonym set as the second tier." .
+
+# -- Environmental impact of local-first AI (F105) ---------------------------------
+# Matt (2026-07-19): emphasize offline local; servers and API usage are a cost in many
+# ways, not just monetary. Calculate environmental impact, market water/electricity
+# savings on the homepage. Thesis: distributed computing puts the power of the user's
+# own device in their hands — the grandparent's Mac helps with shopping, the
+# entrepreneur starts a business without burning API credits.
+kb:environmental-impact rdf:type ktype:Feature ;
+               rdfs:label         "Environmental impact of local-first inference" ;
+               kpred:feature-id   "F105" ;
+               kpred:has-status   "planned" ;
+               kpred:relates-to   kb:aggressive-local-offload ;
+               kpred:relates-to   kb:local-offload ;
+               kpred:relates-to   kb:mission ;
+               kpred:relates-to   kb:honest-status ;
+               kpred:description  "Quantify and communicate the environmental case for running inference on hardware the user already owns. Two halves, deliberately unequal: a MEASURED half (first-party watt-hours for real local tasks on named hardware, which we can substantiate) and a CITED half (published ranges for hosted inference, which we cannot measure and must not present as our own). The public claim leads with the structural argument — a device already manufactured and already powered draws marginal energy, while a hosted query draws on capacity that must be built and cooled — because that argument survives an order-of-magnitude error in any disputed per-query figure. The accessibility framing is the same point in human terms: the Mac someone already owns is enough to help with the shopping or to start a business, with no subscription and no credit balance in the way." ;
+               kpred:principle    "THE THESIS IS RIGHT AND THE OBVIOUS MARKETING FOR IT IS NOT. 'Reckons.AI saves N litres of water' is unverifiable by us: per-query water and energy figures for frontier hosted models are not published by their operators, vary by one to two ORDERS OF MAGNITUDE with region, cooling design, grid mix, hour of day and model size, and the widely-quoted numbers derive from a small number of contested 2023 estimates about older models. Publishing a confident figure would be an unverifiable claim, made by the party it benefits — which is the precise failure kb:mission exists to oppose. We would be committing our own thesis's cardinal sin, in our own marketing, about ourselves." ;
+               kpred:principle    "LOCAL IS NOT ZERO. A laptop running a 7B model draws real power and its manufacture carried real embodied carbon. The honest claim is never 'free', it is a COMPARISON — and a comparison is only valid where the local model can actually do the task. Comparing a 0.5B WASM model against a frontier model on quality-blind 'per query' terms would flatter us by measuring the wrong thing." ;
+               kpred:decision     "LEAD WITH THE ARGUMENT THAT NEEDS NO CONTESTED NUMBERS: MARGINAL vs PROVISIONED capacity. The user's device already exists, is already powered on, and is idle most of the time. Inference on it consumes marginal energy from hardware already manufactured and already running. A hosted query instead draws on capacity that must be BUILT, cooled and kept warm for peak demand. That argument is structural, survives an order-of-magnitude error in any per-query figure, and is honest without a single disputed statistic. The accessibility framing is the same argument in human terms and is independently true: the hardware someone already owns is enough, so capability is not gated behind a subscription or a credit balance." ;
+               kpred:constraint   "MEASURE WHAT WE CAN, CITE RANGES FOR WHAT WE CANNOT, NEVER PUBLISH A POINT ESTIMATE WE DID NOT MEASURE. We CAN measure first-party: wall-power draw and duration for a real local task on real hardware (we already have bench infrastructure and local models), giving Wh per task with the machine and model named. We CANNOT measure hosted per-query water or energy — nobody publishes it. So: our own numbers are measured and attributed to a specific device; the hosted side is presented as a published RANGE with citations and an explicit statement that it is a third-party estimate, not our measurement." ;
+               kpred:constraint   "GREEN CLAIMS ARE LEGALLY REGULATED. Environmental marketing is governed by the FTC Green Guides in the US and the EU's green-claims regime, both of which require substantiation for comparative environmental claims. An unsubstantiated 'saves water' headline is not merely a credibility risk, it is a legal exposure — and per SAFETY.md's precedent, overclaiming a benefit we cannot evidence is itself a liability. Legal review before any comparative figure goes on a public page." ;
+               kpred:measured     "TRAJECTORY, MEASURED 2026-07-19 (Matt: a powerful device is a reach toward more capable models, but as capability packs into fewer parameters and less RAM, phones and smaller devices are enhanced over time). scripts/offline/energy-bench.ts across three model sizes on one machine: llama3.2:3b ~0.68-1.00 Wh per 1k output tokens, mistral-nemo 12.2B ~2.66-3.09, qwen3-coder 30.5B ~1.31. The phone-class 3B is 3-4x more efficient per token than the 12B, and the 30.5B beats the 12.2B because it is mixture-of-experts with far fewer ACTIVE parameters. So the honest framing of the marketing claim is not 'local is greener today' but 'the hardware threshold is falling, and it is falling because ACTIVE parameters are falling faster than total ones'. That is a claim we can measure and re-measure as models ship, rather than one we assert once. CAVEAT: one machine, two short tasks per model, 4.6x spread — directional, not publishable." ;
+               kpred:open-question "How much of this belongs on the HOMEPAGE versus a dedicated, heavily-caveated methodology page? A homepage cannot carry the caveats that make the claim honest, and a claim stripped of its caveats becomes the overclaim. Leaning: homepage carries the STRUCTURAL argument (your device, already on, already yours — no numbers), with a linked methodology page holding measurements, ranges, sources and limits." ;
+               kpred:honest-note  "Nothing is measured yet. Until scripts measure real Wh on real hardware, this feature has NO quantitative claim to make, and the honest position is to say the qualitative thing only. Also worth stating in the copy rather than hiding: Reckons.AI itself calls hosted models when the user chooses one, and this repo's own development runs on a frontier model — a local-first tool built with cloud compute. Claiming otherwise would be false, and admitting it costs nothing next to being caught." ;
+               kpred:remaining    "Not built. (1) scripts/offline/energy-bench.ts — measure wall power + duration for representative local tasks (ingest, chat, embed) on named hardware; (2) a cited range table for hosted inference with sources and dates; (3) methodology page generated from this graph; (4) homepage copy carrying the structural argument only; (5) legal review before publication." .
+
+kb:device-graph rdf:type       ktype:Feature ;
+               rdfs:label         "One-click device graph (and device-to-device comparison)" ;
+               kpred:feature-id   "F106" ;
+               kpred:has-status   "planned" ;
+               kpred:depends-on   kb:workspace-sync ;
+               kpred:relates-to   kb:environmental-impact ;
+               kpred:relates-to   kb:local-offload ;
+               kpred:principle    "A DEVICE PROFILE IS A GRAPH, SO IT NEEDS NO NEW MACHINERY. Facts about this machine — GPU, VRAM, cores, RAM, WebGPU support, and MEASURED throughput and energy per model — are triples like any other. Which means sharing a profile is folder sync, comparing two profiles is the existing cross-graph compare (F16), and a corpus of them is just a multi-graph registry. Inventing a bespoke 'benchmark format' would be building a private version of the product." ;
+               kpred:description  "One click produces a graph describing the user's current device and what it can actually run: static capability (GPU/VRAM/CPU/cores/RAM/WebGPU/browser) plus MEASURED facts (tokens per second and watt-hours per 1k tokens, per model actually run). Because it is a graph it round-trips as TTL, syncs through the existing workspace folder sync, and compares device-to-device through the existing compare/align path — so a user can answer 'will this model run well on MY machine' from real measurements on similar hardware rather than vendor claims." ;
+               kpred:constraint   "A device profile is FINGERPRINTABLE. GPU model, VRAM, core count, screen and browser together are close to a unique identifier, so this is opt-in, local by default, and sharing is an explicit act — never background telemetry. Reckons.AI is local-first and does not phone home; a feature that quietly built a device census would contradict the product. Sharing a profile must also be reviewable before it leaves the device, like any other export." ;
+               kpred:constraint   "REUSE src/lib/integrations/llm/device-capability.ts. It already detects iOS WebKit, memory constraint via navigator.deviceMemory, and whether an in-browser model should be avoided (TINY_WASM_MODEL, CONSTRAINED_MODEL_MB_CAP). That is a narrow GATE today, not a profile — extend it into one rather than writing a second detector." ;
+               kpred:measured     "Method proven 2026-07-19 by scripts/offline/energy-bench.ts on 2x RTX 3090 / Ryzen 9 3900X, marginal GPU energy above idle, warm model, three sizes: llama3.2:3b ~0.68-1.00 Wh per 1k output tokens; mistral-nemo 12.2B ~2.66-3.09; qwen3-coder 30.5B ~1.31. Two findings. (1) The phone-class 3B is 3-4x more energy-efficient per token than the 12B — the capability/energy frontier moving down-market is measurable, not just assertable. (2) The 30.5B beat the 12.2B, almost certainly because it is mixture-of-experts with far fewer ACTIVE parameters — which is Matt's trajectory thesis (capability packed into fewer active params) showing up directly in the numbers. Spread across tasks is 4.6x, so no mean is quotable yet." ;
+               kpred:remaining    "Not built. Extend device-capability.ts into a profile emitter; a one-click 'describe this device' action writing a device graph; in-browser throughput measurement (WebGPU/WASM) since nvidia-smi is desktop-only; opt-in share via folder sync; a device-comparison view over the existing compare path." .
+
+# -- Production stabilization: integrity, trust boundaries, delivery (F107) ------
+# Comprehensive codebase review, 2026-07-21. The semantic model is strong; the
+# release blocker is that execution, persistence, secret, and publishing boundaries
+# do not yet uphold the product's own local-first and review-before-confirm promises.
+# This is ONE ordered stabilization programme, not nine disconnected cleanup tickets.
+
+kb:stabilization-trust-boundaries rdf:type ktype:Feature ;
+               rdfs:label         "Production stabilization — integrity, trust boundaries, and maintainable delivery" ;
+               kpred:feature-id   "F107" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:decided-on   "2026-07-21"^^xsd:date ;
+               kpred:relates-to   kb:mission ;
+               kpred:relates-to   kb:honest-status ;
+               kpred:has-part     kb:mcp-process-safety ;
+               kpred:has-part     kb:reproducible-delivery ;
+               kpred:has-part     kb:canonical-graph-package ;
+               kpred:has-part     kb:transactional-sync-protocol ;
+               kpred:has-part     kb:credential-boundary ;
+               kpred:has-part     kb:settings-schema-roundtrip ;
+               kpred:has-part     kb:untrusted-output-hardening ;
+               kpred:has-part     kb:application-boundary-decomposition ;
+               kpred:has-part     kb:pwa-delivery-budget ;
+               kpred:description  "A stabilization programme that makes the complete Reckons.AI product earn the trust already expressed by its RDF model. It closes the critical command-execution and sync-loss paths first, then establishes one lossless graph package, one secret/settings schema, safe publishing and extension boundaries, transactional mutation architecture, reproducible quality gates, and a measured offline-delivery budget. It EXTENDS F75/F57/F56, F69, F27/F55/F66, F92, and F33/F34 rather than replacing or duplicating them." ;
+               kpred:principle    "DATA LOSS AND SECRET EXPOSURE OUTRANK FEATURE VELOCITY. A local-first graph that can erase review history, and a safe-to-share profile that can carry a secret, violate the product thesis more deeply than any missing feature." ;
+               kpred:principle    "PRODUCTION IS A CLAIM THAT REQUIRES INDEPENDENT EVIDENCE. A passing unit suite or a graph status cannot substitute for adversarial boundary tests, lossless round trips, and observed production-build behaviour." ;
+               kpred:constraint   "STABILIZATION BEFORE EXPANSION: do not promote additional product surfaces to production while F107.1, F107.3, F107.4, F107.5, or F107.7 remain open. Work outside this programme must not weaken or bypass those gates." ;
+               kpred:remaining    "DONE WHEN all nine parts meet their stated completion conditions; an independent review reproduces no command injection, status/provenance loss, secret leakage, active-content execution, or output-path escape; check/test/build/align and every deliverable-specific CI suite pass; warning, coverage, bundle, and precache budgets are blocking; and only then is the application's alpha/production-readiness claim reassessed." .
+
+kb:mcp-process-safety rdf:type ktype:Feature ;
+               rdfs:label         "MCP process execution containment and protocol health" ;
+               kpred:feature-id   "F107.1" ;
+               kpred:has-status   "functional" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:stabilization-trust-boundaries ;
+               kpred:tested-by    "mcp-server/src/__tests__/git-utils.test.ts" ;
+               kpred:tested-by    "mcp-server/src/__tests__/validate-args.test.ts" ;
+               kpred:tested-by    "mcp-server/test/kb-reader.test.mjs" ;
+               hnav:order         "1"^^xsd:integer ;
+               kpred:relates-to   kb:mcp-server ;
+               kpred:relates-to   kb:git-analysis ;
+               kpred:relates-to   kb:control-model ;
+               kpred:description  "Close the MCP's local-code-execution boundary and make reader failure explicit. Replace shell-string child processes with argument-vector APIs; validate Git refs and tool arguments at runtime; audit every process-spawning path; distinguish invalid, empty, stale, and deleted graphs; and reconcile vanished readers instead of serving plausible old facts. MCP is local, but an LLM-controlled tool argument is still untrusted input." ;
+               kpred:progress     "COMPLETE 2026-07-22. (1) Command execution: git-utils.ts (the only process-spawning file, repo-wide grep exec|spawn) uses execFileSync('git', args[]) with no shell, sanitizeRef() rejecting leading-dash option-injection + non-revision characters, and a '--' terminator; the live injection via kb_git_diff_triples/kb_alignment_score ('ref: HEAD; <cmd>') is closed. (2) Runtime arg schemas: validate-args.ts validates every tools/call against the tool's own inputSchema (required present + non-empty, types match) and returns -32602 before any handler runs. (3) Reader health: kb-reader.ts distinguishes ok/empty/parse-error/missing — a corrupt file keeps last-good data but is flagged stale, a deleted graph drops its triples, and a vanished KB is reconciled out of the reader map instead of serving old facts; kb_stats/kb_list_kbs surface it. (4) The full MCP suite (build + vitest + node --test, 73+10 tests incl. adversarial injection, arg-validation, and health cases) now runs as a required CI job (.github/workflows/ci.yml `mcp`)." ;
+               kpred:constraint   "The Git-diff/alignment tools were NOT actually disabled — they were live and injectable. As of 2026-07-22 hostile-ref tests prove shell metacharacters, newlines, command substitutions, and option-like refs cannot execute or reshape a command; that gate is now met. It stays met: any new process-spawning path must land with the same argument-vector + validation + adversarial-test discipline before it ships." ;
+               kpred:remaining    "DONE WHEN every MCP child process uses execFile/spawn-style argument arrays with no shell interpolation; refs are validated and separated from options; runtime schemas reject malformed tool arguments; parse/deletion health is surfaced to callers; repository-wide process audit and adversarial injection tests block regressions; and the full MCP test suite runs as a required CI job." .
+
+kb:reproducible-delivery rdf:type ktype:Feature ;
+               rdfs:label         "Reproducible toolchain, blocking quality gates, and executable documentation" ;
+               kpred:feature-id   "F107.2" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:stabilization-trust-boundaries ;
+               hnav:order         "2"^^xsd:integer ;
+               kpred:relates-to   kb:release-pipeline ;
+               kpred:relates-to   kb:deep-testing ;
+               kpred:relates-to   kb:work-tiering ;
+               kpred:relates-to   kb:tier-script-ci ;
+               kpred:description  "Make a clean checkout behave like CI without hidden downloads or contradictory instructions. Pin one package manager and Node source across package metadata, lockfile, NVM and CI; make tsx a direct pinned dependency instead of an implicit npx fetch; gate Svelte warnings and meaningful coverage; run tests for the web app, MCP, CLI, extension, production build, and supported browser/device projects; and make README/SETUP/deploy commands executable rather than aspirational." ;
+               kpred:principle    "A gate that downloads an undeclared executable is not deterministic, and documentation for files that do not exist is not documentation." ;
+               kpred:remaining    "DONE WHEN a clean npm/pnpm install followed by check, test, build and align succeeds without network access after dependency installation; no script relies on an undeclared npx package; Svelte warnings are ratcheted to zero; coverage includes rune stores, routes, components and persistence boundaries with blocking thresholds; MCP/CLI/extension and cross-browser production tests run in CI; and generated checks catch MCP tool/graph-count plus setup-documentation drift." .
+
+kb:canonical-graph-package rdf:type ktype:Feature ;
+               rdfs:label         "Versioned, lossless graph package contract" ;
+               kpred:feature-id   "F107.3" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:stabilization-trust-boundaries ;
+               hnav:order         "3"^^xsd:integer ;
+               kpred:depends-on   kb:rdf-dataset-migration ;
+               kpred:relates-to   kb:workspace-index ;
+               kpred:relates-to   kb:import-workspace-ux ;
+               kpred:description  "Finish F75's existing decision that multiple KBs and sidecars travel as a GRAPH PACKAGE. One versioned manifest names immutable graph ID, display name, revision, payload paths, sources, assets, pending inbox, and integrity hashes; the payload preserves every statement status and review/provenance field through toTriG/toTurtleFull or an equivalently lossless representation. The app, MCP, Drive and CLI consume the same package schema and conformance fixtures." ;
+               kpred:principle    "A clean Turtle projection is an export VIEW, never an authoritative backup of a richer reviewed graph." ;
+               kpred:remaining    "DONE WHEN export to an empty database and re-import is semantically identical for confirmed, refined, pending, rejected and superseded statements, source records, stable IDs, review metadata and assets; malformed/partial packages fail validation without touching live data; format/version migration fixtures pass; and app, MCP, Drive and CLI use one shared parser/writer contract." .
+
+kb:transactional-sync-protocol rdf:type ktype:Feature ;
+               rdfs:label         "Transactional workspace, Drive, and MCP interoperability" ;
+               kpred:feature-id   "F107.4" ;
+               kpred:has-status   "scaffolded" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:stabilization-trust-boundaries ;
+               hnav:order         "4"^^xsd:integer ;
+               kpred:depends-on   kb:canonical-graph-package ;
+               kpred:relates-to   kb:workspace-sync ;
+               kpred:relates-to   kb:drive-folder-sync ;
+               kpred:progress     "DONE 2026-07-22 (data-safety core): the silent-erase-on-reconnect path is closed. Both sync backends now EXPORT lossless toTurtleFull (all statuses + provenance) for the round-tripped per-KB folder file (knowledge.ttl stays a lossy projection for the MCP reader), and the shared IMPORT (populateKbFromTtl) preserves parsed statuses + sources verbatim for an annotated file while still treating a plain external/legacy TTL as confirmed. Before any destructive replace it captures a full-fidelity recovery snapshot (new Dexie v7 kbSnapshots store + src/lib/storage/kb-snapshots.ts, restoreKbSnapshot), and the clear+repopulate runs in one Dexie transaction (mid-write failure rolls back). Round-trip test proves every status (confirmed/refined/pending/pending-removal/rejected/superseded) + provenance survive export->import (src/lib/stores/__tests__/kb-import-roundtrip.test.ts). PLUS 2026-07-22 (Stage 2, durable revisions): the local-folder last-seen hash baseline now persists to localStorage (reckons:ws-seen-hashes) and is restored in loadWorkspace before the initial pull, so a reload/reconnect skips files that have not changed on disk instead of re-importing (and snapshot-churning) every KB; cleared on clearWorkspace; two tests cover persist->reload->skip and clear. STILL OPEN: staged direction/conflict DIFF UI before an existing-graph replace (the destructive concern is already neutralized by lossless+snapshot, so this is UX not safety), Drive-side durable revisions for symmetry, MCP as a third contract participant, and a cross-backend contract-test harness." ;
+               kpred:relates-to   kb:mcp-workspace ;
+               kpred:relates-to   kb:import-workspace-ux ;
+               kpred:description  "Replace content-hash guesswork and destructive replacement with durable revisions, staged reconciliation, explicit direction/conflict UI, backup, and atomic commit/rollback. Local folder, Drive and MCP must agree on stable identity, graph discovery, source metadata, assets, and one pending-inbox path. Read/write/parse failures are surfaced as failures and never disguised as empty data or a successful sync count." ;
+               kpred:constraint   "Auto-pull is NOT gated off — instead the destructive concern it guarded against was removed at the reconcile itself: re-importing the app's own lossless export is now semantically a no-op, and any replace is snapshotted + transactional, so a reconnect can no longer silently erase review state. Durable last-seen revisions and a staged direction/diff before an existing-graph replace remain the required refinement (Stage 2); reconnect, divergent revisions, malformed input, cancellation and mid-write failure remain required test cases as that lands." ;
+               kpred:remaining    "DONE WHEN last-seen revision state survives reload; first attach/reconnect shows direction and diff before destructive action; imports parse and validate into staging, back up live state, then commit all affected tables atomically with rollback; failures are user-visible; and shared contract tests drive the same fixtures through local folder, Drive and MCP while proving no statement status, source, provenance, changelog reference or asset is lost." .
+
+kb:credential-boundary rdf:type ktype:Feature ;
+               rdfs:label         "Credential classification and secret-safe exports" ;
+               kpred:feature-id   "F107.5" ;
+               kpred:has-status   "scaffolded" ;
+               kpred:progress     "DONE 2026-07-22 (core leak + build guard). THE LEAK: the 'safe to share' settings profile allowlisted top-level fields but embedded turtleSettings whole, and turtleSettings carries humeApiKey + humeSecretKey — so a key escaped a 'no secrets' export. FIX: src/lib/safety/redact.ts recursively drops any secret-NAMED field at any depth (positive rule, not a denylist that new nested creds would slip past); buildSettingsProfileJson runs it as a final pass. A sentinel test (settings-profile-secrets.test.ts) seeds top-level AND nested-in-turtleSettings sentinels and proves neither appears in the serialized profile, while public fields (models, humeConfigId) survive. BUILD GUARD: scripts/offline/secret-scan.ts (npm run secret:scan, now in CI check job) fails if any secret-named VITE_ var referenced in source (10 found: VITE_*_API_KEY, VITE_HUME_SECRET_KEY) is set in the build env — a prod build would inline it into the public bundle — and scans any build/ output for set secret values as a backstop. STILL OPEN: an explicit per-field secret/sensitive/public classification map; extending recursive redaction to the OTHER boundaries (full KB backup, logs, workspace-profile writes); safe legacy-credential migration; and UI/docs stating where each credential lives, where it is sent, and what a static client cannot protect." ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:stabilization-trust-boundaries ;
+               hnav:order         "5"^^xsd:integer ;
+               kpred:relates-to   kb:data-egress-model ;
+               kpred:relates-to   kb:settings-polish ;
+               kpred:relates-to   kb:settings-unified-integrations ;
+               kpred:relates-to   kb:integration-plugin-sdk ;
+               kpred:description  "Give every setting a security classification and enforce it recursively at every boundary. The current safe-to-share profile serializes nested Turtle/Hume credentials, while build-time VITE provider keys become public bundle defaults. Profiles, backups, logs, workspace files and production bundles need positive allowlists and sentinel-secret tests, not comments or TypeScript interfaces that disappear at runtime." ;
+               kpred:principle    "A static client cannot keep an operator-wide secret. Runtime user-supplied credentials may be browser-persisted by explicit choice; real deployment credentials must never be compiled into a distributed bundle." ;
+               kpred:remaining    "DONE WHEN every settings field is classified secret/sensitive/public; recursive schema-driven redaction covers every export, backup, log and workspace-profile path; sentinel-secret tests prove nested credentials cannot escape; a build guard rejects real provider secrets in app and extension bundles; legacy credentials migrate safely; and UI/docs state where each credential lives, where it is sent, and what a static client cannot protect." .
+
+kb:settings-schema-roundtrip rdf:type ktype:Feature ;
+               rdfs:label         "Schema-driven settings persistence and migration" ;
+               kpred:feature-id   "F107.6" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:stabilization-trust-boundaries ;
+               hnav:order         "6"^^xsd:integer ;
+               kpred:depends-on   kb:credential-boundary ;
+               kpred:relates-to   kb:settings-polish ;
+               kpred:relates-to   kb:settings-unified-integrations ;
+               kpred:description  "Replace the manually reconstructed partial SettingsRecord with one authoritative runtime schema that drives defaults, validation, persistence, versioned migration, profile allowlists, secret classification and—where useful—UI metadata. Adding a field must make omission impossible or make an exhaustive test fail." ;
+               kpred:remaining    "DONE WHEN save(load(x)) preserves every non-ephemeral supported field; preferLocal, embedding model, analysis guidance/prompts, story, preview/asset settings, integrations, refresh, tutorial and n8n values all round-trip; old-version migrations pass fixtures; crafted profile keys cannot overwrite secrets; unknown future fields are preserved through a defined extension area or rejected loudly; and the manual partial-object persistence list is gone." .
+
+kb:untrusted-output-hardening rdf:type ktype:Feature ;
+               rdfs:label         "Publisher, extension, QR, and CLI untrusted-input hardening" ;
+               kpred:feature-id   "F107.7" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:stabilization-trust-boundaries ;
+               hnav:order         "7"^^xsd:integer ;
+               kpred:relates-to   kb:graph-publishing ;
+               kpred:relates-to   kb:publishing-v2 ;
+               kpred:relates-to   kb:browser-extension ;
+               kpred:relates-to   kb:publish-safety-gate ;
+               kpred:description  "Treat graph content, Markdown, themes, slugs, page titles, LLM responses, archive contents and CLI arguments as untrusted. Harden generated sites against stored XSS/CSS and remote-asset tracking; constrain every output path and destructive cleanup target; generate extension reports with safe DOM/text rather than active HTML; pin/self-host CMS code with integrity policy; use argument-vector deploy processes; and either implement real revocable mobile authentication or remove the QR access claim." ;
+               kpred:principle    "The content-policy publish gate decides WHAT Reckons.AI will carry; technical sanitization decides WHETHER content can take control of the carrier. Neither replaces the other." ;
+               kpred:remaining    "DONE WHEN generated HTML uses an allowlist sanitizer and effective CSP; theme/URL values are validated; extension and report fields are schema-validated and escaped or assigned through safe DOM APIs; slugs and all output paths resolve beneath an explicit safe root; cleanup refuses dot, repository root, home and ambiguous targets; deployment processes use argument arrays; CMS dependencies are pinned with integrity protection; QR revocation is enforceable if mobile access remains; and adversarial suites block script/event/javascript/CSS injection, archive bombs, path/symlink traversal, hostile titles and shell-shaped CLI values." .
+
+kb:application-boundary-decomposition rdf:type ktype:Feature ;
+               rdfs:label         "Transactional graph commands and application-controller decomposition" ;
+               kpred:feature-id   "F107.8" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:stabilization-trust-boundaries ;
+               hnav:order         "8"^^xsd:integer ;
+               kpred:depends-on   kb:canonical-graph-package ;
+               kpred:depends-on   kb:settings-schema-roundtrip ;
+               kpred:relates-to   kb:one-graph-canvas ;
+               kpred:description  "Establish one transactional GraphCommand boundary for mutations and a durable outbox consumed by local/Drive sync, audit history and reactive state. Split workspace sync into serialization, reconciliation, transport and coordination modules; make routes composition surfaces rather than database/network controllers; move TurtleChatPanel provider, Markdown, voice and graph actions into typed services; and remove the production 100ms force-show path so children cannot act before required state is ready. F92 still owns renderer consolidation; this work owns mutation and controller boundaries around it." ;
+               kpred:principle    "One user action must have one authoritative mutation path. Side effects scattered across UI callers cannot keep IndexedDB, files, Drive, audit history and the rendered graph consistent." ;
+               kpred:remaining    "DONE WHEN every graph mutation goes through a transactionally tested command API that emits one durable outbox event; direct UI imports of database/provider transports are forbidden by dependency lint; workspace and chat responsibilities are split into bounded modules; the 2D/3D scene model is renderer-neutral under F92; startup has a real loading/error boundary; and behavioural plus E2E parity tests cover the extracted controllers." .
+
+kb:pwa-delivery-budget rdf:type ktype:Feature ;
+               rdfs:label         "Offline shell and model-runtime delivery budgets" ;
+               kpred:feature-id   "F107.9" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:stabilization-trust-boundaries ;
+               hnav:order         "9"^^xsd:integer ;
+               kpred:depends-on   kb:reproducible-delivery ;
+               kpred:relates-to   kb:model-cache ;
+               kpred:relates-to   kb:mobile-uiux ;
+               kpred:relates-to   kb:local-offload ;
+               kpred:relates-to   kb:deep-testing ;
+               kpred:description  "Restore the distinction between an installable offline SHELL and optional model/media payloads. The current Workbox glob eagerly precaches roughly 90 MiB and duplicates ONNX/WASM runtimes, undermining lazy model loading, mobile storage and reliable updates. Optional models, demo assets and large media download only after explicit use, remain purgeable, and still work offline after their first successful cache." ;
+               kpred:constraint   "Set the core-shell, chunk and duplicate-byte budgets from measured constrained-device install/update tests before implementation; model weights and user-opted assets never count as shell prerequisites." ;
+               kpred:remaining    "DONE WHEN the core precache excludes optional models, demo media and other on-demand assets; ONNX/WASM bytes are not duplicated; model runtimes download only after explicit consent and can be inspected/purged; route/provider chunks are deliberately split; CI publishes and blocks on precache, chunk and duplicate-byte reports; and install, offline reuse and update recovery pass on constrained mobile-storage fixtures." .
+
+# -- UI experience and visual assurance programme (F108) -----------------------
+# Full desktop/mobile UI and visual-evidence review, 2026-07-22. This programme
+# turns the review into one ordered delivery contract. It extends the existing
+# release, deep-testing, mobile, legibility, and one-canvas work instead of
+# creating parallel versions of F33, F34, F36, F83, or F92.
+
+kb:ui-visual-assurance rdf:type ktype:Feature ;
+               rdfs:label         "UI experience and trustworthy visual assurance" ;
+               kpred:feature-id   "F108" ;
+               kpred:has-status   "in-progress" ;
+               kpred:priority     "high" ;
+               kpred:decided-on   "2026-07-22"^^xsd:date ;
+               kpred:has-part     kb:visual-evidence-integrity ;
+               kpred:has-part     kb:immediate-mobile-correctness ;
+               kpred:has-part     kb:responsive-application-shell ;
+               kpred:has-part     kb:graph-density-legibility ;
+               kpred:has-part     kb:accessible-interaction-contract ;
+               kpred:relates-to   kb:release-pipeline ;
+               kpred:relates-to   kb:deep-testing ;
+               kpred:relates-to   kb:mobile-uiux ;
+               kpred:relates-to   kb:graph-legibility ;
+               kpred:relates-to   kb:one-graph-canvas ;
+               kpred:description  "Make the distinctive Reckons.AI visual system dependable at phone, tablet, and desktop sizes, and make every UI-change claim rest on reproducible visual evidence. The ordered work first repairs the evidence contract, closes observed mobile correctness defects, establishes one responsive shell, makes populated graphs readable, and then ratchets accessibility and interaction quality across every route. This is the UI delivery layer over F33/F34/F36/F83/F92, not a replacement for those features." ;
+               kpred:principle    "A screenshot is evidence only when its build, commit, route state, renderer, device context, and failures are known. A clean image produced after swallowed setup or readiness errors is not a passing test." ;
+               kpred:principle    "MOBILE IS A PRIMARY LAYOUT, NOT A SHRUNK DESKTOP. Content order, navigation, panels, notifications, and touch interactions must be deliberately composed for the narrow viewport." ;
+               kpred:constraint   "Build-time checks stay quick and deterministic. Exhaustive workflows, device/orientation matrices, screenshot review, and local-VLM/Ollama analysis run through explicit local scripts and publish reviewable artifacts; they do not silently become a multi-hour build gate." ;
+               kpred:remaining    "DONE WHEN all five ordered parts meet their stated completion conditions; affected routes are reviewed from fresh production-build artifacts on desktop and Pixel-class mobile contexts; shell, graph, navigation, or typography changes pass the full local device/workflow suite; and no completion claim depends on swallowed browser errors, empty fixtures, stale screenshots, or an unreviewed VLM verdict." .
+
+kb:visual-evidence-integrity rdf:type ktype:Feature ;
+               rdfs:label         "Visual evidence integrity — quick build contract and full local review" ;
+               kpred:feature-id   "F108.1" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:ui-visual-assurance ;
+               hnav:order         "1"^^xsd:integer ;
+               kpred:relates-to   kb:release-pipeline ;
+               kpred:relates-to   kb:deep-testing ;
+               kpred:relates-to   kb:visual-testing ;
+               kpred:relates-to   kb:visual-workflow-harness ;
+               kpred:relates-to   kb:reproducible-delivery ;
+               kpred:description  "Repair the trust contract beneath F33/F34. The per-build browser gate is a deliberately small production-build contract: prove an exact 3D success state on a selected nonempty graph, prove forced no-WebGL fallback reaches exact 2D, and prove one Pixel ingest/layout state without runtime errors. The full local script owns real Playwright device projects, populated end-to-end workflows, screenshot comparison, orientations, accessibility evidence, and structured Ollama/VLM review. Both tiers fail on setup, seed, readiness, console, page, or audit errors instead of substituting an empty clean result." ;
+               kpred:constraint   "The quick gate has a measured browser-time budget and may not absorb the exhaustive F34 matrix. Local VLM output is advisory until it is schema-validated and attached to the exact screenshots it judged; deterministic assertions remain authoritative for renderer state, overflow, errors, and known layout contracts." ;
+               kpred:measured     "AUDIT 2026-07-22: the current full sweep has no screenshot regression assertion, catches setup/readiness/audit failures, captures empty graph/review states, and emulates workflow devices by viewport alone. Existing artifacts span different source revisions and do not record enough provenance to certify the current code." ;
+               kpred:remaining    "DONE WHEN the quick production-build contract is timed and blocking; 3D success cannot pass as 2D and fallback cannot pass as 3D; every visual run uses deterministic nonempty fixtures and fatal setup/readiness/browser errors; full workflows use true device/touch contexts; screenshot baselines have an explicit review/update procedure; run manifests record commit SHA, dirty state, URL, build mode, browser/device, orientation, renderer, timestamp, screenshot hashes and tool/model versions; and one local command generates a complete human-reviewable desktop/mobile report with structured Ollama findings." .
+
+kb:immediate-mobile-correctness rdf:type ktype:Feature ;
+               rdfs:label         "Immediate mobile correctness — Docs, graph cards, Facts, notices, and nav clearance" ;
+               kpred:feature-id   "F108.2" ;
+               kpred:has-status   "in-progress" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:ui-visual-assurance ;
+               hnav:order         "2"^^xsd:integer ;
+               kpred:relates-to   kb:mobile-uiux ;
+               kpred:relates-to   kb:deep-testing ;
+               kpred:description  "Fix the concrete phone defects confirmed by the 2026-07-22 review before undertaking the broader shell redesign. Docs must show the current document before its enormous navigation index; graph-management cards must reflow without switch/tab/remove collisions; Manual Facts inputs must inherit the dark readable field contract; mobile notifications must queue or collapse rather than stack over the working surface; and fixed navigation must reserve enough safe-area-aware space that it never covers page content or actions." ;
+               kpred:measured     "Pixel review evidence: Docs placed roughly 38,700px of link navigation ahead of content; seeded graph cards visibly overlapped metadata and actions; untyped Manual Facts inputs escaped the global dark input selector; notification stacks could consume the upper screen while another panel consumed the lower half; and the fixed navigation obscured content on KB, Settings, Ingest, and workflow captures." ;
+               kpred:remaining    "IN PROGRESS 2026-07-22. DONE WHEN the Docs navigation is a searchable drawer/disclosure with the active document rendered first; KB cards use a stable narrow-screen grid with readable identity and a separate action row/menu; Facts subject/predicate/object fields are explicit, labeled, readable in every state, and keyboard-friendly; only one mobile notice is expanded while dialogs/sheets are active; shared bottom clearance includes the nav and env(safe-area-inset-bottom); and fresh Pixel plus desktop production-build captures and focused interaction tests verify every affected route without overlap or regression." .
+
+kb:responsive-application-shell rdf:type ktype:Feature ;
+               rdfs:label         "Responsive application shell, navigation, and workspace layouts" ;
+               kpred:feature-id   "F108.3" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:ui-visual-assurance ;
+               hnav:order         "3"^^xsd:integer ;
+               kpred:depends-on   kb:immediate-mobile-correctness ;
+               kpred:relates-to   kb:mobile-uiux ;
+               kpred:relates-to   kb:one-graph-canvas ;
+               kpred:relates-to   kb:application-boundary-decomposition ;
+               kpred:description  "Implement F36's responsive architecture as one application shell rather than route-specific media-query patches. Give phones four or five labeled primary destinations plus an explicit More surface; use a reserved navigation row or rail on documents/forms and floating controls only on full-bleed canvases; share one Settings shell; and give Review and History deliberate workspace layouts instead of placing viewport-sized tools inside the narrow document container. Tablet and landscape are first-class compositions, not enlarged phone or shrunken desktop screenshots." ;
+               kpred:constraint   "The current F108.2 nav-clearance repair is a correctness patch, not approval of the existing eight-glyph information architecture. The broader navigation redesign requires route/task evidence and must preserve direct access to core ingest, graph, review, and reckoning workflows." ;
+               kpred:remaining    "DONE WHEN breakpoint and coarse-pointer state come from one shared source; mobile primary destinations are labeled and secondary destinations remain discoverable; Settings root and child routes use one responsive tab/drawer shell; Review provides a useful nonempty mobile/tablet composition with an operable divider or sheet; History uses the available workspace width without content collisions; keyboard, viewport resize, orientation and safe-area changes preserve the active task; and desktop, tablet portrait/landscape, and phone portrait/landscape workflows pass focused visual review." .
+
+kb:graph-density-legibility rdf:type ktype:Feature ;
+               rdfs:label         "Populated-graph legibility and density-aware rendering" ;
+               kpred:feature-id   "F108.4" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:ui-visual-assurance ;
+               hnav:order         "4"^^xsd:integer ;
+               kpred:relates-to   kb:graph-legibility ;
+               kpred:relates-to   kb:one-graph-canvas ;
+               kpred:relates-to   kb:deep-testing ;
+               kpred:description  "Extend F83's semantic condensation and F92's shared adaptive canvas into a visible density contract. Sparse graphs keep the current expressive 3D treatment; populated graphs clamp node scale, avoid label collisions, prioritize selected/hovered/neighbour labels, fade non-neighbour edges, and offer progressive focus, clustering, or a 2D overview before the canvas becomes a wall of text and crossings. Legibility decisions use the same shared scene model in main and Review modes." ;
+               kpred:principle    "RENDERED IS NOT READABLE. A canvas containing every node and label has failed if the user cannot identify structure, selection, or the next useful action." ;
+               kpred:remaining    "DONE WHEN deterministic small, medium, and large real-graph fixtures define acceptance thresholds; label placement and visibility are density/selection aware; node sizes are bounded; non-neighbour edges de-emphasize without erasing provenance; focus/cluster/overview transitions preserve selection and orientation; frame-budget-driven LOD follows F92 without oscillation; main and Review render parity is proven; and reviewed desktop plus mobile screenshots demonstrate meaningful structure rather than merely a nonblank canvas." .
+
+kb:accessible-interaction-contract rdf:type ktype:Feature ;
+               rdfs:label         "Accessible interaction, contrast, and target-size contract" ;
+               kpred:feature-id   "F108.5" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:ui-visual-assurance ;
+               hnav:order         "5"^^xsd:integer ;
+               kpred:relates-to   kb:mobile-uiux ;
+               kpred:relates-to   kb:deep-testing ;
+               kpred:relates-to   kb:reproducible-delivery ;
+               kpred:description  "Turn the existing UI rubric and compiler diagnostics into a blocking interaction contract. Interactive controls need sufficient target size and visible focus; small semantic text needs a contrast-safe token rather than the decorative purple data color; dialogs, menus, disclosures, dividers, graph controls, and mobile sheets must be operable by keyboard and coarse pointer; labels must name controls; and motion/media need appropriate alternatives. Deterministic audits identify candidates, while focused semantic tests and human visual review decide whether each candidate is a real defect." ;
+               kpred:constraint   "Do not treat the current raw sub-44px count as a pass/fail total: it includes noninteractive and intentionally compact elements. First repair audit classification, then ratchet verified interactive violations to zero without inflating visual density indiscriminately." ;
+               kpred:measured     "AUDIT 2026-07-22: mobile routes contain many verified compact glyph controls, the fixed navigation reaches 28-36px controls at narrow widths, small purple semantic text has weak contrast on common dark surfaces, and current Svelte diagnostics include static-element click handlers, unfocusable menu roles, unassociated labels, and media without captions." ;
+               kpred:remaining    "DONE WHEN token-level contrast tests cover text roles; verified interactive targets meet the chosen mobile target-size standard or carry a documented exception; every primary workflow is keyboard-completable with visible focus; touch-only and pointer-only controls have equivalents; labels, roles, dialog focus management, dividers, motion preferences and media alternatives pass automated and manual checks; Svelte accessibility warnings are ratcheted to zero; and the corrected device audit reports no unexplained target, overlap, clipping, or focus violations on supported routes." .
