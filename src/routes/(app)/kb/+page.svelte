@@ -1934,5 +1934,8 @@
     .new-kb-form { flex-direction: column; }
     .new-kb-form input { min-width: 0; }
     .section-head-actions { flex-wrap: wrap; }
+    /* F36: kb view tabs (all / bookmarked) are primary controls — 44px tap target
+       on touch (were ~26px). Matches the NavBar/Sheet min-height:44px convention. */
+    .kb-tab { min-height: 44px; }
   }
 </style>

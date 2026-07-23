@@ -71,14 +71,20 @@
     if (typeof window === 'undefined') return false;
     try {
       const c = document.createElement('canvas');
-      // Test WebGL2 first (Threlte/Three's default); fall back to WebGL1.
+      // Threlte/Three render on WebGL2 by default, so test that first, then fall back
+      // to WebGL1. The old check required window.WebGLRenderingContext AND only tried
+      // 'webgl', so a browser offering webgl2 could still read as "unavailable" and
+      // force the graph to 2D.
       return !!(c.getContext('webgl2') || c.getContext('webgl') || c.getContext('experimental-webgl'));
     } catch { return false; }
   }
-  // WebGL capability. Reactive: false during SSR, becomes true on the client once
-  // checkWebGL runs, so the gate below flips to 3D after hydration. It is a pure
-  // capability flag — NEVER set false by a user action (that was the latch bug).
+  // WebGL capability. Reactive: false during SSR, re-detected true on the client in
+  // onMount below, so the gate flips to 3D after hydration. Pure capability flag —
+  // NEVER set false by a user action (that was the latch bug).
   let webglAvailable = $state(checkWebGL());
+  // Default to attempting 3D. Do NOT seed this from webglAvailable — that value is
+  // false during SSR, which would stick use2D=true (2D) on a fresh load. The gate
+  // (use2D || !webglAvailable) handles the no-WebGL case reactively instead.
   let use2D = $state(settings().prefer2D ?? false);
   let graph3DReady = $state(false);
 
@@ -287,15 +293,21 @@
 
   // Keep labelFontSize and renderer in sync with settings (e.g. changed from settings page)
   $effect(() => { const sz = settings().nodeLabelFontSize; if (sz != null) labelFontSize = sz; });
-  $effect(() => { const p = settings().prefer2D; if (p != null) use2D = p; });
+  // Keep the render mode in sync with the saved preference (e.g. changed on the
+  // settings page). Because the render gate is `use2D` alone, setting this back to
+  // false reliably returns to 3D — there is no webglAvailable latch to fight.
+  $effect(() => {
+    const p = settings().prefer2D;
+    if (p != null) use2D = p;
+  });
 
   // ── URL query param sync ──────────────────────────────────────────────────
   // Read initial view state from URL params (enables Shelly-recommended views
   // to be bookmarked and shared within the same browser/device).
   onMount(async () => {
-    // Re-detect WebGL on the CLIENT. The $state initializer can carry a stale SSR
-    // value (false, since SSR has no window), which would keep the gate in 2D on a
-    // fresh load even when the browser supports WebGL. This guarantees a real check.
+    // Re-detect WebGL on the CLIENT — the $state initializer can carry a stale SSR
+    // value (false), which would keep the gate in 2D on a fresh load even when the
+    // browser supports WebGL. Guarantees a real check.
     webglAvailable = checkWebGL();
     const params = $page.url.searchParams;
     const l = params.get('layout');

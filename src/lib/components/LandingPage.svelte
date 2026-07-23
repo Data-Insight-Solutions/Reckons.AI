@@ -284,6 +284,14 @@
   // control) — and that distinction is RENDERED, not hidden. CI fails if this goes stale.
   import THESIS from '$lib/data/landing-thesis.json';
 
+  // Seven tenets is an essay, not a section — most visitors bounce off a wall of philosophy
+  // before reaching the product. Show three and disclose the rest. Order is the GRAPH's order
+  // (kb:thesis), not a hand-picked "best three": re-ranking here would quietly editorialise a
+  // list whose whole point is that it is generated, and CI checks it against the graph.
+  const THESIS_PREVIEW = 3;
+  let thesisExpanded = $state(false);
+  const visibleThesis = $derived(thesisExpanded ? THESIS : THESIS.slice(0, THESIS_PREVIEW));
+
   const RM_LABEL: Record<string, string> = {
     done: 'shipped',
     building: 'building',
@@ -459,8 +467,8 @@
       measured rather than guessed. Two documents cannot be diffed for reasoning. Two graphs can.
     </p>
 
-    <div class="thesis-list">
-      {#each THESIS as t}
+    <div class="thesis-list" id="thesis-list">
+      {#each visibleThesis as t}
         <div class="tenet">
           <div class="tenet-head">
             <h3>{t.headline}</h3>
@@ -472,6 +480,20 @@
         </div>
       {/each}
     </div>
+
+    {#if THESIS.length > THESIS_PREVIEW}
+      <button
+        class="thesis-more mono"
+        aria-expanded={thesisExpanded}
+        aria-controls="thesis-list"
+        onclick={() => (thesisExpanded = !thesisExpanded)}
+      >
+        {thesisExpanded
+          ? 'Show fewer'
+          : `Show ${THESIS.length - THESIS_PREVIEW} more`}
+        <span class="thesis-more-chevron" class:open={thesisExpanded} aria-hidden="true">▾</span>
+      </button>
+    {/if}
 
     <p class="thesis-foot mono">
       Marked <strong>enforced in code</strong> where a test proves it, and <strong>what we
@@ -1253,6 +1275,32 @@
     color: var(--text-2);
     border: 1px solid var(--border);
   }
+  .thesis-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-top: 1.2rem;
+    padding: 0.45rem 0.9rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .thesis-more:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+  .thesis-more-chevron {
+    transition: transform 0.18s ease;
+    font-size: 0.8rem;
+    line-height: 1;
+  }
+  .thesis-more-chevron.open { transform: rotate(180deg); }
+  @media (prefers-reduced-motion: reduce) {
+    .thesis-more-chevron { transition: none; }
+  }
+
   .thesis-foot {
     margin-top: 1.6rem;
     font-size: 0.78rem;
