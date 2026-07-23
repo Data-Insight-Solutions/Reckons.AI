@@ -293,12 +293,16 @@
 
   // Keep labelFontSize and renderer in sync with settings (e.g. changed from settings page)
   $effect(() => { const sz = settings().nodeLabelFontSize; if (sz != null) labelFontSize = sz; });
-  // Keep the render mode in sync with the saved preference (e.g. changed on the
-  // settings page). Because the render gate is `use2D` alone, setting this back to
-  // false reliably returns to 3D — there is no webglAvailable latch to fight.
   $effect(() => {
     const p = settings().prefer2D;
-    if (p != null) use2D = p;
+    if (p != null) {
+      use2D = p;
+      // webglAvailable is otherwise a one-way latch — only ever set false (by "switch
+      // to 2D", the perf prompt, or a 3D error), never back true. Without re-detecting
+      // here, choosing 3D updates use2D but a stale !webglAvailable keeps the view in
+      // 2D, so the 3D preference is silently ignored. Re-check WebGL when 3D is chosen.
+      if (!p) webglAvailable = checkWebGL();
+    }
   });
 
   // ── URL query param sync ──────────────────────────────────────────────────
