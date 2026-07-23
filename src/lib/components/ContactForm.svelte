@@ -69,9 +69,11 @@
     {#if configured}
       <button class="cf-send" type="submit" disabled={!canSend}>{sending ? 'sending…' : 'send →'}</button>
     {:else}
-      <!-- No n8n instance configured — degrade to a mailto so it always works. -->
+      <!-- No feedback endpoint configured in this build — degrade to a mailto so it always
+           works. This is NOT something the user can fix in Settings: the endpoint is build-time
+           product config, deliberately independent of their own n8n instance. -->
       <a class="cf-send" class:cf-disabled={!message.trim()} href={message.trim() ? mailtoHref : undefined}>send via email →</a>
-      <span class="cf-hint mono">Configure an n8n instance in Settings → Integrations to submit directly.</span>
+      <span class="cf-hint mono">Opens your email client — this build has no direct submit endpoint.</span>
     {/if}
     {#if status === 'error'}
       <span class="cf-note cf-err mono">Couldn't send: {errorMsg}. Try email instead.</span>
