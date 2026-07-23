@@ -501,7 +501,10 @@ kb:feedback-channel rdf:type ktype:Feature ;
                kpred:tested-by    "src/lib/integrations/n8n/__tests__/contact.test.ts" ;
                rdfs:label    "Feedback channel (suggestion box)" ;
                kpred:has-status   "functional" ;
-               kpred:description  "MVP digital suggestion box: a 'Send feedback' mailto link (matthew.roe@data-insight.solutions) in the About footer. Offline-friendly, no backend. Future: route through the existing n8n pipeline." .
+               kpred:description  "Digital suggestion box on /about: a name/email/message form (ContactForm.svelte) that POSTs to the user's own n8n instance at /webhook/reckons-contact when one is configured (Settings -> Integrations), and degrades to a mailto link to matthew.roe@data-insight.solutions when it is not. An importable workflow (static/n8n/contact-feedback.workflow.json) routes a submission to email with Reply-To set to the submitter." ;
+               kpred:tested-by    "src/lib/integrations/n8n/__tests__/contact-workflow.test.ts" ;
+               kpred:honest-note  "The DELIVERY path is built and tested; whether it is CONNECTED is per-install and not something the code can assert. Until an n8n base URL is set in Settings, every submission still goes via the user's mail client — which is a fallback, not an automation, and fails silently if they have no mail client configured. The webhook is also PUBLIC and UNAUTHENTICATED: the workflow drops empty and oversized messages and keeps CR/LF out of mail headers, but nothing rate-limits it and the app sends no shared secret." ;
+               kpred:remaining    "Reachable only from /about — someone hitting friction in the graph view will not navigate there, so the announcement's main feedback surface is a page most users never open. A feedback entry point where frustration actually happens is the gap. Beyond that: capture into a dedicated FEEDBACK GRAPH with provenance (see the ideas graph, idea:feedback-graph) so feedback and the ideas graph can feed the roadmap through a reviewed merge rather than a maintainer reading an inbox." .
 
 kb:launch-prep rdf:type      ktype:Concept ;
                rdfs:label    "Pre-launch (LinkedIn) checklist" ;
