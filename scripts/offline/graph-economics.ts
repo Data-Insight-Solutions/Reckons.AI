@@ -34,7 +34,20 @@ import path from 'path';
 const args = process.argv.slice(2);
 const JSON_OUT = args.includes('--json');
 const flag = (n: string) => args.find((a) => a.startsWith(`--${n}=`))?.split('=')[1];
-const SINCE = flag('since') ?? '2026-05-01';
+/**
+ * `--since=` is interpolated into git command STRINGS below (sh() runs through a shell), so an
+ * unvalidated value is command injection via argv — `--since='x"; rm -rf ~; #'`. It is only ever
+ * a git approxidate, so hold it to that shape rather than reaching for quoting, which is easy to
+ * get subtly wrong. Same posture as sanitizeRef in mcp-server/src/git-utils.ts: refuse implausible
+ * input loudly instead of passing it to a shell. (CodeQL js/indirect-command-line-injection.)
+ */
+function safeSince(v: string): string {
+  if (!/^[A-Za-z0-9 :._-]{1,40}$/.test(v)) {
+    throw new Error(`--since must be a plain date or approxidate (got: ${JSON.stringify(v)})`);
+  }
+  return v;
+}
+const SINCE = safeSince(flag('since') ?? '2026-05-01');
 
 const B = '\x1b[1m', D = '\x1b[2m', G = '\x1b[32m', Y = '\x1b[33m', C = '\x1b[36m', X = '\x1b[0m';
 
@@ -202,7 +215,6 @@ const curve = monthly(SINCE);
 // ─────────────────────────────────────────────────────────────────────────────
 // BREAK-EVEN
 // ─────────────────────────────────────────────────────────────────────────────
-const debitEager = ttlChurnTokens; // per-request tool tax is amortized below, not added here
 const breakEven = (debit: number) => (savingPerQuery > 0 ? Math.ceil(debit / savingPerQuery) : Infinity);
 const beDeferred = breakEven(ttlChurnTokens + toolTax.tokens);          // schema fetched once
 const beEager = breakEven(ttlChurnTokens);                              // + per-request tax below

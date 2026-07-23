@@ -12,7 +12,7 @@
  * This reader handles both annotated (named graphs) and plain Turtle.
  */
 
-import { readFileSync, statSync, readdirSync, existsSync, watchFile, unwatchFile } from 'node:fs';
+import { readFileSync, statSync, readdirSync, existsSync, watchFile, unwatchFile, openSync, fstatSync, closeSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { Store, Parser, DataFactory, type Quad } from 'n3';
 
@@ -123,10 +123,18 @@ export class KBReader {
   reload(): void {
     let mtime: number;
     let text: string;
+    let fd: number | undefined;
     try {
-      mtime = statSync(this.ttlPath).mtimeMs;
+      // Stat and read through ONE file descriptor. Doing statSync(path) then readFileSync(path)
+      // is a TOCTOU race: a write landing between them pairs the OLD mtime with the NEW content,
+      // so lastMtime records a version we never read and the next reload sees "unchanged" and
+      // skips — leaving the reader serving stale triples indefinitely. That is precisely the
+      // "plausible old facts" failure F107.1 exists to prevent, so the handle guarantees the
+      // mtime and the bytes describe the same file. (CodeQL js/file-system-race.)
+      fd = openSync(this.ttlPath, 'r');
+      mtime = fstatSync(fd).mtimeMs;
       if (mtime === this.lastMtime && this.health !== 'missing') return;
-      text = readFileSync(this.ttlPath, 'utf8');
+      text = readFileSync(fd, 'utf8');
     } catch (e) {
       // The file was deleted or became unreadable. This is a durable change, not a transient
       // write, so DROP the old triples rather than keep serving a vanished graph's facts.
@@ -135,6 +143,10 @@ export class KBReader {
       this.lastError = e instanceof Error ? e.message : String(e);
       this.lastMtime = 0;
       return;
+    } finally {
+      // Runs on the early return above too — otherwise every unchanged-file poll leaks a
+      // descriptor, and this reloads on a watch.
+      if (fd !== undefined) closeSync(fd);
     }
 
     this.lastMtime = mtime;

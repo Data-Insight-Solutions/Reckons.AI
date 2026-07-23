@@ -34,7 +34,7 @@
  *   npx tsx scripts/offline/energy-bench.ts --json
  */
 import { execSync } from 'child_process';
-import { writeFileSync, existsSync, readFileSync } from 'fs';
+import { writeFileSync, readFileSync } from 'fs';
 
 const args = process.argv.slice(2);
 const JSON_OUT = args.includes('--json');
