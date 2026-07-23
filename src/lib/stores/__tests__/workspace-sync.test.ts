@@ -22,6 +22,7 @@ class FakeTable {
   async put(r: any) { this.rows.set(r.id, r); }
   async bulkPut(rs: any[]) { for (const r of rs) this.rows.set(r.id, r); }
   async bulkDelete(ks: string[]) { for (const k of ks) this.rows.delete(k); }
+  async delete(k: string) { this.rows.delete(k); }
   async clear() { this.rows.clear(); }
   async get(k: string) { return this.rows.get(k); }
   async update(k: string, patch: any) { const r = this.rows.get(k); if (r) this.rows.set(k, { ...r, ...patch }); }
@@ -159,7 +160,11 @@ describe('two-way folder sync — pullFromWorkspace', () => {
       _s: new Map<string, string>(),
       getItem(k: string) { return this._s.get(k) ?? null; },
       setItem(k: string, v: string) { this._s.set(k, v); },
+      removeItem(k: string) { this._s.delete(k); },
     };
+    // Each test starts with a clean revision baseline.
+    (globalThis as any).localStorage.removeItem('reckons:ws-seen-hashes');
+    fakeDb.workspace.rows.clear();
   });
 
   it('imports a new nested .ttl as a KB', async () => {
@@ -206,6 +211,40 @@ describe('two-way folder sync — pullFromWorkspace', () => {
     const second = await mod.pullFromWorkspace(); // second: unchanged
     expect(second.imported).toHaveLength(0);
     expect(second.updated).toHaveLength(0);
+  });
+
+  it('persists last-seen revisions so a reconnect skips unchanged files (F107.4 Stage 2)', async () => {
+    const mod = await import('../workspace.svelte');
+    mod.__linkHandleForTest(root as any);
+    await seedFile(root, ['kbs', 'a', 'a.ttl'], '<a> <b> <c> .');
+    await mod.pullFromWorkspace(); // imports 'a', records + persists its hash
+
+    const stored = localStorage.getItem('reckons:ws-seen-hashes');
+    expect(stored).toBeTruthy();
+    expect((JSON.parse(stored!) as [string, string][]).some(([k]) => k.includes('a.ttl'))).toBe(true);
+
+    // Simulate a reload + reconnect: a fresh module instance has an empty in-memory baseline,
+    // but loadWorkspace restores it from localStorage, so the unchanged file is NOT re-imported.
+    vi.resetModules();
+    fakeDb.workspace.rows.set('main', { id: 'main', handle: root, name: 'root' });
+    const mod2 = await import('../workspace.svelte');
+    await mod2.loadWorkspace();     // restores the persisted baseline
+    mod2.__linkHandleForTest(root as any);
+
+    const res = await mod2.pullFromWorkspace();
+    expect(res.imported).toHaveLength(0);
+    expect(res.updated).toHaveLength(0);
+  });
+
+  it('clearWorkspace forgets the persisted revision baseline', async () => {
+    const mod = await import('../workspace.svelte');
+    mod.__linkHandleForTest(root as any);
+    await seedFile(root, ['kbs', 'a', 'a.ttl'], '<a> <b> <c> .');
+    await mod.pullFromWorkspace();
+    expect(localStorage.getItem('reckons:ws-seen-hashes')).toBeTruthy();
+
+    await mod.clearWorkspace();
+    expect(localStorage.getItem('reckons:ws-seen-hashes')).toBeNull();
   });
 
   it('reloads the active KB store when the active KB is updated', async () => {

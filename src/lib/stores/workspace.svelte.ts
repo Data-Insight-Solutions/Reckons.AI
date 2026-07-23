@@ -49,6 +49,7 @@ let _syncedKbCount = $state(0);
 // recorded in `_seenHashes`; a poll skips any file whose hash already matches.
 
 const AUTOSYNC_KEY = 'reckons:ws-autosync';
+const SEEN_HASHES_KEY = 'reckons:ws-seen-hashes';
 const POLL_INTERVAL_MS = 10_000;
 
 /** path-key ("kbs/foo/foo.ttl") → last-seen content hash of that file. */
@@ -81,6 +82,34 @@ function hashString(s: string): string {
 /** Record the hash of content the app itself wrote, so a poll never re-pulls it. */
 function markWritten(pathKey: string, content: string): void {
   _seenHashes.set(pathKey, hashString(content));
+  persistSeenHashes();
+}
+
+// ── Durable last-seen revisions (F107.4 Stage 2) ─────────────────────────────
+//
+// _seenHashes is the loop guard AND the reconnect baseline. Kept only in memory it was lost on
+// reload, so a reconnect saw every file as "changed" and re-imported every existing KB — a
+// needless (now snapshot-churning) destructive replace. Persisting it makes reconnect a no-op
+// when nothing changed on disk, and only genuinely-diverged files reconcile.
+
+function persistSeenHashes(): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(SEEN_HASHES_KEY, JSON.stringify([..._seenHashes]));
+  } catch { /* quota / private mode — best-effort */ }
+}
+
+function loadSeenHashes(): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    const raw = localStorage.getItem(SEEN_HASHES_KEY);
+    if (!raw) return;
+    const entries = JSON.parse(raw) as [string, string][];
+    if (Array.isArray(entries)) {
+      _seenHashes.clear();
+      for (const [k, v] of entries) if (typeof k === 'string' && typeof v === 'string') _seenHashes.set(k, v);
+    }
+  } catch { /* corrupt entry — ignore, treat as no baseline */ }
 }
 
 function readAutoSyncPref(): boolean {
@@ -93,6 +122,9 @@ export async function loadWorkspace(): Promise<void> {
   const row = await db.workspace.get('main');
   if (!row) { _state = 'none'; return; }
   _name = row.name;
+  // Restore the last-seen revision baseline BEFORE the initial pull, so a reconnect skips files
+  // that have not changed on disk instead of re-importing every KB.
+  loadSeenHashes();
   try {
     const perm = await (row.handle as any).queryPermission({ mode: 'readwrite' });
     if (perm === 'granted') {
@@ -164,6 +196,7 @@ export async function reconnectWorkspace(): Promise<boolean> {
 export async function clearWorkspace(): Promise<void> {
   stopWorkspacePolling();
   _seenHashes.clear();
+  if (typeof localStorage !== 'undefined') localStorage.removeItem(SEEN_HASHES_KEY);
   await db.workspace.delete('main');
   _handle = null;
   _name = null;
@@ -859,6 +892,7 @@ export async function pullFromWorkspace(): Promise<{ imported: string[]; updated
         console.warn(`[workspace] pull failed for ${folder.meta.name}:`, err);
       }
     }
+    persistSeenHashes();
 
     if (imported.length || updated.length) {
       _lastSyncTime = Date.now();
