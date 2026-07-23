@@ -25,11 +25,24 @@ export type Triple = {
   sourceId?: string;
 };
 
+/**
+ * Health of a graph file, so a caller can tell a real answer from a stale one:
+ *  - ok          — parsed, non-empty, current.
+ *  - empty       — parsed cleanly but holds no triples (a genuinely empty graph).
+ *  - parse-error — the file is now unparseable; the last-good triples are still served but
+ *                  MUST be reported as stale rather than passed off as current.
+ *  - missing     — the file was deleted/unreadable; its triples are dropped, not served.
+ */
+export type KBHealth = 'ok' | 'empty' | 'parse-error' | 'missing';
+
 export type KBStats = {
   tripleCount: number;
   sourceCount: number;
   entityCount: number;
   lastModified: Date;
+  health: KBHealth;
+  /** Present when health is 'parse-error' or 'missing' — the underlying failure. */
+  error?: string;
 };
 
 export type KBInfo = {
@@ -40,19 +53,28 @@ export type KBInfo = {
 
 // ── Single-KB store ─────────────────────────────────────────────────────────
 
-function parseTtl(text: string): Quad[] {
-  try {
-    const parser = new Parser({ format: 'Turtle*' });
-    const quads = parser.parse(text);
-    if (quads.length > 0) return quads;
-  } catch { /* try plain Turtle */ }
+/**
+ * Parse a graph file, distinguishing a genuinely-empty file from a parse FAILURE — the
+ * caller must not treat the two alike (one is "no facts", the other is "broken file, don't
+ * trust me"). Tries Turtle* then TriG (a superset — see F75); `parseError` is set only when
+ * every format threw and none produced a clean parse.
+ */
+function parseTtl(text: string): { quads: Quad[]; parseError: string | null } {
+  let parseError: string | null = null;
+  let parsedClean = false;
 
-  try {
-    const parser = new Parser({ format: 'TriG' }); // superset of Turtle — see F75
-    return parser.parse(text);
-  } catch { /* return empty */ }
+  for (const format of ['Turtle*', 'TriG'] as const) {
+    try {
+      const quads = new Parser({ format }).parse(text);
+      if (quads.length > 0) return { quads, parseError: null };
+      parsedClean = true; // parsed without error, just no triples
+    } catch (e) {
+      parseError = e instanceof Error ? e.message : String(e);
+    }
+  }
 
-  return [];
+  // No triples from any format: genuinely empty if at least one parse succeeded, else broken.
+  return { quads: [], parseError: parsedClean ? null : parseError };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -67,7 +89,7 @@ function quadToTriple(q: any): Triple {
   };
 }
 
-function storeStats(store: Store, mtime: number): KBStats {
+function storeStats(store: Store, mtime: number, health: KBHealth, error?: string): KBStats {
   const subjects = new Set<string>();
   const graphs = new Set<string>();
   for (const q of store) {
@@ -79,6 +101,8 @@ function storeStats(store: Store, mtime: number): KBStats {
     sourceCount: graphs.size,
     entityCount: subjects.size,
     lastModified: new Date(mtime),
+    health,
+    error,
   };
 }
 
@@ -88,6 +112,8 @@ export class KBReader {
   private ttlPath: string;
   private store: Store = new Store();
   private lastMtime = 0;
+  private health: KBHealth = 'missing';
+  private lastError?: string;
 
   constructor(ttlPath: string) {
     this.ttlPath = resolve(ttlPath);
@@ -95,19 +121,40 @@ export class KBReader {
   }
 
   reload(): void {
+    let mtime: number;
+    let text: string;
     try {
-      const stat = statSync(this.ttlPath);
-      const mtime = stat.mtimeMs;
-      if (mtime === this.lastMtime) return;
-      this.lastMtime = mtime;
-
-      const text = readFileSync(this.ttlPath, 'utf8');
-      const quads = parseTtl(text);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (quads.length > 0) this.store = new Store(quads as any);
-    } catch {
-      // File doesn't exist yet or is unreadable — start with empty store
+      mtime = statSync(this.ttlPath).mtimeMs;
+      if (mtime === this.lastMtime && this.health !== 'missing') return;
+      text = readFileSync(this.ttlPath, 'utf8');
+    } catch (e) {
+      // The file was deleted or became unreadable. This is a durable change, not a transient
+      // write, so DROP the old triples rather than keep serving a vanished graph's facts.
+      this.store = new Store();
+      this.health = 'missing';
+      this.lastError = e instanceof Error ? e.message : String(e);
+      this.lastMtime = 0;
+      return;
     }
+
+    this.lastMtime = mtime;
+    const { quads, parseError } = parseTtl(text);
+    if (parseError) {
+      // The file is currently unparseable (often a half-written save). Keep the last-good
+      // store so a transient blip doesn't blank the graph — but flag it so callers can tell
+      // the served triples are stale, not current.
+      this.health = 'parse-error';
+      this.lastError = parseError;
+      return;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.store = new Store(quads as any);
+    this.health = quads.length > 0 ? 'ok' : 'empty';
+    this.lastError = undefined;
+  }
+
+  getHealth(): { health: KBHealth; error?: string } {
+    return { health: this.health, error: this.lastError };
   }
 
   watch(cb: () => void): void {
@@ -123,7 +170,7 @@ export class KBReader {
   }
 
   stats(): KBStats {
-    return storeStats(this.store, this.lastMtime);
+    return storeStats(this.store, this.lastMtime, this.health, this.lastError);
   }
 
   allTriples(): Triple[] {
@@ -267,12 +314,14 @@ export class MultiKBReader {
     if (!this.kbsDir || !existsSync(this.kbsDir)) return;
 
     const entries = readdirSync(this.kbsDir, { withFileTypes: true });
+    const seen = new Set<string>();
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
       const kbDir = join(this.kbsDir, entry.name);
       const ttlPath = this.resolveTtlPath(kbDir, entry.name);
 
       if (!ttlPath) continue;
+      seen.add(entry.name);
 
       // Load or update the reader — recreate if the resolved path changed
       // (e.g. a workspace was migrated from kb.ttl to {name}.ttl at runtime).
@@ -287,6 +336,15 @@ export class MultiKBReader {
       } else {
         this.readers.get(entry.name)!.reload();
       }
+    }
+
+    // Reconcile vanished graphs: a KB whose folder (or whose only .ttl) is gone must be
+    // dropped, not left in the map serving the facts it held when it last existed.
+    for (const folderName of [...this.readers.keys()]) {
+      if (seen.has(folderName)) continue;
+      this.readers.get(folderName)?.unwatch();
+      this.readers.delete(folderName);
+      this.resolvedPaths.delete(folderName);
     }
   }
 
@@ -376,11 +434,15 @@ export class MultiKBReader {
     let lastModified = new Date(0);
     const allEntities = new Set<string>();
     const allSources = new Set<string>();
+    const unhealthy: string[] = [];
 
     for (const reader of readers) {
       const s = reader.stats();
       tripleCount += s.tripleCount;
       if (s.lastModified > lastModified) lastModified = s.lastModified;
+      if (s.health === 'parse-error' || s.health === 'missing') {
+        unhealthy.push(`${s.health}${s.error ? `: ${s.error}` : ''}`);
+      }
       for (const iri of reader.entityIRIs()) allEntities.add(iri);
       for (const t of reader.allTriples()) {
         if (t.graph) allSources.add(t.graph);
@@ -392,6 +454,9 @@ export class MultiKBReader {
       entityCount: allEntities.size,
       sourceCount: allSources.size,
       lastModified,
+      // Aggregate health: any broken/missing graph makes the whole answer untrustworthy.
+      health: unhealthy.length > 0 ? 'parse-error' : 'ok',
+      error: unhealthy.length > 0 ? unhealthy.join('; ') : undefined,
       kbCount: readers.length,
     };
   }
