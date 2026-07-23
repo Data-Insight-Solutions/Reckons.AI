@@ -187,6 +187,7 @@ export const DEFAULT_TURTLE_SETTINGS: TurtleSettings = {
   humeApiKey: import.meta.env.VITE_HUME_API_KEY ?? '',
   humeSecretKey: import.meta.env.VITE_HUME_SECRET_KEY ?? '',
   humeConfigId: import.meta.env.VITE_HUME_CONFIG_ID ?? '',
+  humeTokenUrl: import.meta.env.VITE_HUME_TOKEN_URL ?? '',
   whisperModel: 'onnx-community/whisper-tiny',
   animationSpeed: 'normal',
   opacity: 100,
