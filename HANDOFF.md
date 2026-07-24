@@ -4,6 +4,58 @@
 Everything below the "SESSION 2026-07-23" block is the older F97 context and is still live
 (PR #119 is still open) — read it after the current standing.
 
+## ▶ LATEST (2026-07-23, post-announcement) — PR #151, starter graph
+
+**Matt has ANNOUNCED.** `feat/starter-graph-events` → **PR #151 → `dev`** (base verified).
+
+**Shipped in #151:** nine EVENT nodes on the getting-started graph with `xsd:dateTime` starts
+(so the time layout reads hour-by-hour), each option's cost expressed as the events it deletes
+(`p:ruled-out-by`); nine CC0/public-domain photographs vendored by
+`scripts/offline/fetch-starter-images.ts` with creator + licence + source page recorded IN the
+graph; entity-type presentation predicates (`icon`/`color`/…) made meta so `"tetrahedron"` and
+`"#e0a13c"` stop rendering as literal nodes; "Trip Leg" → "Drive".
+Verified: 1332 unit tests, graph-lint 0 errors, align green, check 0 errors.
+
+**⚠ REMOVED, and Matt must decide the replacement:** Alex's and Jordan's portraits were base64
+photographs of REAL, IDENTIFIABLE PEOPLE with no creator, licence or source — on the graph the
+public landing page serves. Replaced with emoji; file went 83 KB → 16 KB. Queued as a partial
+fact `kpred:portrait-image-rights`. **If their provenance was fine, they can go back — but they
+must carry provenance like every other image now does.**
+
+**LESSON WORTH KEEPING:** the licence check passed on THREE images that were still wrong — a
+Second Life screenshot for "campfire", an Arizona signboard for a Sierra campsite, and a
+Wikimedia "Lake George" file whose own Credit field said *Lake Mamie*. Only LOOKING at them
+caught it. Determinism buys "the rule fired", never "the rule was right".
+Wikimedia Commons searched DIRECTLY (Matt's tip) beat Openverse keyword search for
+place-specific photos — Commons indexes by place.
+
+**F55 INDICO — PAUSED MID-TASK at Matt's request. Resume here:**
+- DONE: `VITE_INDICO_SERVER_URL` / `_API_TOKEN` / `_CATEGORY_ID` now seed `DEFAULT_SETTINGS`
+  (`db.ts`). They previously reached NOTHING — db.ts seeded ~15 other credentials from
+  `import.meta.env` and skipped the Indico pair, so the token in `.env` was dead. Documented in
+  `.env.example`. 20 offline tests pin the client contract.
+- **NOT DONE:** `scripts/offline/indico-verify.ts` is written but **NEVER RUN**. It is BLOCKED on
+  a server URL — `.env` carries only the token, and `indicoServerUrl` is an in-app setting.
+  Resume with: `npx tsx scripts/offline/indico-verify.ts --server=https://<your-indico>`
+  `kb:int-indico` records the integration as UNVERIFIED against a live server. Do not upgrade
+  its status until that harness has actually run green.
+- Note `vite-secret-guard` already matches `VITE_*TOKEN`, so a PUBLIC build with the token set is
+  correctly BLOCKED. The env var is a local-dev/self-host convenience only.
+
+**dev→main promotion (Matt asked to hurry to main) — NOT DONE, and here is why:**
+`dev` is **29 ahead** of `main`; `main` is **11 ahead** of `dev`. A PR from this branch to main
+would drag 29 unrelated dev commits into production. I cherry-picked the work onto a main base
+(`hotfix/starter-graph-provenance`, **local only, not pushed**) and it applied — but it needed
+the redaction test REMOVED, because `src/lib/safety/redact.ts` (F107.5, PR #143) exists only on
+dev. Every targeted cherry-pick hits the same divergence, which is the signal that the right
+vehicle is the dev→main promotion, not a hotfix.
+**Also found: `main`'s unit suite is ALREADY RED in a full run** — 4 store suites
+(drive-sync, official-kb, workspace-sync ×2) fail together while passing in isolation. Reproduced
+on CLEAN main, so pre-existing and order-dependent, not caused by this work. `dev` runs
+1332/1332 green. Worth fixing before any promotion so a red main isn't normalised.
+
+---
+
 ## ▶ CURRENT STANDING (2026-07-23) — pre-announcement push
 
 Goal: comfortable announcement by end of week. Seven PRs landed on `dev` this session; two
