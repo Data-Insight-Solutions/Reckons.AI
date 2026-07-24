@@ -24,13 +24,21 @@ export class IndicoClient {
       if (v) url.searchParams.append(k, v);
     }
 
+    const headers: Record<string, string> = { Accept: 'application/json' };
+
+    // Auth: modern Indico (3.x) PERSONAL TOKENS are `indp_…` and MUST go in the Authorization
+    // header — passing one as the legacy `ak=` query param returns 400 "Malformed API key"
+    // (verified against a live Indico 3.x server, which is exactly what silently broke this
+    // integration). Only the legacy fixed API keys use `ak=`, so route by the token's shape.
     if (this.apiToken) {
-      url.searchParams.append('ak', this.apiToken);
+      if (this.apiToken.startsWith('indp_')) {
+        headers.Authorization = `Bearer ${this.apiToken}`;
+      } else {
+        url.searchParams.append('ak', this.apiToken);
+      }
     }
 
-    const res = await fetch(url.toString(), {
-      headers: { Accept: 'application/json' }
-    });
+    const res = await fetch(url.toString(), { headers });
 
     if (!res.ok) {
       const body = await res.text().catch(() => '');

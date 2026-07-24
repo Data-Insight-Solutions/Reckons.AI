@@ -1,11 +1,15 @@
 /**
  * The importable n8n workflow is part of the contract, not documentation.
  *
- * The app POSTs to `{n8nBaseUrl}${CONTACT_WEBHOOK_PATH}`; the workflow listens on a `path` it
- * declares itself. Those two strings live in different files, in different languages, and NOTHING
- * connects them at runtime — a rename on either side produces a form that reports "✓ Sent" while
- * the submission goes nowhere, because a 404 from a webhook that does not exist is indistinguishable
- * from any other network story the user never sees. So the match is pinned here.
+ * The app POSTs to `{FEEDBACK_WEBHOOK_URL}`; the workflow listens on a `path` it declares itself.
+ * Those two strings live in different files, in different languages, and NOTHING connects them at
+ * runtime — a rename on either side produces a form that reports "✓ Sent" while the submission
+ * goes nowhere, because a 404 from a webhook that does not exist is indistinguishable from any
+ * other network story the user never sees. So the match is pinned here.
+ *
+ * This also pins that the send node is the Microsoft Graph node, NOT SMTP. SMTP was proven a dead
+ * end on a modern M365 tenant (Security Defaults block Basic-Auth SMTP AUTH, 535 5.7.139), so a
+ * regression back to an emailSend node would ship a workflow that cannot deliver.
  *
  * The second half tests the workflow's own Code node, which formats an email out of a payload that
  * arrived over the OPEN INTERNET. Its job is to keep CR/LF out of mail headers; a test that never
@@ -24,28 +28,34 @@ const node = (name: string) => workflow.nodes.find((n: any) => n.name === name);
 
 describe('contact-feedback workflow — the app/n8n contract', () => {
   it('the webhook path is exactly what the app POSTs to', () => {
-    const webhook = node('Reckons contact webhook');
+    const webhook = node('Reckons Contact Webhook');
     expect(webhook).toBeDefined();
     // CONTACT_WEBHOOK_PATH is "/webhook/reckons-contact"; n8n declares the trailing segment only.
     expect(`/webhook/${webhook.parameters.path}`).toBe(CONTACT_WEBHOOK_PATH);
   });
 
   it('responds on receive, so the form can show "Sent" instead of hanging', () => {
-    expect(node('Reckons contact webhook').parameters.responseMode).toBe('onReceived');
+    expect(node('Reckons Contact Webhook').parameters.responseMode).toBe('onReceived');
+  });
+
+  it('sends over Microsoft Graph, NOT SMTP — SMTP is blocked on the tenant', () => {
+    const send = node('Send Feedback Email');
+    expect(send.type).toBe('n8n-nodes-base.microsoftOutlook');
+    expect(send.type).not.toBe('n8n-nodes-base.emailSend');
   });
 
   it('emails the address feedback is meant to reach', () => {
-    expect(node('Send feedback email').parameters.sendTo).toBe('matthew.roe@data-insight.solutions');
+    expect(node('Send Feedback Email').parameters.toRecipients).toBe('matthew.roe@data-insight.solutions');
   });
 
   it('replies go to the submitter, not to the sender of the notification', () => {
-    expect(node('Send feedback email').parameters.options.replyTo).toContain('replyTo');
+    expect(node('Send Feedback Email').parameters.additionalFields.replyTo).toContain('replyTo');
   });
 });
 
 /** Run the workflow's Code node the way n8n would, so the logic under test is the shipped string. */
 function runFormatNode(body: unknown) {
-  const code = node('Validate + format').parameters.jsCode;
+  const code = node('Validate and Format').parameters.jsCode;
   const $input = { first: () => ({ json: { body } }) };
   return new Function('$input', '$json', code)($input, { body })[0].json;
 }
@@ -62,7 +72,7 @@ describe('contact-feedback workflow — untrusted payload handling', () => {
     expect(out.valid).toBe(true);
     expect(out.subject).toBe('Reckons.AI feedback from Ada Lovelace (about)');
     expect(out.replyTo).toBe('ada@example.com');
-    expect(out.body).toContain('The graph view is excellent.');
+    expect(out.text).toContain('The graph view is excellent.');
   });
 
   it('STRIPS CR/LF from the subject — header injection is the reason this node exists', () => {
@@ -84,12 +94,12 @@ describe('contact-feedback workflow — untrusted payload handling', () => {
       message: 'hello',
     });
     expect(out.replyTo).toBe('');
-    expect(out.body).toContain('no usable address supplied');
+    expect(out.text).toContain('no usable address supplied');
   });
 
   it('keeps newlines in the BODY — only headers are flattened', () => {
     const out = runFormatNode({ name: 'A', email: 'a@b.co', message: 'line one\nline two' });
-    expect(out.body).toContain('line one\nline two');
+    expect(out.text).toContain('line one\nline two');
   });
 
   it('drops an empty message', () => {
