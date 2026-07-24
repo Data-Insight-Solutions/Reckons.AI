@@ -233,6 +233,12 @@ export const DEFAULT_SETTINGS: SettingsRecord = {
   reckonsModel: import.meta.env.VITE_RECKONS_MODEL ?? '@cf/meta/llama-3.1-8b-instruct',
   reckonsBaseUrl: import.meta.env.VITE_RECKONS_BASE_URL ?? 'https://api.reckons.ai',
   meshyApiKey: import.meta.env.VITE_MESHY_API_KEY || undefined,
+  // Indico can also be set in-app (Settings -> Integrations) or via the ?indico=
+  // query param, which overwrites these. Seeding them here is what makes a
+  // VITE_INDICO_* entry in .env actually reach createIndicoClient().
+  indicoServerUrl: import.meta.env.VITE_INDICO_SERVER_URL || undefined,
+  indicoApiToken: import.meta.env.VITE_INDICO_API_TOKEN || undefined,
+  indicoCategoryId: import.meta.env.VITE_INDICO_CATEGORY_ID || undefined,
   kbTitle: import.meta.env.VITE_KB_TITLE || undefined,
   kbDescription: import.meta.env.VITE_KB_DESCRIPTION || undefined,
   shellyCustomPrompt: import.meta.env.VITE_SHELLY_PROMPT || undefined,
