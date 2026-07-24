@@ -590,6 +590,8 @@
 
   // ── TTS Engine (Kokoro streaming) ─────────────────────────────────────────
   import * as kokoro from '$lib/integrations/llm/kokoro-tts';
+  import { planHumeAuth, type HumeAuthPlan } from '$lib/integrations/hume/token';
+  import { resolveHumeTtsAuth, synthesizeHumeSpeech, shouldNarrateWithHume } from '$lib/integrations/hume/tts';
 
   let ttsBroken = $state(false);
   let stopCurrentSpeech: (() => void) | null = null;
@@ -641,6 +643,21 @@
 
     stopSpeaking();
 
+    // F5.1 — narrate in the voice this persona was CONFIGURED with. Kokoro is the default and
+    // the fallback: if the Hume voice is chosen but unavailable, unauthorized or unreachable, we
+    // drop to the local voice rather than letting the story go silent.
+    const ts0 = turtleSettings();
+    const s0 = settings();
+    const plan = planHumeAuth({
+      apiKey: ts0.humeApiKey || s0.humeAiApiKey,
+      secretKey: ts0.humeSecretKey || s0.humeSecretKey,
+      tokenUrl: ts0.humeTokenUrl,
+    });
+    if (shouldNarrateWithHume(ts0.voiceType, plan)) {
+      void speakWithHume(clean, plan);
+      return;
+    }
+
     if (!kokoroReady) {
       // Model still loading — freeze countdown until speech actually starts
       speechQueued = true;
@@ -671,6 +688,47 @@
         stopCurrentSpeech = null;
       },
     });
+  }
+
+  /**
+   * Narrate through Hume, falling back to the local voice on ANY failure (F5.1). The fallback
+   * is deliberate and audible — a remote voice that 401s should change the voice, not the story.
+   */
+  async function speakWithHume(clean: string, plan: HumeAuthPlan): Promise<void> {
+    const myId = ++pendingSpeechId;
+    try {
+      const ts = turtleSettings();
+      const auth = await resolveHumeTtsAuth(plan);
+      if (!auth) throw new Error('no usable Hume credential');
+      const blob = await synthesizeHumeSpeech({ text: clean, auth, voiceId: ts.humeConfigId });
+      if (pendingSpeechId !== myId) return; // superseded/stopped while synthesizing
+
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.volume = Math.min((ts.volume ?? 75) / 100, 0.9);
+      audio.playbackRate = ts.speechRate ?? 1;
+      const cleanup = () => { URL.revokeObjectURL(url); storySpeaking = false; stopCurrentSpeech = null; };
+      audio.onended = cleanup;
+      audio.onerror = cleanup;
+      stopCurrentSpeech = () => { audio.pause(); cleanup(); };
+      storySpeaking = true;
+      try {
+        await audio.play();
+      } catch (playErr) {
+        // A rejected play() (autoplay policy is the common one) never fires onerror, so the
+        // object URL would leak and we would fall back holding a live audio element.
+        audio.pause();
+        cleanup();
+        throw playErr;
+      }
+    } catch (e) {
+      if (pendingSpeechId !== myId) return;
+      console.warn('[narration] Hume voice unavailable, using the local voice instead:', e);
+      storySpeaking = false;
+      stopCurrentSpeech = null;
+      if (kokoroReady) startStreaming(clean);
+      else kokoro.getReady().then(() => { if (pendingSpeechId === myId) startStreaming(clean); }).catch(() => { ttsBroken = true; });
+    }
   }
 
   function stopSpeaking() {
