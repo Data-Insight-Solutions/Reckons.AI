@@ -167,7 +167,25 @@ kb:voice-interface rdf:type ktype:Feature ;
                kpred:has-status   "functional" ;
                kpred:feature-id   "F5" ;
                kpred:description  "ShellyVoice.svelte wired with mic capture pipeline. Hume SDK integrated." ;
+               kpred:progress     "DELEGATED VOICE TOKEN shipped 2026-07-22 (PR #143) but was never described here — recording it now to close the drift. src/lib/integrations/hume/token.ts: planHumeAuth() picks, in order, mint-local (owner has apiKey+secretKey — a short-lived token is minted, no raw key on the wire), api-key, then token-url, then none. fetchHumeTokenFromUrl() fetches a SHORT-LIVED access token from an opt-in endpoint the sharer runs (https enforced except localhost; accepts accessToken/access_token/token; every failure wrapped so the caller can fall back rather than hang). TurtleSettings.humeTokenUrl carries it, and because it is an endpoint rather than a credential it survives redaction and travels with a shared persona. THE POINT: someone opening a shared story hears the voice WITHOUT configuring their own Hume, while the sharer's secret key never leaves their control and the delegation stays revocable and rate-limitable — unlike a leaked key." ;
+               kpred:known-issue  "Story NARRATION ignores the configured voice. turtleSettings.voiceType is 'tts' | 'hume', but TurtleChatPanel speakText() -> startStreaming() calls Kokoro unconditionally, so a user who chose 'hume' still hears the local Kokoro voice when a story plays. Hume is wired for CONVERSATION (ShellyVoice EVI socket) but there is no narration path. Tracked as kb:story-narration-voice." ;
                kpred:remaining    "Real-world testing, reconnection handling, animated voice indicator" .
+
+# -- Narrated stories in the configured voice (F5.1) ---------------------------
+# Raised 2026-07-23 (Matt): a story should be visually compelling AND narrated in the
+# voice the persona was configured with — including a Hume voice a viewer never set up.
+# The delegated token above is what makes the shared case possible.
+
+kb:story-narration-voice rdf:type ktype:Feature ;
+               rdfs:label         "Story narration in the configured voice" ;
+               kpred:feature-id   "F5.1" ;
+               kpred:has-status   "planned" ;
+               kpred:part-of      kb:voice-interface ;
+               kpred:depends-on   kb:voice-interface ;
+               kpred:relates-to   kb:asset-viewer ;
+               kpred:principle    "The voice a persona was configured with IS part of that persona. Narrating a shared story in a different voice than the one it was authored with silently substitutes something the author did not choose." ;
+               kpred:description  "Route story-step narration through the voice selected in turtleSettings.voiceType instead of always Kokoro. When 'hume', synthesize the step text with Hume's TTS using the SAME auth ladder as the EVI path (planHumeAuth: local keys, else the delegated token endpoint) so a shared story narrates in the author's voice for a viewer who has no Hume account. Kokoro remains the default and the FALLBACK: any Hume failure degrades to the local voice rather than going silent, and the degradation is visible, not hidden." ;
+               kpred:remaining    "DONE WHEN speakText routes by voiceType; Hume synthesis reuses planHumeAuth and the delegated token; a failed/unauthorized/unreachable Hume call falls back to Kokoro audibly rather than failing silent; and unit tests cover the routing decision and each failure mode. NOT YET VERIFIED against the live Hume TTS endpoint — that needs a real key and is called out rather than assumed." .
 
 kb:google-drive-sync rdf:type ktype:Feature ;
                kpred:tested-by    "src/lib/stores/__tests__/drive-sync.test.ts" ;
