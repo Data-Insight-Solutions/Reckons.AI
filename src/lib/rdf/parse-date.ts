@@ -17,9 +17,18 @@
  * undefined so the caller can place it in an "undated" lane rather than invent a position.
  */
 
-/** Milliseconds for a calendar date at local midnight. */
-function localDate(y: number, monthIndex: number, day: number): number {
-  return new Date(y, monthIndex, day).getTime();
+/**
+ * Milliseconds for a calendar date at local midnight, or undefined if that date does not exist.
+ *
+ * A range check alone is not enough: `new Date(2026, 1, 30)` does not fail on 30 February, it
+ * ROLLS OVER to 2 March. An impossible date would then be placed confidently two days from where
+ * it claims to be — the exact wrong-day error this module exists to prevent. So construct it and
+ * verify the parts survived; anything that rolled over is not a date.
+ */
+function localDate(y: number, monthIndex: number, day: number): number | undefined {
+  const d = new Date(y, monthIndex, day);
+  if (d.getFullYear() !== y || d.getMonth() !== monthIndex || d.getDate() !== day) return undefined;
+  return d.getTime();
 }
 
 /**

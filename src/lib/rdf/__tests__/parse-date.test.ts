@@ -52,4 +52,16 @@ describe('parseGraphDate — timeline placement (node lands on the day it names)
       expect(parseGraphDate(bad as unknown), String(bad)).toBeUndefined();
     }
   });
+
+  it('rejects dates that do not exist instead of silently rolling them over', () => {
+    // `new Date(2026, 1, 30)` does not fail — it becomes 2 March. A range check alone would
+    // place an impossible date two days from where it claims to be.
+    for (const impossible of ['2026-02-30', '2026-02-29', '2026-04-31', '2026-06-31', '2026-11-31']) {
+      expect(parseGraphDate(impossible), impossible).toBeUndefined();
+    }
+  });
+
+  it('still accepts a real leap day', () => {
+    expect(localParts(parseGraphDate('2024-02-29')!)).toEqual({ y: 2024, m: 2, d: 29 });
+  });
 });

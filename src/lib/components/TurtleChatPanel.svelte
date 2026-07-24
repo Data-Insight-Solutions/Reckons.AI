@@ -712,7 +712,15 @@
       audio.onerror = cleanup;
       stopCurrentSpeech = () => { audio.pause(); cleanup(); };
       storySpeaking = true;
-      await audio.play();
+      try {
+        await audio.play();
+      } catch (playErr) {
+        // A rejected play() (autoplay policy is the common one) never fires onerror, so the
+        // object URL would leak and we would fall back holding a live audio element.
+        audio.pause();
+        cleanup();
+        throw playErr;
+      }
     } catch (e) {
       if (pendingSpeechId !== myId) return;
       console.warn('[narration] Hume voice unavailable, using the local voice instead:', e);
