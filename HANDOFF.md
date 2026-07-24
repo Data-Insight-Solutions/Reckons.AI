@@ -4,6 +4,52 @@
 Everything below the "SESSION 2026-07-23" block is the older F97 context and is still live
 (PR #119 is still open) — read it after the current standing.
 
+## ▶ SHIPPED TO PRODUCTION (2026-07-23, post-announcement)
+
+**dev → main promotion MERGED (#148). `dev` is 0 commits behind `main`.** Production verified
+live: reckons.ai/starter-everyday.ttl is 17 KB, carries the event nodes, and contains ZERO
+`data:image` blobs — the unlicensed portraits are off the public site.
+
+Merged to dev then promoted, all CI-green (E2E, CodeQL, deploy gate, script tier, align):
+- **#149** fix(indico): personal tokens need `Authorization: Bearer`, not `?ak=` — the legacy
+  param returns `400 Malformed API key` on Indico 3.x. Verified against the live server.
+- **#150** fix(timeline): nodes land on the date they name (`src/lib/rdf/parse-date.ts`).
+- **#151** feat(starter): nine event nodes with dateTime starts, nine CC0/PD photographs each
+  carrying creator + licence + source page IN the graph, entity-type presentation predicates
+  made meta (no more "tetrahedron"/"#e0a13c" literal nodes), portraits removed.
+
+**F55 INDICO IS NOW VERIFIED — the task earlier recorded as blocked is DONE.** #149 supplied the
+server URL that was missing. Run it again any time:
+`npx tsx scripts/offline/indico-verify.ts --server=https://indico.data-insight.website`
+It is **6/6 green** and repeatable, and it independently reproduced the `400 Malformed API key`
+on a deliberately bad token. STILL UNPROVEN — recorded as such, do NOT upgrade the status:
+category sync beyond root (the server reports NO categories from the root listing), and error
+surfacing in the INGEST UI — the client throws legibly, whether the UI shows it is a separate
+claim that nothing tests.
+
+**Two main workflows, honestly:** Safety Attestation is now GREEN (it was one of the two
+long-standing reds). **Extension Build & Sign still FAILS** — pre-existing, unrelated to this
+work, still likely a CI signing-secret issue.
+
+**Open on main, NOT touched this session:** 3 failing Dependabot PRs (sharp, adm-zip,
+brace-expansion) and 1 high-severity alert on the default branch (security/dependabot/24).
+
+**STILL MATT'S CALL:** `kpred:portrait-image-rights` — the removed portraits. If their provenance
+was fine they can return, but they must carry credit like every other image now does.
+
+**KNOWN FLAKE, do not re-derive:** four store suites (drive-sync, official-kb, workspace-sync ×2)
+fail together in a full `vitest run` while passing in isolation, and pass on a re-run. Present on
+clean `main` too, so pre-existing and order-dependent — NOT caused by recent work. Worth a real
+fix so a red suite is not normalised.
+
+**LESSON WORTH KEEPING:** the licence check passed on THREE images that were still wrong — a
+Second Life screenshot for "campfire", an Arizona signboard for a Sierra campsite, and a
+Wikimedia "Lake George" whose own Credit field said *Lake Mamie*. Only LOOKING at them caught it.
+Determinism buys "the rule fired", never "the rule was right". Wikimedia Commons searched
+DIRECTLY beats Openverse keyword search for place-specific photos — Commons indexes by place.
+
+---
+
 ## ▶ LATEST (2026-07-23, post-announcement) — PR #151, starter graph
 
 **Matt has ANNOUNCED.** `feat/starter-graph-events` → **PR #151 → `dev`** (base verified).
