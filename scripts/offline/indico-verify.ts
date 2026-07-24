@@ -82,7 +82,12 @@ async function main() {
   }
 
   console.log(`  server: ${serverUrl}`);
-  console.log(`  token:  ${token ? 'present (sent as ?ak=, value never printed)' : 'ABSENT — public access only'}`);
+  // client.ts routes by token SHAPE: a modern personal token (indp_…) travels in the
+  // Authorization: Bearer header, anything else as the legacy ?ak= query param. Report which,
+  // because "the token was sent" and "the token was sent the way this server accepts" are
+  // different claims — the second is the one that was silently false before PR #149.
+  const scheme = token?.startsWith('indp_') ? 'Authorization: Bearer' : 'legacy ?ak= query param';
+  console.log(`  token:  ${token ? `present, sent as ${scheme} (value never printed)` : 'ABSENT — public access only'}`);
   console.log(`  category: ${categoryId ?? 'root (0)'}\n`);
 
   const client = createIndicoClient(serverUrl, token);
