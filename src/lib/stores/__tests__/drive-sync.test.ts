@@ -58,18 +58,23 @@ vi.mock('../../storage/kb-registry', () => ({
   getCurrentKbId: () => 'kbase',
 }));
 
-// serializeKb reads statements from a KBaseDB and runs toTurtle.
+// serializeKb reads statements + sources from a KBaseDB and runs toTurtleFull.
 vi.mock('../../storage/db', () => {
   class FakeDB {
     name: string;
     statements = { toArray: async () => [{ id: 's1' }, { id: 's2' }] };
+    sources = { toArray: async () => [] };
+    settings = { get: async () => ({ kbStableId: undefined }) };
     constructor(name = 'kbase') { this.name = name; }
     async open() { return this; }
     close() {}
   }
   return { db: new FakeDB('kbase'), KBaseDB: FakeDB };
 });
-vi.mock('../../rdf/serialize', () => ({ toTurtle: (s: unknown[]) => `# graph with ${s.length} statements\n` }));
+vi.mock('../../rdf/serialize', () => ({
+  toTurtle: (s: unknown[]) => `# graph with ${s.length} statements\n`,
+  toTurtleFull: (s: unknown[]) => `# full graph with ${s.length} statements\n`,
+}));
 vi.mock('../kb.svelte', () => ({ loadAll: vi.fn(async () => {}) }));
 
 const ingestNewKb = vi.fn(

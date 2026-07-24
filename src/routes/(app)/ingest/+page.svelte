@@ -1112,9 +1112,18 @@
     <div class="triples-list">
       {#each manualTriples as t, i (i)}
         <div class="triple-entry">
-          <input class="te-sub" bind:value={t.subject}   placeholder="subject" />
-          <input class="te-pre" bind:value={t.predicate} placeholder="predicate" />
-          <input class="te-obj" bind:value={t.object}    placeholder="object" />
+          <label class="te-field">
+            <span class="te-label mono">subject</span>
+            <input type="text" class="te-sub" bind:value={t.subject} placeholder="weekend-trip" aria-label="Fact {i + 1} subject" />
+          </label>
+          <label class="te-field">
+            <span class="te-label mono">predicate</span>
+            <input type="text" class="te-pre" bind:value={t.predicate} placeholder="check-in" aria-label="Fact {i + 1} predicate" />
+          </label>
+          <label class="te-field">
+            <span class="te-label mono">object</span>
+            <input type="text" class="te-obj" bind:value={t.object} placeholder="2026-07-10" aria-label="Fact {i + 1} object" />
+          </label>
           <button class="te-del" onclick={() => removeTripleRow(i)} title="remove">✕</button>
         </div>
       {/each}
@@ -1441,12 +1450,20 @@
     display: grid;
     grid-template-columns: 1fr 1fr 1fr auto;
     gap: 0.4rem;
-    align-items: center;
+    align-items: end;
+  }
+  .te-field { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; }
+  .te-label {
+    color: var(--muted);
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
   .triple-entry input { font-size: 0.82rem; }
   .te-del {
     background: none; border: none; color: var(--muted);
     cursor: pointer; font-size: 0.85rem; padding: 0.2rem 0.4rem;
+    min-width: 44px; min-height: 44px;
     border-radius: var(--rad-sm); transition: color 0.12s;
   }
   .te-del:hover { color: var(--danger); }
@@ -1725,7 +1742,11 @@
   /* ── Mobile ── */
   @media (max-width: 500px) {
     .tabs { gap: 0.2rem; }
-    .tabs button { padding: 0.35rem 0.65rem; font-size: 0.68rem; }
+    /* F36: the source-type chips are primary controls on the core add flow.
+       Keep the compact padding/size but guarantee a 44px tap target on touch
+       (they were ~28px tall — under the touch minimum). Matches the NavBar/Sheet
+       min-height:44px convention. */
+    .tabs button { padding: 0.35rem 0.65rem; font-size: 0.68rem; min-height: 44px; }
     .triple-entry { grid-template-columns: 1fr; }
     .row { flex-direction: column; align-items: stretch; gap: 0.5rem; }
     .action-group { justify-content: stretch; }

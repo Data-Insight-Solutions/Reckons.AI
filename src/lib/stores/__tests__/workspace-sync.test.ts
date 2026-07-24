@@ -21,9 +21,14 @@ class FakeTable {
   async toArray() { return [...this.rows.values()]; }
   async put(r: any) { this.rows.set(r.id, r); }
   async bulkPut(rs: any[]) { for (const r of rs) this.rows.set(r.id, r); }
+  async bulkDelete(ks: string[]) { for (const k of ks) this.rows.delete(k); }
+  async delete(k: string) { this.rows.delete(k); }
   async clear() { this.rows.clear(); }
   async get(k: string) { return this.rows.get(k); }
   async update(k: string, patch: any) { const r = this.rows.get(k); if (r) this.rows.set(k, { ...r, ...patch }); }
+  where(field: string) {
+    return { equals: (v: any) => ({ toArray: async () => [...this.rows.values()].filter((r) => r[field] === v) }) };
+  }
 }
 class FakeDB {
   name: string;
@@ -34,9 +39,12 @@ class FakeDB {
   glbOverrides = new FakeTable();
   icon2dOverrides = new FakeTable();
   workspace = new FakeTable();
+  kbSnapshots = new FakeTable();
   constructor(name = 'kbase') { this.name = name; }
   async open() { return this; }
   close() {}
+  // Passthrough: the real Dexie transaction gives atomicity; the fake just runs the body.
+  async transaction(_mode: string, _tables: unknown, cb: () => Promise<unknown>) { return cb(); }
 }
 const fakeDb = new FakeDB('kbase');
 
@@ -66,7 +74,9 @@ vi.mock('../../storage/kb-assets', () => ({
   extToMime: () => 'image/png',
 }));
 
-// importTurtleFull → one confirmed statement per " ." terminator in the text.
+// importTurtleFull → one confirmed statement per " ." terminator in the text. `cleanImportCount:
+// 0` marks this as an annotated (lossless) import, so populateKbFromTtl preserves the statements
+// verbatim rather than coercing them.
 vi.mock('../../rdf/import-ttl', () => ({
   importTurtleFull: async (ttl: string) => ({
     statements: (ttl.match(/\./g) ?? []).map((_, i) => ({
@@ -76,10 +86,15 @@ vi.mock('../../rdf/import-ttl', () => ({
       o: { kind: 'literal', value: `v${i}`, datatype: null, lang: null },
       status: 'confirmed',
     })),
+    sources: [],
+    cleanImportCount: 0,
   }),
 }));
 
-vi.mock('../../rdf/serialize', () => ({ toTurtle: () => '<a> <b> <c> .' }));
+vi.mock('../../rdf/serialize', () => ({
+  toTurtle: () => '<a> <b> <c> .',
+  toTurtleFull: () => '<a> <b> <c> .',
+}));
 
 // ── Fake File System Access API ──────────────────────────────────────────────
 
@@ -145,7 +160,11 @@ describe('two-way folder sync — pullFromWorkspace', () => {
       _s: new Map<string, string>(),
       getItem(k: string) { return this._s.get(k) ?? null; },
       setItem(k: string, v: string) { this._s.set(k, v); },
+      removeItem(k: string) { this._s.delete(k); },
     };
+    // Each test starts with a clean revision baseline.
+    (globalThis as any).localStorage.removeItem('reckons:ws-seen-hashes');
+    fakeDb.workspace.rows.clear();
   });
 
   it('imports a new nested .ttl as a KB', async () => {
@@ -192,6 +211,40 @@ describe('two-way folder sync — pullFromWorkspace', () => {
     const second = await mod.pullFromWorkspace(); // second: unchanged
     expect(second.imported).toHaveLength(0);
     expect(second.updated).toHaveLength(0);
+  });
+
+  it('persists last-seen revisions so a reconnect skips unchanged files (F107.4 Stage 2)', async () => {
+    const mod = await import('../workspace.svelte');
+    mod.__linkHandleForTest(root as any);
+    await seedFile(root, ['kbs', 'a', 'a.ttl'], '<a> <b> <c> .');
+    await mod.pullFromWorkspace(); // imports 'a', records + persists its hash
+
+    const stored = localStorage.getItem('reckons:ws-seen-hashes');
+    expect(stored).toBeTruthy();
+    expect((JSON.parse(stored!) as [string, string][]).some(([k]) => k.includes('a.ttl'))).toBe(true);
+
+    // Simulate a reload + reconnect: a fresh module instance has an empty in-memory baseline,
+    // but loadWorkspace restores it from localStorage, so the unchanged file is NOT re-imported.
+    vi.resetModules();
+    fakeDb.workspace.rows.set('main', { id: 'main', handle: root, name: 'root' });
+    const mod2 = await import('../workspace.svelte');
+    await mod2.loadWorkspace();     // restores the persisted baseline
+    mod2.__linkHandleForTest(root as any);
+
+    const res = await mod2.pullFromWorkspace();
+    expect(res.imported).toHaveLength(0);
+    expect(res.updated).toHaveLength(0);
+  });
+
+  it('clearWorkspace forgets the persisted revision baseline', async () => {
+    const mod = await import('../workspace.svelte');
+    mod.__linkHandleForTest(root as any);
+    await seedFile(root, ['kbs', 'a', 'a.ttl'], '<a> <b> <c> .');
+    await mod.pullFromWorkspace();
+    expect(localStorage.getItem('reckons:ws-seen-hashes')).toBeTruthy();
+
+    await mod.clearWorkspace();
+    expect(localStorage.getItem('reckons:ws-seen-hashes')).toBeNull();
   });
 
   it('reloads the active KB store when the active KB is updated', async () => {

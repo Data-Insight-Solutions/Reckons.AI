@@ -428,6 +428,24 @@
         </p>
       </div>
 
+      <div class="setting-group">
+        <label for="hume-token-url">Shared voice token endpoint <span class="optional">(optional)</span></label>
+        <input
+          id="hume-token-url"
+          type="url"
+          class="text-input"
+          placeholder="https://your-endpoint.example.com/hume-token"
+          value={ts.humeTokenUrl ?? ''}
+          oninput={(e) => updateTurtleSettings({ humeTokenUrl: (e.target as HTMLInputElement).value })}
+        />
+        <p class="hint">
+          Lets someone you share this persona with hear the voice <em>without</em> setting up their
+          own Hume. You run a small endpoint that returns a short-lived Hume access token; your
+          secret key never leaves your control. <strong>This URL travels with the shared persona</strong>,
+          so use one you can rate-limit and revoke — never paste an API or secret key here.
+        </p>
+      </div>
+
       {#if ts.humeApiKey && !ts.humeConfigId}
         <div class="setting-group">
           <button

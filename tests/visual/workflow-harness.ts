@@ -12,6 +12,7 @@
  * overflow, sub-44px touch targets, and DOM overlaps.
  */
 import type { Page, Locator } from '@playwright/test';
+import { evalStable } from './eval-stable';
 import { writeFileSync, appendFileSync, mkdirSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -55,8 +56,8 @@ export type Device = (typeof DEVICES)[number];
 export async function boxTarget(page: Page, target: Locator, label?: string): Promise<() => Promise<void>> {
   const box = await target.boundingBox().catch(() => null);
   if (!box) return async () => {};
-  await page.evaluate(
-    ({ b, label }) => {
+  await evalStable(page,
+    ({ b, label }: { b: {x:number;y:number;width:number;height:number}; label?: string }) => {
       const el = document.createElement('div');
       el.setAttribute('data-vtest-box', '1');
       Object.assign(el.style, {
@@ -93,7 +94,7 @@ export async function boxTarget(page: Page, target: Locator, label?: string): Pr
     { b: box, label },
   );
   return async () => {
-    await page.evaluate(() => document.querySelectorAll('[data-vtest-box]').forEach((n) => n.remove()));
+    await evalStable(page, () => document.querySelectorAll('[data-vtest-box]').forEach((n) => n.remove()));
   };
 }
 
@@ -131,7 +132,7 @@ export async function stepAudit(
   page: Page,
   overlapSelectors: string[] = ['nav', 'canvas', '[role="dialog"]', '.sheet-content', '.snap-panel'],
 ): Promise<StepDefects> {
-  const overflow = await page.evaluate(() => document.body.scrollWidth > window.innerWidth + 2);
+  const overflow = await evalStable(page, () => document.body.scrollWidth > window.innerWidth + 2);
   const smallTargets = await auditTouchTargets(page);
   const dom = await analyzeDOMOverlaps(page, overlapSelectors);
   return { overflow, smallTargets, overlaps: dom.overlaps.length };
@@ -151,6 +152,26 @@ export async function useDevice(page: Page, device: Device): Promise<void> {
  * the real UI on slower (dev) builds, so wait for `.boot` to detach + network
  * idle, then a short settle.
  */
+/**
+ * `page.goto` that retries a dev-server abort.
+ *
+ * Vite HMR and the registered PWA service worker can abort an in-flight navigation
+ * (net::ERR_ABORTED) even though the server is healthy — tests/e2e/helpers.ts has retried this for
+ * a while, but the visual harness did not, so the whole navigation-sweep matrix failed at its first
+ * goto once a service worker was warm. Same class of flake, same fix, now in one place.
+ */
+export async function gotoStable(page: Page, url: string, attempts = 3): Promise<void> {
+  for (let i = 0; ; i++) {
+    try {
+      await page.goto(url, { waitUntil: 'domcontentloaded' });
+      return;
+    } catch (e) {
+      if (i >= attempts - 1) throw e;
+      await page.waitForTimeout(400);
+    }
+  }
+}
+
 export async function waitForAppReady(page: Page, timeout = 20_000): Promise<void> {
   await page.locator('.boot').waitFor({ state: 'detached', timeout }).catch(() => {});
   await page.waitForLoadState('networkidle').catch(() => {});

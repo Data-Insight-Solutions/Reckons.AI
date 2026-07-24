@@ -110,6 +110,14 @@ export type TurtleSettings = {
   humeSecretKey: string;
   /** Hume.AI EVI Config ID (voice persona config) */
   humeConfigId: string;
+  /**
+   * Opt-in endpoint that mints a SHORT-LIVED Hume EVI access token (F107.6). Lets a shared
+   * voice persona be heard by someone who has not configured their own Hume: the sharer runs
+   * this endpoint, the viewer's client fetches a scoped, expiring token from it at play-time,
+   * and the sharer's secret key never leaves their control. Unlike an API/secret key this is a
+   * revocable, rate-limitable delegation — so it is safe to travel with a shared persona.
+   */
+  humeTokenUrl?: string;
   /** Whisper model for local speech-to-text (e.g. 'onnx-community/whisper-tiny') */
   whisperModel: string;
 
@@ -263,6 +271,27 @@ export const STMT_PREFIX = 'urn:kbase:stmt/';
 export const PRESENTATION_IMAGE_PREDICATES = new Set([
   'urn:kbase:predicate/icon2d',
   'urn:kbase:predicate/photo',
+  // Provenance ABOUT a photo — who made it, where to check the licence. Belongs in the detail
+  // panel beside the image, never as an edge to a literal node holding a credit line or a URL.
+  'urn:kbase:predicate/photo-credit',
+  'urn:kbase:predicate/photo-source',
+]);
+
+/**
+ * How an ENTITY TYPE renders — geometry name, hex colour, 3D model, generation bookkeeping.
+ * These are the predicates `stores/entity-types.svelte.ts` reads to draw a type, so they cannot
+ * be renamed; but they are configuration, not knowledge. Left visible they put literal nodes
+ * labelled "tetrahedron" and "#e0a13c" into the graph — which is exactly what a first-time user
+ * meets in the starter graph, next to the real facts, meaning nothing (Matt, 2026-07-23).
+ * Same reasoning as the image predicates above: presentation is metadata.
+ */
+export const TYPE_PRESENTATION_PREDICATES = new Set([
+  'urn:kbase:predicate/icon',
+  'urn:kbase:predicate/icon3d',
+  'urn:kbase:predicate/color',
+  'urn:kbase:predicate/type-description',
+  'urn:kbase:predicate/meshy-task-id',
+  'urn:kbase:predicate/meshy-status',
 ]);
 
 /** Returns true if the predicate is metadata (should not render as a graph edge/node) */
@@ -271,6 +300,8 @@ export function isMetaPredicate(predicateIri: string): boolean {
   // Icon/preview image predicates are presentation metadata, not semantic edges —
   // otherwise their data-URI/URL object becomes a junk literal node in the graph.
   if (PRESENTATION_IMAGE_PREDICATES.has(predicateIri)) return true;
+  // Entity-type presentation config (geometry name, hex colour, …) is not a fact about anything.
+  if (TYPE_PRESENTATION_PREDICATES.has(predicateIri)) return true;
   // nav:order and nav:layer are node metadata, not graph edges
   if (predicateIri === `${NAV_PREFIX}order` || predicateIri === `${NAV_PREFIX}layer`) return true;
   // page:* are per-page publishing metadata (literals) — the site tree still renders

@@ -16,6 +16,16 @@ export interface AppNotification {
   ondismiss?: () => void;
   /** Persist dismissal to localStorage — never shown again after dismiss */
   oneTime?: boolean;
+  /**
+   * Force the stack OPEN even on routes that collapse it to the corner bell.
+   *
+   * For guidance the user must actually read at the moment they act. NotificationStack collapses
+   * by default on every non-home route, so a notification pushed from /ingest lands in a tray the
+   * user has no reason to open — which is how the tiny-model warning ("chat only, will not
+   * reliably extract facts") became invisible at exactly the moment someone chose that model
+   * (found 2026-07-18). Use sparingly: if everything is important, nothing is.
+   */
+  important?: boolean;
 }
 
 const DISMISSED_KEY = 'reckons:dismissed-tips';

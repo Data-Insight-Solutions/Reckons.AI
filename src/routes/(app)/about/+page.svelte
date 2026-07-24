@@ -1002,7 +1002,7 @@
     </div>
   </section>
 
-  <section class="contact-section">
+  <section class="contact-section" id="contact">
     <h2 class="contact-h">Get in touch</h2>
     <p class="contact-sub mono">Questions, ideas, or want to self-host? Send a note. With an n8n instance linked (Settings → Integrations) this posts straight to your automation workflow; otherwise it opens your email client.</p>
     <ContactForm source="about" subject="Reckons.AI contact" />
@@ -1024,9 +1024,13 @@
       <a href="https://github.com/Data-Insight-Solutions/Reckons.AI" target="_blank" rel="noopener noreferrer" class="footer-github">GitHub</a>
       <!-- Design-system pilot: shadcn Button (outline) restyled with utilities to
            match the .footer-github pill exactly — proves the Liquid token mapping. -->
+      <!-- Points at the form, NOT at mailto. A hardcoded mailto here bypassed the n8n
+           workflow entirely: with an instance configured the form posts to the automation,
+           and the fallback to email lives inside ContactForm — so there must be exactly one
+           entry point, or half the feedback silently skips the pipeline. -->
       <Button
         variant="outline"
-        href="mailto:matthew.roe@data-insight.solutions?subject=Reckons.AI%20feedback"
+        href="#contact"
         class="h-auto rounded-full border-border bg-transparent px-[0.7rem] py-[0.2rem] text-[0.68rem] font-normal tracking-[-0.01em] text-muted-foreground shadow-none hover:border-primary hover:bg-transparent hover:text-primary dark:border-border dark:bg-transparent dark:hover:border-primary dark:hover:bg-transparent"
       >Send feedback</Button>
     </div>

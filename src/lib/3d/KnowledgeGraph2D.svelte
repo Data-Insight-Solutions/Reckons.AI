@@ -7,10 +7,12 @@
   import { onMount, onDestroy } from 'svelte';
   import type { Statement } from '$lib/rdf/types';
   import { termKey, isIRI, isLit, isMetaPredicate, displayLiteralLabel } from '$lib/rdf/types';
+  import { parseGraphDate } from '$lib/rdf/parse-date';
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { RDF_TYPE, RDFS_LABEL, type EntityTypeDef, type GeometryName } from '$lib/rdf/entity-types';
   import { leapNodeKeys } from '$lib/rdf/kb-leap';
   import { buildHierarchyAnchors } from '$lib/rdf/hierarchy';
+  import { hopDistances, adjacencyFromPairs } from '$lib/rdf/n-hop';
   import { icon2dOverrides } from '$lib/stores/icon2d-overrides.svelte';
   import type { GhostGraph, GhostNode } from '$lib/rdf/ghost-graph';
 
@@ -366,8 +368,9 @@
         if (st.status === 'rejected' || st.status === 'superseded') continue;
         if (!TIMELINE_PREDICATES_2D.has(st.p.value)) continue;
         const key = termKey(st.s);
-        const ts = new Date(st.o.value).getTime();
-        if (isNaN(ts)) continue;
+        // Shared rule — see parse-date.ts (a date-only fact lands on the day it names).
+        const ts = parseGraphDate(st.o.value);
+        if (ts === undefined) continue;
         const existing = nodeTime.get(key);
         if (!existing || ts < existing) nodeTime.set(key, ts);
       }
@@ -447,15 +450,10 @@
 
   function buildFocusAnchors(): Map<string, { x: number; y: number }> {
     if (!selected) return new Map();
-    const dist = new Map<string, number>([[selected, 0]]);
-    const queue = [selected]; let qi = 0;
-    while (qi < queue.length) {
-      const cur = queue[qi++]; const d = dist.get(cur)!;
-      for (const e of edges) {
-        const other = e.a.key === cur ? e.b.key : e.b.key === cur ? e.a.key : null;
-        if (other && !dist.has(other)) { dist.set(other, d + 1); queue.push(other); }
-      }
-    }
+    // Shared traversal (rdf/n-hop.ts). This used to walk the whole EDGE LIST for every
+    // dequeued node — O(V*E) — because no adjacency map existed. Building one first makes
+    // it O(V+E), which matters on the large graphs the focus layout is most useful on.
+    const dist = hopDistances(adjacencyFromPairs(edges.map((e) => [e.a.key, e.b.key] as const)), selected);
     const anchors = new Map<string, { x: number; y: number }>([[selected, { x: 0, y: 0 }]]);
     const angleMap = new Map<string, number>();
     const maxD = dist.size > 0 ? Math.max(...dist.values()) : 0;
@@ -1203,6 +1201,7 @@
     const DAMP      = 0.78;
     const BASE_REST = 3.2;
     const VEL_FLOOR = 0.001; // clamp micro-velocities to zero to stop jitter
+    const LOCK_TIMELINE_X = layout === 'timeline';
 
     for (let i = 0; i < nodes.length; i++) {
       const a = nodes[i];
@@ -1233,6 +1232,12 @@
       // Clamp micro-velocities to zero — prevents infinite low-amplitude jitter
       if (Math.abs(n.vx) < VEL_FLOOR && Math.abs(n.vy) < VEL_FLOOR) { n.vx = 0; n.vy = 0; }
       n.x += n.vx; n.y += n.vy;
+      // TIMELINE: x IS THE DATE (see the matching note in KnowledgeGraph.svelte). Repulsion,
+      // springs and centering all push on x, so a node only ever landed NEAR its date. Pin it.
+      if (LOCK_TIMELINE_X) {
+        const dateAnchor = activeAnchors.get(n.key);
+        if (dateAnchor) { n.x = dateAnchor.x; n.vx = 0; }
+      }
       nodePositionCache.set(n.key, { x: n.x, y: n.y });
     }
     } // end if (!flyAnim) — physics freeze
@@ -1355,8 +1360,8 @@
         if (!nodeTime.has(sk) && st.createdAt) nodeTime.set(sk, st.createdAt);
       } else {
         if (TIMELINE_PREDICATES_2D.has(st.p.value)) {
-          const ts = new Date(st.o.value).getTime();
-          if (!isNaN(ts)) {
+          const ts = parseGraphDate(st.o.value);
+          if (ts !== undefined) {
             const key = termKey(st.s);
             const existing = nodeTime.get(key);
             if (!existing || ts < existing) nodeTime.set(key, ts);

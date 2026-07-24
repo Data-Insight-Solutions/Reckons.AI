@@ -187,6 +187,7 @@ export const DEFAULT_TURTLE_SETTINGS: TurtleSettings = {
   humeApiKey: import.meta.env.VITE_HUME_API_KEY ?? '',
   humeSecretKey: import.meta.env.VITE_HUME_SECRET_KEY ?? '',
   humeConfigId: import.meta.env.VITE_HUME_CONFIG_ID ?? '',
+  humeTokenUrl: import.meta.env.VITE_HUME_TOKEN_URL ?? '',
   whisperModel: 'onnx-community/whisper-tiny',
   animationSpeed: 'normal',
   opacity: 100,
@@ -237,6 +238,9 @@ export const DEFAULT_SETTINGS: SettingsRecord = {
   shellyCustomPrompt: import.meta.env.VITE_SHELLY_PROMPT || undefined,
   embeddingModel: import.meta.env.VITE_EMBEDDING_MODEL ?? 'Xenova/bge-small-en-v1.5',
   n8nBaseUrl: import.meta.env.VITE_N8N_BASE_URL || undefined,
+  indicoServerUrl: import.meta.env.VITE_INDICO_SERVER_URL || undefined,
+  indicoApiToken: import.meta.env.VITE_INDICO_API_TOKEN || undefined,
+  indicoCategoryId: import.meta.env.VITE_INDICO_CATEGORY_ID || undefined,
   n8nNotifyOnReview: false,
   embeddingThreshold: 0.85,
   autoConfirmHighConfidence: false,
@@ -278,6 +282,20 @@ export type MobileSession = {
 
 export type WorkspaceRow = { id: string; handle: FileSystemDirectoryHandle; name: string };
 
+/**
+ * A full-fidelity snapshot of a KB's state, taken before a destructive replace (sync
+ * reconcile). `ttl` is a lossless `toTurtleFull` export (all statuses + provenance) so the
+ * prior state is recoverable via `restoreKbSnapshot`. Pruned to the last few per KB.
+ */
+export type KbSnapshotRow = {
+  id: string;
+  kbId: string;
+  createdAt: number;
+  reason: string;
+  statementCount: number;
+  ttl: string;
+};
+
 export class KBaseDB extends Dexie {
   sources!: Table<Source, string>;
   statements!: Table<Statement, string>;
@@ -289,6 +307,7 @@ export class KBaseDB extends Dexie {
   workspace!: Table<WorkspaceRow, string>;
   entityGifs!: Table<EntityGifRow, string>;
   icon2dOverrides!: Table<Icon2dOverrideRow, string>;
+  kbSnapshots!: Table<KbSnapshotRow, string>;
 
   constructor(name?: string) {
     super(name ?? resolveDbName());
@@ -347,6 +366,21 @@ export class KBaseDB extends Dexie {
       workspace: 'id',
       entityGifs: 'id',
       icon2dOverrides: 'id'
+    });
+    // v7: pre-replace recovery snapshots (F107.4). Additive — new store only, no data
+    // transform, so this is a safe migration for existing databases.
+    this.version(7).stores({
+      sources: 'id, ingestedAt, kind, trustLevel',
+      statements: 'id, sourceId, status, [s.value+p.value], createdAt',
+      settings: 'key',
+      changelog: '++id, timestamp, action, statementId, sourceId, entityKey',
+      mergeDecisions: '++id, timestamp, entityKeyA, entityKeyB',
+      trustEvents: '++id, timestamp, sourceId',
+      glbOverrides: 'id',
+      workspace: 'id',
+      entityGifs: 'id',
+      icon2dOverrides: 'id',
+      kbSnapshots: 'id, kbId, createdAt'
     });
   }
 }

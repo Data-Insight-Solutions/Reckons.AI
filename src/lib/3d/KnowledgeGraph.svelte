@@ -14,12 +14,14 @@
   import * as THREE from 'three';
   import type { Statement } from '$lib/rdf/types';
   import { termKey, isIRI, isLit, isMetaPredicate, displayLiteralLabel } from '$lib/rdf/types';
+  import { parseGraphDate } from '$lib/rdf/parse-date';
   import GraphNode from '$lib/components/GraphNode.svelte';
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { RDF_TYPE, RDFS_LABEL, type EntityTypeDef } from '$lib/rdf/entity-types';
   import { glbOverrides } from '$lib/stores/glb-overrides.svelte';
   import { recordFrame } from '$lib/stores/perf-monitor.svelte';
   import { leapNodeKeys } from '$lib/rdf/kb-leap';
+  import { hopDistances, adjacencyFromPairs } from '$lib/rdf/n-hop';
   import { SKOS_BROADER, NAV_ORDER, NAV_LAYER } from '$lib/rdf/hierarchy';
 
   interactivity();
@@ -42,7 +44,8 @@
     onhovermove = () => {},
     onmarkersmove = () => {},
     onlabelsmove = () => {},
-    ontimelinepan = () => {}
+    ontimelinepan = () => {},
+    onready = () => {}
   } = $props<{
     statements?: Statement[];
     selected?: string | null;
@@ -62,6 +65,8 @@
     onmarkersmove?: (markers: Array<{ key: string; label: string; color: string; x: number; y: number }>) => void;
     onlabelsmove?: (labels: Array<{ key: string; label: string; x: number; y: number; opacity: number }>) => void;
     ontimelinepan?: (center: number) => void;
+    /** Fired after a non-empty scene has completed at least one animation frame. */
+    onready?: () => void;
   }>();
 
   const isHistoryMode = $derived(historyTimestamp !== null);
@@ -260,21 +265,10 @@
     if (!selected) return { anchors: new Map(), radii: [], distances: new Map() };
 
     // ── 1. BFS hop distances ─────────────────────────────────────────────────
-    const distances = new Map<string, number>();
-    distances.set(selected, 0);
-    const queue = [selected];
-    let qi = 0;
-    while (qi < queue.length) {
-      const cur = queue[qi++];
-      const d = distances.get(cur)!;
-      for (const e of edges) {
-        const other = e.a.key === cur ? e.b.key : e.b.key === cur ? e.a.key : null;
-        if (other && !distances.has(other)) {
-          distances.set(other, d + 1);
-          queue.push(other);
-        }
-      }
-    }
+    // Shared traversal (rdf/n-hop.ts) — this was a verbatim copy of the 2D version, and
+    // both rescanned the entire EDGE LIST per dequeued node (O(V*E)). Building an
+    // adjacency map first makes it O(V+E).
+    const distances = hopDistances(adjacencyFromPairs(edges.map((e) => [e.a.key, e.b.key] as const)), selected);
 
     // ── 2. Classify hop-1 neighbors by predicate + direction ────────────────
     // 'out' = selected is the subject (→ target)
@@ -748,8 +742,10 @@
         if (!TIMELINE_PREDICATES.has(st.p.value)) continue;
 
         const key = termKey(st.s);
-        const ts = new Date(st.o.value).getTime();
-        if (isNaN(ts)) continue;
+        // One shared rule so every date is interpreted identically — a date-only fact must
+        // land on the day it names, not UTC-shifted onto the day before (see parse-date.ts).
+        const ts = parseGraphDate(st.o.value);
+        if (ts === undefined) continue;
 
         const existing = nodeTime.get(key);
         if (!existing || ts < existing) nodeTime.set(key, ts);
@@ -926,6 +922,7 @@
   const linePositions = new Float32Array(MAX_EDGES * 6);
   const hlLinePositions = new Float32Array(MAX_EDGES * 6); // highlighted edges (selected node)
   let lineGeomHl: THREE.BufferGeometry | undefined = $state();
+  let reportedReady = false;
 
   // Attach position attributes imperatively with a direct THREE import — survives
   // minification, unlike <T.BufferAttribute> (see comment at the template markup).
@@ -947,6 +944,7 @@
     const CENTER     = activeAnchors.size > 0 ? 0.008 : 0.04;
     const DAMP       = 0.86;
     const BASE_REST  = 2.4;
+    const LOCK_TIMELINE_X = layout === 'timeline';
 
     for (let i = 0; i < nodes.length; i++) {
       const a = nodes[i];
@@ -983,6 +981,16 @@
       n.vel.z += -n.pos.z * CENTER * dt;
       n.vel.multiplyScalar(DAMP);
       n.pos.x += n.vel.x; n.pos.y += n.vel.y; n.pos.z += n.vel.z;
+
+      // TIMELINE: x IS THE DATE — data, not a force outcome. Repulsion, edge springs (×8) and
+      // centering all act on x too, so an anchored node only ever settled NEAR its date and the
+      // axis could not be read against its own markers. Pin x to the anchor and let the other
+      // forces spread nodes vertically instead. Tuning the constants can never fix this; the
+      // date axis has to be authoritative, not negotiated.
+      if (LOCK_TIMELINE_X) {
+        const dateAnchor = activeAnchors.get(n.key);
+        if (dateAnchor) { n.pos.x = dateAnchor.x; n.vel.x = 0; }
+      }
     }
 
     if (lineGeom) {
@@ -1015,6 +1023,13 @@
 
     if (renderer && camera.current) {
       const canvas = renderer.domElement;
+
+      if (!reportedReady && nodes.length > 0 && canvas.width > 0 && canvas.height > 0) {
+        reportedReady = true;
+        // Threlte renders after its update tasks. Report on the following
+        // browser frame so this signal cannot mean only "the branch mounted".
+        requestAnimationFrame(onready);
+      }
 
       // Project selected node for overlay positioning
       if (selected) {

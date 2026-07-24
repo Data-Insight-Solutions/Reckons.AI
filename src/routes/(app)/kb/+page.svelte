@@ -739,7 +739,7 @@
           {#if isCurrent}
             <span class="current-badge mono">current</span>
           {:else}
-            <button class="sm primary" onclick={() => handleSwitch(kb.id)}>switch</button>
+            <button class="sm primary kb-switch-action" onclick={() => handleSwitch(kb.id)}>switch</button>
             <a
               href={kbUrl(kb.id)}
               target="_blank"
@@ -747,7 +747,10 @@
               class="sm-link"
               title="Open in new tab"
               aria-label="Open {kb.name} in a new browser tab"
-            >tab</a>
+            >
+              <span class="desktop-action-label">tab</span>
+              <span class="mobile-action-label">open tab</span>
+            </a>
           {/if}
           <button
             class="sm compare-toggle"
@@ -757,7 +760,8 @@
             aria-label={isCompareSelected ? 'Deselect for comparison' : 'Select for comparison'}
             title="Select for comparison"
           >
-            {isCompareSelected ? '☑' : '☐'}
+            <span aria-hidden="true">{isCompareSelected ? '☑' : '☐'}</span>
+            <span class="mobile-action-label">{isCompareSelected ? 'selected' : 'compare'}</span>
           </button>
           {#if !isCurrent && kb.id !== 'kbase'}
             <button class="sm danger" onclick={() => handleDeleteKb(kb.id)}>remove</button>
@@ -1645,6 +1649,7 @@
   }
 
   .kb-entry-actions { display: flex; gap: 0.3rem; align-items: center; flex-shrink: 0; }
+  .mobile-action-label { display: none; }
   .current-badge {
     font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.1em;
     color: var(--accent); border: 1px solid var(--accent); border-radius: 4px;
@@ -1850,8 +1855,82 @@
   button.sm { padding: 0.25rem 0.6rem; font-size: 0.75rem; }
   button.ghost.sm { padding: 0.2rem 0.5rem; font-size: 0.72rem; }
 
-  /* ── Mobile ── */
-  @media (max-width: 500px) {
+  /* ── Mobile / narrow tablet ── */
+  @media (max-width: 640px) {
+    .kb-entry {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      align-items: stretch;
+      gap: 0.7rem;
+      padding: 0.75rem;
+    }
+    .kb-entry-left {
+      display: grid;
+      grid-template-columns: 72px 44px minmax(0, 1fr);
+      align-items: start;
+      gap: 0.45rem;
+      width: 100%;
+    }
+    .bookmark-btn {
+      display: inline-grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      padding: 0;
+    }
+    .kb-entry-meta { width: 100%; overflow: hidden; }
+    .kb-entry-name { line-height: 1.35; }
+    .kb-entry-sub {
+      flex-wrap: wrap;
+      gap: 0.2rem 0.4rem;
+      min-width: 0;
+    }
+    .kb-entry-id {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .kb-entry-desc {
+      white-space: normal;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+    }
+    .kb-entry-actions {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.4rem;
+      width: 100%;
+      padding-top: 0.65rem;
+      border-top: 1px solid var(--line);
+    }
+    .kb-entry-actions > button,
+    .kb-entry-actions > .sm-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+      min-height: 44px;
+      padding: 0.55rem 0.4rem;
+      white-space: nowrap;
+    }
+    .kb-switch-action,
+    .current-badge {
+      grid-column: 1 / -1;
+    }
+    .current-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 32px;
+    }
+    .kb-entry.current .compare-toggle { grid-column: 1 / -1; }
+    .compare-toggle { gap: 0.3rem; }
+    .desktop-action-label { display: none; }
+    .mobile-action-label { display: inline; }
+
     .new-kb-form { flex-direction: column; }
     .new-kb-form input { min-width: 0; }
     .section-head-actions { flex-wrap: wrap; }
