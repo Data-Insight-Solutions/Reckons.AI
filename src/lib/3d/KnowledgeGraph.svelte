@@ -14,6 +14,7 @@
   import * as THREE from 'three';
   import type { Statement } from '$lib/rdf/types';
   import { termKey, isIRI, isLit, isMetaPredicate, displayLiteralLabel } from '$lib/rdf/types';
+  import { parseGraphDate } from '$lib/rdf/parse-date';
   import GraphNode from '$lib/components/GraphNode.svelte';
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { RDF_TYPE, RDFS_LABEL, type EntityTypeDef } from '$lib/rdf/entity-types';
@@ -741,8 +742,10 @@
         if (!TIMELINE_PREDICATES.has(st.p.value)) continue;
 
         const key = termKey(st.s);
-        const ts = new Date(st.o.value).getTime();
-        if (isNaN(ts)) continue;
+        // One shared rule so every date is interpreted identically — a date-only fact must
+        // land on the day it names, not UTC-shifted onto the day before (see parse-date.ts).
+        const ts = parseGraphDate(st.o.value);
+        if (ts === undefined) continue;
 
         const existing = nodeTime.get(key);
         if (!existing || ts < existing) nodeTime.set(key, ts);
@@ -941,6 +944,7 @@
     const CENTER     = activeAnchors.size > 0 ? 0.008 : 0.04;
     const DAMP       = 0.86;
     const BASE_REST  = 2.4;
+    const LOCK_TIMELINE_X = layout === 'timeline';
 
     for (let i = 0; i < nodes.length; i++) {
       const a = nodes[i];
@@ -977,6 +981,16 @@
       n.vel.z += -n.pos.z * CENTER * dt;
       n.vel.multiplyScalar(DAMP);
       n.pos.x += n.vel.x; n.pos.y += n.vel.y; n.pos.z += n.vel.z;
+
+      // TIMELINE: x IS THE DATE — data, not a force outcome. Repulsion, edge springs (×8) and
+      // centering all act on x too, so an anchored node only ever settled NEAR its date and the
+      // axis could not be read against its own markers. Pin x to the anchor and let the other
+      // forces spread nodes vertically instead. Tuning the constants can never fix this; the
+      // date axis has to be authoritative, not negotiated.
+      if (LOCK_TIMELINE_X) {
+        const dateAnchor = activeAnchors.get(n.key);
+        if (dateAnchor) { n.pos.x = dateAnchor.x; n.vel.x = 0; }
+      }
     }
 
     if (lineGeom) {
