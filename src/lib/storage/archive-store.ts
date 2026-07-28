@@ -29,10 +29,9 @@ import {
 import { getRegistry, createKb, updateKbEntry } from './kb-registry';
 import type { Statement } from '$lib/rdf/types';
 
-/** Registry id of the archive graph belonging to `parentName`, if it exists. */
-export function findArchiveKbId(parentName: string): string | null {
-  const target = archiveGraphName(parentName);
-  return getRegistry().find((k) => k.name === target)?.id ?? null;
+/** Registry id of the archive graph linked to `parentStableId`, if it exists. */
+export function findArchiveKbId(parentStableId: string): string | null {
+  return getRegistry().find((k) => k.archiveOf === parentStableId)?.id ?? null;
 }
 
 /**
@@ -40,14 +39,33 @@ export function findArchiveKbId(parentName: string): string | null {
  *
  * Created lazily rather than alongside every graph: an archive that never receives anything is
  * clutter in the graph list, and the feature's whole purpose is reducing what the user has to look
- * at. `archiveOf` on the registry entry links it back to its parent.
+ * at. `archiveOf` on the registry entry links it back to its parent by stable ID, so renaming the
+ * parent cannot orphan its history or create a second archive.
  */
-export function ensureArchiveKb(parentName: string, parentStableId?: string): string {
-  const existing = findArchiveKbId(parentName);
-  if (existing) return existing;
+export function ensureArchiveKb(parentName: string, parentStableId: string): string {
+  if (!parentStableId.trim()) throw new Error('Archive parent stable ID is required');
 
-  const entry = createKb(archiveGraphName(parentName));
-  updateKbEntry(entry.id, { archiveOf: parentStableId ?? parentName });
+  const targetName = archiveGraphName(parentName);
+  const registry = getRegistry();
+  const linked = registry.find((k) => k.archiveOf === parentStableId);
+  if (linked) {
+    // Keep the display name in sync without using it as identity.
+    if (linked.name !== targetName) updateKbEntry(linked.id, { name: targetName });
+    return linked.id;
+  }
+
+  // Upgrade an archive created before stable-ID linking was enforced. Only adopt an unlinked or
+  // name-linked row: a same-named archive linked to a different stable ID belongs to another graph.
+  const legacy = registry.find(
+    (k) => k.name === targetName && (k.archiveOf == null || k.archiveOf === parentName),
+  );
+  if (legacy) {
+    updateKbEntry(legacy.id, { archiveOf: parentStableId });
+    return legacy.id;
+  }
+
+  const entry = createKb(targetName);
+  updateKbEntry(entry.id, { archiveOf: parentStableId });
   return entry.id;
 }
 
@@ -58,8 +76,11 @@ export interface ArchiveRunInput {
   entities: string[];
   type: ArchiveEventType;
   actor: ArchiveActor;
+  /** Exact Dexie database name of the working graph. Never inferred during a destructive write. */
+  workingKbId: string;
   parentName: string;
-  parentStableId?: string;
+  /** Stable identity used to find the same archive after a parent rename. */
+  parentStableId: string;
   note?: string;
   milestone?: boolean;
   /** Bounded by default to the latest 10 snapshots plus milestones. */
@@ -85,6 +106,24 @@ export interface ArchiveRunResult {
  * to every call site.
  */
 export async function runArchive(input: ArchiveRunInput): Promise<ArchiveRunResult> {
+  if (!input.workingKbId?.trim()) throw new Error('Working KB ID is required');
+  if (!input.parentStableId?.trim()) throw new Error('Archive parent stable ID is required');
+
+  // A supplied database name is only safe if it is the registry entry carrying this stable ID.
+  // Otherwise a typo would make Dexie create a new empty database: the archive write would succeed
+  // while the real working graph stayed untouched, leaving persisted state and the caller's
+  // in-memory `kept` result disagreeing. Reject the mismatch before creating an archive.
+  const registry = getRegistry();
+  const linkedArchive = registry.find((k) => k.archiveOf === input.parentStableId);
+  if (linkedArchive?.id === input.workingKbId) {
+    throw new Error('Archive and working KB IDs must be different');
+  }
+  const workingEntry = registry.find((k) => k.id === input.workingKbId);
+  if (!workingEntry) throw new Error(`Working KB is not registered: ${input.workingKbId}`);
+  if (workingEntry.stableId !== input.parentStableId) {
+    throw new Error('Working KB ID does not match the parent stable ID');
+  }
+
   const now = input.now ?? (() => Date.now());
   const newId = input.newId ?? (() => crypto.randomUUID());
   const at = now();
@@ -102,6 +141,9 @@ export async function runArchive(input: ArchiveRunInput): Promise<ArchiveRunResu
   });
 
   const archiveKbId = ensureArchiveKb(input.parentName, input.parentStableId);
+  if (archiveKbId === input.workingKbId) {
+    throw new Error('Archive and working KB IDs must be different');
+  }
 
   // ── Step 1: write to the archive (additive) ────────────────────────────────
   const archiveDb = new KBaseDB(archiveKbId);
@@ -124,7 +166,7 @@ export async function runArchive(input: ArchiveRunInput): Promise<ArchiveRunResu
   // ── Step 2: only now remove from the working graph ─────────────────────────
   // If the process dies before this line, the facts are duplicated across both graphs. That is
   // the intended failure mode — recoverable, and visible.
-  const workingDb = new KBaseDB();
+  const workingDb = new KBaseDB(input.workingKbId);
   try {
     await workingDb.statements.bulkDelete(archived.map((s) => s.id));
   } finally {
