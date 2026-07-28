@@ -42,7 +42,11 @@ jobs:
 
       # ── Firefox: sign via AMO self-distribution ──────────────────────
       - name: Sign Firefox extension (AMO self-distribution)
-        if: env.AMO_JWT_ISSUER != ''
+        # PRs validate the reproducible build/package path without making an
+        # external signing request. Push/manual runs retain the existing AMO
+        # behavior, so Firefox incompatibilities stay visible rather than
+        # becoming a green build that cannot actually be signed.
+        if: github.event_name != 'pull_request' && env.AMO_JWT_ISSUER != ''
         env:
           AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
           AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
@@ -68,7 +72,7 @@ jobs:
           path: dist/reckons-ai-chrome-*.zip
 
       - name: Upload Firefox signed xpi
-        if: env.AMO_JWT_ISSUER != ''
+        if: github.event_name != 'pull_request' && env.AMO_JWT_ISSUER != ''
         uses: actions/upload-artifact@v7
         env:
           AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
