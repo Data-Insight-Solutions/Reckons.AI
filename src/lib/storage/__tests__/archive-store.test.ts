@@ -56,6 +56,9 @@ const {
   runArchive, ensureArchiveKb, findArchiveKbId, loadArchiveSnapshot,
 } = await import('../archive-store');
 const {
+  createKb, getRegistry, registerStableId, updateKbEntry,
+} = await import('../kb-registry');
+const {
   ARC_SNAPSHOT_ITEM, ARC_TYPE, SnapshotUnavailableError,
 } = await import('$lib/rdf/archive');
 import type { Statement, NamedNode, Term } from '$lib/rdf/types';
@@ -74,41 +77,73 @@ const graph = [
   st('urn:gone', 'urn:p/rel', iri('urn:keep')),
 ];
 
+let workingKbId = '';
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
   calls.length = 0;
   stored = {};
+  workingKbId = createKb('Research').id;
+  registerStableId(workingKbId, 'stable-1');
 });
 
 describe('archive graph lifecycle', () => {
   it('reports no archive graph before one exists', () => {
-    expect(findArchiveKbId('Research')).toBeNull();
+    expect(findArchiveKbId('stable-1')).toBeNull();
   });
 
   it('creates the archive graph on first use, named after its parent', () => {
     const id = ensureArchiveKb('Research', 'stable-1');
     expect(id).toBeTruthy();
-    expect(findArchiveKbId('Research')).toBe(id);
+    expect(findArchiveKbId('stable-1')).toBe(id);
   });
 
   it('is idempotent — a second call reuses the same graph', () => {
-    const first = ensureArchiveKb('Research');
-    const second = ensureArchiveKb('Research');
+    const first = ensureArchiveKb('Research', 'stable-1');
+    const second = ensureArchiveKb('Research', 'stable-1');
     expect(second).toBe(first);
   });
 
   it('links the archive back to its parent via archiveOf', async () => {
     ensureArchiveKb('Research', 'stable-99');
-    const { getRegistry } = await import('../kb-registry');
     const entry = getRegistry().find((k) => k.name === 'Research (archives)')!;
     expect(entry.archiveOf).toBe('stable-99');
   });
 
   it('keeps separate archives for separate parents', () => {
-    const a = ensureArchiveKb('Alpha');
-    const b = ensureArchiveKb('Beta');
+    const a = ensureArchiveKb('Alpha', 'stable-a');
+    const b = ensureArchiveKb('Beta', 'stable-b');
     expect(a).not.toBe(b);
+  });
+
+  it('follows stable identity across a parent rename and updates the archive display name', async () => {
+    const first = ensureArchiveKb('Research', 'stable-1');
+    const second = ensureArchiveKb('Renamed Research', 'stable-1');
+
+    expect(second).toBe(first);
+    expect(getRegistry().find((k) => k.id === first)?.name).toBe('Renamed Research (archives)');
+    expect(getRegistry().filter((k) => k.archiveOf === 'stable-1')).toHaveLength(1);
+  });
+
+  it('does not conflate same-named parents with different stable identities', async () => {
+    const a = ensureArchiveKb('Research', 'stable-a');
+    const b = ensureArchiveKb('Research', 'stable-b');
+
+    expect(b).not.toBe(a);
+    expect(getRegistry().find((k) => k.id === a)?.archiveOf).toBe('stable-a');
+    expect(getRegistry().find((k) => k.id === b)?.archiveOf).toBe('stable-b');
+  });
+
+  it('upgrades a legacy name-linked archive to stable identity', async () => {
+    const legacy = createKb('Research (archives)');
+    updateKbEntry(legacy.id, { archiveOf: 'Research' });
+
+    expect(ensureArchiveKb('Research', 'stable-1')).toBe(legacy.id);
+    expect(getRegistry().find((k) => k.id === legacy.id)?.archiveOf).toBe('stable-1');
+  });
+
+  it('refuses an empty parent stable ID', () => {
+    expect(() => ensureArchiveKb('Research', '  ')).toThrow('stable ID is required');
   });
 });
 
@@ -118,6 +153,7 @@ describe('runArchive — the ordering guarantee', () => {
     entities: ['urn:gone'],
     type: 'delete',
     actor: 'human',
+    workingKbId,
     parentName: 'Research',
     parentStableId: 'stable-1',
     now: () => 1_700_000_000_000,
@@ -139,6 +175,13 @@ describe('runArchive — the ordering guarantee', () => {
     const del = calls.find((c) => c.op === 'bulkDelete')!;
     expect(del.n).toBe(result.archivedCount);
     expect(result.archivedCount).toBe(2); // urn:gone's label + its edge
+  });
+
+  it('deletes from the explicit working database rather than ambient tab state', async () => {
+    sessionStorage.setItem('sessionKbId', 'kbase_wrong_tab');
+    await run();
+    const del = calls.find((c) => c.op === 'bulkDelete')!;
+    expect(del.db).toBe(workingKbId);
   });
 
   it('returns the surviving statements for the caller to adopt', async () => {
@@ -170,11 +213,68 @@ describe('runArchive — the ordering guarantee', () => {
   it('archiving nothing still journals, and deletes nothing', async () => {
     const result = await runArchive({
       statements: graph, entities: [], type: 'prune', actor: 'agent',
-      parentName: 'Research', now: () => 1, newId: () => 'evt-empty',
+      workingKbId, parentName: 'Research', parentStableId: 'stable-1',
+      now: () => 1, newId: () => 'evt-empty',
     });
     expect(result.archivedCount).toBe(0);
     const del = calls.find((c) => c.op === 'bulkDelete')!;
     expect(del.n).toBe(0);
+  });
+
+  it('refuses to use the archive itself as the working database', async () => {
+    const archiveKbId = ensureArchiveKb('Research', 'stable-1');
+    await expect(runArchive({
+      statements: graph,
+      entities: ['urn:gone'],
+      type: 'delete',
+      actor: 'human',
+      workingKbId: archiveKbId,
+      parentName: 'Research',
+      parentStableId: 'stable-1',
+    })).rejects.toThrow('must be different');
+    expect(calls).toHaveLength(0);
+  });
+
+  it('refuses an unregistered working database before creating an archive', async () => {
+    await expect(runArchive({
+      statements: graph,
+      entities: ['urn:gone'],
+      type: 'delete',
+      actor: 'human',
+      workingKbId: 'kbase_missing',
+      parentName: 'Missing',
+      parentStableId: 'stable-missing',
+    })).rejects.toThrow('Working KB is not registered');
+    expect(findArchiveKbId('stable-missing')).toBeNull();
+    expect(calls).toHaveLength(0);
+  });
+
+  it('refuses a working database whose registry stable ID belongs to another parent', async () => {
+    await expect(runArchive({
+      statements: graph,
+      entities: ['urn:gone'],
+      type: 'delete',
+      actor: 'human',
+      workingKbId,
+      parentName: 'Research',
+      parentStableId: 'stable-other',
+    })).rejects.toThrow('does not match the parent stable ID');
+    expect(findArchiveKbId('stable-other')).toBeNull();
+    expect(calls).toHaveLength(0);
+  });
+
+  it('refuses an empty working database ID before creating an archive', async () => {
+    await expect(runArchive({
+      statements: graph,
+      entities: ['urn:gone'],
+      type: 'delete',
+      actor: 'human',
+      workingKbId: ' ',
+      parentName: 'Research',
+      parentStableId: 'stable-1',
+    })).rejects.toThrow('Working KB ID is required');
+    expect(findArchiveKbId('stable-1')).toBeNull();
+    expect(calls).toHaveLength(0);
   });
 });
 
@@ -184,6 +284,7 @@ describe('runArchive — retention is part of the writer', () => {
     entities: ['urn:gone'],
     type: 'age-drop',
     actor: 'schedule',
+    workingKbId,
     parentName: 'Research',
     parentStableId: 'stable-1',
     milestone,
@@ -225,7 +326,7 @@ describe('runArchive — retention is part of the writer', () => {
     expect(calls.map(({ db, op }) => ({ db, op }))).toEqual([
       { db: archiveKbId, op: 'bulkPut' },
       { db: archiveKbId, op: 'bulkDelete' },
-      { db: '__working__', op: 'bulkDelete' },
+      { db: workingKbId, op: 'bulkDelete' },
     ]);
   });
 });
