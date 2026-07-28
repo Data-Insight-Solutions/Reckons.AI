@@ -28,10 +28,22 @@ vi.mock('../db', () => ({
       this.statements = {
         bulkPut: async (rows: unknown[]) => {
           calls.push({ db: this.name, op: 'bulkPut', n: rows.length });
-          stored[this.name] = [...(stored[this.name] ?? []), ...rows];
+          const byId = new Map(
+            (stored[this.name] ?? []).map((row) => [
+              (row as { id?: string }).id ?? crypto.randomUUID(),
+              row,
+            ]),
+          );
+          for (const row of rows) {
+            byId.set((row as { id?: string }).id ?? crypto.randomUUID(), row);
+          }
+          stored[this.name] = [...byId.values()];
         },
         bulkDelete: async (ids: string[]) => {
           calls.push({ db: this.name, op: 'bulkDelete', n: ids.length });
+          const doomed = new Set(ids);
+          stored[this.name] = (stored[this.name] ?? [])
+            .filter((row) => !doomed.has((row as { id?: string }).id ?? ''));
         },
         toArray: async () => stored[this.name] ?? [],
       };
@@ -40,7 +52,12 @@ vi.mock('../db', () => ({
   },
 }));
 
-const { runArchive, ensureArchiveKb, findArchiveKbId } = await import('../archive-store');
+const {
+  runArchive, ensureArchiveKb, findArchiveKbId, loadArchiveSnapshot,
+} = await import('../archive-store');
+const {
+  ARC_SNAPSHOT_ITEM, ARC_TYPE, SnapshotUnavailableError,
+} = await import('$lib/rdf/archive');
 import type { Statement, NamedNode, Term } from '$lib/rdf/types';
 
 const iri = (value: string): NamedNode => ({ kind: 'iri', value });
@@ -138,6 +155,11 @@ describe('runArchive — the ordering guarantee', () => {
     expect(put.n).toBeGreaterThan(event.statementCount);
   });
 
+  it('persists and reloads the full pre-operation snapshot exactly', async () => {
+    const { archiveKbId, event } = await run();
+    await expect(loadArchiveSnapshot(archiveKbId, event.id)).resolves.toEqual(graph);
+  });
+
   it('uses bulkPut so a retried partial archive converges instead of throwing', async () => {
     await run();
     await run(); // same event id, same statements — must not blow up
@@ -153,5 +175,57 @@ describe('runArchive — the ordering guarantee', () => {
     expect(result.archivedCount).toBe(0);
     const del = calls.find((c) => c.op === 'bulkDelete')!;
     expect(del.n).toBe(0);
+  });
+});
+
+describe('runArchive — retention is part of the writer', () => {
+  const runNumbered = (i: number, milestone = false) => runArchive({
+    statements: graph,
+    entities: ['urn:gone'],
+    type: 'age-drop',
+    actor: 'schedule',
+    parentName: 'Research',
+    parentStableId: 'stable-1',
+    milestone,
+    now: () => 1_700_000_000_000 + i,
+    newId: () => `evt-${i}`,
+  });
+
+  it('keeps only the latest 10 snapshot payloads by default while preserving every event', async () => {
+    let archiveKbId = '';
+    for (let i = 0; i < 12; i++) ({ archiveKbId } = await runNumbered(i));
+
+    const rows = stored[archiveKbId] as Statement[];
+    const payloads = rows.filter((row) => row.p.value === ARC_SNAPSHOT_ITEM);
+    const eventTypes = rows.filter((row) => row.p.value === ARC_TYPE);
+    expect(payloads).toHaveLength(10 * graph.length);
+    expect(eventTypes).toHaveLength(12);
+    await expect(loadArchiveSnapshot(archiveKbId, 'evt-11')).resolves.toEqual(graph);
+    await expect(loadArchiveSnapshot(archiveKbId, 'evt-0'))
+      .rejects.toBeInstanceOf(SnapshotUnavailableError);
+  });
+
+  it('keeps a milestone snapshot outside the latest-10 window', async () => {
+    let archiveKbId = '';
+    for (let i = 0; i < 12; i++) ({ archiveKbId } = await runNumbered(i, i === 0));
+
+    const payloads = (stored[archiveKbId] as Statement[])
+      .filter((row) => row.p.value === ARC_SNAPSHOT_ITEM);
+    expect(payloads).toHaveLength(11 * graph.length);
+    await expect(loadArchiveSnapshot(archiveKbId, 'evt-0')).resolves.toEqual(graph);
+    await expect(loadArchiveSnapshot(archiveKbId, 'evt-1'))
+      .rejects.toBeInstanceOf(SnapshotUnavailableError);
+  });
+
+  it('finishes retention before touching the working graph', async () => {
+    for (let i = 0; i < 10; i++) await runNumbered(i);
+    calls.length = 0;
+
+    const { archiveKbId } = await runNumbered(10);
+    expect(calls.map(({ db, op }) => ({ db, op }))).toEqual([
+      { db: archiveKbId, op: 'bulkPut' },
+      { db: archiveKbId, op: 'bulkDelete' },
+      { db: '__working__', op: 'bulkDelete' },
+    ]);
   });
 });

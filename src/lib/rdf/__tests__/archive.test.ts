@@ -10,9 +10,13 @@ import { describe, it, expect } from 'vitest';
 import {
   archiveGraphName, isArchiveGraphName, parentGraphName,
   eventToStatements, statementsToEvents, applyRetention, snapshotFootprint,
-  archiveEntities, restoreSnapshot, findArchivedReferences, detectChurn,
+  snapshotToStatements, statementsToSnapshot, SnapshotPayloadError,
+  SnapshotUnavailableError, archiveEntities, restoreSnapshot,
+  findArchivedReferences, detectChurn,
   type ArchiveEvent,
 } from '../archive';
+import { toTurtleFull } from '../serialize';
+import { importTurtleFull } from '../import-ttl';
 import type { Statement, NamedNode, Term } from '../types';
 
 const iri = (value: string): NamedNode => ({ kind: 'iri', value });
@@ -23,7 +27,7 @@ const T0 = 1_700_000_000_000;
 
 const ev = (over: Partial<ArchiveEvent> = {}): ArchiveEvent => ({
   id: 'e1', type: 'delete', at: T0, actor: 'human',
-  entities: ['urn:a'], statementCount: 3, ...over,
+  entities: ['urn:a'], statementCount: 3, snapshotSize: 3, ...over,
 });
 
 describe('archive graph naming', () => {
@@ -60,6 +64,13 @@ describe('journal serialization', () => {
     expect(back.note).toBe('merged duplicates');
     expect(back.milestone).toBe(true);
     expect(back.entities).toEqual(['urn:a', 'urn:b']); // sorted
+  });
+
+  it('round-trips the recorded snapshot size without loading the payload', () => {
+    const original = ev({ snapshot: [mkSnapshotStatement('snapshot-1')] });
+    const [back] = statementsToEvents(eventToStatements(original));
+    expect(back.snapshot).toBeUndefined();
+    expect(back.snapshotSize).toBe(1);
   });
 
   it('is deterministic — the same event serializes identically every time', () => {
@@ -103,6 +114,21 @@ describe('retention', () => {
     expect(keep.length + dropSnapshots.length).toBe(many.length);
   });
 
+  it('is bounded by default to the latest 10 snapshots plus milestones', () => {
+    const events = Array.from({ length: 15 }, (_, i) =>
+      ev({ id: `e${i}`, at: T0 + i, snapshotSize: 3, milestone: i === 0 }));
+    const { keep, dropSnapshots } = applyRetention(events, {}, T0 + 20);
+    expect(keep.map((e) => e.id)).toEqual([
+      'e14', 'e13', 'e12', 'e11', 'e10', 'e9', 'e8', 'e7', 'e6', 'e5', 'e0',
+    ]);
+    expect(dropSnapshots.map((e) => e.id)).toEqual(['e4', 'e3', 'e2', 'e1']);
+  });
+
+  it('retains an explicitly empty snapshot as a real snapshot candidate', () => {
+    const empty = ev({ id: 'empty', statementCount: 0, snapshotSize: 0 });
+    expect(applyRetention([empty], { keepLast: 1 }, T0).keep).toEqual([empty]);
+  });
+
   it('always keeps the most recent snapshots', () => {
     const { keep } = applyRetention(many, { keepLast: 5, thinToOnePer: 365 * DAY }, now);
     const newest = [...many].sort((a, b) => b.at - a.at).slice(0, 5).map((e) => e.id);
@@ -142,6 +168,82 @@ describe('retention', () => {
 
   it('handles an empty journal', () => {
     expect(applyRetention([], {}, now)).toEqual({ keep: [], dropSnapshots: [] });
+  });
+});
+
+function mkSnapshotStatement(id: string): Statement {
+  return {
+    id,
+    s: iri(`urn:${id}`),
+    p: iri('urn:p'),
+    o: {
+      kind: 'literal',
+      value: 'value',
+      datatype: 'http://www.w3.org/2001/XMLSchema#string',
+      lang: 'en',
+    },
+    g: iri('urn:kbase:source/original'),
+    sourceId: 'original',
+    confidence: 0.73,
+    supersedes: 'older-id',
+    gloss: 'human rendering',
+    excerpt: 'verbatim source',
+    grounded: true,
+    status: 'pending',
+    needsObject: true,
+    question: 'what belongs here?',
+    blocks: ['urn:blocked'],
+    askedBy: 'local-agent',
+    verifiableBy: 'source',
+    answeredByGraph: 'urn:answerer',
+    hopChain: ['urn:origin', 'urn:answerer'],
+    createdAt: 123,
+    updatedAt: 456,
+  };
+}
+
+describe('snapshot payload persistence', () => {
+  it('round-trips every Statement field without repurposing id or sourceId', () => {
+    const snapshot = [mkSnapshotStatement('snapshot-1'), mkSnapshotStatement('snapshot-2')];
+    const event = ev({ id: 'full', snapshot });
+    const stored = [...eventToStatements(event), ...snapshotToStatements(event)];
+
+    expect(statementsToSnapshot(stored, event.id)).toEqual(snapshot);
+    expect(snapshotToStatements(event).every((row) => row.sourceId === 'archive-snapshot:full')).toBe(true);
+  });
+
+  it('round-trips an intentionally empty snapshot', () => {
+    const event = ev({ id: 'empty', snapshot: [] });
+    expect(statementsToSnapshot(eventToStatements(event), event.id)).toEqual([]);
+  });
+
+  it('survives the annotated Turtle export/import path used to move graph history', async () => {
+    const snapshot = [mkSnapshotStatement('portable-snapshot')];
+    const event = ev({ id: 'portable-event', note: 'full history travels', snapshot });
+    const stored = [...eventToStatements(event), ...snapshotToStatements(event)];
+
+    const imported = await importTurtleFull(toTurtleFull(stored, []));
+    expect(statementsToSnapshot(imported.statements, event.id)).toEqual(snapshot);
+  });
+
+  it('refuses a missing payload instead of treating it as an empty graph', () => {
+    const event = ev({ id: 'missing', snapshot: [mkSnapshotStatement('snapshot-1')] });
+    expect(() => statementsToSnapshot(eventToStatements(event), event.id))
+      .toThrow(SnapshotUnavailableError);
+  });
+
+  it('fails loudly on a partial or malformed payload', () => {
+    const event = ev({
+      id: 'broken',
+      snapshot: [mkSnapshotStatement('snapshot-1'), mkSnapshotStatement('snapshot-2')],
+    });
+    const rows = snapshotToStatements(event);
+    expect(() => statementsToSnapshot([...eventToStatements(event), rows[0]], event.id))
+      .toThrow(SnapshotPayloadError);
+
+    const malformed = { ...rows[0], o: lit('{not-json') };
+    expect(() => statementsToSnapshot([...eventToStatements(event), malformed, rows[1]], event.id))
+      .toThrow(SnapshotPayloadError);
   });
 });
 
@@ -347,7 +449,7 @@ describe('detectChurn (F97.6)', () => {
 
 describe('snapshotFootprint', () => {
   it('reports the storage cost so it never becomes a surprise', () => {
-    const events = [ev({ statementCount: 100 }), ev({ id: 'e2', statementCount: 250 })];
+    const events = [ev({ snapshotSize: 100 }), ev({ id: 'e2', snapshotSize: 250 })];
     expect(snapshotFootprint(events)).toBe(350);
   });
 
@@ -357,5 +459,9 @@ describe('snapshotFootprint', () => {
       sourceId: 'x', confidence: 1, status: 'confirmed' as const, createdAt: 0, updatedAt: 0,
     }));
     expect(snapshotFootprint([ev({ statementCount: 999, snapshot })])).toBe(4);
+  });
+
+  it('uses the persisted snapshot size when the payload is not loaded', () => {
+    expect(snapshotFootprint([ev({ statementCount: 2, snapshotSize: 100 })])).toBe(100);
   });
 });
