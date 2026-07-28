@@ -533,8 +533,10 @@ code:test-e2e  rdf:type     ktype:Concept ;
                kpred:has-file "tests/e2e/resilience.test.ts" ;
                kpred:has-file "tests/e2e/viewport.test.ts" ;
                kpred:has-file "tests/e2e/graph-render.test.ts" ;
+               kpred:has-file "tests/e2e/visual-contract.test.ts" ;
                kpred:has-file "playwright.config.ts" ;
-               kpred:has-file "playwright.smoke.config.ts" .
+               kpred:has-file "playwright.smoke.config.ts" ;
+               kpred:has-file "scripts/visual-smoke-gate.ts" .
 
 code:test-visual  rdf:type     ktype:Concept ;
                   rdfs:label   "Visual Tests" ;
@@ -554,6 +556,15 @@ code:test-visual  rdf:type     ktype:Concept ;
                   kpred:has-file "tests/visual/stories.test.ts" ;
                   kpred:has-file "tests/visual/mobile/graph-view.test.ts" ;
                   kpred:has-file "tests/visual/mobile/overlay.test.ts" ;
+                  kpred:has-file "playwright.evidence.config.ts" ;
+                  kpred:has-file "tests/visual/evidence/global-setup.ts" ;
+                  kpred:has-file "tests/visual/evidence/manual-facts.test.ts" ;
+                  kpred:has-file "tests/visual/evidence/__screenshots__/facts-populated-desktop-chrome.png" ;
+                  kpred:has-file "tests/visual/evidence/__screenshots__/facts-compare-desktop-chrome.png" ;
+                  kpred:has-file "tests/visual/evidence/__screenshots__/facts-populated-pixel-7-portrait.png" ;
+                  kpred:has-file "tests/visual/evidence/__screenshots__/facts-compare-pixel-7-portrait.png" ;
+                  kpred:has-file "tests/visual/evidence/__screenshots__/facts-populated-pixel-7-landscape.png" ;
+                  kpred:has-file "tests/visual/evidence/__screenshots__/facts-compare-pixel-7-landscape.png" ;
                   kpred:has-file "tests/visual/user-stories/cross-kb-align.test.ts" ;
                   kpred:has-file "tests/visual/user-stories/dev-sprint.test.ts" ;
                   kpred:has-file "tests/visual/user-stories/user-docs.test.ts" ;
@@ -649,6 +660,10 @@ code:scripts  rdf:type     ktype:Concept ;
               kpred:has-file "scripts/kb-snapshot.ts" ;
               kpred:has-file "scripts/docs-pages.ts" ;
               kpred:has-file "scripts/md-align.ts" ;
+              kpred:has-file "scripts/visual-evidence-contract.ts" ;
+              kpred:has-file "scripts/visual-evidence-report.ts" ;
+              kpred:has-file "scripts/visual-baseline-update.ts" ;
+              kpred:has-file "scripts/__tests__/visual-evidence-contract.test.ts" ;
               kpred:has-file "scripts/sveltia-auth-secrets.sh" .
 
 code:sample-kgs  rdf:type     ktype:Concept ;
