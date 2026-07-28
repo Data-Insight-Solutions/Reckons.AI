@@ -389,6 +389,42 @@ describe('findArchivedReferences (F97.3) — no silent duplicates', () => {
     expect(findArchivedReferences(incoming, archived)).toEqual([]);
   });
 
+  it.each(['rejected', 'superseded'] as const)(
+    'does not resurrect %s archived facts through either IRI or label matching',
+    (status) => {
+      const inactive = archived.map((statement) => ({ ...statement, status }));
+      const incoming = [
+        mk('urn:acme', 'urn:p/employees', lit('50')),
+        mk('urn:new-node', LABEL, lit('Acme Corp')),
+      ];
+      expect(findArchivedReferences(incoming, inactive)).toEqual([]);
+      expect(findArchivedReferences(incoming, inactive, ['urn:acme'])).toEqual([]);
+    },
+  );
+
+  it.each(['rejected', 'superseded'] as const)(
+    'ignores %s incoming rows that are no longer candidates for ingest',
+    (status) => {
+      const incoming = [{ ...mk('urn:acme', 'urn:p/employees', lit('50')), status }];
+      expect(findArchivedReferences(incoming, archived)).toEqual([]);
+    },
+  );
+
+  it('uses exact archived identities instead of mistaking inbound-edge subjects for archived entities', () => {
+    const archivedFacts = [
+      mk('urn:active-neighbour', 'urn:p/relates-to', iri('urn:inbound-only')),
+    ];
+    const incoming = [
+      mk('urn:active-neighbour', 'urn:p/new', lit('still active'), 'active'),
+      mk('urn:inbound-only', 'urn:p/new', lit('returned'), 'archived'),
+    ];
+
+    const refs = findArchivedReferences(incoming, archivedFacts, ['urn:inbound-only']);
+    expect(refs).toEqual([
+      { entity: 'urn:inbound-only', label: 'urn:inbound-only', incoming: [incoming[1]] },
+    ]);
+  });
+
   it('does not flag an entity as a duplicate of itself', () => {
     const incoming = [mk('urn:acme', LABEL, lit('Acme Corp'))];
     const refs = findArchivedReferences(incoming, archived);

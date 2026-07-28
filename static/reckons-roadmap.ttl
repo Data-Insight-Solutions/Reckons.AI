@@ -3157,8 +3157,15 @@ kb:archive-revert rdf:type ktype:Feature ;
 kb:archive-restore-on-reference rdf:type ktype:Feature ;
     rdfs:label "Restore-on-reference — archived entities are not silently duplicated" ;
     kpred:feature-id "F97.3" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "scaffolded" ;
     kpred:depends-on kb:archive-foundation ;
+    kpred:has-file "src/lib/rdf/archive.ts" ;
+    kpred:has-file "src/lib/storage/archive-store.ts" ;
+    kpred:tested-by "src/lib/rdf/__tests__/archive.test.ts" ;
+    kpred:tested-by "src/lib/storage/__tests__/archive-store.test.ts" ;
+    kpred:proof "Scaffolded 2026-07-28: the archive adapter now resolves a parent's archive by stableId, reads only original archived graph facts (excluding journal and snapshot wrapper rows), and composes that read with the conservative direct-IRI / normalized exact-label matcher. Exact archived identities come from journal affectedEntity rows, so an active neighbour carried into the archive by an inbound edge is not misidentified as archived. Rejected and superseded facts cannot seed restore prompts. The boundary is read-only and creates no database when the parent has no archive registry entry." ;
+    kpred:honest-note "SCAFFOLDED, not functional: detection now reaches real archive storage, but no ingest path calls it and there is no restore offer or confirmed restore action. Runtime archive moves remain blocked on completing this guard." ;
+    kpred:remaining "Call the storage-backed detector from every ingest commit boundary; pause duplicate-producing writes when matches exist; show a user-confirmed restore-or-keep-separate choice; restore the selected entity and its touching facts into the working graph with a reversible journal event; add end-to-end coverage across all ingest entry points." ;
     kpred:description "When an ingest mentions an entity that currently lives in the archive, offer to restore it rather than minting a duplicate node. REQUIREMENT, not an enhancement: without it, archiving actively worsens the duplicate problem that the merge analysis exists to solve, and every archive sweep seeds the next round of duplicates." .
 
 kb:archive-recurrence rdf:type ktype:Feature ;

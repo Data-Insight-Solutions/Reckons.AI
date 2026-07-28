@@ -13,6 +13,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 // Records every write in call order across BOTH database instances, so the test can assert the
 // archive was written before the working graph was cleared.
 const calls: Array<{ db: string; op: string; n: number }> = [];
+const opened: string[] = [];
+const closed: string[] = [];
 let stored: Record<string, unknown[]> = {};
 
 vi.mock('../db', () => ({
@@ -25,6 +27,7 @@ vi.mock('../db', () => ({
     };
     constructor(name?: string) {
       this.name = name ?? '__working__';
+      opened.push(this.name);
       this.statements = {
         bulkPut: async (rows: unknown[]) => {
           calls.push({ db: this.name, op: 'bulkPut', n: rows.length });
@@ -48,18 +51,20 @@ vi.mock('../db', () => ({
         toArray: async () => stored[this.name] ?? [],
       };
     }
-    close() { /* no-op */ }
+    close() { closed.push(this.name); }
   },
 }));
 
 const {
   runArchive, ensureArchiveKb, findArchiveKbId, loadArchiveSnapshot,
+  loadArchivedFacts, findArchivedReferencesForParent,
 } = await import('../archive-store');
 const {
   createKb, getRegistry, registerStableId, updateKbEntry,
 } = await import('../kb-registry');
 const {
-  ARC_SNAPSHOT_ITEM, ARC_TYPE, SnapshotUnavailableError,
+  ARCHIVE_EVENT_PREFIX, ARC_SNAPSHOT_ITEM, ARC_TYPE, SnapshotUnavailableError,
+  eventToStatements,
 } = await import('$lib/rdf/archive');
 import type { Statement, NamedNode, Term } from '$lib/rdf/types';
 
@@ -82,6 +87,8 @@ beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
   calls.length = 0;
+  opened.length = 0;
+  closed.length = 0;
   stored = {};
   workingKbId = createKb('Research').id;
   registerStableId(workingKbId, 'stable-1');
@@ -144,6 +151,67 @@ describe('archive graph lifecycle', () => {
 
   it('refuses an empty parent stable ID', () => {
     expect(() => ensureArchiveKb('Research', '  ')).toThrow('stable ID is required');
+  });
+});
+
+describe('archived fact reads (F97.3)', () => {
+  it('returns an empty set without opening a database when the parent has no archive', async () => {
+    await expect(loadArchivedFacts('stable-1')).resolves.toEqual([]);
+    expect(opened).toEqual([]);
+  });
+
+  it('rejects a blank stable ID before opening a database', async () => {
+    await expect(loadArchivedFacts('  ')).rejects.toThrow('stable ID is required');
+    expect(opened).toEqual([]);
+  });
+
+  it('returns original facts while excluding both journal and snapshot wrapper rows', async () => {
+    const archiveKbId = ensureArchiveKb('Research', 'stable-1');
+    const fact = st('urn:gone', LABEL, lit('Goner'), 'fact');
+    const journal = eventToStatements({
+      id: 'evt-1',
+      type: 'prune',
+      at: 1,
+      actor: 'human',
+      entities: ['urn:gone'],
+      statementCount: 1,
+    });
+    const snapshot = st(
+      `${ARCHIVE_EVENT_PREFIX}evt-1`,
+      ARC_SNAPSHOT_ITEM,
+      lit(JSON.stringify(fact)),
+      'snapshot',
+    );
+    stored[archiveKbId] = [fact, ...journal, snapshot];
+
+    await expect(loadArchivedFacts('stable-1')).resolves.toEqual([fact]);
+    expect(opened).toEqual([archiveKbId]);
+    expect(closed).toEqual([archiveKbId]);
+  });
+
+  it('composes the stable-ID storage read with conservative reference matching', async () => {
+    const archiveKbId = ensureArchiveKb('Research', 'stable-1');
+    const event = eventToStatements({
+      id: 'evt-1',
+      type: 'prune',
+      at: 1,
+      actor: 'human',
+      entities: ['urn:gone'],
+      statementCount: 2,
+    });
+    stored[archiveKbId] = [
+      st('urn:gone', LABEL, lit('Goner'), 'archived-label'),
+      st('urn:active-neighbour', 'urn:p/relates-to', iri('urn:gone'), 'inbound-edge'),
+      ...event,
+    ];
+    const incoming = [
+      st('urn:new-gone', LABEL, lit('  goner '), 'incoming'),
+      st('urn:active-neighbour', 'urn:p/new', lit('still active'), 'active-neighbour'),
+    ];
+
+    await expect(findArchivedReferencesForParent('stable-1', incoming)).resolves.toMatchObject([
+      { entity: 'urn:gone', label: 'Goner', incoming: [incoming[0]] },
+    ]);
   });
 });
 

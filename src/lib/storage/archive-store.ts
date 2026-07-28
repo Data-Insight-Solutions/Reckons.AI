@@ -23,8 +23,9 @@ import { KBaseDB } from './db';
 import {
   ARCHIVE_EVENT_PREFIX, ARC_SNAPSHOT_ITEM, archiveGraphName, archiveEntities,
   eventToStatements, snapshotToStatements, statementsToEvents, statementsToSnapshot,
-  applyRetention,
+  applyRetention, findArchivedReferences,
   type ArchiveEventType, type ArchiveActor, type ArchiveEvent, type RetentionPolicy,
+  type ArchivedReference,
 } from '$lib/rdf/archive';
 import { getRegistry, createKb, updateKbEntry } from './kb-registry';
 import type { Statement } from '$lib/rdf/types';
@@ -32,6 +33,58 @@ import type { Statement } from '$lib/rdf/types';
 /** Registry id of the archive graph linked to `parentStableId`, if it exists. */
 export function findArchiveKbId(parentStableId: string): string | null {
   return getRegistry().find((k) => k.archiveOf === parentStableId)?.id ?? null;
+}
+
+const isArchiveMetadataRow = (statement: Statement) =>
+  statement.s.kind === 'iri' && statement.s.value.startsWith(ARCHIVE_EVENT_PREFIX);
+
+async function loadArchiveRows(parentStableId: string): Promise<Statement[]> {
+  if (!parentStableId.trim()) throw new Error('Archive parent stable ID is required');
+
+  const archiveKbId = findArchiveKbId(parentStableId);
+  if (!archiveKbId) return [];
+
+  const db = new KBaseDB(archiveKbId);
+  try {
+    return await db.statements.toArray();
+  } finally {
+    db.close();
+  }
+}
+
+/**
+ * Load archived graph facts for one parent without exposing journal or snapshot wrapper rows.
+ *
+ * A parent with no archive is the ordinary first-run case, so it returns an empty set and does not
+ * create a Dexie database. A blank stable ID is a caller bug: treating it as "no archive" would
+ * silently disable the duplicate guard for an unidentified graph.
+ *
+ * Rejected and superseded facts stay in this result because this is a storage read, not a semantic
+ * view. Consumers such as `findArchivedReferences` decide which statuses are live.
+ */
+export async function loadArchivedFacts(parentStableId: string): Promise<Statement[]> {
+  return (await loadArchiveRows(parentStableId)).filter(
+    (statement) => !isArchiveMetadataRow(statement),
+  );
+}
+
+/**
+ * Storage-backed half of F97.3. The eventual ingest UI can call this before committing extracted
+ * facts, then offer a restore when matches exist; this function deliberately performs no mutation.
+ */
+export async function findArchivedReferencesForParent(
+  parentStableId: string,
+  incoming: Statement[],
+): Promise<ArchivedReference[]> {
+  const rows = await loadArchiveRows(parentStableId);
+  const archivedFacts = rows.filter((statement) => !isArchiveMetadataRow(statement));
+  const archivedEntities = new Set(
+    statementsToEvents(rows)
+      // Revert events describe a whole restored snapshot, not entities currently in the archive.
+      .filter((event) => event.type !== 'revert')
+      .flatMap((event) => event.entities),
+  );
+  return findArchivedReferences(incoming, archivedFacts, archivedEntities);
 }
 
 /**

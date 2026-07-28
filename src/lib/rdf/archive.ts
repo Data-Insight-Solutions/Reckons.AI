@@ -554,15 +554,32 @@ const normLabel = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
 export function findArchivedReferences(
   incoming: Statement[],
   archivedStatements: Statement[],
+  archivedEntities?: Iterable<string>,
 ): ArchivedReference[] {
   const archivedLabels = new Map<string, string>();   // entity IRI → label
   const byNormLabel = new Map<string, string>();      // normalized label → entity IRI
   const archivedIris = new Set<string>();
+  const exactEntities = archivedEntities === undefined ? undefined : new Set(archivedEntities);
 
+  // A storage-backed caller knows the exact entities from journal affectedEntity rows. That
+  // distinction matters because an archive move also carries inbound edges whose SUBJECT remains
+  // active in the working graph; inferring identity from every archived subject would flag that
+  // active neighbour while missing an archived entity represented only as an object.
   for (const st of archivedStatements) {
+    // Rejected and superseded rows remain in the archive as historical evidence, but they are no
+    // longer graph facts. Letting either seed a restore prompt would resurrect a decision the user
+    // already settled.
+    if (st.status === 'rejected' || st.status === 'superseded') continue;
+    if (exactEntities && st.o.kind === 'iri' && exactEntities.has(st.o.value)) {
+      archivedIris.add(st.o.value);
+    }
     if (st.s.kind !== 'iri') continue;
-    archivedIris.add(st.s.value);
-    if (st.p.value === RDFS_LABEL) {
+    if (!exactEntities) {
+      archivedIris.add(st.s.value);
+    } else {
+      if (exactEntities.has(st.s.value)) archivedIris.add(st.s.value);
+    }
+    if (st.p.value === RDFS_LABEL && (!exactEntities || exactEntities.has(st.s.value))) {
       archivedLabels.set(st.s.value, st.o.value);
       byNormLabel.set(normLabel(st.o.value), st.s.value);
     }
@@ -575,6 +592,7 @@ export function findArchivedReferences(
   };
 
   for (const st of incoming) {
+    if (st.status === 'rejected' || st.status === 'superseded') continue;
     // Direct IRI reference to an archived entity.
     if (st.s.kind === 'iri' && archivedIris.has(st.s.value)) { hit(st.s.value, st); continue; }
     if (st.o.kind === 'iri' && archivedIris.has(st.o.value)) { hit(st.o.value, st); continue; }
