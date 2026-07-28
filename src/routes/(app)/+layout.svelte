@@ -30,6 +30,7 @@
   import { Tooltip } from 'bits-ui';
   import NotificationStack from '$lib/components/NotificationStack.svelte';
   import DownloadConsentDialog from '$lib/components/DownloadConsentDialog.svelte';
+  import ArchiveReferenceDialog from '$lib/components/ArchiveReferenceDialog.svelte';
   import FeedbackDialog from '$lib/components/FeedbackDialog.svelte';
   import { initDownloadConsent } from '$lib/stores/download-consent.svelte';
   import { initViewport } from '$lib/stores/viewport.svelte';
@@ -192,6 +193,7 @@
 <ManualLLMModal />
 <NotificationStack />
 <DownloadConsentDialog />
+<ArchiveReferenceDialog />
 <FeedbackDialog />
 
 {#if shellyChatOpen()}

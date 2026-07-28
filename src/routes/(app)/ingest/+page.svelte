@@ -247,6 +247,7 @@
       const result = await ingest(input, (p: IngestProgress) => {
         phase = p.phase;
       });
+      if (result.phase === 'cancelled') return;
       clearDraft(); // extraction succeeded — the note is safely in the graph now
       goto(`/compare?source=${result.source.id}`);
     } catch (e) {
@@ -543,6 +544,7 @@
         filename: driveSelected.name
       };
       const result = await ingest(input, (p) => { phase = p.phase; });
+      if (result.phase === 'cancelled') return;
       goto(`/compare?source=${result.source.id}`);
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
@@ -718,7 +720,7 @@
   // ── Vault / batch markdown ingestion ────────────────────────────────────────
   type VaultItem = {
     file: File;
-    status: 'queued' | 'parsing' | 'extracting' | 'done' | 'error';
+    status: 'queued' | 'parsing' | 'extracting' | 'done' | 'cancelled' | 'error';
     error?: string;
     sourceId?: string;
     wikilinks: string[];
@@ -748,7 +750,7 @@
 
     for (let i = 0; i < vaultQueue.length; i++) {
       const item = vaultQueue[i];
-      if (item.status === 'done') { vaultDone++; continue; }
+      if (item.status === 'done' || item.status === 'cancelled') { vaultDone++; continue; }
 
       try {
         item.status = 'parsing';
@@ -776,8 +778,12 @@
           { kind: 'document', title: itemTitle, text, filename: item.file.name },
           () => {}
         );
-        item.status = 'done';
-        item.sourceId = result.source.id;
+        if (result.phase === 'cancelled') {
+          item.status = 'cancelled';
+        } else {
+          item.status = 'done';
+          item.sourceId = result.source.id;
+        }
       } catch (err) {
         item.status = 'error';
         item.error = err instanceof Error ? err.message : String(err);
@@ -907,11 +913,15 @@
           if (p.phase === 'fetching') repoProgress = 'fetching files…';
           else if (p.phase === 'extracting') repoProgress = `extracting facts (${p.backend})…`;
           else if (p.phase === 'normalizing') repoProgress = 'normalising entities…';
+          else if (p.phase === 'archive-check') repoProgress = 'checking archived identities…';
+          else if (p.phase === 'awaiting-archive-decision') repoProgress = 'waiting for archive decision…';
+          else if (p.phase === 'restoring-archive') repoProgress = 'restoring archived identities…';
           else if (p.phase === 'diffing') repoProgress = 'computing diff…';
           else if (p.phase === 'semantic') repoProgress = 'semantic enrichment…';
           else repoProgress = '';
         },
       );
+      if (result.phase === 'cancelled') return;
       repoDone = true;
       goto(`/compare?source=${result.source.id}`);
     } catch (e) {
@@ -1004,6 +1014,7 @@
               {:else if item.status === 'parsing'}   ◌
               {:else if item.status === 'extracting'} ◎
               {:else if item.status === 'done'}      ✓
+              {:else if item.status === 'cancelled'} —
               {:else}                                ✕
               {/if}
             </span>
@@ -1666,6 +1677,7 @@
 
   .vault-status { font-size: 0.65rem; color: var(--muted); flex-shrink: 0; align-self: center; }
   .vault-done .vault-status     { color: var(--ok); }
+  .vault-cancelled .vault-status { color: var(--muted); }
   .vault-error .vault-status    { color: var(--danger); }
 
   .vault-actions { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }

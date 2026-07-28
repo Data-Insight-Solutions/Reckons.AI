@@ -12,7 +12,8 @@ import {
   eventToStatements, statementsToEvents, applyRetention, snapshotFootprint,
   snapshotToStatements, statementsToSnapshot, SnapshotPayloadError,
   SnapshotUnavailableError, archiveEntities, restoreSnapshot,
-  findArchivedReferences, detectChurn,
+  findArchivedReferences, remapIncomingForArchivedRestores,
+  ArchivedReferenceRemapError, detectChurn,
   type ArchiveEvent,
 } from '../archive';
 import { toTurtleFull } from '../serialize';
@@ -412,6 +413,45 @@ describe('findArchivedReferences (F97.3) — no silent duplicates', () => {
     const refs = findArchivedReferences(incoming, archived);
     expect(refs).toHaveLength(1);
     expect(refs[0].entity).toBe('urn:acme');
+  });
+
+  it('rewrites the exact label-collision IRI after the user chooses restore', () => {
+    const incoming = [
+      mk('urn:new-node', LABEL, lit('Acme Corp'), 'label'),
+      mk('urn:new-node', 'urn:p/employees', lit('50'), 'fact'),
+      mk('urn:beta', 'urn:p/competes-with', iri('urn:new-node'), 'edge'),
+    ];
+    const refs = findArchivedReferences(incoming, archived);
+
+    expect(remapIncomingForArchivedRestores(incoming, refs)).toEqual([
+      { ...incoming[0], s: iri('urn:acme') },
+      { ...incoming[1], s: iri('urn:acme') },
+      { ...incoming[2], o: iri('urn:acme') },
+    ]);
+  });
+
+  it('does not rewrite an exact IRI reference that already points at the archived entity', () => {
+    const incoming = [mk('urn:acme', 'urn:p/employees', lit('50'))];
+    const refs = findArchivedReferences(incoming, archived);
+    expect(remapIncomingForArchivedRestores(incoming, refs)).toBe(incoming);
+  });
+
+  it('refuses one incoming IRI mapped to two archived identities before a restore can start', () => {
+    const first = mk('urn:new-node', LABEL, lit('Acme Corp'), 'first');
+    const second = mk('urn:new-node', LABEL, lit('Acme Holdings'), 'second');
+    expect(() => remapIncomingForArchivedRestores([first, second], [
+      { entity: 'urn:acme', label: 'Acme Corp', incoming: [first] },
+      { entity: 'urn:holdings', label: 'Acme Holdings', incoming: [second] },
+    ])).toThrow(ArchivedReferenceRemapError);
+  });
+
+  it('does not guess when two archived entities share the same normalized label', () => {
+    const ambiguousArchive = [
+      ...archived,
+      mk('urn:other-acme', LABEL, lit('  acme corp  '), 'other-label'),
+    ];
+    const incoming = [mk('urn:new-node', LABEL, lit('ACME CORP'), 'incoming-label')];
+    expect(findArchivedReferences(incoming, ambiguousArchive)).toEqual([]);
   });
 
   it('catches an inbound edge pointing at an archived entity', () => {

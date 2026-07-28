@@ -86,6 +86,9 @@ export function initExtensionBridge() {
     /** Fallback: full re-ingest via the app's LLM pipeline */
     async ingestUrl(url: string): Promise<{ sourceId: string; count: number }> {
       const result = await ingest({ kind: 'url', url });
+      if (result.phase === 'cancelled') {
+        throw new Error('Ingest cancelled at the archived-entity decision.');
+      }
       return { sourceId: result.source.id, count: result.statements.length };
     },
 
