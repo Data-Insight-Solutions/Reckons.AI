@@ -366,9 +366,13 @@ code:extension-bridge  rdf:type     ktype:Concept ;
 
 code:ingest-lib  rdf:type     ktype:Concept ;
                  rdfs:label   "Ingest Library" ;
-                 skos:definition "Source-type routing, folder scanning, and ingest progress tracking." ;
+                 skos:definition "Source-type routing, shared archive-aware ingest boundaries, folder scanning, and ingest progress tracking." ;
                  skos:broader code:repo ;
-                 kpred:has-file "src/lib/ingest/folder-scan.ts" .
+                 kpred:has-file "src/lib/ingest/folder-scan.ts" ;
+                 kpred:has-file "src/lib/ingest/archive-reference.ts" ;
+                 kpred:has-file "src/lib/ingest/precomputed.ts" ;
+                 kpred:tested-by "src/lib/ingest/__tests__/archive-reference.test.ts" ;
+                 kpred:tested-by "src/lib/ingest/__tests__/precomputed.test.ts" .
 
 ## =============================================================================
 ## src/routes — SvelteKit Pages
