@@ -37,6 +37,8 @@ export const ARC_ENTITY = `${ARCHIVE_META_PREFIX}affectedEntity`;
 export const ARC_COUNT = `${ARCHIVE_META_PREFIX}statementCount`;
 export const ARC_PARENT = `${ARCHIVE_META_PREFIX}parentStableId`;
 export const ARC_SNAPSHOT = `${ARCHIVE_META_PREFIX}hasSnapshot`;
+/** Full-fidelity JSON payload rows. Uses the app's metadata namespace so graph views hide them. */
+export const ARC_SNAPSHOT_ITEM = 'urn:kbase:meta/archive/snapshotItem';
 export const ARC_MILESTONE = `${ARCHIVE_META_PREFIX}milestone`;
 export const ARC_NOTE = `${ARCHIVE_META_PREFIX}note`;
 
@@ -64,6 +66,8 @@ export interface ArchiveEvent {
   parentStableId?: string;
   /** Full pre-operation snapshot. Absent on events recorded without one. */
   snapshot?: Statement[];
+  /** Persisted snapshot size when the payload has not been loaded into memory. */
+  snapshotSize?: number;
   /** Milestone events survive retention pruning. */
   milestone?: boolean;
   /** Human-readable summary, shown in the archive UI. */
@@ -91,6 +95,11 @@ export function parentGraphName(archiveName: string): string {
 // ── Journal serialization ────────────────────────────────────────────────────
 
 const eventIri = (id: string) => `${ARCHIVE_EVENT_PREFIX}${id}`;
+const iriIdPart = (value: string) =>
+  encodeURIComponent(value).replace(
+    /[!'()*]/g,
+    (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
 
 /**
  * Serialize an event to graph-native statements. Deterministic — stable ids derived from the
@@ -104,7 +113,9 @@ export function eventToStatements(event: ArchiveEvent): Statement[] {
   const subj = eventIri(event.id);
   const g = iri('urn:kbase:graph/archive');
   const make = (p: string, v: string): Statement => ({
-    id: `archive|${event.id}|${p}|${v}`,
+    // Statement ids become part of <urn:kbase:stmt/{id}> during annotated Turtle export. Raw
+    // pipes, spaces, quotes, or braces make that IRI invalid, so every component is encoded.
+    id: `archive/${iriIdPart(event.id)}/${iriIdPart(p)}/${iriIdPart(v)}`,
     s: iri(subj),
     p: iri(p),
     o: lit(v),
@@ -125,12 +136,157 @@ export function eventToStatements(event: ArchiveEvent): Statement[] {
   if (event.parentStableId) out.push(make(ARC_PARENT, event.parentStableId));
   if (event.milestone) out.push(make(ARC_MILESTONE, 'true'));
   if (event.note) out.push(make(ARC_NOTE, event.note));
-  if (event.snapshot) out.push(make(ARC_SNAPSHOT, String(event.snapshot.length)));
+  const snapshotSize = event.snapshot?.length ?? event.snapshotSize;
+  if (snapshotSize !== undefined) out.push(make(ARC_SNAPSHOT, String(snapshotSize)));
   // Sorted so repeated writes of the same event produce byte-identical output.
   for (const e of [...new Set(event.entities)].sort()) {
     out.push({ ...make(ARC_ENTITY, e), o: iri(e) });
   }
   return out;
+}
+
+const RDF_JSON = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#JSON';
+
+export class SnapshotPayloadError extends Error {}
+export class SnapshotUnavailableError extends Error {}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isTermPayload(value: unknown): boolean {
+  if (!isRecord(value) || typeof value.kind !== 'string' || typeof value.value !== 'string') return false;
+  if (value.kind === 'iri' || value.kind === 'bnode') return true;
+  return value.kind === 'literal'
+    && (value.datatype === undefined || typeof value.datatype === 'string')
+    && (value.lang === undefined || typeof value.lang === 'string');
+}
+
+const REVIEW_STATUSES = new Set([
+  'pending', 'pending-removal', 'confirmed', 'refined', 'rejected', 'superseded',
+]);
+const stringOrUndefined = (value: unknown) => value === undefined || typeof value === 'string';
+const booleanOrUndefined = (value: unknown) => value === undefined || typeof value === 'boolean';
+const stringArrayOrUndefined = (value: unknown) =>
+  value === undefined || (Array.isArray(value) && value.every((item) => typeof item === 'string'));
+
+function isStatementPayload(value: unknown): value is Statement {
+  if (!isRecord(value)) return false;
+  return typeof value.id === 'string'
+    && isTermPayload(value.s)
+    && isRecord(value.p) && value.p.kind === 'iri' && typeof value.p.value === 'string'
+    && isTermPayload(value.o)
+    && isRecord(value.g) && value.g.kind === 'iri' && typeof value.g.value === 'string'
+    && typeof value.sourceId === 'string'
+    && typeof value.confidence === 'number' && Number.isFinite(value.confidence)
+    && typeof value.status === 'string' && REVIEW_STATUSES.has(value.status)
+    && stringOrUndefined(value.supersedes)
+    && stringOrUndefined(value.gloss)
+    && stringOrUndefined(value.excerpt)
+    && booleanOrUndefined(value.grounded)
+    && booleanOrUndefined(value.needsObject)
+    && stringOrUndefined(value.question)
+    && stringArrayOrUndefined(value.blocks)
+    && stringOrUndefined(value.askedBy)
+    && stringOrUndefined(value.verifiableBy)
+    && stringOrUndefined(value.answeredByGraph)
+    && stringArrayOrUndefined(value.hopChain)
+    && typeof value.createdAt === 'number' && Number.isFinite(value.createdAt)
+    && typeof value.updatedAt === 'number' && Number.isFinite(value.updatedAt);
+}
+
+/**
+ * Serialize a full pre-operation snapshot as event-linked JSON literals.
+ *
+ * The payload is JSON rather than copied graph rows because copied rows would have to replace
+ * `id` and `sourceId` to coexist in the archive DB, destroying the exact metadata a revert must
+ * restore. Each literal therefore contains one complete, untouched Statement object. The wrapper
+ * row is disposable archive metadata; the value is the full-fidelity snapshot.
+ */
+export function snapshotToStatements(event: ArchiveEvent): Statement[] {
+  if (event.snapshot === undefined) return [];
+  const subject = iri(eventIri(event.id));
+  const graph = iri('urn:kbase:graph/archive');
+  return event.snapshot.map((statement, index) => ({
+    id: `archive-snapshot/${iriIdPart(event.id)}/${String(index).padStart(8, '0')}`,
+    s: subject,
+    p: iri(ARC_SNAPSHOT_ITEM),
+    o: lit(JSON.stringify(statement), RDF_JSON),
+    g: graph,
+    sourceId: `archive-snapshot:${event.id}`,
+    confidence: 1,
+    status: 'confirmed',
+    createdAt: event.at,
+    updatedAt: event.at,
+  }));
+}
+
+/**
+ * Load one event's snapshot payload from archive statements.
+ *
+ * Missing, partial, and malformed payloads are distinct from a legitimate empty snapshot. Returning
+ * `[]` for any of those failures would turn retention or corruption into permission to wipe the
+ * working graph, so every non-empty mismatch fails loudly.
+ */
+export function statementsToSnapshot(statements: Statement[], eventId: string): Statement[] {
+  const subject = eventIri(eventId);
+  const marker = statements.find(
+    (statement) =>
+      statement.s.kind === 'iri'
+      && statement.s.value === subject
+      && statement.p.value === ARC_SNAPSHOT
+      && statement.status !== 'rejected'
+      && statement.status !== 'superseded',
+  );
+  if (!marker) {
+    throw new SnapshotUnavailableError(`Archive event "${eventId}" has no recorded snapshot.`);
+  }
+
+  const expected = Number(marker.o.value);
+  if (!Number.isSafeInteger(expected) || expected < 0) {
+    throw new SnapshotPayloadError(
+      `Archive event "${eventId}" has an invalid snapshot size: ${marker.o.value}`,
+    );
+  }
+
+  const rows = statements
+    .filter(
+      (statement) =>
+        statement.s.kind === 'iri'
+        && statement.s.value === subject
+        && statement.p.value === ARC_SNAPSHOT_ITEM
+        && statement.status !== 'rejected'
+        && statement.status !== 'superseded',
+    )
+    .sort((a, b) => a.id.localeCompare(b.id));
+
+  if (expected > 0 && rows.length === 0) {
+    throw new SnapshotUnavailableError(
+      `Snapshot payload for archive event "${eventId}" is no longer available.`,
+    );
+  }
+  if (rows.length !== expected) {
+    throw new SnapshotPayloadError(
+      `Snapshot payload for archive event "${eventId}" is incomplete: expected ${expected}, found ${rows.length}.`,
+    );
+  }
+
+  return rows.map((row, index) => {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(row.o.value);
+    } catch {
+      throw new SnapshotPayloadError(
+        `Snapshot payload ${index + 1}/${expected} for archive event "${eventId}" is not valid JSON.`,
+      );
+    }
+    if (!isStatementPayload(parsed)) {
+      throw new SnapshotPayloadError(
+        `Snapshot payload ${index + 1}/${expected} for archive event "${eventId}" is not a complete Statement.`,
+      );
+    }
+    return parsed;
+  });
 }
 
 /**
@@ -160,6 +316,11 @@ export function statementsToEvents(statements: Statement[]): ArchiveEvent[] {
       case ARC_ACTOR: ev.actor = v as ArchiveActor; break;
       case ARC_COUNT: ev.statementCount = Number(v) || 0; break;
       case ARC_PARENT: ev.parentStableId = v; break;
+      case ARC_SNAPSHOT: {
+        const size = Number(v);
+        if (Number.isSafeInteger(size) && size >= 0) ev.snapshotSize = size;
+        break;
+      }
       case ARC_MILESTONE: ev.milestone = v === 'true'; break;
       case ARC_NOTE: ev.note = v; break;
       case ARC_ENTITY: if (!ev.entities.includes(v)) ev.entities.push(v); break;
@@ -206,11 +367,11 @@ export interface RetentionDecision {
  * prevent.
  */
 export function applyRetention(events: ArchiveEvent[], policy: RetentionPolicy = {}, now = Date.now()): RetentionDecision {
-  const { keepLast = 10, thinToOnePer = 24 * 60 * 60 * 1000, maxAgeMs } = policy;
+  const { keepLast = 10, thinToOnePer, maxAgeMs } = policy;
 
   // Only events that actually carry a snapshot are candidates for thinning.
   const withSnapshots = events
-    .filter((e) => e.snapshot !== undefined || e.statementCount > 0)
+    .filter((e) => e.snapshot !== undefined || e.snapshotSize !== undefined)
     .sort((a, b) => b.at - a.at);
 
   const keep: ArchiveEvent[] = [];
@@ -225,6 +386,9 @@ export function applyRetention(events: ArchiveEvent[], policy: RetentionPolicy =
     if (tooOld) { dropSnapshots.push(ev); return; }
     if (index < keepLast) { keep.push(ev); return; }
 
+    // The roadmap's bounded default is "last N + milestones". Thinning is an explicit opt-in
+    // extension; defaulting it to one-per-day would still grow forever and would not be retention.
+    if (thinToOnePer === undefined) { dropSnapshots.push(ev); return; }
     const bucket = Math.floor(ev.at / Math.max(thinToOnePer, 1));
     if (lastKeptBucket === null || bucket !== lastKeptBucket) {
       lastKeptBucket = bucket;
@@ -243,7 +407,7 @@ export function applyRetention(events: ArchiveEvent[], policy: RetentionPolicy =
  * surprise, which is the honest way to ship a feature whose cost grows quietly.
  */
 export function snapshotFootprint(events: ArchiveEvent[]): number {
-  return events.reduce((n, e) => n + (e.snapshot?.length ?? e.statementCount), 0);
+  return events.reduce((n, e) => n + (e.snapshot?.length ?? e.snapshotSize ?? 0), 0);
 }
 
 // ── The move itself ──────────────────────────────────────────────────────────

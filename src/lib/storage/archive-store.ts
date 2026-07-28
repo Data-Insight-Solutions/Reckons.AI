@@ -21,7 +21,9 @@
 
 import { KBaseDB } from './db';
 import {
-  archiveGraphName, archiveEntities, eventToStatements, applyRetention,
+  ARCHIVE_EVENT_PREFIX, ARC_SNAPSHOT_ITEM, archiveGraphName, archiveEntities,
+  eventToStatements, snapshotToStatements, statementsToEvents, statementsToSnapshot,
+  applyRetention,
   type ArchiveEventType, type ArchiveActor, type ArchiveEvent, type RetentionPolicy,
 } from '$lib/rdf/archive';
 import { getRegistry, createKb, updateKbEntry } from './kb-registry';
@@ -60,6 +62,8 @@ export interface ArchiveRunInput {
   parentStableId?: string;
   note?: string;
   milestone?: boolean;
+  /** Bounded by default to the latest 10 snapshots plus milestones. */
+  retentionPolicy?: RetentionPolicy;
   /** Injected for testability; defaults to the real clock and uuid. */
   now?: () => number;
   newId?: () => string;
@@ -104,7 +108,15 @@ export async function runArchive(input: ArchiveRunInput): Promise<ArchiveRunResu
   try {
     // bulkPut, not bulkAdd: re-running an archive that partially completed must converge rather
     // than throw on the statements that already made it across.
-    await archiveDb.statements.bulkPut([...archived, ...eventToStatements(event)]);
+    await archiveDb.statements.bulkPut([
+      ...archived,
+      ...eventToStatements(event),
+      ...snapshotToStatements(event),
+    ]);
+    // Retention is part of the writer, not a maintenance task callers may forget. It runs before
+    // the working graph is touched, so a retention failure leaves duplicated facts rather than
+    // completing a destructive move without the promised storage bound.
+    await pruneSnapshotRows(archiveDb, input.retentionPolicy, at);
   } finally {
     archiveDb.close();
   }
@@ -122,6 +134,44 @@ export async function runArchive(input: ArchiveRunInput): Promise<ArchiveRunResu
   return { event, archiveKbId, kept, archivedCount: archived.length };
 }
 
+/** Load one exact pre-operation snapshot, failing loudly if it was pruned or corrupted. */
+export async function loadArchiveSnapshot(
+  archiveKbId: string,
+  eventId: string,
+): Promise<Statement[]> {
+  const db = new KBaseDB(archiveKbId);
+  try {
+    return statementsToSnapshot(await db.statements.toArray(), eventId);
+  } finally {
+    db.close();
+  }
+}
+
+async function pruneSnapshotRows(
+  db: KBaseDB,
+  policy: RetentionPolicy = {},
+  now = Date.now(),
+): Promise<{ droppedEvents: number; droppedStatements: number }> {
+  const all = await db.statements.toArray();
+  const { dropSnapshots } = applyRetention(statementsToEvents(all), policy, now);
+  if (dropSnapshots.length === 0) return { droppedEvents: 0, droppedStatements: 0 };
+
+  const ids = new Set(dropSnapshots.map((event) => event.id));
+  const doomed = all.filter((statement) => {
+    if (
+      statement.s.kind !== 'iri'
+      || statement.p.value !== ARC_SNAPSHOT_ITEM
+      || !statement.s.value.startsWith(ARCHIVE_EVENT_PREFIX)
+    ) return false;
+    return ids.has(statement.s.value.slice(ARCHIVE_EVENT_PREFIX.length));
+  });
+  if (doomed.length > 0) await db.statements.bulkDelete(doomed.map((statement) => statement.id));
+  const droppedEventIds = new Set(
+    doomed.map((statement) => statement.s.value.slice(ARCHIVE_EVENT_PREFIX.length)),
+  );
+  return { droppedEvents: droppedEventIds.size, droppedStatements: doomed.length };
+}
+
 /**
  * Drop snapshot payloads that retention says are no longer needed.
  *
@@ -131,25 +181,12 @@ export async function runArchive(input: ArchiveRunInput): Promise<ArchiveRunResu
  */
 export async function pruneArchiveSnapshots(
   archiveKbId: string,
-  events: ArchiveEvent[],
   policy: RetentionPolicy = {},
   now = Date.now(),
 ): Promise<{ droppedEvents: number; droppedStatements: number }> {
-  const { dropSnapshots } = applyRetention(events, policy, now);
-  if (dropSnapshots.length === 0) return { droppedEvents: 0, droppedStatements: 0 };
-
-  const ids = new Set(dropSnapshots.map((e) => e.id));
   const db = new KBaseDB(archiveKbId);
   try {
-    const all = await db.statements.toArray();
-    // Snapshot statements are those provenance-linked to a dropped event; the event's own journal
-    // triples live under urn:reckons:archive/event/<id> as the SUBJECT and are deliberately spared.
-    const doomed = all.filter(
-      (s) => ids.has(String(s.sourceId).replace(/^archive-snapshot:/, '')) &&
-             String(s.sourceId).startsWith('archive-snapshot:'),
-    );
-    await db.statements.bulkDelete(doomed.map((s) => s.id));
-    return { droppedEvents: dropSnapshots.length, droppedStatements: doomed.length };
+    return pruneSnapshotRows(db, policy, now);
   } finally {
     db.close();
   }

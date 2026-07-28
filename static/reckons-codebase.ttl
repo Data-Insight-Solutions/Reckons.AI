@@ -71,6 +71,7 @@ code:rdf  rdf:type     ktype:Concept ;
           kpred:has-file "src/lib/rdf/currents-persist.ts" ;
           kpred:has-file "src/lib/rdf/current-ranking.ts" ;
           kpred:has-file "src/lib/rdf/page.ts" ;
+          kpred:has-file "src/lib/rdf/archive.ts" ;
           kpred:tested-by "src/lib/rdf/__tests__/currents.test.ts" ;
           kpred:tested-by "src/lib/rdf/__tests__/currents-persist.test.ts" ;
           kpred:tested-by "src/lib/rdf/__tests__/current-ranking.test.ts" ;
@@ -87,7 +88,8 @@ code:rdf  rdf:type     ktype:Concept ;
           kpred:tested-by "src/lib/rdf/__tests__/ghost-graph.test.ts" ;
           kpred:tested-by "src/lib/rdf/__tests__/bm25.test.ts" ;
           kpred:tested-by "src/lib/rdf/__tests__/reasoning.test.ts" ;
-          kpred:tested-by "src/lib/rdf/__tests__/temporal.test.ts" .
+          kpred:tested-by "src/lib/rdf/__tests__/temporal.test.ts" ;
+          kpred:tested-by "src/lib/rdf/__tests__/archive.test.ts" .
 
 ## =============================================================================
 ## src/lib/stores — Svelte 5 Rune Stores
@@ -134,6 +136,7 @@ code:storage  rdf:type     ktype:Concept ;
               kpred:has-file "src/lib/storage/db.ts" ;
               kpred:has-file "src/lib/storage/types.ts" ;
               kpred:has-file "src/lib/storage/kb-registry.ts" ;
+              kpred:has-file "src/lib/storage/archive-store.ts" ;
               kpred:has-file "src/lib/storage/backup.ts" ;
               kpred:has-file "src/lib/storage/semantic-export.ts" ;
               kpred:has-file "src/lib/storage/kb-assets.ts" ;
@@ -141,7 +144,8 @@ code:storage  rdf:type     ktype:Concept ;
               kpred:has-file "src/lib/storage/gif-package.ts" ;
               kpred:tested-by "src/lib/storage/__tests__/kb-registry.test.ts" ;
               kpred:tested-by "src/lib/storage/__tests__/backup.test.ts" ;
-              kpred:tested-by "src/lib/storage/__tests__/semantic-export.test.ts" .
+              kpred:tested-by "src/lib/storage/__tests__/semantic-export.test.ts" ;
+              kpred:tested-by "src/lib/storage/__tests__/archive-store.test.ts" .
 
 ## =============================================================================
 ## src/lib/components — Svelte UI Components
