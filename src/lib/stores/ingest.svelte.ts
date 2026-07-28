@@ -8,6 +8,7 @@ import { triplesToStatements, extractMock, parseTriplesJSON, EXTRACTION_SYSTEM_P
 import { computeDiff, type Diff } from '../rdf/diff';
 import { semanticEnrichDiff, labelFromIRI } from '../rdf/semantic-diff';
 import { normalizeEntities } from '../rdf/normalize-entities';
+import { resolveArchiveReferencesForIngest } from '../ingest/archive-reference';
 import { fetchTurtleFromUrl } from '../integrations/parsers/turtle-url';
 import { addSource, addStatements, statements as allStatements } from './kb.svelte';
 import { settings } from './settings.svelte';
@@ -27,13 +28,31 @@ export type IngestInput =
   | { kind: 'reminder'; title: string; body: string; dueAt?: number }
   | { kind: 'repository'; repoUrl: string; token?: string };
 
+export type IngestDone = {
+  phase: 'done';
+  source: Source;
+  statements: Statement[];
+  diff: Diff;
+};
+
+export type IngestCancelled = {
+  phase: 'cancelled';
+  reason: 'archive-reference';
+};
+
 export type IngestProgress =
   | { phase: 'fetching' }
   | { phase: 'extracting'; backend: 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'mock' | 'openrouter' | 'chrome-ai' | 'reckons' }
   | { phase: 'normalizing' }
+  | { phase: 'archive-check' }
+  | { phase: 'awaiting-archive-decision' }
+  | { phase: 'restoring-archive' }
   | { phase: 'diffing' }
   | { phase: 'semantic' }
-  | { phase: 'done'; source: Source; statements: Statement[]; diff: Diff };
+  | IngestDone
+  | IngestCancelled;
+
+export type IngestResult = IngestDone | IngestCancelled;
 
 const JINA_PROXY = 'https://r.jina.ai/';
 
@@ -56,7 +75,7 @@ async function fetchReadable(url: string): Promise<{ title: string; text: string
 export async function ingest(
   input: IngestInput,
   onProgress?: (p: IngestProgress) => void
-): Promise<IngestProgress & { phase: 'done' }> {
+): Promise<IngestResult> {
   const id = uuid();
   let title: string;
   let text: string;
@@ -261,13 +280,39 @@ export async function ingest(
   // preventing duplicates like "common-octopus" vs "octopus-vulgaris" from
   // entering the review queue as separate entities.
   onProgress?.({ phase: 'normalizing' });
-  const existingStmts = allStatements();
+  let existingStmts = allStatements();
   const normResult = await normalizeEntities(newStatements, existingStmts);
   newStatements = normResult.statements;
   if (normResult.remaps.length > 0) {
     console.info(`[ingest] Normalised ${normResult.subjectRemaps} entities, ${normResult.predicateRemaps} predicates:`,
       normResult.remaps.map(r => `${r.kind}: "${labelFromIRI(r.from)}" → "${labelFromIRI(r.to)}"`));
   }
+
+  const archiveResolution = await resolveArchiveReferencesForIngest({
+    sourceTitle: source.title,
+    statements: newStatements,
+    onPhase: (archivePhase) => {
+      onProgress?.({
+        phase:
+          archivePhase === 'checking' ? 'archive-check'
+          : archivePhase === 'awaiting-decision' ? 'awaiting-archive-decision'
+          : 'restoring-archive',
+      });
+    },
+  });
+  if (archiveResolution.decision === 'cancel') {
+    const cancelled: IngestCancelled = {
+      phase: 'cancelled',
+      reason: 'archive-reference',
+    };
+    onProgress?.(cancelled);
+    return cancelled;
+  }
+  newStatements = archiveResolution.statements;
+  // A restore writes through a separate Dexie adapter, then reloads the reactive store. Read the
+  // current statements again so the diff is computed against the restored graph, not the stale
+  // pre-consent snapshot captured above.
+  existingStmts = allStatements();
 
   onProgress?.({ phase: 'diffing' });
   const structuralDiff = computeDiff(newStatements, existingStmts);
@@ -322,7 +367,7 @@ export async function ingest(
     console.warn('Disambiguation clustering failed:', err);
   }
 
-  const done: IngestProgress & { phase: 'done' } = {
+  const done: IngestDone = {
     phase: 'done',
     source,
     statements: newStatements,

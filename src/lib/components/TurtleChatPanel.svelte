@@ -880,6 +880,11 @@
         const { ingest } = await import('$lib/stores/ingest.svelte');
         try {
           const result = await ingest({ kind: 'url', url: action.url });
+          if (result.phase === 'cancelled') {
+            input = `I left "${action.url}" unchanged because you cancelled the archived-entity decision.`;
+            await sendMessage();
+            return;
+          }
           const count = result.statements.length;
           input = `I scraped "${action.url}" and extracted ${count} triples. They've been added as pending statements for review.`;
           await sendMessage();

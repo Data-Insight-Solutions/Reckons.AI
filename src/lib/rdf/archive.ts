@@ -570,6 +570,55 @@ export interface ArchivedReference {
 const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
 const normLabel = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
 
+export class ArchivedReferenceRemapError extends Error {}
+
+/**
+ * Point incoming facts at the archived IRI the user chose to restore.
+ *
+ * A label match is specifically the dangerous duplicate case: the incoming batch has minted a
+ * NEW subject IRI carrying the same exact normalized label as an archived entity. Restoring the
+ * old facts without rewriting that new IRI would leave both nodes in the working graph and defeat
+ * the guard. Direct IRI matches need no rewrite.
+ *
+ * Validate the whole remap before changing any statement. If one incoming IRI somehow names two
+ * different archived entities, refusing the batch is safer than silently choosing one identity.
+ */
+export function remapIncomingForArchivedRestores(
+  incoming: Statement[],
+  references: ArchivedReference[],
+): Statement[] {
+  const remap = new Map<string, string>();
+  for (const reference of references) {
+    for (const statement of reference.incoming) {
+      if (
+        statement.p.value !== RDFS_LABEL
+        || statement.s.kind !== 'iri'
+        || statement.s.value === reference.entity
+      ) continue;
+
+      const existing = remap.get(statement.s.value);
+      if (existing && existing !== reference.entity) {
+        throw new ArchivedReferenceRemapError(
+          `Incoming entity "${statement.s.value}" matches more than one archived entity.`,
+        );
+      }
+      remap.set(statement.s.value, reference.entity);
+    }
+  }
+
+  if (remap.size === 0) return incoming;
+  return incoming.map((statement) => {
+    const subject = statement.s.kind === 'iri' ? remap.get(statement.s.value) : undefined;
+    const object = statement.o.kind === 'iri' ? remap.get(statement.o.value) : undefined;
+    if (!subject && !object) return statement;
+    return {
+      ...statement,
+      s: subject ? iri(subject) : statement.s,
+      o: object ? iri(object) : statement.o,
+    };
+  });
+}
+
 /**
  * Find incoming statements that refer to something already sitting in the archive.
  *
@@ -586,7 +635,8 @@ export function findArchivedReferences(
   archivedEntities?: Iterable<string>,
 ): ArchivedReference[] {
   const archivedLabels = new Map<string, string>();   // entity IRI → label
-  const byNormLabel = new Map<string, string>();      // normalized label → entity IRI
+  const byNormLabel = new Map<string, string>();      // unambiguous normalized label → entity IRI
+  const ambiguousLabels = new Set<string>();
   const archivedIris = new Set<string>();
   const exactEntities = archivedEntities === undefined ? undefined : new Set(archivedEntities);
 
@@ -610,7 +660,14 @@ export function findArchivedReferences(
     }
     if (st.p.value === RDFS_LABEL && (!exactEntities || exactEntities.has(st.s.value))) {
       archivedLabels.set(st.s.value, st.o.value);
-      byNormLabel.set(normLabel(st.o.value), st.s.value);
+      const normalized = normLabel(st.o.value);
+      const existing = byNormLabel.get(normalized);
+      if (existing && existing !== st.s.value) {
+        ambiguousLabels.add(normalized);
+        byNormLabel.delete(normalized);
+      } else if (!ambiguousLabels.has(normalized)) {
+        byNormLabel.set(normalized, st.s.value);
+      }
     }
   }
 
