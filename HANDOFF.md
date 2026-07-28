@@ -1,8 +1,33 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-07-23.** Working branch this session: `fix/stabilization-sweep` (merged).
+**Last updated: 2026-07-28.** Working branch this session:
+`chore/sync-main-into-dev-2026-07-28`.
 Everything below the "SESSION 2026-07-23" block is the older F97 context and is still live
 (PR #119 is still open) — read it after the current standing.
+
+## ▶ VERIFIED CORRECTIONS (2026-07-28)
+
+- **First-run ingest hang: FIXED 2026-07-18.** Parallel consent requests previously shared one
+  `_pending` slot, so the second caller replaced the first caller's resolver and orphaned its
+  promise. The consent store now queues callers; the regression explanation and guard are in
+  `tests/e2e/first-run-model.test.ts`.
+- **Full unit run: GREEN.** The reported four-suite store flake did not reproduce: 100/100 files,
+  1317/1317 tests passed in one full run. Do not carry the old failure forward as current state
+  without reproducing it again.
+- **The July dev/main divergence was reconciled by #145 and #148.** Commit-count divergence after
+  that promotion is merge-ancestry noise; the real maintenance delta on 2026-07-28 was four files:
+  `package.json`, `package-lock.json`, `.github/workflows/safety-attestation.yml`, and
+  `static/reckons-safety-log.ttl`. This branch merges those production changes back into `dev`
+  with zero conflicts so a later promotion cannot revert the dependency/workflow updates.
+- **Extension Build & Sign fails before signing.** All observed runs die at `Build extension`;
+  a local extension build succeeds. The unguarded
+  `readdirSync(node_modules/@huggingface/transformers/dist)` in `vite.extension.config.ts` is a
+  hypothesis, not a diagnosis, because the expired CI log cannot confirm the thrown error.
+- **Dependabot currently reports three high alerts** (`sharp`, `adm-zip`, `brace-expansion`).
+  They are transitive and absent from the browser bundle, but remain real exposure for people
+  installing/running the repository and still require documented reachability and remediation.
+- **Script tier: 12/12 clean** on 2026-07-28, including 1317/1317 unit tests, zero type errors,
+  graph-lint with zero errors, and a 6/6 safety attestation.
 
 ## ▶ SHIPPED TO PRODUCTION (2026-07-23, post-announcement)
 
@@ -29,18 +54,16 @@ claim that nothing tests.
 
 **Two main workflows, honestly:** Safety Attestation is now GREEN (it was one of the two
 long-standing reds). **Extension Build & Sign still FAILS** — pre-existing, unrelated to this
-work, still likely a CI signing-secret issue.
+work, at the `Build extension` step before any signing step.
 
-**Open on main, NOT touched this session:** 3 failing Dependabot PRs (sharp, adm-zip,
-brace-expansion) and 1 high-severity alert on the default branch (security/dependabot/24).
+**Open on main, NOT touched this session:** 3 high Dependabot alerts (sharp, adm-zip,
+brace-expansion). See the 2026-07-28 correction above for reachability.
 
 **STILL MATT'S CALL:** `kpred:portrait-image-rights` — the removed portraits. If their provenance
 was fine they can return, but they must carry credit like every other image now does.
 
-**KNOWN FLAKE, do not re-derive:** four store suites (drive-sync, official-kb, workspace-sync ×2)
-fail together in a full `vitest run` while passing in isolation, and pass on a re-run. Present on
-clean `main` too, so pre-existing and order-dependent — NOT caused by recent work. Worth a real
-fix so a red suite is not normalised.
+**OLDER FLAKE REPORT — NOT REPRODUCED 2026-07-28:** the four reported store-suite failures did
+not recur in a full 1317/1317 run. Treat this as historical evidence, not a current failure.
 
 **LESSON WORTH KEEPING:** the licence check passed on THREE images that were still wrong — a
 Second Life screenshot for "campfire", an Arizona signboard for a Sierra campsite, and a
@@ -88,17 +111,9 @@ place-specific photos — Commons indexes by place.
 - Note `vite-secret-guard` already matches `VITE_*TOKEN`, so a PUBLIC build with the token set is
   correctly BLOCKED. The env var is a local-dev/self-host convenience only.
 
-**dev→main promotion (Matt asked to hurry to main) — NOT DONE, and here is why:**
-`dev` is **29 ahead** of `main`; `main` is **11 ahead** of `dev`. A PR from this branch to main
-would drag 29 unrelated dev commits into production. I cherry-picked the work onto a main base
-(`hotfix/starter-graph-provenance`, **local only, not pushed**) and it applied — but it needed
-the redaction test REMOVED, because `src/lib/safety/redact.ts` (F107.5, PR #143) exists only on
-dev. Every targeted cherry-pick hits the same divergence, which is the signal that the right
-vehicle is the dev→main promotion, not a hotfix.
-**Also found: `main`'s unit suite is ALREADY RED in a full run** — 4 store suites
-(drive-sync, official-kb, workspace-sync ×2) fail together while passing in isolation. Reproduced
-on CLEAN main, so pre-existing and order-dependent, not caused by this work. `dev` runs
-1332/1332 green. Worth fixing before any promotion so a red main isn't normalised.
+**HISTORICAL — RESOLVED:** the dev→main promotion concern below was resolved by #145 and #148.
+The later full run on 2026-07-28 passed 1317/1317 tests; do not use the old branch counts or
+store-suite failure as current evidence.
 
 ---
 
@@ -253,9 +268,9 @@ the app are under the touch minimum. This is an **F36 mobile blocker** and maps 
 `touch-targets` guideline in `kb:web-uiux-rubric`. Reproduce with:
 `BASE_URL=http://localhost:5174 npx tsx scripts/offline/button-crawl.ts --device=pixel`
 
-## 🚨 FIRST-RUN BLOCKER — ingest hangs AFTER a successful model download (2026-07-18)
+## ✅ FIRST-RUN BLOCKER — FIXED 2026-07-18
 
-**The highest-priority open item in this file.** Found by the new
+**Historical diagnosis; no longer open.** Found by the new
 `tests/e2e/first-run-model.test.ts`. Measured on vite dev + chromium + mock extraction backend:
 
 Accepting the 33 MB embedding-model download **succeeds at the network layer** — 44.4 MB arrives,
