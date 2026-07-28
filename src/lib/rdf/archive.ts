@@ -41,6 +41,15 @@ export const ARC_SNAPSHOT = `${ARCHIVE_META_PREFIX}hasSnapshot`;
 export const ARC_SNAPSHOT_ITEM = 'urn:kbase:meta/archive/snapshotItem';
 export const ARC_MILESTONE = `${ARCHIVE_META_PREFIX}milestone`;
 export const ARC_NOTE = `${ARCHIVE_META_PREFIX}note`;
+export const ARC_RESTORE_SCOPE = `${ARCHIVE_META_PREFIX}restoreScope`;
+/**
+ * Durable completion marker for operations that cross two IndexedDB databases.
+ *
+ * Older events have no marker and are complete by definition. A false marker is an honest
+ * PREPARED state: its snapshot is durable, but the mutation has not yet been confirmed. Once the
+ * working-graph write succeeds, the adapter atomically replaces false with true.
+ */
+export const ARC_COMMITTED = `${ARCHIVE_META_PREFIX}committed`;
 
 /** The operations worth journalling. `revert` is here deliberately — see restoreIsReversible. */
 export type ArchiveEventType = 'delete' | 'merge' | 'prune' | 'age-drop' | 'revert';
@@ -72,6 +81,13 @@ export interface ArchiveEvent {
   milestone?: boolean;
   /** Human-readable summary, shown in the archive UI. */
   note?: string;
+  /**
+   * False while a cross-database operation is prepared but incomplete. Undefined means a legacy
+   * event that predates explicit completion markers and is therefore treated as complete.
+   */
+  committed?: boolean;
+  /** Distinguishes a prepared one-entity restore from a future whole-snapshot restore. */
+  restoreScope?: 'entity' | 'snapshot';
 }
 
 /**
@@ -136,6 +152,8 @@ export function eventToStatements(event: ArchiveEvent): Statement[] {
   if (event.parentStableId) out.push(make(ARC_PARENT, event.parentStableId));
   if (event.milestone) out.push(make(ARC_MILESTONE, 'true'));
   if (event.note) out.push(make(ARC_NOTE, event.note));
+  if (event.committed !== undefined) out.push(make(ARC_COMMITTED, String(event.committed)));
+  if (event.restoreScope) out.push(make(ARC_RESTORE_SCOPE, event.restoreScope));
   const snapshotSize = event.snapshot?.length ?? event.snapshotSize;
   if (snapshotSize !== undefined) out.push(make(ARC_SNAPSHOT, String(snapshotSize)));
   // Sorted so repeated writes of the same event produce byte-identical output.
@@ -323,6 +341,13 @@ export function statementsToEvents(statements: Statement[]): ArchiveEvent[] {
       }
       case ARC_MILESTONE: ev.milestone = v === 'true'; break;
       case ARC_NOTE: ev.note = v; break;
+      // False dominates duplicate/corrupt markers. Anything except exact "true" stays prepared.
+      case ARC_COMMITTED:
+        ev.committed = ev.committed === false ? false : v === 'true';
+        break;
+      case ARC_RESTORE_SCOPE:
+        if (v === 'entity' || v === 'snapshot') ev.restoreScope = v;
+        break;
       case ARC_ENTITY: if (!ev.entities.includes(v)) ev.entities.push(v); break;
     }
   }
@@ -380,6 +405,10 @@ export function applyRetention(events: ArchiveEvent[], policy: RetentionPolicy =
 
   withSnapshots.forEach((ev, index) => {
     const tooOld = maxAgeMs !== undefined && now - ev.at > maxAgeMs;
+
+    // A prepared operation needs its snapshot to recover or finish. Retention must never turn an
+    // honest "incomplete" marker into an unrecoverable one, even when the payload is old.
+    if (ev.committed === false) { keep.push(ev); return; }
 
     // Milestones outrank everything except an explicit max-age cutoff.
     if (ev.milestone && !tooOld) { keep.push(ev); return; }
