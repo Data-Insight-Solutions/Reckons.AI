@@ -19,6 +19,10 @@ function collectRuntimeErrors(page: Page): RuntimeErrors {
 test('Pixel 7 renders a populated Facts ingest state without layout or runtime errors', async ({
   page,
 }, testInfo) => {
+  test.skip(
+    testInfo.project.name !== 'pixel-7-ingest',
+    'This contract requires the dedicated Pixel 7 device project.',
+  );
   const runtimeErrors = collectRuntimeErrors(page);
 
   await page.goto('/ingest');
