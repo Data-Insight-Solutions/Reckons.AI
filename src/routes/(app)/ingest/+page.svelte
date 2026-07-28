@@ -1,7 +1,8 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { ingest, buildIngestionPrompt, type IngestInput, type IngestProgress } from '$lib/stores/ingest.svelte';
-  import { addSource, addStatements, sources, statements } from '$lib/stores/kb.svelte';
+  import { sources, statements } from '$lib/stores/kb.svelte';
+  import { commitPrecomputedIngest } from '$lib/ingest/precomputed';
   import type { Source } from '$lib/rdf/types';
   import { settings, updateSettings } from '$lib/stores/settings.svelte';
   import { requestManualLLM } from '$lib/stores/manual-llm.svelte';
@@ -110,8 +111,12 @@
         confidence: 0.7,
       }));
       const stmts = triplesToStatements(extracted, source);
-      await addSource(source);
-      await addStatements(stmts);
+      const result = await commitPrecomputedIngest({
+        sourceTitle: source.title,
+        source,
+        statements: stmts,
+      });
+      if (result.phase === 'cancelled') return;
       goto(`/compare?source=${source.id}`);
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
@@ -148,8 +153,12 @@
         ingestedAt: Date.now(),
       };
       const stmts = triplesToStatements(triples, source);
-      await addSource(source);
-      await addStatements(stmts);
+      const result = await commitPrecomputedIngest({
+        sourceTitle: source.title,
+        source,
+        statements: stmts,
+      });
+      if (result.phase === 'cancelled') return;
       goto(`/compare?source=${source.id}`);
     } catch (e) {
       if (e instanceof Error && e.message === 'Cancelled') return;
@@ -380,8 +389,12 @@
           updatedAt: now,
         }));
 
-      await addSource(source);
-      await addStatements(toImport);
+      const result = await commitPrecomputedIngest({
+        sourceTitle: source.title,
+        source,
+        statements: toImport,
+      });
+      if (result.phase === 'cancelled') return;
 
       // Apply Shelly persona overrides from the TTL file
       if (shellyPersona) {
@@ -612,7 +625,14 @@
 
       if (allStmts.length > 0) {
         const firstSourceId = `gcal-${[...selectedCalendarIds][0].replace(/[^a-z0-9]/gi, '-')}`;
-        await addStatements(allStmts);
+        const result = await commitPrecomputedIngest({
+          sourceTitle: 'Google Calendar import',
+          statements: allStmts,
+        });
+        if (result.phase === 'cancelled') {
+          calImportCount = 0;
+          return;
+        }
         goto(`/compare?source=${firstSourceId}`);
       }
     } catch (e) {
@@ -648,7 +668,7 @@
       const sourceId = `indico-${Date.now()}`;
       const stmts = indicoEventsToStatements(events, sourceId, serverUrl, statements());
       if (stmts.length > 0) {
-        await addSource({
+        const source: Source = {
           id: sourceId,
           title: `Indico — ${events.length} events`,
           uri: serverUrl,
@@ -656,8 +676,16 @@
           trustLevel: 'review',
           trustScore: 0.5,
           ingestedAt: Date.now()
+        };
+        const result = await commitPrecomputedIngest({
+          sourceTitle: source.title,
+          source,
+          statements: stmts,
         });
-        await addStatements(stmts);
+        if (result.phase === 'cancelled') {
+          indicoImportResult = 'Import cancelled.';
+          return;
+        }
         indicoImportResult = `Imported ${events.length} events (${stmts.length} facts)`;
       } else {
         indicoImportResult = 'No events found.';
@@ -696,7 +724,7 @@
       }));
       const stmts = icalToStatements(calEvents as any, sourceId, icalUrl.trim(), statements());
       if (stmts.length > 0) {
-        await addSource({
+        const source: Source = {
           id: sourceId,
           title: `iCal — ${events.length} events`,
           uri: icalUrl.trim(),
@@ -704,8 +732,16 @@
           trustLevel: 'review',
           trustScore: 0.5,
           ingestedAt: Date.now()
+        };
+        const result = await commitPrecomputedIngest({
+          sourceTitle: source.title,
+          source,
+          statements: stmts,
         });
-        await addStatements(stmts);
+        if (result.phase === 'cancelled') {
+          icalImportResult = 'Import cancelled.';
+          return;
+        }
         icalImportResult = `Imported ${events.length} events (${stmts.length} facts)`;
       } else {
         icalImportResult = 'No events found in feed.';
@@ -846,15 +882,20 @@
     try {
       const sourceId = `folder-${Date.now()}`;
       const stmts = folderToStatements(folderScanResult, sourceId);
-      await addSource({
+      const source: Source = {
         id: sourceId,
         title: `Folder — ${folderScanResult.rootName}/ (${folderScanResult.files.length} files)`,
         uri: `local-folder://${folderScanResult.rootName}`,
         kind: 'document',
         trustLevel: 'review',
         ingestedAt: Date.now()
+      };
+      const result = await commitPrecomputedIngest({
+        sourceTitle: source.title,
+        source,
+        statements: stmts,
       });
-      await addStatements(stmts, sourceId);
+      if (result.phase === 'cancelled') return;
       folderStmtCount = stmts.length;
       folderDone = true;
     } catch (e: any) {

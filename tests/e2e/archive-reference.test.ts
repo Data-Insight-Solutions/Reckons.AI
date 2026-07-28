@@ -77,6 +77,19 @@ async function submitMatchingMockIngest(page: Page): Promise<void> {
   });
 }
 
+async function submitMatchingManualFacts(page: Page): Promise<void> {
+  await page.goto('/ingest');
+  await page.getByRole('button', { name: /^facts/i }).click();
+  await page.getByPlaceholder(/name for this set of notes/i).fill('Manual archived match');
+  await page.getByRole('textbox', { name: 'Fact 1 subject' }).fill('test-source');
+  await page.getByRole('textbox', { name: 'Fact 1 predicate' }).fill('new-value');
+  await page.getByRole('textbox', { name: 'Fact 1 object' }).fill('from manual facts');
+  await page.getByRole('button', { name: /add to graph/i }).click();
+  await expect(page.getByRole('dialog', { name: /archived entity mentioned/i })).toBeVisible({
+    timeout: 15_000,
+  });
+}
+
 test.beforeEach(async ({ page }) => {
   await clearStorage(page);
   await waitForApp(page);
@@ -85,6 +98,35 @@ test.beforeEach(async ({ page }) => {
 
 test('cancel at restore-on-reference writes no ingest source, facts, or revert event', async ({ page }) => {
   await submitMatchingMockIngest(page);
+  await page.getByRole('button', { name: /cancel ingest/i }).click();
+  await expect(page.getByRole('dialog', { name: /archived entity mentioned/i })).toBeHidden();
+  expect(new URL(page.url()).pathname).toBe('/ingest');
+
+  const state = await page.evaluate(async ({ archiveDbName }) => {
+    const runtimeImport = (path: string) => import(/* @vite-ignore */ path);
+    const { KBaseDB } = await runtimeImport('/src/lib/storage/db.ts') as typeof import('../../src/lib/storage/db');
+    const { statementsToEvents } = await runtimeImport('/src/lib/rdf/archive.ts') as typeof import('../../src/lib/rdf/archive');
+    const workingDb = new KBaseDB('kbase');
+    const [sourceCount, statementCount] = await Promise.all([
+      workingDb.sources.count(),
+      workingDb.statements.count(),
+    ]);
+    workingDb.close();
+    const archiveDb = new KBaseDB(archiveDbName);
+    const events = statementsToEvents(await archiveDb.statements.toArray());
+    archiveDb.close();
+    return {
+      sourceCount,
+      statementCount,
+      revertCount: events.filter((event) => event.type === 'revert').length,
+    };
+  }, { archiveDbName: ARCHIVE_DB });
+
+  expect(state).toEqual({ sourceCount: 1, statementCount: 0, revertCount: 0 });
+});
+
+test('manual facts shares the archive boundary and cancellation writes nothing', async ({ page }) => {
+  await submitMatchingManualFacts(page);
   await page.getByRole('button', { name: /cancel ingest/i }).click();
   await expect(page.getByRole('dialog', { name: /archived entity mentioned/i })).toBeHidden();
   expect(new URL(page.url()).pathname).toBe('/ingest');
