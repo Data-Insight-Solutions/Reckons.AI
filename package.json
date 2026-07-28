@@ -21,7 +21,7 @@
     "build": "npx tsx scripts/offline/vite-secret-guard.ts && vite build",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "build:extension": "npx tsx scripts/offline/vite-secret-guard.ts && vite build --config vite.extension.config.ts",
+    "build:extension": "svelte-kit sync && npx tsx scripts/offline/vite-secret-guard.ts && vite build --config vite.extension.config.ts",
     "dev:extension": "vite build --config vite.extension.config.ts --watch",
     "test:extension": "npm run build:extension && playwright test --config=playwright.extension.config.ts",
     "test:live": "playwright test --config=playwright.visual.config.ts context-gathering-live --project=chromium",
