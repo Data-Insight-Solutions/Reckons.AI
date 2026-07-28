@@ -3569,7 +3569,7 @@ kb:ui-visual-assurance rdf:type ktype:Feature ;
 kb:visual-evidence-integrity rdf:type ktype:Feature ;
                rdfs:label         "Visual evidence integrity — quick build contract and full local review" ;
                kpred:feature-id   "F108.1" ;
-               kpred:has-status   "planned" ;
+               kpred:has-status   "functional" ;
                kpred:priority     "high" ;
                kpred:part-of      kb:ui-visual-assurance ;
                hnav:order         "1"^^xsd:integer ;
@@ -3581,7 +3581,12 @@ kb:visual-evidence-integrity rdf:type ktype:Feature ;
                kpred:description  "Repair the trust contract beneath F33/F34. The per-build browser gate is a deliberately small production-build contract: prove an exact 3D success state on a selected nonempty graph, prove forced no-WebGL fallback reaches exact 2D, and prove one Pixel ingest/layout state without runtime errors. The full local script owns real Playwright device projects, populated end-to-end workflows, screenshot comparison, orientations, accessibility evidence, and structured Ollama/VLM review. Both tiers fail on setup, seed, readiness, console, page, or audit errors instead of substituting an empty clean result." ;
                kpred:constraint   "The quick gate has a measured browser-time budget and may not absorb the exhaustive F34 matrix. Local VLM output is advisory until it is schema-validated and attached to the exact screenshots it judged; deterministic assertions remain authoritative for renderer state, overflow, errors, and known layout contracts." ;
                kpred:measured     "AUDIT 2026-07-22: the current full sweep has no screenshot regression assertion, catches setup/readiness/audit failures, captures empty graph/review states, and emulates workflow devices by viewport alone. Existing artifacts span different source revisions and do not record enough provenance to certify the current code." ;
-               kpred:remaining    "DONE WHEN the quick production-build contract is timed and blocking; 3D success cannot pass as 2D and fallback cannot pass as 3D; every visual run uses deterministic nonempty fixtures and fatal setup/readiness/browser errors; full workflows use true device/touch contexts; screenshot baselines have an explicit review/update procedure; run manifests record commit SHA, dirty state, URL, build mode, browser/device, orientation, renderer, timestamp, screenshot hashes and tool/model versions; and one local command generates a complete human-reviewable desktop/mobile report with structured Ollama findings." .
+               kpred:measured     "IMPLEMENTED 2026-07-28: the blocking minified-build gate proves exact nonempty 3D, forced exact 2D, and a populated Pixel 7 Facts layout with fatal page/console errors under a 240-second browser budget. npm run visual:review builds production, runs a deterministic three-project Desktop Chrome / Pixel 7 portrait / Pixel 7 landscape workflow, compares six reviewed baselines, records accessibility/layout/runtime evidence plus commit/build/browser/device/renderer/tool provenance and screenshot SHA-256 hashes, then produces report.json + report.html with schema-validated qwen2.5vl findings bound to those exact hashes. Local validation: smoke 4/4 in 13.5s; evidence 3/3 in 18.4s; Ollama 0.31.1 report over 9 screenshots completed successfully." ;
+               kpred:tested-by    "tests/e2e/graph-render.test.ts" ;
+               kpred:tested-by    "tests/e2e/visual-contract.test.ts" ;
+               kpred:tested-by    "tests/visual/evidence/manual-facts.test.ts" ;
+               kpred:tested-by    "scripts/__tests__/visual-evidence-contract.test.ts" ;
+               kpred:remaining    "FUNCTIONAL locally on 2026-07-28. Remaining promotion evidence: merge the feature PR to dev with its blocking CI checks green, then observe the gate on the next dev-to-main production promotion before advancing this feature to production." .
 
 kb:immediate-mobile-correctness rdf:type ktype:Feature ;
                rdfs:label         "Immediate mobile correctness — Docs, graph cards, Facts, notices, and nav clearance" ;
