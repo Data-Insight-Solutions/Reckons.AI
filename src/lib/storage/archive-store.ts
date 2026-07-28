@@ -21,7 +21,7 @@
 
 import { KBaseDB } from './db';
 import {
-  ARCHIVE_EVENT_PREFIX, ARC_SNAPSHOT_ITEM, archiveGraphName, archiveEntities,
+  ARCHIVE_EVENT_PREFIX, ARC_COMMITTED, ARC_SNAPSHOT_ITEM, archiveGraphName, archiveEntities,
   eventToStatements, snapshotToStatements, statementsToEvents, statementsToSnapshot,
   applyRetention, findArchivedReferences,
   type ArchiveEventType, type ArchiveActor, type ArchiveEvent, type RetentionPolicy,
@@ -78,13 +78,337 @@ export async function findArchivedReferencesForParent(
 ): Promise<ArchivedReference[]> {
   const rows = await loadArchiveRows(parentStableId);
   const archivedFacts = rows.filter((statement) => !isArchiveMetadataRow(statement));
-  const archivedEntities = new Set(
-    statementsToEvents(rows)
-      // Revert events describe a whole restored snapshot, not entities currently in the archive.
-      .filter((event) => event.type !== 'revert')
-      .flatMap((event) => event.entities),
-  );
+  const archivedEntities = currentlyArchivedEntities(statementsToEvents(rows));
   return findArchivedReferences(incoming, archivedFacts, archivedEntities);
+}
+
+function currentlyArchivedEntities(events: ArchiveEvent[]): Set<string> {
+  const entityState = new Map<string, boolean>();
+  // statementsToEvents is newest-first. The latest completed event touching an entity determines
+  // whether it is currently archived. A prepared revert is deliberately NOT active yet.
+  for (const event of events) {
+    for (const entity of event.entities) {
+      if (!entityState.has(entity)) {
+        entityState.set(entity, event.type !== 'revert' || event.committed === false);
+      }
+    }
+  }
+  const archivedEntities = new Set(
+    [...entityState].filter(([, archived]) => archived).map(([entity]) => entity),
+  );
+  return archivedEntities;
+}
+
+export class ArchivedEntityRestoreError extends Error {}
+export class ArchivedStatementCollisionError extends Error {}
+
+export interface RestoreArchivedEntityInput {
+  /** Exact Dexie database name of the working graph. */
+  workingKbId: string;
+  /** Stable identity linking the working graph to its archive. */
+  parentStableId: string;
+  /** Exact archived entity IRI selected by the user. */
+  entity: string;
+  actor: ArchiveActor;
+  note?: string;
+  retentionPolicy?: RetentionPolicy;
+  now?: () => number;
+  newId?: () => string;
+}
+
+export interface RestoreArchivedEntityResult {
+  event: ArchiveEvent;
+  archiveKbId: string;
+  /** Full-fidelity archive facts copied back into the working graph. */
+  restored: Statement[];
+  /** True when a completed retry found the same entity already restored. */
+  alreadyRestored: boolean;
+}
+
+const touchesEntity = (statement: Statement, entity: string) =>
+  (statement.s.kind === 'iri' && statement.s.value === entity)
+  || (statement.o.kind === 'iri' && statement.o.value === entity);
+
+const touchesArchivedPeer = (
+  statement: Statement,
+  entity: string,
+  archivedEntities: Set<string>,
+) =>
+  (statement.s.kind === 'iri'
+    && statement.s.value !== entity
+    && archivedEntities.has(statement.s.value))
+  || (statement.o.kind === 'iri'
+    && statement.o.value !== entity
+    && archivedEntities.has(statement.o.value));
+
+function stableSerialize(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableSerialize).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    return `{${Object.keys(record).sort()
+      .map((key) => `${JSON.stringify(key)}:${stableSerialize(record[key])}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'undefined';
+}
+
+const sameStatement = (left: Statement, right: Statement) =>
+  stableSerialize(left) === stableSerialize(right);
+
+function assertNoStatementCollisions(
+  current: Statement[],
+  restoring: Statement[],
+): Statement[] {
+  const byId = new Map(current.map((statement) => [statement.id, statement]));
+  const missing: Statement[] = [];
+  for (const statement of restoring) {
+    const existing = byId.get(statement.id);
+    if (!existing) {
+      missing.push(statement);
+    } else if (!sameStatement(existing, statement)) {
+      throw new ArchivedStatementCollisionError(
+        `Cannot restore archived statement "${statement.id}": the working graph uses that ID for different content.`,
+      );
+    }
+  }
+  return missing;
+}
+
+function isSnapshotOrRestoredState(
+  current: Statement[],
+  snapshot: Statement[],
+  restoring: Statement[],
+): boolean {
+  const allowed = new Map(snapshot.map((statement) => [statement.id, statement]));
+  for (const statement of restoring) {
+    const existing = allowed.get(statement.id);
+    if (existing && !sameStatement(existing, statement)) return false;
+    allowed.set(statement.id, statement);
+  }
+  if (current.length !== allowed.size && current.length !== snapshot.length) return false;
+  const currentById = new Map(current.map((statement) => [statement.id, statement]));
+  const candidates = current.length === snapshot.length ? snapshot : [...allowed.values()];
+  return candidates.every((statement) => {
+    const existing = currentById.get(statement.id);
+    return existing !== undefined && sameStatement(existing, statement);
+  });
+}
+
+/**
+ * Copy one currently archived entity back into its working graph.
+ *
+ * The archive facts remain in the archive as historical evidence. Current archive membership is
+ * derived from the newest event for the entity, so a completed revert makes the retained copy
+ * historical rather than live. Keeping it avoids a second destructive cross-database move.
+ *
+ * The durable three-step protocol is:
+ *   1. archive DB: write a PREPARED revert event + full pre-restore working snapshot
+ *   2. working DB: idempotently bulkPut the exact archived facts
+ *   3. archive DB: atomically replace committed=false with committed=true, then apply retention
+ *
+ * Every crash leaves a complete archive copy. A crash after step 2 additionally leaves the working
+ * copy and a recoverable prepared event whose original snapshot is still intact.
+ */
+export async function restoreArchivedEntityForParent(
+  input: RestoreArchivedEntityInput,
+): Promise<RestoreArchivedEntityResult> {
+  if (!input.workingKbId?.trim()) throw new ArchivedEntityRestoreError('Working KB ID is required');
+  if (!input.parentStableId?.trim()) {
+    throw new ArchivedEntityRestoreError('Archive parent stable ID is required');
+  }
+  if (!input.entity?.trim()) throw new ArchivedEntityRestoreError('Archived entity IRI is required');
+
+  const registry = getRegistry();
+  const workingEntry = registry.find((entry) => entry.id === input.workingKbId);
+  if (!workingEntry) {
+    throw new ArchivedEntityRestoreError(`Working KB is not registered: ${input.workingKbId}`);
+  }
+  if (workingEntry.stableId !== input.parentStableId) {
+    throw new ArchivedEntityRestoreError('Working KB ID does not match the parent stable ID');
+  }
+
+  const archiveKbId = findArchiveKbId(input.parentStableId);
+  if (!archiveKbId) {
+    throw new ArchivedEntityRestoreError('No archive graph exists for this parent');
+  }
+  if (archiveKbId === input.workingKbId) {
+    throw new ArchivedEntityRestoreError('Archive and working KB IDs must be different');
+  }
+
+  const archiveReadDb = new KBaseDB(archiveKbId);
+  let archiveRows: Statement[];
+  try {
+    archiveRows = await archiveReadDb.statements.toArray();
+  } finally {
+    archiveReadDb.close();
+  }
+
+  const events = statementsToEvents(archiveRows);
+  const latest = events.find((event) => event.entities.includes(input.entity));
+  if (!latest) {
+    throw new ArchivedEntityRestoreError(
+      `Archived entity "${input.entity}" has no journal event.`,
+    );
+  }
+  if (latest.parentStableId && latest.parentStableId !== input.parentStableId) {
+    throw new ArchivedEntityRestoreError(
+      `Archived entity "${input.entity}" belongs to a different parent stable ID.`,
+    );
+  }
+
+  const archivedEntities = currentlyArchivedEntities(events);
+  const restoring = archiveRows.filter(
+    (statement) =>
+      !isArchiveMetadataRow(statement)
+      && statement.status !== 'rejected'
+      && statement.status !== 'superseded'
+      && touchesEntity(statement, input.entity)
+      // Restoring A must not revive A→B while B is still archived. Inbound/outbound edges to active
+      // neighbours are restored; edges within a still-archived cluster wait for that peer.
+      && !touchesArchivedPeer(statement, input.entity, archivedEntities),
+  );
+  if (restoring.length === 0) {
+    throw new ArchivedEntityRestoreError(
+      `Archived entity "${input.entity}" has no active facts to restore.`,
+    );
+  }
+
+  const workingReadDb = new KBaseDB(input.workingKbId);
+  let workingBefore: Statement[];
+  let workingSourceIds: Set<string>;
+  try {
+    const [statements, sources] = await Promise.all([
+      workingReadDb.statements.toArray(),
+      workingReadDb.sources.toArray(),
+    ]);
+    workingBefore = statements;
+    workingSourceIds = new Set(sources.map((source) => source.id));
+  } finally {
+    workingReadDb.close();
+  }
+  const missingSources = [...new Set(restoring.map((statement) => statement.sourceId))]
+    .filter((sourceId) => !workingSourceIds.has(sourceId));
+  if (missingSources.length > 0) {
+    throw new ArchivedEntityRestoreError(
+      `Cannot restore archived entity "${input.entity}": missing source record(s) ${missingSources.join(', ')}.`,
+    );
+  }
+  assertNoStatementCollisions(workingBefore, restoring);
+
+  if (latest.type === 'revert' && latest.committed !== false) {
+    const missing = assertNoStatementCollisions(workingBefore, restoring);
+    if (missing.length > 0) {
+      throw new ArchivedEntityRestoreError(
+        `Archive journal says "${input.entity}" was restored, but ${missing.length} fact(s) are missing from the working graph.`,
+      );
+    }
+    return {
+      event: latest,
+      archiveKbId,
+      restored: restoring,
+      alreadyRestored: true,
+    };
+  }
+
+  let prepared: ArchiveEvent;
+  let preRestoreSnapshot: Statement[];
+  if (latest.type === 'revert' && latest.committed === false) {
+    if (
+      latest.restoreScope !== 'entity'
+      || latest.parentStableId !== input.parentStableId
+      || latest.entities.length !== 1
+      || latest.entities[0] !== input.entity
+      || latest.statementCount !== restoring.length
+    ) {
+      throw new ArchivedEntityRestoreError(
+        `Prepared restore for "${input.entity}" does not match this entity-restore request.`,
+      );
+    }
+    prepared = { ...latest, snapshot: statementsToSnapshot(archiveRows, latest.id) };
+    preRestoreSnapshot = prepared.snapshot!;
+  } else {
+    const at = (input.now ?? (() => Date.now()))();
+    const id = (input.newId ?? (() => crypto.randomUUID()))();
+    if (events.some((event) => event.id === id)) {
+      throw new ArchivedEntityRestoreError(`Archive event ID already exists: ${id}`);
+    }
+    prepared = {
+      id,
+      type: 'revert',
+      at,
+      actor: input.actor,
+      entities: [input.entity],
+      statementCount: restoring.length,
+      parentStableId: input.parentStableId,
+      snapshot: workingBefore,
+      note: input.note ?? `Restored archived entity ${input.entity}`,
+      committed: false,
+      restoreScope: 'entity',
+    };
+    preRestoreSnapshot = workingBefore;
+
+    const archivePrepareDb = new KBaseDB(archiveKbId);
+    try {
+      await archivePrepareDb.transaction('rw', archivePrepareDb.statements, async () => {
+        await archivePrepareDb.statements.bulkPut([
+          ...eventToStatements(prepared),
+          ...snapshotToStatements(prepared),
+        ]);
+      });
+    } finally {
+      archivePrepareDb.close();
+    }
+  }
+
+  const workingWriteDb = new KBaseDB(input.workingKbId);
+  try {
+    await workingWriteDb.transaction('rw', workingWriteDb.statements, async () => {
+      const current = await workingWriteDb.statements.toArray();
+      if (!isSnapshotOrRestoredState(current, preRestoreSnapshot, restoring)) {
+        throw new ArchivedEntityRestoreError(
+          'Working graph changed after the restore was prepared; refusing to apply a stale snapshot contract.',
+        );
+      }
+      const missing = assertNoStatementCollisions(current, restoring);
+      if (missing.length > 0) await workingWriteDb.statements.bulkPut(missing);
+    });
+  } finally {
+    workingWriteDb.close();
+  }
+
+  const committed: ArchiveEvent = { ...prepared, committed: true };
+  const preparedMarker = eventToStatements(prepared)
+    .find((statement) => statement.p.value === ARC_COMMITTED);
+  if (!preparedMarker) throw new ArchivedEntityRestoreError('Prepared restore has no completion marker');
+
+  const archiveCommitDb = new KBaseDB(archiveKbId);
+  try {
+    await archiveCommitDb.transaction('rw', archiveCommitDb.statements, async () => {
+      await archiveCommitDb.statements.bulkDelete([preparedMarker.id]);
+      await archiveCommitDb.statements.bulkPut([
+        ...eventToStatements(committed),
+        ...snapshotToStatements(committed),
+      ]);
+      await pruneSnapshotRows(
+        archiveCommitDb,
+        {
+          ...input.retentionPolicy,
+          // A restore whose undo snapshot disappears in the same operation is not reversible.
+          keepLast: Math.max(1, input.retentionPolicy?.keepLast ?? 10),
+        },
+        committed.at,
+      );
+    });
+  } finally {
+    archiveCommitDb.close();
+  }
+
+  return {
+    event: committed,
+    archiveKbId,
+    restored: restoring,
+    alreadyRestored: false,
+  };
 }
 
 /**

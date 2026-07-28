@@ -16,6 +16,9 @@ const calls: Array<{ db: string; op: string; n: number }> = [];
 const opened: string[] = [];
 const closed: string[] = [];
 let stored: Record<string, unknown[]> = {};
+let storedSources: Record<string, Array<{ id: string }>> = {};
+let bulkPutCall = 0;
+let failBulkPutCall: number | null = null;
 
 vi.mock('../db', () => ({
   KBaseDB: class {
@@ -25,12 +28,17 @@ vi.mock('../db', () => ({
       bulkDelete: (ids: string[]) => Promise<void>;
       toArray: () => Promise<unknown[]>;
     };
+    sources: {
+      toArray: () => Promise<Array<{ id: string }>>;
+    };
     constructor(name?: string) {
       this.name = name ?? '__working__';
       opened.push(this.name);
       this.statements = {
         bulkPut: async (rows: unknown[]) => {
+          bulkPutCall++;
           calls.push({ db: this.name, op: 'bulkPut', n: rows.length });
+          if (failBulkPutCall === bulkPutCall) throw new Error('injected bulkPut failure');
           const byId = new Map(
             (stored[this.name] ?? []).map((row) => [
               (row as { id?: string }).id ?? crypto.randomUUID(),
@@ -50,6 +58,19 @@ vi.mock('../db', () => ({
         },
         toArray: async () => stored[this.name] ?? [],
       };
+      this.sources = {
+        toArray: async () => storedSources[this.name] ?? [],
+      };
+    }
+    async transaction(_mode: string, ...args: unknown[]) {
+      const callback = args.at(-1) as () => Promise<unknown>;
+      const before = structuredClone(stored[this.name] ?? []);
+      try {
+        return await callback();
+      } catch (error) {
+        stored[this.name] = before;
+        throw error;
+      }
     }
     close() { closed.push(this.name); }
   },
@@ -57,14 +78,15 @@ vi.mock('../db', () => ({
 
 const {
   runArchive, ensureArchiveKb, findArchiveKbId, loadArchiveSnapshot,
-  loadArchivedFacts, findArchivedReferencesForParent,
+  loadArchivedFacts, findArchivedReferencesForParent, restoreArchivedEntityForParent,
+  ArchivedEntityRestoreError, ArchivedStatementCollisionError,
 } = await import('../archive-store');
 const {
   createKb, getRegistry, registerStableId, updateKbEntry,
 } = await import('../kb-registry');
 const {
-  ARCHIVE_EVENT_PREFIX, ARC_SNAPSHOT_ITEM, ARC_TYPE, SnapshotUnavailableError,
-  eventToStatements,
+  ARCHIVE_EVENT_PREFIX, ARC_COMMITTED, ARC_SNAPSHOT_ITEM, ARC_TYPE,
+  SnapshotUnavailableError, eventToStatements, statementsToEvents,
 } = await import('$lib/rdf/archive');
 import type { Statement, NamedNode, Term } from '$lib/rdf/types';
 
@@ -90,6 +112,9 @@ beforeEach(() => {
   opened.length = 0;
   closed.length = 0;
   stored = {};
+  storedSources = {};
+  bulkPutCall = 0;
+  failBulkPutCall = null;
   workingKbId = createKb('Research').id;
   registerStableId(workingKbId, 'stable-1');
 });
@@ -212,6 +237,263 @@ describe('archived fact reads (F97.3)', () => {
     await expect(findArchivedReferencesForParent('stable-1', incoming)).resolves.toMatchObject([
       { entity: 'urn:gone', label: 'Goner', incoming: [incoming[0]] },
     ]);
+  });
+});
+
+describe('restoreArchivedEntityForParent — reversible storage primitive (F97.2/F97.3)', () => {
+  const seedArchive = () => {
+    const archiveKbId = ensureArchiveKb('Research', 'stable-1');
+    const archivedLabel = {
+      ...st('urn:gone', LABEL, lit('Goner'), 'archived-label'),
+      sourceId: 'original-source',
+      confidence: 0.73,
+      excerpt: 'verbatim evidence',
+      grounded: true,
+      createdAt: 123,
+      updatedAt: 456,
+    };
+    const inbound = st(
+      'urn:active-neighbour',
+      'urn:p/relates-to',
+      iri('urn:gone'),
+      'archived-inbound',
+    );
+    const rejected = {
+      ...st('urn:gone', 'urn:p/rejected', lit('no'), 'archived-rejected'),
+      status: 'rejected' as const,
+    };
+    const archivedPeerEdge = st(
+      'urn:gone',
+      'urn:p/related-archived',
+      iri('urn:peer'),
+      'archived-peer-edge',
+    );
+    const archivedPeerLabel = st('urn:peer', LABEL, lit('Peer'), 'archived-peer-label');
+    const unrelated = st('urn:other', LABEL, lit('Other'), 'archived-unrelated');
+    const event = eventToStatements({
+      id: 'archive-1',
+      type: 'delete',
+      at: 1,
+      actor: 'human',
+      entities: ['urn:gone'],
+      statementCount: 3,
+      parentStableId: 'stable-1',
+    });
+    const peerEvent = eventToStatements({
+      id: 'archive-peer',
+      type: 'delete',
+      at: 1,
+      actor: 'human',
+      entities: ['urn:peer'],
+      statementCount: 2,
+      parentStableId: 'stable-1',
+    });
+    stored[archiveKbId] = [
+      archivedLabel,
+      inbound,
+      rejected,
+      archivedPeerEdge,
+      archivedPeerLabel,
+      unrelated,
+      ...event,
+      ...peerEvent,
+    ];
+    stored[workingKbId] = [graph[0]];
+    storedSources[workingKbId] = [{ id: 'x' }, { id: 'original-source' }];
+    return {
+      archiveKbId,
+      archivedLabel,
+      inbound,
+      rejected,
+      archivedPeerEdge,
+      archivedPeerLabel,
+      unrelated,
+    };
+  };
+
+  const restore = () => restoreArchivedEntityForParent({
+    workingKbId,
+    parentStableId: 'stable-1',
+    entity: 'urn:gone',
+    actor: 'human',
+    now: () => 2,
+    newId: () => 'restore-1',
+  });
+
+  it('prepares recovery, copies exact active facts, then commits the journal', async () => {
+    const {
+      archiveKbId,
+      archivedLabel,
+      inbound,
+      rejected,
+      archivedPeerEdge,
+      archivedPeerLabel,
+      unrelated,
+    } = seedArchive();
+    const incoming = [st('urn:new-gone', LABEL, lit('goner'), 'incoming')];
+    await expect(findArchivedReferencesForParent('stable-1', incoming)).resolves.toHaveLength(1);
+
+    const result = await restore();
+
+    expect(result.alreadyRestored).toBe(false);
+    expect(result.restored).toEqual([archivedLabel, inbound]);
+    expect(result.event).toMatchObject({
+      id: 'restore-1',
+      type: 'revert',
+      entities: ['urn:gone'],
+      statementCount: 2,
+      committed: true,
+    });
+
+    // Prepare is durable first, the working copy lands second, and only then can the event say
+    // committed=true. The false marker is deleted inside the final archive transaction.
+    expect(calls.map(({ db, op }) => ({ db, op }))).toEqual([
+      { db: archiveKbId, op: 'bulkPut' },
+      { db: workingKbId, op: 'bulkPut' },
+      { db: archiveKbId, op: 'bulkDelete' },
+      { db: archiveKbId, op: 'bulkPut' },
+    ]);
+
+    const workingRows = stored[workingKbId] as Statement[];
+    expect(workingRows).toEqual([graph[0], archivedLabel, inbound]);
+    expect(workingRows).not.toContainEqual(rejected);
+    expect(workingRows).not.toContainEqual(archivedPeerEdge);
+    expect(workingRows).not.toContainEqual(archivedPeerLabel);
+    expect(workingRows).not.toContainEqual(unrelated);
+
+    // Historical archive facts stay put; the newest completed event changes their membership.
+    expect(stored[archiveKbId]).toContainEqual(archivedLabel);
+    expect(stored[archiveKbId]).toContainEqual(inbound);
+    expect(statementsToEvents(stored[archiveKbId] as Statement[])[0]).toMatchObject({
+      id: 'restore-1',
+      committed: true,
+    });
+    await expect(findArchivedReferencesForParent('stable-1', incoming)).resolves.toEqual([]);
+
+    // Undoing this restore can recover the exact graph from immediately before it.
+    await expect(loadArchiveSnapshot(archiveKbId, 'restore-1')).resolves.toEqual([graph[0]]);
+  });
+
+  it('keeps a recoverable prepared event when the working write fails', async () => {
+    const { archiveKbId } = seedArchive();
+    failBulkPutCall = 2; // prepare succeeds; working transaction fails before writing
+
+    await expect(restore()).rejects.toThrow('injected bulkPut failure');
+    expect(stored[workingKbId]).toEqual([graph[0]]);
+    expect(statementsToEvents(stored[archiveKbId] as Statement[])[0]).toMatchObject({
+      id: 'restore-1',
+      committed: false,
+    });
+    expect((stored[archiveKbId] as Statement[]).some(
+      (row) => row.p.value === ARC_COMMITTED && row.o.value === 'false',
+    )).toBe(true);
+
+    failBulkPutCall = null;
+    const retried = await restore();
+    expect(retried.event.committed).toBe(true);
+    expect(stored[workingKbId]).toHaveLength(3);
+  });
+
+  it('keeps the new undo snapshot even when a caller requests keepLast zero', async () => {
+    const { archiveKbId } = seedArchive();
+    await restoreArchivedEntityForParent({
+      workingKbId,
+      parentStableId: 'stable-1',
+      entity: 'urn:gone',
+      actor: 'human',
+      retentionPolicy: { keepLast: 0 },
+      now: () => 2,
+      newId: () => 'restore-1',
+    });
+
+    await expect(loadArchiveSnapshot(archiveKbId, 'restore-1')).resolves.toEqual([graph[0]]);
+  });
+
+  it('recovers a crash after the working copy without losing the pre-restore snapshot', async () => {
+    const { archiveKbId } = seedArchive();
+    failBulkPutCall = 3; // final committed-event write fails and its transaction rolls back
+
+    await expect(restore()).rejects.toThrow('injected bulkPut failure');
+    expect(stored[workingKbId]).toHaveLength(3);
+    expect(statementsToEvents(stored[archiveKbId] as Statement[])[0]).toMatchObject({
+      id: 'restore-1',
+      committed: false,
+    });
+    await expect(loadArchiveSnapshot(archiveKbId, 'restore-1')).resolves.toEqual([graph[0]]);
+
+    failBulkPutCall = null;
+    const recovered = await restore();
+    expect(recovered.alreadyRestored).toBe(false);
+    expect(recovered.event.committed).toBe(true);
+    expect(stored[workingKbId]).toHaveLength(3);
+    await expect(loadArchiveSnapshot(archiveKbId, 'restore-1')).resolves.toEqual([graph[0]]);
+
+    const completedRetry = await restore();
+    expect(completedRetry.alreadyRestored).toBe(true);
+    expect(statementsToEvents(stored[archiveKbId] as Statement[])
+      .filter((event) => event.type === 'revert')).toHaveLength(1);
+  });
+
+  it('refuses to resume a prepared restore across unrelated working-graph changes', async () => {
+    const { archiveKbId } = seedArchive();
+    failBulkPutCall = 2; // leave a durable prepared event before the working write
+    await expect(restore()).rejects.toThrow('injected bulkPut failure');
+
+    stored[workingKbId] = [
+      ...(stored[workingKbId] as Statement[]),
+      st('urn:concurrent', LABEL, lit('Added elsewhere'), 'concurrent-change'),
+    ];
+    failBulkPutCall = null;
+
+    await expect(restore()).rejects.toThrow('Working graph changed after the restore was prepared');
+    expect((stored[workingKbId] as Statement[]).map((row) => row.id)).toEqual([
+      graph[0].id,
+      'concurrent-change',
+    ]);
+    expect(statementsToEvents(stored[archiveKbId] as Statement[])[0]).toMatchObject({
+      id: 'restore-1',
+      committed: false,
+      restoreScope: 'entity',
+    });
+  });
+
+  it('refuses a same-ID content collision before preparing any mutation', async () => {
+    const { archiveKbId, archivedLabel } = seedArchive();
+    stored[workingKbId] = [
+      graph[0],
+      { ...archivedLabel, o: lit('Different content') },
+    ];
+
+    await expect(restore()).rejects.toBeInstanceOf(ArchivedStatementCollisionError);
+    expect(calls).toEqual([]);
+    expect(statementsToEvents(stored[archiveKbId] as Statement[])).toHaveLength(2);
+  });
+
+  it('refuses to restore facts whose source provenance is no longer available', async () => {
+    const { archiveKbId } = seedArchive();
+    storedSources[workingKbId] = [{ id: 'x' }];
+
+    await expect(restore()).rejects.toThrow('missing source record(s) original-source');
+    expect(calls).toEqual([]);
+    expect(statementsToEvents(stored[archiveKbId] as Statement[])).toHaveLength(2);
+  });
+
+  it('fails loudly when identity or archive evidence is unavailable', async () => {
+    await expect(restore()).rejects.toBeInstanceOf(ArchivedEntityRestoreError);
+
+    seedArchive();
+    await expect(restoreArchivedEntityForParent({
+      workingKbId,
+      parentStableId: 'stable-other',
+      entity: 'urn:gone',
+      actor: 'human',
+    })).rejects.toThrow('does not match the parent stable ID');
+    await expect(restoreArchivedEntityForParent({
+      workingKbId,
+      parentStableId: 'stable-1',
+      entity: 'urn:not-archived',
+      actor: 'human',
+    })).rejects.toThrow('has no journal event');
   });
 });
 

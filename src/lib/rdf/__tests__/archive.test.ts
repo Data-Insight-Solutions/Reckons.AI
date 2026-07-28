@@ -73,6 +73,24 @@ describe('journal serialization', () => {
     expect(back.snapshotSize).toBe(1);
   });
 
+  it('round-trips an explicitly prepared cross-database event', () => {
+    const [back] = statementsToEvents(eventToStatements(ev({
+      type: 'revert',
+      committed: false,
+      restoreScope: 'entity',
+    })));
+    expect(back.type).toBe('revert');
+    expect(back.committed).toBe(false);
+    expect(back.restoreScope).toBe('entity');
+  });
+
+  it('treats an invalid completion marker as incomplete', () => {
+    const rows = eventToStatements(ev({ type: 'revert', committed: true }));
+    const marker = rows.find((row) => row.p.value.endsWith('/committed'))!;
+    marker.o = lit('corrupt');
+    expect(statementsToEvents(rows)[0].committed).toBe(false);
+  });
+
   it('is deterministic — the same event serializes identically every time', () => {
     const e = ev({ entities: ['urn:z', 'urn:a', 'urn:m'] });
     expect(eventToStatements(e)).toEqual(eventToStatements(e));
@@ -127,6 +145,23 @@ describe('retention', () => {
   it('retains an explicitly empty snapshot as a real snapshot candidate', () => {
     const empty = ev({ id: 'empty', statementCount: 0, snapshotSize: 0 });
     expect(applyRetention([empty], { keepLast: 1 }, T0).keep).toEqual([empty]);
+  });
+
+  it('never prunes the recovery snapshot for a prepared operation', () => {
+    const prepared = ev({
+      id: 'prepared',
+      type: 'revert',
+      at: T0 - 1_000 * DAY,
+      committed: false,
+      snapshotSize: 3,
+    });
+    const { keep, dropSnapshots } = applyRetention(
+      [prepared],
+      { keepLast: 0, maxAgeMs: DAY },
+      T0,
+    );
+    expect(keep).toEqual([prepared]);
+    expect(dropSnapshots).toEqual([]);
   });
 
   it('always keeps the most recent snapshots', () => {
