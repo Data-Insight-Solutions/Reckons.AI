@@ -22,25 +22,18 @@ import { Parser, type Quad } from 'n3';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import {
-  composePages, describeComposition,
-  type ExclusionRule, type PageDefinition, type PageSource, type SourceEntity,
+  composePages, describeComposition, type SourceEntity,
 } from '../../src/lib/publish/page-composition';
-import {
-  PAGE_PURPOSE, PAGE_SECTION, PAGE_SLUG,
-  PAGE_SOURCES_ENTITY, PAGE_SOURCES_GRAPH, PAGE_SOURCES_TYPE, WEBPAGE_TYPE,
-} from '../../src/lib/rdf/page';
-import { NAV_ORDER } from '../../src/lib/rdf/hierarchy';
+import { datasetOverlaps, readWebsiteGraph } from '../../src/lib/publish/website-graph';
 
 const ROOT = resolve(import.meta.dirname ?? '.', '../..');
 const STATIC_DIR = join(ROOT, 'static');
-const SITE_FILE = 'docs-site.ttl';
+const SITE_FILE = 'website.ttl';
 
 const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
 const SKOS_DEFINITION = 'http://www.w3.org/2004/02/skos/core#definition';
 const SKOS_BROADER = 'http://www.w3.org/2004/02/skos/core#broader';
-const PAGE_EXCLUDES_UNDER = 'urn:reckons:page/excludes-under';
-const PAGE_EXCLUDES_ENTITY = 'urn:reckons:page/excludes-entity';
 const KTYPE_NS = 'urn:kbase:type/';
 /** Per-sub-graph "back to hub" stubs — UI wiring, never doc content. Mirrors docs-pages.ts. */
 const NAV_DOCS_NS = 'urn:reckons:docs/nav/';
@@ -106,80 +99,48 @@ function readEntities(): SourceEntity[] {
       });
     }
   }
-  // An entity asserted in two files appears once per file; dedupe on IRI, keeping the first,
-  // so coverage counts ENTITIES rather than assertions.
+  return out;
+}
+
+/**
+ * Coverage counts ENTITIES, not assertions, so an entity asserted in two files counts once.
+ *
+ * Kept SEPARATE from readEntities() deliberately. Deduping at read time silently destroyed the
+ * only evidence the overlap analysis runs on, and the meta-graph then reported "no dataset
+ * shares an entity with another" — confidently, and wrongly, since docs-pages.ts documents that
+ * starter-guide.ttl holds summary stubs of concepts defined in the sub-graphs.
+ */
+function dedupeByIri(entities: SourceEntity[]): SourceEntity[] {
   const seen = new Set<string>();
-  return out.filter((e) => (seen.has(e.iri) ? false : (seen.add(e.iri), true)));
-}
-
-/** Read the proposed page definitions out of docs-site.ttl. */
-function readPageDefinitions(): PageDefinition[] {
-  const quads = parseTtl(SITE_FILE);
-  const pages = new Set<string>();
-  for (const q of quads) {
-    if (q.predicate.value === RDF_TYPE && q.object.value === WEBPAGE_TYPE) pages.add(q.subject.value);
-  }
-
-  const defs: PageDefinition[] = [];
-  for (const iri of [...pages].sort()) {
-    const own = quads.filter((q) => q.subject.value === iri);
-    const one = (p: string) => own.find((q) => q.predicate.value === p)?.object.value ?? '';
-    const many = (p: string) => own.filter((q) => q.predicate.value === p).map((q) => q.object.value);
-
-    const sources: PageSource[] = [
-      ...many(PAGE_SOURCES_GRAPH).map((graph): PageSource => ({ kind: 'graph', graph })),
-      ...many(PAGE_SOURCES_ENTITY).map((entity): PageSource => ({ kind: 'entity', iri: entity })),
-      ...many(PAGE_SOURCES_TYPE).map((type): PageSource => ({ kind: 'type', type })),
-    ];
-
-    defs.push({
-      id: iri.split(/[/#]/).pop() ?? iri,
-      title: one(RDFS_LABEL),
-      slug: one(PAGE_SLUG) || undefined,
-      section: one(PAGE_SECTION) || 'Docs',
-      purpose: one(PAGE_PURPOSE),
-      order: Number(one(NAV_ORDER) || 0),
-      sources,
-    });
-  }
-  return defs;
-}
-
-/** Exclusion rules declared in docs-site.ttl — what the site deliberately does not publish. */
-function readExclusions(): ExclusionRule[] {
-  const quads = parseTtl(SITE_FILE);
-  const ids = new Set<string>();
-  for (const q of quads) {
-    if (q.predicate.value === PAGE_EXCLUDES_UNDER || q.predicate.value === PAGE_EXCLUDES_ENTITY) {
-      ids.add(q.subject.value);
-    }
-  }
-  return [...ids].sort().map((iri) => {
-    const own = quads.filter((q) => q.subject.value === iri);
-    const one = (p: string) => own.find((q) => q.predicate.value === p)?.object.value;
-    return {
-      id: one(RDFS_LABEL) ?? iri.split(/[/#]/).pop() ?? iri,
-      reason: one(PAGE_PURPOSE) ?? '',
-      under: one(PAGE_EXCLUDES_UNDER),
-      entity: one(PAGE_EXCLUDES_ENTITY),
-    };
-  });
+  return entities.filter((e) => (seen.has(e.iri) ? false : (seen.add(e.iri), true)));
 }
 
 function main(): void {
   const quiet = process.argv.includes('--quiet');
-  const entities = readEntities();
-  const definitions = readPageDefinitions();
+  // `assertions` keeps one row per (entity, graph) so overlap is measurable; `entities` is the
+  // deduped view composition and coverage counts use.
+  const assertions = readEntities();
+  const entities = dedupeByIri(assertions);
+  const website = readWebsiteGraph(parseTtl(SITE_FILE));
 
-  if (definitions.length === 0) {
-    console.error(C.red(`No WebPage definitions found in static/${SITE_FILE}.`));
+  // Reported BEFORE anything else: a page that resolved to nothing does not error, it silently
+  // stops existing, and a whole site section disappears with no explanation.
+  if (website.problems.length > 0) {
+    console.log('');
+    console.log(C.yellow(C.bold(`  ${website.problems.length} problem(s) reading static/${SITE_FILE}:`)));
+    for (const p of website.problems) console.log(C.yellow(`    ${p}`));
+  }
+
+  if (website.pages.length === 0) {
+    console.error(C.red(`No schema:WebPage definitions found in static/${SITE_FILE}.`));
     process.exit(1);
   }
 
-  const report = composePages(definitions, entities, readExclusions());
+  const report = composePages(website.pages, entities, website.exclusions);
 
   console.log('');
-  console.log(C.bold('docs consolidation') + C.dim(` — proposed in static/${SITE_FILE}`));
+  console.log(C.bold(website.siteName || 'docs consolidation') + C.dim(` — static/${SITE_FILE}`));
+  console.log(C.dim(`  ${website.datasets.length} source datasets, described with void:Dataset`));
   console.log(C.dim(`  today: ${entities.length} entities published as ${entities.length} separate pages`));
   console.log(`  ${C.bold(describeComposition(report))}`);
   console.log('');
@@ -229,6 +190,22 @@ function main(): void {
     console.log(C.dim('  Either claim them from a page, or decide deliberately that they are not'));
     console.log(C.dim('  public documentation. Both are fine; losing them by accident is not.'));
     process.exit(1);
+  }
+
+  // ── The meta-graph: how the datasets inter-relate ──────────────────────────
+  // DERIVED, never hand-maintained: a hand-written claim that two graphs overlap is exactly the
+  // kind of unverifiable assertion the project's own thesis rejects.
+  const overlaps = datasetOverlaps(assertions);
+  console.log('');
+  console.log(C.bold('  how the graphs inter-relate') + C.dim(' — entities asserted in more than one'));
+  if (overlaps.length === 0) {
+    console.log(C.dim('    no dataset shares an entity with another.'));
+  } else {
+    for (const o of overlaps.slice(0, quiet ? 3 : 10)) {
+      const short = (f: string) => f.replace(/^docs-|\.ttl$/g, '');
+      console.log(`    ${short(o.a)} ${C.dim('↔')} ${short(o.b)}  ${C.bold(String(o.shared.length))} shared`);
+      if (!quiet) for (const iri of o.shared.slice(0, 4)) console.log(C.dim(`      ${iri}`));
+    }
   }
 
   console.log('');

@@ -34,21 +34,18 @@ export const PAGE_GENERATED = `${PAGE_NS}generated`;
 export const WEBPAGE_TYPE = 'urn:kbase:type/WebPage';
 
 /**
- * What a page is MADE FROM (F27 composition).
+ * What a page is MADE FROM (F27.3 composition) — see `src/lib/publish/website-graph.ts`.
  *
- * A page declares its sources instead of the generator awarding one page per entity. That
- * inversion is what lets a single readable page draw on several graphs — and it is the only way
- * to express it, since `resolveHomeFile()` picks ONE owning file per entity and drops the other's
- * assertions rather than merging them.
+ * These predicates are deliberately NOT defined here. An earlier draft minted
+ * `urn:reckons:page/sources-graph` and friends; the site graph now uses the standard
+ * vocabularies that already exist for this — `schema:isBasedOn` for the source relation,
+ * `schema:about` for subject matter, `schema:abstract` for the page's purpose, and
+ * `void:Dataset` for the graphs themselves. The project already uses dcterms, foaf, owl, prov
+ * and skos, so the invented terms were the outlier.
+ *
+ * The one local term that survives is `urn:reckons:page/excludes-under`, because no standard
+ * term means "this subtree is deliberately not published, and here is why".
  */
-/** A whole graph file, e.g. "docs-architecture.ttl". Repeatable — a page may source many. */
-export const PAGE_SOURCES_GRAPH  = `${PAGE_NS}sources-graph`;
-/** One entity by IRI, wherever it is asserted. Repeatable. */
-export const PAGE_SOURCES_ENTITY = `${PAGE_NS}sources-entity`;
-/** A humanized rdf:type local name, e.g. "Feature". Repeatable. */
-export const PAGE_SOURCES_TYPE   = `${PAGE_NS}sources-type`;
-/** Why a reader would open this page. Required by composition — see page-composition.ts. */
-export const PAGE_PURPOSE        = `${PAGE_NS}purpose`;
 
 const RDF_TYPE   = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';

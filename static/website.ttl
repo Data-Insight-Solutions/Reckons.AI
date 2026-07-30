@@ -1,0 +1,204 @@
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix schema:  <https://schema.org/> .
+@prefix void:    <http://rdfs.org/ns/void#> .
+@prefix site:    <https://reckons.ai/> .
+@prefix ds:      <https://reckons.ai/dataset/> .
+@prefix kb:      <urn:kbase:concept/> .
+
+# =============================================================================
+# website.ttl — ONE cohesive website graph (F27.3).
+#
+# Every page on the site, the datasets each page is built from, and how those datasets
+# inter-relate. One file, so the site can be seen and managed as a whole rather than inferred
+# from 269 generated files.
+#
+# WHY THIS FILE EXISTS. `scripts/docs-pages.ts` publishes one page per ENTITY: any subject with
+# an rdf:type under urn:kbase:type/ becomes its own file. 269 entities therefore produce 269
+# pages, alphabetical, with no editorial layer — /docs measured 23,407px tall with 815 anchors.
+# "Has a type" was standing in for "is a page someone would want to read", so the graph decided
+# the site's information architecture by accident.
+#
+# ── STANDARD VOCABULARIES, not invented ones ────────────────────────────────────────────────
+# An earlier draft of this used bespoke urn:reckons:page/ terms. It now uses the vocabularies
+# that already exist for exactly this, which is also the house style (dcterms, foaf, owl, prov
+# and skos are already in use across static/*.ttl):
+#
+#   schema:WebSite / schema:WebPage   the site and its pages
+#   schema:hasPart / schema:isPartOf   site structure, both directions
+#   schema:isBasedOn                   THE SOURCE RELATION — "a resource from which this work is
+#                                      derived". A page may declare several, which is how one
+#                                      page draws on several graphs.
+#   schema:about                       a specific entity the page is about
+#   schema:abstract                    why a reader would open the page
+#   schema:position                    order within the site
+#   void:Dataset                       each source graph, described as a dataset
+#   void:Linkset                       a set of triples linking two datasets (see the meta-graph
+#                                      section — these are DERIVED, not hand-maintained)
+#
+# ── ONE HONEST DEPARTURE ────────────────────────────────────────────────────────────────────
+# There is no standard term for "this entity subtree is deliberately not published, and here is
+# why". schema:creativeWorkStatus and dcterms:accessRights describe a resource's own state, not
+# an editorial rule about a set of them. So the exclusion rules below use a local
+# reckons:excludes-under, and say so rather than bending a standard term into meaning something
+# it does not. Everything else on this page is standard.
+#
+# ── WHAT IS NOT SILENTLY DROPPED ────────────────────────────────────────────────────────────
+# Entities no page claims are reported as ORPHANS by `npm run docs:consolidate`, which exits
+# non-zero when the architecture here would drop content. Curating 269 pages into eight is an
+# editorial act; doing it without that list would be data loss with a tidier sidebar.
+#
+# STATUS: PROPOSED, not live. The generator still publishes one page per entity and content/
+# still holds 271 files. Wiring composition in is a separate, reviewed change.
+# =============================================================================
+
+@prefix reckons: <urn:reckons:page/> .
+
+# ── The site ─────────────────────────────────────────────────────────────────
+site:docs a schema:WebSite ;
+    schema:name "Reckons.AI documentation" ;
+    schema:abstract "Everything about using Reckons.AI, composed from the graphs that describe it." ;
+    schema:url "/docs" ;
+    schema:hasPart site:start-here ,
+                   site:what-it-does ,
+                   site:how-it-works ,
+                   site:ai-models ,
+                   site:connecting-other-systems ,
+                   site:working-safely ,
+                   site:where-it-is-going ,
+                   site:contributing .
+
+# ── The datasets each page is built from ─────────────────────────────────────
+# void:Dataset is the standard way to describe an RDF dataset. dcterms:source carries the file
+# so a generator can resolve it without a second lookup table.
+
+ds:starter-guide a void:Dataset ;
+    dcterms:title "Getting started" ;
+    dcterms:source "starter-guide.ttl" .
+
+ds:features a void:Dataset ;
+    dcterms:title "Features" ;
+    dcterms:source "docs-features.ttl" .
+
+ds:use-cases a void:Dataset ;
+    dcterms:title "Use cases" ;
+    dcterms:source "docs-use-cases.ttl" .
+
+ds:triples-rdf a void:Dataset ;
+    dcterms:title "Triples and RDF" ;
+    dcterms:source "docs-triples-rdf.ttl" .
+
+ds:architecture a void:Dataset ;
+    dcterms:title "Architecture" ;
+    dcterms:source "docs-architecture.ttl" .
+
+ds:llm a void:Dataset ;
+    dcterms:title "Language models" ;
+    dcterms:source "docs-llm.ttl" .
+
+ds:integrations a void:Dataset ;
+    dcterms:title "Integrations and tech" ;
+    dcterms:source "docs-integrations-tech.ttl" .
+
+ds:tips-security a void:Dataset ;
+    dcterms:title "Tips and security" ;
+    dcterms:source "docs-tips-security.ttl" .
+
+ds:timeline a void:Dataset ;
+    dcterms:title "Timeline and ecosystem" ;
+    dcterms:source "docs-timeline-ecosystem.ttl" .
+
+ds:coding-workflow a void:Dataset ;
+    dcterms:title "Coding workflow" ;
+    dcterms:source "docs-coding-workflow.ttl" .
+
+ds:testing a void:Dataset ;
+    dcterms:title "Testing" ;
+    dcterms:source "docs-testing.ttl" .
+
+# ── The pages ────────────────────────────────────────────────────────────────
+# Every page carries schema:abstract. Composition REFUSES a page without one, because a page
+# nobody can state the point of is precisely what the 269 auto-generated pages already are.
+
+site:start-here a schema:WebPage ;
+    schema:isPartOf site:docs ;
+    schema:name "Start here" ;
+    schema:url "start-here" ;
+    schema:position 1 ;
+    schema:abstract "Get a graph on screen and a first fact into it. The only page a new reader needs." ;
+    schema:isBasedOn ds:starter-guide .
+
+site:what-it-does a schema:WebPage ;
+    schema:isPartOf site:docs ;
+    schema:name "What it does" ;
+    schema:url "what-it-does" ;
+    schema:position 2 ;
+    schema:abstract "Every capability, and a worked example of each — what you can actually do with it." ;
+    schema:isBasedOn ds:features , ds:use-cases .
+
+site:how-it-works a schema:WebPage ;
+    schema:isPartOf site:docs ;
+    schema:name "How it works" ;
+    schema:url "how-it-works" ;
+    schema:position 3 ;
+    schema:abstract "Triples, graphs and the design decisions behind them — why the data is shaped this way." ;
+    schema:isBasedOn ds:triples-rdf , ds:architecture .
+
+site:ai-models a schema:WebPage ;
+    schema:isPartOf site:docs ;
+    schema:name "Working with AI models" ;
+    schema:url "ai-models" ;
+    schema:position 4 ;
+    schema:abstract "What the models do here, what they are not trusted with, and how to run them locally." ;
+    schema:isBasedOn ds:llm .
+
+site:connecting-other-systems a schema:WebPage ;
+    schema:isPartOf site:docs ;
+    schema:name "Connecting other systems" ;
+    schema:url "connecting-other-systems" ;
+    schema:position 5 ;
+    schema:abstract "Bringing your own tools in and getting your knowledge back out. Every integration is optional." ;
+    schema:isBasedOn ds:integrations .
+
+site:working-safely a schema:WebPage ;
+    schema:isPartOf site:docs ;
+    schema:name "Working safely" ;
+    schema:url "working-safely" ;
+    schema:position 6 ;
+    schema:abstract "Keeping a graph trustworthy: what stays on your machine, what leaves, and how facts get checked." ;
+    schema:isBasedOn ds:tips-security .
+
+site:where-it-is-going a schema:WebPage ;
+    schema:isPartOf site:docs ;
+    schema:name "Where it is going" ;
+    schema:url "where-it-is-going" ;
+    schema:position 7 ;
+    schema:abstract "The direction of the project and the ecosystem it sits in — what is built, and what is intended." ;
+    schema:isBasedOn ds:timeline .
+
+# Deliberately LAST and separate: these datasets describe how this REPOSITORY is developed.
+# That is documentation for contributors, not for people using the product, and mixing the two
+# is part of why the current sidebar reads as noise.
+site:contributing a schema:WebPage ;
+    schema:isPartOf site:docs ;
+    schema:name "Contributing" ;
+    schema:url "contributing" ;
+    schema:position 8 ;
+    schema:abstract "How this repository is developed and tested — for people changing the code, not using the app." ;
+    schema:isBasedOn ds:coding-workflow , ds:testing .
+
+# ── Deliberately not published ───────────────────────────────────────────────
+# An EXCLUSION is not an ORPHAN. An orphan is an entity nobody decided about, and it stays
+# reported until someone does. An exclusion is a decision, and dcterms:description carries the
+# reason so the next person can tell whether it still holds. Composition REFUSES an exclusion
+# with no reason.
+#
+# reckons:excludes-under is the one local term in this file — see the header for why no standard
+# term fits.
+
+site:exclude-migration-tracker a skos:Concept ;
+    rdfs:label "Markdown migration tracker" ;
+    reckons:excludes-under <urn:reckons:arch/MigrationStatus> ;
+    dcterms:description "Internal bookkeeping about which docs/*.md files in THIS repository have been migrated to TTL — entries like \"GUIDE.md -> Superseded\". Useful to a maintainer, meaningless to someone using Reckons.AI, and currently published as 16 public pages on /docs." .
