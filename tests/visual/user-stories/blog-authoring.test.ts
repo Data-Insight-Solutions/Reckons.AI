@@ -118,14 +118,21 @@ test.describe('Blog authoring — visual', () => {
     }
   });
 
-  test('an invalid draft shows its objections and disables the save', async ({ page }) => {
+  test('a pristine form greets the author calmly, not with red errors', async ({ page }) => {
+    // Caught by looking at the first demo walkthrough: an untouched page showed THREE red
+    // objections before anything had been typed, which reads as broken software rather than as
+    // guidance. The save button carries the safety; the error text waits its turn.
     await page.goto(`${APP}/publish`);
     await page.getByTestId('post-title').waitFor({ timeout: 20_000 });
     await page.screenshot({ path: `${SHOTS}/desktop-empty.png`, fullPage: false });
 
-    await expect(page.getByTestId('post-problems')).toBeVisible();
+    await expect(page.getByTestId('post-problems')).toHaveCount(0);
     await expect(page.getByTestId('post-save')).toBeDisabled();
-    // The empty state must explain itself rather than showing a blank panel.
+    // The empty preview must explain itself rather than showing a blank panel.
     await expect(page.getByTestId('preview-empty')).toBeVisible();
+
+    // Once engaged, the remaining objections do appear.
+    await page.getByTestId('post-body').fill('Something worth saying.');
+    await expect(page.getByTestId('post-problems')).toBeVisible();
   });
 });

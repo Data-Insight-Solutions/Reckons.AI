@@ -44,6 +44,18 @@
 
   const draft = $derived<PostDraft>({ title, slug, section, date, excerpt, body, status });
 
+  /**
+   * A PRISTINE form states no objections.
+   *
+   * Validation is live, which is right once someone is writing and wrong the moment they arrive:
+   * an untouched page greeting a new author with three red errors reads as broken software, not
+   * as helpful guidance. Problems appear once the draft has actually been engaged with. The save
+   * button stays disabled either way, so nothing invalid can be submitted in the meantime.
+   */
+  const touched = $derived(
+    title.trim() !== '' || body.trim() !== '' || excerpt.trim() !== '' || slug.trim() !== '',
+  );
+
   /** Every post already in this graph — the collision set, and the list rendered below. */
   const existingPosts = $derived.by<SitePage[]>(() => sitePosts(buildSitePages(statements())));
 
@@ -111,8 +123,25 @@
    * real checkout; without one it downloads, because a file in the Downloads folder the user must
    * move by hand is still an honest handoff — silently doing nothing is not.
    */
+  /**
+   * Export any page in the list without loading it into the editor first.
+   *
+   * The editor's own export can only render the draft currently being edited, so after a reload
+   * the list showed posts beside a dead "export markdown" button — the post was clearly there and
+   * the obvious action did nothing. Found by walking the flow rather than by a test, which had
+   * exported before reloading and so never met an empty editor.
+   */
+  async function exportPage(page: SitePage) {
+    const markdown = pageToMarkdown(page, new Map([[page.iri, page.slug]]));
+    await writeMarkdown(page, markdown);
+  }
+
   async function exportMarkdown() {
     if (!previewPage) return;
+    await writeMarkdown(previewPage, previewMarkdown);
+  }
+
+  async function writeMarkdown(previewPage: SitePage, previewMarkdown: string) {
     failure = '';
     const path = contentPath(previewPage);
     try {
@@ -155,7 +184,7 @@
   }
 
   const problemFor = (field: keyof PostDraft) =>
-    validation.problems.find((p) => p.field === field)?.message ?? '';
+    touched ? (validation.problems.find((p) => p.field === field)?.message ?? '') : '';
 </script>
 
 <svelte:head><title>Write a post · Reckons.AI</title></svelte:head>
@@ -241,7 +270,7 @@
       {#if exported}<p class="ok mono" data-testid="post-exported">{exported}</p>{/if}
       {#if failure}<p class="err mono" data-testid="post-error">{failure}</p>{/if}
 
-      {#if !validation.ok}
+      {#if !validation.ok && touched}
         <!-- All objections at once. A form that reveals them one at a time gets filled in wrong
              four times. -->
         <ul class="problems" data-testid="post-problems">
@@ -284,6 +313,7 @@
               {post.status}
             </span>
             <span class="mono muted">{contentPath(post)}</span>
+            <button class="sm post-export-row" onclick={() => exportPage(post)}>export</button>
           </li>
         {/each}
       </ul>
@@ -364,6 +394,7 @@
     color: var(--muted); border: 1px solid var(--line);
     border-radius: 3px; padding: 0.1rem 0.3rem;
   }
+  .post-export-row { min-height: 44px; flex-shrink: 0; }
   .status-chip.published { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
   .muted { color: var(--muted); font-size: 0.75rem; }
 </style>

@@ -67,11 +67,25 @@ test.describe('blog authoring', () => {
     await expect(page.getByTestId('publish-boundary')).toContainText('does not put this on the live site');
   });
 
-  test('refuses an empty draft and names every problem at once', async ({ page }) => {
+  test('greets a new author with no objections, but cannot be submitted', async ({ page }) => {
+    // A pristine form showing three red errors reads as broken software, not as guidance. The
+    // save button carries the safety; the error text carries the teaching, and it waits its turn.
+    await expect(page.getByTestId('post-problems')).toHaveCount(0);
     await expect(page.getByTestId('post-save')).toBeDisabled();
+  });
+
+  test('names every problem at once as soon as the draft is engaged with', async ({ page }) => {
+    // A part-written post: body started, title still missing. Every remaining objection is shown
+    // together, since a form that reveals them one at a time gets filled in wrong four times.
+    await page.getByTestId('post-body').fill('Something worth saying.');
+
     const problems = page.getByTestId('post-problems');
     await expect(problems).toContainText('needs a title');
-    await expect(problems).toContainText('not a post');
+    await expect(page.getByTestId('post-save')).toBeDisabled();
+
+    // Clearing everything makes the form pristine again rather than leaving errors behind.
+    await page.getByTestId('post-body').fill('');
+    await expect(page.getByTestId('post-problems')).toHaveCount(0);
   });
 
   test('previews the exact file the export will write', async ({ page }) => {
