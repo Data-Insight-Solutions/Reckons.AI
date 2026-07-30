@@ -5,7 +5,8 @@
     confirmedStatements,
     deleteSource,
     statementsForSource,
-    addStatements
+    addStatements,
+    hotSwapData
   } from '$lib/stores/kb.svelte';
   import { toTurtle, toNQuads, parseNQuads } from '$lib/rdf/serialize';
   import { merge, splitByConcept, closure } from '$lib/rdf/reasoning';
@@ -40,6 +41,8 @@
     type KbEntry
   } from '$lib/storage/kb-registry';
   import { groupGraphsWithArchives, groupRows } from '$lib/storage/archive-gallery';
+  import { sweepArchiveByAge } from '$lib/storage/archive-store';
+  import { planAgeSweep, describeAgeSweep } from '$lib/rdf/archive-sweep';
   import { buildGifPackage } from '$lib/storage/gif-package';
   import { gifOverrides } from '$lib/stores/gif-overrides.svelte';
   import { db } from '$lib/storage/db';
@@ -195,6 +198,65 @@
   function handleBookmark(id: string) {
     toggleBookmark(id);
     localKbs = getRegistry();
+  }
+
+  // ── F97 age sweep — the entry point into the archive ───────────────────────
+  // Offered on the CURRENT graph only, because a sweep needs that graph's statements in memory
+  // and updating an unloaded graph's store afterwards is a different (and riskier) operation.
+  // The flow is preview-then-consent: the plan is computed live from what is loaded, the sentence
+  // names what will NOT be touched, and nothing moves until the button is pressed.
+  let sweepOpen = $state(false);
+  let sweepDays = $state(settings().archiveOlderThanDays ?? 365);
+  let sweepBusy = $state(false);
+  let sweepError = $state('');
+  let sweepDone = $state('');
+
+  const sweepPlan = $derived.by(() => {
+    if (!sweepOpen || !Number.isFinite(sweepDays) || sweepDays <= 0) return null;
+    try {
+      return planAgeSweep(statements(), { olderThanDays: sweepDays });
+    } catch {
+      return null;
+    }
+  });
+
+  async function runSweep(kb: KbEntry) {
+    const plan = sweepPlan;
+    if (!plan || plan.entities.length === 0 || sweepBusy) return;
+    if (!kb.stableId) {
+      sweepError = 'This graph has no stable id yet — open it once so it can be registered.';
+      return;
+    }
+    if (!confirm(
+      `Move ${plan.statementCount} fact(s) across ${plan.entities.length} entit(y/ies) into "${kb.name} (archives)"?\n\n`
+      + 'Archived is not deleted — the facts move to a separate graph and can be restored.',
+    )) return;
+
+    sweepBusy = true;
+    sweepError = '';
+    sweepDone = '';
+    try {
+      const { run } = await sweepArchiveByAge({
+        statements: statements(),
+        olderThanDays: sweepDays,
+        workingKbId: kb.id,
+        parentName: kb.name,
+        parentStableId: kb.stableId,
+        actor: 'human',
+      });
+      if (run) {
+        // The store still holds the pre-sweep statements; without this the UI would keep showing
+        // facts that are no longer in the working database until a reload.
+        hotSwapData(run.kept, sources());
+        sweepDone = `Archived ${run.archivedCount} fact(s) into ${run.event.entities.length} entit(y/ies) of history.`;
+        await updateSettings({ archiveOlderThanDays: sweepDays });
+        localKbs = getRegistry();
+      }
+    } catch (e) {
+      sweepError = e instanceof Error ? e.message : String(e);
+    } finally {
+      sweepBusy = false;
+    }
   }
 
   function startRename(kb: KbEntry) {
@@ -795,6 +857,70 @@
           {/if}
         </div>
       </div>
+
+      <!-- F97 entry point. On the current graph only: a sweep works on loaded statements, and
+           the honest alternative — opening another graph's database to sweep it unseen — is a
+           destructive move against something the user is not looking at. -->
+      {#if isCurrent && !group.orphanArchive}
+        <div class="kb-sweep">
+          <button
+            class="kb-sweep-toggle mono"
+            aria-expanded={sweepOpen}
+            onclick={() => { sweepOpen = !sweepOpen; sweepDone = ''; sweepError = ''; }}
+          >
+            {sweepOpen ? '▾' : '▸'} archive old events
+          </button>
+
+          {#if sweepOpen}
+            <div class="kb-sweep-body">
+              <label class="kb-sweep-field mono">
+                older than
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  bind:value={sweepDays}
+                  aria-label="Archive events older than this many days"
+                />
+                days
+              </label>
+
+              <!-- The plan, before anything moves. It names what it will NOT touch as loudly as
+                   what it will: a count that silently omits undated or unreviewed entities is
+                   true and still leaves the user with a false picture. -->
+              {#if sweepPlan}
+                <p class="kb-sweep-plan" data-testid="sweep-plan">{describeAgeSweep(sweepPlan)}</p>
+                {#if sweepPlan.entities.length > 0}
+                  <button
+                    class="sm danger kb-sweep-run"
+                    disabled={sweepBusy}
+                    onclick={() => runSweep(kb)}
+                  >
+                    {sweepBusy ? 'archiving…' : `archive ${sweepPlan.statementCount} facts`}
+                  </button>
+                {/if}
+              {:else}
+                <!-- Same slot, same testid: an invalid threshold must SAY so where the plan
+                     would have been, not leave the panel silent with a live button beneath it. -->
+                <p class="kb-sweep-plan muted-size" data-testid="sweep-plan">
+                  Enter a positive number of days.
+                </p>
+              {/if}
+
+              {#if sweepDone}
+                <p class="kb-sweep-done mono" data-testid="sweep-done">{sweepDone}</p>
+              {/if}
+              {#if sweepError}
+                <p class="err mono" data-testid="sweep-error">{sweepError}</p>
+              {/if}
+              <p class="kb-sweep-note">
+                Archived is not deleted — facts move to a separate archive graph, listed below,
+                and stay restorable. Nothing sweeps on its own; this runs only when you press it.
+              </p>
+            </div>
+          {/if}
+        </div>
+      {/if}
 
       <!-- Archive graphs (F97), nested under the graph whose history they hold. Rendered as a
            compact sub-row rather than a second full card: an archive is not a graph you work in,
@@ -1686,6 +1812,49 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
   }
   .kb-archive-actions { display: flex; gap: 0.3rem; align-items: center; flex-shrink: 0; }
+
+  /* F97 sweep control. Indented to the same 1.5rem as .kb-archive-row so the action and the
+     archive it fills read as one column belonging to the graph above them. */
+  .kb-sweep { margin-left: 1.5rem; }
+  .kb-sweep-toggle {
+    background: none; border: none; padding: 0.2rem 0; cursor: pointer;
+    font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--muted); min-height: 44px; /* touch minimum — see the F36 crawler finding */
+  }
+  .kb-sweep-toggle:hover { color: var(--accent); }
+  .kb-sweep-body {
+    display: flex; flex-direction: column; gap: 0.45rem;
+    padding: 0.55rem 0.85rem 0.7rem;
+    background: color-mix(in srgb, var(--surface) 60%, transparent);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--muted-2);
+    border-radius: var(--rad-sm);
+  }
+  .kb-sweep-field {
+    display: flex; align-items: center; gap: 0.4rem;
+    font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted);
+  }
+  .kb-sweep-field input {
+    width: 5.5rem; min-height: 44px;
+    font-family: var(--font-mono); font-size: 0.75rem;
+    color: var(--fg); background: var(--surface);
+    border: 1px solid var(--line); border-radius: var(--rad-sm);
+    padding: 0.2rem 0.4rem;
+  }
+  .kb-sweep-plan { font-size: 0.72rem; color: var(--fg); margin: 0; }
+  /* `button.danger` is borderless by design — it suits the "remove" link in a dense row. Here it
+     is the panel's one destructive action at the end of a deliberate flow, and borderless coral
+     text read as a hyperlink in the phone screenshot. Keep the danger colour (the semantics are
+     right) and give it back the button affordance. Caught by looking, not by an assertion. */
+  .kb-sweep-run {
+    align-self: flex-start;
+    min-height: 44px;
+    border-color: color-mix(in srgb, var(--danger) 55%, transparent);
+  }
+  /* Success takes the accent; there is no --success in the palette and inventing a fallback is
+     how the orphan badge came to render a caution in brand teal. */
+  .kb-sweep-done { font-size: 0.68rem; color: var(--accent); margin: 0; }
+  .kb-sweep-note { font-size: 0.65rem; color: var(--muted); margin: 0; line-height: 1.45; }
 
   .archive-badge {
     font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.04em;

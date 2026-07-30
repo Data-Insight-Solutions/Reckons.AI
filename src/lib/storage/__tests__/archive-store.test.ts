@@ -79,6 +79,7 @@ vi.mock('../db', () => ({
 const {
   runArchive, ensureArchiveKb, findArchiveKbId, loadArchiveSnapshot,
   loadArchivedFacts, findArchivedReferencesForParent, restoreArchivedEntityForParent,
+  sweepArchiveByAge,
   ArchivedEntityRestoreError, ArchivedStatementCollisionError,
 } = await import('../archive-store');
 const {
@@ -678,5 +679,120 @@ describe('runArchive — retention is part of the writer', () => {
       { db: archiveKbId, op: 'bulkDelete' },
       { db: workingKbId, op: 'bulkDelete' },
     ]);
+  });
+});
+
+// ── F97 age sweep: the entry point ───────────────────────────────────────────
+describe('age sweep', () => {
+  const SCHEDULED = 'urn:kbase:predicate/scheduled-at';
+  const NOW = Date.parse('2026-07-30T12:00:00Z');
+  const daysAgo = (n: number) => new Date(NOW - n * 86_400_000).toISOString();
+
+  const dated = [
+    st('urn:old', SCHEDULED, lit(daysAgo(400)), 'old|when'),
+    st('urn:old', LABEL, lit('Last year'), 'old|label'),
+    st('urn:new', SCHEDULED, lit(daysAgo(2)), 'new|when'),
+    st('urn:new', LABEL, lit('This week'), 'new|label'),
+  ];
+
+  const sweep = (statements: Statement[], olderThanDays = 90) =>
+    sweepArchiveByAge({
+      statements,
+      olderThanDays,
+      workingKbId,
+      parentName: 'Research',
+      parentStableId: 'stable-1',
+      actor: 'human',
+      now: () => NOW,
+      newId: () => 'evt-sweep',
+    });
+
+  it('moves only the aged entity and keeps the current one', async () => {
+    // Seed the working store so the DELETE half is observable, not just the returned `kept`.
+    stored[workingKbId] = [...dated];
+    const { plan, run } = await sweep(dated);
+
+    expect(plan.entities).toEqual(['urn:old']);
+    expect(run).not.toBeNull();
+    expect(run!.archivedCount).toBe(2);
+    expect(run!.kept.map((s) => s.id).sort()).toEqual(['new|label', 'new|when']);
+    expect((stored[workingKbId] ?? []).map((r) => (r as Statement).id).sort())
+      .toEqual(['new|label', 'new|when']);
+  });
+
+  it('journals the move as an age-drop', async () => {
+    const { run } = await sweep(dated);
+    const [event] = statementsToEvents(stored[run!.archiveKbId] as Statement[]);
+    expect(event.type).toBe('age-drop');
+    expect(event.entities).toEqual(['urn:old']);
+    expect(event.note).toContain('older than 90 days');
+  });
+
+  it('creates NO archive graph when the sweep would move nothing', async () => {
+    const recentOnly = dated.filter((s) => s.id.startsWith('new'));
+    const { plan, run } = await sweep(recentOnly);
+
+    expect(run).toBeNull();
+    expect(plan.entities).toEqual([]);
+    // The empty-sweep failure mode: a permanent archive row appearing as the only visible result.
+    expect(findArchiveKbId('stable-1')).toBeNull();
+    expect(calls).toEqual([]);
+  });
+
+  it('still returns the plan when nothing moved, so the user learns why', async () => {
+    const { plan } = await sweep([
+      st('urn:undated', LABEL, lit('No date'), 'u|label'),
+      st('urn:held', SCHEDULED, lit(daysAgo(400)), 'h|when'),
+      { ...st('urn:held', LABEL, lit('?'), 'h|label'), status: 'pending' as const },
+    ]);
+
+    expect(plan.entities).toEqual([]);
+    expect(plan.undatedCount).toBe(1);
+    expect(plan.heldForReview).toEqual(['urn:held']);
+  });
+
+  it('leaves a held-for-review entity in the working graph', async () => {
+    const graphWithPending = [
+      ...dated,
+      { ...st('urn:old', 'urn:p/note', lit('unsettled'), 'old|pending'), status: 'pending' as const },
+    ];
+    const { plan, run } = await sweep(graphWithPending);
+
+    expect(plan.heldForReview).toEqual(['urn:old']);
+    expect(run).toBeNull();
+    expect(findArchiveKbId('stable-1')).toBeNull();
+  });
+
+  it('refuses a threshold that would sweep the whole graph', async () => {
+    await expect(sweep(dated, 0)).rejects.toThrow(/positive number of days/);
+    expect(calls).toEqual([]);
+  });
+});
+
+describe('reactive state never reaches IndexedDB', () => {
+  // Regression, 2026-07-30. Dexie stores STRUCTURED CLONES and a Svelte 5 `$state` array hands
+  // out Proxies that structuredClone refuses. Every unit suite was green while the real browser
+  // threw DataCloneError mid-move, because a mocked Dexie clones nothing — so this test asserts
+  // the property directly rather than trusting the mock to reproduce it.
+  it('writes structured-cloneable rows even when handed proxied statements', async () => {
+    const proxied = graph.map((s) => new Proxy(s, {
+      get: (target, key) => Reflect.get(target, key),
+    }));
+
+    const { archiveKbId } = await runArchive({
+      statements: proxied,
+      entities: ['urn:gone'],
+      type: 'delete',
+      actor: 'human',
+      workingKbId,
+      parentName: 'Research',
+      parentStableId: 'stable-1',
+      now: () => 1,
+      newId: () => 'evt-proxy',
+    });
+
+    // structuredClone is what Dexie actually performs. If any proxy survived, this throws.
+    expect(() => structuredClone(stored[archiveKbId])).not.toThrow();
+    expect(() => structuredClone(stored[workingKbId] ?? [])).not.toThrow();
   });
 });
