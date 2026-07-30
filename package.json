@@ -70,6 +70,7 @@
     "docs:compose": "npx tsx scripts/docs-compose.ts",
     "docs:consolidate": "npx tsx scripts/offline/docs-consolidate.ts",
     "website:align": "npx tsx scripts/offline/website-align.ts",
+    "roadmap:readiness": "npx tsx scripts/offline/roadmap-readiness.ts",
     "bench:compression": "npx tsx tests/bench/run-compression-bench.ts --save",
     "bench:landing": "npx tsx tests/bench/run-landing-page-bench.ts --save",
     "bench:landing:e2e": "npx tsx tests/bench/run-landing-page-e2e.ts --save",
