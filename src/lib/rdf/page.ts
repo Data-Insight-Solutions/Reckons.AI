@@ -33,6 +33,23 @@ export const PAGE_GENERATED = `${PAGE_NS}generated`;
 
 export const WEBPAGE_TYPE = 'urn:kbase:type/WebPage';
 
+/**
+ * What a page is MADE FROM (F27 composition).
+ *
+ * A page declares its sources instead of the generator awarding one page per entity. That
+ * inversion is what lets a single readable page draw on several graphs — and it is the only way
+ * to express it, since `resolveHomeFile()` picks ONE owning file per entity and drops the other's
+ * assertions rather than merging them.
+ */
+/** A whole graph file, e.g. "docs-architecture.ttl". Repeatable — a page may source many. */
+export const PAGE_SOURCES_GRAPH  = `${PAGE_NS}sources-graph`;
+/** One entity by IRI, wherever it is asserted. Repeatable. */
+export const PAGE_SOURCES_ENTITY = `${PAGE_NS}sources-entity`;
+/** A humanized rdf:type local name, e.g. "Feature". Repeatable. */
+export const PAGE_SOURCES_TYPE   = `${PAGE_NS}sources-type`;
+/** Why a reader would open this page. Required by composition — see page-composition.ts. */
+export const PAGE_PURPOSE        = `${PAGE_NS}purpose`;
+
 const RDF_TYPE   = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
 

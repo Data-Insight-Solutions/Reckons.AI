@@ -455,6 +455,24 @@ kb:gp-authoring rdf:type     ktype:Concept ;
                kpred:remaining    "Reckoning (Situation-Target-Proposal) as a drafting path for page content; an authored-post route in the built site (today only the docs loader's build-time glob renders pages, so an authored post needs a commit + rebuild); a publish/unpublish action distinct from the draft/published field; and deciding whether authored posts should live in the same graph as the user's knowledge or in a dedicated site graph." ;
                kpred:has-status   "scaffolded" .
 
+kb:docs-consolidation rdf:type ktype:Feature ;
+    rdfs:label "Docs consolidation — a page declares the graphs it is made from" ;
+    kpred:feature-id "F27.3" ;
+    kpred:has-status "scaffolded" ;
+    kpred:part-of kb:graph-publishing ;
+    kpred:depends-on kb:webpage-entity ;
+    kpred:has-file "src/lib/publish/page-composition.ts" ;
+    kpred:has-file "scripts/offline/docs-consolidate.ts" ;
+    kpred:has-file "static/docs-site.ttl" ;
+    kpred:tested-by "src/lib/publish/__tests__/page-composition.test.ts" ;
+    kpred:description "scripts/docs-pages.ts publishes one page per ENTITY: any subject with an rdf:type under urn:kbase:type/ becomes its own file. 269 entities therefore produce 269 pages, alphabetical, with no editorial layer — /docs measured 23,407px tall with 815 anchors. This inverts it: a PAGE is authored in static/docs-site.ttl and DECLARES its sources (a graph, a named entity, or a type filter), and composition gathers the matching entities into it. One page can source from SEVERAL graphs, which is the thing resolveHomeFile() cannot express — it awards each entity to one owning file and DROPS the other's assertions rather than merging them." ;
+    kpred:principle "Consolidating 269 pages into eight is an EDITORIAL act, and the only difference between 'curated' and 'we lost 250 pages of content' is whether the leftovers are visible. So composition always reports what no page claimed, and npm run docs:consolidate exits non-zero when anything would be dropped. Publishing fewer pages is a decision; doing it silently is data loss with a tidier sidebar." ;
+    kpred:principle "An EXCLUSION is not an ORPHAN. An orphan is an entity nobody decided about and stays reported until someone does; an exclusion is a decision carrying its reason, so the next person can tell whether it still holds. Composition refuses an exclusion with no stated reason." ;
+    kpred:proof "Scaffolded 2026-07-30: 20 unit tests on the pure core, and npm run docs:consolidate runs against the real corpus — 269 entities compose into 8 pages (Start here 26, What it does 54, How it works 48, Working with AI models 9, Connecting other systems 33, Working safely 20, Where it is going 28, Contributing 29), 22 markdown-migration-tracker entries deliberately excluded with a stated reason, and ZERO orphans. Full suite 1,485 tests, 0 type errors, align green, graph-lint 0 errors." ;
+    kpred:honest-note "THE PROPOSED SITE IS NOT THE LIVE SITE (2026-07-30). scripts/docs-pages.ts still publishes one page per entity and content/ still holds 271 files; nothing rendered by /docs has changed. What exists is the mechanism, the proposed architecture in static/docs-site.ttl, and a report that proves the proposal loses nothing. Wiring composition into the generator — and therefore deleting 269 content files — is a deliberate, reviewed change that has not been made, and the eight-page split is an EDITORIAL proposal that is Matt's to accept or redraw, not mine to impose." ;
+    kpred:honest-note "A CONTENT BUG THE VOLUME WAS HIDING: 16 pages titled like 'GUIDE.md -> Superseded' and 4 titled 'Gap: …' are internal bookkeeping about this repository's own docs migration, published as public documentation on /docs. They are covered by the migration-tracker exclusion here, but they are live on the site until composition ships — that is a smaller, separable fix worth making on its own." ;
+    kpred:remaining "Wire composePages into scripts/docs-pages.ts behind the same --check discipline md-align already uses; render a composed page (sections grouped by source graph, with the page's purpose as its lede); decide whether an entity claimed by two pages should duplicate or be assigned; and delete the 269 generated per-entity files once the composed pages replace them." .
+
 kb:sveltia-cms-setup rdf:type ktype:Concept ;
                rdfs:label    "Sveltia CMS — Setup (GitHub OAuth)" ;
                kpred:part-of      kb:graph-publishing ;
