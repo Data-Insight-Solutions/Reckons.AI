@@ -1369,6 +1369,22 @@
 </section>
 
 
+<!-- ── Publishing (F27) ───────────────────────────────────────────────────
+     The entry point to the publishing pipeline. It lives here rather than in the primary nav
+     because that bar already carries nine controls at phone width and crowding it works against
+     F36 — but it must live SOMEWHERE reachable: the whole publish module sat with no caller in
+     the app at all until this landed, which is how a built feature stays unusable. -->
+<section class="section">
+  <div class="section-head">
+    <h3>publishing</h3>
+    <a href="/publish" class="ghost sm mono nav-cta" data-testid="kb-write-post">write a post →</a>
+  </div>
+  <p class="section-hint">
+    author a post as a node in this graph, preview the markdown it produces, and export it into
+    the site's content folder. building and deploying the site stay separate steps.
+  </p>
+</section>
+
 <!-- ── Entity Types ────────────────────────────────────────────────────── -->
 <section class="section">
   <div class="section-head">
