@@ -22,6 +22,8 @@ AI safety company behind the Claude model family. Claude powers Reckons.AI's def
 
 An open-source Java framework for building Semantic Web and Linked Data applications. Includes a SPARQL engine (ARQ), a triple store (TDB), and a rule-based reasoner.
 
+See also: [How it works](/docs/learn/how-it-works)
+
 ### Dan Brickley
 
 Co-creator of FOAF (Friend of a Friend) vocabulary and Schema.org. Demonstrated that RDF could describe social networks long before Facebook.
@@ -33,6 +35,8 @@ Software consultancy behind Reckons.AI. Founded by Matthew Roe. Focused on knowl
 ### DBpedia Launch
 
 DBpedia extracts structured data from Wikipedia and publishes it as RDF. One of the first and largest Linked Data datasets. Demonstrated that RDF could work at web scale.
+
+See also: [How it works](/docs/learn/how-it-works)
 
 ### Dublin Core Metadata Initiative (DCMI)
 
@@ -50,13 +54,19 @@ Develops internet standards including URI/IRI specifications (RFC 3986, RFC 3987
 
 W3C Recommendation for embedding linked data in JSON. Made RDF accessible to web developers who found RDF/XML and Turtle unfamiliar. Adopted by Schema.org as the preferred format.
 
+See also: [How it works](/docs/learn/how-it-works)
+
 ### Knowledge Graphs Meet LLMs
 
 The convergence of structured knowledge graphs with large language models. LLMs can extract triples from text (what Reckons.AI does), query graphs in natural language, and ground their answers in verified facts. This synergy addresses both LLM hallucination and the knowledge graph population bottleneck.
 
+See also: [Start here](/docs/learn/start-here)
+
 ### Linked Data Principles
 
 Tim Berners-Lee's four rules: (1) Use URIs as names. (2) Use HTTP URIs so people can look them up. (3) Provide useful RDF information at those URIs. (4) Include links to other URIs for discovery. Published as a Design Issues note.
+
+See also: [How it works](/docs/learn/how-it-works)
 
 ### Matthew Roe
 
@@ -65,6 +75,8 @@ Owner-operator of Data Insight Solutions LLC. Creator of Reckons.AI. Designed th
 ### Model Context Protocol (MCP)
 
 An open protocol by Anthropic for connecting AI models to external data sources and tools. Reckons.AI implements an MCP server so Claude Desktop, Cursor, and other agents can query your knowledge graph.
+
+See also: [Start here](/docs/learn/start-here)
 
 ### OpenLink Software (Virtuoso)
 
@@ -90,9 +102,13 @@ Updated W3C Recommendation. Added Turtle and JSON-LD as official serializations,
 
 Public launch of Reckons.AI -- a local-first personal knowledge graph built on RDF Turtle. Created by Matthew Roe at Data Insight Solutions LLC. Runs entirely in the browser. LLM-powered triple extraction, 3D graph visualization, browser extension for research sessions, and MCP server for AI agent integration.
 
+See also: [Start here](/docs/learn/start-here)
+
 ### Schema.org
 
 A collaborative vocabulary founded by Google, Bing, Yahoo, and Yandex in 2011. Provides structured data types for web content. Uses JSON-LD as the preferred format — the largest deployment of linked data on the web.
+
+See also: [How it works](/docs/learn/how-it-works)
 
 ### Semantic Web Vision (Scientific American)
 
@@ -109,6 +125,8 @@ W3C Recommendation for validating RDF graphs against a set of constraints (shape
 ### SPARQL 1.0
 
 First W3C Recommendation for querying RDF graphs. SPARQL is to triple stores what SQL is to relational databases. Enabled programmatic access to any RDF dataset.
+
+See also: [How it works](/docs/learn/how-it-works)
 
 ### The AI Alliance
 

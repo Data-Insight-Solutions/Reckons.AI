@@ -28,10 +28,13 @@ import { Parser, type Quad } from 'n3';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { composePages, describeComposition, type SourceEntity } from '../src/lib/publish/page-composition';
+
+/** A SourceEntity plus the outbound relations composition itself does not need. */
+type LinkableEntity = SourceEntity & { related?: string[] };
 import { readWebsiteGraph } from '../src/lib/publish/website-graph';
 import { contentPath, pageToMarkdown } from '../src/lib/publish/site-export';
 import { parsePageFile } from '../src/lib/publish/site-import';
-import { type SitePage } from '../src/lib/rdf/page';
+import { slugify, type SitePage } from '../src/lib/rdf/page';
 import { escapeMdText } from '../src/lib/publish/md-escape';
 
 const ROOT = resolve(import.meta.dirname ?? '.', '..');
@@ -46,6 +49,7 @@ const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
 const SKOS_DEFINITION = 'http://www.w3.org/2004/02/skos/core#definition';
 const SKOS_BROADER = 'http://www.w3.org/2004/02/skos/core#broader';
+const SKOS_RELATED = 'http://www.w3.org/2004/02/skos/core#related';
 const KTYPE_NS = 'urn:kbase:type/';
 const NAV_DOCS_NS = 'urn:reckons:docs/nav/';
 
@@ -68,14 +72,15 @@ function parseTtl(file: string): Quad[] {
 }
 
 /** Every publishable entity, one row per (entity, graph) so nothing is lost before composition. */
-function readEntities(): SourceEntity[] {
-  const out: SourceEntity[] = [];
+function readEntities(): LinkableEntity[] {
+  const out: LinkableEntity[] = [];
   for (const graph of CORPUS) {
     const quads = parseTtl(graph);
     const types = new Map<string, string[]>();
     const titles = new Map<string, string>();
     const defs = new Map<string, string>();
     const parents = new Map<string, string>();
+    const related = new Map<string, string[]>();
 
     for (const q of quads) {
       const s = q.subject.value;
@@ -85,6 +90,9 @@ function readEntities(): SourceEntity[] {
       } else if (q.predicate.value === RDFS_LABEL) titles.set(s, q.object.value);
       else if (q.predicate.value === SKOS_DEFINITION) defs.set(s, q.object.value);
       else if (q.predicate.value === SKOS_BROADER) parents.set(s, q.object.value);
+      else if (q.predicate.value === SKOS_RELATED) {
+        related.set(s, [...(related.get(s) ?? []), q.object.value]);
+      }
     }
     for (const [iri, t] of types) {
       out.push({
@@ -93,6 +101,7 @@ function readEntities(): SourceEntity[] {
         definition: defs.get(iri) ?? '',
         types: [...t].sort(),
         parent: parents.get(iri),
+        related: related.get(iri) ?? [],
       });
     }
   }
@@ -114,6 +123,11 @@ function readEntities(): SourceEntity[] {
 function renderBody(
   page: { title: string; purpose: string; sections: Array<{ graph: string; entities: SourceEntity[] }> },
   datasetTitles: Map<string, string>,
+  /** Every entity in the whole site to the page that now holds it — the cross-link index. */
+  homeOf: Map<string, { title: string; url: string }> = new Map(),
+  /** Outbound skos:related per entity, read from the source graphs. */
+  relations: Map<string, string[]> = new Map(),
+  selfUrl = '',
 ): string {
   // Every piece of free text is escaped. The docs TTLs are prose written for humans, and the
   // first composed page failed to compile on a definition containing a literal {@html}.
@@ -128,6 +142,20 @@ function renderBody(
     for (const entity of section.entities) {
       out.push(`### ${escapeMdText(entity.title)}`, '');
       if (entity.definition) out.push(escapeMdText(entity.definition), '');
+
+      // Cross-links, derived rather than authored: a related entity that now lives on ANOTHER
+      // composed page becomes a link to it. Consolidation moved 269 pages into 8, which made
+      // every one of these relations invisible — the entities are still related, they just share
+      // a page now. Same-page targets are skipped: linking a reader to where they already are is
+      // noise, and page-level anchors are not guaranteed by the markdown pipeline.
+      const targets = (relations.get(entity.iri) ?? [])
+        .map((iri) => homeOf.get(iri))
+        .filter((t): t is { title: string; url: string } => !!t && t.url !== selfUrl);
+      const seen = new Set<string>();
+      const unique = targets.filter((t) => (seen.has(t.url + t.title) ? false : (seen.add(t.url + t.title), true)));
+      if (unique.length > 0) {
+        out.push(`See also: ${unique.map((t) => `[${escapeMdText(t.title)}](${t.url})`).join(' · ')}`, '');
+      }
     }
   }
   return out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
@@ -196,6 +224,20 @@ function main(): void {
   }
 
   const datasetTitles = new Map(website.datasets.map((d) => [d.file, d.title]));
+
+  // Where every entity ENDED UP, built before any page renders so a page can link forward to one
+  // composed later. Without this pass the links would depend on page order.
+  const homeOf = new Map<string, { title: string; url: string }>();
+  for (const composed of report.pages) {
+    const url = `/docs/${slugify(composed.section)}/${composed.slug}`;
+    for (const section of composed.sections) {
+      for (const e of section.entities) homeOf.set(e.iri, { title: composed.title, url });
+    }
+  }
+  const relations = new Map<string, string[]>(
+    entities.map((e) => [e.iri, (e as LinkableEntity).related ?? []]),
+  );
+
   const files: Array<{ path: string; markdown: string }> = [];
 
   for (const composed of report.pages) {
@@ -210,7 +252,7 @@ function main(): void {
       status: 'published',
       nav: 'sidebar',
       excerpt: composed.purpose,
-      body: renderBody(composed, datasetTitles),
+      body: renderBody(composed, datasetTitles, homeOf, relations, `/docs/${slugify(composed.section)}/${composed.slug}`),
       related: [], next: null, prev: null, date: null,
       generated: COMPOSED_TAG,
     };

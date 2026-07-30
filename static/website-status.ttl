@@ -55,7 +55,7 @@ set:docs-site a dcat:Catalog ;
 status:observation a prov:Activity ;
     dcterms:title "Content-layer observation" ;
     prov:used <https://reckons.ai/artifact/content> ;
-    prov:endedAtTime "2026-07-30T16:03:44.180Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> ;
+    prov:endedAtTime "2026-07-30T21:45:35.642Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> ;
     prov:wasAssociatedWith status:website-align ;
     dcterms:type "content-layer" ;
     dcterms:description "Walked content/**/*.md and read each file through src/lib/publish/site-import.ts — the same parser the site uses. Each URL is derived from where the file actually sits, not from what its frontmatter claims." ;
@@ -72,7 +72,7 @@ status:website-align a prov:SoftwareAgent ;
 status:docs a schema:WebSite ;
     schema:name "Reckons.AI documentation (observed)" ;
     schema:url <https://reckons.ai/docs> ;
-    dcterms:extent "10" ;
+    dcterms:extent "11" ;
     prov:wasGeneratedBy status:observation .
 
 status:build-ai-models a schema:WebPage ;
@@ -152,6 +152,15 @@ status:project-contributing a schema:WebPage ;
     dcterms:source "content/project/contributing.md" ;
     schema:creativeWorkStatus "published" ;
     prov:wasDerivedFrom "docs-composed" ;
+    dcterms:type "doc" .
+
+status:project-how-this-site-is-built a schema:WebPage ;
+    schema:isPartOf status:docs ;
+    schema:name "How this site is built" ;
+    schema:url <https://reckons.ai/docs/project/how-this-site-is-built> ;
+    dcterms:isPartOf "Project" ;
+    dcterms:source "content/project/how-this-site-is-built.md" ;
+    schema:creativeWorkStatus "published" ;
     dcterms:type "doc" .
 
 status:project-where-it-is-going a schema:WebPage ;

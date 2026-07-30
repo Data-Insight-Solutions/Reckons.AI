@@ -137,6 +137,8 @@ The /settings page with LLM backend selection, API key inputs, model configurati
 
 Reckons.AI test infrastructure: 336+ unit tests (Vitest + jsdom), Playwright E2E with 6 device profiles, visual regression with pixel analysis + DOM overlap + text presence checks, optional Mistral OCR and Claude Vision tiers. All tests run locally without API keys.
 
+See also: [Start here](/docs/learn/start-here)
+
 ### Unit Tests
 
 336+ tests via Vitest with jsdom environment. Coverage: RDF serialize/import, temporal conflict detection, semantic diff, merge analysis, content safety (28 tests), embedding, mobile auth. Run: npx vitest run.

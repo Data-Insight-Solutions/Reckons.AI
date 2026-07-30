@@ -32,6 +32,8 @@ Entities link via skos:related, skos:broader, skos:narrower. A feature entity co
 
 Per-graph currents configuration (allowed entity types, per-current source/cadence/label) lives IN the graph as ordinary statements under the urn:reckons:meta/currents/ namespace, the same pattern used by nav:order for hierarchy. This means settings travel with TTL export/import and are visible to MCP tools without a separate settings store. isMetaPredicate hides the whole namespace from the rendered graph edges so it does not clutter the visualization.
 
+See also: [What it does](/docs/learn/what-it-does)
+
 ### Dependency Health
 
 Core deps: svelte 5, sveltekit 2, dexie 4, n3 1.x, three 0.169, @huggingface/transformers 3.x, bits-ui 2.x, fflate 0.8. Dev deps: vitest 4.x, playwright 1.x, typescript 5.x. All deps actively maintained. No abandoned packages. Browser-only runtime — no server deps in production.
@@ -59,6 +61,8 @@ Step-by-step instructions (install X, then configure Y, then run Z) are awkward 
 ### Graph Is Source of Truth (Docs Pipeline)
 
 The docs TTL knowledge graphs (static/*.ttl) are the canonical source for the published /docs site, not the other way around: scripts/docs-pages.ts reads the docs graphs and generates content/*.md, which SvelteKit prerenders. There is deliberately NO markdown-to-TTL back-propagation (decided 2026-07-03): graph edits happen in the app or directly on the TTL files, the Sveltia CMS admin UI is only for non-generated content, and hand-edits to generated pages are overwritten by the next regeneration by design. scripts/md-align.ts (built on the site-import round-trip) flags generated pages that have drifted from their graph, so accidental hand-edits are caught rather than silently absorbed.
+
+See also: [What it does](/docs/learn/what-it-does)
 
 ### Local-First Architecture
 
@@ -96,6 +100,8 @@ Standard: rdf:type, rdfs:label, skos:definition, skos:broader, skos:related, sko
 
 Small local models (via Ollama) are unreliable at freeform triple extraction, so the local extraction path constrains the model to a fixed JSON schema (subject/predicate/object/type fields) with a compact prompt rather than the richer freeform prompt used for cloud backends. This trades some extraction nuance for reliability: schema-constrained output parses deterministically even from a 1-4B parameter model, where freeform JSON from the same model frequently fails to parse. Structured output is still treated as ordinary pending proposals — nothing bypasses review.
 
+See also: [What it does](/docs/learn/what-it-does)
+
 ### Static Deployment
 
 SvelteKit adapter-static produces a pure client-side build. No server-side runtime in production. Deployable to any static host (Netlify, Vercel, GitHub Pages, local file server). Vite dev server provides HMR during development only.
@@ -119,6 +125,8 @@ Reckons.AI uses its own TTL knowledge graphs as the primary documentation format
 ### Workspace Folder Design
 
 User-selected directory via File System Access API (Chrome/Edge only). Structure: knowledge.ttl (legacy single-Graph), kbs/{String.fromCharCode(123)}name{String.fromCharCode(125)}/{String.fromCharCode(123)}name{String.fromCharCode(125)}.ttl + meta.json (multi-Graph; legacy kbs/{String.fromCharCode(123)}name{String.fromCharCode(125)}/kb.ttl still read as a fallback), knowledge.pending.jsonl (MCP inbox), settings_profile.json. Auto-exports on every graph mutation (2s debounce). sources.json was removed: it was written on export but never consumed on import, so it added disk writes without a reader.
+
+See also: [What it does](/docs/learn/what-it-does)
 
 ### Workspace TTL Naming Convention
 
@@ -170,6 +178,8 @@ A W3C vocabulary for expressing provenance: who created something, when, and fro
 
 Every triple in Reckons.AI carries its source. You always know where a fact came from, how trusted that source is, and when it was added. Metadata about metadata -- this is what makes a graph trustworthy.
 
+See also: [What it does](/docs/learn/what-it-does)
+
 ### RDF (Resource Description Framework)
 
 A W3C standard for representing knowledge as a graph of linked statements. The foundation of the Semantic Web. RDF itself is abstract -- Turtle, JSON-LD, and RDF/XML are concrete serialization formats.
@@ -202,9 +212,13 @@ Subject: the entity being described (always an IRI). Predicate: the relationship
 
 1. Ingest -- paste text, upload documents, import calendars. 2. Review -- the LLM extracts triples, you confirm or reject each one. 3. Explore -- navigate your 3D knowledge graph. 4. Ask Shelly -- get answers grounded in your confirmed facts. 5. Share -- export your .ttl.
 
+See also: [What it does](/docs/learn/what-it-does)
+
 ### The Semantic Triple
 
 The fundamental unit of knowledge in RDF: a three-part statement -- subject, predicate, object. Any fact expressible in human language can be expressed as a triple. Triples connect to form a graph, and graphs reveal relationships that documents hide.
+
+See also: [Start here](/docs/learn/start-here)
 
 ### Turtle (.ttl) Syntax
 

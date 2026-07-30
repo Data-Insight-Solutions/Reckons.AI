@@ -75,6 +75,7 @@ site:docs a schema:WebSite ;
                    site:where-it-is-going ,
                    site:contributing ,
                    site:welcome ,
+                   site:how-built ,
                    site:release-notes .
 
 # ── The datasets each page is built from ─────────────────────────────────────
@@ -217,6 +218,14 @@ site:welcome a schema:WebPage ;
     schema:url <https://reckons.ai/docs/docs/welcome> ;
     schema:position 0 ;
     schema:abstract "The first graph-authored page — pages are nodes in the Reckons.AI graph." .
+
+site:how-built a schema:WebPage ;
+    schema:isPartOf site:docs ;
+    dcterms:isPartOf "Project" ;
+    schema:name "How this site is built" ;
+    schema:url <https://reckons.ai/docs/project/how-this-site-is-built> ;
+    schema:position 9 ;
+    schema:abstract "How the docs are composed from the graph, and what does not work yet." .
 
 site:release-notes a schema:WebPage ;
     schema:isPartOf site:docs ;

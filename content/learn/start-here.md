@@ -26,6 +26,8 @@ A step-by-step guide to building your first knowledge graph.
 
 Nothing enters your confirmed knowledge graph without your explicit review. Every triple extracted by an LLM starts as 'pending' and must be confirmed, rejected, or refined by you. You are the authority.
 
+See also: [What it does](/docs/learn/what-it-does)
+
 ### LEAP: Architecture & Design
 
 Click for architecture decisions, TTL-first documentation strategy, standards alignment (PROV-O, SKOS), deployment patterns, style conventions, dependency health, and the markdown migration tracker.
@@ -82,29 +84,43 @@ A practical knowledge graph with people, projects, research notes, decisions, an
 
 A personal knowledge graph that runs entirely in your browser. Local-first, open-source, human-in-the-loop. Your data, your device, your authority.
 
+See also: [What it does](/docs/learn/what-it-does) · [Connecting other systems](/docs/build/connecting-other-systems)
+
 ### Step 1: Choose an LLM Backend
 
 Go to Settings and configure at least one LLM provider. Ollama (free, local) or OpenRouter (free tier) are good starting points.
+
+See also: [What it does](/docs/learn/what-it-does)
 
 ### Step 2: Ingest Your First Content
 
 Go to add (the + tab) and paste text, a URL, or upload a document. The LLM will extract semantic facts automatically.
 
+See also: [What it does](/docs/learn/what-it-does)
+
 ### Step 3: Review Pending Statements
 
 Go to Review to see extracted triples. Confirm accurate ones, reject incorrect ones, refine those that need adjustment.
+
+See also: [What it does](/docs/learn/what-it-does)
 
 ### Step 4: Explore the Graph
 
 Go to view (the home tab) to see your knowledge in 3D. Click nodes to select them, use the RadialMenu for actions, and use filters to focus. The graph tab manages your graphs: create, switch, rename, currents, and publishing.
 
+See also: [What it does](/docs/learn/what-it-does)
+
 ### Step 5: Ask Shelly
 
 Click the turtle icon in the search bar to chat with Shelly. Ask questions about your graph, play the story walkthrough, or request a Reckoning.
 
+See also: [What it does](/docs/learn/what-it-does)
+
 ### Step 6: Export and Share
 
 Go to Settings -&gt; Backup and Export to download your graph as Turtle. Share the .ttl file or set up workspace sync for MCP integration.
+
+See also: [What it does](/docs/learn/what-it-does)
 
 ### The Reckons.AI Story
 
@@ -112,6 +128,10 @@ Go to Settings -&gt; Backup and Export to download your graph as Turtle. Share t
 
 Reckons.AI is a personal knowledge graph that runs entirely in your browser. No server, no account, no cloud dependency. Your data stays on your device in IndexedDB, and you control every piece of knowledge that enters your graph through a human review process.
 
+See also: [How it works](/docs/learn/how-it-works)
+
 ### Why Reckons.AI Matters
 
 In an era of information overload, Reckons.AI gives individuals a structured way to capture, verify, connect, and retrieve knowledge. It bridges the gap between human understanding and machine processing -- your knowledge becomes queryable, shareable, and portable.
+
+See also: [What it does](/docs/learn/what-it-does)

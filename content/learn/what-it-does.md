@@ -182,6 +182,8 @@ A lab PI maintains a shared base graph of literature reviews, experimental param
 
 One person organizes a graph around a shared topic, exports a .ttl file, and distributes it. Others import it as a source in their own graph. Each person uses Shelly and the Reckoning to ask questions relevant to them. Decisions are annotated with the sources that informed them. When things change, the organizer re-exports and importers see the diff in Compare.
 
+See also: [Start here](/docs/learn/start-here)
+
 ### Corporate Pushback
 
 When a company stonewalls, you need precision. Ingest their terms of service, your complaint history, regulatory requirements, and previous communications. Shelly can draft a response that cites chapter and verse from THEIR OWN documents.
@@ -221,6 +223,8 @@ Organize diagnoses, prescriptions, test results, and doctor correspondence. Quer
 ### Power to the Individual
 
 Insurance companies have teams of analysts. Corporations have legal departments. Landlords have property managers. You have your memory and a stack of papers? Not anymore. Build a graph of your rights, evidence, and correspondence. Ask Shelly to draft a precise response citing YOUR documented facts. You communicate with the authority of an institution.
+
+See also: [Start here](/docs/learn/start-here)
 
 ### Recurring Source Ingestion
 
