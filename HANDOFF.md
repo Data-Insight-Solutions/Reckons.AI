@@ -1,9 +1,56 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-07-28.** Working branch this session:
-`chore/sync-main-into-dev-2026-07-28`.
+**Last updated: 2026-07-29.** Working branch this session: `feat/archive-gallery-grouping`
+(**PR #170 → `dev`**, base verified).
 Everything below the "SESSION 2026-07-23" block is the older F97 context and is still live
 (PR #119 is still open) — read it after the current standing.
+
+## ▶ LATEST (2026-07-29) — F97.1 gallery display, and the gap it exposed
+
+**PR #170 → `dev`.** Build-order step 2 from this file ("show the archive graph beside its
+parent in `/kb`") was still unbuilt — `archiveOf` existed in storage and appeared **nowhere in
+the UI**. It does now: an archive renders nested under its parent, badged, with its fact count.
+`src/lib/storage/archive-gallery.ts` is the pure half (no sorting of its own, so the gallery's
+recent/name/size order still wins). It adopts **legacy archives linked by parent NAME**, keeps an
+**orphaned archive visible and labelled**, and never nests an archive under another archive.
+
+**🚨 THE REAL FINDING — F97 HAS NO ENTRY POINT.** Nothing in the app calls `runArchive` or
+`ensureArchiveKb`; grepping `src/` finds no caller outside `archive-store.ts` and its tests. No
+"archive now" action, no age threshold, **no sweep**. So the storage layer, restore-on-reference,
+retention and now the gallery display all exist and **no user action reaches any of them** —
+F97's own headline ("auto-archive of events older than a configurable threshold") is unbuilt.
+F97.1 therefore **STAYS `scaffolded`**; the display is proven against SEEDED data only, which is a
+smaller claim than "the feature works". Recorded as F97.1 `kpred:remaining`.
+**This is the next highest-leverage F97 step** — until it lands, every phase below F97.1 is a
+component of a feature nobody can start.
+
+**LESSON, again, the same one:** two bugs were found by **LOOKING at a screenshot**, and both
+test suites passed on both. The orphan badge used `var(--warn, var(--accent))` and **there is no
+`--warn` in the palette**, so a caution rendered as a brand-teal chip identical to `current`; and
+the archive's `open` button reused `.kb-switch-action`, which the mobile block gives
+`grid-column: 1 / -1`, so it spanned full width and stranded `open tab` alone at 412px. Also
+worth keeping: the 13 unit tests were **mutation-checked** (break the logic three ways, watch the
+suite fail) before being trusted.
+
+**LOCAL REVIEW HIT RATE, measured again:** `qwen3-coder` queued **14 findings, 0 actionable** on
+this branch. Eleven were verified-false (it claimed `groupRows` was not imported — line 42; it
+claimed the archive's tab link should point at the PARENT, which would be the bug). Three were it
+re-deriving the missing-entry-point gap from the TTL, i.e. the honest-note working. Consistent
+with the recorded ~1-in-26 rate: **run it, never merge it wholesale.**
+
+**TWO ENVIRONMENT TRAPS HIT AGAIN — not code regressions:**
+- **Playwright browsers were missing** (`chromium_headless_shell-1228`). `npx playwright install
+  chromium`. This is the third time it is recorded; it still wants a CI/dev guard.
+- **3 unit tests failed on a STALE `node_modules`**, not a real break:
+  `scripts/offline/__tests__/dependency-overrides.test.ts` — `package.json` overrides `adm-zip`
+  to `0.6.0` (#159) while the installed tree had `0.5.18`, and `brace-expansion` 5.0.7 vs 5.0.8.
+  **`npm ci` fixed it; the full suite is 1415/1415 green (109 files).** The test was correctly
+  detecting an install that did not carry the security overrides — believe it, run `npm ci`.
+- **`npm` is not on `PATH` in a fresh shell here.** Use
+  `export PATH="$HOME/.nvm/versions/node/v24.18.0/bin:$PATH"`.
+
+**Confirms the 2026-07-28 correction:** the old "four store suites flake together" entry did NOT
+reproduce. One full run, 1415/1415. Do not carry it forward as current state.
 
 ## ▶ VERIFIED CORRECTIONS (2026-07-28)
 
