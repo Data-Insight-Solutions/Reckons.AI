@@ -73,7 +73,9 @@ site:docs a schema:WebSite ;
                    site:connecting-other-systems ,
                    site:working-safely ,
                    site:where-it-is-going ,
-                   site:contributing .
+                   site:contributing ,
+                   site:welcome ,
+                   site:release-notes .
 
 # ── The datasets each page is built from ─────────────────────────────────────
 # void:Dataset is the standard way to describe an RDF dataset. dcterms:source carries the file
@@ -201,6 +203,28 @@ site:contributing a schema:WebPage ;
     schema:position 8 ;
     schema:abstract "How this repository is developed and tested — for people changing the code, not using the app." ;
     schema:isBasedOn ds:coding-workflow , ds:testing .
+
+# ── Hand-authored pages ──────────────────────────────────────────────────────
+# Declared here so the design describes the WHOLE site, but carrying no schema:isBasedOn — which
+# is what marks them hand-authored. Composition skips them; nothing generated overwrites a page a
+# person wrote. Without these two the alignment report would keep flagging them as undeclared
+# forever, training everyone to ignore the report.
+
+site:welcome a schema:WebPage ;
+    schema:isPartOf site:docs ;
+    dcterms:isPartOf "Docs" ;
+    schema:name "Welcome" ;
+    schema:url <https://reckons.ai/docs/docs/welcome> ;
+    schema:position 0 ;
+    schema:abstract "The first graph-authored page — pages are nodes in the Reckons.AI graph." .
+
+site:release-notes a schema:WebPage ;
+    schema:isPartOf site:docs ;
+    dcterms:isPartOf "Releases" ;
+    schema:name "Reckons.AI v0.1.0" ;
+    schema:url <https://reckons.ai/docs/releases/v0-1-0> ;
+    schema:position 90 ;
+    schema:abstract "What shipped in the first release." .
 
 # ── The menu ─────────────────────────────────────────────────────────────────
 # schema:SiteNavigationElement is the standard term for a navigation entry. The menu is stated

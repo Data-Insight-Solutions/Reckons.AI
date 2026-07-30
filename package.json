@@ -67,6 +67,7 @@
     "kb:align:quick": "npx tsx scripts/kb-align.ts --skip-e2e",
     "md-align": "npx tsx scripts/md-align.ts",
     "docs:pages": "npx tsx scripts/docs-pages.ts",
+    "docs:compose": "npx tsx scripts/docs-compose.ts",
     "docs:consolidate": "npx tsx scripts/offline/docs-consolidate.ts",
     "website:align": "npx tsx scripts/offline/website-align.ts",
     "bench:compression": "npx tsx tests/bench/run-compression-bench.ts --save",
