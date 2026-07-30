@@ -32,6 +32,11 @@
 #                                      derived". A page may declare several, which is how one
 #                                      page draws on several graphs.
 #   schema:about                       a specific entity the page is about
+#   schema:url                         THE RESOLVABLE LIVE URL, not a slug. Stated in full so a
+#                                      reviewer reading this graph can open the page it describes
+#                                      — a site graph whose links you cannot follow is a site
+#                                      graph nobody checks against the site. dcterms:isPartOf
+#                                      carries the section, which schema:url no longer encodes.
 #   schema:abstract                    why a reader would open the page
 #   schema:position                    order within the site
 #   void:Dataset                       each source graph, described as a dataset
@@ -60,7 +65,7 @@
 site:docs a schema:WebSite ;
     schema:name "Reckons.AI documentation" ;
     schema:abstract "Everything about using Reckons.AI, composed from the graphs that describe it." ;
-    schema:url "/docs" ;
+    schema:url <https://reckons.ai/docs> ;
     schema:hasPart site:start-here ,
                    site:what-it-does ,
                    site:how-it-works ,
@@ -124,56 +129,63 @@ ds:testing a void:Dataset ;
 
 site:start-here a schema:WebPage ;
     schema:isPartOf site:docs ;
+    dcterms:isPartOf "Learn" ;
     schema:name "Start here" ;
-    schema:url "start-here" ;
+    schema:url <https://reckons.ai/docs/learn/start-here> ;
     schema:position 1 ;
     schema:abstract "Get a graph on screen and a first fact into it. The only page a new reader needs." ;
     schema:isBasedOn ds:starter-guide .
 
 site:what-it-does a schema:WebPage ;
     schema:isPartOf site:docs ;
+    dcterms:isPartOf "Learn" ;
     schema:name "What it does" ;
-    schema:url "what-it-does" ;
+    schema:url <https://reckons.ai/docs/learn/what-it-does> ;
     schema:position 2 ;
     schema:abstract "Every capability, and a worked example of each — what you can actually do with it." ;
     schema:isBasedOn ds:features , ds:use-cases .
 
 site:how-it-works a schema:WebPage ;
     schema:isPartOf site:docs ;
+    dcterms:isPartOf "Learn" ;
     schema:name "How it works" ;
-    schema:url "how-it-works" ;
+    schema:url <https://reckons.ai/docs/learn/how-it-works> ;
     schema:position 3 ;
     schema:abstract "Triples, graphs and the design decisions behind them — why the data is shaped this way." ;
     schema:isBasedOn ds:triples-rdf , ds:architecture .
 
 site:ai-models a schema:WebPage ;
     schema:isPartOf site:docs ;
+    dcterms:isPartOf "Build" ;
     schema:name "Working with AI models" ;
-    schema:url "ai-models" ;
+    schema:url <https://reckons.ai/docs/build/ai-models> ;
     schema:position 4 ;
     schema:abstract "What the models do here, what they are not trusted with, and how to run them locally." ;
     schema:isBasedOn ds:llm .
 
 site:connecting-other-systems a schema:WebPage ;
     schema:isPartOf site:docs ;
+    dcterms:isPartOf "Build" ;
     schema:name "Connecting other systems" ;
-    schema:url "connecting-other-systems" ;
+    schema:url <https://reckons.ai/docs/build/connecting-other-systems> ;
     schema:position 5 ;
     schema:abstract "Bringing your own tools in and getting your knowledge back out. Every integration is optional." ;
     schema:isBasedOn ds:integrations .
 
 site:working-safely a schema:WebPage ;
     schema:isPartOf site:docs ;
+    dcterms:isPartOf "Build" ;
     schema:name "Working safely" ;
-    schema:url "working-safely" ;
+    schema:url <https://reckons.ai/docs/build/working-safely> ;
     schema:position 6 ;
     schema:abstract "Keeping a graph trustworthy: what stays on your machine, what leaves, and how facts get checked." ;
     schema:isBasedOn ds:tips-security .
 
 site:where-it-is-going a schema:WebPage ;
     schema:isPartOf site:docs ;
+    dcterms:isPartOf "Project" ;
     schema:name "Where it is going" ;
-    schema:url "where-it-is-going" ;
+    schema:url <https://reckons.ai/docs/project/where-it-is-going> ;
     schema:position 7 ;
     schema:abstract "The direction of the project and the ecosystem it sits in — what is built, and what is intended." ;
     schema:isBasedOn ds:timeline .
@@ -183,11 +195,62 @@ site:where-it-is-going a schema:WebPage ;
 # is part of why the current sidebar reads as noise.
 site:contributing a schema:WebPage ;
     schema:isPartOf site:docs ;
+    dcterms:isPartOf "Project" ;
     schema:name "Contributing" ;
-    schema:url "contributing" ;
+    schema:url <https://reckons.ai/docs/project/contributing> ;
     schema:position 8 ;
     schema:abstract "How this repository is developed and tested — for people changing the code, not using the app." ;
     schema:isBasedOn ds:coding-workflow , ds:testing .
+
+# ── The menu ─────────────────────────────────────────────────────────────────
+# schema:SiteNavigationElement is the standard term for a navigation entry. The menu is stated
+# SEPARATELY from the page list on purpose: what exists and what is offered are different
+# decisions, and today they are conflated — every one of the 269 generated pages appears in the
+# sidebar simply because it exists, which is why /docs reads as a wall rather than a menu.
+
+site:menu a schema:SiteNavigationElement ;
+    schema:name "Docs" ;
+    schema:isPartOf site:docs ;
+    schema:hasPart site:menu-learn , site:menu-build , site:menu-project .
+
+site:menu-learn a schema:SiteNavigationElement ;
+    schema:name "Learn" ;
+    schema:position 1 ;
+    dcterms:description "For someone deciding whether this is for them." ;
+    schema:hasPart site:start-here , site:what-it-does , site:how-it-works .
+
+site:menu-build a schema:SiteNavigationElement ;
+    schema:name "Build" ;
+    schema:position 2 ;
+    dcterms:description "For someone already using it and extending what it reaches." ;
+    schema:hasPart site:ai-models , site:connecting-other-systems , site:working-safely .
+
+site:menu-project a schema:SiteNavigationElement ;
+    schema:name "Project" ;
+    schema:position 3 ;
+    dcterms:description "For someone deciding whether to rely on it, or to contribute." ;
+    schema:hasPart site:where-it-is-going , site:contributing .
+
+# ── Design controls ──────────────────────────────────────────────────────────
+# F111's intent half, at the smallest useful scope: what a page is MADE of, stated so something
+# can check it against what actually rendered. Deliberately thin — a declared component nobody
+# verifies is a comment, so this grows only as fast as the observer that checks it.
+#
+# NO STANDARD VOCABULARY EXISTS for "this page uses this component". schema.org describes what a
+# page is ABOUT, not what it is BUILT FROM. These are therefore local terms under
+# urn:reckons:design/, declared as local rather than bent out of schema.org.
+
+@prefix design: <urn:reckons:design/> .
+
+site:docs design:default-template "doc" ;
+    design:disclosure-style "accordion" ;
+    design:max-nav-depth 2 .
+
+# A page may override the site default. Stated here rather than in component code so the choice
+# is reviewable and, once F111 phase 2 exists, checkable against the rendered DOM.
+site:start-here design:template "doc" ; design:disclosure-style "none" .
+site:what-it-does design:template "doc" ; design:disclosure-style "accordion" .
+site:how-it-works design:template "doc" ; design:disclosure-style "accordion" .
 
 # ── Deliberately not published ───────────────────────────────────────────────
 # An EXCLUSION is not an ORPHAN. An orphan is an entity nobody decided about, and it stays

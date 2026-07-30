@@ -83,6 +83,8 @@ export interface PageDefinition {
   order?: number;
   /** At least one. A page sourcing from nothing is a page about nothing. */
   sources: PageSource[];
+  /** Resolvable live URL, so anything rendering this page can link a reviewer to it. */
+  url?: string;
 }
 
 export interface ComposedSection {
@@ -95,6 +97,8 @@ export interface ComposedPage {
   id: string;
   title: string;
   slug: string;
+  /** Resolvable live URL, carried through so a report can link straight to the page. */
+  url?: string;
   section: string;
   purpose: string;
   order: number;
@@ -200,6 +204,7 @@ export function composePages(
       id: def.id,
       title: def.title,
       slug: def.slug?.trim() ? slugify(def.slug) : slugify(def.title),
+      url: def.url,
       section: def.section,
       purpose: def.purpose,
       order: def.order ?? 0,

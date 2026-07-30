@@ -70,10 +70,23 @@ const VOID_DATASET = `${VOID}Dataset`;
 const DCTERMS_TITLE = `${DCTERMS}title`;
 const DCTERMS_SOURCE = `${DCTERMS}source`;
 const DCTERMS_DESCRIPTION = `${DCTERMS}description`;
+const DCTERMS_IS_PART_OF = `${DCTERMS}isPartOf`;
 
 /** The one local term. See the module doc for why no standard term fits. */
 const EXCLUDES_UNDER = 'urn:reckons:page/excludes-under';
 const EXCLUDES_ENTITY = 'urn:reckons:page/excludes-entity';
+
+/**
+ * Last path segment of a URL — the page's slug.
+ *
+ * `schema:url` holds the RESOLVABLE live URL rather than a bare slug, so a reviewer reading the
+ * site graph can open the page it describes. The slug is derived from it rather than stored twice:
+ * two fields that must agree eventually disagree, and then the graph links somewhere the site
+ * does not serve.
+ */
+export function slugFromUrl(url: string): string {
+  return url.replace(/[?#].*$/, '').replace(/\/+$/, '').split('/').filter(Boolean).pop() ?? '';
+}
 
 export interface DatasetRef {
   iri: string;
@@ -85,6 +98,8 @@ export interface DatasetRef {
 export interface WebsiteGraph {
   siteIri: string | null;
   siteName: string;
+  /** The site's own resolvable URL. */
+  siteUrl: string;
   datasets: DatasetRef[];
   pages: PageDefinition[];
   exclusions: ExclusionRule[];
@@ -135,8 +150,10 @@ export function readWebsiteGraph(quads: Quad[], sectionName = 'Docs'): WebsiteGr
       break;
     }
   }
+  let siteUrl = '';
   if (siteIri) {
     siteName = quads.find((q) => q.subject.value === siteIri && has(q.predicate.value, NAME))?.object.value ?? '';
+    siteUrl = quads.find((q) => q.subject.value === siteIri && has(q.predicate.value, URL))?.object.value ?? '';
   }
 
   // ── Pages ──────────────────────────────────────────────────────────────────
@@ -146,10 +163,28 @@ export function readWebsiteGraph(quads: Quad[], sectionName = 'Docs'): WebsiteGr
   for (const q of quads) {
     if (q.predicate.value === RDF_TYPE && has(q.object.value, WEBPAGE_TYPES)) pageIris.add(q.subject.value);
   }
+  // Adopting anything linked to the site by hasPart/isPartOf is too loose on its own: a
+  // schema:SiteNavigationElement declares schema:isPartOf the site too, and was being counted as
+  // a page — the alignment report then demanded a URL for the menu. So an entity that carries an
+  // EXPLICIT type other than WebPage is never adopted; untyped ones still are, which is what
+  // makes a page declared only from the site's end still reachable.
+  const explicitlyTyped = new Map<string, string>();
+  for (const q of quads) {
+    if (q.predicate.value === RDF_TYPE) explicitlyTyped.set(q.subject.value, q.object.value);
+  }
+  const adoptable = (iri: string) => {
+    const type = explicitlyTyped.get(iri);
+    return type === undefined || has(type, WEBPAGE_TYPES);
+  };
+
   if (siteIri) {
     for (const q of quads) {
-      if (q.subject.value === siteIri && has(q.predicate.value, HAS_PART)) pageIris.add(q.object.value);
-      if (q.object.value === siteIri && has(q.predicate.value, IS_PART_OF)) pageIris.add(q.subject.value);
+      if (q.subject.value === siteIri && has(q.predicate.value, HAS_PART) && adoptable(q.object.value)) {
+        pageIris.add(q.object.value);
+      }
+      if (q.object.value === siteIri && has(q.predicate.value, IS_PART_OF) && adoptable(q.subject.value)) {
+        pageIris.add(q.subject.value);
+      }
     }
   }
 
@@ -179,11 +214,18 @@ export function readWebsiteGraph(quads: Quad[], sectionName = 'Docs'): WebsiteGr
     for (const entity of many(ABOUT)) sources.push({ kind: 'entity', iri: entity });
 
     const title = one(NAME) ?? localName(iri);
+    const url = one(URL);
+    if (!url) {
+      problems.push(`Page ${localName(iri)} has no schema:url, so nothing can link a reviewer to it.`);
+    }
     pages.push({
       id: localName(iri),
       title,
-      slug: one(URL) || undefined,
-      section: sectionName,
+      slug: url ? slugFromUrl(url) : undefined,
+      // The section is its own statement now that schema:url is a full URL and no longer encodes
+      // it. Falls back to the caller's default so a graph written before this still reads.
+      section: one([DCTERMS_IS_PART_OF]) || sectionName,
+      url,
       purpose: one(ABSTRACT) ?? '',
       order: Number(one(POSITION) ?? 0),
       sources,
@@ -209,7 +251,7 @@ export function readWebsiteGraph(quads: Quad[], sectionName = 'Docs'): WebsiteGr
     };
   });
 
-  return { siteIri, siteName, datasets, pages, exclusions, problems };
+  return { siteIri, siteName, siteUrl, datasets, pages, exclusions, problems };
 }
 
 // ── The meta-graph: how the datasets inter-relate ────────────────────────────

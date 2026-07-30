@@ -204,3 +204,28 @@ describe('the meta-graph — how datasets inter-relate', () => {
     expect(overlaps[0].shared).toHaveLength(2);
   });
 });
+
+describe('navigation elements are not pages', () => {
+  it('does not adopt a SiteNavigationElement that declares schema:isPartOf the site', () => {
+    // Found by the alignment report itself, which demanded a schema:url for "menu". A nav
+    // element links to the site exactly like a page does; the type is what tells them apart.
+    const g = readWebsiteGraph(parse(`${SITE}
+site:menu a schema:SiteNavigationElement ;
+    schema:isPartOf site:docs ;
+    schema:name "Docs" ;
+    schema:hasPart site:what-it-does .
+`));
+    expect(g.pages.map((p) => p.title)).toEqual(['What it does']);
+    expect(g.problems).toEqual([]);
+  });
+
+  it('still adopts an UNTYPED page the site names, so one-ended declarations survive', () => {
+    const g = readWebsiteGraph(parse(`${PREFIXES}
+site:docs a schema:WebSite ; schema:name "Docs" ; schema:hasPart site:untyped .
+ds:features a void:Dataset ; dcterms:source "docs-features.ttl" .
+site:untyped schema:name "Untyped page" ; schema:abstract "Still a page." ;
+    schema:url <https://reckons.ai/docs/learn/untyped> ; schema:isBasedOn ds:features .
+`));
+    expect(g.pages.map((p) => p.title)).toEqual(['Untyped page']);
+  });
+});
