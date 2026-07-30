@@ -39,6 +39,7 @@
     kbFileSlug,
     type KbEntry
   } from '$lib/storage/kb-registry';
+  import { groupGraphsWithArchives, groupRows } from '$lib/storage/archive-gallery';
   import { buildGifPackage } from '$lib/storage/gif-package';
   import { gifOverrides } from '$lib/stores/gif-overrides.svelte';
   import { db } from '$lib/storage/db';
@@ -135,14 +136,28 @@
     );
   };
 
-  const sortedKbs = $derived(
-    localKbs
-      .filter(kb => kbFilter === 'all' || kb.bookmarked)
-      .filter(kb => matchesQuery(kb, kbQuery))
-      .sort((a, b) => {
-        // The graph you are IN always comes first — it is the one you are looking at.
-        if (a.id === currentKbId) return -1;
-        if (b.id === currentKbId) return 1;
+  const passesFilters = (kb: KbEntry) =>
+    (kbFilter === 'all' || kb.bookmarked) && matchesQuery(kb, kbQuery);
+
+  /**
+   * An archive graph (F97) is a real, separate graph in the registry, so it would otherwise
+   * appear here as an unexplained sibling sorted between unrelated graphs. Grouping pairs each
+   * archive with the graph whose history it holds; the pure logic and its edge cases (legacy
+   * name links, orphans, archive-of-archive) live in `archive-gallery.ts`.
+   */
+  const kbGroups = $derived(
+    groupGraphsWithArchives(localKbs)
+      // A group is shown when the parent OR any of its archives passes the filters — searching a
+      // graph's name should not hide the history that belongs to it, and searching "archives"
+      // should find the parent it hangs from. Once a group is shown, ALL its archives render:
+      // showing some would misrepresent how much history a graph has.
+      .filter(group => groupRows(group).some(kb => passesFilters(kb)))
+      .sort((ga, gb) => {
+        const a = ga.parent, b = gb.parent;
+        // The graph you are IN always comes first — it is the one you are looking at. If you are
+        // in an ARCHIVE, its group leads, so the card you are viewing is still at the top.
+        if (groupRows(ga).some(k => k.id === currentKbId)) return -1;
+        if (groupRows(gb).some(k => k.id === currentKbId)) return 1;
         if (a.bookmarked && !b.bookmarked) return -1;
         if (!a.bookmarked && b.bookmarked) return 1;
         if (kbSort === 'name') return a.name.localeCompare(b.name);
@@ -154,6 +169,7 @@
   );
 
   const bookmarkedCount = $derived(localKbs.filter(k => k.bookmarked).length);
+  /** Counts ROWS, not groups — a hidden archive is a hidden graph. */
   const hiddenByQuery = $derived(
     localKbs.filter(kb => (kbFilter === 'all' || kb.bookmarked) && !matchesQuery(kb, kbQuery)).length
   );
@@ -674,13 +690,16 @@
   {/if}
 
   <div class="kb-list">
-    {#each sortedKbs as kb (kb.id)}
+    {#each kbGroups as group (group.parent.id)}
+      {@const kb = group.parent}
       {@const isCurrent = kb.id === currentKbId}
       {@const isCompareSelected = compareSelection.has(kb.id)}
+      <div class="kb-group" class:has-archives={group.archives.length > 0}>
       <div
         class="kb-entry"
         class:current={isCurrent}
         class:compare-selected={isCompareSelected}
+        class:orphan-archive={group.orphanArchive}
       >
         <div class="kb-entry-left">
           <!-- Lazy fingerprint: loads only when the card is on screen AND the browser is idle,
@@ -711,6 +730,14 @@
                 ondblclick={() => startRename(kb)}
                 title="Double-click to rename"
               >{kb.name}</span>
+            {/if}
+            {#if group.orphanArchive}
+              <!-- An archive whose graph has left the registry. It is still listed, because
+                   history you cannot reach is only technically preserved — but it must not be
+                   mistaken for a working graph, so it says what it is and what is missing. -->
+              <span class="archive-badge orphan mono" title="This is an archive. The graph it holds history for is no longer in this list, so it cannot be restored into its parent from here.">
+                archive · parent missing
+              </span>
             {/if}
             <div class="kb-entry-sub">
               <span class="kb-entry-id mono">{kb.id}</span>
@@ -768,8 +795,56 @@
           {/if}
         </div>
       </div>
+
+      <!-- Archive graphs (F97), nested under the graph whose history they hold. Rendered as a
+           compact sub-row rather than a second full card: an archive is not a graph you work in,
+           so it gets no preview thumbnail and no bookmark star — only the things you actually
+           need, which are how much history it holds and a way to go and look at it. -->
+      {#each group.archives as archive (archive.id)}
+        {@const archiveIsCurrent = archive.id === currentKbId}
+        <div class="kb-archive-row" class:current={archiveIsCurrent}>
+          <div class="kb-archive-left">
+            <span class="archive-badge mono" title="Archived history for {kb.name}">archive</span>
+            <span class="kb-archive-name">{archive.name}</span>
+            {#if archive.statementCount != null}
+              <span class="kb-entry-size mono" title="{archive.statementCount} archived statements">
+                {archive.statementCount.toLocaleString()} facts
+              </span>
+            {:else}
+              <span class="kb-entry-size mono muted-size" title="No statement count recorded — this archive has not been opened or saved yet">
+                not opened yet
+              </span>
+            {/if}
+            {#if archive.lastModified}
+              <span class="kb-entry-date mono">{relativeTime(archive.lastModified)}</span>
+            {/if}
+          </div>
+          <div class="kb-archive-actions">
+            {#if archiveIsCurrent}
+              <span class="current-badge mono">current</span>
+            {:else}
+              <!-- Deliberately NOT .kb-switch-action: that class is given `grid-column: 1 / -1`
+                   in the mobile block, which on this two-button row made "open" span the full
+                   width and stranded "open tab" alone in one column. -->
+              <button class="sm kb-archive-open" onclick={() => handleSwitch(archive.id)}>open</button>
+              <a
+                href={kbUrl(archive.id)}
+                target="_blank"
+                rel="noopener"
+                class="sm-link"
+                title="Open in new tab"
+                aria-label="Open the archive of {kb.name} in a new browser tab"
+              >
+                <span class="desktop-action-label">tab</span>
+                <span class="mobile-action-label">open tab</span>
+              </a>
+            {/if}
+          </div>
+        </div>
+      {/each}
+      </div>
     {/each}
-    {#if sortedKbs.length === 0}
+    {#if kbGroups.length === 0}
       <p class="filter-empty mono">no bookmarked graphs yet. star a graph to bookmark it.</p>
     {/if}
   </div>
@@ -1584,6 +1659,51 @@
   .bookmark-btn:hover { color: var(--accent); }
   .bookmark-btn.bookmarked { color: var(--accent); }
 
+  /* ── Archive graphs, nested under their parent (F97) ── */
+  /* The group is the visual unit: parent card plus its archives, tighter inside than the 0.4rem
+     gap between groups, so the nesting reads without indentation guides. */
+  .kb-group { display: flex; flex-direction: column; gap: 0.2rem; }
+  .kb-group.has-archives .kb-entry { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+
+  .kb-archive-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 0.5rem; min-width: 0;
+    margin-left: 1.5rem;
+    padding: 0.4rem 0.85rem;
+    background: color-mix(in srgb, var(--surface) 60%, transparent);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--muted-2);
+    border-radius: var(--rad-sm);
+  }
+  .kb-archive-row.current {
+    border-color: var(--accent);
+    border-left-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+  }
+  .kb-archive-left { display: flex; align-items: center; gap: 0.4rem; min-width: 0; flex: 1; }
+  .kb-archive-name {
+    font-size: 0.72rem; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+  }
+  .kb-archive-actions { display: flex; gap: 0.3rem; align-items: center; flex-shrink: 0; }
+
+  .archive-badge {
+    font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--muted); border: 1px solid var(--line);
+    border-radius: 3px; padding: 0.1rem 0.3rem; flex-shrink: 0;
+  }
+  /* An orphaned archive is not an error to alarm about, but it IS a claim the user must read, so
+     it takes the muted-coral --danger rather than the accent. (There is no --warn in the palette;
+     an earlier `var(--warn, var(--accent))` fell through to the brand teal and rendered this
+     caution as a positive chip — visually indistinguishable from "current".) */
+  .archive-badge.orphan {
+    color: var(--danger);
+    border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+    align-self: flex-start;
+    white-space: nowrap;
+  }
+  .kb-entry.orphan-archive { border-left: 2px solid color-mix(in srgb, var(--danger) 50%, transparent); }
+
   .kb-entry-meta { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
   .kb-entry-name {
     font-size: 0.85rem; font-weight: 600; cursor: default;
@@ -1937,5 +2057,34 @@
     /* F36: kb view tabs (all / bookmarked) are primary controls — 44px tap target
        on touch (were ~26px). Matches the NavBar/Sheet min-height:44px convention. */
     .kb-tab { min-height: 44px; }
+
+    /* Archive rows stack like the parent card on narrow screens, and their controls carry the
+       same 44px touch minimum — a nested row is not an excuse for a smaller target. */
+    .kb-archive-row {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5rem;
+      margin-left: 0.75rem;
+      padding: 0.6rem 0.75rem;
+    }
+    .kb-archive-left { flex-wrap: wrap; gap: 0.2rem 0.4rem; }
+    .kb-archive-name { white-space: normal; }
+    .kb-archive-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.4rem;
+      width: 100%;
+    }
+    .kb-archive-actions > button,
+    .kb-archive-actions > .sm-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+      min-height: 44px;
+      padding: 0.55rem 0.4rem;
+      white-space: nowrap;
+    }
+    .kb-archive-actions > .current-badge { grid-column: 1 / -1; }
   }
 </style>
