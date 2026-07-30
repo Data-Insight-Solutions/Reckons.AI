@@ -503,6 +503,69 @@ kb:situation-as-scope rdf:type ktype:Feature ;
     kpred:open-question "Is free-text situation removed entirely, or kept as an ANNOTATION on an assembled one? Removing it is cleaner and risks losing context only the user holds — the thing that is true but not yet in any graph. Keeping it risks the annotation quietly becoming the situation again. A middle answer: free text is accepted and immediately offered as pending facts, so context the user holds ENTERS the graph rather than bypassing it." ;
     kpred:open-question "What happens when the scoped graphs CONTRADICT each other? multi-graph-query surfaces the disagreement rather than resolving it, so the situation would honestly contain a contradiction. Does the reckoning refuse to propose until it is settled, or propose while naming the contradiction as a risk? The second is more useful and more dangerous." .
 
+# -- F115: Digital twin orchestration ------------------------------------------
+kb:digital-twin-orchestration rdf:type ktype:Feature ;
+    rdfs:label "Digital twin orchestration — many sensors, one coherent event" ;
+    kpred:feature-id "F115" ;
+    kpred:has-status "speculative" ;
+    kpred:relates-to kb:personal-assistant ;
+    kpred:relates-to kb:integration-purposes ;
+    kpred:relates-to kb:design-observed-archive ;
+    kpred:relates-to kb:graph-sets ;
+    kpred:description "Matt (2026-07-30): orchestrate physical-world sensors into a live graph of what is actually happening. The worked example is his own: several ReoLink cameras, HomeAssistant, custom OpenCV or similar identification over RTSP streams, and Blender. A dog crossing the yard currently produces SEVERAL separate phone notifications, one per camera; it should produce ONE tracked event, correlated across cameras, and silenced entirely where those cameras are configured to expect animals." ;
+    kpred:principle "THE PRODUCT IS ALREADY THIS SHAPE. Reckons.AI is controllable orchestration of agents running privately and locally, and a camera network is that with a physical substrate — many imperfect observers reporting on one artifact (the yard), needing correlation rather than merging. Every hard part is a problem this codebase already has a position on: several observers of one thing (F113), disagreement is a discrepancy to investigate rather than a verdict (F114), and the reduction of many arrivals into one meaningful event is exactly kb:currents." ;
+    kpred:scope-decision "THE UNIT IS THE EVENT, NOT THE DETECTION. Six cameras detecting one dog is six observations of ONE event, and the whole value is in that fold. Correlating them needs time, space and identity — overlapping timestamps, known camera coverage, and 'is this the same animal' — which is entity resolution against a graph the user owns, not a per-camera threshold. A per-camera notification setting can never express 'tell me once'." ;
+    kpred:scope-decision "SILENCE IS A DESIGNED OUTCOME, and the reason this is a graph problem. 'Animals are expected on these cameras' is a FACT about the property, not a toggle in six apps, and it belongs beside the cameras, their coverage, and the animals that live there. Notification rules derived from that graph stay correct when a camera moves or a pet is added; six independently-configured toggles do not." ;
+    kpred:principle "LOCAL, AND THIS ONE IS NOT NEGOTIABLE. Continuous video of a person's home is the most sensitive stream this project could ever touch. RTSP handling and identification run on the user's own hardware; the integration boundary rules apply in full (opt-in, per-user, behind settings, never a hard dependency), and no frame leaves the property to make a feature work." ;
+    kpred:honest-note "SPECULATIVE — recorded as a goal, with nothing built and no commitment implied (2026-07-30). Reckons.AI has no video pipeline, no RTSP handling, no HomeAssistant integration, and F90's Blender path is GLB export only, not an agent-drivable renderer. This entry exists so the direction is written down and so the pieces that DO serve it (currents, graph sets, discrepancy handling) are built in a shape that fits." ;
+    kpred:remaining "A HomeAssistant integration (the natural hub — it already speaks to the cameras); RTSP frame sampling with local identification; event correlation across overlapping cameras; notification rules derived from graph facts rather than per-device settings; and only then any 3D/Blender view of the property." .
+
+kb:photo-organization rdf:type ktype:Feature ;
+    rdfs:label "Photo management and organization" ;
+    kpred:feature-id "F115.1" ;
+    kpred:has-status "speculative" ;
+    kpred:relates-to kb:personal-assistant ;
+    kpred:relates-to kb:digital-twin-orchestration ;
+    kpred:description "Matt (2026-07-30) rates this ABOVE 3D reconstruction as a personal-assistant use case, and it is the same machinery pointed somewhere much more everyday: photographs are timestamped, located, and full of recurring entities, which is precisely what this graph is for. Organizing them is entity resolution plus time plus place — no new primitives, and a use case almost everyone has." ;
+    kpred:scope-decision "SCOPE BOUNDARY RECORDED IN THE SAME BREATH (Matt): the separate drone-imagery + GPS + 360-video property-reconstruction project is DELIBERATELY not a Reckons.AI feature. It is a disjointed pipeline of specialist tools serving a planning task, and is 'less aligned with a personal assistant'. Recorded so a future session does not adopt it as scope by association with F115 — a general-purpose assistant does not need that level, and photo organization is the version of this that belongs here." .
+
+# -- F116: Integration purposes -------------------------------------------------
+kb:integration-purposes rdf:type ktype:Feature ;
+    rdfs:label "Integrations categorized by PURPOSE, not by vendor" ;
+    kpred:feature-id "F116" ;
+    kpred:has-status "planned" ;
+    kpred:relates-to kb:digital-twin-orchestration ;
+    kpred:relates-to kb:capability-awareness ;
+    kpred:relates-to kb:graph-sets ;
+    kpred:description "Matt (2026-07-30): as integrations multiply, categorize them by what they are FOR. One tool serves several purposes — Blender belongs to a digital-twin/security set AND to a 3D-generation set — so purpose is a many-to-many relation on the integration, not a folder it lives in. src/lib/integrations/<company>/ organizes by VENDOR, which answers 'who made this' and never answers 'what do I have for this job'." ;
+    kpred:principle "PURPOSE SETS ARE WHAT MAKE CAPABILITY AWARENESS POSSIBLE. Telling a user their web scraping is weaker without Firecrawl requires first knowing that scraping is a purpose, that several tools serve it, and which of those are connected. Without purpose categories there is nothing to compare and the answer degenerates into a list of vendors." ;
+    kpred:remaining "A purpose vocabulary as graph entities; many-to-many integration-to-purpose links; a settings view grouped by purpose rather than vendor; and the alternatives-per-purpose data that F117 reports against." .
+
+# -- F117: Capability awareness -------------------------------------------------
+kb:capability-awareness rdf:type ktype:Feature ;
+    rdfs:label "Capability awareness — what you can do now, and what you are missing" ;
+    kpred:feature-id "F117" ;
+    kpred:has-status "planned" ;
+    kpred:depends-on kb:integration-purposes ;
+    kpred:relates-to kb:honest-status ;
+    kpred:relates-to kb:thesis ;
+    kpred:description "Matt (2026-07-30): tell the user what their ACTIVE integrations enable, and what a task would look like with a service they have not connected — deep web scraping without Firecrawl, or building an app without Claude Code or Codex. Factual, mutable, never salesy. Possible referral monetization, approached carefully." ;
+    kpred:principle "A RECOMMENDATION WE EARN FROM IS THE THESIS POINTED AT OURSELVES. 'An unverifiable claim, made by the party it benefits, is not evidence' — and with a referral attached, Reckons.AI IS the party that benefits. The only defensible version of this feature is a MEASURED one: run the task locally, run it with the integration where the user already has access, and report the observed difference. An asserted performance claim carrying a referral link is precisely the thing this product exists to refuse, and shipping it would cost more credibility than the referral could ever return." ;
+    kpred:scope-decision "MEASURED, NOT ASSERTED — and where measurement is impossible, SAY SO rather than estimate. A user without a Firecrawl key cannot have the comparison run for them, so the honest output is 'this ran locally and produced N results; we have not measured the alternative on YOUR task', not a number borrowed from a vendor's marketing. This is also the commercially stronger position: a measured claim is defensible and a borrowed one is not." ;
+    kpred:principle "MUTE IS PERMANENT AND COSTS NOTHING. A user who declines once must not be asked again, and declining must never degrade the local path or hide a capability behind the prompt. The local open-source route stays a first-class answer, not a downgraded one used to motivate an upsell." ;
+    kpred:decided "DISCLOSE EVERY REFERRAL AT THE POINT OF THE CLAIM, not in a terms page. If a suggestion carries a referral, the suggestion says so where it is made. An undisclosed one turns every honest capability report in the product into something the user is right to doubt." ;
+    kpred:honest-note "PLANNED, NOTHING BUILT (2026-07-30). There is no capability model, no purpose taxonomy (F116), no benchmark harness comparing a local path to an integrated one, and no referral relationship with anybody. The measurement discipline above is a design constraint written before the money exists, which is the only time it can be written honestly." ;
+    kpred:remaining "A capability model per purpose (what is connected, what it enables); a local-vs-integrated benchmark harness reusing the tests/bench infrastructure; a report that states measured deltas and explicitly names what was NOT measured; permanent mute; and referral disclosure at the point of claim if referrals are ever taken." .
+
+kb:ref-exxperts rdf:type ktype:Concept ;
+    rdfs:label "exxperts (EXXETA) — local-first agent memory, approval-gated" ;
+    kpred:relates-to kb:capability-awareness ;
+    kpred:relates-to kb:design-observed-archive ;
+    kpred:copy-permitted "Apache-2.0" ;
+    kpred:description "github.com/EXXETA/exxperts, flagged by Matt for graph-assistant continuity. TypeScript, Apache-2.0, local-first, multi-provider. Fetched 2026-07-30: persistent per-agent 'rooms'; after each session the room PROPOSES what is worth remembering and the user approves before anything enters memory; notes consolidate into long-term memory under review; every memory links back to the conversation it came from, enabling time travel to what the agent knew on a given date." ;
+    kpred:evidence "INDEPENDENT CORROBORATION OF THE GOVERNANCE SHAPE, which is why it is worth recording. It arrives at propose-then-human-approves, provenance back to source, and time-travel-to-a-past-state — the same triad as F52's agent-edit boundary, kb:passage-grounding and F97.5 — WITHOUT a knowledge graph, storing 'plain files on your machine'. Two projects reaching the same governance from different substrates is evidence the governance is load-bearing rather than an artifact of choosing RDF." ;
+    kpred:open-question "Their memory is files with links back to conversations; ours is a graph with reified provenance. Their approach is cheaper and more portable; ours can answer questions across memories that a file cannot. Worth understanding what their file-based time travel CANNOT do before assuming the graph earns its cost — the comparison is a real test of the thesis, not a reassurance exercise." .
+
 # -- F113: Graph sets, roles, and observation provenance ----------------------
 kb:graph-sets rdf:type ktype:Feature ;
     rdfs:label "Graph sets — roles, relations, and how each observation was made" ;
