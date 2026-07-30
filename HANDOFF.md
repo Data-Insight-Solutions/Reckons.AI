@@ -1,7 +1,50 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-07-29.** Working branch this session: `feat/archive-gallery-grouping`
+**Last updated: 2026-07-30.** Working branch this session: `feat/archive-gallery-grouping`
 (**PR #170 → `dev`**, base verified).
+
+## ▶ LATEST (2026-07-30) — F97 HAS AN ENTRY POINT. The gap named on 2026-07-29 is closed.
+
+`/kb` now carries an **"archive old events"** control on the current graph: set a day threshold,
+read a plan, confirm, and aged-out events move to `<parent> (archives)` and appear in the gallery.
+`src/lib/rdf/archive-sweep.ts` is the pure planner (19 tests, **mutation-checked five ways**);
+`sweepArchiveByAge` reuses `runArchive`'s ordering guarantee. **F97.1 scaffolded → functional**,
+**F97 planned → in-progress**. 1441 unit tests, 0 type errors, script tier 12/12, align green.
+
+**Three conservatisms, each REPORTED to the user rather than hidden:** an UNDATED entity is never
+swept (falling back to ingest time would silently become "archive what I imported a while ago");
+an entity is judged by its **newest** date; an entity carrying **unreviewed** facts is held back,
+because archiving by subject-or-object would carry pending facts out of the review queue.
+
+**STILL UNBUILT — do not read "in-progress" as "auto-archive works":** no schedule, no threshold
+trigger, no proactive nudge; the sweep is current-graph-only; and the production **delete, merge
+and prune** paths still bypass the archive entirely. Only age-drop is wired.
+
+**THE LESSON LANDED AGAIN, THIRD TIME RUNNING.** The first live sweep threw **DataCloneError** —
+Dexie stores structured clones and a Svelte 5 `$state` array hands out Proxies that
+`structuredClone` refuses. **Every unit suite was green**, because a mocked Dexie clones nothing,
+and the gap had never fired because nothing in `src/` had ever called `runArchive` with live store
+state. Found by **looking at the failure screenshot**. Fixed inside `runArchive` (not the call
+site — a forgetful caller throws between the archive write and the working-graph delete) and
+pinned with a test that runs `structuredClone` over what was written. A second look at the phone
+screenshot showed the destructive button rendering as borderless coral text that read as a
+hyperlink; `button.danger` is borderless by design for dense "remove" links. Affordance restored
+and asserted. **Every other write path in the app already JSON round-trips before Dexie** — the
+archive was the one that did not, and it was the one nothing called.
+
+**Visual coverage expanded:** `tests/visual/user-stories/archive-sweep.test.ts` screenshots the
+panel at desktop and 412px and asserts the two properties the gallery bugs broke (spanning /
+stranding, horizontal overflow) plus the 44px touch minimum.
+
+**MATT ASKED: why do agents use markdown and jsonl instead of Reckons.AI?** Answered with
+measurements, not opinion — see the three entries queued to `knowledge.pending.jsonl` on
+2026-07-30 (`agent-write-path`, `pending-triage-debt`, `work-session-entity`). Short version:
+**jsonl is deliberate** (F52 — agents propose, humans settle) and the mechanical half of a handoff
+is **already graph-native and good** (`npm run brief`). Two things are genuinely missing: the
+drain terminates in a **Chromium-only manual folder pick** (`showDirectoryPicker`), and the graphs
+model the **product** (187 features) but nothing models the **work** — no session entity, and no
+way to say "I retested this and the earlier finding was false". **The queue is 583 deep and has
+never been cleared**, which is the triage-cost trap F74.3 warns about, measured on our own dogfood.
 Everything below the "SESSION 2026-07-23" block is the older F97 context and is still live
 (PR #119 is still open) — read it after the current standing.
 
