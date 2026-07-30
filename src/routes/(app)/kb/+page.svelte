@@ -41,6 +41,7 @@
     type KbEntry
   } from '$lib/storage/kb-registry';
   import { groupGraphsWithArchives, groupRows } from '$lib/storage/archive-gallery';
+  import { bucketIntoSets, findDuplicateGraphs } from '$lib/storage/graph-sets';
   import { sweepArchiveByAge } from '$lib/storage/archive-store';
   import { planAgeSweep, describeAgeSweep } from '$lib/rdf/archive-sweep';
   import { buildGifPackage } from '$lib/storage/gif-package';
@@ -170,6 +171,22 @@
         return (b.lastModified ?? 0) - (a.lastModified ?? 0);
       })
   );
+
+  /**
+   * The same groups, bucketed by PURPOSE (F113). Thirty graphs in one flat column is unreadable —
+   * nothing on screen said which graphs belong together, so the reader had to already know.
+   * Bucketing happens AFTER filtering and sorting, so every ordering rule above still applies
+   * within each set.
+   */
+  const kbSets = $derived(bucketIntoSets(kbGroups));
+
+  /**
+   * Graphs sharing a name but not an id. Re-importing a source mints a NEW database, so the list
+   * grows a second, independent copy that will disagree the moment either is edited — and the
+   * name alone cannot tell you which one you are looking at. Reported, never auto-removed:
+   * which copy is real is a judgement about content.
+   */
+  const duplicateGraphs = $derived(findDuplicateGraphs(localKbs));
 
   const bookmarkedCount = $derived(localKbs.filter(k => k.bookmarked).length);
   /** Counts ROWS, not groups — a hidden archive is a hidden graph. */
@@ -751,8 +768,43 @@
     </div>
   {/if}
 
+  {#if duplicateGraphs.length > 0}
+    <!-- Reported, never auto-removed: which copy is the real one is a judgement about content,
+         and a heuristic that guessed wrong would delete the only edited version. -->
+    <div class="dupe-notice" data-testid="duplicate-graphs">
+      <strong class="mono">{duplicateGraphs.length} duplicated name(s)</strong>
+      <p>
+        Re-importing a source makes a NEW graph rather than updating the old one, so these names
+        each cover more than one independent copy. They will disagree as soon as either is edited,
+        and the name alone cannot tell you which you are in.
+      </p>
+      <ul>
+        {#each duplicateGraphs as d (d.name)}
+          <li>
+            <span class="mono">{d.name}</span>
+            {#each d.entries as e (e.id)}
+              <span class="dupe-copy mono">{e.statementCount != null ? `${e.statementCount} facts` : 'not opened'}</span>
+            {/each}
+          </li>
+        {/each}
+      </ul>
+    </div>
+  {/if}
+
   <div class="kb-list">
-    {#each kbGroups as group (group.parent.id)}
+    {#each kbSets as set (set.id)}
+      <div class="kb-set">
+        <div class="kb-set-head">
+          <h4 class="mono">{set.title}</h4>
+          <span class="kb-set-count mono">{set.rowCount}</span>
+          {#if set.basis === 'name'}
+            <!-- Say that the grouping is a GUESS. A user cannot correct a rule they cannot see,
+                 and F113's declared membership does not exist yet. -->
+            <span class="kb-set-basis mono" title="Grouped by name. Declared set membership (F113) is not built yet, so renaming a graph moves it.">by name</span>
+          {/if}
+        </div>
+        <p class="kb-set-purpose">{set.purpose}</p>
+    {#each set.groups as group (group.parent.id)}
       {@const kb = group.parent}
       {@const isCurrent = kb.id === currentKbId}
       {@const isCompareSelected = compareSelection.has(kb.id)}
@@ -968,6 +1020,8 @@
           </div>
         </div>
       {/each}
+      </div>
+    {/each}
       </div>
     {/each}
     {#if kbGroups.length === 0}
@@ -1828,6 +1882,37 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
   }
   .kb-archive-actions { display: flex; gap: 0.3rem; align-items: center; flex-shrink: 0; }
+
+  .kb-set { display: flex; flex-direction: column; gap: 0.4rem; }
+  .kb-set + .kb-set { margin-top: 1.6rem; }
+  .kb-set-head { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+  .kb-set-head h4 {
+    margin: 0; font-size: 0.72rem; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--accent);
+  }
+  .kb-set-count {
+    font-size: 0.62rem; color: var(--muted);
+    border: 1px solid var(--line); border-radius: 3px; padding: 0.05rem 0.3rem;
+  }
+  /* The grouping is currently a GUESS from the name; it must look like one. */
+  .kb-set-basis { font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .kb-set-purpose { margin: 0 0 0.5rem; font-size: 0.7rem; color: var(--muted); max-width: 62ch; }
+
+  .dupe-notice {
+    margin: 0 0 1.2rem; padding: 0.7rem 0.9rem;
+    border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+    border-left: 2px solid var(--danger);
+    border-radius: var(--rad-sm);
+    background: color-mix(in srgb, var(--surface) 60%, transparent);
+  }
+  .dupe-notice strong { font-size: 0.68rem; color: var(--danger); text-transform: uppercase; letter-spacing: 0.04em; }
+  .dupe-notice p { margin: 0.3rem 0 0.5rem; font-size: 0.7rem; color: var(--muted); max-width: 68ch; }
+  .dupe-notice ul { margin: 0; padding-left: 1rem; font-size: 0.72rem; }
+  .dupe-notice li { margin-bottom: 0.15rem; }
+  .dupe-copy {
+    font-size: 0.6rem; color: var(--muted); margin-left: 0.4rem;
+    border: 1px solid var(--line); border-radius: 3px; padding: 0.02rem 0.28rem;
+  }
 
   /* F97 sweep control. Indented to the same 1.5rem as .kb-archive-row so the action and the
      archive it fills read as one column belonging to the graph above them. */
