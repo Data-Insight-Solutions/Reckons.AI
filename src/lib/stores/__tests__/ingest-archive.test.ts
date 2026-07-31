@@ -78,8 +78,10 @@ beforeEach(() => {
     predicateRemaps: 0,
     remaps: [],
   });
-  computeDiff.mockReturnValue({ toAdd: [remappedStatement], toRemove: [], unchanged: [] });
-  semanticEnrichDiff.mockResolvedValue({ toAdd: [remappedStatement], toRemove: [], unchanged: [] });
+  // `entries` is part of the real Diff shape; these mocks predate it and asserted only the
+  // wiring, so ingest reading entries (F122 'returned' filtering) tripped over the omission.
+  computeDiff.mockReturnValue({ toAdd: [remappedStatement], toRemove: [], unchanged: [], entries: [] });
+  semanticEnrichDiff.mockResolvedValue({ toAdd: [remappedStatement], toRemove: [], unchanged: [], entries: [] });
 });
 
 describe('ingest archive decision boundary (F97.3)', () => {
@@ -131,5 +133,37 @@ describe('ingest archive decision boundary (F97.3)', () => {
       phase: 'done',
       statements: [remappedStatement],
     });
+  });
+
+  it('does not persist a statement the user already settled, however often it is re-read (F122)', async () => {
+    // Classifying a re-offered rejection as 'returned' stops it READING as news; declining to
+    // store it is what stops a fresh row accruing on every poll of an unchanged source.
+    allStatements.mockReturnValue(existingAfter);
+    resolveArchiveReferencesForIngest.mockResolvedValue({
+      decision: 'proceed',
+      statements: [remappedStatement],
+      references: [],
+      restoredEntities: [],
+    });
+    const returnedDiff = {
+      toAdd: [remappedStatement],
+      toRemove: [],
+      unchanged: [],
+      entries: [
+        {
+          kind: 'returned',
+          incoming: remappedStatement,
+          existing: [{ ...remappedStatement, id: 'already-rejected', status: 'rejected' }],
+          priorStatus: 'rejected',
+        },
+      ],
+    };
+    computeDiff.mockReturnValue(returnedDiff);
+    semanticEnrichDiff.mockResolvedValue(returnedDiff);
+
+    await ingest({ kind: 'note', title: 'Import', body: 'Acme update' });
+
+    expect(addSource).toHaveBeenCalledTimes(1);
+    expect(addStatements).toHaveBeenCalledWith([], 'source-id');
   });
 });

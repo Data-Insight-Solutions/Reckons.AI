@@ -1139,9 +1139,22 @@ export async function readSourceBaseline(sourceId: string): Promise<SourceBaseli
   try {
     const dir = await _handle.getDirectoryHandle(SOURCES_DIR);
     const fh = await dir.getFileHandle(sourceFileName(sourceId));
-    const parsed = JSON.parse(await (await fh.getFile()).text()) as Partial<SourceBaseline>;
+    const raw = await (await fh.getFile()).text();
+    let parsed: Partial<SourceBaseline>;
+    try {
+      parsed = JSON.parse(raw) as Partial<SourceBaseline>;
+    } catch {
+      // A file that EXISTS but cannot be read is not the same as no baseline, even though both
+      // degrade to a full re-extract. Staying silent would let a source re-extract on every poll
+      // forever with nothing to explain why, so say it happened.
+      console.warn(`[workspace] Source baseline for "${sourceId}" is unreadable — treating as absent.`);
+      return null;
+    }
     // Hand-editable file in a user's folder — validate rather than trusting the shape.
-    if (typeof parsed?.hash !== 'string' || typeof parsed?.sourceId !== 'string') return null;
+    if (typeof parsed?.hash !== 'string' || typeof parsed?.sourceId !== 'string') {
+      console.warn(`[workspace] Source baseline for "${sourceId}" has an unexpected shape — treating as absent.`);
+      return null;
+    }
     return {
       sourceId: parsed.sourceId,
       hash: parsed.hash,

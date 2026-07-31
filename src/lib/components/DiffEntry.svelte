@@ -64,11 +64,20 @@
     }
   }
 
+  /**
+   * A 'returned' entry's incoming statement is deliberately never stored (see ingest), so its
+   * actions have to act on the settled statement already in the graph. Everything else acts on
+   * the incoming one.
+   */
+  function targetId(): string {
+    return entry.kind === 'returned' ? entry.existing[0].id : entry.incoming.id;
+  }
+
   async function accept() {
     error = null;
     processing = true;
     try {
-      await setStatus(entry.incoming.id, 'confirmed');
+      await setStatus(targetId(), 'confirmed');
       onresolved();
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
@@ -81,7 +90,7 @@
     error = null;
     processing = true;
     try {
-      await setStatus(entry.incoming.id, 'rejected');
+      await setStatus(targetId(), 'rejected');
       onresolved();
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
