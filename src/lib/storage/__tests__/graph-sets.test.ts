@@ -1,109 +1,204 @@
 /**
- * Graph sets (F113) — grouping the graph list by purpose.
+ * Graph sets (F113) — grouping the graph list for ANY user.
  *
- * Two properties carry the weight. An archive must never be sorted away from its parent, because
- * an archive read as a working graph invites edits that belong somewhere else. And the BASIS of
- * each grouping must be reported, because name-derivation is a guess and a guess presented as
- * fact is one the user cannot know to correct.
+ * The first version of this module hardcoded THIS repository's naming (`docs-`, `reckons-`,
+ * `starter-`) and invented purpose text for the graphs it matched. It grouped one developer's
+ * graphs and nobody else's. So the tests that matter here are the ones proving the logic knows
+ * nothing about this project: an unrelated user's naming must cluster for the same reasons, and
+ * no set may acquire a purpose the user did not write.
  */
 import { describe, it, expect } from 'vitest';
-import { groupIntoSets, findDuplicateGraphs } from '../graph-sets';
+import {
+  groupIntoSets, bucketIntoSets, suggestSetsFromNames, findDuplicateGraphs,
+  type GraphSetDefinition,
+} from '../graph-sets';
+import { groupGraphsWithArchives } from '../archive-gallery';
 import type { KbEntry } from '../kb-registry';
 
 const kb = (name: string, over: Partial<KbEntry> = {}): KbEntry => ({
   id: `kbase_${name.replace(/\W/g, '_')}`, name, createdAt: 0, ...over,
 });
 
-describe('grouping by purpose', () => {
-  it('puts the website design and status graphs in one set', () => {
-    const sets = groupIntoSets([kb('website'), kb('website-status'), kb('docs-features')]);
-    const site = sets.find((s) => s.id === 'website')!;
-    expect(site.groups.map((g) => g.parent.name).sort()).toEqual(['website', 'website-status']);
-    expect(site.rowCount).toBe(2);
-  });
-
-  it('separates docs sources, project graphs and starters', () => {
+describe('nothing about this project is compiled in', () => {
+  it('clusters a stranger\'s naming exactly as it clusters ours', () => {
     const sets = groupIntoSets([
-      kb('docs-features'), kb('reckons-roadmap'), kb('starter-guide'), kb('website'),
+      kb('trip-2024'), kb('trip-2025'), kb('recipes-baking'), kb('recipes-dinner'), kb('Taxes'),
     ]);
-    expect(sets.map((s) => s.id)).toEqual(['website', 'docs', 'project', 'starters']);
+    expect(sets.map((s) => s.title)).toEqual(['Recipes', 'Trip', 'Ungrouped']);
+    expect(sets[0].groups.map((g) => g.parent.name)).toEqual(['recipes-baking', 'recipes-dinner']);
   });
 
-  it('puts an unrecognised graph in Other, last', () => {
-    const sets = groupIntoSets([kb('My Research'), kb('website')]);
-    expect(sets.map((s) => s.id)).toEqual(['website', 'other']);
-    expect(sets.at(-1)!.groups[0].parent.name).toBe('My Research');
-  });
-
-  it('keeps a stable order rather than sorting by size', () => {
-    // The list is somewhere a user navigates by memory; rearranging it when one set grows is
-    // worse than a long list.
-    const many = [kb('website'), ...Array.from({ length: 9 }, (_, i) => kb(`docs-${i}`))];
-    expect(groupIntoSets(many).map((s) => s.id)).toEqual(['website', 'docs']);
-  });
-
-  it('reports the BASIS, so a guess looks like a guess', () => {
-    const sets = groupIntoSets([kb('website'), kb('My Research')]);
-    expect(sets.find((s) => s.id === 'website')!.basis).toBe('name');
-    expect(sets.find((s) => s.id === 'other')!.basis).toBe('ungrouped');
-  });
-
-  it('prefers a DECLARED set over the name, and says the basis changed', () => {
-    const declared = { ...kb('My Research'), declaredSet: 'website' } as KbEntry;
-    const sets = groupIntoSets([declared]);
-    expect(sets[0].id).toBe('website');
-    expect(sets[0].basis).toBe('declared');
-  });
-
-  it('every set carries a stated purpose', () => {
-    for (const s of groupIntoSets([kb('website'), kb('docs-x'), kb('reckons-y'), kb('starter-z'), kb('Mine')])) {
-      expect(s.purpose.length).toBeGreaterThan(10);
+  it('never invents a purpose for a set it derived', () => {
+    // Guessing what someone's graphs are FOR is how a tool starts telling users what their own
+    // data means.
+    for (const s of groupIntoSets([kb('trip-a'), kb('trip-b')])) {
+      expect(s.purpose).toBe('');
     }
+  });
+
+  it('uses the purpose the user wrote, and only that', () => {
+    const defs: GraphSetDefinition[] = [
+      { id: 'holiday', title: 'Holidays', purpose: 'Places I have been.', prefix: 'trip-' },
+    ];
+    const [set] = groupIntoSets([kb('trip-a'), kb('trip-b')], { definitions: defs });
+    expect(set.title).toBe('Holidays');
+    expect(set.purpose).toBe('Places I have been.');
+    expect(set.basis).toBe('defined');
+  });
+
+  it('does not cluster names that merely share letters', () => {
+    // "Research" and "Recipes" share a prefix and nothing else; a grouping on that is one no
+    // user could follow.
+    const sets = groupIntoSets([kb('Research'), kb('Recipes')]);
+    expect(sets.map((s) => s.title)).toEqual(['Ungrouped']);
+    expect(sets[0].rowCount).toBe(2);
+  });
+
+  it('lets the caller name the leftover group', () => {
+    const [set] = groupIntoSets([kb('Solo')], { ungroupedTitle: 'Other graphs' });
+    expect(set.title).toBe('Other graphs');
+  });
+
+  it('can be turned off entirely', () => {
+    const sets = groupIntoSets([kb('trip-a'), kb('trip-b')], { deriveFromNames: false });
+    expect(sets.map((s) => s.title)).toEqual(['Ungrouped']);
+  });
+});
+
+describe('suggesting sets from real names', () => {
+  it('offers a set only when at least two graphs share a prefix', () => {
+    // A "set" of one is a graph with a heading over it — chrome, no information.
+    expect(suggestSetsFromNames([kb('trip-a'), kb('solo-thing')]).map((d) => d.title)).toEqual([]);
+    expect(suggestSetsFromNames([kb('trip-a'), kb('trip-b')]).map((d) => d.title)).toEqual(['Trip']);
+  });
+
+  it('reads hyphen, underscore, space, slash and colon as separators', () => {
+    const names = ['a-1', 'a_2', 'b 1', 'b 2', 'c/1', 'c/2', 'd:1', 'd:2'];
+    expect(suggestSetsFromNames(names.map((n) => kb(n))).map((d) => d.title))
+      .toEqual(['A', 'B', 'C', 'D']);
+  });
+
+  it('produces definitions a user can then own and edit', () => {
+    const [def] = suggestSetsFromNames([kb('trip-a'), kb('trip-b')]);
+    expect(def).toMatchObject({ prefix: 'trip', title: 'Trip' });
+    expect(def.purpose).toBeUndefined();
+  });
+});
+
+describe('precedence between the three sources', () => {
+  const defs: GraphSetDefinition[] = [
+    { id: 'mine', title: 'Mine', prefix: 'trip-' },
+    { id: 'special', title: 'Special', memberIds: ['kbase_trip_b'] },
+  ];
+
+  it('explicit membership beats a matching prefix', () => {
+    // A user who listed a graph by id meant that graph, whatever else its name matches.
+    const sets = groupIntoSets([kb('trip-a'), kb('trip-b')], { definitions: defs });
+    expect(sets.find((s) => s.id === 'special')!.groups.map((g) => g.parent.name)).toEqual(['trip-b']);
+    expect(sets.find((s) => s.id === 'mine')!.groups.map((g) => g.parent.name)).toEqual(['trip-a']);
+  });
+
+  it('a declared set on the graph beats everything', () => {
+    const declared = { ...kb('trip-a'), declaredSet: 'mine' } as KbEntry;
+    const [set] = groupIntoSets([declared], { definitions: defs });
+    expect(set.basis).toBe('declared');
+    expect(set.title).toBe('Mine');
+  });
+
+  it('a longer prefix wins over a broader one', () => {
+    const narrow: GraphSetDefinition[] = [
+      { id: 'broad', title: 'Broad', prefix: 'trip' },
+      { id: 'narrow', title: 'Narrow', prefix: 'trip-2024' },
+    ];
+    const sets = groupIntoSets([kb('trip-2024-spain')], { definitions: narrow });
+    expect(sets[0].id).toBe('narrow');
+  });
+
+  it('keeps user-defined sets in the order the user gave them', () => {
+    const sets = groupIntoSets(
+      [kb('zzz-1'), kb('zzz-2'), kb('trip-a')],
+      { definitions: [{ id: 'mine', title: 'Mine', prefix: 'trip-' }] },
+    );
+    // Defined first, derived after, leftovers last.
+    expect(sets.map((s) => s.id)).toEqual(['mine', 'derived:zzz']);
+  });
+
+  it('always puts the leftover group last', () => {
+    const sets = groupIntoSets([kb('Solo'), kb('trip-a'), kb('trip-b')]);
+    expect(sets.at(-1)!.groups[0].parent.name).toBe('Solo');
   });
 });
 
 describe('archives follow their graph', () => {
-  const parent = kb('Research', { stableId: 'stable-1' });
-  const archive = kb('Research (archives)', { archiveOf: 'stable-1' });
-
-  it('nests an archive under its parent instead of listing it separately', () => {
-    const sets = groupIntoSets([parent, archive]);
-    const other = sets.find((s) => s.id === 'other')!;
-    expect(other.groups).toHaveLength(1);
-    expect(other.groups[0].archives.map((a) => a.name)).toEqual(['Research (archives)']);
-    expect(other.rowCount).toBe(2);
+  it('nests an archive under its parent rather than listing it apart', () => {
+    const parent = kb('trip-a', { stableId: 'stable-1' });
+    const archive = kb('trip-a (archives)', { archiveOf: 'stable-1' });
+    const [set] = groupIntoSets([parent, archive, kb('trip-b')]);
+    const group = set.groups.find((g) => g.parent.name === 'trip-a')!;
+    expect(group.archives.map((a) => a.name)).toEqual(['trip-a (archives)']);
+    expect(set.rowCount).toBe(3);
   });
 
-  it('places an archive by its PARENT even when its own name matches another rule', () => {
-    // "website (archives)" of a graph called "Client Site" belongs with the client site.
+  it('places an archive by its PARENT even when its own name matches another set', () => {
     const site = kb('Client Site', { stableId: 'stable-2' });
-    const arch = kb('website (archives)', { archiveOf: 'stable-2' });
-    const sets = groupIntoSets([site, arch]);
-    expect(sets.find((s) => s.id === 'website')).toBeUndefined();
-    expect(sets.find((s) => s.id === 'other')!.groups[0].archives).toHaveLength(1);
+    const arch = kb('trip-notes (archives)', { archiveOf: 'stable-2' });
+    const sets = groupIntoSets([site, arch, kb('trip-a'), kb('trip-b')]);
+    expect(sets.find((s) => s.title === 'Trip')!.rowCount).toBe(2);
+    expect(sets.at(-1)!.groups[0].archives).toHaveLength(1);
+  });
+});
+
+describe('bucketing pre-sorted groups', () => {
+  it('preserves the caller\'s ordering within a set', () => {
+    // The page sorts by current-graph, bookmarks, then choice; reimplementing that here is how
+    // it would drift.
+    const entries = [kb('trip-b'), kb('trip-a')];
+    const sets = bucketIntoSets(groupGraphsWithArchives(entries), {}, entries);
+    expect(sets[0].groups.map((g) => g.parent.name)).toEqual(['trip-b', 'trip-a']);
+  });
+
+  it('derives from the WHOLE registry, so filtering does not make sets vanish', () => {
+    const all = [kb('trip-a'), kb('trip-b')];
+    const filtered = groupGraphsWithArchives([all[0]]);
+    expect(bucketIntoSets(filtered, {}, all)[0].title).toBe('Trip');
   });
 });
 
 describe('duplicate graphs are reported, never removed', () => {
-  it('finds graphs sharing a name but not an id', () => {
-    // Re-importing a source mints a NEW database; the second row is an independent copy that
-    // will disagree the moment either is edited.
+  it('finds graphs sharing a name but not an id, fullest first', () => {
     const dupes = findDuplicateGraphs([
-      kb('reckons-roadmap', { id: 'a', statementCount: 10 }),
-      kb('reckons-roadmap', { id: 'b', statementCount: 400 }),
-      kb('website'),
+      kb('roadmap', { id: 'a', statementCount: 10 }),
+      kb('roadmap', { id: 'b', statementCount: 400 }),
+      kb('other'),
     ]);
     expect(dupes).toHaveLength(1);
-    expect(dupes[0].name).toBe('reckons-roadmap');
-    // Fullest first — the likeliest real one, offered for judgement rather than acted on.
     expect(dupes[0].entries.map((e) => e.id)).toEqual(['b', 'a']);
   });
 
-  it('reports nothing when every name is unique', () => {
-    expect(findDuplicateGraphs([kb('website'), kb('website-status')])).toEqual([]);
+  it('ignores case and surrounding space', () => {
+    expect(findDuplicateGraphs([kb('Trip'), kb(' trip ')])).toHaveLength(1);
   });
 
-  it('ignores case and surrounding space when comparing names', () => {
-    expect(findDuplicateGraphs([kb('Website'), kb(' website ')])).toHaveLength(1);
+  it('reports nothing when every name is unique', () => {
+    expect(findDuplicateGraphs([kb('a'), kb('b')])).toEqual([]);
+  });
+});
+
+describe('a name that IS the prefix belongs to its own cluster', () => {
+  it('groups "website" with "website-status"', () => {
+    // Found by seeding real names: only the hyphenated one had a separator, so the bare name
+    // never counted toward the prefix it exactly matches — leaving a design graph sitting apart
+    // from the status graph that observes it, which is the pairing this feature exists to show.
+    const sets = groupIntoSets([kb('website'), kb('website-status')]);
+    expect(sets.map((s) => s.title)).toEqual(['Website']);
+    expect(sets[0].rowCount).toBe(2);
+  });
+
+  it('still needs a second member — a bare name alone does not make a set', () => {
+    expect(groupIntoSets([kb('website')]).map((s) => s.title)).toEqual(['Ungrouped']);
+  });
+
+  it('counts the bare name toward the threshold, not past it', () => {
+    expect(suggestSetsFromNames([kb('trip'), kb('trip-a')]).map((d) => d.title)).toEqual(['Trip']);
   });
 });

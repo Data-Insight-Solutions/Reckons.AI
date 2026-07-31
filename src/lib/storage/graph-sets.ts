@@ -1,44 +1,59 @@
 /**
- * Graph sets (F113) — group the graph list by PURPOSE, not by creation order.
+ * Graph sets (F113) — group the graph list by PURPOSE, for ANY user's graphs.
  *
- * The graphs page lists every registry row flat. At thirty graphs that is unreadable: the website
- * design graph, the website status graph that observes it, the ten docs sub-graphs they are built
- * from, and the project's own roadmap and codebase graphs all sit in one alphabet-free column,
- * ordered by whenever they happened to be imported. Nothing on screen says which graphs belong
- * together, so the reader has to already know.
+ * A flat list stops being readable somewhere around a dozen graphs: nothing on screen says which
+ * graphs belong together, so the reader has to already know. Sets fix that — and this module's
+ * whole job is to do it without knowing anything about a particular person's naming.
  *
- * A set is a PURPOSE, and members carry a ROLE within it — the design/observed/archive shape
- * (kb:design-observed-archive) made visible in the one place a user actually manages graphs.
+ * ── WHY THIS WAS REWRITTEN ──────────────────────────────────────────────────────────────────
+ * The first version hardcoded rules for `website`, `docs-`, `reckons-` and `starter-` — this
+ * repository's own conventions, baked into the product. It grouped one developer's graphs
+ * beautifully and every other user's not at all, and it invented purpose text ("Reckons.AI
+ * describing itself") for graphs it had no business describing. That is building the application
+ * for one project. Sets are now DATA, and the fallback is derived from whatever the user actually
+ * named things.
  *
- * ── WHERE MEMBERSHIP COMES FROM, AND WHY IT IS A FALLBACK ───────────────────────────────────
- * F113's proper answer is a declared dcat:Catalog: a graph states which set it belongs to and
- * what role it plays. That does not exist yet, and waiting for it would leave the list unusable
- * in the meantime. So membership is DERIVED FROM THE NAME, and every group records HOW it was
- * derived — a grouping the user cannot see the basis of is one they cannot correct.
+ * ── THREE SOURCES OF MEMBERSHIP, most authoritative first ───────────────────────────────────
  *
- * Name-derivation is genuinely weaker and this module says so rather than implying otherwise:
- * renaming a graph moves it between sets, and a graph named outside the conventions lands in
- * "Other" with nothing explaining why. Declared membership fixes both, and `declaredSet` on a
- * registry row already takes precedence here so the migration needs no rewrite of this logic.
+ *   1. DECLARED   the graph says which set it is in (`declaredSet`). F113's eventual
+ *                 dcat:Catalog answer lands here and needs no change to this logic.
+ *   2. DEFINED    the user made a set and either listed members or gave it a prefix to match.
+ *   3. DERIVED    a shared name prefix, found in the names as they are. Generic: "trip-2024" and
+ *                 "trip-2025" cluster for the same reason "docs-llm" and "docs-features" do.
  *
- * ── ARCHIVES STAY WITH THEIR PARENT ─────────────────────────────────────────────────────────
- * Grouping composes with `archive-gallery.ts` rather than replacing it. An archive is not a peer
- * of its parent and must never be sorted away from it, so sets contain archive GROUPS, not rows.
+ * Anything unmatched lands in one clearly-labelled leftover group, never silently.
  *
- * Pure: registry rows in, grouped rows out. No storage, no Svelte.
+ * ── WHAT THIS MODULE WILL NOT DO ────────────────────────────────────────────────────────────
+ * It will not write a PURPOSE for a set it derived. A purpose is an editorial claim about what
+ * graphs are for, and guessing one is how a tool starts telling users what their own data means.
+ * Derived sets get a title from the prefix and nothing else; the user supplies the purpose or it
+ * stays empty.
+ *
+ * Pure: registry rows and set definitions in, grouped rows out. No storage, no Svelte.
  */
 
 import { groupGraphsWithArchives, groupRows, type ArchiveGroup } from './archive-gallery';
 import type { KbEntry } from './kb-registry';
 
 /** How a graph came to be in its set. Shown to the user, because a guess must look like one. */
-export type SetBasis = 'declared' | 'name' | 'ungrouped';
+export type SetBasis = 'declared' | 'defined' | 'derived' | 'ungrouped';
+
+/** A set the USER defined. Stored as data, never compiled in. */
+export interface GraphSetDefinition {
+  id: string;
+  title: string;
+  /** The user's own words. Empty is fine; invented is not. */
+  purpose?: string;
+  /** Explicit membership by registry id — beats any pattern. */
+  memberIds?: string[];
+  /** Case-insensitive name prefix. The simplest rule that covers most real naming. */
+  prefix?: string;
+}
 
 export interface GraphSet {
   id: string;
-  /** Display name for the set. */
   title: string;
-  /** Why these belong together — shown so the grouping is legible rather than magic. */
+  /** Only ever the user's words, or empty. Never generated. */
   purpose: string;
   /** Archive groups, so an archive is never separated from the graph it belongs to. */
   groups: ArchiveGroup[];
@@ -47,105 +62,196 @@ export interface GraphSet {
   rowCount: number;
 }
 
-/**
- * Name-prefix rules, most specific first.
- *
- * Deliberately few and boring. A clever matcher that guesses well most of the time produces a
- * grouping nobody can predict, and the point is legibility — a user should be able to tell why a
- * graph landed where it did without reading this file.
- */
-const NAME_RULES: ReadonlyArray<{ id: string; title: string; purpose: string; match: (n: string) => boolean }> = [
-  {
-    id: 'website',
-    title: 'Website',
-    purpose: 'The published site: what it is designed to be, and what it actually contains.',
-    match: (n) => n.startsWith('website'),
-  },
-  {
-    id: 'docs',
-    title: 'Documentation sources',
-    purpose: 'The graphs the documentation pages are composed from.',
-    match: (n) => n.startsWith('docs-') || n === 'docs-all',
-  },
-  {
-    id: 'project',
-    title: 'This project',
-    purpose: 'Reckons.AI describing itself — plan, code, shipped work, and its own records.',
-    match: (n) => n.startsWith('reckons-'),
-  },
-  {
-    id: 'starters',
-    title: 'Starter graphs',
-    purpose: 'Example graphs for trying things out or starting from something.',
-    match: (n) => n.startsWith('starter-'),
-  },
-];
-
-const OTHER = {
-  id: 'other',
-  title: 'Other graphs',
-  purpose: 'Graphs that do not belong to a declared set. Yours, most likely.',
-};
-
-/** A registry row may already declare its set; name matching is only the fallback. */
+/** A registry row may declare its own set membership. */
 type SettableEntry = KbEntry & { declaredSet?: string };
 
-function setFor(entry: KbEntry): { id: string; title: string; purpose: string; basis: SetBasis } {
-  const declared = (entry as SettableEntry).declaredSet?.trim();
-  if (declared) {
-    const known = NAME_RULES.find((r) => r.id === declared);
-    return known
-      ? { ...known, basis: 'declared' }
-      : { id: declared, title: declared, purpose: 'Declared by the graph.', basis: 'declared' };
+const UNGROUPED_ID = '__ungrouped__';
+
+const normalize = (s: string) => s.trim().toLowerCase();
+
+/**
+ * Split a graph name into its leading token.
+ *
+ * Separators are the ones people actually use in names — hyphen, underscore, space, slash, colon.
+ * A name with no separator has no prefix and will not cluster, which is correct: "Research" and
+ * "Recipes" share letters and nothing else, and clustering on that would produce groups whose
+ * logic no user could follow.
+ */
+function namePrefix(name: string): string | null {
+  const match = /^([^\s\-_/:]+)[\s\-_/:]/.exec(normalize(name));
+  return match ? match[1] : null;
+}
+
+/** Title-case a derived prefix for display, without claiming to know what it means. */
+function titleFromPrefix(prefix: string): string {
+  return prefix.charAt(0).toUpperCase() + prefix.slice(1);
+}
+
+/**
+ * Suggest sets from the names as they actually are.
+ *
+ * Generic by construction: it reads the user's own naming rather than a list this project happens
+ * to use. `minMembers` of 2 is the smallest number that means anything — a "set" of one is just a
+ * graph with a heading over it, which adds a row of chrome and no information.
+ *
+ * Exported so a settings screen can OFFER these as sets the user then owns, rather than the
+ * grouping being permanently implicit.
+ */
+export function suggestSetsFromNames(
+  entries: readonly KbEntry[],
+  minMembers = 2,
+): GraphSetDefinition[] {
+  const candidates = new Set<string>();
+  for (const entry of entries) {
+    const prefix = namePrefix(entry.name);
+    if (prefix) candidates.add(prefix);
   }
 
-  const name = entry.name.trim().toLowerCase();
-  const rule = NAME_RULES.find((r) => r.match(name));
-  return rule ? { ...rule, basis: 'name' } : { ...OTHER, basis: 'ungrouped' };
+  // A name that IS the prefix counts as a member of its own cluster. Without this, "website" and
+  // "website-status" refuse to group: only the second has a separator, so the first never counted
+  // toward the prefix it exactly matches — and a design graph sitting apart from the status graph
+  // that observes it is precisely the pairing this feature exists to show.
+  const counts = new Map<string, number>();
+  for (const prefix of candidates) {
+    const n = entries.filter((e) => {
+      const name = normalize(e.name);
+      return name === prefix || namePrefix(name) === prefix;
+    }).length;
+    counts.set(prefix, n);
+  }
+  return [...counts.entries()]
+    .filter(([, n]) => n >= minMembers)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([prefix]) => ({ id: `derived:${prefix}`, title: titleFromPrefix(prefix), prefix }));
+}
+
+function matchDefinition(
+  entry: KbEntry,
+  definitions: readonly GraphSetDefinition[],
+): GraphSetDefinition | null {
+  // Explicit membership beats a pattern: a user who listed a graph by id meant that graph, even
+  // if some other set's prefix also happens to match its name.
+  const byId = definitions.find((d) => d.memberIds?.includes(entry.id));
+  if (byId) return byId;
+
+  const name = normalize(entry.name);
+  // Longest prefix wins, so a narrower set ("trip-2024") beats a broader one ("trip").
+  return definitions
+    .filter((d) => d.prefix && name.startsWith(normalize(d.prefix)))
+    .sort((a, b) => (b.prefix?.length ?? 0) - (a.prefix?.length ?? 0))[0] ?? null;
+}
+
+export interface GroupOptions {
+  /** Sets the user defined. Checked before anything is derived. */
+  definitions?: readonly GraphSetDefinition[];
+  /**
+   * Cluster the leftovers by shared name prefix. On by default because it is what makes the list
+   * readable out of the box; a user who has defined their own sets can turn it off.
+   */
+  deriveFromNames?: boolean;
+  /** Label for graphs matching nothing. The caller owns the wording. */
+  ungroupedTitle?: string;
+}
+
+/** Group the registry into sets, keeping archives with their parents. */
+export function groupIntoSets(
+  entries: readonly KbEntry[],
+  options: GroupOptions = {},
+): GraphSet[] {
+  return bucketIntoSets(groupGraphsWithArchives(entries), options, entries);
 }
 
 /**
- * Group the registry into sets, keeping archives with their parents.
+ * Bucket archive groups a caller has ALREADY filtered and sorted.
  *
- * Sets come back in NAME_RULES order with "Other" last, rather than by size. A stable order means
- * a user's graphs do not rearrange themselves when one set happens to grow — the list is a place
- * they navigate by memory, and reordering it is worse than a long list.
+ * Separate from `groupIntoSets` so a page keeps its own ordering rules — current graph first,
+ * bookmarks, then the chosen sort — and gains set headings without those rules being
+ * reimplemented here, where they would drift.
  */
-export function groupIntoSets(entries: readonly KbEntry[]): GraphSet[] {
-  return bucketIntoSets(groupGraphsWithArchives(entries));
-}
+export function bucketIntoSets(
+  archiveGroups: readonly ArchiveGroup[],
+  options: GroupOptions = {},
+  allEntries?: readonly KbEntry[],
+): GraphSet[] {
+  const defined = options.definitions ?? [];
+  const derive = options.deriveFromNames ?? true;
 
-/**
- * Bucket archive groups that a caller has ALREADY filtered and sorted.
- *
- * Separate from `groupIntoSets` so the graphs page keeps its own ordering rules — current graph
- * first, then bookmarks, then the chosen sort — and gains set headings without those rules being
- * quietly reimplemented here, where they would drift.
- */
-export function bucketIntoSets(archiveGroups: readonly ArchiveGroup[]): GraphSet[] {
+  // Derivation reads the WHOLE registry when available, so a set does not appear and vanish as
+  // the user types into the filter box.
+  const parents = archiveGroups.map((g) => g.parent);
+  const derived = derive ? suggestSetsFromNames(allEntries ?? parents) : [];
 
   const bySet = new Map<string, GraphSet>();
+  const order: string[] = [];
+
   for (const group of archiveGroups) {
-    // The PARENT decides the set. An archive follows its graph even when its own name would
-    // match a different rule, because "<parent> (archives)" inherits whatever the parent is.
-    const set = setFor(group.parent);
-    let bucket = bySet.get(set.id);
+    // The PARENT decides the set. An archive follows its graph even when its own name would match
+    // a different rule — "<parent> (archives)" inherits whatever its parent is.
+    const entry = group.parent;
+    const declared = (entry as SettableEntry).declaredSet?.trim();
+
+    let id: string;
+    let title: string;
+    let purpose = '';
+    let basis: SetBasis;
+
+    const definition = declared
+      ? defined.find((d) => d.id === declared) ?? null
+      : matchDefinition(entry, defined);
+
+    if (declared) {
+      const d = definition;
+      id = declared;
+      title = d?.title ?? declared;
+      purpose = d?.purpose ?? '';
+      basis = 'declared';
+    } else if (definition) {
+      id = definition.id;
+      title = definition.title;
+      purpose = definition.purpose ?? '';
+      basis = 'defined';
+    } else {
+      const match = matchDefinition(entry, derived);
+      if (match) {
+        id = match.id;
+        title = match.title;
+        // Deliberately no purpose. Guessing what someone's graphs are FOR is how a tool starts
+        // telling users what their own data means.
+        basis = 'derived';
+      } else {
+        id = UNGROUPED_ID;
+        title = options.ungroupedTitle ?? 'Ungrouped';
+        basis = 'ungrouped';
+      }
+    }
+
+    let bucket = bySet.get(id);
     if (!bucket) {
-      bucket = { id: set.id, title: set.title, purpose: set.purpose, groups: [], basis: set.basis, rowCount: 0 };
-      bySet.set(set.id, bucket);
+      bucket = { id, title, purpose, groups: [], basis, rowCount: 0 };
+      bySet.set(id, bucket);
+      order.push(id);
     }
     bucket.groups.push(group);
     bucket.rowCount += groupRows(group).length;
-    // A set holding even one declared member is a declared set; name-matching is what it fell
-    // back to for the rest, and claiming otherwise would overstate the weaker basis.
-    if (set.basis === 'declared') bucket.basis = 'declared';
+    // A set holding a declared or user-defined member is reported at that stronger basis;
+    // claiming the reverse would overstate a guess.
+    if (basis === 'declared') bucket.basis = 'declared';
+    else if (basis === 'defined' && bucket.basis === 'derived') bucket.basis = 'defined';
+    if (purpose && !bucket.purpose) bucket.purpose = purpose;
   }
 
-  const order = new Map(NAME_RULES.map((r, i) => [r.id, i]));
+  // User-defined sets keep the order the user put them in; derived ones follow alphabetically;
+  // the leftovers are always last. Stable, so the list does not rearrange as sets grow.
+  const definedOrder = new Map(defined.map((d, i) => [d.id, i]));
   return [...bySet.values()].sort((a, b) => {
-    const ai = order.get(a.id) ?? (a.id === OTHER.id ? Number.MAX_SAFE_INTEGER : NAME_RULES.length);
-    const bi = order.get(b.id) ?? (b.id === OTHER.id ? Number.MAX_SAFE_INTEGER : NAME_RULES.length);
-    return ai - bi || a.title.localeCompare(b.title);
+    if (a.id === UNGROUPED_ID) return 1;
+    if (b.id === UNGROUPED_ID) return -1;
+    const ai = definedOrder.get(a.id);
+    const bi = definedOrder.get(b.id);
+    if (ai !== undefined && bi !== undefined) return ai - bi;
+    if (ai !== undefined) return -1;
+    if (bi !== undefined) return 1;
+    return a.title.localeCompare(b.title);
   });
 }
 
@@ -158,22 +264,21 @@ export interface DuplicateGraph {
  * Graphs sharing a name but not an id.
  *
  * Worth surfacing rather than silently rendering twice: importing the same source again mints a
- * NEW database, so the list grows a second row holding an independent copy. Two graphs called
- * "reckons-roadmap" will disagree the moment either is edited, and the user has no way to tell
- * which one they are looking at from the name alone.
+ * NEW database, so the list grows a second row holding an independent copy. Two graphs with one
+ * name will disagree the moment either is edited, and the name alone cannot tell you which you
+ * are looking at.
  *
- * This REPORTS and never removes. Which copy is the real one is a judgement about content, and a
+ * REPORTS, never removes. Which copy is the real one is a judgement about content, and a
  * heuristic that guessed wrong would delete the only edited version.
  */
 export function findDuplicateGraphs(entries: readonly KbEntry[]): DuplicateGraph[] {
   const byName = new Map<string, KbEntry[]>();
   for (const entry of entries) {
-    const key = entry.name.trim().toLowerCase();
-    byName.set(key, [...(byName.get(key) ?? []), entry]);
+    byName.set(normalize(entry.name), [...(byName.get(normalize(entry.name)) ?? []), entry]);
   }
-  return [...byName.entries()]
-    .filter(([, list]) => list.length > 1)
-    .map(([, list]) => ({
+  return [...byName.values()]
+    .filter((list) => list.length > 1)
+    .map((list) => ({
       name: list[0].name,
       entries: [...list].sort((a, b) => (b.statementCount ?? 0) - (a.statementCount ?? 0)),
     }))

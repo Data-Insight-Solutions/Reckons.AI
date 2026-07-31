@@ -178,7 +178,7 @@
    * Bucketing happens AFTER filtering and sorting, so every ordering rule above still applies
    * within each set.
    */
-  const kbSets = $derived(bucketIntoSets(kbGroups));
+  const kbSets = $derived(bucketIntoSets(kbGroups, { ungroupedTitle: 'Ungrouped' }, localKbs));
 
   /**
    * Graphs sharing a name but not an id. Re-importing a source mints a NEW database, so the list
@@ -797,13 +797,15 @@
         <div class="kb-set-head">
           <h4 class="mono">{set.title}</h4>
           <span class="kb-set-count mono">{set.rowCount}</span>
-          {#if set.basis === 'name'}
+          {#if set.basis === 'derived'}
             <!-- Say that the grouping is a GUESS. A user cannot correct a rule they cannot see,
                  and F113's declared membership does not exist yet. -->
-            <span class="kb-set-basis mono" title="Grouped by name. Declared set membership (F113) is not built yet, so renaming a graph moves it.">by name</span>
+            <span class="kb-set-basis mono" title="Grouped by a shared name prefix found in your graph names. Renaming a graph moves it. Define your own sets to make this explicit.">by name</span>
           {/if}
         </div>
-        <p class="kb-set-purpose">{set.purpose}</p>
+        <!-- Only ever the user's words. A derived set has no purpose, and inventing one would be
+             the tool telling the user what their own graphs are for. -->
+        {#if set.purpose}<p class="kb-set-purpose">{set.purpose}</p>{/if}
     {#each set.groups as group (group.parent.id)}
       {@const kb = group.parent}
       {@const isCurrent = kb.id === currentKbId}
