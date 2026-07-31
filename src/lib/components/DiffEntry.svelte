@@ -167,6 +167,7 @@
     'near-duplicate': 'near duplicate',
     'synonym-reinforces': 'synonym',
     'antonym-conflicts': 'contradiction',
+    returned: 'came back',
   };
 </script>
 
@@ -190,6 +191,10 @@
       <span class="muted">predicate is synonymous with existing claim ({(entry.predicateSimilarity * 100).toFixed(0)}% match)</span>
     {:else if entry.kind === 'antonym-conflicts'}
       <span class="muted">{entry.note}</span>
+    {:else if entry.kind === 'returned'}
+      <span class="muted">
+        you already {entry.priorStatus === 'rejected' ? 'rejected' : 'superseded'} this exact fact — the source offered it again
+      </span>
     {/if}
   </div>
 
@@ -280,6 +285,15 @@
         <button onclick={reject} disabled={processing}>
           {processing ? 'dismissing…' : 'dismiss'}
         </button>
+      {:else if entry.kind === 'returned'}
+        <!-- The user already settled this once, so dismissing is the unemphasised default and
+             accepting stays available for a genuine change of mind. -->
+        <button onclick={reject} disabled={processing}>
+          {processing ? 'dismissing…' : 'dismiss again'}
+        </button>
+        <button class="primary" onclick={accept} disabled={processing}>
+          {processing ? 'accepting…' : 'accept after all'}
+        </button>
       {:else if entry.kind === 'reinforces'}
         <button class="primary" onclick={accept} disabled={processing}>
           {processing ? 'adding…' : 'add as new source citation'}
@@ -359,6 +373,7 @@
   .tag.near-duplicate    { color: #f59e0b; border-color: #f59e0b; }
   .tag.synonym-reinforces{ color: var(--ok);     border-color: var(--ok); }
   .tag.antonym-conflicts { color: var(--danger); border-color: var(--danger); }
+  .tag.returned          { color: var(--muted);  border-color: var(--muted); }
 
   .source-title {
     font-size: 0.72rem;

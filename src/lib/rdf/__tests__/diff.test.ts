@@ -131,18 +131,70 @@ describe('computeDiff — summary counts', () => {
 // ── Rejected / superseded exclusion ──────────────────────────────────────────
 
 describe('computeDiff — ignored statuses', () => {
-  it('ignores rejected existing statements (incoming is treated as new)', () => {
+  // These two previously asserted 'new', which is the bug: a settled decision came back as
+  // news on every re-read. They now assert 'returned' — still kept out of the ACTIVE indexes
+  // (never a duplicate/conflict/refinement of a live claim), but no longer forgotten.
+  it('reports a rejected triple offered again as returned, not new', () => {
     const existing = makeStatement({ status: 'rejected' });
     const incoming = makeStatement({ id: 'inc', s: existing.s, p: existing.p, o: existing.o, g: existing.g });
     const diff = computeDiff([incoming], [existing]);
-    expect(diff.entries[0].kind).toBe('new');
+    expect(diff.entries[0].kind).toBe('returned');
+    expect(diff.summary.returned).toBe(1);
+    expect(diff.summary.new).toBe(0);
+    if (diff.entries[0].kind === 'returned') {
+      expect(diff.entries[0].priorStatus).toBe('rejected');
+      expect(diff.entries[0].existing).toEqual([existing]);
+    }
   });
 
-  it('ignores superseded existing statements', () => {
+  it('reports a superseded triple offered again as returned, tagged superseded', () => {
     const existing = makeStatement({ status: 'superseded' });
     const incoming = makeStatement({ id: 'inc', s: existing.s, p: existing.p, o: existing.o, g: existing.g });
     const diff = computeDiff([incoming], [existing]);
+    expect(diff.entries[0].kind).toBe('returned');
+    if (diff.entries[0].kind === 'returned') expect(diff.entries[0].priorStatus).toBe('superseded');
+  });
+
+  it('prefers rejected over superseded when a triple carries both histories', () => {
+    const sup = makeStatement({ status: 'superseded' });
+    const rej = makeStatement({ id: 'rej', s: sup.s, p: sup.p, o: sup.o, g: sup.g, status: 'rejected' });
+    const incoming = makeStatement({ id: 'inc', s: sup.s, p: sup.p, o: sup.o, g: sup.g });
+    const diff = computeDiff([incoming], [sup, rej]);
+    expect(diff.entries[0].kind).toBe('returned');
+    if (diff.entries[0].kind === 'returned') {
+      expect(diff.entries[0].priorStatus).toBe('rejected');
+      expect(diff.entries[0].existing).toEqual([rej]);
+    }
+  });
+
+  it('does not let a rejection suppress a DIFFERENT object on the same predicate', () => {
+    // Rejecting "alice age 30" says nothing about "alice age 31" — that may be the correction.
+    const rejected = makeStatement({ p: AGE, o: lit('30'), status: 'rejected' });
+    const incoming = makeStatement({ id: 'inc', p: AGE, o: lit('31') });
+    const diff = computeDiff([incoming], [rejected]);
     expect(diff.entries[0].kind).toBe('new');
+  });
+
+  it('prefers a live claim over a settled one when both match exactly', () => {
+    const rejected = makeStatement({ status: 'rejected' });
+    const confirmed = makeStatement({ id: 'ok', s: rejected.s, p: rejected.p, o: rejected.o, g: rejected.g });
+    const incoming = makeStatement({ id: 'inc', s: rejected.s, p: rejected.p, o: rejected.o, g: rejected.g });
+    const diff = computeDiff([incoming], [rejected, confirmed]);
+    expect(diff.entries[0].kind).toBe('duplicate');
+  });
+
+  it('does not re-propose a rejected fact on repeated polls of an unchanged source', () => {
+    // The loop this fix exists for: a currents/source-refresh poll re-reads an UNCHANGED
+    // source, so the extractor emits the identical triple every tick. Before the fix each
+    // tick produced a fresh 'new' card for something the user had already thrown out.
+    const store: Statement[] = [makeStatement({ status: 'rejected' })];
+    const reRead = () => makeStatement({ id: `poll-${_id}`, s: store[0].s, p: store[0].p, o: store[0].o, g: store[0].g });
+
+    for (let tick = 0; tick < 5; tick++) {
+      const diff = computeDiff([reRead()], store);
+      expect(diff.summary.new).toBe(0);
+      expect(diff.summary.returned).toBe(1);
+    }
   });
 
   it('does not ignore confirmed existing statements', () => {

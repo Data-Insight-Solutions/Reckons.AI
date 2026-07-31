@@ -52,6 +52,7 @@ function mkDiff(overrides: Partial<Diff['summary']> = {}, entries: DiffEntry[] =
       reinforces: 0,
       conflicts: 0,
       refines: 0,
+      returned: 0,
       nearDuplicate: 0,
       synonymReinforces: 0,
       antonymConflicts: 0,
