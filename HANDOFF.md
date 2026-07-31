@@ -1,6 +1,63 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-07-30.** Working branch this session: `feat/archive-gallery-grouping`
+**Last updated: 2026-07-31.** Working branch: `fix/indico-browser-reachability`
+(cut from `plan/structured-data-source-watching`; **committed locally, NOT pushed, no PR yet**).
+
+## ▶ LATEST (2026-07-31) — F55 INDICO: the app could never reach a real Indico server
+
+**The previous session ended mid-diagnosis and left a half-fix that made things worse:**
+`src/app.html` had gained a `%RECKONS_EXTRA_CONNECT_SRC%` placeholder inside the live
+`connect-src` directive, referencing a `cspConnectSrc` plugin in `vite.config.ts` **that was never
+written**. So an invalid source expression was sitting in the middle of the security policy. It
+also left an untracked live probe (`tests/tmp-indico/`, `pw-indico.tmp.config.ts`) whose captured
+failure showed `Missing required parameter client_id` — which is a **Google OAuth** error, not an
+Indico one, and which sent the diagnosis down the wrong path.
+
+**TWO STACKED BLOCKERS, both invisible, both now measured:**
+1. **CSP** — a per-user self-hosted origin can never be in a literal `<meta>` policy, and a meta
+   CSP cannot be widened at runtime. The request was refused before being sent.
+2. **CORS** — `indico.data-insight.website` returns **no `Access-Control-Allow-Origin` header at
+   all**. Proven independently of CSP by fetching from a CSP-free local origin: still refused.
+
+Identical requests return **HTTP 200 from curl/Node** and fail in Chromium. That is exactly why
+`indico-verify.ts` was **6/6 green** while the product did not work — *the harness tested a layer
+that enforces neither policy*. `kpred:has-status "functional"` was true of the API and false of
+the product. **That is the lesson: match the claim to the LAYER it was tested at.**
+
+**BUILT THIS SESSION (all green: 1635 unit tests, 0 type errors, graph-lint 0 errors, 3 new e2e):**
+- `src/hooks.server.ts` + `scripts/offline/csp-connect-src.ts` — substitutes configured
+  self-hosted origins into the CSP. **NOT a Vite plugin**: `app.html` is SvelteKit's template, so
+  `transformIndexHtml` never runs on it — the plugin computed the right answer and applied
+  nothing. Substitutes **origins only, never paths** (`VITE_FEEDBACK_WEBHOOK_URL` carries a
+  secret-ish path and the CSP ships publicly).
+- `src/lib/integrations/indico/reachability.ts` — turns `TypeError: Failed to fetch` into a
+  message naming the layer that refused and the fix **that layer** needs (different machines!).
+  A `securitypolicyviolation` listener *proves* CSP rather than guessing.
+- The three calendar sub-tabs shared **one `error` variable**, so a Google failure rendered under
+  the Indico panel. Indico now has its own.
+
+**VERIFIED END TO END:** against a CORS-enabled stand-in the real UI imports
+**"Imported 1 events (12 facts)"** with the review badge at 12 — pointed at `127.0.0.1`, which
+`http://localhost:*` deliberately does NOT cover, so the substitution itself is exercised. Both
+production builds checked: origins present when configured, **no placeholder in the empty case**
+(which is what reckons.ai actually ships).
+
+**⚠ BLOCKED ON MATT — I cannot do this, it is a server change:**
+Add `Access-Control-Allow-Origin` at `indico.data-insight.website` (or its reverse proxy) for the
+app origin. Until then the live import stays blocked *by the browser, by design* — but now says so
+legibly instead of failing as a mystery. **Deliberately NOT done:** routing through
+`r.jina.ai`/`corsproxy.io`, which would hand a personal Indico token to a third party.
+
+**Still unproven (do NOT upgrade):** category sync beyond root (the server reports no categories
+from the root listing) and background/periodic sync.
+
+**Leftovers:** `tests/tmp-indico/cors-proxy.mjs` (the CORS stand-in — reusable, untracked) and the
+previous session's `indico-live.test.ts` / `pw-indico.tmp.config.ts`. All untracked scratch,
+disposable. Durable coverage now lives in `tests/e2e/indico-diagnostic.test.ts`.
+
+---
+
+## ▶ PREVIOUS (2026-07-30) — working branch `feat/archive-gallery-grouping`
 (**PR #170 → `dev`**, base verified).
 
 ## ▶ LATEST (2026-07-30) — F97 HAS AN ENTRY POINT. The gap named on 2026-07-29 is closed.

@@ -651,13 +651,18 @@
   // Indico import
   let indicoImporting = $state(false);
   let indicoImportResult = $state<string | null>(null);
+  // Its OWN error, not the shared `error`: the three calendar sub-tabs render into one card, so
+  // a Google OAuth failure ("Missing required parameter client_id") was appearing under the
+  // Indico panel and reading as an Indico fault. Observed 2026-07-31 while diagnosing the real
+  // Indico block, and it cost time chasing the wrong integration.
+  let indicoError = $state<string | null>(null);
 
   async function importIndicoEvents() {
     const serverUrl = settings().indicoServerUrl;
     if (!serverUrl) return;
     indicoImporting = true;
     indicoImportResult = null;
-    error = null;
+    indicoError = null;
     try {
       const { createIndicoClient } = await import('$lib/integrations/indico/client');
       const { indicoEventsToStatements } = await import('$lib/integrations/indico/indico-rdf');
@@ -691,7 +696,7 @@
         indicoImportResult = 'No events found.';
       }
     } catch (e) {
-      error = e instanceof Error ? e.message : String(e);
+      indicoError = e instanceof Error ? e.message : String(e);
     } finally {
       indicoImporting = false;
     }
@@ -1397,7 +1402,7 @@
       {:else}
         <p class="hint">No Indico server configured. Add your server URL in <a href="/settings">Settings</a>.</p>
       {/if}
-      {#if error}<p class="err">{error}</p>{/if}
+      {#if indicoError}<p class="err indico-err">{indicoError}</p>{/if}
 
     {:else if calSource === 'ical'}
       <p class="sub" style="margin-bottom: 0.75rem;">
@@ -1534,6 +1539,15 @@
   .add-triple-btn:hover { background: var(--accent); color: #fff; }
   .hint { color: var(--muted); font-size: 0.75rem; margin: 0; }
   .err { color: var(--danger); font-family: var(--font-mono); font-size: 0.85rem; }
+  /* The Indico reachability diagnostic is a paragraph, not a status code — it has to stay
+     readable rather than overflow the card, so let it wrap and break long URLs. */
+  .indico-err {
+    margin-top: 0.75rem;
+    line-height: 1.5;
+    text-wrap: pretty;
+    overflow-wrap: anywhere;
+    max-width: 70ch;
+  }
 
   /* WASM model-load progress during extraction (Matt: "it says nothing about progress") */
   .wasm-progress { margin-top: 0.4rem; display: flex; flex-direction: column; gap: 0.3rem; }

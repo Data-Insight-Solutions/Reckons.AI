@@ -7,8 +7,17 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 		<!-- CSP: script-src 'self' + wasm-unsafe-eval (ONNX/transformers.js); worker-src blob: (SW + embedding workers);
 		     connect-src lists every provider the browser calls directly; object/base/form locked down.
-		     Fonts are self-hosted in static/fonts/ — no external font requests. -->
-		<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-inline' blob: https://storage.googleapis.com https://accounts.google.com https://cdn.jsdelivr.net; worker-src 'self' blob:; connect-src 'self' data: blob: https://api.anthropic.com https://api.openai.com https://api.mistral.ai https://generativelanguage.googleapis.com https://openrouter.ai https://api.meshy.ai https://www.googleapis.com https://api.hume.ai wss://api.hume.ai https://accounts.google.com https://r.jina.ai https://corsproxy.io https://huggingface.co https://*.huggingface.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.huggingface.co https://*.xethub.hf.co https://*.aws.cdn.hf.co https://cdn.jsdelivr.net http://localhost:* ws://localhost:*; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; font-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self';" />
+		     Fonts are self-hosted in static/fonts/ — no external font requests.
+		     %RECKONS_EXTRA_CONNECT_SRC% is replaced by src/hooks.server.ts (NOT a Vite plugin —
+		     app.html is SvelteKit's template, so transformIndexHtml never runs on it) with the
+		     SELF-HOSTED origins this build is configured for (Indico, n8n,
+		     a non-localhost Ollama, VITE_EXTRA_CONNECT_SRC). Those URLs are per-user and cannot be
+		     listed here, and a <meta> CSP can never be widened at runtime — so without that
+		     substitution every bring-your-own-server integration is blocked by the browser before
+		     the app sees it. Honest limit: this only helps builds that KNOW the origin (local dev
+		     and self-hosters). On the shared hosted build a user's own server is still unreachable,
+		     and passing CSP is only half — the server must also send Access-Control-Allow-Origin. -->
+		<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-inline' blob: https://storage.googleapis.com https://accounts.google.com https://cdn.jsdelivr.net; worker-src 'self' blob:; connect-src 'self' data: blob: https://api.anthropic.com https://api.openai.com https://api.mistral.ai https://generativelanguage.googleapis.com https://openrouter.ai https://api.meshy.ai https://www.googleapis.com https://api.hume.ai wss://api.hume.ai https://accounts.google.com https://r.jina.ai https://corsproxy.io https://huggingface.co https://*.huggingface.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.huggingface.co https://*.xethub.hf.co https://*.aws.cdn.hf.co https://cdn.jsdelivr.net http://localhost:* ws://localhost:* %RECKONS_EXTRA_CONNECT_SRC%; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; font-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self';" />
 		<title>Reckons.AI</title>
 		<meta name="description" content="Reckons.AI — the semantic understanding knowledge graph that you review and automatically edit, compare, and share." />
 		<meta property="og:title" content="Reckons.AI" />
