@@ -31,6 +31,14 @@ import { updateSettings } from './settings.svelte';
 import { getRegistry, getCurrentKbName, type KbEntry } from '../storage/kb-registry';
 import { collectAssets, assetTriples, type CollectedAsset, type AssetCategory } from '../storage/kb-assets';
 import { dedupeCompletePending } from '../rdf/pending-dedup';
+import {
+  classifyChange,
+  hashSourceText,
+  makeBaseline,
+  type CacheDecision,
+  type SourceBaseline
+} from '../rdf/source-cache';
+import { classifyText } from '../safety/content-policy';
 
 /** Filename written to the workspace dir on every KB mutation (read by the MCP server). */
 export const WORKSPACE_KB_FILE = 'knowledge.ttl';
@@ -1053,5 +1061,119 @@ export async function listModelFiles(repo: string, filePaths: string[]): Promise
     return found;
   } catch {
     return []; // models/ or repo dir doesn't exist
+  }
+}
+
+// ── Source reference copies (F122) ──────────────────────────────────────────
+// The LAST REVIEWED text of each watched source, so a refresh can ask "did this actually
+// change?" before paying an extractor to find out. One slot per source, overwritten — no
+// history, because a source copy is a re-fetchable diff baseline and the graph already carries
+// full revertable history far more compactly (see rdf/source-cache.ts for the reasoning).
+//
+// Callers pass the NORMALIZED extraction, never raw HTML: nav, ads, analytics tags and
+// relative timestamps differ between two fetches of an identical article, so an HTML baseline
+// would report a change on nearly every poll.
+//
+// These files sync (they live in the workspace) but must NEVER be published — copying retained
+// third-party documents to your own cloud is personal use; shipping them inside a shared graph
+// package is redistribution of someone else's content.
+
+/** Directory name under the workspace root. Excluded from graph packages by construction. */
+export const SOURCES_DIR = 'sources';
+
+/**
+ * One file per source id. Ids are app-generated, but this builds a path in the user's own
+ * folder, so sanitize regardless. Dots are dropped along with separators so no id can produce
+ * a '..' segment. Sanitizing can in principle collapse two distinct ids onto one name — which
+ * would silently cross-contaminate baselines — so an id that was actually altered gets a short
+ * deterministic suffix. Well-formed ids are the common case and stay readable, because this
+ * folder is meant to be inspectable by a human.
+ */
+function sourceFileName(sourceId: string): string {
+  const safe = sourceId.replace(/[^a-zA-Z0-9_-]/g, '_');
+  if (safe === sourceId) return `${safe}.json`;
+  let h = 5381;
+  for (let i = 0; i < sourceId.length; i++) h = ((h << 5) + h + sourceId.charCodeAt(i)) >>> 0;
+  return `${safe}-${h.toString(36)}.json`;
+}
+
+/**
+ * Retain a reviewed copy. Call this when a review is SETTLED, never when a fetch completes —
+ * a baseline that advanced on fetch would silently swallow changes the user never saw.
+ *
+ * Returns the baseline actually stored (its `text` is null when the body exceeded the cap),
+ * or null when there is no workspace or the content must not be retained.
+ */
+export async function writeSourceBaseline(
+  sourceId: string,
+  normalizedText: string,
+  reviewedAt: number = Date.now()
+): Promise<SourceBaseline | null> {
+  if (!_handle) return null;
+
+  // A document the classifier blocks must not be quietly persisted to the user's folder.
+  // This is a NEW retention path that the addStatements filter does not cover, and it would
+  // write exactly the material that filter exists to keep out. Refusing is a valid outcome.
+  if (classifyText(normalizedText).rating === 'blocked') {
+    console.warn(`[workspace] Source baseline not retained for "${sourceId}": content policy.`);
+    return null;
+  }
+
+  try {
+    const baseline = await makeBaseline(sourceId, normalizedText, reviewedAt);
+    const dir = await getOrCreateDir(_handle, SOURCES_DIR);
+    const fh = await dir.getFileHandle(sourceFileName(sourceId), { create: true });
+    const w = await fh.createWritable();
+    await w.write(JSON.stringify(baseline));
+    await w.close();
+    return baseline;
+  } catch (e) {
+    console.warn(`[workspace] Source baseline write failed for "${sourceId}":`, e);
+    return null;
+  }
+}
+
+/** Read the retained baseline for a source, or null if there isn't one. */
+export async function readSourceBaseline(sourceId: string): Promise<SourceBaseline | null> {
+  if (!_handle) return null;
+  try {
+    const dir = await _handle.getDirectoryHandle(SOURCES_DIR);
+    const fh = await dir.getFileHandle(sourceFileName(sourceId));
+    const parsed = JSON.parse(await (await fh.getFile()).text()) as Partial<SourceBaseline>;
+    // Hand-editable file in a user's folder — validate rather than trusting the shape.
+    if (typeof parsed?.hash !== 'string' || typeof parsed?.sourceId !== 'string') return null;
+    return {
+      sourceId: parsed.sourceId,
+      hash: parsed.hash,
+      bytes: typeof parsed.bytes === 'number' ? parsed.bytes : 0,
+      text: typeof parsed.text === 'string' ? parsed.text : null,
+      reviewedAt: typeof parsed.reviewedAt === 'number' ? parsed.reviewedAt : 0
+    };
+  } catch {
+    return null; // no sources/ dir, no file, or unreadable — all mean "no baseline"
+  }
+}
+
+/**
+ * The gate a refresh runs before extracting. Fetch, normalize, then ask this.
+ * With no workspace connected there is nowhere to retain a baseline, so every refresh reports
+ * 'no-baseline' and behaves exactly as it does today — degraded, but never wrong.
+ */
+export async function classifySourceChange(
+  sourceId: string,
+  normalizedText: string
+): Promise<CacheDecision> {
+  const baseline = await readSourceBaseline(sourceId);
+  return classifyChange(baseline, await hashSourceText(normalizedText), normalizedText);
+}
+
+/** Drop a source's retained copy — on unsubscribe, or when the user clears cached content. */
+export async function removeSourceBaseline(sourceId: string): Promise<void> {
+  if (!_handle) return;
+  try {
+    const dir = await _handle.getDirectoryHandle(SOURCES_DIR);
+    await dir.removeEntry(sourceFileName(sourceId));
+  } catch {
+    // Already absent is the desired end state.
   }
 }
