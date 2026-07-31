@@ -83,10 +83,15 @@
   const pendingDeletions = $derived(pendingRemovalStatements());
   const pendingMerges = $derived(pendingMergeStatements());
 
+  // Everything that is not itself in the review queue. Rejected and superseded statements ARE
+  // included deliberately (F122): computeDiff needs to see a settled decision to recognise a
+  // fact coming back, and it keeps them out of its own active indexes, so they can never be
+  // reported as a duplicate, conflict or refinement of a live claim. Filtering them out here
+  // instead — as this did — silently bypassed that and let an already-rejected fact render as
+  // 'new' on the one surface where the user would meet it.
   const existing = $derived(
     statements().filter(
-      (s) => s.status !== 'pending' && s.status !== 'rejected' &&
-             s.status !== 'superseded' && s.status !== 'pending-removal'
+      (s) => s.status !== 'pending' && s.status !== 'pending-removal'
     )
   );
 

@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { DiffEntry } from '$lib/rdf/diff';
   import StatementCard from './StatementCard.svelte';
-  import { setStatus, supersede, updateStatement, entityChoices } from '$lib/stores/kb.svelte';
+  import { setStatus, supersede, updateStatement, entityChoices, statements } from '$lib/stores/kb.svelte';
   import { recordAnswer } from '$lib/stores/workspace.svelte';
   import type { Statement, Term } from '$lib/rdf/types';
   import { resolvePartial } from '$lib/rdf/partial-facts';
@@ -65,12 +65,24 @@
   }
 
   /**
-   * A 'returned' entry's incoming statement is deliberately never stored (see ingest), so its
-   * actions have to act on the settled statement already in the graph. Everything else acts on
-   * the incoming one.
+   * Which statement an action actually writes to.
+   *
+   * Normally the incoming one. A 'returned' entry is the exception, and it has TWO callers with
+   * opposite situations, so this cannot be decided by kind alone:
+   *   - the INGEST page shows the in-memory diff, and a returned incoming statement is
+   *     deliberately never stored, so acting on its id would write to nothing and "accept after
+   *     all" would silently do nothing;
+   *   - the REVIEW page recomputes computeDiff over STORED pending statements, so a pending
+   *     triple that matches an older rejection renders as 'returned' with a real, stored
+   *     incoming statement — and acting on the old rejected row instead would leave the pending
+   *     one pending forever, which is the same loop in a new place.
+   * So: act on the incoming statement when it is actually in the graph, and fall back to the
+   * settled one when it is not.
    */
   function targetId(): string {
-    return entry.kind === 'returned' ? entry.existing[0].id : entry.incoming.id;
+    if (entry.kind !== 'returned') return entry.incoming.id;
+    const stored = statements().some((st) => st.id === entry.incoming.id);
+    return stored ? entry.incoming.id : entry.existing[0].id;
   }
 
   async function accept() {
