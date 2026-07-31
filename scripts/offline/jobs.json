@@ -123,6 +123,13 @@
       "enabled": false,
       "cmd": "npx tsx scripts/offline/visual-diff.ts --base=${VISUAL_DIFF_BASE:-https://reckons.ai} --head=${VISUAL_DIFF_HEAD:-https://dev.reckons-ai.pages.dev}",
       "desc": "Local-VLM visual regression prod↔dev (needs OLLAMA_BASE_URL; set VISUAL_DIFF_BASE / VISUAL_DIFF_HEAD)"
+    },
+    {
+      "name": "server-health",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/server-health.ts --pending",
+      "desc": "Watches the two SELF-HOSTED servers real features now depend on: the Indico instance behind calendar ingest and the n8n instance running the feedback webhook + Currents monitor. Checks the CORS grant a browser needs (the thing that was silently broken for the integration's whole life while a Node verifier reported 6/6 green), backup freshness, disk, services, containers, and installed-but-not-booted kernels. PUBLIC checks run anywhere including CI; SSH checks SKIP rather than fail without the host aliases. Read-only: it never changes a server, only queues findings"
     }
   ]
 }
