@@ -1,7 +1,38 @@
 # Session handoff — read this first if you are picking up mid-stream
 
 **Last updated: 2026-07-31.** Working branch: `fix/indico-browser-reachability`
-(cut from `plan/structured-data-source-watching`; **committed locally, NOT pushed, no PR yet**).
+(cut from `plan/structured-data-source-watching`; **4 commits, local only, NOT pushed, no PR**).
+
+## ▶ SERVERS ARE NOW MANAGED FROM HERE (2026-07-31)
+
+`ssh indico` (72.60.70.188, Debian 12) and `ssh n8n` (194.163.44.66, Ubuntu 24.04) — keys at
+`~/.ssh/indico_ed25519` / `~/.ssh/n8n_ed25519`. **The n8n host publishes AAAA first and this
+machine has no IPv6 egress**, so the ssh config pins `AddressFamily inet`; without that it fails
+as "Network is unreachable" and looks like the server is down.
+
+- **Indico upgraded 3.3.8 → 3.3.12**, CORS granted, **F55 round trip CLOSED** — 8 live events →
+  90 facts in the browser. Two things only a populated server revealed: the root category export
+  **does not recurse** (so `indicoCategoryId` is REQUIRED — `.env` now sets `=1`), and Indico
+  renders times in the **CATEGORY's** timezone, which the mapper was discarding (every event two
+  hours off). Both fixed and tested.
+- **n8n: weekly backup installed** (`/usr/local/bin/n8n-backup.sh`, cron Sun 04:17, keeps 8).
+  There was NONE before. Uses SQLite `VACUUM INTO` because the DB is in WAL mode and a plain tar
+  can capture a torn database. Captures the **encryption key** (56-byte `config`, the ONLY copy —
+  without it credentials are permanently undecryptable) and ships a `RESTORE.md`. Verified by
+  extracting and querying the archive, not by trusting the exit code.
+- **`npm run offline` job `server-health`** + two `tasks.ttl` entries now watch both hosts.
+  Public checks (incl. the CORS grant) run anywhere; ssh checks SKIP without keys, so CI is safe.
+
+**⚠ OPEN, MATT'S CALL:** the n8n host runs kernel **6.8.0-110 with 6.8.0-117 installed** —
+unattended-upgrades applies kernel security fixes and nothing ever reboots, so they are inert.
+Needs a reboot window; it briefly drops the **live client workflow** (`Safe Haven Accounting`).
+Also still open: `VITE_FEEDBACK_WEBHOOK_URL` in Cloudflare Pages (the workflow is now ACTIVE, but
+the live site falls back to mailto until that build-time var is set).
+
+**NEXT UP:** starter-graph timeline force still looks bad (Matt, 2026-07-31) — fix that next.
+Then multi-integration scenarios (Shelly → schedule + Currents summary). **Note before planning
+those: the Indico integration is READ-ONLY** — `client.ts` has fetch/search/get and no create, so
+"schedule an appointment" is an unbuilt capability, not a wiring job.
 
 ## ▶ LATEST (2026-07-31) — F55 INDICO: the app could never reach a real Indico server
 
