@@ -4104,3 +4104,46 @@ kb:accessible-interaction-contract rdf:type ktype:Feature ;
                kpred:constraint   "Do not treat the current raw sub-44px count as a pass/fail total: it includes noninteractive and intentionally compact elements. First repair audit classification, then ratchet verified interactive violations to zero without inflating visual density indiscriminately." ;
                kpred:measured     "AUDIT 2026-07-22: mobile routes contain many verified compact glyph controls, the fixed navigation reaches 28-36px controls at narrow widths, small purple semantic text has weak contrast on common dark surfaces, and current Svelte diagnostics include static-element click handlers, unfocusable menu roles, unassociated labels, and media without captions." ;
                kpred:remaining    "DONE WHEN token-level contrast tests cover text roles; verified interactive targets meet the chosen mobile target-size standard or carry a documented exception; every primary workflow is keyboard-completable with visible focus; touch-only and pointer-only controls have equivalents; labels, roles, dialog focus management, dividers, motion preferences and media alternatives pass automated and manual checks; Svelte accessibility warnings are ratcheted to zero; and the corrected device audit reports no unexplained target, overlap, clipping, or focus violations on supported routes." .
+
+## -- F99.2 / F56.1 / F125: assistant WRITE capabilities + scenario testing ------
+## Added 2026-07-31 after the Indico round trip closed. Everything below is PLANNED and
+## NOTHING is built — recorded so the next session does not rediscover the same constraints.
+
+kb:calendar-write rdf:type     ktype:Feature ;
+               rdfs:label   "Schedule an appointment (calendar WRITE)" ;
+               kpred:feature-id   "F99.2" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:personal-assistant ;
+               kpred:relates-to   kb:int-indico ;
+               kpred:relates-to   kb:n8n-cloud-sync ;
+               kpred:description  "The half of the assistant that CHANGES the world: 'schedule an appointment with Chelsey at 3pm next Tuesday'. Parse the intent, resolve the person against the graph, find a free slot, and create a real calendar event — then write the event back into the graph as a fact with provenance, so the graph and the calendar agree." ;
+               kpred:honest-note  "NOT A WIRING JOB — THE WRITE PATH DOES NOT EXIST. Measured 2026-07-31: src/lib/integrations/indico/client.ts has fetchEvents/searchEvents/getEvent and NO create, and Indico's HTTP API is effectively read-only for events. The eight starter-graph events on the live server were created through `indico shell` ON THE SERVER, which is not something a browser can do. So this feature needs a write channel that does not yet exist, and choosing it is a design decision, not an implementation detail." ;
+               kpred:open-question "Which write channel? (a) an n8n workflow holding the server-side credential, which matches the Integration Boundaries rule that n8n owns web SIDE-EFFECTS while the app stays local-first, and keeps a write credential out of the browser; (b) write to a calendar that HAS a real write API (Google Calendar, or Nextcloud CalDAV per F63) and leave Indico read-only; (c) an Indico plugin exposing a create endpoint — most work, least reuse. Leaning (a)." ;
+               kpred:decided      "A CALENDAR WRITE IS A REAL-WORLD SIDE EFFECT AND MUST BE CONFIRMED, never auto-committed from a voice command. Consistent with F52 (agents propose, humans settle): the assistant drafts the event, shows time/attendee/duration, and a human accepts. A misheard 'next Tuesday' that silently books a real meeting with a real person is exactly the failure the review queue exists to prevent." ;
+               kpred:remaining    "Design the write channel; intent parsing (person + time + duration) with the person resolved against graph entities rather than invented; free-slot search over the events already imported; a confirmation affordance in Shelly and in the review queue; write-back to the graph with provenance." .
+
+kb:personal-assistant kpred:has-part kb:calendar-write .
+
+kb:drive-file-authoring rdf:type ktype:Feature ;
+               rdfs:label   "Create and edit Drive files (inside synced folders only)" ;
+               kpred:feature-id   "F56.1" ;
+               kpred:has-status   "planned" ;
+               kpred:part-of      kb:google-drive-sync ;
+               kpred:relates-to   kb:personal-assistant ;
+               kpred:relates-to   kb:graph-publishing ;
+               kpred:description  "Let the assistant author and edit documents in Google Drive — meeting notes, a brief, a summary written from a reckoning — and round-trip them into the graph as nodes, the way content/*.md already round-trips under F27. Extends F56, which today has OAuth and file LISTING but no authoring." ;
+               kpred:decided      "SCOPE IS THE SAFETY BOUNDARY, and it is Matt's explicit constraint (2026-07-31): writes are restricted to directories the user has EXPLICITLY SYNCED. The app may create or edit inside a linked folder and nowhere else in the user's Drive. This must be enforced in code and tested — an assistant with unscoped write access to someone's entire Drive is a different and much worse product than one that owns a folder. A path check that can be bypassed by a `../` or by a file id resolved outside the folder tree is not a boundary." ;
+               kpred:remaining    "Drive files.create / files.update behind the existing OAuth; a folder-scope guard resolving every target's PARENT CHAIN (an id-based API means path strings are not enough); graph node <-> Drive file identity so an edit updates rather than duplicates; conflict handling shared with the folder-sync reconcile." .
+
+kb:multi-integration-scenarios rdf:type ktype:Feature ;
+               rdfs:label   "Multi-integration test scenarios" ;
+               kpred:feature-id   "F125" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:relates-to   kb:personal-assistant ;
+               kpred:relates-to   kb:deep-testing ;
+               kpred:relates-to   kb:currents ;
+               kpred:description  "Executable end-to-end scenarios that cross TWO OR MORE integrations, because that is where this product's value and its bugs both live. The worked example (Matt, 2026-07-31): 'Schedule an appointment with Chelsey at 3pm next Tuesday, and check Currents for new research before then and give me a summary' — one utterance spanning calendar WRITE (F99.2), the n8n Currents monitor, a reckoning over the graph, and spoken output. Each scenario is a story with ordered steps and assertions, in the shape docs-testing.ttl already uses." ;
+               kpred:honest-note  "THE REASON THIS FEATURE EXISTS IS A MEASURED ONE. Every integration in this repo was unit-tested and green while the product was broken: Indico's verifier reported 6/6 for months from Node, where neither CSP nor CORS is enforced, so it could not see that no browser had ever reached the server. Single-integration tests answer 'does the client work'; only a crossing scenario answers 'does the user's sentence work'. Scenarios must therefore run at the layer the user actually stands on — a real browser, real servers — or they will repeat the same lie in a new place." ;
+               kpred:open-question "These need real credentials and real servers, so they cannot run in public CI by default. Run them as an opt-in local suite against the self-hosted Indico + n8n (both now watched by scripts/offline/server-health.ts), on a schedule rather than per-PR? And how much is asserted about a WRITE scenario without creating real appointments with real people — a dedicated throwaway category, cleaned up after?" .
