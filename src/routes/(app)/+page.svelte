@@ -2,6 +2,7 @@
   import { Canvas } from '@threlte/core';
   import { goto } from '$app/navigation';
   import KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
+  import { parseCameraSpec, type CameraSpec } from '$lib/3d/camera-presets';
   import { buildGraphView } from '$lib/rdf/graph-view';
   import { connectedComponents, nHopNeighbours } from '$lib/rdf/n-hop';
   import { bestSuggestion } from '$lib/rdf/view-suggestions';
@@ -308,6 +309,8 @@
   // ── URL query param sync ──────────────────────────────────────────────────
   // Read initial view state from URL params (enables Shelly-recommended views
   // to be bookmarked and shared within the same browser/device).
+  let cameraSpec = $state<CameraSpec | null>(null);
+
   onMount(async () => {
     // Re-detect WebGL on the CLIENT — the $state initializer can carry a stale SSR
     // value (false), which would keep the gate in 2D on a fresh load even when the
@@ -324,6 +327,11 @@
     if (src) selectedSources = new Set(src.split(',').filter(Boolean));
     const typ = params.get('types');
     if (typ) selectedTypes = new Set(typ.split(',').filter(Boolean));
+    // ?cam=iso | top | side | front | "az,el[,dist]" — aims the 3D camera. Absent keeps the
+    // historical straight-on view, so every existing screenshot baseline is unaffected.
+    // Exists so visual tests can shoot from an angle that can actually SEE the z axis
+    // (revealsDepth in camera-presets.ts); a head-on camera cannot.
+    cameraSpec = parseCameraSpec(params.get('cam'));
 
     const s = await getSettings();
     if (s.nodeLabelFontSize != null) labelFontSize = s.nodeLabelFontSize;
@@ -1691,6 +1699,7 @@
     <svelte:boundary>
       <Canvas>
         <KnowledgeGraph
+          {cameraSpec}
           statements={visible}
           {selected}
           {layout}
