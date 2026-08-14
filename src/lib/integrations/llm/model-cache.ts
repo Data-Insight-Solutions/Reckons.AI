@@ -78,7 +78,7 @@ const MINILM: ModelManifest = {
 const BGE_SMALL: ModelManifest = {
   id: 'bge-small-en-v1.5',
   label: 'BGE-small-en (embeddings)',
-  description: 'Semantic search, entity clustering & cross-KB alignment. ~33 MB.',
+  description: 'Semantic search, entity clustering & cross-graph alignment. ~33 MB.',
   repo: 'Xenova/bge-small-en-v1.5',
   totalBytes: 33_000_000,
   files: [
