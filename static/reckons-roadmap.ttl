@@ -8,6 +8,7 @@
 @prefix story:  <urn:reckons:story/> .
 @prefix train:  <urn:reckons:training/> .
 @prefix hnav:   <urn:reckons:nav/> .
+@prefix code:   <urn:reckons:code/> .
 
 # ==============================================================================
 # Reckons.AI Product Design & Roadmap KB
@@ -131,6 +132,7 @@ kb:fiftyone rdf:type           ktype:Reference ;
 
 # The two-way local folder sync is done; these are the planned next steps for it.
 kb:drive-folder-sync rdf:type ktype:Feature ;
+               kpred:touches-module code:stores ;
                rdfs:label   "Google Drive folder sync" ;
                kpred:feature-id   "F56" ;
                kpred:has-status   "functional" ;
@@ -188,6 +190,7 @@ kb:story-narration-voice rdf:type ktype:Feature ;
                kpred:remaining    "DONE WHEN speakText routes by voiceType; Hume synthesis reuses planHumeAuth and the delegated token; a failed/unauthorized/unreachable Hume call falls back to Kokoro audibly rather than failing silent; and unit tests cover the routing decision and each failure mode. NOT YET VERIFIED against the live Hume TTS endpoint — that needs a real key and is called out rather than assumed." .
 
 kb:google-drive-sync rdf:type ktype:Feature ;
+               kpred:touches-module code:stores ;
                kpred:tested-by    "src/lib/stores/__tests__/drive-sync.test.ts" ;
                rdfs:label   "Google Drive Sync" ;
                kpred:data-egress  "third-party-service" ;
@@ -282,6 +285,7 @@ kb:published-graph-exchange rdf:type ktype:Feature ;
                kpred:has-part     kb:calendar-management .
 
 kb:published-ttl rdf:type    ktype:Feature ;
+               kpred:touches-module code:publish ;
                  kpred:tested-by    "src/lib/publish/__tests__/site-export.test.ts" ;
                rdfs:label   "Self-describing published TTL" ;
                kpred:data-egress  "mediated-distribution" ;
@@ -373,6 +377,7 @@ kb:growing-filter-set rdf:type ktype:Feature ;
                kpred:depends-on   kb:partial-facts .
 
 kb:n8n-review-notifications rdf:type ktype:Feature ;
+               kpred:touches-module code:n8n ;
                kpred:tested-by    "src/lib/integrations/n8n/__tests__/notify.test.ts" ;
                rdfs:label   "n8n review notifications (email me when there's something to review)" ;
                kpred:feature-id   "F73.1" ;
@@ -384,6 +389,7 @@ kb:n8n-review-notifications rdf:type ktype:Feature ;
                kpred:depends-on   kb:n8n-cloud-sync .
 
 kb:webpage-entity rdf:type   ktype:Feature ;
+               kpred:touches-module code:rdf ;
                   kpred:tested-by    "src/lib/rdf/__tests__/page.test.ts" ;
                rdfs:label   "WebPage Entity" ;
                kpred:has-status   "functional" ;
@@ -392,6 +398,7 @@ kb:webpage-entity rdf:type   ktype:Feature ;
                kpred:part-of      kb:graph-publishing .
 
 kb:post-template rdf:type    ktype:Feature ;
+               kpred:touches-module code:publish ;
                  kpred:tested-by    "src/lib/publish/__tests__/site-import.test.ts" ;
                rdfs:label   "Post Template (dated content)" ;
                kpred:has-status   "functional" ;
@@ -432,6 +439,7 @@ kb:gp-phase-4  rdf:type      ktype:Phase ;
                kpred:depends-on   kb:gp-phase-3 .
 
 kb:docs-pipeline rdf:type    ktype:Feature ;
+               kpred:touches-module code:publish ;
                  kpred:tested-by    "src/lib/publish/__tests__/site-export.test.ts" ;
                  kpred:tested-by    "src/lib/publish/__tests__/site-import.test.ts" ;
                rdfs:label    "Docs graph Publishing Pipeline" ;
@@ -644,6 +652,11 @@ kb:subscription-cost-awareness rdf:type ktype:Feature ;
 
 # -- F123: Source discovery — search finds SOURCES, subscribing is a separate act -
 kb:source-discovery rdf:type ktype:Feature ;
+               kpred:touches-module code:rdf ;
+               kpred:touches-module code:stores ;
+               kpred:touches-module code:llm ;
+               kpred:estimated-files "7"^^xsd:integer ;
+               kpred:estimated-deps "0"^^xsd:integer ;
     rdfs:label "Source discovery — search for sources, then choose what to watch" ;
     kpred:feature-id "F123" ;
     kpred:has-status "planned" ;
@@ -665,6 +678,13 @@ kb:source-discovery rdf:type ktype:Feature ;
 
 # -- F122: Reviewed source copies — diff the document before extracting ----------
 kb:source-reference-copy rdf:type ktype:Feature ;
+               kpred:touches-file "src/lib/stores/source-refresh.ts" ;
+               kpred:touches-file "src/lib/rdf/source-cache.ts" ;
+               kpred:touches-file "src/lib/stores/workspace.svelte.ts" ;
+               kpred:touches-module code:rdf ;
+               kpred:touches-module code:stores ;
+               kpred:estimated-files "6"^^xsd:integer ;
+               kpred:estimated-deps "0"^^xsd:integer ;
     rdfs:label "Reviewed source copies — diff the document, then extract only what changed" ;
     kpred:feature-id "F122" ;
     kpred:has-status "planned" ;
@@ -843,6 +863,7 @@ kb:prose-as-fact rdf:type ktype:Feature ;
     kpred:open-question "When the author rewords a sentence to resolve a conflict, is the OLD wording superseded or kept? Keeping it makes the page's own history queryable — what we used to claim, and when it stopped being true — which is unusually valuable for a project whose thesis is about evidence. It also grows the graph with prose nobody will read again." .
 
 kb:docs-consolidation rdf:type ktype:Feature ;
+               kpred:touches-module code:publish ;
     rdfs:label "Docs consolidation — a page declares the graphs it is made from" ;
     kpred:feature-id "F27.3" ;
     kpred:has-status "scaffolded" ;
@@ -941,6 +962,7 @@ kb:pr-graph-overlay rdf:type ktype:Feature ;
                kpred:relates-to   kb:graph-publishing .
 
 kb:feedback-channel rdf:type ktype:Feature ;
+               kpred:touches-module code:n8n ;
                kpred:tested-by    "src/lib/integrations/n8n/__tests__/contact.test.ts" ;
                rdfs:label    "Feedback channel (suggestion box)" ;
                kpred:has-status   "functional" ;
@@ -993,6 +1015,7 @@ kb:wikipedia-enrich rdf:type ktype:Feature ;
                kpred:depends-on   kb:enrichment-pipeline .
 
 kb:source-validation rdf:type  ktype:Feature ;
+               kpred:touches-module code:rdf ;
                rdfs:label   "Source validation — check a fact against the open web" ;
                kpred:feature-id   "F100" ;
                kpred:has-status   "scaffolded" ;
@@ -1505,9 +1528,15 @@ kb:shelly-curation rdf:type    ktype:Feature ;
 # status: second-class citizens in their own data model.
 
 kb:rdf-dataset-migration rdf:type ktype:Feature ;
+               kpred:actual-files "3"^^xsd:integer ;
+               kpred:actual-deps "0"^^xsd:integer ;
+               kpred:touches-module code:rdf ;
+               kpred:touches-module code:storage ;
+               kpred:estimated-files "5"^^xsd:integer ;
+               kpred:estimated-deps "0"^^xsd:integer ;
                rdfs:label   "RDF dataset capability (TriG-tolerant readers, Turtle on disk)" ;
                kpred:feature-id   "F75" ;
-               kpred:has-status   "planned" ;
+               kpred:has-status   "scaffolded" ;
                kpred:relates-to   kb:work-tiering ;
                kpred:description  "Honor the n-quad model (src/lib/rdf/types.ts: 'a knowledge base is a set of n-quads', g = provenance) WITHOUT giving up Turtle's editability. TriG is a strict superset of Turtle — every .ttl is already legal TriG — but the superset runs ONE WAY: serializing back to Turtle/N-Triples silently drops the graph term. Verified with N3: reckons-roadmap.ttl parses identically under format 'TriG' (1526 quads, all default-graph), while the Turtle parser rejects a named graph outright. DECISION (2026-07-12): make every READER TriG-format (accepts both, zero behavior change) but keep the hand-authored KBs as default-graph .ttl. Rationale: default-graph Turtle concatenates textually and every triple lands in one place, so combining and editing graphs stays trivial; named graphs would make a merge semantic rather than textual. The .trig extension is reserved for files that genuinely need named graphs — the EXTENSION IS A CONTRACT, so a .ttl containing a graph block would be a lie that breaks any format:'Turtle' consumer." ;
                kpred:done         "Readers switched to format 'TriG' (import-ttl.ts, multi-graph-parse.ts, mcp-server/kb-reader.ts) — zero behavior change, 383 RDF tests green, since every .ttl is already legal TriG." ;
@@ -1610,6 +1639,7 @@ kb:session-2026-07-12 rdf:type ktype:Decision ;
                kpred:artifact     "COUNSEL-BRIEF.md — engineering brief for Data Insight Solutions LLC's counsel: what the software sees (nothing), what it controls (best-effort, bypassable by design), the tiers, and the surviving question (does 18 U.S.C. 2258A attach to a tool that hosts nothing?)." .
 
 kb:byo-static-host rdf:type    ktype:Feature ;
+               kpred:touches-module code:publish ;
                kpred:show-on-landing "true" ;
                kpred:landing-label   "Bring-your-own host" ;
                kpred:landing-note    "Publish a corpus, portfolio, or blog to GitHub Pages, Netlify or Cloudflare — free, yours, no lock-in" ;
@@ -1803,6 +1833,7 @@ kb:async-backlog rdf:type      ktype:Phase ;
                kpred:remaining    "Explicit prune command Matt runs (delete the pre-existing type:question entries from competitor-scan/code-review now re-typed at source; back up first — an agent must not auto-delete the shared queue). Populate kpred:blocks on more questions so the blocking lane is real, not empty. Fold `npm run backlog` into the routine's report." .
 
 kb:prune-analysis rdf:type     ktype:Feature ;
+               kpred:touches-module code:rdf ;
                rdfs:label   "Prune analysis — declutter, two lenses" ;
                kpred:feature-id   "F98" ;
                kpred:has-status   "functional" ;
@@ -1816,6 +1847,7 @@ kb:prune-analysis rdf:type     ktype:Feature ;
                kpred:remaining    "REVIEW UI: surface node-prune as a Review analysis tab (candidates ranked most-prunable first, each a reviewable suggestion), alongside incoming/deletions/merges/align — the primitive + suggestion-prune CLI are built, the node-prune UI tab is not. Wire the in-app embedding relevance (embed.ts) as opts.relevance so the main-graph lens uses semantic, not just lexical, fit. One-time normalize of pre-existing competitor-scan/code-review entries mis-typed 'question' -> 'suggestion' (emitters already fixed at source)." .
 
 kb:auto-merge rdf:type         ktype:Feature ;
+               kpred:touches-module code:rdf ;
                rdfs:label   "Auto-merge of accumulated facts" ;
                kpred:feature-id   "F80.1" ;
                kpred:has-status   "scaffolded" ;
@@ -2128,6 +2160,7 @@ kb:orch-control-layers rdf:type ktype:Phase ;
                kpred:remaining    "Not built. The layer vocabulary on the task model; per-layer autonomy settings; a Review-tab surface for editing a task's framing mid-flight; batch (set-scoped) steering actions." .
 
 kb:local-orchestration rdf:type ktype:Feature ;
+               kpred:touches-module code:rdf ;
                rdfs:label   "Local task orchestration & scheduling" ;
                kpred:feature-id   "F81" ;
                kpred:has-status   "in-progress" ;
@@ -2228,6 +2261,7 @@ kb:link-confidence rdf:type    ktype:Concept ;
 # smaller — it stopped lying about what was in it.
 
 kb:graph-legibility rdf:type   ktype:Feature ;
+               kpred:touches-module code:rdf ;
                rdfs:label   "Graph legibility (attributes vs structure, filters, focus)" ;
                kpred:feature-id   "F83" ;
                kpred:has-status   "in-progress" ;
@@ -2347,6 +2381,7 @@ kb:trig-enterprise-overlay rdf:type ktype:Feature ;
 # (kb:honest-status). Roles ship now; RBAC waits for the server.
 
 kb:roles rdf:type              ktype:Feature ;
+               kpred:touches-module code:rdf ;
                rdfs:label   "Roles (descriptive identity metadata)" ;
                kpred:feature-id   "F84.1" ;
                kpred:has-status   "functional" ;
@@ -2464,6 +2499,7 @@ kb:tenet-honesty rdf:type      ktype:Tenet ;
 # different costume: it looks like help and it is not.
 
 kb:view-suggestions rdf:type   ktype:Feature ;
+               kpred:touches-module code:rdf ;
                rdfs:label   "Context-aware view suggestions" ;
                kpred:feature-id   "F85" ;
                kpred:has-status   "functional" ;
@@ -2708,6 +2744,7 @@ kb:mcp-ollama-bridge rdf:type    ktype:Feature ;
 # -- Local Offload (parent) ------------------------------------------------------
 
 kb:local-offload rdf:type      ktype:Feature ;
+               kpred:touches-module code:llm ;
                kpred:tested-by    "src/lib/integrations/llm/__tests__/prefer-local.test.ts" ;
                kpred:tested-by    "src/lib/integrations/llm/__tests__/ollama-extract.test.ts" ;
                kpred:show-on-landing "true" ;
@@ -2799,6 +2836,7 @@ kb:review-workbench rdf:type  ktype:Feature ;
 # -- F31: Local Model Benchmarking & Orchestration -------------------------------
 
 kb:local-model-bench rdf:type ktype:Feature ;
+               kpred:touches-module code:test-bench ;
                rdfs:label    "Local Model Benchmarking & Orchestration" ;
                kpred:feature-id   "F31" ;
                kpred:has-status   "functional" ;
@@ -2814,6 +2852,7 @@ kb:local-model-bench rdf:type ktype:Feature ;
 # -- F32: Partial Facts & Answer-Flow-Back ---------------------------------------
 
 kb:partial-facts rdf:type ktype:Feature ;
+               kpred:touches-module code:rdf ;
                rdfs:label   "Partial Facts & Answer-Flow-Back" ;
                kpred:feature-id   "F32" ;
                kpred:has-status   "functional" ;
@@ -2829,6 +2868,7 @@ kb:partial-facts rdf:type ktype:Feature ;
 # -- F33: Release Pipeline & Branch Alignment ------------------------------------
 
 kb:release-pipeline rdf:type ktype:Feature ;
+               kpred:touches-module code:test-bench ;
                kpred:tested-by    "tests/bench/scoring.test.ts" ;
                rdfs:label    "Release Pipeline & Branch Alignment" ;
                kpred:feature-id   "F33" ;
@@ -2997,6 +3037,7 @@ kb:sveltia-edit-mapping rdf:type ktype:Feature ;
 # MUCH lighter force so a nav hub linking many pages doesn't distort the graph.
 
 kb:graph-as-navigation rdf:type ktype:Feature ;
+               kpred:touches-module code:rdf ;
                rdfs:label    "Graph-as-Site-Navigation" ;
                kpred:feature-id   "F49" ;
                kpred:has-status   "scaffolded" ;
@@ -3031,6 +3072,7 @@ kb:import-workspace-ux rdf:type ktype:Feature ;
 # generate the expansion.
 
 kb:review-anchored-generation rdf:type ktype:Feature ;
+               kpred:touches-module code:rdf ;
                rdfs:label    "Review-Anchored Generation" ;
                kpred:feature-id   "F51" ;
                kpred:has-status   "scaffolded" ;
@@ -3052,6 +3094,7 @@ kb:review-anchored-generation rdf:type ktype:Feature ;
 # focus, not error; adoption cost is paid down via familiar outputs.
 
 kb:control-model rdf:type ktype:Feature ;
+               kpred:touches-module code:rdf ;
                rdfs:label    "Control Model — the agent-edit boundary" ;
                kpred:feature-id   "F52" ;
                kpred:has-status   "scaffolded" ;
@@ -3074,6 +3117,7 @@ kb:control-model rdf:type ktype:Feature ;
 # the many obvious facts — or the human auto-accepts and review becomes theatre.
 
 kb:review-attention rdf:type ktype:Feature ;
+               kpred:touches-module code:rdf ;
                rdfs:label    "Review at Scale — spotlight the decisions" ;
                kpred:feature-id   "F53" ;
                kpred:has-status   "functional" ;
@@ -3099,6 +3143,7 @@ kb:review-attention rdf:type ktype:Feature ;
 # decision, not the concept-dense docs graph. Shipped 2026-07-09 (PR #79).
 
 kb:soft-onboarding rdf:type ktype:Feature ;
+               kpred:touches-module code:stores ;
                kpred:tested-by    "src/lib/stores/__tests__/official-kb.test.ts" ;
                rdfs:label    "Soft Onboarding — the everyday starter graph" ;
                kpred:feature-id   "F54" ;
@@ -3309,6 +3354,7 @@ kb:integration-orchestration rdf:type ktype:Feature ;
 # relate in src/routes/(app)/+page.svelte).
 
 kb:entity-sets rdf:type      ktype:Feature ;
+               kpred:touches-module code:rdf ;
                rdfs:label    "Entity sets (multi-entity groupings)" ;
                kpred:feature-id   "F65" ;
                kpred:has-status   "functional" ;
@@ -3568,6 +3614,8 @@ kb:auto-archive rdf:type ktype:Feature ;
 
 # -- F97 phases -----------------------------------------------------------------
 kb:archive-foundation rdf:type ktype:Feature ;
+               kpred:touches-module code:rdf ;
+               kpred:touches-module code:storage ;
     rdfs:label "Archive graph + snapshot journal + retention" ;
     kpred:feature-id "F97.1" ;
     kpred:has-status "functional" ;
@@ -3601,9 +3649,16 @@ kb:archive-revert rdf:type ktype:Feature ;
     kpred:description "Restore the main graph to a chosen journal snapshot, and restore individual archived entities back into the working graph. Revert is itself a journalled event — reverting a revert must be possible, and an undo that cannot be undone is a trap." .
 
 kb:archive-restore-on-reference rdf:type ktype:Feature ;
+               kpred:actual-files "3"^^xsd:integer ;
+               kpred:actual-deps "0"^^xsd:integer ;
+               kpred:estimated-files "8"^^xsd:integer ;
+               kpred:estimated-deps "0"^^xsd:integer ;
+               kpred:estimate-basis "BLIND, written 2026-08-14 from the design alone with no code read beforehand — deliberately, because the F75 estimate was written by someone who had already read that code and so proved nothing. Reasoning: the detector already exists (scaffolded), so the work is (a) calling it from every ingest commit boundary, (b) pausing duplicate-producing writes, (c) a restore-or-keep-separate choice in the UI, (d) the restore action with a reversible journal event, (e) end-to-end coverage. STATED RISK, and it is the whole variance: 'every ingest entry point' is unknown to me. If writes funnel through ONE chokepoint this is small and 8 is generous; if ingest paths each commit independently, the wiring multiplies and 8 is badly low. I am guessing there is a chokepoint because a graph app that accepted writes from five places without one would have worse problems than this feature." ;
+               kpred:touches-module code:rdf ;
+               kpred:touches-module code:storage ;
     rdfs:label "Restore-on-reference — archived entities are not silently duplicated" ;
     kpred:feature-id "F97.3" ;
-    kpred:has-status "scaffolded" ;
+    kpred:has-status "functional" ;
     kpred:depends-on kb:archive-foundation ;
     kpred:has-file "src/lib/rdf/archive.ts" ;
     kpred:has-file "src/lib/storage/archive-store.ts" ;
@@ -4147,3 +4202,353 @@ kb:multi-integration-scenarios rdf:type ktype:Feature ;
                kpred:description  "Executable end-to-end scenarios that cross TWO OR MORE integrations, because that is where this product's value and its bugs both live. The worked example (Matt, 2026-07-31): 'Schedule an appointment with Chelsey at 3pm next Tuesday, and check Currents for new research before then and give me a summary' — one utterance spanning calendar WRITE (F99.2), the n8n Currents monitor, a reckoning over the graph, and spoken output. Each scenario is a story with ordered steps and assertions, in the shape docs-testing.ttl already uses." ;
                kpred:honest-note  "THE REASON THIS FEATURE EXISTS IS A MEASURED ONE. Every integration in this repo was unit-tested and green while the product was broken: Indico's verifier reported 6/6 for months from Node, where neither CSP nor CORS is enforced, so it could not see that no browser had ever reached the server. Single-integration tests answer 'does the client work'; only a crossing scenario answers 'does the user's sentence work'. Scenarios must therefore run at the layer the user actually stands on — a real browser, real servers — or they will repeat the same lie in a new place." ;
                kpred:open-question "These need real credentials and real servers, so they cannot run in public CI by default. Run them as an opt-in local suite against the self-hosted Indico + n8n (both now watched by scripts/offline/server-health.ts), on a schedule rather than per-PR? And how much is asserted about a WRITE scenario without creating real appointments with real people — a dedicated throwaway category, cleaned up after?" .
+
+## -- F126-F128 + repo-scan refinements (2026-08-13) -----------------------------
+## Two features SHIPPED this session and are recorded here as functional; the rest are
+## refinements drawn from an external repository scan (11 repos, reviewed by Opus).
+## Every claim below was measured, not assumed — where a thing is NOT built, it says so.
+
+kb:merge-synonyms rdf:type ktype:Feature ;
+               kpred:touches-module code:rdf ;
+    kpred:actual-files "3"^^xsd:integer ;
+    kpred:actual-deps "0"^^xsd:integer ;
+               rdfs:label   "Synonyms survive a merge" ;
+               kpred:feature-id   "F126" ;
+               kpred:has-status   "functional" ;
+               kpred:priority     "high" ;
+               kpred:relates-to   kb:entity-normalization ;
+               kpred:relates-to   kb:entity-sets ;
+               kpred:tested-by    "src/lib/rdf/__tests__/merge-aliases.test.ts" ;
+               kpred:description  "Matt (2026-08-13): 'we need some way to track all synonyms within a node. When merging multiple nodes into one that list should automatically occur.' Merging now preserves every name the merged entities answered to, as skos:altLabel on the surviving node, automatically and without a review step." ;
+               kpred:evidence     "THE BUG WAS LOSSY AND SILENT. src/routes/(app)/review/+page.svelte redirects the dropped entity's statements onto the kept one, and MergeReview.svelte classifies two different rdfs:label values as a CONFLICT whose loser is set to 'rejected' (default resolution is 'a'). So merging 'Ava Farmers Market' into 'Ava Growers Market' destroyed the first name — the very name a source used, a search would look for, and the next import will arrive as, at which point the entity duplicates again and a human merges it a second time." ;
+               kpred:decided      "skos:altLabel, NOT A NEW PREDICATE. SKOS is already this project's vocabulary for concept relations (skos:broader and skos:narrower drive rdf/hierarchy.ts; skos:definition appears in ghost-graph.ts and dichotomy.ts) and altLabel is SKOS's own term for alternate lexical labels beside a single preferred one. Minting kpred:synonym would be the private-vocabulary mistake graph-lint already warns about — 73 of 315 predicates used exactly once — and would not survive export to any other tool." ;
+               kpred:principle    "A MERGE IS A CLAIM THAT TWO NAMES DENOTE ONE THING, so discarding the losing name throws away the evidence for the claim being made. It is a lossy edit dressed as a cleanup." ;
+               kpred:decided      "THE LOSING NAME IS PRESERVED WHICHEVER SIDE LOSES. If the user resolves the label conflict in favour of the DROPPED entity, the KEPT entity's original name is the one about to be rejected — so the alias pass reads the surviving primary label and preserves everything else, rather than assuming the kept entity's name always wins. Tested explicitly." ;
+               kpred:evidence     "TRANSITIVITY IS FREE, and that is why this is a statement rather than a side table. Aliases are statements whose subject is the kept entity, so a later merge of that entity into a third redirects them along with everything else. A node merged three times still carries every name it has ever had, with no special handling." ;
+               kpred:remaining    "BUILT: src/lib/rdf/merge-aliases.ts (pure — value derivation, case/whitespace normalisation, dedupe, IRI-slug recovery, primary-label resolution) wired into onMergeConfirm, 12 tests. NOT BUILT: search does not yet match an entity by its altLabel, and the node panel does not display or let you edit the synonym list. entityAnswersTo() exists for the first of those and has no caller." .
+
+kb:import-target-resolution rdf:type ktype:Feature ;
+               kpred:touches-module code:storage ;
+    kpred:actual-files "4"^^xsd:integer ;
+    kpred:actual-deps "0"^^xsd:integer ;
+               rdfs:label   "Re-importing a graph updates it instead of duplicating it" ;
+               kpred:feature-id   "F127" ;
+               kpred:has-status   "functional" ;
+               kpred:priority     "high" ;
+               kpred:relates-to   kb:multi-kb ;
+               kpred:relates-to   kb:graph-sets ;
+               kpred:tested-by    "src/lib/storage/__tests__/kb-import-target.test.ts" ;
+               kpred:description  "One shared rule deciding where an imported graph lands: replace an existing graph, ask the user, or create a new one. Removes the cause of duplicated graph names rather than only reporting them." ;
+               kpred:evidence     "MEASURED 2026-08-13 in Matt's own registry: FIVE duplicated names (reckons-production, reckons-roadmap, starter-everyday, starter-quickstart, starter-visual-review), each covering more than one independent copy, several never opened. Three of the four import paths already resolved a target correctly — drive-sync matches stableId then name, workspace import skips known names and stableIds, the docs-leap path reuses a found entry — while the FILE IMPORT at src/routes/(app)/ingest/+page.svelte called createKb() with no registry check of any kind. The duplicated names are exactly static/*.ttl filenames minus their extension, which is what that page derives a name from." ;
+               kpred:decided      "THE TWO SIGNALS ARE NOT EQUALLY STRONG, and conflating them is how an import destroys work. A STABLE ID match means 'this IS that graph, newer' — replacing in place is correct, and ingestExistingKb takes a recovery snapshot first. A NAME match means 'possibly the same graph': 'roadmap.ttl' from two different projects collides trivially, so a name match warns and offers the choice, and the SAFE branch (keep both, suffixed readably) is the default. Overwriting on a name match would be a data-loss bug dressed as deduplication." ;
+               kpred:constraint   "REPLACING MUST ACTUALLY REPLACE. The ingest path wrote into an existing database without clearing it first, so a replace would have left old facts beside new ones and silently doubled the graph. statements and sources are now cleared inside the replace branch." ;
+               kpred:remaining    "BUILT: src/lib/storage/kb-import-target.ts (resolveImportTarget, uniqueKbName), 11 tests, wired into the ingest file-import path, which now also reports 'Updated' rather than 'Created' when it replaced. NOT BUILT: the five EXISTING duplicate pairs are untouched — the graphs page still only reports them, and which copy is real remains a judgement about content that no heuristic should make. A merge-or-discard affordance on that notice is the follow-up." .
+
+kb:shape-validation rdf:type ktype:Feature ;
+               kpred:touches-module code:rdf ;
+    kpred:actual-files "3"^^xsd:integer ;
+    kpred:actual-deps "2"^^xsd:integer ;
+               rdfs:label   "SHACL shape validation — a deterministic gate before the LLM" ;
+               kpred:feature-id   "F128" ;
+               kpred:has-status   "functional" ;
+               kpred:relates-to   kb:grant-seeker-profile ;
+               kpred:relates-to   kb:work-tiering ;
+               kpred:description  "Validate incoming facts against declared shapes for their type, so 'is this well-formed' is answered by a rule rather than by a human reading a review queue. A grant-seeker profile, a WebPage node and a Feature entity all have a knowable shape today that exists only as prose." ;
+               kpred:evidence     "THE GAP IS NAMED BY THE GRAPH ITSELF: this roadmap mentions DCAT four times and PROV-O three times, both ad hoc, and SHACL zero times before this entry. open-metadata/OpenMetadata (14.9k stars, Apache-2.0) ships DCAT/DPROD, PROV-O, OpenLineage, ODCS 3.1 and RDF/OWL/JSON-LD/SHACL together with an MCP server, which is a working precedent for shape validation over a governed graph rather than a theoretical one." ;
+               kpred:principle    "THIS IS THE WORK-TIERING DOCTRINE APPLIED TO INGEST. A shape check is script tier: zero tokens, no hallucination, right by construction. It decides whether a fact reaches a human at all, the same way F122's document-hash gate decides whether the extractor runs. The review queue is 725 entries deep and has never been drained; a share of that is malformed rather than merely unreviewed." ;
+               kpred:open-question "Which shapes first — the WebPage frontmatter contract (already implicitly validated by scripts/docs-pages.ts), or kb:grant-seeker-profile (currently prose in a TTL comment, and the thing F73's scrape must fill)? And does a shape violation block the fact, or land it in review flagged, which is the softer and probably correct answer for a local-first tool." .
+
+## -- Refinements to EXISTING entities from the repo scan (2026-08-13) ------------
+
+kb:passage-grounding kpred:evidence "PRIOR ART WORTH COPYING (Opus repo scan, 2026-08-13): Imbad0202/academic-research-skills (42.4k stars, CC-BY-NC-4.0) implements three-layer citation anchors — quote plus page plus section — and a claim-faithfulness audit checking whether a cited source ACTUALLY SUPPORTS the claim drawn from it, with citation EXISTENCE verified deterministically against Semantic Scholar, OpenAlex, Crossref and arXiv. The split matters for tiering: existence-checking is deterministic and therefore script tier, while faithfulness is judgement and stays agent tier. It is the closest external match to kb:thesis found in the scan. LICENCE: CC-BY-NC, so the design transfers and the code must not be vendored into a commercial product." .
+
+kb:priority-today kpred:remaining "THE MISSING NODE IS THE GOAL (repo scan, 2026-08-13). danielmiessler/LifeOS (18.5k stars, MIT) ranks against an explicit objective artefact — its TELOS / Ideal State Artifact — held as a typed knowledge graph, so 'what matters today' is answered relative to what the user is trying to ACHIEVE. F99.1 as specified ranks calendar events by time and tasks by due date, which can only ever produce a sorted list of what is IMMINENT, never of what is IMPORTANT. This roadmap mentions telos or a goal graph zero times. Strongly on-thesis: the goal is the well-formed absence the ranking is currently missing." .
+
+kb:loop-safety kpred:evidence "TWO EXTERNAL CONFIRMATIONS OF THE TIERING DOCTRINE (repo scan, 2026-08-13). deerwork-ai/deer-workflow (470 stars, MIT) calls it Graph Engineering: control flow, phases, inputs and failure handling live in reviewable TypeScript while agents do only semantic work inside nodes — the same claim as ground/prompt/validate/emit-proposal, stated as an architecture with pluggable agent runtimes. plasma-ai/fractal (691 stars, Apache-2.0) contributes the concrete cap set this roadmap lacks: hard limits on iterations, DEPTH, children, cost AND wall-clock time, with per-node git worktree isolation (zero roadmap mentions of worktree). F124 currently plans a spend ceiling only. fractal also documents its own anti-pattern honestly — its nodes run without permission prompts by default — which is the failure mode kb:loop-safety exists to refuse." .
+
+kb:local-offload kpred:evidence "lyogavin/airllm (31k stars, Apache-2.0) runs a 70B model on 4GB of VRAM by keeping one layer on the GPU at a time, and DeepSeek-V3 at 671B in roughly 12GB. This changes what the agent tier can BE: the PR #43 devstral lesson was that small local models hallucinate conventions and mangle serialisation, and the usual answer is a bigger model nobody can host. HONEST CAVEAT: layer-by-layer streaming is disk-bound and slow, so it suits BATCH offline jobs (describe-entities, code-review, claim-audit) and is unusable for interactive Shelly. It fits the existing offline job runner without touching the interactive path." .
+
+kb:local-ocr kpred:evidence "alaamroue/pdf-parser-bench (MIT, 9 stars — small, but the METHODOLOGY is the value) benchmarks eight open PDF parsers including MinerU 2.5, Granite-Docling, PaddleOCR-VL and Chandra against synthetic PDFs built to trigger specific failure modes. Its scoring rule is directly adoptable by tests/bench: handwriting ground truth is accepted only where TWO INDEPENDENT READINGS AGREE, and illegible words are marked as such so a model is never credited for inventing text. That is kb:thesis expressed as a benchmark rule, and F70 shipped Tesseract.js with no comparative baseline." .
+
+kb:publish-safety-gate kpred:evidence "clickswave/silocat (AGPL-3.0, 10 stars) is a working reference for encrypted sharing: XChaCha20-Poly1305 with Argon2id-derived keys applied client-side BEFORE upload, so the server holds ciphertext it cannot open — and it states its own limit out loud, that zero-knowledge is not zero-metadata, since sizes and timestamps stay visible. This roadmap mentions encryption once. A shared graph package is plaintext today, and F122 has just decided that retained third-party source copies must never travel in one. AGPL means read it, do not vendor it — scripts/offline/competitor-scan.ts already flags copyleft for exactly this reason." .
+
+kb:conflict-detection kpred:evidence "semantica-agi/semantica (6.5k stars, MIT) is the closest architectural neighbour found in the 2026-08-13 scan and belongs in reckons-competitive.ttl. Its pipeline is Sources, Ingest, Parse, Normalize, Split, Extract, Conflict Detection, Deduplication, Knowledge Graph, with W3C PROV-O provenance, SHACL validation, and both RDF and LPG backends (Oxigraph, Jena, RDF4J; Neo4j, FalkorDB, AGE, Neptune). Two things it has that this roadmap does not: conflict detection positioned BEFORE facts enter the graph, and bi-temporal facts with point-in-time snapshots — zero roadmap mentions of bi-temporal. Worth reading before F122 and F123 land, since it solves the same ingest-ladder problem." .
+
+kb:entity-sets kpred:remaining "DERIVE A SET FROM A PREDICATE, rather than only from manual multi-select (2026-08-13). F65 membership is authored by Ctrl+click on the canvas — this entity's own remaining list calls that gesture clunky — so grouping N nodes by a fact they already state means hand-selecting them and keeping the selection in sync forever. Given a predicate, the app should mint one ktype:EntitySet per distinct object with has-member filled in, and regenerate when the facts change. Verified by hand: three sets derived from pred:eligible-entity over a real graph produced 10, 5 and 4 members correctly from a ~30-line script, and it generalises free to group-by-funder, group-by-status and group-by-source." .
+
+kb:entity-sets kpred:evidence "A SECOND RECORDED INSTANCE OF THE SYNONYM-GAP DETECTOR FAILURE, and it is worth counting because one is an anecdote. On 2026-08-13 Opus proposed a 'facet layout' to cluster nodes by the object of a chosen predicate — the same concept as this feature in different vocabulary, sharing no dependency with it. Neither graph-lint nor shared-deps flagged it; Matt did, immediately, with 'I think facets may just be Sets?'. That is exactly the class this entity's honest-note predicts ('SAME CONCEPT, DIFFERENT VOCABULARY, NO SHARED DEPENDENCY ... found by humans reading the graph, which is not a control'), now observed twice, which strengthens the case for the proposed embedding-similarity check over entity descriptions." .
+
+## -- F127 export-side fix + terminology decision (2026-08-13) -------------------
+
+kb:import-target-resolution kpred:decided "IDENTITY IS MINTED AT EXPORT, WHICH IS THE HALF THAT ACTUALLY PREVENTS DUPLICATION (Matt, 2026-08-13: 'the export procedure should work different to avoid getting multiple copies of the same kb out of sync'). syncAllKbs read `settings?.kbStableId` and passed it straight through, so a graph that had never been given a stable id exported a file with NO IDENTITY IN IT — and on re-import there was nothing to match on but the name. Verified against the real files: none of static/kbs/*/*.ttl, kbs/*/*.ttl or the canonical static/*.ttl carried a kbStableId. The export now mints one via getOrCreateStableId (which already existed and was unused here) and persists it to the graph's settings AND the registry BEFORE writing any file, so the id in the file always matches the id in the app." ;
+    kpred:principle "IDENTITY IS WHAT MAKES DUPLICATE FILES HARMLESS. Several copies of one graph resolve to one entry and update it in place; several ANONYMOUS copies can only ever become several graphs. The fix is therefore not to forbid copies — a local-first tool cannot — but to make every copy say what it is." ;
+    kpred:constraint "THE FIX INTRODUCES ITS OWN HAZARD, AND IT IS GUARDED. Once every copy carries an identity, an identity match makes replacement automatic — so importing a STALE export from an abandoned workspace root would silently roll a newer graph back. That copy is correctly identified and still the wrong thing to restore. resolveImportTarget now parses the exporter's `# generated <ISO>` header and downgrades a stale identity match from 'replace' to 'ambiguous' with its own wording, while an UNKNOWN timestamp still replaces so hand-written TTL stays importable. 18 tests." .
+
+kb:graph-terminology rdf:type ktype:Decision ;
+    rdfs:label "User-facing term is 'graph', not 'KB' or 'knowledge base'" ;
+    kpred:has-status "functional" ;
+    kpred:decided "MATT, 2026-08-13: the user-facing term is plain 'graph'. Chosen over 'knowledge graph' because it is what the app already predominantly says — the graphs page, the duplicate notice and the sets UI — and because 'knowledge graph' costs words in tight UI chrome where 'graph' already fits. Accepted trade-off: 'graph' alone can read as a chart to a newcomer." ;
+    kpred:evidence "THE LEAK WAS IN PROMPTS, NOT MARKUP, which inverted the expected priority. Measured 2026-08-13: visible copy was already almost clean — ONE 'knowledge base' remained, in a markup comment — while 'KB' survived across six LLM prompt files (turtle-chat.ts, re-analyze.ts and the reckoning system prompt), where the model echoes the term straight back into text the user reads. A terminology migration that audits only markup would have reported itself complete while the product still said 'KB' out loud." ;
+    kpred:constraint "'KB' ALSO MEANS KILOBYTES, and a blind sweep corrupts it. model-cache.ts and ingest/+page.svelte format byte sizes as `${n} KB`, and provider-status.svelte.ts advertises '~300 KB on first connect'. Those were verified untouched after the sweep." ;
+    kpred:remaining "DONE: prompts and visible copy now say 'graph'. DELIBERATELY NOT DONE: code identifiers (kbId, kbStableId, KBaseDB, kb-registry, the /kb route) and source comments are unchanged — renaming them is churn with real regression risk and no user benefit, and the IndexedDB database names ARE the graph ids, so renaming those is a migration rather than a rename." .
+
+## -- F59.2: timeline undated-node lane (2026-08-13) -----------------------------
+
+kb:timeline-undated-lane rdf:type ktype:Feature ;
+               kpred:touches-module code:rdf ;
+    kpred:actual-files "4"^^xsd:integer ;
+    kpred:actual-deps "0"^^xsd:integer ;
+    rdfs:label "Undated nodes get a lane, not a fake date" ;
+    kpred:feature-id "F59.2" ;
+    kpred:has-status "functional" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:spatial-force-layout ;
+    kpred:tested-by "src/lib/rdf/__tests__/timeline-layout.test.ts" ;
+    kpred:description "Settles the F59 open question Matt left UNDECIDED, and fixes the 'starter-graph timeline force still looks bad' item carried in HANDOFF since 2026-07-31. In event mode a node with no recognised temporal predicate now goes to a labelled UNDATED LANE below the axis instead of being placed at its statement's createdAt." ;
+    kpred:evidence "THE BUG WAS BIGGER THAN A COSMETIC ONE, and it is measured. Both renderers fell back to createdAt — the INGESTION time — for undated nodes and placed them as if that were an event. On starter-everyday.ttl only 12 of 177 nodes carry a date, so 93% were placed by import time; starter-guide.ttl has 216 nodes and NOT ONE date, so 100% were. Worse than the resulting wall of nodes: those fake timestamps entered dataMin/dataMax, so the axis spanned 36 days and the real 4-day trip was compressed into 11.1% of it. Measured in the running app against the real graph." ;
+    kpred:evidence "THE LANE WAS ALREADY WRITTEN AND UNREACHABLE. Both renderers contained an else-branch placing undated nodes at y = -SPREAD_Y * 0.7 — dead code, because the createdAt fallback guaranteed every node received a time and the branch never ran. The fix largely made the existing intent actually happen." ;
+    kpred:decided "MATT, 2026-08-13: the undated lane, over hiding undated nodes entirely (93% of the starter graph would vanish on switching layout) and over keeping them placed while fixing only the range (the wall remains, still claiming a date it does not have). Placing an undated node at its ingestion time is the graph asserting a date it does not have, in the one view whose entire job is to say when things happened." ;
+    kpred:known-issue "THREE FURTHER DEFECTS FOUND IN THE SAME CODE AND FIXED. (1) In 3D, `if (useIngested) A else if (!useIngested) A` — byte-identical branches reading as though they distinguished cases. (2) In 2D, getTimelineDataRange (which bounds the right-click scrub) EXCLUDED the createdAt fallback while buildTimelineAnchors2D INCLUDED it, so the scrub bounds and the node positions disagreed and dragging felt broken. (3) The recognised temporal predicates existed in THREE copies — KnowledgeGraph, KnowledgeGraph2D and parse-date.ts — which is the drift parse-date.ts's own comment exists to prevent; all now read the one set." ;
+    kpred:remaining "BUILT: src/lib/rdf/timeline-layout.ts (buildNodeTimes, timelineRange, undatedCount), 14 tests, both renderers wired to it, lane spread over 5 rows clear of the dated band and labelled 'no date (N)'. NOT DONE: the camera does not auto-fit the axis plus lane, so the layout needs a manual zoom-out to see whole; and 165 parked nodes remain inherently dense — clustering or collapsing the lane is a further step." .
+
+kb:spatial-force-layout kpred:has-part kb:timeline-undated-lane .
+
+## -- F59.3: camera control for visual tests (2026-08-13) ------------------------
+
+kb:camera-angle-control rdf:type ktype:Feature ;
+               kpred:touches-module code:threed ;
+    kpred:actual-files "4"^^xsd:integer ;
+    kpred:actual-deps "0"^^xsd:integer ;
+    rdfs:label "Aimable 3D camera (?cam=) so visual tests can see depth" ;
+    kpred:feature-id "F59.3" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:spatial-force-layout ;
+    kpred:relates-to kb:deep-testing ;
+    kpred:tested-by "src/lib/3d/__tests__/camera-presets.test.ts" ;
+    kpred:description "Matt (2026-08-13): 'can we control the angle of the viewport in our visual tests? currently our forces are flat even in 3D, but we may want more 3d forces later.' The camera is now aimable via ?cam=iso|top|side|front or an explicit azimuth,elevation[,distance] triple, matching the existing ?layout= / ?sel= / ?types= convention the visual tests already drive the app with." ;
+    kpred:evidence "THE FORCES REALLY ARE FLAT, MEASURED: of the six 3D layout builders, type, hub and timeline place EVERY anchor at z=0; only focus (3), hierarchy (2) and source (1) use the third axis at all. The camera was a hardcoded literal — position={[0, 0, 18]} — looking straight down the z axis, with OrbitControls that only respond to a real pointer." ;
+    kpred:principle "A HEAD-ON CAMERA OVER A FLAT LAYOUT MEANS THE 3D RENDERER WAS UNTESTED AS 3D. Every z value projects to the same screen point from that angle, so a regression that flattened the remaining depth would have passed every visual check identically. Aiming the camera is therefore a PREREQUISITE for adding genuinely 3D forces, not a convenience for the ones that exist: a force that uses depth cannot be regression-tested from an angle that cannot see depth." ;
+    kpred:evidence "PROVEN IN THE RUNNING APP, and the proof is the useful part. Shot against the real starter graph: ?layout=focus&cam=iso renders a visibly different three-quarter view from cam=front, and ?layout=timeline&cam=side COLLAPSES THE WHOLE LAYOUT INTO A SINGLE VERTICAL LINE — every node at z=0 seen edge-on, with all three date ticks stacked in one column. Flatness is now a visible, screenshot-testable property instead of an invisible one." ;
+    kpred:decided "SPHERICAL, AND ABSENT MEANS UNCHANGED. Azimuth/elevation in degrees survive a URL and read clearly in a test name, where a coordinate triple does not. The front preset reproduces the historical [0, 0, 18] exactly and is the default when ?cam= is absent, so every existing screenshot baseline is unaffected. A malformed value returns null rather than a default — a typo that quietly moved the camera would produce a baseline captured from an unintended angle, which is broken but still passing." ;
+    kpred:remaining "BUILT: src/lib/3d/camera-presets.ts (parseCameraSpec, cameraPosition, revealsDepth), 15 tests, ?cam= parsed alongside the existing view params and passed to the 3D renderer. revealsDepth() exists so a 3D visual test can ASSERT its camera is not blind to z. NOT DONE: no visual test yet uses an angled camera — the capability exists and the suite has not been extended to exercise it; and elevation is clamped short of the poles rather than supporting a true top-down orbit." .
+
+kb:spatial-force-layout kpred:has-part kb:camera-angle-control .
+
+## -- F129: proposal yield — measuring the number the doctrine turns on (2026-08-13) --
+
+kb:proposal-yield rdf:type ktype:Feature ;
+               kpred:touches-module code:rdf ;
+    kpred:actual-files "5"^^xsd:integer ;
+    kpred:actual-deps "0"^^xsd:integer ;
+    rdfs:label "Proposal yield — was running that agent worth it?" ;
+    kpred:feature-id "F129" ;
+    kpred:has-status "functional" ;
+    kpred:priority "high" ;
+    kpred:relates-to kb:work-tiering ;
+    kpred:relates-to kb:local-offload ;
+    kpred:relates-to kb:graph-sets ;
+    kpred:tested-by "src/lib/rdf/__tests__/proposal-attribution.test.ts" ;
+    kpred:description "A script-tier job computing accepted-over-ruled-on per agent, plus the fraction of each agent's output that has been looked at. npm run offline (scripts/offline/proposal-yield.ts)." ;
+    kpred:principle "THE WORK-TIERING DOCTRINE RESTS ON A NUMBER NOBODY WAS COMPUTING. CLAUDE.md states that 'a local job that emits 30 findings of which 25 are noise moves cost from generation to TRIAGE rather than removing it', and the promotion ladder says 'anything an agent gets right RELIABLY is demoted to a script'. Both are claims about YIELD. Neither could be evaluated, so the choice between script tier and agent tier has been made on judgement alone." ;
+    kpred:measured "FIRST RUN, 2026-08-13: 736 proposals, 0 EVER RULED ON. The queue has grown from the 586 that kb:graph-sets already recorded as 'never drained', against 8 recorded answers. Top producers: offline:branch-align 273, offline:code-review with qwen3-coder 119, offline:history-lessons 65, button-crawl 53, offline:competitor-scan 46. Nothing establishes whether any of those 273 were right. An unmeasured queue is not a backlog, it is an unpriced liability." ;
+    kpred:evidence "THE METRIC WAS NOT COMPUTABLE UNTIL ATTRIBUTION WAS FIXED, which is why it did not exist. drainAndImportPending attached the proposing agent ONLY to partial facts (askedBy, for routing an answer back), so measured against the real queue 55% of entries — the 402 carrying an object — lost their agent on import, folded into one batch source titled 'MCP (agent-a, agent-b) — N notes'. Statement.proposedBy now carries it for every proposal, toTurtleFull emits meta:proposed-by and importTurtleFull reads it back, so the number is computable from exported graphs by a script rather than only inside the browser. 5 round-trip tests." ;
+    kpred:decided "TWO NUMBERS, AND THE SECOND IS THE HONEST ONE. YIELD is accepted over RULED-ON; TRIAGED is ruled-on over proposed. A brilliant yield across 3 of 273 proposals is not evidence of anything, so yield is never reported without the coverage that qualifies it, and the job says 'unknown rather than good or bad' when nothing has been ruled on." ;
+    kpred:constraint "IT NEVER FAILS THE BUILD. A low yield is information, not a broken invariant — failing CI on it would make the honest number the inconvenient one and create pressure to stop measuring. It also cannot distinguish 'rejected because wrong' from 'rejected because already known'; both are a human declining to accept, which is the triage cost either way." ;
+    kpred:honest-note "ATTRIBUTION BEGAN 2026-08-13, so every earlier proposal is unattributable BY CONSTRUCTION and this number becomes meaningful only as the queue is drained from here. It is not retroactive, and reporting it as though it were would be the overclaim this feature exists to prevent." ;
+    kpred:remaining "BUILT: the job, the attribution round trip, registration in jobs.json. NOT DONE: nothing yet measures TRIAGE COST in time or tokens, so 'offloading moved cost rather than removing it' is still only half-measurable; and the 736-deep queue remains undrained, which is the actual work this metric is arguing for." .
+
+kb:work-tiering kpred:has-part kb:proposal-yield .
+
+kb:shape-validation
+    kpred:tested-by "src/lib/rdf/__tests__/shacl-shapes.test.ts" ;
+    kpred:decided "REAL W3C SHACL, NOT A SUBSET WE WROTE. rdf-validate-shacl is a conforming implementation and is a devDEPENDENCY used only at script tier in Node, so the browser bundle of a local-first app pays nothing for it. Implementing eight constraint components and calling the result SHACL would have been exactly the overclaim kb:honest-status forbids." ;
+    kpred:principle "SHACL DOES NOT REPLACE graph-lint, AND SAYING SO MATTERS. graph-lint already enforces dead-link, bad-status, duplicate-id, dangling-ref, egress-gate and incomplete — every rule hardcoded TypeScript about THIS repo's vocabulary. That is right for this project's invariants and useless for anything else: a user's graph, a shared package or a grant-seeker profile cannot state what well-formed means for them, because the rules live in our source rather than in the data. Shapes are DATA — they travel with a graph, are authorable without a code change, and can be checked by any conforming tool." ;
+    kpred:measured "FIRST RUN FOUND MY OWN SHAPES WERE WRONG BEFORE IT FOUND ANY DRIFT: 78 violations, of which 76 were the shape's fault. 38 were deliberate kpred:moved-to tombstones (a relocated feature carries no status by design) and the rest were a feature-id regex that rejected the real ids F8b, R3, R4 and R5. Corrected — has-status is now required via sh:or with moved-to, which is what the rule actually IS rather than an exemption bolted onto a wrong one — the corpus reports 2 violations, both genuine, both in a stale app export under static/kbs/." ;
+    kpred:evidence "SCOPING IS AS LOAD-BEARING AS THE RULE. kb:review-workflow carries has-status \"pending -> confirmed/rejected/refined\", a state machine rather than a lifecycle; because the shape targets ktype:Feature it correctly leaves that alone. A shape that targeted has-status wherever it appeared would have reported a false positive on the one entity using the predicate legitimately in another sense." ;
+    kpred:honest-note "REPORTS ONLY — nothing is blocked by a shape in the product today. It runs at script tier over EXPORTED graphs and is registered --warn-only while the two pre-existing violations in a stale export are cleared; failing the build on day one is how a new check gets disabled. It is NOT wired into the in-app review gate, which is the step that would make it a gate rather than a report." ;
+    kpred:remaining "BUILT: static/shapes/reckons-shapes.ttl (Feature, PendingProposal, GrantSeeker, GrantCall), scripts/offline/shacl-validate.ts, 19 tests asserting each shape catches what it claims AND leaves valid data alone. NOT BUILT: the in-app review gate; shapes travelling inside a shared graph package; and any way for a USER to author shapes for their own graph — which is the whole argument for shapes-as-data and is currently unavailable to the people it was argued for." .
+
+## -- F130: classifying findings and scope (2026-08-14) --------------------------
+
+kb:finding-taxonomy rdf:type ktype:Feature ;
+               kpred:touches-module code:rdf ;
+    rdfs:label "Classify what KIND of wrong a finding is — and what kind of scope change" ;
+    kpred:feature-id "F130" ;
+    kpred:has-status "functional" ;
+    kpred:priority "high" ;
+    kpred:relates-to kb:shape-validation ;
+    kpred:relates-to kb:ci-cd-kb-watch ;
+    kpred:relates-to kb:honest-status ;
+    kpred:tested-by "src/lib/rdf/__tests__/finding-class.test.ts" ;
+    kpred:description "Matt, 2026-08-14: 'can we clearly classify drift from other syntax or functional errors?' Two orthogonal axes: a FINDING class (form / drift / defect) about a discrepancy, and a SCOPE class (planned / expanded-aligned / expanded-unaligned) about a change." ;
+    kpred:measured "MEASURED BEFORE BUILDING: no. 'drift-warning' was emitted by claim-audit (a claim contradicting reality), server-health (a server being down) and shacl-validate (a node missing a label) — three different kinds of wrong under one label, 54 entries from NINE agents, and NO entity anywhere defined what drift is. CLAUDE.md said only 'Drift detected: use type drift-warning', an instruction with no definition." ;
+    kpred:principle "THE CLASSES DIFFER IN WHO CAN SETTLE THEM AND WHERE THE FIX LANDS, which is why this is routing rather than tidiness. FORM: malformed artifact, decidable from the artifact alone, one right answer, SAFE TO BLOCK A BUILD ON. DRIFT: the claim disagrees with reality, TWO possible fixes (correct the graph or correct the world), so choosing is a judgement that must reach a human and must never auto-resolve. DEFECT: the world is broken while the graph is right, so the fix never touches the graph." ;
+    kpred:decided "THE DISCRIMINATING TEST: if you repaired the world, would the graph become TRUE without editing it? Yes means DEFECT — the claim was right and reality had not caught up. No means DRIFT — the claim itself was wrong. That test separates the two cases this project actually hit: 'repo-ingest is functional' while CSP blocked every request LOOKED like drift, but adding the origin made the graph true without touching it (defect); SAFETY.md claiming a publishing gate that was never built could not be repaired by building anything, so the sentence had to change (drift)." ;
+    kpred:decided "DRIFT MUST NEVER BLOCK A BUILD, and that is encoded rather than left to habit. Blocking forces a fast answer to the question that most needs a slow one — which side is wrong. FORM and DEFECT may block, because neither requires judging intent." ;
+    kpred:decided "SCOPE IS A SECOND AXIS, NOT A FLAVOUR OF DRIFT (Matt, 2026-08-14: 'scope increase (aligned) — like new dependency or touching other features that were not predicted to be needed' versus 'scope increase (not aligned, drift)'). The test mirrors the first: does the extra work serve the STATED INTENT? If yes it is EXPANDED-ALIGNED — legitimate discovery, and the response is to AMEND THE PLAN, since F114 already records that design completeness is relative to the use cases known at the time. If no it is EXPANDED-UNALIGNED, which is drift at the PLAN level and needs a decision: split it out, or revert." ;
+    kpred:known-issue "kb-align CANNOT EXPRESS THIS AND CURRENTLY PENALISES THE HONEST CASE. scripts/kb-align.ts computes scopeScore = 1 - (unmatched / changed) * 0.8, docking every unmatched change identically — so discovering a dependency you genuinely needed scores the same as wandering off the plan. That rewards under-reporting what a change actually touched. Wiring the scope axis into that score is the obvious next step and is NOT done." ;
+    kpred:honest-note "TWO EMITTERS RECLASSIFIED, THE REST NOT. shacl-validate now emits findingClass 'form' (it was typed drift-warning on its first day, by me) and server-health emits 'defect'. claim-audit is correctly drift and unchanged. The remaining 54 historical drift-warning entries in the queue are NOT reclassified — they predate the field and would need re-reading one by one, which is triage rather than a migration." ;
+    kpred:remaining "BUILT: src/lib/rdf/finding-class.ts (both axes, discriminating tests, blockable/flag routing), 23 tests including the real cases from this session; findingClass threaded through PendingEntry, the drain and Statement; both classes enumerable in SHACL so a misclassification is catchable rather than a matter of author attention. NOT BUILT: kb-align does not consume the scope axis; the review UI does not display or filter by class; and no job yet emits a scope-class at all, so that axis is defined and unused." .
+
+kb:honest-status kpred:has-part kb:finding-taxonomy .
+
+kb:scope-creep rdf:type ktype:Feature ;
+               kpred:touches-module code:rdf ;
+    rdfs:label "Scope as an estimate, and creep as its gradual growth" ;
+    kpred:feature-id "F130.1" ;
+    kpred:has-status "functional" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:finding-taxonomy ;
+    kpred:relates-to kb:agent-orchestration ;
+    kpred:relates-to kb:loop-safety ;
+    kpred:tested-by "src/lib/rdf/__tests__/scope.test.ts" ;
+    kpred:description "Matt, 2026-08-14, correcting a first model that treated scope as a CATEGORY: 'scope should be the estimated work required for the implementation of the design. going over scope may be an unexpected dependency, or touching more files than expected. scope is the expectation, and scope creep is the gradual growing of that expectation, through deeper discovery or during implementation.' Scope is therefore a QUANTITY on a design, and creep is a SERIES." ;
+    kpred:decided "CREEP IS A SERIES, NOT A VERDICT, because 'gradual' cannot be expressed by comparing once at the end. Observations are recorded during implementation, each carrying what was DISCOVERED there, and the shape of the series is the actionable part: growth across several readings means the design was systematically under-refined and wants revisiting whole, while a single jump means one specific thing was missed and naming it is the entire fix." ;
+    kpred:decided "A DRIFT WARNING HERE MEANS THE DESIGN WAS NOT REFINED ENOUGH — Matt's framing, and it settles what the signal is FOR: 'drift warnings are a soft, non-blocking warning system that the initial graph was not refined enough. The design didn't account for everything.' Creep is evidence about the DESIGN, never about the implementer, so describeCreep is phrased that way and is tested to contain no blame language." ;
+    kpred:constraint "NOTHING HERE BLOCKS, and that is load-bearing rather than lenient. Blocking on creep would make the honest estimate the dangerous one and push every estimate upward until it meant nothing. A tolerance exists for the same reason: a design that said 'about three files' and cost four has revealed nothing, and warning on it would train people to ignore the signal." ;
+    kpred:principle "SILENCE IS NOT A CLAIM OF ZERO. An estimate that never mentioned dependencies is not the assertion that there would be none, so unmentioned dimensions are skipped rather than scored — otherwise partial estimates are penalised out of existence and nobody writes one." ;
+    kpred:evidence "THIS IS WHAT AGENT ORCHESTRATION NEEDS IN FLIGHT (F87: 'a task is a triple ... schedules, dependencies, tiers, prompts and outcomes live in the graph'). An estimate is one more fact on a task, and creep is the running signal that a harness is diverging from it. It is the explanatory half of what plasma-ai/fractal bounds with hard caps on iterations, depth, children, cost and wall-clock: a cap STOPS the work, creep EXPLAINS it by naming the dependency or file count the design failed to predict." ;
+    kpred:remaining "BUILT: src/lib/rdf/scope.ts (measureCreep, creepSeries, creepShape, shouldWarnOnCreep, describeCreep), 20 tests including this session's own F129 attribution work as a worked gradual-creep example. NOT BUILT — and this is the whole point of the feature, so it is the honest gap: NO DESIGN CARRIES AN ESTIMATE YET. Nothing in the roadmap states expected files or dependencies, no task records observations during implementation, and kb-align still docks every unmatched change equally. Until an estimate exists on a real task this measures nothing." .
+
+kb:agent-orchestration kpred:relates-to kb:scope-creep .
+
+kb:scope-creep kpred:progress "ESTIMATES NOW EXIST ON REAL DESIGNS (2026-08-14). Three forward estimates were written BEFORE their work, chosen from the roadmap-readiness READY TO BUILD list: F122 reviewed source copies (6 files, 0 deps), F123 source discovery (7, 0), F75 RDF dataset capability (5, 0). Six ACTUALS were recorded for work this session finished — F126 3 files, F127 4, F128 3 files and 2 deps, F129 5, F59.2 4, F59.3 4 — as calibration input for future estimates." ;
+    kpred:decided "AN ESTIMATE IS NEVER BACK-FILLED ONTO FINISHED WORK. estimated-* and actual-* are separate predicates precisely so the two cannot be confused: an 'estimate' written after the fact is not a prediction, and scoring one would make every calibration figure a lie. scope-check --calibration therefore reports that estimate quality is UNKNOWN — zero designs carry both — and says why, rather than manufacturing a flattering number from six retrofitted guesses." ;
+    kpred:known-issue "THE IN-FLIGHT CHECK OVER-COUNTS ON A MIXED BRANCH, and the first real run proved it: against a branch carrying five unrelated concerns it reported 39 source files against every estimate, so F75's 5-file estimate appeared to be over by 34. git diff cannot attribute a file to a feature. The report prints this caveat rather than hiding it, and the real remedy is one branch per feature — which this working tree is currently a counter-example to." ;
+    kpred:remaining "BUILT: the estimate vocabulary (kpred:estimated-files / estimated-deps / actual-files / actual-deps) validated by SHACL as non-negative integers; scripts/offline/scope-check.ts in both calibration and in-flight modes, registered in the offline suite, never failing a build. NOT BUILT: no task records OBSERVATIONS DURING implementation, so creepSeries and the gradual-vs-step distinction are still unexercised by real data — the series needs a harness taking readings as it works, which is F87. And estimate quality stays unknown until one of the three estimated features is actually built." .
+
+kb:scope-estimate-derivation rdf:type ktype:Feature ;
+               kpred:touches-module code:rdf ;
+    rdfs:label "Estimates derived from the code graph, not guessed" ;
+    kpred:feature-id "F130.2" ;
+    kpred:has-status "functional" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:scope-creep ;
+    kpred:tested-by "src/lib/rdf/__tests__/scope-derive.test.ts" ;
+    kpred:description "Matt, 2026-08-14: 'shouldn't the code graph have detailed connections for concepts, across multiple files? I see that as a source for the estimates, not just a random guess.' A new edge, kpred:touches-module, links a DESIGN to the code concepts it expects to work in, so an estimate can be bounded by what those modules actually contain." ;
+    kpred:measured "THE EDGE WAS MISSING ENTIRELY, WHICH IS WHY THE FIRST ESTIMATES WERE GUESSES. Measured 2026-08-14: static/reckons-codebase.ttl carries exactly TWO predicates — kpred:has-file (379) and kpred:tested-by (44) — across 38 module concepts joined by skos:broader, and links to NOTHING in the roadmap. 'Which files will F122 touch' had no answer in the graph, so the numbers written for F122, F123 and F75 were invented." ;
+    kpred:principle "DERIVATION HONESTLY GIVES A BOUND, NOT A NUMBER. A module is not a file: naming code:rdf names 24 files and a feature will touch some of them. So the graph yields an UPPER BOUND (every file in every named module) and, where specific files are named, a LOWER BOUND. The estimate lies between — and an estimate ABOVE the upper bound is a contradiction the graph can catch, because you cannot touch more files than exist in the modules you named. The interesting reading of that failure is not 'the number is too big' but 'the design has not named everywhere it will actually go'." ;
+    kpred:evidence "FIRST REAL RUN, F122 on its own branch: 2 modules named (code:rdf, code:stores), upper bound 46 files, graph suggestion ~14, hand-written estimate 6 — within bounds but well under what the modules imply. That gap is the useful output: either phase 2 is genuinely narrow or the estimate was optimistic, and now there is something to argue with rather than a bare number." ;
+    kpred:constraint "THE SUGGESTED FRACTION IS A STATED CONVENTION, NOT A MEASUREMENT. suggestEstimate uses 30% of the module universe because a feature rarely touches every file in a module — but with zero designs yet carrying both an estimate and an actual there is nothing to calibrate it against, and presenting it as evidence would dress a convention up as data." ;
+    kpred:remaining "BUILT: kpred:touches-module on three designs, src/lib/rdf/scope-derive.ts (deriveScope, checkEstimate, suggestEstimate) wired into scope-check so every estimate is reported with its derived bound or flagged as an unbounded GUESS. NOT BUILT: only 3 of ~130 designs name their modules, so the other estimates remain underivable; and the codebase graph still has no concept-to-concept edges beyond skos:broader, so a design cannot yet be linked to a CONCEPT that spans modules — which is the richer version of what Matt asked for." .
+
+kb:scope-justification rdf:type ktype:Feature ;
+               kpred:touches-module code:rdf ;
+    rdfs:label "Justifying a scope increase — judgement raised to a human or the council" ;
+    kpred:feature-id "F130.3" ;
+    kpred:has-status "scaffolded" ;
+    kpred:part-of kb:scope-creep ;
+    kpred:relates-to kb:poseidons-council ;
+    kpred:relates-to kb:verifiability-axis ;
+    kpred:tested-by "src/lib/rdf/__tests__/scope-derive.test.ts" ;
+    kpred:description "Matt, 2026-08-14: 'The idea here is to raise judgement to the human and council. The goal being judgement is made by higher reasoning models and a human that can be accountable for the decision. justifications may be added ... the engineer or the designer may have justification for the increase.' Creep opens a decision; this carries why, who decided, and what they decided." ;
+    kpred:decided "STRUCTURED KIND AND PROSE, NOT ONE OR THE OTHER. Both examples Matt gave are recurring KINDS rather than one-offs — 'I used the initial version and it now clearly needs this other thing' is discovery-through-use; 'if we change this here we would change these other places for consistency and maintainability' is consistency-maintenance. Naming the kinds makes repeated causes COUNTABLE, which free text cannot be: a design whose creep is repeatedly discovery-through-use was under-specified in a different way from one whose creep is repeatedly consistency-maintenance, and only the first is fixed by thinking harder up front. The engineer's own words are kept alongside." ;
+    kpred:decided "ACCOUNTABILITY IS A NAMED PARTY, NEVER 'the system'. isAccountable() returns false for a decision with no decider, however it is labelled, and an undecided increase stays OPEN rather than defaulting to approved — silence is not consent, and the F52 boundary applies to scope exactly as it applies to facts." ;
+    kpred:decided "ANYTHING ILLEGITIMATE GOES TO A HUMAN, NOT A COUNCIL. Contestable-but-legitimate increases route to the council (F102 multi-model corroboration) where a single reviewer's judgement is worth checking. But accepting work that does not belong to a design is an ACCOUNTABILITY decision rather than a technical one, and a model must not be the last word on it." ;
+    kpred:principle "AN ACCEPTED JUSTIFICATION THAT CHANGES NOTHING IS A RUBBER STAMP. followUp() therefore returns what the graph should learn: where the cause refines THE DESIGN, amend the design so the next estimate starts from what was learned; where it refines THE PROCESS — a blocking defect fixed in passing — record it separately, because absorbing it into this design's scope hides it." ;
+    kpred:honest-note "SCAFFOLDED, NOT FUNCTIONAL: the model and its routing are built and tested (20 tests), and NOTHING PRODUCES A JUSTIFICATION YET. No UI collects one, scope-check does not prompt for one, and no justification has ever been recorded — so the council and human lanes are defined and unexercised." ;
+    kpred:remaining "A surface that asks for the justification when creep is detected; persistence of justifications as graph facts; and the council lane actually invoking F102 rather than naming it." .
+
+kb:code-graph-edges rdf:type ktype:Feature ;
+    kpred:test-coverage "none" ;
+    kpred:honest-note "UNTESTED, DECLARED (2026-08-14, caught by status-evidence). The import resolver and module aggregation live INSIDE scripts/offline/derive-code-edges.ts and generate-file-graph.ts rather than in an importable module, so there is nothing a unit test can reach without extracting them first. Its output is checkable by running it — 509 file entities and 981 edges that parse — but that is verification by inspection, not a regression guard, and this logic now feeds scope estimates, so a silent break would corrupt every derived number." ;
+    rdfs:label "Concept-to-concept edges in the code graph, derived from imports" ;
+    kpred:feature-id "F130.4" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:scope-estimate-derivation ;
+    kpred:touches-module code:rdf ;
+    kpred:description "Matt, 2026-08-14: 'shouldn't the code graph have detailed connections for concepts, across multiple files?' It should. static/reckons-codebase.ttl had has-file and tested-by and nothing joining one module to another except skos:broader, which is containment rather than dependency. scripts/offline/derive-code-edges.ts derives kpred:depends-on-module from static TypeScript imports." ;
+    kpred:measured "395 source files, 944 resolvable internal imports, 80 module-to-module edges; 38 written after dropping 42 that carried fewer than three imports as noise rather than structure. Heaviest couplings: routes->stores (71), components->stores (53), routes->rdf (41)." ;
+    kpred:evidence "IT IMMEDIATELY MEASURED SOMETHING THAT SHOULD HAVE CHANGED MY BEHAVIOUR EARLIER TODAY: src/lib/rdf/types.ts is imported DIRECTLY BY 154 FILES, 226 transitively, spanning 17 modules — far and away the highest blast radius in the repo. I edited it twice this session (Statement.proposedBy for F129, then Statement.findingClass for F130) without knowing that. Nothing warned, because until now the graph could not say it." ;
+    kpred:principle "A DEPENDENCY EDGE REPLACES A CONVENTION WITH A MEASUREMENT. scope-derive.ts offers a starting estimate as 30% of a module's file count — a stated convention with nothing behind it. A blast radius is computed: change a file and the graph knows which files import it. That is the difference between a number someone chose and a number the code entails." ;
+    kpred:relates-to kb:serena-prior-art ;
+    kpred:honest-note "FILE GRANULARITY, NOT SYMBOL — and the gap matters. '154 files import types.ts' is true and coarse: changing one exported type does not touch all 154, and this cannot tell which did. Static imports only, so the dynamic `await import()` this codebase uses heavily in stores is invisible, and type-only imports count the same as value imports, so coupling is over-stated. The number is an upper bound on impact, useful for warning and wrong for planning precisely." ;
+    kpred:remaining "Feed the blast radius into scope-derive so suggestEstimate stops using a fraction; surface a warning when a change touches a high-blast-radius file; and resolve dynamic imports, which currently make the graph silently under-count coupling in exactly the module (stores) that has the most of them." .
+
+kb:serena-prior-art rdf:type ktype:Tool ;
+    rdfs:label "Serena — LSP-backed symbol tools for coding agents" ;
+    kpred:has-status "speculative" ;
+    kpred:link "https://github.com/oraios/serena" ;
+    kpred:description "MCP server exposing SEMANTIC code tools to an agent at SYMBOL level rather than as text: find symbol, find referencing symbols, find declaration, find implementations, type hierarchy, plus symbolic edits (replace symbol body, insert before/after, safe delete) and refactors. Backed by open-source language servers across 40+ languages, with a JetBrains plugin as an alternative backend. MIT, 28k stars." ;
+    kpred:evidence "IT IS THE PROPER VERSION OF WHAT F130.4 APPROXIMATES. Import parsing gives file-to-file edges and stops there; a language server gives symbol-to-symbol — which of the 154 dependents of types.ts actually reference the field that changed. That is the difference between 'this file is risky to touch' and 'these nine call sites are affected'." ;
+    kpred:open-question "Adopt as an MCP server alongside the reckons one, or borrow the idea and compute symbol edges ourselves for TypeScript only? Serena is a general agent toolkit and this project needs one narrow output — the symbols a change actually reaches — so a targeted tsserver query may be the smaller answer. Weighing that needs someone to try it; nothing here has." ;
+    kpred:honest-note "NOT INSTALLED, NOT TRIED. Read from its README on 2026-08-14 and recorded as prior art. Every claim above is the project's own description, not a verified capability." .
+
+## -- F131: graph sets open together, separated in the viewport ------------------
+
+kb:multi-graph-viewport rdf:type ktype:Feature ;
+    kpred:constraint "AT MOST THREE ACTIVE GRAPHS IN A SET BROWSE (Matt, 2026-08-14). A hard cap, not a guideline: each member carries its own force simulation and the 3D view already warns at 19fps on ONE starter graph, so a fourth is where the view stops being usable rather than where it starts being crowded. It also bounds the arrangement problem — three regions can be laid out legibly in a plane without a layout algorithm nobody asked for." ;
+    rdfs:label "Open a graph SET — several graphs in one viewport, separated by distance" ;
+    kpred:feature-id "F131" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:relates-to kb:graph-sets ;
+    kpred:relates-to kb:multi-kb ;
+    kpred:touches-module code:rdf ;
+    kpred:touches-module code:threed ;
+    kpred:touches-file "src/lib/rdf/multi-graph-parse.ts" ;
+    kpred:touches-file "src/lib/rdf/kb-leap.ts" ;
+    kpred:touches-file "src/lib/3d/KnowledgeGraph2D.svelte" ;
+    kpred:touches-file "src/lib/3d/KnowledgeGraph.svelte" ;
+    kpred:estimated-files "12"^^xsd:integer ;
+    kpred:estimated-deps "0"^^xsd:integer ;
+    kpred:description "Matt, 2026-08-14: 'as I consider many leaps between nodes of PAIRED graphs — such as Product Design and Code graphs — I see the need to make leaps easier by being able to open graph SETS. The graphs should be displayed the same way, but separated by distance within the plane of the viewport. Leaps could then avoid any reload, if both (or multiple) graphs are already preloaded.' Open a set, render every member in one scene at its own position, and let a leap be a camera traversal rather than a graph swap." ;
+    kpred:evidence "THE PARTS EXIST AND DO NOT DO THIS. src/lib/rdf/multi-graph-parse.ts already models several graphs at once (GraphDef, OverlayData, GRAPH_COLORS) and the overlay route already loads a selection of them — but it renders a VENN-STYLE OVERLAY, merging them into one shared space to show intersection. Separation is the opposite arrangement and nothing does it: verified 2026-08-14, no offset or per-graph positioning exists anywhere in multi-graph-parse.ts or the overlay components." ;
+    kpred:evidence "A LEAP CURRENTLY COSTS A SWAP. kb-leap.ts resolves the target by stable id and the caller switches the active graph, with switchToKb as an explicit reload fallback in the leap handler. If both graphs are already in the scene there is nothing to switch — the leap becomes movement, which is what makes a densely cross-linked pair (design <-> code) usable rather than a sequence of context losses." ;
+    kpred:principle "SEPARATION AND OVERLAY ANSWER DIFFERENT QUESTIONS, so this does not replace the overlay. Overlay asks WHAT DO THESE GRAPHS SHARE and needs one coordinate space to show it. Separation asks HOW DO THESE GRAPHS RELATE and needs distinct spaces so a leap edge is visibly a crossing rather than an ordinary edge. Building separation as a mode of the overlay would blur the one thing each is for." ;
+    kpred:open-question "What arranges the members — the SET's declared order (F113 roles: design, observed, archive), the leap density between them, or the user dragging them? Density is tempting and probably wrong: a layout that moves when facts change makes spatial memory useless, which is the main thing a separated view buys." ;
+    kpred:open-question "How many graphs before this stops helping? Each member carries its own force simulation, and the 3D view already warns at 19fps on a single starter graph. A set of six may need members to render statically until focused." ;
+    kpred:remaining "Per-graph origin offsets in the layout so members occupy distinct regions; a set-aware loader that preloads every member of a graph set; leap edges drawn ACROSS the gap and traversed by camera rather than by switchToKb; and a decision on arrangement before any of it, since the answer changes the data the layout needs." .
+
+kb:graph-sets kpred:has-part kb:multi-graph-viewport .
+
+## -- F132: standards review — where bespoke mechanisms meet W3C ones ------------
+
+kb:standards-review rdf:type ktype:Decision ;
+    rdfs:label "Standards review — SHACL and TriG against what the app actually does" ;
+    kpred:feature-id "F132" ;
+    kpred:has-status "functional" ;
+    kpred:relates-to kb:rdf-dataset-migration ;
+    kpred:relates-to kb:shape-validation ;
+    kpred:description "Matt, 2026-08-14: 'we need to review most of the app considering the better technologies of both SHACL and TriG. The premise remains the same, a personal TTL editor. However as we get into any integrated usage we need those more robust standards.' Reviewed 2026-08-14 by measurement rather than principle." ;
+    kpred:measured "THE LOSSLESS STANDARD FORMAT IS ALREADY BUILT AND NOTHING CALLS IT. src/lib/rdf/serialize.ts exports toTriG, documented as the lossless format for F75 and covered by tests; a repo-wide search finds NO caller outside serialize.ts and its own tests. Meanwhile every path that actually ships uses toTurtleFull: workspace sync, backup, auto-save, graph snapshots. The readers are already TriG-tolerant — import-ttl.ts and multi-graph-parse.ts both parse with format 'TriG' because every .ttl is legal TriG — so the gap is WIRING, not capability or design." ;
+    kpred:measured "F75 WAS RECORDED AS 'planned' WHILE ITS READER WORKED AND ITS WRITER EXISTED. Corrected to 'scaffolded' in this review. Worth noting what this says about the new machinery: the SHACL shape validates that has-status is a value from the lifecycle, and cannot know whether the value is TRUE. Form checking does not catch drift, which is exactly the distinction F130 draws." ;
+    kpred:decided "REIFICATION IS A CONSEQUENCE OF A DELIBERATE CHOICE, NOT AN OVERSIGHT — so 'replace it with TriG' is the wrong reading. TriG has ONE graph slot and serialize.ts spends it on the SOURCE, because that is what types.ts says the graph term means and overloading it to bundle KBs 'would silently destroy the provenance that is the entire point of the product'. Statement-level metadata — status, confidence, gloss, the review state this product is built around — therefore has nowhere native to go, and toTurtleFull emits rdf:Statement reification whose own header admits it is 'invisible to standard RDF tooling'. That is the real cost, and it is paid knowingly." ;
+    kpred:open-question "RDF-star (RDF 1.2 quoted triples) is the standard that annotates a triple directly and would retire the reification blocks. PARTIALLY CHECKED, NOT ADOPTED: n3 2.1.1 — already shipped here — accepts the syntax, but the parse produced blank-node subjects rather than a quoted-triple term, so it desugars rather than modelling it natively. Whether the term model is usable end to end (parse, store in Dexie, re-serialize) is unverified, and claiming it works on one successful parse would be exactly the overclaim this project forbids." ;
+    kpred:decided "THE PREMISE HOLDS: a personal TTL editor stays Turtle-first on disk, because a human opening one file and reading it is the product. Standards earn their place at the INTEGRATION boundary — what leaves the app or arrives from elsewhere — which is where the graph meets tools that were not written here. So the sequence is: wire TriG for EXPORT and sync (lossless, standard, already built), keep Turtle for the single-graph human-readable case, and leave the on-disk default alone." ;
+    kpred:remaining "ORDERED BY WHAT EACH UNBLOCKS. (1) Wire toTriG into export and the graph package, so provenance survives leaving the app — the only item that is pure wiring of something already built and tested. (2) Decide reification versus RDF-star for statement metadata, which needs the term model verified through Dexie and back, not just a parse. (3) The in-app SHACL gate, where shacl-engine is the better candidate than rdf-validate-shacl because its Comunica weight is opt-in (only lib/sparql.js imports it) and it is browser-tested — measured 1.5x faster on this corpus, not the advertised 15-26x. (4) User-authored shapes, which is the whole argument for shapes-as-data and remains unavailable to the users it was argued for." .
+
+kb:type-shape-coupling rdf:type ktype:Feature ;
+    rdfs:label "Custom entity types carry custom SHACL shapes" ;
+    kpred:feature-id "F128.1" ;
+    kpred:has-status "scaffolded" ;
+    kpred:part-of kb:shape-validation ;
+    kpred:relates-to kb:entity-types ;
+    kpred:touches-module code:rdf ;
+    kpred:touches-file "src/lib/rdf/type-shapes.ts" ;
+    kpred:tested-by "src/lib/rdf/__tests__/type-shapes.test.ts" ;
+    kpred:description "Matt, 2026-08-14: 'custom entity types should be coupled with custom SHACL shapes?' They already are, weakly — this makes the coupling real and gives users an on-ramp into authoring shapes." ;
+    kpred:measured "EntityTypeDef ALREADY CARRIES A SHAPE WITHOUT TEETH. `schemaPredicates` is documented as 'suggested predicates for nodes of this type', and measured 2026-08-14 it is ADVISORY ONLY: rendered in the entity-types settings page and used to suggest fields in the detail panel, enforced nowhere. A SHACL NodeShape is the rigorous version of the same statement, so the question is not whether to couple them but how tightly." ;
+    kpred:decided "COUPLED IN AUTHORING, SEPARABLE IN THE MODEL. sh:targetClass already points a shape at a class and an entity type IS a class, so no new link is needed. Welding them one-to-one would break three real cases: ONE TYPE WITH SEVERAL SHAPES (strict for publishing, lenient for drafting, or differing sh:severity — 'warn here, block there' becomes unsayable); SHAPES THAT TARGET NO CLASS AT ALL (sh:targetNode and sh:targetSubjectsOf are Core SHACL); and SHARED GRAPHS, where a package may arrive carrying shapes for types the receiver never defined, or types whose shapes live in someone else's graph. Requiring the two to travel as one object makes a shared contract un-shippable, which is the whole argument for shapes-as-data." ;
+    kpred:decided "DERIVATION NEVER PROMOTES 'SUGGESTED' TO 'REQUIRED', and this is the property that makes it safe to offer unprompted. schemaPredicates is a hint that existing data was never checked against; turning each into sh:minCount 1 would declare every node omitting an optional field invalid the moment the user first opened the shape editor. A validation feature whose first act is to condemn the user's existing graph is one they switch off. The derived shape states the PATHS and constrains nothing — verified by a test that runs the derived shape against a bare typed node and asserts it CONFORMS, and a paired test asserting it fails once minCount is added deliberately." ;
+    kpred:principle "REPORT THE GAP, DO NOT FILL IT SILENTLY. typesWithoutShapes lists types with no shape rather than minting one for each: filling a user's graph with empty shapes they never asked for is the opposite of letting the user decide what their graph promises." ;
+    kpred:honest-note "SCAFFOLDED: the derivation, serialization and safety property are built and tested (12 tests), and NOTHING IN THE APP CALLS IT. The entity-types settings page does not offer shape authoring, no shape is stored per graph, and the in-app validation gate that would give a user-authored shape any effect does not exist (F128). This is the on-ramp, not the road." ;
+    kpred:remaining "A shape editor in the entity-types settings page seeded by entityTypeToShape; per-graph storage of user shapes so they travel with a graph package; and the in-app gate from F128 without which a user shape validates nothing." .
+
+kb:rdf-dataset-migration kpred:progress "EXPORT WIRED 2026-08-14 — the first feature built under the scope tracking, and the first estimate to be scored. PREDICTED 5 files, ACTUAL 3, so it came in UNDER scope. Built: a `trig (.trig)` button beside `turtle (.ttl)` in the graphs export block, with the section hint now saying what the difference IS rather than assuming the user knows ('turtle cannot carry provenance — trig keeps which source each fact came from'). Verified in the running app against a graph seeded from TWO sources: the download is valid TriG carrying 2 named graphs, while the turtle control carries 0. The control is what makes the export worth having rather than merely working." ;
+    kpred:known-issue "THE FIRST REAL CALLER FOUND A BUG THAT GREEN TESTS HAD HIDDEN FOR WEEKS. toTriG pushed opts.header RAW instead of as a comment, so any caller passing one produced invalid TriG — 'Unexpected full on line 1'. toTurtle and toTurtleFull both comment theirs; toTriG was the odd one out. Every existing test called toTriG() with NO header, so the function sat behind full coverage while being broken for the exact shape its first caller used. Caught by driving the actual UI and parsing the downloaded bytes, not by a unit test — the F55 lesson again, in a new place. Fixed, with three regression tests including one asserting toTriG and toTurtle agree on header handling." ;
+    kpred:decided "ITEM 2 OF THE REMAINING LIST WAS DECLINED ON EVIDENCE, NOT DEFERRED. 'Adopt .trig per-file only when a KB genuinely carries >1 source' has a condition that never fires here: measured 2026-08-14, ZERO of the 10 workspace graphs carry more than one source. Building a conditional writer for a condition no local graph meets would be untestable speculation, and the standards review had already decided the on-disk default stays Turtle. A real user graph built from five PDFs WOULD meet it, so this is not dead — it is unexercisable here, which is a different thing and worth saying." ;
+    kpred:remaining "DONE: toTriG wired into the export UI and verified end to end. DECLINED WITH EVIDENCE: per-file .trig adoption (no local graph carries >1 source). STILL OPEN: whether a pure-text multi-KB meta-file is wanted enough to overload the graph term — unchanged, and still nobody's call but Matt's." .
+
+kb:scope-creep kpred:known-issue "THE ACTUAL COUNT IS UNRELIABLE ON A DIRTY TREE, MEASURED WHILE SCORING F75. Two methods, both wrong in opposite directions. Diffing against a BRANCH POINT reported 42 source files because the branch carried five unrelated concerns. Diffing the CHANGED-FILE LIST before and after reported 1, because two of the three files F75 touched — kb/+page.svelte and rdf/serialize.ts — were ALREADY dirty from earlier work and so never appeared as new. The true figure, 3, was known only because the same session did the work and could count it by hand. NEITHER AUTOMATED METHOD SURVIVES A MIXED BRANCH, which turns one-branch-per-feature from hygiene into the precondition for measuring anything at all." ;
+    kpred:remaining "Also needed: measure the actual from a COMMIT RANGE attributable to the feature rather than from working-tree state, which requires the branch discipline the tracking has so far only argued for." .
+
+kb:archive-restore-on-reference kpred:progress "WIRED 2026-08-14. The detector and the restore action both already existed and were unreachable because nothing called the detector at a commit boundary; this is that call. src/lib/rdf/archive-guard.ts holds the decision layer (pure, 11 tests) and addStatements now runs it as one more gate beside the currents type gate, the content-safety gate and the F52 agent boundary. Only MATCHING statements are held — a 200-fact import mentioning one archived entity writes 199 and pauses one — and the prompt reuses the existing notification action surface: 'restore it' restores and replays the held facts, DISMISSING writes them as they arrived (keep-separate). Best-effort throughout: any failure writes the batch unchanged, because a guard that blocks an ingest when the archive is unreadable is worse than the duplicate it prevents." ;
+    kpred:decided "IT PAUSES RATHER THAN AUTO-RESTORING. The underlying matcher is a conservative direct-IRI and normalized-label comparison — a heuristic, not proof of identity — so auto-restoring on a label collision would silently resurrect something the user deliberately archived. Agents propose, humans settle, applied to restores." ;
+    kpred:honest-note "ITEM 5 OF THE REMAINING LIST IS NOT DONE: 'add end-to-end coverage across all ingest entry points'. The DECISION layer is unit-tested and the wiring type-checks, but nothing yet proves the guard fires in the running app — which is precisely the trap this session hit twice (indico-verify green while no browser reached the server; toTriG fully covered while broken for its first real caller). Status therefore stays SCAFFOLDED rather than functional until that test exists, even though the code path is complete." ;
+    kpred:remaining "End-to-end coverage proving the guard fires on a real ingest and that both branches — restore and keep-separate — land correctly. Everything else in this list is now built." .
+
+kb:scope-creep kpred:evidence "SECOND SCORED ESTIMATE, AND THE FIRST BLIND ONE (F97.3, 2026-08-14). Predicted 8 files from the design alone with no code read beforehand; actual 3. The estimate recorded its own risk in advance — 'if writes funnel through ONE chokepoint this is small and 8 is generous; if ingest paths each commit independently, the wiring multiplies' — and the chokepoint existed: addStatements is reached by 32 call sites, so one hook covered every ingest path. The bet was right in direction, which is why the number was high. TWO DATA POINTS NOW, BOTH UNDER: F75 predicted 5 actual 3, F97.3 predicted 8 actual 3. Too few to call a bias, and worth watching for whether estimates here run consistently generous — an estimator that is reliably 2x high is as unusable as one that is reliably low." .
+
+kb:archive-restore-on-reference kpred:proof "VERIFIED END TO END IN THE RUNNING APP, 2026-08-14 — which is why the status moved off scaffolded. The test archives an entity through the REAL archive path (runArchive, so the journal rows are whatever the app actually writes rather than something hand-seeded and possibly wrong), then ingests two facts: one mentioning the archived entity, one unrelated. Result: the detector matched, ONE of the two statements was written, and the restore prompt appeared. The 1-of-2 is the load-bearing observation — it proves the guard holds only the matching fact and lets the rest of the batch through, which is the property that stops a single archived match blocking an entire import." ;
+    kpred:known-issue "THE END-TO-END RUN FOUND A UX DEFECT THE UNIT TESTS COULD NOT. The prompt read '\"urn:kbase:concept/old-supplier\" is in the archive' — technically correct and useless to read. Cause: findArchivedReferences sets label to the ENTITY IRI when the archived node has no rdfs:label (archive.ts: `archivedLabels.get(entity) ?? entity`), so label is never absent and a plain fallback-to-tail never fires. The unit tests passed because they supplied either a real label or none at all — never the IRI-as-label case the real detector actually produces. Fixed by treating an IRI-shaped label as no label; 3 regression tests, including a non-urn scheme." .
