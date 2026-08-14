@@ -3510,6 +3510,7 @@ kb:multi-kb rdf:type ktype:Feature ;
     kpred:moved-to "static/reckons-shipped.ttl" .
 
 kb:mcp-server rdf:type ktype:Feature ;
+               kpred:landing-label   "MCP server" ;
     rdfs:label "MCP Server" ;
     kpred:moved-to "static/reckons-shipped.ttl" .
 
@@ -3554,6 +3555,7 @@ kb:entity-types rdf:type ktype:Feature ;
     kpred:moved-to "static/reckons-shipped.ttl" .
 
 kb:cross-kb-alignment rdf:type ktype:Feature ;
+               kpred:landing-label   "Cross-graph alignment" ;
     rdfs:label "Cross-Graph Alignment" ;
     kpred:moved-to "static/reckons-shipped.ttl" .
 
@@ -3747,6 +3749,7 @@ kb:llm-providers rdf:type ktype:Feature ;
     kpred:moved-to "static/reckons-shipped.ttl" .
 
 kb:publish-safety-gate rdf:type ktype:Feature ;
+               kpred:landing-label   "Publish safety gate" ;
     rdfs:label "Publish Safety Gate" ;
     kpred:moved-to "static/reckons-shipped.ttl" .
 
