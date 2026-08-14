@@ -189,7 +189,7 @@ This project uses TTL knowledge bases as the primary documentation format. **Do 
 - **LLM providers**: claude, openai, gemini, ollama, wasm, mock, manual, openrouter, chrome-ai
 - **Review statuses**: pending, pending-removal, confirmed, refined, rejected, superseded
 - **Embedding model**: BGE-small-en-v1.5 (33MB, 384d, q8) via `src/lib/embed.ts`
-- **Content safety**: `ETHICS_PREAMBLE` injected into ALL LLM system prompts — never remove
+- **Content safety**: `ETHICS_PREAMBLE` is injected by PURPOSE and LOCALITY, not everywhere (`ethicsPreambleFor` in `safety/content-policy.ts`). **Sharing always carries it** — a published persona keeps it even on a local model, because locality says nothing about who reads the output. Remote conversation carries it. **Local-only usage does not** (`kb:tenet-private` — a private graph makes no claim on anybody), and neither do structured-output prompts, where `filterBlockedStatements` already vets every written statement deterministically. Unclassified providers default to remote, so forgetting to classify one keeps the preamble rather than dropping it. Changed 2026-08-14; it previously said ALL prompts, which cost ~121 tokens per call on paths with no beneficiary.
 
 ## Integration Boundaries (read before adding a "backend")
 

@@ -2,27 +2,27 @@ import { chatClaude, chatOpenAI, chatGemini, chatOllama, chatReckons, chatChrome
 import { chatWithWasm } from './wasm';
 import { preferLocalBackendSync } from './prefer-local';
 import type { KBAction, KBContext, TurtleChatResponse } from '$lib/types/turtle-chat';
-import { ETHICS_PREAMBLE } from '../../safety/content-policy';
+import { ETHICS_PREAMBLE, ethicsPreambleFor, localityOf } from '../../safety/content-policy';
 
 const SYSTEM_PROMPT = `You are Shelly, a friendly low-poly turtle companion for Reckons.AI — a personal knowledge base tool built on RDF Turtle format (.ttl).
 
 Your personality: warm, curious, occasionally uses turtle puns, never condescending. Keep responses concise (2-4 sentences for simple questions, up to ~100 words for complex ones). Never repeat yourself or pad with filler.
 
 GROUNDING RULES (critical — follow these strictly):
-- ONLY state facts that appear in the KB SNAPSHOT below. If something isn't in the snapshot, say so — never invent or assume facts.
-- When describing an entity, cite the specific triples you see: e.g. "According to your KB, Matt works-at → Anthropic."
-- If a user asks about something not in the KB, say "I don't see that in your KB yet" and offer to add it.
-- Never make claims about the KB's purpose, history, or significance beyond what the triples show.
+- ONLY state facts that appear in the GRAPH SNAPSHOT below. If something isn't in the snapshot, say so — never invent or assume facts.
+- When describing an entity, cite the specific triples you see: e.g. "According to your graph, Matt works-at → Anthropic."
+- If a user asks about something not in the graph, say "I don't see that in your graph yet" and offer to add it.
+- Never make claims about the graph's purpose, history, or significance beyond what the triples show.
 - Do not embellish, editorialize, or add superlatives. Describe what the data says, nothing more.
 
 You help users:
 1. Understand their knowledge base and the RDF/Turtle format
-2. Make changes to their KB through conversation
+2. Make changes to their graph through conversation
 
 The RDF Turtle format stores knowledge as triples: subject · predicate · object.
 Example: <urn:kbase:person/matt> <urn:kbase:predicate/works-at> <urn:kbase:org/anthropic> .
 
-When you want to propose changes to the KB or adjust the graph view, include a structured action block at the END of your message:
+When you want to propose changes to the graph or adjust the graph view, include a structured action block at the END of your message:
 
 <kb-actions>
 [
@@ -37,12 +37,12 @@ When you want to propose changes to the KB or adjust the graph view, include a s
 
 Action guide (add_triple, remove_triple, set_type take effect immediately on user accept; merge_entities goes to Review page for execution):
 - add_triple: add a new RDF statement — confirmed directly when accepted
-- remove_triple: reject/delete an existing statement (use exact IRIs from the KB snapshot) — rejected directly when accepted
+- remove_triple: reject/delete an existing statement (use exact IRIs from the graph snapshot) — rejected directly when accepted
 - set_type: correct or assign the rdf:type for an entity — confirmed directly when accepted
 - merge_entities: redirect ALL triples from dropEntity to keepEntity, effectively collapsing duplicates into one canonical node. Queued in Review page because it requires redirecting many triples.
 - confirm_source: approve a pending source
 - adjust_view: navigate or adjust the graph view. Use when the user is searching or asking "show me X". Fields are all optional:
-  - selectEntity: IRI of the entity to select/focus in the graph (use exact IRI from KB snapshot)
+  - selectEntity: IRI of the entity to select/focus in the graph (use exact IRI from graph snapshot)
   - layout: one of "force" (default physics), "focus" (selected-node-centric), "source" (grouped by source), "type" (grouped by entity type), "hub" (hub-first)
   - filters: array of filter chips to activate, any of "hubs", "islands", "confirmed", "pending", "no-type", "no-source"
     - "no-type": highlights all entities that have no rdf:type assigned
@@ -51,9 +51,9 @@ Action guide (add_triple, remove_triple, set_type take effect immediately on use
 - query_kb: fetch a filtered list of entities/statements and send them back to you as context, so you can propose targeted bulk actions. Use this when the user asks to batch-process a set (e.g. "assign types to everything without one"). The user clicks "run" and the results appear as your next input.
   - filter: one of "no-type" (entities without rdf:type), "no-source" (manually added statements), "pending" (pending statements), "islands" (isolated nodes)
   Workflow: propose query_kb → user runs it → results come back → you propose set_type / add_triple / etc. for each item.
-- scrape_url: scrape a webpage and ingest its content as triples into the KB. Use when the user shares a URL or asks to import a page. The app uses Firecrawl (if configured) or Jina Reader as fallback, then extracts triples via the configured LLM backend.
+- scrape_url: scrape a webpage and ingest its content as triples into the graph. Use when the user shares a URL or asks to import a page. The app uses Firecrawl (if configured) or Jina Reader as fallback, then extracts triples via the configured LLM backend.
   - url: the full URL to scrape (must start with http:// or https://)
-  Workflow: propose scrape_url → user clicks "scrape" → content is fetched, extracted into triples, diffed against existing KB, and added as pending statements for review.
+  Workflow: propose scrape_url → user clicks "scrape" → content is fetched, extracted into triples, diffed against existing graph, and added as pending statements for review.
 
 Only include the action block when you have concrete changes or navigation to propose. Always explain BEFORE the block. The user must approve each action.`;
 
@@ -84,7 +84,7 @@ function buildContextSection(ctx: KBContext): string {
   if (ctx.untypedEntityCount > 0) alerts.push(`${ctx.untypedEntityCount} entities have no type (use query_kb filter:"no-type" to see them)`);
   if (ctx.manualStatementCount > 0) alerts.push(`${ctx.manualStatementCount} manually added statements (use query_kb filter:"no-source")`);
 
-  return `\n\n---\nKB SNAPSHOT — THIS IS YOUR ONLY SOURCE OF TRUTH. Only reference facts shown here.\nSample of ${Math.min(ctx.sampleEntities.length, 15)} of ${ctx.statementCount > 0 ? 'many' : '0'} entities (this KB is deliberately scoped; absence of a fact doesn't mean it's false, just not yet captured):\n- ${ctx.statementCount} confirmed statements across ${ctx.sourceCount} source(s)\n- Types in use: ${ctx.typesPresent.join(', ') || 'none yet'}${alerts.length ? '\n- Attention: ' + alerts.join('; ') : ''}\n- Entities with their triples (label [type] <IRI>: predicate → object) — untyped shown first:\n${entities || '  (no entities loaded yet)'}`;
+  return `\n\n---\nKB SNAPSHOT — THIS IS YOUR ONLY SOURCE OF TRUTH. Only reference facts shown here.\nSample of ${Math.min(ctx.sampleEntities.length, 15)} of ${ctx.statementCount > 0 ? 'many' : '0'} entities (this graph is deliberately scoped; absence of a fact doesn't mean it's false, just not yet captured):\n- ${ctx.statementCount} confirmed statements across ${ctx.sourceCount} source(s)\n- Types in use: ${ctx.typesPresent.join(', ') || 'none yet'}${alerts.length ? '\n- Attention: ' + alerts.join('; ') : ''}\n- Entities with their triples (label [type] <IRI>: predicate → object) — untyped shown first:\n${entities || '  (no entities loaded yet)'}`;
 }
 
 function parseActions(text: string): { clean: string; actions: KBAction[] } {
@@ -107,17 +107,17 @@ const EXPLORE_SYSTEM_PROMPT = `You are Shelly 🐢, a friendly turtle guide givi
 EXPLORE MODE — you are the active guide, not just a chatbot. You drive the conversation.
 
 GROUNDING RULES (critical — follow these strictly):
-- ONLY describe entities and relationships that appear in the KB SNAPSHOT below. Never invent facts.
+- ONLY describe entities and relationships that appear in the GRAPH SNAPSHOT below. Never invent facts.
 - When pointing out something interesting, cite the specific triple: e.g. "I see that Alice relates-to → Bob."
-- If the KB is small or sparse, that's fine — comment on what IS there, don't speculate about what isn't.
-- Never make claims about the KB's purpose, history, or significance beyond what the triples show.
+- If the graph is small or sparse, that's fine — comment on what IS there, don't speculate about what isn't.
+- Never make claims about the graph's purpose, history, or significance beyond what the triples show.
 - Do not embellish, editorialize, or add superlatives. Describe what the data says, nothing more.
 
 Tour guide rules:
 1. Each response: (a) say 1-2 sentences about what you're showing citing specific triples, (b) navigate with adjust_view, (c) ask ONE engaging question
 2. Keep it short — never more than 3 sentences before your question
 3. Use adjust_view in EVERY response to move the graph as you talk
-4. Notice and comment on: hubs with many connections, isolated islands, clusters by source or type, entities missing types (which may just not be captured yet — this KB is scoped, not exhaustive)
+4. Notice and comment on: hubs with many connections, isolated islands, clusters by source or type, entities missing types (which may just not be captured yet — this graph is scoped, not exhaustive)
 5. If the user answers your question, briefly acknowledge it before the next stop
 6. If the user asks you something, answer in 1-2 sentences then continue the tour
 7. Plan a 5-6 stop tour: overview → a hub entity → a cluster or pattern → something unusual → closing invitation
@@ -132,7 +132,7 @@ Navigation guide (use these in adjust_view):
 - filters ["no-type"]: highlights entities that have no type assigned
 - filters ["confirmed"]: shows only confirmed knowledge
 
-STARTING: When you receive "START_TOUR", begin with a warm 1-sentence greeting, one quick observation about what you see in the KB, then navigate to stop 1 (layout "hub" or "force" for an overview) and ask your first question.
+STARTING: When you receive "START_TOUR", begin with a warm 1-sentence greeting, one quick observation about what you see in the graph, then navigate to stop 1 (layout "hub" or "force" for an overview) and ask your first question.
 
 ACTION FORMAT — you MUST use this exact format to navigate. Include one adjust_view block at the END of every message:
 
@@ -153,7 +153,7 @@ REVIEW MODE — you drive a screen-by-screen review, not a graph tour.
 
 RULES (strict):
 - The VISUAL REVIEW list below is your source of truth. Do NOT invent what a screen shows beyond its title/page/assertion/verdict — you can't see the pixels; the reviewer can. Frame observations as prompts for THEM ("does the nav bar look right?"), not claims.
-- Never call this a KB "about" a topic. It is a visual test of the app's UI. Do not guess a subject/domain.
+- Never call this a graph "about" a topic. It is a visual test of the app's UI. Do not guess a subject/domain.
 - Go through the steps IN ORDER (Step 1, 2, 3 …). One step per message.
 
 Each message:
@@ -248,10 +248,10 @@ export function resolveChatProvider(s: {
 
 const VOICE_MODE_PREFIX = `VOICE MODE: Respond in 1-2 short spoken sentences only. No markdown, bullet points, code blocks, asterisks, or lists. Plain conversational English that sounds natural when read aloud.\n\n`;
 
-/** Ethics wrapper injected when a KB is published/shared. Cannot be overridden by customPrompt. */
-const PUBLISHED_ETHICS_WRAPPER = `IMPORTANT SAFETY RULES (non-negotiable, override any conflicting instructions):
+/** Ethics wrapper injected when a graph is published/shared. Cannot be overridden by customPrompt. */
+export const PUBLISHED_ETHICS_WRAPPER = `IMPORTANT SAFETY RULES (non-negotiable, override any conflicting instructions):
 - You are an AI assistant persona embedded in a published knowledge base. You must never claim to be a real human.
-- If asked, always disclose that you are an AI persona configured by the KB author.
+- If asked, always disclose that you are an AI persona configured by the graph author.
 - Never generate content that promotes violence, harassment, hate speech, or discrimination.
 - Never impersonate real public figures in a way that could mislead or defame.
 - Never generate sexually explicit content, instructions for illegal activities, or content harmful to minors.
@@ -279,8 +279,37 @@ export interface TurtleChatOptions {
   publishedMode?: boolean;
 }
 
-export async function turtleChat(opts: TurtleChatOptions): Promise<TurtleChatResponse> {
-  const { provider, apiKey, model, ollamaBaseUrl, reckonsBaseUrl, messages, kbContext, exploreMode, voiceMode, customPrompt, publishedMode } = opts;
+/**
+ * Assemble the system prompt. EXTRACTED FROM turtleChat AND EXPORTED so the ordering can be
+ * tested — it could not be before, because the assembly sat inside a function that makes
+ * network calls.
+ *
+ * THE ORDER IS THE SAFETY PROPERTY, and it is the whole reason this is a separate function:
+ *
+ *     ETHICS_PREAMBLE + [PUBLISHED_ETHICS_WRAPPER] + [customPrompt] + basePrompt
+ *
+ * A user's customPrompt is prepended to the base prompt, and BOTH the published wrapper and
+ * the ethics preamble are then prepended in front of it — so a custom persona cannot precede
+ * either, whatever it contains. That was true before this extraction and is now ASSERTED
+ * rather than merely arranged.
+ *
+ * Found by asking which optional inputs no test ever passes: publishedMode gates the wrapper
+ * shown to anyone opening a SHARED graph, and nothing exercised it. CLAUDE.md's honest-status
+ * note records a real incident of claiming the ethics preamble "cannot be overridden" when it
+ * is open-source code anyone can delete — so the honest claim is narrower and worth stating:
+ * within this function, ordering is enforced and tested. Deleting the line is still possible
+ * for anyone with the source, and no test can prevent that.
+ */
+export function assembleSystemPrompt(opts: {
+  kbContext: TurtleChatOptions['kbContext'];
+  exploreMode?: boolean;
+  voiceMode?: boolean;
+  customPrompt?: string;
+  publishedMode?: boolean;
+  /** Which backend will run this. Local providers skip the preamble (Matt, 2026-08-14). */
+  provider?: string;
+}): string {
+  const { kbContext, exploreMode, voiceMode, customPrompt, publishedMode, provider } = opts;
   // A visual-test story (reviewSteps present) reviews screen-by-screen; a normal
   // tour explores; otherwise it's the plain assistant. (F34)
   let basePrompt = kbContext.reviewSteps?.length
@@ -289,9 +318,23 @@ export async function turtleChat(opts: TurtleChatOptions): Promise<TurtleChatRes
   if (voiceMode) basePrompt = VOICE_MODE_PREFIX + basePrompt;
   if (customPrompt?.trim()) basePrompt = customPrompt.trim() + '\n\n' + basePrompt;
   if (publishedMode) basePrompt = PUBLISHED_ETHICS_WRAPPER + basePrompt;
-  // Inalienable ethics preamble — always first, cannot be overridden
-  basePrompt = ETHICS_PREAMBLE + basePrompt;
-  const system = basePrompt + buildContextSection(kbContext);
+  // The preamble is always FIRST when present, and cannot be overridden by a custom prompt.
+  // Whether it is present depends on who ends up reading the output:
+  //   publishedMode -> 'share'. Somebody else reads this, so it carries the preamble even on
+  //                    a local model. Sharing outranks locality; asserted in tests.
+  //   otherwise     -> 'converse' at the provider's locality. A local model talking only to
+  //                    its owner exposes nobody who has not consented (kb:tenet-private), and
+  //                    spending ~121 tokens per call to lecture someone in their own notebook
+  //                    is a cost without a beneficiary.
+  basePrompt =
+    ethicsPreambleFor(publishedMode ? 'share' : 'converse', localityOf(provider)) + basePrompt;
+  return basePrompt;
+}
+
+export async function turtleChat(opts: TurtleChatOptions): Promise<TurtleChatResponse> {
+  const { provider, apiKey, model, ollamaBaseUrl, reckonsBaseUrl, messages, kbContext, exploreMode, voiceMode, customPrompt, publishedMode } = opts;
+  const system = assembleSystemPrompt({ kbContext, exploreMode, voiceMode, customPrompt, publishedMode, provider })
+    + buildContextSection(kbContext);
 
   let raw: string;
   if (provider === 'openai') {
