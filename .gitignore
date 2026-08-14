@@ -9,7 +9,12 @@ yarn.lock
 
 # Build output
 dist/
-build/
+# ANCHORED. `build/` unanchored also matched content/build/ — the three generated docs pages
+# under it could never be committed, so CI prerendered a 404 for a link a committed page
+# makes (/docs/learn/start-here -> /docs/build/connecting-other-systems) while the build
+# passed locally, where the files exist untracked. A leading slash keeps this to the root
+# output directory only.
+/build/
 .svelte-kit/
 *.tsbuildinfo
 storybook-static/
