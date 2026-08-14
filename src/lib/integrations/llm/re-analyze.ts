@@ -10,7 +10,7 @@ export const ANALYSIS_TYPE_LABELS: Record<AnalysisType, string> = {
   'merge':       'Merge Entities',
   'entity-types':'Entity Types',
   'delete':      'Entity Delete',
-  'align':       'Cross-KB Align',
+  'align':       'Cross-graph Align',
 };
 
 export interface EntitySummary {
@@ -103,7 +103,7 @@ function buildNewTriplesPrompt(entities: EntitySummary[], kbTitle?: string, kbDe
   return `${kbHeader(kbTitle, kbDescription, analyzeGuidance)}You are enriching an RDF knowledge graph. Your ONLY task is to identify MISSING RELATIONS — new predicate triples that connect existing entities.
 
 IMPORTANT — OPEN WORLD ASSUMPTION:
-This KB is deliberately scoped. Absence of a fact does NOT mean the fact is false — it means this KB hasn't captured it yet. Your suggestions should surface connections that the KB *probably* should contain given its current focus, not everything that *could* be true in the world.
+This graph is deliberately scoped. Absence of a fact does NOT mean the fact is false — it means this graph hasn't captured it yet. Your suggestions should surface connections that the graph *probably* should contain given its current focus, not everything that *could* be true in the world.
 
 RULES:
 - Only suggest relations between entities that appear in the list below.
@@ -136,17 +136,17 @@ function buildEnrichPrompt(entities: EntitySummary[], webContext: string, kbTitl
   return `${kbHeader(kbTitle, kbDescription, analyzeGuidance)}You are enriching an RDF knowledge graph using web search results.
 
 IMPORTANT — OPEN WORLD ASSUMPTION:
-This KB is deliberately scoped. Absence of a fact does NOT mean the fact is false — it means this KB hasn't captured it yet. Your job is to identify facts from the web search results that would meaningfully fill gaps in this KB's coverage, given its existing focus and entities.
+This graph is deliberately scoped. Absence of a fact does NOT mean the fact is false — it means this graph hasn't captured it yet. Your job is to identify facts from the web search results that would meaningfully fill gaps in this graph's coverage, given its existing focus and entities.
 
 TASK:
 1. Compare the web search results against the existing entities below.
-2. Identify facts from the web that are RELEVANT to this KB's scope and would fill notable gaps.
-3. Suggest new triples — either connecting existing entities with newly discovered facts, or introducing new entities that clearly belong in this KB's scope.
+2. Identify facts from the web that are RELEVANT to this graph's scope and would fill notable gaps.
+3. Suggest new triples — either connecting existing entities with newly discovered facts, or introducing new entities that clearly belong in this graph's scope.
 
 RULES:
 - Every suggestion must cite which web result it came from.
 - Prefer facts that connect to existing entities over facts about entirely new topics.
-- Do not suggest facts the KB already contains — check the entity predicates.
+- Do not suggest facts the graph already contains — check the entity predicates.
 - New entity IRIs should follow the pattern: urn:kbase:<type>/<slug>
 - Limit: up to 8 suggestions. Only facts well-supported by the search results.
 - Output valid JSON only — no prose, no markdown fences.

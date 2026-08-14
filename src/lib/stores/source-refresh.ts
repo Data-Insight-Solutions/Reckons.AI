@@ -81,6 +81,14 @@ export async function refreshSource(
     }
 
     const result = await ingest(input, onProgress);
+    if (result.phase === 'cancelled') {
+      return {
+        sourceId: source.id,
+        title: source.title,
+        status: 'skipped',
+        error: 'Refresh cancelled at the archived-entity decision.',
+      };
+    }
 
     // Check if content actually changed by comparing hashes
     if (result.source.hash === source.hash) {

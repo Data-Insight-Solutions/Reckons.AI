@@ -28,29 +28,11 @@ test('documentation graph renders nodes without a WebGL/renderer crash', async (
     if (msg.type() === 'error') consoleErrors.push(msg.text());
   });
 
-  // Clean slate.
+  // Playwright gives every test a fresh browser context, including IndexedDB,
+  // localStorage, and sessionStorage. Do not navigate and then clear/reload:
+  // that aborts the landing page's bundled-KB preload and creates a false
+  // console error before the actual evidence flow starts.
   await page.goto('/');
-  await page.evaluate(async () => {
-    try {
-      const dbs = await indexedDB.databases();
-      await Promise.all(
-        dbs.map((d) =>
-          d.name
-            ? new Promise<void>((res) => {
-                const r = indexedDB.deleteDatabase(d.name!);
-                r.onsuccess = () => res();
-                r.onerror = () => res();
-              })
-            : Promise.resolve()
-        )
-      );
-    } catch {
-      /* indexedDB.databases() may not exist on all browsers */
-    }
-    try { localStorage.clear(); } catch { /* ignore */ }
-    try { sessionStorage.clear(); } catch { /* ignore */ }
-  });
-  await page.reload();
   await page.locator('nav').waitFor({ timeout: 15_000 });
 
   // Open the Documentation Graph from the landing page — this is the exact
@@ -97,12 +79,10 @@ test('documentation graph renders nodes without a WebGL/renderer crash', async (
   // `failed` snippet in routes/(app)/+page.svelte) must never appear.
   await expect(page.locator('.no-webgl')).toHaveCount(0);
 
-  // No uncaught JS errors at all, and specifically none matching the known
-  // signature of this bug (byteLength / WebGLRenderer / "reading 'array'").
-  const rendererErrorPattern = /byteLength|webglrenderer|reading 'array'/i;
+  // Any console or page error invalidates visual evidence. A narrow renderer
+  // filter would let unrelated runtime failures normalize into a green gate.
   expect(pageErrors, `Uncaught page errors:\n${pageErrors.join('\n---\n')}`).toHaveLength(0);
-  const matchingConsoleErrors = consoleErrors.filter((e) => rendererErrorPattern.test(e));
-  expect(matchingConsoleErrors, `Renderer errors in console:\n${matchingConsoleErrors.join('\n---\n')}`).toHaveLength(0);
+  expect(consoleErrors, `Console errors:\n${consoleErrors.join('\n---\n')}`).toHaveLength(0);
 });
 
 test('documentation graph uses the intentional 2D fallback when WebGL is unavailable', async ({ page }, testInfo) => {
@@ -122,7 +102,11 @@ test('documentation graph uses the intentional 2D fallback when WebGL is unavail
   });
 
   const pageErrors: string[] = [];
+  const consoleErrors: string[] = [];
   page.on('pageerror', (err) => pageErrors.push(err.message));
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') consoleErrors.push(msg.text());
+  });
 
   await page.goto('/');
   await page.locator('nav').waitFor({ timeout: 15_000 });
@@ -141,6 +125,7 @@ test('documentation graph uses the intentional 2D fallback when WebGL is unavail
   expect(fallbackPixels.uniqueColorCount).toBeGreaterThan(20);
   await expect(page.locator('.no-webgl')).toHaveCount(0);
   expect(pageErrors, `Uncaught page errors:\n${pageErrors.join('\n---\n')}`).toHaveLength(0);
+  expect(consoleErrors, `Console errors:\n${consoleErrors.join('\n---\n')}`).toHaveLength(0);
 });
 
 /**
@@ -153,27 +138,14 @@ test('documentation graph uses the intentional 2D fallback when WebGL is unavail
  * landing page — the button appeared to do nothing. This asserts the docs graph
  * actually activates and lays out nodes. Runs against the MINIFIED build.
  */
-test('hero "Getting started" button activates the docs graph (not a no-op)', async ({ page }) => {
-  await page.goto('/');
-  await page.evaluate(async () => {
-    try {
-      const dbs = await indexedDB.databases();
-      await Promise.all(
-        dbs.map((d) =>
-          d.name
-            ? new Promise<void>((res) => {
-                const r = indexedDB.deleteDatabase(d.name!);
-                r.onsuccess = () => res();
-                r.onerror = () => res();
-              })
-            : Promise.resolve()
-        )
-      );
-    } catch { /* indexedDB.databases() may not exist on all browsers */ }
-    try { localStorage.clear(); } catch { /* ignore */ }
-    try { sessionStorage.clear(); } catch { /* ignore */ }
+test('hero "Getting started" button activates the starter graph (not a no-op)', async ({ page }) => {
+  const pageErrors: string[] = [];
+  const consoleErrors: string[] = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text());
   });
-  await page.reload();
+  await page.goto('/');
   await page.locator('nav').waitFor({ timeout: 15_000 });
 
   // The exact control the user reported: the hero primary CTA.
@@ -192,4 +164,6 @@ test('hero "Getting started" button activates the docs graph (not a no-op)', asy
 
   // And the landing hero must be gone (graph route swapped in).
   await expect(page.getByRole('button', { name: /getting started/i })).toHaveCount(0);
+  expect(pageErrors, `Uncaught page errors:\n${pageErrors.join('\n---\n')}`).toHaveLength(0);
+  expect(consoleErrors, `Console errors:\n${consoleErrors.join('\n---\n')}`).toHaveLength(0);
 });

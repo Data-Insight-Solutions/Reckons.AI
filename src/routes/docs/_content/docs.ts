@@ -88,10 +88,16 @@ function comparePostsDesc(a: DocEntry, b: DocEntry): number {
 }
 
 /**
- * Docs grouped by section, in first-seen (already sorted) order — feeds the docs nav.
- * A section made up entirely of posts (`template: 'post'`, e.g. release notes) is
- * re-sorted newest-first by date; mixed/non-post sections keep the (order, title)
- * sort from `allDocs()`.
+ * Docs grouped by section — feeds the docs nav.
+ *
+ * SECTION ORDER COMES FROM THE CONTENT, NOT THE ALPHABET. `allDocs()` sorts by section NAME
+ * first, so relying on first-seen order put "Build" above "Learn" no matter what `order` said —
+ * the site silently ignored the running order its own frontmatter declared. A section now takes
+ * the position of its EARLIEST page, so a site that orders its pages orders its nav for free,
+ * with the section name only breaking ties (keeping the result deterministic).
+ *
+ * A section made up entirely of posts (`template: 'post'`, e.g. release notes) is re-sorted
+ * newest-first by date; mixed/non-post sections keep the (order, title) sort from `allDocs()`.
  */
 export function docsBySection(): DocSection[] {
   const sections: DocSection[] = [];
@@ -111,6 +117,13 @@ export function docsBySection(): DocSection[] {
       s.docs.sort(comparePostsDesc);
     }
   }
+
+  // Position a section by its earliest page. Computed AFTER the post re-sort above so a
+  // release-notes section is placed by the page that actually renders first in it.
+  const rank = (s: DocSection): number =>
+    s.docs.reduce((lowest, d) => Math.min(lowest, d.metadata.order ?? 0), Number.POSITIVE_INFINITY);
+  sections.sort((a, b) => (rank(a) - rank(b)) || a.section.localeCompare(b.section));
+
   return sections;
 }
 

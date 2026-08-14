@@ -71,6 +71,7 @@ code:rdf  rdf:type     ktype:Concept ;
           kpred:has-file "src/lib/rdf/currents-persist.ts" ;
           kpred:has-file "src/lib/rdf/current-ranking.ts" ;
           kpred:has-file "src/lib/rdf/page.ts" ;
+          kpred:has-file "src/lib/rdf/archive.ts" ;
           kpred:tested-by "src/lib/rdf/__tests__/currents.test.ts" ;
           kpred:tested-by "src/lib/rdf/__tests__/currents-persist.test.ts" ;
           kpred:tested-by "src/lib/rdf/__tests__/current-ranking.test.ts" ;
@@ -87,7 +88,8 @@ code:rdf  rdf:type     ktype:Concept ;
           kpred:tested-by "src/lib/rdf/__tests__/ghost-graph.test.ts" ;
           kpred:tested-by "src/lib/rdf/__tests__/bm25.test.ts" ;
           kpred:tested-by "src/lib/rdf/__tests__/reasoning.test.ts" ;
-          kpred:tested-by "src/lib/rdf/__tests__/temporal.test.ts" .
+          kpred:tested-by "src/lib/rdf/__tests__/temporal.test.ts" ;
+          kpred:tested-by "src/lib/rdf/__tests__/archive.test.ts" .
 
 ## =============================================================================
 ## src/lib/stores — Svelte 5 Rune Stores
@@ -134,6 +136,7 @@ code:storage  rdf:type     ktype:Concept ;
               kpred:has-file "src/lib/storage/db.ts" ;
               kpred:has-file "src/lib/storage/types.ts" ;
               kpred:has-file "src/lib/storage/kb-registry.ts" ;
+              kpred:has-file "src/lib/storage/archive-store.ts" ;
               kpred:has-file "src/lib/storage/backup.ts" ;
               kpred:has-file "src/lib/storage/semantic-export.ts" ;
               kpred:has-file "src/lib/storage/kb-assets.ts" ;
@@ -141,7 +144,8 @@ code:storage  rdf:type     ktype:Concept ;
               kpred:has-file "src/lib/storage/gif-package.ts" ;
               kpred:tested-by "src/lib/storage/__tests__/kb-registry.test.ts" ;
               kpred:tested-by "src/lib/storage/__tests__/backup.test.ts" ;
-              kpred:tested-by "src/lib/storage/__tests__/semantic-export.test.ts" .
+              kpred:tested-by "src/lib/storage/__tests__/semantic-export.test.ts" ;
+              kpred:tested-by "src/lib/storage/__tests__/archive-store.test.ts" .
 
 ## =============================================================================
 ## src/lib/components — Svelte UI Components
@@ -362,9 +366,13 @@ code:extension-bridge  rdf:type     ktype:Concept ;
 
 code:ingest-lib  rdf:type     ktype:Concept ;
                  rdfs:label   "Ingest Library" ;
-                 skos:definition "Source-type routing, folder scanning, and ingest progress tracking." ;
+                 skos:definition "Source-type routing, shared archive-aware ingest boundaries, folder scanning, and ingest progress tracking." ;
                  skos:broader code:repo ;
-                 kpred:has-file "src/lib/ingest/folder-scan.ts" .
+                 kpred:has-file "src/lib/ingest/folder-scan.ts" ;
+                 kpred:has-file "src/lib/ingest/archive-reference.ts" ;
+                 kpred:has-file "src/lib/ingest/precomputed.ts" ;
+                 kpred:tested-by "src/lib/ingest/__tests__/archive-reference.test.ts" ;
+                 kpred:tested-by "src/lib/ingest/__tests__/precomputed.test.ts" .
 
 ## =============================================================================
 ## src/routes — SvelteKit Pages
@@ -533,8 +541,10 @@ code:test-e2e  rdf:type     ktype:Concept ;
                kpred:has-file "tests/e2e/resilience.test.ts" ;
                kpred:has-file "tests/e2e/viewport.test.ts" ;
                kpred:has-file "tests/e2e/graph-render.test.ts" ;
+               kpred:has-file "tests/e2e/visual-contract.test.ts" ;
                kpred:has-file "playwright.config.ts" ;
-               kpred:has-file "playwright.smoke.config.ts" .
+               kpred:has-file "playwright.smoke.config.ts" ;
+               kpred:has-file "scripts/visual-smoke-gate.ts" .
 
 code:test-visual  rdf:type     ktype:Concept ;
                   rdfs:label   "Visual Tests" ;
@@ -554,6 +564,15 @@ code:test-visual  rdf:type     ktype:Concept ;
                   kpred:has-file "tests/visual/stories.test.ts" ;
                   kpred:has-file "tests/visual/mobile/graph-view.test.ts" ;
                   kpred:has-file "tests/visual/mobile/overlay.test.ts" ;
+                  kpred:has-file "playwright.evidence.config.ts" ;
+                  kpred:has-file "tests/visual/evidence/global-setup.ts" ;
+                  kpred:has-file "tests/visual/evidence/manual-facts.test.ts" ;
+                  kpred:has-file "tests/visual/evidence/__screenshots__/facts-populated-desktop-chrome.png" ;
+                  kpred:has-file "tests/visual/evidence/__screenshots__/facts-compare-desktop-chrome.png" ;
+                  kpred:has-file "tests/visual/evidence/__screenshots__/facts-populated-pixel-7-portrait.png" ;
+                  kpred:has-file "tests/visual/evidence/__screenshots__/facts-compare-pixel-7-portrait.png" ;
+                  kpred:has-file "tests/visual/evidence/__screenshots__/facts-populated-pixel-7-landscape.png" ;
+                  kpred:has-file "tests/visual/evidence/__screenshots__/facts-compare-pixel-7-landscape.png" ;
                   kpred:has-file "tests/visual/user-stories/cross-kb-align.test.ts" ;
                   kpred:has-file "tests/visual/user-stories/dev-sprint.test.ts" ;
                   kpred:has-file "tests/visual/user-stories/user-docs.test.ts" ;
@@ -649,6 +668,10 @@ code:scripts  rdf:type     ktype:Concept ;
               kpred:has-file "scripts/kb-snapshot.ts" ;
               kpred:has-file "scripts/docs-pages.ts" ;
               kpred:has-file "scripts/md-align.ts" ;
+              kpred:has-file "scripts/visual-evidence-contract.ts" ;
+              kpred:has-file "scripts/visual-evidence-report.ts" ;
+              kpred:has-file "scripts/visual-baseline-update.ts" ;
+              kpred:has-file "scripts/__tests__/visual-evidence-contract.test.ts" ;
               kpred:has-file "scripts/sveltia-auth-secrets.sh" .
 
 code:sample-kgs  rdf:type     ktype:Concept ;
@@ -739,3 +762,48 @@ code:static    skos:related code:leap-architecture .
 code:publish   skos:related code:leap-features .
 code:docs-site skos:related code:leap-features .
 code:design-system skos:related code:leap-architecture .
+
+## ── Module dependency edges ─────────────────────────────────────────────────
+## DERIVED by scripts/offline/derive-code-edges.ts from static TypeScript imports.
+## Re-runnable and idempotent. Edges below 3 imports are dropped as noise.
+## File granularity, not symbol — see the script header for what that does and does not
+## license you to conclude.
+
+code:routes kpred:depends-on-module code:stores .  # 71 imports
+code:components kpred:depends-on-module code:stores .  # 53 imports
+code:routes kpred:depends-on-module code:rdf .  # 41 imports
+code:routes kpred:depends-on-module code:components .  # 39 imports
+code:stores kpred:depends-on-module code:rdf .  # 34 imports
+code:components kpred:depends-on-module code:rdf .  # 32 imports
+code:routes kpred:depends-on-module code:storage .  # 28 imports
+code:publish kpred:depends-on-module code:rdf .  # 25 imports
+code:stores kpred:depends-on-module code:storage .  # 24 imports
+code:storage kpred:depends-on-module code:rdf .  # 20 imports
+code:threed kpred:depends-on-module code:rdf .  # 15 imports
+code:components kpred:depends-on-module code:llm .  # 12 imports
+code:stores kpred:depends-on-module code:llm .  # 10 imports
+code:routes kpred:depends-on-module code:llm .  # 9 imports
+code:ingest-lib kpred:depends-on-module code:rdf .  # 8 imports
+code:routes kpred:depends-on-module code:google .  # 8 imports
+code:components kpred:depends-on-module code:storage .  # 7 imports
+code:rdf kpred:depends-on-module code:embed .  # 6 imports
+code:routes kpred:depends-on-module code:threed .  # 6 imports
+code:threed kpred:depends-on-module code:stores .  # 5 imports
+code:components kpred:depends-on-module code:types-lib .  # 5 imports
+code:components kpred:depends-on-module code:embed .  # 5 imports
+code:llm kpred:depends-on-module code:rdf .  # 5 imports
+code:n8n kpred:depends-on-module code:rdf .  # 5 imports
+code:indico kpred:depends-on-module code:rdf .  # 4 imports
+code:llm kpred:depends-on-module code:safety .  # 4 imports
+code:n8n kpred:depends-on-module code:stores .  # 4 imports
+code:publish kpred:depends-on-module code:safety .  # 4 imports
+code:rdf kpred:depends-on-module code:llm .  # 4 imports
+code:stores kpred:depends-on-module code:embed .  # 4 imports
+code:extension-bridge kpred:depends-on-module code:stores .  # 3 imports
+code:ingest-lib kpred:depends-on-module code:stores .  # 3 imports
+code:google kpred:depends-on-module code:rdf .  # 3 imports
+code:llm kpred:depends-on-module code:stores .  # 3 imports
+code:rdf kpred:depends-on-module code:safety .  # 3 imports
+code:stores kpred:depends-on-module code:safety .  # 3 imports
+code:routes kpred:depends-on-module code:mobile-utils .  # 3 imports
+code:routes kpred:depends-on-module code:indico .  # 3 imports

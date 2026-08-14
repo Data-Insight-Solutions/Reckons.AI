@@ -62,6 +62,13 @@ export type SettingsRecord = {
   embeddingModel?: string;
   embeddingThreshold: number;
   autoConfirmHighConfidence: boolean;
+  /**
+   * Age sweep threshold in days (F97): an event whose newest date is older than this is eligible
+   * to move to the archive graph. The user's to set — the feature's whole premise is that only
+   * they know what "current" means for their graph. Nothing sweeps automatically on this value;
+   * it is the default filled into the archive control, which always previews before it moves.
+   */
+  archiveOlderThanDays: number;
   humeAiApiKey?: string;
   openrouterApiKey?: string;
   openrouterModel: string;
@@ -244,6 +251,8 @@ export const DEFAULT_SETTINGS: SettingsRecord = {
   n8nNotifyOnReview: false,
   embeddingThreshold: 0.85,
   autoConfirmHighConfidence: false,
+  // A year, deliberately conservative: the first sweep a user runs should surprise nobody.
+  archiveOlderThanDays: 365,
   turtleSettings: { ...DEFAULT_TURTLE_SETTINGS }
 };
 
@@ -475,6 +484,7 @@ export async function saveSettings(patch: Partial<SettingsRecord>): Promise<void
       ollamaStructuredExtraction: m.ollamaStructuredExtraction,
       embeddingThreshold: m.embeddingThreshold,
       autoConfirmHighConfidence: m.autoConfirmHighConfidence,
+      archiveOlderThanDays: m.archiveOlderThanDays,
       humeAiApiKey: m.humeAiApiKey,
       humeSecretKey: m.humeSecretKey,
       openrouterApiKey: m.openrouterApiKey,

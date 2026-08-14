@@ -5,14 +5,16 @@
     confirmedStatements,
     deleteSource,
     statementsForSource,
-    addStatements
+    addStatements,
+    hotSwapData
   } from '$lib/stores/kb.svelte';
-  import { toTurtle, toNQuads, parseNQuads } from '$lib/rdf/serialize';
+  import { toTurtle, toNQuads, toTriG, parseNQuads } from '$lib/rdf/serialize';
   import { merge, splitByConcept, closure } from '$lib/rdf/reasoning';
   import PredicateManager from '$lib/components/PredicateManager.svelte';
   import GraphPackagePanel from '$lib/components/GraphPackagePanel.svelte';
   import { v4 as uuid } from 'uuid';
   import type { Statement } from '$lib/rdf/types';
+  import { recommendDuplicateChoice, describeProbe, type KbProbe } from '$lib/storage/kb-duplicate-choice';
   import type { KbStoryStep } from '$lib/storage/db';
   import { settings, updateSettings } from '$lib/stores/settings.svelte';
   import {
@@ -39,6 +41,10 @@
     kbFileSlug,
     type KbEntry
   } from '$lib/storage/kb-registry';
+  import { groupGraphsWithArchives, groupRows } from '$lib/storage/archive-gallery';
+  import { bucketIntoSets, findDuplicateGraphs } from '$lib/storage/graph-sets';
+  import { sweepArchiveByAge } from '$lib/storage/archive-store';
+  import { planAgeSweep, describeAgeSweep } from '$lib/rdf/archive-sweep';
   import { buildGifPackage } from '$lib/storage/gif-package';
   import { gifOverrides } from '$lib/stores/gif-overrides.svelte';
   import { db } from '$lib/storage/db';
@@ -135,14 +141,28 @@
     );
   };
 
-  const sortedKbs = $derived(
-    localKbs
-      .filter(kb => kbFilter === 'all' || kb.bookmarked)
-      .filter(kb => matchesQuery(kb, kbQuery))
-      .sort((a, b) => {
-        // The graph you are IN always comes first — it is the one you are looking at.
-        if (a.id === currentKbId) return -1;
-        if (b.id === currentKbId) return 1;
+  const passesFilters = (kb: KbEntry) =>
+    (kbFilter === 'all' || kb.bookmarked) && matchesQuery(kb, kbQuery);
+
+  /**
+   * An archive graph (F97) is a real, separate graph in the registry, so it would otherwise
+   * appear here as an unexplained sibling sorted between unrelated graphs. Grouping pairs each
+   * archive with the graph whose history it holds; the pure logic and its edge cases (legacy
+   * name links, orphans, archive-of-archive) live in `archive-gallery.ts`.
+   */
+  const kbGroups = $derived(
+    groupGraphsWithArchives(localKbs)
+      // A group is shown when the parent OR any of its archives passes the filters — searching a
+      // graph's name should not hide the history that belongs to it, and searching "archives"
+      // should find the parent it hangs from. Once a group is shown, ALL its archives render:
+      // showing some would misrepresent how much history a graph has.
+      .filter(group => groupRows(group).some(kb => passesFilters(kb)))
+      .sort((ga, gb) => {
+        const a = ga.parent, b = gb.parent;
+        // The graph you are IN always comes first — it is the one you are looking at. If you are
+        // in an ARCHIVE, its group leads, so the card you are viewing is still at the top.
+        if (groupRows(ga).some(k => k.id === currentKbId)) return -1;
+        if (groupRows(gb).some(k => k.id === currentKbId)) return 1;
         if (a.bookmarked && !b.bookmarked) return -1;
         if (!a.bookmarked && b.bookmarked) return 1;
         if (kbSort === 'name') return a.name.localeCompare(b.name);
@@ -153,7 +173,60 @@
       })
   );
 
+  /**
+   * The same groups, bucketed by PURPOSE (F113). Thirty graphs in one flat column is unreadable —
+   * nothing on screen said which graphs belong together, so the reader had to already know.
+   * Bucketing happens AFTER filtering and sorting, so every ordering rule above still applies
+   * within each set.
+   */
+  const kbSets = $derived(bucketIntoSets(kbGroups, { ungroupedTitle: 'Ungrouped' }, localKbs));
+
+  /**
+   * Graphs sharing a name but not an id. Re-importing a source mints a NEW database, so the list
+   * grows a second, independent copy that will disagree the moment either is edited — and the
+   * name alone cannot tell you which one you are looking at. Reported, never auto-removed:
+   * which copy is real is a judgement about content.
+   */
+  const duplicateGraphs = $derived(findDuplicateGraphs(localKbs));
+
+  // ── Comparing duplicates (2026-08-13) ──────────────────────────────────────
+  // Reporting a duplicate without letting you tell the copies apart leaves the user
+  // stranded: a copy that has never been opened has no statementCount, so the notice
+  // shows "not opened" for exactly the graph you most need to judge. Probing reads each
+  // copy's IndexedDB directly (read-only, and never creates a database for a dangling
+  // registry row), then recommends one with its reason and confidence stated separately.
+  // Nothing is removed automatically — a low-confidence recommendation means the signals
+  // disagree, which is what a truncated import looks like.
+  let dupeProbes = $state<Record<string, KbProbe[]>>({});
+  let dupeBusy = $state<string | null>(null);
+
+  async function compareDuplicates(group: { name: string; entries: KbEntry[] }) {
+    dupeBusy = group.name;
+    try {
+      const { probeKbs } = await import('$lib/storage/kb-probe');
+      dupeProbes = { ...dupeProbes, [group.name]: await probeKbs(group.entries) };
+    } catch (e) {
+      console.warn('[graphs] duplicate probe failed:', e);
+    } finally {
+      dupeBusy = null;
+    }
+  }
+
+  function unlinkDuplicates(groupName: string, ids: string[], keepName: string) {
+    if (!confirm(
+      `Unlink ${ids.length} copy(ies) of "${groupName}", keeping the one with ${keepName}?\n\n` +
+      `The registry entries are removed so they stop appearing here. Their IndexedDB data is ` +
+      `LEFT ON DISK, so this is reversible by re-adding the graph — nothing is destroyed.`
+    )) return;
+    for (const id of ids) removeKbFromRegistry(id);
+    localKbs = getRegistry();
+    const next = { ...dupeProbes };
+    delete next[groupName];
+    dupeProbes = next;
+  }
+
   const bookmarkedCount = $derived(localKbs.filter(k => k.bookmarked).length);
+  /** Counts ROWS, not groups — a hidden archive is a hidden graph. */
   const hiddenByQuery = $derived(
     localKbs.filter(kb => (kbFilter === 'all' || kb.bookmarked) && !matchesQuery(kb, kbQuery)).length
   );
@@ -179,6 +252,65 @@
   function handleBookmark(id: string) {
     toggleBookmark(id);
     localKbs = getRegistry();
+  }
+
+  // ── F97 age sweep — the entry point into the archive ───────────────────────
+  // Offered on the CURRENT graph only, because a sweep needs that graph's statements in memory
+  // and updating an unloaded graph's store afterwards is a different (and riskier) operation.
+  // The flow is preview-then-consent: the plan is computed live from what is loaded, the sentence
+  // names what will NOT be touched, and nothing moves until the button is pressed.
+  let sweepOpen = $state(false);
+  let sweepDays = $state(settings().archiveOlderThanDays ?? 365);
+  let sweepBusy = $state(false);
+  let sweepError = $state('');
+  let sweepDone = $state('');
+
+  const sweepPlan = $derived.by(() => {
+    if (!sweepOpen || !Number.isFinite(sweepDays) || sweepDays <= 0) return null;
+    try {
+      return planAgeSweep(statements(), { olderThanDays: sweepDays });
+    } catch {
+      return null;
+    }
+  });
+
+  async function runSweep(kb: KbEntry) {
+    const plan = sweepPlan;
+    if (!plan || plan.entities.length === 0 || sweepBusy) return;
+    if (!kb.stableId) {
+      sweepError = 'This graph has no stable id yet — open it once so it can be registered.';
+      return;
+    }
+    if (!confirm(
+      `Move ${plan.statementCount} fact(s) across ${plan.entities.length} entit(y/ies) into "${kb.name} (archives)"?\n\n`
+      + 'Archived is not deleted — the facts move to a separate graph and can be restored.',
+    )) return;
+
+    sweepBusy = true;
+    sweepError = '';
+    sweepDone = '';
+    try {
+      const { run } = await sweepArchiveByAge({
+        statements: statements(),
+        olderThanDays: sweepDays,
+        workingKbId: kb.id,
+        parentName: kb.name,
+        parentStableId: kb.stableId,
+        actor: 'human',
+      });
+      if (run) {
+        // The store still holds the pre-sweep statements; without this the UI would keep showing
+        // facts that are no longer in the working database until a reload.
+        hotSwapData(run.kept, sources());
+        sweepDone = `Archived ${run.archivedCount} fact(s) into ${run.event.entities.length} entit(y/ies) of history.`;
+        await updateSettings({ archiveOlderThanDays: sweepDays });
+        localKbs = getRegistry();
+      }
+    } catch (e) {
+      sweepError = e instanceof Error ? e.message : String(e);
+    } finally {
+      sweepBusy = false;
+    }
   }
 
   function startRename(kb: KbEntry) {
@@ -254,6 +386,22 @@
 
   function exportTurtle() {
     download(`${kbFileSlug()}.ttl`, toTurtle(confirmedStatements(), { header: 'full graph export' }), 'text/turtle');
+  }
+  /**
+   * TriG export (F75). Turtle CANNOT carry the graph term, so `turtle (.ttl)` silently drops
+   * provenance: export a graph built from five PDFs and "where did this fact come from?"
+   * becomes unanswerable. toTriG has existed and been tested since F75 was written and
+   * nothing called it — the lossless format was built and unreachable.
+   *
+   * .trig, not .ttl, because the EXTENSION IS A CONTRACT: a .ttl containing a graph block is
+   * a lie that breaks any format:'Turtle' consumer.
+   */
+  function exportTriG() {
+    download(
+      `${kbFileSlug()}.trig`,
+      toTriG(confirmedStatements(), { header: 'full graph export — lossless, one named graph per source' }),
+      'application/trig',
+    );
   }
   function exportNQuads() {
     download(`${kbFileSlug()}.nq`, toNQuads(confirmedStatements()), 'application/n-quads');
@@ -673,14 +821,85 @@
     </div>
   {/if}
 
+  {#if duplicateGraphs.length > 0}
+    <!-- Reported, never auto-removed: which copy is the real one is a judgement about content,
+         and a heuristic that guessed wrong would delete the only edited version. -->
+    <div class="dupe-notice" data-testid="duplicate-graphs">
+      <strong class="mono">{duplicateGraphs.length} duplicated name(s)</strong>
+      <p>
+        Re-importing a source makes a NEW graph rather than updating the old one, so these names
+        each cover more than one independent copy. They will disagree as soon as either is edited,
+        and the name alone cannot tell you which you are in.
+      </p>
+      <ul>
+        {#each duplicateGraphs as d (d.name)}
+          {@const probes = dupeProbes[d.name]}
+          {@const choice = probes ? recommendDuplicateChoice(probes) : null}
+          <li>
+            <span class="mono">{d.name}</span>
+            {#if !probes}
+              {#each d.entries as e (e.id)}
+                <span class="dupe-copy mono">{e.statementCount != null ? `${e.statementCount} facts` : 'not opened'}</span>
+              {/each}
+              <button
+                class="sm"
+                disabled={dupeBusy === d.name}
+                onclick={() => compareDuplicates(d)}
+                data-testid="compare-duplicates"
+              >{dupeBusy === d.name ? 'reading…' : 'compare copies'}</button>
+            {:else}
+              <ul class="dupe-detail">
+                {#each probes as p (p.id)}
+                  <li class:dupe-keep={choice?.keep.id === p.id}>
+                    <span class="mono">{describeProbe(p)}</span>
+                    {#if choice?.keep.id === p.id}<span class="dupe-tag mono">keep</span>{/if}
+                  </li>
+                {/each}
+              </ul>
+              {#if choice}
+                <p class="dupe-reason" class:dupe-unsure={choice.confidence === 'low'}>
+                  {#if choice.confidence === 'low'}<strong>Check this one yourself.</strong> {/if}{choice.reason}
+                </p>
+                <button
+                  class="sm"
+                  onclick={() => unlinkDuplicates(d.name, choice.discard.map(x => x.id), describeProbe(choice.keep))}
+                  data-testid="unlink-duplicates"
+                >unlink the other {choice.discard.length}</button>
+              {:else}
+                <p class="dupe-reason">No copy could be read, so there is nothing to compare. Leaving all entries in place.</p>
+              {/if}
+            {/if}
+          </li>
+        {/each}
+      </ul>
+    </div>
+  {/if}
+
   <div class="kb-list">
-    {#each sortedKbs as kb (kb.id)}
+    {#each kbSets as set (set.id)}
+      <div class="kb-set">
+        <div class="kb-set-head">
+          <h4 class="mono">{set.title}</h4>
+          <span class="kb-set-count mono">{set.rowCount}</span>
+          {#if set.basis === 'derived'}
+            <!-- Say that the grouping is a GUESS. A user cannot correct a rule they cannot see,
+                 and F113's declared membership does not exist yet. -->
+            <span class="kb-set-basis mono" title="Grouped by a shared name prefix found in your graph names. Renaming a graph moves it. Define your own sets to make this explicit.">by name</span>
+          {/if}
+        </div>
+        <!-- Only ever the user's words. A derived set has no purpose, and inventing one would be
+             the tool telling the user what their own graphs are for. -->
+        {#if set.purpose}<p class="kb-set-purpose">{set.purpose}</p>{/if}
+    {#each set.groups as group (group.parent.id)}
+      {@const kb = group.parent}
       {@const isCurrent = kb.id === currentKbId}
       {@const isCompareSelected = compareSelection.has(kb.id)}
+      <div class="kb-group" class:has-archives={group.archives.length > 0}>
       <div
         class="kb-entry"
         class:current={isCurrent}
         class:compare-selected={isCompareSelected}
+        class:orphan-archive={group.orphanArchive}
       >
         <div class="kb-entry-left">
           <!-- Lazy fingerprint: loads only when the card is on screen AND the browser is idle,
@@ -711,6 +930,14 @@
                 ondblclick={() => startRename(kb)}
                 title="Double-click to rename"
               >{kb.name}</span>
+            {/if}
+            {#if group.orphanArchive}
+              <!-- An archive whose graph has left the registry. It is still listed, because
+                   history you cannot reach is only technically preserved — but it must not be
+                   mistaken for a working graph, so it says what it is and what is missing. -->
+              <span class="archive-badge orphan mono" title="This is an archive. The graph it holds history for is no longer in this list, so it cannot be restored into its parent from here.">
+                archive · parent missing
+              </span>
             {/if}
             <div class="kb-entry-sub">
               <span class="kb-entry-id mono">{kb.id}</span>
@@ -768,8 +995,122 @@
           {/if}
         </div>
       </div>
+
+      <!-- F97 entry point. On the current graph only: a sweep works on loaded statements, and
+           the honest alternative — opening another graph's database to sweep it unseen — is a
+           destructive move against something the user is not looking at. -->
+      {#if isCurrent && !group.orphanArchive}
+        <div class="kb-sweep">
+          <button
+            class="kb-sweep-toggle mono"
+            aria-expanded={sweepOpen}
+            onclick={() => { sweepOpen = !sweepOpen; sweepDone = ''; sweepError = ''; }}
+          >
+            {sweepOpen ? '▾' : '▸'} archive old events
+          </button>
+
+          {#if sweepOpen}
+            <div class="kb-sweep-body">
+              <label class="kb-sweep-field mono">
+                older than
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  bind:value={sweepDays}
+                  aria-label="Archive events older than this many days"
+                />
+                days
+              </label>
+
+              <!-- The plan, before anything moves. It names what it will NOT touch as loudly as
+                   what it will: a count that silently omits undated or unreviewed entities is
+                   true and still leaves the user with a false picture. -->
+              {#if sweepPlan}
+                <p class="kb-sweep-plan" data-testid="sweep-plan">{describeAgeSweep(sweepPlan)}</p>
+                {#if sweepPlan.entities.length > 0}
+                  <button
+                    class="sm danger kb-sweep-run"
+                    disabled={sweepBusy}
+                    onclick={() => runSweep(kb)}
+                  >
+                    {sweepBusy ? 'archiving…' : `archive ${sweepPlan.statementCount} facts`}
+                  </button>
+                {/if}
+              {:else}
+                <!-- Same slot, same testid: an invalid threshold must SAY so where the plan
+                     would have been, not leave the panel silent with a live button beneath it. -->
+                <p class="kb-sweep-plan muted-size" data-testid="sweep-plan">
+                  Enter a positive number of days.
+                </p>
+              {/if}
+
+              {#if sweepDone}
+                <p class="kb-sweep-done mono" data-testid="sweep-done">{sweepDone}</p>
+              {/if}
+              {#if sweepError}
+                <p class="err mono" data-testid="sweep-error">{sweepError}</p>
+              {/if}
+              <p class="kb-sweep-note">
+                Archived is not deleted — facts move to a separate archive graph, listed below,
+                and stay restorable. Nothing sweeps on its own; this runs only when you press it.
+              </p>
+            </div>
+          {/if}
+        </div>
+      {/if}
+
+      <!-- Archive graphs (F97), nested under the graph whose history they hold. Rendered as a
+           compact sub-row rather than a second full card: an archive is not a graph you work in,
+           so it gets no preview thumbnail and no bookmark star — only the things you actually
+           need, which are how much history it holds and a way to go and look at it. -->
+      {#each group.archives as archive (archive.id)}
+        {@const archiveIsCurrent = archive.id === currentKbId}
+        <div class="kb-archive-row" class:current={archiveIsCurrent}>
+          <div class="kb-archive-left">
+            <span class="archive-badge mono" title="Archived history for {kb.name}">archive</span>
+            <span class="kb-archive-name">{archive.name}</span>
+            {#if archive.statementCount != null}
+              <span class="kb-entry-size mono" title="{archive.statementCount} archived statements">
+                {archive.statementCount.toLocaleString()} facts
+              </span>
+            {:else}
+              <span class="kb-entry-size mono muted-size" title="No statement count recorded — this archive has not been opened or saved yet">
+                not opened yet
+              </span>
+            {/if}
+            {#if archive.lastModified}
+              <span class="kb-entry-date mono">{relativeTime(archive.lastModified)}</span>
+            {/if}
+          </div>
+          <div class="kb-archive-actions">
+            {#if archiveIsCurrent}
+              <span class="current-badge mono">current</span>
+            {:else}
+              <!-- Deliberately NOT .kb-switch-action: that class is given `grid-column: 1 / -1`
+                   in the mobile block, which on this two-button row made "open" span the full
+                   width and stranded "open tab" alone in one column. -->
+              <button class="sm kb-archive-open" onclick={() => handleSwitch(archive.id)}>open</button>
+              <a
+                href={kbUrl(archive.id)}
+                target="_blank"
+                rel="noopener"
+                class="sm-link"
+                title="Open in new tab"
+                aria-label="Open the archive of {kb.name} in a new browser tab"
+              >
+                <span class="desktop-action-label">tab</span>
+                <span class="mobile-action-label">open tab</span>
+              </a>
+            {/if}
+          </div>
+        </div>
+      {/each}
+      </div>
     {/each}
-    {#if sortedKbs.length === 0}
+      </div>
+    {/each}
+    {#if kbGroups.length === 0}
       <p class="filter-empty mono">no bookmarked graphs yet. star a graph to bookmark it.</p>
     {/if}
   </div>
@@ -1156,7 +1497,7 @@
   {/if}
 </section>
 
-<!-- ── Knowledge Bases ────────────────────────────────────────────────────── -->
+<!-- ── Graphs ────────────────────────────────────────────────────── -->
 <!-- GRAPH PACKAGE & SYNC — this graph's .ttl, sidecars, story, currents & folder sync.
      Belongs HERE, in the Graphs tab, not buried in the canvas's filter panel: this tab
      exists as its own top-level tab precisely because graph management matters. -->
@@ -1167,6 +1508,22 @@
   <GraphPackagePanel statementCount={statements().length} />
 </section>
 
+
+<!-- ── Publishing (F27) ───────────────────────────────────────────────────
+     The entry point to the publishing pipeline. It lives here rather than in the primary nav
+     because that bar already carries nine controls at phone width and crowding it works against
+     F36 — but it must live SOMEWHERE reachable: the whole publish module sat with no caller in
+     the app at all until this landed, which is how a built feature stays unusable. -->
+<section class="section">
+  <div class="section-head">
+    <h3>publishing</h3>
+    <a href="/publish" class="ghost sm mono nav-cta" data-testid="kb-write-post">write a post →</a>
+  </div>
+  <p class="section-hint">
+    author a post as a node in this graph, preview the markdown it produces, and export it into
+    the site's content folder. building and deploying the site stay separate steps.
+  </p>
+</section>
 
 <!-- ── Entity Types ────────────────────────────────────────────────────── -->
 <section class="section">
@@ -1182,9 +1539,13 @@
   <div class="section-head">
     <h3>export</h3>
   </div>
-  <p class="section-hint">turtle files transfer cleanly between any rdf-aware tool.</p>
+  <p class="section-hint">
+    turtle files transfer cleanly between any rdf-aware tool. turtle cannot carry provenance —
+    <strong>trig</strong> keeps which source each fact came from.
+  </p>
   <div class="row" style="margin-top: 0.5rem;">
     <button onclick={exportTurtle}>turtle (.ttl)</button>
+    <button onclick={exportTriG} title="Lossless: keeps which source each fact came from">trig (.trig)</button>
     <button onclick={exportNQuads}>n-quads (.nq)</button>
     <button onclick={exportClosure}>turtle + inferred</button>
     {#if gifOverrides().size > 0}
@@ -1584,6 +1945,138 @@
   .bookmark-btn:hover { color: var(--accent); }
   .bookmark-btn.bookmarked { color: var(--accent); }
 
+  /* ── Archive graphs, nested under their parent (F97) ── */
+  /* The group is the visual unit: parent card plus its archives, tighter inside than the 0.4rem
+     gap between groups, so the nesting reads without indentation guides. */
+  .kb-group { display: flex; flex-direction: column; gap: 0.2rem; }
+  .kb-group.has-archives .kb-entry { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+
+  .kb-archive-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 0.5rem; min-width: 0;
+    margin-left: 1.5rem;
+    padding: 0.4rem 0.85rem;
+    background: color-mix(in srgb, var(--surface) 60%, transparent);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--muted-2);
+    border-radius: var(--rad-sm);
+  }
+  .kb-archive-row.current {
+    border-color: var(--accent);
+    border-left-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+  }
+  .kb-archive-left { display: flex; align-items: center; gap: 0.4rem; min-width: 0; flex: 1; }
+  .kb-archive-name {
+    font-size: 0.72rem; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+  }
+  .kb-archive-actions { display: flex; gap: 0.3rem; align-items: center; flex-shrink: 0; }
+
+  .kb-set { display: flex; flex-direction: column; gap: 0.4rem; }
+  .kb-set + .kb-set { margin-top: 1.6rem; }
+  .kb-set-head { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+  .kb-set-head h4 {
+    margin: 0; font-size: 0.72rem; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--accent);
+  }
+  .kb-set-count {
+    font-size: 0.62rem; color: var(--muted);
+    border: 1px solid var(--line); border-radius: 3px; padding: 0.05rem 0.3rem;
+  }
+  /* The grouping is currently a GUESS from the name; it must look like one. */
+  .kb-set-basis { font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .kb-set-purpose { margin: 0 0 0.5rem; font-size: 0.7rem; color: var(--muted); max-width: 62ch; }
+
+  .dupe-notice {
+    margin: 0 0 1.2rem; padding: 0.7rem 0.9rem;
+    border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+    border-left: 2px solid var(--danger);
+    border-radius: var(--rad-sm);
+    background: color-mix(in srgb, var(--surface) 60%, transparent);
+  }
+  .dupe-notice strong { font-size: 0.68rem; color: var(--danger); text-transform: uppercase; letter-spacing: 0.04em; }
+  .dupe-notice p { margin: 0.3rem 0 0.5rem; font-size: 0.7rem; color: var(--muted); max-width: 68ch; }
+  .dupe-notice ul { margin: 0; padding-left: 1rem; font-size: 0.72rem; }
+  .dupe-notice li { margin-bottom: 0.15rem; }
+  .dupe-copy {
+    font-size: 0.6rem; color: var(--muted); margin-left: 0.4rem;
+    border: 1px solid var(--line); border-radius: 3px; padding: 0.02rem 0.28rem;
+  }
+
+  /* Duplicate comparison. The recommended copy is marked, and a LOW-confidence
+     recommendation is styled as a warning rather than a result — the signals disagreeing
+     is the case where acting on the suggestion could destroy the only complete graph. */
+  .dupe-detail { list-style: none; margin: 0.3rem 0 0 0.8rem; padding: 0; }
+  .dupe-detail li { font-size: 0.62rem; color: var(--muted); padding: 0.08rem 0; }
+  .dupe-detail li.dupe-keep { color: var(--fg); }
+  .dupe-tag {
+    font-size: 0.55rem; margin-left: 0.4rem; padding: 0.02rem 0.3rem;
+    border-radius: 3px; background: var(--accent); color: var(--bg);
+  }
+  .dupe-reason { font-size: 0.62rem; margin: 0.35rem 0 0.3rem 0.8rem; color: var(--muted); }
+  .dupe-reason.dupe-unsure { color: var(--warn, #d98b2b); }
+
+  /* F97 sweep control. Indented to the same 1.5rem as .kb-archive-row so the action and the
+     archive it fills read as one column belonging to the graph above them. */
+  .kb-sweep { margin-left: 1.5rem; }
+  .kb-sweep-toggle {
+    background: none; border: none; padding: 0.2rem 0; cursor: pointer;
+    font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--muted); min-height: 44px; /* touch minimum — see the F36 crawler finding */
+  }
+  .kb-sweep-toggle:hover { color: var(--accent); }
+  .kb-sweep-body {
+    display: flex; flex-direction: column; gap: 0.45rem;
+    padding: 0.55rem 0.85rem 0.7rem;
+    background: color-mix(in srgb, var(--surface) 60%, transparent);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--muted-2);
+    border-radius: var(--rad-sm);
+  }
+  .kb-sweep-field {
+    display: flex; align-items: center; gap: 0.4rem;
+    font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted);
+  }
+  .kb-sweep-field input {
+    width: 5.5rem; min-height: 44px;
+    font-family: var(--font-mono); font-size: 0.75rem;
+    color: var(--fg); background: var(--surface);
+    border: 1px solid var(--line); border-radius: var(--rad-sm);
+    padding: 0.2rem 0.4rem;
+  }
+  .kb-sweep-plan { font-size: 0.72rem; color: var(--fg); margin: 0; }
+  /* `button.danger` is borderless by design — it suits the "remove" link in a dense row. Here it
+     is the panel's one destructive action at the end of a deliberate flow, and borderless coral
+     text read as a hyperlink in the phone screenshot. Keep the danger colour (the semantics are
+     right) and give it back the button affordance. Caught by looking, not by an assertion. */
+  .kb-sweep-run {
+    align-self: flex-start;
+    min-height: 44px;
+    border-color: color-mix(in srgb, var(--danger) 55%, transparent);
+  }
+  /* Success takes the accent; there is no --success in the palette and inventing a fallback is
+     how the orphan badge came to render a caution in brand teal. */
+  .kb-sweep-done { font-size: 0.68rem; color: var(--accent); margin: 0; }
+  .kb-sweep-note { font-size: 0.65rem; color: var(--muted); margin: 0; line-height: 1.45; }
+
+  .archive-badge {
+    font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--muted); border: 1px solid var(--line);
+    border-radius: 3px; padding: 0.1rem 0.3rem; flex-shrink: 0;
+  }
+  /* An orphaned archive is not an error to alarm about, but it IS a claim the user must read, so
+     it takes the muted-coral --danger rather than the accent. (There is no --warn in the palette;
+     an earlier `var(--warn, var(--accent))` fell through to the brand teal and rendered this
+     caution as a positive chip — visually indistinguishable from "current".) */
+  .archive-badge.orphan {
+    color: var(--danger);
+    border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+    align-self: flex-start;
+    white-space: nowrap;
+  }
+  .kb-entry.orphan-archive { border-left: 2px solid color-mix(in srgb, var(--danger) 50%, transparent); }
+
   .kb-entry-meta { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
   .kb-entry-name {
     font-size: 0.85rem; font-weight: 600; cursor: default;
@@ -1937,5 +2430,34 @@
     /* F36: kb view tabs (all / bookmarked) are primary controls — 44px tap target
        on touch (were ~26px). Matches the NavBar/Sheet min-height:44px convention. */
     .kb-tab { min-height: 44px; }
+
+    /* Archive rows stack like the parent card on narrow screens, and their controls carry the
+       same 44px touch minimum — a nested row is not an excuse for a smaller target. */
+    .kb-archive-row {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5rem;
+      margin-left: 0.75rem;
+      padding: 0.6rem 0.75rem;
+    }
+    .kb-archive-left { flex-wrap: wrap; gap: 0.2rem 0.4rem; }
+    .kb-archive-name { white-space: normal; }
+    .kb-archive-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.4rem;
+      width: 100%;
+    }
+    .kb-archive-actions > button,
+    .kb-archive-actions > .sm-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+      min-height: 44px;
+      padding: 0.55rem 0.4rem;
+      white-space: nowrap;
+    }
+    .kb-archive-actions > .current-badge { grid-column: 1 / -1; }
   }
 </style>

@@ -1,0 +1,198 @@
+# Reckons.AI SHACL shapes — W3C SHACL (Shapes Constraint Language, Recommendation 2017).
+#
+# WHY SHAPES AND NOT MORE graph-lint. scripts/offline/graph-lint.ts already validates this
+# repo's graphs — dead-link, bad-status, duplicate-id, dangling-ref, egress-gate, incomplete —
+# and every one of those rules is HARDCODED TYPESCRIPT about this repo's own vocabulary. That
+# is the right tool for invariants of THIS project and the wrong one for everything else:
+#
+#   - A USER'S graph cannot be validated by rules compiled into our source. A grant-seeker
+#     profile, a user's own entity types, a shared graph package — none of them can state
+#     what well-formed means for them.
+#   - Shapes written as DATA travel with the graph. A published or shared package can carry
+#     its own contract, so the receiver can check it without trusting the sender.
+#   - Shapes can be authored without a code change, which is what "graphs are the plan"
+#     already claims for everything else in this project.
+#
+# So this file is the beginning of a vocabulary, not a replacement for the lint.
+#
+# HONEST SCOPE: these are SHACL Core constraints (sh:datatype, sh:in, sh:minCount,
+# sh:maxCount, sh:pattern, sh:nodeKind, sh:class). No SPARQL-based constraints, and validation
+# runs at SCRIPT tier in Node via rdf-validate-shacl — it is NOT wired into the in-app review
+# gate yet, so nothing is blocked by it in the product today.
+
+@prefix sh:     <http://www.w3.org/ns/shacl#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ktype:  <urn:kbase:type/> .
+@prefix kpred:  <urn:kbase:predicate/> .
+@prefix kshape: <urn:kbase:shape/> .
+
+# ── Feature ───────────────────────────────────────────────────────────────────
+# Mirrors the invariants graph-lint enforces in code, expressed as data so the same
+# contract can be shipped, shared and read by tools that are not this repo.
+
+kshape:Feature a sh:NodeShape ;
+    sh:targetClass ktype:Feature ;
+    rdfs:label "A roadmap feature" ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "A feature needs exactly one label — an unlabelled feature is unfindable." ;
+    ] ;
+    sh:property [
+        sh:path kpred:has-status ;
+        sh:maxCount 1 ;
+        # The lifecycle, and the reason kpred:has-status must reflect reality (kb:honest-status):
+        # a feature is not 'functional' because we wish it were.
+        sh:in ( "speculative" "planned" "scaffolded" "functional" "production" "in-progress" ) ;
+        sh:message "has-status must be one of: speculative, planned, scaffolded, functional, production, in-progress." ;
+    ] ;
+    # A feature says what state it is in — UNLESS it has been moved, in which case it says
+    # where it went. 38 such tombstones exist (kpred:moved-to, pointing at
+    # static/reckons-shipped.ttl); they are Features by type and deliberately carry no status,
+    # so requiring one outright produced 38 violations that were correct by design. Written as
+    # sh:or because that IS the rule, rather than as an exemption bolted onto a wrong one.
+    sh:or (
+        [ sh:property [ sh:path kpred:has-status ; sh:minCount 1 ] ]
+        [ sh:property [ sh:path kpred:moved-to  ; sh:minCount 1 ] ]
+    ) ;
+    sh:message "A feature needs a has-status, or a moved-to saying where it went." ;
+    # ── Scope estimate (F130.1) ──────────────────────────────────────────────
+    # The estimated work a design implies, so creep is measurable against something.
+    # Counts, not effort: files and dependencies are what Matt named, and both are
+    # observable from git without anyone reporting hours.
+    sh:property [
+        sh:path kpred:estimated-files ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:minInclusive 0 ;
+        sh:message "estimated-files is a whole number of source files the design expects to touch." ;
+    ] ;
+    sh:property [
+        sh:path kpred:estimated-deps ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:minInclusive 0 ;
+        sh:message "estimated-deps is the number of NEW dependencies expected. State 0 explicitly — silence is not a claim of zero, so an unstated estimate is never scored." ;
+    ] ;
+    # Actuals are recorded separately and NEVER back-filled into the estimate: an estimate
+    # written after the work is not a prediction, and treating it as one would make every
+    # calibration figure a lie.
+    sh:property [
+        sh:path kpred:actual-files ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:minInclusive 0 ;
+    ] ;
+    sh:property [
+        sh:path kpred:actual-deps ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:minInclusive 0 ;
+    ] ;
+    sh:property [
+        sh:path kpred:feature-id ;
+        sh:maxCount 1 ;
+        # Two series are in real use, and the first pattern written here was wrong about both:
+        # F-numbers may carry a letter suffix (F8b) and an R-series exists (R3, R4, R5).
+        sh:pattern "^[FR][0-9]+[a-z]?(\\.[0-9]+)*$" ;
+        sh:message "feature-id looks like F27, F108.2, F8b or R3." ;
+    ] .
+
+# ── Pending proposal ──────────────────────────────────────────────────────────
+# The shape of an agent's queued note. This one is not theoretical: measured on 2026-08-13
+# the live queue contained three entries whose `type` held a PRIORITY value ("normal",
+# "high"), because nothing validated the field and both keys accept bare strings.
+
+kshape:PendingProposal a sh:NodeShape ;
+    sh:targetClass ktype:PendingProposal ;
+    rdfs:label "A queued agent proposal" ;
+    sh:property [
+        sh:path kpred:proposal-type ;
+        sh:maxCount 1 ;
+        sh:in ( "observation" "question" "suggestion" "status-update" "drift-warning" ) ;
+        sh:message "proposal type must be one of: observation, question, suggestion, status-update, drift-warning. Priority values (high/normal/low) belong on priority, not type — three live entries had exactly that confusion." ;
+    ] ;
+    sh:property [
+        sh:path kpred:priority ;
+        sh:maxCount 1 ;
+        sh:in ( "high" "normal" "low" ) ;
+        sh:message "priority must be high, normal or low." ;
+    ] ;
+    sh:property [
+        sh:path kpred:finding-class ;
+        sh:maxCount 1 ;
+        sh:in ( "form" "drift" "defect" ) ;
+        sh:message "finding-class must be form (malformed artifact), drift (claim disagrees with reality) or defect (the world is broken while the graph is right). Measured 2026-08-14: 'drift-warning' was covering all three at once across nine agents." ;
+    ] ;
+    sh:property [
+        sh:path kpred:scope-class ;
+        sh:maxCount 1 ;
+        sh:in ( "planned" "expanded-aligned" "expanded-unaligned" ) ;
+        sh:message "scope-class must be planned, expanded-aligned (unpredicted work that still serves the intent — amend the plan) or expanded-unaligned (the work left the intent — split or revert)." ;
+    ] ;
+    sh:property [
+        sh:path kpred:proposed-by ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "proposed-by names the agent, so yield can be attributed (F129)." ;
+    ] .
+
+# ── Grant-seeker profile ──────────────────────────────────────────────────────
+# kb:grant-seeker-profile (F73) was described only in prose, which meant the scheduled scrape
+# had no way to know whether a profile was complete enough to search with. This gives it a
+# checkable definition. Geography and focus-area are the two the query builder cannot work
+# without; everything else sharpens the search rather than enabling it.
+
+kshape:GrantSeeker a sh:NodeShape ;
+    sh:targetClass ktype:GrantSeeker ;
+    rdfs:label "An organisation seeking grants" ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+        sh:message "A grant seeker needs a name — it goes on the application." ;
+    ] ;
+    sh:property [
+        sh:path kpred:geography ;
+        sh:minCount 1 ;
+        sh:message "At least one geography. Grant eligibility is jurisdiction-bound; without it a search cannot be targeted and will return mostly ineligible calls." ;
+    ] ;
+    sh:property [
+        sh:path kpred:focus-area ;
+        sh:minCount 1 ;
+        sh:message "At least one focus area — this is what the query is built from." ;
+    ] ;
+    sh:property [
+        sh:path kpred:entity-type ;
+        sh:maxCount 1 ;
+        sh:in ( "nonprofit" "for-profit" "government" "individual" "unincorporated" ) ;
+        sh:message "entity-type decides eligibility per call and must be one of the recognised legal forms." ;
+    ] .
+
+# ── Grant call ────────────────────────────────────────────────────────────────
+# A call without a deadline the timeline can read is a call you will miss. due-at is required
+# rather than kpred:deadline because due-at is one of the eight predicates the timeline force
+# actually reads (F59.2) — modelling it as `deadline` renders the call UNDATED.
+
+kshape:GrantCall a sh:NodeShape ;
+    sh:targetClass ktype:GrantCall ;
+    rdfs:label "A funding opportunity" ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+        sh:message "A call needs a name." ;
+    ] ;
+    sh:property [
+        sh:path kpred:status ;
+        sh:maxCount 1 ;
+        sh:message "status says whether this can be applied for now." ;
+    ] ;
+    sh:property [
+        sh:path kpred:link ;
+        sh:minCount 1 ;
+        sh:nodeKind sh:Literal ;
+        sh:message "A call must link to its source. An unverifiable funding claim is exactly what this product refuses (kb:thesis)." ;
+    ] .

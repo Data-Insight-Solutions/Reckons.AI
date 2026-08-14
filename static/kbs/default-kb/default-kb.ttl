@@ -1,5 +1,5 @@
-# generated 2026-07-09T22:42:34.554Z
-# 0 statements
+# generated 2026-07-30T21:48:54.125Z
+# 0 statements — full annotated export
 
 @prefix kb: <urn:kbase:concept/> .
 @prefix src: <urn:kbase:source/> .
@@ -12,4 +12,7 @@
 @prefix prov: <http://www.w3.org/ns/prov#> .
 @prefix dc: <http://purl.org/dc/terms/> .
 
-# ---- provenance ----
+# ---- kb identity ----
+<urn:reckons:kb> <urn:reckons:meta/kbStableId> "eb7ffc6d-06d4-4caf-9a34-a2e6c87585c2" .
+
+# ---- statement metadata (all statuses) ----

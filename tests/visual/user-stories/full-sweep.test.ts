@@ -14,7 +14,7 @@
  * Run:  (dev:test on 5174 must be up)
  *   npx playwright test --config=playwright.visual.config.ts --project=chromium full-sweep
  */
-import { test } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'fs';
 import { DEVICES, useDevice, gotoStable, waitForAppReady, screenshotStep, stepAudit } from '../workflow-harness';
 import { seedAllKbs } from '../kb-seed';
@@ -48,15 +48,17 @@ for (const device of SWEEP_DEVICES) {
   test.describe(`Full sweep — ${device.name} (${device.width}x${device.height})`, () => {
     test('every screen renders; capture + defect audit', async ({ page }) => {
       test.setTimeout(240_000);
+      const pageErrors: string[] = [];
+      const consoleErrors: string[] = [];
+      page.on('pageerror', (error) => pageErrors.push(error.message));
+      page.on('console', (message) => {
+        if (message.type() === 'error') consoleErrors.push(message.text());
+      });
       await useDevice(page, device);
       await gotoStable(page, APP);
-      // Seed a graph so graph/kb/review/compare aren't empty. A seeding failure must
-      // not sink the sweep — an empty screen is still worth capturing.
-      try {
-        await seedAllKbs(page);
-      } catch (e) {
-        console.warn(`[full-sweep ${device.name}] seeding failed (screens may be empty): ${e}`);
-      }
+      // A green populated sweep must prove setup succeeded. Capturing an empty
+      // fallback after a swallowed seed failure is not evidence for the claim.
+      await seedAllKbs(page);
 
       const story = `full-sweep/${device.name}`;
       const dir = `tests/visual/screenshots/full-sweep/${device.name}`;
@@ -64,26 +66,28 @@ for (const device of SWEEP_DEVICES) {
       const report: { route: string; label: string; overflow: boolean; smallTargets: number; overlaps: number; error?: string }[] = [];
 
       for (const r of ROUTES) {
-        try {
-          await gotoStable(page, `${APP}${r.path}`);
-          await waitForAppReady(page).catch(() => {});
-          await page.waitForTimeout(700); // let force sim / async panels settle
-          await screenshotStep(page, story, r.label);
-          const audit = await stepAudit(page).catch(() => ({ overflow: false, smallTargets: [], overlaps: 0 }));
-          report.push({
-            route: r.path,
-            label: r.label,
-            overflow: audit.overflow,
-            smallTargets: audit.smallTargets.length,
-            overlaps: audit.overlaps,
-          });
-        } catch (e) {
-          report.push({ route: r.path, label: r.label, overflow: false, smallTargets: 0, overlaps: 0, error: String(e).slice(0, 200) });
-        }
+        await gotoStable(page, `${APP}${r.path}`);
+        await waitForAppReady(page);
+        await page.waitForTimeout(700); // let force sim / async panels settle
+        await screenshotStep(page, story, r.label);
+        const audit = await stepAudit(page);
+        report.push({
+          route: r.path,
+          label: r.label,
+          overflow: audit.overflow,
+          smallTargets: audit.smallTargets.length,
+          overlaps: audit.overlaps,
+        });
       }
 
       writeFileSync(`${dir}/_audit.json`, JSON.stringify(report, null, 2));
       console.log(`[full-sweep ${device.name}] audit:`, JSON.stringify(report));
+      const auditFailures = report.filter(
+        (route) => route.overflow || route.smallTargets > 0 || route.overlaps > 0 || route.error,
+      );
+      expect(auditFailures, 'visual audit failures').toEqual([]);
+      expect(pageErrors, `Uncaught page errors:\n${pageErrors.join('\n---\n')}`).toEqual([]);
+      expect(consoleErrors, `Console errors:\n${consoleErrors.join('\n---\n')}`).toEqual([]);
     });
   });
 }

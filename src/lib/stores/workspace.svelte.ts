@@ -26,11 +26,20 @@
  *
  * Requires the File System Access API — Chrome/Edge only (not Firefox/Safari).
  */
-import { db, KBaseDB } from '../storage/db';
+import { db, KBaseDB, DEFAULT_SETTINGS } from '../storage/db';
 import { updateSettings } from './settings.svelte';
-import { getRegistry, getCurrentKbName, type KbEntry } from '../storage/kb-registry';
+import { getRegistry, getCurrentKbName, registerStableId, type KbEntry } from '../storage/kb-registry';
+import { getOrCreateStableId } from '../storage/kb-fingerprint';
 import { collectAssets, assetTriples, type CollectedAsset, type AssetCategory } from '../storage/kb-assets';
 import { dedupeCompletePending } from '../rdf/pending-dedup';
+import {
+  classifyChange,
+  hashSourceText,
+  makeBaseline,
+  type CacheDecision,
+  type SourceBaseline
+} from '../rdf/source-cache';
+import { classifyText } from '../safety/content-policy';
 
 /** Filename written to the workspace dir on every KB mutation (read by the MCP server). */
 export const WORKSPACE_KB_FILE = 'knowledge.ttl';
@@ -488,7 +497,30 @@ export async function syncAllKbs(): Promise<number> {
       const statements = await kbDb.statements.toArray();
       const sources = await kbDb.sources.toArray();
       const settings = await kbDb.settings.get('main');
-      const stableId = settings?.kbStableId;
+
+      // EVERY EXPORTED COPY MUST CARRY AN IDENTITY, and minting one here is what stops the
+      // same graph splitting into rival files (Matt, 2026-08-13: "the export procedure should
+      // work different to avoid getting multiple copies of the same kb out of sync").
+      //
+      // This line used to read `settings?.kbStableId` and pass it straight through, so a graph
+      // that had never been given a stable id exported a file with NO identity in it. On
+      // re-import there was then nothing to match on but the NAME, which is why five graph
+      // names each ended up covering more than one independent copy. Identity is what makes
+      // duplicate FILES harmless: several copies of one graph resolve to one entry and update
+      // it in place (resolveImportTarget), whereas several anonymous copies can only ever
+      // become several graphs.
+      //
+      // Minting is safe and idempotent — an existing id is returned untouched, and a new one is
+      // persisted to this graph's settings AND the registry before it is written to any file,
+      // so the id in the file always matches the id in the app.
+      let stableId = settings?.kbStableId;
+      if (!stableId) {
+        stableId = await getOrCreateStableId(undefined, async (id) => {
+          if (settings) await kbDb.settings.update('main', { kbStableId: id });
+          else await kbDb.settings.put({ ...DEFAULT_SETTINGS, kbStableId: id });
+        });
+        registerStableId(entry.id, stableId, statements.length);
+      }
 
       if (statements.length === 0 && entry.id !== 'kbase') {
         // Skip empty non-default KBs
@@ -608,6 +640,17 @@ type PendingEntry = {
   addedByMcp?: boolean;
   addedAt?: string;
   type?: 'observation' | 'question' | 'suggestion' | 'status-update' | 'drift-warning';
+  /**
+   * WHAT KIND OF WRONG this is — form, drift or defect (rdf/finding-class.ts). A second axis
+   * to `type`, because `type` says what the note IS (a question, a suggestion) and this says
+   * where the fix LANDS: in the artifact, in the graph-or-world decision, or in the code.
+   *
+   * Added 2026-08-14 after measuring that `drift-warning` covered all three at once —
+   * claim-audit (a false claim), server-health (a server down) and shacl-validate (a missing
+   * label) all emitted it, which buried the findings that genuinely need a human to decide
+   * which side is wrong.
+   */
+  findingClass?: 'form' | 'drift' | 'defect';
   commitSha?: string;
   agent?: string;
   priority?: 'low' | 'normal' | 'high';
@@ -708,6 +751,12 @@ export async function drainAndImportPending(): Promise<number> {
       // fact merely a gap instead of a priority — the graph knew it had a hole but not what
       // the hole cost. Dropping `agent` meant an answer could not be routed back to the
       // agent that asked, which breaks the moment more than one is running.
+      // Attribution on EVERY proposal, not only on questions. askedBy routes an answer back
+      // to whoever is waiting; proposedBy answers "was running that agent worth it", which is
+      // the number the work-tiering doctrine actually turns on. Attaching it only to partials
+      // lost the agent for 55% of the real queue.
+      ...(e.agent ? { proposedBy: e.agent } : {}),
+      ...(e.findingClass ? { findingClass: e.findingClass } : {}),
       ...(partial
         ? {
             needsObject: true,
@@ -1053,5 +1102,132 @@ export async function listModelFiles(repo: string, filePaths: string[]): Promise
     return found;
   } catch {
     return []; // models/ or repo dir doesn't exist
+  }
+}
+
+// ── Source reference copies (F122) ──────────────────────────────────────────
+// The LAST REVIEWED text of each watched source, so a refresh can ask "did this actually
+// change?" before paying an extractor to find out. One slot per source, overwritten — no
+// history, because a source copy is a re-fetchable diff baseline and the graph already carries
+// full revertable history far more compactly (see rdf/source-cache.ts for the reasoning).
+//
+// Callers pass the NORMALIZED extraction, never raw HTML: nav, ads, analytics tags and
+// relative timestamps differ between two fetches of an identical article, so an HTML baseline
+// would report a change on nearly every poll.
+//
+// These files sync (they live in the workspace) but must NEVER be published — copying retained
+// third-party documents to your own cloud is personal use; shipping them inside a shared graph
+// package is redistribution of someone else's content.
+
+/** Directory name under the workspace root. Excluded from graph packages by construction. */
+export const SOURCES_DIR = 'sources';
+
+/**
+ * One file per source id. Ids are app-generated, but this builds a path in the user's own
+ * folder, so sanitize regardless. Dots are dropped along with separators so no id can produce
+ * a '..' segment. Sanitizing can in principle collapse two distinct ids onto one name — which
+ * would silently cross-contaminate baselines — so an id that was actually altered gets a short
+ * deterministic suffix. Well-formed ids are the common case and stay readable, because this
+ * folder is meant to be inspectable by a human.
+ */
+function sourceFileName(sourceId: string): string {
+  const safe = sourceId.replace(/[^a-zA-Z0-9_-]/g, '_');
+  if (safe === sourceId) return `${safe}.json`;
+  let h = 5381;
+  for (let i = 0; i < sourceId.length; i++) h = ((h << 5) + h + sourceId.charCodeAt(i)) >>> 0;
+  return `${safe}-${h.toString(36)}.json`;
+}
+
+/**
+ * Retain a reviewed copy. Call this when a review is SETTLED, never when a fetch completes —
+ * a baseline that advanced on fetch would silently swallow changes the user never saw.
+ *
+ * Returns the baseline actually stored (its `text` is null when the body exceeded the cap),
+ * or null when there is no workspace or the content must not be retained.
+ */
+export async function writeSourceBaseline(
+  sourceId: string,
+  normalizedText: string,
+  reviewedAt: number = Date.now()
+): Promise<SourceBaseline | null> {
+  if (!_handle) return null;
+
+  // A document the classifier blocks must not be quietly persisted to the user's folder.
+  // This is a NEW retention path that the addStatements filter does not cover, and it would
+  // write exactly the material that filter exists to keep out. Refusing is a valid outcome.
+  if (classifyText(normalizedText).rating === 'blocked') {
+    console.warn(`[workspace] Source baseline not retained for "${sourceId}": content policy.`);
+    return null;
+  }
+
+  try {
+    const baseline = await makeBaseline(sourceId, normalizedText, reviewedAt);
+    const dir = await getOrCreateDir(_handle, SOURCES_DIR);
+    const fh = await dir.getFileHandle(sourceFileName(sourceId), { create: true });
+    const w = await fh.createWritable();
+    await w.write(JSON.stringify(baseline));
+    await w.close();
+    return baseline;
+  } catch (e) {
+    console.warn(`[workspace] Source baseline write failed for "${sourceId}":`, e);
+    return null;
+  }
+}
+
+/** Read the retained baseline for a source, or null if there isn't one. */
+export async function readSourceBaseline(sourceId: string): Promise<SourceBaseline | null> {
+  if (!_handle) return null;
+  try {
+    const dir = await _handle.getDirectoryHandle(SOURCES_DIR);
+    const fh = await dir.getFileHandle(sourceFileName(sourceId));
+    const raw = await (await fh.getFile()).text();
+    let parsed: Partial<SourceBaseline>;
+    try {
+      parsed = JSON.parse(raw) as Partial<SourceBaseline>;
+    } catch {
+      // A file that EXISTS but cannot be read is not the same as no baseline, even though both
+      // degrade to a full re-extract. Staying silent would let a source re-extract on every poll
+      // forever with nothing to explain why, so say it happened.
+      console.warn(`[workspace] Source baseline for "${sourceId}" is unreadable — treating as absent.`);
+      return null;
+    }
+    // Hand-editable file in a user's folder — validate rather than trusting the shape.
+    if (typeof parsed?.hash !== 'string' || typeof parsed?.sourceId !== 'string') {
+      console.warn(`[workspace] Source baseline for "${sourceId}" has an unexpected shape — treating as absent.`);
+      return null;
+    }
+    return {
+      sourceId: parsed.sourceId,
+      hash: parsed.hash,
+      bytes: typeof parsed.bytes === 'number' ? parsed.bytes : 0,
+      text: typeof parsed.text === 'string' ? parsed.text : null,
+      reviewedAt: typeof parsed.reviewedAt === 'number' ? parsed.reviewedAt : 0
+    };
+  } catch {
+    return null; // no sources/ dir, no file, or unreadable — all mean "no baseline"
+  }
+}
+
+/**
+ * The gate a refresh runs before extracting. Fetch, normalize, then ask this.
+ * With no workspace connected there is nowhere to retain a baseline, so every refresh reports
+ * 'no-baseline' and behaves exactly as it does today — degraded, but never wrong.
+ */
+export async function classifySourceChange(
+  sourceId: string,
+  normalizedText: string
+): Promise<CacheDecision> {
+  const baseline = await readSourceBaseline(sourceId);
+  return classifyChange(baseline, await hashSourceText(normalizedText), normalizedText);
+}
+
+/** Drop a source's retained copy — on unsubscribe, or when the user clears cached content. */
+export async function removeSourceBaseline(sourceId: string): Promise<void> {
+  if (!_handle) return;
+  try {
+    const dir = await _handle.getDirectoryHandle(SOURCES_DIR);
+    await dir.removeEntry(sourceFileName(sourceId));
+  } catch {
+    // Already absent is the desired end state.
   }
 }

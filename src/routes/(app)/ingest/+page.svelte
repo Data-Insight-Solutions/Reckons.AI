@@ -1,7 +1,8 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { ingest, buildIngestionPrompt, type IngestInput, type IngestProgress } from '$lib/stores/ingest.svelte';
-  import { addSource, addStatements, sources, statements } from '$lib/stores/kb.svelte';
+  import { sources, statements } from '$lib/stores/kb.svelte';
+  import { commitPrecomputedIngest } from '$lib/ingest/precomputed';
   import type { Source } from '$lib/rdf/types';
   import { settings, updateSettings } from '$lib/stores/settings.svelte';
   import { requestManualLLM } from '$lib/stores/manual-llm.svelte';
@@ -25,7 +26,8 @@
   import { setGif } from '$lib/stores/gif-overrides.svelte';
   import { setGlb } from '$lib/stores/glb-overrides.svelte';
   import { KBaseDB, DEFAULT_SETTINGS } from '$lib/storage/db';
-  import { createKb, registerStableId, switchToKb } from '$lib/storage/kb-registry';
+  import { createKb, registerStableId, switchToKb, getRegistry } from '$lib/storage/kb-registry';
+  import { resolveImportTarget, uniqueKbName, parseGeneratedAt } from '$lib/storage/kb-import-target';
 
   type Mode = 'note' | 'url' | 'document' | 'reminder' | 'triples' | 'drive' | 'calendar' | 'kb' | 'vault' | 'folder' | 'repo';
   let mode = $state<Mode>('note');
@@ -110,8 +112,12 @@
         confidence: 0.7,
       }));
       const stmts = triplesToStatements(extracted, source);
-      await addSource(source);
-      await addStatements(stmts);
+      const result = await commitPrecomputedIngest({
+        sourceTitle: source.title,
+        source,
+        statements: stmts,
+      });
+      if (result.phase === 'cancelled') return;
       goto(`/compare?source=${source.id}`);
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
@@ -148,8 +154,12 @@
         ingestedAt: Date.now(),
       };
       const stmts = triplesToStatements(triples, source);
-      await addSource(source);
-      await addStatements(stmts);
+      const result = await commitPrecomputedIngest({
+        sourceTitle: source.title,
+        source,
+        statements: stmts,
+      });
+      if (result.phase === 'cancelled') return;
       goto(`/compare?source=${source.id}`);
     } catch (e) {
       if (e instanceof Error && e.message === 'Cancelled') return;
@@ -247,6 +257,7 @@
       const result = await ingest(input, (p: IngestProgress) => {
         phase = p.phase;
       });
+      if (result.phase === 'cancelled') return;
       clearDraft(); // extraction succeeded — the note is safely in the graph now
       goto(`/compare?source=${result.source.id}`);
     } catch (e) {
@@ -379,8 +390,12 @@
           updatedAt: now,
         }));
 
-      await addSource(source);
-      await addStatements(toImport);
+      const result = await commitPrecomputedIngest({
+        sourceTitle: source.title,
+        source,
+        statements: toImport,
+      });
+      if (result.phase === 'cancelled') return;
 
       // Apply Shelly persona overrides from the TTL file
       if (shellyPersona) {
@@ -446,12 +461,65 @@
         ttlText = await kbFile.text();
       }
       const { statements: rawStmts } = await importTurtleFull(ttlText);
-      const kbName = kbFile.name.replace(/\.(ttl|turtle|zip|n3|nq)$/i, '');
-      const newKb = createKb(kbName);
+      let kbName = kbFile.name.replace(/\.(ttl|turtle|zip|n3|nq)$/i, '');
 
-      // Open a temporary Dexie instance for the new KB
+      // WHERE SHOULD THIS LAND? Until 2026-08-13 this always called createKb(), so
+      // re-importing the same file minted another graph with the same name every time —
+      // the cause of the duplicated names the graphs page reports. Resolve the target
+      // FIRST, which means reading the stable id before the database exists rather than
+      // after (it used to be applied post-creation, which is too late to match on).
+      const incomingStableId = rawStmts.find(
+        s => s.p.value === 'urn:kbase:predicate/kbStableId' || s.p.value === 'urn:reckons:meta/kbStableId'
+      )?.o.value;
+      const target = resolveImportTarget(
+        { name: kbName, stableId: incomingStableId, generatedAt: parseGeneratedAt(ttlText) },
+        getRegistry(),
+      );
+
+      let newKb: { id: string };
+      let replacing = false;
+      if (target.kind === 'replace') {
+        // Same graph identity, newer copy. Update in place rather than duplicating.
+        newKb = target.entry;
+        replacing = true;
+        kbName = target.entry.name;
+      } else if (target.kind === 'ambiguous') {
+        // Two different reasons to stop and ask, and they need different words. A NAME
+        // collision means we cannot tell if it is the same graph. A STALE match means we
+        // know it IS the same graph and this file is an OLDER copy of it — restoring that
+        // silently would roll back work, which is the risk identity-matching introduces.
+        const existing = target.entry.statementCount != null ? ` (${target.entry.statementCount} facts)` : '';
+        const overwrite = confirm(
+          target.basis === 'stale'
+            ? `This file is an OLDER export of the graph "${target.entry.name}"${existing}, which has been edited more recently.\n\n` +
+              `Importing it would roll that graph back to this file's contents.\n\n` +
+              `OK — roll it back anyway (a recovery snapshot is kept).\n` +
+              `Cancel — keep the current graph, importing this copy separately as "${uniqueKbName(kbName, getRegistry())}".`
+            : `A graph called "${target.entry.name}" already exists${existing}.\n\n` +
+              `OK — replace its contents with this file.\n` +
+              `Cancel — keep both, importing this as "${uniqueKbName(kbName, getRegistry())}".`
+        );
+        if (overwrite) {
+          newKb = target.entry;
+          replacing = true;
+          kbName = target.entry.name;
+        } else {
+          kbName = uniqueKbName(kbName, getRegistry());
+          newKb = createKb(kbName);
+        }
+      } else {
+        newKb = createKb(kbName);
+      }
+
+      // Open a temporary Dexie instance for the target KB
       const tempDb = new KBaseDB(newKb.id);
       await tempDb.open();
+      // Replacing means REPLACING: without clearing, the old facts remain beside the new
+      // ones and the graph silently doubles instead of updating.
+      if (replacing) {
+        await tempDb.statements.clear();
+        await tempDb.sources.clear();
+      }
       await tempDb.settings.put({ ...DEFAULT_SETTINGS, kbTitle: kbName });
 
       const now = Date.now();
@@ -502,7 +570,8 @@
         ? `\n\n⚠ This graph references preview/icon images that a plain .ttl can't carry, so they won't appear. To see them, import the graph's folder (kbs/${kbName}/, including its assets/ subfolder) via Settings → workspace → "import graphs from folder" instead.`
         : '';
 
-      if (confirm(`Created "${kbName}" with ${stmts.length} facts.${assetNote}\n\nSwitch to it now?`)) {
+      const verb = replacing ? 'Updated' : 'Created';
+      if (confirm(`${verb} "${kbName}" with ${stmts.length} facts.${assetNote}\n\nSwitch to it now?`)) {
         switchToKb(newKb.id);
       }
     } catch (e) {
@@ -543,6 +612,7 @@
         filename: driveSelected.name
       };
       const result = await ingest(input, (p) => { phase = p.phase; });
+      if (result.phase === 'cancelled') return;
       goto(`/compare?source=${result.source.id}`);
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
@@ -610,7 +680,14 @@
 
       if (allStmts.length > 0) {
         const firstSourceId = `gcal-${[...selectedCalendarIds][0].replace(/[^a-z0-9]/gi, '-')}`;
-        await addStatements(allStmts);
+        const result = await commitPrecomputedIngest({
+          sourceTitle: 'Google Calendar import',
+          statements: allStmts,
+        });
+        if (result.phase === 'cancelled') {
+          calImportCount = 0;
+          return;
+        }
         goto(`/compare?source=${firstSourceId}`);
       }
     } catch (e) {
@@ -629,13 +706,18 @@
   // Indico import
   let indicoImporting = $state(false);
   let indicoImportResult = $state<string | null>(null);
+  // Its OWN error, not the shared `error`: the three calendar sub-tabs render into one card, so
+  // a Google OAuth failure ("Missing required parameter client_id") was appearing under the
+  // Indico panel and reading as an Indico fault. Observed 2026-07-31 while diagnosing the real
+  // Indico block, and it cost time chasing the wrong integration.
+  let indicoError = $state<string | null>(null);
 
   async function importIndicoEvents() {
     const serverUrl = settings().indicoServerUrl;
     if (!serverUrl) return;
     indicoImporting = true;
     indicoImportResult = null;
-    error = null;
+    indicoError = null;
     try {
       const { createIndicoClient } = await import('$lib/integrations/indico/client');
       const { indicoEventsToStatements } = await import('$lib/integrations/indico/indico-rdf');
@@ -646,7 +728,7 @@
       const sourceId = `indico-${Date.now()}`;
       const stmts = indicoEventsToStatements(events, sourceId, serverUrl, statements());
       if (stmts.length > 0) {
-        await addSource({
+        const source: Source = {
           id: sourceId,
           title: `Indico — ${events.length} events`,
           uri: serverUrl,
@@ -654,14 +736,22 @@
           trustLevel: 'review',
           trustScore: 0.5,
           ingestedAt: Date.now()
+        };
+        const result = await commitPrecomputedIngest({
+          sourceTitle: source.title,
+          source,
+          statements: stmts,
         });
-        await addStatements(stmts);
+        if (result.phase === 'cancelled') {
+          indicoImportResult = 'Import cancelled.';
+          return;
+        }
         indicoImportResult = `Imported ${events.length} events (${stmts.length} facts)`;
       } else {
         indicoImportResult = 'No events found.';
       }
     } catch (e) {
-      error = e instanceof Error ? e.message : String(e);
+      indicoError = e instanceof Error ? e.message : String(e);
     } finally {
       indicoImporting = false;
     }
@@ -694,7 +784,7 @@
       }));
       const stmts = icalToStatements(calEvents as any, sourceId, icalUrl.trim(), statements());
       if (stmts.length > 0) {
-        await addSource({
+        const source: Source = {
           id: sourceId,
           title: `iCal — ${events.length} events`,
           uri: icalUrl.trim(),
@@ -702,8 +792,16 @@
           trustLevel: 'review',
           trustScore: 0.5,
           ingestedAt: Date.now()
+        };
+        const result = await commitPrecomputedIngest({
+          sourceTitle: source.title,
+          source,
+          statements: stmts,
         });
-        await addStatements(stmts);
+        if (result.phase === 'cancelled') {
+          icalImportResult = 'Import cancelled.';
+          return;
+        }
         icalImportResult = `Imported ${events.length} events (${stmts.length} facts)`;
       } else {
         icalImportResult = 'No events found in feed.';
@@ -718,7 +816,7 @@
   // ── Vault / batch markdown ingestion ────────────────────────────────────────
   type VaultItem = {
     file: File;
-    status: 'queued' | 'parsing' | 'extracting' | 'done' | 'error';
+    status: 'queued' | 'parsing' | 'extracting' | 'done' | 'cancelled' | 'error';
     error?: string;
     sourceId?: string;
     wikilinks: string[];
@@ -748,7 +846,7 @@
 
     for (let i = 0; i < vaultQueue.length; i++) {
       const item = vaultQueue[i];
-      if (item.status === 'done') { vaultDone++; continue; }
+      if (item.status === 'done' || item.status === 'cancelled') { vaultDone++; continue; }
 
       try {
         item.status = 'parsing';
@@ -776,8 +874,12 @@
           { kind: 'document', title: itemTitle, text, filename: item.file.name },
           () => {}
         );
-        item.status = 'done';
-        item.sourceId = result.source.id;
+        if (result.phase === 'cancelled') {
+          item.status = 'cancelled';
+        } else {
+          item.status = 'done';
+          item.sourceId = result.source.id;
+        }
       } catch (err) {
         item.status = 'error';
         item.error = err instanceof Error ? err.message : String(err);
@@ -840,15 +942,20 @@
     try {
       const sourceId = `folder-${Date.now()}`;
       const stmts = folderToStatements(folderScanResult, sourceId);
-      await addSource({
+      const source: Source = {
         id: sourceId,
         title: `Folder — ${folderScanResult.rootName}/ (${folderScanResult.files.length} files)`,
         uri: `local-folder://${folderScanResult.rootName}`,
         kind: 'document',
         trustLevel: 'review',
         ingestedAt: Date.now()
+      };
+      const result = await commitPrecomputedIngest({
+        sourceTitle: source.title,
+        source,
+        statements: stmts,
       });
-      await addStatements(stmts, sourceId);
+      if (result.phase === 'cancelled') return;
       folderStmtCount = stmts.length;
       folderDone = true;
     } catch (e: any) {
@@ -907,11 +1014,15 @@
           if (p.phase === 'fetching') repoProgress = 'fetching files…';
           else if (p.phase === 'extracting') repoProgress = `extracting facts (${p.backend})…`;
           else if (p.phase === 'normalizing') repoProgress = 'normalising entities…';
+          else if (p.phase === 'archive-check') repoProgress = 'checking archived identities…';
+          else if (p.phase === 'awaiting-archive-decision') repoProgress = 'waiting for archive decision…';
+          else if (p.phase === 'restoring-archive') repoProgress = 'restoring archived identities…';
           else if (p.phase === 'diffing') repoProgress = 'computing diff…';
           else if (p.phase === 'semantic') repoProgress = 'semantic enrichment…';
           else repoProgress = '';
         },
       );
+      if (result.phase === 'cancelled') return;
       repoDone = true;
       goto(`/compare?source=${result.source.id}`);
     } catch (e) {
@@ -1004,6 +1115,7 @@
               {:else if item.status === 'parsing'}   ◌
               {:else if item.status === 'extracting'} ◎
               {:else if item.status === 'done'}      ✓
+              {:else if item.status === 'cancelled'} —
               {:else}                                ✕
               {/if}
             </span>
@@ -1345,7 +1457,7 @@
       {:else}
         <p class="hint">No Indico server configured. Add your server URL in <a href="/settings">Settings</a>.</p>
       {/if}
-      {#if error}<p class="err">{error}</p>{/if}
+      {#if indicoError}<p class="err indico-err">{indicoError}</p>{/if}
 
     {:else if calSource === 'ical'}
       <p class="sub" style="margin-bottom: 0.75rem;">
@@ -1482,6 +1594,15 @@
   .add-triple-btn:hover { background: var(--accent); color: #fff; }
   .hint { color: var(--muted); font-size: 0.75rem; margin: 0; }
   .err { color: var(--danger); font-family: var(--font-mono); font-size: 0.85rem; }
+  /* The Indico reachability diagnostic is a paragraph, not a status code — it has to stay
+     readable rather than overflow the card, so let it wrap and break long URLs. */
+  .indico-err {
+    margin-top: 0.75rem;
+    line-height: 1.5;
+    text-wrap: pretty;
+    overflow-wrap: anywhere;
+    max-width: 70ch;
+  }
 
   /* WASM model-load progress during extraction (Matt: "it says nothing about progress") */
   .wasm-progress { margin-top: 0.4rem; display: flex; flex-direction: column; gap: 0.3rem; }
@@ -1666,6 +1787,7 @@
 
   .vault-status { font-size: 0.65rem; color: var(--muted); flex-shrink: 0; align-self: center; }
   .vault-done .vault-status     { color: var(--ok); }
+  .vault-cancelled .vault-status { color: var(--muted); }
   .vault-error .vault-status    { color: var(--danger); }
 
   .vault-actions { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }

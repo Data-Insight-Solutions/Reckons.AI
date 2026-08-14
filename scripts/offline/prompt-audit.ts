@@ -84,14 +84,29 @@ for (const file of files) {
   //    + basePrompt`) rather than at declaration. Treat any file that injects the
   //    preamble anywhere as covering the prompts it declares — otherwise this audit
   //    reports a safety hole that does not exist, which is worse than not auditing.
-  const injectsAtRuntime = /ETHICS_PREAMBLE\s*\+\s*\w/.test(src);
+  // Two shapes count as runtime injection, and since 2026-08-14 the second is CONDITIONAL:
+  //   ETHICS_PREAMBLE + x        unconditional — the old, always-on form
+  //   ethicsPreambleFor(...) + x purpose/locality gated — carries the preamble on some paths
+  //                              (sharing, remote conversation) and deliberately not on others
+  //                              (local-only, structured output).
+  // Detecting only the first made this audit report VOICE_MODE_PREFIX and
+  // PUBLISHED_ETHICS_WRAPPER as UNGATED the moment turtle-chat switched to the gated form —
+  // a safety hole that did not exist, which is the failure this file's own comment warns about.
+  // Strip block comments first. A doc comment DESCRIBING the composition order — e.g.
+  // "ETHICS_PREAMBLE + [PUBLISHED_ETHICS_WRAPPER] + ..." — otherwise reads as an injection
+  // site, and this audit would report a file as unconditionally gated on the strength of its
+  // own prose. Found by writing exactly such a comment.
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const injectsUnconditionally = /ETHICS_PREAMBLE\s*\+\s*\w/.test(code);
+  const injectsConditionally = /ethicsPreambleFor\s*\(/.test(code);
+  const injectsAtRuntime = injectsUnconditionally || injectsConditionally;
   const re2 = /(?:export\s+)?const\s+(\w*(?:PROMPT|SYSTEM|INSTRUCTIONS|PREFIX|WRAPPER)\w*)\s*=\s*`/g;
   while ((m = re2.exec(src))) {
     if (src.slice(Math.max(0, m.index - 60), m.index).includes('ETHICS_PREAMBLE')) continue;
     const body = extractTemplate(src, re2.lastIndex - 1);
     if (body.length < 40) continue;
     if (prompts.some((p) => p.file === file && p.body === body)) continue;
-    prompts.push({ file, name: m[1], body, withPreamble: injectsAtRuntime, runtimeInjected: injectsAtRuntime });
+    prompts.push({ file, name: m[1], body, withPreamble: injectsAtRuntime, runtimeInjected: injectsAtRuntime, conditional: injectsConditionally && !injectsUnconditionally });
   }
 }
 
@@ -103,6 +118,10 @@ const rows = prompts
     return { ...p, bodyT, totalT, share: p.withPreamble ? Math.round((100 * pT) / totalT) : 0 };
   })
   .sort((a, b) => b.share - a.share || a.totalT - b.totalT);
+
+// A conditionally-gated prompt is not "covered" in the old binary sense — it carries the
+// preamble on sharing and remote paths and not on local-only ones. Saying so is the point.
+const conditionalCount = rows.filter((r) => (r as { conditional?: boolean }).conditional).length;
 
 if (JSON_OUT) {
   console.log(JSON.stringify({ preambleTokens: pT, prompts: rows.map(({ body, ...r }) => r) }, null, 2));
@@ -139,5 +158,11 @@ const injecting = rows.filter((r) => r.withPreamble);
 const totalOverhead = injecting.length * pT;
 console.log(`\n${B}Summary${X}`);
 console.log(`  ${injecting.length} prompt(s) carry the preamble; each pays ~${pT} tokens per call.`);
+if (conditionalCount > 0) {
+  console.log(
+    `  \x1b[2m${conditionalCount} of those are CONDITIONAL (ethicsPreambleFor): carried when SHARED or remote,\n` +
+      `  omitted for local-only usage and structured output — see safety/content-policy.ts.\x1b[0m`,
+  );
+}
 console.log(`  Worst ratio: ${injecting[0]?.share ?? 0}% of "${injecting[0]?.name}" is preamble.`);
 console.log(`  ${D}Fixed overhead across all injecting prompts (1 call each): ~${totalOverhead} tokens.${X}`);

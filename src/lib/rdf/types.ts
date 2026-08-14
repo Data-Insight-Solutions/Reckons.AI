@@ -210,6 +210,30 @@ export type Statement = {
    */
   askedBy?: string;
   /**
+   * Which agent PROPOSED this fact — set on every drained proposal, not only on questions.
+   *
+   * Distinct from `askedBy`, which exists to route an ANSWER back to whoever is waiting for
+   * it. This one exists to answer a different question: WAS RUNNING THAT AGENT WORTH IT.
+   *
+   * The work-tiering doctrine turns on proposal YIELD — "a local job that emits 30 findings
+   * of which 25 are noise moves cost from generation to TRIAGE rather than removing it" — and
+   * yield is accepted-over-proposed, per agent. Until 2026-08-13 that was not computable:
+   * `drainAndImportPending` attached the agent only to PARTIAL facts, and measured against the
+   * real queue that lost attribution for 55% of 736 entries (402 proposals carrying an object).
+   * Everything else was folded into one batch source titled "MCP (agent-a, agent-b) — N notes",
+   * so an accepted fact could not be traced to the agent that produced it.
+   */
+  proposedBy?: string;
+  /**
+   * What KIND of wrong this finding reports — see rdf/finding-class.ts.
+   *
+   *   form    malformed artifact; a parser or shape settles it, safe to block a build on
+   *   drift   the graph's claim disagrees with reality; only a human can decide which side
+   *           is wrong, so it must never auto-resolve
+   *   defect  the world is broken while the graph is right; the fix never touches the graph
+   */
+  findingClass?: 'form' | 'drift' | 'defect';
+  /**
    * HOW could this fact be checked — and therefore WHO is competent to approve it (F88).
    *
    * `code` | `test` a script or a suite settles it; the user need not be asked at all.

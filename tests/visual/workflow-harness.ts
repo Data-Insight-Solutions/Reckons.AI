@@ -173,7 +173,8 @@ export async function gotoStable(page: Page, url: string, attempts = 3): Promise
 }
 
 export async function waitForAppReady(page: Page, timeout = 20_000): Promise<void> {
-  await page.locator('.boot').waitFor({ state: 'detached', timeout }).catch(() => {});
-  await page.waitForLoadState('networkidle').catch(() => {});
+  await page.waitForLoadState('domcontentloaded');
+  await page.locator('.boot').waitFor({ state: 'detached', timeout });
+  await page.locator('nav[aria-label="Main navigation"]').waitFor({ state: 'visible', timeout });
   await page.waitForTimeout(400);
 }
