@@ -26,7 +26,8 @@
   import { setGif } from '$lib/stores/gif-overrides.svelte';
   import { setGlb } from '$lib/stores/glb-overrides.svelte';
   import { KBaseDB, DEFAULT_SETTINGS } from '$lib/storage/db';
-  import { createKb, registerStableId, switchToKb } from '$lib/storage/kb-registry';
+  import { createKb, registerStableId, switchToKb, getRegistry } from '$lib/storage/kb-registry';
+  import { resolveImportTarget, uniqueKbName, parseGeneratedAt } from '$lib/storage/kb-import-target';
 
   type Mode = 'note' | 'url' | 'document' | 'reminder' | 'triples' | 'drive' | 'calendar' | 'kb' | 'vault' | 'folder' | 'repo';
   let mode = $state<Mode>('note');
@@ -460,12 +461,65 @@
         ttlText = await kbFile.text();
       }
       const { statements: rawStmts } = await importTurtleFull(ttlText);
-      const kbName = kbFile.name.replace(/\.(ttl|turtle|zip|n3|nq)$/i, '');
-      const newKb = createKb(kbName);
+      let kbName = kbFile.name.replace(/\.(ttl|turtle|zip|n3|nq)$/i, '');
 
-      // Open a temporary Dexie instance for the new KB
+      // WHERE SHOULD THIS LAND? Until 2026-08-13 this always called createKb(), so
+      // re-importing the same file minted another graph with the same name every time —
+      // the cause of the duplicated names the graphs page reports. Resolve the target
+      // FIRST, which means reading the stable id before the database exists rather than
+      // after (it used to be applied post-creation, which is too late to match on).
+      const incomingStableId = rawStmts.find(
+        s => s.p.value === 'urn:kbase:predicate/kbStableId' || s.p.value === 'urn:reckons:meta/kbStableId'
+      )?.o.value;
+      const target = resolveImportTarget(
+        { name: kbName, stableId: incomingStableId, generatedAt: parseGeneratedAt(ttlText) },
+        getRegistry(),
+      );
+
+      let newKb: { id: string };
+      let replacing = false;
+      if (target.kind === 'replace') {
+        // Same graph identity, newer copy. Update in place rather than duplicating.
+        newKb = target.entry;
+        replacing = true;
+        kbName = target.entry.name;
+      } else if (target.kind === 'ambiguous') {
+        // Two different reasons to stop and ask, and they need different words. A NAME
+        // collision means we cannot tell if it is the same graph. A STALE match means we
+        // know it IS the same graph and this file is an OLDER copy of it — restoring that
+        // silently would roll back work, which is the risk identity-matching introduces.
+        const existing = target.entry.statementCount != null ? ` (${target.entry.statementCount} facts)` : '';
+        const overwrite = confirm(
+          target.basis === 'stale'
+            ? `This file is an OLDER export of the graph "${target.entry.name}"${existing}, which has been edited more recently.\n\n` +
+              `Importing it would roll that graph back to this file's contents.\n\n` +
+              `OK — roll it back anyway (a recovery snapshot is kept).\n` +
+              `Cancel — keep the current graph, importing this copy separately as "${uniqueKbName(kbName, getRegistry())}".`
+            : `A graph called "${target.entry.name}" already exists${existing}.\n\n` +
+              `OK — replace its contents with this file.\n` +
+              `Cancel — keep both, importing this as "${uniqueKbName(kbName, getRegistry())}".`
+        );
+        if (overwrite) {
+          newKb = target.entry;
+          replacing = true;
+          kbName = target.entry.name;
+        } else {
+          kbName = uniqueKbName(kbName, getRegistry());
+          newKb = createKb(kbName);
+        }
+      } else {
+        newKb = createKb(kbName);
+      }
+
+      // Open a temporary Dexie instance for the target KB
       const tempDb = new KBaseDB(newKb.id);
       await tempDb.open();
+      // Replacing means REPLACING: without clearing, the old facts remain beside the new
+      // ones and the graph silently doubles instead of updating.
+      if (replacing) {
+        await tempDb.statements.clear();
+        await tempDb.sources.clear();
+      }
       await tempDb.settings.put({ ...DEFAULT_SETTINGS, kbTitle: kbName });
 
       const now = Date.now();
@@ -516,7 +570,8 @@
         ? `\n\n⚠ This graph references preview/icon images that a plain .ttl can't carry, so they won't appear. To see them, import the graph's folder (kbs/${kbName}/, including its assets/ subfolder) via Settings → workspace → "import graphs from folder" instead.`
         : '';
 
-      if (confirm(`Created "${kbName}" with ${stmts.length} facts.${assetNote}\n\nSwitch to it now?`)) {
+      const verb = replacing ? 'Updated' : 'Created';
+      if (confirm(`${verb} "${kbName}" with ${stmts.length} facts.${assetNote}\n\nSwitch to it now?`)) {
         switchToKb(newKb.id);
       }
     } catch (e) {

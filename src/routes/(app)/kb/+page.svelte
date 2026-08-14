@@ -8,12 +8,13 @@
     addStatements,
     hotSwapData
   } from '$lib/stores/kb.svelte';
-  import { toTurtle, toNQuads, parseNQuads } from '$lib/rdf/serialize';
+  import { toTurtle, toNQuads, toTriG, parseNQuads } from '$lib/rdf/serialize';
   import { merge, splitByConcept, closure } from '$lib/rdf/reasoning';
   import PredicateManager from '$lib/components/PredicateManager.svelte';
   import GraphPackagePanel from '$lib/components/GraphPackagePanel.svelte';
   import { v4 as uuid } from 'uuid';
   import type { Statement } from '$lib/rdf/types';
+  import { recommendDuplicateChoice, describeProbe, type KbProbe } from '$lib/storage/kb-duplicate-choice';
   import type { KbStoryStep } from '$lib/storage/db';
   import { settings, updateSettings } from '$lib/stores/settings.svelte';
   import {
@@ -188,6 +189,42 @@
    */
   const duplicateGraphs = $derived(findDuplicateGraphs(localKbs));
 
+  // ── Comparing duplicates (2026-08-13) ──────────────────────────────────────
+  // Reporting a duplicate without letting you tell the copies apart leaves the user
+  // stranded: a copy that has never been opened has no statementCount, so the notice
+  // shows "not opened" for exactly the graph you most need to judge. Probing reads each
+  // copy's IndexedDB directly (read-only, and never creates a database for a dangling
+  // registry row), then recommends one with its reason and confidence stated separately.
+  // Nothing is removed automatically — a low-confidence recommendation means the signals
+  // disagree, which is what a truncated import looks like.
+  let dupeProbes = $state<Record<string, KbProbe[]>>({});
+  let dupeBusy = $state<string | null>(null);
+
+  async function compareDuplicates(group: { name: string; entries: KbEntry[] }) {
+    dupeBusy = group.name;
+    try {
+      const { probeKbs } = await import('$lib/storage/kb-probe');
+      dupeProbes = { ...dupeProbes, [group.name]: await probeKbs(group.entries) };
+    } catch (e) {
+      console.warn('[graphs] duplicate probe failed:', e);
+    } finally {
+      dupeBusy = null;
+    }
+  }
+
+  function unlinkDuplicates(groupName: string, ids: string[], keepName: string) {
+    if (!confirm(
+      `Unlink ${ids.length} copy(ies) of "${groupName}", keeping the one with ${keepName}?\n\n` +
+      `The registry entries are removed so they stop appearing here. Their IndexedDB data is ` +
+      `LEFT ON DISK, so this is reversible by re-adding the graph — nothing is destroyed.`
+    )) return;
+    for (const id of ids) removeKbFromRegistry(id);
+    localKbs = getRegistry();
+    const next = { ...dupeProbes };
+    delete next[groupName];
+    dupeProbes = next;
+  }
+
   const bookmarkedCount = $derived(localKbs.filter(k => k.bookmarked).length);
   /** Counts ROWS, not groups — a hidden archive is a hidden graph. */
   const hiddenByQuery = $derived(
@@ -349,6 +386,22 @@
 
   function exportTurtle() {
     download(`${kbFileSlug()}.ttl`, toTurtle(confirmedStatements(), { header: 'full graph export' }), 'text/turtle');
+  }
+  /**
+   * TriG export (F75). Turtle CANNOT carry the graph term, so `turtle (.ttl)` silently drops
+   * provenance: export a graph built from five PDFs and "where did this fact come from?"
+   * becomes unanswerable. toTriG has existed and been tested since F75 was written and
+   * nothing called it — the lossless format was built and unreachable.
+   *
+   * .trig, not .ttl, because the EXTENSION IS A CONTRACT: a .ttl containing a graph block is
+   * a lie that breaks any format:'Turtle' consumer.
+   */
+  function exportTriG() {
+    download(
+      `${kbFileSlug()}.trig`,
+      toTriG(confirmedStatements(), { header: 'full graph export — lossless, one named graph per source' }),
+      'application/trig',
+    );
   }
   function exportNQuads() {
     download(`${kbFileSlug()}.nq`, toNQuads(confirmedStatements()), 'application/n-quads');
@@ -780,11 +833,42 @@
       </p>
       <ul>
         {#each duplicateGraphs as d (d.name)}
+          {@const probes = dupeProbes[d.name]}
+          {@const choice = probes ? recommendDuplicateChoice(probes) : null}
           <li>
             <span class="mono">{d.name}</span>
-            {#each d.entries as e (e.id)}
-              <span class="dupe-copy mono">{e.statementCount != null ? `${e.statementCount} facts` : 'not opened'}</span>
-            {/each}
+            {#if !probes}
+              {#each d.entries as e (e.id)}
+                <span class="dupe-copy mono">{e.statementCount != null ? `${e.statementCount} facts` : 'not opened'}</span>
+              {/each}
+              <button
+                class="sm"
+                disabled={dupeBusy === d.name}
+                onclick={() => compareDuplicates(d)}
+                data-testid="compare-duplicates"
+              >{dupeBusy === d.name ? 'reading…' : 'compare copies'}</button>
+            {:else}
+              <ul class="dupe-detail">
+                {#each probes as p (p.id)}
+                  <li class:dupe-keep={choice?.keep.id === p.id}>
+                    <span class="mono">{describeProbe(p)}</span>
+                    {#if choice?.keep.id === p.id}<span class="dupe-tag mono">keep</span>{/if}
+                  </li>
+                {/each}
+              </ul>
+              {#if choice}
+                <p class="dupe-reason" class:dupe-unsure={choice.confidence === 'low'}>
+                  {#if choice.confidence === 'low'}<strong>Check this one yourself.</strong> {/if}{choice.reason}
+                </p>
+                <button
+                  class="sm"
+                  onclick={() => unlinkDuplicates(d.name, choice.discard.map(x => x.id), describeProbe(choice.keep))}
+                  data-testid="unlink-duplicates"
+                >unlink the other {choice.discard.length}</button>
+              {:else}
+                <p class="dupe-reason">No copy could be read, so there is nothing to compare. Leaving all entries in place.</p>
+              {/if}
+            {/if}
           </li>
         {/each}
       </ul>
@@ -1413,7 +1497,7 @@
   {/if}
 </section>
 
-<!-- ── Knowledge Bases ────────────────────────────────────────────────────── -->
+<!-- ── Graphs ────────────────────────────────────────────────────── -->
 <!-- GRAPH PACKAGE & SYNC — this graph's .ttl, sidecars, story, currents & folder sync.
      Belongs HERE, in the Graphs tab, not buried in the canvas's filter panel: this tab
      exists as its own top-level tab precisely because graph management matters. -->
@@ -1455,9 +1539,13 @@
   <div class="section-head">
     <h3>export</h3>
   </div>
-  <p class="section-hint">turtle files transfer cleanly between any rdf-aware tool.</p>
+  <p class="section-hint">
+    turtle files transfer cleanly between any rdf-aware tool. turtle cannot carry provenance —
+    <strong>trig</strong> keeps which source each fact came from.
+  </p>
   <div class="row" style="margin-top: 0.5rem;">
     <button onclick={exportTurtle}>turtle (.ttl)</button>
+    <button onclick={exportTriG} title="Lossless: keeps which source each fact came from">trig (.trig)</button>
     <button onclick={exportNQuads}>n-quads (.nq)</button>
     <button onclick={exportClosure}>turtle + inferred</button>
     {#if gifOverrides().size > 0}
@@ -1915,6 +2003,19 @@
     font-size: 0.6rem; color: var(--muted); margin-left: 0.4rem;
     border: 1px solid var(--line); border-radius: 3px; padding: 0.02rem 0.28rem;
   }
+
+  /* Duplicate comparison. The recommended copy is marked, and a LOW-confidence
+     recommendation is styled as a warning rather than a result — the signals disagreeing
+     is the case where acting on the suggestion could destroy the only complete graph. */
+  .dupe-detail { list-style: none; margin: 0.3rem 0 0 0.8rem; padding: 0; }
+  .dupe-detail li { font-size: 0.62rem; color: var(--muted); padding: 0.08rem 0; }
+  .dupe-detail li.dupe-keep { color: var(--fg); }
+  .dupe-tag {
+    font-size: 0.55rem; margin-left: 0.4rem; padding: 0.02rem 0.3rem;
+    border-radius: 3px; background: var(--accent); color: var(--bg);
+  }
+  .dupe-reason { font-size: 0.62rem; margin: 0.35rem 0 0.3rem 0.8rem; color: var(--muted); }
+  .dupe-reason.dupe-unsure { color: var(--warn, #d98b2b); }
 
   /* F97 sweep control. Indented to the same 1.5rem as .kb-archive-row so the action and the
      archive it fills read as one column belonging to the graph above them. */

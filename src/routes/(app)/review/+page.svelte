@@ -32,6 +32,7 @@
     type AlignmentResult, type AlignmentSuggestion,
   } from '$lib/rdf/cross-kb-align';
   import { termKey, isIRI, isLit, isMetaPredicate, type Statement } from '$lib/rdf/types';
+  import { newAliasValues, primaryLabelAfterMerge, buildAliasStatements } from '$lib/rdf/merge-aliases';
   import { computeDiff } from '$lib/rdf/diff';
   import { generateDiffSummary, type DiffSummary } from '$lib/rdf/diff-summary';
   import { semanticEnrichDiff, labelFromIRI } from '$lib/rdf/semantic-diff';
@@ -629,6 +630,16 @@
               s.o.kind === 'iri' && s.o.value === dropVal) &&
              s.status !== 'rejected' && s.status !== 'superseded'
       );
+      // Work out the names this merge would otherwise destroy BEFORE mutating anything.
+      // A losing rdfs:label is about to be rejected, and the dropped IRI is about to stop
+      // existing — both are names the entity genuinely answered to, and both are what the
+      // next import will arrive as. Preserving them as skos:altLabel is what stops the same
+      // duplicate being merged by hand a second time. (kb:merge-synonyms)
+      const rejectedIds = new Set(conflicts.map(c => c.rejectId));
+      const survivingLabel = primaryLabelAfterMerge(keepIri, statements(), rejectedIds)
+        ?? primaryLabelAfterMerge(dropVal, statements(), rejectedIds);
+      const aliasValues = newAliasValues(keepIri, dropVal, statements(), survivingLabel);
+
       for (const st of toRedirect) {
         const patch: Partial<typeof st> = {};
         if (st.s.kind === 'iri' && st.s.value === dropVal) patch.s = keepNode;
@@ -637,6 +648,15 @@
       }
       for (const c of conflicts) {
         await setStatus(c.rejectId, 'rejected');
+      }
+      if (aliasValues.length > 0) {
+        const donor = toRedirect[0];
+        await addStatements(buildAliasStatements(
+          keepIri,
+          aliasValues,
+          { g: donor?.g ?? { kind: 'iri', value: 'urn:kbase:source/manual' }, sourceId: donor?.sourceId ?? 'manual' },
+          () => crypto.randomUUID(),
+        ));
       }
       // Mark original merge suggestion as confirmed
       const mergeStmt = pendingMerges.find(m =>
