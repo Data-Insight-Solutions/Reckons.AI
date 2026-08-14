@@ -26,9 +26,10 @@
  *
  * Requires the File System Access API — Chrome/Edge only (not Firefox/Safari).
  */
-import { db, KBaseDB } from '../storage/db';
+import { db, KBaseDB, DEFAULT_SETTINGS } from '../storage/db';
 import { updateSettings } from './settings.svelte';
-import { getRegistry, getCurrentKbName, type KbEntry } from '../storage/kb-registry';
+import { getRegistry, getCurrentKbName, registerStableId, type KbEntry } from '../storage/kb-registry';
+import { getOrCreateStableId } from '../storage/kb-fingerprint';
 import { collectAssets, assetTriples, type CollectedAsset, type AssetCategory } from '../storage/kb-assets';
 import { dedupeCompletePending } from '../rdf/pending-dedup';
 import {
@@ -496,7 +497,30 @@ export async function syncAllKbs(): Promise<number> {
       const statements = await kbDb.statements.toArray();
       const sources = await kbDb.sources.toArray();
       const settings = await kbDb.settings.get('main');
-      const stableId = settings?.kbStableId;
+
+      // EVERY EXPORTED COPY MUST CARRY AN IDENTITY, and minting one here is what stops the
+      // same graph splitting into rival files (Matt, 2026-08-13: "the export procedure should
+      // work different to avoid getting multiple copies of the same kb out of sync").
+      //
+      // This line used to read `settings?.kbStableId` and pass it straight through, so a graph
+      // that had never been given a stable id exported a file with NO identity in it. On
+      // re-import there was then nothing to match on but the NAME, which is why five graph
+      // names each ended up covering more than one independent copy. Identity is what makes
+      // duplicate FILES harmless: several copies of one graph resolve to one entry and update
+      // it in place (resolveImportTarget), whereas several anonymous copies can only ever
+      // become several graphs.
+      //
+      // Minting is safe and idempotent — an existing id is returned untouched, and a new one is
+      // persisted to this graph's settings AND the registry before it is written to any file,
+      // so the id in the file always matches the id in the app.
+      let stableId = settings?.kbStableId;
+      if (!stableId) {
+        stableId = await getOrCreateStableId(undefined, async (id) => {
+          if (settings) await kbDb.settings.update('main', { kbStableId: id });
+          else await kbDb.settings.put({ ...DEFAULT_SETTINGS, kbStableId: id });
+        });
+        registerStableId(entry.id, stableId, statements.length);
+      }
 
       if (statements.length === 0 && entry.id !== 'kbase') {
         // Skip empty non-default KBs
@@ -616,6 +640,17 @@ type PendingEntry = {
   addedByMcp?: boolean;
   addedAt?: string;
   type?: 'observation' | 'question' | 'suggestion' | 'status-update' | 'drift-warning';
+  /**
+   * WHAT KIND OF WRONG this is — form, drift or defect (rdf/finding-class.ts). A second axis
+   * to `type`, because `type` says what the note IS (a question, a suggestion) and this says
+   * where the fix LANDS: in the artifact, in the graph-or-world decision, or in the code.
+   *
+   * Added 2026-08-14 after measuring that `drift-warning` covered all three at once —
+   * claim-audit (a false claim), server-health (a server down) and shacl-validate (a missing
+   * label) all emitted it, which buried the findings that genuinely need a human to decide
+   * which side is wrong.
+   */
+  findingClass?: 'form' | 'drift' | 'defect';
   commitSha?: string;
   agent?: string;
   priority?: 'low' | 'normal' | 'high';
@@ -716,6 +751,12 @@ export async function drainAndImportPending(): Promise<number> {
       // fact merely a gap instead of a priority — the graph knew it had a hole but not what
       // the hole cost. Dropping `agent` meant an answer could not be routed back to the
       // agent that asked, which breaks the moment more than one is running.
+      // Attribution on EVERY proposal, not only on questions. askedBy routes an answer back
+      // to whoever is waiting; proposedBy answers "was running that agent worth it", which is
+      // the number the work-tiering doctrine actually turns on. Attaching it only to partials
+      // lost the agent for 55% of the real queue.
+      ...(e.agent ? { proposedBy: e.agent } : {}),
+      ...(e.findingClass ? { findingClass: e.findingClass } : {}),
       ...(partial
         ? {
             needsObject: true,

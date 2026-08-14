@@ -212,6 +212,9 @@ if (PENDING_OUT && problems.length) {
       subject: f.host === 'n8n' ? 'urn:kbase:concept/n8n-cloud-sync' : 'urn:kbase:concept/int-indico',
       predicate: `${KPRED}server-health`,
       question,
+      // DEFECT, not drift: the graph's claim about these servers is correct — the world is
+      // what is broken, so the fix lands in the infrastructure and never in the graph.
+      findingClass: 'defect',
       type: 'drift-warning',
       agent: 'offline:server-health',
       priority: f.level === 'error' ? 'high' : 'medium',

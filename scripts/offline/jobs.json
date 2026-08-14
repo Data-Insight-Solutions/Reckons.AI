@@ -41,11 +41,32 @@
       "desc": "Graph invariants: dead has-file/tested-by links, bad status, duplicate feature-ids, dangling refs, incomplete features"
     },
     {
+      "name": "shacl-validate",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/shacl-validate.ts --warn-only",
+      "desc": "W3C SHACL over static/shapes/*.ttl via rdf-validate-shacl. Shapes are DATA, so a user graph or shared package can carry its own contract — graph-lint can only enforce rules hardcoded about THIS repo. --warn-only while pre-existing debt in a stale export is cleared."
+    },
+    {
+      "name": "csp-origin-audit",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/csp-origin-audit.ts",
+      "desc": "Every origin reached by fetch/WebSocket in src/ is present in the app.html connect-src allowlist. Catches the F55 class: a CSP refusal happens before the request is sent, so no Node test can see it."
+    },
+    {
       "name": "status-evidence",
       "tier": "script",
       "enabled": true,
       "cmd": "npx tsx scripts/offline/status-evidence.ts",
       "desc": "Shipped features must link a test OR declare kpred:test-coverage \"none\" — you may ship untested code, but not silently"
+    },
+    {
+      "name": "untested-options",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/untested-options.ts",
+      "desc": "Optional inputs no test ever passes — the branch that only opens when someone sets the option. Found TurtleChatOptions.publishedMode (gates the published ethics wrapper) with zero coverage. Reports only."
     },
     {
       "name": "shared-deps",
@@ -102,6 +123,20 @@
       "enabled": true,
       "cmd": "npx tsx scripts/offline/graph-economics.ts",
       "desc": "F74.5: both sides of the token ledger — TTL maintenance churn and MCP tool-schema tax (debit) against compressed-context saving, cited avoided-rework, and the extend-vs-add cohesion ratio (credit) — plus break-even and the compounding curve. Advisory, never blocking: a ledger reports, it does not gate. Reports correlation and cited events only; there is no repo built without a graph to compare against"
+    },
+    {
+      "name": "proposal-yield",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/proposal-yield.ts",
+      "desc": "Accepted-over-ruled-on per agent. The number the work-tiering doctrine turns on and nothing was computing; reports triaged% alongside so a yield over 3 proposals is not read as a verdict."
+    },
+    {
+      "name": "scope-check",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/scope-check.ts --calibration",
+      "desc": "Design estimates vs recorded actuals (F130.1). Calibration mode always runs; --base=origin/dev compares an in-flight branch. Never fails a build — creep is a prompt to refine the design, not a broken invariant."
     },
     {
       "name": "describe-entities",
