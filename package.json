@@ -1,6 +1,6 @@
 {
   "name": "Reckons.AI",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "A local-first personal knowledge graph that turns documents, web pages, and notes into a reviewable graph of facts, stored as a standard Turtle (.ttl) file on your device.",
   "homepage": "https://reckons.ai",
