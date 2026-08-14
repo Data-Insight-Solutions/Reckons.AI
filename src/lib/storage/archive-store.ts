@@ -27,6 +27,7 @@ import {
   type ArchiveEventType, type ArchiveActor, type ArchiveEvent, type RetentionPolicy,
   type ArchivedReference,
 } from '$lib/rdf/archive';
+import { planAgeSweep, type AgeSweepPlan } from '$lib/rdf/archive-sweep';
 import { getRegistry, createKb, updateKbEntry } from './kb-registry';
 import type { Statement } from '$lib/rdf/types';
 
@@ -482,6 +483,25 @@ export interface ArchiveRunResult {
  * DELETE is done here so the ordering guarantee above is enforced in one place rather than trusted
  * to every call site.
  */
+/**
+ * Strip reactivity before anything reaches IndexedDB.
+ *
+ * Dexie stores STRUCTURED CLONES, and a Svelte 5 `$state` array hands out Proxies that
+ * `structuredClone` refuses outright — `DataCloneError: #<Object> could not be cloned`. Every
+ * other write path in the app already round-trips through JSON for exactly this reason; the
+ * archive did not, because until the age sweep landed nothing in `src/` called `runArchive` with
+ * live store state, so the gap could not fire.
+ *
+ * It is done HERE rather than at the call site because this is a destructive two-graph move: a
+ * caller that forgets would throw between the archive write and the working-graph delete, which
+ * is the one place a half-completed operation is expensive. Found by looking at an e2e failure
+ * screenshot on 2026-07-30 — the unit suites were green throughout, because a mocked Dexie
+ * clones nothing.
+ */
+function plainRows<T>(rows: T[]): T[] {
+  return JSON.parse(JSON.stringify(rows)) as T[];
+}
+
 export async function runArchive(input: ArchiveRunInput): Promise<ArchiveRunResult> {
   if (!input.workingKbId?.trim()) throw new Error('Working KB ID is required');
   if (!input.parentStableId?.trim()) throw new Error('Archive parent stable ID is required');
@@ -506,7 +526,9 @@ export async function runArchive(input: ArchiveRunInput): Promise<ArchiveRunResu
   const at = now();
 
   const { kept, archived, event } = archiveEntities({
-    statements: input.statements,
+    // Sanitized once, up front, so the snapshot the event carries is plain too — the snapshot is
+    // the pre-operation graph, and a snapshot that cannot be written is a revert that cannot run.
+    statements: plainRows(input.statements),
     entities: input.entities,
     type: input.type,
     actor: input.actor,
@@ -564,6 +586,47 @@ export async function loadArchiveSnapshot(
   } finally {
     db.close();
   }
+}
+
+// ── F97 age sweep: the entry point ───────────────────────────────────────────
+
+export interface AgeSweepInput extends Omit<ArchiveRunInput, 'entities' | 'type'> {
+  /** Events whose newest date is older than this many days move to the archive. */
+  olderThanDays: number;
+}
+
+export interface AgeSweepOutcome {
+  plan: AgeSweepPlan;
+  /** null when the plan was empty — no archive graph is created for a no-op. */
+  run: ArchiveRunResult | null;
+}
+
+/**
+ * Plan an age sweep and, if it would move anything, perform it.
+ *
+ * Returns the PLAN either way, so a caller that swept nothing can still tell the user why — how
+ * many entities were undated, how many were held back for review. "Nothing happened" with no
+ * explanation is the shape of a broken button.
+ *
+ * A no-op sweep deliberately does not call `ensureArchiveKb`: creating an empty "<parent>
+ * (archives)" graph would put a permanent row in the user's graph list as the *only* visible
+ * result of an action that moved nothing.
+ */
+export async function sweepArchiveByAge(input: AgeSweepInput): Promise<AgeSweepOutcome> {
+  const plan = planAgeSweep(input.statements, {
+    olderThanDays: input.olderThanDays,
+    now: input.now?.(),
+  });
+  if (plan.entities.length === 0) return { plan, run: null };
+
+  const { olderThanDays: _threshold, ...rest } = input;
+  const run = await runArchive({
+    ...rest,
+    entities: plan.entities,
+    type: 'age-drop',
+    note: input.note ?? `Age sweep: events older than ${input.olderThanDays} days`,
+  });
+  return { plan, run };
 }
 
 async function pruneSnapshotRows(

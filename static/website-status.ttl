@@ -1,0 +1,183 @@
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix schema:  <https://schema.org/> .
+@prefix prov:    <http://www.w3.org/ns/prov#> .
+@prefix reckons: <urn:reckons:observation/> .
+@prefix dcat:    <http://www.w3.org/ns/dcat#> .
+@prefix void:    <http://rdfs.org/ns/void#> .
+@prefix status:  <https://reckons.ai/status/> .
+@prefix set:     <https://reckons.ai/set/> .
+
+# =============================================================================
+# website-status.ttl — the docs site AS OBSERVED. GENERATED; do not hand-edit.
+#
+# Regenerate with: npm run website:align -- --write
+#
+# This is the "actual" half of F111, standing to static/website.ttl exactly as
+# reckons-production.ttl stands to reckons-roadmap.ttl. It is DERIVED FROM THE OUTPUT: every
+# page below was found by walking content/ and reading its frontmatter through the same parser
+# the site uses, and every schema:url is derived from where the file actually sits rather than
+# from what its frontmatter claims about itself.
+#
+# HONEST LIMIT: this observes the CONTENT LAYER, not the rendered DOM. It records that a page
+# exists, where it is served, and what it claims to be. It does NOT record what a browser
+# painted, so it does not satisfy F111 phase 2. A page can appear here, be correctly declared,
+# and still render broken.
+#
+# Pages carry prov:wasDerivedFrom "docs-kb" when the docs generator produced them, and carry
+# nothing when a human wrote them — which is the difference between a generated mess and pages
+# somebody meant.
+# =============================================================================
+
+# ── The set this graph belongs to (F113) ─────────────────────────────────────
+# A dcat:Catalog names the graphs that describe one artifact and the ROLE each plays. Stated
+# here so the pair is discoverable from either end rather than only by someone knowing both
+# filenames.
+set:docs-site a dcat:Catalog ;
+    dcterms:title "Reckons.AI documentation site" ;
+    dcat:dataset <https://reckons.ai/dataset/design> , <https://reckons.ai/dataset/observed-content> .
+
+<https://reckons.ai/dataset/design> a void:Dataset ;
+    dcterms:title "Design — what the site should be" ;
+    dcterms:type "design" ;
+    dcterms:source "website.ttl" .
+
+<https://reckons.ai/dataset/observed-content> a void:Dataset ;
+    dcterms:title "Observed — what the site actually contains" ;
+    dcterms:type "observed" ;
+    dcterms:source "website-status.ttl" ;
+    prov:wasGeneratedBy status:observation .
+
+# ── HOW this observation was made (F113) ─────────────────────────────────────
+# An observation without its method is an assertion. This activity states the method, the tool,
+# when it ran, and — the part that matters — what the method CANNOT see. Previously that limit
+# lived only in a prose comment, which no query can read.
+status:observation a prov:Activity ;
+    dcterms:title "Content-layer observation" ;
+    prov:used <https://reckons.ai/artifact/content> ;
+    prov:endedAtTime "2026-07-30T21:45:35.642Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> ;
+    prov:wasAssociatedWith status:website-align ;
+    dcterms:type "content-layer" ;
+    dcterms:description "Walked content/**/*.md and read each file through src/lib/publish/site-import.ts — the same parser the site uses. Each URL is derived from where the file actually sits, not from what its frontmatter claims." ;
+    reckons:cannot-observe "What a browser actually painted. A page can appear here, be correctly declared, and still render broken." ;
+    reckons:cannot-observe "Anything decided at render time: layout, section ordering, theme, component identity." ;
+    reckons:cannot-observe "Whether the page is reachable from the live site's navigation." .
+
+status:website-align a prov:SoftwareAgent ;
+    dcterms:title "scripts/offline/website-align.ts" .
+
+<https://reckons.ai/artifact/content> a prov:Entity ;
+    dcterms:title "content/ — the markdown the site is built from" .
+
+status:docs a schema:WebSite ;
+    schema:name "Reckons.AI documentation (observed)" ;
+    schema:url <https://reckons.ai/docs> ;
+    dcterms:extent "11" ;
+    prov:wasGeneratedBy status:observation .
+
+status:build-ai-models a schema:WebPage ;
+    schema:isPartOf status:docs ;
+    schema:name "Working with AI models" ;
+    schema:url <https://reckons.ai/docs/build/ai-models> ;
+    dcterms:isPartOf "Build" ;
+    dcterms:source "content/build/ai-models.md" ;
+    schema:creativeWorkStatus "published" ;
+    prov:wasDerivedFrom "docs-composed" ;
+    dcterms:type "doc" .
+
+status:build-connecting-other-systems a schema:WebPage ;
+    schema:isPartOf status:docs ;
+    schema:name "Connecting other systems" ;
+    schema:url <https://reckons.ai/docs/build/connecting-other-systems> ;
+    dcterms:isPartOf "Build" ;
+    dcterms:source "content/build/connecting-other-systems.md" ;
+    schema:creativeWorkStatus "published" ;
+    prov:wasDerivedFrom "docs-composed" ;
+    dcterms:type "doc" .
+
+status:build-working-safely a schema:WebPage ;
+    schema:isPartOf status:docs ;
+    schema:name "Working safely" ;
+    schema:url <https://reckons.ai/docs/build/working-safely> ;
+    dcterms:isPartOf "Build" ;
+    dcterms:source "content/build/working-safely.md" ;
+    schema:creativeWorkStatus "published" ;
+    prov:wasDerivedFrom "docs-composed" ;
+    dcterms:type "doc" .
+
+status:docs-welcome a schema:WebPage ;
+    schema:isPartOf status:docs ;
+    schema:name "Welcome" ;
+    schema:url <https://reckons.ai/docs/docs/welcome> ;
+    dcterms:isPartOf "Docs" ;
+    dcterms:source "content/docs/welcome.md" ;
+    schema:creativeWorkStatus "published" ;
+    dcterms:type "doc" .
+
+status:learn-how-it-works a schema:WebPage ;
+    schema:isPartOf status:docs ;
+    schema:name "How it works" ;
+    schema:url <https://reckons.ai/docs/learn/how-it-works> ;
+    dcterms:isPartOf "Learn" ;
+    dcterms:source "content/learn/how-it-works.md" ;
+    schema:creativeWorkStatus "published" ;
+    prov:wasDerivedFrom "docs-composed" ;
+    dcterms:type "doc" .
+
+status:learn-start-here a schema:WebPage ;
+    schema:isPartOf status:docs ;
+    schema:name "Start here" ;
+    schema:url <https://reckons.ai/docs/learn/start-here> ;
+    dcterms:isPartOf "Learn" ;
+    dcterms:source "content/learn/start-here.md" ;
+    schema:creativeWorkStatus "published" ;
+    prov:wasDerivedFrom "docs-composed" ;
+    dcterms:type "doc" .
+
+status:learn-what-it-does a schema:WebPage ;
+    schema:isPartOf status:docs ;
+    schema:name "What it does" ;
+    schema:url <https://reckons.ai/docs/learn/what-it-does> ;
+    dcterms:isPartOf "Learn" ;
+    dcterms:source "content/learn/what-it-does.md" ;
+    schema:creativeWorkStatus "published" ;
+    prov:wasDerivedFrom "docs-composed" ;
+    dcterms:type "doc" .
+
+status:project-contributing a schema:WebPage ;
+    schema:isPartOf status:docs ;
+    schema:name "Contributing" ;
+    schema:url <https://reckons.ai/docs/project/contributing> ;
+    dcterms:isPartOf "Project" ;
+    dcterms:source "content/project/contributing.md" ;
+    schema:creativeWorkStatus "published" ;
+    prov:wasDerivedFrom "docs-composed" ;
+    dcterms:type "doc" .
+
+status:project-how-this-site-is-built a schema:WebPage ;
+    schema:isPartOf status:docs ;
+    schema:name "How this site is built" ;
+    schema:url <https://reckons.ai/docs/project/how-this-site-is-built> ;
+    dcterms:isPartOf "Project" ;
+    dcterms:source "content/project/how-this-site-is-built.md" ;
+    schema:creativeWorkStatus "published" ;
+    dcterms:type "doc" .
+
+status:project-where-it-is-going a schema:WebPage ;
+    schema:isPartOf status:docs ;
+    schema:name "Where it is going" ;
+    schema:url <https://reckons.ai/docs/project/where-it-is-going> ;
+    dcterms:isPartOf "Project" ;
+    dcterms:source "content/project/where-it-is-going.md" ;
+    schema:creativeWorkStatus "published" ;
+    prov:wasDerivedFrom "docs-composed" ;
+    dcterms:type "doc" .
+
+status:releases-v0-1-0 a schema:WebPage ;
+    schema:isPartOf status:docs ;
+    schema:name "Reckons.AI v0.1.0" ;
+    schema:url <https://reckons.ai/docs/releases/v0-1-0> ;
+    dcterms:isPartOf "Releases" ;
+    dcterms:source "content/releases/v0-1-0.md" ;
+    schema:creativeWorkStatus "published" ;
+    dcterms:type "post" .

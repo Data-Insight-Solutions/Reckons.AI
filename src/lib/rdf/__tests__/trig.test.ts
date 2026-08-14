@@ -90,3 +90,25 @@ describe('toTriG', () => {
     expect(() => new Parser({ format: 'TriG' }).parse(toTriG([]))).not.toThrow();
   });
 });
+
+describe('toTriG header (regression, 2026-08-14)', () => {
+  // The function was built, tested and unwired for weeks. Its FIRST real caller — the export
+  // button — passed a header, and the output would not parse: the header was emitted raw
+  // instead of as a comment. Every existing test called toTriG() with no header, so the bug
+  // sat behind green coverage. Caught by driving the actual UI, not by a unit test.
+  it('emits the header as a COMMENT, so the output still parses', () => {
+    const trig = toTriG(facts, { header: 'full graph export — lossless' });
+    expect(trig.split('\n')[0].startsWith('#')).toBe(true);
+    expect(() => new Parser({ format: 'TriG' }).parse(trig)).not.toThrow();
+  });
+
+  it('still parses when the header contains characters Turtle would choke on', () => {
+    const trig = toTriG(facts, { header: 'export: "quoted", <angled>, 100% — ok' });
+    expect(() => new Parser({ format: 'TriG' }).parse(trig)).not.toThrow();
+  });
+
+  it('matches how toTurtle treats a header', () => {
+    expect(toTurtle(facts, { header: 'x' }).split('\n')[0]).toBe('# x');
+    expect(toTriG(facts, { header: 'x' }).split('\n')[0]).toBe('# x');
+  });
+});

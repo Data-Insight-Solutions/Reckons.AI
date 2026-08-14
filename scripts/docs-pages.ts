@@ -46,6 +46,7 @@ import {
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { slugify, type SitePage } from '../src/lib/rdf/page';
+import { escapeMdText } from '../src/lib/publish/md-escape';
 import { NAV_ORDER, NAV_NEXT, NAV_PREV, NAV_LAYER } from '../src/lib/rdf/hierarchy';
 import { contentPath, pageToMarkdown } from '../src/lib/publish/site-export';
 import { parsePageFile } from '../src/lib/publish/site-import';
@@ -137,35 +138,7 @@ function firstSentence(text: string): string {
   return (m ? m[0] : trimmed).trim();
 }
 
-/**
- * Escape characters that mdsvex/Svelte would otherwise try to parse as markup —
- * `<word` reads as the start of an element/component tag (`<5%`, `<http://…>`
- * angle-bracket IRI notation) and `{...}` reads as a Svelte expression (`{@html}`,
- * `{ ?x ?y }` from SPARQL examples, `{name}` path placeholders). The docs TTLs are
- * prose written for humans, not markdown, so free text is escaped uniformly wherever
- * it's embedded in the generated body.
- *
- * `<`/`>` use plain HTML entities — CommonMark's HTML serializer re-escapes those back
- * to `&lt;`/`&gt;` in the compiled output (they're HTML metacharacters), so they reach
- * Svelte's compiler as harmless literal text.
- *
- * `{`/`}` are NOT HTML metacharacters, so nothing re-escapes them: `&#123;`/`&#125;`
- * numeric character references get *decoded* to literal `{`/`}` per the CommonMark
- * spec and still hit Svelte's mustache parser. A Svelte string-literal mustache
- * (`{'{'}`) dodges that — except mdsvex's default `smartypants` transform mangles the
- * straight quotes inside it into curly quotes, breaking the JS. `String.fromCharCode`
- * needs no quotes at all, so it survives every stage untouched.
- */
-const MD_ESCAPES: Record<string, string> = {
-  '<': '&lt;', '>': '&gt;',
-  '{': '{String.fromCharCode(123)}', '}': '{String.fromCharCode(125)}',
-};
-function escapeMdText(s: string): string {
-  // Single pass over a callback, not chained .replace() calls — the `{`/`}`
-  // replacement text itself contains `{`/`}` characters, and a second chained
-  // .replace() would re-match (and mangle) what the first one just inserted.
-  return s.replace(/[<>{}]/g, (c) => MD_ESCAPES[c]);
-}
+
 
 // ── Parse ─────────────────────────────────────────────────────────────────────
 

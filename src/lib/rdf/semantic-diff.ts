@@ -131,7 +131,7 @@ function isAntonymPredicate(aIRI: string, bIRI: string, cosineSim: number): bool
 // ── Summary recounting ──────────────────────────────────────────────────────
 
 function recountSummary(entries: DiffEntry[]): Diff['summary'] {
-  const s = { new: 0, duplicate: 0, reinforces: 0, conflicts: 0, refines: 0, nearDuplicate: 0, synonymReinforces: 0, antonymConflicts: 0 };
+  const s = { new: 0, duplicate: 0, reinforces: 0, conflicts: 0, refines: 0, returned: 0, nearDuplicate: 0, synonymReinforces: 0, antonymConflicts: 0 };
   for (const e of entries) {
     switch (e.kind) {
       case 'new':               s.new++;               break;
@@ -139,6 +139,7 @@ function recountSummary(entries: DiffEntry[]): Diff['summary'] {
       case 'reinforces':        s.reinforces++;        break;
       case 'conflicts':         s.conflicts++;         break;
       case 'refines':           s.refines++;           break;
+      case 'returned':          s.returned++;          break;
       case 'near-duplicate':    s.nearDuplicate++;     break;
       case 'synonym-reinforces':s.synonymReinforces++; break;
       case 'antonym-conflicts': s.antonymConflicts++;  break;

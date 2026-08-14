@@ -286,3 +286,37 @@ task:no-acceptance rdf:type   ktype:AgentTask ;
     kpred:tier      "script" ;
     kpred:command   "echo improving" ;
     kpred:task-state "open" .
+
+# -----------------------------------------------------------------------------
+# Self-hosted server health (F55 Indico · F20/n8n)
+#
+# Two servers are now load-bearing for shipped features, and until 2026-07-31 nothing watched
+# either. Both had drifted invisibly: Indico refused every browser request for the integration's
+# entire life while a Node verifier reported 6/6 green, and the n8n host ran 92 days with kernel
+# security updates installed-but-never-booted and no backup of the volume holding every workflow
+# and credential.
+#
+# `done-when` is the SAME command without --pending: the check that proves completion is the
+# check itself, run independently of the run that queued the findings.
+#
+# Deliberately read-only. An automated job may REPORT that a server needs a reboot; it may not
+# decide to take someone's live automation offline. That decision stays human.
+# -----------------------------------------------------------------------------
+
+task:server-health rdf:type   ktype:AgentTask ;
+    rdfs:label      "The self-hosted servers must still be serving" ;
+    kpred:goal      "Check the Indico CORS grant a browser actually needs, backup freshness, disk, services, containers, and installed-but-not-booted kernels on the Indico and n8n hosts. Queue drift for review; change nothing." ;
+    kpred:tier      "script" ;
+    kpred:every     "1d" ;
+    kpred:command   "npx tsx scripts/offline/server-health.ts --pending" ;
+    kpred:done-when "npx tsx scripts/offline/server-health.ts" ;
+    kpred:task-state "open" .
+
+task:n8n-backup-verify rdf:type ktype:AgentTask ;
+    rdfs:label      "The n8n backup must be restorable, not merely present" ;
+    kpred:goal      "A backup nobody has restored is a hypothesis. Confirm the newest archive still extracts, its SQLite snapshot passes integrity_check, it holds more than zero workflows, and it carries the encryption key without which credentials can never be decrypted again." ;
+    kpred:tier      "script" ;
+    kpred:every     "7d" ;
+    kpred:command   "npx tsx scripts/offline/server-health.ts --pending" ;
+    kpred:done-when "npx tsx scripts/offline/server-health.ts" ;
+    kpred:task-state "open" .

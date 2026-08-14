@@ -18,6 +18,25 @@
  */
 
 /**
+ * The predicates that carry an EVENT's own date, as opposed to when a fact was ingested.
+ *
+ * Shared because two things now depend on agreeing exactly: where a node lands on the timeline,
+ * and whether the age sweep (F97) considers it old. If those two rules drifted apart, the graph
+ * would archive a node the user can still see sitting inside their visible window — so they read
+ * from one list rather than two copies that happen to match today.
+ */
+export const EVENT_DATE_PREDICATES: ReadonlySet<string> = new Set([
+  'urn:kbase:predicate/scheduled-at',
+  'urn:kbase:predicate/ends-at',
+  'urn:kbase:predicate/due-at',
+  'urn:kbase:predicate/created-at',
+  'urn:kbase:meta/scheduled-at',
+  'urn:kbase:meta/ends-at',
+  'urn:kbase:meta/due-at',
+  'urn:kbase:meta/created-at',
+]);
+
+/**
  * Milliseconds for a calendar date at local midnight, or undefined if that date does not exist.
  *
  * A range check alone is not enough: `new Date(2026, 1, 30)` does not fail on 30 February, it

@@ -321,7 +321,18 @@ export async function ingest(
   const diff = await semanticEnrichDiff(structuralDiff, existingStmts);
 
   await addSource(source);
-  await addStatements(newStatements, source.id);
+  // A 'returned' entry is an exact triple the user already rejected or superseded, offered
+  // again by a re-read (F122). Storing it would add a fresh row per poll for a decision that is
+  // already recorded, so it is NOT persisted — the review card acts on the statement already in
+  // the graph instead. Classifying it was necessary to stop it reading as news; declining to
+  // store it is what actually stops the pile-up.
+  const returnedIds = new Set(
+    diff.entries.filter((e) => e.kind === 'returned').map((e) => e.incoming.id)
+  );
+  await addStatements(
+    returnedIds.size > 0 ? newStatements.filter((st) => !returnedIds.has(st.id)) : newStatements,
+    source.id
+  );
 
   // Detect similar entity names via semantic clustering
   try {

@@ -474,16 +474,28 @@ export interface ArchiveMoveResult {
  * `kept` back to the working graph and `archived` + `event` to the archive graph, so a failure
  * between the two is a caller-visible transaction problem rather than a silent half-move here.
  */
+/**
+ * Would this statement move if the given entities were archived?
+ *
+ * Exported so a PLANNER can predict the move using the identical rule the mover applies. A
+ * separately-written "how many facts will this archive?" count would be a second copy of this
+ * predicate, and the first time the two drifted the app would promise one number and perform
+ * another — on a destructive operation.
+ */
+export function statementTouchesEntities(st: Statement, targets: ReadonlySet<string>): boolean {
+  return (
+    (st.s.kind === 'iri' && targets.has(st.s.value)) ||
+    (st.o.kind === 'iri' && targets.has(st.o.value))
+  );
+}
+
 export function archiveEntities(input: ArchiveMoveInput): ArchiveMoveResult {
   const targets = new Set(input.entities);
   const kept: Statement[] = [];
   const archived: Statement[] = [];
 
   for (const st of input.statements) {
-    const touches =
-      (st.s.kind === 'iri' && targets.has(st.s.value)) ||
-      (st.o.kind === 'iri' && targets.has(st.o.value));
-    (touches ? archived : kept).push(st);
+    (statementTouchesEntities(st, targets) ? archived : kept).push(st);
   }
 
   return {

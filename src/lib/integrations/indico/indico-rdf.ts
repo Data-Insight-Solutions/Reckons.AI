@@ -28,8 +28,52 @@ function lit(value: string) {
   };
 }
 
+/**
+ * Offset, in minutes, of `tz` at a given instant. Positive means ahead of UTC.
+ * Derived from Intl rather than a timezone library — the data is already in the platform, and
+ * the alternative is shipping a tzdata copy that goes stale.
+ */
+function zoneOffsetMinutes(instant: Date, tz: string): number | null {
+  try {
+    // 'en-CA' yields YYYY-MM-DD, so the parts reassemble into a parseable string.
+    const s = new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz, hour12: false,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    }).format(instant).replace(', ', 'T').replace(/T24:/, 'T00:');
+    return (Date.parse(`${s}Z`) - instant.getTime()) / 60_000;
+  } catch {
+    return null; // unknown zone id — caller falls back to a naive local reading
+  }
+}
+
+/**
+ * Indico reports a wall-clock date/time PLUS the zone it was rendered in, and that zone is the
+ * CATEGORY's, not the event's — an event created in America/Los_Angeles comes back rendered in
+ * the root category's US/Central unless `tz=` is passed. This used to return `${date}T${time}`,
+ * throwing the zone away, so a 23:00 PDT deadline entered the graph as a bare "01:00" and every
+ * imported event was silently off by the zone difference with nothing recording which zone it
+ * had meant. (Measured 2026-07-31 against a live server: two hours.)
+ *
+ * Returning a UTC instant makes the value unambiguous, which is what a graph needs — two sources
+ * describing one meeting must compare equal regardless of who exported them.
+ */
 function indicoDateTimeToISO(dt: IndicoDateTime): string {
-  return `${dt.date}T${dt.time}`;
+  const naive = `${dt.date}T${dt.time}`;
+  if (!dt.tz) return naive;
+
+  // Read the wall clock as if UTC, then correct by the zone's offset at that instant. The second
+  // pass matters only near a DST boundary, where the first guess can land on the wrong side.
+  const guess = new Date(`${naive}Z`);
+  if (Number.isNaN(guess.getTime())) return naive;
+
+  let offset = zoneOffsetMinutes(guess, dt.tz);
+  if (offset === null) return naive;
+  const corrected = new Date(guess.getTime() - offset * 60_000);
+  const settled = zoneOffsetMinutes(corrected, dt.tz);
+  if (settled !== null && settled !== offset) offset = settled;
+
+  return new Date(guess.getTime() - offset * 60_000).toISOString().replace(/\.\d{3}Z$/, 'Z');
 }
 
 /**

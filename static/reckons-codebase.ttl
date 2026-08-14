@@ -762,3 +762,48 @@ code:static    skos:related code:leap-architecture .
 code:publish   skos:related code:leap-features .
 code:docs-site skos:related code:leap-features .
 code:design-system skos:related code:leap-architecture .
+
+## ── Module dependency edges ─────────────────────────────────────────────────
+## DERIVED by scripts/offline/derive-code-edges.ts from static TypeScript imports.
+## Re-runnable and idempotent. Edges below 3 imports are dropped as noise.
+## File granularity, not symbol — see the script header for what that does and does not
+## license you to conclude.
+
+code:routes kpred:depends-on-module code:stores .  # 71 imports
+code:components kpred:depends-on-module code:stores .  # 53 imports
+code:routes kpred:depends-on-module code:rdf .  # 41 imports
+code:routes kpred:depends-on-module code:components .  # 39 imports
+code:stores kpred:depends-on-module code:rdf .  # 34 imports
+code:components kpred:depends-on-module code:rdf .  # 32 imports
+code:routes kpred:depends-on-module code:storage .  # 28 imports
+code:publish kpred:depends-on-module code:rdf .  # 25 imports
+code:stores kpred:depends-on-module code:storage .  # 24 imports
+code:storage kpred:depends-on-module code:rdf .  # 20 imports
+code:threed kpred:depends-on-module code:rdf .  # 15 imports
+code:components kpred:depends-on-module code:llm .  # 12 imports
+code:stores kpred:depends-on-module code:llm .  # 10 imports
+code:routes kpred:depends-on-module code:llm .  # 9 imports
+code:ingest-lib kpred:depends-on-module code:rdf .  # 8 imports
+code:routes kpred:depends-on-module code:google .  # 8 imports
+code:components kpred:depends-on-module code:storage .  # 7 imports
+code:rdf kpred:depends-on-module code:embed .  # 6 imports
+code:routes kpred:depends-on-module code:threed .  # 6 imports
+code:threed kpred:depends-on-module code:stores .  # 5 imports
+code:components kpred:depends-on-module code:types-lib .  # 5 imports
+code:components kpred:depends-on-module code:embed .  # 5 imports
+code:llm kpred:depends-on-module code:rdf .  # 5 imports
+code:n8n kpred:depends-on-module code:rdf .  # 5 imports
+code:indico kpred:depends-on-module code:rdf .  # 4 imports
+code:llm kpred:depends-on-module code:safety .  # 4 imports
+code:n8n kpred:depends-on-module code:stores .  # 4 imports
+code:publish kpred:depends-on-module code:safety .  # 4 imports
+code:rdf kpred:depends-on-module code:llm .  # 4 imports
+code:stores kpred:depends-on-module code:embed .  # 4 imports
+code:extension-bridge kpred:depends-on-module code:stores .  # 3 imports
+code:ingest-lib kpred:depends-on-module code:stores .  # 3 imports
+code:google kpred:depends-on-module code:rdf .  # 3 imports
+code:llm kpred:depends-on-module code:stores .  # 3 imports
+code:rdf kpred:depends-on-module code:safety .  # 3 imports
+code:stores kpred:depends-on-module code:safety .  # 3 imports
+code:routes kpred:depends-on-module code:mobile-utils .  # 3 imports
+code:routes kpred:depends-on-module code:indico .  # 3 imports

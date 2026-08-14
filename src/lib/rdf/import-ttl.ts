@@ -109,6 +109,8 @@ export async function importTurtleFull(turtle: string): Promise<ImportResult> {
       else if (pv === RDF + 'object')               d.o           = n3ToTerm(ov);
       else if (pv === KBASE + 'status')             d.status      = ov.value;
       else if (pv === KBASE + 'confidence')         d.confidence  = parseFloat(ov.value);
+      else if (pv === KBASE + 'proposed-by')        d.proposedBy  = ov.value;
+      else if (pv === KBASE + 'asked-by')           d.askedBy     = ov.value;
       else if (pv === KBASE + 'gloss')              d.gloss       = ov.value;
       else if (pv === KBASE + 'excerpt')            d.excerpt     = ov.value;
       else if (pv === KBASE + 'supersedes')         d.supersedes  = ov.value.replace(STMT_PREFIX, '');
@@ -189,6 +191,8 @@ export async function importTurtleFull(turtle: string): Promise<ImportResult> {
       sourceId,
       confidence: (d.confidence as number) ?? 0.5,
       status:     ((d.status as ReviewStatus) ?? 'confirmed'),
+      proposedBy: d.proposedBy as string | undefined,
+      askedBy:    d.askedBy as string | undefined,
       gloss:      d.gloss as string | undefined,
       excerpt:    d.excerpt as string | undefined,
       supersedes: d.supersedes as string | undefined,

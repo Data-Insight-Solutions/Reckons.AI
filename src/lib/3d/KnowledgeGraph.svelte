@@ -14,7 +14,9 @@
   import * as THREE from 'three';
   import type { Statement } from '$lib/rdf/types';
   import { termKey, isIRI, isLit, isMetaPredicate, displayLiteralLabel } from '$lib/rdf/types';
-  import { parseGraphDate } from '$lib/rdf/parse-date';
+  import { parseGraphDate, EVENT_DATE_PREDICATES } from '$lib/rdf/parse-date';
+  import { buildNodeTimes, timelineRange, undatedCount } from '$lib/rdf/timeline-layout';
+  import { cameraPosition, CAMERA_PRESETS, type CameraSpec } from './camera-presets';
   import GraphNode from '$lib/components/GraphNode.svelte';
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { RDF_TYPE, RDFS_LABEL, type EntityTypeDef } from '$lib/rdf/entity-types';
@@ -38,6 +40,7 @@
     timelineZoom = 1,
     timelineCenter = null,
     timelineTimeSource = 'event' as 'event' | 'ingested',
+    cameraSpec = null,
     onselect = () => {},
     onhover = () => {},
     onnodemove = () => {},
@@ -55,6 +58,9 @@
     historyTimestamp?: number | null;
     sources?: any[];
     layout?: 'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy';
+    /** Camera angle. Null keeps the historical straight-on view, so existing baselines are
+     *  unaffected; a spec aims the camera so a visual test can actually SEE the z axis. */
+    cameraSpec?: CameraSpec | null;
     timelineZoom?: number;
     timelineCenter?: number | null;
     timelineTimeSource?: 'event' | 'ingested';
@@ -719,66 +725,23 @@
     return { anchors, markers };
   }
 
-  const TIMELINE_PREDICATES = new Set([
-    'urn:kbase:predicate/scheduled-at',
-    'urn:kbase:predicate/ends-at',
-    'urn:kbase:predicate/due-at',
-    'urn:kbase:predicate/created-at',
-    'urn:kbase:meta/scheduled-at',
-    'urn:kbase:meta/ends-at',
-    'urn:kbase:meta/due-at',
-    'urn:kbase:meta/created-at'
-  ]);
+  // The canonical list lives in rdf/parse-date.ts so the timeline, the age sweep and the
+  // layout rule cannot drift apart — there were three copies of it until 2026-08-13.
+  const TIMELINE_PREDICATES = EVENT_DATE_PREDICATES;
 
   function buildTimelineAnchors(): { anchors: Map<string, THREE.Vector3>; markers: LayoutMarker[] } {
-    const nodeTime = new Map<string, number>();
-    const useEvent = timelineTimeSource === 'event';
-    const useIngested = timelineTimeSource === 'ingested';
+    const nodeTime = buildNodeTimes(
+      statements as Statement[],
+      timelineTimeSource === 'ingested' ? 'ingested' : 'event',
+    );
 
-    if (useEvent || !useIngested) {
-      // Collect earliest timestamp per subject node from temporal predicates
-      for (const st of statements as Statement[]) {
-        if (st.status === 'rejected' || st.status === 'superseded') continue;
-        if (!TIMELINE_PREDICATES.has(st.p.value)) continue;
-
-        const key = termKey(st.s);
-        // One shared rule so every date is interpreted identically — a date-only fact must
-        // land on the day it names, not UTC-shifted onto the day before (see parse-date.ts).
-        const ts = parseGraphDate(st.o.value);
-        if (ts === undefined) continue;
-
-        const existing = nodeTime.get(key);
-        if (!existing || ts < existing) nodeTime.set(key, ts);
-      }
-    }
-
-    if (useIngested) {
-      // Use statement createdAt (ingestion time) for ALL nodes
-      for (const st of statements as Statement[]) {
-        if (st.status === 'rejected' || st.status === 'superseded') continue;
-        const sk = termKey(st.s);
-        const ok = termKey(st.o);
-        if (!nodeTime.has(sk) && st.createdAt) nodeTime.set(sk, st.createdAt);
-        if (!nodeTime.has(ok) && st.createdAt) nodeTime.set(ok, st.createdAt);
-      }
-    } else if (!useIngested) {
-      // Fallback: use createdAt only for nodes without explicit temporal predicates
-      for (const st of statements as Statement[]) {
-        if (st.status === 'rejected' || st.status === 'superseded') continue;
-        const sk = termKey(st.s);
-        const ok = termKey(st.o);
-        if (!nodeTime.has(sk) && st.createdAt) nodeTime.set(sk, st.createdAt);
-        if (!nodeTime.has(ok) && st.createdAt) nodeTime.set(ok, st.createdAt);
-      }
-    }
-
-    if (nodeTime.size === 0) return { anchors: new Map(), markers: [] };
-
-    // Compute data range
-    const times = [...nodeTime.values()];
-    const dataMin = Math.min(...times);
-    const dataMax = Math.max(...times);
-    const dataRange = dataMax - dataMin || 1;
+    // The two branches here used to be byte-identical (`if (useIngested) A else if
+    // (!useIngested) A`), and both applied the createdAt fallback — so in EVENT mode every
+    // undated node was placed at its ingestion time. One shared rule now, and in event mode
+    // an undated node is deliberately absent from the map so it lands in the lane below.
+    const range = timelineRange(nodeTime);
+    if (!range) return { anchors: new Map(), markers: [] };
+    const { dataMin, dataRange } = range;
 
     // Visible range narrows as zoom increases
     const visibleRange = dataRange / timelineZoom;
@@ -799,7 +762,13 @@
         const y = ((hash % 100) / 100 - 0.5) * SPREAD_Y;
         anchors.set(n.key, new THREE.Vector3(x, y, 0));
       } else {
-        anchors.set(n.key, new THREE.Vector3(0, -SPREAD_Y * 0.7, 0));
+        // UNDATED LANE — must clear the ±SPREAD_Y/2 band the dated nodes occupy, and spread
+        // over enough rows that 165 nodes are not shoulder to shoulder. Kept identical to the
+        // 2D renderer so switching views does not move a node.
+        const hash = n.key.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+        const ux = ((hash % 997) / 997 - 0.5) * SPREAD_X;
+        const row = (hash >> 3) % 5;
+        anchors.set(n.key, new THREE.Vector3(ux, -SPREAD_Y * 1.15 - row * 1.5, 0));
       }
     }
 
@@ -1274,7 +1243,7 @@
   });
 </script>
 
-<T.PerspectiveCamera makeDefault position={[0, 0, 18]} fov={55} />
+<T.PerspectiveCamera makeDefault position={cameraPosition(cameraSpec ?? CAMERA_PRESETS.front)} fov={55} />
 <OrbitControls bind:ref={orbitRef} enableDamping dampingFactor={0.08} />
 <T.AmbientLight intensity={0.45} />
 <T.DirectionalLight position={[6, 10, 4]} intensity={0.9} color="#ffd6b0" />

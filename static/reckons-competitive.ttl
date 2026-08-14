@@ -81,9 +81,10 @@ kb:comp-codeflow rdf:type      ktype:Competitor ;
                kpred:part-of      kb:competitive-landscape ;
                hnav:order   2 ;
                kpred:repo-url     "https://github.com/braedonsaunders/codeflow" ;
-               kpred:license      "NONE" ;
-               kpred:copy-permitted "NO — unlicensed, all rights reserved. Ideas only; copy no code, assets, or text." ;
-               kpred:stars        4424 ;
+               kpred:license      "MIT" ;
+               kpred:copy-permitted "YES — MIT, verified against the GitHub API on 2026-08-14 (spdx_id MIT), not merely reported by the scan. Compatible with this project's MIT licence. Attribution still required: MIT obliges the copyright notice to travel with any copied code." ;
+               kpred:license-changed "2026-08-14: was NONE (unlicensed, all rights reserved) — the scan caught the change and the API confirmed it. An unlicensed repo becoming MIT UNBLOCKS kb:adopt-blast-radius and kb:adopt-code-ownership, both of which were recorded as worth-adopting and blocked solely on licence." ;
+               kpred:stars        4917 ;
                kpred:language     "HTML" ;
                kpred:last-push    "2026-07-14"^^xsd:date ;
                kpred:description  "Paste a GitHub URL, get an interactive architecture map. Single-file, browser-only, no install, no accounts, no data collection, works offline on local files. Features: dependency graph, blast-radius analysis, code ownership from git history, and a security scanner." ;
@@ -91,7 +92,8 @@ kb:comp-codeflow rdf:type      ktype:Competitor ;
                kpred:honest-note  "This project holds the local-first thesis more purely than we do: a single HTML file, no build, no server, offline by default. 4,424 stars with no license at all, which is itself a finding — permissionless popularity is not the same as a permissive license." ;
                kpred:worth-adopting kb:adopt-blast-radius ;
                kpred:worth-adopting kb:adopt-code-ownership ;
-               kpred:blocked-by   "kpred:copy-permitted = NO. Any adoption must be a clean-room reimplementation from the CONCEPT, with no reference to their source." .
+               kpred:unblocked-note "PREVIOUSLY blocked-by copy-permitted = NO; that block is lifted as of 2026-08-14. Worth noting what happened in the meantime: kb:adopt-blast-radius was implemented INDEPENDENTLY on 2026-08-14 (F130.4, derived from static TypeScript imports) while this entry still said NO, so the clean-room path was taken by default rather than by discipline. The licence change makes future adoption easier; it does not retroactively make that implementation derivative." ;
+               kpred:superseded-block "kpred:copy-permitted = NO. Any adoption must be a clean-room reimplementation from the CONCEPT, with no reference to their source." .
 
 # ── Agent orchestration: the tier we just built ──────────────────────────────
 

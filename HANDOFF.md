@@ -1,9 +1,187 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-07-28.** Working branch this session:
-`chore/sync-main-into-dev-2026-07-28`.
+**Last updated: 2026-07-31.** Working branch: `fix/indico-browser-reachability`
+(cut from `plan/structured-data-source-watching`; **4 commits, local only, NOT pushed, no PR**).
+
+## ▶ SERVERS ARE NOW MANAGED FROM HERE (2026-07-31)
+
+`ssh indico` (72.60.70.188, Debian 12) and `ssh n8n` (194.163.44.66, Ubuntu 24.04) — keys at
+`~/.ssh/indico_ed25519` / `~/.ssh/n8n_ed25519`. **The n8n host publishes AAAA first and this
+machine has no IPv6 egress**, so the ssh config pins `AddressFamily inet`; without that it fails
+as "Network is unreachable" and looks like the server is down.
+
+- **Indico upgraded 3.3.8 → 3.3.12**, CORS granted, **F55 round trip CLOSED** — 8 live events →
+  90 facts in the browser. Two things only a populated server revealed: the root category export
+  **does not recurse** (so `indicoCategoryId` is REQUIRED — `.env` now sets `=1`), and Indico
+  renders times in the **CATEGORY's** timezone, which the mapper was discarding (every event two
+  hours off). Both fixed and tested.
+- **n8n: weekly backup installed** (`/usr/local/bin/n8n-backup.sh`, cron Sun 04:17, keeps 8).
+  There was NONE before. Uses SQLite `VACUUM INTO` because the DB is in WAL mode and a plain tar
+  can capture a torn database. Captures the **encryption key** (56-byte `config`, the ONLY copy —
+  without it credentials are permanently undecryptable) and ships a `RESTORE.md`. Verified by
+  extracting and querying the archive, not by trusting the exit code.
+- **`npm run offline` job `server-health`** + two `tasks.ttl` entries now watch both hosts.
+  Public checks (incl. the CORS grant) run anywhere; ssh checks SKIP without keys, so CI is safe.
+
+**⚠ OPEN, MATT'S CALL:** the n8n host runs kernel **6.8.0-110 with 6.8.0-117 installed** —
+unattended-upgrades applies kernel security fixes and nothing ever reboots, so they are inert.
+Needs a reboot window; it briefly drops the **live client workflow** (`Safe Haven Accounting`).
+Also still open: `VITE_FEEDBACK_WEBHOOK_URL` in Cloudflare Pages (the workflow is now ACTIVE, but
+the live site falls back to mailto until that build-time var is set).
+
+**NEXT UP:** starter-graph timeline force still looks bad (Matt, 2026-07-31) — fix that next.
+Then multi-integration scenarios (Shelly → schedule + Currents summary). **Note before planning
+those: the Indico integration is READ-ONLY** — `client.ts` has fetch/search/get and no create, so
+"schedule an appointment" is an unbuilt capability, not a wiring job.
+
+## ▶ LATEST (2026-07-31) — F55 INDICO: the app could never reach a real Indico server
+
+**The previous session ended mid-diagnosis and left a half-fix that made things worse:**
+`src/app.html` had gained a `%RECKONS_EXTRA_CONNECT_SRC%` placeholder inside the live
+`connect-src` directive, referencing a `cspConnectSrc` plugin in `vite.config.ts` **that was never
+written**. So an invalid source expression was sitting in the middle of the security policy. It
+also left an untracked live probe (`tests/tmp-indico/`, `pw-indico.tmp.config.ts`) whose captured
+failure showed `Missing required parameter client_id` — which is a **Google OAuth** error, not an
+Indico one, and which sent the diagnosis down the wrong path.
+
+**TWO STACKED BLOCKERS, both invisible, both now measured:**
+1. **CSP** — a per-user self-hosted origin can never be in a literal `<meta>` policy, and a meta
+   CSP cannot be widened at runtime. The request was refused before being sent.
+2. **CORS** — `indico.data-insight.website` returns **no `Access-Control-Allow-Origin` header at
+   all**. Proven independently of CSP by fetching from a CSP-free local origin: still refused.
+
+Identical requests return **HTTP 200 from curl/Node** and fail in Chromium. That is exactly why
+`indico-verify.ts` was **6/6 green** while the product did not work — *the harness tested a layer
+that enforces neither policy*. `kpred:has-status "functional"` was true of the API and false of
+the product. **That is the lesson: match the claim to the LAYER it was tested at.**
+
+**BUILT THIS SESSION (all green: 1635 unit tests, 0 type errors, graph-lint 0 errors, 3 new e2e):**
+- `src/hooks.server.ts` + `scripts/offline/csp-connect-src.ts` — substitutes configured
+  self-hosted origins into the CSP. **NOT a Vite plugin**: `app.html` is SvelteKit's template, so
+  `transformIndexHtml` never runs on it — the plugin computed the right answer and applied
+  nothing. Substitutes **origins only, never paths** (`VITE_FEEDBACK_WEBHOOK_URL` carries a
+  secret-ish path and the CSP ships publicly).
+- `src/lib/integrations/indico/reachability.ts` — turns `TypeError: Failed to fetch` into a
+  message naming the layer that refused and the fix **that layer** needs (different machines!).
+  A `securitypolicyviolation` listener *proves* CSP rather than guessing.
+- The three calendar sub-tabs shared **one `error` variable**, so a Google failure rendered under
+  the Indico panel. Indico now has its own.
+
+**VERIFIED END TO END:** against a CORS-enabled stand-in the real UI imports
+**"Imported 1 events (12 facts)"** with the review badge at 12 — pointed at `127.0.0.1`, which
+`http://localhost:*` deliberately does NOT cover, so the substitution itself is exercised. Both
+production builds checked: origins present when configured, **no placeholder in the empty case**
+(which is what reckons.ai actually ships).
+
+**⚠ BLOCKED ON MATT — I cannot do this, it is a server change:**
+Add `Access-Control-Allow-Origin` at `indico.data-insight.website` (or its reverse proxy) for the
+app origin. Until then the live import stays blocked *by the browser, by design* — but now says so
+legibly instead of failing as a mystery. **Deliberately NOT done:** routing through
+`r.jina.ai`/`corsproxy.io`, which would hand a personal Indico token to a third party.
+
+**Still unproven (do NOT upgrade):** category sync beyond root (the server reports no categories
+from the root listing) and background/periodic sync.
+
+**Leftovers:** `tests/tmp-indico/cors-proxy.mjs` (the CORS stand-in — reusable, untracked) and the
+previous session's `indico-live.test.ts` / `pw-indico.tmp.config.ts`. All untracked scratch,
+disposable. Durable coverage now lives in `tests/e2e/indico-diagnostic.test.ts`.
+
+---
+
+## ▶ PREVIOUS (2026-07-30) — working branch `feat/archive-gallery-grouping`
+(**PR #170 → `dev`**, base verified).
+
+## ▶ LATEST (2026-07-30) — F97 HAS AN ENTRY POINT. The gap named on 2026-07-29 is closed.
+
+`/kb` now carries an **"archive old events"** control on the current graph: set a day threshold,
+read a plan, confirm, and aged-out events move to `<parent> (archives)` and appear in the gallery.
+`src/lib/rdf/archive-sweep.ts` is the pure planner (19 tests, **mutation-checked five ways**);
+`sweepArchiveByAge` reuses `runArchive`'s ordering guarantee. **F97.1 scaffolded → functional**,
+**F97 planned → in-progress**. 1441 unit tests, 0 type errors, script tier 12/12, align green.
+
+**Three conservatisms, each REPORTED to the user rather than hidden:** an UNDATED entity is never
+swept (falling back to ingest time would silently become "archive what I imported a while ago");
+an entity is judged by its **newest** date; an entity carrying **unreviewed** facts is held back,
+because archiving by subject-or-object would carry pending facts out of the review queue.
+
+**STILL UNBUILT — do not read "in-progress" as "auto-archive works":** no schedule, no threshold
+trigger, no proactive nudge; the sweep is current-graph-only; and the production **delete, merge
+and prune** paths still bypass the archive entirely. Only age-drop is wired.
+
+**THE LESSON LANDED AGAIN, THIRD TIME RUNNING.** The first live sweep threw **DataCloneError** —
+Dexie stores structured clones and a Svelte 5 `$state` array hands out Proxies that
+`structuredClone` refuses. **Every unit suite was green**, because a mocked Dexie clones nothing,
+and the gap had never fired because nothing in `src/` had ever called `runArchive` with live store
+state. Found by **looking at the failure screenshot**. Fixed inside `runArchive` (not the call
+site — a forgetful caller throws between the archive write and the working-graph delete) and
+pinned with a test that runs `structuredClone` over what was written. A second look at the phone
+screenshot showed the destructive button rendering as borderless coral text that read as a
+hyperlink; `button.danger` is borderless by design for dense "remove" links. Affordance restored
+and asserted. **Every other write path in the app already JSON round-trips before Dexie** — the
+archive was the one that did not, and it was the one nothing called.
+
+**Visual coverage expanded:** `tests/visual/user-stories/archive-sweep.test.ts` screenshots the
+panel at desktop and 412px and asserts the two properties the gallery bugs broke (spanning /
+stranding, horizontal overflow) plus the 44px touch minimum.
+
+**MATT ASKED: why do agents use markdown and jsonl instead of Reckons.AI?** Answered with
+measurements, not opinion — see the three entries queued to `knowledge.pending.jsonl` on
+2026-07-30 (`agent-write-path`, `pending-triage-debt`, `work-session-entity`). Short version:
+**jsonl is deliberate** (F52 — agents propose, humans settle) and the mechanical half of a handoff
+is **already graph-native and good** (`npm run brief`). Two things are genuinely missing: the
+drain terminates in a **Chromium-only manual folder pick** (`showDirectoryPicker`), and the graphs
+model the **product** (187 features) but nothing models the **work** — no session entity, and no
+way to say "I retested this and the earlier finding was false". **The queue is 583 deep and has
+never been cleared**, which is the triage-cost trap F74.3 warns about, measured on our own dogfood.
 Everything below the "SESSION 2026-07-23" block is the older F97 context and is still live
 (PR #119 is still open) — read it after the current standing.
+
+## ▶ LATEST (2026-07-29) — F97.1 gallery display, and the gap it exposed
+
+**PR #170 → `dev`.** Build-order step 2 from this file ("show the archive graph beside its
+parent in `/kb`") was still unbuilt — `archiveOf` existed in storage and appeared **nowhere in
+the UI**. It does now: an archive renders nested under its parent, badged, with its fact count.
+`src/lib/storage/archive-gallery.ts` is the pure half (no sorting of its own, so the gallery's
+recent/name/size order still wins). It adopts **legacy archives linked by parent NAME**, keeps an
+**orphaned archive visible and labelled**, and never nests an archive under another archive.
+
+**🚨 THE REAL FINDING — F97 HAS NO ENTRY POINT.** Nothing in the app calls `runArchive` or
+`ensureArchiveKb`; grepping `src/` finds no caller outside `archive-store.ts` and its tests. No
+"archive now" action, no age threshold, **no sweep**. So the storage layer, restore-on-reference,
+retention and now the gallery display all exist and **no user action reaches any of them** —
+F97's own headline ("auto-archive of events older than a configurable threshold") is unbuilt.
+F97.1 therefore **STAYS `scaffolded`**; the display is proven against SEEDED data only, which is a
+smaller claim than "the feature works". Recorded as F97.1 `kpred:remaining`.
+**This is the next highest-leverage F97 step** — until it lands, every phase below F97.1 is a
+component of a feature nobody can start.
+
+**LESSON, again, the same one:** two bugs were found by **LOOKING at a screenshot**, and both
+test suites passed on both. The orphan badge used `var(--warn, var(--accent))` and **there is no
+`--warn` in the palette**, so a caution rendered as a brand-teal chip identical to `current`; and
+the archive's `open` button reused `.kb-switch-action`, which the mobile block gives
+`grid-column: 1 / -1`, so it spanned full width and stranded `open tab` alone at 412px. Also
+worth keeping: the 13 unit tests were **mutation-checked** (break the logic three ways, watch the
+suite fail) before being trusted.
+
+**LOCAL REVIEW HIT RATE, measured again:** `qwen3-coder` queued **14 findings, 0 actionable** on
+this branch. Eleven were verified-false (it claimed `groupRows` was not imported — line 42; it
+claimed the archive's tab link should point at the PARENT, which would be the bug). Three were it
+re-deriving the missing-entry-point gap from the TTL, i.e. the honest-note working. Consistent
+with the recorded ~1-in-26 rate: **run it, never merge it wholesale.**
+
+**TWO ENVIRONMENT TRAPS HIT AGAIN — not code regressions:**
+- **Playwright browsers were missing** (`chromium_headless_shell-1228`). `npx playwright install
+  chromium`. This is the third time it is recorded; it still wants a CI/dev guard.
+- **3 unit tests failed on a STALE `node_modules`**, not a real break:
+  `scripts/offline/__tests__/dependency-overrides.test.ts` — `package.json` overrides `adm-zip`
+  to `0.6.0` (#159) while the installed tree had `0.5.18`, and `brace-expansion` 5.0.7 vs 5.0.8.
+  **`npm ci` fixed it; the full suite is 1415/1415 green (109 files).** The test was correctly
+  detecting an install that did not carry the security overrides — believe it, run `npm ci`.
+- **`npm` is not on `PATH` in a fresh shell here.** Use
+  `export PATH="$HOME/.nvm/versions/node/v24.18.0/bin:$PATH"`.
+
+**Confirms the 2026-07-28 correction:** the old "four store suites flake together" entry did NOT
+reproduce. One full run, 1415/1415. Do not carry it forward as current state.
 
 ## ▶ VERIFIED CORRECTIONS (2026-07-28)
 

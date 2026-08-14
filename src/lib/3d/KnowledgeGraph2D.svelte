@@ -8,6 +8,7 @@
   import type { Statement } from '$lib/rdf/types';
   import { termKey, isIRI, isLit, isMetaPredicate, displayLiteralLabel } from '$lib/rdf/types';
   import { parseGraphDate } from '$lib/rdf/parse-date';
+  import { buildNodeTimes, timelineRange, undatedCount } from '$lib/rdf/timeline-layout';
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { RDF_TYPE, RDFS_LABEL, type EntityTypeDef, type GeometryName } from '$lib/rdf/entity-types';
   import { leapNodeKeys } from '$lib/rdf/kb-leap';
@@ -352,45 +353,14 @@
     }
   }
 
-  const TIMELINE_PREDICATES_2D = new Set([
-    'urn:kbase:predicate/scheduled-at', 'urn:kbase:predicate/ends-at',
-    'urn:kbase:predicate/due-at', 'urn:kbase:predicate/created-at',
-    'urn:kbase:meta/scheduled-at', 'urn:kbase:meta/ends-at',
-    'urn:kbase:meta/due-at', 'urn:kbase:meta/created-at'
-  ]);
-
   function buildTimelineAnchors2D(): { anchors: Map<string, { x: number; y: number }>; markers: Marker[] } {
-    const nodeTime = new Map<string, number>();
-    const useIngested = timelineTimeSource === 'ingested';
-
-    if (!useIngested) {
-      for (const st of statements as Statement[]) {
-        if (st.status === 'rejected' || st.status === 'superseded') continue;
-        if (!TIMELINE_PREDICATES_2D.has(st.p.value)) continue;
-        const key = termKey(st.s);
-        // Shared rule — see parse-date.ts (a date-only fact lands on the day it names).
-        const ts = parseGraphDate(st.o.value);
-        if (ts === undefined) continue;
-        const existing = nodeTime.get(key);
-        if (!existing || ts < existing) nodeTime.set(key, ts);
-      }
-    }
-
-    // Ingested mode: use createdAt for all nodes; event mode: fallback only
-    for (const st of statements as Statement[]) {
-      if (st.status === 'rejected' || st.status === 'superseded') continue;
-      const sk = termKey(st.s);
-      const ok = termKey(st.o);
-      if (!nodeTime.has(sk) && st.createdAt) nodeTime.set(sk, st.createdAt);
-      if (!nodeTime.has(ok) && st.createdAt) nodeTime.set(ok, st.createdAt);
-    }
-
-    if (nodeTime.size === 0) return { anchors: new Map(), markers: [] };
-
-    const times = [...nodeTime.values()];
-    const dataMin = Math.min(...times);
-    const dataMax = Math.max(...times);
-    const dataRange = dataMax - dataMin || 1;
+    // One shared rule (rdf/timeline-layout.ts). In event mode an UNDATED node is deliberately
+    // absent from this map: it goes to the undated lane below the axis rather than being
+    // placed at its ingestion time, which is a date the graph does not actually have.
+    const nodeTime = buildNodeTimes(statements as Statement[], timelineTimeSource === 'ingested' ? 'ingested' : 'event');
+    const range = timelineRange(nodeTime);
+    if (!range) return { anchors: new Map(), markers: [] };
+    const { dataMin, dataRange } = range;
     const visibleRange = dataRange / timelineZoom;
     const center = timelineCenter ?? (dataMin + dataRange / 2);
     const viewMin = center - visibleRange / 2;
@@ -398,6 +368,7 @@
 
     const SPREAD_X = 40;
     const SPREAD_Y = 12;
+    const UNDATED_ROWS = 5;
 
     const anchors = new Map<string, { x: number; y: number }>();
     for (const n of nodes) {
@@ -409,7 +380,17 @@
         const y = ((hash % 100) / 100 - 0.5) * SPREAD_Y;
         anchors.set(n.key, { x, y });
       } else {
-        anchors.set(n.key, { x: 0, y: -SPREAD_Y * 0.7 });
+        // UNDATED LANE. Two things matter here and the first attempt got the second wrong.
+        // (1) Spread across the width rather than stacking on one point — starter-everyday
+        //     puts 165 nodes here, and one coordinate just replaces the old wall with a
+        //     smaller one. (2) CLEAR THE AXIS BAND. Dated nodes occupy y in ±SPREAD_Y/2, so a
+        //     lane at 0.72×SPREAD_Y sat barely two units below them and visibly overlapped;
+        //     it has to start below the whole band and use enough rows that 165 nodes are not
+        //     shoulder to shoulder.
+        const hash = n.key.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+        const x = ((hash % 997) / 997 - 0.5) * SPREAD_X;
+        const row = (hash >> 3) % UNDATED_ROWS;
+        anchors.set(n.key, { x, y: -SPREAD_Y * 1.15 - row * 1.5 });
       }
     }
 
@@ -443,6 +424,19 @@
       const frac = (ts - viewMin) / (viewMax - viewMin);
       const x = (frac - 0.5) * SPREAD_X;
       markers.push({ key: `tl-${idx++}`, label: formatTick(new Date(ts)), color: '#7a8a9d', x, y: -SPREAD_Y * 0.5 - 1.5 });
+    }
+
+    // Name the lane. An unlabelled band of parked nodes is just a different mystery; saying
+    // "no date (165)" reports the absence, which is the point of parking them.
+    const undated = undatedCount(nodes.map((n) => n.key), nodeTime);
+    if (undated > 0) {
+      markers.push({
+        key: 'undated-lane',
+        label: `no date (${undated})`,
+        color: '#6b7a8f',
+        x: -SPREAD_X / 2,
+        y: -SPREAD_Y * 1.15 + 1.2,
+      });
     }
 
     return { anchors, markers };
@@ -1350,30 +1344,13 @@
   let timelineDragStartX = 0;
   let timelineDragStartCenter = 0;
 
+  /** Scrub bounds. MUST use the same rule as buildTimelineAnchors2D — until 2026-08-13 this
+   *  function excluded the createdAt fallback while the anchor builder included it, so the
+   *  scrub range and the node positions disagreed and dragging the timeline felt broken. */
   function getTimelineDataRange(): { dataMin: number; dataMax: number; dataRange: number } | null {
-    const nodeTime = new Map<string, number>();
-    const useIngested = timelineTimeSource === 'ingested';
-    for (const st of statements as Statement[]) {
-      if (st.status === 'rejected' || st.status === 'superseded') continue;
-      if (useIngested) {
-        const sk = termKey(st.s);
-        if (!nodeTime.has(sk) && st.createdAt) nodeTime.set(sk, st.createdAt);
-      } else {
-        if (TIMELINE_PREDICATES_2D.has(st.p.value)) {
-          const ts = parseGraphDate(st.o.value);
-          if (ts !== undefined) {
-            const key = termKey(st.s);
-            const existing = nodeTime.get(key);
-            if (!existing || ts < existing) nodeTime.set(key, ts);
-          }
-        }
-      }
-    }
-    const times = [...nodeTime.values()];
-    if (times.length === 0) return null;
-    const dataMin = Math.min(...times);
-    const dataMax = Math.max(...times);
-    return { dataMin, dataMax, dataRange: dataMax - dataMin || 1 };
+    return timelineRange(
+      buildNodeTimes(statements as Statement[], timelineTimeSource === 'ingested' ? 'ingested' : 'event')
+    );
   }
 
   function onPointerDown(e: PointerEvent) {
