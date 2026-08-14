@@ -26,7 +26,7 @@
  */
 
 import { readFileSync, existsSync, appendFileSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { Parser } from 'n3';
 import { measureCreep, shouldWarnOnCreep, describeCreep, type ScopeEstimate } from '../../src/lib/rdf/scope.ts';
@@ -127,8 +127,11 @@ if (CALIBRATION) {
 
 function gitFilesChanged(): string[] {
   try {
-    const out = execSync(`git diff --name-only ${BASE}...HEAD`, { cwd: ROOT, encoding: 'utf8' });
-    const staged = execSync('git status --porcelain', { cwd: ROOT, encoding: 'utf8' });
+    // execFileSync, not execSync: BASE comes from --base= on the command line and was being
+    // interpolated into a SHELL string, so `--base='x; rm -rf ~'` would have run. Passing argv
+    // as an array means git receives it as one argument and no shell is involved at all.
+    const out = execFileSync('git', ['diff', '--name-only', `${BASE}...HEAD`], { cwd: ROOT, encoding: 'utf8' });
+    const staged = execFileSync('git', ['status', '--porcelain'], { cwd: ROOT, encoding: 'utf8' });
     const fromStatus = staged
       .split('\n')
       .map((l) => l.slice(3).trim())
@@ -141,8 +144,8 @@ function gitFilesChanged(): string[] {
 
 function newDependencies(): number {
   try {
-    const diff = execSync(`git diff ${BASE}...HEAD -- package.json`, { cwd: ROOT, encoding: 'utf8' });
-    const staged = execSync('git diff HEAD -- package.json', { cwd: ROOT, encoding: 'utf8' });
+    const diff = execFileSync('git', ['diff', `${BASE}...HEAD`, '--', 'package.json'], { cwd: ROOT, encoding: 'utf8' });
+    const staged = execFileSync('git', ['diff', 'HEAD', '--', 'package.json'], { cwd: ROOT, encoding: 'utf8' });
     const added = (diff + staged)
       .split('\n')
       .filter((l) => /^\+\s*"[^"]+":\s*"[^"]+"/.test(l) && !/^\+\s*"(name|version|type|description)"/.test(l));

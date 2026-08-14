@@ -130,7 +130,10 @@ function scanFile(file: string): Finding[] {
     // Direct: name = 'https://...'   (covers const/let/var AND default parameters)
     const direct = [
       ...region.matchAll(
-        new RegExp(`\\b${name}\\s*(?::[^=,)]+)?=\\s*['"\`]((?:https?|wss?)://[^'"\`\\s\${]+)`, 'g'),
+        // The backtick needs NO escape inside a character class — escaping it made the class
+        // read as containing a backslash, so the pattern was not the one intended. Written as
+        // an explicit source string to keep what the regex actually contains legible.
+        new RegExp('\\b' + name + '\\s*(?::[^=,)]+)?=\\s*[\'"`]((?:https?|wss?)://[^\'"`\\s${]+)', 'g'),
       ),
     ].pop();
     // Indirect: name = `${other}/path`

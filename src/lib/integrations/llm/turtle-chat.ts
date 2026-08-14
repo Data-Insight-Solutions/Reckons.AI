@@ -2,7 +2,7 @@ import { chatClaude, chatOpenAI, chatGemini, chatOllama, chatReckons, chatChrome
 import { chatWithWasm } from './wasm';
 import { preferLocalBackendSync } from './prefer-local';
 import type { KBAction, KBContext, TurtleChatResponse } from '$lib/types/turtle-chat';
-import { ETHICS_PREAMBLE, ethicsPreambleFor, localityOf } from '../../safety/content-policy';
+import { ethicsPreambleFor, localityOf } from '../../safety/content-policy';
 
 const SYSTEM_PROMPT = `You are Shelly, a friendly low-poly turtle companion for Reckons.AI — a personal knowledge base tool built on RDF Turtle format (.ttl).
 
