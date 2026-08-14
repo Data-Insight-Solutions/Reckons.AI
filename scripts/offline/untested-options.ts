@@ -31,7 +31,7 @@
  * Usage: npx tsx scripts/offline/untested-options.ts [--all]
  */
 
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 const ROOT = new URL('../..', import.meta.url).pathname;

@@ -32,7 +32,6 @@ import { Parser } from 'n3';
 const ROOT = new URL('../..', import.meta.url).pathname;
 const THESIS = join(ROOT, 'src/lib/data/landing-thesis.json');
 const ROADMAP_JSON = join(ROOT, 'src/lib/data/landing-roadmap.json');
-const GRAPH = join(ROOT, 'static/reckons-roadmap.ttl');
 
 const norm = (s: unknown) => String(s ?? '').replace(/\s+/g, ' ').trim();
 const problems: string[] = [];
