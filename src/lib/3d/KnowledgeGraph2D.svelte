@@ -7,10 +7,13 @@
   import { onMount, onDestroy } from 'svelte';
   import type { Statement } from '$lib/rdf/types';
   import { termKey, isIRI, isLit, isMetaPredicate, displayLiteralLabel } from '$lib/rdf/types';
+  import { parseGraphDate } from '$lib/rdf/parse-date';
+  import { buildNodeTimes, timelineRange, undatedCount } from '$lib/rdf/timeline-layout';
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { RDF_TYPE, RDFS_LABEL, type EntityTypeDef, type GeometryName } from '$lib/rdf/entity-types';
   import { leapNodeKeys } from '$lib/rdf/kb-leap';
   import { buildHierarchyAnchors } from '$lib/rdf/hierarchy';
+  import { hopDistances, adjacencyFromPairs } from '$lib/rdf/n-hop';
   import { icon2dOverrides } from '$lib/stores/icon2d-overrides.svelte';
   import type { GhostGraph, GhostNode } from '$lib/rdf/ghost-graph';
 
@@ -350,44 +353,14 @@
     }
   }
 
-  const TIMELINE_PREDICATES_2D = new Set([
-    'urn:kbase:predicate/scheduled-at', 'urn:kbase:predicate/ends-at',
-    'urn:kbase:predicate/due-at', 'urn:kbase:predicate/created-at',
-    'urn:kbase:meta/scheduled-at', 'urn:kbase:meta/ends-at',
-    'urn:kbase:meta/due-at', 'urn:kbase:meta/created-at'
-  ]);
-
   function buildTimelineAnchors2D(): { anchors: Map<string, { x: number; y: number }>; markers: Marker[] } {
-    const nodeTime = new Map<string, number>();
-    const useIngested = timelineTimeSource === 'ingested';
-
-    if (!useIngested) {
-      for (const st of statements as Statement[]) {
-        if (st.status === 'rejected' || st.status === 'superseded') continue;
-        if (!TIMELINE_PREDICATES_2D.has(st.p.value)) continue;
-        const key = termKey(st.s);
-        const ts = new Date(st.o.value).getTime();
-        if (isNaN(ts)) continue;
-        const existing = nodeTime.get(key);
-        if (!existing || ts < existing) nodeTime.set(key, ts);
-      }
-    }
-
-    // Ingested mode: use createdAt for all nodes; event mode: fallback only
-    for (const st of statements as Statement[]) {
-      if (st.status === 'rejected' || st.status === 'superseded') continue;
-      const sk = termKey(st.s);
-      const ok = termKey(st.o);
-      if (!nodeTime.has(sk) && st.createdAt) nodeTime.set(sk, st.createdAt);
-      if (!nodeTime.has(ok) && st.createdAt) nodeTime.set(ok, st.createdAt);
-    }
-
-    if (nodeTime.size === 0) return { anchors: new Map(), markers: [] };
-
-    const times = [...nodeTime.values()];
-    const dataMin = Math.min(...times);
-    const dataMax = Math.max(...times);
-    const dataRange = dataMax - dataMin || 1;
+    // One shared rule (rdf/timeline-layout.ts). In event mode an UNDATED node is deliberately
+    // absent from this map: it goes to the undated lane below the axis rather than being
+    // placed at its ingestion time, which is a date the graph does not actually have.
+    const nodeTime = buildNodeTimes(statements as Statement[], timelineTimeSource === 'ingested' ? 'ingested' : 'event');
+    const range = timelineRange(nodeTime);
+    if (!range) return { anchors: new Map(), markers: [] };
+    const { dataMin, dataRange } = range;
     const visibleRange = dataRange / timelineZoom;
     const center = timelineCenter ?? (dataMin + dataRange / 2);
     const viewMin = center - visibleRange / 2;
@@ -395,6 +368,7 @@
 
     const SPREAD_X = 40;
     const SPREAD_Y = 12;
+    const UNDATED_ROWS = 5;
 
     const anchors = new Map<string, { x: number; y: number }>();
     for (const n of nodes) {
@@ -406,7 +380,17 @@
         const y = ((hash % 100) / 100 - 0.5) * SPREAD_Y;
         anchors.set(n.key, { x, y });
       } else {
-        anchors.set(n.key, { x: 0, y: -SPREAD_Y * 0.7 });
+        // UNDATED LANE. Two things matter here and the first attempt got the second wrong.
+        // (1) Spread across the width rather than stacking on one point — starter-everyday
+        //     puts 165 nodes here, and one coordinate just replaces the old wall with a
+        //     smaller one. (2) CLEAR THE AXIS BAND. Dated nodes occupy y in ±SPREAD_Y/2, so a
+        //     lane at 0.72×SPREAD_Y sat barely two units below them and visibly overlapped;
+        //     it has to start below the whole band and use enough rows that 165 nodes are not
+        //     shoulder to shoulder.
+        const hash = n.key.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+        const x = ((hash % 997) / 997 - 0.5) * SPREAD_X;
+        const row = (hash >> 3) % UNDATED_ROWS;
+        anchors.set(n.key, { x, y: -SPREAD_Y * 1.15 - row * 1.5 });
       }
     }
 
@@ -442,20 +426,28 @@
       markers.push({ key: `tl-${idx++}`, label: formatTick(new Date(ts)), color: '#7a8a9d', x, y: -SPREAD_Y * 0.5 - 1.5 });
     }
 
+    // Name the lane. An unlabelled band of parked nodes is just a different mystery; saying
+    // "no date (165)" reports the absence, which is the point of parking them.
+    const undated = undatedCount(nodes.map((n) => n.key), nodeTime);
+    if (undated > 0) {
+      markers.push({
+        key: 'undated-lane',
+        label: `no date (${undated})`,
+        color: '#6b7a8f',
+        x: -SPREAD_X / 2,
+        y: -SPREAD_Y * 1.15 + 1.2,
+      });
+    }
+
     return { anchors, markers };
   }
 
   function buildFocusAnchors(): Map<string, { x: number; y: number }> {
     if (!selected) return new Map();
-    const dist = new Map<string, number>([[selected, 0]]);
-    const queue = [selected]; let qi = 0;
-    while (qi < queue.length) {
-      const cur = queue[qi++]; const d = dist.get(cur)!;
-      for (const e of edges) {
-        const other = e.a.key === cur ? e.b.key : e.b.key === cur ? e.a.key : null;
-        if (other && !dist.has(other)) { dist.set(other, d + 1); queue.push(other); }
-      }
-    }
+    // Shared traversal (rdf/n-hop.ts). This used to walk the whole EDGE LIST for every
+    // dequeued node — O(V*E) — because no adjacency map existed. Building one first makes
+    // it O(V+E), which matters on the large graphs the focus layout is most useful on.
+    const dist = hopDistances(adjacencyFromPairs(edges.map((e) => [e.a.key, e.b.key] as const)), selected);
     const anchors = new Map<string, { x: number; y: number }>([[selected, { x: 0, y: 0 }]]);
     const angleMap = new Map<string, number>();
     const maxD = dist.size > 0 ? Math.max(...dist.values()) : 0;
@@ -1203,6 +1195,7 @@
     const DAMP      = 0.78;
     const BASE_REST = 3.2;
     const VEL_FLOOR = 0.001; // clamp micro-velocities to zero to stop jitter
+    const LOCK_TIMELINE_X = layout === 'timeline';
 
     for (let i = 0; i < nodes.length; i++) {
       const a = nodes[i];
@@ -1233,6 +1226,12 @@
       // Clamp micro-velocities to zero — prevents infinite low-amplitude jitter
       if (Math.abs(n.vx) < VEL_FLOOR && Math.abs(n.vy) < VEL_FLOOR) { n.vx = 0; n.vy = 0; }
       n.x += n.vx; n.y += n.vy;
+      // TIMELINE: x IS THE DATE (see the matching note in KnowledgeGraph.svelte). Repulsion,
+      // springs and centering all push on x, so a node only ever landed NEAR its date. Pin it.
+      if (LOCK_TIMELINE_X) {
+        const dateAnchor = activeAnchors.get(n.key);
+        if (dateAnchor) { n.x = dateAnchor.x; n.vx = 0; }
+      }
       nodePositionCache.set(n.key, { x: n.x, y: n.y });
     }
     } // end if (!flyAnim) — physics freeze
@@ -1345,30 +1344,13 @@
   let timelineDragStartX = 0;
   let timelineDragStartCenter = 0;
 
+  /** Scrub bounds. MUST use the same rule as buildTimelineAnchors2D — until 2026-08-13 this
+   *  function excluded the createdAt fallback while the anchor builder included it, so the
+   *  scrub range and the node positions disagreed and dragging the timeline felt broken. */
   function getTimelineDataRange(): { dataMin: number; dataMax: number; dataRange: number } | null {
-    const nodeTime = new Map<string, number>();
-    const useIngested = timelineTimeSource === 'ingested';
-    for (const st of statements as Statement[]) {
-      if (st.status === 'rejected' || st.status === 'superseded') continue;
-      if (useIngested) {
-        const sk = termKey(st.s);
-        if (!nodeTime.has(sk) && st.createdAt) nodeTime.set(sk, st.createdAt);
-      } else {
-        if (TIMELINE_PREDICATES_2D.has(st.p.value)) {
-          const ts = new Date(st.o.value).getTime();
-          if (!isNaN(ts)) {
-            const key = termKey(st.s);
-            const existing = nodeTime.get(key);
-            if (!existing || ts < existing) nodeTime.set(key, ts);
-          }
-        }
-      }
-    }
-    const times = [...nodeTime.values()];
-    if (times.length === 0) return null;
-    const dataMin = Math.min(...times);
-    const dataMax = Math.max(...times);
-    return { dataMin, dataMax, dataRange: dataMax - dataMin || 1 };
+    return timelineRange(
+      buildNodeTimes(statements as Statement[], timelineTimeSource === 'ingested' ? 'ingested' : 'event')
+    );
   }
 
   function onPointerDown(e: PointerEvent) {

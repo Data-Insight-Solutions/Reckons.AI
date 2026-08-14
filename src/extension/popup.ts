@@ -4,10 +4,17 @@
  * Ingest opens the Reckons.AI ingest page for the current URL.
  */
 import type { ExtensionState, PopupRequest, BackgroundEvent } from './types';
+import {
+  openComparisonSurface,
+  supportsLiveCapture,
+  type ExtensionCapabilities,
+} from './capabilities';
 
 let state: ExtensionState | null = null;
 let error: string | null = null;
 let currentTab: chrome.tabs.Tab | null = null;
+const extensionCapabilities = chrome as unknown as ExtensionCapabilities;
+const liveCaptureSupported = supportsLiveCapture(extensionCapabilities);
 
 function send(msg: PopupRequest): Promise<BackgroundEvent> {
   return chrome.runtime.sendMessage(msg);
@@ -74,14 +81,16 @@ function buildHTML(): string {
     <span class="btn-icon">&#x2B07;</span> Ingest Page
   </button>`;
 
-  // Go Live button
-  const fcActive = state.liveStreaming;
-  html += `<button class="action-btn ${fcActive ? 'live-active' : ''}" id="btn-live">
-    ${fcActive
-      ? '<span class="btn-icon">&#x25A0;</span> Stop Live'
-      : '<span class="btn-icon">&#x1F534;</span> Go Live'
-    }
-  </button>`;
+  if (liveCaptureSupported) {
+    // Go Live button
+    const fcActive = state.liveStreaming;
+    html += `<button class="action-btn ${fcActive ? 'live-active' : ''}" id="btn-live">
+      ${fcActive
+        ? '<span class="btn-icon">&#x25A0;</span> Stop Live'
+        : '<span class="btn-icon">&#x1F534;</span> Go Live'
+      }
+    </button>`;
+  }
 
   // Session status
   const sessionCount = state.session.pages.length;
@@ -122,14 +131,7 @@ function attachHandlers() {
   });
   document.getElementById('btn-compare')?.addEventListener('click', async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const hasSidePanel = typeof (chrome as any).sidePanel !== 'undefined';
-    if (hasSidePanel && tab?.id) {
-      // Chrome: open the native side panel (requires user gesture — popup click qualifies)
-      try { await (chrome.sidePanel as any).open({ tabId: tab.id }); } catch {}
-    } else {
-      // Firefox (and any browser without sidePanel API): open as a regular tab
-      chrome.tabs.create({ url: chrome.runtime.getURL('sidepanel.html'), active: true });
-    }
+    await openComparisonSurface(extensionCapabilities, tab?.id);
     send({ type: 'OPEN_COMPARE' });
     window.close();
   });
@@ -147,10 +149,7 @@ function attachHandlers() {
       if (resp.type === 'ERROR') { error = resp.message; render(); return; }
       if (resp.type === 'STATE') { state = resp.state; }
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      const hasSidePanel = typeof (chrome as any).sidePanel !== 'undefined';
-      if (hasSidePanel && tab?.id) {
-        try { await (chrome.sidePanel as any).open({ tabId: tab.id }); } catch {}
-      }
+      await openComparisonSurface(extensionCapabilities, tab?.id);
       window.close();
     }
   });

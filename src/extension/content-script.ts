@@ -57,7 +57,7 @@ function applyHighlightVars(hs: HighlightSettings) {
 // Load highlight settings from extension storage and apply
 async function loadHighlightSettings() {
   try {
-    const stored = await chrome.storage.local.get('settings');
+    const stored = await chrome.storage.local.get('settings') as Record<string, any>;
     const hs: HighlightSettings = {
       conflictColor:   '#ef4444',
       reinforceColor:  '#22c55e',

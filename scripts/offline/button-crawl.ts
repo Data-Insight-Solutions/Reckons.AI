@@ -32,6 +32,7 @@
  */
 import { chromium, type Page, type Browser } from '@playwright/test';
 import { analyzePixels, auditTouchTargets } from '../../tests/visual/vision-local';
+import { evalStable } from '../../tests/visual/eval-stable';
 import { appendFileSync, mkdirSync, writeFileSync } from 'fs';
 import path from 'path';
 
@@ -40,6 +41,23 @@ const arg = (k: string) => argv.find((a) => a.startsWith(`--${k}=`))?.split('=')
 const BASE_URL = process.env.BASE_URL ?? 'http://localhost:5173';
 const ONLY_ROUTE = arg('route');
 const MAX_PER_ROUTE = Number(arg('max') ?? 60);
+
+/**
+ * Viewport to crawl at. Defaults to desktop, but the 44px TOUCH-TARGET rule only means anything on
+ * a touch screen — a 30px chip is fine under a mouse pointer and a defect under a thumb. Crawling
+ * only at 1280x900 produced 66 "sub-44px" findings that no touch user would ever meet, which is
+ * the same cry-wolf problem as the no-ops. Pass --device=pixel (or iphone/ipad) to audit at a size
+ * where the rule applies; `touchTargetsMeaningful` records which it was, so a reader can tell
+ * whether the count is advisory or real.
+ */
+const DEVICES: Record<string, { width: number; height: number; touch: boolean }> = {
+  desktop: { width: 1280, height: 900, touch: false },
+  ipad:    { width: 834,  height: 1194, touch: true },
+  pixel:   { width: 412,  height: 915,  touch: true },
+  iphone:  { width: 390,  height: 844,  touch: true },
+};
+const DEVICE_NAME = arg('device') ?? 'desktop';
+const DEVICE = DEVICES[DEVICE_NAME] ?? DEVICES.desktop;
 
 /** Routes to crawl. Keep in sync with src/routes/(app). */
 const ROUTES = ['/', '/ingest', '/review', '/kb', '/settings', '/about'];
@@ -62,6 +80,17 @@ interface Snapshot {
   openDialogs: number;
   title: string;
   textHash: number;
+  /**
+   * Which controls are currently "on" (aria-pressed / aria-selected / aria-current / data-state
+   * active / .active / .selected), hashed.
+   *
+   * Without this the crawler is blind to the commonest kind of working button: a toggle whose only
+   * effect is an attribute flip. Body text is identical before and after, so a 2D/3D switch, a
+   * layout mode, or a sort order all looked like SILENT NO-OPS — 11 of them on the 2026-07-18 run,
+   * every one of them a control that works. Fingerprinting the on/off set makes a working toggle
+   * observably different from a dead one.
+   */
+  activeHash: number;
 }
 
 interface Finding {
@@ -74,6 +103,12 @@ interface Finding {
   errors: string[];
   dialogs: string[];
   openedPopup: boolean;
+  /** Click started a file download — a DOM no-change is correct. */
+  downloaded?: boolean;
+  /** Click opened the native file picker — invisible to the DOM by design. */
+  openedFilePicker?: boolean;
+  /** Control was already in the state the click sets — no-change is correct. */
+  alreadyActive?: boolean;
   blankScreen: boolean;
   dominantColor: string;
   tinyTouchTarget: boolean;
@@ -86,17 +121,70 @@ function verdict(f: Finding): string {
   if (f.errors.length) return 'crash';
   if (f.blankScreen) return 'blank';
   if (!f.clicked) return 'unclickable';
-  if (!f.changed && !f.dialogs.length && !f.openedPopup) return 'no-op';
+  if (isRealNoOp(f)) return 'no-op';
   return 'ok';
+}
+
+/**
+ * A no-op worth a human's attention: the click was accepted and NOTHING happened — no DOM change,
+ * no dialog, no popup, no download, no file picker — and the control was not already in the state
+ * it sets.
+ *
+ * The exclusions are not leniency, they are accuracy. An export button that downloads a .ttl
+ * changes no DOM, and neither does the active button of a 2D/3D toggle; reporting those as defects
+ * buries the one finding that is real. This is the docs-hub leap regression's signature — button
+ * fires, no error, nothing happens — and it only stays findable if the list stays honest.
+ */
+function isRealNoOp(f: Finding): boolean {
+  return (
+    f.clicked &&
+    !f.changed &&
+    !f.dialogs.length &&
+    !f.openedPopup &&
+    !f.downloaded &&
+    !f.openedFilePicker &&
+    !f.alreadyActive
+  );
 }
 
 /** A cheap fingerprint of what the user can currently see / where they are. */
 async function snapshot(page: Page): Promise<Snapshot> {
-  return page.evaluate(() => {
+  return evalStable(page, () => {
     const text = document.body?.innerText ?? '';
     let h = 0;
     for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) | 0;
+
+    // Fingerprint of every control currently in an "on" state, positionally indexed so a change
+    // in WHICH control is on registers even when the count stays the same.
+    const onSet: string[] = [];
+    document
+      .querySelectorAll('button, [role="button"], [role="tab"], [role="option"], a, input')
+      .forEach((n, idx) => {
+        const e = n as HTMLElement;
+        if (
+          e.getAttribute('aria-pressed') === 'true' ||
+          e.getAttribute('aria-selected') === 'true' ||
+          e.getAttribute('aria-current') !== null ||
+          e.getAttribute('data-state') === 'active' ||
+          e.getAttribute('data-state') === 'checked' ||
+          // bits-ui marks a selected ToggleGroup/Tabs item with data-state="on" +
+          // aria-checked, NOT .active. Missing these made every working toggle in the
+          // app read as a silent no-op (verified against /review layout chips).
+          e.getAttribute('data-state') === 'on' ||
+          e.getAttribute('aria-checked') === 'true' ||
+          e.classList.contains('active') ||
+          e.classList.contains('selected') ||
+          (e as HTMLInputElement).checked === true
+        ) {
+          onSet.push(`${idx}:${e.tagName}`);
+        }
+      });
+    const onStr = onSet.join('|');
+    let ah = 0;
+    for (let i = 0; i < onStr.length; i++) ah = (ah * 31 + onStr.charCodeAt(i)) | 0;
+
     return {
+      activeHash: ah,
       url: location.pathname + location.search,
       nodeLabels: document.querySelectorAll('.node-label').length,
       kbId: localStorage.getItem('currentKbId'),
@@ -117,12 +205,13 @@ function changed(a: Snapshot, b: Snapshot): boolean {
     a.kbId !== b.kbId ||
     a.openDialogs !== b.openDialogs ||
     a.title !== b.title ||
-    a.textHash !== b.textHash
+    a.textHash !== b.textHash ||
+    a.activeHash !== b.activeHash
   );
 }
 
 async function cleanSlate(page: Page) {
-  await page.evaluate(async () => {
+  await evalStable(page, async () => {
     try {
       const dbs = await indexedDB.databases();
       await Promise.all(
@@ -153,7 +242,7 @@ async function gotoRoute(page: Page, route: string) {
 async function crawlRoute(browser: Browser, route: string): Promise<Finding[]> {
   const findings: Finding[] = [];
   const page = await browser.newPage();
-  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.setViewportSize({ width: DEVICE.width, height: DEVICE.height });
 
   // First visit: clean slate so every run starts identically.
   await page.goto(BASE_URL + route, { waitUntil: 'domcontentloaded' }).catch(() => {});
@@ -196,10 +285,42 @@ async function crawlRoute(browser: Browser, route: string): Promise<Finding[]> {
       await d.dismiss().catch(() => {});
     };
     const onPopup = async (pg: Page) => { openedPopup = true; await pg.close().catch(() => {}); };
+
+    // A click can DO something real while changing nothing observable in the DOM. Without these
+    // three signals the crawler reported export buttons, folder pickers and already-active toggles
+    // as "silent no-ops" — 21 of them on the first full run, most of which were correct behavior.
+    // A finding list that is mostly false positives moves cost from generation to triage and gets
+    // switched off, so the discrimination belongs HERE, not in the reader's head.
+    let downloaded = false;
+    let openedFilePicker = false;
+    const onDownload = (dl: { cancel?: () => Promise<void> }) => {
+      downloaded = true;              // export/save — no DOM change is CORRECT
+      dl.cancel?.().catch(() => {});
+    };
+    const onFileChooser = (fc: { page: () => unknown }) => { openedFilePicker = true; void fc; };
+
+    // Was the control ALREADY in the state the click would set? Then "nothing changed" is the
+    // right outcome, not a defect (clicking the active "2D" button in a 2D/3D toggle).
+    const alreadyActive = await el.evaluate((node: Element) => {
+      const el2 = node as HTMLElement;
+      return (
+        el2.getAttribute('aria-pressed') === 'true' ||
+        el2.getAttribute('aria-selected') === 'true' ||
+        el2.getAttribute('aria-current') !== null ||
+        el2.getAttribute('data-state') === 'active' ||
+        el2.getAttribute('data-state') === 'on' ||
+        el2.getAttribute('aria-checked') === 'true' ||
+        el2.classList.contains('active') ||
+        el2.classList.contains('selected')
+      );
+    }).catch(() => false);
+
     page.on('pageerror', onErr);
     page.on('console', onConsole);
     page.on('dialog', onDialog);
     page.on('popup', onPopup);
+    page.on('download', onDownload);
+    page.on('filechooser', onFileChooser);
 
     let clicked = true;
     try {
@@ -234,6 +355,8 @@ async function crawlRoute(browser: Browser, route: string): Promise<Finding[]> {
     page.off('console', onConsole);
     page.off('dialog', onDialog);
     page.off('popup', onPopup);
+    page.off('download', onDownload);
+    page.off('filechooser', onFileChooser);
 
     const f: Finding = {
       route,
@@ -245,6 +368,9 @@ async function crawlRoute(browser: Browser, route: string): Promise<Finding[]> {
       errors: [...new Set(errors)].slice(0, 5),
       dialogs,
       openedPopup,
+      downloaded,
+      openedFilePicker,
+      alreadyActive,
       blankScreen,
       dominantColor,
       tinyTouchTarget,
@@ -257,7 +383,7 @@ async function crawlRoute(browser: Browser, route: string): Promise<Finding[]> {
       f.errors.length ? `${C.r}CRASH${C.x}` :
       f.blankScreen ? `${C.r}BLANK${C.x}` :
       !f.clicked ? `${C.y}UNCLICKABLE${C.x}` :
-      !f.changed && !f.dialogs.length && !f.openedPopup ? `${C.y}NO-OP${C.x}` :
+      isRealNoOp(f) ? `${C.y}NO-OP${C.x}` :
       `${C.g}ok${C.x}`;
     console.log(`  ${flag} ${C.d}[${i}]${C.x} ${label}`);
   }
@@ -386,11 +512,19 @@ async function main() {
 
   const browser = await chromium.launch();
   const all: Finding[] = [];
+  // Routes that never got crawled. Tracked because the alternative — what this script did until
+  // 2026-07-18 — is to log the failure, skip the route, and still print "crashes: 0". Four of six
+  // routes were dying on a navigation race and the summary claimed a clean run. An untested route
+  // is not a passing route, and a report that cannot tell the difference is worse than no report.
+  const skipped: { route: string; reason: string }[] = [];
+
   for (const route of routes) {
     try {
       all.push(...(await crawlRoute(browser, route)));
     } catch (e) {
-      console.error(`${C.r}route ${route} failed:${C.x}`, e instanceof Error ? e.message : e);
+      const reason = e instanceof Error ? e.message : String(e);
+      console.error(`${C.r}route ${route} failed:${C.x}`, reason);
+      skipped.push({ route, reason });
     }
   }
   await browser.close();
@@ -399,17 +533,46 @@ async function main() {
   mkdirSync(RESULTS_DIR, { recursive: true });
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const reportPath = path.join(RESULTS_DIR, `button-crawl_${stamp}.json`);
-  writeFileSync(reportPath, JSON.stringify({ baseUrl: BASE_URL, routes, findings: all }, null, 2));
+  const crawled = [...new Set(all.map((f) => f.route))];
+  writeFileSync(
+    reportPath,
+    JSON.stringify(
+      {
+        baseUrl: BASE_URL,
+        device: DEVICE_NAME,
+        viewport: { width: DEVICE.width, height: DEVICE.height },
+        // False when crawled on desktop: sub-44px counts below are advisory only.
+        touchTargetsMeaningful: DEVICE.touch,
+        routes, crawled, skipped, findings: all,
+      },
+      null,
+      2,
+    ),
+  );
 
   const crashes = all.filter((f) => f.errors.length);
   const blanks = all.filter((f) => f.blankScreen);
-  const noops = all.filter((f) => f.clicked && !f.changed && !f.dialogs.length && !f.openedPopup);
+  const noops = all.filter(isRealNoOp);
+  const benign = all.filter((f) => f.clicked && !f.changed && !isRealNoOp(f));
   const unclickable = all.filter((f) => !f.clicked);
 
   console.log(`\n${C.b}Summary${C.x}  (${all.length} clicks)`);
-  console.log(`  ${crashes.length ? C.r : C.d}crashes:      ${crashes.length}${C.x}`);
+  // COVERAGE FIRST. Every count below is only meaningful over the routes actually reached, so say
+  // what was reached before saying what was found — otherwise "crashes: 0" reads as "the app is
+  // fine" when it may mean "we never got there".
+  console.log(
+    `  ${C.d}device:       ${DEVICE_NAME} (${DEVICE.width}x${DEVICE.height})${DEVICE.touch ? '' : ' — touch-target counts ADVISORY'}${C.x}`,
+  );
+  console.log(
+    `  ${skipped.length ? C.r : C.d}coverage:     ${crawled.length}/${routes.length} route(s)${C.x}`,
+  );
+  for (const s of skipped) {
+    console.log(`    ${C.r}NOT CRAWLED${C.x} ${s.route} ${C.d}— ${s.reason.slice(0, 90)}${C.x}`);
+  }
+  console.log(`  ${crashes.length ? C.r : C.d}crashes:      ${crashes.length}${C.x}${skipped.length ? ` ${C.d}(over crawled routes only)${C.x}` : ''}`);
   console.log(`  ${blanks.length ? C.r : C.d}blank screens: ${blanks.length}${C.x}`);
-  console.log(`  ${C.y}silent no-ops: ${noops.length}${C.x} ${C.d}(review — may be intended)${C.x}`);
+  console.log(`  ${noops.length ? C.y : C.d}silent no-ops: ${noops.length}${C.x} ${C.d}(no DOM change, no download, not already-active)${C.x}`);
+  console.log(`  ${C.d}benign no-change: ${benign.length} ${C.d}(downloads, file pickers, already-active toggles)${C.x}`);
   console.log(`  ${C.d}unclickable:   ${unclickable.length}${C.x}`);
   const storyPath = writeStoryTtl(all);
   const queued = queueFindings(all);

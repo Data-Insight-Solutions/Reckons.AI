@@ -1,0 +1,56 @@
+{
+  "name": "Reckons.AI — Contact / feedback → email (F20)",
+  "meta": { "templateof": "reckons-contact-feedback" },
+  "nodes": [
+    {
+      "parameters": { "content": "## Contact / feedback → email (Microsoft Graph API)\n\nThe Reckons.AI in-app contact + feedback form POSTs here, so a submission arrives as an email. `src/lib/integrations/n8n/contact.ts` does the POST.\n\n**Send is over the Microsoft Graph API (OAuth2), NOT SMTP.** SMTP was tried first and is a dead end on a modern Microsoft 365 tenant: Security Defaults block Basic-Auth SMTP AUTH (`535 5.7.139 ... locked by your organization's security defaults policy`). Graph over HTTPS works fine *under* Security Defaults, so it is the path that does not rot.\n\n**Setup:**\n1. Import this workflow, open the Webhook node, copy the **production** URL. Its path must be `reckons-contact` so it matches `POST {VITE_FEEDBACK_WEBHOOK_URL}` — see .env.example. NB the app posts to a PRODUCT endpoint, not the user's own n8n (see contact.ts).\n2. Open the **Send Feedback Email** node → create a **Microsoft Outlook OAuth2** credential. In Entra: register an app (**multi-tenant** — n8n uses the `/common` authority), redirect URI `https://<your-n8n>/rest/oauth2-credential/callback`, delegated Graph permission **Mail.Send** + **offline_access**, a client secret (copy the **Value**, not the ID). Paste Client ID + Secret (+ Tenant ID) into n8n and Connect.\n3. Change the recipient (`toRecipients`) if it should not be matthew.roe@data-insight.solutions.\n\n**Reply-To is the submitter**, so replying to the notification reaches the person who wrote in.\n\nPayload: `{ name, email, message, source?, submittedAt }`.\n\n**THIS WEBHOOK IS PUBLIC AND UNAUTHENTICATED.** Anyone who learns the URL can post to it. The Validate node drops empty and oversized messages and keeps CR/LF out of mail headers, but it is not a spam filter and nothing rate-limits it. If abused, put n8n behind Cloudflare/rate-limiting or add a shared secret header — the app does not send one today.", "height": 620, "width": 480 },
+      "id": "note-overview",
+      "name": "About",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-180, 40]
+    },
+    {
+      "parameters": { "httpMethod": "POST", "path": "reckons-contact", "responseMode": "onReceived", "options": {} },
+      "id": "webhook",
+      "name": "Reckons Contact Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [360, 300],
+      "webhookId": "reckons-contact",
+      "notes": "responseMode onReceived returns 200 immediately, which is what makes the form show '✓ Sent' — the app treats any non-2xx as a failure and tells the user to email instead."
+    },
+    {
+      "parameters": { "jsCode": "// Build the email from a submission that arrived over the OPEN INTERNET — every\n// field here is untrusted input, so nothing is interpolated without cleaning.\nconst first = $input.first().json;\nconst b = first.body ?? first ?? {};\n\n// Strip CR/LF before anything reaches a mail HEADER (subject, reply-to). A newline\n// in a header field is how you inject extra headers — a Bcc, a forged From. The\n// body is free to keep its newlines; headers are not.\nconst header = (v, max) => String(v ?? '').replace(/[\\r\\n]+/g, ' ').trim().slice(0, max);\n\nconst name = header(b.name, 120) || 'anonymous';\nconst email = header(b.email, 200);\nconst source = header(b.source, 60) || 'unknown';\nconst message = String(b.message ?? '').trim();\n\n// A plausible address, checked only so Reply-To cannot be turned into a header\n// payload. This is NOT verification that the address exists or belongs to them.\nconst emailOk = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email);\n\nconst subject = `Reckons.AI feedback from ${name} (${source})`;\nconst text = [\n  `From:    ${name} <${emailOk ? email : 'no usable address supplied'}>`,\n  `Source:  ${source}`,\n  `Sent:    ${header(b.submittedAt, 40) || new Date().toISOString()}`,\n  '',\n  '---',\n  '',\n  message,\n].join('\\n');\n\n// Drop the junk the open webhook will inevitably attract. Length caps are the\n// cheap deterministic rule; they are not a spam filter and do not pretend to be.\nconst valid = message.length > 0 && message.length <= 20000;\n\nreturn [{ json: { subject, text, replyTo: emailOk ? email : '', valid } }];" },
+      "id": "format",
+      "name": "Validate and Format",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [580, 300]
+    },
+    {
+      "parameters": { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 }, "conditions": [{ "id": "valid-check", "leftValue": "={{ $json.valid }}", "rightValue": "", "operator": { "type": "boolean", "operation": "true", "singleValue": true } }], "combinator": "and" }, "options": {} },
+      "id": "if-valid",
+      "name": "Only If A Real Message",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [800, 300]
+    },
+    {
+      "parameters": { "resource": "message", "operation": "send", "toRecipients": "matthew.roe@data-insight.solutions", "subject": "={{ $json.subject }}", "bodyContent": "={{ $json.text }}", "additionalFields": { "bodyContentType": "Text", "replyTo": "={{ $json.replyTo }}", "saveToSentItems": true } },
+      "id": "send-email",
+      "name": "Send Feedback Email",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [1040, 220],
+      "notes": "Microsoft Graph API (OAuth2), NOT SMTP — see the About note. Attach a Microsoft Outlook OAuth2 credential. Reply-To is the submitter's address. Swap for the Gmail / Slack / ticket node to change channel — the app does not care how the feedback reaches you."
+    }
+  ],
+  "connections": {
+    "Reckons Contact Webhook": { "main": [[{ "node": "Validate and Format", "type": "main", "index": 0 }]] },
+    "Validate and Format": { "main": [[{ "node": "Only If A Real Message", "type": "main", "index": 0 }]] },
+    "Only If A Real Message": { "main": [[{ "node": "Send Feedback Email", "type": "main", "index": 0 }], []] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

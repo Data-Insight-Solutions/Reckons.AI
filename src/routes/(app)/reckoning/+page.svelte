@@ -3,8 +3,8 @@
    * A Reckoning — STP workflow (Situation · Target · Proposal)
    *
    * The user briefly describes their situation and target goal.
-   * Reckons.AI consults the full KB and produces a traceable proposal:
-   * options with KB citations, source trust levels, and a recommendation.
+   * Reckons.AI consults the full graph and produces a traceable proposal:
+   * options with graph citations, source trust levels, and a recommendation.
    *
    * Two modes:
    *   form  — text areas, structured step-by-step (desktop/tablet)
@@ -38,12 +38,12 @@
   let voiceInput = $state('');
   let voiceStep = $state<'situation' | 'target' | 'proposal'>('situation');
 
-  const RECKONING_SYSTEM_PROMPT = `You are Reckons.AI's decision advisor. Generate a Proposal from the user's Situation and Target using ONLY facts in their personal KB.
+  const RECKONING_SYSTEM_PROMPT = `You are Reckons.AI's decision advisor. Generate a Proposal from the user's Situation and Target using ONLY facts in their personal graph.
 
 OUTPUT RULES:
 - Start with an OVERVIEW in plain, everyday language — no jargon, no technical terms, no raw URIs or IRI strings.
 - Use the entity LABEL (e.g. "Shared Notes", "Company Alpha") never the raw IRI (e.g. "urn:kbase:...") in the main proposal text.
-- Each option must state a concrete next action the user can take, not just a KB citation.
+- Each option must state a concrete next action the user can take, not just a graph citation.
 - Do NOT include <kb-actions> blocks in this response.
 - Cite only facts in the graph snapshot. Do not invent.
 - Keep total response under 450 words. Plain text only — no markdown, no asterisks.
@@ -52,21 +52,21 @@ OUTPUT RULES:
 FORMAT (use these exact section labels):
 
 OVERVIEW
-[2-3 sentences. In plain language: what does your KB tell you about this situation and what is the bottom-line recommendation?]
+[2-3 sentences. In plain language: what does your graph tell you about this situation and what is the bottom-line recommendation?]
 
 Option A: [plain-language title]
-Basis: [which KB knowledge supports this, described in plain language] — Source: [source name]
+Basis: [which graph knowledge supports this, described in plain language] — Source: [source name]
 Action: [specific first step the user should take]
 Consideration: [one practical risk or tradeoff]
 
 Option B: [plain-language title]
-Basis: [plain-language KB support] — Source: [source name]
+Basis: [plain-language graph support] — Source: [source name]
 Action: [specific first step]
 Consideration: [practical tradeoff]
 
 Recommendation: [2-3 sentences, direct and practical. If the graph doesn't cover relevant areas, note what additional sources could strengthen the analysis — but remember that absence of a fact in this graph doesn't mean it's untrue, just not yet captured.]
 
-Confidence: [high / medium / low] — [brief reason, noting if confidence is limited by KB scope rather than contradictory evidence]
+Confidence: [high / medium / low] — [brief reason, noting if confidence is limited by graph scope rather than contradictory evidence]
 
 Ask for more: Reply "show technical details" to see the full graph entity references, predicate names, and IRI citations behind this proposal.`;
 
@@ -78,7 +78,7 @@ No markdown, no bullet points, no asterisks. Short sentences.
 Current conversation state will be provided. Your job:
 1. If situation is not confirmed: ask "What's your situation in one sentence?"
 2. If target is not confirmed: ask "What are you trying to achieve?"
-3. When both are confirmed: generate a brief spoken proposal (under 120 words) citing KB facts.
+3. When both are confirmed: generate a brief spoken proposal (under 120 words) citing graph facts.
 
 After proposing, ask: "Does that work for you, or should I adjust?"`;
 
@@ -561,7 +561,7 @@ Do NOT include <kb-actions> blocks.`;
   .mode-btn:last-child { border-right: none; }
   .mode-btn.active { background: var(--accent-soft); color: var(--accent); }
 
-  /* Empty KB */
+  /* Empty graph */
   .empty-kb {
     text-align: center;
     padding: 4rem 2rem;

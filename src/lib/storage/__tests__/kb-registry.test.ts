@@ -13,6 +13,27 @@ import {
   kbUrl
 } from '../kb-registry';
 
+// ── Regression: id collision ──────────────────────────────────────────────────
+
+describe('createKb id uniqueness', () => {
+  // A colliding id means two graphs share ONE Dexie database and corrupt each other. Date.now()
+  // is millisecond-resolution, so anything creating graphs programmatically (F97 archive graphs)
+  // or two tabs racing would hit this. Found by an archive-store test, 2026-07-18.
+  it('gives every graph a distinct id even when created in the same millisecond', () => {
+    localStorage.clear();
+    const ids = new Set<string>();
+    for (let i = 0; i < 25; i++) ids.add(createKb(`Graph ${i}`).id);
+    expect(ids.size).toBe(25);
+  });
+
+  it('keeps every created graph in the registry', () => {
+    localStorage.clear();
+    for (let i = 0; i < 10; i++) createKb(`G${i}`);
+    // 10 created + the always-present default entry.
+    expect(getRegistry().length).toBe(11);
+  });
+});
+
 // ── Setup ─────────────────────────────────────────────────────────────────────
 
 beforeEach(() => {

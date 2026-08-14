@@ -1,7 +1,6 @@
 {"step":"00-navbar","label":"main navigation"}
 {"step":"nav-view","label":"tap: view"}
 {"step":"page-view","label":"page-view"}
-{"step":"nav-add","label":"tap: add"}
 {"step":"page-add","label":"page-add"}
 {"step":"nav-review","label":"tap: review"}
 {"step":"page-review","label":"page-review"}

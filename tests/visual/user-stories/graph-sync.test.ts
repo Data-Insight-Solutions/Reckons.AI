@@ -50,11 +50,20 @@ async function waitForHook(page: Page) {
 
 /** The graph-package / folder-sync controls live in a collapsed-by-default
  * disclosure in the filter panel. Open it before asserting those controls. */
+/**
+ * Open the graph-package / folder-sync controls.
+ *
+ * These used to be a collapsed `.pkg-disclosure` in the always-on "Filters & layout" panel on the
+ * main graph view. They now live on the GRAPHS tab (/kb) as plain sections — see the comment at
+ * routes/(app)/+page.svelte:1942. The old markup is gone; only its dead CSS remained, which is why
+ * `svelte-check` reports ".pkg-disclosure > summary" as an unused selector.
+ *
+ * So this navigates instead of clicking a disclosure that no longer exists.
+ */
 async function openPackageDisclosure(page: Page) {
-  const summary = page.locator('.pkg-disclosure > summary');
-  await expect(summary).toBeVisible({ timeout: 10_000 });
-  const isOpen = await page.locator('.pkg-disclosure[open]').count();
-  if (!isOpen) { await summary.click(); await page.waitForTimeout(200); }
+  await page.goto(`${APP}/kb`);
+  await page.waitForTimeout(800);
+  await expect(page.getByRole('heading', { name: /graph package/i }).first()).toBeVisible({ timeout: 10_000 });
 }
 
 test.describe('Local Folder Sync', () => {
@@ -63,11 +72,9 @@ test.describe('Local Folder Sync', () => {
     await seedStarterGraph(page);
 
     await test.step('graph menu renders the package panel', async () => {
-      // The graph-package section is a collapsed disclosure in the always-on
-      // "Filters & layout" panel — open it to reveal the folder-sync controls.
+      // The graph-package section lives on the GRAPHS tab (/kb).
       await openPackageDisclosure(page);
       await expect(page.getByText('folder sync', { exact: false }).first()).toBeVisible({ timeout: 10_000 });
-      await expect(page.getByText(/graph package/i).first()).toBeVisible();
       await screenshotTo(page, 'graph-sync', '01-package-panel-unlinked');
     });
   });
@@ -75,6 +82,11 @@ test.describe('Local Folder Sync', () => {
   test('links an OPFS folder and pulls a new graph from disk', async ({ page }) => {
     await clearAllKbs(page);
     await seedStarterGraph(page);
+    // Land on the GRAPHS tab BEFORE linking. __linkHandleForTest holds the OPFS handle in
+    // memory, so navigating afterwards reloads the page and silently drops it — the panel then
+    // renders its unconnected state and "resync now" never appears. Order matters here.
+    await page.goto(`${APP}/kb`);
+    await page.waitForTimeout(800);
     await waitForHook(page);
 
     const result = await test.step('seed an OPFS .ttl and pull', async () => {
@@ -109,7 +121,7 @@ test.describe('Local Folder Sync', () => {
 
     await test.step('panel reflects the connected/synced state', async () => {
       await page.waitForTimeout(500);
-      await openPackageDisclosure(page);
+      // Already on /kb and still holding the linked handle — do NOT navigate here.
       await expect(page.getByText(/resync now/i).first()).toBeVisible({ timeout: 10_000 });
       await screenshotTo(page, 'graph-sync', '02-package-panel-connected');
     });

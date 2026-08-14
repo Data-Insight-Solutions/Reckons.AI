@@ -2,7 +2,19 @@ import type { Statement, Source } from '../../rdf/types';
 import { iri, lit } from '../../rdf/types';
 import { groundStatements } from '../../rdf/grounding';
 import { v4 as uuid } from 'uuid';
-import { ETHICS_PREAMBLE } from '../../safety/content-policy';
+import { ethicsPreambleFor } from '../../safety/content-policy';
+
+// STRUCTURED PURPOSE (2026-08-14, Matt: "avoid injection of unnecessary tokens into processes
+// that don't need protections"). These prompts emit TRIPLES, and every triple written passes
+// filterBlockedStatements in addStatements — a deterministic classifier that blocks regardless
+// of what the model was told. The preamble here was belt-and-braces where braces already
+// exist, at ~121 tokens per call.
+//
+// It is NOT removed from prose paths. Measured against prompt-audit, the worst offenders by
+// ratio — merge-analysis at 78%, the mcp summarizer at 78%, VOICE_MODE_PREFIX at 77% — all
+// produce prose a human reads, which no downstream filter can vet, so they keep it. Checking
+// that was the point: the cheapest-looking cuts were the ones that must not be made.
+const EXTRACTION_ETHICS = ethicsPreambleFor('structured');
 
 /**
  * Both the Claude backend and the local WASM backend produce the same
@@ -28,7 +40,7 @@ export type ExtractedTriple = {
   excerpt?: string;
 };
 
-export const EXTRACTION_SYSTEM_PROMPT = ETHICS_PREAMBLE + `You are an information extraction system that converts text into RDF-style triples.
+export const EXTRACTION_SYSTEM_PROMPT = EXTRACTION_ETHICS + `You are an information extraction system that converts text into RDF-style triples.
 
 Your job is to read the source text and output a JSON array of triples that capture the factual content.
 
@@ -77,7 +89,7 @@ Extract triples now. Respond with a JSON array only.`;
  * "Compact" was only ever true of the OUTPUT it asks for, never of the prompt itself.
  * Do not shrink this without re-running the ingest bench.
  */
-export const EXTRACTION_SYSTEM_PROMPT_FEWSHOT = ETHICS_PREAMBLE + `Extract facts from text as a JSON array of triples.
+export const EXTRACTION_SYSTEM_PROMPT_FEWSHOT = EXTRACTION_ETHICS + `Extract facts from text as a JSON array of triples.
 
 Output schema — each array item is an object with these fields:
 {"subject": "kebab-case-slug", "predicate": "kebab-case-verb-phrase", "object": "kebab-case-slug-or-literal", "objectIsLiteral": true|false, "datatype": "string|number|date|boolean", "gloss": "one short sentence", "confidence": 0.0-1.0, "excerpt": "verbatim source sentence"}

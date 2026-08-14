@@ -5,6 +5,7 @@
  */
 
 import type { IndicoEvent, IndicoSearchOptions, IndicoSearchResponse, IndicoConfig } from './types';
+import { watchCspViolations, describeUnreachable, currentAppOrigin } from './reachability';
 
 const DEFAULT_LIMIT = 50;
 
@@ -24,13 +25,42 @@ export class IndicoClient {
       if (v) url.searchParams.append(k, v);
     }
 
+    const headers: Record<string, string> = { Accept: 'application/json' };
+
+    // Auth: modern Indico (3.x) PERSONAL TOKENS are `indp_…` and MUST go in the Authorization
+    // header — passing one as the legacy `ak=` query param returns 400 "Malformed API key"
+    // (verified against a live Indico 3.x server, which is exactly what silently broke this
+    // integration). Only the legacy fixed API keys use `ak=`, so route by the token's shape.
     if (this.apiToken) {
-      url.searchParams.append('ak', this.apiToken);
+      if (this.apiToken.startsWith('indp_')) {
+        headers.Authorization = `Bearer ${this.apiToken}`;
+      } else {
+        url.searchParams.append('ak', this.apiToken);
+      }
     }
 
-    const res = await fetch(url.toString(), {
-      headers: { Accept: 'application/json' }
-    });
+    // A browser refuses this request in two invisible places — CSP (never sent) and CORS
+    // (sent, answered, response discarded) — and reports both as a bare "Failed to fetch".
+    // Watch for the CSP violation so the thrown error can name the layer that actually refused
+    // and the fix it needs; see ./reachability.ts.
+    const csp = watchCspViolations(new URL(this.baseUrl).origin);
+    let res: Response;
+    try {
+      res = await fetch(url.toString(), { headers });
+    } catch (cause) {
+      // The violation event and the fetch rejection race; yield once so a CSP block that did
+      // fire is observed rather than misreported as CORS.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const { message } = describeUnreachable({
+        serverOrigin: new URL(this.baseUrl).origin,
+        appOrigin: currentAppOrigin(),
+        cspBlocked: csp.blocked(),
+        cause
+      });
+      throw new Error(message, { cause });
+    } finally {
+      csp.stop();
+    }
 
     if (!res.ok) {
       const body = await res.text().catch(() => '');

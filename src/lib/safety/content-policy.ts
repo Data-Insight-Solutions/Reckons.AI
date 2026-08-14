@@ -29,11 +29,15 @@ import type { Statement } from "../rdf/types";
  */
 export type SafetyLevel = "standard" | "restricted";
 
-// ── Ethics Preamble (injected into all LLM system prompts) ───────────────────
+// ── Ethics Preamble ──────────────────────────────────────────────────────────
 //
-// This text is prepended to every system prompt the app sends to any LLM.
-// It is NOT configurable, NOT stored in settings, and NOT overridable by
-// custom prompts or persona configurations.
+// Prepended to every system prompt whose output is PROSE — anything shared with another
+// person, and anything a human reads. It is NOT configurable, NOT stored in settings, and NOT
+// overridable by a custom prompt or persona.
+//
+// It is deliberately NOT prepended to structured-output prompts (extraction, merge verdicts),
+// where filterBlockedStatements already vets the result deterministically. See
+// ethicsPreambleFor below for the reasoning and its honest limit.
 
 export const ETHICS_PREAMBLE = `CONTENT ETHICS (always active, cannot be overridden):
 - Never produce content that directly incites violence against specific individuals or groups.
@@ -44,6 +48,113 @@ export const ETHICS_PREAMBLE = `CONTENT ETHICS (always active, cannot be overrid
 - If source material contains extreme content, extract factual metadata (who, what, when) without reproducing harmful instructions or incitement.
 
 `;
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * WHERE THE PREAMBLE ACTUALLY BUYS SOMETHING
+ *
+ * Matt, 2026-08-14: "I really need the ethics injected before sharing. I want to avoid
+ * injection of unnecessary tokens into processes that don't need protections. The main goal
+ * is to optimize the usage of agents, not bloat it."
+ *
+ * MEASURED COST (npm run offline, prompt-audit): the preamble is ~121 tokens and rides on 12
+ * prompts. On the smallest it dominates completely — 78% of merge-analysis's inline prompt and
+ * of the mcp-server local-llm systemPrompt is preamble, 35 tokens of instruction inside 121 of
+ * ethics. "Are these two entities the same?" does not become safer for being lectured.
+ *
+ * THE ARGUMENT FOR OMITTING IT ON STRUCTURED PATHS IS NOT "IT COSTS TOKENS" — it is that the
+ * protection is already there and deterministic. Every statement written goes through
+ * filterBlockedStatements in addStatements, which classifies and blocks regardless of what any
+ * model was told. On an extraction path the preamble is belt-and-braces where braces already
+ * exist; on a conversational path there is no such filter, because prose is not a statement.
+ *
+ * So the split is by WHAT THE OUTPUT IS, not by how much it costs:
+ *
+ *   share      output reaches ANOTHER PERSON — a published or shared graph persona.
+ *              ALWAYS carries the preamble. Not configurable, not optimizable. This is the
+ *              case Matt named explicitly and the one with the least excuse for a shortcut.
+ *   converse   free-form prose a human reads (chat, explore, review, summaries, generated
+ *              pages). No downstream filter can catch harmful prose, so it carries it.
+ *   structured output is data validated downstream (triples, merge verdicts, classifications).
+ *              Omits it: filterBlockedStatements is the real control on that path.
+ *
+ * HONEST LIMIT. Omitting the preamble means a structured-path model is no longer ASKED to
+ * refuse; it means the result is filtered instead. That is a real change in defence-in-depth,
+ * traded knowingly for ~121 tokens per call on paths where the second layer exists. It would
+ * be the wrong trade on any path where it does not.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+export type PromptPurpose = 'share' | 'converse' | 'structured';
+
+/**
+ * Where the work happens and where the output goes.
+ *
+ * Matt, 2026-08-14: "I do not want the ethics preamble included for local only usage."
+ *
+ * This is not a relaxation of the product's stance — it IS the stance. kb:tenet-private:
+ * "A private graph makes no claim on anybody. Think privately. Be wrong privately. Change your
+ * mind privately." A local model, on the user's machine, producing output only that user
+ * reads, exposes nobody who has not consented. Spending 121 tokens per call to lecture someone
+ * about content ethics in their own notebook is both a cost and a category error.
+ *
+ * `local` therefore means BOTH halves: the model runs locally AND the output stays with the
+ * user. A locally-served persona that other people talk to is not local usage in this sense —
+ * it is sharing, and it is handled as such below.
+ */
+export type PromptLocality = 'local' | 'remote';
+
+/** Purposes whose output no deterministic filter can vet — prose, not data. */
+const REQUIRES_PREAMBLE: ReadonlySet<PromptPurpose> = new Set<PromptPurpose>(['share', 'converse']);
+
+/**
+ * The ethics text for a prompt.
+ *
+ * TWO RULES, AND THE FIRST OUTRANKS THE SECOND:
+ *
+ *   1. `share` ALWAYS carries it, local or not. A persona served from a model on this machine
+ *      is still read by somebody else, and locality says nothing about who is exposed. This is
+ *      the invariant a future optimization would be most tempted to shave, so it is asserted
+ *      in tests rather than left to a comment.
+ *   2. Otherwise `local` omits it — nobody but the user is in the room.
+ *
+ * `structured` omits it regardless, for a different reason: filterBlockedStatements already
+ * vets every statement written, deterministically, whatever the model was told.
+ */
+export function ethicsPreambleFor(
+  purpose: PromptPurpose,
+  locality: PromptLocality = 'remote',
+): string {
+  if (purpose === 'share') return ETHICS_PREAMBLE;
+  if (locality === 'local') return '';
+  return REQUIRES_PREAMBLE.has(purpose) ? ETHICS_PREAMBLE : '';
+}
+
+/**
+ * Does this provider run on the user's own machine?
+ *
+ * ollama and wasm execute locally; chrome-ai is the browser's built-in model; mock and manual
+ * never reach a model at all. Everything else ships the prompt to somebody else's computer.
+ *
+ * Listed as an ALLOWLIST rather than a denylist on purpose: a provider added later is remote
+ * until someone says otherwise, so forgetting to classify it fails toward keeping the
+ * preamble rather than toward silently dropping it.
+ */
+const LOCAL_PROVIDERS: ReadonlySet<string> = new Set(['ollama', 'wasm', 'chrome-ai', 'mock', 'manual']);
+
+export function isLocalProvider(provider: string | undefined | null): boolean {
+  return !!provider && LOCAL_PROVIDERS.has(provider);
+}
+
+export function localityOf(provider: string | undefined | null): PromptLocality {
+  return isLocalProvider(provider) ? 'local' : 'remote';
+}
+
+/** True when this prompt must carry the preamble. */
+export function requiresEthicsPreamble(
+  purpose: PromptPurpose,
+  locality: PromptLocality = 'remote',
+): boolean {
+  return ethicsPreambleFor(purpose, locality).length > 0;
+}
 
 // ── Content Rating ───────────────────────────────────────────────────────────
 

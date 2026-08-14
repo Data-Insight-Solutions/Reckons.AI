@@ -76,6 +76,15 @@
 
   --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 12px 32px -16px rgba(0, 0, 0, 0.6);
   --shadow-2: 0 24px 60px -24px rgba(255, 107, 53, 0.25);
+
+  /* Shared clearance for controls/content that must sit above the fixed app nav. */
+  --app-nav-clearance: max(7rem, calc(5.5rem + env(safe-area-inset-bottom)));
+}
+
+@media (max-width: 640px) {
+  :root {
+    --app-nav-clearance: max(6rem, calc(4.5rem + env(safe-area-inset-bottom)));
+  }
 }
 
 *,

@@ -20,6 +20,7 @@
  */
 import { test, expect, type Page } from '@playwright/test';
 import { clearAllKbs, screenshotTo } from '../kb-seed';
+import { evalStable } from '../eval-stable';
 
 const APP = 'http://localhost:5174';
 const SHOTS = 'async-questions';
@@ -34,8 +35,11 @@ const KPRED = 'urn:kbase:predicate/';
  * the question silently becomes a bogus assertion, so the test asserts on it directly.
  */
 async function seedAgentQuestion(page: Page): Promise<void> {
-  await page.evaluate(
-    async ({ KB, KPRED }) => {
+  // evalStable, not page.evaluate: seeding runs right after a goto, so a late hydration redirect
+  // can destroy the context mid-call. Same navigation race the harness hit.
+  await evalStable(
+    page,
+    async ({ KB, KPRED }: { KB: string; KPRED: string }) => {
       const now = Date.now();
       const sourceId = 'agent-questions';
 
@@ -115,7 +119,9 @@ test.describe('Async questions — the agent asks, the human answers later', () 
 
     // ── 3. The human answers, whenever they like ──────────────────────────────
     // The partial-fact card offers a picker rather than accept/reject (DiffEntry.svelte).
-    const card = page.locator('.diff-entry', { hasText: /auto-merge/i }).first();
+    // DiffEntry.svelte's root is `.entry` (not `.diff-entry`) — the old selector matched nothing,
+    // so this step asserted against a locator that could never exist.
+    const card = page.locator('.entry', { hasText: /auto-merge/i }).first();
     await expect(card).toBeVisible();
     await screenshotTo(page, SHOTS, '02-entity-picker');
 

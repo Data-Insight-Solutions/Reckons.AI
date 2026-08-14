@@ -1,8 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * Deploy-gate smoke config — runs tests/e2e/graph-render.test.ts against a
- * MINIFIED PRODUCTION BUILD (`vite build` + `vite preview`), never `vite dev`.
+ * Deploy-gate smoke config — runs the exact renderer and Pixel ingest contract
+ * against a MINIFIED PRODUCTION BUILD (`vite build` + `vite preview`), never
+ * `vite dev`.
  *
  * Why a separate config: the "black graph" production bug (PR #21) only
  * reproduced once Vite/Rollup minified the bundle — Threlte's <T.BufferAttribute>
@@ -20,7 +21,6 @@ const PORT = 4174;
 
 export default defineConfig({
   testDir: './tests/e2e',
-  testMatch: '**/graph-render.test.ts',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -38,8 +38,17 @@ export default defineConfig({
   projects: [
     {
       name: 'desktop-chrome',
+      testMatch: '**/graph-render.test.ts',
       use: {
         ...devices['Desktop Chrome'],
+        launchOptions: { args: ['--no-sandbox', '--disable-dev-shm-usage'] },
+      },
+    },
+    {
+      name: 'pixel-7-ingest',
+      testMatch: '**/visual-contract.test.ts',
+      use: {
+        ...devices['Pixel 7'],
         launchOptions: { args: ['--no-sandbox', '--disable-dev-shm-usage'] },
       },
     },

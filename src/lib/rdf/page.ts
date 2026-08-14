@@ -33,6 +33,20 @@ export const PAGE_GENERATED = `${PAGE_NS}generated`;
 
 export const WEBPAGE_TYPE = 'urn:kbase:type/WebPage';
 
+/**
+ * What a page is MADE FROM (F27.3 composition) — see `src/lib/publish/website-graph.ts`.
+ *
+ * These predicates are deliberately NOT defined here. An earlier draft minted
+ * `urn:reckons:page/sources-graph` and friends; the site graph now uses the standard
+ * vocabularies that already exist for this — `schema:isBasedOn` for the source relation,
+ * `schema:about` for subject matter, `schema:abstract` for the page's purpose, and
+ * `void:Dataset` for the graphs themselves. The project already uses dcterms, foaf, owl, prov
+ * and skos, so the invented terms were the outlier.
+ *
+ * The one local term that survives is `urn:reckons:page/excludes-under`, because no standard
+ * term means "this subtree is deliberately not published, and here is why".
+ */
+
 const RDF_TYPE   = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
 

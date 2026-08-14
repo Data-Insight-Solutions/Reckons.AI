@@ -12,6 +12,7 @@
  * gate whether expensive API calls are needed.
  */
 
+import { evalStable } from './eval-stable';
 import type { Page } from '@playwright/test';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -247,7 +248,7 @@ export async function analyzeDOMOverlaps(
     .map((e) => ({ selector: e.selector, rect: e.rect! }));
 
   // Z-index audit
-  const zIndexIssues = await page.evaluate((sels: string[]) => {
+  const zIndexIssues = await evalStable(page, (sels: string[]) => {
     const issues: string[] = [];
     const positioned: Array<{
       sel: string;
@@ -301,7 +302,7 @@ export async function analyzeText(
   page: Page,
   expectedLabels: string[],
 ): Promise<TextAnalysis> {
-  const visibleTexts: string[] = await page.evaluate(() => {
+  const visibleTexts: string[] = await evalStable(page, () => {
     const walker = document.createTreeWalker(
       document.body,
       NodeFilter.SHOW_TEXT,
@@ -349,7 +350,7 @@ const MIN_TOUCH_TARGET = 44; // WCAG 2.5.5
 export async function auditTouchTargets(
   page: Page,
 ): Promise<TouchTargetIssue[]> {
-  return page.evaluate((minSize: number) => {
+  return evalStable(page, (minSize: number) => {
     const interactive = document.querySelectorAll(
       'button, a, [role="button"], input, select, textarea, [tabindex]',
     );

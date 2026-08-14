@@ -263,6 +263,69 @@ export async function addStatements(
     }
   }
 
+  // F97.3 ARCHIVE RESTORE GUARD — do not silently duplicate what is merely archived.
+  //
+  // The detector (archive-store.findArchivedReferencesForParent) and the restore action
+  // (restoreArchivedEntityForParent) both existed and were unreachable, because nothing called
+  // the detector at a commit boundary. This is that call. addStatements is the single funnel
+  // for every write — 32 call sites reach it — so one hook covers every ingest path rather
+  // than each path remembering to check.
+  //
+  // Only the MATCHING statements are held: a 200-fact import that mentions one archived entity
+  // writes 199 and pauses one. Holding the batch would punish the user for having archived
+  // anything. And it PAUSES rather than auto-restoring, because the match is a conservative
+  // label/IRI heuristic, not proof of identity — auto-restoring on a label collision would
+  // resurrect something deliberately archived. Agents propose, humans settle (F52).
+  //
+  // Best-effort: any failure here writes the batch unchanged. A guard that could block an
+  // ingest when the archive is unreadable would be worse than the duplicate it prevents.
+  try {
+    const { getCurrentKbId, getRegistry } = await import('$lib/storage/kb-registry');
+    const parentStableId = getRegistry().find((e) => e.id === getCurrentKbId())?.stableId;
+    if (parentStableId) {
+      const [{ findArchivedReferencesForParent }, { guardIncoming, describePrompt }] = await Promise.all([
+        import('$lib/storage/archive-store'),
+        import('$lib/rdf/archive-guard'),
+      ]);
+      const matches = await findArchivedReferencesForParent(parentStableId, gated);
+      const decision = guardIncoming(gated, matches);
+      if (decision.prompts.length > 0) {
+        const { pushNotification } = await import('./notifications.svelte');
+        for (const prompt of decision.prompts) {
+          pushNotification({
+            id: `archive-restore-${prompt.entity}`,
+            type: 'warn',
+            title: 'Archived entity mentioned',
+            body: describePrompt(prompt),
+            action: {
+              label: 'restore it',
+              onclick: () => {
+                void (async () => {
+                  const { restoreArchivedEntityForParent } = await import('$lib/storage/archive-store');
+                  await restoreArchivedEntityForParent({
+                    workingKbId: getCurrentKbId(),
+                    parentStableId,
+                    entity: prompt.entity,
+                    actor: 'human',
+                  });
+                  await addStatements(prompt.statements, sourceId, opts);
+                  await loadAll();
+                })();
+              },
+            },
+            // Dismissing is the "keep separate" branch: the held facts are written as they
+            // arrived, minting the new node. Silence must not DISCARD the user's ingest.
+            ondismiss: () => { void addStatements(prompt.statements, sourceId, opts); },
+          });
+        }
+        gated = decision.write;
+        if (gated.length === 0) return;
+      }
+    }
+  } catch (e) {
+    console.warn('[F97.3] archive guard skipped:', e);
+  }
+
   // Clean statements via JSON round-trip to ensure IndexedDB compatibility
   const cleanedSts = gated.map(st => JSON.parse(JSON.stringify(st)) as Statement);
   await db.statements.bulkPut(cleanedSts);

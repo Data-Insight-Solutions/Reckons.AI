@@ -40,7 +40,7 @@ providerEl.addEventListener('change', () => {
 
 // ── Load ──────────────────────────────────────────────────────────────────────
 async function load() {
-  const stored = await chrome.storage.local.get('settings');
+  const stored = await chrome.storage.local.get('settings') as Record<string, any>;
   const s: ExtSettings = { ...DEFAULT_SETTINGS, ...stored.settings };
   const hl: HighlightSettings = { ...DEFAULT_HIGHLIGHT_SETTINGS, ...(s.highlight ?? {}) };
 

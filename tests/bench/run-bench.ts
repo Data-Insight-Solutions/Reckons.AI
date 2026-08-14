@@ -37,18 +37,25 @@ if (existsSync(envPath)) {
 // These match the WASM_MODELS list in settings + a few extras worth testing.
 // To test a new HuggingFace model, just pass --model org/model-name.
 
-const CATALOGUE: Record<string, { label: string; note: string }> = {
+// sizeMB = approximate q4 ONNX download size (the number that matters for a memory-constrained
+// device — see device-capability.ts / F36 iOS policy). Verified against HF content-length.
+const CATALOGUE: Record<string, { label: string; note: string; sizeMB: number }> = {
   // ── SmolLM2 family ──
-  'HuggingFaceTB/SmolLM2-135M-Instruct':          { label: 'SmolLM2-135M',    note: '~135 MB · ultra-light' },
-  'HuggingFaceTB/SmolLM2-360M-Instruct':          { label: 'SmolLM2-360M',    note: '~360 MB · current default' },
-  'HuggingFaceTB/SmolLM2-1.7B-Instruct':          { label: 'SmolLM2-1.7B',    note: '~1.7 GB · largest SmolLM' },
+  'HuggingFaceTB/SmolLM2-135M-Instruct':          { label: 'SmolLM2-135M',    note: 'ultra-light · iOS candidate', sizeMB: 180 },
+  'HuggingFaceTB/SmolLM2-360M-Instruct':          { label: 'SmolLM2-360M',    note: 'light',                       sizeMB: 370 },
+  'HuggingFaceTB/SmolLM2-1.7B-Instruct':          { label: 'SmolLM2-1.7B',    note: 'largest SmolLM',              sizeMB: 1700 },
   // ── Qwen family ──
-  'onnx-community/Qwen2.5-0.5B-Instruct':         { label: 'Qwen2.5-0.5B',    note: '~500 MB · multilingual' },
-  'onnx-community/Qwen2.5-Coder-0.5B-Instruct':   { label: 'Qwen2.5-Coder',   note: '~500 MB · code-focused' },
-  'onnx-community/Qwen2.5-1.5B-Instruct':         { label: 'Qwen2.5-1.5B',    note: '~1.5 GB · best ingest so far' },
+  'onnx-community/Qwen2.5-0.5B-Instruct':         { label: 'Qwen2.5-0.5B',    note: 'multilingual · desktop default', sizeMB: 500 },
+  'onnx-community/Qwen2.5-Coder-0.5B-Instruct':   { label: 'Qwen2.5-Coder',   note: 'code-focused',                sizeMB: 500 },
+  'onnx-community/Qwen2.5-1.5B-Instruct':         { label: 'Qwen2.5-1.5B',    note: 'best ingest so far',          sizeMB: 1500 },
   // ── Other families ──
-  'onnx-community/Llama-3.2-1B-Instruct':         { label: 'Llama-3.2-1B',    note: '~1 GB · Meta small' },
+  'onnx-community/Llama-3.2-1B-Instruct':         { label: 'Llama-3.2-1B',    note: 'Meta small',                  sizeMB: 1000 },
 };
+
+/** Approx download size (MB) for a model — known catalogue value, else 0 (unknown). */
+function modelSizeMB(modelId: string): number {
+  return CATALOGUE[modelId]?.sizeMB ?? 0;
+}
 
 // ── CLI args ─────────────────────────────────────────────────────────────────
 
@@ -285,31 +292,41 @@ function printComparison(reports: BenchReport[]): void {
   console.log(`${'═'.repeat(72)}`);
 
   const header = [
-    'Model'.padEnd(20),
-    'Ingest P'.padStart(9),
-    'Ingest R'.padStart(9),
+    'Model'.padEnd(16),
+    'Size'.padStart(7),
     'Ingest F1'.padStart(9),
     'Chat'.padStart(7),
     'Combined'.padStart(9),
+    'Score/100MB'.padStart(11),
   ].join(' │ ');
 
   console.log(`  ${header}`);
   console.log(`  ${'─'.repeat(header.length)}`);
 
-  const sorted = [...reports].sort((a, b) => b.combined - a.combined);
+  // Sort by EFFICIENCY (combined score per 100 MB) — the "performance vs size" ranking Matt asked
+  // for: the model that buys the most quality per megabyte a constrained device has to load.
+  const eff = (r: BenchReport) => {
+    const mb = modelSizeMB(r.model);
+    return mb > 0 ? r.combined / (mb / 100) : 0;
+  };
+  const sorted = [...reports].sort((a, b) => eff(b) - eff(a));
   for (const r of sorted) {
-    const label = (CATALOGUE[r.model]?.label ?? r.model.split('/').pop() ?? r.model).slice(0, 20);
+    const label = (CATALOGUE[r.model]?.label ?? r.model.split('/').pop() ?? r.model).slice(0, 16);
+    const mb = modelSizeMB(r.model);
     const row = [
-      label.padEnd(20),
-      pct(r.ingest.precision).padStart(9),
-      pct(r.ingest.recall).padStart(9),
+      label.padEnd(16),
+      (mb ? `${mb}MB` : '?').padStart(7),
       pct(r.ingest.f1).padStart(9),
       pct(r.chatOverall).padStart(7),
       pct(r.combined).padStart(9),
+      (mb ? eff(r).toFixed(3) : '?').padStart(11),
     ].join(' │ ');
     console.log(`  ${row}`);
   }
 
+  console.log(`${'═'.repeat(72)}`);
+  console.log('  Sorted by efficiency (combined score per 100 MB). Ingest F1 = extraction quality;');
+  console.log('  a tiny model with F1≈0 cannot extract — it is chat-only. See F36 iOS policy.');
   console.log(`${'═'.repeat(72)}\n`);
 }
 

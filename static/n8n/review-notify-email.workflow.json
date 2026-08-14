@@ -3,7 +3,7 @@
   "meta": { "templateof": "reckons-review-notify" },
   "nodes": [
     {
-      "parameters": { "content": "## Review notification → email (F73.1 kb:n8n-review-notifications)\n\nReckons.AI POSTs here whenever new facts land for review — a grant scrape, a subscribed publisher's pod, or any ingest — so you get an email instead of having to open the graph.\n\n**Setup:**\n1. Import this workflow, open the Webhook node, copy the **production** URL. Its path must be `reckons-review` so it matches `POST {n8nBaseUrl}/webhook/reckons-review`.\n2. In Reckons.AI → Settings → Integrations: set the n8n base URL and enable **Notify on review** (`n8nNotifyOnReview`).\n3. Set the Send Email credential + your address.\n\nPayload: `{ count, kind, source?, samples?[], at }`.", "height": 420, "width": 420 },
+      "parameters": { "content": "## Review notification → email (F73.1 kb:n8n-review-notifications)\n\nReckons.AI POSTs here whenever new facts land for review — a grant scrape, a subscribed publisher's pod, or any ingest — so you get an email instead of having to open the graph.\n\n**Setup:**\n1. Import this workflow, open the Webhook node, copy the **production** URL. Its path must be `reckons-review` so it matches `POST {n8nBaseUrl}/webhook/reckons-review`.\n2. In Reckons.AI → Settings → Integrations: set the n8n base URL and enable **Notify on review** (`n8nNotifyOnReview`).\n3. On the Send node, attach a **Microsoft Outlook OAuth2** credential (Graph API, NOT SMTP — SMTP is blocked on a modern M365 tenant by Security Defaults) and set your recipient. Same Entra app-registration setup as the contact-feedback workflow.\n\nPayload: `{ count, kind, source?, samples?[], at }`.", "height": 420, "width": 420 },
       "id": "note-overview",
       "name": "About",
       "type": "n8n-nodes-base.stickyNote",
@@ -36,13 +36,13 @@
       "position": [800, 260]
     },
     {
-      "parameters": { "sendTo": "you@example.com", "subject": "={{ $json.subject }}", "emailFormat": "text", "message": "={{ $json.body }}", "options": {} },
+      "parameters": { "resource": "message", "operation": "send", "toRecipients": "you@example.com", "subject": "={{ $json.subject }}", "bodyContent": "={{ $json.body }}", "additionalFields": { "bodyContentType": "Text", "saveToSentItems": true } },
       "id": "send-email",
       "name": "Send email",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
       "position": [1040, 200],
-      "notes": "Set your SMTP credential + recipient. Swap for the Gmail/Slack/etc. node to change the channel — the app doesn't care how you're notified."
+      "notes": "Microsoft Graph API (OAuth2), NOT SMTP — SMTP is blocked on a modern M365 tenant by Security Defaults (535 5.7.139). Attach a Microsoft Outlook OAuth2 credential and set the recipient (toRecipients). Swap for the Gmail / Slack node to change channel — the app does not care how you are notified."
     }
   ],
   "connections": {

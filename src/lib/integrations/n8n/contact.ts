@@ -1,17 +1,32 @@
 /**
- * n8n contact-form submission (F20 use case).
+ * Contact / feedback submission (F20 use case, kb:feedback-channel).
  *
- * A front-end contact form POSTs to an n8n webhook, which the user's self-hosted
- * n8n instance routes however they like (email, a sheet, a ticket, Slack…). This
- * is the clean "web integration via open-source, self-hosted automation" case:
- * the app stays static/offline-first; n8n owns the side effects.
+ * THIS POSTS TO THE PRODUCT'S FEEDBACK ENDPOINT, NOT THE USER'S OWN n8n — and that distinction
+ * is the whole point of this module, so do not "simplify" it back.
  *
- * Reuses settings().n8nBaseUrl (Settings → Integrations), the same base as the
- * currents-sync workflows. Webhook path: /webhook/reckons-contact.
+ * It originally reused settings().n8nBaseUrl, the user's own automation instance. That is right
+ * for every OTHER n8n feature (currents sync, review notifications): those are the user's
+ * automations firing into their own systems. Feedback is the opposite direction — a message TO
+ * THE MAINTAINERS about the product — and routing it through the user's instance meant:
+ *
+ *   - user with no n8n         -> mailto fallback (fine)
+ *   - user with their OWN n8n  -> POST to THEIR server, which has no reckons-contact workflow
+ *                                 -> 404 -> feedback silently lost
+ *
+ * That second case hits exactly the technically-inclined users most likely to run n8n, and most
+ * likely to have something worth telling us.
+ *
+ * The endpoint is therefore CONFIGURED, not derived from user settings, and deliberately not
+ * hardcoded here: set VITE_FEEDBACK_WEBHOOK_URL at build time (see .env.example). Unset means no
+ * direct submit at all — the form degrades to mailto, which always works. A fork or self-hoster
+ * points it at their own desk by setting their own value.
  */
-import { settings } from '../../stores/settings.svelte';
-
 export const CONTACT_WEBHOOK_PATH = '/webhook/reckons-contact';
+
+/** The product's feedback webhook, from build-time config. Empty = mailto-only. */
+export function feedbackWebhookUrl(): string {
+  return (import.meta.env.VITE_FEEDBACK_WEBHOOK_URL ?? '').trim().replace(/\/+$/, '');
+}
 
 export type ContactPayload = {
   name: string;
@@ -23,18 +38,18 @@ export type ContactPayload = {
 
 export type ContactResult = { ok: true } | { ok: false; error: string; unconfigured?: boolean };
 
-/** True when an n8n base URL is configured, so the form can POST instead of mailto. */
+/** True when a feedback endpoint is configured, so the form can POST instead of mailto. */
 export function n8nConfigured(): boolean {
-  return !!settings().n8nBaseUrl?.trim();
+  return !!feedbackWebhookUrl();
 }
 
-/** Submit a contact form to the configured n8n instance. */
+/** Submit a contact form to the product's feedback endpoint. */
 export async function submitContactForm(payload: ContactPayload): Promise<ContactResult> {
-  const base = settings().n8nBaseUrl?.trim().replace(/\/+$/, '');
-  if (!base) return { ok: false, error: 'No n8n instance configured.', unconfigured: true };
+  const url = feedbackWebhookUrl();
+  if (!url) return { ok: false, error: 'No feedback endpoint configured.', unconfigured: true };
 
   try {
-    const res = await fetch(`${base}${CONTACT_WEBHOOK_PATH}`, {
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, submittedAt: new Date().toISOString() }),

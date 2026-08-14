@@ -181,7 +181,11 @@ export function toTriG(statements: Statement[], opts: TriGOptions = {}): string 
     : statements;
 
   const lines: string[] = [];
-  if (opts.header) lines.push(opts.header);
+  // MUST be a comment. This pushed the header raw until 2026-08-14, so any caller passing one
+  // produced INVALID TriG ("Unexpected ... on line 1") — and every test called toTriG without
+  // a header, so the whole function looked covered while its first real caller was broken.
+  // toTurtle and toTurtleFull both comment theirs; this was the odd one out.
+  if (opts.header) lines.push(`# ${opts.header}`);
   for (const [p, ns] of Object.entries(prefixes)) lines.push(`@prefix ${p}: <${ns}> .`);
   lines.push('');
 
@@ -408,6 +412,10 @@ export function toTurtleFull(
     lines.push(`    rdf:object ${termTTL(st.o, prefixes)} ;`);
     lines.push(`    meta:status "${st.status}" ;`);
     lines.push(`    meta:confidence "${st.confidence}"^^xsd:decimal ;`);
+    // Attribution must survive the export, or proposal yield can only ever be computed inside
+    // the browser — and the job that would compute it is script tier, reading these files.
+    if (st.proposedBy) lines.push(`    meta:proposed-by ${JSON.stringify(st.proposedBy)} ;`);
+    if (st.askedBy) lines.push(`    meta:asked-by ${JSON.stringify(st.askedBy)} ;`);
     if (st.gloss) lines.push(`    meta:gloss ${JSON.stringify(st.gloss)} ;`);
     if (st.excerpt) lines.push(`    meta:excerpt ${JSON.stringify(st.excerpt)} ;`);
     if (st.supersedes) lines.push(`    meta:supersedes <urn:kbase:stmt/${st.supersedes}> ;`);

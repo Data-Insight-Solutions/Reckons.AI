@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { DiffEntry } from '$lib/rdf/diff';
   import StatementCard from './StatementCard.svelte';
-  import { setStatus, supersede, updateStatement, entityChoices } from '$lib/stores/kb.svelte';
+  import { setStatus, supersede, updateStatement, entityChoices, statements } from '$lib/stores/kb.svelte';
   import { recordAnswer } from '$lib/stores/workspace.svelte';
   import type { Statement, Term } from '$lib/rdf/types';
   import { resolvePartial } from '$lib/rdf/partial-facts';
@@ -64,11 +64,32 @@
     }
   }
 
+  /**
+   * Which statement an action actually writes to.
+   *
+   * Normally the incoming one. A 'returned' entry is the exception, and it has TWO callers with
+   * opposite situations, so this cannot be decided by kind alone:
+   *   - the INGEST page shows the in-memory diff, and a returned incoming statement is
+   *     deliberately never stored, so acting on its id would write to nothing and "accept after
+   *     all" would silently do nothing;
+   *   - the REVIEW page recomputes computeDiff over STORED pending statements, so a pending
+   *     triple that matches an older rejection renders as 'returned' with a real, stored
+   *     incoming statement — and acting on the old rejected row instead would leave the pending
+   *     one pending forever, which is the same loop in a new place.
+   * So: act on the incoming statement when it is actually in the graph, and fall back to the
+   * settled one when it is not.
+   */
+  function targetId(): string {
+    if (entry.kind !== 'returned') return entry.incoming.id;
+    const stored = statements().some((st) => st.id === entry.incoming.id);
+    return stored ? entry.incoming.id : entry.existing[0].id;
+  }
+
   async function accept() {
     error = null;
     processing = true;
     try {
-      await setStatus(entry.incoming.id, 'confirmed');
+      await setStatus(targetId(), 'confirmed');
       onresolved();
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
@@ -81,7 +102,7 @@
     error = null;
     processing = true;
     try {
-      await setStatus(entry.incoming.id, 'rejected');
+      await setStatus(targetId(), 'rejected');
       onresolved();
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
@@ -167,6 +188,7 @@
     'near-duplicate': 'near duplicate',
     'synonym-reinforces': 'synonym',
     'antonym-conflicts': 'contradiction',
+    returned: 'came back',
   };
 </script>
 
@@ -190,6 +212,10 @@
       <span class="muted">predicate is synonymous with existing claim ({(entry.predicateSimilarity * 100).toFixed(0)}% match)</span>
     {:else if entry.kind === 'antonym-conflicts'}
       <span class="muted">{entry.note}</span>
+    {:else if entry.kind === 'returned'}
+      <span class="muted">
+        you already {entry.priorStatus === 'rejected' ? 'rejected' : 'superseded'} this exact fact — the source offered it again
+      </span>
     {/if}
   </div>
 
@@ -226,7 +252,7 @@
         </div>
       {:else}
         <div class="pf-picker">
-          <input class="pf-input" bind:value={fillQuery}
+          <input type="text" class="pf-input" bind:value={fillQuery}
             oninput={() => (fillOpen = true)} onfocus={() => (fillOpen = true)}
             placeholder="search existing entities or type a new value…" />
           {#if fillOpen && (fillMatches.length > 0 || showFillNew)}
@@ -279,6 +305,15 @@
       {:else if entry.kind === 'duplicate'}
         <button onclick={reject} disabled={processing}>
           {processing ? 'dismissing…' : 'dismiss'}
+        </button>
+      {:else if entry.kind === 'returned'}
+        <!-- The user already settled this once, so dismissing is the unemphasised default and
+             accepting stays available for a genuine change of mind. -->
+        <button onclick={reject} disabled={processing}>
+          {processing ? 'dismissing…' : 'dismiss again'}
+        </button>
+        <button class="primary" onclick={accept} disabled={processing}>
+          {processing ? 'accepting…' : 'accept after all'}
         </button>
       {:else if entry.kind === 'reinforces'}
         <button class="primary" onclick={accept} disabled={processing}>
@@ -359,6 +394,7 @@
   .tag.near-duplicate    { color: #f59e0b; border-color: #f59e0b; }
   .tag.synonym-reinforces{ color: var(--ok);     border-color: var(--ok); }
   .tag.antonym-conflicts { color: var(--danger); border-color: var(--danger); }
+  .tag.returned          { color: var(--muted);  border-color: var(--muted); }
 
   .source-title {
     font-size: 0.72rem;

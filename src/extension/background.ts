@@ -8,6 +8,9 @@ import type {
   LiveClaim, LiveSession, LexicalSnapshot, LiveVerdict,
 } from './types';
 import { DEFAULT_SETTINGS } from './types';
+import { supportsLiveCapture, type ExtensionCapabilities } from './capabilities';
+
+declare const __RECKONS_FIREFOX__: boolean;
 
 // ── In-memory state (lost on service worker restart, backed by storage) ──────
 
@@ -38,7 +41,7 @@ const FC_DEDUP_MS = 120000;
 // ── Persistence ───────────────────────────────────────────────────────────────
 
 async function loadState() {
-  const stored = await chrome.storage.local.get(['settings', 'snapshot', 'result', 'session', 'fcSession']);
+  const stored = await chrome.storage.local.get(['settings', 'snapshot', 'result', 'session', 'fcSession']) as Record<string, any>;
   if (stored.settings) settings = { ...DEFAULT_SETTINGS, ...stored.settings };
   if (stored.snapshot) snapshot = stored.snapshot;
   if (stored.result) result = stored.result;
@@ -914,6 +917,10 @@ async function evaluateFCClaims(contextText: string, lexSummary: string, lexSnap
 async function startLiveStream() {
   if (liveStreaming) return;
 
+  if (__RECKONS_FIREFOX__ || !supportsLiveCapture(chrome as unknown as ExtensionCapabilities)) {
+    throw new Error('Live tab-audio capture is not supported by this browser.');
+  }
+
   if (!settings.apiKey) throw new Error('No LLM API key set. Open extension settings to add one.');
 
   const deepgramKey = settings.deepgramApiKey;
@@ -971,7 +978,7 @@ function stopLiveStream() {
   if (!liveStreaming) return;
 
   chrome.runtime.sendMessage({ type: 'STOP_CAPTURE' }).catch(() => {});
-  chrome.offscreen.closeDocument().catch(() => {});
+  if (!__RECKONS_FIREFOX__) chrome.offscreen.closeDocument().catch(() => {});
 
   if (fcTabId) {
     chrome.tabs.sendMessage(fcTabId, { type: 'LIVE_STOP' } as ContentCommand).catch(() => {});

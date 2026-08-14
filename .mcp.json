@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "reckons": {
+      "command": "bash",
+      "args": [
+        "scripts/mcp-server.sh"
+      ]
+    }
+  }
+}

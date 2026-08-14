@@ -9,6 +9,7 @@ import type {
   ExtensionState, AnalysisResult, ExtractedTriple, DiffSummary, PopupRequest, BackgroundEvent,
   LiveSession, LiveClaim, LiveVerdict,
 } from './types';
+import { supportsLiveCapture, type ExtensionCapabilities } from './capabilities';
 
 let state: ExtensionState | null = null;
 let error: string | null = null;
@@ -20,6 +21,7 @@ let ingestBusy = false;
 let pasteOpen = false;
 let pasteResponse = '';
 let pasteCopied = false;
+const liveCaptureSupported = supportsLiveCapture(chrome as unknown as ExtensionCapabilities);
 
 const collapsed = new Set<string>();
 const sessionCollapsed = new Set<string>();
@@ -34,7 +36,7 @@ chrome.runtime.onMessage.addListener((event: BackgroundEvent) => {
     state = event.state;
     if (event.state.analyzing) error = null;
     // Auto-switch to Live tab when streaming starts
-    if (!wasLive && event.state.liveStreaming) view = 'live';
+    if (liveCaptureSupported && !wasLive && event.state.liveStreaming) view = 'live';
   }
   if (event.type === 'ERROR') { error = event.message; }
   if (event.type === 'INGEST_RESULT') {
@@ -86,12 +88,10 @@ function buildHTML(): string {
 
   // Tab switcher
   const sessionCount = state.session.pages.length;
-  const fcActive = state.liveStreaming;
-  const fcClaimCount = state.liveSession?.claims?.length ?? 0;
   html += `<div class="tab-bar">
     <button class="tab-btn ${view === 'compare' ? 'active' : ''}" data-view="compare">Compare</button>
     <button class="tab-btn ${view === 'session' ? 'active' : ''}" data-view="session">Session${sessionCount > 0 ? ` <span class="tab-badge">${sessionCount}</span>` : ''}</button>
-    <button class="tab-btn ${view === 'live' ? 'active' : ''}" data-view="live">Live${fcActive ? ' <span class="tab-badge live-badge">ON</span>' : (fcClaimCount > 0 ? ` <span class="tab-badge">${fcClaimCount}</span>` : '')}</button>
+    ${buildLiveTab()}
     <button class="tab-btn ${view === 'ingest'  ? 'active' : ''}" data-view="ingest">Ingest</button>
   </div>`;
 
@@ -101,6 +101,13 @@ function buildHTML(): string {
   else html += buildCompareView();
 
   return html;
+}
+
+function buildLiveTab(): string {
+  if (!liveCaptureSupported) return '';
+  const fcActive = state!.liveStreaming;
+  const fcClaimCount = state!.liveSession?.claims?.length ?? 0;
+  return `<button class="tab-btn ${view === 'live' ? 'active' : ''}" data-view="live">Live${fcActive ? ' <span class="tab-badge live-badge">ON</span>' : (fcClaimCount > 0 ? ` <span class="tab-badge">${fcClaimCount}</span>` : '')}</button>`;
 }
 
 // ── At-a-glance bar ─────────────────────────────────────────────────────────

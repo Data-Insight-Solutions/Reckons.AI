@@ -1,5 +1,8 @@
 <script lang="ts">
+  import { page } from '$app/state';
   import { notifications, dismissNotification, notificationStackHeight } from '$lib/stores/notifications.svelte';
+  import { shellyChatOpen } from '$lib/stores/shelly-bridge.svelte';
+  import { isMobile } from '$lib/stores/viewport.svelte';
 
   const MAX_VISIBLE = 3;
 
@@ -15,15 +18,54 @@
     warn: '#f59e0b',
   };
 
-  let stackEl: HTMLDivElement | undefined;
-
-  // Keep the reactive store in sync with the ACTUAL rendered height. A single
-  // rAF after a notifications() change goes stale when the stack keeps resizing
-  // between events (enter/exit transitions, the perf "fps" notification popping
-  // in) — leaving the node panel's max-height wrong and overlapping. A
-  // ResizeObserver tracks every size change; re-armed whenever the stack mounts.
+  // Collapse state. The stack sits at the top-right; on the main graph view ('/') the top-right is
+  // free, but on other views (Review, Settings…) it overlaps the side panel. So collapse into a
+  // corner bell by DEFAULT on any non-home route, and let the user toggle it open per view.
+  // `userToggle` is the per-view override; it resets whenever the route changes.
+  let userToggle = $state<boolean | null>(null);
+  let lastPath = $state(page.url.pathname);
   $effect(() => {
-    notifications(); // re-run on add/remove (the stack element mounts/unmounts)
+    if (page.url.pathname !== lastPath) { lastPath = page.url.pathname; userToggle = null; }
+  });
+  const routeWantsCollapse = $derived(page.url.pathname !== '/');
+  // An `important` notification forces the stack open: it is guidance the user must read NOW,
+  // and a corner bell they have no reason to click is the same as not telling them.
+  // An explicit user toggle still wins — if they closed it, respect that.
+  const hasImportant = $derived(notifications().some((n) => n.important));
+  // A phone cannot afford a notification stack above Shelly's bottom sheet. Collapse ordinary
+  // notices while the sheet is open; truly time-sensitive notices still surface, and an explicit
+  // bell click still lets the user reopen the tray.
+  const mobileSheetWantsCollapse = $derived(isMobile() && shellyChatOpen() && !hasImportant);
+  const collapsed = $derived(
+    userToggle ?? (mobileSheetWantsCollapse || (routeWantsCollapse && !hasImportant))
+  );
+  const visibleLimit = $derived(isMobile() ? 1 : MAX_VISIBLE);
+  // Apply the mobile limit only after promoting urgent guidance. Otherwise an
+  // older ordinary notice can occupy the single visible slot while the alert
+  // that forced the tray open remains hidden behind "+N more".
+  const visibleNotifications = $derived.by(() => {
+    const list = notifications();
+    return [
+      ...list.filter((notification) => notification.important),
+      ...list.filter((notification) => !notification.important),
+    ].slice(0, visibleLimit);
+  });
+
+  // Highest-severity type present, for the bell tint (warn > success > info).
+  const bellColor = $derived.by(() => {
+    const list = notifications();
+    if (list.some((n) => n.type === 'warn')) return typeColor.warn;
+    if (list.some((n) => n.type === 'success')) return typeColor.success;
+    return typeColor.info;
+  });
+
+  let stackEl = $state<HTMLDivElement | undefined>(undefined);
+
+  // Keep the reactive store in sync with the ACTUAL rendered height so the node panel's max-height
+  // leaves room. When collapsed to the bell, the stack occupies no vertical space → report 0.
+  $effect(() => {
+    notifications(); // re-run on add/remove
+    if (collapsed) { notificationStackHeight.set(0); return; }
     let ro: ResizeObserver | undefined;
     const id = requestAnimationFrame(() => {
       const el = stackEl;
@@ -37,40 +79,103 @@
 </script>
 
 {#if notifications().length > 0}
-  <div class="notification-stack" aria-live="polite" bind:this={stackEl}>
-    {#each notifications().slice(0, MAX_VISIBLE) as n (n.id)}
-      <div class="notification" style:--nc={typeColor[n.type]}>
-        <span class="notif-icon" style:color={typeColor[n.type]}>{typeIcon[n.type]}</span>
-        <div class="notif-body">
-          <p class="notif-title">{n.title}</p>
-          {#if n.body}
-            <p class="notif-text">{n.body}</p>
-          {/if}
-          {#if n.action}
-            {#if n.action.href}
-              <a class="notif-action" href={n.action.href}>{n.action.label}</a>
-            {:else}
-              <button class="notif-action" onclick={() => { n.action?.onclick?.(); dismissNotification(n.id); }}>{n.action.label}</button>
+  <!-- Corner bell — always in the very top-right; clicking toggles the stack open/closed. -->
+  <button
+    class="notif-bell"
+    class:has-open={!collapsed}
+    style:--bell-c={bellColor}
+    onclick={() => { userToggle = !collapsed; }}
+    aria-label={collapsed ? `Show ${notifications().length} notification${notifications().length === 1 ? '' : 's'}` : 'Collapse notifications'}
+    aria-expanded={!collapsed}
+    title={collapsed ? 'Show notifications' : 'Collapse notifications'}
+  >
+    <!-- Undersea theme (first piece): a conch shell — "hear the call" — for notifications. -->
+    <span class="bell-glyph" aria-hidden="true">🐚</span>
+    <span class="bell-badge mono">{notifications().length > 99 ? '99+' : notifications().length}</span>
+  </button>
+
+  {#if !collapsed}
+    <div class="notification-stack" aria-live="polite" bind:this={stackEl}>
+      {#each visibleNotifications as n (n.id)}
+        <div class="notification" style:--nc={typeColor[n.type]}>
+          <span class="notif-icon" style:color={typeColor[n.type]}>{typeIcon[n.type]}</span>
+          <div class="notif-body">
+            <p class="notif-title">{n.title}</p>
+            {#if n.body}
+              <p class="notif-text">{n.body}</p>
             {/if}
-          {/if}
+            {#if n.action}
+              {#if n.action.href}
+                <a class="notif-action" href={n.action.href}>{n.action.label}</a>
+              {:else}
+                <button class="notif-action" onclick={() => { n.action?.onclick?.(); dismissNotification(n.id); }}>{n.action.label}</button>
+              {/if}
+            {/if}
+          </div>
+          <button class="notif-close" onclick={() => dismissNotification(n.id)} aria-label="dismiss">✕</button>
         </div>
-        <button class="notif-close" onclick={() => dismissNotification(n.id)} aria-label="dismiss">✕</button>
-      </div>
-    {/each}
-    {#if notifications().length > MAX_VISIBLE}
-      <div class="notif-overflow mono">
-        +{notifications().length - MAX_VISIBLE} more
-      </div>
-    {/if}
-  </div>
+      {/each}
+      {#if notifications().length > visibleLimit}
+        <div class="notif-overflow mono">
+          +{notifications().length - visibleLimit} more
+        </div>
+      {/if}
+    </div>
+  {/if}
 {/if}
 
 <style>
+  /* Corner bell: top-right, above the stack and above modal dialogs.
+     z-701. Notifications must outrank MODALS (consent dialog is 600/601): they are transient
+     system feedback and are useless if a dialog can cover them. This exact collision hid the
+     "switched to the tiny model" guidance on the constrained-device first-run path — same z-index
+     as the dialog meant DOM order decided, and a portaled dialog always wins. */
+  .notif-bell {
+    position: fixed;
+    top: 0.75rem;
+    right: 0.75rem;
+    z-index: 701;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--bell-c, var(--accent));
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    backdrop-filter: blur(8px);
+    cursor: pointer;
+    transition: transform 0.12s ease-out, border-color 0.15s;
+  }
+  .notif-bell:hover { transform: scale(1.08); }
+  .notif-bell.has-open { border-color: var(--bell-c, var(--accent)); }
+  .bell-glyph { font-size: 0.95rem; line-height: 1; }
+  .bell-badge {
+    position: absolute;
+    top: -0.3rem;
+    right: -0.3rem;
+    min-width: 1rem;
+    height: 1rem;
+    padding: 0 0.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: #fff;
+    background: var(--bell-c, var(--accent));
+    border-radius: 999px;
+    line-height: 1;
+  }
+
   .notification-stack {
     position: fixed;
-    top: 4rem;
-    right: 1rem;
-    z-index: 600;
+    top: 3rem; /* below the corner bell */
+    right: 0.75rem;
+    z-index: 700; /* above modals — see the bell comment above */
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -162,5 +267,29 @@
     text-align: right;
     padding: 0.15rem 0.5rem;
     pointer-events: none;
+  }
+
+  @media (max-width: 640px) {
+    .notif-bell {
+      top: 0.5rem;
+      right: 0.5rem;
+      width: 44px;
+      height: 44px;
+    }
+    .notification-stack {
+      top: 3.75rem;
+      right: 0.5rem;
+      width: calc(100vw - 1rem);
+      max-width: 360px;
+    }
+    .notif-action,
+    .notif-close {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .notif-action { padding-inline: 0.25rem; }
+    .notif-close { min-width: 44px; padding: 0; }
   }
 </style>

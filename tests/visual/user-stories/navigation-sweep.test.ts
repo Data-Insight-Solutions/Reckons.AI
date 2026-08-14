@@ -12,7 +12,7 @@
  *   tests/visual/screenshots/navigation-sweep/<device>/
  */
 import { test, expect } from '@playwright/test';
-import { DEVICES, useDevice, screenshotStep, stepAudit, waitForAppReady } from '../workflow-harness';
+import { DEVICES, useDevice, screenshotStep, stepAudit, waitForAppReady , gotoStable} from '../workflow-harness';
 
 const APP = 'http://localhost:5174';
 
@@ -28,7 +28,7 @@ for (const device of DEVICES) {
   test.describe(`Navigation sweep — ${device.name} (${device.width}x${device.height})`, () => {
     test('nav bar usable; every destination renders without overflow', async ({ page }) => {
       await useDevice(page, device);
-      await page.goto(APP);
+      await gotoStable(page, APP);
       await waitForAppReady(page);
 
       const story = `navigation-sweep/${device.name}`;
@@ -51,7 +51,7 @@ for (const device of DEVICES) {
           }
 
           // Navigate and confirm the destination rendered.
-          await page.goto(`${APP}${dest.path}`);
+          await gotoStable(page, `${APP}${dest.path}`);
           await waitForAppReady(page);
           await screenshotStep(page, story, `page-${dest.label}`);
 

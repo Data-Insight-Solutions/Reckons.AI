@@ -28,6 +28,7 @@ import { gitStatus, gitLog, gitChangedFiles } from './git-utils.js';
 import { ollamaEnabled, OLLAMA_DISABLED_MESSAGE, OLLAMA_MODEL } from './ollama-client.js';
 import { extractTriplesLocally, summarizeLocally } from './local-llm.js';
 import { entityToMarkdown } from './entity-markdown.js';
+import { validateToolArgs } from './validate-args.js';
 
 /**
  * Core usage instructions returned on `initialize` — MCP clients inject these
@@ -376,7 +377,12 @@ function handleKbListKbs(): object {
     return { content: [{ type: 'text', text: 'No KBs found.' }] };
   }
   const lines = kbs.map(k => {
-    return `${k.name} (${k.stats.tripleCount} triples, ${k.stats.entityCount} entities)`;
+    const h = k.stats.health;
+    const flag = h === 'parse-error' ? `  ⚠ PARSE ERROR (serving stale data): ${k.stats.error ?? ''}`
+      : h === 'missing' ? `  ⚠ FILE MISSING`
+      : h === 'empty' ? `  (empty)`
+      : '';
+    return `${k.name} (${k.stats.tripleCount} triples, ${k.stats.entityCount} entities)${flag}`;
   });
   return { content: [{ type: 'text', text: `${kbs.length} KB(s):\n${lines.join('\n')}` }] };
 }
@@ -526,6 +532,11 @@ function handleKbStats(params: { kb?: string }): object {
     `  Last modified: ${s.lastModified.toISOString()}`,
     `  Path:         ${kbPath}`
   ];
+  // Surface a broken/missing graph loudly — otherwise the counts above read as authoritative
+  // when they are actually stale or partial.
+  if (s.health !== 'ok') {
+    lines.push(`  ⚠ Health:     ${s.health}${s.error ? ` — ${s.error}` : ''}`);
+  }
   return { content: [{ type: 'text', text: lines.join('\n') }] };
 }
 
@@ -1430,6 +1441,10 @@ rl.on('line', (line) => {
       case 'tools/call': {
         const toolName = (params as { name?: string; arguments?: Record<string, unknown> }).name;
         const toolArgs = (params as { name?: string; arguments?: Record<string, unknown> }).arguments ?? {};
+
+        // Reject malformed arguments up front with a clear -32602, before any handler runs.
+        const argError = toolName ? validateToolArgs(TOOLS, toolName, toolArgs) : null;
+        if (argError) { respondError(id ?? null, -32602, argError); return; }
 
         switch (toolName) {
           case 'kb_list_kbs':    respond(id ?? null, handleKbListKbs()); break;

@@ -14,12 +14,16 @@
   import * as THREE from 'three';
   import type { Statement } from '$lib/rdf/types';
   import { termKey, isIRI, isLit, isMetaPredicate, displayLiteralLabel } from '$lib/rdf/types';
+  import { parseGraphDate, EVENT_DATE_PREDICATES } from '$lib/rdf/parse-date';
+  import { buildNodeTimes, timelineRange, undatedCount } from '$lib/rdf/timeline-layout';
+  import { cameraPosition, CAMERA_PRESETS, type CameraSpec } from './camera-presets';
   import GraphNode from '$lib/components/GraphNode.svelte';
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { RDF_TYPE, RDFS_LABEL, type EntityTypeDef } from '$lib/rdf/entity-types';
   import { glbOverrides } from '$lib/stores/glb-overrides.svelte';
   import { recordFrame } from '$lib/stores/perf-monitor.svelte';
   import { leapNodeKeys } from '$lib/rdf/kb-leap';
+  import { hopDistances, adjacencyFromPairs } from '$lib/rdf/n-hop';
   import { SKOS_BROADER, NAV_ORDER, NAV_LAYER } from '$lib/rdf/hierarchy';
 
   interactivity();
@@ -36,13 +40,15 @@
     timelineZoom = 1,
     timelineCenter = null,
     timelineTimeSource = 'event' as 'event' | 'ingested',
+    cameraSpec = null,
     onselect = () => {},
     onhover = () => {},
     onnodemove = () => {},
     onhovermove = () => {},
     onmarkersmove = () => {},
     onlabelsmove = () => {},
-    ontimelinepan = () => {}
+    ontimelinepan = () => {},
+    onready = () => {}
   } = $props<{
     statements?: Statement[];
     selected?: string | null;
@@ -52,6 +58,9 @@
     historyTimestamp?: number | null;
     sources?: any[];
     layout?: 'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy';
+    /** Camera angle. Null keeps the historical straight-on view, so existing baselines are
+     *  unaffected; a spec aims the camera so a visual test can actually SEE the z axis. */
+    cameraSpec?: CameraSpec | null;
     timelineZoom?: number;
     timelineCenter?: number | null;
     timelineTimeSource?: 'event' | 'ingested';
@@ -62,6 +71,8 @@
     onmarkersmove?: (markers: Array<{ key: string; label: string; color: string; x: number; y: number }>) => void;
     onlabelsmove?: (labels: Array<{ key: string; label: string; x: number; y: number; opacity: number }>) => void;
     ontimelinepan?: (center: number) => void;
+    /** Fired after a non-empty scene has completed at least one animation frame. */
+    onready?: () => void;
   }>();
 
   const isHistoryMode = $derived(historyTimestamp !== null);
@@ -260,21 +271,10 @@
     if (!selected) return { anchors: new Map(), radii: [], distances: new Map() };
 
     // ── 1. BFS hop distances ─────────────────────────────────────────────────
-    const distances = new Map<string, number>();
-    distances.set(selected, 0);
-    const queue = [selected];
-    let qi = 0;
-    while (qi < queue.length) {
-      const cur = queue[qi++];
-      const d = distances.get(cur)!;
-      for (const e of edges) {
-        const other = e.a.key === cur ? e.b.key : e.b.key === cur ? e.a.key : null;
-        if (other && !distances.has(other)) {
-          distances.set(other, d + 1);
-          queue.push(other);
-        }
-      }
-    }
+    // Shared traversal (rdf/n-hop.ts) — this was a verbatim copy of the 2D version, and
+    // both rescanned the entire EDGE LIST per dequeued node (O(V*E)). Building an
+    // adjacency map first makes it O(V+E).
+    const distances = hopDistances(adjacencyFromPairs(edges.map((e) => [e.a.key, e.b.key] as const)), selected);
 
     // ── 2. Classify hop-1 neighbors by predicate + direction ────────────────
     // 'out' = selected is the subject (→ target)
@@ -725,64 +725,23 @@
     return { anchors, markers };
   }
 
-  const TIMELINE_PREDICATES = new Set([
-    'urn:kbase:predicate/scheduled-at',
-    'urn:kbase:predicate/ends-at',
-    'urn:kbase:predicate/due-at',
-    'urn:kbase:predicate/created-at',
-    'urn:kbase:meta/scheduled-at',
-    'urn:kbase:meta/ends-at',
-    'urn:kbase:meta/due-at',
-    'urn:kbase:meta/created-at'
-  ]);
+  // The canonical list lives in rdf/parse-date.ts so the timeline, the age sweep and the
+  // layout rule cannot drift apart — there were three copies of it until 2026-08-13.
+  const TIMELINE_PREDICATES = EVENT_DATE_PREDICATES;
 
   function buildTimelineAnchors(): { anchors: Map<string, THREE.Vector3>; markers: LayoutMarker[] } {
-    const nodeTime = new Map<string, number>();
-    const useEvent = timelineTimeSource === 'event';
-    const useIngested = timelineTimeSource === 'ingested';
+    const nodeTime = buildNodeTimes(
+      statements as Statement[],
+      timelineTimeSource === 'ingested' ? 'ingested' : 'event',
+    );
 
-    if (useEvent || !useIngested) {
-      // Collect earliest timestamp per subject node from temporal predicates
-      for (const st of statements as Statement[]) {
-        if (st.status === 'rejected' || st.status === 'superseded') continue;
-        if (!TIMELINE_PREDICATES.has(st.p.value)) continue;
-
-        const key = termKey(st.s);
-        const ts = new Date(st.o.value).getTime();
-        if (isNaN(ts)) continue;
-
-        const existing = nodeTime.get(key);
-        if (!existing || ts < existing) nodeTime.set(key, ts);
-      }
-    }
-
-    if (useIngested) {
-      // Use statement createdAt (ingestion time) for ALL nodes
-      for (const st of statements as Statement[]) {
-        if (st.status === 'rejected' || st.status === 'superseded') continue;
-        const sk = termKey(st.s);
-        const ok = termKey(st.o);
-        if (!nodeTime.has(sk) && st.createdAt) nodeTime.set(sk, st.createdAt);
-        if (!nodeTime.has(ok) && st.createdAt) nodeTime.set(ok, st.createdAt);
-      }
-    } else if (!useIngested) {
-      // Fallback: use createdAt only for nodes without explicit temporal predicates
-      for (const st of statements as Statement[]) {
-        if (st.status === 'rejected' || st.status === 'superseded') continue;
-        const sk = termKey(st.s);
-        const ok = termKey(st.o);
-        if (!nodeTime.has(sk) && st.createdAt) nodeTime.set(sk, st.createdAt);
-        if (!nodeTime.has(ok) && st.createdAt) nodeTime.set(ok, st.createdAt);
-      }
-    }
-
-    if (nodeTime.size === 0) return { anchors: new Map(), markers: [] };
-
-    // Compute data range
-    const times = [...nodeTime.values()];
-    const dataMin = Math.min(...times);
-    const dataMax = Math.max(...times);
-    const dataRange = dataMax - dataMin || 1;
+    // The two branches here used to be byte-identical (`if (useIngested) A else if
+    // (!useIngested) A`), and both applied the createdAt fallback — so in EVENT mode every
+    // undated node was placed at its ingestion time. One shared rule now, and in event mode
+    // an undated node is deliberately absent from the map so it lands in the lane below.
+    const range = timelineRange(nodeTime);
+    if (!range) return { anchors: new Map(), markers: [] };
+    const { dataMin, dataRange } = range;
 
     // Visible range narrows as zoom increases
     const visibleRange = dataRange / timelineZoom;
@@ -803,7 +762,13 @@
         const y = ((hash % 100) / 100 - 0.5) * SPREAD_Y;
         anchors.set(n.key, new THREE.Vector3(x, y, 0));
       } else {
-        anchors.set(n.key, new THREE.Vector3(0, -SPREAD_Y * 0.7, 0));
+        // UNDATED LANE — must clear the ±SPREAD_Y/2 band the dated nodes occupy, and spread
+        // over enough rows that 165 nodes are not shoulder to shoulder. Kept identical to the
+        // 2D renderer so switching views does not move a node.
+        const hash = n.key.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+        const ux = ((hash % 997) / 997 - 0.5) * SPREAD_X;
+        const row = (hash >> 3) % 5;
+        anchors.set(n.key, new THREE.Vector3(ux, -SPREAD_Y * 1.15 - row * 1.5, 0));
       }
     }
 
@@ -926,6 +891,7 @@
   const linePositions = new Float32Array(MAX_EDGES * 6);
   const hlLinePositions = new Float32Array(MAX_EDGES * 6); // highlighted edges (selected node)
   let lineGeomHl: THREE.BufferGeometry | undefined = $state();
+  let reportedReady = false;
 
   // Attach position attributes imperatively with a direct THREE import — survives
   // minification, unlike <T.BufferAttribute> (see comment at the template markup).
@@ -947,6 +913,7 @@
     const CENTER     = activeAnchors.size > 0 ? 0.008 : 0.04;
     const DAMP       = 0.86;
     const BASE_REST  = 2.4;
+    const LOCK_TIMELINE_X = layout === 'timeline';
 
     for (let i = 0; i < nodes.length; i++) {
       const a = nodes[i];
@@ -983,6 +950,16 @@
       n.vel.z += -n.pos.z * CENTER * dt;
       n.vel.multiplyScalar(DAMP);
       n.pos.x += n.vel.x; n.pos.y += n.vel.y; n.pos.z += n.vel.z;
+
+      // TIMELINE: x IS THE DATE — data, not a force outcome. Repulsion, edge springs (×8) and
+      // centering all act on x too, so an anchored node only ever settled NEAR its date and the
+      // axis could not be read against its own markers. Pin x to the anchor and let the other
+      // forces spread nodes vertically instead. Tuning the constants can never fix this; the
+      // date axis has to be authoritative, not negotiated.
+      if (LOCK_TIMELINE_X) {
+        const dateAnchor = activeAnchors.get(n.key);
+        if (dateAnchor) { n.pos.x = dateAnchor.x; n.vel.x = 0; }
+      }
     }
 
     if (lineGeom) {
@@ -1015,6 +992,13 @@
 
     if (renderer && camera.current) {
       const canvas = renderer.domElement;
+
+      if (!reportedReady && nodes.length > 0 && canvas.width > 0 && canvas.height > 0) {
+        reportedReady = true;
+        // Threlte renders after its update tasks. Report on the following
+        // browser frame so this signal cannot mean only "the branch mounted".
+        requestAnimationFrame(onready);
+      }
 
       // Project selected node for overlay positioning
       if (selected) {
@@ -1259,7 +1243,7 @@
   });
 </script>
 
-<T.PerspectiveCamera makeDefault position={[0, 0, 18]} fov={55} />
+<T.PerspectiveCamera makeDefault position={cameraPosition(cameraSpec ?? CAMERA_PRESETS.front)} fov={55} />
 <OrbitControls bind:ref={orbitRef} enableDamping dampingFactor={0.08} />
 <T.AmbientLight intensity={0.45} />
 <T.DirectionalLight position={[6, 10, 4]} intensity={0.9} color="#ffd6b0" />

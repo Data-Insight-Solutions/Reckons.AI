@@ -4,9 +4,10 @@
  *
  * Called once from +layout.svelte after the KB loads.
  */
-import { confirmedStatements, addSource, addStatements } from './stores/kb.svelte';
+import { confirmedStatements } from './stores/kb.svelte';
 import { typeMap } from './stores/entity-types.svelte';
 import { ingest } from './stores/ingest.svelte';
+import { commitPrecomputedIngest } from './ingest/precomputed';
 import { triplesToStatements } from './integrations/llm/extractor';
 import type { Source } from './rdf/types';
 import { v4 as uuid } from 'uuid';
@@ -78,14 +79,23 @@ export function initExtensionBridge() {
         confidence: t.kind === 'reinforce' ? 0.9 : t.kind === 'conflict' ? 0.5 : 0.75,
       }));
       const statements = triplesToStatements(appTriples, source);
-      await addSource(source);
-      await addStatements(statements);
-      return { sourceId: source.id, count: statements.length };
+      const result = await commitPrecomputedIngest({
+        sourceTitle: source.title,
+        source,
+        statements,
+      });
+      if (result.phase === 'cancelled') {
+        throw new Error('Ingest cancelled at the archived-entity decision.');
+      }
+      return { sourceId: source.id, count: result.statements.length };
     },
 
     /** Fallback: full re-ingest via the app's LLM pipeline */
     async ingestUrl(url: string): Promise<{ sourceId: string; count: number }> {
       const result = await ingest({ kind: 'url', url });
+      if (result.phase === 'cancelled') {
+        throw new Error('Ingest cancelled at the archived-entity decision.');
+      }
       return { sourceId: result.source.id, count: result.statements.length };
     },
 

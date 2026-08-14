@@ -124,15 +124,18 @@ type CollectedAsset = { entityIri: string; category: string; filename: string; d
 /** Serialize one KB to Turtle (graph statements + asset references) and collect
  *  its binary sidecar assets (preview/model/icon blobs). */
 async function serializeKb(kbId: string): Promise<{ ttl: string; assets: CollectedAsset[] } | null> {
-  const { toTurtle } = await import('../rdf/serialize');
+  const { toTurtleFull } = await import('../rdf/serialize');
   const { collectAssets, assetTriples } = await import('../storage/kb-assets');
   const kbDb = kbId === db.name ? db : new KBaseDB(kbId);
   try {
     if (kbDb !== db) await kbDb.open();
     const statements = await kbDb.statements.toArray();
     if (statements.length === 0 && kbId !== 'kbase') return null;
+    const sources = await kbDb.sources.toArray();
+    const stableId = (await kbDb.settings.get('main'))?.kbStableId;
     const assets = (await collectAssets(kbDb)) as CollectedAsset[];
-    const ttl = toTurtle(statements) + (await assetTriples(kbDb, assets as never));
+    // LOSSLESS export (F107.4): all statuses + provenance, so a re-pull cannot drop review state.
+    const ttl = toTurtleFull(statements, sources, { kbStableId: stableId }) + (await assetTriples(kbDb, assets as never));
     return { ttl, assets };
   } finally {
     if (kbDb !== db) kbDb.close();

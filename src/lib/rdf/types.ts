@@ -110,6 +110,14 @@ export type TurtleSettings = {
   humeSecretKey: string;
   /** Hume.AI EVI Config ID (voice persona config) */
   humeConfigId: string;
+  /**
+   * Opt-in endpoint that mints a SHORT-LIVED Hume EVI access token (F107.6). Lets a shared
+   * voice persona be heard by someone who has not configured their own Hume: the sharer runs
+   * this endpoint, the viewer's client fetches a scoped, expiring token from it at play-time,
+   * and the sharer's secret key never leaves their control. Unlike an API/secret key this is a
+   * revocable, rate-limitable delegation — so it is safe to travel with a shared persona.
+   */
+  humeTokenUrl?: string;
   /** Whisper model for local speech-to-text (e.g. 'onnx-community/whisper-tiny') */
   whisperModel: string;
 
@@ -202,6 +210,30 @@ export type Statement = {
    */
   askedBy?: string;
   /**
+   * Which agent PROPOSED this fact — set on every drained proposal, not only on questions.
+   *
+   * Distinct from `askedBy`, which exists to route an ANSWER back to whoever is waiting for
+   * it. This one exists to answer a different question: WAS RUNNING THAT AGENT WORTH IT.
+   *
+   * The work-tiering doctrine turns on proposal YIELD — "a local job that emits 30 findings
+   * of which 25 are noise moves cost from generation to TRIAGE rather than removing it" — and
+   * yield is accepted-over-proposed, per agent. Until 2026-08-13 that was not computable:
+   * `drainAndImportPending` attached the agent only to PARTIAL facts, and measured against the
+   * real queue that lost attribution for 55% of 736 entries (402 proposals carrying an object).
+   * Everything else was folded into one batch source titled "MCP (agent-a, agent-b) — N notes",
+   * so an accepted fact could not be traced to the agent that produced it.
+   */
+  proposedBy?: string;
+  /**
+   * What KIND of wrong this finding reports — see rdf/finding-class.ts.
+   *
+   *   form    malformed artifact; a parser or shape settles it, safe to block a build on
+   *   drift   the graph's claim disagrees with reality; only a human can decide which side
+   *           is wrong, so it must never auto-resolve
+   *   defect  the world is broken while the graph is right; the fix never touches the graph
+   */
+  findingClass?: 'form' | 'drift' | 'defect';
+  /**
    * HOW could this fact be checked — and therefore WHO is competent to approve it (F88).
    *
    * `code` | `test` a script or a suite settles it; the user need not be asked at all.
@@ -263,6 +295,27 @@ export const STMT_PREFIX = 'urn:kbase:stmt/';
 export const PRESENTATION_IMAGE_PREDICATES = new Set([
   'urn:kbase:predicate/icon2d',
   'urn:kbase:predicate/photo',
+  // Provenance ABOUT a photo — who made it, where to check the licence. Belongs in the detail
+  // panel beside the image, never as an edge to a literal node holding a credit line or a URL.
+  'urn:kbase:predicate/photo-credit',
+  'urn:kbase:predicate/photo-source',
+]);
+
+/**
+ * How an ENTITY TYPE renders — geometry name, hex colour, 3D model, generation bookkeeping.
+ * These are the predicates `stores/entity-types.svelte.ts` reads to draw a type, so they cannot
+ * be renamed; but they are configuration, not knowledge. Left visible they put literal nodes
+ * labelled "tetrahedron" and "#e0a13c" into the graph — which is exactly what a first-time user
+ * meets in the starter graph, next to the real facts, meaning nothing (Matt, 2026-07-23).
+ * Same reasoning as the image predicates above: presentation is metadata.
+ */
+export const TYPE_PRESENTATION_PREDICATES = new Set([
+  'urn:kbase:predicate/icon',
+  'urn:kbase:predicate/icon3d',
+  'urn:kbase:predicate/color',
+  'urn:kbase:predicate/type-description',
+  'urn:kbase:predicate/meshy-task-id',
+  'urn:kbase:predicate/meshy-status',
 ]);
 
 /** Returns true if the predicate is metadata (should not render as a graph edge/node) */
@@ -271,6 +324,8 @@ export function isMetaPredicate(predicateIri: string): boolean {
   // Icon/preview image predicates are presentation metadata, not semantic edges —
   // otherwise their data-URI/URL object becomes a junk literal node in the graph.
   if (PRESENTATION_IMAGE_PREDICATES.has(predicateIri)) return true;
+  // Entity-type presentation config (geometry name, hex colour, …) is not a fact about anything.
+  if (TYPE_PRESENTATION_PREDICATES.has(predicateIri)) return true;
   // nav:order and nav:layer are node metadata, not graph edges
   if (predicateIri === `${NAV_PREFIX}order` || predicateIri === `${NAV_PREFIX}layer`) return true;
   // page:* are per-page publishing metadata (literals) — the site tree still renders

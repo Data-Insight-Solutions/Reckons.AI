@@ -46,3 +46,38 @@ cat static/starter-guide.ttl \
 ln -sf ../../../static/docs-all.ttl "$KBS/docs/docs.ttl"
 
 echo "Workspace ready: $WORKSPACE/ (7 KBs, symlinked to static/*.ttl)"
+
+# ── mcp-workspace: the graphs Claude Code's `reckons` MCP server reads ─────────
+#
+# .mcp.json (committed) points the server at mcp-workspace/, but that directory is
+# GITIGNORED — so without this block a fresh clone gets a configured MCP server with
+# nothing to read. It was also hand-made once and then drifted: on 2026-07-18 the
+# `architecture` and `testing` folders existed but were EMPTY and `codebase` was absent,
+# so the server silently served 3 graphs while CLAUDE.md described 6. Building it from a
+# script instead of by hand is what stops that recurring.
+
+MCP_WS="mcp-workspace"
+MCP_KBS="$MCP_WS/kbs"
+
+echo "Setting up MCP workspace..."
+
+mkdir -p "$MCP_KBS"/{production,roadmap,features,architecture,testing,codebase}
+find "$MCP_KBS" -name meta.json -delete 2>/dev/null || true
+find "$MCP_KBS" -name kb.ttl -delete 2>/dev/null || true
+
+ln -sf ../../../static/reckons-production.ttl "$MCP_KBS/production/production.ttl"
+ln -sf ../../../static/reckons-roadmap.ttl    "$MCP_KBS/roadmap/roadmap.ttl"
+ln -sf ../../../static/docs-features.ttl      "$MCP_KBS/features/features.ttl"
+ln -sf ../../../static/docs-architecture.ttl  "$MCP_KBS/architecture/architecture.ttl"
+ln -sf ../../../static/docs-testing.ttl       "$MCP_KBS/testing/testing.ttl"
+ln -sf ../../../static/reckons-codebase.ttl   "$MCP_KBS/codebase/codebase.ttl"
+
+# Fail loudly if a link is dangling — a silently-empty graph is how the drift above
+# went unnoticed for weeks.
+missing=0
+for f in "$MCP_KBS"/*/*.ttl; do
+  [ -e "$f" ] || { echo "  BROKEN LINK: $f"; missing=1; }
+done
+[ "$missing" -eq 0 ] || { echo "MCP workspace has dangling symlinks — fix static/*.ttl paths above."; exit 1; }
+
+echo "MCP workspace ready: $MCP_WS/ (6 graphs) — restart Claude Code to pick up .mcp.json"

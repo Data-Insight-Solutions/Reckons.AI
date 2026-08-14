@@ -14,7 +14,7 @@ test('settings page renders section headings', async ({ page }) => {
   await page.goto('/settings');
 
   // Core sections
-  await expect(page.getByText(/AI backends|backends per task/i).first()).toBeVisible({ timeout: 8_000 });
+  await expect(page.getByText(/AI backend/i).first()).toBeVisible({ timeout: 8_000 });
 });
 
 test('backend selector is interactive', async ({ page }) => {

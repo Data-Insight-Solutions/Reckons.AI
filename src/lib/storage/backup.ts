@@ -15,6 +15,7 @@
 import { db, getSettings, type SettingsRecord } from './db';
 import { toTurtle, toTurtleFull } from '../rdf/serialize';
 import { kbFileSlug } from './kb-registry';
+import { redactSecrets } from '../safety/redact';
 
 // ── Settings profile ─────────────────────────────────────────────────────────
 //
@@ -99,7 +100,10 @@ export async function buildSettingsProfileJson(): Promise<string> {
     turtleSettings: s.turtleSettings,
     extensionHighlight: s.extensionHighlight,
   };
-  return JSON.stringify(profile, null, 2);
+  // Recursive final pass: the allowlist above excludes TOP-LEVEL secrets, but passes nested
+  // objects (turtleSettings carries humeApiKey/humeSecretKey) through whole. Strip any
+  // secret-named field at any depth so a "safe to share" profile truly carries no credential.
+  return JSON.stringify(redactSecrets(profile), null, 2);
 }
 
 /**

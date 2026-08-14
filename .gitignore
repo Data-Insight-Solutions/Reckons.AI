@@ -9,7 +9,12 @@ yarn.lock
 
 # Build output
 dist/
-build/
+# ANCHORED. `build/` unanchored also matched content/build/ — the three generated docs pages
+# under it could never be committed, so CI prerendered a 404 for a link a committed page
+# makes (/docs/learn/start-here -> /docs/build/connecting-other-systems) while the build
+# passed locally, where the files exist untracked. A leading slash keeps this to the root
+# output directory only.
+/build/
 .svelte-kit/
 *.tsbuildinfo
 storybook-static/
@@ -18,6 +23,7 @@ storybook-static/
 test-results/
 playwright-report/
 playwright-report-smoke/
+playwright-report-evidence/
 
 # IDE
 .vscode/
@@ -63,11 +69,17 @@ reckons-workspace/kbs/*/pending.jsonl
 reckons-workspace/kbs/*/sources.json
 reckons-workspace/knowledge.ttl
 reckons-workspace/knowledge.pending.jsonl
+reckons-workspace/knowledge.answers.jsonl
+reckons-workspace/*.prune-backup-*.jsonl
 static/docs-all.ttl
 
 # F34 button-crawl generated artifacts (regenerate: npm run test:crawl)
 tests/visual/button-crawl.ttl
 tests/visual/screenshots/button-crawl/
+# Crawl RESULT json embeds base64 screenshots — individual runs reach 95MB, and
+# 577MB had accumulated untracked, one `git add .` away from entering history
+# permanently. Six older, small results (4.6MB) are already tracked and stay so.
+tests/visual/results/button-crawl_*.json
 
 # tesseract.js OCR language data (downloaded at runtime)
 eng.traineddata
@@ -81,3 +93,9 @@ reckons-workspace/runner.log.jsonl
 reckons-workspace/schedules.state.ttl
 reckons-workspace/schedule.log.jsonl
 reckons-workspace/task-drafts.ttl
+
+# Local app workspace — the folder-sync target writes copies of every graph here.
+# Only default-kb is a real repo asset; the rest are duplicates of static/*.ttl and
+# were once swept into a commit by `git add -A static/` (15,093 lines, 2026-07-19).
+static/kbs/*
+!static/kbs/default-kb/

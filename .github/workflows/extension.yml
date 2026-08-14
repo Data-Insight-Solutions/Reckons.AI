@@ -1,11 +1,16 @@
 name: Extension Build & Sign
 
 on:
+  pull_request:
+    branches: [dev]
   push:
     branches: [main]
     paths:
       - 'src/extension/**'
+      - 'scripts/extension/**'
       - 'vite.extension.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
   workflow_dispatch:
     inputs:
       bump:
@@ -24,7 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -32,7 +37,7 @@ jobs:
       - run: npm ci
 
       - name: Build extension
-        run: npm run build:extension
+        run: npm run build:extension && npm run build:extension:firefox
 
       - name: Get version from manifest
         id: version
@@ -40,13 +45,17 @@ jobs:
 
       # ── Firefox: sign via AMO self-distribution ──────────────────────
       - name: Sign Firefox extension (AMO self-distribution)
-        if: env.AMO_JWT_ISSUER != ''
+        # PRs validate the reproducible build/package path without making an
+        # external signing request. Push/manual runs retain the existing AMO
+        # behavior, so Firefox incompatibilities stay visible rather than
+        # becoming a green build that cannot actually be signed.
+        if: github.event_name != 'pull_request' && env.AMO_JWT_ISSUER != ''
         env:
           AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
           AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
         run: |
-          npx web-ext sign \
-            --source-dir=dist/extension \
+          npx --yes web-ext@10.5.0 sign \
+            --source-dir=dist/extension-firefox \
             --artifacts-dir=dist/signed \
             --channel=unlisted \
             --api-key="$AMO_JWT_ISSUER" \
@@ -66,7 +75,7 @@ jobs:
           path: dist/reckons-ai-chrome-*.zip
 
       - name: Upload Firefox signed xpi
-        if: env.AMO_JWT_ISSUER != ''
+        if: github.event_name != 'pull_request' && env.AMO_JWT_ISSUER != ''
         uses: actions/upload-artifact@v7
         env:
           AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
@@ -77,7 +86,7 @@ jobs:
       # ── GitHub Release (on manual dispatch or version tag) ──────────
       - name: Create GitHub Release
         if: github.event_name == 'workflow_dispatch'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ext-v${{ steps.version.outputs.version }}
           name: Extension v${{ steps.version.outputs.version }}
@@ -91,4 +100,4 @@ jobs:
 
             **Firefox (signed):** Download the `.xpi` and open it in Firefox, or drag it onto the Firefox window.
 
-            **Firefox for Android (Nightly):** Add to a custom AMO collection, then enable in Firefox Nightly add-ons settings.
+            The Firefox package targets desktop Firefox 142 or newer. Live tab-audio capture remains a Chromium-only feature.
