@@ -8,6 +8,20 @@
 		<!-- CSP: script-src 'self' + wasm-unsafe-eval (ONNX/transformers.js); worker-src blob: (SW + embedding workers);
 		     connect-src lists every provider the browser calls directly; object/base/form locked down.
 		     Fonts are self-hosted in static/fonts/ — no external font requests.
+		     ADDING A fetch() TO A NEW HOST MEANS ADDING IT HERE TOO, or the request is refused
+		     before it is sent and the feature fails with a bare "Failed to fetch". Four were
+		     missing until 2026-08-13, measured by loading this exact policy in Chromium:
+		       api.github.com    — repo ingest (F14) + site export (F27). Absent since the initial
+		                           release commit, so BOTH shipped features had only ever worked
+		                           from Node, where CSP is not enforced.
+		       api.tavily.com    — web search (auto-analyze, source-validation).
+		       api.firecrawl.dev — page scrape (URL ingest upgrade, source-refresh).
+		       api.reckons.ai    — the reckons provider's DEFAULT baseUrl. The substitution below
+		                           only adds origins from configured env vars, never code defaults,
+		                           so the default path was blocked and only an explicitly
+		                           configured build worked.
+		     These are fixed global service origins, so they belong in the literal policy; only
+		     PER-USER self-hosted origins need the substitution mechanism below.
 		     %RECKONS_EXTRA_CONNECT_SRC% is replaced by src/hooks.server.ts (NOT a Vite plugin —
 		     app.html is SvelteKit's template, so transformIndexHtml never runs on it) with the
 		     SELF-HOSTED origins this build is configured for (Indico, n8n,
@@ -17,7 +31,7 @@
 		     the app sees it. Honest limit: this only helps builds that KNOW the origin (local dev
 		     and self-hosters). On the shared hosted build a user's own server is still unreachable,
 		     and passing CSP is only half — the server must also send Access-Control-Allow-Origin. -->
-		<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-inline' blob: https://storage.googleapis.com https://accounts.google.com https://cdn.jsdelivr.net; worker-src 'self' blob:; connect-src 'self' data: blob: https://api.anthropic.com https://api.openai.com https://api.mistral.ai https://generativelanguage.googleapis.com https://openrouter.ai https://api.meshy.ai https://www.googleapis.com https://api.hume.ai wss://api.hume.ai https://accounts.google.com https://r.jina.ai https://corsproxy.io https://huggingface.co https://*.huggingface.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.huggingface.co https://*.xethub.hf.co https://*.aws.cdn.hf.co https://cdn.jsdelivr.net http://localhost:* ws://localhost:* %RECKONS_EXTRA_CONNECT_SRC%; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; font-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self';" />
+		<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-inline' blob: https://storage.googleapis.com https://accounts.google.com https://cdn.jsdelivr.net; worker-src 'self' blob:; connect-src 'self' data: blob: https://api.anthropic.com https://api.openai.com https://api.mistral.ai https://generativelanguage.googleapis.com https://openrouter.ai https://api.meshy.ai https://www.googleapis.com https://api.hume.ai wss://api.hume.ai https://accounts.google.com https://api.github.com https://api.tavily.com https://api.firecrawl.dev https://api.reckons.ai https://r.jina.ai https://corsproxy.io https://huggingface.co https://*.huggingface.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.huggingface.co https://*.xethub.hf.co https://*.aws.cdn.hf.co https://cdn.jsdelivr.net http://localhost:* ws://localhost:* %RECKONS_EXTRA_CONNECT_SRC%; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; font-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self';" />
 		<title>Reckons.AI</title>
 		<meta name="description" content="Reckons.AI — the semantic understanding knowledge graph that you review and automatically edit, compare, and share." />
 		<meta property="og:title" content="Reckons.AI" />

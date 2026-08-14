@@ -1,11 +1,9 @@
 {
   "mcpServers": {
     "reckons": {
-      "command": "node",
+      "command": "bash",
       "args": [
-        "mcp-server/dist/index.js",
-        "--kb",
-        "mcp-workspace"
+        "scripts/mcp-server.sh"
       ]
     }
   }
