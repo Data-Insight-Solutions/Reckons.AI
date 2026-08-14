@@ -235,6 +235,14 @@ site:release-notes a schema:WebPage ;
     schema:position 90 ;
     schema:abstract "What shipped in the first release." .
 
+site:release-notes-v0-2-0 a schema:WebPage ;
+    schema:isPartOf site:docs ;
+    dcterms:isPartOf "Releases" ;
+    schema:name "Reckons.AI v0.2.0" ;
+    schema:url <https://reckons.ai/docs/releases/v0-2-0> ;
+    schema:position 89 ;
+    schema:abstract "454 commits since v0.1.0 — currents, archive, publishing, a deterministic offline tier, and a run of fixes for features that were green in tests and dead in a browser." .
+
 # ── The menu ─────────────────────────────────────────────────────────────────
 # schema:SiteNavigationElement is the standard term for a navigation entry. The menu is stated
 # SEPARATELY from the page list on purpose: what exists and what is offered are different
