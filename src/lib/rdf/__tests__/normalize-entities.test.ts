@@ -17,6 +17,20 @@ vi.mock('$lib/embed', () => {
     // Distinct predicates
     'has color':        [0.00, 0.00, 0.95, 0.30],
     'weighs':           [0.00, 0.00, 0.30, 0.95],
+    // OPPOSED predicates that a real embedding scores HIGH — these are not hypothetical.
+    // tests/bench/run-predicate-vocab-bench.ts measured e5-small-v2 at 0.9322 for
+    // has-predator/has-prey and 0.9330 for has-min-weight/has-max-weight, both above the 0.88 the
+    // normaliser rewrites at. Vectors here are pitched to match, so the veto is tested against the
+    // situation that actually occurs rather than a comfortable one.
+    'has predator':     [0.90, 0.44, 0.00, 0.00],
+    'has prey':         [0.93, 0.37, 0.00, 0.00],
+    'has min weight':   [0.00, 0.90, 0.44, 0.00],
+    'has max weight':   [0.00, 0.93, 0.37, 0.00],
+    // A legitimate synonym of has-predator that scores HIGH but strictly LOWER than the antonym
+    // has-prey does (0.982 vs 0.997 against has-predator). That ordering is the whole point of the
+    // shadowing test below: the antonym wins the ranking, so a veto applied afterwards would
+    // suppress this valid remap instead of stepping over it.
+    'has natural enemy': [0.80, 0.60, 0.00, 0.00],
   };
 
   function norm(v: number[]): Float32Array {
@@ -148,6 +162,93 @@ describe('normalizeEntities', () => {
     const result = await normalizeEntities(incoming, existing);
     expect(result.predicateRemaps).toBe(1);
     expect(result.statements[0].p.value).toBe('urn:kbase:predicate/lives-in');
+  });
+
+  // ── Antonym veto on the write path ───────────────────────────────────────
+  //
+  // Added 2026-08-15. normalize-entities REWRITES a predicate before any human sees the fact, and
+  // it had no opposition guard at all — the equivalent check was module-private to semantic-diff.ts
+  // and protected only the advisory diff. These tests pin the veto against measured cosines rather
+  // than convenient ones; see the vector table above.
+
+  it('never remaps a predicate onto its opposite, however high the similarity', async () => {
+    // has-predator ≈ has-prey scores well above 0.88 here, exactly as e5-small-v2 scores it.
+    // Merging them reverses the food chain in the user's graph, silently.
+    const incoming = [
+      stmt({
+        s: iri('urn:kbase:concept/common-octopus'),
+        p: iri('urn:kbase:predicate/has-predator'),
+        o: iri('urn:kbase:concept/moray-eel'),
+      }),
+    ];
+    const existing = [
+      stmt({
+        id: 'e1',
+        s: iri('urn:kbase:concept/common-octopus'),
+        p: iri('urn:kbase:predicate/has-prey'),
+        o: iri('urn:kbase:concept/crab'),
+        status: 'confirmed',
+      }),
+    ];
+    const result = await normalizeEntities(incoming, existing);
+    expect(result.predicateRemaps).toBe(0);
+    expect(result.statements[0].p.value).toBe('urn:kbase:predicate/has-predator');
+  });
+
+  it('never collapses the bounds of a range into each other', async () => {
+    // has-min-weight → has-max-weight would turn a range into a contradiction.
+    const incoming = [
+      stmt({
+        s: iri('urn:kbase:concept/common-octopus'),
+        p: iri('urn:kbase:predicate/has-min-weight'),
+        o: lit('3kg'),
+      }),
+    ];
+    const existing = [
+      stmt({
+        id: 'e1',
+        s: iri('urn:kbase:concept/common-octopus'),
+        p: iri('urn:kbase:predicate/has-max-weight'),
+        o: lit('5kg'),
+        status: 'confirmed',
+      }),
+    ];
+    const result = await normalizeEntities(incoming, existing);
+    expect(result.predicateRemaps).toBe(0);
+  });
+
+  it('the veto is applied while ranking, so an antonym cannot shadow a real synonym', async () => {
+    // Incoming has-predator. The graph holds BOTH its opposite (has-prey, cosine 0.997 — the top
+    // scorer) and a legitimate synonym (has-natural-enemy, 0.982). Vetoing during ranking steps
+    // over has-prey and remaps to has-natural-enemy. Vetoing AFTER a winner is picked would find
+    // has-prey at the top, reject it, and drop the valid remap with it — a silent loss rather than
+    // a silent corruption, but a loss caused by the guard itself.
+    const incoming = [
+      stmt({
+        s: iri('urn:kbase:concept/common-octopus'),
+        p: iri('urn:kbase:predicate/has-predator'),
+        o: iri('urn:kbase:concept/moray-eel'),
+      }),
+    ];
+    const existing = [
+      stmt({
+        id: 'e1',
+        s: iri('urn:kbase:concept/common-octopus'),
+        p: iri('urn:kbase:predicate/has-prey'),
+        o: iri('urn:kbase:concept/crab'),
+        status: 'confirmed',
+      }),
+      stmt({
+        id: 'e2',
+        s: iri('urn:kbase:concept/giant-squid'),
+        p: iri('urn:kbase:predicate/has-natural-enemy'),
+        o: iri('urn:kbase:concept/sperm-whale'),
+        status: 'confirmed',
+      }),
+    ];
+    const result = await normalizeEntities(incoming, existing);
+    expect(result.predicateRemaps).toBe(1);
+    expect(result.statements[0].p.value).toBe('urn:kbase:predicate/has-natural-enemy');
   });
 
   it('does not remap distinct entities below threshold', async () => {

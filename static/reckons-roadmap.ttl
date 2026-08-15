@@ -4726,3 +4726,60 @@ kb:claim-settlement rdf:type ktype:Feature ;
     kpred:honest-note "PLANNED. The F88 axis is BUILT and tested (verifiability.ts, 202 lines, with review-routing.ts, entity-review.ts and agent-edit-boundary.ts consuming it), and the review page reads it. What does not exist: nothing WRITES Statement.verifiableBy anywhere in src/ — the only reference outside the module is archive.ts reading it back — so the class is re-inferred on every read and never recorded, never corrected, and never improved by a human's decision. No extractor emits it. There is no availability axis at all." .
 
 kb:verifiability-axis kpred:relates-to kb:claim-settlement .
+
+# ─────────────────────────────────────────────────────────────────────────────
+# F136 — Vocabulary grounding. Opened 2026-08-15 by a MEASUREMENT, not a hunch:
+# tests/bench/run-predicate-vocab-bench.ts, which scores the decision
+# normalize-entities.ts makes at write time against real embedding models.
+# ─────────────────────────────────────────────────────────────────────────────
+
+kb:vocabulary-grounding rdf:type ktype:Feature ;
+               kpred:touches-file "src/lib/rdf/normalize-entities.ts" ;
+               kpred:touches-file "src/lib/integrations/llm/extractor.ts" ;
+               kpred:touches-file "tests/bench/run-predicate-vocab-bench.ts" ;
+               kpred:touches-module code:rdf ;
+               kpred:touches-module code:llm ;
+    rdfs:label "Vocabulary grounding — tell the model our words before it guesses its own" ;
+    kpred:feature-id "F136" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:relates-to kb:predicate-economy ;
+    kpred:relates-to kb:triple-extraction ;
+    kpred:relates-to kb:predicate-manager ;
+    kpred:description "Put the graph's EXISTING predicates into the extraction prompt so a local model reaches for a word the graph already uses instead of minting a synonym. Today extraction is vocabulary-blind: the model sees the source text and a schema, never the graph it is writing into, and the cleanup happens afterwards by cosine similarity — a repair job for a problem that could have been avoided at the point of asking." ;
+    kpred:measurement "MEASURED 2026-08-15, qwen3.6 structured extraction on the octopus fixture. Strict ingest F1 26.3%. Decomposed: FACT RECALL 44.4% (8 of 18 golden facts found by subject+object) against VOCABULARY AGREEMENT 62.5% (5 of those 8 also used our predicate). The three disagreements were is-found-in twice (model said has-habitat) and has-heart-count (model said has-number-of-hearts). So roughly a third of what the strict score called failure was the model finding the right fact and calling it something else — and strict F1 charges each of those TWICE, once as a missed golden and once as an unmatched output." ;
+    kpred:principle "MEASURE THE LAYER YOU ARE CLAIMING ABOUT. An ingest F1 that mixes 'could not find the fact' with 'used a different word for it' points at a better model when the actual fix is a better prompt. tests/bench/scoring.ts now reports factRecall and vocabularyAgreement separately and deliberately never averages them into one number." ;
+    kpred:constraint "GROUNDING MUST NOT BECOME A CAGE. A prompt that lists existing predicates and demands the model choose one would suppress genuinely new relations — and a well-formed absence is the most valuable node in the graph (kb:thesis). The list has to be offered as preference, not enumerated as law, and minting a new predicate must stay available and visible in review." ;
+    kpred:open-question "How many predicates fit, and which ones? A mature graph holds 333 predicate types (graph-lint, 2026-08-15) and that will not fit in a small model's prompt. Selecting by embedding similarity to the source text is the obvious route and reuses kb:context-compression, but it is unmeasured — and picking the wrong subset grounds the model in the wrong vocabulary, which is worse than no grounding." ;
+    kpred:honest-note "NOT STARTED. Nothing in src/ puts existing predicates into an extraction prompt. What DOES exist is the after-the-fact repair (normalize-entities.ts) and, as of 2026-08-15, an honest measurement of how well it works — which is: badly, on this problem. See kb:predicate-threshold-limit." .
+
+kb:predicate-threshold-limit rdf:type ktype:Concept ;
+    rdfs:label "Cosine alone cannot separate a synonym from an opposite" ;
+    kpred:relates-to kb:vocabulary-grounding ;
+    kpred:relates-to kb:entity-normalization ;
+    kpred:tested-by "tests/bench/predicate-vocab-scoring.test.ts" ;
+    kpred:description "normalize-entities.ts rewrites an incoming predicate onto an existing one at cosine >= 0.88. Benchmarked against five embedding models on 12 synonym pairs and 12 lexically-similar-but-distinct pairs, EVERY model showed NEGATIVE separation: its worst true synonym scored below its closest distinct pair. No single threshold separates the two classes, so tuning the constant only trades one error for the other." ;
+    kpred:measurement "MEASURED 2026-08-15 via npm run bench:predicates. bge-small-en-v1.5 (the shipped default): 16.7% merge recall, 0% false merges, separation -0.256 — SAFE but nearly inert, and it MISSES the real observed case (has-heart-count/has-number-of-hearts at 0.803, below the 0.88 line). all-MiniLM-L6-v2: 8.3% / 0% / -0.311. nomic-embed-text: 16.7% / 0% / -0.208. gte-small: 66.7% recall but 58.3% FALSE merges. e5-small-v2: 83.3% recall and 75% FALSE merges, scoring has-predator/has-prey at 0.9322 and has-min-weight/has-max-weight at 0.9330." ;
+    kpred:decided "KEEP 0.88 AND DO NOT CHASE RECALL BY LOWERING IT. The distinct pair is-found-in/is-located-in scores 0.8341 with the shipped model — ABOVE the 0.8030 synonym we would be lowering the line to catch. Any threshold low enough to fix the observed vocabulary drift merges a distinction the graph author drew first. The recall belongs at extraction time (F136), not in a similarity threshold." ;
+    kpred:constraint "THE TWO ERRORS COST DIFFERENT AMOUNTS AND MUST NEVER BE AVERAGED. A missed merge leaves a duplicate predicate the review queue still shows a human. A FALSE merge rewrites a fact into a different fact before anyone sees it. Any composite score over the two lets a model buy recall with silent corruption — which is exactly how e5-small-v2 would look like an upgrade." ;
+    kpred:honest-note "THE RANKING IN THE EXISTING EMBEDDING BENCH DOES NOT TRANSFER TO THIS DECISION. Models are compared there on entity similarity in coarse bands (0.7/0.4); a model chosen on that basis could false-merge three quarters of the distinct predicate pairs here. Run npm run bench:predicates BEFORE changing the embedding model, and read the false-merge column first." .
+
+kb:antonym-write-guard rdf:type ktype:Feature ;
+               kpred:touches-file "src/lib/rdf/normalize-entities.ts" ;
+               kpred:touches-file "src/lib/rdf/semantic-diff.ts" ;
+               kpred:touches-module code:rdf ;
+    rdfs:label "Antonym veto on the predicate write path" ;
+    kpred:has-status "functional" ;
+    kpred:relates-to kb:predicate-threshold-limit ;
+    kpred:relates-to kb:entity-normalization ;
+    kpred:tested-by "src/lib/rdf/__tests__/normalize-entities.test.ts" ;
+    kpred:tested-by "src/lib/rdf/__tests__/semantic-diff.test.ts" ;
+    kpred:description "normalize-entities.ts will no longer rewrite a predicate onto an opposed one at any similarity. The check is applied while RANKING candidates rather than after choosing a winner, so a high-scoring antonym is stepped over instead of suppressing a legitimate synonym ranked below it." ;
+    kpred:honest-note "DEFENCE IN DEPTH, NOT A BUG BEING FIXED RETROACTIVELY. With the shipped bge-small model no opposed pair currently reaches 0.88, so nothing in an existing user graph was corrupted by this gap. The guard exists so that CHANGING the embedding model cannot silently start reversing the meaning of facts — and two of the five benchmarked models would do exactly that." ;
+    kpred:remaining "The pair table is a hand-maintained list of 40 pairs. It catches what it names and nothing else — the veto is a floor, not a solution, and the real answer is still F136." .
+
+kb:antonym-pairs-dead-entries rdf:type ktype:Concept ;
+    rdfs:label "Nine antonym pairs that never once fired" ;
+    kpred:relates-to kb:antonym-write-guard ;
+    kpred:description "FOUND 2026-08-15 while building the predicate benchmark. semantic-diff.ts stored antonym pairs in hyphenated form (is-true/is-false) while every caller passed a label from labelFromIRI, which has ALREADY converted hyphens to spaces. So the substring test 'is true'.includes('is-true') was false and NINE of the pairs — including is-true/is-false, the most consequential contradiction a knowledge graph can hold — could never match anything. Fixed by splitting both sides on either separator and comparing whole words." ;
+    kpred:principle "A LOOKUP TABLE IS NOT A CONTROL UNTIL SOMETHING PROVES IT FIRES. These nine entries read correctly, reviewed correctly, and did nothing for as long as they existed, because no test ever asserted a match — only that the surrounding logic behaved given an assumed one. The same shape as a mock-vector test standing in for a real threshold measurement." .
