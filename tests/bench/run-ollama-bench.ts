@@ -25,6 +25,9 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join, resolve } from 'path';
 import { EXTRACTION_SYSTEM_PROMPT, buildExtractionUserPrompt, parseTriplesJSON } from '../../src/lib/integrations/llm/extractor';
 import { extractWithOllama } from '../../src/lib/integrations/llm/ollama-extract';
+import { selectVocabulary, buildVocabularySection } from '../../src/lib/rdf/vocabulary-context';
+import { iri, lit } from '../../src/lib/rdf/types';
+import type { Statement } from '../../src/lib/rdf/types';
 import { ETHICS_PREAMBLE } from '../../src/lib/safety/content-policy';
 import { buildReport, formatReport } from './scoring';
 import type { ExtractedTriple } from '../../src/lib/integrations/llm/extractor';
@@ -54,6 +57,8 @@ const CHAT_MAX_TOKENS = parseInt(getArg('--chat-max-tokens', '2048'), 10);
 // Extraction needs headroom for the reasoning AND the triples that follow it. qwen3.6 spent 7805
 // chars thinking before emitting anything, which alone exceeds the old 2048 budget.
 const INGEST_MAX_TOKENS = parseInt(getArg('--ingest-max-tokens', '8192'), 10);
+// F136: put the existing graph's predicate vocabulary into the extraction prompt.
+const GROUNDED = args.includes('--ground');
 
 function parseModels(): string[] {
   const models: string[] = [];
@@ -168,6 +173,42 @@ const chatTestCases: ChatTestCase[] = JSON.parse(
   readFileSync(join(FIXTURES_DIR, 'golden', 'octopus-chat.json'), 'utf-8')
 );
 
+// ── Vocabulary grounding (F136) ──────────────────────────────────────────────
+//
+// `--ground` loads an existing graph and puts ITS predicate vocabulary into the extraction prompt,
+// so the A/B measures the one thing that changed: whether the model reaches for a word the graph
+// already uses instead of inventing a synonym.
+//
+// The fixture deliberately shares NO facts with the golden set — every statement is about a
+// different species — because seeding the golden triples would hand over the answer key. See the
+// $comment in existing-graph.json for what this does and does not prove.
+
+function loadExistingGraph(): Statement[] {
+  const raw = JSON.parse(readFileSync(join(FIXTURES_DIR, 'golden', 'existing-graph.json'), 'utf-8'));
+  return (raw.statements as Array<{ s: string; p: string; o: string }>).map((t, i) => ({
+    id: `existing-${i}`,
+    s: iri(`urn:kbase:concept/${t.s}`),
+    // A literal-looking object (a number, or a phrase with spaces) is stored as a literal, matching
+    // how the app would hold it. Only IRI objects are offered as reusable entity names.
+    o: /^\d|\s/.test(t.o) ? lit(t.o) : iri(`urn:kbase:concept/${t.o}`),
+    p: iri(`urn:kbase:predicate/${t.p}`),
+    g: iri('urn:kbase:source/existing-graph'),
+    sourceId: 'existing-graph',
+  }) as Statement);
+}
+
+function buildGroundingSection(): string {
+  if (!GROUNDED) return '';
+  const vocab = selectVocabulary(loadExistingGraph(), sourceText);
+  const section = buildVocabularySection(vocab);
+  console.log(
+    `Grounding: offering ${vocab.predicates.length} predicates ` +
+      `(${vocab.predicates.filter((p) => p.mentioned).length} matched to the source text), ` +
+      `${vocab.entities.length} entities, +${section.length} prompt chars`,
+  );
+  return section;
+}
+
 // ── Chat system prompt ───────────────────────────────────────────────────────
 
 function buildChatSystem(triples: ExtractedTriple[]): string {
@@ -202,10 +243,10 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   });
 }
 
-async function benchIngestBaseline(model: string): Promise<ExtractedTriple[]> {
+async function benchIngestBaseline(model: string, vocabularySection: string): Promise<ExtractedTriple[]> {
   const raw = await chatOllama(
     EXTRACTION_SYSTEM_PROMPT,
-    buildExtractionUserPrompt(sourceText, 'Common Octopus — Wikipedia'),
+    buildExtractionUserPrompt(sourceText, 'Common Octopus — Wikipedia', vocabularySection),
     model,
     INGEST_MAX_TOKENS
   );
@@ -241,11 +282,18 @@ async function benchIngestStructured(model: string): Promise<ExtractedTriple[]> 
 }
 
 async function benchIngest(model: string): Promise<ExtractedTriple[]> {
-  console.log(`  Ingest: extracting triples (mode=${MODE}) …`);
+  console.log(`  Ingest: extracting triples (mode=${MODE}${GROUNDED ? ', grounded' : ''}) …`);
   const start = Date.now();
+  const vocabularySection = buildGroundingSection();
+
+  // Structured mode composes its own prompt inside extractWithOllama, so grounding is not wired
+  // through it yet. Say so rather than silently running an ungrounded A/B and reporting it as one.
+  if (GROUNDED && MODE === 'structured') {
+    throw new Error('--ground is only wired for --mode baseline; structured mode builds its prompt inside extractWithOllama.');
+  }
 
   const triples = await withTimeout(
-    MODE === 'structured' ? benchIngestStructured(model) : benchIngestBaseline(model),
+    MODE === 'structured' ? benchIngestStructured(model) : benchIngestBaseline(model, vocabularySection),
     INGEST_TIMEOUT_MS,
     `Ingest for ${model}`
   );
@@ -372,6 +420,7 @@ async function main() {
   console.log(`Fixture: octopus.txt (${sourceText.length} chars)`);
   console.log(`Golden: ${goldenIngest.length} ingest triples, ${chatTestCases.length} chat questions`);
   console.log(`Tasks: ${TASKS}`);
+  console.log(`Grounded: ${GROUNDED ? 'yes (F136 vocabulary section)' : 'no'}`);
   console.log(`Mode: ${MODE}${MODE === 'structured' ? ' (schema-constrained decoding + auto small-model prompt)' : ' (plain chat + full prompt)'}`);
   console.log(`Ingest timeout: ${(INGEST_TIMEOUT_MS / 1000).toFixed(0)}s`);
 
@@ -396,8 +445,8 @@ async function main() {
     const ts = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
 
     for (const r of reports) {
-      const slug = `ollama_${r.model.replace(/[/:]/g, '_')}_${MODE}`;
-      writeFileSync(join(RESULTS_DIR, `${slug}_${ts}.json`), JSON.stringify({ ...r, mode: MODE }, null, 2));
+      const slug = `ollama_${r.model.replace(/[/:]/g, '_')}_${MODE}${GROUNDED ? '_grounded' : ''}`;
+      writeFileSync(join(RESULTS_DIR, `${slug}_${ts}.json`), JSON.stringify({ ...r, mode: MODE, grounded: GROUNDED }, null, 2));
     }
 
     const summary = {

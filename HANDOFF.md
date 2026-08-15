@@ -1,6 +1,131 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-07-31.** Working branch: `fix/indico-browser-reachability`
+**Last updated: 2026-08-15.** Working branch: `plan/content-operations`
+(**1 commit landed this session — `59e2e54` — plus UNCOMMITTED F136 work, see below. Not pushed, no PR.**)
+
+## ▶ LATEST (2026-08-15) — the extraction problem, measured properly at last
+
+### ✅ COMMITTED (`59e2e54`) — "0.88 was never measured, and nine antonym pairs never once fired"
+
+Continues the previous commit's finding that extraction is a VOCABULARY problem, not a capability
+problem. The obvious next question was whether the thing that already fixes vocabulary drift —
+`normalize-entities.ts`, which rewrites an incoming predicate onto an existing one at cosine ≥ 0.88
+— actually does. **It had never been measured**: its test mocks a vector table and asserts branching
+given assumed cosines, so it proves the logic and says nothing about the threshold. That constant
+gates a WRITE into a user's graph.
+
+**`npm run bench:predicates`** (new: `tests/bench/run-predicate-vocab-bench.ts` + fixture
+`predicate-pairs.json`, 12 synonym pairs vs 12 lexically-similar-but-DISTINCT pairs, embedded
+exactly as production embeds them):
+
+| model | merge recall | **false merges** | separation | safe threshold |
+|---|---|---|---|---|
+| bge-small (SHIPPED) | 16.7% | 0% | −0.256 | 0.84 |
+| all-MiniLM-L6-v2 | 8.3% | 0% | −0.311 | 0.78 |
+| nomic-embed-text | 16.7% | 0% | −0.208 | 0.85 |
+| gte-small | 66.7% | 58.3% | −0.100 | 0.94 |
+| e5-small-v2 | 83.3% | **75.0%** | −0.117 | 0.95 |
+
+**0.88 is SAFE and nearly INERT.** It misses the case that motivated it
+(`has-heart-count`/`has-number-of-hearts`, 0.803) and CANNOT be lowered to catch it:
+`is-found-in`/`is-located-in` scores **0.8341**, above the synonym. **Every model has NEGATIVE
+separation** — cosine alone cannot separate "another word for the same relation" from "a different
+relation that looks similar". Recorded as `kb:predicate-threshold-limit`; decision **keep 0.88**.
+
+⚠️ **Read the false-merge column before ever changing the embedding model.** The existing embed
+bench ranks models on entity similarity in coarse bands (0.7/0.4); a model chosen on that basis
+(gte-small, e5-small-v2) would silently collapse `has-predator`→`has-prey` (0.9322) and
+`has-min-weight`→`has-max-weight` (0.9330).
+
+**TWO REAL DEFECTS FOUND AND FIXED:**
+1. **Nine antonym pairs were dead code.** `semantic-diff.ts` stored them hyphenated (`is-true`/
+   `is-false`) while every caller passes a label from `labelFromIRI`, which has ALREADY turned
+   hyphens into spaces. `"is true".includes("is-true")` is false — so `is-true`/`is-false`, the most
+   consequential contradiction a graph can hold, **had never matched anything**. Now whole-word
+   matching on both sides (which also stops `"min"` being read out of `"determiner"`).
+2. **The antonym guard protected the advisory path, not the write path.** `isAntonymPredicate` was
+   module-private to `semantic-diff` (which only LABELS a diff). `normalize-entities`, which
+   silently REWRITES, had none. Now vetoed **while ranking** — applied after, a high-scoring antonym
+   would suppress a legitimate synonym below it. **Defence in depth, not a retroactive fix:**
+   bge-small reaches no opposed pair at 0.88, so nothing existing was corrupted.
+
+Also: **ingest scoring now reports `factRecall` beside `vocabularyAgreement`, never combined**
+(`tests/bench/scoring.ts`). On a real qwen3.6 run, strict F1 26.3% decomposes to **44.4% fact recall
+at 62.5% vocabulary agreement**. Blind spot pinned: an inverted relation still matches at fact level,
+so factRecall is an UPPER bound and is never reported alone.
+
+Verified: 1969 unit tests, 0 type errors, graph-lint 0 errors, align green. Every new test
+**mutation-checked**; one was decorative and was rewritten after a mutation failed to kill it.
+
+### 🚧 UNCOMMITTED — F136 vocabulary grounding (built, tested, MEASUREMENT INCOMPLETE)
+
+**Matt's steer this session:** "active query of current graph while extracting… extraction is a
+large % of the battle." Confirmed in code: `buildExtractionUserPrompt(text, sourceTitle)` took the
+source text and a title — **the extractor never saw the graph it was writing into.**
+
+Built (all green, 22 unit tests, 5/5 mutations caught, 1115 tests pass across affected suites):
+- **`src/lib/rdf/vocabulary-context.ts`** — `selectVocabulary()` + `buildVocabularySection()`.
+  **SCRIPT TIER by construction**: frequency + lexical overlap, deterministic, zero tokens, no
+  embedding call, works offline. Drops generic predicates (`relates-to` etc.), drops predicates used
+  once (graph-lint's 24%-are-one-offs finding), drops standard vocabularies, stable ordering so the
+  prompt prefix stays cacheable.
+- **`buildExtractionUserPrompt(text, title, vocabularySection = '')`** — third param OPTIONAL and
+  appended last, so every existing caller keeps its exact prompt bytes and an empty graph costs nothing.
+- **THE LOAD-BEARING PROPERTY, tested:** the section is a PREFERENCE, not a cage. It explicitly
+  permits minting a new predicate and forbids forcing a fact into a listed one. A closed list would
+  suppress genuinely new relations, and a well-formed absence is the point (`kb:thesis`).
+- `tests/bench/fixtures/golden/existing-graph.json` — an existing graph that shares the VOCABULARY
+  but **none of the facts** (cuttlefish/squid/nautilus, never the octopus). Seeding the golden
+  triples would be circular. Read its `$comment` for what the measurement does and does not prove.
+- `--ground` flag on `run-ollama-bench.ts` (baseline mode only; it throws loudly on
+  `--mode structured`, which composes its own prompt inside `extractWithOllama`).
+
+**▶ NEXT STEP, START HERE:** the A/B was **launched but not finished** — baseline run was still going
+when the session ended. Run both and compare `factRecall` / `vocabularyAgreement`:
+```
+OLLAMA_BASE_URL=http://localhost:11434 npx tsx tests/bench/run-ollama-bench.ts \
+  --model qwen3.6:latest --tasks ingest --mode baseline --timeout-ms 900000
+# then the same command with --ground appended
+```
+Baseline to beat (measured earlier this session, ungrounded): **fact recall 44.4%, vocabulary
+agreement 62.5%**, with `is-found-in`→"has-habitat" ×2 and `has-heart-count`→"has-number-of-hearts"
+as the three disagreements. **Do not claim F136 works until that number moves.** Then commit, and
+update `kb:vocabulary-grounding` (currently `planned`) with the measured result — honestly, including
+if it does nothing.
+
+### ▶ MATT'S ASKS THIS SESSION — three of four are still unbuilt
+
+1. ~~Active query of the graph while extracting~~ → F136, built above, measurement pending.
+2. **Active "listening"/extraction from Shelly chat AND Claude Code** — unbuilt.
+3. **Ambient gathering of app usage → suggested triples** — unbuilt.
+4. **Shelly as a front end to a Claude Code terminal** — unbuilt; answered as a design question.
+
+**The architecture answer, grounded:** most of the bridge already exists. The MCP server lets Claude
+Code read the graphs; `knowledge.pending.jsonl`/`knowledge.answers.jsonl` is already the shared
+channel; and **`scripts/agent/desk.sh` already spawns a `claude` side-chat whose answers land in the
+same file the UI writes** — the precedent, pointed the other way. **ONE THING BLOCKS THE LOOP:** the
+app can only reach those files via `showDirectoryPicker` (`workspace.svelte.ts:164`) — a
+Chromium-only manual folder pick. The fix is a **localhost sidecar**, same shape as Ollama (opt-in,
+per-user, `settings.*`, no general backend) wrapping the **Claude Agent SDK**
+(`@anthropic-ai/claude-agent-sdk` — Claude Code packaged as a library, honours the same credential
+resolution as the CLI: `ANTHROPIC_API_KEY` → `ANTHROPIC_AUTH_TOKEN` → `ant auth login` OAuth
+profile). It dissolves the folder-pick problem as a side effect, which is why it unblocks asks 2 and
+3 as well as 4 — highest blast radius of anything outstanding.
+
+**⚠ BLOCKED ON MATT, AND IT IS THE WHOLE PREMISE:** does his Claude Code subscription cover driving
+the Agent SDK programmatically from an app, or does that path resolve to API billing? If the latter,
+**the sidecar does not solve the cost problem he is building it to solve.** Confirm before building.
+(Also note: `ant auth login` and Claude Code's own `/login` conflict — you keep one.)
+
+### Environment notes (unchanged, still true)
+- `npm` is not on PATH in a fresh shell: `export PATH="$HOME/.nvm/versions/node/v24.18.0/bin:$PATH"`.
+- Script tier this session: **19/20**, the one failure being `status-evidence` (pre-existing) plus the
+  known kernel-reboot finding (Matt's call — n8n host still on 6.8.0-110 with -117 installed).
+- Ollama is up with 11 models; `qwen3.6:latest` (36B) is the strongest local extractor.
+
+---
+
+## OLDER CONTEXT (2026-07-31) — working branch `fix/indico-browser-reachability`
 (cut from `plan/structured-data-source-watching`; **4 commits, local only, NOT pushed, no PR**).
 
 ## ▶ SERVERS ARE NOW MANAGED FROM HERE (2026-07-31)
