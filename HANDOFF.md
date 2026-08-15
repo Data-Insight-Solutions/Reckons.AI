@@ -182,6 +182,47 @@ mid-tour. **`ingest` in particular is not a read** and should never fire un-gate
   step, so it should follow the same accept-gate the destructive ones use rather than applying
   silently mid-tour.
 
+### ▶ NEW ASK (Matt, 2026-08-15), NOT STARTED — tie triple-fact REVIEW into Claude Code skills, via MCP and/or CLI
+
+The direct consequence of parking the sidecar: if Claude Code is the agent Matt actually works in,
+the review loop has to be reachable from there. **This is arguably the highest-value item in the
+whole cluster**, because the motivation is already measured — the pending queue is **583 deep and
+has never been cleared**, which is exactly the triage-cost trap F74.3 warns about, observed on our
+own dogfood. Proposals are cheap to generate and expensive to settle, and nothing has made settling
+cheaper.
+
+**What exists (do not rebuild):**
+- `kb_pending(kb?)` — Claude Code can already READ the queue.
+- `kb_add_note(...)` — it can already PROPOSE into it.
+- **`npm run desk` / `scripts/agent/interview.ts`** (`openQuestions` / `recordAnswer`) — the working
+  precedent, and the model to copy: a terminal side-chat that asks Matt open questions and writes
+  the **same `knowledge.answers.jsonl` the UI writes**, so the build session's agents resume without
+  knowing which channel replied.
+
+**The gap: nothing can SETTLE.** There is no `kb_confirm` / `kb_reject` / `kb_supersede` — the
+review statuses (`pending`, `pending-removal`, `confirmed`, `refined`, `rejected`, `superseded`)
+are reachable only through the Review tab in the app. So Claude Code can fill the queue and read it
+and never drain it, which is precisely the asymmetry that produced 583.
+
+**⚠ THE LINE THAT MUST NOT BE BLURRED, AND IT IS STRUCTURAL, NOT ADVISORY.** F52 is *agents propose,
+humans settle*, and it is the product's core thesis, not a policy setting. **Matt settling THROUGH
+Claude Code is still a human settling** — that is what `desk.sh` already does and it is fine. **An
+agent confirming its own proposal is not**, and a `kb_confirm` tool available to the model makes
+the two indistinguishable at the point of the write. Design so the distinction survives:
+- The settling tool should carry the human's decision, not the model's judgement — the model's job
+  is to PRESENT the fact well and record what Matt said, exactly as `recordAnswer` does today.
+- An agent must never be able to confirm a fact **it proposed** in the same session. That is the
+  self-verification failure the whole thesis exists to prevent: *an unverifiable claim, made by the
+  party it benefits, is not evidence.*
+- Provenance on every settle: which channel, which actor, when. A settled fact whose settler is
+  unknown is worse than an unsettled one, because it looks reviewed.
+
+**MCP or CLI?** Both are listed in the ask. The CLI is the better first home — it already has the
+`reckons` command surface, the desk precedent lives there, and a terminal review flow is a HUMAN
+sitting at a keyboard by construction, which makes the line above easy to hold. An MCP `kb_settle`
+hands the same power to any model with the server configured, which is where it gets dangerous.
+**Build the CLI path first; treat MCP settling as a separate decision with its own gate.**
+
 ### ▶ NEW ASK (Matt, 2026-08-15), NOT STARTED — "some sort of 'export to local agent' action/skill"
 
 **The inverse direction of the CLI actions above, and — importantly — the one thing in this whole
