@@ -1,8 +1,15 @@
 {
-  "_comment": "Offline jobs run by `npm run offline:all` (scripts/offline/run-all.ts). Add/remove/toggle freely — each runs in order even if a prior one fails. Findings land in reckons-workspace/knowledge.pending.jsonl for review in Reckons.AI. cmd runs in bash, so ${VAR:-default} and pipes work.",
-  "_tiers": "F74.3 work tiering. tier=script: deterministic, no LLM, zero tokens, right by construction — run these first and prefer growing this tier. tier=agent: a LOCAL model fills a judgment hole inside a scripted harness (ground → prompt → validate → emit-proposal) and only ever emits PROPOSALS a human gates. Opus is not a tier here: it designs the harness and triages the queue these jobs fill. Anything an agent job gets right reliably should be demoted to a script.",
-  "_blocking": "blocking=true means `run-all --ci` exits non-zero if this job fails. Reserve it for failures you cannot take back after a push. Everything else is ADVISORY: it reports and queues pending findings, and never blocks a merge — a gate that cries wolf gets switched off, and then it protects nothing.",
+  "_comment": "Offline jobs run by `npm run offline:all` (scripts/offline/run-all.ts). Add/remove/toggle freely \u2014 each runs in order even if a prior one fails. Findings land in reckons-workspace/knowledge.pending.jsonl for review in Reckons.AI. cmd runs in bash, so ${VAR:-default} and pipes work.",
+  "_tiers": "F74.3 work tiering. tier=script: deterministic, no LLM, zero tokens, right by construction \u2014 run these first and prefer growing this tier. tier=agent: a LOCAL model fills a judgment hole inside a scripted harness (ground \u2192 prompt \u2192 validate \u2192 emit-proposal) and only ever emits PROPOSALS a human gates. Opus is not a tier here: it designs the harness and triages the queue these jobs fill. Anything an agent job gets right reliably should be demoted to a script.",
+  "_blocking": "blocking=true means `run-all --ci` exits non-zero if this job fails. Reserve it for failures you cannot take back after a push. Everything else is ADVISORY: it reports and queues pending findings, and never blocks a merge \u2014 a gate that cries wolf gets switched off, and then it protects nothing.",
   "jobs": [
+    {
+      "name": "queue-dedupe",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/queue-dedupe.ts",
+      "desc": "Reports duplicate and superseded entries in the review queue. Report-only in the sweep: collapsing the queue is a decision, not a check, so --write and --supersede stay manual."
+    },
     {
       "name": "published-graph-guard",
       "tier": "script",
@@ -17,14 +24,14 @@
       "enabled": false,
       "blocking": true,
       "cmd": "npx tsx scripts/offline/build-guard.ts",
-      "desc": "Is ./build actually a PRODUCTION build? No dev artifacts (@vite/client), minified, content-hashed, CSP present. Disabled here because it needs a build to exist — it runs in CI right after `npm run build` (npm run build:verify). Enable with --only=build-guard after building locally"
+      "desc": "Is ./build actually a PRODUCTION build? No dev artifacts (@vite/client), minified, content-hashed, CSP present. Disabled here because it needs a build to exist \u2014 it runs in CI right after `npm run build` (npm run build:verify). Enable with --only=build-guard after building locally"
     },
     {
       "name": "claim-audit",
       "tier": "script",
       "enabled": true,
       "cmd": "npx tsx scripts/offline/claim-audit.ts --pending",
-      "desc": "ASYNC alignment: sweeps the hand-written surfaces align(1) cannot generate (README, SAFETY.md, COUNSEL-BRIEF.md, app shell, landing copy) for claims the graph contradicts — an unbuilt feature described as working, or a countable claim that is simply wrong. Emits PROPOSALS for review; never gates a build, because 'is this sentence overclaiming' is a judgment"
+      "desc": "ASYNC alignment: sweeps the hand-written surfaces align(1) cannot generate (README, SAFETY.md, COUNSEL-BRIEF.md, app shell, landing copy) for claims the graph contradicts \u2014 an unbuilt feature described as working, or a countable claim that is simply wrong. Emits PROPOSALS for review; never gates a build, because 'is this sentence overclaiming' is a judgment"
     },
     {
       "name": "landing-data-align",
@@ -38,7 +45,7 @@
       "tier": "script",
       "enabled": true,
       "cmd": "npx tsx scripts/offline/history-lessons.ts --pending",
-      "desc": "Mines this repo's OWN history for how it fails: fixes that shipped with no test (a bug with a return ticket — in a semantic system the regression will not crash, it will quietly go back to being wrong) and fragility hotspots. Evidence, not opinion"
+      "desc": "Mines this repo's OWN history for how it fails: fixes that shipped with no test (a bug with a return ticket \u2014 in a semantic system the regression will not crash, it will quietly go back to being wrong) and fragility hotspots. Evidence, not opinion"
     },
     {
       "name": "graph-lint",
@@ -52,7 +59,7 @@
       "tier": "script",
       "enabled": true,
       "cmd": "npx tsx scripts/offline/shacl-validate.ts --warn-only",
-      "desc": "W3C SHACL over static/shapes/*.ttl via rdf-validate-shacl. Shapes are DATA, so a user graph or shared package can carry its own contract — graph-lint can only enforce rules hardcoded about THIS repo. --warn-only while pre-existing debt in a stale export is cleared."
+      "desc": "W3C SHACL over static/shapes/*.ttl via rdf-validate-shacl. Shapes are DATA, so a user graph or shared package can carry its own contract \u2014 graph-lint can only enforce rules hardcoded about THIS repo. --warn-only while pre-existing debt in a stale export is cleared."
     },
     {
       "name": "csp-origin-audit",
@@ -66,28 +73,28 @@
       "tier": "script",
       "enabled": true,
       "cmd": "npx tsx scripts/offline/status-evidence.ts",
-      "desc": "Shipped features must link a test OR declare kpred:test-coverage \"none\" — you may ship untested code, but not silently"
+      "desc": "Shipped features must link a test OR declare kpred:test-coverage \"none\" \u2014 you may ship untested code, but not silently"
     },
     {
       "name": "untested-options",
       "tier": "script",
       "enabled": true,
       "cmd": "npx tsx scripts/offline/untested-options.ts",
-      "desc": "Optional inputs no test ever passes — the branch that only opens when someone sets the option. Found TurtleChatOptions.publishedMode (gates the published ethics wrapper) with zero coverage. Reports only."
+      "desc": "Optional inputs no test ever passes \u2014 the branch that only opens when someone sets the option. Found TurtleChatOptions.publishedMode (gates the published ethics wrapper) with zero coverage. Reports only."
     },
     {
       "name": "shared-deps",
       "tier": "script",
       "enabled": true,
       "cmd": "npx tsx scripts/offline/shared-deps.ts --top=10",
-      "desc": "Whole-roadmap shared-dependency scan — dependency hubs (build once), shared files, and overlap warnings (features that need the same thing but touch no common file). Avoid separate code for nearly the same task."
+      "desc": "Whole-roadmap shared-dependency scan \u2014 dependency hubs (build once), shared files, and overlap warnings (features that need the same thing but touch no common file). Avoid separate code for nearly the same task."
     },
     {
       "name": "code-sprawl",
       "tier": "script",
       "enabled": true,
       "cmd": "npx tsx scripts/offline/code-sprawl.ts",
-      "desc": "Copy-paste / duplication detector — the same block of code in >1 file (the disease behind the clipboard crash and the label-overlay drift), plus file-size sprawl. The code-level companion to shared-deps."
+      "desc": "Copy-paste / duplication detector \u2014 the same block of code in >1 file (the disease behind the clipboard crash and the label-overlay drift), plus file-size sprawl. The code-level companion to shared-deps."
     },
     {
       "name": "safety-attestation",
@@ -108,28 +115,28 @@
       "tier": "script",
       "enabled": true,
       "cmd": "bash scripts/offline/alignment-sweep.sh",
-      "desc": "TTL parse / asset paths / namespace typos / stale LEAP + branch-align --suggest + kb-align → pending questions"
+      "desc": "TTL parse / asset paths / namespace typos / stale LEAP + branch-align --suggest + kb-align \u2192 pending questions"
     },
     {
       "name": "competitor-scan",
       "tier": "script",
       "enabled": true,
       "cmd": "npx tsx scripts/offline/competitor-scan.ts --pending",
-      "desc": "F86: refresh competitor metadata + LICENSE from the GitHub API; flags license changes, copyleft (we are MIT), unlicensed repos, and abandoned projects. Add --discover to search for new competitors. Never edits the TTL — judgment stays human"
+      "desc": "F86: refresh competitor metadata + LICENSE from the GitHub API; flags license changes, copyleft (we are MIT), unlicensed repos, and abandoned projects. Add --discover to search for new competitors. Never edits the TTL \u2014 judgment stays human"
     },
     {
       "name": "button-crawl",
       "tier": "script",
       "enabled": false,
       "cmd": "npx tsx scripts/offline/button-crawl.ts",
-      "desc": "F34: clicks every interactive element on every route; flags crashes, blank screens, SILENT no-ops, and sub-44px touch targets. Pure local JS (no Ollama). Disabled by default because it needs a server already running — `npm run dev`, then enable this or run `npm run offline:all -- --only=button-crawl`"
+      "desc": "F34: clicks every interactive element on every route; flags crashes, blank screens, SILENT no-ops, and sub-44px touch targets. Pure local JS (no Ollama). Disabled by default because it needs a server already running \u2014 `npm run dev`, then enable this or run `npm run offline:all -- --only=button-crawl`"
     },
     {
       "name": "graph-economics",
       "tier": "script",
       "enabled": true,
       "cmd": "npx tsx scripts/offline/graph-economics.ts",
-      "desc": "F74.5: both sides of the token ledger — TTL maintenance churn and MCP tool-schema tax (debit) against compressed-context saving, cited avoided-rework, and the extend-vs-add cohesion ratio (credit) — plus break-even and the compounding curve. Advisory, never blocking: a ledger reports, it does not gate. Reports correlation and cited events only; there is no repo built without a graph to compare against"
+      "desc": "F74.5: both sides of the token ledger \u2014 TTL maintenance churn and MCP tool-schema tax (debit) against compressed-context saving, cited avoided-rework, and the extend-vs-add cohesion ratio (credit) \u2014 plus break-even and the compounding curve. Advisory, never blocking: a ledger reports, it does not gate. Reports correlation and cited events only; there is no repo built without a graph to compare against"
     },
     {
       "name": "proposal-yield",
@@ -143,7 +150,7 @@
       "tier": "script",
       "enabled": true,
       "cmd": "npx tsx scripts/offline/scope-check.ts --calibration",
-      "desc": "Design estimates vs recorded actuals (F130.1). Calibration mode always runs; --base=origin/dev compares an in-flight branch. Never fails a build — creep is a prompt to refine the design, not a broken invariant."
+      "desc": "Design estimates vs recorded actuals (F130.1). Calibration mode always runs; --base=origin/dev compares an in-flight branch. Never fails a build \u2014 creep is a prompt to refine the design, not a broken invariant."
     },
     {
       "name": "describe-entities",
@@ -157,14 +164,14 @@
       "tier": "agent",
       "enabled": true,
       "cmd": "npx tsx scripts/offline/code-review.ts --base=${CODE_REVIEW_BASE:-origin/dev}",
-      "desc": "Local coding model (qwen3-coder) reviews the branch diff → findings to pending review (needs OLLAMA_BASE_URL)"
+      "desc": "Local coding model (qwen3-coder) reviews the branch diff \u2192 findings to pending review (needs OLLAMA_BASE_URL)"
     },
     {
       "name": "visual-diff",
       "tier": "agent",
       "enabled": false,
       "cmd": "npx tsx scripts/offline/visual-diff.ts --base=${VISUAL_DIFF_BASE:-https://reckons.ai} --head=${VISUAL_DIFF_HEAD:-https://dev.reckons-ai.pages.dev}",
-      "desc": "Local-VLM visual regression prod↔dev (needs OLLAMA_BASE_URL; set VISUAL_DIFF_BASE / VISUAL_DIFF_HEAD)"
+      "desc": "Local-VLM visual regression prod\u2194dev (needs OLLAMA_BASE_URL; set VISUAL_DIFF_BASE / VISUAL_DIFF_HEAD)"
     },
     {
       "name": "server-health",
