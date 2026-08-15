@@ -47,6 +47,13 @@ const TASKS = getArg('--tasks', 'all') as 'ingest' | 'chat' | 'all';
 // 'baseline' = original plain-chat path with the full extraction prompt, for A/B comparison.
 const MODE = getArg('--mode', 'baseline') as 'baseline' | 'structured';
 const INGEST_TIMEOUT_MS = parseInt(getArg('--timeout-ms', '300000'), 10);
+// Reasoning models spend their budget thinking before they answer, so a budget sized for a
+// non-reasoning model truncates them mid-thought and the harness sees silence. 256 was enough for
+// a 4B model and nowhere near enough for qwen3.6. Overridable, because a bigger budget costs time.
+const CHAT_MAX_TOKENS = parseInt(getArg('--chat-max-tokens', '2048'), 10);
+// Extraction needs headroom for the reasoning AND the triples that follow it. qwen3.6 spent 7805
+// chars thinking before emitting anything, which alone exceeds the old 2048 budget.
+const INGEST_MAX_TOKENS = parseInt(getArg('--ingest-max-tokens', '8192'), 10);
 
 function parseModels(): string[] {
   const models: string[] = [];
@@ -115,7 +122,36 @@ async function chatOllama(
     throw new Error(`Ollama ${res.status}: ${body.slice(0, 300)}`);
   }
   const data = await res.json();
-  return data.choices?.[0]?.message?.content ?? '';
+  const choice = data.choices?.[0] ?? {};
+  const msg = choice.message ?? {};
+  const content = (msg.content ?? '') as string;
+
+  // REASONING MODELS PUT THEIR ANSWER SOMEWHERE ELSE, AND THIS BENCH USED TO SCORE THEM AS MUTE.
+  //
+  // Measured 2026-08-15: qwen3.6 (36B) scored 0.0% ingest F1 and returned 0 words to every chat
+  // question — the same score as a 4B model. Asked directly through /api/generate it extracted
+  // every golden triple correctly. The model was never the problem.
+  //
+  // Two faults compounded. A reasoning model streams its thinking into `message.reasoning` and
+  // only then writes `message.content`; this function read content alone. And max_tokens was small
+  // enough (256 for chat) that the thinking exhausted the budget first, so finish_reason came back
+  // as "length" with content still empty. The harness recorded that as a confident zero.
+  //
+  // A benchmark that reports a broken measurement as a bad model is worse than no benchmark: it
+  // sends you shopping for a replacement you already own. So an empty answer that was TRUNCATED is
+  // now surfaced as a harness failure, never silently scored.
+  if (!content.trim()) {
+    const reasoning = (msg.reasoning ?? msg.reasoning_content ?? '') as string;
+    if (choice.finish_reason === 'length') {
+      throw new Error(
+        `Ollama returned no content for ${model}: finish_reason=length with ${reasoning.length} chars of reasoning. ` +
+          `The token budget (${maxTokens}) was consumed before the model produced an answer — raise it for reasoning models.`,
+      );
+    }
+    // Not truncated, but content is empty and reasoning is not: some builds emit only reasoning.
+    if (reasoning.trim()) return reasoning;
+  }
+  return content;
 }
 
 // ── Paths & fixtures ─────────────────────────────────────────────────────────
@@ -171,7 +207,7 @@ async function benchIngestBaseline(model: string): Promise<ExtractedTriple[]> {
     EXTRACTION_SYSTEM_PROMPT,
     buildExtractionUserPrompt(sourceText, 'Common Octopus — Wikipedia'),
     model,
-    2048
+    INGEST_MAX_TOKENS
   );
 
   console.log(`  Ingest: generated (${raw.length} chars)`);
@@ -226,7 +262,7 @@ async function benchChat(model: string): Promise<string[]> {
 
   for (const tc of chatTestCases) {
     const start = Date.now();
-    const response = await chatOllama(system, tc.question, model, 256);
+    const response = await chatOllama(system, tc.question, model, CHAT_MAX_TOKENS);
     const elapsed = ((Date.now() - start) / 1000).toFixed(1);
     const wordCount = response.split(/\s+/).filter(Boolean).length;
     console.log(`  Chat (${elapsed}s, ${wordCount}w): "${tc.question}" → ${response.slice(0, 80).replace(/\n/g, ' ')}…`);
