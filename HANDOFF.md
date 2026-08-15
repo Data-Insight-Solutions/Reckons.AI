@@ -212,10 +212,38 @@ Shelly has no way to say "hand this to my local agent". The ask is the in-app ac
   NOT written straight into the graph. An export path that quietly becomes an import path is how the
   review gate gets bypassed without anyone deciding to bypass it.
 
-**⚠ BLOCKED ON MATT, AND IT IS THE WHOLE PREMISE:** does his Claude Code subscription cover driving
-the Agent SDK programmatically from an app, or does that path resolve to API billing? If the latter,
-**the sidecar does not solve the cost problem he is building it to solve.** Confirm before building.
-(Also note: `ant auth login` and Claude Code's own `/login` conflict — you keep one.)
+### ✅ DECIDED (Matt, 2026-08-15) — the sidecar is PARKED, and the billing question is no longer blocking
+
+"I will just have to interface with Claude Code directly for now."
+
+**So stop treating the subscription/API-billing question as a blocker — it is deprioritised, not
+answered.** (For whenever it returns: the Agent SDK honours the same credential resolution as the
+CLI, and `ant auth login` conflicts with Claude Code's own `/login` — you keep one.) Matt drives
+Claude Code in the terminal; the app does not front-end it.
+
+**The real dependency he named, and it is the right one:** *"core Shelly usage would need to be a
+great local model, to execute and orchestrate all the skills correctly."* Shelly-as-orchestrator is
+gated on **local tool-calling and orchestration quality**, not on transport. Building the sidecar
+first would have delivered a pipe to a model that cannot reliably drive what is on the other end.
+
+**What this re-sequences:**
+- **`export to local agent` SURVIVES UNCHANGED** and is now clearly the next thing to build — it
+  never needed the sidecar, and it is useful precisely because Matt is in Claude Code directly.
+- **CLI actions are still worth building** for the app's own sake (the preview beats need them), but
+  the *orchestration* layer on top waits on model capability.
+- **F136 is unaffected** — extraction quality was always the separate, independent thread.
+
+**⚠ THE CAPABILITY CLAIM IS UNMEASURED, AND IT IS NOW THE LOAD-BEARING ONE.** "A great local model"
+is currently a judgement, not a number, and this project's whole doctrine is that an unverifiable
+claim is not evidence. What IS known from this session's model survey: only some local models here
+advertise tool-calling at all — `qwen3.6` (36B, tools+thinking), `qwen3-coder` (30.5B),
+`devstral-small-2` (24B), `lfm2.5` (8.5B), `granite3.2-vision`, `llama3.2:3b` — while `gemma3:27b`
+and `qwen2.5vl:7b` do **not**. `qwen3.6` is the strongest general local model on the box.
+**Nothing has benchmarked any of them on multi-step tool orchestration.** `npm run bench:agentic`
+(`tests/bench/run-agentic-bench.ts` + `agentic-tasks.ts`) exists and I did NOT run it, so I cannot
+say what it covers — read it first rather than assuming it answers this. Turning "is a local model
+good enough to orchestrate Shelly's skills?" into a measurement is the piece of work that unparks
+everything above it.
 
 ### Environment notes (unchanged, still true)
 - `npm` is not on PATH in a fresh shell: `export PATH="$HOME/.nvm/versions/node/v24.18.0/bin:$PATH"`.
