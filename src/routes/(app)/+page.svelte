@@ -65,6 +65,7 @@
   import { page } from '$app/stores';
   import type { GraphFilter } from '$lib/types/turtle-chat';
   import { getSettings, saveSettings } from '$lib/storage/db';
+  import { previewModeFrom, legacyFlagsFor, PREVIEW_MODES, PREVIEW_MODE_LABELS, PREVIEW_MODE_HINTS } from '$lib/storage/preview-mode';
   import { shouldSuggest2D, dismissPerfSuggestion, resetPerfMonitor, currentFps } from '$lib/stores/perf-monitor.svelte';
   import { pushNotification, dismissNotification, notificationStackHeight } from '$lib/stores/notifications.svelte';
 
@@ -1003,8 +1004,53 @@
     if (!iri) return null;
     return gifOverrides().get(iri) ?? previewUrlMap.get(iri) ?? null;
   }
+  /** One mode replacing the old alwaysShowPreviews / autoExpandAssets pair; see preview-mode.ts. */
+  const previewMode = $derived(previewModeFrom(settings()));
   /** When on, preview images render on every node (no hover). Slower to paint. */
-  const alwaysPreviews = $derived(settings().alwaysShowPreviews ?? false);
+  const alwaysPreviews = $derived(previewMode === 'all');
+  let showPreviewMenu = $state(false);
+
+  /**
+   * F133 all-previews MODIFIER — node keys the simulation must leave room for.
+   *
+   * Showing every preview at once was already possible (this toggle predates F133), but nothing
+   * told the LAYOUT that a node had grown from a glyph into a 96px thumbnail, so the previews
+   * piled on top of each other and the option was close to unusable on any real graph. Handing
+   * the sim this set is what turns "render them all" into "and you can actually see them".
+   *
+   * Null when the modifier is off, so the simulation keeps its previous behaviour exactly.
+   * Deliberately NOT filtered to visible statements: keys that aren't in the scene are simply
+   * never looked up, and filtering would re-derive the node set the graph already owns.
+   */
+  /**
+   * Clicking a preview thumbnail expands the asset AND selects its node.
+   *
+   * The thumbnail calls stopPropagation so the click never reaches the canvas, which was fine when
+   * previews only appeared on the already-selected node. Once "expand all" covers every node with
+   * its own image, that same stopPropagation left no way to open node details at all — the
+   * thumbnail sits exactly where you would have clicked the node. Reported from the running app,
+   * 2026-08-14. Mirrors the plain-click branch of the graph's onselect so a thumbnail click and a
+   * node click leave the app in the same state.
+   */
+  function openNodeFromThumb(key: string) {
+    expandedAssetKey = key;
+    assetFullscreen = false;
+    if (selected !== key) {
+      multiSelected = new Set();
+      navHistory = [];
+      selected = key;
+    }
+  }
+
+  const previewNodeKeys = $derived.by(() => {
+    if (!alwaysPreviews) return null;
+    const keys = new Set<string>();
+    for (const iri of previewUrlMap.keys()) keys.add('i:' + iri);
+    for (const iri of gifOverrides().keys()) keys.add('i:' + iri);
+    for (const iri of glbModelMap.keys()) keys.add('i:' + iri);
+    for (const iri of videoMap.keys()) keys.add('i:' + iri);
+    return keys.size > 0 ? keys : null;
+  });
   /** "Normal" preview thumbnail size (px), adjustable in Settings. */
   const nodePreviewSize = $derived(settings().nodePreviewSize ?? 96);
 
@@ -1045,7 +1091,7 @@
   }
   const expandedAsset = $derived(nodeAssetFor(expandedAssetKey ? iriFromNodeKey(expandedAssetKey) : null));
   function collapseAsset() { expandedAssetKey = null; assetFullscreen = false; }
-  const autoExpandAssets = $derived(settings().autoExpandAssets ?? false);
+  const autoExpandAssets = $derived(previewMode === 'auto');
 
   // Auto-expand: when on, the selected node's asset opens large automatically as
   // navigation moves node to node (story/explore walkthroughs). Keeps fullscreen
@@ -1706,6 +1752,8 @@
           {timelineZoom}
           {timelineCenter}
           {timelineTimeSource}
+          previewKeys={previewNodeKeys}
+          previewSizePx={nodePreviewSize}
           sources={sources()}
           targetKey={hoverTarget}
           onselect={(k, ctrlKey) => {
@@ -1902,18 +1950,44 @@
     {/if}
   </div>
 
-  <!-- ASSETS -->
+  <!-- PREVIEWS — one mode, not two booleans that can contradict each other. "expand all" spreads
+       every thumbnail so they are all visible; "auto-expand" blows the selected one up to cover
+       most of the graph. Both at once meant the overlay hid the collage, so they are exclusive. -->
   <div class="overlay-group">
-    <span class="group-label mono">assets</span>
+    <span class="group-label mono">previews</span>
     <div class="chip-row">
-      <button
-        class="chip"
-        class:active={autoExpandAssets}
-        onclick={() => updateSettings({ autoExpandAssets: !autoExpandAssets })}
-        title="Auto-expand a node's image to the large view as you move through the graph (e.g. story explore). Off = click a thumbnail to expand."
-      >
-        <span class="lbl mono">auto-expand</span>
-      </button>
+      <Popover.Root bind:open={showPreviewMenu}>
+        <Popover.Trigger>
+          {#snippet child({ props })}
+            <button
+              {...props}
+              class="chip"
+              class:active={previewMode !== 'manual' || showPreviewMenu}
+              title={PREVIEW_MODE_HINTS[previewMode]}
+            >
+              <span class="lbl mono">{PREVIEW_MODE_LABELS[previewMode]}</span>
+              <span class="arr mono">{showPreviewMenu ? '▲' : '▼'}</span>
+            </button>
+          {/snippet}
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Content class="filter-popover" sideOffset={6}>
+            {#each PREVIEW_MODES as mode (mode)}
+              <button
+                class="chip small"
+                class:active={previewMode === mode}
+                title={PREVIEW_MODE_HINTS[mode]}
+                onclick={() => {
+                  updateSettings({ previewMode: mode, ...legacyFlagsFor(mode) });
+                  showPreviewMenu = false;
+                }}
+              >
+                <span class="lbl mono">{PREVIEW_MODE_LABELS[mode]}</span>
+              </button>
+            {/each}
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
     </div>
   </div>
 
@@ -2023,13 +2097,13 @@
         <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions a11y_no_static_element_interactions a11y_media_has_caption -->
         {#if a.kind === 'image'}
           <img class="node-preview-thumb" src={a.url} alt="" loading="lazy" style={dims}
-            onclick={(e) => { e.stopPropagation(); expandedAssetKey = n.key; assetFullscreen = false; }} />
+            onclick={(e) => { e.stopPropagation(); openNodeFromThumb(n.key); }} />
         {:else if a.kind === 'video'}
           <video class="node-preview-thumb" src={a.url} muted loop autoplay playsinline style={dims}
-            onclick={(e) => { e.stopPropagation(); expandedAssetKey = n.key; assetFullscreen = false; }}></video>
+            onclick={(e) => { e.stopPropagation(); openNodeFromThumb(n.key); }}></video>
         {:else}
           <div class="node-preview-thumb glb-badge" style={dims}
-            onclick={(e) => { e.stopPropagation(); expandedAssetKey = n.key; assetFullscreen = false; }}>◈ 3D</div>
+            onclick={(e) => { e.stopPropagation(); openNodeFromThumb(n.key); }}>◈ 3D</div>
         {/if}
       {/if}
     {/if}

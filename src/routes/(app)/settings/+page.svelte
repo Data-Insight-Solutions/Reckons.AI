@@ -24,12 +24,16 @@
   import Select from '$lib/components/ui/Select.svelte';
   import { Dialog } from 'bits-ui';
   import { DEFAULT_SETTINGS, getSettings, getUserDefaults, saveUserDefaults, clearUserDefaults, type SettingsRecord } from '$lib/storage/db';
+  import { previewModeFrom, legacyFlagsFor, PREVIEW_MODES, PREVIEW_MODE_LABELS, PREVIEW_MODE_HINTS } from '$lib/storage/preview-mode';
   import {
     workspaceName, workspaceState, supportsWorkspace,
     pickWorkspace, reconnectWorkspace, clearWorkspace, loadWorkspace,
     syncAllKbs, listKbFolders, lastSyncTime, syncedKbCount,
     importKbsFromWorkspace
   } from '$lib/stores/workspace.svelte';
+
+  /** Effective preview mode, migrated from the legacy booleans when unset. */
+  const previewMode = $derived(previewModeFrom(settings()));
 
   let key = $state(settings().claudeApiKey ?? '');
   let openaiKey = $state(settings().openaiApiKey ?? '');
@@ -1110,18 +1114,28 @@
     </div>
   </div>
 
+  <!-- Writes previewMode, not the raw boolean. Two places writing alwaysShowPreviews independently
+       would be two sources of truth for one behaviour, and they would disagree the moment the
+       graph's Previews dropdown set a different mode. -->
   <div class="field row-field">
     <div>
-      <span class="lbl mono">always-on previews</span>
-      <p class="hint" style="margin: 0.1rem 0 0;">Show every node's preview image at all times, instead of only on hover or during the story. The graph paints slower with many images.</p>
+      <span class="lbl mono">previews</span>
+      <p class="hint" style="margin: 0.1rem 0 0;">
+        {PREVIEW_MODE_HINTS[previewMode]} Also on the graph, under "previews". The graph paints slower with many images.
+      </p>
     </div>
-    <button
-      class="toggle-btn"
-      class:on={settings().alwaysShowPreviews === true}
-      onclick={() => updateSettings({ alwaysShowPreviews: settings().alwaysShowPreviews !== true })}
-    >
-      {settings().alwaysShowPreviews === true ? 'on' : 'off'}
-    </button>
+    <div class="chip-row">
+      {#each PREVIEW_MODES as mode (mode)}
+        <button
+          class="toggle-btn"
+          class:on={previewMode === mode}
+          title={PREVIEW_MODE_HINTS[mode]}
+          onclick={() => updateSettings({ previewMode: mode, ...legacyFlagsFor(mode) })}
+        >
+          {PREVIEW_MODE_LABELS[mode]}
+        </button>
+      {/each}
+    </div>
   </div>
 
   <label class="field">

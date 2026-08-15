@@ -127,8 +127,25 @@ export type SettingsRecord = {
    * can read bigger by default. Default 96. */
   nodePreviewSize?: number;
   /** Auto-expand a node's asset to the large view whenever it becomes selected —
-   * e.g. as a story/explore walkthrough moves node to node. Off by default. */
+   * e.g. as a story/explore walkthrough moves node to node. Off by default.
+   * @deprecated superseded by previewMode; still read for migration. */
   autoExpandAssets?: boolean;
+  /**
+   * How node assets behave — ONE mode, because the old pair of independent booleans could be set
+   * to states that contradict each other. `alwaysShowPreviews` spreads every thumbnail out so they
+   * are all visible, while `autoExpandAssets` blows the selected one up to cover most of the
+   * graph; both on meant the large overlay hid the very collage the other option had just
+   * arranged. Matt, 2026-08-14: "maybe we have that and all previews together in the same
+   * dropdown? Previews dropdown with manual, auto-expand and expand all".
+   *
+   *   manual — click a thumbnail to expand it (previews show on selected/highlighted nodes only)
+   *   auto   — the selected node's asset opens large automatically as you move node to node
+   *   all    — every node shows its preview at once, and the layout makes room so all are visible
+   *
+   * Undefined means "not migrated yet"; previewModeFrom() derives it from the two legacy booleans
+   * so an existing setting keeps working rather than silently resetting to the default.
+   */
+  previewMode?: 'manual' | 'auto' | 'all';
   /** Overall UI text scale. 'sm' = 14px, 'md' = 16px (default), 'lg' = 18px root font. */
   uiScale?: 'sm' | 'md' | 'lg';
   /**
@@ -507,6 +524,7 @@ export async function saveSettings(patch: Partial<SettingsRecord>): Promise<void
       nodeLabelFontSize: m.nodeLabelFontSize,
       prefer2D: m.prefer2D,
       alwaysShowPreviews: m.alwaysShowPreviews,
+      previewMode: m.previewMode,
       uiScale: m.uiScale,
       autoSaveEnabled: m.autoSaveEnabled,
       workspaceName: m.workspaceName,
