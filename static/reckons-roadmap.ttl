@@ -4645,3 +4645,50 @@ kb:reference-graph-catalogue rdf:type ktype:Feature ;
     kpred:open-question "Import as a NEW graph, or merge into the current one? Merging puts formats beside the user's own content so relationships can be drawn, but mixes reference data with authored data; importing separately keeps provenance clean but pushes the user into cross-graph leaps to use it. The archive/restore and cross-graph-alignment work both bear on this." .
 
 kb:content-orchestrator kpred:relates-to kb:content-operations .
+
+# -- F135: Context engine — retrieve per request, capture judgement, forget the rest -
+# Matt, 2026-08-15: "the chat results are captured as triples. The context from the chat
+# should be cleared regularly to save usage of tokens, and instead the relevant graph nodes
+# queried for the request... We need a context engine that queries very well, and avoids long
+# rambling conversation for token usage."
+kb:context-engine rdf:type ktype:Feature ;
+               kpred:touches-file "src/lib/integrations/llm/turtle-chat.ts" ;
+               kpred:touches-file "src/lib/embed.ts" ;
+               kpred:touches-module code:llm ;
+               kpred:touches-module code:rdf ;
+               kpred:touches-module code:stores ;
+               kpred:estimated-files "12"^^xsd:integer ;
+               kpred:estimated-deps "0"^^xsd:integer ;
+    rdfs:label "Context engine — retrieval per request, not accumulated conversation" ;
+    kpred:feature-id "F135" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:depends-on kb:context-compression ;
+    kpred:relates-to kb:review-anchored-generation ;
+    kpred:relates-to kb:graph-sets ;
+    kpred:relates-to kb:passage-grounding ;
+    kpred:description "Stop carrying the conversation and start querying the graph. Each turn retrieves the nodes relevant to THAT request from the selected graph, answers from them, captures any judgement reached as triples, and lets the rest go. Applies to Shelly and to Claude Code sessions alike — both currently pay to re-read everything they have ever said." ;
+    kpred:principle "THE CONVERSATION IS NOT THE ASSET; THE JUDGEMENT IN IT IS. Ephemeral working-out — what was tried, what was ruled out mid-thought, the phrasing of a question — is not a fact and should never be captured. What survives a turn is what somebody decided, and that is a triple. This is the RAG-inversion thesis of kb:review-anchored-generation (F51) applied to dialogue rather than to documents." ;
+    kpred:measurement "MEASURED ON THIS SESSION, 2026-08-15, not estimated. Weighted cost was 77% CACHE READS — re-reading the accumulated context on every turn — against 8% output and ~0% fresh input. Of the context itself, ~85% was the assistant's own accumulated output, 13% tool-result text, 2% images, and 0.35% (5,839 tokens across 35 turns) was the human. So carrying the conversation is the cost, and the human's words are the cheapest, most valuable part of it." ;
+    kpred:decided "NEVER SUMMARISE THE HUMAN SIDE — KEEP IT VERBATIM. At 5,839 tokens for a whole session it is affordable in full, and it is exactly where compression does the most damage: 'collage wasn't a force, it was a force modifier' is eleven words that redirected an entire feature, and no triple carries that. Boil down the ASSISTANT's output, which is 85% of the context and largely re-derivable." ;
+    kpred:constraint "RETRIEVAL TRADES 'EXPENSIVE BUT COMPLETE' FOR 'CHEAP BUT SILENTLY INCOMPLETE', AND THAT IS THE RISK THAT SINKS THIS IF IGNORED. A long context at least CONTAINS the answer. A query that misses the relevant node produces a confident answer with no signal that anything is missing — and the model cannot tell 'not in the graph' from 'not retrieved'. The existing prompt already says absence is not falsity, but under retrieval that absence becomes dynamic and per-turn. Retrieval quality therefore has to be MEASURED (recall against a known answer set), not assumed, before conversation length is cut." ;
+    kpred:open-question "How is 'relevant' computed? BM25 already exists (kb_search), embeddings already exist (BGE-small via embed.ts), and kb_compress already does subgraph selection with a token budget — the pieces are present and unassembled. Whether the retrieval key is the last message, the running topic, or the selected set/graph is undecided." ;
+    kpred:honest-note "PARTLY BUILT, AND LESS THAN IT LOOKS (verified in code 2026-08-15). Shelly does NOT stuff the whole graph in: buildContextSection sends a fixed sample of FIFTEEN entities plus counts. That is frugal but it is not retrieval — the same fifteen arrive whatever was asked. query_kb exists but is user-driven, requiring the reader to click run. add_triple exists and is confirmed directly on accept, so 'conversation can accept facts' is genuinely half-built. Nothing clears context, nothing distinguishes ephemeral from durable, and the Claude Code side captures nothing at all — every decision recorded in this graph today was typed by hand." ;
+    kpred:remaining "Per-turn retrieval keyed to the request; a measured recall figure before any context is cut; a capture path that proposes triples from judgement and ignores working-out; and the same two on the Claude Code side." .
+
+# -- F135.1: Trust tiers — who says so, and can it be re-checked ----------------
+kb:fact-trust-tiers rdf:type ktype:Feature ;
+               kpred:part-of kb:context-engine ;
+               kpred:touches-file "src/lib/rdf/types.ts" ;
+               kpred:estimated-files "6"^^xsd:integer ;
+               kpred:estimated-deps "0"^^xsd:integer ;
+    rdfs:label "Trust tiers — verified automation ranks below human judgement, above a guess" ;
+    kpred:feature-id "F135.1" ;
+    kpred:has-status "planned" ;
+    kpred:relates-to kb:content-safety ;
+    kpred:description "Matt, 2026-08-15: 'Automated findings that are verified are useful, and fact judged by humans even more useful.' Today ReviewStatus has pending / pending-removal / confirmed / refined / rejected / superseded, and every automated finding lands in the same 'pending' bucket as a model's guess. A deterministic check that PROVED something deserves to outrank a plausible suggestion without pretending to outrank a person." ;
+    kpred:decided "'VERIFIED' MUST MEAN RE-CHECKABLE, NOT MERELY MACHINE-PRODUCED. A script emitting a finding is not evidence; a script that can be RE-RUN to prove the finding is. So a verified statement carries the NAME of the check that establishes it, and that check must be runnable on demand — 'integrations-tech.ttl does not parse' is verifiable (re-parse it), while 'this file looks fragile' is a judgement wearing a script's clothes and stays a suggestion. Without that rule 'verified' degrades into 'a computer said it', which is the exact authority-laundering kb:honest-status exists to prevent." ;
+    kpred:evidence "THE COST OF NOT HAVING THIS IS ON RECORD. The review queue reached 904 entries with verified defects and speculative suggestions indistinguishable in the same bucket, and a TRUE finding — 'integrations-tech.ttl does not parse' — was re-reported fifty-nine times and never acted on, because nothing marked it as proven rather than proposed. It was two bad lines in a 944-line graph and took minutes to fix once seen." ;
+    kpred:open-question "Does a verified automated fact enter the graph WITHOUT human review, or does it enter as a distinct status a human can still overrule? Entering unreviewed is what makes the tier worth having and is also the point where an automated writer starts editing the user's graph — kb:tenet-private and the F52 control model both bear on this, and it is Matt's call." .
+
+kb:review-anchored-generation kpred:relates-to kb:context-engine .
