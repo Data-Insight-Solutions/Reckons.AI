@@ -145,9 +145,37 @@ Groundwork already read, so don't re-derive it:
   are the before and after of the same story.
 - Shelly's action vocabulary is `KBAction` in `src/lib/types/turtle-chat.ts:19` — currently
   `adjust_view` / `add_triple` / `remove_triple` / `set_type` / `merge_entities` / `query_kb` /
-  `scrape_url`. **There is no action that can change a setting**, so this needs a new one (e.g.
-  `set_preview_mode`, or a general `set_setting` — prefer the narrow one; a general setting-writer
-  hands the model a much larger blast radius than this task needs).
+  `scrape_url`. **There is no action that can change a setting.**
+
+### ▶ DIRECTION SET (Matt, 2026-08-15): "Shelly needs CLI actions then."
+
+**This supersedes the narrow `set_preview_mode` suggestion above, and it is the better shape.**
+Rather than minting a bespoke `KBAction` per capability — one for preview mode, then one for the
+next thing, then the next — Shelly gets **one action that dispatches to the `reckons` CLI's already
+named, already bounded command surface**. The vocabulary problem is solved by reusing a vocabulary,
+which is the same lesson F136 just learned about predicates.
+
+**It unifies three separate asks into one piece of work:** the preview-mode beats, ambient
+capture, and Shelly-as-front-end-to-Claude-Code all become "Shelly can invoke a named command",
+executed by the same local sidecar. That makes the sidecar the single highest-leverage thing
+outstanding — but note it is still gated on the billing question below.
+
+**What exists today** (`cli/src/` — `index.ts`, `kb.ts`, `llm.ts`, `audio.ts`):
+`ask` · `entity` · `ingest` · `kbs` · `list`/`ls` · `search` · `stats` · `use`
+
+**⚠ THE GAP THAT STOPS THIS BEING A WIRING JOB — do not assume the CLI already covers the preview
+ask.** Every command above is read-only except `ingest`. **None of them writes a setting**, so
+`preview mode` is not reachable through the CLI today. "Shelly needs CLI actions" therefore lands
+as TWO pieces of work, in this order: (1) give the CLI the commands the stories actually need —
+a settings writer among them — then (2) let Shelly dispatch to them. Building (2) first produces a
+front end onto a surface that cannot do the thing that motivated it.
+
+**Design constraint, carried over and now sharper.** A dispatch to *named, allowlisted* commands is
+a dedicated-tool surface: gateable, auditable, and each command can carry its own accept-gate. A
+free-form shell string would be a bash surface — total breadth, nothing to hook. Take the former.
+Every existing `KBAction` either navigates or proposes a fact a human accepts; a command that
+changes state is the first that does not, so keep the accept-gate rather than applying silently
+mid-tour. **`ingest` in particular is not a read** and should never fire un-gated from a chat turn.
 - `EXPLORE_SYSTEM_PROMPT` (`turtle-chat.ts:105`) is the getting-started/tour prompt that would use it.
 - **Honest note for whoever builds it:** every existing `KBAction` either navigates or proposes a
   fact a human accepts. A setting-writer is the first action that changes app state with no review
