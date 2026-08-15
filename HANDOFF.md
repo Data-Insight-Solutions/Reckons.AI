@@ -182,6 +182,36 @@ mid-tour. **`ingest` in particular is not a read** and should never fire un-gate
   step, so it should follow the same accept-gate the destructive ones use rather than applying
   silently mid-tour.
 
+### ▶ NEW ASK (Matt, 2026-08-15), NOT STARTED — "some sort of 'export to local agent' action/skill"
+
+**The inverse direction of the CLI actions above, and — importantly — the one thing in this whole
+cluster that is NOT gated on the sidecar or the billing question.** CLI actions are Shelly reaching
+out to *do* things; this is the graph's context going *out* to something else to work on. An export
+can be a file, a clipboard payload, or a written bundle. None of that needs a running local process,
+so **this is the piece that can ship while the sidecar question is still open.** Start here if the
+billing answer is slow.
+
+**Most of the machinery already exists — on the MCP side only.** Do not rebuild it:
+- `kb_compress(query, budget?, hops?, kb?)` — the compressed-context builder, the exact thing an
+  export payload should be. Returns a relevant SLICE rather than the whole ~116k-token graph.
+- `kb_entity_markdown(entity, kb?)` — **deterministic, no LLM**, renders one entity from its
+  triples. Script tier; the obvious default for an export that must not hallucinate.
+- `kb_local_extract` / `kb_local_summarize` / `kb_generate_page` — already route to a LOCAL Ollama
+  model, opt-in via `OLLAMA_BASE_URL`, and already emit **proposals only, never writes**.
+
+**So the gap is not capability, it is REACH:** every one of those is an MCP tool, so today the graph
+can only be exported to an agent that speaks MCP and has the server configured. A user sitting in
+Shelly has no way to say "hand this to my local agent". The ask is the in-app action for it.
+
+**Two design notes worth settling before building:**
+- **What is the payload?** `kb_compress` output (LLM-shaped, lossy, cheap) and `kb_entity_markdown`
+  (deterministic, faithful, larger) answer different questions. Probably both, chosen by intent —
+  but pick deliberately, because a lossy export that looks authoritative is the failure mode.
+- **Which direction does the result come back?** If the local agent produces facts, they belong in
+  `knowledge.pending.jsonl` like every other agent proposal (F52 — agents propose, humans settle),
+  NOT written straight into the graph. An export path that quietly becomes an import path is how the
+  review gate gets bypassed without anyone deciding to bypass it.
+
 **⚠ BLOCKED ON MATT, AND IT IS THE WHOLE PREMISE:** does his Claude Code subscription cover driving
 the Agent SDK programmatically from an app, or does that path resolve to API billing? If the latter,
 **the sidecar does not solve the cost problem he is building it to solve.** Confirm before building.
