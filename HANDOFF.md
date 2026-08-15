@@ -87,9 +87,15 @@ OLLAMA_BASE_URL=http://localhost:11434 npx tsx tests/bench/run-ollama-bench.ts \
   --model qwen3.6:latest --tasks ingest --mode baseline --timeout-ms 900000
 # then the same command with --ground appended
 ```
-Baseline to beat (measured earlier this session, ungrounded): **fact recall 44.4%, vocabulary
-agreement 62.5%**, with `is-found-in`→"has-habitat" ×2 and `has-heart-count`→"has-number-of-hearts"
-as the three disagreements. **Do not claim F136 works until that number moves.** Then commit, and
+⚠️ **COMPARE LIKE WITH LIKE — the two numbers floating around are from different modes.**
+`--mode structured` ungrounded measured **44.4% fact recall / 62.5% vocabulary agreement**
+(disagreements: `is-found-in`→"has-habitat" ×2, `has-heart-count`→"has-number-of-hearts").
+`--mode baseline` ungrounded measured **16.7% / 33.3%** — much worse, because structured decoding
+helps a lot on its own. `--ground` is wired for **baseline mode only**, so the A/B is
+**16.7% / 33.3% ungrounded vs grounded**, NOT against the structured figure. Grounding structured
+mode means threading the section through `extractWithOllama`, which is unbuilt.
+
+**Do not claim F136 works until the baseline-vs-grounded pair moves.** Then commit, and
 update `kb:vocabulary-grounding` (currently `planned`) with the measured result — honestly, including
 if it does nothing.
 
