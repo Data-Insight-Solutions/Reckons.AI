@@ -95,6 +95,14 @@ helps a lot on its own. `--ground` is wired for **baseline mode only**, so the A
 **16.7% / 33.3% ungrounded vs grounded**, NOT against the structured figure. Grounding structured
 mode means threading the section through `extractWithOllama`, which is unbuilt.
 
+**THE GROUNDED RUN WAS ATTEMPTED AND PRODUCED NO SCORE — RE-RUN IT.** It exited 0 and printed only
+`Grounding: offering 16 predicates (8 matched to the source text), 24 entities, +1200 prompt chars`,
+then no report. So the selection half is confirmed working (16 predicates survive the filters, half
+of them matched to the source text, 1200 chars of prompt) and the *effect* half is **unmeasured**.
+Suspect the model produced nothing scoreable within the window; re-run without the grep so the
+failure is visible, and check `finish_reason` — the reasoning-budget trap from `b2341e3` bites here
+too, and the grounding section adds 1200 chars to an already long prompt.
+
 **Do not claim F136 works until the baseline-vs-grounded pair moves.** Then commit, and
 update `kb:vocabulary-grounding` (currently `planned`) with the measured result — honestly, including
 if it does nothing.
@@ -117,6 +125,30 @@ per-user, `settings.*`, no general backend) wrapping the **Claude Agent SDK**
 resolution as the CLI: `ANTHROPIC_API_KEY` → `ANTHROPIC_AUTH_TOKEN` → `ant auth login` OAuth
 profile). It dissolves the folder-pick problem as a side effect, which is why it unblocks asks 2 and
 3 as well as 4 — highest blast radius of anything outstanding.
+
+### ▶ NEW ASK (Matt, 2026-08-15), NOT STARTED — Shelly should set "preview all" during getting-started
+
+"Have Shelly set the all previews setting during the getting started story."
+
+Groundwork already read, so don't re-derive it:
+- The setting is **one** `PreviewMode` (`'manual' | 'auto' | 'all'`) in `src/lib/storage/preview-mode.ts`
+  — F133 collapsed two booleans that could disagree. `'all'` = every node shows its preview and the
+  layout spreads to fit; `'auto'` = the selected node's asset opens large, and its own hint already
+  says it is **"built for story/explore walkthroughs"**.
+- **So there is a real design question to put to Matt before building:** `auto` was designed for
+  exactly this moment and `all` is the one he asked for. They are mutually exclusive by construction
+  (that was the point of merging them), and `'all'` wins in the legacy migration. Ask which he wants
+  during the story, rather than assuming the newest mode.
+- Shelly's action vocabulary is `KBAction` in `src/lib/types/turtle-chat.ts:19` — currently
+  `adjust_view` / `add_triple` / `remove_triple` / `set_type` / `merge_entities` / `query_kb` /
+  `scrape_url`. **There is no action that can change a setting**, so this needs a new one (e.g.
+  `set_preview_mode`, or a general `set_setting` — prefer the narrow one; a general setting-writer
+  hands the model a much larger blast radius than this task needs).
+- `EXPLORE_SYSTEM_PROMPT` (`turtle-chat.ts:105`) is the getting-started/tour prompt that would use it.
+- **Honest note for whoever builds it:** every existing `KBAction` either navigates or proposes a
+  fact a human accepts. A setting-writer is the first action that changes app state with no review
+  step, so it should follow the same accept-gate the destructive ones use rather than applying
+  silently mid-tour.
 
 **⚠ BLOCKED ON MATT, AND IT IS THE WHOLE PREMISE:** does his Claude Code subscription cover driving
 the Agent SDK programmatically from an app, or does that path resolve to API billing? If the latter,
