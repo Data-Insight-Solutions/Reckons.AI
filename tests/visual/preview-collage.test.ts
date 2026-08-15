@@ -95,7 +95,7 @@ test.describe('F133 — all previews', () => {
     // OFF: only selected/highlighted nodes show a preview, so there is nothing to measure yet.
     await screenshotTo(page, 'preview-collage', '01-modifier-off');
 
-    await setPreviewMode(page, 'expand all');
+    await setPreviewMode(page, 'preview all');
     await page.waitForTimeout(1000);
     const settling = await thumbBoxes(page);
     await screenshotTo(page, 'preview-collage', '02-just-turned-on');
@@ -132,7 +132,7 @@ test.describe('F133 — all previews', () => {
     await seedFixture(page);
     await page.goto(APP);
     await page.waitForTimeout(4000);
-    await setPreviewMode(page, 'expand all');
+    await setPreviewMode(page, 'preview all');
     await page.waitForTimeout(5000);
 
     await page.locator('.node-preview-thumb').first().click();
@@ -146,6 +146,49 @@ test.describe('F133 — all previews', () => {
     console.log(`details panel opened for: ${text}`);
     // It must be a real entity from the fixture, not an empty shell.
     expect(text.length, 'the panel names the node that was clicked').toBeGreaterThan(0);
+
+    // THE EXPANDED IMAGE MUST NOT COVER THE SIDE PANELS. Matt, 2026-08-14: "First preview expansion
+    // should fill available center space, not overlap all side panels." It was `inset: 0` with
+    // max-width:80vw, so it centred on the whole window and was drawn straight over both panels —
+    // the first thing you saw after clicking a thumbnail was your own UI on top of the picture.
+    // Caught by looking at a screenshot; nothing was asserting it.
+    const img = await page.locator('.asset-large img').first().boundingBox();
+    expect(img, 'the expanded image is on screen').not.toBeNull();
+    const panels = await page.locator('.snap-panel').evaluateAll((els) =>
+      els.map((el) => el.getBoundingClientRect()).map((r) => ({ x: r.x, y: r.y, w: r.width, h: r.height })),
+    );
+    for (const p of panels) {
+      const covered = overlapArea({ x: img!.x, y: img!.y, w: img!.width, h: img!.height }, p);
+      expect(covered / (p.w * p.h), 'fraction of a side panel covered by the image').toBeLessThan(0.02);
+    }
+    console.log(`expanded image ${Math.round(img!.width)}x${Math.round(img!.height)} clears ${panels.length} panel(s)`);
+  });
+
+  test('FILTERS APPLY TO PREVIEWS', async ({ page }) => {
+    // Matt, 2026-08-14: "Filters should apply to previews also".
+    //
+    // Filters in this app DIM rather than remove — `visible` is unfiltered and the graph expresses
+    // a filter through dimMode + highlightedSet — so "preview all" was painting every thumbnail at
+    // full brightness whatever was filtered, and the layout was still spreading the graph to make
+    // room for content the user had just filtered out. The filter looked broken because, for
+    // previews, it was.
+    await seedFixture(page);
+    await page.goto(APP);
+    await page.waitForTimeout(4000);
+    await setPreviewMode(page, 'preview all');
+    await page.waitForTimeout(5000);
+    const unfiltered = (await thumbBoxes(page)).length;
+
+    // "hubs" keeps only highly-connected nodes; in this fixture that is the one hub, which has no
+    // photo of its own, so the count must DROP.
+    await page.locator('.chip', { hasText: /^\s*\d*\s*hubs\s*$/i }).first().click();
+    await page.waitForTimeout(3000);
+    const filtered = (await thumbBoxes(page)).length;
+    await screenshotTo(page, 'preview-collage', '07-filtered-previews');
+
+    console.log(`filter: ${unfiltered} previews unfiltered -> ${filtered} with the hubs filter on`);
+    expect(unfiltered, 'previews before filtering').toBeGreaterThanOrEqual(8);
+    expect(filtered, 'the filter must reduce what previews').toBeLessThan(unfiltered);
   });
 
   test('IT COMPOSES WITH THE TIMELINE INSTEAD OF REPLACING IT', async ({ page }) => {
@@ -161,7 +204,7 @@ test.describe('F133 — all previews', () => {
     const datedX = (await thumbBoxes(page)).map((b) => Math.round(b.x));
     await screenshotTo(page, 'preview-collage', '04-timeline-previews-off');
 
-    await setPreviewMode(page, 'expand all');
+    await setPreviewMode(page, 'preview all');
     await page.waitForTimeout(6000);
     await screenshotTo(page, 'preview-collage', '05-timeline-previews-on');
 

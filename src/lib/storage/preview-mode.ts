@@ -20,13 +20,16 @@ export const PREVIEW_MODES: readonly PreviewMode[] = ['manual', 'auto', 'all'] a
 export const PREVIEW_MODE_LABELS: Record<PreviewMode, string> = {
   manual: 'manual',
   auto: 'auto-expand',
-  all: 'expand all',
+  // "preview all", not "expand all": nothing is expanded. Every node shows its normal-size
+  // thumbnail and the layout spreads to fit them. Expansion is the separate, larger view you get
+  // by clicking one. Matt, 2026-08-14: "They aren't really expanded."
+  all: 'preview all',
 };
 
 export const PREVIEW_MODE_HINTS: Record<PreviewMode, string> = {
   manual: 'Previews show on the selected and highlighted nodes. Click a thumbnail to expand it.',
   auto: "The selected node's image opens large automatically as you move from node to node — built for story/explore walkthroughs.",
-  all: 'Every node shows its preview at once, and the layout spreads out so they are all visible. Works with any force mode.',
+  all: 'Every node shows its preview at once, and the layout spreads out so they are all visible. Respects the active filters, and works with any force mode.',
 };
 
 /**

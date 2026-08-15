@@ -1026,7 +1026,7 @@
    * Clicking a preview thumbnail expands the asset AND selects its node.
    *
    * The thumbnail calls stopPropagation so the click never reaches the canvas, which was fine when
-   * previews only appeared on the already-selected node. Once "expand all" covers every node with
+   * previews only appeared on the already-selected node. Once "preview all" covers every node with
    * its own image, that same stopPropagation left no way to open node details at all — the
    * thumbnail sits exactly where you would have clicked the node. Reported from the running app,
    * 2026-08-14. Mirrors the plain-click branch of the graph's onselect so a thumbnail click and a
@@ -1045,12 +1045,28 @@
   const previewNodeKeys = $derived.by(() => {
     if (!alwaysPreviews) return null;
     const keys = new Set<string>();
-    for (const iri of previewUrlMap.keys()) keys.add('i:' + iri);
-    for (const iri of gifOverrides().keys()) keys.add('i:' + iri);
-    for (const iri of glbModelMap.keys()) keys.add('i:' + iri);
-    for (const iri of videoMap.keys()) keys.add('i:' + iri);
+    const add = (iri: string) => {
+      const key = 'i:' + iri;
+      // Under an active filter, only the highlighted nodes count as shown.
+      if (dimMode && !highlightedSet.has(key)) return;
+      keys.add(key);
+    };
+    for (const iri of previewUrlMap.keys()) add(iri);
+    for (const iri of gifOverrides().keys()) add(iri);
+    for (const iri of glbModelMap.keys()) add(iri);
+    for (const iri of videoMap.keys()) add(iri);
     return keys.size > 0 ? keys : null;
   });
+  /**
+   * Should this node paint a preview because "preview all" is on? Shares one rule with
+   * previewNodeKeys so the RENDERING and the LAYOUT cannot disagree — if they did, the simulation
+   * would make room for a thumbnail that never paints, or paint one it left no room for.
+   */
+  function previewsShownFor(key: string): boolean {
+    if (!alwaysPreviews) return false;
+    return !dimMode || highlightedSet.has(key);
+  }
+
   /** "Normal" preview thumbnail size (px), adjustable in Settings. */
   const nodePreviewSize = $derived(settings().nodePreviewSize ?? 96);
 
@@ -1091,6 +1107,46 @@
   }
   const expandedAsset = $derived(nodeAssetFor(expandedAssetKey ? iriFromNodeKey(expandedAssetKey) : null));
   function collapseAsset() { expandedAssetKey = null; assetFullscreen = false; }
+
+  /**
+   * How much room the side panels are taking, so an expanded asset can centre in what is left.
+   *
+   * Measured from the live DOM rather than assumed from the AdaptivePanel defaults: both panels are
+   * SnapPanels the user can drag and resize between 240 and 800px, so any hardcoded gutter is
+   * wrong as soon as somebody widens one.
+   *
+   * An earlier version only counted panels crossing the vertical MIDDLE of the window, on the
+   * reasoning that a panel above the image is not in its way. That was measured wrong and the
+   * screenshot showed it: the filter panel ends around y=345 while the middle is 360, so it scored
+   * as "not in the way" and the image was drawn straight over it. The image is up to 78vh tall and
+   * vertically centred, so it covers most of the window height — any panel on a side is in its
+   * way in practice. Reserving for every visible panel is both simpler and right.
+   */
+  let assetGutters = $state({ left: 0, right: 0 });
+
+  $effect(() => {
+    if (!expandedAssetKey || assetFullscreen) return;
+    const measure = () => {
+      const midX = window.innerWidth / 2;
+      let left = 0, right = 0;
+      for (const el of document.querySelectorAll('.snap-panel')) {
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 || r.height === 0) continue;
+        // Assign by which half the panel's CENTRE is in, so a wide panel straddling the middle
+        // does not claim a gutter on both sides and squeeze the image to nothing.
+        if ((r.left + r.right) / 2 < midX) left = Math.max(left, r.right);
+        else right = Math.max(right, window.innerWidth - r.left);
+      }
+      assetGutters = { left, right };
+    };
+    measure();
+    // Panels can be dragged or resized while the asset is open, and the window can change.
+    const ro = new ResizeObserver(measure);
+    for (const el of document.querySelectorAll('.snap-panel')) ro.observe(el);
+    window.addEventListener('resize', measure);
+    const t = setInterval(measure, 500); // catches drags, which resize nothing
+    return () => { ro.disconnect(); window.removeEventListener('resize', measure); clearInterval(t); };
+  });
   const autoExpandAssets = $derived(previewMode === 'auto');
 
   // Auto-expand: when on, the selected node's asset opens large automatically as
@@ -1950,7 +2006,7 @@
     {/if}
   </div>
 
-  <!-- PREVIEWS — one mode, not two booleans that can contradict each other. "expand all" spreads
+  <!-- PREVIEWS — one mode, not two booleans that can contradict each other. "preview all" spreads
        every thumbnail so they are all visible; "auto-expand" blows the selected one up to cover
        most of the graph. Both at once meant the overlay hid the collage, so they are exclusive. -->
   <div class="overlay-group">
@@ -2090,7 +2146,10 @@
   {#snippet preview(n)}
     <!-- Show the node image when previews are forced on, OR for the focused/selected/highlighted
          nodes. Click it to expand large (→ fullscreen). Hidden while it is the expanded one. -->
-    {#if (alwaysPreviews || n.key === selected || highlightedSet.has(n.key)) && n.key !== expandedAssetKey}
+    <!-- Under an active filter, "preview all" means all the nodes the filter kept — not all nodes
+         in the graph. Filters here DIM rather than remove, so without the dimMode clause every
+         preview stayed at full brightness and the filter looked broken. -->
+    {#if (previewsShownFor(n.key) || n.key === selected || highlightedSet.has(n.key)) && n.key !== expandedAssetKey}
       {@const a = nodeAssetFor(iriFromNodeKey(n.key))}
       {#if a}
         {@const dims = `width: ${nodePreviewSize}px; height: ${nodePreviewSize}px;`}
@@ -2178,7 +2237,16 @@
 <!-- Asset viewer — LARGE: covers most of the graph; clicking the surrounding
      graph (not the image) collapses to normal; clicking the image → fullscreen. -->
 {#if expandedAsset && !assetFullscreen}
-  <div class="asset-large" transition:fade={{ duration: 140 }}>
+  <!-- Centred in the space BETWEEN the side panels, not on the whole viewport. `inset: 0` plus
+       max-width:80vw put the image under the filter panel on the left and the node-details panel
+       on the right, so the first thing you saw after clicking a thumbnail was your own UI covering
+       the picture. Both panels are SnapPanels the user can drag and resize, so the gutters are
+       measured each time rather than hardcoded to the 360/320 defaults. -->
+  <div
+    class="asset-large"
+    style="--gutter-left: {assetGutters.left}px; --gutter-right: {assetGutters.right}px;"
+    transition:fade={{ duration: 140 }}
+  >
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions a11y_media_has_caption a11y_no_static_element_interactions -->
     {#if expandedAsset.kind === 'image'}
       <img src={expandedAsset.url} alt="expanded asset" onclick={() => (assetFullscreen = true)} />
@@ -3630,7 +3698,12 @@
   /* ── Asset viewer: large (covers most of graph) + fullscreen ── */
   .asset-large {
     position: fixed;
-    inset: 0;
+    /* Inset by the measured side-panel gutters so the image centres in the free space between
+       them. A small extra margin keeps it from touching a panel edge. */
+    top: 0;
+    bottom: 0;
+    left: calc(var(--gutter-left, 0px) + 0.75rem);
+    right: calc(var(--gutter-right, 0px) + 0.75rem);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3639,7 +3712,9 @@
   }
   .asset-large img,
   .asset-large .asset-media {
-    max-width: 80vw;
+    /* 100% of the gutter-constrained box, not 80vw of the whole window — 80vw is wider than the
+       space between two open panels, which is exactly how the image ended up underneath them. */
+    max-width: 100%;
     max-height: 78vh;
     object-fit: contain;
     border-radius: var(--rad);
@@ -3652,7 +3727,9 @@
   .asset-media { display: block; }
   /* GLB canvas needs explicit dimensions (threlte fills its container). */
   .asset-glb {
-    width: min(80vw, 900px);
+    /* Needs explicit dimensions (threlte fills its container), but bounded by the same
+       gutter-constrained box as the image — 80vw would slide under the panels. */
+    width: min(100%, 900px);
     height: 78vh;
   }
   .asset-fs-media {
