@@ -31,6 +31,7 @@
  * graphs-are-source-of-truth workflow.
  */
 import { chromium, type Page, type Browser } from '@playwright/test';
+import { queueFindings } from './pending-queue.ts';
 import { analyzePixels, auditTouchTargets } from '../../tests/visual/vision-local';
 import { evalStable } from '../../tests/visual/eval-stable';
 import { appendFileSync, mkdirSync, writeFileSync } from 'fs';
@@ -492,7 +493,10 @@ function queueFindings(findings: Finding[]) {
   });
   try {
     mkdirSync(path.dirname(PENDING), { recursive: true });
-    appendFileSync(PENDING, lines.join('\n') + '\n');
+    // Recomputing: a crawl visits the whole UI, so a control that no longer errors should drop out
+    // of the queue by itself. This job was the second-worst duplicate producer (47) before the
+    // shared guard existed.
+    queueFindings(lines.map((l) => JSON.parse(l)), { agent: 'button-crawl', path: PENDING, recomputes: true });
   } catch {
     /* workspace may not exist in every checkout */
   }

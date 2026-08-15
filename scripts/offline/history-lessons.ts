@@ -31,7 +31,8 @@
  *   npx tsx scripts/offline/history-lessons.ts --since=200  look back N commits (default 300)
  */
 import { execSync } from 'child_process';
-import { readFileSync, existsSync, appendFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
+import { queueFindings } from './pending-queue.ts';
 
 const PENDING = 'reckons-workspace/knowledge.pending.jsonl';
 const argv = process.argv.slice(2);
@@ -142,28 +143,24 @@ if (JSON_OUT) {
 
 // ── Queue proposals ────────────────────────────────────────────────────────
 if (PENDING_OUT && findings.length) {
-  const now = new Date().toISOString();
-  const existing = existsSync(PENDING) ? readFileSync(PENDING, 'utf8') : '';
-  let queued = 0;
-  for (const f of findings) {
-    const question = `[history-lessons/${f.check}] ${f.msg}`;
-    if (existing.includes(JSON.stringify(question).slice(1, -1))) continue;
-    appendFileSync(
-      PENDING,
-      JSON.stringify({
-        subject: 'urn:kbase:concept/deep-testing',
-        predicate: 'urn:kbase:predicate/history-lesson',
-        question,
-        type: f.level === 'error' ? 'drift-warning' : 'observation',
-        agent: 'offline:history-lessons',
-        priority: f.level === 'error' ? 'high' : 'medium',
-        addedAt: now,
-        addedByMcp: true,
-      }) + '\n',
-    );
-    queued++;
-  }
-  console.log(`${queued} finding(s) queued → ${PENDING} (review in Reckons.AI).`);
+  // Shared guard: identity is subject+predicate+text, so the same lesson about a DIFFERENT file is
+  // still a finding. The old check was `existing.includes(question)`, a substring test over the
+  // whole file that ignored the subject entirely and quietly dropped real findings.
+  //
+  // Not marked as recomputing: this reads the last N commits, so a lesson about an older commit is
+  // outside today's window rather than resolved, and replacing the job's whole output would erase
+  // it. Findings age out when the commit leaves the window, not when a run stops mentioning it.
+  const { queued, skipped } = queueFindings(
+    findings.map((f) => ({
+      subject: 'urn:kbase:concept/deep-testing',
+      predicate: 'urn:kbase:predicate/history-lesson',
+      question: `[history-lessons/${f.check}] ${f.msg}`,
+      type: f.level === 'error' ? ('drift-warning' as const) : ('observation' as const),
+      priority: f.level === 'error' ? ('high' as const) : ('medium' as const),
+    })),
+    { agent: 'offline:history-lessons', path: PENDING, recomputes: false },
+  );
+  console.log(`${queued} finding(s) queued${skipped ? `, ${skipped} already present` : ''} → ${PENDING} (review in Reckons.AI).`);
 }
 
 // A report, not a gate: "this old fix had no test" must not block today's build.
