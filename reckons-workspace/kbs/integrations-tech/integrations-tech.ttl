@@ -366,11 +366,8 @@ kb:review-workbench
     pred:in-production "2026-07-08" .
 
 <urn:demo:entity/embedding-model>
-    <urn:demo:pred/quantization> kb:q4 ;
-    <urn:demo:pred/quantization> undefined .
+    <urn:demo:pred/quantization> kb:q4 .
 
-<l:UNKNOWN — needs human answer||>
-    rdfs:label "q4" .
 
 kb:ci-cd-kb-watch
     pred:in-production "2026-07-08" ;

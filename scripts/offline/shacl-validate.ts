@@ -26,6 +26,7 @@
  */
 
 import { readFileSync, readdirSync, statSync, existsSync, appendFileSync } from 'node:fs';
+import { queueFindings } from './pending-queue.ts';
 import { join, relative } from 'node:path';
 import { Parser } from 'n3';
 import SHACLValidator from 'rdf-validate-shacl';
@@ -158,8 +159,13 @@ if (PENDING_OUT) {
       priority: 'normal',
     }),
   );
-  appendFileSync(PENDING, lines.join('\n') + '\n');
-  console.log(`\n\x1b[2mqueued ${lines.length} finding(s) for review\x1b[0m`);
+  // Recomputing: this validates every shape against every graph on each run, so the run IS the
+  // complete picture and a violation that has been fixed should vanish rather than linger.
+  const { queued, superseded } = queueFindings(
+    lines.map((l) => JSON.parse(l)),
+    { agent: 'offline:shacl-validate', path: PENDING, recomputes: true },
+  );
+  console.log(`\n\x1b[2mqueued ${queued} finding(s) for review${superseded ? `, ${superseded} resolved since last run` : ''}\x1b[0m`);
 }
 
 console.log(`\n\x1b[31m${violations.length} violation(s)\x1b[0m`);
