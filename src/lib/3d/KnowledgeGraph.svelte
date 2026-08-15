@@ -17,6 +17,7 @@
   import { parseGraphDate, EVENT_DATE_PREDICATES } from '$lib/rdf/parse-date';
   import { buildNodeTimes, timelineRange, undatedCount } from '$lib/rdf/timeline-layout';
   import { cameraPosition, CAMERA_PRESETS, type CameraSpec } from './camera-presets';
+  import { resolveOverlaps, previewWorldRadius } from './preview-collage';
   import GraphNode from '$lib/components/GraphNode.svelte';
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { RDF_TYPE, RDFS_LABEL, type EntityTypeDef } from '$lib/rdf/entity-types';
@@ -41,6 +42,8 @@
     timelineCenter = null,
     timelineTimeSource = 'event' as 'event' | 'ingested',
     cameraSpec = null,
+    previewKeys = null,
+    previewSizePx = 96,
     onselect = () => {},
     onhover = () => {},
     onnodemove = () => {},
@@ -64,6 +67,17 @@
     timelineZoom?: number;
     timelineCenter?: number | null;
     timelineTimeSource?: 'event' | 'ingested';
+    /**
+     * F133 all-previews MODIFIER. Keys of nodes currently rendering a preview thumbnail. Null (or
+     * empty) means the modifier is off and the simulation behaves exactly as before.
+     *
+     * This is a modifier, not a layout: it never decides WHERE nodes go, it only makes whichever
+     * force is running leave enough room for what the nodes are showing. So it composes with all
+     * eight layout values rather than being a ninth.
+     */
+    previewKeys?: Set<string> | null;
+    /** On-screen size of a preview thumbnail in px (settings.nodePreviewSize). */
+    previewSizePx?: number;
     onselect?: (key: string | null, ctrlKey?: boolean) => void;
     onhover?: (key: string | null) => void;
     onnodemove?: (key: string, x: number, y: number) => void;
@@ -915,6 +929,31 @@
     const BASE_REST  = 2.4;
     const LOCK_TIMELINE_X = layout === 'timeline';
 
+    // F133 — how much world room each node needs THIS FRAME.
+    //
+    // Computed once, up front, and then held fixed for the whole frame. Two things depend on it
+    // and they must agree: the edge springs below (so they WANT the spread) and the collision pass
+    // at the end (so it enforces it). Recomputing per relaxation pass makes the solver chase
+    // itself, because a node pushed further from the camera immediately demands more room.
+    const collageOn = !!previewKeys && previewKeys.size > 0 && !!camera.current && !!renderer;
+    const radii = new Map<string, number>();
+    if (collageOn) {
+      const camPos = camera.current!.position;
+      const halfH = renderer!.domElement.clientHeight * 0.5;
+      for (const n of nodes) {
+        const base = (0.85 + 0.45 * Math.log2(1 + n.degree)) * 0.32;
+        radii.set(
+          n.key,
+          previewKeys!.has(n.key)
+            // A thumbnail is a fixed pixel size, so the world room it needs grows with camera
+            // distance — which is what keeps the separation honest at every zoom, not just one.
+            ? Math.max(base, previewWorldRadius(previewSizePx, camPos.distanceTo(n.pos), halfH))
+            : base,
+        );
+      }
+    }
+    const radiusOf = (n: { key: string }) => radii.get(n.key) ?? 0.32;
+
     for (let i = 0; i < nodes.length; i++) {
       const a = nodes[i];
       for (let j = i + 1; j < nodes.length; j++) {
@@ -930,7 +969,14 @@
     for (const e of edges) {
       const dx = e.b.pos.x - e.a.pos.x, dy = e.b.pos.y - e.a.pos.y, dz = e.b.pos.z - e.a.pos.z;
       const d = Math.hypot(dx, dy, dz) + 0.001;
-      const f = (d - BASE_REST * e.semanticDist) * SPRING;
+      // F133: a spring whose rest length is shorter than the room its two nodes need will pull
+      // them back into each other for as long as the modifier is on, and the collision pass spends
+      // every frame undoing it — a tug-of-war that settles with visible overlap rather than
+      // converging. Lengthening the rest so it never asks for less than the nodes occupy makes the
+      // two agree, so the spread is where the layout WANTS to be instead of where it is forced.
+      let rest = BASE_REST * e.semanticDist;
+      if (collageOn) rest = Math.max(rest, radiusOf(e.a) + radiusOf(e.b));
+      const f = (d - rest) * SPRING;
       e.a.vel.x += (dx / d) * f * dt * 8; e.a.vel.y += (dy / d) * f * dt * 8; e.a.vel.z += (dz / d) * f * dt * 8;
       e.b.vel.x -= (dx / d) * f * dt * 8; e.b.vel.y -= (dy / d) * f * dt * 8; e.b.vel.z -= (dz / d) * f * dt * 8;
     }
@@ -960,6 +1006,35 @@
         const dateAnchor = activeAnchors.get(n.key);
         if (dateAnchor) { n.pos.x = dateAnchor.x; n.vel.x = 0; }
       }
+    }
+
+    // F133 ALL-PREVIEWS MODIFIER — make room for what the nodes are showing.
+    //
+    // Runs AFTER integration and after the timeline x-lock, so it corrects positions rather than
+    // negotiating with the other forces. That ordering is the point: repulsion above is size-blind
+    // (one REPEL constant for every node regardless of what it renders), so previews would settle
+    // wherever the springs balanced and simply overlap. "All visible" is a property, and a
+    // property that must hold gets asserted, not approached — the same reason the date axis is
+    // pinned rather than tuned.
+    if (collageOn) {
+      // The camera's right and up vectors, pulled from its world matrix. Separation happens in
+      // THIS plane: pushing two nodes apart along the view axis satisfies the arithmetic and
+      // changes nothing a viewer can see, which is exactly how the first version converged while
+      // still painting a pile.
+      const m = camera.current!.matrixWorld.elements;
+      const basis = {
+        right: { x: m[0], y: m[1], z: m[2] },
+        up: { x: m[4], y: m[5], z: m[6] },
+      };
+      resolveOverlaps(
+        nodes,
+        radiusOf,
+        // Full strength, iterated to convergence. Easing (0.35, one pass) measurably lost to the
+        // edge springs: on the 9-photo fixture it reported 16 overlapping pairs every frame and
+        // painted a pile. Running last in the frame and converging is what turns "spread out a
+        // bit" into the property the feature is named for.
+        { lockX: LOCK_TIMELINE_X, strength: 1, iterations: 12, basis },
+      );
     }
 
     if (lineGeom) {
@@ -1094,8 +1169,15 @@
 
           // Sort candidates by adjDist ascending — most important processed first,
           // so hubs win proximity dedup against nearby leaf nodes.
+          // F133: a node showing a preview is never a culling candidate. Previews are rendered by
+          // the GraphLabels overlay, so a node dropped here paints NO THUMBNAIL — which is why
+          // settings.alwaysShowPreviews ("always render entity preview images on nodes") did not
+          // actually do that: the label pipeline culled most nodes long before the snippet ran, so
+          // on a 9-photo graph exactly one label survived and it was the one node without a photo.
+          // The thumbnail is the content the user asked to see, not an incidental annotation.
+          const hasPreview = (k: string) => previewKeys != null && previewKeys.has(k);
           const candidates = allProjected
-            .filter(e => e.adjDist <= cutoff || e.key === selected || e.key === targetKey)
+            .filter(e => e.adjDist <= cutoff || e.key === selected || e.key === targetKey || hasPreview(e.key))
             .sort((a, b) => a.adjDist - b.adjDist);
 
           // Separate rawDist-sorted list for the occlusion check (closer nodes first).
@@ -1109,7 +1191,11 @@
           const kept: LabelOut[] = [];
 
           for (const entry of candidates) {
-            const isSpecial = entry.key === selected || entry.key === targetKey;
+            // A preview node is "special" for the same reason the selected node is: it is being
+            // shown deliberately. Occlusion and proximity dedup exist to stop TEXT from piling up;
+            // applying them to a requested thumbnail silently drops the thing that was requested.
+            // Overlap between the thumbnails themselves is the collision pass's job, not this one's.
+            const isSpecial = entry.key === selected || entry.key === targetKey || hasPreview(entry.key);
 
             // 1. Sphere-occlusion: skip if the label position falls inside a closer node's sphere.
             if (!isSpecial) {

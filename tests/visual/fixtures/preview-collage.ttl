@@ -1,0 +1,61 @@
+# Fixture for F133 (all-previews modifier). Nine entities that ALL carry a photo, wired into one
+# hub so the springs pull them together — the arrangement that makes previews overlap when the
+# layout does not know how big they are. Images are the eight real starter photos under
+# static/png/starter/ so the thumbnails actually paint rather than showing broken-image boxes.
+@prefix kb:    <urn:kbase:concept/> .
+@prefix pred:  <urn:kbase:predicate/> .
+@prefix ktype: <urn:kbase:type/> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+
+kb:the-trip a ktype:Concept ;
+    rdfs:label "The trip" ;
+    rdfs:comment "Hub. Every photo hangs off this, so they all crowd the same region." .
+
+kb:campfire a ktype:Concept ;
+    rdfs:label "Campfire" ;
+    pred:photo "/png/starter/campfire.jpg" ;
+    pred:scheduled-at "2026-07-10"^^xsd:date ;
+    pred:part-of kb:the-trip .
+
+kb:drive a ktype:Concept ;
+    rdfs:label "The drive" ;
+    pred:photo "/png/starter/drive-395.jpg" ;
+    pred:scheduled-at "2026-07-04"^^xsd:date ;
+    pred:part-of kb:the-trip .
+
+kb:sierra a ktype:Concept ;
+    rdfs:label "Eastern Sierra" ;
+    pred:photo "/png/starter/eastern-sierra.jpg" ;
+    pred:scheduled-at "2026-07-06"^^xsd:date ;
+    pred:part-of kb:the-trip .
+
+kb:lake-george a ktype:Concept ;
+    rdfs:label "Lake George" ;
+    pred:photo "/png/starter/lake-george.jpg" ;
+    pred:scheduled-at "2026-07-08"^^xsd:date ;
+    pred:part-of kb:the-trip .
+
+kb:los-angeles a ktype:Concept ;
+    rdfs:label "Los Angeles" ;
+    pred:photo "/png/starter/los-angeles.jpg" ;
+    pred:scheduled-at "2026-07-02"^^xsd:date ;
+    pred:part-of kb:the-trip .
+
+kb:oh-ridge a ktype:Concept ;
+    rdfs:label "Oh Ridge" ;
+    pred:photo "/png/starter/oh-ridge.jpg" ;
+    pred:scheduled-at "2026-07-12"^^xsd:date ;
+    pred:part-of kb:the-trip .
+
+kb:pitch-camp a ktype:Concept ;
+    rdfs:label "Pitch camp" ;
+    pred:photo "/png/starter/pitch-camp.jpg" ;
+    pred:scheduled-at "2026-07-14"^^xsd:date ;
+    pred:part-of kb:the-trip .
+
+kb:san-francisco a ktype:Concept ;
+    rdfs:label "San Francisco" ;
+    pred:photo "/png/starter/san-francisco.jpg" ;
+    pred:scheduled-at "2026-07-16"^^xsd:date ;
+    pred:part-of kb:the-trip .
