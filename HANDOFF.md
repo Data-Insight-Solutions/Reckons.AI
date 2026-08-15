@@ -135,10 +135,14 @@ Groundwork already read, so don't re-derive it:
   — F133 collapsed two booleans that could disagree. `'all'` = every node shows its preview and the
   layout spreads to fit; `'auto'` = the selected node's asset opens large, and its own hint already
   says it is **"built for story/explore walkthroughs"**.
-- **So there is a real design question to put to Matt before building:** `auto` was designed for
-  exactly this moment and `all` is the one he asked for. They are mutually exclusive by construction
-  (that was the point of merging them), and `'all'` wins in the legacy migration. Ask which he wants
-  during the story, rather than assuming the newest mode.
+- **DECIDED (Matt, 2026-08-15) — it is BOTH, in sequence, and the sequence is the point:**
+  **`auto` immediately at the start of the story**, then **switch to `all` towards the end as the
+  reveal.** So this is not one setting write, it is two at different beats, and the second is a
+  deliberate show-off moment — the graph opening out from a guided one-node-at-a-time walk into the
+  whole picture at once. Build it as two beats, not a single toggle, and do not "simplify" it to one
+  mode later: the contrast between them IS the demo.
+- That also settles the mutual-exclusivity problem — they were never meant to be simultaneous, they
+  are the before and after of the same story.
 - Shelly's action vocabulary is `KBAction` in `src/lib/types/turtle-chat.ts:19` — currently
   `adjust_view` / `add_triple` / `remove_triple` / `set_type` / `merge_entities` / `query_kb` /
   `scrape_url`. **There is no action that can change a setting**, so this needs a new one (e.g.
