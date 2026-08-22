@@ -129,6 +129,19 @@ export interface DecisionNode {
   /** A forcing event: something with `kpred:decides` pointing at this subject (e.g. a deadline). */
   forcedBy: Statement[];
   /**
+   * Subject IRIs of OTHER OPEN DECISIONS that should be settled first, because this decision's
+   * subject transitively `depends-on` theirs.
+   *
+   * Projected from the roadmap's own 140 `kpred:depends-on` edges rather than from
+   * `Statement.blocks`, which was supposed to carry this and does not — queue-tree.ts measured
+   * only 8 of 529 rows carrying it. The relations were never missing, they were just held at
+   * FEATURE level while the queue asked at FACT level. Deciding a feature whose foundation is
+   * still undecided is how you end up revisiting it.
+   */
+  blockedBy: string[];
+  /** True when this decision sits inside a dependency CYCLE, so its ordering is a lower bound. */
+  inCycle: boolean;
+  /**
    * Set when this root exists because of a CONFLICT rather than a written question.
    *
    * A defect found by the F139 demo graph on 2026-08-19 and worth stating plainly: roots were open
@@ -144,6 +157,15 @@ export interface DecisionNode {
   impliedBy?: 'conflict';
   /** For an implied root: the incompatible values, so the question can name them. */
   conflictValues?: string[];
+  /**
+   * The conflicting statements themselves, not just their values.
+   *
+   * Exposed because a reader cannot ACT on a conflict from values alone. Without these the review
+   * surface could only describe the disagreement and then make the user resolve it fact-by-fact in
+   * the flat list below — accept one, meet the other as a fresh conflict, decide again. That second
+   * decision is redundant: picking a side IS rejecting the other, and it should be one action.
+   */
+  conflictSides?: Statement[];
   /** Transitive blast radius from review-routing — how much is stalled behind this. */
   impact: number;
   /** Entities that transitively depend on this subject — what settling it releases (unlockCounts). */
@@ -326,6 +348,65 @@ export function unlockCounts(all: Statement[]): Map<string, number> {
 }
 
 /**
+ * Which open decisions must be settled before which others.
+ *
+ * THE RELATIONS ARE NOT MISSING, THEY ARE SOMEWHERE ELSE. `Statement.blocks` was meant to carry
+ * decision ordering and is empty in practice (8 of 529 rows). But the roadmap already states which
+ * feature needs which — `kpred:depends-on`, 140 edges — and a decision hangs on a feature. So the
+ * order is PROJECTED from the plan rather than invented: if this decision's subject transitively
+ * depends on another subject that ALSO has an open decision, that one comes first.
+ *
+ * Returns, per subject IRI, the open-decision subjects it waits on, plus the subjects that sit in
+ * a dependency cycle.
+ *
+ * HONEST LIMITS, both inherited deliberately from queue-tree.ts and unlockCounts:
+ *  - This orders what the roadmap DESCRIBES; it does not rank importance. A decision on a feature
+ *    absent from the DAG is simply unordered, which is not the same as unimportant.
+ *  - A cycle is REPORTED, never silently broken. Inside a cycle the prerequisite set is a lower
+ *    bound, because a back-edge contributes nothing — and a cycle means the work is deadlocked,
+ *    which the ordering must not paper over by spinning.
+ */
+export function decisionDependencies(
+  all: Statement[],
+  openSubjects: Set<string>,
+): { blockedBy: Map<string, string[]>; cycles: Set<string> } {
+  /** subject -> the subjects it NEEDS. */
+  const needs = new Map<string, Set<string>>();
+  for (const st of all) {
+    if (st.p.value !== DEPENDS_ON || !isIRI(st.o)) continue;
+    const set = needs.get(st.s.value);
+    if (set) set.add(st.o.value);
+    else needs.set(st.s.value, new Set([st.o.value]));
+  }
+
+  const closure = new Map<string, Set<string>>();
+  const inProgress = new Set<string>();
+  const cycles = new Set<string>();
+
+  function prereqsOf(iri: string): Set<string> {
+    const hit = closure.get(iri);
+    if (hit) return hit;
+    if (inProgress.has(iri)) { cycles.add(iri); return new Set(); }
+    inProgress.add(iri);
+    const out = new Set<string>();
+    for (const need of needs.get(iri) ?? []) {
+      out.add(need);
+      for (const further of prereqsOf(need)) out.add(further);
+    }
+    inProgress.delete(iri);
+    closure.set(iri, out);
+    return out;
+  }
+
+  const blockedBy = new Map<string, string[]>();
+  for (const subject of openSubjects) {
+    const waiting = [...prereqsOf(subject)].filter((p) => p !== subject && openSubjects.has(p)).sort();
+    if (waiting.length) blockedBy.set(subject, waiting);
+  }
+  return { blockedBy, cycles };
+}
+
+/**
  * Precomputed indexes over the whole graph, so the per-decision work stays linear.
  *
  * Built ONCE in buildReviewTree and threaded through. Without it optionsFor scans `all` twice per
@@ -479,8 +560,11 @@ export function buildReviewTree(
         evidence,
         hidden,
         contested: sides.length > 1,
+        conflictSides: sides.length > 1 ? sides : undefined,
         escalate: sides.length > 1 && needsStp(sides, typeOf) ? 'stp' : null,
         forcedBy: forcedByIndex.get(subjectIri) ?? [],
+        blockedBy: [],
+        inCycle: false,
         impact: impacts.get(q.id) ?? 0,
         unlocks: unlocks.get(subjectIri) ?? 0,
         status: statusOf.get(subjectIri),
@@ -532,12 +616,26 @@ export function buildReviewTree(
       contested: true,
       escalate: 'stp',
       forcedBy: forcedByIndex.get(subjectIri) ?? [],
+      blockedBy: [],
+      inCycle: false,
       impact: impacts.get(anchor.id) ?? 0,
       unlocks: unlocks.get(subjectIri) ?? 0,
       status: statusOf.get(subjectIri),
       impliedBy: 'conflict',
       conflictValues: [...new Set(sides.map((st) => st.o.value))],
+      conflictSides: sides,
     });
+  }
+
+  /*
+   * DECISION ORDER, projected from the plan's dependency edges (see decisionDependencies).
+   * Computed here because it needs the full set of open decisions, which only exists now.
+   */
+  const openSubjects = new Set(decisions.map((d) => d.subjectIri));
+  const deps = decisionDependencies(all, openSubjects);
+  for (const d of decisions) {
+    d.blockedBy = deps.blockedBy.get(d.subjectIri) ?? [];
+    d.inCycle = deps.cycles.has(d.subjectIri);
   }
 
   /**
@@ -561,6 +659,11 @@ export function buildReviewTree(
     (a, b) =>
       Number(b.contested) - Number(a.contested) ||
       Number(b.forcedBy.length > 0) - Number(a.forcedBy.length > 0) ||
+      // PREREQUISITE BEFORE DEPENDANT. Placed under contested/forced (which must never be buried)
+      // and ABOVE the weighted signals, because being blocked is not a matter of degree: settling
+      // a decision whose foundation is still open is how you end up settling it twice. The blocked
+      // one is still shown — lower, and carrying the name of what to settle first.
+      Number(a.blockedBy.length > 0) - Number(b.blockedBy.length > 0) ||
       weight(b) - weight(a) ||
       a.question.createdAt - b.question.createdAt ||
       a.subjectIri.localeCompare(b.subjectIri),
@@ -667,4 +770,173 @@ export function reviewTreeSummary(tree: ReviewTree): string {
   if (tree.machineSettleable.length) parts.push(`${tree.machineSettleable.length} a check can settle`);
   if (tree.orphans.length) parts.push(`${tree.orphans.length} judgment${tree.orphans.length === 1 ? '' : 's'} under no decision`);
   return `${parts.join('; ')}.`;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * DISTILLATION — turning a prose decision into options a person can weigh.
+ *
+ * MEASURED 2026-08-21 (npm run offline:decisions): 78 of 78 open decisions in the roadmap are
+ * prose-only. Every root renders "no options modelled, so there is nothing to weigh side by side",
+ * and the question itself is a truncated paragraph. That is the core premise failing in public:
+ * the tree can hide noise and rank by dependency, but the thing it finally shows a human is still
+ * a wall of text with no alternatives.
+ *
+ * `distillationRequest()` above has defined the contract since 2026-08-19 and NOTHING EXECUTES IT
+ * — `graph-decisions.ts` calls it only to print the task name. These types and this validator are
+ * the missing half: what a model may return, and what makes its answer safe to show.
+ *
+ * THE LOAD-BEARING RULE IS THAT AN OPTION MUST ALREADY BE ON THE TABLE. Aggregation's rule is
+ * traceability of the recorded VALUE (one fact settles fifty, so an invented value launders itself
+ * into fifty settled facts). Distillation's risk is different and worse: an invented OPTION is a
+ * course of action nobody proposed, presented to the human in the frame of their own material. They
+ * would be choosing between alternatives the project never considered, believing the graph offered
+ * them. So every option must be grounded in the question's own words or in the facts supplied —
+ * the model SPLITS and PHRASES what is already there, and may not add a course of action.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+export interface ProposedOptions {
+  subjectIri: string;
+  options: Array<{
+    /** Short label for the alternative — display text, never a new entity. */
+    label: string;
+    /** One line on what taking it means. Display only; never becomes a fact. */
+    consequence?: string;
+    /** Ids of supplied facts that would die if this option won. Must be ids from the request. */
+    rulesOutIds?: string[];
+  }>;
+  /** A one-line restatement of the question. Display only, and checked against the original. */
+  restated?: string;
+}
+
+export interface DistillationOutcome {
+  /** Options that survived every check, safe to show beside the question. */
+  options: Array<{ label: string; consequence?: string; rulesOutIds: string[] }>;
+  /** The restatement, only if it stayed faithful to the original question. */
+  restated?: string;
+  /**
+   * Why each rejected item was rejected, in full — never swallowed.
+   *
+   * The rejection rate IS the measurement that decides whether this tier earns its place (F74.3:
+   * offloading is not free). A harness that quietly dropped bad proposals would make a model that
+   * is 80% noise look identical to one that is 5% noise.
+   */
+  rejected: string[];
+}
+
+/** Words too common to prove an option came from the source text. */
+const STOPWORDS = new Set([
+  'the', 'a', 'an', 'and', 'or', 'but', 'if', 'then', 'is', 'are', 'was', 'were', 'be', 'been',
+  'to', 'of', 'in', 'on', 'for', 'with', 'as', 'by', 'at', 'from', 'that', 'this', 'it', 'its',
+  'not', 'no', 'do', 'does', 'can', 'could', 'should', 'would', 'will', 'may', 'might', 'must',
+  'one', 'two', 'per', 'each', 'every', 'any', 'all', 'some', 'more', 'most', 'than', 'so',
+  'we', 'you', 'they', 'them', 'their', 'our', 'what', 'which', 'who', 'how', 'why', 'when',
+]);
+
+const significantTokens = (s: string): string[] =>
+  (s.toLowerCase().match(/[a-z0-9][a-z0-9-]{2,}/g) ?? []).filter((t) => !STOPWORDS.has(t));
+
+const normalizeLabel = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ').replace(/[.;:,]+$/, '');
+
+/**
+ * Validate a model's proposed options against the question and facts it was given.
+ *
+ * Rejects, loudly and with reasons: fewer than two options (one alternative is not a decision),
+ * duplicate labels, labels that restate the question, labels whose content does not appear in the
+ * source material, invented fact ids, and a restatement that drops the question's subject matter.
+ */
+export function validateProposedOptions(
+  proposal: ProposedOptions,
+  request: DistillationRequest,
+  opts: { minGroundedTokens?: number } = {},
+): DistillationOutcome {
+  const minGrounded = opts.minGroundedTokens ?? 1;
+  const rejected: string[] = [];
+  const options: DistillationOutcome['options'] = [];
+
+  if (proposal.subjectIri && proposal.subjectIri !== request.subjectIri) {
+    rejected.push(`proposal is for ${proposal.subjectIri} but the request was for ${request.subjectIri} — refusing to attach options to a different decision`);
+    return { options: [], rejected };
+  }
+
+  // The source material. An option must be findable in here.
+  const sourceText = [request.question, ...request.facts.map((f) => `${f.predicate} ${f.object}`)].join(' \n ');
+  const sourceTokens = new Set(significantTokens(sourceText));
+  const validIds = new Set(request.sourceIds);
+  const questionNorm = normalizeLabel(request.question);
+  const seen = new Set<string>();
+
+  for (const [i, o] of (proposal.options ?? []).entries()) {
+    const where = `option ${i}`;
+    const label = (o?.label ?? '').trim();
+
+    if (label.length < 2) { rejected.push(`${where}: empty label`); continue; }
+    if (label.length > 120) {
+      rejected.push(`${where}: ${label.length}-character label is a paragraph, not an alternative — the point is to weigh them side by side`);
+      continue;
+    }
+
+    const norm = normalizeLabel(label);
+    if (seen.has(norm)) { rejected.push(`${where}: "${label.slice(0, 40)}" duplicates an earlier option`); continue; }
+    if (norm === questionNorm || questionNorm.includes(norm) && norm.length > 40) {
+      rejected.push(`${where}: restates the question instead of offering a way it could go`);
+      continue;
+    }
+
+    // THE GROUNDING CHECK — an invented option is a course of action nobody proposed.
+    const tokens = significantTokens(label);
+    const grounded = tokens.filter((t) => sourceTokens.has(t));
+    if (tokens.length && grounded.length < Math.min(minGrounded, tokens.length)) {
+      rejected.push(
+        `${where}: "${label.slice(0, 50)}" shares no significant term with the question or its ${request.facts.length} facts — ` +
+        `an option nobody proposed must not be offered as if the graph did`,
+      );
+      continue;
+    }
+
+    const ruleIds = o.rulesOutIds ?? [];
+    const unknown = ruleIds.filter((id) => !validIds.has(id));
+    if (unknown.length) {
+      rejected.push(`${where}: names ${unknown.length} fact id(s) not in the request — ${unknown.slice(0, 3).join(', ')}`);
+      continue;
+    }
+
+    seen.add(norm);
+    options.push({ label, consequence: o.consequence?.trim() || undefined, rulesOutIds: ruleIds });
+  }
+
+  // AN OPTION'S PRICE MUST DISCRIMINATE. Observed on the first real run (2026-08-21,
+  // qwen3-coder): all three options for one decision claimed to kill the SAME nine facts. A price
+  // identical across every option is not a price — it tells the reader nothing about what choosing
+  // one costs that the others do not, while looking like hard graph-derived evidence. Better to
+  // drop the prices and show the options bare than to show a column that cannot inform the choice.
+  if (options.length > 1) {
+    const keys = options.map((o) => [...o.rulesOutIds].sort().join(','));
+    if (keys[0] !== '' && keys.every((k) => k === keys[0])) {
+      rejected.push(
+        `every option rules out the same ${options[0].rulesOutIds.length} fact(s), so the cost column cannot ` +
+        `distinguish them — prices dropped, options kept`,
+      );
+      for (const o of options) o.rulesOutIds = [];
+    }
+  }
+
+  if (options.length === 1) {
+    rejected.push(`only one option survived — a decision with a single course of action is not a decision, so none are shown`);
+    return { options: [], rejected };
+  }
+
+  // A restatement is display-only, but a restatement that drifts is worse than none: the human
+  // would answer a question the graph never asked.
+  let restated: string | undefined;
+  if (proposal.restated?.trim()) {
+    const r = proposal.restated.trim();
+    const rTokens = significantTokens(r);
+    const overlap = rTokens.filter((t) => sourceTokens.has(t)).length;
+    if (r.length > 200) rejected.push(`restatement is ${r.length} characters — a restatement that long has not distilled anything`);
+    else if (rTokens.length && overlap / rTokens.length < 0.5) {
+      rejected.push(`restatement shares only ${overlap}/${rTokens.length} significant terms with the original — it has drifted off the question`);
+    } else restated = r;
+  }
+
+  return { options, restated, rejected };
 }

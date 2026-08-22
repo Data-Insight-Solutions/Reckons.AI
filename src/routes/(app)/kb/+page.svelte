@@ -20,7 +20,7 @@
   import {
     workspaceName, workspaceState, supportsWorkspace,
     pickWorkspace, reconnectWorkspace, clearWorkspace,
-    syncAllKbs, lastSyncTime, syncedKbCount
+    syncAllKbs, lastSyncTime, syncedKbCount, syncFolderPaths
   } from '$lib/stores/workspace.svelte';
   import {
     isAutoSaveSupported, hasAutoSaveFile, getAutoSaveFileName,
@@ -53,6 +53,7 @@
   import { podViewEnabled, setPodViewEnabled } from '$lib/stores/pod-view.svelte';
   import { allTypes } from '$lib/stores/entity-types.svelte';
   import GraphPreview from '$lib/components/GraphPreview.svelte';
+  import { focusOnMount } from '$lib/actions/focus-on-mount';
 
   // ── KB identity ────────────────────────────────────────────────────────────
   const currentKbId = getCurrentKbId();
@@ -104,9 +105,18 @@
     new Set(confirmedStatements().filter((s) => s.s.kind === 'iri').map((s) => s.s.value)).size
   );
 
-  const pendingTotal = $derived(
-    statements().filter((s) => s.status === 'pending' && nonAnalysisSources.some((src) => src.id === s.sourceId)).length
-  );
+  // Every pending fact, whatever kind of source carried it in.
+  //
+  // This used to require the source to be non-analysis, and `drainAndImportPending` files its
+  // import under `kind: 'analysis'`. So a graph holding 377 drained proposals reported
+  // "0 entities · 0 facts · 0 sources" and did not even show the pending-review link — every
+  // stat on this page filters analysis sources out, and all three zeros were true of confirmed
+  // facts while the graph was in fact full. A graph that reads as empty when it is not is the
+  // one thing this page must never do.
+  //
+  // The review queue is the review queue regardless of provenance: excluding a source kind from
+  // a COUNT OF WORK OUTSTANDING hides work rather than tidying it.
+  const pendingTotal = $derived(statements().filter((s) => s.status === 'pending').length);
 
   // ── Per-source counts ─────────────────────────────────────────────────────
   function sourcePending(id: string): number {
@@ -180,6 +190,26 @@
    * within each set.
    */
   const kbSets = $derived(bucketIntoSets(kbGroups, { ungroupedTitle: 'Ungrouped' }, localKbs));
+
+  /*
+   * Group by the folders the user actually made (kb:graph-sets, F113 `folder` basis).
+   *
+   * The workspace already knows where every synced graph lives — listKbFolders() has always
+   * returned the full path — but nothing recorded it, so the list could only ever group by how the
+   * names happened to be spelled. This refreshes the cached folder of each registry row whenever
+   * this page is open and a workspace is connected.
+   *
+   * It runs on the CONNECTED state rather than once on mount, so linking a folder regroups the
+   * list without a reload.
+   */
+  $effect(() => {
+    if (workspaceState() !== 'connected') return;
+    let cancelled = false;
+    void syncFolderPaths()
+      .then((updated) => { if (updated && !cancelled) localKbs = getRegistry(); })
+      .catch((e) => console.warn('[graphs] folder-path sync failed:', e));
+    return () => { cancelled = true; };
+  });
 
   /**
    * Graphs sharing a name but not an id. Re-importing a source mints a NEW database, so the list
@@ -796,7 +826,7 @@
         placeholder="new graph name…"
         aria-label="New graph name"
         onkeydown={(e) => { if (e.key === 'Enter') handleCreateKb(); if (e.key === 'Escape') showNewKbForm = false; }}
-        autofocus
+        use:focusOnMount
       />
       <button class="primary sm" onclick={handleCreateKb} disabled={!newKbName.trim()}>create &amp; switch</button>
       <button class="sm" onclick={() => (showNewKbForm = false)}>cancel</button>
@@ -885,6 +915,10 @@
             <!-- Say that the grouping is a GUESS. A user cannot correct a rule they cannot see,
                  and F113's declared membership does not exist yet. -->
             <span class="kb-set-basis mono" title="Grouped by a shared name prefix found in your graph names. Renaming a graph moves it. Define your own sets to make this explicit.">by name</span>
+          {:else if set.basis === 'folder'}
+            <!-- A folder the user made is a statement of intent, not a guess — so it is labelled
+                 differently from the name-prefix cluster above, and says what would move it. -->
+            <span class="kb-set-basis mono folder" title="Grouped by the sub-directory these graphs are synced from in your workspace folder. Moving a graph to another folder moves it here.">by folder</span>
           {/if}
         </div>
         <!-- Only ever the user's words. A derived set has no purpose, and inventing one would be
@@ -921,14 +955,18 @@
                 bind:value={editingName}
                 onblur={commitRename}
                 onkeydown={(e) => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') { editingKbId = null; } }}
-                autofocus
+                use:focusOnMount
                 aria-label="Rename graph"
               />
             {:else}
               <span
                 class="kb-entry-name"
+                role="button"
+                tabindex="0"
                 ondblclick={() => startRename(kb)}
-                title="Double-click to rename"
+                onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startRename(kb); } }}
+                aria-label={`Rename ${kb.name}`}
+                title="Double-click, Enter, or Space to rename"
               >{kb.name}</span>
             {/if}
             {#if group.orphanArchive}
@@ -1985,6 +2023,7 @@
     border: 1px solid var(--line); border-radius: 3px; padding: 0.05rem 0.3rem;
   }
   /* The grouping is currently a GUESS from the name; it must look like one. */
+  .kb-set-basis.folder { color: var(--accent); opacity: 0.85; }
   .kb-set-basis { font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
   .kb-set-purpose { margin: 0 0 0.5rem; font-size: 0.7rem; color: var(--muted); max-width: 62ch; }
 
@@ -2079,9 +2118,10 @@
 
   .kb-entry-meta { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
   .kb-entry-name {
-    font-size: 0.85rem; font-weight: 600; cursor: default;
+    font-size: 0.85rem; font-weight: 600; cursor: pointer;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  .kb-entry-name:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .kb-entry-sub { display: flex; align-items: center; gap: 0.4rem; }
   .kb-entry-id { font-size: 0.6rem; color: var(--muted); }
 

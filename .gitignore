@@ -89,13 +89,29 @@ eng.traineddata
 # this is only the machine's record of what it claimed and what came of it. Delete to reset.
 reckons-workspace/*.state.ttl
 reckons-workspace/runner.log.jsonl
+# Kernel flock sidecars are intentionally persistent names (the kernel releases ownership on
+# process death). They are coordination artifacts, not evidence or authored workspace content.
+reckons-workspace/*.jsonl.lock
+reckons-workspace/*.state.ttl.lock
+reckons-workspace/kbs/*/*.jsonl.lock
 
 reckons-workspace/schedules.state.ttl
 reckons-workspace/schedule.log.jsonl
 reckons-workspace/task-drafts.ttl
+
+# Offline alignment-sweep reports. Already ignored by the bare `*.log` rule above; named
+# explicitly so the directory is a declared artifact location rather than an accident.
+reckons-workspace/sweeps/
 
 # Local app workspace — the folder-sync target writes copies of every graph here.
 # Only default-kb is a real repo asset; the rest are duplicates of static/*.ttl and
 # were once swept into a commit by `git add -A static/` (15,093 lines, 2026-07-19).
 static/kbs/*
 !static/kbs/default-kb/
+
+# Recovered graph exports pulled out of the synced workspace (they were being re-imported
+# as graphs). Kept outside reckons-workspace/ so the folder walker never sees them.
+.reckons-recovered/
+
+# A/B benchmark run artifacts (transcripts + diffs; worktrees live outside the repo)
+.ab/

@@ -79,4 +79,15 @@ for (const r of rows) {
 console.log('-'.repeat(78));
 console.log(`${'TOTAL'.padEnd(26)}${k(tot.input).padStart(8)}${k(tot.cacheW).padStart(8)}${k(tot.cacheR).padStart(9)}${k(tot.output).padStart(8)}${k(tot.eff).padStart(10)}`);
 console.log(`\nweighted = input + 1.25·cacheW + 0.1·cacheR + 5·output (rough Opus ratios).`);
-console.log(`Offloading fresh input + output to local models is what moves 'weighted' down.\n`);
+// CORRECTED 2026-08-21. This line used to say offloading fresh input + output to local
+// models is what moves 'weighted' down. The totals above falsify that on this project:
+// fresh input is ~0% of weighted and output ~12%, while cache READS are ~72%. Tiering
+// (F74.3) is still right for triage cost and hallucination - it is just not the lever on
+// the bill. The lever is how much context each turn carries: see kb:context-engine (F135)
+// and `npm run offline:context` for what is actually filling it.
+const share = (n: number) => (tot.eff ? `${((n / tot.eff) * 100).toFixed(0)}%` : '?');
+console.log(
+  `fresh input ${share(tot.input * W.input)} \u00b7 cache-write ${share(tot.cacheW * W.cacheW)} \u00b7 ` +
+  `cache-read ${share(tot.cacheR * W.cacheR)} \u00b7 output ${share(tot.output * W.output)} of weighted.`
+);
+console.log(`The big share is where the money goes. Run \`npm run offline:context\` to see what fills it.\n`);

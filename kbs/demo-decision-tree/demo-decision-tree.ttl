@@ -1,0 +1,246 @@
+@prefix kb:     <urn:kbase:concept/> .
+@prefix kpred:  <urn:kbase:predicate/> .
+@prefix ktype:  <urn:kbase:type/> .
+@prefix hnav:   <urn:reckons:nav/> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# ==============================================================================
+# DEMO GRAPH — the DECISION TREE as it is meant to LOOK (F139 UI/UX fixture)
+# ==============================================================================
+#
+# This is a deliberately FAKED, hand-authored graph. Its job is to let the tree
+# layout be designed and judged against the intended result, WITHOUT waiting on
+# extraction quality. Matt, 2026-08-21: "we can work on the accurate extraction,
+# separately than the UI/UX of the intended result."
+#
+# So everything here is already in the shape extraction is trying to reach:
+# options are modelled, prices are computed, and the dependency chain is real.
+# Nothing here should be taken as evidence that extraction WORKS — on the live
+# roadmap 78 of 78 decisions are still prose-only and only 7 are dependency-
+# ordered. This file shows the destination, not the current position.
+#
+# Companion to demo-review-tree.ttl, which demonstrates the review PROCESS
+# (cascade, contested, suppression). This one demonstrates DEPTH AND ORDER.
+#
+# IT LIVES IN THE SYNCED WORKSPACE (kbs/), so it appears as a graph after a
+# workspace sync — no import step needed. It was first written to tests/fixtures/
+# and did NOT show up on sync, because sync discovers graphs under the linked
+# workspace folder and tests/fixtures/ is not part of it. Its companion
+# demo-review-tree.ttl is in kbs/ for exactly this reason.
+#
+# IT IS NOT IN static/ ON PURPOSE, for the same reason as its companion:
+# graph-lint scans static/*.ttl, and block 4 asserts two conflicting values on
+# one entity deliberately. Shipping it where lint scans it would make a real
+# check fail for a fictional reason, and a gate that cries wolf gets switched
+# off. kbs/ is not scanned, so the deliberate conflict stays deliberate.
+#
+# To load it without a sync: /ingest → "graph" → "turtle file" → pick this file
+# → "import →", then /review. Every fact lands pending, so the whole graph
+# arrives as review work.
+#
+# The scenario is a volunteer community radio station moving to a new studio —
+# chosen so judging the tree needs no knowledge of Reckons.AI.
+#
+# WHAT EACH BLOCK IS FOR, AND WHAT THE TREE SHOULD DO WITH IT:
+#
+#   BLOCK 1  THE FOUNDATION decision, with two options each priced by the facts
+#            that die if it wins. Nothing depends on anything above it, so it
+#            should sort FIRST among the unblocked — it is what unlocks the rest.
+#   BLOCK 2  A decision that DEPENDS ON block 1. It should render below it and
+#            name it: "settle first: Where the signal comes from".
+#   BLOCK 3  A decision that depends on block 2, so it is TRANSITIVELY blocked by
+#            block 1 as well. Three levels deep — this is the layout test.
+#   BLOCK 4  A CONTESTED value: two conflicting opening dates, both hand-entered.
+#            It must sort ABOVE everything, blocked or not, and route to a
+#            reckoning rather than accept/reject.
+#   BLOCK 5  A FORCED decision: a grant deadline points at it with kpred:decides.
+#            The deadline settles it if nobody else does, so it ranks high.
+#   BLOCK 6  Bookkeeping. Never rows, only a suppressed count behind a drawer.
+#
+# EXPECTED SHAPE (assert against this, don't just look):
+#   5 open decisions · 1 contested (escalating to a reckoning) · 1 forced ·
+#   3 in a dependency chain, of which 2 report blockedBy · 0 prose-only ·
+#   every option carrying a non-empty and DIFFERENT cost.
+# ==============================================================================
+
+
+# ── BLOCK 1 — the foundation. Everything else waits on this. ──────────────────
+
+kb:signal-source rdf:type ktype:Feature ;
+    rdfs:label "Where the signal comes from" ;
+    kpred:has-status "in-progress" ;
+    kpred:description "The new studio needs a path to the transmitter. This is the first decision because the desk, the racks and the volunteer rota all follow from it." ;
+    kpred:open-question "Own mast on the roof, or shared airtime on the county mast? The roof is ours forever and needs a structural survey nobody has done. The county mast is available next month and rents by the year." ;
+    kpred:decided "We are moving. The lease on the old studio ends in March and is not being renewed." ;
+    kpred:measured "Structural survey quote, 2026-07-14: 4,200 for the roof assessment alone, six weeks lead time." ;
+    kpred:measured "County mast tariff, 2026-07-20: 3,100 a year, cancellable annually, live within 30 days." .
+
+kb:opt-own-mast rdf:type ktype:Concept ;
+    rdfs:label "Own mast on the roof" .
+
+kb:opt-county-mast rdf:type ktype:Concept ;
+    rdfs:label "Shared airtime on the county mast" .
+
+# Each option is PRICED by the facts that die if it wins. This is the only way a
+# cost can be checked instead of asserted — and the two prices differ, which is
+# what makes the column worth showing at all.
+kb:fact-no-rent rdf:type ktype:Concept ;
+    rdfs:label "No recurring transmission cost after year one" ;
+
+    kpred:part-of kb:signal-source ;    kpred:ruled-out-by kb:opt-county-mast .
+
+kb:fact-on-air-next-month rdf:type ktype:Concept ;
+    rdfs:label "On air from the new studio next month" ;
+
+    kpred:part-of kb:signal-source ;    kpred:ruled-out-by kb:opt-own-mast .
+
+kb:fact-no-survey-needed rdf:type ktype:Concept ;
+    rdfs:label "No structural survey needed before we broadcast" ;
+
+    kpred:part-of kb:signal-source ;    kpred:ruled-out-by kb:opt-own-mast .
+
+
+# ── BLOCK 2 — depends on block 1. Should say so. ──────────────────────────────
+
+kb:broadcast-chain rdf:type ktype:Feature ;
+    rdfs:label "The broadcast chain in the new studio" ;
+    kpred:has-status "planned" ;
+    kpred:depends-on kb:signal-source ;
+    kpred:description "The desk, processing and link equipment between the studio and whatever carries the signal." ;
+    kpred:open-question "Refurbish the existing analogue desk, or buy the second-hand digital desk that came up? The analogue desk is understood by every volunteer who has ever used it. The digital desk can be re-patched in software, which matters if the signal path changes later." ;
+    kpred:measured "Volunteer survey, 2026-06-30: 19 of 24 active presenters have only ever used the analogue desk." ;
+    kpred:measured "The second-hand digital desk is offered at 2,800, and the seller wants an answer within the month." .
+
+kb:opt-analogue-desk rdf:type ktype:Concept ;
+    rdfs:label "Refurbish the analogue desk" .
+
+kb:opt-digital-desk rdf:type ktype:Concept ;
+    rdfs:label "Buy the second-hand digital desk" .
+
+kb:fact-no-retraining rdf:type ktype:Concept ;
+    rdfs:label "No retraining for 19 of 24 presenters" ;
+
+    kpred:part-of kb:broadcast-chain ;    kpred:ruled-out-by kb:opt-digital-desk .
+
+kb:fact-repatch-in-software rdf:type ktype:Concept ;
+    rdfs:label "Signal path can be re-patched without rewiring" ;
+
+    kpred:part-of kb:broadcast-chain ;    kpred:ruled-out-by kb:opt-analogue-desk .
+
+
+# ── BLOCK 3 — depends on block 2, so transitively on block 1. Three deep. ─────
+
+kb:volunteer-rota rdf:type ktype:Feature ;
+    rdfs:label "How volunteers book their slots" ;
+    kpred:has-status "planned" ;
+    kpred:depends-on kb:broadcast-chain ;
+    kpred:description "Twenty-four presenters, one studio, and a rota currently kept on paper on the studio door." ;
+    kpred:open-question "Keep the paper rota on the door, or move booking to the shared calendar? Paper is visible to whoever is in the building and invisible to everyone else. The shared calendar is visible to everyone and to nobody standing in the doorway at 6am." ;
+    kpred:measured "Rota clashes, first half of 2026: eleven, of which four resulted in dead air." .
+
+kb:opt-paper-rota rdf:type ktype:Concept ;
+    rdfs:label "Keep the paper rota" .
+
+kb:opt-shared-calendar rdf:type ktype:Concept ;
+    rdfs:label "Move booking to the shared calendar" .
+
+kb:fact-visible-in-doorway rdf:type ktype:Concept ;
+    rdfs:label "Readable by whoever is standing in the studio at 6am" ;
+
+    kpred:part-of kb:volunteer-rota ;    kpred:ruled-out-by kb:opt-shared-calendar .
+
+kb:fact-visible-remotely rdf:type ktype:Concept ;
+    rdfs:label "Readable by presenters who are not in the building" ;
+
+    kpred:part-of kb:volunteer-rota ;    kpred:ruled-out-by kb:opt-paper-rota .
+
+
+# ── BLOCK 4 — CONTESTED. Two hand-entered opening dates. Must outrank all. ────
+# Both carry sourceId "manual" in the app, so this is a change of mind between
+# two people rather than an import artefact. Accept/reject is the wrong control:
+# rejecting one person's date does not make the other's true.
+
+kb:opening-night rdf:type ktype:Concept ;
+    rdfs:label "Opening night at the new studio" ;
+    kpred:has-status "2026-04-11" ;
+    kpred:has-status "2026-05-02" ;
+    kpred:description "The first live broadcast from the new studio, and the thing the funder will be invited to." .
+
+
+# ── BLOCK 5 — FORCED. A deadline points at a decision and settles it by default. ─
+
+kb:grant-deadline rdf:type ktype:Concept ;
+    rdfs:label "Community media grant closes 2026-03-31" ;
+    kpred:decides kb:capital-spend ;
+    kpred:description "The grant covers capital equipment only, and cannot be carried into the next round." .
+
+kb:capital-spend rdf:type ktype:Feature ;
+    rdfs:label "What the capital grant is spent on" ;
+    kpred:has-status "in-progress" ;
+    kpred:open-question "Spend the capital grant on the mast survey, or on the desk? It covers one of them, not both, and what is left of it disappears on 31 March whether we decide or not." ;
+    kpred:measured "Grant award letter, 2026-02-02: 5,000, capital only, no carry-over." .
+
+
+# ── BLOCK 6 — bookkeeping. Never rows; a count behind a drawer. ───────────────
+
+kb:signal-source kpred:has-file "docs/studio-move/signal-options.md" ;
+    kpred:relates-to kb:broadcast-chain ;
+    kpred:last-reviewed "2026-07-21" .
+
+kb:broadcast-chain kpred:has-file "docs/studio-move/desk-comparison.md" ;
+    kpred:relates-to kb:volunteer-rota ;
+    kpred:last-reviewed "2026-07-22" .
+
+kb:volunteer-rota kpred:has-file "docs/studio-move/rota-clashes.csv" ;
+    kpred:last-reviewed "2026-07-23" .
+
+kb:capital-spend kpred:relates-to kb:signal-source ;
+    kpred:last-reviewed "2026-07-24" .
+
+
+# ── BLOCK 7 — the same decision tree, drawable by the TREE LAYOUT ─────────────
+#
+# ADDED 2026-08-21 after the "tree" layout chip appeared to do nothing on this
+# graph. It was not a broken button: hierarchyEdgeCount counts skos:broader or
+# kpred:depends-on with an IRI object, and this file had TWO such edges across
+# nineteen entities. Two edges cannot make a tree, so the force layout took over
+# and the picture did not change.
+#
+# These edges mirror the review tree's own shape — DECISION → OPTION → the facts
+# that option kills — so switching to "tree" in either 2D or 3D draws the same
+# hierarchy the review screen reasons about, instead of an unrelated taxonomy.
+# `A skos:broader B` reads "A is under B", so B is the parent.
+#
+# They add no claims: every edge restates a relation already asserted above by
+# kpred:open-question, kpred:ruled-out-by or kpred:depends-on. Nothing here can
+# change what the review tree decides, only where the renderer puts it.
+
+kb:studio-move rdf:type ktype:Concept ;
+    rdfs:label "Moving the station" ;
+    kpred:description "The root of everything being decided about the move." ;
+    hnav:layer 0 .
+
+kb:signal-source   skos:broader kb:studio-move ; hnav:layer 1 ; hnav:order 1 .
+kb:broadcast-chain skos:broader kb:studio-move ; hnav:layer 1 ; hnav:order 2 .
+kb:volunteer-rota  skos:broader kb:studio-move ; hnav:layer 1 ; hnav:order 3 .
+kb:capital-spend   skos:broader kb:studio-move ; hnav:layer 1 ; hnav:order 4 .
+kb:opening-night   skos:broader kb:studio-move ; hnav:layer 1 ; hnav:order 5 .
+
+# Options sit under the decision they are options FOR.
+kb:opt-own-mast        skos:broader kb:signal-source   ; hnav:layer 2 ; hnav:order 1 .
+kb:opt-county-mast     skos:broader kb:signal-source   ; hnav:layer 2 ; hnav:order 2 .
+kb:opt-analogue-desk   skos:broader kb:broadcast-chain ; hnav:layer 2 ; hnav:order 1 .
+kb:opt-digital-desk    skos:broader kb:broadcast-chain ; hnav:layer 2 ; hnav:order 2 .
+kb:opt-paper-rota      skos:broader kb:volunteer-rota  ; hnav:layer 2 ; hnav:order 1 .
+kb:opt-shared-calendar skos:broader kb:volunteer-rota  ; hnav:layer 2 ; hnav:order 2 .
+
+# A priced fact sits under the option that KILLS it — the option's cost, drawn.
+kb:fact-no-rent            skos:broader kb:opt-county-mast     ; hnav:layer 3 ; hnav:order 1 .
+kb:fact-on-air-next-month  skos:broader kb:opt-own-mast        ; hnav:layer 3 ; hnav:order 1 .
+kb:fact-no-survey-needed   skos:broader kb:opt-own-mast        ; hnav:layer 3 ; hnav:order 2 .
+kb:fact-no-retraining      skos:broader kb:opt-digital-desk    ; hnav:layer 3 ; hnav:order 1 .
+kb:fact-repatch-in-software skos:broader kb:opt-analogue-desk  ; hnav:layer 3 ; hnav:order 1 .
+kb:fact-visible-in-doorway skos:broader kb:opt-shared-calendar ; hnav:layer 3 ; hnav:order 1 .
+kb:fact-visible-remotely   skos:broader kb:opt-paper-rota      ; hnav:layer 3 ; hnav:order 1 .

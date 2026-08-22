@@ -38,6 +38,9 @@ const file = args.find((a) => !a.startsWith('--')) ?? 'static/reckons-roadmap.tt
 const { statements, typeOf } = readGraph(file, { asReviewSet: true });
 const tree = buildReviewTree(statements, statements, { typeOf });
 
+/** subject -> label, so a blocker can be named rather than shown as an IRI. */
+const labelBySubject = new Map(tree.decisions.map((d) => [d.subjectIri, d.label]));
+
 const oneLine = (s: string, n = 160) => {
   const t = s.replace(/\s+/g, ' ').trim();
   return t.length > n ? `${t.slice(0, n)}…` : t;
@@ -69,6 +72,14 @@ for (const d of tree.decisions.slice(0, LIMIT)) {
     // rendering an empty options list as though the question were simple.
     console.log(`    ${D}prose only — no options modelled, so there is nothing to weigh side by side${X}`);
     console.log(`    ${D}→ distill: ${distillationRequest(d).task}, grounded in ${distillationRequest(d).sourceIds.length} facts${X}`);
+  }
+
+  // Dependency order, projected from the plan's own depends-on edges. Naming what to settle
+  // first is the difference between "78 questions" and "a sequence".
+  if (d.blockedBy.length) {
+    const names = d.blockedBy.slice(0, 3).map((iri) => labelBySubject.get(iri) ?? iri.replace('urn:kbase:concept/', 'kb:')).join(', ');
+    console.log(`    ${M}⇢ settle first: ${names}${d.blockedBy.length > 3 ? ` (+${d.blockedBy.length - 3})` : ''}${X}` +
+      `${d.inCycle ? ` ${R}[in a dependency cycle — this order is a lower bound]${X}` : ''}`);
   }
 
   const parts = [

@@ -1,0 +1,130 @@
+@prefix kb:     <urn:kbase:concept/> .
+@prefix kpred:  <urn:kbase:predicate/> .
+@prefix ktype:  <urn:kbase:type/> .
+@prefix hnav:   <urn:reckons:nav/> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# ==============================================================================
+# DEMO GRAPH — the TREE LAYOUT, with an actual hierarchy to draw
+# ==============================================================================
+#
+# WHY THIS EXISTS. Clicking the "tree" layout chip on demo-review-tree or
+# demo-decision-tree changes almost nothing, and that is not a bug in the
+# button. Measured 2026-08-21: those graphs carry 0 and 0 skos:broader edges and
+# 1 and 2 kpred:depends-on edges across 16 and 19 entities. The review page's
+# own comment predicts the result — "choosing 'tree' on a graph without them
+# looks exactly like a broken button. It is not: the graph genuinely has no
+# hierarchy to draw."
+#
+# hierarchyEdgeCount counts skos:broader OR kpred:depends-on with an IRI object.
+# Two edges cannot make a tree out of nineteen nodes, so the force layout takes
+# over and the view looks unchanged. This graph supplies a REAL hierarchy:
+# 4 branches, 3 levels, ~35 skos:broader edges — enough that the tree layout
+# produces a visibly different picture from the force layout.
+#
+# `A skos:broader B` reads "A is under B", so B is the PARENT (see hierarchy.ts,
+# which warns that depends-on read naively as broader-shaped INVERTS the tree).
+#
+# hnav:order fixes sibling order so the tree is stable between renders rather
+# than reshuffling on every load; hnav:layer marks the depth bands the HNSW
+# navigation uses. Both are meta predicates and are suppressed from review.
+#
+# The scenario is the same fictional community radio station as its companions,
+# so the three demos can be read together.
+#
+# WHAT TO EXPECT: switch layout to "tree" and the graph should resolve into four
+# labelled branches under one root, three deep, instead of a force-directed
+# cloud. Switch back to force and it should visibly differ.
+# ==============================================================================
+
+kb:station rdf:type ktype:Concept ;
+    rdfs:label "Community radio station" ;
+    kpred:description "The whole operation: what goes out, what carries it, and who makes it." ;
+    hnav:layer 0 .
+
+# ── Branch 1: Studio ──────────────────────────────────────────────────────────
+kb:studio rdf:type ktype:Concept ; rdfs:label "Studio" ;
+    skos:broader kb:station ; hnav:layer 1 ; hnav:order 1 ;
+    kpred:description "The room the programmes are made in." .
+kb:desk rdf:type ktype:Concept ; rdfs:label "Mixing desk" ;
+    skos:broader kb:studio ; hnav:layer 2 ; hnav:order 1 .
+kb:microphones rdf:type ktype:Concept ; rdfs:label "Microphones" ;
+    skos:broader kb:studio ; hnav:layer 2 ; hnav:order 2 .
+kb:monitoring rdf:type ktype:Concept ; rdfs:label "Monitoring" ;
+    skos:broader kb:studio ; hnav:layer 2 ; hnav:order 3 .
+kb:acoustics rdf:type ktype:Concept ; rdfs:label "Acoustic treatment" ;
+    skos:broader kb:studio ; hnav:layer 2 ; hnav:order 4 .
+kb:desk-analogue rdf:type ktype:Concept ; rdfs:label "Analogue desk (current)" ;
+    skos:broader kb:desk ; hnav:layer 3 ; hnav:order 1 .
+kb:desk-digital rdf:type ktype:Concept ; rdfs:label "Digital desk (offered)" ;
+    skos:broader kb:desk ; hnav:layer 3 ; hnav:order 2 .
+kb:mic-presenter rdf:type ktype:Concept ; rdfs:label "Presenter mic" ;
+    skos:broader kb:microphones ; hnav:layer 3 ; hnav:order 1 .
+kb:mic-guest rdf:type ktype:Concept ; rdfs:label "Guest mics" ;
+    skos:broader kb:microphones ; hnav:layer 3 ; hnav:order 2 .
+
+# ── Branch 2: Transmission ────────────────────────────────────────────────────
+kb:transmission rdf:type ktype:Concept ; rdfs:label "Transmission" ;
+    skos:broader kb:station ; hnav:layer 1 ; hnav:order 2 ;
+    kpred:description "Everything between the studio output and a listener's radio." .
+kb:mast rdf:type ktype:Concept ; rdfs:label "Mast" ;
+    skos:broader kb:transmission ; hnav:layer 2 ; hnav:order 1 .
+kb:transmitter rdf:type ktype:Concept ; rdfs:label "Transmitter" ;
+    skos:broader kb:transmission ; hnav:layer 2 ; hnav:order 2 .
+kb:feeder rdf:type ktype:Concept ; rdfs:label "Feeder cable" ;
+    skos:broader kb:transmission ; hnav:layer 2 ; hnav:order 3 .
+kb:mast-own rdf:type ktype:Concept ; rdfs:label "Own mast on the roof" ;
+    skos:broader kb:mast ; hnav:layer 3 ; hnav:order 1 .
+kb:mast-county rdf:type ktype:Concept ; rdfs:label "Shared county mast" ;
+    skos:broader kb:mast ; hnav:layer 3 ; hnav:order 2 .
+
+# ── Branch 3: Programming — the deepest branch ────────────────────────────────
+kb:programming rdf:type ktype:Concept ; rdfs:label "Programming" ;
+    skos:broader kb:station ; hnav:layer 1 ; hnav:order 3 ;
+    kpred:description "What is actually broadcast, and when." .
+kb:news rdf:type ktype:Concept ; rdfs:label "News" ;
+    skos:broader kb:programming ; hnav:layer 2 ; hnav:order 1 .
+kb:music rdf:type ktype:Concept ; rdfs:label "Music" ;
+    skos:broader kb:programming ; hnav:layer 2 ; hnav:order 2 .
+kb:talk rdf:type ktype:Concept ; rdfs:label "Talk" ;
+    skos:broader kb:programming ; hnav:layer 2 ; hnav:order 3 .
+kb:news-local rdf:type ktype:Concept ; rdfs:label "Local bulletin" ;
+    skos:broader kb:news ; hnav:layer 3 ; hnav:order 1 .
+kb:news-travel rdf:type ktype:Concept ; rdfs:label "Travel and weather" ;
+    skos:broader kb:news ; hnav:layer 3 ; hnav:order 2 .
+kb:music-folk rdf:type ktype:Concept ; rdfs:label "Folk hour" ;
+    skos:broader kb:music ; hnav:layer 3 ; hnav:order 1 .
+kb:music-newreleases rdf:type ktype:Concept ; rdfs:label "New releases" ;
+    skos:broader kb:music ; hnav:layer 3 ; hnav:order 2 .
+kb:music-latenight rdf:type ktype:Concept ; rdfs:label "Late night" ;
+    skos:broader kb:music ; hnav:layer 3 ; hnav:order 3 .
+kb:talk-council rdf:type ktype:Concept ; rdfs:label "Council phone-in" ;
+    skos:broader kb:talk ; hnav:layer 3 ; hnav:order 1 .
+kb:talk-gardening rdf:type ktype:Concept ; rdfs:label "Gardening hour" ;
+    skos:broader kb:talk ; hnav:layer 3 ; hnav:order 2 .
+
+# ── Branch 4: Volunteers ──────────────────────────────────────────────────────
+kb:volunteers rdf:type ktype:Concept ; rdfs:label "Volunteers" ;
+    skos:broader kb:station ; hnav:layer 1 ; hnav:order 4 ;
+    kpred:description "Twenty-four people, none of them paid." .
+kb:presenters rdf:type ktype:Concept ; rdfs:label "Presenters" ;
+    skos:broader kb:volunteers ; hnav:layer 2 ; hnav:order 1 .
+kb:engineers rdf:type ktype:Concept ; rdfs:label "Engineers" ;
+    skos:broader kb:volunteers ; hnav:layer 2 ; hnav:order 2 .
+kb:admin rdf:type ktype:Concept ; rdfs:label "Admin and fundraising" ;
+    skos:broader kb:volunteers ; hnav:layer 2 ; hnav:order 3 .
+kb:presenters-weekday rdf:type ktype:Concept ; rdfs:label "Weekday presenters" ;
+    skos:broader kb:presenters ; hnav:layer 3 ; hnav:order 1 .
+kb:presenters-weekend rdf:type ktype:Concept ; rdfs:label "Weekend presenters" ;
+    skos:broader kb:presenters ; hnav:layer 3 ; hnav:order 2 .
+
+# ── A few cross-links, so the tree is a tree and not a disconnected forest ────
+# skos:related is NOT a parent edge, so these do not change the hierarchy — they
+# are here so the FORCE layout has something to pull on, making the difference
+# between the two layouts visible rather than theoretical.
+kb:desk-digital skos:related kb:engineers .
+kb:mast-county skos:related kb:admin .
+kb:music-latenight skos:related kb:presenters-weekend .
+kb:news-travel skos:related kb:transmitter .

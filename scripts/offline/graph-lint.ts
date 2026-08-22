@@ -22,7 +22,7 @@
  *   npm run offline:lint -- --pending    also queue findings for review in Reckons.AI
  *   npm run offline:lint -- --json       machine-readable (CI)
  */
-import { readFileSync, existsSync, appendFileSync, readdirSync } from 'fs';
+import { readFileSync, existsSync, appendFileSync, readdirSync, realpathSync } from 'fs';
 import { execSync } from 'child_process';
 import path from 'path';
 import { Parser, type Quad } from 'n3';
@@ -319,6 +319,39 @@ for (const subject of features) {
   ].filter(Boolean);
   if (missing.length) {
     add('warn', 'incomplete', fileOf(subject), subject, `Feature is missing ${missing.join(', ')}.`);
+  }
+}
+
+// ── mcp-invisible: a graph in static/ that the MCP server cannot see.
+// kb:search-consistency (F104) names the dangerous failure: a silent empty result looks
+// identical whether a fact is ABSENT or merely UNINDEXED, so an agent reads "not found"
+// as "does not exist" and rebuilds what already exists. That is the exact duplication the
+// graph is supposed to prevent, which makes a coverage gap a hole in the product's core
+// claim rather than a search bug. F104's decision (1) is to fix coverage FIRST and guard
+// it; this is that guard. Deliberately a WARNING: a graph can be intentionally unlinked
+// (a fixture asserting a lifecycle conflict must not be shipped where lint scans it).
+{
+  const linked = new Set<string>();
+  for (const root of ['mcp-workspace/kbs', 'reckons-workspace/kbs']) {
+    if (!existsSync(root)) continue;
+    for (const kbDir of readdirSync(root)) {
+      const d = path.join(root, kbDir);
+      let entries: string[];
+      try { entries = readdirSync(d); } catch { continue; }
+      for (const f of entries) {
+        if (!f.endsWith('.ttl')) continue;
+        try { linked.add(realpathSync(path.join(d, f))); } catch { /* dangling link */ }
+      }
+    }
+  }
+  for (const f of readdirSync('static').filter((x) => x.endsWith('.ttl'))) {
+    const abs = path.resolve('static', f);
+    if (linked.has(abs)) continue;
+    add('warn', 'mcp-invisible', `static/${f}`, `static/${f}`,
+      `not linked into any MCP workspace, so kb_search and kb_compress cannot see it. ` +
+      `An agent searching for what is in here gets silence, not an answer — and silence reads ` +
+      `as "does not exist". Link it via scripts/setup-reckons-workspace.sh, or if it is ` +
+      `deliberately excluded, say so where the exclusion is decided.`);
   }
 }
 

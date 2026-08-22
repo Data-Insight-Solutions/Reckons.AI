@@ -64,6 +64,14 @@ const LONG_TASK_MS = Number(arg('long-task', '200'));
 /** Frames per second to subsample a recording at. */
 const FPS = Number(arg('fps', '4'));
 const OUT_DIR = 'tests/visual/results/perf';
+/** Interaction crawl: click every button on a route and time the reaction. */
+const CLICKS_MODE = args.includes('--clicks');
+/** A click that has not settled by here is a stall the user feels as a freeze. */
+const CLICK_BUDGET = Number(arg('click-budget', '1200'));
+/** CDP CPU throttle. 1 = this machine. 4 is a rough stand-in for a mid-range laptop. */
+const THROTTLE = Number(arg('throttle', '1'));
+/** Cap per route, so one route with 80 controls cannot eat the whole run. */
+const MAX_CLICKS = Number(arg('max-clicks', '25'));
 
 const ROUTES = ['/', '/review', '/ingest', '/kb', '/settings'];
 
@@ -576,6 +584,173 @@ console.log(
   `${C.d}budget ${BUDGET}ms · long task ≥ ${LONG_TASK_MS}ms · ${WITH_VIDEO ? `video @ ${FPS}fps` : 'no video'}${C.x}\n`,
 );
 
+
+/**
+ * ── INTERACTION CRAWL: every button on a route, timed before and after ──────────────────────────
+ *
+ * Matt, 2026-08-21, after auto-expand opened an image slowly and then would not close:
+ * "We need to expand the performance testing to all button click events to try to catch any bad
+ * performance of reactivity across the whole app."
+ *
+ * A route's load time says nothing about this. The freeze he hit was paid AFTER load, by a click,
+ * on a page that had already reported time-to-usable in the green. FLOWS above measure two
+ * hand-picked clicks; this measures EVERY button a route offers, which is what "across the whole
+ * app" requires.
+ *
+ * WHAT IS MEASURED PER CLICK, and why each is needed:
+ *   settleMs    from click to the DOM going quiet. This is the number a user experiences as "the
+ *               app responded". Measured with a MutationObserver rather than a fixed wait, so a
+ *               fast click is not credited with the timeout it never used.
+ *   longTasks   main-thread blocks attributed to THIS click — buffers are reset immediately before
+ *               it, so nothing from page load is charged to a button.
+ *   worstFrame  the jank during the settle window: the dropped frames of a janky reactive update.
+ *   changed     whether the DOM changed at all. A click that costs 900ms and changes NOTHING is a
+ *               different and worse bug than a slow click that did something, and without a
+ *               before/after signature the two are indistinguishable.
+ *
+ * DESTRUCTIVE CONTROLS ARE NEVER CLICKED. This runs unattended against a real profile, so anything
+ * whose label reads as delete/remove/clear/reject/unlink/disconnect is skipped and reported as
+ * skipped. A performance harness that wipes a graph to time the wipe has cost more than it measured.
+ */
+interface ClickResult {
+  route: string;
+  label: string;
+  settleMs: number;
+  longTasks: { duration: number; name: string }[];
+  worstFrame: number;
+  changed: boolean;
+  skipped?: string;
+  error?: string;
+}
+
+/** Labels this harness must not click while running unattended. */
+const DESTRUCTIVE = /delete|remove|clear|reset|reject|unlink|disconnect|purge|wipe|revoke|sign out|log out|drop\b/i;
+
+async function measureInteractions(
+  browser: Browser,
+  route: string,
+  opts: { budgetMs: number; throttle: number; max: number },
+): Promise<ClickResult[]> {
+  const ctx = await browser.newContext(viewportOpts());
+  await ctx.addInitScript(OBSERVER);
+  const page = await ctx.newPage();
+  const out: ClickResult[] = [];
+
+  try {
+    /*
+     * CPU THROTTLING, BECAUSE THIS MACHINE IS NOT THE USER'S MACHINE.
+     * Matt, 2026-08-21: "most users would not have as powerful of dual GPU system as I do". A
+     * number measured here is a BEST CASE, and quoting it as the experience would be exactly the
+     * kind of unverifiable claim made by the party it benefits that this project exists to refuse.
+     * CDP's CPU throttle is a blunt instrument — it does not slow the GPU or the network — but it
+     * turns a best case into something closer to a mid-range laptop, and the rate is printed with
+     * every result so no figure is ever read without its hardware.
+     */
+    if (opts.throttle > 1) {
+      const cdp = await ctx.newCDPSession(page);
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: opts.throttle });
+    }
+
+    await page.goto(`${BASE_URL}${route}`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    await page.waitForTimeout(1_500); // let the route's own first render finish
+
+    const buttons = page.locator('button:visible, [role="button"]:visible');
+    const total = await buttons.count();
+    const n = Math.min(total, opts.max);
+
+    for (let i = 0; i < n; i++) {
+      const el = buttons.nth(i);
+      let label = '';
+      try {
+        label = ((await el.innerText({ timeout: 1_000 })) || (await el.getAttribute('aria-label')) || '').trim();
+      } catch { label = ''; }
+      label = (label || `button #${i}`).replace(/\s+/g, ' ').slice(0, 48);
+
+      if (DESTRUCTIVE.test(label)) { out.push({ route, label, settleMs: 0, longTasks: [], worstFrame: 0, changed: false, skipped: 'destructive label' }); continue; }
+      if (!(await el.isEnabled().catch(() => false))) { out.push({ route, label, settleMs: 0, longTasks: [], worstFrame: 0, changed: false, skipped: 'disabled' }); continue; }
+
+      // Before-signature + a fresh perf buffer, so nothing earlier is charged to this click.
+      const before = await page.evaluate(() => {
+        (window as any).__perf.longTasks = [];
+        (window as any).__perf.frames = [];
+        /*
+         * A CONTENT HASH, NOT A LENGTH. The first version compared node COUNT and innerText
+         * LENGTH, and reported the /kb sort buttons ("recent", "size", "name") as changing
+         * nothing — because reordering a list changes neither. Order is exactly what those
+         * buttons are for, so the harness was calling working controls inert. Hash the text.
+         */
+        const t = document.body.innerText;
+        let h = 0;
+        for (let i = 0; i < t.length; i++) { h = ((h << 5) - h + t.charCodeAt(i)) | 0; }
+        return { nodes: document.querySelectorAll('*').length, text: h };
+      }).catch(() => null);
+      if (!before) { out.push({ route, label, settleMs: -1, longTasks: [], worstFrame: 0, changed: false, error: 'page unreachable' }); continue; }
+
+      const t0 = Date.now();
+      try {
+        await el.click({ timeout: 5_000, noWaitAfter: true });
+      } catch (e) {
+        out.push({ route, label, settleMs: -1, longTasks: [], worstFrame: 0, changed: false, error: `click failed: ${(e as Error).message.split('\n')[0].slice(0, 60)}` });
+        continue;
+      }
+
+      // Settle = the DOM going quiet. A fixed wait would credit a fast click with time it never used.
+      const settleMs = await page.evaluate(async (budget) => {
+        return await new Promise<number>((resolve) => {
+          const start = performance.now();
+          let last = start;
+          const obs = new MutationObserver(() => { last = performance.now(); });
+          obs.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
+          const iv = setInterval(() => {
+            const now = performance.now();
+            if (now - last > 250) { clearInterval(iv); obs.disconnect(); resolve(Math.round(last - start)); }
+            else if (now - start > budget) { clearInterval(iv); obs.disconnect(); resolve(-2); } // never settled
+          }, 50);
+        });
+      }, opts.budgetMs).catch(() => -1);
+
+      const after = await page.evaluate(() => {
+        const t = document.body.innerText;
+        let h = 0;
+        for (let i = 0; i < t.length; i++) { h = ((h << 5) - h + t.charCodeAt(i)) | 0; }
+        return {
+        nodes: document.querySelectorAll('*').length,
+        text: h,
+        longTasks: (window as any).__perf.longTasks as { duration: number; name: string }[],
+        frames: (window as any).__perf.frames as number[],
+        };
+      }).catch(() => null);
+
+      out.push({
+        route,
+        label,
+        settleMs: settleMs === -2 ? opts.budgetMs : settleMs,
+        longTasks: (after?.longTasks ?? []).filter((t) => t.duration >= LONG_TASK_MS),
+        worstFrame: after?.frames?.length ? Math.max(...after.frames) : 0,
+        changed: !!after && (after.nodes !== before.nodes || after.text !== before.text),
+        error: settleMs === -2 ? `never settled within ${opts.budgetMs}ms` : undefined,
+      });
+
+      // Return to a known state: a click may have navigated or opened a modal that hides the rest.
+      if (page.url() !== `${BASE_URL}${route}`) {
+        await page.goto(`${BASE_URL}${route}`, { waitUntil: 'domcontentloaded', timeout: 30_000 }).catch(() => {});
+        await page.waitForTimeout(800);
+      } else {
+        await page.keyboard.press('Escape').catch(() => {});
+        await page.waitForTimeout(150);
+      }
+      void (Date.now() - t0);
+    }
+
+    if (total > opts.max) {
+      out.push({ route, label: `(+${total - opts.max} more)`, settleMs: 0, longTasks: [], worstFrame: 0, changed: false, skipped: `over --max-clicks=${opts.max}` });
+    }
+  } finally {
+    await ctx.close().catch(() => {});
+  }
+  return out;
+}
+
 const FLOW = args.find((a) => a.startsWith('--flow='))?.split('=')[1];
 const LADDER_MODE = args.includes('--ladder');
 const results: RouteResult[] = [];
@@ -597,6 +772,62 @@ if (LADDER_MODE) {
     if (r.harnessError) console.log(`    ${C.c}· HARNESS: ${r.harnessError}${C.x}`);
     for (const f of r.failures) console.log(`    ${C.y}· ${f}${C.x}`);
   }
+}
+
+if (CLICKS_MODE) {
+  const routes = ONLY_ROUTE ? [ONLY_ROUTE] : ROUTES;
+  console.log(
+    `${C.d}interaction crawl: every button, timed before and after · budget ${CLICK_BUDGET}ms · ` +
+    `CPU throttle ${THROTTLE}x${THROTTLE === 1 ? C.y + ' (THIS MACHINE — a best case, not a typical one)' + C.d : ''}${C.x}\n`,
+  );
+  const clicks: ClickResult[] = [];
+  for (const route of routes) {
+    const rs = await measureInteractions(browser, route, { budgetMs: CLICK_BUDGET, throttle: THROTTLE, max: MAX_CLICKS });
+    clicks.push(...rs);
+    const measured = rs.filter((r) => !r.skipped);
+    const bad = measured.filter((r) => r.error || r.settleMs >= CLICK_BUDGET || r.longTasks.length);
+    console.log(
+      `${bad.length ? C.r + '✗' : C.g + '✓'} ${route.padEnd(11)}${C.x} ` +
+      `${String(measured.length).padStart(3)} clicked · ${rs.length - measured.length} skipped · ` +
+      `${bad.length} over budget or blocking`,
+    );
+    // Worst first: the one a person would actually notice.
+    for (const r of [...measured].sort((a, b) => b.settleMs - a.settleMs).slice(0, 8)) {
+      const over = r.error || r.settleMs >= CLICK_BUDGET || r.longTasks.length;
+      if (!over && r.settleMs < CLICK_BUDGET / 3) continue;
+      console.log(
+        `    ${over ? C.y : C.d}${String(r.settleMs).padStart(5)}ms${C.x} ${r.label.padEnd(30)} ` +
+        `${r.longTasks.length ? C.r + r.longTasks.length + ' long task(s)' + C.x + ' ' : ''}` +
+        `${r.worstFrame > 100 ? C.y + 'worst frame ' + r.worstFrame.toFixed(0) + 'ms ' + C.x : ''}` +
+        // A slow click that changed NOTHING is a different and worse bug than a slow click that did something.
+        `${!r.changed ? C.r + 'NO DOM CHANGE' + C.x : ''}${r.error ? C.r + r.error + C.x : ''}`,
+      );
+    }
+  }
+
+  mkdirSync(OUT_DIR, { recursive: true });
+  const reportPath = path.join(OUT_DIR, 'interaction-crawl.json');
+  writeFileSync(reportPath, JSON.stringify({
+    schema: 'perf-crawl/interactions@1',
+    finishedAt: new Date().toISOString(),
+    baseUrl: BASE_URL, renderer, throttle: THROTTLE, budgetMs: CLICK_BUDGET,
+    clicks,
+  }, null, 2));
+
+  const measured = clicks.filter((c) => !c.skipped);
+  const overBudget = measured.filter((c) => c.settleMs >= CLICK_BUDGET || c.error);
+  const inert = measured.filter((c) => !c.error && !c.changed);
+  console.log(`\n${C.b}${measured.length} click(s) measured${C.x} · ${overBudget.length} over ${CLICK_BUDGET}ms · ${inert.length} changed nothing`);
+  console.log(`${C.d}report: ${reportPath}${C.x}`);
+  if (THROTTLE === 1) {
+    console.log(
+      `\n${C.y}These numbers are from THIS machine, unthrottled.${C.x} ${C.d}Most users have far less\n` +
+      `hardware, and a click that is comfortable here can be a freeze there. Re-run with\n` +
+      `--throttle=4 before treating any of these as passing, and set budgets from THAT run.${C.x}`,
+    );
+  }
+  await browser.close();
+  process.exit(overBudget.length ? 1 : 0);
 }
 
 if (FLOW) {
