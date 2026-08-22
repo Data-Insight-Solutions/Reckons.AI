@@ -21,9 +21,10 @@
  *   npm run landing:principles            (writes src/lib/data/landing-thesis.json)
  *   npm run landing:principles -- --check (CI: fail if the committed file is stale)
  */
-import { readFileSync, writeFileSync, existsSync, readdirSync } from 'fs';
+import { readFileSync, writeFileSync, readdirSync } from 'fs';
 import path from 'path';
 import { Parser } from 'n3';
+import { readTextOr } from './lib/read-file.js';
 
 const CHECK = process.argv.includes('--check');
 const OUT = 'src/lib/data/landing-thesis.json';
@@ -95,7 +96,7 @@ tenets.sort((a, b) => a.order - b.order);
 const json = JSON.stringify(tenets.map(({ order, ...t }) => t), null, 2) + '\n';
 
 if (CHECK) {
-  const current = existsSync(OUT) ? readFileSync(OUT, 'utf8') : '';
+  const current = readTextOr(OUT, '');
   if (current !== json) {
     console.error(`${OUT} is STALE — the landing page no longer matches the graph.`);
     console.error('Run: npm run landing:principles');

@@ -23,11 +23,12 @@
  *   npx tsx scripts/agent/digest.ts --show          print the digest
  *   npx tsx scripts/agent/digest.ts --session-start "pre-announcement sweep"
  */
-import { appendFileSync, existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { appendFileSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import path from 'path';
 import { expandIri } from './ask.js';
 import { addFinding, readFindings, renderMarkdown } from './digest-graph.js';
 import { queueFindings } from '../offline/pending-queue.js';
+import { readTextOr } from '../lib/read-file.js';
 
 const DIGEST = 'reckons-workspace/DIGEST.md';
 const PENDING = 'reckons-workspace/knowledge.pending.jsonl';
@@ -119,7 +120,7 @@ if (isMain) {
   };
 
   if (argv.includes('--show')) {
-    console.log(existsSync(DIGEST) ? readFileSync(DIGEST, 'utf8') : 'No digest yet.');
+    console.log(readTextOr(DIGEST, 'No digest yet.'));
     process.exit(0);
   }
 

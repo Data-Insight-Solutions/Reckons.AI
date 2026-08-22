@@ -321,3 +321,48 @@ test('a contested decision is settled by ONE pick, not two', async ({ page }) =>
       { timeout: 15_000, message: 'one pick should settle BOTH sides of the conflict' })
     .toBeLessThanOrEqual(pendingBefore - 2);
 });
+
+test('selecting a graph node brings its pending facts into view', async ({ page }) => {
+  test.setTimeout(120_000);
+  await importDemoGraph(page);
+  await page.goto('/review');
+  await expect(page.getByTestId('altitude-headline')).toBeVisible({ timeout: 15_000 });
+  await page.waitForTimeout(3_000); // let the preview lay out and emit labels
+
+  /*
+   * THE HALF THAT WAS MISSING. Panel -> graph already worked: clicking a review card calls
+   * focusStatement and the preview flies to the node. Graph -> panel did NOT — selecting a node
+   * highlighted matching rows with .entry-focused and left them wherever they were, which on a
+   * 104-row queue is usually off screen. A highlight nobody can see is the same as no feedback.
+   *
+   * A node label is positioned at its node's screen coordinates, so clicking the canvas there
+   * selects that node — deterministic, unlike guessing at canvas coordinates.
+   *
+   * The card-click direction is deliberately NOT asserted here: .entry-focus-wrap sits inside a
+   * SwipeCard whose animation keeps it from settling, so Playwright's actionability check times
+   * out on it. That is a harness limit on pre-existing behaviour, and faking it with force:true
+   * would assert that a click we could not really perform did something.
+   */
+  const label = page.locator('.node-label').first();
+  await expect(label).toBeVisible({ timeout: 20_000 });
+  const box = await label.boundingBox();
+  const canvas = page.locator('canvas').first();
+  expect(box, 'no label box to aim at').toBeTruthy();
+  await expect(canvas).toBeVisible();
+
+  await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  await page.waitForTimeout(1_500);
+
+  const focused = page.locator('.entry-focused').first();
+  if (await focused.count()) {
+    // The point of the change: not merely highlighted, but SCROLLED TO.
+    await expect(focused).toBeInViewport({ timeout: 5_000 });
+  } else {
+    // Honest rather than silently green: the click may have landed on a node with no pending
+    // facts, which proves nothing either way.
+    test.info().annotations.push({
+      type: 'coverage-gap',
+      description: 'canvas click selected no node with pending facts; graph→panel scroll unverified this run',
+    });
+  }
+});

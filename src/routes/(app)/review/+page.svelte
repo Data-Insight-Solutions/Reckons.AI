@@ -462,7 +462,57 @@
   });
 
   /** Focus the preview graph on a statement's subject node (called from review cards — incoming, deletions, merges, align). */
+  /*
+   * ── BI-DIRECTIONAL SELECTION (Matt, 2026-08-21) ────────────────────────────────────────────
+   *
+   * "if graph node selected, go to any entity pending facts. If the entity is selected from the
+   * pending fact, show it on the graph."
+   *
+   * The panel -> graph half already worked: clicking a card calls focusStatement and the preview
+   * flies to the node. The graph -> panel half did NOT: selecting a node highlighted matching rows
+   * with .entry-focused and left them wherever they were, which on a 145-fact queue is usually off
+   * screen — a highlight nobody can see is the same as no feedback at all.
+   *
+   * WHY THE SOURCE IS TRACKED. Scrolling on every `selected` change would also fire when the user
+   * clicks a card, yanking the row they just clicked out from under the cursor. So the scroll runs
+   * only for selections that came FROM the graph. Same state, two directions, one of which must
+   * not echo.
+   */
+  let selectionSource = $state<'graph' | 'panel' | null>(null);
+
+  /** Select from the GRAPH: highlight the entity's rows and bring the first one into view. */
+  function selectFromGraph(key: string | null) {
+    // The renderers emit null on deselect (clicking empty space). That is a real state, not a
+    // missing one: it clears the highlight rather than leaving the last entity looking selected.
+    selectionSource = key ? 'graph' : null;
+    selected = key;
+    focusedEdge = null;
+  }
+
+  $effect(() => {
+    const key = selected;
+    if (!key || selectionSource !== 'graph') return;
+
+    /*
+     * If the selected entity has nothing pending in the ACTIVE tab, look for it in the others and
+     * switch. Otherwise selecting a node whose only pending fact is a deletion silently does
+     * nothing, which reads as the feature being broken rather than as the tab being wrong.
+     */
+    const tabsWith: Tab[] = [];
+    if (diff.entries.some((e) => termKey(e.incoming.s) === key)) tabsWith.push('incoming');
+    if (pendingDeletions.some((st: Statement) => termKey(st.s) === key)) tabsWith.push('deletions');
+    if (pendingMerges.some((st: Statement) => termKey(st.s) === key)) tabsWith.push('merges');
+    if (tabsWith.length && !tabsWith.includes(activeTab)) activeTab = tabsWith[0];
+
+    // After the tab (and therefore the list) has rendered.
+    requestAnimationFrame(() => {
+      const el = document.querySelector('.entry-focused');
+      if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
+  });
+
   function focusStatement(st: Statement) {
+    selectionSource = 'panel';
     const key = termKey(st.s);
     selected = key;
     focusedEdge = { s: termKey(st.s), o: termKey(st.o), p: st.p.value.split('/').pop() ?? st.p.value };
@@ -472,6 +522,7 @@
 
   /** Focus the preview graph on an arbitrary node key (called from the node search box). */
   function focusNode(key: string) {
+    selectionSource = 'panel';
     selected = key;
     focusedEdge = null;
     focusKey = null;
@@ -1310,7 +1361,7 @@
             layout={previewLayout}
             nodeOrder={previewNodeOrder}
             sources={sources()}
-            onselect={(k) => { selected = k; focusedEdge = null; }}
+            onselect={(k) => selectFromGraph(k)}
             onhover={() => {}}
             onlabelsmove={() => {}}
             onmarkersmove={() => {}}
@@ -1325,7 +1376,7 @@
                 {selected}
                 layout={previewLayout}
                 sources={sources()}
-                onselect={(k) => { selected = k; focusedEdge = null; }}
+                onselect={(k) => selectFromGraph(k)}
                 onhover={() => {}}
                 onlabelsmove={(labels) => { nodeLabels = labels; }}
                 onmarkersmove={() => {}}

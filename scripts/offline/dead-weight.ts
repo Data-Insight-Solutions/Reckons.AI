@@ -32,6 +32,7 @@ import { readFileSync, existsSync, readdirSync, statSync, appendFileSync } from 
 import path from 'path';
 import { execSync } from 'child_process';
 import { loadGraphQuads, ownerOfFile } from './lib/graph-grounding.js';
+import { readTextOr } from '../lib/read-file.js';
 
 const KPRED = 'urn:kbase:predicate/';
 const KB = 'urn:kbase:concept/';
@@ -337,7 +338,7 @@ else console.log(`${B}${findings.length} finding(s).${X} ${D}Read as "is this fe
 
 if (PENDING_OUT && findings.length) {
   const now = new Date().toISOString();
-  const existing = existsSync(PENDING) ? readFileSync(PENDING, 'utf8') : '';
+  const existing = readTextOr(PENDING, '');
   let queued = 0;
   for (const f of findings) {
     if (f.check === 'over-exported') continue; // never worth a human's review slot

@@ -26,6 +26,7 @@ import { readFileSync, existsSync, appendFileSync, readdirSync, realpathSync } f
 import { execSync } from 'child_process';
 import path from 'path';
 import { Parser, type Quad } from 'n3';
+import { readTextOr } from '../lib/read-file.js';
 
 const argv = process.argv.slice(2);
 const PENDING_OUT = argv.includes('--pending');
@@ -392,7 +393,7 @@ if (JSON_OUT) {
 // ── Optionally queue for human review in the app (same shape as the other offline jobs).
 if (PENDING_OUT && findings.length) {
   const now = new Date().toISOString();
-  const existing = existsSync(PENDING) ? readFileSync(PENDING, 'utf8') : '';
+  const existing = readTextOr(PENDING, '');
   let queued = 0;
   for (const f of findings) {
     const question = `[graph-lint/${f.check}] ${short(f.subject)} — ${f.msg}`;

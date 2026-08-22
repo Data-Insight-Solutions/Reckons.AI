@@ -28,6 +28,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { readAnswers } from './answers.js';
 import { transactPendingQueue } from '../offline/pending-queue.js';
+import { readTextOr } from '../lib/read-file.js';
 
 const PENDING = 'reckons-workspace/knowledge.pending.jsonl';
 const ANSWERS = 'reckons-workspace/knowledge.answers.jsonl';
@@ -104,7 +105,7 @@ for (const a of fresh) {
 
   let dupe = false;
   if (PEEK) {
-    dupe = isDuplicate(existsSync(PENDING) ? readFileSync(PENDING, 'utf8') : '');
+    dupe = isDuplicate(readTextOr(PENDING, ''));
   } else {
     const queued = transactPendingQueue(PENDING, (current) => {
       if (isDuplicate(current)) return { result: false };

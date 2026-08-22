@@ -31,6 +31,7 @@
 import { readFileSync, readdirSync, statSync, existsSync, writeFileSync } from 'node:fs';
 import { join, dirname, resolve, relative, basename } from 'node:path';
 import { Parser } from 'n3';
+import { readTextOr } from '../lib/read-file.js';
 
 const ROOT = new URL('../..', import.meta.url).pathname;
 const CHECK = process.argv.includes('--check');
@@ -170,7 +171,7 @@ for (const f of files) {
 const out = lines.join('\n');
 
 if (CHECK) {
-  const current = existsSync(OUT) ? readFileSync(OUT, 'utf8') : '';
+  const current = readTextOr(OUT, '');
   // Ignore the generated-on date so a re-run on another day is not "stale".
   const strip = (s: string) => s.replace(/generated \d{4}-\d{2}-\d{2}/, '');
   if (strip(current) !== strip(out)) {

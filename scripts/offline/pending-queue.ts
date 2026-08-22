@@ -30,10 +30,11 @@
  * and treating age as staleness would silently delete the most considered entries in the queue.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { atomicWriteFile, withFileLock } from '../agent/state-file.js';
+import { readTextOr } from '../lib/read-file.js';
 
 const repositoryUrl = new URL('../..', import.meta.url);
 // Vitest's transformed module URL is HTTP-shaped rather than file:, even though the test still
@@ -78,7 +79,7 @@ export function transactPendingQueue<T>(
   action: (current: string) => PendingQueueTransaction<T>,
 ): T {
   return withFileLock(`${queuePath}.lock`, () => {
-    const current = existsSync(queuePath) ? readFileSync(queuePath, 'utf8') : '';
+    const current = readTextOr(queuePath, '');
     const transaction = action(current);
     if (transaction.content !== undefined && transaction.content !== current) {
       atomicWriteFile(queuePath, transaction.content);
