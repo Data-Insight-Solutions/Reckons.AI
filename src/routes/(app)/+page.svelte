@@ -376,11 +376,21 @@
 
   // Sync view state → URL whenever it changes (replaceState: no history entry)
   $effect(() => {
-    // Start from the CURRENT params, not an empty set. Rebuilding from scratch dropped every
-    // param this block does not itself write — `?kb=` above all, which names the graph being
-    // looked at. Opening a link to a specific graph and then touching any view control silently
-    // rewrote the URL to one that no longer said which graph it was.
-    const params = new URLSearchParams($page.url.searchParams);
+    /*
+     * Start from the CURRENT params, not an empty set. Rebuilding from scratch dropped every
+     * param this block does not itself write — `?kb=` above all, which names the graph being
+     * looked at. Opening a link to a specific graph and then touching any view control silently
+     * rewrote the URL to one that no longer said which graph it was.
+     *
+     * READ IT UNTRACKED. `replaceState` below updates `$page.url`, so reading the store's params
+     * reactively made this effect its own trigger: write URL -> store changes -> effect reruns ->
+     * write URL. The graph still painted, so it did not look like a loop — it looked like a hang.
+     * Caught by the deploy gate ("docs graph never laid out nodes") and measured at a 42,868 ms
+     * frame by `perf-crawl --clicks` on the "Getting started" button. Bisected to this hunk.
+     *
+     * The current params are an INPUT to the write, never a reason to write again.
+     */
+    const params = new URLSearchParams(untrack(() => $page.url.searchParams));
     if (layout !== 'force') params.set('layout', layout);
     else params.delete('layout');
     // Each of these must DELETE when empty. Rebuilding from scratch got that for free; carrying
