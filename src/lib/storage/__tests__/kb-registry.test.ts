@@ -10,7 +10,9 @@ import {
   updateKbEntry,
   toggleBookmark,
   getBookmarkedKbs,
-  kbUrl
+  kbUrl,
+  resolveKbParam,
+  isUnresolvedKbParam,
 } from '../kb-registry';
 
 // ── Regression: id collision ──────────────────────────────────────────────────
@@ -350,5 +352,48 @@ describe('kbUrl', () => {
 
   it('uses & when the path already has a query string', () => {
     expect(kbUrl('kbase_42', '/review?tab=align')).toBe('/review?tab=align&kb=kbase_42');
+  });
+});
+
+describe('resolveKbParam — a ?kb= link means the graph by that name', () => {
+  const reg = [
+    { id: 'kbase', name: 'Default Graph', createdAt: 0 },
+    { id: 'kbase_1786000000000', name: 'roadmap', createdAt: 1 },
+    { id: 'kbase_1786000000001', name: 'My Research Notes', createdAt: 2 },
+  ];
+
+  it('resolves a name to the EXISTING graph id rather than opening an empty one', () => {
+    // The regression: folder-synced graphs keep generated ids, so `?kb=roadmap` taken literally
+    // created a second, empty database beside the populated graph of the same name.
+    expect(resolveKbParam('roadmap', reg)).toBe('kbase_1786000000000');
+  });
+
+  it('prefers an exact id match over a name match', () => {
+    expect(resolveKbParam('kbase_1786000000001', reg)).toBe('kbase_1786000000001');
+    expect(resolveKbParam('kbase', reg)).toBe('kbase');
+  });
+
+  it('matches names case- and punctuation-insensitively, like folder slugs', () => {
+    expect(resolveKbParam('Roadmap', reg)).toBe('kbase_1786000000000');
+    expect(resolveKbParam('my-research-notes', reg)).toBe('kbase_1786000000001');
+  });
+
+  it('falls back to the DEFAULT graph when nothing matches, never inventing one', () => {
+    // The recurrence hole: with an empty/pre-sync registry, using the raw value as an id mints an
+    // empty graph whose id is literally `roadmap`. The real roadmap later syncs in under a
+    // generated id, and the exact-id match above then pins the link to the empty shadow forever.
+    expect(resolveKbParam('brand-new', reg)).toBe('kbase');
+    expect(resolveKbParam('roadmap', [])).toBe('kbase');
+  });
+
+  it('reports an unresolved param so the UI can say which graph is missing', () => {
+    expect(isUnresolvedKbParam('brand-new', reg)).toBe(true);
+    expect(isUnresolvedKbParam('roadmap', reg)).toBe(false);
+    expect(isUnresolvedKbParam('kbase_1786000000000', reg)).toBe(false);
+    expect(isUnresolvedKbParam('', reg)).toBe(false);
+  });
+
+  it('treats a blank param as the default graph', () => {
+    expect(resolveKbParam('   ', reg)).toBe('kbase');
   });
 });
