@@ -9,7 +9,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import {
-  groupIntoSets, bucketIntoSets, suggestSetsFromNames, findDuplicateGraphs,
+  groupIntoSets, bucketIntoSets, suggestSetsFromNames, findDuplicateGraphs, folderSetOf,
   type GraphSetDefinition,
 } from '../graph-sets';
 import { groupGraphsWithArchives } from '../archive-gallery';
@@ -200,5 +200,86 @@ describe('a name that IS the prefix belongs to its own cluster', () => {
 
   it('counts the bare name toward the threshold, not past it', () => {
     expect(suggestSetsFromNames([kb('trip'), kb('trip-a')]).map((d) => d.title)).toEqual(['Trip']);
+  });
+});
+
+describe('folderSetOf — a graph\'s own folder is not a set, a folder that CONTAINS graphs is', () => {
+  it('groups by the folder the user made, not the one the convention made', () => {
+    // The workspace writes kbs/{name}/{name}.ttl, so the deepest folder is usually the graph's
+    // own name repeated. Grouping on that gives every graph a set of one — a flat list wearing
+    // headings.
+    expect(folderSetOf('kbs/acme', 'acme')).toBeNull();
+    expect(folderSetOf('kbs/clients/acme', 'acme')).toBe('clients');
+  });
+
+  it('groups a loose file by the folder it sits in', () => {
+    expect(folderSetOf('research', 'notes')).toBe('research');
+    expect(folderSetOf('', 'notes')).toBeNull();
+    expect(folderSetOf(undefined, 'notes')).toBeNull();
+  });
+
+  it('never treats the shared kbs/ wrapper as a set — it separates nothing', () => {
+    expect(folderSetOf('kbs', 'anything')).toBeNull();
+  });
+
+  it('takes the DEEPEST folder, which is the most specific thing the user expressed', () => {
+    expect(folderSetOf('kbs/work/clients/acme', 'acme')).toBe('clients');
+  });
+
+  it('matches the graph\'s own folder case-insensitively', () => {
+    expect(folderSetOf('kbs/Acme', 'acme')).toBeNull();
+  });
+});
+
+describe('folder membership in the set list', () => {
+  const folder = (name: string, folderPath: string): KbEntry =>
+    ({ ...kb(name), folderPath }) as KbEntry;
+
+  it('groups synced graphs by their sub-directory', () => {
+    const sets = groupIntoSets([
+      folder('acme', 'kbs/clients/acme'),
+      folder('globex', 'kbs/clients/globex'),
+      folder('household', 'kbs/personal/household'),
+    ]);
+    const titles = sets.map((s) => s.title).sort();
+    expect(titles).toEqual(['clients', 'personal']);
+    expect(sets.every((s) => s.basis === 'folder')).toBe(true);
+  });
+
+  it('never invents a purpose for a folder either — a folder name is not a meaning', () => {
+    for (const s of groupIntoSets([folder('acme', 'kbs/clients/acme'), folder('globex', 'kbs/clients/globex')])) {
+      expect(s.purpose).toBe('');
+    }
+  });
+
+  it('lets a folder beat a name-prefix coincidence, because the user made the folder', () => {
+    // "trip-a" and "trip-b" would cluster on spelling; the user filed them apart on purpose.
+    const sets = groupIntoSets([
+      folder('trip-a', 'kbs/2024/trip-a'),
+      folder('trip-b', 'kbs/2025/trip-b'),
+    ]);
+    expect(sets.map((s) => s.title).sort()).toEqual(['2024', '2025']);
+    expect(sets.every((s) => s.basis === 'folder')).toBe(true);
+  });
+
+  it('still lets a DEFINED set beat the folder — the user\'s explicit word wins', () => {
+    const defs: GraphSetDefinition[] = [{ id: 'work', title: 'Work', prefix: 'acme', purpose: 'Paid engagements' }];
+    const sets = bucketIntoSets(
+      groupGraphsWithArchives([folder('acme', 'kbs/clients/acme')]),
+      { definitions: defs },
+    );
+    expect(sets[0].title).toBe('Work');
+    expect(sets[0].basis).toBe('defined');
+    expect(sets[0].purpose).toBe('Paid engagements');
+  });
+
+  it('can be turned off, falling back to the name-prefix guess', () => {
+    const sets = bucketIntoSets(
+      groupGraphsWithArchives([folder('trip-a', 'kbs/2024/trip-a'), folder('trip-b', 'kbs/2025/trip-b')]),
+      { groupByFolder: false },
+      [folder('trip-a', 'kbs/2024/trip-a'), folder('trip-b', 'kbs/2025/trip-b')],
+    );
+    expect(sets[0].title).toBe('Trip');
+    expect(sets[0].basis).toBe('derived');
   });
 });

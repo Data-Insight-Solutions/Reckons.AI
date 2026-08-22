@@ -79,6 +79,17 @@ const ANTONYM_PAIRS: ReadonlyArray<readonly [string, string]> = [
   ['is-rich', 'is-poor'],
   ['is-safe', 'is-dangerous'],
   ['is-legal', 'is-illegal'],
+  // ADDED 2026-08-15, each one found by tests/bench/run-predicate-vocab-bench.ts rather than
+  // guessed at. These are the pairs real embedding models score HIGHEST while meaning opposite
+  // things — e5-small-v2 put predator/prey at 0.9322 and min/max at 0.9330, both above the 0.88
+  // the normaliser rewrites at.
+  ['predator', 'prey'],
+  ['min', 'max'], ['minimum', 'maximum'],
+  ['ability', 'disability'],
+  ['eats', 'is-eaten-by'],
+  ['ancestor', 'descendant'],
+  ['parent', 'child'],
+  ['before', 'after'],
 ];
 
 // ── Label extraction ────────────────────────────────────────────────────────
@@ -112,20 +123,71 @@ function isNegationOf(a: string, b: string): boolean {
   return false;
 }
 
-function isKnownAntonym(a: string, b: string): boolean {
-  const al = a.toLowerCase().trim();
-  const bl = b.toLowerCase().trim();
-  for (const [x, y] of ANTONYM_PAIRS) {
-    if ((al.includes(x) && bl.includes(y)) || (al.includes(y) && bl.includes(x))) return true;
+/**
+ * Splits a label or table entry into comparable words.
+ *
+ * BOTH SIDES MUST BE NORMALISED THE SAME WAY, and until 2026-08-15 they were not. The table stores
+ * hyphenated forms (`is-true`, `is-safe`) while every caller passes a label from `labelFromIRI`,
+ * which has ALREADY turned hyphens into spaces. So `"is true".includes("is-true")` was false and
+ * NINE of the pairs below — including is-true/is-false, the most consequential contradiction a
+ * knowledge graph can hold — could never fire. Splitting both sides on either separator fixes them
+ * all without editing the table.
+ */
+function antonymWords(s: string): string[] {
+  return s.toLowerCase().trim().split(/[-_\s]+/).filter(Boolean);
+}
+
+/** True when `needle`'s words appear as a contiguous run inside `haystack`'s words. */
+function containsWordRun(haystack: string[], needle: string[]): boolean {
+  if (needle.length === 0 || needle.length > haystack.length) return false;
+  for (let i = 0; i + needle.length <= haystack.length; i++) {
+    if (needle.every((w, j) => haystack[i + j] === w)) return true;
   }
   return false;
 }
 
-function isAntonymPredicate(aIRI: string, bIRI: string, cosineSim: number): boolean {
-  if (cosineSim < ANTONYM_COSINE_MIN || cosineSim > ANTONYM_COSINE_MAX) return false;
+/**
+ * Whole-word matching rather than substring. Substring matching would read "min" out of
+ * "determiner" and "ability" out of "disability" — and `has-ability`/`has-disability` is a pair the
+ * table now lists as OPPOSED, so a substring match would call it an antonym of itself. Morphological
+ * variants (loves/loved) are enumerated explicitly in the table instead of inferred.
+ */
+function isKnownAntonym(a: string, b: string): boolean {
+  const aw = antonymWords(a);
+  const bw = antonymWords(b);
+  for (const [x, y] of ANTONYM_PAIRS) {
+    const xw = antonymWords(x);
+    const yw = antonymWords(y);
+    if (
+      (containsWordRun(aw, xw) && containsWordRun(bw, yw)) ||
+      (containsWordRun(aw, yw) && containsWordRun(bw, xw))
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Label-level opposition, with no cosine involved.
+ *
+ * Exported because `normalize-entities.ts` needs it as a VETO on the write path, where cosine is
+ * exactly the signal that cannot be trusted: an embedding scores `has-predator`/`has-prey` at 0.93
+ * (measured, e5-small-v2) precisely BECAUSE they are about the same thing. Gating the veto on a
+ * cosine band would switch it off in the case it exists for.
+ */
+export function arePredicateLabelsOpposed(aIRI: string, bIRI: string): boolean {
   const aLabel = labelFromIRI(aIRI);
   const bLabel = labelFromIRI(bIRI);
   return isNegationOf(aLabel, bLabel) || isKnownAntonym(aLabel, bLabel);
+}
+
+function isAntonymPredicate(aIRI: string, bIRI: string, cosineSim: number): boolean {
+  // The band stays HERE and deliberately does not move into the shared helper: this function
+  // classifies a diff entry as a contradiction, and two predicates that are barely related should
+  // not be called contradictory. The write-path veto wants the opposite bias.
+  if (cosineSim < ANTONYM_COSINE_MIN || cosineSim > ANTONYM_COSINE_MAX) return false;
+  return arePredicateLabelsOpposed(aIRI, bIRI);
 }
 
 // ── Summary recounting ──────────────────────────────────────────────────────

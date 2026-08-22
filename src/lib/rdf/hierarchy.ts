@@ -26,6 +26,19 @@ export const SKOS_BROADER  = 'http://www.w3.org/2004/02/skos/core#broader';
 export const SKOS_NARROWER = 'http://www.w3.org/2004/02/skos/core#narrower';
 export const SKOS_RELATED  = 'http://www.w3.org/2004/02/skos/core#related';
 
+/**
+ * `kpred:depends-on` is a hierarchy edge too, and it points the OTHER WAY.
+ *
+ * `A skos:broader B` reads "A is under B", so B is the parent. `A depends-on B` reads "A needs B" —
+ * B is the PREREQUISITE, so B is again the parent, but the statement is written from the child. Read
+ * naively as broader-shaped it inverts the tree and puts the dependents above the thing they wait on.
+ *
+ * This matters because the roadmap states 140 depends-on edges while the pending queue carries
+ * almost no `blocks` — so dependency structure the graph genuinely knows about was invisible to the
+ * only layout able to draw a tree.
+ */
+export const KPRED_DEPENDS_ON = 'urn:kbase:predicate/depends-on';
+
 export const NAV_NS     = 'urn:reckons:nav/';
 export const NAV_ORDER  = `${NAV_NS}order`;
 export const NAV_NEXT   = `${NAV_NS}next`;
@@ -236,10 +249,18 @@ export function buildHierarchyAnchors(
 
   for (const s of active) {
     if (s.s.kind !== 'iri') continue;
-    if (s.p.value === SKOS_BROADER && s.o.kind === 'iri') {
+    // Both edges name the parent in the OBJECT: "X is under Y" and "X needs Y" alike. skos:broader
+    // wins where a node has both, because an explicit taxonomy outranks an inferred prerequisite.
+    if ((s.p.value === SKOS_BROADER || s.p.value === KPRED_DEPENDS_ON) && s.o.kind === 'iri') {
+      if (s.p.value === KPRED_DEPENDS_ON && parentOf.has(s.s.value)) continue;
+      const prior = parentOf.get(s.s.value);
+      if (prior && s.p.value === SKOS_BROADER && prior !== s.o.value) {
+        // Replacing a depends-on parent with the taxonomic one: drop the stale child entry.
+        childrenOf.set(prior, (childrenOf.get(prior) ?? []).filter((c) => c !== s.s.value));
+      }
       parentOf.set(s.s.value, s.o.value);
       if (!childrenOf.has(s.o.value)) childrenOf.set(s.o.value, []);
-      childrenOf.get(s.o.value)!.push(s.s.value);
+      if (!childrenOf.get(s.o.value)!.includes(s.s.value)) childrenOf.get(s.o.value)!.push(s.s.value);
     }
     if (s.p.value === NAV_ORDER && s.o.kind === 'literal') {
       orderOf.set(s.s.value, parseInt(s.o.value, 10));
@@ -327,33 +348,46 @@ export function buildHierarchyAnchors(
     });
   }
 
-  // Place nodes in concentric rings
-  const RING_SPACING = 7; // world units between rings
+  // LAYERED TREE: each depth is its own circle, dropped below the one above it.
+  //
+  // This was concentric rings in a single plane — depth read as distance from a centre. That draws
+  // a target, not a tree: with several roots the middle is a crowd, and "below" (which is how a
+  // dependency actually reads — prerequisite above, dependent under it) had no direction at all.
+  // Now depth owns the vertical axis and each level spreads around its own circle, so the shape
+  // says what the data says: one level of prerequisites, and everything that hangs beneath it.
+  const RING_SPACING = 7;  // retained: sets each level's circle size
+  const LEVEL_DROP  = 9;   // vertical gap between one level's circle and the next
+
+  /** Radius of the circle a level's nodes sit on — wide enough that they do not collide. */
+  const levelRadius = (count: number) => (count <= 1 ? 0 : Math.max(RING_SPACING * 0.55, count * 1.15));
 
   for (let d = 0; d <= maxDepth; d++) {
     const iris = byDepth.get(d) ?? [];
+    // `|| 0` normalizes the negative zero that -0 * LEVEL_DROP produces at depth 0. Harmless to
+    // render, but it makes coordinates compare unequal under Object.is and reads as a sign.
+    const levelY = (-d * LEVEL_DROP) || 0;
+
     if (d === 0) {
-      // Roots at center — spread if multiple
-      if (iris.length === 1) {
-        const key = iriToKey.get(iris[0]);
-        if (key) anchors.set(key, { x: 0, y: 0 });
-      } else {
-        const r = RING_SPACING * 0.6;
-        iris.forEach((iri, i) => {
-          const theta = (2 * Math.PI * i) / iris.length - Math.PI / 2;
-          const key = iriToKey.get(iri);
-          if (key) anchors.set(key, { x: r * Math.cos(theta), y: r * Math.sin(theta) });
-        });
-      }
+      // Roots share the top circle. A single root sits at its centre.
+      const r = levelRadius(iris.length);
+      iris.forEach((iri, i) => {
+        const theta = (2 * Math.PI * i) / iris.length - Math.PI / 2;
+        const key = iriToKey.get(iri);
+        if (key) anchors.set(key, { x: (r * Math.cos(theta)) || 0, y: (levelY + r * Math.sin(theta)) || 0 });
+      });
     } else {
-      const r = d * RING_SPACING;
-      // Place children near their parent's angular position
+      const r = levelRadius(iris.length);
+      // Keep a child near its parent's angle on the level above, so edges stay short and the
+      // descent is legible. The angle is measured about the PARENT LEVEL'S OWN CENTRE, not the
+      // world origin — once levels are stacked, atan2 on raw coordinates is dominated by the
+      // vertical drop and every parent collapses to roughly the same angle.
+      const parentLevelY = -(d - 1) * LEVEL_DROP;
       const parentAngles = new Map<string, number>();
-      for (const [iri] of anchors) {
-        const realIri = keyToIri.get(iri);
+      for (const [key] of anchors) {
+        const realIri = keyToIri.get(key);
         if (realIri) {
-          const pos = anchors.get(iri)!;
-          parentAngles.set(realIri, Math.atan2(pos.y, pos.x));
+          const pos = anchors.get(key)!;
+          parentAngles.set(realIri, Math.atan2(pos.y - parentLevelY, pos.x));
         }
       }
 
@@ -373,32 +407,74 @@ export function buildHierarchyAnchors(
       });
 
       const totalChildren = iris.length;
-      let angleOffset = -Math.PI;
 
-      for (const [parentIri, children] of sortedGroups) {
-        const parentAngle = parentAngles.get(parentIri) ?? 0;
-        const sector = (2 * Math.PI * children.length) / totalChildren;
-        const startAngle = parentAngle - sector / 2;
+      /*
+       * SEQUENTIAL SECTORS WITH A GAP BETWEEN SUB-TREES.
+       *
+       * The previous version centred each group's sector on its PARENT'S angle and sized sectors to
+       * fill the circle exactly. Two parents at similar angles therefore received overlapping
+       * sectors, and with no padding between groups even non-overlapping ones ran edge to edge —
+       * so the sub-trees read as one undifferentiated ring and you could not see where one branch
+       * ended and the next began. (`let angleOffset = -Math.PI` sat here unused: sequential
+       * allocation was intended once and never finished.)
+       *
+       * Groups are already sorted by parent angle, so walking them in order around the circle keeps
+       * each branch on the side its parent is on — the property centring was for — while
+       * GUARANTEEING separation, which centring could not. Each group gets a slice proportional to
+       * its size out of the circle MINUS the gaps, and the gaps are what make the branches legible.
+       */
+      const GROUP_GAP = sortedGroups.length > 1
+        // Never let padding eat more than a third of the circle: with many small branches the gaps
+        // would otherwise dominate and squeeze every branch into a thin spike.
+        ? Math.min(0.22, (2 * Math.PI) / 3 / sortedGroups.length)
+        : 0;
+      const usable = 2 * Math.PI - GROUP_GAP * sortedGroups.length;
 
+      // Start so the first group's centre lands where the old code would have put it, keeping the
+      // figure's overall orientation stable rather than rotating the whole level.
+      let cursor = -Math.PI + GROUP_GAP / 2;
+
+      for (const [, children] of sortedGroups) {
+        const sector = (usable * children.length) / totalChildren;
         children.forEach((iri, i) => {
-          const theta = children.length === 1
-            ? parentAngle
-            : startAngle + (i + 0.5) * (sector / children.length);
+          // Children sit at slice centres INSIDE their group's sector, so a lone child is centred
+          // in its own sector rather than pinned to its parent's exact angle — which is what let
+          // two single-child branches land on top of each other.
+          const theta = cursor + (i + 0.5) * (sector / children.length);
           const key = iriToKey.get(iri);
-          if (key) anchors.set(key, { x: r * Math.cos(theta), y: r * Math.sin(theta) });
+          if (key) anchors.set(key, { x: (r * Math.cos(theta)) || 0, y: (levelY + r * Math.sin(theta)) || 0 });
         });
+        cursor += sector + GROUP_GAP;
       }
     }
   }
 
-  // Place remaining nodes (not in broader tree) in an outer ring
+  // Nodes the hierarchy says nothing about get their own circle one level BELOW the tree, rather
+  // than an outer ring that would read as the deepest descendants of it. They are unplaced, not
+  // subordinate — the graph states no parent for them.
   const placedKeys = new Set(anchors.keys());
   const unplaced = nodes.filter(n => !placedKeys.has(n.key));
   if (unplaced.length > 0) {
-    const outerR = (maxDepth + 2) * RING_SPACING;
+    // CONCENTRIC rings of bounded radius, not one ring sized by population.
+    //
+    // A single circle whose radius grew with node count put 640 unplaced nodes on a ring of radius
+    // ~736 while a real level ring is 7-20 across. The tree collapsed to a dot at the centre of an
+    // enormous empty circle, and the force simulation had to settle bodies spread over a hundred
+    // times the useful area — which reads as "frozen and barely moving" rather than as a layout
+    // that simply looks wrong. Rings grow by a fixed step and wrap, so area scales with the square
+    // root of the count and the whole figure stays the same order of size as the tree it sits under.
+    const orphanY = -(maxDepth + 1.6) * LEVEL_DROP;
+    const PER_RING = 24;
     unplaced.forEach((n, i) => {
-      const theta = (2 * Math.PI * i) / unplaced.length;
-      anchors.set(n.key, { x: outerR * Math.cos(theta), y: outerR * Math.sin(theta) });
+      const ring = Math.floor(i / PER_RING);
+      const idx = i % PER_RING;
+      const inRing = Math.min(PER_RING, unplaced.length - ring * PER_RING);
+      const r = RING_SPACING * (1 + ring * 0.6);
+      const theta = (2 * Math.PI * idx) / inRing;
+      anchors.set(n.key, {
+        x: (r * Math.cos(theta)) || 0,
+        y: (orphanY + r * Math.sin(theta)) || 0,
+      });
     });
   }
 

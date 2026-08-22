@@ -97,6 +97,13 @@
       "desc": "Copy-paste / duplication detector \u2014 the same block of code in >1 file (the disease behind the clipboard crash and the label-overlay drift), plus file-size sprawl. The code-level companion to shared-deps."
     },
     {
+      "name": "dead-weight",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/dead-weight.ts --pending",
+      "desc": "Maintenance flag for ORPHANED and SUPERSEDED features: artifacts whose producing job is disabled, graph features whose files are all gone, unshipped plans whose files a shipped feature already owns, and modules of never-called exports rolled up per feature"
+    },
+    {
       "name": "safety-attestation",
       "tier": "script",
       "enabled": true,
@@ -109,6 +116,13 @@
       "enabled": true,
       "cmd": "npx tsx scripts/offline/prompt-audit.ts",
       "desc": "System-prompt token cost, ETHICS_PREAMBLE share per prompt, preamble drift between app and mcp-server, ungated prompts"
+    },
+    {
+      "name": "context-composition",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/context-composition.ts",
+      "desc": "What actually fills the context window and what it costs to CARRY (size x turns re-read). Ranks the single calls driving the cache-read bill; --projects compares against non-graph repos"
     },
     {
       "name": "alignment-sweep",
@@ -179,6 +193,34 @@
       "enabled": true,
       "cmd": "npx tsx scripts/offline/server-health.ts --pending",
       "desc": "Watches the two SELF-HOSTED servers real features now depend on: the Indico instance behind calendar ingest and the n8n instance running the feedback webhook + Currents monitor. Checks the CORS grant a browser needs (the thing that was silently broken for the integration's whole life while a Node verifier reported 6/6 green), backup freshness, disk, services, containers, and installed-but-not-booted kernels. PUBLIC checks run anywhere including CI; SSH checks SKIP rather than fail without the host aliases. Read-only: it never changes a server, only queues findings"
+    },
+    {
+      "name": "altitude-report",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/altitude-report.ts",
+      "desc": "F139 census: how much of each graph is DECISIONS vs bookkeeping nobody should be shown. Report-only. The number that matters is predicate coverage \u2014 every unclassified fact defaults to judgment and lands in front of a person, so a falling coverage number means the review surface is refilling with noise."
+    },
+    {
+      "name": "aggregate-decisions",
+      "tier": "agent",
+      "enabled": false,
+      "cmd": "OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://localhost:11434} npx tsx scripts/offline/aggregate-decisions.ts",
+      "desc": "F139.1 agent tier: a local model proposes which facts ONE question would settle, and which decisions block which. DISABLED until its yield is measured \u2014 enabling a proposal job whose precision is unknown moves cost to triage rather than removing it (F74.3). Run it manually with --limit and read the rejection reasons before turning it on."
+    },
+    {
+      "name": "distill-decisions",
+      "tier": "agent",
+      "enabled": false,
+      "cmd": "npx tsx scripts/offline/distill-decisions.ts --limit=8 --pending",
+      "desc": "Split prose-only decisions into the alternatives they already contain, so the review tree has options to weigh. Proposals only, gated by validateProposedOptions. DISABLED by default: needs OLLAMA_BASE_URL and its yield should be re-measured on a bigger sample before it runs unattended"
+    },
+    {
+      "name": "perf-crawl",
+      "tier": "script",
+      "enabled": false,
+      "cmd": "npx tsx scripts/offline/perf-crawl.ts --ladder",
+      "desc": "F140 GPU-real performance crawl: a HEADED browser on the real GPU, asserting on TIME (long tasks, time-to-usable, settled velocity). DISABLED in the sweep because it needs a DISPLAY and a running dev server \u2014 it aborts rather than silently falling back to SwiftShader, since a green perf report from a software rasterizer is worse than none. Run it manually: npm run dev, then npm run offline:perf -- --ladder --trace-delta"
     }
   ]
 }

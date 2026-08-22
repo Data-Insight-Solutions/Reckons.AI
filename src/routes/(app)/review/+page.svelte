@@ -26,7 +26,7 @@
     addSource,
   } from '$lib/stores/kb.svelte';
   import { getRegistry, getCurrentKbId } from '$lib/storage/kb-registry';
-  import { drainAndImportPending, workspaceState } from '$lib/stores/workspace.svelte';
+  import { drainAndImportPending, workspaceState, supportsWorkspace } from '$lib/stores/workspace.svelte';
   import {
     computeAlignment, loadKbStatements, applyAlignmentToActiveKb,
     type AlignmentResult, type AlignmentSuggestion,
@@ -37,6 +37,14 @@
   import { generateDiffSummary, type DiffSummary } from '$lib/rdf/diff-summary';
   import { semanticEnrichDiff, labelFromIRI } from '$lib/rdf/semantic-diff';
   import { buildReviewPlan, reviewPlanSummary } from '$lib/rdf/review-pipeline';
+  import { buildReviewTree, reviewTreeSummary, questionText } from '$lib/rdf/review-tree';
+  import { reanalysisRequest, reanalysisSummary } from '$lib/rdf/reanalysis';
+  import { runReanalysis, type ReanalysisRun } from '$lib/rdf/reanalysis-run';
+  import { altitudeOf, ALTITUDE_META, type Altitude } from '$lib/rdf/fact-altitude';
+  import {
+    clusterForCascade, applyCascade, cascadeSummary, needsPurposeQuestion, purposeQuestion,
+    BASIS_META, type FactCluster, type CascadeAction,
+  } from '$lib/rdf/fact-aggregation';
   import { settings } from '$lib/stores/settings.svelte';
   import { parseMultipleGraphs, MEMBERSHIP_PREDICATES, MEMBERSHIP_LABELS, isProjectIri, type OverlayData, type GraphDef } from '$lib/rdf/multi-graph-parse';
   import {
@@ -174,6 +182,114 @@
     new Set(reviewPlan.attention.spotlight.map((i) => i.statement.s.value)),
   );
 
+  // ── F139 ALTITUDE + F139.1 CASCADE ────────────────────────────────────────
+  // The tree reads the USER LANE only: routeQueue has already removed what a script or a reviewing
+  // agent can settle, so the tree never asks the human about a fact that was never theirs.
+  /**
+   * SIZE GUARD — above this many facts the tree and the cascade are not computed at all.
+   *
+   * Measured 2026-08-19: buildReviewTree over a 40,433-fact synced graph costs ~210ms and
+   * clusterForCascade ~40ms, and both are $derived, so they re-run on every accept. That is a
+   * visible stall per click. The residual cost is honest linear work — roughly ten passes over the
+   * graph — not a hot spot left to remove, so the answer is to stop doing it rather than to shave it.
+   *
+   * IT MUST SAY SO RATHER THAN SILENTLY DEGRADE. A review surface that quietly stops surfacing
+   * decisions on a large graph is worse than one that is slow, because the user cannot tell the
+   * difference between "no decisions" and "not looked". The headline states the skip and the reason.
+   */
+  const TREE_FACT_LIMIT = 12_000;
+  const graphForTree = $derived([...existing, ...incoming]);
+  const treeTooBig = $derived(graphForTree.length > TREE_FACT_LIMIT);
+
+  const reviewTree = $derived(
+    treeTooBig
+      ? { decisions: [], suppressed: { record: 0, log: 0 }, orphans: [], machineSettleable: [], standingDescription: 0, considered: 0 }
+      : buildReviewTree(
+          reviewPlan.routed.user.map((it) => it.statement),
+          graphForTree,
+          { typeOf: (iri) => subjectTypes.get(iri) },
+        ),
+  );
+  const treeHeadline = $derived(
+    treeTooBig
+      ? `Decision tree skipped: ${graphForTree.length.toLocaleString()} facts is over the ${TREE_FACT_LIMIT.toLocaleString()} limit, and computing it on every change would stall this page. Narrow the graph, or raise the limit deliberately.`
+      : reviewTreeSummary(reviewTree),
+  );
+
+  /**
+   * The CASCADE lane: clusters of bookkeeping that ONE question settles (F139.1).
+   *
+   * Built from the facts the tree files as noise — the record/log altitudes plus the orphan tail —
+   * because those are exactly the rows a person should never be asked to click through one at a
+   * time. Only the deterministic floor runs in the browser; the agent-tier proposals arrive through
+   * the normal pending queue like any other agent output.
+   */
+  const cascadeClusters = $derived.by(() => {
+    if (treeTooBig) return [];
+    const candidates = incoming.filter((st) => {
+      const a = altitudeOf(st);
+      return a === 'log' || a === 'record' || a === 'evidence';
+    });
+    return clusterForCascade(candidates, { subjectLabel: labelFromIRI });
+  });
+  const cascadeHeadline = $derived(cascadeSummary(cascadeClusters));
+
+  /** A subject is "planned" when it is a typed Feature/Phase — decides purpose vs truth question. */
+  const isPlannedSubject = (iri: string) => {
+    const t = subjectTypes.get(iri);
+    return t === 'urn:kbase:type/Feature' || t === 'urn:kbase:type/Phase';
+  };
+
+  /** Which cascade cluster is expanded to show its members. */
+  let openCluster = $state<string | null>(null);
+  /** Which decision root is expanded to show the case beneath it. */
+  let openDecision = $state<string | null>(null);
+
+  /**
+   * Resolve an entity's own rdfs:label, falling back to its IRI slug.
+   *
+   * The facts an option rules out are the option's PRICE, so they have to read as the things they
+   * are ("Content history in git, diffable and revertible") rather than as bare IRIs. A cost the
+   * reviewer cannot read is not a cost they can weigh.
+   */
+  const entityLabels = $derived.by(() => {
+    const m = new Map<string, string>();
+    if (treeTooBig) return m;
+    for (const st of graphForTree) {
+      if (st.p.value === 'http://www.w3.org/2000/01/rdf-schema#label' && st.o.kind === 'literal') {
+        m.set(st.s.value, st.o.value);
+      }
+    }
+    return m;
+  });
+  const labelForIri = (iri: string) => entityLabels.get(iri) ?? labelFromIRI(iri);
+  /** Free-text answer for a purpose question, keyed by cluster id. */
+  let purposeAnswers = $state<Record<string, string>>({});
+
+  /**
+   * Settle a whole cluster with one answer.
+   *
+   * The human is at the keyboard and the channel is recorded, which is what keeps F52 intact: this
+   * is a person settling many facts at once, not an agent settling anything.
+   */
+  let cascadeBusy = $state<string | null>(null);
+  let cascadeEffect = $state<string | null>(null);
+
+  async function settleCluster(cluster: FactCluster, answer: CascadeAction) {
+    if (cascadeBusy) return;
+    cascadeBusy = cluster.id;
+    try {
+      const result = applyCascade(cluster, answer, { actor: 'user', channel: 'app:review' });
+      // The user's own fact first, so the decision exists before anything points at it.
+      await addStatements([result.recorded], 'manual');
+      for (const st of result.updated) await setStatus(st.id, st.status);
+      cascadeEffect = result.effect;
+      openCluster = null;
+    } finally {
+      cascadeBusy = null;
+    }
+  }
+
   /** F83: group the SHOWN entries into per-entity cards so the user decides about things, not rows. */
   let groupByEntity = $state(true);
   const entityGroups = $derived.by(() => {
@@ -204,7 +320,10 @@
     const sDiff = computeDiff(inc, ex);
     const myVersion = ++semanticVersion;
     if (sDiff.entries.length === 0) { semanticDiff = null; semanticAnalyzing = false; return; }
-    if (semanticFailed) return;
+    // Clear the spinner on the way out. This returned without touching it, so once enrichment had
+    // failed one run — after which every later run takes this branch — a stale `true` could never
+    // be cleared by anything, and "analyzing…" stayed on the summary row for the rest of the session.
+    if (semanticFailed) { semanticAnalyzing = false; return; }
     semanticAnalyzing = true;
     semanticDiff = null;
     semanticEnrichDiff(sDiff, ex).then(enriched => {
@@ -215,9 +334,45 @@
     });
   });
 
-  let bumpKey = $state(0);
   let isProcessing = $state(false);
   let error = $state<string | null>(null);
+
+  /*
+   * ── F139 step 3: FREEFORM RE-ANALYSIS OF THE PENDING SET ────────────────────
+   *
+   * Matt, 2026-08-21: the summary and the analyze actions are a start, but what is missing is a
+   * way to prompt DIRECTLY AFTER THE SUMMARY and suggest a re-analysis in your own words. The
+   * principle behind it: not every divergence from the intended shape is detectable by a model or
+   * a rule, the human is still the best layer of intelligence, and nudging pending facts toward
+   * their ideal hierarchy BEFORE they enter the graph costs far less than editing the graph after.
+   *
+   * It proposes only: attach / group / depend / drop, over facts that already exist. Nothing is
+   * applied until the person applies it, and nothing here can mint a fact.
+   */
+  let reanalysisInstruction = $state('');
+  let reanalysisBusy = $state(false);
+  let reanalysisRun = $state<ReanalysisRun | null>(null);
+
+  async function runPendingReanalysis() {
+    const instruction = reanalysisInstruction.trim();
+    if (!instruction || reanalysisBusy) return;
+    reanalysisBusy = true;
+    reanalysisRun = null;
+    try {
+      const req = reanalysisRequest(
+        instruction,
+        pendingStatements(),
+        reviewTree.decisions.map((d) => ({
+          id: d.question.id,
+          subjectIri: d.subjectIri,
+          question: questionText(d),
+        })),
+      );
+      reanalysisRun = await runReanalysis(req, settings());
+    } finally {
+      reanalysisBusy = false;
+    }
+  }
 
   // ── Diff summary ──────────────────────────────────────────────────────────
   let diffSummary = $state<DiffSummary | null>(null);
@@ -229,19 +384,32 @@
     finally { summaryLoading = false; }
   }
 
-  function refresh() { bumpKey++; }
 
   let draining = $state(false);
   let drainResult = $state<string | null>(null);
+  /** What the last bulk accept actually did — including when the honest answer is "nothing". */
+  let bulkResult = $state<string | null>(null);
   async function checkPending() {
     draining = true;
     drainResult = null;
     try {
+      // Distinguish the three ways a drain yields nothing. They used to all report 'none', so
+      // "this graph has no queued rows" was indistinguishable from "I cannot read the queue at
+      // all" — which is what an unlinked folder, or a non-secure origin where the File System
+      // Access API does not exist, actually means. Silence on the failure that needs an action.
+      if (!supportsWorkspace()) {
+        drainResult = 'unavailable here — open over localhost or https';
+        return;
+      }
+      if (workspaceState() !== 'connected') {
+        drainResult = 'no folder linked for this graph';
+        return;
+      }
       const count = await drainAndImportPending();
-      drainResult = count > 0 ? `${count} imported` : 'none';
-      if (count > 0) refresh();
+      drainResult = count > 0 ? `${count} imported` : 'none queued for this graph';
+      // store update is reactive — no manual refresh needed
     } catch { drainResult = 'error'; }
-    finally { draining = false; setTimeout(() => drainResult = null, 3000); }
+    finally { draining = false; setTimeout(() => drainResult = null, 6000); }
   }
 
   function sourceLabel(sourceId: string): string {
@@ -260,6 +428,21 @@
       return true;
     });
   });
+
+  // How many edges the tree layout can actually build a hierarchy from.
+  //
+  // `buildHierarchyAnchors` returns an empty anchor map when the graph states no parent edges, and
+  // the force layout then takes over — so choosing "tree" on a graph without them looks exactly
+  // like a broken button. It is not: the graph genuinely has no hierarchy to draw. Say which of
+  // the two it is, rather than making the user guess from a layout that quietly did nothing.
+  const hierarchyEdgeCount = $derived(
+    previewStatements.filter(
+      (s) =>
+        s.o.kind === 'iri' &&
+        (s.p.value === 'http://www.w3.org/2004/02/skos/core#broader' ||
+          s.p.value === 'urn:kbase:predicate/depends-on'),
+    ).length,
+  );
 
   // Highlighted keys: entities that come from pending statements
   const pendingKeys = $derived(new Set(incoming.flatMap(s => [termKey(s.s), termKey(s.o)])));
@@ -296,7 +479,53 @@
   }
 
   // ── Browse controls (F30: graph controls ported onto the preview pane) ────
-  let previewLayout = $state<'force' | 'focus' | 'hub'>('force');
+  /*
+   * ALL EIGHT LAYOUTS, the same set the main graph view offers (F30: graph controls ported onto
+   * the preview pane). Review had four; a reviewer looking at the same graph should not have a
+   * poorer set of ways to look at it than someone browsing it.
+   *
+   * Two are GUARDED, exactly as they are on the main view, because a chip that cannot do anything
+   * is worse than an absent one — that is precisely how the "tree" chip read as broken while it
+   * was working correctly on a graph with no hierarchy to draw.
+   */
+  const PREVIEW_LAYOUTS = ['force', 'focus', 'source', 'type', 'hub', 'timeline', 'order', 'hierarchy'] as const;
+  type PreviewLayout = (typeof PREVIEW_LAYOUTS)[number];
+  let previewLayout = $state<PreviewLayout>('force');
+
+  /** Sources worth clustering by. Analysis output is not a source a reviewer is comparing. */
+  const previewSourceCount = $derived(sources().filter((s) => s.kind !== 'analysis').length);
+  /** Entity types actually present in the preview — clustering by type needs at least one. */
+  const previewEntityTypes = $derived.by(() => {
+    const t = new Set<string>();
+    for (const st of previewStatements) {
+      const ty = subjectTypes.get(st.s.value);
+      if (ty) t.add(ty);
+    }
+    return [...t];
+  });
+  /**
+   * The grid sequence for the "arrange" layout.
+   *
+   * buildOrderAnchors() returns NOTHING when nodeOrder is empty, so shipping this chip without
+   * supplying an order would add a control that silently does nothing. Pending subjects come
+   * first because they are what the reviewer is here for, then everything else by label, so the
+   * grid is stable between renders instead of reshuffling on every recompute.
+   */
+  const previewNodeOrder = $derived.by(() => {
+    const pendingFirst: string[] = [];
+    const rest: string[] = [];
+    const seen = new Set<string>();
+    for (const st of previewStatements) {
+      for (const term of [st.s, st.o]) {
+        if (term.kind !== 'iri') continue;
+        const k = termKey(term);
+        if (seen.has(k)) continue;
+        seen.add(k);
+        (pendingKeys.has(k) ? pendingFirst : rest).push(k);
+      }
+    }
+    return [...pendingFirst, ...rest.sort()];
+  });
   let nodeSearchQuery = $state('');
   const nodeSearchResults = $derived.by(() => {
     const q = nodeSearchQuery.trim().toLowerCase();
@@ -665,30 +894,87 @@
       );
       if (mergeStmt) await setStatus(mergeStmt.id, 'confirmed');
       showMergeReview = false;
-      refresh();
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     } finally { isProcessing = false; }
   }
 
-  async function dismissMerge(id: string) { await setStatus(id, 'rejected'); refresh(); }
+  async function dismissMerge(id: string) { await setStatus(id, 'rejected'); }
 
   // ── Bulk actions ──────────────────────────────────────────────────────────
   async function acceptAll() {
     error = null; isProcessing = true;
+    bulkResult = null;
+    let accepted = 0, dismissed = 0, skippedPartial = 0, skippedKind = 0;
     try {
       for (const e of diff.entries) {
         // Partial facts (F32) must be filled individually — never bulk-confirm a '?'.
-        if (e.incoming.needsObject) continue;
-        if (e.kind === 'new' || e.kind === 'reinforces' || e.kind === 'synonym-reinforces')
+        if (e.incoming.needsObject) { skippedPartial++; continue; }
+
+        // An exact duplicate is the SAME (s,p,o) in the SAME graph — byte-identical to a fact
+        // already held. There is no decision in it: confirming adds nothing and rejecting loses
+        // nothing, so making a human dismiss each one by hand is pure tax. `reinforces` is the
+        // case that actually carries information (same claim, NEW source) and is confirmed below,
+        // which is what records the extra citation.
+        if (e.kind === 'duplicate') {
+          await setStatus(e.incoming.id, 'rejected');
+          dismissed++;
+          continue;
+        }
+
+        if (e.kind === 'new' || e.kind === 'reinforces' || e.kind === 'synonym-reinforces') {
           await setStatus(e.incoming.id, 'confirmed');
+          accepted++;
+        } else {
+          skippedKind++;
+        }
       }
-      refresh();
+      // Say what happened, including when the answer is "nothing". A whole graph can consist of
+      // partial facts — every code-review finding is a question with no object — and this button
+      // then correctly confirms none of them while looking broken. Silence is the bug; refusing
+      // to bulk-confirm a '?' is not.
+      bulkResult = accepted > 0 || dismissed > 0
+        ? [
+            accepted ? `confirmed ${accepted}` : null,
+            dismissed ? `dismissed ${dismissed} exact duplicate(s)` : null,
+            skippedPartial ? `${skippedPartial} need an answer first` : null,
+            skippedKind ? `${skippedKind} need a decision` : null,
+          ].filter(Boolean).join(', ')
+        : skippedPartial > 0
+          ? `nothing to confirm — ${skippedPartial} partial fact(s) need an object before they can be accepted`
+          : skippedKind > 0
+            ? `nothing to confirm — ${skippedKind} entr(y/ies) are conflicts or refinements, which need a decision`
+            : 'nothing pending';
     } catch (e) { error = e instanceof Error ? e.message : String(e); }
-    finally { isProcessing = false; }
+    finally { isProcessing = false; setTimeout(() => (bulkResult = null), 8000); }
   }
-  async function confirmDeletion(id: string) { await setStatus(id, 'rejected'); refresh(); }
-  async function keepStatement(id: string) { await setStatus(id, 'confirmed'); refresh(); }
+  /**
+   * SETTLE A CONTESTED DECISION IN ONE ACTION (Matt, 2026-08-21).
+   *
+   * "The current state is accept one fact then the other is a conflict with a second decision to
+   * keep existing, which is a bit redundant." It is: picking a side IS rejecting the others, so
+   * asking again is the same decision wearing a different hat. This confirms the chosen statement
+   * and rejects every other side of the same conflict together, the way MergeReview already
+   * resolves a predicate conflict with one pick.
+   *
+   * It does NOT quietly replace the reckoning path. Where two HUMAN-attested claims disagree
+   * (escalate === 'stp') the tree's own rule stands — accept/reject discards the losing side's
+   * reasoning — so the UI offers this pick and the reckoning side by side and says which is which.
+   */
+  let settlingDecision = $state<string | null>(null);
+  async function settleConflict(sides: Statement[], keepId: string, decisionId: string) {
+    if (settlingDecision) return;
+    settlingDecision = decisionId;
+    try {
+      await setStatus(keepId, 'confirmed');
+      for (const st of sides) if (st.id !== keepId) await setStatus(st.id, 'rejected');
+    } finally {
+      settlingDecision = null;
+    }
+  }
+
+  async function confirmDeletion(id: string) { await setStatus(id, 'rejected'); }
+  async function keepStatement(id: string) { await setStatus(id, 'confirmed'); }
 
   // Total pending count for graph label
   const totalPending = $derived(incoming.length + pendingDeletions.length + pendingMerges.length);
@@ -748,7 +1034,6 @@
       await applyAlignmentToActiveKb(suggestion, addStatements, addSource);
       suggestion.decision = 'accepted';
       alignResult = { ...alignResult! };
-      refresh();
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     }
@@ -760,10 +1045,22 @@
   }
 
   // ── URL query param helpers ─────────────────────────────────────────────
+  //
+  // These EDIT the existing URL rather than rebuilding the query string, so `?kb=` and the other
+  // params survive. Rebuilding from a fresh URLSearchParams (as the main graph page does) silently
+  // drops every param the rebuild does not know about — including the one naming the graph.
   function setViewParam(view: string | null) {
     const url = new URL(window.location.href);
     if (view) { url.searchParams.set('view', view); }
     else { url.searchParams.delete('view'); }
+    history.replaceState(null, '', url.toString());
+  }
+
+  /** Keep the chosen layout in the URL so a reload — forced or otherwise — comes back to it. */
+  function setLayoutParam(next: PreviewLayout) {
+    const url = new URL(window.location.href);
+    if (next === 'force') url.searchParams.delete('layout');  // the default needs no param
+    else url.searchParams.set('layout', next);
     history.replaceState(null, '', url.toString());
   }
 
@@ -782,6 +1079,11 @@
     const viewParam = params.get('view');
     if (viewParam === 'compare') { graphMode = 'compare'; }
     else if (viewParam === 'overlay') { graphMode = 'overlay'; initOverlay(); }
+
+    const layoutParam = params.get('layout');
+    if (layoutParam && PREVIEW_LAYOUTS.includes(layoutParam as PreviewLayout)) {
+      previewLayout = layoutParam as PreviewLayout;
+    }
   });
 </script>
 
@@ -823,12 +1125,29 @@
           <ToggleGroup.Root
             type="single"
             value={previewLayout}
-            onValueChange={(v) => { if (v) previewLayout = v as typeof previewLayout; }}
+            onValueChange={(v) => {
+              if (!v) return;
+              previewLayout = v as PreviewLayout;
+              setLayoutParam(previewLayout);
+            }}
             class="tg-row"
           >
             <ToggleGroup.Item value="force" class="tg-chip"><span class="lbl mono">free</span></ToggleGroup.Item>
             <ToggleGroup.Item value="focus" class="tg-chip"><span class="lbl mono">focus</span></ToggleGroup.Item>
+            {#if previewSourceCount > 1}
+              <ToggleGroup.Item value="source" class="tg-chip" title="Cluster nodes by the source they came from"><span class="lbl mono">source</span></ToggleGroup.Item>
+            {/if}
+            {#if previewEntityTypes.length > 0}
+              <ToggleGroup.Item value="type" class="tg-chip" title="Cluster nodes by entity type"><span class="lbl mono">type</span></ToggleGroup.Item>
+            {/if}
             <ToggleGroup.Item value="hub" class="tg-chip"><span class="lbl mono">hub</span></ToggleGroup.Item>
+            <ToggleGroup.Item value="timeline" class="tg-chip" title="Lay nodes out left-to-right by date; undated nodes get a labelled lane rather than a fake date"><span class="lbl mono">time</span></ToggleGroup.Item>
+            <!-- value stays "order" (URL/state); label is "arrange", matching the main view. -->
+            <ToggleGroup.Item value="order" class="tg-chip" title="Arrange nodes on a grid — pending subjects first"><span class="lbl mono">arrange</span></ToggleGroup.Item>
+            <!-- Prerequisites above dependents, from skos:broader and kpred:depends-on. Only
+                 meaningful on a graph that states one of those; on a flat queue it degrades to
+                 the force layout rather than inventing a hierarchy. -->
+            <ToggleGroup.Item value="hierarchy" class="tg-chip"><span class="lbl mono">tree</span></ToggleGroup.Item>
           </ToggleGroup.Root>
           <div class="node-search-wrap">
             <input
@@ -989,6 +1308,7 @@
             {selected}
             {focusKey}
             layout={previewLayout}
+            nodeOrder={previewNodeOrder}
             sources={sources()}
             onselect={(k) => { selected = k; focusedEdge = null; }}
             onhover={() => {}}
@@ -1117,7 +1437,17 @@
 
     <!-- Tab content -->
     <div class="rp-content">
-    {#key bumpKey}
+    <!--
+      No {#key} wrapper here, deliberately.
+
+      This block used to be keyed on a counter that every decision incremented, which destroyed and
+      rebuilt all four tabs — list, summary chips, graph preview and scroll position — for a change
+      affecting ONE row. That read as a full page reload after each confirm/reject.
+
+      It was never needed. setStatus reassigns the _statements rune (kb.svelte.ts), so `incoming`,
+      `existing` and `structuralDiff` are $derived and recompute on their own, and the $effect above
+      re-runs to re-enrich the semantic diff. Svelte then updates only the entry that changed.
+    -->
 
       {#if activeTab === 'incoming'}
         <!-- Summary chips -->
@@ -1197,9 +1527,9 @@
               onaccept={async () => {
                 // Partial facts must be filled via the card's picker, not swipe-confirmed.
                 if (e.incoming.needsObject) return;
-                await setStatus(e.incoming.id, 'confirmed'); refresh();
+                await setStatus(e.incoming.id, 'confirmed');
               }}
-              onreject={async () => { await setStatus(e.incoming.id, 'rejected'); refresh(); }}
+              onreject={async () => { await setStatus(e.incoming.id, 'rejected'); }}
             >
               <!-- Clicking a review card flies the preview graph to its node -->
               <div
@@ -1210,7 +1540,9 @@
                 onclick={() => focusStatement(e.incoming)}
                 onkeydown={(ev) => { if (ev.key === 'Enter') focusStatement(e.incoming); }}
               >
-                <DiffEntry entry={e} sourceLabel={sourceLabel(e.incoming.sourceId)} onresolved={refresh} />
+                <!-- No onresolved handler: DiffEntry mutates statements through the store, and the
+                     derived diff picks that up. It defaults to a no-op. -->
+                <DiffEntry entry={e} sourceLabel={sourceLabel(e.incoming.sourceId)} />
               </div>
             </SwipeCard>
           {/snippet}
@@ -1219,6 +1551,236 @@
                facts grouped into entity cards (decide about things, not rows). The per-fact
                confirm/reject controls are unchanged — nothing is hidden, only better ordered. -->
           <div class="ras-headline mono">{planHeadline}</div>
+          <!-- F139: the same set read by ALTITUDE — what is a decision, and what is bookkeeping.
+               Deliberately NOT .ras-headline: that class identifies the F53 pipeline headline and
+               a second element carrying it makes every existing selector for it ambiguous. -->
+          <div class="alt-headline mono" data-testid="altitude-headline">{treeHeadline}</div>
+
+          <!-- F139 step 3 — the manual trigger. Right after the summary, because that is where a
+               person has just read what the shape IS and can say what it should be instead. -->
+          <div class="reanalyze" data-testid="reanalyze">
+            <div class="reanalyze-row">
+              <input
+                class="reanalyze-input mono"
+                type="text"
+                bind:value={reanalysisInstruction}
+                placeholder="re-analyze these pending facts — e.g. 'these are all about the March deploy, group them'"
+                data-testid="reanalyze-input"
+                disabled={reanalysisBusy}
+                onkeydown={(e) => { if (e.key === 'Enter') runPendingReanalysis(); }}
+              />
+              <button
+                class="ghost-btn"
+                onclick={runPendingReanalysis}
+                disabled={reanalysisBusy || !reanalysisInstruction.trim()}
+                data-testid="reanalyze-run"
+              >{reanalysisBusy ? 'analyzing...' : 're-analyze'}</button>
+            </div>
+
+            {#if reanalysisRun}
+              {#if reanalysisRun.error}
+                <div class="reanalyze-note mono err">{reanalysisRun.error}</div>
+              {:else}
+                <div class="reanalyze-note mono">{reanalysisSummary(reanalysisRun)}</div>
+                {#each reanalysisRun.operations as op, i (i)}
+                  <div class="reanalyze-op">
+                    <span class="op-kind mono">{op.op}</span>
+                    {#if op.op === 'group'}
+                      <span class="op-what">{op.question} <span class="op-n">({op.factIds.length} facts)</span></span>
+                    {:else if op.op === 'attach'}
+                      <span class="op-what">{op.factIds.length} fact{op.factIds.length === 1 ? '' : 's'} under an open decision</span>
+                    {:else if op.op === 'depend'}
+                      <span class="op-what">settle one decision before another</span>
+                    {:else}
+                      <span class="op-what">{op.factIds.length} fact{op.factIds.length === 1 ? '' : 's'} flagged as noise</span>
+                    {/if}
+                    {#if op.because}<span class="op-why">{op.because}</span>{/if}
+                  </div>
+                {/each}
+                <!-- Rejections are shown, never swallowed: a pass that ignored the instruction must
+                     not look identical to one that followed it. -->
+                {#if reanalysisRun.rejected.length}
+                  <details class="reanalyze-rejected">
+                    <summary class="mono">{reanalysisRun.rejected.length} proposal(s) rejected</summary>
+                    {#each reanalysisRun.rejected as r, i (i)}<div class="rej-line">{r}</div>{/each}
+                  </details>
+                {/if}
+                {#if reanalysisRun.operations.length}
+                  <div class="reanalyze-note mono dim">Nothing has been applied. These are proposals about pending facts — the graph is untouched.</div>
+                {/if}
+              {/if}
+            {/if}
+          </div>
+
+          {#if cascadeEffect}
+            <div class="cascade-effect mono" role="status">{cascadeEffect}</div>
+          {/if}
+
+          <!-- F139.1 CASCADE LANE — aggregate the noise, ask ONE question, settle all of it.
+               50 datetime stamps are not 50 decisions; they are one question about one day. -->
+          {#if cascadeClusters.length > 0}
+            <div class="cascade" data-testid="cascade-lane">
+              <span class="cascade-h mono">{cascadeHeadline}</span>
+              {#each cascadeClusters as cluster (cluster.id)}
+                {@const purpose = needsPurposeQuestion(cluster, isPlannedSubject)}
+                <div class="cascade-row" class:purpose>
+                  <button
+                    class="cascade-q"
+                    onclick={() => (openCluster = openCluster === cluster.id ? null : cluster.id)}
+                    aria-expanded={openCluster === cluster.id}
+                  >
+                    <span class="cascade-count mono">{cluster.members.length}</span>
+                    <span class="cascade-text">{purpose ? purposeQuestion(cluster) : cluster.question}</span>
+                    <span class="cascade-basis mono" class:guessed={!BASIS_META[cluster.basis].deterministic}>
+                      {BASIS_META[cluster.basis].label}
+                    </span>
+                  </button>
+
+                  {#if purpose}
+                    <!-- Unplanned work cannot be settled yes/no: the missing information is a
+                         REASON, not a truth value. The answer re-partitions the set (F139.1). -->
+                    <div class="cascade-purpose mono">
+                      This work is tied to no planned feature, so answering it in your own words
+                      splits the set and labels each part. Queued for the local model to partition.
+                    </div>
+                  {:else}
+                    <div class="cascade-acts">
+                      <button
+                        class="cascade-yes"
+                        disabled={cascadeBusy === cluster.id}
+                        onclick={() => settleCluster(cluster, 'confirm')}
+                      >yes — settle all {cluster.members.length}</button>
+                      <button
+                        class="cascade-no"
+                        disabled={cascadeBusy === cluster.id}
+                        onclick={() => settleCluster(cluster, 'reject')}
+                      >no</button>
+                    </div>
+                  {/if}
+
+                  {#if openCluster === cluster.id}
+                    <ul class="cascade-members mono">
+                      {#each cluster.members.slice(0, 40) as m (m.id)}
+                        <li>
+                          <span class="alt-chip alt-{altitudeOf(m)}">{altitudeOf(m)}</span>
+                          {m.p.value.replace('urn:kbase:predicate/', 'kpred:')}
+                          <span class="cm-obj">{m.o.value.slice(0, 90)}</span>
+                        </li>
+                      {/each}
+                      {#if cluster.members.length > 40}
+                        <li class="cm-more">… {cluster.members.length - 40} more</li>
+                      {/if}
+                    </ul>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          {/if}
+
+          <!-- F139 DECISION TREE — the open decisions, the options with their computed costs, and
+               the case beneath each one. Records and logs are a count, never rows. -->
+          {#if reviewTree.decisions.length > 0}
+            <div class="dtree" data-testid="decision-tree">
+              <span class="dtree-h mono">decisions — the only things here that are yours to settle</span>
+              {#each reviewTree.decisions as d (d.question.id)}
+                <div class="dnode" class:contested={d.contested}>
+                  <div class="dnode-top">
+                    <span class="alt-chip alt-decision">decision</span>
+                    <span class="dnode-label">{d.label}</span>
+                    {#if d.contested}
+                      <span class="dflag contested-flag">contested</span>
+                    {/if}
+                    {#if d.impliedBy === 'conflict'}
+                      <span class="dflag implied">nobody asked it</span>
+                    {/if}
+                    {#if d.escalate === 'stp'}
+                      <span class="dflag stp">needs a reckoning</span>
+                    {/if}
+                    {#if d.status}<span class="dstat mono">{d.status}</span>{/if}
+                    {#if d.unlocks}<span class="dstat mono">unlocks {d.unlocks}</span>{/if}
+                  </div>
+
+                  <p class="dquestion">{questionText(d)}</p>
+
+                  {#if d.conflictSides && d.conflictSides.length > 1}
+                    <!-- One pick settles the whole conflict: the chosen side is confirmed and every
+                         other side rejected, instead of accepting one fact and meeting the next as
+                         a fresh decision. -->
+                    <div class="dpick" data-testid="decision-pick">
+                      <span class="dpick-h mono">which holds?</span>
+                      {#each d.conflictSides as side (side.id)}
+                        <button
+                          class="dpick-btn"
+                          disabled={settlingDecision !== null}
+                          onclick={() => settleConflict(d.conflictSides!, side.id, d.question.id)}
+                          title="Confirm this one and reject the other{d.conflictSides!.length > 2 ? 's' : ''}"
+                        >
+                          <span class="dpick-val">{side.o.value.slice(0, 60)}</span>
+                          <span class="dpick-src mono">{sourceLabel(side.sourceId)}</span>
+                        </button>
+                      {/each}
+                    </div>
+                    <p class="dnote mono">
+                      Picking one confirms it and rejects the other{d.conflictSides.length > 2 ? 's' : ''} — one action, not two.
+                      {#if d.escalate === 'stp'}
+                        Both sides are human-attested, so a pick DISCARDS the losing side's reasoning; a reckoning keeps both and supersedes them.
+                      {/if}
+                    </p>
+                  {/if}
+
+                  {#if d.options.length > 0}
+                    <div class="dopts">
+                      {#each d.options as o (o.iri)}
+                        <div class="dopt">
+                          <span class="dopt-label">{o.label}</span>
+                          <span class="dopt-cost mono">costs {o.rulesOut.length} fact{o.rulesOut.length === 1 ? '' : 's'}</span>
+                          <ul class="dopt-kills">
+                            {#each o.rulesOut as k (k.id)}
+                              <li>{labelForIri(k.s.value)}</li>
+                            {/each}
+                          </ul>
+                        </div>
+                      {/each}
+                    </div>
+                    <p class="dnote mono">Each option is priced by the facts it would delete — computed from the graph, not described.</p>
+                  {:else}
+                    <p class="dnote mono">
+                      No options modelled yet, so there is nothing to weigh side by side.
+                      {#if d.escalate === 'stp'}Two attested claims disagree, and no check settles that — accept/reject would discard the reasoning.{/if}
+                    </p>
+                  {/if}
+
+                  <button
+                    class="dexpand mono"
+                    onclick={() => (openDecision = openDecision === d.question.id ? null : d.question.id)}
+                    aria-expanded={openDecision === d.question.id}
+                  >
+                    {d.standing.length} standing · {d.judgments.length} judgments · {d.evidence.length} evidence · ⌄ {d.hidden.length} hidden
+                  </button>
+
+                  {#if openDecision === d.question.id}
+                    <div class="dcase">
+                      {#each [['decision', d.standing], ['judgment', d.judgments], ['evidence', d.evidence], ['record', d.hidden]] as [kind, list]}
+                        {#if (list as typeof d.standing).length > 0}
+                          <ul class="dcase-list mono">
+                            {#each (list as typeof d.standing).slice(0, 12) as f (f.id)}
+                              <li>
+                                <span class="alt-chip alt-{kind}">{kind === 'record' ? 'hidden' : kind}</span>
+                                <span class="dcase-obj">{f.o.value.slice(0, 130)}</span>
+                              </li>
+                            {/each}
+                            {#if (list as typeof d.standing).length > 12}
+                              <li class="cm-more">… {(list as typeof d.standing).length - 12} more</li>
+                            {/if}
+                          </ul>
+                        {/if}
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          {/if}
 
           {#if reviewPlan.attention.spotlight.length > 0}
             <div class="spotlight" data-testid="spotlight">
@@ -1247,6 +1809,7 @@
               title="Group facts by the entity they describe">
               {groupByEntity ? 'by entity' : 'flat list'}
             </button>
+            {#if bulkResult}<p class="bulk-result mono">{bulkResult}</p>{/if}
             {#if error}<p class="error-text">{error}</p>{/if}
           </div>
 
@@ -1448,7 +2011,6 @@
         {/if}
       {/if}
 
-    {/key}
     </div>
   </aside>
 </div>
@@ -2070,6 +2632,7 @@
   }
   .bulk-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .error-text { color: var(--danger); font-size: 0.7rem; margin: 0; }
+  .bulk-result { color: var(--text-muted); font-size: 0.7rem; margin: 0; }
 
   .primary-btn {
     padding: 0.35rem 0.7rem;
@@ -2108,6 +2671,252 @@
     color: var(--muted, #888);
     margin: 0.2rem 0 0.6rem;
   }
+  /* ── F139 decision tree ───────────────────────────────────────────────────── */
+  .dtree { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.85rem; }
+  .dtree-h {
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .dnode {
+    border: 1px solid var(--accent);
+    border-left-width: 3px;
+    border-radius: 3px;
+    background: var(--surface);
+    padding: 0.65rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  /* A live disagreement is the one thing that must never look like routine work. */
+  .dpick { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0.35rem 0; }
+  .dpick-h { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; }
+  .dpick-btn {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem;
+    padding: 0.3rem 0.55rem; border: 1px solid var(--border); border-radius: 4px;
+    background: var(--surface-2); color: var(--text); cursor: pointer; text-align: left;
+  }
+  .dpick-btn:hover:not(:disabled) { border-color: var(--accent); }
+  .dpick-btn:disabled { opacity: 0.5; cursor: default; }
+  .dpick-val { font-size: 0.82rem; }
+  .dpick-src { font-size: 0.66rem; color: var(--text-dim); }
+
+  .dnode.contested { border-left-color: var(--danger); }
+
+  .dnode-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem; }
+  .dnode-label { font-size: 0.9rem; font-weight: 600; color: var(--ink); }
+  .dflag {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border: 1px solid currentColor;
+    border-radius: 2px;
+    padding: 0 0.25rem;
+  }
+  .contested-flag { color: var(--danger); }
+  .implied { color: var(--muted); }
+  .stp { color: var(--accent); }
+  .dstat { font-size: 0.62rem; color: var(--muted); }
+
+  .dquestion { margin: 0; font-size: 0.85rem; line-height: 1.5; color: var(--ink); }
+
+  .dopts { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .dopt {
+    flex: 1 1 14rem;
+    border: 1px solid var(--surface-2, var(--surface));
+    border-top: 2px solid var(--ok);
+    border-radius: 3px;
+    padding: 0.45rem 0.55rem;
+    background: var(--bg);
+  }
+  .dopt-label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--ink); }
+  .dopt-cost { display: block; font-size: 0.65rem; color: var(--ok); margin-top: 0.1rem; }
+  .dopt-kills {
+    list-style: none;
+    margin: 0.35rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    font-size: 0.68rem;
+    color: var(--muted);
+  }
+  .dopt-kills li::before { content: "✗ "; color: var(--danger); }
+
+  .dnote { font-size: 0.66rem; color: var(--muted); margin: 0; line-height: 1.5; }
+
+  .dexpand {
+    align-self: flex-start;
+    background: none;
+    border: 1px solid var(--muted);
+    border-radius: 2px;
+    color: var(--muted);
+    font-size: 0.64rem;
+    padding: 0.15rem 0.4rem;
+    cursor: pointer;
+  }
+  .dexpand:hover { color: var(--accent); border-color: var(--accent); }
+
+  .dcase { display: flex; flex-direction: column; gap: 0.3rem; }
+  .dcase-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.12rem;
+    font-size: 0.66rem;
+  }
+  .dcase-list li { display: flex; gap: 0.35rem; align-items: baseline; }
+  .dcase-obj { color: var(--ink); opacity: 0.8; }
+
+  /* ── F139 step 3: freeform re-analysis prompt ─────────────────────────────── */
+  .reanalyze { margin: 0.5rem 0 0.75rem; display: flex; flex-direction: column; gap: 0.4rem; }
+  .reanalyze-row { display: flex; gap: 0.5rem; align-items: center; }
+  .reanalyze-input {
+    flex: 1; min-width: 0; padding: 0.45rem 0.6rem;
+    background: var(--surface-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 4px; font-size: 0.8rem;
+  }
+  .reanalyze-input:focus { outline: none; border-color: var(--accent); }
+  .reanalyze-note { font-size: 0.75rem; color: var(--accent); }
+  .reanalyze-note.err { color: var(--danger, #e06c75); }
+  .reanalyze-note.dim { color: var(--text-dim); }
+  .reanalyze-op {
+    display: flex; gap: 0.5rem; align-items: baseline; flex-wrap: wrap;
+    font-size: 0.78rem; padding: 0.25rem 0.5rem;
+    background: var(--surface-2); border-left: 2px solid var(--accent); border-radius: 3px;
+  }
+  .op-kind { text-transform: uppercase; font-size: 0.68rem; color: var(--accent); }
+  .op-n { color: var(--text-dim); }
+  .op-why { color: var(--text-dim); font-size: 0.72rem; }
+  .reanalyze-rejected { font-size: 0.72rem; color: var(--text-dim); }
+  .reanalyze-rejected .rej-line { padding: 0.15rem 0 0.15rem 0.75rem; }
+
+  /* ── F139 altitude headline + F139.1 cascade lane ────────────────────────── */
+  .alt-headline {
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+  }
+
+  .cascade-effect {
+    font-size: 0.72rem;
+    color: var(--ok);
+    border: 1px solid var(--ok);
+    background: color-mix(in srgb, var(--ok) 8%, transparent);
+    border-radius: 3px;
+    padding: 0.4rem 0.6rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .cascade {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    padding: 0.6rem;
+    margin-bottom: 0.75rem;
+    background: var(--accent-soft);
+  }
+  .cascade-h {
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .cascade-row {
+    border: 1px solid var(--surface-2, var(--surface));
+    border-radius: 3px;
+    background: var(--surface);
+    padding: 0.45rem 0.55rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  /* An unplanned-work question is a different KIND of question — it wants prose, not yes/no. */
+  .cascade-row.purpose { border-left: 2px solid var(--danger); }
+
+  .cascade-q {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    background: none;
+    border: 0;
+    padding: 0;
+    text-align: left;
+    color: var(--ink);
+    cursor: pointer;
+    font: inherit;
+    width: 100%;
+  }
+  .cascade-q:hover .cascade-text { text-decoration: underline; }
+  .cascade-count {
+    flex: 0 0 auto;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 2px;
+    padding: 0.05rem 0.3rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .cascade-text { flex: 1 1 auto; font-size: 0.85rem; }
+  .cascade-basis { flex: 0 0 auto; font-size: 0.64rem; color: var(--muted); }
+  /* A grouping a model guessed must never look like one a script computed. */
+  .cascade-basis.guessed { color: var(--danger); }
+
+  .cascade-acts { display: flex; gap: 0.4rem; }
+  .cascade-acts button {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    padding: 0.22rem 0.5rem;
+    border-radius: 2px;
+    cursor: pointer;
+    background: none;
+  }
+  .cascade-yes { border: 1px solid var(--ok); color: var(--ok); }
+  .cascade-no { border: 1px solid var(--muted); color: var(--muted); }
+  .cascade-acts button:disabled { opacity: 0.5; cursor: default; }
+
+  .cascade-purpose { font-size: 0.7rem; color: var(--muted); line-height: 1.5; }
+
+  .cascade-members {
+    list-style: none;
+    margin: 0;
+    padding: 0.3rem 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    max-height: 14rem;
+    overflow-y: auto;
+    font-size: 0.66rem;
+    color: var(--muted);
+  }
+  .cascade-members li { display: flex; gap: 0.35rem; align-items: baseline; }
+  .cm-obj { color: var(--ink); opacity: 0.75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cm-more { color: var(--muted); font-style: italic; }
+
+  /* The altitude scale — one colour set, so it reads the same everywhere it appears. */
+  .alt-chip {
+    flex: 0 0 auto;
+    font-size: 0.58rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border: 1px solid currentColor;
+    border-radius: 2px;
+    padding: 0 0.22rem;
+  }
+  .alt-decision { color: var(--accent); }
+  .alt-judgment { color: #d9a94a; }
+  .alt-evidence { color: var(--ok); }
+  .alt-record { color: var(--muted); }
+  .alt-log { color: var(--muted); opacity: 0.7; }
+
   .spotlight {
     display: flex;
     flex-wrap: wrap;

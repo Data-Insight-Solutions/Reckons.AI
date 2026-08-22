@@ -4645,3 +4645,141 @@ kb:reference-graph-catalogue rdf:type ktype:Feature ;
     kpred:open-question "Import as a NEW graph, or merge into the current one? Merging puts formats beside the user's own content so relationships can be drawn, but mixes reference data with authored data; importing separately keeps provenance clean but pushes the user into cross-graph leaps to use it. The archive/restore and cross-graph-alignment work both bear on this." .
 
 kb:content-orchestrator kpred:relates-to kb:content-operations .
+
+# -- F135: Context engine — retrieve per request, capture judgement, forget the rest -
+# Matt, 2026-08-15: "the chat results are captured as triples. The context from the chat
+# should be cleared regularly to save usage of tokens, and instead the relevant graph nodes
+# queried for the request... We need a context engine that queries very well, and avoids long
+# rambling conversation for token usage."
+kb:context-engine rdf:type ktype:Feature ;
+               kpred:touches-file "src/lib/integrations/llm/turtle-chat.ts" ;
+               kpred:touches-file "src/lib/embed.ts" ;
+               kpred:touches-module code:llm ;
+               kpred:touches-module code:rdf ;
+               kpred:touches-module code:stores ;
+               kpred:estimated-files "12"^^xsd:integer ;
+               kpred:estimated-deps "0"^^xsd:integer ;
+    rdfs:label "Context engine — retrieval per request, not accumulated conversation" ;
+    kpred:feature-id "F135" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:depends-on kb:context-compression ;
+    kpred:relates-to kb:review-anchored-generation ;
+    kpred:relates-to kb:graph-sets ;
+    kpred:relates-to kb:passage-grounding ;
+    kpred:description "Stop carrying the conversation and start querying the graph. Each turn retrieves the nodes relevant to THAT request from the selected graph, answers from them, captures any judgement reached as triples, and lets the rest go. Applies to Shelly and to Claude Code sessions alike — both currently pay to re-read everything they have ever said." ;
+    kpred:principle "THE CONVERSATION IS NOT THE ASSET; THE JUDGEMENT IN IT IS. Ephemeral working-out — what was tried, what was ruled out mid-thought, the phrasing of a question — is not a fact and should never be captured. What survives a turn is what somebody decided, and that is a triple. This is the RAG-inversion thesis of kb:review-anchored-generation (F51) applied to dialogue rather than to documents." ;
+    kpred:measurement "MEASURED ON THIS SESSION, 2026-08-15, not estimated. Weighted cost was 77% CACHE READS — re-reading the accumulated context on every turn — against 8% output and ~0% fresh input. Of the context itself, ~85% was the assistant's own accumulated output, 13% tool-result text, 2% images, and 0.35% (5,839 tokens across 35 turns) was the human. So carrying the conversation is the cost, and the human's words are the cheapest, most valuable part of it." ;
+    kpred:decided "NEVER SUMMARISE THE HUMAN SIDE — KEEP IT VERBATIM. At 5,839 tokens for a whole session it is affordable in full, and it is exactly where compression does the most damage: 'collage wasn't a force, it was a force modifier' is eleven words that redirected an entire feature, and no triple carries that. Boil down the ASSISTANT's output, which is 85% of the context and largely re-derivable." ;
+    kpred:constraint "RETRIEVAL TRADES 'EXPENSIVE BUT COMPLETE' FOR 'CHEAP BUT SILENTLY INCOMPLETE', AND THAT IS THE RISK THAT SINKS THIS IF IGNORED. A long context at least CONTAINS the answer. A query that misses the relevant node produces a confident answer with no signal that anything is missing — and the model cannot tell 'not in the graph' from 'not retrieved'. The existing prompt already says absence is not falsity, but under retrieval that absence becomes dynamic and per-turn. Retrieval quality therefore has to be MEASURED (recall against a known answer set), not assumed, before conversation length is cut." ;
+    kpred:open-question "How is 'relevant' computed? BM25 already exists (kb_search), embeddings already exist (BGE-small via embed.ts), and kb_compress already does subgraph selection with a token budget — the pieces are present and unassembled. Whether the retrieval key is the last message, the running topic, or the selected set/graph is undecided." ;
+    kpred:honest-note "PARTLY BUILT, AND LESS THAN IT LOOKS (verified in code 2026-08-15). Shelly does NOT stuff the whole graph in: buildContextSection sends a fixed sample of FIFTEEN entities plus counts. That is frugal but it is not retrieval — the same fifteen arrive whatever was asked. query_kb exists but is user-driven, requiring the reader to click run. add_triple exists and is confirmed directly on accept, so 'conversation can accept facts' is genuinely half-built. Nothing clears context, nothing distinguishes ephemeral from durable, and the Claude Code side captures nothing at all — every decision recorded in this graph today was typed by hand." ;
+    kpred:remaining "Per-turn retrieval keyed to the request; a measured recall figure before any context is cut; a capture path that proposes triples from judgement and ignores working-out; and the same two on the Claude Code side." .
+
+# -- F135.1: Trust tiers — who says so, and can it be re-checked ----------------
+kb:fact-trust-tiers rdf:type ktype:Feature ;
+               kpred:part-of kb:context-engine ;
+               kpred:touches-file "src/lib/rdf/types.ts" ;
+               kpred:estimated-files "6"^^xsd:integer ;
+               kpred:estimated-deps "0"^^xsd:integer ;
+    rdfs:label "Trust tiers — verified automation ranks below human judgement, above a guess" ;
+    kpred:feature-id "F135.1" ;
+    kpred:has-status "planned" ;
+    kpred:relates-to kb:content-safety ;
+    kpred:description "Matt, 2026-08-15: 'Automated findings that are verified are useful, and fact judged by humans even more useful.' Today ReviewStatus has pending / pending-removal / confirmed / refined / rejected / superseded, and every automated finding lands in the same 'pending' bucket as a model's guess. A deterministic check that PROVED something deserves to outrank a plausible suggestion without pretending to outrank a person." ;
+    kpred:decided "'VERIFIED' MUST MEAN RE-CHECKABLE, NOT MERELY MACHINE-PRODUCED. A script emitting a finding is not evidence; a script that can be RE-RUN to prove the finding is. So a verified statement carries the NAME of the check that establishes it, and that check must be runnable on demand — 'integrations-tech.ttl does not parse' is verifiable (re-parse it), while 'this file looks fragile' is a judgement wearing a script's clothes and stays a suggestion. Without that rule 'verified' degrades into 'a computer said it', which is the exact authority-laundering kb:honest-status exists to prevent." ;
+    kpred:evidence "THE COST OF NOT HAVING THIS IS ON RECORD. The review queue reached 904 entries with verified defects and speculative suggestions indistinguishable in the same bucket, and a TRUE finding — 'integrations-tech.ttl does not parse' — was re-reported fifty-nine times and never acted on, because nothing marked it as proven rather than proposed. It was two bad lines in a 944-line graph and took minutes to fix once seen." ;
+    kpred:open-question "Does a verified automated fact enter the graph WITHOUT human review, or does it enter as a distinct status a human can still overrule? Entering unreviewed is what makes the tier worth having and is also the point where an automated writer starts editing the user's graph — kb:tenet-private and the F52 control model both bear on this, and it is Matt's call." .
+
+kb:review-anchored-generation kpred:relates-to kb:context-engine .
+
+# -- F135.2: Settlement — can this be checked, with what, and can we run it? ----
+# Matt, 2026-08-15: "we first need to differenciate accurately if the fact is quantifyable or
+# directly verify-able within available resources. I think we lack structure in that, and LLMs
+# often confidently overstate due to that."
+kb:claim-settlement rdf:type ktype:Feature ;
+               kpred:part-of kb:context-engine ;
+               kpred:touches-file "src/lib/rdf/verifiability.ts" ;
+               kpred:touches-file "src/lib/rdf/types.ts" ;
+               kpred:touches-file "src/lib/integrations/llm/extractor.ts" ;
+               kpred:touches-module code:rdf ;
+               kpred:touches-module code:llm ;
+               kpred:estimated-files "8"^^xsd:integer ;
+               kpred:estimated-deps "0"^^xsd:integer ;
+    rdfs:label "Settlement — every claim carries how it could be checked, and whether we can" ;
+    kpred:feature-id "F135.2" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:depends-on kb:verifiability-axis ;
+    kpred:relates-to kb:fact-trust-tiers ;
+    kpred:relates-to kb:passage-grounding ;
+    kpred:description "The axis F88 introduced answers WHAT KIND of thing would settle a fact (code / test / source / user / unknown / external-graph). It does not answer whether that settlement is available to us, now, at what cost — and it is never recorded, only inferred at read time. This adds the second axis and makes the classification a written property of the statement rather than a guess made later." ;
+    kpred:evidence "MEASURED 2026-08-15, and it is worse than it reads. Running inferVerifiability over real graphs: static/knowledge.ttl is 100% 'unknown' (221 of 221 statements, all routed to the user). static/reckons-roadmap.ttl is 95.6% 'unknown' (3,433 of 3,590), with 150 'code' and 7 'test'. So the taxonomy exists, is tested, and classifies almost nothing — the queue asks a human about essentially everything, which is precisely the failure verifiability.ts says in its own header it exists to prevent." ;
+    kpred:principle "A CLAIM MUST CARRY ITS OWN FALSIFICATION METHOD, AND THAT IS THE ANTI-OVERSTATEMENT MECHANISM. Matt's diagnosis is exact: a model overstates because nothing ever asks it HOW the claim could be checked. Requiring the answer changes what gets produced — a model made to name the procedure emits fewer unfalsifiable sentences, and the ones it does emit arrive labelled as opinion instead of blending in. Confidence cannot do this job: it is self-reported, which makes it an unverifiable claim made by the party it benefits." ;
+    kpred:decided "TWO AXES, NOT A LONGER ENUM. WHAT would settle it (the existing Verifiability) is independent of WHETHER WE CAN RUN THAT SETTLEMENT: 'a cited passage backs it' is decidable when the reference copy was retained (F122) and undecidable when it was not, and the fact has not changed in kind. Proposed second axis — now (a deterministic local check, free, e.g. does this path exist); runnable (a job or suite we own, costing time, e.g. run the test); external (only a third party can settle it, so it carries a source and a checked-on date and it rots — every F134 platform dimension is this); none (no procedure exists, and the honest label is judgement)." ;
+    kpred:decided "'NONE' MAY NEVER BE STATED AS FACT — it is attributed opinion, and it must render as 'X holds that Y', never as Y. This is the same rule kb:honest-status applies to features and the thesis applies to self-attested claims, extended to the statement level. It is also the class most of this repo's own prose belongs to: 'this file looks fragile' is a judgement wearing a script's clothes." ;
+    kpred:decided "SETTLE THE CALCULABLE AUTOMATICALLY; NEVER LET IT SETTLE THE QUALITATIVE. Matt, 2026-08-15: \"High confidence should be automatic, such as \u2018this unit test passes\u2019 does not need verification by humans... However, this is a finished feature, likely needs human UX review. Qualitative response, not calculatable.\" So a claim decomposes: the calculable part is settled by running the check and never enters the queue at all, while the qualitative part cannot be settled by any number of green checks and must reach a person. The failure mode is not that we lack the checks \u2014 it is letting a passing check IMPLY the judgement it cannot make." ;
+    kpred:evidence "F133 IS THE WORKED EXAMPLE, FROM THE SESSION THAT PLANNED THIS. The all-previews modifier shipped with every calculable signal green: 25 unit tests passing, svelte-check 0 errors, a visual test measuring 0.0% thumbnail occlusion, 19/19 script-tier checks clean. Matt then used it and found FOUR defects in minutes \u2014 the nodes vibrated as the constraint fought the simulation, clicking a thumbnail left no way to open node details, the filters did not apply to previews, and the expanded image covered both side panels. Not one was visible to any check that passed, because each was a question about how the thing FEELS to use. Had \u2018tests pass\u2019 been allowed to settle \u2018the feature is finished\u2019, all four would have shipped." ;
+    kpred:decided "STATUS IS A QUALITATIVE CLAIM EVEN WHEN IT RESTS ON CALCULABLE EVIDENCE. scripts/offline/status-evidence.ts already reached this conclusion for one case and corrected itself in writing: an untested `production` feature is a RISK, not a false claim, because kpred:has-status describes maturity and deployment while test coverage is an orthogonal fact. Generalising that: kpred:has-status \u2018functional\u2019 can never be auto-derived from a green suite. What CAN be automated is the surrounding calculable furniture \u2014 does the linked test exist, does it pass, does the file it names still exist \u2014 and the honest output of automating it is a better-prepared question for a human, not an answer instead of one." ;
+    kpred:open-question "Does the EXTRACTOR ask the model to classify, or does a deterministic pass classify afterwards? Asking the model is what forces it to name a falsification method and is the point of the feature — but it also lets a model self-certify its own claim as 'now'-checkable, which is the thing being guarded against. Likely both: the model proposes, a script verifies the proposal by actually running the named check, and disagreement downgrades to unknown. Matt's call." ;
+    kpred:open-question "Is 'external' one class or two? A platform's own spec page and a vendor's marketing claim about its own product are both external, but only one is disinterested. F134 needs the first; competitor-scan already refuses to trust the second." ;
+    kpred:honest-note "PLANNED. The F88 axis is BUILT and tested (verifiability.ts, 202 lines, with review-routing.ts, entity-review.ts and agent-edit-boundary.ts consuming it), and the review page reads it. What does not exist: nothing WRITES Statement.verifiableBy anywhere in src/ — the only reference outside the module is archive.ts reading it back — so the class is re-inferred on every read and never recorded, never corrected, and never improved by a human's decision. No extractor emits it. There is no availability axis at all." .
+
+kb:verifiability-axis kpred:relates-to kb:claim-settlement .
+
+# ─────────────────────────────────────────────────────────────────────────────
+# F136 — Vocabulary grounding. Opened 2026-08-15 by a MEASUREMENT, not a hunch:
+# tests/bench/run-predicate-vocab-bench.ts, which scores the decision
+# normalize-entities.ts makes at write time against real embedding models.
+# ─────────────────────────────────────────────────────────────────────────────
+
+kb:vocabulary-grounding rdf:type ktype:Feature ;
+               kpred:touches-file "src/lib/rdf/normalize-entities.ts" ;
+               kpred:touches-file "src/lib/integrations/llm/extractor.ts" ;
+               kpred:touches-file "tests/bench/run-predicate-vocab-bench.ts" ;
+               kpred:touches-module code:rdf ;
+               kpred:touches-module code:llm ;
+    rdfs:label "Vocabulary grounding — tell the model our words before it guesses its own" ;
+    kpred:feature-id "F136" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:relates-to kb:predicate-economy ;
+    kpred:relates-to kb:triple-extraction ;
+    kpred:relates-to kb:predicate-manager ;
+    kpred:description "Put the graph's EXISTING predicates into the extraction prompt so a local model reaches for a word the graph already uses instead of minting a synonym. Today extraction is vocabulary-blind: the model sees the source text and a schema, never the graph it is writing into, and the cleanup happens afterwards by cosine similarity — a repair job for a problem that could have been avoided at the point of asking." ;
+    kpred:measurement "MEASURED 2026-08-15, qwen3.6 structured extraction on the octopus fixture. Strict ingest F1 26.3%. Decomposed: FACT RECALL 44.4% (8 of 18 golden facts found by subject+object) against VOCABULARY AGREEMENT 62.5% (5 of those 8 also used our predicate). The three disagreements were is-found-in twice (model said has-habitat) and has-heart-count (model said has-number-of-hearts). So roughly a third of what the strict score called failure was the model finding the right fact and calling it something else — and strict F1 charges each of those TWICE, once as a missed golden and once as an unmatched output." ;
+    kpred:principle "MEASURE THE LAYER YOU ARE CLAIMING ABOUT. An ingest F1 that mixes 'could not find the fact' with 'used a different word for it' points at a better model when the actual fix is a better prompt. tests/bench/scoring.ts now reports factRecall and vocabularyAgreement separately and deliberately never averages them into one number." ;
+    kpred:constraint "GROUNDING MUST NOT BECOME A CAGE. A prompt that lists existing predicates and demands the model choose one would suppress genuinely new relations — and a well-formed absence is the most valuable node in the graph (kb:thesis). The list has to be offered as preference, not enumerated as law, and minting a new predicate must stay available and visible in review." ;
+    kpred:open-question "How many predicates fit, and which ones? A mature graph holds 333 predicate types (graph-lint, 2026-08-15) and that will not fit in a small model's prompt. Selecting by embedding similarity to the source text is the obvious route and reuses kb:context-compression, but it is unmeasured — and picking the wrong subset grounds the model in the wrong vocabulary, which is worse than no grounding." ;
+    kpred:honest-note "NOT STARTED. Nothing in src/ puts existing predicates into an extraction prompt. What DOES exist is the after-the-fact repair (normalize-entities.ts) and, as of 2026-08-15, an honest measurement of how well it works — which is: badly, on this problem. See kb:predicate-threshold-limit." .
+
+kb:predicate-threshold-limit rdf:type ktype:Concept ;
+    rdfs:label "Cosine alone cannot separate a synonym from an opposite" ;
+    kpred:relates-to kb:vocabulary-grounding ;
+    kpred:relates-to kb:entity-normalization ;
+    kpred:tested-by "tests/bench/predicate-vocab-scoring.test.ts" ;
+    kpred:description "normalize-entities.ts rewrites an incoming predicate onto an existing one at cosine >= 0.88. Benchmarked against five embedding models on 12 synonym pairs and 12 lexically-similar-but-distinct pairs, EVERY model showed NEGATIVE separation: its worst true synonym scored below its closest distinct pair. No single threshold separates the two classes, so tuning the constant only trades one error for the other." ;
+    kpred:measurement "MEASURED 2026-08-15 via npm run bench:predicates. bge-small-en-v1.5 (the shipped default): 16.7% merge recall, 0% false merges, separation -0.256 — SAFE but nearly inert, and it MISSES the real observed case (has-heart-count/has-number-of-hearts at 0.803, below the 0.88 line). all-MiniLM-L6-v2: 8.3% / 0% / -0.311. nomic-embed-text: 16.7% / 0% / -0.208. gte-small: 66.7% recall but 58.3% FALSE merges. e5-small-v2: 83.3% recall and 75% FALSE merges, scoring has-predator/has-prey at 0.9322 and has-min-weight/has-max-weight at 0.9330." ;
+    kpred:decided "KEEP 0.88 AND DO NOT CHASE RECALL BY LOWERING IT. The distinct pair is-found-in/is-located-in scores 0.8341 with the shipped model — ABOVE the 0.8030 synonym we would be lowering the line to catch. Any threshold low enough to fix the observed vocabulary drift merges a distinction the graph author drew first. The recall belongs at extraction time (F136), not in a similarity threshold." ;
+    kpred:constraint "THE TWO ERRORS COST DIFFERENT AMOUNTS AND MUST NEVER BE AVERAGED. A missed merge leaves a duplicate predicate the review queue still shows a human. A FALSE merge rewrites a fact into a different fact before anyone sees it. Any composite score over the two lets a model buy recall with silent corruption — which is exactly how e5-small-v2 would look like an upgrade." ;
+    kpred:honest-note "THE RANKING IN THE EXISTING EMBEDDING BENCH DOES NOT TRANSFER TO THIS DECISION. Models are compared there on entity similarity in coarse bands (0.7/0.4); a model chosen on that basis could false-merge three quarters of the distinct predicate pairs here. Run npm run bench:predicates BEFORE changing the embedding model, and read the false-merge column first." .
+
+kb:antonym-write-guard rdf:type ktype:Feature ;
+               kpred:touches-file "src/lib/rdf/normalize-entities.ts" ;
+               kpred:touches-file "src/lib/rdf/semantic-diff.ts" ;
+               kpred:touches-module code:rdf ;
+    rdfs:label "Antonym veto on the predicate write path" ;
+    kpred:has-status "functional" ;
+    kpred:relates-to kb:predicate-threshold-limit ;
+    kpred:relates-to kb:entity-normalization ;
+    kpred:tested-by "src/lib/rdf/__tests__/normalize-entities.test.ts" ;
+    kpred:tested-by "src/lib/rdf/__tests__/semantic-diff.test.ts" ;
+    kpred:description "normalize-entities.ts will no longer rewrite a predicate onto an opposed one at any similarity. The check is applied while RANKING candidates rather than after choosing a winner, so a high-scoring antonym is stepped over instead of suppressing a legitimate synonym ranked below it." ;
+    kpred:honest-note "DEFENCE IN DEPTH, NOT A BUG BEING FIXED RETROACTIVELY. With the shipped bge-small model no opposed pair currently reaches 0.88, so nothing in an existing user graph was corrupted by this gap. The guard exists so that CHANGING the embedding model cannot silently start reversing the meaning of facts — and two of the five benchmarked models would do exactly that." ;
+    kpred:remaining "The pair table is a hand-maintained list of 40 pairs. It catches what it names and nothing else — the veto is a floor, not a solution, and the real answer is still F136." .
+
+kb:antonym-pairs-dead-entries rdf:type ktype:Concept ;
+    rdfs:label "Nine antonym pairs that never once fired" ;
+    kpred:relates-to kb:antonym-write-guard ;
+    kpred:description "FOUND 2026-08-15 while building the predicate benchmark. semantic-diff.ts stored antonym pairs in hyphenated form (is-true/is-false) while every caller passed a label from labelFromIRI, which has ALREADY converted hyphens to spaces. So the substring test 'is true'.includes('is-true') was false and NINE of the pairs — including is-true/is-false, the most consequential contradiction a knowledge graph can hold — could never match anything. Fixed by splitting both sides on either separator and comparing whole words." ;
+    kpred:principle "A LOOKUP TABLE IS NOT A CONTROL UNTIL SOMETHING PROVES IT FIRES. These nine entries read correctly, reviewed correctly, and did nothing for as long as they existed, because no test ever asserted a match — only that the surrounding logic behaved given an assumed one. The same shape as a mock-vector test standing in for a real threshold measurement." .

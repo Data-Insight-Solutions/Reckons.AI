@@ -57,13 +57,27 @@ Rules:
 10. excerpt is the verbatim sentence or phrase from the source text that this triple was derived from. Copy it exactly — do not paraphrase.
 11. Consolidate similar facts: if multiple sentences state the same relationship with minor wording differences, emit ONE triple capturing the core fact. Prefer fewer, well-formed triples over many near-duplicates. A 500-word text should typically produce 8–20 triples, not 40.`;
 
-export function buildExtractionUserPrompt(text: string, sourceTitle: string): string {
+/**
+ * @param vocabularySection Optional graph-vocabulary block from
+ *   `buildVocabularySection` (F136). Passing it tells the extractor which predicates and entities
+ *   this graph already uses, so it reaches for an existing word before inventing a synonym —
+ *   measured 2026-08-15, a third of qwen3.6's apparent extraction "failures" were correct facts
+ *   under a different predicate name. Optional and appended LAST on purpose: every existing caller
+ *   keeps its exact prompt bytes, and an empty graph produces an empty section, so a first ingest
+ *   pays nothing for a feature that has nothing to say.
+ */
+export function buildExtractionUserPrompt(
+  text: string,
+  sourceTitle: string,
+  vocabularySection = ''
+): string {
   return `Source: "${sourceTitle}"
 
 Text:
 """
 ${text.slice(0, 12_000)}
 """
+${vocabularySection}
 
 Extract triples now. Respond with a JSON array only.`;
 }

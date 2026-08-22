@@ -48,7 +48,7 @@ KBs (kb_list_kbs to list; query with kb_search / kb_get_entity / kb_compress):
 BEFORE YOU ACT (do not skip):
 - Before editing a TTL graph, kb_get_entity or kb_compress a nearby entity to learn the EXACT prefixes, namespaces, and asset paths. Do not invent them.
 - Before starting a feature, kb_check_plan / kb_search the roadmap — is it planned, in progress, or done?
-- For context, prefer kb_compress(query) over reading raw files (~60-70% fewer tokens, better grounding).
+- For context, prefer kb_compress(query) over reading raw files: it returns a relevant SLICE instead of the whole ~116k-token graph, which is where the saving comes from. The compact encoding adds ~18-29% on top (measured; see compress.ts). Better grounding either way.
 
 HARD CONVENTIONS (getting these wrong breaks the graph):
 - Namespace is urn:kbase: (NOT urn:kabase:). Prefixes: kb: (concept/), kpred: (predicate/), kmeta: (meta/), ktype: (type/) — DECLARE every prefix you use.

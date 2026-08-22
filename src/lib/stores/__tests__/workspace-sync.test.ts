@@ -162,8 +162,12 @@ describe('two-way folder sync — pullFromWorkspace', () => {
       setItem(k: string, v: string) { this._s.set(k, v); },
       removeItem(k: string) { this._s.delete(k); },
     };
-    // Each test starts with a clean revision baseline.
-    (globalThis as any).localStorage.removeItem('reckons:ws-seen-hashes');
+    // Each test starts with a clean revision baseline. The key is scoped per graph, so ask the
+    // module which key it will use rather than hardcoding one.
+    {
+      const { seenHashesKey } = await import('../workspace.svelte');
+      (globalThis as any).localStorage.removeItem(seenHashesKey());
+    }
     fakeDb.workspace.rows.clear();
   });
 
@@ -219,7 +223,9 @@ describe('two-way folder sync — pullFromWorkspace', () => {
     await seedFile(root, ['kbs', 'a', 'a.ttl'], '<a> <b> <c> .');
     await mod.pullFromWorkspace(); // imports 'a', records + persists its hash
 
-    const stored = localStorage.getItem('reckons:ws-seen-hashes');
+    // Scoped per graph: the baseline for graph A must not silently satisfy graph B, which is what
+    // one shared key did — every hash matched, so a second graph imported nothing and stayed empty.
+    const stored = localStorage.getItem(mod.seenHashesKey());
     expect(stored).toBeTruthy();
     expect((JSON.parse(stored!) as [string, string][]).some(([k]) => k.includes('a.ttl'))).toBe(true);
 
@@ -241,10 +247,10 @@ describe('two-way folder sync — pullFromWorkspace', () => {
     mod.__linkHandleForTest(root as any);
     await seedFile(root, ['kbs', 'a', 'a.ttl'], '<a> <b> <c> .');
     await mod.pullFromWorkspace();
-    expect(localStorage.getItem('reckons:ws-seen-hashes')).toBeTruthy();
+    expect(localStorage.getItem(mod.seenHashesKey())).toBeTruthy();
 
     await mod.clearWorkspace();
-    expect(localStorage.getItem('reckons:ws-seen-hashes')).toBeNull();
+    expect(localStorage.getItem(mod.seenHashesKey())).toBeNull();
   });
 
   it('reloads the active KB store when the active KB is updated', async () => {
@@ -271,5 +277,107 @@ describe('two-way folder sync — pullFromWorkspace', () => {
     const mod = await import('../workspace.svelte');
     const r = await mod.pullFromWorkspace();
     expect(r).toEqual({ imported: [], updated: [] });
+  });
+});
+
+describe('writeKbToFolder — holds a write it is not entitled to make', () => {
+  let root: FakeDirHandle;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    registry = [];
+    currentKbId = 'kbase';
+    root = new FakeDirHandle('root');
+    (globalThis as any).window = (globalThis as any).window ?? {};
+    (globalThis as any).localStorage = (globalThis as any).localStorage ?? {
+      _s: new Map<string, string>(),
+      getItem(k: string) { return this._s.get(k) ?? null; },
+      setItem(k: string, v: string) { this._s.set(k, v); },
+      removeItem(k: string) { this._s.delete(k); },
+    };
+    const { seenHashesKey } = await import('../workspace.svelte');
+    (globalThis as any).localStorage.removeItem(seenHashesKey());
+    fakeDb.workspace.rows.clear();
+  });
+
+  const fileAt = (segs: string[]) => {
+    let dir: any = root;
+    for (const s of segs.slice(0, -1)) dir = dir.dirs.get(s);
+    return dir?.files.get(segs[segs.length - 1]);
+  };
+
+  it('refuses to overwrite a file it has never read — the canonical-graph clobber', () => {
+    // Exactly what happened: a graph holding only freshly-drained facts wrote itself over a
+    // canonical roadmap it had no baseline for.
+    return (async () => {
+      const mod = await import('../workspace.svelte');
+      mod.__linkHandleForTest(root as any);
+      await seedFile(root, ['kbs', 'my-kb', 'my-kb.ttl'], '<canonical> <graph> <content> .');
+
+      await mod.writeKbToFolder(mkEntry(), '<our> <partial> <export> .');
+
+      expect(fileAt(['kbs', 'my-kb', 'my-kb.ttl'])!.content).toBe('<canonical> <graph> <content> .');
+      expect(mod.lastWriteHold()).toMatchObject({ held: true, reason: 'diverged' });
+    })();
+  });
+
+  it('holds while a host process holds the lock sentinel', async () => {
+    const mod = await import('../workspace.svelte');
+    mod.__linkHandleForTest(root as any);
+    await seedFile(root, ['kbs', 'my-kb', 'my-kb.ttl'], 'original');
+    await seedFile(root, ['kbs', 'my-kb', 'my-kb.ttl.lock'], '');
+
+    await mod.writeKbToFolder(mkEntry(), 'ours');
+
+    expect(fileAt(['kbs', 'my-kb', 'my-kb.ttl'])!.content).toBe('original');
+    expect(mod.lastWriteHold()).toMatchObject({ held: true, reason: 'locked' });
+  });
+
+  it('writes a brand-new file, since there is nothing to clobber', async () => {
+    const mod = await import('../workspace.svelte');
+    mod.__linkHandleForTest(root as any);
+
+    await mod.writeKbToFolder(mkEntry(), '<fresh> <graph> <a> .');
+
+    expect(fileAt(['kbs', 'my-kb', 'my-kb.ttl'])!.content).toBe('<fresh> <graph> <a> .');
+    expect(mod.lastWriteHold()).toEqual({ held: false });
+  });
+
+  it('writes again over its OWN last write — the baseline still matches', async () => {
+    const mod = await import('../workspace.svelte');
+    mod.__linkHandleForTest(root as any);
+
+    await mod.writeKbToFolder(mkEntry(), 'first');
+    await mod.writeKbToFolder(mkEntry(), 'second');
+
+    expect(fileAt(['kbs', 'my-kb', 'my-kb.ttl'])!.content).toBe('second');
+    expect(mod.lastWriteHold()).toEqual({ held: false });
+  });
+
+  it('holds once someone else edits the file behind us', async () => {
+    const mod = await import('../workspace.svelte');
+    mod.__linkHandleForTest(root as any);
+    await mod.writeKbToFolder(mkEntry(), 'ours-v1');
+
+    // Claude Code / a script / git edits it out from under the app.
+    fileAt(['kbs', 'my-kb', 'my-kb.ttl'])!.content = 'edited by someone else';
+
+    await mod.writeKbToFolder(mkEntry(), 'ours-v2');
+
+    expect(fileAt(['kbs', 'my-kb', 'my-kb.ttl'])!.content).toBe('edited by someone else');
+    expect(mod.lastWriteHold()).toMatchObject({ held: true, reason: 'diverged' });
+  });
+});
+
+describe('drained objects become real terms, not always literals', () => {
+  it('imports a urn: object as an IRI so the fact is an EDGE, not a leaf', async () => {
+    const { partitionPendingJsonl } = await import('../../rdf/pending-entry');
+    const row = JSON.stringify({
+      subject: 'urn:kbase:concept/a', predicate: 'urn:kbase:predicate/depends-on',
+      object: 'urn:kbase:concept/b', objectKind: 'iri', kb: 'roadmap', type: 'suggestion',
+    });
+    const { entries } = partitionPendingJsonl(row, ['roadmap']);
+    expect(entries[0].objectKind).toBe('iri');
+    expect(entries[0].object).toBe('urn:kbase:concept/b');
   });
 });

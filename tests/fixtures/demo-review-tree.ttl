@@ -1,0 +1,213 @@
+@prefix kb:     <urn:kbase:concept/> .
+@prefix kpred:  <urn:kbase:predicate/> .
+@prefix ktype:  <urn:kbase:type/> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+
+# ==============================================================================
+# DEMO GRAPH — the hierarchical review process (F139 / F139.1 / F136.3)
+# ==============================================================================
+#
+# Import this through /ingest → "graph" → "turtle file", then press "import →".
+# Every fact lands PENDING, so the whole graph arrives as review work and /review
+# shows the process end to end.
+#
+# IT LIVES IN tests/fixtures/ RATHER THAN static/ ON PURPOSE. graph-lint scans
+# static/*.ttl, and block 2 below asserts two lifecycle values on one entity
+# deliberately — so shipping it there would make a real check fail for a
+# fictional reason, and a gate that cries wolf gets switched off. Nothing needs
+# it to be served: you pick it from the file dialog.
+#
+# It is a small fictional scenario — a studio deciding how to replatform its
+# website — chosen so nothing here needs knowledge of Reckons.AI to judge.
+#
+# WHAT EACH BLOCK IS FOR. Read this before reviewing, so you can tell whether
+# the process did the right thing rather than merely something:
+#
+#   BLOCK 1  One real DECISION with two options, each priced by the facts it
+#            KILLS (kpred:ruled-out-by). The tree should show both options with
+#            a cost, and assert no winner.
+#   BLOCK 2  A CONTESTED status — two conflicting values on one well-identified
+#            entity, both attested by a person. Accept/reject is the wrong
+#            control for that, so it should be flagged as needing a reckoning.
+#   BLOCK 3  Eleven datestamped work notes on a PLANNED feature. These are noise
+#            individually; they should collapse into ONE yes/no question.
+#   BLOCK 4  Six datestamped notes on work tied to NO planned feature. No yes/no
+#            question can settle these, because what is missing is a reason —
+#            so they should get the "what was the main goal of this work?" prompt.
+#   BLOCK 5  Bookkeeping: file links, test links, relates-to edges. These should
+#            NEVER appear as rows — only as a suppressed count.
+#   BLOCK 6  Judgments and evidence that sit UNDER the decision in block 1.
+#
+# Counts to expect are in the honest-note at the end of this file.
+# ==============================================================================
+
+
+# ── BLOCK 1 — the decision, and what each option costs ────────────────────────
+# The options are NOT described in prose. Each is priced by the facts that die
+# if it wins, which is the only way a cost can be checked rather than asserted.
+
+kb:replatform rdf:type ktype:Feature ;
+    rdfs:label "Replatform the studio website" ;
+    kpred:has-status "in-progress" ;
+    kpred:description "The current site is four years old, hand-rolled, and only two people can safely edit it. Replatforming is agreed; which way is not." ;
+    kpred:open-question "Static site generator, or hosted CMS? The SSG keeps everything in git and costs nothing to run, but every content edit needs someone comfortable with a pull request. The hosted CMS lets the whole studio edit, and puts the content behind someone else's login and export format." ;
+    kpred:decided "Replatforming is happening this quarter. That part is settled — this decision is only about which target." ;
+    kpred:decided "Whatever we choose must keep the existing URLs working. Losing four years of inbound links is not on the table." ;
+    kpred:measured "Content audit, 2026-07-02: 212 pages, of which 61 have been edited in the last year and 9 are edited monthly or more." ;
+    kpred:measured "Two of eleven studio members can currently edit the site without help." .
+
+kb:opt-ssg rdf:type ktype:Concept ;
+    rdfs:label "Static site generator" ;
+    kpred:description "Markdown in git, built on push. No running server, no monthly cost." ;
+    kpred:measured "Hosting quote: $0/month on a static host." .
+
+kb:opt-cms rdf:type ktype:Concept ;
+    rdfs:label "Hosted CMS" ;
+    kpred:description "Content lives in a vendor database with a web editor. Anyone can edit." ;
+    kpred:measured "Hosting quote: $49/month, plus $12/editor/month above five editors." .
+
+# Facts that DIE if the SSG wins — the price of choosing it.
+kb:ev-nontechnical-editing rdf:type ktype:Concept ;
+    rdfs:label "Nine of eleven staff can edit pages themselves" ;
+    kpred:part-of kb:replatform ;
+    kpred:ruled-out-by kb:opt-ssg .
+
+kb:ev-same-day-copy rdf:type ktype:Concept ;
+    rdfs:label "Copy changes go live the same afternoon, without a developer" ;
+    kpred:part-of kb:replatform ;
+    kpred:ruled-out-by kb:opt-ssg .
+
+kb:ev-scheduled-posts rdf:type ktype:Concept ;
+    rdfs:label "Posts scheduled ahead by the studio manager" ;
+    kpred:part-of kb:replatform ;
+    kpred:ruled-out-by kb:opt-ssg .
+
+# Facts that DIE if the CMS wins — the price of choosing that instead.
+kb:ev-content-in-git rdf:type ktype:Concept ;
+    rdfs:label "Content history in git, diffable and revertible" ;
+    kpred:part-of kb:replatform ;
+    kpred:ruled-out-by kb:opt-cms .
+
+kb:ev-zero-running-cost rdf:type ktype:Concept ;
+    rdfs:label "No monthly bill and nothing to renew" ;
+    kpred:part-of kb:replatform ;
+    kpred:ruled-out-by kb:opt-cms .
+
+kb:ev-offline-authoring rdf:type ktype:Concept ;
+    rdfs:label "Writing on a train, with no connection" ;
+    kpred:part-of kb:replatform ;
+    kpred:ruled-out-by kb:opt-cms .
+
+kb:ev-no-vendor-export rdf:type ktype:Concept ;
+    rdfs:label "No dependence on a vendor's export format" ;
+    kpred:part-of kb:replatform ;
+    kpred:ruled-out-by kb:opt-cms .
+
+
+# ── BLOCK 2 — a contested claim between two people ───────────────────────────
+# Two conflicting values on a well-identified entity, neither settleable by any
+# check. One person says the booking flow works; another says what exists is a
+# shell. The 31% completion rate is why it is a real argument rather than an
+# error. Rejecting one row would throw away the reasoning and the argument would
+# simply return, so this should route to a structured reckoning instead.
+#
+# EXPECTED: `npm run offline:lint` reports a conflict on this entity, and that is
+# the point rather than a defect in the demo. FORM checking catches the SHAPE (an
+# entity in two lifecycle states is undefined for every consumer); the review
+# process decides WHICH SIDE IS WRONG, which no checker can do. Both values are
+# valid lifecycle states deliberately, so the only finding is the conflict.
+
+kb:booking-flow rdf:type ktype:Feature ;
+    rdfs:label "Online booking flow" ;
+    kpred:description "The three-step form clients use to book an initial consultation." ;
+    kpred:has-status "functional" ;
+    kpred:has-status "scaffolded" ;
+    kpred:measured "Completion rate 31% over 400 sessions, June 2026." ;
+    kpred:relates-to kb:replatform .
+
+
+# ── BLOCK 3 — eleven work notes, one day, one planned feature ────────────────
+# Individually these are noise: each says only that somebody did something, and
+# the person being asked is the person who did it. One question should settle all.
+
+kb:url-migration rdf:type ktype:Feature ;
+    rdfs:label "URL and redirect migration" ;
+    kpred:has-status "in-progress" ;
+    kpred:description "Preserving all 212 existing URLs through the replatform." ;
+    kpred:depends-on kb:replatform ;
+    kpred:progress "DONE 2026-08-12. Exported the full URL list from the access logs." ;
+    kpred:progress "DONE 2026-08-12. Deduplicated 212 paths down to 197 canonical targets." ;
+    kpred:progress "DONE 2026-08-12. Wrote the redirect map for the 15 collapsed paths." ;
+    kpred:progress "DONE 2026-08-12. Checked the map against the sitemap." ;
+    kpred:progress "DONE 2026-08-12. Fixed four trailing-slash mismatches." ;
+    kpred:progress "DONE 2026-08-12. Added the map to the staging config." ;
+    kpred:progress "DONE 2026-08-12. Spot-checked twenty redirects by hand." ;
+    kpred:progress "DONE 2026-08-12. Corrected two that pointed at the old blog index." ;
+    kpred:progress "DONE 2026-08-12. Re-ran the link checker: zero 404s." ;
+    kpred:progress "DONE 2026-08-12. Noted three external links we cannot control." ;
+    kpred:progress "DONE 2026-08-12. Handed the map to the hosting review." .
+
+
+# ── BLOCK 4 — six notes on work tied to no planned feature ───────────────────
+# Deliberately NOT a ktype:Feature and linked to no plan. A yes/no question
+# cannot settle these, because the missing information is a REASON. The process
+# should ask what the work was FOR — and an answer in your own words should be
+# able to split this into more than one labelled set.
+
+kb:misc-august-work rdf:type ktype:Concept ;
+    rdfs:label "Unattributed August work" ;
+    kpred:progress "DONE 2026-08-14. Upgraded the image pipeline dependency past the deprecation." ;
+    kpred:progress "DONE 2026-08-14. Bumped the two transitive packages it pinned." ;
+    kpred:progress "DONE 2026-08-14. Refreshed the lockfile and re-ran the audit." ;
+    kpred:progress "DONE 2026-08-14. Traced the intermittent gallery blank-out to a race in the loader." ;
+    kpred:progress "DONE 2026-08-14. Reproduced it reliably by throttling the connection." ;
+    kpred:progress "DONE 2026-08-14. Fixed the race and confirmed against the throttled repro." .
+
+
+# ── BLOCK 5 — bookkeeping that must never become a review row ────────────────
+# Structural links and identifiers. Deliberately NOT has-file/tested-by: those
+# are path-checked by graph-lint, and a demo graph inventing source paths would
+# make a real check fail for a fictional reason. relates-to is the better
+# stand-in anyway — it is the single most common suppressed predicate in this
+# repo's own graph at 476 facts, which is exactly why it needed suppressing.
+
+kb:replatform kpred:relates-to kb:booking-flow ;
+    kpred:relates-to kb:url-migration ;
+    kpred:relates-to kb:content-freshness ;
+    kpred:relates-to kb:editor-training ;
+    kpred:page "/work/replatform" ;
+    kpred:order "1"^^xsd:integer .
+
+kb:url-migration kpred:relates-to kb:replatform ;
+    kpred:relates-to kb:booking-flow ;
+    kpred:page "/work/urls" ;
+    kpred:order "2"^^xsd:integer .
+
+kb:booking-flow kpred:relates-to kb:url-migration ;
+    kpred:page "/work/booking" ;
+    kpred:order "3"^^xsd:integer .
+
+# ── BLOCK 6 — judgment and evidence sitting under the decision ───────────────
+
+kb:content-freshness rdf:type ktype:Concept ;
+    rdfs:label "Most pages are not actually maintained" ;
+    kpred:part-of kb:replatform ;
+    kpred:description "151 of 212 pages have not been touched in a year. Whichever platform wins, most of this content should be archived rather than migrated." ;
+    kpred:measured "Pages untouched for over 12 months: 151 of 212, audited 2026-07-02." .
+
+kb:editor-training rdf:type ktype:Concept ;
+    rdfs:label "Training cost is the hidden half of the SSG option" ;
+    kpred:part-of kb:replatform ;
+    kpred:description "Teaching nine people a git workflow is a real cost that the $0 hosting figure hides. Nobody has estimated it." ;
+    kpred:open-question "What would it actually take to get the studio comfortable editing in git — an afternoon, or an ongoing support burden nobody has budgeted for?" .
+
+
+# ── What to expect, so you can tell right from merely plausible ──────────────
+
+kb:demo-review-tree rdf:type ktype:Concept ;
+    rdfs:label "Demo: hierarchical review" ;
+    kpred:description "A fictional website-replatform scenario used to exercise the F139 review tree, the F139.1 cascade lane, and F136.3 structural grounding through the real app paths." ;
+    kpred:honest-note "EXPECTED ON IMPORT: two open decisions (kb:replatform's platform question, and kb:editor-training's unbudgeted-training question). kb:replatform should show TWO options — Static site generator costing 3 facts, Hosted CMS costing 4 — because each option's price is computed from kpred:ruled-out-by rather than described in prose. kb:booking-flow should read as CONTESTED and route to a reckoning, because 'functional' and 'needs-rebuild' are both attested and no check adjudicates between them. The cascade lane should offer ONE question for the eleven 2026-08-12 notes on kb:url-migration, and a PURPOSE question for the six 2026-08-14 notes on kb:misc-august-work, which is tied to no planned feature. The relates-to / page / order bookkeeping should appear only as a suppressed count, never as rows." ;
+    kpred:honest-note "WHAT IS NOT WIRED YET, so do not read its absence as a bug: answering the purpose question does not yet split the set. The re-partition contract is built and tested (exhaustive, disjoint, and every purpose traceable to your own words) but has no caller, so the prompt appears and the answer queues instead of producing two labelled work units." .

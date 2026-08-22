@@ -26,6 +26,20 @@ export interface IngestScore {
   unmatchedOutput: string[];
   /** Golden triples not found in output */
   missedGolden: string[];
+  /**
+   * Recall counting a golden triple as found when the model connected the same SUBJECT to the same
+   * OBJECT, whatever it called the relation. Always >= `recall`.
+   */
+  factRecall: number;
+  /**
+   * Of the golden triples the model found at fact level, the fraction where it ALSO used our
+   * predicate. 1 means perfect agreement with our vocabulary; a low number next to a high
+   * `factRecall` means the model is finding the right facts and calling them something else.
+   * Null when nothing matched at fact level, because a ratio over zero says nothing.
+   */
+  vocabularyAgreement: number | null;
+  /** Golden triples found at fact level but under a different predicate name. */
+  vocabularyMismatches: Array<{ golden: string; outputPredicate: string }>;
 }
 
 export interface ChatTestCase {
@@ -109,6 +123,35 @@ function tripleLabel(t: ExtractedTriple): string {
   return `${t.subject} · ${t.predicate} · ${t.object}`;
 }
 
+/**
+ * Subject and object match, predicate ignored — "did the model connect these two things at all,
+ * whatever it called the relation".
+ *
+ * WHY THIS EXISTS. On 2026-08-15 qwen3.6 scored 42.9% ingest F1 on the octopus fixture, and a
+ * chunk of the loss was `has-number-of-hearts 3` against a golden `has-heart-count 3`. The strict
+ * matcher scored that ONCE as a missed golden triple and AGAIN as an unmatched output — penalised
+ * twice for being right. The number that came out was not "extraction quality", it was agreement
+ * with the predicate vocabulary Opus happened to use, and the two were indistinguishable.
+ *
+ * KNOWN WEAKNESS, stated rather than buried: ignoring the predicate lets genuinely different
+ * relations between the same pair count as one fact. `octopus feeds-on crab` and
+ * `octopus is-eaten-by crab` match here and mean opposite things. So factRecall is an UPPER bound
+ * on extraction quality, not a measurement of it — it is only meaningful read next to
+ * vocabularyAgreement, which is why they are reported together and never combined into one score.
+ */
+function factsMatch(a: ExtractedTriple, b: ExtractedTriple): boolean {
+  const sA = norm(a.subject), sB = norm(b.subject);
+  const oA = norm(String(a.object)), oB = norm(String(b.object));
+  const subjectMatch = tokenOverlap(a.subject, b.subject) >= 0.5 || sA.includes(sB) || sB.includes(sA);
+  const objectMatch = tokenOverlap(String(a.object), String(b.object)) >= 0.5 || oA.includes(oB) || oB.includes(oA);
+  return subjectMatch && objectMatch;
+}
+
+function predicatesMatch(a: ExtractedTriple, b: ExtractedTriple): boolean {
+  const pA = norm(a.predicate), pB = norm(b.predicate);
+  return tokenOverlap(a.predicate, b.predicate) >= 0.5 || pA.includes(pB) || pB.includes(pA);
+}
+
 export function scoreIngest(output: ExtractedTriple[], golden: ExtractedTriple[]): IngestScore {
   const goldenMatched = new Set<number>();
   const outputMatched = new Set<number>();
@@ -136,10 +179,41 @@ export function scoreIngest(output: ExtractedTriple[], golden: ExtractedTriple[]
     .filter((_, i) => !goldenMatched.has(i))
     .map(tripleLabel);
 
+  // ── Fact layer vs vocabulary layer ─────────────────────────────────────────
+  // A second, independent pass: match on subject+object only, then ask separately whether the
+  // predicate agreed. Run over ALL golden triples rather than only the strict misses, so
+  // vocabularyAgreement is a property of the whole fixture and not of what the strict pass left
+  // over.
+  const factMatchedGolden = new Set<number>();
+  const factMatchedOutput = new Set<number>();
+  const vocabularyMismatches: Array<{ golden: string; outputPredicate: string }> = [];
+
+  for (let gi = 0; gi < golden.length; gi++) {
+    for (let oi = 0; oi < output.length; oi++) {
+      if (factMatchedOutput.has(oi)) continue;
+      if (!factsMatch(output[oi], golden[gi])) continue;
+      factMatchedGolden.add(gi);
+      factMatchedOutput.add(oi);
+      if (!predicatesMatch(output[oi], golden[gi])) {
+        vocabularyMismatches.push({
+          golden: tripleLabel(golden[gi]),
+          outputPredicate: output[oi].predicate,
+        });
+      }
+      break;
+    }
+  }
+
+  const factRecall = golden.length > 0 ? factMatchedGolden.size / golden.length : 0;
+  const vocabularyAgreement = factMatchedGolden.size > 0
+    ? (factMatchedGolden.size - vocabularyMismatches.length) / factMatchedGolden.size
+    : null;
+
   return {
     recall, precision, f1,
     matchedCount, goldenCount: golden.length, outputCount: output.length,
-    unmatchedOutput, missedGolden
+    unmatchedOutput, missedGolden,
+    factRecall, vocabularyAgreement, vocabularyMismatches
   };
 }
 
@@ -237,6 +311,20 @@ export function formatReport(r: BenchReport): string {
   lines.push(`\n── INGEST (Triple Extraction) ──`);
   lines.push(`  Precision: ${pct(r.ingest.precision)}  Recall: ${pct(r.ingest.recall)}  F1: ${pct(r.ingest.f1)}`);
   lines.push(`  Matched: ${r.ingest.matchedCount} / ${r.ingest.goldenCount} golden, ${r.ingest.outputCount} total output`);
+
+  // Reported directly under F1 because F1 alone is ambiguous between two very different failures,
+  // and reading it as "extraction quality" sent a previous session shopping for a better model
+  // when the actual gap was vocabulary.
+  lines.push(`\n  Decomposed —`);
+  lines.push(`    Fact recall (subject+object, predicate ignored): ${pct(r.ingest.factRecall)}`);
+  lines.push(`    Vocabulary agreement (of those, our predicate):  ${r.ingest.vocabularyAgreement === null ? 'n/a — nothing matched at fact level' : pct(r.ingest.vocabularyAgreement)}`);
+  if (r.ingest.vocabularyMismatches.length) {
+    lines.push(`    Right fact, different word:`);
+    for (const m of r.ingest.vocabularyMismatches) {
+      lines.push(`      - ${m.golden}   →  model said "${m.outputPredicate}"`);
+    }
+    lines.push(`    ↑ These are found facts, not misses. Strict F1 charges each of them twice.`);
+  }
   if (r.ingest.missedGolden.length) {
     lines.push(`  Missed golden triples:`);
     for (const m of r.ingest.missedGolden) lines.push(`    - ${m}`);

@@ -1,5 +1,66 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { labelFromIRI } from '../semantic-diff';
+import { labelFromIRI, arePredicateLabelsOpposed } from '../semantic-diff';
+
+// ── arePredicateLabelsOpposed (pure, no mocking needed) ──────────────────────
+//
+// This is the label-level opposition check shared by the advisory diff path and the
+// normalize-entities WRITE path. It carries a bug fix worth pinning: the pair table stores
+// hyphenated forms (`is-true`) while every caller passes a label from labelFromIRI, which has
+// already turned hyphens into SPACES. Nine pairs — is-true/is-false among them — therefore matched
+// nothing at all until 2026-08-15. The first test below fails against the old substring matcher.
+
+describe('arePredicateLabelsOpposed', () => {
+  const P = 'urn:kbase:predicate/';
+
+  it.each([
+    ['is-true', 'is-false'],
+    ['is-valid', 'is-invalid'],
+    ['is-active', 'is-inactive'],
+    ['is-present', 'is-absent'],
+    ['is-safe', 'is-dangerous'],
+    ['is-legal', 'is-illegal'],
+    ['is-happy', 'is-sad'],
+    ['is-healthy', 'is-sick'],
+    ['is-rich', 'is-poor'],
+  ])('matches the multi-word pair %s / %s (dead until the separator fix)', (a, b) => {
+    expect(arePredicateLabelsOpposed(P + a, P + b)).toBe(true);
+  });
+
+  it.each([
+    ['has-predator', 'has-prey'],
+    ['has-min-weight', 'has-max-weight'],
+    ['has-ability', 'has-disability'],
+    ['loves', 'hates'],
+    ['enables', 'disables'],
+  ])('matches %s / %s', (a, b) => {
+    expect(arePredicateLabelsOpposed(P + a, P + b)).toBe(true);
+  });
+
+  it('is symmetric', () => {
+    expect(arePredicateLabelsOpposed(P + 'has-prey', P + 'has-predator')).toBe(true);
+  });
+
+  it('catches negation prefixes', () => {
+    expect(arePredicateLabelsOpposed(P + 'is-a', P + 'not-is-a')).toBe(true);
+  });
+
+  it('matches on whole words, so "min" is not read out of "determiner"', () => {
+    // The substring matcher this replaced would call these opposed, because "determiner" contains
+    // "min" — a false veto on a perfectly ordinary predicate.
+    expect(arePredicateLabelsOpposed(P + 'has-determiner', P + 'has-max-value')).toBe(false);
+  });
+
+  it('does not call a predicate the opposite of itself via substring', () => {
+    // "ability" is a substring of "disability"; only whole-word matching keeps this false.
+    expect(arePredicateLabelsOpposed(P + 'has-ability', P + 'has-ability')).toBe(false);
+  });
+
+  it('leaves genuine synonyms alone', () => {
+    expect(arePredicateLabelsOpposed(P + 'has-heart-count', P + 'has-number-of-hearts')).toBe(false);
+    expect(arePredicateLabelsOpposed(P + 'feeds-on', P + 'eats')).toBe(false);
+    expect(arePredicateLabelsOpposed(P + 'has-habitat', P + 'lives-in')).toBe(false);
+  });
+});
 
 // ── labelFromIRI (pure, no mocking needed) ────────────────────────────────────
 

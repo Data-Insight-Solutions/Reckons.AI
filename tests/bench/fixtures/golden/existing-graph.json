@@ -1,0 +1,75 @@
+{
+  "$comment": [
+    "AN EXISTING GRAPH THAT SHARES THE VOCABULARY BUT NONE OF THE FACTS.",
+    "",
+    "WHY THIS SHAPE, AND WHAT IT DOES AND DOES NOT PROVE. Grounding is measured by giving the",
+    "extractor a graph and seeing whether it reuses that graph's predicates. Seeding it with the",
+    "octopus golden triples would be circular — handing over the answer key and then congratulating",
+    "the model for reading it. So every fact here is about a DIFFERENT species: cuttlefish, giant",
+    "squid, nautilus. Not one statement mentions the common octopus, and no object here appears in",
+    "the golden set.",
+    "",
+    "What the predicates share is the RELATIONAL VOCABULARY — has-heart-count, is-found-in,",
+    "feeds-on, has-predator — because that is the real situation the feature exists for: a graph",
+    "that already describes things of this kind, meeting a document about a new one.",
+    "",
+    "STATED PLAINLY SO THE RESULT IS NOT OVERSOLD: this measures 'if the graph already uses our",
+    "words, does the model reuse them?', which is the product scenario. It does NOT measure whether",
+    "a model can guess our vocabulary unaided — it cannot, and that is the whole point of F136.",
+    "",
+    "Every predicate appears at least twice, deliberately: selectVocabulary drops predicates used",
+    "once (graph-lint's finding that 24% of predicate types are private one-offs), so a fixture with",
+    "singletons would silently offer the model nothing and read as a null result."
+  ],
+
+  "statements": [
+    { "s": "common-cuttlefish", "p": "is-a", "o": "marine-mollusk" },
+    { "s": "giant-squid", "p": "is-a", "o": "marine-mollusk" },
+
+    { "s": "common-cuttlefish", "p": "belongs-to-class", "o": "cephalopoda" },
+    { "s": "chambered-nautilus", "p": "belongs-to-class", "o": "cephalopoda" },
+
+    { "s": "common-cuttlefish", "p": "has-scientific-name", "o": "Sepia officinalis" },
+    { "s": "giant-squid", "p": "has-scientific-name", "o": "Architeuthis dux" },
+
+    { "s": "common-cuttlefish", "p": "is-found-in", "o": "north-sea" },
+    { "s": "giant-squid", "p": "is-found-in", "o": "north-pacific-ocean" },
+    { "s": "chambered-nautilus", "p": "is-found-in", "o": "coral-reef-slopes" },
+
+    { "s": "common-cuttlefish", "p": "has-heart-count", "o": "3" },
+    { "s": "giant-squid", "p": "has-heart-count", "o": "3" },
+
+    { "s": "common-cuttlefish", "p": "has-blood-color", "o": "blue" },
+    { "s": "chambered-nautilus", "p": "has-blood-color", "o": "blue" },
+
+    { "s": "giant-squid", "p": "has-neuron-count", "o": "300000000" },
+    { "s": "common-cuttlefish", "p": "has-neuron-count", "o": "500000000" },
+
+    { "s": "common-cuttlefish", "p": "has-weight-range", "o": "1 to 4 kilograms" },
+    { "s": "giant-squid", "p": "has-weight-range", "o": "150 to 275 kilograms" },
+
+    { "s": "common-cuttlefish", "p": "has-lifespan", "o": "1 to 2 years" },
+    { "s": "chambered-nautilus", "p": "has-lifespan", "o": "up to 20 years" },
+
+    { "s": "common-cuttlefish", "p": "feeds-on", "o": "shrimp" },
+    { "s": "giant-squid", "p": "feeds-on", "o": "deep-sea-fish" },
+
+    { "s": "common-cuttlefish", "p": "has-predator", "o": "dolphin" },
+    { "s": "giant-squid", "p": "has-predator", "o": "sperm-whale" },
+
+    { "s": "common-cuttlefish", "p": "has-ability", "o": "camouflage" },
+    { "s": "chambered-nautilus", "p": "has-ability", "o": "buoyancy-control" },
+
+    { "s": "cuttlebone", "p": "enables", "o": "buoyancy-control" },
+    { "s": "siphon", "p": "enables", "o": "jet-propulsion" },
+
+    { "s": "common-cuttlefish", "p": "has-reproductive-strategy", "o": "semelparity" },
+    { "s": "giant-squid", "p": "has-reproductive-strategy", "o": "broadcast-spawning" },
+
+    { "s": "common-cuttlefish", "p": "has-sucker-count-per-arm", "o": "180" },
+    { "s": "giant-squid", "p": "has-sucker-count-per-arm", "o": "300" },
+
+    { "s": "marine-biological-association", "p": "is-located-in", "o": "united-kingdom" },
+    { "s": "hokkaido-university", "p": "is-located-in", "o": "japan" }
+  ]
+}
