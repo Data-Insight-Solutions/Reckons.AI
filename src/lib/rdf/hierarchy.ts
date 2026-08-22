@@ -358,6 +358,26 @@ export function buildHierarchyAnchors(
   const RING_SPACING = 7;  // retained: sets each level's circle size
   const LEVEL_DROP  = 9;   // vertical gap between one level's circle and the next
 
+  /*
+   * DEPTH GROWS DOWNWARD, AND THE TREE IS CENTRED ON THE ORIGIN.
+   *
+   * Two bugs, both reported by looking at it (Matt, 2026-08-21): "the 'root' was down a level and
+   * not at highest level", and "the graph appears below the central focus of the screen and I
+   * needed to manually drag each load."
+   *
+   * 1. INVERTED. This is the 2D layout and KnowledgeGraph2D's worldToScreen does NOT flip y —
+   *    screen y grows downward, canvas-style. Levels were placed at `-d * LEVEL_DROP`, which is
+   *    correct for the 3D twin (y-up) and upside down here: the root sat at the BOTTOM with its
+   *    descendants climbing above it, and the unplaced ring — meant to hang below the tree —
+   *    floated over the top of everything.
+   *
+   * 2. OFF-CENTRE. Levels ran from 0 to ±(maxDepth * LEVEL_DROP), so the tree's centroid was half
+   *    its own height away from the origin the camera frames. Every load needed a manual drag.
+   *    Centring costs one subtraction and removes the drag entirely.
+   */
+  const span = maxDepth * LEVEL_DROP;
+  const yOfDepth = (d: number) => (d * LEVEL_DROP - span / 2) || 0;
+
   /** Radius of the circle a level's nodes sit on — wide enough that they do not collide. */
   const levelRadius = (count: number) => (count <= 1 ? 0 : Math.max(RING_SPACING * 0.55, count * 1.15));
 
@@ -365,7 +385,7 @@ export function buildHierarchyAnchors(
     const iris = byDepth.get(d) ?? [];
     // `|| 0` normalizes the negative zero that -0 * LEVEL_DROP produces at depth 0. Harmless to
     // render, but it makes coordinates compare unequal under Object.is and reads as a sign.
-    const levelY = (-d * LEVEL_DROP) || 0;
+    const levelY = yOfDepth(d);
 
     if (d === 0) {
       // Roots share the top circle. A single root sits at its centre.
@@ -381,7 +401,7 @@ export function buildHierarchyAnchors(
       // descent is legible. The angle is measured about the PARENT LEVEL'S OWN CENTRE, not the
       // world origin — once levels are stacked, atan2 on raw coordinates is dominated by the
       // vertical drop and every parent collapses to roughly the same angle.
-      const parentLevelY = -(d - 1) * LEVEL_DROP;
+      const parentLevelY = yOfDepth(d - 1);
       const parentAngles = new Map<string, number>();
       for (const [key] of anchors) {
         const realIri = keyToIri.get(key);
@@ -463,7 +483,8 @@ export function buildHierarchyAnchors(
     // times the useful area — which reads as "frozen and barely moving" rather than as a layout
     // that simply looks wrong. Rings grow by a fixed step and wrap, so area scales with the square
     // root of the count and the whole figure stays the same order of size as the tree it sits under.
-    const orphanY = -(maxDepth + 1.6) * LEVEL_DROP;
+    // BELOW the tree, which now means a LARGER y — they are unplaced, not superior to the root.
+    const orphanY = yOfDepth(maxDepth + 1.6);
     const PER_RING = 24;
     unplaced.forEach((n, i) => {
       const ring = Math.floor(i / PER_RING);

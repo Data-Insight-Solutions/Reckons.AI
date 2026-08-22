@@ -664,10 +664,22 @@
     const ringRadius = (depth: number, count: number) =>
       depth === 0 && count <= 1 ? 0 : Math.max(SHELL_SPACING * (0.5 + depth * 0.55), count * 1.1);
 
+    /*
+     * CENTRED ON THE ORIGIN. Levels used to run from 0 down to -(maxDepth * LEVEL_DROP), so the
+     * tree's centroid sat half its own height below the point the camera frames — Matt, 2026-08-21:
+     * "the graph appears below the central focus of the screen and I needed to manually drag each
+     * load." Centring costs one subtraction and removes the drag.
+     *
+     * Sign stays NEGATIVE-for-deeper here: three.js Y is up, so the root belongs at the top. (Its
+     * 2D twin in rdf/hierarchy.ts needs the opposite sign, because canvas Y grows downward — that
+     * mismatch is what put the 2D root at the BOTTOM.)
+     */
+    const span = maxDepth * LEVEL_DROP;
+    const yOfDepth3D = (d: number) => (span / 2 - d * LEVEL_DROP) || 0;
+
     for (let d = 0; d <= maxDepth; d++) {
       const iris = byDepth.get(d) ?? [];
-      // three.js Y is up, so descending levels are negative Y. `|| 0` kills the -0 at depth 0.
-      const levelY = (-d * LEVEL_DROP) || 0;
+      const levelY = yOfDepth3D(d);
 
       if (d === 0) {
         // Roots share the top ring; a lone root sits at its centre.
@@ -742,7 +754,8 @@
       // population put hundreds of unplaced nodes on a radius of ~700 against level rings of 7-20,
       // so the tree shrank to a dot and the simulation had to settle bodies across a hundred times
       // the useful area. That presents as a frozen graph, not as a bad-looking one.
-      const orphanY = -(maxDepth + 1.6) * LEVEL_DROP;
+      // Below the tree — which in a y-up scene means a SMALLER y. Unplaced, not superior to the root.
+      const orphanY = yOfDepth3D(maxDepth + 1.6);
       const PER_RING = 24;
       unplaced.forEach((n, i) => {
         const ring = Math.floor(i / PER_RING);

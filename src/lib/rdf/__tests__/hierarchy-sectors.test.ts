@@ -45,8 +45,15 @@ describe('sub-trees get their own sector, with space between them', () => {
   });
 
   it('keeps each branch CONTIGUOUS and leaves a gap to the next one', () => {
-    // Depth 2 is where the six leaves live; LEVEL_DROP is 9, so that level sits at y = -18.
-    const levelY = -18;
+    /*
+     * The RING CENTRE of depth 2 — not a node's own y, which carries its own r*sin(theta) and
+     * would collapse every angle on the level to 0 or pi.
+     *
+     * The tree is centred on the origin (fixed 2026-08-21 so it no longer renders below the
+     * viewport centre), so a level sits at `depth * LEVEL_DROP - (maxDepth * LEVEL_DROP) / 2`.
+     * Here that is 2*9 - (2*9)/2 = 9.
+     */
+    const levelY = 9;
     const aAngles = ['a1', 'a2', 'a3'].map((c) => angleOf(anchors, `${C}${c}`, levelY)).sort((x, y) => x - y);
     const bAngles = ['b1', 'b2', 'b3'].map((c) => angleOf(anchors, `${C}${c}`, levelY)).sort((x, y) => x - y);
 
@@ -91,5 +98,47 @@ describe('sub-trees get their own sector, with space between them', () => {
     expect(placed).toHaveLength(12);
     const uniq = new Set(placed.map((p) => `${p!.x.toFixed(2)},${p!.y.toFixed(2)}`));
     expect(uniq.size, 'children collapsed onto shared positions').toBe(12);
+  });
+});
+
+describe('orientation and framing — the two things a user sees first', () => {
+  // root → two branches → two leaves each: three levels, so both properties are non-trivial.
+  const stmts: Statement[] = [
+    st(`${C}b1`, SKOS_BROADER, `${C}root`),
+    st(`${C}b2`, SKOS_BROADER, `${C}root`),
+    st(`${C}l1`, SKOS_BROADER, `${C}b1`),
+    st(`${C}l2`, SKOS_BROADER, `${C}b1`),
+    st(`${C}l3`, SKOS_BROADER, `${C}b2`),
+    st(`${C}l4`, SKOS_BROADER, `${C}b2`),
+  ];
+  const iris = [...new Set(stmts.flatMap((s) => [s.s.value, s.o.value]))];
+  const anchors = buildHierarchyAnchors(stmts, iris.map((i) => ({ key: K(i) })), []);
+
+  it('puts the ROOT at the highest level, not one down', () => {
+    /*
+     * Matt, 2026-08-21: "the 'root' was down a level and not at highest level."
+     *
+     * These anchors feed the 2D renderer only, and its worldToScreen does NOT flip y — canvas y
+     * grows downward. Levels were placed at `-d * LEVEL_DROP`, correct for the y-up 3D twin and
+     * upside down here, so the root sat at the BOTTOM with its descendants climbing above it.
+     */
+    const rootY = anchors.get(K(`${C}root`))!.y;
+    const everyoneElse = ['b1', 'b2', 'l1', 'l2', 'l3', 'l4'].map((n) => anchors.get(K(`${C}${n}`))!.y);
+    for (const y of everyoneElse) expect(rootY).toBeLessThan(y);
+    // And depth is monotonic: a leaf is below its branch, which is below the root.
+    expect(anchors.get(K(`${C}b1`))!.y).toBeLessThan(anchors.get(K(`${C}l1`))!.y);
+  });
+
+  it('CENTRES the tree on the origin, so it does not render below the viewport', () => {
+    /*
+     * Matt: "the graph appears below the central focus of the screen and I needed to manually drag
+     * each load." Levels ran 0 -> -(maxDepth * LEVEL_DROP), so the centroid sat half the tree's
+     * height from the origin the camera frames.
+     */
+    const ys = [...anchors.values()].map((a) => a.y);
+    const mid = (Math.min(...ys) + Math.max(...ys)) / 2;
+    const span = Math.max(...ys) - Math.min(...ys);
+    // The tree's vertical midpoint is at the origin, within a fraction of one level.
+    expect(Math.abs(mid)).toBeLessThan(span * 0.15);
   });
 });

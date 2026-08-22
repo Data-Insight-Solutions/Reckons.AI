@@ -345,7 +345,14 @@ for (const subject of features) {
       }
     }
   }
-  for (const f of readdirSync('static').filter((x) => x.endsWith('.ttl'))) {
+  /*
+   * NO WORKSPACE AT ALL is not 30 invisible graphs — it is a workspace nobody has built yet.
+   * On a fresh clone (CI included) the symlinks do not exist until setup-reckons-workspace.sh
+   * runs, and reporting every graph as invisible there is precisely the gate crying wolf that
+   * this file warns about elsewhere. The check is about a graph MISSING from a workspace that
+   * exists, so it stays silent when there is nothing to be missing from.
+   */
+  for (const f of linked.size === 0 ? [] : readdirSync('static').filter((x) => x.endsWith('.ttl'))) {
     const abs = path.resolve('static', f);
     if (linked.has(abs)) continue;
     add('warn', 'mcp-invisible', `static/${f}`, `static/${f}`,

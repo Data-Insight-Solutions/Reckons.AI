@@ -1,0 +1,94 @@
+{
+  "schema": "perf-crawl/interactions@1",
+  "finishedAt": "2026-08-22T02:23:46.196Z",
+  "baseUrl": "http://localhost:5173",
+  "renderer": "ANGLE (NVIDIA Corporation, NVIDIA GeForce RTX 3090/PCIe/SSE2, OpenGL 4.5.0)",
+  "throttle": 4,
+  "budgetMs": 1200,
+  "clicks": [
+    {
+      "route": "/",
+      "label": "Getting started →",
+      "settleMs": 0,
+      "longTasks": [],
+      "worstFrame": 150,
+      "changed": true
+    },
+    {
+      "route": "/",
+      "label": "button #1",
+      "settleMs": 1200,
+      "longTasks": [
+        {
+          "duration": 338,
+          "name": "unknown"
+        }
+      ],
+      "worstFrame": 349.99999999999955,
+      "changed": true,
+      "error": "never settled within 1200ms"
+    },
+    {
+      "route": "/",
+      "label": "button #2",
+      "settleMs": 1200,
+      "longTasks": [],
+      "worstFrame": 300,
+      "changed": true,
+      "error": "never settled within 1200ms"
+    },
+    {
+      "route": "/",
+      "label": "button #3",
+      "settleMs": 1200,
+      "longTasks": [],
+      "worstFrame": 166.69999999999982,
+      "changed": true,
+      "error": "never settled within 1200ms"
+    },
+    {
+      "route": "/",
+      "label": "button #4",
+      "settleMs": 1200,
+      "longTasks": [],
+      "worstFrame": 150,
+      "changed": true,
+      "error": "never settled within 1200ms"
+    },
+    {
+      "route": "/",
+      "label": "button #5",
+      "settleMs": 1200,
+      "longTasks": [],
+      "worstFrame": 133.4000000000001,
+      "changed": true,
+      "error": "never settled within 1200ms"
+    },
+    {
+      "route": "/",
+      "label": "button #6",
+      "settleMs": 1200,
+      "longTasks": [],
+      "worstFrame": 100,
+      "changed": true,
+      "error": "never settled within 1200ms"
+    },
+    {
+      "route": "/",
+      "label": "button #7",
+      "settleMs": 1200,
+      "longTasks": [],
+      "worstFrame": 116.70000000000027,
+      "changed": true,
+      "error": "never settled within 1200ms"
+    },
+    {
+      "route": "/",
+      "label": "button #8",
+      "settleMs": 147,
+      "longTasks": [],
+      "worstFrame": 233.4000000000001,
+      "changed": true
+    }
+  ]
+}
