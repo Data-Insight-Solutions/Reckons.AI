@@ -1,0 +1,59 @@
+{
+  "schema": "perf-crawl/1",
+  "finishedAt": "2026-08-20T00:11:26.217Z",
+  "baseUrl": "http://localhost:5173",
+  "renderer": "ANGLE (NVIDIA Corporation, NVIDIA GeForce RTX 3090/PCIe/SSE2, OpenGL 4.5.0)",
+  "softwareRendered": false,
+  "budgetMs": 2500,
+  "longTaskMs": 200,
+  "results": [
+    {
+      "route": "/",
+      "timeToUsable": 955,
+      "longTasks": [],
+      "worstFrame": 83.29999999999995,
+      "medianFrame": 16.699999999999818,
+      "frozenSpans": [],
+      "failures": []
+    },
+    {
+      "route": "/review",
+      "timeToUsable": 10745,
+      "longTasks": [],
+      "worstFrame": 166.70000000000005,
+      "medianFrame": 16.699999999999818,
+      "frozenSpans": [],
+      "failures": [
+        "never became usable within 10000ms",
+        "time-to-usable 10745ms over the 2500ms budget"
+      ]
+    },
+    {
+      "route": "/ingest",
+      "timeToUsable": 1271,
+      "longTasks": [],
+      "worstFrame": 33.299999999999955,
+      "medianFrame": 16.699999999999818,
+      "frozenSpans": [],
+      "failures": []
+    },
+    {
+      "route": "/kb",
+      "timeToUsable": 398,
+      "longTasks": [],
+      "worstFrame": 195.09999999850987,
+      "medianFrame": 16.699999999999818,
+      "frozenSpans": [],
+      "failures": []
+    },
+    {
+      "route": "/settings",
+      "timeToUsable": 1165,
+      "longTasks": [],
+      "worstFrame": 33.200000000000045,
+      "medianFrame": 16.699999999999818,
+      "frozenSpans": [],
+      "failures": []
+    }
+  ]
+}

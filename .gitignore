@@ -91,7 +91,9 @@ reckons-workspace/*.state.ttl
 reckons-workspace/runner.log.jsonl
 # Kernel flock sidecars are intentionally persistent names (the kernel releases ownership on
 # process death). They are coordination artifacts, not evidence or authored workspace content.
-reckons-workspace/*.jsonl.lock
+reckons-workspace/*.json
+reckons-workspace/runs/
+reckons-workspace/knowledge.pending.jsonl.*l.lock
 reckons-workspace/*.state.ttl.lock
 reckons-workspace/kbs/*/*.jsonl.lock
 
@@ -115,3 +117,28 @@ static/kbs/*
 
 # A/B benchmark run artifacts (transcripts + diffs; worktrees live outside the repo)
 .ab/
+
+# ── Local graph workspaces (2026-08-21) ──────────────────────────────────────
+# These are the USER'S graph data, written by the app's folder sync — not source.
+# Ignoring only affects UNTRACKED paths, so the demo/starter fixtures already
+# tracked under kbs/ stay tracked and versioned as before.
+#
+# kbs/button-crawl alone reached 209MB: button-crawl.ts embeds every screenshot as
+# a full data: URI literal. Nothing here belongs in the repository.
+kbs/*
+reckons-workspace/kbs/*
+reckons-workspace/*.json
+reckons-workspace/runs/
+reckons-workspace/knowledge.pending.jsonl.*l
+reckons-workspace/*.json
+reckons-workspace/runs/
+reckons-workspace/knowledge.pending.jsonl.*
+
+# Environment backups. A .env copy is a credential file whatever it is named.
+.env.bak*
+.env.*.bak
+
+# Perf-crawl artifacts: the JSON reports are small and worth keeping as evidence;
+# the recordings and frame dumps beside them run to tens of MB and are not.
+tests/visual/results/perf/*
+!tests/visual/results/perf/*.json

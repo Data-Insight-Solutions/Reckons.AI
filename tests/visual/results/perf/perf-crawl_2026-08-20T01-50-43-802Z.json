@@ -1,0 +1,38 @@
+{
+  "schema": "perf-crawl/1",
+  "finishedAt": "2026-08-20T01:50:43.802Z",
+  "baseUrl": "http://localhost:4173",
+  "renderer": "ANGLE (NVIDIA Corporation, NVIDIA GeForce RTX 3090/PCIe/SSE2, OpenGL 4.5.0)",
+  "softwareRendered": false,
+  "budgetMs": 2500,
+  "longTaskMs": 200,
+  "results": [
+    {
+      "route": "flow:docs",
+      "timeToUsable": 2144,
+      "longTasks": [
+        {
+          "duration": 1165,
+          "name": "unknown"
+        },
+        {
+          "duration": 474,
+          "name": "unknown"
+        },
+        {
+          "duration": 296,
+          "name": "unknown"
+        }
+      ],
+      "worstFrame": 1633.3,
+      "medianFrame": 16.699999999999818,
+      "frozenSpans": [],
+      "failures": [
+        "long task 1165ms blocked the main thread (unknown)",
+        "long task 474ms blocked the main thread (unknown)",
+        "long task 296ms blocked the main thread (unknown)"
+      ],
+      "harnessError": null
+    }
+  ]
+}
