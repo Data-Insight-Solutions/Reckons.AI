@@ -22,6 +22,7 @@ import { readFileSync, existsSync, readdirSync } from 'fs';
 import path from 'path';
 import { Parser, type Quad } from 'n3';
 import { transactPendingQueue } from './pending-queue.js';
+import { readTextOr } from '../lib/read-file.js';
 
 const raw = process.argv.slice(2);
 const flag = (n: string) => raw.find((a) => a.startsWith(`--${n}=`))?.split('=').slice(1).join('=');
@@ -115,7 +116,7 @@ const NOW = new Date().toISOString();
 // Idempotence must key on the ENTITY, not on the draft text — otherwise a re-run
 // (new model, tweaked prompt) queues a second competing proposal for the same entity.
 const alreadyQueued = new Set(
-  (existsSync(PENDING) ? readFileSync(PENDING, 'utf8') : '')
+  (readTextOr(PENDING, ''))
     .split('\n')
     .filter(Boolean)
     .flatMap((l) => {

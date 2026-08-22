@@ -27,6 +27,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import path from 'path';
 import { Parser, Writer, DataFactory, type Quad } from 'n3';
+import { readTextOr } from '../lib/read-file.js';
 
 const { namedNode, literal, quad } = DataFactory;
 
@@ -217,7 +218,7 @@ if (isMain) {
   const rendered = renderMarkdown(findings);
 
   if (argv.includes('--check')) {
-    const current = existsSync(MD) ? readFileSync(MD, 'utf8') : '';
+    const current = readTextOr(MD, '');
     if (current !== rendered) {
       console.error(`${MD} is STALE — it no longer matches reckons-workspace/digest.ttl.`);
       console.error(`The graph is the source. Run: npx tsx scripts/agent/digest-graph.ts --render`);

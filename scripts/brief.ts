@@ -22,6 +22,7 @@ import { existsSync, readFileSync } from 'fs';
 import { Parser } from 'n3';
 import { inspectPendingJsonl } from '../src/lib/rdf/pending-entry.js';
 import { formatFirstPullRequest } from './lib/brief-data.js';
+import { readTextOr } from './lib/read-file.js';
 
 const B = '\x1b[1m', D = '\x1b[2m', G = '\x1b[32m', Y = '\x1b[33m', R = '\x1b[31m', X = '\x1b[0m';
 const JSON_OUT = process.argv.includes('--json');
@@ -76,7 +77,7 @@ const readJsonl = (f: string): any[] =>
     : [];
 
 const pendingInspection = inspectPendingJsonl(
-  existsSync(PENDING) ? readFileSync(PENDING, 'utf8') : '',
+  readTextOr(PENDING, ''),
 );
 const pending = pendingInspection.entries;
 const answered = new Set(readJsonl(ANSWERS).map((a) => `${a.subject}|${a.predicate}`));

@@ -33,10 +33,11 @@
  *   OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/distill-decisions.ts --limit=5
  *   … --graph=static/reckons-roadmap.ttl --model=qwen3-coder:latest --dry --pending
  */
-import { readFileSync, existsSync, appendFileSync } from 'fs';
+import { readFileSync, appendFileSync } from 'fs';
 import { readGraph } from './read-graph.js';
 import { buildReviewTree, distillationRequest, validateProposedOptions, questionText } from '../../src/lib/rdf/review-tree.js';
 import type { DistillationRequest, ProposedOptions } from '../../src/lib/rdf/review-tree.js';
+import { readTextOr } from '../lib/read-file.js';
 
 const B = '\x1b[1m', D = '\x1b[2m', G = '\x1b[32m', Y = '\x1b[33m', C = '\x1b[36m', R = '\x1b[31m', X = '\x1b[0m';
 
@@ -195,7 +196,7 @@ if (allRejections.length) {
 // ── EMIT — proposals only. Nothing here is a fact until a person says so. ───
 if (PENDING_OUT && emit.length) {
   const now = new Date().toISOString();
-  const existing = existsSync(PENDING) ? readFileSync(PENDING, 'utf8') : '';
+  const existing = readTextOr(PENDING, '');
   let queued = 0;
   for (const e of emit) {
     const note = `[distill/${MODEL}] option for "${e.question.slice(0, 90)}"${e.consequence ? ` — ${e.consequence}` : ''}`;
