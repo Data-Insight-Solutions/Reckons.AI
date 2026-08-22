@@ -5,6 +5,7 @@
   // renaming a standard-vocabulary term rewrote it into our namespace, renaming onto an
   // existing predicate silently merged, and merging created duplicate statements.
   import { listPredicates, planRename, planMerge, type PredicateInfo } from '$lib/rdf/predicates';
+  import { focusOnMount } from '$lib/actions/focus-on-mount';
 
   const predicates = $derived(listPredicates(statements()));
 
@@ -153,7 +154,7 @@
                   type="text"
                   class="rename-input mono"
                   bind:value={renameValue}
-                  autofocus
+                  use:focusOnMount
                   disabled={processing}
                 />
                 <button type="submit" class="sm primary" disabled={processing}>

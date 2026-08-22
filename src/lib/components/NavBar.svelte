@@ -63,7 +63,14 @@
 <svelte:window onclick={closePopup} />
 
 {#if analyzeOpen}
-  <div class="analyze-popup" role="menu" aria-label="Analysis actions" onclick={(e) => e.stopPropagation()}>
+  <div
+    class="analyze-popup"
+    role="menu"
+    tabindex="-1"
+    aria-label="Analysis actions"
+    onclick={(e) => e.stopPropagation()}
+    onkeydown={(e) => e.stopPropagation()}
+  >
     {#each analysisActions as action}
       <button
         class="popup-item"

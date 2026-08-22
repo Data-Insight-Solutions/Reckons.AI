@@ -275,6 +275,7 @@
     }
     nodes = [...nodeMap.values()];
     edges = e;
+    reheat(); // new topology is a new layout problem
   });
 
   // ── Layout builders ─────────────────────────────────────────────────────────
@@ -643,34 +644,44 @@
       });
     }
 
-    const SHELL_SPACING = 7;
+    // STACKED RINGS, not concentric shells.
+    //
+    // Depth used to be radius: every level a sphere around a common centre. In 3D that buries the
+    // shallow levels INSIDE the deep ones — the roots end up at the middle of the ball, hidden
+    // behind everything that depends on them, and "prerequisite" has no visible direction.
+    //
+    // Now each level is a ring in the horizontal plane and depth descends the vertical axis, so the
+    // tree reads as a cone: level 0 is a small ring on top, and each level below is further down AND
+    // wider. Ring size grows with depth as well as population, which is what makes the widening
+    // legible rather than a stack of same-sized discs.
+    const SHELL_SPACING = 7;   // retained: base unit for ring size
+    const LEVEL_DROP    = 9;   // vertical gap between one level's ring and the next
     const anchors = new Map<string, THREE.Vector3>();
     const markers: LayoutMarker[] = [];
     const parentAngles = new Map<string, { theta: number; phi: number }>();
 
+    /** Ring radius for a level: widens with depth, and with how many nodes must fit on it. */
+    const ringRadius = (depth: number, count: number) =>
+      depth === 0 && count <= 1 ? 0 : Math.max(SHELL_SPACING * (0.5 + depth * 0.55), count * 1.1);
+
     for (let d = 0; d <= maxDepth; d++) {
       const iris = byDepth.get(d) ?? [];
+      // three.js Y is up, so descending levels are negative Y. `|| 0` kills the -0 at depth 0.
+      const levelY = (-d * LEVEL_DROP) || 0;
+
       if (d === 0) {
-        // Roots at center — slight spread if multiple
-        if (iris.length === 1) {
-          const key = iriToKey.get(iris[0]);
+        // Roots share the top ring; a lone root sits at its centre.
+        const r = ringRadius(0, iris.length);
+        iris.forEach((iri, i) => {
+          const theta = (2 * Math.PI * i) / iris.length;
+          const key = iriToKey.get(iri);
           if (key) {
-            anchors.set(key, new THREE.Vector3(0, 0, 0));
-            parentAngles.set(iris[0], { theta: 0, phi: Math.PI / 2 });
+            anchors.set(key, new THREE.Vector3((r * Math.cos(theta)) || 0, levelY, (r * Math.sin(theta)) || 0));
+            parentAngles.set(iri, { theta, phi: Math.PI / 2 });
           }
-        } else {
-          iris.forEach((iri, i) => {
-            const theta = (2 * Math.PI * i) / iris.length;
-            const r = SHELL_SPACING * 0.5;
-            const key = iriToKey.get(iri);
-            if (key) {
-              anchors.set(key, new THREE.Vector3(r * Math.cos(theta), r * Math.sin(theta), 0));
-              parentAngles.set(iri, { theta, phi: Math.PI / 2 });
-            }
-          });
-        }
+        });
       } else {
-        const r = d * SHELL_SPACING;
+        const r = ringRadius(d, iris.length);
         // Group children by parent for sector allocation
         const groups = new Map<string, string[]>();
         for (const iri of iris) {
@@ -684,35 +695,35 @@
           const pAngle = parentAngles.get(pIri) ?? { theta: 0, phi: Math.PI / 2 };
           const sector = (2 * Math.PI * children.length) / Math.max(totalChildren, 1);
           const startTheta = pAngle.theta - sector / 2;
-          // Spread phi (elevation) across children to use 3D space
-          const phiSpread = Math.min(Math.PI * 0.4, Math.PI * 0.8 / Math.max(children.length, 1));
-          const basePhi = pAngle.phi;
 
+          // Children keep their parent's BEARING around the ring, so a branch descends in one
+          // direction instead of scattering. Elevation is no longer a free axis to spread across:
+          // it now means depth, and nudging a node off its level would misreport its position in
+          // the tree — the one thing this layout exists to show.
           children.forEach((iri, i) => {
             const theta = children.length === 1
               ? pAngle.theta
               : startTheta + (i + 0.5) * (sector / children.length);
-            const phi = children.length === 1
-              ? basePhi
-              : basePhi + (i - (children.length - 1) / 2) * phiSpread / children.length;
 
-            const x = r * Math.sin(phi) * Math.cos(theta);
-            const y = r * Math.sin(phi) * Math.sin(theta);
-            const z = r * Math.cos(phi);
             const key = iriToKey.get(iri);
             if (key) {
-              anchors.set(key, new THREE.Vector3(x, y, z));
-              parentAngles.set(iri, { theta, phi });
+              anchors.set(
+                key,
+                new THREE.Vector3((r * Math.cos(theta)) || 0, levelY, (r * Math.sin(theta)) || 0),
+              );
+              parentAngles.set(iri, { theta, phi: pAngle.phi });
             }
           });
         }
       }
 
-      // Shell ring marker for each depth level
+      // One label per level, sitting AT that level. These were all pinned to the origin, which
+      // read correctly when a level was a shell around it; with levels stacked, every label would
+      // pile up at the top ring and name the wrong rings.
       if (d > 0) {
         markers.push({
           key: `hierarchy-ring-${d}`,
-          pos: new THREE.Vector3(0, 0, 0),
+          pos: new THREE.Vector3(0, levelY, 0),
           label: `Layer ${maxDepth - d}`,
           color: '#f59e0b',
           kind: 'cluster'
@@ -720,18 +731,29 @@
       }
     }
 
-    // Place unplaced nodes in outer shell
+    // Nodes the hierarchy says nothing about get their own ring below the cone — not an outer
+    // shell, which would wrap the whole tree and read as its deepest, widest level. They are
+    // unplaced, not subordinate. Also no longer randomized: a layout that moves every time it is
+    // recomputed cannot be read, and jitter here was hiding that these nodes have no place at all.
     const placedKeys = new Set(anchors.keys());
     const unplaced = nodes.filter(n => !placedKeys.has(n.key));
     if (unplaced.length > 0) {
-      const outerR = (maxDepth + 2) * SHELL_SPACING;
+      // Bounded concentric rings — see the 2D twin in rdf/hierarchy.ts. Sizing ONE ring by
+      // population put hundreds of unplaced nodes on a radius of ~700 against level rings of 7-20,
+      // so the tree shrank to a dot and the simulation had to settle bodies across a hundred times
+      // the useful area. That presents as a frozen graph, not as a bad-looking one.
+      const orphanY = -(maxDepth + 1.6) * LEVEL_DROP;
+      const PER_RING = 24;
       unplaced.forEach((n, i) => {
-        const theta = (2 * Math.PI * i) / unplaced.length;
-        const phi = Math.PI / 2 + (Math.random() - 0.5) * 0.5;
+        const ring = Math.floor(i / PER_RING);
+        const idx = i % PER_RING;
+        const inRing = Math.min(PER_RING, unplaced.length - ring * PER_RING);
+        const r = SHELL_SPACING * (1 + ring * 0.6);
+        const theta = (2 * Math.PI * idx) / inRing;
         anchors.set(n.key, new THREE.Vector3(
-          outerR * Math.sin(phi) * Math.cos(theta),
-          outerR * Math.sin(phi) * Math.sin(theta),
-          outerR * Math.cos(phi)
+          (r * Math.cos(theta)) || 0,
+          orphanY,
+          (r * Math.sin(theta)) || 0,
         ));
       });
     }
@@ -840,6 +862,7 @@
 
   // Rebuild layout anchors whenever layout mode or relevant graph data changes
   $effect(() => {
+    reheat(); // anchors are about to move, so the nodes have somewhere new to go
     if (layout === 'focus') {
       const { anchors, radii, distances } = buildFocusAnchors();
       activeAnchors = anchors;
@@ -919,9 +942,30 @@
   });
   let _labelFrame = 0;
 
+  /* ── COOLING SCHEDULE (F141) — see the long note in KnowledgeGraph2D.svelte ─────
+   *
+   * Same defect, same fix, and this is the renderer that matters most because 3D is the DEFAULT
+   * (settings.prefer2D is false). Measured on a production build, RTX 3090: 110 lines took 8.7s to
+   * settle, 451 lines never settled inside 45s. There was no termination condition — only a constant
+   * per-frame DAMP, with forces re-injecting energy forever.
+   *
+   * Alpha scales the FORCES only; damping and position integration keep raw dt. Below the floor the
+   * physics is skipped entirely, so a settled graph stops costing an O(n^2) repulsion pass per frame.
+   */
+  const SIM_ALPHA_DECAY = 0.0228;
+  const SIM_ALPHA_MIN   = 0.001;
+  let simAlpha = 1;
+  /** Put energy back only when the layout problem genuinely changed — see reheat() in the 2D file. */
+  function reheat(to = 1) { simAlpha = Math.max(simAlpha, to); }
+
   useTask((delta) => {
     recordFrame(delta);
     const dt = Math.min(delta, 0.05);
+    // Skip the whole simulation once cooled: a settled graph must not run an O(n^2) repulsion
+    // pass every frame forever. This is the gate that turns "finished" into "stopped".
+    if (simAlpha >= SIM_ALPHA_MIN) {
+    /** Force timestep, scaled by the cooling schedule. Damping and integration use raw dt. */
+    const fdt = dt * simAlpha;
     const REPEL      = 1.6;
     const SPRING     = layout === 'force' ? 0.18 : 0.10;
     const CENTER     = activeAnchors.size > 0 ? 0.008 : 0.04;
@@ -961,8 +1005,8 @@
         const dx = a.pos.x - b.pos.x, dy = a.pos.y - b.pos.y, dz = a.pos.z - b.pos.z;
         const d2 = dx * dx + dy * dy + dz * dz + 0.01;
         const f = REPEL / d2, inv = 1 / Math.sqrt(d2);
-        a.vel.x += dx * inv * f * dt; a.vel.y += dy * inv * f * dt; a.vel.z += dz * inv * f * dt;
-        b.vel.x -= dx * inv * f * dt; b.vel.y -= dy * inv * f * dt; b.vel.z -= dz * inv * f * dt;
+        a.vel.x += dx * inv * f * fdt; a.vel.y += dy * inv * f * fdt; a.vel.z += dz * inv * f * fdt;
+        b.vel.x -= dx * inv * f * fdt; b.vel.y -= dy * inv * f * fdt; b.vel.z -= dz * inv * f * fdt;
       }
     }
 
@@ -977,8 +1021,8 @@
       let rest = BASE_REST * e.semanticDist;
       if (collageOn) rest = Math.max(rest, radiusOf(e.a) + radiusOf(e.b));
       const f = (d - rest) * SPRING;
-      e.a.vel.x += (dx / d) * f * dt * 8; e.a.vel.y += (dy / d) * f * dt * 8; e.a.vel.z += (dz / d) * f * dt * 8;
-      e.b.vel.x -= (dx / d) * f * dt * 8; e.b.vel.y -= (dy / d) * f * dt * 8; e.b.vel.z -= (dz / d) * f * dt * 8;
+      e.a.vel.x += (dx / d) * f * fdt * 8; e.a.vel.y += (dy / d) * f * fdt * 8; e.a.vel.z += (dz / d) * f * fdt * 8;
+      e.b.vel.x -= (dx / d) * f * fdt * 8; e.b.vel.y -= (dy / d) * f * fdt * 8; e.b.vel.z -= (dz / d) * f * fdt * 8;
     }
 
     for (const n of nodes) {
@@ -986,14 +1030,14 @@
       if (activeAnchors.size > 0) {
         const anchor = activeAnchors.get(n.key);
         if (anchor) {
-          n.vel.x += (anchor.x - n.pos.x) * anchorStrength * dt;
-          n.vel.y += (anchor.y - n.pos.y) * anchorStrength * dt;
-          n.vel.z += (anchor.z - n.pos.z) * anchorStrength * dt;
+          n.vel.x += (anchor.x - n.pos.x) * anchorStrength * fdt;
+          n.vel.y += (anchor.y - n.pos.y) * anchorStrength * fdt;
+          n.vel.z += (anchor.z - n.pos.z) * anchorStrength * fdt;
         }
       }
-      n.vel.x += -n.pos.x * CENTER * dt;
-      n.vel.y += -n.pos.y * CENTER * dt;
-      n.vel.z += -n.pos.z * CENTER * dt;
+      n.vel.x += -n.pos.x * CENTER * fdt;
+      n.vel.y += -n.pos.y * CENTER * fdt;
+      n.vel.z += -n.pos.z * CENTER * fdt;
       n.vel.multiplyScalar(DAMP);
       n.pos.x += n.vel.x; n.pos.y += n.vel.y; n.pos.z += n.vel.z;
 
@@ -1036,6 +1080,13 @@
         { lockX: LOCK_TIMELINE_X, strength: 1, iterations: 12, basis },
       );
     }
+
+    // Cool. Below the floor everything above — repulsion, springs, integration and the F133
+    // collage correction — stops running. Edge geometry below still updates, so the last frame
+    // rendered is the settled one.
+    simAlpha += (0 - simAlpha) * SIM_ALPHA_DECAY;
+    if (simAlpha < SIM_ALPHA_MIN) simAlpha = 0;
+    } // end if (simAlpha >= SIM_ALPHA_MIN) — cooled, simulation at rest
 
     if (lineGeom) {
       const limit = Math.min(edges.length, MAX_EDGES);

@@ -209,7 +209,10 @@ if (PENDING_OUT && problems.length) {
     problems.map((f) => ({
       subject: f.host === 'n8n' ? 'urn:kbase:concept/n8n-cloud-sync' : 'urn:kbase:concept/int-indico',
       predicate: `${KPRED}server-health`,
-      question: `[server-health/${f.host}/${f.check}] ${f.msg}`,
+      // The probe already ran and already knows the condition — filing it as an object-less
+      // question asked a human to answer something the script was holding the answer to.
+      object: `${f.host}: ${f.check}`,
+      note: `[server-health/${f.host}/${f.check}] ${f.msg}`,
       // DEFECT, not drift: the graph's claim about these servers is correct — the world is
       // what is broken, so the fix lands in the infrastructure and never in the graph.
       findingClass: 'defect',

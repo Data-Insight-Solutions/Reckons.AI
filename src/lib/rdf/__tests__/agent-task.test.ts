@@ -54,6 +54,7 @@ function task(over: Partial<AgentTask> = {}): AgentTask {
     goal: 'do the thing',
     tier: 'script',
     harness: 'any',
+    effects: ['read-only'],
     doneWhen: 'npm run align exits 0',
     blockedBy: [],
     state: 'open',
@@ -71,7 +72,11 @@ describe('parseTasks', () => {
       st(T, `${KPRED}goal`, 'fix the filter'),
       st(T, `${KPRED}tier`, 'local-agent'),
       st(T, `${KPRED}done-when`, 'tests pass'),
+      st(T, `${KPRED}effect`, 'queue-write'),
+      st(T, `${KPRED}context-query`, 'review orchestration'),
+      st(T, `${KPRED}context-budget`, '1400'),
       st(T, `${KPRED}blocked-by`, 'urn:kbase:concept/q1'),
+      st(T, `${KPRED}task-state`, 'waiting'),
     ];
     // The o for rdf:type must be an IRI for the type match; force it.
     (stmts[0].o as any) = { kind: 'iri', value: AGENT_TASK_TYPE };
@@ -81,7 +86,43 @@ describe('parseTasks', () => {
     expect(t.tier).toBe('local-agent');
     expect(t.doneWhen).toBe('tests pass');
     expect(t.blockedBy).toEqual(['urn:kbase:concept/q1']);
+    expect(t.effects).toEqual(['queue-write']);
+    expect(t.unknownEffects).toEqual([]);
+    expect(t.contextQuery).toBe('review orchestration');
+    expect(t.contextBudget).toBe(1400);
+    expect(t.state).toBe('waiting');
     expect(t.harness).toBe('any'); // default: any competent harness
+  });
+
+  it('retains an unknown effect so the contract violation cannot disappear during parsing', () => {
+    const stmts = [
+      st(T, RDF_TYPE, AGENT_TASK_TYPE),
+      st(T, `${KPRED}goal`, 'fix the filter'),
+      st(T, `${KPRED}tier`, 'script'),
+      st(T, `${KPRED}done-when`, 'tests pass'),
+      st(T, `${KPRED}effect`, 'read-only'),
+      st(T, `${KPRED}effect`, 'teleport-write'),
+    ];
+    (stmts[0].o as any) = { kind: 'iri', value: AGENT_TASK_TYPE };
+
+    const [parsed] = parseTasks(stmts);
+    expect(parsed.effects).toEqual(['read-only']);
+    expect(parsed.unknownEffects).toEqual(['teleport-write']);
+    expect(blockedReason(parsed, allResolved)).toMatch(/unknown effect declaration: teleport-write/);
+  });
+});
+
+describe('effect declarations are mandatory and closed', () => {
+  it('refuses a task with no declared effect', () => {
+    const unbounded = task({ effects: [] });
+    expect(blockedReason(unbounded, allResolved)).toMatch(/no effect declaration/);
+    expect(runnableTasks([unbounded], allResolved)).toHaveLength(0);
+  });
+
+  it('defensively rejects an unknown effect supplied by an untyped caller', () => {
+    const untyped = task({ effects: ['read-only', 'mystery-write'] as AgentTask['effects'] });
+    expect(blockedReason(untyped, allResolved)).toMatch(/unknown effect declaration: mystery-write/);
+    expect(runnableTasks([untyped], allResolved)).toHaveLength(0);
   });
 });
 

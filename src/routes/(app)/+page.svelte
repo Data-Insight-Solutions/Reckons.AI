@@ -10,6 +10,7 @@
   import GraphLabels from '$lib/components/GraphLabels.svelte';
   import { copyText } from '$lib/utils/clipboard';
   import AssetGlbViewer from '$lib/components/AssetGlbViewer.svelte';
+  import { focusOnMount } from '$lib/actions/focus-on-mount';
   import StatementCard from '$lib/components/StatementCard.svelte';
   import LandingPage from '$lib/components/LandingPage.svelte';
   import SourcesPanel from '$lib/components/SourcesPanel.svelte';
@@ -375,12 +376,20 @@
 
   // Sync view state → URL whenever it changes (replaceState: no history entry)
   $effect(() => {
-    const params = new URLSearchParams();
+    // Start from the CURRENT params, not an empty set. Rebuilding from scratch dropped every
+    // param this block does not itself write — `?kb=` above all, which names the graph being
+    // looked at. Opening a link to a specific graph and then touching any view control silently
+    // rewrote the URL to one that no longer said which graph it was.
+    const params = new URLSearchParams($page.url.searchParams);
     if (layout !== 'force') params.set('layout', layout);
-    if (selected) params.set('sel', selected);
-    if (activeFilters.size > 0) params.set('f', [...activeFilters].join(','));
-    if (selectedSources.size > 0) params.set('src', [...selectedSources].join(','));
-    if (selectedTypes.size > 0) params.set('types', [...selectedTypes].join(','));
+    else params.delete('layout');
+    // Each of these must DELETE when empty. Rebuilding from scratch got that for free; carrying
+    // the existing params forward does not, and a filter param left behind after the filter is
+    // cleared would reapply it on the next load.
+    if (selected) params.set('sel', selected); else params.delete('sel');
+    if (activeFilters.size > 0) params.set('f', [...activeFilters].join(',')); else params.delete('f');
+    if (selectedSources.size > 0) params.set('src', [...selectedSources].join(',')); else params.delete('src');
+    if (selectedTypes.size > 0) params.set('types', [...selectedTypes].join(',')); else params.delete('types');
     const qs = params.toString();
     replaceState(qs ? `?${qs}` : '?', {});
   });
@@ -1979,7 +1988,10 @@
 
   <!-- FORCE -->
   <div class="overlay-group">
-    <span class="group-label mono">force</span>
+    <!-- "layout", not "force". The group was named after ONE of the options inside it, so the
+         heading and the first chip said the same word while meaning different things — and the
+         other seven options were not forces at all. -->
+    <span class="group-label mono">layout</span>
     <ToggleGroup.Root
       type="single"
       value={layout}
@@ -1999,7 +2011,7 @@
       <!-- value stays "order" (URL/state); label is "arrange" so it isn't
            confused with structural hnav ordering — this is a manual drag grid. -->
       <ToggleGroup.Item value="order" class="tg-chip" title="Hand-arrange nodes on a grid — drag to reorder (basis for page layout)"><span class="lbl mono">arrange</span></ToggleGroup.Item>
-      <ToggleGroup.Item value="hierarchy" class="tg-chip" title="Hierarchical tree from broader/narrower and nav order"><span class="lbl mono">tree</span></ToggleGroup.Item>
+      <ToggleGroup.Item value="hierarchy" class="tg-chip" title="Hierarchical tree — prerequisites above, from skos:broader and kpred:depends-on"><span class="lbl mono">tree</span></ToggleGroup.Item>
     </ToggleGroup.Root>
     {#if podMode}
       <span class="pod-indicator mono" title="Pod view is on — arrivals from your currents drift in translucent until you accept them. Toggle it on the Graph tab.">🐋 pod</span>
@@ -2153,17 +2165,22 @@
       {@const a = nodeAssetFor(iriFromNodeKey(n.key))}
       {#if a}
         {@const dims = `width: ${nodePreviewSize}px; height: ${nodePreviewSize}px;`}
-        <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions a11y_no_static_element_interactions a11y_media_has_caption -->
-        {#if a.kind === 'image'}
-          <img class="node-preview-thumb" src={a.url} alt="" loading="lazy" style={dims}
-            onclick={(e) => { e.stopPropagation(); openNodeFromThumb(n.key); }} />
-        {:else if a.kind === 'video'}
-          <video class="node-preview-thumb" src={a.url} muted loop autoplay playsinline style={dims}
-            onclick={(e) => { e.stopPropagation(); openNodeFromThumb(n.key); }}></video>
-        {:else}
-          <div class="node-preview-thumb glb-badge" style={dims}
-            onclick={(e) => { e.stopPropagation(); openNodeFromThumb(n.key); }}>◈ 3D</div>
-        {/if}
+        <button
+          type="button"
+          class="node-preview-thumb"
+          class:glb-badge={a.kind === 'glb'}
+          style={dims}
+          aria-label={`Open asset for ${n.label}`}
+          onclick={(e) => { e.stopPropagation(); openNodeFromThumb(n.key); }}
+        >
+          {#if a.kind === 'image'}
+            <img src={a.url} alt="" loading="lazy" />
+          {:else if a.kind === 'video'}
+            <video src={a.url} muted loop autoplay playsinline></video>
+          {:else}
+            ◈ 3D
+          {/if}
+        </button>
       {/if}
     {/if}
   {/snippet}
@@ -2235,7 +2252,7 @@
 {/if}
 
 <!-- Asset viewer — LARGE: covers most of the graph; clicking the surrounding
-     graph (not the image) collapses to normal; clicking the image → fullscreen. -->
+     graph (not the asset) collapses to normal; its labelled image/3D control opens fullscreen. -->
 {#if expandedAsset && !assetFullscreen}
   <!-- Centred in the space BETWEEN the side panels, not on the whole viewport. `inset: 0` plus
        max-width:80vw put the image under the filter panel on the left and the node-details panel
@@ -2247,13 +2264,21 @@
     style="--gutter-left: {assetGutters.left}px; --gutter-right: {assetGutters.right}px;"
     transition:fade={{ duration: 140 }}
   >
-    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions a11y_media_has_caption a11y_no_static_element_interactions -->
     {#if expandedAsset.kind === 'image'}
-      <img src={expandedAsset.url} alt="expanded asset" onclick={() => (assetFullscreen = true)} />
+      <button type="button" class="asset-expand-control" aria-label="View image fullscreen" onclick={() => (assetFullscreen = true)}>
+        <img src={expandedAsset.url} alt="expanded asset" />
+      </button>
     {:else if expandedAsset.kind === 'video'}
       <video class="asset-media" src={expandedAsset.url} controls autoplay loop playsinline></video>
     {:else}
-      <div class="asset-media asset-glb" onclick={() => (assetFullscreen = true)}>
+      <div
+        class="asset-media asset-glb"
+        role="button"
+        tabindex="0"
+        aria-label="View 3D asset fullscreen"
+        onclick={() => (assetFullscreen = true)}
+        onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); assetFullscreen = true; } }}
+      >
         {#key expandedAsset.url}<AssetGlbViewer url={expandedAsset.url} />{/key}
       </div>
     {/if}
@@ -2267,19 +2292,33 @@
 <!-- Asset viewer — FULLSCREEN: images, video, and 3D/GLB. Click the backdrop to
      step back to large; ✕ or Esc closes. -->
 {#if expandedAsset && assetFullscreen}
-  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div class="asset-fullscreen" onclick={() => (assetFullscreen = false)} transition:fade={{ duration: 140 }}>
-    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions a11y_media_has_caption -->
+  <div
+    class="asset-fullscreen"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Fullscreen asset"
+    tabindex="-1"
+    onclick={(event) => { if (event.target === event.currentTarget) assetFullscreen = false; }}
+    onkeydown={(event) => {
+      if (event.key === 'Escape') {
+        // The window handler owns the next Escape (large → closed). Keep this first Escape
+        // inside the dialog so fullscreen steps back to large instead of collapsing both.
+        event.stopPropagation();
+        assetFullscreen = false;
+      }
+    }}
+    transition:fade={{ duration: 140 }}
+  >
     {#if expandedAsset.kind === 'image'}
-      <img src={expandedAsset.url} alt="fullscreen asset" onclick={(e) => e.stopPropagation()} />
+      <img src={expandedAsset.url} alt="fullscreen asset" />
     {:else if expandedAsset.kind === 'video'}
-      <video class="asset-fs-media" src={expandedAsset.url} controls autoplay loop playsinline onclick={(e) => e.stopPropagation()}></video>
+      <video class="asset-fs-media" src={expandedAsset.url} controls autoplay loop playsinline></video>
     {:else}
-      <div class="asset-fs-media asset-glb" onclick={(e) => e.stopPropagation()}>
+      <div class="asset-fs-media asset-glb">
         {#key expandedAsset.url}<AssetGlbViewer url={expandedAsset.url} />{/key}
       </div>
     {/if}
-    <button class="asset-fs-close" onclick={collapseAsset} title="Close (Esc)">✕</button>
+    <button class="asset-fs-close" use:focusOnMount onclick={collapseAsset} title="Close (Esc)">✕</button>
   </div>
 {/if}
 
@@ -2323,7 +2362,7 @@
             bind:value={labelDraft}
             onkeydown={onLabelKeydown}
             onblur={saveLabel}
-            autofocus
+            use:focusOnMount
           />
         {:else}
           <button class="np-label-btn" onclick={startEditLabel} title="click to edit label">
@@ -2480,7 +2519,7 @@
                 placeholder={newLinkKind === 'url' ? 'https://…' : '/path/to/file'}
                 bind:value={newLinkValue}
                 onkeydown={onLinkKeydown}
-                autofocus
+                use:focusOnMount
               />
               <div class="link-add-buttons">
                 <button class="primary" onclick={saveLink} disabled={!newLinkValue.trim()}>save</button>
@@ -2507,7 +2546,7 @@
             placeholder="https://…/model.glb"
             bind:value={icon3dDraft}
             onkeydown={(e) => { if (e.key === 'Enter') saveEntityIcon3d(); if (e.key === 'Escape') { editingIcon3d = false; icon3dDraft = ''; } }}
-            autofocus
+            use:focusOnMount
           />
           <div class="link-add-buttons">
             <button class="primary" onclick={saveEntityIcon3d} disabled={!icon3dDraft.trim()}>save</button>
@@ -2581,7 +2620,7 @@
             placeholder="https://…/icon.svg or /path/to/icon.png"
             bind:value={icon2dDraft}
             onkeydown={(e) => { if (e.key === 'Enter') saveEntityIcon2d(); if (e.key === 'Escape') { editingIcon2d = false; icon2dDraft = ''; } }}
-            autofocus
+            use:focusOnMount
           />
           <div class="link-add-buttons">
             <button class="primary" onclick={saveEntityIcon2d} disabled={!icon2dDraft.trim()}>save</button>
@@ -2640,9 +2679,11 @@
               {@const slug = predIri.split('/').pop() ?? predIri}
               {@const inputType = predicateInputType(predIri)}
               {@const currentVal = schemaFieldValues.get(predIri) ?? ''}
+              {@const inputId = `schema-field-${encodeURIComponent(predIri)}`}
               <div class="schema-field-row">
-                <label class="schema-field-label mono">{slug}</label>
+                <label class="schema-field-label mono" for={inputId}>{slug}</label>
                 <input
+                  id={inputId}
                   class="schema-field-input mono"
                   type={inputType}
                   value={currentVal}
@@ -2683,7 +2724,7 @@
               placeholder="Graph ID, URL, or app path"
               bind:value={newLeapId}
               onkeydown={(e) => { if (e.key === 'Enter') saveLeap(); if (e.key === 'Escape') { addingLeap = false; newLeapId = ''; newLeapLabel = ''; } }}
-              autofocus
+              use:focusOnMount
             />
             <input
               class="link-input"
@@ -2918,17 +2959,6 @@
     border-top: 1px solid var(--line);
     padding-top: 0.5rem;
   }
-  .pkg-disclosure > summary {
-    cursor: pointer;
-    list-style: none;
-    user-select: none;
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-  }
-  .pkg-disclosure > summary::-webkit-details-marker { display: none; }
-  .pkg-disclosure > summary:hover { color: var(--accent); }
-
   .group-label {
     font-size: 0.52rem;
     text-transform: uppercase;
@@ -3093,14 +3123,6 @@
     display: flex;
     gap: 1rem;
     margin-top: 0.5rem;
-  }
-  .empty .wordmark {
-    font-family: var(--font-display);
-    font-size: 2.8rem;
-    font-weight: 700;
-    color: var(--accent);
-    letter-spacing: -0.03em;
-    margin: 0;
   }
   .tagline {
     font-size: 0.85rem;
@@ -3686,9 +3708,24 @@
     border: 1px solid var(--line);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
     background: var(--surface);
+    padding: 0;
     pointer-events: auto;
     cursor: zoom-in;
     transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .node-preview-thumb > img,
+  .node-preview-thumb > video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+  }
+  .node-preview-thumb:focus-visible,
+  .asset-expand-control:focus-visible,
+  .asset-glb:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
   .node-preview-thumb:hover {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
@@ -3724,6 +3761,16 @@
     pointer-events: auto;
     cursor: zoom-in;
   }
+  .asset-expand-control {
+    max-width: 100%;
+    max-height: 78vh;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    pointer-events: auto;
+    cursor: zoom-in;
+  }
+  .asset-expand-control img { display: block; }
   .asset-media { display: block; }
   /* GLB canvas needs explicit dimensions (threlte fills its container). */
   .asset-glb {
@@ -3788,7 +3835,9 @@
     justify-content: center;
     background: rgba(6, 6, 10, 0.92);
     backdrop-filter: blur(4px);
-    z-index: 600;
+    /* A fullscreen asset is a task-modal surface. It must outrank transient notification
+       controls (z-700/701), or the bell sits over the close button and traps pointer users. */
+    z-index: 800;
     cursor: zoom-out;
   }
   .asset-fullscreen img {

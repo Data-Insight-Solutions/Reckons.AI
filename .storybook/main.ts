@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
- * Storybook 8 config for Reckons.AI.
+ * Storybook 10 config for Reckons.AI.
  *
  * Key concern: SvelteKit-specific modules ($app/state, $app/stores, etc.)
  * do not exist outside the SvelteKit runtime. We alias them to lightweight

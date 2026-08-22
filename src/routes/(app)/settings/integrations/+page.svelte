@@ -445,12 +445,13 @@
 
   <div class="pref-row">
     <div class="pref-group">
-      <label class="pref-label mono">compute preference</label>
-      <div class="seg">
+      <span id="compute-preference-label" class="pref-label mono">compute preference</span>
+      <div class="seg" role="group" aria-labelledby="compute-preference-label">
         {#each ['local-first', 'balanced', 'cloud-first'] as mode}
           <button
             class="seg-btn"
             class:active={prefMode === mode}
+            aria-pressed={prefMode === mode}
             onclick={() => { prefMode = mode as typeof prefMode; updateSettings({ providerPreference: mode } as any); }}
           >{mode}</button>
         {/each}
@@ -463,12 +464,13 @@
     </div>
 
     <div class="pref-group">
-      <label class="pref-label mono">offline capability</label>
-      <div class="seg">
+      <span id="offline-capability-label" class="pref-label mono">offline capability</span>
+      <div class="seg" role="group" aria-labelledby="offline-capability-label">
         {#each [['none','no offline'], ['cpu','cpu / wasm'], ['gpu','gpu / ollama']] as [val, label]}
           <button
             class="seg-btn"
             class:active={offlineTier === val}
+            aria-pressed={offlineTier === val}
             onclick={() => { offlineTier = val as typeof offlineTier; updateSettings({ offlineTier: val } as any); }}
           >{label}</button>
         {/each}

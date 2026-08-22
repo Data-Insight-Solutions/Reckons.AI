@@ -101,8 +101,10 @@ kb:transformers-js rdf:type ktype:Library ;
 # There is NO purpose declaration, NO T&C tier-unlock, NO context field — because
 # CONTEXT IS NEVER AN INPUT TO THE GATE. Nobody can talk their way past a gate that
 # asks no question. The blackmailer who wraps their material in a plausible paragraph
-# about their novel has nothing to wrap it in. It also means no accounts, no server, no
-# PII, no retention duty, and no age-verification exposure — the app stays local-first.
+# about their novel has nothing to wrap it in. It also means no accounts, graph-content
+# backend, identity record, or age-verification exposure FOR THIS DISTRIBUTION PATH. The
+# voluntary feedback form is a separate maintainer-facing PII/retention path (F20) and
+# must never be used to support the stronger claim that DIS receives no user content.
 
 kb:nemo-speech rdf:type     ktype:Feature ;
                rdfs:label   "NVIDIA NeMo Speech" ;
@@ -632,7 +634,7 @@ kb:subscription-cost-awareness rdf:type ktype:Feature ;
     rdfs:label "Cost-aware subscriptions — warn before a watch becomes a bill" ;
     kpred:feature-id "F124" ;
     kpred:has-status "planned" ;
-    kpred:depends-on kb:source-reference-copy ;
+    kpred:relates-to kb:source-reference-copy ;
     kpred:relates-to kb:currents ;
     kpred:relates-to kb:source-discovery ;
     kpred:relates-to kb:capability-awareness ;
@@ -1383,6 +1385,7 @@ kb:work-tiering rdf:type       ktype:Feature ;
                kpred:relates-to   kb:offline-align-review ;
                kpred:relates-to   kb:session-tokens ;
                kpred:description  "Every recurring task is routed to the cheapest tier that can do it correctly, decided by the first test it passes: (1) SCRIPT — the answer is checkable by a rule (does this path exist, does this parse, is this status in the enum), so it is deterministic code, zero tokens, zero hallucination, runs in CI and fails loudly; (2) LOCAL AGENT — the answer is judgment over language and being wrong is cheap because the output is a PROPOSAL a human gates (first-pass code review, description drafting, staleness reads), always emitted to knowledge.pending.jsonl, never to source; (3) OPUS — cross-file architectural reasoning, deciding the process, triaging the queue the other tiers fill, and writing code that lands. Opus designs the harness; the local model is a plugin inside it (ground -> prompt -> validate -> emit-proposal, per the PR #43 devstral salvage). Promotion ladder: anything Opus does twice becomes an agent job or a script; anything an agent gets right RELIABLY is demoted to a script, because reliability proves the rule was expressible." ;
+               kpred:progress     "2026-08-17 audit-reliability slice: the published-graph guard now distinguishes asserted app Statements from exporter provenance RDF triples, and the hand-written claim audit recognizes explicit capability absence without hiding negated-property claims. Ten focused deterministic tests cover the checked-in public graph, provenance/advisory accounting, repeated mentions, clause boundaries, absence, and scoped negative properties. The new helper/test files remain untracked inside the broader review patch, so formal has-file/tested-by edges are deliberately deferred until the commit that first tracks them." ;
                kpred:remaining    "Grow the script tier: graph-lint (dead has-file/tested-by links, status enum, feature-id collisions, dangling depends-on) + convention lint (ETHICS_PREAMBLE presence, CSS vars, americanize --check) + pending.jsonl schema/dedupe validation." ;
                kpred:remaining    "Agent tier: local description drafting for entities whose kpred:description is missing or stale vs the code." ;
                kpred:measured     "Tracked by npm run session:tokens (kb:session-tokens) — the metric that says whether a tier move actually saved anything." ;
@@ -1417,6 +1420,7 @@ kb:tier-script-ci rdf:type     ktype:Phase ;
                kpred:has-status   "functional" ;
                kpred:description  "The script tier runs on every push/PR (ci.yml, job `script-tier`) and FAILS the build when a job marked blocking:true fails. jobs.json carries the `blocking` flag; run-all.ts has a `--ci` mode that exits non-zero. Blocking today: published-graph-guard (static/knowledge.ttl IS the public graph — the one failure you cannot take back once pushed) and build-guard (a dev-mode artifact must never deploy). Everything else reports and queues findings without gating, because a diagnostic that fails the build on every finding gets switched off, and then it protects nothing." ;
                kpred:correction   "CORRECTED 2026-07-14, and the correction is the lesson. This shipped ADVISORY for one day because published-graph-guard reported '166 test-harness terms' in the published graph. THE FINDING WAS FALSE: the guard banned `urn:reckons:story/`, which is the PRODUCT'S OWN guided-story vocabulary (src/lib/rdf/story.ts, used by the landing page and TurtleChatPanel, declared in reckons-production.ttl). The real harness namespace is `urn:reckons:test/`, and it appears ZERO times. The published graph was clean the entire time. An unverified finding, believed and repeated across three commit messages, kept a real gate switched off — an unverifiable claim treated as evidence, which is the exact failure this product exists to refuse. We committed it against ourselves." ;
+               kpred:correction   "CORRECTED 2026-08-17: the honest-header check compared the exporter's app-Statement header with every RDF triple parsed by N3. Because toTurtle emits two provenance decorations per Statement, the honest 221-statement header was falsely compared with 663 RDF triples. The guard now reports both units, compares the header with 221 asserted Statements, excludes the derived content-advisory triple, and applies a recalibrated 100-Statement catastrophic-truncation floor to the logical unit instead of relying on provenance inflation. This is regression-covered against the checked-in public graph." ;
                kpred:principle    "A finding is a CLAIM. A tool that reports a violation is a party with an interest in having found one. Verify the finding before you act on it — especially when acting on it means weakening a control." .
 
 kb:tier-local-agent rdf:type   ktype:Concept ;
@@ -1430,6 +1434,7 @@ kb:tier-local-agent rdf:type   ktype:Concept ;
                kpred:exemplar     "scripts/offline/describe-entities.ts" ;
                kpred:honest-note  "THE TIER'S REAL FAILURE MODE IS NOT BEING INVOKED. On 2026-07-18 a session read the tiering doctrine in CLAUDE.md at startup and then ran an entire multi-hour audit, test-authoring and feature build at Opus tier — with Ollama up on localhost:11434 the whole time and qwen3-coder idle. This is the SAME shape as the 2026-07-14 note on kb:tier-script ('a free tier that no trigger invokes displaces no tokens'), recurring one tier down: the doctrine was written, agreed and ignored, because prose describing a principle does not cause a command to be run. Fixed by giving CLAUDE.md a RUN-THESE table of literal commands with triggers rather than philosophy. Measured value when it finally ran: 22 findings on one branch, roughly a third actionable — including a genuine graph-wipe path in restoreSnapshot that Opus wrote and missed." ;
                kpred:harness      "ground -> prompt -> validate -> emit-proposal. The model never runs free: the script grounds it in the graph, constrains the prompt, validates the output (rejecting hedges, placeholders, and invented file paths), and emits a reviewable proposal. Local models hallucinate conventions and mangle serialization (PR #43 devstral salvage), so the harness — not the model — is the deliverable." ;
+               kpred:progress     "2026-08-16 extraction-ledger continuation used qwen3-coder:latest only through localhost for read-only diff review. One earlier lifecycle finding was repaired; later claimed parser arithmetic and direct-Turtle defects were independently rejected with focused tests. No local-model output was queued, promoted, or permitted to edit source/TTL. The useful residual is architectural: an adapter that returns only parsed triples cannot reveal its pre-filter losses, so model-facing extraction adapters need metadata-bearing result contracts before routing treats their validation counts as complete." ;
                kpred:description  "A local Ollama model fills a judgment hole inside a scripted harness. Because output is always a gated proposal, a wrong answer costs a click in the Review tab rather than a bad commit." .
 
 kb:tier-claude-code rdf:type   ktype:Concept ;
@@ -1628,8 +1633,8 @@ kb:session-2026-07-12 rdf:type ktype:Decision ;
                kpred:decision     "WORK TIERING (kb:work-tiering, F74.3): route every recurring task to the cheapest tier that can do it correctly — script (rule-checkable, zero tokens, zero triage) > local agent (judgment over language, proposals only, inside a ground/prompt/validate/emit harness) > Claude Code (hardware-bound, cross-file reasoning, decides process, writes code that lands). Offloading is NOT free: a noisy local job moves cost from generation to triage. Prefer growing the SCRIPT tier. Promotion ladder: what Opus does twice becomes a job; what an agent gets right reliably becomes a script." ;
                kpred:decision     "RDF FORMAT (kb:rdf-dataset-migration, F75): TriG in, Turtle out. Readers accept TriG (done); files stay .ttl with a default graph; .trig only when a KB genuinely carries >1 source. Grounded in kb:provenance-model — a named graph on a single-source KB is ceremony carrying zero information." ;
                kpred:decision     "EGRESS (kb:data-egress-model): export is a RIGHT, distribution is a PRIVILEGE. Plain-text export of the user's own graph is never blocked; gates apply only where Reckons.AI is the intermediary carrying content to someone else. graph-lint enforces BOTH directions." ;
-               kpred:decision     "ADULT CONTENT — OPTION C (kb:adult-content-policy, F66.1): gate only what we carry. No mediated distribution channel for adult content; authoring, storage and export unimpeded. Deletes the gameable attestation entirely — context is never an input to the gate, so there is nothing to lie about. No accounts, no server, no PII, no age-verification surface." ;
-               kpred:decision     "SAFETY RECORD (scripts/offline/safety-attestation.ts): the app can retain no evidence about USERS (no server, no accounts, no logs), so it retains verified evidence about the SOFTWARE — a dated, git-chained, weekly attestation that the good-faith controls exist and still pass. Records failures deliberately; a log that only records success is worthless as evidence." ;
+               kpred:decision     "ADULT CONTENT — OPTION C (kb:adult-content-policy, F66.1): gate only what we carry. No mediated distribution channel for adult content; authoring, storage and export unimpeded. Deletes the gameable attestation entirely — context is never an input to the gate, so there is nothing to lie about. No product accounts, graph-content backend, identity record or age-verification surface FOR THIS PATH. The F20 feedback endpoint is a separate voluntary PII path with its own notice/retention duties." ;
+               kpred:decision     "SAFETY RECORD (scripts/offline/safety-attestation.ts): the app retains no identity record for graph activity or publishing, so it retains verified evidence about the SOFTWARE — a dated, hash-linked, weekly attestation that the good-faith controls exist and still pass. The hosted remote/CI history supplies timing evidence; git history alone can be rewritten, so 'cannot be backdated' is too strong. Records failures deliberately; a log that only records success is worthless as evidence. The separate F20 feedback path does not establish who authored a graph." ;
                kpred:decision     "PUBLISHING (kb:byo-static-host, F76): never a registrar, never a host. Ease of self-hosting is a SAFETY-POLICY dependency — 'export it and self-host' is only a fair answer if self-hosting is genuinely easy." ;
                kpred:relates-to   kb:work-tiering ;
                kpred:relates-to   kb:rdf-dataset-migration ;
@@ -1754,7 +1759,9 @@ kb:async-orchestration rdf:type ktype:Feature ;
                rdfs:label   "Async orchestration (agents ask the graph, not the human)" ;
                kpred:feature-id   "F80" ;
                kpred:has-status   "in-progress" ;
+               kpred:tested-by    "scripts/agent/__tests__/async-loop.test.ts" ;
                kpred:honest-note  "Corrected 2026-07-14: this said `planned` while phases 1 and 3 were already SHIPPED and passing 15 tests (scripts/agent/ask.ts, answers.ts, digest.ts — used daily). kb:honest-status cuts BOTH ways: a roadmap that understates is still a roadmap you cannot trust, and it was about to be the source for public marketing copy. Still genuinely outstanding: phase 2 (blocked-vs-unblocked work) and phase 4 (the visual test of the ask/answer loop)." ;
+               kpred:progress     "QUEUE ROUTING HARDENED 2026-08-16 after auditing the real 421-row file. src/lib/rdf/pending-entry.ts now validates the JSONL boundary and drainWorkspacePending consumes only a schema-valid row that explicitly names the active graph. Other-target, unscoped, malformed and invalid rows are retained verbatim; `medium` remains a supported legacy priority normalized to `normal`. Repository audit producers now target roadmap by default, kb-align targets production, and npm run brief reports total/valid/invalid/malformed/untargeted counts. Focused evidence: 49 tests passed. LEGACY DATA IS NOT MIGRATED: 418 schema-valid current rows still lack kb and are deliberately held until assigned; 3 rows have invalid type values. No current queue row was rewritten or deleted." ;
                kpred:relates-to   kb:partial-facts ;
                kpred:relates-to   kb:work-tiering ;
                kpred:relates-to   kb:review-workbench ;
@@ -2129,10 +2136,11 @@ kb:orch-harness-adapter rdf:type ktype:Phase ;
 kb:orch-claim-lease rdf:type   ktype:Phase ;
                rdfs:label   "Phase 3 — claims, leases, and surviving a usage limit" ;
                kpred:part-of      kb:agent-orchestration ;
+               kpred:has-status   "functional" ;
                hnav:order   3 ;
                kpred:description  "The moment more than one runner drains one queue, two of them will take the same task. A task therefore carries kpred:claimed-by + kpred:claim-expires (a LEASE, not a lock — a runner that dies must not hold a task forever). When a harness stops on a usage limit, the lease lapses and the task returns to the queue for a different harness. This is the concrete mechanism behind 'a harness must be replaceable mid-task'." ;
                kpred:learned-from "unsnooze exists ENTIRELY because agent sessions die on usage limits and nothing notices. Our queue currently has no concept of a harness running out of budget — a task handed to Claude Code at a limit boundary would simply stop, and the graph would say it was in progress forever. That is the same silent-failure class as the cron that fired and produced nothing." ;
-               kpred:remaining    "kpred:claimed-by / kpred:claim-expires; lease expiry sweep; graph-lint check for tasks claimed by a runner that has not reported in." .
+               kpred:remaining    "HOST RUNNER FUNCTIONAL, BROADER RUNTIMES REMAIN (2026-08-17). scripts/agent/runner.ts now claims under Linux kernel flock, rereads attempts/due/state inside the lock, fences renew/completion with a random claim token plus an unexpired lease, persists WAITING question keys, fails closed on corrupt state, and atomically replaces state/receipt/context files. Deterministic process tests hold the lock until two runners have both selected one task, then prove exactly one command executes. Remaining: the in-app Worker has no equivalent claim store; multi-host claims need a shared backend rather than a host file; graph-lint still needs the abandoned-claim check." .
 
 kb:orch-jobs-to-ttl rdf:type   ktype:Phase ;
                rdfs:label   "Phase 4 — jobs.json becomes a graph" ;
@@ -2168,6 +2176,8 @@ kb:local-orchestration rdf:type ktype:Feature ;
                kpred:has-file     "scripts/agent/runner.ts" ;
                kpred:has-file     "src/lib/rdf/agent-task.ts" ;
                kpred:tested-by    "src/lib/rdf/__tests__/agent-task.test.ts" ;
+               kpred:progress     "WAVE 0 HARDENING IMPLEMENTED, UNCOMMITTED (2026-08-17). Success is commandExit=0 AND verificationExit=0; button/visual/review tasks verify schema-versioned fresh reports rather than mtime; receipts bind HEAD plus staged, unstaged and untracked worktree state; state claims and the host pending queue use short flock transactions plus fsync/atomic rename; claim tokens and live leases fence stale completions; WAITING survives pending-row drain through durable subject|predicate keys. The focused evidence is 12 files / 139 tests, including deterministic two-process runner and queue races; npm check is 0 errors / 4 pre-existing warnings. New helper/test files are still untracked in the broad patch, so formal has-file/tested-by edges wait for the commit that first tracks them." ;
+               kpred:progress     "MCP CONTEXT CONSUMING PROOF (2026-08-17). The corrected standing kb_compress query returned F81/local-orchestration, 8,561 characters, SHA-256 b26d3ab851e98c02e5558f62fad9520327bd4f8a35f7be2a36628a4d9a410c63, and no F108.3. qwen3-coder then consumed exactly those bytes while reviewing runner.ts and tasks.ttl: 2/2 files over five complete bounded chunks, zero omitted/failed/truncated, and the independent report verifier recomputed both source and consumed hashes. QUALITY LIMIT: it emitted 13 candidate lines; the cap retained one false positive claiming the already-present --graph guard was missing. Transport/evidence is now credible; proposal precision is not." ;
                kpred:proof        "Schedules live in the GRAPH (reckons-workspace/schedules.ttl, ktype:Schedule). `npm run schedule` reads the TTL, reports what is due, runs the due ones, and writes last-run/next-due back — verified end to end: a schedule executed `orchestrate --json` and its state was tracked. kpred:every is an INTERVAL, not cron: the next due time is computed from when it actually ran, so a machine asleep for a week wakes owing one run, not seven. Whatever triggers it (cron, systemd, unsnooze, a human) reads the graph to know what to do — the plan is not baked into a crontab nobody can diff. MODEL BATCHING (2026-07-15): a task declares kpred:model, and orderForModelBatching runs same-model local-agent tasks CONSECUTIVELY — Ollama + RAM cannot switch models cheaply, so keeping one model warm across its whole batch avoids a reload between every task. Script tier stays first (free, no model); the sort is stable so priority within a model is preserved. 5 tests; the runner logs each model-batch boundary because every boundary is a real reload." ;
                kpred:decided      "OPPORTUNISTIC LOCAL-AGENT SCHEDULING + PARALLEL GPUs (Matt, 2026-07-16). The local-model host (a desktop with TWO RTX 3090 Ti) is shut down or suspended in the evenings but UP for several multi-hour windows per day. So: (1) local-agent jobs run a FEW TIMES PER DAY (cadence bumped 24h->8h for visual-regression + local-code-review; 7d->24h for describe-entities) and take the BRUNT of testing/heavy work when the host is up; (2) they must WAIT, never fail, when the host is down — already true (the runner's ollamaUp check marks a local-agent task WAITING when Ollama is unreachable); (3) do NOT force the orchestrator to block on a slow offline job — a quick test (<=1 min) runs INLINE (CI / the run), only heavy/local-model work is queued as offline; (4) TWO GPUs => run MULTIPLE local agents SIMULTANEOUSLY: different-model tasks in parallel (qwen3-coder on one GPU, qwen2.5vl on the other — no reload thrash across separate GPUs), or two same-model workers. The serial model-batching above is the ONE-GPU strategy; parallel-per-GPU is the two-GPU strategy." ;
                kpred:remaining    "PARALLEL LOCAL-AGENT RUNNER (F81, next build): dispatch up to N concurrent local-agent tasks across the two 3090 Ti — e.g. two Ollama instances pinned per GPU (CUDA_VISIBLE_DEVICES=0/1 on ports 11434/11435) or Ollama's own multi-GPU, with the runner assigning a due task to a free GPU (prefer keeping each GPU on one model to avoid reload thrash, the model-batching rule per lane). done-when: two different-model tasks measurably overlap in wall-clock. Extends scripts/agent/runner.ts (today serial)." ;
@@ -2178,12 +2188,12 @@ kb:local-orchestration rdf:type ktype:Feature ;
                kpred:principle    "Silence must never look like success. The cloud cron fired, produced nothing, and reported nothing; that is the failure mode to design against." ;
                kpred:correction   "PRECISION, 2026-07-13: the cron did NOT fail. It fired on time (last_fired_at 20:40:18Z, exactly as scheduled). What failed was the RUNNER (the cloud agent produced no commits) and the OBSERVABILITY (nothing reported that). Blaming the scheduling primitive would lead to fixing the wrong component. The lesson is about runners and reporting, not about cron." ;
                kpred:principle    "THE QUEUE IS THE CONTRACT; THE RUNNER IS PLUGGABLE. Do not choose between cron and the browser — they optimize different axes. cron gives RELIABLE TIMING on a NARROW set of machines (Unix-only; Windows needs Task Scheduler; it does not exist on phone or tablet; the machine must be awake). A Web Worker gives BROAD REACH with OPPORTUNISTIC timing (every device, one codebase, but only while the app is open). Put the task queue in the GRAPH, and let any runner drain it: the in-app Worker by default (all devices), an optional desktop process for wake-when-closed (driven by cron/launchd/Task Scheduler), the MCP server when an agent is already talking to it. Each runner claims tasks and writes outcomes back. No runner is load-bearing, so none of them failing silently can stop the system — and the queue tells you which ones are actually doing anything." ;
-               kpred:remaining    "Task entities + kpred:runs-at / kpred:blocked-by; a local runner draining the unblocked queue; run outcomes written back as facts; surface the queue in-app." ;
+               kpred:remaining    "WAVE 0 REMAINING: effects are declared/gated but not an OS capability sandbox; add artifact-write so report/screenshot jobs stop overstating source-write; the browser File System Access drain and shell alignment-sweep cannot participate in host flock; complete the due 19-file standing local review through the runner so the corrected MCP/report proof is tied to a full Git-state receipt; sample and rule on proposal yield before widening local-agent cadence or WIP. The queue still needs an in-app observability/steering surface." ;
                kpred:decided      "WEB WORKER IN THE APP (Matt, 2026-07-13), for cross-device reach. The browser is the most portable runtime there is, and it is already open all day — so the local tier lives where the user already is: desktop, laptop, tablet, phone, same code. WASM models (transformers.js) run inside a Worker, so the whole local tier ships with the app and needs nothing installed." ;
                kpred:constraint   "HONEST LIMIT — A WORKER CANNOT BE A SCHEDULER. A Web Worker lives only while a tab is open. A Service Worker survives page close but browsers kill idle ones in ~30s, and true timed wakeup (Periodic Background Sync) is Chromium-only, needs an INSTALLED PWA, and is gated behind engagement heuristics — Safari and Firefox do not implement it. So 'fire at 3:40 with nothing open' is not something the browser will honestly deliver on every device, and designing as if it will is how you get another silent failure." ;
                kpred:principle    "DO NOT SCHEDULE — DRAIN. Invert the model: a task carries a due-time, and whenever the app is open the Worker drains everything unblocked and due. 'Run at T' becomes 'the next time you are here, this is ready'. That is strictly MORE reliable than the cron that fired and silently did nothing, because the queue and its outcomes are visible in the app: the user can SEE what ran, what is waiting, and what it is waiting on." ;
                kpred:principle    "Tiers by reach, not by preference. WASM-in-Worker is the only tier that runs on EVERY device, so it is the default local tier. Ollama is desktop-only (it needs localhost) and is an upgrade, not a requirement. Claude Code is the frontier tier. A task declares the weakest tier that can do it correctly, and the strongest available one takes it." ;
-               kpred:remaining    "Task entities + kpred:due-at / kpred:blocked-by / kpred:min-tier; a Web Worker queue drainer (WASM tier); run outcomes written back as facts; the queue surfaced in-app so it is observable." ;
+               kpred:remaining    "WEB RUNTIME STILL UNBUILT. The host runner/task vocabulary now exists, but no Web Worker drains AgentTask entities, no cross-runtime atomic claim store coordinates browser and host, and the queue/outcome/WAITING state is not surfaced in-app. Do not transfer the host flock correctness claim to the browser." ;
                kpred:decided      "INSTALLABLE PWA (Matt, 2026-07-13). Already configured (@vite-pwa/sveltekit, vite.config.ts) — installable, offline-capable, on the home screen. Worth it on its own merits regardless of scheduling." ;
                kpred:constraint   "AN INSTALLED PWA IS STILL NOT A SCHEDULER. Periodic Background Sync unlocks on Chromium once installed, but the BROWSER decides whether and how often it fires, from engagement heuristics — commonly no more than once every ~12h, and never at a time you choose. Safari and Firefox do not implement it. So treat it as an OPPORTUNISTIC BONUS on top of drain-when-open, never a foundation. Building on it would reproduce exactly the failure we just had: a scheduler that looks armed and quietly does nothing." ;
                kpred:open-question "For users who genuinely need wake-when-CLOSED at a chosen time: that is an OS capability, not a browser one. An optional desktop companion (or the existing MCP server) could do it. But for a local-first tool, 'work happens when the app is open' may simply be the honest bargain — and the app is open all day anyway." .
@@ -4161,6 +4171,8 @@ kb:accessible-interaction-contract rdf:type ktype:Feature ;
                kpred:description  "Turn the existing UI rubric and compiler diagnostics into a blocking interaction contract. Interactive controls need sufficient target size and visible focus; small semantic text needs a contrast-safe token rather than the decorative purple data color; dialogs, menus, disclosures, dividers, graph controls, and mobile sheets must be operable by keyboard and coarse pointer; labels must name controls; and motion/media need appropriate alternatives. Deterministic audits identify candidates, while focused semantic tests and human visual review decide whether each candidate is a real defect." ;
                kpred:constraint   "Do not treat the current raw sub-44px count as a pass/fail total: it includes noninteractive and intentionally compact elements. First repair audit classification, then ratchet verified interactive violations to zero without inflating visual density indiscriminately." ;
                kpred:measured     "AUDIT 2026-07-22: mobile routes contain many verified compact glyph controls, the fixed navigation reaches 28-36px controls at narrow widths, small purple semantic text has weak contrast on common dark surfaces, and current Svelte diagnostics include static-element click handlers, unfocusable menu roles, unassociated labels, and media without captions." ;
+               kpred:progress     "MAINTENANCE SLICE 2026-08-16 (uncommitted): Svelte check moved from 0 errors / 81 warnings in 21 files to 0 errors / 4 warnings in 2 files, without suppression. Repaired the calendar's invalid nested button with a keyboard-operable event shell; corrected popup/menu/group labels and state-selection semantics; associated input labels; replaced deprecated handlers; made the merge backdrop dismiss only on an actual backdrop click; removed compiler-confirmed dead CSS; corrected reactive references, stale edit drafts and explicit initial state; and replaced static autofocus with a client-only focus-on-mount action for intentional edit/dialog focus. Asset thumbnails and fullscreen image/3D paths now use named native or keyboard-operable controls, and fullscreen is a labelled backdrop-bounded dialog. Full suite remains 146 files / 2,016 tests and production build passes. Four remaining warnings have a deliberate next step: define Sheet swipe keyboard semantics; relocate/structure non-control graph pointer observation; and model real video caption-track URLs for both viewer renderings. No empty caption track or warning suppression was added." ;
+               kpred:progress     "VISUAL/E2E FOLLOW-UP 2026-08-16 (uncommitted): scoped local agents found a fullscreen Escape propagation regression and notification-bell stacking collision introduced/exposed by the accessibility maintenance. Fullscreen now stops Escape propagation so it steps back to large, and sits above the notification bell. Focused Chromium preview flow was extended to prove focus entry, Escape, backdrop and explicit close; it completed without a Playwright error artifact. Jcode is not installed; retain only compact evidence capsules for local agents. Full device verification remains incomplete because this host's WebKit lacks libavif16; do not count those launch failures as application evidence." ;
                kpred:remaining    "DONE WHEN token-level contrast tests cover text roles; verified interactive targets meet the chosen mobile target-size standard or carry a documented exception; every primary workflow is keyboard-completable with visible focus; touch-only and pointer-only controls have equivalents; labels, roles, dialog focus management, dividers, motion preferences and media alternatives pass automated and manual checks; Svelte accessibility warnings are ratcheted to zero; and the corrected device audit reports no unexplained target, overlap, clipping, or focus violations on supported routes." .
 
 ## -- F99.2 / F56.1 / F125: assistant WRITE capabilities + scenario testing ------
@@ -4592,6 +4604,9 @@ kb:spatial-force-layout kpred:relates-to kb:all-previews-modifier .
 kb:all-previews-modifier
     kpred:actual-files "11"^^xsd:integer ;
     kpred:actual-deps "0"^^xsd:integer ;
+    kpred:tested-by "src/lib/3d/__tests__/preview-collage.test.ts" ;
+    kpred:tested-by "src/lib/storage/__tests__/preview-mode.test.ts" ;
+    kpred:tested-by "tests/visual/preview-collage.test.ts" ;
     kpred:proof "VERIFIED IN A REAL BROWSER, not only in unit tests, because the claim is about what a person can see. tests/visual/preview-collage.test.ts imports a 9-entity fixture where every node carries a photo and all hang off one hub — the arrangement that piles previews up — then MEASURES the painted thumbnails: total occluded thumbnail area as a fraction of thumbnail area. Result on free-force: 8 thumbnails, 0.0% occluded. On timeline: 8 thumbnails in 8 distinct date columns, 0.0% occlusion among those inside the date window. 25 unit tests cover the geometry, 10 cover the settings migration." ;
     kpred:known-issue "ON A TIMELINE, 'ALL VISIBLE' IS BOUNDED BY THE DATE WINDOW. Nodes are placed at their date and the viewport is a window onto a range you pan and zoom, so a preview whose date is off-screen is off-screen. Measured: 3 of 8 outside the window at default zoom. This is the timeline behaving correctly rather than a defect in the modifier, but it does mean the feature's name overpromises in that one composition, and the visual test says so in place of asserting a number that would hide it." ;
     kpred:known-issue "AUTO-EXPAND HAD NO DISCOVERABLE EFFECT and this was only found by Matt using it (2026-08-14): the toggle does nothing visible unless you also select a node that happens to own an asset. Folded into the previews dropdown, where the three modes read as alternatives and the tooltip states what each does." ;
@@ -4728,6 +4743,296 @@ kb:claim-settlement rdf:type ktype:Feature ;
 kb:verifiability-axis kpred:relates-to kb:claim-settlement .
 
 # ─────────────────────────────────────────────────────────────────────────────
+# External references flagged by Matt, reviewed against their repository docs
+# on 2026-08-16. These are comparison/evaluation inputs, not adopted dependencies
+# or evidence that the corresponding Reckons feature works.
+# ─────────────────────────────────────────────────────────────────────────────
+
+kb:ref-iai-personal-memory-engine rdf:type ktype:Reference ;
+    rdfs:label "iai personal memory engine — ambient local memory for coding agents" ;
+    kpred:repo-url "https://github.com/CodeAbra/iai-personal-memory-engine" ;
+    kpred:license "MIT" ;
+    kpred:copy-permitted "yes — MIT, attribution required" ;
+    kpred:relates-to kb:context-engine ;
+    kpred:relates-to kb:agent-context-dogfooding ;
+    kpred:relates-to kb:async-orchestration ;
+    kpred:relates-to kb:auto-archive ;
+    kpred:relates-to kb:local-session-memory ;
+    kpred:description "README reviewed 2026-08-16. A fully local MCP memory service for coding assistants that captures session turns verbatim, keeps write-once historical versions, performs local embedding/consolidation, and injects small session-start and per-turn memory packs. It exposes install/status/doctor flows and reports token economics from the user's own store rather than only publishing a global estimate." ;
+    kpred:evidence "DIRECT PRIOR ART FOR THE CLAUDE/CODEX LISTENING ASK AND F135 CONTEXT ENGINE: host-native hooks make capture and recall ambient without requiring Shelly to front-end the coding agent, while bounded packs are the same retrieve-per-request shape as kb:context-engine. Its health check, fail-open empty recall, age/revision markers and per-user token counters are concrete acceptance-test ideas." ;
+    kpred:constraint "DO NOT COPY VERBATIM CAPTURE INTO THE AUTHORITATIVE GRAPH. iai-pme deliberately stores every turn; Reckons currently decides that the conversation is not the asset and only durable judgement becomes a reviewed triple. Verbatim local history may be a useful SOURCE/ARCHIVE feeding proposals, but silently promoting it to facts would bypass F52 and create a privacy/retention change. Benchmark recovery value, review load and storage cost before revisiting that decision." .
+
+kb:ref-fenic rdf:type ktype:Reference ;
+    rdfs:label "fenic — typed, inspectable semantic DataFrame pipelines" ;
+    kpred:repo-url "https://github.com/typedef-ai/fenic" ;
+    kpred:license "Apache-2.0" ;
+    kpred:copy-permitted "yes — Apache-2.0: attribution + NOTICE, express patent grant" ;
+    kpred:relates-to kb:vocabulary-grounding ;
+    kpred:relates-to kb:triple-extraction ;
+    kpred:relates-to kb:deep-testing ;
+    kpred:relates-to kb:review-anchored-generation ;
+    kpred:relates-to kb:extraction-run-ledger ;
+    kpred:description "README reviewed 2026-08-16. A semantic DataFrame engine where extract/classify/summarize/embed and semantic joins are typed query operators. Pipelines are lazy, inspectable, rerunnable and promotable, with row-level lineage, explain plans, schemas, batching, rate limits, retries, caching and token/cost accounting." ;
+    kpred:evidence "THE PIPELINE, NOT THE PROMPT, IS THE DURABLE ARTIFACT. F136 currently experiments by assembling prompt text inside a benchmark. fenic is prior art for representing extraction shape, schema, lineage, execution metrics and cached results as one inspectable plan that humans and agents can both rerun. That would make an extraction result explainable beyond 'this prompt was sent'." ;
+    kpred:scope-decision "REFERENCE THE CONTRACT, NOT THE PYTHON ENGINE. Reckons needs a small browser/local-first extraction-plan record first: source revision, selected vocabulary, backend/model, schema, prompt version, token/time metrics and per-output provenance. Consider fenic integration only if real batch workloads exceed what the existing TypeScript pipeline can express." .
+
+kb:ref-ontocast rdf:type ktype:Reference ;
+    rdfs:label "OntoCast — ontology-assisted RDF extraction" ;
+    kpred:repo-url "https://github.com/growgraph/ontocast" ;
+    kpred:license "Apache-2.0" ;
+    kpred:copy-permitted "yes — Apache-2.0: attribution + NOTICE, express patent grant" ;
+    kpred:relates-to kb:vocabulary-grounding ;
+    kpred:relates-to kb:triple-extraction ;
+    kpred:relates-to kb:entity-normalization ;
+    kpred:relates-to kb:passage-grounding ;
+    kpred:relates-to kb:reviewable-graph-patches ;
+    kpred:description "README reviewed 2026-08-16. An ontology-assisted document-to-RDF pipeline with parallel ontology and facts loops, per-unit render/critic/merge, insert/delete GraphUpdate patches, cross-chunk entity disambiguation, RDF 1.2 provenance, ontology catalog/vector retrieval, SHACL/invariant validation and LLM-free repairs. It runs as CLI, service or embeddable agent component." ;
+    kpred:evidence "THE CLOSEST DIRECT F136 COMPARATOR IN THIS SET. It grounds extraction in a selected ontology before writing, treats schema and facts as related loops, and emits patches rather than regenerating the whole graph. Its ontology-retrieval modes, critic stage, provenance artifacts and deterministic SHACL repair are concrete baselines for Reckons' vocabulary selector and post-extraction gate." ;
+    kpred:constraint "ONTOLOGY CO-EVOLUTION MUST REMAIN A PROPOSAL HERE. An extractor that can mutate schema while extracting facts can make its own output valid by changing the rules. In Reckons, new predicates/shape changes remain visible pending proposals and a human settles them. Evaluate OntoCast on the existing golden fixtures as an external baseline before borrowing architecture or adding a service dependency." .
+
+kb:ref-doctr rdf:type ktype:Reference ;
+    rdfs:label "docTR — two-stage OCR and document layout detection" ;
+    kpred:repo-url "https://github.com/mindee/doctr" ;
+    kpred:license "Apache-2.0" ;
+    kpred:copy-permitted "yes — Apache-2.0: attribution + NOTICE, express patent grant" ;
+    kpred:relates-to kb:local-ocr ;
+    kpred:relates-to kb:ocr-visual-testing ;
+    kpred:relates-to kb:triple-extraction ;
+    kpred:relates-to kb:ocr-provider-benchmark ;
+    kpred:description "README reviewed 2026-08-16. A PyTorch OCR toolkit that explicitly separates text detection (where each word is) from recognition (which characters it contains), accepts PDFs/images/web pages, supports layout regions such as title/text/table/header/footer, and handles rotated pages and word orientations through configurable geometry paths." ;
+    kpred:evidence "F70 currently proves local OCR on screenshots and falls back to Tesseract.js, but its benchmark is mostly text correctness. docTR is a useful high-accuracy/sidecar comparator and, more importantly, makes LAYOUT and ROTATION separate measurable layers. A document-ingest fixture should score transcription, reading order, region class and geometry independently rather than collapsing all OCR failure into one string score." ;
+    kpred:scope-decision "Do not replace the browser WASM path on reputation. Benchmark docTR, the shipped Tesseract path, the current Ollama VLM option and Mistral OCR on the same synthetic failure fixtures. A Python/PyTorch sidecar earns an integration only if the measured layout/rotation gain justifies installation, model and GPU/CPU cost." .
+
+kb:ref-old-coder rdf:type ktype:Reference ;
+    rdfs:label "old-coder — evidence-first gauntlet for coding agents" ;
+    kpred:repo-url "https://github.com/AmazingAng/old-coder" ;
+    kpred:license "MIT" ;
+    kpred:copy-permitted "yes — MIT, attribution required" ;
+    kpred:relates-to kb:deep-testing ;
+    kpred:relates-to kb:work-tiering ;
+    kpred:relates-to kb:verifiability-axis ;
+    kpred:relates-to kb:risk-evidence-contract ;
+    kpred:description "README reviewed 2026-08-16. A plain-Markdown agent skill organized as human-approved SPEC, red/green/refactor, a risk-scaled gauntlet, and a fresh EVIDENCE report. Its checks include full suite, types/lint/complexity, changed-line coverage, mutation and property tests, real execution, supply-chain/secrets and suite-order health; anything not run must remain labelled unverified." ;
+    kpred:evidence "INDEPENDENT CORROBORATION OF F34 AND F74.3. Reckons already uses mutation checks, script-tier gates, status evidence and the rule that an unrun check cannot be reported green. The useful adoption is the REPORT CONTRACT: before work, name behaviors and risk-selected gates; after work, emit one fresh rerunnable evidence summary with unverified limits. This would make the handoff less dependent on prose claims." ;
+    kpred:constraint "A gauntlet proves the expressed contract, not that the contract is complete or that its own checker is trustworthy. Keep qualitative status and design completeness human-settled, exactly as kb:verifiability-axis requires. Reference the workflow; do not add another overlapping skill/config until its incremental value over the existing script tier is measured." .
+
+kb:ref-docling-graph rdf:type ktype:Reference ;
+    rdfs:label "Docling Graph — schema-bound document-to-graph extraction" ;
+    kpred:repo-url "https://github.com/docling-project/docling-graph" ;
+    kpred:license "MIT" ;
+    kpred:copy-permitted "yes — MIT, attribution required" ;
+    kpred:relates-to kb:vocabulary-grounding ;
+    kpred:relates-to kb:triple-extraction ;
+    kpred:relates-to kb:passage-grounding ;
+    kpred:relates-to kb:local-ocr ;
+    kpred:relates-to kb:document-evidence-anchors ;
+    kpred:description "README reviewed 2026-08-16. A config-driven document pipeline that extracts validated Pydantic objects with local VLM or local/remote LLM backends, then builds directed graphs with stable IDs and edge/provenance metadata. It supports many document formats, deterministic graph fusion, template generation from examples or OWL/RDFS, bounding-box provenance, debug traces and skeleton-then-flesh dense extraction." ;
+    kpred:evidence "DIRECT BASELINE FOR DOCUMENT-SHAPED F136. Schema templates, stable IDs, trace capture and bounding-box grounding address failure classes the octopus text fixture cannot see. Deterministic no-LLM graph fusion also overlaps F80.1's rule that mechanical facts should settle at script tier rather than return to a model." ;
+    kpred:constraint "Its output model is Pydantic plus NetworkX/Cypher-oriented graphs, not Reckons' reviewed RDF statement model. Preserve statement status, source revision, excerpt/geometry and F52 provenance through any adapter. First action is a benchmark on shared PDF/image fixtures, not an integration: compare fact recall, vocabulary agreement, object kind, provenance geometry, runtime and installation weight." .
+
+kb:ref-nvidia-switchyard rdf:type ktype:Reference ;
+    rdfs:label "NVIDIA NeMo Switchyard — multi-provider LLM routing proxy and library" ;
+    kpred:repo-url "https://github.com/NVIDIA-NeMo/Switchyard" ;
+    kpred:license "Apache-2.0" ;
+    kpred:copy-permitted "yes — Apache-2.0: attribution + NOTICE, express patent grant" ;
+    kpred:relates-to kb:work-tiering ;
+    kpred:relates-to kb:aggressive-local-offload ;
+    kpred:relates-to kb:llm-providers ;
+    kpred:relates-to kb:extraction-run-ledger ;
+    kpred:relates-to kb:model-routing-ledger ;
+    kpred:description "README reviewed 2026-08-16. A pre-alpha Rust proxy/library that translates OpenAI Chat, OpenAI Responses and Anthropic Messages traffic, selects among local and remote OpenAI-compatible targets, and exports request, error, latency, token and routing-overhead metrics. Its documented strategies include pass-through, random splits, an LLM classifier, deterministic conversation-stage routing and weak-first/judge/escalate routing." ;
+    kpred:evidence "STAGE ROUTING IS THE STRONGEST FIT. A known workflow signal — tool result, parse error, validator failure or stage marker — can select the next model tier without paying a classifier model or asking a model to grade itself. Its library boundary also demonstrates that route selection can return a target decision without owning the provider call, which fits Reckons' existing direct-browser adapters better than mandatory proxying." ;
+    kpred:constraint "PRE-ALPHA REFERENCE, NOT A CORE DEPENDENCY. An always-on native proxy conflicts with the shipped browser/static-host path, and a generic fallback can silently turn local processing into cloud egress. Protocol translation may also flatten provider-specific streaming, structured-output, tool-call or safety semantics. No adoption before conformance tests, explicit locality policy and visible per-attempt failure evidence." ;
+    kpred:scope-decision "Copy the route-policy and observability contract into TypeScript first. Later, allow a user-configured localhost Switchyard endpoint/sidecar as one provider adapter if it beats the native router on measured reliability or operational simplicity; never require it for ordinary browser use." .
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Architecture synthesis from the seven references above. These are native Reckons
+# contracts and gates, not plans to import seven Python/Rust stacks. The shared rule:
+# large/raw traces stay local; compact evidence and reviewable proposals enter the graph.
+# ─────────────────────────────────────────────────────────────────────────────
+
+kb:reference-repo-architecture rdf:type ktype:Concept ;
+    rdfs:label "Reference-repo architecture — seven native workstreams, no dependency spree" ;
+    kpred:has-part kb:extraction-run-ledger ;
+    kpred:has-part kb:reviewable-graph-patches ;
+    kpred:has-part kb:document-evidence-anchors ;
+    kpred:has-part kb:local-session-memory ;
+    kpred:has-part kb:risk-evidence-contract ;
+    kpred:has-part kb:ocr-provider-benchmark ;
+    kpred:has-part kb:model-routing-ledger ;
+    kpred:description "Architecture agreed 2026-08-16 after reviewing iai-pme, fenic, OntoCast, docTR, old-coder, Docling Graph and NVIDIA NeMo Switchyard. The useful convergence is typed and inspectable processing, source-addressable evidence, deterministic validation and routing, bounded local context and fresh verification records. None requires adopting the reference implementation wholesale." ;
+    kpred:principle "COPY THE CONTRACT BEFORE THE ENGINE. A local-first TypeScript product should first make its own pipeline explicit and measurable. A Python service, native daemon or GPU sidecar earns a place only after a shared benchmark proves a capability the browser path cannot provide." ;
+    kpred:decided "SEVEN WORKSTREAMS, ONE SEQUENCE: first the ExtractionRun ledger, including route attempts; then document anchors and the reusable route-policy ledger; then reviewable graph patches. OCR providers feed the anchor contract, session memory feeds the context engine, and the evidence contract verifies every stage. This order makes later experiments comparable instead of adding another opaque path." .
+
+# F74.6 — Switchyard lesson: choosing and retrying a model is itself an auditable stage.
+kb:model-routing-ledger rdf:type ktype:Feature ;
+    rdfs:label "Policy-driven model routing — explicit constraints, decisions and attempts" ;
+    kpred:feature-id "F74.6" ;
+    kpred:has-status "planned" ;
+    kpred:priority "medium" ;
+    kpred:part-of kb:work-tiering ;
+    kpred:depends-on kb:llm-providers ;
+    kpred:relates-to kb:aggressive-local-offload ;
+    kpred:relates-to kb:data-egress-model ;
+    kpred:relates-to kb:extraction-run-ledger ;
+    kpred:relates-to kb:risk-evidence-contract ;
+    kpred:touches-file "src/lib/integrations/llm/prefer-local.ts" ;
+    kpred:touches-file "src/lib/integrations/llm/providers.ts" ;
+    kpred:touches-file "src/lib/stores/ingest.svelte.ts" ;
+    kpred:description "Replace scattered provider selection and silent fallback branches with a provider-neutral ModelRoutePolicy and append-only ModelRouteDecision. The native TypeScript router chooses an eligible target and records why; existing provider adapters still make the calls. Switchyard may later be configured as an optional localhost adapter, not installed as required infrastructure." ;
+    kpred:principle "CONSTRAINTS BEFORE CAPABILITY; DETERMINISTIC SIGNALS BEFORE MODEL JUDGEMENT. First exclude targets that violate task capability, user egress policy, availability or hard cost/latency limits. Then use explicit task overrides and named workflow signals such as parse, schema, SHACL or grounding failure. Benchmarked policy comes next. An LLM classifier may propose a tier only when none of those can decide, and an LLM judge never certifies its own success." ;
+    kpred:decided "POLICY CONTRACT. ModelRoutePolicy names route id/version, task purpose, permitted locality/egress classes, eligible provider/model targets with required capabilities, maximum attempts, latency/token/cost ceilings, named escalation signals and whether each fallback edge is permitted. No eligible target is a visible terminal failure, not an excuse to choose an undeclared provider." ;
+    kpred:decided "DECISION CONTRACT. ModelRouteDecision records the policy version, privacy-safe request/input hash, ordered candidates, selected target, decisive rule/signal, start/end time and terminal result. Every attempt records exact provider/model/version, locality, latency, token/cost where available, error category and validator outcome. A fallback success retains the failed primary attempt; it never rewrites history to look like the first target succeeded." ;
+    kpred:decided "ROUTING ORDER. Explicit per-task user override -> hard capability/privacy/availability filters -> deterministic stage signals -> measured benchmark policy -> optional classifier proposal -> visible no-route failure. Random routing exists only for controlled evaluation, is sticky by fixture/request hash, and partitions evidence by exact target version; it is not nondeterministic production behavior." ;
+    kpred:constraint "NO SILENT LOCAL-TO-CLOUD FALLBACK. A route may cross from device/local-network execution to a third-party service only when the user has enabled that edge for the task or confirms it at the point of use. Missing cloud keys may fall toward an eligible local target, but missing local capacity may not fall outward merely to keep the operation apparently successful." ;
+    kpred:constraint "PROTOCOL TRANSLATION NEEDS CONFORMANCE EVIDENCE. Before a proxy or common adapter carries agent traffic, fixtures must compare non-streaming and streaming text, structured extraction, tool-call ids/arguments/results, cancellation, usage accounting, provider errors and safety metadata end-to-end. Unsupported semantics fail visibly instead of being approximated." ;
+    kpred:scope-decision "FIRST SLICE LIVES INSIDE F136.1: record route choice and each extraction attempt in ExtractionRun, driven only by explicit overrides and deterministic validator failures. Generalise the contract to chat, merge and analysis after that path proves replayable. Evaluate the Switchyard sidecar only after the native contract and conformance corpus exist." ;
+    kpred:remaining "DONE WHEN the same extraction fixture deterministically stays local on success and escalates only on a named validation failure; the UI/run record explains the chosen target and every attempt; no local source reaches cloud without an allowed policy edge; a failed primary remains visible after fallback; route replay selects the same target under the same policy/capabilities; and protocol-conformance fixtures expose any lossy adapter behavior." .
+
+# F136.1 — fenic lesson: the pipeline, not prompt text, is the durable artifact.
+kb:extraction-run-ledger rdf:type ktype:Feature ;
+    rdfs:label "ExtractionRun ledger — typed, inspectable, rerunnable ingestion" ;
+    kpred:feature-id "F136.1" ;
+    kpred:has-status "in-progress" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:vocabulary-grounding ;
+    kpred:depends-on kb:source-reference-copy ;
+    kpred:relates-to kb:triple-extraction ;
+    kpred:relates-to kb:passage-grounding ;
+    kpred:relates-to kb:work-tiering ;
+    kpred:relates-to kb:model-routing-ledger ;
+    kpred:touches-file "src/lib/rdf/types.ts" ;
+    kpred:touches-file "src/lib/storage/db.ts" ;
+    kpred:touches-file "src/lib/integrations/llm/extractor.ts" ;
+    kpred:touches-file "src/lib/stores/kb.svelte.ts" ;
+    kpred:touches-file "src/lib/stores/ingest.svelte.ts" ;
+    kpred:tested-by "src/lib/integrations/llm/__tests__/extractor.test.ts" ;
+    kpred:tested-by "src/lib/stores/__tests__/ingest-archive.test.ts" ;
+    kpred:description "Replace the monolithic ingest function's implicit control flow with a typed ExtractionRun whose stages and outputs can be inspected and rerun. The first implementation wraps the existing providers, normalization, grounding and diff code; it does not rewrite those algorithms or require fenic." ;
+    kpred:progress "FIRST FOUNDATION SHIPPED LOCALLY 2026-08-16. Dexie v8 adds an additive extractionRuns table indexed by id/sourceId/start/status. `ingest.svelte.ts` creates a metadata-only ExtractionRun after source hashing and records the existing configured route (including its locality and why a missing cloud key selected the pre-existing WASM fallback), then transitions route -> extract -> validate -> ground -> normalize -> archive -> diff -> persist. Source.latestExtractionRunId and each newly proposed Statement.extractionRunId link the run without storing source bytes, prompts, raw responses or keys. The existing WASM -> mock behavior is unchanged but now exposes two attempts — failed WASM then successful browser-local placeholder — instead of laundering the fallback as clean WASM success; Source records the actual placeholder extractor while the run preserves the requested WASM primary. Archive cancellation records cancelled, provider/pipeline errors record failed at the active stage and rethrow." ;
+    kpred:progress "VALIDATION SLICE 2026-08-16. `parseTriplesJSONWithReport` preserves raw-chat candidate and parser-rejected counts as metadata only; `validateExtractedTriples` rejects blank ids, invalid literal/datatype pairs, non-finite scalar literals, invalid confidence and malformed optional fields before Statement conversion. A provider with zero usable candidates now makes its run fail at `validate` before either graph write; a mixed batch proceeds with explicit losses. Direct Turtle import skips this boundary because it already has parsed statements. Claude/Ollama/WASM adapters currently return post-parser triples, so their candidate count is truthful for returned values but cannot reveal entries their private parser discarded; unifying adapter result metadata remains open." ;
+    kpred:progress "ATOMIC INGEST PERSISTENCE 2026-08-16. The shared `addStatements` admission logic is factored into `prepareStatementsForWrite`, then ingest passes its exact accepted plan to `persistIngestBatch`. One Dexie transaction writes the source, accepted statement rows, statement changelog rows and succeeded terminal ExtractionRun; reactive state, source callbacks, autosave/export, and best-effort review notification are post-commit only. The transaction deliberately still permits a source/run with zero statement rows when content/archive policy holds every candidate; an empty provider result fails earlier at validate. A late official-graph switch throws, preventing a run incorrectly marked successful with no commit. Scope is this ingest path only, not every existing addSource-plus-addStatements caller." ;
+    kpred:progress "FOCUSED EVIDENCE 2026-08-16: 53 extractor + ExtractionRun + ingest-archive + atomic-persist tests passed; full unit suite 146 files / 2,016 tests passed; svelte-check 0 errors (81 pre-existing warnings). The atomic-persist test injects a statement-table failure and verifies no source, statement, run or changelog durable record survives; it separately verifies an intentional policy-held zero-statement result still persists its source, terminal run and audit record. Output statement ids come from the preflight shared write funnel's accepted plan, not a requested batch or reactive-store inspection, so content-policy/archive holds do not become false persisted-output claims. A read-only local qwen3-coder review found one valid hole — a repository prompt lazy-import outside the tracked boundary could leave a run running — and it was moved inside `extract`. Its validation-slice claims of broken parser arithmetic and a Turtle bypass were checked and rejected: the parser count is `array entries - retained entries`, tested directly, and Turtle is intentionally already parsed. A later local review request returned no usable text in its time budget and is not evidence; it made no graph or source edits." ;
+    kpred:decided "RUN CONTRACT. ExtractionRun carries id, sourceId, immutable source hash/revision, pipeline version, backend and exact model, prompt/schema identifiers, selected vocabulary with selector reason, ordered stage records, start/end timestamps, terminal status, token/cache/latency metrics, output statement ids, validation counts and a failure record. Every stage is created, running, succeeded, failed or skipped; a requested provider returning no usable result is FAILED, never silently omitted from a report." ;
+    kpred:decided "ROUTING IS RUN EVIDENCE. The run records the route policy/version, decisive signal and every provider attempt rather than only the final backend/model. Retry or escalation may recover the extraction, but it cannot erase the primary failure, hide a change in data locality or merge multiple attempts' metrics into a misleading single-call total." ;
+    kpred:decided "STORAGE BOUNDARY. Add a dedicated IndexedDB extractionRuns table rather than growing Source into an execution log. Source points to its latest settled run; each proposed Statement carries extractionRunId. Compact run metadata and hashes may round-trip with graph provenance, while raw prompts, raw model output and source bodies remain local trace artifacts and are excluded from normal publication. Secrets are never recorded." ;
+    kpred:decided "PIPELINE ORDER. acquire normalized source -> select vocabulary/schema -> invoke provider and parse candidates -> typed shape/invariant validation -> ground evidence -> normalize identities -> compute review patch. The first deployed boundary combines invoke and parse in `extract`, then makes validation separately visible; a later split must preserve historic run readability. Stage inputs and outputs are typed and hashed, so changing one stage can be benchmarked without pretending the rest changed." ;
+    kpred:constraint "OBSERVABILITY MUST NOT CREATE A SECOND PRIVACY LEAK. Recording every prompt and response by default would duplicate the most sensitive user material. Default traces retain schemas, hashes, counts, timings and failure messages; full raw traces are an explicit local debugging option with deletion controls and never sync/publish implicitly." ;
+    kpred:constraint "ATOMIC SUCCESS BOUNDARY IS IMPLEMENTED FOR INGEST ONLY. Source, accepted statements, their changelog entries and the terminal successful run now commit in one Dexie transaction after shared preflight. User-mediated archive prompts and post-commit notifications/hooks are intentionally outside it; their failure cannot relabel a committed run. Other historical callers that separately call addSource and addStatements remain outside this guarantee. Cancellation is distinct from failure, and any retry must create a new run linked to the prior one rather than rewriting history." ;
+    kpred:remaining "NEXT: split `extract` into invoke and parse and return parser accounting from every adapter, not only raw-chat call sites; add selected vocabulary/prompt/schema ids and per-attempt token/latency/cost when providers expose them; then add local run inspection/replay and export policy. Extend the atomic boundary to other source-plus-statement workflows only after their policy and callback semantics are specified. DONE WHEN one command/UI action can show an ingest's exact source revision, selected vocabulary, provider/model, every stage outcome, validation losses and final statement ids; a deliberately failed provider produces a visible failed run and zero graph writes; and the record round-trips without exporting raw source or secret material." .
+
+# F136.2 — OntoCast lesson: propose bounded operations; never regenerate or self-amend rules.
+kb:reviewable-graph-patches rdf:type ktype:Feature ;
+    rdfs:label "Reviewable graph patches — extract, criticise, validate, then propose" ;
+    kpred:feature-id "F136.2" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:vocabulary-grounding ;
+    kpred:depends-on kb:extraction-run-ledger ;
+    kpred:depends-on kb:document-evidence-anchors ;
+    kpred:depends-on kb:shape-validation ;
+    kpred:relates-to kb:control-model ;
+    kpred:relates-to kb:review-workbench ;
+    kpred:relates-to kb:entity-normalization ;
+    kpred:touches-file "src/lib/rdf/diff.ts" ;
+    kpred:touches-file "src/lib/rdf/semantic-diff.ts" ;
+    kpred:touches-file "src/lib/stores/ingest.svelte.ts" ;
+    kpred:description "Make an extraction result a bounded GraphPatch rather than an unstructured batch of statements. Existing Diff remains the review presentation and comparison engine; GraphPatch becomes the execution artifact that says exactly which operations were proposed, why, from which run, and which validations each operation survived." ;
+    kpred:decided "PATCH CONTRACT. A GraphPatch has patchId, extractionRunId, target graph identity and base fingerprint plus ordered operations. An insert carries a complete pending Statement draft and evidence anchors. A delete must name an existing statement id, its observed base hash and a reason. Every operation carries validator outcomes and critic diagnostics; applying accepted operations re-checks the base fingerprint inside one transaction." ;
+    kpred:decided "FIRST RELEASE IS INSERT-ONLY. Document extraction has no authority to delete established knowledge. Delete operations enter only through an explicit refresh/conflict workflow after stale-source behavior is specified, and are always human-settled. This prevents adopting OntoCast's insert/delete vocabulary as accidental deletion authority." ;
+    kpred:decided "STAGE AUTHORITY. The extractor proposes candidate facts. A critic may identify missing support, inconsistent direction, suspicious object kind or likely vocabulary drift, but it emits diagnostics and replacement proposals, never edits the candidate in place. Deterministic validators may repair only meaning-preserving form such as canonical IRI spelling or datatype syntax, recording before and after; any semantic change is a new visible proposal." ;
+    kpred:decided "SCHEMA PATCHES ARE SEPARATE FROM FACT PATCHES. A newly minted predicate or SHACL/ontology change is offered in a schema patch with its motivating facts, never applied just to make the same run validate. The fact patch can remain pending against the proposed schema. An extractor may not change the rules that judge its own output." ;
+    kpred:measurement "Benchmark each layer separately: fact recall, vocabulary agreement, predicate direction, object kind/datatype, excerpt/anchor validity, shape validity, novel-predicate precision, accepted-over-proposed yield, latency and token cost. No blended score may let better recall hide semantic corruption or lost provenance." ;
+    kpred:remaining "DONE WHEN the octopus fixture produces an inspectable insert-only patch; critic findings are visible without changing facts; invalid shape/object/direction cases are attributed to their stage; accepting a subset applies exactly that subset transactionally; stale-base application is refused; and a proposed new predicate cannot become schema without a separate human action." .
+
+# F122.1 — Docling Graph lesson: evidence is an address into a specific source revision.
+kb:document-evidence-anchors rdf:type ktype:Feature ;
+    rdfs:label "Document evidence anchors — page, block, span and geometry provenance" ;
+    kpred:feature-id "F122.1" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:source-reference-copy ;
+    kpred:depends-on kb:passage-grounding ;
+    kpred:relates-to kb:local-ocr ;
+    kpred:relates-to kb:reviewable-graph-patches ;
+    kpred:relates-to kb:review-anchored-generation ;
+    kpred:touches-file "src/lib/rdf/types.ts" ;
+    kpred:touches-file "src/lib/rdf/source-cache.ts" ;
+    kpred:touches-file "src/lib/rdf/grounding.ts" ;
+    kpred:description "Extend today's verified excerpt into an addressable EvidenceAnchor tied to the exact retained source revision. Text-only sources keep character spans; paged and visual documents can additionally retain page, region, reading order and normalized geometry so clicking a fact can reopen the evidence rather than merely show a quote." ;
+    kpred:decided "DOCUMENT IR. Every parser returns a provider-neutral DocumentIR: sourceId, sourceHash, media type and ordered pages/blocks. A block has a stable id derived from source revision plus page/reading order, text, optional semantic region type and optional normalized bounding box. Provider-specific response objects stop at the adapter boundary." ;
+    kpred:decided "ANCHOR CONTRACT. EvidenceAnchor carries anchorId, sourceId, sourceHash, blockId, exact excerpt, normalized character start/end within the block and, when truly supplied, one-based page plus bbox x/y/width/height in 0..1 coordinates. Statement carries one or more evidenceAnchorIds and extractionRunId; shared anchors are stored once rather than duplicating geometry on every statement." ;
+    kpred:decided "STORAGE AND EXPORT. DocumentIR and anchor geometry live beside the reviewed source copy under the private sources boundary or an OPFS fallback; the graph stores compact anchor identity, source revision and excerpt provenance. Normal graph export may include those compact anchors. Raw PDFs/images and retained third-party source bodies remain excluded from published graph packages by construction." ;
+    kpred:constraint "NEVER SYNTHESIZE PRECISION. A parser that returns plain text gets a verified text span and no page/bbox. Missing geometry is unknown, not page 1 at 0,0. If sourceHash no longer matches the retained revision, the anchor is stale and cannot be shown as currently verified until remapped or re-extracted." ;
+    kpred:constraint "EXISTENCE AND FAITHFULNESS ARE DIFFERENT CHECKS. Exact excerpt/span containment and bbox bounds are deterministic. Whether the passage actually supports the proposed fact is semantic judgement and remains a critic/human signal; a real quote can still be irrelevant evidence." ;
+    kpred:remaining "DONE WHEN a rotated multi-page fixture yields stable anchors; selecting a proposed fact opens the correct retained page and highlights the correct region; text-only input degrades honestly to a span; changing the source revision invalidates rather than misplaces the anchor; and graph publication excludes the original document bytes." .
+
+# F135.3 — iai-pme lesson, reconciled with F135: memory may be a source, never authority.
+kb:local-session-memory rdf:type ktype:Feature ;
+    rdfs:label "Optional local session memory — archive turns, retrieve packs, promote judgement" ;
+    kpred:feature-id "F135.3" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:context-engine ;
+    kpred:depends-on kb:context-compression ;
+    kpred:depends-on kb:control-model ;
+    kpred:relates-to kb:agent-context-dogfooding ;
+    kpred:relates-to kb:auto-archive ;
+    kpred:relates-to kb:extraction-run-ledger ;
+    kpred:touches-file "src/lib/integrations/llm/turtle-chat.ts" ;
+    kpred:touches-file "mcp-server/src/index.ts" ;
+    kpred:description "Add an opt-in local source archive for Shelly, Claude Code and Codex sessions, then retrieve a small request-specific context pack. The archive preserves what was said; the graph preserves what was accepted. A remembered turn may inform or motivate a fact but never becomes authoritative knowledge without the normal proposal/review boundary." ;
+    kpred:decided "EVENT CONTRACT. Host adapters append a neutral SessionEvent with eventId, sessionId, harness, role, timestamp, parent/sequence, exact text or tool-result reference, content hash and optional supersedes link. Human turns remain verbatim and immutable as F135 decided; a correction appends a new event. Assistant/tool material is separately configurable and retention-bounded because it dominates volume and is largely re-derivable." ;
+    kpred:decided "PRIVACY BOUNDARY. Session capture is off until the user enables it for an explicit private location. It is device/workspace-local, excluded from graph sync and publication by default, has inspect/delete/export controls and never records provider keys or environment secrets. Sharing a graph cannot silently share the conversation that produced it." ;
+    kpred:decided "RETRIEVAL PACK. Query confirmed graph facts first, then retrieve relevant archived human turns under separate token budgets. Every item is labelled graph or session, with source id, age and revision/supersession state. Empty/unreachable memory fails open to an empty pack; low retrieval confidence is disclosed, and absence from the pack is never presented as absence from the graph or history." ;
+    kpred:decided "PROMOTION FLOW. A candidate durable judgement is extracted into a pending Statement/GraphPatch carrying the originating event anchors. The user may accept, refine or reject it. Acceptance links the fact to the session source but does not delete or rewrite the turn; rejection teaches proposal yield without making the underlying private archive part of the graph." ;
+    kpred:measurement "Measure retrieval recall against known prior decisions, false/stale recall, repeated-orientation-question rate, tokens injected versus displaced search, pack latency, storage growth and accepted-over-proposed promotion yield. Per-user live counters are required; a global token-savings claim is not evidence of value for this user's archive." ;
+    kpred:remaining "DONE WHEN Shelly and one coding-agent adapter write the same event format; a new session receives a bounded pack containing a known prior correction; a superseded turn is labelled stale rather than current; memory unavailable never blocks the host; promotion creates a pending fact with event provenance; and disabling/deleting memory leaves the authoritative graph intact." .
+
+# F34.1 — old-coder lesson: the process emits evidence; the agent does not grade itself.
+kb:risk-evidence-contract rdf:type ktype:Feature ;
+    rdfs:label "Risk-scaled verification plans and fresh evidence reports" ;
+    kpred:feature-id "F34.1" ;
+    kpred:has-status "planned" ;
+    kpred:priority "medium" ;
+    kpred:part-of kb:deep-testing ;
+    kpred:depends-on kb:work-tiering ;
+    kpred:relates-to kb:claim-settlement ;
+    kpred:relates-to kb:release-pipeline ;
+    kpred:touches-file "scripts/offline/status-evidence.ts" ;
+    kpred:touches-file "scripts/offline/run-all.ts" ;
+    kpred:description "Give every material change a pre-work VerificationPlan and a machine-produced post-work EvidenceReport. The plan states what behavior and risk are in scope; the report records what fresh checks actually ran. This formalizes the project's existing test, mutation, graph-lint and safety discipline without importing another agent skill or trusting prose in a handoff." ;
+    kpred:decided "PLAN CONTRACT. VerificationPlan carries feature/task id, base revision, intended behavior with positive and negative examples, explicit non-goals, touched modules/data boundaries, risk tags, required checks and qualitative approvals. The plan is reviewable before implementation. Automatic inference may raise risk; lowering an inferred gate requires a recorded rationale and, for data-loss/security/egress risk, explicit human approval." ;
+    kpred:decided "REPORT CONTRACT. EvidenceReport carries plan id, git base/head/diff hash, environment/tool versions, command argv, start/end time, exit code, parsed counts, artifact hashes and an explicit unverified list. The runner captures process results directly; an agent may select or explain checks but cannot write PASS. A retry appends a new run rather than replacing the failed evidence." ;
+    kpred:decided "RISK MATRIX. Low-risk prose/metadata runs syntax and graph/diff checks. Normal logic runs targeted tests, types and the full unit suite. Data/serialization/sync/security/egress/concurrency work additionally requires round-trip or recovery tests, property/mutation/hostile-input checks where applicable, secret/supply-chain checks and real execution. Visual/interaction work adds device, orientation, touch and observable-outcome evidence. The matrix is a minimum, never proof the spec is complete." ;
+    kpred:progress "DEPENDENCY + SECURITY REVIEW 2026-08-16 (NO PACKAGE CHANGE). npm audit --omit=dev reports 0 production vulnerabilities (155 production packages). The full lockfile has six dev/build paths, 4 high and 2 moderate, with no critical: direct @sveltejs/kit 2.70.0 plus brace-expansion 2.1.3/5.0.8, fast-uri 3.1.4, nanoid 3.3.15, postcss 8.5.19 and undici 7.28.0. Audit fix --dry-run proposes compatible updates only: Kit 2.70.2, brace-expansion 2.1.4/5.0.9, fast-uri 3.1.5, nanoid 3.3.18, postcss 8.5.26 and undici 7.29.0. The current override test passes but its brace-expansion floors still accept the vulnerable versions, so tighten it before treating it as a supply-chain regression gate. Overrides are intentional and observed resolved: uuid root-pin aligns Hume/Storybook, cookie constrains Kit, sharp aligns Transformers, and exact adm-zip constrains ONNX Runtime; retain their compatibility test." ;
+    kpred:progress "TOOLING/CONTROL WARNINGS 2026-08-16. Storybook core/svelte adapters resolve at 10.5.2 while addon-essentials and @storybook/test are 8.6.18 with Storybook-8 peers; npm ls marks the installed tree peer-invalid. This is a release-tooling reliability gap, not a static-app production vulnerability: align the entire family to one supported major before using story builds as gate evidence. package.json says 0.2.0 while package-lock root metadata says 0.1.0; npm ci --dry-run succeeds, but synchronize on the next deliberate dependency update. secret-scan finds no inline provider secret; CSP origin audit passes; safety attestation passes 6/6 with its normal npm PATH. Its direct use of ambient npx causes false indeterminate Vitest/graph-lint results in a Node-only shell; resolve local binaries directly so the verifier's environment cannot be misreported as a failed safety control. Deprecated boolean/rdf-dataset-ext/source-map leaves are parent-owned maintenance signals, not a reason for untested direct overrides." ;
+    kpred:progress "REMEDIATED 2026-08-16. Removed obsolete Storybook-8 addon-essentials and @storybook/test root dependencies; the already-empty Storybook-10 addons configuration relies on the built-ins as intended, and its stale Storybook-8 heading was corrected. Storybook build now passes and npm ls has no peer-invalid Storybook tree. Raised the direct Kit floor to ^2.70.2; the audit lock update resolves brace-expansion 2.1.4/5.0.9, fast-uri 3.1.5, nanoid 3.3.18, postcss 8.5.26 and undici 7.29.0. The lock-root metadata now matches package version 0.2.0. Fresh full and production-only audits both report 0 vulnerabilities. Override behavior is unchanged, but its test now rejects the previous vulnerable brace-expansion floors and passes. Safety attestation executes checked-in vitest/tsx through process.execPath rather than ambient npx, so its direct Node-only invocation passes 6/6 instead of falsely reporting unrun controls. Full unit suite (146 files/2,016 tests), type check (0 errors/81 existing warnings), production, Storybook and extension builds all pass. FOLLOW-UP: Rolldown documents inlineDynamicImports false as the default and codeSplitting false as the opposite single-bundle behavior. The redundant deprecated false flag was removed, and Vite 8 build.rollupOptions was renamed build.rolldownOptions; a new extension build preserved the six expected entries, passed and emitted no deprecation warning." ;
+    kpred:constraint "CALCULABLE EVIDENCE CANNOT SETTLE QUALITATIVE STATUS. A green suite can establish that named checks passed; it cannot declare the UX good, the architecture complete or a feature production-ready. Those remain separately attributed human judgements under F135.2. Unrun means unverified, never pass." ;
+    kpred:constraint "THE VERIFIER IS ALSO A CLAIMANT. Evidence includes versions and rerunnable commands, and high-risk mappings need mutation/fresh-context checks so a broken checker cannot authenticate itself merely by exiting zero. Git hashes order the record but do not make its timing impossible to rewrite." ;
+    kpred:remaining "DONE WHEN a command such as `npm run verify -- --feature F136` resolves the feature's plan, runs the risk-required checks, writes one append-only report and generates the handoff verification block; injected command failure is recorded as failure; an omitted required gate stays unverified; and changing the diff invalidates reuse of an older report." .
+
+# F70.2 — docTR lesson: benchmark OCR capabilities behind one DocumentIR contract.
+kb:ocr-provider-benchmark rdf:type ktype:Feature ;
+    rdfs:label "OCR provider contract and benchmark — text, layout, rotation and geometry" ;
+    kpred:feature-id "F70.2" ;
+    kpred:has-status "planned" ;
+    kpred:priority "medium" ;
+    kpred:part-of kb:local-ocr ;
+    kpred:depends-on kb:document-evidence-anchors ;
+    kpred:relates-to kb:visual-testing ;
+    kpred:relates-to kb:work-tiering ;
+    kpred:touches-file "src/lib/integrations/parsers/local-ocr.ts" ;
+    kpred:touches-file "src/lib/integrations/parsers/mistral-ocr.ts" ;
+    kpred:touches-file "tests/visual/vision-local.ts" ;
+    kpred:description "Put Tesseract.js, Ollama VLM, Mistral OCR and any future docTR sidecar behind one capability-declared adapter returning DocumentIR. Providers are compared on the same fixtures before routing changes. The browser path remains the default local baseline; docTR is a benchmark/optional sidecar candidate, not a presumed replacement." ;
+    kpred:decided "PROVIDER CONTRACT. An adapter declares locality, supported media, text, layout, rotation, table and bbox capabilities plus runtime requirements. It returns DocumentIR pages/blocks with provider/model/version and timing, or a typed failure. A provider without geometry returns no geometry; a markdown-only response is not mislabeled layout-aware." ;
+    kpred:decided "BENCHMARK DIMENSIONS. Score character/word error, reading order, region classification, bbox intersection-over-union, rotation/orientation, table structure, hallucinated text, runtime, peak memory, model/download size and data-egress class separately. Preserve per-fixture results and provider versions; never collapse them into one leaderboard number that hides a local/privacy or geometry tradeoff." ;
+    kpred:decided "FIXTURE POLICY. Use synthetic documents targeted at rotation, columns, headers/footers, tables, handwriting, low contrast and scans plus a small licensed real-document set. Illegible ground truth is marked unknown, and handwriting truth requires two independent readings where practical, so a provider is never rewarded for confidently inventing text." ;
+    kpred:constraint "ROUTING IS EXPLICIT AND CAPABILITY-BASED. Offline image ingest may prefer Tesseract; PDF/layout grounding may offer another provider when configured. No local document is sent to a cloud OCR service merely because it scores higher, and no heavyweight sidecar is installed automatically. The user sees locality, expected capability and cost before egress." ;
+    kpred:remaining "DONE WHEN one benchmark command runs every available provider on the shared corpus and emits rerunnable per-dimension results; current Tesseract and Mistral adapters both return DocumentIR honestly; rotated/two-column/table failures are separately visible; and docTR earns an optional adapter only if measured accuracy or geometry materially exceeds the shipped paths at an acceptable installation/runtime cost." .
+
+# ─────────────────────────────────────────────────────────────────────────────
 # F136 — Vocabulary grounding. Opened 2026-08-15 by a MEASUREMENT, not a hunch:
 # tests/bench/run-predicate-vocab-bench.ts, which scores the decision
 # normalize-entities.ts makes at write time against real embedding models.
@@ -4735,10 +5040,13 @@ kb:verifiability-axis kpred:relates-to kb:claim-settlement .
 
 kb:vocabulary-grounding rdf:type ktype:Feature ;
                kpred:touches-file "src/lib/rdf/normalize-entities.ts" ;
+               kpred:touches-file "src/lib/rdf/vocabulary-context.ts" ;
                kpred:touches-file "src/lib/integrations/llm/extractor.ts" ;
+               kpred:touches-file "tests/bench/run-ollama-bench.ts" ;
                kpred:touches-file "tests/bench/run-predicate-vocab-bench.ts" ;
                kpred:touches-module code:rdf ;
                kpred:touches-module code:llm ;
+    kpred:tested-by "src/lib/rdf/__tests__/vocabulary-context.test.ts" ;
     rdfs:label "Vocabulary grounding — tell the model our words before it guesses its own" ;
     kpred:feature-id "F136" ;
     kpred:has-status "planned" ;
@@ -4751,7 +5059,9 @@ kb:vocabulary-grounding rdf:type ktype:Feature ;
     kpred:principle "MEASURE THE LAYER YOU ARE CLAIMING ABOUT. An ingest F1 that mixes 'could not find the fact' with 'used a different word for it' points at a better model when the actual fix is a better prompt. tests/bench/scoring.ts now reports factRecall and vocabularyAgreement separately and deliberately never averages them into one number." ;
     kpred:constraint "GROUNDING MUST NOT BECOME A CAGE. A prompt that lists existing predicates and demands the model choose one would suppress genuinely new relations — and a well-formed absence is the most valuable node in the graph (kb:thesis). The list has to be offered as preference, not enumerated as law, and minting a new predicate must stay available and visible in review." ;
     kpred:open-question "How many predicates fit, and which ones? A mature graph holds 333 predicate types (graph-lint, 2026-08-15) and that will not fit in a small model's prompt. Selecting by embedding similarity to the source text is the obvious route and reuses kb:context-compression, but it is unmeasured — and picking the wrong subset grounds the model in the wrong vocabulary, which is worse than no grounding." ;
-    kpred:honest-note "NOT STARTED. Nothing in src/ puts existing predicates into an extraction prompt. What DOES exist is the after-the-fact repair (normalize-entities.ts) and, as of 2026-08-15, an honest measurement of how well it works — which is: badly, on this problem. See kb:predicate-threshold-limit." .
+    kpred:known-issue "AUDIT 2026-08-16: exact-token relevance does not mark the motivating has-heart-count predicate as mentioned; it survives the 16-predicate fixture only because the whole filtered vocabulary fits. The candidate entity list also mixes entities with literal-like values such as blue, while the scorer ignores objectIsLiteral/datatype. A vocabulary score can therefore improve while object typing regresses undetected." ;
+    kpred:known-issue "AUDIT 2026-08-16: run-ollama-bench catches a failed model run as null, drops it from the report and can exit 0 with no score. --ground covers baseline mode only, while production Ollama ingest defaults to structured extraction. Make missing requested results fail loudly, score object kind/direction, and measure the production-shaped path." ;
+    kpred:honest-note "SCAFFOLD COMMITTED AS 5f33879, PRODUCT FEATURE STILL PLANNED (audited 2026-08-16). src/lib/rdf/vocabulary-context.ts deterministically selects predicates/entities and builds an optional prompt section; its focused tests pass, and the baseline Ollama benchmark can request it. No production ingest caller supplies that section: ingest.svelte.ts and ollama-extract.ts still call buildExtractionUserPrompt without graph context. The attempted grounded run exited 0 without a score. Production wiring and credible measurement remain unbuilt; do not claim active graph-aware extraction yet. See kb:predicate-threshold-limit and the external baselines above." .
 
 kb:predicate-threshold-limit rdf:type ktype:Concept ;
     rdfs:label "Cosine alone cannot separate a synonym from an opposite" ;
@@ -4783,3 +5093,345 @@ kb:antonym-pairs-dead-entries rdf:type ktype:Concept ;
     kpred:relates-to kb:antonym-write-guard ;
     kpred:description "FOUND 2026-08-15 while building the predicate benchmark. semantic-diff.ts stored antonym pairs in hyphenated form (is-true/is-false) while every caller passed a label from labelFromIRI, which has ALREADY converted hyphens to spaces. So the substring test 'is true'.includes('is-true') was false and NINE of the pairs — including is-true/is-false, the most consequential contradiction a knowledge graph can hold — could never match anything. Fixed by splitting both sides on either separator and comparing whole words." ;
     kpred:principle "A LOOKUP TABLE IS NOT A CONTROL UNTIL SOMETHING PROVES IT FIRES. These nine entries read correctly, reviewed correctly, and did nothing for as long as they existed, because no test ever asserted a match — only that the surrounding logic behaved given an assumed one. The same shape as a mock-vector test standing in for a real threshold measurement." .
+
+# ------------------------------------------------------------------------------
+# F137: Set View — the missing condensation layer between entities and graphs.
+# This extends F65/F83/F96/F101. It does not introduce a second grouping primitive.
+# ------------------------------------------------------------------------------
+
+kb:set-view rdf:type ktype:Feature ;
+    rdfs:label "Set View — collapse entity sets into explorable graph regions" ;
+    kpred:feature-id "F137" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:graph-legibility ;
+    kpred:depends-on kb:entity-sets ;
+    kpred:relates-to kb:set-summarization ;
+    kpred:relates-to kb:shelly-graph-control ;
+    kpred:relates-to kb:multi-graph-viewport ;
+    kpred:relates-to kb:graph-sets ;
+    kpred:relates-to kb:one-graph-canvas ;
+    kpred:has-part kb:entity-appearance-resolver ;
+    kpred:touches-module code:rdf ;
+    kpred:touches-module code:threed ;
+    kpred:touches-file "src/lib/rdf/entity-sets.ts" ;
+    kpred:touches-file "src/lib/rdf/set-view.ts" ;
+    kpred:touches-file "src/routes/(app)/+page.svelte" ;
+    kpred:touches-file "src/lib/3d/KnowledgeGraph2D.svelte" ;
+    kpred:touches-file "src/lib/3d/KnowledgeGraph.svelte" ;
+    kpred:touches-file "src/lib/components/GraphLabels.svelte" ;
+    kpred:estimated-files "12"^^xsd:integer ;
+    kpred:estimated-deps "0"^^xsd:integer ;
+    kpred:description "Add a view mode that replaces the members of an existing ktype:EntitySet with the set's own real node, so a complex graph can be read as a hierarchy of graph set -> graph -> entity set -> entity. The source statements remain untouched: Set View is a deterministic display projection with enough provenance to expand any aggregate back to the facts that produced it." ;
+    kpred:decided "ONE PRIMITIVE, THREE VIEW MODES. F65's ktype:EntitySet + has-member remains the only grouping primitive. Nodes is today's view; Sets collapses every unambiguous active membership; Mixed collapses only the sets the user has not expanded. F96's quick All / Sets / Default / Settings control maps onto Nodes / Sets / the stored view preference / the existing Filters & layout AdaptivePanel. No second set store and no new panel." ;
+    kpred:decided "THE PROJECTION IS PURE AND UPSTREAM. buildSetProjection(allStatements, graphView, options) returns displayed nodes and edges, representativeOf, membersBySet, original statement ids, internal-edge counts and diagnostics; it never writes synthetic triples into the graph or export. Counts, filters, selection, labels, 2D and 3D all consume this one projected scene. This closes today's split brain where +page.svelte computes `drawn = buildGraphView(visible)` for counts but passes `visible` to both renderers." ;
+    kpred:decided "OVERLAPS STAY LEGIBLE. A member in exactly one visible set collapses into that set. A member in more than one visible set remains once as a bridge node connected to every containing set: never duplicate it and never choose an arbitrary first set. Unassigned entities remain visible. Boundary edges aggregate by displayed subject + FULL predicate IRI + displayed object and retain count plus original statement ids; internal edges are hidden but countable and inspectable." ;
+    kpred:principle "CONDENSATION MUST PRESERVE SPATIAL MEMORY. A collapsed set begins at the centroid of its cached member positions; expanding seeds members around that centroid; changing Nodes / Sets / Mixed must not re-solve unrelated nodes. This is F83's dim-rather-than-remove doctrine applied to grouping." ;
+    kpred:principle "FILTERS LIFT THROUGH THE PROJECTION. A collapsed set shows matched/total when any member matches; zero-match sets dim rather than disappear; search can enter or expand the containing set. A condensed view that hides the route to a matching child is not explorable." ;
+    kpred:decided "ENTITY-SET DESCENT IS VIEW STATE; GRAPH LEAPS REMAIN GRAPH TRANSITIONS. The same breadcrumb or jump control may navigate both, but expanding a set does not perform kb-leap.ts's whole-store switch. Under F131, a leap to a preloaded graph becomes camera traversal; without it the current graph-switch fallback remains. The user sees one hierarchy without conflating two storage operations." ;
+    kpred:constraint "NESTED SETS ARE A LATER DAG, NOT PHASE 1. A set may eventually be a member of another set, but cycles must be diagnosed and traversal stopped visibly. Current buildEntitySet accepts arbitrary IRIs and provides no overlap, nesting or cycle guard, so one-level projection ships first." ;
+    kpred:honest-note "PLANNED, NOT A RENDERING MODE TODAY (audited 2026-08-17). F65 already creates, reads, protects and spotlights direct entity sets. F101 already names a summarized set as the HNSW middle rung and places its controls in Filters & layout. Current hierarchy only follows skos:broader; current KBLeap swaps the active graph; and neither renderer consumes a set-collapse projection. This feature reconciles those shipped and planned parts rather than restarting them." ;
+    kpred:phase "P0 CONTRACT: a pure O(statements + memberships) membership index and one-level projection; deterministic overlap semantics, edge aggregation, provenance maps, rejected/superseded exclusion and cycle diagnostics; unit fixtures invariant under statement order." ;
+    kpred:phase "P1 VIEW: Nodes / Sets / Mixed controls in the existing AdaptivePanel, collapse/expand, member counts, match counts and stable centroid handoff. 2D and 3D consume identical node/edge identities and counts; mobile inherits the Sheet surface." ;
+    kpred:phase "P2 APPEARANCE: use F137.1 for explicit set color, icon and media plus a deterministic two-to-four-member collage and count when no explicit preview exists." ;
+    kpred:phase "P3 HIERARCHY: nested-set DAG, breadcrumb, search/filter descent and set-level jump controls. P4 composes with F131's maximum-three preloaded graph regions and F101's ephemeral Shelly education." ;
+    kpred:acceptance "In Sets mode, every unique member appears only as its real set representative; unassigned and multi-set bridge nodes appear once; internal edges are countable but not drawn; aggregated boundary edges drill back to original statements; no source statement, review state or export changes." ;
+    kpred:acceptance "Nodes / Sets / Mixed preserves unrelated positions; selection identity, labels, displayed counts and filter/search results agree in 2D and 3D; a matching child remains reachable from a collapsed parent; cycle or ambiguous-membership diagnostics are visible instead of silently choosing." .
+
+# F137.1 is deliberately shared by Set View and predicate inheritance. Appearance
+# configuration is graph data, while the resolved renderer map is derived view state.
+kb:entity-appearance-resolver rdf:type ktype:Feature ;
+    rdfs:label "Shared entity appearance resolver" ;
+    kpred:feature-id "F137.1" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:set-view ;
+    kpred:relates-to kb:entity-types ;
+    kpred:relates-to kb:one-graph-canvas ;
+    kpred:relates-to kb:predicate-appearance-inheritance ;
+    kpred:touches-file "src/lib/rdf/entity-appearance.ts" ;
+    kpred:touches-file "src/lib/stores/entity-types.svelte.ts" ;
+    kpred:touches-file "src/lib/3d/KnowledgeGraph2D.svelte" ;
+    kpred:touches-file "src/lib/3d/KnowledgeGraph.svelte" ;
+    kpred:estimated-files "7"^^xsd:integer ;
+    kpred:estimated-deps "0"^^xsd:integer ;
+    kpred:description "Resolve explicit per-entity and per-set color, icon, image, video and GLB presentation into one renderer-neutral appearance map. Topology and appearance configuration are separate inputs: presentation triples are intentionally excluded from the drawn topology, but excluding them must not make them invisible to the resolver. Both graph renderers, labels and the preview panel consume the same result." ;
+    kpred:decided "SEMANTIC CASCADE BELOW TRANSIENT VIEW STATE. Explicit entity appearance wins over inherited appearance, which wins over entity type and fallback. Selection, hover, focus and dim are a separate transient layer and may override the rendered channel without erasing the semantic value or its provenance. When a layout owns fill color, semantic status stays visible through a configured outline, halo, icon or badge." ;
+    kpred:decided "A SET IS AN ORDINARY ENTITY WITH A DERIVED FALLBACK. Explicit set media uses the same predicates and editor as any node. Without it, the resolver returns a stable collage of two to four deterministically ordered members plus total count; F101 summaries remain ephemeral education and are never persisted as preview facts." ;
+    kpred:honest-note "CURRENT GAP (audited 2026-08-17): EntitySet has built-in geometry/color/icon and the generic IRI preview path supports image, GIF, icon2d, video and GLB, but arbitrary kpred:color is resolved only while building EntityType definitions. A color fact on an individual entity or set does not currently color that node." ;
+    kpred:acceptance "One pure tested resolver produces identical appearance and provenance maps for 2D, 3D, labels and preview; style config never renders as topology; an explicit entity/set value overrides inherited and type defaults; absent set media yields the same ordered collage after reload and statement shuffle." .
+
+# ------------------------------------------------------------------------------
+# F138: predicates can carry edge appearance and explicit inheritance rules.
+# ------------------------------------------------------------------------------
+
+kb:predicate-appearance-inheritance rdf:type ktype:Feature ;
+    rdfs:label "Predicate appearance and visual inheritance" ;
+    kpred:feature-id "F138" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:depends-on kb:predicate-manager ;
+    kpred:depends-on kb:entity-appearance-resolver ;
+    kpred:relates-to kb:graph-legibility ;
+    kpred:relates-to kb:one-graph-canvas ;
+    kpred:relates-to kb:feature-lifecycle-vocab ;
+    kpred:relates-to kb:set-view ;
+    kpred:touches-file "src/lib/rdf/predicate-appearance.ts" ;
+    kpred:touches-file "src/lib/components/PredicateManager.svelte" ;
+    kpred:touches-file "src/lib/3d/KnowledgeGraph2D.svelte" ;
+    kpred:touches-file "src/lib/3d/KnowledgeGraph.svelte" ;
+    kpred:touches-file "src/routes/(app)/+page.svelte" ;
+    kpred:estimated-files "10"^^xsd:integer ;
+    kpred:estimated-deps "0"^^xsd:integer ;
+    kpred:description "Let a predicate define its own edge appearance and one or more first-class visual inheritance rules, so a relation such as Article has-status Published can make the article visibly production-green with an explainable trace. Predicate Manager gains a customization surface parallel to Entity Types without materializing the derived appearance as a fact on every related node." ;
+    kpred:decided "DIRECT EDGE STYLE AND PROPAGATION ARE DIFFERENT DATA. A predicate appearance definition may carry edge color, opacity, width, dash and label treatment. Each propagation is a separate ktype:VisualStyleRule entity so one predicate can express several rules: full predicate IRI, direction, source mode (endpoint appearance or fixed), source attribute/value/type, target type, target channel (fill, outline, glow, icon, opacity), strength 0..1, priority, enabled, scope, max depth, attenuation and conflict policy." ;
+    kpred:decided "DETERMINISTIC CASCADE: explicit entity appearance > predicate inheritance contributions ordered by priority then stable rule/source key > explicitly configured set aggregation > entity type > fallback. Strength blends color over the lower semantic base in sRGB and interpolates scalar channels; non-blendable icon/shape uses the winning rule. Equal-priority disagreement emits a conflict trace and deterministic configured outcome; blend is opt-in, never accidental `find()` or last-write behavior." ;
+    kpred:principle "VISUAL PROVENANCE IS PART OF THE RESULT. The resolver returns rule, relation statement, source term, strength and any suppressed conflict so the inspector can say 'green via has-status from Published (100%)'. Derived appearance is view state and is never written back as kpred:color or multiplied into export." ;
+    kpred:principle "CONFIRMED FACTS DRIVE CANONICAL APPEARANCE. Confirmed/refined relationships may contribute; rejected and superseded never do. A pending relationship may preview through a dashed or provisional halo with explicit provenance, but must not silently turn the canonical fill green." ;
+    kpred:decided "SUPPORT BOTH STATUS SHAPES. Endpoint appearance handles an IRI object such as a green Published node. A value-conditioned fixed rule handles today's free-text status literal such as `production`, so this feature is not blocked on F75.2's planned SKOS migration. External predicates can be styled by full IRI without renaming them." ;
+    kpred:constraint "MVP IS ONE HOP. Later recursion uses a visited (node, rule) set, maximum depth three and per-hop attenuation; cycles terminate and output is invariant under statement order. Accepted extractor confidence does not multiply visual strength. Invalid enum, range or dangling references produce diagnostics and no rule, never a renderer crash." ;
+    kpred:constraint "A COLLAPSED SET DOES NOT INHERIT ONE MEMBER'S STATUS BY ACCIDENT. Member-to-set propagation is off by default and requires an explicit aggregation policy such as all, majority, highest-priority or mixed, with a provenance trace and a visible mixed state." ;
+    kpred:principle "STATUS CANNOT BE ENCODED ONLY BY HUE. Rules may pair fill with outline, icon, dash or label; contrast and non-color channels are acceptance criteria. A source/hub layout that owns fill must preserve semantic status in a secondary channel or disclose the masking in the legend." ;
+    kpred:honest-note "PLANNED, NO EXISTING FEATURE COVERS THIS (audited 2026-08-17). Predicate Manager currently counts, renames and merges predicates only. 2D hard-codes edge colors, 3D uses one global line material, and both renderers reduce predicates to local slugs so two namespaces can collide. Presentation predicates are excluded before renderer props, so the resolver must receive full confirmed statements or an upstream appearance map rather than being hidden inside a renderer." ;
+    kpred:phase "P0 CONTRACT: pure RDF parser/validator plus shared base/entity/node/edge resolver, diagnostics, provenance traces, literal and IRI fixtures, deterministic conflict/cycle tests, graph-lint rules for invalid configuration and a 1k/10k O(V + E + R) benchmark." ;
+    kpred:phase "P1 EDITOR: Predicate Manager appearance editor, direct edge style, one-hop color inheritance and provenance legend. P2 RENDER: one full-IRI scene map drives 2D and 3D; 3D vertex colors ship before renderer-specific width/dash work; pending preview and export/import get end-to-end coverage. P3 adds bounded recursion, literal palettes and explicit set/multi-graph scopes." ;
+    kpred:acceptance "Published has explicit #22c55e; Article has-status Published plus object-to-subject color rule resolves Article green with a trace, and removing the relation restores its type color. The equivalent literal `production` fixture resolves green. Strength 0/0.5/1 is exact; explicit entity wins; inherited beats type; priority and shuffled statement order are deterministic." ;
+    kpred:acceptance "Rejected/superseded facts never contribute; pending does not alter canonical fill; equal-priority conflict is visible; cycles terminate; invalid rules diagnose; same local slug in two vocabularies styles separately; config entities never enter the scene; export/import round-trips rule RDF; 2D and 3D use the same resolved map and preserve a non-color status channel." .
+
+# ------------------------------------------------------------------------------
+# Current external references evaluated 2026-08-17. These are evidence-bearing
+# candidates/prior art, not new product roots or adopted dependencies.
+# ------------------------------------------------------------------------------
+
+kb:ref-lfm2-5-vl-3b rdf:type ktype:Reference ;
+    rdfs:label "LiquidAI LFM2.5-VL-3B — local visual-role evaluation" ;
+    kpred:link "https://huggingface.co/LiquidAI/LFM2.5-VL-3B" ;
+    kpred:link "https://www.liquid.ai/blog/lfm2-5-vl-3b" ;
+    kpred:license "LFM Open License v1.0 — commercial use is unlicensed at or above USD 10M annual revenue without a separate license" ;
+    kpred:relates-to kb:local-model-bench ;
+    kpred:relates-to kb:visual-evidence-integrity ;
+    kpred:relates-to kb:local-ocr ;
+    kpred:relates-to kb:ocr-provider-benchmark ;
+    kpred:relates-to kb:model-routing-ledger ;
+    kpred:relates-to kb:video-asset-analysis ;
+    kpred:description "New 2026-08-12 3.1B multimodal release: an LFM2.5 2.6B language backbone plus a 400M SigLIP2 NaFlex vision encoder, with official GGUF, ONNX/WebGPU, MLX, Transformers, llama.cpp, Ollama, vLLM and SGLang paths. It is optimized for short direct visual work, screen grounding, multi-image input and OCR/layout rather than long visual-design reasoning. This is a MODEL CANDIDATE inside F31/F70.2/F74.6, not a new Reckons feature and not a default merely because vendor benchmarks are strong." ;
+    kpred:measurement "REPO GATE, 2026-08-17. Official Q4_K_M plus Q8 projector was pulled through Ollama as hf.co/LiquidAI/LFM2.5-VL-3B-GGUF:Q4_K_M (local Ollama id 3e9bb91d3103, 2.3 GB). On the existing 10-screenshot / 48-check / num_ctx=8192 gate it scored 38/48 = 79.2%, ZERO false-negative misses, 10 false flags, p50 769 ms and p95 1262 ms in 42.1 s. Evidence: tests/visual/results/vlm-gate_2026-08-17T16-16-10.json." ;
+    kpred:measurement "SAME-SESSION QWEN CONTROL, 2026-08-17. qwen2.5vl:7b scored 44/48 = 91.7%, one dangerous miss, three false flags, p50 537 ms and p95 1157 ms in 42.3 s. Evidence: tests/visual/results/vlm-gate_2026-08-17T16-17-15.json. The older July run was 45/48 with zero misses, so one run does not establish a stable recall winner." ;
+    kpred:measurement "PRODUCTION TWO-IMAGE SMOKE, 2026-08-17. Through the exact diffImagesVLM /api/generate path, both models called one duplicated screenshot IDENTICAL. Given two plainly different Reckons app views in BOTH orders, LFM2.5-VL-3B returned CHANGED both times with concrete header/layout differences. qwen2.5vl:7b called the forward pair IDENTICAL, then called the reversed pair CHANGED with partly invented node differences — direct evidence of image-order instability on this pair. This is one pair, not a benchmark, but it blocks a single global winner assumption and makes Liquid the leading candidate for the pairwise-diff role." ;
+    kpred:note "USER OBSERVATION, Matt 2026-08-17: LFM2.5-VL-3B looked very good at multi-image work. Preserve this as attributed qualitative evidence alongside the measured pair smoke, not as a promotion verdict; the labelled pair corpus must determine whether the impression generalizes." ;
+    kpred:note "DISCOVERY WARNING. Ordinary web/model indexes initially surfaced only LFM2-VL-3B and the older 1.6B/450M LFM2.5-VL models because this release was six days old. The live Hugging Face API returned LiquidAI/LFM2.5-VL-3B (created 2026-08-11) and its official artifacts. Future model audits must query the publisher API/model registry directly before concluding an exact new model does not exist." ;
+    kpred:decided "ROUTE BY MEASURED VISUAL ROLE, NOT ONE MODEL NAME. Keep qwen2.5vl:7b as the current single-image presence-gate default until replicated evidence says otherwise. Build a labelled two-image corpus before selecting the visual-diff model; let F74.6 record the role, exact artifact/version and validation result. A 2.3 GB model that raises more harmless false alarms may still be the better cheap lane when zero misses or GPU co-residency matters." ;
+    kpred:constraint "LICENSE AND ARTIFACT IDENTITY ARE ROUTING INPUTS. Do not bundle, silently download or make this the universal default without exposing the LFM license boundary. Record quantization, language/projector artifact, Ollama/model digest, context and corpus revision; a mutable Hugging Face tag is not reproducible evidence." ;
+    kpred:honest-note "CONTEXT METADATA DISAGREES. The release model card says 32,768 context while config/GGUF/Ollama metadata advertise 128,000. Treat 32K as the documented support claim until tested. Reckons pins 8,192, so this discrepancy does not affect the recorded runs." ;
+    kpred:remaining "Before routing changes: three repeated gate runs; a labelled identical/harmless/meaningful two-image corpus in both image orders; strict visual-evidence JSON/schema compliance; OCR/layout fixtures under F70.2; Q4_K_M versus Q8/BF16 quality ceiling; peak VRAM/power and concurrency-one/two measurements including co-residency with qwen3-coder. Adoption gate: parseable output, no worse pairwise false-negative rate than the incumbent, and either incumbent-level accuracy or a measured memory/concurrency win." .
+
+kb:ref-vault-ld rdf:type ktype:Reference ;
+    rdfs:label "Vault-LD v0.5 — Markdown/YAML-LD linked-data interchange prior art" ;
+    kpred:repo-url "https://github.com/The-Knowledge-Graph-Guys/vault-ld" ;
+    kpred:license "Apache-2.0" ;
+    kpred:relates-to kb:rdf-core ;
+    kpred:relates-to kb:ingest-pipeline ;
+    kpred:relates-to kb:graph-publishing ;
+    kpred:relates-to kb:canonical-graph-package ;
+    kpred:relates-to kb:transactional-sync-protocol ;
+    kpred:relates-to kb:workspace-sync ;
+    kpred:relates-to kb:rdf-dataset-migration ;
+    kpred:relates-to kb:graph-sets ;
+    kpred:description "A young open specification and pair of Python reference converters for treating each Markdown note as one RDF subject: YAML-LD frontmatter supplies predicate/object facts, Obsidian wiki links supply IRI edges, composed external context.jsonld files supply terms and scoped bases, and prose bodies remain outside the triple set. It can generate schema.ttl/data.ttl from a vault and generate/update a vault from RDF. Useful ideas include explicit source-of-truth direction, vld:path placement fidelity, deterministic no-op regeneration, composed-context collision warnings and strong untrusted-vault path/frontmatter tests." ;
+    kpred:measurement "UPSTREAM CHECK, 2026-08-17. At v0.5.0 the 31 security tests pass and the bundled 11-subject/44-triple example round-trips graph-isomorphically. The project has no database, query engine, manifest, revisions, locking, atomic multi-file promotion, conflict handling or sync protocol; unsupported fidelity cases generally warn rather than fail." ;
+    kpred:measurement "DECISIVE RECKONS INCOMPATIBILITY, reproduced 2026-08-17. The reference tools accept an explicit id only for http(s). A minimal RDF -> vault -> RDF probe changed urn:kbase:concept/x into https://example.org/data/urn:kbase:concept/x and rebased URN types and predicates too. A separate minimal @vocab fixture did not follow the spec's compatibility profile: type: concept was based under @base and an unmapped custom field was skipped." ;
+    kpred:decided "REFERENCE AND CONFORMANCE SPIKE ONLY — NO STORAGE/SYNC ADAPTER YET. Vault-LD may become an optional generated Markdown/interchange VIEW after exact-IRI and loss-boundary fixtures pass. It cannot replace Dexie, the F107.3 canonical graph package, TriG source provenance, workspace sync, graph sets or MCP storage. Reckons remains graph-first; a generated Vault-LD tree is never an authoritative backup." ;
+    kpred:constraint "CURRENT NO-GO FOR AUTHORITATIVE INTERCHANGE. Every urn:kbase subject, predicate, type and IRI object must round-trip exactly before any user graph enters this path. Review statuses, statement identity, sources/named graphs, extraction/changelog links, stable graph ids, revisions, assets, pending inbox and graph-set roles must remain in the canonical package rather than being projected away." ;
+    kpred:constraint "IMPORT IS A STAGED TRANSACTION OR IT DOES NOT TOUCH LIVE STATE. Blank nodes, language tags, named graphs, RDF-star, unsupported SHACL, ambiguous wiki links, malformed/oversized contexts, remote contexts, cancellation, concurrent runs and mid-write failure must either map losslessly or hard-fail before promotion; stderr warnings and partial file rewrites are not acceptance." ;
+    kpred:honest-note "Reckons' current JSON-LD function is a confirmed/refined Schema.org PUBLISHING VIEW, not a lossless RDF dataset importer or backup format. Do not route Vault-LD through semantic-export.ts or describe folder-scan reading .jsonld as JSON-LD support." ;
+    kpred:remaining "Bounded spike only if interoperability is desired: pin the upstream tag; run exact URN/@vocab/context-collision/identity fixtures; round-trip the clean supported subset of the MCP-visible corpus; preserve bodies and host keys; prove a second conversion changes zero files; define deletion/tombstones; stage then atomically promote; reuse the upstream security suite; benchmark 10k/100k triples. If exact identity or hard loss accounting fails, retain only the security/profile lessons and add no permanent adapter feature." .
+
+# ------------------------------------------------------------------------------
+# F139: review is a tree of decisions, not a list of facts.
+# ------------------------------------------------------------------------------
+
+kb:review-tree rdf:type ktype:Feature ;
+    rdfs:label "Hierarchical review — decisions at the top, bookkeeping behind a count" ;
+    kpred:feature-id "F139" ;
+    kpred:has-status "scaffolded" ;
+    kpred:priority "high" ;
+    kpred:depends-on kb:review-attention ;
+    kpred:depends-on kb:verifiability-axis ;
+    kpred:relates-to kb:claim-settlement ;
+    kpred:relates-to kb:graph-legibility ;
+    kpred:relates-to kb:dichotomy ;
+    kpred:relates-to kb:situation-as-scope ;
+    kpred:relates-to kb:mission ;
+    kpred:touches-module kb:rdf ;
+    kpred:has-file "src/lib/rdf/fact-altitude.ts" ;
+    kpred:has-file "src/lib/rdf/review-tree.ts" ;
+    kpred:has-file "scripts/offline/altitude-report.ts" ;
+    kpred:has-file "scripts/offline/graph-decisions.ts" ;
+    kpred:has-file "scripts/offline/read-graph.ts" ;
+    kpred:tested-by "src/lib/rdf/__tests__/fact-altitude.test.ts" ;
+    kpred:tested-by "src/lib/rdf/__tests__/review-tree.test.ts" ;
+    kpred:touches-file "src/routes/(app)/review/+page.svelte" ;
+    kpred:touches-file "src/lib/rdf/review-pipeline.ts" ;
+    kpred:estimated-files "8"^^xsd:integer ;
+    kpred:estimated-deps "0"^^xsd:integer ;
+    kpred:description "Matt, 2026-08-19: 'Real conflicting statements or deciding factors, not a long list of datetime stamps of work being done, or statuses that can be verified with automated testing... We need to elevate the type of facts higher than simplified logs.' Adds the missing classification axis — ALTITUDE, what happens if a fact is wrong — and turns the flat review queue into a tree whose depth is that ladder: an open decision at the root, the options with their computed costs beneath it, the judgments and evidence that bear on them below that, and records and logs collapsed into an openable count." ;
+    kpred:principle "THE THREE EXISTING AXES ALL ANSWER 'HOW DO I HANDLE THIS', AND NONE ANSWERS 'DOES THIS MATTER'. verifiability.ts says who is competent to settle a fact, finding-class.ts says what kind of wrong it reports, dichotomy.ts says whether it is contested. That is why routing alone did not fix review: kpred:relates-to is the roadmap's single most common predicate at 476 facts, it is unknown-verifiable, so F88 routes all 476 to the human and ranks them. A shorter flat list is still flat." ;
+    kpred:principle "THE DISCRIMINATING TEST IS ABOUT BEING WRONG, NOT ABOUT BEING INTERESTING. If this fact were wrong, what would we do differently? Choose a different path (DECISION); believe the wrong thing about whether something is any good (JUDGMENT); lose the footing under a judgment (EVIDENCE); fix a link (RECORD); nothing at all (LOG). Framing it as consequence rather than importance is what makes it decidable by a script instead of by taste." ;
+    kpred:principle "A LOG HAS NO REVIEWABLE CONTENT, WHICH IS DIFFERENT FROM BEING LOW-VALUE. 'REMEDIATED 2026-08-16. Removed obsolete Storybook-8 addons' cannot be accepted or rejected, because the only claim in it is that somebody did something and the person being asked is the person who did it. Putting it in a queue is not inefficient, it is incoherent." ;
+    kpred:principle "BUT CLASSIFY LOGS, NEVER DROP THEM. A log under a live decision, contradicting the evidence that decision rests on, IS a deciding factor. A design that filtered logs at the door could never surface that, so altitude is a view-time rank (liftedAltitudes) rather than a delete." ;
+    kpred:decided "AN OPTION'S COST IS COMPUTED FROM THE GRAPH, NEVER NARRATED BY A MODEL. static/starter-everyday.ttl already had the right primitive and nothing in src/ ever read it: kpred:ruled-out-by marks a fact that DIES if a given option wins, so 'what does this option cost' is a query (optionCost) rather than an LLM's opinion. The camping graph prices Lake George in the Friday campfire it deletes and Oh! Ridge in the sunrise it deletes, and asserts no winner. A model may PHRASE a tradeoff; it may never invent one." ;
+    kpred:decided "OPTIONS ARE DERIVED FROM kpred:ruled-out-by RATHER THAN A NEW kpred:option. Reading the relation that already exists means the everyday graph and the roadmap both render today; minting a new predicate would require every existing graph to be rewritten before the tree could show anything." ;
+    kpred:decided "A SETTLED DECISION IS CONTEXT, NOT AN ITEM. kpred:decided and kpred:open-question are both decision-altitude and belong in the same place in the tree, but one is the standing frame and the other is the live work. Showing them alike is how a review surface re-asks in August what was answered in March." ;
+    kpred:decided "TWO HUMAN OPINIONS IN CONFLICT GO TO STP, NOT TO ACCEPT/REJECT (Matt's instruction, 2026-08-19). Accept/reject asks a person to declare a past position of their own wrong, captures no reasoning, and leaves nothing behind explaining why — so the same conflict returns. needsStp() escalates only when EVERY side gates to `user`: two machine-checkable values disagreeing is a bug (run the check, the graph loses), whereas two attested values disagreeing is a real change of mind that only a Situation-Target-Proposal adjudicates." ;
+    kpred:decided "AUTHORITY CAN LIFT ALTITUDE, IT NEVER LOWERS IT. Minting a feature (kpred:feature-id) classifies as `record` but verifiability.ts reserves it to the user because it is authorship; if altitude could demote it, the fact would land in the collapsed drawer and the person whose call it is would never see it. The converse is forbidden — otherwise an authority list becomes a way to hide decisions." ;
+    kpred:decided "UNCLASSIFIED FAILS UPWARD TO JUDGMENT, WHICH IS THE OPPOSITE DIRECTION FROM F88. There, auto-approving an unclassified fact is the quiet disaster, so it routes to the human. Here the quiet disaster is inverted: guessing `log` would HIDE a real decision. But not `decision` either — flooding the root with unclassified prose destroys the signal the tree exists to create. The default is an admitted compromise, and the fix is predicate discipline in the graph, not a cleverer guess in the classifier." ;
+    kpred:decided "A DISTILLED LINE IS NEVER A FACT. It carries no id, no status and no provenance, and it is regenerated rather than stored. The moment a summary is written back into the graph it becomes citable, and a model's paraphrase becomes indistinguishable from a measurement — the exact laundering kb:mission forbids. The facts it summarizes sit beneath it, always openable, and if the two disagree the facts win." ;
+    kpred:decided "RANKING IS WEIGHTED BELOW THE TOP TWO SIGNALS, NOT LEXICOGRAPHIC. Contested outranks everything and a deadline-forced decision comes next, because those must never be buried. Below them impact, unlocks and status urgency are SUMMED, because on a real graph any single signal is often flat — sorting strictly by one meant whichever field happened to be populated decided the order." ;
+    kpred:measured "ALTITUDE IS DERIVABLE FROM WHAT THE GRAPH ALREADY SAYS — measured 2026-08-19 with scripts/offline/altitude-report.ts across 26 graphs and 13,470 facts: 95.0% predicate coverage, 73.4% of all facts classified as record or log and therefore never shown to a person, 77 open decisions across the whole roadmap. On static/reckons-roadmap.ttl alone: 4,070 facts, 96.0% coverage, 18.7% decision, 24.5% judgment, 3.7% evidence, 51.8% record, 1.2% log." ;
+    kpred:measured "THE FIRST ATTEMPT FAILED AND THE FAILURE IS THE REASON FOR THE FAMILY TIERS. Enumerating predicates one at a time reached 92.3% on the roadmap and 11.5% on static/knowledge.ttl — the trap kb:verifiability-axis warns about in its own words, 'the tooling must not assume its own conditions generalize'. The misses were not a long tail of interesting vocabulary but whole NAMESPACES of machinery (nav meta, test-story structure, Shelly persona config, schema.org, PROV provenance) plus 221 dcterms:created timestamps. Classifying the namespace instead of the term took knowledge.ttl to 89.7%." ;
+    kpred:measured "35 OF 58 open-question literals already state their alternatives INSIDE THE PROSE, so structuring them is reading rather than inventing — which is what makes the distillation job groundable and its output checkable against sourceIds." ;
+    kpred:honest-note "THE BROWSER COVERAGE GAP IS CLOSED (2026-08-19). tests/fixtures/demo-review-tree.ttl is imported through the real turtle path — which lands every fact PENDING — so the decision tree, the priced options, the contested escalation, the cascade lane and the purpose question are all now verified in a real browser: 9/9 review e2e. The tree itself is RENDERED in /review, not merely computed: decision roots with their options and each option's computed cost, contested and reckoning flags, and the judgments/evidence/hidden counts behind one expand control. Full suite 157 files / 2,194 tests." ;
+    kpred:honest-note "STILL SCAFFOLDED, AND THE REASON IS NARROWER THAN IT WAS: answering a PURPOSE question does not yet split the set. The re-partition contract is built and tested with its three invariants but has no caller, so the prompt renders and the answer queues. That is the last thing between this and `functional`." ;
+    kpred:decided "A CONFLICT IS A DECISION THE GRAPH NEVER WROTE DOWN — found by the demo graph and fixed the same day. Roots were open decisions only, so a contested entity carrying no kpred:open-question never appeared in the tree at all; it fell into the orphan tail. That was incoherent with this feature's own ranking rule that contested outranks everything: the strongest signal in the system was visible only if the entity happened to also have a question written on it. buildReviewTree now synthesizes an IMPLIED root for a contested subject whose sides all gate to `user`, anchored on the OLDEST side (the claim that stood longest unchallenged), with the question composed at READ time by questionText() so the graph never gains a question nobody asked. A machine-checkable clash is still not surfaced — that is a bug to fix by running the check." ;
+    kpred:has-file "tests/fixtures/demo-review-tree.ttl" ;
+    kpred:has-file "kbs/demo-review-tree/demo-review-tree.ttl" ;
+    kpred:measured "PERFORMANCE, MEASURED 2026-08-19 AFTER MATT REPORTED THE REVIEW SURFACE WAS UNRESPONSIVE. On a 40,433-fact synced graph the review pipeline cost 749ms in clusterForCascade and 237ms in buildReviewTree, per $derived recompute, on the main thread. Three accidental quadratics were the cause, all of the form `map.set(k, [...(map.get(k) ?? []), v])` inside a loop: the cascade date and source groupings, unlockCounts' neededBy index, review-routing's blastRadius bySubject, structural-context's dependsOn, and — the largest single one — dichotomy.ts bySubject, which became a hot path only because F139 started calling findDichotomies over the whole graph. After replacing spread with push: clusterForCascade 749ms -> 41ms (18x), and the roadmap graph 22ms -> 11ms." ;
+    kpred:measured "A SECOND DEFECT OF MINE, FOUND BY READING RATHER THAN BY PROFILING: unlockCounts had a memoized `reach` calling an UNMEMOIZED `collect`, re-walking every shared subtree from scratch — exponential on the shape a real roadmap has, where several features depend on one foundation. It also cached counts computed while a cycle cut was active, storing a truncated answer as final. Rewritten as one memoized closure; a node inside a dependency cycle now gets an honest LOWER BOUND rather than a wrong number." ;
+    kpred:decided "A SIZE GUARD THAT SAYS SO, RATHER THAN A FASTER LOOP. After the quadratics were gone the residual ~210ms on 40k facts is honest linear cost — roughly ten passes over the graph — so shaving it further is not the answer. Above 12,000 facts /review skips the tree and the cascade entirely AND STATES THE SKIP WITH ITS REASON in the headline. A review surface that quietly stops surfacing decisions on a large graph is worse than a slow one, because the user cannot distinguish `no decisions` from `not looked`." ;
+    kpred:known-issue "THE `MASSIVE GRAPH THAT NEVER FINISHED LOADING` IS NOT THE REVIEW CODE — it is kbs/button-crawl/button-crawl.ttl at 209,460,660 bytes from only 1,792 statements. scripts/offline/button-crawl.ts embeds every Playwright screenshot as a full `kmeta:gif \"data:image/png;base64,...\"` literal; 98 inline PNGs account for 59.9MB of the first 60MB alone, and single lines reach 928,817 characters. No browser will parse that, and no size guard in the review surface helps because the failure is at graph LOAD. The app already has the right mechanism — storage/kb-assets.ts round-trips binaries as workspace FILES under urn:kbase:asset/* — so the fix is for button-crawl to write asset references instead of data URIs. Until then that graph should not be synced. Matt's call whether to fix the exporter or drop the graph." ;
+    kpred:honest-note "ALL 77 OPEN DECISIONS IN THE ROADMAP ARE PROSE-ONLY. kpred:open-question is a string literal, so not one of them has Option entities behind it and the tree currently renders every root with 'no options to weigh side by side'. The depth exists and the content to fill it does not yet. proseOnly is surfaced on every node rather than rendering an empty options list as though the question were simple." ;
+    kpred:honest-note "THE TREE FOUND A MIS-AUTHORED FACT ON ITS FIRST REAL RUN, which is evidence the axis is doing something: one kb:entity-sets open-question literal is not a question at all but a finding about undetected duplicate concepts, written into the wrong predicate. Data-quality findings like this are a side effect of classifying by consequence." ;
+    kpred:honest-note "OUR OWN DEMO DATA MODELS A DECISION'S CONSEQUENCES WITHOUT THE DECISION ITSELF, and it is the cleanest illustration of the gap. static/starter-everyday.ttl gives kb:the-weekend a forcing deadline (kpred:decides from kb:ev-booking-deadline) and prices both options exactly — kb:lake-george rules out 4 facts (both drives, pitching camp, the first night's fire), kb:oh-ridge rules out 1 (Jordan's sunrise shoot). But nothing carries an open-question, so buildReviewTree renders NO root for that graph: `No decisions open. 127 bookkeeping facts settled without you.` The costs are computable and the question was never written down." ;
+    kpred:honest-note "CORRECTED 2026-08-19 — AN EARLIER VERSION OF THIS ENTRY CLAIMED 1,641 OUTSTANDING REVIEW ITEMS ON A GRAPH THAT HAS NONE. The number came from scripts/offline/graph-decisions.ts feeding every CONFIRMED fact in as `pending`; buildReviewTree trusted the caller and did not filter by review status. It now filters itself, read-graph.ts requires an explicit `asReviewSet` opt-in, and the tail is reported in three separate populations instead of one lump. A settled kpred:description on a shipped feature is what the feature IS — the graph's standing description, read by navigating to the entity, costing nothing to review because it is not under review." ;
+    kpred:decided "THE TAIL IS THREE POPULATIONS, NOT ONE (Matt, 2026-08-19): 'Some may be missing a true decision to make. Some may already be verified by code and tests, or available existing facts and ingested resources. We do NOT want to represent the user with hundreds of separate facts that are just log lines tracing work completion.' So: log-shaped completion narration is DEMOTED by fact-altitude.ts and never shown; anything a check could settle leaves through F88's machine lane; settled facts under no open decision are standing description; and only what remains — genuinely qualitative, under no decision — is a clustering candidate." ;
+    kpred:measured "MEASURED COMPOSITION OF THE TAIL, 2026-08-19, and it disproves a claim this plan made. F88 routing barely shrinks it: 1,639 of 1,646 gate to `user` and only 7 to `machine`, because inferVerifiability returns `unknown` for ~95% of facts and unknown fails toward the human. So 'route first, then tree' does NOT reduce the human's load on this graph, and F135.2 — nothing in src/ writes Statement.verifiableBy — is the reason. By predicate the tail is 249 description, 212 has-status, 153 feature-id, 141 principle, 109 depends-on, 105 remaining, 99 decided: overwhelmingly the standing description of the system, not a backlog." ;
+    kpred:measured "WORK-COMPLETION NARRATION WEARING A JUDGMENT PREDICATE IS REAL BUT SMALLER THAN IT FEELS: 13 facts match both the completion-opener and a datestamp, 48 match the opener alone, 197 merely contain a date. Samples: kpred:remaining 'PHASE 1 — DONE (2026-07-31)…', kpred:note 'RESOLVED (2026-07-02)…', kpred:correction 'CORRECTED 2026-08-17…'. Both signals are required to demote, because a date alone appears in real judgments that cite when they were measured." ;
+    kpred:known-gap "The demotion rule can be wrong, and the case is recorded rather than hidden: kpred:honest-note 'RESOLVED 2026-07-31, BOTH HALVES — but the shape of the old failure is the lesson worth keeping' opens as a log and ends as a judgment. Survivable only because demotion HIDES rather than deletes — the fact stays classified, stays in the openable drawer, and liftedAltitudes pulls it back the moment its subject has a live decision." ;
+    kpred:known-gap "unlockCounts() re-derives the roadmap's dependency DAG that scripts/offline/queue-tree.ts already walks for the queue. The projection belongs in one place; queue-tree.ts should consume the pure function rather than keeping its own copy." ;
+    kpred:open-question "How is a PURPOSE answer routed when the user's prose names work the graph cannot place? needsPurposeQuestion fires for unplanned work and the partition validator requires every purpose to trace to the user's own words — but if they answer with a purpose that matches no sensible split, the model returns one part and the partition is refused. Does the UI then fall back to a plain confirm-with-purpose, or keep asking? Matt's call." ;
+    kpred:decided "STRUCTURING THE PROSE QUESTIONS: agent tier for the 35 open-question literals that already state their alternatives in the prose (reading, not authoring — so yield should be high and triage cheap), and lazily-on-open for the other 23, because a question that does not state its own alternatives is one where a model would be inventing them. Matt chose this 2026-08-19." ;
+    kpred:done "PHASE 1 DONE 2026-08-19 — the tree and the cascade lane are WIRED INTO /review, composed with buildReviewPlan rather than replacing it: dedupe and route first (F80.1, F88), then buildReviewTree over the USER LANE ONLY so a machine-settleable fact never reaches it. The altitude headline renders beside the existing pipeline headline; 7/7 review e2e pass." ;
+    kpred:remaining "PHASE 2 — the option-structuring agent job (scripts/offline/structure-decisions.ts): ground in the open-question literal and its subject's facts, prompt a local model for options, VALIDATE that every returned option traces to sourceIds, emit ktype:Option proposals to knowledge.pending.jsonl. Proposals only, never a write." ;
+    kpred:remaining "PHASE 3 — the STP escalation path: a contested human/human decision opens a Reckoning with the conflict as its assembled Situation (F112), and the accepted Proposal writes a ktype:Decision that supersedes both sides AND records the reasoning." ;
+    kpred:remaining "PHASE 4 — resolve the unattached-judgment question above, then implement whichever answer Matt chooses." ;
+    kpred:acceptance "A graph with one open decision, two options, a standing decision, a judgment, a measurement, a record and a log renders exactly one root; the record and log appear only as a count; the standing decision appears as context and not as a second item; each option shows the number of facts it rules out." ;
+    kpred:acceptance "Two hand-entered conflicting statuses on a well-identified entity render as contested and escalate to STP; two conflicting kpred:tested-by values do not escalate. A distillation request contains only facts already in the graph and every returned line traces to a sourceId or is rejected." .
+
+# ------------------------------------------------------------------------------
+# kb:dichotomy — cited by src/lib/rdf/dichotomy.ts since it was written, never
+# defined here until F139 needed it (found by graph-lint as a dangling ref).
+# ------------------------------------------------------------------------------
+
+kb:dichotomy rdf:type ktype:Feature ;
+    rdfs:label "Dichotomy detection — one entity, two truths" ;
+    kpred:has-status "functional" ;
+    kpred:relates-to kb:review-attention ;
+    kpred:relates-to kb:review-tree ;
+    kpred:touches-module kb:rdf ;
+    kpred:has-file "src/lib/rdf/dichotomy.ts" ;
+    kpred:tested-by "src/lib/rdf/__tests__/dichotomy.test.ts" ;
+    kpred:description "Finds where a single, well-identified entity says drastically different things about itself, and distinguishes a CONFLICT (one value is stale or wrong, single-valued predicate) from a NATURAL DICHOTOMY (a person who was in sales and is now technical is genuinely both). The distinction drives review: a conflict is something to fix before a merge, a dichotomy is something to PRESERVE through one." ;
+    kpred:principle "TWO GATES, BOTH NECESSARY. The entity must be well-identified — divergent values on a stub tell you nothing — and the divergence must be on a DESCRIBING attribute rather than a structural link, because a feature with many kpred:has-file links is not in tension, that is just how files work." ;
+    kpred:decided "DETERMINISTIC TIER ONLY. It finds divergence structurally (same subject, same predicate, distinct objects) and classifies by the predicate's cardinality convention. It does NOT judge how semantically drastic the difference is; that needs embeddings and is a later tier." ;
+    kpred:honest-note "FUNCTIONAL AND CONSUMED: review-attention.ts uses it for the F53 spotlight and review-tree.ts uses it for the F139 contested/STP escalation. It reports the entity, predicate and divergent VALUES but not the statements, so review-tree resolves those back itself in order to test who is competent to settle each side." .
+
+# ------------------------------------------------------------------------------
+# F139.1: aggregate the noise, ask ONE question, cascade the answer down.
+# ------------------------------------------------------------------------------
+
+kb:cascade-aggregation rdf:type ktype:Feature ;
+    rdfs:label "Cascade aggregation — one question settles fifty facts" ;
+    kpred:feature-id "F139.1" ;
+    kpred:has-status "scaffolded" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:review-tree ;
+    kpred:depends-on kb:review-tree ;
+    kpred:relates-to kb:claim-settlement ;
+    kpred:relates-to kb:mission ;
+    kpred:touches-module kb:rdf ;
+    kpred:has-file "src/lib/rdf/fact-aggregation.ts" ;
+    kpred:has-file "scripts/offline/aggregate-decisions.ts" ;
+    kpred:tested-by "src/lib/rdf/__tests__/fact-aggregation.test.ts" ;
+    kpred:tested-by "tests/e2e/review.test.ts" ;
+    kpred:touches-file "src/routes/(app)/review/+page.svelte" ;
+    kpred:touches-file "src/lib/rdf/types.ts" ;
+    kpred:estimated-files "5"^^xsd:integer ;
+    kpred:description "Matt, 2026-08-19: 'The LLM should be processing the bare fact, and not only doing a written summary, the facts should be aggregated and decisions should be asked of the user that cascade down to the facts that are noise. 50 statements of datetime stamps are noise, one question, did this work occur on X date? should be extrapolated and one question asked to the user. The user's fact statement recorded and other facts updated from that one decision point.' Aggregate facts bound by one underlying claim, ask the single question that settles them, record the answer as the user's own fact, and propagate it to every member with provenance back to that one decision." ;
+    kpred:principle "A CASCADE IS NOT A SUMMARY, AND THE DIFFERENCE IS THE WHOLE POINT. A summary produces prose a person reads and then still has to settle fifty rows. A cascade produces one ANSWERABLE QUESTION whose answer settles fifty rows and records the person's own statement. Review effort goes from O(facts) to O(decisions), which is the only shape in which review scales." ;
+    kpred:principle "A CASCADE IS VALID ONLY WHEN THE MEMBERS ARE FACETS OF ONE UNDERLYING CLAIM. If one member could be true while another is false, it does not belong. This is the rule for admitting any future basis." ;
+    kpred:principle "F52 IS NOT SUSPENDED, IT IS MADE AFFORDABLE. The human still makes every decision; they stop making the same decision fifty times. An agent proposes the grouping and the question; it never answers one." ;
+    kpred:decided "THE DETERMINISTIC BASES ARE A FLOOR, NOT THE MECHANISM (Matt's correction, 2026-08-19: 'It is not just script tier… the summarization of many detailed facts into accurate decision points is not mechanically viable… aggregation and dependency decisions I'm certain need LLM assistance.'). A groupBy over datestamps yields a correct MECHANICAL BATCH and says nothing about what question is worth asking, which facts bear on the same claim, or what settling them would mean. Reaching an accurate decision point is judgment over language: agent tier. Same for dependency between decisions — depends-on states some prerequisites, but which decision must be settled first is usually judgment nobody wrote down." ;
+    kpred:decided "THERE IS NO same-predicate-value BASIS. It was implemented and DELETED the same day after it batched 2,348 roadmap facts into 141 'questions' and starved the agent tier. The bug was semantic, not sizing: `kb:a relates-to kb:x` and `kb:b relates-to kb:x` are INDEPENDENT claims that merely agree, so one answer settling both is exactly the laundering this feature exists to prevent. A shared datestamp means the members describe ONE event; a shared source means ONE act of trust. Those are single claims." ;
+    kpred:decided "WHAT MAKES THE MODEL SAFE IS THE VALIDATOR, NOT THE PROMPT. validateProposedAggregation rejects: fact ids not in the request, clusters below minimum size, overlapping clusters, decision- or judgment-altitude members, output that is not a question, predicates outside the graph's vocabulary, and — the load-bearing rule — any recorded value not TRACEABLE to a member's own object text. A cascade writes one fact and settles fifty on its strength, so an invented value would launder one hallucination into fifty settled facts." ;
+    kpred:decided "THE ANSWER MAY RESTRUCTURE THE SET, NOT ONLY PROPAGATE THROUGH IT (Matt, 2026-08-19): 'What if the question is, what is the main goal of this set of work? and was asked because the work wasn't related to a product design decision in the roadmap. The user may reply, this work consisted of a package update and debugging. The fact set that was defined before the user response should be adjusted to two sets, and the package upgrade itself labelled appropriately, and the debugging after also labeled appropriately with their purpose. Not a simple application, but the logical semantic one.' So a free-text answer triggers a SECOND model pass that re-partitions the cluster along the lines the person drew." ;
+    kpred:decided "THREE PARTITION INVARIANTS, ALL ABOUT NOT LOSING THE USER'S MEANING. EXHAUSTIVE: every member lands in exactly one part — a fact silently dropped by a re-partition was under review and now is not, and nobody would notice. DISJOINT: no member appears twice, because two purposes on one fact is a contradiction the graph would carry forever. TRACEABLE: every purpose's content words must appear in the USER'S ANSWER — the model draws the lines between facts, which is the judgment it is there for, but the LABELS are the person's. A model free to invent purposes could relabel a package bump as a security fix and the graph would record it as the user's own statement." ;
+    kpred:decided "ASK FOR PURPOSE, NOT TRUTH, WHEN WORK IS TIED TO NO PLANNED FEATURE. A batch of completion notes hanging off a Feature already has its purpose — the Feature. A batch hanging off nothing is unexplained work, and no yes/no question can fix it, because the missing information is a REASON, not a truth value. needsPurposeQuestion is that trigger and it fails toward asking rather than assuming." ;
+    kpred:decided "PROVENANCE ON EVERY CASCADED FACT. Each member carries kpred settledByDecision pointing at the user's recorded statement, and that statement carries settledBy {actor, channel, at}. The handoff's rule applied at scale: a settled fact whose settler is unknown is worse than an unsettled one because it looks reviewed — and fifty at once would be fifty times worse. settledBy is deliberately distinct from verifiedBy, which names a check that settled a fact WITHOUT a human." ;
+    kpred:decided "A DECISION IS NEVER BATCH-SETTLED. CASCADABLE is log/record/evidence only; applyCascade throws on decision altitude even if handed one, and the validator rejects judgment members too. Batching the facts that were meant to be considered one at a time would be a way to bulk-approve exactly what the tree exists to surface." ;
+    kpred:measured "THE REJECTION COUNT IS THE MEASUREMENT, NOT A FOOTNOTE. scripts/offline/aggregate-decisions.ts prints accepted vs rejected with every reason and a yield percentage, because offloading is not free (F74.3): a job emitting 30 findings of which 25 are noise moves cost to triage rather than removing it. A low yield is evidence against running it again." ;
+    kpred:honest-note "SCAFFOLDED. Built and tested: the floor (same-date, same-source), applyCascade with provenance, the agent-tier validator, the purpose trigger, and the semantic re-partition with its three invariants — 31 unit tests. The lane is WIRED INTO /review and settles a cluster with one click. NOT BUILT: the second model pass is a validated CONTRACT with no caller yet, so a purpose answer currently queues rather than partitioning; the review UI shows the purpose prompt but does not yet collect the prose and run the partition. NOT VERIFIED: the lane has no in-browser test — extractMock yields only judgment-altitude facts, which are never cascadable, so no mock ingest can produce a cluster." ;
+    kpred:remaining "Wire the partition pass: collect the free-text purpose answer in the review UI, call the local model, run validateProposedPartition, and apply through applyPartition so one answer splits and labels the set." ;
+    kpred:done "SEEDING ROUTE FOUND AND THE LANE IS NOW BROWSER-VERIFIED (2026-08-19): tests/fixtures/demo-review-tree.ttl imported through /ingest -> graph -> turtle file, which lands every fact PENDING. The cascade lane, the settle-all click with its effect line, and the purpose question for unplanned work are all covered by e2e." ;
+    kpred:decided "THE same-source BASIS COVERS record AND log ONLY, NOT evidence. Measured on the demo graph: allowing evidence in put 61 facts into one 'do you trust this source?' question including every kpred:measured reading. That contradicts the altitude ordering the whole feature rests on — evidence sits above record and log precisely because a measurement can pull a judgment out from under itself. Trusting a source is a weaker claim than confirming a measurement, and the weaker claim must not settle the stronger fact." ;
+    kpred:remaining "Run aggregate-decisions.ts against a real graph and record the measured yield, which is the evidence that decides whether the agent tier earns its triage cost." ;
+    kpred:acceptance "Four completion notes sharing one date render as ONE question; answering it confirms all four, records one user-attested fact, and stamps every member with settledByDecision pointing at it." ;
+    kpred:acceptance "A partition proposal that invents a purpose, drops a member, or double-assigns one is rejected whole rather than trimmed; a validated two-part partition mints one work unit per purpose and files every fact under exactly one." .
+
+# ------------------------------------------------------------------------------
+# F136.3: a new fact should know what the graph already depends on.
+# ------------------------------------------------------------------------------
+
+kb:structural-grounding rdf:type ktype:Feature ;
+    rdfs:label "Structural grounding — the graph is present when a fact is defined" ;
+    kpred:feature-id "F136.3" ;
+    kpred:has-status "functional" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:vocabulary-grounding ;
+    kpred:depends-on kb:vocabulary-grounding ;
+    kpred:relates-to kb:review-tree ;
+    kpred:relates-to kb:predicate-threshold-limit ;
+    kpred:touches-module kb:rdf ;
+    kpred:has-file "src/lib/rdf/structural-context.ts" ;
+    kpred:tested-by "src/lib/rdf/__tests__/structural-context.test.ts" ;
+    kpred:touches-file "src/lib/stores/ingest.svelte.ts" ;
+    kpred:estimated-files "3"^^xsd:integer ;
+    kpred:description "Matt, 2026-08-19: 'I think we need more intensive review and inclusion of current graph when defining new facts. The dependency for tree could be better determined with the context of the current graph more available during the definition of the new fact?' Extraction now sees the graph it is writing into: the entities that already exist with their real dependency edges and statuses, and the questions the graph has left open, both ranked by overlap with the source text. A structural claim pointing nowhere is dropped before it reaches the graph." ;
+    kpred:principle "THE SPARSE-DEPENDENCY PROBLEM IS A DEFINITION-TIME PROBLEM, NOT A REVIEW-TIME ONE. F139's tree ranks by what is stalled behind a decision, and that ranking was inert: Statement.blocks is populated on 8 of 529 queue rows, so the tree fell back to creation order and surfaced speculative NVIDIA notes above live architectural decisions. The workaround projected ranking from 140 depends-on edges after the fact. But those edges are sparse because NOTHING KNEW THE GRAPH WHEN THE FACT WAS BORN — every structural relation had to be inferred later by something with less information than the extractor had." ;
+    kpred:principle "GROUNDING MUST NOT BECOME A CAGE, and here it binds harder than for vocabulary. A prompt enumerating existing entities and demanding the model pick one would suppress genuinely new things, and a well-formed absence is the most valuable node in the graph. So the section is PERMISSIVE — 'reuse when the text is about the same thing; minting a new subject is fine and expected' — and it says 'only when the text says so' about dependencies. An imperative version was considered and rejected: told to attach every fact, a model attaches every fact, and the graph fills with confident dependencies the source never mentioned." ;
+    kpred:decided "A REFERENCE THIS BATCH INTRODUCED IS LEGITIMATE; A REFERENCE THAT EXISTS NOWHERE IS INVENTED. validateStructuralClaims keeps depends-on/part-of/blocks/gated-by/has-phase whose object is either already in the graph or introduced by the same extraction — a document may well describe two new things and the relation between them, and refusing that would make the extractor unable to express new structure at all. Anything else is dropped with a reason, because a FABRICATED dependency is worse than a missing one: the tree ranks by dependency, so a made-up edge promotes the wrong decision and the ranking looks well-informed while doing it." ;
+    kpred:decided "A STRUCTURAL RELATION TO A LITERAL IS A CATEGORY ERROR and is dropped: structure links entities, not strings. Descriptive triples are left alone — an odd object there is a content question for review, not a defect in the graph's shape." ;
+    kpred:done "WIRED IN PRODUCTION 2026-08-19, WHICH IS WHAT F136 WAS MISSING. All six buildExtractionUserPrompt call sites in ingest.svelte.ts now pass vocabulary + structural context, and so does the manual copy-prompt/paste-response path — a human pasting into any LLM gets the same grounding, or the pasted result comes back speaking a vocabulary the graph does not use. Both sections are appended LAST and are EMPTY on a first ingest, so an empty graph pays nothing and existing prompts keep their bytes when there is nothing to say." ;
+    kpred:known-issue "FIXED SAME DAY, RECORDED BECAUSE IT IS THE FAILURE F136 PREDICTED. The first version took open decisions in DOCUMENT order rather than by relevance. Measured against the real roadmap, a source text about Set View and the appearance resolver was offered the open questions about NVIDIA NeMo sidecars, Cosmos GPU requirements, FiftyOne and Facebook's deprecated API — exactly what kb:vocabulary-grounding's own open-question warns about: 'picking the wrong subset grounds the model in the wrong vocabulary, which is worse than no grounding'. An irrelevant question is not merely wasted prompt, it invites the model to attach a fact to whichever question it was shown. Questions are now ranked by overlap against both the question text and its subject's label, and a question with zero overlap is DROPPED rather than used as filler." ;
+    kpred:measured "MEASURED 2026-08-19 against static/reckons-roadmap.ttl with a Set View source text: the vocabulary section is 1,515 characters and the structural section 2,916, so grounding adds ~4.4k characters (roughly 1,100 tokens) to an extraction prompt. The selected anchors were correct — set-view, entity-appearance-resolver, graph-legibility, graph-density-legibility — and after the relevance fix the open questions were content-operations, multi-graph-viewport, entity-sets and prose-as-fact. Budgets are configurable (12 anchors, 6 decisions by default) because a small local model has a finite prompt and F136's open question about how much context fits is still open." ;
+    kpred:honest-note "FUNCTIONAL FOR SELECTION, VALIDATION AND WIRING; UNMEASURED FOR EFFECT. The context is built, ranked, injected at every production call site, and dangling structural claims are dropped with reasons — 21 unit tests, full suite 157 files / 2,187 tests green. What has NOT been measured is whether a model actually emits better dependencies because of it: there is no before/after extraction benchmark, so the claim is that the information is now PRESENT, not that dependency quality has improved. tests/bench/run-ollama-bench.ts --ground is the place to measure it, and kb:vocabulary-grounding already records that its own grounded run exited 0 without a score." ;
+    kpred:remaining "Measure the effect: a before/after extraction run scoring dependency correctness, not just vocabulary agreement. Until that exists, do not claim graph-aware extraction improves the tree's ranking — only that the ranking now has a source." ;
+    kpred:remaining "The dropped-claim reasons are console warnings. They should be pending observations in the review queue so a repeatedly-invented dependency becomes visible as a pattern rather than scrolling past in a dev console." ;
+    kpred:acceptance "A source text about an existing feature receives that feature as an anchor with its real depends-on edges and status; a text about nothing in the graph receives no open questions rather than the first six; an extraction claiming depends-on an entity that exists nowhere has that triple dropped with a reason while its other triples survive." .
+
+# ------------------------------------------------------------------------------
+# F140: a real browser, on the real GPU, asserting on time.
+# ------------------------------------------------------------------------------
+
+kb:perf-crawl rdf:type ktype:Feature ;
+    rdfs:label "Performance crawl — GPU-real, and it asserts on time" ;
+    kpred:feature-id "F140" ;
+    kpred:has-status "functional" ;
+    kpred:priority "high" ;
+    kpred:relates-to kb:ui-visual-assurance ;
+    kpred:relates-to kb:graph-density-legibility ;
+    kpred:relates-to kb:spatial-force-layout ;
+    kpred:touches-module kb:rdf ;
+    kpred:has-file "scripts/offline/perf-crawl.ts" ;
+    kpred:description "Matt, 2026-08-19, after repeated freezing screens while the suite reported 9/9 green: 'So we need a live browser actually rendering and performance testing on that.' A headed Chromium on the real display, driving routes, interactions and a ladder of progressively larger graphs, measuring long tasks, time-to-usable, frame timing, and time until the force simulation SETTLES." ;
+    kpred:principle "NO TEST IN THIS REPO ASSERTED ON TIME, and that is why every freeze shipped. Grepping tests/ and src/ for PerformanceObserver, longtask or INP returned ZERO hits. The review e2e has 19 presence assertions and none about latency, so toBeVisible({ timeout: 15_000 }) passes identically at 80ms and at 14.9s. The suite proved things APPEAR, never that they appear PROMPTLY — and raising a timeout to quiet a flake writes that tolerance down permanently." ;
+    kpred:principle "HEADLESS CHROMIUM DOES NOT USE THE GPU. Probed: the test browser reports ANGLE/SwiftShader — pure CPU rasterization. WebGL is PRESENT so checkWebGL() passes and the 3D graph renders; it simply renders on a path with nothing in common with a real GPU, leaving driver stalls, VRAM pressure and compositor jank unreachable. So this script REFUSES to run software-rendered: it reads the unmasked renderer string and aborts on SwiftShader unless --allow-software, because a green performance report from a software rasterizer is an unverifiable claim made by the party it benefits." ;
+    kpred:principle "SETTLED VELOCITY IS THE COMPLETION SIGNAL, NOT A VISIBLE CANVAS (Matt: 'Because of the great explosion effect of the nodes, I think settled velocities is more of a complete load.'). A canvas being visible means the simulation STARTED. Convergence is measured as the mean per-channel pixel delta between successive compositor screenshots decaying below a threshold — it spikes during the node explosion and decays toward rest." ;
+    kpred:measured "THE LADDER, 2026-08-19, RTX 3090, OpenGL 4.5, 1920x1200, measured to SETTLED VELOCITY. demo-review-tree (110 lines) 19.1s, peak delta 8.0. starter-quickstart (113) 15.6s, peak 7.2. starter-everyday (254) 38.6s, peak 9.1. starter-guide (398) NEVER SETTLED in 45s, peak 15.4. reckons-production (451) NEVER SETTLED, still moving at 2.9 after 45s, peak 28.6. reckons-roadmap (4,224) NEVER SETTLED and could not even be SAMPLED — 6 screenshots in 45 seconds, worst frame 13,850ms, 11 long tasks. So a 398-line graph never finishes loading, and starter-guide is exactly what the landing page's 'Documentation Graph' button opens." ;
+    kpred:measured "THE GETTING-STARTED FLOW, MEASURED AS AN INTERACTION: landing -> Documentation Graph settled at 11,147ms with a SINGLE long task of 10,417ms blocking the main thread, plus a 473ms one. That is the reported freeze, reproduced and quantified." ;
+    kpred:known-issue "starter-guide's delta trace does not decay monotonically: 2.33 -> 3.57 -> decay. The simulation OSCILLATES rather than converging, which is a different defect from being slow and needs its own fix in the force layout." ;
+    kpred:honest-note "THE INSTRUMENT WAS WRONG TWICE BEFORE IT WAS RIGHT, and both failures are recorded in the source because they generalize to any visual measurement. (1) canvas.drawImage() on a WebGL canvas returns BLANK without preserveDrawingBuffer, so every delta was 0 and it reported a fixed ~1.4s settle for every graph size; the tell was peak=0/final=0/samples=5 on every rung. (2) Comparing JPEG BYTES is noise — compressed streams do not preserve spatial locality and their length varies per frame, so it reported peak delta 255 everywhere. The working version screenshots as PNG through the compositor and decodes to a 64x64 RGB buffer with sharp. Validated by inspecting the decay TRAJECTORY (--trace-delta) before trusting any settle number." ;
+    kpred:honest-note "A wrong selector and a real stall look identical from outside, so the script separates them: if the usable-selector matches nothing after the wait it reports a HARNESS error, never a page failure. The first run claimed a 10.7s stall on /review that did not exist, because it looked for h1 where the page renders h2.rp-title." ;
+    kpred:known-issue "OBSERVER EFFECT: screenshot sampling costs ~50-100ms per sample and perturbs what it measures. On reckons-roadmap it cannot keep up at all (6 samples in 45s), so that rung's settle time is unmeasurable rather than merely bad. Reading the simulation's own vx/vy through a dev-only hook would remove both the proxy and the perturbation." ;
+    kpred:remaining "Expose the force simulation's velocities behind a dev-only window hook, so convergence is read from the simulation rather than proxied through pixels." ;
+    kpred:remaining "Add latency assertions to the existing e2e suite, replacing presence-only checks, so a slow render fails instead of passing quietly." ;
+    kpred:acceptance "The script aborts with a non-zero exit when the renderer is SwiftShader; a route whose usable-selector matches nothing is reported as a harness error and not counted as a page failure; the ladder reports a settle time or an explicit never-settled for each rung." .

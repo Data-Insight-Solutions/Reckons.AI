@@ -50,7 +50,8 @@
   // Configured if the caller has their own Hume key OR the persona carries a shared token
   // endpoint (F107.6) — the latter lets a viewer hear the voice without any Hume setup.
   const isConfigured = $derived(!!(turtleSettings().humeApiKey || settings().humeAiApiKey || turtleSettings().humeTokenUrl));
-  let voiceState = $state<VoiceState>(isConfigured ? 'idle' : 'setup');
+  function initialVoiceState(): VoiceState { return isConfigured ? 'idle' : 'setup'; }
+  let voiceState = $state<VoiceState>(initialVoiceState());
   let errorMsg = $state('');
 
   $effect(() => {

@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie';
-import type { Statement, Source, TurtleSettings } from '../rdf/types';
+import { resolveKbParam } from './kb-registry';
+import type { ExtractionRun, Statement, Source, TurtleSettings } from '../rdf/types';
 import type { ChangeLogEntry, MergeDecision, TrustEvent } from './types';
 import type { HighlightSettings } from '../../extension/types';
 
@@ -275,11 +276,13 @@ export const DEFAULT_SETTINGS: SettingsRecord = {
 
 function resolveDbName(): string {
   if (typeof window === 'undefined') return 'kbase';
-  // Per-tab KB: check URL ?kb= param, then sessionStorage, then localStorage
+  // Per-tab KB: check URL ?kb= param, then sessionStorage, then localStorage.
+  // Resolved through the SAME rule the registry uses (id, else graph name), or this would open a
+  // different database than getCurrentKbId() reports — the two must never disagree.
   try {
     const url = new URL(window.location.href);
     const fromUrl = url.searchParams.get('kb');
-    if (fromUrl) return fromUrl;
+    if (fromUrl) return resolveKbParam(fromUrl);
   } catch { /* ignore */ }
   return sessionStorage.getItem('sessionKbId')
     ?? localStorage.getItem('currentKbId')
@@ -334,6 +337,7 @@ export class KBaseDB extends Dexie {
   entityGifs!: Table<EntityGifRow, string>;
   icon2dOverrides!: Table<Icon2dOverrideRow, string>;
   kbSnapshots!: Table<KbSnapshotRow, string>;
+  extractionRuns!: Table<ExtractionRun, string>;
 
   constructor(name?: string) {
     super(name ?? resolveDbName());
@@ -407,6 +411,22 @@ export class KBaseDB extends Dexie {
       entityGifs: 'id',
       icon2dOverrides: 'id',
       kbSnapshots: 'id, kbId, createdAt'
+    });
+    // v8: F136.1's local execution ledger. Additive only: historic sources/statements keep
+    // working unchanged, while each new ingest can link to an inspectable run record.
+    this.version(8).stores({
+      sources: 'id, ingestedAt, kind, trustLevel',
+      statements: 'id, sourceId, status, [s.value+p.value], createdAt',
+      settings: 'key',
+      changelog: '++id, timestamp, action, statementId, sourceId, entityKey',
+      mergeDecisions: '++id, timestamp, entityKeyA, entityKeyB',
+      trustEvents: '++id, timestamp, sourceId',
+      glbOverrides: 'id',
+      workspace: 'id',
+      entityGifs: 'id',
+      icon2dOverrides: 'id',
+      kbSnapshots: 'id, kbId, createdAt',
+      extractionRuns: 'id, sourceId, startedAt, status'
     });
   }
 }
@@ -497,6 +517,12 @@ export async function saveSettings(patch: Partial<SettingsRecord>): Promise<void
       mergeAnalysisBackend: m.mergeAnalysisBackend,
       ollamaModel: m.ollamaModel,
       ollamaBaseUrl: m.ollamaBaseUrl,
+      // Persisted like every other backend preference. It was missing from this allowlist, so the
+      // settings form wrote it, the in-memory store showed it set, and `saveSettings` silently
+      // dropped it on the way to Dexie — the checkbox came back unticked on every reload and the
+      // prefer-local routing in prefer-local.ts could never actually engage. An allowlist that
+      // omits a field fails silently by construction; add new SettingsRecord fields here too.
+      preferLocal: m.preferLocal,
       ollamaPromptMode: m.ollamaPromptMode,
       ollamaStructuredExtraction: m.ollamaStructuredExtraction,
       embeddingThreshold: m.embeddingThreshold,
@@ -534,6 +560,26 @@ export async function saveSettings(patch: Partial<SettingsRecord>): Promise<void
       indicoApiToken: m.indicoApiToken,
       indicoCategoryId: m.indicoCategoryId,
       indicoLastSync: m.indicoLastSync,
+      // Declared on SettingsRecord but absent from this list until now, so each was written to the
+      // in-memory store, shown as set in the UI, and dropped before Dexie. Found by diffing the
+      // type against this object after `preferLocal` turned out to be missing the same way; a
+      // credential or model choice that silently fails to persist is indistinguishable from a
+      // form that does not work.
+      embeddingModel: m.embeddingModel,
+      analyzeGuidance: m.analyzeGuidance,
+      analyzePrompts: m.analyzePrompts
+        ? JSON.parse(JSON.stringify(m.analyzePrompts))
+        : undefined,
+      kbStory: m.kbStory,
+      nodePreviewSize: m.nodePreviewSize,
+      autoExpandAssets: m.autoExpandAssets,
+      tavilyApiKey: m.tavilyApiKey,
+      githubToken: m.githubToken,
+      autoRefreshOnOpen: m.autoRefreshOnOpen,
+      autoRefreshIntervalMinutes: m.autoRefreshIntervalMinutes,
+      showTutorialHints: m.showTutorialHints,
+      n8nBaseUrl: m.n8nBaseUrl,
+      n8nNotifyOnReview: m.n8nNotifyOnReview,
       turtleSettings: JSON.parse(JSON.stringify(m.turtleSettings))
     };
     await db.settings.put(toSave);

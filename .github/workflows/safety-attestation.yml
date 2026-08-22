@@ -2,10 +2,11 @@ name: Safety Attestation
 
 # A recurring, dated record that Reckons.AI's good-faith safety controls exist and
 # still pass — recorded against the app's own functionality, continuously, from an
-# early date. The app has no server, no accounts, and no logs, so it can retain no
-# evidence about any USER; what it can prove is what the SOFTWARE did. Committing the
-# attestation gives that record what only git can: timestamped, ordered, and
-# cryptographically chained, so it cannot be backdated.
+# early date. The app has no graph-content backend or accounts, so it retains no evidence
+# tying graph activity to a user; the separate optional feedback path is not graph-activity
+# evidence. What this workflow can prove is what the SOFTWARE did. Git provides ordered,
+# hash-linked history; the hosted remote and CI run history provide independent timing evidence.
+# Git history alone can be rewritten, so do not describe backdating as impossible.
 #
 # See COUNSEL-BRIEF.md and scripts/offline/safety-attestation.ts.
 

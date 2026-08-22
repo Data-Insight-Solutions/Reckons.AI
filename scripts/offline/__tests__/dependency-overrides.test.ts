@@ -111,15 +111,15 @@ describe('security dependency overrides', () => {
   });
 
   it('keeps Minimatch 5 on the compatible patched brace-expansion line', () => {
-    // GHSA-mh99-v99m-4gvg was backported to 2.x in 2.1.3. Forcing 5.x here
-    // would break Minimatch 5, which requires brace-expansion as a function.
+    // The current 2.x remediation is 2.1.4. Forcing 5.x here would break
+    // Minimatch 5, which requires brace-expansion as a function.
     const minimatchRequire = createRequire(
       path.join(process.cwd(), 'node_modules/filelist/node_modules/minimatch/minimatch.js')
     );
     const bracePackage = minimatchRequire('brace-expansion/package.json') as {
       version: string;
     };
-    expect(versionAtLeast(bracePackage.version, '2.1.3')).toBe(true);
+    expect(versionAtLeast(bracePackage.version, '2.1.4')).toBe(true);
 
     const minimatch = minimatchRequire('minimatch') as (
       candidate: string,
@@ -145,7 +145,7 @@ describe('security dependency overrides', () => {
     const bracePackage = modernMinimatchRequire('brace-expansion/package.json') as {
       version: string;
     };
-    expect(versionAtLeast(bracePackage.version, '5.0.8')).toBe(true);
+    expect(versionAtLeast(bracePackage.version, '5.0.9')).toBe(true);
 
     const { minimatch } = modernMinimatchRequire('minimatch') as {
       minimatch(candidate: string, pattern: string): boolean;

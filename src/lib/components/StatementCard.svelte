@@ -36,6 +36,11 @@
 <div class="row" class:compact role="button" tabindex="0" onclick={onclick} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { onclick?.(e as any); } }}>
   {#if statement.gloss && !compact}
     <div class="gloss">{statement.gloss}</div>
+  {:else if compact && statement.needsObject && statement.question}
+    <!-- A partial fact renders its object as a bare "?" — which in compact mode, with the gloss
+         suppressed, is the entire content of the card: a row that shows a blank without ever
+         saying what the blank is asking. The question is the only part worth reading. -->
+    <div class="gloss compact-question">❓ {statement.question}</div>
   {/if}
   {#if statement.excerpt && !compact}
     <blockquote class="excerpt">{statement.excerpt}</blockquote>
@@ -93,6 +98,15 @@
     line-height: 1.3;
     margin-bottom: 0.55rem;
     color: var(--ink);
+  }
+  /* Sized for a dense list rather than a card headline — this appears where the full gloss is
+     deliberately suppressed, so it has to inform without dominating the row. */
+  .gloss.compact-question {
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    line-height: 1.35;
+    margin-bottom: 0.35rem;
+    color: var(--ink-muted, var(--ink));
   }
   .excerpt {
     font-size: 0.82rem;

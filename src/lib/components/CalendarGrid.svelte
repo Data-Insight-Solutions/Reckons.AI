@@ -214,14 +214,23 @@
         {@const top = (ev.start.getHours() + ev.start.getMinutes() / 60) * 3.5}
         {@const duration = ev.end ? (ev.end.getTime() - ev.start.getTime()) / 3600000 : 1}
         {@const height = Math.max(duration * 3.5, 2)}
-        <button
+        <div
           class="day-event"
           class:conflict={ev.conflict}
           class:in-kb={ev.inKb}
           class:recurring={ev.recurring}
+          role="button"
+          tabindex="0"
           title={ev.recurring ? `${ev.title} (${ev.recurrencePattern ?? 'recurring'})` : ev.title}
           style="top: calc(2.5rem + {top}rem); height: {height}rem;"
           onclick={() => onselect?.(ev)}
+          onkeydown={(event) => {
+            if (event.target !== event.currentTarget) return;
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              onselect?.(ev);
+            }
+          }}
         >
           <span class="de-time">{#if ev.recurring}<span class="cal-recur">&#8634;</span>{/if}{formatTime(ev.start)}{ev.end ? ` - ${formatTime(ev.end)}` : ''}</span>
           <span class="de-title">{ev.title}</span>
@@ -231,7 +240,7 @@
           {#if onadd && !ev.inKb}
             <button class="de-add" onclick={(e) => { e.stopPropagation(); onadd?.(ev); }}>+ add</button>
           {/if}
-        </button>
+        </div>
       {/each}
     </div>
   </div>

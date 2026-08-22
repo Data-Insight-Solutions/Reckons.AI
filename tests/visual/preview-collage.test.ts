@@ -162,6 +162,32 @@ test.describe('F133 — all previews', () => {
       expect(covered / (p.w * p.h), 'fraction of a side panel covered by the image').toBeLessThan(0.02);
     }
     console.log(`expanded image ${Math.round(img!.width)}x${Math.round(img!.height)} clears ${panels.length} panel(s)`);
+
+    // The three levels are deliberately distinct: a thumbnail opens the large viewer; its
+    // fullscreen control opens a dialog; Escape or the dialog backdrop returns to large; and
+    // the explicit close button closes the viewer altogether. Keep the two Escape handlers from
+    // accidentally collapsing both levels in one keypress.
+    const fullscreen = page.locator('.asset-fullscreen');
+    const expand = page.getByRole('button', { name: 'View image fullscreen' });
+    const close = page.locator('.asset-fs-close');
+    await expand.click();
+    await expect(fullscreen).toBeVisible();
+    await expect(close).toBeFocused();
+
+    await page.keyboard.press('Escape');
+    await expect(fullscreen).toHaveCount(0);
+    await expect(page.locator('.asset-large')).toBeVisible();
+
+    await expand.click();
+    await expect(fullscreen).toBeVisible();
+    await fullscreen.click({ position: { x: 4, y: 4 } });
+    await expect(fullscreen).toHaveCount(0);
+    await expect(page.locator('.asset-large')).toBeVisible();
+
+    await expand.click();
+    await expect(close).toBeFocused();
+    await close.click();
+    await expect(page.locator('.asset-large')).toHaveCount(0);
   });
 
   test('FILTERS APPLY TO PREVIEWS', async ({ page }) => {

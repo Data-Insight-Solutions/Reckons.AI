@@ -7,8 +7,9 @@
  * A first measurement said half the queue was duplicated. That was WRONG, and the way it was wrong
  * matters more than the number: it keyed on the question TEXT alone, so 345 branch-align findings
  * that say the same sentence about 345 DIFFERENT entities all counted as copies of each other. The
- * identity of a finding is subject + predicate + text, and under that key the real figure is 115
- * duplicates — 13%. Same sentence, different subject, is two findings.
+ * identity of a finding is destination graph + subject + predicate + blockers + text, and under
+ * the earlier subject/predicate/text key the real figure was 115 duplicates — 13%. Same sentence
+ * about a different subject, graph, or blocked task is different work.
  *
  * What survives the correction is the part that actually hurt. The single worst duplicate was
  * reported FIFTY-NINE times:
@@ -49,10 +50,18 @@
  *   npx tsx scripts/offline/queue-dedupe.ts --supersede # also keep only the newest recomputed run
  */
 
-import { readFileSync, writeFileSync, copyFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { atomicWriteFile } from '../agent/state-file.js';
+import {
+  findingIdentity,
+  normalizeFindingBlocks,
+  normalizeFindingKb,
+  transactPendingQueue,
+} from './pending-queue.js';
 
-const ROOT = new URL('../..', import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const QUEUE = join(ROOT, 'reckons-workspace/knowledge.pending.jsonl');
 const SUPERSEDE = process.argv.includes('--supersede');
 const WRITE = process.argv.includes('--write') || SUPERSEDE;
@@ -81,78 +90,82 @@ if (!existsSync(QUEUE)) {
 
 type Row = Record<string, unknown> & { subject?: string; predicate?: string; agent?: string };
 
-const lines = readFileSync(QUEUE, 'utf8').split('\n');
-const rows: { raw: string; row: Row }[] = [];
-let unparseable = 0;
-for (const raw of lines) {
-  if (!raw.trim()) continue;
-  try {
-    rows.push({ raw, row: JSON.parse(raw) as Row });
-  } catch {
-    unparseable++; // keep the count honest rather than silently dropping
-  }
+function recomputeKey(row: Row): string {
+  const agent = String(row.agent ?? '').split(' ')[0];
+  return `${agent}|${normalizeFindingKb(row.kb)}|${row.subject ?? ''}|${row.predicate ?? ''}|` +
+    JSON.stringify(normalizeFindingBlocks(row.blocks));
 }
 
-/**
- * Identity of a finding. Subject + predicate + the text a human would read.
- *
- * Deliberately NOT including the timestamp, which is what made these duplicates in the first
- * place: the same finding re-queued on a later run differs only by addedAt, so any key including
- * it would call every copy unique and this script would report a clean queue.
- */
-const identity = (r: Row): string => {
-  const text = String(r.question ?? r.object ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
-  return `${r.subject ?? ''}|${r.predicate ?? ''}|${text}`;
-};
+function analyzeQueue(content: string) {
+  const parsed: { raw: string; row: Row | null }[] = content.split('\n')
+    .filter((raw) => raw.trim())
+    .map((raw) => {
+      try { return { raw, row: JSON.parse(raw) as Row }; }
+      catch { return { raw, row: null }; }
+    });
+  const seen = new Map<string, number>();
+  const kept: typeof parsed = [];
+  const dupesByAgent = new Map<string, number>();
+  const worst = new Map<string, { n: number; text: string }>();
+  let unparseable = 0;
 
-const seen = new Map<string, number>();
-const kept: string[] = [];
-const dupesByAgent = new Map<string, number>();
-const worst = new Map<string, { n: number; text: string }>();
-
-for (const { raw, row } of rows) {
-  const id = identity(row);
-  const n = (seen.get(id) ?? 0) + 1;
-  seen.set(id, n);
-  if (n === 1) {
-    kept.push(raw);
-  } else {
-    const agent = String(row.agent ?? 'unknown').split(' ')[0];
-    dupesByAgent.set(agent, (dupesByAgent.get(agent) ?? 0) + 1);
+  for (const item of parsed) {
+    if (!item.row) {
+      unparseable++;
+      kept.push(item); // malformed evidence is preserved byte-for-byte
+      continue;
+    }
+    const id = findingIdentity(item.row);
+    const n = (seen.get(id) ?? 0) + 1;
+    seen.set(id, n);
+    if (n === 1) kept.push(item);
+    else {
+      const agent = String(item.row.agent ?? 'unknown').split(' ')[0];
+      dupesByAgent.set(agent, (dupesByAgent.get(agent) ?? 0) + 1);
+    }
+    const worstEntry = worst.get(id) ?? { n: 0, text: String(item.row.question ?? item.row.object ?? '') };
+    worstEntry.n = n;
+    worst.set(id, worstEntry);
   }
-  const w = worst.get(id) ?? { n: 0, text: String(row.question ?? row.object ?? '') };
-  w.n = n;
-  worst.set(id, w);
-}
 
-// ── Supersede: for recomputing jobs, keep only the newest run per subject+predicate ──
-let superseded = 0;
-let final = kept;
-if (SUPERSEDE) {
-  const parsed = kept.map((raw) => ({ raw, row: JSON.parse(raw) as Row }));
-  const newest = new Map<string, string>();
-  for (const { row } of parsed) {
-    const agent = String(row.agent ?? '').split(' ')[0];
-    if (!RECOMPUTABLE.has(agent)) continue;
-    const k = `${agent}|${row.subject ?? ''}|${row.predicate ?? ''}`;
-    const at = String(row.addedAt ?? '');
-    if (!newest.has(k) || at > newest.get(k)!) newest.set(k, at);
-  }
-  final = parsed
-    .filter(({ row }) => {
-      const agent = String(row.agent ?? '').split(' ')[0];
-      if (!RECOMPUTABLE.has(agent)) return true; // one-time notes are never superseded
-      const k = `${agent}|${row.subject ?? ''}|${row.predicate ?? ''}`;
-      const keep = String(row.addedAt ?? '') === newest.get(k);
+  let superseded = 0;
+  let final = kept;
+  if (SUPERSEDE) {
+    const newest = new Map<string, string>();
+    for (const item of kept) {
+      if (!item.row) continue;
+      const agent = String(item.row.agent ?? '').split(' ')[0];
+      if (!RECOMPUTABLE.has(agent)) continue;
+      const key = recomputeKey(item.row);
+      const at = String(item.row.addedAt ?? '');
+      if (!newest.has(key) || at > newest.get(key)!) newest.set(key, at);
+    }
+    final = kept.filter((item) => {
+      if (!item.row) return true;
+      const agent = String(item.row.agent ?? '').split(' ')[0];
+      if (!RECOMPUTABLE.has(agent)) return true;
+      const keep = String(item.row.addedAt ?? '') === newest.get(recomputeKey(item.row));
       if (!keep) superseded++;
       return keep;
-    })
-    .map((p) => p.raw);
+    });
+  }
+
+  return {
+    rows: parsed.length,
+    unparseable,
+    seen,
+    dupesByAgent,
+    worst,
+    removed: parsed.length - kept.length,
+    superseded,
+    final: final.map((item) => item.raw),
+  };
 }
 
-const removed = rows.length - kept.length;
+const analysis = analyzeQueue(readFileSync(QUEUE, 'utf8'));
+const { rows, unparseable, seen, dupesByAgent, worst, removed, superseded, final } = analysis;
 
-console.log(`\x1b[1mqueue dedupe\x1b[0m \x1b[2m— ${rows.length} entr(ies), ${seen.size} unique\x1b[0m\n`);
+console.log(`\x1b[1mqueue dedupe\x1b[0m \x1b[2m— ${rows} entr(ies), ${seen.size} unique\x1b[0m\n`);
 if (unparseable) console.log(`  \x1b[33m${unparseable} line(s) did not parse as JSON and were left untouched\x1b[0m\n`);
 
 if (removed === 0 && superseded === 0) {
@@ -160,7 +173,7 @@ if (removed === 0 && superseded === 0) {
   process.exit(0);
 }
 
-console.log(`  \x1b[31m${removed}\x1b[0m duplicate entr(ies) — \x1b[1m${Math.round((removed / rows.length) * 100)}%\x1b[0m of the queue\n`);
+console.log(`  \x1b[31m${removed}\x1b[0m duplicate entr(ies) — \x1b[1m${Math.round((removed / rows) * 100)}%\x1b[0m of the queue\n`);
 console.log('  by the job that queued them:');
 for (const [agent, n] of [...dupesByAgent].sort((a, b) => b[1] - a[1]).slice(0, 6)) {
   console.log(`    ${String(n).padStart(4)}  ${agent}`);
@@ -180,10 +193,17 @@ if (!WRITE) {
   process.exit(0);
 }
 
-copyFileSync(QUEUE, QUEUE + '.bak');
-writeFileSync(QUEUE, final.join('\n') + '\n');
+const written = transactPendingQueue(QUEUE, (current) => {
+  const fresh = analyzeQueue(current);
+  atomicWriteFile(QUEUE + '.bak', current);
+  return {
+    content: fresh.final.join('\n') + (fresh.final.length ? '\n' : ''),
+    result: fresh,
+  };
+});
 console.log(
-  `\n\x1b[32mRewrote\x1b[0m ${QUEUE.replace(ROOT, '')} — ${final.length} kept, ` +
-    `${removed} duplicate(s) collapsed` + (superseded ? `, ${superseded} stale recomputation(s) superseded` : '') + '.',
+  `\n\x1b[32mRewrote\x1b[0m ${QUEUE.replace(ROOT, '')} — ${written.final.length} kept, ` +
+    `${written.removed} duplicate(s) collapsed` +
+    (written.superseded ? `, ${written.superseded} stale recomputation(s) superseded` : '') + '.',
 );
 console.log(`\x1b[2mPrevious contents saved alongside as .bak\x1b[0m`);

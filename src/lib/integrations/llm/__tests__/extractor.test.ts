@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseTriplesJSON, triplesToStatements } from '../extractor';
+import { parseTriplesJSON, parseTriplesJSONWithReport, triplesToStatements, validateExtractedTriples } from '../extractor';
 import type { ExtractedTriple } from '../extractor';
 import type { Source } from '$lib/rdf/types';
 
@@ -139,6 +139,15 @@ describe('parseTriplesJSON', () => {
     expect(parseTriplesJSON('[]')).toHaveLength(0);
   });
 
+  it('reports parser-rejected entries without retaining raw model output', () => {
+    const result = parseTriplesJSONWithReport(JSON.stringify([
+      { subject: 'alice', predicate: 'knows', object: 'bob' },
+      { predicate: 'missing-subject', object: 'nobody' },
+    ]));
+    expect(result).toMatchObject({ candidateCount: 2, parserRejectedCount: 1 });
+    expect(result.triples).toHaveLength(1);
+  });
+
   it('parses all optional fields when present', () => {
     const triple: ExtractedTriple = {
       subject: 'alice',
@@ -154,6 +163,25 @@ describe('parseTriplesJSON', () => {
     expect(result[0].datatype).toBe('date');
     expect(result[0].gloss).toBe('Alice was born on 1990-01-01.');
     expect(result[0].confidence).toBe(0.95);
+  });
+});
+
+describe('validateExtractedTriples', () => {
+  it('rejects blank identifiers and invalid optional field values without repairing them', () => {
+    const result = validateExtractedTriples([
+      MINIMAL_TRIPLE,
+      { subject: ' ', predicate: 'knows', object: 'bob' },
+      { subject: 'alice', predicate: 'knows', object: 'bob', confidence: 1.2 },
+      { subject: 'alice', predicate: 'knows', object: 'bob', datatype: 'date' },
+      { subject: 'alice', predicate: 'knows', object: '42', objectIsLiteral: true, datatype: 'number' },
+    ]);
+    expect(result.rejectedCount).toBe(3);
+    expect(result.triples).toEqual([MINIMAL_TRIPLE, expect.objectContaining({ datatype: 'number' })]);
+  });
+
+  it('accepts finite literal scalars from dynamic provider JSON', () => {
+    const dynamic = { subject: 'count', predicate: 'has-value', object: 0, objectIsLiteral: true } as unknown as ExtractedTriple;
+    expect(validateExtractedTriples([dynamic])).toMatchObject({ rejectedCount: 0, triples: [dynamic] });
   });
 });
 
