@@ -29,8 +29,8 @@
  *
  * Prints the question id. Exits 0. Does not wait.
  */
-import { appendFileSync, existsSync, readFileSync, mkdirSync } from 'fs';
 import path from 'path';
+import { queueFindings } from '../offline/pending-queue.js';
 
 const PENDING = 'reckons-workspace/knowledge.pending.jsonl';
 
@@ -61,7 +61,7 @@ export interface Question {
    * Target graph, by name. A question about kb:auto-merge belongs in the Reckons.AI
    * roadmap graph, NOT in whatever the user happens to have open. The app leaves entries
    * addressed elsewhere in the file rather than misfiling them.
-   * Omit to mean "any graph".
+   * Repository-agent questions default to `roadmap`; use an explicit value for every other graph.
    */
   kb?: string;
   /** The work this question blocks. Lets other agents pick up what is NOT waiting. */
@@ -92,7 +92,7 @@ export function askGraph(q: Question, pendingPath = PENDING): { queued: boolean;
     // drainWorkspacePending() sees the missing object and sets needsObject:true, object '?'.
     question: q.question,
     note: q.note,
-    ...(q.kb ? { kb: q.kb } : {}),
+    kb: q.kb ?? 'roadmap',
     ...(q.blocks ? { blocks: expandIri(q.blocks) } : {}),
     ...(q.askedByGraph ? { askedByGraph: q.askedByGraph } : {}),
     type: 'question' as const,
@@ -104,26 +104,13 @@ export function askGraph(q: Question, pendingPath = PENDING): { queued: boolean;
 
   const line = JSON.stringify(entry);
 
-  mkdirSync(path.dirname(pendingPath), { recursive: true });
-  const existing = existsSync(pendingPath) ? readFileSync(pendingPath, 'utf8') : '';
-
-  // Dedupe on (subject, predicate, question) — not on the whole line, which carries a
-  // timestamp and would never match.
-  const already = existing
-    .split('\n')
-    .filter(Boolean)
-    .some((l) => {
-      try {
-        const d = JSON.parse(l);
-        return d.subject === subject && d.predicate === predicate && d.question === q.question;
-      } catch {
-        return false;
-      }
-    });
-  if (already) return { queued: false, line };
-
-  appendFileSync(pendingPath, line + '\n');
-  return { queued: true, line };
+  const queued = queueFindings([entry], {
+    agent: entry.agent,
+    path: pendingPath,
+    recomputes: false,
+    kb: entry.kb,
+  });
+  return { queued: queued.queued > 0, line };
 }
 
 // ── CLI ───────────────────────────────────────────────────────────────────────

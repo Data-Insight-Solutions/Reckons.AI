@@ -25,7 +25,7 @@
   import { pushNotification } from '$lib/stores/notifications.svelte';
   import { confirmedStatements } from '$lib/stores/kb.svelte';
   import { updateSettings } from '$lib/stores/settings.svelte';
-  import { getCurrentKbId, registerStableId, getRegistry, createKb } from '$lib/storage/kb-registry';
+  import { getCurrentKbId, registerStableId, ensureKbRegistered, isUnresolvedKbParam } from '$lib/storage/kb-registry';
   import { getOrCreateStableId } from '$lib/storage/kb-fingerprint';
   import { Tooltip } from 'bits-ui';
   import NotificationStack from '$lib/components/NotificationStack.svelte';
@@ -99,11 +99,21 @@
           s.kbStableId,
           (newId) => updateSettings({ kbStableId: newId })
         );
-        // Ensure the KB entry exists in the registry
-        const reg = getRegistry();
-        if (!reg.find(k => k.id === dbName)) {
-          createKb(s.kbTitle || 'My Graph');
+        // A `?kb=` naming a graph this browser does not have now lands on the default graph rather
+        // than minting an empty one. Say so — silently showing a different graph than the link
+        // asked for is how the wrong graph gets reviewed, and edited.
+        const requested = new URL(window.location.href).searchParams.get('kb');
+        if (requested && isUnresolvedKbParam(requested)) {
+          console.warn(
+            `[graph] no graph named "${requested}" in this browser — showing the default graph. ` +
+            `Link the workspace folder and sync first, then reopen the link.`,
+          );
         }
+        // Ensure THIS graph is in the registry. The previous call was createKb(), which mints a
+        // fresh `kbase_<timestamp>` id instead of registering dbName — so opening `?kb=roadmap`
+        // added a phantom entry for a graph nobody was looking at, on every load, and the
+        // registerStableId below then found no entry for dbName and silently did nothing.
+        ensureKbRegistered(dbName, s.kbTitle || dbName);
         registerStableId(dbName, stableId, confirmedStatements().length);
       }
 
@@ -162,7 +172,7 @@
 
 <div class="bg"></div>
 
-<main id="main-content" role="main" class:reserved-nav-shell={usesReservedNavShell}>
+<main id="main-content" class:reserved-nav-shell={usesReservedNavShell}>
   {#if loaded() && settingsLoaded() || forceShow}
     {@render children()}
     {#if error}

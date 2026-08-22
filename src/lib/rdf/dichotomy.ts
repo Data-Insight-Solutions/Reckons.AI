@@ -98,7 +98,12 @@ export function findDichotomies(statements: Statement[], minIdentity = 0.6): Dic
   for (const s of statements) {
     if (s.status === 'rejected' || s.status === 'superseded') continue;
     if (s.s.kind !== 'iri') continue;
-    bySubject.set(s.s.value, [...(bySubject.get(s.s.value) ?? []), s]);
+    // Push rather than spread. This was O(n^2) and it became a HOT PATH when F139's review tree
+    // started calling findDichotomies over the whole graph: measured on a 40,433-fact synced graph it
+    // was the largest single cost in buildReviewTree.
+    const list = bySubject.get(s.s.value);
+    if (list) list.push(s);
+    else bySubject.set(s.s.value, [s]);
   }
 
   const out: Dichotomy[] = [];

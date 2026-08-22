@@ -82,6 +82,18 @@ interface Finding {
   level: 'error' | 'warn';
   check: string;
   msg: string;
+  /**
+   * What this finding is ABOUT — a commit sha or a repo path.
+   *
+   * Every finding used to be queued under one generic subject with one predicate, so 74 distinct
+   * observations about 74 distinct commits collapsed into a single subject+predicate carrying 74
+   * "?" objects. That is unreviewable by construction: the graph cannot say which commit each row
+   * concerns, dedup cannot tell two of them apart, and no decision on one means anything for the
+   * others. The subject has to be the thing observed.
+   */
+  about: string;
+  /** The proven answer. These are lookups, not questions — the script already ran the check. */
+  object: string;
 }
 const findings: Finding[] = [];
 
@@ -96,6 +108,8 @@ for (const f of untested) {
   findings.push({
     level: 'error',
     check: 'fix-without-test',
+    about: `urn:reckons:commit/${f.sha}`,
+    object: `${f.sourceFiles.length} source file(s), 0 test file(s)`,
     msg:
       `${f.sha} "${f.subject.slice(0, 90)}" changed ${f.sourceFiles.length} source file(s) and NO test. ` +
       `A fix with no test is a bug with a return ticket — and in a semantic system the regression will not ` +
@@ -112,6 +126,8 @@ for (const [file, n] of hotspots.slice(0, 8)) {
   findings.push({
     level: 'warn',
     check: 'fragility-hotspot',
+    about: `urn:reckons:file/${file}`,
+    object: `${n} fixes in ${SINCE} commits`,
     msg:
       `${file} has been fixed ${n} times in the last ${SINCE} commits. A file that keeps needing fixes is not ` +
       `unlucky, it is fragile — that is a design signal, not a moral failing. Worth asking what invariant it ` +
@@ -152,9 +168,15 @@ if (PENDING_OUT && findings.length) {
   // it. Findings age out when the commit leaves the window, not when a run stops mentioning it.
   const { queued, skipped } = queueFindings(
     findings.map((f) => ({
-      subject: 'urn:kbase:concept/deep-testing',
-      predicate: 'urn:kbase:predicate/history-lesson',
-      question: `[history-lessons/${f.check}] ${f.msg}`,
+      // The commit or file the lesson is about — not one shared bucket. See Finding.about.
+      subject: f.about,
+      predicate: `urn:kbase:predicate/${f.check}`,
+      // An OBSERVATION carrying its answer, not a question with a "?" object. This check is a
+      // lookup the script has already performed: "did this fix commit touch a test file, yes or
+      // no". Filing a settled lookup as a question hands a human a decision that has no decision
+      // in it — and 74 of them at once reads as a queue full of work that is not work.
+      object: f.object,
+      note: `[history-lessons/${f.check}] ${f.msg}`,
       type: f.level === 'error' ? ('drift-warning' as const) : ('observation' as const),
       priority: f.level === 'error' ? ('high' as const) : ('medium' as const),
     })),

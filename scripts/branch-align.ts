@@ -14,15 +14,36 @@
  *
  * Usage: npm run branch-align   (or: npx tsx scripts/branch-align.ts)
  */
-import { readFileSync, appendFileSync } from 'fs';
+import { readFileSync } from 'fs';
 import { execSync } from 'child_process';
 import N3 from 'n3';
+import { queueFindings } from './offline/pending-queue.js';
 
 // --suggest: instead of only reporting drift, queue proposed graph changes as
 // pending entries for human review in Reckons.AI (offline-agent workflow).
 const SUGGEST = process.argv.includes('--suggest');
 const PENDING = 'reckons-workspace/knowledge.pending.jsonl';
-const TODAY = new Date().toISOString().slice(0, 10);
+/**
+ * The date an environment's branch actually last moved — NOT the date this script ran.
+ *
+ * This was `new Date()`, so "when did this feature land in dev" was answered with "whenever
+ * somebody happened to run branch-align". Two runs on two days produced two different values for
+ * the same subject and predicate, each conflicting with the last, and the review UI then asked a
+ * human to choose between `2026-08-15` and `2026-08-17` as though it were a judgement. It is not:
+ * neither was ever evidence of anything, and no answer to that question could be right.
+ *
+ * The branch tip's commit date is stable between runs and is a real claim: this feature is present
+ * in that environment as of a commit made on that day. Falls back to undefined rather than to
+ * today — a date we cannot substantiate should be absent, not invented.
+ */
+function branchDate(branch: string): string | undefined {
+  try {
+    const iso = execSync(`git log -1 --format=%cI origin/${branch}`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+    return iso ? iso.slice(0, 10) : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 const KP = 'urn:kbase:predicate/';
 const KT = 'urn:kbase:type/';
@@ -79,7 +100,7 @@ for (const [s, list] of bySubject) {
 }
 
 // Proposed graph changes accumulated alongside drift when --suggest is set.
-interface Sug { subject: string; predicate: string; object: string; note: string; type: string; }
+interface Sug { subject: string; predicate: string; object: string; note: string; type: 'suggestion' | 'status-update'; }
 const suggestions: Sug[] = [];
 const inProd = (f: Feat) => !!f.inProduction || f.status === 'production';
 
@@ -146,12 +167,17 @@ for (const f of features) {
     // Proposed fix: features with outstanding work belong in dev; finished ones
     // are already live on main, so track them in-production and promote the
     // maturity status to match. Both are proposals — the human accepts/adjusts.
+    // `status-update`, not `suggestion`: this REPLACES the environment date rather than competing
+    // with it. Typed as a suggestion, a refreshed value arrived as a rival claim and the reviewer
+    // was offered keep-new / keep-existing / keep-both between two dates.
     if (f.remaining) {
-      suggestions.push({ subject: f.iri, predicate: KP + 'in-dev', object: TODAY, type: 'suggestion',
-        note: `${f.id} is 'functional' with remaining work ("${f.remaining.slice(0, 60)}...") — track in dev.` });
+      const d = branchDate('dev');
+      if (d) suggestions.push({ subject: f.iri, predicate: KP + 'in-dev', object: d, type: 'status-update',
+        note: `${f.id} is 'functional' with remaining work ("${f.remaining.slice(0, 60)}...") — track in dev, as of the dev branch tip.` });
     } else {
-      suggestions.push({ subject: f.iri, predicate: KP + 'in-production', object: TODAY, type: 'suggestion',
-        note: `${f.id} is 'functional' with no remaining work — appears shipped/live on main; track in-production.` });
+      const d = branchDate('main');
+      if (d) suggestions.push({ subject: f.iri, predicate: KP + 'in-production', object: d, type: 'status-update',
+        note: `${f.id} is 'functional' with no remaining work — appears shipped/live on main; track in-production, as of the main branch tip.` });
       suggestions.push({ subject: f.iri, predicate: KP + 'has-status', object: 'production', type: 'status-update',
         note: `${f.id} promote maturity 'functional' → 'production' to match in-production tracking.` });
     }
@@ -176,31 +202,21 @@ if (drift.length === 0) {
 }
 
 // ── Suggestions (--suggest) ─────────────────────────────────────────────────
-if (SUGGEST && suggestions.length > 0) {
-  // Idempotent: skip any suggestion already present (same subject+predicate+object)
-  // so repeated offline runs don't pile up duplicates.
-  const existing = new Set<string>();
-  try {
-    for (const l of readFileSync(PENDING, 'utf8').split('\n')) {
-      if (!l.trim()) continue;
-      try { const o = JSON.parse(l); existing.add(`${o.subject}|${o.predicate}|${o.object}`); } catch { /* skip */ }
-    }
-  } catch { /* no pending file yet */ }
-  const fresh = suggestions.filter((s) => !existing.has(`${s.subject}|${s.predicate}|${s.object}`));
-  const skipped = suggestions.length - fresh.length;
-  if (fresh.length > 0) {
-    const lines = fresh.map((s) => JSON.stringify({
-      subject: s.subject, predicate: s.predicate, object: s.object, note: s.note,
-      type: s.type, agent: 'offline:branch-align', priority: 'medium',
-      addedAt: new Date().toISOString(), addedByMcp: true,
-    })).join('\n') + '\n';
-    appendFileSync(PENDING, lines);
-    console.log(col(C.b, `\n↳ queued ${fresh.length} graph-change suggestion(s) → ${PENDING}`));
+if (SUGGEST) {
+  const result = queueFindings(suggestions, {
+    agent: 'offline:branch-align',
+    path: PENDING,
+    recomputes: true,
+    kb: 'roadmap',
+  });
+  if (result.queued > 0) {
+    console.log(col(C.b, `\n↳ queued ${result.queued} graph-change suggestion(s) → ${PENDING}`));
     console.log(col(C.dim, '  Review in Reckons.AI (Review tab → drain ↻) — accept, adjust, or reject each.'));
+  } else {
+    console.log(col(C.dim, '\n(no suggestable drift — nothing queued)'));
   }
-  if (skipped > 0) console.log(col(C.dim, `  (${skipped} already queued — skipped)`));
-} else if (SUGGEST) {
-  console.log(col(C.dim, '\n(no suggestable drift — nothing queued)'));
+  if (result.skipped > 0) console.log(col(C.dim, `  (${result.skipped} duplicate suggestion(s) suppressed)`));
+  if (result.superseded > 0) console.log(col(C.dim, `  (${result.superseded} stale suggestion(s) removed)`));
 }
 console.log('');
 process.exit(drift.length > 0 ? 1 : 0);

@@ -1,11 +1,16 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { closeSync, mkdtempSync, openSync, rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { queueFindings, findingIdentity, RECOMPUTABLE_AGENTS } from '../pending-queue';
 
 let dir: string;
 let QUEUE: string;
+const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
+const TSX = join(REPO, 'node_modules/tsx/dist/cli.mjs');
+const WORKER = join(REPO, 'scripts/offline/__tests__/fixtures/pending-queue-writer.ts');
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pending-queue-'));
@@ -23,6 +28,25 @@ const f = (subject: string, question: string, predicate = 'urn:sweep:pred/test')
   predicate,
   question,
 });
+
+function worker(ready: string, subject: string, mode = 'append'): Promise<number> {
+  return new Promise((resolveWorker, reject) => {
+    const child = spawn(process.execPath, [TSX, WORKER, QUEUE, ready, subject, mode], {
+      cwd: REPO,
+      stdio: 'ignore',
+    });
+    child.on('error', reject);
+    child.on('close', (code) => resolveWorker(code ?? 1));
+  });
+}
+
+async function waitForFiles(files: string[]): Promise<void> {
+  const deadline = Date.now() + 5_000;
+  while (!files.every(existsSync)) {
+    if (Date.now() >= deadline) throw new Error(`workers did not reach queue lock: ${files.join(', ')}`);
+    await new Promise((resolveWait) => setTimeout(resolveWait, 10));
+  }
+}
 
 describe('findingIdentity', () => {
   it('is the same for the same finding re-queued later', () => {
@@ -50,6 +74,22 @@ describe('findingIdentity', () => {
   it('falls back to `object` when there is no question — proposed triples carry no question', () => {
     expect(findingIdentity({ subject: 's', predicate: 'p', object: '2026-07-12' })).toContain('2026-07-12');
   });
+
+  it('keeps identical text addressed to different graphs distinct', () => {
+    const base = { subject: 's', predicate: 'p', question: 'same' };
+    expect(findingIdentity({ ...base, kb: 'roadmap' }))
+      .not.toBe(findingIdentity({ ...base, kb: 'production' }));
+    expect(findingIdentity({ ...base, kb: 'Reckons.AI Roadmap' }))
+      .toBe(findingIdentity({ ...base, kb: 'reckons-ai-roadmap' }));
+  });
+
+  it('keeps different blockers distinct but ignores block order', () => {
+    const base = { subject: 's', predicate: 'p', question: 'same', kb: 'roadmap' };
+    expect(findingIdentity({ ...base, blocks: 'task:a' }))
+      .not.toBe(findingIdentity({ ...base, blocks: 'task:b' }));
+    expect(findingIdentity({ ...base, blocks: ['task:b', 'task:a'] }))
+      .toBe(findingIdentity({ ...base, blocks: ['task:a', 'task:b'] }));
+  });
 });
 
 describe('queueFindings — non-recomputing jobs append only what is new', () => {
@@ -59,6 +99,12 @@ describe('queueFindings — non-recomputing jobs append only what is new', () =>
     const r = queueFindings([f('a', 'x'), f('b', 'y')], { ...opts, path: QUEUE });
     expect(r).toMatchObject({ queued: 2, skipped: 0, superseded: 0 });
     expect(read()).toHaveLength(2);
+    expect(read().every((entry) => entry.kb === 'roadmap')).toBe(true);
+  });
+
+  it('uses an explicit graph target instead of the repository default', () => {
+    queueFindings([f('a', 'x')], { ...opts, path: QUEUE, kb: 'production' });
+    expect(read()[0].kb).toBe('production');
   });
 
   it('SKIPS AN IDENTICAL FINDING ON RE-RUN — the queue stops refilling', () => {
@@ -165,6 +211,23 @@ describe('queueFindings — recomputing jobs replace their own previous answers'
     for (let i = 0; i < 5; i++) queueFindings(findings, { ...opts, path: QUEUE });
     expect(read()).toHaveLength(2);
   });
+
+  it('deduplicates repeated findings inside one recomputing result', () => {
+    const finding = { subject: 'a', predicate: 'p', object: '1' };
+    const result = queueFindings([finding, finding], { ...opts, path: QUEUE });
+    expect(result).toMatchObject({ queued: 1, skipped: 1 });
+    expect(read()).toHaveLength(1);
+  });
+
+  it('recomputes only the destination graph supplied by this run', () => {
+    queueFindings([{ subject: 'prod', predicate: 'p', object: '1' }], {
+      ...opts, path: QUEUE, kb: 'production',
+    });
+    queueFindings([{ subject: 'road', predicate: 'p', object: '1' }], {
+      ...opts, path: QUEUE, kb: 'roadmap',
+    });
+    expect(read().map((row) => row.kb).sort()).toEqual(['production', 'roadmap']);
+  });
 });
 
 describe('the queue file is never damaged', () => {
@@ -193,4 +256,27 @@ describe('the queue file is never damaged', () => {
     queueFindings([], { agent: 'offline:branch-align', path: QUEUE });
     expect(read()).toHaveLength(1);
   });
+
+  it('serializes concurrent append and recompute transactions without losing either result', async () => {
+    queueFindings([{ subject: 'old', predicate: 'urn:test/predicate', object: 'old' }], {
+      agent: 'offline:branch-align', path: QUEUE, recomputes: true, kb: 'roadmap',
+    });
+
+    const lockFd = openSync(`${QUEUE}.lock`, 'a', 0o600);
+    const acquired = spawnSync('flock', ['-x', '3'], {
+      stdio: ['ignore', 'ignore', 'pipe', lockFd],
+    });
+    expect(acquired.status).toBe(0);
+
+    const readyA = join(dir, 'ready-a');
+    const readyB = join(dir, 'ready-b');
+    const a = worker(readyA, 'fresh-recompute', 'recompute');
+    const b = worker(readyB, 'concurrent-append');
+    await waitForFiles([readyA, readyB]);
+    closeSync(lockFd);
+
+    expect(await Promise.all([a, b])).toEqual([0, 0]);
+    const subjects = read().map((row) => row.subject).sort();
+    expect(subjects).toEqual(['concurrent-append', 'fresh-recompute']);
+  }, 15_000);
 });

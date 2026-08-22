@@ -146,12 +146,13 @@
       <h2>Personality</h2>
 
       <div class="setting-group">
-        <label>Tone</label>
-        <div class="button-group">
+        <span id="turtle-tone-label" class="setting-label">Tone</span>
+        <div class="button-group" role="group" aria-labelledby="turtle-tone-label">
           {#each ['helpful', 'witty', 'laid-back', 'sarcastic'] as type}
             <button
               class="personality-btn"
               class:active={ts.personality === type}
+              aria-pressed={ts.personality === type}
               onclick={() => setTurtlePersonality(type as 'helpful' | 'witty' | 'laid-back' | 'sarcastic')}
             >
               {type}
@@ -172,11 +173,12 @@
       </div>
 
       <div class="setting-group">
-        <label>Response Style</label>
-        <div class="button-group">
+        <span id="turtle-response-style-label" class="setting-label">Response Style</span>
+        <div class="button-group" role="group" aria-labelledby="turtle-response-style-label">
           {#each [['concise', 'Concise'], ['detailed', 'Detailed'], ['conversational', 'Chatty']] as [val, label]}
             <button
               class:active={ts.responseStyle === val}
+              aria-pressed={ts.responseStyle === val}
               onclick={() => updateTurtleSettings({ responseStyle: val as 'concise' | 'detailed' | 'conversational' })}
             >
               {label}
@@ -195,9 +197,10 @@
       </div>
 
       <div class="setting-group">
-        <label>Max Response Length</label>
+        <label for="turtle-max-response-words">Max Response Length</label>
         <div class="slider-group">
           <input
+            id="turtle-max-response-words"
             type="range"
             min="0"
             max="500"
@@ -212,9 +215,10 @@
       </div>
 
       <div class="setting-group">
-        <label>Patience Level</label>
+        <label for="turtle-patience-level">Patience Level</label>
         <div class="slider-group">
           <input
+            id="turtle-patience-level"
             type="range"
             min="0"
             max="100"
@@ -227,11 +231,12 @@
       </div>
 
       <div class="setting-group">
-        <label>Engagement Level</label>
-        <div class="button-group">
+        <span id="turtle-engagement-label" class="setting-label">Engagement Level</span>
+        <div class="button-group" role="group" aria-labelledby="turtle-engagement-label">
           {#each ['low', 'medium', 'high'] as level}
             <button
               class:active={ts.engagement === level}
+              aria-pressed={ts.engagement === level}
               onclick={() => updateTurtleSettings({ engagement: level as 'low' | 'medium' | 'high' })}
             >
               {level}
@@ -280,16 +285,18 @@
 
       {#if ts.voiceEnabled}
         <div class="setting-group">
-          <label>Voice Engine</label>
-          <div class="button-group">
+          <span id="turtle-voice-engine-label" class="setting-label">Voice Engine</span>
+          <div class="button-group" role="group" aria-labelledby="turtle-voice-engine-label">
             <button
               class:active={ts.voiceType === 'tts'}
+              aria-pressed={ts.voiceType === 'tts'}
               onclick={() => setVoiceType('tts')}
             >
               Kokoro
             </button>
             <button
               class:active={ts.voiceType === 'hume'}
+              aria-pressed={ts.voiceType === 'hume'}
               onclick={() => setVoiceType('hume')}
               disabled={!humeConfigured}
             >
@@ -318,34 +325,38 @@
 
         {#if ts.voiceType === 'tts'}
           <div class="setting-group">
-            <label>Kokoro Voice</label>
-            {#each Object.entries(voicesByGroup) as [group, voices]}
-              <p class="voice-group-label">{group}</p>
-              <div class="voice-grid">
-                {#each voices as v}
-                  <button
-                    class="voice-chip"
-                    class:active={ts.kokoroVoice === v.id}
-                    class:previewing={previewingVoice === v.id}
-                    onclick={() => {
-                      updateTurtleSettings({ kokoroVoice: v.id });
-                      previewVoice(v.id);
-                    }}
-                  >
-                    <span class="voice-name">{v.label}</span>
-                    <span class="voice-grade">{v.grade}</span>
-                  </button>
-                {/each}
-              </div>
-            {/each}
-            <p class="hint">Click a voice to select and preview it. Grade indicates quality (A = best).</p>
+            <span id="turtle-kokoro-voice-label" class="setting-label">Kokoro Voice</span>
+            <div role="group" aria-labelledby="turtle-kokoro-voice-label">
+              {#each Object.entries(voicesByGroup) as [group, voices]}
+                <p class="voice-group-label">{group}</p>
+                <div class="voice-grid">
+                  {#each voices as v}
+                    <button
+                      class="voice-chip"
+                      class:active={ts.kokoroVoice === v.id}
+                      class:previewing={previewingVoice === v.id}
+                      aria-pressed={ts.kokoroVoice === v.id}
+                      onclick={() => {
+                        updateTurtleSettings({ kokoroVoice: v.id });
+                        previewVoice(v.id);
+                      }}
+                    >
+                      <span class="voice-name">{v.label}</span>
+                      <span class="voice-grade">{v.grade}</span>
+                    </button>
+                  {/each}
+                </div>
+              {/each}
+              <p class="hint">Click a voice to select and preview it. Grade indicates quality (A = best).</p>
+            </div>
           </div>
         {/if}
 
         <div class="setting-group">
-          <label>Speech Rate</label>
+          <label for="turtle-speech-rate">Speech Rate</label>
           <div class="slider-group">
             <input
+              id="turtle-speech-rate"
               type="range"
               min="0.5"
               max="2"
@@ -359,9 +370,10 @@
         </div>
 
         <div class="setting-group">
-          <label>Volume</label>
+          <label for="turtle-volume">Volume</label>
           <div class="slider-group">
             <input
+              id="turtle-volume"
               type="range"
               min="0"
               max="100"
@@ -487,11 +499,12 @@
       <h2>Visual &amp; Animation</h2>
 
       <div class="setting-group">
-        <label>Animation Speed</label>
-        <div class="button-group">
+        <span id="turtle-animation-speed-label" class="setting-label">Animation Speed</span>
+        <div class="button-group" role="group" aria-labelledby="turtle-animation-speed-label">
           {#each ['slow', 'normal', 'fast'] as speed}
             <button
               class:active={ts.animationSpeed === speed}
+              aria-pressed={ts.animationSpeed === speed}
               onclick={() => updateTurtleSettings({ animationSpeed: speed as 'slow' | 'normal' | 'fast' })}
             >
               {speed}
@@ -501,9 +514,10 @@
       </div>
 
       <div class="setting-group">
-        <label>Opacity (when idle)</label>
+        <label for="turtle-opacity">Opacity (when idle)</label>
         <div class="slider-group">
           <input
+            id="turtle-opacity"
             type="range"
             min="0"
             max="100"
@@ -516,11 +530,12 @@
       </div>
 
       <div class="setting-group">
-        <label>Size</label>
-        <div class="button-group">
+        <span id="turtle-size-label" class="setting-label">Size</span>
+        <div class="button-group" role="group" aria-labelledby="turtle-size-label">
           {#each ['small', 'medium', 'large'] as size}
             <button
               class:active={ts.size === size}
+              aria-pressed={ts.size === size}
               onclick={() => updateTurtleSettings({ size: size as 'small' | 'medium' | 'large' })}
             >
               {size}
@@ -558,11 +573,12 @@
       <h2>Help &amp; Tutorial</h2>
 
       <div class="setting-group">
-        <label>Proactive Help</label>
-        <div class="button-group">
+        <span id="turtle-proactive-help-label" class="setting-label">Proactive Help</span>
+        <div class="button-group" role="group" aria-labelledby="turtle-proactive-help-label">
           {#each ['never', 'errors-only', 'always'] as level}
             <button
               class:active={ts.proactiveHelp === level}
+              aria-pressed={ts.proactiveHelp === level}
               onclick={() => updateTurtleSettings({ proactiveHelp: level as 'never' | 'errors-only' | 'always' })}
             >
               {level}
@@ -583,9 +599,10 @@
       </div>
 
       <div class="setting-group">
-        <label>Response Frequency</label>
+        <label for="turtle-response-frequency">Response Frequency</label>
         <div class="slider-group">
           <input
+            id="turtle-response-frequency"
             type="range"
             min="0"
             max="100"
@@ -737,7 +754,8 @@ shelly:persona
     margin-bottom: 0;
   }
 
-  .setting-group label {
+  .setting-group label,
+  .setting-label {
     display: block;
     font-size: 0.9rem;
     color: var(--ink-2);

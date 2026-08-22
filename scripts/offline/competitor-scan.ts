@@ -65,6 +65,18 @@ interface Finding {
   check: string;
   subject: string;
   msg: string;
+  /**
+   * The answer this check already computed, when it has one.
+   *
+   * A star-drift finding KNOWS the new count. Queued as a question with no object it asked a human
+   * to supply a number the script was holding — the reviewer's only possible move was to retype it.
+   * With the value as the object it becomes a one-click status update instead.
+   *
+   * Left undefined where the finding genuinely opens a question (a license verdict needs a human).
+   */
+  object?: string;
+  /** Predicate the object updates, when this is a value refresh rather than an observation. */
+  updates?: string;
 }
 const findings: Finding[] = [];
 
@@ -250,6 +262,8 @@ for (const k of known) {
       level: 'info',
       check: 'stars-drift',
       subject: k.iri,
+      object: String(stars),
+      updates: `${KPRED}stars`,
       msg: `${k.repo}: ${k.stars} -> ${stars} stars (>25% change). Refresh kpred:stars.`,
     });
   }
@@ -314,11 +328,19 @@ if (PENDING_OUT && findings.length) {
   const { queued, superseded } = queueFindings(
     findings.map((f) => ({
       subject: f.subject,
-      predicate: `${KPRED}competitor-scan`,
-      question: `[competitor-scan/${f.check}] ${f.msg}`,
+      // A value refresh updates the predicate it is about, so accepting it lands the new value.
+      // Only findings with no computed answer stay under the generic scan predicate.
+      predicate: f.updates ?? `${KPRED}competitor-scan`,
+      ...(f.object !== undefined
+        ? { object: f.object, note: `[competitor-scan/${f.check}] ${f.msg}` }
+        : { question: `[competitor-scan/${f.check}] ${f.msg}` }),
       // A license verdict / candidate is a standing constraint to KNOW or a light confirm —
       // it blocks nothing, so it is a suggestion for the backlog, never a desk question.
-      type: f.level === 'error' ? ('drift-warning' as const) : ('suggestion' as const),
+      type: f.level === 'error'
+        ? ('drift-warning' as const)
+        : f.object !== undefined
+          ? ('status-update' as const)
+          : ('suggestion' as const),
       priority: f.level === 'error' ? ('high' as const) : ('medium' as const),
     })),
     { agent: 'offline:competitor-scan', path: PENDING, recomputes: true },

@@ -37,10 +37,12 @@
  *   npx tsx scripts/offline/claim-audit.ts --pending   queue findings for review
  *   npx tsx scripts/offline/claim-audit.ts --json      machine-readable
  */
-import { readFileSync, existsSync, appendFileSync, readdirSync } from 'fs';
+import { readFileSync, existsSync, readdirSync } from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 import { Parser } from 'n3';
+import { containsUnnegatedMention } from './lib/audit-rules';
+import { queueFindings } from './pending-queue.js';
 
 const PENDING = 'reckons-workspace/knowledge.pending.jsonl';
 const KPRED = 'urn:kbase:predicate/';
@@ -118,7 +120,7 @@ for (const file of SURFACES) {
     const lower = s.toLowerCase();
     if (HEDGES.some((h) => lower.includes(h))) continue;
     for (const u of unbuilt) {
-      if (!lower.includes(u.needle)) continue;
+      if (!containsUnnegatedMention(lower, u.needle)) continue;
       findings.push({
         level: 'error',
         check: 'unbuilt-claimed-as-built',
@@ -224,27 +226,23 @@ if (JSON_OUT) {
 // ── Queue as proposals. NEVER edits copy; NEVER fails a build. ──────────────
 if (PENDING_OUT && findings.length) {
   const now = new Date().toISOString();
-  const existing = existsSync(PENDING) ? readFileSync(PENDING, 'utf8') : '';
-  let queued = 0;
-  for (const f of findings) {
+  const proposals = findings.map((f) => {
     const question = `[claim-audit/${f.check}] ${f.msg}`;
-    if (existing.includes(JSON.stringify(question).slice(1, -1))) continue;
-    appendFileSync(
-      PENDING,
-      JSON.stringify({
-        subject: 'urn:kbase:concept/honest-status',
-        predicate: `${KPRED}claim-audit`,
-        question,
-        type: 'drift-warning',
-        agent: 'offline:claim-audit',
-        priority: 'high',
-        addedAt: now,
-        addedByMcp: true,
-      }) + '\n',
-    );
-    queued++;
-  }
-  console.log(`\n${queued} finding(s) queued → ${PENDING} (review in Reckons.AI).`);
+    return {
+      subject: 'urn:kbase:concept/honest-status',
+      predicate: `${KPRED}claim-audit`,
+      question,
+      kb: 'roadmap',
+      type: 'drift-warning' as const,
+      priority: 'high' as const,
+      addedAt: now,
+      addedByMcp: true,
+    };
+  });
+  const result = queueFindings(proposals, {
+    agent: 'offline:claim-audit', path: PENDING, recomputes: false, kb: 'roadmap',
+  });
+  console.log(`\n${result.queued} finding(s) queued → ${PENDING} (review in Reckons.AI).`);
 }
 
 // Asynchronous by design: this reports, it does not gate. A judgment call that fails a build

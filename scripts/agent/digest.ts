@@ -25,8 +25,9 @@
  */
 import { appendFileSync, existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import path from 'path';
-import { askGraph, expandIri } from './ask.js';
+import { expandIri } from './ask.js';
 import { addFinding, readFindings, renderMarkdown } from './digest-graph.js';
+import { queueFindings } from '../offline/pending-queue.js';
 
 const DIGEST = 'reckons-workspace/DIGEST.md';
 const PENDING = 'reckons-workspace/knowledge.pending.jsonl';
@@ -76,20 +77,24 @@ export function appendFinding(f: Finding, digestPath = DIGEST): string {
   // and shows up next to the feature it is about — pending, because a finding is a claim
   // until a human confirms it.
   if (f.about) {
-    const line = JSON.stringify({
+    const entry = {
       subject: expandIri(f.about),
       predicate: expandIri(`kpred:${f.type.replace(/-/g, '-')}`),
       object: f.headline,
       note: f.detail,
+      kb: 'roadmap',
       type: f.type === 'question-raised' || f.type === 'decision-needed' ? 'question' : 'observation',
       agent: f.agent ?? 'agent',
       priority: f.type === 'bug-found' || f.type === 'claim-falsified' ? 'high' : 'medium',
       addedAt: when,
       addedByMcp: true,
+    };
+    queueFindings([entry], {
+      agent: entry.agent,
+      path: PENDING,
+      recomputes: false,
+      kb: entry.kb,
     });
-    mkdirSync(path.dirname(PENDING), { recursive: true });
-    const existing = existsSync(PENDING) ? readFileSync(PENDING, 'utf8') : '';
-    if (!existing.includes(f.headline)) appendFileSync(PENDING, line + '\n');
   }
 
   return when;

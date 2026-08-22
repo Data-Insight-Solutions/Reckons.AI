@@ -161,4 +161,15 @@ describe('isMetaPredicate integration', () => {
     expect(isMetaPredicate('urn:reckons:meta/currents/sourceUrl')).toBe(true);
     expect(isMetaPredicate(KB_MENTIONED_IN)).toBe(false);
   });
+
+  it('keeps crawl telemetry out of the graph — a button caption is not an entity', () => {
+    // A real button-crawl finding: the object is the button's accessible name, and the subject is
+    // the crawled route. Rendered as an edge this puts "bookmarked (0)" on the canvas as a node
+    // nothing can be said about, plus a concept node per route.
+    expect(isMetaPredicate('urn:reckons:test/finding')).toBe(true);
+    expect(isMetaPredicate('urn:reckons:test/anything-else')).toBe(true);
+    // Still an ordinary fact — the suppression is scoped to the telemetry namespace.
+    expect(isMetaPredicate(KB_MENTIONED_IN)).toBe(false);
+    expect(isMetaPredicate('urn:kbase:predicate/tested-by')).toBe(false);
+  });
 });

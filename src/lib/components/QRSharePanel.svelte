@@ -249,10 +249,11 @@
     <div class="config-grid">
       <!-- Server address -->
       <div class="config-field">
-        <label class="lbl mono">server address</label>
-        <div class="host-row">
+        <span id="share-server-label" class="lbl mono">server address</span>
+        <div class="host-row" role="group" aria-labelledby="share-server-label">
           <input
             type="text"
+            aria-label="server host"
             bind:value={serverHost}
             oninput={() => testResult = null}
             placeholder="192.168.1.x"
@@ -261,6 +262,7 @@
           <span class="port-sep mono">:</span>
           <input
             type="text"
+            aria-label="server port"
             bind:value={serverPort}
             oninput={() => testResult = null}
             class="port-input"
@@ -300,12 +302,13 @@
 
       <!-- Duration -->
       <div class="config-field">
-        <label class="lbl mono">token duration</label>
-        <div class="duration-pills">
+        <span id="share-duration-label" class="lbl mono">token duration</span>
+        <div class="duration-pills" role="group" aria-labelledby="share-duration-label">
           {#each DURATION_OPTIONS as opt}
             <button
               class="dur-pill"
               class:active={durationDays === opt.days}
+              aria-pressed={durationDays === opt.days}
               onclick={() => durationDays = opt.days}
             >{opt.label}</button>
           {/each}

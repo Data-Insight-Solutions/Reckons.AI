@@ -40,6 +40,46 @@ export type ExtractedTriple = {
   excerpt?: string;
 };
 
+/** Parser accounting is deliberately metadata-only: never retain raw model output in a run. */
+export type ParsedTriplesJSON = {
+  triples: ExtractedTriple[];
+  candidateCount: number;
+  parserRejectedCount: number;
+};
+
+/**
+ * The typed boundary between provider-shaped JSON and graph candidates.
+ *
+ * This rejects values that would otherwise become empty IRIs, misleading datatype hints, or
+ * out-of-range confidence. It does not repair semantics: canonicalisation happens later and a
+ * semantic change must remain a visible proposal. `[]` is represented honestly here; ingest
+ * decides that a provider result with zero usable candidates is terminal before any graph write.
+ */
+export function validateExtractedTriples(triples: ExtractedTriple[]): {
+  triples: ExtractedTriple[];
+  rejectedCount: number;
+} {
+  const validDatatypes = new Set<NonNullable<ExtractedTriple['datatype']>>([
+    'string', 'number', 'date', 'boolean',
+  ]);
+  const accepted = triples.filter((triple) => {
+    const record = triple as unknown as Record<string, unknown>;
+    const literal = record.objectIsLiteral;
+    const object = record.object;
+    if (typeof record.subject !== 'string' || record.subject.trim().length === 0) return false;
+    if (typeof record.predicate !== 'string' || record.predicate.trim().length === 0) return false;
+    if (literal !== undefined && typeof literal !== 'boolean') return false;
+    if (typeof object === 'string' ? object.trim().length === 0 :
+      !literal || (typeof object !== 'number' && typeof object !== 'boolean') ||
+      (typeof object === 'number' && !Number.isFinite(object))) return false;
+    if (record.datatype !== undefined && (!literal || typeof record.datatype !== 'string' || !validDatatypes.has(record.datatype as NonNullable<ExtractedTriple['datatype']>))) return false;
+    if (record.confidence !== undefined && (typeof record.confidence !== 'number' || !Number.isFinite(record.confidence) || record.confidence < 0 || record.confidence > 1)) return false;
+    if (record.gloss !== undefined && typeof record.gloss !== 'string') return false;
+    return record.excerpt === undefined || typeof record.excerpt === 'string';
+  });
+  return { triples: accepted, rejectedCount: triples.length - accepted.length };
+}
+
 export const EXTRACTION_SYSTEM_PROMPT = EXTRACTION_ETHICS + `You are an information extraction system that converts text into RDF-style triples.
 
 Your job is to read the source text and output a JSON array of triples that capture the factual content.
@@ -263,7 +303,7 @@ function repairTruncatedArray(slice: string): unknown[] {
 }
 
 /** Robust JSON extraction: strips fences, trailing text, repairs truncated arrays. */
-export function parseTriplesJSON(raw: string): ExtractedTriple[] {
+export function parseTriplesJSONWithReport(raw: string): ParsedTriplesJSON {
   let text = raw.trim();
   // Strip markdown fences
   text = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '');
@@ -284,12 +324,18 @@ export function parseTriplesJSON(raw: string): ExtractedTriple[] {
   }
 
   if (!Array.isArray(arr)) throw new Error('LLM output is not a JSON array');
-  return arr.filter(
+  const triples = arr.filter(
     (t: unknown): t is ExtractedTriple => {
       const r = t as Record<string, unknown>;
       return !!r && typeof r.subject === 'string' && typeof r.predicate === 'string' && r.object != null;
     }
   );
+  return { triples, candidateCount: arr.length, parserRejectedCount: arr.length - triples.length };
+}
+
+/** Robust JSON extraction for provider adapters that only need the usable triples. */
+export function parseTriplesJSON(raw: string): ExtractedTriple[] {
+  return parseTriplesJSONWithReport(raw).triples;
 }
 
 /** Mock extractor for UI testing - returns sample triples */

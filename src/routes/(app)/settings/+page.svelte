@@ -1835,23 +1835,6 @@
     margin-bottom: 0.75rem;
   }
   .sub { color: var(--muted); margin: 0 0 0.9rem; }
-  .radio { display: flex; flex-direction: column; gap: 0.6rem; }
-  .radio label {
-    display: flex;
-    gap: 0.85rem;
-    padding: 0.85rem;
-    background: var(--surface-2);
-    border: 1px solid var(--line);
-    border-radius: var(--rad-sm);
-    cursor: pointer;
-    align-items: flex-start;
-  }
-  .radio label:has(input:checked) {
-    border-color: var(--accent);
-    background: var(--accent-soft);
-  }
-  .radio strong { font-family: var(--font-display); font-size: 1.1rem; }
-  .radio p { margin: 0.2rem 0 0; color: var(--muted); font-size: 0.82rem; }
   .field { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.7rem; }
   .field-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
   .btn-group { display: flex; gap: 0.35rem; flex-wrap: wrap; }
@@ -1877,7 +1860,6 @@
   .scale-btn.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
   .lbl { color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.12em; }
   .row { display: flex; gap: 0.7rem; align-items: center; margin-top: 0.7rem; flex-wrap: wrap; }
-  .status { color: var(--data); font-size: 0.78rem; }
   .wasm-progress { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.5rem; }
   .wasm-prog-track {
     height: 4px; background: var(--surface-3); border-radius: 999px; overflow: hidden;
@@ -1942,9 +1924,6 @@
   .per-task-wasm .field { margin-top: 0.4rem; }
   .local-badge { font-size: 0.62rem; color: var(--ok); border: 1px solid var(--ok); border-radius: 999px; padding: 0.05rem 0.4rem; vertical-align: middle; margin-left: 0.3rem; }
   .badge { font-size: 0.6rem; border-radius: 999px; padding: 0.05rem 0.45rem; vertical-align: middle; margin-left: 0.35rem; font-family: var(--font-mono); font-weight: 500; }
-  .badge.free { color: var(--ok, #22c55e); border: 1px solid var(--ok, #22c55e); }
-  .badge.openrouter { color: #a78bfa; border: 1px solid #a78bfa; }
-  .badge.gemini { color: #60a5fa; border: 1px solid #60a5fa; }
   .badge.paid { color: var(--muted); border: 1px solid var(--muted); }
   /* Task backends */
   /* Quick setup — one model for everything (the simple path over the per-task grid) */
@@ -2042,7 +2021,6 @@
   .backend-detail-body p { margin: 0; font-size: 0.78rem; color: var(--muted); }
   .backend-detail-body strong { color: var(--ink-2); }
 
-  .save-row { margin-top: 1.25rem; }
   .backup-btn {
     padding: 0.6rem 1.2rem;
     background: var(--data-soft);

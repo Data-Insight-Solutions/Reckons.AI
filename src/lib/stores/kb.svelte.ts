@@ -1,5 +1,5 @@
 import { db } from '../storage/db';
-import type { Statement, Source, ReviewStatus } from '../rdf/types';
+import type { ExtractionRun, Statement, Source, ReviewStatus } from '../rdf/types';
 import { isIRI, termKey } from '../rdf/types';
 import { labelFromIRI } from '../rdf/semantic-diff';
 import { gateFactWrite } from '../rdf/agent-edit-boundary';
@@ -198,12 +198,29 @@ export async function autoConfirmTrustedSources() {
   }
 }
 
-export async function addStatements(
+export type StatementWriteOptions = { origin?: 'manual' | 'current' | 'agent' };
+
+/** The shared write funnel's decision, made before a caller opens its persistence transaction. */
+export type PreparedStatementWrite = {
+  statements: Statement[];
+  blocked: Array<{ statement: Statement; reasons: string[] }>;
+  opts?: StatementWriteOptions;
+};
+
+/**
+ * Apply every existing statement-admission rule without writing a statement row.
+ *
+ * The separation is intentional: ordinary callers still use addStatements(), while ingest can
+ * decide the exact accepted batch, attach those ids to its run, and atomically write source,
+ * statement rows, changelog rows and terminal ExtractionRun. Archive prompts remain deliberately
+ * outside a transaction because they await a later human decision.
+ */
+export async function prepareStatementsForWrite(
   sts: Statement[],
   sourceId?: string,
-  opts?: { origin?: 'manual' | 'current' | 'agent' }
-) {
-  if (isReadOnly() || sts.length === 0) return;
+  opts?: StatementWriteOptions,
+): Promise<PreparedStatementWrite> {
+  if (isReadOnly() || sts.length === 0) return { statements: [], blocked: [], opts };
 
   // Currents type gate (F29) — only batches originating from a current are
   // gated, and only NEW entity creation is blocked; facts on entities already
@@ -224,7 +241,7 @@ export async function addStatements(
       );
     }
     sts = gate.allowed;
-    if (sts.length === 0) return;
+    if (sts.length === 0) return { statements: [], blocked: [], opts };
   }
 
   // Content safety gate — block extreme content before save
@@ -232,17 +249,12 @@ export async function addStatements(
   if (blocked.length > 0) {
     console.warn(`[ContentPolicy] Blocked ${blocked.length} statement(s):`,
       blocked.map(s => ({ id: s.id, reasons: blockReasons[s.id] })));
-    for (const st of blocked) {
-      await logChange({
-        action: 'reject',
-        statementId: st.id,
-        sourceId: st.sourceId,
-        note: `content-policy: ${blockReasons[st.id]?.join(', ') ?? 'blocked'}`,
-        after: JSON.stringify({ s: st.s, p: st.p, o: st.o, status: 'rejected' })
-      });
-    }
   }
-  if (allowed.length === 0) return;
+  const held = blocked.map((statement) => ({
+    statement,
+    reasons: blockReasons[statement.id] ?? ['blocked'],
+  }));
+  if (allowed.length === 0) return { statements: [], blocked: held, opts };
 
   // F52 agent-edit boundary (kb:control-model): the human holds the fact-edit right; an agent may
   // only PROPOSE. When this batch is agent-originated, run every status through the boundary so a
@@ -319,27 +331,48 @@ export async function addStatements(
           });
         }
         gated = decision.write;
-        if (gated.length === 0) return;
+        if (gated.length === 0) return { statements: [], blocked: held, opts };
       }
     }
   } catch (e) {
     console.warn('[F97.3] archive guard skipped:', e);
   }
 
-  // Clean statements via JSON round-trip to ensure IndexedDB compatibility
-  const cleanedSts = gated.map(st => JSON.parse(JSON.stringify(st)) as Statement);
-  await db.statements.bulkPut(cleanedSts);
-  _statements = [..._statements, ...cleanedSts];
+  return {
+    // Clean statements via JSON round-trip to ensure IndexedDB compatibility.
+    statements: gated.map(st => JSON.parse(JSON.stringify(st)) as Statement),
+    blocked: held,
+    opts,
+  };
+}
 
-  // Log ingest/add action for each statement
-  for (const st of cleanedSts) {
-    await logChange({
-      action: sourceId ? 'ingest' : 'add',
-      statementId: st.id,
-      sourceId: st.sourceId,
-      after: JSON.stringify({ s: st.s, p: st.p, o: st.o, status: st.status })
-    });
+function changeLogRow(entry: Omit<ChangeLogEntry, 'timestamp' | 'id'>): ChangeLogEntry {
+  return { ...entry, timestamp: Date.now() } as ChangeLogEntry;
+}
+
+async function writeStatementChangeLog(plan: PreparedStatementWrite, sourceId?: string) {
+  for (const { statement, reasons } of plan.blocked) {
+    await db.changelog.add(changeLogRow({
+      action: 'reject',
+      statementId: statement.id,
+      sourceId: statement.sourceId,
+      note: `content-policy: ${reasons.join(', ')}`,
+      after: JSON.stringify({ s: statement.s, p: statement.p, o: statement.o, status: 'rejected' }),
+    }));
   }
+  for (const statement of plan.statements) {
+    await db.changelog.add(changeLogRow({
+      action: sourceId ? 'ingest' : 'add',
+      statementId: statement.id,
+      sourceId: statement.sourceId,
+      after: JSON.stringify({ s: statement.s, p: statement.p, o: statement.o, status: statement.status }),
+    }));
+  }
+}
+
+function afterStatementsPersisted(plan: PreparedStatementWrite, sourceId?: string) {
+  const cleanedSts = plan.statements;
+  _statements = [..._statements, ...cleanedSts];
   scheduleAutoSave();
   scheduleWorkspaceTtlExport();
   scheduleDrivePush();
@@ -355,12 +388,71 @@ export async function addStatements(
         if (!reviewNotifyEnabled()) return;
         return notifyReview({
           count: newPending.length,
-          kind: opts?.origin === 'current' ? 'pod' : 'ingest',
+          kind: plan.opts?.origin === 'current' ? 'pod' : 'ingest',
           samples: newPending.slice(0, 5).map((st) => st.s.value.split('/').pop() ?? st.s.value),
         });
       })
       .catch(() => { /* best-effort notification */ });
   }
+}
+
+export async function addStatements(
+  sts: Statement[],
+  sourceId?: string,
+  opts?: StatementWriteOptions,
+) {
+  const plan = await prepareStatementsForWrite(sts, sourceId, opts);
+  if (plan.statements.length === 0 && plan.blocked.length === 0) return;
+  await db.transaction('rw', db.statements, db.changelog, async () => {
+    if (plan.statements.length > 0) await db.statements.bulkPut(plan.statements);
+    await writeStatementChangeLog(plan, sourceId);
+  });
+  if (plan.statements.length > 0) afterStatementsPersisted(plan, sourceId);
+}
+
+/**
+ * Ingest's terminal write boundary. It deliberately consumes a plan produced by the same
+ * admission funnel as addStatements(), so content and archive policy cannot be bypassed merely
+ * to obtain atomic source/run persistence. A transaction failure updates no reactive state and
+ * commits none of source, accepted statements, changelog entries, or the terminal run.
+ */
+export async function persistIngestBatch(
+  source: Source,
+  plan: PreparedStatementWrite,
+  terminalRun: ExtractionRun,
+): Promise<Statement[]> {
+  // A graph switch between preflight and commit must be visible to ingest. Silently returning
+  // would leave the already-recorded persist stage looking successful while neither the source
+  // nor terminal run was committed.
+  if (isReadOnly()) throw new Error('Cannot persist an ingest while the official graph is active');
+  const persistedRun = JSON.parse(JSON.stringify(terminalRun)) as ExtractionRun;
+  await db.transaction('rw', db.sources, db.statements, db.extractionRuns, db.changelog, async () => {
+    await db.sources.put(source);
+    if (plan.statements.length > 0) await db.statements.bulkPut(plan.statements);
+    await db.extractionRuns.put(persistedRun);
+    await writeStatementChangeLog(plan, source.id);
+  });
+
+  _sources = [source, ..._sources];
+  for (const hook of _afterAddSourceHooks) {
+    try {
+      hook(source);
+    } catch (error) {
+      // Post-commit observers are not part of the durable ingest boundary. Re-throwing here would
+      // falsely turn a committed run into a failed one.
+      console.error('[ingest] after-add-source hook failed:', error);
+    }
+  }
+  if (plan.statements.length > 0) {
+    afterStatementsPersisted(plan, source.id);
+  } else {
+    // A source retained with every candidate policy-held is still a durable ingest result and must
+    // reach the same backup/export path, even though it has no pending-review notification.
+    scheduleAutoSave();
+    scheduleWorkspaceTtlExport();
+    scheduleDrivePush();
+  }
+  return plan.statements;
 }
 
 export async function updateStatement(id: string, patch: Partial<Statement>) {

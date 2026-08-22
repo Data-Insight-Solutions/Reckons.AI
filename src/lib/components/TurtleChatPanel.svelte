@@ -34,7 +34,8 @@
   }>();
 
   type Tab = 'tutorial' | 'chat' | 'explore';
-  let tab = $state<Tab>(storyId ? 'explore' : exploreMode ? 'explore' : 'tutorial');
+  function initialTab(): Tab { return storyId || exploreMode ? 'explore' : 'tutorial'; }
+  let tab = $state<Tab>(initialTab());
 
   function resolveChatProvider() {
     return _resolveProvider(settings());
@@ -380,7 +381,7 @@
   let exploreInput = $state('');
   let exploreLoading = $state(false);
   let exploreErrorMsg = $state('');
-  let exploreListRef: HTMLDivElement | undefined;
+  let exploreListRef = $state<HTMLDivElement | undefined>(undefined);
   let exploreStarted = $state(false);
 
   $effect(() => {
@@ -498,7 +499,7 @@
   let storyInput = $state('');
   let storyLoading = $state(false);
   let storyErrorMsg = $state('');
-  let storyListRef: HTMLDivElement | undefined;
+  let storyListRef = $state<HTMLDivElement | undefined>(undefined);
   let storyDetoured = $state(false);
 
   $effect(() => {

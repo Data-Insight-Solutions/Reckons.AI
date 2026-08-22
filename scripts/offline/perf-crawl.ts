@@ -72,6 +72,17 @@ const CLICK_BUDGET = Number(arg('click-budget', '1200'));
 const THROTTLE = Number(arg('throttle', '1'));
 /** Cap per route, so one route with 80 controls cannot eat the whole run. */
 const MAX_CLICKS = Number(arg('max-clicks', '25'));
+/**
+ * How many levels deep to FOLLOW a path.
+ *
+ * Matt, 2026-08-21: "could go slower and hit more buttons in a given review path". Returning to
+ * the route after every click only ever measures the top layer, and the controls that hurt are
+ * usually the ones a click REVEALS — a modal's contents, an expanded panel, a picker. At depth 1
+ * the crawl clicks what a click opened before backing out.
+ */
+const CLICK_DEPTH = Number(arg('depth', '1'));
+/** Pause after each click before measuring, so a slow reaction is measured rather than missed. */
+const SETTLE_MS = Number(arg('settle', '600'));
 
 const ROUTES = ['/', '/review', '/ingest', '/kb', '/settings'];
 
@@ -608,6 +619,14 @@ console.log(
  *               different and worse bug than a slow click that did something, and without a
  *               before/after signature the two are indistinguishable.
  *
+ * `changed` IS BLIND TO CANVAS. It compares DOM node count and a hash of body.innerText, so a
+ * control whose whole effect is a re-render — every graph LAYOUT chip, camera moves, node
+ * selection — reports "NO DOM CHANGE" while working perfectly. Measured 2026-08-21: all six
+ * layout chips on /review read inert for exactly this reason. Read that column as "no DOM effect",
+ * never as "did nothing", and do not use it to judge canvas controls. Catching those needs pixel
+ * diffing, which timeToStill() already does for the graph and this crawl deliberately does not
+ * repeat per click.
+ *
  * DESTRUCTIVE CONTROLS ARE NEVER CLICKED. This runs unattended against a real profile, so anything
  * whose label reads as delete/remove/clear/reject/unlink/disconnect is skipped and reported as
  * skipped. A performance harness that wipes a graph to time the wipe has cost more than it measured.
@@ -629,7 +648,7 @@ const DESTRUCTIVE = /delete|remove|clear|reset|reject|unlink|disconnect|purge|wi
 async function measureInteractions(
   browser: Browser,
   route: string,
-  opts: { budgetMs: number; throttle: number; max: number },
+  opts: { budgetMs: number; throttle: number; max: number; depth: number; settleMs: number },
 ): Promise<ClickResult[]> {
   const ctx = await browser.newContext(viewportOpts());
   await ctx.addInitScript(OBSERVER);
@@ -654,11 +673,21 @@ async function measureInteractions(
     await page.goto(`${BASE_URL}${route}`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
     await page.waitForTimeout(1_500); // let the route's own first render finish
 
+    /** Every visible control's label, so newly-REVEALED ones can be told from pre-existing ones. */
+    const labelsNow = async (): Promise<string[]> => {
+      try {
+        return await page.locator('button:visible, [role="button"]:visible')
+          .evaluateAll((els) => els.map((e) => ((e as HTMLElement).innerText || e.getAttribute('aria-label') || '').trim().replace(/\s+/g, ' ').slice(0, 48)));
+      } catch { return []; }
+    };
+
     const buttons = page.locator('button:visible, [role="button"]:visible');
     const total = await buttons.count();
     const n = Math.min(total, opts.max);
+    let budget = opts.max; // shared across depths, so a deep path cannot run forever
 
     for (let i = 0; i < n; i++) {
+      if (budget <= 0) break;
       const el = buttons.nth(i);
       let label = '';
       try {
@@ -686,6 +715,7 @@ async function measureInteractions(
       }).catch(() => null);
       if (!before) { out.push({ route, label, settleMs: -1, longTasks: [], worstFrame: 0, changed: false, error: 'page unreachable' }); continue; }
 
+      const before_labels = opts.depth > 0 ? await labelsNow() : [];
       const t0 = Date.now();
       try {
         await el.click({ timeout: 5_000, noWaitAfter: true });
@@ -721,6 +751,9 @@ async function measureInteractions(
         };
       }).catch(() => null);
 
+      // A deliberate pause: measuring the instant after a click misses a reaction that starts late.
+      if (opts.settleMs) await page.waitForTimeout(opts.settleMs);
+
       out.push({
         route,
         label,
@@ -730,6 +763,64 @@ async function measureInteractions(
         changed: !!after && (after.nodes !== before.nodes || after.text !== before.text),
         error: settleMs === -2 ? `never settled within ${opts.budgetMs}ms` : undefined,
       });
+
+      budget--;
+
+      /*
+       * FOLLOW WHAT THE CLICK REVEALED, before backing out.
+       *
+       * Controls that appear only after an interaction — a modal's buttons, an expanded panel, a
+       * picker's rows — are exactly the ones a route-level sweep never reaches, and they are where
+       * the slow reactivity tends to live. Only labels that were NOT present before the click are
+       * followed, so this explores the path rather than re-clicking the page furniture.
+       */
+      if (opts.depth > 0 && page.url() === `${BASE_URL}${route}` && budget > 0) {
+        const revealed = (await labelsNow()).filter((l) => l && !before_labels.includes(l));
+        for (const childLabel of revealed.slice(0, Math.min(6, budget))) {
+          if (DESTRUCTIVE.test(childLabel)) { out.push({ route, label: `${label} → ${childLabel}`, settleMs: 0, longTasks: [], worstFrame: 0, changed: false, skipped: 'destructive label' }); continue; }
+          const child = page.locator('button:visible, [role="button"]:visible', { hasText: childLabel }).first();
+          if (!(await child.count().catch(() => 0))) continue;
+          const cb = await page.evaluate(() => {
+            (window as any).__perf.longTasks = []; (window as any).__perf.frames = [];
+            const t = document.body.innerText; let h = 0;
+            for (let i = 0; i < t.length; i++) { h = ((h << 5) - h + t.charCodeAt(i)) | 0; }
+            return { nodes: document.querySelectorAll('*').length, text: h };
+          }).catch(() => null);
+          if (!cb) break;
+          const ct0 = Date.now();
+          const clicked = await child.click({ timeout: 4_000, noWaitAfter: true }).then(() => true).catch(() => false);
+          if (!clicked) { out.push({ route, label: `${label} → ${childLabel}`, settleMs: -1, longTasks: [], worstFrame: 0, changed: false, error: 'click failed' }); budget--; continue; }
+          const cSettle = await page.evaluate(async (budgetMs) => await new Promise<number>((resolve) => {
+            const start = performance.now(); let last = start;
+            const obs = new MutationObserver(() => { last = performance.now(); });
+            obs.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
+            const iv = setInterval(() => {
+              const now = performance.now();
+              if (now - last > 250) { clearInterval(iv); obs.disconnect(); resolve(Math.round(last - start)); }
+              else if (now - start > budgetMs) { clearInterval(iv); obs.disconnect(); resolve(-2); }
+            }, 50);
+          }), opts.budgetMs).catch(() => -1);
+          if (opts.settleMs) await page.waitForTimeout(opts.settleMs);
+          const ca = await page.evaluate(() => {
+            const t = document.body.innerText; let h = 0;
+            for (let i = 0; i < t.length; i++) { h = ((h << 5) - h + t.charCodeAt(i)) | 0; }
+            return { nodes: document.querySelectorAll('*').length, text: h,
+              longTasks: (window as any).__perf.longTasks as { duration: number; name: string }[],
+              frames: (window as any).__perf.frames as number[] };
+          }).catch(() => null);
+          out.push({
+            route, label: `${label} → ${childLabel}`,
+            settleMs: cSettle === -2 ? opts.budgetMs : cSettle,
+            longTasks: (ca?.longTasks ?? []).filter((t) => t.duration >= LONG_TASK_MS),
+            worstFrame: ca?.frames?.length ? Math.max(...ca.frames) : 0,
+            changed: !!ca && (ca.nodes !== cb.nodes || ca.text !== cb.text),
+            error: cSettle === -2 ? `never settled within ${opts.budgetMs}ms` : undefined,
+          });
+          budget--;
+          void ct0;
+          if (page.url() !== `${BASE_URL}${route}`) break; // navigated away: stop following this path
+        }
+      }
 
       // Return to a known state: a click may have navigated or opened a modal that hides the rest.
       if (page.url() !== `${BASE_URL}${route}`) {
@@ -778,11 +869,11 @@ if (CLICKS_MODE) {
   const routes = ONLY_ROUTE ? [ONLY_ROUTE] : ROUTES;
   console.log(
     `${C.d}interaction crawl: every button, timed before and after · budget ${CLICK_BUDGET}ms · ` +
-    `CPU throttle ${THROTTLE}x${THROTTLE === 1 ? C.y + ' (THIS MACHINE — a best case, not a typical one)' + C.d : ''}${C.x}\n`,
+    `depth ${CLICK_DEPTH} · settle ${SETTLE_MS}ms · CPU throttle ${THROTTLE}x${THROTTLE === 1 ? C.y + ' (THIS MACHINE — a best case, not a typical one)' + C.d : ''}${C.x}\n`,
   );
   const clicks: ClickResult[] = [];
   for (const route of routes) {
-    const rs = await measureInteractions(browser, route, { budgetMs: CLICK_BUDGET, throttle: THROTTLE, max: MAX_CLICKS });
+    const rs = await measureInteractions(browser, route, { budgetMs: CLICK_BUDGET, throttle: THROTTLE, max: MAX_CLICKS, depth: CLICK_DEPTH, settleMs: SETTLE_MS });
     clicks.push(...rs);
     const measured = rs.filter((r) => !r.skipped);
     const bad = measured.filter((r) => r.error || r.settleMs >= CLICK_BUDGET || r.longTasks.length);

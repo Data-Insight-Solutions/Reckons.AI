@@ -14,19 +14,27 @@ import {
 } from '$lib/integrations/llm/providers';
 import { chatWithWasm } from '$lib/integrations/llm/wasm';
 import { preferLocalBackend } from '$lib/integrations/llm/prefer-local';
+import { ethicsPreambleFor } from '$lib/safety/content-policy';
 import type { SettingsRecord } from '$lib/storage/db';
 import {
   validateProposedReanalysis, type ReanalysisRequest, type ReanalysisOutcome, type ProposedReanalysis,
 } from './reanalysis';
 
 /*
- * NO ETHICS PREAMBLE HERE, DELIBERATELY. Per kb:content-safety the preamble is injected by PURPOSE
- * and LOCALITY, and structured-output prompts are excluded because they write no prose a reader
- * ever sees. This prompt is stricter than that: its entire output is a closed set of operations
- * over ids that already exist, and validateProposedReanalysis rejects anything else. There is no
- * channel here through which generated content could reach a person.
+ * THE POLICY DECIDES, NOT THIS COMMENT.
+ *
+ * An earlier version of this file argued in prose that no ethics preamble was needed here —
+ * purpose is 'structured', the entire output is a closed set of operations over ids that already
+ * exist, and validateProposedReanalysis rejects anything else, so there is no channel through
+ * which generated content reaches a reader. The reasoning was right and the implementation was
+ * wrong: scripts/offline/safety-attestation.ts flagged this module UNCLASSIFIED, because a prompt
+ * that asserts its own exemption cannot be audited.
+ *
+ * So it now ASKS. ethicsPreambleFor('structured') returns '' today, which is the same output the
+ * comment claimed — but if the policy ever changes its mind about structured prompts, this prompt
+ * changes with it instead of quietly keeping an exemption somebody wrote once.
  */
-const SYSTEM = `You reorganize a list of PENDING facts that a person is about to review.
+const SYSTEM = ethicsPreambleFor('structured') + `You reorganize a list of PENDING facts that a person is about to review.
 
 You may only propose these operations, and nothing else:
   attach  {"op":"attach","factIds":["..."],"decisionId":"...","because":"..."}   put facts under an open decision

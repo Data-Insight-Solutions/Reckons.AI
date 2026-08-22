@@ -15,11 +15,12 @@
  */
 
 import { execSync } from 'node:child_process';
-import { appendFileSync, readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { MultiKBReader, type Triple } from '../mcp-server/src/kb-reader.js';
 import { bm25Search, invalidateCache } from '../mcp-server/src/search.js';
 import { gitChangedFiles, gitLog, gitStatus } from '../mcp-server/src/git-utils.js';
+import { transactPendingQueue } from './offline/pending-queue.js';
 
 // ── CLI args ─────────────────────────────────────────────────────────────────
 
@@ -59,6 +60,7 @@ type Discrepancy = {
 type PendingEntry = {
   subject: string;
   predicate: string;
+  kb: string;
   object: string;
   note?: string;
   type: string;
@@ -490,6 +492,7 @@ function toPendingEntries(discrepancies: Discrepancy[]): PendingEntry[] {
       entries.push({
         subject: d.iri,
         predicate: 'urn:kbase:predicate/expected-result',
+        kb: 'production',
         object: d.actualValue,
         note: `kb-align: new test category detected. No KB entity for "${d.entity}".`,
         type: 'suggestion',
@@ -502,6 +505,7 @@ function toPendingEntries(discrepancies: Discrepancy[]): PendingEntry[] {
       entries.push({
         subject: d.iri,
         predicate: `urn:kbase:predicate/${d.field}`,
+        kb: 'production',
         object: d.actualValue,
         note: `kb-align: KB says "${d.kbValue}" but actual is "${d.actualValue}".`,
         type: 'status-update',
@@ -514,6 +518,7 @@ function toPendingEntries(discrepancies: Discrepancy[]): PendingEntry[] {
       entries.push({
         subject: d.iri,
         predicate: `urn:kbase:predicate/${d.field}`,
+        kb: 'production',
         object: d.actualValue,
         note: `kb-align: DRIFT — KB expects "${d.kbValue}" but actual is "${d.actualValue}".`,
         type: 'drift-warning',
@@ -527,11 +532,11 @@ function toPendingEntries(discrepancies: Discrepancy[]): PendingEntry[] {
   return entries;
 }
 
-function deduplicateEntries(entries: PendingEntry[]): PendingEntry[] {
+function deduplicateEntries(entries: PendingEntry[], pendingText?: string): PendingEntry[] {
   // Read existing pending entries
   const existing = new Set<string>();
-  if (existsSync(PENDING_PATH)) {
-    const lines = readFileSync(PENDING_PATH, 'utf8').split('\n');
+  if (pendingText !== undefined || existsSync(PENDING_PATH)) {
+    const lines = (pendingText ?? readFileSync(PENDING_PATH, 'utf8')).split('\n');
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed) continue;
@@ -652,10 +657,16 @@ function main() {
         console.log(dim(`  ${e.type}: ${e.subject.split('/').pop()} .${e.predicate.split('/').pop()} ${e.object}`));
       }
     } else {
-      for (const e of entries) {
-        appendFileSync(PENDING_PATH, JSON.stringify(e) + '\n', 'utf8');
-      }
-      console.log(`\n${ok(`${entries.length} pending entries`)} written to ${dim(PENDING_PATH.replace(ROOT + '/', ''))}`);
+      const written = transactPendingQueue(PENDING_PATH, (current) => {
+        const fresh = deduplicateEntries(rawEntries, current);
+        if (fresh.length === 0) return { result: 0 };
+        const separator = current && !current.endsWith('\n') ? '\n' : '';
+        return {
+          content: current + separator + fresh.map((entry) => JSON.stringify(entry)).join('\n') + '\n',
+          result: fresh.length,
+        };
+      });
+      console.log(`\n${ok(`${written} pending entries`)} written to ${dim(PENDING_PATH.replace(ROOT + '/', ''))}`);
     }
   } else if (rawEntries.length > 0) {
     console.log(dim(`\n${rawEntries.length} entries already queued (skipped duplicates)`));

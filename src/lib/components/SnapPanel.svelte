@@ -40,11 +40,15 @@
   const EDGE_MARGIN   = 12;
   const SNAP_DIST     = 60; // px from screen edge triggers snap
 
-  let snappedCorner = $state<Corner>(corner);
+  // These are local panel state after mount. Read the caller's values through helpers so the
+  // intentionally one-time initialization is explicit to Svelte's rune analysis.
+  function initialCorner(): Corner { return corner; }
+  function initialWidth(): number { return width; }
+  let snappedCorner = $state<Corner>(initialCorner());
   let isSnapped     = $state(true);
   let floatLeft     = $state(0);
   let floatTop      = $state(0);
-  let panelW        = $state(width);
+  let panelW        = $state(initialWidth());
   let panelH        = $state<number | null>(null); // null = auto
 
   let panelEl: HTMLDivElement | undefined;

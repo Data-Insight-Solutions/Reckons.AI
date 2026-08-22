@@ -232,14 +232,16 @@
 <!-- Full-screen overlay -->
 <div
   class="mr-backdrop"
-  onclick={() => onCancel()}
+  onclick={(event) => {
+    if (event.target === event.currentTarget) onCancel();
+  }}
   onkeydown={(e) => { if (e.key === 'Escape') onCancel(); }}
   role="dialog"
+  tabindex="-1"
   aria-modal="true"
   aria-label="Merge review"
 >
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="mr-modal" onclick={(e) => e.stopPropagation()}>
+  <div class="mr-modal">
 
     <!-- ── Header ── -->
     <div class="mr-header">
@@ -795,7 +797,6 @@
   .mr-val-b:hover, .mr-val-b.chosen { border-color: var(--data); background: color-mix(in srgb, var(--data) 12%, var(--surface)); color: var(--data); }
   .mr-val-both:hover, .mr-val-both.chosen { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, var(--surface)); color: var(--ok); }
   .mr-val-src { font-size: 0.6rem; font-weight: 700; }
-  .mr-val-text { }
   .mr-chosen-mark { font-size: 0.75rem; }
   .mr-vs { font-size: 0.62rem; color: var(--muted); }
 

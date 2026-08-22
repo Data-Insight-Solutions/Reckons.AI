@@ -3,15 +3,16 @@
  * Safety attestation (SCRIPT tier) — a dated, recurring record of the good-faith effort.
  *
  * WHY THIS EXISTS
- * Reckons.AI has no server, no accounts, and no logs, so it cannot retain evidence about
- * what a USER did. What it CAN do — and what actually matters if the product is ever
- * called to account — is prove what the SOFTWARE did: that specific safety controls
- * existed, were verified, and kept passing, continuously, from an early date.
+ * Reckons.AI has no graph-content backend or accounts, so it retains no identity record for
+ * graph activity. The optional maintainer feedback endpoint is a separate voluntary content/PII
+ * path and does not establish who authored a graph. What this job CAN do is prove what the
+ * SOFTWARE did: that specific safety controls existed, were verified, and kept passing.
  *
  * This job verifies each control against the live codebase and appends a dated
  * attestation record to static/reckons-safety-log.ttl. Because that file is committed,
- * git gives the record properties we could not otherwise buy: it is timestamped, ordered,
- * append-only in practice, and cryptographically chained — you cannot backdate it.
+ * git gives the record ordered, hash-linked history, while the hosted remote and CI run history
+ * supply independent timing evidence. Git history alone can be rewritten, so this is evidence,
+ * not a claim that backdating is impossible.
  *
  * The controls are checked, not asserted. If a control regresses, the attestation says so
  * and the job fails. An attestation that always passes would be worthless.
@@ -25,18 +26,32 @@
  *   npm run safety:attest -- --record  also append the dated record to the TTL log
  */
 import { readFileSync, existsSync, appendFileSync, writeFileSync, readdirSync, statSync } from 'fs';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import path from 'path';
 
 const RECORD = process.argv.includes('--record');
 const LOG = 'static/reckons-safety-log.ttl';
 
-/** Capture stdout even when the command exits non-zero — graph-lint exits 1 on findings,
- *  and its findings are precisely what we need to read. */
-const sh = (cmd: string): string => {
-  try { return execSync(cmd, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
+/** Capture stdout even when a command exits non-zero — graph-lint exits 1 on findings,
+ * and its findings are precisely what we need to read. Execute the local project tools through
+ * this Node binary rather than ambient npx, so the attestation has the same result in CI, npm,
+ * and a Node-only shell. */
+const sh = (command: string, args: string[] = []): string => {
+  try {
+    return execFileSync(command, args, {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  }
   catch (e: any) { return (e?.stdout ?? '').toString().trim(); }
 };
+
+const projectFile = (...segments: string[]) => path.join(process.cwd(), ...segments);
+const runProjectTypeScript = (script: string, ...args: string[]) =>
+  sh(process.execPath, [projectFile('node_modules', 'tsx', 'dist', 'cli.mjs'), projectFile(script), ...args]);
+const runVitest = (...args: string[]) =>
+  sh(process.execPath, [projectFile('node_modules', 'vitest', 'vitest.mjs'), ...args]);
 
 interface Control {
   id: string;
@@ -82,10 +97,11 @@ const CONTROLS: Control[] = [
   },
   {
     id: 'ethics-preamble-injected',
-    label: 'Ethics preamble is injected into every generative LLM prompt',
+    label: 'Generative prompts follow the explicit purpose/locality ethics policy',
     claim:
-      'Every code path that sends a system prompt to an LLM prepends the ETHICS_PREAMBLE. ' +
-      'Verified by static analysis of the prompt sites, not by assertion.',
+      'Generative prompt modules either call ethicsPreambleFor(purpose, locality) or explicitly ' +
+      'include ETHICS_PREAMBLE. Shared output is always gated; remote conversation is gated; ' +
+      'local-only conversation and structured extraction are deliberate documented omissions.',
     check: () => {
       // A generative prompt module DECLARES a system-prompt constant as a template literal
       // (or as ETHICS_PREAMBLE + ...). Matching a bare `systemPrompt =` is not enough: it
@@ -97,13 +113,26 @@ const CONTROLS: Control[] = [
         if (/ethics-preamble\.ts$/.test(f)) return false; // the preamble's own definition
         return DECLARES_PROMPT.test(readFileSync(f, 'utf8'));
       });
-      const ungated = promptModules.filter((f) => !readFileSync(f, 'utf8').includes('ETHICS_PREAMBLE'));
+      const unclassified = promptModules.filter((f) => {
+        const src = readFileSync(f, 'utf8');
+        return !src.includes('ETHICS_PREAMBLE') && !src.includes('ethicsPreambleFor');
+      });
+      const policy = readFileSync('src/lib/safety/content-policy.ts', 'utf8');
+      const policyInvariants = [
+        /purpose === 'share'[^\n]+ETHICS_PREAMBLE/,
+        /locality === 'local'[^\n]+return ''/,
+        /REQUIRES_PREAMBLE[^\n]+share[^\n]+converse/,
+      ];
+      const policyComplete = policyInvariants.every((pattern) => pattern.test(policy));
       return {
-        pass: ungated.length === 0,
+        pass: unclassified.length === 0 && policyComplete,
         evidence:
-          ungated.length === 0
-            ? `${promptModules.length}/${promptModules.length} prompt modules inject the preamble`
-            : `UNGATED: ${ungated.join(', ')}`,
+          unclassified.length === 0 && policyComplete
+            ? `${promptModules.length}/${promptModules.length} prompt modules classified; share=always, remote-converse=gated, local/structured=deliberate omissions`
+            : [
+                policyComplete ? '' : 'POLICY INVARIANTS NOT FOUND',
+                unclassified.length ? `UNCLASSIFIED: ${unclassified.join(', ')}` : '',
+              ].filter(Boolean).join('; '),
       };
     },
   },
@@ -135,7 +164,7 @@ const CONTROLS: Control[] = [
     label: 'The safety test suite passes',
     claim: 'The content-policy test suite is green as of this attestation.',
     check: () => {
-      const out = sh('npx vitest run src/lib/safety 2>&1');
+      const out = runVitest('run', 'src/lib/safety');
       const m = out.match(/Tests\s+(\d+)\s+passed/);
       const failed = /\d+\s+failed/.test(out);
       return { pass: !!m && !failed, evidence: m ? `${m[1]} tests passed` : 'could not determine test result' };
@@ -148,7 +177,7 @@ const CONTROLS: Control[] = [
       'Every feature that DISTRIBUTES user data (Reckons.AI as intermediary) declares a safety gate and does not ' +
       'ship ahead of it; user-export paths carry no blocking gate (export is a right). Enforced by graph-lint.',
     check: () => {
-      const out = sh('npx tsx scripts/offline/graph-lint.ts --json');
+      const out = runProjectTypeScript('scripts/offline/graph-lint.ts', '--json');
       if (!out) return { pass: false, evidence: 'graph-lint did not run' };
       try {
         const j = JSON.parse(out) as { errors: { check: string; subject: string; msg: string }[] };
@@ -164,7 +193,7 @@ const CONTROLS: Control[] = [
 
 // ── Run ───────────────────────────────────────────────────────────────────────
 const B = '\x1b[1m', D = '\x1b[2m', R = '\x1b[31m', G = '\x1b[32m', X = '\x1b[0m';
-const sha = sh('git rev-parse HEAD') || 'unknown';
+const sha = sh('git', ['rev-parse', 'HEAD']) || 'unknown';
 const when = new Date().toISOString();
 
 console.log(`${B}Safety attestation${X}  ${D}${when} · ${sha.slice(0, 10)}${X}\n`);
@@ -197,12 +226,15 @@ if (RECORD) {
 # ==============================================================================
 # A dated, recurring record that specific safety controls existed in the software
 # and were VERIFIED to pass, from an early date onward. Generated by
-# scripts/offline/safety-attestation.ts and committed, so git supplies what this
-# record needs and we cannot otherwise buy: it is timestamped, ordered, and
-# cryptographically chained — it cannot be backdated.
+# scripts/offline/safety-attestation.ts and committed. Git supplies an ordered,
+# hash-linked history; the hosted remote and CI run history supply independent
+# timing evidence. Git history alone can be rewritten and is not proof against
+# backdating.
 #
 # This records what the SOFTWARE did. It records nothing about any user: the app
-# has no server, no accounts, and no logs, and retains no user content.
+# has no graph-content backend or accounts and retains no identity record for
+# graph activity. The optional maintainer feedback endpoint is a separate
+# voluntary content/PII path and does not establish graph authorship.
 #
 # NOT a claim of enforcement. The controls are good-faith defaults in open-source,
 # local-first, client-side code and are bypassable by design (COUNSEL-BRIEF.md §4).

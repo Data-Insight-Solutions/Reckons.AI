@@ -26,6 +26,7 @@
  */
 import { readFileSync, existsSync } from 'fs';
 import { Parser } from 'n3';
+import { countPublishedGraph } from './lib/audit-rules';
 
 const argv = process.argv.slice(2);
 const JSON_OUT = argv.includes('--json');
@@ -33,12 +34,12 @@ const JSON_OUT = argv.includes('--json');
 const FILE = 'static/knowledge.ttl';
 
 /**
- * The floor, not the target. A real graph of the product is in the high hundreds; this only
- * catches a CATASTROPHIC truncation (an empty or debris-filled export), not slow erosion.
- * Deliberately well under the true count so pruning statements never trips it — a guard that
- * cries wolf on ordinary edits gets deleted, and then it guards nothing.
+ * The floor, not the target. The checked-in graph currently has 221 asserted app statements;
+ * this catches a CATASTROPHIC truncation (such as the historic 45-statement test clobber), not
+ * slow erosion. Keep the floor in the same logical unit as the export header. Using raw RDF size
+ * here would make the control depend on two optional provenance decorations inflating every fact.
  */
-const MIN_STATEMENTS = 400;
+const MIN_STATEMENTS = 100;
 
 /**
  * Namespaces that belong to the TEST HARNESS, not to the product. Their presence in the
@@ -75,6 +76,9 @@ const err = (check: string, msg: string) => findings.push({ level: 'error', chec
 const warn = (check: string, msg: string) => findings.push({ level: 'warn', check, msg });
 
 let statements = 0;
+let rdfQuads = 0;
+let provenanceQuads = 0;
+let advisoryQuads = 0;
 let declared: number | null = null;
 
 if (!existsSync(FILE)) {
@@ -90,17 +94,18 @@ if (!existsSync(FILE)) {
   try {
     // Every .ttl is legal TriG (F75), so this tolerates a named graph if one appears.
     quads = new Parser({ format: 'TriG' }).parse(text);
-    statements = quads.length;
+    ({ statements, rdfQuads, provenanceQuads, advisoryQuads } = countPublishedGraph(quads));
   } catch (e) {
     err('parse', `${FILE} does not parse: ${e instanceof Error ? e.message : e}`);
   }
 
-  if (statements > 0) {
+  if (rdfQuads > 0) {
     // 1. Not gutted. This is the check that would have caught the clobber.
     if (statements < MIN_STATEMENTS) {
       err(
         'not-truncated',
-        `${FILE} has only ${statements} statements (floor is ${MIN_STATEMENTS}). ` +
+        `${FILE} has only ${statements} asserted app statements (floor is ${MIN_STATEMENTS}; ` +
+          `${rdfQuads} RDF triples/quads including exporter metadata). ` +
           `The published graph looks GUTTED — most likely a test run or a dev-server export ` +
           `wrote over it. Restore it (git checkout -- ${FILE}) before committing.`,
       );
@@ -123,12 +128,14 @@ if (!existsSync(FILE)) {
       );
     }
 
-    // 3. The header must not lie. It is the first thing a reader trusts, and it is cheap to
-    //    check, so an untrue one is inexcusable — kb:honest-status applies to our own exports.
+    // 3. The header must not lie. `toTurtle()` declares app Statements, while N3 also parses
+    //    two provenance decorations per Statement. Compare the header to its own unit, not
+    //    the raw RDF size — 221 app statements legitimately parse to 663 RDF triples.
     if (declared !== null && declared !== statements) {
       warn(
         'honest-header',
-        `${FILE} says "${declared} statements" but parses to ${statements}. ` +
+        `${FILE} says "${declared} statements" but contains ${statements} asserted app statements ` +
+          `(${rdfQuads} RDF triples/quads including exporter metadata). ` +
           `The header was not regenerated with the body.`,
       );
     }
@@ -139,7 +146,15 @@ const errors = findings.filter((f) => f.level === 'error');
 const warns = findings.filter((f) => f.level === 'warn');
 
 if (JSON_OUT) {
-  console.log(JSON.stringify({ file: FILE, statements, declared, findings }, null, 2));
+  console.log(JSON.stringify({
+    file: FILE,
+    statements,
+    rdfQuads,
+    provenanceQuads,
+    advisoryQuads,
+    declared,
+    findings,
+  }, null, 2));
 } else {
   const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
   const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
@@ -153,7 +168,10 @@ if (JSON_OUT) {
   for (const f of warns) console.log(`  ${yellow('!')} ${bold(f.check)}  ${f.msg}\n`);
 
   if (findings.length === 0) {
-    console.log(`  ${green('✓')} ${statements} statements, parses, no test debris, header honest.\n`);
+    console.log(
+      `  ${green('✓')} ${statements} statements (${rdfQuads} RDF triples/quads), ` +
+        `parses, no test debris, header honest.\n`,
+    );
   }
 
   const summary = `${errors.length} error(s), ${warns.length} warning(s).`;
