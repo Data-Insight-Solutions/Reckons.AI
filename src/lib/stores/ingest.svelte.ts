@@ -295,7 +295,9 @@ export async function ingest(
         parsedCandidateCount = parsed.candidateCount;
         parserRejectedCount = parsed.parserRejectedCount;
       } else if (backend === 'claude') {
-        triples = await extractWithClaude(text, title, { apiKey: s.claudeApiKey!, model: s.claudeModel, systemPrompt });
+        triples = await extractWithClaude(text, title, {
+          apiKey: s.claudeApiKey!, model: s.claudeModel, systemPrompt, graphContext,
+        });
       } else if (backend === 'openrouter') {
         const raw = await chatOpenRouter(
           [{ role: 'user', content: buildExtractionUserPrompt(text, title, graphContext) }],
@@ -316,7 +318,8 @@ export async function ingest(
           baseUrl: s.ollamaBaseUrl,
           systemPromptOverride: kind === 'repository' ? systemPrompt : undefined,
           promptMode: s.ollamaPromptMode,
-          structured: s.ollamaStructuredExtraction !== false
+          structured: s.ollamaStructuredExtraction !== false,
+          graphContext,
         });
       } else if (backend === 'reckons') {
         const raw = await chatReckons(
@@ -341,7 +344,7 @@ export async function ingest(
         parserRejectedCount = parsed.parserRejectedCount;
       } else if (backend === 'wasm') {
         try {
-          triples = await extractWithWasm(text, title, s.wasmIngestModel || s.wasmModel);
+          triples = await extractWithWasm(text, title, s.wasmIngestModel || s.wasmModel, graphContext);
         } catch (wasmErr) {
           console.warn('[fallback] WASM extraction failed, using mock:', wasmErr);
           const errMsg = wasmErr instanceof Error ? wasmErr.message : String(wasmErr);

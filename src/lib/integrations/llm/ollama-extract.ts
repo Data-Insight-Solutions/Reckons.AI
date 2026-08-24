@@ -33,6 +33,8 @@ export type OllamaExtractOptions = {
    * is safe to leave enabled.
    */
   structured?: boolean;
+  /** Existing graph vocabulary + structure appended to the extraction request (F136.3). */
+  graphContext?: string;
 };
 
 /** Picks EXTRACTION_SYSTEM_PROMPT vs. the compact small-model variant. */
@@ -111,7 +113,7 @@ export async function extractWithOllama(
   opts: OllamaExtractOptions
 ): Promise<ExtractedTriple[]> {
   const system = resolveOllamaSystemPrompt(opts);
-  const messages: ChatMessage[] = [{ role: 'user', content: buildExtractionUserPrompt(text, sourceTitle) }];
+  const messages: ChatMessage[] = [{ role: 'user', content: buildExtractionUserPrompt(text, sourceTitle, opts.graphContext) }];
   const useStructured = opts.structured ?? true;
 
   if (useStructured) {
