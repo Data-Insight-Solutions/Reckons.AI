@@ -153,14 +153,17 @@ test('hero "Getting started" button activates the starter graph (not a no-op)', 
   await expect(getStarted).toBeVisible({ timeout: 10_000 });
   await getStarted.click();
 
-  // Docs KB must actually activate and lay out nodes. If activation no-ops, the
-  // empty-KB guard re-renders the landing page and no .node-label ever appears.
-  await expect
-    .poll(async () => page.locator('.node-label').count(), {
-      timeout: 30_000,
-      message: 'Getting started was a no-op — docs graph never laid out nodes',
-    })
-    .toBeGreaterThan(0);
+  // The everyday starter intentionally opens in transient 2D: creating the default full-window
+  // WebGL context synchronously blocked this CTA for 500ms+ on the production GPU. Reaching a
+  // painted 2D canvas proves the facts activated without weakening the separate 3D docs gate above.
+  const starterGraph = page.locator('[data-graph-renderer="2d"]');
+  await expect(starterGraph).toBeVisible({ timeout: 30_000 });
+  const starterCanvas = starterGraph.locator('canvas').first();
+  await expect(starterCanvas).toBeVisible();
+  const starterFrame = await starterCanvas.screenshot();
+  const starterPixels = await analyzePixels(starterFrame);
+  expect(starterPixels.isBlank, starterPixels.anomalyDetails.join('; ')).toBe(false);
+  expect(starterPixels.uniqueColorCount).toBeGreaterThan(20);
 
   // And the landing hero must be gone (graph route swapped in).
   await expect(page.getByRole('button', { name: /getting started/i })).toHaveCount(0);

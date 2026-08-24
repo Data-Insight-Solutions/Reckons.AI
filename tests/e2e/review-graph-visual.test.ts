@@ -14,9 +14,14 @@ import { clearStorage, waitForApp } from './helpers';
 
 async function loadStarter(page: Page) {
   await page.goto('/');
-  await page.waitForTimeout(1000);
   const gs = page.getByRole('button', { name: /getting started/i }).first();
-  if (await gs.count()) { await gs.click(); await page.waitForTimeout(2500); }
+  await expect(gs).toBeVisible({ timeout: 15_000 });
+  await gs.click();
+  // First-run starter loading deliberately uses a transient 2D renderer. Waiting for a 3D DOM
+  // label here made every review assertion depend on an element that cannot exist in this state.
+  const graph = page.locator('[data-graph-renderer="2d"]');
+  await expect(graph).toBeVisible({ timeout: 15_000 });
+  await expect(graph).toHaveAttribute('data-graph-settled', 'true', { timeout: 20_000 });
 }
 
 test.beforeEach(async ({ page }) => {
@@ -36,13 +41,13 @@ test('review preview graph renders node labels for a real graph (not blank)', as
   await expect(page.locator('canvas').first()).toBeVisible({ timeout: 8_000 });
 
   // …and the shared GraphLabels overlay emits several real node labels (the bug was ZERO labels).
-  await page.waitForTimeout(4_000); // let the force layout place nodes
+  await expect(page.locator('.graph-pane')).toHaveAttribute('data-graph-settled', 'true', { timeout: 20_000 });
   const labels = page.locator('.node-label');
+  await expect.poll(() => labels.count(), {
+    timeout: 20_000,
+    message: 'review preview graph should emit DOM labels after settling',
+  }).toBeGreaterThanOrEqual(5);
   const count = await labels.count();
-  if (count === 0) {
-    test.skip(true, 'graph rendered without WebGL labels in this environment');
-    return;
-  }
   expect(count, 'review preview graph should render several node labels').toBeGreaterThanOrEqual(5);
   const text = (await labels.allInnerTexts()).join(' ').toLowerCase();
   const seeded = ['lake george', 'alex', 'jordan', 'oh! ridge', 'june lake'];

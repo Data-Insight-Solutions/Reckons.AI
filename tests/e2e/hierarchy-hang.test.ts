@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { clearStorage, waitForApp } from './helpers';
 
 /**
  * REGRESSION: the "tree" layout hangs the app when the graph HAS a hierarchy.
@@ -12,13 +13,14 @@ import { test, expect } from '@playwright/test';
  * so the block happens BEFORE anchors are computed. The review preview defaults to 3D
  * (`use2D = prefer2D ?? false`), so the 2D path is not involved at all.
  *
- * Marked test.fail(): it PASSES while the bug is present and turns RED the moment the hang is
- * fixed, which is the signal that matters. A hang a user hit twice belongs in the suite, not in a
- * handoff note — but it must not sit in CI as a permanent red that everyone learns to ignore.
+ * This used to be marked `test.fail`, but the test never reached the tree: a first-run consent
+ * overlay intercepted the click. Shared setup now clears storage and dismisses that overlay, and
+ * the fixed interaction is a normal regression gate instead of an expected failure.
  */
 test('tree layout does not hang on a graph that has a hierarchy', async ({ page }) => {
-  test.fail(true, 'KNOWN HANG: switching to tree layout blocks the main thread when the graph states hierarchy edges');
   test.setTimeout(180_000);
+  await clearStorage(page);
+  await waitForApp(page);
   await page.goto('/ingest');
   await page.locator('.tabs button', { hasText: 'graph' }).click();
   await page.setInputFiles('input[type="file"]', 'kbs/demo-decision-tree/demo-decision-tree.ttl');

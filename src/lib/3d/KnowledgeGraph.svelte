@@ -25,12 +25,13 @@
   import { recordFrame } from '$lib/stores/perf-monitor.svelte';
   import { leapNodeKeys } from '$lib/rdf/kb-leap';
   import { hopDistances, adjacencyFromPairs } from '$lib/rdf/n-hop';
-  import { SKOS_BROADER, NAV_ORDER, NAV_LAYER } from '$lib/rdf/hierarchy';
+  import { buildHierarchyParentMaps, NAV_ORDER, NAV_LAYER } from '$lib/rdf/hierarchy';
 
   interactivity();
 
   let {
     statements = [],
+    topologyStatements = null,
     selected = null,
     highlighted = [],
     dimMode = false,
@@ -51,9 +52,16 @@
     onmarkersmove = () => {},
     onlabelsmove = () => {},
     ontimelinepan = () => {},
+    onsettledchange = (_settled: boolean) => {},
     onready = () => {}
   } = $props<{
     statements?: Statement[];
+    /**
+     * Statements allowed to create visible edges. `statements` remains the complete input so
+     * labels, rdf:type styling and presentation metadata still work. When omitted, every normal
+     * statement remains topology-compatible for callers that have not split attributes yet.
+     */
+    topologyStatements?: Statement[] | null;
     selected?: string | null;
     highlighted?: string[];
     dimMode?: boolean;
@@ -85,6 +93,8 @@
     onmarkersmove?: (markers: Array<{ key: string; label: string; color: string; x: number; y: number }>) => void;
     onlabelsmove?: (labels: Array<{ key: string; label: string; x: number; y: number; opacity: number }>) => void;
     ontimelinepan?: (center: number) => void;
+    /** Exposes the simulation's real cooling boundary to UI/performance consumers. */
+    onsettledchange?: (settled: boolean) => void;
     /** Fired after a non-empty scene has completed at least one animation frame. */
     onready?: () => void;
   }>();
@@ -184,6 +194,37 @@
   let cameraTarget = new THREE.Vector3(0, 0, 0);
   const projVec = new THREE.Vector3();
   const { camera, renderer } = useThrelte();
+  let previousCanvasWidth = 0;
+  let previousCanvasHeight = 0;
+  let previousCameraAspect = 0;
+
+  /** Fit a structured tree as a whole; its orphan lane is part of the visible composition too. */
+  function fitHierarchyCamera3D(anchors: Map<string, THREE.Vector3>) {
+    if (cameraSpec || anchors.size === 0 || !camera.current) return;
+    const cam = camera.current as THREE.PerspectiveCamera;
+    if (!cam.isPerspectiveCamera) return;
+    const sphere = new THREE.Sphere();
+    new THREE.Box3().setFromPoints([...anchors.values()]).getBoundingSphere(sphere);
+    const previousTarget = orbitRef?.target ?? cameraTarget;
+    const direction = cam.position.clone().sub(previousTarget);
+    if (direction.lengthSq() === 0) direction.set(0, 0, 1);
+    direction.normalize();
+    const verticalFov = THREE.MathUtils.degToRad(cam.fov);
+    const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * Math.max(cam.aspect, 0.1));
+    const limitingHalfFov = Math.max(0.05, Math.min(verticalFov, horizontalFov) / 2);
+    const distance = Math.max(8, (sphere.radius / Math.sin(limitingHalfFov)) * 1.18);
+
+    cameraTarget.copy(sphere.center);
+    cam.position.copy(sphere.center).addScaledVector(direction, distance);
+    cam.near = Math.max(0.01, distance - sphere.radius * 1.5);
+    cam.far = Math.max(100, distance + sphere.radius * 3);
+    cam.lookAt(sphere.center);
+    cam.updateProjectionMatrix();
+    if (orbitRef?.target) {
+      orbitRef.target.copy(sphere.center);
+      orbitRef.update?.();
+    }
+  }
 
   // ── Semantic distance heuristic ─────────────────────────────────────────────
   /**
@@ -213,6 +254,9 @@
   $effect(() => {
     const nodeMap = new Map<string, Node>();
     const e: Edge[] = [];
+    const topologyIds = topologyStatements === null
+      ? null
+      : new Set((topologyStatements as Statement[]).map((st) => st.id));
     for (const st of statements as Statement[]) {
       if (st.status === 'rejected' || st.status === 'superseded') continue;
       // rdf:type triples style the subject node (nodeTypeMap) but must not
@@ -242,6 +286,19 @@
           const pos = nodePositionCache.get(k)
             ?? new THREE.Vector3((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
           nodeMap.set(k, { key: k, label: st.o.value, kind: 'concept', pos, vel: new THREE.Vector3(), degree: 0 });
+          nodePositionCache.set(k, pos);
+        }
+        continue;
+      }
+      if (topologyIds && !topologyIds.has(st.id)) {
+        // A unique literal is an attribute, not a leaf node. Keep its subject visible even when
+        // this is the entity's only fact; the detail panel still reads the full `statements` set.
+        const k = termKey(st.s);
+        if (!nodeMap.has(k) && st.s.kind === 'iri') {
+          const label = st.s.value.split('/').pop() ?? st.s.value;
+          const pos = nodePositionCache.get(k)
+            ?? new THREE.Vector3((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
+          nodeMap.set(k, { key: k, label, kind: 'concept', pos, vel: new THREE.Vector3(), degree: 0 });
           nodePositionCache.set(k, pos);
         }
         continue;
@@ -577,19 +634,14 @@
   function buildHierarchyAnchors3D(): { anchors: Map<string, THREE.Vector3>; markers: LayoutMarker[] } {
     const active = (statements as Statement[]).filter(s => s.status !== 'rejected' && s.status !== 'superseded');
 
-    // Build broader tree
-    const parentOf = new Map<string, string>();
-    const childrenOf = new Map<string, string[]>();
+    // Build the same tree the 2D renderer shows. Both predicates name the parent in the object;
+    // an explicit taxonomic parent wins over a dependency parent regardless of statement order.
+    const { parentOf, childrenOf, allIris } = buildHierarchyParentMaps(active, true);
     const orderOf = new Map<string, number>();
     const labels = new Map<string, string>();
 
     for (const s of active) {
       if (s.s.kind !== 'iri') continue;
-      if (s.p.value === SKOS_BROADER && s.o.kind === 'iri') {
-        parentOf.set(s.s.value, s.o.value);
-        if (!childrenOf.has(s.o.value)) childrenOf.set(s.o.value, []);
-        childrenOf.get(s.o.value)!.push(s.s.value);
-      }
       if (s.p.value === NAV_ORDER && s.o.kind === 'literal') {
         orderOf.set(s.s.value, parseInt(s.o.value, 10));
       }
@@ -597,7 +649,6 @@
         labels.set(s.s.value, s.o.value);
       }
     }
-
     // Map node keys ↔ IRIs
     const keyToIri = new Map<string, string>();
     const iriToKey = new Map<string, string>();
@@ -609,8 +660,7 @@
     }
 
     // Find roots (no parent, has children)
-    const allIris = new Set([...parentOf.keys(), ...childrenOf.keys()]);
-    const rootIris = [...allIris].filter(iri => !parentOf.has(iri) && childrenOf.has(iri));
+    const rootIris = [...allIris].filter(iri => !parentOf.has(iri)).sort();
     if (rootIris.length === 0) return { anchors: new Map(), markers: [] };
 
     // BFS depth assignment
@@ -922,6 +972,15 @@
     } else if (layout === 'hierarchy') {
       const { anchors, markers } = buildHierarchyAnchors3D();
       activeAnchors = anchors;
+      // Hierarchy coordinates encode stated depth. Snap to them once on entry so alpha cooling
+      // cannot stop a large graph halfway between its prior free layout and its actual tree.
+      for (const node of nodes) {
+        const anchor = anchors.get(node.key);
+        if (!anchor) continue;
+        node.pos.copy(anchor);
+        node.vel.set(0, 0, 0);
+      }
+      fitHierarchyCamera3D(anchors);
       layoutMarkers = markers;
       layoutRingRadii = [];
       anchorStrength = 0.85;
@@ -966,10 +1025,29 @@
    * physics is skipped entirely, so a settled graph stops costing an O(n^2) repulsion pass per frame.
    */
   const SIM_ALPHA_DECAY = 0.0228;
-  const SIM_ALPHA_MIN   = 0.001;
+  // The final 0.05 -> 0.001 tail consumes ~170 additional frames while contributing only the
+  // last 5% of the force integral. Stop at the perceptual floor instead: the layout keeps 95% of
+  // its convergence work but reaches an actual idle state in ~2.2s at 60Hz rather than ~5s.
+  const SIM_ALPHA_MIN   = 0.05;
   let simAlpha = 1;
+  let reportedSettled = false;
+  let lastEmittedSettled: boolean | null = null;
+  function emitSettled(settled: boolean) {
+    if (lastEmittedSettled === settled) return;
+    lastEmittedSettled = settled;
+    onsettledchange(settled);
+  }
   /** Put energy back only when the layout problem genuinely changed — see reheat() in the 2D file. */
-  function reheat(to = 1) { simAlpha = Math.max(simAlpha, to); }
+  function reheat(to = 1) {
+    simAlpha = Math.max(simAlpha, to);
+    if (simAlpha >= SIM_ALPHA_MIN) {
+      reportedSettled = false;
+      // Publish the initial cooling state too. A newly-mounted renderer can inherit a parent's
+      // prior `true` value (for example compare -> preview), even though this local simulation has
+      // never settled. Only flipping after a local true report leaves that parent probe stale.
+      emitSettled(false);
+    }
+  }
 
   useTask((delta) => {
     recordFrame(delta);
@@ -985,6 +1063,7 @@
     const DAMP       = 0.86;
     const BASE_REST  = 2.4;
     const LOCK_TIMELINE_X = layout === 'timeline';
+    const LOCK_HIERARCHY_Y = layout === 'hierarchy';
 
     // F133 — how much world room each node needs THIS FRAME.
     //
@@ -1063,6 +1142,10 @@
         const dateAnchor = activeAnchors.get(n.key);
         if (dateAnchor) { n.pos.x = dateAnchor.x; n.vel.x = 0; }
       }
+      if (LOCK_HIERARCHY_Y) {
+        const hierarchyAnchor = activeAnchors.get(n.key);
+        if (hierarchyAnchor) { n.pos.y = hierarchyAnchor.y; n.vel.y = 0; }
+      }
     }
 
     // F133 ALL-PREVIEWS MODIFIER — make room for what the nodes are showing.
@@ -1100,6 +1183,10 @@
     simAlpha += (0 - simAlpha) * SIM_ALPHA_DECAY;
     if (simAlpha < SIM_ALPHA_MIN) simAlpha = 0;
     } // end if (simAlpha >= SIM_ALPHA_MIN) — cooled, simulation at rest
+    if (simAlpha === 0 && !reportedSettled) {
+      reportedSettled = true;
+      emitSettled(true);
+    }
 
     if (lineGeom) {
       const limit = Math.min(edges.length, MAX_EDGES);
@@ -1131,6 +1218,24 @@
 
     if (renderer && camera.current) {
       const canvas = renderer.domElement;
+      const cam = camera.current as THREE.PerspectiveCamera;
+      const canvasWidth = canvas.clientWidth;
+      const canvasHeight = canvas.clientHeight;
+      const aspect = cam.isPerspectiveCamera ? cam.aspect : 0;
+      if (
+        canvasWidth !== previousCanvasWidth ||
+        canvasHeight !== previousCanvasHeight ||
+        Math.abs(aspect - previousCameraAspect) > 0.0001
+      ) {
+        previousCanvasWidth = canvasWidth;
+        previousCanvasHeight = canvasHeight;
+        previousCameraAspect = aspect;
+        // Hierarchy framing depends on the limiting horizontal/vertical FOV. Re-fit after a
+        // renderer resize (including rotation and split panes) without reheating the simulation.
+        if (layout === 'hierarchy' && activeAnchors.size > 0) {
+          fitHierarchyCamera3D(activeAnchors);
+        }
+      }
 
       if (!reportedReady && nodes.length > 0 && canvas.width > 0 && canvas.height > 0) {
         reportedReady = true;

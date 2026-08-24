@@ -25,8 +25,7 @@
     pendingStatements,
     updateStatement,
     addStatements,
-    setStatus,
-    hotSwapData
+    setStatus
   } from '$lib/stores/kb.svelte';
   import { termKey, type Statement, type Source } from '$lib/rdf/types';
   import MergeReview from '$lib/components/MergeReview.svelte';
@@ -42,7 +41,7 @@
   import { icon2dOverrides, setIcon2d, clearIcon2d } from '$lib/stores/icon2d-overrides.svelte';
   import { LEAP_PRED, LEAP_LABEL_PRED, getLeap, leapNodeKeys } from '$lib/rdf/kb-leap';
   import { findDichotomies } from '$lib/rdf/dichotomy';
-  import { findKbByStableId, switchToKb, createKb, registerStableId, getCurrentKbId, getRegistry } from '$lib/storage/kb-registry';
+  import { findKbByStableId, switchToKb, createKb, registerStableId } from '$lib/storage/kb-registry';
 
   // Predicates that are internal KB metadata — never shown as graph edges/nodes
   const GRAPH_EXCLUDED_PREDICATES = new Set([
@@ -81,15 +80,20 @@
       return !!(c.getContext('webgl2') || c.getContext('webgl') || c.getContext('experimental-webgl'));
     } catch { return false; }
   }
-  // WebGL capability. Reactive: false during SSR, re-detected true on the client in
-  // onMount below, so the gate flips to 3D after hydration. Pure capability flag —
-  // NEVER set false by a user action (that was the latch bug).
-  let webglAvailable = $state(checkWebGL());
+
+  // WebGL capability is checked ON DEMAND when a non-empty graph actually wants 3D. Creating a
+  // disposable context is not a cheap feature query: a production CPU profile measured this call
+  // at ~225ms on an RTX 3090. The old initializer + settings effect + onMount could each create one
+  // on the empty landing page, and the cost was then attributed unpredictably to an IndexedDB
+  // completion or animation frame when a user immediately opened the explicitly-2D starter.
+  let webglAvailable = $state(false);
+  let webglChecked = $state(false);
   // Default to attempting 3D. Do NOT seed this from webglAvailable — that value is
   // false during SSR, which would stick use2D=true (2D) on a fresh load. The gate
   // (use2D || !webglAvailable) handles the no-WebGL case reactively instead.
   let use2D = $state(settings().prefer2D ?? false);
   let graph3DReady = $state(false);
+  let graphSettled = $state(false);
 
   let selected = $state<string | null>(null);
   let hoverTarget = $state<string | null>(null);
@@ -294,17 +298,20 @@
   let timelineCenter = $state<number | null>(null);
   let timelineTimeSource = $state<'event' | 'ingested'>('event');
 
-  // Keep labelFontSize and renderer in sync with settings (e.g. changed from settings page)
+  // Keep labelFontSize and renderer in sync with settings (e.g. changed from settings page).
+  // Only react to a REAL renderer-preference change. Re-running the expensive WebGL probe because
+  // an unrelated setting changed made a label-size edit capable of stalling the graph.
   $effect(() => { const sz = settings().nodeLabelFontSize; if (sz != null) labelFontSize = sz; });
+  let appliedPrefer2D = settings().prefer2D;
   $effect(() => {
     const p = settings().prefer2D;
-    if (p != null) {
+    if (p != null && p !== appliedPrefer2D) {
+      appliedPrefer2D = p;
       use2D = p;
-      // webglAvailable is otherwise a one-way latch — only ever set false (by "switch
-      // to 2D", the perf prompt, or a 3D error), never back true. Without re-detecting
-      // here, choosing 3D updates use2D but a stale !webglAvailable keeps the view in
-      // 2D, so the 3D preference is silently ignored. Re-check WebGL when 3D is chosen.
-      if (!p) webglAvailable = checkWebGL();
+      // A user explicitly choosing 3D gets a fresh capability check. The graph effect below owns
+      // the check so this settings reaction itself stays cheap and cannot create a context while
+      // the landing page is still empty.
+      if (!p) webglChecked = false;
     }
   });
 
@@ -314,10 +321,6 @@
   let cameraSpec = $state<CameraSpec | null>(null);
 
   onMount(async () => {
-    // Re-detect WebGL on the CLIENT — the $state initializer can carry a stale SSR
-    // value (false), which would keep the gate in 2D on a fresh load even when the
-    // browser supports WebGL. Guarantees a real check.
-    webglAvailable = checkWebGL();
     const params = $page.url.searchParams;
     const l = params.get('layout');
     if (l && ['force','focus','source','type','hub','timeline','order','hierarchy'].includes(l)) layout = l as typeof layout;
@@ -468,6 +471,15 @@
       !GRAPH_EXCLUDED_PREDICATES.has(s.p.value)
     )
   );
+
+  // Run before the graph branch updates, so a normal 3D graph does not mount a throwaway 2D canvas
+  // first. The everyday starter calls `onstarteropen` before publishing its facts, setting use2D;
+  // that makes this branch skip the WebGL probe completely. No graph means no context allocation.
+  $effect.pre(() => {
+    if (visible.length === 0 || use2D || webglChecked) return;
+    webglChecked = true;
+    webglAvailable = checkWebGL();
+  });
   $effect(() => {
     if (visible.length === 0 || use2D || !webglAvailable) graph3DReady = false;
   });
@@ -1374,69 +1386,27 @@
 
   let leapImporting = $state(false);
   let flyToGhost = $state(false);
-  /** Data pre-loaded during fly, injected on arrival. */
-  let pendingLeapData: {
-    kbId: string;
-    stmts: Statement[];
-    srcs: Source[];
-    sourceStableId?: string; // the KB we're leaving — used to find the return leap
-  } | null = null;
+  /** Target retained while the 2D camera finishes its departure animation. */
+  let pendingLeapKbId: string | null = null;
 
   /** Called by KnowledgeGraph2D when camera fly animation completes. */
   function handleFlyEnd() {
     flyToGhost = false;
-    if (!pendingLeapData) return;
-    const { kbId, stmts, srcs, sourceStableId } = pendingLeapData;
-    pendingLeapData = null;
-    // Hot-swap visual data — no reload, no overlay
-    hotSwapData(stmts, srcs);
-    // Update session so next page load / navigation uses the target KB
-    sessionStorage.setItem('sessionKbId', kbId);
-    localStorage.setItem('currentKbId', kbId);
-
-    // Find and select the return leap node — gives the user orientation and a way back.
-    // Look for any entity in the new KB that has a leap pointing to the source KB's stable ID.
-    if (sourceStableId) {
-      const returnStmt = stmts.find(
-        s => s.p.value === LEAP_PRED && s.o.kind === 'literal' && s.o.value === sourceStableId
-          && (s.status === 'confirmed' || s.status === 'refined')
-      );
-      if (returnStmt && returnStmt.s.kind === 'iri') {
-        selected = `i:${returnStmt.s.value}`;
-        return;
-      }
-    }
-    // Fallback: find any leap node in the new KB as an anchor point
-    const anyLeap = stmts.find(
-      s => s.p.value === LEAP_PRED && (s.status === 'confirmed' || s.status === 'refined')
-    );
-    if (anyLeap && anyLeap.s.kind === 'iri') {
-      selected = `i:${anyLeap.s.value}`;
-    } else {
-      selected = null;
-    }
+    if (!pendingLeapKbId) return;
+    const kbId = pendingLeapKbId;
+    pendingLeapKbId = null;
+    // Finish the visual departure, then perform a real graph switch. Merely replacing the arrays
+    // would leave the store singleton and Dexie live query attached to the graph we just left.
+    switchToKb(kbId);
   }
 
-  /** Pre-load target KB data and start fly animation (2D), or fall back to direct switch (3D). */
-  async function startLeapTransition(kbId: string, stmts: Statement[], srcs: Source[]) {
-    const currentEntry = getRegistry().find(k => k.id === getCurrentKbId());
-    const sourceStableId = currentEntry?.stableId ?? settings().kbStableId;
+  /** Start the 2D departure animation, or perform a direct durable switch in 3D. */
+  async function startLeapTransition(kbId: string) {
     if ((use2D || !webglAvailable) && ghostGraph) {
-      pendingLeapData = { kbId, stmts, srcs, sourceStableId };
+      pendingLeapKbId = kbId;
       flyToGhost = true;
     } else {
-      // 3D mode or no ghost graph — hot-swap immediately, find return node
-      hotSwapData(stmts, srcs);
-      sessionStorage.setItem('sessionKbId', kbId);
-      localStorage.setItem('currentKbId', kbId);
-      // Select the return leap node if one exists
-      if (sourceStableId) {
-        const ret = stmts.find(s => s.p.value === LEAP_PRED && s.o.kind === 'literal' && s.o.value === sourceStableId
-          && (s.status === 'confirmed' || s.status === 'refined'));
-        selected = ret?.s.kind === 'iri' ? `i:${ret.s.value}` : null;
-      } else {
-        selected = null;
-      }
+      switchToKb(kbId);
     }
   }
 
@@ -1465,7 +1435,7 @@
           tempDb.sources.orderBy('ingestedAt').reverse().toArray(),
         ]);
         tempDb.close();
-        await startLeapTransition(found.id, stmts, srcs);
+        await startLeapTransition(found.id);
       } catch (e) {
         // Fallback to reload
         switchToKb(found.id);
@@ -1515,11 +1485,11 @@
         await tempDb.statements.bulkPut(stmts);
         registerStableId(kbEntry.id, entityLeap.target, stmts.length);
         tempDb.close();
-        await startLeapTransition(kbEntry.id, stmts, [src]);
+        await startLeapTransition(kbEntry.id);
       } catch (e) {
         alert(`Failed to import docs graph: ${e instanceof Error ? e.message : String(e)}`);
         flyToGhost = false;
-        pendingLeapData = null;
+        pendingLeapKbId = null;
       } finally {
         leapImporting = false;
       }
@@ -1770,18 +1740,22 @@
   }
 </script>
 
-<div class="viewport" onpointermove={onGraphPointerMove}>
+<div class="viewport">
   <section
     class="graph"
+    aria-label={visible.length === 0 ? 'Getting started' : 'Knowledge graph'}
+    onpointermove={onGraphPointerMove}
     class:graph-landing={visible.length === 0}
     data-graph-renderer={visible.length === 0 ? 'landing' : use2D || !webglAvailable ? '2d' : '3d'}
     data-graph-ready={graph3DReady}
+    data-graph-settled={visible.length === 0 || graphSettled}
   >
   {#if visible.length === 0}
-    <LandingPage />
+    <LandingPage onstarteropen={() => { use2D = true; }} />
   {:else if use2D || !webglAvailable}
     <KnowledgeGraph2D
       statements={visible}
+      topologyStatements={drawn}
       {selected}
       {layout}
       {timelineZoom}
@@ -1804,6 +1778,7 @@
       onhover={(k) => (hoverTarget = k)}
       onlabelsmove={setNodeLabels}
       onmarkersmove={(m) => { markerLabels = m; }}
+      onsettledchange={(settled) => { graphSettled = settled; }}
       ontimelinepan={(c) => { timelineCenter = c; }}
       {nodeOrder}
       onreorder={(order) => { nodeOrder = order; }}
@@ -1822,6 +1797,7 @@
         <KnowledgeGraph
           {cameraSpec}
           statements={visible}
+          topologyStatements={drawn}
           {selected}
           {layout}
           {timelineZoom}
@@ -1846,6 +1822,7 @@
           onhover={(k) => (hoverTarget = k)}
           onlabelsmove={setNodeLabels}
           onmarkersmove={(m) => { markerLabels = m; }}
+          onsettledchange={(settled) => { graphSettled = settled; }}
           ontimelinepan={(c) => { timelineCenter = c; }}
           onready={() => (graph3DReady = true)}
           highlighted={[...highlightedSet]}
@@ -2279,7 +2256,10 @@
         <img src={expandedAsset.url} alt="expanded asset" />
       </button>
     {:else if expandedAsset.kind === 'video'}
-      <video class="asset-media" src={expandedAsset.url} controls autoplay loop playsinline></video>
+      <!-- Uploaded video assets do not include a separate caption file. Keep playback user-initiated;
+           a fake empty captions track would be more misleading than documenting that limitation. -->
+      <!-- svelte-ignore a11y_media_has_caption -->
+      <video class="asset-media" src={expandedAsset.url} controls preload="metadata" playsinline></video>
     {:else}
       <div
         class="asset-media asset-glb"
@@ -2322,7 +2302,8 @@
     {#if expandedAsset.kind === 'image'}
       <img src={expandedAsset.url} alt="fullscreen asset" />
     {:else if expandedAsset.kind === 'video'}
-      <video class="asset-fs-media" src={expandedAsset.url} controls autoplay loop playsinline></video>
+      <!-- svelte-ignore a11y_media_has_caption -->
+      <video class="asset-fs-media" src={expandedAsset.url} controls preload="metadata" playsinline></video>
     {:else}
       <div class="asset-fs-media asset-glb">
         {#key expandedAsset.url}<AssetGlbViewer url={expandedAsset.url} />{/key}

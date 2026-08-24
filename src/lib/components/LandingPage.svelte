@@ -9,8 +9,19 @@
   import { startStory, startExplore } from '$lib/stores/shelly-bridge.svelte';
   import * as kokoro from '$lib/integrations/llm/kokoro-tts';
 
-  // Eagerly pre-fetch the official KB so it's ready when user clicks "Getting Started"
-  preloadOfficialKb();
+  let { onstarteropen = () => {} } = $props<{
+    /** Let the graph route choose a lightweight transient renderer before starter facts react. */
+    onstarteropen?: () => void;
+  }>();
+
+  // Warm the larger documentation graph after the landing page has had time to hydrate. Starting
+  // its fetch/parse during component initialization competes with an immediate starter click on the
+  // same main thread. `activateOfficialKb()` still loads on demand when Documentation Graph wins
+  // the race, so this delay changes no behavior.
+  onMount(() => {
+    const timer = window.setTimeout(preloadOfficialKb, 1_500);
+    return () => window.clearTimeout(timer);
+  });
 
   // Kokoro TTS is lazy-loaded on first voice use — no automatic download.
   // The 87MB model only downloads when the user explicitly enables voice.
@@ -19,6 +30,8 @@
   let loadingDocs = $state(false);
   let loadingStarter = $state(false);
   let docsError = $state<string | null>(null);
+  let actionError = $state<string | null>(null);
+  let actionErrorEl: HTMLParagraphElement | undefined = $state();
   let loadingExample = $state<string | null>(null);
   let loadingVisualReview = $state(false);
 
@@ -60,6 +73,7 @@
   // user. The full docs graph is the "go deeper" path.
   async function openStarter() {
     loadingStarter = true;
+    actionError = null;
     try {
       const res = await fetch('/starter-everyday.ttl');
       if (!res.ok) throw new Error(`Failed to fetch starter graph: ${res.status}`);
@@ -70,9 +84,25 @@
       // graph reads as real and Shelly's tour (which sees confirmed statements)
       // has something to talk about.
       const confirmed = statements.map((s) => ({ ...s, status: 'confirmed' as const }));
-      if (confirmed.length) await addStatements(confirmed, 'starter');
+      if (confirmed.length) {
+        // The 177-node example is a friendly first-run tour, not a 3D stress test. Switch only this
+        // live view before persistence publishes the facts, so mounting the graph cannot block the
+        // CTA on synchronous WebGL-driver setup. The parent deliberately does not save the choice.
+        onstarteropen();
+        await addStatements(confirmed, 'starter');
+        // Publishing the batch mounts the graph reactively. Let that task finish before opening
+        // Shelly and generating tour context; doing both in the IndexedDB completion turn produced
+        // an intermittent 230ms+ first-run stall even after the graph itself became lightweight.
+        await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
+      }
       startExplore(); // opens Shelly's guided tour on the graph page
       goto('/');
+    } catch (error) {
+      actionError = error instanceof Error ? error.message : String(error);
+      requestAnimationFrame(() => {
+        actionErrorEl?.scrollIntoView({ block: 'center' });
+        actionErrorEl?.focus({ preventScroll: true });
+      });
     } finally {
       loadingStarter = false;
     }
@@ -84,6 +114,7 @@
   // confirm or flag each. Regenerate the real thing with `npm run test:crawl`.
   async function openVisualReview() {
     loadingVisualReview = true;
+    actionError = null;
     try {
       const res = await fetch('/starter-visual-review.ttl');
       if (!res.ok) throw new Error(`Failed to fetch visual-review story: ${res.status}`);
@@ -94,6 +125,12 @@
       if (confirmed.length) await addStatements(confirmed, 'visual-review');
       startExplore(); // Shelly detects the visual-test steps → review mode
       goto('/');
+    } catch (error) {
+      actionError = error instanceof Error ? error.message : String(error);
+      requestAnimationFrame(() => {
+        actionErrorEl?.scrollIntoView({ block: 'center' });
+        actionErrorEl?.focus({ preventScroll: true });
+      });
     } finally {
       loadingVisualReview = false;
     }
@@ -101,6 +138,7 @@
 
   async function importExample(kb: typeof EXAMPLE_KBS[0]) {
     loadingExample = kb.id;
+    actionError = null;
     try {
       const res = await fetch(kb.file);
       if (!res.ok) throw new Error(`Failed to fetch ${kb.file}`);
@@ -109,6 +147,12 @@
       for (const src of sources) await addSource(src);
       if (statements.length) await addStatements(statements, 'example-kb');
       goto('/');
+    } catch (error) {
+      actionError = error instanceof Error ? error.message : String(error);
+      requestAnimationFrame(() => {
+        actionErrorEl?.scrollIntoView({ block: 'center' });
+        actionErrorEl?.focus({ preventScroll: true });
+      });
     } finally {
       loadingExample = null;
     }
@@ -339,6 +383,11 @@
       </p>
       {#if docsError}
         <p class="docs-error mono" role="alert">Couldn't open the documentation graph — {docsError}</p>
+      {/if}
+      {#if actionError}
+        <p class="docs-error mono" role="alert" tabindex="-1" bind:this={actionErrorEl}>
+          Couldn't load that starter graph — {actionError}
+        </p>
       {/if}
       {#if kokoroStatus === 'loading'}
         <p class="core-loading mono">loading voice model — {kokoroPct}%</p>
