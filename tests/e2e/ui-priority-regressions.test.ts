@@ -20,6 +20,39 @@ function isPhoneProject(testInfo: TestInfo): boolean {
   return testInfo.project.name === 'mobile-android' || testInfo.project.name === 'mobile-ios';
 }
 
+async function seedLargeReviewQueue(page: Page, count = 104) {
+  await page.goto('/');
+  await page.evaluate(async (statementCount) => {
+    const runtimeImport = (path: string) => import(/* @vite-ignore */ path);
+    const { KBaseDB } = await runtimeImport('/src/lib/storage/db.ts') as typeof import('../../src/lib/storage/db');
+    const db = new KBaseDB('kbase');
+    await db.sources.put({
+      id: 'ui-review-scale',
+      title: 'Mobile review scale fixture',
+      uri: 'test://ui-review-scale',
+      kind: 'note',
+      ingestedAt: 1,
+      trustLevel: 'review',
+    });
+    await db.statements.bulkPut(Array.from({ length: statementCount }, (_, index) => ({
+      id: `ui-review-${index}`,
+      s: { kind: 'iri' as const, value: `urn:ui-review:item-${index}` },
+      p: { kind: 'iri' as const, value: 'http://www.w3.org/2004/02/skos/core#broader' },
+      o: {
+        kind: 'iri' as const,
+        value: index === 0 ? 'urn:ui-review:root' : `urn:ui-review:item-${index - 1}`,
+      },
+      g: { kind: 'iri' as const, value: 'urn:kbase:source/ui-review-scale' },
+      sourceId: 'ui-review-scale',
+      confidence: 0.75,
+      status: 'pending' as const,
+      createdAt: index + 1,
+      updatedAt: index + 1,
+    })));
+    db.close();
+  }, count);
+}
+
 test('manual Facts inputs retain readable dark-theme styling', async ({ page }, testInfo) => {
   await page.goto('/ingest');
   await page.getByRole('button', { name: 'facts ✎', exact: true }).click();
@@ -61,6 +94,308 @@ test('manual Facts inputs retain readable dark-theme styling', async ({ page }, 
     expect(fieldAppearance.contrast).toBeGreaterThanOrEqual(4.5);
   }
   await attachViewport(page, testInfo, 'manual-facts-readable');
+});
+
+test('starter and ingest failures are visible, announced, and retryable', async ({ page }, testInfo) => {
+  await page.route('**/starter-everyday.ttl', async (route) => {
+    await route.fulfill({ status: 503, body: 'fixture unavailable' });
+  });
+  await page.goto('/');
+  const starter = page.getByRole('button', { name: /getting started/i });
+  await starter.click();
+  const starterError = page.getByRole('alert').filter({ hasText: /starter graph.*503/i });
+  await expect(starterError).toBeVisible();
+  await expect(starterError).toBeFocused();
+  await expect(starter).toBeEnabled();
+
+  await page.goto('/ingest');
+  await page.getByRole('button', { name: 'repo', exact: true }).click();
+  await page.getByPlaceholder(/owner\/repo or/i).fill('not a valid repo');
+  await page.getByRole('button', { name: 'preview', exact: true }).click();
+  const ingestError = page.getByRole('alert').filter({ hasText: /invalid repo url/i });
+  await expect(ingestError).toBeVisible();
+  await expect(ingestError).toBeFocused();
+  await expect(page.getByText('fetching repo info…', { exact: true })).toHaveCount(0);
+  const box = await ingestError.boundingBox();
+  expect(box?.y ?? Number.POSITIVE_INFINITY).toBeGreaterThanOrEqual(0);
+  expect((box?.y ?? 0) + (box?.height ?? Number.POSITIVE_INFINITY))
+    .toBeLessThanOrEqual(page.viewportSize()?.height ?? 0);
+  await attachViewport(page, testInfo, 'visible-actionable-errors');
+});
+
+test('everyday starter opens in transient 2D without overwriting the saved renderer', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: /getting started/i }).click();
+
+  // The curated first-run graph contains 177 nodes. Avoid charging its CTA for synchronous WebGL
+  // context and shader setup; an explicit user renderer preference remains authoritative later.
+  const graph = page.locator('[data-graph-renderer="2d"]');
+  await expect(graph).toBeVisible({ timeout: 15_000 });
+  // Performance consumers must see this graph's real lifecycle, not inherit the landing page's
+  // no-work `true`. This is the exact false→true contract the flow crawl now waits on.
+  await expect(graph).toHaveAttribute('data-graph-settled', 'false');
+  await expect(graph).toHaveAttribute('data-graph-settled', 'true', { timeout: 15_000 });
+
+  await page.goto('/settings');
+  const rendererRow = page.getByText('graph renderer').locator('..').locator('..');
+  await expect(rendererRow.getByRole('button', { name: '3D', exact: true })).toHaveClass(/active/);
+  await expect(rendererRow.getByRole('button', { name: '2D', exact: true })).not.toHaveClass(/active/);
+});
+
+test('starter graph keeps prose and URL attributes off the canvas topology', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chrome', '3D label integration regression');
+  await page.goto('/');
+  await page.getByRole('button', { name: /getting started/i }).click();
+  const graph = page.locator('[data-graph-renderer="2d"]');
+  await expect(graph).toBeVisible({ timeout: 15_000 });
+  await expect(graph).toHaveAttribute('data-graph-settled', 'true', { timeout: 15_000 });
+
+  // Inspect the 2D renderer's complete label callback. Unlike 3D's deliberately camera-visible
+  // subset, 2D publishes every rendered node to the shared DOM overlay (collision-hidden labels
+  // remain in the DOM at zero alpha), so this is an honest topology inventory rather than a claim
+  // about which side of a rotating camera an entity happened to occupy.
+  const labels = page.locator('.node-label');
+  await expect.poll(async () => labels.count(), { timeout: 15_000 }).toBeGreaterThan(5);
+
+  const labelText = (await labels.allInnerTexts()).join('\n');
+  expect(labelText).not.toMatch(/Drives up from San Francisco|behind the wheel/i);
+  expect(labelText).not.toMatch(/google\.com|recreation\.gov|forecast\.weather\.gov/i);
+  expect(labelText).toMatch(/Alex/);
+  expect(labelText).toMatch(/Jordan/);
+
+  // The prose did not disappear: selecting Alex still exposes the full fact in node details.
+  await page.getByPlaceholder('search nodes or facts…').fill('Alex');
+  await page.locator('.sb-node-row').filter({ hasText: 'Alex' }).first().click();
+  await page.locator('.np-stmts-toggle').click();
+  await expect(page.getByText(/Wants a fair, even meet-up point/i)).toBeVisible();
+});
+
+test('successful mobile starter opens a legible, touch-safe guided tour', async ({ page }, testInfo) => {
+  test.skip(!isPhoneProject(testInfo), 'mobile starter handoff regression');
+  await page.goto('/');
+  await page.getByRole('button', { name: /getting started/i }).click();
+
+  const graph = page.locator('section.graph');
+  await expect(graph).not.toHaveAttribute('data-graph-renderer', 'landing', { timeout: 15_000 });
+  const shelly = page.getByRole('dialog', { name: 'Shelly' });
+  await expect(shelly).toBeVisible({ timeout: 15_000 });
+
+  // The first response can take several seconds even with a local model. Say what is happening
+  // instead of presenting an unexplained row of animated dots.
+  const initialStatus = shelly.getByRole('status').filter({ hasText: /reading your graph|thinking/i });
+  if (await initialStatus.count()) await expect(initialStatus).toBeVisible();
+
+  const tourTargets = shelly.locator('button, textarea').filter({ visible: true });
+  const undersizedTourTargets = await tourTargets.evaluateAll((targets) => targets.map((target) => {
+    const rect = target.getBoundingClientRect();
+    return {
+      name: target.getAttribute('aria-label') || target.textContent?.trim() || target.getAttribute('placeholder'),
+      width: rect.width,
+      height: rect.height,
+    };
+  }).filter(({ width, height }) => width < 44 || height < 44));
+  expect(undersizedTourTargets, 'Every visible starter-tour control should have a 44×44px target').toEqual([]);
+
+  await shelly.getByRole('button', { name: 'close' }).click();
+  const askShelly = page.getByRole('button', { name: 'Ask Shelly' });
+  await expect(askShelly).toBeVisible();
+  const askShellyBox = await askShelly.boundingBox();
+  expect(askShellyBox?.width ?? 0).toBeGreaterThanOrEqual(44);
+  expect(askShellyBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  await attachViewport(page, testInfo, 'mobile-starter-guided-tour');
+});
+
+test('mobile navigation keeps secondary actions usable without crowding primary tasks', async ({ page }, testInfo) => {
+  test.skip(!isPhoneProject(testInfo), 'mobile navigation disclosure regression');
+  await page.goto('/ingest');
+
+  const nav = page.getByRole('navigation', { name: 'Main navigation' });
+  const more = nav.getByRole('button', { name: 'More' });
+  await expect(more).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'settings' })).toBeHidden();
+
+  const primaryTargets = nav.locator(':scope > a:visible, :scope > button:visible');
+  const primarySizes = await primaryTargets.evaluateAll((targets) => targets.map((target) => {
+    const rect = target.getBoundingClientRect();
+    return { width: rect.width, height: rect.height };
+  }));
+  expect(primarySizes.every(({ width, height }) => width >= 44 && height >= 44)).toBe(true);
+
+  await more.click();
+  const menu = page.getByRole('menu', { name: 'More navigation' });
+  await expect(menu).toBeVisible();
+  await expect(more).toHaveAttribute('aria-expanded', 'true');
+  await expect(menu.getByRole('menuitem')).toHaveCount(3);
+  await expect(menu.getByRole('menuitem', { name: 'settings' })).toBeVisible();
+  await expect(menu.getByRole('menuitem', { name: 'info' })).toBeVisible();
+  await expect(menu.getByRole('menuitem', { name: 'send feedback' })).toBeVisible();
+  await expect(menu.getByRole('menuitem', { name: 'settings' })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(menu.getByRole('menuitem', { name: 'info' })).toBeFocused();
+
+  const menuSizes = await menu.getByRole('menuitem').evaluateAll((targets) => targets.map((target) => {
+    const rect = target.getBoundingClientRect();
+    return { width: rect.width, height: rect.height };
+  }));
+  expect(menuSizes.every(({ width, height }) => width >= 44 && height >= 44)).toBe(true);
+
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+  await expect(more).toBeFocused();
+  const analyze = nav.getByRole('button', { name: 'Analyze graph' });
+  await analyze.click();
+  const analysisMenu = page.getByRole('menu', { name: 'Analysis actions' });
+  await expect(analysisMenu).toBeVisible();
+  await expect(analysisMenu.getByRole('menuitem', { name: 'enrich' })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(analysisMenu.getByRole('menuitem').nth(1)).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(analysisMenu).toBeHidden();
+  await expect(nav.getByRole('link', { name: 'reckon', exact: true })).toBeFocused();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  await attachViewport(page, testInfo, 'mobile-navigation-more-menu');
+});
+
+test('review entries expose a standalone graph-focus control without nested interactive elements', async ({ page }) => {
+  await seedLargeReviewQueue(page, 3);
+  await page.goto('/review');
+  await expect(page.getByTestId('review-pending-count')).toContainText('3', { timeout: 15_000 });
+
+  const entries = page.locator('.entry-focus-wrap');
+  await expect(entries).toHaveCount(3);
+  await expect(entries.first()).not.toHaveAttribute('role');
+  await expect(entries.first()).not.toHaveAttribute('tabindex');
+
+  const nestedControls = await page.locator('.review-panel').evaluate((panel) => {
+    const interactive = 'button, a[href], input, select, textarea, summary, [role="button"], [tabindex]:not([tabindex="-1"])';
+    return [...panel.querySelectorAll<HTMLElement>(interactive)].flatMap((control) => {
+      const ancestor = control.parentElement?.closest(interactive);
+      return ancestor ? [{
+        control: control.getAttribute('aria-label') || control.textContent?.trim() || control.tagName,
+        ancestor: ancestor.getAttribute('aria-label') || ancestor.textContent?.trim() || ancestor.tagName,
+      }] : [];
+    });
+  });
+  expect(nestedControls, 'Review actions must not be nested inside another interactive control').toEqual([]);
+
+  // A native button supplies both Enter and Space semantics. Selecting one entry and then using a
+  // different entry's action also proves that child actions do not bubble into card focus.
+  const declineModel = page.getByRole('button', { name: /not now/i });
+  if (await declineModel.isVisible()) await declineModel.click();
+
+  const first = entries.nth(0);
+  const second = entries.nth(1);
+  const firstFocus = first.locator('.entry-focus-action');
+  const secondFocus = second.locator('.entry-focus-action');
+  await expect(firstFocus).toHaveAccessibleName(/show .+ in the preview graph/i);
+  await expect(secondFocus).toHaveAccessibleName(/show .+ in the preview graph/i);
+  await secondFocus.press('Enter');
+  await expect(second).toHaveClass(/entry-focused/);
+  await firstFocus.press('Space');
+  await expect(first).toHaveClass(/entry-focused/);
+  await second.getByRole('button', { name: 'accept', exact: true }).click();
+  await expect(first).toHaveClass(/entry-focused/);
+});
+
+test('large mobile review queues scroll inside the panel and keep controls reachable', async ({ page }, testInfo) => {
+  test.skip(!isPhoneProject(testInfo), 'mobile review scrolling regression');
+  await seedLargeReviewQueue(page);
+  await page.goto('/review');
+  await expect(page.getByTestId('review-pending-count')).toContainText('104', { timeout: 15_000 });
+  await expect(page.locator('.review-panel .triple button')).toHaveCount(0);
+  await expect(page.locator('.review-panel .row[role="button"]')).toHaveCount(0);
+
+  const sizes = await page.locator(
+    '.graph-pane button, .graph-pane input:not([type="hidden"]), .review-panel button, .review-panel input:not([type="hidden"]), .review-panel a[href]'
+  ).evaluateAll((targets) => targets.filter((target) => {
+    const rect = target.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  }).map((target) => {
+    const rect = target.getBoundingClientRect();
+    return {
+      name: target.getAttribute('aria-label') || target.textContent?.trim(),
+      width: rect.width,
+      height: rect.height,
+    };
+  }));
+  expect(
+    sizes.filter(({ width, height }) => width < 44 || height < 44),
+    'Every visible mobile review control should have its own 44×44px target',
+  ).toEqual([]);
+
+  // The coarse 3D labels above exercise touch hit areas. Switch to 2D to verify that a large
+  // hierarchy can actually fit below the old 4x zoom floor and reports real simulation completion.
+  const graphPane = page.locator('.graph-pane');
+  const declineModel = page.getByRole('button', { name: /not now/i });
+  if (await declineModel.isVisible()) await declineModel.click();
+  await graphPane.getByRole('button', { name: /^(2D|3D)$/ }).click();
+  await graphPane.getByRole('radio', { name: 'tree', exact: true }).click();
+  const graph2d = graphPane.locator('canvas.graph2d');
+  await expect(graph2d).toBeVisible();
+  await expect.poll(async () => Number(await graph2d.getAttribute('data-camera-scale'))).toBeLessThan(4);
+  await expect(graphPane).toHaveAttribute('data-graph-settled', 'true', { timeout: 12_000 });
+
+  const originalViewport = page.viewportSize()!;
+  const scaleBeforeResize = Number(await graph2d.getAttribute('data-camera-scale'));
+  await page.setViewportSize({ width: originalViewport.width, height: 700 });
+  await expect.poll(async () => {
+    const scale = Number(await graph2d.getAttribute('data-camera-scale'));
+    return Math.abs(scale - scaleBeforeResize) > 0.0001;
+  }, { message: 'Hierarchy camera should re-fit when its canvas changes size' }).toBe(true);
+  await expect(graphPane).toHaveAttribute('data-graph-settled', 'true');
+  await page.setViewportSize(originalViewport);
+
+  const scroll = await page.locator('.review-panel').evaluate(async (panel) => {
+    const content = panel.querySelector<HTMLElement>('.rp-content')!;
+    const layout = panel.closest<HTMLElement>('.review-layout')!;
+    const header = panel.querySelector<HTMLElement>('.rp-header')!;
+    const panelRect = panel.getBoundingClientRect();
+    const before = {
+      panelBottom: panelRect.bottom,
+      viewportHeight: innerHeight,
+      contentClientHeight: content.clientHeight,
+      contentScrollHeight: content.scrollHeight,
+    };
+    content.scrollTop = 500;
+    await new Promise(requestAnimationFrame);
+    return {
+      ...before,
+      contentScrollTop: content.scrollTop,
+      layoutScrollTop: layout.scrollTop,
+      headerTop: header.getBoundingClientRect().top,
+      panelTop: panel.getBoundingClientRect().top,
+    };
+  });
+
+  expect(scroll.panelBottom).toBeLessThanOrEqual(scroll.viewportHeight + 1);
+  expect(scroll.contentScrollHeight).toBeGreaterThan(scroll.contentClientHeight);
+  expect(scroll.contentScrollTop).toBeGreaterThan(0);
+  expect(scroll.layoutScrollTop).toBe(0);
+  expect(scroll.headerTop).toBeGreaterThanOrEqual(scroll.panelTop);
+  await attachViewport(page, testInfo, 'large-mobile-review-scrolls-internally');
+});
+
+test('review graph remount starts a fresh settled-signal cycle', async ({ page }) => {
+  await seedLargeReviewQueue(page, 3);
+  await page.goto('/review');
+  await expect(page.getByTestId('review-pending-count')).toContainText('3', { timeout: 15_000 });
+
+  const graphPane = page.locator('.graph-pane');
+  const declineModel = page.getByRole('button', { name: /not now/i });
+  if (await declineModel.isVisible()) await declineModel.click();
+  const rendererToggle = graphPane.getByRole('button', { name: /^(2D|3D)$/ });
+  if ((await rendererToggle.textContent())?.trim() === '3D') await rendererToggle.click();
+  await expect(graphPane.locator('canvas.graph2d')).toBeVisible();
+  await expect(graphPane).toHaveAttribute('data-graph-settled', 'true', { timeout: 12_000 });
+
+  // Non-preview modes are settled by definition and unmount the force renderer. Returning to
+  // preview must not inherit that `true`: the new renderer has a fresh simulation to cool.
+  await graphPane.getByRole('button', { name: 'compare', exact: true }).click();
+  await expect(graphPane).toHaveAttribute('data-graph-settled', 'true');
+  await graphPane.getByRole('button', { name: /preview/i }).click();
+  await expect(graphPane).toHaveAttribute('data-graph-settled', 'false');
+  await expect(graphPane).toHaveAttribute('data-graph-settled', 'true', { timeout: 12_000 });
 });
 
 test('Docs keeps content ahead of a compact mobile navigation disclosure', async ({ page }, testInfo) => {
@@ -217,11 +552,20 @@ test('mobile document and status surfaces reserve navigation clearance', async (
     .toBeLessThanOrEqual((ingestNavBox?.y ?? 0) + 1);
 
   await page.goto('/review');
-  const clearance = await page.locator('.review-panel').evaluate((panel) => ({
-    paddingBottom: Number.parseFloat(getComputedStyle(panel).paddingBottom),
-    navHeight: document.querySelector<HTMLElement>('nav[aria-label="Main navigation"]')
-      ?.getBoundingClientRect().height ?? 0,
-  }));
-  expect(clearance.paddingBottom).toBeGreaterThanOrEqual(clearance.navHeight);
+  const clearance = await page.locator('.rp-content').evaluate(async (content) => {
+    const probe = document.createElement('span');
+    probe.style.cssText = 'display:block;width:1px;height:1px;';
+    content.append(probe);
+    content.scrollTop = content.scrollHeight;
+    await new Promise(requestAnimationFrame);
+    const result = {
+      probeBottom: probe.getBoundingClientRect().bottom,
+      navTop: document.querySelector<HTMLElement>('nav[aria-label="Main navigation"]')
+        ?.getBoundingClientRect().top ?? innerHeight,
+    };
+    probe.remove();
+    return result;
+  });
+  expect(clearance.probeBottom).toBeLessThanOrEqual(clearance.navTop + 1);
   await attachViewport(page, testInfo, 'mobile-navigation-clearance');
 });

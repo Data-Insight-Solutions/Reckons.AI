@@ -46,6 +46,19 @@
   let wasmPct = $state<number | null>(null);
   let error = $state<string | null>(null);
 
+  // An error can be rendered far below the phone viewport after a long form.
+  // Bring the active message into view and focus it once its branch exists.
+  $effect(() => {
+    if (!error || typeof document === 'undefined') return;
+    requestAnimationFrame(() => {
+      const alert = [...document.querySelectorAll<HTMLElement>('[data-ingest-error]')]
+        .find((node) => node.getClientRects().length > 0);
+      if (!alert) return;
+      alert.scrollIntoView({ block: 'center' });
+      alert.focus({ preventScroll: true });
+    });
+  });
+
   // ── Crash-safe draft ──────────────────────────────────────────────────────
   // Loading a local WASM model can OOM-crash the tab (esp. iOS Safari/WebKit). If it does, the
   // user's typed note must survive the reload — persist it and restore on mount, clear on success.
@@ -997,6 +1010,7 @@
       error = e instanceof Error ? e.message : String(e);
     } finally {
       repoFetching = false;
+      repoProgress = '';
     }
   }
 
@@ -1292,7 +1306,7 @@
     <p class="hint mono">fetching page…</p>
   {/if}
   {#if error}
-    <p class="err">{error}</p>
+    <p class="err" role="alert" tabindex="-1" data-ingest-error>{error}</p>
   {/if}
 </div>
 {/if}
@@ -1326,7 +1340,7 @@
         {/if}
       </div>
     {/if}
-    {#if error}<p class="err">{error}</p>{/if}
+    {#if error}<p class="err" role="alert" tabindex="-1" data-ingest-error>{error}</p>{/if}
     <div class="row" style="margin-top: 0.75rem; gap: 0.5rem;">
       <button class="secondary" onclick={importAsNewKb} disabled={!kbPreview || busy} title="Create a separate graph (enables Jump navigation)">
         {busy ? 'importing…' : 'as new graph'}
@@ -1367,7 +1381,7 @@
           {busy ? phase || 'importing…' : 'import selected →'}
         </button>
       </div>
-      {#if error}<p class="err">{error}</p>{/if}
+      {#if error}<p class="err" role="alert" tabindex="-1" data-ingest-error>{error}</p>{/if}
     {/if}
   </div>
 {/if}
@@ -1430,7 +1444,7 @@
             {calImporting ? `importing ${calImportCount} events…` : 'import events →'}
           </button>
         </div>
-        {#if error}<p class="err">{error}</p>{/if}
+        {#if error}<p class="err" role="alert" tabindex="-1" data-ingest-error>{error}</p>{/if}
       {/if}
 
     {:else if calSource === 'indico'}
@@ -1479,7 +1493,7 @@
       {#if icalImportResult}
         <p class="hint mono ok">{icalImportResult}</p>
       {/if}
-      {#if error}<p class="err">{error}</p>{/if}
+      {#if error}<p class="err" role="alert" tabindex="-1" data-ingest-error>{error}</p>{/if}
     {/if}
   </div>
 {/if}

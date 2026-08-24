@@ -1525,7 +1525,12 @@
           {#if exploreMessages.length === 0 && exploreLoading}
             <div class="msg assistant">
               <img src="/svg/head1.svg" alt="" class="msg-icon" />
-              <div class="msg-body thinking"><span></span><span></span><span></span></div>
+              <div class="msg-body thinking" role="status">
+                <span class="thinking-label mono">reading your graph…</span>
+                <span class="thinking-dots" aria-hidden="true">
+                  <span></span><span></span><span></span>
+                </span>
+              </div>
             </div>
           {/if}
 
@@ -1545,7 +1550,12 @@
           {#if exploreLoading && exploreMessages.length > 0}
             <div class="msg assistant">
               <img src="/svg/head1.svg" alt="" class="msg-icon" />
-              <div class="msg-body thinking"><span></span><span></span><span></span></div>
+              <div class="msg-body thinking" role="status">
+                <span class="thinking-label mono">thinking…</span>
+                <span class="thinking-dots" aria-hidden="true">
+                  <span></span><span></span><span></span>
+                </span>
+              </div>
             </div>
           {/if}
 
@@ -1588,6 +1598,8 @@
   .panel-header {
     display: flex;
     align-items: center;
+    width: 100%;
+    box-sizing: border-box;
     gap: 0.5rem;
     padding: 0.6rem 0.75rem;
     border-bottom: 1px solid var(--line);
@@ -1868,18 +1880,28 @@
   /* Typing indicator */
   .thinking {
     display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    min-height: 1.2rem;
+  }
+  .thinking-label {
+    color: var(--muted);
+    font-size: 0.66rem;
+    white-space: nowrap;
+  }
+  .thinking-dots {
+    display: inline-flex;
     gap: 4px;
     align-items: center;
-    height: 1.2rem;
   }
-  .thinking span {
+  .thinking-dots span {
     width: 6px; height: 6px;
     border-radius: 50%;
     background: var(--accent);
     animation: bounce 1.1s infinite;
   }
-  .thinking span:nth-child(2) { animation-delay: 0.18s; }
-  .thinking span:nth-child(3) { animation-delay: 0.36s; }
+  .thinking-dots span:nth-child(2) { animation-delay: 0.18s; }
+  .thinking-dots span:nth-child(3) { animation-delay: 0.36s; }
   @keyframes bounce {
     0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
     40% { transform: translateY(-5px); opacity: 1; }
@@ -2288,7 +2310,8 @@
       text-align: center;
       padding: 0.4rem 0.2rem;
       font-size: 0.72rem;
-      min-height: 36px;
+      min-width: 44px;
+      min-height: 44px;
     }
     .close {
       font-size: 1.1rem;
@@ -2308,7 +2331,7 @@
     .story-exit {
       font-size: 0.85rem;
       min-width: 44px;
-      min-height: 36px;
+      min-height: 44px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -2317,8 +2340,25 @@
       color: var(--danger);
     }
     .story-btn {
-      min-height: 36px;
+      min-width: 44px;
+      min-height: 44px;
       padding: 0.3rem 0.55rem;
+    }
+    .input-row textarea,
+    .send,
+    .mic-btn,
+    .next-stop,
+    .story-resume,
+    .explore-story-chip,
+    .starter-card,
+    .step-buttons button {
+      min-height: 44px;
+    }
+    .send,
+    .mic-btn,
+    .story-resume,
+    .step-buttons button {
+      min-width: 44px;
     }
   }
 </style>

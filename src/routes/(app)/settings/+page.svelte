@@ -700,7 +700,12 @@
 
 <header class="head">
   <p class="kicker mono">settings</p>
-  <h1>system configuration</h1>
+  <div class="settings-heading-row">
+    <h1>system configuration</h1>
+    <div class="autosave-indicator" class:autosave-pulse={savedPulse} role="status">
+      {savedPulse ? 'saved ✓' : 'auto-save on'}
+    </div>
+  </div>
 
   <div class="settings-nav">
     <a href="/settings" class:active={!page.url.pathname.includes('/turtle') && !page.url.pathname.includes('/entity-types') && !page.url.pathname.includes('/integrations') && !page.url.pathname.includes('/publishing')} class="nav-link">backends</a>
@@ -1707,11 +1712,6 @@
   </Dialog.Portal>
 </Dialog.Root>
 
-<!-- Auto-save indicator -->
-<div class="autosave-indicator" class:autosave-pulse={savedPulse}>
-  {savedPulse ? 'saved ✓' : 'settings auto-save on'}
-</div>
-
 <style>
   /* ── Provider status dots ───────────────────────────────────────────────── */
   .provider-status-card { padding-bottom: 0.75rem; }
@@ -1757,6 +1757,13 @@
   }
 
   .head { margin-bottom: 1.25rem; }
+  .settings-heading-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
   .kicker {
     color: var(--accent);
     font-size: 0.72rem;
@@ -1773,9 +1780,12 @@
     /* On narrow viewports the section tabs used to clip (e.g. "turtle" cut off at
        the edge on mobile). Scroll horizontally instead of clipping. */
     overflow-x: auto;
-    scrollbar-width: none;
+    scrollbar-width: thin;
+    scrollbar-color: var(--muted-2) transparent;
+    scroll-snap-type: x proximity;
   }
-  .settings-nav::-webkit-scrollbar { display: none; }
+  .settings-nav::-webkit-scrollbar { height: 4px; }
+  .settings-nav::-webkit-scrollbar-thumb { background: var(--muted-2); border-radius: 999px; }
   .section-toc {
     display: flex;
     flex-wrap: wrap;
@@ -1814,6 +1824,7 @@
     transition: all 0.15s;
     white-space: nowrap;
     flex: 0 0 auto;
+    scroll-snap-align: start;
   }
   .nav-link:hover {
     color: var(--ink-2);
@@ -2309,9 +2320,7 @@
 
   /* ── Auto-save indicator ── */
   .autosave-indicator {
-    position: fixed;
-    bottom: var(--app-nav-clearance);
-    right: 1rem;
+    flex: 0 0 auto;
     font-family: var(--font-mono);
     font-size: 0.7rem;
     color: var(--muted);
@@ -2321,7 +2330,6 @@
     padding: 0.25rem 0.6rem;
     opacity: 0.6;
     transition: color 0.3s, opacity 0.3s;
-    pointer-events: none;
   }
   .autosave-indicator.autosave-pulse {
     color: var(--accent);
