@@ -63,14 +63,31 @@ const DEFAULT_ENTRY: KbEntry = { id: DEFAULT_ID, name: 'Default Graph', createdA
 export function subscribeRegistry(callback: (registry: KbEntry[]) => void): () => void {
   if (typeof window === 'undefined') return () => {};
 
+  let lastSnapshot = JSON.stringify(getRegistry());
+  const publishIfChanged = () => {
+    const registry = getRegistry();
+    const snapshot = JSON.stringify(registry);
+    if (snapshot === lastSnapshot) return;
+    lastSnapshot = snapshot;
+    callback(registry);
+  };
+
   const onStorage = (event: StorageEvent) => {
     if (event.storageArea && event.storageArea !== localStorage) return;
     if (event.key !== REGISTRY_KEY && event.key !== null) return;
-    callback(getRegistry());
+    publishIfChanged();
   };
 
   window.addEventListener('storage', onStorage);
-  return () => window.removeEventListener('storage', onStorage);
+  // Storage events are the fast path, but browsers may discard one while a background tab is
+  // throttled or a document is changing lifecycle state. A cheap reconciliation poll keeps a
+  // missed event from making the graph gallery permanently stale. It runs only while a consumer
+  // (currently /kb) is mounted and emits only when the serialized registry actually changed.
+  const reconcileTimer = window.setInterval(publishIfChanged, 1_000);
+  return () => {
+    window.removeEventListener('storage', onStorage);
+    window.clearInterval(reconcileTimer);
+  };
 }
 
 export function getRegistry(): KbEntry[] {

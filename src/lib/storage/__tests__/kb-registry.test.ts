@@ -129,6 +129,29 @@ describe('subscribeRegistry', () => {
     expect(listener).not.toHaveBeenCalled();
     unsubscribe();
   });
+
+  it('reconciles a registry change even when the browser drops its storage event', () => {
+    const listener = vi.fn();
+    const unsubscribe = subscribeRegistry(listener);
+
+    // Write the shared key without dispatching the event. Background-tab lifecycle throttling can
+    // lose that notification in real browsers; the mounted gallery must not remain stale forever.
+    localStorage.setItem('kbRegistry', JSON.stringify([
+      { id: 'kbase_remote', name: 'Recovered Graph', createdAt: 1 },
+    ]));
+    expect(listener).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1_000);
+    expect(listener).toHaveBeenCalledOnce();
+    expect(listener).toHaveBeenLastCalledWith(expect.arrayContaining([
+      expect.objectContaining({ id: 'kbase_remote', name: 'Recovered Graph' }),
+    ]));
+
+    unsubscribe();
+    localStorage.clear();
+    vi.advanceTimersByTime(1_000);
+    expect(listener).toHaveBeenCalledOnce();
+  });
 });
 
 // ── createKb ──────────────────────────────────────────────────────────────────
