@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Canvas } from '@threlte/core';
+  import { replaceState } from '$app/navigation';
   import KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
   import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
   import CompareGraph from '$lib/components/CompareGraph.svelte';
@@ -21,6 +22,7 @@
     pendingMergeStatements,
     statementsForSource,
     setStatus,
+    setStatuses,
     updateStatement,
     addStatements,
     addSource,
@@ -86,6 +88,7 @@
   type GraphMode = 'preview' | 'compare' | 'overlay';
   let graphMode = $state<GraphMode>('preview');
   let use2D = $state(settings().prefer2D ?? false);
+  let graphSettled = $state(false);
 
   // ── Review data ───────────────────────────────────────────────────────────
   const incoming = $derived(pendingStatements());
@@ -480,6 +483,11 @@
    */
   let selectionSource = $state<'graph' | 'panel' | null>(null);
 
+  /** A selectable graph entity can occur on either side of a pending relation. */
+  function statementHasKey(st: Statement, key: string): boolean {
+    return termKey(st.s) === key || termKey(st.o) === key;
+  }
+
   /** Select from the GRAPH: highlight the entity's rows and bring the first one into view. */
   function selectFromGraph(key: string | null) {
     // The renderers emit null on deselect (clicking empty space). That is a real state, not a
@@ -499,9 +507,9 @@
      * nothing, which reads as the feature being broken rather than as the tab being wrong.
      */
     const tabsWith: Tab[] = [];
-    if (diff.entries.some((e) => termKey(e.incoming.s) === key)) tabsWith.push('incoming');
-    if (pendingDeletions.some((st: Statement) => termKey(st.s) === key)) tabsWith.push('deletions');
-    if (pendingMerges.some((st: Statement) => termKey(st.s) === key)) tabsWith.push('merges');
+    if (diff.entries.some((e) => statementHasKey(e.incoming, key))) tabsWith.push('incoming');
+    if (pendingDeletions.some((st: Statement) => statementHasKey(st, key))) tabsWith.push('deletions');
+    if (pendingMerges.some((st: Statement) => statementHasKey(st, key))) tabsWith.push('merges');
     if (tabsWith.length && !tabsWith.includes(activeTab)) activeTab = tabsWith[0];
 
     // After the tab (and therefore the list) has rendered.
@@ -518,6 +526,36 @@
     focusedEdge = { s: termKey(st.s), o: termKey(st.o), p: st.p.value.split('/').pop() ?? st.p.value };
     focusKey = null; // retrigger even if the same node is focused twice
     requestAnimationFrame(() => { focusKey = key; });
+  }
+
+  /**
+   * Keep the convenient "click anywhere on the card" graph focus without making the whole card
+   * an interactive accessibility container. Review entries contain their own buttons and inputs;
+   * nesting those inside a role=button wrapper produced an invalid control tree and let an inner
+   * accept/refine click also fly the graph. Keyboard users get the adjacent native focus button.
+   */
+  function focusStatementFromCard(event: MouseEvent, st: Statement) {
+    const target = event.target;
+    if (
+      target instanceof Element &&
+      target.closest('button, a[href], input, select, textarea, summary, [role="button"], [contenteditable="true"]')
+    ) return;
+    focusStatement(st);
+  }
+
+  /** Attach pointer-only card chrome behavior without claiming the content container is a control. */
+  function cardGraphFocus(node: HTMLElement, initialStatement: Statement) {
+    let statement = initialStatement;
+    const handleClick = (event: MouseEvent) => focusStatementFromCard(event, statement);
+    node.addEventListener('click', handleClick);
+    return {
+      update(nextStatement: Statement) { statement = nextStatement; },
+      destroy() { node.removeEventListener('click', handleClick); },
+    };
+  }
+
+  function statementFocusLabel(st: Statement): string {
+    return `Show ${labelFromIRI(st.s.value)} in the preview graph`;
   }
 
   /** Focus the preview graph on an arbitrary node key (called from the node search box). */
@@ -1017,8 +1055,10 @@
     if (settlingDecision) return;
     settlingDecision = decisionId;
     try {
-      await setStatus(keepId, 'confirmed');
-      for (const st of sides) if (st.id !== keepId) await setStatus(st.id, 'rejected');
+      await setStatuses(sides.map((st) => ({
+        id: st.id,
+        status: st.id === keepId ? 'confirmed' : 'rejected',
+      })));
     } finally {
       settlingDecision = null;
     }
@@ -1104,7 +1144,7 @@
     const url = new URL(window.location.href);
     if (view) { url.searchParams.set('view', view); }
     else { url.searchParams.delete('view'); }
-    history.replaceState(null, '', url.toString());
+    replaceState(url, {});
   }
 
   /** Keep the chosen layout in the URL so a reload — forced or otherwise — comes back to it. */
@@ -1112,7 +1152,7 @@
     const url = new URL(window.location.href);
     if (next === 'force') url.searchParams.delete('layout');  // the default needs no param
     else url.searchParams.set('layout', next);
-    history.replaceState(null, '', url.toString());
+    replaceState(url, {});
   }
 
   // Auto-populate from URL params
@@ -1140,28 +1180,33 @@
 
 <div class="review-layout" class:dragging={isDragging}>
   <!-- ── LEFT: Graph area ──────────────────────────────────────────────── -->
-  <section class="graph-pane">
+  <section
+    class="graph-pane"
+    data-graph-settled={graphMode !== 'preview' || previewStatements.length === 0 || graphSettled}
+  >
     <!-- Graph mode bar -->
     <div class="graph-mode-bar">
-      <button class="mode-btn" class:active={graphMode === 'preview'} onclick={() => { graphMode = 'preview'; setViewParam(null); }}>
+      <button class="mode-btn" class:active={graphMode === 'preview'} aria-pressed={graphMode === 'preview'} onclick={() => { graphMode = 'preview'; setViewParam(null); }}>
         <span class="mode-lbl mono">preview</span>
         {#if totalPending > 0}<span class="mode-badge">{totalPending}</span>{/if}
       </button>
-      <button class="mode-btn" class:active={graphMode === 'compare'} onclick={() => { graphMode = 'compare'; setViewParam('compare'); }}>
+      <button class="mode-btn" class:active={graphMode === 'compare'} aria-pressed={graphMode === 'compare'} onclick={() => { graphMode = 'compare'; setViewParam('compare'); }}>
         <span class="mode-lbl mono">compare</span>
       </button>
-      <button class="mode-btn" class:active={graphMode === 'overlay'} onclick={() => { graphMode = 'overlay'; initOverlay(); setViewParam('overlay'); }}>
+      <button class="mode-btn" class:active={graphMode === 'overlay'} aria-pressed={graphMode === 'overlay'} onclick={() => { graphMode = 'overlay'; initOverlay(); setViewParam('overlay'); }}>
         <span class="mode-lbl mono">overlay</span>
       </button>
       <span class="mode-spacer"></span>
       {#if graphMode === 'preview'}
-        <button class="mode-btn dim-toggle" class:active={!use2D} onclick={() => use2D = !use2D}
+        <button class="mode-btn dim-toggle" class:active={!use2D} onclick={() => { graphSettled = false; use2D = !use2D; }}
+          aria-pressed={!use2D}
           title="Switch between 2D and 3D">
           <span class="mode-lbl mono">{use2D ? '2D' : '3D'}</span>
         </button>
       {/if}
       {#if graphMode === 'overlay'}
         <button class="mode-btn dim-toggle" class:active={overlayViewIs3D} onclick={() => overlayViewIs3D = !overlayViewIs3D}
+          aria-pressed={overlayViewIs3D}
           title="Switch between 2D and 3D">
           <span class="mode-lbl mono">{overlayViewIs3D ? '3D' : '2D'}</span>
         </button>
@@ -1175,6 +1220,7 @@
           <span class="ov-label mono">layout</span>
           <ToggleGroup.Root
             type="single"
+            aria-label="Graph layout"
             value={previewLayout}
             onValueChange={(v) => {
               if (!v) return;
@@ -1205,6 +1251,7 @@
               class="node-search-input mono"
               type="text"
               placeholder="find node…"
+              aria-label="Find graph node"
               bind:value={nodeSearchQuery}
             />
             {#if nodeSearchResults.length > 0}
@@ -1365,6 +1412,7 @@
             onhover={() => {}}
             onlabelsmove={() => {}}
             onmarkersmove={() => {}}
+            onsettledchange={(settled) => { graphSettled = settled; }}
             highlighted={[...pendingKeys]}
             highlightedEdges={focusedEdge ? [focusedEdge] : []}
           />
@@ -1380,6 +1428,7 @@
                 onhover={() => {}}
                 onlabelsmove={(labels) => { nodeLabels = labels; }}
                 onmarkersmove={() => {}}
+                onsettledchange={(settled) => { graphSettled = settled; }}
                 highlighted={[...pendingKeys]}
               />
             </Canvas>
@@ -1435,7 +1484,7 @@
       <!-- 3D node labels via the SHARED GraphLabels overlay (F92) — same component the main graph
            uses, so review's labels can no longer drift from it. Review needs no asset/leap snippets. -->
       {#if graphMode === 'preview' && !use2D}
-        <GraphLabels labels={nodeLabels} {selected} />
+        <GraphLabels labels={nodeLabels} {selected} onselect={(key) => selectFromGraph(key)} />
       {/if}
     </div>
 
@@ -1456,7 +1505,7 @@
   <aside class="review-panel" style="width:{panelWidth}px">
     <div class="rp-header">
       <h2 class="rp-title">review</h2>
-      <p class="rp-sub mono">
+      <p class="rp-sub mono" data-testid="review-pending-count">
         {totalPending} pending change{totalPending !== 1 ? 's' : ''}
         {#if workspaceState() === 'connected'}
           <button class="drain-btn" onclick={checkPending} disabled={draining} title="Check workspace for pending MCP proposals">
@@ -1467,20 +1516,20 @@
     </div>
 
     <!-- Tab bar -->
-    <nav class="rp-tabs">
-      <button class:active={activeTab === 'incoming'} onclick={() => activeTab = 'incoming'}>
+    <nav class="rp-tabs" aria-label="Review queue sections">
+      <button class:active={activeTab === 'incoming'} aria-pressed={activeTab === 'incoming'} onclick={() => activeTab = 'incoming'}>
         incoming
         {#if diff.entries.length > 0}<span class="badge">{diff.entries.length}</span>{/if}
       </button>
-      <button class:active={activeTab === 'deletions'} onclick={() => activeTab = 'deletions'}>
+      <button class:active={activeTab === 'deletions'} aria-pressed={activeTab === 'deletions'} onclick={() => activeTab = 'deletions'}>
         delete
         {#if pendingDeletions.length > 0}<span class="badge badge-danger">{pendingDeletions.length}</span>{/if}
       </button>
-      <button class:active={activeTab === 'merges'} onclick={() => activeTab = 'merges'}>
+      <button class:active={activeTab === 'merges'} aria-pressed={activeTab === 'merges'} onclick={() => activeTab = 'merges'}>
         merge
         {#if pendingMerges.length > 0}<span class="badge badge-merge">{pendingMerges.length}</span>{/if}
       </button>
-      <button class:active={activeTab === 'align'} onclick={() => activeTab = 'align'}>
+      <button class:active={activeTab === 'align'} aria-pressed={activeTab === 'align'} onclick={() => activeTab = 'align'}>
         align
         {#if alignPending > 0}<span class="badge badge-align">{alignPending}</span>{/if}
       </button>
@@ -1505,7 +1554,7 @@
         <div class="summary">
           <span class="sc new">{diff.summary.new} new</span>
           <span class="sc reinforces">{diff.summary.reinforces} reinforce</span>
-          <span class="sc conflict">{diff.summary.conflicts} conflict</span>
+          <span class="sc conflict">{diff.summary.conflicts} conflict{diff.summary.conflicts === 1 ? '' : 's'} with graph</span>
           {#if diff.summary.refines > 0}<span class="sc refines">{diff.summary.refines} refine</span>{/if}
           {#if diff.summary.duplicate > 0}<span class="sc duplicate">{diff.summary.duplicate} dup</span>{/if}
           {#if semanticAnalyzing}<span class="sc analyzing">analyzing...</span>{/if}
@@ -1583,14 +1632,19 @@
               onreject={async () => { await setStatus(e.incoming.id, 'rejected'); }}
             >
               <!-- Clicking a review card flies the preview graph to its node -->
+              <!-- The native button below is the keyboard equivalent; the card action preserves
+                   pointer focus on non-control card chrome without assigning a nested ARIA role. -->
               <div
                 class="entry-focus-wrap"
-                class:entry-focused={selected === termKey(e.incoming.s)}
-                role="button"
-                tabindex="0"
-                onclick={() => focusStatement(e.incoming)}
-                onkeydown={(ev) => { if (ev.key === 'Enter') focusStatement(e.incoming); }}
+                class:entry-focused={selected !== null && statementHasKey(e.incoming, selected)}
+                use:cardGraphFocus={e.incoming}
               >
+                <button
+                  type="button"
+                  class="entry-focus-action mono"
+                  aria-label={statementFocusLabel(e.incoming)}
+                  onclick={(event) => { event.stopPropagation(); focusStatement(e.incoming); }}
+                ><span aria-hidden="true">⌖</span> show in graph</button>
                 <!-- No onresolved handler: DiffEntry mutates statements through the store, and the
                      derived diff picks that up. It defaults to a no-op. -->
                 <DiffEntry entry={e} sourceLabel={sourceLabel(e.incoming.sourceId)} />
@@ -1907,12 +1961,15 @@
               >
                 <div
                   class="entry-focus-wrap"
-                  class:entry-focused={selected === termKey(st.s)}
-                  role="button"
-                  tabindex="0"
-                  onclick={() => focusStatement(st)}
-                  onkeydown={(ev) => { if (ev.key === 'Enter') focusStatement(st); }}
+                  class:entry-focused={selected !== null && statementHasKey(st, selected)}
+                  use:cardGraphFocus={st}
                 >
+                  <button
+                    type="button"
+                    class="entry-focus-action mono"
+                    aria-label={statementFocusLabel(st)}
+                    onclick={(event) => { event.stopPropagation(); focusStatement(st); }}
+                  ><span aria-hidden="true">⌖</span> show in graph</button>
                   <div class="del-card">
                     <span class="del-tag mono">deletion</span>
                     <StatementCard statement={st} compact />
@@ -1948,12 +2005,15 @@
               >
                 <div
                   class="entry-focus-wrap"
-                  class:entry-focused={selected === termKey(st.s)}
-                  role="button"
-                  tabindex="0"
-                  onclick={() => focusStatement(st)}
-                  onkeydown={(ev) => { if (ev.key === 'Enter') focusStatement(st); }}
+                  class:entry-focused={selected !== null && statementHasKey(st, selected)}
+                  use:cardGraphFocus={st}
                 >
+                  <button
+                    type="button"
+                    class="entry-focus-action mono"
+                    aria-label={statementFocusLabel(st)}
+                    onclick={(event) => { event.stopPropagation(); focusStatement(st); }}
+                  ><span aria-hidden="true">⌖</span> show in graph</button>
                   <div class="merge-card">
                     <span class="merge-tag mono">merge</span>
                     {#if st.gloss}
@@ -2039,12 +2099,15 @@
                 >
                   <div
                     class="entry-focus-wrap"
-                    class:entry-focused={selected === termKey(suggestion.statement.s)}
-                    role="button"
-                    tabindex="0"
-                    onclick={() => focusStatement(suggestion.statement)}
-                    onkeydown={(ev) => { if (ev.key === 'Enter') focusStatement(suggestion.statement); }}
+                    class:entry-focused={selected !== null && statementHasKey(suggestion.statement, selected)}
+                    use:cardGraphFocus={suggestion.statement}
                   >
+                    <button
+                      type="button"
+                      class="entry-focus-action mono"
+                      aria-label={statementFocusLabel(suggestion.statement)}
+                      onclick={(event) => { event.stopPropagation(); focusStatement(suggestion.statement); }}
+                    ><span aria-hidden="true">⌖</span> show in graph</button>
                     <AlignmentCard
                       {suggestion}
                       onaccept={() => acceptAlignment(suggestion)}
@@ -2109,7 +2172,7 @@
     padding: 0.5rem 0.75rem;
     border-bottom: 1px solid var(--line);
     background: var(--surface);
-    z-index: 10;
+    z-index: 30;
     flex-shrink: 0;
   }
   .mode-btn {
@@ -2173,6 +2236,25 @@
   .entry-focus-wrap { cursor: pointer; border-left: 2px solid transparent; transition: border-color 0.15s; }
   .entry-focus-wrap:hover { border-left-color: var(--muted-2, var(--muted)); }
   .entry-focus-wrap.entry-focused { border-left-color: var(--accent); }
+  .entry-focus-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    min-height: 30px;
+    margin: 0 0 0.35rem 0.4rem;
+    padding: 0.2rem 0.55rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 0.62rem;
+    cursor: pointer;
+  }
+  .entry-focus-action:hover,
+  .entry-focus-action:focus-visible {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
   .graph-empty {
     height: 100%;
     display: flex;
@@ -2216,7 +2298,8 @@
     flex-direction: column;
     gap: 0.3rem;
     flex-shrink: 0;
-    z-index: 10;
+    position: relative;
+    z-index: 30;
   }
   .ov-row {
     display: flex;
@@ -3105,6 +3188,14 @@
     font-size: 0.82rem;
   }
   .empty-state p { margin: 0.2rem 0; }
+  .empty-state a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 0.5rem;
+  }
 
   /* ── Align tab ── */
   .badge-align { background: color-mix(in srgb, var(--accent) 15%, var(--surface)); color: var(--accent); }
@@ -3151,8 +3242,10 @@
       flex-direction: column;
     }
     .graph-pane {
-      height: 45vh;
-      min-height: 280px;
+      flex: 0 0 min(45dvh, 360px);
+      height: auto;
+      min-height: 260px;
+      overflow: hidden;
     }
     .resize-handle {
       display: none;
@@ -3162,10 +3255,33 @@
       max-width: none;
       min-width: 0;
       border-top: 1px solid var(--line);
-      flex: 1;
-      /* This route is a fixed full-viewport workspace, so the app shell's main
-         padding cannot protect its scrollable decision surface from the nav. */
-      padding-bottom: var(--app-nav-clearance);
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .rp-content {
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding-bottom: calc(0.75rem + var(--app-nav-clearance));
+    }
+    .mode-btn,
+    :global(.review-layout .tg-chip),
+    .node-search-input,
+    .node-search-row,
+    .rp-tabs button,
+    .gc,
+    .ghost-btn,
+    .reanalyze-input,
+    .bulk-btn,
+    .group-toggle {
+      /* A 45px box remains above 44px after the app's narrow-screen scale. */
+      min-height: 45px;
+      min-width: 44px;
+    }
+    .entry-focus-action {
+      min-height: 45px;
+      min-width: 44px;
     }
     .node-details-pane {
       width: calc(100% - 1.5rem);

@@ -21,6 +21,11 @@ async function seedPendingStatement(page: Page) {
   await page.waitForURL((url) => !url.pathname.startsWith('/ingest'), { timeout: 30_000 });
 }
 
+async function reviewPendingCount(page: Page): Promise<number> {
+  const text = await page.getByTestId('review-pending-count').textContent();
+  return Number(text?.match(/\d+/)?.[0] ?? Number.NaN);
+}
+
 test.beforeEach(async ({ page }) => {
   await clearStorage(page);
   await waitForApp(page);
@@ -61,14 +66,20 @@ test('confirm button marks statement confirmed', async ({ page }) => {
   await page.goto('/review');
 
   // Find confirm button (✓ or "confirm" text)
-  const confirmBtn = page.getByRole('button', { name: /confirm|✓|accept/i }).first();
+  // Exact name avoids the clickable card wrapper whose accessible name includes its child actions.
+  const confirmButtons = page.getByRole('button', { name: /^(confirm|✓|accept)$/i });
+  await expect(confirmButtons.first()).toBeVisible({ timeout: 8_000 });
+  const before = await reviewPendingCount(page);
+  expect(before).toBeGreaterThan(0);
+  const confirmBtn = confirmButtons.first();
   await expect(confirmBtn).toBeVisible({ timeout: 8_000 });
   await confirmBtn.click();
 
-  // After confirming all, empty state should appear
-  await expect(
-    page.getByText(/nothing|empty|no statements|all caught up|company.alpha|employee/i).first()
-  ).toBeVisible({ timeout: 5_000 });
+  // The pending control must leave the queue, and stay gone after reloading from IndexedDB.
+  await expect.poll(() => reviewPendingCount(page), { timeout: 8_000 }).toBeLessThan(before);
+  const after = await reviewPendingCount(page);
+  await page.reload();
+  await expect.poll(() => reviewPendingCount(page), { timeout: 8_000 }).toBe(after);
 });
 
 test('review-at-scale: pending facts group into entity cards with a plan headline and a toggle', async ({ page }) => {
@@ -83,7 +94,7 @@ test('review-at-scale: pending facts group into entity cards with a plan headlin
 
   // The seeded fact is still visible inside a card, and confirm is still reachable (nothing hidden).
   await expect(page.getByText(/company.alpha|employee|50|2020/i).first()).toBeVisible({ timeout: 5_000 });
-  await expect(page.getByRole('button', { name: /confirm|✓|accept/i }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /^(confirm|✓|accept)$/i }).first()).toBeVisible();
 
   // The by-entity / flat toggle switches the grouping off.
   const toggle = page.getByRole('button', { name: /^(by entity|flat list)$/i });
@@ -97,14 +108,18 @@ test('reject button removes statement from review', async ({ page }) => {
 
   await page.goto('/review');
 
-  const rejectBtn = page.getByRole('button', { name: /reject|✕|dismiss/i }).first();
+  const rejectButtons = page.getByRole('button', { name: /^(reject|✕|dismiss)$/i });
+  await expect(rejectButtons.first()).toBeVisible({ timeout: 8_000 });
+  const before = await reviewPendingCount(page);
+  expect(before).toBeGreaterThan(0);
+  const rejectBtn = rejectButtons.first();
   await expect(rejectBtn).toBeVisible({ timeout: 8_000 });
   await rejectBtn.click();
 
-  // After rejecting, the statement count should decrease (or empty state appears)
-  await expect(
-    page.getByText(/nothing|empty|no statements|all caught up|company.alpha|employee/i).first()
-  ).toBeVisible({ timeout: 5_000 });
+  await expect.poll(() => reviewPendingCount(page), { timeout: 8_000 }).toBeLessThan(before);
+  const after = await reviewPendingCount(page);
+  await page.reload();
+  await expect.poll(() => reviewPendingCount(page), { timeout: 8_000 }).toBe(after);
 });
 
 /**
@@ -335,34 +350,26 @@ test('selecting a graph node brings its pending facts into view', async ({ page 
    * highlighted matching rows with .entry-focused and left them wherever they were, which on a
    * 104-row queue is usually off screen. A highlight nobody can see is the same as no feedback.
    *
-   * A node label is positioned at its node's screen coordinates, so clicking the canvas there
-   * selects that node — deterministic, unlike guessing at canvas coordinates.
+   * The shared 3D label is an accessible graph control. Search first materializes this specific
+   * label (selected labels are never culled), then activating the label exercises graph → panel
+   * instead of guessing which overlapping mesh wins a canvas raycast.
    *
    * The card-click direction is deliberately NOT asserted here: .entry-focus-wrap sits inside a
    * SwipeCard whose animation keeps it from settling, so Playwright's actionability check times
    * out on it. That is a harness limit on pre-existing behaviour, and faking it with force:true
    * would assert that a click we could not really perform did something.
    */
-  const label = page.locator('.node-label').first();
-  await expect(label).toBeVisible({ timeout: 20_000 });
-  const box = await label.boundingBox();
-  const canvas = page.locator('canvas').first();
-  expect(box, 'no label box to aim at').toBeTruthy();
-  await expect(canvas).toBeVisible();
-
-  await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
-  await page.waitForTimeout(1_500);
+  const search = page.getByPlaceholder('find node…');
+  await search.fill('replatform');
+  // Search results intentionally use the stable IRI local name, while graph labels use rdfs:label.
+  await page.locator('.node-search-row', { hasText: /^replatform$/i }).click();
+  const target = page.locator('.node-label-wrap[data-node-key="i:urn:kbase:concept/replatform"]');
+  await expect(target).toBeVisible({ timeout: 20_000 });
+  await target.press('Enter');
+  await expect(target.locator('.node-label')).toHaveClass(/selected-node/, { timeout: 5_000 });
 
   const focused = page.locator('.entry-focused').first();
-  if (await focused.count()) {
-    // The point of the change: not merely highlighted, but SCROLLED TO.
-    await expect(focused).toBeInViewport({ timeout: 5_000 });
-  } else {
-    // Honest rather than silently green: the click may have landed on a node with no pending
-    // facts, which proves nothing either way.
-    test.info().annotations.push({
-      type: 'coverage-gap',
-      description: 'canvas click selected no node with pending facts; graph→panel scroll unverified this run',
-    });
-  }
+  await expect(focused).toBeVisible({ timeout: 5_000 });
+  // The point of the change: not merely highlighted, but SCROLLED TO.
+  await expect(focused).toBeInViewport({ timeout: 5_000 });
 });
