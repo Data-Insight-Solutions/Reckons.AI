@@ -9,7 +9,7 @@
   import NavBar from '$lib/components/NavBar.svelte';
   import TurtleChatPanel from '$lib/components/TurtleChatPanel.svelte';
   import ManualLLMModal from '$lib/components/ManualLLMModal.svelte';
-  import { loadAll, loaded } from '$lib/stores/kb.svelte';
+  import { loadAll, loaded, startKbLiveSync } from '$lib/stores/kb.svelte';
   import { loadSettings, settingsLoaded } from '$lib/stores/settings.svelte';
   import { loadTurtleSettings } from '$lib/stores/turtle-settings.svelte';
   import { startScheduler } from '$lib/stores/auto-analyze.svelte';
@@ -49,6 +49,10 @@
   // behaviour (F36). Client-only; the returned teardown removes matchMedia
   // listeners on destroy.
   $effect(() => initViewport());
+
+  // IndexedDB is shared by same-origin tabs; mirror committed source/fact changes into this
+  // tab's reactive store for as long as the app layout is mounted.
+  $effect(() => startKbLiveSync());
 
   // Apply UI scale as root font-size whenever it changes
   const UI_SCALE_PX: Record<string, string> = { sm: '14px', md: '16px', lg: '18px' };

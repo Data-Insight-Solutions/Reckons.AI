@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import {
     statements,
     sources,
@@ -37,6 +38,7 @@
     removeKbFromRegistry,
     updateKbName,
     toggleBookmark,
+    subscribeRegistry,
     kbUrl,
     kbFileSlug,
     type KbEntry
@@ -128,6 +130,11 @@
 
   // ── KB registry ───────────────────────────────────────────────────────────
   let localKbs = $state<KbEntry[]>(getRegistry());
+  // Install during component initialisation, before the first gallery rows render. Waiting for
+  // onMount leaves a small window where another tab can write after the snapshot above but before
+  // the listener exists, permanently losing that event.
+  const unsubscribeRegistry = subscribeRegistry((registry) => { localKbs = registry; });
+  onDestroy(unsubscribeRegistry);
   let newKbName = $state('');
   let showNewKbForm = $state(false);
   let editingKbId = $state<string | null>(null);

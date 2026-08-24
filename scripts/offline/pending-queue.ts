@@ -70,9 +70,10 @@ export type PendingQueueTransaction<T> = {
  * The one host-side read/modify/write boundary for a pending JSONL file.
  *
  * Every Node producer and rewriter of the same path must participate in this advisory lock. The
- * browser File System Access API cannot hold Linux `flock`, so `workspace.svelte.ts` draining the
- * file remains a separate cross-runtime gap; this helper intentionally does not overclaim safety
- * against a simultaneous browser drain.
+ * browser File System Access API cannot hold Linux `flock`, so `withFileLock` publishes a leased
+ * `.lock.active` marker while this transaction runs. `workspace.svelte.ts` observes that marker
+ * before draining. This narrows the cross-runtime race but is still optimistic concurrency: the
+ * browser cannot atomically acquire the kernel lock.
  */
 export function transactPendingQueue<T>(
   queuePath: string,

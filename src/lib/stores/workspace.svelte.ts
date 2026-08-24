@@ -41,6 +41,7 @@ import {
 } from '../rdf/source-cache';
 import { classifyText } from '../safety/content-policy';
 import {
+  acknowledgePendingJsonl,
   partitionPendingJsonl,
   type PendingEntry,
 } from '../rdf/pending-entry';
@@ -78,12 +79,10 @@ const AUTOSYNC_KEY = 'reckons:ws-autosync';
 export function seenHashesKey(): string {
   if (typeof window === 'undefined') return 'reckons:ws-seen-hashes';
   try {
-    const url = new URL(window.location.href);
-    const fromUrl = url.searchParams.get('kb');
-    if (fromUrl) return `reckons:ws-seen-hashes:${fromUrl}`;
-    const fromSession = sessionStorage.getItem('sessionKbId');
-    if (fromSession) return `reckons:ws-seen-hashes:${fromSession}`;
-    return `reckons:ws-seen-hashes:${localStorage.getItem('currentKbId') ?? 'kbase'}`;
+    // `?kb=` may be a human-facing graph NAME. getCurrentKbId() resolves that alias to the
+    // registry's opaque id, so `/?kb=roadmap` and `/?kb=kbase_123` share one loop guard instead
+    // of importing the same folder twice under two storage keys.
+    return `reckons:ws-seen-hashes:${getCurrentKbId()}`;
   } catch {
     return 'reckons:ws-seen-hashes';
   }
@@ -325,6 +324,71 @@ export async function writeToWorkspace(filename: string, content: string): Promi
   }
 }
 
+/**
+ * Queue acknowledgement is the commit marker for a pending import, so it cannot use the
+ * best-effort helpers above. A missing handle, failed re-read, failed write, or failed close must
+ * reject the drain: reporting success would leave the row queued and import it again on retry.
+ */
+async function readWorkspaceFileStrict(filename: string): Promise<string> {
+  const fh = await findWorkspaceFile(filename);
+  if (!fh) throw new Error(`Workspace file is unavailable: ${filename}`);
+  return (await fh.getFile()).text();
+}
+
+async function writeWorkspaceFileStrict(
+  filename: string,
+  content: string,
+  expectedCurrent?: string,
+): Promise<void> {
+  if (!_handle) throw new Error('Workspace is not connected');
+  const fh = await findWorkspaceFile(filename, { create: true });
+  if (!fh) throw new Error(`Workspace file is unavailable: ${filename}`);
+  const writable = await fh.createWritable({ keepExistingData: true });
+  if (expectedCurrent !== undefined) {
+    const current = await (await fh.getFile()).text();
+    if (current !== expectedCurrent) {
+      await writable.abort('Workspace queue changed before acknowledgement');
+      throw new Error(`Workspace file changed before acknowledgement: ${filename}`);
+    }
+  }
+  await writable.write(content);
+  await writable.close();
+}
+
+const HOST_LOCK_ACTIVE_SUFFIX = '.lock.active';
+
+/**
+ * Host writers use a persistent `.lock` pathname as the inode behind Linux flock. Existence of
+ * that file is therefore not activity. While the kernel lock is actually held they publish a
+ * leased `.lock.active` JSON marker for browser clients, which cannot participate in flock. The
+ * expiry is the crash-recovery path when a process dies before removing its marker.
+ */
+async function activeHostLockMarker(marker: FileSystemFileHandle): Promise<boolean> {
+  let text: string;
+  try {
+    text = await (await marker.getFile()).text();
+  } catch {
+    // If a marker was found but cannot be inspected, fail closed for this short operation. A valid
+    // expired marker is handled below; unreadable workspace permissions will fail the write too.
+    return true;
+  }
+  try {
+    const value = JSON.parse(text) as { expiresAt?: unknown };
+    return typeof value.expiresAt === 'number'
+      && Number.isFinite(value.expiresAt)
+      && value.expiresAt > Date.now();
+  } catch {
+    // Compatible writers replace marker JSON atomically. Invalid content cannot prove activity and
+    // must not become a new permanent sentinel with the same failure mode as `.lock` existence.
+    return false;
+  }
+}
+
+async function workspaceFileHasActiveHostLock(filename: string): Promise<boolean> {
+  const marker = await findWorkspaceFile(`${filename}${HOST_LOCK_ACTIVE_SUFFIX}`);
+  return marker ? activeHostLockMarker(marker) : false;
+}
+
 /** Write a text file into a subdirectory handle. */
 async function writeToDir(dir: FileSystemDirectoryHandle, filename: string, content: string): Promise<void> {
   const fh = await dir.getFileHandle(filename, { create: true });
@@ -354,8 +418,8 @@ export function lastWriteHold(): WriteHold { return _lastHold; }
  * Two independent checks, because the two writers fail differently:
  *
  *   locked    a host process (scripts/offline/pending-queue.ts and friends) holds `<file>.lock`
- *             through a Linux flock. The browser cannot take that lock, but it CAN see the sentinel,
- *             so it waits rather than racing a transaction that is midway through.
+ *             through Linux flock and publishes a leased `<file>.lock.active` marker. The browser
+ *             cannot take flock, but it CAN inspect that transient marker.
  *   diverged  the bytes on disk no longer hash to what we last read. Catches every other writer —
  *             Claude Code, a script, `git checkout` — including those that take no lock at all.
  *
@@ -370,8 +434,10 @@ async function holdWrite(
 ): Promise<WriteHold> {
   // 1. A host transaction is in flight.
   try {
-    await dir.getFileHandle(`${filename}.lock`);
-    return { held: true, reason: 'locked', detail: `${filename} is locked by a local process` };
+    const marker = await dir.getFileHandle(`${filename}${HOST_LOCK_ACTIVE_SUFFIX}`);
+    if (await activeHostLockMarker(marker)) {
+      return { held: true, reason: 'locked', detail: `${filename} is locked by a local process` };
+    }
   } catch { /* absent — nothing holds it */ }
 
   // 2. Compare-and-swap against what we last read.
@@ -846,26 +912,60 @@ function objectTerm(value: string, declared?: 'literal' | 'iri'): { kind: 'liter
   return value.startsWith('urn:') ? { kind: 'iri', value } : { kind: 'literal', value };
 }
 
-export async function drainAndImportPending(): Promise<number> {
-  const pending = await drainWorkspacePending();
+let pendingImport: Promise<number> | null = null;
+
+/**
+ * Coalesce the startup and manual review triggers in this page. Without this guard both callers
+ * can import the same snapshot before either reaches acknowledgement.
+ */
+export function drainAndImportPending(): Promise<number> {
+  if (pendingImport) return pendingImport;
+  const run = drainAndImportPendingOnce();
+  pendingImport = run;
+  run.then(
+    () => { if (pendingImport === run) pendingImport = null; },
+    () => { if (pendingImport === run) pendingImport = null; },
+  );
+  return run;
+}
+
+async function drainAndImportPendingOnce(): Promise<number> {
+  // Host-side queue writers advertise their flock with a leased active marker the browser can
+  // observe. The `.lock` pathname itself persists between transactions and is not an activity bit.
+  if (await workspaceFileHasActiveHostLock(WORKSPACE_PENDING_FILE)) return 0;
+
+  // Snapshot first, but do not mutate the queue yet. Filesystem and IndexedDB cannot share a
+  // transaction, so the safe ordering is at-least-once: commit locally, then acknowledge exactly
+  // the rows from this snapshot. Stable row ids make a crash retry idempotent in IndexedDB; the
+  // final strict re-read preserves appends that arrived while the transaction was running.
+  const snapshot = await readFromWorkspace(WORKSPACE_PENDING_FILE);
+  if (!snapshot?.trim()) return 0;
+  const currentKbId = getCurrentKbId();
+  const active = [getCurrentKbName(), currentKbId];
+  const partition = partitionPendingJsonl(snapshot, active);
+  const pending = partition.entries;
   if (pending.length === 0) return 0;
 
-  const { addStatements, addSource } = await import('./kb.svelte');
-  const { v4: uuid } = await import('uuid');
+  const { prepareStatementsForWrite, persistSourceBatch } = await import('./kb.svelte');
+  const { v5: uuidv5 } = await import('uuid');
 
-  const sourceId = `mcp-pending-${Date.now()}`;
+  const queueNamespace = uuidv5('https://reckons.ai/workspace-pending', uuidv5.URL);
+  const sourceId = `mcp-pending-${uuidv5(
+    JSON.stringify([currentKbId, ...partition.consumedLines]),
+    queueNamespace,
+  )}`;
   const now = Date.now();
 
   const agents = [...new Set(pending.map(e => e.agent).filter(Boolean))];
   const agentSuffix = agents.length > 0 ? ` (${agents.join(', ')})` : '';
-  await addSource({
+  const source = {
     id: sourceId,
     title: `MCP${agentSuffix} — ${pending.length} queued note${pending.length > 1 ? 's' : ''}`,
     uri: `urn:mcp:pending:${sourceId}`,
     kind: 'analysis',
     trustLevel: 'review',
     ingestedAt: now,
-  });
+  } as const;
 
   const priorityToConfidence: Record<string, number> = { high: 0.9, normal: 0.7, low: 0.5 };
   const typePrefix: Record<string, string> = {
@@ -875,7 +975,11 @@ export async function drainAndImportPending(): Promise<number> {
     'status-update': '[STATUS] ',
   };
 
-  const sts = pending.map(e => {
+  const rowOccurrences = new Map<string, number>();
+  const sts = pending.map((e, index) => {
+    const rawLine = partition.consumedLines[index];
+    const occurrence = rowOccurrences.get(rawLine) ?? 0;
+    rowOccurrences.set(rawLine, occurrence + 1);
     const confidence = priorityToConfidence[e.priority ?? 'normal'] ?? 0.7;
     // Partial fact (F32): no object supplied — the reviewer fills it in.
     const partial = e.object == null || e.object === '';
@@ -884,22 +988,17 @@ export async function drainAndImportPending(): Promise<number> {
     const gloss = prefix + (question ?? e.note ?? '');
     const excerpt = e.commitSha ? `commit: ${e.commitSha}` : undefined;
 
-    // A fact a SCRIPT re-derived arrives settled. `verifiedBy` is only ever stamped by a
-    // deterministic check that reproduced the claim from the thing it describes — a path that
-    // exists on disk, an edge transcribed from the canonical roadmap graph. Those were never
-    // decisions: queueing them asked a human to confirm something already proved, and 140
-    // roadmap dependency edges copied verbatim out of a TTL is the clearest case.
-    //
-    // Judgements never carry this flag, so opinions still land as pending no matter how
-    // confidently they were stated. The verifier's name is kept on the statement, so an
-    // auto-accepted fact says who accepted it and can be found and reversed.
-    const verified = typeof e.verifiedBy === 'string' && e.verifiedBy.trim().length > 0;
-
     return {
-      id: uuid(),
+      // Raw bytes plus duplicate occurrence make retries stable without collapsing two deliberate,
+      // identical partial questions. Graph scope prevents the same producer row in two KBs from
+      // sharing an id if their databases are later combined.
+      id: uuidv5(JSON.stringify([currentKbId, rawLine, occurrence]), queueNamespace),
       sourceId,
-      status: (verified && !partial ? 'confirmed' : 'pending') as 'confirmed' | 'pending',
-      ...(verified ? { verifiedBy: e.verifiedBy } : {}),
+      // The queue is a proposal transport, not an authentication channel. `verifiedBy` is a
+      // legacy self-attested string and `verificationClaim` is intentionally advisory; either can
+      // be forged by the same writer that supplied the triple. A separately authenticated future
+      // verifier may use a trusted write path, but no JSONL row can settle itself.
+      status: 'pending' as const,
       confidence,
       s: { kind: 'iri' as const, value: e.subject },
       p: { kind: 'iri' as const, value: e.predicate },
@@ -940,13 +1039,55 @@ export async function drainAndImportPending(): Promise<number> {
   // and folding them would silently drop what the hole costs — a destructive action must never be
   // silent. Cross-batch dedupe (against already-imported pending) also remains — that needs a
   // graph read, not just this batch.
-  const { kept: deduped, folded } = dedupeCompletePending(sts);
+  const { kept: deduped, folded, groups } = dedupeCompletePending(sts);
   if (folded) console.info(`[F80.1] folded ${folded} duplicate pending note(s) before review`);
 
-  // Origin 'agent' engages the F52 boundary in addStatements: these are agent-queued notes, so
+  // A previous attempt may have committed IndexedDB and then failed to acknowledge the file.
+  // Stable ids are durable receipts: do not write or audit those statements a second time.
+  const durable = await db.statements.bulkGet(deduped.map((statement) => statement.id));
+  const unpersisted = deduped.filter((_, index) => !durable[index]);
+
+  // Origin 'agent' engages the F52 boundary: these are agent-queued notes, so
   // any settled status is downgraded to a proposal — agents propose, the human settles.
-  await addStatements(deduped, sourceId, { origin: 'agent' });
-  return deduped.length;
+  let written: typeof deduped = [];
+  if (unpersisted.length > 0) {
+    const plan = await prepareStatementsForWrite(unpersisted, sourceId, { origin: 'agent' });
+    written = await persistSourceBatch(source, plan);
+  }
+
+  // Admission can intentionally hold rows (content policy or an archived-entity
+  // decision). A queue row is acknowledged only when its statement id is now
+  // durable. Exact duplicates point at their durable canonical representative.
+  const durableAfter = await db.statements.bulkGet(deduped.map((statement) => statement.id));
+  const delivered = new Set(
+    deduped.filter((_, index) => durableAfter[index]).map((statement) => statement.id),
+  );
+  const representative = new Map<string, string>();
+  for (const group of groups) {
+    for (const duplicate of group.duplicates) representative.set(duplicate.id, group.keep.id);
+  }
+  const acknowledgedLines = sts.flatMap((statement, index) => {
+    const receiptId = representative.get(statement.id) ?? statement.id;
+    return delivered.has(receiptId) ? [partition.consumedLines[index]] : [];
+  });
+
+  // Re-read before acknowledging so rows appended during the IndexedDB transaction survive. Do
+  // not fall back to the old snapshot: a transient read error followed by a successful stale
+  // rewrite would erase those appends.
+  if (acknowledgedLines.length > 0) {
+    const latest = await readWorkspaceFileStrict(WORKSPACE_PENDING_FILE);
+    // A host writer may have started after the initial marker check. Once its marker disappears,
+    // the idempotent retry will subtract our rows from the host's committed version.
+    if (await workspaceFileHasActiveHostLock(WORKSPACE_PENDING_FILE)) {
+      throw new Error(`Workspace file is locked by a local process: ${WORKSPACE_PENDING_FILE}`);
+    }
+    await writeWorkspaceFileStrict(
+      WORKSPACE_PENDING_FILE,
+      acknowledgePendingJsonl(latest, acknowledgedLines),
+      latest,
+    );
+  }
+  return written.length;
 }
 
 /**

@@ -14,6 +14,16 @@ import type { KbEntry } from '../../storage/kb-registry';
 
 let registry: KbEntry[] = [];
 const loadAllSpy = vi.fn(async () => {});
+const prepareStatementsForWriteSpy = vi.fn(async (statements: any[], _sourceId?: string, opts?: unknown) => ({
+  statements,
+  blocked: [] as Array<{ statement: any; reasons: string[] }>,
+  opts,
+}));
+const persistSourceBatchSpy = vi.fn(async (source: any, plan: { statements: any[] }) => {
+  await fakeDb.sources.put(source);
+  await fakeDb.statements.bulkPut(plan.statements);
+  return plan.statements;
+});
 let currentKbId = 'kbase';
 
 class FakeTable {
@@ -25,6 +35,7 @@ class FakeTable {
   async delete(k: string) { this.rows.delete(k); }
   async clear() { this.rows.clear(); }
   async get(k: string) { return this.rows.get(k); }
+  async bulkGet(ks: string[]) { return ks.map((k) => this.rows.get(k)); }
   async update(k: string, patch: any) { const r = this.rows.get(k); if (r) this.rows.set(k, { ...r, ...patch }); }
   where(field: string) {
     return { equals: (v: any) => ({ toArray: async () => [...this.rows.values()].filter((r) => r[field] === v) }) };
@@ -56,11 +67,16 @@ vi.mock('../../storage/db', () => ({
 
 vi.mock('../settings.svelte', () => ({ updateSettings: vi.fn(async () => {}) }));
 
-vi.mock('../kb.svelte', () => ({ loadAll: loadAllSpy }));
+vi.mock('../kb.svelte', () => ({
+  loadAll: loadAllSpy,
+  prepareStatementsForWrite: prepareStatementsForWriteSpy,
+  persistSourceBatch: persistSourceBatchSpy,
+}));
 
 vi.mock('../../storage/kb-registry', () => ({
   getRegistry: () => registry,
   getCurrentKbId: () => currentKbId,
+  getCurrentKbName: () => registry.find((entry) => entry.id === currentKbId)?.name ?? currentKbId,
   findKbByStableId: (sid: string) => registry.find(r => r.stableId === sid),
   createKb: (name: string) => { const e = { id: `kb_${name}`, name, createdAt: 0 }; registry.push(e); return e; },
   registerStableId: (id: string, sid: string) => { const e = registry.find(r => r.id === id); if (e) e.stableId = sid; },
@@ -101,16 +117,34 @@ vi.mock('../../rdf/serialize', () => ({
 class FakeFileHandle {
   content = '';
   kind = 'file' as const;
+  getFileCalls = 0;
+  createWritableCalls = 0;
+  failGetFileOnCall: number | null = null;
+  writeError: Error | null = null;
+  closeError: Error | null = null;
+  onCreateWritable: (() => void) | null = null;
   constructor(public name: string) {}
   async getFile() {
+    this.getFileCalls++;
+    if (this.failGetFileOnCall === this.getFileCalls) throw new Error('file read failed');
     const text = this.content;
     return { text: async () => text, arrayBuffer: async () => new TextEncoder().encode(text).buffer };
   }
   async createWritable() {
+    this.createWritableCalls++;
+    this.onCreateWritable?.();
     const self = this;
+    let staged = self.content;
     return {
-      write: async (d: unknown) => { self.content = typeof d === 'string' ? d : new TextDecoder().decode(d as ArrayBuffer); },
-      close: async () => {},
+      write: async (d: unknown) => {
+        if (self.writeError) throw self.writeError;
+        staged = typeof d === 'string' ? d : new TextDecoder().decode(d as ArrayBuffer);
+      },
+      close: async () => {
+        if (self.closeError) throw self.closeError;
+        self.content = staged;
+      },
+      abort: async () => {},
     };
   }
 }
@@ -154,6 +188,18 @@ describe('two-way folder sync — pullFromWorkspace', () => {
     registry = [];
     currentKbId = 'kbase';
     loadAllSpy.mockClear();
+    prepareStatementsForWriteSpy.mockClear();
+    prepareStatementsForWriteSpy.mockImplementation(async (statements: any[], _sourceId?: string, opts?: unknown) => ({
+      statements,
+      blocked: [],
+      opts,
+    }));
+    persistSourceBatchSpy.mockClear();
+    persistSourceBatchSpy.mockImplementation(async (source: any, plan: { statements: any[] }) => {
+      await fakeDb.sources.put(source);
+      await fakeDb.statements.bulkPut(plan.statements);
+      return plan.statements;
+    });
     root = new FakeDirHandle('root');
     (globalThis as any).window = (globalThis as any).window ?? {};
     (globalThis as any).localStorage = (globalThis as any).localStorage ?? {
@@ -168,7 +214,10 @@ describe('two-way folder sync — pullFromWorkspace', () => {
       const { seenHashesKey } = await import('../workspace.svelte');
       (globalThis as any).localStorage.removeItem(seenHashesKey());
     }
-    fakeDb.workspace.rows.clear();
+    for (const table of [
+      fakeDb.workspace, fakeDb.sources, fakeDb.statements, fakeDb.settings,
+      fakeDb.entityGifs, fakeDb.glbOverrides, fakeDb.icon2dOverrides, fakeDb.kbSnapshots,
+    ]) table.rows.clear();
   });
 
   it('imports a new nested .ttl as a KB', async () => {
@@ -242,6 +291,16 @@ describe('two-way folder sync — pullFromWorkspace', () => {
     expect(res.updated).toHaveLength(0);
   });
 
+  it('keys seen hashes by the resolved graph id rather than a URL name alias', async () => {
+    currentKbId = 'kbase_resolved_roadmap';
+    window.history.replaceState({}, '', '/?kb=roadmap');
+    const mod = await import('../workspace.svelte');
+
+    expect(mod.seenHashesKey()).toBe('reckons:ws-seen-hashes:kbase_resolved_roadmap');
+
+    window.history.replaceState({}, '', '/');
+  });
+
   it('clearWorkspace forgets the persisted revision baseline', async () => {
     const mod = await import('../workspace.svelte');
     mod.__linkHandleForTest(root as any);
@@ -277,6 +336,272 @@ describe('two-way folder sync — pullFromWorkspace', () => {
     const mod = await import('../workspace.svelte');
     const r = await mod.pullFromWorkspace();
     expect(r).toEqual({ imported: [], updated: [] });
+  });
+});
+
+describe('pending queue import delivery', () => {
+  let root: FakeDirHandle;
+
+  const pendingRow = (extra: Record<string, unknown> = {}) => JSON.stringify({
+    subject: 'urn:kbase:concept/queue-test',
+    predicate: 'urn:kbase:predicate/has-status',
+    object: 'planned',
+    kb: 'kbase',
+    type: 'suggestion',
+    ...extra,
+  });
+
+  beforeEach(() => {
+    vi.resetModules();
+    registry = [];
+    currentKbId = 'kbase';
+    root = new FakeDirHandle('root');
+    prepareStatementsForWriteSpy.mockReset();
+    prepareStatementsForWriteSpy.mockImplementation(async (statements: any[], _sourceId?: string, opts?: unknown) => ({
+      statements,
+      blocked: [],
+      opts,
+    }));
+    persistSourceBatchSpy.mockReset();
+    persistSourceBatchSpy.mockImplementation(async (source: any, plan: { statements: any[] }) => {
+      await fakeDb.sources.put(source);
+      await fakeDb.statements.bulkPut(plan.statements);
+      return plan.statements;
+    });
+    for (const table of [fakeDb.workspace, fakeDb.sources, fakeDb.statements]) table.rows.clear();
+  });
+
+  async function linkQueue(content: string) {
+    const mod = await import('../workspace.svelte');
+    mod.__linkHandleForTest(root as any);
+    await seedFile(root, [mod.WORKSPACE_PENDING_FILE], content);
+    return {
+      mod,
+      file: root.files.get(mod.WORKSPACE_PENDING_FILE)!,
+    };
+  }
+
+  it.each(['write', 'close'] as const)(
+    'surfaces an acknowledgement %s failure and makes the retry idempotent',
+    async (failure) => {
+      const row = pendingRow();
+      const { mod, file } = await linkQueue(`${row}\n`);
+      if (failure === 'write') file.writeError = new Error('pending write failed');
+      else file.closeError = new Error('pending close failed');
+
+      await expect(mod.drainAndImportPending()).rejects.toThrow(`pending ${failure} failed`);
+
+      expect(file.content).toBe(`${row}\n`);
+      expect(fakeDb.sources.rows.size).toBe(1);
+      expect(fakeDb.statements.rows.size).toBe(1);
+      expect(persistSourceBatchSpy).toHaveBeenCalledTimes(1);
+
+      file.writeError = null;
+      file.closeError = null;
+      await expect(mod.drainAndImportPending()).resolves.toBe(0);
+
+      expect(file.content).toBe('');
+      expect(fakeDb.sources.rows.size).toBe(1);
+      expect(fakeDb.statements.rows.size).toBe(1);
+      expect(persistSourceBatchSpy).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('aborts acknowledgement when the final re-read fails instead of rewriting a stale snapshot', async () => {
+    const row = pendingRow();
+    const { mod, file } = await linkQueue(`${row}\n`);
+    file.failGetFileOnCall = 2;
+
+    await expect(mod.drainAndImportPending()).rejects.toThrow('file read failed');
+
+    expect(file.content).toBe(`${row}\n`);
+    expect(file.createWritableCalls).toBe(0);
+    expect(persistSourceBatchSpy).toHaveBeenCalledTimes(1);
+
+    file.failGetFileOnCall = null;
+    await expect(mod.drainAndImportPending()).resolves.toBe(0);
+    expect(file.content).toBe('');
+    expect(persistSourceBatchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('coalesces concurrent in-page drains into one import and one acknowledgement', async () => {
+    const row = pendingRow();
+    const { mod, file } = await linkQueue(`${row}\n`);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    persistSourceBatchSpy.mockImplementation(async (source: any, plan: { statements: any[] }) => {
+      await gate;
+      await fakeDb.sources.put(source);
+      await fakeDb.statements.bulkPut(plan.statements);
+      return plan.statements;
+    });
+
+    const first = mod.drainAndImportPending();
+    const second = mod.drainAndImportPending();
+    expect(second).toBe(first);
+    await vi.waitFor(() => expect(persistSourceBatchSpy).toHaveBeenCalledTimes(1));
+    release();
+
+    await expect(Promise.all([first, second])).resolves.toEqual([1, 1]);
+    expect(persistSourceBatchSpy).toHaveBeenCalledTimes(1);
+    expect(file.createWritableCalls).toBe(1);
+    expect(file.content).toBe('');
+  });
+
+  it('derives stable source and occurrence-aware statement ids across a failed persistence retry', async () => {
+    const duplicatePartial = pendingRow({ object: undefined, question: 'What status belongs here?' });
+    const { mod, file } = await linkQueue(`${duplicatePartial}\n${duplicatePartial}\n`);
+    const attempts: Array<{ sourceId: string; statementIds: string[] }> = [];
+    let attempt = 0;
+    persistSourceBatchSpy.mockImplementation(async (source: any, plan: { statements: any[] }) => {
+      attempts.push({ sourceId: source.id, statementIds: plan.statements.map((statement) => statement.id) });
+      if (attempt++ === 0) throw new Error('database unavailable');
+      await fakeDb.sources.put(source);
+      await fakeDb.statements.bulkPut(plan.statements);
+      return plan.statements;
+    });
+
+    await expect(mod.drainAndImportPending()).rejects.toThrow('database unavailable');
+    await expect(mod.drainAndImportPending()).resolves.toBe(2);
+
+    expect(attempts).toHaveLength(2);
+    expect(attempts[1]).toEqual(attempts[0]);
+    expect(new Set(attempts[0].statementIds).size).toBe(2);
+    expect(fakeDb.sources.rows.size).toBe(1);
+    expect(fakeDb.statements.rows.size).toBe(2);
+    expect(file.content).toBe('');
+  });
+
+  it('keeps rows appended before the final re-read', async () => {
+    const consumed = pendingRow({ object: 'first' });
+    const appended = pendingRow({ object: 'arrived-during-import' });
+    const { mod, file } = await linkQueue(`${consumed}\n`);
+    persistSourceBatchSpy.mockImplementation(async (source: any, plan: { statements: any[] }) => {
+      await fakeDb.sources.put(source);
+      await fakeDb.statements.bulkPut(plan.statements);
+      file.content += `${appended}\n`;
+      return plan.statements;
+    });
+
+    await expect(mod.drainAndImportPending()).resolves.toBe(1);
+    expect(file.content).toBe(`${appended}\n`);
+  });
+
+  it('retains a row that admission did not durably write', async () => {
+    const row = pendingRow({ object: 'policy-held' });
+    const { mod, file } = await linkQueue(`${row}\n`);
+    prepareStatementsForWriteSpy.mockImplementation(async (statements: any[], _sourceId?: string, opts?: unknown) => ({
+      statements: [],
+      blocked: statements.map((statement) => ({ statement, reasons: ['fixture hold'] })),
+      opts,
+    }));
+
+    await expect(mod.drainAndImportPending()).resolves.toBe(0);
+    expect(file.content).toBe(`${row}\n`);
+    expect(file.createWritableCalls).toBe(0);
+    expect(fakeDb.statements.rows.size).toBe(0);
+  });
+
+  it.each([
+    { verifiedBy: 'script:queue-verify/roadmap-edge' },
+    { verificationClaim: 'script:queue-verify/roadmap-edge' },
+  ])('never lets a self-attested queue verification label bypass review: %j', async (claim) => {
+    const row = pendingRow({
+      object: 'urn:kbase:concept/claimed-settled',
+      objectKind: 'iri',
+      ...claim,
+    });
+    const { mod, file } = await linkQueue(`${row}\n`);
+
+    await expect(mod.drainAndImportPending()).resolves.toBe(1);
+
+    const [statement] = [...fakeDb.statements.rows.values()];
+    expect(statement.status).toBe('pending');
+    expect(statement.verifiedBy).toBeUndefined();
+    expect(prepareStatementsForWriteSpy).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ status: 'pending' })]),
+      expect.any(String),
+      { origin: 'agent' },
+    );
+    expect(file.content).toBe('');
+  });
+
+  it('does not treat the persistent host flock pathname as an active queue lock', async () => {
+    const row = pendingRow();
+    const { mod, file } = await linkQueue(`${row}\n`);
+    await seedFile(root, [`${mod.WORKSPACE_PENDING_FILE}.lock`], '');
+
+    await expect(mod.drainAndImportPending()).resolves.toBe(1);
+    expect(file.content).toBe('');
+    expect(persistSourceBatchSpy).toHaveBeenCalledTimes(1);
+    expect(file.createWritableCalls).toBe(1);
+  });
+
+  it('does not import or acknowledge while a fresh host active marker exists', async () => {
+    const row = pendingRow();
+    const { mod, file } = await linkQueue(`${row}\n`);
+    await seedFile(root, [`${mod.WORKSPACE_PENDING_FILE}.lock`], '');
+    await seedFile(root, [`${mod.WORKSPACE_PENDING_FILE}.lock.active`], JSON.stringify({
+      version: 1,
+      pid: 123,
+      acquiredAt: Date.now(),
+      expiresAt: Date.now() + 60_000,
+    }));
+
+    await expect(mod.drainAndImportPending()).resolves.toBe(0);
+    expect(file.content).toBe(`${row}\n`);
+    expect(persistSourceBatchSpy).not.toHaveBeenCalled();
+    expect(file.createWritableCalls).toBe(0);
+  });
+
+  it('ignores a stale host active marker after its lease expires', async () => {
+    const row = pendingRow();
+    const { mod, file } = await linkQueue(`${row}\n`);
+    await seedFile(root, [`${mod.WORKSPACE_PENDING_FILE}.lock.active`], JSON.stringify({
+      version: 1,
+      pid: 123,
+      acquiredAt: Date.now() - 120_000,
+      expiresAt: Date.now() - 60_000,
+    }));
+
+    await expect(mod.drainAndImportPending()).resolves.toBe(1);
+    expect(file.content).toBe('');
+    expect(persistSourceBatchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('aborts acknowledgement when a host marker becomes active during the database import', async () => {
+    const row = pendingRow();
+    const { mod, file } = await linkQueue(`${row}\n`);
+    persistSourceBatchSpy.mockImplementation(async (source: any, plan: { statements: any[] }) => {
+      await fakeDb.sources.put(source);
+      await fakeDb.statements.bulkPut(plan.statements);
+      await seedFile(root, [`${mod.WORKSPACE_PENDING_FILE}.lock.active`], JSON.stringify({
+        version: 1,
+        pid: 123,
+        acquiredAt: Date.now(),
+        expiresAt: Date.now() + 60_000,
+      }));
+      return plan.statements;
+    });
+
+    await expect(mod.drainAndImportPending()).rejects.toThrow(/locked by a local process/i);
+    expect(file.content).toBe(`${row}\n`);
+    expect(file.createWritableCalls).toBe(0);
+    expect(fakeDb.statements.rows.size).toBe(1);
+  });
+
+  it('aborts acknowledgement if a producer appends after the final read', async () => {
+    const consumed = pendingRow({ object: 'first' });
+    const appended = pendingRow({ object: 'late-append' });
+    const { mod, file } = await linkQueue(`${consumed}\n`);
+    file.onCreateWritable = () => {
+      file.onCreateWritable = null;
+      file.content += `${appended}\n`;
+    };
+
+    await expect(mod.drainAndImportPending()).rejects.toThrow(/changed before acknowledgement/i);
+    expect(file.content).toBe(`${consumed}\n${appended}\n`);
+    expect(fakeDb.statements.rows.size).toBe(1);
   });
 });
 
@@ -321,16 +646,51 @@ describe('writeKbToFolder — holds a write it is not entitled to make', () => {
     })();
   });
 
-  it('holds while a host process holds the lock sentinel', async () => {
+  it('does not hold a graph write merely because the persistent flock pathname exists', async () => {
     const mod = await import('../workspace.svelte');
     mod.__linkHandleForTest(root as any);
-    await seedFile(root, ['kbs', 'my-kb', 'my-kb.ttl'], 'original');
+    await mod.writeKbToFolder(mkEntry(), 'original');
     await seedFile(root, ['kbs', 'my-kb', 'my-kb.ttl.lock'], '');
+
+    await mod.writeKbToFolder(mkEntry(), 'ours');
+
+    expect(fileAt(['kbs', 'my-kb', 'my-kb.ttl'])!.content).toBe('ours');
+    expect(mod.lastWriteHold()).toEqual({ held: false });
+  });
+
+  it('holds a graph write while the host active marker lease is fresh', async () => {
+    const mod = await import('../workspace.svelte');
+    mod.__linkHandleForTest(root as any);
+    await mod.writeKbToFolder(mkEntry(), 'original');
+    await seedFile(root, ['kbs', 'my-kb', 'my-kb.ttl.lock'], '');
+    await seedFile(root, ['kbs', 'my-kb', 'my-kb.ttl.lock.active'], JSON.stringify({
+      version: 1,
+      pid: 123,
+      acquiredAt: Date.now(),
+      expiresAt: Date.now() + 60_000,
+    }));
 
     await mod.writeKbToFolder(mkEntry(), 'ours');
 
     expect(fileAt(['kbs', 'my-kb', 'my-kb.ttl'])!.content).toBe('original');
     expect(mod.lastWriteHold()).toMatchObject({ held: true, reason: 'locked' });
+  });
+
+  it('ignores a stale graph active marker after its lease expires', async () => {
+    const mod = await import('../workspace.svelte');
+    mod.__linkHandleForTest(root as any);
+    await mod.writeKbToFolder(mkEntry(), 'original');
+    await seedFile(root, ['kbs', 'my-kb', 'my-kb.ttl.lock.active'], JSON.stringify({
+      version: 1,
+      pid: 123,
+      acquiredAt: Date.now() - 120_000,
+      expiresAt: Date.now() - 60_000,
+    }));
+
+    await mod.writeKbToFolder(mkEntry(), 'ours');
+
+    expect(fileAt(['kbs', 'my-kb', 'my-kb.ttl'])!.content).toBe('ours');
+    expect(mod.lastWriteHold()).toEqual({ held: false });
   });
 
   it('writes a brand-new file, since there is nothing to clobber', async () => {

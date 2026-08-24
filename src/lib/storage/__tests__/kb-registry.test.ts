@@ -13,6 +13,7 @@ import {
   kbUrl,
   resolveKbParam,
   isUnresolvedKbParam,
+  subscribeRegistry,
 } from '../kb-registry';
 
 // ── Regression: id collision ──────────────────────────────────────────────────
@@ -94,6 +95,39 @@ describe('getRegistry', () => {
     const reg = getRegistry();
     expect(reg).toHaveLength(1);
     expect(reg[0].id).toBe(DEFAULT_ID);
+  });
+});
+
+describe('subscribeRegistry', () => {
+  it('re-reads the registry when another tab changes or clears its localStorage key', () => {
+    const listener = vi.fn();
+    const unsubscribe = subscribeRegistry(listener);
+
+    localStorage.setItem('kbRegistry', JSON.stringify([
+      { id: 'kbase_remote', name: 'Remote Graph', createdAt: 1 },
+    ]));
+    window.dispatchEvent(new StorageEvent('storage', { key: 'kbRegistry' }));
+    expect(listener).toHaveBeenLastCalledWith(expect.arrayContaining([
+      expect.objectContaining({ id: 'kbase_remote', name: 'Remote Graph' }),
+    ]));
+
+    localStorage.clear();
+    window.dispatchEvent(new StorageEvent('storage', { key: null }));
+    expect(listener).toHaveBeenLastCalledWith([
+      expect.objectContaining({ id: DEFAULT_ID, name: 'Default Graph' }),
+    ]);
+
+    unsubscribe();
+    window.dispatchEvent(new StorageEvent('storage', { key: 'kbRegistry' }));
+    expect(listener).toHaveBeenCalledTimes(2);
+  });
+
+  it('ignores storage changes unrelated to the registry', () => {
+    const listener = vi.fn();
+    const unsubscribe = subscribeRegistry(listener);
+    window.dispatchEvent(new StorageEvent('storage', { key: 'currentKbId' }));
+    expect(listener).not.toHaveBeenCalled();
+    unsubscribe();
   });
 });
 

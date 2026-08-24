@@ -53,6 +53,26 @@ const DEFAULT_ID = 'kbase';
 
 const DEFAULT_ENTRY: KbEntry = { id: DEFAULT_ID, name: 'Default Graph', createdAt: 0 };
 
+/**
+ * Observe registry writes made by another tab.
+ *
+ * The browser deliberately does not dispatch `storage` back to the tab that made the write, so
+ * local actions can keep updating their component state synchronously while other tabs re-read
+ * the shared registry. A `null` key represents localStorage.clear().
+ */
+export function subscribeRegistry(callback: (registry: KbEntry[]) => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+
+  const onStorage = (event: StorageEvent) => {
+    if (event.storageArea && event.storageArea !== localStorage) return;
+    if (event.key !== REGISTRY_KEY && event.key !== null) return;
+    callback(getRegistry());
+  };
+
+  window.addEventListener('storage', onStorage);
+  return () => window.removeEventListener('storage', onStorage);
+}
+
 export function getRegistry(): KbEntry[] {
   if (typeof window === 'undefined') return [DEFAULT_ENTRY];
   try {
