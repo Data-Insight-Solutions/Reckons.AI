@@ -12,7 +12,15 @@ import { type Page, type BrowserContext, expect } from '@playwright/test';
 export async function clearStorage(page: Page): Promise<void> {
   // Navigate to the app origin so we have IndexedDB access
   if (!page.url().startsWith('http://localhost')) {
-    await page.goto('/');
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await page.goto('/', { waitUntil: 'domcontentloaded' });
+        break;
+      } catch (error) {
+        if (attempt >= 2) throw error;
+        await page.waitForTimeout(400);
+      }
+    }
   }
   await page.evaluate(async () => {
     // Delete by known name (plus any versioned variants)
