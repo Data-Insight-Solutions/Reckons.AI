@@ -359,3 +359,23 @@ kb:competitor-scan rdf:type    ktype:Feature ;
                kpred:principle    "The FETCH is script tier because it is checkable by a rule. The JUDGMENT — is this a competitor, do we want this feature, why do we decline it — stays with a human. Automating the judgment would fill the graph with confident nonsense." ;
                kpred:relates-to   kb:work-tiering ;
                kpred:relates-to   kb:license-gate .
+
+# ── Nearest neighbour to our own MCP server ───────────────────────────────────
+
+kb:comp-megamemory rdf:type    ktype:Competitor ;
+               rdfs:label   "MegaMemory" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   14 ;
+               kpred:repo-url     "https://github.com/0xK3vin/MegaMemory" ;
+               kpred:license      "MIT" ;
+               kpred:copy-permitted "yes on licence — MIT, attribution required. But see kpred:constraint: its dependency set is one this project deliberately removed, so the licence gate passing is not the whole answer." ;
+               kpred:stars        497 ;
+               kpred:last-push    "2026-05-03"^^xsd:date ;
+               kpred:description  "MCP server giving coding agents a persistent per-project knowledge graph in SQLite (.megamemory/knowledge.db), with in-process embeddings, semantic search, a web explorer, and a CLI that merges two graphs with conflict detection and manual or AI-assisted resolution. The LLM is the indexer — no AST parsing and no static analysis; the agent reads code and writes CONCEPTS in its own words, then queries them before future tasks via an understand-work-update loop." ;
+               kpred:closest-to   kb:mcp-server ;
+               kpred:honest-note  "THE NEAREST THING TO OUR OWN MCP SERVER IN THIS GRAPH, and it was not previously recorded here — it surfaced only because Matt supplied the URL on 2026-08-25, not because competitor-scan.ts found it. Same shape as ours: local graph, in-process embeddings, MCP surface, orient-before-work loop. It is also stale, last pushed 2026-05-03, roughly four months before this review." ;
+               kpred:constraint   "TWO SPECIFIC REASONS NOT TO LIFT CODE, BOTH BEYOND THE LICENCE. It depends on @xenova/transformers ^2.17.2 — the exact package this project REMOVED on 2026-07-01 for a CVE, migrating to @huggingface/transformers — so vendoring would reintroduce a dependency we dropped on purpose. And it embeds with all-MiniLM-L6-v2, where kb:embedding-model settled on BGE-small-en-v1.5 on measured pair accuracy. Read it for design, do not copy from it." ;
+               kpred:differs-from "MegaMemory's nodes are CONCEPTS the agent wrote in prose, indexed by embedding. Ours are entities joined by typed predicates carrying provenance and a review status, so a statement can be cited, diffed, and gated by a human before it is believed. Theirs is the faster write path for one agent's working memory; ours is the graph you can interrogate and hold to account. Its graph-merge CLI with explicit conflict surfacing is nonetheless direct prior art for the kb_merge tool and the per-agent namespace work still open under kb:loop-subagent-graphs." ;
+               kpred:relates-to   kb:mcp-server ;
+               kpred:relates-to   kb:loop-subagent-graphs ;
+               kpred:relates-to   kb:embedding-model .
