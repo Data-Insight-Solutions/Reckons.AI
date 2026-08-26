@@ -5435,3 +5435,85 @@ kb:perf-crawl rdf:type ktype:Feature ;
     kpred:remaining "Expose the force simulation's velocities behind a dev-only window hook, so convergence is read from the simulation rather than proxied through pixels." ;
     kpred:remaining "Add latency assertions to the existing e2e suite, replacing presence-only checks, so a slow render fails instead of passing quietly." ;
     kpred:acceptance "The script aborts with a non-zero exit when the renderer is SwiftShader; a route whose usable-selector matches nothing is reported as a harness error and not counted as a page failure; the ladder reports a settle time or an explicit never-settled for each rung." .
+
+# ==============================================================================
+# Research runs — 2026-08-26
+# ==============================================================================
+
+kb:research-run rdf:type       ktype:Feature ;
+               rdfs:label         "Research run — a question becomes a graph you can throw away" ;
+               kpred:feature-id   "F141" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:depends-on   kb:ingest-routing ;
+               kpred:depends-on   kb:cross-kb-alignment ;
+               kpred:relates-to   kb:multi-kb ;
+               kpred:relates-to   kb:browser-fact-finding ;
+               kpred:relates-to   kb:review-attention ;
+               kpred:description  "One instruction — 'research this grant', 'research this site' — produces a NEW graph holding what was found, which the user then keeps separate, merges into an existing graph, or discards. Matt (2026-08-26): 'refer to existing graphs, and create a new one that could be imported into existing if I choose. I think this workflow will be critical.'" ;
+               kpred:principle    "GROUND BEFORE FETCHING. The first act of a research run is to query the graphs the user already has and SAY what is already known — sources, dates, gaps — before a single page is retrieved. An agent that re-derives what you already hold is precisely the waste this product exists to prevent, and skipping this step would make the research feature a betrayal of the thesis rather than an expression of it." ;
+               kpred:principle    "A FRESH GRAPH IS A CONTROL, NOT A CONVENIENCE. kb:review-attention already records that tenure anchors perspective: the longer a graph is worked, the more its established intention frames new facts. Researching directly INTO an anchored graph pulls findings toward the existing view, and the pull is invisible from inside. A separate graph is the only cheap way to see what the sources actually said before deciding what it means to you." ;
+               kpred:principle    "THE DELIVERABLE IS A DECISION, NOT A GRAPH. A run ends by presenting three outcomes — keep separate, merge, discard — and discard must be as easy as the others. A research artifact you cannot throw away is one you will keep out of sunk cost, and that is how a registry fills with graphs nobody trusts." ;
+               kpred:principle    "REPORT THE ABSENCE. A run that could not find the deadline must SAY it could not find the deadline. The most useful node is a well-formed absence, and F32 already models it — needsObject with the question attached — so a research run emits partial facts for what it went looking for and did not get, rather than quietly returning a shorter list." ;
+               kpred:constraint   "EVERY TRIPLE KEEPS ITS EXCERPT. F9 passage-grounding is not optional here. Research is the path most likely to put a fabricated claim into a graph, because the user did not read the sources — they are trusting the run. A triple whose excerpt cannot be found in the retrieved text must be dropped, not shown." ;
+               kpred:constraint   "REUSE THE SCORER, DO NOT WRITE A THIRD. Grounding needs 'which graphs know about this?', which is routeQuestion's job and F103's factoring work. A parallel relevance engine here would be the second divergence of the same idea in one area." ;
+               kpred:open-question "Where does a research run EXECUTE? The browser can fetch and extract (kb:browser-fact-finding), but multi-source gathering with retries is n8n-shaped, and an agent loop is Claude-shaped. Leaning browser-first for one URL and n8n for the multi-source sweep, so the core stays local-first and the fan-out is an opt-in integration — but this is undecided and it determines the whole shape." ;
+               kpred:open-question "Does a research graph get a TYPE GATE by default? currents-settings already supports one and its own description uses a research graph as the example ('a research graph admits only Tool and Concept'). A gate keeps a run from minting fifty Person entities off a staff directory, but a wrong gate silently drops the finding that mattered." ;
+               kpred:remaining    "Not built. Five phases below." .
+
+kb:rr-ground rdf:type          ktype:Phase ;
+               rdfs:label         "Phase 1 — say what is already known, before fetching anything" ;
+               kpred:part-of      kb:research-run ;
+               hnav:order         1 ;
+               kpred:has-status   "planned" ;
+               kpred:description  "Score every graph in the registry against the research question and report prior knowledge as a first-class result: which graphs, how many statements, from which sources, how stale. Reuses routeQuestion's scoring per kb:research-run's constraint. This phase is shippable ALONE and is worth shipping alone — 'you already have 12 facts about this grant from 3 sources, last touched in March' is useful before any fetching exists." .
+
+kb:rr-gather rdf:type          ktype:Phase ;
+               rdfs:label         "Phase 2 — retrieve, with the graph shortcut taken first" ;
+               kpred:part-of      kb:research-run ;
+               hnav:order         2 ;
+               kpred:has-status   "planned" ;
+               kpred:description  "Fetch the sources. kb:ttl-aware-ingest runs FIRST: if a source publishes text/turtle, import it directly rather than extracting prose the publisher already modelled — cheaper, exact and lossless. scripts/offline/find-feed.ts answers the adjacent question for a site you want to keep watching rather than read once." ;
+               kpred:constraint   "RESPECT A REFUSAL. A login wall, a robots exclusion or a terms prohibition is an answer, not an obstacle. The run records that the source could not be read and moves on — see kb:announcement-channels for the worked case." .
+
+kb:rr-land rdf:type            ktype:Phase ;
+               rdfs:label         "Phase 3 — land findings in a new graph named from the question" ;
+               kpred:part-of      kb:research-run ;
+               hnav:order         3 ;
+               kpred:has-status   "planned" ;
+               kpred:description  "importAsNewKb() already creates a graph from an ingest (src/routes/(app)/ingest/+page.svelte). The work is naming it from the question, marking it as a research artifact so the registry can show it as provisional, and carrying the run's own provenance — question, sources attempted, sources refused, when." .
+
+kb:rr-delta rdf:type           ktype:Phase ;
+               rdfs:label         "Phase 4 — report the delta, not the dump" ;
+               kpred:part-of      kb:research-run ;
+               hnav:order         4 ;
+               kpred:has-status   "planned" ;
+               kpred:description  "Diff the research graph against what phase 1 found: what is NEW, what CORROBORATES an existing statement from a second source, what CONFLICTS. The engine exists — wf-compare categorises Add/Reinforce/Conflict/Merge/Remove — so this is wiring, not invention." ;
+               kpred:principle    "A CONFLICT IS THE MOST VALUABLE THING A RUN CAN RETURN. Fifty corroborating facts change nothing you believed. One source contradicting a statement you have been relying on is the finding worth the whole run, and it must be surfaced first rather than buried in a list sorted by confidence." .
+
+kb:rr-decide rdf:type          ktype:Phase ;
+               rdfs:label         "Phase 5 — keep, merge, or discard" ;
+               kpred:part-of      kb:research-run ;
+               hnav:order         5 ;
+               kpred:has-status   "planned" ;
+               kpred:description  "Merge routes through cross-KB alignment (F16): computeAlignment() matches entities by IRI and embedding, applyAlignmentToActiveKb() applies the accepted matches. That path is SHIPPED, which is why this feature is mostly orchestration rather than new machinery. Discard deletes the graph and keeps the run record, so a question already asked and answered unhelpfully is not asked again." .
+
+kb:facebook-personal-feed rdf:type ktype:Concept ;
+               rdfs:label         "Watching a personal Facebook feed — settled: not possible" ;
+               kpred:relates-to   kb:currents ;
+               kpred:note         "Belongs under kb:announcement-channels, which arrives with PR #204. Attached to kb:currents until that merges rather than asserting an edge that does not resolve — a dangling reference is how a graph starts lying quietly." ;
+               kpred:honest-note  "ASKED AND ANSWERED, 2026-08-26. Reading your OWN News Feed by API is not gated behind approval — it was REMOVED. The /me/home edge was retired on 2015-10-06 and the read_stream permission that once served it has not existed for a decade. There is no modern equivalent and no review process that restores it." ;
+               kpred:honest-note  "user_posts DOES NOT HELP. It grants what YOU posted, not what you SEE — the opposite of what catching a community announcement requires. Combined with the Groups API removal (2024-04-22) and Page Public Content Access needing App Review, every route to reading other people's Facebook posts is closed to a personal project." ;
+               kpred:decided      "SKIP FACEBOOK. Matt (2026-08-26): 'Facebook may need to be skipped if its too difficult.' It is not difficult, it is closed, which is a better reason to stop. Effort moves to channels that publish: scripts/offline/find-feed.ts checks any site for a feed including unlinked conventional paths, and an IMAP capture kind remains the highest-value next channel." .
+
+kb:find-feed rdf:type          ktype:Feature ;
+               rdfs:label         "Feed discovery — can this site be watched at all?" ;
+               kpred:feature-id   "F29.6" ;
+               kpred:has-status   "functional" ;
+               kpred:part-of      kb:currents ;
+               kpred:note         "Belongs under kb:announcement-channels, which arrives with PR #204." ;
+               kpred:tested-by    "scripts/offline/__tests__/find-feed.test.ts" ;
+               kpred:has-file     "scripts/offline/find-feed.ts" ;
+               kpred:description  "Given a URL, reports whether it publishes RSS, Atom or Turtle — checking both the links the page declares and the conventional paths nothing links to (/feed, /rss.xml, ?format=rss, /RSSFeed.aspx for municipal CMSs). Script tier: every question is a rule, so it costs zero tokens and cannot invent a feed." ;
+               kpred:evidence     "SITES PUBLISH FEEDS WITHOUT ADVERTISING THEM. WordPress serves /feed on every install; a human checking by eye concludes 'no feed' and reaches for a scraper. The classifier also accepts a feed served with the wrong content-type, which municipal CMSs do constantly — trusting the header would report no feed on a site that has one." ;
+               kpred:decided      "A NEGATIVE IS A REAL ANSWER. When nothing is found the script says so plainly and points at email, rather than implying the user should try harder against a site that does not want to be read." .
