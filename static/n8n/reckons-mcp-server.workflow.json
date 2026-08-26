@@ -1,0 +1,91 @@
+{
+  "name": "Reckons — MCP Server (capture)",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Exposes Reckons.AI capture as an MCP server on your n8n, so any MCP client — a phone app, a note-taking ring's companion app, another agent — can drop a note into your graph without ever reaching your laptop."
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## What this is\n\n```\nPhone/ring app ──MCP──▶ n8n (your VPS)\n                            │ tool: capture_note\n                            ▼\n                  /webhook/reckons-note\n                            │\n                            ▼\n                     Google Drive\n                            │\n        Reckons.AI ◀──poll──┘\n```\n\nThe MCP client never talks to your machine. It calls a **tool**; n8n does the work; Reckons.AI pulls.\n\n## Setup order matters\n\n1. Deploy and configure **Reckons — iOS Note Capture** FIRST. This workflow calls its webhook; without it, `capture_note` returns a 404 and the MCP client reports success anyway.\n2. Set `CAPTURE_WEBHOOK_URL` on the capture_note node to that workflow's production URL.\n3. Set **Bearer auth** on the trigger below and give the token to the app.\n4. Activate. The production MCP URL appears on the trigger node.\n\n## Why a separate workflow\n\nThe MCP trigger only connects to tool nodes — it cannot contain the capture logic itself. Pointing the tool at the existing webhook also means the capture path stays ONE tested implementation, rather than a second copy that drifts.",
+        "height": 660,
+        "width": 460
+      },
+      "id": "sticky-what",
+      "name": "Read me first",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-480, 0]
+    },
+    {
+      "parameters": {
+        "content": "## Bearer auth is not optional\n\nThis endpoint is on the public internet and its tool WRITES into your knowledge graph. Anyone holding the URL and no token should get nothing.\n\n## Notes arrive PENDING\n\nThe capture webhook writes rows the app imports as **pending facts**, never confirmed ones. That is deliberate and it matters more here than anywhere else in the product: the writer is a speech-to-text transcript on the far side of the internet, which is exactly where a misheard name becomes a confident triple.\n\nAn MCP tool that could confirm facts directly would be a remote write path into an authoritative graph. This one cannot.",
+        "height": 420,
+        "width": 400
+      },
+      "id": "sticky-safety",
+      "name": "Safety",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [40, 420]
+    },
+    {
+      "parameters": {
+        "path": "reckons-capture",
+        "authentication": "bearerAuth"
+      },
+      "id": "mcp-trigger",
+      "name": "MCP Server Trigger",
+      "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+      "typeVersion": 2.1,
+      "position": [80, 200],
+      "webhookId": "reckons-capture"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Capture a short note into the user's Reckons.AI knowledge graph. Use this for anything the user says they want to remember, ask about later, or follow up on — a task, an observation, a name, a deadline. Pass the note EXACTLY as the user said it. Do not summarise, rephrase, expand abbreviations, or correct what sounds like a mistake: the wording is the record, and interpreting it is a separate step a human reviews. Returns confirmation that the note was queued.",
+        "method": "POST",
+        "url": "PUT-YOUR-CAPTURE-WEBHOOK-URL-HERE",
+        "sendBody": true,
+        "specifyBody": "model",
+        "parametersBody": {
+          "values": [
+            {
+              "name": "text",
+              "valueProvider": "modelRequired",
+              "description": "The note, verbatim as the user said it."
+            },
+            {
+              "name": "capturedAt",
+              "valueProvider": "modelOptional",
+              "description": "ISO 8601 timestamp of when the user said it, if known. Omit if unsure — the server will stamp it."
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "Authorization",
+              "valueProvider": "fieldValue",
+              "value": "Bearer PUT-YOUR-CAPTURE-WEBHOOK-TOKEN-HERE"
+            }
+          ]
+        }
+      },
+      "id": "tool-capture",
+      "name": "capture_note",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [420, 200]
+    }
+  ],
+  "connections": {
+    "capture_note": {
+      "ai_tool": [[{ "node": "MCP Server Trigger", "type": "ai_tool", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

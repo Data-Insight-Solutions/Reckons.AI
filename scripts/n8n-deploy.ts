@@ -66,7 +66,11 @@ export function unsetPlaceholders(wf: WorkflowFile): string[] {
   const found: string[] = [];
   const walk = (v: unknown, path: string): void => {
     if (typeof v === 'string') {
-      if (/^PUT-[A-Z-]+-HERE$/.test(v)) found.push(`${path} = ${v}`);
+      // Matched ANYWHERE in the string, not anchored to it. A placeholder is routinely embedded
+      // in a larger value — "Bearer PUT-YOUR-TOKEN-HERE" is the common one — and an anchored
+      // test silently passes exactly the half-configured deploy this check exists to catch.
+      const m = v.match(/PUT-[A-Z][A-Z-]*-HERE/);
+      if (m) found.push(`${path} = ${m[0]}`);
       return;
     }
     if (Array.isArray(v)) { v.forEach((x, i) => walk(x, `${path}[${i}]`)); return; }

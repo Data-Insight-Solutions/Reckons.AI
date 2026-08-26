@@ -85,6 +85,24 @@ describe('unsetPlaceholders', () => {
     expect(unsetPlaceholders(wf)).toHaveLength(1);
   });
 
+  it('finds a placeholder EMBEDDED in a larger value', () => {
+    // The miss this was written for: an auth header is "Bearer PUT-...-HERE", so an anchored
+    // ^...$ match passes it and the deploy proceeds with an unusable credential. Caught when
+    // the MCP server workflow's token placeholder went unreported.
+    const wf: WorkflowFile = {
+      nodes: [{ name: 'n', type: 't', ...({ parameters: { h: 'Bearer PUT-YOUR-TOKEN-HERE' } } as object) }],
+    };
+    expect(unsetPlaceholders(wf)).toHaveLength(1);
+    expect(unsetPlaceholders(wf)[0]).toContain('PUT-YOUR-TOKEN-HERE');
+  });
+
+  it('reports both placeholders in the shipped MCP server workflow', () => {
+    const found = unsetPlaceholders(load('reckons-mcp-server.workflow.json'));
+    expect(found).toHaveLength(2);
+    expect(found.join(' ')).toContain('PUT-YOUR-CAPTURE-WEBHOOK-URL-HERE');
+    expect(found.join(' ')).toContain('PUT-YOUR-CAPTURE-WEBHOOK-TOKEN-HERE');
+  });
+
   it('does not flag ordinary text that merely shouts', () => {
     const wf: WorkflowFile = {
       nodes: [{ name: 'n', type: 't', ...({ parameters: { note: 'PUT THE KETTLE ON' } } as object) }],
