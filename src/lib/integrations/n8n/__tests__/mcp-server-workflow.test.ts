@@ -24,10 +24,14 @@ const node = (name: string): Node => {
 };
 
 describe('MCP server workflow — node identity', () => {
-  it('uses the real MCP trigger type and a supported version', () => {
+  it('pins a typeVersion the OLDEST supported n8n can actually run', () => {
+    // Not the newest available, deliberately. mcpTrigger 2.1 exists in langchain 2.36.x but
+    // NOT in 2.23.0, which ships with n8n 2.23.x — and the public API stores whatever JSON you
+    // send without validating node versions, so a too-new version deploys "successfully" and
+    // then fails at activation on the instance. Shipping 2 works on both.
     const t = node('MCP Server Trigger');
     expect(t.type).toBe('@n8n/n8n-nodes-langchain.mcpTrigger');
-    expect([1, 1.1, 2, 2.1]).toContain(t.typeVersion);
+    expect(t.typeVersion).toBe(2);
   });
 
   it('uses the real HTTP tool type and a supported version', () => {
