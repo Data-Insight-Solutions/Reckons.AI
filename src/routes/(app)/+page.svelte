@@ -29,6 +29,7 @@
     hotSwapData
   } from '$lib/stores/kb.svelte';
   import { termKey, type Statement, type Source } from '$lib/rdf/types';
+  import { SKOS_ALT_LABEL, buildAliasStatements, entityAnswersTo } from '$lib/rdf/merge-aliases';
   import MergeReview from '$lib/components/MergeReview.svelte';
   import { allTypes } from '$lib/stores/entity-types.svelte';
   import {
@@ -1569,6 +1570,54 @@
     editingLabel = false;
   }
 
+  // ── Synonyms on this node (kb:node-synonyms, F104 phase 2) ────────────────
+  //
+  // "PUT THE VOCABULARY WHERE THE USER ALREADY IS" — a synonym added while looking at the node
+  // costs nothing; the same synonym added in a separate taxonomy manager costs a context
+  // switch and will therefore not be added. So aliases live beside the label, not in a new
+  // surface. skos:altLabel rather than a bespoke predicate: the graph is already SKOS, and
+  // this round-trips to any other SKOS tool for free.
+  let aliasDraft = $state('');
+  let addingAlias = $state(false);
+
+  const nodeAliases = $derived.by(() => {
+    if (!selected) return [] as Statement[];
+    const iri = selected.startsWith('i:') ? selected.slice(2) : selected;
+    return statements().filter(
+      s => s.s.kind === 'iri' && s.s.value === iri && s.p.value === SKOS_ALT_LABEL &&
+           s.o.kind === 'literal' && s.status !== 'rejected' && s.status !== 'superseded'
+    );
+  });
+
+  async function addAlias() {
+    const value = aliasDraft.trim();
+    if (!selected || !value) { addingAlias = false; aliasDraft = ''; return; }
+    const entityIri = selected.startsWith('i:') ? selected.slice(2) : selected;
+    // An alias the entity already answers to is not a new name. entityAnswersTo covers the
+    // primary label too, so "add the name it is already called" is a no-op rather than a
+    // duplicate row.
+    if (entityAnswersTo(entityIri, value, statements())) { addingAlias = false; aliasDraft = ''; return; }
+    const { v4: uuid } = await import('uuid');
+    // Confirmed, not pending: the user typed it while looking at the node. That IS the review.
+    await addStatements(buildAliasStatements(
+      entityIri,
+      [value],
+      { g: { kind: 'iri', value: 'urn:kbase:source/manual' }, sourceId: 'manual' },
+      uuid,
+    ));
+    aliasDraft = '';
+    addingAlias = false;
+  }
+
+  function onAliasKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter') { e.preventDefault(); addAlias(); }
+    if (e.key === 'Escape') { aliasDraft = ''; addingAlias = false; }
+  }
+
+  // Rejected, not deleted: an alias is a fact, and the graph keeps what it was told even when
+  // a human disagrees with it. It stops matching search and stops showing here.
+  const removeAlias = (id: string) => setStatus(id, 'rejected');
+
   function onLabelKeydown(e: KeyboardEvent) {
     if (e.key === 'Enter') { e.preventDefault(); saveLabel(); }
     if (e.key === 'Escape') { editingLabel = false; }
@@ -2414,6 +2463,31 @@
     </div>
     {/snippet}
     <div class="np-body">
+      <!-- Also known as — every other name this node answers to -->
+      <div class="np-aliases">
+        <p class="np-conn-title mono">also known as</p>
+        <div class="np-alias-list">
+          {#each nodeAliases as alias (alias.id)}
+            <span class="np-alias-chip mono" class:np-alias-pending={alias.status === 'pending'}>
+              {alias.o.kind === 'literal' ? alias.o.value : ''}
+              {#if alias.status === 'pending'}<span class="np-alias-flag" title="proposed by normalisation — confirm in review">?</span>{/if}
+              <button class="np-alias-x" title="remove this name" onclick={() => removeAlias(alias.id)}>×</button>
+            </span>
+          {/each}
+          {#if addingAlias}
+            <input
+              class="np-alias-input mono"
+              bind:value={aliasDraft}
+              onkeydown={onAliasKeydown}
+              onblur={addAlias}
+              placeholder="another name…"
+              use:focusOnMount
+            />
+          {:else}
+            <button class="np-alias-add mono" onclick={() => (addingAlias = true)} title="add another name for this node">+ name</button>
+          {/if}
+        </div>
+      </div>
 
     <!-- Pod arrival actions (F29.3) — shown when pod view is on and this node hasn't been accepted yet -->
     {#if podMode && selectedIsArrival && !selected?.startsWith('src:')}
@@ -3478,6 +3552,66 @@
     flex-direction: column;
     gap: 0.2rem;
   }
+  /* ── Synonyms (kb:node-synonyms) ─────────────────────────────────────── */
+  .np-aliases {
+    margin-bottom: 0.6rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .np-alias-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    align-items: center;
+  }
+  .np-alias-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.62rem;
+    padding: 0.12rem 0.3rem 0.12rem 0.4rem;
+    border: 1px solid var(--border);
+    border-radius: 0.7rem;
+    color: var(--fg);
+    background: var(--surface);
+  }
+  /* A pending alias was PROPOSED by normalisation, not agreed to by anyone. It has to look
+     different from a name the user typed, or the panel would launder a guess into a fact. */
+  .np-alias-pending {
+    border-style: dashed;
+    color: var(--muted);
+  }
+  .np-alias-flag {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .np-alias-x,
+  .np-alias-add {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--muted);
+    padding: 0;
+    line-height: 1;
+  }
+  .np-alias-x:hover { color: var(--accent); }
+  .np-alias-add {
+    font-size: 0.62rem;
+    padding: 0.12rem 0.4rem;
+    border: 1px dashed var(--border);
+    border-radius: 0.7rem;
+  }
+  .np-alias-add:hover { color: var(--accent); border-color: var(--accent); }
+  .np-alias-input {
+    font-size: 0.62rem;
+    padding: 0.12rem 0.4rem;
+    border: 1px solid var(--accent);
+    border-radius: 0.7rem;
+    background: var(--surface);
+    color: var(--fg);
+    min-width: 8rem;
+  }
+
   .np-conn-title {
     font-size: 0.58rem;
     text-transform: uppercase;

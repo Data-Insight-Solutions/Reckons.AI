@@ -1,0 +1,142 @@
+{
+  "note": "Golden set for tests/bench/run-synonym-search-bench.ts. Every subject is a real entity in static/*.ttl and every alias is a name this project genuinely uses for it \u2014 NOT invented to make the benchmark pass. Queries are deliberately HARD: they use the alias and avoid the entity's own label and slug tokens, because a query that leaks the real name measures nothing about synonyms. An earlier, looser set scored 100% hit@10 with expansion OFF and proved only that the corpus is well connected.",
+  "grounding": "F104 measured two causes of kb_search failure on 2026-07-19. Coverage is fixed (23 KBs indexed). This set exercises the second: 'BM25 indexes subjectSlug + predicateSlug + object with no expansion, so a synonym gap is fatal'. The cited example \u2014 'group nodes into a set' vs 'group the queue into one decision' \u2014 is the first row.",
+  "aliases": [
+    {
+      "subject": "urn:kbase:concept/entity-sets",
+      "values": [
+        "group",
+        "grouping",
+        "batch",
+        "collection"
+      ]
+    },
+    {
+      "subject": "urn:kbase:concept/knowledge-graph",
+      "values": [
+        "knowledge base",
+        "KB"
+      ]
+    },
+    {
+      "subject": "urn:kbase:concept/mcp-server",
+      "values": [
+        "Model Context Protocol server"
+      ]
+    },
+    {
+      "subject": "urn:kbase:concept/graph-publishing",
+      "values": [
+        "docs site",
+        "static site publishing"
+      ]
+    },
+    {
+      "subject": "urn:kbase:concept/cross-kb-alignment",
+      "values": [
+        "align graphs",
+        "cross-KB alignment"
+      ]
+    },
+    {
+      "subject": "urn:kbase:concept/comparison-view",
+      "values": [
+        "diff view",
+        "semantic diff"
+      ]
+    },
+    {
+      "subject": "urn:kbase:concept/browser-extension",
+      "values": [
+        "web extension",
+        "Chrome extension"
+      ]
+    },
+    {
+      "subject": "urn:kbase:concept/model-training",
+      "values": [
+        "fine-tuning",
+        "LoRA"
+      ]
+    }
+  ],
+  "queries": [
+    {
+      "query": "batch grouping",
+      "expect": "urn:kbase:concept/entity-sets"
+    },
+    {
+      "query": "collection of nodes",
+      "expect": "urn:kbase:concept/entity-sets"
+    },
+    {
+      "query": "KB",
+      "expect": "urn:kbase:concept/knowledge-graph"
+    },
+    {
+      "query": "Model Context Protocol",
+      "expect": "urn:kbase:concept/mcp-server"
+    },
+    {
+      "query": "static site",
+      "expect": "urn:kbase:concept/graph-publishing"
+    },
+    {
+      "query": "docs site",
+      "expect": "urn:kbase:concept/graph-publishing"
+    },
+    {
+      "query": "cross-KB alignment",
+      "expect": "urn:kbase:concept/cross-kb-alignment"
+    },
+    {
+      "query": "diff view",
+      "expect": "urn:kbase:concept/comparison-view"
+    },
+    {
+      "query": "web extension",
+      "expect": "urn:kbase:concept/browser-extension"
+    },
+    {
+      "query": "Chrome extension",
+      "expect": "urn:kbase:concept/browser-extension"
+    },
+    {
+      "query": "LoRA",
+      "expect": "urn:kbase:concept/model-training"
+    },
+    {
+      "query": "fine-tuning",
+      "expect": "urn:kbase:concept/model-training"
+    }
+  ],
+  "control": {
+    "note": "Queries that must keep working unchanged. If expansion drags these off their target, recall was bought at the cost of the searches that already worked.",
+    "queries": [
+      {
+        "query": "entity sets multi-entity groupings",
+        "expect": "urn:kbase:concept/entity-sets"
+      },
+      {
+        "query": "MCP server",
+        "expect": "urn:kbase:concept/mcp-server"
+      },
+      {
+        "query": "browser extension",
+        "expect": "urn:kbase:concept/browser-extension"
+      },
+      {
+        "query": "comparison view",
+        "expect": "urn:kbase:concept/comparison-view"
+      },
+      {
+        "query": "model training",
+        "expect": "urn:kbase:concept/model-training"
+      },
+      {
+        "query": "graph publishing",
+        "expect": "urn:kbase:concept/graph-publishing"
+      }
+    ]
+  }
+}
