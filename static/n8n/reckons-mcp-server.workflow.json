@@ -56,7 +56,7 @@
         "method": "POST",
         "url": "PUT-YOUR-CAPTURE-WEBHOOK-URL-HERE",
         "sendBody": true,
-        "specifyBody": "model",
+        "specifyBody": "keypair",
         "parametersBody": {
           "values": [
             {

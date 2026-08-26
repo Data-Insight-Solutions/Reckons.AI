@@ -77,6 +77,37 @@ describe('iOS capture — the newline injection guard', () => {
   });
 });
 
+describe('iOS capture — accepts both callers', () => {
+  it('reads {text} from an iOS Shortcut', () => {
+    expect(JSON.parse(buildRow({ text: 'stall fees' }).line).object).toBe('stall fees');
+  });
+
+  it('reads {input} from the MCP tool', () => {
+    // n8n's MCP Server Trigger presents every tool as a single freeform `input`, whatever
+    // parameter schema the tool node declares — confirmed against a live tools/list. Reading
+    // only `text` meant every MCP-captured note arrived empty and was dropped, while the
+    // client was told it succeeded.
+    expect(JSON.parse(buildRow({ input: 'stall fees' }).line).object).toBe('stall fees');
+  });
+
+  it('unwraps a JSON object the model stuffed into input', () => {
+    const out = buildRow({ input: '{"text":"stall fees","capturedAt":"2026-08-26T08:41:00.000Z"}' });
+    expect(JSON.parse(out.line).object).toBe('stall fees');
+  });
+
+  it('treats a non-JSON brace-leading string as the note itself', () => {
+    expect(JSON.parse(buildRow({ input: '{not json but spoken' }).line).object).toBe('{not json but spoken');
+  });
+
+  it('prefers text when both arrive', () => {
+    expect(JSON.parse(buildRow({ text: 'real', input: 'wrapper' }).line).object).toBe('real');
+  });
+
+  it('still skips when neither carries anything', () => {
+    expect(buildRow({ input: '   ' }).skip).toBe(true);
+  });
+});
+
 describe('iOS capture — row shape', () => {
   it('targets the configured graph, or the app would retain the row unimported', () => {
     const out = buildRow({ text: 'stall fees' });
