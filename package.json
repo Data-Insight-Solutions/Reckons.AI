@@ -91,6 +91,7 @@
     "bench:ollama:save": "npx tsx tests/bench/run-ollama-bench.ts --save",
     "bench:ollama:list": "npx tsx tests/bench/run-ollama-bench.ts --list",
     "bench:predicates": "npx tsx tests/bench/run-predicate-vocab-bench.ts",
+    "find-feed": "npx tsx scripts/offline/find-feed.ts",
     "bench:predicates:save": "npx tsx tests/bench/run-predicate-vocab-bench.ts --ollama --save",
     "bench:predicates:pairs": "npx tsx tests/bench/run-predicate-vocab-bench.ts --pairs",
     "test:local": "bash tests/bench/run-local-suite.sh",
