@@ -5435,3 +5435,41 @@ kb:perf-crawl rdf:type ktype:Feature ;
     kpred:remaining "Expose the force simulation's velocities behind a dev-only window hook, so convergence is read from the simulation rather than proxied through pixels." ;
     kpred:remaining "Add latency assertions to the existing e2e suite, replacing presence-only checks, so a slow render fails instead of passing quietly." ;
     kpred:acceptance "The script aborts with a non-zero exit when the renderer is SwiftShader; a route whose usable-selector matches nothing is reported as a harness error and not counted as a page failure; the ladder reports a settle time or an explicit never-settled for each rung." .
+
+# ==============================================================================
+# Voice capture from a phone — 2026-08-26
+# ==============================================================================
+
+kb:ios-note-capture rdf:type   ktype:Feature ;
+               rdfs:label         "iOS voice note capture via n8n" ;
+               kpred:feature-id   "F142" ;
+               kpred:has-status   "functional" ;
+               kpred:part-of      kb:currents ;
+               kpred:note         "Sibling of kb:tasks-current (Google Tasks capture), which arrives with PR #204. Not linked as an edge until that merges — a dangling reference is how a graph starts lying quietly." ;
+               kpred:tested-by    "src/lib/integrations/n8n/__tests__/ios-note-workflow.test.ts" ;
+               kpred:tested-by    "src/lib/stores/__tests__/workspace-poll-drain.test.ts" ;
+               kpred:description  "An iOS Shortcut POSTs a dictated note to an n8n webhook, which appends it to knowledge.pending.jsonl in the Google Drive workspace folder. Reckons.AI's existing folder poll picks it up and it lands in the review queue. Ships as static/n8n/ios-note-capture.workflow.json." ;
+               kpred:decided      "PULL, NEVER PUSH — AND THERE IS NOTHING TO EXPOSE. Matt (2026-08-26): 'I do not really want to expose my local server directly.' There is no local server: the app is adapter-static, so it is files in a browser. Every connection is outbound already, and no inbound path exists to close. n8n is the intermediary for a different reason than the one that prompted it." ;
+               kpred:decided      "THE BUFFER IS REQUIRED, AND n8n ALREADY IS ONE. A note dictated at 08:41 with the laptop shut has to live somewhere until the app next runs. That is the whole job of the intermediate storage — not a design nicety but the difference between a captured note and a lost one." ;
+               kpred:constraint   "A FOLDER CANNOT WAKE A CLOSED TAB. The poll runs only while the app is open, so notes accumulate in Drive and arrive when it is next opened. This is the honest limit of a local-first browser app and must not be described as background sync. True background capture needs a process, not a tab — the reckons CLI is the candidate, cron-able because it is Node rather than a browser." ;
+               kpred:constraint   "THE WEBHOOK IS ON THE OPEN INTERNET. Header Auth on the trigger node is not optional, and the row builder is a trust boundary: knowledge.pending.jsonl is newline-delimited, so a dictated note containing a newline would end its row early and let the remainder parse as a SECOND row — a fact nobody said, arriving in review looking exactly like one that was. Rows are built with JSON.stringify and the node refuses to emit a line containing a raw newline. This is the JSONL twin of the CR/LF header injection kb:contact-form guards against." ;
+               kpred:known-issue  "APPEND IS A READ-MODIFY-WRITE AND RACES. Two notes arriving within the same second can have the second read miss the first write, losing a note. Left as a stated limit rather than papered over: dictation is human-paced, and the honest mitigation is n8n's own workflow concurrency setting, not a lock invented in a Code node." ;
+               kpred:remaining    "A Drive-side append that is atomic; the same flow for Android; and deciding whether captures should route through kb:currents instead of the pending queue once kb:currents-client-unwired is fixed." .
+
+kb:poll-drains-pending rdf:type ktype:Feature ;
+               rdfs:label         "The folder poll drains pending, not just TTL" ;
+               kpred:feature-id   "F142.1" ;
+               kpred:has-status   "functional" ;
+               kpred:part-of      kb:ios-note-capture ;
+               kpred:tested-by    "src/lib/stores/__tests__/workspace-poll-drain.test.ts" ;
+               kpred:description  "startWorkspacePolling's tick now runs pullFromWorkspace AND drainAndImportPending, sequenced, with errors caught so a failed cycle cannot kill the timer." ;
+               kpred:evidence     "THE CAPTURE FEATURE DID NOT WORK WITH THE APP OPEN. pullFromWorkspace reads kbs/*.ttl and nothing else, so a row appended to knowledge.pending.jsonl by anything outside the browser — an agent, a scheduled job, an n8n workflow relaying a dictated note — arrived only on app RELOAD or when /review was opened by hand. Leave the app open on the graph view and the note never appeared, which is indistinguishable from the capture having failed. Every capture path in this session depended on a drain that only fired on navigation." ;
+               kpred:fixed        "drainAndImportPending had no concurrency guard. It reads the pending file, decides what it can safely take, and writes the remainder back — so two overlapping runs each compute a remainder without the other, importing a row twice or dropping a row nobody imported. The app-load and /review callers could never collide; a 10-second timer collides with a slow IndexedDB write easily. Callers now share one in-flight promise, and the guard is released even when the drain throws — a stuck guard would wedge the pipeline permanently and lose every later note in silence." .
+
+kb:currents-client-unwired rdf:type ktype:Concept ;
+               rdfs:label         "The n8n currents client has no caller" ;
+               kpred:relates-to   kb:currents ;
+               kpred:relates-to   kb:ios-note-capture ;
+               kpred:honest-note  "FOUND 2026-08-26, NOT FIXED. registerCurrent(), fetchCurrentItems() and processArrivals() in src/lib/integrations/n8n/currents-sync.ts are referenced ONLY by their own test file. Nothing in the app calls them, so despite F29.2 being recorded as shipped, THE APP DOES NOT WATCH n8n. The client is real, tested and untethered." ;
+               kpred:honest-note  "THIS CHANGES WHAT 'CURRENTS' MEANS TODAY. A current registered in settings is persisted to the graph and displayed, and the n8n monitor may well be collecting items — but nothing pulls them into the browser. The folder path (kb:ios-note-capture) works precisely because it rides the workspace poll, which IS wired. Anyone reasoning about capture should route through the folder until this is closed." ;
+               kpred:remaining    "Wire fetchCurrentItems into a poll alongside the workspace one, with the same error containment; decide whether arrivals land per-current or in one sweep; and re-check F29.2's status against reality once it does." .
