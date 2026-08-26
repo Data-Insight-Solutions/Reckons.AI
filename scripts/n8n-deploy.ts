@@ -27,7 +27,27 @@
  *   npx tsx scripts/n8n-deploy.ts --list              # what is already on the instance
  */
 
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
+
+/**
+ * Minimal .env reader, matching scripts/offline/indico-verify.ts — the repo has no dotenv
+ * dependency and does not need one.
+ *
+ * Without this, putting N8N_API_URL in .env accomplishes NOTHING: tsx does not load .env, so
+ * the script sees an unset variable and tells you to set one you already set. Existing
+ * process.env always wins, so an inline override on the command line still works.
+ */
+function loadDotEnv(file = '.env'): void {
+  if (!existsSync(file)) return;
+  for (const line of readFileSync(file, 'utf8').split('\n')) {
+    if (line.trimStart().startsWith('#')) continue;
+    const m = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/.exec(line);
+    if (!m) continue;
+    if (process.env[m[1]] !== undefined) continue;
+    process.env[m[1]] = m[2].replace(/^(['"])(.*)\1$/, '$2');
+  }
+}
+loadDotEnv();
 
 /** The only keys POST /workflows accepts. Everything else is read-only and 400s. */
 const CREATE_FIELDS = ['name', 'nodes', 'connections', 'settings'] as const;
