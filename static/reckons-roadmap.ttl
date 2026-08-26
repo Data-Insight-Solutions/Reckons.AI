@@ -5435,3 +5435,43 @@ kb:perf-crawl rdf:type ktype:Feature ;
     kpred:remaining "Expose the force simulation's velocities behind a dev-only window hook, so convergence is read from the simulation rather than proxied through pixels." ;
     kpred:remaining "Add latency assertions to the existing e2e suite, replacing presence-only checks, so a slow render fails instead of passing quietly." ;
     kpred:acceptance "The script aborts with a non-zero exit when the renderer is SwiftShader; a route whose usable-selector matches nothing is reported as a harness error and not counted as a page failure; the ladder reports a settle time or an explicit never-settled for each rung." .
+
+# ==============================================================================
+# Capture currents + personal workspace separation — 2026-08-26
+# ==============================================================================
+
+kb:tasks-current rdf:type      ktype:Feature ;
+               rdfs:label         "Google Tasks capture current" ;
+               kpred:feature-id   "F29.4" ;
+               kpred:has-status   "functional" ;
+               kpred:part-of      kb:currents ;
+               kpred:relates-to   kb:personal-workspace ;
+               kpred:tested-by    "src/lib/integrations/n8n/__tests__/google-tasks-workflow.test.ts" ;
+               kpred:tested-by    "src/lib/rdf/__tests__/currents-tasks-kind.test.ts" ;
+               kpred:description  "A fourth CurrentKind, 'tasks', for quick capture rather than publication: a note dictated into a phone or a note-taking ring lands in Google Tasks, and the n8n Currents Monitor polls it into reckons_currents_items where fetchCurrentItems() already reads. Ships as an importable workflow, static/n8n/google-tasks-current.workflow.json." ;
+               kpred:constraint   "GOOGLE TASKS CANNOT BE WATCHED, ONLY POLLED. The Tasks API exposes eight methods on the tasks resource and NONE of them is `watch` — there is no push channel of any kind, where Calendar and Gmail both have one, and n8n ships a Google Tasks action node but no trigger node. So capture freshness is bounded by the cadence, and nothing in the design can improve on that. tasks.list does accept updatedMin (RFC 3339), which at least keeps each poll cheap." ;
+               kpred:decided      "LOSING A NOTE IS UNRECOVERABLE; SEEING ONE TWICE IS FREE. The poll window reaches back two minutes further than the last run, because task `updated` timestamps are server-side and a run can straddle a write. Re-fetching is safe: buildArrivalStatements mints deterministic ids, so a task arriving twice updates rather than duplicates. The watermark is staged before the fetch and committed only after the write, so a failed run re-covers its window instead of stepping over it." ;
+               kpred:decided      "THE TRANSCRIPT IS THE FACT; THE READING IS NOT. The workflow carries the task title verbatim and interprets nothing. Arrivals are already `pending` (buildArrivalStatements), which matters more than usual here because the input is speech-to-text captured one-handed — the exact place a misheard proper noun becomes a confidently wrong triple. Capture automatically, gate the reading." ;
+               kpred:remaining    "iOS Quick Note via Shortcuts POSTing to the same table under a different slug — Apple Notes has no third-party read API, so a shortcut is the supported route rather than a workaround. An IMAP/email capture kind. No browser fallback is planned: fetchCurrentDirect refuses a tasks current by design, because it holds no OAuth credential." .
+
+kb:personal-workspace rdf:type ktype:Feature ;
+               rdfs:label         "Personal workspace separation" ;
+               kpred:feature-id   "F29.5" ;
+               kpred:has-status   "functional" ;
+               kpred:relates-to   kb:tasks-current ;
+               kpred:description  "reckons-workspace/kbs/** is gitignored entirely — personal graphs (notes, grants, household) are the user's data and never enter the repository. Example graphs ship from static/examples/ instead and are COPIED in by scripts/setup-reckons-workspace.sh, so a fresh clone gets a worked example without a personal graph ever becoming tracked." ;
+               kpred:principle    "PERSONAL DATA IS NOT SOURCE, AND THE STAKES ARE DEPLOYMENT. Production deploys from main on every push, so anything tracked is anything published. A personal notes graph in the repository is a personal notes graph on the internet." ;
+               kpred:decided      "COPY, NEVER SYMLINK. Every other workspace graph is symlinked to static/ because it is the project describing itself — edit the graph, edit the repo. Examples are starting points for the user's own data, so a symlink would make the first edit to a personal notes graph a modification of a tracked file. That is precisely the confusion the separation exists to prevent." ;
+               kpred:fixed        "The .gitignore block claimed 'the demo/starter fixtures already tracked under kbs/ stay tracked and versioned as before'. They were not: git ls-files reckons-workspace/kbs/ returned ZERO. A fresh clone got an empty workspace and no worked example of what a personal graph looks like." ;
+               kpred:fixed        "F104's COVERAGE FIX WAS NEVER IN THE SCRIPT. setup-reckons-workspace.sh linked six hand-picked graphs into mcp-workspace while the working workspace had 23 — repaired by hand at some point and never written down. Every fresh clone silently recreated the exact bug F104 measured (kb_search blind to reckons-shipped.ttl, so a search for completed work returns nothing and invites a rebuild). The script now derives the link set from static/*.ttl with four documented exclusions, so a NEW graph is covered the day it is added rather than the day somebody remembers this file. graph-lint's mcp-invisible warnings went 18 to 3, the 3 being the exclusions." .
+
+kb:announcement-channels rdf:type ktype:Concept ;
+               rdfs:label         "Watching community announcement channels" ;
+               kpred:relates-to   kb:currents ;
+               kpred:description  "The 'we missed the soccer signups' problem: a time-critical local notice announced once, in one channel, seen by nobody who needed it." ;
+               kpred:principle    "THIS IS A COVERAGE PROBLEM, NOT A SCRAPING PROBLEM. A deadline missed because it was announced in one place is fixed by watching more channels, not by defeating the one channel that is hardest to watch." ;
+               kpred:honest-note  "FACEBOOK GROUPS ARE NOT WATCHABLE. Meta removed the Groups API on 2024-04-22 — all third-party read access, not merely posting. There is no API, no feed and no supported route. Tools claiming otherwise drive a logged-in browser session, which is against Facebook's terms and breaks whenever the markup changes." ;
+               kpred:honest-note  "FACEBOOK PAGES ARE WATCHABLE ONLY IF YOU ADMINISTER THE PAGE. With a Page access token and pages_read_engagement, /page/feed is readable. For a Page you do not administer this needs the Page Public Content Access feature, which requires Meta App Review and is not realistically granted to a personal project. Becoming an editor of the club's Page is a social fix that opens the technical one." ;
+               kpred:honest-note  "CURRENTS DOES NOT SCRAPE, AND SHOULD NOT START. fetchCurrentDirect parses RSS/Atom XML only. A 'url' current pointed at facebook.com returns a login wall — not a parse bug to fix but a refusal to respect." ;
+               kpred:decided      "WATCH THE CHANNELS THAT WANT TO BE READ. Club sites, council pages and school newsletters usually publish RSS or send email. A dedicated address subscribed to every relevant list, watched over IMAP, catches more real announcements than any Facebook workaround and keeps working next season." ;
+               kpred:remaining    "An 'email' current kind polling IMAP through n8n — the highest-value next capture channel, and the one most likely to have caught the signup notice." .

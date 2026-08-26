@@ -1,0 +1,31 @@
+@prefix kb:     <urn:kbase:concept/> .
+@prefix kpred:  <urn:kbase:predicate/> .
+@prefix ktype:  <urn:kbase:type/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+
+# ==============================================================================
+# EXAMPLE WORKSPACE GRAPHS — tracked in git, copied into your workspace on setup
+#
+# THE BOUNDARY THIS FILE EXISTS TO MAKE OBVIOUS:
+#
+#   static/examples/*.ttl        TRACKED. Shipped with the app. Edit these and it
+#                                is a code change, reviewed like any other.
+#
+#   reckons-workspace/kbs/**     IGNORED, entirely. This is YOUR graph data,
+#                                written by the app's folder sync. Nothing here
+#                                is ever committed, and that is deliberate: a
+#                                personal notes graph and a grants pipeline are
+#                                not source code and must not deploy with it.
+#
+# scripts/setup-reckons-workspace.sh COPIES these into the workspace if a graph
+# of that name is absent. A copy, never a symlink — a symlink would make your
+# first edit to a personal graph a modification of the repository, which is the
+# exact confusion this separation exists to prevent.
+# ==============================================================================
+
+kb:example-workspace rdf:type ktype:Concept ;
+    rdfs:label "Example workspace graphs" ;
+    kpred:description "Starter graphs demonstrating personal usage of Reckons.AI, separate from the project's own self-documenting graphs. Copied into reckons-workspace/kbs/ on setup, then yours to edit." ;
+    kpred:principle "AN EXAMPLE THAT SHIPS IS AN EXAMPLE THAT IS TESTED. Until 2026-08-26 nothing under reckons-workspace/kbs/ was tracked at all — the .gitignore comment claimed 'the demo/starter fixtures already tracked under kbs/ stay tracked', and `git ls-files` returned zero. A fresh clone got an empty workspace and no worked example of what a personal graph looks like." ;
+    kpred:principle "PERSONAL DATA IS NOT SOURCE. The separation is not a tidiness preference: production deploys from main on every push, so anything tracked is published. A personal notes graph in the repository is a personal notes graph on the internet." .

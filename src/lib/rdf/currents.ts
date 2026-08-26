@@ -34,7 +34,21 @@ export const CUR_ENABLED = `${CURRENTS_META_PREFIX}enabled`;
 const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 const TYPE_PREFIX = 'urn:kbase:type/';
 
-export type CurrentKind = 'rss' | 'url' | 'topic';
+/**
+ * What kind of source a current draws from.
+ *
+ * 'tasks' is CAPTURE rather than publication, and that is the only real difference: an rss or
+ * url current watches something the world published, while a tasks current watches something
+ * YOU said — dictated into a phone or a note-taking ring, landing in Google Tasks, and pulled
+ * by the n8n Currents Monitor (static/n8n/google-tasks-current.workflow.json).
+ *
+ * It exists as its own kind because Google Tasks CANNOT be watched the way the others can. The
+ * Tasks API has no `watch` method and no push channel of any sort — Calendar and Gmail have
+ * them, Tasks never got one — so the monitor polls tasks.list with `updatedMin` on a cadence
+ * instead of receiving a webhook. Naming the kind keeps that constraint visible at the point
+ * where somebody would otherwise wonder why the cadence matters here and not for an RSS feed.
+ */
+export type CurrentKind = 'rss' | 'url' | 'topic' | 'tasks';
 
 export interface CurrentDef {
   slug: string;
@@ -53,7 +67,7 @@ export interface CurrentsSettings {
   currents: CurrentDef[];
 }
 
-const KINDS = new Set<CurrentKind>(['rss', 'url', 'topic']);
+const KINDS = new Set<CurrentKind>(['rss', 'url', 'topic', 'tasks']);
 
 function isActive(s: Statement): boolean {
   return s.status !== 'rejected' && s.status !== 'superseded';

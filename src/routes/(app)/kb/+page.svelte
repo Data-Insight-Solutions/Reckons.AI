@@ -1482,6 +1482,7 @@
                 <option value="rss">rss</option>
                 <option value="url">url</option>
                 <option value="topic">topic</option>
+                <option value="tasks">tasks</option>
               </select>
               <button
                 type="button"
