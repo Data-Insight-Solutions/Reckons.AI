@@ -1,0 +1,41 @@
+@prefix kb:     <urn:kbase:concept/> .
+@prefix kpred:  <urn:kbase:predicate/> .
+@prefix kmeta:  <urn:kbase:meta/> .
+@prefix ktype:  <urn:kbase:type/> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+
+# ==============================================================================
+# PERSONAL NOTES — the default landing graph for captured notes
+#
+# This is an EXAMPLE, copied into your workspace on setup and then yours. It is
+# deliberately near-empty: the shape matters, the contents do not.
+#
+# Quick capture (a note-taking ring, a phone shortcut, a Google Task) arrives
+# here as a Note with a timestamp and a source. What the note SAYS stays a
+# literal until you decide otherwise — see kb:note-vs-claim below, which is the
+# one idea worth reading before using this graph.
+# ==============================================================================
+
+kb:personal-notes rdf:type ktype:Concept ;
+    rdfs:label "Personal notes" ;
+    kpred:description "Default landing graph for quick captures: voice notes, Google Tasks, phone shortcuts. Notes arrive as pending arrivals and stay literal until reviewed." ;
+    kpred:default-for "capture" .
+
+kb:note-vs-claim rdf:type ktype:Concept ;
+    rdfs:label "A note is not a claim" ;
+    kpred:part-of kb:personal-notes ;
+    kpred:principle "WHAT YOU SAID IS A FACT. WHAT IT MEANT IS AN INTERPRETATION. That you dictated 'ask Sarah about the grant deadline' at 08:41 on Tuesday is verifiable and safe to record automatically. That there EXISTS a person Sarah, related to a grant, with a deadline, is a reading of a speech-to-text transcript — and transcripts mishear names for a living. Capture the utterance automatically; leave the reading pending." ;
+    kpred:principle "THIS IS WHY CAPTURES ARRIVE PENDING. buildArrivalStatements marks every arrival `pending` (src/lib/rdf/currents.ts). Reviewing them is not friction bolted onto the capture flow — it is the step that keeps a graph worth citing." .
+
+# ── A worked example: what one captured note looks like ──────────────────────
+# Left in place so a new graph is not an empty screen. Delete it whenever.
+
+kb:note-example rdf:type ktype:Note ;
+    rdfs:label "Ask about spring market stall fees" ;
+    kpred:captured-at "2026-08-26T08:41:00Z"^^xsd:dateTime ;
+    kpred:captured-via "google-tasks" ;
+    kpred:transcript "Ask about spring market stall fees before the deadline" ;
+    kpred:note "The transcript is the fact. 'Spring market', 'stall fees' and 'the deadline' are all things a human should confirm before they become entities — which is what the review queue is for." .

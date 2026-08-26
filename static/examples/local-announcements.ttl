@@ -1,0 +1,37 @@
+@prefix kb:     <urn:kbase:concept/> .
+@prefix kpred:  <urn:kbase:predicate/> .
+@prefix ktype:  <urn:kbase:type/> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# ==============================================================================
+# LOCAL ANNOUNCEMENTS — the "we missed the soccer signups" graph
+#
+# An EXAMPLE of watching several channels for time-critical local notices, and
+# an honest record of which channels can actually be watched.
+# ==============================================================================
+
+kb:local-announcements rdf:type ktype:Concept ;
+    rdfs:label "Local announcements" ;
+    kpred:description "Currents watching the channels a community actually announces on, so a signup window is not missed because it was posted once, in one place." ;
+    kpred:principle "THE FAILURE WAS NEVER TECHNICAL. A signup deadline missed because it was announced in one channel is a COVERAGE problem, and the fix is more channels watched, not a cleverer scraper for the one channel that is hardest to watch." .
+
+kb:channel-reality rdf:type ktype:Concept ;
+    rdfs:label "What can actually be watched, honestly" ;
+    kpred:part-of kb:local-announcements ;
+    kpred:honest-note "FACEBOOK GROUPS: NOT WATCHABLE. Meta removed the Groups API on 2024-04-22 — all third-party read access, not just posting. There is no API, no feed, and no supported route. Anything claiming otherwise is driving a logged-in browser session, which is against Facebook's terms and breaks whenever they change their markup." ;
+    kpred:honest-note "FACEBOOK PAGES: WATCHABLE ONLY IF YOU ADMIN THE PAGE. With a Page access token and pages_read_engagement you can read /page/feed. For a Page you do NOT administer, this needs the Page Public Content Access feature, which requires Meta App Review and is not realistically granted for a personal project. If someone at the club can make you an editor, the API opens; otherwise it does not." ;
+    kpred:honest-note "CURRENTS DOES NOT SCRAPE. fetchCurrentDirect parses RSS/Atom XML and nothing else (src/lib/integrations/n8n/currents-sync.ts). Pointing a 'url' current at a facebook.com page returns a login wall, which is not a parse failure to be fixed but a refusal to be respected." ;
+    kpred:decided "WATCH THE CHANNELS THAT WANT TO BE READ. Club websites, council pages and school newsletters usually publish RSS or send email, both of which are reliable, permitted and stable. An email address subscribed to every relevant list, watched over IMAP, catches more real announcements than any Facebook workaround and does not break." .
+
+kb:channel-club-site rdf:type ktype:Concept ;
+    rdfs:label "Club website feed" ;
+    kpred:part-of kb:local-announcements ;
+    kpred:current-kind "rss" ;
+    kpred:note "Replace sourceUrl with the club's real feed. Many league and club sites run WordPress, which serves /feed by default even when nothing links to it — try it before concluding there is no feed." .
+
+kb:channel-email rdf:type ktype:Concept ;
+    rdfs:label "Newsletter inbox" ;
+    kpred:part-of kb:local-announcements ;
+    kpred:current-kind "email" ;
+    kpred:note "A dedicated address subscribed to club, school and council lists, watched by n8n over IMAP. The most boring option and the one most likely to still work next season." .

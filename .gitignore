@@ -120,8 +120,17 @@ static/kbs/*
 
 # ── Local graph workspaces (2026-08-21) ──────────────────────────────────────
 # These are the USER'S graph data, written by the app's folder sync — not source.
-# Ignoring only affects UNTRACKED paths, so the demo/starter fixtures already
-# tracked under kbs/ stay tracked and versioned as before.
+#
+# CORRECTED 2026-08-26. This block used to claim that "the demo/starter fixtures
+# already tracked under kbs/ stay tracked and versioned as before". They were
+# not: `git ls-files reckons-workspace/kbs/` returned ZERO files, so a fresh
+# clone got an empty workspace and no worked example of a personal graph. The
+# rule below is correct and stays as it is — personal data must never be
+# committed, because production deploys from main on every push, so anything
+# tracked is anything published. Examples now ship from static/examples/ and are
+# COPIED in by scripts/setup-reckons-workspace.sh, which keeps the ignore rule
+# absolute rather than riddling it with negations that a future graph name could
+# accidentally match.
 #
 # kbs/button-crawl alone reached 209MB: button-crawl.ts embeds every screenshot as
 # a full data: URI literal. Nothing here belongs in the repository.
