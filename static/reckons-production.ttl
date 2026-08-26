@@ -6,6 +6,7 @@
 @prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
 @prefix ktype:  <urn:kbase:type/> .
 @prefix story:  <urn:reckons:story/> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Reckons.AI Production Status KB
@@ -539,3 +540,21 @@ kb:env-production a ktype:Environment ;
     kpred:reviews-graph "roadmap+codebase" ;
     kpred:requires-documentation "true" ;
     kpred:description "Live site; deploys from main on every push. Requires BOTH developer and stakeholder approval. A feature reaching production carries kpred:in-production; has-status 'production' implies it." .
+
+# ==============================================================================
+# THESAURUS — the names these entities also answer to (skos:altLabel)
+#
+# F104 phase 2 (kb:node-synonyms). Until 2026-08-25 altLabel/prefLabel/hiddenLabel were used
+# ZERO times across all 25 graphs: the thesaurus half of a standard already in play sat
+# unused, so kb_search could only ever match the one name an entity happened to be labelled
+# with. Every value below is a name this project genuinely uses for the thing in prose, chat
+# or its own roadmap text — not a guess at what someone might type.
+#
+# These are FACTS and are reviewable like any other. Measured effect on the real corpus by
+# tests/bench/run-synonym-search-bench.ts: synonym-phrased queries went from 75.0% to 100%
+# top-1 (MRR 0.828 -> 1.000) with no regression on the queries that already worked.
+# ==============================================================================
+
+kb:graph-publishing skos:altLabel "docs site" , "static site publishing" .
+
+kb:browser-extension skos:altLabel "web extension" , "Chrome extension" .

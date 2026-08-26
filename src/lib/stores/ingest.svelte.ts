@@ -8,6 +8,7 @@ import { triplesToStatements, extractMock, parseTriplesJSONWithReport, validateE
 import { computeDiff, type Diff } from '../rdf/diff';
 import { semanticEnrichDiff, labelFromIRI } from '../rdf/semantic-diff';
 import { normalizeEntities } from '../rdf/normalize-entities';
+import { aliasesFromNormalization } from '../rdf/ingest-aliases';
 import { selectVocabulary, buildVocabularySection } from '../rdf/vocabulary-context';
 import {
   selectStructuralContext, buildStructuralSection, validateStructuralClaims,
@@ -465,10 +466,24 @@ export async function ingest(
     onProgress?.({ phase: 'normalizing' });
     let existingStmts = allStatements();
     const normResult = await normalizeEntities(newStatements, existingStmts);
-    newStatements = normResult.statements;
+
+    // A fold produced a synonym; keep it rather than letting it become a conflict.
+    //
+    // Rewriting the subject IRI leaves the incoming rdfs:label pointing at the canonical
+    // entity, where it reads as a rival name and computeDiff calls it a `conflicts` entry —
+    // so the reviewer is asked to pick a winner and the source's own name is rejected. That
+    // is the F126 merge bug on the ingest path. These land as PENDING skos:altLabel instead:
+    // an embedding proposed them, not a human, so they are reviewed like any other fact
+    // (kb:node-synonyms — "a vocabulary the user did not agree to is not user-managed").
+    const aliased = aliasesFromNormalization(normResult.statements, normResult.remaps, existingStmts);
+    newStatements = aliased.statements;
     if (normResult.remaps.length > 0) {
       console.info(`[ingest] Normalised ${normResult.subjectRemaps} entities, ${normResult.predicateRemaps} predicates:`,
         normResult.remaps.map(r => `${r.kind}: "${labelFromIRI(r.from)}" → "${labelFromIRI(r.to)}"`));
+    }
+    if (aliased.conversions.length > 0) {
+      console.info(`[ingest] Preserved ${aliased.conversions.length} name(s) as pending aliases:`,
+        aliased.conversions.map(c => `"${c.value}" → ${labelFromIRI(c.iri)} (${c.similarity.toFixed(3)})`));
     }
     run = finishExtractionStage(run, activeRunStage);
     await saveExtractionRun(run);

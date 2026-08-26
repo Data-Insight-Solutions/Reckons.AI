@@ -397,11 +397,21 @@ function handleKbSearch(params: { query: string; limit?: number; kb?: string }):
     return { content: [{ type: 'text', text: `No results${params.kb ? ` in "${params.kb}"` : ''} for "${params.query}" (absence doesn't mean nonexistence)` }] };
   }
 
-  const lines = results.map(r => fmtTriple(r.triple));
+  // Say WHICH alias earned a row. kb:node-synonyms is explicit that unexplained recall is no
+  // better than unexplained silence — worse, in fact, because it looks like it worked. A row
+  // with no marker matched on its own text and did not need the thesaurus.
+  const lines = results.map(r =>
+    r.matchedAliases?.length
+      ? `${fmtTriple(r.triple)}  [via alias: ${r.matchedAliases.join(', ')}]`
+      : fmtTriple(r.triple));
+  const viaAlias = results.filter(r => r.matchedAliases?.length).length;
+  const header = viaAlias > 0
+    ? `${results.length} results (${viaAlias} via alias):`
+    : `${results.length} results:`;
   return {
     content: [{
       type: 'text',
-      text: `${results.length} results:\n${lines.join('\n')}`
+      text: `${header}\n${lines.join('\n')}`
     }]
   };
 }

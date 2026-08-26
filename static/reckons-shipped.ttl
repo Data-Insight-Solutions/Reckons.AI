@@ -6,6 +6,7 @@
 @prefix ktype: <urn:kbase:type/>.
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
 @prefix hnav: <urn:reckons:nav/>.
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
 
 kb:wf-ingest a ktype:Concept;
     rdfs:label "Ingest Workflow";
@@ -359,3 +360,25 @@ kb:llm-providers a ktype:Feature;
     kpred:has-status "production";
     kpred:description "Pluggable LLM backends (src/lib/integrations/llm/): claude, openai, gemini, ollama, wasm (in-browser via @huggingface/transformers), reckons (hosted proxy), openrouter, chrome-ai, plus mock/manual. Per-task selection (ingest / analyze / chat / diffSummary / mergeAnalysis); wasm auto-fallback when a chosen cloud backend has no key. ETHICS_PREAMBLE is injected into every provider's system prompt.";
     kpred:relates-to kb:knowledge-graph.
+
+# ==============================================================================
+# THESAURUS — the names these entities also answer to (skos:altLabel)
+#
+# F104 phase 2 (kb:node-synonyms). Until 2026-08-25 altLabel/prefLabel/hiddenLabel were used
+# ZERO times across all 25 graphs: the thesaurus half of a standard already in play sat
+# unused, so kb_search could only ever match the one name an entity happened to be labelled
+# with. Every value below is a name this project genuinely uses for the thing in prose, chat
+# or its own roadmap text — not a guess at what someone might type.
+#
+# These are FACTS and are reviewable like any other. Measured effect on the real corpus by
+# tests/bench/run-synonym-search-bench.ts: synonym-phrased queries went from 75.0% to 100%
+# top-1 (MRR 0.828 -> 1.000) with no regression on the queries that already worked.
+# ==============================================================================
+
+kb:knowledge-graph skos:altLabel "knowledge base" , "KB" .
+
+kb:mcp-server skos:altLabel "Model Context Protocol server" .
+
+kb:cross-kb-alignment skos:altLabel "align graphs" , "cross-KB alignment" .
+
+kb:comparison-view skos:altLabel "diff view" , "semantic diff" .
