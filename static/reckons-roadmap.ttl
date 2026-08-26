@@ -5473,3 +5473,23 @@ kb:currents-client-unwired rdf:type ktype:Concept ;
                kpred:honest-note  "FOUND 2026-08-26, NOT FIXED. registerCurrent(), fetchCurrentItems() and processArrivals() in src/lib/integrations/n8n/currents-sync.ts are referenced ONLY by their own test file. Nothing in the app calls them, so despite F29.2 being recorded as shipped, THE APP DOES NOT WATCH n8n. The client is real, tested and untethered." ;
                kpred:honest-note  "THIS CHANGES WHAT 'CURRENTS' MEANS TODAY. A current registered in settings is persisted to the graph and displayed, and the n8n monitor may well be collecting items — but nothing pulls them into the browser. The folder path (kb:ios-note-capture) works precisely because it rides the workspace poll, which IS wired. Anyone reasoning about capture should route through the folder until this is closed." ;
                kpred:remaining    "Wire fetchCurrentItems into a poll alongside the workspace one, with the same error containment; decide whether arrivals land per-current or in one sweep; and re-check F29.2's status against reality once it does." .
+
+kb:n8n-deploy rdf:type         ktype:Feature ;
+               rdfs:label         "Deploy a shipped workflow to your own n8n" ;
+               kpred:feature-id   "F143" ;
+               kpred:has-status   "functional" ;
+               kpred:part-of      kb:ios-note-capture ;
+               kpred:tested-by    "scripts/__tests__/n8n-deploy.test.ts" ;
+               kpred:has-file     "scripts/n8n-deploy.ts" ;
+               kpred:description  "npm run n8n:deploy -- static/n8n/<file> POSTs a shipped workflow to the user's instance through the public REST API, and npm run n8n:list shows what is already there. Reads N8N_API_URL and N8N_API_KEY from the environment — the same pair the n8n MCP server in .mcp.json reads." ;
+               kpred:evidence     "IMPORTING BY HAND IS WHERE 'I SET IT UP' AND 'IT IS RUNNING' DIVERGE. The shipped JSON was import-ready but the click-path had no verification step, so a workflow could be imported, left inactive, and believed live." ;
+               kpred:decided      "STRIP TO FOUR FIELDS. n8n's create endpoint rejects read-only fields that every export carries — id, active, tags, meta, pinData, versionId, createdAt, updatedAt — and returns a 400 naming ONE at a time, so a verbatim POST becomes a guessing game. Only name/nodes/connections/settings are sent, and the filter is pinned by tests parameterised over every file in static/n8n/ so a new export cannot reintroduce one." ;
+               kpred:decided      "DEPLOY INACTIVE, AND REFUSE TO ACTIVATE WHILE INCOMPLETE. Credentials are referenced by instance id and cannot be created unattended, which is correct. So the script names the nodes still needing a credential and the placeholders still unset, and --activate declines while either is outstanding: a workflow that fails every execution while reporting itself active is strictly worse than an inactive one you know to finish." ;
+               kpred:constraint   "N8N_API_KEY CAN DELETE EVERY WORKFLOW ON THE INSTANCE. It is a deployment credential, not a read token — kept out of the app bundle (nothing under src/ reads it), out of any published graph, and documented as such in .env.example." .
+
+kb:n8n-mcp rdf:type            ktype:Concept ;
+               rdfs:label         "n8n MCP server" ;
+               kpred:relates-to   kb:n8n-deploy ;
+               kpred:description  "n8n-mcp (czlonkowski, npm) added to .mcp.json as the `n8n` server, reading N8N_API_URL and N8N_API_KEY. Gives an agent n8n_create_workflow, n8n_update_partial_workflow, n8n_validate_workflow and n8n_test_workflow against the user's own instance." ;
+               kpred:honest-note  "NOT VERIFIED AGAINST A LIVE INSTANCE (2026-08-26). The config is written and the package exists (v2.73.0), but no n8n was reachable from this machine — no credentials in the environment, nothing on localhost:5678 — so the server has never been started and its tools have never been called here. It is a configured server, not a demonstrated one." ;
+               kpred:decided      "THE SCRIPT IS NOT REDUNDANT WITH THE MCP SERVER. scripts/n8n-deploy.ts runs in CI and in a shell with no agent present, and its payload filter is unit-tested; the MCP server is for an agent iterating on a workflow interactively. Keeping both means a deploy is reproducible without an agent in the loop." .

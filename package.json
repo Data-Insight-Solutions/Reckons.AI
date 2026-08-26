@@ -103,6 +103,8 @@
     "kb:reckon": "npx tsx tests/bench/run-kb-workflow.ts reckon --save",
     "kb:search": "npx tsx tests/bench/run-kb-workflow.ts search",
     "session:tokens": "npx tsx scripts/session-tokens.ts",
+    "n8n:deploy": "npx tsx scripts/n8n-deploy.ts",
+    "n8n:list": "npx tsx scripts/n8n-deploy.ts --list",
     "offline:review": "npx tsx scripts/offline/code-review.ts",
     "offline:perf": "npx tsx scripts/offline/perf-crawl.ts",
     "offline:altitude": "npx tsx scripts/offline/altitude-report.ts",
