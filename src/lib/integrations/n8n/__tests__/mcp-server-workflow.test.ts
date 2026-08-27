@@ -74,6 +74,25 @@ describe('MCP server workflow — the contract with the capture webhook', () => 
   });
 });
 
+describe('MCP server workflow — client tool-name namespacing', () => {
+  it('warns that a namespacing client needs the node renamed', () => {
+    // The failure this documents cost an evening. Pebble calls
+    // `Reckons_AI__capture_note` — <server_nickname>__<tool_name> — while n8n matches node
+    // names EXACTLY (.name === toolName). The call therefore matches nothing and, critically,
+    // NO EXECUTION IS RECORDED: the workflow reads as idle and the logs read as clean while
+    // every call fails. There is nothing to debug on the server, which is why it went unfound
+    // through several rounds of looking in the right place for the wrong thing.
+    //
+    // The shipped node keeps the plain name because that is correct MCP and the prefix is a
+    // property of the CLIENT's nickname for the server, not of this workflow. So the warning
+    // has to travel with it.
+    const sticky = (wf.nodes as Node[]).find((n) => n.name === 'Read me first');
+    const content = String(sticky?.parameters.content ?? '');
+    expect(content).toMatch(/namespace/i);
+    expect(content).toMatch(/no execution is recorded/i);
+  });
+});
+
 describe('MCP server workflow — safety', () => {
   it('requires bearer auth on a public write endpoint', () => {
     // The tool WRITES into a personal knowledge graph. Unauthenticated is not an option.
