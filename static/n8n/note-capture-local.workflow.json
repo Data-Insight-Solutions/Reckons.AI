@@ -1,0 +1,239 @@
+{
+  "name": "Reckons \u2014 Note Capture (local)",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Accepts a note (iOS Shortcut or the MCP capture_note tool) and buffers it in an n8n data table. A poller on the user's own machine drains it into the Reckons.AI workspace. No Google, no third-party sync, nothing inbound to the laptop."
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Why a data table, not Drive\n\nDrive was only ever the medium both sides could reach. It costs a Google OAuth client, and when that client is deleted the whole capture path dies with an error no one sees.\n\nThe data table is already inside n8n \u2014 the buffer the phone needs when the laptop is off \u2014 and the laptop drains it on its own poll. One fewer vendor, one fewer credential, same guarantees.\n\n## Delivery is AT-LEAST-ONCE\n\nThe poller writes locally, THEN acks. A crash between those two produces a duplicate, never a loss \u2014 and duplicates are harmless because pending rows carry deterministic ids and the app dedupes on import.\n\nThe other order would trade a harmless duplicate for a silent loss. Never make that trade on capture.",
+        "height": 520,
+        "width": 420
+      },
+      "id": "sticky",
+      "name": "Read me first",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -460,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "reckons-note",
+        "responseMode": "responseNode",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "id": "hook",
+      "name": "Note received",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        80,
+        200
+      ],
+      "webhookId": "reckons-note-local"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "TARGET_GRAPH",
+              "value": "personal-notes",
+              "type": "string"
+            },
+            {
+              "id": "c2",
+              "name": "TABLE",
+              "value": "reckons_notes",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cfg",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        280,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build ONE pending row from an untrusted payload.\n//\n// THE INJECTION THIS GUARDS. knowledge.pending.jsonl is newline-delimited: one row per line.\n// A dictated note containing a newline \u2014 trivially produced by saying \"new line\", and produced\n// by accident whenever a transcript breaks a sentence \u2014 would end the row early and let the\n// remainder parse as a SECOND row, forging a fact nobody said. JSON.stringify escapes newlines\n// to \\n, so the row is built by stringifying an object and never by concatenating strings.\n// This is the JSONL twin of the CR/LF header injection the contact workflow guards against.\n//\n// The note text is carried VERBATIM into the object. What was said is the fact; what it meant\n// is a reading the review queue exists to gate.\n\nconst cfg = $('Config').first().json;\nconst body = $('Note received').first().json.body ?? {};\n\n// ACCEPT WHAT ACTUALLY ARRIVES, from either caller.\n//\n// An iOS Shortcut POSTs {text}. The MCP tool posts {input}: n8n's MCP Server Trigger presents\n// every attached tool to the client as a single freeform `input` field, regardless of the\n// parameter schema configured on the tool node \u2014 verified against a live tools/list, where a\n// tool declaring text+capturedAt still advertised only `input`. Reading body.text alone meant\n// every note captured through MCP arrived empty and was dropped, while the client was told it\n// succeeded. A model may also hand back the whole object as a JSON string, so try that too.\nfunction noteText(b) {\n  if (typeof b.text === 'string' && b.text.trim()) return b.text;\n  const inp = b.input;\n  if (typeof inp === 'string' && inp.trim()) {\n    const s = inp.trim();\n    if (s.startsWith('{')) {\n      try {\n        const parsed = JSON.parse(s);\n        if (typeof parsed.text === 'string' && parsed.text.trim()) return parsed.text;\n      } catch { /* not JSON \u2014 it is just the note, fall through */ }\n    }\n    return inp;\n  }\n  if (inp && typeof inp === 'object' && typeof inp.text === 'string') return inp.text;\n  return '';\n}\n\nconst raw = noteText(body);\nconst text = raw.trim();\n\nif (!text) {\n  return [{ json: { ok: false, reason: 'empty note \u2014 nothing was said', skip: true } }];\n}\n\n// A dictation is a sentence, not a document. Cap it so a malformed or hostile client cannot\n// push an unbounded string into a file the app parses on every poll.\nconst MAX = 2000;\nconst clipped = text.length > MAX;\nconst value = clipped ? text.slice(0, MAX) : text;\n\nconst capturedAt = typeof body.capturedAt === 'string' && !Number.isNaN(Date.parse(body.capturedAt))\n  ? new Date(body.capturedAt).toISOString()\n  : new Date().toISOString();\n\n// Subject is derived from the timestamp, not from the text: deriving it from a transcript\n// would mint an entity out of a possibly-misheard proper noun before any human saw it.\nconst subject = `urn:kbase:concept/note-${capturedAt.replace(/[:.]/g, '-')}`;\n\nconst row = {\n  subject,\n  predicate: 'urn:kbase:predicate/captured-note',\n  object: value,\n  kb: cfg.TARGET_GRAPH,\n  type: 'observation',\n  agent: 'ios-shortcut',\n  note: `Dictated ${capturedAt}${clipped ? ' (truncated at 2000 chars)' : ''}`,\n  addedAt: capturedAt\n};\n\n// One line, newline-terminated. JSON.stringify guarantees no raw newline survives inside it.\nconst line = JSON.stringify(row) + '\\n';\nif (line.split('\\n').length !== 2) {\n  throw new Error('refusing to write a row containing a newline');\n}\n\nreturn [{ json: { ok: true, skip: false, line, subject, capturedAt, clipped } }];"
+      },
+      "id": "build-row",
+      "name": "Build pending row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ok",
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "guard",
+      "name": "Something was said?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        700,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "tableName": "={{ $('Config').first().json.TABLE }}",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "line": "={{ $json.line }}",
+            "subject": "={{ $json.subject }}",
+            "capturedAt": "={{ $json.capturedAt }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "store",
+      "name": "Buffer the note",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        920,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, captured: $('Build pending row').first().json.subject }) }}",
+        "options": {}
+      },
+      "id": "ok",
+      "name": "Confirm captured",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1140,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 400,
+        "responseBody": "={{ JSON.stringify({ ok: false, error: $json.reason }) }}",
+        "options": {}
+      },
+      "id": "bad",
+      "name": "Nothing was said",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        920,
+        320
+      ]
+    }
+  ],
+  "connections": {
+    "Note received": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Build pending row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build pending row": {
+      "main": [
+        [
+          {
+            "node": "Something was said?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Something was said?": {
+      "main": [
+        [
+          {
+            "node": "Buffer the note",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Nothing was said",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buffer the note": {
+      "main": [
+        [
+          {
+            "node": "Confirm captured",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

@@ -1,0 +1,208 @@
+{
+  "name": "Reckons \u2014 Note Drain (local poller)",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Two endpoints the user's own machine calls: GET drains buffered notes, POST acks the ones it wrote to disk. Delivery is at-least-once by design."
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Two endpoints, deliberately\n\n**GET /webhook/reckons-notes-drain** returns buffered notes and deletes NOTHING.\n\n**POST /webhook/reckons-notes-ack** `{ids:[...]}` deletes the rows the poller has already written to disk.\n\n## Why not one call\n\nA single get-and-delete loses a note whenever the poller dies between n8n's delete and the local write \u2014 and a dictated note lost is unrecoverable. Splitting it means the same crash produces a DUPLICATE instead, which is harmless: pending rows carry deterministic ids and the app dedupes on import.\n\nAt-least-once is the only correct choice for capture. Never trade a harmless duplicate for a silent loss.",
+        "height": 440,
+        "width": 420
+      },
+      "id": "sticky",
+      "name": "Read me first",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -460,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "reckons-notes-drain",
+        "responseMode": "responseNode",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "id": "hookget",
+      "name": "Drain requested",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        80,
+        120
+      ],
+      "webhookId": "reckons-notes-drain"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "tableName": "reckons_notes",
+        "returnAll": true,
+        "options": {}
+      },
+      "id": "rows",
+      "name": "Read buffered notes",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        300,
+        120
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, rows: $input.all().map(i => i.json).filter(r => r && r.id) }) }}",
+        "options": {}
+      },
+      "id": "sendrows",
+      "name": "Return rows",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        520,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "reckons-notes-ack",
+        "responseMode": "responseNode",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "id": "hookack",
+      "name": "Ack received",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        80,
+        380
+      ],
+      "webhookId": "reckons-notes-ack"
+    },
+    {
+      "parameters": {
+        "jsCode": "// One item per id the poller confirmed it wrote to disk. Anything not acked stays\n// buffered and is delivered again next poll \u2014 which is the point.\nconst ids = $input.first().json.body?.ids;\nif (!Array.isArray(ids)) return [];\nreturn ids.filter(id => id !== undefined && id !== null).map(id => ({ json: { id } }));"
+      },
+      "id": "fanout",
+      "name": "One per id",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "deleteRows",
+        "tableName": "reckons_notes",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "del",
+      "name": "Drop acked rows",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        520,
+        380
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, deleted: $input.all().length }) }}",
+        "options": {}
+      },
+      "id": "ackok",
+      "name": "Confirm ack",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        740,
+        380
+      ]
+    }
+  ],
+  "connections": {
+    "Drain requested": {
+      "main": [
+        [
+          {
+            "node": "Read buffered notes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read buffered notes": {
+      "main": [
+        [
+          {
+            "node": "Return rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ack received": {
+      "main": [
+        [
+          {
+            "node": "One per id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One per id": {
+      "main": [
+        [
+          {
+            "node": "Drop acked rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drop acked rows": {
+      "main": [
+        [
+          {
+            "node": "Confirm ack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

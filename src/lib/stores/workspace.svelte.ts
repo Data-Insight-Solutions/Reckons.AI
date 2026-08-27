@@ -846,7 +846,25 @@ function objectTerm(value: string, declared?: 'literal' | 'iri'): { kind: 'liter
   return value.startsWith('urn:') ? { kind: 'iri', value } : { kind: 'literal', value };
 }
 
-export async function drainAndImportPending(): Promise<number> {
+/**
+ * In-flight drain, shared by every caller.
+ *
+ * Needed the moment the poll loop started calling this (below): drainWorkspacePending READS
+ * knowledge.pending.jsonl, decides what it can safely take, and WRITES the remainder back. Two
+ * overlapping runs both read the same rows and both write back a remainder computed without the
+ * other — so a row is imported twice, or a row nobody imported is dropped from the file. The
+ * app-load and /review callers could never collide; a 10-second timer collides with a slow
+ * IndexedDB write easily.
+ */
+let _draining: Promise<number> | null = null;
+
+export function drainAndImportPending(): Promise<number> {
+  if (_draining) return _draining;
+  _draining = drainAndImportPendingOnce().finally(() => { _draining = null; });
+  return _draining;
+}
+
+async function drainAndImportPendingOnce(): Promise<number> {
   const pending = await drainWorkspacePending();
   if (pending.length === 0) return 0;
 
@@ -1167,10 +1185,27 @@ export async function resyncNow(): Promise<{ imported: string[]; updated: string
 
 // ── Polling ──────────────────────────────────────────────────────────────────
 
-/** Start the background poll loop (idempotent). No-op without a handle. */
+/**
+ * Start the background poll loop (idempotent). No-op without a handle.
+ *
+ * THE TICK DRAINS PENDING TOO, and until 2026-08-26 it did not. pullFromWorkspace only reads
+ * kbs/*.ttl, so a row appended to knowledge.pending.jsonl by anything OUTSIDE the browser — an
+ * agent, a scheduled job, an n8n workflow relaying a note dictated into a phone — arrived only
+ * when the app was reloaded or /review was opened by hand. Leave the app open on the graph and
+ * a captured note simply never showed up, which reads exactly like the capture having failed.
+ *
+ * Sequenced rather than fired in parallel: the TTL pull can replace a graph wholesale, and
+ * importing notes into a graph that is about to be overwritten wastes the import. Errors are
+ * caught here because an unhandled rejection inside setInterval is invisible AND leaves the
+ * user with a silently dead sync.
+ */
 export function startWorkspacePolling(ms: number = POLL_INTERVAL_MS): void {
   if (_pollTimer || !_handle || typeof setInterval === 'undefined') return;
-  _pollTimer = setInterval(() => { void pullFromWorkspace(); }, ms);
+  _pollTimer = setInterval(() => {
+    void pullFromWorkspace()
+      .then(() => drainAndImportPending())
+      .catch((e) => console.warn('[workspace] poll cycle failed:', e));
+  }, ms);
 }
 
 export function stopWorkspacePolling(): void {
