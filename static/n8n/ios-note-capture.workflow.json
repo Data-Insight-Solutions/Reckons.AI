@@ -39,7 +39,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "reckons-note",
-        "responseMode": "lastNode",
+        "responseMode": "responseNode",
         "options": {},
         "authentication": "headerAuth"
       },

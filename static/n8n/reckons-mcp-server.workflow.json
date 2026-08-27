@@ -60,14 +60,9 @@
         "parametersBody": {
           "values": [
             {
-              "name": "text",
+              "name": "input",
               "valueProvider": "modelRequired",
               "description": "The note, verbatim as the user said it."
-            },
-            {
-              "name": "capturedAt",
-              "valueProvider": "modelOptional",
-              "description": "ISO 8601 timestamp of when the user said it, if known. Omit if unsure \u2014 the server will stamp it."
             }
           ]
         },

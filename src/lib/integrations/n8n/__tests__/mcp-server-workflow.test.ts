@@ -49,20 +49,24 @@ describe('MCP server workflow — node identity', () => {
 });
 
 describe('MCP server workflow — the contract with the capture webhook', () => {
-  it('sends the field name the capture workflow reads', () => {
-    // ios-note-capture's row builder reads body.text. Anything else and the note is dropped as
-    // empty while the MCP client is told it succeeded.
-    const names = node('capture_note').parameters.parametersBody.values.map((v: any) => v.name);
-    expect(names).toContain('text');
+  it('names its parameter `input`, because that is what n8n ADVERTISES over MCP', () => {
+    // n8n publishes a different schema than it enforces. tools/list advertises exactly one
+    // property — `input` — regardless of what the tool node declares, but execution validates
+    // against the DECLARED parameter names. A tool declaring `text` therefore advertised
+    // `input` and then rejected every call with "Received tool input did not match expected
+    // schema ✖ Required → at text". That is not theory: it is n8n execution 2784, a real
+    // Pebble call that failed. Naming the parameter `input` makes the two agree, verified by
+    // a live tools/call against a throwaway workflow.
+    const values = node('capture_note').parameters.parametersBody.values;
+    expect(values).toHaveLength(1);
+    expect(values[0].name).toBe('input');
+    expect(values[0].valueProvider).toBe('modelRequired');
   });
 
-  it('requires the model to supply the note, and only optionally the timestamp', () => {
-    const values = node('capture_note').parameters.parametersBody.values;
-    const byName = Object.fromEntries(values.map((v: any) => [v.name, v.valueProvider]));
-    expect(byName.text).toBe('modelRequired');
-    // Optional on purpose: the capture workflow falls back to server time, and a model
-    // inventing a timestamp is worse than not sending one.
-    expect(byName.capturedAt).toBe('modelOptional');
+  it('sends a body the capture webhook can read', () => {
+    // The webhook's noteText() accepts text | input | JSON-in-input, so `input` lands.
+    const names = node('capture_note').parameters.parametersBody.values.map((v: any) => v.name);
+    expect(names.some((n: string) => ['text', 'input'].includes(n))).toBe(true);
   });
 
   it('POSTs, because the capture webhook only accepts POST', () => {
