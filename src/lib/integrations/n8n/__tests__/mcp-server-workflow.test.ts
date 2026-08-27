@@ -75,21 +75,20 @@ describe('MCP server workflow — the contract with the capture webhook', () => 
 });
 
 describe('MCP server workflow — client tool-name namespacing', () => {
-  it('warns that a namespacing client needs the node renamed', () => {
-    // The failure this documents cost an evening. Pebble calls
-    // `Reckons_AI__capture_note` — <server_nickname>__<tool_name> — while n8n matches node
-    // names EXACTLY (.name === toolName). The call therefore matches nothing and, critically,
-    // NO EXECUTION IS RECORDED: the workflow reads as idle and the logs read as clean while
-    // every call fails. There is nothing to debug on the server, which is why it went unfound
-    // through several rounds of looking in the right place for the wrong thing.
-    //
-    // The shipped node keeps the plain name because that is correct MCP and the prefix is a
-    // property of the CLIENT's nickname for the server, not of this workflow. So the warning
-    // has to travel with it.
+  it('keeps the PLAIN tool name, because the client adds its own prefix', () => {
+    // Renaming this node to match what the client displays is the obvious fix and it is wrong.
+    // Pebble applies <server_nickname>__ to whatever the server ADVERTISES, so renaming the
+    // node to `Reckons_AI__capture_note` produced `Reckons_AI__Reckons_AI__capture_note` on the
+    // next call. Measured on the live instance, not reasoned about. The plain name is correct.
+    const values = (wf.nodes as Node[]).filter((n) => n.type.endsWith('toolHttpRequest'));
+    expect(values.map((n) => n.name)).toEqual(['capture_note']);
+  });
+
+  it('tells the reader NOT to rename it, and why', () => {
     const sticky = (wf.nodes as Node[]).find((n) => n.name === 'Read me first');
     const content = String(sticky?.parameters.content ?? '');
-    expect(content).toMatch(/namespace/i);
-    expect(content).toMatch(/no execution is recorded/i);
+    expect(content).toMatch(/do not rename this node/i);
+    expect(content).toMatch(/no execution/i);
   });
 });
 
