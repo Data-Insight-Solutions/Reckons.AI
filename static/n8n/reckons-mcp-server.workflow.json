@@ -60,7 +60,7 @@
         "parametersBody": {
           "values": [
             {
-              "name": "text",
+              "name": "input",
               "valueProvider": "modelRequired",
               "description": "The note, verbatim as the user said it."
             }
