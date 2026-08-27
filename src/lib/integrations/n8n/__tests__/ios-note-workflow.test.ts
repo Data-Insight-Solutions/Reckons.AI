@@ -181,6 +181,14 @@ describe('iOS capture — structure', () => {
     );
   });
 
+  it('requires header auth — it must not ship as an open write endpoint', () => {
+    // This URL is on the public internet and writes into a personal knowledge graph. It
+    // originally shipped with authentication unset, on the assumption it would be added in the
+    // UI; an assumption is not a control. The credential is still per-instance, but the
+    // REQUIREMENT travels with the workflow.
+    expect(node('Note received').parameters.authentication).toBe('headerAuth');
+  });
+
   it('is a webhook, since the phone pushes and n8n is the buffer', () => {
     const types = (workflow.nodes as Node[]).map((n) => n.type);
     expect(types).toContain('n8n-nodes-base.webhook');

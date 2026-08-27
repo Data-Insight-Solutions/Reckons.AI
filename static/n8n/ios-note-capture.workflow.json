@@ -40,7 +40,8 @@
         "httpMethod": "POST",
         "path": "reckons-note",
         "responseMode": "lastNode",
-        "options": {}
+        "options": {},
+        "authentication": "headerAuth"
       },
       "id": "webhook",
       "name": "Note received",
