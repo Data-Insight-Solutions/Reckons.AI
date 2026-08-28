@@ -56,7 +56,7 @@
   import { entityProtection } from '$lib/rdf/protected-entities';
   import { buildEntitySet, defaultSetName, isEntitySet, setMembers } from '$lib/rdf/entity-sets';
   import { isCompact } from '$lib/stores/viewport.svelte';
-  import { Popover, ToggleGroup } from 'bits-ui';
+  import { Popover } from 'bits-ui';
   import { analysisRunning, lastAnalysisError } from '$lib/stores/auto-analyze.svelte';
   import { onMount, untrack } from 'svelte';
   import { fade } from 'svelte/transition';
@@ -472,6 +472,32 @@
   ];
 
   let detailLevel = $state<DetailId>('detailed');
+  /**
+   * Layout options as data, so LAYOUT and DETAIL can render as two matching dropdowns.
+   *
+   * Matt, 2026-08-28, twice: the detail control belongs beside layout, and "Layout should also be
+   * dropdown". Eight chips wrapping over three lines were pushing detail onto its own row below,
+   * which is why it kept reading as a separate thing no matter which group it lived in. Two
+   * selects side by side is the shape that actually says "these are the same kind of control".
+   *
+   * `available` keeps the conditional options honest: clustering by source is meaningless with one
+   * source, and by type with no types.
+   */
+  const LAYOUTS: { value: typeof layout; label: string; title: string; available?: () => boolean }[] = [
+    { value: 'force', label: 'free', title: 'Free force layout — nodes repel, links pull them together' },
+    { value: 'focus', label: 'focus', title: 'Focus the selected node and its neighbours; push the rest away' },
+    { value: 'source', label: 'source', title: 'Cluster nodes by the source they came from',
+      available: () => sources().filter((s) => s.kind !== 'analysis').length > 1 },
+    { value: 'type', label: 'type', title: 'Cluster nodes by entity type',
+      available: () => activeEntityTypes.length > 0 },
+    { value: 'hub', label: 'hub', title: 'Pull the most-connected hubs toward the centre' },
+    { value: 'timeline', label: 'time', title: 'Lay nodes out left-to-right on a timeline by date' },
+    // value stays "order" (URL/state); label is "arrange" so it is not confused with structural
+    // hnav ordering — this is a manual drag grid.
+    { value: 'order', label: 'arrange', title: 'Hand-arrange nodes on a grid — drag to reorder' },
+    { value: 'hierarchy', label: 'tree', title: 'Hierarchical tree — prerequisites above, from skos:broader and kpred:depends-on' },
+  ];
+  const availableLayouts = $derived(LAYOUTS.filter((l) => l.available?.() ?? true));
   /**
    * Which nodes are ALLOWED to be hubs (Matt, 2026-08-28: "In type settings we 'allow hub
    * classification'. By default files and log types are not able to become hubs").
@@ -2065,43 +2091,28 @@
 
   <!-- FORCE -->
   <div class="overlay-group">
-    <!-- "layout", not "force". The group was named after ONE of the options inside it, so the
-         heading and the first chip said the same word while meaning different things — and the
-         other seven options were not forces at all. -->
-    <span class="group-label mono">layout</span>
-    <ToggleGroup.Root
-      type="single"
-      value={layout}
-      onValueChange={(v) => { if (v) layout = v as typeof layout; }}
-      class="tg-row"
-    >
-      <ToggleGroup.Item value="force" class="tg-chip" title="Free force layout — nodes repel, links pull them together"><span class="lbl mono">free</span></ToggleGroup.Item>
-      <ToggleGroup.Item value="focus" class="tg-chip" title="Focus the selected node and its neighbours; push the rest away"><span class="lbl mono">focus</span></ToggleGroup.Item>
-      {#if sources().filter(s => s.kind !== 'analysis').length > 1}
-        <ToggleGroup.Item value="source" class="tg-chip" title="Cluster nodes by the source they came from"><span class="lbl mono">source</span></ToggleGroup.Item>
-      {/if}
-      {#if activeEntityTypes.length > 0}
-        <ToggleGroup.Item value="type" class="tg-chip" title="Cluster nodes by entity type"><span class="lbl mono">type</span></ToggleGroup.Item>
-      {/if}
-      <ToggleGroup.Item value="hub" class="tg-chip" title="Pull the most-connected hubs toward the centre"><span class="lbl mono">hub</span></ToggleGroup.Item>
-      <ToggleGroup.Item value="timeline" class="tg-chip" title="Lay nodes out left-to-right on a timeline by date"><span class="lbl mono">time</span></ToggleGroup.Item>
-      <!-- value stays "order" (URL/state); label is "arrange" so it isn't
-           confused with structural hnav ordering — this is a manual drag grid. -->
-      <ToggleGroup.Item value="order" class="tg-chip" title="Hand-arrange nodes on a grid — drag to reorder (basis for page layout)"><span class="lbl mono">arrange</span></ToggleGroup.Item>
-      <ToggleGroup.Item value="hierarchy" class="tg-chip" title="Hierarchical tree — prerequisites above, from skos:broader and kpred:depends-on"><span class="lbl mono">tree</span></ToggleGroup.Item>
-    </ToggleGroup.Root>
-
-    <!-- DETAIL sits with LAYOUT because both answer 'what am I looking at' rather than
-         'which subset do I want' — the filters below are selections; this is a magnification.
-         On ONE ROW with its label rather than stacked as its own block, so it reads as part of
-         the layout control instead of a fourth group competing with it. -->
-    <div class="detail-row">
-    <span class="group-label mono">detail</span>
-    <select class="detail-select mono" bind:value={detailLevel} title={detail.title}>
-      {#each DETAIL_LEVELS as level (level.id)}
-        <option value={level.id} title={level.title}>{level.label}</option>
-      {/each}
-    </select>
+    <!-- "view", not "layout": the group now holds TWO controls that each name themselves, and
+         reusing one of their names for the heading is the same confusion the old "force" heading
+         had — a label that means something different from the thing beside it. -->
+    <span class="group-label mono">view</span>
+    <div class="control-row">
+      <label class="control mono">
+        <span class="control-label">layout</span>
+        <select class="control-select mono" bind:value={layout}
+          title={availableLayouts.find((l) => l.value === layout)?.title}>
+          {#each availableLayouts as l (l.value)}
+            <option value={l.value} title={l.title}>{l.label}</option>
+          {/each}
+        </select>
+      </label>
+      <label class="control mono">
+        <span class="control-label">detail</span>
+        <select class="control-select mono" bind:value={detailLevel} title={detail.title}>
+          {#each DETAIL_LEVELS as level (level.id)}
+            <option value={level.id} title={level.title}>{level.label}</option>
+          {/each}
+        </select>
+      </label>
     </div>
     <!--
       HIDDEN MUST BE VISIBLY HIDDEN (Matt's own condition on this feature). A canvas that is
@@ -3081,12 +3092,33 @@
     gap: 0.35rem;
   }
 
-  .detail-row {
+  .control-row {
     display: flex;
-    align-items: center;
     gap: 0.4rem;
   }
-  .detail-row .group-label { padding: 0; white-space: nowrap; }
+  .control {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    flex: 1;
+    min-width: 0;
+  }
+  .control-label {
+    font-size: 0.52rem;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--muted);
+    opacity: 0.7;
+  }
+  .control-select {
+    background: var(--surface);
+    color: var(--fg);
+    border: 1px solid var(--line);
+    border-radius: 0.25rem;
+    font-size: 0.62rem;
+    padding: 0.2rem 0.25rem;
+    width: 100%;
+  }
 
   .detail-select {
     background: var(--surface);
@@ -4072,36 +4104,7 @@
     50% { box-shadow: 0 0 10px rgba(245, 158, 11, 0.35); }
   }
 
-  /* ── bits-ui ToggleGroup (layout selector) ── */
-  :global(.tg-row) {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-  }
-  :global(.tg-chip) {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.3rem 0.7rem;
-    border-radius: 999px;
-    border: 1px solid var(--line);
-    background: var(--surface);
-    color: var(--muted);
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    cursor: pointer;
-    transition: all 0.15s;
-    user-select: none;
-  }
-  :global(.tg-chip:hover) {
-    border-color: var(--muted-2, var(--muted));
-    color: var(--ink-2, var(--ink));
-  }
-  :global(.tg-chip[data-state="on"]) {
-    background: var(--accent-soft);
-    border-color: var(--accent);
-    color: var(--accent);
-  }
+  /* The layout selector is a plain <select> now; the ToggleGroup chip styles it used are gone. */
   /* Pod view indicator (F29 Currents) — shown when pod view is on (toggled on the
      Graph tab). Sky-blue, matching arrival halos. Read-only status chip, not a button. */
   .pod-indicator {
