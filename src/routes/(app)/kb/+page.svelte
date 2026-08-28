@@ -34,7 +34,6 @@
     getRegistry,
     getCurrentKbId,
     switchToKb,
-    createKb,
     removeKbFromRegistry,
     updateKbName,
     toggleBookmark,
@@ -43,6 +42,7 @@
     kbFileSlug,
     type KbEntry
   } from '$lib/storage/kb-registry';
+  import { createNamedKb, renameKb } from '$lib/storage/kb-naming';
   import { groupGraphsWithArchives, groupRows } from '$lib/storage/archive-gallery';
   import { bucketIntoSets, findDuplicateGraphs } from '$lib/storage/graph-sets';
   import { sweepArchiveByAge } from '$lib/storage/archive-store';
@@ -74,7 +74,15 @@
 
   async function saveTitle() {
     titleSaving = true;
-    await updateSettings({ kbTitle: kbTitleLocal.trim() || undefined });
+    const name = kbTitleLocal.trim();
+    if (name) {
+      // One writer for both stores: the title box used to leave the registry — and therefore
+      // /kb's list and every ?kb=<name> link — pointing at the old name.
+      await renameKb(currentKbId, name, updateSettings);
+      localKbs = getRegistry();
+    } else {
+      await updateSettings({ kbTitle: undefined });
+    }
     titleSaving = false;
   }
 
@@ -268,10 +276,12 @@
     localKbs.filter(kb => (kbFilter === 'all' || kb.bookmarked) && !matchesQuery(kb, kbQuery)).length
   );
 
-  function handleCreateKb() {
+  async function handleCreateKb() {
     const name = newKbName.trim();
     if (!name) return;
-    const entry = createKb(name);
+    // Seeds the new graph's own kbTitle as well as the registry entry, so the graph opens
+    // already knowing its name instead of presenting an empty title box.
+    const entry = await createNamedKb(name);
     switchToKb(entry.id); // triggers reload
   }
 
@@ -355,10 +365,14 @@
     editingName = kb.name;
   }
 
-  function commitRename() {
+  async function commitRename() {
     if (editingKbId && editingName.trim()) {
-      updateKbName(editingKbId, editingName.trim());
+      const name = editingName.trim();
+      const renamed = editingKbId;
+      await renameKb(renamed, name, updateSettings);
       localKbs = getRegistry();
+      // Renaming the graph you are looking at must move the header too, not just the list row.
+      if (renamed === currentKbId) kbTitleLocal = name;
     }
     editingKbId = null;
   }

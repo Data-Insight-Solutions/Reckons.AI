@@ -267,7 +267,10 @@ test('a freeform re-analysis prompt sits directly after the summary (F139 step 3
   // instruction would be a model call with no guidance, which is the opposite of the point.
   const run = page.getByTestId('reanalyze-run');
   await expect(run).toBeDisabled();
-  await page.getByTestId('reanalyze-input').fill('these are all about the March deploy, group them');
+  const instruction = page.getByTestId('reanalyze-input');
+  await expect(instruction).toBeEnabled({ timeout: 20_000 });
+  await instruction.fill('these are all about the March deploy, group them');
+  await expect(instruction).toHaveValue('these are all about the March deploy, group them');
   await expect(run).toBeEnabled();
 
   /*

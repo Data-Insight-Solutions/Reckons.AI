@@ -41,10 +41,27 @@ import {
 } from '../rdf/source-cache';
 import { classifyText } from '../safety/content-policy';
 import {
+  getWorkspaceRow,
+  putWorkspaceRow,
+  clearWorkspaceRow,
+  defaultGraphWorkspaceStore,
+} from '../storage/app-db';
+import {
   acknowledgePendingJsonl,
   partitionPendingJsonl,
   type PendingEntry,
 } from '../rdf/pending-entry';
+
+/**
+ * Where a handle from BEFORE the app-level store might still be sitting: this graph's own
+ * database first, then the default graph — which is where a long-standing setup keeps it, and
+ * therefore what saves a re-pick the first time a freshly created graph is opened.
+ */
+function legacyWorkspaceStores() {
+  const stores = [db.workspace as never];
+  if (db.name !== 'kbase') stores.push(defaultGraphWorkspaceStore() as never);
+  return stores;
+}
 
 /** Filename written to the workspace dir on every KB mutation (read by the MCP server). */
 export const WORKSPACE_KB_FILE = 'knowledge.ttl';
@@ -156,7 +173,9 @@ function readAutoSyncPref(): boolean {
 
 /** Called on app startup — loads the stored handle and checks current permission. */
 export async function loadWorkspace(): Promise<void> {
-  const row = await db.workspace.get('main');
+  // App-level, with a one-time adoption of any handle an older version left in this graph's
+  // own database. See app-db.ts: the handle describes the browser, not the graph.
+  const row = await getWorkspaceRow(legacyWorkspaceStores());
   if (!row) { _state = 'none'; return; }
   _name = row.name;
   // Restore the last-seen revision baseline BEFORE the initial pull, so a reconnect skips files
@@ -182,7 +201,16 @@ export async function loadWorkspace(): Promise<void> {
 function onWorkspaceConnected(): void {
   if (!_autoSyncEnabled) return;
   // Fire-and-forget: an initial pull followed by the polling loop.
-  void pullFromWorkspace().finally(() => startWorkspacePolling());
+  //
+  // The pending queue is drained here as well as on page load. Linking a folder mid-session used
+  // to sync graph TTLs but leave queued proposals sitting in knowledge.pending.jsonl until the
+  // next reload or a manual refresh — so a note dictated into a ring arrived on disk, and then
+  // appeared to have vanished. Connecting a folder is exactly when the user expects what is in
+  // it to show up.
+  void pullFromWorkspace()
+    .then(() => drainAndImportPending())
+    .catch(() => { /* both paths report their own failures; never break connection on this */ })
+    .finally(() => startWorkspacePolling());
 }
 
 /** Ask the user to pick a directory. Returns true on success. */
@@ -191,7 +219,7 @@ export async function pickWorkspace(): Promise<boolean> {
   try {
     const handle = await (window as unknown as { showDirectoryPicker(o?: { mode?: string }): Promise<FileSystemDirectoryHandle> })
       .showDirectoryPicker({ mode: 'readwrite' });
-    await db.workspace.put({ id: 'main', handle, name: handle.name });
+    await putWorkspaceRow(handle, handle.name, db.workspace);
     _handle = handle;
     _name = handle.name;
     _state = 'connected';
@@ -212,7 +240,7 @@ export async function pickWorkspace(): Promise<boolean> {
 
 /** Re-request permission for the stored handle (call once per session if state === 'disconnected'). */
 export async function reconnectWorkspace(): Promise<boolean> {
-  const row = await db.workspace.get('main');
+  const row = await getWorkspaceRow(legacyWorkspaceStores());
   if (!row) return false;
   try {
     const perm = await (row.handle as any).requestPermission({ mode: 'readwrite' });
@@ -234,7 +262,7 @@ export async function clearWorkspace(): Promise<void> {
   stopWorkspacePolling();
   _seenHashes.clear();
   if (typeof localStorage !== 'undefined') localStorage.removeItem(seenHashesKey());
-  await db.workspace.delete('main');
+  await clearWorkspaceRow(legacyWorkspaceStores());
   _handle = null;
   _name = null;
   _state = 'none';
@@ -1087,6 +1115,18 @@ async function drainAndImportPendingOnce(): Promise<number> {
       latest,
     );
   }
+
+  // A dictated note lands here as ONE log-level fact carrying a whole sentence. Reading it into
+  // triples is not an optional extra step the user should have to remember: the note is the
+  // TRANSPORT, and the facts inside it are the point. Extraction is therefore automatic, and
+  // everything it reads out still arrives pending for review.
+  //
+  // Dynamically imported to keep the extraction pipeline (and the model backends behind it) out
+  // of this module's static dependency graph — the workspace store is loaded on every page.
+  void import('./note-extraction.svelte')
+    .then((m) => m.extractCapturedNotes())
+    .catch((err) => console.warn('[notes] automatic extraction failed:', err));
+
   return written.length;
 }
 
@@ -1311,7 +1351,14 @@ export async function resyncNow(): Promise<{ imported: string[]; updated: string
 /** Start the background poll loop (idempotent). No-op without a handle. */
 export function startWorkspacePolling(ms: number = POLL_INTERVAL_MS): void {
   if (_pollTimer || !_handle || typeof setInterval === 'undefined') return;
-  _pollTimer = setInterval(() => { void pullFromWorkspace(); }, ms);
+  // Pull graph TTLs AND drain the proposal queue. The poll used to do only the first, so a note
+  // dictated into a ring reached knowledge.pending.jsonl on disk and then sat there until the
+  // next page load or a manual refresh — the app was polling a folder while ignoring the one file
+  // in it that changes most. Two of three dictated notes were lost this way on 2026-08-27; they
+  // were never lost, just never picked up.
+  _pollTimer = setInterval(() => {
+    void pullFromWorkspace().then(() => drainAndImportPending());
+  }, ms);
 }
 
 export function stopWorkspacePolling(): void {

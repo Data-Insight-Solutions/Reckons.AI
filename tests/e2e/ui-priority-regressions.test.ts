@@ -1,4 +1,5 @@
 import { test, expect, type Page, type TestInfo } from '@playwright/test';
+import { clearStorage, waitForApp } from './helpers';
 
 /**
  * Focused UI regressions from the 2026-07 mobile/visual review.
@@ -52,6 +53,11 @@ async function seedLargeReviewQueue(page: Page, count = 104) {
     db.close();
   }, count);
 }
+
+test.beforeEach(async ({ page }) => {
+  await clearStorage(page);
+  await waitForApp(page);
+});
 
 test('manual Facts inputs retain readable dark-theme styling', async ({ page }, testInfo) => {
   await page.goto('/ingest');

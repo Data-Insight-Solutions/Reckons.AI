@@ -31,7 +31,9 @@ test.beforeEach(async ({ page }) => {
 
 test('review preview graph renders node labels for a real graph (not blank)', async ({ page }) => {
   await loadStarter(page);
-  await page.goto('/review');
+  // Follow the same client-side transition a person uses after loading the starter.
+  await page.locator('nav').getByRole('link', { name: /review/i }).click();
+  await page.waitForURL((url) => url.pathname === '/review');
   await page.waitForTimeout(1500);
 
   // Must NOT be the empty state — the starter gives the preview graph confirmed statements.
@@ -57,7 +59,11 @@ test('review preview graph renders node labels for a real graph (not blank)', as
 
 test('notifications collapse to a corner bell on /review and expand on click', async ({ page }) => {
   await loadStarter(page);
-  await page.goto('/review');
+  // Follow the same client-side transition a person uses. A hard reload intentionally resets the
+  // in-memory notification tray, and Firefox cannot create the Chromium-only "Protect your graph"
+  // workspace notice as a replacement.
+  await page.locator('nav').getByRole('link', { name: /review/i }).click();
+  await page.waitForURL((url) => url.pathname === '/review');
   await page.waitForTimeout(1500);
 
   // The first-run "Protect your graph" tip is a notification; on /review it must be collapsed to

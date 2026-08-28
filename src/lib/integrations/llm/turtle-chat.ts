@@ -1,4 +1,5 @@
 import { chatClaude, chatOpenAI, chatGemini, chatOllama, chatReckons, chatChromeAI, type ChatMessage } from './providers';
+import { ollamaModelFor } from './model-for-task';
 import { chatWithWasm } from './wasm';
 import { preferLocalBackendSync } from './prefer-local';
 import type { KBAction, KBContext, TurtleChatResponse } from '$lib/types/turtle-chat';
@@ -174,7 +175,7 @@ ACTION FORMAT — every message MUST end with exactly one <kb-actions> block con
 
 CRITICAL: every message ends with a question AND a <kb-actions> block. Plain-text navigation does not work — only the JSON block does.`;
 
-export type TurtleChatProvider = 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'reckons' | 'chrome-ai';
+export type TurtleChatProvider = 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'reckons' | 'chrome-ai' | 'mock';
 
 export interface ResolvedProvider {
   provider: TurtleChatProvider;
@@ -214,6 +215,7 @@ export function resolveChatProvider(s: {
     : pref === 'wasm' ? 'wasm'
     : pref === 'chrome-ai' ? 'chrome-ai'
     : pref === 'reckons' ? 'reckons'
+    : pref === 'mock' ? 'mock'
     : pref === 'openrouter' ? 'openai'
     : 'claude';
 
@@ -224,7 +226,7 @@ export function resolveChatProvider(s: {
     : provider === 'reckons' ? s.reckonsApiKey
     : provider === 'claude' ? s.claudeApiKey
     : null; // ollama, wasm, chrome-ai need no key
-  if (provider !== 'ollama' && provider !== 'wasm' && provider !== 'chrome-ai' && !keyForProvider) {
+  if (provider !== 'ollama' && provider !== 'wasm' && provider !== 'chrome-ai' && provider !== 'mock' && !keyForProvider) {
     provider = 'wasm';
   }
 
@@ -237,9 +239,10 @@ export function resolveChatProvider(s: {
   const model =
     provider === 'openai' ? (s.openaiModel ?? (pref === 'openrouter' ? s.openrouterModel : 'gpt-4o-mini'))
     : provider === 'gemini' ? (s.geminiModel ?? 'gemini-2.0-flash')
-    : provider === 'ollama' ? (s.ollamaModel ?? 'llama3.2')
+    : provider === 'ollama' ? ollamaModelFor('chat', s)
     : provider === 'wasm' ? (s.wasmChatModel || s.wasmModel || undefined)
     : provider === 'chrome-ai' ? undefined
+    : provider === 'mock' ? undefined
     : provider === 'reckons' ? (s.reckonsModel ?? undefined)
     : (s.claudeModel ?? 'claude-haiku-4-5-20251001');
 
@@ -349,6 +352,11 @@ export async function turtleChat(opts: TurtleChatOptions): Promise<TurtleChatRes
     raw = await chatChromeAI(messages, system);
   } else if (provider === 'reckons') {
     raw = await chatReckons(messages, system, apiKey, reckonsBaseUrl, model ?? undefined);
+  } else if (provider === 'mock') {
+    // Deterministic browser-test backend. `mock` is already a supported SettingsRecord value and
+    // is selected by the E2E server environment; routing it to Claude/WASM made "mock" workflows
+    // unexpectedly request credentials or a model download.
+    raw = `OVERVIEW\nThis test proposal is grounded in ${kbContext.statementCount} verified statements.\n\nRecommendation: Review the cited graph facts and choose the option that best fits the stated target.\n\nConfidence: test — deterministic mock response.`;
   } else {
     raw = await chatClaude(messages, system, apiKey, model ?? 'claude-haiku-4-5-20251001');
   }
