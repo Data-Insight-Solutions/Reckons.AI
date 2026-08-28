@@ -6248,3 +6248,36 @@ kb:generation-coupling rdf:type ktype:Decision ;
                kpred:relates-to   kb:integration-plugin-sdk ;
                kpred:open-question "Does a generation task need a new EFFECT? The current five — read-only, queue-write, source-write, external-read, external-write — do not distinguish \u0027writes a file into my assets folder\u0027 from \u0027rewrites my source tree\u0027, and both are source-write today. An `asset-write` effect would let generation run under autonomy (F165) without granting anything else." ;
                kpred:remaining    "The catalogue is a list of commands nobody has run. Needed: one generation task end to end — a real command, a real done-when, a real outcome — before any of this is more than a well-licensed list." .
+
+## =============================================================================
+## F167: Ranking by fit, and composing by type  (Matt, 2026-08-28)
+## =============================================================================
+
+kb:generation-fit rdf:type   ktype:Feature ;
+               rdfs:label   "Rank generation tools by what an agent can actually run" ;
+               kpred:feature-id   "F167" ;
+               kpred:has-status   "functional" ;
+               kpred:has-file     "scripts/offline/generation-fit.ts" ;
+               kpred:has-file     "static/reckons-generation-tools.ttl" ;
+               kpred:part-of      kb:generation-coupling ;
+               kpred:description  "Matt: \u0027prioritize easy to install and open, along with compatibility to run from local agents.\u0027 Three axes, each DERIVED FROM THE REPOSITORY rather than recalled — licence class, install shape from the top-level file listing, and whether the README documents an actual command." ;
+               kpred:principle    "\u0027EASY TO INSTALL\u0027 IS EXACTLY THE CLAIM A MODEL ASSERTS CONFIDENTLY AND WRONGLY, which is why every axis here is evidence from the repo. A prebuilt release or a Dockerfile is one command; a Python project is an environment, a CUDA version and an afternoon — and that ordering is the difference between a task a runner sets up unattended and one that needs a person." ;
+               kpred:principle    "MAINTENANCE IS A GATE, NOT AN AXIS. Averaging it in would let a dormant project score its way to the top; two did score 6/6 and are unpushed since 2024. It is reported separately so it cannot be traded off." ;
+               kpred:measured     "SCORED 2026-08-28. Five tools scored 6/6 AND are actively maintained: leejet/stable-diffusion.cpp (MIT, image), mudler/LocalAI (MIT, runtime), SWivid/F5-TTS (MIT, speech), danielgatis/rembg (MIT, image utility), hpcaitech/Open-Sora (Apache-2.0, video). Every one is permissive, ships a prebuilt release, and documents a command. That is the shortlist." ;
+               kpred:known-issue  "THE INVOKE AXIS MEASURES DOCUMENTATION, NOT CAPABILITY, and the scores must be read that way. A zero means the README shows no command — checked on rhasspy/piper, whose README genuinely links out to docs instead — which is a real signal about how hard the tool is to drive, and NOT proof it has no CLI. AUTOMATIC1111 and InvokeAI score zero for the same reason. Do not let this rank a tool out of consideration on its own." ;
+               kpred:honest-note  "NONE OF THIS MEASURES WHETHER THE OUTPUT IS ANY GOOD. That is taste, it routes to the user by the verifiability axis, and no amount of repository metadata substitutes for looking at a generated image." .
+
+kb:generation-composition rdf:type ktype:Decision ;
+               rdfs:label   "Compose tools by input and output type — and edit at the cheapest representation" ;
+               kpred:feature-id   "F167.1" ;
+               kpred:has-status   "planned" ;
+               kpred:part-of      kb:generation-coupling ;
+               kpred:decided      "Matt, 2026-08-28: \u0027We will also need to carefully track the available inputs for the various tools. One great example is that you would want to download a transcript, edit text, use a TTS model, then do video editing to align the new speech, instead of trying to use video editing models to change specific words in a transcript.\u0027" ;
+               kpred:principle    "EDIT AT THE LOWEST-FIDELITY REPRESENTATION THAT STILL CARRIES THE MEANING. Changing a word is a TEXT operation. Doing it in pixels asks a video model to re-derive everything the transcript already stated exactly — it is slower, needs a bigger model, and can silently change things nobody asked to change. Text is cheap to edit correctly, audio less so, video least. The chain transcript -> edit -> TTS -> align is not a workaround for missing video models; it is the RIGHT answer, and it would remain the right answer if the video models were perfect." ;
+               kpred:principle    "SO THE CATALOGUE MUST CARRY TYPES, NOT JUST CAPABILITIES. kpred:accepts and kpred:produces are now on every tool, so a chain is computable: find a path from what you have to what you want, and prefer the path that does its editing earliest. Without types, composition is a person remembering which tool eats what." ;
+               kpred:honest-note  "THE MODALITIES ARE AUTHORED, NOT FETCHED, unlike every other field in that catalogue. A repository does not reliably declare its input and output types in machine-readable form, so these were written by hand and are checkable at a glance by a human — which is why it was safe to declare them where \u0027easy to install\u0027 was not." ;
+               kpred:relates-to   kb:generation-catalog ;
+               kpred:relates-to   kb:agent-orchestration ;
+               kpred:relates-to   kb:meme-with-context ;
+               kpred:open-question "Does a chain become ONE task or several? Several is honest — each step gets its own effects, its own done-when and its own reviewable outcome — but then something has to hold the intermediate artifacts and know the chain is a chain. kpred:blocked-by already sequences tasks; what is missing is passing an OUTPUT from one to the next." ;
+               kpred:remaining    "A path finder over accepts/produces; intermediate artifact handling between chained tasks; and the transcript-edit-TTS-align chain built once end to end, since it is the example that motivated this and would prove the whole idea." .
