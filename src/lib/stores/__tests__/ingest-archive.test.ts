@@ -67,6 +67,9 @@ vi.mock('../kb.svelte', () => ({
   prepareStatementsForWrite,
   persistIngestBatch,
   statements: allStatements,
+  // The typing stage reads the user's entity types, which are derived from confirmed facts.
+  // Empty here: these tests exercise the archive boundary, so built-in types are enough.
+  confirmedStatements: () => [],
 }));
 vi.mock('../settings.svelte', () => ({
   settings: () => currentSettings,

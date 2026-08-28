@@ -8,7 +8,7 @@ import type {
 } from '../rdf/types';
 
 export const EXTRACTION_RUN_STAGES: readonly ExtractionStageName[] = [
-  'route', 'extract', 'validate', 'ground', 'normalize', 'archive', 'diff', 'persist',
+  'route', 'extract', 'validate', 'ground', 'normalize', 'type', 'archive', 'diff', 'persist',
 ];
 
 export type CreateExtractionRunInput = {
