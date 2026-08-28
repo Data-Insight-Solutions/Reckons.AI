@@ -18,7 +18,7 @@ KBS="$WORKSPACE/kbs"
 
 echo "Setting up Reckons workspace..."
 
-mkdir -p "$KBS"/{production,roadmap,features,docs,quickstart,codebase,architecture,vocabulary}
+mkdir -p "$KBS"/{production,roadmap,features,docs,quickstart,codebase,architecture,vocabulary,generation}
 
 # Clean up legacy meta.json files (no longer needed — discovery uses {folder}.ttl)
 find "$KBS" -name meta.json -delete 2>/dev/null || true
@@ -37,6 +37,9 @@ ln -sf ../../../static/docs-architecture.ttl  "$KBS/architecture/architecture.tt
 # task state is, rather than inferring it from examples — which is the whole reason for defining
 # them in the graph instead of in TypeScript.
 ln -sf ../../../static/reckons-vocabulary.ttl "$KBS/vocabulary/vocabulary.ttl"
+# The local-generation catalogue, so an agent can ask what is available and what its licence
+# permits rather than guessing from a model name.
+ln -sf ../../../static/reckons-generation-tools.ttl "$KBS/generation/generation.ttl"
 
 # Docs KB: merge all sub-graphs into one file, then symlink
 cat static/starter-guide.ttl \

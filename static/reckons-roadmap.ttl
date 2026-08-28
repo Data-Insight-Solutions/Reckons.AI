@@ -6226,3 +6226,25 @@ kb:graph-autonomy rdf:type   ktype:Feature ;
                kpred:relates-to   kb:agent-orchestration ;
                kpred:open-question "Does an auto-run output carry a different provenance than a human-triggered one? It should be distinguishable — kpred:proposedBy already exists for exactly this reason, and \u0027was this run because I asked, or because the graph was set to\u0027 is the first question anyone will have about a surprising fact." ;
                kpred:remaining    "All of it. The setting per graph, the effect allowlist, the refusal on capture graphs, and a runner invocation that reads the allowlist instead of a CLI flag. kb:shelly-curation already defines suggest / auto-safe / auto-all, and orch-control-layers already says autonomy applies PER LAYER — this is that vocabulary, made real for one layer." .
+
+## =============================================================================
+## F166: Generation tools couple through the task queue  (Matt, 2026-08-28)
+## =============================================================================
+
+kb:generation-coupling rdf:type ktype:Decision ;
+               rdfs:label   "A generation tool is a task with a command, not an integration" ;
+               kpred:feature-id   "F166" ;
+               kpred:has-status   "planned" ;
+               kpred:has-file     "static/reckons-generation-tools.ttl" ;
+               kpred:decided      "Matt: \u0027we need to loosly couple all these generation tools... CLI usage of stable diffusion models has worked decently for me in the past.\u0027 The loosest possible coupling to a tool is a SHELL COMMAND with a declared authority boundary — and F87 already ships exactly that. So generation is another tier of the task queue rather than a new subsystem, and no plugin SDK is needed for it." ;
+               kpred:principle    "THE TOOL KNOWS NOTHING ABOUT US AND WE KNOW NOTHING ABOUT IT beyond how to invoke it and what counts as success. kpred:command invokes, kpred:effect bounds the authority, kpred:done-when decides acceptance, kpred:outcome records what happened. kb:visual-acceptance already supplies the missing half for this domain, because a green exit code is not a good image. Every piece is built and tested; nothing about generation requires new machinery." ;
+               kpred:principle    "WHICH ALSO ANSWERS THE OpenWebUI QUESTION. A separate runtime is not a competing plan — it is one more thing a command can talk to, and it stays the USER\u0027S process under the Integration Boundaries rule. That is the same posture the runner already takes toward Ollama." ;
+               kpred:measured     "TWENTY TOOLS CATALOGUED FROM LIVE API DATA, 2026-08-28 — licence, stars and last-push fetched and written programmatically rather than recalled. 15 permissive (9 MIT, 6 Apache-2.0), 1 BSD-3, 1 MPL-2.0, 2 copyleft (A1111 AGPL-3.0, Fooocus GPL-3.0), and 1 NOASSERTION — which is open-webui, the runtime Matt named. SEVEN OF TWENTY ARE DORMANT, including Real-ESRGAN, bark and Coqui TTS, all unpushed since 2024. A README never says that; the API does." ;
+               kpred:principle    "THE CLI SHAPE MATT PREFERS HAS A BEST ANSWER: leejet/stable-diffusion.cpp, MIT, a single C++ binary with no Python and no server. It is the loosest coupling in the catalogue and the easiest thing to put in a kpred:command." ;
+               kpred:relates-to   kb:generation-catalog ;
+               kpred:relates-to   kb:agent-orchestration ;
+               kpred:relates-to   kb:asset-generation ;
+               kpred:relates-to   kb:meme-with-context ;
+               kpred:relates-to   kb:integration-plugin-sdk ;
+               kpred:open-question "Does a generation task need a new EFFECT? The current five — read-only, queue-write, source-write, external-read, external-write — do not distinguish \u0027writes a file into my assets folder\u0027 from \u0027rewrites my source tree\u0027, and both are source-write today. An `asset-write` effect would let generation run under autonomy (F165) without granting anything else." ;
+               kpred:remaining    "The catalogue is a list of commands nobody has run. Needed: one generation task end to end — a real command, a real done-when, a real outcome — before any of this is more than a well-licensed list." .
