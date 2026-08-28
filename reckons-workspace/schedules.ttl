@@ -56,3 +56,10 @@ sched:review-stars rdf:type   ktype:Schedule ;
     kpred:command   "npx tsx scripts/offline/stars-scan.ts --pending --limit 15" ;
     kpred:enabled   "true" ;
     kpred:description "Matt: 'Make it a regular task to review my github stars... I'm tired of copy pasting their links anyway.' A star is a judgement he already made, stranded on github.com. This brings the new ones in as licence-gated proposals. Incremental by starred_at and capped, because 659 stars proposed at once is a flooded queue rather than a feature." .
+
+sched:integration-health rdf:type ktype:Schedule ;
+    rdfs:label      "Check connected tools and versions" ;
+    kpred:every     "168h" ;
+    kpred:command   "npx tsx scripts/offline/integration-health.ts --pending" ;
+    kpred:enabled   "true" ;
+    kpred:description "Matt: 'before usage at some interval it might be nice to check if new version is available'. Reports what is reachable, what is behind, and how many catalogued tools are actually invokable here. Weekly, because a version check that runs hourly is noise -- and only a SECURITY fix or an unreachable service raises attention." .
