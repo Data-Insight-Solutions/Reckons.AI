@@ -1,0 +1,85 @@
+{
+  "name": "Reckons.AI — Task document → email (F162)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Reckons.AI task documents by email\n\nA task dictated into a ring becomes a `proposed` AgentTask with a goal and nothing else — no declared effects, no acceptance check. It CANNOT run until a person supplies those.\n\n`scripts/agent/tasks-export.ts --notify` renders each unauthored task as a markdown form and POSTs it here. This workflow emails it, so the form can be read on a phone.\n\n**Reply by editing the file, not the email.** The answers go back through `scripts/agent/tasks-import.ts`, which turns them into PENDING facts for review. Accepting them in the app is what authorizes the task — nothing in this workflow grants a runner permission to do anything.\n\nSecurity: add a Header Auth credential on the webhook and set N8N_CAPTURE_HEADER_NAME / N8N_CAPTURE_HEADER_VALUE in .env, matching the capture webhooks.",
+        "height": 420,
+        "width": 460
+      },
+      "id": "about",
+      "name": "Read me first",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-180, 120]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "reckons-document",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Reckons document webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [360, 260],
+      "webhookId": "reckons-document"
+    },
+    {
+      "parameters": {
+        "jsCode": "// The document arrives as markdown. Email it as text: a task form is meant to be read on a\n// phone and answered at a desk, and HTML would only obscure the frontmatter that carries the\n// fields somebody has to fill in.\nconst d = $input.first().json.body ?? $input.first().json;\nconst title = d.title || d.filename || 'Reckons.AI task';\nconst graph = d.graph ? ` [${d.graph}]` : '';\n\nreturn [{\n  json: {\n    subject: `Task needs authorising${graph}: ${title}`,\n    body: [\n      d.markdown || '(no document body)',\n      '',\n      '--',\n      'Fill in `effect` and `done_when` in the file, then run:',\n      '  npx tsx scripts/agent/tasks-import.ts',\n      '',\n      'The answers arrive as PENDING facts. Accepting them in Reckons.AI is what',\n      'authorises the task; this email does not.',\n    ].join('\\n'),\n    filename: d.filename,\n    task: d.task,\n  },\n}];"
+      },
+      "id": "format",
+      "name": "Format email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [580, 260]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            {
+              "id": "has-body",
+              "leftValue": "={{ $json.body }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "guard",
+      "name": "Only if there is a document",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [800, 260]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "toRecipients": "you@example.com",
+        "subject": "={{ $json.subject }}",
+        "bodyContent": "={{ $json.body }}",
+        "additionalFields": { "bodyContentType": "Text", "saveToSentItems": true }
+      },
+      "id": "send",
+      "name": "Send email",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [1040, 220]
+    }
+  ],
+  "connections": {
+    "Reckons document webhook": { "main": [[{ "node": "Format email", "type": "main", "index": 0 }]] },
+    "Format email": { "main": [[{ "node": "Only if there is a document", "type": "main", "index": 0 }]] },
+    "Only if there is a document": { "main": [[{ "node": "Send email", "type": "main", "index": 0 }], []] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

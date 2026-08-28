@@ -26,6 +26,13 @@
  *   npx tsx scripts/agent/tasks-export.ts --dry-run       list what would be written
  *   npx tsx scripts/agent/tasks-export.ts --force         overwrite existing documents
  *   npx tsx scripts/agent/tasks-export.ts --out <dir>     default reckons-workspace/tasks-inbox
+ *   npx tsx scripts/agent/tasks-export.ts --notify        also POST each document to n8n (F162)
+ *
+ * DELIVERY IS OPT-IN AND BEST-EFFORT. `--notify` posts each document to the user's own n8n at
+ * `/webhook/reckons-document`, which they wire to an email however they like — the importable
+ * template is static/n8n/task-document-email.workflow.json. It is a SIDE EFFECT, so it never
+ * decides whether the export succeeded: a delivery failure is reported and the documents are
+ * still on disk. n8n owns web side-effects; the graph owns state (Integration Boundaries).
  */
 import { readFileSync, existsSync, writeFileSync, mkdirSync, readdirSync } from 'fs';
 import path from 'path';
@@ -44,6 +51,59 @@ const arg = (name: string, fallback: string) => {
 
 const WORKSPACE = arg('--workspace', 'reckons-workspace');
 const OUT_DIR = arg('--out', path.join(WORKSPACE, 'tasks-inbox'));
+const NOTIFY = argv.includes('--notify');
+const DOCUMENT_WEBHOOK = '/webhook/reckons-document';
+
+/** Read .env the same way notes-pull does, so one file configures both directions. */
+function loadDotEnv(file = '.env'): void {
+  if (!existsSync(file)) return;
+  for (const line of readFileSync(file, 'utf8').split('\n')) {
+    if (line.trimStart().startsWith('#')) continue;
+    const m = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/.exec(line);
+    if (!m || process.env[m[1]] !== undefined) continue;
+    process.env[m[1]] = m[2].replace(/^(['"])(.*)\1$/, '$2');
+  }
+}
+
+/**
+ * Hand one document to n8n. Never throws: delivery is a side effect and must not be able to fail
+ * an export whose real output is already safely on disk.
+ */
+async function deliver(doc: { filename: string; title: string; markdown: string }, graph: string, taskIri: string): Promise<boolean> {
+  const base = process.env.N8N_API_URL?.replace(/\/+$/, '');
+  if (!base) {
+    console.warn('  ! --notify given but N8N_API_URL is unset — documents written, nothing sent');
+    return false;
+  }
+  const headerName = process.env.N8N_CAPTURE_HEADER_NAME;
+  const headerValue = process.env.N8N_CAPTURE_HEADER_VALUE;
+  try {
+    const res = await fetch(`${base}${DOCUMENT_WEBHOOK}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(headerName && headerValue ? { [headerName]: headerValue } : {}),
+      },
+      body: JSON.stringify({
+        kind: 'task-document',
+        graph,
+        task: taskIri,
+        filename: doc.filename,
+        title: doc.title,
+        markdown: doc.markdown,
+        at: new Date().toISOString(),
+      }),
+    });
+    if (!res.ok) {
+      console.warn(`  ! delivery of ${doc.filename} failed: HTTP ${res.status}`);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn(`  ! delivery of ${doc.filename} failed: ${err instanceof Error ? err.message : err}`);
+    return false;
+  }
+}
 
 /**
  * A quad as the minimal Statement the RDF helpers need.
@@ -103,7 +163,8 @@ export function needsAuthoring(tasks: AgentTask[]): AgentTask[] {
   );
 }
 
-function main(): void {
+async function main(): Promise<void> {
+  if (NOTIFY) loadDotEnv();
   const graphs = readGraphTasks();
   if (graphs.length === 0) {
     console.log(`No graphs with tasks under ${WORKSPACE}/kbs. Is the workspace synced?`);
@@ -113,6 +174,7 @@ function main(): void {
   let written = 0;
   let skipped = 0;
   let complete = 0;
+  let delivered = 0;
 
   for (const { graph, tasks } of graphs) {
     const pending = needsAuthoring(tasks);
@@ -133,7 +195,8 @@ function main(): void {
         continue;
       }
       mkdirSync(OUT_DIR, { recursive: true });
-      writeFileSync(target, doc.markdown, 'utf8');
+      writeFileSync(target, doc.markdown, 'utf8');   // ON DISK FIRST, always
+      if (NOTIFY && (await deliver(doc, graph, task.iri))) delivered++;
       if (existsSync(target) && FORCE) console.log(`  ! ${doc.filename}  (OVERWRITTEN)`);
       else console.log(`  + ${doc.filename}  [${graph}] ${doc.title}`);
       written++;
@@ -146,10 +209,13 @@ function main(): void {
     `\n${DRY_RUN ? 'Would write' : 'Wrote'} ${written}, skipped ${skipped} existing, ` +
       `${complete} task(s) already carry their effects and done-when.`,
   );
+  if (NOTIFY) console.log(`Delivered ${delivered} of ${written} to n8n${DRY_RUN ? ' (dry run: none)' : ''}.`);
   if (written > 0 && !DRY_RUN) {
     console.log(`\nFill in effect / done_when in ${OUT_DIR}/*.md, then:`);
     console.log('  npx tsx scripts/agent/tasks-import.ts');
   }
 }
 
-if (process.argv[1] && process.argv[1].endsWith('tasks-export.ts')) main();
+if (process.argv[1] && process.argv[1].endsWith('tasks-export.ts')) {
+  main().catch((e) => { console.error('tasks-export failed:', e); process.exit(1); });
+}

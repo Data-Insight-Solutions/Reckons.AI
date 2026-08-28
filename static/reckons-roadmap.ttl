@@ -6139,7 +6139,6 @@ kb:meme-with-context rdf:type ktype:Feature ;
 kb:n8n-document-output rdf:type ktype:Feature ;
                rdfs:label   "Generated documents out through n8n — review on a phone, forward if good" ;
                kpred:feature-id   "F162" ;
-               kpred:has-status   "planned" ;
                kpred:priority     "high" ;
                kpred:description  "Matt, 2026-08-28: 'record the need for n8n output, like an email of a generated document, so I could review easily from my phone and forward if acceptable.' The capture direction is proven — ring to n8n to the graph. This is the return leg: the graph produces a document and n8n delivers it wherever the person actually is." ;
                kpred:principle    "MARKDOWN IS WHY THIS IS NEARLY FREE. F153 already renders tasks and entities as documents, and a markdown document is the one artifact that emails, renders on a phone, and forwards without a client. The output side needs no new format — it needs a delivery hook and a body." ;
@@ -6151,4 +6150,9 @@ kb:n8n-document-output rdf:type ktype:Feature ;
                kpred:relates-to   kb:task-bridge ;
                kpred:relates-to   kb:meme-with-context ;
                kpred:open-question "Which documents earn a send? A task form needing authorisation is the obvious one, and F160 currently has no way to tell anyone its documents are waiting. A daily digest, a finished generation, a reckoning — each is a different trigger and a different cadence, and sending all of them is how a notification channel becomes noise." ;
-               kpred:remaining    "A document-shaped payload on the existing review webhook; a trigger on artifact generation rather than only on queue change; an importable n8n workflow template beside the two that already ship. Decide the approval question above before any action link is built." .
+               kpred:has-status   "scaffolded" ;
+               kpred:has-file     "scripts/agent/tasks-export.ts" ;
+               kpred:template     "static/n8n/task-document-email.workflow.json — importable: webhook /webhook/reckons-document → format as text → guard → email. Ships beside the review-notify and contact templates." ;
+               kpred:done         "THE FIRST DOCUMENT KIND IS DELIVERED. tasks-export --notify POSTs each generated task form to the user\u0027s own n8n at /webhook/reckons-document, reusing the same .env credentials as the capture direction so one file configures both legs. Markdown goes out as TEXT, deliberately: a task form is read on a phone and answered at a desk, and HTML would obscure the frontmatter carrying the fields to fill in." ;
+               kpred:principle    "DELIVERY IS A SIDE EFFECT AND MUST NEVER DECIDE WHETHER THE EXPORT SUCCEEDED. Documents are written to disk FIRST; a failed POST is warned about and the run continues. n8n owns web side-effects, the graph owns state — and an export that reported failure because an email bounced would have inverted that." ;
+               kpred:remaining    "Other document kinds — a digest, a finished generation, a reckoning — each needing its own trigger and cadence, because sending all of them is how a notification channel becomes noise. Nothing runs the export on a schedule yet. And the approval question above is unanswered: today the forward is purely SOCIAL, with acceptance happening separately in the app, which is the honest shippable half." .
