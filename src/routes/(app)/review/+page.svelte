@@ -29,6 +29,7 @@
   } from '$lib/stores/kb.svelte';
   import { getRegistry, getCurrentKbId } from '$lib/storage/kb-registry';
   import { drainAndImportPending, workspaceState, supportsWorkspace } from '$lib/stores/workspace.svelte';
+  import { runPartition } from '$lib/rdf/partition-run';
   import {
     computeAlignment, loadKbStatements, applyAlignmentToActiveKb,
     type AlignmentResult, type AlignmentSuggestion,
@@ -42,8 +43,8 @@
   import { buildReviewTree, reviewTreeSummary, questionText } from '$lib/rdf/review-tree';
   import { reanalysisRequest, reanalysisSummary } from '$lib/rdf/reanalysis';
   import { runReanalysis, type ReanalysisRun } from '$lib/rdf/reanalysis-run';
-  import { altitudeOf, ALTITUDE_META, type Altitude } from '$lib/rdf/fact-altitude';
-  import {
+  import { altitudeOf, ALTITUDE_META, ALTITUDE_RANK, type Altitude } from '$lib/rdf/fact-altitude';
+  import { applyPartition,
     clusterForCascade, applyCascade, cascadeSummary, needsPurposeQuestion, purposeQuestion,
     BASIS_META, type FactCluster, type CascadeAction,
   } from '$lib/rdf/fact-aggregation';
@@ -91,7 +92,59 @@
   let graphSettled = $state(false);
 
   // ── Review data ───────────────────────────────────────────────────────────
-  const incoming = $derived(pendingStatements());
+  // LOG-ALTITUDE FACTS ARE NOT REVIEW WORK. A dictated sentence stored whole
+  // (`kpred:captured-note`) asserts only that somebody said something, and the person who would
+  // be asked to confirm it is the person who said it — F139 calls queueing one "not inefficient,
+  // it is incoherent". The KNOWLEDGE in a note is whatever extraction reads out of it, and those
+  // triples queue normally on their own merits.
+  //
+  // FILTERED FOR DISPLAY, NOT AUTO-CONFIRMED ON IMPORT. The queue is a proposal transport, not an
+  // authentication channel: letting a JSONL row carry a predicate that settles it would let any
+  // writer of that file mint confirmed facts. So the status stays `pending` and the QUEUE decides
+  // not to ask about it. Extraction settles it properly a moment later.
+  const allIncoming = $derived(pendingStatements());
+
+  // DETAIL — the same ladder the graph view uses, on the queue (Matt, 2026-08-28: "I need
+  // depth/detail/altitude in the review screen, for sure").
+  //
+  // This queue ALREADY hid logs, with a hardcoded `!== 'log'` and no way to see past it. The
+  // default below reproduces that behaviour exactly, so nothing changes for anyone who does not
+  // touch the control — what changes is that the floor is now visible, adjustable, and says what
+  // it costs. `hubs` is deliberately absent: a hub is a shape in a graph, not a property of a
+  // fact awaiting a decision.
+  type ReviewDetailId = 'all' | 'detailed' | 'evidence' | 'judgments' | 'decisions';
+  const REVIEW_DETAIL_LEVELS: { id: ReviewDetailId; label: string; floor: Altitude | null; title: string }[] = [
+    { id: 'all', label: 'all', floor: null, title: 'Everything, including logs — notes and timestamps that assert only that something happened' },
+    { id: 'detailed', label: 'detailed', floor: 'record', title: 'Above logs — the default, and what this queue has always shown' },
+    { id: 'evidence', label: 'evidence', floor: 'evidence', title: 'Measurements and up — drops mechanical records a script settles' },
+    { id: 'judgments', label: 'judgments', floor: 'judgment', title: 'Verdicts no check can settle, and the decisions above them' },
+    { id: 'decisions', label: 'decisions', floor: 'decision', title: 'Only facts that foreclose options' },
+  ];
+  let reviewDetail = $state<ReviewDetailId>('detailed');
+  // `?? 'record'` would be WRONG here: the `all` rung's floor is deliberately null, and ?? treats
+  // null as nullish — so selecting "all" would have silently kept the log floor on. Resolve the
+  // LEVEL, then read its floor.
+  const reviewLevel = $derived(
+    REVIEW_DETAIL_LEVELS.find((l) => l.id === reviewDetail) ?? REVIEW_DETAIL_LEVELS[1],
+  );
+  const reviewFloor = $derived(reviewLevel.floor);
+
+  // RAW ALTITUDE, NOT LIFTED — and this is a correction, recorded because it is not obvious.
+  // The graph view's ladder uses liftedAltitudes so a log under an open decision stays visible.
+  // Making this queue match broke `review.test.ts` ("unplanned work is asked for its PURPOSE"):
+  // lifting raises log facts INTO the queue, and cascade aggregation refuses decision- and
+  // judgment-altitude members by design (kb:cascade-aggregation), so the purpose row never
+  // formed. The two surfaces genuinely want different things — the canvas is showing you a
+  // picture, the queue is assembling a decision — so the queue keeps raw altitude and the
+  // difference is stated rather than smoothed over. Revisit with the cascade validator in hand,
+  // not by changing this line.
+  const incoming = $derived(
+    reviewFloor === null
+      ? allIncoming
+      : allIncoming.filter((s) => ALTITUDE_RANK[altitudeOf(s)] >= ALTITUDE_RANK[reviewFloor]),
+  );
+  /** Said out loud rather than silently dropped — a hidden row must look hidden, not absent. */
+  const hiddenLogCount = $derived(allIncoming.length - incoming.length);
   const pendingDeletions = $derived(pendingRemovalStatements());
   const pendingMerges = $derived(pendingMergeStatements());
 
@@ -113,6 +166,7 @@
   // Semantic diff (async upgrade)
   let semanticDiff = $state<ReturnType<typeof computeDiff> | null>(null);
   let semanticAnalyzing = $state(false);
+  let semanticReady = $state(false);
   let semanticVersion = 0;
   let semanticFailed = false;
 
@@ -278,6 +332,55 @@
   let cascadeBusy = $state<string | null>(null);
   let cascadeEffect = $state<string | null>(null);
 
+  /** Which cluster the last purpose failure belongs to, so the message sits on the right card. */
+  let purposeError = $state<string | null>(null);
+  let purposeErrorCluster = $state<string | null>(null);
+
+  /**
+   * Settle a purpose cluster with the user's own words.
+   *
+   * The model only SORTS: `validateProposedPartition` drops any purpose not built from words the
+   * person actually used, so a hallucinated goal cannot become a work unit. A single-purpose
+   * answer is legitimate and cannot be partitioned (applyPartition needs two parts), so it falls
+   * back to settling the whole cluster — the user still said what the work was for.
+   */
+  async function settlePurpose(cluster: FactCluster) {
+    const answer = (purposeAnswers[cluster.id] ?? '').trim();
+    if (!answer || cascadeBusy) return;
+    cascadeBusy = cluster.id;
+    purposeError = null;
+    purposeErrorCluster = cluster.id;
+    try {
+      const run = await runPartition(cluster, answer, settings());
+      if (!run.outcome || run.error) {
+        purposeError = run.error ?? 'The model returned nothing usable.';
+        return;
+      }
+      if (run.outcome.parts.length < 2) {
+        purposeError =
+          'You named one goal, so there is nothing to split — settling the whole set under it.';
+        await settleCluster(cluster, 'confirm');
+        return;
+      }
+      const result = applyPartition(run.outcome, cluster, answer, {
+        actor: 'user',
+        channel: 'app:review',
+      });
+      await addStatements(result.recorded, 'manual');
+      for (const st of result.updated) await setStatus(st.id, st.status);
+      cascadeEffect = result.effect;
+      purposeAnswers[cluster.id] = '';
+      openCluster = null;
+      if (run.outcome.rejected.length > 0) {
+        purposeError = `${run.outcome.rejected.length} proposed group(s) used words you did not, and were dropped.`;
+      }
+    } catch (err) {
+      purposeError = err instanceof Error ? err.message : String(err);
+    } finally {
+      cascadeBusy = null;
+    }
+  }
+
   async function settleCluster(cluster: FactCluster, answer: CascadeAction) {
     if (cascadeBusy) return;
     cascadeBusy = cluster.id;
@@ -322,18 +425,31 @@
     const ex = existing;
     const sDiff = computeDiff(inc, ex);
     const myVersion = ++semanticVersion;
-    if (sDiff.entries.length === 0) { semanticDiff = null; semanticAnalyzing = false; return; }
+    semanticReady = false;
+    if (sDiff.entries.length === 0) {
+      semanticDiff = null;
+      semanticAnalyzing = false;
+      semanticReady = true;
+      return;
+    }
     // Clear the spinner on the way out. This returned without touching it, so once enrichment had
     // failed one run — after which every later run takes this branch — a stale `true` could never
     // be cleared by anything, and "analyzing…" stayed on the summary row for the rest of the session.
-    if (semanticFailed) { semanticAnalyzing = false; return; }
+    if (semanticFailed) { semanticAnalyzing = false; semanticReady = true; return; }
     semanticAnalyzing = true;
     semanticDiff = null;
     semanticEnrichDiff(sDiff, ex).then(enriched => {
-      if (myVersion === semanticVersion) { semanticDiff = enriched; semanticAnalyzing = false; }
+      if (myVersion === semanticVersion) {
+        semanticDiff = enriched;
+        semanticAnalyzing = false;
+        semanticReady = true;
+      }
     }).catch(() => {
       semanticFailed = true;
-      if (myVersion === semanticVersion) semanticAnalyzing = false;
+      if (myVersion === semanticVersion) {
+        semanticAnalyzing = false;
+        semanticReady = true;
+      }
     });
   });
 
@@ -358,7 +474,7 @@
 
   async function runPendingReanalysis() {
     const instruction = reanalysisInstruction.trim();
-    if (!instruction || reanalysisBusy) return;
+    if (!instruction || reanalysisBusy || !semanticReady) return;
     reanalysisBusy = true;
     reanalysisRun = null;
     try {
@@ -390,6 +506,7 @@
 
   let draining = $state(false);
   let drainResult = $state<string | null>(null);
+
   /** What the last bulk accept actually did — including when the honest answer is "nothing". */
   let bulkResult = $state<string | null>(null);
   async function checkPending() {
@@ -1507,6 +1624,21 @@
       <h2 class="rp-title">review</h2>
       <p class="rp-sub mono" data-testid="review-pending-count">
         {totalPending} pending change{totalPending !== 1 ? 's' : ''}
+        {#if hiddenLogCount > 0}
+          <span class="log-hidden mono" title="Hidden from this queue only. Every fact is still in the graph — lower the detail level to see them.">
+            · {hiddenLogCount} not shown
+          </span>
+        {/if}
+        <select
+          class="review-detail mono"
+          bind:value={reviewDetail}
+          title={reviewLevel.title}
+          aria-label="Detail level"
+        >
+          {#each REVIEW_DETAIL_LEVELS as level (level.id)}
+            <option value={level.id} title={level.title}>{level.label}</option>
+          {/each}
+        </select>
         {#if workspaceState() === 'connected'}
           <button class="drain-btn" onclick={checkPending} disabled={draining} title="Check workspace for pending MCP proposals">
             {draining ? '...' : drainResult ?? '↻'}
@@ -1671,13 +1803,13 @@
                 bind:value={reanalysisInstruction}
                 placeholder="re-analyze these pending facts — e.g. 'these are all about the March deploy, group them'"
                 data-testid="reanalyze-input"
-                disabled={reanalysisBusy}
+                disabled={reanalysisBusy || !semanticReady}
                 onkeydown={(e) => { if (e.key === 'Enter') runPendingReanalysis(); }}
               />
               <button
                 class="ghost-btn"
                 onclick={runPendingReanalysis}
-                disabled={reanalysisBusy || !reanalysisInstruction.trim()}
+                disabled={reanalysisBusy || !semanticReady || !reanalysisInstruction.trim()}
                 data-testid="reanalyze-run"
               >{reanalysisBusy ? 'analyzing...' : 're-analyze'}</button>
             </div>
@@ -1746,8 +1878,29 @@
                          REASON, not a truth value. The answer re-partitions the set (F139.1). -->
                     <div class="cascade-purpose mono">
                       This work is tied to no planned feature, so answering it in your own words
-                      splits the set and labels each part. Queued for the local model to partition.
+                      splits the set and labels each part. The purposes come from YOUR wording —
+                      anything the model invents is dropped.
                     </div>
+                    <div class="cascade-answer">
+                      <textarea
+                        class="cascade-answer-input mono"
+                        rows="2"
+                        bind:value={purposeAnswers[cluster.id]}
+                        placeholder="e.g. 'half of this was the capture pipeline, the rest was fixing the workspace sync'"
+                        disabled={cascadeBusy === cluster.id}
+                        data-testid="purpose-answer"
+                      ></textarea>
+                      <button
+                        class="cascade-yes"
+                        disabled={cascadeBusy === cluster.id || !purposeAnswers[cluster.id]?.trim()}
+                        onclick={() => settlePurpose(cluster)}
+                      >{cascadeBusy === cluster.id ? 'sorting...' : `answer — settle all ${cluster.members.length}`}</button>
+                    </div>
+                    {#if purposeError && purposeErrorCluster === cluster.id}
+                      <!-- Said out loud. A failure that reads as "nothing happened" is what stops
+                           somebody answering the next one. -->
+                      <div class="cascade-purpose-error mono">{purposeError}</div>
+                    {/if}
                   {:else}
                     <div class="cascade-acts">
                       <button
@@ -2689,6 +2842,38 @@
   /* The two lanes that are NOT the user's are deliberately quiet — they are what the
      queue is sparing them, not another thing demanding attention. */
   .gc-machine, .gc-agent { opacity: 0.75; }
+  .log-hidden {
+    opacity: 0.6;
+    font-size: 0.75rem;
+  }
+
+  .cascade-answer {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+    margin-top: 0.4rem;
+  }
+  .cascade-answer-input {
+    flex: 1;
+    min-width: 0;
+    resize: vertical;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+  .cascade-answer-input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .cascade-purpose-error {
+    margin-top: 0.35rem;
+    font-size: 0.75rem;
+    color: var(--accent);
+  }
+
   .sc.question-filter {
     cursor: pointer;
     background: transparent;
@@ -3036,6 +3221,16 @@
   .cm-more { color: var(--muted); font-style: italic; }
 
   /* The altitude scale — one colour set, so it reads the same everywhere it appears. */
+  .review-detail {
+    background: var(--surface);
+    color: var(--fg);
+    border: 1px solid var(--line);
+    border-radius: 0.25rem;
+    font-size: 0.6rem;
+    padding: 0.1rem 0.25rem;
+    margin-left: 0.4rem;
+  }
+
   .alt-chip {
     flex: 0 0 auto;
     font-size: 0.58rem;
