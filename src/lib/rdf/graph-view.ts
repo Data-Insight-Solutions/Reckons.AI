@@ -25,6 +25,7 @@
  */
 import type { Statement, Term } from './types';
 import { termKey, isIRI, isLit } from './types';
+import { ALTITUDE_RANK, altitudeOf, liftedAltitudes, type Altitude } from './fact-altitude';
 
 /**
  * A literal must be at least this short to be a category. Long strings are prose — even
@@ -43,6 +44,44 @@ export interface GraphViewOptions {
   /** Only statements created within this window (ms epoch). */
   since?: number;
   until?: number;
+  /**
+   * Hide facts BELOW this altitude from the canvas. Undefined draws everything.
+   *
+   * WHY THIS REMOVES RATHER THAN DIMS, against the house rule that a filter is a lens.
+   * Every other filter here is a SELECTION — "show me hubs", "show me this type" — where the
+   * unselected facts are still the thing you are looking at, so dimming them to 0.18 alpha
+   * focuses without lying, and removing them made the layout jump. Altitude is not a selection.
+   * It is a statement about whether a fact is reviewable CONTENT at all: a `log` "asserts only
+   * that something happened", and ALTITUDE_META marks it unreviewable because the person who
+   * would confirm it is the person who did it. Dimming 73% of the graph leaves 73% of the
+   * clutter, still in the force simulation, still occupying the space the user is complaining
+   * about. So the floor removes from the CANVAS — and from nowhere else.
+   *
+   * Three things keep that honest. Lifted altitude (below) never hides a log that a live
+   * decision rests on. `hidden` reports exactly what went, because a hidden thing must be
+   * visibly hidden. And a hidden fact still reaches the node panel as an attribute, so the
+   * record is one click away rather than gone.
+   */
+  minAltitude?: Altitude;
+}
+
+/** What an altitude floor took off the canvas. Never let something be invisibly hidden. */
+export interface HiddenByAltitude {
+  /** Facts below the floor. They remain in the graph, and in the node panel. */
+  statements: number;
+  /** Per altitude, so a control can say what lowering the floor would bring back. */
+  byAltitude: Record<Altitude, number>;
+  /** Nodes that vanished entirely because every edge touching them was below the floor. */
+  nodes: number;
+  /**
+   * Ids of the statements the floor removed.
+   *
+   * The renderers need this and a COUNT will not do. Their attribute rule — "a unique literal is
+   * an attribute, so keep its subject visible even when this is the entity's only fact" — is right
+   * for attributes and wrong for a floored fact: it resurrects the very node the floor was asked
+   * to hide. Telling them WHICH exclusions came from the floor is what separates the two.
+   */
+  statementIds: Set<string>;
 }
 
 export interface GraphView {
@@ -55,6 +94,25 @@ export interface GraphView {
   attributes: Map<string, Statement[]>;
   /** Literal values that earned a node by being shared. */
   categories: Set<string>;
+  /** What `minAltitude` removed. All zeroes when no floor is set. */
+  hidden: HiddenByAltitude;
+}
+
+const NO_ALTITUDE_HIDDEN: HiddenByAltitude = {
+  statements: 0,
+  byAltitude: { decision: 0, judgment: 0, evidence: 0, record: 0, log: 0 },
+  nodes: 0,
+  statementIds: new Set(),
+};
+
+/** Node keys an edge set would put on the canvas. */
+function nodeKeysOf(edges: Statement[]): Set<string> {
+  const keys = new Set<string>();
+  for (const st of edges) {
+    keys.add(termKey(st.s));
+    keys.add(termKey(st.o));
+  }
+  return keys;
 }
 
 /**
@@ -90,7 +148,7 @@ export function isNodeTerm(term: Term, categories: Set<string>): boolean {
  * relates nothing to nothing is not part of that picture, however important it is to read.
  */
 export function buildGraphView(statements: Statement[], opts: GraphViewOptions = {}): GraphView {
-  const { categoryNodes = true, predicates, since, until } = opts;
+  const { categoryNodes = true, predicates, since, until, minAltitude } = opts;
 
   const inWindow = (st: Statement) =>
     (since === undefined || st.createdAt >= since) && (until === undefined || st.createdAt <= until);
@@ -99,13 +157,33 @@ export function buildGraphView(statements: Statement[], opts: GraphViewOptions =
     (st) => inWindow(st) && (!predicates || predicates.size === 0 || predicates.has(st.p.value)),
   );
 
-  const categories = categoryNodes ? categoryLiterals(filtered) : new Set<string>();
+  // LIFTED, NOT RAW. `liftedAltitudes` pulls a fact up to the altitude of any OPEN decision on
+  // its subject, which is the rule that makes hiding safe: a log contradicting the evidence
+  // under a live decision IS a deciding factor, and a floor reading raw altitude would be
+  // exactly the design that could never surface it. Computed over ALL statements rather than
+  // the windowed set, so narrowing a date range cannot accidentally drop the decision doing
+  // the lifting and hide a fact that was visible a moment ago.
+  const lifted = minAltitude ? liftedAltitudes(statements) : null;
+  const floor = minAltitude ? ALTITUDE_RANK[minAltitude] : Number.NEGATIVE_INFINITY;
+  const altitudeOfDrawn = (st: Statement): Altitude => lifted?.get(st.id) ?? altitudeOf(st);
+  const aboveFloor = (st: Statement) => !lifted || ALTITUDE_RANK[altitudeOfDrawn(st)] >= floor;
+
+  const drawable = lifted ? filtered.filter(aboveFloor) : filtered;
+
+  // Categories come from the DRAWABLE set: a literal shared only among hidden facts is not a
+  // category anybody can see, and minting a node for it would leave an orphan on the canvas
+  // with every edge that justified it removed.
+  const categories = categoryNodes ? categoryLiterals(drawable) : new Set<string>();
 
   const edges: Statement[] = [];
   const attributes = new Map<string, Statement[]>();
 
+  // Iterate the FULL windowed set, not `drawable`. Anything the floor removed falls through to
+  // `attributes`, so opening the node still shows it. Hidden from the picture, not from the
+  // record — which is the same distinction the review tree draws when it collapses logs into a
+  // drawer instead of dropping them.
   for (const st of filtered) {
-    if (isNodeTerm(st.o, categories)) {
+    if (aboveFloor(st) && isNodeTerm(st.o, categories)) {
       edges.push(st);
     } else {
       const key = termKey(st.s);
@@ -115,7 +193,35 @@ export function buildGraphView(statements: Statement[], opts: GraphViewOptions =
     }
   }
 
-  return { edges, attributes, categories };
+  return { edges, attributes, categories, hidden: summarizeHidden() };
+
+  function summarizeHidden(): HiddenByAltitude {
+    if (!lifted) return NO_ALTITUDE_HIDDEN;
+
+    const byAltitude: Record<Altitude, number> = {
+      decision: 0, judgment: 0, evidence: 0, record: 0, log: 0,
+    };
+    let count = 0;
+    const statementIds = new Set<string>();
+    for (const st of filtered) {
+      if (aboveFloor(st)) continue;
+      byAltitude[altitudeOfDrawn(st)]++;
+      statementIds.add(st.id);
+      count++;
+    }
+
+    // What the canvas WOULD have shown with no floor, so "nodes" is the number that actually
+    // disappeared rather than the number of facts removed. Those differ by a lot: hiding 900
+    // provenance edges may remove three nodes or three hundred, and only one of those numbers
+    // answers "is my graph less cluttered".
+    const openCategories = categoryNodes ? categoryLiterals(filtered) : new Set<string>();
+    const openEdges = filtered.filter((st) => isNodeTerm(st.o, openCategories));
+    const shown = nodeKeysOf(edges);
+    let vanished = 0;
+    for (const key of nodeKeysOf(openEdges)) if (!shown.has(key)) vanished++;
+
+    return { statements: count, byAltitude, nodes: vanished, statementIds };
+  }
 }
 
 /**
@@ -178,4 +284,73 @@ export function topByDegree(edges: Statement[], limit: number): Statement[] {
   );
 
   return edges.filter((st) => keep.has(termKey(st.s)) && keep.has(termKey(st.o)));
+}
+
+/**
+ * The most-connected node keys — the skeleton of a graph.
+ *
+ * Extracted so the hubs FILTER and the top rung of the detail ladder cannot drift apart. They are
+ * the same question asked for two purposes: "which nodes hold this graph together?"
+ *
+ * The threshold is relative, not absolute: twice the median degree, floored at 3. A fixed cut-off
+ * would call everything a hub in a dense graph and nothing a hub in a sparse one, and the answer
+ * that matters is which nodes are unusually connected FOR THIS GRAPH.
+ *
+ * TWO GATES ON TOP OF DEGREE, because degree alone gets this WRONG (Matt, 2026-08-28: "note file
+ * names (log level) can be classified as a hub because of other rules of connection count").
+ *
+ *   1. SUBSTANTIVE DEGREE. A dictated note accumulates one kpred:extracted-from edge for every
+ *      triple read out of it, so a single sentence can out-rank a real concept on raw count. But
+ *      all of those edges are RECORDS: they say the pipeline ran, not that the note means
+ *      anything. A node whose every edge is a record or a log is bookkeeping with a high fan-out,
+ *      and this rule denies it hub status regardless of degree. It needs no entity type, which
+ *      matters because captured note entities carry none.
+ *   2. `eligible` — the caller's type gate. Hubs should be concepts, people, organizations; a
+ *      Document or Web Page can be a hub but rarely is, so the caller decides from the user's own
+ *      type settings. Absent, everything is eligible and only rule 1 applies.
+ */
+export function hubNodeKeys(
+  edges: Statement[],
+  limit = Number.POSITIVE_INFINITY,
+  opts: { eligible?: (nodeKey: string) => boolean } = {},
+): string[] {
+  const degrees = new Map<string, number>();
+  // A node's SUBSTANTIVE degree: how many of its edges are more than bookkeeping.
+  const substantive = new Map<string, number>();
+
+  for (const st of edges) {
+    const sk = termKey(st.s);
+    const ok = termKey(st.o);
+    degrees.set(sk, (degrees.get(sk) ?? 0) + 1);
+    degrees.set(ok, (degrees.get(ok) ?? 0) + 1);
+    if (ALTITUDE_RANK[altitudeOf(st)] > ALTITUDE_RANK.record) {
+      substantive.set(sk, (substantive.get(sk) ?? 0) + 1);
+      substantive.set(ok, (substantive.get(ok) ?? 0) + 1);
+    }
+  }
+
+  // The median is taken over EVERY node, including the ineligible ones. They are really there and
+  // really connected; excluding them would make the graph look sparser than it is and drag the
+  // threshold down. Eligibility governs who can BE a hub, not what a typical degree looks like.
+  const entries = [...degrees.entries()].sort(([, a], [, b]) => b - a);
+  if (entries.length === 0) return [];
+  const median = entries[Math.floor(entries.length / 2)][1];
+  const minDeg = Math.max(median * 2, 3);
+
+  return entries
+    .filter(([key, d]) => d >= minDeg && (substantive.get(key) ?? 0) > 0 && (opts.eligible?.(key) ?? true))
+    .slice(0, limit)
+    .map(([key]) => key);
+}
+
+/**
+ * Edges where BOTH ends are hubs — the graph of the skeleton, not the skeleton plus everything
+ * hanging off it.
+ *
+ * Keeping edges with only ONE hub end drags every leaf back in, which is the opposite of what the
+ * top of a zoom-out ladder is for.
+ */
+export function hubOnlyEdges(edges: Statement[], hubKeys: Iterable<string>): Statement[] {
+  const hubs = new Set(hubKeys);
+  return edges.filter((st) => hubs.has(termKey(st.s)) && hubs.has(termKey(st.o)));
 }

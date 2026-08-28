@@ -180,6 +180,20 @@ export type Statement = {
   supersedes?: string;
   /** Human-readable rendering produced at extraction time */
   gloss?: string;
+  /**
+   * An altitude set BY HAND on this one fact, overriding what the classifier reads from its
+   * predicate (Matt, 2026-08-28: "an easy way to adjust the depth/altitude of the new fact").
+   *
+   * Two levels of correction exist and they answer different questions. `kpred:altitude` on a
+   * PREDICATE fixes the class — every fact using that word, forever, which is the high-leverage
+   * repair. This field fixes THIS FACT, for when the predicate is usually right and this one use
+   * of it is not. Prefer the predicate-level fix where it applies; a graph full of per-fact
+   * overrides is a predicate nobody classified.
+   *
+   * The union is duplicated here rather than imported because `fact-altitude.ts` imports Statement
+   * from this module; `Altitude` there is derived FROM this field, so the two cannot drift.
+   */
+  altitude?: 'decision' | 'judgment' | 'evidence' | 'record' | 'log';
   /** Verbatim source sentence/phrase the triple was derived from */
   excerpt?: string;
   /**
@@ -307,6 +321,7 @@ export type ExtractionStageName =
   | 'validate'
   | 'ground'
   | 'normalize'
+  | 'type'
   | 'archive'
   | 'diff'
   | 'persist';

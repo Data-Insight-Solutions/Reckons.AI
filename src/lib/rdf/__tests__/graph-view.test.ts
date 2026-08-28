@@ -13,6 +13,8 @@ import {
   predicateFacets,
   timeRange,
   topByDegree,
+  hubNodeKeys,
+  hubOnlyEdges,
   MAX_CATEGORY_LITERAL_LENGTH,
 } from '../graph-view';
 import type { Statement } from '../types';
@@ -195,5 +197,187 @@ describe('topByDegree — progressive disclosure', () => {
 
   it('is a no-op on an empty graph', () => {
     expect(topByDegree([], 10)).toEqual([]);
+  });
+});
+
+// ── Altitude floor (Matt, 2026-08-28: "very cluttered with just a few notes to review") ──
+//
+// 73.4% of all facts across 26 graphs classify as record or log (measured 2026-08-19), and the
+// capture path adds provenance edges faster than it adds anything worth looking at.
+describe('minAltitude — hiding log-level facts from the canvas', () => {
+  const graph = () => [
+    st('feature-a', 'depends-on', 'feature-b'),          // judgment
+    st('feature-a', 'has-file', 'file-x'),               // record
+    st('feature-a', 'progress', 'note-1'),               // log
+    st('task-1', 'extracted-from', 'note-1'),            // record
+  ];
+
+  it('draws everything when no floor is set', () => {
+    const view = buildGraphView(graph());
+    expect(view.edges).toHaveLength(4);
+    expect(view.hidden.statements).toBe(0);
+    expect(view.hidden.nodes).toBe(0);
+  });
+
+  it('removes log facts at a record floor', () => {
+    const view = buildGraphView(graph(), { minAltitude: 'record' });
+    expect(view.edges.map((e) => e.p.value.split('/').pop())).not.toContain('progress');
+    expect(view.hidden.statements).toBe(1);
+    expect(view.hidden.byAltitude.log).toBe(1);
+  });
+
+  it('removes record AND log at an evidence floor', () => {
+    const view = buildGraphView(graph(), { minAltitude: 'evidence' });
+    expect(view.edges).toHaveLength(1);
+    expect(view.hidden.statements).toBe(3);
+    expect(view.hidden.byAltitude.record).toBe(2);
+    expect(view.hidden.byAltitude.log).toBe(1);
+  });
+
+  it('counts the NODES that vanished, not just the facts', () => {
+    // note-1 is reachable only through a log edge and a record edge; at an evidence floor both
+    // go, and so does the node. "300 facts hidden" and "3 nodes hidden" answer different
+    // questions, and only the second one is the decluttering claim.
+    const view = buildGraphView(graph(), { minAltitude: 'evidence' });
+    expect(view.hidden.nodes).toBeGreaterThan(0);
+  });
+
+  // The safety rule the whole design rests on.
+  it('does NOT hide a log whose subject carries an open decision', () => {
+    const open: Statement = { ...st('feature-a', 'open-question', { literal: 'which way?' }), needsObject: true };
+    const view = buildGraphView([...graph(), open], { minAltitude: 'evidence' });
+    const progress = view.edges.find((e) => e.p.value.endsWith('progress'));
+    expect(progress).toBeDefined();          // lifted to decision by liftedAltitudes
+    expect(view.hidden.byAltitude.log).toBe(0);
+  });
+
+  it('keeps a hidden fact reachable in the node panel', () => {
+    const view = buildGraphView(graph(), { minAltitude: 'evidence' });
+    const attrs = [...view.attributes.values()].flat();
+    expect(attrs.some((s) => s.p.value.endsWith('progress'))).toBe(true);
+  });
+
+  it('never leaves a category node whose every edge was hidden', () => {
+    // "done" is shared by two LOG facts only. At a record floor it must not become an orphan.
+    const shared = [
+      st('a', 'progress', { literal: 'done' }),
+      st('b', 'progress', { literal: 'done' }),
+      st('a', 'depends-on', 'b'),
+    ];
+    const view = buildGraphView(shared, { minAltitude: 'record' });
+    expect(view.categories.has('done')).toBe(false);
+    expect(view.edges).toHaveLength(1);
+  });
+
+  it('does not change the graph — hiding is a view, and lowering the floor restores it', () => {
+    const g = graph();
+    expect(buildGraphView(g, { minAltitude: 'evidence' }).edges).toHaveLength(1);
+    expect(buildGraphView(g, {}).edges).toHaveLength(4);
+  });
+});
+
+// The top rung of the depth ladder (Matt: "up to Hubs as highest").
+describe('hubNodeKeys / hubOnlyEdges', () => {
+  const star = () => [
+    st('hub', 'depends-on', 'a'),
+    st('hub', 'depends-on', 'b'),
+    st('hub', 'depends-on', 'c'),
+    st('hub', 'depends-on', 'other-hub'),
+    st('other-hub', 'depends-on', 'd'),
+    st('other-hub', 'depends-on', 'e'),
+    st('other-hub', 'depends-on', 'f'),
+  ];
+
+  it('finds the nodes holding the graph together', () => {
+    // Keys are termKey() values, not bare IRIs — a literal and an IRI of the same text are
+    // different nodes, and the hub set has to agree with what the canvas keys nodes by.
+    const keys = hubNodeKeys(star());
+    expect(keys).toContain(`i:${KB}hub`);
+    expect(keys).toContain(`i:${KB}other-hub`);
+    expect(keys).not.toContain(`i:${KB}a`);
+  });
+
+  it('is relative to the graph, not an absolute degree', () => {
+    // Every node has the same degree, so nothing is unusually connected and nothing is a hub.
+    const flat = [st('a', 'depends-on', 'b'), st('c', 'depends-on', 'd')];
+    expect(hubNodeKeys(flat)).toEqual([]);
+  });
+
+  it('keeps only edges with a hub at BOTH ends', () => {
+    const edges = hubOnlyEdges(star(), hubNodeKeys(star()));
+    expect(edges).toHaveLength(1);
+    expect(edges[0].o.value).toBe(`${KB}other-hub`);
+  });
+
+  it('is empty rather than wrong on an empty graph', () => {
+    expect(hubNodeKeys([])).toEqual([]);
+    expect(hubOnlyEdges([], [])).toEqual([]);
+  });
+});
+
+// Matt, 2026-08-28: "note file names (log level) can be classified as a hub because of other
+// rules of connection count. Hubs must be core concepts, people, or other entities."
+describe('hub gates — degree alone is not enough', () => {
+  // A dictated note collects one provenance edge per triple read out of it. Raw degree makes it
+  // the biggest node in the graph; it is bookkeeping.
+  const noteWithProvenance = () => [
+    st('fact-1', 'extracted-from', 'note-1'),
+    st('fact-2', 'extracted-from', 'note-1'),
+    st('fact-3', 'extracted-from', 'note-1'),
+    st('fact-4', 'extracted-from', 'note-1'),
+    st('fact-5', 'extracted-from', 'note-1'),
+    st('concept-a', 'depends-on', 'concept-b'),
+  ];
+
+  it('a node whose every edge is a record is never a hub, whatever its degree', () => {
+    expect(hubNodeKeys(noteWithProvenance())).not.toContain(`i:${KB}note-1`);
+  });
+
+  it('one substantive edge is enough to make a well-connected node eligible again', () => {
+    const withMeaning = [...noteWithProvenance(), st('note-1', 'depends-on', 'concept-a')];
+    expect(hubNodeKeys(withMeaning)).toContain(`i:${KB}note-1`);
+  });
+
+  it('honours the caller type gate on top of that', () => {
+    const withMeaning = [...noteWithProvenance(), st('note-1', 'depends-on', 'concept-a')];
+    const keys = hubNodeKeys(withMeaning, Number.POSITIVE_INFINITY, {
+      eligible: (key) => !key.includes('note-'),
+    });
+    expect(keys).not.toContain(`i:${KB}note-1`);
+  });
+
+  it('still counts ineligible nodes toward the median — the graph is not sparser than it is', () => {
+    // note-1 has degree 5 and drags the median up; excluding it from the census would lower the
+    // bar and let smaller nodes qualify as hubs. It must be counted, just not selected.
+    const keys = hubNodeKeys(noteWithProvenance());
+    expect(keys).not.toContain(`i:${KB}note-1`);
+    expect(keys).not.toContain(`i:${KB}concept-a`);
+  });
+});
+
+// The renderers need WHICH statements the floor removed, not how many: their attribute rule
+// resurrects a subject node for any excluded statement, which silently undid the whole floor.
+describe('hidden.statementIds', () => {
+  const graph = () => [
+    st('feature-a', 'depends-on', 'feature-b'),
+    st('feature-a', 'progress', 'note-1'),
+  ];
+
+  it('names the statements the floor removed', () => {
+    const view = buildGraphView(graph(), { minAltitude: 'record' });
+    expect(view.hidden.statementIds.size).toBe(1);
+    const removed = graph()[1];
+    expect([...view.hidden.statementIds][0]).toMatch(/^s\d+$/);
+    expect(view.hidden.statements).toBe(view.hidden.statementIds.size);
+    expect(removed).toBeDefined();
+  });
+
+  it('is empty when no floor is set', () => {
+    expect(buildGraphView(graph()).hidden.statementIds.size).toBe(0);
+  });
+
+  it('agrees with the count it reports', () => {
+    const view = buildGraphView(graph(), { minAltitude: 'evidence' });
+    expect(view.hidden.statementIds.size).toBe(view.hidden.statements);
   });
 });

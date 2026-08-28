@@ -32,6 +32,7 @@
   let {
     statements = [],
     topologyStatements = null,
+    flooredStatementIds = null,
     selected = null,
     highlighted = [],
     dimMode = false,
@@ -62,6 +63,8 @@
      * statement remains topology-compatible for callers that have not split attributes yet.
      */
     topologyStatements?: Statement[] | null;
+    /** Statements removed by the detail floor — see the guard in the build loop. */
+    flooredStatementIds?: Set<string> | null;
     selected?: string | null;
     highlighted?: string[];
     dimMode?: boolean;
@@ -291,6 +294,10 @@
         continue;
       }
       if (topologyIds && !topologyIds.has(st.id)) {
+        // ...but a fact the DETAIL FLOOR removed is a different case: resurrecting its subject
+        // here would undo exactly what the floor was asked to do. A dictated note whose every
+        // edge is provenance would keep its node and the graph would look unfiltered.
+        if (flooredStatementIds?.has(st.id)) continue;
         // A unique literal is an attribute, not a leaf node. Keep its subject visible even when
         // this is the entity's only fact; the detail panel still reads the full `statements` set.
         const k = termKey(st.s);

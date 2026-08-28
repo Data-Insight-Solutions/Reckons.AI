@@ -20,6 +20,7 @@
   let {
     statements = [],
     topologyStatements = null,
+    flooredStatementIds = null,
     selected = null,
     highlighted = [],
     dimMode = false,
@@ -55,6 +56,8 @@
      * labels, entity types, icons and detail/source metadata.
      */
     topologyStatements?: Statement[] | null;
+    /** Statements removed by the detail floor — see the guard in the build loop. */
+    flooredStatementIds?: Set<string> | null;
     selected?: string | null;
     highlighted?: string[];
     dimMode?: boolean;
@@ -248,6 +251,10 @@
         continue;
       }
       if (topologyIds && !topologyIds.has(st.id)) {
+        // ...but a fact the DETAIL FLOOR removed is a different case: resurrecting its subject
+        // here would undo exactly what the floor was asked to do. A dictated note whose every
+        // edge is provenance would keep its node and the graph would look unfiltered.
+        if (flooredStatementIds?.has(st.id)) continue;
         // Attribute-only entities still deserve a node; only the unique literal leaf disappears.
         const k = termKey(st.s);
         if (!nodeMap.has(k) && st.s.kind === 'iri') {

@@ -3,7 +3,8 @@
   import { goto } from '$app/navigation';
   import KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
   import { parseCameraSpec, type CameraSpec } from '$lib/3d/camera-presets';
-  import { buildGraphView } from '$lib/rdf/graph-view';
+  import { buildGraphView, hubNodeKeys, hubOnlyEdges } from '$lib/rdf/graph-view';
+  import { ALTITUDE_RANK, liftedAltitudes, type Altitude } from '$lib/rdf/fact-altitude';
   import { connectedComponents, nHopNeighbours } from '$lib/rdf/n-hop';
   import { bestSuggestion } from '$lib/rdf/view-suggestions';
   import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
@@ -29,7 +30,7 @@
   } from '$lib/stores/kb.svelte';
   import { termKey, type Statement, type Source } from '$lib/rdf/types';
   import MergeReview from '$lib/components/MergeReview.svelte';
-  import { allTypes } from '$lib/stores/entity-types.svelte';
+  import { allTypes, typeMap } from '$lib/stores/entity-types.svelte';
   import {
     RDF_TYPE, KB_URL, KB_LOCAL_PATH,
     KB_ICON2D, KB_ICON3D, KB_MESHY_TASK_ID, KB_MESHY_STATUS,
@@ -332,6 +333,8 @@
     if (src) selectedSources = new Set(src.split(',').filter(Boolean));
     const typ = params.get('types');
     if (typ) selectedTypes = new Set(typ.split(',').filter(Boolean));
+    const d = params.get('detail');
+    if (d && DETAIL_LEVELS.some((l) => l.id === d)) detailLevel = d as DetailId;
     // ?cam=iso | top | side | front | "az,el[,dist]" — aims the 3D camera. Absent keeps the
     // historical straight-on view, so every existing screenshot baseline is unaffected.
     // Exists so visual tests can shoot from an angle that can actually SEE the z axis
@@ -403,6 +406,8 @@
     if (activeFilters.size > 0) params.set('f', [...activeFilters].join(',')); else params.delete('f');
     if (selectedSources.size > 0) params.set('src', [...selectedSources].join(',')); else params.delete('src');
     if (selectedTypes.size > 0) params.set('types', [...selectedTypes].join(',')); else params.delete('types');
+    // 'detailed' is the default, so it stays out of the URL; every other rung is shareable.
+    if (detailLevel !== 'detailed') params.set('detail', detailLevel); else params.delete('detail');
     const qs = params.toString();
     replaceState(qs ? `?${qs}` : '?', {});
   });
@@ -432,6 +437,66 @@
   /** Show shared literal values ("production", "high") as category nodes. Unique literals
    *  are NEVER nodes — they are attributes (F83). */
   let showCategoryNodes = $state(true);
+
+  // DETAIL — a hierarchy of how much of the graph to draw, coarsest at the top.
+  //
+  // Matt, 2026-08-28: "very cluttered with just a few notes to review... a filter set to detailed
+  // (above log), and allow users to select higher levels, up to Hubs as highest."
+  //
+  // Measured across 26 graphs, 73.4% of all facts classify as record or log, and the capture path
+  // mints provenance edges faster than it mints anything a person would open. So DETAILED IS THE
+  // DEFAULT and logs are hidden until asked for — the opposite of this control's first draft,
+  // which defaulted to drawing everything on the theory that hiding by default is dishonest. It
+  // is not dishonest when the count of what is hidden is on screen beside the control; it is just
+  // legible. `all` is one click away and says exactly what it costs.
+  //
+  // HUBS IS THE TOP RUNG, not a separate filter: the ladder is one question asked at six
+  // magnifications — how much structure do I want to see at once — and "only the nodes holding
+  // this graph together" is the coarsest honest answer to it.
+  type DetailId = 'all' | 'detailed' | 'evidence' | 'judgments' | 'decisions' | 'hubs';
+  const DETAIL_LEVELS: {
+    id: DetailId; label: string; floor: Altitude | null; hubsOnly?: boolean; title: string;
+  }[] = [
+    { id: 'all', label: 'all', floor: null,
+      title: 'Everything, including logs — timestamps, provenance, "this happened" facts' },
+    { id: 'detailed', label: 'detailed', floor: 'record',
+      title: 'Above logs. Records and up: file links, provenance, types — the default' },
+    { id: 'evidence', label: 'evidence', floor: 'evidence',
+      title: 'Measurements and up — drops mechanical records a script settles' },
+    { id: 'judgments', label: 'judgments', floor: 'judgment',
+      title: 'Verdicts no check can settle, and the decisions above them' },
+    { id: 'decisions', label: 'decisions', floor: 'decision',
+      title: 'Only facts that foreclose options' },
+    { id: 'hubs', label: 'hubs', floor: 'record', hubsOnly: true,
+      title: 'Only the nodes holding this graph together, and how they connect to each other' },
+  ];
+
+  let detailLevel = $state<DetailId>('detailed');
+  /**
+   * Which nodes are ALLOWED to be hubs (Matt, 2026-08-28: "In type settings we 'allow hub
+   * classification'. By default files and log types are not able to become hubs").
+   *
+   * This is the TYPE gate. It is the second of two: graph-view.ts independently refuses hub
+   * status to any node whose every edge is a record or a log, which is what actually catches a
+   * dictated note — captured note entities carry no rdf:type at all, so a type gate alone would
+   * never have seen them.
+   */
+  const hubEligible = $derived.by(() => {
+    const types = typeMap();
+    const typeOf = new Map<string, string>();
+    for (const st of visible) {
+      if (st.p.value === RDF_TYPE && st.s.kind === 'iri' && st.o.kind === 'iri') {
+        typeOf.set(termKey(st.s), st.o.value);
+      }
+    }
+    return (nodeKey: string) => {
+      const iri = typeOf.get(nodeKey);
+      if (!iri) return true;            // untyped nodes are handled by the substantive-degree rule
+      return types.get(iri)?.allowHub !== false;
+    };
+  });
+
+  const detail = $derived(DETAIL_LEVELS.find((d) => d.id === detailLevel) ?? DETAIL_LEVELS[1]);
 
   // Build a set of subject IRIs matching the selected entity types
   const typedSubjects = $derived.by(() => {
@@ -534,9 +599,41 @@
   // A literal earns a node by being SHARED ("production", 53 features — a real category).
   // A value that appears once connects nothing; it belongs in the node panel, not on the
   // canvas. Nodes: 1,234 -> 271, and every one of them means something.
-  const graphView = $derived(buildGraphView(visible, { categoryNodes: showCategoryNodes }));
+  //
+  // The altitude floor rides HERE rather than in `visible` on purpose. Splicing statements out
+  // of `visible` is the mistake documented above: it empties the topology, and an empty
+  // `visible` draws the marketing landing page over the user's own graph.
+  const graphView = $derived(
+    buildGraphView(visible, {
+      categoryNodes: showCategoryNodes,
+      minAltitude: detail.floor ?? undefined,
+    }),
+  );
+
+
+  // The hubs rung, applied AFTER the altitude floor. It reads `graphView.edges` rather than
+  // `drawn` deliberately: `nodeDegrees` is built from `drawn`, so deriving the rung's hub set
+  // from `drawn` would close a cycle.
+  const detailHubKeys = $derived(detail.hubsOnly ? hubNodeKeys(graphView.edges, hubLimit, { eligible: hubEligible }) : []);
+
   /** Statements the canvas actually draws. */
-  const drawn = $derived(graphView.edges);
+  const drawn = $derived(
+    detail.hubsOnly ? hubOnlyEdges(graphView.edges, detailHubKeys) : graphView.edges,
+  );
+
+  /** Everything the detail ladder took off the canvas — the floor AND the hubs rung. */
+  const detailHidden = $derived.by(() => {
+    const shown = new Set<string>();
+    for (const e of drawn) { shown.add(termKey(e.s)); shown.add(termKey(e.o)); }
+    let extraNodes = 0;
+    const beforeRung = new Set<string>();
+    for (const e of graphView.edges) { beforeRung.add(termKey(e.s)); beforeRung.add(termKey(e.o)); }
+    for (const key of beforeRung) if (!shown.has(key)) extraNodes++;
+    return {
+      statements: graphView.hidden.statements + (graphView.edges.length - drawn.length),
+      nodes: graphView.hidden.nodes + extraNodes,
+    };
+  });
   /** Literal facts that belong to a node rather than the canvas (node panel reads these). */
   const nodeAttributes = $derived(graphView.attributes);
 
@@ -629,17 +726,8 @@
   });
 
   // Hub threshold: median degree × 2 or 3, whichever is higher — only truly connected nodes qualify
-  const hubs = $derived.by(() => {
-    const entries = Array.from(nodeDegrees.entries()).sort(([, a], [, b]) => b - a);
-    if (entries.length === 0) return [];
-    const degrees = entries.map(([, d]) => d);
-    const median = degrees[Math.floor(degrees.length / 2)];
-    const minDeg = Math.max(median * 2, 3);
-    return entries
-      .filter(([, d]) => d >= minDeg)
-      .slice(0, hubLimit)
-      .map(([key]) => key);
-  });
+  // Same rule as the depth ladder's top rung — one definition, in rdf/graph-view.ts.
+  const hubs = $derived(hubNodeKeys(drawn, hubLimit, { eligible: hubEligible }));
 
   // All entity IRIs (subjects + non-type-definition objects) in the confirmed KB
   // that have no rdf:type statement. Includes entities that only appear as objects.
@@ -1756,6 +1844,7 @@
     <KnowledgeGraph2D
       statements={visible}
       topologyStatements={drawn}
+      flooredStatementIds={graphView.hidden.statementIds}
       {selected}
       {layout}
       {timelineZoom}
@@ -1798,6 +1887,7 @@
           {cameraSpec}
           statements={visible}
           topologyStatements={drawn}
+          flooredStatementIds={graphView.hidden.statementIds}
           {selected}
           {layout}
           {timelineZoom}
@@ -2000,6 +2090,28 @@
       <ToggleGroup.Item value="order" class="tg-chip" title="Hand-arrange nodes on a grid — drag to reorder (basis for page layout)"><span class="lbl mono">arrange</span></ToggleGroup.Item>
       <ToggleGroup.Item value="hierarchy" class="tg-chip" title="Hierarchical tree — prerequisites above, from skos:broader and kpred:depends-on"><span class="lbl mono">tree</span></ToggleGroup.Item>
     </ToggleGroup.Root>
+
+    <!-- DETAIL sits with LAYOUT because both answer 'what am I looking at' rather than
+         'which subset do I want' — the filters below are selections; this is a magnification. -->
+    <span class="group-label mono">detail</span>
+    <select class="detail-select mono" bind:value={detailLevel} title={detail.title}>
+      {#each DETAIL_LEVELS as level (level.id)}
+        <option value={level.id} title={level.title}>{level.label}</option>
+      {/each}
+    </select>
+    <!--
+      HIDDEN MUST BE VISIBLY HIDDEN (Matt's own condition on this feature). A canvas that is
+      quietly missing 900 facts is not a cleaner graph, it is a graph that lies about its size.
+      The node count is the one that answers "is it less cluttered"; the fact count is the one
+      that answers "what did that cost me".
+    -->
+    {#if detailHidden.statements > 0}
+      <span class="depth-hidden mono" title="Hidden from the canvas only. Every fact is still in the graph, and still listed in a node's panel.">
+        {detailHidden.nodes} node{detailHidden.nodes === 1 ? '' : 's'} ·
+        {detailHidden.statements} fact{detailHidden.statements === 1 ? '' : 's'} hidden
+      </span>
+    {/if}
+  
     {#if podMode}
       <span class="pod-indicator mono" title="Pod view is on — arrivals from your currents drift in translucent until you accept them. Toggle it on the Graph tab.">🐋 pod</span>
     {/if}
@@ -2963,6 +3075,24 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.35rem;
+  }
+
+  .detail-select {
+    background: var(--surface);
+    color: var(--fg);
+    border: 1px solid var(--line);
+    border-radius: 0.25rem;
+    font-size: 0.6rem;
+    padding: 0.2rem 0.3rem;
+    width: 100%;
+  }
+
+  /* Deliberately quiet but never absent: the count is a disclosure, not a warning. */
+  .depth-hidden {
+    font-size: 0.55rem;
+    color: var(--muted);
+    padding: 0 0.2rem;
+    letter-spacing: 0.04em;
   }
 
   :global(.filter-popover) {
