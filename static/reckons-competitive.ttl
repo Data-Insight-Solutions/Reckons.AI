@@ -267,6 +267,90 @@ kb:comp-rxdb rdf:type          ktype:Competitor ;
                kpred:worth-adopting kb:adopt-user-owned-sync ;
                kpred:honest-note  "Permissively licensed, and it solves the exact problem kb:avoid-hosted-sync currently answers with 'no'. This is the one candidate in the graph that could change a design decision rather than add a feature." .
 
+# ── Agent memory & handoff: the closest neighbours to our own dogfooding ─────
+# Metadata below fetched 2026-08-26 from the GitHub API (script tier, zero tokens).
+# LICENSE IS THE GATE: all four are permissive, so the concepts AND the expression
+# are available to us with attribution. That is the exception, not the rule.
+
+kb:comp-ai-memory rdf:type     ktype:Competitor ;
+               rdfs:label   "ai-memory (akitaonrails)" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   14 ;
+               kpred:repo-url     "https://github.com/akitaonrails/ai-memory" ;
+               kpred:license      "MIT" ;
+               kpred:copy-permitted "yes — MIT, attribution required" ;
+               kpred:stars        4852 ;
+               kpred:language     "Rust" ;
+               kpred:last-push    "2026-08-26"^^xsd:date ;
+               kpred:description  "Long-term memory for coding agents, and the handoff BETWEEN them: quit Claude Code mid-task, start Codex in the same directory hours later, continue without re-explaining the architecture, the failed approaches, or the open questions. Lifecycle hooks capture bounded, sanitized observations; at session end those are compiled into a coherent summary and the next agent receives a bounded 'where you left off' block before its first prompt. The store is plain markdown in a git repo — greppable, Obsidian-openable, rsync-backed, and explicitly 'no vector database to babysit, no write_note ceremony'." ;
+               kpred:closest-to   kb:workspace-index ;
+               kpred:closest-to   kb:agent-context-dogfooding ;
+               kpred:honest-note  "This is the closest thing in the neighbourhood to what HANDOFF.md is trying to be, and it is better at it. Their handoff is COMPILED and BOUNDED; ours is 107,738 bytes of hand-maintained prose plus a 94,002-byte archive, and the first act of the session that added this entry was to grep its section headers rather than read it. That is the failure mode, stated out loud rather than filed as a nice-to-have." ;
+               kpred:worth-adopting kb:adopt-bounded-handoff ;
+               kpred:worth-adopting kb:adopt-capture-allowlist ;
+               kpred:validates    "Their support matrix states per-harness capability in the same sentence as the claim — 'capture works; no hook handoff injection, so recover handoffs via MCP' — instead of a blanket 'supported'. That is kb:honest-status arrived at independently, by a project with 4,852 stars and every commercial incentive to claim uniform support. Two projects reaching the same disclosure discipline is evidence the discipline is load-bearing." ;
+               kpred:we-avoid     "The harness-integration surface: 25+ agent CLIs with per-vendor hooks, managed-workstream wrappers that relaunch other people's tools, and a Docker/systemd server with bearer auth and per-operator memory slots." ;
+               kpred:avoid-reason "That is a different product. See kb:avoid-agent-harness-layer." .
+
+kb:comp-megamemory rdf:type    ktype:Competitor ;
+               rdfs:label   "MegaMemory (0xK3vin)" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   15 ;
+               kpred:repo-url     "https://github.com/0xK3vin/MegaMemory" ;
+               kpred:license      "MIT" ;
+               kpred:copy-permitted "yes — MIT, attribution required" ;
+               kpred:stars        506 ;
+               kpred:language     "TypeScript" ;
+               kpred:last-push    "2026-05-03"^^xsd:date ;
+               kpred:description  "The single closest architectural match to our own stack: an MCP server over a persistent per-project knowledge graph of CONCEPTS (feature, module, pattern, config, decision, component) with typed edges (connects_to, depends_on, implements, calls, configured_by), in-process quantized embeddings (all-MiniLM-L6-v2, 384d, ONNX, no network after first download), brute-force cosine search, soft-delete that preserves history, and a d3-force web explorer. Storage is per-project SQLite. Nine MCP tools, fronted by one natural-language entry point, `understand`." ;
+               kpred:closest-to   kb:mcp-server ;
+               kpred:closest-to   kb:agent-context-dogfooding ;
+               kpred:honest-note  "We built the same shape — MCP server, concept graph, local quantized embeddings, visual explorer — and theirs has the better-signposted tool surface: 9 tools with one obvious front door, against our 21 presented flat. Last pushed 2026-05-03, so roughly four months quiet; that is a caution about depending on it, not a reason to discount what it got right." ;
+               kpred:worth-adopting kb:adopt-tool-front-door ;
+               kpred:worth-adopting kb:adopt-divergence-merge ;
+               kpred:validates    "Their merge engine keeps BOTH sides of a conflict as ::left/::right variants under one merge-group id and refuses to pick blindly — an agent resolving one must verify both against the current source and record the verification reason. That is kb:dichotomy's distinction (fix a conflict, PRESERVE a genuine dichotomy) reached from a different substrate, by a project that had to solve it under duress." ;
+               kpred:we-avoid     "'The LLM is the indexer. No AST parsing. No static analysis.' — structural facts written by a model in its own words, with no deterministic pass underneath." ;
+               kpred:avoid-reason "See kb:avoid-model-as-index." ;
+               kpred:evidence     "Their README concedes the cost of the storage choice in passing: a SQLite knowledge.db 'cannot be auto-merged by git', which is why they had to build a merge CLI, conflict groups, and a resolution protocol to get back what a text format gives for free. Our TTL merges textually. That is a real, unglamorous win for the file format, worth recording precisely because we chose it for other reasons and got this one by accident." .
+
+# ── Not competitors: a technique and a component source ──────────────────────
+# Recorded here because kpred:repo-url is what competitor-scan.ts tracks, so their
+# licenses stay watched. Neither is adjacent to the thesis, and saying so is the point.
+
+kb:ref-hyperframes rdf:type    ktype:Reference ;
+               rdfs:label   "HyperFrames (HeyGen) — HTML to deterministic video, built for agents" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   16 ;
+               kpred:repo-url     "https://github.com/heygen-com/hyperframes" ;
+               kpred:license      "Apache-2.0" ;
+               kpred:copy-permitted "yes — Apache-2.0, attribution required (+ NOTICE, patent grant)" ;
+               kpred:stars        42748 ;
+               kpred:language     "TypeScript" ;
+               kpred:last-push    "2026-08-27"^^xsd:date ;
+               kpred:description  "Turns HTML, CSS, media and SEEKABLE animations into deterministic MP4 through headless Chrome: the renderer advances animation to an explicit frame time rather than recording against a wall clock, so the same input yields the same frames. Ships 20 agent skills behind a single `/hyperframes` router that installs each creation workflow on demand instead of loading all twenty." ;
+               kpred:relates-to   kb:context-compression ;
+               kpred:honest-note  "NOT a competitor and barely adjacent — it renders video, we render graphs. It is in this graph for two transferable techniques and for nothing else, and its 42,748 stars say nothing about us. Recording weak relevance as weak is the point: a research graph that inflates every input into a threat or an opportunity is marketing with footnotes." ;
+               kpred:worth-adopting kb:adopt-skill-router ;
+               kpred:evidence     "Seek-based determinism names a problem we actually have. OverlayGraph.svelte:128-129 seeds initial node positions with unseeded Math.random(), so the 2D layout is not reproducible run to run, which is why visual assertions on it must wait for a settled state instead of comparing frames. Driving time as a parameter rather than as elapsed wall clock is the shape of a fix. Nothing is copied; the idea is free and the expression is not needed." ;
+               kpred:we-avoid     "Video generation as a product surface." ;
+               kpred:avoid-reason "Reckons.AI has no video feature and must not acquire one in order to justify a library. If this ever earns a place it is in announcing a release, not in the app." .
+
+kb:ref-sv-table rdf:type       ktype:Reference ;
+               rdfs:label   "sv-table (SikandarJODD) — Svelte 5 data-table components" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   17 ;
+               kpred:repo-url     "https://github.com/SikandarJODD/sv-table" ;
+               kpred:license      "MIT" ;
+               kpred:copy-permitted "yes — MIT, attribution required" ;
+               kpred:stars        69 ;
+               kpred:language     "Svelte" ;
+               kpred:last-push    "2026-08-20"^^xsd:date ;
+               kpred:description  "Data-table components and complete table blocks for Svelte 5, SvelteKit and TanStack Table v9, distributed through the shadcn-svelte registry — row/header selection with a bulk-actions bar, faceted, date-range and number-range filters, debounced input, column header/visibility/pinning/resizing, draggable columns, expandable sub-rows, two pagination styles, CSV export, loading skeletons and empty-result states." ;
+               kpred:relates-to   kb:wf-review ;
+               kpred:relates-to   kb:structured-data ;
+               kpred:honest-note  "The smallest and least famous repo in this graph at 69 stars, and the one most likely to produce working code this quarter. Relevance is not proportional to stars, and a competitive graph that sorts by popularity would have discarded this one." ;
+               kpred:worth-adopting kb:adopt-table-primitive .
+
 # ── WHAT WE ADOPT ────────────────────────────────────────────────────────────
 # Each is a proposal against a roadmap entity, not a decision. Status stays
 # speculative until Matt rules on it (kb:honest-status).
@@ -314,6 +398,75 @@ kb:adopt-sonnet-bucket rdf:type ktype:Feature ;
                kpred:serves       kb:work-tiering ;
                kpred:honest-note  "This is a real hole in our tiering model, found by reading someone else's README. The tier ladder treats 'Opus' as one rung when it is three." .
 
+kb:adopt-bounded-handoff rdf:type ktype:Feature ;
+               rdfs:label   "A handoff that is compiled and bounded, not written and grown" ;
+               kpred:part-of      kb:competitive-landscape ;
+               kpred:has-status   "speculative" ;
+               kpred:seen-in      kb:comp-ai-memory ;
+               kpred:description  "Generate the session handoff from state the graph already holds — task-queue outcomes, the alignment result, open decisions, the last verification run, what changed since the previous handoff — and cap its size. ai-memory compiles theirs from captured lifecycle observations and hands the next agent a bounded block before its first prompt, rather than a document that accretes until nobody reads it." ;
+               kpred:serves       kb:workspace-index ;
+               kpred:serves       kb:agent-context-dogfooding ;
+               kpred:evidence     "HANDOFF.md is 107,738 bytes; HANDOFF-ARCHIVE.md a further 94,002. Every session is instructed to read it first, and what happens instead — in the session that wrote this entry — is a grep for section headers. An unread handoff is not continuity, and the size is the reason it goes unread." ;
+               kpred:honest-note  "We hold better raw material than ai-memory does: they reconstruct intent from tool-call observations, while we already have the plan, the statuses and the dependencies as a graph. The missing piece is the compiler and the cap, not the data. Nothing has been built, and the prose handoff should not be deleted before something demonstrably replaces it." ;
+               kpred:decision-owner "Matt" .
+
+kb:adopt-capture-allowlist rdf:type ktype:Feature ;
+               rdfs:label   "Fail toward forgetting, not toward leaking" ;
+               kpred:part-of      kb:competitive-landscape ;
+               kpred:has-status   "speculative" ;
+               kpred:seen-in      kb:comp-ai-memory ;
+               kpred:description  "ai-memory's allowlist capture mode inverts the default so a repository with no marker file emits no observation at all. Their one-line justification is the whole idea: forgetting a marker then costs recall rather than confidentiality." ;
+               kpred:serves       kb:workspace-index ;
+               kpred:evidence     "Our workspace sync uses the opposite default: WALK_SKIP_DIRS and WALK_SKIP_FILES in src/lib/stores/workspace.svelte.ts are a hardcoded DENYLIST — everything not named is read. The comment above them records what that cost once already: linking a real workspace imported the task queue, run state, digest, idea list and schedules as six unwanted graphs. A denylist is only ever as complete as the last surprise." ;
+               kpred:validates    "src/lib/rdf/retention.ts already fails in the safe direction on a different axis — an unclassified predicate defaults to judgment and is therefore protected from archiving. Same reasoning: when the default will sometimes be wrong, be wrong in the direction that costs convenience rather than the direction that costs the user something they cannot get back." ;
+               kpred:honest-note  "An inverted default is a breaking change to how linking a folder behaves, so this is a decision about user experience, not only about safety." ;
+               kpred:decision-owner "Matt" .
+
+kb:adopt-tool-front-door rdf:type ktype:Feature ;
+               rdfs:label   "One obvious front door over a flat list of tools" ;
+               kpred:part-of      kb:competitive-landscape ;
+               kpred:has-status   "speculative" ;
+               kpred:seen-in      kb:comp-megamemory ;
+               kpred:description  "MegaMemory exposes 9 MCP tools and signposts exactly one as the entry point: `understand`, a natural-language query returning matched concepts with their children, edges and parent context in a single call. Their documented loop is understand → work → update, three tools out of nine." ;
+               kpred:serves       kb:mcp-server ;
+               kpred:serves       kb:context-compression ;
+               kpred:evidence     "mcp-server exposes 21 tools, presented flat. kb_compress is the equivalent front door and the server instructions do say to prefer it, but it is the fourth name alphabetically in a list of 21 — the ordering and the shape of the list still argue for kb_search." ;
+               kpred:honest-note  "Cheap and unglamorous: mostly naming, ordering and description text in an existing tool list, not new capability. It is recorded because tool-surface economy is a cost we are already paying and had not written down anywhere." .
+
+kb:adopt-divergence-merge rdf:type ktype:Feature ;
+               rdfs:label   "Divergent-graph merge that preserves both sides until resolved" ;
+               kpred:part-of      kb:competitive-landscape ;
+               kpred:has-status   "speculative" ;
+               kpred:seen-in      kb:comp-megamemory ;
+               kpred:description  "When two copies of a graph diverge, group the conflicting entities under one merge id and keep BOTH as labelled variants until a human resolves them — never silently pick a side, and never lose the loser. MegaMemory resolves by re-reading the current source and writing what the code actually reflects, carrying a verification reason alongside the resolution rather than a bare choice." ;
+               kpred:serves       kb:wf-review ;
+               kpred:serves       kb:dichotomy ;
+               kpred:honest-note  "We already hold the harder half — semantic-diff, merge-aliases, merge-band, and a review tab with merge proposals — and TTL merges textually, so we never needed their merge CLI at all. What is worth taking is narrower than the machinery: the labelled-variant HOLDING PATTERN, so that an unresolved divergence is a visible state rather than a decision forced at merge time." ;
+               kpred:open-question "Whether our existing merge path records the evidence behind a resolution or only its outcome was NOT established when this entry was written. Check before claiming a gap." .
+
+kb:adopt-table-primitive rdf:type ktype:Feature ;
+               rdfs:label   "A real data-table primitive for the review and compare surfaces" ;
+               kpred:part-of      kb:competitive-landscape ;
+               kpred:has-status   "speculative" ;
+               kpred:seen-in      kb:ref-sv-table ;
+               kpred:description  "sv-table ships the parts our list surfaces keep re-implementing by hand: a bulk-actions bar over row and header selection, faceted and range filters, debounced input, column visibility and sorting, expandable sub-rows, pagination, CSV export, and — the two that matter most for an honest interface — loading skeletons and explicit empty-result states." ;
+               kpred:serves       kb:wf-review ;
+               kpred:serves       kb:structured-data ;
+               kpred:evidence     "It installs through the shadcn-svelte registry this project already uses: components.json points at shadcn-svelte.com/registry and src/lib/components/ui/ is already populated that way. The source lands in our repo rather than becoming a runtime dependency on someone else's server — which is exactly what makes a 69-star single-maintainer project safe to take from, and would not be true of a normal npm dependency." ;
+               kpred:honest-note  "It is built on TanStack Table v9, which this project does NOT currently depend on. Taking the blocks wholesale means taking that dependency, and offline:script-tier runs shared-deps and dead-weight checks precisely because bundle weight is a tracked cost in an offline-first app. Reading the components is free; adding the dependency is a separate call." ;
+               kpred:decision-owner "Matt" .
+
+kb:adopt-skill-router rdf:type ktype:Feature ;
+               rdfs:label   "A router that loads workflows on demand" ;
+               kpred:part-of      kb:competitive-landscape ;
+               kpred:has-status   "speculative" ;
+               kpred:seen-in      kb:ref-hyperframes ;
+               kpred:description  "HyperFrames ships 20 agent skills but installs a small core plus ONE router, which pulls a workflow in only when a request needs it. The router doubles as the capability map, so an agent reads one document to learn what exists instead of loading twenty to find out." ;
+               kpred:serves       kb:context-compression ;
+               kpred:serves       kb:work-tiering ;
+               kpred:evidence     "Identical economics to kb_compress, where the saving comes overwhelmingly from SELECTING the relevant slice rather than from compressing everything. scripts/offline/jobs.json is already a capability map of this shape for the offline tier, and it works." ;
+               kpred:honest-note  "Whether our command set is actually large enough to need a router is unmeasured. Copying the pattern before the problem exists would be cargo cult; it is recorded as a shape to reach for if the set keeps growing." .
+
 # ── WHAT WE AVOID, AND WHY ───────────────────────────────────────────────────
 # The load-bearing half of this graph. A declined feature is a decision.
 
@@ -345,6 +498,26 @@ kb:avoid-cloud-only-pipeline rdf:type ktype:Decision ;
                kpred:reason       "A knowledge base that cannot be read without an API key is a rental, not a possession." ;
                kpred:consistent-with kb:work-tiering .
 
+kb:avoid-model-as-index rdf:type ktype:Decision ;
+               rdfs:label   "No model-only index — what a rule can check, a rule checks" ;
+               kpred:part-of      kb:competitive-landscape ;
+               kpred:description  "MegaMemory's stated design is 'the LLM is the indexer — no AST parsing, no static analysis': the agent reads code and writes concepts in its own words, and that IS the index. We decline it. Structural facts about a codebase — which files exist, which module owns them, what depends on what — are derivable, and scripts/offline/generate-file-graph.ts derives them at zero tokens and zero hallucination." ;
+               kpred:reason       "A model-only index fails FLUENTLY. A hallucinated module reads exactly like a real one, and a graph that claims to be the source of truth cannot carry errors that are indistinguishable from facts by inspection." ;
+               kpred:reason       "F74.3 restated: the model's job is judgment over language, not answers a rule already has. Deterministic checks have zero triage cost because they are right by construction." ;
+               kpred:consistent-with kb:work-tiering ;
+               kpred:scope        "What is refused is the model as the ONLY indexer. Model-drafted prose over a deterministic skeleton is already how describe-entities.ts works and stays — grounded, validated, and emitted as a proposal a human gates." ;
+               kpred:honest-note  "Their approach buys something real that ours does not: a concept graph in the developer's own vocabulary, which a file-structure derivation cannot produce. The two are complementary, and we have the weaker half of the pair automated." .
+
+kb:avoid-agent-harness-layer rdf:type ktype:Decision ;
+               rdfs:label   "Not an agent-harness integration layer" ;
+               kpred:part-of      kb:competitive-landscape ;
+               kpred:description  "ai-memory supports 25+ agent CLIs with per-vendor lifecycle hooks, wrapper launchers that resume other vendors' native sessions, and a server with bearer auth and per-operator memory slots. Reckons.AI stays an application with an MCP server attached — not a layer sitting between an operator and their agents." ;
+               kpred:reason       "Every harness integration is a permanent compatibility obligation to a product we do not control, and their own support matrix documents the tax: several harnesses silently cannot inject a handoff at all, so the feature degrades to 'recover it manually via MCP'. Breadth bought at that price is deferred maintenance, not reach." ;
+               kpred:reason       "The multi-user form reintroduces exactly the operator kb:avoid-hosted-sync refuses. Their docs concede the mechanism is 'context-injection isolation rather than RBAC' — an honest admission that a shared memory server gives whoever runs it power over what every agent on it remembers." ;
+               kpred:consistent-with kb:avoid-hosted-sync ;
+               kpred:consistent-with kb:integration-boundaries ;
+               kpred:honest-note  "This costs us reach, and the cost is not small. ai-memory has 4,852 stars largely BECAUSE it meets people inside whatever tool they already use, and we meet them only where we are. The honest position is that we refuse the obligation, not that we have not got to it yet." .
+
 # ── Automated scanning ───────────────────────────────────────────────────────
 
 kb:competitor-scan rdf:type    ktype:Feature ;
@@ -359,3 +532,65 @@ kb:competitor-scan rdf:type    ktype:Feature ;
                kpred:principle    "The FETCH is script tier because it is checkable by a rule. The JUDGMENT — is this a competitor, do we want this feature, why do we decline it — stays with a human. Automating the judgment would fill the graph with confident nonsense." ;
                kpred:relates-to   kb:work-tiering ;
                kpred:relates-to   kb:license-gate .
+
+# ── TYPESCRIPT GAME ENGINES (flagged by Matt 2026-08-28, F143) ───────────────
+# License gate run through the GitHub API, same as the 2026-08-26 batch: all three
+# MIT, so expression as well as ideas is available to us with attribution. All three
+# are THREE.JS WRAPPERS, which is the finding that matters — the app already ships
+# Threlte 8 + Three.js, so an engine here runs IN-PROCESS with no server and no new
+# runtime. That is the option kb:int-game-engine (F59.1) left open and never settled.
+
+kb:ref-mavon-engine rdf:type   ktype:Reference ;
+               rdfs:label   "MavonEngine/Core — multiplayer TypeScript Three.js engine" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   18 ;
+               kpred:repo-url     "https://github.com/MavonEngine/Core" ;
+               kpred:license      "MIT" ;
+               kpred:copy-permitted "yes — MIT, attribution required" ;
+               kpred:stars        30 ;
+               kpred:language     "TypeScript" ;
+               kpred:last-push    "2026-05-31"^^xsd:date ;
+               kpred:description  "A multi- and single-player TypeScript Three.js engine for browser games. The only one of the three with multiplayer as a first-class concern, which is the part a graph-driven pipeline has nothing to say about and would have to adopt wholesale." ;
+               kpred:relates-to   kb:game-development .
+
+kb:ref-three-game-engine rdf:type ktype:Reference ;
+               rdfs:label   "WesUnwin/three-game-engine — Three.js + rapier + three-mesh-ui" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   19 ;
+               kpred:repo-url     "https://github.com/WesUnwin/three-game-engine" ;
+               kpred:license      "MIT" ;
+               kpred:copy-permitted "yes — MIT, attribution required" ;
+               kpred:stars        111 ;
+               kpred:language     "TypeScript" ;
+               kpred:last-push    "2026-01-15"^^xsd:date ;
+               kpred:description  "Light-weight engine over Three.js with rapier physics and three-mesh-ui. The most interesting of the three for us: PHYSICS is the concrete thing Threlte and our 3D graph view do not have, and it is a bounded dependency rather than a framework that wants to own the runtime." ;
+               kpred:honest-note  "Most-starred and most recently pushed of the three, which is a weak signal at this scale — 111 stars is a personal project, not an ecosystem. Judge it on whether its scene model can be GENERATED from a graph, not on its numbers." ;
+               kpred:relates-to   kb:game-development .
+
+kb:ref-era-engine rdf:type     ktype:Reference ;
+               rdfs:label   "rogerscg/era-engine — Three.js wrapper (dormant)" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   20 ;
+               kpred:repo-url     "https://github.com/rogerscg/era-engine" ;
+               kpred:license      "MIT" ;
+               kpred:copy-permitted "yes — MIT, attribution required" ;
+               kpred:stars        72 ;
+               kpred:language     "JavaScript" ;
+               kpred:last-push    "2023-01-06"^^xsd:date ;
+               kpred:honest-note  "DORMANT — last pushed 2023-01-06, over three years cold, and the API check says so rather than the README. Shipped real games (Slapshot, ERA: Earth Revival Act), so it is worth READING for how a small wrapper structured its scene and entity model. It is not worth DEPENDING on: an unmaintained engine is a fork you have not admitted to yet." ;
+               kpred:relates-to   kb:game-development .
+
+kb:comp-ontology-atlas rdf:type ktype:Competitor ;
+               rdfs:label   "ontology-atlas (wlsdks) — agent-native ontology workbench" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   21 ;
+               kpred:repo-url     "https://github.com/wlsdks/ontology-atlas" ;
+               kpred:license      "MIT" ;
+               kpred:copy-permitted "yes — MIT, attribution required" ;
+               kpred:stars        18 ;
+               kpred:language     "TypeScript" ;
+               kpred:last-push    "2026-08-28"^^xsd:date ;
+               kpred:description  "'Agent-native, human-sovereign ontology workbench — one markdown graph humans and coding agents read, write, and keep fresh together. Local-first, MCP-native, open source.' Its framing is the closest to ours of anything in this graph: local-first, MCP-native, human-sovereign, one graph shared by people and agents." ;
+               kpred:closest-to   kb:agent-orchestration ;
+               kpred:honest-note  "THE NEAREST NEIGHBOUR YET, AND SMALL — 18 stars, pushed the same day it was found, which means it is early rather than proven. Judge it on its MODEL, not its traction: it keeps ONE MARKDOWN graph where we keep TTL/RDF, which trades queryability and standards for something any agent can read without a parser. That trade is worth understanding before dismissing, because the markdown side is exactly where kb:adopt-bounded-handoff already found us wanting." ;
+               kpred:validates    "'Understand what your AI agents are building' is an OBSERVABILITY framing on agent work that this roadmap does not have. F87 models the task queue and F89 triages the residue; neither answers 'what did the agents actually change in my ontology, and is it still coherent'." .

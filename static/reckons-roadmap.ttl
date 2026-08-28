@@ -2110,7 +2110,28 @@ kb:agent-orchestration rdf:type ktype:Feature ;
                kpred:has-phase    kb:orch-harness-adapter ;
                kpred:has-phase    kb:orch-claim-lease ;
                kpred:has-phase    kb:orch-jobs-to-ttl ;
-               kpred:has-phase    kb:orch-control-layers .
+               kpred:has-phase    kb:orch-control-layers ;
+               kpred:has-phase    kb:orch-dictated-task .
+
+kb:orch-dictated-task rdf:type ktype:Phase ;
+               rdfs:label   "Phase 6 — a dictated instruction enters the queue as a proposal" ;
+               kpred:part-of      kb:agent-orchestration ;
+               hnav:order   6 ;
+               kpred:has-status   "functional" ;
+               kpred:relates-to   kb:personal-assistant ;
+               kpred:relates-to   kb:partial-facts ;
+               kpred:has-file     "src/lib/rdf/note-intent.ts" ;
+               kpred:has-file     "src/lib/rdf/captured-notes.ts" ;
+               kpred:has-file     "src/lib/stores/note-extraction.svelte.ts" ;
+               kpred:tested-by    "src/lib/rdf/__tests__/note-intent.test.ts" ;
+               kpred:tested-by    "src/lib/stores/__tests__/note-extraction.test.ts" ;
+               kpred:description  "The capture path deposits a dictated sentence and extraction turns it into triples — but some sentences ASK FOR WORK rather than state anything, and an extractor has no mode for that. It invents: 'run research on grants for kids sports' became facts nobody asserted, while the request itself reached nothing. rdf/note-intent.ts routes each sentence before the model sees it, and an instruction is written into the F87 task vocabulary instead: ktype:AgentTask + kpred:goal, verbatim." ;
+               kpred:principle    "SCRIPT TIER, AND IT RUNS FIRST. English commands have a shape a rule can see — a bare verb in first position with no subject in front of it — so the routing is deterministic, free, identical under every backend, and it happens BEFORE extraction, which means a note that is wholly an instruction costs no model call at all. Asking the extractor to notice that a sentence contains no facts is asking it to argue against its own job." ;
+               kpred:principle    "A DICTATED TASK IS NOT A RUNNABLE ONE. It lands in kpred:task-state 'proposed' with NO kpred:effect and NO kpred:done-when, because neither was said out loud. blockedReason refuses it by name, so no harness can take it until a person supplies the authority boundary and the acceptance check. Voice must never be a path to unsupervised action." ;
+               kpred:principle    "THE GOAL IS THE TRANSCRIPT, VERBATIM — fillers, comma splices and all. Tidying 'grants that are, for city, uh, Parks and Rec' into 'the Parks and Recreation department' silently resolves guesses the speaker never made. Interpretation is a separate, reviewable act." ;
+               kpred:proof        "Verified on a real dictation, 2026-08-28T13:38:52Z: 'run a research task for new grants or current grants that are, for city, uh, Parks and Rec, that have, uh, childhood activities, uh, like swim team.' Routed task at 0.75, zero text sent to the extractor, four triples written — type, goal, task-state 'proposed', and provenance back to the note. 39 unit tests." ;
+               kpred:known-issue  "THE FIRST DRAFT SCORED THAT SENTENCE 0.5 — hedged, not routed. Its 'are' and 'have' sit inside relative clauses describing the grants being asked for, and counting them as assertions made the detector WORSE the more detail the speaker gave. Fixed by ignoring finite verbs after a subordinator. Invented test sentences never surfaced it; the first real transcript did, immediately." ;
+               kpred:remaining    "No task-specific review surface: a proposed task appears in the queue as four ordinary pending triples, so a reviewer settles it fact-by-fact rather than accepting or rejecting a task as a unit, and there is nowhere to supply the missing effect and done-when. Detection is English-only and single-sentence — an unpunctuated run-on is read as one goal. Nothing yet reads dictated tasks back out of the app graph into a runner." .
 
 kb:orch-task-vocab rdf:type    ktype:Phase ;
                rdfs:label   "Phase 1 — the task vocabulary (a task is a triple)" ;
@@ -5437,3 +5458,623 @@ kb:perf-crawl rdf:type ktype:Feature ;
     kpred:remaining "Expose the force simulation's velocities behind a dev-only window hook, so convergence is read from the simulation rather than proxied through pixels." ;
     kpred:remaining "Add latency assertions to the existing e2e suite, replacing presence-only checks, so a slow render fails instead of passing quietly." ;
     kpred:acceptance "The script aborts with a non-zero exit when the renderer is SwiftShader; a route whose usable-selector matches nothing is reported as a harness error and not counted as a page failure; the ladder reports a settle time or an explicit never-settled for each rung." .
+
+## =============================================================================
+## F141: Interview mode — the model asks, you answer  (Matt, 2026-08-28)
+## =============================================================================
+## "A proactive approach for the LLM and TTS optional models to ask the user what
+## they think about different elements of the graph, refinements and expansions,
+## based on the goal of the graph. The proactive nature of the models and passive
+## question answering of the user can be a refreshing change from most research
+## and documentation efforts."
+##
+## Lives in ADD (/ingest, src/routes/(app)/ingest/+page.svelte — the nav labels it
+## "add"), because it is a way of getting knowledge IN, not a way of reviewing what
+## is already there.
+
+kb:interview-mode rdf:type   ktype:Feature ;
+               rdfs:label   "Interview mode — the model asks, you answer" ;
+               kpred:feature-id   "F141" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:description  "A mode in Add where the system INTERVIEWS the user about their own graph instead of waiting for them to type something into it. It starts from the open questions that already exist — F32 partial facts, purpose questions, questions agents left — and then goes a level further: it GENERATES questions from the graph's gaps, ranked against what the graph is for, and asks them one at a time with the graph view of the subject beside the question. Spoken if the user wants it. Every answer is recorded as the user's own fact, in the same file and the same shape the Review tab and the terminal desk already write." ;
+               kpred:principle    "THE BLANK PAGE IS THE FAILURE MODE OF EVERY DOCUMENTATION EFFORT, and Add is a blank page. It waits for the user to already know what is worth writing down. An interview inverts who carries that load: the model does the part it is good at — deciding what is worth asking — and the user does the one part only they can do, which is answer. Passive answering is a posture people sustain; active authoring is the one they abandon." ;
+               kpred:principle    "AN AGENT MUST NOT ASK WHAT IT CAN VERIFY (kb:co-orchestration, reused rather than restated). Question selection is gated by the verifiability axis: anything a script, a test or a cited source can settle never becomes an interview question. An interview that asks what the graph already answers is not merely wasteful — it teaches the user that the questions are not worth reading, and after that the real ones do not get answered either." ;
+               kpred:principle    "ONE QUESTION MUST SETTLE MANY FACTS (kb:cascade-aggregation, F139.1). Forty sparse entities of the same shape are ONE question asked forty times. A review queue survives that badly; an interview does not survive it at all, because a queue can be closed and returned to and an interview in progress cannot. Aggregation is not an optimization here, it is the precondition." ;
+               kpred:principle    "THE ANSWER IS THE USER'S FACT, NOT THE MODEL'S. The interviewer records what was said; it never fills an answer in on the user's behalf and never rewrites one into something more graph-shaped than what they actually meant. Asserting something only the user could know is a fabrication with good manners." ;
+               kpred:principle    "VOICE IS OPTIONAL AND NEVER THE ONLY CHANNEL. Kokoro TTS and Whisper STT are both shipped, so a hands-free interview is reachable — but Matt's own stated reason for the terminal desk was that he sees more in the graph view than in a chat line. A voice-only interview throws away exactly the thing that makes answering possible. Speech accompanies the view; it does not replace it." ;
+               kpred:principle    "A GENERATED QUESTION IS ITSELF A PROPOSAL. Deciding what is missing is judgment over language, so it lands where every other agent proposal lands — rejectable, and cheap to reject. Rejecting must be one keystroke, and a rejected question must never come back; a system that re-asks something you already refused is indistinguishable from one that is not listening." ;
+               kpred:honest-note  "THE MECHANISM EXISTS IN EXACTLY ONE CHANNEL, AND THE APP IS NOT IT. scripts/agent/interview.ts (kb:async-desk, functional) already computes open questions and records answers — in the TERMINAL, over JSONL files. None of it is reachable from the browser: it reads reckons-workspace/*.jsonl from disk. So this is NOT 'put a UI on an existing feature'. It is (1) lifting one shared definition of an open question into src/lib/rdf/ so both channels agree on what is open, and (2) building the proactive half, which neither channel has today. Do not read async-desk's `functional` as covering any of this." ;
+               kpred:depends-on   kb:partial-facts ;
+               kpred:depends-on   kb:verifiability-axis ;
+               kpred:depends-on   kb:cascade-aggregation ;
+               kpred:depends-on   kb:graph-goal ;
+               kpred:relates-to   kb:async-desk ;
+               kpred:relates-to   kb:review-attention ;
+               kpred:relates-to   kb:enrichment-pipeline ;
+               kpred:relates-to   kb:work-tiering ;
+               kpred:relates-to   kb:co-orchestration ;
+               kpred:relates-to   kb:mission ;
+               kpred:relates-to   kb:kokoro-tts ;
+               kpred:open-question "Does an interview SESSION become an entity — what was asked, answered, skipped and refused — or is only the answer recorded? Recording it makes 'why does the graph say this' answerable and lets a skipped question return at a better moment; not recording it keeps interview bookkeeping out of the user's graph. Matt's call." ;
+               kpred:open-question "What starts an interview? User-initiated only, or may the graph nudge when it has accumulated enough worth asking? kb:auto-archive is the warning here — the word AUTO was claimed before any trigger existed. A nudge is a real feature with a real cost and must not be assumed into the description." ;
+               kpred:open-question "Is an interview scoped to a SET (kb:entity-sets) or to a whole graph? 'Interview me about the farm-grants graph' and 'interview me about these twelve entities' are different products, and the second is the one that finishes." ;
+               kpred:remaining    "All of it. No app code exists; the four phases below are the plan." ;
+               kpred:has-phase    kb:interview-supply ;
+               kpred:has-phase    kb:interview-session ;
+               kpred:has-phase    kb:interview-generation ;
+               kpred:has-phase    kb:interview-voice .
+
+kb:interview-supply rdf:type ktype:Phase ;
+               rdfs:label   "Phase 1 — one definition of an open question, shared by both channels" ;
+               kpred:part-of      kb:interview-mode ;
+               hnav:order   1 ;
+               kpred:has-status   "planned" ;
+               kpred:description  "Today 'what is still open' is computed twice and agrees by luck: scripts/agent/interview.ts derives it from JSONL on disk, and the Review tab derives it from the graph in the browser. Lift one implementation into src/lib/rdf/ — open questions are partial facts (needsObject) plus purpose questions plus unanswered kpred:open-question, minus anything already answered in either channel — and rank them with kb:review-attention, which already scores what deserves a human. Script tier: this is a filter and a sort, and it is right by construction." ;
+               kpred:principle    "THE GATE COMES BEFORE THE RANKING. Filter by gateFor() first — drop everything a script, a test or a source settles — and only then rank what is left. Ranking a machine-settleable question highly just puts a well-presented waste of the user's time at the top." ;
+               kpred:remaining    "openQuestions() in src/lib/rdf/; verifiability gate; review-attention ranking; scripts/agent/interview.ts re-pointed at it so the terminal and the app cannot drift apart." .
+
+kb:interview-session rdf:type ktype:Phase ;
+               rdfs:label   "Phase 2 — the session surface in Add" ;
+               kpred:part-of      kb:interview-mode ;
+               hnav:order   2 ;
+               kpred:has-status   "planned" ;
+               kpred:description  "One question at a time, with the graph view of its subject beside it, and four ways out: ANSWER (free text or an entity pick), SKIP (ask me later), NOT RELEVANT (this question was wrong), and NEVER ASK THIS (a standing refusal recorded in the graph). An answer fills the partial fact's object through the existing F32 answer-flow-back, so a waiting agent resumes without knowing which channel replied." ;
+               kpred:principle    "SKIP AND REFUSE ARE DIFFERENT ANSWERS AND MUST BE STORED DIFFERENTLY. 'Not now' is scheduling; 'never ask me this' is a fact about the user's intent for their graph, and it is worth more than most of the answers — it is the user teaching the system what it is for." ;
+               kpred:relates-to   kb:partial-facts ;
+               kpred:remaining    "The mode in src/routes/(app)/ingest/+page.svelte; the graph-view pane; answer/skip/refuse handling; the standing-refusal predicate." .
+
+kb:interview-generation rdf:type ktype:Phase ;
+               rdfs:label   "Phase 3 — proactive questions (the level that does not exist yet)" ;
+               kpred:part-of      kb:interview-mode ;
+               hnav:order   3 ;
+               kpred:has-status   "planned" ;
+               kpred:description  "Every question in the system today exists because an agent or a pipeline left one. This phase generates them from the graph itself. SCRIPT-TIER FLOOR FIRST, because several gap classes are deterministic and therefore free: an entity with a type and no description; a dangling kpred:depends-on; a type with no shape (kb:type-shape-coupling); an orphan nothing points at; a partial fact nobody has touched in a month. AGENT TIER ON TOP for what a rule cannot express — reading a goal-scoped slice of the graph and proposing the refinements and expansions worth asking about, which is judgment over language and lands as a proposal." ;
+               kpred:principle    "THE FLOOR IS NOT A CONSOLATION PRIZE. The deterministic classes are the ones with ZERO triage cost — they are right by construction and can be asked without a model being involved at all. Growing that set is worth more than improving the prompt, per kb:work-tiering, and an agent job that emits thirty questions of which twenty-five are noise has moved cost from generation to triage rather than removing it." ;
+               kpred:principle    "WITHOUT THE GOAL, GENERATION CAN ONLY FIND WHAT IS INCOMPLETE, NEVER WHAT IS IMPORTANT. A graph is always incomplete somewhere; that is not a reason to ask. kb:graph-goal is what turns 'this entity has no description' into 'this entity has no description AND it is load-bearing for what you said this graph is for'. This phase is buildable without it and will be mediocre without it, and that should be said plainly rather than discovered." ;
+               kpred:depends-on   kb:graph-goal ;
+               kpred:relates-to   kb:type-shape-coupling ;
+               kpred:relates-to   kb:agent-orchestration ;
+               kpred:remaining    "Deterministic gap detectors; the goal-scoped slice; a local-model question proposer inside a ground-prompt-validate-emit harness; per-question rejection that sticks." .
+
+kb:interview-voice rdf:type  ktype:Phase ;
+               rdfs:label   "Phase 4 — the spoken interview (optional)" ;
+               kpred:part-of      kb:interview-mode ;
+               hnav:order   4 ;
+               kpred:has-status   "planned" ;
+               kpred:description  "Kokoro TTS reads the question aloud and Whisper STT takes the answer, so an interview can happen while walking or driving — the same posture that made the ring capture worth building. Both models are already shipped and run locally, so this adds a channel rather than a dependency." ;
+               kpred:principle    "A SPOKEN ANSWER IS A TRANSCRIPT, WITH EVERYTHING THAT IMPLIES. It goes through the same vocabulary repair, the same verbatim-record rule and the same review as a dictated note — a mis-heard proper noun in an interview answer is exactly the failure rdf/vocabulary-repair.ts exists for. The interviewer must never treat speech as more settled than typing because it felt more like a conversation." ;
+               kpred:relates-to   kb:kokoro-tts ;
+               kpred:relates-to   kb:orch-dictated-task ;
+               kpred:remaining    "TTS playback of the question queue; STT answer capture; barge-in and repeat; a hard fallback to text when either model is unavailable." .
+
+## =============================================================================
+## F142: The goal of the graph — its title and description  (2026-08-28)
+## =============================================================================
+## Named as absent by the 2026-08-13 repo scan against danielmiessler/LifeOS, and
+## still absent: "telos" appears exactly once in this roadmap, in the note saying
+## it is missing. Minted now because TWO features need it — F99.1 to rank by what
+## is important rather than what is imminent, and F141 to know what is worth asking.
+
+kb:graph-goal rdf:type       ktype:Feature ;
+               rdfs:label   "The goal of the graph — its title and description, finally read by something" ;
+               kpred:feature-id   "F142" ;
+               kpred:has-status   "planned" ;
+               kpred:description  "An explicit statement of what a graph is FOR — what it is trying to achieve and what would count as success — so that everything which ranks, prioritizes or proposes has something to rank AGAINST. Today they rank against structure alone (degree, recency, incompleteness), because structure is all there is." ;
+               kpred:decided      "IT IS THE GRAPH'S TITLE AND DESCRIPTION, NOT A NEW NODE (Matt, 2026-08-28, correcting the first draft of this entity). A telos vocabulary would have been a second place to say what a graph is for, competing with the one that already exists and that the user already fills in. THE FIELDS ARE ALREADY THERE: settings.kbTitle and settings.kbDescription (src/lib/storage/db.ts) live INSIDE each graph so they travel with an export or a sync, and KbEntry.description mirrors the registry side. What is missing is not a place to write the goal down. It is that almost nothing READS it." ;
+               kpred:measured     "WHO CONSUMES kbDescription TODAY, grepped 2026-08-28: the JSON-LD and llms.txt exporters, the /kb settings form that edits it, and TurtleChatPanel's fallback tour blurb. That is all. Nothing in review, ranking, extraction, analysis or question generation has ever read it — so the user's own statement of what their graph is for currently affects nothing except how the graph describes itself to strangers." ;
+               kpred:principle    "WITHOUT A GOAL, A RANKING CAN ONLY EVER PRODUCE WHAT IS IMMINENT, NEVER WHAT IS IMPORTANT — F99.1's own remaining note, generalized. Sorting tasks by due date and events by time is a correct sort of the wrong quantity." ;
+               kpred:principle    "A GOAL IS A WELL-FORMED ABSENCE AT GRAPH SCALE (kb:mission). Subject and predicate known — this graph is for something — object unknown until the user says it, and a great deal blocked behind it. It is the most useful node in the graph precisely because so much else is unresolvable without it." ;
+               kpred:principle    "THE GOAL IS THE USER'S TO STATE, AND ONLY THE USER'S (F88 authority). A model that infers your goal and then measures you against it has invented both the yardstick and the score. It may PROPOSE a goal from what the graph contains — that is a reading, and a reading is reviewable — but it may never hold one the user did not agree to." ;
+               kpred:relates-to   kb:priority-today ;
+               kpred:relates-to   kb:interview-mode ;
+               kpred:relates-to   kb:mission ;
+               kpred:relates-to   kb:situation-as-scope ;
+               kpred:principle    "PROSE IS ENOUGH TO RANK AGAINST, AND IT IS THE ONLY THING THE USER WILL ACTUALLY MAINTAIN. A structured objective tree is more computable and would be emptier: a field someone fills in once is worth more than a schema they abandon. The description is already written, already travels with the graph, and already belongs to the user." ;
+               kpred:open-question "Is the goal stated once, or is it itself interview material that sharpens over time — the way kb:growing-filter-set sharpens a grant profile one real requirement at a time? Matt's call, and it changes what F141 phase 3 can rank against on day one." ;
+               kpred:remaining    "The CONSUMERS, which is now the whole feature: goal-aware ranking in kb:review-attention; goal-scoped question generation in F141 phase 3; goal-relative ranking in F99.1. Plus a prompt to write a description when a graph has none — an empty description is the well-formed absence here, and today nothing notices it is empty." ;
+               kpred:remaining    "Decide whether the description is ALSO interview material that sharpens over time, the way kb:growing-filter-set sharpens a grant profile one real requirement at a time. It is a much smaller change now that it is a text field rather than a vocabulary." ;
+               kpred:relates-to   kb:growing-filter-set .
+
+## =============================================================================
+## F143: Game development on a graph  (Matt, 2026-08-28)
+## =============================================================================
+## "I see a lot of game developers struggle with cohesion, 3d asset creation, and
+## many other design elements I believe Reckons.AI UI would help with. I think of
+## AI agent usage as a new method to tackle sheer quantity, and approvals of many
+## different generation attempts as a key process."
+##
+## NOT THE SAME AS F59.1 (kb:int-game-engine), and they must not be merged: F59.1
+## asks a game engine to RENDER OUR GRAPH better. This asks our graph to HOLD A GAME
+## that an engine runs. Both can be true; only one of them is a product direction.
+
+kb:game-development rdf:type ktype:Feature ;
+               rdfs:label   "Game development on a graph — cohesion, assets, and approval at quantity" ;
+               kpred:feature-id   "F143" ;
+               kpred:has-status   "speculative" ;
+               kpred:description  "A game's design is the most cohesion-hungry artifact most people ever build, and it is normally scattered across a wiki, a Notion page, a Discord scrollback and four hundred binary files that cannot be checked against each other. Hold the CANON in a graph — factions, characters, items, locations, rules, materials, and the constraints between them — and cohesion stops being something a reviewer has to notice and starts being something the graph can compute. Generation then hangs off that canon rather than off a prompt, and the hard part becomes what this codebase is already built for: approving an enormous number of proposals without rubber-stamping them." ;
+               kpred:principle    "WE ARE NOT ENTERING THE ASSET-GENERATION MARKET, WE ARE ENTERING THE APPROVAL MARKET. Generating two hundred variants is already cheap and getting cheaper every quarter; CHOOSING among two hundred is the bottleneck, and it is precisely the bottleneck F52, F88 and F139 exist to attack. If this feature's value proposition ever becomes 'it generates good assets', we have picked a fight with better-funded people on their ground and lost. The proposition is that you can approve at that volume without it becoming rubber-stamping." ;
+               kpred:principle    "COHESION IS A CANON PROBLEM, NOT AN ASSET PROBLEM. A weapon whose material contradicts its faction's palette, a location referenced by three quests and defined by none, a rule that two systems state differently — these are graph queries, not art-direction meetings. This is the same machinery as kb:cross-kb-align and the review tree, pointed at a fiction instead of a codebase." ;
+               kpred:principle    "THE SCENE IS A GRAPH, NOT A SCRIPT (inherited from kb:content-orchestration, F90, not restated here). A generated .blend, .glb or scene file is a DERIVED artifact; the graph is the source. Otherwise the asset pipeline becomes exactly the thing this product exists to replace — a binary blob whose reasoning is lost." ;
+               kpred:principle    "A GREEN EXIT CODE IS NOT A GOOD IMAGE (inherited from kb:visual-acceptance). The deterministic floor is free and catches the whole black-frame class: the GLB parses, the texture is not one flat colour, the poly count is inside budget, the file is not zero bytes. A VLM score is a PROPOSAL above that floor. Taste routes to the user, out loud, because the verifiability axis exists so a domain like this can say `user` instead of dressing a preference up as a passing check." ;
+               kpred:honest-note  "WE SHIP NO ENGINE, NO RENDERER AND NO ASSET GENERATOR, and this feature must never be described as though we do. Meshy is integrated for text-to-3D (kb:int-meshy); local 3D and video generation are speculative and GPU-heavy (F74.1); headless Blender over MCP is planned and unbuilt (F90). What is REAL today is the graph, the review queue, and the approval machinery. This is a LAYER over other people's engines and other people's generators, and the day it tries to become one of them it has lost its reason to exist." ;
+               kpred:honest-note  "NO GAME DEVELOPER HAS ASKED FOR THIS. It is Matt's read of a market he is not currently in, which is why the status is `speculative` and not `planned`. The cheapest possible falsification is one real game canon in a graph — even a small one — and a single generation run reviewed as a set. Do not build phases 3 and 4 before that has happened." ;
+               kpred:depends-on   kb:cascade-aggregation ;
+               kpred:depends-on   kb:content-orchestration ;
+               kpred:relates-to   kb:int-game-engine ;
+               kpred:relates-to   kb:asset-generation ;
+               kpred:relates-to   kb:visual-acceptance ;
+               kpred:relates-to   kb:entity-sets ;
+               kpred:relates-to   kb:agent-orchestration ;
+               kpred:relates-to   kb:type-shape-coupling ;
+               kpred:relates-to   kb:competitive-landscape ;
+               kpred:open-question "Who is the user — a solo developer or small team who owns the whole canon, or an art lead inside a studio approving other people's output? The first needs generation wired in and buys the whole pipeline; the second needs ONLY the approval surface and will never let us near their asset tooling. The second is a smaller product and a much easier sale. Matt's call, and it decides whether phases 3 and 4 are ever built." ;
+               kpred:open-question "Does the canon need SHAPES to be useful — a type system saying a Weapon must have a material, a faction and a damage band (kb:type-shape-coupling) — or does an untyped graph plus contradiction queries get most of the value? Shapes make 'what is missing' computable, which is what makes an interview (F141) able to fill a canon in." ;
+               kpred:remaining    "Everything. The four phases below are the plan, and phase 1 alone is the falsifiable experiment." ;
+               kpred:has-phase    kb:game-canon ;
+               kpred:has-phase    kb:game-variant-review ;
+               kpred:has-phase    kb:game-asset-pipeline ;
+               kpred:has-phase    kb:game-engine-bridge .
+
+kb:game-canon rdf:type       ktype:Phase ;
+               rdfs:label   "Phase 1 — the canon as a graph, and contradiction as a query" ;
+               kpred:part-of      kb:game-development ;
+               hnav:order   1 ;
+               kpred:has-status   "speculative" ;
+               kpred:description  "One real game's design canon held as entities and constraints, with the contradictions surfaced as findings rather than found by eye. Nothing new is needed to try this: ingest, types, entity shapes, cross-graph alignment and the review tree already exist. That is the point — phase 1 is an EXPERIMENT run on shipped machinery, and if a canon in a graph does not obviously beat a wiki page, the rest of this feature should not be built." ;
+               kpred:principle    "THE TEST IS WHETHER IT CATCHES SOMETHING A HUMAN MISSED. A graph that merely re-states the wiki is a more expensive wiki. The claim is that constraints between entities catch the drift a wiki cannot — and that claim is checkable on one real canon before a line of new code is written." ;
+               kpred:relates-to   kb:cross-kb-alignment ;
+               kpred:relates-to   kb:type-shape-coupling ;
+               kpred:remaining    "A canon vocabulary; one real canon ingested; contradiction queries; an honest write-up of whether it found anything." .
+
+kb:game-variant-review rdf:type ktype:Phase ;
+               rdfs:label   "Phase 2 — approval at quantity (the part that is actually ours)" ;
+               kpred:part-of      kb:game-development ;
+               hnav:order   2 ;
+               kpred:has-status   "speculative" ;
+               kpred:description  "A generation RUN is a batch of proposals, and forty variants of one asset are ONE decision presented forty times. Reuse kb:cascade-aggregation exactly as written: aggregate the variants bound by one underlying choice, ask the single question that settles them, record the answer as the user's own fact, and propagate it with provenance back to that one decision point — with the OUTLIERS surfaced rather than hidden, because a batch accept is precisely where a bad asset slips through. Accept, reject, or regenerate-with-a-note, scoped to a set (kb:entity-sets)." ;
+               kpred:principle    "REJECTION IS DATA AND IS CURRENTLY THROWN AWAY. 'Not this one, because the silhouette reads wrong at distance' is the most valuable sentence in the whole pipeline: it is a constraint the canon did not contain, learned from a real choice. Capturing rejection REASONS as facts is what makes the next run better; capturing only accept/reject makes it identical." ;
+               kpred:relates-to   kb:cascade-aggregation ;
+               kpred:relates-to   kb:visual-acceptance ;
+               kpred:relates-to   kb:entity-sets ;
+               kpred:remaining    "Variant grouping; a comparison surface built for many candidates at once rather than one card at a time; rejection reasons as facts; the deterministic image/GLB floor from kb:visual-acceptance applied before anything reaches a human." .
+
+kb:game-asset-pipeline rdf:type ktype:Phase ;
+               rdfs:label   "Phase 3 — generation hung off the canon" ;
+               kpred:part-of      kb:game-development ;
+               hnav:order   3 ;
+               kpred:has-status   "speculative" ;
+               kpred:description  "Generation prompted BY THE GRAPH rather than by a person retyping the brief: an asset request carries its faction's palette, its material rules and its budget because those are facts about the entity it belongs to. Runs as ordinary F87 tasks so the queue, the tiering and the outcomes are the ones that already exist. Backends are whatever the user has connected — Meshy for text-to-3D today, headless Blender over MCP when F90 lands, a GPU sidecar for image and video if F74.1 ever gets one." ;
+               kpred:principle    "OPT-IN, PER-USER, AND NEVER A HARD DEPENDENCY (Integration Boundaries). A studio with its own pipeline must be able to use phases 1 and 2 and generate nothing here at all. If the approval surface only works when we also generate, we have built the lock-in this product exists to refuse." ;
+               kpred:depends-on   kb:content-orchestration ;
+               kpred:relates-to   kb:asset-generation ;
+               kpred:relates-to   kb:int-meshy ;
+               kpred:remaining    "Canon-grounded prompt assembly; asset requests as AgentTasks; per-backend adapters behind the F61 plug-in SDK." .
+
+kb:game-engine-bridge rdf:type ktype:Phase ;
+               rdfs:label   "Phase 4 — export the canon into an engine" ;
+               kpred:part-of      kb:game-development ;
+               hnav:order   4 ;
+               kpred:has-status   "speculative" ;
+               kpred:description  "A graph-described scene exported into a TypeScript engine that runs in the browser. Three MIT candidates were license-gated 2026-08-28 and recorded in static/reckons-competitive.ttl: kb:ref-three-game-engine (Three.js + rapier physics + three-mesh-ui, 111 stars, active), kb:ref-mavon-engine (multiplayer, 30 stars, active), and kb:ref-era-engine (72 stars, DORMANT since 2023 — read it, do not depend on it)." ;
+               kpred:principle    "ALL THREE CANDIDATES ARE THREE.JS WRAPPERS, AND THAT SETTLES F59.1'S OPEN WEIGHING. The app already ships Threlte 8 over Three.js, so any of these runs IN-PROCESS: no server, no hosting, no second runtime, and the offline-first thesis survives intact. The heavier alternatives F59.1 named — Godot web export, Bevy wasm — would each have cost a deployment story. That was the real question and the license gate answered it as a side effect." ;
+               kpred:principle    "PHYSICS IS THE THING WE DO NOT HAVE. Three.js and Threlte give us rendering and a scene graph; none of our 3D work has ever needed collision, rigid bodies or a fixed timestep. rapier, via kb:ref-three-game-engine, is the concrete gap-filler and is a bounded dependency rather than a framework that wants to own the loop." ;
+               kpred:relates-to   kb:int-game-engine ;
+               kpred:relates-to   kb:ref-three-game-engine ;
+               kpred:relates-to   kb:ref-mavon-engine ;
+               kpred:relates-to   kb:ref-era-engine ;
+               kpred:remaining    "A scene vocabulary that survives export; one engine chosen and justified in the graph; a round-trip test proving a scene regenerates from the graph rather than being hand-edited afterwards." .
+
+## =============================================================================
+## F144: The depth ladder — one hierarchy from every fact up to hubs  (2026-08-28)
+## =============================================================================
+
+kb:graph-depth-ladder rdf:type ktype:Feature ;
+               rdfs:label   "Depth ladder — draw the graph at six magnifications" ;
+               kpred:feature-id   "F144" ;
+               kpred:has-status   "functional" ;
+               kpred:part-of      kb:graph-legibility ;
+               kpred:has-file     "src/lib/rdf/graph-view.ts" ;
+               kpred:tested-by    "src/lib/rdf/__tests__/graph-view.test.ts" ;
+               kpred:description  "One control on the graph overlay, six rungs, coarsest last: all · detailed · evidence · judgments · decisions · hubs. The first five are altitude floors over kb:review-tree's classification; the sixth keeps only the nodes holding the graph together and the edges between them. DETAILED IS THE DEFAULT, so logs are hidden until asked for." ;
+               kpred:principle    "HIDING BY DEFAULT IS ONLY HONEST IF THE COUNT IS ON SCREEN. The first draft defaulted to drawing everything, reasoning that a graph which quietly omits facts teaches you not to trust it. Matt overruled it (2026-08-28) and was right: with '57 nodes · 286 facts hidden' sitting beside the control, hiding is legible rather than deceptive, and `all` is one click away carrying its own price." ;
+               kpred:principle    "THIS ONE REMOVES WHERE EVERY OTHER FILTER DIMS, and the difference is principled. The other filters are SELECTIONS — the unselected facts are still the thing you are looking at, so dimming to 0.18 alpha focuses without lying. Altitude is a statement about whether a fact is reviewable CONTENT at all. Dimming 73% of a graph leaves 73% of the clutter, still in the force simulation, still taking the space the user is complaining about." ;
+               kpred:principle    "LIFTED ALTITUDE, NEVER RAW. liftedAltitudes pulls a fact up to the altitude of any OPEN decision on its subject, so a log contradicting the evidence under a live decision stays on the canvas. A floor reading raw altitude would be exactly the design kb:review-tree warned about — one that could never surface the log that mattered." ;
+               kpred:principle    "HIDDEN FROM THE PICTURE, NOT FROM THE RECORD. A fact the floor removes falls through to the node panel as an attribute, so it is one click away rather than gone — the same distinction the review tree draws when it collapses logs into a drawer instead of dropping them." ;
+               kpred:measured     "ON MATT'S OWN personal-notes.ttl — 1,739 quads but only 547 REAL facts: all = 284 nodes / 443 edges · detailed = 228 nodes / 269 edges (239 facts, 56 nodes hidden) · evidence = 8 nodes / 17 edges · hubs = 45 nodes / 90 edges. The default rung removes 56 nodes and 39% of the edges." ;
+               kpred:honest-note  "THE FIRST MEASUREMENT OF THIS FEATURE WAS WRONG AND WAS REPORTED TO MATT BEFORE IT WAS CAUGHT (2026-08-28). It parsed the raw TTL and counted REIFICATION triples — rdf:subject/predicate/object and urn:kbase:meta/* — which the importer folds into Statement FIELDS and which therefore never exist as statements in the app. That inflated 547 facts to 1,739 and 443 edges to 1,476. Node counts happened to be close; edge and fact counts were roughly 3x too high. The lesson generalizes: measuring a graph by parsing its serialization measures the FILE FORMAT, not the graph the app builds." ;
+               kpred:measured     "COVERAGE IS THE REAL LIMIT, and it is what makes the middle rungs useless on a capture graph. altitude-report.ts: reckons own graphs 95.1% predicate coverage; personal-notes.ttl 39.6%, with 0% decision and 0% evidence. So `evidence` collapses that graph from 284 nodes to 8 — not because the facts are unimportant but because nothing has classified them, and everything unclassified defaults to judgment. The ladder has two usable rungs there, then a cliff. See F147." ;
+               kpred:known-issue  "A notes graph contains NO decision-altitude facts, so the `decisions` rung renders an empty canvas there (324 nodes hidden, stated in the readout). Truthful, and explained only by the counter beside the control — a per-rung survivor count was drafted and cut for cost. If the blank view reads as a bug to anyone, that count is the fix." ;
+               kpred:relates-to   kb:review-tree ;
+               kpred:relates-to   kb:review-attention ;
+               kpred:known-issue  "IT DID NOT ACTUALLY FILTER WHEN FIRST SHIPPED, and the reason is worth keeping. The floor was applied to `topologyStatements`, and both renderers treat a statement missing from that set as an ATTRIBUTE — \u0027a unique literal is an attribute, not a leaf node; keep its subject visible even when this is the entity\u0027s only fact\u0027. That rule is right for attributes and exactly wrong for a floored fact: it resurrected the very nodes the floor was asked to hide, so edges vanished and the graph looked unchanged. Fixed by returning hidden.statementIds and having the renderers refuse to resurrect a subject on that list. Two correct rules composed into a wrong one, which is the kind of bug no unit test on either side would find." ;
+               kpred:remaining    "Per-rung survivor counts on the chips, so an empty rung announces itself before it is clicked. The rung is not yet reflected in the 2D/3D legend or in exports." .
+
+## =============================================================================
+## F145: Derived facts ride with the fact they came from  (Matt, 2026-08-28)
+## =============================================================================
+
+kb:derived-fact-approval rdf:type ktype:Feature ;
+               rdfs:label   "Sub-facts are approved — and rejected — with their parent" ;
+               kpred:feature-id   "F145" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:description  "Matt, 2026-08-28: 'log level pre-validated sub-facts approved with the top level extracted fact'. An extraction produces one claim a human must weigh and several bookkeeping facts that only exist because of it — kpred:extracted-from, kpred:extracted-at, the source link. Those should be settled BY the parent's settlement, not settled independently of it." ;
+               kpred:known-issue  "THE REJECT PATH IS THE BROKEN HALF, verified 2026-08-28: setStatus() has no cascade of any kind. auto-trust.ts already auto-confirms log-altitude and system-asserted facts AT WRITE TIME, so the approve direction looks fine — but reject 'Orange Logic is a private company' and its kpred:extracted-from link stays CONFIRMED, now asserting provenance for a claim nobody accepted. The graph keeps a settled fact about a rejected one." ;
+               kpred:principle    "A DERIVED FACT HAS NO STANDING OF ITS OWN. It is true only in the sense that the pipeline did what it says it did; once the claim it describes is rejected, its provenance describes nothing. This is not the same as deleting it — kb:review-tree's rule holds, classify and demote rather than drop — but it must not remain CONFIRMED." ;
+               kpred:principle    "THE MACHINERY ALREADY EXISTS AND SHOULD NOT BE REBUILT. kb:cascade-aggregation ships applyCascade and settledByDecision precisely so a batch settled by one act can be traced to it and reversed from it. This is that, with the parent fact as the decision point instead of a user's answer." ;
+               kpred:depends-on   kb:cascade-aggregation ;
+               kpred:relates-to   kb:reviewable-graph-patches ;
+               kpred:relates-to   kb:graph-depth-ladder ;
+               kpred:open-question "What status does a derived fact take when its parent is rejected — `superseded` (it described something that no longer stands), `rejected` (it is wrong), or back to `pending`? They read very differently in an audit, and only one of them is honest about the fact that the pipeline DID run." ;
+               kpred:remaining    "Everything. A parent link on derived facts; cascade on settle in both directions; the status question above answered before any of it." .
+
+## =============================================================================
+## F146: Extraction robustness — multiple strategies, and hierarchy  (Matt, 2026-08-28)
+## =============================================================================
+## "I think the extraction process must be very robust for all of this to occur
+## correctly, we need much more time spent on the extraction processes, and to
+## implement multiple strategies to gain an accurate triples extraction, and
+## hierarchy."
+
+kb:extraction-strategies rdf:type ktype:Feature ;
+               rdfs:label   "Extraction robustness — multiple strategies, and hierarchy" ;
+               kpred:feature-id   "F146" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:description  "Everything downstream is a function of extraction quality. The review queue, the altitude ladder, cascade aggregation, the interview and the whole capture path all assume the triples arriving are roughly right and roughly well-shaped; where they are not, every later mechanism is polishing noise. This feature is the deliberate investment Matt called for: several extraction strategies rather than one prompt, reconciled against each other, and a hierarchy that is EXTRACTED rather than hoped for." ;
+               kpred:principle    "MEASURE FIRST, AND WE CURRENTLY CANNOT. kb:structural-grounding already says it in its own remaining note: 'Measure the effect: a before/after extraction run scoring dependency correctness, not just vocabulary agreement. Until that exists, do not claim graph-aware extraction improves the tree's ranking.' That is still true, and it applies to every strategy proposed below. A second strategy that cannot be scored against the first is not robustness, it is two guesses." ;
+               kpred:principle    "MULTIPLE STRATEGIES MEANS DISAGREEMENT IS THE SIGNAL. Two extractors that agree on a triple raise its confidence; two that disagree have found the sentence worth showing a human. That converts model unreliability from a defect into a routing input — and it is the same move the merge band and the dichotomy filter already make elsewhere in this codebase." ;
+               kpred:principle    "THE DETERMINISTIC TIER COMES FIRST AND IS ALREADY EARNING (F74.3). rdf/triple-shape.ts catches a whole class of failure — the collapsed 'orange-logic-is-an-enterprise-dam' subject — with a rule, for free, under every backend. rdf/note-intent.ts routes instructions away before a model sees them. Growing that set beats improving a prompt, because a rule is right by construction rather than right on average." ;
+               kpred:principle    "HIERARCHY IS A SEPARATE EXTRACTION PROBLEM FROM FACTS, and treating it as a by-product is why it is weak. skos:broader, part-of and depends-on are what the depth ladder, the review tree and hnav all rank against; an extractor optimized for atomic triples has no reason to produce them and no way to know it failed to." ;
+               kpred:learned-from "kb:ref-ontocast is the named comparator and already recorded as 'the closest direct F136 comparator': ontology-retrieval modes, a CRITIC STAGE over extraction output, provenance artifacts, and deterministic SHACL repair. The critic stage in particular is the shape of a second strategy that is not merely a second prompt." ;
+               kpred:relates-to   kb:vocabulary-grounding ;
+               kpred:relates-to   kb:structural-grounding ;
+               kpred:relates-to   kb:ref-ontocast ;
+               kpred:relates-to   kb:work-tiering ;
+               kpred:relates-to   kb:interview-mode ;
+               kpred:relates-to   kb:graph-depth-ladder ;
+               kpred:open-question "Which strategies, and how many? Candidates: the current freeform prompt; schema-constrained output (already used for small local models); a two-pass extract-then-critic; a deterministic shape/repair pass; and a per-sentence re-ask for anything the others disagreed on. Running all five on every ingest is unaffordable — the ladder from cheap-and-always to expensive-and-conditional is the real design." ;
+               kpred:open-question "What is the ground truth? Scoring needs a hand-checked corpus, and the only honest source is graphs Matt has already reviewed — which are small, and biased toward the sentences that survived review. Building the corpus may be most of the work, and it must exist before any accuracy claim is made." ;
+               kpred:remaining    "All of it, and the order matters: a scored corpus and a harness FIRST, then strategies measured against it, then hierarchy extraction, then consensus routing into the review queue." ;
+               kpred:has-phase    kb:extraction-scoring .
+
+kb:extraction-scoring rdf:type ktype:Phase ;
+               rdfs:label   "Phase 1 — a way to tell whether extraction got better" ;
+               kpred:part-of      kb:extraction-strategies ;
+               hnav:order   1 ;
+               kpred:has-status   "planned" ;
+               kpred:description  "A hand-checked corpus and a harness that scores an extraction run against it: triple-level precision and recall, subject-collapse rate, vocabulary agreement with the existing graph, and hierarchy edges recovered. Script tier, and it gates everything else in F146 — without it, 'more robust' is a feeling." ;
+               kpred:principle    "IT MUST BE ABLE TO REPORT THAT A CHANGE MADE THINGS WORSE. A harness that only ever confirms improvement is a marketing instrument. Score the CURRENT extractor first and publish that number, before any strategy is added to beat it." ;
+               kpred:remaining    "Corpus selection and hand-checking; scripts/offline/extraction-score.ts; a baseline number for the current extractor, recorded here." .
+
+## =============================================================================
+## F147: Re-orienting a graph's own predicates into the hierarchy  (2026-08-28)
+## =============================================================================
+## Matt: "there must be a 'restructure' or some analyze action that can help
+## re-orient all triple facts into that hierarchy."
+
+kb:altitude-restructure rdf:type ktype:Feature ;
+               rdfs:label   "Restructure — classify a graph's own predicates by altitude" ;
+               kpred:feature-id   "F147" ;
+               kpred:has-status   "scaffolded" ;
+               kpred:has-file     "src/lib/rdf/altitude-proposals.ts" ;
+               kpred:tested-by    "src/lib/rdf/__tests__/altitude-proposals.test.ts" ;
+               kpred:description  "fact-altitude.ts classifies by PREDICATE against a table built from Reckons' own authored graphs. A user's graph invents its own predicates, and anything the table misses defaults to judgment. This proposes a classification per unclassified predicate — <predicate> kpred:altitude \"log\" — pending, for a human to accept, and altitudeOf now READS accepted ones so an acceptance actually changes what the graph shows." ;
+               kpred:principle    "ONLY THE OBJECT SHAPE DECIDES, AND DECLINING IS A REAL ANSWER. Whether kpred:has-property is a record or a judgment is a question about what the word MEANS — agent tier, or the user. What a script settles is what the VALUES look like: all timestamps is a log whichever word was chosen. The proposer refuses where the shapes disagree and REPORTS the refusal, because a proposer that always has an answer moves cost from classification to triage." ;
+               kpred:principle    "THE USER OUTRANKS THE TABLE, AND ONLY THE USER. setUserAltitudes is fed from facts a person ACCEPTED in review — never from an extractor, never from a proposal. A pipeline that could quietly reclassify predicates could quietly hide decisions, which is the one failure the altitude design exists to prevent. A REJECTED classification is remembered too, so a settled question is never re-asked." ;
+               kpred:honest-note  "MEASURED, AND THE MEASUREMENT KILLED MY OWN JUSTIFICATION FOR IT. This was built because altitude-report.ts showed 39.6% coverage on personal-notes.ttl against 95.1% on Reckons' graphs. That 39.6% was wrong for the same reason F144's first numbers were wrong: it parsed the raw TTL and counted REIFICATION triples the importer folds into Statement fields. On the real 547 facts, coverage is 96.3%, only 20 facts across 5 predicates are unclassified, and the deterministic proposer finds ZERO proposals. TWICE IN ONE SESSION, measuring a graph by parsing its serialization measured the file format instead of the graph." ;
+               kpred:honest-note  "SO THE SPARSE MIDDLE RUNGS ARE REAL, NOT AN ARTIFACT. personal-notes collapses from 284 nodes to 8 at the `evidence` rung because a notes graph genuinely holds almost no measurements and no decisions — not because classification failed. The ladder is telling the truth about that graph." ;
+               kpred:remaining    "The value here is on graphs with INVENTED vocabulary, which is where 186 distinct unclassified predicates were counted across Reckons' own static/*.ttl. Unproven on a user graph. Needed next: the agent tier for the predicates the shapes cannot settle; an /analyze action to run the survey and queue the proposals; and setUserAltitudes actually wired to the graph on load — the read path exists and NOTHING CALLS IT YET." ;
+               kpred:relates-to   kb:graph-depth-ladder ;
+               kpred:relates-to   kb:review-tree ;
+               kpred:relates-to   kb:work-tiering .
+
+kb:hub-eligibility rdf:type  ktype:Feature ;
+               rdfs:label   "A hub must be a concept, not a filing artifact" ;
+               kpred:feature-id   "F148" ;
+               kpred:has-status   "functional" ;
+               kpred:part-of      kb:graph-depth-ladder ;
+               kpred:has-file     "src/lib/rdf/graph-view.ts" ;
+               kpred:has-file     "src/lib/rdf/entity-types.ts" ;
+               kpred:tested-by    "src/lib/rdf/__tests__/graph-view.test.ts" ;
+               kpred:description  "Matt, 2026-08-28: 'note file names (log level) can be classified as a hub because of other rules of connection count. Hubs must be core concepts, people, or other entities.' Two independent gates now sit on top of degree." ;
+               kpred:principle    "SUBSTANTIVE DEGREE, NOT DEGREE. A dictated note gains one kpred:extracted-from edge per triple read out of it, so one sentence can out-rank a real concept on raw count — while every one of those edges is a RECORD saying the pipeline ran. A node whose every edge is a record or log is bookkeeping with high fan-out and is denied hub status at any degree." ;
+               kpred:principle    "THE TYPE GATE ALONE WOULD NOT HAVE WORKED, and checking that first is why both exist. Captured note entities carry NO rdf:type at all, so an allowHub flag would never have seen them. The type gate handles Documents and Web Pages, which have types and rarely deserve hub status; the substantive-degree rule handles everything untyped." ;
+               kpred:principle    "INELIGIBLE NODES STILL COUNT TOWARD THE MEDIAN. They are really there and really connected; excluding them would make the graph look sparser than it is and lower the bar for everyone else. Eligibility governs who can BE a hub, not what a typical degree looks like." ;
+               kpred:remaining    "EntityTypeDef.allowHub exists and defaults false for Document and Web Page, but NO SETTINGS UI EXPOSES IT — the flag is real, the toggle Matt asked for is not. Also unbuilt: a standalone 'hide log-type nodes' filter, distinct from raising the detail level." .
+
+## =============================================================================
+## F149: The vocabulary added this session, reviewed against the standards
+## =============================================================================
+## Matt: "We should research these definitions we are adding, compared to
+## standards like SKOS and SHACL, as well as compared to other github libraries
+## we have researched."
+
+kb:new-vocab-standards-review rdf:type ktype:Decision ;
+               rdfs:label   "Standards review of the altitude, task and typing vocabulary" ;
+               kpred:feature-id   "F149" ;
+               kpred:has-status   "functional" ;
+               kpred:description  "Reviewing what was minted across 2026-08-28 — kpred:altitude, meta:altitude, kpred:task-state 'proposed', EntityTypeDef.allowHub, and the predicate-to-type inference — against SKOS, SHACL, RDFS and PROV-O, and against the repos already recorded in reckons-competitive.ttl. Extends kb:standards-review (F132), which set the rule these are judged by: standards earn their place at the INTEGRATION boundary, not on disk." ;
+               kpred:known-issue  "EVERY CLOSED VOCABULARY MINTED THIS SESSION IS A FREE-TEXT LITERAL, WHICH IS THE EXACT MISTAKE F75.2 EXISTS TO STOP. kb:feature-lifecycle-vocab already ruled: a closed set is modeled as ktype:*/ skos:Concepts in a scheme, ordered by hnav:order, REFERENCED AS IRIs rather than strings, so an invalid value is a broken reference graph-lint catches structurally instead of a typo nothing notices. kpred:altitude takes \"log\"; kpred:task-state takes \"proposed\"; both are strings. The altitude scale is a five-member ORDERED set and maps exactly onto skos:OrderedCollection + skos:memberList, with hnav:order already the project's ordering convention. This was not noticed while building; it was found by this review." ;
+               kpred:known-issue  "rdfs:domain IS THE STANDARD FORM OF THE TYPE INFERENCE, AND WE REBUILT IT BY HAND. entity-typing.ts inverts EntityTypeDef.schemaPredicates to answer 'which type does this predicate imply', which is precisely what rdfs:domain declares — and those same schemaPredicates ALREADY become sh:path in type-shapes.ts, so the data is one field away from being standard. THE CATCH IS REAL THOUGH: rdfs:domain is an ENTAILMENT — asserting it makes the type true, with no proposal and no review — and this product's whole stance is that nothing about a user's graph is auto-asserted. So the honest position is to DECLARE with rdfs:domain (portable, reasoner-legible, one predicate instead of a private array) and still treat it as EVIDENCE FOR A PROPOSAL rather than as inference. Standard vocabulary, non-standard semantics, said out loud." ;
+               kpred:measured     "SHACL IS ALREADY SPOKEN HERE, which changes the framing of kb:shape-validation's 'SHACL zero times'. type-shapes.ts emits real sh:NodeShape / sh:targetClass / sh:path / sh:minCount / sh:maxCount / sh:message today. What is missing is not the vocabulary but the VALIDATOR — F132 names shacl-engine as the candidate and measured it at 1.5x, not the advertised 15-26x." ;
+               kpred:measured     "SERIALIZATION GAP FOUND AND FIXED BY THIS REVIEW. The reification block in serialize.ts emits status, confidence, proposedBy, askedBy, gloss, excerpt, supersedes, prov:wasDerivedFrom and dc:created — and NOT the new meta:altitude, so a hand-set altitude was lost on every export, sync and round-trip. Fixed in both directions, with an invalid value dropped on read rather than trusted. STILL MISSING and pre-existing: verifiableBy, findingClass, blocks, settledByDecision and verifiedBy are all Statement fields that do not survive a file either." ;
+               kpred:principle    "PROV-O IS ALREADY THE PRECEDENT FOR HOW TO DO THIS. serialize.ts writes prov:wasDerivedFrom in the reification block while everything else uses urn:kbase:meta/ — the MigProvO decision was partial alignment on purpose (source provenance yes, activity chains no). That is the pattern to copy for altitude: use the standard term where one exists and fits, keep the private one where it does not, and record which is which." ;
+               kpred:open-question "Is altitude a genuinely new axis, or an unnamed re-invention of something already standardized? Nothing in SKOS, SHACL, PROV-O or DCAT ranks a fact by CONSEQUENCE-IF-WRONG. The closest neighbours are nanopublications, which separate the assertion from its provenance and publication metadata — the same cut the record/log tier makes informally — and argumentation ontologies, which separate claim from backing the way judgment separates from evidence. Neither was checked against the actual spec here, and this entry does not claim they were." ;
+               kpred:decided      "SHARED-VOCABULARY CHANGES FORCE FULL REVALIDATION (Matt, 2026-08-28, agreeing the position). Accepting a predicate classification is not a local accept: every fact using that predicate moves at once, changing what the detail ladder draws, what the review tree ranks, what retention may archive and which nodes clear the hub bar. It is Graphwise\u0027s third scenario — shared data evolution in ontologies and thesauri — and it is the one that crosses the whole graph." ;
+               kpred:decided      "AND REVALIDATION IS AN ANALYZE ACTION, NOT A CLICK-TIME COMPUTATION (Matt, 2026-08-28: \u0027depending on the change, I see that as an analyze action accomplished\u0027). Small changes settle inline; a shared-vocabulary change runs as a job in /analyze alongside enrich, merge, entity-types and align, and reports its effect. That also answers the earlier ask for a \u0027restructure or some analyze action\u0027 — restructure and revalidate are the same action seen from two ends." ;
+               kpred:relates-to   kb:standards-review ;
+               kpred:relates-to   kb:feature-lifecycle-vocab ;
+               kpred:relates-to   kb:shape-validation ;
+               kpred:relates-to   kb:graph-depth-ladder ;
+               kpred:relates-to   kb:altitude-restructure ;
+               kpred:relates-to   kb:ref-ontocast ;
+               kpred:learned-from "GRAPHWISE ON INCREMENTAL SHACL VALIDATION (ERA, the EU rail agency KG) — https://graphwise.ai/blog/improving-era-shacl-shapes-and-data-flows/ — read 2026-08-28. Their problem is ours at a larger scale: command-line SHACL loads the ENTIRE dataset into memory before validating, which caps how big a graph can get. Their fix is to let the database validate, and to validate only the INCOMING TRANSACTION against the data at rest." ;
+               kpred:learned-from "THE ARGUMENT FOR DECLARING RATHER THAN CODING IS STRONGER THAN THE ONE THIS ENTRY FIRST MADE. Their load-bearing sentence: SHACL-core constraints are declarative, so the ENGINE can work out which triple patterns trigger which shapes and run only those. That is selective execution, and it is unavailable to a hand-written TypeScript function by construction. So the case for rdfs:domain and sh:path over entity-typing.ts's private array is not mainly portability — it is that a declarative shape tells you which shapes a change could possibly affect, and validation cost then scales with the CHANGE rather than with the graph. Our pipeline is already transaction-shaped (a batch of new statements checked against allStatements()), so the seam exists." ;
+               kpred:learned-from "THEIR SCENARIO TAXONOMY MAPS ONTO OURS, AND ONE ROW IS A WARNING ABOUT WHAT SHIPPED TODAY. They separate a subgraph update, a single-resource change, SHARED DATA EVOLUTION in ontologies and SKOS thesauri, and migrations — and shared-vocabulary changes are the ones that force FULL revalidation because their impact crosses the whole graph. Accepting a kpred:altitude for a predicate, or editing a type\u0027s schemaPredicates, is exactly that class: it silently changes what is hidden and what is a hub EVERYWHERE, not just where it was accepted. F147 currently treats it as a local acceptance." ;
+               kpred:honest-note  "NO PERFORMANCE FIGURES ARE CLAIMED FROM THAT ARTICLE, because it gives none for incremental validation — it references GraphDB documentation rather than a benchmark. The only measured SHACL number this project holds is F132\u0027s own: shacl-engine at 1.5x on this corpus, against an advertised 15-26x." ;
+               kpred:remaining    "(0) Treat a predicate-level altitude or a schemaPredicates edit as a GRAPH-WIDE change with a visible blast radius, not a local accept — the shared-vocabulary lesson above. (1) Move kpred:altitude and kpred:task-state to SKOS concept references, following F75.2's pattern, and let graph-lint catch invalid values structurally. (2) Declare schemaPredicates as rdfs:domain and read inference from that instead of a private array. (3) Serialize the remaining Statement fields. (4) Check altitude against the nanopublication and argumentation specs properly before claiming it is or is not novel." .
+
+kb:vocabulary-revalidation rdf:type ktype:Feature ;
+               rdfs:label   "Revalidate the graph after a shared-vocabulary change" ;
+               kpred:feature-id   "F150" ;
+               kpred:has-status   "scaffolded" ;
+               kpred:has-file     "src/lib/rdf/vocabulary-change.ts" ;
+               kpred:tested-by    "src/lib/rdf/__tests__/vocabulary-change.test.ts" ;
+               kpred:description  "Computes what a shared-vocabulary change does to the WHOLE graph before it is accepted: how many facts move altitude, which transitions, how many entities are touched, and — first — how many facts LEAVE the review queue. We have no SHACL engine to re-run, so revalidation here means recomputing the derived classification twice, as it is and as it would be, and handing the difference to the person about to approve it." ;
+               kpred:principle    "THE DIRECTION MATTERS MORE THAN THE COUNT. kb:review-tree ruled that authority can LIFT altitude and never lower it, because demoting hides a fact from the queue. A change that reclassifies four hundred facts DOWN removes four hundred things from human view, so that number is reported separately and read first. Reclassifying upward is merely noisy; downward is how a decision goes missing." ;
+               kpred:principle    "IT RECOMPUTES RATHER THAN SUBTRACTING, AND THAT IS THE WHOLE DESIGN. Promoting a predicate to `decision` can make its subject carry an OPEN decision, and liftedAltitudes then pulls that subject's OTHER facts up with it — facts that never mention the changed predicate. A diff counting only the changed rows would miss every one of them." ;
+               kpred:depends-on   kb:altitude-restructure ;
+               kpred:relates-to   kb:new-vocab-standards-review ;
+               kpred:relates-to   kb:cascade-aggregation ;
+               kpred:remaining    "Wire it as an /analyze focus so it runs as a job with a report, per the F149 decision; today it is a pure function nothing calls. Extend beyond predicate-altitude to schemaPredicates and allowHub edits, which are the same class of change. No blast-radius confirmation step exists in the review UI." .
+
+kb:review-detail-ladder rdf:type ktype:Feature ;
+               rdfs:label   "Detail ladder on the review queue" ;
+               kpred:feature-id   "F151" ;
+               kpred:has-status   "functional" ;
+               kpred:part-of      kb:graph-depth-ladder ;
+               kpred:has-file     "src/routes/(app)/review/+page.svelte" ;
+               kpred:description  "Matt, 2026-08-28: 'I need depth/detail/altitude in the review screen, for sure.' Five rungs — all, detailed, evidence, judgments, decisions — defaulting to detailed. `hubs` is absent on purpose: a hub is a shape in a graph, not a property of a fact awaiting a decision." ;
+               kpred:known-issue  "THE QUEUE WAS ALREADY HIDING LOGS AND SAID SO ONLY IN PASSING. The old code was a hardcoded `altitudeOf(s) !== 'log'` with a count in the header and no way to see past it. The default rung reproduces that behaviour exactly, so nothing changes for anyone who does not touch the control; what changed is that the floor is now visible and adjustable." ;
+               kpred:decided      "THE QUEUE USES RAW ALTITUDE WHERE THE CANVAS USES LIFTED, and the difference is deliberate rather than an oversight. Making the queue lifted — to match the graph — broke review.test.ts 'unplanned work is asked for its PURPOSE': lifting raises log facts INTO the queue, and cascade aggregation refuses decision- and judgment-altitude members by design, so the purpose row never formed. The canvas is showing a picture; the queue is assembling a decision. Revisit with the cascade validator in hand, not by changing the filter." ;
+               kpred:remaining    "The rung is not persisted or shareable (the graph view's is, via ?detail=). No control yet for the other two review tabs." .
+
+## =============================================================================
+## F152: Ask before extracting — incremental extraction with the user in the loop
+## =============================================================================
+## Matt, 2026-08-28: "questions for proper extraction could be proposed for the
+## user, before the full extraction is completed. We will need to queue the
+## incremental analysis and extraction, and do best we can without user input.
+## When user input occurs we recalculate everything."
+
+kb:incremental-extraction rdf:type ktype:Feature ;
+               rdfs:label   "Ask before extracting — questions first, then recompute" ;
+               kpred:feature-id   "F152" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:description  "Extraction is currently one shot: text in, triples out, everything pending, and whatever the model misunderstood is now the user's problem to unpick fact by fact. This inverts it. Do the best pass available WITHOUT the user, surface the few questions that would change the most, and recompute when each is answered — with re-analysis running in the background while the user works through the next question." ;
+               kpred:principle    "ASK THE QUESTION THAT CHANGES THE MOST, AND ONLY THAT ONE. The value is not in asking more questions, it is in asking the few whose answers propagate. kb:cascade-aggregation already computes that shape — one answer settling fifty facts — and F150 already computes the blast radius of a shared-vocabulary change. Ranking candidate questions by what they would resolve is the same calculation pointed at extraction." ;
+               kpred:principle    "IT WILL BE SLOWER, AND THAT IS THE TRADE BEING BOUGHT (Matt: 'this will slow down the experience'). A fast extraction that produces facts nobody can review is not fast, it has moved the cost to triage — the same accounting kb:work-tiering applies to agent proposals. State the slowdown; do not hide it behind a spinner." ;
+               kpred:principle    "RECOMPUTE, DO NOT PATCH. An answer changes the grounding every later triple was read against, so the honest response is to re-run rather than to edit the facts already emitted. This is the same rule F150 reached for vocabulary changes, arrived at from the other direction." ;
+               kpred:depends-on   kb:extraction-strategies ;
+               kpred:depends-on   kb:cascade-aggregation ;
+               kpred:relates-to   kb:interview-mode ;
+               kpred:relates-to   kb:vocabulary-revalidation ;
+               kpred:relates-to   kb:partial-facts ;
+               kpred:open-question "What is a good extraction question, and can a rule find one? Candidates a script could spot: a proper noun matching no known entity and no vocabulary-repair candidate; a pronoun with no antecedent in range; a predicate used once in a graph that has a near-synonym; an entity the typing stage declined to type. Whether those are the questions a person would actually want asked is unmeasured, and the answer decides whether this is script tier or agent tier." ;
+               kpred:open-question "Does an unanswered question BLOCK its triples or merely flag them? Blocking keeps bad facts out of the graph and stalls capture; flagging keeps capture flowing and lets a wrong reading spread. Matt's call, and it is the same trade the ring capture already made in the other direction — at-least-once delivery, duplicates over losses." ;
+               kpred:remaining    "All of it. Needs F146 phase 1 first: without a scored corpus there is no way to tell whether asking the questions produced better triples than not asking them, and the whole feature is a claim about quality." .
+
+## =============================================================================
+## F153: Markdown as a first-class graph output — and input  (Matt, 2026-08-28)
+## =============================================================================
+## "I think the direct markdown within Handoff has been extremely difficult to
+## remove from this equation, so how about we make that a standard not a
+## workaround... this increases interoperability even further, allowing for a
+## markdown in, markdown out process for agents utilizing Reckons.AI."
+
+kb:markdown-interchange rdf:type ktype:Feature ;
+               rdfs:label   "Markdown in, markdown out — a rendered view is a first-class output" ;
+               kpred:feature-id   "F153" ;
+               kpred:has-status   "scaffolded" ;
+               kpred:priority     "high" ;
+               kpred:has-file     "src/lib/rdf/task-markdown.ts" ;
+               kpred:tested-by    "src/lib/rdf/__tests__/task-markdown.test.ts" ;
+               kpred:description  "Triples are the STORE and markdown is a PROJECTION, and the project already treats it as one for documentation (F27: WebPage nodes to content/*.md and back, with an md-align drift check). This makes that a general methodology rather than a docs feature: a task renders as a markdown document, an agent fills the document in, and the document parses back into facts. The graph stays the source; the document is derived and says so in its own footer." ;
+               kpred:decided      "MARKDOWN IS A STANDARD HERE, NOT A WORKAROUND (Matt, 2026-08-28). This RESOLVES kb:adopt-bounded-handoff differently from how that entity framed it. It called HANDOFF.md a legacy artifact to compile away and cap. But it has survived every attempt to remove it, and a thing that will not die is usually doing a job nothing else does: telling one reader, in order, what is going on. Triples are hopeless at that. So the fix is not to eliminate the rendered view — it is to generate it, bound it, and admit it is a real output format." ;
+               kpred:principle    "THE REFUSAL IS THE DOCUMENT'S STRUCTURE. A dictated task has no effects, no acceptance check and no command, so blockedReason refuses it. As a triple that refusal is one string nobody reads; as a document it is a checklist naming each missing field and what it is FOR. That is the difference between a queue that blocks work and one that asks for what it needs." ;
+               kpred:principle    "THE DOCUMENT IS A FORM, WHICH IS WHAT MAKES THE ROUND TRIP WORTH ANYTHING. The three missing fields are emitted as EMPTY FRONTMATTER KEYS, so the file an agent receives is the file it fills in and hands back. This is how an agent supplies what a transcript cannot contain, without anybody hand-editing TTL." ;
+               kpred:principle    "PARSE FRONTMATTER, NEVER PROSE — a safety property rather than laziness. Reading an effect out of a sentence would let an agent's phrasing decide an authority boundary. A key with a value is unambiguous, diffable, and cannot be smuggled past a reviewer inside a paragraph." ;
+               kpred:principle    "A FILE MUST NEVER ASSERT THAT WORK HAPPENED. taskFromMarkdown refuses a declared state of claimed, done or failed and reports the attempt: state transitions are claims about reality, and letting any writer of a file make them would let anyone mark work finished that nobody did. Unknown effects are refused rather than filtered into apparent safety, and a command with no declared effect is flagged." ;
+               kpred:principle    "BOUNDED IS THE FEATURE. queueToMarkdown caps what it renders and SAYS what it omitted. kb:adopt-bounded-handoff holds the evidence for why: HANDOFF.md reached 107,738 bytes and the session instructed to read it first grepped its headers instead. An unread document is not continuity." ;
+               kpred:measured     "A GAP FOUND WHILE BUILDING IT: AgentTask had no `command` field. scripts/agent/runner.ts has always read kpred:command; the app's parser never did, so anything rendering a task from the app could not show what it would actually execute — which is exactly how a reviewer approves something they cannot see. Both parsers now describe the same task." ;
+               kpred:relates-to   kb:graph-publishing ;
+               kpred:relates-to   kb:adopt-bounded-handoff ;
+               kpred:relates-to   kb:agent-orchestration ;
+               kpred:relates-to   kb:comp-ontology-atlas ;
+               kpred:relates-to   kb:orch-dictated-task ;
+               kpred:open-question "PUBLISHING A TASK AS A PAGE (Matt, 2026-08-28: \u0027its public which is a good thing sometimes\u0027). The renderer already emits status: draft and nav: hidden precisely so a queue cannot publish itself by accident, and that default must stay — a task goal is a VERBATIM TRANSCRIPT and can contain anything the speaker happened to say near the microphone. But deliberate publication is genuinely interesting: an open call for help, a public commitment with a date on it, an audit trail a client can read. The question is what the opt-in looks like and what it redacts, because \u0027sometimes\u0027 is doing a lot of work in that sentence and the failure mode is one-way." ;
+               kpred:open-question "Should the MCP server return markdown for more than pages? kb_entity_markdown already renders one entity deterministically, so kb_task / kb_queue would be the same shape. The trade is that an agent reading markdown cannot address a single triple — good for orientation, wrong for editing — so the honest split is markdown for READING and triples for WRITING." ;
+               kpred:remaining    "Nothing calls either function yet. Needed: an export path that writes task documents where a Claude Code session can find them; a re-import that turns a filled-in document into pending facts; and the MCP tools if the open question above resolves that way. HANDOFF.md itself is untouched and still hand-written — this feature does not yet generate it, and should not be described as though it does." .
+
+## =============================================================================
+## F154: The positioning — headless agent orchestration, on standards
+## =============================================================================
+
+kb:headless-orchestration-thesis rdf:type ktype:Decision ;
+               rdfs:label   "Headless agent orchestration with standards — text is the interface" ;
+               kpred:feature-id   "F154" ;
+               kpred:has-status   "planned" ;
+               kpred:decided      "THE POSITIONING (Matt, 2026-08-28): 'Reckons.AI the headless agent orchestration with standards. Leverage the semantic web defined with SKOS and SHACL, to orchestrate content generation, or ANY agent task in ANY platform. MCP is not required, simply generate markdown instructions and have agents use the text.'" ;
+               kpred:principle    "THIS SHARPENS F87 RATHER THAN REPLACING IT. kb:agent-orchestration already held that PORTABILITY IS THE PRODUCT and that a harness is not a platform. What this adds is the lowest-common-denominator interface: not a protocol an agent must implement, but TEXT, which every agent already reads. MCP becomes one convenient door rather than the doorway — and an orchestration layer that requires a protocol has quietly reintroduced the vendor lock F87 exists to refuse." ;
+               kpred:principle    "STANDARDS ARE WHAT MAKE 'ANY PLATFORM' MORE THAN A SLOGAN. A private vocabulary orchestrates only the tools that learned it. SKOS gives the closed vocabularies a portable, referenceable form; SHACL states what a well-formed task or entity IS, in a language other systems already validate against. The graph then defines the work, and the markdown is a rendering of it — which is why the rendering can be regenerated for any consumer rather than negotiated with each one." ;
+               kpred:principle    "THE GRAPH REMAINS THE SOURCE AND THE DOCUMENT REMAINS DERIVED. 'Generate markdown instructions' is only safe while the markdown is a projection: the moment a document becomes authoritative, provenance, review status and diffability are gone and we are back to a folder of prose. F153 keeps the direction one-way by construction — parse frontmatter, never prose; a file may never assert that work happened." ;
+               kpred:honest-note  "THE STANDARDS HALF IS ASPIRATION TODAY, AND SAYING SO IS THE POINT (kb:honest-status). F149 measured it this same day: every closed vocabulary minted here is a FREE-TEXT LITERAL, not a SKOS concept — kpred:altitude takes \"log\", kpred:task-state takes \"proposed\". SHACL shapes are EMITTED by type-shapes.ts but nothing VALIDATES against them; F132 named shacl-engine as the candidate and it is not wired. So 'defined with SKOS and SHACL' describes where this is going, not where it is. Do not put it in a README until F149's remaining list is done." ;
+               kpred:measured     "THE 'MCP IS NOT REQUIRED' HALF IS ALREADY TRUE AND DEMONSTRABLE. src/lib/rdf/task-markdown.ts renders a task — including a real dictated one — to a markdown document with no MCP, no model and no network, and parses a filled-in document back. 19 tests. What is missing is only the plumbing: nothing writes those documents anywhere an agent would find them." ;
+               kpred:relates-to   kb:agent-orchestration ;
+               kpred:relates-to   kb:markdown-interchange ;
+               kpred:relates-to   kb:new-vocab-standards-review ;
+               kpred:relates-to   kb:content-orchestration ;
+               kpred:relates-to   kb:comp-ontology-atlas ;
+               kpred:open-question "If text is the interface, what is the SMALLEST contract an outside agent must honour — a filename convention and a frontmatter schema, or something more? The answer decides whether 'any platform' means 'any agent that can read a file' or 'any agent we have written an adapter for', and those are very different products." ;
+               kpred:remaining    "Everything downstream of the positioning: SKOS-ify the closed vocabularies (F149), wire a SHACL validator (F132), write task documents somewhere an agent finds them and read them back (F153), and prove the loop once end to end on a real task before the claim is made anywhere user-facing." .
+
+## =============================================================================
+## F155: The controlled vocabularies, as SKOS and SHACL  (Matt, 2026-08-28)
+## =============================================================================
+## "We need to work on defined with SKOS and SHACL then. Lets look at our
+## features, and align them with those standards or others. We want a strong
+## foundation, and a place to look for refinement (W3C)."
+
+kb:controlled-vocabularies rdf:type ktype:Feature ;
+               rdfs:label   "Closed vocabularies as SKOS schemes, enforced by lint" ;
+               kpred:feature-id   "F155" ;
+               kpred:has-status   "functional" ;
+               kpred:has-file     "static/reckons-vocabulary.ttl" ;
+               kpred:has-file     "scripts/offline/graph-lint.ts" ;
+               kpred:description  "Four closed sets — altitude, task state, review status, feature lifecycle — defined as skos:ConceptSchemes with skos:notation, plus SHACL NodeShapes stating what a well-formed use of each predicate looks like. 300 quads. graph-lint now READS the lifecycle from this file instead of a hardcoded constant, and checks the other three, so the vocabulary is enforcement rather than decoration." ;
+               kpred:principle    "skos:notation IS THE BRIDGE THAT LET THIS LAND TODAY. The standard way to attach a machine code to a concept is skos:notation, so every concept carries the exact literal the code already writes. That makes the file enforceable NOW, without a breaking migration of every graph from literals to IRIs — which is the step F75.2 specified in 2026-07-12 and which never happened, arguably because it was all-or-nothing." ;
+               kpred:principle    "THE VOCABULARY DESCRIBES REALITY, NOT THE DESIGN. `in-progress` was never in the designed lifecycle; it is on 14 features and graph-lint has always accepted it. Omitting it would have been describing a wish, and the first thing the new check would have done is fail 14 valid entities. It is recorded WITH a note that it is de-facto — promote it deliberately or migrate those 14, but do not pretend in the vocabulary." ;
+               kpred:proof        "The check was PROVED to fire rather than merely observed to be quiet. A probe file with altitude \"boss\" and task-state \"dnoe\" produced two bad-vocab errors naming the permitted values; removing it returned the corpus to clean. A linter that has never fired on a real fault is an untested linter." ;
+               kpred:measured     "Zero bad-vocab findings across the real corpus, so every altitude, task-state and review status in 26 graphs is already valid. The lifecycle check is unchanged in behaviour and now driven by the graph: adding a status is a TTL edit, not a code change." ;
+               kpred:honest-note  "DEFINING A VOCABULARY IS NOT USING ONE, and the file says so in its own header. NO application code reads it — fact-altitude.ts, agent-task.ts and the review statuses still carry their unions in TypeScript. graph-lint is the only consumer. So F154's claim 'defined with SKOS and SHACL' is now FOUNDED but still not TRUE of the running app, and the gap is the migration of the writers, not more vocabulary." ;
+               kpred:honest-note  "THE SHACL SHAPES ARE DECLARED AND UNVALIDATED. They are correct SHACL and nothing runs them — graph-lint enforces the same constraints procedurally instead. That duplication is deliberate and temporary: it means the rules are enforced today, and when F132's shacl-engine lands the shapes become the single source and the procedural checks come out." ;
+               kpred:relates-to   kb:feature-lifecycle-vocab ;
+               kpred:relates-to   kb:new-vocab-standards-review ;
+               kpred:relates-to   kb:standards-review ;
+               kpred:relates-to   kb:shape-validation ;
+               kpred:relates-to   kb:headless-orchestration-thesis ;
+               kpred:done         "LANDING PAGE: an `interoperability` section now sits before the thesis, four cards, stated as FORMATS rather than integrations. Deliberately says nothing about which agent runtimes work, because F87\u0027s harness adapters are planned and unbuilt — naming Claude Code or Codex there would be the exact overclaim kb:honest-status warns about on user-facing surfaces. src/lib/components/LandingPage.svelte." ;
+               kpred:remaining    "Migrate the WRITERS from literals to concept IRIs, one vocabulary at a time, with skos:notation keeping old graphs readable throughout. Wire a real SHACL validator so the shapes replace the procedural checks. Add rdfs:domain declarations for the schemaPredicates that entity-typing.ts currently inverts by hand (F149). And decide `in-progress`: promote or migrate." .
+
+## =============================================================================
+## F156: Terse communication with its context attached  (Matt, 2026-08-28)
+## =============================================================================
+## "The ability to share information has been transforming towards very terse and
+## image based memes, as well as terse language that is very ambiguous like 'so
+## fire'... we must have a deeper definition attached to these terse communication
+## formats... the context from the sender's graphs could be referenced to avoid
+## miscommunications. The receiver may have a different definition of the same
+## term for example, not just be missing some context."
+
+kb:contextual-communication rdf:type ktype:Feature ;
+               rdfs:label   "Terse communication, with the sender's context attached" ;
+               kpred:feature-id   "F156" ;
+               kpred:has-status   "speculative" ;
+               kpred:description  "Compression is winning on the web because the information behind it is expanding, and the cost is paid by whoever lacks the background — a meme, a shorthand, an in-group term. The proposal is not to make people write more. It is to attach the sender's own definitions, from their graph, to the terse thing they sent, so the receiver can expand it in place instead of leaving the conversation to go and search." ;
+               kpred:principle    "THE HARD CASE IS DISAGREEMENT, NOT ABSENCE, and Matt named it precisely: 'the receiver may have a DIFFERENT definition of the same term, not just be missing some context.' A missing definition is a lookup problem and is nearly solved. Two parties confidently holding incompatible definitions of one word is a different failure — nobody experiences it as confusion, both sides believe they were understood, and the conversation proceeds wrongly. A system that only fills gaps would never detect it." ;
+               kpred:principle    "SKOS ALREADY HAS THE ANSWER TO THE HARD HALF, which is the strongest argument this direction is buildable rather than merely appealing. skos:exactMatch, closeMatch, broadMatch, narrowMatch and relatedMatch exist SPECIFICALLY to relate concepts across schemes maintained by DIFFERENT PARTIES — they are the standard's own admission that two vocabularies can name the same thing and not mean the same thing. That is exactly the sender/receiver problem, and it means the interchange format for this is a W3C recommendation rather than something we invent." ;
+               kpred:principle    "THE MACHINERY FOR DETECTING IT IS ALREADY HERE, POINTED SOMEWHERE ELSE. kb:cross-kb-alignment matches entities across graphs by IRI and embedding; kb:dichotomy finds entities that say drastically different things about themselves and distinguishes a conflict to fix from a natural dichotomy to preserve. Run those BETWEEN two people's graphs instead of within one, and 'we disagree about what this word means' becomes computable — and, per the dichotomy rule, not automatically a fault." ;
+               kpred:principle    "IT MUST DISPLAY ON DEMAND, NEVER BY DEFAULT — corrected 2026-08-28, having first been written as 'expand on demand', which conflated two different things. The context bundle may be COMPUTED and may travel with the message; what must not happen is it RENDERING unasked. The whole reason terse formats won is that they are cheap to READ, and a message arriving pre-expanded with the sender's ontology has destroyed what it was trying to help. A footnote, not a preamble — and a footnote is fully written before anyone follows it." ;
+               kpred:relates-to   kb:mission ;
+               kpred:relates-to   kb:thesis ;
+               kpred:relates-to   kb:cross-kb-alignment ;
+               kpred:relates-to   kb:dichotomy ;
+               kpred:relates-to   kb:node-synonyms ;
+               kpred:relates-to   kb:graph-publishing ;
+               kpred:relates-to   kb:publisher-subscriptions ;
+               kpred:relates-to   kb:controlled-vocabularies ;
+               kpred:honest-note  "NOTHING OF THIS EXISTS. What exists is every ingredient and no dish: graphs publish (F27), entities align across graphs (F16), aliases are reviewable facts (kb:node-synonyms), questions route to another graph and answers come back marked as that party's claim (F91), and vocabularies now have a standard form (F155). Not one line addresses a MESSAGE, a sender, a receiver, or an expansion in place. Read this as a direction with unusually good foundations, not as work underway." ;
+               kpred:open-question "What is the smallest real artifact — a link that carries a definition bundle, a shared graph a message points into, or an annotation format over existing messages (the terse thing stays on whatever platform it was sent on)? The third respects the principle above best and owns the least, which by this project's usual reasoning makes it the one to try first." ;
+               kpred:open-question "WHOSE DEFINITION WINS ON DISPLAY? Showing the sender's silently makes the receiver's graph subordinate; showing both is honest and costs attention on exactly the terse surface where attention is scarce. The thesis says an unverifiable claim made by the party it benefits is not evidence — which argues the sender's definition must be presented AS the sender's, never as the definition." ;
+               kpred:open-question "What does this leak? A definition bundle carries the sender's private vocabulary, and vocabulary is diagnostic of a person — their employer's jargon, their client list, what they call things internally. Any sharing path here needs the F66-class gate before it has users, not after." ;
+               kpred:remaining    "Everything. The cheapest falsification: take two real graphs that use one word differently, run cross-kb-alignment plus dichotomy across them, and see whether the disagreement is actually detected. That is an afternoon with shipped code and it decides whether the hard half is tractable." .
+
+## =============================================================================
+## F157: The verb — expand and refine a statement  (Matt, 2026-08-28)
+## =============================================================================
+## "It is not easy to gather references, to prepare logic statements. It is an
+## innovation within LLMs that should enable the great expansion and refinement
+## of simple prose, digging deeper into the meaning of the statement."
+
+kb:statement-expansion rdf:type ktype:Feature ;
+               rdfs:label   "Expand and refine a statement — the verb the UI should be built around" ;
+               kpred:feature-id   "F157" ;
+               kpred:has-status   "speculative" ;
+               kpred:priority     "high" ;
+               kpred:description  "The labour this product exists to remove is a specific, old one: gathering references and forming them into logic statements. It is slow, it is why most claims go unsupported, and it is the reason careful work is rare rather than the reason it is valuable. What LLMs newly make possible is the other direction — take one line of simple prose and expand it into what it actually claims, what would support it, what it depends on, and what is missing." ;
+               kpred:principle    "THE CORE VERB IS EXPAND-AND-REFINE A STATEMENT, NOT MANAGE A GRAPH. kb:one-graph-canvas already established that a mode should be designed around its verb — review's verb being 'propose facts and partial facts for human settling'. This names the verb one level up, for the whole product. Every surface should be answerable to it: does this help someone take a sentence and find out what it really says?" ;
+               kpred:known-issue  "NO SURFACE IS ORGANIZED AROUND THAT VERB TODAY, and they are each organized around a graph OBJECT instead. /ingest is a blank page that wants text. /review is a queue of rows about triples. The graph is a canvas of nodes. Not one of them is 'here is your sentence — here is what it claims, here is what supports it, here is what is missing, here is where you and someone else would disagree'. The pieces to build that exist and are scattered across five features; the surface does not." ;
+               kpred:principle    "THE ROADMAP HAS ONLY EVER RECORDED THE COMPRESSING DIRECTION, which is why this went unnamed for so long. kb:context-compression is well developed — 'a page of prose becomes a handful of triples', measured, shipped, MCP-exposed — and it serves an LLM's context window. This is its mirror and it serves a PERSON: one statement becomes the structure underneath it. Both are real, they run on the same machinery, and only one of them had a name." ;
+               kpred:principle    "A FREEFORM STATEMENT MUST BECOME STRUCTURED ENTITIES AND TRIPLES (Matt, 2026-08-28). That is the bar, and it rules out the two easy things a language model would rather do: summarise the sentence, or elaborate it into more sentences. Neither is addressable, diffable or disagreeable-with. Entities and triples are, which is the only reason any of the rest of this product works — review, altitude, provenance and cross-graph alignment all take a triple as their unit and have nothing to say about a paragraph." ;
+               kpred:principle    "AND THAT REQUIREMENT ALREADY HAS A DETERMINISTIC GUARD, which is worth knowing before anyone reaches for a better prompt. rdf/triple-shape.ts rejects the collapsed case — \u0027Orange Logic is an enterprise DAM\u0027 arriving as the single subject `orange-logic-is-an-enterprise-dam`, where the proposition became a NAME and the relation it states was never extracted at all. That is precisely the failure of this requirement, it is checkable by a rule, and the rule holds under whichever model is behind the extractor." ;
+               kpred:principle    "EXPANSION MUST PRODUCE PROPOSALS, NOT PROSE. The failure mode is obvious and would be popular: a model that eloquently elaborates a sentence into paragraphs nobody can check. What makes this the product rather than a writing assistant is that every expanded piece lands as a reviewable fact with a source, a verifiability gate and an altitude — so the expansion can be disagreed with a piece at a time." ;
+               kpred:principle    "TERSENESS IS A PROPERTY OF THE PRESENTATION, NOT OF THE CONTENT (Matt, 2026-08-28: \u0027the filtering of logs and sources and deeper information can keep the user experience more terse than the detail being delivered\u0027). Expansion and brevity look opposed and are not, because the altitude ladder decouples them: a statement can open into fifty facts while the reader still sees only the handful that would change their mind. That is the resolution of the objection this feature would otherwise face — that digging deeper means showing more." ;
+               kpred:principle    "WHICH REFRAMES THE DETAIL LADDER AS THE THING THAT MAKES EXPANSION AFFORDABLE, not merely as decluttering. F144 was built to answer \u0027my graph is cluttered\u0027. Its more important job is this one: without a depth control, every expansion is a cost paid by every future reader, so the honest design would have to expand sparingly. With one, generating richly is safe because the floor governs what arrives on screen." ;
+               kpred:relates-to   kb:context-compression ;
+               kpred:relates-to   kb:graph-depth-ladder ;
+               kpred:relates-to   kb:one-graph-canvas ;
+               kpred:relates-to   kb:mission ;
+               kpred:relates-to   kb:thesis ;
+               kpred:relates-to   kb:verifiability-axis ;
+               kpred:relates-to   kb:partial-facts ;
+               kpred:relates-to   kb:interview-mode ;
+               kpred:relates-to   kb:extraction-strategies ;
+               kpred:relates-to   kb:incremental-extraction ;
+               kpred:relates-to   kb:contextual-communication ;
+               kpred:honest-note  "THIS NAMES SOMETHING, IT DOES NOT BUILD IT. Every ingredient is already here and unassembled: extraction turns prose into triples (F146 is about making that trustworthy), F32 partial facts hold what is missing, F88 records who could settle each piece, F139 ranks what matters, F141 would ask the questions, F152 would ask them BEFORE extracting, F156 would carry the result to someone else. What does not exist is a surface where a person puts in one sentence and watches it open up. Do not read the status as anything but speculative." ;
+               kpred:open-question "What is the unit on screen — a sentence, a claim, or an entity? The review queue chose the triple and found it unusable at 1,888 rows (F83); entity cards were built as the fix and are still not rendered anywhere. This feature suggests a fourth answer, the STATEMENT, which is the unit the user actually wrote and the only one they will recognise as theirs." ;
+               kpred:decided      "GENERATE ON ARRIVAL, SHOW ON DEMAND (Matt, 2026-08-28). The question this entry first asked — expand on arrival or on demand — was framed as one decision and is two. GENERATING an expansion eagerly is safe, because the detail floor decides what is shown; SHOWING it eagerly is the thing that must never happen. The remaining cost of generating eagerly is compute and review volume, not attention, and those are governed by F152 and the review queue respectively." ;
+               kpred:remaining    "All of it. The cheapest test of whether the verb is real: take ONE sentence from a dictated note, and hand-assemble on paper what a good expansion of it would look like — the claims, the support, the gaps, the disagreements. If that artifact is obviously useful, the surface is worth building; if it reads as busywork, the verb is wrong and the current object-shaped surfaces are right." .
+
+## =============================================================================
+## F158: What each layer is for, and where the expert belongs  (Matt, 2026-08-28)
+## =============================================================================
+## "I see the triple as a manageable logical structure, and an entity as a type
+## checkable shape, and the prose of literature as something to analyze with the
+## assistance of an expert providing their interpretation. The expert must not
+## define easily verifiable facts, but rather the ambiguous or conflicting. The
+## dichotomies of life and love can never have one true meaning, rather many
+## unique interpretations."
+
+kb:interpretation-layer rdf:type ktype:Decision ;
+               rdfs:label   "Triple, shape, interpretation — three layers and what each is for" ;
+               kpred:feature-id   "F158" ;
+               kpred:has-status   "functional" ;
+               kpred:decided      "THE THREE LAYERS, NAMED. A TRIPLE is a manageable logical structure — small enough to review, address, diff and disagree with one at a time. An ENTITY is a type-checkable SHAPE, which as of F155 is literally true rather than metaphorical: sh:NodeShape with sh:path and sh:in says what a well-formed one is. PROSE is neither, and needs an EXPERT'S INTERPRETATION to become either." ;
+               kpred:decided      "THE EXPERT MUST NOT DEFINE EASILY VERIFIABLE FACTS, ONLY THE AMBIGUOUS OR CONFLICTING. This generalises kb:co-orchestration's rule — 'an agent must not ask what it can verify, and must not assert what it cannot' — from the USER to the EXPERT, and it is the same scarcity argument: expert judgment is the most expensive input in the system and spending it on something a script settles wastes it twice, once in the asking and once in the lower authority of the answer. F88's verifiability axis is the existing mechanism: code, test and source settle themselves; `user` is reserved for what only a person knows." ;
+               kpred:principle    "SOME DICHOTOMIES ARE NOT ERRORS AND MUST NEVER BE RESOLVED. kb:dichotomy already distinguishes a conflict to fix from a natural dichotomy to preserve; this states the stronger form — for an entire class of subject matter, life and love among them, MANY UNIQUE INTERPRETATIONS is the correct final state and a single agreed meaning would be a loss rather than a success. A system that treats disagreement as a defect to converge would, in that domain, be destroying the content." ;
+               kpred:known-issue  "AND ENTITY NORMALISATION WOULD DESTROY EXACTLY THAT, TODAY. normalizeEntities remaps a new entity onto an existing one at cosine >= 0.90, and TWO COMPETING READINGS OF ONE WORD ARE SEMANTICALLY ADJACENT BY CONSTRUCTION — that is what makes them competing rather than unrelated. The project has already MEASURED this failure for predicates: tests/bench/run-predicate-vocab-bench.ts scores has-predator/has-prey at 0.9322 and has-min-weight/has-max-weight at 0.9330, both above the merge threshold. The 2026-08-15 fix was arePredicateLabelsOpposed, vetoed at any similarity — and it is applied ONLY in the predicate loop. THE SUBJECT LOOP HAS NO EQUIVALENT GUARD. Verified by grep 2026-08-28: one call site, line 225, predicates." ;
+               kpred:principle    "HIGH SIMILARITY IS EVIDENCE OF CONTEST, NOT OF SAMENESS, in an interpretive domain — which is the inverse of what the merge band assumes. Embedding distance cannot tell 'the same thing said differently' from 'a different reading of the same word', and in the domains where the second matters most the two are indistinguishable to it. Whatever the fix is, it cannot be a better threshold." ;
+               kpred:relates-to   kb:dichotomy ;
+               kpred:relates-to   kb:co-orchestration ;
+               kpred:relates-to   kb:verifiability-axis ;
+               kpred:relates-to   kb:merge-synonyms ;
+               kpred:relates-to   kb:auto-merge ;
+               kpred:relates-to   kb:node-synonyms ;
+               kpred:relates-to   kb:statement-expansion ;
+               kpred:relates-to   kb:contextual-communication ;
+               kpred:relates-to   kb:controlled-vocabularies ;
+               kpred:open-question "How is an interpretive entity MARKED so normalisation leaves it alone? Candidates: a type whose shape declares it non-mergeable; an explicit kpred:interpretation-of linking a reading to the term it reads, so many readings coexist under one word by design; or SKOS relatedMatch between them, which is the standard's own way of saying 'related, and NOT the same'. The third is portable and already in the vocabulary F155 established." ;
+               kpred:remaining    "The subject-side opposition guard, which is the immediate safety gap — predicates got one in 2026-08-15 and entities never did. Then the marking mechanism above, decided rather than guessed. A regression test using two competing readings of one word, scored by the real embedder, so the guard is proved against the measurement rather than assumed." .
+
+## =============================================================================
+## F159: The next three, in Matt's order  (2026-08-28)
+## =============================================================================
+
+kb:next-three rdf:type       ktype:Decision ;
+               rdfs:label   "Next work, prioritised: dictated tasks · standards alignment · terse review" ;
+               kpred:feature-id   "F159" ;
+               kpred:has-status   "planned" ;
+               kpred:decided      "MATT'S ORDER, 2026-08-28: (1) dictated notes into an actionable agent task; (2) SKOS and SHACL alignment across app features, and other standards where they fit; (3) a terse review process that shows the important decisions rather than a sprawl of logs and details already validated." ;
+               kpred:principle    "ALL THREE ARE ASSEMBLY, NOT INVENTION — which is why this order is cheap. Every one of them is blocked on a connection between things that already exist and are tested, not on a component nobody has built. That is unusual and worth exploiting before it stops being true." ;
+
+               kpred:remaining    "ONE — DICTATED NOTE TO ACTIONABLE TASK. The chain works to the point of a `proposed` task and stops: ring to n8n to pending to note-intent.ts is proven, runner.ts drains a queue and verifies outcomes, task-markdown.ts renders the task as a fillable form and parses it back. THE ONLY MISSING LINK IS A BRIDGE: nothing moves a task from the app's IndexedDB graph to anywhere a runner or an agent looks. Smallest complete increment — export proposed tasks as markdown documents into a watched folder, let a person or a Claude Code session fill in effect and done-when, import the filled documents back as pending facts. That closes the loop with NO MCP and NO harness adapter, and the `proposed` refusal stays exactly where it is." ;
+
+               kpred:remaining    "TWO — STANDARDS ALIGNMENT. static/reckons-vocabulary.ttl defines the four closed sets as SKOS with SHACL shapes and graph-lint enforces them, but NO APPLICATION CODE READS IT — Altitude, TaskState, ReviewStatus and the effect list are still unions in TypeScript, so the graph and the code can silently disagree. Smallest increment: make ONE vocabulary single-source, generating or verifying the TS union from the TTL at build time so drift becomes impossible rather than merely unlikely; altitude first, being newest and most depended on. Then the SHACL validator (F132 named shacl-engine, measured 1.5x not the advertised 15-26x), then rdfs:domain for the schemaPredicates entity-typing.ts inverts by hand." ;
+
+               kpred:remaining    "THREE — TERSE REVIEW. Two complete, tested modules render NOWHERE. review-attention.ts computes a spotlight/quiet split and nothing calls spotlightUserQueue. entity-review.ts groups pending facts into one card per entity — built precisely because 1,888 triple rows were unusable (F83) — and nothing calls groupPendingByEntity. review-tree IS wired; those two are not. Smallest increment is therefore rendering rather than designing. AND THE OTHER HALF OF MATT'S SENTENCE IS ALREADY MODELLED: 'details already validated' is F88's machine lane — anything gateFor() settles as `code`, `test` or `source` should never reach a person at all, and the detail ladder (F151) now handles the log sprawl." ;
+
+               kpred:open-question "Which standards beyond SKOS and SHACL actually earn their place? PROV-O is already partially adopted by deliberate decision (source provenance yes, activity chains no). skos:relatedMatch and closeMatch are the candidate answer to F158's interpretation problem. Nanopublications remain UNCHECKED against the spec — named in F149 as the closest neighbour to altitude and never verified, so nobody should cite them yet." ;
+               kpred:relates-to   kb:orch-dictated-task ;
+               kpred:relates-to   kb:markdown-interchange ;
+               kpred:relates-to   kb:agent-orchestration ;
+               kpred:relates-to   kb:controlled-vocabularies ;
+               kpred:relates-to   kb:new-vocab-standards-review ;
+               kpred:relates-to   kb:shape-validation ;
+               kpred:relates-to   kb:review-attention ;
+               kpred:relates-to   kb:review-tree ;
+               kpred:relates-to   kb:graph-depth-ladder ;
+               kpred:relates-to   kb:interpretation-layer .
