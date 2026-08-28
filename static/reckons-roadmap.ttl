@@ -6078,3 +6078,77 @@ kb:next-three rdf:type       ktype:Decision ;
                kpred:relates-to   kb:review-tree ;
                kpred:relates-to   kb:graph-depth-ladder ;
                kpred:relates-to   kb:interpretation-layer .
+
+## =============================================================================
+## F160: The bridge — dictated task to a document a person or agent can answer
+## =============================================================================
+
+kb:task-bridge rdf:type      ktype:Feature ;
+               rdfs:label   "Task bridge — export tasks as forms, import the answers" ;
+               kpred:feature-id   "F160" ;
+               kpred:has-status   "functional" ;
+               kpred:part-of      kb:agent-orchestration ;
+               kpred:has-file     "scripts/agent/tasks-export.ts" ;
+               kpred:has-file     "scripts/agent/tasks-import.ts" ;
+               kpred:tested-by    "scripts/agent/__tests__/tasks-bridge.test.ts" ;
+               kpred:description  "The missing link between a dictated instruction and a runner. A `proposed` AgentTask lives in the app's IndexedDB graph, which no Node script can read; the runner reads a TTL on disk. THE CROSSING POINT IS THE WORKSPACE SYNC, which already writes every graph to disk as Turtle — so this needs no app change, no MCP and no harness adapter. Export writes a markdown form per unauthored task; import turns the answers into pending facts." ;
+               kpred:principle    "IT EXPORTS WHAT NEEDS A PERSON, NOT WHAT IS BLOCKED. A task blocked by an unmet DEPENDENCY does not need a human — it needs its dependency to finish, and putting an unanswerable document in front of someone is how a queue teaches people to ignore it. The filter is `missingForExecution`: the effects it may have and how a machine will know it worked, which is the same list the document renders as a checklist." ;
+               kpred:principle    "THE PROMOTION IS PROPOSED, NEVER PERFORMED. A filled document supplies effect and done-when as PENDING facts, and the importer emits its own task-state row — generated in the importer, never read from the file — so ACCEPTING IT IN REVIEW IS THE HUMAN ACT THAT AUTHORIZES THE TASK. A file that could set an effect directly would let anyone who can write a file grant a runner permission to touch the outside world." ;
+               kpred:principle    "AT-LEAST-ONCE, LIKE EVERY CAPTURE PATH HERE. Rows are appended FIRST and the document is moved to imported/ only afterwards; a crash between them duplicates a proposal rather than losing an answer somebody typed. And export NEVER overwrites an existing document, because it may already hold the answers this whole path exists to collect." ;
+               kpred:proof        "Round-tripped against the real workspace 2026-08-28: 26 tasks found across the synced graphs, 24 already carrying their fields, 2 exported as forms. Filling one produced 4 valid pending rows — effect, done-when, command and the proposed promotion — all parsing through parsePendingEntryLine and routed back to the graph that asked. The document moved to imported/; the workspace was then restored, because those rows were a test rather than Matt's intent." ;
+               kpred:measured     "THE SAFETY CHECK FIRED ON REAL DATA, unprompted: the second document was REFUSED because its task carries a command with no effect declared — the runner could not choose an authority boundary for it. A refused document stays in place rather than moving to imported/, because it is somebody's work with a mistake in it, not garbage." ;
+               kpred:relates-to   kb:markdown-interchange ;
+               kpred:relates-to   kb:orch-dictated-task ;
+               kpred:relates-to   kb:headless-orchestration-thesis ;
+               kpred:remaining    "Nothing runs it on a schedule, and nothing tells a Claude Code session that documents are waiting — F162 is the intended answer. The app-side half of the loop is untested end to end: a dictated task has not yet round-tripped from the browser through the sync to a document and back, because that needs the app open with a workspace connected." .
+
+## =============================================================================
+## F161: The meme story — a terse thing, published with its context
+## =============================================================================
+## Matt, 2026-08-28: new graph, settings already configured, add a meme image,
+## add a personal note, define a reaction, generate a GIF for publishing. The
+## GIF has the meme character with the defined reaction and the note overlaid;
+## the published GIF carries attached context, and the direct link is sent as a
+## custom meme hosted on the user's own private site.
+
+kb:meme-with-context rdf:type ktype:Feature ;
+               rdfs:label   "Custom meme, generated from a graph and published with its context" ;
+               kpred:feature-id   "F161" ;
+               kpred:has-status   "speculative" ;
+               kpred:description  "A whole-product user story that crosses nearly every surface: new graph, image asset, personal note, a defined REACTION, a generated GIF composing all three, and publication to the user's own site with the graph context attached to the link." ;
+               kpred:principle    "THIS IS F156 MADE CONCRETE, AND THAT IS WHY IT MATTERS MORE THAN IT LOOKS. kb:contextual-communication argues abstractly that terse formats need their sender's definitions attached. A meme IS the terse format, and a meme published with the context that produced it is the smallest complete demonstration of the thesis — including the hard half, since the receiver may read the same image entirely differently." ;
+               kpred:principle    "THE REACTION IS THE INTERESTING NODE, not the image. An image and a note are assets the product already holds; a REACTION is an interpretation — the sender's reading of what this picture means to them right now. That is precisely the interpretive entity F158 says must never be normalised away, and a graph that held many people's reactions to one image would be the natural-dichotomy case rather than a merge candidate." ;
+               kpred:honest-note  "THE GENERATION STEP DOES NOT EXIST. kb:asset-generation is explicit that video is not browser-feasible today and needs a GPU sidecar or a cloud API; Meshy covers text-to-3D and nothing here. Image COMPOSITING is more tractable — kb:mvg-image-gen already calls canvas recolour the cheapest immediately-shippable generation — and a GIF of a still with an overlay is compositing, not synthesis. The story should be attempted in that order: overlay first, animation second, character-with-a-new-reaction last, because only the last one needs a model at all." ;
+               kpred:honest-note  "PUBLISHING TO A PRIVATE SITE IS PARTLY REAL. F27 publishes WebPage nodes to markdown and a static site; kb:byo-static-host is the planned no-lock-in hosting path and is unbuilt. What does NOT exist anywhere is attaching context to a shared asset link, which is the actual novelty in this story." ;
+               kpred:relates-to   kb:contextual-communication ;
+               kpred:relates-to   kb:interpretation-layer ;
+               kpred:relates-to   kb:asset-generation ;
+               kpred:relates-to   kb:mvg-image-gen ;
+               kpred:relates-to   kb:meta-visual-generation ;
+               kpred:relates-to   kb:asset-viewer ;
+               kpred:relates-to   kb:graph-publishing ;
+               kpred:relates-to   kb:byo-static-host ;
+               kpred:open-question "Does the context travel WITH the image or behind the link? Embedded metadata survives a re-upload to someone else's platform and cannot be revoked; a link is revocable, updatable and leaks nothing until followed, but dies the moment the image is screenshotted — which is what always happens to a meme. The whole value proposition sits on this choice." ;
+               kpred:open-question "What does the receiver actually SEE first? By F156's rule the expansion must not render unasked, so the meme arrives as a meme. But an unmarked link is never followed. There is a real design problem here in making context AVAILABLE without making it LOUD." ;
+               kpred:remaining    "Everything. The cheapest first slice is the one that needs no model: image plus note overlaid, composed in canvas, published as a page whose graph context is one click away." .
+
+## =============================================================================
+## F162: n8n as the OUTPUT side — send me the document, let me approve by phone
+## =============================================================================
+
+kb:n8n-document-output rdf:type ktype:Feature ;
+               rdfs:label   "Generated documents out through n8n — review on a phone, forward if good" ;
+               kpred:feature-id   "F162" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:description  "Matt, 2026-08-28: 'record the need for n8n output, like an email of a generated document, so I could review easily from my phone and forward if acceptable.' The capture direction is proven — ring to n8n to the graph. This is the return leg: the graph produces a document and n8n delivers it wherever the person actually is." ;
+               kpred:principle    "MARKDOWN IS WHY THIS IS NEARLY FREE. F153 already renders tasks and entities as documents, and a markdown document is the one artifact that emails, renders on a phone, and forwards without a client. The output side needs no new format — it needs a delivery hook and a body." ;
+               kpred:principle    "AND THE HOOK EXISTS. kb:n8n-review-notifications (F73.1, functional) already POSTs to the user's n8n webhook whenever pending facts land, carrying a COUNT and sample labels. The gap is that it sends a summary rather than the document, and that nothing fires on a generated ARTIFACT as opposed to a queue change." ;
+               kpred:principle    "'FORWARD IF ACCEPTABLE' IS AN APPROVAL, AND MUST BE TREATED AS ONE. Forwarding an email is not a graph act, so either the forward is purely social — the person separately accepts in the app — or the email carries an action link, and then that link is an authorization channel with all the gates that implies. The first is honest and shippable; the second is a real feature with a real threat model. Do not blur them." ;
+               kpred:relates-to   kb:n8n-review-notifications ;
+               kpred:relates-to   kb:markdown-interchange ;
+               kpred:relates-to   kb:int-n8n ;
+               kpred:relates-to   kb:task-bridge ;
+               kpred:relates-to   kb:meme-with-context ;
+               kpred:open-question "Which documents earn a send? A task form needing authorisation is the obvious one, and F160 currently has no way to tell anyone its documents are waiting. A daily digest, a finished generation, a reckoning — each is a different trigger and a different cadence, and sending all of them is how a notification channel becomes noise." ;
+               kpred:remaining    "A document-shaped payload on the existing review webhook; a trigger on artifact generation rather than only on queue change; an importable n8n workflow template beside the two that already ship. Decide the approval question above before any action link is built." .
