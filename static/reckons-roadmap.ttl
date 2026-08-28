@@ -5832,6 +5832,8 @@ kb:vocabulary-revalidation rdf:type ktype:Feature ;
                kpred:remaining    "Wire it as an /analyze focus so it runs as a job with a report, per the F149 decision; today it is a pure function nothing calls. Extend beyond predicate-altitude to schemaPredicates and allowHub edits, which are the same class of change. No blast-radius confirmation step exists in the review UI." .
 
 kb:review-detail-ladder rdf:type ktype:Feature ;
+               kpred:test-coverage "none" ;
+               kpred:honest-note  "UNTESTED WIRING, TESTED LOGIC. The altitude floor it applies is covered by rdf/__tests__/graph-view.test.ts and fact-altitude.test.ts; what has no test is the review page\u0027s own binding of that floor to a control. The e2e on that page drives LAYOUT, not detail. Declared rather than silently shipped (kb:honest-status)." ;
                rdfs:label   "Detail ladder on the review queue" ;
                kpred:feature-id   "F151" ;
                kpred:has-status   "functional" ;
@@ -5930,6 +5932,7 @@ kb:headless-orchestration-thesis rdf:type ktype:Decision ;
 ## foundation, and a place to look for refinement (W3C)."
 
 kb:controlled-vocabularies rdf:type ktype:Feature ;
+               kpred:tested-by    "src/lib/rdf/__tests__/vocabulary-ttl.test.ts" ;
                rdfs:label   "Closed vocabularies as SKOS schemes, enforced by lint" ;
                kpred:feature-id   "F155" ;
                kpred:has-status   "functional" ;
@@ -6145,6 +6148,8 @@ kb:meme-with-context rdf:type ktype:Feature ;
 ## =============================================================================
 
 kb:n8n-document-output rdf:type ktype:Feature ;
+               kpred:test-coverage "none" ;
+               kpred:honest-note  "NO AUTOMATED TEST — it POSTs to a live n8n instance and sends real email, which is not something a suite should do on every run. It is PROVEN instead, once and by execution id: 3531 and 3532 on 2026-08-28 both succeeded with the Send node running. That is evidence, not coverage, and the difference is stated rather than blurred." ;
                rdfs:label   "Generated documents out through n8n — review on a phone, forward if good" ;
                kpred:feature-id   "F162" ;
                kpred:priority     "high" ;
@@ -6193,6 +6198,7 @@ kb:schedule-repair rdf:type  ktype:Decision ;
 ## =============================================================================
 
 kb:graph-cleanup rdf:type    ktype:Feature ;
+               kpred:tested-by    "scripts/offline/__tests__/graph-cleanup.test.ts" ;
                rdfs:label   "Find what an earlier, worse extractor left behind" ;
                kpred:feature-id   "F164" ;
                kpred:has-status   "functional" ;
@@ -6257,6 +6263,7 @@ kb:generation-coupling rdf:type ktype:Decision ;
 ## =============================================================================
 
 kb:generation-fit rdf:type   ktype:Feature ;
+               kpred:tested-by    "scripts/offline/__tests__/generation-fit.test.ts" ;
                rdfs:label   "Rank generation tools by what an agent can actually run" ;
                kpred:feature-id   "F167" ;
                kpred:has-status   "functional" ;
@@ -6289,6 +6296,8 @@ kb:generation-composition rdf:type ktype:Decision ;
                kpred:remaining    "A path finder over accepts/produces; intermediate artifact handling between chained tasks; and the transcript-edit-TTS-align chain built once end to end, since it is the example that motivated this and would prove the whole idea." .
 
 kb:integration-health rdf:type ktype:Feature ;
+               kpred:test-coverage "none" ;
+               kpred:honest-note  "NO AUTOMATED TEST — the whole function is live I/O: reachability probes, the n8n version API, and which binaries are on PATH. Mocking all three would test the mocks. Its first run is recorded as kpred:measured instead, which is the honest form of evidence for a prober." ;
                rdfs:label   "What is connected here, and is it current" ;
                kpred:feature-id   "F168" ;
                kpred:has-status   "functional" ;
