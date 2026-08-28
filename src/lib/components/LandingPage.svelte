@@ -275,6 +275,43 @@
     };
   });
 
+  /**
+   * INTEROPERABILITY — what actually goes in and out, stated as FORMATS.
+   *
+   * kb:honest-status bites hardest here: this is the most user-facing surface in the product, and
+   * an overclaim on a landing page is the kind that gets quoted back. So every card below names a
+   * FORMAT that exists and is tested — not an agent runtime we integrate with. F87's harness
+   * adapters (adapters/claude-code.ts and friends) are PLANNED AND UNBUILT, so nothing here says
+   * "works with Claude Code" or lists runtimes. What is true, and is the interesting claim
+   * anyway, is that a task is a text file and needs no protocol to read.
+   */
+  const INTEROP = [
+    {
+      icon: '⌁',
+      title: 'No protocol required',
+      body: 'A task renders to a markdown document with the missing fields as an empty form. Any agent that can read a file can pick one up, fill it in, and hand it back — no client, no SDK, no network.',
+      color: 'var(--accent)'
+    },
+    {
+      icon: '⇄',
+      title: 'Markdown in, markdown out',
+      body: 'The same document round-trips. Frontmatter carries the machine-readable fields, prose carries the intent, and parsing reads only the frontmatter — so an agent\u2019s phrasing can never decide an authority boundary.',
+      color: 'var(--accent)'
+    },
+    {
+      icon: '◇',
+      title: 'Standard vocabularies',
+      body: 'Altitude, task state, review status and the feature lifecycle are SKOS concept schemes with SHACL shapes, checked on every lint. The graph says what a valid value is, so you can look it up instead of guessing.',
+      color: 'var(--accent)'
+    },
+    {
+      icon: '⇱',
+      title: 'Your data leaves whole',
+      body: 'Turtle and TriG for the graph, JSON-LD and llms.txt for the web, markdown for people and agents. Export is a right, not a feature — the format is open and the file is yours.',
+      color: 'var(--accent)'
+    }
+  ];
+
   const FEATURES = [
     {
       icon: '⬡',
@@ -490,6 +527,22 @@
 
     <div class="features-grid">
       {#each FEATURES as f}
+        <div class="feature-card">
+          <span class="feat-icon" style="color: {f.color}">{f.icon}</span>
+          <h3>{f.title}</h3>
+          <p>{f.body}</p>
+        </div>
+      {/each}
+    </div>
+  </section>
+
+  <section class="section">
+    <p class="section-kicker mono">interoperability</p>
+    <h2>Orchestrate <em>any</em> agent, on <em>any</em> platform.</h2>
+    <p class="section-sub">The graph defines the work; a document renders it. Because that document is ordinary text, the agent on the other end does not have to know Reckons.AI exists.</p>
+
+    <div class="features-grid">
+      {#each INTEROP as f}
         <div class="feature-card">
           <span class="feat-icon" style="color: {f.color}">{f.icon}</span>
           <h3>{f.title}</h3>
