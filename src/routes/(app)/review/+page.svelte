@@ -1394,12 +1394,14 @@
             {/if}
           </div>
         {/if}
+        {#if hiddenLogCount > 0}
+          <!-- Inline, not on a line of its own: it is a footnote to the detail control beside it,
+               and a whole row for three words was the thing that made it look like a status bar. -->
+          <span class="log-hidden mono" title="Hidden from this queue only. Every fact is still in the graph — lower the detail level to see them.">
+            {hiddenLogCount} not shown
+          </span>
+        {/if}
       </div>
-      {#if hiddenLogCount > 0}
-        <span class="log-hidden mono" title="Hidden from this queue only. Every fact is still in the graph — lower the detail level to see them.">
-          {hiddenLogCount} not shown
-        </span>
-      {/if}
     </div>
 
     <!-- Overlay controls strip (when overlay mode) -->
@@ -3249,6 +3251,8 @@
   }
   /* The search takes whatever is left, because it is the only one whose content is unbounded. */
   .control-row .node-search-wrap { flex: 1 1 auto; min-width: 0; }
+  /* The hidden count rides at the end of the same row, sized to its text. */
+  .control-row .log-hidden { flex: 0 0 auto; white-space: nowrap; align-self: center; }
 
   .review-detail {
     background: var(--surface);

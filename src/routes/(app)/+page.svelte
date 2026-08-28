@@ -498,6 +498,12 @@
     { value: 'hierarchy', label: 'tree', title: 'Hierarchical tree — prerequisites above, from skos:broader and kpred:depends-on' },
   ];
   const availableLayouts = $derived(LAYOUTS.filter((l) => l.available?.() ?? true));
+  // Chip + popover, matching the previews control. Matt, 2026-08-28: "I like the previews dropdown
+  // styling much better than the new ones on graph view." A bare <select> inherits the browser's
+  // widget and reads as foreign against an overlay built entirely from chips — and it was the
+  // thing stretching to fill its row. The chip sizes to its own label by construction.
+  let showLayoutMenu = $state(false);
+  let showDetailMenu = $state(false);
   /**
    * Which nodes are ALLOWED to be hubs (Matt, 2026-08-28: "In type settings we 'allow hub
    * classification'. By default files and log types are not able to become hubs").
@@ -2095,24 +2101,50 @@
          reusing one of their names for the heading is the same confusion the old "force" heading
          had — a label that means something different from the thing beside it. -->
     <span class="group-label mono">view</span>
-    <div class="control-row">
-      <label class="control mono">
-        <span class="control-label">layout</span>
-        <select class="control-select mono" bind:value={layout}
-          title={availableLayouts.find((l) => l.value === layout)?.title}>
-          {#each availableLayouts as l (l.value)}
-            <option value={l.value} title={l.title}>{l.label}</option>
-          {/each}
-        </select>
-      </label>
-      <label class="control mono">
-        <span class="control-label">detail</span>
-        <select class="control-select mono" bind:value={detailLevel} title={detail.title}>
-          {#each DETAIL_LEVELS as level (level.id)}
-            <option value={level.id} title={level.title}>{level.label}</option>
-          {/each}
-        </select>
-      </label>
+    <div class="chip-row">
+      <Popover.Root bind:open={showLayoutMenu}>
+        <Popover.Trigger>
+          {#snippet child({ props })}
+            <button {...props} class="chip" class:active={showLayoutMenu}
+              title={availableLayouts.find((l) => l.value === layout)?.title}>
+              <span class="lbl mono">{availableLayouts.find((l) => l.value === layout)?.label ?? layout}</span>
+              <span class="arr mono">{showLayoutMenu ? '▲' : '▼'}</span>
+            </button>
+          {/snippet}
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Content class="filter-popover" sideOffset={6}>
+            {#each availableLayouts as l (l.value)}
+              <button class="chip small" class:active={layout === l.value} title={l.title}
+                onclick={() => { layout = l.value; showLayoutMenu = false; }}>
+                <span class="lbl mono">{l.label}</span>
+              </button>
+            {/each}
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
+
+      <Popover.Root bind:open={showDetailMenu}>
+        <Popover.Trigger>
+          {#snippet child({ props })}
+            <button {...props} class="chip" class:active={detailLevel !== 'detailed' || showDetailMenu}
+              title={detail.title}>
+              <span class="lbl mono">{detail.label}</span>
+              <span class="arr mono">{showDetailMenu ? '▲' : '▼'}</span>
+            </button>
+          {/snippet}
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Content class="filter-popover" sideOffset={6}>
+            {#each DETAIL_LEVELS as level (level.id)}
+              <button class="chip small" class:active={detailLevel === level.id} title={level.title}
+                onclick={() => { detailLevel = level.id; showDetailMenu = false; }}>
+                <span class="lbl mono">{level.label}</span>
+              </button>
+            {/each}
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
     </div>
     <!--
       HIDDEN MUST BE VISIBLY HIDDEN (Matt's own condition on this feature). A canvas that is
@@ -3092,34 +3124,7 @@
     gap: 0.35rem;
   }
 
-  .control-row {
-    display: flex;
-    gap: 0.4rem;
-  }
-  /* Sized to content. A dropdown stretched to fill its row makes a five-character value look
-     like a text field. */
-  .control {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-    flex: 0 0 auto;
-  }
-  .control-label {
-    font-size: 0.52rem;
-    text-transform: uppercase;
-    letter-spacing: 0.16em;
-    color: var(--muted);
-    opacity: 0.7;
-  }
-  .control-select {
-    background: var(--surface);
-    color: var(--fg);
-    border: 1px solid var(--line);
-    border-radius: 0.25rem;
-    font-size: 0.62rem;
-    padding: 0.2rem 0.25rem;
-    width: auto;
-  }
+  /* layout + detail use the shared .chip / .filter-popover styling, like previews. */
 
   .detail-select {
     background: var(--surface);
