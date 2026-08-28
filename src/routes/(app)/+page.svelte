@@ -2092,13 +2092,17 @@
     </ToggleGroup.Root>
 
     <!-- DETAIL sits with LAYOUT because both answer 'what am I looking at' rather than
-         'which subset do I want' — the filters below are selections; this is a magnification. -->
+         'which subset do I want' — the filters below are selections; this is a magnification.
+         On ONE ROW with its label rather than stacked as its own block, so it reads as part of
+         the layout control instead of a fourth group competing with it. -->
+    <div class="detail-row">
     <span class="group-label mono">detail</span>
     <select class="detail-select mono" bind:value={detailLevel} title={detail.title}>
       {#each DETAIL_LEVELS as level (level.id)}
         <option value={level.id} title={level.title}>{level.label}</option>
       {/each}
     </select>
+    </div>
     <!--
       HIDDEN MUST BE VISIBLY HIDDEN (Matt's own condition on this feature). A canvas that is
       quietly missing 900 facts is not a cleaner graph, it is a graph that lies about its size.
@@ -3077,6 +3081,13 @@
     gap: 0.35rem;
   }
 
+  .detail-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .detail-row .group-label { padding: 0; white-space: nowrap; }
+
   .detail-select {
     background: var(--surface);
     color: var(--fg);
@@ -3084,7 +3095,8 @@
     border-radius: 0.25rem;
     font-size: 0.6rem;
     padding: 0.2rem 0.3rem;
-    width: 100%;
+    flex: 1;
+    min-width: 0;
   }
 
   /* Deliberately quiet but never absent: the count is a disclosure, not a warning. */

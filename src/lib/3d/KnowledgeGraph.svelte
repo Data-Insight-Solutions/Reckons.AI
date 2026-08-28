@@ -262,12 +262,19 @@
       : new Set((topologyStatements as Statement[]).map((st) => st.id));
     for (const st of statements as Statement[]) {
       if (st.status === 'rejected' || st.status === 'superseded') continue;
+      // THE DETAIL FLOOR HAS TO BE CONSULTED BEFORE ANY NODE IS CREATED, not only in the topology
+      // branch below. rdf:type and rdfs:label each mint a node of their own, and both classify as
+      // RECORD — so at a `decisions` floor they are hidden and were STILL creating the node, which
+      // is why filtering to decisions left almost every node on screen. It decorates freely and
+      // creates nothing: a label on a node that survives for other reasons is welcome; a label
+      // that RESURRECTS a hidden node is the bug.
+      const floored = flooredStatementIds?.has(st.id) ?? false;
       // rdf:type triples style the subject node (nodeTypeMap) but must not
       // create a visible type-IRI node or edge in the graph.
       if (st.p.value === RDF_TYPE) {
         // Ensure the typed subject node still exists even if it has no other triples.
         const k = termKey(st.s);
-        if (!nodeMap.has(k) && st.s.kind === 'iri') {
+        if (!floored && !nodeMap.has(k) && st.s.kind === 'iri') {
           const label = st.s.value.split('/').pop() ?? st.s.value;
           const pos = nodePositionCache.get(k)
             ?? new THREE.Vector3((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
@@ -285,7 +292,7 @@
         const existing = nodeMap.get(k);
         if (existing) {
           existing.label = st.o.value;
-        } else if (st.s.kind === 'iri') {
+        } else if (!floored && st.s.kind === 'iri') {
           const pos = nodePositionCache.get(k)
             ?? new THREE.Vector3((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
           nodeMap.set(k, { key: k, label: st.o.value, kind: 'concept', pos, vel: new THREE.Vector3(), degree: 0 });
@@ -297,7 +304,7 @@
         // ...but a fact the DETAIL FLOOR removed is a different case: resurrecting its subject
         // here would undo exactly what the floor was asked to do. A dictated note whose every
         // edge is provenance would keep its node and the graph would look unfiltered.
-        if (flooredStatementIds?.has(st.id)) continue;
+        if (floored) continue;
         // A unique literal is an attribute, not a leaf node. Keep its subject visible even when
         // this is the entity's only fact; the detail panel still reads the full `statements` set.
         const k = termKey(st.s);

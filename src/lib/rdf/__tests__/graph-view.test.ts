@@ -381,3 +381,45 @@ describe('hidden.statementIds', () => {
     expect(view.hidden.statementIds.size).toBe(view.hidden.statements);
   });
 });
+
+// THE BUG: filtering to `decisions` still showed almost every node. rdf:type and rdfs:label each
+// mint a node in the renderers, both classify as RECORD, and both were creating nodes before the
+// floor was consulted. The renderers now check `hidden.statementIds` on EVERY creation path, so
+// this test guards the contract they depend on.
+describe('the floor hides type and label statements too', () => {
+  // Built by hand: the `st` helper prefixes every predicate with kpred:, which mangles the
+  // absolute IRIs this case is specifically about.
+  const abs = (predicate: string, object: Statement['o']): Statement => ({
+    id: `abs${++n}`,
+    s: iri(`${KB}thing`),
+    p: iri(predicate),
+    o: object,
+    g: iri('urn:kbase:source/test'),
+    sourceId: 'src',
+    confidence: 1,
+    status: 'confirmed',
+    createdAt: 0,
+    updatedAt: 0,
+  });
+  const typed = (): Statement[] => [
+    abs('http://www.w3.org/1999/02/22-rdf-syntax-ns#type', iri('urn:kbase:type/Concept')),
+    abs('http://www.w3.org/2000/01/rdf-schema#label', lit('A Thing')),
+    st('thing', 'depends-on', 'other'),
+  ];
+
+  it('floors rdf:type and rdfs:label at a decision floor, so neither mints a node', () => {
+    const view = buildGraphView(typed(), { minAltitude: 'decision' });
+    expect(view.hidden.statementIds.size).toBe(2);   // both records; depends-on survives
+    expect(view.hidden.byAltitude.record).toBe(2);
+  });
+
+  it('keeps them at the default detailed floor', () => {
+    expect(buildGraphView(typed(), { minAltitude: 'record' }).hidden.statementIds.size).toBe(0);
+  });
+
+  it('leaves only the structural fact at a judgment floor', () => {
+    const view = buildGraphView(typed(), { minAltitude: 'judgment' });
+    expect(view.edges).toHaveLength(1);
+    expect(view.edges[0].p.value).toContain('depends-on');
+  });
+});

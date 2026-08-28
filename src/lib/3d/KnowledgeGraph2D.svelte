@@ -223,9 +223,16 @@
       : new Set((topologyStatements as Statement[]).map((st) => st.id));
     for (const st of statements as Statement[]) {
       if (st.status === 'rejected' || st.status === 'superseded') continue;
+      // THE DETAIL FLOOR HAS TO BE CONSULTED BEFORE ANY NODE IS CREATED, not only in the
+      // topology branch below. rdf:type and rdfs:label each mint a node of their own, and both
+      // classify as RECORD — so at a `decisions` floor they are hidden and were STILL creating
+      // the node, which is why filtering to decisions left almost every node on screen. It
+      // decorates freely and creates nothing: a label on a node that survives for other reasons
+      // is welcome; a label that RESURRECTS a hidden node is the bug.
+      const floored = flooredStatementIds?.has(st.id) ?? false;
       if (st.p.value === RDF_TYPE) {
         const k = termKey(st.s);
-        if (!nodeMap.has(k) && st.s.kind === 'iri') {
+        if (!floored && !nodeMap.has(k) && st.s.kind === 'iri') {
           const label = st.s.value.split('/').pop() ?? st.s.value;
           const c = nodePositionCache.get(k);
           const x = c?.x ?? (spawnCenter?.x ?? 0) + (Math.random() - 0.5) * 8;
@@ -242,7 +249,7 @@
         const existing = nodeMap.get(k);
         if (existing) {
           existing.label = st.o.value;
-        } else if (st.s.kind === 'iri') {
+        } else if (!floored && st.s.kind === 'iri') {
           const c = nodePositionCache.get(k);
           const x = c?.x ?? (spawnCenter?.x ?? 0) + (Math.random() - 0.5) * 8;
           const y = c?.y ?? (spawnCenter?.y ?? 0) + (Math.random() - 0.5) * 8;
@@ -254,7 +261,7 @@
         // ...but a fact the DETAIL FLOOR removed is a different case: resurrecting its subject
         // here would undo exactly what the floor was asked to do. A dictated note whose every
         // edge is provenance would keep its node and the graph would look unfiltered.
-        if (flooredStatementIds?.has(st.id)) continue;
+        if (floored) continue;
         // Attribute-only entities still deserve a node; only the unique literal leaf disappears.
         const k = termKey(st.s);
         if (!nodeMap.has(k) && st.s.kind === 'iri') {
