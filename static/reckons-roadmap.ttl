@@ -6131,7 +6131,11 @@ kb:meme-with-context rdf:type ktype:Feature ;
                kpred:relates-to   kb:byo-static-host ;
                kpred:open-question "Does the context travel WITH the image or behind the link? Embedded metadata survives a re-upload to someone else's platform and cannot be revoked; a link is revocable, updatable and leaks nothing until followed, but dies the moment the image is screenshotted — which is what always happens to a meme. The whole value proposition sits on this choice." ;
                kpred:open-question "What does the receiver actually SEE first? By F156's rule the expansion must not render unasked, so the meme arrives as a meme. But an unmarked link is never followed. There is a real design problem here in making context AVAILABLE without making it LOUD." ;
-               kpred:remaining    "Everything. The cheapest first slice is the one that needs no model: image plus note overlaid, composed in canvas, published as a page whose graph context is one click away." .
+               kpred:learned-from "THE STACK, LICENCE-GATED 2026-08-28 (Matt: \u0027open source, open weight if possible\u0027). TIER 1 — overlay, NO MODEL: kb:ref-sharp (Apache-2.0) in Node, or plain Canvas in the browser with no dependency at all. TIER 2 — animation container: kb:ref-gifenc (MIT). TIER 3 — the reaction itself: kb:ref-diffusers (Apache-2.0) in a GPU sidecar, or kb:ref-comfyui (GPL-3.0, arm\u0027s length over HTTP). REFUSED: kb:ref-liveportrait, whose capability is the closest match to \u0027the character with the reaction defined\u0027 and which reports NO RECOGNISED LICENCE." ;
+               kpred:principle    "OPEN SOURCE AND OPEN WEIGHT ARE DIFFERENT THINGS, and conflating them is how this ships something we cannot redistribute. diffusers is Apache-2.0; Stable Diffusion WEIGHTS are OpenRAIL, which is open to download and run and carries BEHAVIOURAL USE RESTRICTIONS — not OSI-open. Fine for a local personal tool, a real constraint on anything hosted or redistributed. Check the weight card, never the repo badge." ;
+               kpred:principle    "THE TIERS ARE ORDERED BY WHAT THEY NEED, NOT BY WHAT IS EXCITING. Tier 1 needs no model, no GPU and no licence question, and is most of the story: a meme with a note overlaid, published with its context, already demonstrates the F156 thesis. Tier 3 needs a sidecar, a GPU and a weight licence. Building them in that order means the thesis is testable before any of the hard parts exist." ;
+               kpred:measured     "THE HARDWARE IS NOT THE BLOCKER HERE. The perf work in this repo ran on an RTX 3090, so a local diffusion sidecar is genuinely reachable for this user — which is why the tier-3 question is licensing and integration boundaries rather than feasibility." ;
+               kpred:remaining    "TIER 1 FIRST, and it needs no model: image plus note overlaid, composed in canvas, published as a page whose graph context is one click away. Then GIF encoding. Only then the sidecar — and if LivePortrait is ever relicensed, revisit it, because its capability is the exact shape of the hard part." .
 
 ## =============================================================================
 ## F162: n8n as the OUTPUT side — send me the document, let me approve by phone
@@ -6180,3 +6184,21 @@ kb:schedule-repair rdf:type  ktype:Decision ;
                kpred:relates-to   kb:n8n-document-output ;
                kpred:relates-to   kb:orch-dictated-task ;
                kpred:remaining    "Nothing watches the schedule log, so the next silent failure is found the same way this one was — by someone asking. The cheapest guard is a job that reports when a schedule has not succeeded within its own interval, which is exactly the abandoned-lease check agent-task.ts already implements for tasks." .
+
+## =============================================================================
+## F164: Measuring the mess before cleaning it  (Matt, 2026-08-28)
+## =============================================================================
+
+kb:graph-cleanup rdf:type    ktype:Feature ;
+               rdfs:label   "Find what an earlier, worse extractor left behind" ;
+               kpred:feature-id   "F164" ;
+               kpred:has-status   "functional" ;
+               kpred:has-file     "scripts/offline/graph-cleanup.ts" ;
+               kpred:description  "Matt: 'Lets clean up this very messy graph. It did not have good extractions throughout.' Script tier, no model: finds COLLAPSED entities (a whole proposition became a name), MISHEARD ones (two names for one thing), and ORPHANS. It changes nothing; --pending queues the real findings for review." ;
+               kpred:principle    "THE FIX FOR A COLLAPSED ENTITY IS RE-EXTRACTION, NOT REPAIR, and the tool will not offer to split one. rdf/triple-shape.ts already settled it: splitting on the verb would invent a fact from a parse, and the model's failure would become the graph's content with nothing marking it as a guess. The note is kept VERBATIM so a reading can be redone — and the pipeline is materially better than the one that produced these, since shape rejection, entity typing and instruction routing all postdate them." ;
+               kpred:measured     "AND THE GRAPH IS FAR LESS MESSY THAN IT LOOKED — 2 bad entities out of 235, not a general failure. personal-notes.ttl: 571 content facts, 235 entities, 2 collapsed (`orange-logic-is-an-enterprise-dam`, `matthew-roes-owns-data-insight-solutions-llc`), 1 orphan, 0 mis-hearings. What makes it FEEL messy is different and already addressed: 496 of 571 facts are provenance and source bookkeeping, which is what the F144 detail ladder hides." ;
+               kpred:known-issue  "THE MIS-HEARING DETECTOR FIRST PRODUCED 45 FINDINGS OF WHICH 45 WERE NOISE. Note IRIs are minted from the clock, phoneticKey drops digits, so every note matched every other note. Clock-derived names are now excluded — they cannot be mis-heard, because captured-notes.ts names them from the clock precisely so a possibly-misheard proper noun never becomes an entity. A detector that floods the queue is worse than none: it moves cost from extraction to triage, which is exactly what kb:work-tiering forbids. Caught before it shipped, by running it." ;
+               kpred:relates-to   kb:extraction-strategies ;
+               kpred:relates-to   kb:graph-depth-ladder ;
+               kpred:relates-to   kb:work-tiering ;
+               kpred:remaining    "Nothing re-extracts. Acting on a finding still means rejecting the bad facts and clearing the kpred:extracted-at marker by hand so findUnextractedNotes picks the note up again — an obvious next script, and the one that would make this a cleanup tool rather than a report." .

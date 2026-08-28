@@ -594,3 +594,74 @@ kb:comp-ontology-atlas rdf:type ktype:Competitor ;
                kpred:closest-to   kb:agent-orchestration ;
                kpred:honest-note  "THE NEAREST NEIGHBOUR YET, AND SMALL — 18 stars, pushed the same day it was found, which means it is early rather than proven. Judge it on its MODEL, not its traction: it keeps ONE MARKDOWN graph where we keep TTL/RDF, which trades queryability and standards for something any agent can read without a parser. That trade is worth understanding before dismissing, because the markdown side is exactly where kb:adopt-bounded-handoff already found us wanting." ;
                kpred:validates    "'Understand what your AI agents are building' is an OBSERVABILITY framing on agent work that this roadmap does not have. F87 models the task queue and F89 triages the residue; neither answers 'what did the agents actually change in my ontology, and is it still coherent'." .
+
+# ── ASSET GENERATION CANDIDATES (F161, licensed 2026-08-28) ──────────────────
+# Matt asked for open-source and open-WEIGHT where possible. The two are not the
+# same thing and the difference decides what we can ship: OSI-open code can be
+# depended on freely, while open-weight model licences (OpenRAIL and friends)
+# carry behavioural use restrictions that are not OSI-open at all.
+
+kb:ref-sharp rdf:type          ktype:Reference ;
+               rdfs:label   "sharp — image compositing without a model" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   22 ;
+               kpred:repo-url     "https://github.com/lovell/sharp" ;
+               kpred:license      "Apache-2.0" ;
+               kpred:copy-permitted "yes — Apache-2.0" ;
+               kpred:stars        32612 ;
+               kpred:last-push    "2026-08-28"^^xsd:date ;
+               kpred:description  "Node image processing: composite, overlay text, resize, format. THE FIRST TIER OF F161 NEEDS NOTHING ELSE — a meme with a note overlaid is compositing, not synthesis, and kb:mvg-image-gen already argued canvas work is the cheapest immediately-shippable generation. In the browser the same job is plain Canvas with no dependency at all." ;
+               kpred:relates-to   kb:meme-with-context .
+
+kb:ref-gifenc rdf:type         ktype:Reference ;
+               rdfs:label   "gifenc — GIF encoding in JS" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   23 ;
+               kpred:repo-url     "https://github.com/mattdesl/gifenc" ;
+               kpred:license      "MIT" ;
+               kpred:copy-permitted "yes — MIT, attribution required" ;
+               kpred:stars        339 ;
+               kpred:last-push    "2024-09-19"^^xsd:date ;
+               kpred:description  "Fast GIF encoder, browser and Node, no native deps. Small and quiet rather than popular; the alternative jnordberg/gif.js has 15x the stars and has not been pushed since 2023." ;
+               kpred:relates-to   kb:meme-with-context .
+
+kb:ref-diffusers rdf:type      ktype:Reference ;
+               rdfs:label   "huggingface/diffusers — the image-model library" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   24 ;
+               kpred:repo-url     "https://github.com/huggingface/diffusers" ;
+               kpred:license      "Apache-2.0" ;
+               kpred:copy-permitted "yes — Apache-2.0 for the CODE. The WEIGHTS are licensed separately." ;
+               kpred:stars        34401 ;
+               kpred:last-push    "2026-08-28"^^xsd:date ;
+               kpred:description  "The standard Python library for diffusion models. Apache-2.0 and actively maintained, so the harness is unambiguously usable; what it loads is a separate question." ;
+               kpred:honest-note  "CODE LICENCE IS NOT WEIGHT LICENCE, and this is the distinction that matters for 'open weight if possible'. Stability-AI/generative-models is MIT for the code while the Stable Diffusion weights ship under CreativeML OpenRAIL-M / OpenRAIL++ — open to download and run, with BEHAVIOURAL USE RESTRICTIONS attached, which is not OSI-open. That is acceptable for a local personal tool and is a real constraint on anything we redistribute or host. Check the weight card, never the repo badge." ;
+               kpred:relates-to   kb:meme-with-context ;
+               kpred:relates-to   kb:asset-generation .
+
+kb:ref-comfyui rdf:type        ktype:Reference ;
+               rdfs:label   "ComfyUI — a local generation runtime (GPL-3.0)" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   25 ;
+               kpred:repo-url     "https://github.com/comfyanonymous/ComfyUI" ;
+               kpred:license      "GPL-3.0" ;
+               kpred:copy-permitted "as a SEPARATE PROCESS over HTTP, yes. Bundling or linking would raise GPL obligations on what links it." ;
+               kpred:stars        130450 ;
+               kpred:last-push    "2026-08-28"^^xsd:date ;
+               kpred:description  "The de-facto local diffusion runtime, 130k stars and pushed daily. Node-graph workflows map unusually well onto this product's own shape: a ComfyUI workflow IS a graph, and one could plausibly be generated from ours." ;
+               kpred:honest-note  "GPL-3.0 IS THE ONLY LICENCE IN THIS SET THAT CONSTRAINS US, and the constraint is manageable rather than fatal: run it as the user's own sidecar over HTTP — which is what the Integration Boundaries rule requires of any 'backend' anyway — and it stays arm's length. Do not vendor it, and do not let a Reckons.AI process link it. This is a reading, not legal advice." ;
+               kpred:relates-to   kb:meme-with-context ;
+               kpred:relates-to   kb:asset-generation .
+
+kb:ref-liveportrait rdf:type   ktype:Reference ;
+               rdfs:label   "LivePortrait — expression transfer, REFUSED by the licence gate" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   26 ;
+               kpred:repo-url     "https://github.com/KlingAIResearch/LivePortrait" ;
+               kpred:license      "NOASSERTION" ;
+               kpred:copy-permitted "NO — GitHub reports no recognised licence. Not usable until that changes." ;
+               kpred:stars        18979 ;
+               kpred:last-push    "2026-06-01"^^xsd:date ;
+               kpred:description  "Drives a still portrait with a driving video, which is exactly 'the character in the meme, with the reaction defined' from F161. Technically the closest thing to the hard part of that story." ;
+               kpred:honest-note  "AND IT IS THE ONE WE CANNOT USE. The API reports NOASSERTION — no licence GitHub recognises — so the deterministic gate that cleared every other repo in this graph fails this one. Recorded rather than quietly dropped, because the capability is the right shape and someone will find it again: if it is ever relicensed, revisit. The repo has also moved owner (KwaiVGI to KlingAIResearch), which is its own signal about stability." ;
+               kpred:relates-to   kb:meme-with-context .
