@@ -35,8 +35,16 @@
 export type NoteIntent = 'task' | 'ambiguous' | 'assertion';
 
 export type IntentReading = {
-  /** The sentence, verbatim. A goal is never paraphrased — see `buildTaskProposals`. */
+  /** The clause, verbatim. A goal is never paraphrased — see `buildTaskProposals`. */
   sentence: string;
+  /**
+   * The whole sentence this clause came from, when it was one of several.
+   *
+   * The goal is the CLAUSE, so each task says one thing a harness can act on. The full sentence
+   * rides along as the excerpt, so the record still shows exactly what was said and a reviewer
+   * can see that two tasks came from one breath.
+   */
+  fullSentence?: string;
   intent: NoteIntent;
   /** Strength of the command reading, 0-1. Carried onto the proposal as its confidence. */
   score: number;
@@ -63,7 +71,30 @@ const IMPERATIVE_OPENERS = new Set([
   'fix', 'test', 'verify', 'confirm', 'track', 'watch', 'monitor', 'list', 'gather', 'collect',
   'contact', 'apply', 'register', 'sign', 'order', 'buy', 'plan', 'organize', 'organise',
   'prepare', 'estimate', 'price', 'quote', 'measure', 'count', 'read', 'watch', 'explore',
+  // Added 2026-08-28 after "Generate a document about orange logic and email it to me." was
+  // read as a STATEMENT and extracted as prose. `create`, `make` and `build` were all present;
+  // `generate` was not, and one missing word silently turned a request into invented facts.
+  'generate', 'produce', 'publish', 'post', 'share', 'compile', 'extract', 'convert', 'export',
+  'upload', 'download', 'fetch', 'translate', 'outline', 'sketch', 'calculate', 'forecast',
+  'evaluate', 'assess', 'rank', 'score', 'sort', 'clean', 'rename', 'install', 'deploy',
+  'notify', 'message', 'invite', 'reserve', 'cancel', 'subscribe', 'follow',
 ]);
+
+/**
+ * Words that open a noun phrase rather than a command.
+ *
+ * Used only by the structural fallback below, to keep "New idea for Reckons.AI" — a note — from
+ * being read as an instruction just because it happens to contain no finite verb.
+ */
+const PHRASE_OPENERS = new Set([
+  'a', 'an', 'the', 'this', 'that', 'these', 'those', 'my', 'our', 'his', 'her', 'their', 'its',
+  'i', 'we', 'he', 'she', 'they', 'it', 'you', 'there', 'here',
+  'new', 'old', 'another', 'more', 'most', 'some', 'any', 'every', 'each', 'no',
+  'in', 'on', 'at', 'for', 'with', 'from', 'about', 'by', 'to', 'of',
+]);
+
+/** Coordinators after which a second imperative can begin: "draft X AND email it to me". */
+const COORDINATORS = new Set(['and', 'then', 'also', 'plus']);
 
 /**
  * Two-word imperatives. Scored slightly higher than a bare opener because the pair is
@@ -104,6 +135,11 @@ const FINITE_FOLLOWERS = new Set([
   'shows', 'showed', 'seems', 'seemed', 'means', 'meant', 'says', 'said',
   'indicates', 'suggests', 'includes', 'requires', 'costs', 'runs', 'goes', 'went',
   'became', 'becomes', 'remains', 'looks', 'sounds', 'appears', 'needs', 'wants',
+  // Third-person forms are open-ended and this list will always be short of them. It caught
+  // "Matthew Roe OWNS Data Insight Solutions" only because the structural fallback below was
+  // tightened; these are here because they are common, not because the list is now complete.
+  'owns', 'uses', 'makes', 'provides', 'offers', 'sells', 'builds', 'holds', 'keeps', 'works',
+  'lives', 'comes', 'gets', 'takes', 'gives', 'leads', 'serves', 'supports', 'covers', 'contains',
 ]);
 
 /**
@@ -143,6 +179,43 @@ function words(value: string): string[] {
     .replace(/[^a-z0-9'\s-]/g, ' ')
     .split(/\s+/)
     .filter(Boolean);
+}
+
+/**
+ * Split one sentence into separate imperative clauses.
+ *
+ * Matt, 2026-08-28: "Actually multiple agent tasks, generate document, and email me." He is right —
+ * "Generate a document about orange logic AND EMAIL IT TO ME" is two pieces of work, and one task
+ * carrying both has a `done-when` nobody could write.
+ *
+ * THIS REVERSES A DELIBERATE EARLIER DECISION, recorded in splitSentences below, so the reasoning
+ * behind that decision is worth keeping rather than deleting: splitting on conjunctions IN GENERAL
+ * would cut goals in half and put fragments in the queue. The narrow version is safe because it
+ * cuts only where the coordinator is followed by a word this module already recognises as a
+ * command — "and email", never "and rec". A fragment does not begin with a known imperative verb,
+ * so the risk that comment names is precisely the case this rule excludes.
+ *
+ * The sentence is never lost: every clause carries it as `fullSentence`, and it becomes the
+ * excerpt on each proposal, so a reviewer can see that two tasks came from one breath.
+ */
+export function splitImperativeClauses(sentence: string): string[] {
+  const parts = sentence.split(/\s+/);
+  const cuts: number[] = [];
+  for (let i = 1; i < parts.length - 1; i++) {
+    const here = parts[i].toLowerCase().replace(/[^a-z']/g, '');
+    const next = parts[i + 1].toLowerCase().replace(/[^a-z']/g, '');
+    if (COORDINATORS.has(here) && IMPERATIVE_OPENERS.has(next)) cuts.push(i);
+  }
+  if (cuts.length === 0) return [sentence];
+
+  const clauses: string[] = [];
+  let start = 0;
+  for (const cut of cuts) {
+    clauses.push(parts.slice(start, cut).join(' ').trim());
+    start = cut + 1;   // the coordinator itself belongs to neither clause
+  }
+  clauses.push(parts.slice(start).join(' ').trim());
+  return clauses.filter(Boolean);
 }
 
 /**
@@ -200,16 +273,52 @@ export function readIntent(raw: string): IntentReading {
     signals.push(`imperative opener "${opener}"`);
   }
 
+  // A SECOND IMPERATIVE AFTER A COORDINATOR. "Generate a document ... AND EMAIL it to me" is one
+  // request with two verbs, and the second one is often the recognisable half. This is redundancy
+  // against holes in the lexicon above: it takes two unknown verbs to lose the sentence, not one.
+  if (score === 0) {
+    const coordinated = token.findIndex(
+      (w, i) => i > 0 && COORDINATORS.has(token[i - 1]) && IMPERATIVE_OPENERS.has(w),
+    );
+    if (coordinated > 0) {
+      score = 0.5;
+      signals.push(`imperative "${token[coordinated]}" after "${token[coordinated - 1]}"`);
+    }
+  }
+
   // Something was asked for at the front, and nothing is asserted in the MAIN clause. A sentence
   // that states no fact gives the extractor nothing to lose, so the command reading is safe to
   // back. Verbs inside subordinate clauses are skipped — they qualify what is being asked for.
   const asserts = token.some(
     (w, i) => FINITE_FOLLOWERS.has(w) && !SUBORDINATORS.has(token[i - 1] ?? ''),
   );
+
+  // THE STRUCTURAL FALLBACK, AND WHY IT ONLY HEDGES. A sentence with no finite verb anywhere,
+  // opening on a word that does not begin a noun phrase, is usually an imperative whose verb this
+  // module has never heard of. But it is also sometimes a dictated fragment — "New idea for the
+  // grants work" — so backing it outright would invent tasks out of notes. It therefore scores
+  // into the AMBIGUOUS band, which proposes a task AND extracts the prose: a lexicon hole then
+  // costs a hedge a human resolves, instead of silently turning a request into invented facts.
   if (score > 0 && !asserts) {
     score += 0.25;
     signals.push('no main-clause verb — the sentence asserts nothing');
   }
+  // THE SHAPE IT LOOKS FOR IS `verb + determiner`, not merely "no finite verb". The first draft
+  // asked only whether anything was asserted, and read "Matthew Roe owns Data Insight Solutions"
+  // as a possible command — because `owns` is not in the finite list above and never will be
+  // reliably, since third-person forms are open-ended. Requiring the SECOND word to open a noun
+  // phrase ("generate A document", "frobnicate THE widget") excludes a proper-noun subject
+  // outright, and does not depend on knowing the verb at all.
+  //
+  // IT RUNS AFTER THE BONUS ABOVE AND DOES NOT RECEIVE IT. The bonus rewards "asked for something
+  // AND asserts nothing"; this rule's whole premise is already "asserts nothing", so stacking them
+  // would count one piece of evidence twice and promote an unknown verb straight to `task`. A verb
+  // this module has never seen should HEDGE — that is the point of the rule.
+  if (score === 0 && !asserts && !PHRASE_OPENERS.has(token[0]) && PHRASE_OPENERS.has(token[1] ?? '')) {
+    score = 0.35;
+    signals.push(`"${token[0]}" takes an object and asserts nothing — possibly a verb this module does not know`);
+  }
+
 
   // The default path must explain itself too. "Nothing fired" is a real reason and a reviewer
   // asking why a sentence went to the extractor deserves to read it, rather than finding an empty
@@ -244,7 +353,14 @@ export type NoteReading = {
  * dropped: `tasks` and `factText` together cover every sentence.
  */
 export function readNote(text: string): NoteReading {
-  const readings = splitSentences(text).map(readIntent);
+  const readings: IntentReading[] = [];
+  for (const sentence of splitSentences(text)) {
+    const clauses = splitImperativeClauses(sentence);
+    for (const clause of clauses) {
+      const reading = readIntent(clause);
+      readings.push(clauses.length > 1 ? { ...reading, fullSentence: sentence } : reading);
+    }
+  }
   return {
     readings,
     tasks: readings.filter((r) => r.intent !== 'assertion'),

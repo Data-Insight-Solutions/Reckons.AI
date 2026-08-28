@@ -76,7 +76,7 @@ describe('readIntent — requests for work', () => {
 describe('readIntent — assertions', () => {
   it.each([
     'Orange Logic is a private company.',
-    'Matthew Rowe owns Data Insight Solutions, LLC.',
+    'Matthew Roe owns Data Insight Solutions, LLC.',
     'A primo and binder and open text are potential integrations.',
   ])('reads %j as an assertion', (sentence) => {
     expect(readIntent(sentence).intent).toBe('assertion');
@@ -296,5 +296,67 @@ describe('the real dictation', () => {
       'assertion',
     );
     expect(readIntent('check the swim program costs').intent).toBe('ambiguous');
+  });
+});
+
+// Matt, 2026-08-28: "Actually multiple agent tasks, generate document, and email me."
+describe('one sentence, several tasks', () => {
+  const TWO = 'Generate a document about orange logic and email it to me.';
+
+  it('splits a coordinated imperative into separate tasks', () => {
+    const r = readNote(TWO);
+    expect(r.tasks).toHaveLength(2);
+    expect(r.tasks[0].sentence).toBe('Generate a document about orange logic');
+    expect(r.tasks[1].sentence).toBe('email it to me.');
+  });
+
+  it('keeps the whole sentence on each clause, so the record shows what was said', () => {
+    for (const t of readNote(TWO).tasks) expect(t.fullSentence).toBe(TWO);
+  });
+
+  it('carries the full sentence onto the proposal as its excerpt', () => {
+    const captured = note(TWO);
+    const proposals = buildTaskProposals(captured, readNote(TWO).tasks, template, nextId, 1_700_000);
+    expect(proposals).toHaveLength(2);
+    for (const p of proposals) {
+      expect(p.statements[0].excerpt).toBe(TWO);
+      expect(p.iri).toMatch(/-\d$/);            // distinct IRIs
+    }
+    expect(proposals[0].iri).not.toBe(proposals[1].iri);
+  });
+
+  // The exact risk the original no-splitting decision named.
+  it('does NOT split on a conjunction that is not followed by a verb', () => {
+    // "...for city park and rec" — `rec` is not an imperative opener, so this stays one task.
+    expect(readNote(THE_NOTE).tasks).toHaveLength(1);
+  });
+
+  it('leaves an assertion containing "and" entirely alone', () => {
+    const r = readNote('Orange Logic is a private company and it is growing.');
+    expect(r.tasks).toHaveLength(0);
+    expect(r.factText).toContain('and it is growing');
+  });
+});
+
+describe('lexicon holes hedge instead of vanishing', () => {
+  it('reads a verb it has never heard of as ambiguous, not as a statement', () => {
+    // The failure this guards: "Generate ..." was read as prose purely because `generate` was
+    // missing from the opener list, and the request became invented facts.
+    const r = readIntent('Transmogrify the grants list.');
+    expect(r.intent).toBe('ambiguous');
+    expect(r.signals.join(' ')).toContain('a verb this module does not know');
+  });
+
+  it('still refuses a proper-noun subject with an unlisted verb', () => {
+    expect(readIntent('Matthew Roe owns Data Insight Solutions, LLC.').intent).toBe('assertion');
+  });
+
+  it('needs the object shape, not just the absence of a verb', () => {
+    // "New idea for the grants work" is a note; nothing about it is a command.
+    expect(readIntent('New idea for the grants work.').intent).toBe('assertion');
+  });
+
+  it('generate is in the lexicon now', () => {
+    expect(readIntent('Generate a report on swim grants.').intent).toBe('task');
   });
 });

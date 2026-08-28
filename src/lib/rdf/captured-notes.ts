@@ -284,7 +284,8 @@ export function buildTaskProposals(
       g: template.g,
       sourceId: template.sourceId,
       confidence: reading.score,
-      excerpt: reading.sentence,
+      // The whole sentence, so a reviewer seeing two tasks can tell they came from one breath.
+      excerpt: reading.fullSentence ?? reading.sentence,
       grounded: true,
       createdAt: now,
       updatedAt: now,
