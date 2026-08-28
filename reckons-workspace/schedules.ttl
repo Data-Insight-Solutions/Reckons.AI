@@ -49,3 +49,10 @@ sched:offer-tasks rdf:type    ktype:Schedule ;
     kpred:command   "npx tsx scripts/agent/tasks-export.ts --notify" ;
     kpred:enabled   "true" ;
     kpred:description "Render every task still missing its effects or acceptance check as a markdown form, and deliver it through n8n (F162). It does NOT re-send: a document already on disk is skipped without delivering, so a task nobody has answered yet emails once rather than hourly. Answers return via tasks-import.ts as pending facts." .
+
+sched:review-stars rdf:type   ktype:Schedule ;
+    rdfs:label      "Review new GitHub stars" ;
+    kpred:every     "24h" ;
+    kpred:command   "npx tsx scripts/offline/stars-scan.ts --pending --limit 15" ;
+    kpred:enabled   "true" ;
+    kpred:description "Matt: 'Make it a regular task to review my github stars... I'm tired of copy pasting their links anyway.' A star is a judgement he already made, stranded on github.com. This brings the new ones in as licence-gated proposals. Incremental by starred_at and capped, because 659 stars proposed at once is a flooded queue rather than a feature." .
