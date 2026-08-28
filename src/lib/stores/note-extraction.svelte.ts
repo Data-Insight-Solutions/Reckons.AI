@@ -21,6 +21,7 @@ import {
   findUnextractedNotes,
   noteTitle,
   buildExtractionMarker,
+  buildNoteType,
   buildProvenanceLinks,
   buildRepairProposals,
   buildTaskProposals,
@@ -135,6 +136,8 @@ export async function extractCapturedNotes(
       }
 
       const marker = buildExtractionMarker(note, tmpl, uuid);
+      // The note is a Document, and the pipeline knows it — no model is asked.
+      const noteType = buildNoteType(note, tmpl, uuid);
       const links = buildProvenanceLinks(note, extracted, tmpl, uuid);
       const tasks = buildTaskProposals(note, reading.tasks, tmpl, uuid);
       // Repair reads only the EXTRACTED statements. A task's goal is a whole verbatim sentence
@@ -150,6 +153,7 @@ export async function extractCapturedNotes(
       await addStatements(
         [
           marker,
+          noteType,
           ...links,
           ...tasks.flatMap((t) => t.statements),
           ...proposals.map((p) => p.statement),

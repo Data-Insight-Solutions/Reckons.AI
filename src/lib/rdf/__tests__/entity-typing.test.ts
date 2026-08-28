@@ -188,3 +188,44 @@ describe('a hand-set altitude round-trips through Turtle', () => {
     expect(back.statements.find((s) => s.id === f.id)?.altitude).toBeUndefined();
   });
 });
+
+// Matt, 2026-08-28: "notes are documents."
+describe('a captured note types itself', () => {
+  const captured = {
+    iri: 'urn:kbase:concept/note-2026-08-28T13-38-52-197Z',
+    text: 'some dictation',
+    statement: st('note', 'urn:kbase:predicate/captured-note', 'some dictation'),
+  };
+  const tmpl = { g: { kind: 'iri' as const, value: 'urn:kbase:graph/personal-notes' }, sourceId: 'src' };
+
+  it('is a Document, decided by the pipeline rather than a model', async () => {
+    const { buildNoteType, DOCUMENT_TYPE } = await import('../captured-notes');
+    const fact = buildNoteType(captured, tmpl, () => 'id-1');
+    expect(fact.p.value).toBe(RDF_TYPE);
+    expect(fact.o.value).toBe(DOCUMENT_TYPE);
+    expect(fact.s.value).toBe(captured.iri);
+  });
+
+  it('says in its gloss that nothing inferred it', async () => {
+    const { buildNoteType } = await import('../captured-notes');
+    expect(buildNoteType(captured, tmpl, () => 'id-1').gloss).toContain('not inferred');
+  });
+
+  // The gap this closes: surveyTypes could settle 1 of 183 entities on a real captured graph,
+  // because most of the rest were notes and no type existed for a note to have.
+  it('removes the note from what the type survey has to decide', async () => {
+    const { buildNoteType } = await import('../captured-notes');
+    const noteFact = st('note-1', 'urn:kbase:predicate/captured-note', 'text');
+    const before = surveyTypes([noteFact], BUILT_IN_TYPES);
+    expect(before.undecided.map((u) => u.entityIri)).toContain(`${KB}note-1`);
+
+    const typed = buildNoteType(
+      { iri: `${KB}note-1`, text: 'text', statement: noteFact },
+      tmpl,
+      () => 'id-2',
+    );
+    const after = surveyTypes([noteFact], BUILT_IN_TYPES, [typed]);
+    expect(after.undecided).toHaveLength(0);
+    expect(after.proposals).toHaveLength(0);
+  });
+});

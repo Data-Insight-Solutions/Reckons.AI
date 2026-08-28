@@ -6204,6 +6204,8 @@ kb:graph-cleanup rdf:type    ktype:Feature ;
                kpred:relates-to   kb:extraction-strategies ;
                kpred:relates-to   kb:graph-depth-ladder ;
                kpred:relates-to   kb:work-tiering ;
+               kpred:measured     "THE TYPE SURVEY COULD SETTLE 1 ENTITY OUT OF 183 on personal-notes, and the reason was not that inference is hard. Most untyped entities were captured NOTES, and there was no type for a note to have — so the capture path minted ~100 entities whose type it knew and could not say. That is also why the hub type gate needed a substantive-degree rule: it was catching by another route a class of node that simply had no type. Matt settled it in three words: notes are documents." ;
+               kpred:measured     "THE SECOND CAUSE IS A VOCABULARY MISMATCH, and it is not fixed. The real content entities are undecidable because the predicates the extractor actually produces — used-by, has-property, has-purpose — appear in NO built-in type\u0027s schemaPredicates. The typer works by finding predicates only one type has, and the extractor speaks a vocabulary the type system does not. That is F149\u0027s rdfs:domain gap seen from the other end." ;
                kpred:remaining    "Nothing re-extracts. Acting on a finding still means rejecting the bad facts and clearing the kpred:extracted-at marker by hand so findUnextractedNotes picks the note up again — an obvious next script, and the one that would make this a cleanup tool rather than a report." .
 
 

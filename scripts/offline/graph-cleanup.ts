@@ -49,6 +49,9 @@ const PENDING = 'reckons-workspace/knowledge.pending.jsonl';
 const RDF = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
 const CONCEPT = 'urn:kbase:concept/';
 const EXTRACTED_FROM = 'urn:kbase:predicate/extracted-from';
+const CAPTURED_NOTE = 'urn:kbase:predicate/captured-note';
+const RDF_TYPE = `${RDF}type`;
+const DOCUMENT_TYPE = 'urn:kbase:type/Document';
 
 /** Reification and source bookkeeping — the app folds these into fields, so they are not content. */
 const isBookkeeping = (p: string, o: string) =>
@@ -60,7 +63,7 @@ const slugOf = (iri: string) => iri.split('/').pop() ?? iri;
 const words = (iri: string) => slugOf(iri).replace(/[-_]+/g, ' ');
 
 export type Finding = {
-  kind: 'collapsed' | 'misheard' | 'orphaned';
+  kind: 'collapsed' | 'misheard' | 'orphaned' | 'untyped-note';
   entity: string;
   detail: string;
   /** The dictated note this entity was read out of, when the graph records one. */
@@ -139,6 +142,24 @@ export function analyse(quads: Quad[]): { findings: Finding[]; facts: number; en
     }
   }
 
+  // UNTYPED NOTES. The capture path minted these before it knew how to type them, and a note is a
+  // Document (Matt, 2026-08-28). This is the one type nobody has to infer, so proposing it costs
+  // no model call and settles the largest single group of untyped entities in a captured graph.
+  const notes = new Set<string>();
+  const typed = new Set<string>();
+  for (const q of content) {
+    if (q.predicate.value === CAPTURED_NOTE) notes.add(q.subject.value);
+    if (q.predicate.value === RDF_TYPE) typed.add(q.subject.value);
+  }
+  for (const note of notes) {
+    if (typed.has(note)) continue;
+    findings.push({
+      kind: 'untyped-note',
+      entity: note,
+      detail: 'a captured note with no rdf:type — it is a Document, and the pipeline knows it',
+    });
+  }
+
   for (const e of concepts) {
     if ((degree.get(e) ?? 0) <= 1) {
       findings.push({ kind: 'orphaned', entity: e, detail: 'mentioned once, connects nothing', note: noteOf.get(e) });
@@ -150,6 +171,19 @@ export function analyse(quads: Quad[]): { findings: Finding[]; facts: number; en
 
 /** A finding as a pending row. Always a re-extraction proposal — never a rewrite. */
 export function toPendingRow(f: Finding, kb: string): Record<string, unknown> {
+  if (f.kind === 'untyped-note') {
+    return {
+      subject: f.entity,
+      predicate: RDF_TYPE,
+      object: DOCUMENT_TYPE,
+      objectKind: 'iri',
+      kb,
+      type: 'suggestion',
+      priority: 'low',
+      agent: 'graph-cleanup',
+      note: 'Backfill: the capture path now types notes as Document at extraction time. This proposes the same for notes minted before it did.',
+    };
+  }
   const object = f.note
     ? `Re-extract ${f.note.split('/').pop()} — ${f.detail}`
     : `Review ${slugOf(f.entity)} — ${f.detail}`;
@@ -188,7 +222,7 @@ function main(): void {
     console.log(`\n\x1b[1m${file}\x1b[0m  ${facts} content facts · ${entities} entities`);
     const byKind = (k: Finding['kind']) => findings.filter((f) => f.kind === k);
 
-    for (const kind of ['collapsed', 'misheard', 'orphaned'] as const) {
+    for (const kind of ['collapsed', 'misheard', 'untyped-note', 'orphaned'] as const) {
       const group = byKind(kind);
       if (group.length === 0) continue;
       console.log(`\n  ${kind.toUpperCase()} (${group.length})`);

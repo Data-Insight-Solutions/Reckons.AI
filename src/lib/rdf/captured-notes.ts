@@ -143,6 +143,50 @@ export function buildExtractionMarker(
   return { ...marker, status: statusForNewFact(marker) };
 }
 
+/** The built-in type a captured note is. Matt, 2026-08-28: "notes are documents". */
+export const DOCUMENT_TYPE = 'urn:kbase:type/Document';
+
+/**
+ * Type the note itself.
+ *
+ * WHY THIS WAS MISSING AND WHY IT MATTERED. The capture path mints a note entity per dictation and
+ * never said what one IS, so ~100 of them sat untyped — invisible to the entity-type system, grey
+ * on the canvas, and unreachable by the hub type gate, which is why that gate needed a
+ * substantive-degree rule to catch them by another route. Measured 2026-08-28 on personal-notes:
+ * of 183 untyped entities, the deterministic typer could settle ONE, because most of the rest were
+ * notes and there was no type for a note to have.
+ *
+ * IT IS THE ONE TYPE NOBODY HAS TO INFER. Every other entity's type is read out of a transcript by
+ * a model and is a claim about the world; this one is known by the pipeline that created the
+ * entity. Asking a language model to decide whether a thing the capture path just minted as a note
+ * is a note would be paying for an answer we already have.
+ */
+export function buildNoteType(
+  note: CapturedNote,
+  template: Template,
+  makeId: () => string,
+  now = Date.now(),
+): Statement {
+  const fact: Statement = {
+    id: makeId(),
+    s: { kind: 'iri', value: note.iri },
+    p: { kind: 'iri', value: RDF_TYPE },
+    o: { kind: 'iri', value: DOCUMENT_TYPE },
+    g: template.g,
+    sourceId: template.sourceId,
+    confidence: 1,
+    gloss: 'A dictated note is a document — set by the capture pipeline, not inferred',
+    // Derived like every other fact this module builds. `rdf:type` is a record, so this lands
+    // PENDING: typing is a claim in the general case, and the allowlist that skips review is
+    // deliberately keyed by predicate rather than by subject. Widening it so this one case
+    // auto-confirms is a decision to take on purpose, not a side effect of adding a type.
+    status: 'pending',
+    createdAt: now,
+    updatedAt: now,
+  };
+  return { ...fact, status: statusForNewFact(fact) };
+}
+
 /** Links each extracted statement's subject back to the sentence it was read from. */
 export function buildProvenanceLinks(
   note: CapturedNote,
