@@ -1,6 +1,46 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-08-28.** Working branch: `fix/claude-review-hardening`.
+**Last updated: 2026-08-28.** Working branch: `feat/task-bridge` (PR #208, stacked on #207 /
+`fix/claude-review-hardening`). PRs target `dev`. Note the branch tracks `origin/dev` directly, so
+a bare `git push` would push to dev — always `git push origin HEAD:refs/heads/<branch>`.
+
+## ▶ SESSION 2026-08-28 (latest) — the bridge, the schedule, and eight standing jobs
+
+**MATT'S STATED PRIORITIES (F159, his order):** 1 dictated notes → actionable agent task ·
+2 SKOS/SHACL alignment across app features · 3 a terse review process. **1 is DONE.**
+
+- **F160 task bridge** — `tasks-export.ts` writes a markdown FORM for every task missing the fields
+  only a person can supply; `tasks-import.ts` turns answers into pending facts and PROPOSES the
+  promotion out of `proposed` rather than performing it. No app change, no MCP, no harness adapter:
+  the crossing point is the workspace sync, which already writes every graph to disk as Turtle.
+- **F162 n8n document output** — live workflow `VarVHunvq5O6oZVW` on Matt's n8n, header-auth gated,
+  reusing his existing Outlook credential. Proven by executions 3531/3532.
+- **F163 the schedule had NEVER run** — 3,216 consecutive failures: the installed crontab line had
+  no `cd`, so cron ran from `$HOME`. The installer was already correct; nothing re-runs it. **And
+  the installer WIPED the crontab when re-run** (`grep -v` exiting 1 under `set -e` killed the
+  subshell before the echo). Both fixed. **Matt's other cron entries, if any, were lost.**
+- **Eight jobs now scheduled** (quarter-hourly trigger, drain-not-cron): pull-notes 15m ·
+  drain-queue and offer-tasks 1h · reconcile 6h · orchestrate and review-stars 24h ·
+  integration-health 168h.
+- **F164 graph-cleanup · F166/F167 generation catalogue (20 tools, API-gated) · F168 integration
+  health** — all script tier. **F161 meme story · F165 per-graph autonomy · F156/F157** recorded,
+  not built.
+- **Notes are Documents** (Matt) — typed at capture. The deterministic type survey could settle 1
+  of 183 entities, because most untyped entities were notes and no type existed for one to have.
+
+**KNOWN-BAD, do not rediscover:**
+- `review.test.ts:184` fails — bisected to review-page work carried in from an earlier session, NOT
+  from this work. Recorded on `bd071d8`.
+- **Every good audio-portrait model fails the licence gate** — LivePortrait, MuseTalk and the whole
+  Tencent Hunyuan family all report NOASSERTION. Open-weight, not OSI-open. So does `open-webui`.
+- **The second cause of bad typing is unfixed:** the extractor emits `used-by` / `has-property` /
+  `has-purpose`, which appear in NO built-in type's `schemaPredicates`. That is F149's rdfs:domain
+  gap from the other end, and it is why the model has to type everything itself.
+- `server-health` reports the kernel has security updates **installed but not in effect** — needs a
+  reboot window. Matt's call.
+
+**MEASUREMENT LESSON, cost two wrong numbers in one day:** parsing raw TTL counts reification
+triples the importer folds into `Statement` fields. Measure the graph the app builds, not the file.
 
 ## ▶ SESSION 2026-08-28 (later) — detail ladder, typing, markdown interchange, SKOS/SHACL
 
@@ -149,12 +189,12 @@ had ever run. Do not chase n8n-side naming again.
 
 ## Open / next
 
+- ~~**Altitude in the graph UI**~~ — **DONE 2026-08-28** as F144/F151, and both open decisions are
+  answered: hiding uses LIFTED altitude so a log under a live decision is never hidden, and hidden
+  is visibly hidden via the node/fact counter beside the control. Do not rebuild it.
 - **Cross-graph vocabulary** — grounding sees only the CURRENT graph. Biggest remaining lever on
   extraction quality. Matt wants "highly aware of all existing graphs, default to personal notes".
 - **Migrating triples between graphs** — not built. Personal Notes as a triage inbox.
-- **Altitude in the graph UI** — Matt asked for an adjustable depth so thousands of log nodes are
-  hideable. `ALTITUDE_RANK` / `censusByAltitude` exist. Decide: does hiding a log node orphan
-  entities, and hidden must be visibly hidden.
 - **Outlook/GMail/Drive agent control** — needs an ACTION queue with a review gate; nothing exists.
 - n8n "Read me first" sticky still draws the abandoned Google Drive hop.
 
