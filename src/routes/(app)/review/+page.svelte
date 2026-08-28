@@ -59,7 +59,6 @@
   import { routeQueue, routingSummary } from '$lib/rdf/review-routing';
   import { LEAP_PRED, LEAP_LABEL_PRED } from '$lib/rdf/kb-leap';
   import { requestShellyChat } from '$lib/stores/shelly-bridge.svelte';
-  import { ToggleGroup } from 'bits-ui';
   import { onMount } from 'svelte';
 
   // Predicates that are internal KB metadata
@@ -697,6 +696,26 @@
   const PREVIEW_LAYOUTS = ['force', 'focus', 'source', 'type', 'hub', 'timeline', 'order', 'hierarchy'] as const;
   type PreviewLayout = (typeof PREVIEW_LAYOUTS)[number];
   let previewLayout = $state<PreviewLayout>('force');
+  /**
+   * Layout options as data, so LAYOUT and DETAIL render as two matching dropdowns.
+   *
+   * Matt, 2026-08-28, after I fixed the wrong page twice: the detail control was crammed into the
+   * panel header beside "2 pending changes · 27 not shown · ↻", where it read as a status line
+   * rather than a control. It belongs next to layout, and layout should be a dropdown too.
+   */
+  const PREVIEW_LAYOUT_OPTIONS: { value: PreviewLayout; label: string; title: string; available?: () => boolean }[] = [
+    { value: 'force', label: 'free', title: 'Free force layout' },
+    { value: 'focus', label: 'focus', title: 'Focus the selected node and its neighbours' },
+    { value: 'source', label: 'source', title: 'Cluster nodes by the source they came from',
+      available: () => previewSourceCount > 1 },
+    { value: 'type', label: 'type', title: 'Cluster nodes by entity type',
+      available: () => previewEntityTypes.length > 0 },
+    { value: 'hub', label: 'hub', title: 'Pull the most-connected hubs toward the centre' },
+    { value: 'timeline', label: 'time', title: 'Lay nodes out left-to-right by date; undated nodes get a labelled lane rather than a fake date' },
+    { value: 'order', label: 'arrange', title: 'Arrange nodes on a grid — pending subjects first' },
+    { value: 'hierarchy', label: 'tree', title: 'Prerequisites above dependents, from skos:broader and kpred:depends-on' },
+  ];
+  const availablePreviewLayouts = $derived(PREVIEW_LAYOUT_OPTIONS.filter((l) => l.available?.() ?? true));
 
   /** Sources worth clustering by. Analysis output is not a source a reviewer is comparing. */
   const previewSourceCount = $derived(sources().filter((s) => s.kind !== 'analysis').length);
@@ -1330,39 +1349,32 @@
       {/if}
     </div>
 
-    <!-- Browse controls (F30: layout + node search ported onto the preview pane) -->
-    {#if graphMode === 'preview'}
-      <div class="overlay-controls browse-controls">
-        <div class="ov-row">
-          <span class="ov-label mono">layout</span>
-          <ToggleGroup.Root
-            type="single"
-            aria-label="Graph layout"
-            value={previewLayout}
-            onValueChange={(v) => {
-              if (!v) return;
-              previewLayout = v as PreviewLayout;
-              setLayoutParam(previewLayout);
-            }}
-            class="tg-row"
-          >
-            <ToggleGroup.Item value="force" class="tg-chip"><span class="lbl mono">free</span></ToggleGroup.Item>
-            <ToggleGroup.Item value="focus" class="tg-chip"><span class="lbl mono">focus</span></ToggleGroup.Item>
-            {#if previewSourceCount > 1}
-              <ToggleGroup.Item value="source" class="tg-chip" title="Cluster nodes by the source they came from"><span class="lbl mono">source</span></ToggleGroup.Item>
-            {/if}
-            {#if previewEntityTypes.length > 0}
-              <ToggleGroup.Item value="type" class="tg-chip" title="Cluster nodes by entity type"><span class="lbl mono">type</span></ToggleGroup.Item>
-            {/if}
-            <ToggleGroup.Item value="hub" class="tg-chip"><span class="lbl mono">hub</span></ToggleGroup.Item>
-            <ToggleGroup.Item value="timeline" class="tg-chip" title="Lay nodes out left-to-right by date; undated nodes get a labelled lane rather than a fake date"><span class="lbl mono">time</span></ToggleGroup.Item>
-            <!-- value stays "order" (URL/state); label is "arrange", matching the main view. -->
-            <ToggleGroup.Item value="order" class="tg-chip" title="Arrange nodes on a grid — pending subjects first"><span class="lbl mono">arrange</span></ToggleGroup.Item>
-            <!-- Prerequisites above dependents, from skos:broader and kpred:depends-on. Only
-                 meaningful on a graph that states one of those; on a flat queue it degrades to
-                 the force layout rather than inventing a hierarchy. -->
-            <ToggleGroup.Item value="hierarchy" class="tg-chip"><span class="lbl mono">tree</span></ToggleGroup.Item>
-          </ToggleGroup.Root>
+    <!-- Browse controls (F30). ONE ROW: layout · detail · search.
+         DETAIL renders in every graph mode because it filters the QUEUE, which is on screen in
+         all three; LAYOUT and SEARCH only in preview, the one mode they steer. -->
+    <div class="overlay-controls browse-controls">
+      <div class="ov-row control-row">
+        {#if graphMode === 'preview'}
+          <label class="control mono">
+            <span class="ov-label mono">layout</span>
+            <select class="control-select mono" bind:value={previewLayout}
+              onchange={() => setLayoutParam(previewLayout)}
+              title={availablePreviewLayouts.find((l) => l.value === previewLayout)?.title}>
+              {#each availablePreviewLayouts as l (l.value)}
+                <option value={l.value} title={l.title}>{l.label}</option>
+              {/each}
+            </select>
+          </label>
+        {/if}
+        <label class="control mono">
+          <span class="ov-label mono">detail</span>
+          <select class="control-select mono" bind:value={reviewDetail} title={reviewLevel.title}>
+            {#each REVIEW_DETAIL_LEVELS as level (level.id)}
+              <option value={level.id} title={level.title}>{level.label}</option>
+            {/each}
+          </select>
+        </label>
+        {#if graphMode === 'preview'}
           <div class="node-search-wrap">
             <input
               class="node-search-input mono"
@@ -1381,9 +1393,14 @@
               </div>
             {/if}
           </div>
-        </div>
+        {/if}
       </div>
-    {/if}
+      {#if hiddenLogCount > 0}
+        <span class="log-hidden mono" title="Hidden from this queue only. Every fact is still in the graph — lower the detail level to see them.">
+          {hiddenLogCount} not shown
+        </span>
+      {/if}
+    </div>
 
     <!-- Overlay controls strip (when overlay mode) -->
     {#if graphMode === 'overlay'}
@@ -1624,21 +1641,6 @@
       <h2 class="rp-title">review</h2>
       <p class="rp-sub mono" data-testid="review-pending-count">
         {totalPending} pending change{totalPending !== 1 ? 's' : ''}
-        {#if hiddenLogCount > 0}
-          <span class="log-hidden mono" title="Hidden from this queue only. Every fact is still in the graph — lower the detail level to see them.">
-            · {hiddenLogCount} not shown
-          </span>
-        {/if}
-        <select
-          class="review-detail mono"
-          bind:value={reviewDetail}
-          title={reviewLevel.title}
-          aria-label="Detail level"
-        >
-          {#each REVIEW_DETAIL_LEVELS as level (level.id)}
-            <option value={level.id} title={level.title}>{level.label}</option>
-          {/each}
-        </select>
         {#if workspaceState() === 'connected'}
           <button class="drain-btn" onclick={checkPending} disabled={draining} title="Check workspace for pending MCP proposals">
             {draining ? '...' : drainResult ?? '↻'}
@@ -2491,7 +2493,7 @@
   .ov-chip:disabled { opacity: 0.5; cursor: wait; }
   .ov-hint { font-size: 0.55rem; color: var(--muted); }
 
-  /* ── Browse controls (F30: layout ToggleGroup + node search on the preview) ── */
+  /* ── Browse controls (F30: layout + detail dropdowns, node search on the preview) ── */
   .browse-controls { padding-top: 0.35rem; padding-bottom: 0.35rem; }
   :global(.review-layout .tg-row) {
     display: flex;
@@ -3221,6 +3223,33 @@
   .cm-more { color: var(--muted); font-style: italic; }
 
   /* The altitude scale — one colour set, so it reads the same everywhere it appears. */
+  /* One row: layout · detail · search. Each control is sized to its own content — stretching
+     a dropdown to fill the row makes a five-character value look like a text field, and it was
+     what pushed the search onto a line of its own. */
+  .control-row {
+    display: flex;
+    gap: 0.4rem;
+    align-items: flex-end;
+    flex-wrap: nowrap;
+  }
+  .control {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    flex: 0 0 auto;
+  }
+  .control-select {
+    background: var(--surface);
+    color: var(--fg);
+    border: 1px solid var(--line);
+    border-radius: 0.25rem;
+    font-size: 0.62rem;
+    padding: 0.2rem 0.25rem;
+    width: auto;
+  }
+  /* The search takes whatever is left, because it is the only one whose content is unbounded. */
+  .control-row .node-search-wrap { flex: 1 1 auto; min-width: 0; }
+
   .review-detail {
     background: var(--surface);
     color: var(--fg);

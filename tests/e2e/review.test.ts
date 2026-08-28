@@ -282,7 +282,7 @@ test('a freeform re-analysis prompt sits directly after the summary (F139 step 3
    */
 });
 
-test('the review preview offers every layout, and the tree chip actually engages', async ({ page }) => {
+test('the review preview offers every layout, and selecting tree actually engages', async ({ page }) => {
   test.setTimeout(120_000);
   await importDemoGraph(page);
   await page.goto('/review');
@@ -295,21 +295,25 @@ test('the review preview offers every layout, and the tree chip actually engages
    * asserts the unguarded six are always present rather than pinning a number that legitimately
    * varies with the graph.
    */
-  const labels = await page.locator('.tg-chip .lbl').allInnerTexts();
+  // The control became a <select> on 2026-08-28 — eight chips wrapped over three lines and
+  // pushed the detail and search controls onto rows of their own. The ASSERTION is unchanged:
+  // every unguarded layout is still offered, whatever the control looks like.
+  const layout = page.locator('select.control-select').first();
+  await expect(layout).toBeVisible({ timeout: 10_000 });
+  const labels = await layout.locator('option').allInnerTexts();
   for (const expected of ['free', 'focus', 'hub', 'time', 'arrange', 'tree']) {
-    expect(labels, `layout chip "${expected}" missing from ${JSON.stringify(labels)}`).toContain(expected);
+    expect(labels, `layout option "${expected}" missing from ${JSON.stringify(labels)}`).toContain(expected);
   }
 
   /*
-   * AND THE TREE CHIP MUST ENGAGE. It read as broken for a long time and the cause was never the
+   * AND SELECTING TREE MUST ENGAGE. It read as broken for a long time and the cause was never the
    * button: the demo graphs stated 0 and 2 hierarchy edges, so buildHierarchyAnchors returned an
-   * empty map and the force layout took over. This asserts the CONTROL works — that clicking it
+   * empty map and the force layout took over. This asserts the CONTROL works — that choosing it
    * selects it — separately from whether a given graph has a hierarchy worth drawing, because
    * conflating those two is what made the bug take three attempts to find.
    */
-  const tree = page.locator('.tg-chip', { hasText: /^tree$/ }).first();
-  await tree.click();
-  await expect(tree).toHaveAttribute('data-state', 'on', { timeout: 5_000 });
+  await layout.selectOption({ label: 'tree' });
+  await expect(layout).toHaveValue('hierarchy', { timeout: 5_000 });
 });
 
 test('a contested decision is settled by ONE pick, not two', async ({ page }) => {

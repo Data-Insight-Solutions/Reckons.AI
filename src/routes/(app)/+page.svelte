@@ -3096,12 +3096,13 @@
     display: flex;
     gap: 0.4rem;
   }
+  /* Sized to content. A dropdown stretched to fill its row makes a five-character value look
+     like a text field. */
   .control {
     display: flex;
     flex-direction: column;
     gap: 0.15rem;
-    flex: 1;
-    min-width: 0;
+    flex: 0 0 auto;
   }
   .control-label {
     font-size: 0.52rem;
@@ -3117,7 +3118,7 @@
     border-radius: 0.25rem;
     font-size: 0.62rem;
     padding: 0.2rem 0.25rem;
-    width: 100%;
+    width: auto;
   }
 
   .detail-select {
