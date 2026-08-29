@@ -40,6 +40,7 @@ import { Parser, type Quad } from 'n3';
 import { parseTasks, type AgentTask } from '../../src/lib/rdf/agent-task.js';
 import { taskToMarkdown, missingForExecution } from '../../src/lib/rdf/task-markdown.js';
 import type { Statement, Term } from '../../src/lib/rdf/types.js';
+import { createIfAbsent } from '../lib/read-file.js';
 
 const argv = process.argv.slice(2);
 const DRY_RUN = argv.includes('--dry-run');
@@ -183,21 +184,34 @@ async function main(): Promise<void> {
       const doc = taskToMarkdown(task, { section: graph });
       const target = path.join(OUT_DIR, doc.filename);
 
-      if (existsSync(target) && !FORCE) {
-        // It may already hold somebody's answers, and this path exists to collect those.
-        skipped++;
-        console.log(`  = ${doc.filename}  (exists — not overwritten)`);
-        continue;
-      }
       if (DRY_RUN) {
+        if (!FORCE && existsSync(target)) {
+          // A dry run performs no later write, so this observation cannot race with a mutation.
+          skipped++;
+          console.log(`  = ${doc.filename}  (exists — not overwritten)`);
+          continue;
+        }
         console.log(`  + ${doc.filename}  [${graph}] ${doc.title}`);
         written++;
         continue;
       }
-      mkdirSync(OUT_DIR, { recursive: true });
-      writeFileSync(target, doc.markdown, 'utf8');   // ON DISK FIRST, always
+
+      if (FORCE) {
+        // This path is explicitly allowed to replace the destination, so there is no existence
+        // check whose answer could become stale before the write.
+        mkdirSync(OUT_DIR, { recursive: true });
+        writeFileSync(target, doc.markdown, 'utf8');
+      } else if (!createIfAbsent(target, doc.markdown)) {
+        // The kernel performed the create-if-absent check atomically. It may already hold
+        // somebody's answers, and this path exists to collect those.
+        skipped++;
+        console.log(`  = ${doc.filename}  (exists — not overwritten)`);
+        continue;
+      }
+
+      // ON DISK FIRST, always: delivery cannot decide whether the export succeeded.
       if (NOTIFY && (await deliver(doc, graph, task.iri))) delivered++;
-      if (existsSync(target) && FORCE) console.log(`  ! ${doc.filename}  (OVERWRITTEN)`);
+      if (FORCE) console.log(`  ! ${doc.filename}  (FORCED WRITE)`);
       else console.log(`  + ${doc.filename}  [${graph}] ${doc.title}`);
       written++;
     }

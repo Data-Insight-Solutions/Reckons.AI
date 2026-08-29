@@ -66,6 +66,13 @@ function mkKb(name: string) {
 
 const DEFAULT_ID = 'kbase';
 
+/** happy-dom exposes StorageEvent's key as readonly but implements only the one-argument ctor. */
+function storageEvent(key: string | null): StorageEvent {
+  const event = new StorageEvent('storage');
+  Object.defineProperty(event, 'key', { value: key });
+  return event;
+}
+
 // ── getRegistry ───────────────────────────────────────────────────────────────
 
 describe('getRegistry', () => {
@@ -106,26 +113,26 @@ describe('subscribeRegistry', () => {
     localStorage.setItem('kbRegistry', JSON.stringify([
       { id: 'kbase_remote', name: 'Remote Graph', createdAt: 1 },
     ]));
-    window.dispatchEvent(new StorageEvent('storage', { key: 'kbRegistry' }));
+    window.dispatchEvent(storageEvent('kbRegistry'));
     expect(listener).toHaveBeenLastCalledWith(expect.arrayContaining([
       expect.objectContaining({ id: 'kbase_remote', name: 'Remote Graph' }),
     ]));
 
     localStorage.clear();
-    window.dispatchEvent(new StorageEvent('storage', { key: null }));
+    window.dispatchEvent(storageEvent(null));
     expect(listener).toHaveBeenLastCalledWith([
       expect.objectContaining({ id: DEFAULT_ID, name: 'Default Graph' }),
     ]);
 
     unsubscribe();
-    window.dispatchEvent(new StorageEvent('storage', { key: 'kbRegistry' }));
+    window.dispatchEvent(storageEvent('kbRegistry'));
     expect(listener).toHaveBeenCalledTimes(2);
   });
 
   it('ignores storage changes unrelated to the registry', () => {
     const listener = vi.fn();
     const unsubscribe = subscribeRegistry(listener);
-    window.dispatchEvent(new StorageEvent('storage', { key: 'currentKbId' }));
+    window.dispatchEvent(storageEvent('currentKbId'));
     expect(listener).not.toHaveBeenCalled();
     unsubscribe();
   });

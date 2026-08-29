@@ -167,7 +167,10 @@ test('starter graph keeps prose and URL attributes off the canvas topology', asy
 
   const labelText = (await labels.allInnerTexts()).join('\n');
   expect(labelText).not.toMatch(/Drives up from San Francisco|behind the wheel/i);
-  expect(labelText).not.toMatch(/google\.com|recreation\.gov|forecast\.weather\.gov/i);
+  const normalizedLabels = labelText.toLowerCase();
+  expect(normalizedLabels).not.toContain('google.com');
+  expect(normalizedLabels).not.toContain('recreation.gov');
+  expect(normalizedLabels).not.toContain('forecast.weather.gov');
   expect(labelText).toMatch(/Alex/);
   expect(labelText).toMatch(/Jordan/);
 

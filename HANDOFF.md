@@ -17,7 +17,7 @@ a bare `git push` would push to dev — always `git push origin HEAD:refs/heads/
 - **Initial-load boundary:** Shelly chat, Hume narration, Kokoro, and the voice catalogue are loaded
   dynamically only after the corresponding user action. PWA precache excludes optional voice/ML
   runtimes and WASM while retaining runtime caching after an opted-in use.
-- **Verification:** 185 unit files / 2,609 unit tests plus 5 Playwright performance-probe tests;
+- **Verification:** 187 unit files / 2,614 unit tests plus 5 Playwright performance-probe tests;
   `svelte-check` 0/0; production build; deploy-gate smoke 5/5; offline evidence 81 tested / 17
   declared / 0 undeclared; fresh production navigation
   made zero optional voice/ML or WASM requests. PWA precache is 484 entries / 31,023.45 KiB with
@@ -25,6 +25,10 @@ a bare `git push` would push to dev — always `git push origin HEAD:refs/heads/
 - **CI boundary fixed:** the five performance-probe tests had launched Playwright from the Vitest
   job, where Actions intentionally installs no browser. Pure performance rules remain in Vitest;
   browser probes now run in the Chromium E2E job that already owns the browser dependency.
+- **CodeQL boundary fixed:** task documents use atomic create-if-absent; drained n8n rows are
+  validated and allowlist-serialized locally before a locked queue write; integration version
+  responses are structurally validated before they can reach the review queue. Four correctness
+  warnings in storage-event tests and a URL-like label assertion were corrected as well.
 
 ## ▶ SESSION 2026-08-28 (latest) — the bridge, the schedule, and eight standing jobs
 

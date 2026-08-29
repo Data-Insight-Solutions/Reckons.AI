@@ -100,6 +100,7 @@ export const RECOMPUTABLE_AGENTS = new Set([
   'offline:alignment-sweep',
   'offline:graph-lint',
   'offline:server-health',
+  'offline:integration-health',
   'offline:competitor-scan',
   'offline:proposal-yield',
   'offline:shacl-validate',

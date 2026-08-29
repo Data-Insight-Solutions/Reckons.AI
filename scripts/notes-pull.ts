@@ -26,8 +26,10 @@
  * Env (reads .env): N8N_API_URL, N8N_CAPTURE_HEADER_NAME, N8N_CAPTURE_HEADER_VALUE
  */
 
-import { readFileSync, existsSync, appendFileSync, mkdirSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import path from 'path';
+import { parsePendingEntryLine, type PendingEntry } from '../src/lib/rdf/pending-entry.js';
+import { transactPendingQueue } from './offline/pending-queue.js';
 
 function loadDotEnv(file = '.env'): void {
   if (!existsSync(file)) return;
@@ -61,6 +63,70 @@ function requireEnv(): { base: string; header: string; value: string } {
 }
 
 type Row = { id: number | string; line: string; subject?: string; capturedAt?: string };
+const MAX_ROW_BYTES = 64 * 1024;
+
+/**
+ * Serialize only fields the local pending-queue contract knows about.
+ *
+ * The n8n drain is authenticated but still remote input. Parsing its `line` with JSON.parse and
+ * appending the original bytes would let an unexpected field or malformed row cross that trust
+ * boundary. Validate it with the same parser as the app, then rebuild an allowlisted JSON object.
+ */
+function serializeEntry(entry: PendingEntry): string {
+  const safe: PendingEntry = { subject: entry.subject, predicate: entry.predicate };
+  const optional = [
+    'kb', 'object', 'objectKind', 'question', 'blocks', 'note', 'addedByMcp', 'addedAt', 'type',
+    'findingClass', 'commitSha', 'agent', 'priority', 'askedByGraph', 'verifiedBy',
+    'verificationClaim',
+  ] as const;
+  for (const key of optional) {
+    if (entry[key] !== undefined) safe[key] = entry[key] as never;
+  }
+  return JSON.stringify(safe);
+}
+
+/** Validate and normalize the complete remote batch before any row is written or acknowledged. */
+export function parseDrainRows(payload: unknown): Row[] {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw new Error('drain returned a non-object response');
+  }
+  const body = payload as Record<string, unknown>;
+  if (body.ok !== true || (body.rows !== undefined && !Array.isArray(body.rows))) {
+    throw new Error('drain response is missing ok=true or has an invalid rows value');
+  }
+
+  const values = Array.isArray(body.rows) ? body.rows : [];
+  return values.map((value, index) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      throw new Error(`drain row ${index + 1} is not an object`);
+    }
+    const raw = value as Record<string, unknown>;
+    const validId = typeof raw.id === 'number'
+      ? Number.isSafeInteger(raw.id)
+      : typeof raw.id === 'string' && /^[A-Za-z0-9._:-]{1,200}$/.test(raw.id);
+    if (!validId) throw new Error(`drain row ${index + 1} has an invalid id`);
+    if (typeof raw.line !== 'string' || !raw.line.trim()) {
+      throw new Error(`drain row ${index + 1} has no JSONL content`);
+    }
+    if (Buffer.byteLength(raw.line, 'utf8') > MAX_ROW_BYTES) {
+      throw new Error(`drain row ${index + 1} exceeds ${MAX_ROW_BYTES} bytes`);
+    }
+
+    const parsed = parsePendingEntryLine(raw.line, { requireKb: true });
+    if (!parsed.ok) {
+      throw new Error(`drain row ${index + 1} is unsafe: ${parsed.code} (${parsed.message})`);
+    }
+    const capturedAt = typeof raw.capturedAt === 'string' && !Number.isNaN(Date.parse(raw.capturedAt))
+      ? new Date(raw.capturedAt).toISOString()
+      : undefined;
+    return {
+      id: raw.id as number | string,
+      line: serializeEntry(parsed.entry),
+      subject: parsed.entry.subject,
+      capturedAt,
+    };
+  });
+}
 
 async function drainOnce(): Promise<number> {
   const { base, header, value } = requireEnv();
@@ -68,14 +134,10 @@ async function drainOnce(): Promise<number> {
 
   const res = await fetch(`${base}/webhook/reckons-notes-drain`, { headers });
   if (!res.ok) throw new Error(`drain failed: HTTP ${res.status}`);
-  const body = (await res.json()) as { ok: boolean; rows?: Row[] };
-  const rows = (body.rows ?? []).filter((r) => typeof r?.line === 'string' && r.line.trim());
+  const rows = parseDrainRows(await res.json());
   if (rows.length === 0) return 0;
 
-  // Each stored `line` is already a complete, newline-terminated JSONL row built and validated
-  // server-side — including the newline-injection guard. Nothing is re-serialised here, so a
-  // note cannot be reshaped in transit.
-  const text = rows.map((r) => (r.line.endsWith('\n') ? r.line : r.line + '\n')).join('');
+  const text = rows.map((r) => r.line + '\n').join('');
 
   if (dryRun) {
     console.log(`  --dry-run: ${rows.length} note(s) would land in ${PENDING}; acking nothing.`);
@@ -83,8 +145,12 @@ async function drainOnce(): Promise<number> {
     return rows.length;
   }
 
-  mkdirSync(WORKSPACE, { recursive: true });
-  appendFileSync(PENDING, text, 'utf8');   // WRITE FIRST
+  // WRITE FIRST under the same lock as every other host-side queue producer. The browser sees
+  // the lock lease and waits; the remote bytes have already been parsed and allowlist-serialized.
+  transactPendingQueue(PENDING, (current) => ({
+    content: current + (current && !current.endsWith('\n') ? '\n' : '') + text,
+    result: undefined,
+  }));
 
   const ack = await fetch(`${base}/webhook/reckons-notes-ack`, {
     method: 'POST',
@@ -116,4 +182,6 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((e) => { console.error('notes-pull failed:', e); process.exit(1); });
+if (process.argv[1] && import.meta.url.endsWith(path.basename(process.argv[1]))) {
+  main().catch((e) => { console.error('notes-pull failed:', e); process.exit(1); });
+}

@@ -31,13 +31,23 @@
  *   npx tsx scripts/offline/integration-health.ts
  *   npx tsx scripts/offline/integration-health.ts --pending    queue what needs attention
  */
-import { readFileSync, existsSync, appendFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { execFileSync } from 'child_process';
+import { queueFindings, type Finding } from './pending-queue.js';
 
 const argv = process.argv.slice(2);
 const PENDING_OUT = argv.includes('--pending');
 const PENDING = 'reckons-workspace/knowledge.pending.jsonl';
 const CATALOGUE = 'static/reckons-generation-tools.ttl';
+
+/** Keep network-reported versions display-only and bounded before they reach logs or the queue. */
+export function normalizeVersion(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return /^v?\d{1,6}(?:\.\d{1,6}){1,3}(?:[-+][A-Za-z0-9.-]{1,80})?$/.test(trimmed)
+    ? trimmed
+    : undefined;
+}
 
 export type Health = {
   name: string;
@@ -71,9 +81,9 @@ async function reachable(url: string, ms = 3000): Promise<boolean> {
 /** Latest published release of a GitHub project, or undefined if it cannot be read. */
 export function latestRelease(repo: string): string | undefined {
   try {
-    return execFileSync('gh', ['api', `repos/${repo}/releases/latest`, '--jq', '.tag_name'], {
+    return normalizeVersion(execFileSync('gh', ['api', `repos/${repo}/releases/latest`, '--jq', '.tag_name'], {
       encoding: 'utf8',
-    }).trim();
+    }));
   } catch {
     return undefined;
   }
@@ -100,6 +110,32 @@ type N8nVersion = {
   hasBreakingChange: boolean;
 };
 
+export function parseN8nVersions(value: unknown): N8nVersion[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((candidate) => {
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return [];
+    const row = candidate as Record<string, unknown>;
+    const name = normalizeVersion(row.name);
+    const createdAt = typeof row.createdAt === 'string' && !Number.isNaN(Date.parse(row.createdAt))
+      ? new Date(row.createdAt).toISOString()
+      : undefined;
+    const nullableBoolean = (item: unknown): item is boolean | null => item === null || typeof item === 'boolean';
+    if (
+      !name || !createdAt ||
+      !nullableBoolean(row.hasSecurityIssue) ||
+      !nullableBoolean(row.hasSecurityFix) ||
+      typeof row.hasBreakingChange !== 'boolean'
+    ) return [];
+    return [{
+      name,
+      createdAt,
+      hasSecurityIssue: row.hasSecurityIssue,
+      hasSecurityFix: row.hasSecurityFix,
+      hasBreakingChange: row.hasBreakingChange,
+    }];
+  });
+}
+
 /**
  * Releases newer than `from`, with the flags that actually decide an upgrade.
  *
@@ -109,9 +145,10 @@ type N8nVersion = {
  */
 export async function n8nVersionsSince(from = '2.30.0'): Promise<N8nVersion[]> {
   try {
-    const res = await fetch(`https://api.n8n.io/api/versions/${from}`, { signal: AbortSignal.timeout(6000) });
+    const safeFrom = normalizeVersion(from) ?? '2.30.0';
+    const res = await fetch(`https://api.n8n.io/api/versions/${safeFrom}`, { signal: AbortSignal.timeout(6000) });
     if (!res.ok) return [];
-    return (await res.json()) as N8nVersion[];
+    return parseN8nVersions(await res.json());
   } catch {
     return [];
   }
@@ -151,7 +188,8 @@ async function checkOllama(): Promise<Health> {
   const base = (process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434').replace(/\/+$/, '');
   try {
     const res = await fetch(`${base}/api/version`, { signal: AbortSignal.timeout(2000) });
-    const running = ((await res.json()) as { version?: string }).version;
+    const body = await res.json() as { version?: unknown };
+    const running = normalizeVersion(body.version);
     const latest = latestRelease('ollama/ollama');
     const behind = running && latest && !latest.includes(running);
     return {
@@ -203,7 +241,7 @@ async function main(): Promise<void> {
   }
 
   if (PENDING_OUT && attention.length > 0) {
-    const rows = attention.map((c) => ({
+    const rows: Finding[] = attention.map((c) => ({
       subject: `urn:kbase:concept/int-${c.name}`,
       predicate: 'urn:kbase:predicate/known-issue',
       object: `${c.name}: ${c.detail}`,
@@ -214,8 +252,13 @@ async function main(): Promise<void> {
       agent: 'integration-health',
       note: 'Checked on a schedule. A tool that drifts out of date silently is the same failure shape as one that silently stops running.',
     }));
-    appendFileSync(PENDING, rows.map((r) => JSON.stringify(r)).join('\n') + '\n', 'utf8');
-    console.log(`\nQueued ${rows.length} for review.`);
+    const result = queueFindings(rows, {
+      agent: 'offline:integration-health',
+      path: PENDING,
+      kb: 'production',
+      recomputes: true,
+    });
+    console.log(`\nQueued ${result.queued} for review (${result.skipped} unchanged, ${result.superseded} resolved).`);
   }
 }
 
