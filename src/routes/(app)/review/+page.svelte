@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Canvas } from '@threlte/core';
   import { replaceState } from '$app/navigation';
+  import { Popover } from 'bits-ui';
   import KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
   import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
   import CompareGraph from '$lib/components/CompareGraph.svelte';
@@ -696,6 +697,8 @@
   const PREVIEW_LAYOUTS = ['force', 'focus', 'source', 'type', 'hub', 'timeline', 'order', 'hierarchy'] as const;
   type PreviewLayout = (typeof PREVIEW_LAYOUTS)[number];
   let previewLayout = $state<PreviewLayout>('force');
+  let showPreviewLayoutMenu = $state(false);
+  let showReviewDetailMenu = $state(false);
   /**
    * Layout options as data, so LAYOUT and DETAIL render as two matching dropdowns.
    *
@@ -1355,25 +1358,51 @@
     <div class="overlay-controls browse-controls">
       <div class="ov-row control-row">
         {#if graphMode === 'preview'}
-          <label class="control mono">
-            <span class="ov-label mono">layout</span>
-            <select class="control-select mono" bind:value={previewLayout}
-              onchange={() => setLayoutParam(previewLayout)}
-              title={availablePreviewLayouts.find((l) => l.value === previewLayout)?.title}>
-              {#each availablePreviewLayouts as l (l.value)}
-                <option value={l.value} title={l.title}>{l.label}</option>
-              {/each}
-            </select>
-          </label>
+          <Popover.Root bind:open={showPreviewLayoutMenu}>
+            <Popover.Trigger>
+              {#snippet child({ props })}
+                <button {...props} class="chip" class:active={showPreviewLayoutMenu}
+                  title={availablePreviewLayouts.find((l) => l.value === previewLayout)?.title}>
+                  <span class="lbl mono">{availablePreviewLayouts.find((l) => l.value === previewLayout)?.label ?? previewLayout}</span>
+                  <span class="arr mono">{showPreviewLayoutMenu ? '▲' : '▼'}</span>
+                </button>
+              {/snippet}
+            </Popover.Trigger>
+            <Popover.Portal>
+              <Popover.Content class="filter-popover" sideOffset={6}>
+                {#each availablePreviewLayouts as l (l.value)}
+                  <button class="chip small" class:active={previewLayout === l.value} title={l.title}
+                    onclick={() => { previewLayout = l.value; setLayoutParam(previewLayout); showPreviewLayoutMenu = false; }}>
+                    <span class="lbl mono">{l.label}</span>
+                  </button>
+                {/each}
+              </Popover.Content>
+            </Popover.Portal>
+          </Popover.Root>
         {/if}
-        <label class="control mono">
-          <span class="ov-label mono">detail</span>
-          <select class="control-select mono" bind:value={reviewDetail} title={reviewLevel.title}>
-            {#each REVIEW_DETAIL_LEVELS as level (level.id)}
-              <option value={level.id} title={level.title}>{level.label}</option>
-            {/each}
-          </select>
-        </label>
+
+        <Popover.Root bind:open={showReviewDetailMenu}>
+          <Popover.Trigger>
+            {#snippet child({ props })}
+              <button {...props} class="chip" class:active={reviewDetail !== 'detailed' || showReviewDetailMenu}
+                title={reviewLevel.title}>
+                <span class="lbl mono">{reviewLevel.label}</span>
+                <span class="arr mono">{showReviewDetailMenu ? '▲' : '▼'}</span>
+              </button>
+            {/snippet}
+          </Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Content class="filter-popover" sideOffset={6}>
+              {#each REVIEW_DETAIL_LEVELS as level (level.id)}
+                <button class="chip small" class:active={reviewDetail === level.id} title={level.title}
+                  onclick={() => { reviewDetail = level.id; showReviewDetailMenu = false; }}>
+                  <span class="lbl mono">{level.label}</span>
+                </button>
+              {/each}
+            </Popover.Content>
+          </Popover.Portal>
+        </Popover.Root>
+
         {#if graphMode === 'preview'}
           <div class="node-search-wrap">
             <input
@@ -3225,6 +3254,47 @@
   .cm-more { color: var(--muted); font-style: italic; }
 
   /* The altitude scale — one colour set, so it reads the same everywhere it appears. */
+  /* Chip + popover, copied verbatim from the graph view (Matt: "I like the previews dropdown
+     styling much better"). Duplicated rather than shared because these are two independent
+     Svelte components with their own scoped styles — if a third surface needs them, that is the
+     point to extract a component rather than paste a third time. */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .chip:hover { border-color: var(--muted-2); color: var(--ink-2); }
+  .chip.active {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .chip.small { font-size: 0.68rem; padding: 0.2rem 0.55rem; }
+  .chip .lbl { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.14em; }
+  .chip .arr { font-size: 0.5rem; opacity: 0.6; }
+
+  :global(.filter-popover) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    padding: 0.5rem 0.6rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--rad);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    max-width: 260px;
+    z-index: 500;
+  }
+
   /* One row: layout · detail · search. Each control is sized to its own content — stretching
      a dropdown to fill the row makes a five-character value look like a text field, and it was
      what pushed the search onto a line of its own. */

@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
-import { Parser, type Quad } from 'n3';
+import { Parser } from 'n3';
+
+// DERIVED, NOT IMPORTED. `import { type Quad } from 'n3'` resolves to a NAMESPACE under this
+// project's src/ tsconfig and fails with "Cannot use namespace 'Quad' as a type" — it only works
+// in scripts/. Reading the element type off Parser.parse cannot drift from what the parser
+// actually returns.
+type Quad = ReturnType<InstanceType<typeof Parser>['parse']>[number];
 import { ALTITUDE_RANK } from '../fact-altitude';
 import { TASK_EFFECTS } from '../agent-task';
 

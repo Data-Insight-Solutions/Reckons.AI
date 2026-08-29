@@ -295,12 +295,19 @@ test('the review preview offers every layout, and selecting tree actually engage
    * asserts the unguarded six are always present rather than pinning a number that legitimately
    * varies with the graph.
    */
-  // The control became a <select> on 2026-08-28 — eight chips wrapped over three lines and
-  // pushed the detail and search controls onto rows of their own. The ASSERTION is unchanged:
-  // every unguarded layout is still offered, whatever the control looks like.
-  const layout = page.locator('select.control-select').first();
-  await expect(layout).toBeVisible({ timeout: 10_000 });
-  const labels = await layout.locator('option').allInnerTexts();
+  // The control has changed shape twice on 2026-08-28 — chips, then a <select>, now a chip that
+  // opens a popover of chips, matching the graph view. THE ASSERTION HAS NOT CHANGED ONCE: every
+  // unguarded layout is still offered, and choosing tree still engages it. That is the point of
+  // this test, and it is why it gets updated rather than deleted each time.
+  const trigger = page.locator('.browse-controls .chip').first();
+  await expect(trigger).toBeVisible({ timeout: 10_000 });
+  await trigger.click();
+  const menu = page.locator('.filter-popover');
+  await expect(menu).toBeVisible({ timeout: 5_000 });
+  // Lower-cased before comparing: the chips are uppercased by CSS, so allInnerTexts returns
+  // "FREE" for a label authored as "free". Asserting on the authored value keeps this test about
+  // which layouts exist rather than about text-transform.
+  const labels = (await menu.locator('.chip .lbl').allInnerTexts()).map((t) => t.trim().toLowerCase());
   for (const expected of ['free', 'focus', 'hub', 'time', 'arrange', 'tree']) {
     expect(labels, `layout option "${expected}" missing from ${JSON.stringify(labels)}`).toContain(expected);
   }
@@ -312,8 +319,8 @@ test('the review preview offers every layout, and selecting tree actually engage
    * selects it — separately from whether a given graph has a hierarchy worth drawing, because
    * conflating those two is what made the bug take three attempts to find.
    */
-  await layout.selectOption({ label: 'tree' });
-  await expect(layout).toHaveValue('hierarchy', { timeout: 5_000 });
+  await menu.locator('.chip', { hasText: /^tree$/i }).first().click();
+  await expect(trigger.locator('.lbl')).toHaveText(/^tree$/i, { timeout: 5_000 });
 });
 
 test('a contested decision is settled by ONE pick, not two', async ({ page }) => {
