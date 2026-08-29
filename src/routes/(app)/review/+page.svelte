@@ -283,7 +283,12 @@
    */
   const cascadeClusters = $derived.by(() => {
     if (treeTooBig) return [];
-    const candidates = incoming.filter((st) => {
+    // Cascades exist to keep low-altitude bookkeeping OUT of the row-by-row queue while still
+    // giving a person one honest way to settle it. Building this from `incoming` made the visible
+    // detail floor erase the very logs this lane aggregates: the six unplanned completion notes
+    // disappeared at the default `detailed` rung, so their required purpose question never formed.
+    // Detail controls individual rows; cascade aggregation must inspect the complete pending set.
+    const candidates = allIncoming.filter((st) => {
       const a = altitudeOf(st);
       return a === 'log' || a === 'record' || a === 'evidence';
     });

@@ -29,6 +29,11 @@ a bare `git push` would push to dev — always `git push origin HEAD:refs/heads/
   validated and allowlist-serialized locally before a locked queue write; integration version
   responses are structurally validated before they can reach the review queue. Four correctness
   warnings in storage-event tests and a URL-like label assertion were corrected as well.
+- **Full-E2E blockers fixed:** cascade aggregation now inspects all pending bookkeeping even when
+  the detail control hides low-altitude rows, so unplanned completion logs still produce their
+  required purpose question. The hierarchy regression drives the current layout popover, nav
+  assertions await SvelteKit navigation, and Indico diagnostics no longer race a full-page reload
+  against their settings write.
 
 ## ▶ SESSION 2026-08-28 (latest) — the bridge, the schedule, and eight standing jobs
 

@@ -31,11 +31,15 @@ test('tree layout does not hang on a graph that has a hierarchy', async ({ page 
   await page.goto('/review');
   await expect(page.getByTestId('altitude-headline')).toBeVisible({ timeout: 20_000 });
   await page.waitForTimeout(3000);
-  const tree = page.locator('.tg-chip', { hasText: /^tree$/ }).first();
-  // The click itself is the assertion: it must RETURN. A 15s cap keeps a hang from eating the
-  // whole test timeout and makes the failure read as "hung", not "slow".
+  const layout = page.locator('.browse-controls .chip').first();
+  await expect(layout).toBeVisible({ timeout: 10_000 });
+  await layout.click();
+  const tree = page.locator('.filter-popover .chip', { hasText: /^tree$/i }).first();
+  await expect(tree).toBeVisible({ timeout: 5_000 });
+  // The option click itself is the assertion: it must RETURN. A 15s cap keeps a hang from eating
+  // the whole test timeout and makes the failure read as "hung", not "slow".
   await tree.click({ timeout: 15_000 });
-  await expect(tree).toHaveAttribute('data-state', 'on', { timeout: 5_000 });
+  await expect(layout.locator('.lbl')).toHaveText(/^tree$/i, { timeout: 5_000 });
   // And the page must still be answering afterwards.
   const t0 = Date.now();
   await page.evaluate(() => 1);
