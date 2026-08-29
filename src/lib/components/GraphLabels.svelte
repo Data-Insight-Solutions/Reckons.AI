@@ -29,6 +29,7 @@
     dimMode = false,
     highlightedSet = new Set<string>(),
     labelFontSize = 11,
+    onselect,
     preview,
     after,
   } = $props<{
@@ -41,6 +42,8 @@
     dimMode?: boolean;
     highlightedSet?: Set<string>;
     labelFontSize?: number;
+    /** Optional accessible label activation (the 3D canvas remains the primary hit target). */
+    onselect?: (key: string, ctrlKey?: boolean) => void;
     /** Per-label extra rendered BEFORE the label (main uses it for the asset thumbnail). */
     preview?: Snippet<[NodeLabel]>;
     /** Per-label extra rendered AFTER the label (main uses it for the leap badge). */
@@ -48,12 +51,7 @@
   }>();
 </script>
 
-{#each labels as n (n.key)}
-  <div
-    class="node-label-wrap"
-    transition:fade={{ duration: 220 }}
-    style="transform: translate3d({n.x}px, {n.y}px, 0); --lfs: {labelFontSize}px; --lop: {n.opacity ?? 0.85};"
-  >
+{#snippet labelContents(n: NodeLabel)}
     {@render preview?.(n)}
     <span
       class="node-label mono"
@@ -62,7 +60,26 @@
       class:dim-hidden={dimMode && !highlightedSet.has(n.key) && n.key !== hoverTarget && n.key !== selected}
     >{n.label}</span>
     {@render after?.(n)}
-  </div>
+{/snippet}
+
+{#each labels as n (n.key)}
+  {#if onselect}
+    <button
+      type="button"
+      class="node-label-wrap selectable"
+      data-node-key={n.key}
+      onclick={(event) => onselect(n.key, event.ctrlKey || event.metaKey)}
+      transition:fade={{ duration: 220 }}
+      style="--lx: {n.x}px; --ly: {n.y}px; --lfs: {labelFontSize}px; --lop: {n.opacity ?? 0.85};"
+    >{@render labelContents(n)}</button>
+  {:else}
+    <div
+      class="node-label-wrap"
+      data-node-key={n.key}
+      transition:fade={{ duration: 220 }}
+      style="--lx: {n.x}px; --ly: {n.y}px; --lfs: {labelFontSize}px; --lop: {n.opacity ?? 0.85};"
+    >{@render labelContents(n)}</div>
+  {/if}
 {/each}
 
 <style>
@@ -73,7 +90,15 @@
     pointer-events: none;
     z-index: 10;
     will-change: transform;
+    transform: translate3d(var(--lx), var(--ly), 0);
     transition: transform 35ms linear;
+  }
+  .node-label-wrap.selectable {
+    pointer-events: auto;
+    cursor: pointer;
+    border: 0;
+    padding: 0;
+    background: transparent;
   }
   .node-label {
     display: block;
@@ -103,5 +128,27 @@
   .node-label.selected-node {
     color: var(--accent);
     transform: translate(-50%, calc(-100% - 5px)) scale(1.6);
+  }
+
+  /* On touch screens the HTML labels are the precise alternative to tapping a small 3D sphere.
+     Keep the text visually anchored above the node while giving the button a centered 44px target. */
+  @media (pointer: coarse) {
+    .node-label-wrap.selectable {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 45px;
+      height: 45px;
+      transform: translate3d(var(--lx), var(--ly), 0) translate(-50%, -50%);
+    }
+    .selectable .node-label {
+      transform: translateY(calc(-50% - 5px));
+    }
+    .selectable .node-label.hovered {
+      transform: translateY(calc(-50% - 5px)) scale(1.8);
+    }
+    .selectable .node-label.selected-node {
+      transform: translateY(calc(-50% - 5px)) scale(1.6);
+    }
   }
 </style>

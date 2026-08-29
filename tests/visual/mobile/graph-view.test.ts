@@ -220,9 +220,9 @@ test.describe('Graph view — touch targets', () => {
   test('nav buttons meet WCAG 2.5.5 minimum (44px)', async ({ page }) => {
     await seedGraphData(page);
 
-    // Check top-level nav links and buttons (not nav-pair items, which are
-    // stacked and share a larger combined touch area)
-    const navButtons = page.locator('nav > a, nav > button');
+    // Each interactive control needs its own 44×44px hit area. A visually
+    // grouped container does not make undersized child targets accessible.
+    const navButtons = page.locator('nav a, nav button');
     const count = await navButtons.count();
 
     const undersized: string[] = [];
@@ -232,9 +232,7 @@ test.describe('Graph view — touch targets', () => {
       if (!visible) continue;
       const box = await btn.boundingBox();
       if (!box) continue;
-      // Check touch target area: width * height should be at least 44*44 = 1936px²
-      // This allows narrow-but-tall or short-but-wide elements to pass
-      if (box.width < 44 && box.height < 44) {
+      if (box.width < 44 || box.height < 44) {
         const text = await btn.textContent().catch(() => '?');
         undersized.push(`"${text?.trim()}" (${Math.round(box.width)}x${Math.round(box.height)}px)`);
       }

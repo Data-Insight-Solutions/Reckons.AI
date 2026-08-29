@@ -25,7 +25,14 @@ async function configureIndico(page: import('@playwright/test').Page, serverUrl:
   await section.locator('input[type="url"]').fill(serverUrl);
   await section.getByRole('button', { name: /^save$/ }).click();
 
-  await page.goto('/ingest');
+  // Follow the app's client-side navigation after saving. `page.goto()` starts a full document
+  // replacement and could tear down the page while the IndexedDB settings write was still in
+  // flight, which made the next page intermittently read an empty Indico URL.
+  const addLink = page.locator('nav').getByRole('link', { name: /^add$/i });
+  await Promise.all([
+    page.waitForURL((url) => url.pathname === '/ingest'),
+    addLink.click(),
+  ]);
   await page.getByRole('button', { name: /^calendar$/i }).first().click();
   await page.getByRole('button', { name: /^indico$/i }).first().click();
   await expect(page.getByRole('button', { name: /fetch & import events/i })).toBeVisible();

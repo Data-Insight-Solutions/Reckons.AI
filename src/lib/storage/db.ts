@@ -40,6 +40,23 @@ export type SettingsRecord = {
   diffSummaryBackend?: 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'openrouter' | 'chrome-ai' | 'reckons';
   mergeAnalysisBackend?: 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'openrouter' | 'chrome-ai' | 'reckons';
   ollamaModel: string;
+  /**
+   * Per-task Ollama model overrides — fall back to `ollamaModel` when absent.
+   *
+   * The backend was already per-task (`ingestBackend` and friends) and WASM already had per-task
+   * models, but every Ollama task shared ONE model. That is how extraction ended up running on
+   * `qwen3-coder`: a code model chosen for code work, silently also doing prose extraction, where
+   * it collapsed whole sentences into single entity slugs. Different tasks want genuinely
+   * different models — a coder for code, a reasoning model for extraction and partitioning, a
+   * fast small one for chat — so the choice has to be expressible.
+   *
+   * Resolve these through `ollamaModelFor(task, settings)`, never by reading them directly.
+   */
+  ollamaIngestModel?: string;
+  ollamaAnalyzeModel?: string;
+  ollamaChatModel?: string;
+  ollamaDiffSummaryModel?: string;
+  ollamaMergeAnalysisModel?: string;
   ollamaBaseUrl: string;
   /**
    * Ollama extraction prompt-variant override. 'auto' (default when unset)
@@ -245,6 +262,13 @@ export const DEFAULT_SETTINGS: SettingsRecord = {
   analyzeBackend: (import.meta.env.VITE_ANALYZE_BACKEND as SettingsRecord['analyzeBackend']) || undefined,
   chatBackend: (import.meta.env.VITE_CHAT_BACKEND as SettingsRecord['chatBackend']) || undefined,
   ollamaModel: import.meta.env.VITE_OLLAMA_MODEL ?? 'llama3.2',
+  // Unset by default: absent means "use ollamaModel", so an existing install keeps its behaviour
+  // exactly until someone deliberately splits a task off.
+  ollamaIngestModel: import.meta.env.VITE_OLLAMA_INGEST_MODEL || undefined,
+  ollamaAnalyzeModel: import.meta.env.VITE_OLLAMA_ANALYZE_MODEL || undefined,
+  ollamaChatModel: import.meta.env.VITE_OLLAMA_CHAT_MODEL || undefined,
+  ollamaDiffSummaryModel: import.meta.env.VITE_OLLAMA_DIFF_SUMMARY_MODEL || undefined,
+  ollamaMergeAnalysisModel: import.meta.env.VITE_OLLAMA_MERGE_ANALYSIS_MODEL || undefined,
   ollamaBaseUrl: import.meta.env.VITE_OLLAMA_BASE_URL ?? 'http://localhost:11434',
   preferLocal: import.meta.env.VITE_PREFER_LOCAL === 'true' || undefined,
   openrouterApiKey: import.meta.env.VITE_OPENROUTER_API_KEY || undefined,
@@ -516,6 +540,11 @@ export async function saveSettings(patch: Partial<SettingsRecord>): Promise<void
       diffSummaryBackend: m.diffSummaryBackend,
       mergeAnalysisBackend: m.mergeAnalysisBackend,
       ollamaModel: m.ollamaModel,
+      ollamaIngestModel: m.ollamaIngestModel,
+      ollamaAnalyzeModel: m.ollamaAnalyzeModel,
+      ollamaChatModel: m.ollamaChatModel,
+      ollamaDiffSummaryModel: m.ollamaDiffSummaryModel,
+      ollamaMergeAnalysisModel: m.ollamaMergeAnalysisModel,
       ollamaBaseUrl: m.ollamaBaseUrl,
       // Persisted like every other backend preference. It was missing from this allowlist, so the
       // settings form wrote it, the in-memory store showed it set, and `saveSettings` silently

@@ -3,7 +3,8 @@
   import { goto } from '$app/navigation';
   import KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
   import { parseCameraSpec, type CameraSpec } from '$lib/3d/camera-presets';
-  import { buildGraphView } from '$lib/rdf/graph-view';
+  import { buildGraphView, hubNodeKeys, hubOnlyEdges } from '$lib/rdf/graph-view';
+  import { ALTITUDE_RANK, liftedAltitudes, type Altitude } from '$lib/rdf/fact-altitude';
   import { connectedComponents, nHopNeighbours } from '$lib/rdf/n-hop';
   import { bestSuggestion } from '$lib/rdf/view-suggestions';
   import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
@@ -25,12 +26,11 @@
     pendingStatements,
     updateStatement,
     addStatements,
-    setStatus,
-    hotSwapData
+    setStatus
   } from '$lib/stores/kb.svelte';
   import { termKey, type Statement, type Source } from '$lib/rdf/types';
   import MergeReview from '$lib/components/MergeReview.svelte';
-  import { allTypes } from '$lib/stores/entity-types.svelte';
+  import { allTypes, typeMap } from '$lib/stores/entity-types.svelte';
   import {
     RDF_TYPE, KB_URL, KB_LOCAL_PATH,
     KB_ICON2D, KB_ICON3D, KB_MESHY_TASK_ID, KB_MESHY_STATUS,
@@ -42,7 +42,7 @@
   import { icon2dOverrides, setIcon2d, clearIcon2d } from '$lib/stores/icon2d-overrides.svelte';
   import { LEAP_PRED, LEAP_LABEL_PRED, getLeap, leapNodeKeys } from '$lib/rdf/kb-leap';
   import { findDichotomies } from '$lib/rdf/dichotomy';
-  import { findKbByStableId, switchToKb, createKb, registerStableId, getCurrentKbId, getRegistry } from '$lib/storage/kb-registry';
+  import { findKbByStableId, switchToKb, createKb, registerStableId } from '$lib/storage/kb-registry';
 
   // Predicates that are internal KB metadata — never shown as graph edges/nodes
   const GRAPH_EXCLUDED_PREDICATES = new Set([
@@ -56,7 +56,7 @@
   import { entityProtection } from '$lib/rdf/protected-entities';
   import { buildEntitySet, defaultSetName, isEntitySet, setMembers } from '$lib/rdf/entity-sets';
   import { isCompact } from '$lib/stores/viewport.svelte';
-  import { Popover, ToggleGroup } from 'bits-ui';
+  import { Popover } from 'bits-ui';
   import { analysisRunning, lastAnalysisError } from '$lib/stores/auto-analyze.svelte';
   import { onMount, untrack } from 'svelte';
   import { fade } from 'svelte/transition';
@@ -81,15 +81,20 @@
       return !!(c.getContext('webgl2') || c.getContext('webgl') || c.getContext('experimental-webgl'));
     } catch { return false; }
   }
-  // WebGL capability. Reactive: false during SSR, re-detected true on the client in
-  // onMount below, so the gate flips to 3D after hydration. Pure capability flag —
-  // NEVER set false by a user action (that was the latch bug).
-  let webglAvailable = $state(checkWebGL());
+
+  // WebGL capability is checked ON DEMAND when a non-empty graph actually wants 3D. Creating a
+  // disposable context is not a cheap feature query: a production CPU profile measured this call
+  // at ~225ms on an RTX 3090. The old initializer + settings effect + onMount could each create one
+  // on the empty landing page, and the cost was then attributed unpredictably to an IndexedDB
+  // completion or animation frame. One on-demand check is enough when a graph actually mounts.
+  let webglAvailable = $state(false);
+  let webglChecked = $state(false);
   // Default to attempting 3D. Do NOT seed this from webglAvailable — that value is
   // false during SSR, which would stick use2D=true (2D) on a fresh load. The gate
   // (use2D || !webglAvailable) handles the no-WebGL case reactively instead.
   let use2D = $state(settings().prefer2D ?? false);
   let graph3DReady = $state(false);
+  let graphSettled = $state(false);
 
   let selected = $state<string | null>(null);
   let hoverTarget = $state<string | null>(null);
@@ -294,17 +299,20 @@
   let timelineCenter = $state<number | null>(null);
   let timelineTimeSource = $state<'event' | 'ingested'>('event');
 
-  // Keep labelFontSize and renderer in sync with settings (e.g. changed from settings page)
+  // Keep labelFontSize and renderer in sync with settings (e.g. changed from settings page).
+  // Only react to a REAL renderer-preference change. Re-running the expensive WebGL probe because
+  // an unrelated setting changed made a label-size edit capable of stalling the graph.
   $effect(() => { const sz = settings().nodeLabelFontSize; if (sz != null) labelFontSize = sz; });
+  let appliedPrefer2D = settings().prefer2D;
   $effect(() => {
     const p = settings().prefer2D;
-    if (p != null) {
+    if (p != null && p !== appliedPrefer2D) {
+      appliedPrefer2D = p;
       use2D = p;
-      // webglAvailable is otherwise a one-way latch — only ever set false (by "switch
-      // to 2D", the perf prompt, or a 3D error), never back true. Without re-detecting
-      // here, choosing 3D updates use2D but a stale !webglAvailable keeps the view in
-      // 2D, so the 3D preference is silently ignored. Re-check WebGL when 3D is chosen.
-      if (!p) webglAvailable = checkWebGL();
+      // A user explicitly choosing 3D gets a fresh capability check. The graph effect below owns
+      // the check so this settings reaction itself stays cheap and cannot create a context while
+      // the landing page is still empty.
+      if (!p) webglChecked = false;
     }
   });
 
@@ -314,10 +322,6 @@
   let cameraSpec = $state<CameraSpec | null>(null);
 
   onMount(async () => {
-    // Re-detect WebGL on the CLIENT — the $state initializer can carry a stale SSR
-    // value (false), which would keep the gate in 2D on a fresh load even when the
-    // browser supports WebGL. Guarantees a real check.
-    webglAvailable = checkWebGL();
     const params = $page.url.searchParams;
     const l = params.get('layout');
     if (l && ['force','focus','source','type','hub','timeline','order','hierarchy'].includes(l)) layout = l as typeof layout;
@@ -329,6 +333,8 @@
     if (src) selectedSources = new Set(src.split(',').filter(Boolean));
     const typ = params.get('types');
     if (typ) selectedTypes = new Set(typ.split(',').filter(Boolean));
+    const d = params.get('detail');
+    if (d && DETAIL_LEVELS.some((l) => l.id === d)) detailLevel = d as DetailId;
     // ?cam=iso | top | side | front | "az,el[,dist]" — aims the 3D camera. Absent keeps the
     // historical straight-on view, so every existing screenshot baseline is unaffected.
     // Exists so visual tests can shoot from an angle that can actually SEE the z axis
@@ -400,6 +406,8 @@
     if (activeFilters.size > 0) params.set('f', [...activeFilters].join(',')); else params.delete('f');
     if (selectedSources.size > 0) params.set('src', [...selectedSources].join(',')); else params.delete('src');
     if (selectedTypes.size > 0) params.set('types', [...selectedTypes].join(',')); else params.delete('types');
+    // 'detailed' is the default, so it stays out of the URL; every other rung is shareable.
+    if (detailLevel !== 'detailed') params.set('detail', detailLevel); else params.delete('detail');
     const qs = params.toString();
     replaceState(qs ? `?${qs}` : '?', {});
   });
@@ -429,6 +437,98 @@
   /** Show shared literal values ("production", "high") as category nodes. Unique literals
    *  are NEVER nodes — they are attributes (F83). */
   let showCategoryNodes = $state(true);
+
+  // DETAIL — a hierarchy of how much of the graph to draw, coarsest at the top.
+  //
+  // Matt, 2026-08-28: "very cluttered with just a few notes to review... a filter set to detailed
+  // (above log), and allow users to select higher levels, up to Hubs as highest."
+  //
+  // Measured across 26 graphs, 73.4% of all facts classify as record or log, and the capture path
+  // mints provenance edges faster than it mints anything a person would open. So DETAILED IS THE
+  // DEFAULT and logs are hidden until asked for — the opposite of this control's first draft,
+  // which defaulted to drawing everything on the theory that hiding by default is dishonest. It
+  // is not dishonest when the count of what is hidden is on screen beside the control; it is just
+  // legible. `all` is one click away and says exactly what it costs.
+  //
+  // HUBS IS THE TOP RUNG, not a separate filter: the ladder is one question asked at six
+  // magnifications — how much structure do I want to see at once — and "only the nodes holding
+  // this graph together" is the coarsest honest answer to it.
+  type DetailId = 'all' | 'detailed' | 'evidence' | 'judgments' | 'decisions' | 'hubs';
+  const DETAIL_LEVELS: {
+    id: DetailId; label: string; floor: Altitude | null; hubsOnly?: boolean; title: string;
+  }[] = [
+    { id: 'all', label: 'all', floor: null,
+      title: 'Everything, including logs — timestamps, provenance, "this happened" facts' },
+    { id: 'detailed', label: 'detailed', floor: 'record',
+      title: 'Above logs. Records and up: file links, provenance, types — the default' },
+    { id: 'evidence', label: 'evidence', floor: 'evidence',
+      title: 'Measurements and up — drops mechanical records a script settles' },
+    { id: 'judgments', label: 'judgments', floor: 'judgment',
+      title: 'Verdicts no check can settle, and the decisions above them' },
+    { id: 'decisions', label: 'decisions', floor: 'decision',
+      title: 'Only facts that foreclose options' },
+    { id: 'hubs', label: 'hubs', floor: 'record', hubsOnly: true,
+      title: 'Only the nodes holding this graph together, and how they connect to each other' },
+  ];
+
+  let detailLevel = $state<DetailId>('detailed');
+  /**
+   * Layout options as data, so LAYOUT and DETAIL can render as two matching dropdowns.
+   *
+   * Matt, 2026-08-28, twice: the detail control belongs beside layout, and "Layout should also be
+   * dropdown". Eight chips wrapping over three lines were pushing detail onto its own row below,
+   * which is why it kept reading as a separate thing no matter which group it lived in. Two
+   * selects side by side is the shape that actually says "these are the same kind of control".
+   *
+   * `available` keeps the conditional options honest: clustering by source is meaningless with one
+   * source, and by type with no types.
+   */
+  const LAYOUTS: { value: typeof layout; label: string; title: string; available?: () => boolean }[] = [
+    { value: 'force', label: 'free', title: 'Free force layout — nodes repel, links pull them together' },
+    { value: 'focus', label: 'focus', title: 'Focus the selected node and its neighbours; push the rest away' },
+    { value: 'source', label: 'source', title: 'Cluster nodes by the source they came from',
+      available: () => sources().filter((s) => s.kind !== 'analysis').length > 1 },
+    { value: 'type', label: 'type', title: 'Cluster nodes by entity type',
+      available: () => activeEntityTypes.length > 0 },
+    { value: 'hub', label: 'hub', title: 'Pull the most-connected hubs toward the centre' },
+    { value: 'timeline', label: 'time', title: 'Lay nodes out left-to-right on a timeline by date' },
+    // value stays "order" (URL/state); label is "arrange" so it is not confused with structural
+    // hnav ordering — this is a manual drag grid.
+    { value: 'order', label: 'arrange', title: 'Hand-arrange nodes on a grid — drag to reorder' },
+    { value: 'hierarchy', label: 'tree', title: 'Hierarchical tree — prerequisites above, from skos:broader and kpred:depends-on' },
+  ];
+  const availableLayouts = $derived(LAYOUTS.filter((l) => l.available?.() ?? true));
+  // Chip + popover, matching the previews control. Matt, 2026-08-28: "I like the previews dropdown
+  // styling much better than the new ones on graph view." A bare <select> inherits the browser's
+  // widget and reads as foreign against an overlay built entirely from chips — and it was the
+  // thing stretching to fill its row. The chip sizes to its own label by construction.
+  let showLayoutMenu = $state(false);
+  let showDetailMenu = $state(false);
+  /**
+   * Which nodes are ALLOWED to be hubs (Matt, 2026-08-28: "In type settings we 'allow hub
+   * classification'. By default files and log types are not able to become hubs").
+   *
+   * This is the TYPE gate. It is the second of two: graph-view.ts independently refuses hub
+   * status to any node whose every edge is a record or a log, which is what actually catches a
+   * dictated note — captured note entities carry no rdf:type at all, so a type gate alone would
+   * never have seen them.
+   */
+  const hubEligible = $derived.by(() => {
+    const types = typeMap();
+    const typeOf = new Map<string, string>();
+    for (const st of visible) {
+      if (st.p.value === RDF_TYPE && st.s.kind === 'iri' && st.o.kind === 'iri') {
+        typeOf.set(termKey(st.s), st.o.value);
+      }
+    }
+    return (nodeKey: string) => {
+      const iri = typeOf.get(nodeKey);
+      if (!iri) return true;            // untyped nodes are handled by the substantive-degree rule
+      return types.get(iri)?.allowHub !== false;
+    };
+  });
+
+  const detail = $derived(DETAIL_LEVELS.find((d) => d.id === detailLevel) ?? DETAIL_LEVELS[1]);
 
   // Build a set of subject IRIs matching the selected entity types
   const typedSubjects = $derived.by(() => {
@@ -468,6 +568,15 @@
       !GRAPH_EXCLUDED_PREDICATES.has(s.p.value)
     )
   );
+
+  // Run before the graph branch updates, so a 3D graph does not mount a throwaway 2D canvas first.
+  // No graph means no context allocation; once facts arrive, the saved renderer preference is
+  // authoritative and the capability probe runs exactly once when 3D is requested.
+  $effect.pre(() => {
+    if (visible.length === 0 || use2D || webglChecked) return;
+    webglChecked = true;
+    webglAvailable = checkWebGL();
+  });
   $effect(() => {
     if (visible.length === 0 || use2D || !webglAvailable) graph3DReady = false;
   });
@@ -522,9 +631,41 @@
   // A literal earns a node by being SHARED ("production", 53 features — a real category).
   // A value that appears once connects nothing; it belongs in the node panel, not on the
   // canvas. Nodes: 1,234 -> 271, and every one of them means something.
-  const graphView = $derived(buildGraphView(visible, { categoryNodes: showCategoryNodes }));
+  //
+  // The altitude floor rides HERE rather than in `visible` on purpose. Splicing statements out
+  // of `visible` is the mistake documented above: it empties the topology, and an empty
+  // `visible` draws the marketing landing page over the user's own graph.
+  const graphView = $derived(
+    buildGraphView(visible, {
+      categoryNodes: showCategoryNodes,
+      minAltitude: detail.floor ?? undefined,
+    }),
+  );
+
+
+  // The hubs rung, applied AFTER the altitude floor. It reads `graphView.edges` rather than
+  // `drawn` deliberately: `nodeDegrees` is built from `drawn`, so deriving the rung's hub set
+  // from `drawn` would close a cycle.
+  const detailHubKeys = $derived(detail.hubsOnly ? hubNodeKeys(graphView.edges, hubLimit, { eligible: hubEligible }) : []);
+
   /** Statements the canvas actually draws. */
-  const drawn = $derived(graphView.edges);
+  const drawn = $derived(
+    detail.hubsOnly ? hubOnlyEdges(graphView.edges, detailHubKeys) : graphView.edges,
+  );
+
+  /** Everything the detail ladder took off the canvas — the floor AND the hubs rung. */
+  const detailHidden = $derived.by(() => {
+    const shown = new Set<string>();
+    for (const e of drawn) { shown.add(termKey(e.s)); shown.add(termKey(e.o)); }
+    let extraNodes = 0;
+    const beforeRung = new Set<string>();
+    for (const e of graphView.edges) { beforeRung.add(termKey(e.s)); beforeRung.add(termKey(e.o)); }
+    for (const key of beforeRung) if (!shown.has(key)) extraNodes++;
+    return {
+      statements: graphView.hidden.statements + (graphView.edges.length - drawn.length),
+      nodes: graphView.hidden.nodes + extraNodes,
+    };
+  });
   /** Literal facts that belong to a node rather than the canvas (node panel reads these). */
   const nodeAttributes = $derived(graphView.attributes);
 
@@ -617,17 +758,8 @@
   });
 
   // Hub threshold: median degree × 2 or 3, whichever is higher — only truly connected nodes qualify
-  const hubs = $derived.by(() => {
-    const entries = Array.from(nodeDegrees.entries()).sort(([, a], [, b]) => b - a);
-    if (entries.length === 0) return [];
-    const degrees = entries.map(([, d]) => d);
-    const median = degrees[Math.floor(degrees.length / 2)];
-    const minDeg = Math.max(median * 2, 3);
-    return entries
-      .filter(([, d]) => d >= minDeg)
-      .slice(0, hubLimit)
-      .map(([key]) => key);
-  });
+  // Same rule as the depth ladder's top rung — one definition, in rdf/graph-view.ts.
+  const hubs = $derived(hubNodeKeys(drawn, hubLimit, { eligible: hubEligible }));
 
   // All entity IRIs (subjects + non-type-definition objects) in the confirmed KB
   // that have no rdf:type statement. Includes entities that only appear as objects.
@@ -1374,69 +1506,27 @@
 
   let leapImporting = $state(false);
   let flyToGhost = $state(false);
-  /** Data pre-loaded during fly, injected on arrival. */
-  let pendingLeapData: {
-    kbId: string;
-    stmts: Statement[];
-    srcs: Source[];
-    sourceStableId?: string; // the KB we're leaving — used to find the return leap
-  } | null = null;
+  /** Target retained while the 2D camera finishes its departure animation. */
+  let pendingLeapKbId: string | null = null;
 
   /** Called by KnowledgeGraph2D when camera fly animation completes. */
   function handleFlyEnd() {
     flyToGhost = false;
-    if (!pendingLeapData) return;
-    const { kbId, stmts, srcs, sourceStableId } = pendingLeapData;
-    pendingLeapData = null;
-    // Hot-swap visual data — no reload, no overlay
-    hotSwapData(stmts, srcs);
-    // Update session so next page load / navigation uses the target KB
-    sessionStorage.setItem('sessionKbId', kbId);
-    localStorage.setItem('currentKbId', kbId);
-
-    // Find and select the return leap node — gives the user orientation and a way back.
-    // Look for any entity in the new KB that has a leap pointing to the source KB's stable ID.
-    if (sourceStableId) {
-      const returnStmt = stmts.find(
-        s => s.p.value === LEAP_PRED && s.o.kind === 'literal' && s.o.value === sourceStableId
-          && (s.status === 'confirmed' || s.status === 'refined')
-      );
-      if (returnStmt && returnStmt.s.kind === 'iri') {
-        selected = `i:${returnStmt.s.value}`;
-        return;
-      }
-    }
-    // Fallback: find any leap node in the new KB as an anchor point
-    const anyLeap = stmts.find(
-      s => s.p.value === LEAP_PRED && (s.status === 'confirmed' || s.status === 'refined')
-    );
-    if (anyLeap && anyLeap.s.kind === 'iri') {
-      selected = `i:${anyLeap.s.value}`;
-    } else {
-      selected = null;
-    }
+    if (!pendingLeapKbId) return;
+    const kbId = pendingLeapKbId;
+    pendingLeapKbId = null;
+    // Finish the visual departure, then perform a real graph switch. Merely replacing the arrays
+    // would leave the store singleton and Dexie live query attached to the graph we just left.
+    switchToKb(kbId);
   }
 
-  /** Pre-load target KB data and start fly animation (2D), or fall back to direct switch (3D). */
-  async function startLeapTransition(kbId: string, stmts: Statement[], srcs: Source[]) {
-    const currentEntry = getRegistry().find(k => k.id === getCurrentKbId());
-    const sourceStableId = currentEntry?.stableId ?? settings().kbStableId;
+  /** Start the 2D departure animation, or perform a direct durable switch in 3D. */
+  async function startLeapTransition(kbId: string) {
     if ((use2D || !webglAvailable) && ghostGraph) {
-      pendingLeapData = { kbId, stmts, srcs, sourceStableId };
+      pendingLeapKbId = kbId;
       flyToGhost = true;
     } else {
-      // 3D mode or no ghost graph — hot-swap immediately, find return node
-      hotSwapData(stmts, srcs);
-      sessionStorage.setItem('sessionKbId', kbId);
-      localStorage.setItem('currentKbId', kbId);
-      // Select the return leap node if one exists
-      if (sourceStableId) {
-        const ret = stmts.find(s => s.p.value === LEAP_PRED && s.o.kind === 'literal' && s.o.value === sourceStableId
-          && (s.status === 'confirmed' || s.status === 'refined'));
-        selected = ret?.s.kind === 'iri' ? `i:${ret.s.value}` : null;
-      } else {
-        selected = null;
-      }
+      switchToKb(kbId);
     }
   }
 
@@ -1465,7 +1555,7 @@
           tempDb.sources.orderBy('ingestedAt').reverse().toArray(),
         ]);
         tempDb.close();
-        await startLeapTransition(found.id, stmts, srcs);
+        await startLeapTransition(found.id);
       } catch (e) {
         // Fallback to reload
         switchToKb(found.id);
@@ -1515,11 +1605,11 @@
         await tempDb.statements.bulkPut(stmts);
         registerStableId(kbEntry.id, entityLeap.target, stmts.length);
         tempDb.close();
-        await startLeapTransition(kbEntry.id, stmts, [src]);
+        await startLeapTransition(kbEntry.id);
       } catch (e) {
         alert(`Failed to import docs graph: ${e instanceof Error ? e.message : String(e)}`);
         flyToGhost = false;
-        pendingLeapData = null;
+        pendingLeapKbId = null;
       } finally {
         leapImporting = false;
       }
@@ -1770,18 +1860,23 @@
   }
 </script>
 
-<div class="viewport" onpointermove={onGraphPointerMove}>
+<div class="viewport">
   <section
     class="graph"
+    aria-label={visible.length === 0 ? 'Getting started' : 'Knowledge graph'}
+    onpointermove={onGraphPointerMove}
     class:graph-landing={visible.length === 0}
     data-graph-renderer={visible.length === 0 ? 'landing' : use2D || !webglAvailable ? '2d' : '3d'}
     data-graph-ready={graph3DReady}
+    data-graph-settled={visible.length === 0 || graphSettled}
   >
   {#if visible.length === 0}
     <LandingPage />
   {:else if use2D || !webglAvailable}
     <KnowledgeGraph2D
       statements={visible}
+      topologyStatements={drawn}
+      flooredStatementIds={graphView.hidden.statementIds}
       {selected}
       {layout}
       {timelineZoom}
@@ -1804,6 +1899,7 @@
       onhover={(k) => (hoverTarget = k)}
       onlabelsmove={setNodeLabels}
       onmarkersmove={(m) => { markerLabels = m; }}
+      onsettledchange={(settled) => { graphSettled = settled; }}
       ontimelinepan={(c) => { timelineCenter = c; }}
       {nodeOrder}
       onreorder={(order) => { nodeOrder = order; }}
@@ -1822,6 +1918,8 @@
         <KnowledgeGraph
           {cameraSpec}
           statements={visible}
+          topologyStatements={drawn}
+          flooredStatementIds={graphView.hidden.statementIds}
           {selected}
           {layout}
           {timelineZoom}
@@ -1846,6 +1944,7 @@
           onhover={(k) => (hoverTarget = k)}
           onlabelsmove={setNodeLabels}
           onmarkersmove={(m) => { markerLabels = m; }}
+          onsettledchange={(settled) => { graphSettled = settled; }}
           ontimelinepan={(c) => { timelineCenter = c; }}
           onready={() => (graph3DReady = true)}
           highlighted={[...highlightedSet]}
@@ -1998,31 +2097,68 @@
 
   <!-- FORCE -->
   <div class="overlay-group">
-    <!-- "layout", not "force". The group was named after ONE of the options inside it, so the
-         heading and the first chip said the same word while meaning different things — and the
-         other seven options were not forces at all. -->
-    <span class="group-label mono">layout</span>
-    <ToggleGroup.Root
-      type="single"
-      value={layout}
-      onValueChange={(v) => { if (v) layout = v as typeof layout; }}
-      class="tg-row"
-    >
-      <ToggleGroup.Item value="force" class="tg-chip" title="Free force layout — nodes repel, links pull them together"><span class="lbl mono">free</span></ToggleGroup.Item>
-      <ToggleGroup.Item value="focus" class="tg-chip" title="Focus the selected node and its neighbours; push the rest away"><span class="lbl mono">focus</span></ToggleGroup.Item>
-      {#if sources().filter(s => s.kind !== 'analysis').length > 1}
-        <ToggleGroup.Item value="source" class="tg-chip" title="Cluster nodes by the source they came from"><span class="lbl mono">source</span></ToggleGroup.Item>
-      {/if}
-      {#if activeEntityTypes.length > 0}
-        <ToggleGroup.Item value="type" class="tg-chip" title="Cluster nodes by entity type"><span class="lbl mono">type</span></ToggleGroup.Item>
-      {/if}
-      <ToggleGroup.Item value="hub" class="tg-chip" title="Pull the most-connected hubs toward the centre"><span class="lbl mono">hub</span></ToggleGroup.Item>
-      <ToggleGroup.Item value="timeline" class="tg-chip" title="Lay nodes out left-to-right on a timeline by date"><span class="lbl mono">time</span></ToggleGroup.Item>
-      <!-- value stays "order" (URL/state); label is "arrange" so it isn't
-           confused with structural hnav ordering — this is a manual drag grid. -->
-      <ToggleGroup.Item value="order" class="tg-chip" title="Hand-arrange nodes on a grid — drag to reorder (basis for page layout)"><span class="lbl mono">arrange</span></ToggleGroup.Item>
-      <ToggleGroup.Item value="hierarchy" class="tg-chip" title="Hierarchical tree — prerequisites above, from skos:broader and kpred:depends-on"><span class="lbl mono">tree</span></ToggleGroup.Item>
-    </ToggleGroup.Root>
+    <!-- "view", not "layout": the group now holds TWO controls that each name themselves, and
+         reusing one of their names for the heading is the same confusion the old "force" heading
+         had — a label that means something different from the thing beside it. -->
+    <span class="group-label mono">view</span>
+    <div class="chip-row">
+      <Popover.Root bind:open={showLayoutMenu}>
+        <Popover.Trigger>
+          {#snippet child({ props })}
+            <button {...props} class="chip" class:active={showLayoutMenu}
+              title={availableLayouts.find((l) => l.value === layout)?.title}>
+              <span class="lbl mono">{availableLayouts.find((l) => l.value === layout)?.label ?? layout}</span>
+              <span class="arr mono">{showLayoutMenu ? '▲' : '▼'}</span>
+            </button>
+          {/snippet}
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Content class="filter-popover" sideOffset={6}>
+            {#each availableLayouts as l (l.value)}
+              <button class="chip small" class:active={layout === l.value} title={l.title}
+                onclick={() => { layout = l.value; showLayoutMenu = false; }}>
+                <span class="lbl mono">{l.label}</span>
+              </button>
+            {/each}
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
+
+      <Popover.Root bind:open={showDetailMenu}>
+        <Popover.Trigger>
+          {#snippet child({ props })}
+            <button {...props} class="chip" class:active={detailLevel !== 'detailed' || showDetailMenu}
+              title={detail.title}>
+              <span class="lbl mono">{detail.label}</span>
+              <span class="arr mono">{showDetailMenu ? '▲' : '▼'}</span>
+            </button>
+          {/snippet}
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Content class="filter-popover" sideOffset={6}>
+            {#each DETAIL_LEVELS as level (level.id)}
+              <button class="chip small" class:active={detailLevel === level.id} title={level.title}
+                onclick={() => { detailLevel = level.id; showDetailMenu = false; }}>
+                <span class="lbl mono">{level.label}</span>
+              </button>
+            {/each}
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
+    </div>
+    <!--
+      HIDDEN MUST BE VISIBLY HIDDEN (Matt's own condition on this feature). A canvas that is
+      quietly missing 900 facts is not a cleaner graph, it is a graph that lies about its size.
+      The node count is the one that answers "is it less cluttered"; the fact count is the one
+      that answers "what did that cost me".
+    -->
+    {#if detailHidden.statements > 0}
+      <span class="depth-hidden mono" title="Hidden from the canvas only. Every fact is still in the graph, and still listed in a node's panel.">
+        {detailHidden.nodes} node{detailHidden.nodes === 1 ? '' : 's'} ·
+        {detailHidden.statements} fact{detailHidden.statements === 1 ? '' : 's'} hidden
+      </span>
+    {/if}
+  
     {#if podMode}
       <span class="pod-indicator mono" title="Pod view is on — arrivals from your currents drift in translucent until you accept them. Toggle it on the Graph tab.">🐋 pod</span>
     {/if}
@@ -2279,7 +2415,10 @@
         <img src={expandedAsset.url} alt="expanded asset" />
       </button>
     {:else if expandedAsset.kind === 'video'}
-      <video class="asset-media" src={expandedAsset.url} controls autoplay loop playsinline></video>
+      <!-- Uploaded video assets do not include a separate caption file. Keep playback user-initiated;
+           a fake empty captions track would be more misleading than documenting that limitation. -->
+      <!-- svelte-ignore a11y_media_has_caption -->
+      <video class="asset-media" src={expandedAsset.url} controls preload="metadata" playsinline></video>
     {:else}
       <div
         class="asset-media asset-glb"
@@ -2322,7 +2461,8 @@
     {#if expandedAsset.kind === 'image'}
       <img src={expandedAsset.url} alt="fullscreen asset" />
     {:else if expandedAsset.kind === 'video'}
-      <video class="asset-fs-media" src={expandedAsset.url} controls autoplay loop playsinline></video>
+      <!-- svelte-ignore a11y_media_has_caption -->
+      <video class="asset-fs-media" src={expandedAsset.url} controls preload="metadata" playsinline></video>
     {:else}
       <div class="asset-fs-media asset-glb">
         {#key expandedAsset.url}<AssetGlbViewer url={expandedAsset.url} />{/key}
@@ -2982,6 +3122,27 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.35rem;
+  }
+
+  /* layout + detail use the shared .chip / .filter-popover styling, like previews. */
+
+  .detail-select {
+    background: var(--surface);
+    color: var(--fg);
+    border: 1px solid var(--line);
+    border-radius: 0.25rem;
+    font-size: 0.6rem;
+    padding: 0.2rem 0.3rem;
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Deliberately quiet but never absent: the count is a disclosure, not a warning. */
+  .depth-hidden {
+    font-size: 0.55rem;
+    color: var(--muted);
+    padding: 0 0.2rem;
+    letter-spacing: 0.04em;
   }
 
   :global(.filter-popover) {
@@ -3949,36 +4110,7 @@
     50% { box-shadow: 0 0 10px rgba(245, 158, 11, 0.35); }
   }
 
-  /* ── bits-ui ToggleGroup (layout selector) ── */
-  :global(.tg-row) {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-  }
-  :global(.tg-chip) {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.3rem 0.7rem;
-    border-radius: 999px;
-    border: 1px solid var(--line);
-    background: var(--surface);
-    color: var(--muted);
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    cursor: pointer;
-    transition: all 0.15s;
-    user-select: none;
-  }
-  :global(.tg-chip:hover) {
-    border-color: var(--muted-2, var(--muted));
-    color: var(--ink-2, var(--ink));
-  }
-  :global(.tg-chip[data-state="on"]) {
-    background: var(--accent-soft);
-    border-color: var(--accent);
-    color: var(--accent);
-  }
+  /* The layout selector is a plain <select> now; the ToggleGroup chip styles it used are gone. */
   /* Pod view indicator (F29 Currents) — shown when pod view is on (toggled on the
      Graph tab). Sky-blue, matching arrival halos. Read-only status chip, not a button. */
   .pod-indicator {

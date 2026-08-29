@@ -1,10 +1,308 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-08-17.** Working branch: `plan/content-operations`.
-The generated brief now reports **9 commits ahead of `origin/plan/content-operations`**, **14 ahead
-of `dev`**, no open PR, and **106 dirty status entries** across the broad uncommitted review patch
-and local workspace/export artifacts. The F136 scaffold is committed as `5f33879`; it is not
-uncommitted work.
+**Last updated: 2026-08-29.** Working branch: `feat/task-bridge` (PR #208, stacked on #207 /
+`fix/claude-review-hardening`). PRs target `dev`. Note the branch tracks `origin/dev` directly, so
+a bare `git push` would push to dev — always `git push origin HEAD:refs/heads/<branch>`.
+
+## ▶ SESSION 2026-08-29 (latest) — honor 3D, and make voice truly opt-in
+
+- **Renderer selection:** Getting Started no longer silently changes a saved/default 3D choice to
+  2D. Intentional saved 2D, no-WebGL fallback, FPS detection, the downgrade notice, and its manual
+  action remain. The production smoke gate covers all three paths.
+- **Starter media:** the everyday starter graph now demonstrates a GIF, WebM video, and GLB model;
+  the asset render path is covered by the production smoke gate.
+- **Voice is explicit opt-in:** a fresh profile does not import or request Kokoro, Hume, Whisper,
+  Transformers, ONNX, a model, WASM, microphone access, or Hume configuration. Saved explicit
+  consent remains supported. Imported Turtle preferences cannot grant voice consent.
+- **Initial-load boundary:** Shelly chat, Hume narration, Kokoro, and the voice catalogue are loaded
+  dynamically only after the corresponding user action. PWA precache excludes optional voice/ML
+  runtimes and WASM while retaining runtime caching after an opted-in use.
+- **Verification:** 187 unit files / 2,614 unit tests plus 5 Playwright performance-probe tests;
+  `svelte-check` 0/0; production build; deploy-gate smoke 5/5; offline evidence 81 tested / 17
+  declared / 0 undeclared; fresh production navigation
+  made zero optional voice/ML or WASM requests. PWA precache is 484 entries / 31,023.45 KiB with
+  zero optional-runtime leaks.
+- **CI boundary fixed:** the five performance-probe tests had launched Playwright from the Vitest
+  job, where Actions intentionally installs no browser. Pure performance rules remain in Vitest;
+  browser probes now run in the Chromium E2E job that already owns the browser dependency.
+- **CodeQL boundary fixed:** task documents use atomic create-if-absent; drained n8n rows are
+  validated and allowlist-serialized locally before a locked queue write; integration version
+  responses are structurally validated before they can reach the review queue. Four correctness
+  warnings in storage-event tests and a URL-like label assertion were corrected as well.
+- **Full-E2E blockers fixed:** cascade aggregation now inspects all pending bookkeeping even when
+  the detail control hides low-altitude rows, so unplanned completion logs still produce their
+  required purpose question. The hierarchy regression drives the current layout popover, nav
+  assertions await SvelteKit navigation, and Indico diagnostics no longer race a full-page reload
+  against their settings write.
+
+## ▶ SESSION 2026-08-28 (latest) — the bridge, the schedule, and eight standing jobs
+
+**MATT'S STATED PRIORITIES (F159, his order):** 1 dictated notes → actionable agent task ·
+2 SKOS/SHACL alignment across app features · 3 a terse review process. **1 is DONE.**
+
+- **F160 task bridge** — `tasks-export.ts` writes a markdown FORM for every task missing the fields
+  only a person can supply; `tasks-import.ts` turns answers into pending facts and PROPOSES the
+  promotion out of `proposed` rather than performing it. No app change, no MCP, no harness adapter:
+  the crossing point is the workspace sync, which already writes every graph to disk as Turtle.
+- **F162 n8n document output** — live workflow `VarVHunvq5O6oZVW` on Matt's n8n, header-auth gated,
+  reusing his existing Outlook credential. Proven by executions 3531/3532.
+- **F163 the schedule had NEVER run** — 3,216 consecutive failures: the installed crontab line had
+  no `cd`, so cron ran from `$HOME`. The installer was already correct; nothing re-runs it. **And
+  the installer WIPED the crontab when re-run** (`grep -v` exiting 1 under `set -e` killed the
+  subshell before the echo). Both fixed. **Matt's other cron entries, if any, were lost.**
+- **Eight jobs now scheduled** (quarter-hourly trigger, drain-not-cron): pull-notes 15m ·
+  drain-queue and offer-tasks 1h · reconcile 6h · orchestrate and review-stars 24h ·
+  integration-health 168h.
+- **F164 graph-cleanup · F166/F167 generation catalogue (20 tools, API-gated) · F168 integration
+  health** — all script tier. **F161 meme story · F165 per-graph autonomy · F156/F157** recorded,
+  not built.
+- **Notes are Documents** (Matt) — typed at capture. The deterministic type survey could settle 1
+  of 183 entities, because most untyped entities were notes and no type existed for one to have.
+
+**KNOWN-BAD, do not rediscover:**
+- `review.test.ts:184` fails — bisected to review-page work carried in from an earlier session, NOT
+  from this work. Recorded on `bd071d8`.
+- **Every good audio-portrait model fails the licence gate** — LivePortrait, MuseTalk and the whole
+  Tencent Hunyuan family all report NOASSERTION. Open-weight, not OSI-open. So does `open-webui`.
+- **The second cause of bad typing is unfixed:** the extractor emits `used-by` / `has-property` /
+  `has-purpose`, which appear in NO built-in type's `schemaPredicates`. That is F149's rdfs:domain
+  gap from the other end, and it is why the model has to type everything itself.
+- `server-health` reports the kernel has security updates **installed but not in effect** — needs a
+  reboot window. Matt's call.
+
+**MEASUREMENT LESSON, cost two wrong numbers in one day:** parsing raw TTL counts reification
+triples the importer folds into `Statement` fields. Measure the graph the app builds, not the file.
+
+## ▶ SESSION 2026-08-28 (later) — detail ladder, typing, markdown interchange, SKOS/SHACL
+
+**Built and tested (97 files / 1,493 tests, svelte-check 0/0, smoke gate 4/4):**
+
+- **F144/F151 detail ladder** — `all · detailed · evidence · judgments · decisions · hubs`, default
+  `detailed`, on the graph view (in the layout group) and the review queue. It did NOT filter when
+  first shipped: the floor was applied to `topologyStatements`, and both renderers resurrect a
+  subject node for any excluded statement (right for attributes, wrong for a floored fact). Fixed
+  via `hidden.statementIds`. **Two correct rules composing into a wrong one.**
+- **F148 hub gates** — a node whose every edge is a record/log is never a hub at any degree, plus
+  `EntityTypeDef.allowHub` (false for Document/Web Page). The type gate ALONE would not have
+  worked: captured note entities carry no `rdf:type` at all.
+- **F147 altitude proposals + user override** — `setUserAltitudes` exists and **nothing calls it**.
+- **F145** — verified: `setStatus` has no cascade, so rejecting a fact leaves its `extracted-from`
+  link CONFIRMED. The approve direction works via auto-trust; the reject direction is broken.
+- **F150 vocabulary revalidation** — computes what a shared-vocabulary change does to the whole
+  graph, reporting facts LEAVING the review queue first. Pure function, **no caller yet**.
+- **entity-typing** — a `type` stage in the ingest pipeline; types are set before review.
+- **F153 markdown interchange** — `task-markdown.ts` renders a task (checklist of what is missing)
+  and parses a filled-in one back. Frontmatter only, never prose. **Nothing writes the files yet.**
+- **F155 controlled vocabularies** — `static/reckons-vocabulary.ttl`, 300 quads, SKOS schemes +
+  SHACL shapes. graph-lint READS the lifecycle from it and checks altitude/task-state/status. The
+  check was PROVED to fire with a probe. **No app code reads it** — the unions are still in TS.
+
+**Measurement lesson, learned twice in one day:** parsing raw TTL counts reification triples the
+importer folds into Statement fields. It inflated personal-notes from 547 facts to 1,739 and
+coverage from 96.3% down to 39.6% — and the second wrong number was used to justify building F147.
+**Measure the graph the app builds, not the file format.**
+
+**Pre-existing broken test:** `review.test.ts:184` fails on the uncommitted patch and passes on the
+committed page. Bisected — not from this session's work. Fix before that patch lands.
+
+**Recorded, not built:** F146 extraction strategies (scored corpus FIRST), F152 ask-before-extract,
+F154 headless-orchestration positioning (the SKOS/SHACL half is aspiration), F156 terse
+communication with sender context (SKOS mapping properties are the standard answer), F157 the verb
+— expand and refine a statement, which no surface is organized around today.
+
+## ▶ ROADMAP ADDITIONS (2026-08-28) — F141 interview mode, F142 graph goal, F143 game dev
+
+Three new roadmap entries, all TTL only, no code. `graph-lint` clean apart from the untracked-file
+dead links below.
+
+- **F141 `kb:interview-mode`** (planned, 4 phases) — in Add (`/ingest`), the model interviews the
+  user instead of waiting for input. **The honest part:** `scripts/agent/interview.ts`
+  (`kb:async-desk`, functional) already computes open questions and records answers — in the
+  TERMINAL, over JSONL on disk, unreachable from the browser. So this is not "add a UI"; it is
+  lifting one shared definition of an open question into `src/lib/rdf/`, then building the
+  proactive half neither channel has. Governed by an existing principle rather than a new one:
+  *an agent must not ask what it can verify*.
+- **F142 `kb:graph-goal`** (planned) — minted because F141 needs it and F99.1 already named it
+  missing. "telos" appears exactly once in the roadmap: in the 2026-08-13 note saying it is absent.
+  Without it, ranking can only produce what is IMMINENT, never what is IMPORTANT — and question
+  generation can only find what is incomplete, never what matters.
+- **F143 `kb:game-development`** (**speculative**, 4 phases) — a game's canon as a graph. The sharp
+  framing: *we are not entering the asset-generation market, we are entering the approval market*.
+  Status is speculative and not planned because no game developer has asked for this; phase 1 is a
+  falsifiable experiment on shipped machinery (one real canon, does it catch anything a human
+  missed) and phases 3-4 should not be built before it.
+- **License gate** on Matt's three TS engines, GitHub API, recorded in `reckons-competitive.ttl`:
+  MavonEngine/Core MIT 30★ · WesUnwin/three-game-engine MIT 111★ (rapier physics) ·
+  rogerscg/era-engine MIT 72★ **DORMANT since 2023-01-06**. All three are Three.js wrappers, which
+  incidentally settles F59.1's open weighing: in-process, no server, offline-first thesis intact.
+- **F59.1 `kb:int-game-engine` is NOT this and must not be merged with it** — it asks an engine to
+  render OUR graph; F143 asks our graph to hold a GAME.
+
+## ▶ LATEST (2026-08-28) — dictated instructions become tasks, not invented facts
+
+**A dictated sentence can ask for work, and extraction had no mode for that.** "Run research on
+grants for kids sports" went to a machine whose only output is assertions, so it invented some
+(`research has-subject grants`) and lost the actual request. `src/lib/rdf/note-intent.ts` now
+routes each sentence BEFORE the model sees it; an instruction is written into the existing F87
+task vocabulary instead (`ktype:AgentTask` + `kpred:goal`, verbatim).
+
+- **Script tier, running first.** English commands have a shape a rule can see — bare verb in
+  first position, no subject in front. Deterministic, free, backend-independent, and a note that
+  is wholly an instruction costs NO extraction call at all. Follows `triple-shape.ts`.
+- **Three bands.** Confident → task only. Ambiguous → task proposal AND extraction, both pending,
+  human keeps one. No signal → prose as before. Nothing is ever dropped, and every routing carries
+  its own explanation in `signals`.
+- **A dictated task is NOT runnable.** State `proposed`, no `kpred:effect`, no `kpred:done-when` —
+  neither was said out loud. `blockedReason` refuses it by name. Voice must never be a path to
+  unsupervised action.
+- **The goal is the transcript, verbatim**, fillers and comma splices included.
+- Roadmap: `kb:orch-dictated-task` (F87 phase 6, `functional`). 39 + 5 tests; 93 files / 1407 in
+  `rdf`+`stores`; svelte-check 0/0.
+
+**The first draft got the real sentence wrong, and that is the lesson.** Matt dictated
+"...grants that are, for city, uh, Parks and Rec, that have, uh, childhood activities..." — scored
+0.5, hedged instead of routed. Its `are`/`have` sit in relative clauses describing the grants being
+asked for, so the detector got WORSE the more detail the speaker gave. Fixed by ignoring finite
+verbs after a subordinator. **Invented test sentences never surfaced it; the first real transcript
+did, immediately.** Re-scored 0.75, zero text to the extractor.
+
+## ⚠ NOTHING BUFFERS ON THE CAPTURE DEVICE — an offline note is LOST, not delayed
+
+Matt tested a dictation while offline. It never arrived. Verified against the n8n API, not
+inferred: **zero executions on either capture workflow all day** (last capture
+2026-08-27T22:50:41Z), and the drain returned zero rows. The n8n data table buffers for the
+LAPTOP being shut — which is what it was built for and what this file already claimed. It does
+nothing for the phone or ring being out of signal: the MCP call fails client-side and there is no
+local queue behind it.
+
+**Matt's call, queued as a question:** retry inside the iOS Shortcut (no new components, but
+Shortcuts has no durable queue), or move capture off MCP onto a plain webhook the Shortcut can
+retry against? Until one exists, dictating out of signal loses the note silently.
+
+## ▶ LATEST (2026-08-27) — voice capture works end to end; extraction is automatic
+
+**The ring → graph path is live and proven.** Pebble Index 01 double-click → MCP
+`/mcp/reckons-capture` (Streamable HTTP, bearer) → tool `capture_note` → `/webhook/reckons-note`
+→ n8n data table → `scripts/notes-pull.ts --watch` → `knowledge.pending.jsonl` → app import →
+automatic extraction → review queue. First successful n8n execution 2826 at 15:22:58Z.
+
+**Root cause of the multi-day tool-call failure was CLIENT-SIDE, not n8n.** The Pebble connection
+was named `Reckons.AI`; the dot must be sanitised to `_` when building a tool-name prefix, so
+Pebble's strip step could never match what it prepended, and the doubled
+`Reckons_AI__Reckons_AI__capture_note` stayed cached in its registry. Fix was renaming the
+connection to a sanitisation-stable word (`Reckons`) and REMOVING/RE-ADDING it. **The n8n workflow
+was never modified.** Diagnosis came from the n8n API: zero webhook-mode executions ever = no tool
+had ever run. Do not chase n8n-side naming again.
+
+## What was built (all tested, 172 files / 2393 tests, svelte-check 0/0)
+
+- `rdf/vocabulary-repair.ts` — LEXICAL/PHONETIC tier. Neither `entityAnswersTo` (exact after
+  case-fold) nor `normalizeEntities` (BGE cosine ≥0.90) can catch "Recon's AI" → "Reckons.AI": a
+  misspelling has no semantics to embed. Damerau-Levenshtein + a phonetic key, two independent
+  signals. Real transcript scores: `Recon's AI`→0.85, `dams`→0.75. **Everything real lands in the
+  suggest band — approval IS the feature.** Homophones ("dams"/"DAMs") are UNSOLVABLE here.
+- `rdf/captured-notes.ts` + `stores/note-extraction.svelte.ts` — finds unextracted notes, runs
+  `ingest({kind:'note'})`, adds provenance. Idempotent via a `kpred:extracted-at` marker IN THE
+  GRAPH (capture is at-least-once). A failure leaves no marker so it retries.
+- `rdf/auto-trust.ts` — log/system-asserted facts are auto-confirmed; extracted CLAIMS stay
+  pending. `extracted-from` is trusted for WHO WROTE IT, not its altitude — `relates-to` is also a
+  `record` and must not be auto-confirmed. Test guards that.
+- `rdf/claims-context.ts` — grounding now includes what the graph already CLAIMS about anchors,
+  not just their names, so a follow-up note can refine/contradict instead of restating. Pending
+  claims included but marked `(unconfirmed)`.
+- `rdf/partition-run.ts` + review UI — purpose questions are now answerable with free text.
+  `purposeAnswers` had been declared and never read while the card promised "queued for the local
+  model". The model only SORTS; `validateProposedPartition` drops any purpose not in the user's words.
+- `storage/app-db.ts` — workspace handle moved to an app-level DB. It was per-graph, so every new
+  graph lost it. Adopts from this graph then the default graph.
+- `storage/kb-naming.ts` — one writer for `KbEntry.name` AND `settings.kbTitle`, which had diverged.
+- Connecting a workspace now drains the pending queue (it previously only pulled TTLs).
+
+## Open / next
+
+- ~~**Altitude in the graph UI**~~ — **DONE 2026-08-28** as F144/F151, and both open decisions are
+  answered: hiding uses LIFTED altitude so a log under a live decision is never hidden, and hidden
+  is visibly hidden via the node/fact counter beside the control. Do not rebuild it.
+- **Cross-graph vocabulary** — grounding sees only the CURRENT graph. Biggest remaining lever on
+  extraction quality. Matt wants "highly aware of all existing graphs, default to personal notes".
+- **Migrating triples between graphs** — not built. Personal Notes as a triage inbox.
+- **Outlook/GMail/Drive agent control** — needs an ACTION queue with a review gate; nothing exists.
+- n8n "Read me first" sticky still draws the abandoned Google Drive hop.
+
+
+**Last updated: 2026-08-26.** Working branch: `fix/claude-review-hardening`, based directly on
+`origin/dev` at `61700e5`. The review/refinement patch below is being organized into release-ready
+commits; do not rebase the dirty tree without first preserving it.
+
+## ▶ LATEST (2026-08-26) — four external repos analyzed, licensed, and recorded
+
+Matt flagged four repos for analysis, license check, and incorporation of learnings. All four are
+in `static/reckons-competitive.ttl` now; nothing was copied and no code changed.
+
+**License gate (deterministic, GitHub API, script tier).** `ai-memory` MIT · `MegaMemory` MIT ·
+`hyperframes` Apache-2.0 (+NOTICE, patent grant) · `sv-table` MIT. All permissive: expression as
+well as ideas is available to us with attribution. `competitor-scan.ts` now tracks 17 repos and
+reports **no `license-changed` finding** on any of the four — the scanner independently confirms
+the licenses recorded by hand.
+
+**Two competitors** (`kb:comp-ai-memory`, `kb:comp-megamemory`) and **two references**
+(`kb:ref-hyperframes`, `kb:ref-sv-table` — not competitors, and the graph says so). Six
+`kb:adopt-*` candidates, all `speculative`, and two new `ktype:Decision` refusals
+(`kb:avoid-model-as-index`, `kb:avoid-agent-harness-layer`).
+
+**The finding that matters is about this file.** ai-memory COMPILES a bounded handoff from captured
+session state. HANDOFF.md is 107,738 bytes plus a 94,002-byte archive, and this session — under
+instructions to read it first — grepped its headers instead. That is recorded as evidence on
+`kb:adopt-bounded-handoff`. We hold better raw material than they do (the plan is already a graph);
+what is missing is the compiler and the cap. Nothing built, and the prose should not be deleted
+before something demonstrably replaces it.
+
+**Waiting on Matt** (`kpred:decision-owner`, plus two partial facts in the queue):
+- TanStack Table v9 as a dependency for `sv-table`'s blocks, or port only the dependency-free
+  presentation pieces? Offline-first bundle weight is the trade.
+- Invert the workspace-sync capture default (denylist → user-marker allowlist)? A breaking UX change.
+- Replace the prose handoff with a generated, bounded one?
+- Unconfirmed, asked not guessed: does our merge path record resolution EVIDENCE or only the outcome?
+
+**Verification:** `graph-lint` 0 errors · `npm run align` green (5/5) · `offline:script-tier` 23/23
+clean · `agent:run` 1 task, 0 failed. Warnings in graph-lint are pre-existing and unrelated.
+
+---
+
+## ▶ LATEST (2026-08-23) — Claude/Opus review completed, UI/trust/performance follow-through
+
+Parallel code, accessibility, test-integrity, and performance reviews are now integrated. Besides
+the earlier graph-context, transaction, review-tree, hierarchy-fit, mobile navigation, error-state,
+and false-green harness repairs, the final pass fixed six more defects: invalid RDF terms crossing
+the pending-queue boundary; self-asserted `verifiedBy` labels appearing to authorize confirmation;
+nested interactive review cards; a visual test that contradicted the transient 2D starter; freeze
+reports that charged stillness outside the click window; and recursive hierarchy construction that
+overflowed on a valid 6,000-level taxonomy. Queue rows are categorically proposals: verifier output
+is advisory `verificationClaim` evidence and every drained fact still enters human review.
+
+The full browser suite also exposed three deliberately expected-failure multi-tab cases. They are
+no longer expected failures: graph add/remove events propagate through lifecycle-safe registry
+subscriptions, fact/source writes propagate through Dexie `liveQuery`, and same-tab snapshots are
+content-deduplicated before reactive assignment. Chrome passed the promoted suite 12/12 across
+three repeats, then 20/20 registry race stress and 10/10 fact/duplicate stress; Firefox passed 4/4.
+WebKit still aborts at `page.goto` before app code, including the unchanged control, on this host.
+
+The starter performance result is now genuinely green on the production bundle. CPU profiling
+located an intermittent ~225ms task in repeated disposable `checkWebGL()` context creation—not in
+the 2D simulation (about 38ms total physics and 15ms total draw). WebGL probing is lazy and once-only
+for non-empty graphs that actually request 3D, so the transient-2D starter never pays it. Four
+headed RTX 3090 runs settled in **1,423–1,485ms**, with **82–133ms worst frames**, **zero ≥200ms long
+tasks**, and the video run reported **zero frozen spans**. Reports are
+`tests/visual/results/perf/perf-crawl_2026-08-24T03-13-{01-891,09-782,17-661,34-284}Z.json`.
+Thresholds and attribution were not weakened.
+
+Final static verification: **166 Vitest files / 2,327 tests pass**, `svelte-check` reports **0 errors
+and 0 warnings**, the integrated mock production build succeeds, and `git diff --check` is clean.
+The 123-case desktop run completed 114 pass / 9 opt-in or device skips; final focused desktop,
+Android, review-visual, settled-signal, topology, and multi-tab repetitions cover the follow-up
+changes. One final topology assertion was corrected after proving that 3D DOM labels are a lossy
+camera-visible subset; its complete settled-2D inventory passed 3/3 repeats. Everything remains
+uncommitted, including generated performance reports.
 
 ## ▶ LATEST (2026-08-21e) — why the demo tree was empty, folder grouping, retention, click perf
 

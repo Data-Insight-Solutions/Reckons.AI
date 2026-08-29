@@ -1,5 +1,7 @@
 <script lang="ts">
   import { Canvas } from '@threlte/core';
+  import { replaceState } from '$app/navigation';
+  import { Popover } from 'bits-ui';
   import KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
   import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
   import CompareGraph from '$lib/components/CompareGraph.svelte';
@@ -21,12 +23,14 @@
     pendingMergeStatements,
     statementsForSource,
     setStatus,
+    setStatuses,
     updateStatement,
     addStatements,
     addSource,
   } from '$lib/stores/kb.svelte';
   import { getRegistry, getCurrentKbId } from '$lib/storage/kb-registry';
   import { drainAndImportPending, workspaceState, supportsWorkspace } from '$lib/stores/workspace.svelte';
+  import { runPartition } from '$lib/rdf/partition-run';
   import {
     computeAlignment, loadKbStatements, applyAlignmentToActiveKb,
     type AlignmentResult, type AlignmentSuggestion,
@@ -40,8 +44,8 @@
   import { buildReviewTree, reviewTreeSummary, questionText } from '$lib/rdf/review-tree';
   import { reanalysisRequest, reanalysisSummary } from '$lib/rdf/reanalysis';
   import { runReanalysis, type ReanalysisRun } from '$lib/rdf/reanalysis-run';
-  import { altitudeOf, ALTITUDE_META, type Altitude } from '$lib/rdf/fact-altitude';
-  import {
+  import { altitudeOf, ALTITUDE_META, ALTITUDE_RANK, type Altitude } from '$lib/rdf/fact-altitude';
+  import { applyPartition,
     clusterForCascade, applyCascade, cascadeSummary, needsPurposeQuestion, purposeQuestion,
     BASIS_META, type FactCluster, type CascadeAction,
   } from '$lib/rdf/fact-aggregation';
@@ -56,7 +60,6 @@
   import { routeQueue, routingSummary } from '$lib/rdf/review-routing';
   import { LEAP_PRED, LEAP_LABEL_PRED } from '$lib/rdf/kb-leap';
   import { requestShellyChat } from '$lib/stores/shelly-bridge.svelte';
-  import { ToggleGroup } from 'bits-ui';
   import { onMount } from 'svelte';
 
   // Predicates that are internal KB metadata
@@ -86,9 +89,62 @@
   type GraphMode = 'preview' | 'compare' | 'overlay';
   let graphMode = $state<GraphMode>('preview');
   let use2D = $state(settings().prefer2D ?? false);
+  let graphSettled = $state(false);
 
   // ── Review data ───────────────────────────────────────────────────────────
-  const incoming = $derived(pendingStatements());
+  // LOG-ALTITUDE FACTS ARE NOT REVIEW WORK. A dictated sentence stored whole
+  // (`kpred:captured-note`) asserts only that somebody said something, and the person who would
+  // be asked to confirm it is the person who said it — F139 calls queueing one "not inefficient,
+  // it is incoherent". The KNOWLEDGE in a note is whatever extraction reads out of it, and those
+  // triples queue normally on their own merits.
+  //
+  // FILTERED FOR DISPLAY, NOT AUTO-CONFIRMED ON IMPORT. The queue is a proposal transport, not an
+  // authentication channel: letting a JSONL row carry a predicate that settles it would let any
+  // writer of that file mint confirmed facts. So the status stays `pending` and the QUEUE decides
+  // not to ask about it. Extraction settles it properly a moment later.
+  const allIncoming = $derived(pendingStatements());
+
+  // DETAIL — the same ladder the graph view uses, on the queue (Matt, 2026-08-28: "I need
+  // depth/detail/altitude in the review screen, for sure").
+  //
+  // This queue ALREADY hid logs, with a hardcoded `!== 'log'` and no way to see past it. The
+  // default below reproduces that behaviour exactly, so nothing changes for anyone who does not
+  // touch the control — what changes is that the floor is now visible, adjustable, and says what
+  // it costs. `hubs` is deliberately absent: a hub is a shape in a graph, not a property of a
+  // fact awaiting a decision.
+  type ReviewDetailId = 'all' | 'detailed' | 'evidence' | 'judgments' | 'decisions';
+  const REVIEW_DETAIL_LEVELS: { id: ReviewDetailId; label: string; floor: Altitude | null; title: string }[] = [
+    { id: 'all', label: 'all', floor: null, title: 'Everything, including logs — notes and timestamps that assert only that something happened' },
+    { id: 'detailed', label: 'detailed', floor: 'record', title: 'Above logs — the default, and what this queue has always shown' },
+    { id: 'evidence', label: 'evidence', floor: 'evidence', title: 'Measurements and up — drops mechanical records a script settles' },
+    { id: 'judgments', label: 'judgments', floor: 'judgment', title: 'Verdicts no check can settle, and the decisions above them' },
+    { id: 'decisions', label: 'decisions', floor: 'decision', title: 'Only facts that foreclose options' },
+  ];
+  let reviewDetail = $state<ReviewDetailId>('detailed');
+  // `?? 'record'` would be WRONG here: the `all` rung's floor is deliberately null, and ?? treats
+  // null as nullish — so selecting "all" would have silently kept the log floor on. Resolve the
+  // LEVEL, then read its floor.
+  const reviewLevel = $derived(
+    REVIEW_DETAIL_LEVELS.find((l) => l.id === reviewDetail) ?? REVIEW_DETAIL_LEVELS[1],
+  );
+  const reviewFloor = $derived(reviewLevel.floor);
+
+  // RAW ALTITUDE, NOT LIFTED — and this is a correction, recorded because it is not obvious.
+  // The graph view's ladder uses liftedAltitudes so a log under an open decision stays visible.
+  // Making this queue match broke `review.test.ts` ("unplanned work is asked for its PURPOSE"):
+  // lifting raises log facts INTO the queue, and cascade aggregation refuses decision- and
+  // judgment-altitude members by design (kb:cascade-aggregation), so the purpose row never
+  // formed. The two surfaces genuinely want different things — the canvas is showing you a
+  // picture, the queue is assembling a decision — so the queue keeps raw altitude and the
+  // difference is stated rather than smoothed over. Revisit with the cascade validator in hand,
+  // not by changing this line.
+  const incoming = $derived(
+    reviewFloor === null
+      ? allIncoming
+      : allIncoming.filter((s) => ALTITUDE_RANK[altitudeOf(s)] >= ALTITUDE_RANK[reviewFloor]),
+  );
+  /** Said out loud rather than silently dropped — a hidden row must look hidden, not absent. */
+  const hiddenLogCount = $derived(allIncoming.length - incoming.length);
   const pendingDeletions = $derived(pendingRemovalStatements());
   const pendingMerges = $derived(pendingMergeStatements());
 
@@ -110,6 +166,7 @@
   // Semantic diff (async upgrade)
   let semanticDiff = $state<ReturnType<typeof computeDiff> | null>(null);
   let semanticAnalyzing = $state(false);
+  let semanticReady = $state(false);
   let semanticVersion = 0;
   let semanticFailed = false;
 
@@ -226,7 +283,12 @@
    */
   const cascadeClusters = $derived.by(() => {
     if (treeTooBig) return [];
-    const candidates = incoming.filter((st) => {
+    // Cascades exist to keep low-altitude bookkeeping OUT of the row-by-row queue while still
+    // giving a person one honest way to settle it. Building this from `incoming` made the visible
+    // detail floor erase the very logs this lane aggregates: the six unplanned completion notes
+    // disappeared at the default `detailed` rung, so their required purpose question never formed.
+    // Detail controls individual rows; cascade aggregation must inspect the complete pending set.
+    const candidates = allIncoming.filter((st) => {
       const a = altitudeOf(st);
       return a === 'log' || a === 'record' || a === 'evidence';
     });
@@ -275,6 +337,55 @@
   let cascadeBusy = $state<string | null>(null);
   let cascadeEffect = $state<string | null>(null);
 
+  /** Which cluster the last purpose failure belongs to, so the message sits on the right card. */
+  let purposeError = $state<string | null>(null);
+  let purposeErrorCluster = $state<string | null>(null);
+
+  /**
+   * Settle a purpose cluster with the user's own words.
+   *
+   * The model only SORTS: `validateProposedPartition` drops any purpose not built from words the
+   * person actually used, so a hallucinated goal cannot become a work unit. A single-purpose
+   * answer is legitimate and cannot be partitioned (applyPartition needs two parts), so it falls
+   * back to settling the whole cluster — the user still said what the work was for.
+   */
+  async function settlePurpose(cluster: FactCluster) {
+    const answer = (purposeAnswers[cluster.id] ?? '').trim();
+    if (!answer || cascadeBusy) return;
+    cascadeBusy = cluster.id;
+    purposeError = null;
+    purposeErrorCluster = cluster.id;
+    try {
+      const run = await runPartition(cluster, answer, settings());
+      if (!run.outcome || run.error) {
+        purposeError = run.error ?? 'The model returned nothing usable.';
+        return;
+      }
+      if (run.outcome.parts.length < 2) {
+        purposeError =
+          'You named one goal, so there is nothing to split — settling the whole set under it.';
+        await settleCluster(cluster, 'confirm');
+        return;
+      }
+      const result = applyPartition(run.outcome, cluster, answer, {
+        actor: 'user',
+        channel: 'app:review',
+      });
+      await addStatements(result.recorded, 'manual');
+      for (const st of result.updated) await setStatus(st.id, st.status);
+      cascadeEffect = result.effect;
+      purposeAnswers[cluster.id] = '';
+      openCluster = null;
+      if (run.outcome.rejected.length > 0) {
+        purposeError = `${run.outcome.rejected.length} proposed group(s) used words you did not, and were dropped.`;
+      }
+    } catch (err) {
+      purposeError = err instanceof Error ? err.message : String(err);
+    } finally {
+      cascadeBusy = null;
+    }
+  }
+
   async function settleCluster(cluster: FactCluster, answer: CascadeAction) {
     if (cascadeBusy) return;
     cascadeBusy = cluster.id;
@@ -319,18 +430,31 @@
     const ex = existing;
     const sDiff = computeDiff(inc, ex);
     const myVersion = ++semanticVersion;
-    if (sDiff.entries.length === 0) { semanticDiff = null; semanticAnalyzing = false; return; }
+    semanticReady = false;
+    if (sDiff.entries.length === 0) {
+      semanticDiff = null;
+      semanticAnalyzing = false;
+      semanticReady = true;
+      return;
+    }
     // Clear the spinner on the way out. This returned without touching it, so once enrichment had
     // failed one run — after which every later run takes this branch — a stale `true` could never
     // be cleared by anything, and "analyzing…" stayed on the summary row for the rest of the session.
-    if (semanticFailed) { semanticAnalyzing = false; return; }
+    if (semanticFailed) { semanticAnalyzing = false; semanticReady = true; return; }
     semanticAnalyzing = true;
     semanticDiff = null;
     semanticEnrichDiff(sDiff, ex).then(enriched => {
-      if (myVersion === semanticVersion) { semanticDiff = enriched; semanticAnalyzing = false; }
+      if (myVersion === semanticVersion) {
+        semanticDiff = enriched;
+        semanticAnalyzing = false;
+        semanticReady = true;
+      }
     }).catch(() => {
       semanticFailed = true;
-      if (myVersion === semanticVersion) semanticAnalyzing = false;
+      if (myVersion === semanticVersion) {
+        semanticAnalyzing = false;
+        semanticReady = true;
+      }
     });
   });
 
@@ -355,7 +479,7 @@
 
   async function runPendingReanalysis() {
     const instruction = reanalysisInstruction.trim();
-    if (!instruction || reanalysisBusy) return;
+    if (!instruction || reanalysisBusy || !semanticReady) return;
     reanalysisBusy = true;
     reanalysisRun = null;
     try {
@@ -387,6 +511,7 @@
 
   let draining = $state(false);
   let drainResult = $state<string | null>(null);
+
   /** What the last bulk accept actually did — including when the honest answer is "nothing". */
   let bulkResult = $state<string | null>(null);
   async function checkPending() {
@@ -480,6 +605,11 @@
    */
   let selectionSource = $state<'graph' | 'panel' | null>(null);
 
+  /** A selectable graph entity can occur on either side of a pending relation. */
+  function statementHasKey(st: Statement, key: string): boolean {
+    return termKey(st.s) === key || termKey(st.o) === key;
+  }
+
   /** Select from the GRAPH: highlight the entity's rows and bring the first one into view. */
   function selectFromGraph(key: string | null) {
     // The renderers emit null on deselect (clicking empty space). That is a real state, not a
@@ -499,9 +629,9 @@
      * nothing, which reads as the feature being broken rather than as the tab being wrong.
      */
     const tabsWith: Tab[] = [];
-    if (diff.entries.some((e) => termKey(e.incoming.s) === key)) tabsWith.push('incoming');
-    if (pendingDeletions.some((st: Statement) => termKey(st.s) === key)) tabsWith.push('deletions');
-    if (pendingMerges.some((st: Statement) => termKey(st.s) === key)) tabsWith.push('merges');
+    if (diff.entries.some((e) => statementHasKey(e.incoming, key))) tabsWith.push('incoming');
+    if (pendingDeletions.some((st: Statement) => statementHasKey(st, key))) tabsWith.push('deletions');
+    if (pendingMerges.some((st: Statement) => statementHasKey(st, key))) tabsWith.push('merges');
     if (tabsWith.length && !tabsWith.includes(activeTab)) activeTab = tabsWith[0];
 
     // After the tab (and therefore the list) has rendered.
@@ -518,6 +648,36 @@
     focusedEdge = { s: termKey(st.s), o: termKey(st.o), p: st.p.value.split('/').pop() ?? st.p.value };
     focusKey = null; // retrigger even if the same node is focused twice
     requestAnimationFrame(() => { focusKey = key; });
+  }
+
+  /**
+   * Keep the convenient "click anywhere on the card" graph focus without making the whole card
+   * an interactive accessibility container. Review entries contain their own buttons and inputs;
+   * nesting those inside a role=button wrapper produced an invalid control tree and let an inner
+   * accept/refine click also fly the graph. Keyboard users get the adjacent native focus button.
+   */
+  function focusStatementFromCard(event: MouseEvent, st: Statement) {
+    const target = event.target;
+    if (
+      target instanceof Element &&
+      target.closest('button, a[href], input, select, textarea, summary, [role="button"], [contenteditable="true"]')
+    ) return;
+    focusStatement(st);
+  }
+
+  /** Attach pointer-only card chrome behavior without claiming the content container is a control. */
+  function cardGraphFocus(node: HTMLElement, initialStatement: Statement) {
+    let statement = initialStatement;
+    const handleClick = (event: MouseEvent) => focusStatementFromCard(event, statement);
+    node.addEventListener('click', handleClick);
+    return {
+      update(nextStatement: Statement) { statement = nextStatement; },
+      destroy() { node.removeEventListener('click', handleClick); },
+    };
+  }
+
+  function statementFocusLabel(st: Statement): string {
+    return `Show ${labelFromIRI(st.s.value)} in the preview graph`;
   }
 
   /** Focus the preview graph on an arbitrary node key (called from the node search box). */
@@ -542,6 +702,28 @@
   const PREVIEW_LAYOUTS = ['force', 'focus', 'source', 'type', 'hub', 'timeline', 'order', 'hierarchy'] as const;
   type PreviewLayout = (typeof PREVIEW_LAYOUTS)[number];
   let previewLayout = $state<PreviewLayout>('force');
+  let showPreviewLayoutMenu = $state(false);
+  let showReviewDetailMenu = $state(false);
+  /**
+   * Layout options as data, so LAYOUT and DETAIL render as two matching dropdowns.
+   *
+   * Matt, 2026-08-28, after I fixed the wrong page twice: the detail control was crammed into the
+   * panel header beside "2 pending changes · 27 not shown · ↻", where it read as a status line
+   * rather than a control. It belongs next to layout, and layout should be a dropdown too.
+   */
+  const PREVIEW_LAYOUT_OPTIONS: { value: PreviewLayout; label: string; title: string; available?: () => boolean }[] = [
+    { value: 'force', label: 'free', title: 'Free force layout' },
+    { value: 'focus', label: 'focus', title: 'Focus the selected node and its neighbours' },
+    { value: 'source', label: 'source', title: 'Cluster nodes by the source they came from',
+      available: () => previewSourceCount > 1 },
+    { value: 'type', label: 'type', title: 'Cluster nodes by entity type',
+      available: () => previewEntityTypes.length > 0 },
+    { value: 'hub', label: 'hub', title: 'Pull the most-connected hubs toward the centre' },
+    { value: 'timeline', label: 'time', title: 'Lay nodes out left-to-right by date; undated nodes get a labelled lane rather than a fake date' },
+    { value: 'order', label: 'arrange', title: 'Arrange nodes on a grid — pending subjects first' },
+    { value: 'hierarchy', label: 'tree', title: 'Prerequisites above dependents, from skos:broader and kpred:depends-on' },
+  ];
+  const availablePreviewLayouts = $derived(PREVIEW_LAYOUT_OPTIONS.filter((l) => l.available?.() ?? true));
 
   /** Sources worth clustering by. Analysis output is not a source a reviewer is comparing. */
   const previewSourceCount = $derived(sources().filter((s) => s.kind !== 'analysis').length);
@@ -1017,8 +1199,10 @@
     if (settlingDecision) return;
     settlingDecision = decisionId;
     try {
-      await setStatus(keepId, 'confirmed');
-      for (const st of sides) if (st.id !== keepId) await setStatus(st.id, 'rejected');
+      await setStatuses(sides.map((st) => ({
+        id: st.id,
+        status: st.id === keepId ? 'confirmed' : 'rejected',
+      })));
     } finally {
       settlingDecision = null;
     }
@@ -1104,7 +1288,7 @@
     const url = new URL(window.location.href);
     if (view) { url.searchParams.set('view', view); }
     else { url.searchParams.delete('view'); }
-    history.replaceState(null, '', url.toString());
+    replaceState(url, {});
   }
 
   /** Keep the chosen layout in the URL so a reload — forced or otherwise — comes back to it. */
@@ -1112,7 +1296,7 @@
     const url = new URL(window.location.href);
     if (next === 'force') url.searchParams.delete('layout');  // the default needs no param
     else url.searchParams.set('layout', next);
-    history.replaceState(null, '', url.toString());
+    replaceState(url, {});
   }
 
   // Auto-populate from URL params
@@ -1140,71 +1324,97 @@
 
 <div class="review-layout" class:dragging={isDragging}>
   <!-- ── LEFT: Graph area ──────────────────────────────────────────────── -->
-  <section class="graph-pane">
+  <section
+    class="graph-pane"
+    data-graph-settled={graphMode !== 'preview' || previewStatements.length === 0 || graphSettled}
+  >
     <!-- Graph mode bar -->
     <div class="graph-mode-bar">
-      <button class="mode-btn" class:active={graphMode === 'preview'} onclick={() => { graphMode = 'preview'; setViewParam(null); }}>
+      <button class="mode-btn" class:active={graphMode === 'preview'} aria-pressed={graphMode === 'preview'} onclick={() => { graphMode = 'preview'; setViewParam(null); }}>
         <span class="mode-lbl mono">preview</span>
         {#if totalPending > 0}<span class="mode-badge">{totalPending}</span>{/if}
       </button>
-      <button class="mode-btn" class:active={graphMode === 'compare'} onclick={() => { graphMode = 'compare'; setViewParam('compare'); }}>
+      <button class="mode-btn" class:active={graphMode === 'compare'} aria-pressed={graphMode === 'compare'} onclick={() => { graphMode = 'compare'; setViewParam('compare'); }}>
         <span class="mode-lbl mono">compare</span>
       </button>
-      <button class="mode-btn" class:active={graphMode === 'overlay'} onclick={() => { graphMode = 'overlay'; initOverlay(); setViewParam('overlay'); }}>
+      <button class="mode-btn" class:active={graphMode === 'overlay'} aria-pressed={graphMode === 'overlay'} onclick={() => { graphMode = 'overlay'; initOverlay(); setViewParam('overlay'); }}>
         <span class="mode-lbl mono">overlay</span>
       </button>
       <span class="mode-spacer"></span>
       {#if graphMode === 'preview'}
-        <button class="mode-btn dim-toggle" class:active={!use2D} onclick={() => use2D = !use2D}
+        <button class="mode-btn dim-toggle" class:active={!use2D} onclick={() => { graphSettled = false; use2D = !use2D; }}
+          aria-pressed={!use2D}
           title="Switch between 2D and 3D">
           <span class="mode-lbl mono">{use2D ? '2D' : '3D'}</span>
         </button>
       {/if}
       {#if graphMode === 'overlay'}
         <button class="mode-btn dim-toggle" class:active={overlayViewIs3D} onclick={() => overlayViewIs3D = !overlayViewIs3D}
+          aria-pressed={overlayViewIs3D}
           title="Switch between 2D and 3D">
           <span class="mode-lbl mono">{overlayViewIs3D ? '3D' : '2D'}</span>
         </button>
       {/if}
     </div>
 
-    <!-- Browse controls (F30: layout + node search ported onto the preview pane) -->
-    {#if graphMode === 'preview'}
-      <div class="overlay-controls browse-controls">
-        <div class="ov-row">
-          <span class="ov-label mono">layout</span>
-          <ToggleGroup.Root
-            type="single"
-            value={previewLayout}
-            onValueChange={(v) => {
-              if (!v) return;
-              previewLayout = v as PreviewLayout;
-              setLayoutParam(previewLayout);
-            }}
-            class="tg-row"
-          >
-            <ToggleGroup.Item value="force" class="tg-chip"><span class="lbl mono">free</span></ToggleGroup.Item>
-            <ToggleGroup.Item value="focus" class="tg-chip"><span class="lbl mono">focus</span></ToggleGroup.Item>
-            {#if previewSourceCount > 1}
-              <ToggleGroup.Item value="source" class="tg-chip" title="Cluster nodes by the source they came from"><span class="lbl mono">source</span></ToggleGroup.Item>
-            {/if}
-            {#if previewEntityTypes.length > 0}
-              <ToggleGroup.Item value="type" class="tg-chip" title="Cluster nodes by entity type"><span class="lbl mono">type</span></ToggleGroup.Item>
-            {/if}
-            <ToggleGroup.Item value="hub" class="tg-chip"><span class="lbl mono">hub</span></ToggleGroup.Item>
-            <ToggleGroup.Item value="timeline" class="tg-chip" title="Lay nodes out left-to-right by date; undated nodes get a labelled lane rather than a fake date"><span class="lbl mono">time</span></ToggleGroup.Item>
-            <!-- value stays "order" (URL/state); label is "arrange", matching the main view. -->
-            <ToggleGroup.Item value="order" class="tg-chip" title="Arrange nodes on a grid — pending subjects first"><span class="lbl mono">arrange</span></ToggleGroup.Item>
-            <!-- Prerequisites above dependents, from skos:broader and kpred:depends-on. Only
-                 meaningful on a graph that states one of those; on a flat queue it degrades to
-                 the force layout rather than inventing a hierarchy. -->
-            <ToggleGroup.Item value="hierarchy" class="tg-chip"><span class="lbl mono">tree</span></ToggleGroup.Item>
-          </ToggleGroup.Root>
+    <!-- Browse controls (F30). ONE ROW: layout · detail · search.
+         DETAIL renders in every graph mode because it filters the QUEUE, which is on screen in
+         all three; LAYOUT and SEARCH only in preview, the one mode they steer. -->
+    <div class="overlay-controls browse-controls">
+      <div class="ov-row control-row">
+        {#if graphMode === 'preview'}
+          <Popover.Root bind:open={showPreviewLayoutMenu}>
+            <Popover.Trigger>
+              {#snippet child({ props })}
+                <button {...props} class="chip" class:active={showPreviewLayoutMenu}
+                  title={availablePreviewLayouts.find((l) => l.value === previewLayout)?.title}>
+                  <span class="lbl mono">{availablePreviewLayouts.find((l) => l.value === previewLayout)?.label ?? previewLayout}</span>
+                  <span class="arr mono">{showPreviewLayoutMenu ? '▲' : '▼'}</span>
+                </button>
+              {/snippet}
+            </Popover.Trigger>
+            <Popover.Portal>
+              <Popover.Content class="filter-popover" sideOffset={6}>
+                {#each availablePreviewLayouts as l (l.value)}
+                  <button class="chip small" class:active={previewLayout === l.value} title={l.title}
+                    onclick={() => { previewLayout = l.value; setLayoutParam(previewLayout); showPreviewLayoutMenu = false; }}>
+                    <span class="lbl mono">{l.label}</span>
+                  </button>
+                {/each}
+              </Popover.Content>
+            </Popover.Portal>
+          </Popover.Root>
+        {/if}
+
+        <Popover.Root bind:open={showReviewDetailMenu}>
+          <Popover.Trigger>
+            {#snippet child({ props })}
+              <button {...props} class="chip" class:active={reviewDetail !== 'detailed' || showReviewDetailMenu}
+                title={reviewLevel.title}>
+                <span class="lbl mono">{reviewLevel.label}</span>
+                <span class="arr mono">{showReviewDetailMenu ? '▲' : '▼'}</span>
+              </button>
+            {/snippet}
+          </Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Content class="filter-popover" sideOffset={6}>
+              {#each REVIEW_DETAIL_LEVELS as level (level.id)}
+                <button class="chip small" class:active={reviewDetail === level.id} title={level.title}
+                  onclick={() => { reviewDetail = level.id; showReviewDetailMenu = false; }}>
+                  <span class="lbl mono">{level.label}</span>
+                </button>
+              {/each}
+            </Popover.Content>
+          </Popover.Portal>
+        </Popover.Root>
+
+        {#if graphMode === 'preview'}
           <div class="node-search-wrap">
             <input
               class="node-search-input mono"
               type="text"
               placeholder="find node…"
+              aria-label="Find graph node"
               bind:value={nodeSearchQuery}
             />
             {#if nodeSearchResults.length > 0}
@@ -1217,9 +1427,16 @@
               </div>
             {/if}
           </div>
-        </div>
+        {/if}
+        {#if hiddenLogCount > 0}
+          <!-- Inline, not on a line of its own: it is a footnote to the detail control beside it,
+               and a whole row for three words was the thing that made it look like a status bar. -->
+          <span class="log-hidden mono" title="Hidden from this queue only. Every fact is still in the graph — lower the detail level to see them.">
+            {hiddenLogCount} not shown
+          </span>
+        {/if}
       </div>
-    {/if}
+    </div>
 
     <!-- Overlay controls strip (when overlay mode) -->
     {#if graphMode === 'overlay'}
@@ -1365,6 +1582,7 @@
             onhover={() => {}}
             onlabelsmove={() => {}}
             onmarkersmove={() => {}}
+            onsettledchange={(settled) => { graphSettled = settled; }}
             highlighted={[...pendingKeys]}
             highlightedEdges={focusedEdge ? [focusedEdge] : []}
           />
@@ -1380,6 +1598,7 @@
                 onhover={() => {}}
                 onlabelsmove={(labels) => { nodeLabels = labels; }}
                 onmarkersmove={() => {}}
+                onsettledchange={(settled) => { graphSettled = settled; }}
                 highlighted={[...pendingKeys]}
               />
             </Canvas>
@@ -1435,7 +1654,7 @@
       <!-- 3D node labels via the SHARED GraphLabels overlay (F92) — same component the main graph
            uses, so review's labels can no longer drift from it. Review needs no asset/leap snippets. -->
       {#if graphMode === 'preview' && !use2D}
-        <GraphLabels labels={nodeLabels} {selected} />
+        <GraphLabels labels={nodeLabels} {selected} onselect={(key) => selectFromGraph(key)} />
       {/if}
     </div>
 
@@ -1456,7 +1675,7 @@
   <aside class="review-panel" style="width:{panelWidth}px">
     <div class="rp-header">
       <h2 class="rp-title">review</h2>
-      <p class="rp-sub mono">
+      <p class="rp-sub mono" data-testid="review-pending-count">
         {totalPending} pending change{totalPending !== 1 ? 's' : ''}
         {#if workspaceState() === 'connected'}
           <button class="drain-btn" onclick={checkPending} disabled={draining} title="Check workspace for pending MCP proposals">
@@ -1467,20 +1686,20 @@
     </div>
 
     <!-- Tab bar -->
-    <nav class="rp-tabs">
-      <button class:active={activeTab === 'incoming'} onclick={() => activeTab = 'incoming'}>
+    <nav class="rp-tabs" aria-label="Review queue sections">
+      <button class:active={activeTab === 'incoming'} aria-pressed={activeTab === 'incoming'} onclick={() => activeTab = 'incoming'}>
         incoming
         {#if diff.entries.length > 0}<span class="badge">{diff.entries.length}</span>{/if}
       </button>
-      <button class:active={activeTab === 'deletions'} onclick={() => activeTab = 'deletions'}>
+      <button class:active={activeTab === 'deletions'} aria-pressed={activeTab === 'deletions'} onclick={() => activeTab = 'deletions'}>
         delete
         {#if pendingDeletions.length > 0}<span class="badge badge-danger">{pendingDeletions.length}</span>{/if}
       </button>
-      <button class:active={activeTab === 'merges'} onclick={() => activeTab = 'merges'}>
+      <button class:active={activeTab === 'merges'} aria-pressed={activeTab === 'merges'} onclick={() => activeTab = 'merges'}>
         merge
         {#if pendingMerges.length > 0}<span class="badge badge-merge">{pendingMerges.length}</span>{/if}
       </button>
-      <button class:active={activeTab === 'align'} onclick={() => activeTab = 'align'}>
+      <button class:active={activeTab === 'align'} aria-pressed={activeTab === 'align'} onclick={() => activeTab = 'align'}>
         align
         {#if alignPending > 0}<span class="badge badge-align">{alignPending}</span>{/if}
       </button>
@@ -1505,7 +1724,7 @@
         <div class="summary">
           <span class="sc new">{diff.summary.new} new</span>
           <span class="sc reinforces">{diff.summary.reinforces} reinforce</span>
-          <span class="sc conflict">{diff.summary.conflicts} conflict</span>
+          <span class="sc conflict">{diff.summary.conflicts} conflict{diff.summary.conflicts === 1 ? '' : 's'} with graph</span>
           {#if diff.summary.refines > 0}<span class="sc refines">{diff.summary.refines} refine</span>{/if}
           {#if diff.summary.duplicate > 0}<span class="sc duplicate">{diff.summary.duplicate} dup</span>{/if}
           {#if semanticAnalyzing}<span class="sc analyzing">analyzing...</span>{/if}
@@ -1583,14 +1802,19 @@
               onreject={async () => { await setStatus(e.incoming.id, 'rejected'); }}
             >
               <!-- Clicking a review card flies the preview graph to its node -->
+              <!-- The native button below is the keyboard equivalent; the card action preserves
+                   pointer focus on non-control card chrome without assigning a nested ARIA role. -->
               <div
                 class="entry-focus-wrap"
-                class:entry-focused={selected === termKey(e.incoming.s)}
-                role="button"
-                tabindex="0"
-                onclick={() => focusStatement(e.incoming)}
-                onkeydown={(ev) => { if (ev.key === 'Enter') focusStatement(e.incoming); }}
+                class:entry-focused={selected !== null && statementHasKey(e.incoming, selected)}
+                use:cardGraphFocus={e.incoming}
               >
+                <button
+                  type="button"
+                  class="entry-focus-action mono"
+                  aria-label={statementFocusLabel(e.incoming)}
+                  onclick={(event) => { event.stopPropagation(); focusStatement(e.incoming); }}
+                ><span aria-hidden="true">⌖</span> show in graph</button>
                 <!-- No onresolved handler: DiffEntry mutates statements through the store, and the
                      derived diff picks that up. It defaults to a no-op. -->
                 <DiffEntry entry={e} sourceLabel={sourceLabel(e.incoming.sourceId)} />
@@ -1617,13 +1841,13 @@
                 bind:value={reanalysisInstruction}
                 placeholder="re-analyze these pending facts — e.g. 'these are all about the March deploy, group them'"
                 data-testid="reanalyze-input"
-                disabled={reanalysisBusy}
+                disabled={reanalysisBusy || !semanticReady}
                 onkeydown={(e) => { if (e.key === 'Enter') runPendingReanalysis(); }}
               />
               <button
                 class="ghost-btn"
                 onclick={runPendingReanalysis}
-                disabled={reanalysisBusy || !reanalysisInstruction.trim()}
+                disabled={reanalysisBusy || !semanticReady || !reanalysisInstruction.trim()}
                 data-testid="reanalyze-run"
               >{reanalysisBusy ? 'analyzing...' : 're-analyze'}</button>
             </div>
@@ -1692,8 +1916,29 @@
                          REASON, not a truth value. The answer re-partitions the set (F139.1). -->
                     <div class="cascade-purpose mono">
                       This work is tied to no planned feature, so answering it in your own words
-                      splits the set and labels each part. Queued for the local model to partition.
+                      splits the set and labels each part. The purposes come from YOUR wording —
+                      anything the model invents is dropped.
                     </div>
+                    <div class="cascade-answer">
+                      <textarea
+                        class="cascade-answer-input mono"
+                        rows="2"
+                        bind:value={purposeAnswers[cluster.id]}
+                        placeholder="e.g. 'half of this was the capture pipeline, the rest was fixing the workspace sync'"
+                        disabled={cascadeBusy === cluster.id}
+                        data-testid="purpose-answer"
+                      ></textarea>
+                      <button
+                        class="cascade-yes"
+                        disabled={cascadeBusy === cluster.id || !purposeAnswers[cluster.id]?.trim()}
+                        onclick={() => settlePurpose(cluster)}
+                      >{cascadeBusy === cluster.id ? 'sorting...' : `answer — settle all ${cluster.members.length}`}</button>
+                    </div>
+                    {#if purposeError && purposeErrorCluster === cluster.id}
+                      <!-- Said out loud. A failure that reads as "nothing happened" is what stops
+                           somebody answering the next one. -->
+                      <div class="cascade-purpose-error mono">{purposeError}</div>
+                    {/if}
                   {:else}
                     <div class="cascade-acts">
                       <button
@@ -1907,12 +2152,15 @@
               >
                 <div
                   class="entry-focus-wrap"
-                  class:entry-focused={selected === termKey(st.s)}
-                  role="button"
-                  tabindex="0"
-                  onclick={() => focusStatement(st)}
-                  onkeydown={(ev) => { if (ev.key === 'Enter') focusStatement(st); }}
+                  class:entry-focused={selected !== null && statementHasKey(st, selected)}
+                  use:cardGraphFocus={st}
                 >
+                  <button
+                    type="button"
+                    class="entry-focus-action mono"
+                    aria-label={statementFocusLabel(st)}
+                    onclick={(event) => { event.stopPropagation(); focusStatement(st); }}
+                  ><span aria-hidden="true">⌖</span> show in graph</button>
                   <div class="del-card">
                     <span class="del-tag mono">deletion</span>
                     <StatementCard statement={st} compact />
@@ -1948,12 +2196,15 @@
               >
                 <div
                   class="entry-focus-wrap"
-                  class:entry-focused={selected === termKey(st.s)}
-                  role="button"
-                  tabindex="0"
-                  onclick={() => focusStatement(st)}
-                  onkeydown={(ev) => { if (ev.key === 'Enter') focusStatement(st); }}
+                  class:entry-focused={selected !== null && statementHasKey(st, selected)}
+                  use:cardGraphFocus={st}
                 >
+                  <button
+                    type="button"
+                    class="entry-focus-action mono"
+                    aria-label={statementFocusLabel(st)}
+                    onclick={(event) => { event.stopPropagation(); focusStatement(st); }}
+                  ><span aria-hidden="true">⌖</span> show in graph</button>
                   <div class="merge-card">
                     <span class="merge-tag mono">merge</span>
                     {#if st.gloss}
@@ -2039,12 +2290,15 @@
                 >
                   <div
                     class="entry-focus-wrap"
-                    class:entry-focused={selected === termKey(suggestion.statement.s)}
-                    role="button"
-                    tabindex="0"
-                    onclick={() => focusStatement(suggestion.statement)}
-                    onkeydown={(ev) => { if (ev.key === 'Enter') focusStatement(suggestion.statement); }}
+                    class:entry-focused={selected !== null && statementHasKey(suggestion.statement, selected)}
+                    use:cardGraphFocus={suggestion.statement}
                   >
+                    <button
+                      type="button"
+                      class="entry-focus-action mono"
+                      aria-label={statementFocusLabel(suggestion.statement)}
+                      onclick={(event) => { event.stopPropagation(); focusStatement(suggestion.statement); }}
+                    ><span aria-hidden="true">⌖</span> show in graph</button>
                     <AlignmentCard
                       {suggestion}
                       onaccept={() => acceptAlignment(suggestion)}
@@ -2109,7 +2363,7 @@
     padding: 0.5rem 0.75rem;
     border-bottom: 1px solid var(--line);
     background: var(--surface);
-    z-index: 10;
+    z-index: 30;
     flex-shrink: 0;
   }
   .mode-btn {
@@ -2173,6 +2427,25 @@
   .entry-focus-wrap { cursor: pointer; border-left: 2px solid transparent; transition: border-color 0.15s; }
   .entry-focus-wrap:hover { border-left-color: var(--muted-2, var(--muted)); }
   .entry-focus-wrap.entry-focused { border-left-color: var(--accent); }
+  .entry-focus-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    min-height: 30px;
+    margin: 0 0 0.35rem 0.4rem;
+    padding: 0.2rem 0.55rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 0.62rem;
+    cursor: pointer;
+  }
+  .entry-focus-action:hover,
+  .entry-focus-action:focus-visible {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
   .graph-empty {
     height: 100%;
     display: flex;
@@ -2216,7 +2489,8 @@
     flex-direction: column;
     gap: 0.3rem;
     flex-shrink: 0;
-    z-index: 10;
+    position: relative;
+    z-index: 30;
   }
   .ov-row {
     display: flex;
@@ -2255,7 +2529,7 @@
   .ov-chip:disabled { opacity: 0.5; cursor: wait; }
   .ov-hint { font-size: 0.55rem; color: var(--muted); }
 
-  /* ── Browse controls (F30: layout ToggleGroup + node search on the preview) ── */
+  /* ── Browse controls (F30: layout + detail dropdowns, node search on the preview) ── */
   .browse-controls { padding-top: 0.35rem; padding-bottom: 0.35rem; }
   :global(.review-layout .tg-row) {
     display: flex;
@@ -2606,6 +2880,38 @@
   /* The two lanes that are NOT the user's are deliberately quiet — they are what the
      queue is sparing them, not another thing demanding attention. */
   .gc-machine, .gc-agent { opacity: 0.75; }
+  .log-hidden {
+    opacity: 0.6;
+    font-size: 0.75rem;
+  }
+
+  .cascade-answer {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+    margin-top: 0.4rem;
+  }
+  .cascade-answer-input {
+    flex: 1;
+    min-width: 0;
+    resize: vertical;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+  .cascade-answer-input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .cascade-purpose-error {
+    margin-top: 0.35rem;
+    font-size: 0.75rem;
+    color: var(--accent);
+  }
+
   .sc.question-filter {
     cursor: pointer;
     background: transparent;
@@ -2953,6 +3259,86 @@
   .cm-more { color: var(--muted); font-style: italic; }
 
   /* The altitude scale — one colour set, so it reads the same everywhere it appears. */
+  /* Chip + popover, copied verbatim from the graph view (Matt: "I like the previews dropdown
+     styling much better"). Duplicated rather than shared because these are two independent
+     Svelte components with their own scoped styles — if a third surface needs them, that is the
+     point to extract a component rather than paste a third time. */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .chip:hover { border-color: var(--muted-2); color: var(--ink-2); }
+  .chip.active {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .chip.small { font-size: 0.68rem; padding: 0.2rem 0.55rem; }
+  .chip .lbl { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.14em; }
+  .chip .arr { font-size: 0.5rem; opacity: 0.6; }
+
+  :global(.filter-popover) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    padding: 0.5rem 0.6rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--rad);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    max-width: 260px;
+    z-index: 500;
+  }
+
+  /* One row: layout · detail · search. Each control is sized to its own content — stretching
+     a dropdown to fill the row makes a five-character value look like a text field, and it was
+     what pushed the search onto a line of its own. */
+  .control-row {
+    display: flex;
+    gap: 0.4rem;
+    align-items: flex-end;
+    flex-wrap: nowrap;
+  }
+  .control {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    flex: 0 0 auto;
+  }
+  .control-select {
+    background: var(--surface);
+    color: var(--fg);
+    border: 1px solid var(--line);
+    border-radius: 0.25rem;
+    font-size: 0.62rem;
+    padding: 0.2rem 0.25rem;
+    width: auto;
+  }
+  /* The search takes whatever is left, because it is the only one whose content is unbounded. */
+  .control-row .node-search-wrap { flex: 1 1 auto; min-width: 0; }
+  /* The hidden count rides at the end of the same row, sized to its text. */
+  .control-row .log-hidden { flex: 0 0 auto; white-space: nowrap; align-self: center; }
+
+  .review-detail {
+    background: var(--surface);
+    color: var(--fg);
+    border: 1px solid var(--line);
+    border-radius: 0.25rem;
+    font-size: 0.6rem;
+    padding: 0.1rem 0.25rem;
+    margin-left: 0.4rem;
+  }
+
   .alt-chip {
     flex: 0 0 auto;
     font-size: 0.58rem;
@@ -3105,6 +3491,14 @@
     font-size: 0.82rem;
   }
   .empty-state p { margin: 0.2rem 0; }
+  .empty-state a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 0.5rem;
+  }
 
   /* ── Align tab ── */
   .badge-align { background: color-mix(in srgb, var(--accent) 15%, var(--surface)); color: var(--accent); }
@@ -3151,8 +3545,10 @@
       flex-direction: column;
     }
     .graph-pane {
-      height: 45vh;
-      min-height: 280px;
+      flex: 0 0 min(45dvh, 360px);
+      height: auto;
+      min-height: 260px;
+      overflow: hidden;
     }
     .resize-handle {
       display: none;
@@ -3162,10 +3558,33 @@
       max-width: none;
       min-width: 0;
       border-top: 1px solid var(--line);
-      flex: 1;
-      /* This route is a fixed full-viewport workspace, so the app shell's main
-         padding cannot protect its scrollable decision surface from the nav. */
-      padding-bottom: var(--app-nav-clearance);
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .rp-content {
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding-bottom: calc(0.75rem + var(--app-nav-clearance));
+    }
+    .mode-btn,
+    :global(.review-layout .tg-chip),
+    .node-search-input,
+    .node-search-row,
+    .rp-tabs button,
+    .gc,
+    .ghost-btn,
+    .reanalyze-input,
+    .bulk-btn,
+    .group-toggle {
+      /* A 45px box remains above 44px after the app's narrow-screen scale. */
+      min-height: 45px;
+      min-width: 44px;
+    }
+    .entry-focus-action {
+      min-height: 45px;
+      min-width: 44px;
     }
     .node-details-pane {
       width: calc(100% - 1.5rem);

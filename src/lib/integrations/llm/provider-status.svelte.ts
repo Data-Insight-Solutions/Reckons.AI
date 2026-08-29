@@ -16,6 +16,7 @@
  */
 
 import { settings } from '../../stores/settings.svelte';
+import { turtleSettings } from '../../stores/turtle-settings.svelte';
 
 export type ProviderKey =
   | 'claude' | 'openai' | 'gemini' | 'openrouter'
@@ -121,7 +122,7 @@ export function activeProviders(): ProviderInfo[] {
     s.diffSummaryBackend ?? analyzeDefault,
     s.mergeAnalysisBackend ?? analyzeDefault,
     s.chatBackend ?? s.preferredBackend,
-    s.humeAiApiKey ? 'hume' : null,
+    s.humeAiApiKey && turtleSettings().voiceEnabled ? 'hume' : null,
     s.mistralApiKey ? 'mistral' : null,
     s.firecrawlApiKey ? 'firecrawl' : null,
   ].filter(Boolean) as ProviderKey[]);

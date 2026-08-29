@@ -93,6 +93,23 @@ test('settings nav tabs are present', async ({ page }) => {
   await expect(page.getByRole('link', { name: /turtle/i })).toBeVisible({ timeout: 8_000 });
 });
 
+test('voice features require an explicit opt-in', async ({ page }) => {
+  await page.goto('/settings/turtle');
+
+  const optIn = page.getByRole('checkbox', { name: 'Enable voice features' });
+  await expect(optIn).toBeVisible({ timeout: 8_000 });
+  await expect(optIn).not.toBeChecked();
+  await expect(page.getByRole('heading', { name: 'Hume.AI Voice Persona' })).toHaveCount(0);
+
+  await optIn.check();
+  await expect(page.getByRole('heading', { name: 'Hume.AI Voice Persona' })).toBeVisible();
+
+  // Turtle settings intentionally debounce IndexedDB writes by 500 ms.
+  await page.waitForTimeout(700);
+  await page.reload();
+  await expect(page.getByRole('checkbox', { name: 'Enable voice features' })).toBeChecked({ timeout: 8_000 });
+});
+
 test('integrations page loads', async ({ page }) => {
   await page.goto('/settings/integrations');
   await expect(page.locator('h1, h2, section').first()).toBeVisible({ timeout: 8_000 });

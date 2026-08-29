@@ -30,14 +30,16 @@ const resolveArchiveReferencesForIngest = vi.fn();
 const computeDiff = vi.fn();
 const semanticEnrichDiff = vi.fn();
 const saveExtractionRun = vi.fn();
+const extractWithClaude = vi.fn();
 const extractWithWasm = vi.fn();
+const extractWithOllama = vi.fn();
 const extractMock = vi.fn(() => [{ subject: 'acme', predicate: 'has-name', object: 'Acme' }]);
 let currentSettings: Record<string, unknown> = { ingestBackend: 'mock', preferredBackend: 'mock' };
 
 vi.mock('uuid', () => ({ v4: () => 'source-id' }));
-vi.mock('../../integrations/llm/claude', () => ({ extractWithClaude: vi.fn() }));
+vi.mock('../../integrations/llm/claude', () => ({ extractWithClaude }));
 vi.mock('../../integrations/llm/wasm', () => ({ extractWithWasm }));
-vi.mock('../../integrations/llm/ollama-extract', () => ({ extractWithOllama: vi.fn() }));
+vi.mock('../../integrations/llm/ollama-extract', () => ({ extractWithOllama }));
 vi.mock('../../integrations/llm/providers', () => ({
   chatOpenAI: vi.fn(),
   chatGemini: vi.fn(),
@@ -65,6 +67,9 @@ vi.mock('../kb.svelte', () => ({
   prepareStatementsForWrite,
   persistIngestBatch,
   statements: allStatements,
+  // The typing stage reads the user's entity types, which are derived from confirmed facts.
+  // Empty here: these tests exercise the archive boundary, so built-in types are enough.
+  confirmedStatements: () => [],
 }));
 vi.mock('../settings.svelte', () => ({
   settings: () => currentSettings,
@@ -209,6 +214,33 @@ describe('ingest archive decision boundary (F97.3)', () => {
       expect.objectContaining({ backend: 'wasm', model: 'small-local-model', status: 'failed' }),
       expect.objectContaining({ backend: 'mock', model: 'placeholder-extractor-v1', status: 'succeeded' }),
     ]);
+  });
+
+  it('threads graph grounding through the Claude, Ollama, and WASM adapters', async () => {
+    resolveArchiveReferencesForIngest.mockResolvedValue({
+      decision: 'proceed', statements: [rawStatement], references: [], restoredEntities: [],
+    });
+    extractWithClaude.mockResolvedValue([{ subject: 'acme', predicate: 'has-name', object: 'Acme' }]);
+    extractWithOllama.mockResolvedValue([{ subject: 'acme', predicate: 'has-name', object: 'Acme' }]);
+    extractWithWasm.mockResolvedValue([{ subject: 'acme', predicate: 'has-name', object: 'Acme' }]);
+
+    currentSettings = { ingestBackend: 'claude', preferredBackend: 'claude', claudeApiKey: 'test', claudeModel: 'test' };
+    await ingest({ kind: 'note', title: 'Import', body: 'Acme update' });
+    expect(extractWithClaude).toHaveBeenCalledWith('Acme update', 'Import', expect.objectContaining({
+      graphContext: expect.stringContaining('This graph already contains'),
+    }));
+
+    currentSettings = { ingestBackend: 'ollama', preferredBackend: 'ollama', ollamaModel: 'test' };
+    await ingest({ kind: 'note', title: 'Import', body: 'Acme update' });
+    expect(extractWithOllama).toHaveBeenCalledWith('Acme update', 'Import', expect.objectContaining({
+      graphContext: expect.stringContaining('This graph already contains'),
+    }));
+
+    currentSettings = { ingestBackend: 'wasm', preferredBackend: 'wasm', wasmModel: 'test' };
+    await ingest({ kind: 'note', title: 'Import', body: 'Acme update' });
+    expect(extractWithWasm).toHaveBeenCalledWith(
+      'Acme update', 'Import', 'test', expect.stringContaining('This graph already contains'),
+    );
   });
 
   it('records only statements the shared write funnel actually accepted as run output', async () => {

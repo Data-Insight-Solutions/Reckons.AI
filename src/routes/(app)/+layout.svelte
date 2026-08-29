@@ -7,9 +7,8 @@
   import { page } from '$app/state';
 
   import NavBar from '$lib/components/NavBar.svelte';
-  import TurtleChatPanel from '$lib/components/TurtleChatPanel.svelte';
   import ManualLLMModal from '$lib/components/ManualLLMModal.svelte';
-  import { loadAll, loaded } from '$lib/stores/kb.svelte';
+  import { loadAll, loaded, startKbLiveSync } from '$lib/stores/kb.svelte';
   import { loadSettings, settingsLoaded } from '$lib/stores/settings.svelte';
   import { loadTurtleSettings } from '$lib/stores/turtle-settings.svelte';
   import { startScheduler } from '$lib/stores/auto-analyze.svelte';
@@ -38,6 +37,9 @@
   let { children } = $props();
   let error = $state<string | null>(null);
   let forceShow = $state(false);
+  // Client-only readiness prevents an SSR process's module-level store state from exposing route
+  // controls before this browser has loaded its own IndexedDB state.
+  let clientReady = $state(false);
   // Document/form routes scroll inside a viewport that ends above the fixed
   // mobile nav. Full-bleed graph/workspace routes keep owning the viewport.
   const reservedNavRoutes = ['/ingest', '/kb', '/settings', '/reckoning', '/analyze', '/compare', '/about'];
@@ -49,6 +51,10 @@
   // behaviour (F36). Client-only; the returned teardown removes matchMedia
   // listeners on destroy.
   $effect(() => initViewport());
+
+  // IndexedDB is shared by same-origin tabs; mirror committed source/fact changes into this
+  // tab's reactive store for as long as the app layout is mounted.
+  $effect(() => startKbLiveSync());
 
   // Apply UI scale as root font-size whenever it changes
   const UI_SCALE_PX: Record<string, string> = { sm: '14px', md: '16px', lg: '18px' };
@@ -64,6 +70,7 @@
 
     // Load in background; show UI immediately for testing
     Promise.all([loadAll(), loadSettings(), loadTurtleSettings(), loadGlbOverrides(), loadGifOverrides(), loadIcon2dOverrides()]).then(async () => {
+      clientReady = true;
       startScheduler();
       initExtensionBridge();
       // Apply embedding model from settings
@@ -160,9 +167,15 @@
     }).catch(e => {
       error = e instanceof Error ? e.message : String(e);
       console.error('Store initialization error:', e);
+      // Initialization failed, so reveal the route together with the actionable error instead of
+      // leaving the user on a permanent loading screen.
+      clientReady = true;
+      forceShow = true;
     });
-    // Force show after very short delay to allow perception of loading
-    setTimeout(() => { forceShow = true; }, 100);
+    // Fail open only after a genuine startup timeout. Showing route controls after 100 ms used to
+    // make them interactive before IndexedDB/settings had loaded; on slower browsers the loaded
+    // state then replaced those controls and discarded text a person had already entered.
+    setTimeout(() => { forceShow = true; }, 8_000);
   });
 </script>
 
@@ -173,7 +186,7 @@
 <div class="bg"></div>
 
 <main id="main-content" class:reserved-nav-shell={usesReservedNavShell}>
-  {#if loaded() && settingsLoaded() || forceShow}
+  {#if clientReady && loaded() && settingsLoaded() || forceShow}
     {@render children()}
     {#if error}
       <div style="position: fixed; bottom: 1rem; left: 1rem; right: 1rem; background: var(--surface); border: 1px solid var(--danger); padding: 1rem; border-radius: var(--rad); font-size: 0.75rem; color: var(--danger);">
@@ -207,12 +220,15 @@
 <FeedbackDialog />
 
 {#if shellyChatOpen()}
-  <TurtleChatPanel
-    initialMessage={shellyOpenMessage()}
-    exploreMode={exploreOpen()}
-    storyId={activeStoryId()}
-    onclose={() => { setShellyChatOpen(false); stopExplore(); stopStory(); clearShellyOpen(); }}
-  />
+  {#await import('$lib/components/TurtleChatPanel.svelte') then chatModule}
+    {@const TurtleChatPanel = chatModule.default}
+    <TurtleChatPanel
+      initialMessage={shellyOpenMessage()}
+      exploreMode={exploreOpen()}
+      storyId={activeStoryId()}
+      onclose={() => { setShellyChatOpen(false); stopExplore(); stopStory(); clearShellyOpen(); }}
+    />
+  {/await}
 {/if}
 
 </Tooltip.Provider>

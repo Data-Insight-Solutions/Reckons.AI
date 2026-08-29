@@ -7,7 +7,7 @@
  * refuse to do: bury a contested decision, and spin on a cycle.
  */
 import { describe, it, expect } from 'vitest';
-import { buildReviewTree, decisionDependencies } from '../review-tree';
+import { buildReviewTree, decisionDependencies, unlockCounts } from '../review-tree';
 import type { Statement } from '../types';
 
 const KPRED = 'urn:kbase:predicate/';
@@ -73,8 +73,97 @@ describe('decisionDependencies — the order is projected from the plan, not inv
       st(STORAGE, `${KPRED}depends-on`, '', { o: iri(SYNC) }),
     ];
     const { cycles } = decisionDependencies(all, new Set([STORAGE, SYNC]));
-    expect(cycles.size).toBeGreaterThan(0);
+    expect(cycles).toEqual(new Set([STORAGE, SYNC]));
+
+    // A cycle member may unlock the other member, but never itself. Counts must not depend on
+    // which side the DFS happened to visit first.
+    const unlocks = unlockCounts(all);
+    expect(unlocks.get(STORAGE)).toBe(1);
+    expect(unlocks.get(SYNC)).toBe(1);
   });
+
+  it('gives every member of a longer cycle the same complete prerequisite closure', () => {
+    const all = [
+      ask(STORAGE, 'One file or many?', 'q1'),
+      ask(SYNC, 'Push or pull?', 'q2'),
+      ask(UI, 'Panel or page?', 'q3'),
+      st(STORAGE, `${KPRED}depends-on`, '', { o: iri(SYNC) }),
+      st(SYNC, `${KPRED}depends-on`, '', { o: iri(UI) }),
+      st(UI, `${KPRED}depends-on`, '', { o: iri(STORAGE) }),
+    ];
+    const { blockedBy, cycles } = decisionDependencies(all, new Set([STORAGE, SYNC, UI]));
+
+    expect(cycles).toEqual(new Set([STORAGE, SYNC, UI]));
+    expect(blockedBy.get(STORAGE)).toEqual([SYNC, UI]);
+    expect(blockedBy.get(SYNC)).toEqual([STORAGE, UI]);
+    expect(blockedBy.get(UI)).toEqual([STORAGE, SYNC]);
+  });
+
+  it('marks every member of a branched strongly-connected dependency component', () => {
+    const API = 'urn:kbase:concept/api';
+    const all = [
+      st(STORAGE, `${KPRED}depends-on`, '', { o: iri(SYNC) }),
+      st(STORAGE, `${KPRED}depends-on`, '', { o: iri(UI) }),
+      st(SYNC, `${KPRED}depends-on`, '', { o: iri(API) }),
+      st(UI, `${KPRED}depends-on`, '', { o: iri(API) }),
+      st(API, `${KPRED}depends-on`, '', { o: iri(STORAGE) }),
+    ];
+    const { cycles } = decisionDependencies(all, new Set());
+    expect(cycles).toEqual(new Set([STORAGE, SYNC, UI, API]));
+  });
+
+  it('counts a shared downstream dependant once instead of once per path', () => {
+    const LEAF = 'urn:kbase:concept/leaf';
+    const all = [
+      st(SYNC, `${KPRED}depends-on`, '', { o: iri(STORAGE) }),
+      st(UI, `${KPRED}depends-on`, '', { o: iri(STORAGE) }),
+      st(LEAF, `${KPRED}depends-on`, '', { o: iri(SYNC) }),
+      st(LEAF, `${KPRED}depends-on`, '', { o: iri(UI) }),
+    ];
+
+    const unlocks = unlockCounts(all);
+    expect(unlocks.get(STORAGE)).toBe(3); // SYNC, UI and LEAF — not LEAF twice
+    expect(unlocks.get(SYNC)).toBe(1);
+    expect(unlocks.get(UI)).toBe(1);
+  });
+
+  it('does not let a rejected dependency keep blocking a live decision', () => {
+    const all = [
+      ask(STORAGE, 'One file or many?', 'q1'),
+      ask(SYNC, 'Push or pull?', 'q2'),
+      st(SYNC, `${KPRED}depends-on`, '', { o: iri(STORAGE), status: 'rejected' }),
+    ];
+    const tree = buildReviewTree(all, all);
+    expect(tree.decisions.find((d) => d.subjectIri === SYNC)?.blockedBy).toEqual([]);
+  });
+});
+
+describe('dependency closure scaling', () => {
+  it('keeps a 6,000-node chain below the interactive freeze budget', () => {
+    const count = 6_000;
+    const node = (index: number) => `urn:kbase:concept/scale-${index}`;
+    const all = Array.from({ length: count - 1 }, (_, index) =>
+      st(node(index + 1), `${KPRED}depends-on`, '', {
+        id: `scale-dependency-${index}`,
+        o: iri(node(index)),
+      }),
+    );
+    const middle = Math.floor(count / 2);
+    const open = new Set([node(0), node(middle), node(count - 1)]);
+
+    const started = performance.now();
+    const unlocks = unlockCounts(all);
+    const dependencies = decisionDependencies(all, open);
+    const elapsed = performance.now() - started;
+
+    expect(unlocks.get(node(0))).toBe(count - 1);
+    expect(unlocks.get(node(middle))).toBe(count - middle - 1);
+    expect(dependencies.blockedBy.get(node(count - 1))).toEqual([node(0), node(middle)].sort());
+    expect(dependencies.cycles.size).toBe(0);
+    // The former per-node DFS takes several seconds on this fixture. Leave generous CI headroom
+    // while still making a return to that O(V·E) implementation fail loudly.
+    expect(elapsed).toBeLessThan(1_500);
+  }, 10_000);
 });
 
 describe('buildReviewTree — prerequisite is offered before dependant', () => {

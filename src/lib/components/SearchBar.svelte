@@ -252,7 +252,7 @@
       <kbd class="sb-hint mono">/ or ⌃K</kbd>
     {/if}
     {#if onshellyopen || onshellyquery}
-      <button class="sb-shelly-pill" onclick={askShelly} title="Ask Shelly"><img src="/svg/head1.svg" alt="" class="sb-shelly-head" /></button>
+      <button class="sb-shelly-pill" onclick={askShelly} title="Ask Shelly" aria-label="Ask Shelly"><img src="/svg/head1.svg" alt="" class="sb-shelly-head" /></button>
     {/if}
   </div>
 
@@ -557,5 +557,14 @@
       top: 2.3rem;
     }
     .sb-hint { display: none; }
+    .sb-clear,
+    .sb-shelly-pill {
+      min-width: 44px;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .sb-row { min-height: 44px; }
   }
 </style>

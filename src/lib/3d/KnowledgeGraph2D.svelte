@@ -19,6 +19,8 @@
 
   let {
     statements = [],
+    topologyStatements = null,
+    flooredStatementIds = null,
     selected = null,
     highlighted = [],
     dimMode = false,
@@ -44,10 +46,18 @@
     onhovermove = () => {},
     onmarkersmove = () => {},
     onlabelsmove = () => {},
+    onsettledchange = (_settled: boolean) => {},
     ontimelinepan = () => {},
     onreorder = (_order: string[]) => {}
   } = $props<{
     statements?: Statement[];
+    /**
+     * Statements allowed to create visible edges. Full `statements` are still consumed for
+     * labels, entity types, icons and detail/source metadata.
+     */
+    topologyStatements?: Statement[] | null;
+    /** Statements removed by the detail floor — see the guard in the build loop. */
+    flooredStatementIds?: Set<string> | null;
     selected?: string | null;
     highlighted?: string[];
     dimMode?: boolean;
@@ -76,6 +86,8 @@
     onhovermove?: (key: string | null, label: string | null, x: number, y: number) => void;
     onmarkersmove?: (markers: Array<{ key: string; label: string; color: string; x: number; y: number }>) => void;
     onlabelsmove?: (labels: Array<{ key: string; label: string; x: number; y: number; opacity: number }>) => void;
+    /** Exposes the simulation's real cooling boundary to UI/performance consumers. */
+    onsettledchange?: (settled: boolean) => void;
     ontimelinepan?: (center: number) => void;
     onreorder?: (order: string[]) => void;
   }>();
@@ -206,11 +218,21 @@
 
     const nodeMap = new Map<string, Node>();
     const e: Edge[] = [];
+    const topologyIds = topologyStatements === null
+      ? null
+      : new Set((topologyStatements as Statement[]).map((st) => st.id));
     for (const st of statements as Statement[]) {
       if (st.status === 'rejected' || st.status === 'superseded') continue;
+      // THE DETAIL FLOOR HAS TO BE CONSULTED BEFORE ANY NODE IS CREATED, not only in the
+      // topology branch below. rdf:type and rdfs:label each mint a node of their own, and both
+      // classify as RECORD — so at a `decisions` floor they are hidden and were STILL creating
+      // the node, which is why filtering to decisions left almost every node on screen. It
+      // decorates freely and creates nothing: a label on a node that survives for other reasons
+      // is welcome; a label that RESURRECTS a hidden node is the bug.
+      const floored = flooredStatementIds?.has(st.id) ?? false;
       if (st.p.value === RDF_TYPE) {
         const k = termKey(st.s);
-        if (!nodeMap.has(k) && st.s.kind === 'iri') {
+        if (!floored && !nodeMap.has(k) && st.s.kind === 'iri') {
           const label = st.s.value.split('/').pop() ?? st.s.value;
           const c = nodePositionCache.get(k);
           const x = c?.x ?? (spawnCenter?.x ?? 0) + (Math.random() - 0.5) * 8;
@@ -227,11 +249,27 @@
         const existing = nodeMap.get(k);
         if (existing) {
           existing.label = st.o.value;
-        } else if (st.s.kind === 'iri') {
+        } else if (!floored && st.s.kind === 'iri') {
           const c = nodePositionCache.get(k);
           const x = c?.x ?? (spawnCenter?.x ?? 0) + (Math.random() - 0.5) * 8;
           const y = c?.y ?? (spawnCenter?.y ?? 0) + (Math.random() - 0.5) * 8;
           nodeMap.set(k, { key: k, label: st.o.value, kind: 'concept', x, y, vx: 0, vy: 0, degree: 0 });
+        }
+        continue;
+      }
+      if (topologyIds && !topologyIds.has(st.id)) {
+        // ...but a fact the DETAIL FLOOR removed is a different case: resurrecting its subject
+        // here would undo exactly what the floor was asked to do. A dictated note whose every
+        // edge is provenance would keep its node and the graph would look unfiltered.
+        if (floored) continue;
+        // Attribute-only entities still deserve a node; only the unique literal leaf disappears.
+        const k = termKey(st.s);
+        if (!nodeMap.has(k) && st.s.kind === 'iri') {
+          const label = st.s.value.split('/').pop() ?? st.s.value;
+          const c = nodePositionCache.get(k);
+          const x = c?.x ?? (spawnCenter?.x ?? 0) + (Math.random() - 0.5) * 8;
+          const y = c?.y ?? (spawnCenter?.y ?? 0) + (Math.random() - 0.5) * 8;
+          nodeMap.set(k, { key: k, label, kind: 'concept', x, y, vx: 0, vy: 0, degree: 0 });
         }
         continue;
       }
@@ -332,9 +370,20 @@
    * settled graph costs nothing instead of running an O(n^2) repulsion loop every frame forever.
    * That is what turns a graph that has finished into a graph that has stopped.
    */
-  const SIM_ALPHA_DECAY = 0.0228; // reaches the floor in ~300 ticks, d3's default
-  const SIM_ALPHA_MIN   = 0.001;
+  const SIM_ALPHA_DECAY = 0.0228;
+  // d3's 0.001 tail takes ~300 ticks in total, but everything after 0.05 contributes only 5% of
+  // the accumulated force while keeping the O(n²) loop alive for ~170 extra frames. The perceptual
+  // floor retains 95% of the layout work and reaches a real idle state in ~2.2s at 60Hz.
+  const SIM_ALPHA_MIN   = 0.05;
   let simAlpha = 1;
+  let reportedSettled = false;
+  let lastEmittedSettled: boolean | null = null;
+
+  function emitSettled(settled: boolean) {
+    if (lastEmittedSettled === settled) return;
+    lastEmittedSettled = settled;
+    onsettledchange(settled);
+  }
 
   /**
    * Put energy back in — deliberately, and only on events that genuinely change the layout problem.
@@ -344,6 +393,12 @@
    */
   function reheat(to = 1) {
     simAlpha = Math.max(simAlpha, to);
+    if (simAlpha >= SIM_ALPHA_MIN) {
+      reportedSettled = false;
+      // A renderer remount can inherit `true` from the parent's previous graph mode. Publish the
+      // initial cooling state as well as later reheats so the external probe cannot stay stale.
+      emitSettled(false);
+    }
   }
 
   function rebuildLayout() {
@@ -364,6 +419,7 @@
     } else if (layout === 'hub') {
       const r = buildHubAnchors();
       activeAnchors  = r.anchors; markerData = r.markers;
+      scheduleStructuredFit2D(activeAnchors, 'hub');
       anchorStrength = 0.78; nodeColorMap = r.nodeColors; hubNodeKeys = r.hubKeys;
     } else if (layout === 'timeline') {
       const r = buildTimelineAnchors2D();
@@ -377,6 +433,17 @@
       hubNodeKeys    = [];
     } else if (layout === 'hierarchy') {
       activeAnchors  = buildHierarchyAnchors(statements as Statement[], nodes, edges);
+      // A tree is a stated structure, not a suggestion for a cooling force. Starting every node
+      // at its authoritative anchor prevents the simulation from cooling halfway to the layout.
+      for (const node of nodes) {
+        const anchor = activeAnchors.get(node.key);
+        if (!anchor) continue;
+        node.x = anchor.x;
+        node.y = anchor.y;
+        node.vx = 0;
+        node.vy = 0;
+      }
+      scheduleStructuredFit2D(activeAnchors, 'hierarchy');
       anchorStrength = 0.85;
       markerData     = [];
       nodeColorMap   = new Map();
@@ -741,10 +808,41 @@
   // ── Canvas + camera ──────────────────────────────────────────────────────────
   let canvasEl = $state<HTMLCanvasElement | null>(null);
   // Camera: center of canvas = world origin (0,0); scale = px per world unit
+  const MIN_CAMERA_SCALE = 0.05;
   let camX = 0, camY = 0, camScale = 40;
+  let reportedCamScale = $state(40);
   let prevW = 0, prevH = 0;
   // Cached viewport rect — updated once per tick to avoid repeated layout queries
   let _rect = { left: 0, top: 0, width: 0, height: 0 };
+
+  /** Frame structured anchors as a whole instead of cropping their outer clusters below overlays. */
+  function scheduleStructuredFit2D(anchors: Map<string, { x: number; y: number }>, expectedLayout: 'hub' | 'hierarchy') {
+    requestAnimationFrame(() => {
+      if (layout !== expectedLayout || activeAnchors !== anchors || anchors.size === 0) return;
+      const width = canvasEl?.clientWidth ?? _rect.width;
+      const height = canvasEl?.clientHeight ?? _rect.height;
+      if (width <= 0 || height <= 0) return;
+      const points = [...anchors.values()];
+      const minX = Math.min(...points.map((point) => point.x));
+      const maxX = Math.max(...points.map((point) => point.x));
+      const minY = Math.min(...points.map((point) => point.y));
+      const maxY = Math.max(...points.map((point) => point.y));
+      // Nodes render at a screen-space radius (nodeRadius * 4), so reserve that radius separately
+      // from the responsive outer gutter. A fixed 72px gutter plus the old 4x minimum zoom cropped
+      // large hierarchies on a short phone pane and then prevented the user from zooming them out.
+      const nodeMargin = Math.max(20, ...nodes.map((node) => nodeRadius(node) * 4));
+      // On roomy canvases reserve the floating search/nav bands as well as the bare viewport edge.
+      // Compact panes still cap this at 12%, so a short mobile hierarchy does not lose its canvas.
+      const outerGutter = Math.min(88, width * 0.12, height * 0.12);
+      const inset = nodeMargin + outerGutter;
+      const fitX = Math.max(1, width - inset * 2) / Math.max(maxX - minX, 1);
+      const fitY = Math.max(1, height - inset * 2) / Math.max(maxY - minY, 1);
+      camScale = Math.max(MIN_CAMERA_SCALE, Math.min(40, fitX, fitY));
+      reportedCamScale = camScale;
+      camX = -((minX + maxX) / 2) * camScale;
+      camY = -((minY + maxY) / 2) * camScale;
+    });
+  }
 
   // ── Ghost graph + camera fly (leap transition) ──────────────────────────────
   const GHOST_OFFSET = 35;  // world units from anchor to ghost cluster center
@@ -816,6 +914,15 @@
 
   function nodeRadius(n: Node): number {
     return 5 + Math.min(4, Math.sqrt(n.degree));
+  }
+
+  /**
+   * Preserve the familiar 20–36px node size at normal zoom, but let nodes shrink with the world
+   * below 4x. Keeping a fixed screen radius while fitting a 100-level tree turned its overview into
+   * one opaque pile even though every anchor was technically in frame.
+   */
+  function nodeWorldRadius(n: Node): number {
+    return nodeRadius(n) * Math.min(4, camScale) / camScale;
   }
 
   /** Draw a 2D shape on ctx2d centered at (cx,cy) with half-size r. Path is open — caller fills/strokes. */
@@ -1077,7 +1184,7 @@
     // Nodes
     const tm = nodeTypeMap;
     for (const n of nodes) {
-      const r        = nodeRadius(n) / camScale * 40 * 0.1; // world units
+      const r        = nodeWorldRadius(n);
       const isSel    = n.key === selected;
       const isHov    = n.key === hoveredKey;
       const isHL     = highlightSet.has(n.key);
@@ -1224,6 +1331,13 @@
     // Freeze physics during camera fly animation to prevent drift.
     // Skip entirely once cooled: a settled graph must cost nothing (see SIM_ALPHA_DECAY).
     if (!flyAnim && simAlpha >= SIM_ALPHA_MIN) {
+    // Small graphs can advance several simulation ticks between paints without hiding input or
+    // changing the final layout. This preserves the same force/damping schedule while compressing
+    // ~129 cheap ticks into fewer visible frames. Large graphs stay at one tick so O(n²) work never
+    // turns one frame into a main-thread stall.
+    const pairCount = nodes.length * Math.max(0, nodes.length - 1) / 2;
+    const simulationSteps = pairCount <= 10_000 ? 8 : pairCount <= 40_000 ? 4 : pairCount <= 125_000 ? 2 : 1;
+    for (let simulationStep = 0; simulationStep < simulationSteps && simAlpha >= SIM_ALPHA_MIN; simulationStep++) {
     /** Force timestep, scaled by the cooling schedule. Damping and integration use raw dt. */
     const fdt = dt * simAlpha;
     const REPEL     = 2.2;
@@ -1233,6 +1347,7 @@
     const BASE_REST = 3.2;
     const VEL_FLOOR = 0.001; // clamp micro-velocities to zero to stop jitter
     const LOCK_TIMELINE_X = layout === 'timeline';
+    const LOCK_HIERARCHY_Y = layout === 'hierarchy';
 
     for (let i = 0; i < nodes.length; i++) {
       const a = nodes[i];
@@ -1269,17 +1384,35 @@
         const dateAnchor = activeAnchors.get(n.key);
         if (dateAnchor) { n.x = dateAnchor.x; n.vx = 0; }
       }
+      if (LOCK_HIERARCHY_Y) {
+        const hierarchyAnchor = activeAnchors.get(n.key);
+        if (hierarchyAnchor) { n.y = hierarchyAnchor.y; n.vy = 0; }
+      }
       nodePositionCache.set(n.key, { x: n.x, y: n.y });
     }
 
     // Cool. Once below the floor the block above is skipped entirely and the graph is at rest.
     simAlpha += (0 - simAlpha) * SIM_ALPHA_DECAY;
     if (simAlpha < SIM_ALPHA_MIN) simAlpha = 0;
+    } // end adaptive simulation substeps
     } // end if (!flyAnim && simAlpha >= SIM_ALPHA_MIN) — physics freeze / cooled
+    if (simAlpha === 0 && !reportedSettled) {
+      reportedSettled = true;
+      emitSettled(true);
+    }
 
     const el = canvasEl;
     if (el) {
       const w = el.clientWidth, h = el.clientHeight;
+      if (w !== prevW || h !== prevH) {
+        prevW = w;
+        prevH = h;
+        // The initial hierarchy fit is viewport-dependent. A phone rotation, split-pane resize,
+        // or desktop panel drag must recompute it instead of leaving the tree cropped or tiny.
+        if ((layout === 'hierarchy' || layout === 'hub') && activeAnchors.size > 0) {
+          scheduleStructuredFit2D(activeAnchors, layout);
+        }
+      }
       const dpr = window.devicePixelRatio || 1;
       const bw = Math.round(w * dpr), bh = Math.round(h * dpr);
       if (el.width !== bw || el.height !== bh) { el.width = bw; el.height = bh; }
@@ -1374,7 +1507,8 @@
     const wx = (clientX - rect.left - rect.width  / 2 - camX) / camScale;
     const wy = (clientY - rect.top  - rect.height / 2 - camY) / camScale;
     for (const n of [...nodes].reverse()) {
-      const r = (nodeRadius(n) / camScale * 40 * 0.1) * 2.2; // generous hit target
+      // Visual nodes may be sub-pixel in an all-tree overview; interaction remains a 44px target.
+      const r = Math.max(nodeWorldRadius(n) * 2.2, 22 / camScale);
       if ((n.x - wx)**2 + (n.y - wy)**2 <= r*r) return n;
     }
     return null;
@@ -1503,15 +1637,20 @@
     e.preventDefault();
     const factor = e.deltaY < 0 ? 1.12 : 0.89;
     const el = canvasEl;
-    if (!el) { camScale = Math.max(4, Math.min(400, camScale * factor)); return; }
+    if (!el) {
+      camScale = Math.max(MIN_CAMERA_SCALE, Math.min(400, camScale * factor));
+      reportedCamScale = camScale;
+      return;
+    }
     const rect = el.getBoundingClientRect();
     // Use rect dimensions (CSS layout) for coordinate accuracy
     const px = e.clientX - rect.left - rect.width  / 2;
     const py = e.clientY - rect.top  - rect.height / 2;
-    const newScale = Math.max(4, Math.min(400, camScale * factor));
+    const newScale = Math.max(MIN_CAMERA_SCALE, Math.min(400, camScale * factor));
     camX = px - (px - camX) * (newScale / camScale);
     camY = py - (py - camY) * (newScale / camScale);
     camScale = newScale;
+    reportedCamScale = camScale;
   }
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────────
@@ -1529,6 +1668,7 @@
 <canvas
   bind:this={canvasEl}
   class="graph2d"
+  data-camera-scale={reportedCamScale.toFixed(3)}
   onpointerdown={onPointerDown}
   onpointermove={onPointerMove}
   onpointerup={onPointerUp}

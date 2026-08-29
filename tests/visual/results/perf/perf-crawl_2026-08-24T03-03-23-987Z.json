@@ -1,0 +1,35 @@
+{
+  "schema": "perf-crawl/1",
+  "finishedAt": "2026-08-24T03:03:23.987Z",
+  "baseUrl": "http://127.0.0.1:4180",
+  "renderer": "ANGLE (NVIDIA Corporation, NVIDIA GeForce RTX 3090/PCIe/SSE2, OpenGL 4.5.0)",
+  "softwareRendered": false,
+  "budgetMs": 2500,
+  "longTaskMs": 200,
+  "results": [
+    {
+      "route": "flow:everyday",
+      "timeToUsable": 2123,
+      "longTasks": [
+        {
+          "startTime": 165.79999999701977,
+          "duration": 741,
+          "name": "DvJuRh-Q.js:IDBTransaction.oncomplete 741ms"
+        },
+        {
+          "startTime": 2214.5999999940395,
+          "duration": 275,
+          "name": "inline:TimerHandler:setTimeout 39ms"
+        }
+      ],
+      "worstFrame": 744.7,
+      "medianFrame": 16.699999999999818,
+      "frozenSpans": [],
+      "failures": [
+        "long task 741ms blocked the main thread (DvJuRh-Q.js:IDBTransaction.oncomplete 741ms)",
+        "long task 275ms blocked the main thread (inline:TimerHandler:setTimeout 39ms)"
+      ],
+      "harnessError": null
+    }
+  ]
+}

@@ -28,7 +28,15 @@
 import type { Statement } from './types';
 
 export type Tier = 'script' | 'local-agent' | 'frontier';
-export type TaskState = 'open' | 'claimed' | 'waiting' | 'done' | 'failed';
+/**
+ * `proposed` is the state of a task NOBODY HAS AUTHORED YET — it was read out of a dictated note
+ * by `rdf/note-intent.ts` and carries only a goal in the speaker's own words. It is deliberately
+ * not `open`: `open` means a human wrote this task down and meant it, and a sentence said into a
+ * ring while walking is not that. A proposed task can never be assigned (see `blockedReason`)
+ * until a person gives it the two things a transcript cannot contain — the effects it is allowed
+ * to have, and how a machine will know it worked.
+ */
+export type TaskState = 'proposed' | 'open' | 'claimed' | 'waiting' | 'done' | 'failed';
 export const TASK_EFFECTS = [
   'read-only',
   'queue-write',
@@ -65,6 +73,15 @@ export interface AgentTask {
   model?: string;
   /** Machine-checkable acceptance criterion. A task without one must never be assigned. */
   doneWhen?: string;
+  /**
+   * The shell command a script-tier task runs.
+   *
+   * Read here so the app's task model and `scripts/agent/runner.ts` describe the SAME task — the
+   * runner has always read kpred:command and this parser never did, so anything rendering a task
+   * from the app could not show what it would actually execute. That gap is exactly how a
+   * reviewer approves something they cannot see.
+   */
+  command?: string;
   /** IRIs of questions/partial-facts/tasks that must resolve first. */
   blockedBy: string[];
   /** Epoch ms. A task is not runnable before this. */
@@ -118,6 +135,7 @@ export function parseTasks(statements: Statement[]): AgentTask[] {
       contextBudget: num(one('context-budget')),
       model: one('model'),
       doneWhen: one('done-when'),
+      command: one('command'),
       blockedBy: many('blocked-by'),
       dueAt: num(one('due-at')),
       claimedBy: one('claimed-by'),
@@ -142,6 +160,13 @@ export function blockedReason(
   opts: { now: number; resolved: (iri: string) => boolean },
 ): string | null {
   if (task.state === 'done') return 'already done';
+  // Belt and braces over the effect and done-when refusals below, which a dictated task already
+  // fails twice. Stated separately because the REASON differs and a queue should say so: this one
+  // has not been authored by a person at all, and no field added to it later changes that until
+  // somebody moves it out of `proposed`.
+  if (task.state === 'proposed') {
+    return 'proposed from a dictated note — nobody has yet declared its effects or how it is checked';
+  }
   if (!task.goal.trim()) return 'no goal — there is nothing to do';
   // Preserve and reject unknown declarations instead of filtering them into apparent safety.
   // The defensive scan of `effects` also protects JavaScript callers and deserialized objects

@@ -416,6 +416,10 @@ export function toTurtleFull(
     // the browser — and the job that would compute it is script tier, reading these files.
     if (st.proposedBy) lines.push(`    meta:proposed-by ${JSON.stringify(st.proposedBy)} ;`);
     if (st.askedBy) lines.push(`    meta:asked-by ${JSON.stringify(st.askedBy)} ;`);
+    // A HAND-SET ALTITUDE MUST SURVIVE THE FILE. It is a user's ruling on one fact, and the
+    // whole detail ladder reads it; losing it on export would silently undo their work the next
+    // time the graph round-trips through disk or sync.
+    if (st.altitude) lines.push(`    meta:altitude "${st.altitude}" ;`);
     if (st.gloss) lines.push(`    meta:gloss ${JSON.stringify(st.gloss)} ;`);
     if (st.excerpt) lines.push(`    meta:excerpt ${JSON.stringify(st.excerpt)} ;`);
     if (st.supersedes) lines.push(`    meta:supersedes <urn:kbase:stmt/${st.supersedes}> ;`);

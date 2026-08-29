@@ -78,6 +78,8 @@
            kept for pointer/keyboard/screen-reader users. -->
       <div
         class="sheet-drag"
+        role="group"
+        aria-label="Panel header"
         onpointerdown={onDragStart}
         onpointermove={onDragMove}
         onpointerup={onDragEnd}
