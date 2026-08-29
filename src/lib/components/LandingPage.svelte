@@ -7,12 +7,6 @@
   import { activateOfficialKb, preloadOfficialKb, officialKbError } from '$lib/stores/official-kb.svelte';
   import { importTurtleFull } from '$lib/rdf/import-ttl';
   import { startStory, startExplore } from '$lib/stores/shelly-bridge.svelte';
-  import * as kokoro from '$lib/integrations/llm/kokoro-tts';
-
-  let { onstarteropen = () => {} } = $props<{
-    /** Let the graph route choose a lightweight transient renderer before starter facts react. */
-    onstarteropen?: () => void;
-  }>();
 
   // Warm the larger documentation graph after the landing page has had time to hydrate. Starting
   // its fetch/parse during component initialization competes with an immediate starter click on the
@@ -23,9 +17,6 @@
     return () => window.clearTimeout(timer);
   });
 
-  // Kokoro TTS is lazy-loaded on first voice use — no automatic download.
-  // The 87MB model only downloads when the user explicitly enables voice.
-
   let loadingTemplate = $state<string | null>(null);
   let loadingDocs = $state(false);
   let loadingStarter = $state(false);
@@ -34,14 +25,6 @@
   let actionErrorEl: HTMLParagraphElement | undefined = $state();
   let loadingExample = $state<string | null>(null);
   let loadingVisualReview = $state(false);
-
-  // Track core module loading (Kokoro TTS voice model)
-  let kokoroStatus = $state<'idle' | 'loading' | 'ready' | 'error'>('idle');
-  let kokoroPct = $state(0);
-  kokoro.onKokoroStatus((status, pct) => {
-    kokoroStatus = status;
-    kokoroPct = pct;
-  });
 
   const EXAMPLE_KBS = [
     { id: 'quickstart', icon: '🚀', title: 'Quick-Start Example', body: 'People, projects, decisions, metrics', file: '/starter-quickstart.ttl' },
@@ -85,10 +68,6 @@
       // has something to talk about.
       const confirmed = statements.map((s) => ({ ...s, status: 'confirmed' as const }));
       if (confirmed.length) {
-        // The 177-node example is a friendly first-run tour, not a 3D stress test. Switch only this
-        // live view before persistence publishes the facts, so mounting the graph cannot block the
-        // CTA on synchronous WebGL-driver setup. The parent deliberately does not save the choice.
-        onstarteropen();
         await addStatements(confirmed, 'starter');
         // Publishing the batch mounts the graph reactively. Let that task finish before opening
         // Shelly and generating tour context; doing both in the IndexedDB completion turn produced
@@ -404,11 +383,6 @@
           {:else}
             Getting started →
           {/if}
-          {#if kokoroStatus === 'loading'}
-            <span class="btn-loader">
-              <span class="btn-loader-bar" style="width: {kokoroPct}%"></span>
-            </span>
-          {/if}
         </button>
         <a href="/ingest" class="btn-secondary">Add your own source</a>
       </div>
@@ -426,10 +400,6 @@
           Couldn't load that starter graph — {actionError}
         </p>
       {/if}
-      {#if kokoroStatus === 'loading'}
-        <p class="core-loading mono">loading voice model — {kokoroPct}%</p>
-      {/if}
-
       <div class="badges">
         <span class="badge">local-first</span>
         <span class="badge">open source</span>
@@ -461,14 +431,6 @@
           <span class="tmpl-loading mono">loading...</span>
         {:else}
           <span class="tmpl-cta">Open docs →</span>
-        {/if}
-        {#if kokoroStatus === 'loading'}
-          <span class="tmpl-loader">
-            <span class="tmpl-loader-track">
-              <span class="tmpl-loader-bar" style="width: {kokoroPct}%"></span>
-            </span>
-            <span class="tmpl-loader-label mono">voice {kokoroPct}%</span>
-          </span>
         {/if}
       </button>
 
@@ -1096,13 +1058,6 @@
     50% { opacity: 0.3; }
   }
 
-  /* ── Core module loading indicator ───────────────── */
-  .core-loading {
-    font-size: 0.7rem;
-    color: var(--muted);
-    margin: 0;
-    letter-spacing: 0.04em;
-  }
   .docs-error {
     font-size: 0.72rem;
     color: var(--danger, #d4726d);
@@ -1128,53 +1083,6 @@
   }
   .starter-hint .link-btn:hover:not(:disabled) { text-decoration: underline; }
   .starter-hint .link-btn:disabled { color: var(--muted); cursor: default; }
-
-  .btn-loader {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: rgba(0, 0, 0, 0.15);
-    border-radius: 0 0 var(--rad) var(--rad);
-    overflow: hidden;
-  }
-
-  .btn-loader-bar {
-    display: block;
-    height: 100%;
-    background: rgba(255, 255, 255, 0.6);
-    border-radius: 0 0 var(--rad) var(--rad);
-    transition: width 0.3s ease;
-  }
-
-  .tmpl-loader {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-top: 0.3rem;
-  }
-
-  .tmpl-loader-track {
-    flex: 1;
-    height: 3px;
-    background: var(--line);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-
-  .tmpl-loader-bar {
-    height: 100%;
-    background: var(--accent);
-    border-radius: 2px;
-    transition: width 0.3s ease;
-  }
-
-  .tmpl-loader-label {
-    font-size: 0.62rem;
-    color: var(--muted);
-    white-space: nowrap;
-  }
 
   /* ── Features grid ──────────────────────────────────── */
   .features-grid {

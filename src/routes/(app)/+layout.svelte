@@ -7,7 +7,6 @@
   import { page } from '$app/state';
 
   import NavBar from '$lib/components/NavBar.svelte';
-  import TurtleChatPanel from '$lib/components/TurtleChatPanel.svelte';
   import ManualLLMModal from '$lib/components/ManualLLMModal.svelte';
   import { loadAll, loaded, startKbLiveSync } from '$lib/stores/kb.svelte';
   import { loadSettings, settingsLoaded } from '$lib/stores/settings.svelte';
@@ -221,12 +220,15 @@
 <FeedbackDialog />
 
 {#if shellyChatOpen()}
-  <TurtleChatPanel
-    initialMessage={shellyOpenMessage()}
-    exploreMode={exploreOpen()}
-    storyId={activeStoryId()}
-    onclose={() => { setShellyChatOpen(false); stopExplore(); stopStory(); clearShellyOpen(); }}
-  />
+  {#await import('$lib/components/TurtleChatPanel.svelte') then chatModule}
+    {@const TurtleChatPanel = chatModule.default}
+    <TurtleChatPanel
+      initialMessage={shellyOpenMessage()}
+      exploreMode={exploreOpen()}
+      storyId={activeStoryId()}
+      onclose={() => { setShellyChatOpen(false); stopExplore(); stopStory(); clearShellyOpen(); }}
+    />
+  {/await}
 {/if}
 
 </Tooltip.Provider>

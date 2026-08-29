@@ -1,8 +1,26 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-08-28.** Working branch: `feat/task-bridge` (PR #208, stacked on #207 /
+**Last updated: 2026-08-29.** Working branch: `feat/task-bridge` (PR #208, stacked on #207 /
 `fix/claude-review-hardening`). PRs target `dev`. Note the branch tracks `origin/dev` directly, so
 a bare `git push` would push to dev — always `git push origin HEAD:refs/heads/<branch>`.
+
+## ▶ SESSION 2026-08-29 (latest) — honor 3D, and make voice truly opt-in
+
+- **Renderer selection:** Getting Started no longer silently changes a saved/default 3D choice to
+  2D. Intentional saved 2D, no-WebGL fallback, FPS detection, the downgrade notice, and its manual
+  action remain. The production smoke gate covers all three paths.
+- **Starter media:** the everyday starter graph now demonstrates a GIF, WebM video, and GLB model;
+  the asset render path is covered by the production smoke gate.
+- **Voice is explicit opt-in:** a fresh profile does not import or request Kokoro, Hume, Whisper,
+  Transformers, ONNX, a model, WASM, microphone access, or Hume configuration. Saved explicit
+  consent remains supported. Imported Turtle preferences cannot grant voice consent.
+- **Initial-load boundary:** Shelly chat, Hume narration, Kokoro, and the voice catalogue are loaded
+  dynamically only after the corresponding user action. PWA precache excludes optional voice/ML
+  runtimes and WASM while retaining runtime caching after an opted-in use.
+- **Verification:** 185 unit files / 2,614 tests; `svelte-check` 0/0; production build; deploy-gate
+  smoke 5/5; offline evidence 81 tested / 17 declared / 0 undeclared; fresh production navigation
+  made zero optional voice/ML or WASM requests. PWA precache is 484 entries / 31,023.45 KiB with
+  zero optional-runtime leaks.
 
 ## ▶ SESSION 2026-08-28 (latest) — the bridge, the schedule, and eight standing jobs
 

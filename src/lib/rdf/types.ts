@@ -432,12 +432,15 @@ export const STMT_PREFIX = 'urn:kbase:stmt/';
  * a finding is still a decision you rule on, just not a thing the graph pretends to know about. */
 export const TEST_TELEMETRY_PREFIX = 'urn:reckons:test/';
 
-/** Predicates whose object is a presentation image (2D icon / preview photo).
+/** Predicates whose object is a presentation asset (2D icon / photo / video).
  * They're consumed directly by the icon/preview maps; as edges they'd render
- * the raw data-URI or URL as a junk literal node, so they're metadata here. */
+ * the raw data-URI or URL as a junk literal node, so they're metadata here.
+ * GIF and GLB references already live under urn:kbase:meta/* and are covered by
+ * the namespace check in isMetaPredicate(). */
 export const PRESENTATION_IMAGE_PREDICATES = new Set([
   'urn:kbase:predicate/icon2d',
   'urn:kbase:predicate/photo',
+  'urn:kbase:predicate/video',
   // Provenance ABOUT a photo — who made it, where to check the licence. Belongs in the detail
   // panel beside the image, never as an edge to a literal node holding a credit line or a URL.
   'urn:kbase:predicate/photo-credit',

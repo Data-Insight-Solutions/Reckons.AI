@@ -17,11 +17,10 @@ async function loadStarter(page: Page) {
   const gs = page.getByRole('button', { name: /getting started/i }).first();
   await expect(gs).toBeVisible({ timeout: 15_000 });
   await gs.click();
-  // First-run starter loading deliberately uses a transient 2D renderer. Waiting for a 3D DOM
-  // label here made every review assertion depend on an element that cannot exist in this state.
-  const graph = page.locator('[data-graph-renderer="2d"]');
-  await expect(graph).toBeVisible({ timeout: 15_000 });
-  await expect(graph).toHaveAttribute('data-graph-settled', 'true', { timeout: 20_000 });
+  // Fresh storage defaults to 3D. Wait for the saved renderer to mount before following the same
+  // client-side navigation a person uses to reach Review.
+  await expect(page.locator('[data-graph-renderer="3d"][data-graph-ready="true"]'))
+    .toBeVisible({ timeout: 20_000 });
 }
 
 test.beforeEach(async ({ page }) => {

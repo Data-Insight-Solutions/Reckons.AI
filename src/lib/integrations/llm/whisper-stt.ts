@@ -151,6 +151,7 @@ export function startMicRecording(): {
   let chunks: Blob[] = [];
   let resolveAudio: ((audio: Float32Array) => void) | null = null;
   let rejectAudio: ((err: Error) => void) | null = null;
+  let cancelled = false;
 
   const audioPromise = new Promise<Float32Array>((resolve, reject) => {
     resolveAudio = resolve;
@@ -159,6 +160,10 @@ export function startMicRecording(): {
 
   // Start recording immediately
   navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
+    if (cancelled) {
+      s.getTracks().forEach(t => t.stop());
+      return;
+    }
     stream = s;
     recorder = new MediaRecorder(s, { mimeType: getMimeType() });
     recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
@@ -187,6 +192,7 @@ export function startMicRecording(): {
       return audioPromise;
     },
     cancel: () => {
+      cancelled = true;
       recorder?.stop();
       stream?.getTracks().forEach(t => t.stop());
       chunks = [];

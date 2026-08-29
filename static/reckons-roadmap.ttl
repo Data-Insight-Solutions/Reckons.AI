@@ -1345,13 +1345,12 @@ kb:int-indico  rdf:type     ktype:Tool ;
 
 ## -- F74: Asset viewer + generation (image · video · 3D/GLB) --------------------
 kb:asset-viewer rdf:type     ktype:Feature ;
-               kpred:test-coverage "none" ;
-               kpred:honest-note  "No automated test covers this feature (audited 2026-07-12, scripts/offline/status-evidence.ts). The status is still accurate — it IS shipped and in use; test coverage and deployment maturity are orthogonal, and pretending otherwise would be its own dishonesty. This is a declared RISK, not a hidden one: kb:honest-status requires the gap be visible rather than silent." ;
+               kpred:tested-by    "tests/e2e/graph-render.test.ts" ;
                rdfs:label   "Asset viewer (image · video · 3D/GLB)" ;
                kpred:feature-id   "F74" ;
                kpred:has-status   "functional" ;
-               kpred:description  "A node's asset opens in three levels — normal thumbnail (settings-adjustable) → large (covers most of the graph) → fullscreen. Renders per kind: <img>, <video controls>, and an orbitable GLB canvas (AssetGlbViewer, threlte). Resolves urn:kbase:meta/glbModel (3D), urn:kbase:predicate/video, then image previews. 'assets → auto-expand' in the graph menu opens each asset as you navigate (story/explore). GLB loading now wires a locally-served Draco decoder (static/draco/), so Meshy/compressed GLBs render everywhere (graph + viewer). Demo: static/starter-assets.ttl." ;
-               kpred:done         "AssetGlbViewer.svelte; +page.svelte asset viewer + kind resolution + auto-expand; nodePreviewSize setting; Draco decoder in GraphNode loader." .
+               kpred:description  "A node's asset opens in three levels — normal thumbnail (settings-adjustable) → large (covers most of the graph) → fullscreen. Renders per kind: <img>, <video controls>, and an orbitable GLB canvas (AssetGlbViewer, threlte). Resolves urn:kbase:meta/glbModel (3D), urn:kbase:predicate/video, then image previews. 'assets → auto-expand' in the graph menu opens each asset as you navigate (story/explore). GLB loading now wires a locally-served Draco decoder (static/draco/), so Meshy/compressed GLBs render everywhere (graph + viewer). Demos: the focused static/starter-assets.ttl graph and the Getting Started camping trip, whose Preview All mode mixes GIF, WebM, GLB, and still images." ;
+               kpred:done         "AssetGlbViewer.svelte; +page.svelte asset viewer + kind resolution + auto-expand; nodePreviewSize setting; Draco decoder in GraphNode loader; production-build Getting Started coverage that decodes GIF/video and paints the GLB viewer." .
 
 kb:asset-generation rdf:type ktype:Feature ;
                rdfs:label   "Asset generation (video · 3D/GLB)" ;

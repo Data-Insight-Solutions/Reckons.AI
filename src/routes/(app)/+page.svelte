@@ -86,7 +86,7 @@
   // disposable context is not a cheap feature query: a production CPU profile measured this call
   // at ~225ms on an RTX 3090. The old initializer + settings effect + onMount could each create one
   // on the empty landing page, and the cost was then attributed unpredictably to an IndexedDB
-  // completion or animation frame when a user immediately opened the explicitly-2D starter.
+  // completion or animation frame. One on-demand check is enough when a graph actually mounts.
   let webglAvailable = $state(false);
   let webglChecked = $state(false);
   // Default to attempting 3D. Do NOT seed this from webglAvailable — that value is
@@ -569,9 +569,9 @@
     )
   );
 
-  // Run before the graph branch updates, so a normal 3D graph does not mount a throwaway 2D canvas
-  // first. The everyday starter calls `onstarteropen` before publishing its facts, setting use2D;
-  // that makes this branch skip the WebGL probe completely. No graph means no context allocation.
+  // Run before the graph branch updates, so a 3D graph does not mount a throwaway 2D canvas first.
+  // No graph means no context allocation; once facts arrive, the saved renderer preference is
+  // authoritative and the capability probe runs exactly once when 3D is requested.
   $effect.pre(() => {
     if (visible.length === 0 || use2D || webglChecked) return;
     webglChecked = true;
@@ -1871,7 +1871,7 @@
     data-graph-settled={visible.length === 0 || graphSettled}
   >
   {#if visible.length === 0}
-    <LandingPage onstarteropen={() => { use2D = true; }} />
+    <LandingPage />
   {:else if use2D || !webglAvailable}
     <KnowledgeGraph2D
       statements={visible}

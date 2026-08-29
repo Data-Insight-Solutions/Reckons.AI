@@ -129,27 +129,29 @@ test('starter and ingest failures are visible, announced, and retryable', async 
   await attachViewport(page, testInfo, 'visible-actionable-errors');
 });
 
-test('everyday starter opens in transient 2D without overwriting the saved renderer', async ({ page }) => {
+test('everyday starter honors the saved 3D renderer', async ({ page }) => {
+  await page.goto('/settings');
+  const rendererRow = page.getByText('graph renderer').locator('..').locator('..');
+  await rendererRow.getByRole('button', { name: '3D', exact: true }).click();
+
   await page.goto('/');
   await page.getByRole('button', { name: /getting started/i }).click();
 
-  // The curated first-run graph contains 177 nodes. Avoid charging its CTA for synchronous WebGL
-  // context and shader setup; an explicit user renderer preference remains authoritative later.
-  const graph = page.locator('[data-graph-renderer="2d"]');
-  await expect(graph).toBeVisible({ timeout: 15_000 });
-  // Performance consumers must see this graph's real lifecycle, not inherit the landing page's
-  // no-work `true`. This is the exact false→true contract the flow crawl now waits on.
-  await expect(graph).toHaveAttribute('data-graph-settled', 'false');
-  await expect(graph).toHaveAttribute('data-graph-settled', 'true', { timeout: 15_000 });
+  const graph = page.locator('[data-graph-renderer="3d"][data-graph-ready="true"]');
+  await expect(graph).toBeVisible({ timeout: 20_000 });
 
   await page.goto('/settings');
-  const rendererRow = page.getByText('graph renderer').locator('..').locator('..');
   await expect(rendererRow.getByRole('button', { name: '3D', exact: true })).toHaveClass(/active/);
   await expect(rendererRow.getByRole('button', { name: '2D', exact: true })).not.toHaveClass(/active/);
 });
 
 test('starter graph keeps prose and URL attributes off the canvas topology', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop-chrome', '3D label integration regression');
+  // This assertion needs 2D's complete label callback rather than the camera-visible 3D subset,
+  // so select 2D explicitly instead of relying on the starter to contradict Settings.
+  await page.goto('/settings');
+  const rendererRow = page.getByText('graph renderer').locator('..').locator('..');
+  await rendererRow.getByRole('button', { name: '2D', exact: true }).click();
   await page.goto('/');
   await page.getByRole('button', { name: /getting started/i }).click();
   const graph = page.locator('[data-graph-renderer="2d"]');

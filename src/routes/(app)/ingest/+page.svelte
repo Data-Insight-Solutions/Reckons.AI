@@ -424,7 +424,9 @@
         if (shellyPersona.patienceLevel != null) patch.patienceLevel = shellyPersona.patienceLevel;
         if (shellyPersona.engagement) patch.engagement = shellyPersona.engagement;
         // Voice
-        if (shellyPersona.voiceEnabled != null) patch.voiceEnabled = shellyPersona.voiceEnabled;
+        // Voice enablement is local consent, not portable persona data. An
+        // imported graph may carry preferred voice settings, but it cannot
+        // activate audio, model downloads, microphone access, or Hume.
         if (shellyPersona.voiceType) patch.voiceType = shellyPersona.voiceType;
         if (shellyPersona.speechRate != null) patch.speechRate = shellyPersona.speechRate;
         if (shellyPersona.volume != null) patch.volume = shellyPersona.volume;

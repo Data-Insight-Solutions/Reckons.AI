@@ -2,7 +2,61 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
+import fs from 'node:fs';
 import path from 'path';
+
+/**
+ * Workbox normally precaches every generated JS/WASM asset. That defeats an
+ * application-level opt-in: a fresh install would still download Kokoro,
+ * Hume, Whisper/Transformers and ONNX before the user enabled voice.
+ *
+ * Generated chunks are content-hashed, so identify optional runtime chunks by
+ * stable source strings instead of brittle filenames. They remain available
+ * on demand and the runtime cache stores them after the explicit first use.
+ */
+function isOptInRuntimeAsset(url: string): boolean {
+  if (url.endsWith('.wasm')) return true;
+  if (!url.endsWith('.js')) return false;
+
+  const relative = decodeURIComponent(url).replace(/^\/+/, '');
+  const clientRelative = relative.replace(/^client\//, '');
+  const candidates = [
+    path.resolve(process.cwd(), 'build', clientRelative),
+    path.resolve(process.cwd(), '.svelte-kit/output', relative),
+    path.resolve(process.cwd(), '.svelte-kit/output/client', clientRelative),
+  ];
+  const file = candidates.find((candidate) => fs.existsSync(candidate));
+  if (!file) return false;
+
+  const source = fs.readFileSync(file, 'utf8');
+  return [
+    'Kokoro-82M-v1.0-ONNX',
+    'KokoroTTS',
+    'automatic-speech-recognition',
+    'Whisper download declined',
+    'empathicVoice',
+    'HumeClient',
+    'EVIWebAudioPlayer',
+    'onnxruntime-web',
+  ].some((marker) => source.includes(marker));
+}
+
+/** Preserve @vite-pwa/sveltekit's public-URL mapping when adding our custom
+ * manifest transform (the integration only injects its own transform when no
+ * custom transform is supplied). */
+function toPublicPrecacheUrl(url: string): string | null {
+  if (url === 'prerendered/fallback.html') return null;
+  if (url.startsWith('client/')) url = url.slice(7);
+  else if (url.startsWith('prerendered/dependencies/')) url = url.slice(25);
+  else if (url.startsWith('prerendered/pages/')) url = url.slice(18);
+
+  if (url.endsWith('.html')) {
+    if (url === 'index.html') return '/';
+    if (url.endsWith('/index.html')) return url.slice(0, -11);
+    return url.slice(0, -5);
+  }
+  return url === 'manifest.webmanifest' ? null : url;
+}
 
 export default defineConfig({
   plugins: [
@@ -32,7 +86,26 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2,wasm}'],
         maximumFileSizeToCacheInBytes: 50_000_000,
+        manifestTransforms: [async (entries) => ({
+          manifest: entries.flatMap((entry) => {
+            if (isOptInRuntimeAsset(entry.url)) return [];
+            const url = toPublicPrecacheUrl(entry.url);
+            return url ? [{ ...entry, url }] : [];
+          }),
+          warnings: [],
+        })],
         runtimeCaching: [
+          {
+            // Lazy app runtimes (voice/ML and optional 3D decoders) are cached
+            // only after a feature requests them, never during PWA install.
+            urlPattern: /\/(?:_app\/immutable|draco\/).+\.(?:js|wasm)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'opt-in-app-runtimes',
+              expiration: { maxEntries: 40, maxAgeSeconds: 30 * 24 * 60 * 60 },
+              cacheableResponse: { statuses: [0, 200] },
+            }
+          },
           {
             // Cache HuggingFace model files (ONNX weights, tokenizers, configs)
             // after first download so WASM LLM + embeddings work offline.
