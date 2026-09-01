@@ -424,6 +424,79 @@ function checkPackageIntegrity(): void {
   );
 }
 
+/**
+ * DRIVE HEALTH — the check whose absence cost a 1 TB NVMe.
+ *
+ * On 2026-09-01 a Samsung 970 EVO Plus was found dead in this machine: critical_warning 0x9,
+ * available_spare 0% against a 10% threshold, 174,071 media errors — and percentage_used at 0%,
+ * so it was a manufacturing defect rather than wear. It had been dead long enough that Matt had
+ * forgotten the drive existed. smartmontools was not installed, kernel.dmesg_restrict is 1, and
+ * nothing on the box was reading drive health. Six drives, zero monitoring.
+ *
+ * available_spare is the field that predicts death, NOT percentage_used. A drive can burn its
+ * entire spare pool while its rated write endurance is untouched, which is exactly what happened
+ * here — so a wear-based check would have stayed green right up to the moment it went read-only.
+ *
+ * Reads /var/log/disk-health.json, written hourly by a root systemd timer (install-disk-health.sh)
+ * because SMART needs privilege and this job deliberately has none.
+ */
+type DriveRow = {
+  dev?: string; model?: string; health?: string; critical_warning?: string;
+  available_spare?: string; spare_threshold?: string; percentage_used?: string; media_errors?: string;
+};
+
+function checkDriveHealth(): void {
+  const src = '/var/log/disk-health.json';
+  if (!existsSync(src)) {
+    add({
+      name: 'drive-health',
+      ok: false,
+      priority: 'high',
+      detail:
+        'NO DRIVE HEALTH MONITORING. SMART needs root and nothing collects it — which is how a ' +
+        'dead NVMe went unnoticed for years. Install: sudo bash install-disk-health.sh',
+    });
+    return;
+  }
+  let rows: DriveRow[] = [];
+  let ageH = 0;
+  try {
+    rows = (JSON.parse(readFileSync(src, 'utf8')).drives ?? []) as DriveRow[];
+    ageH = (Date.now() - statMtime(src)) / 3_600_000;
+  } catch {
+    add({ name: 'drive-health', ok: null, detail: `${src} is unreadable or malformed` });
+    return;
+  }
+  if (ageH > 25) {
+    add({
+      name: 'drive-health',
+      ok: false,
+      priority: 'normal',
+      detail: `${src} is ${ageH.toFixed(0)}h old — the disk-health.timer has stopped`,
+    });
+    return;
+  }
+  const bad: string[] = [];
+  for (const d of rows) {
+    const num = (v?: string) => (v && v.trim() !== '' ? Number(v) : NaN);
+    const cw = d.critical_warning?.trim();
+    if (cw && cw !== '0' && cw !== '0x0') bad.push(`${d.dev}: critical_warning ${cw}`);
+    const spare = num(d.available_spare);
+    const thr = num(d.spare_threshold);
+    if (Number.isFinite(spare) && Number.isFinite(thr) && spare <= thr) {
+      bad.push(`${d.dev}: available_spare ${spare}% at/below threshold ${thr}%`);
+    }
+    if (d.health && /fail/i.test(d.health)) bad.push(`${d.dev}: SMART health ${d.health}`);
+    const used = num(d.percentage_used);
+    if (Number.isFinite(used) && used >= 90) bad.push(`${d.dev}: ${used}% of write endurance used`);
+  }
+  add(
+    bad.length
+      ? { name: 'drive-health', ok: false, priority: 'high', detail: bad.join('; ') }
+      : { name: 'drive-health', ok: true, detail: `${rows.length} drives healthy` },
+  );
+}
+
 // --- run ----------------------------------------------------------------------------------------
 checkDisk();
 checkMounts();
@@ -435,6 +508,7 @@ checkFailedUnits();
 checkRootkitScan();
 checkUnreadRootMail();
 checkPackageIntegrity();
+checkDriveHealth();
 
 const failing = checks.filter((c) => c.ok === false);
 const unknown = checks.filter((c) => c.ok === null);
