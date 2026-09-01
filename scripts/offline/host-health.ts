@@ -180,12 +180,23 @@ function checkExposure(): void {
 
 // --- firewall (needs root; report unknown rather than assume) ------------------------------------
 function checkFirewall(): void {
-  const out = sh('ufw', ['status']);
+  // `ufw status` needs root, but /etc/ufw/ufw.conf is world-readable and carries ENABLED=yes|no.
+  // Falling back to it turns this from a permanent UNKNOWN into a real answer. It reports whether
+  // ufw is ENABLED, not what its rules are — and it cannot see that Docker bypasses ufw entirely.
+  let out = sh('ufw', ['status']);
+  if (out === null && existsSync('/etc/ufw/ufw.conf')) {
+    try {
+      const conf = readFileSync('/etc/ufw/ufw.conf', 'utf8');
+      out = /^ENABLED=yes/im.test(conf) ? 'Status: active' : 'Status: inactive';
+    } catch {
+      /* fall through to unknown */
+    }
+  }
   if (out === null) {
     add({
       name: 'firewall',
       ok: null,
-      detail: 'ufw status needs root — state UNKNOWN, not assumed clean. Run: sudo ufw status verbose',
+      detail: 'ufw state unreadable. Run: sudo ufw status verbose',
     });
     return;
   }
@@ -194,7 +205,9 @@ function checkFirewall(): void {
     name: 'firewall',
     ok: active,
     priority: 'high',
-    detail: active ? 'ufw active' : 'ufw INACTIVE — nothing is filtering inbound traffic',
+    detail: active
+      ? 'ufw enabled (note: it does NOT filter Docker-published ports)'
+      : 'ufw INACTIVE — nothing is filtering inbound traffic',
   });
 }
 
@@ -306,7 +319,9 @@ function checkRootkitScan(): void {
       name: 'rootkit-scan',
       ok: false,
       priority: 'normal',
-      detail: `${log} last written ${ageDays.toFixed(0)} days ago — the scan job may have stopped`,
+      detail:
+        `${log} last written ${ageDays.toFixed(0)} days ago — no integrity scan is actually ` +
+        `running. Check /etc/default/rkhunter CRON_DAILY_RUN, which ships empty and never runs.`,
     });
   } else {
     add({ name: 'rootkit-scan', ok: true, detail: `clean (${log}), ${ageDays.toFixed(1)}d ago` });
