@@ -68,6 +68,21 @@ type Check = {
 const checks: Check[] = [];
 const add = (c: Check) => checks.push(c);
 
+/**
+ * Like sh(), but keeps stdout when the command exits non-zero. debsums exits 2 whenever ANY file
+ * is missing — 97 of them here, all from a broken CUDA install — which would otherwise discard a
+ * perfectly good list of changed files.
+ */
+function shTolerant(cmd: string, args: string[]): string | null {
+  try {
+    return execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  } catch (err) {
+    const out = (err as { stdout?: string | Buffer }).stdout;
+    if (out === undefined || out === null) return null;
+    return typeof out === 'string' ? out : out.toString('utf8');
+  }
+}
+
 function sh(cmd: string, args: string[]): string | null {
   try {
     return execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
@@ -369,6 +384,46 @@ function checkUnreadRootMail(): void {
   );
 }
 
+/**
+ * PACKAGE INTEGRITY — the deterministic check, and the one worth more than either rootkit scanner.
+ * debsums compares installed files against the distro's own checksums, so a modified system binary
+ * is a fact, not a heuristic. Opt-in via --deep because a full sweep takes minutes.
+ *
+ * TWO TRAPS, BOTH HIT ON 2026-09-01. (1) --changed writes changed files to STDOUT while
+ * MISSING-file warnings go to STDERR, so merging them with 2>&1 buries the real signal under
+ * absent files — that flood was 97 lines, every one of them from a broken CUDA 13.1 install and
+ * none of them a security event. Do not merge the streams. (2) /usr/share/misc/pci.ids is
+ * legitimately rewritten by update-pciids, so it is excluded rather than reported forever.
+ */
+const BENIGN_CHANGED = new Set(['/usr/share/misc/pci.ids']);
+
+function checkPackageIntegrity(): void {
+  if (!argv.includes('--deep')) {
+    add({ name: 'pkg-integrity', ok: true, detail: 'skipped (pass --deep; takes a few minutes)' });
+    return;
+  }
+  const out = shTolerant('debsums', ['--changed']); // stderr discarded; exit code ignored
+  if (out === null) {
+    add({ name: 'pkg-integrity', ok: null, detail: 'debsums not installed or not runnable' });
+    return;
+  }
+  const changed = out
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .filter((f) => !BENIGN_CHANGED.has(f));
+  add(
+    changed.length
+      ? {
+          name: 'pkg-integrity',
+          ok: false,
+          priority: 'high',
+          detail: `${changed.length} packaged file(s) MODIFIED: ${changed.slice(0, 5).join(', ')}`,
+        }
+      : { name: 'pkg-integrity', ok: true, detail: 'no packaged file has been modified' },
+  );
+}
+
 // --- run ----------------------------------------------------------------------------------------
 checkDisk();
 checkMounts();
@@ -379,6 +434,7 @@ checkUpdates();
 checkFailedUnits();
 checkRootkitScan();
 checkUnreadRootMail();
+checkPackageIntegrity();
 
 const failing = checks.filter((c) => c.ok === false);
 const unknown = checks.filter((c) => c.ok === null);
