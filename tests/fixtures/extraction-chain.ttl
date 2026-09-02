@@ -1,0 +1,146 @@
+@prefix kb:     <urn:kbase:concept/> .
+@prefix kpred:  <urn:kbase:predicate/> .
+@prefix ktype:  <urn:kbase:type/> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+
+# ==============================================================================
+# EXTRACTION CHAIN FIXTURE — the seams between vocabulary, typing and hierarchy
+# ==============================================================================
+#
+#   npx tsx scripts/offline/extraction-chain.ts --graph=tests/fixtures/extraction-chain.ttl
+#
+# WHY THIS EXISTS. Matt, 2026-09-02: "vocabulary, hierarchy and other important
+# elements of extraction and analysis need to work well together, to make a clear
+# cohesive decision tree for review." Each stage has its own unit tests and
+# NOTHING tests them composed, so a defect living in the seam between two stages
+# is invisible to all of them.
+#
+# IT IS SYNTHETIC ON PURPOSE. The real corpus that exposed these shapes is Matt's
+# dictated Pebble Index 01 notes, which live in the gitignored workspace because
+# this repository is public. This fixture reproduces the same SHAPES with
+# fictional content — a small architecture studio and its CAD tooling — so the
+# chain can be asserted in CI without publishing anybody's notes. Run the harness
+# against both: the fixture proves the rules, the real notes prove the rules
+# matter.
+#
+# It lives in tests/fixtures/ rather than static/ for the same reason
+# demo-review-tree.ttl does: graph-lint scans static/*.ttl and blocks below are
+# deliberately malformed, so shipping it there would make a real check fail for a
+# fictional reason.
+#
+# WHAT EACH BLOCK IS FOR — read this before judging the harness output:
+#
+#   BLOCK 1  Mis-transcriptions a dictation actually produces. The repair tier
+#            SHOULD flag these: same sounds, different letters.
+#   BLOCK 2  Identifiers differing only in digits. The repair tier MUST NOT flag
+#            these — phoneticKey strips digits, so they all key alike, and a
+#            proposed merge would destroy the provenance link to a note.
+#   BLOCK 3  Whole sentences collapsed into one entity slug. Every later stage
+#            silently skips these; nothing currently reports them.
+#   BLOCK 4  Co-hyponyms sharing a prefix. Vocabulary reads them as near
+#            duplicates (WRONG) where hierarchy should read them as siblings
+#            under one parent (RIGHT). The same signal, two opposite meanings —
+#            this is the seam.
+#   BLOCK 5  A hierarchy that actually works, as the control.
+#   BLOCK 6  Judgments with no decision to hang on — a flat review list.
+#   BLOCK 7  A request, not a fact. It must never become a claim.
+
+# ------------------------------------------------------------------------------
+# BLOCK 1 — mis-transcriptions the repair tier SHOULD catch
+# Dictated: "Lumenpath" heard as "Lumen Path"; "Vantage" heard as "Vantidge".
+# ------------------------------------------------------------------------------
+kb:lumenpath
+    rdfs:label      "Lumenpath" ;
+    kpred:is-a      "CAD platform" ;
+    kpred:vendor-of kb:vantage-suite .
+
+kb:lumen-path
+    rdfs:label   "Lumen Path" ;
+    kpred:is-a   "CAD platform" .
+
+kb:vantage-suite
+    rdfs:label "Vantage Suite" .
+
+kb:vantidge-suite
+    rdfs:label "Vantidge Suite" .
+
+# ------------------------------------------------------------------------------
+# BLOCK 2 — identifiers that differ ONLY in digits. NEVER a mis-hearing.
+# Four captured notes from one afternoon. phoneticKey('note-2026-…') strips every
+# digit, so all four collapse to one key and score as confident phonetic twins.
+# ------------------------------------------------------------------------------
+kb:note-2026-09-02T09-15-04-100Z
+    rdfs:label       "note-2026-09-02T09-15-04-100Z" ;
+    kpred:note-text  "Lumenpath is a CAD platform." .
+
+kb:note-2026-09-02T09-17-22-431Z
+    rdfs:label       "note-2026-09-02T09-17-22-431Z" ;
+    kpred:note-text  "Vantage Suite is their flagship." .
+
+kb:note-2026-09-02T11-02-58-007Z
+    rdfs:label       "note-2026-09-02T11-02-58-007Z" ;
+    kpred:note-text  "Check the render settings." .
+
+kb:note-2026-09-02T11-40-13-902Z
+    rdfs:label       "note-2026-09-02T11-40-13-902Z" ;
+    kpred:note-text  "Ask about site licensing." .
+
+# ------------------------------------------------------------------------------
+# BLOCK 3 — a whole sentence collapsed into ONE entity slug.
+# The extractor does this when it cannot find the subject. Such a node can never
+# match another entity, never be typed, and never join a hierarchy — so stages
+# 2, 3 and 4 all silently do nothing with it, and nothing says so.
+# ------------------------------------------------------------------------------
+kb:lumenpath-is-an-enterprise-cad-platform
+    rdfs:label      "Lumenpath is an enterprise cad platform" ;
+    kpred:mentioned-in kb:note-2026-09-02T09-15-04-100Z .
+
+kb:the-studio-owns-three-site-licences
+    rdfs:label      "The studio owns three site licences" ;
+    kpred:mentioned-in kb:note-2026-09-02T11-40-13-902Z .
+
+# ------------------------------------------------------------------------------
+# BLOCK 4 — THE SEAM. Five co-hyponyms sharing the prefix "render setting".
+# To vocabulary-repair these read as near-duplicates and it proposes merging them,
+# which would destroy five distinct settings. To hierarchy they are siblings that
+# want a parent. Same lexical signal, opposite correct actions — and today only
+# the wrong reader runs on extraction output.
+# NOTE: no skos:broader here ON PURPOSE. That absence is the defect being fixtured.
+# ------------------------------------------------------------------------------
+kb:render-setting-width   rdfs:label "render setting width" ;   kpred:unit "px" .
+kb:render-setting-height  rdfs:label "render setting height" ;  kpred:unit "px" .
+kb:render-setting-quality rdfs:label "render setting quality" ; kpred:unit "level" .
+kb:render-setting-samples rdfs:label "render setting samples" ; kpred:unit "count" .
+kb:render-setting-format  rdfs:label "render setting format" ;  kpred:unit "enum" .
+
+# ------------------------------------------------------------------------------
+# BLOCK 5 — THE CONTROL: a hierarchy that works, so a run that places nothing is
+# distinguishable from a graph that had nothing to place.
+# ------------------------------------------------------------------------------
+kb:cad-tooling
+    rdf:type    ktype:Concept ;
+    rdfs:label  "CAD tooling" .
+
+kb:lumenpath      skos:broader kb:cad-tooling .
+kb:vantage-suite  skos:broader kb:cad-tooling .
+kb:drafting-board skos:broader kb:cad-tooling ; rdfs:label "Drafting board" .
+
+# ------------------------------------------------------------------------------
+# BLOCK 6 — judgments with NO decision to hang on. These are real claims a person
+# must rule on, and the tree has no root for them, so review degrades to a flat
+# list. This is the shape the whole decision tree exists to prevent.
+# ------------------------------------------------------------------------------
+kb:lumenpath kpred:assessment "Licensing terms look unfavourable for a studio of our size." .
+kb:lumenpath kpred:assessment "Their file format is proprietary, which is a lock-in risk." .
+kb:vantage-suite kpred:assessment "Faster on large assemblies than what we run now." .
+kb:drafting-board kpred:assessment "Cheaper, but no parametric modelling." .
+
+# ------------------------------------------------------------------------------
+# BLOCK 7 — a REQUEST, not a fact. Dictation mixes these freely with claims, and
+# an extractor that treats it as a claim records something nobody asserted.
+# ------------------------------------------------------------------------------
+kb:note-2026-09-02T11-40-13-902Z
+    kpred:note-text "Generate a comparison of Lumenpath and Vantage Suite and email it to me." .
