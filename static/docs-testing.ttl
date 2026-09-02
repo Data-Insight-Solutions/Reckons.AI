@@ -478,7 +478,7 @@ test:ManualER-Step1
     story:partOf        test:ManualExtractionReview ;
     story:order         "1"^^xsd:integer ;
     story:title         "Start on a clean graph, or you cannot read the result" ;
-    story:content       "Create or switch to an empty graph before ingesting. Vocabulary repair matches against names the graph ALREADY HAS, so a dirty starting graph makes repair proposals unattributable to the note that triggered them. This is also why note 01 cannot repair anything and note 02 can — the corpus depends on ingest order." ;
+    story:content       "Create a NEW empty graph to extract into. Two test graphs are already synced in the workspace and neither is the target: `extraction-corpus` holds the raw text to copy FROM, and `extraction-tests` holds already-extracted triples for exercising the analysis chain without running the extractor at all. Extract into a fresh graph instead — vocabulary repair matches against names the graph ALREADY HAS, so a dirty start makes repair proposals unattributable to the note that triggered them, and mixing input with output means you can no longer tell which facts came from where." ;
     kpred:assertion     "graph is empty: 0 statements, 0 entities" ;
     kpred:page          "/" .
 
@@ -487,7 +487,7 @@ test:ManualER-Step2
     story:partOf        test:ManualExtractionReview ;
     story:order         "2"^^xsd:integer ;
     story:title         "Ingest one sentence pair — 01-note-single.txt" ;
-    story:content       "Paste the contents of tests/fixtures/notes-corpus/01-note-single.txt into /ingest as a note. The ONLY question this file asks: are the two claims separated into distinct facts with a real subject, or collapsed into one sentence-shaped node? Read 01-note-single.EXPECTED.txt before judging — three of the plausible complaints are known-broken and already recorded." ;
+    story:content       "Open the `extraction-corpus` graph in the workspace and select kb:note-01-single. Copy its kpred:captured-note literal and ingest it into the FRESH graph from step 1 — never into extraction-corpus itself, which is the source, not the target. The ONLY question this file asks: are the two claims separated into distinct facts with a real subject, or collapsed into one sentence-shaped node? Read the node's kpred:expected first — three of the plausible complaints are known-broken and already recorded." ;
     kpred:assertion     "no entity slug contains a copula; 3-4 pending facts" ;
     kpred:page          "/ingest" .
 
@@ -496,7 +496,7 @@ test:ManualER-Step3
     story:partOf        test:ManualExtractionReview ;
     story:order         "3"^^xsd:integer ;
     story:title         "Ingest eight dictated notes — 02-notes-batch.txt" ;
-    story:content       "The file that matters: every damage pattern catalogued from the real Pebble Index 01 notes, plus enough vocabulary for repair to have something to match. Seven things to judge, listed in its EXPECTED file. The highest-value one is FIRST: the last two notes are REQUESTS, and must become tasks rather than facts. A fact asserting a document was generated is a claim nobody made." ;
+    story:content       "kb:note-02-batch in the `extraction-corpus` graph — the one that matters: every damage pattern catalogued from the real Pebble Index 01 notes, plus enough vocabulary for repair to have something to match. Seven things to judge, in its kpred:expected. The highest-value one is FIRST: the last two notes are REQUESTS, and must become tasks rather than facts. A fact asserting a document was generated is a claim nobody made. Ingest AFTER 01 — 01 seeds the vocabulary that makes repair possible here." ;
     kpred:assertion     "2 tasks routed, 0 facts asserting the requests" ;
     kpred:page          "/ingest" .
 
@@ -509,10 +509,19 @@ test:ManualER-Step4
     kpred:assertion     "merge proposals present between node-attribute siblings; no parent proposed" ;
     kpred:page          "/review" .
 
-test:ManualER-Step5
+test:ManualER-Step4b
     rdf:type            story:Step ;
     story:partOf        test:ManualExtractionReview ;
     story:order         "5"^^xsd:integer ;
+    story:title         "Cross-check against the triples-only graph" ;
+    story:content       "Open `extraction-tests` in the workspace — 41 statements already extracted, so it exercises the analysis chain with the extractor held constant. Its blocks are labelled: mis-transcriptions repair SHOULD catch, note ids it must NOT merge, sentence-shaped slugs, the co-hyponym seam, and a working skos:broader hierarchy as the control. If the app behaves differently here than `npx tsx scripts/offline/extraction-chain.ts --graph=reckons-workspace/kbs/extraction-tests/extraction-tests.ttl`, the difference is in the app's wiring rather than in the rules — which is the most useful kind of finding this walkthrough can produce." ;
+    kpred:assertion     "app and harness agree on the same graph, or the difference is recorded" ;
+    kpred:page          "/review" .
+
+test:ManualER-Step5
+    rdf:type            story:Step ;
+    story:partOf        test:ManualExtractionReview ;
+    story:order         "6"^^xsd:integer ;
     story:title         "Judge the queue as a person, not as a count" ;
     story:content       "The question is not how many facts are pending, it is whether you can get through them. Work the queue for five minutes and record: how many clicks to settle one CLAIM; whether bookkeeping stayed behind a count; whether any decision root appeared at all. Measured baseline on the real corpus (2026-09-02): 33 batch questions over 148 bookkeeping facts, and 53 claims loose under ZERO decisions. If that repeats here, the flat list is reproduced and the number to beat is 0." ;
     kpred:assertion     "record: clicks per settled claim, and decisions-open count" ;
@@ -521,16 +530,16 @@ test:ManualER-Step5
 test:ManualER-Step6
     rdf:type            story:Step ;
     story:partOf        test:ManualExtractionReview ;
-    story:order         "6"^^xsd:integer ;
+    story:order         "7"^^xsd:integer ;
     story:title         "Ingest structured prose — 03-doc-medium.md" ;
-    story:content       "Where 02 tests damage, this tests STRUCTURE. Two things to watch above all: (1) do the opinions keep their author — 'we assess the terms as unfavourable' must not become a flat measurement; (2) does the 'What we do not know' section survive as QUESTIONS. Two absences are stated outright there, which is the rarest thing a document can contain (kb:mission). If they are dropped, the extractor cannot represent missing information at all — and that is the most important single result in this walkthrough." ;
+    story:content       "kb:note-03-medium in the `extraction-corpus` graph. Where 02 tests damage, this tests STRUCTURE. Two things to watch above all: (1) do the opinions keep their author — 'we assess the terms as unfavourable' must not become a flat measurement; (2) does the 'What we do not know' section survive as QUESTIONS. Two absences are stated outright there, which is the rarest thing a document can contain (kb:mission). If they are dropped, the extractor cannot represent missing information at all — and that is the most important single result in this walkthrough." ;
     kpred:assertion     "the 2 stated unknowns appear as questions or partial facts" ;
     kpred:page          "/ingest" .
 
 test:ManualER-Step7
     rdf:type            story:Step ;
     story:partOf        test:ManualExtractionReview ;
-    story:order         "7"^^xsd:integer ;
+    story:order         "8"^^xsd:integer ;
     story:title         "Let the two sources disagree" ;
     story:content       "03 says 'enterprise DAM' where 02 said 'enterprise cad' and 'enterprise damn'. A second source disagreeing with the first is precisely what the review queue exists for. Confirm the disagreement SURFACES as something to settle rather than the later ingest silently overwriting the earlier. Silent overwrite is the worst outcome available here and would be a finding worth stopping for." ;
     kpred:assertion     "disagreement is visible; no silent overwrite" ;
@@ -539,16 +548,16 @@ test:ManualER-Step7
 test:ManualER-Step8
     rdf:type            story:Step ;
     story:partOf        test:ManualExtractionReview ;
-    story:order         "8"^^xsd:integer ;
+    story:order         "9"^^xsd:integer ;
     story:title         "Only now, go big — 04-article-large.md" ;
-    story:content       "Fetch a real article per the instructions in 04-article-large.md and ingest it LAST. Judge SHAPE, not accuracy: chunk seams (a subject named in one chunk, pronoun in the next), whether review survives several hundred entities, the false-positive rate of repair at volume, and whether the UI stays honest about progress. Accuracy at this size is what F146 phase 1's scored corpus is for, and that corpus does not exist yet — so do not attempt to grade triples by reading them." ;
+    story:content       "kb:note-04-large carries the fetch instructions; the text itself is deliberately not committed. Fetch a real article and ingest it LAST. Judge SHAPE, not accuracy: chunk seams (a subject named in one chunk, pronoun in the next), whether review survives several hundred entities, the false-positive rate of repair at volume, and whether the UI stays honest about progress. Accuracy at this size is what F146 phase 1's scored corpus is for, and that corpus does not exist yet — so do not attempt to grade triples by reading them." ;
     kpred:assertion     "record: chunk-seam orphans, queue survivability, drift rate, wall time" ;
     kpred:page          "/ingest" .
 
 test:ManualER-Step9
     rdf:type            story:Step ;
     story:partOf        test:ManualExtractionReview ;
-    story:order         "9"^^xsd:integer ;
+    story:order         "10"^^xsd:integer ;
     story:title         "Put findings back in the graph, not in chat" ;
     story:content       "Every observation goes to the review queue as a pending entry — kb_add_note, or a JSONL line in reckons-workspace/knowledge.pending.jsonl — never as a chat report that evaporates. Re-run `npx tsx scripts/offline/extraction-chain.ts --graph=<the graph you just built>` and compare against the 2026-09-02 baseline recorded on kb:extraction-scoring: the harness measures the same graph you just judged by hand, and the two readings disagreeing is itself information." ;
     kpred:assertion     "findings queued; chain harness re-run and compared to baseline" ;
