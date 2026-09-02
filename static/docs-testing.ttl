@@ -438,6 +438,124 @@ test:SettingsPage
 
 
 ## =============================================================================
+## Manual extraction + review walkthrough (2026-09-02)
+## =============================================================================
+## Matt: "setup some manual testing of extraction and review process for me."
+##
+## Every other story here documents an AUTOMATED run. This one is written to be
+## driven BY HAND, because the two things it exercises cannot be asserted
+## headlessly: whether extraction produced the right SHAPE, and whether the
+## review queue is something a person can actually get through. Both are
+## judgements, and the offline chain harness measures around them rather than
+## through them.
+##
+## Inputs are tests/fixtures/notes-corpus/ — raw TEXT, because every other
+## fixture in this repo is already-extracted triples and therefore exercises the
+## extractor not at all. Each input has a companion EXPECTED file naming what a
+## correct run produces AND what is known-broken, so a run is judgeable rather
+## than merely observable.
+## =============================================================================
+
+test:ManualExtractionReview
+    rdf:type            story:Story ;
+    rdfs:label          "Manual extraction & review walkthrough" ;
+    story:description   "Drive extraction and review by hand against a raw-text corpus, smallest input first, judging SHAPE rather than counting triples. Written because the two questions that matter here — did extraction produce the right shape, and can a person get through the queue — are judgements no headless assertion reaches." ;
+    story:autoplay      "false" ;
+    story:pace          "0" ;
+    skos:broader        test:GraphReviewStory .
+
+test:ManualER-Step0
+    rdf:type            story:Step ;
+    story:partOf        test:ManualExtractionReview ;
+    story:order         "0"^^xsd:integer ;
+    story:title         "Set the backend, and know which one you set" ;
+    story:content       "Run `npm run dev` (port 5173), open /settings, set the ingest backend to ollama with base URL http://localhost:11434. DO NOT use `npm run dev:test` for this walkthrough: it forces the mock extractor, which yields only judgment-altitude facts and therefore produces no cascadable cluster at all — a mock run cannot exercise aggregation and will look misleadingly clean. Confirm Ollama is up first: curl -s localhost:11434/api/tags." ;
+    kpred:assertion     "settings show ingest backend = ollama, and /api/tags responds" ;
+    kpred:page          "/settings" .
+
+test:ManualER-Step1
+    rdf:type            story:Step ;
+    story:partOf        test:ManualExtractionReview ;
+    story:order         "1"^^xsd:integer ;
+    story:title         "Start on a clean graph, or you cannot read the result" ;
+    story:content       "Create or switch to an empty graph before ingesting. Vocabulary repair matches against names the graph ALREADY HAS, so a dirty starting graph makes repair proposals unattributable to the note that triggered them. This is also why note 01 cannot repair anything and note 02 can — the corpus depends on ingest order." ;
+    kpred:assertion     "graph is empty: 0 statements, 0 entities" ;
+    kpred:page          "/" .
+
+test:ManualER-Step2
+    rdf:type            story:Step ;
+    story:partOf        test:ManualExtractionReview ;
+    story:order         "2"^^xsd:integer ;
+    story:title         "Ingest one sentence pair — 01-note-single.txt" ;
+    story:content       "Paste the contents of tests/fixtures/notes-corpus/01-note-single.txt into /ingest as a note. The ONLY question this file asks: are the two claims separated into distinct facts with a real subject, or collapsed into one sentence-shaped node? Read 01-note-single.EXPECTED.txt before judging — three of the plausible complaints are known-broken and already recorded." ;
+    kpred:assertion     "no entity slug contains a copula; 3-4 pending facts" ;
+    kpred:page          "/ingest" .
+
+test:ManualER-Step3
+    rdf:type            story:Step ;
+    story:partOf        test:ManualExtractionReview ;
+    story:order         "3"^^xsd:integer ;
+    story:title         "Ingest eight dictated notes — 02-notes-batch.txt" ;
+    story:content       "The file that matters: every damage pattern catalogued from the real Pebble Index 01 notes, plus enough vocabulary for repair to have something to match. Seven things to judge, listed in its EXPECTED file. The highest-value one is FIRST: the last two notes are REQUESTS, and must become tasks rather than facts. A fact asserting a document was generated is a claim nobody made." ;
+    kpred:assertion     "2 tasks routed, 0 facts asserting the requests" ;
+    kpred:page          "/ingest" .
+
+test:ManualER-Step4
+    rdf:type            story:Step ;
+    story:partOf        test:ManualExtractionReview ;
+    story:order         "4"^^xsd:integer ;
+    story:title         "Watch the seam: repair offers to destroy five siblings" ;
+    story:content       "In /review, find the node-attribute family — name, value, type, count, and the repeat-count one. EXPECTED TODAY: vocabulary-repair offers to MERGE them, which would destroy four distinct attributes, and NOTHING proposes a parent. proposeCoHyponyms exists (src/lib/rdf/co-hyponyms.ts, 10 tests) and would withdraw those merges and propose one parent instead, but it is wired only into the offline harness. Confirming the bad merges appear IS the test — this step exists to show the seam in the UI rather than in a report." ;
+    kpred:assertion     "merge proposals present between node-attribute siblings; no parent proposed" ;
+    kpred:page          "/review" .
+
+test:ManualER-Step5
+    rdf:type            story:Step ;
+    story:partOf        test:ManualExtractionReview ;
+    story:order         "5"^^xsd:integer ;
+    story:title         "Judge the queue as a person, not as a count" ;
+    story:content       "The question is not how many facts are pending, it is whether you can get through them. Work the queue for five minutes and record: how many clicks to settle one CLAIM; whether bookkeeping stayed behind a count; whether any decision root appeared at all. Measured baseline on the real corpus (2026-09-02): 33 batch questions over 148 bookkeeping facts, and 53 claims loose under ZERO decisions. If that repeats here, the flat list is reproduced and the number to beat is 0." ;
+    kpred:assertion     "record: clicks per settled claim, and decisions-open count" ;
+    kpred:page          "/review" .
+
+test:ManualER-Step6
+    rdf:type            story:Step ;
+    story:partOf        test:ManualExtractionReview ;
+    story:order         "6"^^xsd:integer ;
+    story:title         "Ingest structured prose — 03-doc-medium.md" ;
+    story:content       "Where 02 tests damage, this tests STRUCTURE. Two things to watch above all: (1) do the opinions keep their author — 'we assess the terms as unfavourable' must not become a flat measurement; (2) does the 'What we do not know' section survive as QUESTIONS. Two absences are stated outright there, which is the rarest thing a document can contain (kb:mission). If they are dropped, the extractor cannot represent missing information at all — and that is the most important single result in this walkthrough." ;
+    kpred:assertion     "the 2 stated unknowns appear as questions or partial facts" ;
+    kpred:page          "/ingest" .
+
+test:ManualER-Step7
+    rdf:type            story:Step ;
+    story:partOf        test:ManualExtractionReview ;
+    story:order         "7"^^xsd:integer ;
+    story:title         "Let the two sources disagree" ;
+    story:content       "03 says 'enterprise DAM' where 02 said 'enterprise cad' and 'enterprise damn'. A second source disagreeing with the first is precisely what the review queue exists for. Confirm the disagreement SURFACES as something to settle rather than the later ingest silently overwriting the earlier. Silent overwrite is the worst outcome available here and would be a finding worth stopping for." ;
+    kpred:assertion     "disagreement is visible; no silent overwrite" ;
+    kpred:page          "/review" .
+
+test:ManualER-Step8
+    rdf:type            story:Step ;
+    story:partOf        test:ManualExtractionReview ;
+    story:order         "8"^^xsd:integer ;
+    story:title         "Only now, go big — 04-article-large.md" ;
+    story:content       "Fetch a real article per the instructions in 04-article-large.md and ingest it LAST. Judge SHAPE, not accuracy: chunk seams (a subject named in one chunk, pronoun in the next), whether review survives several hundred entities, the false-positive rate of repair at volume, and whether the UI stays honest about progress. Accuracy at this size is what F146 phase 1's scored corpus is for, and that corpus does not exist yet — so do not attempt to grade triples by reading them." ;
+    kpred:assertion     "record: chunk-seam orphans, queue survivability, drift rate, wall time" ;
+    kpred:page          "/ingest" .
+
+test:ManualER-Step9
+    rdf:type            story:Step ;
+    story:partOf        test:ManualExtractionReview ;
+    story:order         "9"^^xsd:integer ;
+    story:title         "Put findings back in the graph, not in chat" ;
+    story:content       "Every observation goes to the review queue as a pending entry — kb_add_note, or a JSONL line in reckons-workspace/knowledge.pending.jsonl — never as a chat report that evaporates. Re-run `npx tsx scripts/offline/extraction-chain.ts --graph=<the graph you just built>` and compare against the 2026-09-02 baseline recorded on kb:extraction-scoring: the harness measures the same graph you just judged by hand, and the two readings disagreeing is itself information." ;
+    kpred:assertion     "findings queued; chain harness re-run and compared to baseline" ;
+    kpred:page          "/review" .
+
+
+## =============================================================================
 ## Persona
 ## =============================================================================
 

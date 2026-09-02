@@ -1,0 +1,53 @@
+EXPECTED — 02-notes-batch.txt
+=============================
+Eight dictated notes, Pebble-scale. This is the file that matters: it carries
+every damage pattern from the real corpus and enough vocabulary for repair to
+have something to match against.
+
+THE SEVEN THINGS TO JUDGE, in the order they get decided:
+
+1. INTENT — the last two notes are REQUESTS, not claims.
+   "Generate a comparison document… and email it to me" and "Run a research
+   task…" must be routed to TASKS by rdf/note-intent.ts, never recorded as
+   facts. A fact asserting that a document was generated is a claim nobody
+   made. THIS IS THE HIGHEST-VALUE ASSERTION IN THE CORPUS — getting it wrong
+   silently writes invented history into the graph.
+
+2. SUBJECT SHAPE — no entity slug may be a whole sentence.
+   Watch for: lumenpath-is-an-enterprise-cad-platform,
+   jordan-veil-owns-northwind-analytics-llc. The guard catches these; their
+   appearance is a regression.
+
+3. VOCABULARY REPAIR — "lumen path" (note 3) should now be repairable, because
+   note 1 seeded "Lumenpath" into the graph. Expect a SUGGEST-band proposal,
+   not an automatic merge: repair proposes, the human settles.
+   "Recon's AI" -> Reckons.AI scored 0.85 on real transcripts — suggest band.
+
+4. THE HOMOPHONE WILL SURVIVE. "enterprise damn" and "enterprise cad" will not
+   be corrected. Nothing knows the acronym; "damn" and "cad" are real words, so
+   no lexical or phonetic signal exists to fire on. RECORD IT, do not re-file
+   it — this is the known unsolvable case (homophones, per the real-transcript
+   analysis: "dams"/"DAMs" is unsolvable at this tier).
+
+5. SPLIT PROPER NOUNS — "A primo and binder and open text" should ideally yield
+   three vendors (Aprimo, Bynder, OpenText). It almost certainly will not.
+   The decoder split them before the extractor ever saw them, so this is an
+   ASR-boundary failure, not an extraction failure. Judge whether the extractor
+   at least produces separable entities rather than one run-on blob.
+
+6. CO-HYPONYMS — "node attribute name / value / type / count" plus "a node
+   attribute for how many times to repeat the action" is the seam case, five
+   siblings sharing a head.
+   EXPECTED TODAY: vocabulary-repair offers to MERGE them (wrong, destructive)
+   and nothing proposes a parent, because proposeCoHyponyms is not wired into
+   the app. Confirm the merge proposals appear — that is the bug this corpus
+   exists to demonstrate in the UI.
+
+7. AGGREGATION — all eight notes share one ingest source, so the same-source
+   cascade basis should form ONE bookkeeping question, not eight. It must not
+   swallow the CLAIMS: only record/log altitude is cascadable, and the claims
+   above are judgments.
+
+WHAT A GOOD RUN LOOKS LIKE: two tasks, no invented facts, a handful of suggest-
+band repairs, and a review queue where the claims are separable and the
+bookkeeping is behind a count.
