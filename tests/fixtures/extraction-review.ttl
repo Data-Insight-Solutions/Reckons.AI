@@ -9,34 +9,7 @@
 @prefix prov:   <http://www.w3.org/ns/prov#> .
 @prefix dc:     <http://purl.org/dc/terms/> .
 
-
 <urn:reckons:kb> <urn:reckons:meta/kbStableId> "7c1f9a20-3b64-4e2b-9d51-000000000201" .
-
-# =============================================================================
-# WHY THIS FILE CARRIES REIFICATION AND extraction-chain.ttl DOES NOT
-# =============================================================================
-# Matt, 2026-09-02: "the hierarchy in tree layout seems decent for sure. The
-# detail level filter does not seem accurate. Can you add some pending?"
-#
-# BOTH OBSERVATIONS HAD ONE CAUSE. The plain-Turtle fixture carried no altitudes,
-# so every fact fell back to inference, which produced exactly TWO of the ladder's
-# five rungs — record (22) and judgment (19). With `evidence`, `decisions` and the
-# log floor all empty, three rungs render identically and two render nothing. The
-# filter was not inaccurate; it had nothing to separate. Measured before the fix.
-#
-# So this file sets meta:altitude by hand across all five, adds a real decision
-# with priced options (block 8), evidence that can pull a judgment out from under
-# itself (block 9), log/record bookkeeping that must stay behind a count
-# (block 10), and a contested pair that accept/reject is the wrong control for
-# (block 11).
-#
-# 46 of 79 statements are PENDING; the structural ones (rdf:type, rdfs:label,
-# skos:broader) are confirmed. A graph where everything is pending has no
-# reviewed ground for new extraction to be grounded against, which is its own
-# distortion — grounding on unreviewed claims propagates them.
-#
-# Written in the app's own toTurtleFull() shape so it round-trips unchanged.
-# =============================================================================
 
 # ==============================================================================
 # EXTRACTION CHAIN FIXTURE — the seams between vocabulary, typing and hierarchy
@@ -194,13 +167,13 @@ kb:cad-platform-choice
 
 kb:opt-lumenpath
     rdf:type            ktype:Concept ;
-    rdfs:label          "Choose Lumenpath" ;
+    rdfs:label          "Lumenpath" ;
     kpred:description   "Documented REST API, connectors for most automation tools." ;
     kpred:measured      "Quoted at 340 per seat per year, 11 seats." .
 
 kb:opt-vantage
     rdf:type            ktype:Concept ;
-    rdfs:label          "Choose Vantage Suite" ;
+    rdfs:label          "Vantage Suite" ;
     kpred:description   "Already installed. Faster on large assemblies." ;
     kpred:measured      "Benchmark 2026-08-30: 41s vs 96s on the 2.1GB assembly." .
 
@@ -245,19 +218,48 @@ kb:cad-platform-choice kpred:has-file "tests/fixtures/extraction-review.ttl" .
 kb:cad-platform-choice kpred:tested-by "src/lib/rdf/__tests__/extraction-chain.test.ts" .
 
 # ------------------------------------------------------------------------------
-# BLOCK 11 — A CONTESTED PAIR. Two conflicting values on one well-identified
-# entity. Accept/reject is the WRONG control for this: neither is a mistake, they
-# disagree. The tree should flag it as needing a reckoning, not offer a checkbox.
+# BLOCK 11 — THE THIS-OR-THAT. Two rival CLAIMS, not two abstract options.
+#
+# Matt, 2026-09-02: "there should be a conflict between the two pending facts
+# 'Lumenpath is CAD platform of choice' and a second 'Vantage Suite is the CAD
+# platform of choice', and the single choice to approve one of those facts should
+# cascade down to other facts."
+#
+# THEY MUST SHARE A SUBJECT AND PREDICATE OR NOTHING DETECTS THEM. findDichotomies
+# keys conflicts by ENTITY + PREDICATE + divergent values, and review-tree keys
+# conflictSides by subject. Two claims written as `kb:lumenpath kpred:is-chosen
+# true` and `kb:vantage-suite kpred:is-chosen true` have different subjects, so
+# they are two unrelated facts that merely happen to be incompatible — no
+# conflict is detected and no chooser appears. Hanging both off the DECISION as
+# divergent values of one predicate is what makes this a this-or-that.
 # ------------------------------------------------------------------------------
-kb:lumenpath kpred:has-status "approved" .
-kb:lumenpath kpred:has-status "rejected" .
+kb:cad-platform-choice kpred:decided-on kb:opt-lumenpath .
+kb:cad-platform-choice kpred:decided-on kb:opt-vantage .
+
+# ------------------------------------------------------------------------------
+# BLOCK 12 — THE DOWNSTREAM CONFLICT. This one is only worth asking AFTER the
+# platform is settled: which archive format to standardise on. If Vantage wins,
+# the proprietary format is forced and there is nothing to decide; if Lumenpath
+# wins, this is a real open choice. A cascade that fires the first decision must
+# either surface this one or say why it no longer applies.
+# ------------------------------------------------------------------------------
+kb:archive-format
+    rdf:type            ktype:Feature ;
+    rdfs:label          "Which archive format to standardise on" ;
+    kpred:open-question "Neutral STEP export, or the native format of whichever platform wins?" ;
+    kpred:depends-on    kb:cad-platform-choice .
+
+kb:archive-format kpred:decided-on "Neutral STEP export" .
+kb:archive-format kpred:decided-on "Native platform format" .
+
+# A fact that only STANDS if Vantage wins — it dies with the Lumenpath choice.
+kb:ev-vantage-native
+    rdf:type            ktype:Concept ;
+    rdfs:label          "The .vsx archive stays readable in place, no conversion" ;
+    kpred:part-of       kb:archive-format ;
+    kpred:ruled-out-by  kb:opt-lumenpath .
 
 # ---- statement metadata (all statuses) ----
-# Written in the app's own toTurtleFull() reification shape so this file round-trips
-# through import/export unchanged. meta:altitude is the load-bearing field here: it is
-# a HAND-SET ruling that the detail ladder reads, and without it every fact falls back
-# to inference, which on this graph produced only `record` and `judgment` — two rungs
-# out of five, which is why the ladder looked inaccurate rather than merely coarse.
 
 <urn:kbase:stmt/14102a81238cd277>
     rdf:type rdf:Statement ;
@@ -815,7 +817,7 @@ kb:lumenpath kpred:has-status "rejected" .
     rdf:type rdf:Statement ;
     rdf:subject <urn:kbase:concept/opt-lumenpath> ;
     rdf:predicate <http://www.w3.org/2000/01/rdf-schema#label> ;
-    rdf:object "Choose Lumenpath" ;
+    rdf:object "Lumenpath" ;
     meta:status "confirmed" ;
     meta:confidence "0.8"^^xsd:decimal ;
     meta:proposed-by "extraction-test-fixture" ;
@@ -861,7 +863,7 @@ kb:lumenpath kpred:has-status "rejected" .
     rdf:type rdf:Statement ;
     rdf:subject <urn:kbase:concept/opt-vantage> ;
     rdf:predicate <http://www.w3.org/2000/01/rdf-schema#label> ;
-    rdf:object "Choose Vantage Suite" ;
+    rdf:object "Vantage Suite" ;
     meta:status "confirmed" ;
     meta:confidence "0.8"^^xsd:decimal ;
     meta:proposed-by "extraction-test-fixture" ;
@@ -1150,26 +1152,142 @@ kb:lumenpath kpred:has-status "rejected" .
     prov:wasDerivedFrom <urn:kbase:source/extraction-review-fixture> ;
     dc:created "2026-09-02T12:00:00.000Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/3610d4e762c40931>
+<urn:kbase:stmt/09b378d68100bf85>
     rdf:type rdf:Statement ;
-    rdf:subject <urn:kbase:concept/lumenpath> ;
-    rdf:predicate <urn:kbase:predicate/has-status> ;
-    rdf:object "approved" ;
+    rdf:subject <urn:kbase:concept/cad-platform-choice> ;
+    rdf:predicate <urn:kbase:predicate/decided-on> ;
+    rdf:object <urn:kbase:concept/opt-lumenpath> ;
     meta:status "pending" ;
     meta:confidence "0.8"^^xsd:decimal ;
     meta:proposed-by "extraction-test-fixture" ;
-    meta:altitude "judgment" ;
+    meta:altitude "decision" ;
     prov:wasDerivedFrom <urn:kbase:source/extraction-review-fixture> ;
     dc:created "2026-09-02T12:00:00.000Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/4949758e82dc10bf>
+<urn:kbase:stmt/7a0d3795ad6d03e0>
     rdf:type rdf:Statement ;
-    rdf:subject <urn:kbase:concept/lumenpath> ;
-    rdf:predicate <urn:kbase:predicate/has-status> ;
-    rdf:object "rejected" ;
+    rdf:subject <urn:kbase:concept/cad-platform-choice> ;
+    rdf:predicate <urn:kbase:predicate/decided-on> ;
+    rdf:object <urn:kbase:concept/opt-vantage> ;
     meta:status "pending" ;
     meta:confidence "0.8"^^xsd:decimal ;
     meta:proposed-by "extraction-test-fixture" ;
-    meta:altitude "judgment" ;
+    meta:altitude "decision" ;
+    prov:wasDerivedFrom <urn:kbase:source/extraction-review-fixture> ;
+    dc:created "2026-09-02T12:00:00.000Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/c48b25a2354dbd93>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:kbase:concept/archive-format> ;
+    rdf:predicate <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ;
+    rdf:object <urn:kbase:type/Feature> ;
+    meta:status "confirmed" ;
+    meta:confidence "0.8"^^xsd:decimal ;
+    meta:proposed-by "extraction-test-fixture" ;
+    prov:wasDerivedFrom <urn:kbase:source/extraction-review-fixture> ;
+    dc:created "2026-09-02T12:00:00.000Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/f5971c73075dcb52>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:kbase:concept/archive-format> ;
+    rdf:predicate <http://www.w3.org/2000/01/rdf-schema#label> ;
+    rdf:object "Which archive format to standardise on" ;
+    meta:status "confirmed" ;
+    meta:confidence "0.8"^^xsd:decimal ;
+    meta:proposed-by "extraction-test-fixture" ;
+    prov:wasDerivedFrom <urn:kbase:source/extraction-review-fixture> ;
+    dc:created "2026-09-02T12:00:00.000Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/ee1d65fa2ee7fe36>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:kbase:concept/archive-format> ;
+    rdf:predicate <urn:kbase:predicate/open-question> ;
+    rdf:object "Neutral STEP export, or the native format of whichever platform wins?" ;
+    meta:status "pending" ;
+    meta:confidence "0.8"^^xsd:decimal ;
+    meta:proposed-by "extraction-test-fixture" ;
+    meta:altitude "decision" ;
+    prov:wasDerivedFrom <urn:kbase:source/extraction-review-fixture> ;
+    dc:created "2026-09-02T12:00:00.000Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/2b64c0fe301f9007>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:kbase:concept/archive-format> ;
+    rdf:predicate <urn:kbase:predicate/depends-on> ;
+    rdf:object <urn:kbase:concept/cad-platform-choice> ;
+    meta:status "pending" ;
+    meta:confidence "0.8"^^xsd:decimal ;
+    meta:proposed-by "extraction-test-fixture" ;
+    meta:altitude "decision" ;
+    prov:wasDerivedFrom <urn:kbase:source/extraction-review-fixture> ;
+    dc:created "2026-09-02T12:00:00.000Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/5de9dc9c119a3f79>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:kbase:concept/archive-format> ;
+    rdf:predicate <urn:kbase:predicate/decided-on> ;
+    rdf:object "Neutral STEP export" ;
+    meta:status "pending" ;
+    meta:confidence "0.8"^^xsd:decimal ;
+    meta:proposed-by "extraction-test-fixture" ;
+    meta:altitude "decision" ;
+    prov:wasDerivedFrom <urn:kbase:source/extraction-review-fixture> ;
+    dc:created "2026-09-02T12:00:00.000Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/bf694258a43a7238>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:kbase:concept/archive-format> ;
+    rdf:predicate <urn:kbase:predicate/decided-on> ;
+    rdf:object "Native platform format" ;
+    meta:status "pending" ;
+    meta:confidence "0.8"^^xsd:decimal ;
+    meta:proposed-by "extraction-test-fixture" ;
+    meta:altitude "decision" ;
+    prov:wasDerivedFrom <urn:kbase:source/extraction-review-fixture> ;
+    dc:created "2026-09-02T12:00:00.000Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/cb43d9c4b7c32952>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:kbase:concept/ev-vantage-native> ;
+    rdf:predicate <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ;
+    rdf:object <urn:kbase:type/Concept> ;
+    meta:status "confirmed" ;
+    meta:confidence "0.8"^^xsd:decimal ;
+    meta:proposed-by "extraction-test-fixture" ;
+    prov:wasDerivedFrom <urn:kbase:source/extraction-review-fixture> ;
+    dc:created "2026-09-02T12:00:00.000Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/cbb528c1f337e93e>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:kbase:concept/ev-vantage-native> ;
+    rdf:predicate <http://www.w3.org/2000/01/rdf-schema#label> ;
+    rdf:object "The .vsx archive stays readable in place, no conversion" ;
+    meta:status "confirmed" ;
+    meta:confidence "0.8"^^xsd:decimal ;
+    meta:proposed-by "extraction-test-fixture" ;
+    prov:wasDerivedFrom <urn:kbase:source/extraction-review-fixture> ;
+    dc:created "2026-09-02T12:00:00.000Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/447798bd0e8687ca>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:kbase:concept/ev-vantage-native> ;
+    rdf:predicate <urn:kbase:predicate/part-of> ;
+    rdf:object <urn:kbase:concept/archive-format> ;
+    meta:status "pending" ;
+    meta:confidence "0.8"^^xsd:decimal ;
+    meta:proposed-by "extraction-test-fixture" ;
+    meta:altitude "record" ;
+    prov:wasDerivedFrom <urn:kbase:source/extraction-review-fixture> ;
+    dc:created "2026-09-02T12:00:00.000Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/2819f6293a991b67>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:kbase:concept/ev-vantage-native> ;
+    rdf:predicate <urn:kbase:predicate/ruled-out-by> ;
+    rdf:object <urn:kbase:concept/opt-lumenpath> ;
+    meta:status "pending" ;
+    meta:confidence "0.8"^^xsd:decimal ;
+    meta:proposed-by "extraction-test-fixture" ;
+    meta:altitude "decision" ;
     prov:wasDerivedFrom <urn:kbase:source/extraction-review-fixture> ;
     dc:created "2026-09-02T12:00:00.000Z"^^xsd:dateTime .
