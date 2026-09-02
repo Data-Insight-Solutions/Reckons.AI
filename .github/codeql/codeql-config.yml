@@ -1,0 +1,29 @@
+name: "Reckons.AI CodeQL config"
+
+# WHY THIS EXISTS (2026-09-02). The default workflow ran `security-and-quality` over the whole
+# repo, which produced ~117 open alerts — of which 71 were NOTE-level code-*quality* style checks
+# (unused variables, etc.), not security, and the security-relevant ones (file-system-race,
+# incomplete-sanitization, file-access-to-http) were almost all in LOCAL operator tooling —
+# scripts/, tests/, cli/ — where CodeQL's web-threat queries (SSRF, TOCTOU) do not map to a real
+# trust boundary: the operator runs those on their own inputs.
+#
+# So this focuses the security gate on the code that actually runs against UNTRUSTED input:
+#   - src/         the browser app (untrusted DOM, network, imported graph content)
+#   - mcp-server/  the server other people run (untrusted MCP requests + graph files)
+# and uses `security-extended` (all security queries, no style/quality noise).
+#
+# This is scoping, not silencing: nothing security-relevant in the shipped app is excluded. If the
+# CLI or a script later becomes a service processing untrusted input, add its path back here.
+
+queries:
+  - uses: security-extended
+
+paths:
+  - src
+  - mcp-server/src
+
+paths-ignore:
+  - '**/__tests__/**'
+  - '**/*.test.ts'
+  - '**/*.spec.ts'
+  - '**/*.stories.*'
