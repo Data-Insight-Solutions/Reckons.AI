@@ -36,7 +36,23 @@ export async function populateKbFromTtl(
   name: string,
   sourceUri: string,
   ttl: string,
-  assets: Map<string, Uint8Array>
+  assets: Map<string, Uint8Array>,
+  opts: {
+    /**
+     * Import a plain TTL as REVIEW WORK rather than as settled knowledge.
+     *
+     * A plain file carries no review state, so the default treats it as confirmed — correct for a
+     * legacy or external graph you are adopting wholesale. It is wrong for a graph you want to
+     * READ THROUGH: a demo, a draft, or anything arriving from someone else that you intend to
+     * judge fact by fact. Measured 2026-08-21: the F139 demo graphs import 87 plain triples, so
+     * arriving via workspace sync they landed confirmed and the review tree correctly showed
+     * nothing — the fixtures only ever worked through /ingest, which keeps them pending.
+     *
+     * Ignored for an ANNOTATED file: that one already states each statement's real status, and
+     * overriding it would destroy the review state the annotation exists to carry.
+     */
+    asPending?: boolean;
+  } = {},
 ): Promise<number> {
   const { importTurtleFull } = await import('../rdf/import-ttl');
   const { v4: uuid } = await import('uuid');
@@ -73,7 +89,7 @@ export async function populateKbFromTtl(
       id: uuid(),
       sourceId,
       g: { kind: 'iri' as const, value: `urn:kbase:source/${sourceId}` },
-      status: 'confirmed' as const,
+      status: (opts.asPending ? 'pending' : 'confirmed') as 'pending' | 'confirmed',
       createdAt: now,
       updatedAt: now,
     }));
@@ -132,7 +148,8 @@ export async function populateKbFromTtl(
 export async function ingestNewKb(
   data: KbImportData,
   meta: KbImportMeta,
-  sourceUri: string
+  sourceUri: string,
+  opts: { asPending?: boolean } = {},
 ): Promise<{ kbId: string; count: number } | null> {
   if (!data.ttl) return null;
   const { createKb, registerStableId } = await import('../storage/kb-registry');
@@ -141,7 +158,7 @@ export async function ingestNewKb(
   try {
     await tempDb.open();
     await tempDb.settings.put({ ...DEFAULT_SETTINGS, kbTitle: meta.name });
-    const count = await populateKbFromTtl(tempDb, meta.name, sourceUri, data.ttl, data.assets);
+    const count = await populateKbFromTtl(tempDb, meta.name, sourceUri, data.ttl, data.assets, opts);
     if (meta.stableId) {
       await tempDb.settings.update('main', { kbStableId: meta.stableId });
       registerStableId(newKb.id, meta.stableId, count);
@@ -157,13 +174,14 @@ export async function ingestExistingKb(
   kbId: string,
   data: KbImportData,
   meta: KbImportMeta,
-  sourceUri: string
+  sourceUri: string,
+  opts: { asPending?: boolean } = {},
 ): Promise<number> {
   if (!data.ttl) return 0;
   const target = kbId === db.name ? db : new KBaseDB(kbId);
   try {
     if (target !== db) await target.open();
-    return await populateKbFromTtl(target, meta.name, sourceUri, data.ttl, data.assets);
+    return await populateKbFromTtl(target, meta.name, sourceUri, data.ttl, data.assets, opts);
   } finally {
     if (target !== db) target.close();
   }

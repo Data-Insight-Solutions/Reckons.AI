@@ -18,9 +18,11 @@
  *   OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/describe-entities.ts \
  *     [--model=qwen3-coder:latest] [--limit=10] [--entity=kb:foo] [--dry-run]
  */
-import { readFileSync, existsSync, appendFileSync, readdirSync } from 'fs';
+import { readFileSync, existsSync, readdirSync } from 'fs';
 import path from 'path';
 import { Parser, type Quad } from 'n3';
+import { transactPendingQueue } from './pending-queue.js';
+import { readTextOr } from '../lib/read-file.js';
 
 const raw = process.argv.slice(2);
 const flag = (n: string) => raw.find((a) => a.startsWith(`--${n}=`))?.split('=').slice(1).join('=');
@@ -114,7 +116,7 @@ const NOW = new Date().toISOString();
 // Idempotence must key on the ENTITY, not on the draft text — otherwise a re-run
 // (new model, tweaked prompt) queues a second competing proposal for the same entity.
 const alreadyQueued = new Set(
-  (existsSync(PENDING) ? readFileSync(PENDING, 'utf8') : '')
+  (readTextOr(PENDING, ''))
     .split('\n')
     .filter(Boolean)
     .flatMap((l) => {
@@ -176,18 +178,38 @@ for (const subject of targets) {
     const text = clean(out);
     const question =
       `[local draft] ${short(subject)} has no kpred:description. Proposed: "${text}" — accept, edit, or reject.`;
-    appendFileSync(PENDING, JSON.stringify({
+    const entry = {
       subject,
       predicate: KPRED + 'description',
       object: text,
       note: `Drafted offline by ${MODEL} from ${short(subject)}'s own triples + linked source files. PROPOSAL — verify before accepting.`,
       question,
+      kb: 'roadmap',
       type: 'suggestion',
       agent: `offline:describe-entities (${MODEL})`,
       priority: 'medium',
       addedAt: NOW,
       addedByMcp: true,
-    }) + '\n');
+    };
+    const queued = transactPendingQueue(PENDING, (current) => {
+      const duplicate = current.split('\n').filter(Boolean).some((line) => {
+        try {
+          const row = JSON.parse(line) as { subject?: string; predicate?: string; agent?: string };
+          return row.subject === subject && row.predicate === KPRED + 'description' &&
+            row.agent?.startsWith('offline:describe-entities');
+        } catch {
+          return false;
+        }
+      });
+      if (duplicate) return { result: false };
+      const separator = current && !current.endsWith('\n') ? '\n' : '';
+      return { content: current + separator + JSON.stringify(entry) + '\n', result: true };
+    });
+    if (!queued) {
+      skipped++;
+      console.log('another worker already queued this entity — duplicate suppressed');
+      continue;
+    }
     alreadyQueued.add(subject);
     drafted++;
     console.log(`drafted → queued (${text.split(/\s+/).length} words)`);

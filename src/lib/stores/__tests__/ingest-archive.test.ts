@@ -22,18 +22,24 @@ const remappedStatement: Statement = {
 const existingBefore: Statement[] = [{ ...rawStatement, id: 'before', s: { kind: 'iri', value: 'urn:before' } }];
 const existingAfter: Statement[] = [{ ...rawStatement, id: 'after', s: { kind: 'iri', value: 'urn:restored' } }];
 
-const addSource = vi.fn();
-const addStatements = vi.fn();
+const prepareStatementsForWrite = vi.fn(async (statements: Statement[]) => ({ statements, blocked: [] }));
+const persistIngestBatch = vi.fn(async (_source: unknown, plan: { statements: Statement[] }, _run: unknown) => plan.statements);
 const allStatements = vi.fn();
 const normalizeEntities = vi.fn();
 const resolveArchiveReferencesForIngest = vi.fn();
 const computeDiff = vi.fn();
 const semanticEnrichDiff = vi.fn();
+const saveExtractionRun = vi.fn();
+const extractWithClaude = vi.fn();
+const extractWithWasm = vi.fn();
+const extractWithOllama = vi.fn();
+const extractMock = vi.fn(() => [{ subject: 'acme', predicate: 'has-name', object: 'Acme' }]);
+let currentSettings: Record<string, unknown> = { ingestBackend: 'mock', preferredBackend: 'mock' };
 
 vi.mock('uuid', () => ({ v4: () => 'source-id' }));
-vi.mock('../../integrations/llm/claude', () => ({ extractWithClaude: vi.fn() }));
-vi.mock('../../integrations/llm/wasm', () => ({ extractWithWasm: vi.fn() }));
-vi.mock('../../integrations/llm/ollama-extract', () => ({ extractWithOllama: vi.fn() }));
+vi.mock('../../integrations/llm/claude', () => ({ extractWithClaude }));
+vi.mock('../../integrations/llm/wasm', () => ({ extractWithWasm }));
+vi.mock('../../integrations/llm/ollama-extract', () => ({ extractWithOllama }));
 vi.mock('../../integrations/llm/providers', () => ({
   chatOpenAI: vi.fn(),
   chatGemini: vi.fn(),
@@ -44,8 +50,9 @@ vi.mock('../../integrations/llm/providers', () => ({
 vi.mock('../../integrations/llm/extractor', () => ({
   EXTRACTION_SYSTEM_PROMPT: 'system',
   buildExtractionUserPrompt: vi.fn(),
-  parseTriplesJSON: vi.fn(),
-  extractMock: vi.fn(() => []),
+  parseTriplesJSONWithReport: vi.fn(),
+  validateExtractedTriples: vi.fn((triples: unknown[]) => ({ triples, rejectedCount: 0 })),
+  extractMock,
   triplesToStatements: vi.fn(() => [rawStatement]),
 }));
 vi.mock('../../integrations/parsers/turtle-url', () => ({ fetchTurtleFromUrl: vi.fn() }));
@@ -57,20 +64,25 @@ vi.mock('../../rdf/semantic-diff', () => ({
   labelFromIRI: (value: string) => value,
 }));
 vi.mock('../kb.svelte', () => ({
-  addSource,
-  addStatements,
+  prepareStatementsForWrite,
+  persistIngestBatch,
   statements: allStatements,
+  // The typing stage reads the user's entity types, which are derived from confirmed facts.
+  // Empty here: these tests exercise the archive boundary, so built-in types are enough.
+  confirmedStatements: () => [],
 }));
 vi.mock('../settings.svelte', () => ({
-  settings: () => ({ ingestBackend: 'mock', preferredBackend: 'mock' }),
+  settings: () => currentSettings,
 }));
 vi.mock('../disambiguation.svelte', () => ({ addSuggestion: vi.fn() }));
 vi.mock('../notifications.svelte', () => ({ pushNotification: vi.fn() }));
+vi.mock('../../storage/extraction-runs', () => ({ saveExtractionRun }));
 
 const { ingest } = await import('../ingest.svelte');
 
 beforeEach(() => {
   vi.clearAllMocks();
+  currentSettings = { ingestBackend: 'mock', preferredBackend: 'mock' };
   allStatements.mockReturnValue(existingBefore);
   normalizeEntities.mockResolvedValue({
     statements: [normalizedStatement],
@@ -103,13 +115,18 @@ describe('ingest archive decision boundary (F97.3)', () => {
     expect(result).toEqual({ phase: 'cancelled', reason: 'archive-reference' });
     expect(computeDiff).not.toHaveBeenCalled();
     expect(semanticEnrichDiff).not.toHaveBeenCalled();
-    expect(addSource).not.toHaveBeenCalled();
-    expect(addStatements).not.toHaveBeenCalled();
+    expect(prepareStatementsForWrite).not.toHaveBeenCalled();
+    expect(persistIngestBatch).not.toHaveBeenCalled();
     expect(progress).toHaveBeenLastCalledWith(result);
   });
 
   it('diffs and persists the remapped batch against the refreshed post-restore graph', async () => {
     allStatements
+      // F136.3 added a THIRD read of the graph, and it comes FIRST: grounding the extraction prompt
+      // has to see the graph BEFORE extraction, whereas the two reads below happen after it (once
+      // to normalize against, once refreshed after an archive restore). Ordering matters here, so
+      // the grounding read is given its own value rather than being folded into the next one.
+      .mockReturnValueOnce(existingBefore)
       .mockReturnValueOnce(existingBefore)
       .mockReturnValueOnce(existingAfter);
     resolveArchiveReferencesForIngest.mockResolvedValue({
@@ -121,14 +138,20 @@ describe('ingest archive decision boundary (F97.3)', () => {
 
     const result = await ingest({ kind: 'note', title: 'Import', body: 'Acme update' });
 
-    expect(normalizeEntities).toHaveBeenCalledWith([rawStatement], existingBefore);
+    expect(normalizeEntities).toHaveBeenCalledWith([
+      expect.objectContaining({ ...rawStatement, extractionRunId: 'source-id' }),
+    ], existingBefore);
     expect(computeDiff).toHaveBeenCalledWith([remappedStatement], existingAfter);
     expect(semanticEnrichDiff).toHaveBeenCalledWith(
       expect.objectContaining({ toAdd: [remappedStatement] }),
       existingAfter,
     );
-    expect(addSource).toHaveBeenCalledTimes(1);
-    expect(addStatements).toHaveBeenCalledWith([remappedStatement], 'source-id');
+    expect(prepareStatementsForWrite).toHaveBeenCalledWith([remappedStatement], 'source-id');
+    expect(persistIngestBatch).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'source-id' }),
+      expect.objectContaining({ statements: [remappedStatement] }),
+      expect.objectContaining({ status: 'succeeded', outputStatementIds: ['remapped'] }),
+    );
     expect(result).toMatchObject({
       phase: 'done',
       statements: [remappedStatement],
@@ -163,7 +186,92 @@ describe('ingest archive decision boundary (F97.3)', () => {
 
     await ingest({ kind: 'note', title: 'Import', body: 'Acme update' });
 
-    expect(addSource).toHaveBeenCalledTimes(1);
-    expect(addStatements).toHaveBeenCalledWith([], 'source-id');
+    expect(prepareStatementsForWrite).toHaveBeenCalledWith([], 'source-id');
+    expect(persistIngestBatch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ statements: [] }),
+      expect.anything(),
+    );
+  });
+
+  it('keeps the failed WASM primary and actual placeholder producer distinct', async () => {
+    currentSettings = { ingestBackend: 'wasm', preferredBackend: 'wasm', wasmModel: 'small-local-model' };
+    extractWithWasm.mockRejectedValue(new Error('ONNX unavailable'));
+    normalizeEntities.mockImplementation(async (incoming: Statement[]) => ({
+      statements: incoming, subjectRemaps: 0, predicateRemaps: 0, remaps: [],
+    }));
+    resolveArchiveReferencesForIngest.mockResolvedValue({
+      decision: 'proceed', statements: [rawStatement], references: [], restoredEntities: [],
+    });
+
+    await ingest({ kind: 'note', title: 'Import', body: 'Acme update' });
+
+    expect(persistIngestBatch).toHaveBeenCalledWith(expect.objectContaining({
+      extractionBackend: 'mock', extractionModel: 'placeholder-extractor-v1',
+    }), expect.anything(), expect.anything());
+    const terminalRun = persistIngestBatch.mock.calls.at(-1)![2] as any;
+    expect(terminalRun.route.attempts).toEqual([
+      expect.objectContaining({ backend: 'wasm', model: 'small-local-model', status: 'failed' }),
+      expect.objectContaining({ backend: 'mock', model: 'placeholder-extractor-v1', status: 'succeeded' }),
+    ]);
+  });
+
+  it('threads graph grounding through the Claude, Ollama, and WASM adapters', async () => {
+    resolveArchiveReferencesForIngest.mockResolvedValue({
+      decision: 'proceed', statements: [rawStatement], references: [], restoredEntities: [],
+    });
+    extractWithClaude.mockResolvedValue([{ subject: 'acme', predicate: 'has-name', object: 'Acme' }]);
+    extractWithOllama.mockResolvedValue([{ subject: 'acme', predicate: 'has-name', object: 'Acme' }]);
+    extractWithWasm.mockResolvedValue([{ subject: 'acme', predicate: 'has-name', object: 'Acme' }]);
+
+    currentSettings = { ingestBackend: 'claude', preferredBackend: 'claude', claudeApiKey: 'test', claudeModel: 'test' };
+    await ingest({ kind: 'note', title: 'Import', body: 'Acme update' });
+    expect(extractWithClaude).toHaveBeenCalledWith('Acme update', 'Import', expect.objectContaining({
+      graphContext: expect.stringContaining('This graph already contains'),
+    }));
+
+    currentSettings = { ingestBackend: 'ollama', preferredBackend: 'ollama', ollamaModel: 'test' };
+    await ingest({ kind: 'note', title: 'Import', body: 'Acme update' });
+    expect(extractWithOllama).toHaveBeenCalledWith('Acme update', 'Import', expect.objectContaining({
+      graphContext: expect.stringContaining('This graph already contains'),
+    }));
+
+    currentSettings = { ingestBackend: 'wasm', preferredBackend: 'wasm', wasmModel: 'test' };
+    await ingest({ kind: 'note', title: 'Import', body: 'Acme update' });
+    expect(extractWithWasm).toHaveBeenCalledWith(
+      'Acme update', 'Import', 'test', expect.stringContaining('This graph already contains'),
+    );
+  });
+
+  it('records only statements the shared write funnel actually accepted as run output', async () => {
+    normalizeEntities.mockImplementation(async (incoming: Statement[]) => ({
+      statements: incoming, subjectRemaps: 0, predicateRemaps: 0, remaps: [],
+    }));
+    resolveArchiveReferencesForIngest.mockResolvedValue({
+      decision: 'proceed', statements: [rawStatement], references: [], restoredEntities: [],
+    });
+    prepareStatementsForWrite.mockResolvedValueOnce({ statements: [], blocked: [] });
+
+    await ingest({ kind: 'note', title: 'Import', body: 'Acme update' });
+
+    const terminalRun = persistIngestBatch.mock.calls.at(-1)![2] as any;
+    expect(terminalRun.candidateStatementCount).toBe(1);
+    expect(terminalRun.outputStatementIds).toEqual([]);
+  });
+
+  it('records an empty provider result as a validate-stage failure before graph writes', async () => {
+    extractMock.mockReturnValueOnce([]);
+
+    await expect(ingest({ kind: 'note', title: 'Empty result', body: 'Acme update' }))
+      .rejects.toThrow('Extraction produced no usable triples');
+
+    expect(prepareStatementsForWrite).not.toHaveBeenCalled();
+    expect(persistIngestBatch).not.toHaveBeenCalled();
+    const terminalRun = saveExtractionRun.mock.calls.at(-1)?.[0];
+    expect(terminalRun).toMatchObject({
+      status: 'failed',
+      failure: expect.objectContaining({ stage: 'validate' }),
+      validationCounts: expect.objectContaining({ candidates: 0, accepted: 0, rejected: 0 }),
+    });
   });
 });

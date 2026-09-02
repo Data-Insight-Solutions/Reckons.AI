@@ -15,9 +15,15 @@
   }>();
 
   let editing = $state(false);
-  let editedObj = $state(isLit(entry.incoming.o) ? entry.incoming.o.value : '');
+  let editedObj = $state('');
   let processing = $state(false);
   let error = $state<string | null>(null);
+
+  // A diff entry may be replaced in place after a refresh. Keep the draft aligned with that
+  // incoming value until the reviewer starts editing; never overwrite an in-progress refinement.
+  $effect(() => {
+    if (!editing) editedObj = isLit(entry.incoming.o) ? entry.incoming.o.value : '';
+  });
 
   // ── Partial fact (F32): reviewer fills the object's "loose end" ─────────────
   const isPartial = $derived(!!entry.incoming.needsObject);

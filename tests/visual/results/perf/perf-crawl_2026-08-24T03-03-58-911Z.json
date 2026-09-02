@@ -1,0 +1,35 @@
+{
+  "schema": "perf-crawl/1",
+  "finishedAt": "2026-08-24T03:03:58.911Z",
+  "baseUrl": "http://127.0.0.1:4180",
+  "renderer": "ANGLE (NVIDIA Corporation, NVIDIA GeForce RTX 3090/PCIe/SSE2, OpenGL 4.5.0)",
+  "softwareRendered": false,
+  "budgetMs": 2500,
+  "longTaskMs": 200,
+  "results": [
+    {
+      "route": "flow:everyday",
+      "timeToUsable": 1813,
+      "longTasks": [
+        {
+          "startTime": 1541,
+          "duration": 255,
+          "name": "DeLZguTt.js:FrameRequestCallback 253ms"
+        },
+        {
+          "startTime": 165.5,
+          "duration": 220,
+          "name": "DvJuRh-Q.js:IDBTransaction.oncomplete 220ms"
+        }
+      ],
+      "worstFrame": 266.5999999999999,
+      "medianFrame": 16.699999999999818,
+      "frozenSpans": [],
+      "failures": [
+        "long task 255ms blocked the main thread (DeLZguTt.js:FrameRequestCallback 253ms)",
+        "long task 220ms blocked the main thread (DvJuRh-Q.js:IDBTransaction.oncomplete 220ms)"
+      ],
+      "harnessError": null
+    }
+  ]
+}

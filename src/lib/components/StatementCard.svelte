@@ -33,32 +33,49 @@
   }
 </script>
 
-<div class="row" class:compact role="button" tabindex="0" onclick={onclick} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { onclick?.(e as any); } }}>
+{#snippet contents()}
   {#if statement.gloss && !compact}
     <div class="gloss">{statement.gloss}</div>
+  {:else if compact && statement.needsObject && statement.question}
+    <!-- A partial fact renders its object as a bare "?" — which in compact mode, with the gloss
+         suppressed, is the entire content of the card: a row that shows a blank without ever
+         saying what the blank is asking. The question is the only part worth reading. -->
+    <div class="gloss compact-question">❓ {statement.question}</div>
   {/if}
   {#if statement.excerpt && !compact}
     <blockquote class="excerpt">{statement.excerpt}</blockquote>
   {/if}
   <div class="triple mono">
-    <button class="term subj"
-      onclick={(e) => { e.stopPropagation(); onclicksubject?.(termKey(statement.s)); }}
-      onpointerenter={() => onhoverterm?.(termKey(statement.s))}
-      onpointerleave={() => onhoverterm?.(null)}>
-      {termLabel(statement.s)}
-    </button>
-    <button class="term pred"
-      onclick={(e) => { e.stopPropagation(); onclickpredicate?.(termKey(statement.p)); }}
-      onpointerenter={() => onhoverterm?.(termKey(statement.p))}
-      onpointerleave={() => onhoverterm?.(null)}>
-      {short(statement.p.value)}
-    </button>
-    <button class="term obj"
-      onclick={(e) => { e.stopPropagation(); onclickobject?.(termKey(statement.o)); }}
-      onpointerenter={() => onhoverterm?.(termKey(statement.o))}
-      onpointerleave={() => onhoverterm?.(null)}>
-      {termLabel(statement.o)}
-    </button>
+    {#if onclicksubject}
+      <button class="term term-action subj"
+        onclick={(e) => { e.stopPropagation(); onclicksubject(termKey(statement.s)); }}
+        onpointerenter={() => onhoverterm?.(termKey(statement.s))}
+        onpointerleave={() => onhoverterm?.(null)}>
+        {termLabel(statement.s)}
+      </button>
+    {:else}
+      <span class="term subj">{termLabel(statement.s)}</span>
+    {/if}
+    {#if onclickpredicate}
+      <button class="term term-action pred"
+        onclick={(e) => { e.stopPropagation(); onclickpredicate(termKey(statement.p)); }}
+        onpointerenter={() => onhoverterm?.(termKey(statement.p))}
+        onpointerleave={() => onhoverterm?.(null)}>
+        {short(statement.p.value)}
+      </button>
+    {:else}
+      <span class="term pred">{short(statement.p.value)}</span>
+    {/if}
+    {#if onclickobject}
+      <button class="term term-action obj"
+        onclick={(e) => { e.stopPropagation(); onclickobject(termKey(statement.o)); }}
+        onpointerenter={() => onhoverterm?.(termKey(statement.o))}
+        onpointerleave={() => onhoverterm?.(null)}>
+        {termLabel(statement.o)}
+      </button>
+    {:else}
+      <span class="term obj">{termLabel(statement.o)}</span>
+    {/if}
   </div>
   <div class="meta">
     {#if showGraph}
@@ -67,7 +84,26 @@
     <span class="meta-item mono">c={statement.confidence.toFixed(2)}</span>
     <span class="meta-item tag {statement.status}">{statement.status}</span>
   </div>
-</div>
+{/snippet}
+
+{#if onclick}
+  <div
+    class="row interactive"
+    class:compact
+    role="button"
+    tabindex="0"
+    {onclick}
+    onkeydown={(e) => {
+      if (e.key === 'Enter' || e.key === ' ') onclick(e as unknown as MouseEvent);
+    }}
+  >
+    {@render contents()}
+  </div>
+{:else}
+  <div class="row" class:compact>
+    {@render contents()}
+  </div>
+{/if}
 
 <style>
   .row {
@@ -79,10 +115,11 @@
     border-radius: var(--rad);
     padding: 1rem 1.1rem;
     margin: 0;
-    cursor: pointer;
+    cursor: default;
     transition: border-color 0.15s, transform 0.15s, background 0.15s;
   }
-  .row:hover {
+  .row.interactive { cursor: pointer; }
+  .row.interactive:hover {
     border-color: var(--muted-2);
     background: var(--surface-2);
   }
@@ -93,6 +130,15 @@
     line-height: 1.3;
     margin-bottom: 0.55rem;
     color: var(--ink);
+  }
+  /* Sized for a dense list rather than a card headline — this appears where the full gloss is
+     deliberately suppressed, so it has to inform without dominating the row. */
+  .gloss.compact-question {
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    line-height: 1.35;
+    margin-bottom: 0.35rem;
+    color: var(--ink-muted, var(--ink));
   }
   .excerpt {
     font-size: 0.82rem;
@@ -116,19 +162,19 @@
     border: none;
     padding: 0.1rem 0.25rem;
     border-radius: var(--rad-sm);
-    cursor: pointer;
     font-family: inherit;
     font-size: inherit;
     font-style: inherit;
     transition: background 0.1s;
   }
-  .term:hover {
+  .term-action { cursor: pointer; }
+  .term-action:hover {
     background: var(--surface-3);
   }
   .term.subj {
     color: var(--accent);
   }
-  .term.subj:hover {
+  .term-action.subj:hover {
     background: var(--accent-soft);
   }
   .term.pred {
@@ -138,7 +184,7 @@
   .term.obj {
     color: var(--data);
   }
-  .term.obj:hover {
+  .term-action.obj:hover {
     background: var(--data-soft);
   }
   .meta {

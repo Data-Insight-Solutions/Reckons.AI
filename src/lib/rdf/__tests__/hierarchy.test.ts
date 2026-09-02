@@ -85,6 +85,56 @@ describe('buildHierarchy', () => {
     const roots = buildHierarchy(stmts);
     expect(roots.length).toBe(0);
   });
+
+  it('breaks cycles deterministically and includes every hierarchy node once', () => {
+    const edges = [
+      mkStmt('urn:b', SKOS_BROADER, 'urn:a'),
+      mkStmt('urn:c', SKOS_BROADER, 'urn:b'),
+      mkStmt('urn:a', SKOS_BROADER, 'urn:c'),
+      mkStmt('urn:self', SKOS_BROADER, 'urn:self'),
+    ];
+    const flatten = (nodes: ReturnType<typeof buildHierarchy>): string[] =>
+      nodes.flatMap((node) => [node.iri, ...flatten(node.children)]);
+
+    const forward = buildHierarchy(edges);
+    const reversed = buildHierarchy([...edges].reverse());
+    expect(flatten(forward).sort()).toEqual(['urn:a', 'urn:b', 'urn:c', 'urn:self']);
+    expect(forward).toEqual(reversed);
+    expect(forward.map((root) => root.iri)).toContain('urn:a');
+    expect(forward.map((root) => root.iri)).toContain('urn:self');
+  });
+
+  it('chooses a stable parent when repeated broader edges disagree', () => {
+    const edges = [
+      mkStmt('urn:child', SKOS_BROADER, 'urn:z-parent'),
+      mkStmt('urn:child', SKOS_BROADER, 'urn:a-parent'),
+    ];
+    expect(buildHierarchy(edges)).toEqual(buildHierarchy([...edges].reverse()));
+    const roots = buildHierarchy(edges);
+    expect(roots.find((root) => root.iri === 'urn:a-parent')?.children[0].iri).toBe('urn:child');
+  });
+
+  it('builds a 6,000-level imported taxonomy without overflowing the call stack', () => {
+    const depth = 6_000;
+    const edges = Array.from({ length: depth - 1 }, (_, index) =>
+      mkStmt(`urn:node-${index + 1}`, SKOS_BROADER, `urn:node-${index}`));
+
+    const roots = buildHierarchy(edges);
+    expect(roots).toHaveLength(1);
+    expect(roots[0].iri).toBe('urn:node-0');
+    expect(roots[0].layer).toBe(depth - 1);
+
+    let current = roots[0];
+    let visited = 1;
+    while (current.children.length > 0) {
+      expect(current.children).toHaveLength(1);
+      current = current.children[0];
+      visited++;
+    }
+    expect(visited).toBe(depth);
+    expect(current.iri).toBe(`urn:node-${depth - 1}`);
+    expect(current.layer).toBe(0);
+  });
 });
 
 describe('getOrderedChildren', () => {
@@ -142,18 +192,171 @@ describe('buildHierarchyAnchors', () => {
 
     const root = anchors.get('i:urn:root')!;
     expect(root.x).toBe(0);
-    expect(root.y).toBe(0);
+    // The tree is CENTRED on the origin, so a root is only at y:0 when the tree is one level
+    // deep — what must hold at every depth is that the root is above its children.
+    expect(root.y).toBeLessThan(anchors.get('i:urn:child1')!.y);
 
-    // Children should be in a ring (non-zero distance from center)
+    /*
+     * Children sit in a RING — measured from their own level's centre, not from the origin.
+     * Centring the tree moved the origin into the middle of it, so distance-from-origin now says
+     * how far a node is from the middle of the WHOLE TREE, which is not what "in a ring" means:
+     * a child directly below the centre legitimately lands near the origin.
+     */
     const c1 = anchors.get('i:urn:child1')!;
     const c2 = anchors.get('i:urn:child2')!;
-    expect(Math.hypot(c1.x, c1.y)).toBeGreaterThan(1);
-    expect(Math.hypot(c2.x, c2.y)).toBeGreaterThan(1);
+    const levelY = (c1.y + c2.y) / 2;
+    expect(Math.hypot(c1.x, c1.y - levelY)).toBeGreaterThan(1);
+    expect(Math.hypot(c2.x, c2.y - levelY)).toBeGreaterThan(1);
   });
 
   it('returns empty map when no broader relationships exist', () => {
     const nodes = [{ key: 'i:urn:solo' }];
     const anchors = buildHierarchyAnchors([], nodes, []);
     expect(anchors.size).toBe(0);
+  });
+
+  it('lays out cyclic hierarchy data without dropping the component', () => {
+    const stmts = [
+      mkStmt('urn:a', SKOS_BROADER, 'urn:b'),
+      mkStmt('urn:b', SKOS_BROADER, 'urn:a'),
+    ];
+    const anchors = buildHierarchyAnchors(stmts, [{ key: 'i:urn:a' }, { key: 'i:urn:b' }], []);
+    expect([...anchors.keys()].sort()).toEqual(['i:urn:a', 'i:urn:b']);
+    expect([...anchors.values()].every(({ x, y }) => Number.isFinite(x) && Number.isFinite(y))).toBe(true);
+  });
+});
+
+describe('buildHierarchyAnchors — depends-on, laid out as stacked levels', () => {
+  const KPRED_DEPENDS_ON = 'urn:kbase:predicate/depends-on';
+  const nodesFor = (...iris: string[]) => iris.map((i) => ({ key: `i:${i}` }));
+  /** Which level a node landed on. Levels descend, so deeper == more negative y. */
+  /*
+   * DEPTH IN SCREEN SPACE, and the sign matters.
+   *
+   * These anchors feed the 2D renderer ONLY (the 3D twin has its own buildHierarchyAnchors3D),
+   * and KnowledgeGraph2D's worldToScreen does not flip y — canvas y grows DOWNWARD. These tests
+   * previously encoded y-UP semantics (root at y:0, children at -1), which read correctly as
+   * intent and drew the tree UPSIDE DOWN: the root sat at the bottom with its descendants
+   * climbing above it. Fixed 2026-08-21 after Matt reported "the 'root' was down a level and not
+   * at highest level".
+   *
+   * So: deeper = LARGER y = further down the screen. And the whole tree is CENTRED on the origin,
+   * so a root is only at y:0 when the tree is one level deep.
+   */
+  const levelOf = (a: { x: number; y: number }) => Math.round(a.y / 9);
+  /** Depth relative to the shallowest placed node — sign-independent, so it survives centring. */
+  const depthFrom = (root: { y: number }, node: { y: number }) => Math.round((node.y - root.y) / 9);
+
+  it('puts the prerequisite on the level ABOVE the features that need it', () => {
+    const stmts = [
+      mkStmt('urn:f81', KPRED_DEPENDS_ON, 'urn:f80'),
+      mkStmt('urn:f82', KPRED_DEPENDS_ON, 'urn:f80'),
+    ];
+    const anchors = buildHierarchyAnchors(stmts, nodesFor('urn:f80', 'urn:f81', 'urn:f82'), []);
+
+    expect(anchors.size).toBe(3);
+    const root = anchors.get('i:urn:f80')!;
+    // A lone root sits at the centre of the top circle: x centred, and ABOVE its dependents.
+    expect(root.x).toBe(0);
+    // Both dependents share the next level DOWN THE SCREEN — one circle, one level.
+    expect(depthFrom(root, anchors.get('i:urn:f81')!)).toBe(1);
+    expect(depthFrom(root, anchors.get('i:urn:f82')!)).toBe(1);
+    expect(anchors.get('i:urn:f81')!.y).toBeGreaterThan(root.y);
+    expect(anchors.get('i:urn:f81')!.y).toBeGreaterThan(anchors.get('i:urn:f80')!.y);
+  });
+
+  it('drops a third level below the second — depth is the vertical axis', () => {
+    const stmts = [
+      mkStmt('urn:mid', KPRED_DEPENDS_ON, 'urn:root'),
+      mkStmt('urn:leaf', KPRED_DEPENDS_ON, 'urn:mid'),
+    ];
+    const anchors = buildHierarchyAnchors(stmts, nodesFor('urn:root', 'urn:mid', 'urn:leaf'), []);
+    const root = anchors.get('i:urn:root')!;
+    // Each level is strictly further DOWN the screen than the one above it.
+    expect(depthFrom(root, anchors.get('i:urn:mid')!)).toBe(1);
+    expect(depthFrom(root, anchors.get('i:urn:leaf')!)).toBe(2);
+    expect(root.y).toBeLessThan(anchors.get('i:urn:mid')!.y);
+    expect(anchors.get('i:urn:mid')!.y).toBeLessThan(anchors.get('i:urn:leaf')!.y);
+  });
+
+  it('does not invert the tree — the dependent never becomes the root', () => {
+    const stmts = [mkStmt('urn:dependent', KPRED_DEPENDS_ON, 'urn:prerequisite')];
+    const anchors = buildHierarchyAnchors(stmts, nodesFor('urn:prerequisite', 'urn:dependent'), []);
+    expect(anchors.get('i:urn:dependent')!.y).toBeGreaterThan(anchors.get('i:urn:prerequisite')!.y);
+  });
+
+  it('lets an explicit skos:broader win over an inferred depends-on parent', () => {
+    const stmts = [
+      mkStmt('urn:x', KPRED_DEPENDS_ON, 'urn:prereq'),
+      mkStmt('urn:x', SKOS_BROADER, 'urn:taxonomy'),
+    ];
+    const anchors = buildHierarchyAnchors(stmts, nodesFor('urn:prereq', 'urn:taxonomy', 'urn:x'), []);
+    // The taxonomic parent is the one x hangs under: it sits ABOVE x on screen, one level up.
+    const tax = anchors.get('i:urn:taxonomy')!;
+    expect(tax.y).toBeLessThan(anchors.get('i:urn:x')!.y);
+    expect(depthFrom(tax, anchors.get('i:urn:x')!)).toBe(1);
+  });
+
+  it('parks nodes with no stated parent below the tree, not as its deepest branch', () => {
+    const stmts = [mkStmt('urn:child', KPRED_DEPENDS_ON, 'urn:root')];
+    const anchors = buildHierarchyAnchors(stmts, nodesFor('urn:root', 'urn:child', 'urn:loner'), []);
+    // Strictly below the deepest real level, so it never reads as a descendant of it.
+    // Below = LARGER y, because this layout is drawn in screen space.
+    expect(anchors.get('i:urn:loner')!.y).toBeGreaterThan(anchors.get('i:urn:child')!.y);
+  });
+
+  it('still returns nothing when the graph states no hierarchy at all', () => {
+    const stmts = [mkStmt('urn:a', 'urn:kbase:predicate/mentions', 'urn:b')];
+    expect(buildHierarchyAnchors(stmts, nodesFor('urn:a', 'urn:b'), []).size).toBe(0);
+  });
+});
+
+describe('buildHierarchyAnchors — unplaced nodes stay bounded', () => {
+  const KPRED_DEPENDS_ON = 'urn:kbase:predicate/depends-on';
+
+  it('does not scale the orphan area with node count', () => {
+    // The regression: one ring sized by population. 600 unplaced nodes produced a radius of ~700
+    // against level rings of 7-20, so the force simulation had to settle bodies across a hundred
+    // times the useful area — which presents as a frozen graph rather than an ugly one.
+    const stmts = [mkStmt('urn:child', KPRED_DEPENDS_ON, 'urn:root')];
+    const nodes = [
+      { key: 'i:urn:root' },
+      { key: 'i:urn:child' },
+      ...Array.from({ length: 600 }, (_, i) => ({ key: `i:urn:orphan${i}` })),
+    ];
+    const anchors = buildHierarchyAnchors(stmts, nodes, []);
+
+    const radii = [...anchors.entries()]
+      .filter(([k]) => k.includes('orphan'))
+      .map(([, a]) => Math.hypot(a.x, a.y));
+
+    expect(radii).toHaveLength(600);
+    // Comfortably bounded: linear scaling would put this near 700.
+    expect(Math.max(...radii)).toBeLessThan(200);
+  });
+
+  it('keeps the tree and the orphans within the same order of size', () => {
+    const stmts = [mkStmt('urn:child', KPRED_DEPENDS_ON, 'urn:root')];
+    const nodes = [
+      { key: 'i:urn:root' },
+      { key: 'i:urn:child' },
+      ...Array.from({ length: 200 }, (_, i) => ({ key: `i:urn:o${i}` })),
+    ];
+    const anchors = buildHierarchyAnchors(stmts, nodes, []);
+    /*
+     * Measured as EXTENT from the tree's own centre, not as distance from the origin. Centring
+     * moved the origin into the middle of the tree, so a root that used to sit at hypot 0 now
+     * sits half a level away — and a ratio with that in the denominator says nothing about
+     * whether the orphan ring is proportionate.
+     */
+    const tree = [anchors.get('i:urn:root')!, anchors.get('i:urn:child')!];
+    const cy = (tree[0].y + tree[1].y) / 2;
+    const orphanMax = Math.max(
+      ...[...anchors.entries()].filter(([k]) => k.includes(':urn:o')).map(([, a]) => Math.hypot(a.x, a.y - cy)),
+    );
+    // The tree's SPAN, not one node's distance from a centre that sits inside it. Centring halved
+    // the latter and would have doubled this ratio without the orphan ring changing at all.
+    const treeMax = Math.abs(tree[1].y - tree[0].y);
+    expect(orphanMax / treeMax).toBeLessThan(12);
   });
 });

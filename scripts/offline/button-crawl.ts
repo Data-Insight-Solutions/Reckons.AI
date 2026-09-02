@@ -26,14 +26,14 @@
  *   npm run test:crawl -- --route=/kb        crawl a single route
  *   npm run test:crawl -- --max=20           cap elements per route
  *
- * Exit code is always 0 (offline diagnostic) — findings are queued to
- * reckons-workspace/knowledge.pending.jsonl for in-app review, per the
- * graphs-are-source-of-truth workflow.
+ * Findings are queued to reckons-workspace/knowledge.pending.jsonl for review. A route that was
+ * not crawled exits non-zero: incomplete coverage is evidence of neither success nor failure.
  */
 import { chromium, type Page, type Browser } from '@playwright/test';
+import { queueFindings as queuePendingFindings } from './pending-queue.ts';
 import { analyzePixels, auditTouchTargets } from '../../tests/visual/vision-local';
 import { evalStable } from '../../tests/visual/eval-stable';
-import { appendFileSync, mkdirSync, writeFileSync } from 'fs';
+import { mkdirSync, writeFileSync } from 'fs';
 import path from 'path';
 
 const argv = process.argv.slice(2);
@@ -41,6 +41,7 @@ const arg = (k: string) => argv.find((a) => a.startsWith(`--${k}=`))?.split('=')
 const BASE_URL = process.env.BASE_URL ?? 'http://localhost:5173';
 const ONLY_ROUTE = arg('route');
 const MAX_PER_ROUTE = Number(arg('max') ?? 60);
+const CONTRACT_REPORT = arg('report');
 
 /**
  * Viewport to crawl at. Defaults to desktop, but the 44px TOUCH-TARGET rule only means anything on
@@ -468,35 +469,40 @@ function writeStoryTtl(findings: Finding[]) {
 }
 
 /** Turn the worst findings into pending graph entries for in-app review. */
-function queueFindings(findings: Finding[]) {
+function queueCrawlFindings(findings: Finding[]) {
   const worth = findings.filter(
-    (f) => f.errors.length || f.blankScreen || (!f.changed && !f.clicked),
+    (f) => f.errors.length || f.blankScreen || isRealNoOp(f) || !f.clicked,
   );
-  if (!worth.length) return 0;
-  const lines = worth.map((f) => {
+  const entries = worth.map((f) => {
     const kind = f.errors.length ? 'observation' : f.blankScreen ? 'observation' : 'question';
     const note = f.errors.length
       ? `Button "${f.label}" (${f.route}) threw on click: ${f.errors[0]}`
       : f.blankScreen
         ? `Button "${f.label}" (${f.route}) left a blank/solid-fill screen (${f.dominantColor})`
-        : `Button "${f.label}" (${f.route}) could not be clicked (occluded/disabled?)`;
-    return JSON.stringify({
-      subject: `urn:reckons:test/button-crawl${f.route}`,
+        : isRealNoOp(f)
+          ? `Button "${f.label}" (${f.route}) accepted a click but produced no observable change`
+          : `Button "${f.label}" (${f.route}) could not be clicked (occluded/disabled?)`;
+    return {
+      // Labels are not identities: one route commonly has several "Close" or icon-only controls.
+      // The crawl index is stable within the reset route and prevents distinct defects collapsing
+      // into one pending fact merely because their visible gloss is the same.
+      subject: `urn:reckons:test/button-crawl${f.route}/control-${f.index}`,
       predicate: 'urn:reckons:test/finding',
       object: f.label,
       note,
       type: kind,
-      agent: 'button-crawl',
-      priority: f.errors.length || f.blankScreen ? 'high' : 'normal',
-    });
+      priority: (f.errors.length || f.blankScreen ? 'high' : 'normal') as 'high' | 'normal',
+    };
   });
-  try {
-    mkdirSync(path.dirname(PENDING), { recursive: true });
-    appendFileSync(PENDING, lines.join('\n') + '\n');
-  } catch {
-    /* workspace may not exist in every checkout */
-  }
-  return worth.length;
+  mkdirSync(path.dirname(PENDING), { recursive: true });
+  // Only a complete, full crawl may replace older findings. A single-route diagnostic or a run
+  // with skipped coverage is not the complete answer and must never clear evidence it did not see.
+  return queuePendingFindings(entries, {
+    agent: 'button-crawl',
+    path: PENDING,
+    recomputes: !ONLY_ROUTE,
+    kb: 'roadmap',
+  }).queued;
 }
 
 async function main() {
@@ -504,7 +510,7 @@ async function main() {
   const probe = await fetch(BASE_URL).then((r) => r.ok).catch(() => false);
   if (!probe) {
     console.error(`${C.r}No server at ${BASE_URL}.${C.x} Start one (npm run dev) or set BASE_URL.`);
-    process.exit(0);
+    process.exit(1);
   }
 
   const routes = ONLY_ROUTE ? [ONLY_ROUTE] : ROUTES;
@@ -512,6 +518,7 @@ async function main() {
 
   const browser = await chromium.launch();
   const all: Finding[] = [];
+  const crawled: string[] = [];
   // Routes that never got crawled. Tracked because the alternative — what this script did until
   // 2026-07-18 — is to log the failure, skip the route, and still print "crashes: 0". Four of six
   // routes were dying on a navigation race and the summary claimed a clean run. An untested route
@@ -521,6 +528,7 @@ async function main() {
   for (const route of routes) {
     try {
       all.push(...(await crawlRoute(browser, route)));
+      crawled.push(route);
     } catch (e) {
       const reason = e instanceof Error ? e.message : String(e);
       console.error(`${C.r}route ${route} failed:${C.x}`, reason);
@@ -533,22 +541,25 @@ async function main() {
   mkdirSync(RESULTS_DIR, { recursive: true });
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const reportPath = path.join(RESULTS_DIR, `button-crawl_${stamp}.json`);
-  const crawled = [...new Set(all.map((f) => f.route))];
-  writeFileSync(
-    reportPath,
-    JSON.stringify(
+  const report = JSON.stringify(
       {
+        schema: 'reckons.button-crawl/v1',
         baseUrl: BASE_URL,
         device: DEVICE_NAME,
         viewport: { width: DEVICE.width, height: DEVICE.height },
         // False when crawled on desktop: sub-44px counts below are advisory only.
         touchTargetsMeaningful: DEVICE.touch,
         routes, crawled, skipped, findings: all,
+        finishedAt: new Date().toISOString(),
       },
       null,
       2,
-    ),
-  );
+    ) + '\n';
+  writeFileSync(reportPath, report);
+  if (CONTRACT_REPORT) {
+    mkdirSync(path.dirname(CONTRACT_REPORT), { recursive: true });
+    writeFileSync(CONTRACT_REPORT, report);
+  }
 
   const crashes = all.filter((f) => f.errors.length);
   const blanks = all.filter((f) => f.blankScreen);
@@ -575,11 +586,17 @@ async function main() {
   console.log(`  ${C.d}benign no-change: ${benign.length} ${C.d}(downloads, file pickers, already-active toggles)${C.x}`);
   console.log(`  ${C.d}unclickable:   ${unclickable.length}${C.x}`);
   const storyPath = writeStoryTtl(all);
-  const queued = queueFindings(all);
+  const queued = skipped.length ? queuePendingFindings([], {
+    agent: 'button-crawl', path: PENDING, recomputes: false, kb: 'roadmap',
+  }).queued : queueCrawlFindings(all);
   console.log(`\n  report:  ${C.d}${path.relative(process.cwd(), reportPath)}${C.x}`);
   console.log(`  story:   ${C.d}${path.relative(process.cwd(), storyPath)}${C.x} ${C.d}(TestWorkflow/TestStep — reviewable in-app)${C.x}`);
   console.log(`  queued:  ${queued} finding(s) -> ${C.d}${path.relative(process.cwd(), PENDING)}${C.x}`);
   console.log(`\n${C.d}No-ops and visuals want an Opus/VLM pass — phase 2.${C.x}`);
+  if (skipped.length) process.exitCode = 1;
 }
 
-main();
+main().catch((error) => {
+  console.error(`${C.r}Button crawl failed:${C.x} ${error instanceof Error ? error.message : error}`);
+  process.exitCode = 1;
+});

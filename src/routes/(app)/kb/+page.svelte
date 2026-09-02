@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import {
     statements,
     sources,
@@ -20,7 +21,7 @@
   import {
     workspaceName, workspaceState, supportsWorkspace,
     pickWorkspace, reconnectWorkspace, clearWorkspace,
-    syncAllKbs, lastSyncTime, syncedKbCount
+    syncAllKbs, lastSyncTime, syncedKbCount, syncFolderPaths
   } from '$lib/stores/workspace.svelte';
   import {
     isAutoSaveSupported, hasAutoSaveFile, getAutoSaveFileName,
@@ -33,14 +34,15 @@
     getRegistry,
     getCurrentKbId,
     switchToKb,
-    createKb,
     removeKbFromRegistry,
     updateKbName,
     toggleBookmark,
+    subscribeRegistry,
     kbUrl,
     kbFileSlug,
     type KbEntry
   } from '$lib/storage/kb-registry';
+  import { createNamedKb, renameKb } from '$lib/storage/kb-naming';
   import { groupGraphsWithArchives, groupRows } from '$lib/storage/archive-gallery';
   import { bucketIntoSets, findDuplicateGraphs } from '$lib/storage/graph-sets';
   import { sweepArchiveByAge } from '$lib/storage/archive-store';
@@ -53,6 +55,7 @@
   import { podViewEnabled, setPodViewEnabled } from '$lib/stores/pod-view.svelte';
   import { allTypes } from '$lib/stores/entity-types.svelte';
   import GraphPreview from '$lib/components/GraphPreview.svelte';
+  import { focusOnMount } from '$lib/actions/focus-on-mount';
 
   // ── KB identity ────────────────────────────────────────────────────────────
   const currentKbId = getCurrentKbId();
@@ -71,7 +74,15 @@
 
   async function saveTitle() {
     titleSaving = true;
-    await updateSettings({ kbTitle: kbTitleLocal.trim() || undefined });
+    const name = kbTitleLocal.trim();
+    if (name) {
+      // One writer for both stores: the title box used to leave the registry — and therefore
+      // /kb's list and every ?kb=<name> link — pointing at the old name.
+      await renameKb(currentKbId, name, updateSettings);
+      localKbs = getRegistry();
+    } else {
+      await updateSettings({ kbTitle: undefined });
+    }
     titleSaving = false;
   }
 
@@ -104,9 +115,18 @@
     new Set(confirmedStatements().filter((s) => s.s.kind === 'iri').map((s) => s.s.value)).size
   );
 
-  const pendingTotal = $derived(
-    statements().filter((s) => s.status === 'pending' && nonAnalysisSources.some((src) => src.id === s.sourceId)).length
-  );
+  // Every pending fact, whatever kind of source carried it in.
+  //
+  // This used to require the source to be non-analysis, and `drainAndImportPending` files its
+  // import under `kind: 'analysis'`. So a graph holding 377 drained proposals reported
+  // "0 entities · 0 facts · 0 sources" and did not even show the pending-review link — every
+  // stat on this page filters analysis sources out, and all three zeros were true of confirmed
+  // facts while the graph was in fact full. A graph that reads as empty when it is not is the
+  // one thing this page must never do.
+  //
+  // The review queue is the review queue regardless of provenance: excluding a source kind from
+  // a COUNT OF WORK OUTSTANDING hides work rather than tidying it.
+  const pendingTotal = $derived(statements().filter((s) => s.status === 'pending').length);
 
   // ── Per-source counts ─────────────────────────────────────────────────────
   function sourcePending(id: string): number {
@@ -118,6 +138,11 @@
 
   // ── KB registry ───────────────────────────────────────────────────────────
   let localKbs = $state<KbEntry[]>(getRegistry());
+  // Install during component initialisation, before the first gallery rows render. Waiting for
+  // onMount leaves a small window where another tab can write after the snapshot above but before
+  // the listener exists, permanently losing that event.
+  const unsubscribeRegistry = subscribeRegistry((registry) => { localKbs = registry; });
+  onDestroy(unsubscribeRegistry);
   let newKbName = $state('');
   let showNewKbForm = $state(false);
   let editingKbId = $state<string | null>(null);
@@ -181,6 +206,26 @@
    */
   const kbSets = $derived(bucketIntoSets(kbGroups, { ungroupedTitle: 'Ungrouped' }, localKbs));
 
+  /*
+   * Group by the folders the user actually made (kb:graph-sets, F113 `folder` basis).
+   *
+   * The workspace already knows where every synced graph lives — listKbFolders() has always
+   * returned the full path — but nothing recorded it, so the list could only ever group by how the
+   * names happened to be spelled. This refreshes the cached folder of each registry row whenever
+   * this page is open and a workspace is connected.
+   *
+   * It runs on the CONNECTED state rather than once on mount, so linking a folder regroups the
+   * list without a reload.
+   */
+  $effect(() => {
+    if (workspaceState() !== 'connected') return;
+    let cancelled = false;
+    void syncFolderPaths()
+      .then((updated) => { if (updated && !cancelled) localKbs = getRegistry(); })
+      .catch((e) => console.warn('[graphs] folder-path sync failed:', e));
+    return () => { cancelled = true; };
+  });
+
   /**
    * Graphs sharing a name but not an id. Re-importing a source mints a NEW database, so the list
    * grows a second, independent copy that will disagree the moment either is edited — and the
@@ -231,10 +276,12 @@
     localKbs.filter(kb => (kbFilter === 'all' || kb.bookmarked) && !matchesQuery(kb, kbQuery)).length
   );
 
-  function handleCreateKb() {
+  async function handleCreateKb() {
     const name = newKbName.trim();
     if (!name) return;
-    const entry = createKb(name);
+    // Seeds the new graph's own kbTitle as well as the registry entry, so the graph opens
+    // already knowing its name instead of presenting an empty title box.
+    const entry = await createNamedKb(name);
     switchToKb(entry.id); // triggers reload
   }
 
@@ -318,10 +365,14 @@
     editingName = kb.name;
   }
 
-  function commitRename() {
+  async function commitRename() {
     if (editingKbId && editingName.trim()) {
-      updateKbName(editingKbId, editingName.trim());
+      const name = editingName.trim();
+      const renamed = editingKbId;
+      await renameKb(renamed, name, updateSettings);
       localKbs = getRegistry();
+      // Renaming the graph you are looking at must move the header too, not just the list row.
+      if (renamed === currentKbId) kbTitleLocal = name;
     }
     editingKbId = null;
   }
@@ -796,7 +847,7 @@
         placeholder="new graph name…"
         aria-label="New graph name"
         onkeydown={(e) => { if (e.key === 'Enter') handleCreateKb(); if (e.key === 'Escape') showNewKbForm = false; }}
-        autofocus
+        use:focusOnMount
       />
       <button class="primary sm" onclick={handleCreateKb} disabled={!newKbName.trim()}>create &amp; switch</button>
       <button class="sm" onclick={() => (showNewKbForm = false)}>cancel</button>
@@ -885,6 +936,10 @@
             <!-- Say that the grouping is a GUESS. A user cannot correct a rule they cannot see,
                  and F113's declared membership does not exist yet. -->
             <span class="kb-set-basis mono" title="Grouped by a shared name prefix found in your graph names. Renaming a graph moves it. Define your own sets to make this explicit.">by name</span>
+          {:else if set.basis === 'folder'}
+            <!-- A folder the user made is a statement of intent, not a guess — so it is labelled
+                 differently from the name-prefix cluster above, and says what would move it. -->
+            <span class="kb-set-basis mono folder" title="Grouped by the sub-directory these graphs are synced from in your workspace folder. Moving a graph to another folder moves it here.">by folder</span>
           {/if}
         </div>
         <!-- Only ever the user's words. A derived set has no purpose, and inventing one would be
@@ -921,14 +976,18 @@
                 bind:value={editingName}
                 onblur={commitRename}
                 onkeydown={(e) => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') { editingKbId = null; } }}
-                autofocus
+                use:focusOnMount
                 aria-label="Rename graph"
               />
             {:else}
               <span
                 class="kb-entry-name"
+                role="button"
+                tabindex="0"
                 ondblclick={() => startRename(kb)}
-                title="Double-click to rename"
+                onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startRename(kb); } }}
+                aria-label={`Rename ${kb.name}`}
+                title="Double-click, Enter, or Space to rename"
               >{kb.name}</span>
             {/if}
             {#if group.orphanArchive}
@@ -1985,6 +2044,7 @@
     border: 1px solid var(--line); border-radius: 3px; padding: 0.05rem 0.3rem;
   }
   /* The grouping is currently a GUESS from the name; it must look like one. */
+  .kb-set-basis.folder { color: var(--accent); opacity: 0.85; }
   .kb-set-basis { font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
   .kb-set-purpose { margin: 0 0 0.5rem; font-size: 0.7rem; color: var(--muted); max-width: 62ch; }
 
@@ -2079,9 +2139,10 @@
 
   .kb-entry-meta { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
   .kb-entry-name {
-    font-size: 0.85rem; font-weight: 600; cursor: default;
+    font-size: 0.85rem; font-weight: 600; cursor: pointer;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  .kb-entry-name:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .kb-entry-sub { display: flex; align-items: center; gap: 0.4rem; }
   .kb-entry-id { font-size: 0.6rem; color: var(--muted); }
 

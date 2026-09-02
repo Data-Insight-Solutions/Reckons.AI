@@ -153,17 +153,92 @@ test('hero "Getting started" button activates the starter graph (not a no-op)', 
   await expect(getStarted).toBeVisible({ timeout: 10_000 });
   await getStarted.click();
 
-  // Docs KB must actually activate and lay out nodes. If activation no-ops, the
-  // empty-KB guard re-renders the landing page and no .node-label ever appears.
-  await expect
-    .poll(async () => page.locator('.node-label').count(), {
-      timeout: 30_000,
-      message: 'Getting started was a no-op — docs graph never laid out nodes',
-    })
-    .toBeGreaterThan(0);
+  // The saved renderer preference is authoritative. The default is 3D, so the starter must not
+  // silently paint 2D while Settings still says 3D.
+  const starterGraph = page.locator('[data-graph-renderer="3d"][data-graph-ready="true"]');
+  await expect(starterGraph).toBeVisible({ timeout: 30_000 });
+  const starterCanvas = starterGraph.locator('canvas').first();
+  await expect(starterCanvas).toBeVisible();
+  const starterFrame = await starterCanvas.screenshot();
+  const starterPixels = await analyzePixels(starterFrame);
+  expect(starterPixels.isBlank, starterPixels.anomalyDetails.join('; ')).toBe(false);
+  expect(starterPixels.uniqueColorCount).toBeGreaterThan(20);
 
   // And the landing hero must be gone (graph route swapped in).
   await expect(page.getByRole('button', { name: /getting started/i })).toHaveCount(0);
   expect(pageErrors, `Uncaught page errors:\n${pageErrors.join('\n---\n')}`).toHaveLength(0);
   expect(consoleErrors, `Console errors:\n${consoleErrors.join('\n---\n')}`).toHaveLength(0);
+});
+
+test('Getting started + Preview all demonstrates GIF, video, and GLB assets', async ({ page }, testInfo) => {
+  const failedAssets: string[] = [];
+  page.on('response', (response) => {
+    const url = response.url();
+    if (
+      response.status() >= 400 &&
+      ['/gif/starter/', '/video/starter/', '/glb/starter/'].some((part) => url.includes(part))
+    ) failedAssets.push(`${response.status()} ${url}`);
+  });
+
+  await page.goto('/');
+  await page.locator('nav').waitFor({ timeout: 15_000 });
+  await page.getByRole('button', { name: /getting started/i }).click();
+  await expect(page.locator('[data-graph-renderer="3d"][data-graph-ready="true"]')).toBeVisible({ timeout: 30_000 });
+
+  // A fresh browser profile shows the first-run Shelly notification over the
+  // asset viewer's top-right controls. Clear it as a user would before opening
+  // the large viewers below.
+  const dismissNotification = page.getByRole('button', { name: 'dismiss', exact: true });
+  if (await dismissNotification.isVisible()) await dismissNotification.click();
+
+  const previews = page.locator('.overlay-group', { hasText: /previews/i });
+  await previews.locator('button.chip').first().click();
+  // The popover is portaled to <body>, so it is intentionally not a descendant
+  // of the previews overlay group that owns the trigger.
+  await page.getByRole('button', { name: 'preview all', exact: true }).click();
+
+  const gifThumb = page.getByRole('button', { name: /open asset for first night, fire and catching up/i });
+  const videoThumb = page.getByRole('button', { name: /open asset for jordan's sunrise shoot/i });
+  const glbThumb = page.getByRole('button', { name: /open asset for pitch camp before dark/i });
+
+  await expect(gifThumb).toBeVisible({ timeout: 15_000 });
+  await expect(videoThumb).toBeVisible();
+  await expect(glbThumb).toBeVisible();
+  await expect(gifThumb.locator('img')).toHaveAttribute('src', '/gif/starter/campfire.gif');
+  await expect(videoThumb.locator('video')).toHaveAttribute('src', '/video/starter/sunrise-shoot.webm');
+  await expect(glbThumb).toContainText('3D');
+
+  await expect.poll(
+    () => gifThumb.locator('img').evaluate((img) => (img as HTMLImageElement).complete && (img as HTMLImageElement).naturalWidth > 0),
+    { message: 'the animated GIF should decode into a real image' },
+  ).toBe(true);
+  await expect.poll(
+    () => videoThumb.locator('video').evaluate((video) => ({
+      ready: (video as HTMLVideoElement).readyState >= HTMLMediaElement.HAVE_METADATA,
+      duration: (video as HTMLVideoElement).duration,
+      width: (video as HTMLVideoElement).videoWidth,
+    })),
+    { message: 'the WebM should load metadata and dimensions' },
+  ).toMatchObject({ ready: true, duration: 4, width: 640 });
+
+  // Exercise the kind-specific large viewers, not merely three asset URLs in the Turtle file.
+  await gifThumb.click();
+  await expect(page.locator('.asset-large img')).toHaveAttribute('src', '/gif/starter/campfire.gif');
+  await page.locator('.asset-large .asset-controls button[title="Close"]').click();
+
+  await videoThumb.click();
+  await expect(page.locator('.asset-large video.asset-media')).toHaveAttribute('src', '/video/starter/sunrise-shoot.webm');
+  await page.locator('.asset-large .asset-controls button[title="Close"]').click();
+
+  await glbThumb.click();
+  const glbCanvas = page.locator('.asset-large .asset-glb canvas');
+  await expect(glbCanvas).toBeVisible({ timeout: 15_000 });
+  await page.waitForTimeout(1_500); // allow the async GLB loader to frame and paint the model
+  const glbFrame = await glbCanvas.screenshot();
+  await testInfo.attach('starter-glb-viewer', { body: glbFrame, contentType: 'image/png' });
+  const glbPixels = await analyzePixels(glbFrame);
+  expect(glbPixels.isBlank, glbPixels.anomalyDetails.join('; ')).toBe(false);
+  expect(glbPixels.uniqueColorCount).toBeGreaterThan(10);
+
+  expect(failedAssets, `Starter assets failed to load:\n${failedAssets.join('\n')}`).toHaveLength(0);
 });

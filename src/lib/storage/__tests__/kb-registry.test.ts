@@ -10,7 +10,10 @@ import {
   updateKbEntry,
   toggleBookmark,
   getBookmarkedKbs,
-  kbUrl
+  kbUrl,
+  resolveKbParam,
+  isUnresolvedKbParam,
+  subscribeRegistry,
 } from '../kb-registry';
 
 // ── Regression: id collision ──────────────────────────────────────────────────
@@ -63,6 +66,13 @@ function mkKb(name: string) {
 
 const DEFAULT_ID = 'kbase';
 
+/** happy-dom exposes StorageEvent's key as readonly but implements only the one-argument ctor. */
+function storageEvent(key: string | null): StorageEvent {
+  const event = new StorageEvent('storage');
+  Object.defineProperty(event, 'key', { value: key });
+  return event;
+}
+
 // ── getRegistry ───────────────────────────────────────────────────────────────
 
 describe('getRegistry', () => {
@@ -92,6 +102,62 @@ describe('getRegistry', () => {
     const reg = getRegistry();
     expect(reg).toHaveLength(1);
     expect(reg[0].id).toBe(DEFAULT_ID);
+  });
+});
+
+describe('subscribeRegistry', () => {
+  it('re-reads the registry when another tab changes or clears its localStorage key', () => {
+    const listener = vi.fn();
+    const unsubscribe = subscribeRegistry(listener);
+
+    localStorage.setItem('kbRegistry', JSON.stringify([
+      { id: 'kbase_remote', name: 'Remote Graph', createdAt: 1 },
+    ]));
+    window.dispatchEvent(storageEvent('kbRegistry'));
+    expect(listener).toHaveBeenLastCalledWith(expect.arrayContaining([
+      expect.objectContaining({ id: 'kbase_remote', name: 'Remote Graph' }),
+    ]));
+
+    localStorage.clear();
+    window.dispatchEvent(storageEvent(null));
+    expect(listener).toHaveBeenLastCalledWith([
+      expect.objectContaining({ id: DEFAULT_ID, name: 'Default Graph' }),
+    ]);
+
+    unsubscribe();
+    window.dispatchEvent(storageEvent('kbRegistry'));
+    expect(listener).toHaveBeenCalledTimes(2);
+  });
+
+  it('ignores storage changes unrelated to the registry', () => {
+    const listener = vi.fn();
+    const unsubscribe = subscribeRegistry(listener);
+    window.dispatchEvent(storageEvent('currentKbId'));
+    expect(listener).not.toHaveBeenCalled();
+    unsubscribe();
+  });
+
+  it('reconciles a registry change even when the browser drops its storage event', () => {
+    const listener = vi.fn();
+    const unsubscribe = subscribeRegistry(listener);
+
+    // Write the shared key without dispatching the event. Background-tab lifecycle throttling can
+    // lose that notification in real browsers; the mounted gallery must not remain stale forever.
+    localStorage.setItem('kbRegistry', JSON.stringify([
+      { id: 'kbase_remote', name: 'Recovered Graph', createdAt: 1 },
+    ]));
+    expect(listener).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1_000);
+    expect(listener).toHaveBeenCalledOnce();
+    expect(listener).toHaveBeenLastCalledWith(expect.arrayContaining([
+      expect.objectContaining({ id: 'kbase_remote', name: 'Recovered Graph' }),
+    ]));
+
+    unsubscribe();
+    localStorage.clear();
+    vi.advanceTimersByTime(1_000);
+    expect(listener).toHaveBeenCalledOnce();
   });
 });
 
@@ -350,5 +416,48 @@ describe('kbUrl', () => {
 
   it('uses & when the path already has a query string', () => {
     expect(kbUrl('kbase_42', '/review?tab=align')).toBe('/review?tab=align&kb=kbase_42');
+  });
+});
+
+describe('resolveKbParam — a ?kb= link means the graph by that name', () => {
+  const reg = [
+    { id: 'kbase', name: 'Default Graph', createdAt: 0 },
+    { id: 'kbase_1786000000000', name: 'roadmap', createdAt: 1 },
+    { id: 'kbase_1786000000001', name: 'My Research Notes', createdAt: 2 },
+  ];
+
+  it('resolves a name to the EXISTING graph id rather than opening an empty one', () => {
+    // The regression: folder-synced graphs keep generated ids, so `?kb=roadmap` taken literally
+    // created a second, empty database beside the populated graph of the same name.
+    expect(resolveKbParam('roadmap', reg)).toBe('kbase_1786000000000');
+  });
+
+  it('prefers an exact id match over a name match', () => {
+    expect(resolveKbParam('kbase_1786000000001', reg)).toBe('kbase_1786000000001');
+    expect(resolveKbParam('kbase', reg)).toBe('kbase');
+  });
+
+  it('matches names case- and punctuation-insensitively, like folder slugs', () => {
+    expect(resolveKbParam('Roadmap', reg)).toBe('kbase_1786000000000');
+    expect(resolveKbParam('my-research-notes', reg)).toBe('kbase_1786000000001');
+  });
+
+  it('falls back to the DEFAULT graph when nothing matches, never inventing one', () => {
+    // The recurrence hole: with an empty/pre-sync registry, using the raw value as an id mints an
+    // empty graph whose id is literally `roadmap`. The real roadmap later syncs in under a
+    // generated id, and the exact-id match above then pins the link to the empty shadow forever.
+    expect(resolveKbParam('brand-new', reg)).toBe('kbase');
+    expect(resolveKbParam('roadmap', [])).toBe('kbase');
+  });
+
+  it('reports an unresolved param so the UI can say which graph is missing', () => {
+    expect(isUnresolvedKbParam('brand-new', reg)).toBe(true);
+    expect(isUnresolvedKbParam('roadmap', reg)).toBe(false);
+    expect(isUnresolvedKbParam('kbase_1786000000000', reg)).toBe(false);
+    expect(isUnresolvedKbParam('', reg)).toBe(false);
+  });
+
+  it('treats a blank param as the default graph', () => {
+    expect(resolveKbParam('   ', reg)).toBe('kbase');
   });
 });

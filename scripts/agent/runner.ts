@@ -32,13 +32,22 @@
  * Usage:
  *   npx tsx scripts/agent/runner.ts --graph reckons-workspace/tasks.ttl
  *   npx tsx scripts/agent/runner.ts --graph … --dry-run    show what would run, run nothing
- *   npx tsx scripts/agent/runner.ts --graph … --once       take a single task and stop
+ *   npx tsx scripts/agent/runner.ts --graph … --allow-effects=queue-write --max-tasks=1
+ *   npx tsx scripts/agent/runner.ts --graph … --task=local-code-review --allow-effects=source-write,queue-write
+ *   npx tsx scripts/agent/runner.ts --graph … --all --allow-effects=all
+ *
+ * The default WIP cap is one and the default authority is read-only. `--all` and every effect
+ * beyond read-only must be explicit; `--once` remains a readable alias for the default cap.
  */
-import { execSync } from 'child_process';
-import { readFileSync, writeFileSync, existsSync, appendFileSync } from 'fs';
+import { execFileSync, execSync } from 'child_process';
+import { readFileSync, existsSync, appendFileSync } from 'fs';
+import { createHash, randomUUID } from 'crypto';
 import path from 'path';
 import { Parser, Writer, DataFactory, type Quad } from 'n3';
 import { orderForModelBatching } from '../../src/lib/rdf/agent-task.js';
+import { collectMcpContext } from './mcp-context.js';
+import { captureGitState, runSucceeded } from './run-contract.js';
+import { atomicWriteFile, withFileLock } from './state-file.js';
 
 const { namedNode, literal, quad } = DataFactory;
 
@@ -47,6 +56,7 @@ const KTYPE = 'urn:kbase:type/';
 const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 const AGENT_TASK = `${KTYPE}AgentTask`;
 const JOURNAL = 'reckons-workspace/runner.log.jsonl';
+const RECEIPTS_DIR = 'reckons-workspace/runs';
 const PENDING = 'reckons-workspace/knowledge.pending.jsonl';
 const ANSWERS = 'reckons-workspace/knowledge.answers.jsonl';
 const LEASE_MS = 30 * 60 * 1000;
@@ -83,8 +93,23 @@ const flag = (n: string) => {
 };
 const DRY = argv.includes('--dry-run');
 const ONCE = argv.includes('--once');
+const ALL = argv.includes('--all');
 const GRAPH = flag('graph');
+const TASK_FILTER = flag('task');
 const RUNNER_ID = flag('id') ?? `script-runner@${process.pid}`;
+const EFFECTS = ['read-only', 'queue-write', 'source-write', 'external-read', 'external-write'] as const;
+type Effect = (typeof EFFECTS)[number];
+// These describe the TASK COMMAND's authority. The runner's own derived state, journal, and
+// receipt writes are mandatory bookkeeping and do not turn a read-only diagnostic into a source
+// mutator.
+const requestedEffects = new Set((flag('allow-effects') ?? 'read-only').split(',').map((v) => v.trim()).filter(Boolean));
+const allowedEffects = requestedEffects.has('all') ? new Set<string>(EFFECTS) : requestedEffects;
+const maxTasksRaw = flag('max-tasks');
+const MAX_TASKS = ONCE || !ALL ? Number(maxTasksRaw ?? 1) : Number.POSITIVE_INFINITY;
+if (!(MAX_TASKS === Number.POSITIVE_INFINITY || (Number.isInteger(MAX_TASKS) && MAX_TASKS >= 1))) {
+  console.error(`${R}--max-tasks must be a positive integer.${X}`);
+  process.exit(2);
+}
 
 // ── The trust boundary, enforced rather than documented ─────────────────────
 if (!GRAPH) {
@@ -100,6 +125,11 @@ if (!existsSync(GRAPH)) {
   console.error(`${R}No such graph: ${GRAPH}${X}`);
   process.exit(2);
 }
+if (!GRAPH.endsWith('.ttl')) {
+  console.error(`${R}The task graph must end in .ttl: ${GRAPH}${X}`);
+  console.error(`${D}Refusing to derive state from an ambiguous path; the authored graph must never be a state-file target.${X}`);
+  process.exit(2);
+}
 
 // ── Read the queue, then the state, layered on top ─────────────────────────
 //
@@ -112,7 +142,11 @@ if (!existsSync(GRAPH)) {
 // It is the project's own rule, learned again the hard way: never hand-edit (or machine-edit)
 // a file that a human authors. State goes in its own file and is layered over the top. The
 // authored queue keeps its comments and stays readable; the state file is disposable.
-const STATE = GRAPH.replace(/\.ttl$/, '.state.ttl');
+const STATE = `${GRAPH.slice(0, -'.ttl'.length)}.state.ttl`;
+if (path.resolve(STATE) === path.resolve(GRAPH)) {
+  console.error(`${R}Refusing to use the authored graph as derived state: ${GRAPH}${X}`);
+  process.exit(2);
+}
 
 let quads: Quad[];
 try {
@@ -123,27 +157,17 @@ try {
   process.exit(2);
 }
 
-// A CORRUPT STATE FILE MUST NOT KILL THE RUNNER.
-//
-// It did, once, and the stack trace was the whole output. That is the failure class this
-// project keeps meeting: the thing that was supposed to keep watch is the thing that died,
-// and it died loudly enough to look like a crash rather than a condition to handle. The state
-// file is DERIVED — the authored queue is the truth — so an unreadable one is a recoverable
-// problem: say so, treat the state as empty, and re-derive it. Never take the queue down
-// because the notebook got smudged.
+// CORRUPT STATE FAILS CLOSED. Treating it as empty can re-run a source-writing or external task;
+// that is not recovery, it is duplicate side effects. State is derived, but it is still the only
+// durable claim/outcome record, so a human must inspect or deliberately remove an unreadable file.
 let stateQuads: Quad[] = [];
 if (existsSync(STATE)) {
   try {
     stateQuads = new Parser().parse(readFileSync(STATE, 'utf8')) as Quad[];
   } catch (e) {
-    console.log(
-      `${Y}!${X} state file is unreadable (${STATE}) — ${D}${e instanceof Error ? e.message.split('\n')[0] : e}${X}`,
-    );
-    console.log(
-      `${D}  It is derived, not authored, so it is being IGNORED and rebuilt. Tasks may re-run.\n` +
-        `  If that is wrong, stop and look — do not let a smudged notebook decide what work happens.${X}\n`,
-    );
-    stateQuads = [];
+    console.error(`${R}State file is unreadable; refusing to run: ${STATE}${X}`);
+    console.error(`${D}${e instanceof Error ? e.message.split('\n')[0] : e}${X}`);
+    process.exit(2);
   }
 }
 
@@ -169,6 +193,25 @@ interface Task {
   lastRun?: number;
   /** Consecutive failures. Bounded by MAX_ATTEMPTS. */
   attempts?: number;
+  /** Declared effects. The runner gates these before giving graph-authored shell to a process. */
+  effects: string[];
+  /** A bounded graph query fetched through MCP before a local-agent task runs. */
+  contextQuery?: string;
+  contextBudget?: number;
+  /** Durable subject|predicate keys for a suspended question. Pending rows may be drained. */
+  waitingKeys: string[];
+}
+
+function parseWaitingKeys(value: string | undefined): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) && parsed.every((key) => typeof key === 'string' && key.length > 0)
+      ? [...new Set(parsed)]
+      : [];
+  } catch {
+    return [];
+  }
 }
 
 const taskIris = new Set(
@@ -200,6 +243,10 @@ const tasks: Task[] = [...taskIris].map((iri) => ({
   dueAt: Number(one(iri, 'due-at') ?? 0) || undefined,
   lastRun: Number(one(iri, 'last-run') ?? 0) || undefined,
   attempts: Number(one(iri, 'attempts') ?? 0) || 0,
+  effects: many(iri, 'effect'),
+  contextQuery: one(iri, 'context-query'),
+  contextBudget: Number(one(iri, 'context-budget') ?? 0) || undefined,
+  waitingKeys: parseWaitingKeys(one(iri, 'waiting-keys')),
 }));
 
 /**
@@ -237,7 +284,9 @@ const doneIris = new Set(tasks.filter((t) => t.state === 'done').map((t) => t.ir
 const OLLAMA = process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434';
 let ollamaUp = false;
 try {
-  execSync(`curl -sf -m 3 -o /dev/null ${OLLAMA}/api/tags`, { stdio: 'ignore', shell: '/bin/bash' });
+  execFileSync('curl', ['-sf', '-m', '3', '-o', '/dev/null', `${OLLAMA.replace(/\/$/, '')}/api/tags`], {
+    stdio: 'ignore',
+  });
   ollamaUp = true;
 } catch {
   ollamaUp = false;
@@ -261,15 +310,35 @@ const readJsonl = (f: string): any[] => {
 };
 
 const answeredKeys = new Set(readJsonl(ANSWERS).map((a) => `${a.subject}|${a.predicate}`));
-/** taskIri -> the questions blocking it that are still UNANSWERED. */
-const openQuestionsFor = new Map<string, string[]>();
-for (const q of readJsonl(PENDING)) {
-  if (q.type !== 'question' || !q.blocks) continue;
-  if (answeredKeys.has(`${q.subject}|${q.predicate}`)) continue;
-  const list = openQuestionsFor.get(q.blocks) ?? [];
-  list.push(q.question ?? `${q.subject} ${q.predicate} ?`);
-  openQuestionsFor.set(q.blocks, list);
+interface QuestionRef { key: string; text: string }
+const questionKey = (q: any): string | null =>
+  typeof q?.subject === 'string' && typeof q?.predicate === 'string'
+    ? `${q.subject}|${q.predicate}`
+    : null;
+const blockTargets = (blocks: unknown): string[] =>
+  typeof blocks === 'string'
+    ? [blocks]
+    : Array.isArray(blocks)
+      ? blocks.filter((block): block is string => typeof block === 'string')
+      : [];
+
+function pendingQuestionsByTask(): Map<string, QuestionRef[]> {
+  const byTask = new Map<string, QuestionRef[]>();
+  for (const q of readJsonl(PENDING)) {
+    if (q.type !== 'question') continue;
+    const key = questionKey(q);
+    if (!key || answeredKeys.has(key)) continue;
+    for (const blockedTask of blockTargets(q.blocks)) {
+      const list = byTask.get(blockedTask) ?? [];
+      list.push({ key, text: q.question ?? `${q.subject} ${q.predicate} ?` });
+      byTask.set(blockedTask, list);
+    }
+  }
+  return byTask;
 }
+/** taskIri -> questions still visible in the pending queue. WAITING state below uses persisted
+ * keys instead, because importing/draining the pending row must not wake the task by accident. */
+const openQuestionsFor = pendingQuestionsByTask();
 
 const resolved = (iri: string) => doneIris.has(iri);
 
@@ -289,6 +358,19 @@ function blockedReason(t: Task): string | null {
   }
 
   if (!t.goal.trim()) return 'no goal';
+  if (t.effects.length === 0) {
+    return 'NO effect declaration — the runner cannot safely choose an authority boundary for this task';
+  }
+  const unknownEffects = t.effects.filter((effect) => !EFFECTS.includes(effect as Effect));
+  if (unknownEffects.length) return `unknown effect declaration: ${unknownEffects.join(', ')}`;
+  const disallowedEffects = t.effects.filter((effect) => !allowedEffects.has(effect));
+  if (disallowedEffects.length) {
+    return `requires effect ${disallowedEffects.join(', ')} — allow explicitly with --allow-effects=${disallowedEffects.join(',')}`;
+  }
+  if (t.contextQuery !== undefined && !t.contextQuery.trim()) return 'blank MCP context query';
+  if (t.contextBudget !== undefined && (!Number.isInteger(t.contextBudget) || t.contextBudget < 200 || t.contextBudget > 8000)) {
+    return 'MCP context budget must be an integer from 200 to 8000';
+  }
   if (!t.doneWhen?.trim()) {
     return 'NO done-when — a task with no machine-checkable acceptance criterion is a wish, not a task';
   }
@@ -300,9 +382,14 @@ function blockedReason(t: Task): string | null {
     return `local-agent tier, but Ollama is not reachable at ${OLLAMA} — waiting, not failing`;
   }
   if (!t.command?.trim()) return 'no command to run';
+  if (t.state === 'waiting') {
+    if (t.waitingKeys.length === 0) return 'WAITING with no durable question key — manual inspection required';
+    const unanswered = t.waitingKeys.filter((key) => !answeredKeys.has(key));
+    if (unanswered.length) return `WAITING on ${unanswered.length} unanswered graph question(s)`;
+  }
   // Waiting on a human. Not failed, not done — ASKED. It comes back by itself when answered.
   const asked = openQuestionsFor.get(t.iri) ?? [];
-  if (asked.length) return `WAITING on you — ${asked[0].slice(0, 90)}`;
+  if (asked.length) return `WAITING on you — ${asked[0].text.slice(0, 90)}`;
 
   if ((t.attempts ?? 0) >= MAX_ATTEMPTS) {
     return `gave up after ${t.attempts} attempts — "however long it takes" is patience, not an infinite retry of a broken thing`;
@@ -320,26 +407,111 @@ function blockedReason(t: Task): string | null {
 //
 // The graph is the record. A run that leaves no trace in it did not happen, as far as anyone
 // looking at the queue tomorrow is concerned.
-function setFacts(iri: string, facts: Record<string, string>) {
-  if (DRY) return;
-  // Rebuild the state file from parsed quads — no text surgery on anything, ever.
-  const keep = (existsSync(STATE) ? (new Parser().parse(readFileSync(STATE, 'utf8')) as Quad[]) : []).filter(
-    (q) => !(q.subject.value === iri && Object.keys(facts).some((p) => q.predicate.value === `${KPRED}${p}`)),
-  );
-  for (const [p, v] of Object.entries(facts)) {
-    keep.push(quad(namedNode(iri), namedNode(`${KPRED}${p}`), literal(v)) as Quad);
-  }
-  const writer = new Writer({ format: 'Turtle' });
-  writer.addQuads(keep);
-  writer.end((err, result: string) => {
-    if (err) throw err;
-    writeFileSync(
-      STATE,
-      `# GENERATED by scripts/agent/runner.ts — do not hand-edit.\n` +
-        `# The authored queue is ${path.basename(GRAPH!)}; this is only the machine's record of\n` +
-        `# what it claimed, ran, and what came of it. Delete it to reset the queue.\n\n` +
-        result,
+function currentStateQuads(): Quad[] {
+  if (!existsSync(STATE)) return [];
+  try {
+    return new Parser().parse(readFileSync(STATE, 'utf8')) as Quad[];
+  } catch (error) {
+    throw new Error(
+      `state file became unreadable; refusing a state transition (${STATE}): ` +
+      `${error instanceof Error ? error.message.split('\n')[0] : error}`,
     );
+  }
+}
+
+function stateValue(current: Quad[], iri: string, predicate: string): string | undefined {
+  return current.find((q) => q.subject.value === iri && q.predicate.value === `${KPRED}${predicate}`)?.object.value;
+}
+
+function writeStateQuads(next: Quad[]): void {
+  // N-Triples is a valid Turtle subset and this serializer is synchronous. Do not hold a kernel
+  // lock across Writer.end(callback) and hope an implementation detail keeps the callback inline.
+  const body = new Writer({ format: 'N-Triples' }).quadsToString(next);
+  atomicWriteFile(
+    STATE,
+    `# GENERATED by scripts/agent/runner.ts — do not hand-edit.\n` +
+      `# The authored queue is ${path.basename(GRAPH!)}; this is only the machine's record of\n` +
+      `# what it claimed, ran, and what came of it. Delete it to reset the queue.\n\n${body}`,
+  );
+}
+
+/** Locked read-modify-replace. `expectedClaimToken` fences a late runner whose lease expired and
+ * was reclaimed. A token is necessary but not sufficient: an expired owner may not renew or
+ * complete even if no replacement has claimed the task yet. */
+function setFacts(
+  iri: string,
+  facts: Record<string, string | null>,
+  expectedClaimToken?: string,
+): boolean {
+  if (DRY) return true;
+  return withFileLock(`${STATE}.lock`, () => {
+    const current = currentStateQuads();
+    if (expectedClaimToken) {
+      const liveToken = stateValue(current, iri, 'claim-token');
+      const liveExpiry = Number(stateValue(current, iri, 'claim-expires') ?? 0);
+      if (liveToken !== expectedClaimToken || !Number.isFinite(liveExpiry) || liveExpiry <= Date.now()) return false;
+    }
+    const keys = Object.keys(facts);
+    const keep = current.filter(
+      (q) => !(q.subject.value === iri && keys.some((p) => q.predicate.value === `${KPRED}${p}`)),
+    );
+    for (const [p, v] of Object.entries(facts)) {
+      if (v !== null) keep.push(quad(namedNode(iri), namedNode(`${KPRED}${p}`), literal(v)) as Quad);
+    }
+    writeStateQuads(keep);
+    return true;
+  });
+}
+
+function renewClaim(iri: string, claimToken: string): boolean {
+  return setFacts(iri, { 'claim-expires': String(Date.now() + LEASE_MS) }, claimToken);
+}
+
+interface Claim {
+  token: string;
+  /** Attempts re-read under the claim lock. The startup task snapshot may be stale. */
+  attempts: number;
+}
+
+/** Re-check and claim under the same lock. Candidate selection above is advisory only: another
+ * runner may have claimed or completed the task since this process read the queue. */
+function tryClaim(t: Task): Claim | null {
+  if (DRY) return { token: 'dry-run', attempts: t.attempts ?? 0 };
+  return withFileLock(`${STATE}.lock`, () => {
+    const current = currentStateQuads();
+    const liveState = stateValue(current, t.iri, 'task-state') ?? t.state;
+    const liveClaimedBy = stateValue(current, t.iri, 'claimed-by');
+    const liveExpiry = Number(stateValue(current, t.iri, 'claim-expires') ?? 0);
+    const liveDue = Number(stateValue(current, t.iri, 'due-at') ?? t.dueAt ?? 0);
+    const parsedAttempts = Number(stateValue(current, t.iri, 'attempts') ?? t.attempts ?? 0);
+    const liveAttempts = Number.isInteger(parsedAttempts) && parsedAttempts >= 0 ? parsedAttempts : 0;
+    const currentTime = Date.now();
+    if (liveState === 'done' && parseEvery(t.every) === null) return null;
+    if (liveDue > currentTime || liveAttempts >= MAX_ATTEMPTS) return null;
+    if (liveClaimedBy && liveExpiry > currentTime) return null;
+    if (liveState === 'waiting') {
+      const liveWaitingKeys = parseWaitingKeys(stateValue(current, t.iri, 'waiting-keys'));
+      if (liveWaitingKeys.length === 0 || liveWaitingKeys.some((key) => !answeredKeys.has(key))) return null;
+    }
+
+    const token = randomUUID();
+    const facts: Record<string, string> = {
+      'claimed-by': RUNNER_ID,
+      'claim-token': token,
+      'claim-expires': String(currentTime + LEASE_MS),
+      'task-state': 'claimed',
+    };
+    // Clear the prior waiting/outcome record when its answer allows a fresh attempt. Otherwise a
+    // runner that dies after reclaim would still look like a completed WAITING run.
+    const keys = [...Object.keys(facts), 'waiting-keys', 'outcome'];
+    const keep = current.filter(
+      (q) => !(q.subject.value === t.iri && keys.some((p) => q.predicate.value === `${KPRED}${p}`)),
+    );
+    for (const [p, v] of Object.entries(facts)) {
+      keep.push(quad(namedNode(t.iri), namedNode(`${KPRED}${p}`), literal(v)) as Quad);
+    }
+    writeStateQuads(keep);
+    return { token, attempts: liveAttempts };
   });
 }
 
@@ -351,13 +523,71 @@ function journal(entry: object) {
   }
 }
 
+/** A durable, structured account of the run. State says what the queue believes; a receipt
+ * says what was actually invoked, against which checkout, and what each independent command
+ * returned. Output is hashed rather than copied: tool output can contain noisy or sensitive
+ * material and a receipt must be safe to leave in the workspace. */
+function writeReceipt(input: {
+  task: Task;
+  claimToken: string;
+  startedAt: number;
+  finishedAt: number;
+  commandExit: number;
+  commandOutput: string;
+  verificationExit?: number;
+  verificationOutput?: string;
+  context?: { query: string; budget: number; path: string; contentSha256: string };
+}): string | undefined {
+  if (DRY) return undefined;
+  const short = input.task.iri.split('/').pop()?.replace(/[^a-zA-Z0-9_.-]/g, '-') ?? 'task';
+  const stamp = new Date(input.finishedAt).toISOString().replace(/[:.]/g, '-');
+  const receiptPath = path.join(RECEIPTS_DIR, `${short}-${input.claimToken}-${stamp}.json`);
+  try {
+    const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
+    const git = captureGitState();
+    if (!git.available) throw new Error(`could not fingerprint git state: ${git.error}`);
+    atomicWriteFile(receiptPath, JSON.stringify({
+      schema: 'reckons.task-run-receipt/v1',
+      task: input.task.iri,
+      runner: RUNNER_ID,
+      claimToken: input.claimToken,
+      startedAt: new Date(input.startedAt).toISOString(),
+      finishedAt: new Date(input.finishedAt).toISOString(),
+      durationMs: input.finishedAt - input.startedAt,
+      effects: input.task.effects,
+      command: input.task.command,
+      commandExit: input.commandExit,
+      commandOutputSha256: sha256(input.commandOutput),
+      doneWhen: input.task.doneWhen,
+      verificationExit: input.verificationExit,
+      verificationOutputSha256: input.verificationOutput === undefined ? undefined : sha256(input.verificationOutput),
+      mcpContext: input.context,
+      git,
+    }, null, 2) + '\n');
+    return receiptPath;
+  } catch (e) {
+    console.log(`${Y}!${X} could not write receipt — ${D}${e instanceof Error ? e.message : e}${X}`);
+    return undefined;
+  }
+}
+
 // ── Drain ──────────────────────────────────────────────────────────────────
-console.log(`${B}Runner${X} ${D}— ${GRAPH} · ${RUNNER_ID}${D}${DRY ? ' · DRY RUN' : ''}${X}\n`);
+console.log(
+  `${B}Runner${X} ${D}— ${GRAPH} · ${RUNNER_ID}${DRY ? ' · DRY RUN' : ''} · ` +
+  `WIP ${Number.isFinite(MAX_TASKS) ? MAX_TASKS : 'all'} · allowed effects: ${[...allowedEffects].join(', ') || 'none'}${X}\n`,
+);
 
 // Batch by local model so Ollama keeps one model warm across its tasks instead of thrashing
 // reloads between them (RAM cannot switch models cheaply). Script tier stays first (free).
 const runnable = orderForModelBatching(tasks.filter((t) => blockedReason(t) === null));
 const blocked = tasks.filter((t) => blockedReason(t) !== null && t.state !== 'done');
+const matchesTask = (t: Task) => !TASK_FILTER || t.iri === TASK_FILTER || t.iri.endsWith(`/${TASK_FILTER}`);
+const selectedRunnable = runnable.filter(matchesTask);
+
+if (TASK_FILTER && !tasks.some(matchesTask)) {
+  console.error(`${R}No task matches --task=${TASK_FILTER}.${X}`);
+  process.exit(2);
+}
 
 if (blocked.length) {
   console.log(`${D}not runnable:${X}`);
@@ -375,7 +605,7 @@ for (const t of abandoned) {
 }
 if (abandoned.length) console.log('');
 
-if (runnable.length === 0) {
+if (selectedRunnable.length === 0) {
   console.log(`${G}Nothing to run.${X} ${D}${tasks.length} task(s) in the queue.${X}`);
   process.exit(0);
 }
@@ -384,7 +614,7 @@ let ran = 0;
 let failed = 0;
 let warmModel: string | undefined; // the model currently kept warm, for batch-boundary logging
 
-for (const t of runnable) {
+for (const t of selectedRunnable) {
   const short = t.iri.split('/').pop();
   // Announce a model batch boundary — the whole point of the ordering is that this fires as few
   // times as possible, because each firing is a real Ollama reload.
@@ -397,109 +627,223 @@ for (const t of runnable) {
   if (DRY) {
     console.log(`  ${D}would run:  ${t.command}${X}`);
     console.log(`  ${D}would verify: ${t.doneWhen}${X}\n`);
+    console.log(`  ${D}effects: ${t.effects.join(', ')}${X}\n`);
+    if (t.contextQuery) console.log(`  ${D}would query MCP kb_compress (${t.contextBudget ?? 1400} tok): ${t.contextQuery}${X}\n`);
     ran++;
-    if (ONCE) break;
+    if (ran >= MAX_TASKS) break;
     continue;
   }
 
-  // 1. CLAIM — a lease, so a second runner cannot take the same task.
-  setFacts(t.iri, {
-    'claimed-by': RUNNER_ID,
-    'claim-expires': String(now + LEASE_MS),
-    'task-state': 'claimed',
-  });
-  journal({ event: 'claimed', task: t.iri });
+  // 1. CLAIM — atomically re-check and lease. The runnable list is a snapshot; only this
+  // transaction decides who owns the work.
+  let claim: Claim | null;
+  try {
+    claim = tryClaim(t);
+  } catch (error) {
+    console.error(`${R}Could not safely claim ${t.iri}: ${error instanceof Error ? error.message : error}${X}`);
+    process.exit(2);
+  }
+  if (!claim) {
+    console.log(`  ${D}lost race or no longer runnable — another runner/state change got there first.${X}\n`);
+    journal({ event: 'claim-skipped', task: t.iri });
+    continue;
+  }
+  const claimToken = claim.token;
+  journal({ event: 'claimed', task: t.iri, claimToken });
 
   // 2. EXECUTE
   let execOk = true;
   let execOut = '';
   let execCode = 0;
-  try {
+  const startedAt = Date.now();
+  const taskEpoch = Math.floor(startedAt / 1000) - 1;
+  let context: { query: string; budget: number; path: string; contentSha256: string } | undefined;
+  if (t.contextQuery) {
+    const short = t.iri.split('/').pop()?.replace(/[^a-zA-Z0-9_.-]/g, '-') ?? 'task';
+    const contextPath = path.join(RECEIPTS_DIR, `${short}-${claimToken}-context-${startedAt}.json`);
+    try {
+      const fetched = collectMcpContext(t.contextQuery, t.contextBudget ?? 1400);
+      atomicWriteFile(contextPath, JSON.stringify(fetched, null, 2) + '\n');
+      context = { query: fetched.query, budget: fetched.budget, path: contextPath, contentSha256: fetched.contentSha256 };
+      console.log(`  ${D}MCP context: kb_compress (${fetched.content.length} chars)${X}`);
+    } catch (error) {
+      execOk = false;
+      execCode = 1;
+      execOut = `MCP context failed — ${error instanceof Error ? error.message : error}`;
+    }
+  }
+  if (execOk) {
+    try {
     // Pass the SAME Ollama URL the runner just up-checked (line ~231) into the child. Without
     // this the runner and the child disagree on the default: the runner falls back to
     // localhost:11434 and sees Ollama up, runs the task — but a child that falls back to '' (as
     // code-review.ts did) hard-exits "OLLAMA_BASE_URL not set" even though Ollama is running.
     // The runner is the source of truth for the URL it verified; the child inherits it.
-    const childEnv = { ...process.env, OLLAMA_BASE_URL: OLLAMA };
+    const childEnv = {
+      ...process.env, OLLAMA_BASE_URL: OLLAMA, TASK_RUN_EPOCH: String(taskEpoch),
+      TASK_MCP_CONTEXT: context?.path ?? '',
+    };
     execOut = execSync(t.command!, { encoding: 'utf8', stdio: 'pipe', shell: '/bin/bash', timeout: 15 * 60 * 1000, env: childEnv });
-  } catch (e: any) {
-    execOk = false;
-    execCode = typeof e?.status === 'number' ? e.status : 1;
-    execOut = (e?.stdout ?? '') + (e?.stderr ?? '') || String(e?.message ?? e);
+    } catch (e: any) {
+      execOk = false;
+      execCode = typeof e?.status === 'number' ? e.status : 1;
+      execOut = (e?.stdout ?? '') + (e?.stderr ?? '') || String(e?.message ?? e);
+    }
   }
 
   // THE TASK ASKED, RATHER THAN GUESSED. It is not done and it is not failed — neither would
   // be true, and recording either would be a lie. It is WAITING, and it will come back on its
   // own when the answer lands. Nothing else in the queue is held up by it.
   if (execCode === NEEDS_ANSWER) {
-    setFacts(t.iri, {
+    const waitingQuestions = pendingQuestionsByTask().get(t.iri) ?? [];
+    const waitingKeys = [...new Set(waitingQuestions.map((question) => question.key))];
+    const finishedAt = Date.now();
+    const receipt = writeReceipt({
+      task: t, claimToken, startedAt, finishedAt, commandExit: execCode, commandOutput: execOut, context,
+    });
+    const waitingFacts: Record<string, string | null> = {
       'task-state': 'waiting',
       'claim-expires': '0',
+      'claim-token': null,
+      'claimed-by': null,
+      'waiting-keys': JSON.stringify(waitingKeys),
       outcome: `WAITING on a human decision. The task asked rather than guessing — a guess ` +
         `silently entered into a knowledge graph is worse than a stalled task. It resumes by itself ` +
         `when the question is answered (review queue, or Shelly — either resolves the same fact).`,
-    });
-    journal({ event: 'waiting', task: t.iri });
-    console.log(`  ${Y}?${X} ${D}asked a question and suspended — it will resume when you answer.${X}\n`);
+    };
+    if (!receipt || waitingKeys.length === 0) {
+      waitingFacts['task-state'] = 'failed';
+      waitingFacts['waiting-keys'] = null;
+      waitingFacts['last-receipt'] = null;
+      waitingFacts.attempts = String(claim.attempts + 1);
+      waitingFacts.outcome = !receipt
+        ? 'FAILED — the task asked a question but no durable receipt was written.'
+        : 'FAILED — exit 42 did not leave a durable subject|predicate question key for this task.';
+    } else {
+      waitingFacts['last-receipt'] = receipt;
+    }
+    const retained = setFacts(t.iri, waitingFacts, claimToken);
+    if (!retained) {
+      journal({ event: 'stale-completion-discarded', task: t.iri, phase: 'waiting', claimToken, receipt });
+      console.log(`  ${R}✗ claim was lost before WAITING state could be retained; result discarded.${X}\n`);
+      failed++;
+    } else if (!receipt || waitingKeys.length === 0) {
+      journal({ event: 'failed', task: t.iri, claimToken, outcome: waitingFacts.outcome, receipt });
+      console.log(`  ${R}✗ ${waitingFacts.outcome}${X}\n`);
+      failed++;
+    } else {
+      journal({ event: 'waiting', task: t.iri, claimToken, waitingKeys, receipt });
+      console.log(`  ${Y}?${X} ${D}asked a question and suspended — it will resume when you answer.${X}\n`);
+    }
     ran++;
-    if (ONCE) break;
+    if (ran >= MAX_TASKS) break;
     continue;
   }
 
   console.log(`  ${execOk ? G + 'ran' : Y + 'command exited non-zero'}${X}`);
 
+  // Refresh before the independent check. A late owner is fenced out rather than overwriting a
+  // task that was reclaimed after its lease expired.
+  if (!renewClaim(t.iri, claimToken)) {
+    const receipt = writeReceipt({
+      task: t, claimToken, startedAt, finishedAt: Date.now(), commandExit: execCode, commandOutput: execOut, context,
+    });
+    journal({ event: 'stale-completion-discarded', task: t.iri, phase: 'before-verification', claimToken, receipt });
+    console.log(`  ${R}✗ claim was lost before verification; result discarded.${X}\n`);
+    ran++;
+    failed++;
+    if (ran >= MAX_TASKS) break;
+    continue;
+  }
+
   // 3. VERIFY — independently. The command's own opinion of itself is not evidence: a thing
   //    that did the work is the party with an interest in believing it worked.
   let verified = false;
+  let verifyCode = 1;
   let verifyOut = '';
   try {
-    verifyOut = execSync(t.doneWhen!, { encoding: 'utf8', stdio: 'pipe', shell: '/bin/bash', timeout: 15 * 60 * 1000 });
+    verifyOut = execSync(t.doneWhen!, {
+      encoding: 'utf8', stdio: 'pipe', shell: '/bin/bash', timeout: 15 * 60 * 1000,
+      env: { ...process.env, OLLAMA_BASE_URL: OLLAMA, TASK_RUN_EPOCH: String(taskEpoch), TASK_MCP_CONTEXT: context?.path ?? '' },
+    });
     verified = true;
+    verifyCode = 0;
   } catch (e: any) {
     verified = false;
+    verifyCode = typeof e?.status === 'number' ? e.status : 1;
     verifyOut = (e?.stdout ?? '') + (e?.stderr ?? '') || String(e?.message ?? e);
   }
 
   // 4. REPORT — the outcome goes into the graph either way.
-  const outcome = verified
-    ? `done — verified by: ${t.doneWhen}`
-    : `FAILED — the work ran${execOk ? '' : ' (and exited non-zero)'} but the acceptance check did not pass: ${t.doneWhen}. ` +
-      `Last output: ${verifyOut.trim().split('\n').slice(-2).join(' / ').slice(0, 200)}`;
+  let succeeded = runSucceeded(execCode, verifyCode);
+  let outcome = succeeded
+    ? `done — command exited 0 and independently verified by: ${t.doneWhen}`
+    : !execOk
+      ? `FAILED — command exited ${execCode}; the acceptance check ${verified ? 'passed, but cannot erase an execution failure' : `also failed (${verifyCode})`}. ` +
+        `Last command output: ${execOut.trim().split('\n').slice(-2).join(' / ').slice(0, 200)}`
+      : `FAILED — command exited 0 but the acceptance check failed (${verifyCode}): ${t.doneWhen}. ` +
+        `Last verification output: ${verifyOut.trim().split('\n').slice(-2).join(' / ').slice(0, 200)}`;
 
   const interval = parseEvery(t.every);
-  const facts: Record<string, string> = {
+  const finishedAt = Date.now();
+  const facts: Record<string, string | null> = {
     outcome,
     'claim-expires': '0',
-    'last-run': String(now),
+    'last-run': String(finishedAt),
+    'claim-token': null,
+    'claimed-by': null,
+    'waiting-keys': null,
   };
+  const receipt = writeReceipt({
+    task: t, claimToken, startedAt, finishedAt, commandExit: execCode, commandOutput: execOut,
+    verificationExit: verifyCode, verificationOutput: verifyOut, context,
+  });
+  if (receipt) {
+    facts['last-receipt'] = receipt;
+  } else {
+    succeeded = false;
+    outcome = `FAILED — no durable receipt was written, so this run cannot bind its command, verification, MCP context, and checkout.`;
+    facts.outcome = outcome;
+    facts['last-receipt'] = null;
+  }
   if (interval !== null) {
     // Recurring: it is not finished, it is due again. The next due time is computed from NOW,
     // not from the scheduled time — so a machine that was asleep for a week does not wake up
     // owing seven runs. It owes one. Drain, do not schedule.
     facts['task-state'] = 'open';
-    facts['due-at'] = String(now + interval);
+    facts['due-at'] = String(finishedAt + interval);
   } else {
-    facts['task-state'] = verified ? 'done' : 'failed';
+    facts['task-state'] = succeeded ? 'done' : 'failed';
   }
   // A failure counts against the attempt budget; a success clears it. Bounded patience.
-  facts['attempts'] = String(verified ? 0 : (t.attempts ?? 0) + 1);
-  setFacts(t.iri, facts);
-  journal({ event: verified ? 'done' : 'failed', task: t.iri, outcome });
+  facts['attempts'] = String(succeeded ? 0 : claim.attempts + 1);
+  const retained = setFacts(t.iri, facts, claimToken);
+  if (!retained) {
+    succeeded = false;
+    outcome = 'FAILED — claim ownership changed before completion; stale result was discarded.';
+    journal({ event: 'stale-completion-discarded', task: t.iri, phase: 'final', claimToken, receipt });
+    console.log(`  ${R}✗ claim was lost before final state could be retained; result discarded.${X}\n`);
+    ran++;
+    failed++;
+    if (ran >= MAX_TASKS) break;
+    continue;
+  }
+  journal({ event: succeeded ? 'done' : 'failed', task: t.iri, claimToken, outcome, receipt });
 
-  console.log(`  ${verified ? G + '✓ verified' : R + '✗ NOT verified'}${X} ${D}${t.doneWhen}${X}`);
+  console.log(`  ${succeeded ? G + '✓ verified' : R + '✗ FAILED'}${X} ${D}${t.doneWhen}${X}`);
   if (interval !== null) {
     console.log(`  ${D}recurring — due again in ${t.every}${X}`);
   }
   console.log('');
 
   ran++;
-  if (!verified) failed++;
-  if (ONCE) break;
+  if (!succeeded) failed++;
+  if (ran >= MAX_TASKS) break;
 }
 
 console.log(
   `${B}══${X} ${ran} task(s) ${DRY ? 'would run' : 'run'}, ${failed ? R + failed + ' failed' + X : G + '0 failed' + X}. ` +
-    `${D}Outcomes written to the graph.${X}`,
+    `${D}${DRY ? 'No commands or state were changed.' : 'State and receipts recorded.'}${X}`,
 );
 
 // A failed task is a reported fact, not a crashed runner. The queue keeps moving.

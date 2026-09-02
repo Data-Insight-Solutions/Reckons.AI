@@ -3,13 +3,15 @@
   import { goto } from '$app/navigation';
   import KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
   import { parseCameraSpec, type CameraSpec } from '$lib/3d/camera-presets';
-  import { buildGraphView } from '$lib/rdf/graph-view';
+  import { buildGraphView, hubNodeKeys, hubOnlyEdges } from '$lib/rdf/graph-view';
+  import { ALTITUDE_RANK, liftedAltitudes, type Altitude } from '$lib/rdf/fact-altitude';
   import { connectedComponents, nHopNeighbours } from '$lib/rdf/n-hop';
   import { bestSuggestion } from '$lib/rdf/view-suggestions';
   import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
   import GraphLabels from '$lib/components/GraphLabels.svelte';
   import { copyText } from '$lib/utils/clipboard';
   import AssetGlbViewer from '$lib/components/AssetGlbViewer.svelte';
+  import { focusOnMount } from '$lib/actions/focus-on-mount';
   import StatementCard from '$lib/components/StatementCard.svelte';
   import LandingPage from '$lib/components/LandingPage.svelte';
   import SourcesPanel from '$lib/components/SourcesPanel.svelte';
@@ -24,12 +26,11 @@
     pendingStatements,
     updateStatement,
     addStatements,
-    setStatus,
-    hotSwapData
+    setStatus
   } from '$lib/stores/kb.svelte';
   import { termKey, type Statement, type Source } from '$lib/rdf/types';
   import MergeReview from '$lib/components/MergeReview.svelte';
-  import { allTypes } from '$lib/stores/entity-types.svelte';
+  import { allTypes, typeMap } from '$lib/stores/entity-types.svelte';
   import {
     RDF_TYPE, KB_URL, KB_LOCAL_PATH,
     KB_ICON2D, KB_ICON3D, KB_MESHY_TASK_ID, KB_MESHY_STATUS,
@@ -41,7 +42,7 @@
   import { icon2dOverrides, setIcon2d, clearIcon2d } from '$lib/stores/icon2d-overrides.svelte';
   import { LEAP_PRED, LEAP_LABEL_PRED, getLeap, leapNodeKeys } from '$lib/rdf/kb-leap';
   import { findDichotomies } from '$lib/rdf/dichotomy';
-  import { findKbByStableId, switchToKb, createKb, registerStableId, getCurrentKbId, getRegistry } from '$lib/storage/kb-registry';
+  import { findKbByStableId, switchToKb, createKb, registerStableId } from '$lib/storage/kb-registry';
 
   // Predicates that are internal KB metadata — never shown as graph edges/nodes
   const GRAPH_EXCLUDED_PREDICATES = new Set([
@@ -55,7 +56,7 @@
   import { entityProtection } from '$lib/rdf/protected-entities';
   import { buildEntitySet, defaultSetName, isEntitySet, setMembers } from '$lib/rdf/entity-sets';
   import { isCompact } from '$lib/stores/viewport.svelte';
-  import { Popover, ToggleGroup } from 'bits-ui';
+  import { Popover } from 'bits-ui';
   import { analysisRunning, lastAnalysisError } from '$lib/stores/auto-analyze.svelte';
   import { onMount, untrack } from 'svelte';
   import { fade } from 'svelte/transition';
@@ -65,6 +66,7 @@
   import { page } from '$app/stores';
   import type { GraphFilter } from '$lib/types/turtle-chat';
   import { getSettings, saveSettings } from '$lib/storage/db';
+  import { previewModeFrom, legacyFlagsFor, PREVIEW_MODES, PREVIEW_MODE_LABELS, PREVIEW_MODE_HINTS } from '$lib/storage/preview-mode';
   import { shouldSuggest2D, dismissPerfSuggestion, resetPerfMonitor, currentFps } from '$lib/stores/perf-monitor.svelte';
   import { pushNotification, dismissNotification, notificationStackHeight } from '$lib/stores/notifications.svelte';
 
@@ -79,15 +81,20 @@
       return !!(c.getContext('webgl2') || c.getContext('webgl') || c.getContext('experimental-webgl'));
     } catch { return false; }
   }
-  // WebGL capability. Reactive: false during SSR, re-detected true on the client in
-  // onMount below, so the gate flips to 3D after hydration. Pure capability flag —
-  // NEVER set false by a user action (that was the latch bug).
-  let webglAvailable = $state(checkWebGL());
+
+  // WebGL capability is checked ON DEMAND when a non-empty graph actually wants 3D. Creating a
+  // disposable context is not a cheap feature query: a production CPU profile measured this call
+  // at ~225ms on an RTX 3090. The old initializer + settings effect + onMount could each create one
+  // on the empty landing page, and the cost was then attributed unpredictably to an IndexedDB
+  // completion or animation frame. One on-demand check is enough when a graph actually mounts.
+  let webglAvailable = $state(false);
+  let webglChecked = $state(false);
   // Default to attempting 3D. Do NOT seed this from webglAvailable — that value is
   // false during SSR, which would stick use2D=true (2D) on a fresh load. The gate
   // (use2D || !webglAvailable) handles the no-WebGL case reactively instead.
   let use2D = $state(settings().prefer2D ?? false);
   let graph3DReady = $state(false);
+  let graphSettled = $state(false);
 
   let selected = $state<string | null>(null);
   let hoverTarget = $state<string | null>(null);
@@ -292,17 +299,20 @@
   let timelineCenter = $state<number | null>(null);
   let timelineTimeSource = $state<'event' | 'ingested'>('event');
 
-  // Keep labelFontSize and renderer in sync with settings (e.g. changed from settings page)
+  // Keep labelFontSize and renderer in sync with settings (e.g. changed from settings page).
+  // Only react to a REAL renderer-preference change. Re-running the expensive WebGL probe because
+  // an unrelated setting changed made a label-size edit capable of stalling the graph.
   $effect(() => { const sz = settings().nodeLabelFontSize; if (sz != null) labelFontSize = sz; });
+  let appliedPrefer2D = settings().prefer2D;
   $effect(() => {
     const p = settings().prefer2D;
-    if (p != null) {
+    if (p != null && p !== appliedPrefer2D) {
+      appliedPrefer2D = p;
       use2D = p;
-      // webglAvailable is otherwise a one-way latch — only ever set false (by "switch
-      // to 2D", the perf prompt, or a 3D error), never back true. Without re-detecting
-      // here, choosing 3D updates use2D but a stale !webglAvailable keeps the view in
-      // 2D, so the 3D preference is silently ignored. Re-check WebGL when 3D is chosen.
-      if (!p) webglAvailable = checkWebGL();
+      // A user explicitly choosing 3D gets a fresh capability check. The graph effect below owns
+      // the check so this settings reaction itself stays cheap and cannot create a context while
+      // the landing page is still empty.
+      if (!p) webglChecked = false;
     }
   });
 
@@ -312,10 +322,6 @@
   let cameraSpec = $state<CameraSpec | null>(null);
 
   onMount(async () => {
-    // Re-detect WebGL on the CLIENT — the $state initializer can carry a stale SSR
-    // value (false), which would keep the gate in 2D on a fresh load even when the
-    // browser supports WebGL. Guarantees a real check.
-    webglAvailable = checkWebGL();
     const params = $page.url.searchParams;
     const l = params.get('layout');
     if (l && ['force','focus','source','type','hub','timeline','order','hierarchy'].includes(l)) layout = l as typeof layout;
@@ -327,6 +333,8 @@
     if (src) selectedSources = new Set(src.split(',').filter(Boolean));
     const typ = params.get('types');
     if (typ) selectedTypes = new Set(typ.split(',').filter(Boolean));
+    const d = params.get('detail');
+    if (d && DETAIL_LEVELS.some((l) => l.id === d)) detailLevel = d as DetailId;
     // ?cam=iso | top | side | front | "az,el[,dist]" — aims the 3D camera. Absent keeps the
     // historical straight-on view, so every existing screenshot baseline is unaffected.
     // Exists so visual tests can shoot from an angle that can actually SEE the z axis
@@ -374,12 +382,32 @@
 
   // Sync view state → URL whenever it changes (replaceState: no history entry)
   $effect(() => {
-    const params = new URLSearchParams();
+    /*
+     * Start from the CURRENT params, not an empty set. Rebuilding from scratch dropped every
+     * param this block does not itself write — `?kb=` above all, which names the graph being
+     * looked at. Opening a link to a specific graph and then touching any view control silently
+     * rewrote the URL to one that no longer said which graph it was.
+     *
+     * READ IT UNTRACKED. `replaceState` below updates `$page.url`, so reading the store's params
+     * reactively made this effect its own trigger: write URL -> store changes -> effect reruns ->
+     * write URL. The graph still painted, so it did not look like a loop — it looked like a hang.
+     * Caught by the deploy gate ("docs graph never laid out nodes") and measured at a 42,868 ms
+     * frame by `perf-crawl --clicks` on the "Getting started" button. Bisected to this hunk.
+     *
+     * The current params are an INPUT to the write, never a reason to write again.
+     */
+    const params = new URLSearchParams(untrack(() => $page.url.searchParams));
     if (layout !== 'force') params.set('layout', layout);
-    if (selected) params.set('sel', selected);
-    if (activeFilters.size > 0) params.set('f', [...activeFilters].join(','));
-    if (selectedSources.size > 0) params.set('src', [...selectedSources].join(','));
-    if (selectedTypes.size > 0) params.set('types', [...selectedTypes].join(','));
+    else params.delete('layout');
+    // Each of these must DELETE when empty. Rebuilding from scratch got that for free; carrying
+    // the existing params forward does not, and a filter param left behind after the filter is
+    // cleared would reapply it on the next load.
+    if (selected) params.set('sel', selected); else params.delete('sel');
+    if (activeFilters.size > 0) params.set('f', [...activeFilters].join(',')); else params.delete('f');
+    if (selectedSources.size > 0) params.set('src', [...selectedSources].join(',')); else params.delete('src');
+    if (selectedTypes.size > 0) params.set('types', [...selectedTypes].join(',')); else params.delete('types');
+    // 'detailed' is the default, so it stays out of the URL; every other rung is shareable.
+    if (detailLevel !== 'detailed') params.set('detail', detailLevel); else params.delete('detail');
     const qs = params.toString();
     replaceState(qs ? `?${qs}` : '?', {});
   });
@@ -409,6 +437,98 @@
   /** Show shared literal values ("production", "high") as category nodes. Unique literals
    *  are NEVER nodes — they are attributes (F83). */
   let showCategoryNodes = $state(true);
+
+  // DETAIL — a hierarchy of how much of the graph to draw, coarsest at the top.
+  //
+  // Matt, 2026-08-28: "very cluttered with just a few notes to review... a filter set to detailed
+  // (above log), and allow users to select higher levels, up to Hubs as highest."
+  //
+  // Measured across 26 graphs, 73.4% of all facts classify as record or log, and the capture path
+  // mints provenance edges faster than it mints anything a person would open. So DETAILED IS THE
+  // DEFAULT and logs are hidden until asked for — the opposite of this control's first draft,
+  // which defaulted to drawing everything on the theory that hiding by default is dishonest. It
+  // is not dishonest when the count of what is hidden is on screen beside the control; it is just
+  // legible. `all` is one click away and says exactly what it costs.
+  //
+  // HUBS IS THE TOP RUNG, not a separate filter: the ladder is one question asked at six
+  // magnifications — how much structure do I want to see at once — and "only the nodes holding
+  // this graph together" is the coarsest honest answer to it.
+  type DetailId = 'all' | 'detailed' | 'evidence' | 'judgments' | 'decisions' | 'hubs';
+  const DETAIL_LEVELS: {
+    id: DetailId; label: string; floor: Altitude | null; hubsOnly?: boolean; title: string;
+  }[] = [
+    { id: 'all', label: 'all', floor: null,
+      title: 'Everything, including logs — timestamps, provenance, "this happened" facts' },
+    { id: 'detailed', label: 'detailed', floor: 'record',
+      title: 'Above logs. Records and up: file links, provenance, types — the default' },
+    { id: 'evidence', label: 'evidence', floor: 'evidence',
+      title: 'Measurements and up — drops mechanical records a script settles' },
+    { id: 'judgments', label: 'judgments', floor: 'judgment',
+      title: 'Verdicts no check can settle, and the decisions above them' },
+    { id: 'decisions', label: 'decisions', floor: 'decision',
+      title: 'Only facts that foreclose options' },
+    { id: 'hubs', label: 'hubs', floor: 'record', hubsOnly: true,
+      title: 'Only the nodes holding this graph together, and how they connect to each other' },
+  ];
+
+  let detailLevel = $state<DetailId>('detailed');
+  /**
+   * Layout options as data, so LAYOUT and DETAIL can render as two matching dropdowns.
+   *
+   * Matt, 2026-08-28, twice: the detail control belongs beside layout, and "Layout should also be
+   * dropdown". Eight chips wrapping over three lines were pushing detail onto its own row below,
+   * which is why it kept reading as a separate thing no matter which group it lived in. Two
+   * selects side by side is the shape that actually says "these are the same kind of control".
+   *
+   * `available` keeps the conditional options honest: clustering by source is meaningless with one
+   * source, and by type with no types.
+   */
+  const LAYOUTS: { value: typeof layout; label: string; title: string; available?: () => boolean }[] = [
+    { value: 'force', label: 'free', title: 'Free force layout — nodes repel, links pull them together' },
+    { value: 'focus', label: 'focus', title: 'Focus the selected node and its neighbours; push the rest away' },
+    { value: 'source', label: 'source', title: 'Cluster nodes by the source they came from',
+      available: () => sources().filter((s) => s.kind !== 'analysis').length > 1 },
+    { value: 'type', label: 'type', title: 'Cluster nodes by entity type',
+      available: () => activeEntityTypes.length > 0 },
+    { value: 'hub', label: 'hub', title: 'Pull the most-connected hubs toward the centre' },
+    { value: 'timeline', label: 'time', title: 'Lay nodes out left-to-right on a timeline by date' },
+    // value stays "order" (URL/state); label is "arrange" so it is not confused with structural
+    // hnav ordering — this is a manual drag grid.
+    { value: 'order', label: 'arrange', title: 'Hand-arrange nodes on a grid — drag to reorder' },
+    { value: 'hierarchy', label: 'tree', title: 'Hierarchical tree — prerequisites above, from skos:broader and kpred:depends-on' },
+  ];
+  const availableLayouts = $derived(LAYOUTS.filter((l) => l.available?.() ?? true));
+  // Chip + popover, matching the previews control. Matt, 2026-08-28: "I like the previews dropdown
+  // styling much better than the new ones on graph view." A bare <select> inherits the browser's
+  // widget and reads as foreign against an overlay built entirely from chips — and it was the
+  // thing stretching to fill its row. The chip sizes to its own label by construction.
+  let showLayoutMenu = $state(false);
+  let showDetailMenu = $state(false);
+  /**
+   * Which nodes are ALLOWED to be hubs (Matt, 2026-08-28: "In type settings we 'allow hub
+   * classification'. By default files and log types are not able to become hubs").
+   *
+   * This is the TYPE gate. It is the second of two: graph-view.ts independently refuses hub
+   * status to any node whose every edge is a record or a log, which is what actually catches a
+   * dictated note — captured note entities carry no rdf:type at all, so a type gate alone would
+   * never have seen them.
+   */
+  const hubEligible = $derived.by(() => {
+    const types = typeMap();
+    const typeOf = new Map<string, string>();
+    for (const st of visible) {
+      if (st.p.value === RDF_TYPE && st.s.kind === 'iri' && st.o.kind === 'iri') {
+        typeOf.set(termKey(st.s), st.o.value);
+      }
+    }
+    return (nodeKey: string) => {
+      const iri = typeOf.get(nodeKey);
+      if (!iri) return true;            // untyped nodes are handled by the substantive-degree rule
+      return types.get(iri)?.allowHub !== false;
+    };
+  });
+
+  const detail = $derived(DETAIL_LEVELS.find((d) => d.id === detailLevel) ?? DETAIL_LEVELS[1]);
 
   // Build a set of subject IRIs matching the selected entity types
   const typedSubjects = $derived.by(() => {
@@ -448,6 +568,15 @@
       !GRAPH_EXCLUDED_PREDICATES.has(s.p.value)
     )
   );
+
+  // Run before the graph branch updates, so a 3D graph does not mount a throwaway 2D canvas first.
+  // No graph means no context allocation; once facts arrive, the saved renderer preference is
+  // authoritative and the capability probe runs exactly once when 3D is requested.
+  $effect.pre(() => {
+    if (visible.length === 0 || use2D || webglChecked) return;
+    webglChecked = true;
+    webglAvailable = checkWebGL();
+  });
   $effect(() => {
     if (visible.length === 0 || use2D || !webglAvailable) graph3DReady = false;
   });
@@ -502,9 +631,41 @@
   // A literal earns a node by being SHARED ("production", 53 features — a real category).
   // A value that appears once connects nothing; it belongs in the node panel, not on the
   // canvas. Nodes: 1,234 -> 271, and every one of them means something.
-  const graphView = $derived(buildGraphView(visible, { categoryNodes: showCategoryNodes }));
+  //
+  // The altitude floor rides HERE rather than in `visible` on purpose. Splicing statements out
+  // of `visible` is the mistake documented above: it empties the topology, and an empty
+  // `visible` draws the marketing landing page over the user's own graph.
+  const graphView = $derived(
+    buildGraphView(visible, {
+      categoryNodes: showCategoryNodes,
+      minAltitude: detail.floor ?? undefined,
+    }),
+  );
+
+
+  // The hubs rung, applied AFTER the altitude floor. It reads `graphView.edges` rather than
+  // `drawn` deliberately: `nodeDegrees` is built from `drawn`, so deriving the rung's hub set
+  // from `drawn` would close a cycle.
+  const detailHubKeys = $derived(detail.hubsOnly ? hubNodeKeys(graphView.edges, hubLimit, { eligible: hubEligible }) : []);
+
   /** Statements the canvas actually draws. */
-  const drawn = $derived(graphView.edges);
+  const drawn = $derived(
+    detail.hubsOnly ? hubOnlyEdges(graphView.edges, detailHubKeys) : graphView.edges,
+  );
+
+  /** Everything the detail ladder took off the canvas — the floor AND the hubs rung. */
+  const detailHidden = $derived.by(() => {
+    const shown = new Set<string>();
+    for (const e of drawn) { shown.add(termKey(e.s)); shown.add(termKey(e.o)); }
+    let extraNodes = 0;
+    const beforeRung = new Set<string>();
+    for (const e of graphView.edges) { beforeRung.add(termKey(e.s)); beforeRung.add(termKey(e.o)); }
+    for (const key of beforeRung) if (!shown.has(key)) extraNodes++;
+    return {
+      statements: graphView.hidden.statements + (graphView.edges.length - drawn.length),
+      nodes: graphView.hidden.nodes + extraNodes,
+    };
+  });
   /** Literal facts that belong to a node rather than the canvas (node panel reads these). */
   const nodeAttributes = $derived(graphView.attributes);
 
@@ -597,17 +758,8 @@
   });
 
   // Hub threshold: median degree × 2 or 3, whichever is higher — only truly connected nodes qualify
-  const hubs = $derived.by(() => {
-    const entries = Array.from(nodeDegrees.entries()).sort(([, a], [, b]) => b - a);
-    if (entries.length === 0) return [];
-    const degrees = entries.map(([, d]) => d);
-    const median = degrees[Math.floor(degrees.length / 2)];
-    const minDeg = Math.max(median * 2, 3);
-    return entries
-      .filter(([, d]) => d >= minDeg)
-      .slice(0, hubLimit)
-      .map(([key]) => key);
-  });
+  // Same rule as the depth ladder's top rung — one definition, in rdf/graph-view.ts.
+  const hubs = $derived(hubNodeKeys(drawn, hubLimit, { eligible: hubEligible }));
 
   // All entity IRIs (subjects + non-type-definition objects) in the confirmed KB
   // that have no rdf:type statement. Includes entities that only appear as objects.
@@ -1003,8 +1155,69 @@
     if (!iri) return null;
     return gifOverrides().get(iri) ?? previewUrlMap.get(iri) ?? null;
   }
+  /** One mode replacing the old alwaysShowPreviews / autoExpandAssets pair; see preview-mode.ts. */
+  const previewMode = $derived(previewModeFrom(settings()));
   /** When on, preview images render on every node (no hover). Slower to paint. */
-  const alwaysPreviews = $derived(settings().alwaysShowPreviews ?? false);
+  const alwaysPreviews = $derived(previewMode === 'all');
+  let showPreviewMenu = $state(false);
+
+  /**
+   * F133 all-previews MODIFIER — node keys the simulation must leave room for.
+   *
+   * Showing every preview at once was already possible (this toggle predates F133), but nothing
+   * told the LAYOUT that a node had grown from a glyph into a 96px thumbnail, so the previews
+   * piled on top of each other and the option was close to unusable on any real graph. Handing
+   * the sim this set is what turns "render them all" into "and you can actually see them".
+   *
+   * Null when the modifier is off, so the simulation keeps its previous behaviour exactly.
+   * Deliberately NOT filtered to visible statements: keys that aren't in the scene are simply
+   * never looked up, and filtering would re-derive the node set the graph already owns.
+   */
+  /**
+   * Clicking a preview thumbnail expands the asset AND selects its node.
+   *
+   * The thumbnail calls stopPropagation so the click never reaches the canvas, which was fine when
+   * previews only appeared on the already-selected node. Once "preview all" covers every node with
+   * its own image, that same stopPropagation left no way to open node details at all — the
+   * thumbnail sits exactly where you would have clicked the node. Reported from the running app,
+   * 2026-08-14. Mirrors the plain-click branch of the graph's onselect so a thumbnail click and a
+   * node click leave the app in the same state.
+   */
+  function openNodeFromThumb(key: string) {
+    expandedAssetKey = key;
+    assetFullscreen = false;
+    if (selected !== key) {
+      multiSelected = new Set();
+      navHistory = [];
+      selected = key;
+    }
+  }
+
+  const previewNodeKeys = $derived.by(() => {
+    if (!alwaysPreviews) return null;
+    const keys = new Set<string>();
+    const add = (iri: string) => {
+      const key = 'i:' + iri;
+      // Under an active filter, only the highlighted nodes count as shown.
+      if (dimMode && !highlightedSet.has(key)) return;
+      keys.add(key);
+    };
+    for (const iri of previewUrlMap.keys()) add(iri);
+    for (const iri of gifOverrides().keys()) add(iri);
+    for (const iri of glbModelMap.keys()) add(iri);
+    for (const iri of videoMap.keys()) add(iri);
+    return keys.size > 0 ? keys : null;
+  });
+  /**
+   * Should this node paint a preview because "preview all" is on? Shares one rule with
+   * previewNodeKeys so the RENDERING and the LAYOUT cannot disagree — if they did, the simulation
+   * would make room for a thumbnail that never paints, or paint one it left no room for.
+   */
+  function previewsShownFor(key: string): boolean {
+    if (!alwaysPreviews) return false;
+    return !dimMode || highlightedSet.has(key);
+  }
+
   /** "Normal" preview thumbnail size (px), adjustable in Settings. */
   const nodePreviewSize = $derived(settings().nodePreviewSize ?? 96);
 
@@ -1045,7 +1258,47 @@
   }
   const expandedAsset = $derived(nodeAssetFor(expandedAssetKey ? iriFromNodeKey(expandedAssetKey) : null));
   function collapseAsset() { expandedAssetKey = null; assetFullscreen = false; }
-  const autoExpandAssets = $derived(settings().autoExpandAssets ?? false);
+
+  /**
+   * How much room the side panels are taking, so an expanded asset can centre in what is left.
+   *
+   * Measured from the live DOM rather than assumed from the AdaptivePanel defaults: both panels are
+   * SnapPanels the user can drag and resize between 240 and 800px, so any hardcoded gutter is
+   * wrong as soon as somebody widens one.
+   *
+   * An earlier version only counted panels crossing the vertical MIDDLE of the window, on the
+   * reasoning that a panel above the image is not in its way. That was measured wrong and the
+   * screenshot showed it: the filter panel ends around y=345 while the middle is 360, so it scored
+   * as "not in the way" and the image was drawn straight over it. The image is up to 78vh tall and
+   * vertically centred, so it covers most of the window height — any panel on a side is in its
+   * way in practice. Reserving for every visible panel is both simpler and right.
+   */
+  let assetGutters = $state({ left: 0, right: 0 });
+
+  $effect(() => {
+    if (!expandedAssetKey || assetFullscreen) return;
+    const measure = () => {
+      const midX = window.innerWidth / 2;
+      let left = 0, right = 0;
+      for (const el of document.querySelectorAll('.snap-panel')) {
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 || r.height === 0) continue;
+        // Assign by which half the panel's CENTRE is in, so a wide panel straddling the middle
+        // does not claim a gutter on both sides and squeeze the image to nothing.
+        if ((r.left + r.right) / 2 < midX) left = Math.max(left, r.right);
+        else right = Math.max(right, window.innerWidth - r.left);
+      }
+      assetGutters = { left, right };
+    };
+    measure();
+    // Panels can be dragged or resized while the asset is open, and the window can change.
+    const ro = new ResizeObserver(measure);
+    for (const el of document.querySelectorAll('.snap-panel')) ro.observe(el);
+    window.addEventListener('resize', measure);
+    const t = setInterval(measure, 500); // catches drags, which resize nothing
+    return () => { ro.disconnect(); window.removeEventListener('resize', measure); clearInterval(t); };
+  });
+  const autoExpandAssets = $derived(previewMode === 'auto');
 
   // Auto-expand: when on, the selected node's asset opens large automatically as
   // navigation moves node to node (story/explore walkthroughs). Keeps fullscreen
@@ -1253,69 +1506,27 @@
 
   let leapImporting = $state(false);
   let flyToGhost = $state(false);
-  /** Data pre-loaded during fly, injected on arrival. */
-  let pendingLeapData: {
-    kbId: string;
-    stmts: Statement[];
-    srcs: Source[];
-    sourceStableId?: string; // the KB we're leaving — used to find the return leap
-  } | null = null;
+  /** Target retained while the 2D camera finishes its departure animation. */
+  let pendingLeapKbId: string | null = null;
 
   /** Called by KnowledgeGraph2D when camera fly animation completes. */
   function handleFlyEnd() {
     flyToGhost = false;
-    if (!pendingLeapData) return;
-    const { kbId, stmts, srcs, sourceStableId } = pendingLeapData;
-    pendingLeapData = null;
-    // Hot-swap visual data — no reload, no overlay
-    hotSwapData(stmts, srcs);
-    // Update session so next page load / navigation uses the target KB
-    sessionStorage.setItem('sessionKbId', kbId);
-    localStorage.setItem('currentKbId', kbId);
-
-    // Find and select the return leap node — gives the user orientation and a way back.
-    // Look for any entity in the new KB that has a leap pointing to the source KB's stable ID.
-    if (sourceStableId) {
-      const returnStmt = stmts.find(
-        s => s.p.value === LEAP_PRED && s.o.kind === 'literal' && s.o.value === sourceStableId
-          && (s.status === 'confirmed' || s.status === 'refined')
-      );
-      if (returnStmt && returnStmt.s.kind === 'iri') {
-        selected = `i:${returnStmt.s.value}`;
-        return;
-      }
-    }
-    // Fallback: find any leap node in the new KB as an anchor point
-    const anyLeap = stmts.find(
-      s => s.p.value === LEAP_PRED && (s.status === 'confirmed' || s.status === 'refined')
-    );
-    if (anyLeap && anyLeap.s.kind === 'iri') {
-      selected = `i:${anyLeap.s.value}`;
-    } else {
-      selected = null;
-    }
+    if (!pendingLeapKbId) return;
+    const kbId = pendingLeapKbId;
+    pendingLeapKbId = null;
+    // Finish the visual departure, then perform a real graph switch. Merely replacing the arrays
+    // would leave the store singleton and Dexie live query attached to the graph we just left.
+    switchToKb(kbId);
   }
 
-  /** Pre-load target KB data and start fly animation (2D), or fall back to direct switch (3D). */
-  async function startLeapTransition(kbId: string, stmts: Statement[], srcs: Source[]) {
-    const currentEntry = getRegistry().find(k => k.id === getCurrentKbId());
-    const sourceStableId = currentEntry?.stableId ?? settings().kbStableId;
+  /** Start the 2D departure animation, or perform a direct durable switch in 3D. */
+  async function startLeapTransition(kbId: string) {
     if ((use2D || !webglAvailable) && ghostGraph) {
-      pendingLeapData = { kbId, stmts, srcs, sourceStableId };
+      pendingLeapKbId = kbId;
       flyToGhost = true;
     } else {
-      // 3D mode or no ghost graph — hot-swap immediately, find return node
-      hotSwapData(stmts, srcs);
-      sessionStorage.setItem('sessionKbId', kbId);
-      localStorage.setItem('currentKbId', kbId);
-      // Select the return leap node if one exists
-      if (sourceStableId) {
-        const ret = stmts.find(s => s.p.value === LEAP_PRED && s.o.kind === 'literal' && s.o.value === sourceStableId
-          && (s.status === 'confirmed' || s.status === 'refined'));
-        selected = ret?.s.kind === 'iri' ? `i:${ret.s.value}` : null;
-      } else {
-        selected = null;
-      }
+      switchToKb(kbId);
     }
   }
 
@@ -1344,7 +1555,7 @@
           tempDb.sources.orderBy('ingestedAt').reverse().toArray(),
         ]);
         tempDb.close();
-        await startLeapTransition(found.id, stmts, srcs);
+        await startLeapTransition(found.id);
       } catch (e) {
         // Fallback to reload
         switchToKb(found.id);
@@ -1394,11 +1605,11 @@
         await tempDb.statements.bulkPut(stmts);
         registerStableId(kbEntry.id, entityLeap.target, stmts.length);
         tempDb.close();
-        await startLeapTransition(kbEntry.id, stmts, [src]);
+        await startLeapTransition(kbEntry.id);
       } catch (e) {
         alert(`Failed to import docs graph: ${e instanceof Error ? e.message : String(e)}`);
         flyToGhost = false;
-        pendingLeapData = null;
+        pendingLeapKbId = null;
       } finally {
         leapImporting = false;
       }
@@ -1649,18 +1860,23 @@
   }
 </script>
 
-<div class="viewport" onpointermove={onGraphPointerMove}>
+<div class="viewport">
   <section
     class="graph"
+    aria-label={visible.length === 0 ? 'Getting started' : 'Knowledge graph'}
+    onpointermove={onGraphPointerMove}
     class:graph-landing={visible.length === 0}
     data-graph-renderer={visible.length === 0 ? 'landing' : use2D || !webglAvailable ? '2d' : '3d'}
     data-graph-ready={graph3DReady}
+    data-graph-settled={visible.length === 0 || graphSettled}
   >
   {#if visible.length === 0}
     <LandingPage />
   {:else if use2D || !webglAvailable}
     <KnowledgeGraph2D
       statements={visible}
+      topologyStatements={drawn}
+      flooredStatementIds={graphView.hidden.statementIds}
       {selected}
       {layout}
       {timelineZoom}
@@ -1683,6 +1899,7 @@
       onhover={(k) => (hoverTarget = k)}
       onlabelsmove={setNodeLabels}
       onmarkersmove={(m) => { markerLabels = m; }}
+      onsettledchange={(settled) => { graphSettled = settled; }}
       ontimelinepan={(c) => { timelineCenter = c; }}
       {nodeOrder}
       onreorder={(order) => { nodeOrder = order; }}
@@ -1701,11 +1918,15 @@
         <KnowledgeGraph
           {cameraSpec}
           statements={visible}
+          topologyStatements={drawn}
+          flooredStatementIds={graphView.hidden.statementIds}
           {selected}
           {layout}
           {timelineZoom}
           {timelineCenter}
           {timelineTimeSource}
+          previewKeys={previewNodeKeys}
+          previewSizePx={nodePreviewSize}
           sources={sources()}
           targetKey={hoverTarget}
           onselect={(k, ctrlKey) => {
@@ -1723,6 +1944,7 @@
           onhover={(k) => (hoverTarget = k)}
           onlabelsmove={setNodeLabels}
           onmarkersmove={(m) => { markerLabels = m; }}
+          onsettledchange={(settled) => { graphSettled = settled; }}
           ontimelinepan={(c) => { timelineCenter = c; }}
           onready={() => (graph3DReady = true)}
           highlighted={[...highlightedSet]}
@@ -1875,45 +2097,111 @@
 
   <!-- FORCE -->
   <div class="overlay-group">
-    <span class="group-label mono">force</span>
-    <ToggleGroup.Root
-      type="single"
-      value={layout}
-      onValueChange={(v) => { if (v) layout = v as typeof layout; }}
-      class="tg-row"
-    >
-      <ToggleGroup.Item value="force" class="tg-chip" title="Free force layout — nodes repel, links pull them together"><span class="lbl mono">free</span></ToggleGroup.Item>
-      <ToggleGroup.Item value="focus" class="tg-chip" title="Focus the selected node and its neighbours; push the rest away"><span class="lbl mono">focus</span></ToggleGroup.Item>
-      {#if sources().filter(s => s.kind !== 'analysis').length > 1}
-        <ToggleGroup.Item value="source" class="tg-chip" title="Cluster nodes by the source they came from"><span class="lbl mono">source</span></ToggleGroup.Item>
-      {/if}
-      {#if activeEntityTypes.length > 0}
-        <ToggleGroup.Item value="type" class="tg-chip" title="Cluster nodes by entity type"><span class="lbl mono">type</span></ToggleGroup.Item>
-      {/if}
-      <ToggleGroup.Item value="hub" class="tg-chip" title="Pull the most-connected hubs toward the centre"><span class="lbl mono">hub</span></ToggleGroup.Item>
-      <ToggleGroup.Item value="timeline" class="tg-chip" title="Lay nodes out left-to-right on a timeline by date"><span class="lbl mono">time</span></ToggleGroup.Item>
-      <!-- value stays "order" (URL/state); label is "arrange" so it isn't
-           confused with structural hnav ordering — this is a manual drag grid. -->
-      <ToggleGroup.Item value="order" class="tg-chip" title="Hand-arrange nodes on a grid — drag to reorder (basis for page layout)"><span class="lbl mono">arrange</span></ToggleGroup.Item>
-      <ToggleGroup.Item value="hierarchy" class="tg-chip" title="Hierarchical tree from broader/narrower and nav order"><span class="lbl mono">tree</span></ToggleGroup.Item>
-    </ToggleGroup.Root>
+    <!-- "view", not "layout": the group now holds TWO controls that each name themselves, and
+         reusing one of their names for the heading is the same confusion the old "force" heading
+         had — a label that means something different from the thing beside it. -->
+    <span class="group-label mono">view</span>
+    <div class="chip-row">
+      <Popover.Root bind:open={showLayoutMenu}>
+        <Popover.Trigger>
+          {#snippet child({ props })}
+            <button {...props} class="chip" class:active={showLayoutMenu}
+              title={availableLayouts.find((l) => l.value === layout)?.title}>
+              <span class="lbl mono">{availableLayouts.find((l) => l.value === layout)?.label ?? layout}</span>
+              <span class="arr mono">{showLayoutMenu ? '▲' : '▼'}</span>
+            </button>
+          {/snippet}
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Content class="filter-popover" sideOffset={6}>
+            {#each availableLayouts as l (l.value)}
+              <button class="chip small" class:active={layout === l.value} title={l.title}
+                onclick={() => { layout = l.value; showLayoutMenu = false; }}>
+                <span class="lbl mono">{l.label}</span>
+              </button>
+            {/each}
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
+
+      <Popover.Root bind:open={showDetailMenu}>
+        <Popover.Trigger>
+          {#snippet child({ props })}
+            <button {...props} class="chip" class:active={detailLevel !== 'detailed' || showDetailMenu}
+              title={detail.title}>
+              <span class="lbl mono">{detail.label}</span>
+              <span class="arr mono">{showDetailMenu ? '▲' : '▼'}</span>
+            </button>
+          {/snippet}
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Content class="filter-popover" sideOffset={6}>
+            {#each DETAIL_LEVELS as level (level.id)}
+              <button class="chip small" class:active={detailLevel === level.id} title={level.title}
+                onclick={() => { detailLevel = level.id; showDetailMenu = false; }}>
+                <span class="lbl mono">{level.label}</span>
+              </button>
+            {/each}
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
+    </div>
+    <!--
+      HIDDEN MUST BE VISIBLY HIDDEN (Matt's own condition on this feature). A canvas that is
+      quietly missing 900 facts is not a cleaner graph, it is a graph that lies about its size.
+      The node count is the one that answers "is it less cluttered"; the fact count is the one
+      that answers "what did that cost me".
+    -->
+    {#if detailHidden.statements > 0}
+      <span class="depth-hidden mono" title="Hidden from the canvas only. Every fact is still in the graph, and still listed in a node's panel.">
+        {detailHidden.nodes} node{detailHidden.nodes === 1 ? '' : 's'} ·
+        {detailHidden.statements} fact{detailHidden.statements === 1 ? '' : 's'} hidden
+      </span>
+    {/if}
+  
     {#if podMode}
       <span class="pod-indicator mono" title="Pod view is on — arrivals from your currents drift in translucent until you accept them. Toggle it on the Graph tab.">🐋 pod</span>
     {/if}
   </div>
 
-  <!-- ASSETS -->
+  <!-- PREVIEWS — one mode, not two booleans that can contradict each other. "preview all" spreads
+       every thumbnail so they are all visible; "auto-expand" blows the selected one up to cover
+       most of the graph. Both at once meant the overlay hid the collage, so they are exclusive. -->
   <div class="overlay-group">
-    <span class="group-label mono">assets</span>
+    <span class="group-label mono">previews</span>
     <div class="chip-row">
-      <button
-        class="chip"
-        class:active={autoExpandAssets}
-        onclick={() => updateSettings({ autoExpandAssets: !autoExpandAssets })}
-        title="Auto-expand a node's image to the large view as you move through the graph (e.g. story explore). Off = click a thumbnail to expand."
-      >
-        <span class="lbl mono">auto-expand</span>
-      </button>
+      <Popover.Root bind:open={showPreviewMenu}>
+        <Popover.Trigger>
+          {#snippet child({ props })}
+            <button
+              {...props}
+              class="chip"
+              class:active={previewMode !== 'manual' || showPreviewMenu}
+              title={PREVIEW_MODE_HINTS[previewMode]}
+            >
+              <span class="lbl mono">{PREVIEW_MODE_LABELS[previewMode]}</span>
+              <span class="arr mono">{showPreviewMenu ? '▲' : '▼'}</span>
+            </button>
+          {/snippet}
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Content class="filter-popover" sideOffset={6}>
+            {#each PREVIEW_MODES as mode (mode)}
+              <button
+                class="chip small"
+                class:active={previewMode === mode}
+                title={PREVIEW_MODE_HINTS[mode]}
+                onclick={() => {
+                  updateSettings({ previewMode: mode, ...legacyFlagsFor(mode) });
+                  showPreviewMenu = false;
+                }}
+              >
+                <span class="lbl mono">{PREVIEW_MODE_LABELS[mode]}</span>
+              </button>
+            {/each}
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
     </div>
   </div>
 
@@ -2016,21 +2304,29 @@
   {#snippet preview(n)}
     <!-- Show the node image when previews are forced on, OR for the focused/selected/highlighted
          nodes. Click it to expand large (→ fullscreen). Hidden while it is the expanded one. -->
-    {#if (alwaysPreviews || n.key === selected || highlightedSet.has(n.key)) && n.key !== expandedAssetKey}
+    <!-- Under an active filter, "preview all" means all the nodes the filter kept — not all nodes
+         in the graph. Filters here DIM rather than remove, so without the dimMode clause every
+         preview stayed at full brightness and the filter looked broken. -->
+    {#if (previewsShownFor(n.key) || n.key === selected || highlightedSet.has(n.key)) && n.key !== expandedAssetKey}
       {@const a = nodeAssetFor(iriFromNodeKey(n.key))}
       {#if a}
         {@const dims = `width: ${nodePreviewSize}px; height: ${nodePreviewSize}px;`}
-        <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions a11y_no_static_element_interactions a11y_media_has_caption -->
-        {#if a.kind === 'image'}
-          <img class="node-preview-thumb" src={a.url} alt="" loading="lazy" style={dims}
-            onclick={(e) => { e.stopPropagation(); expandedAssetKey = n.key; assetFullscreen = false; }} />
-        {:else if a.kind === 'video'}
-          <video class="node-preview-thumb" src={a.url} muted loop autoplay playsinline style={dims}
-            onclick={(e) => { e.stopPropagation(); expandedAssetKey = n.key; assetFullscreen = false; }}></video>
-        {:else}
-          <div class="node-preview-thumb glb-badge" style={dims}
-            onclick={(e) => { e.stopPropagation(); expandedAssetKey = n.key; assetFullscreen = false; }}>◈ 3D</div>
-        {/if}
+        <button
+          type="button"
+          class="node-preview-thumb"
+          class:glb-badge={a.kind === 'glb'}
+          style={dims}
+          aria-label={`Open asset for ${n.label}`}
+          onclick={(e) => { e.stopPropagation(); openNodeFromThumb(n.key); }}
+        >
+          {#if a.kind === 'image'}
+            <img src={a.url} alt="" loading="lazy" />
+          {:else if a.kind === 'video'}
+            <video src={a.url} muted loop autoplay playsinline></video>
+          {:else}
+            ◈ 3D
+          {/if}
+        </button>
       {/if}
     {/if}
   {/snippet}
@@ -2102,16 +2398,36 @@
 {/if}
 
 <!-- Asset viewer — LARGE: covers most of the graph; clicking the surrounding
-     graph (not the image) collapses to normal; clicking the image → fullscreen. -->
+     graph (not the asset) collapses to normal; its labelled image/3D control opens fullscreen. -->
 {#if expandedAsset && !assetFullscreen}
-  <div class="asset-large" transition:fade={{ duration: 140 }}>
-    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions a11y_media_has_caption a11y_no_static_element_interactions -->
+  <!-- Centred in the space BETWEEN the side panels, not on the whole viewport. `inset: 0` plus
+       max-width:80vw put the image under the filter panel on the left and the node-details panel
+       on the right, so the first thing you saw after clicking a thumbnail was your own UI covering
+       the picture. Both panels are SnapPanels the user can drag and resize, so the gutters are
+       measured each time rather than hardcoded to the 360/320 defaults. -->
+  <div
+    class="asset-large"
+    style="--gutter-left: {assetGutters.left}px; --gutter-right: {assetGutters.right}px;"
+    transition:fade={{ duration: 140 }}
+  >
     {#if expandedAsset.kind === 'image'}
-      <img src={expandedAsset.url} alt="expanded asset" onclick={() => (assetFullscreen = true)} />
+      <button type="button" class="asset-expand-control" aria-label="View image fullscreen" onclick={() => (assetFullscreen = true)}>
+        <img src={expandedAsset.url} alt="expanded asset" />
+      </button>
     {:else if expandedAsset.kind === 'video'}
-      <video class="asset-media" src={expandedAsset.url} controls autoplay loop playsinline></video>
+      <!-- Uploaded video assets do not include a separate caption file. Keep playback user-initiated;
+           a fake empty captions track would be more misleading than documenting that limitation. -->
+      <!-- svelte-ignore a11y_media_has_caption -->
+      <video class="asset-media" src={expandedAsset.url} controls preload="metadata" playsinline></video>
     {:else}
-      <div class="asset-media asset-glb" onclick={() => (assetFullscreen = true)}>
+      <div
+        class="asset-media asset-glb"
+        role="button"
+        tabindex="0"
+        aria-label="View 3D asset fullscreen"
+        onclick={() => (assetFullscreen = true)}
+        onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); assetFullscreen = true; } }}
+      >
         {#key expandedAsset.url}<AssetGlbViewer url={expandedAsset.url} />{/key}
       </div>
     {/if}
@@ -2125,19 +2441,34 @@
 <!-- Asset viewer — FULLSCREEN: images, video, and 3D/GLB. Click the backdrop to
      step back to large; ✕ or Esc closes. -->
 {#if expandedAsset && assetFullscreen}
-  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div class="asset-fullscreen" onclick={() => (assetFullscreen = false)} transition:fade={{ duration: 140 }}>
-    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions a11y_media_has_caption -->
+  <div
+    class="asset-fullscreen"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Fullscreen asset"
+    tabindex="-1"
+    onclick={(event) => { if (event.target === event.currentTarget) assetFullscreen = false; }}
+    onkeydown={(event) => {
+      if (event.key === 'Escape') {
+        // The window handler owns the next Escape (large → closed). Keep this first Escape
+        // inside the dialog so fullscreen steps back to large instead of collapsing both.
+        event.stopPropagation();
+        assetFullscreen = false;
+      }
+    }}
+    transition:fade={{ duration: 140 }}
+  >
     {#if expandedAsset.kind === 'image'}
-      <img src={expandedAsset.url} alt="fullscreen asset" onclick={(e) => e.stopPropagation()} />
+      <img src={expandedAsset.url} alt="fullscreen asset" />
     {:else if expandedAsset.kind === 'video'}
-      <video class="asset-fs-media" src={expandedAsset.url} controls autoplay loop playsinline onclick={(e) => e.stopPropagation()}></video>
+      <!-- svelte-ignore a11y_media_has_caption -->
+      <video class="asset-fs-media" src={expandedAsset.url} controls preload="metadata" playsinline></video>
     {:else}
-      <div class="asset-fs-media asset-glb" onclick={(e) => e.stopPropagation()}>
+      <div class="asset-fs-media asset-glb">
         {#key expandedAsset.url}<AssetGlbViewer url={expandedAsset.url} />{/key}
       </div>
     {/if}
-    <button class="asset-fs-close" onclick={collapseAsset} title="Close (Esc)">✕</button>
+    <button class="asset-fs-close" use:focusOnMount onclick={collapseAsset} title="Close (Esc)">✕</button>
   </div>
 {/if}
 
@@ -2181,7 +2512,7 @@
             bind:value={labelDraft}
             onkeydown={onLabelKeydown}
             onblur={saveLabel}
-            autofocus
+            use:focusOnMount
           />
         {:else}
           <button class="np-label-btn" onclick={startEditLabel} title="click to edit label">
@@ -2338,7 +2669,7 @@
                 placeholder={newLinkKind === 'url' ? 'https://…' : '/path/to/file'}
                 bind:value={newLinkValue}
                 onkeydown={onLinkKeydown}
-                autofocus
+                use:focusOnMount
               />
               <div class="link-add-buttons">
                 <button class="primary" onclick={saveLink} disabled={!newLinkValue.trim()}>save</button>
@@ -2365,7 +2696,7 @@
             placeholder="https://…/model.glb"
             bind:value={icon3dDraft}
             onkeydown={(e) => { if (e.key === 'Enter') saveEntityIcon3d(); if (e.key === 'Escape') { editingIcon3d = false; icon3dDraft = ''; } }}
-            autofocus
+            use:focusOnMount
           />
           <div class="link-add-buttons">
             <button class="primary" onclick={saveEntityIcon3d} disabled={!icon3dDraft.trim()}>save</button>
@@ -2439,7 +2770,7 @@
             placeholder="https://…/icon.svg or /path/to/icon.png"
             bind:value={icon2dDraft}
             onkeydown={(e) => { if (e.key === 'Enter') saveEntityIcon2d(); if (e.key === 'Escape') { editingIcon2d = false; icon2dDraft = ''; } }}
-            autofocus
+            use:focusOnMount
           />
           <div class="link-add-buttons">
             <button class="primary" onclick={saveEntityIcon2d} disabled={!icon2dDraft.trim()}>save</button>
@@ -2498,9 +2829,11 @@
               {@const slug = predIri.split('/').pop() ?? predIri}
               {@const inputType = predicateInputType(predIri)}
               {@const currentVal = schemaFieldValues.get(predIri) ?? ''}
+              {@const inputId = `schema-field-${encodeURIComponent(predIri)}`}
               <div class="schema-field-row">
-                <label class="schema-field-label mono">{slug}</label>
+                <label class="schema-field-label mono" for={inputId}>{slug}</label>
                 <input
+                  id={inputId}
                   class="schema-field-input mono"
                   type={inputType}
                   value={currentVal}
@@ -2541,7 +2874,7 @@
               placeholder="Graph ID, URL, or app path"
               bind:value={newLeapId}
               onkeydown={(e) => { if (e.key === 'Enter') saveLeap(); if (e.key === 'Escape') { addingLeap = false; newLeapId = ''; newLeapLabel = ''; } }}
-              autofocus
+              use:focusOnMount
             />
             <input
               class="link-input"
@@ -2776,17 +3109,6 @@
     border-top: 1px solid var(--line);
     padding-top: 0.5rem;
   }
-  .pkg-disclosure > summary {
-    cursor: pointer;
-    list-style: none;
-    user-select: none;
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-  }
-  .pkg-disclosure > summary::-webkit-details-marker { display: none; }
-  .pkg-disclosure > summary:hover { color: var(--accent); }
-
   .group-label {
     font-size: 0.52rem;
     text-transform: uppercase;
@@ -2800,6 +3122,27 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.35rem;
+  }
+
+  /* layout + detail use the shared .chip / .filter-popover styling, like previews. */
+
+  .detail-select {
+    background: var(--surface);
+    color: var(--fg);
+    border: 1px solid var(--line);
+    border-radius: 0.25rem;
+    font-size: 0.6rem;
+    padding: 0.2rem 0.3rem;
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Deliberately quiet but never absent: the count is a disclosure, not a warning. */
+  .depth-hidden {
+    font-size: 0.55rem;
+    color: var(--muted);
+    padding: 0 0.2rem;
+    letter-spacing: 0.04em;
   }
 
   :global(.filter-popover) {
@@ -2951,14 +3294,6 @@
     display: flex;
     gap: 1rem;
     margin-top: 0.5rem;
-  }
-  .empty .wordmark {
-    font-family: var(--font-display);
-    font-size: 2.8rem;
-    font-weight: 700;
-    color: var(--accent);
-    letter-spacing: -0.03em;
-    margin: 0;
   }
   .tagline {
     font-size: 0.85rem;
@@ -3544,9 +3879,24 @@
     border: 1px solid var(--line);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
     background: var(--surface);
+    padding: 0;
     pointer-events: auto;
     cursor: zoom-in;
     transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .node-preview-thumb > img,
+  .node-preview-thumb > video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+  }
+  .node-preview-thumb:focus-visible,
+  .asset-expand-control:focus-visible,
+  .asset-glb:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
   .node-preview-thumb:hover {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
@@ -3556,7 +3906,12 @@
   /* ── Asset viewer: large (covers most of graph) + fullscreen ── */
   .asset-large {
     position: fixed;
-    inset: 0;
+    /* Inset by the measured side-panel gutters so the image centres in the free space between
+       them. A small extra margin keeps it from touching a panel edge. */
+    top: 0;
+    bottom: 0;
+    left: calc(var(--gutter-left, 0px) + 0.75rem);
+    right: calc(var(--gutter-right, 0px) + 0.75rem);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3565,7 +3920,9 @@
   }
   .asset-large img,
   .asset-large .asset-media {
-    max-width: 80vw;
+    /* 100% of the gutter-constrained box, not 80vw of the whole window — 80vw is wider than the
+       space between two open panels, which is exactly how the image ended up underneath them. */
+    max-width: 100%;
     max-height: 78vh;
     object-fit: contain;
     border-radius: var(--rad);
@@ -3575,10 +3932,22 @@
     pointer-events: auto;
     cursor: zoom-in;
   }
+  .asset-expand-control {
+    max-width: 100%;
+    max-height: 78vh;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    pointer-events: auto;
+    cursor: zoom-in;
+  }
+  .asset-expand-control img { display: block; }
   .asset-media { display: block; }
   /* GLB canvas needs explicit dimensions (threlte fills its container). */
   .asset-glb {
-    width: min(80vw, 900px);
+    /* Needs explicit dimensions (threlte fills its container), but bounded by the same
+       gutter-constrained box as the image — 80vw would slide under the panels. */
+    width: min(100%, 900px);
     height: 78vh;
   }
   .asset-fs-media {
@@ -3637,7 +4006,9 @@
     justify-content: center;
     background: rgba(6, 6, 10, 0.92);
     backdrop-filter: blur(4px);
-    z-index: 600;
+    /* A fullscreen asset is a task-modal surface. It must outrank transient notification
+       controls (z-700/701), or the bell sits over the close button and traps pointer users. */
+    z-index: 800;
     cursor: zoom-out;
   }
   .asset-fullscreen img {
@@ -3739,36 +4110,7 @@
     50% { box-shadow: 0 0 10px rgba(245, 158, 11, 0.35); }
   }
 
-  /* ── bits-ui ToggleGroup (layout selector) ── */
-  :global(.tg-row) {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-  }
-  :global(.tg-chip) {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.3rem 0.7rem;
-    border-radius: 999px;
-    border: 1px solid var(--line);
-    background: var(--surface);
-    color: var(--muted);
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    cursor: pointer;
-    transition: all 0.15s;
-    user-select: none;
-  }
-  :global(.tg-chip:hover) {
-    border-color: var(--muted-2, var(--muted));
-    color: var(--ink-2, var(--ink));
-  }
-  :global(.tg-chip[data-state="on"]) {
-    background: var(--accent-soft);
-    border-color: var(--accent);
-    color: var(--accent);
-  }
+  /* The layout selector is a plain <select> now; the ToggleGroup chip styles it used are gone. */
   /* Pod view indicator (F29 Currents) — shown when pod view is on (toggled on the
      Graph tab). Sky-blue, matching arrival halos. Read-only status chip, not a button. */
   .pod-indicator {

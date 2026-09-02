@@ -24,8 +24,10 @@
  *   npx tsx scripts/agent/reconcile.ts            report what is stale
  *   npx tsx scripts/agent/reconcile.ts --apply    drop the stale entries (backs up first)
  */
-import { readFileSync, writeFileSync, existsSync, copyFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { execSync } from 'child_process';
+import { atomicWriteFile } from './state-file.js';
+import { transactPendingQueue } from '../offline/pending-queue.js';
 
 const PENDING = 'reckons-workspace/knowledge.pending.jsonl';
 const B = '\x1b[1m', D = '\x1b[2m', G = '\x1b[32m', Y = '\x1b[33m', R = '\x1b[31m', X = '\x1b[0m';
@@ -130,7 +132,28 @@ if (!APPLY) {
   process.exit(0);
 }
 
-copyFileSync(PENDING, PENDING + '.bak');
-writeFileSync(PENDING, kept.map((e) => e.raw).join('\n') + (kept.length ? '\n' : ''));
-console.log(`${G}Dropped ${stale.length} stale finding(s).${X} ${D}${kept.length} kept. Backup: ${PENDING}.bak${X}`);
+const applied = transactPendingQueue(PENDING, (current) => {
+  const freshEntries = current.split('\n').filter(Boolean).map((line) => {
+    try { return { raw: line, obj: JSON.parse(line) as any }; }
+    catch { return { raw: line, obj: null }; }
+  });
+  const freshStale: typeof freshEntries = [];
+  const freshKept: typeof freshEntries = [];
+  for (const entry of freshEntries) {
+    if (!entry.obj || !reconcilableAgents.has(entry.obj.agent)) {
+      freshKept.push(entry);
+      continue;
+    }
+    const live = liveBySource.get(entry.obj.agent)!;
+    const signature = sigOf(entry.obj);
+    if (!live.has('__unverifiable__') && signature && !live.has(signature)) freshStale.push(entry);
+    else freshKept.push(entry);
+  }
+  atomicWriteFile(PENDING + '.bak', current);
+  return {
+    content: freshKept.map((entry) => entry.raw).join('\n') + (freshKept.length ? '\n' : ''),
+    result: { dropped: freshStale.length, kept: freshKept.length },
+  };
+});
+console.log(`${G}Dropped ${applied.dropped} stale finding(s).${X} ${D}${applied.kept} kept. Backup: ${PENDING}.bak${X}`);
 console.log(`${D}These were re-derivable and already resolved. The queue now shows work that is actually open.${X}`);

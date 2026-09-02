@@ -136,12 +136,6 @@
     gap: 1rem;
   }
 
-  .modal-header h2 {
-    margin: 0;
-    font-size: 1.1rem;
-    font-family: var(--font-display);
-  }
-
   :global(.manual-llm-modal .close-btn) {
     background: none;
     border: none;

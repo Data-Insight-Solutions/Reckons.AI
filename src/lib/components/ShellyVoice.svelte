@@ -47,13 +47,20 @@
 
   type VoiceState = 'setup' | 'idle' | 'requesting' | 'connecting' | 'listening' | 'thinking' | 'speaking' | 'error';
 
-  // Configured if the caller has their own Hume key OR the persona carries a shared token
-  // endpoint (F107.6) — the latter lets a viewer hear the voice without any Hume setup.
-  const isConfigured = $derived(!!(turtleSettings().humeApiKey || settings().humeAiApiKey || turtleSettings().humeTokenUrl));
-  let voiceState = $state<VoiceState>(isConfigured ? 'idle' : 'setup');
+  const voiceOptedIn = $derived(
+    turtleSettings().voiceEnabled && turtleSettings().voiceType === 'hume'
+  );
+  // Credentials never imply consent. Hume is configured only while the
+  // separate, persisted voice opt-in is active.
+  const isConfigured = $derived(voiceOptedIn && !!(
+    turtleSettings().humeApiKey || settings().humeAiApiKey || turtleSettings().humeTokenUrl
+  ));
+  function initialVoiceState(): VoiceState { return isConfigured ? 'idle' : 'setup'; }
+  let voiceState = $state<VoiceState>(initialVoiceState());
   let errorMsg = $state('');
 
   $effect(() => {
+    if (!voiceOptedIn) disconnect();
     if (!isConfigured && voiceState === 'idle') voiceState = 'setup';
     if (isConfigured && voiceState === 'setup') voiceState = 'idle';
   });
@@ -72,6 +79,7 @@
   let analyser: AnalyserNode | null = null;
   let volBuf: Uint8Array | null = null;
   let volRafId = 0;
+  let connectionAttempt = 0;
 
   let sessionSourceId: string | null = null;
 
@@ -215,7 +223,8 @@
   }
 
   async function connect() {
-    if (!isConfigured) { voiceState = 'setup'; return; }
+    if (!voiceOptedIn || !isConfigured) { voiceState = 'setup'; return; }
+    const attempt = ++connectionAttempt;
     voiceState = 'requesting';
     errorMsg = '';
 
@@ -228,6 +237,7 @@
       voiceState = 'error';
       return;
     }
+    if (attempt !== connectionAttempt || !voiceOptedIn) return;
 
     try {
       micStream = await getAudioStream();
@@ -237,6 +247,11 @@
         ? 'Microphone access denied. Allow mic access in your browser.'
         : `Could not access microphone: ${msg}`;
       voiceState = 'error';
+      return;
+    }
+    if (attempt !== connectionAttempt || !voiceOptedIn) {
+      micStream?.getTracks().forEach(t => t.stop());
+      micStream = null;
       return;
     }
 
@@ -341,6 +356,7 @@
   }
 
   function disconnect() {
+    connectionAttempt++;
     stopMic();
     try { socket?.close?.(); } catch { /* ignore */ }
     try { (audioPlayer as { dispose?: () => void })?.dispose?.(); } catch { /* ignore */ }

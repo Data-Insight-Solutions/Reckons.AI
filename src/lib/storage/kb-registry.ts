@@ -34,6 +34,16 @@ export type KbEntry = {
    * settings page show an archive beside its parent rather than as an unexplained sibling.
    */
   archiveOf?: string;
+  /**
+   * Directory (no filename) this graph was last discovered at inside the linked workspace folder,
+   * e.g. "kbs/clients/acme". Recorded so the graph list can be grouped the way the user organised
+   * their own filesystem, rather than only by how they happened to spell the names.
+   *
+   * A CACHE OF WHERE A FILE WAS, NOT A CLAIM ABOUT WHERE IT IS. The folder can be moved or the
+   * workspace unlinked without the app noticing, so this is refreshed from discovery and must
+   * never be treated as authoritative for reading a file — listKbFolders() is.
+   */
+  folderPath?: string;
 };
 
 const REGISTRY_KEY = 'kbRegistry';
@@ -42,6 +52,43 @@ const SESSION_KEY = 'sessionKbId';
 const DEFAULT_ID = 'kbase';
 
 const DEFAULT_ENTRY: KbEntry = { id: DEFAULT_ID, name: 'Default Graph', createdAt: 0 };
+
+/**
+ * Observe registry writes made by another tab.
+ *
+ * The browser deliberately does not dispatch `storage` back to the tab that made the write, so
+ * local actions can keep updating their component state synchronously while other tabs re-read
+ * the shared registry. A `null` key represents localStorage.clear().
+ */
+export function subscribeRegistry(callback: (registry: KbEntry[]) => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+
+  let lastSnapshot = JSON.stringify(getRegistry());
+  const publishIfChanged = () => {
+    const registry = getRegistry();
+    const snapshot = JSON.stringify(registry);
+    if (snapshot === lastSnapshot) return;
+    lastSnapshot = snapshot;
+    callback(registry);
+  };
+
+  const onStorage = (event: StorageEvent) => {
+    if (event.storageArea && event.storageArea !== localStorage) return;
+    if (event.key !== REGISTRY_KEY && event.key !== null) return;
+    publishIfChanged();
+  };
+
+  window.addEventListener('storage', onStorage);
+  // Storage events are the fast path, but browsers may discard one while a background tab is
+  // throttled or a document is changing lifecycle state. A cheap reconciliation poll keeps a
+  // missed event from making the graph gallery permanently stale. It runs only while a consumer
+  // (currently /kb) is mounted and emits only when the serialized registry actually changed.
+  const reconcileTimer = window.setInterval(publishIfChanged, 1_000);
+  return () => {
+    window.removeEventListener('storage', onStorage);
+    window.clearInterval(reconcileTimer);
+  };
+}
 
 export function getRegistry(): KbEntry[] {
   if (typeof window === 'undefined') return [DEFAULT_ENTRY];
@@ -63,6 +110,54 @@ function saveRegistry(reg: KbEntry[]): void {
   localStorage.setItem(REGISTRY_KEY, JSON.stringify(reg));
 }
 
+/** Folder/display-name normalization, shared by name matching below. */
+function slug(s: string): string {
+  return s.trim().toLowerCase().replace(/['"]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+/**
+ * Resolve a `?kb=` value to a real graph id: an exact id wins, then a graph whose NAME matches,
+ * and only failing both is the value used as a literal id.
+ *
+ * Ids are opaque (`createKb` mints `kbase_<timestamp>`), so a human-written or shared link says
+ * `?kb=roadmap` meaning the graph CALLED roadmap. Taken literally that opened a brand-new empty
+ * database beside the real one: the folder-synced graph kept its generated id, so the link led to
+ * an empty graph with no folder link and no facts, while the populated one sat in the picker
+ * under the same name. Matching on name first makes the link mean what it plainly says.
+ */
+export function resolveKbParam(param: string, reg: KbEntry[] = getRegistry()): string {
+  const trimmed = param.trim();
+  if (!trimmed) return DEFAULT_ID;
+  if (reg.some((k) => k.id === trimmed)) return trimmed;
+  const target = slug(trimmed);
+  const byName = reg.find((k) => slug(k.name) === target);
+  if (byName) return byName.id;
+
+  // NOTHING MATCHED — fall back to the default graph rather than inventing one.
+  //
+  // Using the raw value as an id looks harmless and is the whole bug class. Visit `?kb=roadmap`
+  // once with an empty registry — a cleared cache, or any moment before the workspace folder has
+  // synced — and it mints an empty graph whose id is literally `roadmap`. The real roadmap then
+  // arrives from the folder with a generated `kbase_<timestamp>` id, and because an exact id match
+  // wins above, that link is pinned to the empty shadow permanently. Worse, the shadow then syncs
+  // ITSELF over the canonical file.
+  //
+  // A link naming a graph that does not exist yet is a link to nothing. Say so by landing on the
+  // default graph; creating graphs stays a deliberate act in the graph picker.
+  return DEFAULT_ID;
+}
+
+/**
+ * True when `?kb=` named a graph this browser does not have, so the caller can say "no graph named
+ * X — showing the default" instead of silently showing the wrong graph.
+ */
+export function isUnresolvedKbParam(param: string, reg: KbEntry[] = getRegistry()): boolean {
+  const trimmed = param.trim();
+  if (!trimmed) return false;
+  const target = slug(trimmed);
+  return !reg.some((k) => k.id === trimmed || slug(k.name) === target);
+}
+
 /**
  * Resolve the active KB for this tab.
  * Priority: URL ?kb= > sessionStorage > localStorage > default.
@@ -70,14 +165,15 @@ function saveRegistry(reg: KbEntry[]): void {
 export function getCurrentKbId(): string {
   if (typeof window === 'undefined') return DEFAULT_ID;
 
-  // 1. URL param (bookmarkable)
+  // 1. URL param (bookmarkable) — by id OR by graph name.
   try {
     const url = new URL(window.location.href);
     const fromUrl = url.searchParams.get('kb');
     if (fromUrl) {
+      const resolved = resolveKbParam(fromUrl);
       // Persist to sessionStorage so in-tab navigation keeps this KB
-      sessionStorage.setItem(SESSION_KEY, fromUrl);
-      return fromUrl;
+      sessionStorage.setItem(SESSION_KEY, resolved);
+      return resolved;
     }
   } catch { /* ignore URL parse errors */ }
 
@@ -209,6 +305,29 @@ export function findKbByStableId(stableId: string): KbEntry | undefined {
  * Register the stable ID and statement count for a KB.
  * Called on app load after settings are available.
  */
+/**
+ * Ensure the active graph exists in the registry, creating an entry for it if not.
+ *
+ * A `?kb=<id>` link opens (and Dexie creates) a database for any id at all, but nothing ever added
+ * it to the registry: `registerStableId` only patches entries that already exist. The graph was
+ * therefore real and populated yet absent from /kb, and `getCurrentKbName()` reported it as
+ * 'Default Graph' — the name every other graph-scoped decision is made from.
+ *
+ * The id doubles as the initial display name so a shared link like `?kb=roadmap` presents as
+ * "roadmap" rather than something opaque. Renaming afterwards is ordinary `updateKbName`.
+ * Returns the entry, existing or newly created.
+ */
+export function ensureKbRegistered(id: string, name = id): KbEntry {
+  const reg = getRegistry();
+  const existing = reg.find((k) => k.id === id);
+  if (existing) return existing;
+
+  const entry: KbEntry = { id, name, createdAt: Date.now() };
+  reg.push(entry);
+  saveRegistry(reg);
+  return entry;
+}
+
 export function registerStableId(dbName: string, stableId: string, statementCount?: number): void {
   const reg = getRegistry();
   const entry = reg.find((k) => k.id === dbName);

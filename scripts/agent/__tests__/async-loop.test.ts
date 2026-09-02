@@ -176,9 +176,9 @@ describe('pending entries are addressed to a graph — misfiling loses them fore
     expect(JSON.parse(readFileSync(pending, 'utf8').trim()).kb).toBe('Reckons.AI Roadmap');
   });
 
-  it('omits `kb` when the question is not graph-specific — meaning "any graph"', () => {
+  it('defaults repository-agent questions to roadmap instead of whichever graph is open', () => {
     const pending = p('pending.jsonl');
     askGraph({ subject: 'kb:x', predicate: 'kpred:y', question: 'q?' }, pending);
-    expect('kb' in JSON.parse(readFileSync(pending, 'utf8').trim())).toBe(false);
+    expect(JSON.parse(readFileSync(pending, 'utf8').trim()).kb).toBe('roadmap');
   });
 });

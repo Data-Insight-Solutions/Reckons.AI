@@ -85,15 +85,15 @@ export default defineConfig(({ mode }) => {
       emptyOutDir: true,
       sourcemap: false,
       minify: false,
-      rollupOptions: {
+      // Vite 8 delegates production bundling to Rolldown. Keep multiple extension
+      // entry points on Rolldown's default automatic code splitting; setting the
+      // deprecated inlineDynamicImports flag to false was redundant.
+      rolldownOptions: {
         input,
         output: {
           entryFileNames: '[name].js',
           chunkFileNames: '[name].js',
           assetFileNames: '[name].[ext]',
-          // Each entry should be standalone — no shared chunks
-          manualChunks: undefined,
-          inlineDynamicImports: false,
         },
       },
     },

@@ -25,8 +25,10 @@
  *   npx tsx scripts/agent/return-answer.ts            return new answers to their origin graphs
  *   npx tsx scripts/agent/return-answer.ts --peek     show what would return, advance nothing
  */
-import { existsSync, readFileSync, appendFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { readAnswers } from './answers.js';
+import { transactPendingQueue } from '../offline/pending-queue.js';
+import { readTextOr } from '../lib/read-file.js';
 
 const PENDING = 'reckons-workspace/knowledge.pending.jsonl';
 const ANSWERS = 'reckons-workspace/knowledge.answers.jsonl';
@@ -64,7 +66,6 @@ const fresh = allAnswers.slice(from);
 console.log(`${B}Return routed answers${X} ${D}— ${routed.size} routed question(s) outstanding, ${fresh.length} new answer(s)${X}\n`);
 
 let returned = 0;
-const existingPending = existsSync(PENDING) ? readFileSync(PENDING, 'utf8') : '';
 
 for (const a of fresh) {
   const q = routed.get(`${a.subject}|${a.predicate}`);
@@ -92,18 +93,32 @@ for (const a of fresh) {
     addedByMcp: true,
   };
 
-  // Idempotent: do not return the same answer to the same origin twice.
-  const dupe = existingPending.includes(`"answeredByGraph":"${answerer}"`) &&
-    existingPending.includes(`"subject":"${a.subject}"`) &&
-    existingPending.includes(`"object":${JSON.stringify(a.object)}`);
+  const isDuplicate = (current: string) => current.split('\n').filter(Boolean).some((line) => {
+    try {
+      const row = JSON.parse(line) as Record<string, unknown>;
+      return row.answeredByGraph === answerer && row.subject === a.subject &&
+        row.predicate === a.predicate && row.object === a.object && row.kb === origin;
+    } catch {
+      return false;
+    }
+  });
+
+  let dupe = false;
+  if (PEEK) {
+    dupe = isDuplicate(readTextOr(PENDING, ''));
+  } else {
+    const queued = transactPendingQueue(PENDING, (current) => {
+      if (isDuplicate(current)) return { result: false };
+      const separator = current && !current.endsWith('\n') ? '\n' : '';
+      return { content: current + separator + JSON.stringify(entry) + '\n', result: true };
+    });
+    dupe = !queued;
+    if (queued) returned++;
+  }
 
   console.log(`  ${G}←${X} ${a.subject.split('/').pop()} ${a.predicate.split('/').pop()} = "${String(a.object).slice(0, 40)}"`);
   console.log(`     ${D}${answerer} → ${origin}  ·  external-graph, hop [${origin} → ${answerer}]${dupe ? ' (already returned)' : ''}${X}`);
 
-  if (!PEEK && !dupe) {
-    appendFileSync(PENDING, JSON.stringify(entry) + '\n');
-    returned++;
-  }
 }
 
 if (fresh.length > 0 && !PEEK) writeFileSync(CURSOR, String(allAnswers.length));

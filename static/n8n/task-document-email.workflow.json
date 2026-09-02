@@ -1,0 +1,156 @@
+{
+  "name": "Reckons — Task document → email (F162)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Task documents by email\n\n`scripts/agent/tasks-export.ts --notify` renders each UNAUTHORISED AgentTask as a markdown form and POSTs it here.\n\nA task dictated into a ring has a goal and nothing else — no declared effects, no acceptance check — and CANNOT run until a person supplies them.\n\n**Answer by editing the file, not the email.** Fill in `effect` and `done_when`, then run `scripts/agent/tasks-import.ts`. That turns the answers into PENDING facts. Accepting them in Reckons.AI is what authorises the task — nothing in this workflow does.\n\nWebhook is Header Auth (same credential as capture).",
+        "height": 400,
+        "width": 420
+      },
+      "id": "about",
+      "name": "Read me first",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -140,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "reckons-document",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "id": "doc-webhook",
+      "name": "Reckons document webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        360,
+        260
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_YOUR_HEADER_AUTH_CREDENTIAL_ID",
+          "name": "Reckons capture header"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Markdown out as TEXT on purpose: a task form is read on a phone and answered at a desk,\n// and HTML would obscure the frontmatter carrying the fields somebody has to fill in.\nconst d = $input.first().json.body ?? $input.first().json;\nconst title = d.title || d.filename || 'Reckons.AI task';\nconst graph = d.graph ? ` [${d.graph}]` : '';\nconst md = d.markdown || '';\n\nreturn [{\n  json: {\n    subject: `Task needs authorising${graph}: ${title}`,\n    text: [\n      md || '(no document body)',\n      '',\n      '--',\n      'Fill in `effect` and `done_when` in the file, then run:',\n      '  npx tsx scripts/agent/tasks-import.ts',\n      '',\n      'The answers arrive as PENDING facts. Accepting them in Reckons.AI is what',\n      'authorises the task; this email does not.',\n    ].join('\\n'),\n    hasBody: md.trim().length > 0,\n  },\n}];"
+      },
+      "id": "format",
+      "name": "Format email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-body",
+              "leftValue": "={{ $json.hasBody }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "guard",
+      "name": "Only if there is a document",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        800,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "toRecipients": "you@example.com",
+        "subject": "={{ $json.subject }}",
+        "bodyContent": "={{ $json.text }}",
+        "additionalFields": {
+          "bodyContentType": "Text",
+          "saveToSentItems": true
+        }
+      },
+      "id": "send",
+      "name": "Send task document",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        220
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_OUTLOOK_CREDENTIAL_ID",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Reckons document webhook": {
+      "main": [
+        [
+          {
+            "node": "Format email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format email": {
+      "main": [
+        [
+          {
+            "node": "Only if there is a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Only if there is a document": {
+      "main": [
+        [
+          {
+            "node": "Send task document",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

@@ -15,6 +15,8 @@
  *   goal        what to do, in words a harness can act on
  *   tier        script | local-agent | frontier — route to the CHEAPEST competent harness
  *   harness     a PREFERENCE, not a requirement ('any' is the default and usually right)
+ *   effect      read-only | queue-write | source-write | external-read | external-write. The
+ *               execution runner uses this declaration as an explicit authority boundary.
  *   done-when   how a MACHINE will know it worked. Without this a task is a wish, and its
  *               completion is an agent's opinion of its own work — an unverifiable claim,
  *               made by the party it benefits.
@@ -26,7 +28,27 @@
 import type { Statement } from './types';
 
 export type Tier = 'script' | 'local-agent' | 'frontier';
-export type TaskState = 'open' | 'claimed' | 'done' | 'failed';
+/**
+ * `proposed` is the state of a task NOBODY HAS AUTHORED YET — it was read out of a dictated note
+ * by `rdf/note-intent.ts` and carries only a goal in the speaker's own words. It is deliberately
+ * not `open`: `open` means a human wrote this task down and meant it, and a sentence said into a
+ * ring while walking is not that. A proposed task can never be assigned (see `blockedReason`)
+ * until a person gives it the two things a transcript cannot contain — the effects it is allowed
+ * to have, and how a machine will know it worked.
+ */
+export type TaskState = 'proposed' | 'open' | 'claimed' | 'waiting' | 'done' | 'failed';
+export const TASK_EFFECTS = [
+  'read-only',
+  'queue-write',
+  'source-write',
+  'external-read',
+  'external-write',
+] as const;
+export type TaskEffect = (typeof TASK_EFFECTS)[number];
+
+export function isTaskEffect(value: string): value is TaskEffect {
+  return (TASK_EFFECTS as readonly string[]).includes(value);
+}
 
 /** How long a claim survives without a heartbeat. A dead runner must give the task back. */
 export const DEFAULT_LEASE_MS = 30 * 60 * 1000; // 30 minutes
@@ -37,11 +59,29 @@ export interface AgentTask {
   tier: Tier;
   /** Preferred harness ('any' = whatever is cheapest and competent). */
   harness: string;
+  /** Effects the task is allowed to have. An executor must require an explicit allowlist. */
+  effects: TaskEffect[];
+  /** Invalid graph declarations are retained here so a typo is visible and blocks execution.
+   * Keeping this separate preserves the existing typed `effects` API for callers that only act
+   * on known capabilities. */
+  unknownEffects?: string[];
+  /** Optional compact graph query the runner fetches through MCP before invoking the task. */
+  contextQuery?: string;
+  contextBudget?: number;
   /** The local model this task loads (e.g. "qwen3-coder", "qwen2.5vl"). Drives model BATCHING:
    *  Ollama + RAM cannot switch models cheaply, so the runner keeps same-model tasks together. */
   model?: string;
   /** Machine-checkable acceptance criterion. A task without one must never be assigned. */
   doneWhen?: string;
+  /**
+   * The shell command a script-tier task runs.
+   *
+   * Read here so the app's task model and `scripts/agent/runner.ts` describe the SAME task — the
+   * runner has always read kpred:command and this parser never did, so anything rendering a task
+   * from the app could not show what it would actually execute. That gap is exactly how a
+   * reviewer approves something they cannot see.
+   */
+  command?: string;
   /** IRIs of questions/partial-facts/tasks that must resolve first. */
   blockedBy: string[];
   /** Epoch ms. A task is not runnable before this. */
@@ -82,13 +122,20 @@ export function parseTasks(statements: Statement[]): AgentTask[] {
     const tierRaw = one('tier') ?? 'frontier';
     const num = (v?: string) => (v && /^\d+$/.test(v) ? Number(v) : undefined);
 
+    const declaredEffects = many('effect');
+
     tasks.push({
       iri,
       goal: one('goal') ?? '',
       tier: isTier(tierRaw) ? tierRaw : 'frontier',
       harness: one('harness') ?? 'any',
+      effects: declaredEffects.filter(isTaskEffect),
+      unknownEffects: declaredEffects.filter((effect) => !isTaskEffect(effect)),
+      contextQuery: one('context-query'),
+      contextBudget: num(one('context-budget')),
       model: one('model'),
       doneWhen: one('done-when'),
+      command: one('command'),
       blockedBy: many('blocked-by'),
       dueAt: num(one('due-at')),
       claimedBy: one('claimed-by'),
@@ -113,7 +160,29 @@ export function blockedReason(
   opts: { now: number; resolved: (iri: string) => boolean },
 ): string | null {
   if (task.state === 'done') return 'already done';
+  // Belt and braces over the effect and done-when refusals below, which a dictated task already
+  // fails twice. Stated separately because the REASON differs and a queue should say so: this one
+  // has not been authored by a person at all, and no field added to it later changes that until
+  // somebody moves it out of `proposed`.
+  if (task.state === 'proposed') {
+    return 'proposed from a dictated note — nobody has yet declared its effects or how it is checked';
+  }
   if (!task.goal.trim()) return 'no goal — there is nothing to do';
+  // Preserve and reject unknown declarations instead of filtering them into apparent safety.
+  // The defensive scan of `effects` also protects JavaScript callers and deserialized objects
+  // that bypass TypeScript's TaskEffect union. Treat a missing runtime field like an empty list
+  // so an older serialized task is refused clearly rather than crashing the scheduler.
+  const effects = task.effects ?? [];
+  const unknownEffects = [
+    ...(task.unknownEffects ?? []),
+    ...effects.filter((effect) => !isTaskEffect(effect)),
+  ];
+  if (effects.length + unknownEffects.length === 0) {
+    return 'no effect declaration — the runner cannot safely choose an authority boundary for this task';
+  }
+  if (unknownEffects.length > 0) {
+    return `unknown effect declaration: ${[...new Set(unknownEffects)].join(', ')}`;
+  }
   if (!task.doneWhen?.trim()) {
     return 'no done-when — a task without a machine-checkable acceptance criterion is a wish, not a task';
   }

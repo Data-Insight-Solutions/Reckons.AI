@@ -26,6 +26,7 @@
  *   npx tsx scripts/offline/server-health.ts --json      machine-readable
  */
 import { existsSync, appendFileSync, readFileSync } from 'fs';
+import { queueFindings } from './pending-queue.ts';
 import { execFileSync } from 'child_process';
 
 const PENDING = 'reckons-workspace/knowledge.pending.jsonl';
@@ -202,28 +203,25 @@ if (JSON_OUT) {
 }
 
 if (PENDING_OUT && problems.length) {
-  const now = new Date().toISOString();
-  const existing = existsSync(PENDING) ? readFileSync(PENDING, 'utf8') : '';
-  let queued = 0;
-  for (const f of problems) {
-    const question = `[server-health/${f.host}/${f.check}] ${f.msg}`;
-    if (existing.includes(JSON.stringify(question).slice(1, -1))) continue;
-    appendFileSync(PENDING, JSON.stringify({
+  // Recomputing: each run probes every server, so a host that has come back up should drop out of
+  // the queue instead of sitting there implying it is still down.
+  const { queued, superseded } = queueFindings(
+    problems.map((f) => ({
       subject: f.host === 'n8n' ? 'urn:kbase:concept/n8n-cloud-sync' : 'urn:kbase:concept/int-indico',
       predicate: `${KPRED}server-health`,
-      question,
+      // The probe already ran and already knows the condition — filing it as an object-less
+      // question asked a human to answer something the script was holding the answer to.
+      object: `${f.host}: ${f.check}`,
+      note: `[server-health/${f.host}/${f.check}] ${f.msg}`,
       // DEFECT, not drift: the graph's claim about these servers is correct — the world is
       // what is broken, so the fix lands in the infrastructure and never in the graph.
       findingClass: 'defect',
-      type: 'drift-warning',
-      agent: 'offline:server-health',
-      priority: f.level === 'error' ? 'high' : 'medium',
-      addedAt: now,
-      addedByMcp: true,
-    }) + '\n');
-    queued++;
-  }
-  console.log(`\nqueued ${queued} finding(s) for review`);
+      type: 'drift-warning' as const,
+      priority: f.level === 'error' ? ('high' as const) : ('medium' as const),
+    })),
+    { agent: 'offline:server-health', path: PENDING, recomputes: true },
+  );
+  console.log(`${queued} finding(s) queued${superseded ? `, ${superseded} recovered since last run` : ''} → ${PENDING}`);
 }
 
 // Deliberately exit 0 on findings: this reports drift for a human, it does not gate CI.

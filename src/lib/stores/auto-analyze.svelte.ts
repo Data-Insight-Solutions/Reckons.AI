@@ -6,6 +6,7 @@
  * so they flow through the normal review pipeline.
  */
 import { v4 as uuid } from 'uuid';
+import { ollamaModelFor } from '../integrations/llm/model-for-task';
 import { settings } from './settings.svelte';
 import { addSource, addStatements, confirmedStatements, onAfterAddSource } from './kb.svelte';
 import { typeMap } from './entity-types.svelte';
@@ -108,7 +109,7 @@ export async function runAndStoreAnalysis(trigger: AnalysisTrigger = 'manual', a
   const model =
     provider === 'openai'     ? s.openaiModel :
     provider === 'gemini'     ? s.geminiModel :
-    provider === 'ollama'     ? s.ollamaModel :
+    provider === 'ollama'     ? ollamaModelFor('analyze', s) :
     provider === 'openrouter' ? s.openrouterModel :
     provider === 'reckons'    ? (s.reckonsModel ?? '@cf/meta/llama-3.1-8b-instruct') :
     s.claudeModel;

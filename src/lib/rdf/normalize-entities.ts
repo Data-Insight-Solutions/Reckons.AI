@@ -15,7 +15,7 @@
 
 import { embedMany, cosine } from '../embed';
 import type { Statement } from './types';
-import { labelFromIRI } from './semantic-diff';
+import { labelFromIRI, arePredicateLabelsOpposed } from './semantic-diff';
 
 /** Subject IRIs with cosine >= this are treated as the same entity. */
 const SUBJECT_MATCH_THRESHOLD = 0.90;
@@ -210,6 +210,20 @@ async function _normalize(
         let bestIRI = '';
 
         for (let ei = 0; ei < existingPredicateIRIs.length; ei++) {
+          // OPPOSED PREDICATES ARE NEVER CANDIDATES, AT ANY SIMILARITY.
+          //
+          // This veto is applied while choosing the best match, not after, because skipping it
+          // afterwards would let an antonym shadow a legitimate synonym ranked just below it.
+          //
+          // It sits on the WRITE path, which had no such guard until 2026-08-15: the equivalent
+          // check in semantic-diff.ts was module-private and protected only the advisory diff.
+          // Measured by tests/bench/run-predicate-vocab-bench.ts, e5-small-v2 scores
+          // has-predator/has-prey at 0.9322 and has-min-weight/has-max-weight at 0.9330 — both
+          // comfortably above this threshold. The default model (bge-small) does not, so nothing
+          // is being fixed retroactively here; the guard exists so that changing the embedding
+          // model cannot silently start reversing the meaning of facts.
+          if (arePredicateLabelsOpposed(newPredicateIRIs[idx], existingPredicateIRIs[ei])) continue;
+
           const sim = cosine(unmatchedPredVecs[ui], existingPredVecs[ei]);
           if (sim > bestSim) {
             bestSim = sim;

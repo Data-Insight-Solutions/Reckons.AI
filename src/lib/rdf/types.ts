@@ -39,6 +39,8 @@ export type Source = {
   extractionBackend?: string;
   /** Exact model ID used for triple extraction (e.g. 'claude-opus-4-7', 'Xenova/Qwen2.5-0.5B-Instruct') */
   extractionModel?: string;
+  /** Latest local-only execution record for this source's ingest. Never exported as source text. */
+  latestExtractionRunId?: string;
   /** Analysis-run metadata (present when kind === 'analysis') */
   analysisModel?: string;
   analysisProvider?: string;
@@ -170,12 +172,28 @@ export type Statement = {
 
   /** Reference to Source for fast joins */
   sourceId: string;
+  /** Execution record that proposed this statement, when it came through the F136 pipeline. */
+  extractionRunId?: string;
   /** Model confidence in [0,1] from the extractor */
   confidence: number;
   /** Statement this one supersedes (if a refinement of an earlier one) */
   supersedes?: string;
   /** Human-readable rendering produced at extraction time */
   gloss?: string;
+  /**
+   * An altitude set BY HAND on this one fact, overriding what the classifier reads from its
+   * predicate (Matt, 2026-08-28: "an easy way to adjust the depth/altitude of the new fact").
+   *
+   * Two levels of correction exist and they answer different questions. `kpred:altitude` on a
+   * PREDICATE fixes the class — every fact using that word, forever, which is the high-leverage
+   * repair. This field fixes THIS FACT, for when the predicate is usually right and this one use
+   * of it is not. Prefer the predicate-level fix where it applies; a graph full of per-fact
+   * overrides is a predicate nobody classified.
+   *
+   * The union is duplicated here rather than imported because `fact-altitude.ts` imports Statement
+   * from this module; `Altitude` there is derived FROM this field, so the two cannot drift.
+   */
+  altitude?: 'decision' | 'judgment' | 'evidence' | 'record' | 'log';
   /** Verbatim source sentence/phrase the triple was derived from */
   excerpt?: string;
   /**
@@ -225,6 +243,14 @@ export type Statement = {
    */
   proposedBy?: string;
   /**
+   * The deterministic check that settled this fact without a human, if one did.
+   *
+   * Auto-acceptance is only legitimate when it is auditable and reversible, so the verifier names
+   * itself on the statement. A confirmed fact carrying this can be found, questioned, and undone;
+   * one that silently appeared could not be.
+   */
+  verifiedBy?: string;
+  /**
    * What KIND of wrong this finding reports — see rdf/finding-class.ts.
    *
    *   form    malformed artifact; a parser or shape settles it, safe to block a build on
@@ -259,9 +285,113 @@ export type Statement = {
    * F84 RBAC daisy-chain, where each hop is authorized and provenance-stamped.
    */
   hopChain?: string[];
+  /**
+   * The cascade decision that settled this fact (F139.1), when ONE answer settled a whole batch.
+   *
+   * Points at the user's own recorded statement, so fifty facts settled by one answer can all be
+   * traced to it — and reversed from it. A batch settle without this would be indistinguishable from
+   * fifty individually reviewed facts, which is the failure the handoff names exactly: a settled
+   * fact whose settler is unknown is worse than an unsettled one, because it looks reviewed.
+   */
+  settledByDecision?: string;
+  /**
+   * Who settled it, through which channel, and when. Set on the recorded decision itself.
+   *
+   * Distinct from `verifiedBy`, which names a deterministic check that settled a fact WITHOUT a
+   * human. This names the human and the channel they used, which is what keeps "Matt settling
+   * through the CLI" distinguishable from "an agent settling its own proposal" (F52).
+   */
+  settledBy?: { actor: string; channel: string; at: number };
+
   /** Created / updated timestamps */
   createdAt: number;
   updatedAt: number;
+};
+
+/**
+ * F136.1's first execution boundary. These are the stages the existing ingest path can
+ * truthfully distinguish today. `extract` remains the provider invocation plus parser boundary;
+ * `validate` makes candidate-shape losses and an empty usable result explicit before grounding.
+ * A later version may still split `extract` into separate invoke and parse stages without
+ * rewriting historic runs.
+ */
+export type ExtractionStageName =
+  | 'route'
+  | 'extract'
+  | 'validate'
+  | 'ground'
+  | 'normalize'
+  | 'type'
+  | 'archive'
+  | 'diff'
+  | 'persist';
+
+export type ExtractionStageStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'skipped';
+export type ExtractionRunStatus = 'running' | 'succeeded' | 'failed' | 'cancelled';
+export type ExtractionLocality = 'browser' | 'local-network' | 'third-party' | 'manual' | 'unknown';
+
+export type ExtractionStageRecord = {
+  name: ExtractionStageName;
+  status: ExtractionStageStatus;
+  startedAt?: number;
+  endedAt?: number;
+  detail?: string;
+};
+
+/** One real provider/manual attempt; a successful fallback never erases an earlier failure. */
+export type ExtractionRouteAttempt = {
+  id: string;
+  backend: string;
+  model: string;
+  locality: ExtractionLocality;
+  startedAt: number;
+  endedAt?: number;
+  status: 'running' | 'succeeded' | 'failed' | 'skipped';
+  error?: string;
+};
+
+export type ExtractionRouteDecision = {
+  /** Deliberately a versioned name even while routing remains today's configured backend rule. */
+  policyVersion: string;
+  selectedBackend: string;
+  selectedModel: string;
+  locality: ExtractionLocality;
+  reason: string;
+  candidates: Array<{ backend: string; model: string; locality: ExtractionLocality }>;
+  attempts: ExtractionRouteAttempt[];
+};
+
+/**
+ * Local execution/provenance record for a single ingestion attempt. It stores hashes, ids,
+ * counters and timings — never raw source text, prompts, responses, or secrets.
+ */
+export type ExtractionRun = {
+  id: string;
+  sourceId: string;
+  sourceHash: string;
+  pipelineVersion: string;
+  promptId: string;
+  schemaId?: string;
+  startedAt: number;
+  endedAt?: number;
+  status: ExtractionRunStatus;
+  route: ExtractionRouteDecision;
+  stages: ExtractionStageRecord[];
+  candidateStatementCount?: number;
+  outputStatementIds: string[];
+  validationCounts?: {
+    /** Every array entry seen at a parser boundary, where that boundary can expose it. */
+    candidates?: number;
+    /** Candidates accepted by the typed in-memory guard before Statement conversion. */
+    accepted?: number;
+    /** Entries rejected by the parser before typed validation. */
+    parserRejected?: number;
+    /** Entries rejected by the typed in-memory guard. */
+    rejected?: number;
+    grounded: number;
+    ungrounded: number;
+  };
+  failure?: { stage: ExtractionStageName; message: string; at: number };
 };
 
 /* ---------- predicate namespaces ---------- */
@@ -289,12 +419,28 @@ export const PROV_PREFIX = 'http://www.w3.org/ns/prov#';
 /** Statement-reification subjects (urn:kbase:stmt/{id}) — the id-nodes provenance hangs off. */
 export const STMT_PREFIX = 'urn:kbase:stmt/';
 
-/** Predicates whose object is a presentation image (2D icon / preview photo).
+/** Automated test/crawl telemetry (button-crawl findings, route probes).
+ *
+ * These are OBSERVATIONS ABOUT A TEST RUN, not knowledge the graph is about. Their objects are UI
+ * strings scraped off a page — a button captioned "bookmarked (0)", or a select chevron whose whole
+ * accessible name is "▾". Rendered as edges, each such caption becomes a literal node, and each
+ * crawled route becomes a concept node, so a single crawl silently populates the canvas with
+ * entities nothing can ever be said about. Same failure mode as PROV reification (kb:graph-legibility,
+ * F83), arriving through a different door.
+ *
+ * They remain fully reviewable — the review LIST is not filtered by this, only the graph view — so
+ * a finding is still a decision you rule on, just not a thing the graph pretends to know about. */
+export const TEST_TELEMETRY_PREFIX = 'urn:reckons:test/';
+
+/** Predicates whose object is a presentation asset (2D icon / photo / video).
  * They're consumed directly by the icon/preview maps; as edges they'd render
- * the raw data-URI or URL as a junk literal node, so they're metadata here. */
+ * the raw data-URI or URL as a junk literal node, so they're metadata here.
+ * GIF and GLB references already live under urn:kbase:meta/* and are covered by
+ * the namespace check in isMetaPredicate(). */
 export const PRESENTATION_IMAGE_PREDICATES = new Set([
   'urn:kbase:predicate/icon2d',
   'urn:kbase:predicate/photo',
+  'urn:kbase:predicate/video',
   // Provenance ABOUT a photo — who made it, where to check the licence. Belongs in the detail
   // panel beside the image, never as an edge to a literal node holding a credit line or a URL.
   'urn:kbase:predicate/photo-credit',
@@ -336,6 +482,8 @@ export function isMetaPredicate(predicateIri: string): boolean {
   // PROV-O provenance is accountability metadata, not a semantic edge — otherwise the graph fills
   // with UUID statement-nodes joined by "wasDerivedFrom" (kb:graph-legibility, F83).
   if (predicateIri.startsWith(PROV_PREFIX)) return true;
+  // Test/crawl telemetry: findings about a button or route, not facts about the world.
+  if (predicateIri.startsWith(TEST_TELEMETRY_PREFIX)) return true;
   return false;
 }
 

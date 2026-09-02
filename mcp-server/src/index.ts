@@ -29,6 +29,7 @@ import { ollamaEnabled, OLLAMA_DISABLED_MESSAGE, OLLAMA_MODEL } from './ollama-c
 import { extractTriplesLocally, summarizeLocally } from './local-llm.js';
 import { entityToMarkdown } from './entity-markdown.js';
 import { validateToolArgs } from './validate-args.js';
+import { appendPendingLines } from './pending-file.js';
 
 /**
  * Core usage instructions returned on `initialize` — MCP clients inject these
@@ -48,7 +49,7 @@ KBs (kb_list_kbs to list; query with kb_search / kb_get_entity / kb_compress):
 BEFORE YOU ACT (do not skip):
 - Before editing a TTL graph, kb_get_entity or kb_compress a nearby entity to learn the EXACT prefixes, namespaces, and asset paths. Do not invent them.
 - Before starting a feature, kb_check_plan / kb_search the roadmap — is it planned, in progress, or done?
-- For context, prefer kb_compress(query) over reading raw files (~60-70% fewer tokens, better grounding).
+- For context, prefer kb_compress(query) over reading raw files: it returns a relevant SLICE instead of the whole ~116k-token graph, which is where the saving comes from. The compact encoding adds ~18-29% on top (measured; see compress.ts). Better grounding either way.
 
 HARD CONVENTIONS (getting these wrong breaks the graph):
 - Namespace is urn:kbase: (NOT urn:kabase:). Prefixes: kb: (concept/), kpred: (predicate/), kmeta: (meta/), ktype: (type/) — DECLARE every prefix you use.
@@ -510,7 +511,7 @@ function handleKbMerge(params: { source: string; target: string; write_pending?:
     const pendingPath = kbFolder
       ? join(kbFolder, 'pending.jsonl')
       : kbPath.replace(/\.ttl$/, '.pending.jsonl');
-    for (const e of entries) appendFileSync(pendingPath, e + '\n', 'utf8');
+    appendPendingLines(pendingPath, entries);
     lines.push(`${entries.length} proposal(s) queued → ${pendingPath}`);
     lines.push(`Nothing was written to a graph. Accept or reject them in the Reckons.AI review queue.`);
   } else {
@@ -582,11 +583,11 @@ function handleKbAddNote(params: AddNoteParams): object {
   const kbFolder = kb.getKbFolderPath(params.kb);
   if (kbFolder) {
     const pendingPath = join(kbFolder, 'pending.jsonl');
-    appendFileSync(pendingPath, entry + '\n', 'utf8');
+    appendPendingLines(pendingPath, [entry]);
   } else {
     // Legacy: write next to the .ttl file
     const pendingPath = kbPath.replace(/\.ttl$/, '.pending.jsonl');
-    appendFileSync(pendingPath, entry + '\n', 'utf8');
+    appendPendingLines(pendingPath, [entry]);
   }
 
   return {

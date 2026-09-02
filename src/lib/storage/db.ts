@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie';
-import type { Statement, Source, TurtleSettings } from '../rdf/types';
+import { resolveKbParam } from './kb-registry';
+import type { ExtractionRun, Statement, Source, TurtleSettings } from '../rdf/types';
 import type { ChangeLogEntry, MergeDecision, TrustEvent } from './types';
 import type { HighlightSettings } from '../../extension/types';
 
@@ -39,6 +40,23 @@ export type SettingsRecord = {
   diffSummaryBackend?: 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'openrouter' | 'chrome-ai' | 'reckons';
   mergeAnalysisBackend?: 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'openrouter' | 'chrome-ai' | 'reckons';
   ollamaModel: string;
+  /**
+   * Per-task Ollama model overrides — fall back to `ollamaModel` when absent.
+   *
+   * The backend was already per-task (`ingestBackend` and friends) and WASM already had per-task
+   * models, but every Ollama task shared ONE model. That is how extraction ended up running on
+   * `qwen3-coder`: a code model chosen for code work, silently also doing prose extraction, where
+   * it collapsed whole sentences into single entity slugs. Different tasks want genuinely
+   * different models — a coder for code, a reasoning model for extraction and partitioning, a
+   * fast small one for chat — so the choice has to be expressible.
+   *
+   * Resolve these through `ollamaModelFor(task, settings)`, never by reading them directly.
+   */
+  ollamaIngestModel?: string;
+  ollamaAnalyzeModel?: string;
+  ollamaChatModel?: string;
+  ollamaDiffSummaryModel?: string;
+  ollamaMergeAnalysisModel?: string;
   ollamaBaseUrl: string;
   /**
    * Ollama extraction prompt-variant override. 'auto' (default when unset)
@@ -127,8 +145,25 @@ export type SettingsRecord = {
    * can read bigger by default. Default 96. */
   nodePreviewSize?: number;
   /** Auto-expand a node's asset to the large view whenever it becomes selected —
-   * e.g. as a story/explore walkthrough moves node to node. Off by default. */
+   * e.g. as a story/explore walkthrough moves node to node. Off by default.
+   * @deprecated superseded by previewMode; still read for migration. */
   autoExpandAssets?: boolean;
+  /**
+   * How node assets behave — ONE mode, because the old pair of independent booleans could be set
+   * to states that contradict each other. `alwaysShowPreviews` spreads every thumbnail out so they
+   * are all visible, while `autoExpandAssets` blows the selected one up to cover most of the
+   * graph; both on meant the large overlay hid the very collage the other option had just
+   * arranged. Matt, 2026-08-14: "maybe we have that and all previews together in the same
+   * dropdown? Previews dropdown with manual, auto-expand and expand all".
+   *
+   *   manual — click a thumbnail to expand it (previews show on selected/highlighted nodes only)
+   *   auto   — the selected node's asset opens large automatically as you move node to node
+   *   all    — every node shows its preview at once, and the layout makes room so all are visible
+   *
+   * Undefined means "not migrated yet"; previewModeFrom() derives it from the two legacy booleans
+   * so an existing setting keeps working rather than silently resetting to the default.
+   */
+  previewMode?: 'manual' | 'auto' | 'all';
   /** Overall UI text scale. 'sm' = 14px, 'md' = 16px (default), 'lg' = 18px root font. */
   uiScale?: 'sm' | 'md' | 'lg';
   /**
@@ -227,6 +262,13 @@ export const DEFAULT_SETTINGS: SettingsRecord = {
   analyzeBackend: (import.meta.env.VITE_ANALYZE_BACKEND as SettingsRecord['analyzeBackend']) || undefined,
   chatBackend: (import.meta.env.VITE_CHAT_BACKEND as SettingsRecord['chatBackend']) || undefined,
   ollamaModel: import.meta.env.VITE_OLLAMA_MODEL ?? 'llama3.2',
+  // Unset by default: absent means "use ollamaModel", so an existing install keeps its behaviour
+  // exactly until someone deliberately splits a task off.
+  ollamaIngestModel: import.meta.env.VITE_OLLAMA_INGEST_MODEL || undefined,
+  ollamaAnalyzeModel: import.meta.env.VITE_OLLAMA_ANALYZE_MODEL || undefined,
+  ollamaChatModel: import.meta.env.VITE_OLLAMA_CHAT_MODEL || undefined,
+  ollamaDiffSummaryModel: import.meta.env.VITE_OLLAMA_DIFF_SUMMARY_MODEL || undefined,
+  ollamaMergeAnalysisModel: import.meta.env.VITE_OLLAMA_MERGE_ANALYSIS_MODEL || undefined,
   ollamaBaseUrl: import.meta.env.VITE_OLLAMA_BASE_URL ?? 'http://localhost:11434',
   preferLocal: import.meta.env.VITE_PREFER_LOCAL === 'true' || undefined,
   openrouterApiKey: import.meta.env.VITE_OPENROUTER_API_KEY || undefined,
@@ -258,11 +300,13 @@ export const DEFAULT_SETTINGS: SettingsRecord = {
 
 function resolveDbName(): string {
   if (typeof window === 'undefined') return 'kbase';
-  // Per-tab KB: check URL ?kb= param, then sessionStorage, then localStorage
+  // Per-tab KB: check URL ?kb= param, then sessionStorage, then localStorage.
+  // Resolved through the SAME rule the registry uses (id, else graph name), or this would open a
+  // different database than getCurrentKbId() reports — the two must never disagree.
   try {
     const url = new URL(window.location.href);
     const fromUrl = url.searchParams.get('kb');
-    if (fromUrl) return fromUrl;
+    if (fromUrl) return resolveKbParam(fromUrl);
   } catch { /* ignore */ }
   return sessionStorage.getItem('sessionKbId')
     ?? localStorage.getItem('currentKbId')
@@ -317,6 +361,7 @@ export class KBaseDB extends Dexie {
   entityGifs!: Table<EntityGifRow, string>;
   icon2dOverrides!: Table<Icon2dOverrideRow, string>;
   kbSnapshots!: Table<KbSnapshotRow, string>;
+  extractionRuns!: Table<ExtractionRun, string>;
 
   constructor(name?: string) {
     super(name ?? resolveDbName());
@@ -390,6 +435,22 @@ export class KBaseDB extends Dexie {
       entityGifs: 'id',
       icon2dOverrides: 'id',
       kbSnapshots: 'id, kbId, createdAt'
+    });
+    // v8: F136.1's local execution ledger. Additive only: historic sources/statements keep
+    // working unchanged, while each new ingest can link to an inspectable run record.
+    this.version(8).stores({
+      sources: 'id, ingestedAt, kind, trustLevel',
+      statements: 'id, sourceId, status, [s.value+p.value], createdAt',
+      settings: 'key',
+      changelog: '++id, timestamp, action, statementId, sourceId, entityKey',
+      mergeDecisions: '++id, timestamp, entityKeyA, entityKeyB',
+      trustEvents: '++id, timestamp, sourceId',
+      glbOverrides: 'id',
+      workspace: 'id',
+      entityGifs: 'id',
+      icon2dOverrides: 'id',
+      kbSnapshots: 'id, kbId, createdAt',
+      extractionRuns: 'id, sourceId, startedAt, status'
     });
   }
 }
@@ -479,7 +540,18 @@ export async function saveSettings(patch: Partial<SettingsRecord>): Promise<void
       diffSummaryBackend: m.diffSummaryBackend,
       mergeAnalysisBackend: m.mergeAnalysisBackend,
       ollamaModel: m.ollamaModel,
+      ollamaIngestModel: m.ollamaIngestModel,
+      ollamaAnalyzeModel: m.ollamaAnalyzeModel,
+      ollamaChatModel: m.ollamaChatModel,
+      ollamaDiffSummaryModel: m.ollamaDiffSummaryModel,
+      ollamaMergeAnalysisModel: m.ollamaMergeAnalysisModel,
       ollamaBaseUrl: m.ollamaBaseUrl,
+      // Persisted like every other backend preference. It was missing from this allowlist, so the
+      // settings form wrote it, the in-memory store showed it set, and `saveSettings` silently
+      // dropped it on the way to Dexie — the checkbox came back unticked on every reload and the
+      // prefer-local routing in prefer-local.ts could never actually engage. An allowlist that
+      // omits a field fails silently by construction; add new SettingsRecord fields here too.
+      preferLocal: m.preferLocal,
       ollamaPromptMode: m.ollamaPromptMode,
       ollamaStructuredExtraction: m.ollamaStructuredExtraction,
       embeddingThreshold: m.embeddingThreshold,
@@ -507,6 +579,7 @@ export async function saveSettings(patch: Partial<SettingsRecord>): Promise<void
       nodeLabelFontSize: m.nodeLabelFontSize,
       prefer2D: m.prefer2D,
       alwaysShowPreviews: m.alwaysShowPreviews,
+      previewMode: m.previewMode,
       uiScale: m.uiScale,
       autoSaveEnabled: m.autoSaveEnabled,
       workspaceName: m.workspaceName,
@@ -516,6 +589,26 @@ export async function saveSettings(patch: Partial<SettingsRecord>): Promise<void
       indicoApiToken: m.indicoApiToken,
       indicoCategoryId: m.indicoCategoryId,
       indicoLastSync: m.indicoLastSync,
+      // Declared on SettingsRecord but absent from this list until now, so each was written to the
+      // in-memory store, shown as set in the UI, and dropped before Dexie. Found by diffing the
+      // type against this object after `preferLocal` turned out to be missing the same way; a
+      // credential or model choice that silently fails to persist is indistinguishable from a
+      // form that does not work.
+      embeddingModel: m.embeddingModel,
+      analyzeGuidance: m.analyzeGuidance,
+      analyzePrompts: m.analyzePrompts
+        ? JSON.parse(JSON.stringify(m.analyzePrompts))
+        : undefined,
+      kbStory: m.kbStory,
+      nodePreviewSize: m.nodePreviewSize,
+      autoExpandAssets: m.autoExpandAssets,
+      tavilyApiKey: m.tavilyApiKey,
+      githubToken: m.githubToken,
+      autoRefreshOnOpen: m.autoRefreshOnOpen,
+      autoRefreshIntervalMinutes: m.autoRefreshIntervalMinutes,
+      showTutorialHints: m.showTutorialHints,
+      n8nBaseUrl: m.n8nBaseUrl,
+      n8nNotifyOnReview: m.n8nNotifyOnReview,
       turtleSettings: JSON.parse(JSON.stringify(m.turtleSettings))
     };
     await db.settings.put(toSave);

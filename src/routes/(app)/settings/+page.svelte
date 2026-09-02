@@ -24,12 +24,16 @@
   import Select from '$lib/components/ui/Select.svelte';
   import { Dialog } from 'bits-ui';
   import { DEFAULT_SETTINGS, getSettings, getUserDefaults, saveUserDefaults, clearUserDefaults, type SettingsRecord } from '$lib/storage/db';
+  import { previewModeFrom, legacyFlagsFor, PREVIEW_MODES, PREVIEW_MODE_LABELS, PREVIEW_MODE_HINTS } from '$lib/storage/preview-mode';
   import {
     workspaceName, workspaceState, supportsWorkspace,
     pickWorkspace, reconnectWorkspace, clearWorkspace, loadWorkspace,
     syncAllKbs, listKbFolders, lastSyncTime, syncedKbCount,
     importKbsFromWorkspace
   } from '$lib/stores/workspace.svelte';
+
+  /** Effective preview mode, migrated from the legacy booleans when unset. */
+  const previewMode = $derived(previewModeFrom(settings()));
 
   let key = $state(settings().claudeApiKey ?? '');
   let openaiKey = $state(settings().openaiApiKey ?? '');
@@ -69,6 +73,11 @@
   let openaiModel = $state(settings().openaiModel);
   let geminiModel = $state(settings().geminiModel);
   let ollamaModel = $state(settings().ollamaModel ?? 'llama3.2');
+  // Per-task overrides. Empty string means "use the general model above" — the resolver
+  // (ollamaModelFor) treats blank as unset, so an empty box is not a broken setting.
+  let ollamaIngestModel = $state(settings().ollamaIngestModel ?? '');
+  let ollamaAnalyzeModel = $state(settings().ollamaAnalyzeModel ?? '');
+  let ollamaChatModel = $state(settings().ollamaChatModel ?? '');
   let ollamaBaseUrl = $state(settings().ollamaBaseUrl ?? 'http://localhost:11434');
   let preferLocal = $state(settings().preferLocal ?? false);
   let wasmModel = $state(settings().wasmModel);
@@ -162,6 +171,9 @@
       openaiModel,
       geminiModel,
       ollamaModel,
+      ollamaIngestModel: ollamaIngestModel.trim() || undefined,
+      ollamaAnalyzeModel: ollamaAnalyzeModel.trim() || undefined,
+      ollamaChatModel: ollamaChatModel.trim() || undefined,
       ollamaBaseUrl: ollamaBaseUrl.trim() || 'http://localhost:11434',
       preferLocal: preferLocal || undefined,
       wasmModel,
@@ -419,6 +431,9 @@
     openaiModel            = d.openaiModel;
     geminiModel            = d.geminiModel;
     ollamaModel            = d.ollamaModel;
+    ollamaIngestModel      = d.ollamaIngestModel ?? '';
+    ollamaAnalyzeModel     = d.ollamaAnalyzeModel ?? '';
+    ollamaChatModel        = d.ollamaChatModel ?? '';
     ollamaBaseUrl          = d.ollamaBaseUrl;
     preferLocal            = d.preferLocal            ?? false;
     wasmModel              = d.wasmModel;
@@ -478,6 +493,9 @@
       openaiModel: ud.openaiModel,
       geminiModel: ud.geminiModel,
       ollamaModel: ud.ollamaModel,
+      ollamaIngestModel: ud.ollamaIngestModel,
+      ollamaAnalyzeModel: ud.ollamaAnalyzeModel,
+      ollamaChatModel: ud.ollamaChatModel,
       ollamaBaseUrl: ud.ollamaBaseUrl,
       preferLocal: ud.preferLocal,
       wasmModel: ud.wasmModel,
@@ -511,6 +529,9 @@
     openaiModel                = ud.openaiModel;
     geminiModel                = ud.geminiModel;
     ollamaModel                = ud.ollamaModel;
+    ollamaIngestModel          = ud.ollamaIngestModel ?? '';
+    ollamaAnalyzeModel         = ud.ollamaAnalyzeModel ?? '';
+    ollamaChatModel            = ud.ollamaChatModel ?? '';
     ollamaBaseUrl              = ud.ollamaBaseUrl;
     preferLocal                = ud.preferLocal              ?? false;
     wasmModel                  = ud.wasmModel;
@@ -696,7 +717,12 @@
 
 <header class="head">
   <p class="kicker mono">settings</p>
-  <h1>system configuration</h1>
+  <div class="settings-heading-row">
+    <h1>system configuration</h1>
+    <div class="autosave-indicator" class:autosave-pulse={savedPulse} role="status">
+      {savedPulse ? 'saved ✓' : 'auto-save on'}
+    </div>
+  </div>
 
   <div class="settings-nav">
     <a href="/settings" class:active={!page.url.pathname.includes('/turtle') && !page.url.pathname.includes('/entity-types') && !page.url.pathname.includes('/integrations') && !page.url.pathname.includes('/publishing')} class="nav-link">backends</a>
@@ -958,6 +984,27 @@
     <span class="lbl mono">model</span>
     <input type="text" bind:value={ollamaModel} placeholder="llama3.2" />
   </label>
+
+  <p class="hint">
+    Per-task overrides — leave blank to use the model above. Different tasks genuinely want
+    different models: a code model extracting prose collapses whole sentences into one entity.
+    Benchmarked extraction (F1 vs golden Opus triples, 2026-08-27):
+    <code>llama3.2:3b</code> 47.4 · <code>devstral-small-2</code> 47.1 ·
+    <code>gemma3:27b</code> 41.9 · <code>qwen3-coder</code> 30.4 · <code>qwen3.6</code> 30.3.
+    One fixture, 18 triples — trust the 15-point gaps, not the 1-point ones.
+  </p>
+  <label class="field">
+    <span class="lbl mono">ingest model</span>
+    <input type="text" bind:value={ollamaIngestModel} placeholder="(uses model above)" />
+  </label>
+  <label class="field">
+    <span class="lbl mono">analyze model</span>
+    <input type="text" bind:value={ollamaAnalyzeModel} placeholder="(uses model above)" />
+  </label>
+  <label class="field">
+    <span class="lbl mono">chat model</span>
+    <input type="text" bind:value={ollamaChatModel} placeholder="(uses model above)" />
+  </label>
 </section>
 {/if}
 
@@ -1110,18 +1157,28 @@
     </div>
   </div>
 
+  <!-- Writes previewMode, not the raw boolean. Two places writing alwaysShowPreviews independently
+       would be two sources of truth for one behaviour, and they would disagree the moment the
+       graph's Previews dropdown set a different mode. -->
   <div class="field row-field">
     <div>
-      <span class="lbl mono">always-on previews</span>
-      <p class="hint" style="margin: 0.1rem 0 0;">Show every node's preview image at all times, instead of only on hover or during the story. The graph paints slower with many images.</p>
+      <span class="lbl mono">previews</span>
+      <p class="hint" style="margin: 0.1rem 0 0;">
+        {PREVIEW_MODE_HINTS[previewMode]} Also on the graph, under "previews". The graph paints slower with many images.
+      </p>
     </div>
-    <button
-      class="toggle-btn"
-      class:on={settings().alwaysShowPreviews === true}
-      onclick={() => updateSettings({ alwaysShowPreviews: settings().alwaysShowPreviews !== true })}
-    >
-      {settings().alwaysShowPreviews === true ? 'on' : 'off'}
-    </button>
+    <div class="chip-row">
+      {#each PREVIEW_MODES as mode (mode)}
+        <button
+          class="toggle-btn"
+          class:on={previewMode === mode}
+          title={PREVIEW_MODE_HINTS[mode]}
+          onclick={() => updateSettings({ previewMode: mode, ...legacyFlagsFor(mode) })}
+        >
+          {PREVIEW_MODE_LABELS[mode]}
+        </button>
+      {/each}
+    </div>
   </div>
 
   <label class="field">
@@ -1693,11 +1750,6 @@
   </Dialog.Portal>
 </Dialog.Root>
 
-<!-- Auto-save indicator -->
-<div class="autosave-indicator" class:autosave-pulse={savedPulse}>
-  {savedPulse ? 'saved ✓' : 'settings auto-save on'}
-</div>
-
 <style>
   /* ── Provider status dots ───────────────────────────────────────────────── */
   .provider-status-card { padding-bottom: 0.75rem; }
@@ -1743,6 +1795,13 @@
   }
 
   .head { margin-bottom: 1.25rem; }
+  .settings-heading-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
   .kicker {
     color: var(--accent);
     font-size: 0.72rem;
@@ -1759,9 +1818,12 @@
     /* On narrow viewports the section tabs used to clip (e.g. "turtle" cut off at
        the edge on mobile). Scroll horizontally instead of clipping. */
     overflow-x: auto;
-    scrollbar-width: none;
+    scrollbar-width: thin;
+    scrollbar-color: var(--muted-2) transparent;
+    scroll-snap-type: x proximity;
   }
-  .settings-nav::-webkit-scrollbar { display: none; }
+  .settings-nav::-webkit-scrollbar { height: 4px; }
+  .settings-nav::-webkit-scrollbar-thumb { background: var(--muted-2); border-radius: 999px; }
   .section-toc {
     display: flex;
     flex-wrap: wrap;
@@ -1800,6 +1862,7 @@
     transition: all 0.15s;
     white-space: nowrap;
     flex: 0 0 auto;
+    scroll-snap-align: start;
   }
   .nav-link:hover {
     color: var(--ink-2);
@@ -1821,23 +1884,6 @@
     margin-bottom: 0.75rem;
   }
   .sub { color: var(--muted); margin: 0 0 0.9rem; }
-  .radio { display: flex; flex-direction: column; gap: 0.6rem; }
-  .radio label {
-    display: flex;
-    gap: 0.85rem;
-    padding: 0.85rem;
-    background: var(--surface-2);
-    border: 1px solid var(--line);
-    border-radius: var(--rad-sm);
-    cursor: pointer;
-    align-items: flex-start;
-  }
-  .radio label:has(input:checked) {
-    border-color: var(--accent);
-    background: var(--accent-soft);
-  }
-  .radio strong { font-family: var(--font-display); font-size: 1.1rem; }
-  .radio p { margin: 0.2rem 0 0; color: var(--muted); font-size: 0.82rem; }
   .field { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.7rem; }
   .field-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
   .btn-group { display: flex; gap: 0.35rem; flex-wrap: wrap; }
@@ -1863,7 +1909,6 @@
   .scale-btn.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
   .lbl { color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.12em; }
   .row { display: flex; gap: 0.7rem; align-items: center; margin-top: 0.7rem; flex-wrap: wrap; }
-  .status { color: var(--data); font-size: 0.78rem; }
   .wasm-progress { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.5rem; }
   .wasm-prog-track {
     height: 4px; background: var(--surface-3); border-radius: 999px; overflow: hidden;
@@ -1928,9 +1973,6 @@
   .per-task-wasm .field { margin-top: 0.4rem; }
   .local-badge { font-size: 0.62rem; color: var(--ok); border: 1px solid var(--ok); border-radius: 999px; padding: 0.05rem 0.4rem; vertical-align: middle; margin-left: 0.3rem; }
   .badge { font-size: 0.6rem; border-radius: 999px; padding: 0.05rem 0.45rem; vertical-align: middle; margin-left: 0.35rem; font-family: var(--font-mono); font-weight: 500; }
-  .badge.free { color: var(--ok, #22c55e); border: 1px solid var(--ok, #22c55e); }
-  .badge.openrouter { color: #a78bfa; border: 1px solid #a78bfa; }
-  .badge.gemini { color: #60a5fa; border: 1px solid #60a5fa; }
   .badge.paid { color: var(--muted); border: 1px solid var(--muted); }
   /* Task backends */
   /* Quick setup — one model for everything (the simple path over the per-task grid) */
@@ -2028,7 +2070,6 @@
   .backend-detail-body p { margin: 0; font-size: 0.78rem; color: var(--muted); }
   .backend-detail-body strong { color: var(--ink-2); }
 
-  .save-row { margin-top: 1.25rem; }
   .backup-btn {
     padding: 0.6rem 1.2rem;
     background: var(--data-soft);
@@ -2317,9 +2358,7 @@
 
   /* ── Auto-save indicator ── */
   .autosave-indicator {
-    position: fixed;
-    bottom: var(--app-nav-clearance);
-    right: 1rem;
+    flex: 0 0 auto;
     font-family: var(--font-mono);
     font-size: 0.7rem;
     color: var(--muted);
@@ -2329,7 +2368,6 @@
     padding: 0.25rem 0.6rem;
     opacity: 0.6;
     transition: color 0.3s, opacity 0.3s;
-    pointer-events: none;
   }
   .autosave-indicator.autosave-pulse {
     color: var(--accent);

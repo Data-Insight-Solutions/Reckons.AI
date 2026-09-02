@@ -41,7 +41,7 @@
 
   // ── State ───────────────────────────────────────────────────────────────────
   let canvasEl = $state<HTMLCanvasElement | null>(null);
-  let simNodes: SimNode[] = [];
+  let simNodes = $state<SimNode[]>([]);
   let simEdges: SimEdge[] = [];
   let camX = 0, camY = 0, camScale = 22;
   let hoveredKey: string | null = null;

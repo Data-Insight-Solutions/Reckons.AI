@@ -26,6 +26,7 @@
  */
 
 import { readFileSync, existsSync, appendFileSync } from 'node:fs';
+import { queueFindings } from './pending-queue.ts';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { Parser } from 'n3';
@@ -213,24 +214,22 @@ for (const d of targets) {
 }
 
 if (PENDING_OUT && warnings.length > 0) {
-  appendFileSync(
-    PENDING,
-    warnings
-      .map((w) =>
-        JSON.stringify({
-          subject: 'urn:kbase:concept/scope-creep',
-          predicate: 'urn:kbase:predicate/observed',
-          object: w,
-          note: 'Soft signal: the design did not account for everything. Refine the estimate or the design.',
-          type: 'drift-warning',
-          findingClass: 'drift',
-          agent: 'offline:scope-check',
-          priority: 'normal',
-        }),
-      )
-      .join('\n') + '\n',
+  // Recomputing: every design carrying an estimate is re-scored on each run, so a design brought
+  // back inside its estimate should stop being flagged instead of accumulating a history of
+  // moments when it was not.
+  const { queued, superseded } = queueFindings(
+    warnings.map((w) => ({
+      subject: 'urn:kbase:concept/scope-creep',
+      predicate: 'urn:kbase:predicate/observed',
+      object: w,
+      note: 'Soft signal: the design did not account for everything. Refine the estimate or the design.',
+      type: 'drift-warning' as const,
+      findingClass: 'drift',
+      priority: 'normal',
+    })),
+    { agent: 'offline:scope-check', path: PENDING, recomputes: true },
   );
-  console.log(`\n\x1b[2mqueued ${warnings.length} finding(s) for review\x1b[0m`);
+  console.log(`\n\x1b[2mqueued ${queued} finding(s) for review${superseded ? `, ${superseded} resolved` : ''}\x1b[0m`);
 }
 
 // Never fails. Creep is a prompt to refine the design, not a broken invariant.

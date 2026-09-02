@@ -1,0 +1,171 @@
+{
+  "$comment": [
+    "PREDICATE VOCABULARY BENCHMARK — the decision boundary that normalize-entities.ts actually ships.",
+    "",
+    "WHY THIS FIXTURE EXISTS. src/lib/rdf/normalize-entities.ts rewrites an incoming predicate IRI to an",
+    "existing one when cosine >= PREDICATE_MATCH_THRESHOLD (0.88). That constant gates a WRITE into the",
+    "user's graph, and until 2026-08-15 it was tested only against a hand-written mock vector table:",
+    "the test asserted the branching logic given assumed cosines and never measured what a real embedding",
+    "model returns. This fixture supplies the measurement.",
+    "",
+    "Labels are given in the form normalize-entities.ts embeds them — labelFromIRI() strips the IRI path",
+    "and turns hyphens into spaces — so the benchmark scores the exact strings production scores.",
+    "",
+    "TWO CLASSES, AND THE SECOND MATTERS MORE.",
+    "  shouldMerge  — same relation, different words. Missing one costs a duplicate predicate; the review",
+    "                 queue still sees the fact, and predicate-manager can merge it later. Recoverable.",
+    "  mustNotMerge — different relations that look alike. Merging one SILENTLY REWRITES a fact into a",
+    "                 different fact before a human ever sees it. Not recoverable, and not visible.",
+    "So a false merge is the expensive error, and the benchmark weights it accordingly."
+  ],
+
+  "shouldMerge": [
+    {
+      "a": "has-heart-count",
+      "b": "has-number-of-hearts",
+      "why": "OBSERVED 2026-08-15: qwen3.6 emitted has-number-of-hearts 3; the golden set says has-heart-count 3. Same fact, scored as a miss AND a false positive.",
+      "source": "observed"
+    },
+    {
+      "a": "has-neuron-count",
+      "b": "has-number-of-neurons",
+      "why": "Same count-vs-number-of drift as the observed pair, on a different attribute.",
+      "source": "constructed"
+    },
+    {
+      "a": "has-sucker-count-per-arm",
+      "b": "has-suckers-per-arm",
+      "why": "Plural noun standing in for an explicit count.",
+      "source": "constructed"
+    },
+    {
+      "a": "has-lifespan",
+      "b": "has-life-span",
+      "why": "Pure orthographic drift — the easiest case any model must pass.",
+      "source": "constructed"
+    },
+    {
+      "a": "feeds-on",
+      "b": "eats",
+      "why": "Plain-verb drift; small models reach for the everyday word.",
+      "source": "constructed"
+    },
+    {
+      "a": "feeds-on",
+      "b": "preys-on",
+      "why": "Register drift within the same direction of the relation.",
+      "source": "constructed"
+    },
+    {
+      "a": "has-predator",
+      "b": "has-natural-enemy",
+      "why": "Domain synonym for the same role.",
+      "source": "constructed"
+    },
+    {
+      "a": "has-scientific-name",
+      "b": "has-binomial-name",
+      "why": "Technical synonym; both name the Linnaean binomial.",
+      "source": "constructed"
+    },
+    {
+      "a": "belongs-to-class",
+      "b": "has-taxonomic-class",
+      "why": "Verb-phrase vs has-attribute phrasing of one taxonomic rank.",
+      "source": "constructed"
+    },
+    {
+      "a": "has-reproductive-strategy",
+      "b": "has-breeding-strategy",
+      "why": "Domain synonym: 'reproductive' and 'breeding' name the same strategy in biology writing, and a model picks whichever the source text used.",
+      "source": "constructed"
+    },
+    {
+      "a": "enables",
+      "b": "allows",
+      "why": "Verb synonym on a capability edge.",
+      "source": "constructed"
+    },
+    {
+      "a": "is-found-in",
+      "b": "occurs-in",
+      "why": "Range/occurrence phrasing for the same relation.",
+      "source": "constructed"
+    }
+  ],
+
+  "mustNotMerge": [
+    {
+      "a": "has-heart-count",
+      "b": "has-neuron-count",
+      "why": "IDENTICAL SHAPE, different attribute. If a model scores string shape over meaning this is where it fails, and it fails silently.",
+      "severity": "high"
+    },
+    {
+      "a": "has-predator",
+      "b": "has-prey",
+      "why": "Inverse roles. Merging these reverses the food chain — and normalize-entities has NO antonym guard.",
+      "severity": "high"
+    },
+    {
+      "a": "feeds-on",
+      "b": "is-eaten-by",
+      "why": "Inverse direction of one relation. Merging reverses every edge that uses it.",
+      "severity": "high"
+    },
+    {
+      "a": "has-scientific-name",
+      "b": "has-common-name",
+      "why": "One word apart, and the two names are routinely different strings.",
+      "severity": "high"
+    },
+    {
+      "a": "belongs-to-class",
+      "b": "belongs-to-family",
+      "why": "Adjacent taxonomic ranks; near-identical phrasing, strictly different rank.",
+      "severity": "high"
+    },
+    {
+      "a": "has-min-weight",
+      "b": "has-max-weight",
+      "why": "Bounds of one range. Merging collapses a range into a contradiction.",
+      "severity": "high"
+    },
+    {
+      "a": "has-blood-color",
+      "b": "has-blood-protein",
+      "why": "OBSERVED 2026-08-15 and previously mis-read as a vocabulary miss. It is not: has-blood-protein hemocyanin is a DIFFERENT, also-correct fact, not another word for has-blood-color blue. A valid extra, not a synonym.",
+      "severity": "high"
+    },
+    {
+      "a": "is-found-in",
+      "b": "is-located-in",
+      "why": "The golden set uses both and means different things: a species' range (is-found-in mediterranean-sea) vs an institution's fixed site (university-of-otago is-located-in new-zealand). Merging erases a distinction the graph author drew.",
+      "severity": "medium"
+    },
+    {
+      "a": "enables",
+      "b": "prevents",
+      "why": "Antonym on a capability edge.",
+      "severity": "high"
+    },
+    {
+      "a": "is-a",
+      "b": "is-not-a",
+      "why": "Negation. The one case a prefix rule already catches in semantic-diff — included to check the embedding alone, without that rule.",
+      "severity": "high"
+    },
+    {
+      "a": "has-lifespan",
+      "b": "has-weight-range",
+      "why": "Unrelated attributes sharing the has-X-range shape. Should be an easy reject; included as the floor.",
+      "severity": "low"
+    },
+    {
+      "a": "has-ability",
+      "b": "has-disability",
+      "why": "Substring negation — 'ability' is a substring of 'disability', so any containment-based matcher merges them.",
+      "severity": "high"
+    }
+  ]
+}

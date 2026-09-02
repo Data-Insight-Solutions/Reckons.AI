@@ -17,6 +17,7 @@
   import { parseGraphDate, EVENT_DATE_PREDICATES } from '$lib/rdf/parse-date';
   import { buildNodeTimes, timelineRange, undatedCount } from '$lib/rdf/timeline-layout';
   import { cameraPosition, CAMERA_PRESETS, type CameraSpec } from './camera-presets';
+  import { resolveOverlaps, previewWorldRadius } from './preview-collage';
   import GraphNode from '$lib/components/GraphNode.svelte';
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { RDF_TYPE, RDFS_LABEL, type EntityTypeDef } from '$lib/rdf/entity-types';
@@ -24,12 +25,14 @@
   import { recordFrame } from '$lib/stores/perf-monitor.svelte';
   import { leapNodeKeys } from '$lib/rdf/kb-leap';
   import { hopDistances, adjacencyFromPairs } from '$lib/rdf/n-hop';
-  import { SKOS_BROADER, NAV_ORDER, NAV_LAYER } from '$lib/rdf/hierarchy';
+  import { buildHierarchyParentMaps, NAV_ORDER, NAV_LAYER } from '$lib/rdf/hierarchy';
 
   interactivity();
 
   let {
     statements = [],
+    topologyStatements = null,
+    flooredStatementIds = null,
     selected = null,
     highlighted = [],
     dimMode = false,
@@ -41,6 +44,8 @@
     timelineCenter = null,
     timelineTimeSource = 'event' as 'event' | 'ingested',
     cameraSpec = null,
+    previewKeys = null,
+    previewSizePx = 96,
     onselect = () => {},
     onhover = () => {},
     onnodemove = () => {},
@@ -48,9 +53,18 @@
     onmarkersmove = () => {},
     onlabelsmove = () => {},
     ontimelinepan = () => {},
+    onsettledchange = (_settled: boolean) => {},
     onready = () => {}
   } = $props<{
     statements?: Statement[];
+    /**
+     * Statements allowed to create visible edges. `statements` remains the complete input so
+     * labels, rdf:type styling and presentation metadata still work. When omitted, every normal
+     * statement remains topology-compatible for callers that have not split attributes yet.
+     */
+    topologyStatements?: Statement[] | null;
+    /** Statements removed by the detail floor — see the guard in the build loop. */
+    flooredStatementIds?: Set<string> | null;
     selected?: string | null;
     highlighted?: string[];
     dimMode?: boolean;
@@ -64,6 +78,17 @@
     timelineZoom?: number;
     timelineCenter?: number | null;
     timelineTimeSource?: 'event' | 'ingested';
+    /**
+     * F133 all-previews MODIFIER. Keys of nodes currently rendering a preview thumbnail. Null (or
+     * empty) means the modifier is off and the simulation behaves exactly as before.
+     *
+     * This is a modifier, not a layout: it never decides WHERE nodes go, it only makes whichever
+     * force is running leave enough room for what the nodes are showing. So it composes with all
+     * eight layout values rather than being a ninth.
+     */
+    previewKeys?: Set<string> | null;
+    /** On-screen size of a preview thumbnail in px (settings.nodePreviewSize). */
+    previewSizePx?: number;
     onselect?: (key: string | null, ctrlKey?: boolean) => void;
     onhover?: (key: string | null) => void;
     onnodemove?: (key: string, x: number, y: number) => void;
@@ -71,6 +96,8 @@
     onmarkersmove?: (markers: Array<{ key: string; label: string; color: string; x: number; y: number }>) => void;
     onlabelsmove?: (labels: Array<{ key: string; label: string; x: number; y: number; opacity: number }>) => void;
     ontimelinepan?: (center: number) => void;
+    /** Exposes the simulation's real cooling boundary to UI/performance consumers. */
+    onsettledchange?: (settled: boolean) => void;
     /** Fired after a non-empty scene has completed at least one animation frame. */
     onready?: () => void;
   }>();
@@ -170,6 +197,37 @@
   let cameraTarget = new THREE.Vector3(0, 0, 0);
   const projVec = new THREE.Vector3();
   const { camera, renderer } = useThrelte();
+  let previousCanvasWidth = 0;
+  let previousCanvasHeight = 0;
+  let previousCameraAspect = 0;
+
+  /** Fit a structured tree as a whole; its orphan lane is part of the visible composition too. */
+  function fitHierarchyCamera3D(anchors: Map<string, THREE.Vector3>) {
+    if (cameraSpec || anchors.size === 0 || !camera.current) return;
+    const cam = camera.current as THREE.PerspectiveCamera;
+    if (!cam.isPerspectiveCamera) return;
+    const sphere = new THREE.Sphere();
+    new THREE.Box3().setFromPoints([...anchors.values()]).getBoundingSphere(sphere);
+    const previousTarget = orbitRef?.target ?? cameraTarget;
+    const direction = cam.position.clone().sub(previousTarget);
+    if (direction.lengthSq() === 0) direction.set(0, 0, 1);
+    direction.normalize();
+    const verticalFov = THREE.MathUtils.degToRad(cam.fov);
+    const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * Math.max(cam.aspect, 0.1));
+    const limitingHalfFov = Math.max(0.05, Math.min(verticalFov, horizontalFov) / 2);
+    const distance = Math.max(8, (sphere.radius / Math.sin(limitingHalfFov)) * 1.18);
+
+    cameraTarget.copy(sphere.center);
+    cam.position.copy(sphere.center).addScaledVector(direction, distance);
+    cam.near = Math.max(0.01, distance - sphere.radius * 1.5);
+    cam.far = Math.max(100, distance + sphere.radius * 3);
+    cam.lookAt(sphere.center);
+    cam.updateProjectionMatrix();
+    if (orbitRef?.target) {
+      orbitRef.target.copy(sphere.center);
+      orbitRef.update?.();
+    }
+  }
 
   // ── Semantic distance heuristic ─────────────────────────────────────────────
   /**
@@ -199,14 +257,24 @@
   $effect(() => {
     const nodeMap = new Map<string, Node>();
     const e: Edge[] = [];
+    const topologyIds = topologyStatements === null
+      ? null
+      : new Set((topologyStatements as Statement[]).map((st) => st.id));
     for (const st of statements as Statement[]) {
       if (st.status === 'rejected' || st.status === 'superseded') continue;
+      // THE DETAIL FLOOR HAS TO BE CONSULTED BEFORE ANY NODE IS CREATED, not only in the topology
+      // branch below. rdf:type and rdfs:label each mint a node of their own, and both classify as
+      // RECORD — so at a `decisions` floor they are hidden and were STILL creating the node, which
+      // is why filtering to decisions left almost every node on screen. It decorates freely and
+      // creates nothing: a label on a node that survives for other reasons is welcome; a label
+      // that RESURRECTS a hidden node is the bug.
+      const floored = flooredStatementIds?.has(st.id) ?? false;
       // rdf:type triples style the subject node (nodeTypeMap) but must not
       // create a visible type-IRI node or edge in the graph.
       if (st.p.value === RDF_TYPE) {
         // Ensure the typed subject node still exists even if it has no other triples.
         const k = termKey(st.s);
-        if (!nodeMap.has(k) && st.s.kind === 'iri') {
+        if (!floored && !nodeMap.has(k) && st.s.kind === 'iri') {
           const label = st.s.value.split('/').pop() ?? st.s.value;
           const pos = nodePositionCache.get(k)
             ?? new THREE.Vector3((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
@@ -224,10 +292,27 @@
         const existing = nodeMap.get(k);
         if (existing) {
           existing.label = st.o.value;
-        } else if (st.s.kind === 'iri') {
+        } else if (!floored && st.s.kind === 'iri') {
           const pos = nodePositionCache.get(k)
             ?? new THREE.Vector3((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
           nodeMap.set(k, { key: k, label: st.o.value, kind: 'concept', pos, vel: new THREE.Vector3(), degree: 0 });
+          nodePositionCache.set(k, pos);
+        }
+        continue;
+      }
+      if (topologyIds && !topologyIds.has(st.id)) {
+        // ...but a fact the DETAIL FLOOR removed is a different case: resurrecting its subject
+        // here would undo exactly what the floor was asked to do. A dictated note whose every
+        // edge is provenance would keep its node and the graph would look unfiltered.
+        if (floored) continue;
+        // A unique literal is an attribute, not a leaf node. Keep its subject visible even when
+        // this is the entity's only fact; the detail panel still reads the full `statements` set.
+        const k = termKey(st.s);
+        if (!nodeMap.has(k) && st.s.kind === 'iri') {
+          const label = st.s.value.split('/').pop() ?? st.s.value;
+          const pos = nodePositionCache.get(k)
+            ?? new THREE.Vector3((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
+          nodeMap.set(k, { key: k, label, kind: 'concept', pos, vel: new THREE.Vector3(), degree: 0 });
           nodePositionCache.set(k, pos);
         }
         continue;
@@ -261,6 +346,7 @@
     }
     nodes = [...nodeMap.values()];
     edges = e;
+    reheat(); // new topology is a new layout problem
   });
 
   // ── Layout builders ─────────────────────────────────────────────────────────
@@ -562,19 +648,14 @@
   function buildHierarchyAnchors3D(): { anchors: Map<string, THREE.Vector3>; markers: LayoutMarker[] } {
     const active = (statements as Statement[]).filter(s => s.status !== 'rejected' && s.status !== 'superseded');
 
-    // Build broader tree
-    const parentOf = new Map<string, string>();
-    const childrenOf = new Map<string, string[]>();
+    // Build the same tree the 2D renderer shows. Both predicates name the parent in the object;
+    // an explicit taxonomic parent wins over a dependency parent regardless of statement order.
+    const { parentOf, childrenOf, allIris } = buildHierarchyParentMaps(active, true);
     const orderOf = new Map<string, number>();
     const labels = new Map<string, string>();
 
     for (const s of active) {
       if (s.s.kind !== 'iri') continue;
-      if (s.p.value === SKOS_BROADER && s.o.kind === 'iri') {
-        parentOf.set(s.s.value, s.o.value);
-        if (!childrenOf.has(s.o.value)) childrenOf.set(s.o.value, []);
-        childrenOf.get(s.o.value)!.push(s.s.value);
-      }
       if (s.p.value === NAV_ORDER && s.o.kind === 'literal') {
         orderOf.set(s.s.value, parseInt(s.o.value, 10));
       }
@@ -582,7 +663,6 @@
         labels.set(s.s.value, s.o.value);
       }
     }
-
     // Map node keys ↔ IRIs
     const keyToIri = new Map<string, string>();
     const iriToKey = new Map<string, string>();
@@ -594,8 +674,7 @@
     }
 
     // Find roots (no parent, has children)
-    const allIris = new Set([...parentOf.keys(), ...childrenOf.keys()]);
-    const rootIris = [...allIris].filter(iri => !parentOf.has(iri) && childrenOf.has(iri));
+    const rootIris = [...allIris].filter(iri => !parentOf.has(iri)).sort();
     if (rootIris.length === 0) return { anchors: new Map(), markers: [] };
 
     // BFS depth assignment
@@ -629,34 +708,56 @@
       });
     }
 
-    const SHELL_SPACING = 7;
+    // STACKED RINGS, not concentric shells.
+    //
+    // Depth used to be radius: every level a sphere around a common centre. In 3D that buries the
+    // shallow levels INSIDE the deep ones — the roots end up at the middle of the ball, hidden
+    // behind everything that depends on them, and "prerequisite" has no visible direction.
+    //
+    // Now each level is a ring in the horizontal plane and depth descends the vertical axis, so the
+    // tree reads as a cone: level 0 is a small ring on top, and each level below is further down AND
+    // wider. Ring size grows with depth as well as population, which is what makes the widening
+    // legible rather than a stack of same-sized discs.
+    const SHELL_SPACING = 7;   // retained: base unit for ring size
+    const LEVEL_DROP    = 9;   // vertical gap between one level's ring and the next
     const anchors = new Map<string, THREE.Vector3>();
     const markers: LayoutMarker[] = [];
     const parentAngles = new Map<string, { theta: number; phi: number }>();
 
+    /** Ring radius for a level: widens with depth, and with how many nodes must fit on it. */
+    const ringRadius = (depth: number, count: number) =>
+      depth === 0 && count <= 1 ? 0 : Math.max(SHELL_SPACING * (0.5 + depth * 0.55), count * 1.1);
+
+    /*
+     * CENTRED ON THE ORIGIN. Levels used to run from 0 down to -(maxDepth * LEVEL_DROP), so the
+     * tree's centroid sat half its own height below the point the camera frames — Matt, 2026-08-21:
+     * "the graph appears below the central focus of the screen and I needed to manually drag each
+     * load." Centring costs one subtraction and removes the drag.
+     *
+     * Sign stays NEGATIVE-for-deeper here: three.js Y is up, so the root belongs at the top. (Its
+     * 2D twin in rdf/hierarchy.ts needs the opposite sign, because canvas Y grows downward — that
+     * mismatch is what put the 2D root at the BOTTOM.)
+     */
+    const span = maxDepth * LEVEL_DROP;
+    const yOfDepth3D = (d: number) => (span / 2 - d * LEVEL_DROP) || 0;
+
     for (let d = 0; d <= maxDepth; d++) {
       const iris = byDepth.get(d) ?? [];
+      const levelY = yOfDepth3D(d);
+
       if (d === 0) {
-        // Roots at center — slight spread if multiple
-        if (iris.length === 1) {
-          const key = iriToKey.get(iris[0]);
+        // Roots share the top ring; a lone root sits at its centre.
+        const r = ringRadius(0, iris.length);
+        iris.forEach((iri, i) => {
+          const theta = (2 * Math.PI * i) / iris.length;
+          const key = iriToKey.get(iri);
           if (key) {
-            anchors.set(key, new THREE.Vector3(0, 0, 0));
-            parentAngles.set(iris[0], { theta: 0, phi: Math.PI / 2 });
+            anchors.set(key, new THREE.Vector3((r * Math.cos(theta)) || 0, levelY, (r * Math.sin(theta)) || 0));
+            parentAngles.set(iri, { theta, phi: Math.PI / 2 });
           }
-        } else {
-          iris.forEach((iri, i) => {
-            const theta = (2 * Math.PI * i) / iris.length;
-            const r = SHELL_SPACING * 0.5;
-            const key = iriToKey.get(iri);
-            if (key) {
-              anchors.set(key, new THREE.Vector3(r * Math.cos(theta), r * Math.sin(theta), 0));
-              parentAngles.set(iri, { theta, phi: Math.PI / 2 });
-            }
-          });
-        }
+        });
       } else {
-        const r = d * SHELL_SPACING;
+        const r = ringRadius(d, iris.length);
         // Group children by parent for sector allocation
         const groups = new Map<string, string[]>();
         for (const iri of iris) {
@@ -670,35 +771,35 @@
           const pAngle = parentAngles.get(pIri) ?? { theta: 0, phi: Math.PI / 2 };
           const sector = (2 * Math.PI * children.length) / Math.max(totalChildren, 1);
           const startTheta = pAngle.theta - sector / 2;
-          // Spread phi (elevation) across children to use 3D space
-          const phiSpread = Math.min(Math.PI * 0.4, Math.PI * 0.8 / Math.max(children.length, 1));
-          const basePhi = pAngle.phi;
 
+          // Children keep their parent's BEARING around the ring, so a branch descends in one
+          // direction instead of scattering. Elevation is no longer a free axis to spread across:
+          // it now means depth, and nudging a node off its level would misreport its position in
+          // the tree — the one thing this layout exists to show.
           children.forEach((iri, i) => {
             const theta = children.length === 1
               ? pAngle.theta
               : startTheta + (i + 0.5) * (sector / children.length);
-            const phi = children.length === 1
-              ? basePhi
-              : basePhi + (i - (children.length - 1) / 2) * phiSpread / children.length;
 
-            const x = r * Math.sin(phi) * Math.cos(theta);
-            const y = r * Math.sin(phi) * Math.sin(theta);
-            const z = r * Math.cos(phi);
             const key = iriToKey.get(iri);
             if (key) {
-              anchors.set(key, new THREE.Vector3(x, y, z));
-              parentAngles.set(iri, { theta, phi });
+              anchors.set(
+                key,
+                new THREE.Vector3((r * Math.cos(theta)) || 0, levelY, (r * Math.sin(theta)) || 0),
+              );
+              parentAngles.set(iri, { theta, phi: pAngle.phi });
             }
           });
         }
       }
 
-      // Shell ring marker for each depth level
+      // One label per level, sitting AT that level. These were all pinned to the origin, which
+      // read correctly when a level was a shell around it; with levels stacked, every label would
+      // pile up at the top ring and name the wrong rings.
       if (d > 0) {
         markers.push({
           key: `hierarchy-ring-${d}`,
-          pos: new THREE.Vector3(0, 0, 0),
+          pos: new THREE.Vector3(0, levelY, 0),
           label: `Layer ${maxDepth - d}`,
           color: '#f59e0b',
           kind: 'cluster'
@@ -706,18 +807,30 @@
       }
     }
 
-    // Place unplaced nodes in outer shell
+    // Nodes the hierarchy says nothing about get their own ring below the cone — not an outer
+    // shell, which would wrap the whole tree and read as its deepest, widest level. They are
+    // unplaced, not subordinate. Also no longer randomized: a layout that moves every time it is
+    // recomputed cannot be read, and jitter here was hiding that these nodes have no place at all.
     const placedKeys = new Set(anchors.keys());
     const unplaced = nodes.filter(n => !placedKeys.has(n.key));
     if (unplaced.length > 0) {
-      const outerR = (maxDepth + 2) * SHELL_SPACING;
+      // Bounded concentric rings — see the 2D twin in rdf/hierarchy.ts. Sizing ONE ring by
+      // population put hundreds of unplaced nodes on a radius of ~700 against level rings of 7-20,
+      // so the tree shrank to a dot and the simulation had to settle bodies across a hundred times
+      // the useful area. That presents as a frozen graph, not as a bad-looking one.
+      // Below the tree — which in a y-up scene means a SMALLER y. Unplaced, not superior to the root.
+      const orphanY = yOfDepth3D(maxDepth + 1.6);
+      const PER_RING = 24;
       unplaced.forEach((n, i) => {
-        const theta = (2 * Math.PI * i) / unplaced.length;
-        const phi = Math.PI / 2 + (Math.random() - 0.5) * 0.5;
+        const ring = Math.floor(i / PER_RING);
+        const idx = i % PER_RING;
+        const inRing = Math.min(PER_RING, unplaced.length - ring * PER_RING);
+        const r = SHELL_SPACING * (1 + ring * 0.6);
+        const theta = (2 * Math.PI * idx) / inRing;
         anchors.set(n.key, new THREE.Vector3(
-          outerR * Math.sin(phi) * Math.cos(theta),
-          outerR * Math.sin(phi) * Math.sin(theta),
-          outerR * Math.cos(phi)
+          (r * Math.cos(theta)) || 0,
+          orphanY,
+          (r * Math.sin(theta)) || 0,
         ));
       });
     }
@@ -826,6 +939,7 @@
 
   // Rebuild layout anchors whenever layout mode or relevant graph data changes
   $effect(() => {
+    reheat(); // anchors are about to move, so the nodes have somewhere new to go
     if (layout === 'focus') {
       const { anchors, radii, distances } = buildFocusAnchors();
       activeAnchors = anchors;
@@ -872,6 +986,15 @@
     } else if (layout === 'hierarchy') {
       const { anchors, markers } = buildHierarchyAnchors3D();
       activeAnchors = anchors;
+      // Hierarchy coordinates encode stated depth. Snap to them once on entry so alpha cooling
+      // cannot stop a large graph halfway between its prior free layout and its actual tree.
+      for (const node of nodes) {
+        const anchor = anchors.get(node.key);
+        if (!anchor) continue;
+        node.pos.copy(anchor);
+        node.vel.set(0, 0, 0);
+      }
+      fitHierarchyCamera3D(anchors);
       layoutMarkers = markers;
       layoutRingRadii = [];
       anchorStrength = 0.85;
@@ -905,15 +1028,81 @@
   });
   let _labelFrame = 0;
 
+  /* ── COOLING SCHEDULE (F141) — see the long note in KnowledgeGraph2D.svelte ─────
+   *
+   * Same defect, same fix, and this is the renderer that matters most because 3D is the DEFAULT
+   * (settings.prefer2D is false). Measured on a production build, RTX 3090: 110 lines took 8.7s to
+   * settle, 451 lines never settled inside 45s. There was no termination condition — only a constant
+   * per-frame DAMP, with forces re-injecting energy forever.
+   *
+   * Alpha scales the FORCES only; damping and position integration keep raw dt. Below the floor the
+   * physics is skipped entirely, so a settled graph stops costing an O(n^2) repulsion pass per frame.
+   */
+  const SIM_ALPHA_DECAY = 0.0228;
+  // The final 0.05 -> 0.001 tail consumes ~170 additional frames while contributing only the
+  // last 5% of the force integral. Stop at the perceptual floor instead: the layout keeps 95% of
+  // its convergence work but reaches an actual idle state in ~2.2s at 60Hz rather than ~5s.
+  const SIM_ALPHA_MIN   = 0.05;
+  let simAlpha = 1;
+  let reportedSettled = false;
+  let lastEmittedSettled: boolean | null = null;
+  function emitSettled(settled: boolean) {
+    if (lastEmittedSettled === settled) return;
+    lastEmittedSettled = settled;
+    onsettledchange(settled);
+  }
+  /** Put energy back only when the layout problem genuinely changed — see reheat() in the 2D file. */
+  function reheat(to = 1) {
+    simAlpha = Math.max(simAlpha, to);
+    if (simAlpha >= SIM_ALPHA_MIN) {
+      reportedSettled = false;
+      // Publish the initial cooling state too. A newly-mounted renderer can inherit a parent's
+      // prior `true` value (for example compare -> preview), even though this local simulation has
+      // never settled. Only flipping after a local true report leaves that parent probe stale.
+      emitSettled(false);
+    }
+  }
+
   useTask((delta) => {
     recordFrame(delta);
     const dt = Math.min(delta, 0.05);
+    // Skip the whole simulation once cooled: a settled graph must not run an O(n^2) repulsion
+    // pass every frame forever. This is the gate that turns "finished" into "stopped".
+    if (simAlpha >= SIM_ALPHA_MIN) {
+    /** Force timestep, scaled by the cooling schedule. Damping and integration use raw dt. */
+    const fdt = dt * simAlpha;
     const REPEL      = 1.6;
     const SPRING     = layout === 'force' ? 0.18 : 0.10;
     const CENTER     = activeAnchors.size > 0 ? 0.008 : 0.04;
     const DAMP       = 0.86;
     const BASE_REST  = 2.4;
     const LOCK_TIMELINE_X = layout === 'timeline';
+    const LOCK_HIERARCHY_Y = layout === 'hierarchy';
+
+    // F133 — how much world room each node needs THIS FRAME.
+    //
+    // Computed once, up front, and then held fixed for the whole frame. Two things depend on it
+    // and they must agree: the edge springs below (so they WANT the spread) and the collision pass
+    // at the end (so it enforces it). Recomputing per relaxation pass makes the solver chase
+    // itself, because a node pushed further from the camera immediately demands more room.
+    const collageOn = !!previewKeys && previewKeys.size > 0 && !!camera.current && !!renderer;
+    const radii = new Map<string, number>();
+    if (collageOn) {
+      const camPos = camera.current!.position;
+      const halfH = renderer!.domElement.clientHeight * 0.5;
+      for (const n of nodes) {
+        const base = (0.85 + 0.45 * Math.log2(1 + n.degree)) * 0.32;
+        radii.set(
+          n.key,
+          previewKeys!.has(n.key)
+            // A thumbnail is a fixed pixel size, so the world room it needs grows with camera
+            // distance — which is what keeps the separation honest at every zoom, not just one.
+            ? Math.max(base, previewWorldRadius(previewSizePx, camPos.distanceTo(n.pos), halfH))
+            : base,
+        );
+      }
+    }
+    const radiusOf = (n: { key: string }) => radii.get(n.key) ?? 0.32;
 
     for (let i = 0; i < nodes.length; i++) {
       const a = nodes[i];
@@ -922,17 +1111,24 @@
         const dx = a.pos.x - b.pos.x, dy = a.pos.y - b.pos.y, dz = a.pos.z - b.pos.z;
         const d2 = dx * dx + dy * dy + dz * dz + 0.01;
         const f = REPEL / d2, inv = 1 / Math.sqrt(d2);
-        a.vel.x += dx * inv * f * dt; a.vel.y += dy * inv * f * dt; a.vel.z += dz * inv * f * dt;
-        b.vel.x -= dx * inv * f * dt; b.vel.y -= dy * inv * f * dt; b.vel.z -= dz * inv * f * dt;
+        a.vel.x += dx * inv * f * fdt; a.vel.y += dy * inv * f * fdt; a.vel.z += dz * inv * f * fdt;
+        b.vel.x -= dx * inv * f * fdt; b.vel.y -= dy * inv * f * fdt; b.vel.z -= dz * inv * f * fdt;
       }
     }
 
     for (const e of edges) {
       const dx = e.b.pos.x - e.a.pos.x, dy = e.b.pos.y - e.a.pos.y, dz = e.b.pos.z - e.a.pos.z;
       const d = Math.hypot(dx, dy, dz) + 0.001;
-      const f = (d - BASE_REST * e.semanticDist) * SPRING;
-      e.a.vel.x += (dx / d) * f * dt * 8; e.a.vel.y += (dy / d) * f * dt * 8; e.a.vel.z += (dz / d) * f * dt * 8;
-      e.b.vel.x -= (dx / d) * f * dt * 8; e.b.vel.y -= (dy / d) * f * dt * 8; e.b.vel.z -= (dz / d) * f * dt * 8;
+      // F133: a spring whose rest length is shorter than the room its two nodes need will pull
+      // them back into each other for as long as the modifier is on, and the collision pass spends
+      // every frame undoing it — a tug-of-war that settles with visible overlap rather than
+      // converging. Lengthening the rest so it never asks for less than the nodes occupy makes the
+      // two agree, so the spread is where the layout WANTS to be instead of where it is forced.
+      let rest = BASE_REST * e.semanticDist;
+      if (collageOn) rest = Math.max(rest, radiusOf(e.a) + radiusOf(e.b));
+      const f = (d - rest) * SPRING;
+      e.a.vel.x += (dx / d) * f * fdt * 8; e.a.vel.y += (dy / d) * f * fdt * 8; e.a.vel.z += (dz / d) * f * fdt * 8;
+      e.b.vel.x -= (dx / d) * f * fdt * 8; e.b.vel.y -= (dy / d) * f * fdt * 8; e.b.vel.z -= (dz / d) * f * fdt * 8;
     }
 
     for (const n of nodes) {
@@ -940,14 +1136,14 @@
       if (activeAnchors.size > 0) {
         const anchor = activeAnchors.get(n.key);
         if (anchor) {
-          n.vel.x += (anchor.x - n.pos.x) * anchorStrength * dt;
-          n.vel.y += (anchor.y - n.pos.y) * anchorStrength * dt;
-          n.vel.z += (anchor.z - n.pos.z) * anchorStrength * dt;
+          n.vel.x += (anchor.x - n.pos.x) * anchorStrength * fdt;
+          n.vel.y += (anchor.y - n.pos.y) * anchorStrength * fdt;
+          n.vel.z += (anchor.z - n.pos.z) * anchorStrength * fdt;
         }
       }
-      n.vel.x += -n.pos.x * CENTER * dt;
-      n.vel.y += -n.pos.y * CENTER * dt;
-      n.vel.z += -n.pos.z * CENTER * dt;
+      n.vel.x += -n.pos.x * CENTER * fdt;
+      n.vel.y += -n.pos.y * CENTER * fdt;
+      n.vel.z += -n.pos.z * CENTER * fdt;
       n.vel.multiplyScalar(DAMP);
       n.pos.x += n.vel.x; n.pos.y += n.vel.y; n.pos.z += n.vel.z;
 
@@ -960,6 +1156,50 @@
         const dateAnchor = activeAnchors.get(n.key);
         if (dateAnchor) { n.pos.x = dateAnchor.x; n.vel.x = 0; }
       }
+      if (LOCK_HIERARCHY_Y) {
+        const hierarchyAnchor = activeAnchors.get(n.key);
+        if (hierarchyAnchor) { n.pos.y = hierarchyAnchor.y; n.vel.y = 0; }
+      }
+    }
+
+    // F133 ALL-PREVIEWS MODIFIER — make room for what the nodes are showing.
+    //
+    // Runs AFTER integration and after the timeline x-lock, so it corrects positions rather than
+    // negotiating with the other forces. That ordering is the point: repulsion above is size-blind
+    // (one REPEL constant for every node regardless of what it renders), so previews would settle
+    // wherever the springs balanced and simply overlap. "All visible" is a property, and a
+    // property that must hold gets asserted, not approached — the same reason the date axis is
+    // pinned rather than tuned.
+    if (collageOn) {
+      // The camera's right and up vectors, pulled from its world matrix. Separation happens in
+      // THIS plane: pushing two nodes apart along the view axis satisfies the arithmetic and
+      // changes nothing a viewer can see, which is exactly how the first version converged while
+      // still painting a pile.
+      const m = camera.current!.matrixWorld.elements;
+      const basis = {
+        right: { x: m[0], y: m[1], z: m[2] },
+        up: { x: m[4], y: m[5], z: m[6] },
+      };
+      resolveOverlaps(
+        nodes,
+        radiusOf,
+        // Full strength, iterated to convergence. Easing (0.35, one pass) measurably lost to the
+        // edge springs: on the 9-photo fixture it reported 16 overlapping pairs every frame and
+        // painted a pile. Running last in the frame and converging is what turns "spread out a
+        // bit" into the property the feature is named for.
+        { lockX: LOCK_TIMELINE_X, strength: 1, iterations: 12, basis },
+      );
+    }
+
+    // Cool. Below the floor everything above — repulsion, springs, integration and the F133
+    // collage correction — stops running. Edge geometry below still updates, so the last frame
+    // rendered is the settled one.
+    simAlpha += (0 - simAlpha) * SIM_ALPHA_DECAY;
+    if (simAlpha < SIM_ALPHA_MIN) simAlpha = 0;
+    } // end if (simAlpha >= SIM_ALPHA_MIN) — cooled, simulation at rest
+    if (simAlpha === 0 && !reportedSettled) {
+      reportedSettled = true;
+      emitSettled(true);
     }
 
     if (lineGeom) {
@@ -992,6 +1232,24 @@
 
     if (renderer && camera.current) {
       const canvas = renderer.domElement;
+      const cam = camera.current as THREE.PerspectiveCamera;
+      const canvasWidth = canvas.clientWidth;
+      const canvasHeight = canvas.clientHeight;
+      const aspect = cam.isPerspectiveCamera ? cam.aspect : 0;
+      if (
+        canvasWidth !== previousCanvasWidth ||
+        canvasHeight !== previousCanvasHeight ||
+        Math.abs(aspect - previousCameraAspect) > 0.0001
+      ) {
+        previousCanvasWidth = canvasWidth;
+        previousCanvasHeight = canvasHeight;
+        previousCameraAspect = aspect;
+        // Hierarchy framing depends on the limiting horizontal/vertical FOV. Re-fit after a
+        // renderer resize (including rotation and split panes) without reheating the simulation.
+        if (layout === 'hierarchy' && activeAnchors.size > 0) {
+          fitHierarchyCamera3D(activeAnchors);
+        }
+      }
 
       if (!reportedReady && nodes.length > 0 && canvas.width > 0 && canvas.height > 0) {
         reportedReady = true;
@@ -1094,8 +1352,15 @@
 
           // Sort candidates by adjDist ascending — most important processed first,
           // so hubs win proximity dedup against nearby leaf nodes.
+          // F133: a node showing a preview is never a culling candidate. Previews are rendered by
+          // the GraphLabels overlay, so a node dropped here paints NO THUMBNAIL — which is why
+          // settings.alwaysShowPreviews ("always render entity preview images on nodes") did not
+          // actually do that: the label pipeline culled most nodes long before the snippet ran, so
+          // on a 9-photo graph exactly one label survived and it was the one node without a photo.
+          // The thumbnail is the content the user asked to see, not an incidental annotation.
+          const hasPreview = (k: string) => previewKeys != null && previewKeys.has(k);
           const candidates = allProjected
-            .filter(e => e.adjDist <= cutoff || e.key === selected || e.key === targetKey)
+            .filter(e => e.adjDist <= cutoff || e.key === selected || e.key === targetKey || hasPreview(e.key))
             .sort((a, b) => a.adjDist - b.adjDist);
 
           // Separate rawDist-sorted list for the occlusion check (closer nodes first).
@@ -1109,7 +1374,11 @@
           const kept: LabelOut[] = [];
 
           for (const entry of candidates) {
-            const isSpecial = entry.key === selected || entry.key === targetKey;
+            // A preview node is "special" for the same reason the selected node is: it is being
+            // shown deliberately. Occlusion and proximity dedup exist to stop TEXT from piling up;
+            // applying them to a requested thumbnail silently drops the thing that was requested.
+            // Overlap between the thumbnails themselves is the collision pass's job, not this one's.
+            const isSpecial = entry.key === selected || entry.key === targetKey || hasPreview(entry.key);
 
             // 1. Sphere-occlusion: skip if the label position falls inside a closer node's sphere.
             if (!isSpecial) {

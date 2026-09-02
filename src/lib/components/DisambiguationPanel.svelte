@@ -2,7 +2,7 @@
   import { suggestions, dismissSuggestion } from '$lib/stores/disambiguation.svelte';
   import { statements } from '$lib/stores/kb.svelte';
 
-  let sugg = suggestions();
+  let sugg = $state(suggestions());
   $effect(() => {
     sugg = suggestions();
   });
@@ -57,10 +57,10 @@
           </div>
 
           <div class="actions">
-            <button class="btn-merge" on:click={() => handleMerge(s.entityKeyA, s.entityKeyB)}>
+            <button class="btn-merge" onclick={() => handleMerge(s.entityKeyA, s.entityKeyB)}>
               Merge
             </button>
-            <button class="btn-dismiss" on:click={() => handleDismiss(s.id)}>
+            <button class="btn-dismiss" onclick={() => handleDismiss(s.id)}>
               Keep Separate
             </button>
           </div>

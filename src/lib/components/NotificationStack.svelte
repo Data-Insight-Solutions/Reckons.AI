@@ -238,6 +238,11 @@
     background: none;
     border: none;
     border-bottom: 1px solid var(--nc);
+    /* The same class renders as an <a> when the action is a link and a <button> when it runs a
+       handler. The global `button` rule applies border-radius, which this never reset — so with
+       only a bottom border left, the button's underline curled up at both ends while the anchor's
+       stayed straight. Two controls that do the same job looked like different things. */
+    border-radius: 0;
     padding: 0;
     cursor: pointer;
     text-decoration: none;

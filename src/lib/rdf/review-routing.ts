@@ -52,7 +52,11 @@ export function blastRadius(statements: Statement[]): Map<string, number> {
   const bySubject = new Map<string, Statement[]>();
   for (const st of statements) {
     const k = termKey(st.s);
-    bySubject.set(k, [...(bySubject.get(k) ?? []), st]);
+    // Push rather than spread: this runs once per pending statement, and rebuilding the array each
+    // time made blastRadius quadratic on a large queue.
+    const list = bySubject.get(k);
+    if (list) list.push(st);
+    else bySubject.set(k, [st]);
   }
 
   const memo = new Map<string, number>();

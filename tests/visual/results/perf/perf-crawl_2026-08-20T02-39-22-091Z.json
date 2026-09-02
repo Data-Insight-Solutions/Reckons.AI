@@ -1,0 +1,227 @@
+{
+  "schema": "perf-crawl/1",
+  "finishedAt": "2026-08-20T02:39:22.091Z",
+  "baseUrl": "http://localhost:4173",
+  "renderer": "ANGLE (NVIDIA Corporation, NVIDIA GeForce RTX 3090/PCIe/SSE2, OpenGL 4.5.0)",
+  "softwareRendered": false,
+  "budgetMs": 2500,
+  "longTaskMs": 200,
+  "results": [
+    {
+      "route": "ladder:demo-review-tree",
+      "timeToUsable": 5651,
+      "longTasks": [
+        {
+          "duration": 203,
+          "name": "unknown"
+        }
+      ],
+      "worstFrame": 250,
+      "medianFrame": 16.699999999999818,
+      "frozenSpans": [],
+      "failures": [
+        "import→still took 5651ms, over the 2500ms budget (settled 5127ms after landing)",
+        "long task 203ms (unknown)"
+      ],
+      "harnessError": null,
+      "stillness": {
+        "ms": 5127,
+        "samples": 7,
+        "lastChangeMs": 2882,
+        "peakDelta": 5.346842447916667,
+        "finalDelta": 0.18595377604166666
+      }
+    },
+    {
+      "route": "ladder:starter-quickstart",
+      "timeToUsable": 5695,
+      "longTasks": [],
+      "worstFrame": 133.3,
+      "medianFrame": 16.699999999999818,
+      "frozenSpans": [],
+      "failures": [
+        "import→still took 5695ms, over the 2500ms budget (settled 5050ms after landing)"
+      ],
+      "harnessError": null,
+      "stillness": {
+        "ms": 5050,
+        "samples": 7,
+        "lastChangeMs": 2779,
+        "peakDelta": 5.086995442708333,
+        "finalDelta": 0.15584309895833334
+      }
+    },
+    {
+      "route": "ladder:starter-everyday",
+      "timeToUsable": 5693,
+      "longTasks": [],
+      "worstFrame": 233.4000000000001,
+      "medianFrame": 16.699999999999818,
+      "frozenSpans": [],
+      "failures": [
+        "import→still took 5693ms, over the 2500ms budget (settled 5341ms after landing)"
+      ],
+      "harnessError": null,
+      "stillness": {
+        "ms": 5341,
+        "samples": 7,
+        "lastChangeMs": 2924,
+        "peakDelta": 8.046468098958334,
+        "finalDelta": 0.21199544270833334
+      }
+    },
+    {
+      "route": "ladder:starter-guide",
+      "timeToUsable": 8489,
+      "longTasks": [
+        {
+          "duration": 244,
+          "name": "unknown"
+        }
+      ],
+      "worstFrame": 250,
+      "medianFrame": 16.699999999999818,
+      "frozenSpans": [],
+      "failures": [
+        "import→still took 8489ms, over the 2500ms budget (settled 8075ms after landing)",
+        "long task 244ms (unknown)"
+      ],
+      "harnessError": null,
+      "stillness": {
+        "ms": 8075,
+        "samples": 10,
+        "lastChangeMs": 5646,
+        "peakDelta": 14.801350911458334,
+        "finalDelta": 0.07568359375
+      }
+    },
+    {
+      "route": "ladder:reckons-production",
+      "timeToUsable": 17936,
+      "longTasks": [
+        {
+          "duration": 295,
+          "name": "unknown"
+        },
+        {
+          "duration": 257,
+          "name": "unknown"
+        },
+        {
+          "duration": 213,
+          "name": "unknown"
+        }
+      ],
+      "worstFrame": 533.4000000000001,
+      "medianFrame": 66.59999999999991,
+      "frozenSpans": [],
+      "failures": [
+        "import→still took 17936ms, over the 2500ms budget (settled 17341ms after landing)",
+        "long task 295ms (unknown)",
+        "long task 257ms (unknown)"
+      ],
+      "harnessError": null,
+      "stillness": {
+        "ms": 17341,
+        "samples": 16,
+        "lastChangeMs": 14209,
+        "peakDelta": 23.902750651041668,
+        "finalDelta": 0.4471028645833333
+      }
+    },
+    {
+      "route": "ladder:reckons-roadmap",
+      "timeToUsable": -1,
+      "longTasks": [
+        {
+          "duration": 7027,
+          "name": "unknown"
+        },
+        {
+          "duration": 3111,
+          "name": "unknown"
+        },
+        {
+          "duration": 2770,
+          "name": "unknown"
+        },
+        {
+          "duration": 2752,
+          "name": "unknown"
+        },
+        {
+          "duration": 2740,
+          "name": "unknown"
+        },
+        {
+          "duration": 2723,
+          "name": "unknown"
+        },
+        {
+          "duration": 2698,
+          "name": "unknown"
+        },
+        {
+          "duration": 2593,
+          "name": "unknown"
+        },
+        {
+          "duration": 2579,
+          "name": "unknown"
+        },
+        {
+          "duration": 2557,
+          "name": "unknown"
+        },
+        {
+          "duration": 2523,
+          "name": "unknown"
+        },
+        {
+          "duration": 2511,
+          "name": "unknown"
+        },
+        {
+          "duration": 2484,
+          "name": "unknown"
+        },
+        {
+          "duration": 2478,
+          "name": "unknown"
+        },
+        {
+          "duration": 2474,
+          "name": "unknown"
+        },
+        {
+          "duration": 2468,
+          "name": "unknown"
+        },
+        {
+          "duration": 2467,
+          "name": "unknown"
+        },
+        {
+          "duration": 2382,
+          "name": "unknown"
+        }
+      ],
+      "worstFrame": 10133.599999999999,
+      "medianFrame": 2483.5,
+      "frozenSpans": [],
+      "failures": [
+        "graph NEVER settled within 45000ms — still moving at 0.0 mean delta (peak 0.0, last movement 0ms)",
+        "long task 7027ms (unknown)",
+        "long task 3111ms (unknown)"
+      ],
+      "harnessError": null,
+      "stillness": {
+        "ms": -1,
+        "samples": 6,
+        "lastChangeMs": 0,
+        "peakDelta": 0,
+        "finalDelta": 0
+      }
+    }
+  ]
+}

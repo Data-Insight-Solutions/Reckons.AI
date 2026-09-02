@@ -14,7 +14,7 @@
   import { settings } from '$lib/stores/settings.svelte';
   import { confirmedStatements, statements, sources } from '$lib/stores/kb.svelte';
   import { allTypes } from '$lib/stores/entity-types.svelte';
-  import { turtleChat, type TurtleChatProvider } from '$lib/integrations/llm/turtle-chat';
+  import { turtleChat, resolveChatProvider, type TurtleChatProvider } from '$lib/integrations/llm/turtle-chat';
   import type { KBContext } from '$lib/types/turtle-chat';
   import { RDF_TYPE } from '$lib/rdf/entity-types';
   import { fade } from 'svelte/transition';
@@ -148,18 +148,11 @@ After proposing, ask: "Does that work for you, or should I adjust?"`;
 
   function getProvider(): { provider: TurtleChatProvider; apiKey: string; model?: string; ollamaBaseUrl?: string; reckonsBaseUrl?: string } {
     const s = settings();
-    const backend = s.chatBackend ?? s.preferredBackend;
-    if (backend === 'claude' && s.claudeApiKey)   return { provider: 'claude',  apiKey: s.claudeApiKey,  model: s.claudeModel };
-    if (backend === 'openai' && s.openaiApiKey)   return { provider: 'openai',  apiKey: s.openaiApiKey,  model: s.openaiModel };
-    if (backend === 'gemini' && s.geminiApiKey)   return { provider: 'gemini',  apiKey: s.geminiApiKey,  model: s.geminiModel };
-    if (backend === 'ollama')                     return { provider: 'ollama',  apiKey: '',              model: s.ollamaModel, ollamaBaseUrl: s.ollamaBaseUrl };
-    if (backend === 'reckons' && s.reckonsApiKey) return { provider: 'reckons', apiKey: s.reckonsApiKey, model: s.reckonsModel, reckonsBaseUrl: s.reckonsBaseUrl };
-    // fallback
-    if (s.claudeApiKey)   return { provider: 'claude',  apiKey: s.claudeApiKey,  model: s.claudeModel };
-    if (s.openaiApiKey)   return { provider: 'openai',  apiKey: s.openaiApiKey,  model: s.openaiModel };
-    if (s.geminiApiKey)   return { provider: 'gemini',  apiKey: s.geminiApiKey,  model: s.geminiModel };
-    if (s.reckonsApiKey)  return { provider: 'reckons', apiKey: s.reckonsApiKey, model: s.reckonsModel, reckonsBaseUrl: s.reckonsBaseUrl };
-    return { provider: 'wasm', apiKey: '' };
+    return {
+      ...resolveChatProvider(s),
+      ollamaBaseUrl: s.ollamaBaseUrl,
+      reckonsBaseUrl: s.reckonsBaseUrl,
+    };
   }
 
   async function generateProposal() {

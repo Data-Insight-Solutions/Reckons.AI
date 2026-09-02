@@ -180,13 +180,14 @@ export async function chatWithWasm(
 export async function extractWithWasm(
   text: string,
   sourceTitle: string,
-  model = DEFAULT_MODEL
+  model = DEFAULT_MODEL,
+  graphContext = '',
 ): Promise<ExtractedTriple[]> {
   await ensureWasmReady(model);
   const raw = await call<string>({
     type: 'extract',
     system: EXTRACTION_SYSTEM_PROMPT,
-    user: buildExtractionUserPrompt(text, sourceTitle)
+    user: buildExtractionUserPrompt(text, sourceTitle, graphContext)
   });
   return parseTriplesJSON(raw);
 }

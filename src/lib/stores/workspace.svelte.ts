@@ -28,7 +28,7 @@
  */
 import { db, KBaseDB, DEFAULT_SETTINGS } from '../storage/db';
 import { updateSettings } from './settings.svelte';
-import { getRegistry, getCurrentKbName, registerStableId, type KbEntry } from '../storage/kb-registry';
+import { getRegistry, getCurrentKbName, getCurrentKbId, registerStableId, type KbEntry } from '../storage/kb-registry';
 import { getOrCreateStableId } from '../storage/kb-fingerprint';
 import { collectAssets, assetTriples, type CollectedAsset, type AssetCategory } from '../storage/kb-assets';
 import { dedupeCompletePending } from '../rdf/pending-dedup';
@@ -40,6 +40,28 @@ import {
   type SourceBaseline
 } from '../rdf/source-cache';
 import { classifyText } from '../safety/content-policy';
+import {
+  getWorkspaceRow,
+  putWorkspaceRow,
+  clearWorkspaceRow,
+  defaultGraphWorkspaceStore,
+} from '../storage/app-db';
+import {
+  acknowledgePendingJsonl,
+  partitionPendingJsonl,
+  type PendingEntry,
+} from '../rdf/pending-entry';
+
+/**
+ * Where a handle from BEFORE the app-level store might still be sitting: this graph's own
+ * database first, then the default graph — which is where a long-standing setup keeps it, and
+ * therefore what saves a re-pick the first time a freshly created graph is opened.
+ */
+function legacyWorkspaceStores() {
+  const stores = [db.workspace as never];
+  if (db.name !== 'kbase') stores.push(defaultGraphWorkspaceStore() as never);
+  return stores;
+}
 
 /** Filename written to the workspace dir on every KB mutation (read by the MCP server). */
 export const WORKSPACE_KB_FILE = 'knowledge.ttl';
@@ -58,7 +80,30 @@ let _syncedKbCount = $state(0);
 // recorded in `_seenHashes`; a poll skips any file whose hash already matches.
 
 const AUTOSYNC_KEY = 'reckons:ws-autosync';
-const SEEN_HASHES_KEY = 'reckons:ws-seen-hashes';
+
+/**
+ * Seen-hashes are PER GRAPH, because what they guard is per graph.
+ *
+ * The key used to be one origin-wide `reckons:ws-seen-hashes`, but the data it protects lives in
+ * a per-graph Dexie database. Pull the same folder into graph A, then open graph B via `?kb=` and
+ * link that same folder: every file hash already matches, so the loop guard skips every folder and
+ * B imports NOTHING while staying empty. The folder looks linked and does nothing — and picking a
+ * DIFFERENT folder appears to "work" only because its paths were never seen before.
+ *
+ * Scoping by graph id makes the guard mean what its comment always claimed: this graph has already
+ * seen this file at this revision.
+ */
+export function seenHashesKey(): string {
+  if (typeof window === 'undefined') return 'reckons:ws-seen-hashes';
+  try {
+    // `?kb=` may be a human-facing graph NAME. getCurrentKbId() resolves that alias to the
+    // registry's opaque id, so `/?kb=roadmap` and `/?kb=kbase_123` share one loop guard instead
+    // of importing the same folder twice under two storage keys.
+    return `reckons:ws-seen-hashes:${getCurrentKbId()}`;
+  } catch {
+    return 'reckons:ws-seen-hashes';
+  }
+}
 const POLL_INTERVAL_MS = 10_000;
 
 /** path-key ("kbs/foo/foo.ttl") → last-seen content hash of that file. */
@@ -104,14 +149,14 @@ function markWritten(pathKey: string, content: string): void {
 function persistSeenHashes(): void {
   if (typeof localStorage === 'undefined') return;
   try {
-    localStorage.setItem(SEEN_HASHES_KEY, JSON.stringify([..._seenHashes]));
+    localStorage.setItem(seenHashesKey(), JSON.stringify([..._seenHashes]));
   } catch { /* quota / private mode — best-effort */ }
 }
 
 function loadSeenHashes(): void {
   if (typeof localStorage === 'undefined') return;
   try {
-    const raw = localStorage.getItem(SEEN_HASHES_KEY);
+    const raw = localStorage.getItem(seenHashesKey());
     if (!raw) return;
     const entries = JSON.parse(raw) as [string, string][];
     if (Array.isArray(entries)) {
@@ -128,7 +173,9 @@ function readAutoSyncPref(): boolean {
 
 /** Called on app startup — loads the stored handle and checks current permission. */
 export async function loadWorkspace(): Promise<void> {
-  const row = await db.workspace.get('main');
+  // App-level, with a one-time adoption of any handle an older version left in this graph's
+  // own database. See app-db.ts: the handle describes the browser, not the graph.
+  const row = await getWorkspaceRow(legacyWorkspaceStores());
   if (!row) { _state = 'none'; return; }
   _name = row.name;
   // Restore the last-seen revision baseline BEFORE the initial pull, so a reconnect skips files
@@ -154,7 +201,16 @@ export async function loadWorkspace(): Promise<void> {
 function onWorkspaceConnected(): void {
   if (!_autoSyncEnabled) return;
   // Fire-and-forget: an initial pull followed by the polling loop.
-  void pullFromWorkspace().finally(() => startWorkspacePolling());
+  //
+  // The pending queue is drained here as well as on page load. Linking a folder mid-session used
+  // to sync graph TTLs but leave queued proposals sitting in knowledge.pending.jsonl until the
+  // next reload or a manual refresh — so a note dictated into a ring arrived on disk, and then
+  // appeared to have vanished. Connecting a folder is exactly when the user expects what is in
+  // it to show up.
+  void pullFromWorkspace()
+    .then(() => drainAndImportPending())
+    .catch(() => { /* both paths report their own failures; never break connection on this */ })
+    .finally(() => startWorkspacePolling());
 }
 
 /** Ask the user to pick a directory. Returns true on success. */
@@ -163,7 +219,7 @@ export async function pickWorkspace(): Promise<boolean> {
   try {
     const handle = await (window as unknown as { showDirectoryPicker(o?: { mode?: string }): Promise<FileSystemDirectoryHandle> })
       .showDirectoryPicker({ mode: 'readwrite' });
-    await db.workspace.put({ id: 'main', handle, name: handle.name });
+    await putWorkspaceRow(handle, handle.name, db.workspace);
     _handle = handle;
     _name = handle.name;
     _state = 'connected';
@@ -184,7 +240,7 @@ export async function pickWorkspace(): Promise<boolean> {
 
 /** Re-request permission for the stored handle (call once per session if state === 'disconnected'). */
 export async function reconnectWorkspace(): Promise<boolean> {
-  const row = await db.workspace.get('main');
+  const row = await getWorkspaceRow(legacyWorkspaceStores());
   if (!row) return false;
   try {
     const perm = await (row.handle as any).requestPermission({ mode: 'readwrite' });
@@ -205,8 +261,8 @@ export async function reconnectWorkspace(): Promise<boolean> {
 export async function clearWorkspace(): Promise<void> {
   stopWorkspacePolling();
   _seenHashes.clear();
-  if (typeof localStorage !== 'undefined') localStorage.removeItem(SEEN_HASHES_KEY);
-  await db.workspace.delete('main');
+  if (typeof localStorage !== 'undefined') localStorage.removeItem(seenHashesKey());
+  await clearWorkspaceRow(legacyWorkspaceStores());
   _handle = null;
   _name = null;
   _state = 'none';
@@ -226,12 +282,51 @@ async function getOrCreateDir(parent: FileSystemDirectoryHandle, name: string): 
  * Read a file from the workspace directory.
  * Returns null if no workspace is connected or the file doesn't exist.
  */
-export async function readFromWorkspace(filename: string): Promise<string | null> {
+/**
+ * Directories to look in for a workspace file, relative to the linked folder.
+ *
+ * The linked folder is whatever the user picked, and there is no reason to force it to be the
+ * one shape the app expects. Pointing at a project ROOT is at least as natural as pointing at
+ * `reckons-workspace/` — the graph walker already recurses, so it finds graphs either way, and
+ * only the queue was pinned to the top level. That mismatch is what made linking the repo root
+ * "work" for graphs while the drain silently found nothing.
+ *
+ * Adapting the lookup is the right fix. The alternative — symlinking or copying files into the
+ * shape the app wanted — forces filesystem structure to satisfy a hardcoded path, and symlinks in
+ * particular are INVISIBLE to the File System Access API, so that approach cannot work at all in
+ * a browser even when it looks correct on disk.
+ */
+const WORKSPACE_SEARCH_DIRS: readonly string[][] = [[], ['reckons-workspace']];
+
+/** Resolve `filename` against the linked folder, trying each known layout. */
+async function findWorkspaceFile(
+  filename: string,
+  opts: { create?: boolean } = {},
+): Promise<FileSystemFileHandle | null> {
   if (!_handle) return null;
+  for (const segs of WORKSPACE_SEARCH_DIRS) {
+    try {
+      let dir: FileSystemDirectoryHandle = _handle;
+      for (const seg of segs) dir = await dir.getDirectoryHandle(seg);
+      return await dir.getFileHandle(filename);
+    } catch { /* not in this layout — try the next */ }
+  }
+  // Creating falls back to the linked folder itself, never inventing a subdirectory.
+  if (opts.create) {
+    try { return await _handle.getFileHandle(filename, { create: true }); } catch { return null; }
+  }
+  return null;
+}
+
+/**
+ * Read a file from the workspace directory.
+ * Returns null if no workspace is connected or the file doesn't exist.
+ */
+export async function readFromWorkspace(filename: string): Promise<string | null> {
+  const fh = await findWorkspaceFile(filename);
+  if (!fh) return null;
   try {
-    const fh = await _handle.getFileHandle(filename);
-    const file = await fh.getFile();
-    return await file.text();
+    return await (await fh.getFile()).text();
   } catch {
     return null;
   }
@@ -244,7 +339,11 @@ export async function readFromWorkspace(filename: string): Promise<string | null
 export async function writeToWorkspace(filename: string, content: string): Promise<void> {
   if (!_handle) return;
   try {
-    const fh = await _handle.getFileHandle(filename, { create: true });
+    // Write back to WHERE THE FILE WAS FOUND. Resolving reads through the search path but writing
+    // to the linked root would drain a queue from one location and rewrite the remainder to
+    // another — the retained rows would look deleted, and the original file would never shrink.
+    const fh = await findWorkspaceFile(filename, { create: true });
+    if (!fh) return;
     const w = await fh.createWritable();
     await w.write(content);
     await w.close();
@@ -253,12 +352,136 @@ export async function writeToWorkspace(filename: string, content: string): Promi
   }
 }
 
+/**
+ * Queue acknowledgement is the commit marker for a pending import, so it cannot use the
+ * best-effort helpers above. A missing handle, failed re-read, failed write, or failed close must
+ * reject the drain: reporting success would leave the row queued and import it again on retry.
+ */
+async function readWorkspaceFileStrict(filename: string): Promise<string> {
+  const fh = await findWorkspaceFile(filename);
+  if (!fh) throw new Error(`Workspace file is unavailable: ${filename}`);
+  return (await fh.getFile()).text();
+}
+
+async function writeWorkspaceFileStrict(
+  filename: string,
+  content: string,
+  expectedCurrent?: string,
+): Promise<void> {
+  if (!_handle) throw new Error('Workspace is not connected');
+  const fh = await findWorkspaceFile(filename, { create: true });
+  if (!fh) throw new Error(`Workspace file is unavailable: ${filename}`);
+  const writable = await fh.createWritable({ keepExistingData: true });
+  if (expectedCurrent !== undefined) {
+    const current = await (await fh.getFile()).text();
+    if (current !== expectedCurrent) {
+      await writable.abort('Workspace queue changed before acknowledgement');
+      throw new Error(`Workspace file changed before acknowledgement: ${filename}`);
+    }
+  }
+  await writable.write(content);
+  await writable.close();
+}
+
+const HOST_LOCK_ACTIVE_SUFFIX = '.lock.active';
+
+/**
+ * Host writers use a persistent `.lock` pathname as the inode behind Linux flock. Existence of
+ * that file is therefore not activity. While the kernel lock is actually held they publish a
+ * leased `.lock.active` JSON marker for browser clients, which cannot participate in flock. The
+ * expiry is the crash-recovery path when a process dies before removing its marker.
+ */
+async function activeHostLockMarker(marker: FileSystemFileHandle): Promise<boolean> {
+  let text: string;
+  try {
+    text = await (await marker.getFile()).text();
+  } catch {
+    // If a marker was found but cannot be inspected, fail closed for this short operation. A valid
+    // expired marker is handled below; unreadable workspace permissions will fail the write too.
+    return true;
+  }
+  try {
+    const value = JSON.parse(text) as { expiresAt?: unknown };
+    return typeof value.expiresAt === 'number'
+      && Number.isFinite(value.expiresAt)
+      && value.expiresAt > Date.now();
+  } catch {
+    // Compatible writers replace marker JSON atomically. Invalid content cannot prove activity and
+    // must not become a new permanent sentinel with the same failure mode as `.lock` existence.
+    return false;
+  }
+}
+
+async function workspaceFileHasActiveHostLock(filename: string): Promise<boolean> {
+  const marker = await findWorkspaceFile(`${filename}${HOST_LOCK_ACTIVE_SUFFIX}`);
+  return marker ? activeHostLockMarker(marker) : false;
+}
+
 /** Write a text file into a subdirectory handle. */
 async function writeToDir(dir: FileSystemDirectoryHandle, filename: string, content: string): Promise<void> {
   const fh = await dir.getFileHandle(filename, { create: true });
   const w = await fh.createWritable();
   await w.write(content);
   await w.close();
+}
+
+/** A write this graph is not allowed to make yet, and why. */
+export type WriteHold =
+  | { held: false }
+  | { held: true; reason: 'locked'; detail: string }
+  | { held: true; reason: 'diverged'; detail: string };
+
+let _lastHold = $state<WriteHold>({ held: false });
+/** The most recent reason a graph write was withheld, for the UI to surface. */
+export function lastWriteHold(): WriteHold { return _lastHold; }
+
+/**
+ * Decide whether it is safe to overwrite `filename` with our version of it.
+ *
+ * The write used to be unconditional: read nothing, write, and only THEN record the hash. That made
+ * `_seenHashes` a loop guard and never a precondition, so whoever wrote last won and the loser was
+ * never told. That is how a graph containing only freshly-drained pending facts replaced a canonical
+ * roadmap: nothing asked whether the file on disk was still the file we had read.
+ *
+ * Two independent checks, because the two writers fail differently:
+ *
+ *   locked    a host process (scripts/offline/pending-queue.ts and friends) holds `<file>.lock`
+ *             through Linux flock and publishes a leased `<file>.lock.active` marker. The browser
+ *             cannot take flock, but it CAN inspect that transient marker.
+ *   diverged  the bytes on disk no longer hash to what we last read. Catches every other writer —
+ *             Claude Code, a script, `git checkout` — including those that take no lock at all.
+ *
+ * This is optimistic concurrency, NOT mutual exclusion: a writer can still land between our read and
+ * our write. From the File System Access sandbox that race cannot be closed, only narrowed from
+ * "always silently" to "a few milliseconds". Say so rather than implying the file is safe.
+ */
+async function holdWrite(
+  dir: FileSystemDirectoryHandle,
+  filename: string,
+  pathKey: string,
+): Promise<WriteHold> {
+  // 1. A host transaction is in flight.
+  try {
+    const marker = await dir.getFileHandle(`${filename}${HOST_LOCK_ACTIVE_SUFFIX}`);
+    if (await activeHostLockMarker(marker)) {
+      return { held: true, reason: 'locked', detail: `${filename} is locked by a local process` };
+    }
+  } catch { /* absent — nothing holds it */ }
+
+  // 2. Compare-and-swap against what we last read.
+  const onDisk = await readFromDir(dir, filename);
+  if (onDisk === null) return { held: false };           // new file — nothing to clobber
+  const seen = _seenHashes.get(pathKey);
+  if (seen === undefined) {
+    // We have never read this file but it exists. That is exactly the case that overwrote the
+    // canonical graphs, so treat an unknown file as somebody else's until a pull establishes a
+    // baseline for it.
+    return { held: true, reason: 'diverged', detail: `${filename} exists but this graph has no baseline for it` };
+  }
+  if (hashString(onDisk) !== seen) {
+    return { held: true, reason: 'diverged', detail: `${filename} changed on disk since this graph last read it` };
+  }
+  return { held: false };
 }
 
 /** Read a text file from a subdirectory handle. Returns null if not found. */
@@ -315,11 +538,21 @@ export async function writeKbToFolder(
     const kbsDir = await getOrCreateDir(_handle, 'kbs');
     const folderName = kbFolderName(entry.name, entry.id);
     const kbDir = await getOrCreateDir(kbsDir, folderName);
+    const pathKey = `kbs/${folderName}/${folderName}.ttl`;
+
+    // HOLD, don't clobber. An unsafe write is deferred, not dropped: the file on disk stays as it
+    // is, this graph keeps its state in IndexedDB, and the next pull reconciles the two properly.
+    const hold = await holdWrite(kbDir, `${folderName}.ttl`, pathKey);
+    _lastHold = hold;
+    if (hold.held) {
+      console.warn(`[workspace] write held for "${entry.name}": ${hold.detail} (${hold.reason})`);
+      return;
+    }
 
     await writeToDir(kbDir, `${folderName}.ttl`, ttl);
     // Remember what we wrote so the poll loop doesn't treat our own write as an
     // external change and re-import it (write→read feedback loop).
-    markWritten(`kbs/${folderName}/${folderName}.ttl`, ttl);
+    markWritten(pathKey, ttl);
 
     // Write binary assets to structured directories (only populated categories)
     if (assets && assets.length > 0) {
@@ -363,6 +596,28 @@ async function writeAssetsToFolder(
  *  `.git`, `.svelte-kit`, `.cache`, …) are skipped separately below. */
 const WALK_SKIP_DIRS = new Set(['assets', 'node_modules', 'build', 'dist', 'coverage', 'vendor']);
 
+/**
+ * Workspace files that are AGENT INFRASTRUCTURE, not the user's knowledge.
+ *
+ * `knowledge.ttl` was excluded here; nothing else was. So linking a real Reckons workspace imported
+ * the task queue, its derived run state, the digest, the idea list, the schedules and the task
+ * drafts as six knowledge graphs — each then re-exported back to disk as a `# N statements` file,
+ * and each one more graph to pick through at review time. Machinery about the work is not the work.
+ *
+ * Matched on filename anywhere in the tree, because these live at the workspace root while user
+ * graphs live under kbs/ — and a user is still free to keep a real graph in a nested folder.
+ */
+const WALK_SKIP_FILES = new Set([
+  'tasks.ttl',
+  'tasks.state.ttl',
+  'tasksstate.ttl',   // the app-written folder renames it, so the original name alone missed it
+  'schedules.ttl',
+  'schedules.state.ttl',
+  'task-drafts.ttl',
+  'digest.ttl',
+  'ideas.ttl',
+]);
+
 /** Recursively yield the path segments of every `.ttl` file under `dir`.
  *  Skips asset stores, dependency/build/VCS directories, and hidden folders, so
  *  linking a real project folder discovers the user's KBs without pulling in
@@ -372,9 +627,15 @@ async function* walkTtls(dir: any, prefix: string[] = []): AsyncGenerator<string
     if (entry.kind === 'directory') {
       if (WALK_SKIP_DIRS.has(entry.name) || entry.name.startsWith('.')) continue;
       yield* walkTtls(entry, [...prefix, entry.name]);
-    } else if (entry.kind === 'file' && entry.name.endsWith('.ttl') && entry.name !== WORKSPACE_KB_FILE) {
+    } else if (
+      entry.kind === 'file' &&
+      entry.name.endsWith('.ttl') &&
+      entry.name !== WORKSPACE_KB_FILE &&
+      !WALK_SKIP_FILES.has(entry.name)
+    ) {
       // Skip the MCP combined export (knowledge.ttl) so it isn't imported as a
-      // duplicate KB alongside the real per-graph files.
+      // duplicate KB alongside the real per-graph files, and the agent-infrastructure
+      // files above, which describe the work rather than being it.
       yield [...prefix, entry.name];
     }
   }
@@ -616,81 +877,41 @@ async function _triggerWorkspaceTtlExport(): Promise<void> {
 
 export const WORKSPACE_PENDING_FILE = 'knowledge.pending.jsonl';
 
-type PendingEntry = {
-  subject: string;
-  predicate: string;
-  /**
-   * Target graph, by name (F80). An agent's question about kb:auto-merge belongs in the
-   * Reckons.AI roadmap graph, NOT in whatever the user happened to have open.
-   *
-   * Omit to mean "any graph" (legacy entries, and notes that are not graph-specific).
-   * Entries addressed to a DIFFERENT graph are put back in the file rather than consumed —
-   * see drainWorkspacePending. Draining used to be unconditionally destructive: it read the
-   * file, cleared it, and imported everything into the active graph, so a question could be
-   * misfiled into the wrong graph AND lost from the file, with no way to retry.
-   */
-  kb?: string;
-  /** Omit (or leave empty) to denote a PARTIAL FACT whose object the reviewer must fill (F32). */
-  object?: string;
-  /** The sub-agent's question for a partial fact (F32). */
-  question?: string;
-  /** Entity IRIs this unanswered question blocks (F80). Carried onto the Statement. */
-  blocks?: string | string[];
-  note?: string;
-  addedByMcp?: boolean;
-  addedAt?: string;
-  type?: 'observation' | 'question' | 'suggestion' | 'status-update' | 'drift-warning';
-  /**
-   * WHAT KIND OF WRONG this is — form, drift or defect (rdf/finding-class.ts). A second axis
-   * to `type`, because `type` says what the note IS (a question, a suggestion) and this says
-   * where the fix LANDS: in the artifact, in the graph-or-world decision, or in the code.
-   *
-   * Added 2026-08-14 after measuring that `drift-warning` covered all three at once —
-   * claim-audit (a false claim), server-health (a server down) and shacl-validate (a missing
-   * label) all emitted it, which buried the findings that genuinely need a human to decide
-   * which side is wrong.
-   */
-  findingClass?: 'form' | 'drift' | 'defect';
-  commitSha?: string;
-  agent?: string;
-  priority?: 'low' | 'normal' | 'high';
-};
-
 /**
  * Read knowledge.pending.jsonl, take the entries meant for the ACTIVE graph, and PUT THE
  * REST BACK. Returns an empty array if the file doesn't exist or no workspace is connected.
  *
  * Draining is destructive — it consumes the file — so it must only consume what it can
  * actually deliver. An entry addressed to another graph (`kb`) is left in the file for
- * that graph to claim. Previously drain took everything and imported it into whatever
- * graph happened to be open, so an agent's question about the roadmap could be silently
- * misfiled into a user's personal notes AND erased from the file, with no way to retry.
+ * that graph to claim. An unscoped or invalid row is also retained verbatim: guessing a
+ * destination from the active tab is how a roadmap finding lands in a user's personal notes.
  */
 export async function drainWorkspacePending(): Promise<PendingEntry[]> {
   const text = await readFromWorkspace(WORKSPACE_PENDING_FILE);
   if (!text?.trim()) return [];
 
-  const active = getCurrentKbName();
-  const entries: PendingEntry[] = [];
-  const notMine: string[] = [];
+  // Both aliases: the display name AND the graph id. A `?kb=<id>` link sets the id, but an id
+  // absent from the registry resolves to the 'Default Graph' NAME, so matching on name alone made
+  // a correctly targeted row import nowhere while still reporting a successful drain.
+  const active = [getCurrentKbName(), getCurrentKbId()];
+  const { entries, retainedLines, issues } = partitionPendingJsonl(text, active);
 
-  for (const line of text.split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    try {
-      const entry = JSON.parse(trimmed) as PendingEntry;
-      // No `kb` = any graph. Otherwise it must match the active one, or it waits.
-      if (entry.kb && entry.kb !== active) notMine.push(trimmed);
-      else entries.push(entry);
-    } catch {
-      // skip malformed lines
-    }
+  if (issues.length > 0) {
+    const counts = new Map<string, number>();
+    for (const issue of issues) counts.set(issue.code, (counts.get(issue.code) ?? 0) + 1);
+    console.warn(
+      `[workspace] retained ${issues.length} pending row(s) that are not safe to import: ` +
+      [...counts].map(([code, count]) => `${code}=${count}`).join(', '),
+    );
   }
 
-  // Consume ONLY what we took. Entries addressed to another graph are written back so
-  // that graph can claim them later — clearing the whole file would destroy them.
+  // Consume ONLY what we took. Other-target, unscoped, malformed, and invalid rows are written
+  // back byte-for-line so a drain can never erase evidence it could not safely deliver.
   if (entries.length > 0) {
-    await writeToWorkspace(WORKSPACE_PENDING_FILE, notMine.length ? notMine.join('\n') + '\n' : '');
+    await writeToWorkspace(
+      WORKSPACE_PENDING_FILE,
+      retainedLines.length ? retainedLines.join('\n') + '\n' : '',
+    );
   }
 
   return entries;
@@ -700,26 +921,79 @@ export async function drainWorkspacePending(): Promise<PendingEntry[]> {
  * Drain pending.jsonl and import entries as pending statements into IndexedDB.
  * Returns the number of statements imported (0 if none or workspace not connected).
  */
-export async function drainAndImportPending(): Promise<number> {
-  const pending = await drainWorkspacePending();
+/**
+ * The object term for a drained proposal.
+ *
+ * Every drained object used to be forced to `kind: 'literal'`, so a fact RELATING two entities
+ * imported as a leaf holding the other entity's IRI as text. No drained fact could ever produce an
+ * edge — which is why draining hundreds of proposals yields a graph with no structure, and why the
+ * hierarchy layout finds nothing to lay out. `PendingEntry` has always declared `objectKind`; only
+ * this funnel ignored it.
+ *
+ * `urn:` is inferred as an IRI when nothing is declared: a literal VALUE that begins with `urn:`
+ * is vanishingly rare, while a `urn:kbase:concept/...` object is always an entity reference. HTTP
+ * URLs are deliberately NOT inferred — those are routinely literal values (source links, image
+ * URLs), so they need `objectKind: 'iri'` stated explicitly.
+ */
+function objectTerm(value: string, declared?: 'literal' | 'iri'): { kind: 'literal' | 'iri'; value: string } {
+  if (declared) return { kind: declared, value };
+  return value.startsWith('urn:') ? { kind: 'iri', value } : { kind: 'literal', value };
+}
+
+let pendingImport: Promise<number> | null = null;
+
+/**
+ * Coalesce the startup and manual review triggers in this page. Without this guard both callers
+ * can import the same snapshot before either reaches acknowledgement.
+ */
+export function drainAndImportPending(): Promise<number> {
+  if (pendingImport) return pendingImport;
+  const run = drainAndImportPendingOnce();
+  pendingImport = run;
+  run.then(
+    () => { if (pendingImport === run) pendingImport = null; },
+    () => { if (pendingImport === run) pendingImport = null; },
+  );
+  return run;
+}
+
+async function drainAndImportPendingOnce(): Promise<number> {
+  // Host-side queue writers advertise their flock with a leased active marker the browser can
+  // observe. The `.lock` pathname itself persists between transactions and is not an activity bit.
+  if (await workspaceFileHasActiveHostLock(WORKSPACE_PENDING_FILE)) return 0;
+
+  // Snapshot first, but do not mutate the queue yet. Filesystem and IndexedDB cannot share a
+  // transaction, so the safe ordering is at-least-once: commit locally, then acknowledge exactly
+  // the rows from this snapshot. Stable row ids make a crash retry idempotent in IndexedDB; the
+  // final strict re-read preserves appends that arrived while the transaction was running.
+  const snapshot = await readFromWorkspace(WORKSPACE_PENDING_FILE);
+  if (!snapshot?.trim()) return 0;
+  const currentKbId = getCurrentKbId();
+  const active = [getCurrentKbName(), currentKbId];
+  const partition = partitionPendingJsonl(snapshot, active);
+  const pending = partition.entries;
   if (pending.length === 0) return 0;
 
-  const { addStatements, addSource } = await import('./kb.svelte');
-  const { v4: uuid } = await import('uuid');
+  const { prepareStatementsForWrite, persistSourceBatch } = await import('./kb.svelte');
+  const { v5: uuidv5 } = await import('uuid');
 
-  const sourceId = `mcp-pending-${Date.now()}`;
+  const queueNamespace = uuidv5('https://reckons.ai/workspace-pending', uuidv5.URL);
+  const sourceId = `mcp-pending-${uuidv5(
+    JSON.stringify([currentKbId, ...partition.consumedLines]),
+    queueNamespace,
+  )}`;
   const now = Date.now();
 
   const agents = [...new Set(pending.map(e => e.agent).filter(Boolean))];
   const agentSuffix = agents.length > 0 ? ` (${agents.join(', ')})` : '';
-  await addSource({
+  const source = {
     id: sourceId,
     title: `MCP${agentSuffix} — ${pending.length} queued note${pending.length > 1 ? 's' : ''}`,
     uri: `urn:mcp:pending:${sourceId}`,
     kind: 'analysis',
     trustLevel: 'review',
     ingestedAt: now,
-  });
+  } as const;
 
   const priorityToConfidence: Record<string, number> = { high: 0.9, normal: 0.7, low: 0.5 };
   const typePrefix: Record<string, string> = {
@@ -729,7 +1003,11 @@ export async function drainAndImportPending(): Promise<number> {
     'status-update': '[STATUS] ',
   };
 
-  const sts = pending.map(e => {
+  const rowOccurrences = new Map<string, number>();
+  const sts = pending.map((e, index) => {
+    const rawLine = partition.consumedLines[index];
+    const occurrence = rowOccurrences.get(rawLine) ?? 0;
+    rowOccurrences.set(rawLine, occurrence + 1);
     const confidence = priorityToConfidence[e.priority ?? 'normal'] ?? 0.7;
     // Partial fact (F32): no object supplied — the reviewer fills it in.
     const partial = e.object == null || e.object === '';
@@ -739,13 +1017,22 @@ export async function drainAndImportPending(): Promise<number> {
     const excerpt = e.commitSha ? `commit: ${e.commitSha}` : undefined;
 
     return {
-      id: uuid(),
+      // Raw bytes plus duplicate occurrence make retries stable without collapsing two deliberate,
+      // identical partial questions. Graph scope prevents the same producer row in two KBs from
+      // sharing an id if their databases are later combined.
+      id: uuidv5(JSON.stringify([currentKbId, rawLine, occurrence]), queueNamespace),
       sourceId,
+      // The queue is a proposal transport, not an authentication channel. `verifiedBy` is a
+      // legacy self-attested string and `verificationClaim` is intentionally advisory; either can
+      // be forged by the same writer that supplied the triple. A separately authenticated future
+      // verifier may use a trusted write path, but no JSONL row can settle itself.
       status: 'pending' as const,
       confidence,
       s: { kind: 'iri' as const, value: e.subject },
       p: { kind: 'iri' as const, value: e.predicate },
-      o: { kind: 'literal' as const, value: partial ? '?' : e.object! },
+      o: partial
+        ? { kind: 'literal' as const, value: '?' }
+        : objectTerm(e.object!, e.objectKind),
       g: { kind: 'iri' as const, value: `urn:mcp:pending:${sourceId}` },
       // Carry BOTH through to the graph. Dropping `blocks` was the bug that made a partial
       // fact merely a gap instead of a priority — the graph knew it had a hole but not what
@@ -780,13 +1067,67 @@ export async function drainAndImportPending(): Promise<number> {
   // and folding them would silently drop what the hole costs — a destructive action must never be
   // silent. Cross-batch dedupe (against already-imported pending) also remains — that needs a
   // graph read, not just this batch.
-  const { kept: deduped, folded } = dedupeCompletePending(sts);
+  const { kept: deduped, folded, groups } = dedupeCompletePending(sts);
   if (folded) console.info(`[F80.1] folded ${folded} duplicate pending note(s) before review`);
 
-  // Origin 'agent' engages the F52 boundary in addStatements: these are agent-queued notes, so
+  // A previous attempt may have committed IndexedDB and then failed to acknowledge the file.
+  // Stable ids are durable receipts: do not write or audit those statements a second time.
+  const durable = await db.statements.bulkGet(deduped.map((statement) => statement.id));
+  const unpersisted = deduped.filter((_, index) => !durable[index]);
+
+  // Origin 'agent' engages the F52 boundary: these are agent-queued notes, so
   // any settled status is downgraded to a proposal — agents propose, the human settles.
-  await addStatements(deduped, sourceId, { origin: 'agent' });
-  return deduped.length;
+  let written: typeof deduped = [];
+  if (unpersisted.length > 0) {
+    const plan = await prepareStatementsForWrite(unpersisted, sourceId, { origin: 'agent' });
+    written = await persistSourceBatch(source, plan);
+  }
+
+  // Admission can intentionally hold rows (content policy or an archived-entity
+  // decision). A queue row is acknowledged only when its statement id is now
+  // durable. Exact duplicates point at their durable canonical representative.
+  const durableAfter = await db.statements.bulkGet(deduped.map((statement) => statement.id));
+  const delivered = new Set(
+    deduped.filter((_, index) => durableAfter[index]).map((statement) => statement.id),
+  );
+  const representative = new Map<string, string>();
+  for (const group of groups) {
+    for (const duplicate of group.duplicates) representative.set(duplicate.id, group.keep.id);
+  }
+  const acknowledgedLines = sts.flatMap((statement, index) => {
+    const receiptId = representative.get(statement.id) ?? statement.id;
+    return delivered.has(receiptId) ? [partition.consumedLines[index]] : [];
+  });
+
+  // Re-read before acknowledging so rows appended during the IndexedDB transaction survive. Do
+  // not fall back to the old snapshot: a transient read error followed by a successful stale
+  // rewrite would erase those appends.
+  if (acknowledgedLines.length > 0) {
+    const latest = await readWorkspaceFileStrict(WORKSPACE_PENDING_FILE);
+    // A host writer may have started after the initial marker check. Once its marker disappears,
+    // the idempotent retry will subtract our rows from the host's committed version.
+    if (await workspaceFileHasActiveHostLock(WORKSPACE_PENDING_FILE)) {
+      throw new Error(`Workspace file is locked by a local process: ${WORKSPACE_PENDING_FILE}`);
+    }
+    await writeWorkspaceFileStrict(
+      WORKSPACE_PENDING_FILE,
+      acknowledgePendingJsonl(latest, acknowledgedLines),
+      latest,
+    );
+  }
+
+  // A dictated note lands here as ONE log-level fact carrying a whole sentence. Reading it into
+  // triples is not an optional extra step the user should have to remember: the note is the
+  // TRANSPORT, and the facts inside it are the point. Extraction is therefore automatic, and
+  // everything it reads out still arrives pending for review.
+  //
+  // Dynamically imported to keep the extraction pipeline (and the model backends behind it) out
+  // of this module's static dependency graph — the workspace store is loaded on every page.
+  void import('./note-extraction.svelte')
+    .then((m) => m.extractCapturedNotes())
+    .catch((err) => console.warn('[notes] automatic extraction failed:', err));
+
+  return written.length;
 }
 
 /**
@@ -882,7 +1223,48 @@ export async function importKbsFromWorkspace(): Promise<{ imported: string[]; sk
     }
   }
 
+  // A graph imported and then not grouped would appear under "Ungrouped" until the next scan.
+  await syncFolderPaths();
+
   return { imported, skipped };
+}
+
+/**
+ * Record WHERE each synced graph lives, so the graph list can be grouped by the folders the user
+ * actually made (kb:graph-sets, F113 — the `folder` membership basis).
+ *
+ * The path is a CACHE, not a claim: a folder can be moved or the workspace unlinked without the
+ * app noticing, so this is refreshed from discovery every time and nothing reads a file through it.
+ * Matching is by stableId first — a graph that was renamed is still the same graph — and falls back
+ * to name, which is all a graph written by hand may have.
+ *
+ * Returns how many registry rows were updated, so a caller can tell "nothing to do" from "did not
+ * run" rather than reporting a silent success.
+ */
+export async function syncFolderPaths(): Promise<number> {
+  if (!_handle) return 0;
+  const folders = await listKbFolders();
+  if (!folders.length) return 0;
+
+  const { getRegistry, updateKbEntry } = await import('../storage/kb-registry');
+  const registry = getRegistry();
+  const byStableId = new Map(registry.filter((e) => e.stableId).map((e) => [e.stableId!, e]));
+  const byName = new Map(registry.map((e) => [e.name.toLowerCase(), e]));
+
+  let updated = 0;
+  for (const folder of folders) {
+    const entry =
+      (folder.meta.stableId ? byStableId.get(folder.meta.stableId) : undefined) ??
+      byName.get(folder.meta.name.toLowerCase()) ??
+      byName.get(folder.folderName.toLowerCase());
+    if (!entry) continue;
+    // Directory only — the filename is not part of the grouping.
+    const folderPath = folder.path.slice(0, -1).join('/');
+    if (entry.folderPath === folderPath) continue;
+    updateKbEntry(entry.id, { folderPath });
+    updated++;
+  }
+  return updated;
 }
 
 // ── Pull: import new / update changed .ttl from disk ─────────────────────────
@@ -969,7 +1351,14 @@ export async function resyncNow(): Promise<{ imported: string[]; updated: string
 /** Start the background poll loop (idempotent). No-op without a handle. */
 export function startWorkspacePolling(ms: number = POLL_INTERVAL_MS): void {
   if (_pollTimer || !_handle || typeof setInterval === 'undefined') return;
-  _pollTimer = setInterval(() => { void pullFromWorkspace(); }, ms);
+  // Pull graph TTLs AND drain the proposal queue. The poll used to do only the first, so a note
+  // dictated into a ring reached knowledge.pending.jsonl on disk and then sat there until the
+  // next page load or a manual refresh — the app was polling a folder while ignoring the one file
+  // in it that changes most. Two of three dictated notes were lost this way on 2026-08-27; they
+  // were never lost, just never picked up.
+  _pollTimer = setInterval(() => {
+    void pullFromWorkspace().then(() => drainAndImportPending());
+  }, ms);
 }
 
 export function stopWorkspacePolling(): void {
@@ -999,6 +1388,11 @@ if (typeof window !== 'undefined' && import.meta.env?.DEV) {
   (window as unknown as { __reckonsWorkspace?: unknown }).__reckonsWorkspace = {
     __linkHandleForTest, pullFromWorkspace, resyncNow,
     workspaceState, workspaceName, syncedKbCount, autoSyncEnabled, setAutoSync,
+    // The pending drain is the review pipeline's entry point and its failure mode is SILENT —
+    // a graph-target mismatch returns 0 and still looks like a successful drain. Exposed so a
+    // browser test can assert rows actually arrive, per graph, rather than trusting unit tests
+    // over a path whose real inputs are a directory handle and a `?kb=` id.
+    drainWorkspacePending, drainAndImportPending,
   };
 }
 

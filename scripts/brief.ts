@@ -17,9 +17,12 @@
  * Usage:  npm run brief          human-readable
  *         npm run brief -- --json
  */
-import { execSync } from 'child_process';
+import { execFileSync, execSync } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import { Parser } from 'n3';
+import { inspectPendingJsonl } from '../src/lib/rdf/pending-entry.js';
+import { formatFirstPullRequest } from './lib/brief-data.js';
+import { readTextOr } from './lib/read-file.js';
 
 const B = '\x1b[1m', D = '\x1b[2m', G = '\x1b[32m', Y = '\x1b[33m', R = '\x1b[31m', X = '\x1b[0m';
 const JSON_OUT = process.argv.includes('--json');
@@ -37,14 +40,21 @@ const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 
 // ── Where are we? ───────────────────────────────────────────────────────────
 const branch = sh('git rev-parse --abbrev-ref HEAD');
-const ahead = sh('git rev-list --count origin/dev..HEAD') || '0';
+const upstream = sh('git rev-parse --abbrev-ref --symbolic-full-name @{u}');
+const aheadOfDev = sh('git rev-list --count origin/dev..HEAD') || '0';
+const aheadOfUpstream = upstream ? (sh(`git rev-list --count ${upstream}..HEAD`) || '0') : '0';
 const dirty = sh('git status --porcelain').split('\n').filter(Boolean).length;
 const lastCommits = sh('git log --oneline -3').split('\n').filter(Boolean);
 
 // PR, if the gh CLI is available and authenticated. Absent is not an error.
 let pr = '';
 try {
-  pr = sh(`gh pr list --head ${branch} --json number,baseRefName,title --jq '.[0] | "#\\(.number) → \\(.baseRefName): \\(.title)"'`);
+  const raw = execFileSync(
+    'gh',
+    ['pr', 'list', '--head', branch, '--json', 'number,baseRefName,title'],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
+  ).trim();
+  pr = formatFirstPullRequest(raw);
 } catch {
   /* no gh; fine */
 }
@@ -66,7 +76,10 @@ const readJsonl = (f: string): any[] =>
         })
     : [];
 
-const pending = readJsonl(PENDING);
+const pendingInspection = inspectPendingJsonl(
+  readTextOr(PENDING, ''),
+);
+const pending = pendingInspection.entries;
 const answered = new Set(readJsonl(ANSWERS).map((a) => `${a.subject}|${a.predicate}`));
 const openQuestions = pending.filter(
   (p) => p.type === 'question' && !answered.has(`${p.subject}|${p.predicate}`),
@@ -127,14 +140,36 @@ if (existsSync(ROADMAP)) {
 
 // ── Report ─────────────────────────────────────────────────────────────────
 if (JSON_OUT) {
-  console.log(JSON.stringify({ branch, ahead: Number(ahead), dirty, pr, openQuestions: openQuestions.length, driftWarnings: driftWarnings.length, tasks: { total: tasks.length, waiting: waiting.length, failed: failed.length }, inProgress }, null, 2));
+  console.log(JSON.stringify({
+    branch,
+    upstream: upstream || null,
+    aheadOfUpstream: Number(aheadOfUpstream),
+    aheadOfDev: Number(aheadOfDev),
+    dirty,
+    pr: pr || null,
+    pending: {
+      total: pendingInspection.total,
+      valid: pendingInspection.valid,
+      malformed: pendingInspection.malformed,
+      invalid: pendingInspection.invalid,
+      untargeted: pendingInspection.untargeted,
+    },
+    openQuestions: openQuestions.length,
+    driftWarnings: driftWarnings.length,
+    tasks: { total: tasks.length, waiting: waiting.length, failed: failed.length },
+    inProgress,
+  }, null, 2));
   process.exit(0);
 }
 
 console.log(`${B}Brief${X} ${D}— everything below is a FACT, read from the repo. Nothing here cost a token.${X}\n`);
 
 console.log(`${B}where${X}`);
-console.log(`  branch   ${branch}${ahead !== '0' ? ` ${D}(${ahead} ahead of dev)${X}` : ''}`);
+console.log(
+  `  branch   ${branch}` +
+  (upstream && aheadOfUpstream !== '0' ? ` ${D}(${aheadOfUpstream} ahead of ${upstream})${X}` : '') +
+  (aheadOfDev !== '0' ? ` ${D}(${aheadOfDev} ahead of dev)${X}` : ''),
+);
 if (pr) console.log(`  PR       ${pr}`);
 if (dirty) console.log(`  ${Y}uncommitted: ${dirty} file(s)${X}`);
 for (const c of lastCommits) console.log(`  ${D}${c}${X}`);
@@ -157,7 +192,15 @@ console.log(
     (failed.length ? `  ${R}${failed.length} FAILED${X}` : '') +
     `  ${D}· run 'npm run agent:run' — it is free${X}`,
 );
-console.log(`  ${pending.length} pending fact(s) to triage${driftWarnings.length ? `, ${R}${driftWarnings.length} drift-warning(s)${X}` : ''}`);
+console.log(`  ${pendingInspection.total} pending row(s)${driftWarnings.length ? `, ${R}${driftWarnings.length} drift-warning(s)${X}` : ''}`);
+if (pendingInspection.untargeted) {
+  console.log(`  ${Y}${pendingInspection.untargeted} held: destination graph not assigned${X}`);
+}
+if (pendingInspection.invalid || pendingInspection.malformed) {
+  console.log(
+    `  ${R}${pendingInspection.invalid} invalid, ${pendingInspection.malformed} malformed — retained, not importable${X}`,
+  );
+}
 
 if (inProgress.length) {
   console.log(`\n${B}in flight (roadmap says so, not memory)${X}`);

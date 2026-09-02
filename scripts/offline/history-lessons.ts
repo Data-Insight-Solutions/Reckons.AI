@@ -31,7 +31,8 @@
  *   npx tsx scripts/offline/history-lessons.ts --since=200  look back N commits (default 300)
  */
 import { execSync } from 'child_process';
-import { readFileSync, existsSync, appendFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
+import { queueFindings } from './pending-queue.ts';
 
 const PENDING = 'reckons-workspace/knowledge.pending.jsonl';
 const argv = process.argv.slice(2);
@@ -81,6 +82,18 @@ interface Finding {
   level: 'error' | 'warn';
   check: string;
   msg: string;
+  /**
+   * What this finding is ABOUT — a commit sha or a repo path.
+   *
+   * Every finding used to be queued under one generic subject with one predicate, so 74 distinct
+   * observations about 74 distinct commits collapsed into a single subject+predicate carrying 74
+   * "?" objects. That is unreviewable by construction: the graph cannot say which commit each row
+   * concerns, dedup cannot tell two of them apart, and no decision on one means anything for the
+   * others. The subject has to be the thing observed.
+   */
+  about: string;
+  /** The proven answer. These are lookups, not questions — the script already ran the check. */
+  object: string;
 }
 const findings: Finding[] = [];
 
@@ -95,6 +108,8 @@ for (const f of untested) {
   findings.push({
     level: 'error',
     check: 'fix-without-test',
+    about: `urn:reckons:commit/${f.sha}`,
+    object: `${f.sourceFiles.length} source file(s), 0 test file(s)`,
     msg:
       `${f.sha} "${f.subject.slice(0, 90)}" changed ${f.sourceFiles.length} source file(s) and NO test. ` +
       `A fix with no test is a bug with a return ticket — and in a semantic system the regression will not ` +
@@ -111,6 +126,8 @@ for (const [file, n] of hotspots.slice(0, 8)) {
   findings.push({
     level: 'warn',
     check: 'fragility-hotspot',
+    about: `urn:reckons:file/${file}`,
+    object: `${n} fixes in ${SINCE} commits`,
     msg:
       `${file} has been fixed ${n} times in the last ${SINCE} commits. A file that keeps needing fixes is not ` +
       `unlucky, it is fragile — that is a design signal, not a moral failing. Worth asking what invariant it ` +
@@ -142,28 +159,30 @@ if (JSON_OUT) {
 
 // ── Queue proposals ────────────────────────────────────────────────────────
 if (PENDING_OUT && findings.length) {
-  const now = new Date().toISOString();
-  const existing = existsSync(PENDING) ? readFileSync(PENDING, 'utf8') : '';
-  let queued = 0;
-  for (const f of findings) {
-    const question = `[history-lessons/${f.check}] ${f.msg}`;
-    if (existing.includes(JSON.stringify(question).slice(1, -1))) continue;
-    appendFileSync(
-      PENDING,
-      JSON.stringify({
-        subject: 'urn:kbase:concept/deep-testing',
-        predicate: 'urn:kbase:predicate/history-lesson',
-        question,
-        type: f.level === 'error' ? 'drift-warning' : 'observation',
-        agent: 'offline:history-lessons',
-        priority: f.level === 'error' ? 'high' : 'medium',
-        addedAt: now,
-        addedByMcp: true,
-      }) + '\n',
-    );
-    queued++;
-  }
-  console.log(`${queued} finding(s) queued → ${PENDING} (review in Reckons.AI).`);
+  // Shared guard: identity is subject+predicate+text, so the same lesson about a DIFFERENT file is
+  // still a finding. The old check was `existing.includes(question)`, a substring test over the
+  // whole file that ignored the subject entirely and quietly dropped real findings.
+  //
+  // Not marked as recomputing: this reads the last N commits, so a lesson about an older commit is
+  // outside today's window rather than resolved, and replacing the job's whole output would erase
+  // it. Findings age out when the commit leaves the window, not when a run stops mentioning it.
+  const { queued, skipped } = queueFindings(
+    findings.map((f) => ({
+      // The commit or file the lesson is about — not one shared bucket. See Finding.about.
+      subject: f.about,
+      predicate: `urn:kbase:predicate/${f.check}`,
+      // An OBSERVATION carrying its answer, not a question with a "?" object. This check is a
+      // lookup the script has already performed: "did this fix commit touch a test file, yes or
+      // no". Filing a settled lookup as a question hands a human a decision that has no decision
+      // in it — and 74 of them at once reads as a queue full of work that is not work.
+      object: f.object,
+      note: `[history-lessons/${f.check}] ${f.msg}`,
+      type: f.level === 'error' ? ('drift-warning' as const) : ('observation' as const),
+      priority: f.level === 'error' ? ('high' as const) : ('medium' as const),
+    })),
+    { agent: 'offline:history-lessons', path: PENDING, recomputes: false },
+  );
+  console.log(`${queued} finding(s) queued${skipped ? `, ${skipped} already present` : ''} → ${PENDING} (review in Reckons.AI).`);
 }
 
 // A report, not a gate: "this old fix had no test" must not block today's build.

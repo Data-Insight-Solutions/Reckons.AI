@@ -14,6 +14,8 @@ export type ClaudeOptions = {
   signal?: AbortSignal;
   /** Override the default extraction system prompt (e.g. for code-aware extraction) */
   systemPrompt?: string;
+  /** Existing graph vocabulary + structure appended to the extraction request (F136.3). */
+  graphContext?: string;
 };
 
 /**
@@ -43,7 +45,7 @@ export async function extractWithClaude(
       max_tokens: 4096,
       system: opts.systemPrompt ?? EXTRACTION_SYSTEM_PROMPT,
       messages: [
-        { role: 'user', content: buildExtractionUserPrompt(text, sourceTitle) },
+        { role: 'user', content: buildExtractionUserPrompt(text, sourceTitle, opts.graphContext) },
         // Prefill forces Claude to start its response mid-array, guaranteeing
         // JSON output without any preamble text.
         { role: 'assistant', content: '[' }

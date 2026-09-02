@@ -89,13 +89,57 @@ eng.traineddata
 # this is only the machine's record of what it claimed and what came of it. Delete to reset.
 reckons-workspace/*.state.ttl
 reckons-workspace/runner.log.jsonl
+# Kernel flock sidecars are intentionally persistent names (the kernel releases ownership on
+# process death). They are coordination artifacts, not evidence or authored workspace content.
+reckons-workspace/*.json
+reckons-workspace/runs/
+reckons-workspace/knowledge.pending.jsonl.*l.lock
+reckons-workspace/*.state.ttl.lock
+reckons-workspace/kbs/*/*.jsonl.lock
 
 reckons-workspace/schedules.state.ttl
 reckons-workspace/schedule.log.jsonl
 reckons-workspace/task-drafts.ttl
+
+# Offline alignment-sweep reports. Already ignored by the bare `*.log` rule above; named
+# explicitly so the directory is a declared artifact location rather than an accident.
+reckons-workspace/sweeps/
 
 # Local app workspace — the folder-sync target writes copies of every graph here.
 # Only default-kb is a real repo asset; the rest are duplicates of static/*.ttl and
 # were once swept into a commit by `git add -A static/` (15,093 lines, 2026-07-19).
 static/kbs/*
 !static/kbs/default-kb/
+
+# Recovered graph exports pulled out of the synced workspace (they were being re-imported
+# as graphs). Kept outside reckons-workspace/ so the folder walker never sees them.
+.reckons-recovered/
+
+# A/B benchmark run artifacts (transcripts + diffs; worktrees live outside the repo)
+.ab/
+
+# ── Local graph workspaces (2026-08-21) ──────────────────────────────────────
+# These are the USER'S graph data, written by the app's folder sync — not source.
+# Ignoring only affects UNTRACKED paths, so the demo/starter fixtures already
+# tracked under kbs/ stay tracked and versioned as before.
+#
+# kbs/button-crawl alone reached 209MB: button-crawl.ts embeds every screenshot as
+# a full data: URI literal. Nothing here belongs in the repository.
+kbs/*
+reckons-workspace/kbs/*
+reckons-workspace/*.json
+reckons-workspace/runs/
+reckons-workspace/knowledge.pending.jsonl.*l
+reckons-workspace/*.json
+reckons-workspace/runs/
+reckons-workspace/knowledge.pending.jsonl.*
+
+# Environment backups. A .env copy is a credential file whatever it is named.
+.env.bak*
+.env.*.bak
+
+# Perf-crawl artifacts: the JSON reports are small and worth keeping as evidence;
+# the recordings and frame dumps beside them run to tens of MB and are not.
+tests/visual/results/perf/*
+!tests/visual/results/perf/*.json
+reckons-workspace/stars-scan.state.json

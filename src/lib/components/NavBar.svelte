@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount, tick } from 'svelte';
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { pendingStatements } from '$lib/stores/kb.svelte';
@@ -41,10 +42,38 @@
   const running = $derived(analysisRunning());
 
   let analyzeOpen = $state(false);
+  let moreOpen = $state(false);
+  let hydrated = $state(false);
+  let analyzeTrigger = $state<HTMLButtonElement>();
+  let moreTrigger = $state<HTMLButtonElement>();
+  let analyzeMenu = $state<HTMLDivElement>();
+  let moreMenu = $state<HTMLDivElement>();
+  let activePopup = $state<'analyze' | 'more' | null>(null);
 
-  function toggleAnalyze(e: MouseEvent) {
+  onMount(() => { hydrated = true; });
+
+  async function focusFirstItem(kind: 'analyze' | 'more') {
+    await tick();
+    const menu = kind === 'analyze' ? analyzeMenu : moreMenu;
+    menu?.querySelector<HTMLElement>('[role="menuitem"]:not([disabled])')?.focus();
+  }
+
+  async function toggleAnalyze(e: MouseEvent) {
     e.stopPropagation();
-    analyzeOpen = !analyzeOpen;
+    const opening = !analyzeOpen;
+    analyzeOpen = opening;
+    moreOpen = false;
+    activePopup = opening ? 'analyze' : null;
+    if (opening) await focusFirstItem('analyze');
+  }
+
+  async function toggleMore(e: MouseEvent) {
+    e.stopPropagation();
+    const opening = !moreOpen;
+    moreOpen = opening;
+    analyzeOpen = false;
+    activePopup = opening ? 'more' : null;
+    if (opening) await focusFirstItem('more');
   }
 
   async function runAnalysis(type: AnalysisType) {
@@ -57,13 +86,91 @@
     await runAndStoreAnalysis('manual', type);
   }
 
-  function closePopup() { analyzeOpen = false; }
+  function openMobileFeedback() {
+    moreOpen = false;
+    openFeedback(page.url.pathname);
+  }
+
+  function closePopup(restoreFocus = false) {
+    const trigger = activePopup === 'analyze' ? analyzeTrigger : activePopup === 'more' ? moreTrigger : null;
+    analyzeOpen = false;
+    moreOpen = false;
+    activePopup = null;
+    if (restoreFocus) queueMicrotask(() => trigger?.focus());
+  }
+
+  function handleMenuKeydown(e: KeyboardEvent) {
+    const menu = e.currentTarget as HTMLElement;
+    const items = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])')];
+    const index = items.indexOf(document.activeElement as HTMLElement);
+    let target: HTMLElement | undefined;
+    if (e.key === 'ArrowDown') target = items[(index + 1 + items.length) % items.length];
+    else if (e.key === 'ArrowUp') target = items[(index - 1 + items.length) % items.length];
+    else if (e.key === 'Home') target = items[0];
+    else if (e.key === 'End') target = items.at(-1);
+    else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      closePopup(true);
+      return;
+    } else if (e.key === 'Tab') {
+      // Leave the disclosure in the same direction as ordinary sequential navigation. Returning
+      // focus to the trigger traps keyboard users for an extra keystroke and makes Tab behave like
+      // Escape. Resolve the next visible control before the menu disappears, then move there after
+      // Svelte removes the popup.
+      const trigger = activePopup === 'analyze' ? analyzeTrigger : activePopup === 'more' ? moreTrigger : null;
+      const focusable = [...document.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )].filter((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0 && !menu.contains(element) && !element.classList.contains('popup-scrim');
+      });
+      const triggerIndex = trigger ? focusable.indexOf(trigger) : -1;
+      const destination = triggerIndex < 0
+        ? null
+        : focusable[triggerIndex + (e.shiftKey ? -1 : 1)] ?? null;
+      e.preventDefault();
+      e.stopPropagation();
+      closePopup(false);
+      queueMicrotask(() => destination?.focus());
+      return;
+    } else return;
+    e.preventDefault();
+    e.stopPropagation();
+    target?.focus();
+  }
+
+  function handleWindowKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape' && (analyzeOpen || moreOpen)) {
+      e.preventDefault();
+      closePopup(true);
+    }
+  }
 </script>
 
-<svelte:window onclick={closePopup} />
+<svelte:window onkeydown={handleWindowKeydown} />
+
+{#if analyzeOpen || moreOpen}
+  <button
+    type="button"
+    class="popup-scrim"
+    aria-label="Close navigation menu"
+    tabindex="-1"
+    onclick={() => closePopup(true)}
+  ></button>
+{/if}
 
 {#if analyzeOpen}
-  <div class="analyze-popup" role="menu" aria-label="Analysis actions" onclick={(e) => e.stopPropagation()}>
+  <div
+    id="analyze-actions-menu"
+    class="analyze-popup"
+    bind:this={analyzeMenu}
+    role="menu"
+    tabindex="-1"
+    aria-label="Analysis actions"
+    onclick={(e) => e.stopPropagation()}
+    onkeydown={handleMenuKeydown}
+  >
     {#each analysisActions as action}
       <button
         class="popup-item"
@@ -80,6 +187,40 @@
         <div class="popup-divider"></div>
       {/if}
     {/each}
+  </div>
+{/if}
+
+{#if moreOpen}
+  <div
+    id="mobile-more-menu"
+    class="mobile-more-popup"
+    bind:this={moreMenu}
+    role="menu"
+    tabindex="-1"
+    aria-label="More navigation"
+    onclick={(e) => e.stopPropagation()}
+    onkeydown={handleMenuKeydown}
+  >
+    {#each smallItems as it}
+      <a
+        href={it.href}
+        class="mobile-more-item"
+        class:active={page.url.pathname === it.href || page.url.pathname.startsWith(it.href)}
+        role="menuitem"
+        onclick={() => { moreOpen = false; }}
+      >
+        {#if it.svg}
+          <span class="nav-pair-svg">{@html it.svg}</span>
+        {:else}
+          <span class="glyph nav-pair-glyph">{it.glyph}</span>
+        {/if}
+        <span>{it.label}</span>
+      </a>
+    {/each}
+    <button class="mobile-more-item" role="menuitem" onclick={openMobileFeedback}>
+      <span class="glyph nav-pair-glyph">✎</span>
+      <span>send feedback</span>
+    </button>
   </div>
 {/if}
 
@@ -112,13 +253,17 @@
     {#if i === 1}
       <!-- Analyze popup button sits between review and reckon -->
       <button
+        bind:this={analyzeTrigger}
         class="nav-btn"
         class:active={analyzeOpen}
         class:running
         onclick={toggleAnalyze}
         title="analyze"
         aria-label="Analyze graph"
+        aria-haspopup="menu"
         aria-expanded={analyzeOpen}
+        aria-controls="analyze-actions-menu"
+        disabled={!hydrated}
       >
         <span class="glyph-wrap">
           <span class="glyph">◈</span>
@@ -160,11 +305,27 @@
       class="nav-pair-item nav-feedback"
       title="send feedback"
       aria-label="send feedback"
+      disabled={!hydrated}
       onclick={() => openFeedback(page.url.pathname)}
     >
       <span class="glyph nav-pair-glyph">✎</span>
     </button>
   </div>
+  <button
+    bind:this={moreTrigger}
+    class="nav-more"
+    class:active={moreOpen || smallItems.some((it) => page.url.pathname.startsWith(it.href))}
+    title="more"
+    aria-label="More"
+    aria-haspopup="menu"
+    aria-expanded={moreOpen}
+    aria-controls="mobile-more-menu"
+    disabled={!hydrated}
+    onclick={toggleMore}
+  >
+    <span class="glyph">⋯</span>
+    <span class="label">more</span>
+  </button>
 </nav>
 
 <style>
@@ -183,6 +344,17 @@
     border: 1px solid var(--line);
     border-radius: 999px;
     box-shadow: var(--shadow-1);
+  }
+  .popup-scrim {
+    position: fixed;
+    z-index: 399;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: default;
   }
   a {
     display: flex;
@@ -252,7 +424,7 @@
   /* ── Analyze popup ── */
   .analyze-popup {
     position: fixed;
-    z-index: 21;
+    z-index: 401;
     left: 50%;
     bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 68px);
     transform: translateX(-50%);
@@ -324,6 +496,12 @@
     min-width: 56px;
   }
   .nav-btn:hover { color: var(--ink); background: var(--surface-2); }
+  .nav-btn:disabled,
+  .nav-feedback:disabled,
+  .nav-more:disabled {
+    opacity: 0.55;
+    cursor: wait;
+  }
   .nav-btn.active {
     color: var(--accent);
     background: var(--accent-soft);
@@ -425,6 +603,13 @@
     height: 14px;
   }
 
+  /* Mobile-only disclosure: secondary destinations should not turn the phone
+     nav into a row of undersized mystery icons. */
+  .nav-more,
+  .mobile-more-popup {
+    display: none;
+  }
+
   /* ── Mobile: compress nav to fit iPhone 375–393px ── */
   @media (max-width: 640px) {
     nav {
@@ -446,7 +631,11 @@
     /* Labels hidden — glyphs only, saves ~50px total */
     .label { display: none; }
 
-    a.wordmark { padding: 0.3rem 0.4rem; }
+    a.wordmark {
+      padding: 0.3rem 0.4rem;
+      min-width: 44px;
+      min-height: 44px;
+    }
     .wm-logo { height: 1.3rem; }
 
     a:not(.wordmark), .nav-btn {
@@ -455,21 +644,83 @@
       min-height: 44px;
     }
 
-    /* nav-pair: settings + info sit INLINE on the full-width bar (they stack
-       vertically in the desktop pill, which doubled the mobile bar's height). */
+    /* Keep the five primary tasks visible. Secondary destinations live behind
+       one labelled disclosure, leaving every visible target at least 44px. */
     .nav-pair {
-      flex-direction: row;
-      background: none;
-      margin: 0;
+      display: none;
     }
-    .pair-divider { display: none; }
-    .nav-pair-item {
-      padding: 0.45rem 0.5rem;
-      min-width: 36px;
+    .nav-more {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.5rem;
+      min-width: 44px;
       min-height: 44px;
+      border: none;
+      border-radius: 999px;
+      background: none;
+      color: var(--muted);
+      cursor: pointer;
+      font: inherit;
+    }
+    .nav-more:hover,
+    .nav-more.active {
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .mobile-more-popup {
+      position: fixed;
+      z-index: 401;
+      right: 0.5rem;
+      bottom: calc(3.75rem + env(safe-area-inset-bottom));
+      display: flex;
+      flex-direction: column;
+      width: min(13rem, calc(100vw - 1rem));
+      padding: 0.35rem;
+      background: rgba(20, 20, 26, 0.96);
+      backdrop-filter: blur(18px) saturate(140%);
+      -webkit-backdrop-filter: blur(18px) saturate(140%);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: var(--shadow-1);
+      animation: mobile-more-in 0.14s ease-out;
+    }
+    .mobile-more-item {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 0.65rem;
+      width: 100%;
+      min-width: 44px;
+      /* The app's narrow-screen 0.98 scale would turn 44px into 43.12px. */
+      min-height: 45px;
+      height: 45px;
+      flex: 0 0 45px;
+      box-sizing: border-box;
+      padding: 0.65rem 0.75rem;
+      border: none;
+      border-radius: 8px;
+      background: none;
+      color: var(--muted);
+      cursor: pointer;
+      font: 0.72rem var(--font-mono);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .mobile-more-item:hover,
+    .mobile-more-item:focus-visible,
+    .mobile-more-item.active {
+      color: var(--accent);
+      background: var(--accent-soft);
     }
 
     .divider { margin: 0; height: 20px; }
+  }
+
+  @keyframes mobile-more-in {
+    from { opacity: 0; transform: translateY(6px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
   }
 
   /* Extra-small screens (iPhone SE, 320-375px) */
@@ -477,12 +728,11 @@
     nav {
       padding: 0.2rem 0.1rem;
     }
-    a:not(.wordmark), .nav-btn {
+    a:not(.wordmark), .nav-btn, .nav-more {
       padding: 0.45rem 0.4rem;
-      min-width: 36px;
+      min-width: 44px;
     }
     .glyph { font-size: 1rem; }
     .glyph-svg :global(svg) { width: 1rem; height: 1.1rem; }
-    .nav-pair-item { padding: 0.35rem 0.4rem; min-width: 28px; }
   }
 </style>

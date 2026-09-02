@@ -35,6 +35,7 @@
  * failing the build — an unauthenticated CI runner is not a competitive-research problem.
  */
 import { execFileSync } from 'child_process';
+import { queueFindings } from './pending-queue.ts';
 import { readFileSync, existsSync, appendFileSync } from 'fs';
 import { Parser } from 'n3';
 
@@ -64,6 +65,18 @@ interface Finding {
   check: string;
   subject: string;
   msg: string;
+  /**
+   * The answer this check already computed, when it has one.
+   *
+   * A star-drift finding KNOWS the new count. Queued as a question with no object it asked a human
+   * to supply a number the script was holding — the reviewer's only possible move was to retype it.
+   * With the value as the object it becomes a one-click status update instead.
+   *
+   * Left undefined where the finding genuinely opens a question (a license verdict needs a human).
+   */
+  object?: string;
+  /** Predicate the object updates, when this is a value refresh rather than an observation. */
+  updates?: string;
 }
 const findings: Finding[] = [];
 
@@ -249,6 +262,8 @@ for (const k of known) {
       level: 'info',
       check: 'stars-drift',
       subject: k.iri,
+      object: String(stars),
+      updates: `${KPRED}stars`,
       msg: `${k.repo}: ${k.stars} -> ${stars} stars (>25% change). Refresh kpred:stars.`,
     });
   }
@@ -308,30 +323,31 @@ if (JSON_OUT) {
 
 // ── Queue for human review ───────────────────────────────────────────────────
 if (PENDING_OUT && findings.length) {
-  const now = new Date().toISOString();
-  const existing = existsSync(PENDING) ? readFileSync(PENDING, 'utf8') : '';
-  let queued = 0;
-  for (const f of findings) {
-    const question = `[competitor-scan/${f.check}] ${f.msg}`;
-    if (existing.includes(JSON.stringify(question).slice(1, -1))) continue; // idempotent re-runs
-    appendFileSync(
-      PENDING,
-      JSON.stringify({
-        subject: f.subject,
-        predicate: `${KPRED}competitor-scan`,
-        question,
-        // A license verdict / candidate is a standing constraint to KNOW or a light confirm —
-        // it blocks nothing, so it is a suggestion for the backlog, never a desk question.
-        type: f.level === 'error' ? 'drift-warning' : 'suggestion',
-        agent: 'offline:competitor-scan',
-        priority: f.level === 'error' ? 'high' : 'medium',
-        addedAt: now,
-        addedByMcp: true,
-      }) + '\n',
-    );
-    queued++;
-  }
-  console.log(`\n${queued} finding(s) queued → ${PENDING} (review in Reckons.AI).`);
+  // Recomputing: every run re-checks every competitor and every license, so a project that has
+  // since picked a license should stop being reported rather than sit in the queue for good.
+  const { queued, superseded } = queueFindings(
+    findings.map((f) => ({
+      subject: f.subject,
+      // A value refresh updates the predicate it is about, so accepting it lands the new value.
+      // Only findings with no computed answer stay under the generic scan predicate.
+      predicate: f.updates ?? `${KPRED}competitor-scan`,
+      ...(f.object !== undefined
+        ? { object: f.object, note: `[competitor-scan/${f.check}] ${f.msg}` }
+        : { question: `[competitor-scan/${f.check}] ${f.msg}` }),
+      // A license verdict / candidate is a standing constraint to KNOW or a light confirm —
+      // it blocks nothing, so it is a suggestion for the backlog, never a desk question.
+      type: f.level === 'error'
+        ? ('drift-warning' as const)
+        : f.object !== undefined
+          ? ('status-update' as const)
+          : ('suggestion' as const),
+      priority: f.level === 'error' ? ('high' as const) : ('medium' as const),
+    })),
+    { agent: 'offline:competitor-scan', path: PENDING, recomputes: true },
+  );
+  console.log(
+    `\n${queued} finding(s) queued${superseded ? `, ${superseded} no longer reported` : ''} → ${PENDING} (review in Reckons.AI).`,
+  );
 }
 
 // A license that moved under us is the one thing worth stopping for.

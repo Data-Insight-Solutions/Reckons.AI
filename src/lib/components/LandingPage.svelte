@@ -7,28 +7,24 @@
   import { activateOfficialKb, preloadOfficialKb, officialKbError } from '$lib/stores/official-kb.svelte';
   import { importTurtleFull } from '$lib/rdf/import-ttl';
   import { startStory, startExplore } from '$lib/stores/shelly-bridge.svelte';
-  import * as kokoro from '$lib/integrations/llm/kokoro-tts';
 
-  // Eagerly pre-fetch the official KB so it's ready when user clicks "Getting Started"
-  preloadOfficialKb();
-
-  // Kokoro TTS is lazy-loaded on first voice use — no automatic download.
-  // The 87MB model only downloads when the user explicitly enables voice.
+  // Warm the larger documentation graph after the landing page has had time to hydrate. Starting
+  // its fetch/parse during component initialization competes with an immediate starter click on the
+  // same main thread. `activateOfficialKb()` still loads on demand when Documentation Graph wins
+  // the race, so this delay changes no behavior.
+  onMount(() => {
+    const timer = window.setTimeout(preloadOfficialKb, 1_500);
+    return () => window.clearTimeout(timer);
+  });
 
   let loadingTemplate = $state<string | null>(null);
   let loadingDocs = $state(false);
   let loadingStarter = $state(false);
   let docsError = $state<string | null>(null);
+  let actionError = $state<string | null>(null);
+  let actionErrorEl: HTMLParagraphElement | undefined = $state();
   let loadingExample = $state<string | null>(null);
   let loadingVisualReview = $state(false);
-
-  // Track core module loading (Kokoro TTS voice model)
-  let kokoroStatus = $state<'idle' | 'loading' | 'ready' | 'error'>('idle');
-  let kokoroPct = $state(0);
-  kokoro.onKokoroStatus((status, pct) => {
-    kokoroStatus = status;
-    kokoroPct = pct;
-  });
 
   const EXAMPLE_KBS = [
     { id: 'quickstart', icon: '🚀', title: 'Quick-Start Example', body: 'People, projects, decisions, metrics', file: '/starter-quickstart.ttl' },
@@ -60,6 +56,7 @@
   // user. The full docs graph is the "go deeper" path.
   async function openStarter() {
     loadingStarter = true;
+    actionError = null;
     try {
       const res = await fetch('/starter-everyday.ttl');
       if (!res.ok) throw new Error(`Failed to fetch starter graph: ${res.status}`);
@@ -70,9 +67,21 @@
       // graph reads as real and Shelly's tour (which sees confirmed statements)
       // has something to talk about.
       const confirmed = statements.map((s) => ({ ...s, status: 'confirmed' as const }));
-      if (confirmed.length) await addStatements(confirmed, 'starter');
+      if (confirmed.length) {
+        await addStatements(confirmed, 'starter');
+        // Publishing the batch mounts the graph reactively. Let that task finish before opening
+        // Shelly and generating tour context; doing both in the IndexedDB completion turn produced
+        // an intermittent 230ms+ first-run stall even after the graph itself became lightweight.
+        await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
+      }
       startExplore(); // opens Shelly's guided tour on the graph page
       goto('/');
+    } catch (error) {
+      actionError = error instanceof Error ? error.message : String(error);
+      requestAnimationFrame(() => {
+        actionErrorEl?.scrollIntoView({ block: 'center' });
+        actionErrorEl?.focus({ preventScroll: true });
+      });
     } finally {
       loadingStarter = false;
     }
@@ -84,6 +93,7 @@
   // confirm or flag each. Regenerate the real thing with `npm run test:crawl`.
   async function openVisualReview() {
     loadingVisualReview = true;
+    actionError = null;
     try {
       const res = await fetch('/starter-visual-review.ttl');
       if (!res.ok) throw new Error(`Failed to fetch visual-review story: ${res.status}`);
@@ -94,6 +104,12 @@
       if (confirmed.length) await addStatements(confirmed, 'visual-review');
       startExplore(); // Shelly detects the visual-test steps → review mode
       goto('/');
+    } catch (error) {
+      actionError = error instanceof Error ? error.message : String(error);
+      requestAnimationFrame(() => {
+        actionErrorEl?.scrollIntoView({ block: 'center' });
+        actionErrorEl?.focus({ preventScroll: true });
+      });
     } finally {
       loadingVisualReview = false;
     }
@@ -101,6 +117,7 @@
 
   async function importExample(kb: typeof EXAMPLE_KBS[0]) {
     loadingExample = kb.id;
+    actionError = null;
     try {
       const res = await fetch(kb.file);
       if (!res.ok) throw new Error(`Failed to fetch ${kb.file}`);
@@ -109,6 +126,12 @@
       for (const src of sources) await addSource(src);
       if (statements.length) await addStatements(statements, 'example-kb');
       goto('/');
+    } catch (error) {
+      actionError = error instanceof Error ? error.message : String(error);
+      requestAnimationFrame(() => {
+        actionErrorEl?.scrollIntoView({ block: 'center' });
+        actionErrorEl?.focus({ preventScroll: true });
+      });
     } finally {
       loadingExample = null;
     }
@@ -231,6 +254,43 @@
     };
   });
 
+  /**
+   * INTEROPERABILITY — what actually goes in and out, stated as FORMATS.
+   *
+   * kb:honest-status bites hardest here: this is the most user-facing surface in the product, and
+   * an overclaim on a landing page is the kind that gets quoted back. So every card below names a
+   * FORMAT that exists and is tested — not an agent runtime we integrate with. F87's harness
+   * adapters (adapters/claude-code.ts and friends) are PLANNED AND UNBUILT, so nothing here says
+   * "works with Claude Code" or lists runtimes. What is true, and is the interesting claim
+   * anyway, is that a task is a text file and needs no protocol to read.
+   */
+  const INTEROP = [
+    {
+      icon: '⌁',
+      title: 'No protocol required',
+      body: 'A task renders to a markdown document with the missing fields as an empty form. Any agent that can read a file can pick one up, fill it in, and hand it back — no client, no SDK, no network.',
+      color: 'var(--accent)'
+    },
+    {
+      icon: '⇄',
+      title: 'Markdown in, markdown out',
+      body: 'The same document round-trips. Frontmatter carries the machine-readable fields, prose carries the intent, and parsing reads only the frontmatter — so an agent\u2019s phrasing can never decide an authority boundary.',
+      color: 'var(--accent)'
+    },
+    {
+      icon: '◇',
+      title: 'Standard vocabularies',
+      body: 'Altitude, task state, review status and the feature lifecycle are SKOS concept schemes with SHACL shapes, checked on every lint. The graph says what a valid value is, so you can look it up instead of guessing.',
+      color: 'var(--accent)'
+    },
+    {
+      icon: '⇱',
+      title: 'Your data leaves whole',
+      body: 'Turtle and TriG for the graph, JSON-LD and llms.txt for the web, markdown for people and agents. Export is a right, not a feature — the format is open and the file is yours.',
+      color: 'var(--accent)'
+    }
+  ];
+
   const FEATURES = [
     {
       icon: '⬡',
@@ -323,11 +383,6 @@
           {:else}
             Getting started →
           {/if}
-          {#if kokoroStatus === 'loading'}
-            <span class="btn-loader">
-              <span class="btn-loader-bar" style="width: {kokoroPct}%"></span>
-            </span>
-          {/if}
         </button>
         <a href="/ingest" class="btn-secondary">Add your own source</a>
       </div>
@@ -340,10 +395,11 @@
       {#if docsError}
         <p class="docs-error mono" role="alert">Couldn't open the documentation graph — {docsError}</p>
       {/if}
-      {#if kokoroStatus === 'loading'}
-        <p class="core-loading mono">loading voice model — {kokoroPct}%</p>
+      {#if actionError}
+        <p class="docs-error mono" role="alert" tabindex="-1" bind:this={actionErrorEl}>
+          Couldn't load that starter graph — {actionError}
+        </p>
       {/if}
-
       <div class="badges">
         <span class="badge">local-first</span>
         <span class="badge">open source</span>
@@ -375,14 +431,6 @@
           <span class="tmpl-loading mono">loading...</span>
         {:else}
           <span class="tmpl-cta">Open docs →</span>
-        {/if}
-        {#if kokoroStatus === 'loading'}
-          <span class="tmpl-loader">
-            <span class="tmpl-loader-track">
-              <span class="tmpl-loader-bar" style="width: {kokoroPct}%"></span>
-            </span>
-            <span class="tmpl-loader-label mono">voice {kokoroPct}%</span>
-          </span>
         {/if}
       </button>
 
@@ -441,6 +489,22 @@
 
     <div class="features-grid">
       {#each FEATURES as f}
+        <div class="feature-card">
+          <span class="feat-icon" style="color: {f.color}">{f.icon}</span>
+          <h3>{f.title}</h3>
+          <p>{f.body}</p>
+        </div>
+      {/each}
+    </div>
+  </section>
+
+  <section class="section">
+    <p class="section-kicker mono">interoperability</p>
+    <h2>Orchestrate <em>any</em> agent, on <em>any</em> platform.</h2>
+    <p class="section-sub">The graph defines the work; a document renders it. Because that document is ordinary text, the agent on the other end does not have to know Reckons.AI exists.</p>
+
+    <div class="features-grid">
+      {#each INTEROP as f}
         <div class="feature-card">
           <span class="feat-icon" style="color: {f.color}">{f.icon}</span>
           <h3>{f.title}</h3>
@@ -994,13 +1058,6 @@
     50% { opacity: 0.3; }
   }
 
-  /* ── Core module loading indicator ───────────────── */
-  .core-loading {
-    font-size: 0.7rem;
-    color: var(--muted);
-    margin: 0;
-    letter-spacing: 0.04em;
-  }
   .docs-error {
     font-size: 0.72rem;
     color: var(--danger, #d4726d);
@@ -1026,53 +1083,6 @@
   }
   .starter-hint .link-btn:hover:not(:disabled) { text-decoration: underline; }
   .starter-hint .link-btn:disabled { color: var(--muted); cursor: default; }
-
-  .btn-loader {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: rgba(0, 0, 0, 0.15);
-    border-radius: 0 0 var(--rad) var(--rad);
-    overflow: hidden;
-  }
-
-  .btn-loader-bar {
-    display: block;
-    height: 100%;
-    background: rgba(255, 255, 255, 0.6);
-    border-radius: 0 0 var(--rad) var(--rad);
-    transition: width 0.3s ease;
-  }
-
-  .tmpl-loader {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-top: 0.3rem;
-  }
-
-  .tmpl-loader-track {
-    flex: 1;
-    height: 3px;
-    background: var(--line);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-
-  .tmpl-loader-bar {
-    height: 100%;
-    background: var(--accent);
-    border-radius: 2px;
-    transition: width 0.3s ease;
-  }
-
-  .tmpl-loader-label {
-    font-size: 0.62rem;
-    color: var(--muted);
-    white-space: nowrap;
-  }
 
   /* ── Features grid ──────────────────────────────────── */
   .features-grid {

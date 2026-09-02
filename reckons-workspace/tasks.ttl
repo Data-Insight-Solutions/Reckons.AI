@@ -15,21 +15,25 @@
 # imported or user-supplied graph — "here is an interesting knowledge base" would become
 # remote code execution.
 #
-# EVERY TASK MUST CARRY `kpred:done-when`. The runner REFUSES to run a task without one. An
+# EVERY TASK MUST CARRY `kpred:done-when` AND one or more `kpred:effect` declarations. The
+# runner defaults to read-only work and requires an explicit CLI allowlist before it hands a
+# queue-write, source-write, or external effect to a shell. An
 # agent left to judge whether its own work is finished will decide that it is — so completion
 # is asserted by an INDEPENDENT check, not by the thing that did the work.
+# Effects describe the task command, not the runner's mandatory derived state/journal/receipt
+# bookkeeping.
 #
 #   npx tsx scripts/agent/runner.ts --graph reckons-workspace/tasks.ttl --dry-run
 #
-# The runner writes kpred:outcome and kpred:task-state back into this file. That is the
-# record: a run that leaves no trace in the graph did not happen, as far as tomorrow is
-# concerned.
+# The runner writes state and structured receipts beside this authored file. That is the record:
+# a run that leaves no trace tomorrow did not happen.
 # =============================================================================
 
 task:align-site rdf:type      ktype:AgentTask ;
     rdfs:label      "Keep the site aligned with the graph" ;
     kpred:goal      "Regenerate every surface that is generated from the graph, so the site says exactly what the graph says." ;
     kpred:tier      "script" ;
+    kpred:effect    "source-write" ;
     kpred:command   "npx tsx scripts/align.ts --fix" ;
     kpred:done-when "npx tsx scripts/align.ts" ;
     kpred:task-state "open" .
@@ -38,6 +42,7 @@ task:graph-invariants rdf:type ktype:AgentTask ;
     rdfs:label      "The graph must be internally consistent" ;
     kpred:goal      "Check graph invariants: dead file links, invalid statuses, duplicate feature ids, dangling dependencies." ;
     kpred:tier      "script" ;
+    kpred:effect    "queue-write" ;
     kpred:command   "npx tsx scripts/offline/graph-lint.ts --pending" ;
     kpred:done-when "npx tsx scripts/offline/graph-lint.ts" ;
     kpred:task-state "open" .
@@ -46,6 +51,7 @@ task:published-graph rdf:type ktype:AgentTask ;
     rdfs:label      "The published graph is the receipt" ;
     kpred:goal      "static/knowledge.ttl is served at /knowledge.ttl and IS the public graph. Verify it parses, is not gutted, carries no test debris, and does not lie in its own header." ;
     kpred:tier      "script" ;
+    kpred:effect    "read-only" ;
     kpred:command   "npx tsx scripts/offline/published-graph-guard.ts" ;
     kpred:done-when "npx tsx scripts/offline/published-graph-guard.ts" ;
     kpred:task-state "open" .
@@ -58,6 +64,7 @@ task:status-evidence rdf:type ktype:AgentTask ;
     rdfs:label      "Shipped features must show their evidence" ;
     kpred:goal      "Every feature marked shipped/functional/production must link a test OR declare kpred:test-coverage none. You may ship untested code, but not silently." ;
     kpred:tier      "script" ;
+    kpred:effect    "read-only" ;
     kpred:every     "24h" ;
     kpred:command   "npx tsx scripts/offline/status-evidence.ts" ;
     kpred:done-when "npx tsx scripts/offline/status-evidence.ts" ;
@@ -65,10 +72,11 @@ task:status-evidence rdf:type ktype:AgentTask ;
 
 task:safety-attestation rdf:type ktype:AgentTask ;
     rdfs:label      "The good-faith safety controls still hold" ;
-    kpred:goal      "Verify the ETHICS_PREAMBLE is present/injected/undrifted, the classifier and safety tests pass, and egress gating holds. Record a dated attestation entry." ;
+    kpred:goal      "Verify the ETHICS_PREAMBLE is present/injected/undrifted, the classifier and safety tests pass, and egress gating holds. Reporting does not append to the canonical safety log." ;
     kpred:tier      "script" ;
+    kpred:effect    "read-only" ;
     kpred:every     "24h" ;
-    kpred:command   "npx tsx scripts/offline/safety-attestation.ts --record" ;
+    kpred:command   "npx tsx scripts/offline/safety-attestation.ts" ;
     kpred:done-when "npx tsx scripts/offline/safety-attestation.ts" ;
     kpred:task-state "open" .
 
@@ -76,6 +84,7 @@ task:alignment-sweep rdf:type ktype:AgentTask ;
     rdfs:label      "TTL parse, asset paths, namespace typos, stale LEAPs" ;
     kpred:goal      "Sweep every TTL for parse errors, bad asset paths, namespace typos, and stale LEAP references; queue findings for review." ;
     kpred:tier      "script" ;
+    kpred:effect    "queue-write" ;
     kpred:every     "12h" ;
     kpred:command   "bash scripts/offline/alignment-sweep.sh" ;
     kpred:done-when "npx tsx scripts/offline/graph-lint.ts" ;
@@ -85,6 +94,7 @@ task:unit-tests rdf:type      ktype:AgentTask ;
     rdfs:label      "The unit suite stays green" ;
     kpred:goal      "Run the full unit test suite. A regression that lands silently is the failure this project fears most; catch it on a schedule, not at a deadline." ;
     kpred:tier      "script" ;
+    kpred:effect    "read-only" ;
     kpred:every     "6h" ;
     kpred:command   "npx vitest run" ;
     kpred:done-when "npx vitest run" ;
@@ -94,6 +104,7 @@ task:mcp-tests rdf:type       ktype:AgentTask ;
     rdfs:label      "The MCP server suite stays green" ;
     kpred:goal      "Build and test the standalone MCP server — kb_merge and the rest must keep working for any connected agent." ;
     kpred:tier      "script" ;
+    kpred:effect    "source-write" ;
     kpred:every     "24h" ;
     kpred:command   "cd mcp-server && npm run build && npm test" ;
     kpred:done-when "cd mcp-server && npm test" ;
@@ -103,6 +114,7 @@ task:reconcile-queue rdf:type ktype:AgentTask ;
     rdfs:label      "Drop findings that fixed themselves" ;
     kpred:goal      "Re-run the deterministic checks and drop pending entries whose finding no longer reproduces, so the review queue reflects reality, not history." ;
     kpred:tier      "script" ;
+    kpred:effect    "queue-write" ;
     kpred:every     "6h" ;
     kpred:command   "npx tsx scripts/agent/reconcile.ts --apply" ;
     kpred:done-when "npx tsx scripts/agent/reconcile.ts" ;
@@ -112,6 +124,7 @@ task:orchestrate-triage rdf:type ktype:AgentTask ;
     rdfs:label      "Triage the queue for Opus and draft tasks" ;
     kpred:goal      "Split the pending queue into re-derivable / remediable / judgment, and draft candidate tasks for the remediable clusters, so a returning Opus session sees a triaged queue not a pile." ;
     kpred:tier      "script" ;
+    kpred:effect    "source-write" ;
     kpred:every     "12h" ;
     kpred:command   "npx tsx scripts/agent/orchestrate.ts --draft" ;
     kpred:done-when "npx tsx scripts/agent/orchestrate.ts --json > /dev/null" ;
@@ -121,6 +134,7 @@ task:token-metric rdf:type    ktype:AgentTask ;
     rdfs:label      "Track session token usage" ;
     kpred:goal      "Record the weighted session-token metric — the number that says whether a tier move actually saved anything (F74.4)." ;
     kpred:tier      "script" ;
+    kpred:effect    "read-only" ;
     kpred:every     "24h" ;
     kpred:command   "npx tsx scripts/session-tokens.ts > /dev/null" ;
     kpred:done-when "npx tsx scripts/session-tokens.ts > /dev/null" ;
@@ -130,6 +144,7 @@ task:competitor-discover rdf:type ktype:AgentTask ;
     rdfs:label      "Discover new competitors, weekly" ;
     kpred:goal      "Search the neighbourhood for new competitors by topic and license, and queue candidates for review — the review list will always be stale; discovery should not be." ;
     kpred:tier      "script" ;
+    kpred:effect    "external-read", "queue-write" ;
     kpred:every     "7d" ;
     kpred:command   "npx tsx scripts/offline/competitor-scan.ts --discover --pending" ;
     kpred:done-when "npx tsx scripts/offline/competitor-scan.ts" ;
@@ -143,6 +158,7 @@ task:visual-smoke rdf:type    ktype:AgentTask ;
     rdfs:label      "Deploy-gate visual smoke (production build, black-graph guard)" ;
     kpred:goal      "Build a real production bundle, serve it, and confirm the documentation graph renders nodes without a WebGL/renderer crash — the black-graph regression only reproduces in a minified build." ;
     kpred:tier      "script" ;
+    kpred:effect    "source-write" ;
     kpred:every     "24h" ;
     kpred:command   "npm run test:e2e:smoke" ;
     kpred:done-when "npm run test:e2e:smoke" ;
@@ -152,19 +168,21 @@ task:button-crawl rdf:type    ktype:AgentTask ;
     rdfs:label      "Crawl every interactive element on every route (F34)" ;
     kpred:goal      "Click every interactive element on every route and flag crashes, blank screens, SILENT no-ops, and sub-44px touch targets. Pure local JS, no model. Findings queue for review." ;
     kpred:tier      "script" ;
+    kpred:effect    "source-write", "queue-write" ;
     kpred:every     "24h" ;
-    kpred:command   "npm run dev:test & DEV=$!; sleep 12; BASE_URL=http://localhost:5174 npx tsx scripts/offline/button-crawl.ts; kill $DEV 2>/dev/null || true" ;
-    kpred:done-when "test -f reckons-workspace/knowledge.pending.jsonl" ;
+    kpred:command   "set -e; npm run dev:test & DEV=$!; trap 'kill $DEV 2>/dev/null || true' EXIT; sleep 12; BASE_URL=http://localhost:5174 npx tsx scripts/offline/button-crawl.ts --report=reckons-workspace/runs/button-crawl.json" ;
+    kpred:done-when "npx tsx scripts/agent/verify-run-report.ts --kind=button-crawl --file=reckons-workspace/runs/button-crawl.json" ;
     kpred:task-state "open" .
 
 task:visual-regression rdf:type ktype:AgentTask ;
     rdfs:label      "Local-VLM visual regression prod↔dev" ;
     kpred:goal      "A local vision model compares production against a dev build and flags visual regressions. Agent tier — proposals only, needs Ollama (waits if it is down, never fails for that)." ;
     kpred:tier      "local-agent" ;
+    kpred:effect    "external-read", "source-write", "queue-write" ;
     kpred:model     "qwen2.5vl" ;
     kpred:every     "8h" ;
-    kpred:command   "npx tsx scripts/offline/visual-diff.ts --base=${VISUAL_DIFF_BASE:-https://reckons.ai} --head=${VISUAL_DIFF_HEAD:-http://localhost:5174}" ;
-    kpred:done-when "test -f reckons-workspace/knowledge.pending.jsonl" ;
+    kpred:command   "set -e; npm run dev:test & DEV=$!; trap 'kill $DEV 2>/dev/null || true' EXIT; sleep 12; npx tsx scripts/offline/visual-diff.ts --base=${VISUAL_DIFF_BASE:-https://reckons.ai} --head=${VISUAL_DIFF_HEAD:-http://localhost:5174} --report=reckons-workspace/runs/visual-diff.json" ;
+    kpred:done-when "npx tsx scripts/agent/verify-run-report.ts --kind=visual-diff --file=reckons-workspace/runs/visual-diff.json" ;
     kpred:task-state "open" .
 
 # A task that is BLOCKED, on purpose — proof that the queue actually holds work back rather
@@ -174,6 +192,7 @@ task:claim-audit rdf:type     ktype:AgentTask ;
     rdfs:label      "No hand-written surface may claim what the graph denies" ;
     kpred:goal      "Sweep README, SAFETY.md, COUNSEL-BRIEF.md and the app shell for capabilities described as working that the graph says are unbuilt." ;
     kpred:tier      "script" ;
+    kpred:effect    "queue-write" ;
     kpred:command   "npx tsx scripts/offline/claim-audit.ts --pending" ;
     kpred:done-when "npx tsx scripts/offline/claim-audit.ts" ;
     kpred:blocked-by task:published-graph ;
@@ -198,6 +217,7 @@ task:history-lessons rdf:type ktype:AgentTask ;
     rdfs:label      "Learn from our own failures, weekly" ;
     kpred:goal      "Mine the repo's history for fixes that shipped with no test (a bug with a return ticket) and for files where fixes cluster (fragility is a design signal)." ;
     kpred:tier      "script" ;
+    kpred:effect    "queue-write" ;
     kpred:every     "7d" ;
     kpred:command   "npx tsx scripts/offline/history-lessons.ts --pending" ;
     kpred:done-when "npx tsx scripts/offline/history-lessons.ts --json > /dev/null" ;
@@ -207,6 +227,7 @@ task:competitor-scan rdf:type ktype:AgentTask ;
     rdfs:label      "Watch the neighbourhood, and the licences" ;
     kpred:goal      "Refresh every competitor's metadata and LICENCE from the GitHub API. A licence that moved under us changes what we are ALLOWED to do, and the graph's copy-permitted claims would be lying about it." ;
     kpred:tier      "script" ;
+    kpred:effect    "external-read", "queue-write" ;
     kpred:every     "7d" ;
     kpred:command   "npx tsx scripts/offline/competitor-scan.ts --pending" ;
     kpred:done-when "npx tsx scripts/offline/competitor-scan.ts" ;
@@ -214,8 +235,9 @@ task:competitor-scan rdf:type ktype:AgentTask ;
 
 task:prompt-audit rdf:type    ktype:AgentTask ;
     rdfs:label      "The ethics preamble must not drift" ;
-    kpred:goal      "Check ETHICS_PREAMBLE is present, injected into every LLM prompt, and identical between the app and the MCP server. A safety control that silently drifts is not a control." ;
+    kpred:goal      "Measure ETHICS_PREAMBLE token overhead, app↔MCP drift, and purpose/locality-gated coverage. It reports the current policy rather than assuming every prompt must carry the preamble." ;
     kpred:tier      "script" ;
+    kpred:effect    "read-only" ;
     kpred:every     "24h" ;
     kpred:command   "npx tsx scripts/offline/prompt-audit.ts" ;
     kpred:done-when "npx tsx scripts/offline/prompt-audit.ts" ;
@@ -240,6 +262,7 @@ task:needs-decision rdf:type  ktype:AgentTask ;
     rdfs:label      "A task that asks instead of guessing" ;
     kpred:goal      "Set the auto-merge confidence threshold. The right value is a judgment about how much risk the user is willing to accept — nothing in the code can answer it, and no amount of reasoning will make it a fact." ;
     kpred:tier      "script" ;
+    kpred:effect    "queue-write" ;
     # THE PATTERN, and it is worth copying exactly: CHECK FOR THE ANSWER FIRST, and only ask if
     # it is missing. A command that asks unconditionally will ask again the moment it resumes,
     # and suspend itself forever — which is what the first draft of this task did.
@@ -258,19 +281,23 @@ task:needs-decision rdf:type  ktype:AgentTask ;
 # system that conflates the two will quietly give up on work that was perfectly fine.
 
 task:local-code-review rdf:type ktype:AgentTask ;
-    rdfs:label      "First-pass code review, for free" ;
-    kpred:goal      "A local coding model (qwen3-coder) reviews the branch diff and queues its findings for review. Opus triages the output rather than reading the diff cold — which is the whole point: the reading is not judgment, and the reading is most of the tokens." ;
+    rdfs:label      "Wave 0 orchestration first-pass review, for free" ;
+    kpred:goal      "A local coding model (qwen3-coder) reviews the complete Wave 0 runner, report, queue, MCP and shared RDF-contract diff and queues findings for review. This is deliberately bounded to orchestration-owned files; it does not claim to review the whole dirty branch." ;
     kpred:tier      "local-agent" ;
+    kpred:effect    "source-write", "queue-write" ;
     kpred:model     "qwen3-coder" ;
+    kpred:context-query "scripts/agent/runner.ts task orchestration local agent MCP context receipts effects code review" ;
+    kpred:context-budget "1400" ;
     kpred:every     "8h" ;
-    kpred:command   "npx tsx scripts/offline/code-review.ts --base=origin/dev" ;
-    kpred:done-when "npx tsx scripts/offline/code-review.ts --base=HEAD~1" ;
+    kpred:command   "npx tsx scripts/offline/code-review.ts --base=origin/dev --worktree --files=scripts/agent/runner.ts,scripts/agent/state-file.ts,scripts/agent/run-contract.ts,scripts/agent/verify-run-report.ts,scripts/agent/mcp-context.ts,scripts/agent/__tests__/runner-integration.test.ts,scripts/agent/__tests__/run-contract.test.ts,scripts/agent/__tests__/mcp-context.test.ts,scripts/agent/__tests__/verify-run-report.test.ts,scripts/offline/code-review.ts,scripts/offline/pending-queue.ts,scripts/offline/button-crawl.ts,scripts/offline/visual-diff.ts,scripts/offline/lib/review-git.ts,scripts/offline/lib/__tests__/review-git.test.ts,scripts/offline/__tests__/pending-queue.test.ts,reckons-workspace/tasks.ttl,src/lib/rdf/agent-task.ts,src/lib/rdf/__tests__/agent-task.test.ts --max-findings=12 --max-per-file=1 --report=reckons-workspace/runs/local-code-review.json" ;
+    kpred:done-when "npx tsx scripts/agent/verify-run-report.ts --kind=local-code-review --file=reckons-workspace/runs/local-code-review.json --require-mcp" ;
     kpred:task-state "open" .
 
 task:describe-entities rdf:type ktype:AgentTask ;
     rdfs:label      "Draft the descriptions nobody wrote" ;
     kpred:goal      "A local model drafts kpred:description for entities graph-lint found incomplete, grounded in their own subgraph and linked files. Proposals only — a description the model invented is a claim, not a fact." ;
     kpred:tier      "local-agent" ;
+    kpred:effect    "queue-write" ;
     kpred:model     "qwen3-coder" ;
     kpred:every     "24h" ;
     kpred:command   "npx tsx scripts/offline/describe-entities.ts" ;
@@ -284,6 +311,7 @@ task:no-acceptance rdf:type   ktype:AgentTask ;
     rdfs:label      "A wish, not a task (deliberately unrunnable)" ;
     kpred:goal      "Make the codebase better." ;
     kpred:tier      "script" ;
+    kpred:effect    "read-only" ;
     kpred:command   "echo improving" ;
     kpred:task-state "open" .
 
@@ -307,6 +335,7 @@ task:server-health rdf:type   ktype:AgentTask ;
     rdfs:label      "The self-hosted servers must still be serving" ;
     kpred:goal      "Check the Indico CORS grant a browser actually needs, backup freshness, disk, services, containers, and installed-but-not-booted kernels on the Indico and n8n hosts. Queue drift for review; change nothing." ;
     kpred:tier      "script" ;
+    kpred:effect    "external-read", "queue-write" ;
     kpred:every     "1d" ;
     kpred:command   "npx tsx scripts/offline/server-health.ts --pending" ;
     kpred:done-when "npx tsx scripts/offline/server-health.ts" ;
@@ -316,6 +345,7 @@ task:n8n-backup-verify rdf:type ktype:AgentTask ;
     rdfs:label      "The n8n backup must be restorable, not merely present" ;
     kpred:goal      "A backup nobody has restored is a hypothesis. Confirm the newest archive still extracts, its SQLite snapshot passes integrity_check, it holds more than zero workflows, and it carries the encryption key without which credentials can never be decrypted again." ;
     kpred:tier      "script" ;
+    kpred:effect    "external-read", "queue-write" ;
     kpred:every     "7d" ;
     kpred:command   "npx tsx scripts/offline/server-health.ts --pending" ;
     kpred:done-when "npx tsx scripts/offline/server-health.ts" ;

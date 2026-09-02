@@ -15,9 +15,11 @@
  *   npm run prune -- --apply      back up, then remove the flagged suggestions
  *   npm run prune -- --stale 30   only treat suggestions older than N days as stale (default 14)
  */
-import { readFileSync, writeFileSync, existsSync, copyFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { analyzeSuggestionPrune, type SuggestionPruneReason } from '../../src/lib/rdf/prune.js';
 import type { PendingItem } from '../../src/lib/rdf/triage.js';
+import { atomicWriteFile } from './state-file.js';
+import { transactPendingQueue } from '../offline/pending-queue.js';
 
 const PENDING = 'reckons-workspace/knowledge.pending.jsonl';
 const B = '\x1b[1m', D = '\x1b[2m', G = '\x1b[32m', Y = '\x1b[33m', R = '\x1b[31m', X = '\x1b[0m';
@@ -73,7 +75,21 @@ if (!APPLY) {
 }
 
 const backup = `${PENDING}.prune-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.jsonl`;
-copyFileSync(PENDING, backup);
-writeFileSync(PENDING, keptRows.map((r) => r.line).join('\n') + '\n');
-console.log(`  ${G}✓ pruned ${pruneRows.length}, kept ${keptRows.length}.${X}`);
+const applied = transactPendingQueue(PENDING, (current) => {
+  const freshRows = current.split('\n').filter(Boolean).map((line) => {
+    let item: PendingItem | null = null;
+    try { item = JSON.parse(line); } catch { /* preserve malformed lines */ }
+    return { line, item };
+  });
+  const freshScored = freshRows.map((row) =>
+    row.item ? analyzeSuggestionPrune([row.item], { staleDays })[0] : null,
+  );
+  const freshKept = freshRows.filter((_, index) => !freshScored[index]?.prune);
+  atomicWriteFile(backup, current);
+  return {
+    content: freshKept.map((row) => row.line).join('\n') + (freshKept.length ? '\n' : ''),
+    result: { pruned: freshRows.length - freshKept.length, kept: freshKept.length },
+  };
+});
+console.log(`  ${G}✓ pruned ${applied.pruned}, kept ${applied.kept}.${X}`);
 console.log(`  ${D}backup: ${backup}${X}\n`);

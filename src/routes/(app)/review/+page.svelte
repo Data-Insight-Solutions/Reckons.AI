@@ -1,5 +1,7 @@
 <script lang="ts">
   import { Canvas } from '@threlte/core';
+  import { replaceState } from '$app/navigation';
+  import { Popover } from 'bits-ui';
   import KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
   import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
   import CompareGraph from '$lib/components/CompareGraph.svelte';
@@ -21,12 +23,14 @@
     pendingMergeStatements,
     statementsForSource,
     setStatus,
+    setStatuses,
     updateStatement,
     addStatements,
     addSource,
   } from '$lib/stores/kb.svelte';
   import { getRegistry, getCurrentKbId } from '$lib/storage/kb-registry';
-  import { drainAndImportPending, workspaceState } from '$lib/stores/workspace.svelte';
+  import { drainAndImportPending, workspaceState, supportsWorkspace } from '$lib/stores/workspace.svelte';
+  import { runPartition } from '$lib/rdf/partition-run';
   import {
     computeAlignment, loadKbStatements, applyAlignmentToActiveKb,
     type AlignmentResult, type AlignmentSuggestion,
@@ -37,6 +41,14 @@
   import { generateDiffSummary, type DiffSummary } from '$lib/rdf/diff-summary';
   import { semanticEnrichDiff, labelFromIRI } from '$lib/rdf/semantic-diff';
   import { buildReviewPlan, reviewPlanSummary } from '$lib/rdf/review-pipeline';
+  import { buildReviewTree, reviewTreeSummary, questionText } from '$lib/rdf/review-tree';
+  import { reanalysisRequest, reanalysisSummary } from '$lib/rdf/reanalysis';
+  import { runReanalysis, type ReanalysisRun } from '$lib/rdf/reanalysis-run';
+  import { altitudeOf, ALTITUDE_META, ALTITUDE_RANK, type Altitude } from '$lib/rdf/fact-altitude';
+  import { applyPartition,
+    clusterForCascade, applyCascade, cascadeSummary, needsPurposeQuestion, purposeQuestion,
+    BASIS_META, type FactCluster, type CascadeAction,
+  } from '$lib/rdf/fact-aggregation';
   import { settings } from '$lib/stores/settings.svelte';
   import { parseMultipleGraphs, MEMBERSHIP_PREDICATES, MEMBERSHIP_LABELS, isProjectIri, type OverlayData, type GraphDef } from '$lib/rdf/multi-graph-parse';
   import {
@@ -48,7 +60,6 @@
   import { routeQueue, routingSummary } from '$lib/rdf/review-routing';
   import { LEAP_PRED, LEAP_LABEL_PRED } from '$lib/rdf/kb-leap';
   import { requestShellyChat } from '$lib/stores/shelly-bridge.svelte';
-  import { ToggleGroup } from 'bits-ui';
   import { onMount } from 'svelte';
 
   // Predicates that are internal KB metadata
@@ -78,9 +89,62 @@
   type GraphMode = 'preview' | 'compare' | 'overlay';
   let graphMode = $state<GraphMode>('preview');
   let use2D = $state(settings().prefer2D ?? false);
+  let graphSettled = $state(false);
 
   // ── Review data ───────────────────────────────────────────────────────────
-  const incoming = $derived(pendingStatements());
+  // LOG-ALTITUDE FACTS ARE NOT REVIEW WORK. A dictated sentence stored whole
+  // (`kpred:captured-note`) asserts only that somebody said something, and the person who would
+  // be asked to confirm it is the person who said it — F139 calls queueing one "not inefficient,
+  // it is incoherent". The KNOWLEDGE in a note is whatever extraction reads out of it, and those
+  // triples queue normally on their own merits.
+  //
+  // FILTERED FOR DISPLAY, NOT AUTO-CONFIRMED ON IMPORT. The queue is a proposal transport, not an
+  // authentication channel: letting a JSONL row carry a predicate that settles it would let any
+  // writer of that file mint confirmed facts. So the status stays `pending` and the QUEUE decides
+  // not to ask about it. Extraction settles it properly a moment later.
+  const allIncoming = $derived(pendingStatements());
+
+  // DETAIL — the same ladder the graph view uses, on the queue (Matt, 2026-08-28: "I need
+  // depth/detail/altitude in the review screen, for sure").
+  //
+  // This queue ALREADY hid logs, with a hardcoded `!== 'log'` and no way to see past it. The
+  // default below reproduces that behaviour exactly, so nothing changes for anyone who does not
+  // touch the control — what changes is that the floor is now visible, adjustable, and says what
+  // it costs. `hubs` is deliberately absent: a hub is a shape in a graph, not a property of a
+  // fact awaiting a decision.
+  type ReviewDetailId = 'all' | 'detailed' | 'evidence' | 'judgments' | 'decisions';
+  const REVIEW_DETAIL_LEVELS: { id: ReviewDetailId; label: string; floor: Altitude | null; title: string }[] = [
+    { id: 'all', label: 'all', floor: null, title: 'Everything, including logs — notes and timestamps that assert only that something happened' },
+    { id: 'detailed', label: 'detailed', floor: 'record', title: 'Above logs — the default, and what this queue has always shown' },
+    { id: 'evidence', label: 'evidence', floor: 'evidence', title: 'Measurements and up — drops mechanical records a script settles' },
+    { id: 'judgments', label: 'judgments', floor: 'judgment', title: 'Verdicts no check can settle, and the decisions above them' },
+    { id: 'decisions', label: 'decisions', floor: 'decision', title: 'Only facts that foreclose options' },
+  ];
+  let reviewDetail = $state<ReviewDetailId>('detailed');
+  // `?? 'record'` would be WRONG here: the `all` rung's floor is deliberately null, and ?? treats
+  // null as nullish — so selecting "all" would have silently kept the log floor on. Resolve the
+  // LEVEL, then read its floor.
+  const reviewLevel = $derived(
+    REVIEW_DETAIL_LEVELS.find((l) => l.id === reviewDetail) ?? REVIEW_DETAIL_LEVELS[1],
+  );
+  const reviewFloor = $derived(reviewLevel.floor);
+
+  // RAW ALTITUDE, NOT LIFTED — and this is a correction, recorded because it is not obvious.
+  // The graph view's ladder uses liftedAltitudes so a log under an open decision stays visible.
+  // Making this queue match broke `review.test.ts` ("unplanned work is asked for its PURPOSE"):
+  // lifting raises log facts INTO the queue, and cascade aggregation refuses decision- and
+  // judgment-altitude members by design (kb:cascade-aggregation), so the purpose row never
+  // formed. The two surfaces genuinely want different things — the canvas is showing you a
+  // picture, the queue is assembling a decision — so the queue keeps raw altitude and the
+  // difference is stated rather than smoothed over. Revisit with the cascade validator in hand,
+  // not by changing this line.
+  const incoming = $derived(
+    reviewFloor === null
+      ? allIncoming
+      : allIncoming.filter((s) => ALTITUDE_RANK[altitudeOf(s)] >= ALTITUDE_RANK[reviewFloor]),
+  );
+  /** Said out loud rather than silently dropped — a hidden row must look hidden, not absent. */
+  const hiddenLogCount = $derived(allIncoming.length - incoming.length);
   const pendingDeletions = $derived(pendingRemovalStatements());
   const pendingMerges = $derived(pendingMergeStatements());
 
@@ -102,6 +166,7 @@
   // Semantic diff (async upgrade)
   let semanticDiff = $state<ReturnType<typeof computeDiff> | null>(null);
   let semanticAnalyzing = $state(false);
+  let semanticReady = $state(false);
   let semanticVersion = 0;
   let semanticFailed = false;
 
@@ -174,6 +239,168 @@
     new Set(reviewPlan.attention.spotlight.map((i) => i.statement.s.value)),
   );
 
+  // ── F139 ALTITUDE + F139.1 CASCADE ────────────────────────────────────────
+  // The tree reads the USER LANE only: routeQueue has already removed what a script or a reviewing
+  // agent can settle, so the tree never asks the human about a fact that was never theirs.
+  /**
+   * SIZE GUARD — above this many facts the tree and the cascade are not computed at all.
+   *
+   * Measured 2026-08-19: buildReviewTree over a 40,433-fact synced graph costs ~210ms and
+   * clusterForCascade ~40ms, and both are $derived, so they re-run on every accept. That is a
+   * visible stall per click. The residual cost is honest linear work — roughly ten passes over the
+   * graph — not a hot spot left to remove, so the answer is to stop doing it rather than to shave it.
+   *
+   * IT MUST SAY SO RATHER THAN SILENTLY DEGRADE. A review surface that quietly stops surfacing
+   * decisions on a large graph is worse than one that is slow, because the user cannot tell the
+   * difference between "no decisions" and "not looked". The headline states the skip and the reason.
+   */
+  const TREE_FACT_LIMIT = 12_000;
+  const graphForTree = $derived([...existing, ...incoming]);
+  const treeTooBig = $derived(graphForTree.length > TREE_FACT_LIMIT);
+
+  const reviewTree = $derived(
+    treeTooBig
+      ? { decisions: [], suppressed: { record: 0, log: 0 }, orphans: [], machineSettleable: [], standingDescription: 0, considered: 0 }
+      : buildReviewTree(
+          reviewPlan.routed.user.map((it) => it.statement),
+          graphForTree,
+          { typeOf: (iri) => subjectTypes.get(iri) },
+        ),
+  );
+  const treeHeadline = $derived(
+    treeTooBig
+      ? `Decision tree skipped: ${graphForTree.length.toLocaleString()} facts is over the ${TREE_FACT_LIMIT.toLocaleString()} limit, and computing it on every change would stall this page. Narrow the graph, or raise the limit deliberately.`
+      : reviewTreeSummary(reviewTree),
+  );
+
+  /**
+   * The CASCADE lane: clusters of bookkeeping that ONE question settles (F139.1).
+   *
+   * Built from the facts the tree files as noise — the record/log altitudes plus the orphan tail —
+   * because those are exactly the rows a person should never be asked to click through one at a
+   * time. Only the deterministic floor runs in the browser; the agent-tier proposals arrive through
+   * the normal pending queue like any other agent output.
+   */
+  const cascadeClusters = $derived.by(() => {
+    if (treeTooBig) return [];
+    // Cascades exist to keep low-altitude bookkeeping OUT of the row-by-row queue while still
+    // giving a person one honest way to settle it. Building this from `incoming` made the visible
+    // detail floor erase the very logs this lane aggregates: the six unplanned completion notes
+    // disappeared at the default `detailed` rung, so their required purpose question never formed.
+    // Detail controls individual rows; cascade aggregation must inspect the complete pending set.
+    const candidates = allIncoming.filter((st) => {
+      const a = altitudeOf(st);
+      return a === 'log' || a === 'record' || a === 'evidence';
+    });
+    return clusterForCascade(candidates, { subjectLabel: labelFromIRI });
+  });
+  const cascadeHeadline = $derived(cascadeSummary(cascadeClusters));
+
+  /** A subject is "planned" when it is a typed Feature/Phase — decides purpose vs truth question. */
+  const isPlannedSubject = (iri: string) => {
+    const t = subjectTypes.get(iri);
+    return t === 'urn:kbase:type/Feature' || t === 'urn:kbase:type/Phase';
+  };
+
+  /** Which cascade cluster is expanded to show its members. */
+  let openCluster = $state<string | null>(null);
+  /** Which decision root is expanded to show the case beneath it. */
+  let openDecision = $state<string | null>(null);
+
+  /**
+   * Resolve an entity's own rdfs:label, falling back to its IRI slug.
+   *
+   * The facts an option rules out are the option's PRICE, so they have to read as the things they
+   * are ("Content history in git, diffable and revertible") rather than as bare IRIs. A cost the
+   * reviewer cannot read is not a cost they can weigh.
+   */
+  const entityLabels = $derived.by(() => {
+    const m = new Map<string, string>();
+    if (treeTooBig) return m;
+    for (const st of graphForTree) {
+      if (st.p.value === 'http://www.w3.org/2000/01/rdf-schema#label' && st.o.kind === 'literal') {
+        m.set(st.s.value, st.o.value);
+      }
+    }
+    return m;
+  });
+  const labelForIri = (iri: string) => entityLabels.get(iri) ?? labelFromIRI(iri);
+  /** Free-text answer for a purpose question, keyed by cluster id. */
+  let purposeAnswers = $state<Record<string, string>>({});
+
+  /**
+   * Settle a whole cluster with one answer.
+   *
+   * The human is at the keyboard and the channel is recorded, which is what keeps F52 intact: this
+   * is a person settling many facts at once, not an agent settling anything.
+   */
+  let cascadeBusy = $state<string | null>(null);
+  let cascadeEffect = $state<string | null>(null);
+
+  /** Which cluster the last purpose failure belongs to, so the message sits on the right card. */
+  let purposeError = $state<string | null>(null);
+  let purposeErrorCluster = $state<string | null>(null);
+
+  /**
+   * Settle a purpose cluster with the user's own words.
+   *
+   * The model only SORTS: `validateProposedPartition` drops any purpose not built from words the
+   * person actually used, so a hallucinated goal cannot become a work unit. A single-purpose
+   * answer is legitimate and cannot be partitioned (applyPartition needs two parts), so it falls
+   * back to settling the whole cluster — the user still said what the work was for.
+   */
+  async function settlePurpose(cluster: FactCluster) {
+    const answer = (purposeAnswers[cluster.id] ?? '').trim();
+    if (!answer || cascadeBusy) return;
+    cascadeBusy = cluster.id;
+    purposeError = null;
+    purposeErrorCluster = cluster.id;
+    try {
+      const run = await runPartition(cluster, answer, settings());
+      if (!run.outcome || run.error) {
+        purposeError = run.error ?? 'The model returned nothing usable.';
+        return;
+      }
+      if (run.outcome.parts.length < 2) {
+        purposeError =
+          'You named one goal, so there is nothing to split — settling the whole set under it.';
+        await settleCluster(cluster, 'confirm');
+        return;
+      }
+      const result = applyPartition(run.outcome, cluster, answer, {
+        actor: 'user',
+        channel: 'app:review',
+      });
+      await addStatements(result.recorded, 'manual');
+      for (const st of result.updated) await setStatus(st.id, st.status);
+      cascadeEffect = result.effect;
+      purposeAnswers[cluster.id] = '';
+      openCluster = null;
+      if (run.outcome.rejected.length > 0) {
+        purposeError = `${run.outcome.rejected.length} proposed group(s) used words you did not, and were dropped.`;
+      }
+    } catch (err) {
+      purposeError = err instanceof Error ? err.message : String(err);
+    } finally {
+      cascadeBusy = null;
+    }
+  }
+
+  async function settleCluster(cluster: FactCluster, answer: CascadeAction) {
+    if (cascadeBusy) return;
+    cascadeBusy = cluster.id;
+    try {
+      const result = applyCascade(cluster, answer, { actor: 'user', channel: 'app:review' });
+      // The user's own fact first, so the decision exists before anything points at it.
+      await addStatements([result.recorded], 'manual');
+      for (const st of result.updated) await setStatus(st.id, st.status);
+      cascadeEffect = result.effect;
+      openCluster = null;
+    } finally {
+      cascadeBusy = null;
+    }
+  }
+
   /** F83: group the SHOWN entries into per-entity cards so the user decides about things, not rows. */
   let groupByEntity = $state(true);
   const entityGroups = $derived.by(() => {
@@ -203,21 +430,73 @@
     const ex = existing;
     const sDiff = computeDiff(inc, ex);
     const myVersion = ++semanticVersion;
-    if (sDiff.entries.length === 0) { semanticDiff = null; semanticAnalyzing = false; return; }
-    if (semanticFailed) return;
+    semanticReady = false;
+    if (sDiff.entries.length === 0) {
+      semanticDiff = null;
+      semanticAnalyzing = false;
+      semanticReady = true;
+      return;
+    }
+    // Clear the spinner on the way out. This returned without touching it, so once enrichment had
+    // failed one run — after which every later run takes this branch — a stale `true` could never
+    // be cleared by anything, and "analyzing…" stayed on the summary row for the rest of the session.
+    if (semanticFailed) { semanticAnalyzing = false; semanticReady = true; return; }
     semanticAnalyzing = true;
     semanticDiff = null;
     semanticEnrichDiff(sDiff, ex).then(enriched => {
-      if (myVersion === semanticVersion) { semanticDiff = enriched; semanticAnalyzing = false; }
+      if (myVersion === semanticVersion) {
+        semanticDiff = enriched;
+        semanticAnalyzing = false;
+        semanticReady = true;
+      }
     }).catch(() => {
       semanticFailed = true;
-      if (myVersion === semanticVersion) semanticAnalyzing = false;
+      if (myVersion === semanticVersion) {
+        semanticAnalyzing = false;
+        semanticReady = true;
+      }
     });
   });
 
-  let bumpKey = $state(0);
   let isProcessing = $state(false);
   let error = $state<string | null>(null);
+
+  /*
+   * ── F139 step 3: FREEFORM RE-ANALYSIS OF THE PENDING SET ────────────────────
+   *
+   * Matt, 2026-08-21: the summary and the analyze actions are a start, but what is missing is a
+   * way to prompt DIRECTLY AFTER THE SUMMARY and suggest a re-analysis in your own words. The
+   * principle behind it: not every divergence from the intended shape is detectable by a model or
+   * a rule, the human is still the best layer of intelligence, and nudging pending facts toward
+   * their ideal hierarchy BEFORE they enter the graph costs far less than editing the graph after.
+   *
+   * It proposes only: attach / group / depend / drop, over facts that already exist. Nothing is
+   * applied until the person applies it, and nothing here can mint a fact.
+   */
+  let reanalysisInstruction = $state('');
+  let reanalysisBusy = $state(false);
+  let reanalysisRun = $state<ReanalysisRun | null>(null);
+
+  async function runPendingReanalysis() {
+    const instruction = reanalysisInstruction.trim();
+    if (!instruction || reanalysisBusy || !semanticReady) return;
+    reanalysisBusy = true;
+    reanalysisRun = null;
+    try {
+      const req = reanalysisRequest(
+        instruction,
+        pendingStatements(),
+        reviewTree.decisions.map((d) => ({
+          id: d.question.id,
+          subjectIri: d.subjectIri,
+          question: questionText(d),
+        })),
+      );
+      reanalysisRun = await runReanalysis(req, settings());
+    } finally {
+      reanalysisBusy = false;
+    }
+  }
 
   // ── Diff summary ──────────────────────────────────────────────────────────
   let diffSummary = $state<DiffSummary | null>(null);
@@ -229,19 +508,33 @@
     finally { summaryLoading = false; }
   }
 
-  function refresh() { bumpKey++; }
 
   let draining = $state(false);
   let drainResult = $state<string | null>(null);
+
+  /** What the last bulk accept actually did — including when the honest answer is "nothing". */
+  let bulkResult = $state<string | null>(null);
   async function checkPending() {
     draining = true;
     drainResult = null;
     try {
+      // Distinguish the three ways a drain yields nothing. They used to all report 'none', so
+      // "this graph has no queued rows" was indistinguishable from "I cannot read the queue at
+      // all" — which is what an unlinked folder, or a non-secure origin where the File System
+      // Access API does not exist, actually means. Silence on the failure that needs an action.
+      if (!supportsWorkspace()) {
+        drainResult = 'unavailable here — open over localhost or https';
+        return;
+      }
+      if (workspaceState() !== 'connected') {
+        drainResult = 'no folder linked for this graph';
+        return;
+      }
       const count = await drainAndImportPending();
-      drainResult = count > 0 ? `${count} imported` : 'none';
-      if (count > 0) refresh();
+      drainResult = count > 0 ? `${count} imported` : 'none queued for this graph';
+      // store update is reactive — no manual refresh needed
     } catch { drainResult = 'error'; }
-    finally { draining = false; setTimeout(() => drainResult = null, 3000); }
+    finally { draining = false; setTimeout(() => drainResult = null, 6000); }
   }
 
   function sourceLabel(sourceId: string): string {
@@ -261,6 +554,21 @@
     });
   });
 
+  // How many edges the tree layout can actually build a hierarchy from.
+  //
+  // `buildHierarchyAnchors` returns an empty anchor map when the graph states no parent edges, and
+  // the force layout then takes over — so choosing "tree" on a graph without them looks exactly
+  // like a broken button. It is not: the graph genuinely has no hierarchy to draw. Say which of
+  // the two it is, rather than making the user guess from a layout that quietly did nothing.
+  const hierarchyEdgeCount = $derived(
+    previewStatements.filter(
+      (s) =>
+        s.o.kind === 'iri' &&
+        (s.p.value === 'http://www.w3.org/2004/02/skos/core#broader' ||
+          s.p.value === 'urn:kbase:predicate/depends-on'),
+    ).length,
+  );
+
   // Highlighted keys: entities that come from pending statements
   const pendingKeys = $derived(new Set(incoming.flatMap(s => [termKey(s.s), termKey(s.o)])));
 
@@ -279,7 +587,62 @@
   });
 
   /** Focus the preview graph on a statement's subject node (called from review cards — incoming, deletions, merges, align). */
+  /*
+   * ── BI-DIRECTIONAL SELECTION (Matt, 2026-08-21) ────────────────────────────────────────────
+   *
+   * "if graph node selected, go to any entity pending facts. If the entity is selected from the
+   * pending fact, show it on the graph."
+   *
+   * The panel -> graph half already worked: clicking a card calls focusStatement and the preview
+   * flies to the node. The graph -> panel half did NOT: selecting a node highlighted matching rows
+   * with .entry-focused and left them wherever they were, which on a 145-fact queue is usually off
+   * screen — a highlight nobody can see is the same as no feedback at all.
+   *
+   * WHY THE SOURCE IS TRACKED. Scrolling on every `selected` change would also fire when the user
+   * clicks a card, yanking the row they just clicked out from under the cursor. So the scroll runs
+   * only for selections that came FROM the graph. Same state, two directions, one of which must
+   * not echo.
+   */
+  let selectionSource = $state<'graph' | 'panel' | null>(null);
+
+  /** A selectable graph entity can occur on either side of a pending relation. */
+  function statementHasKey(st: Statement, key: string): boolean {
+    return termKey(st.s) === key || termKey(st.o) === key;
+  }
+
+  /** Select from the GRAPH: highlight the entity's rows and bring the first one into view. */
+  function selectFromGraph(key: string | null) {
+    // The renderers emit null on deselect (clicking empty space). That is a real state, not a
+    // missing one: it clears the highlight rather than leaving the last entity looking selected.
+    selectionSource = key ? 'graph' : null;
+    selected = key;
+    focusedEdge = null;
+  }
+
+  $effect(() => {
+    const key = selected;
+    if (!key || selectionSource !== 'graph') return;
+
+    /*
+     * If the selected entity has nothing pending in the ACTIVE tab, look for it in the others and
+     * switch. Otherwise selecting a node whose only pending fact is a deletion silently does
+     * nothing, which reads as the feature being broken rather than as the tab being wrong.
+     */
+    const tabsWith: Tab[] = [];
+    if (diff.entries.some((e) => statementHasKey(e.incoming, key))) tabsWith.push('incoming');
+    if (pendingDeletions.some((st: Statement) => statementHasKey(st, key))) tabsWith.push('deletions');
+    if (pendingMerges.some((st: Statement) => statementHasKey(st, key))) tabsWith.push('merges');
+    if (tabsWith.length && !tabsWith.includes(activeTab)) activeTab = tabsWith[0];
+
+    // After the tab (and therefore the list) has rendered.
+    requestAnimationFrame(() => {
+      const el = document.querySelector('.entry-focused');
+      if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
+  });
+
   function focusStatement(st: Statement) {
+    selectionSource = 'panel';
     const key = termKey(st.s);
     selected = key;
     focusedEdge = { s: termKey(st.s), o: termKey(st.o), p: st.p.value.split('/').pop() ?? st.p.value };
@@ -287,8 +650,39 @@
     requestAnimationFrame(() => { focusKey = key; });
   }
 
+  /**
+   * Keep the convenient "click anywhere on the card" graph focus without making the whole card
+   * an interactive accessibility container. Review entries contain their own buttons and inputs;
+   * nesting those inside a role=button wrapper produced an invalid control tree and let an inner
+   * accept/refine click also fly the graph. Keyboard users get the adjacent native focus button.
+   */
+  function focusStatementFromCard(event: MouseEvent, st: Statement) {
+    const target = event.target;
+    if (
+      target instanceof Element &&
+      target.closest('button, a[href], input, select, textarea, summary, [role="button"], [contenteditable="true"]')
+    ) return;
+    focusStatement(st);
+  }
+
+  /** Attach pointer-only card chrome behavior without claiming the content container is a control. */
+  function cardGraphFocus(node: HTMLElement, initialStatement: Statement) {
+    let statement = initialStatement;
+    const handleClick = (event: MouseEvent) => focusStatementFromCard(event, statement);
+    node.addEventListener('click', handleClick);
+    return {
+      update(nextStatement: Statement) { statement = nextStatement; },
+      destroy() { node.removeEventListener('click', handleClick); },
+    };
+  }
+
+  function statementFocusLabel(st: Statement): string {
+    return `Show ${labelFromIRI(st.s.value)} in the preview graph`;
+  }
+
   /** Focus the preview graph on an arbitrary node key (called from the node search box). */
   function focusNode(key: string) {
+    selectionSource = 'panel';
     selected = key;
     focusedEdge = null;
     focusKey = null;
@@ -296,7 +690,75 @@
   }
 
   // ── Browse controls (F30: graph controls ported onto the preview pane) ────
-  let previewLayout = $state<'force' | 'focus' | 'hub'>('force');
+  /*
+   * ALL EIGHT LAYOUTS, the same set the main graph view offers (F30: graph controls ported onto
+   * the preview pane). Review had four; a reviewer looking at the same graph should not have a
+   * poorer set of ways to look at it than someone browsing it.
+   *
+   * Two are GUARDED, exactly as they are on the main view, because a chip that cannot do anything
+   * is worse than an absent one — that is precisely how the "tree" chip read as broken while it
+   * was working correctly on a graph with no hierarchy to draw.
+   */
+  const PREVIEW_LAYOUTS = ['force', 'focus', 'source', 'type', 'hub', 'timeline', 'order', 'hierarchy'] as const;
+  type PreviewLayout = (typeof PREVIEW_LAYOUTS)[number];
+  let previewLayout = $state<PreviewLayout>('force');
+  let showPreviewLayoutMenu = $state(false);
+  let showReviewDetailMenu = $state(false);
+  /**
+   * Layout options as data, so LAYOUT and DETAIL render as two matching dropdowns.
+   *
+   * Matt, 2026-08-28, after I fixed the wrong page twice: the detail control was crammed into the
+   * panel header beside "2 pending changes · 27 not shown · ↻", where it read as a status line
+   * rather than a control. It belongs next to layout, and layout should be a dropdown too.
+   */
+  const PREVIEW_LAYOUT_OPTIONS: { value: PreviewLayout; label: string; title: string; available?: () => boolean }[] = [
+    { value: 'force', label: 'free', title: 'Free force layout' },
+    { value: 'focus', label: 'focus', title: 'Focus the selected node and its neighbours' },
+    { value: 'source', label: 'source', title: 'Cluster nodes by the source they came from',
+      available: () => previewSourceCount > 1 },
+    { value: 'type', label: 'type', title: 'Cluster nodes by entity type',
+      available: () => previewEntityTypes.length > 0 },
+    { value: 'hub', label: 'hub', title: 'Pull the most-connected hubs toward the centre' },
+    { value: 'timeline', label: 'time', title: 'Lay nodes out left-to-right by date; undated nodes get a labelled lane rather than a fake date' },
+    { value: 'order', label: 'arrange', title: 'Arrange nodes on a grid — pending subjects first' },
+    { value: 'hierarchy', label: 'tree', title: 'Prerequisites above dependents, from skos:broader and kpred:depends-on' },
+  ];
+  const availablePreviewLayouts = $derived(PREVIEW_LAYOUT_OPTIONS.filter((l) => l.available?.() ?? true));
+
+  /** Sources worth clustering by. Analysis output is not a source a reviewer is comparing. */
+  const previewSourceCount = $derived(sources().filter((s) => s.kind !== 'analysis').length);
+  /** Entity types actually present in the preview — clustering by type needs at least one. */
+  const previewEntityTypes = $derived.by(() => {
+    const t = new Set<string>();
+    for (const st of previewStatements) {
+      const ty = subjectTypes.get(st.s.value);
+      if (ty) t.add(ty);
+    }
+    return [...t];
+  });
+  /**
+   * The grid sequence for the "arrange" layout.
+   *
+   * buildOrderAnchors() returns NOTHING when nodeOrder is empty, so shipping this chip without
+   * supplying an order would add a control that silently does nothing. Pending subjects come
+   * first because they are what the reviewer is here for, then everything else by label, so the
+   * grid is stable between renders instead of reshuffling on every recompute.
+   */
+  const previewNodeOrder = $derived.by(() => {
+    const pendingFirst: string[] = [];
+    const rest: string[] = [];
+    const seen = new Set<string>();
+    for (const st of previewStatements) {
+      for (const term of [st.s, st.o]) {
+        if (term.kind !== 'iri') continue;
+        const k = termKey(term);
+        if (seen.has(k)) continue;
+        seen.add(k);
+        (pendingKeys.has(k) ? pendingFirst : rest).push(k);
+      }
+    }
+    return [...pendingFirst, ...rest.sort()];
+  });
   let nodeSearchQuery = $state('');
   const nodeSearchResults = $derived.by(() => {
     const q = nodeSearchQuery.trim().toLowerCase();
@@ -665,30 +1127,89 @@
       );
       if (mergeStmt) await setStatus(mergeStmt.id, 'confirmed');
       showMergeReview = false;
-      refresh();
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     } finally { isProcessing = false; }
   }
 
-  async function dismissMerge(id: string) { await setStatus(id, 'rejected'); refresh(); }
+  async function dismissMerge(id: string) { await setStatus(id, 'rejected'); }
 
   // ── Bulk actions ──────────────────────────────────────────────────────────
   async function acceptAll() {
     error = null; isProcessing = true;
+    bulkResult = null;
+    let accepted = 0, dismissed = 0, skippedPartial = 0, skippedKind = 0;
     try {
       for (const e of diff.entries) {
         // Partial facts (F32) must be filled individually — never bulk-confirm a '?'.
-        if (e.incoming.needsObject) continue;
-        if (e.kind === 'new' || e.kind === 'reinforces' || e.kind === 'synonym-reinforces')
+        if (e.incoming.needsObject) { skippedPartial++; continue; }
+
+        // An exact duplicate is the SAME (s,p,o) in the SAME graph — byte-identical to a fact
+        // already held. There is no decision in it: confirming adds nothing and rejecting loses
+        // nothing, so making a human dismiss each one by hand is pure tax. `reinforces` is the
+        // case that actually carries information (same claim, NEW source) and is confirmed below,
+        // which is what records the extra citation.
+        if (e.kind === 'duplicate') {
+          await setStatus(e.incoming.id, 'rejected');
+          dismissed++;
+          continue;
+        }
+
+        if (e.kind === 'new' || e.kind === 'reinforces' || e.kind === 'synonym-reinforces') {
           await setStatus(e.incoming.id, 'confirmed');
+          accepted++;
+        } else {
+          skippedKind++;
+        }
       }
-      refresh();
+      // Say what happened, including when the answer is "nothing". A whole graph can consist of
+      // partial facts — every code-review finding is a question with no object — and this button
+      // then correctly confirms none of them while looking broken. Silence is the bug; refusing
+      // to bulk-confirm a '?' is not.
+      bulkResult = accepted > 0 || dismissed > 0
+        ? [
+            accepted ? `confirmed ${accepted}` : null,
+            dismissed ? `dismissed ${dismissed} exact duplicate(s)` : null,
+            skippedPartial ? `${skippedPartial} need an answer first` : null,
+            skippedKind ? `${skippedKind} need a decision` : null,
+          ].filter(Boolean).join(', ')
+        : skippedPartial > 0
+          ? `nothing to confirm — ${skippedPartial} partial fact(s) need an object before they can be accepted`
+          : skippedKind > 0
+            ? `nothing to confirm — ${skippedKind} entr(y/ies) are conflicts or refinements, which need a decision`
+            : 'nothing pending';
     } catch (e) { error = e instanceof Error ? e.message : String(e); }
-    finally { isProcessing = false; }
+    finally { isProcessing = false; setTimeout(() => (bulkResult = null), 8000); }
   }
-  async function confirmDeletion(id: string) { await setStatus(id, 'rejected'); refresh(); }
-  async function keepStatement(id: string) { await setStatus(id, 'confirmed'); refresh(); }
+  /**
+   * SETTLE A CONTESTED DECISION IN ONE ACTION (Matt, 2026-08-21).
+   *
+   * "The current state is accept one fact then the other is a conflict with a second decision to
+   * keep existing, which is a bit redundant." It is: picking a side IS rejecting the others, so
+   * asking again is the same decision wearing a different hat. This confirms the chosen statement
+   * and rejects every other side of the same conflict together, the way MergeReview already
+   * resolves a predicate conflict with one pick.
+   *
+   * It does NOT quietly replace the reckoning path. Where two HUMAN-attested claims disagree
+   * (escalate === 'stp') the tree's own rule stands — accept/reject discards the losing side's
+   * reasoning — so the UI offers this pick and the reckoning side by side and says which is which.
+   */
+  let settlingDecision = $state<string | null>(null);
+  async function settleConflict(sides: Statement[], keepId: string, decisionId: string) {
+    if (settlingDecision) return;
+    settlingDecision = decisionId;
+    try {
+      await setStatuses(sides.map((st) => ({
+        id: st.id,
+        status: st.id === keepId ? 'confirmed' : 'rejected',
+      })));
+    } finally {
+      settlingDecision = null;
+    }
+  }
+
+  async function confirmDeletion(id: string) { await setStatus(id, 'rejected'); }
+  async function keepStatement(id: string) { await setStatus(id, 'confirmed'); }
 
   // Total pending count for graph label
   const totalPending = $derived(incoming.length + pendingDeletions.length + pendingMerges.length);
@@ -748,7 +1269,6 @@
       await applyAlignmentToActiveKb(suggestion, addStatements, addSource);
       suggestion.decision = 'accepted';
       alignResult = { ...alignResult! };
-      refresh();
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     }
@@ -760,11 +1280,23 @@
   }
 
   // ── URL query param helpers ─────────────────────────────────────────────
+  //
+  // These EDIT the existing URL rather than rebuilding the query string, so `?kb=` and the other
+  // params survive. Rebuilding from a fresh URLSearchParams (as the main graph page does) silently
+  // drops every param the rebuild does not know about — including the one naming the graph.
   function setViewParam(view: string | null) {
     const url = new URL(window.location.href);
     if (view) { url.searchParams.set('view', view); }
     else { url.searchParams.delete('view'); }
-    history.replaceState(null, '', url.toString());
+    replaceState(url, {});
+  }
+
+  /** Keep the chosen layout in the URL so a reload — forced or otherwise — comes back to it. */
+  function setLayoutParam(next: PreviewLayout) {
+    const url = new URL(window.location.href);
+    if (next === 'force') url.searchParams.delete('layout');  // the default needs no param
+    else url.searchParams.set('layout', next);
+    replaceState(url, {});
   }
 
   // Auto-populate from URL params
@@ -782,59 +1314,107 @@
     const viewParam = params.get('view');
     if (viewParam === 'compare') { graphMode = 'compare'; }
     else if (viewParam === 'overlay') { graphMode = 'overlay'; initOverlay(); }
+
+    const layoutParam = params.get('layout');
+    if (layoutParam && PREVIEW_LAYOUTS.includes(layoutParam as PreviewLayout)) {
+      previewLayout = layoutParam as PreviewLayout;
+    }
   });
 </script>
 
 <div class="review-layout" class:dragging={isDragging}>
   <!-- ── LEFT: Graph area ──────────────────────────────────────────────── -->
-  <section class="graph-pane">
+  <section
+    class="graph-pane"
+    data-graph-settled={graphMode !== 'preview' || previewStatements.length === 0 || graphSettled}
+  >
     <!-- Graph mode bar -->
     <div class="graph-mode-bar">
-      <button class="mode-btn" class:active={graphMode === 'preview'} onclick={() => { graphMode = 'preview'; setViewParam(null); }}>
+      <button class="mode-btn" class:active={graphMode === 'preview'} aria-pressed={graphMode === 'preview'} onclick={() => { graphMode = 'preview'; setViewParam(null); }}>
         <span class="mode-lbl mono">preview</span>
         {#if totalPending > 0}<span class="mode-badge">{totalPending}</span>{/if}
       </button>
-      <button class="mode-btn" class:active={graphMode === 'compare'} onclick={() => { graphMode = 'compare'; setViewParam('compare'); }}>
+      <button class="mode-btn" class:active={graphMode === 'compare'} aria-pressed={graphMode === 'compare'} onclick={() => { graphMode = 'compare'; setViewParam('compare'); }}>
         <span class="mode-lbl mono">compare</span>
       </button>
-      <button class="mode-btn" class:active={graphMode === 'overlay'} onclick={() => { graphMode = 'overlay'; initOverlay(); setViewParam('overlay'); }}>
+      <button class="mode-btn" class:active={graphMode === 'overlay'} aria-pressed={graphMode === 'overlay'} onclick={() => { graphMode = 'overlay'; initOverlay(); setViewParam('overlay'); }}>
         <span class="mode-lbl mono">overlay</span>
       </button>
       <span class="mode-spacer"></span>
       {#if graphMode === 'preview'}
-        <button class="mode-btn dim-toggle" class:active={!use2D} onclick={() => use2D = !use2D}
+        <button class="mode-btn dim-toggle" class:active={!use2D} onclick={() => { graphSettled = false; use2D = !use2D; }}
+          aria-pressed={!use2D}
           title="Switch between 2D and 3D">
           <span class="mode-lbl mono">{use2D ? '2D' : '3D'}</span>
         </button>
       {/if}
       {#if graphMode === 'overlay'}
         <button class="mode-btn dim-toggle" class:active={overlayViewIs3D} onclick={() => overlayViewIs3D = !overlayViewIs3D}
+          aria-pressed={overlayViewIs3D}
           title="Switch between 2D and 3D">
           <span class="mode-lbl mono">{overlayViewIs3D ? '3D' : '2D'}</span>
         </button>
       {/if}
     </div>
 
-    <!-- Browse controls (F30: layout + node search ported onto the preview pane) -->
-    {#if graphMode === 'preview'}
-      <div class="overlay-controls browse-controls">
-        <div class="ov-row">
-          <span class="ov-label mono">layout</span>
-          <ToggleGroup.Root
-            type="single"
-            value={previewLayout}
-            onValueChange={(v) => { if (v) previewLayout = v as typeof previewLayout; }}
-            class="tg-row"
-          >
-            <ToggleGroup.Item value="force" class="tg-chip"><span class="lbl mono">free</span></ToggleGroup.Item>
-            <ToggleGroup.Item value="focus" class="tg-chip"><span class="lbl mono">focus</span></ToggleGroup.Item>
-            <ToggleGroup.Item value="hub" class="tg-chip"><span class="lbl mono">hub</span></ToggleGroup.Item>
-          </ToggleGroup.Root>
+    <!-- Browse controls (F30). ONE ROW: layout · detail · search.
+         DETAIL renders in every graph mode because it filters the QUEUE, which is on screen in
+         all three; LAYOUT and SEARCH only in preview, the one mode they steer. -->
+    <div class="overlay-controls browse-controls">
+      <div class="ov-row control-row">
+        {#if graphMode === 'preview'}
+          <Popover.Root bind:open={showPreviewLayoutMenu}>
+            <Popover.Trigger>
+              {#snippet child({ props })}
+                <button {...props} class="chip" class:active={showPreviewLayoutMenu}
+                  title={availablePreviewLayouts.find((l) => l.value === previewLayout)?.title}>
+                  <span class="lbl mono">{availablePreviewLayouts.find((l) => l.value === previewLayout)?.label ?? previewLayout}</span>
+                  <span class="arr mono">{showPreviewLayoutMenu ? '▲' : '▼'}</span>
+                </button>
+              {/snippet}
+            </Popover.Trigger>
+            <Popover.Portal>
+              <Popover.Content class="filter-popover" sideOffset={6}>
+                {#each availablePreviewLayouts as l (l.value)}
+                  <button class="chip small" class:active={previewLayout === l.value} title={l.title}
+                    onclick={() => { previewLayout = l.value; setLayoutParam(previewLayout); showPreviewLayoutMenu = false; }}>
+                    <span class="lbl mono">{l.label}</span>
+                  </button>
+                {/each}
+              </Popover.Content>
+            </Popover.Portal>
+          </Popover.Root>
+        {/if}
+
+        <Popover.Root bind:open={showReviewDetailMenu}>
+          <Popover.Trigger>
+            {#snippet child({ props })}
+              <button {...props} class="chip" class:active={reviewDetail !== 'detailed' || showReviewDetailMenu}
+                title={reviewLevel.title}>
+                <span class="lbl mono">{reviewLevel.label}</span>
+                <span class="arr mono">{showReviewDetailMenu ? '▲' : '▼'}</span>
+              </button>
+            {/snippet}
+          </Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Content class="filter-popover" sideOffset={6}>
+              {#each REVIEW_DETAIL_LEVELS as level (level.id)}
+                <button class="chip small" class:active={reviewDetail === level.id} title={level.title}
+                  onclick={() => { reviewDetail = level.id; showReviewDetailMenu = false; }}>
+                  <span class="lbl mono">{level.label}</span>
+                </button>
+              {/each}
+            </Popover.Content>
+          </Popover.Portal>
+        </Popover.Root>
+
+        {#if graphMode === 'preview'}
           <div class="node-search-wrap">
             <input
               class="node-search-input mono"
               type="text"
               placeholder="find node…"
+              aria-label="Find graph node"
               bind:value={nodeSearchQuery}
             />
             {#if nodeSearchResults.length > 0}
@@ -847,9 +1427,16 @@
               </div>
             {/if}
           </div>
-        </div>
+        {/if}
+        {#if hiddenLogCount > 0}
+          <!-- Inline, not on a line of its own: it is a footnote to the detail control beside it,
+               and a whole row for three words was the thing that made it look like a status bar. -->
+          <span class="log-hidden mono" title="Hidden from this queue only. Every fact is still in the graph — lower the detail level to see them.">
+            {hiddenLogCount} not shown
+          </span>
+        {/if}
       </div>
-    {/if}
+    </div>
 
     <!-- Overlay controls strip (when overlay mode) -->
     {#if graphMode === 'overlay'}
@@ -989,11 +1576,13 @@
             {selected}
             {focusKey}
             layout={previewLayout}
+            nodeOrder={previewNodeOrder}
             sources={sources()}
-            onselect={(k) => { selected = k; focusedEdge = null; }}
+            onselect={(k) => selectFromGraph(k)}
             onhover={() => {}}
             onlabelsmove={() => {}}
             onmarkersmove={() => {}}
+            onsettledchange={(settled) => { graphSettled = settled; }}
             highlighted={[...pendingKeys]}
             highlightedEdges={focusedEdge ? [focusedEdge] : []}
           />
@@ -1005,10 +1594,11 @@
                 {selected}
                 layout={previewLayout}
                 sources={sources()}
-                onselect={(k) => { selected = k; focusedEdge = null; }}
+                onselect={(k) => selectFromGraph(k)}
                 onhover={() => {}}
                 onlabelsmove={(labels) => { nodeLabels = labels; }}
                 onmarkersmove={() => {}}
+                onsettledchange={(settled) => { graphSettled = settled; }}
                 highlighted={[...pendingKeys]}
               />
             </Canvas>
@@ -1064,7 +1654,7 @@
       <!-- 3D node labels via the SHARED GraphLabels overlay (F92) — same component the main graph
            uses, so review's labels can no longer drift from it. Review needs no asset/leap snippets. -->
       {#if graphMode === 'preview' && !use2D}
-        <GraphLabels labels={nodeLabels} {selected} />
+        <GraphLabels labels={nodeLabels} {selected} onselect={(key) => selectFromGraph(key)} />
       {/if}
     </div>
 
@@ -1085,7 +1675,7 @@
   <aside class="review-panel" style="width:{panelWidth}px">
     <div class="rp-header">
       <h2 class="rp-title">review</h2>
-      <p class="rp-sub mono">
+      <p class="rp-sub mono" data-testid="review-pending-count">
         {totalPending} pending change{totalPending !== 1 ? 's' : ''}
         {#if workspaceState() === 'connected'}
           <button class="drain-btn" onclick={checkPending} disabled={draining} title="Check workspace for pending MCP proposals">
@@ -1096,20 +1686,20 @@
     </div>
 
     <!-- Tab bar -->
-    <nav class="rp-tabs">
-      <button class:active={activeTab === 'incoming'} onclick={() => activeTab = 'incoming'}>
+    <nav class="rp-tabs" aria-label="Review queue sections">
+      <button class:active={activeTab === 'incoming'} aria-pressed={activeTab === 'incoming'} onclick={() => activeTab = 'incoming'}>
         incoming
         {#if diff.entries.length > 0}<span class="badge">{diff.entries.length}</span>{/if}
       </button>
-      <button class:active={activeTab === 'deletions'} onclick={() => activeTab = 'deletions'}>
+      <button class:active={activeTab === 'deletions'} aria-pressed={activeTab === 'deletions'} onclick={() => activeTab = 'deletions'}>
         delete
         {#if pendingDeletions.length > 0}<span class="badge badge-danger">{pendingDeletions.length}</span>{/if}
       </button>
-      <button class:active={activeTab === 'merges'} onclick={() => activeTab = 'merges'}>
+      <button class:active={activeTab === 'merges'} aria-pressed={activeTab === 'merges'} onclick={() => activeTab = 'merges'}>
         merge
         {#if pendingMerges.length > 0}<span class="badge badge-merge">{pendingMerges.length}</span>{/if}
       </button>
-      <button class:active={activeTab === 'align'} onclick={() => activeTab = 'align'}>
+      <button class:active={activeTab === 'align'} aria-pressed={activeTab === 'align'} onclick={() => activeTab = 'align'}>
         align
         {#if alignPending > 0}<span class="badge badge-align">{alignPending}</span>{/if}
       </button>
@@ -1117,14 +1707,24 @@
 
     <!-- Tab content -->
     <div class="rp-content">
-    {#key bumpKey}
+    <!--
+      No {#key} wrapper here, deliberately.
+
+      This block used to be keyed on a counter that every decision incremented, which destroyed and
+      rebuilt all four tabs — list, summary chips, graph preview and scroll position — for a change
+      affecting ONE row. That read as a full page reload after each confirm/reject.
+
+      It was never needed. setStatus reassigns the _statements rune (kb.svelte.ts), so `incoming`,
+      `existing` and `structuralDiff` are $derived and recompute on their own, and the $effect above
+      re-runs to re-enrich the semantic diff. Svelte then updates only the entry that changed.
+    -->
 
       {#if activeTab === 'incoming'}
         <!-- Summary chips -->
         <div class="summary">
           <span class="sc new">{diff.summary.new} new</span>
           <span class="sc reinforces">{diff.summary.reinforces} reinforce</span>
-          <span class="sc conflict">{diff.summary.conflicts} conflict</span>
+          <span class="sc conflict">{diff.summary.conflicts} conflict{diff.summary.conflicts === 1 ? '' : 's'} with graph</span>
           {#if diff.summary.refines > 0}<span class="sc refines">{diff.summary.refines} refine</span>{/if}
           {#if diff.summary.duplicate > 0}<span class="sc duplicate">{diff.summary.duplicate} dup</span>{/if}
           {#if semanticAnalyzing}<span class="sc analyzing">analyzing...</span>{/if}
@@ -1197,20 +1797,27 @@
               onaccept={async () => {
                 // Partial facts must be filled via the card's picker, not swipe-confirmed.
                 if (e.incoming.needsObject) return;
-                await setStatus(e.incoming.id, 'confirmed'); refresh();
+                await setStatus(e.incoming.id, 'confirmed');
               }}
-              onreject={async () => { await setStatus(e.incoming.id, 'rejected'); refresh(); }}
+              onreject={async () => { await setStatus(e.incoming.id, 'rejected'); }}
             >
               <!-- Clicking a review card flies the preview graph to its node -->
+              <!-- The native button below is the keyboard equivalent; the card action preserves
+                   pointer focus on non-control card chrome without assigning a nested ARIA role. -->
               <div
                 class="entry-focus-wrap"
-                class:entry-focused={selected === termKey(e.incoming.s)}
-                role="button"
-                tabindex="0"
-                onclick={() => focusStatement(e.incoming)}
-                onkeydown={(ev) => { if (ev.key === 'Enter') focusStatement(e.incoming); }}
+                class:entry-focused={selected !== null && statementHasKey(e.incoming, selected)}
+                use:cardGraphFocus={e.incoming}
               >
-                <DiffEntry entry={e} sourceLabel={sourceLabel(e.incoming.sourceId)} onresolved={refresh} />
+                <button
+                  type="button"
+                  class="entry-focus-action mono"
+                  aria-label={statementFocusLabel(e.incoming)}
+                  onclick={(event) => { event.stopPropagation(); focusStatement(e.incoming); }}
+                ><span aria-hidden="true">⌖</span> show in graph</button>
+                <!-- No onresolved handler: DiffEntry mutates statements through the store, and the
+                     derived diff picks that up. It defaults to a no-op. -->
+                <DiffEntry entry={e} sourceLabel={sourceLabel(e.incoming.sourceId)} />
               </div>
             </SwipeCard>
           {/snippet}
@@ -1219,6 +1826,257 @@
                facts grouped into entity cards (decide about things, not rows). The per-fact
                confirm/reject controls are unchanged — nothing is hidden, only better ordered. -->
           <div class="ras-headline mono">{planHeadline}</div>
+          <!-- F139: the same set read by ALTITUDE — what is a decision, and what is bookkeeping.
+               Deliberately NOT .ras-headline: that class identifies the F53 pipeline headline and
+               a second element carrying it makes every existing selector for it ambiguous. -->
+          <div class="alt-headline mono" data-testid="altitude-headline">{treeHeadline}</div>
+
+          <!-- F139 step 3 — the manual trigger. Right after the summary, because that is where a
+               person has just read what the shape IS and can say what it should be instead. -->
+          <div class="reanalyze" data-testid="reanalyze">
+            <div class="reanalyze-row">
+              <input
+                class="reanalyze-input mono"
+                type="text"
+                bind:value={reanalysisInstruction}
+                placeholder="re-analyze these pending facts — e.g. 'these are all about the March deploy, group them'"
+                data-testid="reanalyze-input"
+                disabled={reanalysisBusy || !semanticReady}
+                onkeydown={(e) => { if (e.key === 'Enter') runPendingReanalysis(); }}
+              />
+              <button
+                class="ghost-btn"
+                onclick={runPendingReanalysis}
+                disabled={reanalysisBusy || !semanticReady || !reanalysisInstruction.trim()}
+                data-testid="reanalyze-run"
+              >{reanalysisBusy ? 'analyzing...' : 're-analyze'}</button>
+            </div>
+
+            {#if reanalysisRun}
+              {#if reanalysisRun.error}
+                <div class="reanalyze-note mono err">{reanalysisRun.error}</div>
+              {:else}
+                <div class="reanalyze-note mono">{reanalysisSummary(reanalysisRun)}</div>
+                {#each reanalysisRun.operations as op, i (i)}
+                  <div class="reanalyze-op">
+                    <span class="op-kind mono">{op.op}</span>
+                    {#if op.op === 'group'}
+                      <span class="op-what">{op.question} <span class="op-n">({op.factIds.length} facts)</span></span>
+                    {:else if op.op === 'attach'}
+                      <span class="op-what">{op.factIds.length} fact{op.factIds.length === 1 ? '' : 's'} under an open decision</span>
+                    {:else if op.op === 'depend'}
+                      <span class="op-what">settle one decision before another</span>
+                    {:else}
+                      <span class="op-what">{op.factIds.length} fact{op.factIds.length === 1 ? '' : 's'} flagged as noise</span>
+                    {/if}
+                    {#if op.because}<span class="op-why">{op.because}</span>{/if}
+                  </div>
+                {/each}
+                <!-- Rejections are shown, never swallowed: a pass that ignored the instruction must
+                     not look identical to one that followed it. -->
+                {#if reanalysisRun.rejected.length}
+                  <details class="reanalyze-rejected">
+                    <summary class="mono">{reanalysisRun.rejected.length} proposal(s) rejected</summary>
+                    {#each reanalysisRun.rejected as r, i (i)}<div class="rej-line">{r}</div>{/each}
+                  </details>
+                {/if}
+                {#if reanalysisRun.operations.length}
+                  <div class="reanalyze-note mono dim">Nothing has been applied. These are proposals about pending facts — the graph is untouched.</div>
+                {/if}
+              {/if}
+            {/if}
+          </div>
+
+          {#if cascadeEffect}
+            <div class="cascade-effect mono" role="status">{cascadeEffect}</div>
+          {/if}
+
+          <!-- F139.1 CASCADE LANE — aggregate the noise, ask ONE question, settle all of it.
+               50 datetime stamps are not 50 decisions; they are one question about one day. -->
+          {#if cascadeClusters.length > 0}
+            <div class="cascade" data-testid="cascade-lane">
+              <span class="cascade-h mono">{cascadeHeadline}</span>
+              {#each cascadeClusters as cluster (cluster.id)}
+                {@const purpose = needsPurposeQuestion(cluster, isPlannedSubject)}
+                <div class="cascade-row" class:purpose>
+                  <button
+                    class="cascade-q"
+                    onclick={() => (openCluster = openCluster === cluster.id ? null : cluster.id)}
+                    aria-expanded={openCluster === cluster.id}
+                  >
+                    <span class="cascade-count mono">{cluster.members.length}</span>
+                    <span class="cascade-text">{purpose ? purposeQuestion(cluster) : cluster.question}</span>
+                    <span class="cascade-basis mono" class:guessed={!BASIS_META[cluster.basis].deterministic}>
+                      {BASIS_META[cluster.basis].label}
+                    </span>
+                  </button>
+
+                  {#if purpose}
+                    <!-- Unplanned work cannot be settled yes/no: the missing information is a
+                         REASON, not a truth value. The answer re-partitions the set (F139.1). -->
+                    <div class="cascade-purpose mono">
+                      This work is tied to no planned feature, so answering it in your own words
+                      splits the set and labels each part. The purposes come from YOUR wording —
+                      anything the model invents is dropped.
+                    </div>
+                    <div class="cascade-answer">
+                      <textarea
+                        class="cascade-answer-input mono"
+                        rows="2"
+                        bind:value={purposeAnswers[cluster.id]}
+                        placeholder="e.g. 'half of this was the capture pipeline, the rest was fixing the workspace sync'"
+                        disabled={cascadeBusy === cluster.id}
+                        data-testid="purpose-answer"
+                      ></textarea>
+                      <button
+                        class="cascade-yes"
+                        disabled={cascadeBusy === cluster.id || !purposeAnswers[cluster.id]?.trim()}
+                        onclick={() => settlePurpose(cluster)}
+                      >{cascadeBusy === cluster.id ? 'sorting...' : `answer — settle all ${cluster.members.length}`}</button>
+                    </div>
+                    {#if purposeError && purposeErrorCluster === cluster.id}
+                      <!-- Said out loud. A failure that reads as "nothing happened" is what stops
+                           somebody answering the next one. -->
+                      <div class="cascade-purpose-error mono">{purposeError}</div>
+                    {/if}
+                  {:else}
+                    <div class="cascade-acts">
+                      <button
+                        class="cascade-yes"
+                        disabled={cascadeBusy === cluster.id}
+                        onclick={() => settleCluster(cluster, 'confirm')}
+                      >yes — settle all {cluster.members.length}</button>
+                      <button
+                        class="cascade-no"
+                        disabled={cascadeBusy === cluster.id}
+                        onclick={() => settleCluster(cluster, 'reject')}
+                      >no</button>
+                    </div>
+                  {/if}
+
+                  {#if openCluster === cluster.id}
+                    <ul class="cascade-members mono">
+                      {#each cluster.members.slice(0, 40) as m (m.id)}
+                        <li>
+                          <span class="alt-chip alt-{altitudeOf(m)}">{altitudeOf(m)}</span>
+                          {m.p.value.replace('urn:kbase:predicate/', 'kpred:')}
+                          <span class="cm-obj">{m.o.value.slice(0, 90)}</span>
+                        </li>
+                      {/each}
+                      {#if cluster.members.length > 40}
+                        <li class="cm-more">… {cluster.members.length - 40} more</li>
+                      {/if}
+                    </ul>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          {/if}
+
+          <!-- F139 DECISION TREE — the open decisions, the options with their computed costs, and
+               the case beneath each one. Records and logs are a count, never rows. -->
+          {#if reviewTree.decisions.length > 0}
+            <div class="dtree" data-testid="decision-tree">
+              <span class="dtree-h mono">decisions — the only things here that are yours to settle</span>
+              {#each reviewTree.decisions as d (d.question.id)}
+                <div class="dnode" class:contested={d.contested}>
+                  <div class="dnode-top">
+                    <span class="alt-chip alt-decision">decision</span>
+                    <span class="dnode-label">{d.label}</span>
+                    {#if d.contested}
+                      <span class="dflag contested-flag">contested</span>
+                    {/if}
+                    {#if d.impliedBy === 'conflict'}
+                      <span class="dflag implied">nobody asked it</span>
+                    {/if}
+                    {#if d.escalate === 'stp'}
+                      <span class="dflag stp">needs a reckoning</span>
+                    {/if}
+                    {#if d.status}<span class="dstat mono">{d.status}</span>{/if}
+                    {#if d.unlocks}<span class="dstat mono">unlocks {d.unlocks}</span>{/if}
+                  </div>
+
+                  <p class="dquestion">{questionText(d)}</p>
+
+                  {#if d.conflictSides && d.conflictSides.length > 1}
+                    <!-- One pick settles the whole conflict: the chosen side is confirmed and every
+                         other side rejected, instead of accepting one fact and meeting the next as
+                         a fresh decision. -->
+                    <div class="dpick" data-testid="decision-pick">
+                      <span class="dpick-h mono">which holds?</span>
+                      {#each d.conflictSides as side (side.id)}
+                        <button
+                          class="dpick-btn"
+                          disabled={settlingDecision !== null}
+                          onclick={() => settleConflict(d.conflictSides!, side.id, d.question.id)}
+                          title="Confirm this one and reject the other{d.conflictSides!.length > 2 ? 's' : ''}"
+                        >
+                          <span class="dpick-val">{side.o.value.slice(0, 60)}</span>
+                          <span class="dpick-src mono">{sourceLabel(side.sourceId)}</span>
+                        </button>
+                      {/each}
+                    </div>
+                    <p class="dnote mono">
+                      Picking one confirms it and rejects the other{d.conflictSides.length > 2 ? 's' : ''} — one action, not two.
+                      {#if d.escalate === 'stp'}
+                        Both sides are human-attested, so a pick DISCARDS the losing side's reasoning; a reckoning keeps both and supersedes them.
+                      {/if}
+                    </p>
+                  {/if}
+
+                  {#if d.options.length > 0}
+                    <div class="dopts">
+                      {#each d.options as o (o.iri)}
+                        <div class="dopt">
+                          <span class="dopt-label">{o.label}</span>
+                          <span class="dopt-cost mono">costs {o.rulesOut.length} fact{o.rulesOut.length === 1 ? '' : 's'}</span>
+                          <ul class="dopt-kills">
+                            {#each o.rulesOut as k (k.id)}
+                              <li>{labelForIri(k.s.value)}</li>
+                            {/each}
+                          </ul>
+                        </div>
+                      {/each}
+                    </div>
+                    <p class="dnote mono">Each option is priced by the facts it would delete — computed from the graph, not described.</p>
+                  {:else}
+                    <p class="dnote mono">
+                      No options modelled yet, so there is nothing to weigh side by side.
+                      {#if d.escalate === 'stp'}Two attested claims disagree, and no check settles that — accept/reject would discard the reasoning.{/if}
+                    </p>
+                  {/if}
+
+                  <button
+                    class="dexpand mono"
+                    onclick={() => (openDecision = openDecision === d.question.id ? null : d.question.id)}
+                    aria-expanded={openDecision === d.question.id}
+                  >
+                    {d.standing.length} standing · {d.judgments.length} judgments · {d.evidence.length} evidence · ⌄ {d.hidden.length} hidden
+                  </button>
+
+                  {#if openDecision === d.question.id}
+                    <div class="dcase">
+                      {#each [['decision', d.standing], ['judgment', d.judgments], ['evidence', d.evidence], ['record', d.hidden]] as [kind, list]}
+                        {#if (list as typeof d.standing).length > 0}
+                          <ul class="dcase-list mono">
+                            {#each (list as typeof d.standing).slice(0, 12) as f (f.id)}
+                              <li>
+                                <span class="alt-chip alt-{kind}">{kind === 'record' ? 'hidden' : kind}</span>
+                                <span class="dcase-obj">{f.o.value.slice(0, 130)}</span>
+                              </li>
+                            {/each}
+                            {#if (list as typeof d.standing).length > 12}
+                              <li class="cm-more">… {(list as typeof d.standing).length - 12} more</li>
+                            {/if}
+                          </ul>
+                        {/if}
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          {/if}
 
           {#if reviewPlan.attention.spotlight.length > 0}
             <div class="spotlight" data-testid="spotlight">
@@ -1247,6 +2105,7 @@
               title="Group facts by the entity they describe">
               {groupByEntity ? 'by entity' : 'flat list'}
             </button>
+            {#if bulkResult}<p class="bulk-result mono">{bulkResult}</p>{/if}
             {#if error}<p class="error-text">{error}</p>{/if}
           </div>
 
@@ -1293,12 +2152,15 @@
               >
                 <div
                   class="entry-focus-wrap"
-                  class:entry-focused={selected === termKey(st.s)}
-                  role="button"
-                  tabindex="0"
-                  onclick={() => focusStatement(st)}
-                  onkeydown={(ev) => { if (ev.key === 'Enter') focusStatement(st); }}
+                  class:entry-focused={selected !== null && statementHasKey(st, selected)}
+                  use:cardGraphFocus={st}
                 >
+                  <button
+                    type="button"
+                    class="entry-focus-action mono"
+                    aria-label={statementFocusLabel(st)}
+                    onclick={(event) => { event.stopPropagation(); focusStatement(st); }}
+                  ><span aria-hidden="true">⌖</span> show in graph</button>
                   <div class="del-card">
                     <span class="del-tag mono">deletion</span>
                     <StatementCard statement={st} compact />
@@ -1334,12 +2196,15 @@
               >
                 <div
                   class="entry-focus-wrap"
-                  class:entry-focused={selected === termKey(st.s)}
-                  role="button"
-                  tabindex="0"
-                  onclick={() => focusStatement(st)}
-                  onkeydown={(ev) => { if (ev.key === 'Enter') focusStatement(st); }}
+                  class:entry-focused={selected !== null && statementHasKey(st, selected)}
+                  use:cardGraphFocus={st}
                 >
+                  <button
+                    type="button"
+                    class="entry-focus-action mono"
+                    aria-label={statementFocusLabel(st)}
+                    onclick={(event) => { event.stopPropagation(); focusStatement(st); }}
+                  ><span aria-hidden="true">⌖</span> show in graph</button>
                   <div class="merge-card">
                     <span class="merge-tag mono">merge</span>
                     {#if st.gloss}
@@ -1425,12 +2290,15 @@
                 >
                   <div
                     class="entry-focus-wrap"
-                    class:entry-focused={selected === termKey(suggestion.statement.s)}
-                    role="button"
-                    tabindex="0"
-                    onclick={() => focusStatement(suggestion.statement)}
-                    onkeydown={(ev) => { if (ev.key === 'Enter') focusStatement(suggestion.statement); }}
+                    class:entry-focused={selected !== null && statementHasKey(suggestion.statement, selected)}
+                    use:cardGraphFocus={suggestion.statement}
                   >
+                    <button
+                      type="button"
+                      class="entry-focus-action mono"
+                      aria-label={statementFocusLabel(suggestion.statement)}
+                      onclick={(event) => { event.stopPropagation(); focusStatement(suggestion.statement); }}
+                    ><span aria-hidden="true">⌖</span> show in graph</button>
                     <AlignmentCard
                       {suggestion}
                       onaccept={() => acceptAlignment(suggestion)}
@@ -1448,7 +2316,6 @@
         {/if}
       {/if}
 
-    {/key}
     </div>
   </aside>
 </div>
@@ -1496,7 +2363,7 @@
     padding: 0.5rem 0.75rem;
     border-bottom: 1px solid var(--line);
     background: var(--surface);
-    z-index: 10;
+    z-index: 30;
     flex-shrink: 0;
   }
   .mode-btn {
@@ -1560,6 +2427,25 @@
   .entry-focus-wrap { cursor: pointer; border-left: 2px solid transparent; transition: border-color 0.15s; }
   .entry-focus-wrap:hover { border-left-color: var(--muted-2, var(--muted)); }
   .entry-focus-wrap.entry-focused { border-left-color: var(--accent); }
+  .entry-focus-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    min-height: 30px;
+    margin: 0 0 0.35rem 0.4rem;
+    padding: 0.2rem 0.55rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 0.62rem;
+    cursor: pointer;
+  }
+  .entry-focus-action:hover,
+  .entry-focus-action:focus-visible {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
   .graph-empty {
     height: 100%;
     display: flex;
@@ -1603,7 +2489,8 @@
     flex-direction: column;
     gap: 0.3rem;
     flex-shrink: 0;
-    z-index: 10;
+    position: relative;
+    z-index: 30;
   }
   .ov-row {
     display: flex;
@@ -1642,7 +2529,7 @@
   .ov-chip:disabled { opacity: 0.5; cursor: wait; }
   .ov-hint { font-size: 0.55rem; color: var(--muted); }
 
-  /* ── Browse controls (F30: layout ToggleGroup + node search on the preview) ── */
+  /* ── Browse controls (F30: layout + detail dropdowns, node search on the preview) ── */
   .browse-controls { padding-top: 0.35rem; padding-bottom: 0.35rem; }
   :global(.review-layout .tg-row) {
     display: flex;
@@ -1993,6 +2880,38 @@
   /* The two lanes that are NOT the user's are deliberately quiet — they are what the
      queue is sparing them, not another thing demanding attention. */
   .gc-machine, .gc-agent { opacity: 0.75; }
+  .log-hidden {
+    opacity: 0.6;
+    font-size: 0.75rem;
+  }
+
+  .cascade-answer {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+    margin-top: 0.4rem;
+  }
+  .cascade-answer-input {
+    flex: 1;
+    min-width: 0;
+    resize: vertical;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+  .cascade-answer-input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .cascade-purpose-error {
+    margin-top: 0.35rem;
+    font-size: 0.75rem;
+    color: var(--accent);
+  }
+
   .sc.question-filter {
     cursor: pointer;
     background: transparent;
@@ -2070,6 +2989,7 @@
   }
   .bulk-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .error-text { color: var(--danger); font-size: 0.7rem; margin: 0; }
+  .bulk-result { color: var(--text-muted); font-size: 0.7rem; margin: 0; }
 
   .primary-btn {
     padding: 0.35rem 0.7rem;
@@ -2108,6 +3028,332 @@
     color: var(--muted, #888);
     margin: 0.2rem 0 0.6rem;
   }
+  /* ── F139 decision tree ───────────────────────────────────────────────────── */
+  .dtree { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.85rem; }
+  .dtree-h {
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .dnode {
+    border: 1px solid var(--accent);
+    border-left-width: 3px;
+    border-radius: 3px;
+    background: var(--surface);
+    padding: 0.65rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  /* A live disagreement is the one thing that must never look like routine work. */
+  .dpick { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0.35rem 0; }
+  .dpick-h { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; }
+  .dpick-btn {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem;
+    padding: 0.3rem 0.55rem; border: 1px solid var(--border); border-radius: 4px;
+    background: var(--surface-2); color: var(--text); cursor: pointer; text-align: left;
+  }
+  .dpick-btn:hover:not(:disabled) { border-color: var(--accent); }
+  .dpick-btn:disabled { opacity: 0.5; cursor: default; }
+  .dpick-val { font-size: 0.82rem; }
+  .dpick-src { font-size: 0.66rem; color: var(--text-dim); }
+
+  .dnode.contested { border-left-color: var(--danger); }
+
+  .dnode-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem; }
+  .dnode-label { font-size: 0.9rem; font-weight: 600; color: var(--ink); }
+  .dflag {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border: 1px solid currentColor;
+    border-radius: 2px;
+    padding: 0 0.25rem;
+  }
+  .contested-flag { color: var(--danger); }
+  .implied { color: var(--muted); }
+  .stp { color: var(--accent); }
+  .dstat { font-size: 0.62rem; color: var(--muted); }
+
+  .dquestion { margin: 0; font-size: 0.85rem; line-height: 1.5; color: var(--ink); }
+
+  .dopts { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .dopt {
+    flex: 1 1 14rem;
+    border: 1px solid var(--surface-2, var(--surface));
+    border-top: 2px solid var(--ok);
+    border-radius: 3px;
+    padding: 0.45rem 0.55rem;
+    background: var(--bg);
+  }
+  .dopt-label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--ink); }
+  .dopt-cost { display: block; font-size: 0.65rem; color: var(--ok); margin-top: 0.1rem; }
+  .dopt-kills {
+    list-style: none;
+    margin: 0.35rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    font-size: 0.68rem;
+    color: var(--muted);
+  }
+  .dopt-kills li::before { content: "✗ "; color: var(--danger); }
+
+  .dnote { font-size: 0.66rem; color: var(--muted); margin: 0; line-height: 1.5; }
+
+  .dexpand {
+    align-self: flex-start;
+    background: none;
+    border: 1px solid var(--muted);
+    border-radius: 2px;
+    color: var(--muted);
+    font-size: 0.64rem;
+    padding: 0.15rem 0.4rem;
+    cursor: pointer;
+  }
+  .dexpand:hover { color: var(--accent); border-color: var(--accent); }
+
+  .dcase { display: flex; flex-direction: column; gap: 0.3rem; }
+  .dcase-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.12rem;
+    font-size: 0.66rem;
+  }
+  .dcase-list li { display: flex; gap: 0.35rem; align-items: baseline; }
+  .dcase-obj { color: var(--ink); opacity: 0.8; }
+
+  /* ── F139 step 3: freeform re-analysis prompt ─────────────────────────────── */
+  .reanalyze { margin: 0.5rem 0 0.75rem; display: flex; flex-direction: column; gap: 0.4rem; }
+  .reanalyze-row { display: flex; gap: 0.5rem; align-items: center; }
+  .reanalyze-input {
+    flex: 1; min-width: 0; padding: 0.45rem 0.6rem;
+    background: var(--surface-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 4px; font-size: 0.8rem;
+  }
+  .reanalyze-input:focus { outline: none; border-color: var(--accent); }
+  .reanalyze-note { font-size: 0.75rem; color: var(--accent); }
+  .reanalyze-note.err { color: var(--danger, #e06c75); }
+  .reanalyze-note.dim { color: var(--text-dim); }
+  .reanalyze-op {
+    display: flex; gap: 0.5rem; align-items: baseline; flex-wrap: wrap;
+    font-size: 0.78rem; padding: 0.25rem 0.5rem;
+    background: var(--surface-2); border-left: 2px solid var(--accent); border-radius: 3px;
+  }
+  .op-kind { text-transform: uppercase; font-size: 0.68rem; color: var(--accent); }
+  .op-n { color: var(--text-dim); }
+  .op-why { color: var(--text-dim); font-size: 0.72rem; }
+  .reanalyze-rejected { font-size: 0.72rem; color: var(--text-dim); }
+  .reanalyze-rejected .rej-line { padding: 0.15rem 0 0.15rem 0.75rem; }
+
+  /* ── F139 altitude headline + F139.1 cascade lane ────────────────────────── */
+  .alt-headline {
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+  }
+
+  .cascade-effect {
+    font-size: 0.72rem;
+    color: var(--ok);
+    border: 1px solid var(--ok);
+    background: color-mix(in srgb, var(--ok) 8%, transparent);
+    border-radius: 3px;
+    padding: 0.4rem 0.6rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .cascade {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    padding: 0.6rem;
+    margin-bottom: 0.75rem;
+    background: var(--accent-soft);
+  }
+  .cascade-h {
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .cascade-row {
+    border: 1px solid var(--surface-2, var(--surface));
+    border-radius: 3px;
+    background: var(--surface);
+    padding: 0.45rem 0.55rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  /* An unplanned-work question is a different KIND of question — it wants prose, not yes/no. */
+  .cascade-row.purpose { border-left: 2px solid var(--danger); }
+
+  .cascade-q {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    background: none;
+    border: 0;
+    padding: 0;
+    text-align: left;
+    color: var(--ink);
+    cursor: pointer;
+    font: inherit;
+    width: 100%;
+  }
+  .cascade-q:hover .cascade-text { text-decoration: underline; }
+  .cascade-count {
+    flex: 0 0 auto;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 2px;
+    padding: 0.05rem 0.3rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .cascade-text { flex: 1 1 auto; font-size: 0.85rem; }
+  .cascade-basis { flex: 0 0 auto; font-size: 0.64rem; color: var(--muted); }
+  /* A grouping a model guessed must never look like one a script computed. */
+  .cascade-basis.guessed { color: var(--danger); }
+
+  .cascade-acts { display: flex; gap: 0.4rem; }
+  .cascade-acts button {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    padding: 0.22rem 0.5rem;
+    border-radius: 2px;
+    cursor: pointer;
+    background: none;
+  }
+  .cascade-yes { border: 1px solid var(--ok); color: var(--ok); }
+  .cascade-no { border: 1px solid var(--muted); color: var(--muted); }
+  .cascade-acts button:disabled { opacity: 0.5; cursor: default; }
+
+  .cascade-purpose { font-size: 0.7rem; color: var(--muted); line-height: 1.5; }
+
+  .cascade-members {
+    list-style: none;
+    margin: 0;
+    padding: 0.3rem 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    max-height: 14rem;
+    overflow-y: auto;
+    font-size: 0.66rem;
+    color: var(--muted);
+  }
+  .cascade-members li { display: flex; gap: 0.35rem; align-items: baseline; }
+  .cm-obj { color: var(--ink); opacity: 0.75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cm-more { color: var(--muted); font-style: italic; }
+
+  /* The altitude scale — one colour set, so it reads the same everywhere it appears. */
+  /* Chip + popover, copied verbatim from the graph view (Matt: "I like the previews dropdown
+     styling much better"). Duplicated rather than shared because these are two independent
+     Svelte components with their own scoped styles — if a third surface needs them, that is the
+     point to extract a component rather than paste a third time. */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .chip:hover { border-color: var(--muted-2); color: var(--ink-2); }
+  .chip.active {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .chip.small { font-size: 0.68rem; padding: 0.2rem 0.55rem; }
+  .chip .lbl { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.14em; }
+  .chip .arr { font-size: 0.5rem; opacity: 0.6; }
+
+  :global(.filter-popover) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    padding: 0.5rem 0.6rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--rad);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    max-width: 260px;
+    z-index: 500;
+  }
+
+  /* One row: layout · detail · search. Each control is sized to its own content — stretching
+     a dropdown to fill the row makes a five-character value look like a text field, and it was
+     what pushed the search onto a line of its own. */
+  .control-row {
+    display: flex;
+    gap: 0.4rem;
+    align-items: flex-end;
+    flex-wrap: nowrap;
+  }
+  .control {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    flex: 0 0 auto;
+  }
+  .control-select {
+    background: var(--surface);
+    color: var(--fg);
+    border: 1px solid var(--line);
+    border-radius: 0.25rem;
+    font-size: 0.62rem;
+    padding: 0.2rem 0.25rem;
+    width: auto;
+  }
+  /* The search takes whatever is left, because it is the only one whose content is unbounded. */
+  .control-row .node-search-wrap { flex: 1 1 auto; min-width: 0; }
+  /* The hidden count rides at the end of the same row, sized to its text. */
+  .control-row .log-hidden { flex: 0 0 auto; white-space: nowrap; align-self: center; }
+
+  .review-detail {
+    background: var(--surface);
+    color: var(--fg);
+    border: 1px solid var(--line);
+    border-radius: 0.25rem;
+    font-size: 0.6rem;
+    padding: 0.1rem 0.25rem;
+    margin-left: 0.4rem;
+  }
+
+  .alt-chip {
+    flex: 0 0 auto;
+    font-size: 0.58rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border: 1px solid currentColor;
+    border-radius: 2px;
+    padding: 0 0.22rem;
+  }
+  .alt-decision { color: var(--accent); }
+  .alt-judgment { color: #d9a94a; }
+  .alt-evidence { color: var(--ok); }
+  .alt-record { color: var(--muted); }
+  .alt-log { color: var(--muted); opacity: 0.7; }
+
   .spotlight {
     display: flex;
     flex-wrap: wrap;
@@ -2245,6 +3491,14 @@
     font-size: 0.82rem;
   }
   .empty-state p { margin: 0.2rem 0; }
+  .empty-state a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 0.5rem;
+  }
 
   /* ── Align tab ── */
   .badge-align { background: color-mix(in srgb, var(--accent) 15%, var(--surface)); color: var(--accent); }
@@ -2291,8 +3545,10 @@
       flex-direction: column;
     }
     .graph-pane {
-      height: 45vh;
-      min-height: 280px;
+      flex: 0 0 min(45dvh, 360px);
+      height: auto;
+      min-height: 260px;
+      overflow: hidden;
     }
     .resize-handle {
       display: none;
@@ -2302,10 +3558,33 @@
       max-width: none;
       min-width: 0;
       border-top: 1px solid var(--line);
-      flex: 1;
-      /* This route is a fixed full-viewport workspace, so the app shell's main
-         padding cannot protect its scrollable decision surface from the nav. */
-      padding-bottom: var(--app-nav-clearance);
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .rp-content {
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding-bottom: calc(0.75rem + var(--app-nav-clearance));
+    }
+    .mode-btn,
+    :global(.review-layout .tg-chip),
+    .node-search-input,
+    .node-search-row,
+    .rp-tabs button,
+    .gc,
+    .ghost-btn,
+    .reanalyze-input,
+    .bulk-btn,
+    .group-toggle {
+      /* A 45px box remains above 44px after the app's narrow-screen scale. */
+      min-height: 45px;
+      min-width: 44px;
+    }
+    .entry-focus-action {
+      min-height: 45px;
+      min-width: 44px;
     }
     .node-details-pane {
       width: calc(100% - 1.5rem);

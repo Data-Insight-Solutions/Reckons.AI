@@ -18,7 +18,10 @@
  *   1. DECLARED   the graph says which set it is in (`declaredSet`). F113's eventual
  *                 dcat:Catalog answer lands here and needs no change to this logic.
  *   2. DEFINED    the user made a set and either listed members or gave it a prefix to match.
- *   3. DERIVED    a shared name prefix, found in the names as they are. Generic: "trip-2024" and
+ *   3. FOLDER     the sub-directory the graph is synced from. A folder the user physically made
+ *                 and dragged graphs into is a statement of intent, and a stronger one than a
+ *                 coincidence of spelling — so it outranks the name-prefix guess below it.
+ *   4. DERIVED    a shared name prefix, found in the names as they are. Generic: "trip-2024" and
  *                 "trip-2025" cluster for the same reason "docs-llm" and "docs-features" do.
  *
  * Anything unmatched lands in one clearly-labelled leftover group, never silently.
@@ -36,7 +39,7 @@ import { groupGraphsWithArchives, groupRows, type ArchiveGroup } from './archive
 import type { KbEntry } from './kb-registry';
 
 /** How a graph came to be in its set. Shown to the user, because a guess must look like one. */
-export type SetBasis = 'declared' | 'defined' | 'derived' | 'ungrouped';
+export type SetBasis = 'declared' | 'defined' | 'folder' | 'derived' | 'ungrouped';
 
 /** A set the USER defined. Stored as data, never compiled in. */
 export interface GraphSetDefinition {
@@ -62,10 +65,40 @@ export interface GraphSet {
   rowCount: number;
 }
 
-/** A registry row may declare its own set membership. */
-type SettableEntry = KbEntry & { declaredSet?: string };
+/** A registry row may declare its own set membership, and may remember where it was synced from. */
+type SettableEntry = KbEntry & { declaredSet?: string; folderPath?: string };
 
 const UNGROUPED_ID = '__ungrouped__';
+
+/**
+ * The sub-directory a synced graph should be grouped under, or null.
+ *
+ * A GRAPH'S OWN FOLDER IS NOT A SET; A FOLDER THAT CONTAINS GRAPHS IS. The workspace convention
+ * writes `kbs/{name}/{name}.ttl`, so the deepest directory is usually just the graph's own name
+ * repeated — grouping on that would give every graph a set of one, which is a flat list wearing
+ * headings. So the graph's own folder is dropped, and so is the top-level `kbs/` wrapper that
+ * every conventional graph shares and which therefore separates nothing.
+ *
+ *   kbs/clients/acme/acme.ttl  →  "clients"    a folder the user made to hold client graphs
+ *   kbs/acme/acme.ttl          →  null          the convention, not a grouping
+ *   research/notes.ttl         →  "research"    a loose file in a folder of the user's own
+ *   notes.ttl                  →  null          the workspace root groups nothing
+ *
+ * @param folderPath  directory segments, joined with "/" — no filename.
+ * @param graphName   the graph's folder/file name, so its own folder can be recognised.
+ */
+export function folderSetOf(folderPath: string | undefined, graphName: string): string | null {
+  if (!folderPath) return null;
+  const segs = folderPath.split('/').map((x) => x.trim()).filter(Boolean);
+  if (!segs.length) return null;
+  // The graph's own folder, when the convention put one there.
+  if (segs[segs.length - 1] && normalize(segs[segs.length - 1]) === normalize(graphName)) segs.pop();
+  // The shared `kbs/` wrapper separates nothing, so it is never a set on its own.
+  if (segs.length && normalize(segs[0]) === 'kbs') segs.shift();
+  if (!segs.length) return null;
+  // The DEEPEST remaining folder is the most specific thing the user expressed.
+  return segs[segs.length - 1];
+}
 
 const normalize = (s: string) => s.trim().toLowerCase();
 
@@ -149,6 +182,12 @@ export interface GroupOptions {
    * readable out of the box; a user who has defined their own sets can turn it off.
    */
   deriveFromNames?: boolean;
+  /**
+   * Group synced graphs by the sub-directory they came from. On by default: a folder the user made
+   * is a statement of intent, and ignoring it would mean the list disagrees with the filesystem
+   * the user just organised.
+   */
+  groupByFolder?: boolean;
   /** Label for graphs matching nothing. The caller owns the wording. */
   ungroupedTitle?: string;
 }
@@ -210,6 +249,14 @@ export function bucketIntoSets(
       title = definition.title;
       purpose = definition.purpose ?? '';
       basis = 'defined';
+    } else if (options.groupByFolder !== false && folderSetOf((entry as SettableEntry).folderPath, entry.name)) {
+      const folder = folderSetOf((entry as SettableEntry).folderPath, entry.name)!;
+      id = `folder:${normalize(folder)}`;
+      title = folder;
+      // No purpose, for the same reason a derived set gets none: a folder name is not a statement
+      // about what the graphs inside it MEAN, and inventing one would be the tool talking over
+      // the user about their own data.
+      basis = 'folder';
     } else {
       const match = matchDefinition(entry, derived);
       if (match) {

@@ -94,10 +94,10 @@
     <div class="empty">No history yet. Statements will appear here as you make changes.</div>
   {:else}
     <div class="controls">
-      <button class="btn-playback" on:click={handlePlayback} title="Playback events">
+      <button class="btn-playback" onclick={handlePlayback} title="Playback events">
         ▶ Playback
       </button>
-      <button class="btn-reset" on:click={handleReset} title="Return to present">
+      <button class="btn-reset" onclick={handleReset} title="Return to present">
         ↻ Present
       </button>
     </div>
@@ -117,7 +117,7 @@
         min={firstTime}
         max={lastTime}
         value={currentTimestamp ?? lastTime}
-        on:change={handleSliderChange}
+        onchange={handleSliderChange}
       />
     </div>
 

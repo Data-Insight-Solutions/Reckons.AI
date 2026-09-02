@@ -113,8 +113,9 @@
 
   <!-- ── Step 1: Predicate ── -->
   <div class="rb-field">
-    <label class="rb-lbl mono">predicate</label>
+    <label class="rb-lbl mono" for="relation-predicate">predicate</label>
     <input
+      id="relation-predicate"
       class="rb-input"
       type="text"
       bind:value={predQuery}
@@ -122,14 +123,13 @@
       spellcheck="false"
     />
     {#if predSuggestions.length > 0}
-      <div class="rb-chips" role="list">
+      <div class="rb-chips">
         {#each predSuggestions as p (p)}
           <button
             class="rb-chip"
             class:active={predQuery === p}
             class:schema={selectedTypeDef?.schemaPredicates?.includes(p)}
             onclick={() => choosePred(p)}
-            role="listitem"
           >{p}</button>
         {/each}
       </div>
@@ -139,7 +139,7 @@
   <!-- ── Step 2: Target (shown once predicate is non-empty) ── -->
   {#if predQuery.trim()}
     <div class="rb-field">
-      <label class="rb-lbl mono">target node</label>
+      <label class="rb-lbl mono" for="relation-target">target node</label>
 
       {#if selectedTarget}
         <!-- Selected target chip -->
@@ -156,6 +156,7 @@
         <!-- Search input -->
         <div class="rb-search-wrap">
           <input
+            id="relation-target"
             class="rb-input"
             type="text"
             bind:value={targetQuery}
@@ -191,11 +192,11 @@
   <!-- ── Step 3: Type picker (only for new nodes) ── -->
   {#if selectedTarget?.isNew}
     <div class="rb-field">
-      <label class="rb-lbl mono">
+      <span id="relation-type-label" class="rb-lbl mono">
         entity type
         <span class="rb-required">required</span>
-      </label>
-      <div class="rb-type-grid">
+      </span>
+      <div class="rb-type-grid" role="group" aria-labelledby="relation-type-label">
         {#each typeList as t (t.iri)}
           <button
             class="rb-type-btn"

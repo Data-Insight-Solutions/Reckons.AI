@@ -8,6 +8,7 @@
  */
 
 import type { Statement, Source, Term, ReviewStatus } from './types';
+import { isAltitude } from './fact-altitude';
 
 // IRIs used in the annotated format
 const RDF   = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
@@ -111,6 +112,7 @@ export async function importTurtleFull(turtle: string): Promise<ImportResult> {
       else if (pv === KBASE + 'confidence')         d.confidence  = parseFloat(ov.value);
       else if (pv === KBASE + 'proposed-by')        d.proposedBy  = ov.value;
       else if (pv === KBASE + 'asked-by')           d.askedBy     = ov.value;
+      else if (pv === KBASE + 'altitude')           d.altitude    = isAltitude(ov.value) ? ov.value : undefined;
       else if (pv === KBASE + 'gloss')              d.gloss       = ov.value;
       else if (pv === KBASE + 'excerpt')            d.excerpt     = ov.value;
       else if (pv === KBASE + 'supersedes')         d.supersedes  = ov.value.replace(STMT_PREFIX, '');
@@ -193,6 +195,7 @@ export async function importTurtleFull(turtle: string): Promise<ImportResult> {
       status:     ((d.status as ReviewStatus) ?? 'confirmed'),
       proposedBy: d.proposedBy as string | undefined,
       askedBy:    d.askedBy as string | undefined,
+      altitude:   d.altitude as Statement['altitude'],
       gloss:      d.gloss as string | undefined,
       excerpt:    d.excerpt as string | undefined,
       supersedes: d.supersedes as string | undefined,

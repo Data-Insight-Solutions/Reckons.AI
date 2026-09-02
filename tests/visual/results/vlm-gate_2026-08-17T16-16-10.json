@@ -1,0 +1,532 @@
+{
+  "url": "http://localhost:11434",
+  "images": 10,
+  "checks": 48,
+  "reports": [
+    {
+      "model": "hf.co/LiquidAI/LFM2.5-VL-3B-GGUF:Q4_K_M",
+      "outcomes": [
+        {
+          "image": "coding-workflow/02-production-graph.png",
+          "id": "toast",
+          "type": "toast",
+          "expect": "yes",
+          "verdict": "yes",
+          "correct": true,
+          "ms": 811,
+          "raw": "YES"
+        },
+        {
+          "image": "coding-workflow/02-production-graph.png",
+          "id": "mobile",
+          "type": "mobile",
+          "expect": "no",
+          "verdict": "no",
+          "correct": true,
+          "ms": 777,
+          "raw": "NO"
+        },
+        {
+          "image": "coding-workflow/02-production-graph.png",
+          "id": "graph",
+          "type": "graph",
+          "expect": "yes",
+          "verdict": "yes",
+          "correct": true,
+          "ms": 812,
+          "raw": "YES"
+        },
+        {
+          "image": "coding-workflow/02-production-graph.png",
+          "id": "blank",
+          "type": "blank",
+          "expect": "no",
+          "verdict": "yes",
+          "correct": false,
+          "ms": 786,
+          "raw": "YES"
+        },
+        {
+          "image": "coding-workflow/02-production-graph.png",
+          "id": "settings",
+          "type": "settings",
+          "expect": "no",
+          "verdict": "no",
+          "correct": true,
+          "ms": 736,
+          "raw": "NO"
+        },
+        {
+          "image": "coding-workflow/06b-alignment-cards-detail.png",
+          "id": "toast",
+          "type": "toast",
+          "expect": "no",
+          "verdict": "no",
+          "correct": true,
+          "ms": 807,
+          "raw": "NO"
+        },
+        {
+          "image": "coding-workflow/06b-alignment-cards-detail.png",
+          "id": "mobile",
+          "type": "mobile",
+          "expect": "no",
+          "verdict": "no",
+          "correct": true,
+          "ms": 772,
+          "raw": "NO"
+        },
+        {
+          "image": "coding-workflow/06b-alignment-cards-detail.png",
+          "id": "graph",
+          "type": "graph",
+          "expect": "yes",
+          "verdict": "yes",
+          "correct": true,
+          "ms": 759,
+          "raw": "YES"
+        },
+        {
+          "image": "coding-workflow/06b-alignment-cards-detail.png",
+          "id": "align",
+          "type": "alignTab",
+          "expect": "yes",
+          "verdict": "yes",
+          "correct": true,
+          "ms": 811,
+          "raw": "YES"
+        },
+        {
+          "image": "coding-workflow/06b-alignment-cards-detail.png",
+          "id": "blank",
+          "type": "blank",
+          "expect": "no",
+          "verdict": "no",
+          "correct": true,
+          "ms": 708,
+          "raw": "NO"
+        },
+        {
+          "image": "cross-kb-align/01-all-three-imported.png",
+          "id": "toast",
+          "type": "toast",
+          "expect": "yes",
+          "verdict": "yes",
+          "correct": true,
+          "ms": 662,
+          "raw": "YES"
+        },
+        {
+          "image": "cross-kb-align/01-all-three-imported.png",
+          "id": "mobile",
+          "type": "mobile",
+          "expect": "no",
+          "verdict": "yes",
+          "correct": false,
+          "ms": 781,
+          "raw": "YES"
+        },
+        {
+          "image": "cross-kb-align/01-all-three-imported.png",
+          "id": "graph",
+          "type": "graph",
+          "expect": "no",
+          "verdict": "yes",
+          "correct": false,
+          "ms": 783,
+          "raw": "YES"
+        },
+        {
+          "image": "cross-kb-align/01-all-three-imported.png",
+          "id": "blank",
+          "type": "blank",
+          "expect": "no",
+          "verdict": "no",
+          "correct": true,
+          "ms": 777,
+          "raw": "NO"
+        },
+        {
+          "image": "cross-kb-align/09-mobile-stacked-layout.png",
+          "id": "toast",
+          "type": "toast",
+          "expect": "no",
+          "verdict": "no",
+          "correct": true,
+          "ms": 571,
+          "raw": "NO"
+        },
+        {
+          "image": "cross-kb-align/09-mobile-stacked-layout.png",
+          "id": "mobile",
+          "type": "mobile",
+          "expect": "yes",
+          "verdict": "yes",
+          "correct": true,
+          "ms": 557,
+          "raw": "YES"
+        },
+        {
+          "image": "cross-kb-align/09-mobile-stacked-layout.png",
+          "id": "graph",
+          "type": "graph",
+          "expect": "no",
+          "verdict": "no",
+          "correct": true,
+          "ms": 621,
+          "raw": "NO"
+        },
+        {
+          "image": "cross-kb-align/09-mobile-stacked-layout.png",
+          "id": "blank",
+          "type": "blank",
+          "expect": "yes",
+          "verdict": "yes",
+          "correct": true,
+          "ms": 602,
+          "raw": "YES"
+        },
+        {
+          "image": "cross-kb-align/09-mobile-stacked-layout.png",
+          "id": "align",
+          "type": "alignTab",
+          "expect": "no",
+          "verdict": "no",
+          "correct": true,
+          "ms": 579,
+          "raw": "NO"
+        },
+        {
+          "image": "dev-sprint/09-no-artifacts.png",
+          "id": "toast",
+          "type": "toast",
+          "expect": "no",
+          "verdict": "no",
+          "correct": true,
+          "ms": 750,
+          "raw": "NO"
+        },
+        {
+          "image": "dev-sprint/09-no-artifacts.png",
+          "id": "mobile",
+          "type": "mobile",
+          "expect": "no",
+          "verdict": "yes",
+          "correct": false,
+          "ms": 751,
+          "raw": "YES"
+        },
+        {
+          "image": "dev-sprint/09-no-artifacts.png",
+          "id": "graph",
+          "type": "graph",
+          "expect": "no",
+          "verdict": "no",
+          "correct": true,
+          "ms": 809,
+          "raw": "NO"
+        },
+        {
+          "image": "dev-sprint/09-no-artifacts.png",
+          "id": "blank",
+          "type": "blank",
+          "expect": "yes",
+          "verdict": "yes",
+          "correct": true,
+          "ms": 783,
+          "raw": "YES"
+        },
+        {
+          "image": "dev-sprint/09-no-artifacts.png",
+          "id": "align",
+          "type": "alignTab",
+          "expect": "no",
+          "verdict": "yes",
+          "correct": false,
+          "ms": 761,
+          "raw": "YES"
+        },
+        {
+          "image": "dev-sprint/09-no-artifacts.png",
+          "id": "kb",
+          "type": "kb",
+          "expect": "no",
+          "verdict": "no",
+          "correct": true,
+          "ms": 707,
+          "raw": "NO"
+        },
+        {
+          "image": "main-page-empty.png",
+          "id": "toast",
+          "type": "toast",
+          "expect": "yes",
+          "verdict": "yes",
+          "correct": true,
+          "ms": 809,
+          "raw": "YES"
+        },
+        {
+          "image": "main-page-empty.png",
+          "id": "mobile",
+          "type": "mobile",
+          "expect": "no",
+          "verdict": "yes",
+          "correct": false,
+          "ms": 779,
+          "raw": "YES"
+        },
+        {
+          "image": "main-page-empty.png",
+          "id": "graph",
+          "type": "graph",
+          "expect": "no",
+          "verdict": "yes",
+          "correct": false,
+          "ms": 761,
+          "raw": "YES"
+        },
+        {
+          "image": "main-page-empty.png",
+          "id": "blank",
+          "type": "blank",
+          "expect": "no",
+          "verdict": "no",
+          "correct": true,
+          "ms": 743,
+          "raw": "NO"
+        },
+        {
+          "image": "coding-workflow/04-align-tab.png",
+          "id": "toast",
+          "type": "toast",
+          "expect": "no",
+          "verdict": "no",
+          "correct": true,
+          "ms": 728,
+          "raw": "NO"
+        },
+        {
+          "image": "coding-workflow/04-align-tab.png",
+          "id": "mobile",
+          "type": "mobile",
+          "expect": "no",
+          "verdict": "no",
+          "correct": true,
+          "ms": 769,
+          "raw": "NO"
+        },
+        {
+          "image": "coding-workflow/04-align-tab.png",
+          "id": "graph",
+          "type": "graph",
+          "expect": "yes",
+          "verdict": "yes",
+          "correct": true,
+          "ms": 816,
+          "raw": "YES"
+        },
+        {
+          "image": "coding-workflow/04-align-tab.png",
+          "id": "align",
+          "type": "alignTab",
+          "expect": "yes",
+          "verdict": "yes",
+          "correct": true,
+          "ms": 675,
+          "raw": "YES"
+        },
+        {
+          "image": "coding-workflow/04-align-tab.png",
+          "id": "blank",
+          "type": "blank",
+          "expect": "no",
+          "verdict": "no",
+          "correct": true,
+          "ms": 744,
+          "raw": "NO"
+        },
+        {
+          "image": "kb-page.png",
+          "id": "toast",
+          "type": "toast",
+          "expect": "no",
+          "verdict": "no",
+          "correct": true,
+          "ms": 797,
+          "raw": "NO"
+        },
+        {
+          "image": "kb-page.png",
+          "id": "mobile",
+          "type": "mobile",
+          "expect": "no",
+          "verdict": "yes",
+          "correct": false,
+          "ms": 746,
+          "raw": "YES"
+        },
+        {
+          "image": "kb-page.png",
+          "id": "graph",
+          "type": "graph",
+          "expect": "no",
+          "verdict": "no",
+          "correct": true,
+          "ms": 744,
+          "raw": "NO"
+        },
+        {
+          "image": "kb-page.png",
+          "id": "kb",
+          "type": "kb",
+          "expect": "yes",
+          "verdict": "yes",
+          "correct": true,
+          "ms": 769,
+          "raw": "YES"
+        },
+        {
+          "image": "kb-page.png",
+          "id": "settings",
+          "type": "settings",
+          "expect": "no",
+          "verdict": "no",
+          "correct": true,
+          "ms": 755,
+          "raw": "NO"
+        },
+        {
+          "image": "settings-page.png",
+          "id": "toast",
+          "type": "toast",
+          "expect": "no",
+          "verdict": "no",
+          "correct": true,
+          "ms": 772,
+          "raw": "NO"
+        },
+        {
+          "image": "settings-page.png",
+          "id": "mobile",
+          "type": "mobile",
+          "expect": "no",
+          "verdict": "yes",
+          "correct": false,
+          "ms": 755,
+          "raw": "YES"
+        },
+        {
+          "image": "settings-page.png",
+          "id": "graph",
+          "type": "graph",
+          "expect": "no",
+          "verdict": "no",
+          "correct": true,
+          "ms": 750,
+          "raw": "NO"
+        },
+        {
+          "image": "settings-page.png",
+          "id": "settings",
+          "type": "settings",
+          "expect": "yes",
+          "verdict": "yes",
+          "correct": true,
+          "ms": 765,
+          "raw": "YES"
+        },
+        {
+          "image": "settings-page.png",
+          "id": "kb",
+          "type": "kb",
+          "expect": "no",
+          "verdict": "no",
+          "correct": true,
+          "ms": 826,
+          "raw": "NO"
+        },
+        {
+          "image": "main-page-mobile.png",
+          "id": "toast",
+          "type": "toast",
+          "expect": "yes",
+          "verdict": "yes",
+          "correct": true,
+          "ms": 1298,
+          "raw": "YES"
+        },
+        {
+          "image": "main-page-mobile.png",
+          "id": "mobile",
+          "type": "mobile",
+          "expect": "yes",
+          "verdict": "yes",
+          "correct": true,
+          "ms": 1318,
+          "raw": "YES"
+        },
+        {
+          "image": "main-page-mobile.png",
+          "id": "graph",
+          "type": "graph",
+          "expect": "no",
+          "verdict": "yes",
+          "correct": false,
+          "ms": 1251,
+          "raw": "YES"
+        },
+        {
+          "image": "main-page-mobile.png",
+          "id": "settings",
+          "type": "settings",
+          "expect": "no",
+          "verdict": "no",
+          "correct": true,
+          "ms": 1262,
+          "raw": "NO"
+        }
+      ],
+      "total": 48,
+      "correct": 38,
+      "accuracy": 0.7916666666666666,
+      "misses": 0,
+      "falseFlags": 10,
+      "ambiguous": 0,
+      "p50": 769,
+      "p95": 1262,
+      "meanMs": 789.6875,
+      "byType": {
+        "toast": {
+          "total": 10,
+          "correct": 10
+        },
+        "mobile": {
+          "total": 10,
+          "correct": 5
+        },
+        "graph": {
+          "total": 10,
+          "correct": 7
+        },
+        "blank": {
+          "total": 7,
+          "correct": 6
+        },
+        "settings": {
+          "total": 4,
+          "correct": 4
+        },
+        "alignTab": {
+          "total": 4,
+          "correct": 3
+        },
+        "kb": {
+          "total": 3,
+          "correct": 3
+        }
+      },
+      "gateScore": 0.8385911458333334
+    }
+  ]
+}
