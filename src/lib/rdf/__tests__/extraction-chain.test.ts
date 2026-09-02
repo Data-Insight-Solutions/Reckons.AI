@@ -59,16 +59,33 @@ describe('extraction chain — composed, on tests/fixtures/extraction-chain.ttl'
 
   /* ── GAPS: pinned so they cannot be forgotten. Each should FAIL when fixed. ──────────────── */
 
-  it('GAP — BLOCK 4: co-hyponyms are read as duplicates by vocabulary and claimed by no hierarchy', async () => {
+  it('BLOCK 4 — CLOSED: co-hyponyms are read as siblings, and the merge proposals are withdrawn', async () => {
     const r = await runChain(FIXTURE);
+    // THE SEAM, now composed. `render setting width/height/quality/...` are five DISTINCT settings
+    // that share a prefix. vocabulary-repair scores them as near-duplicates and would offer to
+    // MERGE them, destroying four of the five. Co-hyponym inference claims them first and the
+    // sibling reading wins, because a shared head with DIFFERENT tails is positive evidence they
+    // are different things — where lexical closeness only says they are spelled alike.
+    //
+    // This assertion was written as a GAP pinning the broken behaviour, and failed the moment the
+    // gap closed. That is what a pinned gap is for.
     const renderPairs = r.vocabulary.suspects.filter(
       (s) => s.heard.startsWith('render setting') && s.match.startsWith('render setting'),
     );
-    // THE SEAM, in one assertion. `render setting width/height/quality/...` are five DISTINCT
-    // settings that share a prefix. Vocabulary reads that prefix as evidence they are the same
-    // thing (wrong); hierarchy would read it as evidence they are siblings under one parent
-    // (right) — but nothing infers a parent from a shared prefix, so only the wrong reader runs.
-    expect(renderPairs.length).toBeGreaterThan(0);
+    expect(renderPairs).toEqual([]);
+    expect(r.vocabulary.siblingsSpared).toBeGreaterThan(0);
+
+    const group = r.coHyponyms.heads;
+    expect(group).toContain('render setting');
+    expect(r.coHyponyms.wouldPlace).toBe(5);
+  });
+
+  it('GAP — the sibling groups are PROPOSALS: hierarchy still places nothing', async () => {
+    const r = await runChain(FIXTURE);
+    // Co-hyponym inference says what WOULD be placed. Until a reviewer confirms a parent and the
+    // skos:broader edges are written, buildHierarchy still sees only what block 5 declares — so
+    // the orphan count does not move. Proposing is not placing, and the harness must not blur them.
+    expect(r.coHyponyms.wouldPlace).toBeGreaterThan(0);
     expect(r.hierarchy.orphans).toBeGreaterThan(0);
   });
 

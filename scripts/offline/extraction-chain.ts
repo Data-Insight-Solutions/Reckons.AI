@@ -30,6 +30,7 @@ import { buildVocabulary, repairCandidates } from '../../src/lib/rdf/vocabulary-
 import { surveyTypes } from '../../src/lib/rdf/entity-typing.js';
 import { BUILT_IN_TYPES } from '../../src/lib/rdf/entity-types.js';
 import { buildHierarchy } from '../../src/lib/rdf/hierarchy.js';
+import { proposeCoHyponyms, coHyponymSummary, areCoHyponyms } from '../../src/lib/rdf/co-hyponyms.js';
 import { clusterForCascade, cascadeSummary } from '../../src/lib/rdf/fact-aggregation.js';
 import { buildReviewTree, reviewTreeSummary } from '../../src/lib/rdf/review-tree.js';
 
@@ -49,9 +50,16 @@ const words = (iri: string) => iri.replace(KCONCEPT, '').replace(/[-_]/g, ' ').t
 export interface ChainReport {
   graph: string;
   read: { statements: number; entities: number; syntheticSource: boolean };
-  vocabulary: { entries: number; suspects: Array<{ heard: string; match: string; reason: string; confidence: number }> };
+  vocabulary: {
+    entries: number;
+    suspects: Array<{ heard: string; match: string; reason: string; confidence: number }>;
+    /** Repair proposals withdrawn because the pair are siblings, not duplicates. */
+    siblingsSpared: number;
+  };
   typing: { proposals: number; undecided: number; alreadyTyped: number };
   hierarchy: { roots: number; maxDepth: number; placed: number; orphans: number };
+  /** Siblings a shared name head would place, which hierarchy alone cannot see. */
+  coHyponyms: { groups: number; wouldPlace: number; heads: string[] };
   aggregate: { clusters: number; covered: number; perQuestion: number };
   tree: { decisions: number; orphanJudgments: number; suppressed: number };
   verdict: { facts: number; decisions: number; factsPerDecision: number };
@@ -86,7 +94,10 @@ function sentenceShaped(iri: string): boolean {
  * tests/fixtures/extraction-chain.ttl.
  */
 export async function runChain(graph: string): Promise<
-  ChainReport & { seams: { sentenceEntities: string[] }; lines: { cascade: string; tree: string } }
+  ChainReport & {
+    seams: { sentenceEntities: string[] };
+    lines: { cascade: string; tree: string; coHyponyms: string };
+  }
 > {
   const GRAPH = graph;
   const { statements, syntheticSource } = await readGraph(GRAPH, { asReviewSet: true });
@@ -100,16 +111,23 @@ export async function runChain(graph: string): Promise<
   const typeOf = (iri: string) =>
     statements.find((st) => st.s.value === iri && st.p.value === RDF_TYPE)?.o.value;
 
+  // ── CO-HYPONYMS (computed first: the sibling reading outranks the duplicate reading) ──────
+  const coGroups = proposeCoHyponyms(statements);
+
   // ── VOCABULARY ────────────────────────────────────────────────────────────
   // Ask the repair tier what it makes of the graph's OWN entity names. A name that closely matches
   // a different name in the same graph is the mis-transcription signature: "enterprise dam" beside
   // "enterprise dams", "Recon's AI" beside "Reckons.AI".
   const vocabulary = buildVocabulary(statements);
   const suspects: ChainReport['vocabulary']['suspects'] = [];
+  let siblingsSpared = 0;
   const seen = new Set<string>();
   for (const entry of vocabulary) {
     const others = vocabulary.filter((v) => v.iri !== entry.iri);
     for (const cand of repairCandidates(entry.name, others, 2)) {
+      // THE COMPOSITION. Two members of one sibling group are different things that happen to be
+      // spelled alike; proposing a merge would destroy one of them. The sibling reading wins.
+      if (areCoHyponyms(entry.iri, cand.iri, coGroups)) { siblingsSpared += 1; continue; }
       if (cand.confidence >= 0.7 && cand.reason !== 'exact') {
         const key = [entry.name, cand.match].sort().join('~');
         if (seen.has(key)) continue;
@@ -127,6 +145,7 @@ export async function runChain(graph: string): Promise<
   const roots = buildHierarchy(statements);
   const placed = countPlaced(roots);
 
+
   // ── AGGREGATE ─────────────────────────────────────────────────────────────
   const clusters = clusterForCascade(statements, { syntheticSource });
   const covered = clusters.reduce((n, c) => n + c.members.length, 0);
@@ -139,9 +158,14 @@ export async function runChain(graph: string): Promise<
   const report: ChainReport = {
     graph: GRAPH,
     read: { statements: statements.length, entities: entities.size, syntheticSource },
-    vocabulary: { entries: vocabulary.length, suspects: suspects.slice(0, 12) },
+    vocabulary: { entries: vocabulary.length, suspects: suspects.slice(0, 12), siblingsSpared },
     typing: { proposals: survey.proposals.length, undecided: survey.undecided.length, alreadyTyped: survey.alreadyTyped },
     hierarchy: { roots: roots.length, maxDepth: roots.length ? depthOf(roots) : 0, placed, orphans: Math.max(0, entities.size - placed) },
+    coHyponyms: {
+      groups: coGroups.length,
+      wouldPlace: coGroups.reduce((n, g) => n + g.members.length, 0),
+      heads: coGroups.map((g) => g.head),
+    },
     aggregate: { clusters: clusters.length, covered, perQuestion: clusters.length ? covered / clusters.length : 0 },
     tree: { decisions: tree.decisions.length, orphanJudgments: tree.orphans.length, suppressed },
     verdict: { facts: statements.length, decisions, factsPerDecision: decisions ? statements.length / decisions : 0 },
@@ -152,7 +176,11 @@ export async function runChain(graph: string): Promise<
     seams: { sentenceEntities: [...entities].filter(sentenceShaped) },
     // The renderer needs the prose summaries too; recomputing them in main() meant reading the
     // graph twice and drifting from what was measured.
-    lines: { cascade: cascadeSummary(clusters), tree: reviewTreeSummary(tree) },
+    lines: {
+      cascade: cascadeSummary(clusters),
+      tree: reviewTreeSummary(tree),
+      coHyponyms: coHyponymSummary(coGroups, entities.size),
+    },
   };
 }
 
@@ -168,7 +196,8 @@ async function main() {
     (r.read.syntheticSource ? ` ${Y}(no recorded sources — provenance is synthetic)${X}` : ''));
 
   const v = r.vocabulary;
-  console.log(`${B}2 vocabulary${X}  ${v.entries} names · ${v.suspects.length ? `${Y}${v.suspects.length} look like damaged twins${X}` : `${G}no near-duplicates${X}`}`);
+  console.log(`${B}2 vocabulary${X}  ${v.entries} names · ${v.suspects.length ? `${Y}${v.suspects.length} look like damaged twins${X}` : `${G}no near-duplicates${X}`}` +
+    (v.siblingsSpared ? ` ${D}·${X} ${G}${v.siblingsSpared} merge(s) withdrawn — siblings, not duplicates${X}` : ''));
   for (const s of v.suspects.slice(0, 6)) {
     console.log(`  ${D}·${X} ${C}${s.heard}${X} ${D}~${X} ${C}${s.match}${X} ${D}(${s.reason}, ${s.confidence.toFixed(2)})${X}`);
   }
@@ -181,6 +210,10 @@ async function main() {
   const h = r.hierarchy;
   console.log(`${B}4 hierarchy${X}   ${h.roots} root(s) · depth ${h.maxDepth} · ${h.placed} placed · ` +
     (h.orphans ? `${Y}${h.orphans} under nothing${X}` : `${G}none loose${X}`));
+
+  const co = r.coHyponyms;
+  console.log(`${B}4b siblings${X}   ${co.groups ? `${G}${r.lines.coHyponyms}${X}` : `${D}${r.lines.coHyponyms}${X}`}`);
+  for (const head of co.heads.slice(0, 4)) console.log(`  ${D}·${X} ${C}${head}${X}`);
 
   console.log(`${B}5 aggregate${X}   ${r.lines.cascade}`);
   console.log(`${B}6 tree${X}        ${r.lines.tree}`);
