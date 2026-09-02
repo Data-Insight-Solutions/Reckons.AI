@@ -1,0 +1,9 @@
+# Cloudflare Pages response headers. Copied to the build root by adapter-static.
+# CSP is intentionally NOT set here — it lives in app.html's <meta> tag, which carries the
+# %RECKONS_EXTRA_CONNECT_SRC% build placeholder; duplicating it as a header risks divergence.
+# These are the safe, non-CSP hardening headers that do not affect app behaviour.
+/*
+  Strict-Transport-Security: max-age=63072000; includeSubDomains
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
