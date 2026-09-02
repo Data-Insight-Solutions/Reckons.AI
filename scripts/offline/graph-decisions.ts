@@ -35,7 +35,7 @@ const file = args.find((a) => !a.startsWith('--')) ?? 'static/reckons-roadmap.tt
 
 // Opt in explicitly: a committed TTL holds no pending facts, so without this the tree correctly
 // reports nothing to review. See read-graph.ts.
-const { statements, typeOf } = readGraph(file, { asReviewSet: true });
+const { statements, typeOf } = await readGraph(file, { asReviewSet: true });
 const tree = buildReviewTree(statements, statements, { typeOf });
 
 /** subject -> label, so a blocker can be named rather than shown as an IRI. */

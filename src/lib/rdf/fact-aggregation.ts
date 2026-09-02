@@ -63,6 +63,40 @@ import { altitudeOf, type Altitude } from './fact-altitude';
 import { labelFromIRI } from './semantic-diff';
 
 const KPRED = 'urn:kbase:predicate/';
+const KCONCEPT = 'urn:kbase:concept/';
+
+/**
+ * The shorthand the REQUEST teaches a model, and the expansion the VALIDATOR must undo. One table,
+ * used in both directions, because the two used to disagree and that made a whole tier useless.
+ *
+ * MEASURED, 2026-09-02. `aggregationRequest` presented every fact as `kb:x kpred:y …`, and the
+ * validator then checked the returned predicate against FULL IRI prefixes only. So a model that
+ * echoed back exactly the vocabulary it had just been shown was rejected — "predicate
+ * kpred:extracted-from is outside the graph's vocabulary" — 100% of the time. The agent tier's
+ * yield was pinned at 0% by construction, and the yield number is the very evidence that decides
+ * whether the tier is worth running (F74.3). Contraction and expansion are now the same table, so
+ * they cannot drift apart again.
+ */
+const PREFIXES: ReadonlyArray<readonly [short: string, full: string]> = [
+  ['kpred:', KPRED],
+  ['kb:', KCONCEPT],
+];
+
+/** `urn:kbase:predicate/x` -> `kpred:x`. What the model is shown. */
+function contractIri(iri: string): string {
+  for (const [short, full] of PREFIXES) if (iri.startsWith(full)) return short + iri.slice(full.length);
+  return iri;
+}
+
+/**
+ * `kpred:x` -> `urn:kbase:predicate/x`. What the model returns must be expanded BEFORE it is
+ * checked and before it is stored — a shorthand written into the graph is not an IRI, it is a
+ * string that looks like one.
+ */
+function expandIri(value: string): string {
+  for (const [short, full] of PREFIXES) if (value.startsWith(short)) return full + value.slice(short.length);
+  return value;
+}
 
 /** What binds a cluster together — and therefore how much a script can vouch for it. */
 export type ClusterBasis =
@@ -138,7 +172,16 @@ const DATE_IN_TEXT = /\b(20\d\d-\d\d-\d\d)\b/;
  */
 export function clusterForCascade(
   statements: Statement[],
-  opts: { minSize?: number; subjectLabel?: (iri: string) => string } = {},
+  opts: {
+    minSize?: number;
+    subjectLabel?: (iri: string) => string;
+    /**
+     * Set when the caller knows every `sourceId` was fabricated rather than recorded — a plain
+     * Turtle import, where the importer stamps them all `imported`. Suppresses the same-source
+     * basis entirely, because there is no act of trust to ask about.
+     */
+    syntheticSource?: boolean;
+  } = {},
 ): FactCluster[] {
   const minSize = opts.minSize ?? 3;
   const labelOf = opts.subjectLabel ?? labelFromIRI;
@@ -212,6 +255,7 @@ export function clusterForCascade(
   const bySource = new Map<string, Statement[]>();
   for (const st of eligible) {
     if (claimed.has(st.id) || !st.sourceId) continue;
+    if (opts.syntheticSource || isSyntheticSource(st.sourceId)) continue;
     const alt = altitudeOf(st);
     if (alt !== 'record' && alt !== 'log') continue;
     const srcList = bySource.get(st.sourceId);
@@ -235,6 +279,24 @@ export function clusterForCascade(
 
   // Biggest saving first: a cluster that removes 50 rows outranks one that removes 3.
   return clusters.sort((a, b) => b.members.length - a.members.length || a.id.localeCompare(b.id));
+}
+
+/**
+ * A source id that names no act of ingest. Trusting a source is a real decision; trusting "the
+ * file this came out of" is not one, and asking it produces a single rubber-stamp question over
+ * everything the file contains.
+ *
+ * MEASURED, 2026-09-02. The offline shim used to stamp every statement with the TTL's own path.
+ * On personal-notes.ttl that made one cluster of 944 facts — "Accept all 944 bookkeeping facts
+ * from this source?" — which claimed every cascadable fact in the graph and left the agent tier,
+ * the tier that exists to find the questions actually worth asking, with nothing to read. The shim
+ * is fixed, but the guard belongs HERE too: the app's own importer stamps `imported` on any plain
+ * Turtle file a user drags in, and that would reproduce the same bad question from the UI.
+ */
+function isSyntheticSource(sourceId: string): boolean {
+  if (sourceId === 'imported' || sourceId === 'unknown') return true;
+  // A path or a URL is a location, not a source record: `a/b.ttl`, `./x.ttl`, `file:///…`.
+  return /[/\\]/.test(sourceId) || /\.(ttl|trig|nt|jsonl|md)$/i.test(sourceId);
 }
 
 function highestAltitude(members: Statement[]): Altitude {
@@ -679,7 +741,12 @@ export function validateProposedAggregation(
       rejected.push(`${where}: incomplete proposed fact`);
       continue;
     }
-    if (!ALLOWED_PREDICATE_PREFIXES.some((prefix) => p.predicate.startsWith(prefix))) {
+    // Expand the shorthand the request itself taught before judging it. This is not a loosening:
+    // the allowlist below is still the only vocabulary a proposal may write into — `kpred:` simply
+    // IS `urn:kbase:predicate/`, and rejecting it rejected the model for being obedient.
+    const predicate = expandIri(String(p.predicate));
+    const subject = expandIri(String(p.subject));
+    if (!ALLOWED_PREDICATE_PREFIXES.some((prefix) => predicate.startsWith(prefix))) {
       rejected.push(`${where}: predicate ${p.predicate} is outside the graph's vocabulary`);
       continue;
     }
@@ -708,7 +775,7 @@ export function validateProposedAggregation(
       question,
       members,
       altitude: alt,
-      proposes: { subject: p.subject, predicate: p.predicate, object },
+      proposes: { subject, predicate, object },
     });
   }
 
@@ -738,8 +805,8 @@ export function aggregationRequest(
       .filter((st) => CASCADABLE.includes(altitudeOf(st)))
       .map((st) => ({
         id: st.id,
-        subject: st.s.value.replace('urn:kbase:concept/', 'kb:'),
-        predicate: st.p.value.replace(KPRED, 'kpred:'),
+        subject: contractIri(st.s.value),
+        predicate: contractIri(st.p.value),
         object: isLit(st.o) ? st.o.value : st.o.value,
       })),
     openDecisions,
