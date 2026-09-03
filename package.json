@@ -207,7 +207,7 @@
     "cookie": "^0.7.0",
     "sharp": "$sharp",
     "adm-zip": "0.6.0",
-    "fast-uri": "^3.1.5",
+    "fast-uri": "^3.1.7",
     "postcss": "^8.5.23",
     "undici": "^7.29.0",
     "browserslist": "^4.28.7"
