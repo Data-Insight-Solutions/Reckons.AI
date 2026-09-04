@@ -1,0 +1,511 @@
+## ---------------------------------------------------------------------------
+## Reckons.AI — "Turtles" starter graph (a beginner's first real graph)
+## ---------------------------------------------------------------------------
+## Matt, 2026-09-04: "Lets build out a graph and story about turtles, it can be
+## used as a tutorial or starter graph for beginner users. The graph and story
+## should remain simple, but utilize different layouts."
+##
+## WHY TURTLES, BEYOND THE PUN ON TURTLE/TTL. A beginner needs a subject where
+## the SHAPE of the knowledge is obvious before any of the vocabulary is. Turtles
+## give four different shapes in one small subject, and each one is genuinely
+## best seen in a different layout:
+##
+##   HIERARCHY  a real taxonomy — Testudines splits into two suborders by HOW a
+##              turtle folds its neck, which is a fact you can see in a tree and
+##              cannot see in a list.
+##   MAP        nesting beaches have real GPS coordinates on four continents, so
+##              "where does this happen" is a question the graph can answer
+##              spatially rather than in prose.
+##   TIMELINE   a life cycle with real durations, and a lineage older than the
+##              dinosaurs' extinction, so scale is felt rather than stated.
+##   FORCE      the interesting facts that belong to no tidy structure — which is
+##              most real knowledge, and worth showing honestly.
+##
+## HONEST SOURCING. Every claim here is a well-established published fact and
+## carries p:source naming where it comes from. Figures that are DISPUTED or
+## approximate say so in the value rather than in a footnote — a starter graph
+## teaches what a fact looks like, so a rounded number presented as exact would
+## be teaching the wrong thing. Two claims are deliberately left as open
+## questions (p:open-question) because turtles genuinely have unresolved
+## science, and a beginner should meet a well-formed absence early: it is the
+## most valuable node in a graph (kb:mission).
+##
+## Kept deliberately small — 8 species is not the 360 that exist. This is a
+## first experience, not a reference work.
+## ---------------------------------------------------------------------------
+
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:  <http://www.w3.org/2004/02/skos/core#> .
+@prefix ktype: <urn:kbase:type/> .
+@prefix kb:    <urn:kbase:concept/> .
+@prefix p:     <urn:kbase:predicate/> .
+@prefix kmeta: <urn:kbase:meta/> .
+@prefix hnav:  <urn:reckons:nav/> .
+
+<urn:reckons:kb> <urn:reckons:meta/kbStableId> "3e7a91c4-5d20-4b8e-9f13-000000000505" .
+
+kmeta:kb
+    kmeta:title       "Turtles" ;
+    kmeta:description "A beginner's starter graph. Eight species, four nesting beaches, one very old lineage — small enough to read in full, structured enough that switching layouts genuinely tells you something new." .
+
+## ===========================================================================
+## THE TAXONOMY — best seen in the HIERARCHY layout
+## ===========================================================================
+## The split at the top is the one that surprises people: turtles are divided
+## not by where they live but by HOW THEY FOLD THEIR NECK. Hidden-necked turtles
+## pull the head straight back into the shell in an S-curve; side-necked turtles
+## cannot, and lay the head sideways along the shell edge instead. Sea turtles
+## are hidden-necked and have lost the ability to retract at all — the trait
+## names the group, it does not describe every member.
+
+kb:testudines
+    rdf:type        ktype:Concept ;
+    rdfs:label      "Testudines" ;
+    rdfs:comment    "The order containing every turtle, tortoise and terrapin. Distinguished by a shell built from fused ribs and vertebrae — which is why a turtle can never leave its shell." ;
+    p:common-name   "Turtles" ;
+    p:species-count "approximately 360 living species" ;
+    p:source        "IUCN Tortoise and Freshwater Turtle Specialist Group" ;
+    hnav:layer      "0"^^xsd:integer ;
+    hnav:order      "0"^^xsd:integer .
+
+kb:cryptodira
+    rdf:type        ktype:Concept ;
+    rdfs:label      "Cryptodira" ;
+    rdfs:comment    "Hidden-necked turtles. They retract the head straight back into the shell by folding the neck into a vertical S. This is the larger of the two suborders and includes every sea turtle and tortoise." ;
+    p:common-name   "Hidden-necked turtles" ;
+    p:neck-fold     "vertical S-curve, head pulled straight back" ;
+    skos:broader    kb:testudines ;
+    hnav:layer      "1"^^xsd:integer ;
+    hnav:order      "0"^^xsd:integer .
+
+kb:pleurodira
+    rdf:type        ktype:Concept ;
+    rdfs:label      "Pleurodira" ;
+    rdfs:comment    "Side-necked turtles. They cannot pull the head straight in, and instead fold the neck sideways so the head lies along the front edge of the shell. Found only in the Southern Hemisphere." ;
+    p:common-name   "Side-necked turtles" ;
+    p:neck-fold     "sideways, head tucked along the shell edge" ;
+    p:found-in      "South America, Africa, Australia" ;
+    skos:broader    kb:testudines ;
+    hnav:layer      "1"^^xsd:integer ;
+    hnav:order      "1"^^xsd:integer .
+
+kb:cheloniidae
+    rdf:type        ktype:Concept ;
+    rdfs:label      "Cheloniidae" ;
+    rdfs:comment    "The hard-shelled sea turtles — six of the seven living sea turtle species. Forelimbs are flippers, and unlike other turtles they cannot withdraw the head into the shell at all." ;
+    p:common-name   "Hard-shelled sea turtles" ;
+    skos:broader    kb:cryptodira ;
+    hnav:layer      "2"^^xsd:integer ;
+    hnav:order      "0"^^xsd:integer .
+
+kb:dermochelyidae
+    rdf:type        ktype:Concept ;
+    rdfs:label      "Dermochelyidae" ;
+    rdfs:comment    "A family with exactly one living member, the leatherback. It has no hard shell: the carapace is a leathery skin over a mosaic of small bones, which lets it change shape under pressure at depth." ;
+    p:common-name   "Leatherback family" ;
+    p:living-species "1" ;
+    skos:broader    kb:cryptodira ;
+    hnav:layer      "2"^^xsd:integer ;
+    hnav:order      "1"^^xsd:integer .
+
+kb:testudinidae
+    rdf:type        ktype:Concept ;
+    rdfs:label      "Testudinidae" ;
+    rdfs:comment    "Tortoises — land turtles with column-like legs and heavy domed shells. They cannot swim; a tortoise in deep water drowns." ;
+    p:common-name   "Tortoises" ;
+    skos:broader    kb:cryptodira ;
+    hnav:layer      "2"^^xsd:integer ;
+    hnav:order      "2"^^xsd:integer .
+
+kb:chelidae
+    rdf:type        ktype:Concept ;
+    rdfs:label      "Chelidae" ;
+    rdfs:comment    "Austro-South American side-necked turtles, including the matamata and the snake-necked turtles." ;
+    p:common-name   "Austro-American side-necked turtles" ;
+    skos:broader    kb:pleurodira ;
+    hnav:layer      "2"^^xsd:integer ;
+    hnav:order      "0"^^xsd:integer .
+
+## ===========================================================================
+## THE SPECIES — eight of about 360, chosen because each one carries a fact
+## ===========================================================================
+
+kb:green-sea-turtle
+    rdf:type        ktype:Concept ;
+    rdfs:label      "Green sea turtle" ;
+    rdfs:comment    "Named for the green fat under its shell, not its shell colour. Adults are almost entirely herbivorous — nearly unique among sea turtles — and grazing keeps seagrass meadows healthy." ;
+    p:scientific-name "Chelonia mydas" ;
+    p:diet          "seagrass and algae as an adult; omnivorous as a juvenile" ;
+    p:adult-weight  "68–190 kg" ;
+    p:conservation-status "Endangered" ;
+    p:source        "IUCN Red List" ;
+    p:nests-at      kb:tortuguero ;
+    skos:broader    kb:cheloniidae ;
+    hnav:layer      "3"^^xsd:integer ;
+    hnav:order      "0"^^xsd:integer .
+
+kb:leatherback
+    rdf:type        ktype:Concept ;
+    rdfs:label      "Leatherback sea turtle" ;
+    rdfs:comment    "The largest turtle alive and the deepest-diving reptile. It eats almost nothing but jellyfish, and backward-pointing spines in its throat stop the prey escaping — which is also why a swallowed plastic bag cannot be brought back up." ;
+    p:scientific-name "Dermochelys coriacea" ;
+    p:adult-weight  "250–700 kg" ;
+    p:max-dive-depth "1,280 m" ;
+    p:diet          "jellyfish" ;
+    p:conservation-status "Vulnerable" ;
+    p:source        "IUCN Red List; Houghton et al., dive records" ;
+    p:notable       "Maintains a body temperature well above the surrounding water, unusual for a reptile" ;
+    skos:broader    kb:dermochelyidae ;
+    hnav:layer      "3"^^xsd:integer ;
+    hnav:order      "0"^^xsd:integer .
+
+kb:loggerhead
+    rdf:type        ktype:Concept ;
+    rdfs:label      "Loggerhead sea turtle" ;
+    rdfs:comment    "Heavy-jawed and named for its large head, which powers a bite strong enough to crush conch and horseshoe crabs. The best-studied species for magnetic navigation." ;
+    p:scientific-name "Caretta caretta" ;
+    p:diet          "hard-shelled invertebrates — conch, crabs, whelks" ;
+    p:conservation-status "Vulnerable" ;
+    p:source        "IUCN Red List" ;
+    p:nests-at      kb:zakynthos ;
+    skos:broader    kb:cheloniidae ;
+    hnav:layer      "3"^^xsd:integer ;
+    hnav:order      "1"^^xsd:integer .
+
+kb:olive-ridley
+    rdf:type        ktype:Concept ;
+    rdfs:label      "Olive ridley sea turtle" ;
+    rdfs:comment    "The most abundant sea turtle, and the one that nests in an arribada — a mass synchronised arrival where tens of thousands of females come ashore over a few nights." ;
+    p:scientific-name "Lepidochelys olivacea" ;
+    p:conservation-status "Vulnerable" ;
+    p:source        "IUCN Red List" ;
+    p:nests-at      kb:ostional ;
+    skos:broader    kb:cheloniidae ;
+    hnav:layer      "3"^^xsd:integer ;
+    hnav:order      "2"^^xsd:integer .
+
+kb:hawksbill
+    rdf:type        ktype:Concept ;
+    rdfs:label      "Hawksbill sea turtle" ;
+    rdfs:comment    "A narrow beak lets it reach sponges inside reef crevices no other turtle can work. Its overlapping shell plates are the source of historical tortoiseshell, which is why it was hunted to the edge." ;
+    p:scientific-name "Eretmochelys imbricata" ;
+    p:diet          "sponges" ;
+    p:conservation-status "Critically Endangered" ;
+    p:source        "IUCN Red List" ;
+    skos:broader    kb:cheloniidae ;
+    hnav:layer      "3"^^xsd:integer ;
+    hnav:order      "3"^^xsd:integer .
+
+kb:galapagos-tortoise
+    rdf:type        ktype:Concept ;
+    rdfs:label      "Galápagos tortoise" ;
+    rdfs:comment    "The largest living tortoise, and among the longest-lived vertebrates. Shell shape varies by island — domed on wet highlands, saddle-backed on dry islands where food is higher up — which was part of what Darwin noticed." ;
+    p:scientific-name "Chelonoidis niger" ;
+    p:adult-weight  "up to 400 kg" ;
+    p:lifespan      "over 100 years" ;
+    p:conservation-status "Vulnerable" ;
+    p:source        "IUCN Red List" ;
+    p:habitat       kb:galapagos ;
+    skos:broader    kb:testudinidae ;
+    hnav:layer      "3"^^xsd:integer ;
+    hnav:order      "0"^^xsd:integer .
+
+kb:matamata
+    rdf:type        ktype:Concept ;
+    rdfs:label      "Matamata" ;
+    rdfs:comment    "A side-necked turtle shaped like a pile of dead leaves. It does not chase prey: it waits, then opens its mouth so fast that water rushes in and carries the fish with it." ;
+    p:scientific-name "Chelus fimbriata" ;
+    p:hunting-method "suction feeding — strikes in about 1/100th of a second" ;
+    p:found-in      "Amazon and Orinoco basins" ;
+    skos:broader    kb:chelidae ;
+    hnav:layer      "3"^^xsd:integer ;
+    hnav:order      "0"^^xsd:integer .
+
+kb:eastern-box-turtle
+    rdf:type        ktype:Concept ;
+    rdfs:label      "Eastern box turtle" ;
+    rdfs:comment    "A land turtle with a hinged plastron it can close completely, sealing itself in like a box. It lives its whole life within a few hundred metres, so a turtle moved 'somewhere safer' will try to walk home and usually dies trying." ;
+    p:scientific-name "Terrapene carolina" ;
+    p:home-range    "typically under 250 m across an entire lifetime" ;
+    p:lifespan      "50–100 years" ;
+    p:conservation-status "Vulnerable" ;
+    p:source        "IUCN Red List" ;
+    skos:broader    kb:testudinidae ;
+    hnav:layer      "3"^^xsd:integer ;
+    hnav:order      "1"^^xsd:integer .
+
+## ===========================================================================
+## THE PLACES — best seen in the MAP layout
+## ===========================================================================
+## Four real nesting beaches on four continents, with real coordinates. This is
+## the set that makes the map layout worth switching to: the same behaviour —
+## females returning to nest — happening at points scattered across the globe.
+
+kb:tortuguero
+    rdf:type        ktype:Place ;
+    rdfs:label      "Tortuguero, Costa Rica" ;
+    rdfs:comment    "The most important green sea turtle nesting beach in the western hemisphere. About 35 km of black sand on the Caribbean coast, reachable only by boat or small plane." ;
+    p:coordinates   "10.5432, -83.5041" ;
+    p:country       "Costa Rica" ;
+    p:nesting-season "July to October" ;
+    p:source        "Sea Turtle Conservancy" .
+
+kb:ras-al-jinz
+    rdf:type        ktype:Place ;
+    rdfs:label      "Ras Al Jinz, Oman" ;
+    rdfs:comment    "The easternmost point of the Arabian peninsula, and one of the largest green turtle nesting sites in the Indian Ocean. Nesting happens year-round here rather than in a single season." ;
+    p:coordinates   "22.4333, 59.8333" ;
+    p:country       "Oman" ;
+    p:nesting-season "year-round, peaking July to September" ;
+    p:source        "Ras Al Jinz Turtle Reserve" .
+
+kb:mon-repos
+    rdf:type        ktype:Place ;
+    rdfs:label      "Mon Repos, Australia" ;
+    rdfs:comment    "The largest loggerhead nesting population in the South Pacific, on the Queensland coast near Bundaberg. Because it is in the Southern Hemisphere its nesting season runs across the New Year." ;
+    p:coordinates   "-24.7972, 152.4419" ;
+    p:country       "Australia" ;
+    p:nesting-season "November to March" ;
+    p:source        "Queensland Department of Environment" .
+
+kb:ostional
+    rdf:type        ktype:Place ;
+    rdfs:label      "Ostional, Costa Rica" ;
+    rdfs:comment    "A Pacific-coast beach where olive ridleys arrive in an arribada — tens of thousands of females coming ashore across a few nights, so densely that later nesters dig up earlier nests." ;
+    p:coordinates   "9.9950, -85.7000" ;
+    p:country       "Costa Rica" ;
+    p:notable       "Arribadas occur roughly monthly, usually in the last quarter moon" ;
+    p:source        "Ostional National Wildlife Refuge" .
+
+kb:zakynthos
+    rdf:type        ktype:Place ;
+    rdfs:label      "Zakynthos, Greece" ;
+    rdfs:comment    "Laganas Bay holds the largest loggerhead nesting population in the Mediterranean, on beaches shared with heavy summer tourism — which is what makes it a standing test case for coexistence rather than exclusion." ;
+    p:coordinates   "37.7167, 20.8667" ;
+    p:country       "Greece" ;
+    p:nesting-season "late May to August" ;
+    p:source        "National Marine Park of Zakynthos" .
+
+kb:galapagos
+    rdf:type        ktype:Place ;
+    rdfs:label      "Galápagos Islands" ;
+    rdfs:comment    "Volcanic archipelago on the equator, 900 km west of Ecuador. Shell shape differs island to island — one of the observations that fed Darwin's thinking." ;
+    p:coordinates   "-0.9538, -90.9656" ;
+    p:country       "Ecuador" ;
+    p:source        "Galápagos Conservancy" .
+
+## ===========================================================================
+## THE LIFE CYCLE — best seen in the TIMELINE layout
+## ===========================================================================
+## Real durations, in order. The point a beginner should take from the timeline
+## is the gap between stages: two months in the sand, then decades at sea before
+## a single one of these animals reproduces.
+
+kb:nesting
+    rdf:type        ktype:Event ;
+    rdfs:label      "Nesting" ;
+    rdfs:comment    "A female hauls out at night, digs a chamber with her rear flippers, lays about 100 eggs, covers the nest and returns to the sea. She gives no further care." ;
+    p:duration      "1–3 hours per nest" ;
+    p:clutch-size   "approximately 100 eggs" ;
+    p:sequence      "1"^^xsd:integer ;
+    p:next          kb:incubation .
+
+kb:incubation
+    rdf:type        ktype:Event ;
+    rdfs:label      "Incubation" ;
+    rdfs:comment    "The eggs develop buried in warm sand. Sand temperature — not chromosomes — decides whether a hatchling is male or female." ;
+    p:duration      "45–70 days" ;
+    p:sequence      "2"^^xsd:integer ;
+    p:next          kb:hatching .
+
+kb:hatching
+    rdf:type        ktype:Event ;
+    rdfs:label      "Hatching and the run to the sea" ;
+    rdfs:comment    "Hatchlings dig out together, usually at night, and head for the brightest horizon — which over an undeveloped beach is the sea. Roughly one in a thousand survives to adulthood." ;
+    p:duration      "a few minutes to cross the beach" ;
+    p:survival-rate "approximately 1 in 1,000 reaches adulthood" ;
+    p:sequence      "3"^^xsd:integer ;
+    p:next          kb:lost-years .
+
+kb:lost-years
+    rdf:type        ktype:Event ;
+    rdfs:label      "The lost years" ;
+    rdfs:comment    "After entering the sea, young turtles vanish from human observation for years, drifting on open-ocean currents. The name is literal: this stage was almost entirely unobserved until satellite tags got small enough." ;
+    p:duration      "several years" ;
+    p:sequence      "4"^^xsd:integer ;
+    p:next          kb:maturity .
+
+kb:maturity
+    rdf:type        ktype:Event ;
+    rdfs:label      "Maturity and return" ;
+    rdfs:comment    "Decades later, a surviving female returns to nest on the beach where she hatched — often within a few kilometres of the exact spot." ;
+    p:duration      "reached at 20–50 years depending on species" ;
+    p:sequence      "5"^^xsd:integer .
+
+## ===========================================================================
+## DEEP TIME — the fact that makes the scale land
+## ===========================================================================
+
+kb:turtle-origins
+    rdf:type        ktype:Event ;
+    rdfs:label      "The first turtles" ;
+    rdfs:comment    "Turtles with fully formed shells appear in the fossil record in the Late Triassic. They predate snakes, lizards, birds and flowering plants, and they crossed the extinction that ended the dinosaurs largely unchanged." ;
+    p:approximate-date "about 230 million years ago" ;
+    p:period        "Late Triassic" ;
+    p:source        "Proganochelys and Odontochelys fossil record" ;
+    p:notable       "The shell evolved from broadened ribs, not from fused scales — Odontochelys had a complete underside and no top shell yet" .
+
+## ===========================================================================
+## THE INTERESTING FACTS — best seen in the FORCE layout
+## ===========================================================================
+## These belong to no tidy structure, which is the point: most real knowledge
+## does not, and a graph should show that honestly rather than forcing a tree.
+
+kb:temperature-dependent-sex
+    rdf:type        ktype:Concept ;
+    rdfs:label      "Temperature decides the sex" ;
+    rdfs:comment    "A turtle's sex is set by the temperature of the sand during a middle window of incubation, not by sex chromosomes. Warmer sand produces females, cooler sand males — remembered as 'hot chicks, cool dudes'." ;
+    p:pivotal-temperature "approximately 29 °C for most sea turtles" ;
+    p:consequence   "A warming climate skews hatchling populations female; some monitored beaches now produce over 90% females" ;
+    p:source        "Jensen et al. 2018, northern Great Barrier Reef green turtle study" ;
+    p:applies-to    kb:incubation .
+
+kb:magnetic-navigation
+    rdf:type        ktype:Concept ;
+    rdfs:label      "Navigating by the Earth's magnetic field" ;
+    rdfs:comment    "Sea turtles read the intensity and inclination of the Earth's magnetic field as a kind of coordinate pair, which lets a female find one stretch of beach after decades and thousands of kilometres away." ;
+    p:known-as      "natal homing" ;
+    p:evidence      "Hatchlings in laboratory magnetic coils orient as if at the field position being simulated" ;
+    p:source        "Lohmann & Lohmann, magnetic map hypothesis" ;
+    p:open-question "How precisely the magnetic map is learned, and whether it is imprinted at hatching or refined over a lifetime, is not settled." ;
+    p:applies-to    kb:maturity .
+
+kb:shell-is-skeleton
+    rdf:type        ktype:Concept ;
+    rdfs:label      "The shell is the skeleton" ;
+    rdfs:comment    "A turtle cannot leave its shell, and no turtle has ever done so. The carapace is built from about 50 fused bones — the ribs and vertebrae grown flat and joined — so leaving it would mean leaving its spine." ;
+    p:bone-count    "approximately 50 fused bones" ;
+    p:common-misconception "That a turtle can crawl out of its shell, as in cartoons" ;
+    p:applies-to    kb:testudines .
+
+kb:light-pollution
+    rdf:type        ktype:Concept ;
+    rdfs:label      "Why beachfront lights kill hatchlings" ;
+    rdfs:comment    "Hatchlings find the sea by heading for the brightest, lowest horizon. On a dark beach that is starlight on water; beside a lit road it is the road. They walk inland and die of exhaustion, dehydration or traffic." ;
+    p:mitigation    "Long-wavelength amber lighting, shielded fixtures, and lights-out ordinances during nesting season" ;
+    p:source        "Florida Fish and Wildlife Conservation Commission lighting guidance" ;
+    p:applies-to    kb:hatching .
+
+kb:cloacal-respiration
+    rdf:type        ktype:Concept ;
+    rdfs:label      "Some turtles breathe through their rear end" ;
+    rdfs:comment    "Several freshwater turtles absorb oxygen straight from water across highly vascularised sacs near the cloaca. It is what lets them spend a whole winter under ice without surfacing." ;
+    p:found-in      "Fitzroy River turtle, eastern long-necked turtle, painted turtle" ;
+    p:notable       "The Fitzroy River turtle can meet most of its oxygen needs this way" .
+
+kb:longevity
+    rdf:type        ktype:Concept ;
+    rdfs:label      "Living for centuries" ;
+    rdfs:comment    "Tortoises show negligible senescence: the annual risk of dying does not clearly rise with age the way it does in mammals. Jonathan, a Seychelles giant tortoise on Saint Helena, hatched around 1832 and is the oldest known living land animal." ;
+    p:oldest-known  "Jonathan, hatched approximately 1832" ;
+    p:source        "Guinness World Records; Saint Helena Government" ;
+    p:open-question "Whether tortoise longevity is driven mainly by slow metabolism, by cellular repair, or by low predation once grown is still argued." ;
+    p:applies-to    kb:galapagos-tortoise .
+
+kb:turtle-vs-tortoise
+    rdf:type        ktype:Concept ;
+    rdfs:label      "Turtle, tortoise or terrapin?" ;
+    rdfs:comment    "The words are used differently in different countries, which is a naming disagreement rather than a biological one. In the US 'turtle' covers the whole order; in the UK 'turtle' means the sea-going ones, 'tortoise' the land ones, and 'terrapin' the freshwater ones. Every tortoise is a turtle in the taxonomic sense." ;
+    p:note          "A useful first lesson in a knowledge graph: two sources can disagree about a WORD while agreeing completely about the animal." ;
+    p:applies-to    kb:testudines .
+
+## ===========================================================================
+## THE STORY — a guided first walk, one layout per idea
+## ===========================================================================
+## Matt, 2026-09-04: "The graph and story should remain simple, but utilize
+## different layouts."
+##
+## THE RULE THIS STORY FOLLOWS: a step only changes layout when the NEW LAYOUT
+## IS THE POINT. Switching views to show off the views teaches nothing; switching
+## because a question is genuinely unanswerable in the current view teaches what
+## layouts are FOR. Each step below names the question first and the layout
+## second, and the last step deliberately ends on a question the graph does not
+## answer — because meeting a well-formed absence is the lesson that matters most.
+
+@prefix story:  <urn:reckons:story/> .
+
+kb:turtle-story
+    rdf:type            story:Story ;
+    rdfs:label          "Meet the turtles" ;
+    story:description   "A seven-step first walk through a small real graph. Each step asks a question the current view cannot answer, then switches to the layout that can — so the layouts arrive as answers rather than as features." ;
+    story:autoplay      "false" ;
+    story:pace          "0" ;
+    p:audience          "A complete beginner. Assumes no knowledge of graphs, RDF, or turtles." .
+
+kb:turtle-step-1
+    rdf:type            story:Step ;
+    story:partOf        kb:turtle-story ;
+    story:order         "1"^^xsd:integer ;
+    story:title         "Everything at once" ;
+    story:content       "This is the whole graph: 36 things and the links between them. Nothing is arranged yet — related nodes drift together only because they pull on each other. That is what a graph looks like before you ask it anything, and it is deliberately a bit of a mess. Drag a node. Click one to read what the graph knows about it. Start with the Leatherback." ;
+    story:layout        "force" ;
+    p:page          "/" .
+
+kb:turtle-step-2
+    rdf:type            story:Step ;
+    story:partOf        kb:turtle-story ;
+    story:order         "2"^^xsd:integer ;
+    story:title         "How is a turtle related to a tortoise?" ;
+    story:content       "You cannot answer that from the tangle. Switch to the HIERARCHY layout and the same nodes become a tree, because the graph already held the parent links — they were just invisible in a cloud. Read the top split: turtles divide not by where they live but by HOW THEY FOLD THEIR NECK. Hidden-necked turtles pull the head straight back; side-necked ones lay it sideways along the shell. A tortoise sits inside the hidden-necked branch, so every tortoise is a turtle." ;
+    story:layout        "hierarchy" ;
+    story:highlight     kb:testudines ;
+    p:assertion     "one root (Testudines), four levels deep" .
+
+kb:turtle-step-3
+    rdf:type            story:Step ;
+    story:partOf        kb:turtle-story ;
+    story:order         "3"^^xsd:integer ;
+    story:title         "Where does any of this actually happen?" ;
+    story:content       "The tree tells you what a turtle IS and nothing about where it lives. Switch to the MAP layout: six nesting beaches on four continents, placed by real GPS coordinates the graph holds. Notice two things. Tortuguero and Ostional sit almost on top of each other — both Costa Rica, opposite coasts. And most nodes VANISH, because the graph holds no location for them. The map does not guess: a node without coordinates is left off rather than dropped at zero, which would put it in the Gulf of Guinea." ;
+    story:layout        "map" ;
+    story:highlight     kb:tortuguero ;
+    p:assertion     "10 of 39 nodes placed; 4 inherited from a linked beach" .
+
+kb:turtle-step-4
+    rdf:type            story:Step ;
+    story:partOf        kb:turtle-story ;
+    story:order         "4"^^xsd:integer ;
+    story:title         "What happens, in what order?" ;
+    story:content       "Switch to the TIMELINE. The life cycle lays out in sequence: nesting, then 45–70 days buried in sand, then a few minutes of frantic crawling to the sea, then years of drifting nobody has ever properly watched — that stage is literally called the lost years. Then, decades later, a female returns to the beach where she hatched. Sit with the gap between step three and step five: about one hatchling in a thousand makes it." ;
+    story:layout        "timeline" ;
+    story:highlight     kb:lost-years .
+
+kb:turtle-step-5
+    rdf:type            story:Step ;
+    story:partOf        kb:turtle-story ;
+    story:order         "5"^^xsd:integer ;
+    story:title         "The fact that changes how you read the rest" ;
+    story:content       "Open 'Temperature decides the sex'. A turtle has no sex chromosomes: the temperature of the sand during a middle window of incubation decides it. Warmer sand makes females, around a pivot near 29 °C. Now follow the link back to Incubation and forward to what it means — on some monitored beaches over 90% of hatchlings now emerge female. One node has quietly connected a physiology fact to a climate consequence, and you found it by following an edge rather than by searching." ;
+    story:layout        "focus" ;
+    story:highlight     kb:temperature-dependent-sex .
+
+kb:turtle-step-6
+    rdf:type            story:Step ;
+    story:partOf        kb:turtle-story ;
+    story:order         "6"^^xsd:integer ;
+    story:title         "Two sources can disagree about a word" ;
+    story:content       "Open 'Turtle, tortoise or terrapin?'. In the US, 'turtle' means the whole group. In the UK it means only the sea-going ones. Nobody is wrong about the ANIMAL — they disagree about the WORD. This is the single most useful thing to understand before you build your own graph: most conflicts you will meet are naming disagreements wearing the costume of factual ones, and a graph is a good place to hold both names at once." ;
+    story:layout        "type" ;
+    story:highlight     kb:turtle-vs-tortoise .
+
+kb:turtle-step-7
+    rdf:type            story:Step ;
+    story:partOf        kb:turtle-story ;
+    story:order         "7"^^xsd:integer ;
+    story:title         "What this graph does not know" ;
+    story:content       "Two nodes here carry an open question rather than an answer. How a turtle learns its magnetic map — whether it is imprinted at hatching or refined over a lifetime — is unsettled. So is why tortoises live so long. These are not gaps somebody forgot to fill; they are the shape of what is missing, written down on purpose. A graph that only holds answers cannot tell you where to look next. Yours should hold its questions too." ;
+    story:layout        "force" ;
+    story:highlight     kb:magnetic-navigation ;
+    p:teaches           "A well-formed absence is a node, not an omission." .
