@@ -1,10 +1,128 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-09-02.** Working branch: `fix/cascade-real-graph` (3 commits, **unpushed,
-no PR** — Matt's call). PRs target `dev`. The branch tracks `origin/dev` directly, so a bare
-`git push` would push to dev — always `git push origin HEAD:refs/heads/<branch>`.
+**Last updated: 2026-09-04.** Working branch: `fix/cascade-real-graph` (7 commits, **unpushed,
+no PR**, plus uncommitted working-tree changes — Matt's call). PRs target `dev`. The branch tracks
+`origin/dev` directly, so a bare `git push` would push to dev — always
+`git push origin HEAD:refs/heads/<branch>`.
 
-## ▶ SESSION 2026-09-02 (latest) — the graph audit, and the chain measured composed
+## ▶ SESSION 2026-09-04 (latest) — extraction ACCURACY has a number, and grounding fails it
+
+Branch `fix/cascade-real-graph`, continuing. **Uncommitted** — new files staged only (`git add`)
+so graph-lint's has-file check passes. 2689 tests / 192 files pass, svelte-check 0/0,
+graph-lint 0 errors, 25/25 script-tier offline jobs clean.
+
+### THE GATE EXISTS NOW — `scripts/offline/extraction-score.ts` (F146 phase 1's missing half)
+`npm run offline:score` · ground truth in `tests/fixtures/notes-corpus/expectations.json`
+(19 scoreable + 4 known-broken), 22 unit tests, `main()` guarded so importing it in vitest does
+NOT fire models. It measures what `extraction-chain.ts` structurally cannot: whether the triples
+are the RIGHT triples. **Every "extraction got better" claim now has a number to move.**
+
+Three failure kinds are separated, and BOTH splits were forced by real output, not designed:
+- **INVENTION** — `lumenpath | can-genrate-comparison-documents | true`. A REQUEST became a
+  claimed capability. Nobody said that. This is the corpus's highest-value assertion, failing.
+- **MISROUTING** — `user | request-to-generate | comparison-document`. The model understood
+  perfectly; note-intent.ts never moved it out of the fact stream. Different owner, cheaper fix.
+- **VERBATIM** — `note-<id> | note-text | "Generate a comparison document…"`. Stores the
+  sentence, asserts nothing, extracts nothing. Scoring this as invention was simply wrong.
+
+### ⚠ GRAPH GROUNDING DOES NOT HELP EXTRACTION — unanimous across 6 models
+Every model scored BEST with **no** graph context. none→full: gemma3:27b 72→56, devstral 56→22,
+qwen3.6 50→44, qwen3-coder 39→28, lfm2.5 33→22, llama3.2 22→17. **Not one improved.**
+This is the measurement `kb:structural-grounding`'s own remaining note demanded before any claim
+could be made. Matt's report ("lean less on existing graph if its small or empty") *understates*
+it — the problem is not confined to small graphs.
+
+**Two deterministic leaks, both localised, both unfixed:**
+1. **No relevance floor on anchors.** `selectStructuralContext` drops open-decisions at zero
+   lexical overlap but applies no floor to anchors. Measured on corpus 01: a 40-statement graph
+   injects **1,001 tokens, 2 of 12 anchors relevant**; the 227-statement graph injects 368 tokens
+   and **0 anchors**. Backwards.
+2. **It offers things that are not concepts.** 4 of those 12 anchors were note-id timestamps
+   (`note-2026-09-02T11-40-13-902Z`) and one was `lumenpath-is-an-enterprise-cad-platform` — the
+   prompt teaches the exact shape `looksLikeProposition` exists to reject. Both reappear in model
+   output. `co-hyponyms.ts` already refuses identifier schemes; structural-context does not.
+
+### ⚠ A 32K CONTEXT WAS RUNNING A 32B MODEL ON THE CPU — the biggest single find
+Matt: *"My CPU was maxing out my 24 threads... GPU was under utilized??"* `ollama ps` said
+`qwen3:32b · 25 GB · 100% CPU · context 32768`, both 3090s at 0-8%, load average 145. Weights are
+20GB and fit a 24GB card fine — the **KV cache** pushed it over, and Ollama fell back to CPU
+*entirely*. The host sets `OLLAMA_CONTEXT_LENGTH=32768` and the app never overrode it per request.
+Fixed by `contextWindowFor()` in `providers.ts` (sizes `num_ctx` to the actual prompt, 4K floor,
+25% headroom). After: `21 GB · 100% GPU · context 8192`, spread across BOTH cards ~11GB each.
+**Every local extraction in the app was paying this** — a silent ~20x slowdown, no error, on
+hardware that looks idle. Also observed: gemma3:27b (18GB) + phi4:14b (9.8GB) resident TOGETHER,
+which is the headroom that makes the requested concurrent queue feasible.
+
+### MODEL RANKING — the roster was wrong, and the configured model was the WORST one
+**`.env` had `VITE_OLLAMA_INGEST_MODEL=llama3.2:3b`, which is LAST of eleven at 22%.** That is the
+direct cause of the extraction quality Matt reported. Now `qwen3:32b`.
+On GPU, 8192 ctx, strict recall over 19 expectations, no graph context:
+`qwen3:32b 74% (0 invented, 112s) · gemma3:27b 68% (151s) · mistral-small3.2:24b 53% (101s) ·
+phi4:14b 53% · command-r:35b 47% (204s) · devstral 56% · qwen3.6 50% · qwen3-coder 39% ·
+llama3.2:3b 22% · qwen2.5vl:7b 11% · nuextract 5%`
+**Do not delete the 2026-08-27 octopus-fixture benchmark that says llama3.2:3b WON at 47.4** — it
+measured a different task (clean single-topic prose, F1 vs golden triples). Both are true; the
+notes corpus is the one that matches real ingest. Kept in `.env` comments.
+`command-r:35b` is built for RAG and came LAST — architecture-of-purpose did not transfer.
+Earlier CPU-era numbers (gemma3 72%) used an 18-expectation denominator; 03.5 was promoted out of
+known-broken the same day, so 68% is a stricter denominator and NOT a regression.
+
+### THINKING MODE MEASURED, AND IT DID NOT EARN ITS COST
+qwen3:32b: **74% single-pass, 63% with `--thinking`** (one run each, 2026-09-04). The critic added
+11 triples so it IS finding things — it has not been shown to find the RIGHT things. Shipped
+OFF (`ollamaThinkingMode`, `VITE_OLLAMA_THINKING_MODE=false`). This is the gate working as F146
+phase 1 demanded: *"a harness that only ever confirms improvement is a marketing instrument."*
+Needs repeat runs before any verdict — run-to-run variance is real (gemma3 scored 67% then 72%).
+
+### OLD RANKING, superseded by the GPU run above (kept: it was measured on CPU/32K ctx)
+`gemma3:27b 72% · devstral-small-2 56% · qwen3.6 50% · qwen3-coder 39% · lfm2.5 33% · llama3.2:3b 22%`
+**The code specialist is the wrong tool for prose**: qwen3-coder is 4th of 6 and scores 20% where
+gemma3 scores 70% on the same file. Cost: gemma3 ~60s/source vs qwen3-coder ~14s.
+Also measured: **nuextract 5%** (3 triples total — it is TEMPLATE-fill extraction, needs a schema
+of fields, so our open-ended triple prompt is the wrong format for it) and **qwen2.5vl:7b 11%**.
+Run-to-run variance is real: gemma3/small scored 67% then 72% on re-run. Do not read 5pts as signal.
+
+### THINKING MODE BUILT — `src/lib/integrations/llm/extract-critic.ts` (12 tests)
+The two-pass extract-then-critic F146 already names, and `kb:ref-docling-graph` independently
+validates as "skeleton-then-flesh dense extraction". Critic sees source AND first pass, asked only
+what is MISSING. **Unioned, never substituted** — pinned by a test that it cannot delete a
+first-pass fact. Opt-in (`--thinking` on the scorer, `thinking: true` on the ollama opts).
+**UNMEASURED: nobody has run --thinking against the corpus yet. Do not claim it helps.**
+
+### UI: cancel is real now
+`button.primary` had no `:disabled` rule and its `:hover` fired anyway, so a dead button lit up
+orange while its label cycled stage names — fixed globally in `global.css`. Added a step-based
+progress bar (NOT a fake timer) and a cancel button. `AbortSignal` threaded through all 8
+providers → ollama-extract → `ingest()`, so an in-flight 27B generation actually aborts, plus
+stage-boundary checks so nothing half-lands in the graph.
+
+### Disk: 51G reclaimed (83% → 76%, 210G free), Matt approved each target
+Deleted LM Studio gemma-2-27b (21G, superseded by ollama gemma3:27b), Codestral-22B (17G),
+Llava-v1.5-7B (5.8G), and `~/.cache/huggingface` (7.8G). **phi-4-GGUF kept.**
+Pulling qwen3:32b, mistral-small3.2:24b, command-r:35b, phi4:14b to benchmark the 48GB class
+(2x RTX 3090). ⚠ `nvme1n1` SMART still FAILED, `available_spare 0%` — unchanged, still unfixed.
+
+### Next, in order (Matt: "after benchmarking, experiment with workflow fixes")
+1. ~~Finish the 48GB benchmark~~ **DONE** — table above, `.env` + `.env.example` updated.
+2. **The two grounding fixes**, then RE-RUN. The baseline is published so the fix has a
+   number to beat; do not claim it worked without one. `kb:ref-ontocast`'s ontology-RETRIEVAL
+   mode is the pattern to copy for leak #1 (retrieve a relevant slice, do not dump anchors).
+3. **Run `--thinking` against the corpus.** It is built and unproven.
+4. **Workflow patterns from the reference tools** (Matt asked). Already in the graph:
+   `kb:ref-ontocast` (ontology-RETRIEVAL modes — the fix pattern for leak #1; per-unit
+   render/critic/merge; GraphUpdate patches not regeneration; SHACL + LLM-free repair),
+   `kb:ref-docling-graph` (skeleton-then-flesh; deterministic graph fusion; stable IDs),
+   `kb:ref-fenic` (typed rerunnable operators, row-level lineage, batching/retry/cost accounting —
+   the pattern for the concurrency queue), `kb:ref-orionbelt` (NEW, added this session: 22 SKOS
+   validation checks as SCRIPT tier; merge-aware import. No licence — read, do not copy).
+5. **Still unbuilt and asked for**: concurrent extraction queue (pending/active, hardware-aware
+   limit) and extension → queue wiring (`src/extension/background.ts:459` currently opens one
+   background tab per page). Deferred by Matt until benchmarking lands.
+
+---
+
+
+## ▶ SESSION 2026-09-02 — the graph audit, and the chain measured composed
 
 Branch `fix/cascade-real-graph` off `dev`, 3 commits, **not pushed and no PR opened** —
 Matt's call. 86 files / 1,397 rdf tests, svelte-check 0/0, graph-lint 0 errors.

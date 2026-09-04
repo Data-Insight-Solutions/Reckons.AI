@@ -570,6 +570,85 @@ test:ManualER-Step9
 
 @prefix shelly: <urn:reckons:shelly/> .
 
+## =============================================================================
+## REVIEW WORKLOAD AFTER ENHANCED EXTRACTION (2026-09-04)
+## =============================================================================
+## Matt: "we have attempted the summary, hierarchy, and other elements to reduce
+## reviewer workload, but now with enhanced extraction we should test again."
+##
+## The graph under test is GENERATED, not hand-written:
+##   npx tsx scripts/offline/build-review-corpus.ts
+## which runs raw note text through the real pipeline — ungrounded extraction with
+## qwen3:32b, passage-verified excerpts, then deterministic vocabulary reconcile —
+## and writes every statement PENDING so it arrives as review work.
+##
+## READ THE MEASURED RESULT BELOW BEFORE YOU START. The automated chain already
+## says the decision tree is EMPTY. This walkthrough is not asking you to discover
+## that; it is asking whether the flat list is nonetheless navigable, and which of
+## the three missing mechanisms you would want first.
+## =============================================================================
+
+test:ReviewWorkloadAfterExtraction
+    rdf:type            story:Story ;
+    rdfs:label          "Review workload after enhanced extraction" ;
+    story:description   "Re-test whether summary, hierarchy and aggregation reduce reviewer workload, now that extraction runs on qwen3:32b with grounding deferred to post-hoc reconciliation. The automated half is already measured and negative — the tree is still empty. What a person has to judge is whether the queue is WORKABLE anyway, and what is actually missing." ;
+    story:autoplay      "false" ;
+    story:pace          "0" ;
+    kpred:measured      "2026-09-04, generated corpus (3 sources, 41 statements, all pending). IMPROVED vs the 2026-09-02 baseline: 0 sentence-shaped entity slugs, down from 3 — triple-shape.ts is holding and the collapsed-subject failure is gone. UNCHANGED: 0 types proposed (0 of 11 untyped settleable), 0 entities placed in a hierarchy, 39 orphans, 0 decisions open, 32 loose judgments. Aggregation now produces NOTHING at all, because 41 statements across 3 sources contains no bookkeeping cluster big enough to be worth one question — on the 217-statement baseline it formed 33. So better extraction did NOT reduce review workload: it produced cleaner facts in the same flat list." ;
+    skos:broader        test:GraphReviewStory .
+
+test:RWAE-Step0
+    rdf:type            story:Step ;
+    story:partOf        test:ReviewWorkloadAfterExtraction ;
+    story:order         "0"^^xsd:integer ;
+    story:title         "Generate the corpus yourself, or trust the committed one" ;
+    story:content       "Extraction is nondeterministic — three runs of the same corpus produced 34, 40 and 41 statements — so regenerate only if you want to see that variance, and expect the numbers below to shift by a few. Run: OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/build-review-corpus.ts. It writes reckons-workspace/kbs/review-test/review-test.ttl and mutates nothing else. Then run npx tsx scripts/offline/extraction-chain.ts --graph=reckons-workspace/kbs/review-test/review-test.ttl to see the machine's verdict before you form your own." ;
+    kpred:assertion     "review-test.ttl exists and the chain reports a non-zero statement count" .
+
+test:RWAE-Step1
+    rdf:type            story:Step ;
+    story:partOf        test:ReviewWorkloadAfterExtraction ;
+    story:order         "1"^^xsd:integer ;
+    story:title         "Open the review-test graph and go to /review" ;
+    story:content       "Run `npm run dev` (port 5173) — NOT dev:test, which forces the mock extractor. Switch to the review-test graph. Every statement is pending on purpose, so the queue should be full immediately. If the queue is EMPTY, the graph imported as confirmed and something in the annotated-Turtle round-trip broke; that is a bug, not a clean run." ;
+    kpred:assertion     "the review queue shows roughly 40 pending facts, not zero" ;
+    kpred:page          "/review" .
+
+test:RWAE-Step2
+    rdf:type            story:Step ;
+    story:partOf        test:ReviewWorkloadAfterExtraction ;
+    story:order         "2"^^xsd:integer ;
+    story:title         "THE MAIN QUESTION — how many decisions does it ask you to make?" ;
+    story:content       "Count what the page actually puts in front of you. The chain harness says 0 decisions and 32 loose judgments, which means a flat list. Judge whether that is true in the UI, and then judge the thing no harness can: could you get through it? Time yourself on the first ten. If you find yourself re-reading the same entity under two names, note which two — that is the reconcile gap, not a review-UI gap." ;
+    kpred:assertion     "you can state a number: how many distinct decisions the queue asked for" ;
+    kpred:page          "/review" .
+
+test:RWAE-Step3
+    rdf:type            story:Step ;
+    story:partOf        test:ReviewWorkloadAfterExtraction ;
+    story:order         "3"^^xsd:integer ;
+    story:title         "Check the five summaries — do any say what the facts CLAIM?" ;
+    story:content       "reviewTreeSummary, reviewPlanSummary, attentionSummary, routingSummary and reanalysisSummary all count QUEUE SHAPE ('12 decisions open; 3 contested'). None says what the facts assert. That was the 2026-09-02 root cause of 'I have not seen success yet on a great summary of the pending facts to approve', and it is still unbuilt. Confirm it is still true rather than assuming — if a summary now describes CONTENT, that is new and worth recording." ;
+    kpred:assertion     "you can say whether any on-screen summary describes content rather than counts" ;
+    kpred:page          "/review" .
+
+test:RWAE-Step4
+    rdf:type            story:Step ;
+    story:partOf        test:ReviewWorkloadAfterExtraction ;
+    story:order         "4"^^xsd:integer ;
+    story:title         "Find the reconcile proposals — and notice they are not here" ;
+    story:content       "vocabulary-reconcile.ts produced suggest-band proposals during the build (e.g. `lumenpath ~ lumen-path`, phonetic 0.85, and across documents `jordan-vale ~ jordan-veil`). They were computed, logged to console, and then went nowhere: they have NO review surface yet. This is a KNOWN GAP recorded on kb:deferred-grounding, not a bug to file. What to judge: when you meet the two spellings as separate rows in the queue, how much work does settling them by hand cost? That cost is the argument for building the surface." ;
+    kpred:assertion     "you can find both spellings of at least one name as separate queue rows" ;
+    kpred:page          "/review" .
+
+test:RWAE-Step5
+    rdf:type            story:Step ;
+    story:partOf        test:ReviewWorkloadAfterExtraction ;
+    story:order         "5"^^xsd:integer ;
+    story:title         "Decide which missing mechanism you want first" ;
+    story:content       "Three things independently produce zero, and each is a different fix. TYPING proposes 0 of 11 because no built-in type carries the predicates a dictated note produces (F149's rdfs:domain gap). HIERARCHY places 0 because extraction emits no skos:broader at all, and proposeCoHyponyms is still offline-only. AGGREGATION forms 0 questions because a 41-statement graph has no bookkeeping cluster worth batching — it needs volume, which means this test may simply be too small to exercise it. Your call on the order; only the first two are within reach without more data." ;
+    kpred:assertion     "a stated preference, recorded on kb:extraction-strategies" .
+
 shelly:persona
     shelly:name             "Shelly" ;
     shelly:greeting         "This is the test documentation! I can walk you through any test story step-by-step, show you screenshots, or explain the test infrastructure. The Dev Sprint story is a great place to start!" ;
