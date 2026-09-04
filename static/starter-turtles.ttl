@@ -449,7 +449,7 @@ kb:turtle-step-1
     story:partOf        kb:turtle-story ;
     story:order         "1"^^xsd:integer ;
     story:title         "Everything at once" ;
-    story:content       "This is the whole graph: 36 things and the links between them. Nothing is arranged yet — related nodes drift together only because they pull on each other. That is what a graph looks like before you ask it anything, and it is deliberately a bit of a mess. Drag a node. Click one to read what the graph knows about it. Start with the Leatherback." ;
+    story:content       "This is the whole graph: 57 things and the links between them. Nothing is arranged yet — related nodes drift together only because they pull on each other. That is what a graph looks like before you ask it anything, and it is deliberately a bit of a mess. Drag a node. Click one to read what the graph knows about it. Start with the Leatherback." ;
     story:layout        "force" ;
     p:page          "/" .
 
@@ -468,15 +468,25 @@ kb:turtle-step-3
     story:partOf        kb:turtle-story ;
     story:order         "3"^^xsd:integer ;
     story:title         "Where does any of this actually happen?" ;
-    story:content       "The tree tells you what a turtle IS and nothing about where it lives. Switch to the MAP layout: six nesting beaches on four continents, placed by real GPS coordinates the graph holds. Notice two things. Tortuguero and Ostional sit almost on top of each other — both Costa Rica, opposite coasts. And most nodes VANISH, because the graph holds no location for them. The map does not guess: a node without coordinates is left off rather than dropped at zero, which would put it in the Gulf of Guinea." ;
-    story:layout        "map" ;
+    story:content       "The tree tells you what a turtle IS and nothing about where it lives. Open Tortuguero and read its coordinates — 10.5432, -83.5041 — then follow p:nests-at back to the green sea turtle. Six nesting beaches here carry real GPS, on four continents. A dedicated MAP layout that places these by coordinate is built but NOT YET RELEASED, so on reckons.ai today this is a question you answer by reading nodes rather than by looking at a map. That gap is the point of the step: you can feel what the map would give you." ;
+    story:layout        "focus" ;
     story:highlight     kb:tortuguero ;
-    p:assertion     "10 of 39 nodes placed; 4 inherited from a linked beach" .
+    p:pending-layout    "map" ;
+    p:honest-note       "story:layout is 'focus' rather than 'map' on purpose. Production ships eight layouts and map is not one of them, so naming a layout that does not exist would silently do nothing and read as a broken story. Switch this to \"map\" in the same commit that releases kb:map-layout." .
+
+kb:turtle-step-3b
+    rdf:type            story:Step ;
+    story:partOf        kb:turtle-story ;
+    story:order         "4"^^xsd:integer ;
+    story:title         "One animal, two oceans" ;
+    story:content       "Open 'The trans-Pacific loggerhead loop'. A loggerhead hatched on a Japanese beach drifts the North Pacific to Baja California, feeds there for a decade, then swims back to Japan to breed — roughly 20,000 km over 20 to 30 years. Follow its four waypoints in p:leg-order. Each one carries BOTH a coordinate and a month, because a migration is genuinely two facts about one thing: a route and a schedule. That is the clearest argument in this graph for why one view is never enough." ;
+    story:layout        "focus" ;
+    story:highlight     kb:loggerhead-pacific-loop .
 
 kb:turtle-step-4
     rdf:type            story:Step ;
     story:partOf        kb:turtle-story ;
-    story:order         "4"^^xsd:integer ;
+    story:order         "5"^^xsd:integer ;
     story:title         "What happens, in what order?" ;
     story:content       "Switch to the TIMELINE. The life cycle lays out in sequence: nesting, then 45–70 days buried in sand, then a few minutes of frantic crawling to the sea, then years of drifting nobody has ever properly watched — that stage is literally called the lost years. Then, decades later, a female returns to the beach where she hatched. Sit with the gap between step three and step five: about one hatchling in a thousand makes it." ;
     story:layout        "timeline" ;
@@ -485,7 +495,7 @@ kb:turtle-step-4
 kb:turtle-step-5
     rdf:type            story:Step ;
     story:partOf        kb:turtle-story ;
-    story:order         "5"^^xsd:integer ;
+    story:order         "6"^^xsd:integer ;
     story:title         "The fact that changes how you read the rest" ;
     story:content       "Open 'Temperature decides the sex'. A turtle has no sex chromosomes: the temperature of the sand during a middle window of incubation decides it. Warmer sand makes females, around a pivot near 29 °C. Now follow the link back to Incubation and forward to what it means — on some monitored beaches over 90% of hatchlings now emerge female. One node has quietly connected a physiology fact to a climate consequence, and you found it by following an edge rather than by searching." ;
     story:layout        "focus" ;
@@ -494,7 +504,7 @@ kb:turtle-step-5
 kb:turtle-step-6
     rdf:type            story:Step ;
     story:partOf        kb:turtle-story ;
-    story:order         "6"^^xsd:integer ;
+    story:order         "7"^^xsd:integer ;
     story:title         "Two sources can disagree about a word" ;
     story:content       "Open 'Turtle, tortoise or terrapin?'. In the US, 'turtle' means the whole group. In the UK it means only the sea-going ones. Nobody is wrong about the ANIMAL — they disagree about the WORD. This is the single most useful thing to understand before you build your own graph: most conflicts you will meet are naming disagreements wearing the costume of factual ones, and a graph is a good place to hold both names at once." ;
     story:layout        "type" ;
@@ -503,9 +513,149 @@ kb:turtle-step-6
 kb:turtle-step-7
     rdf:type            story:Step ;
     story:partOf        kb:turtle-story ;
-    story:order         "7"^^xsd:integer ;
+    story:order         "8"^^xsd:integer ;
     story:title         "What this graph does not know" ;
     story:content       "Two nodes here carry an open question rather than an answer. How a turtle learns its magnetic map — whether it is imprinted at hatching or refined over a lifetime — is unsettled. So is why tortoises live so long. These are not gaps somebody forgot to fill; they are the shape of what is missing, written down on purpose. A graph that only holds answers cannot tell you where to look next. Yours should hold its questions too." ;
     story:layout        "force" ;
     story:highlight     kb:magnetic-navigation ;
     p:teaches           "A well-formed absence is a node, not an omission." .
+
+## ===========================================================================
+## MIGRATION — the one subject that needs BOTH the map and the timeline
+## ===========================================================================
+## Matt, 2026-09-04: "Maybe migration patterns of sea turtles would be a great
+## thing for timeline and map layouts."
+##
+## It is the right test case because a migration is genuinely TWO facts about
+## the same thing: a ROUTE (where, in order) and a SCHEDULE (when). Look at it on
+## a map and you see the distance; look at it on a timeline and you see that the
+## loggerhead's loop takes longer than a human childhood. Neither view alone
+## tells you what the animal is doing — which is the argument for having both.
+##
+## Each waypoint therefore carries BOTH p:coordinates and p:month, plus
+## p:leg-order so the sequence survives however it is drawn.
+##
+## THESE ARE REAL TRACKED MIGRATIONS, not illustrative averages. Where a figure
+## is a range or an estimate the value says so, because a starter graph teaches
+## what a fact looks like.
+
+kb:migration
+    rdf:type        ktype:Concept ;
+    rdfs:label      "Sea turtle migration" ;
+    rdfs:comment    "Sea turtles separate the places they eat from the place they breed, often by thousands of kilometres, and commute between them for decades. A female may cross an ocean to lay eggs on the beach where she herself hatched." ;
+    p:why           "Feeding grounds and nesting beaches are rarely in the same place; warm sand suits eggs, cold rich water suits adults" ;
+    p:navigation    kb:magnetic-navigation .
+
+## ── The trans-Pacific loggerhead loop ──────────────────────────────────────
+## The longest-known loop of any sea turtle, and it takes decades. Hatchlings
+## leave Japan, drift the North Pacific to Baja California, spend years feeding
+## there, then cross back to Japan to nest — the only place they will breed.
+
+kb:loggerhead-pacific-loop
+    rdf:type        ktype:Concept ;
+    rdfs:label      "The trans-Pacific loggerhead loop" ;
+    rdfs:comment    "A round trip of roughly 20,000 km spread across two to three decades. Loggerheads that feed off Mexico were shown by genetics and satellite tags to be Japanese-born — they cross the entire North Pacific twice in a lifetime." ;
+    p:total-distance "approximately 20,000 km round trip" ;
+    p:duration      "20–30 years for a complete loop" ;
+    p:species       kb:loggerhead ;
+    p:part-of       kb:migration ;
+    p:source        "Bowen et al., genetic stock analysis; NOAA satellite telemetry" .
+
+kb:leg-japan-nesting
+    rdf:type        ktype:Place ;
+    rdfs:label      "Yakushima, Japan — where the loop begins and ends" ;
+    rdfs:comment    "The largest loggerhead nesting site in the North Pacific. Every loggerhead in this loop hatched on a Japanese beach and every breeding female returns to one." ;
+    p:coordinates   "30.3333, 130.5000" ;
+    p:month         "May to August" ;
+    p:leg-order     "1"^^xsd:integer ;
+    p:part-of       kb:loggerhead-pacific-loop .
+
+kb:leg-kuroshio
+    rdf:type        ktype:Place ;
+    rdfs:label      "The Kuroshio Current" ;
+    rdfs:comment    "Hatchlings are carried east on the Kuroshio and the North Pacific Current. They do not swim this leg so much as ride it — which is why the crossing takes years rather than months." ;
+    p:coordinates   "35.0000, 160.0000" ;
+    p:month         "the first years after hatching" ;
+    p:leg-order     "2"^^xsd:integer ;
+    p:part-of       kb:loggerhead-pacific-loop .
+
+kb:leg-baja
+    rdf:type        ktype:Place ;
+    rdfs:label      "Baja California feeding grounds" ;
+    rdfs:comment    "Off the Pacific coast of Baja, juvenile loggerheads feed on pelagic red crabs for a decade or more. Genetically they are still a Japanese population living 10,000 km from where they will breed." ;
+    p:coordinates   "26.0000, -113.5000" ;
+    p:month         "years spent resident" ;
+    p:leg-order     "3"^^xsd:integer ;
+    p:part-of       kb:loggerhead-pacific-loop .
+
+kb:leg-return-crossing
+    rdf:type        ktype:Place ;
+    rdfs:label      "The return crossing" ;
+    rdfs:comment    "Adults recross the North Pacific to breed. Unlike the drift out, this leg is actively swum against the prevailing flow." ;
+    p:coordinates   "32.0000, -170.0000" ;
+    p:month         "several months of continuous swimming" ;
+    p:leg-order     "4"^^xsd:integer ;
+    p:part-of       kb:loggerhead-pacific-loop .
+
+## ── The leatherback's Pacific crossing ─────────────────────────────────────
+
+kb:leatherback-pacific-crossing
+    rdf:type        ktype:Concept ;
+    rdfs:label      "The leatherback's Pacific crossing" ;
+    rdfs:comment    "The longest recorded migration of any reptile: a satellite-tagged leatherback swam from a nesting beach in Papua, Indonesia to the coast of Oregon — a documented 20,558 km over 647 days." ;
+    p:total-distance "20,558 km — the longest recorded reptile migration" ;
+    p:duration      "647 days" ;
+    p:species       kb:leatherback ;
+    p:part-of       kb:migration ;
+    p:source        "Benson et al. 2007, satellite telemetry of a tagged female" .
+
+kb:leg-papua
+    rdf:type        ktype:Place ;
+    rdfs:label      "Jamursba-Medi, Papua — the nesting beach" ;
+    rdfs:comment    "The largest leatherback nesting beach in the Pacific, on the north coast of Papua, Indonesia." ;
+    p:coordinates   "-0.3667, 132.4833" ;
+    p:month         "May to September" ;
+    p:leg-order     "1"^^xsd:integer ;
+    p:part-of       kb:leatherback-pacific-crossing .
+
+kb:leg-oregon
+    rdf:type        ktype:Place ;
+    rdfs:label      "Oregon coast feeding grounds" ;
+    rdfs:comment    "Cold, productive water off the US Pacific Northwest where leatherbacks feed on large jellyfish blooms — an entire ocean away from where they breed." ;
+    p:coordinates   "44.5000, -124.5000" ;
+    p:month         "arrives after roughly 647 days" ;
+    p:leg-order     "2"^^xsd:integer ;
+    p:part-of       kb:leatherback-pacific-crossing .
+
+## ── The Ascension Island crossing ──────────────────────────────────────────
+## The navigation problem stated as plainly as it can be: a target 2,300 km
+## away, 16 km wide, with no landmarks on the way.
+
+kb:ascension-crossing
+    rdf:type        ktype:Concept ;
+    rdfs:label      "Brazil to Ascension Island" ;
+    rdfs:comment    "Green turtles feeding off Brazil cross roughly 2,300 km of open South Atlantic to nest on Ascension Island — a volcanic speck about 16 km across with nothing to aim at on the way. It is the clearest natural demonstration that turtle navigation is real and not luck." ;
+    p:total-distance "approximately 2,300 km each way" ;
+    p:target-size   "the island is about 16 km wide" ;
+    p:species       kb:green-sea-turtle ;
+    p:part-of       kb:migration ;
+    p:demonstrates  kb:magnetic-navigation ;
+    p:source        "Carr & Coleman; Luschi et al. satellite tracking" .
+
+kb:leg-brazil-feeding
+    rdf:type        ktype:Place ;
+    rdfs:label      "Brazilian coast feeding grounds" ;
+    rdfs:comment    "Seagrass pastures off the Brazilian coast where the Ascension nesting population spends the years between breeding seasons." ;
+    p:coordinates   "-8.0000, -35.0000" ;
+    p:month         "between breeding seasons" ;
+    p:leg-order     "1"^^xsd:integer ;
+    p:part-of       kb:ascension-crossing .
+
+kb:ascension-island
+    rdf:type        ktype:Place ;
+    rdfs:label      "Ascension Island" ;
+    rdfs:comment    "An isolated volcanic island in the mid-Atlantic, and one of the most important green turtle rookeries in the world." ;
+    p:coordinates   "-7.9467, -14.3559" ;
+    p:month         "December to May" ;
+    p:leg-order     "2"^^xsd:integer ;
+    p:part-of       kb:ascension-crossing .

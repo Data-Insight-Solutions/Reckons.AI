@@ -26,7 +26,15 @@ const TURTLES = 'static/starter-turtles.ttl';
 const PATHS = 'static/docs-user-paths.ttl';
 const FEATURES = 'static/docs-features.ttl';
 
-const parse = (file: string) => new Parser().parse(readFileSync(file, 'utf8'));
+/** n3's Quad is a namespace rather than a type here, so the shape is named locally. */
+type ParsedQuad = {
+  subject: { value: string; termType: string };
+  predicate: { value: string };
+  object: { value: string; termType: string };
+};
+
+const parse = (file: string): ParsedQuad[] =>
+  new Parser().parse(readFileSync(file, 'utf8')) as unknown as ParsedQuad[];
 
 describe('starter-turtles.ttl — the beginner graph', () => {
   it('parses', () => {
@@ -62,10 +70,10 @@ describe('starter-turtles.ttl — the beginner graph', () => {
     expect(at('mon-repos').y).toBeLessThan(at('tortuguero').y);
   });
 
-  it('has a seven-step story that moves between at least four layouts', () => {
+  it('has an eight-step story that moves between at least four layouts', () => {
     const quads = parse(TURTLES);
     const steps = quads.filter((q) => q.object.value === 'urn:reckons:story/Step');
-    expect(steps).toHaveLength(7);
+    expect(steps).toHaveLength(8);
 
     const layouts = new Set(
       quads.filter((q) => q.predicate.value === 'urn:reckons:story/layout').map((q) => q.object.value),
@@ -73,8 +81,28 @@ describe('starter-turtles.ttl — the beginner graph', () => {
     // The graph's whole reason to exist is that different questions want different views.
     expect(layouts.size).toBeGreaterThanOrEqual(4);
     expect(layouts.has('hierarchy')).toBe(true);
-    expect(layouts.has('map')).toBe(true);
     expect(layouts.has('timeline')).toBe(true);
+  });
+
+  it('NAMES ONLY LAYOUTS PRODUCTION ACTUALLY SHIPS', () => {
+    /*
+     * This graph is handed to people to import into reckons.ai. A story:layout naming something
+     * production does not have silently does nothing, and a step that does nothing reads as a
+     * broken story rather than as an unreleased feature. `map` is built locally and NOT deployed,
+     * which is why step 3 says 'focus' and carries p:pending-layout instead.
+     *
+     * When kb:map-layout ships, add 'map' here in the same commit that changes the step.
+     */
+    const shipped = ['force', 'focus', 'source', 'type', 'hub', 'timeline', 'order', 'hierarchy'];
+    const used = [
+      ...new Set(
+        parse(TURTLES)
+          .filter((q) => q.predicate.value === 'urn:reckons:story/layout')
+          .map((q) => q.object.value),
+      ),
+    ];
+    const unshipped = used.filter((l) => !shipped.includes(l));
+    expect(unshipped, `story names unreleased layouts: ${unshipped.join(', ')}`).toEqual([]);
   });
 
   it('ends on an open question rather than a summary', () => {
