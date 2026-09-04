@@ -41,9 +41,24 @@
  * marketing instrument.
  */
 import type { ExtractedTriple } from './extractor';
+import { ethicsPreambleFor } from '../../safety/content-policy';
 
-/** The ethics preamble is carried by the caller's system prompt; this is the task framing only. */
-export const CRITIC_SYSTEM_PROMPT = `You are a fact-extraction CRITIC. You are given a source text and a list of triples already extracted from it. Your only job is to find claims the extraction MISSED.
+/*
+ * GATED THE SAME WAY THE EXTRACTOR IS, and the first version was not.
+ *
+ * `npm run offline:all -- --tier=script` flagged this prompt as UNGATED — no ETHICS_PREAMBLE on
+ * any path — because the original comment reasoned that "the caller's system prompt carries it".
+ * That was wrong: this prompt REPLACES the caller's system prompt for the second pass rather than
+ * appending to it, so the critic pass was the one extraction path with no policy on it at all.
+ *
+ * 'structured' is the right classification and matches extractor.ts: the critic emits JSON triples
+ * that go through the same filterBlockedStatements, which vets every written statement
+ * deterministically. Classifying it that way is a decision the policy makes, not a shortcut around
+ * it — and an unclassified prompt would default to the fuller remote preamble anyway.
+ */
+const CRITIC_ETHICS = ethicsPreambleFor('structured');
+
+export const CRITIC_SYSTEM_PROMPT = CRITIC_ETHICS + `You are a fact-extraction CRITIC. You are given a source text and a list of triples already extracted from it. Your only job is to find claims the extraction MISSED.
 
 Rules:
 1. Return ONLY triples that are stated in the text and are NOT already in the list.

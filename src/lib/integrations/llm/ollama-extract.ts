@@ -8,6 +8,7 @@ import {
   type ExtractedTriple
 } from './extractor';
 import { chatOllama, chatOllamaStructured, type ChatMessage } from './providers';
+import { CRITIC_SYSTEM_PROMPT, buildCriticUserPrompt, mergeCriticPass } from './extract-critic';
 
 export type OllamaExtractOptions = {
   model: string;
@@ -35,6 +36,21 @@ export type OllamaExtractOptions = {
   structured?: boolean;
   /** Existing graph vocabulary + structure appended to the extraction request (F136.3). */
   graphContext?: string;
+  /**
+   * Aborts the HTTP request when the user cancels an ingest. Without it a cancel could only stop
+   * the pipeline BETWEEN stages, leaving a 27B model generating for another minute against a
+   * result nobody will read.
+   */
+  signal?: AbortSignal;
+  /**
+   * THINKING MODE (F146 extract-then-critic). Runs a second pass that reads the source AGAINST the
+   * first pass's triples and returns only what was missed, unioned in. Roughly doubles the time,
+   * which is why it is opt-in and off by default — see extract-critic.ts for why a comparison beats
+   * a re-run, and why the critic can only ever add.
+   */
+  thinking?: boolean;
+  /** Reports what the critic contributed, so the UI can say whether the extra wait bought anything. */
+  onCritic?: (info: { added: number; duplicates: number }) => void;
 };
 
 /** Picks EXTRACTION_SYSTEM_PROMPT vs. the compact small-model variant. */
@@ -72,7 +88,7 @@ async function extractStructured(
   opts: OllamaExtractOptions
 ): Promise<ExtractedTriple[]> {
   const schema = buildExtractedTripleSchema();
-  const raw = await chatOllamaStructured(messages, system, schema, opts.model, opts.baseUrl, opts.maxTokens);
+  const raw = await chatOllamaStructured(messages, system, schema, opts.model, opts.baseUrl, opts.maxTokens, opts.signal);
   const first = tryParseTriples(raw);
   if (first.ok) return first.triples;
 
@@ -84,7 +100,7 @@ async function extractStructured(
       content: `That response was invalid: ${first.error}. Re-emit a corrected JSON array that matches the schema exactly. Respond with ONLY the JSON array.`
     }
   ];
-  const repaired = await chatOllamaStructured(repairMessages, system, schema, opts.model, opts.baseUrl, opts.maxTokens);
+  const repaired = await chatOllamaStructured(repairMessages, system, schema, opts.model, opts.baseUrl, opts.maxTokens, opts.signal);
   const second = tryParseTriples(repaired);
   if (second.ok) return second.triples;
 
@@ -112,18 +128,58 @@ export async function extractWithOllama(
   sourceTitle: string,
   opts: OllamaExtractOptions
 ): Promise<ExtractedTriple[]> {
-  const system = resolveOllamaSystemPrompt(opts);
-  const messages: ChatMessage[] = [{ role: 'user', content: buildExtractionUserPrompt(text, sourceTitle, opts.graphContext) }];
+  const first = await runOnePass(
+    buildExtractionUserPrompt(text, sourceTitle, opts.graphContext),
+    resolveOllamaSystemPrompt(opts),
+    opts,
+  );
+  if (!opts.thinking) return first;
+
+  /*
+   * THE SECOND PASS IS BEST-EFFORT AND MUST NEVER COST THE FIRST. If the critic times out, returns
+   * unparseable output, or the model simply refuses, thinking mode degrades to exactly the
+   * single-pass result rather than failing the whole ingest — the user asked for a better answer,
+   * not a more fragile one. A cancel is the one exception: it is an instruction, so it propagates.
+   */
+  let critic: ExtractedTriple[] = [];
+  try {
+    critic = await runOnePass(
+      buildCriticUserPrompt(text, sourceTitle, first, opts.graphContext),
+      CRITIC_SYSTEM_PROMPT,
+      opts,
+    );
+  } catch (e) {
+    if (e instanceof Error && e.name === 'AbortError') throw e;
+    console.warn('[ollama] critic pass failed; keeping the single-pass result:', e);
+    opts.onCritic?.({ added: 0, duplicates: 0 });
+    return first;
+  }
+
+  const { merged, added, duplicates } = mergeCriticPass(first, critic);
+  opts.onCritic?.({ added: added.length, duplicates });
+  return merged;
+}
+
+/** One extraction request: schema-constrained where possible, plain chat as the fallback. */
+async function runOnePass(
+  userPrompt: string,
+  system: string,
+  opts: OllamaExtractOptions
+): Promise<ExtractedTriple[]> {
+  const messages: ChatMessage[] = [{ role: 'user', content: userPrompt }];
   const useStructured = opts.structured ?? true;
 
   if (useStructured) {
     try {
       return await extractStructured(messages, system, opts);
     } catch (e) {
+      // A cancel must not be "handled" by silently retrying on the unstructured path — that would
+      // start a second generation the user already asked to stop.
+      if (e instanceof Error && e.name === 'AbortError') throw e;
       console.warn('[ollama] structured extraction failed, falling back to plain chat:', e);
     }
   }
 
-  const raw = await chatOllama(messages, system, opts.model, opts.baseUrl, opts.maxTokens);
+  const raw = await chatOllama(messages, system, opts.model, opts.baseUrl, opts.maxTokens, opts.signal);
   return parseTriplesJSON(raw);
 }
