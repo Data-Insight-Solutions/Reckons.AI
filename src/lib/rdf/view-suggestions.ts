@@ -37,7 +37,8 @@ export type GraphLayout =
   | 'hub'
   | 'timeline'
   | 'order'
-  | 'hierarchy';
+  | 'hierarchy'
+  | 'map';
 
 export interface ViewContext {
   /** Statements currently drawn (post-filter). */

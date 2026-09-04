@@ -71,7 +71,7 @@
     targetKey?: string | null;
     historyTimestamp?: number | null;
     sources?: any[];
-    layout?: 'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy';
+    layout?: 'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy' | 'map';
     /** Camera angle. Null keeps the historical straight-on view, so existing baselines are
      *  unaffected; a spec aims the camera so a visual test can actually SEE the z axis. */
     cameraSpec?: CameraSpec | null;

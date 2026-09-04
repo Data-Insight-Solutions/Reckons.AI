@@ -215,3 +215,49 @@ describe('mapCoverageSummary — say it before the map looks broken', () => {
     expect(mapCoverageSummary(buildMapLayout([]))).toBe('nothing to place');
   });
 });
+
+describe('the antimeridian — found by the trans-Pacific turtle migrations', () => {
+  const pacific = [
+    st('japan', 'coordinates', '30.33, 130.50'),
+    st('kuroshio', 'coordinates', '35.00, 160.00'),
+    st('baja', 'coordinates', '26.00, -113.50'),
+  ];
+
+  it('takes the short way round instead of drawing back across Africa', () => {
+    // Japan 130 to Baja -113 is 254 degrees the naive way and 106 across the Pacific. Without the
+    // unwrap the loggerhead's route renders backwards through the wrong ocean.
+    const extent = mapExtent(placeNodes(pacific))!;
+    expect(extent.wrapped).toBe(true);
+    expect(extent.maxLon - extent.minLon).toBeLessThan(180);
+  });
+
+  it('keeps the crossing in the right ORDER — Japan east, Baja west of it going forward', () => {
+    const l = buildMapLayout(pacific);
+    const at = (s: string) => l.anchors.get(`${C}${s}`)!.x;
+    // Travelling east from Japan: Japan -> Kuroshio -> (dateline) -> Baja, monotonically.
+    expect(at('japan')).toBeLessThan(at('kuroshio'));
+    expect(at('kuroshio')).toBeLessThan(at('baja'));
+  });
+
+  it('leaves a normal extent alone', () => {
+    // Two Costa Rican beaches must not be unwrapped — the naive span is already the short one.
+    const extent = mapExtent(
+      placeNodes([st('tortuguero', 'coordinates', '10.54, -83.50'), st('ostional', 'coordinates', '9.99, -85.70')]),
+    )!;
+    expect(extent.wrapped).toBeFalsy();
+    expect(extent.minLon).toBeLessThan(0);
+  });
+
+  it('does not unwrap when the graph genuinely spans the globe', () => {
+    // Points evenly spread give >180 either way; the wrap is not tighter, so it is not taken.
+    const extent = mapExtent(
+      placeNodes([
+        st('a', 'coordinates', '0, -170'),
+        st('b', 'coordinates', '0, -60'),
+        st('c', 'coordinates', '0, 60'),
+        st('d', 'coordinates', '0, 170'),
+      ]),
+    )!;
+    expect(extent.wrapped).toBeFalsy();
+  });
+});

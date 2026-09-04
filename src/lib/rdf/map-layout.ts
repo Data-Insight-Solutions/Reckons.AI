@@ -182,9 +182,26 @@ export interface MapExtent {
   maxLat: number;
   minLon: number;
   maxLon: number;
+  /** True when longitudes were unwrapped across the antimeridian to keep the extent contiguous. */
+  wrapped?: boolean;
 }
 
-/** Bounding box of what was placed. Null when nothing was — there is no map to draw. */
+/**
+ * Bounding box of what was placed. Null when nothing was — there is no map to draw.
+ *
+ * THE ANTIMERIDIAN, and it is not a theoretical concern here. The turtle graph's trans-Pacific
+ * loggerhead loop runs Japan (lon 130) to Baja California (lon -113). Taken literally that is a
+ * 254-degree span and the route draws right across Africa — backwards, and across the wrong ocean.
+ * Going the other way, over the Pacific, the same points are only 106 degrees apart.
+ *
+ * So when the naive span exceeds 180 degrees, the shorter arc is the one that crosses the
+ * antimeridian, and longitudes west of centre are unwrapped by +360 to make the extent contiguous.
+ * `lonOffset` records that the unwrapping happened, because the projection has to apply the same
+ * shift to each point or the nodes and the extent disagree.
+ *
+ * The rule is data-driven rather than a Pacific special case: a graph spanning most of the globe
+ * genuinely has a >180 span either way, and for it the wrap changes nothing meaningful.
+ */
 export function mapExtent(placed: ReadonlyMap<string, PlacedNode>): MapExtent | null {
   if (placed.size === 0) return null;
   let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
@@ -194,7 +211,34 @@ export function mapExtent(placed: ReadonlyMap<string, PlacedNode>): MapExtent | 
     if (n.lon < minLon) minLon = n.lon;
     if (n.lon > maxLon) maxLon = n.lon;
   }
+
+  if (maxLon - minLon > 180) {
+    // Unwrap: treat everything west of 0 as +360 and re-measure. Keep it only if it is tighter.
+    let wMin = Infinity, wMax = -Infinity;
+    for (const n of placed.values()) {
+      const lon = n.lon < 0 ? n.lon + 360 : n.lon;
+      if (lon < wMin) wMin = lon;
+      if (lon > wMax) wMax = lon;
+    }
+    /*
+     * MERELY TIGHTER IS NOT ENOUGH — it must be genuinely COMPACT, and the first version got this
+     * wrong twice in one test run. Tortuguero/Ras Al Jinz/Mon Repos unwrap from a 235-degree span
+     * to 218, so "tighter" fired and made Costa Rica the easternmost point on the map. A globally
+     * spread graph is not helped by re-centring; it is only scrambled, and readers expect the
+     * conventional orientation. So the unwrap is taken only when the data really does cluster on
+     * one side of the planet — which is exactly the trans-Pacific migration case (117 degrees) and
+     * not the spread-across-the-world case (218 and 240).
+     */
+    if (wMax - wMin < 180) {
+      return { minLat, maxLat, minLon: wMin, maxLon: wMax, wrapped: true };
+    }
+  }
   return { minLat, maxLat, minLon, maxLon };
+}
+
+/** Longitude in the extent's frame — shifted when the extent crosses the antimeridian. */
+export function lonIn(extent: MapExtent, lon: number): number {
+  return extent.wrapped && lon < 0 ? lon + 360 : lon;
 }
 
 /** Web Mercator y, normalized to the same units as longitude so aspect ratio is preserved. */
@@ -256,7 +300,7 @@ export function buildMapLayout(
 
     for (const n of placed.values()) {
       anchors.set(n.iri, {
-        x: (n.lon - lonMid) * scale,
+        x: (lonIn(extent, n.lon) - lonMid) * scale,
         y: (mercatorY(n.lat) - yMid) * scale,
         origin: n.origin,
       });
