@@ -258,4 +258,17 @@ async function main() {
   console.log(`${D}\nA working chain turns many facts into few decisions. A flat list with a summary on top is the failure.${X}\n`);
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+/*
+ * GUARDED, because this module is IMPORTED by a test.
+ *
+ * src/lib/rdf/__tests__/extraction-chain.test.ts imports runChain from here, and an unguarded
+ * main() runs the whole CLI on import: it read the DEFAULT graph, which is a gitignored workspace
+ * file. That file exists on the machine this was written on and does not exist in CI, so the run
+ * threw and called process.exit(1) — vitest reported "2777 passed, 1 error" and the job failed
+ * with every assertion green. Caught by CI on PR #222, invisible locally by construction.
+ *
+ * Same guard as scripts/offline/extraction-score.ts, for the same reason.
+ */
+if (process.argv[1]?.includes('extraction-chain')) {
+  main().catch((e) => { console.error(e); process.exit(1); });
+}
