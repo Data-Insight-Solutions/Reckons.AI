@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toTurtle, toNQuads, parseNQuads, DEFAULT_PREFIXES } from '../serialize';
+import { toTurtle, toTurtleFull, toNQuads, parseNQuads, DEFAULT_PREFIXES } from '../serialize';
 import type { Statement } from '../types';
 import { iri, lit } from '../types';
 
@@ -151,5 +151,26 @@ describe('toNQuads + parseNQuads round-trip', () => {
   it('returns empty array for empty input', () => {
     expect(parseNQuads('')).toEqual([]);
     expect(parseNQuads('# only comments\n')).toEqual([]);
+  });
+});
+
+describe('multi-line headers stay comments (2026-09-04)', () => {
+  const header = 'GENERATED FIXTURE\nnpx tsx scripts/offline/build-review-corpus.ts\n\nDo not hand-edit.';
+
+  it('comments EVERY line of a multi-line header in toTurtleFull', () => {
+    // Prefixing only the first line pushed line 2 as raw Turtle, and the file failed to parse at
+    // "Unexpected npx on line 2". Hit for real by build-review-corpus.ts.
+    const ttl = toTurtleFull([], [], { header });
+    for (const line of ttl.split('\n').slice(0, 4)) {
+      expect(line === '' || line.startsWith('#') || line.startsWith('@prefix')).toBe(true);
+    }
+    expect(ttl).toContain('# GENERATED FIXTURE');
+    expect(ttl).toContain('# npx tsx scripts/offline/build-review-corpus.ts');
+  });
+
+  it('comments every line in toTurtle too', () => {
+    const ttl = toTurtle([], { header });
+    expect(ttl).toContain('# Do not hand-edit.');
+    expect(ttl.split('\n').find((l) => l.includes('npx'))).toMatch(/^#/);
   });
 });

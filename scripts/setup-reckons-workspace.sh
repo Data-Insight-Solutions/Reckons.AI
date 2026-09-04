@@ -78,6 +78,17 @@ ln -sf ../../../static/docs-features.ttl      "$MCP_KBS/features/features.ttl"
 ln -sf ../../../static/docs-architecture.ttl  "$MCP_KBS/architecture/architecture.ttl"
 ln -sf ../../../static/docs-testing.ttl       "$MCP_KBS/testing/testing.ttl"
 ln -sf ../../../static/reckons-codebase.ttl   "$MCP_KBS/codebase/codebase.ttl"
+mkdir -p "$MCP_KBS/user-paths"
+ln -sf ../../../static/docs-user-paths.ttl   "$MCP_KBS/user-paths/user-paths.ttl"
+
+# ── Starter graphs ────────────────────────────────────────────────────────────
+# These were linked by hand once and never added here, so a FRESH CLONE got a
+# different graph-lint result from this machine — the same silent-drift class the
+# dangling-link check below exists to catch. Listed explicitly now.
+for starter in guide everyday turtles; do
+  mkdir -p "$MCP_KBS/starter-$starter"
+  ln -sf "../../../static/starter-$starter.ttl" "$MCP_KBS/starter-$starter/starter-$starter.ttl"
+done
 
 # Fail loudly if a link is dangling — a silently-empty graph is how the drift above
 # went unnoticed for weeks.
@@ -87,4 +98,4 @@ for f in "$MCP_KBS"/*/*.ttl; do
 done
 [ "$missing" -eq 0 ] || { echo "MCP workspace has dangling symlinks — fix static/*.ttl paths above."; exit 1; }
 
-echo "MCP workspace ready: $MCP_WS/ (6 graphs) — restart Claude Code to pick up .mcp.json"
+echo "MCP workspace ready: $MCP_WS/ (6 doc graphs + 3 starters) — restart Claude Code to pick up .mcp.json"

@@ -42,6 +42,50 @@
 
   let busy = $state(false);
   let phase = $state<string>('');
+
+  /*
+   * EXTRACTION PROGRESS AND CANCEL (Matt, 2026-09-04: "the button on the add screen change to
+   * different steps, it was still clickable which is confusing... show a progress bar... and have a
+   * cancel button").
+   *
+   * The button WAS already inert while busy — canSubmit returns false — but nothing looked disabled,
+   * so the only feedback was its label mutating through stage names. A label is not a progress
+   * indicator: it says what is happening now and nothing about how much is left.
+   */
+  const INGEST_STEPS = [
+    { phase: 'fetching', label: 'fetching source' },
+    { phase: 'extracting', label: 'extracting facts' },
+    { phase: 'normalizing', label: 'normalising entities' },
+    { phase: 'archive-check', label: 'checking archived identities' },
+    { phase: 'diffing', label: 'computing diff' },
+    { phase: 'semantic', label: 'semantic enrichment' },
+  ] as const;
+
+  /*
+   * Progress is STEP-BASED, not time-based, and it does not animate towards 100%. A fake timer that
+   * creeps forward while a local model is thinking is a lie the user can catch — and extraction
+   * time varies by two orders of magnitude between a one-line note and an 8k-word article, so there
+   * is no honest duration to interpolate against.
+   */
+  const stepIndex = $derived(INGEST_STEPS.findIndex((s) => s.phase === phase));
+  const progressPct = $derived(
+    stepIndex < 0 ? (busy ? 4 : 0) : Math.round(((stepIndex + 1) / INGEST_STEPS.length) * 100),
+  );
+  const phaseLabel = $derived(
+    // Two phases are deliberately absent from the step list because they are BRANCHES, not
+    // progress: both wait on the archive dialog and neither advances the bar.
+    phase === 'awaiting-archive-decision' ? 'waiting for your archive decision'
+      : phase === 'restoring-archive' ? 'restoring archived identities'
+      : (INGEST_STEPS.find((s) => s.phase === phase)?.label ?? (busy ? 'working' : '')),
+  );
+
+  let ingestAbort = $state<AbortController | null>(null);
+  let cancelling = $state(false);
+
+  function cancelIngest() {
+    cancelling = true;
+    ingestAbort?.abort();
+  }
   let wasmStatus = $state('');
   let wasmPct = $state<number | null>(null);
   let error = $state<string | null>(null);
@@ -254,6 +298,9 @@
   async function submit() {
     error = null;
     busy = true;
+    cancelling = false;
+    const controller = new AbortController();
+    ingestAbort = controller;
     try {
       let input: IngestInput;
       if (mode === 'url') input = { kind: 'url', url };
@@ -267,16 +314,28 @@
           body,
           dueAt: dueAt ? new Date(dueAt).getTime() : undefined
         };
-      const result = await ingest(input, (p: IngestProgress) => {
-        phase = p.phase;
-      });
+      const result = await ingest(
+        input,
+        (p: IngestProgress) => {
+          phase = p.phase;
+        },
+        { signal: controller.signal },
+      );
+      // A cancelled run keeps the draft: the whole point of cancelling is to change something and
+      // try again, and clearing the form would throw away the text the user was about to edit.
       if (result.phase === 'cancelled') return;
       clearDraft(); // extraction succeeded — the note is safely in the graph now
       goto(`/compare?source=${result.source.id}`);
     } catch (e) {
+      // An aborted fetch surfaces as AbortError. That is the user's own instruction carried out,
+      // not a fault, so it must never be shown in the error banner.
+      if (e instanceof Error && e.name === 'AbortError') return;
       error = e instanceof Error ? e.message : String(e);
     } finally {
       busy = false;
+      cancelling = false;
+      ingestAbort = null;
+      phase = '';
     }
   }
 
@@ -1290,10 +1349,36 @@
           title="Build the prompt and paste the response from any LLM — no API key needed"
         >use any LLM</button>
         <button class="primary" onclick={submit} disabled={!canSubmit}>
-          {busy ? phase || 'working…' : 'extract facts →'}
+          {busy ? 'extracting…' : 'extract facts →'}
         </button>
+        {#if busy}
+          <button class="btn-cancel mono" onclick={cancelIngest} disabled={cancelling}>
+            {cancelling ? 'cancelling…' : 'cancel'}
+          </button>
+        {/if}
       </div>
     </div>
+
+    {#if busy}
+      <div class="ingest-progress" role="status" aria-live="polite">
+        <div
+          class="ingest-progress-bar"
+          role="progressbar"
+          aria-valuenow={progressPct}
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-label="extraction progress"
+        >
+          <div class="ingest-progress-fill" style="width: {progressPct}%"></div>
+        </div>
+        <div class="ingest-progress-meta mono">
+          <span>{phaseLabel}{cancelling ? ' — stopping' : ''}</span>
+          <span class="ingest-progress-step">
+            {stepIndex < 0 ? '' : `step ${stepIndex + 1} of ${INGEST_STEPS.length}`}
+          </span>
+        </div>
+      </div>
+    {/if}
   {/if}
 
   {#if busy && wasmStatus && (settings().ingestBackend ?? settings().preferredBackend) === 'wasm'}
@@ -1738,6 +1823,46 @@
   }
 
   /* ── Vault batch mode ───────────────────────────────────────────────────── */
+  /* Extraction progress on the main add flow. Mirrors .vault-progress-* so the two read as one
+     control rather than two designs for the same idea. */
+  .ingest-progress {
+    margin-top: 0.75rem;
+  }
+  .ingest-progress-bar {
+    height: 4px;
+    background: var(--line);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .ingest-progress-fill {
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.4s ease;
+    border-radius: 2px;
+  }
+  .ingest-progress-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 0.4rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+  .ingest-progress-step {
+    white-space: nowrap;
+  }
+  /* Cancel is deliberately quiet — it sits beside a primary action and must not compete with it,
+     but it turns red on hover so the destructive reading is unambiguous once reached for. */
+  .btn-cancel {
+    font-size: 0.8rem;
+    padding: 0.6rem 0.9rem;
+    color: var(--muted);
+  }
+  .btn-cancel:hover:not(:disabled) {
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+
   .vault-progress-bar {
     height: 4px;
     background: var(--line);

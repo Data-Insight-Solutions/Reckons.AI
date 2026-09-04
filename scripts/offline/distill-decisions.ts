@@ -113,7 +113,7 @@ function buildPrompt(req: DistillationRequest): string {
 }
 
 // ── GROUND ──────────────────────────────────────────────────────────────────
-const { statements, typeOf } = readGraph(GRAPH, { asReviewSet: true });
+const { statements, typeOf } = await readGraph(GRAPH, { asReviewSet: true });
 const tree = buildReviewTree(statements, statements, { typeOf, maxDecisions: 500 });
 const proseOnly = tree.decisions.filter((d) => d.proseOnly);
 

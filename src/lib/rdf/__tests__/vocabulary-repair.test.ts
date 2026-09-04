@@ -155,3 +155,42 @@ describe('repairCandidates', () => {
     for (const c of out) expect(c.confidence).toBeGreaterThanOrEqual(SUGGEST_FLOOR);
   });
 });
+
+/**
+ * MEASURED 2026-09-02 on the dictated Pebble Index 01 notes. `phoneticKey` strips digits — right,
+ * since a digit has no sound to key on — but that collapsed every timestamped note id to the same
+ * key. 14 note ids produced 12 confident "repairs", all false, and a repair merges entities, so
+ * accepting one would have destroyed the provenance linking a fact to the note it came from.
+ */
+describe('identifiers that differ only in their numbers are not mis-hearings', () => {
+  const vocab = (names: string[]) =>
+    names.map((name, i) => ({ name, iri: `urn:kbase:concept/e${i}`, viaAlias: false }));
+
+  it('does not propose merging two timestamped note ids', () => {
+    const others = vocab(['note-2026-08-27T18-47-56-720Z']);
+    const out = repairCandidates('note-2026-08-27T18-31-51-202Z', others);
+    expect(out).toEqual([]);
+  });
+
+  it('does not propose merging note-1 with note-2', () => {
+    expect(repairCandidates('note-1', vocab(['note-2']))).toEqual([]);
+  });
+
+  it('still repairs a real mis-hearing that carries no digits', () => {
+    const out = repairCandidates("Recon's AI", vocab(['Reckons.AI']));
+    expect(out.length).toBeGreaterThan(0);
+    expect(out[0].match).toBe('Reckons.AI');
+  });
+
+  it('still matches an identifier against itself when the digits agree', () => {
+    const out = repairCandidates('note-2026-08-27T18-47-56-720Z', vocab(['note-2026-08-27T18-47-56-720Z']));
+    expect(out[0]?.reason).toBe('exact');
+  });
+
+  it('still repairs when letters differ AND digits differ — a real slip can do both', () => {
+    const out = repairCandidates('verison 2', vocab(['version 3']));
+    // Not suppressed by the digit guard: the letters are not identical, so this is a genuine
+    // candidate and the normal confidence floor decides it.
+    expect(out.every((c) => c.match === 'version 3')).toBe(true);
+  });
+});

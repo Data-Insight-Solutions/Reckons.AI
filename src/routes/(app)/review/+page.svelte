@@ -31,6 +31,7 @@
   import { getRegistry, getCurrentKbId } from '$lib/storage/kb-registry';
   import { drainAndImportPending, workspaceState, supportsWorkspace } from '$lib/stores/workspace.svelte';
   import { runPartition } from '$lib/rdf/partition-run';
+  import { planOptionCascade, cascadeWrites } from '$lib/rdf/option-cascade';
   import {
     computeAlignment, loadKbStatements, applyAlignmentToActiveKb,
     type AlignmentResult, type AlignmentSuggestion,
@@ -1199,13 +1200,36 @@
     if (settlingDecision) return;
     settlingDecision = decisionId;
     try {
-      await setStatuses(sides.map((st) => ({
-        id: st.id,
-        status: st.id === keepId ? 'confirmed' : 'rejected',
-      })));
+      /*
+       * THE PICK PAYS ITS OWN PRICE (Matt, 2026-09-02: "the single choice to approve one of those
+       * facts should cascade down to other facts"). planOptionCascade adds the facts the winning
+       * option was PRICED BY — the ones the UI has already shown as the cost of choosing it — so a
+       * person is not shown a price, charged it, and then asked to pay it again fact by fact. It
+       * deliberately does NOT settle a downstream decision: those are surfaced, never decided.
+       */
+      const plan = planOptionCascade(sides, keepId, statements());
+      await setStatuses(plan
+        ? cascadeWrites(plan)
+        : sides.map((st) => ({ id: st.id, status: st.id === keepId ? 'confirmed' : 'rejected' })));
     } finally {
       settlingDecision = null;
     }
+  }
+
+  /**
+   * An option's own words. A conflict side whose object is a LINK renders as a raw IRI otherwise —
+   * "urn:kbase:concept/opt-lumenpath" is not a choice anybody can make.
+   */
+  function labelForTerm(o: Statement['o']): string {
+    if (o.kind !== 'iri') return o.value.slice(0, 60);
+    const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
+    const lbl = statements().find((st) => st.s.value === o.value && st.p.value === RDFS_LABEL);
+    return (lbl && lbl.o.kind === 'literal' ? lbl.o.value : o.value.split('/').pop() ?? o.value).slice(0, 60);
+  }
+
+  /** The plan for one option, computed for the PREVIEW so nothing is settled unseen. */
+  function cascadeFor(sides: Statement[], keepId: string) {
+    return planOptionCascade(sides, keepId, statements());
   }
 
   async function confirmDeletion(id: string) { await setStatus(id, 'rejected'); }
@@ -2005,19 +2029,35 @@
                     <div class="dpick" data-testid="decision-pick">
                       <span class="dpick-h mono">which holds?</span>
                       {#each d.conflictSides as side (side.id)}
+                        {@const plan = cascadeFor(d.conflictSides!, side.id)}
                         <button
                           class="dpick-btn"
                           disabled={settlingDecision !== null}
                           onclick={() => settleConflict(d.conflictSides!, side.id, d.question.id)}
-                          title="Confirm this one and reject the other{d.conflictSides!.length > 2 ? 's' : ''}"
+                          title={plan?.summary ?? 'Confirm this one and reject the others'}
                         >
-                          <span class="dpick-val">{side.o.value.slice(0, 60)}</span>
+                          <span class="dpick-val">{labelForTerm(side.o)}</span>
                           <span class="dpick-src mono">{sourceLabel(side.sourceId)}</span>
+                          <!-- WHAT THIS PICK COSTS, ON THE CONTROL THAT SPENDS IT. A cascade that
+                               settles facts the person never saw named is the laundering the
+                               validator elsewhere in this codebase exists to prevent. -->
+                          {#if plan}
+                            <span class="dpick-cascade mono">
+                              {#if plan.effects.length}
+                                also rejects {plan.effects.length}
+                              {:else}
+                                nothing else
+                              {/if}
+                              {#each plan.downstream as ds}
+                                · {ds.effect === 'mooted' ? 'retires' : 'opens'} “{ds.label}”
+                              {/each}
+                            </span>
+                          {/if}
                         </button>
                       {/each}
                     </div>
                     <p class="dnote mono">
-                      Picking one confirms it and rejects the other{d.conflictSides.length > 2 ? 's' : ''} — one action, not two.
+                      Picking one confirms it, rejects the other{d.conflictSides.length > 2 ? 's' : ''}, and rejects the facts that option was priced by — one action, not several. A decision beneath it is surfaced, never settled for you.
                       {#if d.escalate === 'stp'}
                         Both sides are human-attested, so a pick DISCARDS the losing side's reasoning; a reckoning keeps both and supersedes them.
                       {/if}
@@ -3058,6 +3098,15 @@
   .dpick-btn:disabled { opacity: 0.5; cursor: default; }
   .dpick-val { font-size: 0.82rem; }
   .dpick-src { font-size: 0.66rem; color: var(--text-dim); }
+  /* The cost of the pick, on the control that spends it. Dim rather than loud: it must be
+     readable before committing without competing with the option's own name. */
+  .dpick-cascade {
+    font-size: 0.62rem;
+    color: var(--text-dim);
+    display: block;
+    margin-top: 0.15rem;
+    line-height: 1.35;
+  }
 
   .dnode.contested { border-left-color: var(--danger); }
 

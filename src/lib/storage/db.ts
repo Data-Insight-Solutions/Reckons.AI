@@ -71,6 +71,28 @@ export type SettingsRecord = {
    */
   ollamaStructuredExtraction?: boolean;
   /**
+   * THINKING MODE — a second extract-then-critic pass over the same source (F146). Slower (roughly
+   * two generations instead of one) and OFF by default.
+   *
+   * Default is false because the first measurement did not support turning it on: qwen3:32b scored
+   * 74% strict single-pass and 63% with thinking on (2026-09-04, one run each). The critic did add
+   * 11 triples, so it is finding things — it just has not been shown to find the RIGHT things yet.
+   * Shipping it on by default would double every local extraction's cost on an unproven benefit.
+   * See src/lib/integrations/llm/extract-critic.ts and scripts/offline/extraction-score.ts --thinking.
+   */
+  ollamaThinkingMode?: boolean;
+  /**
+   * Inject the existing graph's vocabulary and structure into the EXTRACTION PROMPT (F136/F136.3).
+   *
+   * OFF by default since 2026-09-04, because it was measured: on the notes corpus it took qwen3:32b
+   * from 53% recall to 26-32% while raising predicate reuse from 0% to 75-89%. It buys vocabulary
+   * agreement and pays for it in facts found — and that agreement is now recovered after the fact
+   * by rdf/vocabulary-reconcile.ts, where each connection is reviewable instead of an ungated nudge.
+   * Kept as a switch rather than deleted: no experiment has yet tested whether prompt grounding
+   * helps the model SEGMENT text, which no later stage could recover.
+   */
+  groundExtractionPrompt?: boolean;
+  /**
    * Prefer-local routing: when true and Ollama is reachable, chat, diff
    * summary, and merge analysis default to the ollama backend unless a
    * per-task override says otherwise. See src/lib/integrations/llm/prefer-local.ts.
@@ -270,6 +292,8 @@ export const DEFAULT_SETTINGS: SettingsRecord = {
   ollamaDiffSummaryModel: import.meta.env.VITE_OLLAMA_DIFF_SUMMARY_MODEL || undefined,
   ollamaMergeAnalysisModel: import.meta.env.VITE_OLLAMA_MERGE_ANALYSIS_MODEL || undefined,
   ollamaBaseUrl: import.meta.env.VITE_OLLAMA_BASE_URL ?? 'http://localhost:11434',
+  ollamaThinkingMode: import.meta.env.VITE_OLLAMA_THINKING_MODE === 'true' || undefined,
+  groundExtractionPrompt: import.meta.env.VITE_GROUND_EXTRACTION_PROMPT === 'true' || undefined,
   preferLocal: import.meta.env.VITE_PREFER_LOCAL === 'true' || undefined,
   openrouterApiKey: import.meta.env.VITE_OPENROUTER_API_KEY || undefined,
   openrouterModel: import.meta.env.VITE_OPENROUTER_MODEL ?? 'meta-llama/llama-3.2-3b-instruct:free',
@@ -554,6 +578,8 @@ export async function saveSettings(patch: Partial<SettingsRecord>): Promise<void
       preferLocal: m.preferLocal,
       ollamaPromptMode: m.ollamaPromptMode,
       ollamaStructuredExtraction: m.ollamaStructuredExtraction,
+      ollamaThinkingMode: m.ollamaThinkingMode,
+      groundExtractionPrompt: m.groundExtractionPrompt,
       embeddingThreshold: m.embeddingThreshold,
       autoConfirmHighConfidence: m.autoConfirmHighConfidence,
       archiveOlderThanDays: m.archiveOlderThanDays,

@@ -20,6 +20,11 @@
   import { v4 as uuid } from 'uuid';
   import { applyShellyViewAdjust, activeStoryId, stopStory, storyAutoPlayRequested, clearStoryAutoPlay } from '$lib/stores/shelly-bridge.svelte';
   import { extractStories, type Story, type StoryStep } from '$lib/rdf/story';
+  import type { GraphLayout } from '$lib/rdf/view-suggestions';
+
+  /** Layouts the renderer accepts — the guard for an authored story:layout. */
+  const KNOWN_LAYOUTS: GraphLayout[] = ['force', 'focus', 'source', 'type', 'hub', 'timeline', 'order', 'hierarchy', 'map'];
+
   import { wasmStatus, wasmPct, wasmStatusText } from '$lib/stores/wasm-status.svelte';
   import { turtleSettings, updateTurtleSettings } from '$lib/stores/turtle-settings.svelte';
   import AdaptivePanel from './AdaptivePanel.svelte';
@@ -558,13 +563,30 @@
 
     storyMessages = [...storyMessages, { role: 'shelly', content: msg, isStep: true, stepIdx: idx }];
 
-    // Highlight entities — use focus layout when spotlighting a specific node
+    /*
+     * A STEP'S OWN LAYOUT WINS. story:layout is what the author chose to answer THIS step's
+     * question — a taxonomy step wants the tree, a life-cycle step wants the timeline — and until
+     * 2026-09-04 it was parsed by nobody: every step fell back to 'focus' or to whatever view the
+     * previous step happened to leave behind. The highlight-count heuristic stays as the fallback
+     * for stories that state no layout, which is most of the older ones.
+     *
+     * A step may also change layout WITHOUT highlighting anything (an overview step), so this no
+     * longer sits inside the highlights branch.
+     */
+    // PARSE PERMISSIVELY, VALIDATE AT USE. story.ts passes story:layout through as a plain string
+    // so a graph authored for a different build still loads; the check belongs here, where an
+    // unknown name would otherwise reach the renderer. An unrecognised layout falls back rather
+    // than throwing, so a story from a newer build degrades instead of breaking.
+    const authored = KNOWN_LAYOUTS.includes(step.layout as GraphLayout) ? (step.layout as GraphLayout) : undefined;
+    const stepLayout = authored ?? (step.highlights.length <= 2 ? 'focus' : undefined);
     if (step.highlights.length > 0) {
       applyShellyViewAdjust({
         selectEntity: step.highlights[0],
         spotlight: step.highlights,
-        layout: step.highlights.length <= 2 ? 'focus' : undefined
+        layout: stepLayout
       });
+    } else if (authored) {
+      applyShellyViewAdjust({ layout: authored });
     }
 
     // Speak step via browser TTS when voice is enabled

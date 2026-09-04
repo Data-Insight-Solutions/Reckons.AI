@@ -57,6 +57,20 @@ export function pushNotification(n: Omit<AppNotification, 'id'> & { id?: string 
   _notifications = [..._notifications, { ...n, id }];
 }
 
+/**
+ * Forget a one-time dismissal, so the notification can fire again.
+ *
+ * For the case where a user DELIBERATELY re-does the thing the notification is about. A story
+ * prompt dismissed months ago would otherwise stay silent when the same graph is re-opened on
+ * purpose to read it — the dismissal recorded "not now", not "never tell me about this again
+ * under any circumstances". Call it only on an explicit user action, never on a timer.
+ */
+export function undismissNotification(id: string): void {
+  const d = getDismissed();
+  if (!d.delete(id)) return;
+  saveDismissed(d);
+}
+
 export function dismissNotification(id: string): void {
   const idx = _notifications.findIndex(x => x.id === id);
   if (idx === -1) return; // nothing to do — avoids triggering reactive cycle

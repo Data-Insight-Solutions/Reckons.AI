@@ -44,7 +44,7 @@ Action guide (add_triple, remove_triple, set_type take effect immediately on use
 - confirm_source: approve a pending source
 - adjust_view: navigate or adjust the graph view. Use when the user is searching or asking "show me X". Fields are all optional:
   - selectEntity: IRI of the entity to select/focus in the graph (use exact IRI from graph snapshot)
-  - layout: one of "force" (default physics), "focus" (selected-node-centric), "source" (grouped by source), "type" (grouped by entity type), "hub" (hub-first)
+  - layout: one of "force" (default physics), "focus" (selected-node-centric), "source" (grouped by source), "type" (grouped by entity type), "hub" (hub-first), "timeline" (left-to-right by date), "hierarchy" (tree, from skos:broader), "map" (placed by GPS coordinates), "order" (hand-arranged grid)
   - filters: array of filter chips to activate, any of "hubs", "islands", "confirmed", "pending", "no-type", "no-source"
     - "no-type": highlights all entities that have no rdf:type assigned
     - "no-source": shows only manually added statements (no ingested source)

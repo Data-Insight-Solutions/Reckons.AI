@@ -8,7 +8,7 @@
 
   import NavBar from '$lib/components/NavBar.svelte';
   import ManualLLMModal from '$lib/components/ManualLLMModal.svelte';
-  import { loadAll, loaded, startKbLiveSync } from '$lib/stores/kb.svelte';
+  import { loadAll, loaded, startKbLiveSync, statements } from '$lib/stores/kb.svelte';
   import { loadSettings, settingsLoaded } from '$lib/stores/settings.svelte';
   import { loadTurtleSettings } from '$lib/stores/turtle-settings.svelte';
   import { startScheduler } from '$lib/stores/auto-analyze.svelte';
@@ -73,6 +73,19 @@
       clientReady = true;
       startScheduler();
       initExtensionBridge();
+
+      /*
+       * A GRAPH SOMEONE HANDED YOU MAY CONTAIN A GUIDED WALK, and nothing said so. Story steps live
+       * in the graph as story:Step triples and surface only inside one tab of the Shelly panel, so
+       * a reader with no reason to open that panel gets a node cloud and their own guesswork
+       * instead of the author's ordered route through their own subject.
+       *
+       * Fires at most once per graph (the id carries the KB id, oneTime persists the dismissal),
+       * and stays silent for a graph with fewer than two steps.
+       */
+      const { promptStoryIfPresent } = await import('$lib/stores/story-prompt.svelte');
+      const { getCurrentKbId } = await import('$lib/storage/kb-registry');
+      promptStoryIfPresent(statements(), getCurrentKbId());
       // Apply embedding model from settings
       const { setEmbeddingModel } = await import('$lib/embed');
       const s = settings();

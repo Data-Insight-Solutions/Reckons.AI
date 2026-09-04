@@ -176,12 +176,25 @@ button {
   letter-spacing: 0.02em;
   transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s;
 }
-button:hover {
+button:hover:not(:disabled) {
   background: var(--surface-2);
   border-color: var(--muted-2);
 }
-button:active {
+button:active:not(:disabled) {
   transform: translateY(1px);
+}
+/*
+ * A DISABLED BUTTON MUST LOOK DISABLED (Matt, 2026-09-04: the ingest button "was still clickable
+ * which is confusing"). It was in fact already inert — `canSubmit` returns false while busy — but
+ * nothing said so: `button.primary` had no :disabled rule, and its :hover fired regardless, so a
+ * dead button still lit up orange under the cursor while its label cycled through stage names.
+ * Looking live while doing nothing is worse than looking dead, because the user clicks again.
+ * Hover and active are gated above rather than only dimmed here, or the hover would repaint over
+ * the dimming.
+ */
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 button.primary {
   background: var(--accent);
@@ -189,7 +202,7 @@ button.primary {
   border-color: var(--accent);
   font-weight: 600;
 }
-button.primary:hover {
+button.primary:hover:not(:disabled) {
   background: #ff8a5b;
   border-color: #ff8a5b;
 }
