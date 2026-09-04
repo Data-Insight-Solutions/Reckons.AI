@@ -38,6 +38,19 @@ export interface StoryStep {
   prompt?: string;
   /** Optional question to pose to the user */
   question?: string;
+  /**
+   * Graph layout this step should switch to (story:layout).
+   *
+   * PARSED SINCE 2026-09-04 — the predicate was already being authored in story graphs and NOTHING
+   * READ IT. The player only ever chose 'focus' (when a step highlighted one or two entities) or
+   * nothing at all, so a step that said "switch to the hierarchy layout" left the reader to do it
+   * by hand while the graph sat in whatever view the previous step left behind.
+   *
+   * Deliberately NOT validated against a layout union here: story.ts parses graphs that may be
+   * authored for a newer or older build than the one reading them. An unknown value is passed
+   * through and the renderer ignores it, which degrades to today's behaviour instead of throwing.
+   */
+  layout?: string;
 }
 
 export interface Story {
@@ -123,7 +136,8 @@ export function extractStories(stmts: Statement[]): Story[] {
         content: getStepLit(`${STORY_NS}content`) ?? '',
         highlights,
         prompt: getStepLit(`${STORY_NS}prompt`) ?? undefined,
-        question: getStepLit(`${STORY_NS}question`) ?? undefined
+        question: getStepLit(`${STORY_NS}question`) ?? undefined,
+        layout: getStepLit(`${STORY_NS}layout`) ?? undefined
       });
     }
 
