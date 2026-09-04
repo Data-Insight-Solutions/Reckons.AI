@@ -7,6 +7,7 @@
   import { ALTITUDE_RANK, liftedAltitudes, type Altitude } from '$lib/rdf/fact-altitude';
   import { connectedComponents, nHopNeighbours } from '$lib/rdf/n-hop';
   import { bestSuggestion } from '$lib/rdf/view-suggestions';
+  import { statedCoordinates } from '$lib/rdf/map-layout';
   import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
   import GraphLabels from '$lib/components/GraphLabels.svelte';
   import { copyText } from '$lib/utils/clipboard';
@@ -290,7 +291,7 @@
   let selectedTypes = $state<Set<string>>(new Set()); // entity type IRIs
   let showSourcesPanel = $state(false);
   let hubLimit = $state(5);
-  let layout = $state<'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy'>('force');
+  let layout = $state<'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy' | 'map'>('force');
   /** Pod view (F29 Currents): pending-only arrival nodes render translucent + drifting.
    *  Toggled on the Graph tab (/kb currents section); honoured here via the shared store. */
   const podMode = $derived(podViewEnabled());
@@ -496,6 +497,11 @@
     // hnav ordering — this is a manual drag grid.
     { value: 'order', label: 'arrange', title: 'Hand-arrange nodes on a grid — drag to reorder' },
     { value: 'hierarchy', label: 'tree', title: 'Hierarchical tree — prerequisites above, from skos:broader and kpred:depends-on' },
+    // OFFERED ONLY WHEN THE GRAPH HAS SOMETHING TO PLACE. Most graphs hold no coordinates at all,
+    // and a map layout that opens empty reads as a broken feature rather than as an absent fact.
+    // The same `available` gate already hides 'source' and 'type' for the same reason.
+    { value: 'map', label: 'map', title: 'Place nodes by GPS coordinates; anything without a location goes to a lane below',
+      available: () => statedCoordinates(statements()).size > 0 },
   ];
   const availableLayouts = $derived(LAYOUTS.filter((l) => l.available?.() ?? true));
   // Chip + popover, matching the previews control. Matt, 2026-08-28: "I like the previews dropdown

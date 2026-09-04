@@ -17,10 +17,12 @@ export async function chatClaude(
   system: string,
   apiKey: string,
   model = 'claude-haiku-4-5-20251001',
-  maxTokens = 1024
+  maxTokens = 1024,
+  signal?: AbortSignal
 ): Promise<string> {
   const res = await fetch(CLAUDE_URL, {
     method: 'POST',
+    signal,
     headers: {
       'content-type': 'application/json',
       'x-api-key': apiKey,
@@ -54,10 +56,12 @@ export async function chatOpenAI(
   system: string,
   apiKey: string,
   model = 'gpt-4o-mini',
-  maxTokens = 1024
+  maxTokens = 1024,
+  signal?: AbortSignal
 ): Promise<string> {
   const res = await fetch(OPENAI_URL, {
     method: 'POST',
+    signal,
     headers: {
       'content-type': 'application/json',
       'authorization': `Bearer ${apiKey}`
@@ -85,14 +89,24 @@ export async function chatOpenAI(
  * and body handling to the caller since the two endpoints shape errors
  * differently.
  */
-async function ollamaFetch(url: string, body: unknown, baseUrl: string): Promise<Response> {
+async function ollamaFetch(
+  url: string,
+  body: unknown,
+  baseUrl: string,
+  signal?: AbortSignal
+): Promise<Response> {
   try {
     return await fetch(url, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal
     });
   } catch (e) {
+    // A user-cancelled request is not a network fault. Without this, aborting extraction would
+    // surface "Cannot reach Ollama — start it with OLLAMA_ORIGINS=…", sending someone to debug a
+    // server that is running fine.
+    if (e instanceof Error && e.name === 'AbortError') throw e;
     // Network errors (CORS blocked, connection refused, offline)
     const msg = e instanceof Error ? e.message : String(e);
     if (msg.includes('NetworkError') || msg.includes('Failed to fetch') || msg.includes('Load failed')) {
@@ -120,20 +134,52 @@ async function ollamaFetch(url: string, body: unknown, baseUrl: string): Promise
   }
 }
 
+/**
+ * SIZE THE CONTEXT TO THE PROMPT, because the server default is sized for the worst case.
+ *
+ * Measured 2026-09-04 on a 2x RTX 3090 box (48GB): `ollama ps` reported
+ * `qwen3:32b · 25 GB · 100% CPU · context 32768` with both GPUs at 0-8% and load average 145.
+ * The weights are 20GB and fit a single 24GB card fine — it was the KV CACHE that pushed the
+ * working set past the card, and Ollama then fell back to CPU ENTIRELY rather than partially.
+ * The host sets OLLAMA_CONTEXT_LENGTH=32768, so every request inherited a 32K window whether it
+ * needed one or not; extraction of a dictated note needs a small fraction of that.
+ *
+ * A per-request `num_ctx` overrides the server default, so this makes the window follow the actual
+ * prompt instead of the server's maximum. The failure it prevents is not "slower" — it is a silent
+ * 20x slowdown with no error, on hardware that looks idle while the CPU melts.
+ *
+ * Deliberately generous headroom (25%) and a 4K floor: a context that is too SMALL silently
+ * truncates the source text, which loses facts and would look exactly like a model getting worse.
+ */
+export function contextWindowFor(promptChars: number, maxTokens: number): number {
+  // ~3.6 chars per token is conservative for English prose; under-estimating tokens here would
+  // under-size the window, so the divisor errs small on purpose.
+  const promptTokens = Math.ceil(promptChars / 3.6);
+  const needed = Math.ceil((promptTokens + maxTokens) * 1.25);
+  const POWERS = [4096, 8192, 16384, 32768, 65536];
+  return POWERS.find((p) => p >= needed) ?? POWERS[POWERS.length - 1];
+}
+
+/** Total characters a request will send, system prompt included. */
+function promptSize(messages: ChatMessage[], system: string): number {
+  return system.length + messages.reduce((n, m) => n + m.content.length, 0);
+}
+
 /** Calls a locally running Ollama instance via its OpenAI-compatible chat endpoint. */
 export async function chatOllama(
   messages: ChatMessage[],
   system: string,
   model = 'llama3.2',
   baseUrl = 'http://localhost:11434',
-  maxTokens = 1024
+  maxTokens = 1024,
+  signal?: AbortSignal
 ): Promise<string> {
   const url = `${baseUrl}/v1/chat/completions`;
   const res = await ollamaFetch(url, {
     model,
     max_tokens: maxTokens,
     messages: [{ role: 'system', content: system }, ...messages]
-  }, baseUrl);
+  }, baseUrl, signal);
   if (!res.ok) {
     const body = await res.text().catch(() => '');
     throw new Error(`Ollama ${res.status}: ${body.slice(0, 300)} — is Ollama running at ${baseUrl}?`);
@@ -164,7 +210,8 @@ export async function chatOllamaStructured(
   schema: Record<string, unknown>,
   model = 'llama3.2',
   baseUrl = 'http://localhost:11434',
-  maxTokens = 1024
+  maxTokens = 1024,
+  signal?: AbortSignal
 ): Promise<string> {
   const url = `${baseUrl}/api/chat`;
   const res = await ollamaFetch(url, {
@@ -172,9 +219,12 @@ export async function chatOllamaStructured(
     stream: false,
     think: false,
     format: schema,
-    options: { num_predict: maxTokens },
+    options: {
+      num_predict: maxTokens,
+      num_ctx: contextWindowFor(promptSize(messages, system), maxTokens)
+    },
     messages: [{ role: 'system', content: system }, ...messages]
-  }, baseUrl);
+  }, baseUrl, signal);
   if (!res.ok) {
     const body = await res.text().catch(() => '');
     throw new Error(`Ollama ${res.status}: ${body.slice(0, 300)} — is Ollama running at ${baseUrl}?`);
@@ -207,10 +257,12 @@ export async function chatOpenRouter(
   system: string,
   apiKey: string,
   model = 'meta-llama/llama-3.2-3b-instruct:free',
-  maxTokens = 1024
+  maxTokens = 1024,
+  signal?: AbortSignal
 ): Promise<string> {
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
+    signal,
     headers: {
       'content-type': 'application/json',
       'authorization': `Bearer ${apiKey}`,
@@ -243,11 +295,13 @@ export async function chatReckons(
   apiKey: string,
   baseUrl = 'https://api.reckons.ai',
   model = '@cf/meta/llama-3.1-8b-instruct',
-  maxTokens = 1024
+  maxTokens = 1024,
+  signal?: AbortSignal
 ): Promise<string> {
   const url = `${baseUrl.replace(/\/$/, '')}/v1/chat/completions`;
   const res = await fetch(url, {
     method: 'POST',
+    signal,
     headers: {
       'content-type': 'application/json',
       'authorization': `Bearer ${apiKey}`
@@ -307,7 +361,8 @@ export async function chatGemini(
   system: string,
   apiKey: string,
   model = 'gemini-2.0-flash',
-  maxTokens = 1024
+  maxTokens = 1024,
+  signal?: AbortSignal
 ): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
@@ -327,6 +382,7 @@ export async function chatGemini(
 
   const res = await fetch(url, {
     method: 'POST',
+    signal,
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body)
   });

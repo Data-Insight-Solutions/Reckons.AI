@@ -109,6 +109,8 @@
     "offline:decisions": "npx tsx scripts/offline/graph-decisions.ts",
     "offline:aggregate": "npx tsx scripts/offline/aggregate-decisions.ts",
     "offline:lint": "npx tsx scripts/offline/graph-lint.ts",
+    "offline:chain": "npx tsx scripts/offline/extraction-chain.ts",
+    "offline:score": "npx tsx scripts/offline/extraction-score.ts",
     "secret:scan": "npx tsx scripts/offline/secret-scan.ts --ci",
     "offline:economics": "npx tsx scripts/offline/graph-economics.ts",
     "offline:prompt-audit": "npx tsx scripts/offline/prompt-audit.ts",

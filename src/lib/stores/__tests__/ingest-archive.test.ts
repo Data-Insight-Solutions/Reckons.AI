@@ -122,11 +122,11 @@ describe('ingest archive decision boundary (F97.3)', () => {
 
   it('diffs and persists the remapped batch against the refreshed post-restore graph', async () => {
     allStatements
-      // F136.3 added a THIRD read of the graph, and it comes FIRST: grounding the extraction prompt
-      // has to see the graph BEFORE extraction, whereas the two reads below happen after it (once
-      // to normalize against, once refreshed after an archive restore). Ordering matters here, so
-      // the grounding read is given its own value rather than being folded into the next one.
-      .mockReturnValueOnce(existingBefore)
+      // TWO reads, and the count is load-bearing. F136.3 briefly added a THIRD — grounding the
+      // extraction prompt read the graph BEFORE extraction — but grounding became opt-in on
+      // 2026-09-04 (F146 phase 2) and that read is now skipped by default. What remains: once to
+      // reconcile/normalize against, then once REFRESHED after an archive restore. The refresh is
+      // the whole point of this test, so the two values must stay distinct.
       .mockReturnValueOnce(existingBefore)
       .mockReturnValueOnce(existingAfter);
     resolveArchiveReferencesForIngest.mockResolvedValue({
@@ -216,7 +216,27 @@ describe('ingest archive decision boundary (F97.3)', () => {
     ]);
   });
 
-  it('threads graph grounding through the Claude, Ollama, and WASM adapters', async () => {
+  /*
+   * Grounding became OPT-IN on 2026-09-04 (F146 phase 2), so this pair asserts the SWITCH rather
+   * than the old always-on behaviour: off, no graph reaches the prompt; on, it still threads
+   * through every adapter. The measurement behind the default is in ingest.svelte.ts — prompt
+   * grounding halved recall (53% -> 26-32%) on the notes corpus, and the vocabulary agreement it
+   * bought is now recovered reviewably by rdf/vocabulary-reconcile.ts.
+   */
+  it('sends NO graph context by default — grounding is opt-in since F146 phase 2', async () => {
+    resolveArchiveReferencesForIngest.mockResolvedValue({
+      decision: 'proceed', statements: [rawStatement], references: [], restoredEntities: [],
+    });
+    extractWithClaude.mockResolvedValue([{ subject: 'acme', predicate: 'has-name', object: 'Acme' }]);
+
+    currentSettings = { ingestBackend: 'claude', preferredBackend: 'claude', claudeApiKey: 'test', claudeModel: 'test' };
+    await ingest({ kind: 'note', title: 'Import', body: 'Acme update' });
+    expect(extractWithClaude).toHaveBeenCalledWith('Acme update', 'Import', expect.objectContaining({
+      graphContext: expect.not.stringContaining('This graph already contains'),
+    }));
+  });
+
+  it('threads graph grounding through the Claude, Ollama, and WASM adapters WHEN ENABLED', async () => {
     resolveArchiveReferencesForIngest.mockResolvedValue({
       decision: 'proceed', statements: [rawStatement], references: [], restoredEntities: [],
     });
@@ -224,19 +244,19 @@ describe('ingest archive decision boundary (F97.3)', () => {
     extractWithOllama.mockResolvedValue([{ subject: 'acme', predicate: 'has-name', object: 'Acme' }]);
     extractWithWasm.mockResolvedValue([{ subject: 'acme', predicate: 'has-name', object: 'Acme' }]);
 
-    currentSettings = { ingestBackend: 'claude', preferredBackend: 'claude', claudeApiKey: 'test', claudeModel: 'test' };
+    currentSettings = { ingestBackend: 'claude', preferredBackend: 'claude', claudeApiKey: 'test', claudeModel: 'test', groundExtractionPrompt: true };
     await ingest({ kind: 'note', title: 'Import', body: 'Acme update' });
     expect(extractWithClaude).toHaveBeenCalledWith('Acme update', 'Import', expect.objectContaining({
       graphContext: expect.stringContaining('This graph already contains'),
     }));
 
-    currentSettings = { ingestBackend: 'ollama', preferredBackend: 'ollama', ollamaModel: 'test' };
+    currentSettings = { ingestBackend: 'ollama', preferredBackend: 'ollama', ollamaModel: 'test', groundExtractionPrompt: true };
     await ingest({ kind: 'note', title: 'Import', body: 'Acme update' });
     expect(extractWithOllama).toHaveBeenCalledWith('Acme update', 'Import', expect.objectContaining({
       graphContext: expect.stringContaining('This graph already contains'),
     }));
 
-    currentSettings = { ingestBackend: 'wasm', preferredBackend: 'wasm', wasmModel: 'test' };
+    currentSettings = { ingestBackend: 'wasm', preferredBackend: 'wasm', wasmModel: 'test', groundExtractionPrompt: true };
     await ingest({ kind: 'note', title: 'Import', body: 'Acme update' });
     expect(extractWithWasm).toHaveBeenCalledWith(
       'Acme update', 'Import', 'test', expect.stringContaining('This graph already contains'),

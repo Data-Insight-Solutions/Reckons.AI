@@ -1,0 +1,25 @@
+Lumenpath is an enterprise cad platform.
+
+Enterprise cads are used by large architecture studios to organize their
+drawings, models and site photographs.
+
+A primo and binder and open text and other enterprise damn software are,
+alongside lumen path, potential integrations.
+
+Jordan Veil owns Northwind Analytics, LLC. Northwind Analytics, LLC is a
+systems integrator and technology consultant. Lumenpath has high
+interoperability with many integration and automation tools.
+
+I have a new idea for Recon's AI. We have the representation of order, but we
+do not have the representation of repetition. So when generating ten images
+based on a given definition, I think we are lacking a node attribute for how
+many times to repeat the action.
+
+The node attribute name and the node attribute value are separate things, and
+we also need a node attribute type and a node attribute count.
+
+Generate a comparison document about Lumenpath and Vantage Suite and email it
+to me.
+
+Run a research task for new grants for city parks and recreation that have
+childhood activities, like swim team.

@@ -9,6 +9,7 @@
   import { termKey, isIRI, isLit, isMetaPredicate, displayLiteralLabel } from '$lib/rdf/types';
   import { parseGraphDate } from '$lib/rdf/parse-date';
   import { buildNodeTimes, timelineRange, undatedCount } from '$lib/rdf/timeline-layout';
+  import { buildMapLayout, mapCoverageSummary } from '$lib/rdf/map-layout';
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { RDF_TYPE, RDFS_LABEL, type EntityTypeDef, type GeometryName } from '$lib/rdf/entity-types';
   import { leapNodeKeys } from '$lib/rdf/kb-leap';
@@ -64,7 +65,7 @@
     targetKey?: string | null;
     historyTimestamp?: number | null;
     sources?: any[];
-    layout?: 'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy';
+    layout?: 'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy' | 'map';
     timelineZoom?: number;
     timelineCenter?: number | null;
     timelineTimeSource?: 'event' | 'ingested';
@@ -431,6 +432,23 @@
       markerData     = [];
       nodeColorMap   = new Map();
       hubNodeKeys    = [];
+    } else if (layout === 'map') {
+      const r = buildMapAnchors2D();
+      activeAnchors = r.anchors; markerData = r.markers;
+      // Coordinates are a STATED position, not a suggestion for a cooling force — same reasoning
+      // as the hierarchy branch. Seeding each node at its anchor stops the simulation settling
+      // halfway between the real place and wherever the previous layout left it.
+      for (const node of nodes) {
+        const anchor = activeAnchors.get(node.key);
+        if (!anchor) continue;
+        node.x = anchor.x;
+        node.y = anchor.y;
+        node.vx = 0;
+        node.vy = 0;
+      }
+      scheduleStructuredFit2D(activeAnchors, 'map');
+      anchorStrength = 0.90;
+      nodeColorMap = new Map(); hubNodeKeys = [];
     } else if (layout === 'hierarchy') {
       activeAnchors  = buildHierarchyAnchors(statements as Statement[], nodes, edges);
       // A tree is a stated structure, not a suggestion for a cooling force. Starting every node
@@ -452,6 +470,57 @@
       activeAnchors  = new Map(); markerData = []; nodeColorMap = new Map(); hubNodeKeys = [];
       anchorStrength = 0.25;
     }
+  }
+
+  /**
+   * MAP ANCHORS — real coordinates, and an honest lane for everything without them.
+   *
+   * The projection and the placement rules live in rdf/map-layout.ts so the 3D renderer consumes
+   * the same implementation rather than a second copy (the pattern rdf/timeline-layout.ts set after
+   * the two renderers drifted apart on undated nodes).
+   *
+   * THE UNPLACED LANE IS THE WHOLE POINT. A node with no coordinates is not on the map, and
+   * defaulting it to (0,0) would drop it at Null Island in the Gulf of Guinea — a real place, drawn
+   * as though the graph asserted it. Unplaced nodes go to a labelled band below the map instead,
+   * spread across the width and across several rows: on a typical graph MOST nodes land here, and
+   * one coordinate would just rebuild the wall the timeline's undated lane exists to avoid.
+   */
+  function buildMapAnchors2D(): { anchors: Map<string, { x: number; y: number }>; markers: Marker[] } {
+    const SPREAD = 20;
+    const UNPLACED_ROWS = 5;
+    const layoutResult = buildMapLayout(statements as Statement[], {
+      spread: SPREAD,
+      allEntities: nodes.map((n) => n.key),
+    });
+
+    const anchors = new Map<string, { x: number; y: number }>();
+    for (const [iri, a] of layoutResult.anchors) anchors.set(iri, { x: a.x, y: a.y });
+
+    for (const n of nodes) {
+      if (anchors.has(n.key)) continue;
+      const hash = n.key.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+      const x = ((hash % 997) / 997 - 0.5) * SPREAD * 2;
+      const row = (hash >> 3) % UNPLACED_ROWS;
+      anchors.set(n.key, { x, y: -SPREAD * 1.15 - row * 1.5 });
+    }
+
+    /*
+     * ONE MARKER, AND IT REPORTS COVERAGE RATHER THAN DECORATING. A map showing 10 of 39 nodes
+     * looks broken unless it says it is sparse — which is the same honesty the timeline's undated
+     * lane provides visually. Saying "10 of 39 placed" turns "this feature is broken" into "this
+     * graph has little location data", which is a fact about the graph and actionable.
+     */
+    const markers: Marker[] = layoutResult.anchors.size === 0 ? [] : [
+      {
+        key: 'map-coverage',
+        label: mapCoverageSummary(layoutResult),
+        color: '#7a8a9d',
+        x: 0,
+        y: -SPREAD * 1.02,
+      },
+    ];
+
+    return { anchors, markers };
   }
 
   function buildTimelineAnchors2D(): { anchors: Map<string, { x: number; y: number }>; markers: Marker[] } {
@@ -816,7 +885,7 @@
   let _rect = { left: 0, top: 0, width: 0, height: 0 };
 
   /** Frame structured anchors as a whole instead of cropping their outer clusters below overlays. */
-  function scheduleStructuredFit2D(anchors: Map<string, { x: number; y: number }>, expectedLayout: 'hub' | 'hierarchy') {
+  function scheduleStructuredFit2D(anchors: Map<string, { x: number; y: number }>, expectedLayout: 'hub' | 'hierarchy' | 'map') {
     requestAnimationFrame(() => {
       if (layout !== expectedLayout || activeAnchors !== anchors || anchors.size === 0) return;
       const width = canvasEl?.clientWidth ?? _rect.width;
@@ -1026,7 +1095,21 @@
     const baseAlpha = isHistory ? 0.45 : 1.0;
 
     // Draw layout markers
-    if (layout === 'timeline' && markerData.length > 0) {
+    if (layout === 'map' && markerData.length > 0) {
+      /*
+       * A DIVIDER AND A COVERAGE LINE, not a ring. The map's one marker is a SENTENCE ("10 of 39
+       * nodes placed"), and drawing it as a cluster ring would read as a node in the Atlantic. The
+       * rule separates the map from the unplaced band beneath it so the band is legibly NOT part of
+       * the geography — a node below the line is not somewhere south, it is nowhere.
+       */
+      const m = markerData[0];
+      ctx2d.beginPath();
+      ctx2d.moveTo(-22, m.y); ctx2d.lineTo(22, m.y);
+      ctx2d.strokeStyle = m.color; ctx2d.lineWidth = 0.03;
+      ctx2d.setLineDash([0.4, 0.4]);
+      ctx2d.globalAlpha = 0.45 * baseAlpha; ctx2d.stroke();
+      ctx2d.setLineDash([]);
+    } else if (layout === 'timeline' && markerData.length > 0) {
       // Timeline: axis line + tick marks
       const axisY = markerData[0]?.y ?? -7.5;
       ctx2d.beginPath();

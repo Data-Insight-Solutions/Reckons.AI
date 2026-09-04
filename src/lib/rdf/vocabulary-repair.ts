@@ -91,6 +91,27 @@ function fold(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
+const lettersOf = (value: string) => fold(value).replace(/[^a-z]/g, '');
+const digitsOf = (value: string) => fold(value).replace(/[^0-9]/g, '');
+
+/**
+ * TWO NAMES WITH THE SAME LETTERS AND DIFFERENT NUMBERS ARE TWO THINGS, NEVER A MIS-HEARING.
+ *
+ * `phoneticKey` strips digits — correctly, since a digit has no phonetics to key on — but that
+ * makes every timestamped name collapse to the same key. Measured 2026-09-02 on the dictated
+ * Pebble notes: `note-2026-08-27T18-31-51-202Z` and `note-2026-08-27T18-47-56-720Z` scored 0.95 as
+ * PHONETIC twins, and the graph's 14 note ids produced 12 confident "repairs", every one of them
+ * false. Lexical distance does not save it either — such names share a long prefix, so they clear
+ * the suggest floor on letters alone.
+ *
+ * The rule is about what a transcription error can actually do: it changes SOUNDS. If the letters
+ * are identical and only the numbers differ, nothing was misheard — these are two identifiers
+ * minted by the same scheme, and proposing to merge them would silently destroy provenance.
+ */
+function differsOnlyInDigits(a: string, b: string): boolean {
+  return lettersOf(a) === lettersOf(b) && digitsOf(a) !== digitsOf(b);
+}
+
 function isActive(s: Statement): boolean {
   return s.status !== 'rejected' && s.status !== 'superseded';
 }
@@ -224,6 +245,10 @@ export function repairCandidates(
 
   for (const entry of vocabulary) {
     const name = fold(entry.name);
+
+    // Distinct identifiers from one naming scheme, not a slip of the tongue. Checked before the
+    // exact test so an id can still match itself when the digits agree.
+    if (differsOnlyInDigits(heard, entry.name)) continue;
 
     if (editDistance(target, name) === 0) {
       out.push({

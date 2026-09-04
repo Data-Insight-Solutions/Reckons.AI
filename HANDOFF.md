@@ -1,10 +1,220 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-08-29.** Working branch: `feat/task-bridge` (PR #208, stacked on #207 /
-`fix/claude-review-hardening`). PRs target `dev`. Note the branch tracks `origin/dev` directly, so
-a bare `git push` would push to dev — always `git push origin HEAD:refs/heads/<branch>`.
+**Last updated: 2026-09-04.** Working branch: `fix/cascade-real-graph` (7 commits, **unpushed,
+no PR**, plus uncommitted working-tree changes — Matt's call). PRs target `dev`. The branch tracks
+`origin/dev` directly, so a bare `git push` would push to dev — always
+`git push origin HEAD:refs/heads/<branch>`.
 
-## ▶ SESSION 2026-08-29 (latest) — honor 3D, and make voice truly opt-in
+## ▶ SESSION 2026-09-04 (latest) — extraction ACCURACY has a number, and grounding fails it
+
+Branch `fix/cascade-real-graph`, continuing. **Uncommitted** — new files staged only (`git add`)
+so graph-lint's has-file check passes. 2689 tests / 192 files pass, svelte-check 0/0,
+graph-lint 0 errors, 25/25 script-tier offline jobs clean.
+
+### THE GATE EXISTS NOW — `scripts/offline/extraction-score.ts` (F146 phase 1's missing half)
+`npm run offline:score` · ground truth in `tests/fixtures/notes-corpus/expectations.json`
+(19 scoreable + 4 known-broken), 22 unit tests, `main()` guarded so importing it in vitest does
+NOT fire models. It measures what `extraction-chain.ts` structurally cannot: whether the triples
+are the RIGHT triples. **Every "extraction got better" claim now has a number to move.**
+
+Three failure kinds are separated, and BOTH splits were forced by real output, not designed:
+- **INVENTION** — `lumenpath | can-genrate-comparison-documents | true`. A REQUEST became a
+  claimed capability. Nobody said that. This is the corpus's highest-value assertion, failing.
+- **MISROUTING** — `user | request-to-generate | comparison-document`. The model understood
+  perfectly; note-intent.ts never moved it out of the fact stream. Different owner, cheaper fix.
+- **VERBATIM** — `note-<id> | note-text | "Generate a comparison document…"`. Stores the
+  sentence, asserts nothing, extracts nothing. Scoring this as invention was simply wrong.
+
+### ⚠ GRAPH GROUNDING DOES NOT HELP EXTRACTION — unanimous across 6 models
+Every model scored BEST with **no** graph context. none→full: gemma3:27b 72→56, devstral 56→22,
+qwen3.6 50→44, qwen3-coder 39→28, lfm2.5 33→22, llama3.2 22→17. **Not one improved.**
+This is the measurement `kb:structural-grounding`'s own remaining note demanded before any claim
+could be made. Matt's report ("lean less on existing graph if its small or empty") *understates*
+it — the problem is not confined to small graphs.
+
+**Two deterministic leaks, both localised, both unfixed:**
+1. **No relevance floor on anchors.** `selectStructuralContext` drops open-decisions at zero
+   lexical overlap but applies no floor to anchors. Measured on corpus 01: a 40-statement graph
+   injects **1,001 tokens, 2 of 12 anchors relevant**; the 227-statement graph injects 368 tokens
+   and **0 anchors**. Backwards.
+2. **It offers things that are not concepts.** 4 of those 12 anchors were note-id timestamps
+   (`note-2026-09-02T11-40-13-902Z`) and one was `lumenpath-is-an-enterprise-cad-platform` — the
+   prompt teaches the exact shape `looksLikeProposition` exists to reject. Both reappear in model
+   output. `co-hyponyms.ts` already refuses identifier schemes; structural-context does not.
+
+### ⚠ A 32K CONTEXT WAS RUNNING A 32B MODEL ON THE CPU — the biggest single find
+Matt: *"My CPU was maxing out my 24 threads... GPU was under utilized??"* `ollama ps` said
+`qwen3:32b · 25 GB · 100% CPU · context 32768`, both 3090s at 0-8%, load average 145. Weights are
+20GB and fit a 24GB card fine — the **KV cache** pushed it over, and Ollama fell back to CPU
+*entirely*. The host sets `OLLAMA_CONTEXT_LENGTH=32768` and the app never overrode it per request.
+Fixed by `contextWindowFor()` in `providers.ts` (sizes `num_ctx` to the actual prompt, 4K floor,
+25% headroom). After: `21 GB · 100% GPU · context 8192`, spread across BOTH cards ~11GB each.
+**Every local extraction in the app was paying this** — a silent ~20x slowdown, no error, on
+hardware that looks idle. Also observed: gemma3:27b (18GB) + phi4:14b (9.8GB) resident TOGETHER,
+which is the headroom that makes the requested concurrent queue feasible.
+
+### MODEL RANKING — the roster was wrong, and the configured model was the WORST one
+**`.env` had `VITE_OLLAMA_INGEST_MODEL=llama3.2:3b`, which is LAST of eleven at 22%.** That is the
+direct cause of the extraction quality Matt reported. Now `qwen3:32b`.
+On GPU, 8192 ctx, strict recall over 19 expectations, no graph context:
+`qwen3:32b 74% (0 invented, 112s) · gemma3:27b 68% (151s) · mistral-small3.2:24b 53% (101s) ·
+phi4:14b 53% · command-r:35b 47% (204s) · devstral 56% · qwen3.6 50% · qwen3-coder 39% ·
+llama3.2:3b 22% · qwen2.5vl:7b 11% · nuextract 5%`
+**Do not delete the 2026-08-27 octopus-fixture benchmark that says llama3.2:3b WON at 47.4** — it
+measured a different task (clean single-topic prose, F1 vs golden triples). Both are true; the
+notes corpus is the one that matches real ingest. Kept in `.env` comments.
+`command-r:35b` is built for RAG and came LAST — architecture-of-purpose did not transfer.
+Earlier CPU-era numbers (gemma3 72%) used an 18-expectation denominator; 03.5 was promoted out of
+known-broken the same day, so 68% is a stricter denominator and NOT a regression.
+
+### THINKING MODE MEASURED, AND IT DID NOT EARN ITS COST
+qwen3:32b: **74% single-pass, 63% with `--thinking`** (one run each, 2026-09-04). The critic added
+11 triples so it IS finding things — it has not been shown to find the RIGHT things. Shipped
+OFF (`ollamaThinkingMode`, `VITE_OLLAMA_THINKING_MODE=false`). This is the gate working as F146
+phase 1 demanded: *"a harness that only ever confirms improvement is a marketing instrument."*
+Needs repeat runs before any verdict — run-to-run variance is real (gemma3 scored 67% then 72%).
+
+### OLD RANKING, superseded by the GPU run above (kept: it was measured on CPU/32K ctx)
+`gemma3:27b 72% · devstral-small-2 56% · qwen3.6 50% · qwen3-coder 39% · lfm2.5 33% · llama3.2:3b 22%`
+**The code specialist is the wrong tool for prose**: qwen3-coder is 4th of 6 and scores 20% where
+gemma3 scores 70% on the same file. Cost: gemma3 ~60s/source vs qwen3-coder ~14s.
+Also measured: **nuextract 5%** (3 triples total — it is TEMPLATE-fill extraction, needs a schema
+of fields, so our open-ended triple prompt is the wrong format for it) and **qwen2.5vl:7b 11%**.
+Run-to-run variance is real: gemma3/small scored 67% then 72% on re-run. Do not read 5pts as signal.
+
+### THINKING MODE BUILT — `src/lib/integrations/llm/extract-critic.ts` (12 tests)
+The two-pass extract-then-critic F146 already names, and `kb:ref-docling-graph` independently
+validates as "skeleton-then-flesh dense extraction". Critic sees source AND first pass, asked only
+what is MISSING. **Unioned, never substituted** — pinned by a test that it cannot delete a
+first-pass fact. Opt-in (`--thinking` on the scorer, `thinking: true` on the ollama opts).
+**UNMEASURED: nobody has run --thinking against the corpus yet. Do not claim it helps.**
+
+### UI: cancel is real now
+`button.primary` had no `:disabled` rule and its `:hover` fired anyway, so a dead button lit up
+orange while its label cycled stage names — fixed globally in `global.css`. Added a step-based
+progress bar (NOT a fake timer) and a cancel button. `AbortSignal` threaded through all 8
+providers → ollama-extract → `ingest()`, so an in-flight 27B generation actually aborts, plus
+stage-boundary checks so nothing half-lands in the graph.
+
+### Disk: 51G reclaimed (83% → 76%, 210G free), Matt approved each target
+Deleted LM Studio gemma-2-27b (21G, superseded by ollama gemma3:27b), Codestral-22B (17G),
+Llava-v1.5-7B (5.8G), and `~/.cache/huggingface` (7.8G). **phi-4-GGUF kept.**
+Pulling qwen3:32b, mistral-small3.2:24b, command-r:35b, phi4:14b to benchmark the 48GB class
+(2x RTX 3090). ⚠ `nvme1n1` SMART still FAILED, `available_spare 0%` — unchanged, still unfixed.
+
+### Next, in order (Matt: "after benchmarking, experiment with workflow fixes")
+1. ~~Finish the 48GB benchmark~~ **DONE** — table above, `.env` + `.env.example` updated.
+2. **The two grounding fixes**, then RE-RUN. The baseline is published so the fix has a
+   number to beat; do not claim it worked without one. `kb:ref-ontocast`'s ontology-RETRIEVAL
+   mode is the pattern to copy for leak #1 (retrieve a relevant slice, do not dump anchors).
+3. **Run `--thinking` against the corpus.** It is built and unproven.
+4. **Workflow patterns from the reference tools** (Matt asked). Already in the graph:
+   `kb:ref-ontocast` (ontology-RETRIEVAL modes — the fix pattern for leak #1; per-unit
+   render/critic/merge; GraphUpdate patches not regeneration; SHACL + LLM-free repair),
+   `kb:ref-docling-graph` (skeleton-then-flesh; deterministic graph fusion; stable IDs),
+   `kb:ref-fenic` (typed rerunnable operators, row-level lineage, batching/retry/cost accounting —
+   the pattern for the concurrency queue), `kb:ref-orionbelt` (NEW, added this session: 22 SKOS
+   validation checks as SCRIPT tier; merge-aware import. No licence — read, do not copy).
+5. **Still unbuilt and asked for**: concurrent extraction queue (pending/active, hardware-aware
+   limit) and extension → queue wiring (`src/extension/background.ts:459` currently opens one
+   background tab per page). Deferred by Matt until benchmarking lands.
+
+---
+
+
+## ▶ SESSION 2026-09-02 — the graph audit, and the chain measured composed
+
+Branch `fix/cascade-real-graph` off `dev`, 3 commits, **not pushed and no PR opened** —
+Matt's call. 86 files / 1,397 rdf tests, svelte-check 0/0, graph-lint 0 errors.
+
+### ⚠ UNRELATED AND URGENT: `nvme1n1` SMART health FAILED
+`host-health` reports `critical_warning 0x9`, `available_spare 0%` (threshold 10%). The drive
+is failing NOW. Matt said he will "look at drive RMA and camera re-network later" — it is
+acknowledged, not fixed. `exposure` also flags port 8000 listening on all interfaces.
+
+### THE GRAPH AUDIT — it does not save context the way the ledger claims
+- **102 graph queries EVER** (79 reads + 23 writes) against 3,652 file-touching calls. Graph
+  share of context 3.6%, of carry 6.6% (was 1.1%/1.7% in August — tripled, from near-zero).
+- **Head-to-head, kb_compress is 3x MORE expensive than grep for a KNOWN entity**: 1,950
+  tokens vs 660. Its value is DISCOVERY, not retrieval. `graph-economics` claims 28.0K saved
+  per query against a 30K baseline the job itself flags as never measured — do not quote it.
+- **What the graph does earn: 118K tokens of avoided rework**, 5 features not rebuilt under new
+  names. Matt: *"the avoided rework is the win for sure."* That is the plan working, not
+  compression. `npm run ab:benchmark` — the experiment that would settle it — STILL never run.
+
+### WHY THE PENDING-FACT SUMMARY NEVER LANDED — root-caused, three layers
+1. **Five summaries, none of which summarizes the facts.** `reviewTreeSummary`,
+   `reviewPlanSummary`, `attentionSummary`, `routingSummary`, `reanalysisSummary` all count
+   QUEUE SHAPE ("12 decisions open; 3 contested"). None says what the facts CLAIM.
+2. **The harness measured the FILE, not the graph — third instance.** `read-graph.ts` mapped
+   raw quads 1:1, so an app-EXPORTED graph read 2,295 where the file declares 217 (10.6x —
+   it counted the reification the importer folds away), and stamped every statement with the
+   TTL's own path as sourceId. Result: ONE question proposing to settle 944 facts, and 0 facts
+   left for the agent tier. Invisible on `reckons-roadmap.ttl`, which is what the job defaults
+   to. Fixed by delegating to the app's own `importTurtleFull`.
+3. **Prompt and validator disagreed on the vocabulary, pinning yield at 0% BY CONSTRUCTION.**
+   `aggregationRequest` taught `kb:`/`kpred:` shorthand; the validator accepted full IRIs only.
+   A model echoing what it was shown was rejected every time. **Yield 0% → 100%** once fixed.
+
+After the fixes, on the real Pebble notes: facts 2,295→217 · clusters 1→33 · 944.0→4.5 per
+question · agent input 0→16. It now produces a real question: *"Is Orange Logic an enterprise
+dam?" settles 4 facts.* (The transcription damage survives — should be **DAM**.)
+
+### THE CHAIN, MEASURED COMPOSED — `npm run` → `scripts/offline/extraction-chain.ts`
+Every stage had passing unit tests and NOTHING measured them composed, which is exactly where
+both bugs above lived. New script-tier job + `tests/fixtures/extraction-chain.ttl` (synthetic —
+the repo is PUBLIC and `reckons-workspace/kbs/*` is gitignored, so Matt's notes stay local).
+
+**Baseline on the real corpus, published before any strategy is added to beat it:**
+`217 statements · 32 entities · typing 0 of 16 proposable · hierarchy 0 of 32 placed ·
+aggregate 33 batch questions over 148 BOOKKEEPING facts · tree 0 DECISIONS, 53 orphans.`
+
+**Two of five stages contribute NOTHING.** Typing proposes 0 types because no built-in type
+carries the predicates a dictated note produces (F149's rdfs:domain gap from the other end).
+Hierarchy places 0 because extraction emits no `skos:broader` at all. No types + no parents =
+no structure = every claim lands as an orphan and review degrades to a flat list. **That is the
+reported symptom, measured.**
+
+### CO-HYPONYMS — the seam closed (`src/lib/rdf/co-hyponyms.ts`, 10 tests)
+One lexical signal, two opposite readings, and only the destructive one ran:
+`node attribute {name,value,type,...}` scored 0.85 to vocabulary-repair, which offered to MERGE
+them. A shared head with DIFFERENT tails is positive evidence they are DIFFERENT things.
+`areCoHyponyms()` withdraws any repair between two members of one sibling group.
+**Real corpus: suspects 8→1, 10 destructive merges withdrawn, 6 of 32 entities would be placed.**
+
+Also fixed: **vocabulary-repair no longer merges identifiers differing only in digits.**
+`phoneticKey` strips digits, so all 14 note ids keyed alike and scored 12 confident FALSE
+repairs — and a repair merges entities, destroying the provenance link to the note.
+
+**HONEST LIMIT, pinned by a test: PROPOSING IS NOT PLACING.** Nothing in the app calls
+`proposeCoHyponyms`; it runs only in the offline harness. Hierarchy still places 0 of 32 and the
+tree still has 0 decisions open. Do not report "6 of 32 would be placed" as "placed".
+
+### KNOWN-GOOD, do not re-derive
+- **`triple-shape.ts` WORKS.** All 5 collapsed subjects (`orange-logic-is-an-enterprise-dam`
+  etc.) are caught by `looksLikeProposition`. The 3 still in the notes graph are LEGACY,
+  extracted before the guard landed. Not a broken control — do not "fix" it.
+- **There is no `repair` or `hierarchy` stage in `ExtractionStageName`** (route/extract/validate/
+  ground/normalize/type/archive/diff/persist). Vocabulary repair lives beside the pipeline in the
+  note path; hierarchy is used only by `page.ts` for rendering. That is the STRUCTURAL reason
+  neither reaches the decision tree.
+- **Extracted entities are often OBJECTS ONLY.** All six `node-attribute-*` entities never
+  appear as a subject. A stage that walks subjects only sees a fraction of the graph — this cost
+  one wrong "no groups found" result.
+
+### Next, in order
+1. Wire `proposeCoHyponyms` into the pipeline as a stage and surface each group as ONE review
+   question. This is what moves the tree off 0 decisions.
+2. The scoring half of F146 phase 1: a corpus of raw note TEXT with hand-checked expected
+   triples, and `extraction-score.ts`. The chain harness measures graph SHAPE; it cannot measure
+   extraction ACCURACY without ground truth. **This gates every "extraction got better" claim.**
+3. Then the content summary — what the pending facts SAY, which is still unbuilt. The five
+   counters remain the only summaries.
+
+---
+
+
+## ▶ SESSION 2026-08-29 — honor 3D, and make voice truly opt-in
 
 - **Renderer selection:** Getting Started no longer silently changes a saved/default 3D choice to
   2D. Intentional saved 2D, no-WebGL fallback, FPS detection, the downgrade notice, and its manual
@@ -35,7 +245,7 @@ a bare `git push` would push to dev — always `git push origin HEAD:refs/heads/
   assertions await SvelteKit navigation, and Indico diagnostics no longer race a full-page reload
   against their settings write.
 
-## ▶ SESSION 2026-08-28 (latest) — the bridge, the schedule, and eight standing jobs
+## ▶ SESSION 2026-08-28 — the bridge, the schedule, and eight standing jobs
 
 **MATT'S STATED PRIORITIES (F159, his order):** 1 dictated notes → actionable agent task ·
 2 SKOS/SHACL alignment across app features · 3 a terse review process. **1 is DONE.**
@@ -837,878 +1047,6 @@ ORDER — deliberately not merged; altitude is depth, dependency is order.
 
 **Nothing committed, nothing pushed.** 10 `graph-lint` errors are the new untracked files and clear
 on commit.
-
-## ▶ LATEST (2026-08-17) — Wave 0 concurrency/evidence contract + graph-view plans (uncommitted)
-
-This section supersedes the two older August 17 runner sections immediately below. Terra and three
-bounded local-agent audits were used as reviewers/designers; their conclusions were checked against
-the files and the roadmap MCP context before edits. No agent settled a proposal, committed, pushed,
-or changed a feature status.
-
-### Wave 0 implemented contract
-
-- A task now succeeds only when **both** its command and independent `done-when` exit zero. The old
-  runner could mark a non-zero visual/review command green when a fresh report happened to exist.
-  Focused process coverage injects command exit 7 with a passing verifier and proves the task stays
-  failed with both exit codes in its receipt.
-- `button-crawl`, `visual-diff`, and `local-code-review` write schema-versioned stable reports with
-  `finishedAt`. `tasks.ttl` verifies report content and freshness through
-  `scripts/agent/verify-run-report.ts`, not file mtime/size. Skipped routes, failed review files,
-  incomplete selected/discovered accounting, a wrong schema, or stale content cannot pass.
-- Git receipts no longer hash an empty string after `execSync` exceeds its buffer. The new streamed
-  fingerprint binds HEAD, porcelain state, tracked staged+unstaged diff, and sorted untracked paths
-  plus bytes. Fingerprint failure prevents success. A temporary-repo test covers staged, unstaged,
-  untracked, and >1 MiB content independently.
-- Runner state changes use a short Linux kernel `flock`, fresh-state conditional claim, unique claim
-  token, unexpired-lease fencing, fresh retry baseline, and same-directory fsync+rename. WAITING
-  persists its subject|predicate question keys and resumes only from the answers file even after the
-  UI drains the pending row. Two deterministically synchronized runner subprocesses execute one
-  shared task once; corrupt state fails closed; receipt/context writes are atomic and token-named.
-- The shared pending-queue path uses the same locked atomic transaction. All production TypeScript
-  host writers/rewriters found by the direct-write sweep now participate; the standalone MCP package
-  implements the same `<queue>.lock` protocol. Identity includes graph destination and question
-  blockers, recomputation is graph-scoped, and incoming recompute duplicates collapse before write.
-- Local review consumes runner-fetched `kb_compress` text only after recomputing its source hash and
-  records separate source/consumed hashes and lengths plus truncation. Its worktree discovery unions
-  tracked and untracked files, Git failures are loud, findings go through the shared deduplicating
-  queue, and the report distinguishes discovered/selected/omitted instead of calling a capped batch
-  complete. Oversized file diffs are split into complete bounded prompts and a file counts reviewed
-  only after every chunk succeeds. The standing task explicitly names 19 Wave 0 files; it no longer
-  implies that this broad dirty branch was reviewed.
-- The shared `AgentTask` parser now includes `waiting`, requires at least one known effect, and retains
-  unknown effects as blocking diagnostics rather than silently dropping them. This closes drift
-  between the reusable RDF contract and the executable runner.
-
-### Honest limits before calling Wave 0 complete
-
-- The corrected standing MCP query returned F81 / `local-orchestration`, 8,561 characters, SHA-256
-  `b26d3ab851e98c02e5558f62fad9520327bd4f8a35f7be2a36628a4d9a410c63`, and no F108.3. A bounded
-  post-hardening consumer proof then reviewed `runner.ts` and `tasks.ttl` through local
-  `qwen3-coder`: **2/2 files, five complete chunks, 0 omitted, 0 failed, 0 truncated**, with source
-  and consumed hashes both equal to that F81 hash; independent report verification passed. It was
-  a direct consumer-contract proof, not a runner receipt over the complete 19-file standing scope.
-- That proof emitted 13 candidate lines for `runner.ts`; the cap retained one and suppressed 12.
-  The retained proposal says `--graph` lacks an empty/invalid check, but `runner.ts` already rejects
-  missing/empty `GRAPH` before file operations, so Codex assesses it as a false positive. It remains
-  pending for the human gate; do not silently settle it. This is evidence that precision/yield is
-  still the limiting orchestration metric even when transport and evidence are correct.
-- Effects are a declared/gated contract, not an OS capability sandbox. `artifact-write` also remains
-  absent, so report/screenshot-producing tasks currently overstate themselves as `source-write`.
-- Host locking does not make the browser File System Access drain atomic with Node workers. The UI's
-  read/replace path and the shell-only `alignment-sweep.sh` appender remain explicit cross-runtime
-  gaps; do not run them concurrently with local queue writers or claim end-to-end queue atomicity.
-- `flock` makes this host runner Linux-specific and intentionally fails loud where util-linux is not
-  present. Do not replace it with a racy mkdir/mtime stale-lock protocol.
-- The first historical local-review receipt is not valid whole-worktree evidence: it covered only the
-  first capped 25 tracked paths, omitted untracked paths, consumed unrelated F108.3 context, and its
-  worktree hash is SHA-256(empty). Keep it as the failure fixture, not the proof of hardening.
-- The latest script-tier sweep ran all **20/20** jobs successfully with explicit Node 22 on `PATH`, but
-  it also generated/recomputed proposals as designed. The current brief is **535 total / 532 valid /
-  3 invalid / 410 untargeted**; no acceptance-yield measurement exists. Advisory output included five
-  predicate-economy warnings, two warn-only SHACL findings in a stale export, 37 alignment suggestions,
-  and three reboot/kernel findings. These are observations, not settled product defects.
-
-### MCP-reconciled feature plans recorded in the roadmap
-
-- **F137 Set View** extends F65/F83/F96/F101; it does not create another grouping primitive. A pure
-  upstream projection supplies Nodes/Sets/Mixed modes to counts, filters, selection, labels, 2D and
-  3D. Unique members collapse to their real set IRI, overlaps stay once as bridge nodes, boundary
-  edges aggregate with original statement IDs, filters lift to matched/total, and centroid-based
-  collapse preserves spatial memory. Within-set descent is view state; graph leaps remain graph
-  transitions and later compose with F131's maximum-three preloaded graph regions.
-- **F137.1 shared entity appearance** separates topology from appearance config and gives entities and
-  sets one renderer-neutral color/icon/media resolver plus deterministic member-collage fallback.
-- **F138 predicate appearance and visual inheritance** adds first-class rule entities, full predicate
-  IRIs, direction/channel/strength/priority/conflict/depth/scope settings, literal and IRI status
-  sources, deterministic cascade and provenance traces. Confirmed/refined relations drive canonical
-  appearance; pending is provisional; derived style is never materialized; collapsed sets require an
-  explicit aggregation policy; status must have a non-color channel. The pure resolver precedes the
-  Predicate Manager/editor and renderer integrations.
-
-### New local-model and Vault-LD evaluations recorded as references
-
-- The context harness ran two direct `kb_compress` queries before planning. The local-VLM query
-  returned F31/F93/F81 context (6,121 characters, SHA-256
-  `cc66bc120cc6bdcc190f88ee9a3681140a90bfb6f4ca43a6b4f1e3cde894a0ed`); the RDF/vault/storage
-  query returned the ingest/storage/TriG/graph-set contracts (10,903 characters, SHA-256
-  `94788f604581d9d6a372f5e734008e35e47ed9a1f45e8ee24a529069a774c98a`). Terra then checked the
-  exact F31/F70.2/F74.6/F108.1 and F75/F107/F113 entities through MCP. This avoided creating a new
-  product feature for either external project. After writing the references, a fresh 3,000-token
-  MCP query returned both exact entities (16,564 characters, SHA-256
-  `38e4c2f274a5215f9853cf55c1a55e34109ff5608ff9a774a53f61c775eb5eb1`).
-- `kb:ref-lfm2-5-vl-3b` records the exact six-day-old Liquid model as a role-specific candidate, its
-  custom license boundary, and fresh local evidence. Official Q4_K_M + projector is now installed in
-  Ollama as `hf.co/LiquidAI/LFM2.5-VL-3B-GGUF:Q4_K_M` (2.3 GB; local id `3e9bb91d3103`). On the
-  existing 48-check screenshot gate it scored **38/48, zero misses, 10 false flags, p50 769 ms**;
-  same-session qwen2.5vl:7b scored **44/48, one miss, three false flags, p50 537 ms**. Reports are
-  `tests/visual/results/vlm-gate_2026-08-17T16-16-10.json` and
-  `vlm-gate_2026-08-17T16-17-15.json`.
-- The exact production two-image `diffImagesVLM` path exposed role separation: on a duplicated image
-  both models said IDENTICAL; on two clearly different app views in both orders, Liquid said CHANGED
-  twice with concrete layout differences. Qwen said IDENTICAL in the forward order and CHANGED in
-  reverse with partly invented node details. Keep Qwen as the current single-image gate default;
-  Liquid is the leading pairwise-diff candidate, not promoted until a labelled multi-pair corpus,
-  repeats, JSON/evidence-schema, OCR/layout, VRAM/power, and concurrency checks exist.
-- `kb:ref-vault-ld` records Vault-LD v0.5 as useful interchange/security prior art and a **current
-  no-go for authoritative Reckons storage, backup, or sync**. Its 31 upstream security tests and tiny
-  44-triple example pass, but a live RDF -> vault -> RDF probe rebased `urn:kbase:*` subject,
-  predicate, and type IRIs under an HTTP base; a minimal `@vocab` fixture also diverged from the spec.
-  It has no manifest, revision, locking, atomic promotion, conflict, or sync contract and cannot
-  preserve Reckons review/provenance/package state. If Matt wants interoperability, run only the
-  bounded exact-IRI/loss-boundary/staged-write conformance spike recorded on the reference; do not
-  add an adapter feature before those gates pass.
-
-### Exact continuation for the visual-model evaluation
-
-1. Do **not** change `VLM_MODEL` globally from this one smoke. Add a small pairwise benchmark beside
-   `run-vlm-gate-bench.ts`: at least 10 identical pairs, 5 harmless rescale/anti-alias pairs, and 15
-   real regressions (blank/missing graph, overlap, mobile layout, text/status-color and moved nodes).
-   Run both image orders and three repetitions because the Qwen smoke was order-sensitive.
-2. Exercise the production contract, not a bespoke prompt: `diffImagesVLM` plus the structured
-   visual-evidence report. Record strict parse rate, false negatives first, false flags, p50/p95,
-   exact Ollama artifact/digest, image hashes and corpus revision. A model may not certify itself.
-3. If Liquid keeps zero pairwise misses, route only `visual-diff` to it through F74.6. Keep Qwen on
-   single-image presence gates unless replicated F31 evidence changes that result. Then compare Q8
-   or BF16 only as a quality ceiling and test GPU co-residency/concurrency; do not spend time on
-   long visual-design reasoning that Liquid's own card says is outside the model's intended role.
-4. Matt independently observed that Liquid looked very good at multi-image work. That observation is
-   now attributed on `kb:ref-lfm2-5-vl-3b`; treat it as a reason to test the role thoroughly, not as
-   permission to bypass the benchmark. Note also that ordinary search initially missed this six-day
-   release—query the live publisher registry before declaring a new model absent.
-
-### Verification and immediate continuation
-
-- Focused verification: **12 test files / 139 tests passed** across runner process races, report/Git
-  contracts, MCP binding, queue concurrency, async interview/triage, AgentTask parsing and audit
-  rules. `npm run check` reports **0 errors / 4 pre-existing warnings in 2 files**. MCP TypeScript
-  check passes. Task TTL parses as **232 quads / 25 tasks**; all 25 declare effects and only the
-  deliberate `no-acceptance` refusal fixture lacks `done-when`. Graph lint reports **0 errors / 5
-  known predicate-economy warnings**. `git diff --check` passes.
-- The next runner proof is the complete **19-file standing Wave 0 review** when its existing 8-hour
-  due time permits (the current derived state correctly reports it not due). It must leave a runner
-  receipt tied to the full Git fingerprint and the verified report/context. Do not erase derived
-  schedule state merely to make a demo green, and do not widen WIP or add the two-GPU scheduler until
-  this serial proof and sampled proposal yield are credible.
-
-## ▶ LATEST (2026-08-17) — MCP-grounded local-agent pilot (uncommitted)
-
-- Added `scripts/agent/mcp-context.ts`: it calls the configured local Reckons MCP server over
-  stdio JSON-RPC and records a `kb_compress` context file with query, budget, SHA-256 and transport
-  provenance. `runner.ts` supports `kpred:context-query` / `kpred:context-budget`, exposes the
-  saved path as `TASK_MCP_CONTEXT`, and includes its provenance in the run receipt.
-- `local-code-review` is the first consuming task. It now injects runner-fetched MCP graph text as
-  **reference data, not instructions**, retains its graph file-owner grounding, and records the
-  MCP context hash in its review report. The standing query names `scripts/agent/runner.ts` and
-  task-orchestration terms so `kb_compress` lands on F81 rather than the unrelated F108.3 hit from
-  the first broad wording.
-- Historical pilot run: the runner claimed only `local-code-review`, queried MCP, selected **25**
-  paths, wrote a report/receipt, and added proposals without source edits. The newer audit proved
-  this was **not** a complete worktree review: it silently capped a much larger tracked set, omitted
-  every untracked file, consumed unrelated F108.3 context, and recorded SHA-256(empty) for the
-  overflowing diff. Treat it as the motivating failed contract, not end-to-end proof.
-- **Quality warning:** that first run emitted **73** code-review proposals. The queue now
-  has **535** pending proposals and no proposal has yet been ruled on, so acceptance yield remains
-  unknown. Do not treat the 73 as bugs or auto-settle them. The harness now limits future runs to
-  **12 total / 1 per file**, reporting suppressed observations; this limits human triage load but
-  does not establish precision. Next evaluation work is a sampled human/Codex triage of the capped
-  proposals, then measure accepted-over-ruled-on before widening the local-agent schedule.
-- Validation: direct `kb_compress` call succeeded through `scripts/mcp-server.sh`; 20 focused
-  tests (agent task + MCP response parser) passed under node environment; runner targeted dry-run
-  displayed its MCP query and effect gate; `git diff --check` passed.
-
-## ▶ LATEST (2026-08-17) — Wave 0 task-runner hardening (uncommitted)
-
-- `scripts/agent/runner.ts` now requires every runnable task to declare one or more effects
-  (`read-only`, `queue-write`, `source-write`, `external-read`, `external-write`), defaults to
-  **read-only** authority and **WIP 1**, and requires explicit `--allow-effects=…` / `--all` for
-  broader execution. It records hash-only structured JSON receipts under
-  `reckons-workspace/runs/` and links the latest receipt from derived task state. Do not invoke
-  `npm run agent:run` expecting the old all-task drain.
-- All 25 contracts in `reckons-workspace/tasks.ttl` now declare effects. Safety attestation is
-  report-only; prompt-audit reflects purpose/locality gating; button-crawl and visual-diff now
-  require a fresh task-specific report instead of the shared pending queue.
-- Local code review now accepts `--worktree`, `--files`, and `--report`; its standing task reviews
-  the uncommitted worktree and verifies a fresh structured review report. Visual diff writes its
-  own report and exits nonzero when any route was skipped.
-- Validation: task graph parses; 25/25 tasks have effects; no contract still uses the shared
-  `knowledge.pending.jsonl` existence check; runner dry-run exposes the effect gate and schedules
-  one read-only task. `git diff --check` passes. The focused Vitest invocation is currently blocked
-  before test discovery by the existing `html-encoding-sniffer` → ESM dependency mismatch; direct
-  `tsc --noEmit` reaches unrelated existing Svelte export errors in badge/button and docs params.
-- A bounded local `qwen3-coder:latest` review was run on this diff. Its output was mostly generic
-  effect-label concerns; the actionable concern (fresh-report timestamp handling) was manually
-  checked against the runner-provided `TASK_RUN_EPOCH` and retained as the task-specific contract.
-
-## ▶ LATEST (2026-08-17) — deterministic audit reliability and refreshed handoff facts
-
-This section supersedes stale counts and the contradictory atomicity line in the August 16 section.
-No commit, push, PR, queue settlement, legacy graph assignment, or workspace/export cleanup was
-performed. The existing broad patch remains intentionally uncommitted for review.
-
-### Completed in this session (uncommitted)
-
-- Ran the required script tier with an explicit Node 24.18 path because this shell initially had no
-  `npm` on `PATH`. All **20/20 jobs exited clean**. Advisory output included the five known graph
-  vocabulary warnings, 37 branch-alignment suggestions, and three self-hosted-server reboot/kernel
-  findings; those are not represented here as product failures.
-- Fixed a repeated false-positive class in the blocking published-graph guard. `toTurtle()` declares
-  app `Statement` objects, while N3 also parses two provenance triples per statement. The honest
-  header is therefore **221 statements**, not 663; 663 is the raw RDF triple count. The guard now
-  reports both units, excludes provenance plus the derived advisory triple from header comparison,
-  and uses a **100 asserted-statement** catastrophic-truncation floor rather than staying green only
-  because provenance inflated the old 400-triple floor.
-- The hand-written claim audit now distinguishes explicit capability absence from a built claim.
-  It no longer flags the counsel sentence saying Reckons does not mediate Graph Publication, while
-  it still flags an ordinary present-tense claim and still treats statements such as "Graph
-  Publication does not require a Reckons server" or "does not exist on a Reckons server" as claims
-  that the capability exists.
-- Added pure rules in `scripts/offline/lib/audit-rules.ts` and focused coverage in
-  `scripts/offline/lib/__tests__/audit-rules.test.ts`. Both files are still untracked inside this
-  review patch; formal graph file/test edges are deliberately deferred until the commit that first
-  tracks them. `static/knowledge.ttl` was not edited—the warning was in the guard, not the graph.
-- Updated the canonical F74.3/tier-script roadmap facts with the correction and current evidence.
-  This is plan/evidence maintenance, not a feature-status promotion.
-
-### Verification and local-agent disposition
-
-- Focused audit rules: **10/10 passed**.
-- Full unit suite: **147 files / 2,026 tests passed**.
-- `npm run check`: **0 errors / 4 warnings in 2 files**. These are the same deliberately unresolved
-  Sheet drag-handle, graph pointer-move, and two missing-video-caption-model warnings documented
-  below; this slice did not suppress them.
-- Published graph guard: **221 asserted statements / 663 RDF triples, 0 errors, 0 warnings**.
-- Claim audit: **0 findings** across 5 hand-written surfaces / 156 unbuilt features.
-- `git diff --check`: passed.
-- A read-only local `qwen3-coder:latest` review received only this bounded diff and made no edits.
-  It emitted seven observations. Accepted: scoped "does not exist on our server" needed to remain a
-  built-capability claim, and the truncation-floor comment/unit needed tightening. Rejected as
-  direct code/test misreads: the intentional helper call, blank-node term access, already-handled
-  auxiliary spacing and `does not exist`, the checked-in graph integration fixture, and the
-  negated-property test. The accepted edge is now covered.
-
-### Queue and next work (current, not the August 16 snapshot)
-
-- `scripts/brief.ts --json` now reports **460 total** rows: **457 valid, 3 invalid, 410 untargeted**.
-  The script-tier sweep changed the prior 421-row snapshot by recomputing/superseding its own job
-  findings and adding current targeted findings; it did not infer graph targets for legacy rows or
-  settle any proposal. Do not describe 418 targetless rows as the current count.
-- Review and commit the broad uncommitted patch as coherent slices before starting another large
-  feature. When the new audit-rule files are first tracked, add their formal roadmap file/test edges.
-- Then resume the CLI-first grouped/deduplicated human settlement flow. Legacy graph assignment and
-  the three invalid proposal types remain explicit human migration decisions.
-- F136.1's atomic source/statement/changelog/run transaction **is implemented and rollback-tested**.
-  The remaining F136.1 work is the typed invoke/parse adapter split, complete pre-filter loss
-  metadata, inspectability/query UI, and the benchmark failure/object-shape/direction fixes before
-  production vocabulary wiring. Do not repeat the older statement that atomicity is unfinished.
-
-## ▶ LATEST (2026-08-16) — repository/roadmap audit after the Claude handoff
-
-This section is the current correction layer over the August 15 narrative below. The canonical
-roadmap is **`static/reckons-roadmap.ttl`** (also reached through
-`reckons-workspace/kbs/roadmap/roadmap.ttl`). The generated browser export at
-`kbs/reckons-roadmap/reckons-roadmap.ttl` predates F136 and other August 14–15 changes and is not a
-current source of truth.
-
-### Work completed after this audit (2026-08-16; uncommitted)
-
-The highest-priority accuracy and data-integrity slice from the audit is now implemented. These
-changes are deliberately still uncommitted so the next maintainer can review them as one coherent
-patch. No existing pending-queue row or untracked workspace/export artifact was modified, migrated,
-or deleted.
-
-#### Queue validation and graph routing
-
-- Added a shared runtime parser and partitioner in `src/lib/rdf/pending-entry.ts`. It validates the
-  JSON object and required fields, proposal type, priority, timestamps, and optional blockers;
-  normalizes graph names; and retains the original line for anything that cannot be safely consumed.
-  Legacy priority `medium` is accepted and normalized to `normal`, but arbitrary proposal types are
-  rejected.
-- `drainWorkspacePending` now consumes only schema-valid entries whose explicit `kb` target matches
-  the active graph. Targetless, other-graph, invalid, and malformed rows are retained verbatim. A
-  malformed line can no longer disappear merely because other entries were drained.
-- All repository queue producers now emit an explicit target. General audit/agent/digest/review
-  producers default to `roadmap`; production alignment targets `production`; the offline queue API
-  accepts an explicit override. Per-KB MCP queue files remain scoped by their containing KB.
-- While inventorying producers, fixed a pre-existing name collision in `button-crawl.ts`: its local
-  `queueFindings` function shadowed the imported shared writer, recursively called itself with the
-  wrong input shape, and swallowed the resulting failure. Crawl findings now reach the shared,
-  targeted, recomputing writer and the reported queued count is the actual count.
-- The live queue was inspected but **not rewritten**: 421 parseable nonblank rows, of which 418 are
-  schema-valid but targetless and 3 have invalid proposal types (`high` once, `normal` twice).
-  Consequently all 421 are safely held. Assigning those 418 legacy rows to graphs is a content
-  decision, not a migration to infer automatically.
-- Added focused coverage in `src/lib/rdf/__tests__/pending-entry.test.ts` and updated offline/agent
-  queue tests. The tests cover explicit matching, display/folder-name normalization, legacy priority,
-  field validation, and verbatim retention of invalid and malformed rows.
-
-#### F136.1 ExtractionRun ledger — first local foundation (in progress)
-
-- Added the typed, metadata-only `ExtractionRun` contract in `src/lib/rdf/types.ts`, pure lifecycle
-  functions in `src/lib/ingest/extraction-run.ts`, and a Dexie **v8** `extractionRuns` table indexed
-  by id, source id, start time, and status. Stored runs contain source hash, pipeline/prompt/schema
-  identifiers, route decision, attempts, stage timing/status, candidate ids and output ids read
-  from the actual write funnel, grounded vs
-  explicitly ungrounded counts, terminal status and failure details. They deliberately do **not**
-  retain source text, prompts, raw model responses, or credentials.
-- `ingest.svelte.ts` now creates and updates a run across the truthful seams the current monolith
-  actually exposes: `route → extract → validate → ground → normalize → archive → diff → persist`.
-  It records the existing configured backend selection and locality; it does **not** add model
-  selection, retries, egress, or fallback behavior. `Source.latestExtractionRunId` and new
-  `Statement.extractionRunId` link successful work back to the run.
-- The `validate` stage is now a real pre-write boundary. `parseTriplesJSONWithReport()` records
-  total array entries and parser-rejected entries for raw-chat adapters; `validateExtractedTriples()`
-  rejects blank identifiers, non-scalar/non-finite literal values, invalid literal/datatype pairs,
-  out-of-range confidence, and wrongly typed optional presentation/evidence fields. A provider
-  result with zero usable candidates throws and leaves no source or statement write; mixed batches
-  continue with their accepted candidates and an explicit loss count. Direct Turtle imports skip
-  this boundary because their parser has already produced Statements. Adapter APIs that return
-  `ExtractedTriple[]` (Claude, Ollama, WASM) can report the candidates they return but cannot yet
-  report entries discarded inside their private parser boundary—do not describe those loss counts
-  as complete until adapter result metadata is unified.
-- The old WASM error path still produces placeholder facts, but its evidence is now honest: the run
-  keeps a failed WASM attempt and a succeeding browser-local `placeholder-extractor-v1` attempt.
-  The source's extraction metadata names that actual placeholder producer, while the run retains
-  the requested WASM primary and its failure.
-  Archive-decision cancellation becomes `cancelled`; provider/pipeline errors become `failed` at
-  the active stage and are rethrown. A repository-only prompt lazy import was moved inside this
-  tracked boundary after local review found it could otherwise leave a run permanently `running`.
-- The successful ingest boundary is now atomic. `prepareStatementsForWrite()` preserves the same
-  currents/content/agent/archive admission path that `addStatements()` uses, but returns its exact
-  accepted batch before a transaction opens. `persistIngestBatch()` then commits source, accepted
-  statements, associated changelog entries, and the terminal `ExtractionRun` in one Dexie
-  transaction; reactive state, review notifications, autosave/export scheduling, and source hooks
-  happen only after commit. A statement-table failure is tested to roll **all four** durable
-  records back. A late official-graph switch throws rather than leaving a successful-looking run.
-  Content-blocked or archive-held batches can still deliberately persist a source/run with no
-  accepted statement rows; that is a policy result, not a partial database failure.
-- **Deliberate limits:** no extraction-run UI/query endpoint, no replay, no raw trace option, no
-  vocabulary-selector wiring, no token/cost accounting, and no full invoke/parse split yet. The
-  parser report is complete only at raw-chat call sites; adapter-returned extraction has the
-  terminal typed guard but not pre-filter loss accounting. Atomicity is currently scoped to this
-  ingest path; other callers that separately invoke `addSource()` then `addStatements()` retain
-  their pre-existing boundary and must not inherit this claim.
-- Focused evidence: `src/lib/integrations/llm/__tests__/extractor.test.ts`,
-  `src/lib/ingest/__tests__/extraction-run.test.ts`, updated `ingest-archive.test.ts`, and the new
-  `kb-ingest-atomic.test.ts` cover parser-loss accounting, typed candidate rejection, local/manual
-  route lifecycle, an empty provider result failing before graph writes, cancellation, exact
-  accepted-output ids, visible WASM→mock fallback, and transactional source/statement/run/audit
-  rollback plus intentional policy-held zero-statement persistence. The full suite passed
-  **146 files / 2,016 tests**; `svelte-check`
-  reports **0 errors** and the existing 81 warnings.
-- Post-documentation verification: `graph-lint` passed with **12,666 quads, 0 errors, 5 existing
-  predicate-economy warnings**; `status-evidence` remains **71 tested / 15 declared-untested /
-  0 undeclared**; `git diff --check` passed.
-- The four new F136 source/test files are still untracked with this broader worktree patch. The
-  roadmap therefore records their paths in progress prose but intentionally omits formal
-  `kpred:has-file`/`kpred:tested-by` edges: graph-lint correctly treats an uncommitted link as
-  dead for every other checkout. Add those edges in the same commit that tracks the files.
-- Local-agent review: read-only `qwen3-coder:latest` reviewed only the uncommitted diffs through
-  the local Ollama daemon (nothing queued or sent to a cloud service). Its earlier repository
-  lazy-import lifecycle finding is fixed. On this validation slice it incorrectly alleged broken
-  parser accounting (the count is exactly `array entries - retained entries`) and a Turtle/import
-  bypass; the former is covered by a focused test and the latter is deliberate because Turtle
-  already arrives as parsed Statements. Its useful reminder was the honest scope boundary above:
-  current adapter-returned triples cannot expose parser losses from their private parser. The local
-  agent remained review-only; `scripts/agent/orchestrate.ts` continues to emit task drafts only and
-  `runner.ts` refuses to run a local-agent task when Ollama is unavailable rather than failing it.
-  A second local review request for the transaction seam returned no usable model text within its
-  time budget, so it is **not** treated as review evidence; focused rollback tests are the evidence.
-
-#### Dependency, override, and security review (2026-08-16; no package changes made)
-
-- `npm audit --omit=dev --json` is clean: **0 production vulnerabilities** across 155 production
-  packages. The full lockfile audit reports **6 vulnerable development/build-tool dependency paths**
-  (4 high, 2 moderate; no critical): direct `@sveltejs/kit` 2.70.0 (Accept-header ReDoS), plus
-  `brace-expansion` 2.1.3 and 5.0.8, `fast-uri` 3.1.4, `nanoid` 3.3.15, `postcss` 8.5.19, and
-  `undici` 7.28.0. The paths are Kit, Vite/PWA Workbox build tooling, shadcn/PostCSS, and jsdom;
-  they are dev dependencies in the lockfile, but Kit is a direct build/preview tool and should be
-  patched promptly rather than treated as irrelevant.
-- A read-only `npm audit fix --dry-run --json` proposed only compatible patch/minor lock updates:
-  Kit 2.70.2, `brace-expansion` 2.1.4 + 5.0.9, `fast-uri` 3.1.5, `nanoid` 3.3.18, `postcss`
-  8.5.26, and `undici` 7.29.0. Do **not** use a blind audit fix: first update the override test
-  floors, apply the lockfile change in an isolated commit, then run the full suite, build, PWA and
-  extension checks. The existing `dependency-overrides.test.ts` passes today but accepts the two
-  vulnerable brace-expansion versions (`>=2.1.3`, `>=5.0.8`); it should require the audit-fixed
-  floors before that test is relied on as a security regression control.
-- Overrides are purposeful and presently resolved as intended: `uuid: "$uuid"` aligns the direct
-  uuid 14.0.1 with Hume/Storybook; `cookie: ^0.7.0` constrains Kit's copy; `sharp: "$sharp"`
-  aligns the direct 0.35.3 package with Transformers; and exact `adm-zip: 0.6.0` constrains
-  ONNX Runtime. The focused override-compatibility test passes. Keep these only with the test:
-  Sharp and AdmZip cross native/ONNX boundaries, so removing or broadening them on an audit pass is
-  not a safe mechanical change.
-- **Priority warning — incompatible Storybook family.** Root `storybook`, `@storybook/svelte-vite`,
-  and `@storybook/sveltekit` resolve to 10.5.2, while direct `@storybook/addon-essentials` and
-  `@storybook/test` are 8.6.18 and declare `storybook ^8.6.18` peers. `npm ls` marks the tree
-  peer-invalid. This does not ship in the static application, but it can invalidate component-story
-  builds/tests and makes future dependency changes noisier. Align all Storybook packages to one
-  supported major in a separate tooling change before trusting `build-storybook` as a release gate.
-- Maintenance warnings, not current vulnerabilities: deprecated `boolean` is transitively owned by
-  Transformers -> ONNX Runtime -> global-agent; deprecated `rdf-dataset-ext` is owned by
-  `rdf-validate-shacl`; old/beta `source-map` copies arise through Storybook/Vite PWA tooling.
-  Treat parent upgrades/replacement as the remediation path; do not add direct overrides for these
-  deprecated leaves without a compatibility test.
-- Lock metadata drift is present: `package.json` is 0.2.0 but root metadata in `package-lock.json`
-  remains 0.1.0. `npm ci --dry-run --ignore-scripts` succeeded, so this is not a current install
-  reproducibility failure, but synchronize the metadata in the next intentional dependency commit.
-- Security controls checked clean: `secret-scan --ci` found only expected `VITE_*` references and
-  no inline provider secret; `csp-origin-audit` found every network-call origin admitted by CSP;
-  and the safety attestation passed **6/6** when executed with the project's Node bin on `PATH`
-  (including 47 safety tests). The Vite secret guard blocks builds if a secret-bearing `VITE_*`
-  variable is set, unless the explicit `VITE_SECRET_GUARD_ALLOW=1` bypass is supplied; preserve
-  that guard and treat the bypass as a distribution-risk exception.
-- Attestation portability warning: called directly in an environment with Node/tsx but no ambient
-  npm/npx, the attestation falsely reports its Vitest and graph-lint controls as indeterminate
-  because it shells out to `npx`. `npm run safety:attest` supplies the normal PATH and passes.
-  Later harden the script to invoke local project binaries through `process.execPath`/resolved paths
-  rather than ambient `npx`, so an environment setup defect cannot look like a security failure.
-
-Recommended order when dependency work resumes: (1) reconcile the Storybook major-version split;
-(2) tighten the brace-expansion test floors; (3) apply and review the audit dry-run's seven package
-updates in one lockfile-only change; (4) synchronize lockfile version metadata; (5) make safety
-attestation independent of ambient `npx`. Re-run production and full audits, override tests, unit
-suite, builds/extension checks, secret/CSP scans, and the attestation after each relevant change.
-
-#### Dependency/security remediation completed (2026-08-16; uncommitted)
-
-- Completed the ordered repair above without changing application behavior. `@storybook/addon-essentials`
-  and `@storybook/test` were removed from the root dev dependencies. The existing Storybook 10
-  config already leaves `addons` empty because controls/actions/docs/etc. are built into Storybook
-  core; Storybook's v10 addon migration guide specifically says to remove those legacy packages.
-  The config's stale "Storybook 8" heading is now accurate as "Storybook 10." The prior mixed-major
-  peer-invalid tree is gone and `npm run build-storybook` now completes successfully.
-- Raised the direct Kit floor from `^2.69.3` to `^2.70.2`, then applied the compatible audit lock
-  updates: `brace-expansion` 2.1.4 and 5.0.9, `fast-uri` 3.1.5, `nanoid` 3.3.18, `postcss` 8.5.26,
-  and `undici` 7.29.0. Lock-root metadata is now 0.2.0, matching `package.json`. No override was
-  removed, broadened, or added: `uuid`, `cookie`, `sharp`, and `adm-zip` retain their prior tested
-  constraints. The fresh installed tree is peer-valid and has **0 full-audit vulnerabilities**;
-  production-only audit remains zero.
-- Strengthened `dependency-overrides.test.ts` so the two Workbox/Minimatch compatibility paths now
-  require the actual security floors (`brace-expansion >=2.1.4` and `>=5.0.9`) while continuing to
-  exercise the old function-shaped API required by Minimatch 5. Its four tests pass.
-- Made `safety-attestation.ts` invoke the checked-in Vitest and tsx entry points with
-  `process.execPath`/`execFileSync`, not shell-interpolated ambient `npx`. The same direct
-  Node-only invocation that previously returned false indeterminate controls now passes **6/6**;
-  it still preserves graph-lint's non-zero finding output for inspection.
-- Fresh evidence after dependency installation: full unit suite **146 files / 2,016 tests**;
-  `npm run check` **0 errors, 81 pre-existing warnings**; production `npm run build` passed with
-  the secret guard green; Storybook 10.5.2 build passed; and the Chromium extension build passed.
-  A clean `npm ci --dry-run --ignore-scripts` also accepts the reconciled lock. Full and
-  production-only `npm audit --json` reports **0 vulnerabilities**. Storybook and production
-  builds retain pre-existing Svelte/a11y, unresolved font-at-build-time, ineffective-dynamic-import,
-  and large-chunk warnings. These are documented warnings, not part of this patch.
-- A read-only local `lfm2.5` review received the source/config diff but exhausted its response
-  budget in internal reasoning without a findings section. It is **not review evidence** and made
-  no edits; the passing deterministic checks above are the evidence for this slice.
-
-#### Extension bundler deprecation remediation (2026-08-16; uncommitted)
-
-- Read the current Rolldown/Vite 8 migration documentation before changing the extension config.
-  `inlineDynamicImports: false` is already the default; the recommended `codeSplitting: false`
-  is equivalent to deprecated **true** and would incorrectly request a single bundle, which is not
-  valid for this six-entry extension build. Removed the redundant deprecated option instead and
-  renamed Vite 8's `build.rollupOptions` to `build.rolldownOptions`; no custom chunking is needed.
-- A fresh `npm run build:extension` passes with the same entry artifacts and no deprecation warning.
-  The Vite secret guard remains green. Do not re-add `inlineDynamicImports` or set
-  `codeSplitting: false` unless the extension is deliberately redesigned as a single-input bundle.
-
-#### Accessibility / warning-maintenance slice (2026-08-16; uncommitted)
-
-- Reduced the Svelte compiler result from **0 errors / 81 warnings in 21 files** to **0 errors /
-  4 warnings in 2 files**, without blanket warning suppression. The full unit suite remains
-  **146 files / 2,016 tests** and the production build passes with the secret guard enabled.
-- Repaired the calendar's invalid nested interactive controls by making its selectable event shell a
-  keyboard-operable `role="button"` container and retaining the nested add button as the sole native
-  button. Menu, popup, group, state-selection, input-label, and deprecated event-handler diagnostics
-  were repaired across navigation, merge review, relation builder, QR sharing, history,
-  disambiguation, integrations, and Turtle settings. The merge backdrop now dismisses only when the
-  actual backdrop is clicked, preserving its prior modal behavior.
-- Removed compiler-identified dead CSS; made graph renaming keyboard-operable; corrected reactive
-  component references, stale incoming-diff drafts, and local initial-state declarations; and added
-  `focusOnMount`, a client-only action that preserves intentional focus for dynamically opened edit
-  fields and the fullscreen dialog's close control without the HTML `autofocus` attribute stealing
-  focus on page load.
-- Converted graph asset thumbnails and image/3D fullscreen affordances to named native controls or
-  keyboard-operable controls. The fullscreen surface is now a labelled dialog that dismisses only on
-  its backdrop, moves focus to its close control, and locally handles Escape. These are mechanical
-  accessibility and correctness fixes; no product workflow was added or redesigned.
-- The four remaining warnings are intentionally visible because they need an owning interaction or
-  metadata design: (1) Sheet's swipe-down handle is pointer-only but has an independently accessible
-  close control, so decide/implement its keyboard semantics rather than assigning a cosmetic role;
-  (2) the graph viewport observes pointer movement for hover positioning but is not itself a control,
-  so relocate/structure that listener without hiding child graph semantics; and (3–4) video assets
-  have only a video URL (`urn:kbase:predicate/video`), no caption-track source. Add an explicit
-  caption metadata model and render real `<track kind="captions">` elements before clearing those
-  two diagnostics. Do not silence them globally merely to reach zero.
-
-#### Visual/E2E verification slice (2026-08-16; uncommitted)
-
-- Used two scoped, read-only local review agents with compact evidence capsules (changed-file manifest,
-  exact test paths, and observations only). `jcode` is **not installed**. Ollama is available with
-  local coding and vision models; use the same capsule/retrieve-by-artifact-ID pattern rather than
-  passing full transcripts or screenshot payloads into future agent context.
-- Installed Playwright Firefox and WebKit browser binaries locally. WebKit cannot launch on this host
-  because `libavif16` is absent; do not treat its per-test launch failures as product results or alter
-  system packages without approval. The attempted all-device run also exposed the three existing
-  `test.fail()` multi-tab synchronization characterizations and one Firefox Vite dynamic-import error
-  on an otherwise correctly rendered 404; neither belongs to this UI slice. The long matrix was
-  deliberately stopped once WebKit infrastructure failures made continuation non-informative.
-- Browser review found and fixed two real fullscreen regressions from this slice: dialog Escape had
-  bubbled to the window handler and collapsed both fullscreen and large states; it now stops at the
-  fullscreen → large step. Also, the notification bell (`z-index:701`) intercepted the fullscreen
-  close control; the task-modal fullscreen surface now sits above it (`z-index:800`).
-- `tests/visual/user-stories/previews.test.ts` now asserts the accessible button wrapper introduced
-  for node thumbnails. `tests/visual/preview-collage.test.ts` now proves dialog focus, Escape step
-  back, backdrop step back, and explicit close. The focused Chromium visual run completed without a
-  Playwright error artifact after those repairs. It refreshed the seven tracked preview-collage
-  screenshot evidence files; leave them visible for visual review rather than silently reverting them.
-- Still required before claiming a complete device gate: run Android Chromium; supply the host WebKit
-  dependency then run iOS/tablet; run `test:e2e:smoke`, workflows, and evidence/VLM review. Add
-  focused browser tests for MergeReview immediate Escape, Analyze-menu focus transfer, Calendar
-  outer-vs-add keyboard behavior, KB rename focus, and Turtle/Integrations selection persistence.
-
-#### Generated brief and handoff facts
-
-- `scripts/brief.ts` now parses the GitHub CLI response without the `jq` formatting trap. An empty PR
-  array becomes `null`, not `#null → null: null`.
-- Human and JSON output now report the tracking branch, ahead-of-upstream and ahead-of-`dev` counts,
-  PR state, and queue totals split into valid, malformed, invalid, and targetless rows. Queue counting
-  uses the same validator as ingestion. Pure formatting/count tests live in
-  `scripts/__tests__/brief-data.test.ts`.
-- Current generated facts: branch `plan/content-operations`, upstream
-  `origin/plan/content-operations`, 9 commits ahead of upstream, 14 ahead of `dev`, no open PR found,
-  and the held queue counts above.
-
-#### Counsel and safety-record accuracy
-
-- Corrected `COUNSEL-BRIEF.md`, the safety workflow commentary, the attestation generator, and the
-  current log header. Claims now distinguish the local graph/content path from the optional
-  maintainer feedback endpoint, which can receive name, email, message, source, timestamp, and
-  ordinary request metadata. The brief expressly asks counsel for feedback privacy/retention advice.
-- Replaced the false "every prompt gets the preamble" claim with the actual purpose/locality policy:
-  sharing prompts always include it, remote conversation is gated, and local-only/structured paths
-  have deliberate omissions. The safety check now discovers and classifies the prompt modules
-  against that policy.
-- The record no longer represents Git alone as impossible to backdate. Git supplies hash-linked
-  ordering; a protected hosted remote and CI history are the independent timing evidence to preserve.
-  Historical attestation entries remain historical and were not rewritten.
-- The current safety attestation passes **6/6 controls** (including 47 safety-focused tests).
-
-#### Roadmap evidence and external references
-
-- Corrected F136 (`kb:vocabulary-grounding`) directly in the canonical graph: its selector and
-  benchmark scaffold are committed, while production wiring and a usable score remain pending. The
-  graph now links the implementation/test artifacts and preserves the measurement defects listed
-  below rather than implying graph-aware extraction has shipped.
-- Added the missing `kpred:tested-by` evidence for `kb:all-previews-modifier`; status-evidence is now
-  green with 71 test-backed shipped features, 15 explicitly declared untested features, and no
-  undeclared gaps.
-- Recorded seven copy-permitted roadmap references from their primary repositories, with concrete
-  lessons and constraints rather than adoption commitments:
-  - [iai personal memory engine](https://github.com/CodeAbra/iai-personal-memory-engine) → ambient
-    capture hooks and bounded context packs for the context engine; verbatim capture must not bypass
-    F52/locality policy.
-  - [fenic](https://github.com/typedef-ai/fenic) → typed, inspectable semantic pipelines, lineage,
-    caching, and cost accounting for F136/extraction; preserve Reckons' TypeScript/RDF contracts.
-  - [OntoCast](https://github.com/growgraph/ontocast) → ontology retrieval, critic/patch stages,
-    SHACL repair, and provenance for extraction; schema evolution must remain proposal/review based.
-  - [docTR](https://github.com/mindee/doctr) → transcription/layout/rotation OCR benchmark cases;
-    do not replace the local WASM path without measured benefit.
-  - [old-coder](https://github.com/AmazingAng/old-coder) → spec-to-gauntlet-to-fresh-evidence
-    workflow for verification and work tiering; a gauntlet cannot prove its source spec complete.
-  - [Docling Graph](https://github.com/docling-project/docling-graph) → validated extraction
-    templates, stable IDs, bounding-box provenance, and deterministic fusion; benchmark before any
-    integration and retain the existing RDF review model.
-  - [NVIDIA NeMo Switchyard](https://github.com/NVIDIA-NeMo/Switchyard) → protocol-normalised model
-    routing, deterministic stage signals, escalation and per-route metrics for F74.6; retain direct
-    browser providers, make any localhost proxy optional, and never let fallback silently cross the
-    local-to-cloud egress boundary.
-
-#### Architecture pass from the seven references (2026-08-16; design only)
-
-Matt asked to architect each useful takeaway. Seven planned native Reckons features now sit beside
-the references in `static/reckons-roadmap.ttl`; this pass changed the canonical plan, not product
-code, storage schemas, provider selection, or user data:
-
-1. **F136.1 `kb:extraction-run-ledger` — typed ExtractionRun.** A separate IndexedDB run record
-   captures immutable source revision, provider/model, prompt/schema ids, selected vocabulary,
-   ordered stage outcomes, metrics, validations, output statement ids and explicit failures. Source
-   points to the latest settled run; proposed statements carry `extractionRunId`. Raw prompts,
-   responses and source bodies remain opt-in local traces, never default publication payloads.
-2. **F136.2 `kb:reviewable-graph-patches` — bounded graph operations.** The sequence is acquire ->
-   select -> extract -> ground -> validate -> normalize -> diff -> propose. Existing `Diff` remains
-   the review presentation; GraphPatch is the transactional execution artifact. First release is
-   insert-only. Critics emit diagnostics/replacement proposals, deterministic code may repair only
-   meaning-preserving form, and schema patches are separate human decisions from fact patches.
-3. **F122.1 `kb:document-evidence-anchors` — source-addressable evidence.** Parsers return a neutral
-   DocumentIR of ordered pages/blocks. An EvidenceAnchor names the exact source hash, block, excerpt,
-   character span and optional normalized page/bbox geometry. Missing geometry stays unknown; source
-   revision mismatch invalidates the anchor. Private document bytes remain outside graph packages.
-4. **F135.3 `kb:local-session-memory` — memory as source, never authority.** Opt-in host adapters
-   append a common immutable SessionEvent. Human turns remain verbatim; assistant/tool retention is
-   separately bounded. Bounded packs query confirmed graph facts first and labelled session history
-   second. Promotion creates an ordinary pending patch tied to the source turn; no conversation is
-   auto-promoted, synced, or published.
-5. **F34.1 `kb:risk-evidence-contract` — plan before, evidence after.** VerificationPlan states
-   behaviors, non-goals, risks and required checks. A runner, not the agent, emits append-only
-   EvidenceReports with diff hash, exact argv, versions, timing, exit codes, artifacts and an
-   explicit unverified list. Risk can be elevated automatically; sensitive gates cannot be lowered
-   silently. Green checks never settle qualitative UX/status claims.
-6. **F70.2 `kb:ocr-provider-benchmark` — capabilities and measurement before provider changes.**
-   Tesseract, Ollama VLM, Mistral and any future docTR sidecar declare text/layout/rotation/table/bbox
-   capability and return the same DocumentIR. Benchmarks score CER/WER, reading order, regions,
-   bbox IoU, rotation, tables, hallucination, latency, memory/download size and egress separately;
-   there is deliberately no blended leaderboard score.
-7. **F74.6 `kb:model-routing-ledger` — policy-driven routing with visible attempts.** A native
-   `ModelRoutePolicy` first excludes targets that violate capability, locality, egress, availability
-   or budget constraints, then applies explicit task overrides and deterministic workflow signals.
-   A `ModelRouteDecision` records candidates, the decisive rule and every provider/model attempt,
-   including errors, validators, locality, tokens/cost and latency. Local-to-cloud fallback requires
-   an allowed policy edge; a recovered run still shows the failed primary. Random routing is only a
-   sticky benchmark split. An LLM classifier is last-resort advice, never the primary router or the
-   judge of its own output.
-
-Cross-cutting decisions: copy contracts before engines; large/raw artifacts stay local while compact
-provenance enters the graph; model stages cannot silently repair semantics; deterministic checks own
-form and humans own meaning; routing cannot silently change data locality; failures and unrun checks
-are explicit. Recommended delivery spine is F34.1's minimal evidence reporter alongside F136.1,
-including F74.6's route-attempt record, then F122.1 + F70.2, then F136.2. Generalise F74.6 beyond
-extraction only after that route is replayable. F135.3 can proceed independently once its
-retrieval-recall fixture and private-location UX are specified. The three ingestion contracts and
-memory remain high priority; the incremental evidence automation, OCR provider competition and
-generalised router are medium priority rather than seven new simultaneous P0s.
-
-Switchyard itself is deliberately **not** adopted as runtime infrastructure in this architecture.
-Its README marks it pre-alpha, and its always-on Rust proxy/server shape is not a default fit for a
-static browser application. The first implementation remains provider-neutral TypeScript around the
-existing direct calls. A user-configured localhost Switchyard endpoint can later compete as one
-adapter after a conformance corpus proves streaming, structured output, tool calls, cancellation,
-usage/error reporting and safety metadata survive protocol translation without approximation.
-
-#### Verification of the uncommitted patch
-
-- Full unit suite: **144 files, 2,003 tests passed**.
-- `npm run check`: **0 errors**, 81 pre-existing warnings in 21 files.
-- Graph lint: **26 files, 12,657 quads, 0 errors**, 5 structural vocabulary warnings after the
-  architecture pass.
-- Status-evidence: **71 backed, 15 declared, 0 undeclared** (exit 0).
-- Safety attestation: **6/6 controls passed**.
-- `scripts/brief.ts --json` was exercised against the current repository and queue.
-- The new pending-entry test is described in F80's progress evidence but is not yet a formal
-  `kpred:tested-by` target: graph-lint correctly rejects links to untracked files. Add that edge in
-  the commit that first tracks the test, or immediately afterward.
-
-#### Remaining ordered work
-
-1. Decide the target graph(s) for the current 410 legacy targetless rows and repair or reject the 3 invalid
-   proposal types through an explicit, reviewable migration. Do not bulk-assign them based only on
-   their current file location.
-2. Build the CLI-first grouped/deduplicated settlement UI with human settler provenance. The runtime
-   safety boundary is complete; the review experience is not.
-3. F136.1's atomic success transaction is implemented and rollback-tested. Finish the typed
-   invoke/parse/validation adapter split, complete pre-filter loss metadata, add inspectability, and
-   then complete the existing F136 benchmark failure/object-shape/direction fixes before production
-   vocabulary wiring.
-4. Build F122.1 evidence anchors and the F70.2 provider-neutral DocumentIR/benchmark, then F136.2's
-   insert-only patch path. Production vocabulary wiring follows only if that evidence supports it.
-5. Decide an ignore/external-workspace policy for the seven pre-existing untracked export/workspace
-   paths. They remain untouched.
-6. Generate or retire stale `ROADMAP.md`/`AUDIT.md` inventories, and shrink this handoff after the
-   current patch is committed. The implementation section above is the current state; findings below
-   describe the pre-fix audit unless explicitly marked otherwise.
-
-### Immediate corrections to the prior handoff
-
-- F136 is committed, but only as a vocabulary selector, prompt-section builder, fixture, and
-  baseline benchmark scaffold. It is **not wired into production ingestion**. Production callers in
-  `src/lib/stores/ingest.svelte.ts` and `src/lib/ai/ollama-extract.ts` still call
-  `buildExtractionUserPrompt` without vocabulary context. Keep `kb:vocabulary-grounding` planned
-  until the production path is wired and measured; a precise interim description is **"selector and
-  benchmark scaffold complete; production wiring and measurement pending."**
-- Before hardening, `reckons-workspace/knowledge.pending.jsonl` had **421 parseable nonblank rows**,
-  not 583: 418 are schema-valid under the compatibility parser and 3 have invalid proposal types.
-  The queue was previously pruned/reconciled (the roadmap records 904 → 409), so "has never been
-  cleared" is not literally true. The accurate claim is that it has not been drained through a
-  working human settlement workflow.
-- "Export to local agent is clearly next" and "review settlement is the highest-value item" are
-  competing historical recommendations below, not a resolved order. The audit order is recorded at
-  the end of this section.
-- `npm run bench:agentic` does not answer whether Shelly can orchestrate skills. It contains three
-  small TypeScript coding exercises (`fix-failing-test`, `implement-to-spec`, `two-file-rename`) and
-  measures a coding loop, not action selection, argument correctness, accept gates, multi-step tool
-  use, refusal, or recovery. Do not use it to unpark Shelly orchestration.
-
-### P0 audit finding — counsel brief made false engineering assertions (addressed above)
-
-`COUNSEL-BRIEF.md` says Reckons/DIS has no path by which user content reaches DIS infrastructure.
-That conflicts with `src/lib/integrations/n8n/contact.ts`: when
-`VITE_FEEDBACK_WEBHOOK_URL` is configured at build time, the feedback form sends name, email,
-message, and source to the maintainer endpoint. The variable may be unset in the current production
-build, but the conditional product data path exists and must be disclosed before counsel relies on
-the brief. Mailto fallback is also still a communication path to DIS.
-
-The same brief says the ethics preamble is injected into every LLM prompt. Current
-`ethicsPreambleFor` policy omits it from some local and structured paths. Update the claim to match
-the deliberate policy and document its rationale. The old 5/6 safety attestation is a dated result,
-not current evidence. This is an engineering/documentation finding, not legal advice.
-
-### P0 audit finding — pending queue integrity and graph routing (runtime guard addressed above)
-
-Do not bulk-drain the current queue until these are resolved:
-
-- All 421 audit-time entries omitted `kb`. The old `drainWorkspacePending` treated an entry without `kb` as valid
-  for whichever graph is active, so roadmap/code-review proposals can be imported into the wrong
-  graph.
-- The producer schema and app type disagree. **286 entries use priority `medium`**, while
-  `PendingEntry` declares `low | normal | high`. Three rows also use invalid proposal types
-  (`high` once and `normal` twice). Runtime parsing casts JSON without validating it, so the bad
-  values are silently accepted with fallback behavior.
-- Malformed JSON rows are skipped rather than retained. If other entries are drained and the file
-  is rewritten, a malformed row can disappear silently.
-- There are 421 rows but only 213 unique subject+predicate pairs, with heavy clusters (including 74
-  history-lesson proposals on one deep-testing predicate). Multiplicity can be legitimate, but the
-  review flow needs grouping/deduplication rather than presenting this as 421 independent decisions.
-- 51 entries have no `addedAt`; all omit `kb`; 57 lack `addedByMcp`. The answers file contains only
-  8 entries. Provenance and targeting need to be required before settlement is trusted.
-
-The CLI-first settlement recommendation remains sound because a human is at the keyboard, but the
-same work must add schema validation, explicit graph routing, grouping/deduplication, and provenance.
-Do not expose model-callable MCP settlement until the human/agent distinction is structurally
-enforceable.
-
-### F136 — measurement and implementation findings
-
-The selector/test scaffold is useful and its focused tests pass, but the current experiment cannot
-support a product claim yet:
-
-1. `run-ollama-bench.ts` catches a model failure and returns `null`; the report then drops null
-   results and exits 0. That is why the attempted grounded run produced selection output but no
-   score. An explicitly requested model with no result must be reported as failed and produce a
-   non-zero exit.
-2. The scorer matches normalized subject/predicate/object text but ignores `objectIsLiteral` and
-   datatype. Grounding could improve vocabulary agreement while turning a literal such as `blue`
-   into an entity IRI, and the score would not notice. Add object-kind/datatype accuracy or require
-   shape equality in the strict match.
-3. The fixture's exact-token relevance check does not mark the motivating `has-heart-count` as
-   mentioned. It is still offered only because all 16 fixture predicates fit the budget; in a
-   mature 333-predicate graph it could be crowded out. Measure lexical variants/lemmatization or a
-   partial topical score against a realistically sized graph.
-4. The selected entity list mixes proper entities with literal-like values such as `blue` and
-   `semelparity`. A reuse instruction can therefore change object typing. Separate candidate entity
-   IRIs from known literal vocabulary, or make the prompt distinction explicit.
-5. `--ground` currently measures baseline mode only, while production Ollama ingestion defaults to
-   structured extraction. A successful baseline A/B still would not measure the production path.
-   Thread vocabulary through the structured, production-shaped path before making a shipping claim.
-6. Fact recall remains an upper bound because the scorer does not detect relation direction. Keep
-   reporting it separately from vocabulary agreement and add a direction-sensitive metric/fixture.
-
-### Roadmap, graph, and generated-artifact findings
-
-- `npx tsx scripts/offline/graph-lint.ts --json` passes: 26 graph files, 12,402 quads, 0 errors.
-  Its 5 warnings are structural signals, not syntax failures: 226 `skos:related` edges, 401
-  `kpred:relates-to` edges, 4 `kpred:related`, 1 `kpred:link`, and 80 of 333 predicate types used
-  only once.
-- `status-evidence --json` currently exits 1. It finds 70 shipped features backed by tests, 15
-  explicitly untested, and one undeclared gap: `kb:all-previews-modifier` is functional and names
-  tests in its proof text but lacks a `kpred:tested-by` relationship. This looks like an evidence-link
-  documentation gap, not proof that no tests exist.
-- Roadmap readiness reports 119 startable features: 11 in progress, 93 planned, 15 scaffolded; 27
-  ready, 21 blocked, and 71 underdefined. Its ordering is not wholly trustworthy because it reads
-  moved stubs in the roadmap as unbuilt without resolving their shipped/production destinations.
-  Fix that resolver before using the report to rank work.
-- The shared-dependency report is useful for discovery but too noisy to set priority directly (283
-  features, 126 hub-overlap pairs, 174 lexical pairs). The roadmap needs a much smaller explicit
-  "Now" set and a WIP cap rather than more inferred candidates.
-- Root `kbs/default-graph`, `kbs/docs-features`, `kbs/docs-use-cases`, and
-  `kbs/reckons-roadmap` are untracked generated browser exports from August 13. The annotated
-  roadmap export contains 28,194 parsed quads/3,458 subjects versus the canonical roadmap's 3,665
-  quads/353 subjects because it expands annotations, but it is older and lacks F136. Size is not
-  freshness.
-- `reckons-workspace/kbs/farm-grants` and the two council worksheets are also untracked local
-  workspace artifacts. Root `kbs/` already contains tracked examples, so these paths are one broad
-  `git add -A` away from an accidental commit. Use an external workspace or targeted ignore rules;
-  do not blanket-ignore the tracked samples.
-
-### Stale hand-maintained documentation
-
-`ROADMAP.md` and `AUDIT.md` were last updated around July 4 while the canonical graph continued
-through August 15. Treat them as dated snapshots until they are generated or retired. Concrete
-drift found:
-
-- `ROADMAP.md` says "Alpha — feature-complete for personal use" while stabilization remains open and
-  the graph has 93 planned plus 11 in-progress features.
-- It says "7 total" extraction paths while listing 6; the current settings union has 9 provider
-  values plus a separate manual path.
-- Its 155+ test count is stale.
-- It documents 20 MCP tools. `mcp-server/src/index.ts` registers **21**; `kb_merge` is missing from
-  `ROADMAP.md`, `CLAUDE.md`, and the production graph's 20-tool inventory. Generate and compare the
-  registered tool-name list instead of maintaining counts manually. `CLAUDE.md` also omits other
-  current tools from its summary even where later prose mentions them.
-- Its `kb_compress` wording attributes roughly 60–70% savings to format alone. Canonical measurement
-  records about 18% versus grouped TTL and 29% versus flat triples; larger savings come from
-  selecting a relevant subgraph. Separate selection savings from serialization savings.
-- F6 points to old `src/lib/google/*` paths; current code lives under
-  `src/lib/integrations/google`.
-- It calls n8n sync complete. Server workflow/infrastructure may be operational, but graph
-  upload/download and Currents application paths remain partially wired.
-- It describes three MCP KBs; current setup creates six MCP graphs and seven Reckons workspace KBs.
-- R5's client-side `.env` passphrase cannot authenticate access to a shared static deployment and
-  mixes host access control, local device encryption, and published-graph authorization. Split the
-  threat models: reverse-proxy/host auth, local vault encryption, and sharing access.
-- The old Gist-publication design is no longer the same architecture as the newer graph-publishing
-  work.
-- `AUDIT.md` repeats the 20-tool, three-graph, completed-n8n, and every-prompt ethics claims; it also
-  calls voice input a scaffold despite the current functional interface and names stale action
-  vocabulary. It should be regenerated or labeled explicitly as a dated audit snapshot.
-
-### Handoff/brief automation defects
-
-- `scripts/brief.ts` formats an empty GitHub PR list as `#null → null: null`, making "no PR" look
-  like a PR. Test the empty array before formatting.
-- Its human report prints the pending queue total, but JSON output omits that total. The queue count
-  therefore gets copied into prose and drifts. Put branch/ahead state, PR state, queue count, queue
-  validity, and test evidence in the generated header.
-- The current `HANDOFF.md` is over 1,300 lines, contains several `LATEST` headings, and retains public
-  host addresses and private SSH key locations in tracked project history. Move old session detail
-  to Git/history or a private operations document and keep this file to current state, decisions,
-  blockers, and the next ordered actions.
-
-### Council worksheet finding still worth tracking
-
-`council-design.worksheet.json` decided that Poseidon's council verdict remains
-`verifiable-by unknown` and belongs in provenance; the roadmap description reflects the decision
-but still repeats it as an open question. Close the question when the graph is next edited.
-
-`council-review.worksheet.json` contains one valid latent code-contract finding among considerable
-model noise: `connectedComponents(adj, nodes)` can traverse to nodes outside the supplied `nodes`
-set. The current production caller constructs adjacency and its complete node set together, so the
-current caller is safe. The exported API should nevertheless restrict traversal, document that
-`nodes` must be complete, or gain a subset test. Archive/ignore the generated worksheet once the
-finding is represented durably.
-
-### Verification performed during this audit
-
-- Focused F136/scoring tests: **62/62 passed**.
-- `npm run check`: **0 errors, 81 existing warnings in 21 files**.
-- Graph lint: **0 errors, 5 warnings** as detailed above.
-- Status-evidence: **1 failure**, the missing `tested-by` link above.
-- No full test suite or live Ollama benchmark was run during this audit.
-
-### Recommended execution order from this audit
-
-1. **Control-plane/data integrity:** correct the counsel brief; make handoff facts generated; repair
-   queue schema, routing, malformed-row retention, and artifact ignore/workspace policy.
-2. **Finish F136 evidence:** fail loudly on missing benchmark results, score object shape and
-   direction, use a mature vocabulary, and measure the structured production path.
-3. **Wire F136 into production** only after that measurement is credible, then update the roadmap
-   status and evidence.
-4. **Build CLI-first human settlement** with explicit graph target and settler provenance. Keep
-   model-callable MCP settlement a separate gated decision.
-5. **Create a Shelly-specific orchestration benchmark** before choosing a local model or expanding
-   action dispatch.
-6. **Then choose between export-to-local-agent and additional CLI actions** from the smaller "Now"
-   set, rather than treating the older prose below as a resolved priority.
-
----
 
 ## Older sessions (2026-07-16 → 2026-08-15) — `HANDOFF-ARCHIVE.md`
 

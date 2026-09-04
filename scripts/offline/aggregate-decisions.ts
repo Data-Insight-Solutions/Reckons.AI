@@ -70,7 +70,7 @@ async function ollama(prompt: string): Promise<string> {
 }
 
 // ── GROUND ──────────────────────────────────────────────────────────────────
-const { statements, typeOf } = readGraph(GRAPH, { asReviewSet: true });
+const { statements, typeOf, syntheticSource } = await readGraph(GRAPH, { asReviewSet: true });
 const tree = buildReviewTree(statements, statements, { typeOf });
 
 const openDecisions = tree.decisions.slice(0, 40).map((d) => ({
@@ -86,7 +86,7 @@ const cascadable = statements.filter((s) => {
 });
 
 // The FLOOR runs first: whatever a script can batch EXACTLY, it batches for free.
-const mechanical = clusterForCascade(cascadable);
+const mechanical = clusterForCascade(cascadable, { syntheticSource });
 const alreadyBatched = new Set(mechanical.flatMap((c) => c.members.map((m) => m.id)));
 
 const candidates = cascadable.filter((s) => !alreadyBatched.has(s.id)).slice(0, LIMIT);

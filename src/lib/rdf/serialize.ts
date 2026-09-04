@@ -78,6 +78,19 @@ export type TurtleOptions = {
   header?: string;
 };
 
+/**
+ * Render a header as Turtle comments — EVERY line, not just the first.
+ *
+ * The 2026-08-14 fix made toTriG prefix its header with `# `, which covers a one-line header and
+ * silently breaks a multi-line one: only line 1 becomes a comment and the rest is pushed as raw
+ * Turtle, so the file fails to parse at line 2. Hit for real on 2026-09-04 by
+ * scripts/offline/build-review-corpus.ts, whose header explains what the fixture is. Commenting
+ * per line is right by construction and removes the trap for every future caller.
+ */
+function headerComment(header: string): string[] {
+  return header.split('\n').map((line) => (line ? `# ${line}` : '#'));
+}
+
 export function toTurtle(statements: Statement[], opts: TurtleOptions = {}): string {
   const {
     includeStatuses = ['confirmed', 'refined'],
@@ -93,7 +106,7 @@ export function toTurtle(statements: Statement[], opts: TurtleOptions = {}): str
   const advisoryLines = exportAdvisoryHeader(advisory);
 
   const lines: string[] = [];
-  if (header) lines.push(`# ${header}`);
+  if (header) lines.push(...headerComment(header));
   lines.push(`# generated ${new Date().toISOString()}`);
   lines.push(`# ${kept.length} statements`);
   if (advisoryLines.length > 0) lines.push(...advisoryLines);
@@ -185,7 +198,7 @@ export function toTriG(statements: Statement[], opts: TriGOptions = {}): string 
   // produced INVALID TriG ("Unexpected ... on line 1") — and every test called toTriG without
   // a header, so the whole function looked covered while its first real caller was broken.
   // toTurtle and toTurtleFull both comment theirs; this was the odd one out.
-  if (opts.header) lines.push(`# ${opts.header}`);
+  if (opts.header) lines.push(...headerComment(opts.header));
   for (const [p, ns] of Object.entries(prefixes)) lines.push(`@prefix ${p}: <${ns}> .`);
   lines.push('');
 
@@ -307,7 +320,7 @@ export function toTurtleFull(
 
   const lines: string[] = [];
 
-  if (opts.header) lines.push(`# ${opts.header}`);
+  if (opts.header) lines.push(...headerComment(opts.header));
   lines.push(`# generated ${new Date().toISOString()}`);
   lines.push(`# ${statements.length} statements — full annotated export`);
   if (advisoryLines.length > 0) lines.push(...advisoryLines);

@@ -1,0 +1,300 @@
+## ---------------------------------------------------------------------------
+## Reckons.AI Docs — USER PATHS
+## ---------------------------------------------------------------------------
+## Matt, 2026-09-04: "We need to better explain the many different user paths, to
+## utilize Reckons.AI — Building a graph for research, adding new content to an
+## existing graph, comparing your graph to another's, viewing a story built on a
+## graph, using reckoning, etc."
+##
+## WHY THIS IS A SEPARATE GRAPH FROM docs-features.ttl. That file lists 41
+## features and answers "what can this do?" — organised by MECHANISM: Ingest,
+## Review System, Compare, Reckoning, Shelly. A person arriving does not have a
+## mechanism, they have an INTENTION: "I am researching something and want to
+## keep track of what I learn." A feature list cannot answer that, because the
+## answer is a sequence that crosses five features and skips thirty-six.
+##
+## So paths REFERENCE features rather than restating them (path:uses ->
+## feat:Something). Editing a feature's description in one place stays correct in
+## both, and a path that names no feature is a path with nothing behind it.
+##
+## EVERY PATH CARRIES ITS OWN HONEST STATUS (kb:honest-status). Some of these are
+## smooth today; some have a real gap in the middle, and the gap is stated ON THE
+## STEP where a person would hit it, not in a footnote at the bottom. A journey
+## document that describes a frictionless flow which does not exist is the most
+## expensive kind of lie this project can tell, because someone will follow it.
+## ---------------------------------------------------------------------------
+
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix feat:   <urn:reckons:feature/> .
+@prefix guide:  <urn:reckons:guide/> .
+@prefix path:   <urn:reckons:path/> .
+@prefix ktype:  <urn:kbase:type/> .
+@prefix kpred:  <urn:kbase:predicate/> .
+@prefix hnav:   <urn:reckons:nav/> .
+
+<urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a08-b008-000000000008" .
+
+path:UserPaths
+    rdf:type            ktype:Concept ;
+    rdfs:label          "User paths" ;
+    skos:definition     "The routes people actually take through Reckons.AI, each written as an intention rather than a feature. Five are documented; they overlap deliberately, because the same person moves between them as their work changes." ;
+    kpred:principle     "A PATH IS NAMED BY WHAT THE PERSON WANTS, NOT BY WHAT THE APP PROVIDES. 'Building a graph for research' is a path; 'Ingest' is a feature. If a path's name could appear in the settings menu, it has been named from the wrong side." ;
+    hnav:layer          "0"^^xsd:integer .
+
+## ===========================================================================
+## PATH 1 — Building a graph for research
+## ===========================================================================
+
+path:BuildForResearch
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Building a graph for research" ;
+    skos:definition     "You are investigating something over weeks — a technology choice, a literature area, a decision with real money behind it — and you want what you learn to accumulate instead of scattering across tabs and notes." ;
+    kpred:audience      "Researcher, analyst, or anyone doing sustained investigation. The primary user this product is for." ;
+    kpred:starts-with   "An empty graph and a question you cannot yet answer." ;
+    kpred:ends-with     "A graph where the claims are separable, sourced, and disagreements are visible instead of averaged away." ;
+    kpred:uses          feat:Ingest ;
+    kpred:uses          feat:ReviewSystem ;
+    kpred:uses          feat:TrustSystem ;
+    kpred:uses          feat:Graph3D ;
+    kpred:has-status    "functional" ;
+    kpred:honest-note   "THE LONGEST PATH AND THE ONE WITH THE MOST FRICTION LEFT. Extraction and review both work; what does not yet work is the queue getting SHORTER as the graph grows. Measured 2026-09-04: a freshly extracted graph still presents as a flat list of ~32 claims with 0 grouped decisions, because typing proposes no types and hierarchy places no parents. You will get a good graph out of this path; you will spend longer in review than you should." ;
+    skos:broader        path:UserPaths ;
+    hnav:layer          "1"^^xsd:integer ;
+    hnav:order          "0"^^xsd:integer .
+
+path:Research-1
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Start a graph for the question, not for everything" ;
+    skos:definition     "Create a new graph per investigation rather than one graph for your whole life. Vocabulary repair and entity matching work by comparing new names against names the graph already holds, so a graph about one subject makes those matches meaningful and a graph about everything makes them noise." ;
+    kpred:page          "/kb" ;
+    kpred:part-of       path:BuildForResearch ;
+    kpred:step-order    "1"^^xsd:integer .
+
+path:Research-2
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Feed it what you are already reading" ;
+    skos:definition     "Paste a URL, drop a PDF, or dictate a note. Extraction turns prose into candidate triples. Nothing you add is trusted yet — every extracted fact arrives PENDING, which is the whole safety model: the app proposes, you settle." ;
+    kpred:page          "/ingest" ;
+    kpred:uses          feat:Ingest ;
+    kpred:part-of       path:BuildForResearch ;
+    kpred:step-order    "2"^^xsd:integer .
+
+path:Research-3
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Review in short passes, not one long one" ;
+    skos:definition     "Settle facts while the source is still fresh in your mind. A reviewer who batches a week of ingests is judging claims they no longer remember reading, which is how a wrong fact gets confirmed." ;
+    kpred:page          "/review" ;
+    kpred:uses          feat:ReviewSystem ;
+    kpred:part-of       path:BuildForResearch ;
+    kpred:step-order    "3"^^xsd:integer ;
+    kpred:honest-note   "This is where the friction is. See the path's honest-note: the queue is currently flat rather than grouped." .
+
+path:Research-4
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Let the shape of what is missing be a node" ;
+    skos:definition     "When a source raises a question it does not answer, record the question. A partial fact — subject and predicate known, object open — is a first-class thing here, and it is what makes a graph tell you where to look next rather than only what you already found." ;
+    kpred:uses          feat:ReviewSystem ;
+    kpred:part-of       path:BuildForResearch ;
+    kpred:step-order    "4"^^xsd:integer .
+
+## ===========================================================================
+## PATH 2 — Adding new content to an existing graph
+## ===========================================================================
+
+path:AddToExisting
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Adding to a graph you already have" ;
+    skos:definition     "The everyday path. The graph exists, you found something new, and the question is whether the new thing connects to what is already there or genuinely stands alone." ;
+    kpred:audience      "Anyone returning to a graph they built before." ;
+    kpred:starts-with   "An existing graph and one new source." ;
+    kpred:ends-with     "New facts connected to the right existing entities — or standing as new ones, on purpose." ;
+    kpred:uses          feat:Ingest ;
+    kpred:uses          feat:Disambiguation ;
+    kpred:uses          feat:ReviewSystem ;
+    kpred:has-status    "functional" ;
+    kpred:honest-note   "CONNECTION IS PARTLY AUTOMATIC AND PARTLY NOT YET SURFACED. Since 2026-09-04 extraction runs UNGROUNDED and reconciles afterwards: names that are the same word with different grammar (is-used-by / used-by) are connected automatically, and probable mis-hearings (lumen path / Lumenpath) are held back as proposals for you. The proposals are computed but have NO REVIEW SURFACE yet, so today you will meet both spellings as two separate rows and merge them by hand." ;
+    skos:broader        path:UserPaths ;
+    hnav:layer          "1"^^xsd:integer ;
+    hnav:order          "1"^^xsd:integer .
+
+path:Add-1
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Add into the graph the subject belongs to" ;
+    skos:definition     "Switch to the right graph first. Ingesting into whichever graph happened to be open is the most common way to end up with two half-graphs about one subject." ;
+    kpred:page          "/ingest" ;
+    kpred:part-of       path:AddToExisting ;
+    kpred:step-order    "1"^^xsd:integer .
+
+path:Add-2
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Watch the diff, not the fact list" ;
+    skos:definition     "After extraction you are shown what CHANGES, not everything found: new facts, facts that contradict something you already confirmed, and near-duplicates. The contradictions are the valuable part — a second source disagreeing with the first is the exact signal the review queue exists for, and it should be settled rather than silently overwritten." ;
+    kpred:page          "/compare" ;
+    kpred:uses          feat:Compare ;
+    kpred:part-of       path:AddToExisting ;
+    kpred:step-order    "2"^^xsd:integer .
+
+path:Add-3
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Decide what is the same thing" ;
+    skos:definition     "Two names that mean one thing get merged; a shared name-head with different tails (node attribute name / value / type) means they are SIBLINGS and must not be merged. Merging keeps both names — the alternate is preserved as an alias rather than discarded." ;
+    kpred:uses          feat:Disambiguation ;
+    kpred:part-of       path:AddToExisting ;
+    kpred:step-order    "3"^^xsd:integer .
+
+## ===========================================================================
+## PATH 3 — Comparing your graph to someone else's
+## ===========================================================================
+
+path:CompareGraphs
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Comparing your graph to another's" ;
+    skos:definition     "Two people investigated the same subject and reached different graphs. The interesting output is not the overlap — it is what one holds that the other does not, and the places where both hold a claim and the claims conflict." ;
+    kpred:audience      "Collaborators, reviewers, a team checking its own consensus, or a learner checking their understanding against an expert's graph." ;
+    kpred:starts-with   "Your graph, and someone else's exported graph file." ;
+    kpred:ends-with     "A list of genuine disagreements, separated from mere differences of wording." ;
+    kpred:uses          feat:Compare ;
+    kpred:uses          feat:DiffSummary ;
+    kpred:uses          feat:MultiKB ;
+    kpred:has-status    "functional" ;
+    kpred:honest-note   "THE HARD PART IS TELLING A REAL DISAGREEMENT FROM A NAMING ONE, and that is not fully solved. Two graphs can say the same thing in different words and look like a conflict, or use one word for two things and look like agreement. Predicate matching by embedding was benchmarked across five models and does not separate synonyms reliably (16.7% caught, negative separation), so wording differences are surfaced for a human rather than resolved automatically." ;
+    skos:broader        path:UserPaths ;
+    hnav:layer          "1"^^xsd:integer ;
+    hnav:order          "2"^^xsd:integer .
+
+path:Compare-1
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Bring the other graph in as its own graph" ;
+    skos:definition     "Import their export as a SEPARATE graph rather than merging it into yours. Merging first destroys the very thing you wanted to see: whose graph said what." ;
+    kpred:page          "/kb" ;
+    kpred:uses          feat:MultiKB ;
+    kpred:part-of       path:CompareGraphs ;
+    kpred:step-order    "1"^^xsd:integer .
+
+path:Compare-2
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Read the summary before the rows" ;
+    skos:definition     "The diff summary says what KIND of difference you are looking at — mostly additions, mostly conflicts, mostly rewording — so you know whether you are catching up on their research or arguing with it." ;
+    kpred:page          "/compare" ;
+    kpred:uses          feat:DiffSummary ;
+    kpred:part-of       path:CompareGraphs ;
+    kpred:step-order    "2"^^xsd:integer .
+
+path:Compare-3
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Take what you agree with, keep the rest visible" ;
+    skos:definition     "Accepting their fact does not erase yours. A conflict that stays recorded as a conflict is more useful than a resolution nobody can audit later — especially when the two of you turn out to have been reading different sources." ;
+    kpred:uses          feat:Compare ;
+    kpred:part-of       path:CompareGraphs ;
+    kpred:step-order    "3"^^xsd:integer .
+
+## ===========================================================================
+## PATH 4 — Viewing a story built on a graph
+## ===========================================================================
+
+path:ViewStory
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Viewing a story built on a graph" ;
+    skos:definition     "The learner's path, and the only one that does not require building anything. Someone who knows a subject has arranged a graph into an ordered walk; you follow it, and the layout changes underneath you as the kind of question changes." ;
+    kpred:audience      "Learners, students, anyone handed a graph by an expert. The receiving half of the sharing story." ;
+    kpred:starts-with   "A graph someone else built, and no obligation to edit it." ;
+    kpred:ends-with     "Having understood a subject through its structure rather than through prose about it." ;
+    kpred:uses          feat:StorySystem ;
+    kpred:uses          feat:Graph3D ;
+    kpred:uses          feat:Shelly ;
+    kpred:has-status    "functional" ;
+    kpred:example       "static/starter-turtles.ttl — kb:turtle-story, seven steps across six layouts. Each step asks a question the current view cannot answer, then switches to the layout that can, so layouts arrive as answers rather than as features." ;
+    kpred:honest-note   "STORIES ARE AUTHORED BY HAND TODAY. There is no story editor: the steps are written as triples in the graph file. That is fine for a starter graph shipped with the app and a real barrier for a teacher who wants to build one for their class." ;
+    skos:broader        path:UserPaths ;
+    hnav:layer          "1"^^xsd:integer ;
+    hnav:order          "3"^^xsd:integer .
+
+path:Story-1
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Start in the tangle on purpose" ;
+    skos:definition     "A good story opens on the unarranged graph. Seeing the mess first is what makes the second step land — the tree was always in there, it just could not be seen." ;
+    kpred:part-of       path:ViewStory ;
+    kpred:step-order    "1"^^xsd:integer .
+
+path:Story-2
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Let each question pick its own layout" ;
+    skos:definition     "'How are these related' is a hierarchy question. 'Where does this happen' is a map question. 'In what order' is a timeline question. A story that changes layout to show off layouts teaches nothing; one that changes because the question changed teaches what layouts are for." ;
+    kpred:uses          feat:Graph3D ;
+    kpred:part-of       path:ViewStory ;
+    kpred:step-order    "2"^^xsd:integer .
+
+path:Story-3
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Ask Shelly about any node you land on" ;
+    skos:definition     "A story is a path through a graph, not a slideshow — you can stop and ask about anything you pass, and the answer is grounded in the graph rather than in the model's memory." ;
+    kpred:uses          feat:Shelly ;
+    kpred:part-of       path:ViewStory ;
+    kpred:step-order    "3"^^xsd:integer .
+
+path:Story-4
+    rdf:type            ktype:Concept ;
+    rdfs:label          "End on what the graph does not know" ;
+    skos:definition     "The last step of a good story is an open question, not a summary. It is the difference between having been told a subject and being able to work in it." ;
+    kpred:part-of       path:ViewStory ;
+    kpred:step-order    "4"^^xsd:integer .
+
+## ===========================================================================
+## PATH 5 — Using reckoning
+## ===========================================================================
+
+path:UseReckoning
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Using reckoning to decide something" ;
+    skos:definition     "You have a graph and a decision. Reckoning reads the graph as SITUATION (where things stand), TARGET (where you want to be) and PROPOSAL (what would close the gap) — grounded in the facts you confirmed, not in what a model recalls about the subject." ;
+    kpred:audience      "Anyone at the point where research has to become a decision." ;
+    kpred:starts-with   "A graph with enough confirmed facts to reason over, and a target you can state." ;
+    kpred:ends-with     "A proposal you can trace back to the specific facts it rests on." ;
+    kpred:uses          feat:Reckoning ;
+    kpred:uses          feat:Graph3D ;
+    kpred:has-status    "functional" ;
+    kpred:honest-note   "IT IS ONLY AS GOOD AS WHAT YOU CONFIRMED. Reckoning reasons over the graph, so a graph full of unreviewed pending facts produces a confident proposal resting on claims nobody checked. Run it after a review pass, not instead of one. It states which facts it used, so a proposal you distrust can be traced rather than argued with." ;
+    skos:broader        path:UserPaths ;
+    hnav:layer          "1"^^xsd:integer ;
+    hnav:order          "4"^^xsd:integer .
+
+path:Reckon-1
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Say where you actually are" ;
+    skos:definition     "The situation is drawn from the graph, but you frame which part of it matters. A reckoning over an entire graph answers a question nobody asked." ;
+    kpred:page          "/reckoning" ;
+    kpred:uses          feat:Reckoning ;
+    kpred:part-of       path:UseReckoning ;
+    kpred:step-order    "1"^^xsd:integer .
+
+path:Reckon-2
+    rdf:type            ktype:Concept ;
+    rdfs:label          "State a target you could tell you had reached" ;
+    skos:definition     "A target that cannot be checked produces a proposal that cannot be evaluated. 'Choose a platform by Friday' works; 'improve our tooling' does not." ;
+    kpred:page          "/reckoning" ;
+    kpred:part-of       path:UseReckoning ;
+    kpred:step-order    "2"^^xsd:integer .
+
+path:Reckon-3
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Read the proposal against its evidence" ;
+    skos:definition     "Follow the facts the proposal cites back into the graph. If it leans on something you never confirmed, that is not a bug in the reckoning — it is the graph telling you what to go and check." ;
+    kpred:uses          feat:Reckoning ;
+    kpred:part-of       path:UseReckoning ;
+    kpred:step-order    "3"^^xsd:integer .
+
+## ===========================================================================
+## WHERE THE PATHS MEET
+## ===========================================================================
+
+path:PathsOverlap
+    rdf:type            ktype:Concept ;
+    rdfs:label          "The paths are not separate products" ;
+    skos:definition     "One person moves between all five as their work changes: research until there is enough to decide, reckon to decide it, compare against a colleague who disagreed, then turn the settled result into a story for whoever comes next. The graph is the same object throughout — that continuity is the point of the whole app." ;
+    kpred:principle     "THE SHARING DIRECTION IS RESEARCHER -> LEARNER, AND IT ONLY WORKS IF REVIEW HAPPENED. A story built on unreviewed facts teaches someone a graph nobody checked, with all the authority of a finished artifact and none of the verification. Review is not admin overhead in front of the fun part; it is what makes the sharing honest." ;
+    skos:broader        path:UserPaths ;
+    hnav:layer          "1"^^xsd:integer ;
+    hnav:order          "5"^^xsd:integer .

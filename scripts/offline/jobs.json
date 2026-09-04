@@ -55,6 +55,20 @@
       "desc": "Graph invariants: dead has-file/tested-by links, bad status, duplicate feature-ids, dangling refs, incomplete features"
     },
     {
+      "name": "extraction-chain",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/extraction-chain.ts --graph=tests/fixtures/extraction-chain.ttl",
+      "desc": "Runs vocabulary, typing, hierarchy, aggregation and the review tree COMPOSED on one graph and reports what each contributes, because every stage is unit-tested in isolation and a defect in the seam between two is invisible to all of them. Points at the fixture by default so it is deterministic in CI; pass --graph=<workspace graph> to measure a real one. The number that matters is the claims line: how many real claims sit under a decision versus loose."
+    },
+    {
+      "name": "extraction-score",
+      "tier": "agent",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/extraction-score.ts --pending",
+      "desc": "Scores extraction ACCURACY against the hand-checked notes corpus — strict/loose recall, yield, invented vs misrouted requests, entity fragments. The gate for every 'extraction got better' claim (F146 phase 1; needs OLLAMA_BASE_URL)."
+    },
+    {
       "name": "shacl-validate",
       "tier": "script",
       "enabled": true,
