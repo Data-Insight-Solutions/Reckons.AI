@@ -1,20 +1,51 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-09-06.** Working branch: `docs/user-journeys-and-diagrams` — **committed and
-pushed as PR #225**, base `dev`. It was cut from `docs/funnel-status-and-coverage` (PR #224), **not
-from `origin/dev`** as an earlier draft of this line said, so **#225's diff carries #224's two
-commits until #224 merges** — merge #224 first. Both PRs target `dev`. A branch cut from a branch
-that tracks `origin/dev` would push to dev on a bare `git push` — always
-`git push origin HEAD:refs/heads/<branch>`.
+**Last updated: 2026-09-06 (evening).** On `dev`, clean. **THREE PRs MERGED THIS SESSION: #224,
+#225, #206** — all into `dev`, base verified on each before merging. Nothing was pushed to `main`.
 
-**The work described below sat UNCOMMITTED for a session** (the editor was closed on a different
-folder). It is committed now as `2cdfe25`; re-verified on 2026-09-06 before pushing: `npm run
-align` six gates aligned, **2796 tests / 197 files pass**, 16/16 mermaid tests. `scripts/__shot__.ts`
-(scratch screenshot harness) and `share/turtles-story.ttl` are deliberately left untracked.
+## ▶ SESSION 2026-09-06 (evening) — recovered an uncommitted session, then merged three PRs
 
-**`fix/cascade-real-graph` IS MERGED** (PR #222) — the 2026-09-04 entry below says "unpushed, no
-PR" and that has been false since the merge. `origin/dev` is at that merge commit; `origin/main`
-is fully caught up and carries only safety attestations beyond it.
+**The diagrams work from the previous session was never committed** — the editor was closed on a
+different folder and 49 files sat in the working tree on the WRONG branch (`docs/funnel-status-and-
+coverage`, which was already PR #224's head). Re-verified before trusting it (align six gates,
+2796 tests), committed to `docs/user-journeys-and-diagrams`, shipped as **PR #225**.
+
+**The user paths are LIVE on dev**, and the route is not the obvious one:
+**`/docs/user-paths/user-paths`** is the hub — the bare `/docs/user-paths` is a section prefix with
+no page behind it and returns the SPA shell with a 200, which looks like a working page and is not.
+Nine paths under it (`core-loop`, `everyday-notes`, `capture-spoken`, …). **Not on production** —
+`reckons.ai` deploys from `main` and this is only on `dev`; promoting is a deliberate act nobody has
+taken yet.
+
+### PR #206 merged — and the "mechanical" conflict resolution was not mechanical
+HANDOFF said "take dev's side on the three files". Two of three were that. The third was a trap:
+- `notes-pull.ts` — dev's side whole (dev has validated transactional writes; nothing lost).
+- `workspace.svelte.ts` — dev's side **per hunk, not per file**. Taking the file would have silently
+  dropped 13 lines this branch added OUTSIDE the conflict that auto-merge had already placed.
+- `reckons-roadmap.ttl` — **BOTH sides, plus a renumber.** The branch minted F142-F144 on
+  2026-08-26 and sat unmerged eleven days while dev spent all three on different features. A
+  textual merge appends both blocks cleanly and leaves **two features wearing one id** — invisible
+  to git and to graph-lint. The branch's became **F178, F178.1, F179, F180**; dev's kept the
+  numbers because every external reference already meant dev's. **Worth a lint rule** (duplicate
+  `kpred:feature-id`) — ids are minted by hand on long-lived branches, so this will recur.
+- `workspace-poll-drain.test.ts` was **deleted, not ported**: written against the old drain, all six
+  cases failed on the mock alone, and every behavior is covered by `workspace-sync.test.ts`. Both
+  `kpred:tested-by` links repointed — **graph-lint caught the second one I missed.**
+
+Verified on the merged tree: **2859 tests / 200 files**, svelte-check 0/0, graph-lint 0 errors,
+align six gates.
+
+### Still open, in the order agreed 2026-09-06
+1. **The manual walk of add → review with real dictated notes.** Ring capture is merged now, so
+   there is finally a real note to walk. The pending queue holds ~379 rows, almost all offline-job
+   findings — that exercises review with machine output, not capture.
+2. **The two grounding leaks** in `src/lib/rdf/structural-context.ts` (no relevance floor on
+   anchors, offers identifiers as concepts), then re-run `npm run offline:score`.
+3. **F177 freeform capture — DO NOT BUILD.** Matt asked to talk the user stories through in depth
+   first; both open questions are still open.
+4. Four PRs still open on `dev`: #205, #204, #198, #197 — **all four conflict on
+   `reckons-roadmap.ttl`** the same way, and #204/#198 each add one source-file conflict. Check for
+   duplicate feature-ids on every one of them.
 
 ## ▶ SESSION 2026-09-06 (later) — the user paths, published, with diagrams
 
