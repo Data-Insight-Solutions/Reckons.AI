@@ -16,7 +16,7 @@ export type KBAction =
   // most obvious thing to offer someone staring at dated facts ("want to see these on a
   // timeline?") was not expressible in the view-control API. A view-control API that cannot
   // express the view is not an API.
-  | { type: 'adjust_view'; selectEntity?: string; layout?: 'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy'; filters?: GraphFilter[]; label: string }
+  | { type: 'adjust_view'; selectEntity?: string; layout?: 'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy' | 'map'; filters?: GraphFilter[]; label: string }
   | { type: 'query_kb'; filter: 'no-type' | 'no-source' | 'pending' | 'islands'; label: string }
   | { type: 'scrape_url'; url: string; label: string };
 

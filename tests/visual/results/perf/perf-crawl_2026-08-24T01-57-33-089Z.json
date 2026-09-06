@@ -1,0 +1,21 @@
+{
+  "schema": "perf-crawl/1",
+  "finishedAt": "2026-08-24T01:57:33.089Z",
+  "baseUrl": "http://127.0.0.1:5175",
+  "renderer": "ANGLE (NVIDIA Corporation, NVIDIA GeForce RTX 3090/PCIe/SSE2, OpenGL 4.5.0)",
+  "softwareRendered": false,
+  "budgetMs": 2500,
+  "longTaskMs": 200,
+  "results": [
+    {
+      "route": "/review",
+      "timeToUsable": 963,
+      "longTasks": [],
+      "worstFrame": 107.69999999999999,
+      "medianFrame": 16.699999999999818,
+      "frozenSpans": [],
+      "failures": [],
+      "harnessError": null
+    }
+  ]
+}

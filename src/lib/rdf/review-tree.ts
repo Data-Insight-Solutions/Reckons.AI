@@ -301,50 +301,213 @@ const DEFAULT_URGENCY = 2.5;
  * Cycles are visited once and not re-entered: a dependency cycle means the work is deadlocked,
  * which a count must not paper over by spinning.
  */
+type DependencyGraph = {
+  nodes: string[];
+  indexOf: Map<string, number>;
+  adjacency: number[][];
+  componentOf: Int32Array;
+  components: number[][];
+  componentDag: number[][];
+  topologicalComponents: number[];
+  cyclicComponents: Uint8Array;
+};
+
+/**
+ * Condense a directed graph into strongly-connected components without recursion.
+ *
+ * Dependency imports can contain long chains, so recursive Tarjan/Kosaraju walks are themselves a
+ * stack-overflow risk. The two iterative Kosaraju passes below visit each node and edge once. The
+ * resulting component graph is a DAG: every member of a component has the same outside closure,
+ * while a multi-node component (or a self-loop) is exactly a dependency cycle.
+ */
+function buildDependencyGraph(edges: readonly (readonly [string, string])[]): DependencyGraph {
+  const nodes: string[] = [];
+  const indexOf = new Map<string, number>();
+  const outgoing: Array<Set<number>> = [];
+
+  const nodeIndex = (iri: string): number => {
+    const prior = indexOf.get(iri);
+    if (prior !== undefined) return prior;
+    const index = nodes.length;
+    nodes.push(iri);
+    indexOf.set(iri, index);
+    outgoing.push(new Set());
+    return index;
+  };
+
+  for (const [fromIri, toIri] of edges) {
+    const from = nodeIndex(fromIri);
+    const to = nodeIndex(toIri);
+    outgoing[from].add(to);
+  }
+
+  const adjacency = outgoing.map((targets) => [...targets]);
+  const reverse = Array.from({ length: nodes.length }, () => [] as number[]);
+  for (let from = 0; from < adjacency.length; from++) {
+    for (const to of adjacency[from]) reverse[to].push(from);
+  }
+
+  // First pass: finishing order in the original graph.
+  const visited = new Uint8Array(nodes.length);
+  const finishOrder: number[] = [];
+  for (let start = 0; start < nodes.length; start++) {
+    if (visited[start]) continue;
+    visited[start] = 1;
+    const nodeStack = [start];
+    const edgeStack = [0];
+    while (nodeStack.length) {
+      const top = nodeStack.length - 1;
+      const node = nodeStack[top];
+      const edgeIndex = edgeStack[top];
+      if (edgeIndex < adjacency[node].length) {
+        const next = adjacency[node][edgeIndex];
+        edgeStack[top] = edgeIndex + 1;
+        if (!visited[next]) {
+          visited[next] = 1;
+          nodeStack.push(next);
+          edgeStack.push(0);
+        }
+      } else {
+        nodeStack.pop();
+        edgeStack.pop();
+        finishOrder.push(node);
+      }
+    }
+  }
+
+  // Second pass: components in the reversed graph.
+  const componentOf = new Int32Array(nodes.length);
+  componentOf.fill(-1);
+  const components: number[][] = [];
+  for (let i = finishOrder.length - 1; i >= 0; i--) {
+    const start = finishOrder[i];
+    if (componentOf[start] !== -1) continue;
+    const component = components.length;
+    const members: number[] = [];
+    const stack = [start];
+    componentOf[start] = component;
+    while (stack.length) {
+      const node = stack.pop()!;
+      members.push(node);
+      for (const next of reverse[node]) {
+        if (componentOf[next] !== -1) continue;
+        componentOf[next] = component;
+        stack.push(next);
+      }
+    }
+    components.push(members);
+  }
+
+  const componentEdges = Array.from({ length: components.length }, () => new Set<number>());
+  const cyclicComponents = new Uint8Array(components.length);
+  for (let component = 0; component < components.length; component++) {
+    if (components[component].length > 1) cyclicComponents[component] = 1;
+  }
+  for (let from = 0; from < adjacency.length; from++) {
+    const fromComponent = componentOf[from];
+    for (const to of adjacency[from]) {
+      const toComponent = componentOf[to];
+      if (fromComponent === toComponent) {
+        if (from === to) cyclicComponents[fromComponent] = 1;
+      } else {
+        componentEdges[fromComponent].add(toComponent);
+      }
+    }
+  }
+  const componentDag = componentEdges.map((targets) => [...targets]);
+
+  // Kahn order. Processing this in reverse lets each component union already-complete children.
+  const indegree = new Int32Array(components.length);
+  for (const targets of componentDag) for (const target of targets) indegree[target]++;
+  const queue: number[] = [];
+  for (let component = 0; component < components.length; component++) {
+    if (indegree[component] === 0) queue.push(component);
+  }
+  const topologicalComponents: number[] = [];
+  for (let cursor = 0; cursor < queue.length; cursor++) {
+    const component = queue[cursor];
+    topologicalComponents.push(component);
+    for (const target of componentDag[component]) {
+      indegree[target]--;
+      if (indegree[target] === 0) queue.push(target);
+    }
+  }
+
+  return {
+    nodes, indexOf, adjacency, componentOf, components, componentDag,
+    topologicalComponents, cyclicComponents,
+  };
+}
+
+const REACHABILITY_CHUNK_BITS = 2048;
+
+function popcount32(value: number): number {
+  value -= (value >>> 1) & 0x55555555;
+  value = (value & 0x33333333) + ((value >>> 2) & 0x33333333);
+  return (((value + (value >>> 4)) & 0x0f0f0f0f) * 0x01010101) >>> 24;
+}
+
+/**
+ * Exact reachable-node counts on a component DAG, using chunked bitsets.
+ *
+ * A Set-valued closure still stores and copies O(V²) JavaScript objects on a chain. Bitsets turn
+ * that into word operations, while chunking caps the temporary matrix at 256 bytes per component
+ * instead of allocating an unbounded V×V matrix. Shared descendants set one bit and are counted
+ * once; SCC members share a closure and subtract only themselves.
+ */
+function reachableNodeCounts(graph: DependencyGraph, requested: readonly string[]): Map<string, number> {
+  const wantedComponents = new Set<number>();
+  for (const iri of requested) {
+    const node = graph.indexOf.get(iri);
+    if (node !== undefined) wantedComponents.add(graph.componentOf[node]);
+  }
+  const totals = new Int32Array(graph.components.length);
+
+  for (let base = 0; base < graph.nodes.length; base += REACHABILITY_CHUNK_BITS) {
+    const chunkSize = Math.min(REACHABILITY_CHUNK_BITS, graph.nodes.length - base);
+    const words = Math.ceil(chunkSize / 32);
+    const bits = new Uint32Array(graph.components.length * words);
+
+    for (let local = 0; local < chunkSize; local++) {
+      const component = graph.componentOf[base + local];
+      bits[component * words + (local >>> 5)] |= (1 << (local & 31)) >>> 0;
+    }
+    for (let i = graph.topologicalComponents.length - 1; i >= 0; i--) {
+      const component = graph.topologicalComponents[i];
+      const destinationOffset = component * words;
+      for (const target of graph.componentDag[component]) {
+        const sourceOffset = target * words;
+        for (let word = 0; word < words; word++) {
+          bits[destinationOffset + word] |= bits[sourceOffset + word];
+        }
+      }
+    }
+    for (const component of wantedComponents) {
+      const offset = component * words;
+      let count = 0;
+      for (let word = 0; word < words; word++) count += popcount32(bits[offset + word]);
+      totals[component] += count;
+    }
+  }
+
+  const result = new Map<string, number>();
+  for (const iri of requested) {
+    const node = graph.indexOf.get(iri);
+    if (node !== undefined) result.set(iri, Math.max(0, totals[graph.componentOf[node]] - 1));
+  }
+  return result;
+}
+
 export function unlockCounts(all: Statement[]): Map<string, number> {
-  /** subject -> the entities that need it. */
-  const neededBy = new Map<string, string[]>();
+  /** Reverse depends-on: prerequisite -> the entity that needs it. */
+  const edges: Array<readonly [string, string]> = [];
+  const prerequisites = new Set<string>();
   for (const st of all) {
     if (st.p.value !== DEPENDS_ON || !isIRI(st.o)) continue;
-    const list = neededBy.get(st.o.value);
-    if (list) list.push(st.s.value);
-    else neededBy.set(st.o.value, [st.s.value]);
+    edges.push([st.o.value, st.s.value]);
+    prerequisites.add(st.o.value);
   }
-
-  /*
-   * ONE MEMOIZED CLOSURE, NOT TWO MUTUALLY-RECURSIVE WALKS.
-   *
-   * The first version had a memoized `reach` calling an UNMEMOIZED `collect`, which re-walked every
-   * shared subtree from scratch on each visit — exponential on a dependency graph where several
-   * features depend on the same foundation, which is exactly the shape a real roadmap has. It also
-   * memoized counts computed while a cycle cut was active, caching a truncated answer as if it were
-   * final. Both are fixed by computing the closure once per node and caching the SET.
-   *
-   * HONEST LIMIT ON CYCLES: a back-edge contributes nothing, so a node inside a dependency cycle
-   * gets a LOWER BOUND rather than a true count. That is deliberate and matches blastRadius: a cycle
-   * means the work is deadlocked, and a count must not paper over that by spinning.
-   */
-  const closure = new Map<string, Set<string>>();
-  const inProgress = new Set<string>();
-
-  function closureOf(iri: string): Set<string> {
-    const hit = closure.get(iri);
-    if (hit) return hit;
-    if (inProgress.has(iri)) return new Set();
-    inProgress.add(iri);
-    const out = new Set<string>();
-    for (const dependant of neededBy.get(iri) ?? []) {
-      out.add(dependant);
-      for (const further of closureOf(dependant)) out.add(further);
-    }
-    inProgress.delete(iri);
-    closure.set(iri, out);
-    return out;
-  }
-
-  const counts = new Map<string, number>();
-  for (const iri of neededBy.keys()) counts.set(iri, closureOf(iri).size);
-  return counts;
+  return reachableNodeCounts(buildDependencyGraph(edges), [...prerequisites]);
 }
 
 /**
@@ -359,48 +522,81 @@ export function unlockCounts(all: Statement[]): Map<string, number> {
  * Returns, per subject IRI, the open-decision subjects it waits on, plus the subjects that sit in
  * a dependency cycle.
  *
- * HONEST LIMITS, both inherited deliberately from queue-tree.ts and unlockCounts:
+ * HONEST LIMITS, inherited deliberately from queue-tree.ts and unlockCounts:
  *  - This orders what the roadmap DESCRIBES; it does not rank importance. A decision on a feature
  *    absent from the DAG is simply unordered, which is not the same as unimportant.
- *  - A cycle is REPORTED, never silently broken. Inside a cycle the prerequisite set is a lower
- *    bound, because a back-edge contributes nothing — and a cycle means the work is deadlocked,
- *    which the ordering must not paper over by spinning.
+ *  - A cycle is REPORTED, never silently broken. Every member and every reachable open prerequisite
+ *    is returned exactly; the ordering does not paper over a deadlock by cutting a back-edge.
  */
 export function decisionDependencies(
   all: Statement[],
   openSubjects: Set<string>,
 ): { blockedBy: Map<string, string[]>; cycles: Set<string> } {
-  /** subject -> the subjects it NEEDS. */
-  const needs = new Map<string, Set<string>>();
+  /** subject -> the subject it needs. */
+  const edges: Array<readonly [string, string]> = [];
   for (const st of all) {
     if (st.p.value !== DEPENDS_ON || !isIRI(st.o)) continue;
-    const set = needs.get(st.s.value);
-    if (set) set.add(st.o.value);
-    else needs.set(st.s.value, new Set([st.o.value]));
+    edges.push([st.s.value, st.o.value]);
+  }
+  const graph = buildDependencyGraph(edges);
+
+  const cycles = new Set<string>();
+  for (let component = 0; component < graph.components.length; component++) {
+    if (!graph.cyclicComponents[component]) continue;
+    for (const node of graph.components[component]) cycles.add(graph.nodes[node]);
   }
 
-  const closure = new Map<string, Set<string>>();
-  const inProgress = new Set<string>();
-  const cycles = new Set<string>();
+  /*
+   * Propagate only OPEN subjects through the component DAG. A bit means "this component can reach
+   * that open decision". This replaces one whole-graph traversal per subject with one DAG pass per
+   * machine-word of open decisions, while preserving exact closures through joins and cycles.
+   */
+  const open = [...openSubjects];
+  const blockedLists = new Map<string, string[]>();
+  for (const subject of open) blockedLists.set(subject, []);
 
-  function prereqsOf(iri: string): Set<string> {
-    const hit = closure.get(iri);
-    if (hit) return hit;
-    if (inProgress.has(iri)) { cycles.add(iri); return new Set(); }
-    inProgress.add(iri);
-    const out = new Set<string>();
-    for (const need of needs.get(iri) ?? []) {
-      out.add(need);
-      for (const further of prereqsOf(need)) out.add(further);
+  for (let base = 0; base < open.length; base += REACHABILITY_CHUNK_BITS) {
+    const chunk = open.slice(base, base + REACHABILITY_CHUNK_BITS);
+    const words = Math.ceil(chunk.length / 32);
+    const bits = new Uint32Array(graph.components.length * words);
+    for (let local = 0; local < chunk.length; local++) {
+      const node = graph.indexOf.get(chunk[local]);
+      if (node === undefined) continue;
+      const component = graph.componentOf[node];
+      bits[component * words + (local >>> 5)] |= (1 << (local & 31)) >>> 0;
     }
-    inProgress.delete(iri);
-    closure.set(iri, out);
-    return out;
+    for (let i = graph.topologicalComponents.length - 1; i >= 0; i--) {
+      const component = graph.topologicalComponents[i];
+      const destinationOffset = component * words;
+      for (const target of graph.componentDag[component]) {
+        const sourceOffset = target * words;
+        for (let word = 0; word < words; word++) {
+          bits[destinationOffset + word] |= bits[sourceOffset + word];
+        }
+      }
+    }
+
+    for (const subject of open) {
+      const node = graph.indexOf.get(subject);
+      if (node === undefined) continue;
+      const offset = graph.componentOf[node] * words;
+      const waiting = blockedLists.get(subject)!;
+      for (let word = 0; word < words; word++) {
+        let value = bits[offset + word] >>> 0;
+        while (value !== 0) {
+          const lowBit = (value & -value) >>> 0;
+          const bit = 31 - Math.clz32(lowBit);
+          const target = chunk[word * 32 + bit];
+          if (target !== undefined && target !== subject) waiting.push(target);
+          value = (value ^ lowBit) >>> 0;
+        }
+      }
+    }
   }
 
   const blockedBy = new Map<string, string[]>();
-  for (const subject of openSubjects) {
-    const waiting = [...prereqsOf(subject)].filter((p) => p !== subject && openSubjects.has(p)).sort();
+  for (const [subject, waiting] of blockedLists) {
+    waiting.sort();
     if (waiting.length) blockedBy.set(subject, waiting);
   }
   return { blockedBy, cycles };
@@ -474,21 +670,26 @@ export function buildReviewTree(
   opts: ReviewTreeOptions = {},
 ): ReviewTree {
   const typeOf = opts.typeOf ?? (() => undefined);
-  const impacts = blastRadius(pending);
-  const unlocks = unlockCounts(all);
+  // Rejected and superseded rows remain available to diff/resurrection logic, but they are not
+  // live graph context. Letting them price an option, create a conflict, or block a decision makes
+  // a fact the user dismissed continue steering the review process.
+  const activeAll = all.filter((st) => st.status !== 'rejected' && st.status !== 'superseded');
+  const reviewPending = pending.filter(isPendingReview);
+  const impacts = blastRadius(reviewPending);
+  const unlocks = unlockCounts(activeAll);
   // Built once. See GraphIndex — without this the per-decision work is quadratic in the graph.
-  const index = buildGraphIndex(all);
+  const index = buildGraphIndex(activeAll);
   const statusOf = new Map<string, string>();
-  for (const st of all) if (st.p.value === HAS_STATUS && isLit(st.o)) statusOf.set(st.s.value, st.o.value);
+  for (const st of activeAll) if (st.p.value === HAS_STATUS && isLit(st.o)) statusOf.set(st.s.value, st.o.value);
 
   // Conflicts, keyed by subject, so a decision node can say it is contested.
   // findDichotomies reports the entity, the predicate and the divergent VALUES; the STP test
   // needs the STATEMENTS, because it turns on who is competent to settle each side. So resolve
   // them back rather than re-implementing the detection.
   const conflictSides = new Map<string, Statement[]>();
-  for (const d of findDichotomies(all)) {
+  for (const d of findDichotomies(activeAll)) {
     if (d.kind !== 'conflict') continue;
-    const sides = all.filter(
+    const sides = activeAll.filter(
       (st) => st.s.value === d.entityIri && st.p.value === d.predicate && d.values.includes(st.o.value),
     );
     const prev = conflictSides.get(d.entityIri);
@@ -497,18 +698,17 @@ export function buildReviewTree(
   }
 
   const bySubject = new Map<string, Statement[]>();
-  for (const st of all) {
+  for (const st of activeAll) {
     const g = bySubject.get(st.s.value);
     if (g) g.push(st);
     else bySubject.set(st.s.value, [st]);
   }
 
   const openBySubject = new Map<string, Statement[]>();
-  for (const st of pending) {
+  for (const st of reviewPending) {
     // A settled fact is never a review item, however open its question reads. The tree filters
     // here rather than trusting the caller: passing a whole confirmed graph in as `pending` is an
     // easy mistake and it silently turns the graph's standing description into a fake backlog.
-    if (!isPendingReview(st)) continue;
     if (!isOpenDecision(st)) continue;
     const g = openBySubject.get(st.s.value);
     if (g) g.push(st);
@@ -517,7 +717,7 @@ export function buildReviewTree(
 
   /** subject IRI -> forcing events (kpred:decides pointing at it). One pass, not one per decision. */
   const forcedByIndex = new Map<string, Statement[]>();
-  for (const st of all) {
+  for (const st of activeAll) {
     if (st.p.value !== DECIDES) continue;
     const list = forcedByIndex.get(st.o.value);
     if (list) list.push(st);
@@ -529,7 +729,7 @@ export function buildReviewTree(
 
   for (const [subjectIri, questions] of openBySubject) {
     const siblings = bySubject.get(subjectIri) ?? [];
-    const options = optionsFor(subjectIri, all, index);
+    const options = optionsFor(subjectIri, activeAll, index);
     const sides = conflictSides.get(subjectIri) ?? [];
 
     const standing: Statement[] = [];
@@ -551,7 +751,7 @@ export function buildReviewTree(
       attached.add(q.id);
       decisions.push({
         subjectIri,
-        label: labelOf(subjectIri, all, index),
+        label: labelOf(subjectIri, activeAll, index),
         question: q,
         proseOnly: options.length === 0,
         options,
@@ -605,10 +805,10 @@ export function buildReviewTree(
     const anchor = [...sides].sort((a, b) => a.createdAt - b.createdAt)[0];
     decisions.push({
       subjectIri,
-      label: labelOf(subjectIri, all, index),
+      label: labelOf(subjectIri, activeAll, index),
       question: anchor,
       proseOnly: true,
-      options: optionsFor(subjectIri, all, index),
+      options: optionsFor(subjectIri, activeAll, index),
       standing,
       judgments,
       evidence,
@@ -632,7 +832,7 @@ export function buildReviewTree(
    * Computed here because it needs the full set of open decisions, which only exists now.
    */
   const openSubjects = new Set(decisions.map((d) => d.subjectIri));
-  const deps = decisionDependencies(all, openSubjects);
+  const deps = decisionDependencies(activeAll, openSubjects);
   for (const d of decisions) {
     d.blockedBy = deps.blockedBy.get(d.subjectIri) ?? [];
     d.inCycle = deps.cycles.has(d.subjectIri);

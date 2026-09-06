@@ -87,4 +87,37 @@
     border-left: 2px solid var(--accent);
     color: var(--muted);
   }
+
+  /* ── Diagrams ──────────────────────────────────────────────────────────────
+     Rendered to SVG at build time (scripts/lib/mermaid-render.ts), so there is no
+     mermaid runtime here and the docs route keeps csr = false. The renderer strips
+     mermaid's baked width/height, which is what lets the figure size itself to the
+     column rather than to whatever viewport happened to render it. */
+  .doc-prose :global(figure.diagram) {
+    margin: 1.75rem 0;
+    padding: 1.25rem 1rem;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    /* A wide flowchart scrolls inside its own box instead of forcing the page to. */
+    overflow-x: auto;
+  }
+  .doc-prose :global(figure.diagram svg) {
+    display: block;
+    width: 100%;
+    /* Bounded so a tall diagram cannot push the prose off the screen; the viewBox
+       keeps it legible while it scales. */
+    max-height: 420px;
+    height: auto;
+  }
+  .doc-prose :global(figure.diagram figcaption) {
+    margin-top: 0.9rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--line);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+
 </style>

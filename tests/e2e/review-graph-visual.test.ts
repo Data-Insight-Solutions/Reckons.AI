@@ -14,9 +14,13 @@ import { clearStorage, waitForApp } from './helpers';
 
 async function loadStarter(page: Page) {
   await page.goto('/');
-  await page.waitForTimeout(1000);
   const gs = page.getByRole('button', { name: /getting started/i }).first();
-  if (await gs.count()) { await gs.click(); await page.waitForTimeout(2500); }
+  await expect(gs).toBeVisible({ timeout: 15_000 });
+  await gs.click();
+  // Fresh storage defaults to 3D. Wait for the saved renderer to mount before following the same
+  // client-side navigation a person uses to reach Review.
+  await expect(page.locator('[data-graph-renderer="3d"][data-graph-ready="true"]'))
+    .toBeVisible({ timeout: 20_000 });
 }
 
 test.beforeEach(async ({ page }) => {
@@ -26,7 +30,9 @@ test.beforeEach(async ({ page }) => {
 
 test('review preview graph renders node labels for a real graph (not blank)', async ({ page }) => {
   await loadStarter(page);
-  await page.goto('/review');
+  // Follow the same client-side transition a person uses after loading the starter.
+  await page.locator('nav').getByRole('link', { name: /review/i }).click();
+  await page.waitForURL((url) => url.pathname === '/review');
   await page.waitForTimeout(1500);
 
   // Must NOT be the empty state — the starter gives the preview graph confirmed statements.
@@ -36,13 +42,13 @@ test('review preview graph renders node labels for a real graph (not blank)', as
   await expect(page.locator('canvas').first()).toBeVisible({ timeout: 8_000 });
 
   // …and the shared GraphLabels overlay emits several real node labels (the bug was ZERO labels).
-  await page.waitForTimeout(4_000); // let the force layout place nodes
+  await expect(page.locator('.graph-pane')).toHaveAttribute('data-graph-settled', 'true', { timeout: 20_000 });
   const labels = page.locator('.node-label');
+  await expect.poll(() => labels.count(), {
+    timeout: 20_000,
+    message: 'review preview graph should emit DOM labels after settling',
+  }).toBeGreaterThanOrEqual(5);
   const count = await labels.count();
-  if (count === 0) {
-    test.skip(true, 'graph rendered without WebGL labels in this environment');
-    return;
-  }
   expect(count, 'review preview graph should render several node labels').toBeGreaterThanOrEqual(5);
   const text = (await labels.allInnerTexts()).join(' ').toLowerCase();
   const seeded = ['lake george', 'alex', 'jordan', 'oh! ridge', 'june lake'];
@@ -52,7 +58,11 @@ test('review preview graph renders node labels for a real graph (not blank)', as
 
 test('notifications collapse to a corner bell on /review and expand on click', async ({ page }) => {
   await loadStarter(page);
-  await page.goto('/review');
+  // Follow the same client-side transition a person uses. A hard reload intentionally resets the
+  // in-memory notification tray, and Firefox cannot create the Chromium-only "Protect your graph"
+  // workspace notice as a replacement.
+  await page.locator('nav').getByRole('link', { name: /review/i }).click();
+  await page.waitForURL((url) => url.pathname === '/review');
   await page.waitForTimeout(1500);
 
   // The first-run "Protect your graph" tip is a notification; on /review it must be collapsed to

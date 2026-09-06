@@ -73,6 +73,11 @@
   let openaiModel = $state(settings().openaiModel);
   let geminiModel = $state(settings().geminiModel);
   let ollamaModel = $state(settings().ollamaModel ?? 'llama3.2');
+  // Per-task overrides. Empty string means "use the general model above" — the resolver
+  // (ollamaModelFor) treats blank as unset, so an empty box is not a broken setting.
+  let ollamaIngestModel = $state(settings().ollamaIngestModel ?? '');
+  let ollamaAnalyzeModel = $state(settings().ollamaAnalyzeModel ?? '');
+  let ollamaChatModel = $state(settings().ollamaChatModel ?? '');
   let ollamaBaseUrl = $state(settings().ollamaBaseUrl ?? 'http://localhost:11434');
   let preferLocal = $state(settings().preferLocal ?? false);
   let wasmModel = $state(settings().wasmModel);
@@ -166,6 +171,9 @@
       openaiModel,
       geminiModel,
       ollamaModel,
+      ollamaIngestModel: ollamaIngestModel.trim() || undefined,
+      ollamaAnalyzeModel: ollamaAnalyzeModel.trim() || undefined,
+      ollamaChatModel: ollamaChatModel.trim() || undefined,
       ollamaBaseUrl: ollamaBaseUrl.trim() || 'http://localhost:11434',
       preferLocal: preferLocal || undefined,
       wasmModel,
@@ -423,6 +431,9 @@
     openaiModel            = d.openaiModel;
     geminiModel            = d.geminiModel;
     ollamaModel            = d.ollamaModel;
+    ollamaIngestModel      = d.ollamaIngestModel ?? '';
+    ollamaAnalyzeModel     = d.ollamaAnalyzeModel ?? '';
+    ollamaChatModel        = d.ollamaChatModel ?? '';
     ollamaBaseUrl          = d.ollamaBaseUrl;
     preferLocal            = d.preferLocal            ?? false;
     wasmModel              = d.wasmModel;
@@ -482,6 +493,9 @@
       openaiModel: ud.openaiModel,
       geminiModel: ud.geminiModel,
       ollamaModel: ud.ollamaModel,
+      ollamaIngestModel: ud.ollamaIngestModel,
+      ollamaAnalyzeModel: ud.ollamaAnalyzeModel,
+      ollamaChatModel: ud.ollamaChatModel,
       ollamaBaseUrl: ud.ollamaBaseUrl,
       preferLocal: ud.preferLocal,
       wasmModel: ud.wasmModel,
@@ -515,6 +529,9 @@
     openaiModel                = ud.openaiModel;
     geminiModel                = ud.geminiModel;
     ollamaModel                = ud.ollamaModel;
+    ollamaIngestModel          = ud.ollamaIngestModel ?? '';
+    ollamaAnalyzeModel         = ud.ollamaAnalyzeModel ?? '';
+    ollamaChatModel            = ud.ollamaChatModel ?? '';
     ollamaBaseUrl              = ud.ollamaBaseUrl;
     preferLocal                = ud.preferLocal              ?? false;
     wasmModel                  = ud.wasmModel;
@@ -700,7 +717,12 @@
 
 <header class="head">
   <p class="kicker mono">settings</p>
-  <h1>system configuration</h1>
+  <div class="settings-heading-row">
+    <h1>system configuration</h1>
+    <div class="autosave-indicator" class:autosave-pulse={savedPulse} role="status">
+      {savedPulse ? 'saved ✓' : 'auto-save on'}
+    </div>
+  </div>
 
   <div class="settings-nav">
     <a href="/settings" class:active={!page.url.pathname.includes('/turtle') && !page.url.pathname.includes('/entity-types') && !page.url.pathname.includes('/integrations') && !page.url.pathname.includes('/publishing')} class="nav-link">backends</a>
@@ -961,6 +983,27 @@
   <label class="field">
     <span class="lbl mono">model</span>
     <input type="text" bind:value={ollamaModel} placeholder="llama3.2" />
+  </label>
+
+  <p class="hint">
+    Per-task overrides — leave blank to use the model above. Different tasks genuinely want
+    different models: a code model extracting prose collapses whole sentences into one entity.
+    Benchmarked extraction (F1 vs golden Opus triples, 2026-08-27):
+    <code>llama3.2:3b</code> 47.4 · <code>devstral-small-2</code> 47.1 ·
+    <code>gemma3:27b</code> 41.9 · <code>qwen3-coder</code> 30.4 · <code>qwen3.6</code> 30.3.
+    One fixture, 18 triples — trust the 15-point gaps, not the 1-point ones.
+  </p>
+  <label class="field">
+    <span class="lbl mono">ingest model</span>
+    <input type="text" bind:value={ollamaIngestModel} placeholder="(uses model above)" />
+  </label>
+  <label class="field">
+    <span class="lbl mono">analyze model</span>
+    <input type="text" bind:value={ollamaAnalyzeModel} placeholder="(uses model above)" />
+  </label>
+  <label class="field">
+    <span class="lbl mono">chat model</span>
+    <input type="text" bind:value={ollamaChatModel} placeholder="(uses model above)" />
   </label>
 </section>
 {/if}
@@ -1707,11 +1750,6 @@
   </Dialog.Portal>
 </Dialog.Root>
 
-<!-- Auto-save indicator -->
-<div class="autosave-indicator" class:autosave-pulse={savedPulse}>
-  {savedPulse ? 'saved ✓' : 'settings auto-save on'}
-</div>
-
 <style>
   /* ── Provider status dots ───────────────────────────────────────────────── */
   .provider-status-card { padding-bottom: 0.75rem; }
@@ -1757,6 +1795,13 @@
   }
 
   .head { margin-bottom: 1.25rem; }
+  .settings-heading-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
   .kicker {
     color: var(--accent);
     font-size: 0.72rem;
@@ -1773,9 +1818,12 @@
     /* On narrow viewports the section tabs used to clip (e.g. "turtle" cut off at
        the edge on mobile). Scroll horizontally instead of clipping. */
     overflow-x: auto;
-    scrollbar-width: none;
+    scrollbar-width: thin;
+    scrollbar-color: var(--muted-2) transparent;
+    scroll-snap-type: x proximity;
   }
-  .settings-nav::-webkit-scrollbar { display: none; }
+  .settings-nav::-webkit-scrollbar { height: 4px; }
+  .settings-nav::-webkit-scrollbar-thumb { background: var(--muted-2); border-radius: 999px; }
   .section-toc {
     display: flex;
     flex-wrap: wrap;
@@ -1814,6 +1862,7 @@
     transition: all 0.15s;
     white-space: nowrap;
     flex: 0 0 auto;
+    scroll-snap-align: start;
   }
   .nav-link:hover {
     color: var(--ink-2);
@@ -2309,9 +2358,7 @@
 
   /* ── Auto-save indicator ── */
   .autosave-indicator {
-    position: fixed;
-    bottom: var(--app-nav-clearance);
-    right: 1rem;
+    flex: 0 0 auto;
     font-family: var(--font-mono);
     font-size: 0.7rem;
     color: var(--muted);
@@ -2321,7 +2368,6 @@
     padding: 0.25rem 0.6rem;
     opacity: 0.6;
     transition: color 0.3s, opacity 0.3s;
-    pointer-events: none;
   }
   .autosave-indicator.autosave-pulse {
     color: var(--accent);

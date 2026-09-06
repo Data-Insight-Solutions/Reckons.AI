@@ -18,6 +18,16 @@ generated: "docs-kb"
 
 Every recurring task is routed to the cheapest tier that can do it correctly. SCRIPT: the answer is checkable by a rule ('does this path exist', 'is this status in the enum') — deterministic code, zero tokens, zero hallucination, runs in CI. LOCAL AGENT: the answer is judgment over language and being wrong is cheap, because the output is a proposal a human gates — a local model inside a scripted harness that grounds it, validates its output, and emits a reviewable proposal. FRONTIER: cross-file architectural reasoning, deciding process, and code that lands.
 
+## Where to go next
+
+**[The script tier — checks that cannot hallucinate](../coding-workflow/script-tier)**
+
+Deterministic checks that run on every push and cost nothing: graph invariants (dead file links, invalid statuses, duplicate IDs, dangling dependencies); evidence for status claims (a feature marked shipped must link a test or declare that it has none — you may ship untested code, but not silently); prompt/safety-preamble drift; production-build verification; and a license gate on every third-party dependency we study.
+
+**[The local agent tier — a first pass that never touches your source](../coding-workflow/agent-tier)**
+
+A local model (via Ollama, on your own hardware) reviews a diff, drafts a missing description, or reads for staleness — always inside a scripted harness: ground it in the graph, constrain the prompt, validate the output, emit a PROPOSAL.
+
 ## Details
 
 **Honest Note**

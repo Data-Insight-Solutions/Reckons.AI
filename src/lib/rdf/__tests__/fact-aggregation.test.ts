@@ -399,3 +399,85 @@ describe('purpose questions and semantic re-partition', () => {
     expect(slugifyPurpose('   ')).toBe('unlabelled');
   });
 });
+
+/**
+ * REGRESSIONS FROM THE 2026-09-02 MEASUREMENT RUN. Both bugs were found by pointing the offline
+ * job at a REAL user graph (personal-notes.ttl, the dictated Pebble notes) rather than at the
+ * hand-authored roadmap it defaults to. Neither was visible on the default graph, and neither was
+ * covered by the 32 tests above — which is precisely why they survived.
+ */
+describe('the request and the validator must agree on one vocabulary', () => {
+  const facts = [
+    st(F(1), `${KPRED}progress`, 'shipped the resolver', { id: 'a', altitude: 'record' }),
+    st(F(1), `${KPRED}progress`, 'shipped the editor', { id: 'b', altitude: 'record' }),
+    st(F(1), `${KPRED}progress`, 'shipped the lint pass', { id: 'c', altitude: 'record' }),
+  ];
+
+  it('teaches the model kpred:/kb: shorthand', () => {
+    const req = aggregationRequest(facts, []);
+    expect(req.facts[0].predicate).toBe('kpred:progress');
+    expect(req.facts[0].subject).toBe('kb:feature-1');
+  });
+
+  it('ACCEPTS a proposal that echoes the shorthand it was taught, and stores it expanded', () => {
+    const proposal: ProposedAggregation = {
+      clusters: [{
+        memberIds: ['a', 'b', 'c'],
+        question: 'Did all of this ship?',
+        proposes: { subject: 'kb:feature-1', predicate: 'kpred:progress', object: 'shipped the resolver' },
+      }],
+      dependencies: [],
+    };
+    const out = validateProposedAggregation(proposal, aggregationRequest(facts, []), facts);
+    // The bug: this rejected 100% of obedient proposals, pinning the agent tier's yield at 0%.
+    expect(out.rejected).toEqual([]);
+    expect(out.clusters).toHaveLength(1);
+    // A shorthand written into the graph is a string that looks like an IRI, not an IRI.
+    expect(out.clusters[0].proposes.predicate).toBe(`${KPRED}progress`);
+    expect(out.clusters[0].proposes.subject).toBe('urn:kbase:concept/feature-1');
+  });
+
+  it('still rejects a vocabulary the graph does not have', () => {
+    const proposal: ProposedAggregation = {
+      clusters: [{
+        memberIds: ['a', 'b', 'c'],
+        question: 'Did all of this ship?',
+        proposes: { subject: 'kb:feature-1', predicate: 'evil:owns', object: 'shipped the resolver' },
+      }],
+      dependencies: [],
+    };
+    const out = validateProposedAggregation(proposal, aggregationRequest(facts, []), facts);
+    expect(out.clusters).toHaveLength(0);
+    expect(out.rejected[0]).toContain("outside the graph's vocabulary");
+  });
+});
+
+describe('a synthetic source is not an act of trust', () => {
+  const fromFile = (id: string, sourceId: string) =>
+    st(F(1), `${KPRED}extracted-from`, `note ${id}`, { id, sourceId, altitude: 'record' });
+
+  it('does NOT form a same-source cluster from a file path', () => {
+    // The offline shim stamped every statement with the TTL's own path, which made ONE question
+    // covering 944 facts and left the agent tier with nothing to read.
+    const facts = ['a', 'b', 'c', 'd'].map((i) => fromFile(i, 'reckons-workspace/kbs/notes/notes.ttl'));
+    expect(clusterForCascade(facts).filter((c) => c.basis === 'same-source')).toHaveLength(0);
+  });
+
+  it('does NOT cluster on the importer\'s `imported` placeholder', () => {
+    const facts = ['a', 'b', 'c', 'd'].map((i) => fromFile(i, 'imported'));
+    expect(clusterForCascade(facts).filter((c) => c.basis === 'same-source')).toHaveLength(0);
+  });
+
+  it('still clusters on a REAL source id', () => {
+    const facts = ['a', 'b', 'c', 'd'].map((i) => fromFile(i, 'note-2026-08-27T18-48-36-861Z'));
+    const sourceClusters = clusterForCascade(facts).filter((c) => c.basis === 'same-source');
+    expect(sourceClusters).toHaveLength(1);
+    expect(sourceClusters[0].members).toHaveLength(4);
+  });
+
+  it('the caller can suppress the basis wholesale when it knows the ids were fabricated', () => {
+    const facts = ['a', 'b', 'c', 'd'].map((i) => fromFile(i, 'note-2026-08-27T18-48-36-861Z'));
+    const out = clusterForCascade(facts, { syntheticSource: true });
+    expect(out.filter((c) => c.basis === 'same-source')).toHaveLength(0);
+  });
+});

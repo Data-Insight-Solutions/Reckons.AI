@@ -67,6 +67,8 @@
     "kb:align:quick": "npx tsx scripts/kb-align.ts --skip-e2e",
     "md-align": "npx tsx scripts/md-align.ts",
     "docs:pages": "npx tsx scripts/docs-pages.ts",
+    "docs:diagrams": "npx tsx scripts/docs-diagrams.ts",
+    "docs:diagrams:check": "npx tsx scripts/docs-diagrams.ts --check",
     "docs:compose": "npx tsx scripts/docs-compose.ts",
     "docs:consolidate": "npx tsx scripts/offline/docs-consolidate.ts",
     "website:align": "npx tsx scripts/offline/website-align.ts",
@@ -112,6 +114,8 @@
     "offline:decisions": "npx tsx scripts/offline/graph-decisions.ts",
     "offline:aggregate": "npx tsx scripts/offline/aggregate-decisions.ts",
     "offline:lint": "npx tsx scripts/offline/graph-lint.ts",
+    "offline:chain": "npx tsx scripts/offline/extraction-chain.ts",
+    "offline:score": "npx tsx scripts/offline/extraction-score.ts",
     "secret:scan": "npx tsx scripts/offline/secret-scan.ts --ci",
     "offline:economics": "npx tsx scripts/offline/graph-economics.ts",
     "offline:prompt-audit": "npx tsx scripts/offline/prompt-audit.ts",
@@ -173,6 +177,7 @@
     "clsx": "^2.1.1",
     "jsdom": "^29.1.1",
     "mdsvex": "^0.12.7",
+    "mermaid": "^11.17.2",
     "rdf-validate-shacl": "^0.6.5",
     "shadcn-svelte": "^1.4.2",
     "sharp": "^0.35.3",
@@ -209,6 +214,10 @@
     "uuid": "$uuid",
     "cookie": "^0.7.0",
     "sharp": "$sharp",
-    "adm-zip": "0.6.0"
+    "adm-zip": "0.6.0",
+    "fast-uri": "^3.1.5",
+    "postcss": "^8.5.23",
+    "undici": "^7.29.0",
+    "browserslist": "^4.28.7"
   }
 }

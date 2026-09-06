@@ -35,3 +35,31 @@ sched:orchestrate rdf:type    ktype:Schedule ;
     kpred:command   "npx tsx scripts/agent/orchestrate.ts" ;
     kpred:enabled   "true" ;
     kpred:description "Prepare an orchestration briefing: route the pending queue by gate, draft candidate tasks for the machine-settleable work, and surface what actually needs a frontier decision. The output is a PROPOSAL an Opus session (or Matt) acts on — the script does the routing, the frontier tier does the judgment." .
+
+sched:pull-notes rdf:type     ktype:Schedule ;
+    rdfs:label      "Pull dictated notes down from n8n" ;
+    kpred:every     "15m" ;
+    kpred:command   "npx tsx scripts/notes-pull.ts" ;
+    kpred:enabled   "true" ;
+    kpred:description "Drain the n8n data table into knowledge.pending.jsonl, where the app imports it within 10s and extracts it. NOTHING WAS DOING THIS: every drain until 2026-08-28 was run by hand, so a note dictated while nobody was at the keyboard simply waited. The buffer is deliberately at-least-once, so a duplicate on retry is harmless and a missed note is not." .
+
+sched:offer-tasks rdf:type    ktype:Schedule ;
+    rdfs:label      "Offer unauthorised tasks as documents" ;
+    kpred:every     "1h" ;
+    kpred:command   "npx tsx scripts/agent/tasks-export.ts --notify" ;
+    kpred:enabled   "true" ;
+    kpred:description "Render every task still missing its effects or acceptance check as a markdown form, and deliver it through n8n (F162). It does NOT re-send: a document already on disk is skipped without delivering, so a task nobody has answered yet emails once rather than hourly. Answers return via tasks-import.ts as pending facts." .
+
+sched:review-stars rdf:type   ktype:Schedule ;
+    rdfs:label      "Review new GitHub stars" ;
+    kpred:every     "24h" ;
+    kpred:command   "npx tsx scripts/offline/stars-scan.ts --pending --limit 15" ;
+    kpred:enabled   "true" ;
+    kpred:description "Matt: 'Make it a regular task to review my github stars... I'm tired of copy pasting their links anyway.' A star is a judgement he already made, stranded on github.com. This brings the new ones in as licence-gated proposals. Incremental by starred_at and capped, because 659 stars proposed at once is a flooded queue rather than a feature." .
+
+sched:integration-health rdf:type ktype:Schedule ;
+    rdfs:label      "Check connected tools and versions" ;
+    kpred:every     "168h" ;
+    kpred:command   "npx tsx scripts/offline/integration-health.ts --pending" ;
+    kpred:enabled   "true" ;
+    kpred:description "Matt: 'before usage at some interval it might be nice to check if new version is available'. Reports what is reachable, what is behind, and how many catalogued tools are actually invokable here. Weekly, because a version check that runs hourly is noise -- and only a SECURITY fix or an unreachable service raises attention." .

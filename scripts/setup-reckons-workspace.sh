@@ -18,7 +18,7 @@ KBS="$WORKSPACE/kbs"
 
 echo "Setting up Reckons workspace..."
 
-mkdir -p "$KBS"/{production,roadmap,features,docs,quickstart,codebase,architecture}
+mkdir -p "$KBS"/{production,roadmap,features,docs,quickstart,codebase,architecture,vocabulary,generation}
 
 # Clean up legacy meta.json files (no longer needed — discovery uses {folder}.ttl)
 find "$KBS" -name meta.json -delete 2>/dev/null || true
@@ -33,6 +33,13 @@ ln -sf ../../../static/docs-features.ttl      "$KBS/features/features.ttl"
 ln -sf ../../../static/starter-quickstart.ttl "$KBS/quickstart/quickstart.ttl"
 ln -sf ../../../static/reckons-codebase.ttl   "$KBS/codebase/codebase.ttl"
 ln -sf ../../../static/docs-architecture.ttl  "$KBS/architecture/architecture.ttl"
+# The controlled vocabularies (SKOS + SHACL). Linked so an agent can ASK what a valid altitude or
+# task state is, rather than inferring it from examples — which is the whole reason for defining
+# them in the graph instead of in TypeScript.
+ln -sf ../../../static/reckons-vocabulary.ttl "$KBS/vocabulary/vocabulary.ttl"
+# The local-generation catalogue, so an agent can ask what is available and what its licence
+# permits rather than guessing from a model name.
+ln -sf ../../../static/reckons-generation-tools.ttl "$KBS/generation/generation.ttl"
 
 # Docs KB: merge all sub-graphs into one file, then symlink
 cat static/starter-guide.ttl \
@@ -71,6 +78,17 @@ ln -sf ../../../static/docs-features.ttl      "$MCP_KBS/features/features.ttl"
 ln -sf ../../../static/docs-architecture.ttl  "$MCP_KBS/architecture/architecture.ttl"
 ln -sf ../../../static/docs-testing.ttl       "$MCP_KBS/testing/testing.ttl"
 ln -sf ../../../static/reckons-codebase.ttl   "$MCP_KBS/codebase/codebase.ttl"
+mkdir -p "$MCP_KBS/user-paths"
+ln -sf ../../../static/docs-user-paths.ttl   "$MCP_KBS/user-paths/user-paths.ttl"
+
+# ── Starter graphs ────────────────────────────────────────────────────────────
+# These were linked by hand once and never added here, so a FRESH CLONE got a
+# different graph-lint result from this machine — the same silent-drift class the
+# dangling-link check below exists to catch. Listed explicitly now.
+for starter in guide everyday turtles; do
+  mkdir -p "$MCP_KBS/starter-$starter"
+  ln -sf "../../../static/starter-$starter.ttl" "$MCP_KBS/starter-$starter/starter-$starter.ttl"
+done
 
 # Fail loudly if a link is dangling — a silently-empty graph is how the drift above
 # went unnoticed for weeks.
@@ -80,4 +98,4 @@ for f in "$MCP_KBS"/*/*.ttl; do
 done
 [ "$missing" -eq 0 ] || { echo "MCP workspace has dangling symlinks — fix static/*.ttl paths above."; exit 1; }
 
-echo "MCP workspace ready: $MCP_WS/ (6 graphs) — restart Claude Code to pick up .mcp.json"
+echo "MCP workspace ready: $MCP_WS/ (6 doc graphs + 3 starters) — restart Claude Code to pick up .mcp.json"

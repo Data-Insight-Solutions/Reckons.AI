@@ -1,4 +1,5 @@
 import { db } from '../storage/db';
+import { liveQuery } from 'dexie';
 import type { ExtractionRun, Statement, Source, ReviewStatus } from '../rdf/types';
 import { isIRI, termKey } from '../rdf/types';
 import { labelFromIRI } from '../rdf/semantic-diff';
@@ -94,17 +95,58 @@ export async function loadAll() {
   _loaded = true;
 }
 
+/** Compare storage snapshots by id and content, independent of cursor/local insertion order. */
+function sameRows<T extends { id: string }>(current: T[], next: T[]): boolean {
+  if (current.length !== next.length) return false;
+  const currentById = new Map(current.map((row) => [row.id, row]));
+  for (const row of next) {
+    const prior = currentById.get(row.id);
+    if (!prior || JSON.stringify(prior) !== JSON.stringify(row)) return false;
+  }
+  return true;
+}
+
 /**
- * Hot-swap store data for seamless KB transitions (leap animation).
- * Replaces statements and sources without a page reload. The `db` singleton
- * still points to the previous DB — call switchToKb() for a full transition
- * when the user navigates away or the session can tolerate a reload.
+ * Keep the in-memory fact store aligned with writes committed by another tab.
+ *
+ * Dexie's live query invalidation crosses browsing contexts and re-runs only when one of the
+ * observed tables changes. The caller owns the subscription lifetime so route teardown and HMR
+ * do not accumulate observers.
+ */
+export function startKbLiveSync(): () => void {
+  const subscription = liveQuery(async () => {
+    const [srcs, sts] = await Promise.all([
+      db.sources.orderBy('ingestedAt').reverse().toArray(),
+      db.statements.toArray(),
+    ]);
+    return { srcs, sts };
+  }).subscribe({
+    next: ({ srcs, sts }) => {
+      // Dexie invalidates live queries in the writing tab as well. Its mutation functions have
+      // already updated these arrays, so avoid a second assignment (and a full graph re-layout)
+      // when IndexedDB contains the same rows. Compare by id because cursor order and the local
+      // append order need not match.
+      if (!sameRows(_sources, srcs)) _sources = srcs;
+      if (!sameRows(_statements, sts)) _statements = sts;
+      _loaded = true;
+    },
+    error: (error) => console.warn('[graph] live cross-tab sync failed:', error),
+  });
+
+  return () => subscription.unsubscribe();
+}
+
+/**
+ * Refresh the reactive snapshot after a transaction has already replaced rows in the CURRENT DB.
+ *
+ * This must never be used to switch graphs. The store's `db` singleton and its live query remain
+ * bound to the database chosen at module load, so displaying rows from another database here would
+ * make the next invalidation overwrite the screen and every subsequent mutation hit the old graph.
+ * Cross-graph navigation must use `switchToKb()`, which retargets storage before reloading.
  */
 export function hotSwapData(stmts: Statement[], srcs: Source[]) {
-  // A hot-swap means we've navigated to a real registered KB (e.g. a KB leap
-  // from the read-only docs hub). The official-KB overlay must be dropped first
-  // — otherwise statements()/sources() keep returning officialKbStatements() and
-  // mask the swapped-in data, so the leap silently appears to do nothing.
+  // A same-DB replacement may follow an official read-only overlay. Drop that overlay so the
+  // freshly committed user snapshot is visible.
   if (officialKbActive()) deactivateOfficialKb();
   _statements = stmts;
   _sources = srcs;
@@ -351,8 +393,9 @@ function changeLogRow(entry: Omit<ChangeLogEntry, 'timestamp' | 'id'>): ChangeLo
 }
 
 async function writeStatementChangeLog(plan: PreparedStatementWrite, sourceId?: string) {
+  const rows: ChangeLogEntry[] = [];
   for (const { statement, reasons } of plan.blocked) {
-    await db.changelog.add(changeLogRow({
+    rows.push(changeLogRow({
       action: 'reject',
       statementId: statement.id,
       sourceId: statement.sourceId,
@@ -361,13 +404,16 @@ async function writeStatementChangeLog(plan: PreparedStatementWrite, sourceId?: 
     }));
   }
   for (const statement of plan.statements) {
-    await db.changelog.add(changeLogRow({
+    rows.push(changeLogRow({
       action: sourceId ? 'ingest' : 'add',
       statementId: statement.id,
       sourceId: statement.sourceId,
       after: JSON.stringify({ s: statement.s, p: statement.p, o: statement.o, status: statement.status }),
     }));
   }
+  // One IndexedDB request instead of one awaited request per fact. The old 221-row starter import
+  // spent 600ms+ in IDBTransaction completion callbacks and dropped a full second-long frame.
+  if (rows.length > 0) await db.changelog.bulkAdd(rows);
 }
 
 function afterStatementsPersisted(plan: PreparedStatementWrite, sourceId?: string) {
@@ -408,6 +454,58 @@ export async function addStatements(
     await writeStatementChangeLog(plan, sourceId);
   });
   if (plan.statements.length > 0) afterStatementsPersisted(plan, sourceId);
+}
+
+/**
+ * Persist a source and its already-admitted statements as one durable batch.
+ *
+ * Workspace queue imports use this boundary before acknowledging their source JSONL rows. Keeping
+ * the source, statements, and audit records in one IndexedDB transaction means a failed statement
+ * write cannot leave an orphan source or make the filesystem queue look delivered.
+ */
+export async function persistSourceBatch(
+  source: Source,
+  plan: PreparedStatementWrite,
+): Promise<Statement[]> {
+  if (isReadOnly()) throw new Error('Cannot persist a source batch while the official graph is active');
+  let sourceInserted = false;
+  let committedPlan: PreparedStatementWrite = { ...plan, statements: [] };
+  await db.transaction('rw', db.sources, db.statements, db.changelog, async () => {
+    // Stable queue ids make this boundary an idempotency receipt across tabs,
+    // not only within one module instance. Dexie serializes these read/write
+    // transactions, so the later tab observes what the first committed.
+    const [existingSource, existingStatements] = await Promise.all([
+      db.sources.get(source.id),
+      db.statements.bulkGet(plan.statements.map((statement) => statement.id)),
+    ]);
+    sourceInserted = !existingSource;
+    committedPlan = {
+      ...plan,
+      statements: plan.statements.filter((_, index) => !existingStatements[index]),
+      // A blocked row intentionally has no durable statement receipt and remains in the queue.
+      // The stable source is its batch receipt instead: once that source exists, retrying the same
+      // snapshot must not append the identical content-policy rejection audit forever.
+      blocked: sourceInserted ? plan.blocked : [],
+    };
+    if (sourceInserted) await db.sources.put(source);
+    if (committedPlan.statements.length > 0) await db.statements.bulkPut(committedPlan.statements);
+    await writeStatementChangeLog(committedPlan, source.id);
+  });
+
+  if (sourceInserted) {
+    _sources = [source, ..._sources.filter((existing) => existing.id !== source.id)];
+    for (const hook of _afterAddSourceHooks) {
+      try { hook(source); }
+      catch (error) { console.error('[source-batch] after-add-source hook failed:', error); }
+    }
+  }
+  if (committedPlan.statements.length > 0) afterStatementsPersisted(committedPlan, source.id);
+  else if (sourceInserted) {
+    scheduleAutoSave();
+    scheduleWorkspaceTtlExport();
+    scheduleDrivePush();
+  }
+  return committedPlan.statements;
 }
 
 /**
@@ -467,40 +565,94 @@ export async function updateStatement(id: string, patch: Partial<Statement>) {
 }
 
 export async function setStatus(id: string, status: ReviewStatus) {
+  await setStatuses([{ id, status }]);
+}
+
+/**
+ * Set several review statuses as one decision and one IndexedDB transaction.
+ *
+ * Conflict settlement is semantically indivisible: confirming the chosen side while leaving a
+ * losing side pending (because a later write failed) asks the human to make the same decision
+ * again. Statement rows, audit rows, and trust events therefore commit or roll back together, and
+ * reactive state changes only after that durable boundary succeeds.
+ */
+export async function setStatuses(
+  updates: readonly { id: string; status: ReviewStatus }[],
+) {
   if (isReadOnly()) return;
-  const cur = _statements.find((s) => s.id === id);
-  if (!cur) return;
+  const requested = new Map<string, ReviewStatus>();
+  for (const update of updates) {
+    const prior = requested.get(update.id);
+    if (prior && prior !== update.status) {
+      throw new Error(`Conflicting statuses requested for statement ${update.id}`);
+    }
+    requested.set(update.id, update.status);
+  }
+  if (requested.size === 0) return;
 
-  await updateStatement(id, { status });
+  let changed: Array<{ before: Statement; after: Statement }> = [];
 
-  // Log the status change
-  const logAction = status === 'confirmed' || status === 'refined' ? 'confirm'
-    : status === 'rejected' ? 'reject'
-    : 'confirm'; // pending-removal and others treated as non-destructive
-  await logChange({
-    action: logAction,
-    statementId: id,
-    sourceId: cur.sourceId,
-    before: JSON.stringify({ status: cur.status }),
-    after: JSON.stringify({ status })
+  await db.transaction('rw', db.statements, db.changelog, db.trustEvents, async () => {
+    // Read inside the transaction. Another tab may have edited the durable row
+    // since this module last loaded; replacing it from _statements would erase
+    // unrelated fields such as gloss, confidence, or provenance.
+    const ids = [...requested.keys()];
+    const durable = await db.statements.bulkGet(ids);
+    const missing = ids.filter((_, index) => !durable[index]);
+    if (missing.length > 0) {
+      throw new Error(`Cannot settle missing statement${missing.length === 1 ? '' : 's'}: ${missing.join(', ')}`);
+    }
+
+    const now = Date.now();
+    changed = durable.flatMap((before, index) => {
+      if (!before) return [];
+      const status = requested.get(ids[index])!;
+      if (before.status === status) return [];
+      const after = JSON.parse(JSON.stringify({ ...before, status, updatedAt: now })) as Statement;
+      return [{ before, after }];
+    });
+    if (changed.length === 0) return;
+
+    await db.statements.bulkPut(changed.map(({ after }) => after));
+    for (const { before, after } of changed) {
+      const logAction = after.status === 'confirmed' || after.status === 'refined' ? 'confirm'
+        : after.status === 'rejected' ? 'reject'
+        : after.status === 'superseded' ? 'supersede'
+        : 'confirm'; // pending-removal and others treated as non-destructive
+      await logChange({
+        action: logAction,
+        statementId: before.id,
+        sourceId: before.sourceId,
+        before: JSON.stringify({ status: before.status }),
+        after: JSON.stringify({ status: after.status }),
+      });
+
+      if ((after.status === 'confirmed' || after.status === 'refined') && before.status === 'pending') {
+        await logTrustEvent({
+          sourceId: before.sourceId,
+          delta: 0.05,
+          reason: 'confirm',
+          statementId: before.id,
+        });
+      } else if (after.status === 'rejected' && before.status === 'pending') {
+        await logTrustEvent({
+          sourceId: before.sourceId,
+          delta: -0.1,
+          reason: 'reject',
+          statementId: before.id,
+        });
+      }
+    }
   });
 
-  // Emit trust event for user confirmations/rejections
-  if ((status === 'confirmed' || status === 'refined') && cur.status === 'pending') {
-    await logTrustEvent({
-      sourceId: cur.sourceId,
-      delta: 0.05,
-      reason: 'confirm',
-      statementId: id
-    });
-  } else if (status === 'rejected' && cur.status === 'pending') {
-    await logTrustEvent({
-      sourceId: cur.sourceId,
-      delta: -0.1,
-      reason: 'reject',
-      statementId: id
-    });
-  }
+  if (changed.length === 0) return;
+
+  const changedById = new Map(changed.map(({ after }) => [after.id, after]));
+  const localIds = new Set(_statements.map((statement) => statement.id));
+  _statements = [
+    ..._statements.map((statement) => changedById.get(statement.id) ?? statement),
+    ...changed.map(({ after }) => after).filter((statement) => !localIds.has(statement.id)),
+  ];
   scheduleAutoSave();
   scheduleWorkspaceTtlExport();
   scheduleDrivePush();

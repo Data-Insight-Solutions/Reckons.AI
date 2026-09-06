@@ -41,6 +41,11 @@ export interface SettingsProfile {
   openaiModel: string;
   geminiModel: string;
   ollamaModel: string;
+  ollamaIngestModel?: string;
+  ollamaAnalyzeModel?: string;
+  ollamaChatModel?: string;
+  ollamaDiffSummaryModel?: string;
+  ollamaMergeAnalysisModel?: string;
   ollamaBaseUrl: string;
   wasmModel: string;
   wasmIngestModel?: string;
@@ -83,6 +88,11 @@ export async function buildSettingsProfileJson(): Promise<string> {
     openaiModel: s.openaiModel,
     geminiModel: s.geminiModel,
     ollamaModel: s.ollamaModel,
+    ollamaIngestModel: s.ollamaIngestModel,
+    ollamaAnalyzeModel: s.ollamaAnalyzeModel,
+    ollamaChatModel: s.ollamaChatModel,
+    ollamaDiffSummaryModel: s.ollamaDiffSummaryModel,
+    ollamaMergeAnalysisModel: s.ollamaMergeAnalysisModel,
     ollamaBaseUrl: s.ollamaBaseUrl,
     wasmModel: s.wasmModel,
     wasmIngestModel: s.wasmIngestModel,

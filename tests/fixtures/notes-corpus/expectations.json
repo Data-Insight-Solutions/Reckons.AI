@@ -1,0 +1,492 @@
+{
+  "_comment": "MACHINE-READABLE GROUND TRUTH for scripts/offline/extraction-score.ts. The *.EXPECTED.txt files stay the human-readable companion and say WHY; this file says WHAT, in a form a scorer can check. Derived from those files on 2026-09-04 — when they disagree, the .txt is authoritative and this file is the bug.",
+  "_matching": "Every slot is a list of ACCEPTED forms. A slot matches if any form matches after normalization (case, kb:/kpred: prefixes, spaces/underscores to hyphens, trailing plural, leading is-/has-/are- on predicates). Explicit alternates are used in preference to fuzzy matching: a lenient matcher inflates the score and makes the gate useless.",
+  "_knownBroken": "true means this SHOULD be produced but is documented as not-produced today. Scored separately: never counted as a regression, always reported as a gain if it starts passing. Do not delete one to make a number look better.",
+  "01-note-single.txt": {
+    "title": "one dictated note",
+    "expected": [
+      {
+        "id": "01.1",
+        "why": "the two claims are separated, and the platform is classified rather than collapsed",
+        "s": [
+          "lumenpath",
+          "lumen-path"
+        ],
+        "p": [
+          "is-a",
+          "type",
+          "instance-of",
+          "kind-of",
+          "category"
+        ],
+        "o": [
+          "enterprise-cad",
+          "enterprise-cad-platform",
+          "cad-platform"
+        ]
+      },
+      {
+        "id": "01.2",
+        "why": "the second sentence's relation survives as its own fact",
+        "s": [
+          "enterprise-cad",
+          "enterprise-cad-platform",
+          "cad-platform"
+        ],
+        "p": [
+          "used-by",
+          "user",
+          "serves"
+        ],
+        "o": [
+          "architecture-studio",
+          "architecture-studios",
+          "studio"
+        ]
+      },
+      {
+        "id": "01.3",
+        "why": "the purpose clause is captured at all, under either reading (platform-purpose or studio-activity)",
+        "s": [
+          "enterprise-cad",
+          "enterprise-cad-platform",
+          "architecture-studio",
+          "cad-platform"
+        ],
+        "p": [
+          "purpose",
+          "used-for",
+          "manage",
+          "manages",
+          "used-to",
+          "function"
+        ],
+        "o": [
+          "manage-drawings-and-models",
+          "drawings-and-models",
+          "drawing",
+          "model",
+          "drawings",
+          "models"
+        ]
+      },
+      {
+        "id": "01.4",
+        "why": "repair to the correct product name; cannot fire on a fresh graph, which is why 02 seeds it first",
+        "knownBroken": true,
+        "s": [
+          "lumenpath"
+        ],
+        "p": [
+          "label",
+          "rdfs:label",
+          "name"
+        ],
+        "o": [
+          "lumenpath"
+        ]
+      }
+    ],
+    "forbidden": {
+      "slugs": [
+        "lumen-path-is-an-enterprise-cad-platform"
+      ],
+      "why": "a whole sentence as one entity slug — looksLikeProposition rejects this at the door, so its appearance is a REGRESSION in that guard, not a model failure"
+    }
+  },
+  "02-notes-batch.txt": {
+    "title": "eight dictated notes, Pebble-scale",
+    "expected": [
+      {
+        "id": "02.1",
+        "why": "seeds the correct product name so repair has something to match in note 3",
+        "s": [
+          "lumenpath"
+        ],
+        "p": [
+          "is-a",
+          "type",
+          "instance-of",
+          "kind-of",
+          "category"
+        ],
+        "o": [
+          "enterprise-cad",
+          "enterprise-cad-platform",
+          "cad-platform"
+        ]
+      },
+      {
+        "id": "02.2",
+        "s": [
+          "enterprise-cad",
+          "enterprise-cad-platform",
+          "cad-platform"
+        ],
+        "p": [
+          "used-by",
+          "user",
+          "serves"
+        ],
+        "o": [
+          "architecture-studio",
+          "large-architecture-studio",
+          "architecture-studios"
+        ]
+      },
+      {
+        "id": "02.3",
+        "why": "site photographs is the third object and is the one most often dropped",
+        "s": [
+          "enterprise-cad",
+          "enterprise-cad-platform",
+          "architecture-studio",
+          "cad-platform"
+        ],
+        "p": [
+          "purpose",
+          "used-for",
+          "organize",
+          "organizes",
+          "used-to",
+          "manage"
+        ],
+        "o": [
+          "site-photograph",
+          "site-photographs",
+          "drawings-models-and-site-photographs"
+        ]
+      },
+      {
+        "id": "02.4",
+        "why": "the ownership claim, with a person as subject",
+        "s": [
+          "jordan-veil"
+        ],
+        "p": [
+          "owns",
+          "owner-of",
+          "own"
+        ],
+        "o": [
+          "northwind-analytics",
+          "northwind-analytics-llc"
+        ]
+      },
+      {
+        "id": "02.5",
+        "s": [
+          "northwind-analytics",
+          "northwind-analytics-llc"
+        ],
+        "p": [
+          "is-a",
+          "type",
+          "instance-of",
+          "kind-of",
+          "category",
+          "role"
+        ],
+        "o": [
+          "systems-integrator",
+          "system-integrator"
+        ]
+      },
+      {
+        "id": "02.6",
+        "why": "the SECOND classification — an extractor that emits one is-a and stops loses half the sentence",
+        "s": [
+          "northwind-analytics",
+          "northwind-analytics-llc"
+        ],
+        "p": [
+          "is-a",
+          "type",
+          "instance-of",
+          "kind-of",
+          "category",
+          "role"
+        ],
+        "o": [
+          "technology-consultant",
+          "technology-consulting"
+        ]
+      },
+      {
+        "id": "02.7",
+        "s": [
+          "lumenpath",
+          "lumen-path"
+        ],
+        "p": [
+          "interoperability-with",
+          "interoperable-with",
+          "integrates-with",
+          "has-interoperability-with",
+          "interoperability"
+        ],
+        "o": [
+          "integration-and-automation-tool",
+          "integration-and-automation-tools",
+          "automation-tool",
+          "integration-tool",
+          "high"
+        ]
+      },
+      {
+        "id": "02.8",
+        "why": "the idea note's POSITIVE half — what the system does have",
+        "s": [
+          "reckons-ai",
+          "recons-ai",
+          "recon-s-ai"
+        ],
+        "p": [
+          "has",
+          "represents",
+          "supports",
+          "has-representation-of"
+        ],
+        "o": [
+          "order",
+          "representation-of-order"
+        ]
+      },
+      {
+        "id": "02.9",
+        "why": "the ABSENCE — a well-formed missing thing, the most valuable node in the graph (kb:mission). Should be a question or a partial fact, not silence.",
+        "s": [
+          "reckons-ai",
+          "recons-ai",
+          "recon-s-ai"
+        ],
+        "p": [
+          "lacks",
+          "missing",
+          "needs",
+          "does-not-have",
+          "requires"
+        ],
+        "o": [
+          "repetition",
+          "representation-of-repetition",
+          "repeat-count",
+          "node-attribute-repeat-count"
+        ]
+      },
+      {
+        "id": "02.10",
+        "why": "the co-hyponym seam — at least one sibling must exist as its own entity, not merged into the others",
+        "s": [
+          "node-attribute-name",
+          "node-attribute"
+        ],
+        "p": [
+          "is-a",
+          "type",
+          "part-of",
+          "distinct-from",
+          "separate-from",
+          "instance-of"
+        ],
+        "o": [
+          "node-attribute",
+          "node-attribute-name",
+          "attribute",
+          "separate-thing"
+        ]
+      },
+      {
+        "id": "02.11",
+        "why": "the three vendors, split by the decoder before extraction ever saw them — an ASR-boundary failure, recorded not re-filed",
+        "knownBroken": true,
+        "s": [
+          "aprimo"
+        ],
+        "p": [
+          "is-a",
+          "type",
+          "potential-integration",
+          "instance-of"
+        ],
+        "o": [
+          "enterprise-dam",
+          "potential-integration",
+          "enterprise-dam-software"
+        ]
+      },
+      {
+        "id": "02.12",
+        "why": "the homophone. Nothing knows the acronym and 'damn' is a real word, so no lexical or phonetic signal can fire. Known unsolvable at this tier.",
+        "knownBroken": true,
+        "s": [
+          "enterprise-dam"
+        ],
+        "p": [
+          "is-a",
+          "type",
+          "instance-of"
+        ],
+        "o": [
+          "software",
+          "enterprise-software",
+          "dam"
+        ]
+      }
+    ],
+    "forbidden": {
+      "slugs": [
+        "comparison-document",
+        "research-task",
+        "swim-team",
+        "city-parks-and-recreation",
+        "childhood-activities",
+        "grant"
+      ],
+      "why": "THE HIGHEST-VALUE ASSERTION IN THE CORPUS. The last two notes are REQUESTS. Anything asserting a comparison document exists, or that grants were researched, is invented history written into the graph by a machine. note-intent.ts must route these to tasks."
+    }
+  },
+  "03-doc-medium.md": {
+    "title": "a briefing document, structured prose",
+    "expected": [
+      {
+        "id": "03.1",
+        "why": "checkable evidence — a date, the easiest thing in the document",
+        "s": [
+          "lumenpath"
+        ],
+        "p": [
+          "founded",
+          "founded-in",
+          "year-founded",
+          "established"
+        ],
+        "o": [
+          "2014"
+        ]
+      },
+      {
+        "id": "03.2",
+        "s": [
+          "lumenpath"
+        ],
+        "p": [
+          "headquartered-in",
+          "headquarters",
+          "located-in",
+          "based-in",
+          "city"
+        ],
+        "o": [
+          "toronto"
+        ]
+      },
+      {
+        "id": "03.3",
+        "s": [
+          "northwind-analytics",
+          "northwind-analytics-llc"
+        ],
+        "p": [
+          "based-in",
+          "located-in",
+          "headquartered-in",
+          "city"
+        ],
+        "o": [
+          "kansas-city"
+        ]
+      },
+      {
+        "id": "03.4",
+        "why": "record altitude — provenance of the document itself",
+        "s": [
+          "northwind-analytics-digital-asset-tooling-review",
+          "digital-asset-tooling-review",
+          "this-document",
+          "document"
+        ],
+        "p": [
+          "prepared-by",
+          "author",
+          "authored-by"
+        ],
+        "o": [
+          "jordan-vale",
+          "northwind-analytics",
+          "northwind-analytics-llc"
+        ]
+      },
+      {
+        "id": "03.5",
+        "why": "a JUDGMENT that must keep its author. A flat `licensing unfavourable` has stripped the attribution and turned an opinion into a measurement. NO LONGER KNOWN-BROKEN: qwen3.6 produced it on 2026-09-04 at both graph none and full, which proves it is achievable, so a model that misses it is failing rather than facing a limitation. Promoted out of knownBroken the same day it first passed — leaving it exempt would quietly forgive every future model for the same miss.",
+        "s": [
+          "northwind-analytics",
+          "jordan-vale",
+          "northwind-analytics-llc"
+        ],
+        "p": [
+          "assesses",
+          "asserts",
+          "believes",
+          "judges",
+          "claims"
+        ],
+        "o": [
+          "lumenpath-licensing-unfavourable",
+          "unfavourable",
+          "unfavorable"
+        ]
+      },
+      {
+        "id": "03.6",
+        "why": "the lock-in judgment, the document's other opinion",
+        "s": [
+          "vantage-suite"
+        ],
+        "p": [
+          "risk",
+          "has-risk",
+          "lock-in-risk",
+          "concern",
+          "weakness"
+        ],
+        "o": [
+          "lock-in",
+          "lock-in-risk",
+          "proprietary-file-format",
+          "vendor-lock-in"
+        ]
+      },
+      {
+        "id": "03.7",
+        "why": "THE MOST IMPORTANT PART — an explicit absence, stated outright. Should become a QUESTION or a partial fact (F32 needsObject), not be dropped.",
+        "knownBroken": true,
+        "s": [
+          "lumenpath"
+        ],
+        "p": [
+          "pricing",
+          "pricing-above-50-seats",
+          "unknown",
+          "open-question"
+        ],
+        "o": [
+          "?",
+          "unknown",
+          "not-known"
+        ]
+      }
+    ],
+    "forbidden": {
+      "slugs": [
+        "recommended-platform",
+        "selected-platform",
+        "chosen-platform",
+        "next-actions-completed"
+      ],
+      "why": "the document says 'No recommendation yet'. Naming a recommended/selected platform invents the conclusion the document explicitly withholds. Recording that NO recommendation was made is correct and must not be flagged — qwen3-coder emitted `has-no-recommendation true` on 2026-09-04 and an earlier, broader forbidden list wrongly called that an invention. Next actions are TASKS, same rule as 02."
+    }
+  },
+  "_requestMarkers": "A triple touching a forbidden slug is INVENTED HISTORY only if it asserts the thing happened. If its predicate marks it as a request/task/ask, it is a ROUTING miss instead — the extractor understood the intent but note-intent.ts never got to move it out of the fact stream. Both are failures; only the first writes something false into the graph."
+}

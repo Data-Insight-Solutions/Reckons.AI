@@ -64,6 +64,83 @@ export interface HierarchyNode {
 }
 
 /**
+ * Resolve hierarchy edges into a deterministic forest.
+ *
+ * Real imported graphs are not always trees: a child can name multiple parents,
+ * and malformed data can contain self-loops or longer cycles. Layout and
+ * navigation must still terminate and include every participant exactly once.
+ * An explicit taxonomy outranks a dependency; equal-ranked parents are chosen
+ * lexicographically so statement order cannot change the result. Cycles are
+ * broken at their lexicographically smallest IRI, making that node a root.
+ */
+export function buildHierarchyParentMaps(
+  stmts: Statement[],
+  includeDependencies = false,
+): {
+  parentOf: Map<string, string>;
+  childrenOf: Map<string, string[]>;
+  allIris: Set<string>;
+} {
+  const candidates = new Map<string, Map<string, number>>();
+  const allIris = new Set<string>();
+
+  for (const s of stmts) {
+    if (!isActive(s) || s.s.kind !== 'iri' || s.o.kind !== 'iri') continue;
+    const priority = s.p.value === SKOS_BROADER
+      ? 2
+      : includeDependencies && s.p.value === KPRED_DEPENDS_ON
+        ? 1
+        : 0;
+    if (!priority) continue;
+
+    allIris.add(s.s.value);
+    allIris.add(s.o.value);
+    const parents = candidates.get(s.s.value) ?? new Map<string, number>();
+    parents.set(s.o.value, Math.max(priority, parents.get(s.o.value) ?? 0));
+    candidates.set(s.s.value, parents);
+  }
+
+  const parentOf = new Map<string, string>();
+  for (const child of [...candidates.keys()].sort()) {
+    const choices = [...candidates.get(child)!]
+      .sort(([parentA, priorityA], [parentB, priorityB]) =>
+        priorityB - priorityA || parentA.localeCompare(parentB));
+    if (choices[0]) parentOf.set(child, choices[0][0]);
+  }
+
+  // parentOf is a functional graph (at most one outgoing parent per child),
+  // so deleting one edge per detected cycle turns it into a forest.
+  const settled = new Set<string>();
+  for (const start of [...allIris].sort()) {
+    if (settled.has(start)) continue;
+    const path: string[] = [];
+    const pathIndex = new Map<string, number>();
+    let current = start;
+    while (parentOf.has(current) && !settled.has(current)) {
+      const cycleStart = pathIndex.get(current);
+      if (cycleStart !== undefined) {
+        const cycle = path.slice(cycleStart);
+        const promotedRoot = [...cycle].sort()[0];
+        parentOf.delete(promotedRoot);
+        break;
+      }
+      pathIndex.set(current, path.length);
+      path.push(current);
+      current = parentOf.get(current)!;
+    }
+    for (const iri of path) settled.add(iri);
+  }
+
+  const childrenOf = new Map<string, string[]>();
+  for (const [child, parent] of [...parentOf].sort(([a], [b]) => a.localeCompare(b))) {
+    const children = childrenOf.get(parent) ?? [];
+    children.push(child);
+    childrenOf.set(parent, children);
+  }
+  return { parentOf, childrenOf, allIris };
+}
+
+/**
  * Build a hierarchy tree from statements using skos:broader relationships.
  * Returns root nodes (entities with no broader parent).
  */
@@ -78,19 +155,8 @@ export function buildHierarchy(stmts: Statement[]): HierarchyNode[] {
     }
   }
 
-  // Build parent → children map from skos:broader (child broader parent)
-  const parentOf = new Map<string, string>(); // child → parent
-  const childrenOf = new Map<string, string[]>(); // parent → [children]
-
-  for (const s of active) {
-    if (s.p.value === SKOS_BROADER && s.s.kind === 'iri' && s.o.kind === 'iri') {
-      const child = s.s.value;
-      const parent = s.o.value;
-      parentOf.set(child, parent);
-      if (!childrenOf.has(parent)) childrenOf.set(parent, []);
-      childrenOf.get(parent)!.push(child);
-    }
-  }
+  // Build a deterministic, cycle-safe parent → children forest.
+  const { parentOf, childrenOf, allIris } = buildHierarchyParentMaps(active);
 
   // Collect nav:order values
   const orderOf = new Map<string, number>();
@@ -117,59 +183,65 @@ export function buildHierarchy(stmts: Statement[]): HierarchyNode[] {
     }
   }
 
-  // Collect all entity IRIs that participate in broader relationships
-  const allIris = new Set<string>();
-  for (const [child, parent] of parentOf) {
-    allIris.add(child);
-    allIris.add(parent);
-  }
+  // Every promoted cycle root participates even if the malformed component was
+  // only a self-loop and therefore has no remaining child edge.
+  const rootIris = [...allIris].filter(iri => !parentOf.has(iri)).sort();
 
-  // Find roots (entities that have children but no parent in the broader tree)
-  const rootIris = [...allIris].filter(iri => !parentOf.has(iri) && (childrenOf.has(iri) || layerOf.has(iri)));
-
-  // Compute max tree depth from each root for auto-layer assignment
-  function getMaxDepth(iri: string, visited = new Set<string>()): number {
-    if (visited.has(iri)) return 0;
-    visited.add(iri);
-    const children = childrenOf.get(iri) ?? [];
-    if (children.length === 0) return 0;
-    return 1 + Math.max(...children.map(c => getMaxDepth(c, visited)));
-  }
-
-  // Pre-compute total tree depth for each root
+  // Pre-compute each node's depth and the total depth of its tree iteratively.
+  // Imported taxonomies can be thousands of levels deep; recursive descent would
+  // overflow the JavaScript call stack even though the data is a valid forest.
+  const depthOf = new Map<string, number>();
   const rootMaxDepth = new Map<string, number>();
   for (const root of rootIris) {
-    rootMaxDepth.set(root, getMaxDepth(root));
+    let maxDepth = 0;
+    const stack: Array<{ iri: string; depth: number }> = [{ iri: root, depth: 0 }];
+    while (stack.length > 0) {
+      const { iri, depth } = stack.pop()!;
+      depthOf.set(iri, depth);
+      maxDepth = Math.max(maxDepth, depth);
+      const children = childrenOf.get(iri) ?? [];
+      for (let i = children.length - 1; i >= 0; i--) {
+        stack.push({ iri: children[i], depth: depth + 1 });
+      }
+    }
+    rootMaxDepth.set(root, maxDepth);
   }
 
-  // Find which root an IRI belongs to
-  function findRoot(iri: string): string | null {
-    let cur = iri;
-    while (parentOf.has(cur)) cur = parentOf.get(cur)!;
-    return rootIris.includes(cur) ? cur : null;
-  }
+  // Build children before parents using an explicit post-order stack. This keeps
+  // the public nested shape without coupling supported data depth to call-stack size.
+  const built = new Map<string, HierarchyNode>();
+  for (const root of rootIris) {
+    const stack: Array<{ iri: string; expanded: boolean }> = [{ iri: root, expanded: false }];
+    while (stack.length > 0) {
+      const { iri, expanded } = stack.pop()!;
+      if (!expanded) {
+        stack.push({ iri, expanded: true });
+        const children = childrenOf.get(iri) ?? [];
+        for (let i = children.length - 1; i >= 0; i--) {
+          stack.push({ iri: children[i], expanded: false });
+        }
+        continue;
+      }
 
-  // Build tree recursively
-  function buildNode(iri: string, depth: number, treeDepth: number): HierarchyNode {
-    const children = (childrenOf.get(iri) ?? [])
-      .map(c => buildNode(c, depth + 1, treeDepth))
-      .sort((a, b) => a.order - b.order);
-
-    return {
-      iri,
-      label: labels.get(iri) ?? iri.split('/').pop() ?? iri,
-      layer: layerOf.get(iri) ?? (treeDepth - depth),
-      order: orderOf.get(iri) ?? 0,
-      children,
-      parent: parentOf.get(iri) ?? null,
-      next: nextOf.get(iri) ?? null,
-      prev: prevOf.get(iri) ?? null,
-    };
+      const children = (childrenOf.get(iri) ?? [])
+        .map((child) => built.get(child)!)
+        .sort((a, b) => a.order - b.order);
+      built.set(iri, {
+        iri,
+        label: labels.get(iri) ?? iri.split('/').pop() ?? iri,
+        layer: layerOf.get(iri) ?? ((rootMaxDepth.get(root) ?? 0) - (depthOf.get(iri) ?? 0)),
+        order: orderOf.get(iri) ?? 0,
+        children,
+        parent: parentOf.get(iri) ?? null,
+        next: nextOf.get(iri) ?? null,
+        prev: prevOf.get(iri) ?? null,
+      });
+    }
   }
 
   const roots = rootIris
-    .map(iri => buildNode(iri, 0, rootMaxDepth.get(iri) ?? 0))
-    .sort((a, b) => a.order - b.order);
+    .map(iri => built.get(iri)!)
+    .sort((a, b) => a.order - b.order || a.label.localeCompare(b.label) || a.iri.localeCompare(b.iri));
 
   return roots;
 }
@@ -242,26 +314,12 @@ export function buildHierarchyAnchors(
   const active = stmts.filter(isActive);
 
   // Build broader tree using raw IRI values
-  const parentOf = new Map<string, string>();
-  const childrenOf = new Map<string, string[]>();
+  const { parentOf, childrenOf, allIris } = buildHierarchyParentMaps(active, true);
   const orderOf = new Map<string, number>();
   const labels = new Map<string, string>();
 
   for (const s of active) {
     if (s.s.kind !== 'iri') continue;
-    // Both edges name the parent in the OBJECT: "X is under Y" and "X needs Y" alike. skos:broader
-    // wins where a node has both, because an explicit taxonomy outranks an inferred prerequisite.
-    if ((s.p.value === SKOS_BROADER || s.p.value === KPRED_DEPENDS_ON) && s.o.kind === 'iri') {
-      if (s.p.value === KPRED_DEPENDS_ON && parentOf.has(s.s.value)) continue;
-      const prior = parentOf.get(s.s.value);
-      if (prior && s.p.value === SKOS_BROADER && prior !== s.o.value) {
-        // Replacing a depends-on parent with the taxonomic one: drop the stale child entry.
-        childrenOf.set(prior, (childrenOf.get(prior) ?? []).filter((c) => c !== s.s.value));
-      }
-      parentOf.set(s.s.value, s.o.value);
-      if (!childrenOf.has(s.o.value)) childrenOf.set(s.o.value, []);
-      if (!childrenOf.get(s.o.value)!.includes(s.s.value)) childrenOf.get(s.o.value)!.push(s.s.value);
-    }
     if (s.p.value === NAV_ORDER && s.o.kind === 'literal') {
       orderOf.set(s.s.value, parseInt(s.o.value, 10));
     }
@@ -282,8 +340,7 @@ export function buildHierarchyAnchors(
   }
 
   // Find roots in the broader tree
-  const allBroaderIris = new Set([...parentOf.keys(), ...childrenOf.keys()]);
-  const rootIris = [...allBroaderIris].filter(iri => !parentOf.has(iri) && childrenOf.has(iri));
+  const rootIris = [...allIris].filter(iri => !parentOf.has(iri)).sort();
 
   if (rootIris.length === 0) {
     // No hierarchy found — fall back to empty anchors (force layout takes over)

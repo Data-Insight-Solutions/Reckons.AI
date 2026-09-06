@@ -1,0 +1,276 @@
+@prefix kb:     <urn:kbase:concept/> .
+@prefix kpred:  <urn:kbase:predicate/> .
+@prefix kmeta:  <urn:kbase:meta/> .
+@prefix ktype:  <urn:kbase:type/> .
+@prefix kalt:   <urn:kbase:type/altitude/> .
+@prefix ktask:  <urn:kbase:type/task-state/> .
+@prefix kstat:  <urn:kbase:type/review-status/> .
+@prefix klife:  <urn:kbase:type/lifecycle/> .
+@prefix kshape: <urn:kbase:shape/> .
+@prefix hnav:   <urn:reckons:nav/> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix sh:     <http://www.w3.org/ns/shacl#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+# =============================================================================
+# THE CLOSED VOCABULARIES OF RECKONS.AI, AS SKOS AND SHACL
+# =============================================================================
+#
+# Matt, 2026-08-28: "We need to work on defined with SKOS and SHACL then... We want a strong
+# foundation, and a place to look for refinement (W3C)."
+#
+# WHY THIS FILE EXISTS. Four vocabularies in this product are CLOSED SETS — altitude, task state,
+# review status, feature lifecycle — and all four were free-text literals. kb:feature-lifecycle-vocab
+# (F75.2) ruled years of sessions ago that a closed set belongs in a SKOS scheme referenced by IRI,
+# "so an invalid status is a broken reference that graph-lint catches structurally". It was never
+# built, and F149 found the same mistake being repeated the day it was written down.
+#
+# SKOS:NOTATION IS THE BRIDGE, AND IT IS WHY THIS CAN LAND TODAY. The standard way to attach a
+# machine code to a concept is `skos:notation`, so every concept below carries the exact literal
+# the code writes right now. That makes this file immediately enforceable — graph-lint can check
+# a literal against the notations — WITHOUT a breaking migration of every graph to IRIs. Moving
+# the writers from literals to IRIs is a later, separate step; the vocabulary does not have to
+# wait for it.
+#
+# WHAT IS HONEST ABOUT THE STATE OF THIS. Defining a vocabulary is not using one. As of writing,
+# NO application code reads this file. graph-lint validates against it, which is real enforcement
+# and the reason it is not merely decorative — but do not read this file as "Reckons.AI is defined
+# with SKOS and SHACL". It is the foundation for that claim, not the claim.
+#
+# WHERE TO LOOK FOR REFINEMENT — the W3C specs these follow:
+#   SKOS   https://www.w3.org/TR/skos-reference/     concept schemes, notation, ordered collections
+#   SHACL  https://www.w3.org/TR/shacl/              node and property shapes, sh:in, severity
+#   RDFS   https://www.w3.org/TR/rdf-schema/         rdfs:domain / rdfs:range
+#   PROV-O https://www.w3.org/TR/prov-o/             provenance — already partially adopted
+
+<urn:kbase:vocabulary/reckons> a skos:ConceptScheme ;
+    dcterms:title "Reckons.AI controlled vocabularies" ;
+    dcterms:modified "2026-08-28"^^xsd:date ;
+    skos:definition "The closed sets this product's own predicates draw from. Each concept carries a skos:notation matching the literal the code writes today." .
+
+# ── ALTITUDE (F139) ──────────────────────────────────────────────────────────
+# An ORDERED scale, so it is a skos:OrderedCollection as well as a scheme. The order is the
+# review tree's depth and the detail ladder's rungs; hnav:order carries it in this project's
+# own convention, skos:memberList carries it in the standard's.
+
+ktype:AltitudeScheme a skos:ConceptScheme ;
+    rdfs:label "Fact altitude" ;
+    skos:definition "How much a fact matters, tested by consequence: if this fact were wrong, what would we do differently?" ;
+    skos:note "The discriminating question is about being WRONG, not about being interesting. Framing it as consequence rather than importance is what makes it decidable by a script instead of by taste." ;
+    skos:hasTopConcept kalt:decision, kalt:judgment, kalt:evidence, kalt:record, kalt:log .
+
+ktype:AltitudeOrder a skos:OrderedCollection ;
+    rdfs:label "Altitude, highest to lowest" ;
+    skos:memberList ( kalt:decision kalt:judgment kalt:evidence kalt:record kalt:log ) .
+
+kalt:decision a skos:Concept ;
+    skos:inScheme ktype:AltitudeScheme ;
+    skos:prefLabel "Decision" ;
+    skos:notation "decision" ;
+    skos:definition "It forecloses options. If it were wrong, we go the wrong direction." ;
+    hnav:order 4 .
+
+kalt:judgment a skos:Concept ;
+    skos:inScheme ktype:AltitudeScheme ;
+    skos:prefLabel "Judgment" ;
+    skos:notation "judgment" ;
+    skos:definition "A verdict no check can settle. If it were wrong, we believe something untrue about whether the thing is any good." ;
+    skos:note "The fail-upward default: an unclassified predicate lands here, because guessing `log` would HIDE a real decision." ;
+    hnav:order 3 .
+
+kalt:evidence a skos:Concept ;
+    skos:inScheme ktype:AltitudeScheme ;
+    skos:prefLabel "Evidence" ;
+    skos:notation "evidence" ;
+    skos:definition "A measurement under a judgment. If it were wrong, a judgment above it loses its footing." ;
+    hnav:order 2 .
+
+kalt:record a skos:Concept ;
+    skos:inScheme ktype:AltitudeScheme ;
+    skos:prefLabel "Record" ;
+    skos:notation "record" ;
+    skos:definition "Mechanical; a script settles it. If it were wrong, a link needs fixing." ;
+    skos:note "Not reviewable BY A PERSON — this is F88's machine lane — but still reviewable in principle." ;
+    hnav:order 1 .
+
+kalt:log a skos:Concept ;
+    skos:inScheme ktype:AltitudeScheme ;
+    skos:prefLabel "Log" ;
+    skos:notation "log" ;
+    skos:definition "It asserts only that something happened. If it were wrong: nothing — there is no claim in it to be wrong about." ;
+    skos:note "CLASSIFIED, NEVER DROPPED. A log contradicting the evidence under a live decision IS a deciding factor, which is why altitude is a view-time rank rather than a delete." ;
+    hnav:order 0 .
+
+# ── TASK STATE (F87) ─────────────────────────────────────────────────────────
+
+ktype:TaskStateScheme a skos:ConceptScheme ;
+    rdfs:label "Agent task state" ;
+    skos:definition "Where a task is in its life. Not an ordered scale — a state machine." ;
+    skos:hasTopConcept ktask:proposed, ktask:open, ktask:claimed, ktask:waiting, ktask:done, ktask:failed .
+
+ktask:proposed a skos:Concept ;
+    skos:inScheme ktype:TaskStateScheme ;
+    skos:prefLabel "Proposed" ;
+    skos:notation "proposed" ;
+    skos:definition "Read out of a dictated note; nobody has authored it. Carries a goal in the speaker's own words and nothing else." ;
+    skos:note "Can never be assigned: a transcript cannot contain the effects a task may have or how a machine would know it worked." .
+
+ktask:open a skos:Concept ;
+    skos:inScheme ktype:TaskStateScheme ;
+    skos:prefLabel "Open" ;
+    skos:notation "open" ;
+    skos:definition "A person wrote this task down and meant it. Available for a runner to claim." .
+
+ktask:claimed a skos:Concept ;
+    skos:inScheme ktype:TaskStateScheme ;
+    skos:prefLabel "Claimed" ;
+    skos:notation "claimed" ;
+    skos:definition "A runner holds a LEASE on it — not a lock. A runner that dies must not hold a task forever." .
+
+ktask:waiting a skos:Concept ;
+    skos:inScheme ktype:TaskStateScheme ;
+    skos:prefLabel "Waiting" ;
+    skos:notation "waiting" ;
+    skos:definition "Started, and blocked on something outside itself." .
+
+ktask:done a skos:Concept ;
+    skos:inScheme ktype:TaskStateScheme ;
+    skos:prefLabel "Done" ;
+    skos:notation "done" ;
+    skos:definition "Finished, with an outcome recorded and independently verified by its own done-when." .
+
+ktask:failed a skos:Concept ;
+    skos:inScheme ktype:TaskStateScheme ;
+    skos:prefLabel "Failed" ;
+    skos:notation "failed" ;
+    skos:definition "Ended without success, with an outcome recorded. 'I did nothing, and here is why' is a legitimate outcome; silence is not." .
+
+# ── REVIEW STATUS ────────────────────────────────────────────────────────────
+
+ktype:ReviewStatusScheme a skos:ConceptScheme ;
+    rdfs:label "Statement review status" ;
+    skos:definition "Whether a human has settled a fact, and how." ;
+    skos:hasTopConcept kstat:pending, kstat:pending-removal, kstat:confirmed, kstat:refined, kstat:rejected, kstat:superseded .
+
+kstat:pending a skos:Concept ;
+    skos:inScheme ktype:ReviewStatusScheme ; skos:prefLabel "Pending" ; skos:notation "pending" ;
+    skos:definition "Proposed and awaiting a human decision." .
+kstat:pending-removal a skos:Concept ;
+    skos:inScheme ktype:ReviewStatusScheme ; skos:prefLabel "Pending removal" ; skos:notation "pending-removal" ;
+    skos:definition "A deletion has been proposed and awaits confirmation." .
+kstat:confirmed a skos:Concept ;
+    skos:inScheme ktype:ReviewStatusScheme ; skos:prefLabel "Confirmed" ; skos:notation "confirmed" ;
+    skos:definition "Approved by a human, or settled by a deterministic check that names itself." .
+kstat:refined a skos:Concept ;
+    skos:inScheme ktype:ReviewStatusScheme ; skos:prefLabel "Refined" ; skos:notation "refined" ;
+    skos:definition "Edited by a human, replacing a pending variant." .
+kstat:rejected a skos:Concept ;
+    skos:inScheme ktype:ReviewStatusScheme ; skos:prefLabel "Rejected" ; skos:notation "rejected" ;
+    skos:definition "Turned down. Retained rather than deleted, so the same proposal is not asked again." .
+kstat:superseded a skos:Concept ;
+    skos:inScheme ktype:ReviewStatusScheme ; skos:prefLabel "Superseded" ; skos:notation "superseded" ;
+    skos:definition "Replaced by a newer statement." .
+
+# ── FEATURE LIFECYCLE (F75.2, specified 2026-07-12 and unbuilt until now) ─────
+
+ktype:FeatureLifecycle a skos:ConceptScheme ;
+    rdfs:label "Feature lifecycle" ;
+    skos:definition "How far a feature has actually got. A feature is not `functional` because we wish it were." ;
+    skos:hasTopConcept klife:speculative, klife:planned, klife:in-progress, klife:scaffolded, klife:functional, klife:production .
+
+ktype:FeatureLifecycleOrder a skos:OrderedCollection ;
+    rdfs:label "Lifecycle, earliest to latest" ;
+    skos:memberList ( klife:speculative klife:planned klife:in-progress klife:scaffolded klife:functional klife:production ) .
+
+klife:speculative a skos:Concept ;
+    skos:inScheme ktype:FeatureLifecycle ; skos:prefLabel "Speculative" ; skos:notation "speculative" ;
+    skos:definition "An idea worth recording. Nobody has committed to it." ; hnav:order 0 .
+klife:planned a skos:Concept ;
+    skos:inScheme ktype:FeatureLifecycle ; skos:prefLabel "Planned" ; skos:notation "planned" ;
+    skos:definition "Committed to and designed. No code." ; hnav:order 1 .
+# DE-FACTO, AND RECORDED BECAUSE IT IS REAL. `in-progress` was never in the designed lifecycle;
+# it appears on 14 features and graph-lint has always accepted it. A vocabulary that omitted a
+# value the corpus actually uses would be describing a wish, and the first thing it would do is
+# fail 14 valid entities. Either promote it deliberately or migrate those 14 — but not by
+# pretending here.
+klife:in-progress a skos:Concept ;
+    skos:inScheme ktype:FeatureLifecycle ; skos:prefLabel "In progress" ; skos:notation "in-progress" ;
+    skos:definition "Started, and not yet whole. Sits between planned and scaffolded." ;
+    skos:note "De-facto rather than designed. 14 uses as of 2026-08-28." ; hnav:order 2 .
+
+klife:scaffolded a skos:Concept ;
+    skos:inScheme ktype:FeatureLifecycle ; skos:prefLabel "Scaffolded" ; skos:notation "scaffolded" ;
+    skos:definition "Parts exist and are tested; the feature does not yet work end to end." ; hnav:order 3 .
+klife:functional a skos:Concept ;
+    skos:inScheme ktype:FeatureLifecycle ; skos:prefLabel "Functional" ; skos:notation "functional" ;
+    skos:definition "Works end to end for its stated case, and has been demonstrated doing so." ; hnav:order 4 .
+klife:production a skos:Concept ;
+    skos:inScheme ktype:FeatureLifecycle ; skos:prefLabel "Production" ; skos:notation "production" ;
+    skos:definition "Deployed, used, and carrying its own failures visibly." ; hnav:order 5 .
+
+# =============================================================================
+# SHACL — what a well-formed use of these predicates looks like
+# =============================================================================
+#
+# sh:in over the NOTATIONS rather than the concept IRIs, deliberately: it constrains the data as
+# it exists TODAY. When the writers move to IRIs, each sh:in becomes an sh:class on the scheme and
+# the shapes get simpler, not more complex. Severity is Violation for the closed sets — an unknown
+# value is not a matter of taste.
+
+kshape:Altitude a sh:NodeShape ;
+    rdfs:label "Altitude values must come from the scheme" ;
+    sh:targetSubjectsOf kpred:altitude ;
+    sh:property [
+        sh:path kpred:altitude ;
+        sh:in ( "decision" "judgment" "evidence" "record" "log" ) ;
+        sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "kpred:altitude must be one of the ktype:AltitudeScheme notations."
+    ] .
+
+kshape:TaskState a sh:NodeShape ;
+    rdfs:label "A task's state must come from the scheme" ;
+    sh:targetClass ktype:AgentTask ;
+    sh:property [
+        sh:path kpred:task-state ;
+        sh:in ( "proposed" "open" "claimed" "waiting" "done" "failed" ) ;
+        sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "kpred:task-state must be one of the ktype:TaskStateScheme notations."
+    ] ;
+    sh:property [
+        sh:path kpred:goal ;
+        sh:minCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "A task without a goal has nothing to do."
+    ] ;
+    sh:property [
+        sh:path kpred:effect ;
+        sh:in ( "read-only" "queue-write" "source-write" "external-read" "external-write" ) ;
+        sh:severity sh:Violation ;
+        sh:message "An effect declaration is an authority boundary; an unknown one must block, not pass."
+    ] .
+
+kshape:FeatureStatus a sh:NodeShape ;
+    rdfs:label "A feature's status must come from the lifecycle" ;
+    sh:targetSubjectsOf kpred:has-status ;
+    sh:property [
+        sh:path kpred:has-status ;
+        sh:in ( "speculative" "planned" "in-progress" "scaffolded" "functional" "production" ) ;
+        sh:severity sh:Violation ;
+        sh:message "kpred:has-status must be a ktype:FeatureLifecycle notation. Review statuses are a different scheme."
+    ] .
+
+kshape:StatementStatus a sh:NodeShape ;
+    rdfs:label "Reified statement status must come from the review scheme" ;
+    sh:targetSubjectsOf kmeta:status ;
+    sh:property [
+        sh:path kmeta:status ;
+        sh:in ( "pending" "pending-removal" "confirmed" "refined" "rejected" "superseded" ) ;
+        sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "kmeta:status must be one of the ktype:ReviewStatusScheme notations."
+    ] .

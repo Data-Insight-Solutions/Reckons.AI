@@ -142,3 +142,4 @@ reckons-workspace/knowledge.pending.jsonl.*
 # the recordings and frame dumps beside them run to tens of MB and are not.
 tests/visual/results/perf/*
 !tests/visual/results/perf/*.json
+reckons-workspace/stars-scan.state.json
