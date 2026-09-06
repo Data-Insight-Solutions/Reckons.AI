@@ -83,6 +83,59 @@ describe('normalizeSvg', () => {
   });
 });
 
+describe('normalizeSvg touches only the root — the regression that broke every node box', () => {
+  /**
+   * MEASURED DAMAGE, not a hypothetical (2026-09-06). The width/height rewrite ran over the whole
+   * document, so across the nine published diagrams it stripped `width` from all 153 <rect>s and
+   * all 55 <foreignObject>s and set `height="100%"` on 107 elements. On a child, a percentage
+   * height resolves against the viewBox — so every node box became as tall as the whole diagram
+   * while losing the width that gives it a shape, and a label in a zero-width foreignObject has
+   * nowhere to lay out. Every gate stayed green throughout: the TTL parsed, the cache hit, the
+   * pages matched. A picture can be wrong in ways only a person looking at it can see, which is
+   * why these assertions count elements rather than trusting the pipeline.
+   */
+  const svg = (body: string) =>
+    `<svg id="mermaid-1" width="1024" height="768" style="max-width: 1024px;" viewBox="0 0 1024 768">${body}</svg>`;
+
+  it('strips the root width and height so the stylesheet and viewBox size the figure', () => {
+    const out = normalizeSvg(svg(''), 'abc');
+    expect(out).not.toMatch(/<svg[^>]*\swidth="1024"/);
+    expect(out).not.toMatch(/<svg[^>]*\sheight="768"/);
+    expect(out).not.toMatch(/max-width/);
+    // The viewBox is the aspect ratio — losing it would make `height: auto` meaningless.
+    expect(out).toMatch(/viewBox="0 0 1024 768"/);
+  });
+
+  it('leaves every child element its own width and height', () => {
+    const out = normalizeSvg(
+      svg('<rect class="label-container" x="-113" y="-39" width="227" height="78"></rect>'),
+      'abc',
+    );
+    expect(out).toMatch(/<rect[^>]*width="227"/);
+    expect(out).toMatch(/<rect[^>]*height="78"/);
+  });
+
+  it('never writes a percentage height onto a child', () => {
+    const out = normalizeSvg(
+      svg('<foreignObject width="160" height="24"></foreignObject><circle r="5" width="10" height="10"></circle>'),
+      'abc',
+    );
+    expect(out).not.toContain('height="100%"');
+    expect(out).toMatch(/<foreignObject[^>]*width="160"[^>]*height="24"/);
+  });
+
+  it('maps the colors mermaid writes as rgb()/hsl(), not only its hexes', () => {
+    // These are the ones that break DARK theme: a near-white plate behind every edge label.
+    const out = normalizeSvg(
+      svg('<g style="background-color:rgba(232,232,232, 0.8);filter:drop-shadow(1px 2px 2px rgba(185, 185, 185, 1))"></g>'),
+      'abc',
+    );
+    expect(out).not.toMatch(/rgba?\(/);
+    expect(out).toContain('var(--diagram-surface)');
+    expect(out).toContain('var(--diagram-line)');
+  });
+});
+
 describe('diagramFigure', () => {
   it('carries the caption as an accessible label as well as visible text', () => {
     const out = diagramFigure('<svg/>', 'How a note becomes facts');

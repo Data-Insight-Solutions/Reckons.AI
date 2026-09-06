@@ -105,10 +105,11 @@
   .doc-prose :global(figure.diagram svg) {
     display: block;
     width: 100%;
-    /* Bounded so a tall diagram cannot push the prose off the screen; the viewBox
-       keeps it legible while it scales. */
-    max-height: 420px;
     height: auto;
+    /* NO max-height. The first version capped this at 420px, which sounds prudent and is not:
+       the tallest diagram here is 944x988, so the cap scaled it to ~0.42 and rendered its 16px
+       labels at about 7px — a picture technically present and practically unreadable. A diagram
+       is worth its height, and the reader can scroll. */
   }
   .doc-prose :global(figure.diagram figcaption) {
     margin-top: 0.9rem;
