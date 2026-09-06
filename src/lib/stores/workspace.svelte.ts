@@ -1348,7 +1348,20 @@ export async function resyncNow(): Promise<{ imported: string[]; updated: string
 
 // ── Polling ──────────────────────────────────────────────────────────────────
 
-/** Start the background poll loop (idempotent). No-op without a handle. */
+/**
+ * Start the background poll loop (idempotent). No-op without a handle.
+ *
+ * THE TICK DRAINS PENDING TOO, and until 2026-08-26 it did not. pullFromWorkspace only reads
+ * kbs/*.ttl, so a row appended to knowledge.pending.jsonl by anything OUTSIDE the browser — an
+ * agent, a scheduled job, an n8n workflow relaying a note dictated into a phone — arrived only
+ * when the app was reloaded or /review was opened by hand. Leave the app open on the graph and
+ * a captured note simply never showed up, which reads exactly like the capture having failed.
+ *
+ * Sequenced rather than fired in parallel: the TTL pull can replace a graph wholesale, and
+ * importing notes into a graph that is about to be overwritten wastes the import. Errors are
+ * caught here because an unhandled rejection inside setInterval is invisible AND leaves the
+ * user with a silently dead sync.
+ */
 export function startWorkspacePolling(ms: number = POLL_INTERVAL_MS): void {
   if (_pollTimer || !_handle || typeof setInterval === 'undefined') return;
   // Pull graph TTLs AND drain the proposal queue. The poll used to do only the first, so a note
