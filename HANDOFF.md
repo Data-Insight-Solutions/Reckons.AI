@@ -1,13 +1,20 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-09-06.** Working branch: `docs/user-journeys-and-diagrams`, cut from
-`origin/dev` (the earlier `docs/funnel-status-and-coverage` is PR #224). PRs target `dev`. A branch cut this way tracks `origin/dev` directly, so a bare
-`git push` would push to dev — always `git push origin HEAD:refs/heads/<branch>`.
+**Last updated: 2026-09-06.** Working branch: `docs/user-journeys-and-diagrams` — **committed and
+pushed as PR #225**, base `dev`. It was cut from `docs/funnel-status-and-coverage` (PR #224), **not
+from `origin/dev`** as an earlier draft of this line said, so **#225's diff carries #224's two
+commits until #224 merges** — merge #224 first. Both PRs target `dev`. A branch cut from a branch
+that tracks `origin/dev` would push to dev on a bare `git push` — always
+`git push origin HEAD:refs/heads/<branch>`.
+
+**The work described below sat UNCOMMITTED for a session** (the editor was closed on a different
+folder). It is committed now as `2cdfe25`; re-verified on 2026-09-06 before pushing: `npm run
+align` six gates aligned, **2796 tests / 197 files pass**, 16/16 mermaid tests. `scripts/__shot__.ts`
+(scratch screenshot harness) and `share/turtles-story.ttl` are deliberately left untracked.
 
 **`fix/cascade-real-graph` IS MERGED** (PR #222) — the 2026-09-04 entry below says "unpushed, no
 PR" and that has been false since the merge. `origin/dev` is at that merge commit; `origin/main`
-is fully caught up and carries only safety attestations beyond it. Working tree is clean apart
-from an untracked `share/turtles-story.ttl`.
+is fully caught up and carries only safety attestations beyond it.
 
 ## ▶ SESSION 2026-09-06 (later) — the user paths, published, with diagrams
 
