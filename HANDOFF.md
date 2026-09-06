@@ -1,20 +1,103 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-09-06.** Working branch: `docs/user-journeys-and-diagrams` — **committed and
-pushed as PR #225**, base `dev`. It was cut from `docs/funnel-status-and-coverage` (PR #224), **not
-from `origin/dev`** as an earlier draft of this line said, so **#225's diff carries #224's two
-commits until #224 merges** — merge #224 first. Both PRs target `dev`. A branch cut from a branch
-that tracks `origin/dev` would push to dev on a bare `git push` — always
-`git push origin HEAD:refs/heads/<branch>`.
+**Last updated: 2026-09-06 (late).** On `fix/diagram-entity-labels` (**PR #227**), cut from `dev`.
+Merged today: **#224, #225, #206** into `dev`. Nothing pushed to `main`. **PR #226 is SUPERSEDED by
+#227** — it carried only the evening handoff entry, which is reproduced in full below, so close it
+rather than merging both and resolving a pointless conflict. Untracked and deliberate:
+`scripts/__shot__.ts`, `share/turtles-story.ttl`.
 
-**The work described below sat UNCOMMITTED for a session** (the editor was closed on a different
-folder). It is committed now as `2cdfe25`; re-verified on 2026-09-06 before pushing: `npm run
-align` six gates aligned, **2796 tests / 197 files pass**, 16/16 mermaid tests. `scripts/__shot__.ts`
-(scratch screenshot harness) and `share/turtles-story.ttl` are deliberately left untracked.
+## ▶ SESSION 2026-09-06 (late) — the diagrams were broken, and every gate said fine
 
-**`fix/cascade-real-graph` IS MERGED** (PR #222) — the 2026-09-04 entry below says "unpushed, no
-PR" and that has been false since the merge. `origin/dev` is at that merge commit; `origin/main`
-is fully caught up and carries only safety attestations beyond it.
+**Matt found both faults by looking at the published page.** That is the finding, more than the
+bugs are. Recorded on `kb:journey-docs` as `kpred:measured` + `kpred:principle`, not only here.
+
+### THE PAGE PRINTED `4 &middot; Use` AT READERS
+Stage labels were written with the HTML entity; mermaid escapes the ampersand when it builds the
+SVG text node, so the entity reached the reader as literal text. Five labels, two diagrams. Now
+guarded by a test over every diagram in `static/*.ttl` that still allows a bare `&` (valid mermaid:
+`A & B`) and `<br/>`.
+
+### THEN LOOKING PROPERLY FOUND WORSE — THREE FAULTS, ALL COUNTED
+1. **`normalizeSvg` rewrote the whole document instead of the root.** It stripped `width` from
+   **153 of 153 `<rect>`** and **55 of 55 `<foreignObject>`** elements and wrote `height="100%"`
+   onto **107 children**, where a percentage resolves against the viewBox — so every node box was
+   as tall as the whole diagram, with no width to give it shape. Root-scoped now. Checked against
+   raw mermaid output: the 101 width-less `<rect class="background">` that remain are its own.
+2. **Five colors escaped the palette map** because it matched only hex and these are rgb()/hsl().
+   `rgba(232,232,232,0.8)` is the plate behind all **72** edge labels — in **dark theme**, a pale
+   blob under every label.
+3. **`max-height: 420px`** scaled the tallest diagram (944x988) to ~0.42, rendering its 16px labels
+   at about 7px. Removed; the figure already scrolls.
+
+**`RENDER_CONTRACT` v1 → v2.** The cache keys on source alone, so without the bump every fix above
+would have been a silent no-op against nine stale entries. Remember this when touching the renderer.
+
+### ⚠ THE REAL GAP: ALL SIX GATES ARE TEXT GATES
+graph-lint parsed, the cache hit, `md-align` matched all 316 files and all six align gates reported
+aligned — while every box in every diagram was broken. **Rendered output needs a rendered check.**
+The pieces exist: the visual-regression suite drives Chromium and the VLM gate (`qwen2.5vl:7b`)
+scores screens against `kb:web-uiux-rubric`. Pointing either at `/docs/user-paths/*` closes it.
+**Highest-value next task on the docs side.**
+
+Verified: 2866 tests / 200 files, svelte-check 0/0, align six gates, and — the only check that
+could have caught any of this — **screenshots of a diagram in both themes, looked at**.
+
+### Next, in order
+1. Point a rendered check at the docs diagrams (above).
+2. Manual walk of add → review with real dictated notes — ring capture is merged now.
+3. The two grounding leaks in `src/lib/rdf/structural-context.ts`, then `npm run offline:score`.
+4. **F177 freeform capture — DO NOT BUILD.** Matt asked to talk the user stories through first.
+5. PRs #205, #204, #198, #197 all conflict on `reckons-roadmap.ttl`; **check each for duplicate
+   `kpred:feature-id`** — #206 had three, invisible to git and to graph-lint.
+
+### The docs link, and the trap in it
+**`/docs/user-paths/user-paths`** is the hub. The bare `/docs/user-paths` returns the SPA shell with
+a **200 and no content**, which looks like a working page and is not. On `dev` only; `reckons.ai`
+deploys from `main`.
+
+## ▶ SESSION 2026-09-06 (evening) — recovered an uncommitted session, then merged three PRs
+
+**The diagrams work from the previous session was never committed** — the editor was closed on a
+different folder and 49 files sat in the working tree on the WRONG branch (`docs/funnel-status-and-
+coverage`, which was already PR #224's head). Re-verified before trusting it (align six gates,
+2796 tests), committed to `docs/user-journeys-and-diagrams`, shipped as **PR #225**.
+
+**The user paths are LIVE on dev**, and the route is not the obvious one:
+**`/docs/user-paths/user-paths`** is the hub — the bare `/docs/user-paths` is a section prefix with
+no page behind it and returns the SPA shell with a 200, which looks like a working page and is not.
+Nine paths under it (`core-loop`, `everyday-notes`, `capture-spoken`, …). **Not on production** —
+`reckons.ai` deploys from `main` and this is only on `dev`; promoting is a deliberate act nobody has
+taken yet.
+
+### PR #206 merged — and the "mechanical" conflict resolution was not mechanical
+HANDOFF said "take dev's side on the three files". Two of three were that. The third was a trap:
+- `notes-pull.ts` — dev's side whole (dev has validated transactional writes; nothing lost).
+- `workspace.svelte.ts` — dev's side **per hunk, not per file**. Taking the file would have silently
+  dropped 13 lines this branch added OUTSIDE the conflict that auto-merge had already placed.
+- `reckons-roadmap.ttl` — **BOTH sides, plus a renumber.** The branch minted F142-F144 on
+  2026-08-26 and sat unmerged eleven days while dev spent all three on different features. A
+  textual merge appends both blocks cleanly and leaves **two features wearing one id** — invisible
+  to git and to graph-lint. The branch's became **F178, F178.1, F179, F180**; dev's kept the
+  numbers because every external reference already meant dev's. **Worth a lint rule** (duplicate
+  `kpred:feature-id`) — ids are minted by hand on long-lived branches, so this will recur.
+- `workspace-poll-drain.test.ts` was **deleted, not ported**: written against the old drain, all six
+  cases failed on the mock alone, and every behavior is covered by `workspace-sync.test.ts`. Both
+  `kpred:tested-by` links repointed — **graph-lint caught the second one I missed.**
+
+Verified on the merged tree: **2859 tests / 200 files**, svelte-check 0/0, graph-lint 0 errors,
+align six gates.
+
+### Still open, in the order agreed 2026-09-06
+1. **The manual walk of add → review with real dictated notes.** Ring capture is merged now, so
+   there is finally a real note to walk. The pending queue holds ~379 rows, almost all offline-job
+   findings — that exercises review with machine output, not capture.
+2. **The two grounding leaks** in `src/lib/rdf/structural-context.ts` (no relevance floor on
+   anchors, offers identifiers as concepts), then re-run `npm run offline:score`.
+3. **F177 freeform capture — DO NOT BUILD.** Matt asked to talk the user stories through in depth
+   first; both open questions are still open.
+4. Four PRs still open on `dev`: #205, #204, #198, #197 — **all four conflict on
+   `reckons-roadmap.ttl`** the same way, and #204/#198 each add one source-file conflict. Check for
+   duplicate feature-ids on every one of them.
 
 ## ▶ SESSION 2026-09-06 (later) — the user paths, published, with diagrams
 
