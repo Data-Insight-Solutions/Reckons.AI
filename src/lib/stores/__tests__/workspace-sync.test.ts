@@ -603,6 +603,80 @@ describe('pending queue import delivery', () => {
     expect(file.content).toBe(`${consumed}\n${appended}\n`);
     expect(fakeDb.statements.rows.size).toBe(1);
   });
+
+  // ── The poll tick itself ──────────────────────────────────────────────────
+  //
+  // WHAT WAS UNTESTED. Everything above drives `drainAndImportPending` DIRECTLY. Nothing asserted
+  // that anything ever CALLS it on a timer — and that call is the whole of the 2026-08-27 fix,
+  // whose own comment in workspace.svelte.ts records the cost: "Two of three dictated notes were
+  // lost this way". The poll read kbs/*.ttl and ignored the one file in the folder that changes
+  // most, so a note relayed by n8n from a ring or a phone sat on disk until someone reloaded the
+  // page or opened /review by hand. With the app left open on the graph view that is
+  // indistinguishable from the capture having failed.
+
+  it('the poll tick drains the queue — a note arriving while the app sits open is imported', async () => {
+    vi.useFakeTimers();
+    try {
+      const row = pendingRow({ object: 'arrived-on-a-tick' });
+      const { mod, file } = await linkQueue(`${row}\n`);
+
+      mod.startWorkspacePolling(10_000);
+      await vi.advanceTimersByTimeAsync(10_000);
+      mod.stopWorkspacePolling();
+
+      // Nothing reloaded and nothing navigated: the timer alone moved the row into the graph.
+      expect(persistSourceBatchSpy).toHaveBeenCalledTimes(1);
+      expect(file.content).toBe('');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('the poll tick does not re-import a row it already consumed', async () => {
+    vi.useFakeTimers();
+    try {
+      const row = pendingRow({ object: 'consumed-once' });
+      const { mod } = await linkQueue(`${row}\n`);
+
+      mod.startWorkspacePolling(10_000);
+      await vi.advanceTimersByTimeAsync(10_000);
+      await vi.advanceTimersByTimeAsync(10_000);
+      mod.stopWorkspacePolling();
+
+      expect(persistSourceBatchSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('reports a failed poll cycle instead of leaving the rejection unhandled', async () => {
+    // The timer survives a rejection either way — setInterval does not care. What a missing catch
+    // costs is the DIAGNOSTIC: the only evidence that capture is broken becomes an unhandled
+    // rejection nobody attributed, and the note simply appears never to have arrived.
+    vi.useFakeTimers();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const row = pendingRow({ object: 'first-cycle-explodes' });
+      const { mod } = await linkQueue(`${row}\n`);
+      persistSourceBatchSpy.mockRejectedValueOnce(new Error('database unavailable'));
+
+      mod.startWorkspacePolling(10_000);
+      await vi.advanceTimersByTimeAsync(10_000);
+
+      expect(warn).toHaveBeenCalledWith('[workspace] poll cycle failed:', expect.any(Error));
+
+      // And the next tick still runs, against the row the failed cycle left in place.
+      persistSourceBatchSpy.mockClear();
+      await vi.advanceTimersByTimeAsync(10_000);
+      mod.stopWorkspacePolling();
+
+      expect(persistSourceBatchSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      warn.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
 });
 
 describe('writeKbToFolder — holds a write it is not entitled to make', () => {

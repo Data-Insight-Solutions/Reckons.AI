@@ -1,11 +1,92 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-09-04.** Working branch: `fix/cascade-real-graph` (7 commits, **unpushed,
-no PR**, plus uncommitted working-tree changes — Matt's call). PRs target `dev`. The branch tracks
-`origin/dev` directly, so a bare `git push` would push to dev — always
-`git push origin HEAD:refs/heads/<branch>`.
+**Last updated: 2026-09-06.** Working branch: `docs/funnel-status-and-coverage`, cut from
+`origin/dev`. PRs target `dev`. A branch cut this way tracks `origin/dev` directly, so a bare
+`git push` would push to dev — always `git push origin HEAD:refs/heads/<branch>`.
 
-## ▶ SESSION 2026-09-04 (latest) — extraction ACCURACY has a number, and grounding fails it
+**`fix/cascade-real-graph` IS MERGED** (PR #222) — the 2026-09-04 entry below says "unpushed, no
+PR" and that has been false since the merge. `origin/dev` is at that merge commit; `origin/main`
+is fully caught up and carries only safety attestations beyond it. Working tree is clean apart
+from an untracked `share/turtles-story.ttl`.
+
+## ▶ SESSION 2026-09-06 (latest) — status audit: three "next" items were already built
+
+A documentation-and-coverage pass before the next build. This session read the graph against the
+repo and found **F159's three `kpred:remaining` notes describing work that had since shipped** —
+corrected in `static/reckons-roadmap.ttl` (graph-lint 0 errors). Then, checking test coverage on
+the ring-capture path, it found the regression test stranded on an unmerged branch and **a missing
+`.catch()` on the poll tick**; both are fixed here. Baseline at session start: **2777 tests / 196
+files pass**, 25/25 script-tier offline jobs clean, Ollama up with 17 models and
+`VITE_OLLAMA_INGEST_MODEL=qwen3:32b`.
+
+### F159 was stale in all three items — two done, one half done
+- **ONE, dictated task → bridge: BUILT** as F160 `kb:task-bridge` (already `functional`, with
+  `has-file` links). `tasks-export.ts` / `tasks-import.ts` cross the IndexedDB↔Node boundary via
+  the workspace TTL sync. F159's note still said "THE ONLY MISSING LINK IS A BRIDGE".
+  *Genuinely left*: no task-specific review surface — grep for `AgentTask`/`task-state`/`done-when`
+  in `review/+page.svelte` returns nothing, so a proposed task is still four ordinary pending rows.
+- **TWO, standards alignment: HALF DONE, and it is the half the note named first.**
+  `vocabulary-ttl.test.ts` asserts `notationsOf(AltitudeScheme) === Object.keys(ALTITUDE_RANK)`
+  and cross-checks `TASK_EFFECTS`. *Genuinely left*: `ReviewStatus` and `TaskState` TS unions are
+  still unchecked against the TTL — that test imports two unions, not four.
+- **THREE, terse review: RENDERED.** `review-pipeline.ts` composes both "orphaned" modules and
+  `review/+page.svelte` renders the spotlight strip (`data-testid="spotlight"`) and entity cards.
+  13 Playwright tests in `tests/e2e/review.test.ts` cover it.
+
+### ⚠ THE RING-NOTES TEST LIVED ONLY ON AN UNMERGED BRANCH — FIXED THIS SESSION
+`startWorkspacePolling` — the 10s tick whose own comment records *"Two of three dictated notes were
+lost this way on 2026-08-27"* — **appeared in no test file on `dev`**. The fix shipped; the test
+pinning it was in PR #206 (`workspace-poll-drain.test.ts`) and has never merged. `dev` did cover
+the drain's concurrency guard (`workspace-sync.test.ts`: "coalesces concurrent in-page drains").
+What was untested was that the **poll calls the drain at all**.
+
+**Now pinned by three tests** added to the existing `workspace-sync.test.ts` (reusing its
+`pendingRow`/`linkQueue` fixtures rather than duplicating PR #206's 90 lines of fakes):
+the tick drains the queue, it does not re-import a consumed row, and a failed cycle is reported.
+**Mutation-checked, both directions** — reverting the drain out of the tick fails all three;
+reverting only the catch fails the third. They are not tests that pass either way.
+
+### AND THAT SEARCH FOUND A REAL BUG ON `dev`: the poll tick had lost its `.catch()`
+PR #206 has `.catch((e) => console.warn('[workspace] poll cycle failed:', e))`; `dev`'s
+re-implementation is a bare `void pullFromWorkspace().then(() => drainAndImportPending())`.
+The drain *does* reject — on a database error, or an acknowledgement write that did not land, both
+already covered by neighbouring tests. **Fixed in this branch.** Be precise about the damage: the
+timer survives either way, `setInterval` does not care about a rejected promise. What was lost is
+the **diagnostic** — the only evidence capture had broken became an unhandled rejection nobody
+attributed, so a failed note is indistinguishable from a note that never arrived. That is the
+exact failure mode of the 2026-08-27 incident, one layer down.
+
+### PR #206 (ring capture) — all-green CI, conflicting since 2026-08-27
+11/11 checks pass. Conflict is only 3 files and **`dev` is ahead on all three**
+(`notes-pull.ts` +78 lines, `workspace.svelte.ts` +223, roadmap). The payload does not conflict:
+`static/n8n/ios-note-capture.workflow.json`, `note-capture-local`, `note-drain`,
+`reckons-mcp-server` — none exist on `dev` — plus `scripts/n8n-deploy.ts`. Resolution is
+mechanical: **take dev's side on the three, keep the new files.**
+
+### The two grounding leaks are still open — confirmed by reading the code
+`src/lib/rdf/structural-context.ts` is unchanged since 2026-09-01. Line ~195 drops open-decisions
+at zero overlap; line ~201 slices anchors by budget with **no floor at all**. No identifier or
+proposition rejection anywhere in the file. Its 24 tests include a relevance-floor regression for
+open **decisions** (2026-08-19) and **nothing equivalent for anchors** — so the two leaks are
+exactly the untested gaps, and the fix should start as two failing tests.
+
+### Next, in order (agreed with Matt 2026-09-06)
+1. **Rebase and merge PR #206** — restores ring capture; without it there is no ring note to review.
+   Bring `workspace-poll-drain.test.ts` across even where the source already matches.
+2. **Manual walk of add → review with real dictated notes.** Note the pending queue currently holds
+   **379 rows, almost all offline-job findings** (97 suggestion, 97 observation, 74 status-update,
+   41 drift-warning) — that exercises the review half with machine output, not capture.
+3. **The two grounding fixes, then re-run `npm run offline:score`** against the published baseline
+   (qwen3:32b 74% ungrounded; grounding made all six models worse).
+
+### Host findings from `offline:all --tier=script` (host-health)
+Beyond the known dead drive — reported as **`nvme0n1`** (critical_warning 0x9, available_spare 0%,
+SMART FAILED), *not* `nvme1n1` as earlier entries say; worth confirming which is which — two more:
+**port 8000 listening on all interfaces** with no allowlist entry (overlaps the camera/pfsense
+re-networking plan), and **rkhunter has never actually run** (`/etc/default/rkhunter` ships with
+`CRON_DAILY_RUN` empty; log last written 4 days ago).
+
+## ▶ SESSION 2026-09-04 — extraction ACCURACY has a number, and grounding fails it
 
 Branch `fix/cascade-real-graph`, continuing. **Uncommitted** — new files staged only (`git add`)
 so graph-lint's has-file check passes. 2689 tests / 192 files pass, svelte-check 0/0,
