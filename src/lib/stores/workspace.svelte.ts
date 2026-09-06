@@ -1356,8 +1356,15 @@ export function startWorkspacePolling(ms: number = POLL_INTERVAL_MS): void {
   // next page load or a manual refresh — the app was polling a folder while ignoring the one file
   // in it that changes most. Two of three dictated notes were lost this way on 2026-08-27; they
   // were never lost, just never picked up.
+  // AND A FAILED CYCLE MUST SAY SO. Neither half is infallible — the drain rejects on a database
+  // error or an acknowledgement write that did not land — and without a catch that rejection is
+  // unhandled, so the one signal that capture is broken is a console message nobody wrote. The
+  // timer itself survives either way; what is lost is the diagnostic, which on this path is the
+  // difference between a note that failed loudly and a note that appears never to have arrived.
   _pollTimer = setInterval(() => {
-    void pullFromWorkspace().then(() => drainAndImportPending());
+    void pullFromWorkspace()
+      .then(() => drainAndImportPending())
+      .catch((e) => console.warn('[workspace] poll cycle failed:', e));
   }, ms);
 }
 
