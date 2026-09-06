@@ -6596,3 +6596,52 @@ kb:integration-health rdf:type ktype:Feature ;
                kpred:relates-to   kb:generation-catalog ;
                kpred:relates-to   kb:int-n8n ;
                kpred:remaining    "Reads only n8n and Ollama. The catalogue knows 20 tools and this checks 7 binaries by a hand-written list — deriving the binary names FROM the catalogue would close that gap. Nothing checks the MCP server, the workspace, or whether an integration\u0027s credentials have expired." .
+
+## =============================================================================
+## F176: Journey documentation — user paths, published, with diagrams
+## =============================================================================
+## Matt, 2026-09-06, after a first-time reader (his sister) reviewed the product:
+## "She had a lot of great feedback, but was missing some of the core context
+## condensation and was thinking more about generic story boarding and note taking."
+## =============================================================================
+
+kb:journey-docs rdf:type     ktype:Feature ;
+               rdfs:label   "User-path documentation, published with diagrams" ;
+               kpred:feature-id   "F176" ;
+               kpred:has-status   "functional" ;
+               kpred:has-file     "scripts/lib/mermaid-render.ts" ;
+               kpred:has-file     "scripts/docs-diagrams.ts" ;
+               kpred:has-file     "static/docs-user-paths.ttl" ;
+               kpred:has-file     "static/diagram-cache.json" ;
+               kpred:tested-by    "scripts/__tests__/mermaid-render.test.ts" ;
+               kpred:description  "The routes people take through the product, written as intentions rather than features, published as /docs/user-paths with a rendered diagram on each. Nine paths, each with numbered steps, led by THE CORE LOOP — add, review, add, review, reckon — which is grounded in tests/e2e/workflow-add-review-reckon.test.ts so the page and the test move together." ;
+               kpred:known-issue  "THE PATHS WERE WRITTEN ON 2026-09-04 AND PUBLISHED TO NOBODY. docs-user-paths.ttl was never added to the SOURCES list in scripts/docs-pages.ts, so five documented journeys generated zero pages for two days and nothing reported it. The graph was linked into the MCP workspace, which made it look present while the public site had no route to it at all." ;
+               kpred:known-issue  "AND EVERY HUB PAGE WAS A TABLE OF CONTENTS WITH NO CONTENTS. Body relations only ever pointed OUTWARD (kpred:uses, skos:related) while skos:broader points UP, so a parent page rendered with no route to its own children: the user-paths hub described nine journeys and linked to none of them. Fixed by indexing children under BOTH skos:broader and kpred:part-of — indexing only the first is why numbered steps never appeared under their own path either. This affected all 16 docs sections, not just the new one." ;
+               kpred:principle    "DIAGRAMS RENDER AT BUILD TIME, BECAUSE THE DOCS ROUTE SHIPS NO JAVASCRIPT. src/routes/docs/+layout.ts sets csr = false deliberately, so loading a ~500 KB mermaid runtime to draw a picture would reverse a real performance decision for decoration. Mermaid runs once against the Chromium already here for Playwright, and the docs ship finished SVG." ;
+               kpred:principle    "AND THE RENDERED OUTPUT IS COMMITTED, BECAUSE MERMAID IS NOT DETERMINISTIC ACROSS MACHINES. Its layout depends on the fonts installed on the box doing the rendering, so a CI runner and a laptop produce different SVG for identical input — and md-align plus the regeneration gate would report a diff nobody wrote. scripts/docs-pages.ts therefore NEVER renders: it looks each diagram up by a hash of its own source and fails loudly naming `npm run docs:diagrams` on a miss. The align gate checks the cache before the pages, so a missing diagram surfaces as that instruction rather than as a stack trace." ;
+               kpred:principle    "THE PALETTE IS REWRITTEN ONTO SITE VARIABLES. Mermaid bakes its own purple into every SVG; the renderer maps those hex literals onto --diagram-* custom properties, so a diagram inherits the page theme and restyling every diagram costs a CSS edit rather than a re-render." ;
+               kpred:relates-to   kb:graph-publishing ;
+               kpred:relates-to   kb:honest-status ;
+               kpred:relates-to   kb:freeform-capture ;
+               kpred:remaining    "The paths carry no screenshots — every diagram is schematic. The visual-regression suite already captures real screens, and attaching those to the step nodes (as docs-testing.ttl does via kpred:icon2d) would show a reader the actual surface rather than a box labelled with its name." .
+
+## =============================================================================
+## F177: Freeform capture, with triples still the core  (Matt, 2026-09-06)
+## =============================================================================
+
+kb:freeform-capture rdf:type ktype:Decision ;
+               rdfs:label   "Freeform note-taking as the way IN, not an alternative to triples" ;
+               kpred:feature-id   "F177" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:decided      "MATT, 2026-09-06: 'I think we may support more freeform notetaking, but with triples remaining the core.' Both halves are load-bearing. Freeform is worth supporting because composing triples by hand is a terrible way to think and a hostile way to start; triples stay the core because everything the product does downstream takes a triple as its unit and has nothing to say about a paragraph." ;
+               kpred:evidence     "A FIRST-TIME READER REACHED FOR THE WRONG CATEGORY, AND THAT IS DATA. Reviewing the product cold, Matt's sister read it as generic storyboarding and note-taking and missed the context condensation entirely. Treat that as a finding about the product's legibility rather than a misunderstanding to be corrected: if the condensation step is not visible on the way IN, what is left genuinely does look like a notes app that makes you do extra work in the middle." ;
+               kpred:principle    "STORING PROSE AND CALLING IT DONE IS THE EASY VERSION, AND IT FORFEITS EVERYTHING DOWNSTREAM. You cannot diff a paragraph, cite half of it, detect that it contradicts another one, attach provenance to one clause, or record that it left a question open. Review, altitude, comparison and reckoning all take a triple as their unit. A freeform mode that quietly stopped producing triples would not be a friendlier version of this product; it would be a different, much smaller one." ;
+               kpred:principle    "THE PROSE MUST SURVIVE VERBATIM ALONGSIDE THE TRIPLES. captured-notes.ts already keeps the transcript exactly as said — fillers and comma splices included — and that guarantee generalises: structuring must never cost a person the original words, or they are being asked to trust a summary of their own thought." ;
+               kpred:open-question "What is the unit on screen — the note, or the claims taken out of it? The review queue chose the claim and became unusable at 1,888 rows (F83); entity cards were the fix. For everyday notes the answer may be the inverse: the SENTENCE a person wrote, with its extracted claims folded underneath it, since that is the only unit they will recognise as theirs. kb:statement-expansion asks the same question from the other direction and neither has been settled." ;
+               kpred:open-question "Does a note become editable after capture? Today it is an input to extraction and then a source record. Editing one raises a question nothing in the app currently answers: what happens to facts already confirmed from a sentence that has since changed?" ;
+               kpred:relates-to   kb:statement-expansion ;
+               kpred:relates-to   kb:orch-dictated-task ;
+               kpred:relates-to   kb:journey-docs ;
+               kpred:relates-to   kb:mission ;
+               kpred:remaining    "ALL OF IT, AND THE DOCS NOW SAY SO. path:EverydayNotes is published as `scaffolded` with the gap stated on the page: freeform text is extracted into reviewable facts today, but there is no note-taking SURFACE — no notebook, no daily page, no editing, no browsing notes as notes rather than as graph nodes. Matt has asked to talk the intended user stories through in depth before any of it is built." .

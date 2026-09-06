@@ -1,15 +1,73 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-09-06.** Working branch: `docs/funnel-status-and-coverage`, cut from
-`origin/dev`. PRs target `dev`. A branch cut this way tracks `origin/dev` directly, so a bare
-`git push` would push to dev — always `git push origin HEAD:refs/heads/<branch>`.
+**Last updated: 2026-09-06.** Working branch: `docs/user-journeys-and-diagrams` — **committed and
+pushed as PR #225**, base `dev`. It was cut from `docs/funnel-status-and-coverage` (PR #224), **not
+from `origin/dev`** as an earlier draft of this line said, so **#225's diff carries #224's two
+commits until #224 merges** — merge #224 first. Both PRs target `dev`. A branch cut from a branch
+that tracks `origin/dev` would push to dev on a bare `git push` — always
+`git push origin HEAD:refs/heads/<branch>`.
+
+**The work described below sat UNCOMMITTED for a session** (the editor was closed on a different
+folder). It is committed now as `2cdfe25`; re-verified on 2026-09-06 before pushing: `npm run
+align` six gates aligned, **2796 tests / 197 files pass**, 16/16 mermaid tests. `scripts/__shot__.ts`
+(scratch screenshot harness) and `share/turtles-story.ttl` are deliberately left untracked.
 
 **`fix/cascade-real-graph` IS MERGED** (PR #222) — the 2026-09-04 entry below says "unpushed, no
 PR" and that has been false since the merge. `origin/dev` is at that merge commit; `origin/main`
-is fully caught up and carries only safety attestations beyond it. Working tree is clean apart
-from an untracked `share/turtles-story.ttl`.
+is fully caught up and carries only safety attestations beyond it.
 
-## ▶ SESSION 2026-09-06 (latest) — status audit: three "next" items were already built
+## ▶ SESSION 2026-09-06 (later) — the user paths, published, with diagrams
+
+**For a first-time reader.** Matt's sister reviewed the product cold, gave a lot of useful
+feedback, and **read it as generic storyboarding and note-taking** — she missed the context
+condensation entirely. That is recorded as evidence about the product's legibility (F177), not as
+a misunderstanding to correct: if the condensation step is not visible on the way IN, what is left
+genuinely does look like a notes app that makes you do extra work in the middle.
+
+### TWO THINGS WERE SILENTLY BROKEN, AND BOTH ARE WHY THE PATHS REACHED NOBODY
+1. **`docs-user-paths.ttl` was never in `SOURCES`.** Five journeys written on 2026-09-04 generated
+   **zero pages** for two days and nothing reported it. The graph *was* linked into the MCP
+   workspace, which made it look present while the public site had no route to it at all.
+2. **Every hub page was a table of contents with no contents.** Body relations only pointed
+   OUTWARD (`kpred:uses`, `skos:related`) while `skos:broader` points UP, so a parent page rendered
+   with **no route to its own children** — the hub described nine journeys and linked to none.
+   Fixed by indexing children under **both** `skos:broader` and `kpred:part-of`; indexing only the
+   first is why numbered steps never appeared under their own path either. **This affected all 16
+   docs sections**, not just the new one — 40 pages gained navigation.
+
+### WHAT SHIPPED
+`/docs/user-paths` — **nine paths, 35 pages**, led by **the core loop** (add → review → add →
+review → reckon), grounded in `tests/e2e/workflow-add-review-reckon.test.ts` so page and test move
+together. Two paths are new and marked **`scaffolded` on the page itself**: everyday notes and
+spoken capture. Nine mermaid diagrams.
+
+### DIAGRAMS RENDER AT BUILD TIME — the docs route ships no JavaScript
+`src/routes/docs/+layout.ts` sets `csr = false` deliberately, so loading a ~500 KB mermaid runtime
+to draw a picture would reverse a real performance decision for decoration. Mermaid runs once
+against the Chromium already here for Playwright (`scripts/lib/mermaid-render.ts`), and the docs
+ship finished SVG. Verified end to end: the SVG survives mdsvex, its CSS braces stay balanced
+through the Svelte compiler, and it prerenders into the static HTML.
+
+**The output is COMMITTED (`static/diagram-cache.json`) because mermaid is not deterministic across
+machines** — its layout depends on the fonts installed on the box rendering it, so a CI re-render
+would produce a diff nobody wrote and `md-align` would fail. `docs-pages.ts` therefore **never
+renders**: it looks each diagram up by a hash of its source and fails loudly naming
+`npm run docs:diagrams`. The `align` gate checks the cache **before** the pages, so a miss surfaces
+as that instruction rather than a stack trace. Mermaid's baked purple is rewritten onto
+`--diagram-*` variables, so restyling every diagram is a CSS edit, not a re-render.
+
+### VERIFICATION
+`npm run align` — all six gates aligned. `md-align` — **all 316 content files match the graph**.
+16 new tests in `scripts/__tests__/mermaid-render.test.ts`, none of which launch a browser.
+
+### ⚠ OPEN, AND MATT ASKED FOR IT NEXT: the user stories in depth (F177)
+`kb:freeform-capture` records the direction — *"more freeform notetaking, but with triples
+remaining the core"* — with **both halves load-bearing** and two open questions that are NOT
+settled: whether the unit on screen is the note or the claims taken out of it, and whether a note
+becomes editable after capture (and if so, what happens to facts already confirmed from a sentence
+that has since changed). **Do not build any of it before that conversation.**
+
+## ▶ SESSION 2026-09-06 — status audit: three "next" items were already built
 
 A documentation-and-coverage pass before the next build. This session read the graph against the
 repo and found **F159's three `kpred:remaining` notes describing work that had since shipped** —

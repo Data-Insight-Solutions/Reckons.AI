@@ -45,6 +45,15 @@ const GATES: Gate[] = [
     check: 'npx tsx scripts/offline/graph-lint.ts',
   },
   {
+    // Ordered BEFORE 'docs pages' on purpose: a missing diagram makes docs-pages.ts throw, so
+    // without this gate the failure surfaces as a stack trace from the generator rather than as
+    // the one-line instruction that actually fixes it.
+    name: 'docs diagrams',
+    why: 'every mermaid diagram declared in a graph must be in the committed render cache — CI never renders, because mermaid lays text out with the fonts of whatever machine runs it and a re-render in CI would produce a diff nobody wrote',
+    check: 'npx tsx scripts/docs-diagrams.ts --check',
+    fix: 'npx tsx scripts/docs-diagrams.ts',
+  },
+  {
     name: 'docs pages',
     why: 'content/*.md must match what the graph generates — a hand-edited page is a second source of truth',
     check: 'npx tsx scripts/md-align.ts',

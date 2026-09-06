@@ -50,6 +50,7 @@ import { escapeMdText } from '../src/lib/publish/md-escape';
 import { NAV_ORDER, NAV_NEXT, NAV_PREV, NAV_LAYER } from '../src/lib/rdf/hierarchy';
 import { contentPath, pageToMarkdown } from '../src/lib/publish/site-export';
 import { parsePageFile } from '../src/lib/publish/site-import';
+import { loadCache, diagramKey, diagramFigure } from './lib/mermaid-render.js';
 
 const ROOT = resolve(import.meta.dirname ?? '.', '..');
 const STATIC_DIR = join(ROOT, 'static');
@@ -66,6 +67,10 @@ const SKOS_RELATED     = 'http://www.w3.org/2004/02/skos/core#related';
 const HAS_STATUS       = 'urn:kbase:predicate/has-status';
 const KTYPE_NS          = 'urn:kbase:type/';
 const NAV_DOCS_NS       = 'urn:reckons:docs/nav/'; // per-sub-graph "back to hub" stub namespace
+const DIAGRAM           = 'urn:kbase:predicate/diagram';
+const DIAGRAM_CAPTION   = 'urn:kbase:predicate/diagram-caption';
+const STEP_ORDER        = 'urn:kbase:predicate/step-order';
+const PART_OF           = 'urn:kbase:predicate/part-of';
 
 /** Literal-valued predicates that are structural/technical, not doc content — never
  *  rendered in the "Details" body section. */
@@ -73,6 +78,9 @@ const EXCLUDED_LITERAL_PREDICATES = new Set<string>([
   RDFS_LABEL, SKOS_DEFINITION, NAV_ORDER, NAV_LAYER,
   'urn:reckons:leap', 'urn:reckons:leap/label',
   'urn:kbase:meta/glbModel', 'urn:kbase:predicate/icon2d',
+  // Rendered as an SVG figure by renderBody — dumping the mermaid source into a
+  // "Details" bullet would show a reader the code instead of the picture.
+  DIAGRAM, DIAGRAM_CAPTION,
 ]);
 
 /** IRI-valued predicates handled elsewhere (type, parent, sibling chain) — never
@@ -96,6 +104,7 @@ const SOURCES: ReadonlyArray<{ file: string; section: string }> = [
   { file: 'docs-architecture.ttl', section: 'Architecture' },
   { file: 'docs-coding-workflow.ttl', section: 'Coding Workflow' },
   { file: 'docs-testing.ttl', section: 'Testing' },
+  { file: 'docs-user-paths.ttl', section: 'User Paths' },
   { file: 'starter-guide.ttl', section: 'Guide' },
 ];
 
@@ -196,6 +205,10 @@ interface Entity {
   navOrder: number | null;       // explicit nav:order, if present
   literalProps: Map<string, string[]>; // predicate IRI -> sorted literal values
   iriProps: Map<string, string[]>;     // predicate IRI -> target IRIs (may or may not be pages)
+  // Held apart from literalProps on purpose: the mermaid SOURCE is not prose and must never reach
+  // the "Details" list, but renderBody still needs it to look the finished SVG up in the cache.
+  diagram: string | null;
+  diagramCaption: string | null;
 }
 
 function extractEntity(iri: string, section: string, quads: Quad[]): Entity {
@@ -207,6 +220,8 @@ function extractEntity(iri: string, section: string, quads: Quad[]): Entity {
   let navOrder: number | null = null;
   const literalProps = new Map<string, string[]>();
   const iriProps = new Map<string, string[]>();
+  let diagram: string | null = null;
+  let diagramCaption: string | null = null;
 
   for (const q of own) {
     const p = q.predicate.value;
@@ -218,6 +233,8 @@ function extractEntity(iri: string, section: string, quads: Quad[]): Entity {
     if (p === SKOS_DEFINITION && q.object.termType === 'Literal') { definition = q.object.value; continue; }
     if (p === SKOS_BROADER && q.object.termType === 'NamedNode') { parent = parent ?? q.object.value; continue; }
     if (p === NAV_ORDER && q.object.termType === 'Literal') { navOrder = parseInt(q.object.value, 10); continue; }
+    if (p === DIAGRAM && q.object.termType === 'Literal') { diagram = diagram ?? q.object.value; continue; }
+    if (p === DIAGRAM_CAPTION && q.object.termType === 'Literal') { diagramCaption = diagramCaption ?? q.object.value; continue; }
 
     if (q.object.termType === 'Literal') {
       if (EXCLUDED_LITERAL_PREDICATES.has(p)) continue;
@@ -238,7 +255,7 @@ function extractEntity(iri: string, section: string, quads: Quad[]): Entity {
 
   return {
     iri, section, title: title || localName(iri), types, definition, parent, navOrder,
-    literalProps, iriProps,
+    literalProps, iriProps, diagram, diagramCaption,
   };
 }
 
@@ -292,6 +309,14 @@ function assignSlugs(entities: Entity[]): Map<string, string> {
 
 interface PageRef { slug: string; section: string; title: string }
 
+/** One child in a hub's walkthrough: enough to summarise it without opening it. */
+interface ChildRef {
+  slug: string; section: string; title: string;
+  excerpt: string;      // first sentence of the child's definition
+  status: string | null; // so a hub can say which of its steps are not built
+  order: number;         // step-order, then nav:order, then alphabetical
+}
+
 /**
  * Lifecycle status banner (kb:honest-status).
  *
@@ -310,7 +335,58 @@ const STATUS_BANNER: Record<string, string> = {
   production: '> **Production** — built, tested, and in use.',
 };
 
-function renderBody(e: Entity, refs: Map<string, PageRef>): string {
+/**
+ * The committed diagram cache, read once per run.
+ *
+ * This script NEVER renders. Mermaid lays text out with the fonts of whatever machine runs it, so
+ * rendering here would make the generator non-deterministic and CI's regenerate-and-diff check
+ * would report changes nobody made. `scripts/docs-diagrams.ts` owns rendering; a miss here is a
+ * loud failure naming the fix, never a silently missing picture.
+ */
+const DIAGRAMS = loadCache();
+
+function renderDiagramFor(e: Entity): string[] {
+  const source = e.diagram;
+  if (!source) return [];
+  const key = diagramKey(source);
+  const svg = DIAGRAMS[key];
+  if (!svg) {
+    throw new Error(
+      `No cached diagram for <${e.iri}> (key ${key}).\n` +
+      `Diagrams are rendered ahead of time so this generator stays deterministic.\n` +
+      `Fix: npm run docs:diagrams`,
+    );
+  }
+  return [diagramFigure(svg, e.diagramCaption ?? undefined), ''];
+}
+
+/**
+ * A hub page's walkthrough of what sits underneath it.
+ *
+ * WHY THIS EXISTS. Relations in the body only ever pointed OUTWARD (`kpred:uses`, `skos:related`)
+ * and `skos:broader` points UP, so a parent page rendered with no route to its own children — the
+ * /docs/user-paths hub described five journeys and linked to none of them, which is a table of
+ * contents with the contents missing. Children are indexed here so any hub becomes a walkthrough
+ * automatically, in the order the author actually meant.
+ *
+ * The child's own status travels with it, so a hub cannot quietly present a step that is not built
+ * as though it were finished (kb:honest-status) — the reader sees the gap in the list, before they
+ * click.
+ */
+function renderChildren(children: ChildRef[], heading: string): string[] {
+  if (!children.length) return [];
+  const lines = [`## ${heading}`, ''];
+  for (const c of children) {
+    const flag = c.status && c.status !== 'functional' && c.status !== 'production'
+      ? ` — **${escapeMdText(c.status)}**`
+      : '';
+    lines.push(`**[${escapeMdText(c.title)}](../${slugify(c.section)}/${c.slug})**${flag}`, '');
+    if (c.excerpt) lines.push(escapeMdText(c.excerpt), '');
+  }
+  return lines;
+}
+
+function renderBody(e: Entity, refs: Map<string, PageRef>, children: ChildRef[] = []): string {
   const lines: string[] = [`# ${escapeMdText(e.title)}`, ''];
   if (e.types.length) { lines.push(`*${escapeMdText(e.types.join(', '))}*`, ''); }
 
@@ -319,6 +395,13 @@ function renderBody(e: Entity, refs: Map<string, PageRef>): string {
   if (status && STATUS_BANNER[status]) lines.push(STATUS_BANNER[status], '');
 
   if (e.definition) { lines.push(escapeMdText(e.definition), ''); }
+
+  // The picture goes directly under the sentence that introduces it, not at the bottom.
+  lines.push(...renderDiagramFor(e));
+
+  // Then the route onward. A reader who wants the next page should not have to scroll past
+  // every property of this one to find it, so children come before Details.
+  lines.push(...renderChildren(children, e.parent ? 'Steps' : 'Where to go next'));
 
   // has-status is rendered as the banner above; don't repeat it in Details.
   const literalKeys = [...e.literalProps.keys()]
@@ -414,6 +497,34 @@ function main(): void {
   const refs = new Map<string, PageRef>();
   for (const e of entities) refs.set(e.iri, { slug: slugs.get(e.iri)!, section: e.section, title: e.title });
 
+  // Children, indexed by parent, so a hub page can render the route through what it contains.
+  // Sort key: explicit kpred:step-order first (a numbered sequence the author wrote), then
+  // nav:order, then title — deterministic in every case, which the regeneration check requires.
+  //
+  // A child declares its parent EITHER as skos:broader (the taxonomy edge, used between hubs and
+  // the journeys under them) OR as kpred:part-of (the composition edge, used by the numbered steps
+  // inside one journey). Both mean "this page lives under that one" for navigation purposes, and
+  // indexing only the first is why every path page rendered without its own steps.
+  const childrenOf = new Map<string, ChildRef[]>();
+  for (const e of entities) {
+    const partOf = e.iriProps.get(PART_OF)?.find((t) => refs.has(t)) ?? null;
+    const parent = (e.parent && refs.has(e.parent)) ? e.parent : partOf;
+    if (!parent) continue;
+    const stepRaw = e.literalProps.get(STEP_ORDER)?.[0];
+    const step = stepRaw !== undefined ? parseInt(stepRaw, 10) : NaN;
+    const arr = childrenOf.get(parent) ?? [];
+    arr.push({
+      slug: slugs.get(e.iri)!, section: e.section, title: e.title,
+      excerpt: e.definition ? firstSentence(e.definition) : '',
+      status: e.literalProps.get(HAS_STATUS)?.[0] ?? null,
+      order: Number.isFinite(step) ? step : (e.navOrder ?? Number.MAX_SAFE_INTEGER),
+    });
+    childrenOf.set(parent, arr);
+  }
+  for (const arr of childrenOf.values()) {
+    arr.sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
+  }
+
   const pages: SitePage[] = entities.map((e) => ({
     iri: e.iri,
     title: e.title,
@@ -425,7 +536,7 @@ function main(): void {
     status: 'published',
     nav: 'sidebar',
     excerpt: e.definition ? firstSentence(e.definition) : '',
-    body: renderBody(e, refs),
+    body: renderBody(e, refs, childrenOf.get(e.iri) ?? []),
     // Sorted by slug (not source IRI): `md-align`'s round trip reconstructs `related`
     // via synthetic `urn:kbase:concept/<slug>` IRIs and re-sorts alphabetically, so the
     // frontmatter list must already be in that order for the output to be stable.

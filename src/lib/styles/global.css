@@ -66,6 +66,19 @@
   --danger: #d4726d;
   --ok: #6ab68a;
 
+  /* Diagram palette. Mermaid bakes its own purple into every SVG it renders; the
+     build-time renderer rewrites those hex literals onto these variables, so a
+     docs diagram inherits the site theme instead of shipping mermaid's defaults.
+     Changing a value here restyles every diagram with no re-render — the mapping
+     lives in scripts/lib/mermaid-render.ts. */
+  --diagram-surface: var(--surface);
+  --diagram-node-bg: var(--surface-2);
+  --diagram-node-border: var(--accent);
+  --diagram-note-bg: var(--surface-3);
+  --diagram-note-border: var(--data);
+  --diagram-line: var(--ink-2);
+  --diagram-ink: var(--ink);
+
   --font-display: 'Bespoke Stencil', 'Times New Roman', serif;
   --font-body: 'Supreme', system-ui, -apple-system, sans-serif;
   --font-mono: 'Supreme', system-ui, -apple-system, sans-serif;
