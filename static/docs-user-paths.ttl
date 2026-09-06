@@ -43,16 +43,16 @@ path:UserPaths
     skos:definition     "The routes people actually take through Reckons.AI, each written as an intention rather than a feature. Start with the core loop below \u2014 every other path is that loop with one stage emphasised. They overlap deliberately, because the same person moves between them as their work changes." ;
     kpred:read-first    "IF YOU READ ONE THING, READ THE CORE LOOP. Everything here is the same four stages: something comes IN, the app PROPOSES what it thinks that means, you SETTLE what is true, and the settled graph is then USED \u2014 to decide, to compare, or to teach. A path is just that loop with the weight moved to a different stage." ;
     kpred:diagram       """flowchart TB
-  subgraph s1["1 &middot; Capture"]
+  subgraph s1["1 · Capture"]
     N["A note, page, PDF,<br/>or something you said"]
   end
-  subgraph s2["2 &middot; Propose"]
+  subgraph s2["2 · Propose"]
     E["Extraction"] --> P["Pending facts"]
   end
-  subgraph s3["3 &middot; Settle"]
+  subgraph s3["3 · Settle"]
     R{"You review<br/>each claim"}
   end
-  subgraph s4["4 &middot; Use"]
+  subgraph s4["4 · Use"]
     G[("Your graph")]
     Q["Reckon<br/>decide something"]
     C["Compare<br/>against someone else"]
@@ -206,7 +206,7 @@ path:CompareGraphs
   A[("Your graph")] --> C["Compare"]
   B[("Theirs, imported<br/>as its own graph")] --> C
   C --> S["Summary first"]
-  S --> D["Agreements &middot; conflicts<br/>&middot; only-in-one"]
+  S --> D["Agreements · conflicts<br/>· only-in-one"]
   D --> T["Take what you agree with"]
   D --> K["Keep the rest visible"]""" ;
     kpred:diagram-caption "Their graph is never merged into yours. Disagreement stays legible instead of being averaged away." ;

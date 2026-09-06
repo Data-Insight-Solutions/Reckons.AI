@@ -14,9 +14,12 @@
 import { describe, it, expect } from 'vitest';
 import { diagramKey, normalizeSvg, diagramFigure } from '../lib/mermaid-render';
 import { collectDiagramSources, DIAGRAM_PREDICATE } from '../docs-diagrams';
-import { writeFileSync, mkdtempSync } from 'fs';
+import { writeFileSync, mkdtempSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import { resolve } from 'path';
+
+const STATIC_DIR = resolve(import.meta.dirname ?? '.', '..', '..', 'static');
 
 describe('diagramKey', () => {
   it('is stable for the same source', () => {
@@ -137,5 +140,40 @@ describe('collectDiagramSources', () => {
 
   it('names the predicate the docs graphs actually use', () => {
     expect(DIAGRAM_PREDICATE).toBe('urn:kbase:predicate/diagram');
+  });
+});
+
+describe('no HTML entity reaches a diagram label', () => {
+  /**
+   * A REAL BUG, CAUGHT BY EYE ON THE PUBLISHED PAGE (2026-09-06). The user-paths stage labels were
+   * written `"1 &middot; Capture"`, and mermaid escapes the ampersand when it builds the SVG text
+   * node — so the finished page rendered the literal string `1 &middot; Capture` to every reader.
+   *
+   * Nothing caught it: the TTL parses, the diagram renders, the cache hits, and all six align gates
+   * pass, because an entity is perfectly valid text. Only a person looking at the picture could
+   * see it, and that is exactly the kind of check worth demoting to a rule (F74.3). The fix is to
+   * write the character itself — TTL is UTF-8 and mermaid draws it correctly.
+   */
+  const ENTITY = /&(?:[a-zA-Z][a-zA-Z0-9]{1,31}|#\d{1,7}|#[xX][0-9a-fA-F]{1,6});/;
+
+  it('flags an entity in a diagram source', () => {
+    expect(ENTITY.test('subgraph s1["1 &middot; Capture"]')).toBe(true);
+    expect(ENTITY.test('S --> D["Agreements &amp; conflicts"]')).toBe(true);
+  });
+
+  it('leaves a bare ampersand and mermaid\'s own markup alone', () => {
+    // `A & B` is valid mermaid (a node list), and <br/> is the line break mermaid documents.
+    expect(ENTITY.test('flowchart LR\n  A & B --> C')).toBe(false);
+    expect(ENTITY.test('D["Agreements · conflicts<br/>· only-in-one"]')).toBe(false);
+  });
+
+  it('every diagram declared in the real graphs is entity-free', () => {
+    const graphs = readdirSync(STATIC_DIR)
+      .filter((f) => f.endsWith('.ttl'))
+      .map((f) => join(STATIC_DIR, f));
+    const offenders = collectDiagramSources(graphs)
+      .filter((src) => ENTITY.test(src))
+      .map((src) => src.slice(0, 80));
+    expect(offenders).toEqual([]);
   });
 });
