@@ -18,6 +18,16 @@ generated: "docs-kb"
 
 The usual pitch for a knowledge graph in front of a coding agent is token compression: feed a dense subgraph instead of re-reading the repo. That saving is real but modest. The larger one is structural — an agent that can query what you already decided proposes an EXTENSION to an existing feature instead of a new feature under a slightly different name. A duplicate feature is not a one-off cost: you pay to build it, then pay forever to maintain two things that should have been one, and the second one drifts from the first the first time either is tuned.
 
+## Where to go next
+
+**[One session, five features not rebuilt](../coding-workflow/case-study-one-session)**
+
+Five requests arrived across a single session on 2026-07-19, each framed as new work — and every one of them had already been decided months earlier.
+
+**[Consistency comes from YOUR context, not from a better model](../coding-workflow/personal-context)**
+
+The facts that did the work in that session were not general knowledge, and no model would have produced them from training.
+
 ## Details
 
 **Honest Note**

@@ -16,3 +16,13 @@ generated: "docs-kb"
 *Concept*
 
 9 providers: Claude, OpenAI, Gemini, Ollama (local), OpenRouter (free tier), WASM (offline, Qwen2.5-0.5B-Instruct), Chrome AI (Gemini Nano), Manual paste, Mock. Per-task backend overrides let you use different providers for ingest, chat, analysis, diff summary, and merge analysis. Prefer-local routing can redirect chat, diff summary, and merge analysis to a reachable local Ollama server.
+
+## Steps
+
+**[Model Cache Management](../features/model-cache-features)**
+
+Inspect, sideload, and purge locally cached WASM models.
+
+**[Prefer-Local Routing](../features/prefer-local)**
+
+Opt-in setting that redirects chat, diff-summary, and merge-analysis to a local Ollama model whenever it is reachable, instead of your chosen cloud backend.

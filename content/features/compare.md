@@ -19,6 +19,12 @@ related:
 
 Compare two knowledge graphs or snapshots at /compare. Diff engine categorizes changes as Add, Reinforce, Conflict, Merge, Remove. Visual Venn diagram and diff table with bulk accept/reject.
 
+## Steps
+
+**[Diff Summary](../features/diff-summary)**
+
+LLM-generated 3-part summaries of diffs: what is new, what reinforces existing knowledge, and what conflicts.
+
 ## Related
 
 **Related**
