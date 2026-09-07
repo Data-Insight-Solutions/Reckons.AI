@@ -33,5 +33,20 @@
     "headline": "We will not describe a control we do not have.",
     "body": "Our safety documentation states plainly which protections exist and which do not, and an automated check verifies them against the live code every week — recording the failures too. We have already caught ourselves overclaiming, and corrected it in public. A safety promise you cannot verify is just marketing.",
     "status": "built"
+  },
+  {
+    "headline": "No account until an account is unavoidable.",
+    "body": "There is no sign-up, no email, no profile, and no server holding your graph. The app is static files and a browser database, so there is nothing to log in TO — and that is a structural fact, not a policy we could quietly reverse. An account is a cost paid by every user forever to solve a problem most of them do not have. Where a feature genuinely cannot work without one, the account belongs to the user and lives with the third party they chose: your own API key, your own n8n, your own Cloudflare. The honest limit: publishing to the open web and syncing across devices are the places this pressure will come from, and neither has been solved without someone holding an identity.",
+    "status": "built"
+  },
+  {
+    "headline": "Open source wins the tie.",
+    "body": "The whole application is MIT licensed, and so is the format your graph is stored in — Turtle, an open W3C standard, not a private schema with an exporter bolted on. When a closed component and an open one are close, the open one wins; when the closed one is genuinely better, we say so rather than pretending. The check on this is simple and unforgiving: if we disappeared tomorrow, your graph and the code that reads it would both still work. The honest limit: the strongest models this app can call are not open, and a local model is measurably worse at extraction today — 74% recall against a hand-checked corpus. We ship the choice rather than hiding it.",
+    "status": "built"
+  },
+  {
+    "headline": "Knowing something should not require permission.",
+    "body": "Enclosing knowledge behind a login, a subscription, or a format only one vendor can read is a choice somebody made, not a property of the knowledge. The tools for thinking with what you know should be free to use, free to read, and free to leave. THIS ONE IS A BELIEF, NOT A CONTROL, and it is marked so deliberately: nothing in the code enforces it and nothing could. It is the reason the other tenets are shaped the way they are — export as a right, no account, open licence — and those are the parts you can actually hold us to.",
+    "status": "belief"
   }
 ]

@@ -2648,6 +2648,36 @@ kb:tenet-honesty rdf:type      ktype:Tenet ;
                hnav:order   7 ;
                kpred:tenet-body   "Our safety documentation states plainly which protections exist and which do not, and an automated check verifies them against the live code every week — recording the failures too. We have already caught ourselves overclaiming, and corrected it in public. A safety promise you cannot verify is just marketing." .
 
+kb:tenet-no-account rdf:type   ktype:Tenet ;
+               rdfs:label   "No account until an account is unavoidable." ;
+               kpred:part-of      kb:thesis ;
+               kpred:show-on-landing "true" ;
+               kpred:tenet-status "built" ;
+               hnav:order   8 ;
+               kpred:tenet-body   "There is no sign-up, no email, no profile, and no server holding your graph. The app is static files and a browser database, so there is nothing to log in TO — and that is a structural fact, not a policy we could quietly reverse. An account is a cost paid by every user forever to solve a problem most of them do not have. Where a feature genuinely cannot work without one, the account belongs to the user and lives with the third party they chose: your own API key, your own n8n, your own Cloudflare. The honest limit: publishing to the open web and syncing across devices are the places this pressure will come from, and neither has been solved without someone holding an identity." ;
+               kpred:relates-to   kb:tenet-private ;
+               kpred:relates-to   kb:tenet-export .
+
+kb:tenet-open rdf:type         ktype:Tenet ;
+               rdfs:label   "Open source wins the tie." ;
+               kpred:part-of      kb:thesis ;
+               kpred:show-on-landing "true" ;
+               kpred:tenet-status "built" ;
+               hnav:order   9 ;
+               kpred:tenet-body   "The whole application is MIT licensed, and so is the format your graph is stored in — Turtle, an open W3C standard, not a private schema with an exporter bolted on. When a closed component and an open one are close, the open one wins; when the closed one is genuinely better, we say so rather than pretending. The check on this is simple and unforgiving: if we disappeared tomorrow, your graph and the code that reads it would both still work. The honest limit: the strongest models this app can call are not open, and a local model is measurably worse at extraction today — 74% recall against a hand-checked corpus. We ship the choice rather than hiding it." ;
+               kpred:relates-to   kb:tenet-export ;
+               kpred:relates-to   kb:tenet-no-account .
+
+kb:tenet-freedom rdf:type      ktype:Tenet ;
+               rdfs:label   "Knowing something should not require permission." ;
+               kpred:part-of      kb:thesis ;
+               kpred:show-on-landing "true" ;
+               kpred:tenet-status "belief" ;
+               hnav:order   10 ;
+               kpred:tenet-body   "Enclosing knowledge behind a login, a subscription, or a format only one vendor can read is a choice somebody made, not a property of the knowledge. The tools for thinking with what you know should be free to use, free to read, and free to leave. THIS ONE IS A BELIEF, NOT A CONTROL, and it is marked so deliberately: nothing in the code enforces it and nothing could. It is the reason the other tenets are shaped the way they are — export as a right, no account, open licence — and those are the parts you can actually hold us to." ;
+               kpred:relates-to   kb:tenet-open ;
+               kpred:relates-to   kb:tenet-export .
+
 # -- F85: Context-aware view suggestions ----------------------------------------
 # Shelly and the notification stack should offer the RIGHT filter or force for what the
 # user is actually looking at — "47 of the facts on screen carry dates spanning 8 months;
@@ -6722,3 +6752,82 @@ kb:freeform-capture rdf:type ktype:Decision ;
                kpred:relates-to   kb:journey-docs ;
                kpred:relates-to   kb:mission ;
                kpred:remaining    "ALL OF IT, AND THE DOCS NOW SAY SO. path:EverydayNotes is published as `scaffolded` with the gap stated on the page: freeform text is extracted into reviewable facts today, but there is no note-taking SURFACE — no notebook, no daily page, no editing, no browsing notes as notes rather than as graph nodes. Matt has asked to talk the intended user stories through in depth before any of it is built." .
+
+## =============================================================================
+## F181-F184: session of 2026-09-06 (evening) — Matt's directions, recorded as
+## plan before any of it is built.
+## =============================================================================
+
+kb:domain-strategy rdf:type    ktype:Decision ;
+               rdfs:label   "Five domains, DNS only until a site earns a build" ;
+               kpred:feature-id   "F181" ;
+               kpred:has-status   "planned" ;
+               kpred:decided      "DNS ONLY FOR THE EXTRA DOMAINS (Matt, 2026-09-06). reckons.ai stays the one built site; reckons.app, reckons.solutions, reckons.tech and reckons.us hold DNS and nothing else until each has content worth deploying. A domain costs nothing to park and a great deal to maintain as a half-built site nobody updates." ;
+               kpred:measured     "VERIFIED AGAINST CLOUDFLARE, 2026-09-06: all five zones are active on the account, and exactly ONE Pages project exists — `reckons-ai`, production branch `main`, serving reckons-ai.pages.dev and reckons.ai. So four of the five already are DNS-only in fact; this decision makes that deliberate rather than incidental." ;
+               kpred:constraint   "MAIN IS THE DEPLOY BRANCH AND IT IS BEHIND. Production deploys from `main` on every push, and `main` was 22 commits behind `dev` when this was written — so anything shipped today is not on reckons.ai. Multiplying sites multiplies that promotion problem, which is the strongest argument for not building four more yet." ;
+               kpred:remaining    "The INTENT for each, recorded so it is not re-derived: reckons.app = the app dashboard, opening on the current graphs shown in the metagraph rather than a new-user landing page; reckons.solutions = enterprise solutions and consulting, connected to data-insight.solutions as the consultancy front; reckons.tech = a deep dive into the stack and why semantic ontology building makes AI services more efficient; reckons.us = personal, self-reflective use, deliberately avoiding enterprise framing, speaking to democratized learning and free and open usage." ;
+               kpred:relates-to   kb:tenet-freedom ;
+               kpred:relates-to   kb:tenet-open .
+
+kb:graph-to-content rdf:type   ktype:Feature ;
+               rdfs:label   "Generating from the graph — the direction we have barely built" ;
+               kpred:feature-id   "F182" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:decided      "MATT, 2026-09-06: \u0027workflows to expand upon graphs, not just extract external information into new triples, but the reverse, generating prose and other content types from graphs.\u0027 Nearly everything built so far points INWARD — ingest, extraction, review, merge. The outward half exists only as special cases." ;
+               kpred:decided      "THE FILTERS ARE THE INTERFACE (Matt, 2026-09-06): \u0027utilize filters, such as levels of detail, and other graph tools, via MCP and CLI, to generate specific new content. This content generation should be multi-modal.\u0027 The detail ladder (F144: all / detailed / evidence / judgments / decisions / hubs) was built to DECLUTTER a view. Its more important job is selecting a slice worth generating from — the same control, pointed the other way." ;
+               kpred:measured     "WHAT ALREADY EXISTS, so this is not started from zero: scripts/docs-pages.ts renders TTL to markdown deterministically; scripts/docs-diagrams.ts renders mermaid declared in the graph to committed SVG; scripts/offline/docs-expand.ts drafts prose for thin entities via a local model as proposals; and the MCP server exposes kb_compress, kb_entity_markdown and kb_generate_page. Four one-off generators and no common shape between them." ;
+               kpred:principle    "THE OUTPUT IS A PROPOSAL OR IT IS DETERMINISTIC — never a model writing straight into a graph or a file. Rendering that must round-trip (docs pages) stays in the script tier because md-align requires byte-identical regeneration; anything a model authors is a proposal a human gates. That split is already proven and must survive generalization." ;
+               kpred:open-question "What is the unit of a generation request? A saved recipe (slice + filter + format + template) is reusable and inspectable; an ad-hoc CLI invocation is faster to write and impossible to review. The graph should probably hold the recipe, which makes generation itself a thing the graph describes." ;
+               kpred:open-question "Which modalities first? Prose and diagrams are proven here. Slides, audio narration, and image+text (a meme with context) are named but unbuilt, and each needs a validator of its own — the mermaid renderer is the model for what \u0027validate before emit\u0027 looks like for a non-prose format." ;
+               kpred:relates-to   kb:graph-publishing ;
+               kpred:relates-to   kb:journey-docs ;
+               kpred:relates-to   kb:tenet-export ;
+               kpred:relates-to   kb:tenet-citation ;
+               kpred:remaining    "ALL OF THE GENERALIZATION. Today there are four unrelated generators; there is no way to say \u0027this slice, at this detail level, as this format\u0027 and get an artifact." .
+
+kb:task-model-bench rdf:type   ktype:Feature ;
+               rdfs:label   "Define a task, search HuggingFace, benchmark the options" ;
+               kpred:feature-id   "F183" ;
+               kpred:has-status   "planned" ;
+               kpred:decided      "MATT, 2026-09-06: an easy way to define a task, search HuggingFace for candidates, and benchmark them against each other — \u0027critical when nailing down the multitudes of multi-media content there is. Video with audio, meme photo with text.\u0027" ;
+               kpred:measured     "THIS IS UNIFICATION, NOT A NEW CAPABILITY: 33 bench scripts already exist (bench:embed, bench:vlm, bench:llm, bench:tts, bench:stt, bench:coding, bench:agentic, bench:ollama, bench:predicates, bench:docs, bench:cost and more), and HuggingFace discovery is already wired for two of them via bench:embed:hf and bench:llm:hf (tests/visual/hf-model-query.ts). What is missing is a common TASK definition, so a new modality means writing a new bench from scratch every time." ;
+               kpred:principle    "A BENCHMARK NEEDS A GROUND TRUTH OR IT IS A VIBE. The extraction score earned its number by hand-checking a corpus (tests/fixtures/notes-corpus/expectations.json, 19 scoreable items). Multi-modal tasks need the same and it is the expensive part — the model search is easy, the fixtures are not." ;
+               kpred:open-question "Is the task definition a graph entity? It would make the benchmark corpus, the candidates, and the scores all queryable — and the results are exactly the kind of measured claim kb:tenet-evidence asks for. It would also be the first time the graph describes a process rather than a thing." ;
+               kpred:relates-to   kb:local-model-bench ;
+               kpred:relates-to   kb:graph-to-content ;
+               kpred:relates-to   kb:tenet-evidence ;
+               kpred:relates-to   kb:tenet-open ;
+               kpred:remaining    "The task definition, a shared runner, and fixtures for the named modalities: video-with-audio and image-with-text. Nothing exists for either today." .
+
+kb:tenet-alignment rdf:type    ktype:Feature ;
+               rdfs:label   "Tenet alignment — checking the roadmap against what we say we believe" ;
+               kpred:feature-id   "F184" ;
+               kpred:has-status   "functional" ;
+               kpred:has-file     "scripts/offline/tenet-align.ts" ;
+               kpred:description  "Reads every roadmap feature against the tenets in kb:thesis and reports where they disagree: account pressure, closed-by-default dependencies, a store with no export path, a functional claim with no test or measurement, a status that outranks its own dependency, and tenets nothing is built against. Script tier, zero tokens, registered in the session sweep." ;
+               kpred:decided      "MATT ASKED FOR IT AS A HABIT, 2026-09-06, which decides the tier. A deep read of 255 features against 11 tenets is exactly what Opus should do ONCE and then never again — it is expensive, unreproducible, and stale the moment a feature is added. Everything checkable by a rule became a rule, so it runs free every session." ;
+               kpred:measured     "THE FIRST RUN WAS 98 FINDINGS AND 67% NOISE, which is the failure this project already warned itself about. 39 dangling-dependency findings were ALL false: a shipped feature moves to reckons-shipped.ttl leaving a stub with no feature-id, so every dependency on anything shipped read as broken. 27 overclaim findings were false for a different reason: inside the roadmap a `planned` entity describing what it WILL do is not lying, because kpred:has-status sits right beside it. Narrowed to 31 findings, 19 high." ;
+               kpred:honest-note  "AND ONE FALSE POSITIVE SURVIVED INTO THE SECOND RUN: \u0027session token\u0027 matched F74.4, which counts LLM TOKENS, not auth sessions. A word meaning two things in the same repository is not a usable signal, and no amount of care at design time would have found that — only reading the output did." ;
+               kpred:principle    "REPORT-ONLY, ALWAYS. A rule cannot read intent: a flag may be correct design that simply says so out loud, and a pass proves only that the words did not trip a check. It writes to no TTL and fails no build; the output is a reading list." ;
+               kpred:relates-to   kb:tenet-honesty ;
+               kpred:relates-to   kb:tenet-evidence ;
+               kpred:relates-to   kb:tenet-link ;
+               kpred:relates-to   kb:tenet-no-account ;
+               kpred:remaining    "The checks are keyword-shaped, so they find features whose WORDS touch a tenet and miss any that betray one silently. The agent tier is the natural next step — a local model reading each feature against each tenet — but only once the script tier stops producing noise, or it just moves the triage cost." .
+
+kb:blog-delivery rdf:type      ktype:Feature ;
+               rdfs:label   "Multi-media generated content ships as blog entries in the CMS" ;
+               kpred:feature-id   "F185" ;
+               kpred:has-status   "planned" ;
+               kpred:decided      "MATT, 2026-09-06: \u0027deliver the multi-media content via blog entries in the CMS.\u0027 This settles where F182\u0027s output GOES, which was its biggest unanswered question — generated prose, diagrams and other media become posts a human edits and publishes, not files that appear in a directory." ;
+               kpred:principle    "THIS IS WHY GENERATION CAN BE A PROPOSAL RATHER THAN A COMMIT. A blog entry is reviewed before it is published by definition, so the CMS IS the human gate that F182 requires — the same shape as knowledge.pending.jsonl, with an editor instead of a review queue." ;
+               kpred:measured     "WHAT EXISTS TODAY: Sveltia CMS is wired (static/admin/config.yml) against content/, with OAuth handled by the `reckons-sveltia-cms-auth` Cloudflare Worker at admin.reckons.ai, and the page schema already carries a `date` field hinted \u0027Posts only — release notes/announcements/blog publish date\u0027. So the CMS and the field exist; there is no blog COLLECTION, no post template, and no route rendering a feed." ;
+               kpred:constraint   "THE CMS IS THE ONE PLACE AN ACCOUNT IS REQUIRED, and kb:tenet-no-account demands that be said rather than glossed: editing through Sveltia needs a GitHub login, because it commits to the repository. It is the EDITOR\u0027s account with a third party they already have, never a reader\u0027s — reading the site requires nothing, and must keep requiring nothing." ;
+               kpred:constraint   "GENERATED PAGES ARE NOT HAND-EDITABLE, and a blog post must be. content/ today is regenerated from the graph and md-align fails on any hand edit, so a post either lives outside that check or the round-trip has to accept authored content — which is kb:gp-authoring\u0027s open question (F110), still unsettled." ;
+               kpred:open-question "Does a post become facts in the graph, or only come FROM it? A post generated from a slice is graph-to-content; a post a human then rewrites is content the graph does not know about — the same tension F110 names for authored prose, arriving from the other direction." ;
+               kpred:depends-on   kb:graph-to-content ;
+               kpred:relates-to   kb:graph-publishing ;
+               kpred:relates-to   kb:tenet-no-account ;
+               kpred:relates-to   kb:tenet-honesty ;
+               kpred:remaining    "A blog collection in the CMS config, a post template, a feed route, and a decision on the hand-edit question above. None of it exists." .

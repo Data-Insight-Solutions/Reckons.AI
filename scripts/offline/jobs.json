@@ -55,6 +55,13 @@
       "desc": "Graph invariants: dead has-file/tested-by links, bad status, duplicate feature-ids, dangling refs, incomplete features"
     },
     {
+      "name": "tenet-align",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/tenet-align.ts",
+      "desc": "Reads every roadmap feature against the tenets in kb:thesis and reports where they disagree: account pressure, closed-by-default dependencies, a store with no export, a 'functional' claim with no test or measurement, a status that outranks its own dependency, and tenets nothing is built against. Script tier and free, so it runs every session \u2014 an alignment check is only a habit if it costs nothing. Report-only: a rule cannot read intent, so the output is a reading list, never a verdict."
+    },
+    {
       "name": "extraction-chain",
       "tier": "script",
       "enabled": true,
