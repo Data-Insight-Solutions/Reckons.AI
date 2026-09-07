@@ -14,22 +14,18 @@ related:
 
 # SHACL (Shapes Constraint Language)
 
-*Concept*
-
 W3C Recommendation for validating RDF graphs against a set of constraints (shapes). Like a schema for RDF: define required properties, value types, and cardinalities.
 
-## Details
+## Detail
 
 **Date**
 
-- 2017-07-20
+2017-07-20
 
 ## Related
 
 **Published By**
 
 - [W3C (World Wide Web Consortium)](../timeline-ecosystem/w3-c)
-
-**Related**
 
 - [RDF 1.1 Specification](../timeline-ecosystem/rdf11)

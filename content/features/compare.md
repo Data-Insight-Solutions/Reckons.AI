@@ -9,24 +9,18 @@ status: published
 nav: sidebar
 excerpt: "Compare two knowledge graphs or snapshots at /compare."
 generated: "docs-kb"
-related:
-  - "diff-summary"
 ---
 
 # Compare / Diff Engine
 
-*Concept*
-
 Compare two knowledge graphs or snapshots at /compare. Diff engine categorizes changes as Add, Reinforce, Conflict, Merge, Remove. Visual Venn diagram and diff table with bulk accept/reject.
 
-## Steps
+## In this section
 
-**[Diff Summary](../features/diff-summary)**
+### Diff Summary
 
-LLM-generated 3-part summaries of diffs: what is new, what reinforces existing knowledge, and what conflicts.
+LLM-generated 3-part summaries of diffs: what is new, what reinforces existing knowledge, and what conflicts. Integrated in /compare, /review, and the browser extension sidepanel.
 
 ## Related
 
-**Related**
-
-- [Diff Summary](../features/diff-summary)
+- [Compare / Diff Engine](../features/compare)

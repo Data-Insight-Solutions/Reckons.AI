@@ -3,6 +3,7 @@ title: "Add — put something in"
 slug: "core-1"
 order: 1000
 section: "User Paths"
+parent: "core-loop"
 template: doc
 status: published
 nav: sidebar
@@ -12,25 +13,15 @@ generated: "docs-kb"
 
 # Add — put something in
 
-*Concept*
-
 Paste a note, drop a file, give it a URL, or say it out loud. The app reads it and proposes triples: separate claims, each small enough to judge on its own. You are not writing the graph by hand — you are giving it something to read.
 
-## Details
+## Detail
 
 **Page**
 
-- /ingest
-
-**Step Order**
-
-- 1
+/ingest
 
 ## Related
-
-**Part Of**
-
-- [The core loop — add, review, add, review, decide](../user-paths/core-loop)
 
 **Uses**
 

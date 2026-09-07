@@ -13,36 +13,40 @@ generated: "docs-kb"
 
 # Getting Started
 
-*Document*
-
 A step-by-step guide to building your first knowledge graph.
 
-## Steps
+## In this section
 
-**[Quick-Start Example graph](../guide/quick-start-example)**
+### Quick-Start Example graph
 
-A practical knowledge graph with people, projects, research notes, decisions, and metrics.
+A practical knowledge graph with people, projects, research notes, decisions, and metrics. Import it from the Info page to see how real-world data maps to triples. 15 entities, 90 triples.
 
-**[Step 1: Choose an LLM Backend](../guide/step1)**
+#### Detail
 
-Go to Settings and configure at least one LLM provider.
+**Source**
 
-**[Step 2: Ingest Your First Content](../guide/step2)**
+/starter-quickstart.ttl
 
-Go to add (the + tab) and paste text, a URL, or upload a document.
+### Step 1: Choose an LLM Backend
 
-**[Step 3: Review Pending Statements](../guide/step3)**
+Go to Settings and configure at least one LLM provider. Ollama (free, local) or OpenRouter (free tier) are good starting points.
 
-Go to Review to see extracted triples.
+### Step 2: Ingest Your First Content
 
-**[Step 4: Explore the Graph](../guide/step4)**
+Go to add (the + tab) and paste text, a URL, or upload a document. The LLM will extract semantic facts automatically.
 
-Go to view (the home tab) to see your knowledge in 3D.
+### Step 3: Review Pending Statements
 
-**[Step 5: Ask Shelly](../guide/step5)**
+Go to Review to see extracted triples. Confirm accurate ones, reject incorrect ones, refine those that need adjustment.
 
-Click the turtle icon in the search bar to chat with Shelly.
+### Step 4: Explore the Graph
 
-**[Step 6: Export and Share](../guide/step6)**
+Go to view (the home tab) to see your knowledge in 3D. Click nodes to select them, use the RadialMenu for actions, and use filters to focus. The graph tab manages your graphs: create, switch, rename, currents, and publishing.
 
-Go to Settings -&gt; Backup and Export to download your graph as Turtle.
+### Step 5: Ask Shelly
+
+Click the turtle icon in the search bar to chat with Shelly. Ask questions about your graph, play the story walkthrough, or request a Reckoning.
+
+### Step 6: Export and Share
+
+Go to Settings -&gt; Backup and Export to download your graph as Turtle. Share the .ttl file or set up workspace sync for MCP integration.

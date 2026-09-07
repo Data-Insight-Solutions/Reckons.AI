@@ -14,12 +14,8 @@ related:
 
 # OpenLink Software (Virtuoso)
 
-*Organization*
-
 Creator of Virtuoso, a hybrid RDBMS/graph database and SPARQL endpoint. Powers DBpedia and many enterprise linked data deployments.
 
 ## Related
-
-**Related**
 
 - [DBpedia Launch](../timeline-ecosystem/d-bpedia-launch)

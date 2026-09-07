@@ -12,11 +12,17 @@ generated: "docs-kb"
 
 # Coding workflow
 
-*Concept*
-
 Reckons.AI turns a codebase into a graph you can interrogate, and then keeps the code and the plan honest with each other. The plan lives in the graph; code is checked against it; agents propose, humans decide. This page is generated from that same graph, so it cannot claim a capability the graph does not have.
 
-## Where to go next
+## Why it is this way
+
+**Principle**
+
+- Agents propose; humans dispose. Every automated finding lands as a PENDING fact for review, never as a silent edit to source or to the graph.
+- Route work to the cheapest tier that can do it correctly. Most of what an AI coding assistant is asked to do is not judgment — it is a rule, and a rule should be a script.
+- The graph is the plan. A feature must exist in the roadmap graph before it is built, and its status must reflect reality — not what we wish were true.
+
+## Steps
 
 **[Ingest a repository into a graph](../coding-workflow/repo-ingest)**
 
@@ -57,11 +63,3 @@ THIS DOES NOT EXIST YET.
 **[The saving is not compression — it is the feature you did not build twice](../coding-workflow/avoided-rework)**
 
 The usual pitch for a knowledge graph in front of a coding agent is token compression: feed a dense subgraph instead of re-reading the repo.
-
-## Details
-
-**Principle**
-
-- Agents propose; humans dispose. Every automated finding lands as a PENDING fact for review, never as a silent edit to source or to the graph.
-- Route work to the cheapest tier that can do it correctly. Most of what an AI coding assistant is asked to do is not judgment — it is a rule, and a rule should be a script.
-- The graph is the plan. A feature must exist in the roadmap graph before it is built, and its status must reflect reality — not what we wish were true.

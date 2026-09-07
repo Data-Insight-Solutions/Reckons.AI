@@ -11,18 +11,14 @@ generated: "docs-kb"
 
 # The Reckons.AI Story
 
-*Concept*
+A guided walkthrough of why Reckons.AI exists, how it works, and what it means for you.
 
-## Details
+## Detail
 
 **Autoplay**
 
-- false
-
-**Description**
-
-- A guided walkthrough of why Reckons.AI exists, how it works, and what it means for you.
+false
 
 **Pace**
 
-- 40
+40

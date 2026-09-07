@@ -14,18 +14,14 @@ related:
 
 # Google Knowledge Graph
 
-*Concept*
-
 Google announced its Knowledge Graph in 2012, using structured data (including Freebase and Schema.org) to enhance search results with entity panels. Brought knowledge graphs into mainstream awareness.
 
-## Details
+## Detail
 
 **Date**
 
-- 2012-05-16
+2012-05-16
 
 ## Related
-
-**Related**
 
 - [Schema.org](../timeline-ecosystem/schema-org)

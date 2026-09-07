@@ -14,26 +14,22 @@ related:
 
 # Semiont (AI Alliance)
 
-*Concept*
-
 A semantic enrichment framework from the AI Alliance. Defines 8 progressive analysis flows: Frame, Yield, Mark, Match, Bind, Gather, Browse, Beckon. Inspired Reckons.AI's Research Sessions and planned enrichment pipeline.
 
-## Details
+## Detail
 
 **Date**
 
-- 2025-01-01
+2025-01-01
 
 **Website**
 
-- https://github.com/The-AI-Alliance/semiont
+https://github.com/The-AI-Alliance/semiont
 
 ## Related
 
 **Published By**
 
 - [The AI Alliance](../timeline-ecosystem/ai-alliance)
-
-**Related**
 
 - [Reckons.AI Launch](../timeline-ecosystem/reckons-ai-launch)

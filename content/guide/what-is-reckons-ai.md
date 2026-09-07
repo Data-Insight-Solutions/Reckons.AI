@@ -10,52 +10,49 @@ excerpt: "Reckons.AI is a personal knowledge graph that runs entirely in your br
 generated: "docs-kb"
 related:
   - "triple-architecture"
-  - "why-it-matters"
 ---
 
 # What Is Reckons.AI
 
-*Concept*
-
 Reckons.AI is a personal knowledge graph that runs entirely in your browser. No server, no account, no cloud dependency. Your data stays on your device in IndexedDB, and you control every piece of knowledge that enters your graph through a human review process.
 
-## Where to go next
+## In this section
 
-**[LEAP: Triples & RDF Deep Dive](../guide/triples-and-rdf)**
+### LEAP: Triples & RDF Deep Dive
 
 Click to explore the semantic triple architecture, Turtle syntax, RDF standards (RDFS, SKOS, SPARQL, JSON-LD, PROV-O), and knowledge graph fundamentals.
 
-**[LEAP: Language Models](../guide/language-models)**
+### LEAP: Language Models
 
 Click to learn what LLMs actually are, why they hallucinate, how RAG works, and why your curated graph makes AI dramatically more accurate.
 
-**[LEAP: Use Cases](../guide/use-cases)**
+### LEAP: Use Cases
 
 Click to explore real-world scenarios: insurance claims, legal disputes, employment rights, medical records, corporate pushback, and research.
 
-**[LEAP: Features](../guide/features)**
+### LEAP: Features
 
 Click for detailed coverage of every feature: Ingest, Review, Trust, Graph, Shelly, Reckonings, Compare, Multi-Graph, graph Leap, Content Safety, Predicate Manager, Whisper STT, Kokoro TTS, and more.
 
-**[LEAP: Integrations & Tech](../guide/integrations-tech)**
+### LEAP: Integrations & Tech
 
 Click for integrations (Calendar, MCP, Extension, Whisper, Kokoro, OCR, Firecrawl, Meshy 3D) and the technology stack (SvelteKit 2, Threlte 8, N3.js, @huggingface/transformers, Dexie).
 
-**[LEAP: Tips & Security](../guide/tips-security)**
+### LEAP: Tips & Security
 
 Click for practical tips (start small, review carefully, export often, use Ollama offline) and the security architecture (no server, API key safety, content safety, CSP, offline-capable).
 
-**[LEAP: Timeline & RDF Ecosystem](../guide/timeline-ecosystem)**
+### LEAP: Timeline & RDF Ecosystem
 
 Click for the RDF timeline from 1999 to 2026, key organizations (W3C, AI Alliance, Schema.org), people (Tim Berners-Lee), and the Reckons.AI launch.
 
-**[LEAP: Architecture & Design](../guide/architecture-guide)**
+### LEAP: Architecture & Design
 
 Click for architecture decisions, TTL-first documentation strategy, standards alignment (PROV-O, SKOS), deployment patterns, style conventions, dependency health, and the markdown migration tracker.
 
-**[LEAP: Test Suite & Visual Regression](../guide/testing)**
+### LEAP: Test Suite & Visual Regression
 
-Click for test documentation as interactive stories.
+Click for test documentation as interactive stories. Walk through user story E2E tests step-by-step with screenshots attached to each node. Covers Dev Sprint Planning, User Docs Import, Cross-Graph Alignment, and page-level visual regression.
 
 **[3D / 2D Knowledge Graph](../features/graph3-d)**
 
@@ -65,17 +62,17 @@ Interactive force-directed graph in WebGL (3D) or Canvas (2D fallback).
 
 Compare two knowledge graphs or snapshots at /compare.
 
-**[Content Safety](../features/content-safety-features)**
+### Content Safety
 
-Ethics preamble injected into ALL LLM system prompts.
+Ethics preamble injected into ALL LLM system prompts. Content classifier with two levels: blocked (filtered out on ingest) and mature (flagged on export with advisory). Discourse, disagreement, and academic content pass freely.
 
 **[Context Compression](../features/context-compression-features)**
 
 Condense your context.
 
-**[Cross-Graph Alignment](../features/cross-kb-alignment)**
+### Cross-Graph Alignment
 
-Align entities across knowledge graphs.
+Align entities across knowledge graphs. Entity matching via exact IRI match and embedding similarity. IRI remapping for entities that represent the same concept across graphs. Align tab in review page. KbPicker selects source graph, AlignmentCard shows each match with accept/reject.
 
 **[Currents](../features/currents)**
 
@@ -85,25 +82,25 @@ Streamed ingest: point a current at an RSS feed, URL, or topic and it brings rec
 
 Per-graph currents configuration (allowed entity types, per-current source/cadence/label) lives IN the graph as ordinary statements under the urn:reckons:meta/currents/ namespace, the same pattern used by nav:order for hierarchy.
 
-**[Disambiguation](../features/disambiguation)**
+### Disambiguation
 
-Automatic detection of duplicate or similar entities using text embeddings and cosine similarity.
+Automatic detection of duplicate or similar entities using text embeddings and cosine similarity. Suggests merges for your review in the Merges tab.
 
-**[Entity Type System](../features/entity-types)**
+### Entity Type System
 
-Categorize entities (Person, Place, Concept, Tool, Document, Organization, Event) with custom colors and 3D shapes.
+Categorize entities (Person, Place, Concept, Tool, Document, Organization, Event) with custom colors and 3D shapes. Types assigned via rdf:type statements.
 
 **[Getting Started](../guide/getting-started)**
 
 A step-by-step guide to building your first knowledge graph.
 
-**[History Mode](../features/history-mode)**
+### History Mode
 
-Time-travel through your graph at /history.
+Time-travel through your graph at /history. Scrub a timeline to see the graph at any past point. All mutations are logged in the changelog.
 
-**[Human-in-the-Loop](../guide/human-in-the-loop)**
+### Human-in-the-Loop
 
-Nothing enters your confirmed knowledge graph without your explicit review.
+Nothing enters your confirmed knowledge graph without your explicit review. Every triple extracted by an LLM starts as 'pending' and must be confirmed, rejected, or refined by you. You are the authority.
 
 **[Ingest](../features/ingest)**
 
@@ -129,25 +126,25 @@ Reckons.AI uses its own MCP server to track product state.
 
 Create, switch, rename, and delete independent knowledge graphs.
 
-**[Open Source (MIT)](../guide/open-source)**
+### Open Source (MIT)
 
-Reckons.AI is MIT-licensed.
+Reckons.AI is MIT-licensed. Read the code, fork it, self-host it, run it offline forever. No proprietary lock-in, no subscription, no way to lose access to your own tool.
 
-**[Passage Grounding](../features/passage-grounding)**
+### Passage Grounding
 
-Verbatim source excerpts attached to extracted triples.
+Verbatim source excerpts attached to extracted triples. LLM prompt rule requests the exact source sentence. Persists via meta:excerpt in TTL reification. Displayed in StatementCard and DiffEntry.
 
-**[Predicate Manager](../features/predicate-manager)**
+### Predicate Manager
 
-View all predicates in your graph with usage counts.
+View all predicates in your graph with usage counts. Rename predicates across all statements or merge two predicates into one. Accessible from the graph page.
 
 **[Published Graph Site](../features/published-docs)**
 
 Any graph can publish itself as a browsable website.
 
-**[Reckoning (STP)](../features/reckoning)**
+### Reckoning (STP)
 
-Situation-Target-Proposal: describe your situation, state your goal, and the AI synthesizes options grounded ONLY in your confirmed triples.
+Situation-Target-Proposal: describe your situation, state your goal, and the AI synthesizes options grounded ONLY in your confirmed triples. Every option cites its sources.
 
 **[Review System](../features/review-system)**
 
@@ -165,9 +162,9 @@ The turtle-shaped AI assistant.
 
 Generic refresh for url, repository, and calendar sources.
 
-**[Source Trust System](../features/trust-system)**
+### Source Trust System
 
-Sources accumulate trust scores based on your review decisions.
+Sources accumulate trust scores based on your review decisions. Trusted sources can be auto-confirmed. A time-decay formula prevents stale trust from persisting.
 
 **[Style Conventions](../architecture/style-conventions)**
 
@@ -185,17 +182,15 @@ Static SvelteKit 2 app with Svelte 5 runes.
 
 Reckons.AI uses its own TTL knowledge graphs as the primary documentation format.
 
-**[Turtle Export](../features/ttl-export)**
+### Turtle Export
 
-Export your graph as a .ttl file with full reification metadata (status, source, confidence, timestamps, excerpts).
+Export your graph as a .ttl file with full reification metadata (status, source, confidence, timestamps, excerpts). Roundtrip-safe. Clean export for interop or full export with all metadata.
 
-**[Why Reckons.AI Matters](../guide/why-it-matters)**
+### Why Reckons.AI Matters
 
-In an era of information overload, Reckons.AI gives individuals a structured way to capture, verify, connect, and retrieve knowledge.
+In an era of information overload, Reckons.AI gives individuals a structured way to capture, verify, connect, and retrieve knowledge. It bridges the gap between human understanding and machine processing -- your knowledge becomes queryable, shareable, and portable.
 
 ## Related
 
-**Related**
-
 - [The Semantic Triple](../triples-rdf/triple-architecture)
-- [Why Reckons.AI Matters](../guide/why-it-matters)
+- [What Is Reckons.AI](../guide/what-is-reckons-ai)

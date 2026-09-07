@@ -87,6 +87,16 @@ const EXCLUDED_LITERAL_PREDICATES = new Set<string>([
  *  rendered in the generic "Related" body section. */
 const EXCLUDED_IRI_PREDICATES = new Set<string>([RDF_TYPE, SKOS_BROADER, NAV_NEXT, NAV_PREV]);
 
+/**
+ * Structural predicates that are READ by the generator but never SHOWN to a reader.
+ *
+ * They cannot be dropped at extraction time the way EXCLUDED_* are — `part-of` is how a child
+ * finds its parent and `step-order` is how the steps are sorted, so removing them from the data
+ * silently unbuilds the hierarchy while every gate still passes. (It did, for one run, on
+ * 2026-09-06.) Excluded here, at the point of rendering, and only there.
+ */
+const RENDER_ONLY_STRUCTURAL = new Set<string>([PART_OF, STEP_ORDER]);
+
 // ── Section map — file → display title. Order here is the processing order used to
 // resolve which file "owns" an entity asserted in more than one file (see
 // resolveHomeFile): starter-guide.ttl is listed last on purpose, so a sub-graph's
@@ -315,6 +325,97 @@ interface ChildRef {
   excerpt: string;      // first sentence of the child's definition
   status: string | null; // so a hub can say which of its steps are not built
   order: number;         // step-order, then nav:order, then alphabetical
+  // Set when the child was too thin to earn its own page: it is rendered inline here instead,
+  // in full, at the position it would have occupied as a link.
+  folded: Entity | null;
+}
+
+/**
+ * Reading order for the prose predicates, and the section each belongs under.
+ *
+ * WHY THIS EXISTS. Everything below the definition used to be sorted ALPHABETICALLY BY PREDICATE
+ * NAME and dumped under one heading called "Details". So a page whose author had written
+ * `kpred:read-first` — literally "read this first" — rendered it below `kpred:principle`, because
+ * P sorts before R. The most important sentence on a page was positioned by an accident of the
+ * English word someone chose for the predicate, and filed under the least informative heading
+ * available in the language.
+ *
+ * `rank` is reading order; `band` is the section heading it appears under, and an empty band means
+ * no heading at all — the page speaking in its own voice, straight after its definition. Anything
+ * unlisted still renders: it lands in the final band alphabetically, so a newly minted predicate
+ * degrades to the old behaviour rather than vanishing.
+ */
+interface PredicateStyle { band: string; rank: number }
+
+const PREDICATE_STYLE: Record<string, PredicateStyle> = {
+  'read-first':    { band: '', rank: 10 },
+  'description':   { band: '', rank: 20 },
+  'summary':       { band: '', rank: 30 },
+
+  // A path's shape, in the order a reader needs it: who it is for, where it begins, where it
+  // lands. Alphabetically these came out audience / ends-with / starts-with — the journey
+  // described backwards, under a heading called "Detail".
+  'audience':      { band: 'At a glance', rank: 40 },
+  'starts-with':   { band: 'At a glance', rank: 50 },
+  'ends-with':     { band: 'At a glance', rank: 60 },
+
+  'decided':       { band: 'Why it is this way', rank: 100 },
+  'principle':     { band: 'Why it is this way', rank: 110 },
+  'constraint':    { band: 'Why it is this way', rank: 120 },
+  'tenet':         { band: 'Why it is this way', rank: 130 },
+  'honest-note':   { band: 'Why it is this way', rank: 140 },
+  'note':          { band: 'Why it is this way', rank: 150 },
+
+  'measured':      { band: 'What we found', rank: 200 },
+  'evidence':      { band: 'What we found', rank: 210 },
+  'proof':         { band: 'What we found', rank: 220 },
+  'example':       { band: 'What we found', rank: 230 },
+
+  'known-issue':   { band: 'What is not done', rank: 300 },
+  'open-question': { band: 'What is not done', rank: 310 },
+  'remaining':     { band: 'What is not done', rank: 320 },
+  'done':          { band: 'What is not done', rank: 330 },
+};
+
+const FALLBACK_BAND = 'Detail';
+
+function styleFor(predicateIri: string): PredicateStyle {
+  return PREDICATE_STYLE[localName(predicateIri)] ?? { band: FALLBACK_BAND, rank: 1000 };
+}
+
+/**
+ * One entity's prose: bands in reading order, values as PARAGRAPHS.
+ *
+ * Values used to be bullets. A bullet list of four-sentence paragraphs reads as a checklist nobody
+ * intends to tick, and a single-valued predicate became a one-item list — the least useful list
+ * there is. Several values under one predicate still list, because then it really is a list.
+ *
+ * `depth` lets the same renderer serve a page (h2 bands) and an entity folded into its parent
+ * (h4 bands), so a folded section cannot outrank the page it sits inside.
+ */
+function renderProse(e: Entity, depth: number): string[] {
+  const hash = '#'.repeat(Math.min(6, depth));
+  const keys = [...e.literalProps.keys()]
+    .filter((k) => k !== HAS_STATUS && !RENDER_ONLY_STRUCTURAL.has(k))
+    .sort((a, b) => {
+      const sa = styleFor(a), sb = styleFor(b);
+      return sa.rank - sb.rank || humanize(localName(a)).localeCompare(humanize(localName(b)));
+    });
+
+  const lines: string[] = [];
+  let openBand: string | null = null;
+  for (const k of keys) {
+    const { band } = styleFor(k);
+    if (band !== openBand) {
+      if (band) lines.push(`${hash} ${escapeMdText(band)}`, '');
+      openBand = band;
+    }
+    const values = e.literalProps.get(k)!;
+    if (band) lines.push(`**${escapeMdText(humanize(localName(k)))}**`, '');
+    if (values.length === 1) lines.push(escapeMdText(values[0]), '');
+    else { for (const v of values) lines.push(`- ${escapeMdText(v)}`); lines.push(''); }
+  }
+  return lines;
 }
 
 /**
@@ -361,34 +462,86 @@ function renderDiagramFor(e: Entity): string[] {
 }
 
 /**
- * A hub page's walkthrough of what sits underneath it.
+ * How much prose an entity actually carries — the number that decides whether it is a page.
+ *
+ * Counts the definition plus every content predicate. Structural values are already excluded from
+ * literalProps, so this is what a reader would actually read.
+ */
+function proseWeight(e: Entity): number {
+  let words = e.definition ? e.definition.split(/\s+/).length : 0;
+  for (const [k, values] of e.literalProps) {
+    if (k === HAS_STATUS) continue;
+    for (const v of values) words += v.split(/\s+/).length;
+  }
+  return words;
+}
+
+/** Below this many words, an entity is a paragraph and is folded into its parent. */
+const PAGE_THRESHOLD_WORDS = 45;
+
+/**
+ * Does this entity deserve a page of its own?
+ *
+ * MEASURED, WHICH IS WHY THE RULE EXISTS: 138 of 316 generated pages — 43% — carried under 40
+ * words of prose, and nine carried under 20. `content/features/entity-types.md` was a title and
+ * one sentence. That is not a short page, it is a paragraph that has been given a URL, a sidebar
+ * entry, a heading and a back-link, and the reader pays a navigation step to reach one line.
+ *
+ * A thin entity is folded into its parent as a section instead, which fixes the same problem from
+ * the other end: the parent stops being a table of contents and becomes a page worth reading.
+ *
+ * An entity with children always earns a page whatever its length — it is a junction, and folding
+ * it would strand everything beneath it.
+ */
+function earnsPage(e: Entity, hasChildren: boolean, hasParentPage: boolean): boolean {
+  if (hasChildren) return true;
+  if (!hasParentPage) return true;      // nothing to fold into
+  if (e.diagram) return true;           // a picture is worth the page
+  return proseWeight(e) >= PAGE_THRESHOLD_WORDS;
+}
+
+/**
+ * A hub's route through what sits underneath it.
  *
  * WHY THIS EXISTS. Relations in the body only ever pointed OUTWARD (`kpred:uses`, `skos:related`)
  * and `skos:broader` points UP, so a parent page rendered with no route to its own children — the
- * /docs/user-paths hub described five journeys and linked to none of them, which is a table of
- * contents with the contents missing. Children are indexed here so any hub becomes a walkthrough
- * automatically, in the order the author actually meant.
+ * /docs/user-paths hub described nine journeys and linked to none of them, which is a table of
+ * contents with the contents missing.
  *
- * The child's own status travels with it, so a hub cannot quietly present a step that is not built
- * as though it were finished (kb:honest-status) — the reader sees the gap in the list, before they
- * click.
+ * A child that earned its own page gets a link and its first sentence. A child that did not is
+ * rendered INLINE, in full, at the same position — so the sequence a reader follows is the same
+ * either way, and the thin ones stop being a click that leads to one line.
+ *
+ * A child's status travels with it, so a hub cannot quietly present a step that is not built as
+ * though it were finished (kb:honest-status) — the gap is visible before the reader clicks.
  */
 function renderChildren(children: ChildRef[], heading: string): string[] {
   if (!children.length) return [];
-  const lines = [`## ${heading}`, ''];
+  const lines = [`## ${escapeMdText(heading)}`, ''];
   for (const c of children) {
     const flag = c.status && c.status !== 'functional' && c.status !== 'production'
       ? ` — **${escapeMdText(c.status)}**`
       : '';
-    lines.push(`**[${escapeMdText(c.title)}](../${slugify(c.section)}/${c.slug})**${flag}`, '');
-    if (c.excerpt) lines.push(escapeMdText(c.excerpt), '');
+    if (c.folded) {
+      lines.push(`### ${escapeMdText(c.title)}${flag}`, '');
+      if (c.folded.definition) lines.push(escapeMdText(c.folded.definition), '');
+      lines.push(...renderDiagramFor(c.folded));
+      lines.push(...renderProse(c.folded, 4));
+    } else {
+      lines.push(`**[${escapeMdText(c.title)}](../${slugify(c.section)}/${c.slug})**${flag}`, '');
+      if (c.excerpt) lines.push(escapeMdText(c.excerpt), '');
+    }
   }
   return lines;
 }
 
-function renderBody(e: Entity, refs: Map<string, PageRef>, children: ChildRef[] = []): string {
+function renderBody(
+  e: Entity,
+  refs: Map<string, PageRef>,
+  children: ChildRef[] = [],
+  childHeading = 'Where to go next',
+): string {
   const lines: string[] = [`# ${escapeMdText(e.title)}`, ''];
-  if (e.types.length) { lines.push(`*${escapeMdText(e.types.join(', '))}*`, ''); }
 
   // Status first — before the prose that would otherwise imply the thing exists.
   const status = e.literalProps.get(HAS_STATUS)?.[0];
@@ -399,24 +552,15 @@ function renderBody(e: Entity, refs: Map<string, PageRef>, children: ChildRef[] 
   // The picture goes directly under the sentence that introduces it, not at the bottom.
   lines.push(...renderDiagramFor(e));
 
-  // Then the route onward. A reader who wants the next page should not have to scroll past
-  // every property of this one to find it, so children come before Details.
-  lines.push(...renderChildren(children, e.parent ? 'Steps' : 'Where to go next'));
+  // The page's own prose, in reading order, BEFORE the route onward: a reader arriving here came
+  // for this page, not for its table of contents.
+  lines.push(...renderProse(e, 2));
 
-  // has-status is rendered as the banner above; don't repeat it in Details.
-  const literalKeys = [...e.literalProps.keys()]
-    .filter((p) => p !== HAS_STATUS)
-    .sort((a, b) => humanize(localName(a)).localeCompare(humanize(localName(b))));
-  if (literalKeys.length) {
-    lines.push('## Details', '');
-    for (const p of literalKeys) {
-      lines.push(`**${escapeMdText(humanize(localName(p)))}**`, '');
-      for (const v of e.literalProps.get(p)!) lines.push(`- ${escapeMdText(v)}`);
-      lines.push('');
-    }
-  }
+  lines.push(...renderChildren(children, childHeading));
 
-  const iriKeys = [...e.iriProps.keys()].sort((a, b) =>
+  const iriKeys = [...e.iriProps.keys()]
+    .filter((k) => !RENDER_ONLY_STRUCTURAL.has(k))
+    .sort((a, b) =>
     humanize(localName(a)).localeCompare(humanize(localName(b))));
   const relatedBlocks: string[] = [];
   for (const p of iriKeys) {
@@ -425,7 +569,9 @@ function renderBody(e: Entity, refs: Map<string, PageRef>, children: ChildRef[] 
       .filter((r): r is PageRef => !!r)
       .sort((a, b) => a.title.localeCompare(b.title));
     if (!targets.length) continue;
-    relatedBlocks.push(`**${escapeMdText(humanize(localName(p)))}**`, '');
+    const label = humanize(localName(p));
+    // "## Related" followed by "**Related**" was printing the same word twice on 87 pages.
+    if (label !== 'Related') relatedBlocks.push(`**${escapeMdText(label)}**`, '');
     for (const t of targets) {
       relatedBlocks.push(`- [${escapeMdText(t.title)}](../${slugify(t.section)}/${t.slug})`);
     }
@@ -505,10 +651,39 @@ function main(): void {
   // the journeys under them) OR as kpred:part-of (the composition edge, used by the numbered steps
   // inside one journey). Both mean "this page lives under that one" for navigation purposes, and
   // indexing only the first is why every path page rendered without its own steps.
-  const childrenOf = new Map<string, ChildRef[]>();
+  const parentOf = new Map<string, string>();
+  const viaPartOf = new Set<string>();
   for (const e of entities) {
     const partOf = e.iriProps.get(PART_OF)?.find((t) => refs.has(t)) ?? null;
     const parent = (e.parent && refs.has(e.parent)) ? e.parent : partOf;
+    if (!parent || parent === e.iri) continue;
+    parentOf.set(e.iri, parent);
+    if (parent === partOf && !e.parent) viaPartOf.add(parent);
+  }
+  const hasChildren = new Set([...parentOf.values()]);
+
+  // WHICH ENTITIES ARE PAGES. Everything with children is (folding a junction would strand what
+  // hangs off it), and everything else must carry enough prose to be worth a click. Because a
+  // parent always has a child, a folded entity's parent always earns a page — so nothing can fold
+  // into something that is not there.
+  const isPage = new Map<string, boolean>();
+  for (const e of entities) {
+    isPage.set(e.iri, earnsPage(e, hasChildren.has(e.iri), parentOf.has(e.iri)));
+  }
+
+  // A link to a folded entity must still go somewhere: it resolves to the page that now CONTAINS
+  // it. Dropping the link instead would quietly delete a cross-reference the author wrote.
+  const byIri = new Map(entities.map((e) => [e.iri, e]));
+  for (const e of entities) {
+    if (isPage.get(e.iri)) continue;
+    const host = parentOf.get(e.iri);
+    const hostRef = host ? refs.get(host) : undefined;
+    if (hostRef) refs.set(e.iri, hostRef);
+  }
+
+  const childrenOf = new Map<string, ChildRef[]>();
+  for (const e of entities) {
+    const parent = parentOf.get(e.iri);
     if (!parent) continue;
     const stepRaw = e.literalProps.get(STEP_ORDER)?.[0];
     const step = stepRaw !== undefined ? parseInt(stepRaw, 10) : NaN;
@@ -518,6 +693,7 @@ function main(): void {
       excerpt: e.definition ? firstSentence(e.definition) : '',
       status: e.literalProps.get(HAS_STATUS)?.[0] ?? null,
       order: Number.isFinite(step) ? step : (e.navOrder ?? Number.MAX_SAFE_INTEGER),
+      folded: isPage.get(e.iri) ? null : (byIri.get(e.iri) ?? null),
     });
     childrenOf.set(parent, arr);
   }
@@ -525,24 +701,43 @@ function main(): void {
     arr.sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
   }
 
-  const pages: SitePage[] = entities.map((e) => ({
+  // The heading names the relation the author used: kpred:part-of is a sequence ("Steps"),
+  // skos:broader is a taxonomy ("In this section"). Calling a section's pages "Steps" told a
+  // reader they were following a procedure when they were browsing a category.
+  const childHeadingFor = (iri: string) => (viaPartOf.has(iri) ? 'Steps' : 'In this section');
+
+  /** The page a reference should land on: the entity itself, or the page that absorbed it. */
+  const hostPageOf = (iri: string): string | null => {
+    if (isPage.get(iri)) return iri;
+    const host = parentOf.get(iri);
+    return host && isPage.get(host) ? host : null;
+  };
+
+  // Only entities that earned a page become files. A folded entity's content is not lost — it is
+  // rendered inside its parent by renderChildren, in the position it would have linked from.
+  const pages: SitePage[] = entities.filter((e) => isPage.get(e.iri)).map((e) => ({
     iri: e.iri,
     title: e.title,
     slug: slugs.get(e.iri)!,
     section: e.section,
     order: order.get(e.iri)!,
-    parent: e.parent && refs.has(e.parent) ? e.parent : null,
+    parent: (() => { const par = parentOf.get(e.iri); return par && isPage.get(par) ? par : null; })(),
     template: 'doc',
     status: 'published',
     nav: 'sidebar',
     excerpt: e.definition ? firstSentence(e.definition) : '',
-    body: renderBody(e, refs, childrenOf.get(e.iri) ?? []),
+    body: renderBody(e, refs, childrenOf.get(e.iri) ?? [], childHeadingFor(e.iri)),
     // Sorted by slug (not source IRI): `md-align`'s round trip reconstructs `related`
     // via synthetic `urn:kbase:concept/<slug>` IRIs and re-sorts alphabetically, so the
     // frontmatter list must already be in that order for the output to be stable.
-    related: (e.iriProps.get(SKOS_RELATED) ?? [])
-      .filter((r) => refs.has(r))
-      .sort((a, b) => refs.get(a)!.slug.localeCompare(refs.get(b)!.slug)),
+    // Resolved through the fold: a `related` pointing at an entity that is now a SECTION of some
+    // page must name that page, or the frontmatter links to a file that no longer exists. Deduped
+    // (two folded siblings resolve to the same host) and self-references dropped.
+    related: [...new Set(
+      (e.iriProps.get(SKOS_RELATED) ?? [])
+        .map((r) => hostPageOf(r))
+        .filter((r): r is string => !!r && r !== e.iri),
+    )].sort((a, b) => refs.get(a)!.slug.localeCompare(refs.get(b)!.slug)),
     next: null,
     prev: null,
     date: null,

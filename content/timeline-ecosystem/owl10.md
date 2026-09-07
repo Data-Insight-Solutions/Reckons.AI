@@ -14,22 +14,18 @@ related:
 
 # OWL 1.0 (Web Ontology Language)
 
-*Concept*
-
 W3C Recommendation for expressing rich ontologies: class hierarchies, cardinality constraints, equivalences. Built on RDF. Enables automated reasoning about domain knowledge.
 
-## Details
+## Detail
 
 **Date**
 
-- 2004-02-10
+2004-02-10
 
 ## Related
 
 **Published By**
 
 - [W3C (World Wide Web Consortium)](../timeline-ecosystem/w3-c)
-
-**Related**
 
 - [SPARQL 1.0](../timeline-ecosystem/sparql10)

@@ -14,12 +14,8 @@ related:
 
 # IETF (Internet Engineering Task Force)
 
-*Organization*
-
 Develops internet standards including URI/IRI specifications (RFC 3986, RFC 3987) that underpin RDF identifiers.
 
 ## Related
-
-**Related**
 
 - [W3C (World Wide Web Consortium)](../timeline-ecosystem/w3-c)

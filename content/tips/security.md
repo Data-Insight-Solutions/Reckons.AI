@@ -14,23 +14,21 @@ related:
 
 # Security and Privacy
 
-*Concept*
-
 Reckons.AI is designed so that your data cannot leak by accident. The architecture makes security the default, not an afterthought.
 
-## Where to go next
+## In this section
 
-**[API Key Safety](../tips/api-key-safety)**
+### API Key Safety
 
-API keys are sent directly from your browser to the provider (Claude, OpenAI, etc.).
+API keys are sent directly from your browser to the provider (Claude, OpenAI, etc.). They never pass through any Reckons.AI infrastructure. Keys are excluded from .ttl exports and settings exports.
 
-**[Content Safety System](../tips/content-safety-tips)**
+### Content Safety System
 
-All LLM prompts include an ethics preamble (hardcoded, not configurable).
+All LLM prompts include an ethics preamble (hardcoded, not configurable). A content classifier filters blocked content on ingest and flags mature content on export with an advisory triple. Discourse, disagreement, and academic content pass freely.
 
-**[Content Security Policy](../tips/csp)**
+### Content Security Policy
 
-The app enforces a strict CSP: no inline scripts beyond what SvelteKit requires, object-src none, form-action self.
+The app enforces a strict CSP: no inline scripts beyond what SvelteKit requires, object-src none, form-action self. connect-src explicitly lists each allowed AI provider domain.
 
 **[Data Classification Levels](../tips/data-classification)**
 
@@ -40,17 +38,17 @@ All graph data stored in browser IndexedDB (origin-locked).
 
 Three free tools in use: npm audit (known CVEs in dependency tree), GitHub Dependabot (automated PRs for vulnerable deps — enable via Settings &gt; Security &gt; Dependabot), and GitHub Code Scanning via CodeQL (static analysis of source code).
 
-**[No Server = No Breach](../tips/no-server)**
+### No Server = No Breach
 
-There is no server to hack.
+There is no server to hack. Your data lives in your browser's IndexedDB. The app is a static file served from a CDN or your own machine. No database, no API endpoint, no attack surface.
 
 **[No Telemetry Constraint](../tips/no-telemetry)**
 
 Reckons.AI collects zero telemetry, zero analytics, and performs zero third-party tracking.
 
-**[Offline Capable](../tips/offline-capable)**
+### Offline Capable
 
-After first load, the app works without internet.
+After first load, the app works without internet. Use Ollama or the WASM model and zero inference traffic leaves your machine. Your graph is fully usable offline.
 
 **[Risk Warnings for Integrations](../tips/risk-warnings)**
 
@@ -65,7 +63,5 @@ When a new vulnerability is reported (via npm audit, Dependabot alert, or public
 All {String.fromCharCode(123)}@html{String.fromCharCode(125)} usages are safe: TurtleChatPanel uses escHtml() before markdown, SearchBar uses escHtml() on all segments, NavBar renders hardcoded SVG, extension popup/sidepanel use template literals with no user input.
 
 ## Related
-
-**Related**
 
 - [What Is Reckons.AI](../guide/what-is-reckons-ai)

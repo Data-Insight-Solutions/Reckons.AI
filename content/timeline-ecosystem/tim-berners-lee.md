@@ -14,13 +14,9 @@ related:
 
 # Tim Berners-Lee
 
-*Person*
-
 Inventor of the World Wide Web (1989) and the Semantic Web vision (2001). Founded W3C. Proposed the Linked Data principles: use URIs, use HTTP, provide RDF, link to other datasets.
 
 ## Related
-
-**Related**
 
 - [Semantic Web Vision (Scientific American)](../timeline-ecosystem/semantic-web-vision)
 

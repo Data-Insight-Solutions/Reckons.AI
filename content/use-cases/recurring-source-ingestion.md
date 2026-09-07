@@ -13,6 +13,4 @@ generated: "docs-kb"
 
 # Recurring Source Ingestion
 
-*Concept*
-
 Mark a URL source as recurring with a check interval. On each re-ingest, a new dated source record is created while the old record is kept for historical comparison. The Compare view shows what changed between ingestions. Enables live-data workflows like weather monitoring, river gauge tracking, and NWS alert subscriptions.

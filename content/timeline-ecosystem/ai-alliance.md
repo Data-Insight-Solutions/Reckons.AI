@@ -14,18 +14,14 @@ related:
 
 # The AI Alliance
 
-*Organization*
-
 A consortium of companies, universities, and research organizations promoting open, safe, and beneficial AI. Hosts the Semiont project which inspired Reckons.AI's enrichment pipeline and research session features.
 
-## Details
+## Detail
 
 **Website**
 
-- https://thealliance.ai
+https://thealliance.ai
 
 ## Related
-
-**Related**
 
 - [Semiont (AI Alliance)](../timeline-ecosystem/semiont-release)

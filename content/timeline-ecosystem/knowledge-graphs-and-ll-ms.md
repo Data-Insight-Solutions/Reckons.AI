@@ -14,18 +14,14 @@ related:
 
 # Knowledge Graphs Meet LLMs
 
-*Concept*
-
 The convergence of structured knowledge graphs with large language models. LLMs can extract triples from text (what Reckons.AI does), query graphs in natural language, and ground their answers in verified facts. This synergy addresses both LLM hallucination and the knowledge graph population bottleneck.
 
-## Details
+## Detail
 
 **Date**
 
-- 2023-01-01
+2023-01-01
 
 ## Related
-
-**Related**
 
 - [What Is Reckons.AI](../guide/what-is-reckons-ai)

@@ -14,22 +14,18 @@ related:
 
 # RDF 1.1 Specification
 
-*Concept*
-
 Updated W3C Recommendation. Added Turtle and JSON-LD as official serializations, adopted IRIs (replacing URIs), and clarified the abstract syntax. The current version of the RDF standard.
 
-## Details
+## Detail
 
 **Date**
 
-- 2014-02-25
+2014-02-25
 
 ## Related
 
 **Published By**
 
 - [W3C (World Wide Web Consortium)](../timeline-ecosystem/w3-c)
-
-**Related**
 
 - [JSON-LD 1.0](../timeline-ecosystem/jsonld10)

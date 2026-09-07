@@ -17,23 +17,19 @@ related:
 
 # Reckons.AI Launch
 
-*Concept*
-
 Public launch of Reckons.AI -- a local-first personal knowledge graph built on RDF Turtle. Created by Matthew Roe at Data Insight Solutions LLC. Runs entirely in the browser. LLM-powered triple extraction, 3D graph visualization, browser extension for research sessions, and MCP server for AI agent integration.
 
-## Details
+## Detail
 
 **Date**
 
-- 2026-06-01
+2026-06-01
 
 ## Related
 
 **Created By**
 
 - [Matthew Roe](../timeline-ecosystem/matthew-roe-timeline-ecosystem)
-
-**Related**
 
 - [Data Insight Solutions LLC](../timeline-ecosystem/data-insight-solutions-timeline-ecosystem)
 - [Knowledge Graphs Meet LLMs](../timeline-ecosystem/knowledge-graphs-and-ll-ms)

@@ -14,22 +14,18 @@ related:
 
 # Model Context Protocol (MCP)
 
-*Concept*
-
 An open protocol by Anthropic for connecting AI models to external data sources and tools. Reckons.AI implements an MCP server so Claude Desktop, Cursor, and other agents can query your knowledge graph.
 
-## Details
+## Detail
 
 **Date**
 
-- 2024-11-25
+2024-11-25
 
 ## Related
 
 **Published By**
 
 - [Anthropic](../timeline-ecosystem/anthropic)
-
-**Related**
 
 - [What Is Reckons.AI](../guide/what-is-reckons-ai)

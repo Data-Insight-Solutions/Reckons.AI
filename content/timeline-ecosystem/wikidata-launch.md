@@ -14,22 +14,18 @@ related:
 
 # Wikidata Launch
 
-*Concept*
-
 Wikimedia's free knowledge graph. Over 100 million items, all queryable via SPARQL. The largest collaboratively edited knowledge graph in the world. Powers infoboxes across all Wikipedia language editions.
 
-## Details
+## Detail
 
 **Date**
 
-- 2012-10-29
+2012-10-29
 
 **Published By**
 
-- Wikimedia Foundation
+Wikimedia Foundation
 
 ## Related
-
-**Related**
 
 - [DBpedia Launch](../timeline-ecosystem/d-bpedia-launch)

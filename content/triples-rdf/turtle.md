@@ -13,24 +13,22 @@ generated: "docs-kb"
 
 # Turtle (.ttl) Syntax
 
-*Document*
-
 A compact, human-readable syntax for writing RDF triples. File extension: .ttl. Uses prefix declarations, semicolons to share subjects, commas to share predicates, and periods to end statement groups. This file is itself written in Turtle.
 
-## Steps
+## In this section
 
-**[@prefix Declaration](../triples-rdf/turtle-prefix)**
+### @prefix Declaration
 
-Declares a short alias for a namespace IRI.
+Declares a short alias for a namespace IRI. Example: @prefix rdf: &lt;http://www.w3.org/1999/02/22-rdf-syntax-ns#&gt; . Prefixes make Turtle readable -- without them every IRI needs full angle-bracket notation.
 
-**[Comma (,) -- Same Subject and Predicate](../triples-rdf/turtle-comma)**
+### Comma (,) -- Same Subject and Predicate
 
-In Turtle, a comma separates objects that share the same subject and predicate.
+In Turtle, a comma separates objects that share the same subject and predicate. Example: ex:Earth ex:hasOcean ex:Pacific , ex:Atlantic , ex:Indian .
 
-**[Period (.) -- End of Statement Group](../triples-rdf/turtle-period)**
+### Period (.) -- End of Statement Group
 
 A period terminates a group of triples about the same subject.
 
-**[Semicolon (;) -- Same Subject](../triples-rdf/turtle-semicolon)**
+### Semicolon (;) -- Same Subject
 
-In Turtle, a semicolon separates predicate-object pairs that share the same subject.
+In Turtle, a semicolon separates predicate-object pairs that share the same subject. Example: ex:Earth rdf:type ex:Planet ; ex:orbits ex:Sun .

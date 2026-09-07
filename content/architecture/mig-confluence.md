@@ -13,18 +13,16 @@ generated: "docs-kb"
 
 # CONFLUENCE_MIGRATION.md → Superseded
 
-*Concept*
-
 docs/CONFLUENCE_MIGRATION.md (490 lines) is a detailed design doc for F26. Key entities already exist in reckons-roadmap.ttl (F26 phases) and docs-features.ttl (ConfluenceMigration, TextChunking). Detailed implementation notes (chunking params, pause/resume) should be expanded in the roadmap TTL. Safe to delete after expansion.
 
-## Steps
+## Detail
+
+**Status**
+
+superseded
+
+## In this section
 
 **[Confluence Migration Design](../architecture/mig-confluence-design)**
 
 Design decisions and implementation details for F26 Confluence Migration.
-
-## Details
-
-**Status**
-
-- superseded

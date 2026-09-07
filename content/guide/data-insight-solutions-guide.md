@@ -14,8 +14,6 @@ related:
 
 # Data Insight Solutions LLC
 
-*Organization*
-
 The company behind Reckons.AI. A software consultancy focused on knowledge management, data engineering, and AI-augmented tooling.
 
 ## Related
@@ -23,7 +21,5 @@ The company behind Reckons.AI. A software consultancy focused on knowledge manag
 **Operates**
 
 - [Reckons.AI](../guide/reckons-ai)
-
-**Related**
 
 - [Matthew Roe](../guide/matthew-roe-guide)

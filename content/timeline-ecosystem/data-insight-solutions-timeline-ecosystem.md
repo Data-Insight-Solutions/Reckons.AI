@@ -14,12 +14,8 @@ related:
 
 # Data Insight Solutions LLC
 
-*Organization*
-
 Software consultancy behind Reckons.AI. Founded by Matthew Roe. Focused on knowledge management, data engineering, and AI-augmented tooling.
 
 ## Related
-
-**Related**
 
 - [Matthew Roe](../timeline-ecosystem/matthew-roe-timeline-ecosystem)

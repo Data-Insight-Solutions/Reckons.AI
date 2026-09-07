@@ -16,8 +16,6 @@ related:
 
 # Reckons.AI
 
-*Organization*
-
 A personal knowledge graph that runs entirely in your browser. Local-first, open-source, human-in-the-loop. Your data, your device, your authority.
 
 ## Related
@@ -26,8 +24,6 @@ A personal knowledge graph that runs entirely in your browser. Local-first, open
 
 - [Data Insight Solutions LLC](../guide/data-insight-solutions-guide)
 - [Matthew Roe](../guide/matthew-roe-guide)
-
-**Related**
 
 - [Shelly (AI Assistant)](../features/shelly)
 - [Technology Stack](../integrations-tech/architecture-integrations-tech)

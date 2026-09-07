@@ -13,12 +13,10 @@ generated: "docs-kb"
 
 # Local-First Architecture
 
-*Concept*
-
 Everything runs in the browser. Your graph is stored in IndexedDB, API keys never leave your device, and the app works offline after first load. No server means no data breaches, no vendor lock-in, and no monthly subscription.
 
-## Details
+## Why it is this way
 
 **Note**
 
-- This is not just a feature -- it is a design philosophy. Your knowledge belongs to you.
+This is not just a feature -- it is a design philosophy. Your knowledge belongs to you.

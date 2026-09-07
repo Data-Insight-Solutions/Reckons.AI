@@ -12,20 +12,18 @@ generated: "docs-kb"
 
 # W3C (World Wide Web Consortium)
 
-*Organization*
-
 The main international standards body for the Web. Founded by Tim Berners-Lee in 1994. Publishes the RDF, OWL, SPARQL, and SKOS specifications. Stewards the Semantic Web vision.
 
-## Details
+## Detail
 
 **Founded**
 
-- 1994-10-01
+1994-10-01
 
 **Headquarters**
 
-- MIT, Cambridge, Massachusetts
+MIT, Cambridge, Massachusetts
 
 **Website**
 
-- https://www.w3.org
+https://www.w3.org

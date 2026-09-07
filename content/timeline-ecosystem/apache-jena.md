@@ -9,17 +9,13 @@ nav: sidebar
 excerpt: "An open-source Java framework for building Semantic Web and Linked Data applications."
 generated: "docs-kb"
 related:
-  - "sparql"
+  - "rdf"
 ---
 
 # Apache Jena
-
-*Organization*
 
 An open-source Java framework for building Semantic Web and Linked Data applications. Includes a SPARQL engine (ARQ), a triple store (TDB), and a rule-based reasoner.
 
 ## Related
 
-**Related**
-
-- [SPARQL](../triples-rdf/sparql)
+- [RDF (Resource Description Framework)](../triples-rdf/rdf)

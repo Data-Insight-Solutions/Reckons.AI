@@ -14,18 +14,14 @@ related:
 
 # Dublin Core Metadata Initiative (DCMI)
 
-*Organization*
-
 Maintains the Dublin Core metadata vocabulary — one of the earliest and most widely used RDF vocabularies for describing resources (dc:title, dc:creator, dc:date).
 
-## Details
+## Detail
 
 **Founded**
 
-- 1995-01-01
+1995-01-01
 
 ## Related
-
-**Related**
 
 - [W3C (World Wide Web Consortium)](../timeline-ecosystem/w3-c)

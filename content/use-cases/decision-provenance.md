@@ -15,12 +15,8 @@ related:
 
 # Decision Provenance
 
-*Concept*
-
 When a Reckoning produces a recommendation and the user accepts it, the resulting graph statements are automatically annotated with the source IRIs, Reckoning timestamp, and confidence level. Anyone reading the triple later can see it was added by a Reckoning on a specific date, informed by specific sources. The graph becomes self-documenting.
 
 ## Related
-
-**Related**
 
 - [Power to the Individual](../use-cases/personal-empowerment)

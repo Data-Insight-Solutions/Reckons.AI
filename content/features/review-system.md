@@ -10,16 +10,14 @@ nav: sidebar
 excerpt: "Three tabs: Incoming (new triples), Deletions (removal proposals), Merges (duplicate entity suggestions)."
 generated: "docs-kb"
 related:
-  - "trust-system"
+  - "what-is-reckons-ai"
 ---
 
 # Review System
 
-*Concept*
-
 Three tabs: Incoming (new triples), Deletions (removal proposals), Merges (duplicate entity suggestions). Confirm, reject, or refine each statement. Nothing enters your graph without your approval.
 
-## Steps
+## In this section
 
 **[Review Workbench](../features/review-workbench)**
 
@@ -27,6 +25,4 @@ The review page pairs its four tabs (incoming, deletions, merges, align) with a 
 
 ## Related
 
-**Related**
-
-- [Source Trust System](../features/trust-system)
+- [What Is Reckons.AI](../guide/what-is-reckons-ai)

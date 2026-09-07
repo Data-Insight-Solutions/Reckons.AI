@@ -14,19 +14,15 @@ related:
 
 # Matthew Roe
 
-*Person*
-
 Owner-operator of Data Insight Solutions LLC and creator of Reckons.AI. Designed the local-first architecture, the human-in-the-loop review workflow, and the graph Leap cross-referencing system.
 
-## Details
+## Detail
 
 **Role**
 
-- Founder & Developer
+Founder & Developer
 
 ## Related
-
-**Related**
 
 - [Reckons.AI](../guide/reckons-ai)
 

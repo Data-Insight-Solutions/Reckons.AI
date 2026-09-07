@@ -15,18 +15,14 @@ related:
 
 # Graph-Grounded Accuracy
 
-*Concept*
-
 When an LLM has access to YOUR reviewed knowledge graph, its outputs become dramatically more accurate. Instead of guessing from training data, it retrieves YOUR confirmed facts. This is called retrieval-augmented generation (RAG) -- and the quality of the retrieval source is everything. Your curated graph is the best source possible.
 
-## Steps
+## In this section
 
-**[RAG (Retrieval-Augmented Generation)](../llm/retrieval-augmented)**
+### RAG (Retrieval-Augmented Generation)
 
-A technique where an LLM retrieves relevant facts from a knowledge graph before generating a response.
+A technique where an LLM retrieves relevant facts from a knowledge graph before generating a response. Dramatically reduces hallucination because the model grounds its answer in your verified data, not its training set.
 
 ## Related
-
-**Related**
 
 - [Shelly (AI Assistant)](../features/shelly)
