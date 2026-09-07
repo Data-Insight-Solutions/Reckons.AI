@@ -2654,7 +2654,7 @@ kb:tenet-no-account rdf:type   ktype:Tenet ;
                kpred:show-on-landing "true" ;
                kpred:tenet-status "built" ;
                hnav:order   8 ;
-               kpred:tenet-body   "There is no sign-up, no email, no profile, and no server holding your graph. The app is static files and a browser database, so there is nothing to log in TO — and that is a structural fact, not a policy we could quietly reverse. An account is a cost paid by every user forever to solve a problem most of them do not have. Where a feature genuinely cannot work without one, the account belongs to the user and lives with the third party they chose: your own API key, your own n8n, your own Cloudflare. The honest limit: publishing to the open web and syncing across devices are the places this pressure will come from, and neither has been solved without someone holding an identity." ;
+               kpred:tenet-body   "There is no sign-up, no email, and no server holding your graph — the app is static files and a browser database, so there is nothing to log in TO. Where a feature genuinely cannot work without an account, it is YOUR account with a service you chose: your API key, your n8n, your Cloudflare. Publishing and cross-device sync are where this will be tested, and neither is solved yet." ;
                kpred:relates-to   kb:tenet-private ;
                kpred:relates-to   kb:tenet-export .
 
@@ -2664,7 +2664,7 @@ kb:tenet-open rdf:type         ktype:Tenet ;
                kpred:show-on-landing "true" ;
                kpred:tenet-status "built" ;
                hnav:order   9 ;
-               kpred:tenet-body   "The whole application is MIT licensed, and so is the format your graph is stored in — Turtle, an open W3C standard, not a private schema with an exporter bolted on. When a closed component and an open one are close, the open one wins; when the closed one is genuinely better, we say so rather than pretending. The check on this is simple and unforgiving: if we disappeared tomorrow, your graph and the code that reads it would both still work. The honest limit: the strongest models this app can call are not open, and a local model is measurably worse at extraction today — 74% recall against a hand-checked corpus. We ship the choice rather than hiding it." ;
+               kpred:tenet-body   "The application is MIT licensed and your graph is stored in Turtle, a W3C standard rather than a private format with an exporter bolted on. If we disappeared tomorrow, your graph and the code that reads it would both still work. The honest part: the strongest models this app can call are not open, and a local one is measurably worse at extraction today." ;
                kpred:relates-to   kb:tenet-export ;
                kpred:relates-to   kb:tenet-no-account .
 
@@ -2674,7 +2674,7 @@ kb:tenet-freedom rdf:type      ktype:Tenet ;
                kpred:show-on-landing "true" ;
                kpred:tenet-status "belief" ;
                hnav:order   10 ;
-               kpred:tenet-body   "Enclosing knowledge behind a login, a subscription, or a format only one vendor can read is a choice somebody made, not a property of the knowledge. The tools for thinking with what you know should be free to use, free to read, and free to leave. THIS ONE IS A BELIEF, NOT A CONTROL, and it is marked so deliberately: nothing in the code enforces it and nothing could. It is the reason the other tenets are shaped the way they are — export as a right, no account, open licence — and those are the parts you can actually hold us to." ;
+               kpred:tenet-body   "Enclosing knowledge behind a login, a subscription, or a format one vendor controls is a choice somebody made, not a property of the knowledge. The tools for thinking with what you know should be free to use, read, and leave. This is a BELIEF, not a control — nothing in the code enforces it, and it is why the other tenets are shaped the way they are." ;
                kpred:relates-to   kb:tenet-open ;
                kpred:relates-to   kb:tenet-export .
 
