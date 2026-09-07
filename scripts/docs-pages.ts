@@ -71,6 +71,11 @@ const DIAGRAM           = 'urn:kbase:predicate/diagram';
 const DIAGRAM_CAPTION   = 'urn:kbase:predicate/diagram-caption';
 const STEP_ORDER        = 'urn:kbase:predicate/step-order';
 const PART_OF           = 'urn:kbase:predicate/part-of';
+const THESIS_IRI        = 'urn:kbase:concept/thesis';
+const RENDER_INLINE     = 'urn:kbase:predicate/render-inline';
+const CHILDREN_LABEL    = 'urn:kbase:predicate/children-label';
+const SHOW_ON_LANDING   = 'urn:kbase:predicate/show-on-landing';
+const TENET_STATUS      = 'urn:kbase:predicate/tenet-status';
 
 /** Literal-valued predicates that are structural/technical, not doc content — never
  *  rendered in the "Details" body section. */
@@ -95,7 +100,11 @@ const EXCLUDED_IRI_PREDICATES = new Set<string>([RDF_TYPE, SKOS_BROADER, NAV_NEX
  * silently unbuilds the hierarchy while every gate still passes. (It did, for one run, on
  * 2026-09-06.) Excluded here, at the point of rendering, and only there.
  */
-const RENDER_ONLY_STRUCTURAL = new Set<string>([PART_OF, STEP_ORDER]);
+const RENDER_ONLY_STRUCTURAL = new Set<string>([
+  PART_OF, STEP_ORDER, RENDER_INLINE, CHILDREN_LABEL,
+  // Which surface a tenet appears on is a routing flag, not something to print at a reader.
+  SHOW_ON_LANDING,
+]);
 
 // ── Section map — file → display title. Order here is the processing order used to
 // resolve which file "owns" an entity asserted in more than one file (see
@@ -103,7 +112,18 @@ const RENDER_ONLY_STRUCTURAL = new Set<string>([PART_OF, STEP_ORDER]);
 // fuller definition always wins over the hub's summary stub. `slugify(title)` is
 // what `contentPath()` turns into the content/<folder>/ name, so titles are chosen so
 // their slug matches the intended folder (e.g. "Tips" -> content/tips/).
-const SOURCES: ReadonlyArray<{ file: string; section: string }> = [
+/**
+ * `only` publishes a SUBSET of a graph.
+ *
+ * reckons-roadmap.ttl is the plan, not documentation, and publishing it wholesale would put 255
+ * feature entities on the public site. But the tenets live there — they are the source the landing
+ * page is generated from — and they are exactly the thing a reader should be able to read in full.
+ * So the thesis subtree is published and nothing else from that file is. One source, two surfaces:
+ * the landing page shows a headline and one sentence, /docs/principles carries the argument.
+ */
+const SOURCES: ReadonlyArray<{
+  file: string; section: string; only?: (iri: string, quads: Quad[]) => boolean;
+}> = [
   { file: 'docs-triples-rdf.ttl', section: 'Triples & RDF' },
   { file: 'docs-llm.ttl', section: 'LLM' },
   { file: 'docs-use-cases.ttl', section: 'Use Cases' },
@@ -116,6 +136,15 @@ const SOURCES: ReadonlyArray<{ file: string; section: string }> = [
   { file: 'docs-testing.ttl', section: 'Testing' },
   { file: 'docs-user-paths.ttl', section: 'User Paths' },
   { file: 'starter-guide.ttl', section: 'Guide' },
+  {
+    file: 'reckons-roadmap.ttl',
+    section: 'Principles',
+    // Membership, not rdf:type. kb:design-observed-archive is typed ktype:Tenet but is an
+    // internal design paradigm with no tenet-body and no place in the thesis — filtering by type
+    // published it. `part-of kb:thesis` is what actually makes something a tenet of the thesis.
+    only: (iri, quads) => iri === THESIS_IRI || quads.some((q) =>
+      q.subject.value === iri && q.predicate.value === PART_OF && q.object.value === THESIS_IRI),
+  },
 ];
 
 // ── String helpers ───────────────────────────────────────────────────────────
@@ -194,9 +223,10 @@ function candidateIris(quads: Quad[]): Set<string> {
  */
 function resolveHomeFiles(fileQuads: Map<string, Quad[]>): Map<string, string> {
   const home = new Map<string, string>();
-  for (const { file } of SOURCES) {
+  for (const { file, only } of SOURCES) {
     const quads = fileQuads.get(file)!;
     for (const iri of candidateIris(quads)) {
+      if (only && !only(iri, quads)) continue;
       if (!home.has(iri)) home.set(iri, file);
     }
   }
@@ -349,6 +379,8 @@ interface PredicateStyle { band: string; rank: number }
 
 const PREDICATE_STYLE: Record<string, PredicateStyle> = {
   'read-first':    { band: '', rank: 10 },
+  'tenet-body':    { band: '', rank: 15 },
+  'tenet-status':  { band: '', rank: 12 },   // rendered as a banner, see renderProse
   'description':   { band: '', rank: 20 },
   'summary':       { band: '', rank: 30 },
 
@@ -411,6 +443,15 @@ function renderProse(e: Entity, depth: number): string[] {
       openBand = band;
     }
     const values = e.literalProps.get(k)!;
+    // The built/belief distinction is the whole point of kb:honest-status on this page, so it
+    // reads as a marker rather than as "Tenet Status: belief" in a properties list.
+    if (k === TENET_STATUS) {
+      const v = values[0];
+      lines.push(v === 'built'
+        ? '> **Enforced in code** — there is a mechanism, and it runs.'
+        : '> **What we believe** — a commitment, not a control. Nothing enforces this.', '');
+      continue;
+    }
     if (band) lines.push(`**${escapeMdText(humanize(localName(k)))}**`, '');
     if (values.length === 1) lines.push(escapeMdText(values[0]), '');
     else { for (const v of values) lines.push(`- ${escapeMdText(v)}`); lines.push(''); }
@@ -493,7 +534,12 @@ const PAGE_THRESHOLD_WORDS = 45;
  * An entity with children always earns a page whatever its length — it is a junction, and folding
  * it would strand everything beneath it.
  */
-function earnsPage(e: Entity, hasChildren: boolean, hasParentPage: boolean): boolean {
+function earnsPage(e: Entity, hasChildren: boolean, hasParentPage: boolean, hostInlines = false): boolean {
+  // The parent said so. Some sets read as ONE document and are actively worse split up: the ten
+  // tenets are an argument, and ten pages of seventy words each is the table-of-contents failure
+  // this generator already folds thin entities to avoid. Declared on the parent
+  // (kpred:render-inline) rather than inferred, so it is visible in the graph and reviewable.
+  if (hostInlines) return false;
   if (hasChildren) return true;
   if (!hasParentPage) return true;      // nothing to fold into
   if (e.diagram) return true;           // a picture is worth the page
@@ -666,9 +712,12 @@ function main(): void {
   // hangs off it), and everything else must carry enough prose to be worth a click. Because a
   // parent always has a child, a folded entity's parent always earns a page — so nothing can fold
   // into something that is not there.
+  const byIriEarly = new Map(entities.map((e) => [e.iri, e]));
   const isPage = new Map<string, boolean>();
   for (const e of entities) {
-    isPage.set(e.iri, earnsPage(e, hasChildren.has(e.iri), parentOf.has(e.iri)));
+    const host = parentOf.get(e.iri);
+    const hostInlines = !!host && (byIriEarly.get(host)?.literalProps.get(RENDER_INLINE)?.[0] === 'true');
+    isPage.set(e.iri, earnsPage(e, hasChildren.has(e.iri), parentOf.has(e.iri), hostInlines));
   }
 
   // A link to a folded entity must still go somewhere: it resolves to the page that now CONTAINS
@@ -704,7 +753,9 @@ function main(): void {
   // The heading names the relation the author used: kpred:part-of is a sequence ("Steps"),
   // skos:broader is a taxonomy ("In this section"). Calling a section's pages "Steps" told a
   // reader they were following a procedure when they were browsing a category.
-  const childHeadingFor = (iri: string) => (viaPartOf.has(iri) ? 'Steps' : 'In this section');
+  const childHeadingFor = (iri: string) =>
+    byIriEarly.get(iri)?.literalProps.get(CHILDREN_LABEL)?.[0]
+    ?? (viaPartOf.has(iri) ? 'Steps' : 'In this section');
 
   /** The page a reference should land on: the entity itself, or the page that absorbed it. */
   const hostPageOf = (iri: string): string | null => {

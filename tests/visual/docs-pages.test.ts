@@ -105,7 +105,8 @@ test.describe('docs render as documents', () => {
         // A cap on the figure scales the SVG down, and the labels with it. The first version
         // capped at 420px and rendered a 944x988 diagram's 16px labels at about 7px — present,
         // and unreadable. Effective size is the declared size times the rendering scale.
-        const smallest = await svg.evaluate((el) => {
+        const smallest = await svg.evaluate((node) => {
+          const el = node as unknown as SVGSVGElement;
           const scale = el.getBoundingClientRect().width / (el.viewBox.baseVal.width || 1);
           const sizes = Array.from(el.querySelectorAll('text, .nodeLabel, foreignObject div'))
             .map((n) => parseFloat(getComputedStyle(n as Element).fontSize) * scale)

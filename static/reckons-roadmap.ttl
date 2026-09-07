@@ -2597,6 +2597,8 @@ kb:graph-db-connectors rdf:type ktype:Feature ;
 
 kb:thesis rdf:type             ktype:Concept ;
                rdfs:label   "The thesis" ;
+               kpred:render-inline "true" ;
+               kpred:children-label "The tenets" ;
                kpred:part-of      kb:reckons-ai ;
                kpred:description  "Most knowledge tools store what you know. Reckons.AI stores HOW YOU KNOW IT — and refuses to fake it when it cannot." .
 
