@@ -85,6 +85,17 @@ const JSON_OUT = args.includes('--json');
  * it — a second pass that does not move strict recall is costing twice the time for nothing, and a
  * second pass that raises yield without raising recall is manufacturing noise for the review queue.
  */
+/*
+ * REPEAT — because a single run cannot choose anything here, and this harness spent two weeks
+ * pretending it could. qwen3:32b scored 74% and 53% AT IDENTICAL SETTINGS ON THE SAME DAY
+ * (2026-09-04). Any comparison of two models on one run each is inside that spread and therefore
+ * says nothing. kb:task-model-bench already named this as the thing to build FIRST.
+ *
+ * The median is reported rather than the mean: with a spread this wide one bad run drags a mean
+ * somewhere no individual run ever was, and the SPREAD is printed beside it because a median that
+ * hides a 21-point range is the same lie in a smaller font.
+ */
+const REPEAT = Math.max(1, parseInt(arg('repeat', '1'), 10) || 1);
 const THINKING = args.includes('--thinking');
 const PENDING_OUT = args.includes('--pending');
 const CORPUS = arg('corpus', 'tests/fixtures/notes-corpus');
@@ -214,6 +225,8 @@ export interface Score {
   file: string;
   model: string;
   condition: string;
+  /** Which repetition this came from (0-based). Always 0 unless --repeat=N. */
+  run: number;
   yield: number;
   strict: string[];
   loose: string[];
@@ -247,7 +260,7 @@ export function scoreOne(
   spec: FileSpec,
   triples: ExtractedTriple[],
   offered: { offered: Set<string>; offeredPredicates: Set<string> } = { offered: new Set(), offeredPredicates: new Set() },
-): Omit<Score, 'file' | 'model' | 'condition' | 'seconds'> {
+): Omit<Score, 'file' | 'model' | 'condition' | 'seconds' | 'run'> {
   const strict: string[] = [],
     loose: string[] = [],
     missed: string[] = [];
@@ -459,6 +472,7 @@ async function main() {
 
   for (const model of MODELS) {
     for (const condition of CONDITIONS) {
+     for (let run = 0; run < REPEAT; run++) {
       for (const [fileName, spec] of Object.entries(specs)) {
         const src = path.join(CORPUS, fileName);
         if (!existsSync(src)) continue;
@@ -478,7 +492,7 @@ async function main() {
             },
           });
           const s = scoreOne(spec, triples, ctx);
-          scores.push({ ...s, file: fileName, model, condition, criticAdded, seconds: (Date.now() - t0) / 1000 });
+          scores.push({ ...s, file: fileName, model, condition, run, criticAdded, seconds: (Date.now() - t0) / 1000 });
           if (!JSON_OUT) reportOne(scores[scores.length - 1], spec, ctx);
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
@@ -486,6 +500,7 @@ async function main() {
             file: fileName,
             model,
             condition,
+            run,
             yield: 0,
             strict: [],
             loose: [],
@@ -507,6 +522,7 @@ async function main() {
           if (!JSON_OUT) console.log(`  ${R}✗ ${model} / ${condition} / ${fileName}: ${msg.slice(0, 160)}${X}\n`);
         }
       }
+     }
     }
   }
 
@@ -640,6 +656,60 @@ function summary(scores: Score[], specs: Record<string, FileSpec>) {
         `${r.entEmit ? pct(r.entReuse, r.entEmit) : '  n/a'}      ${r.predEmit ? pct(r.predReuse, r.predEmit) : '  n/a'}  ` +
         `${String(r.y).padStart(5)}  ${r.inv ? R : D}${String(r.inv).padStart(3)}${X}  ${r.mis ? Y : D}${String(r.mis).padStart(3)}${X}`,
     );
+  }
+
+  /*
+   * MEDIAN AND SPREAD ACROSS REPEATS — the table above is a MEAN over all runs, and a mean is the
+   * wrong summary for a distribution this wide. Printed only when there is more than one run,
+   * because a "median of 1" would dress a single sample up as a result.
+   *
+   * The SPREAD is the number that decides whether a comparison is allowed at all: if two models'
+   * ranges overlap, the harness has not distinguished them, and saying which is better on these
+   * data would be exactly the marketing instrument F146 phase 1 warned about.
+   */
+  if (REPEAT > 1) {
+    const median = (xs: number[]): number => {
+      const a = [...xs].sort((p, q) => p - q);
+      const m = Math.floor(a.length / 2);
+      return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+    };
+    console.log(`\n${B}Median of ${REPEAT} runs, with the spread${X} ${D}— the table above is the mean${X}`);
+    const ranges = new Map<string, { lo: number; hi: number; med: number }>();
+    for (const [k, group] of groups) {
+      const [model, condition] = k.split(' ');
+      const byRun = new Map<number, { hit: number; tot: number }>();
+      for (const sc of group) {
+        const cur = byRun.get(sc.run) ?? { hit: 0, tot: 0 };
+        cur.hit += sc.strict.length;
+        cur.tot += totalExpected(sc.file);
+        byRun.set(sc.run, cur);
+      }
+      const perRun = [...byRun.values()].map((v) => (v.tot ? (v.hit / v.tot) * 100 : 0));
+      const med = median(perRun);
+      const lo = Math.min(...perRun);
+      const hi = Math.max(...perRun);
+      ranges.set(k, { lo, hi, med });
+      const runs = perRun.map((x) => `${x.toFixed(0)}%`).join(' ');
+      console.log(
+        `  ${model.slice(0, 26).padEnd(28)} ${condition.padEnd(9)} median ${C}${med.toFixed(0).padStart(3)}%${X}` +
+          `  spread ${lo.toFixed(0)}-${hi.toFixed(0)}%  ${D}(${runs})${X}`,
+      );
+    }
+    // Do the ranges overlap? If they do, this run distinguished nothing, and it must say so.
+    const keys = [...ranges.keys()];
+    for (let i = 0; i < keys.length; i++) {
+      for (let j = i + 1; j < keys.length; j++) {
+        const a = ranges.get(keys[i])!;
+        const b = ranges.get(keys[j])!;
+        if (a.lo <= b.hi && b.lo <= a.hi) {
+          console.log(
+            `\n${Y}${keys[i]} and ${keys[j]} have OVERLAPPING ranges ` +
+              `(${a.lo.toFixed(0)}-${a.hi.toFixed(0)}% vs ${b.lo.toFixed(0)}-${b.hi.toFixed(0)}%). ` +
+              `This run did not distinguish them — do not pick one on these data.${X}`,
+          );
+        }
+      }
+    }
   }
 
   const best = rows[0];
