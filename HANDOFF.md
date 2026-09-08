@@ -1,10 +1,110 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-09-06 (late).** On `fix/diagram-entity-labels` (**PR #227**), cut from `dev`.
-Merged today: **#224, #225, #206** into `dev`. Nothing pushed to `main`. **PR #226 is SUPERSEDED by
-#227** — it carried only the evening handoff entry, which is reproduced in full below, so close it
-rather than merging both and resolving a pointless conflict. Untracked and deliberate:
-`scripts/__shot__.ts`, `share/turtles-story.ttl`.
+**Last updated: 2026-09-08.** On `feat/docs-sets-and-composition-gate` (**PR #228**, base `dev`,
+stacked on `fix/diagram-entity-labels` / **PR #227**). Nothing pushed to `main`. **PR #226 is
+SUPERSEDED by #227** — close it rather than merging both. Untracked and deliberate:
+`scripts/__shot__.ts`, `share/`.
+
+## ▶ SESSION 2026-09-08 — /docs is a mess, and the gate that would have fixed it could not run
+
+Matt's manual note: **"/docs is a cluttered mess"**, plus a design for SETS as the organizing
+layer. Both halves turned out to be already half-built and quietly broken.
+
+### THE MESS IS MEASURED, NOT AN IMPRESSION
+
+171 pages in 18 flat sections, 159 generated one-per-entity. Six sections share the default
+`order: 1000` and are alphabetized by accident. **Testing sorts to `order: 0`** — the front door
+of the documentation leads with the test docs. `website.ttl` records the earlier measurement of
+the same page at **23,407px tall with 815 anchors**.
+
+### THE FIX WAS DESIGNED IN FEBRUARY AND NEVER SWITCHED ON — two faults kept it there
+
+1. **The gate crashed.** `npm run docs:consolidate` died on `Page welcome declares no sources`.
+   `docs-compose.ts` (the WRITER) partitioned hand-authored pages out; `docs-consolidate.ts` (the
+   GATE) did not. So the tool that writes pages ran while the orphan report — the whole safeguard
+   against consolidating 269 pages and losing content — could not run at all. **A check weaker
+   than the action it guards.** Both now share `partitionPages()`; the strict rule is unchanged
+   and a test pins that an unpartitioned call still throws.
+2. **The gate was blind exactly where the generator was.** `docs-user-paths.ttl` was registered in
+   `docs-pages.ts` and in **none** of the other three lists. `npm run docs:compose` would have
+   **pruned the 21 published user-path pages** — nine journeys with hand-rendered diagrams,
+   shipped two days earlier — and composed nothing to replace them, while the gate printed
+   *"nothing would be dropped"* in green. **Proved, not assumed:** adding the graph to the corpus
+   flipped the same gate to *"35 entities would NOT be published"*.
+
+**The recurrence is the real fix.** `scripts/offline/docs-graph-registration.ts` (script tier,
+zero tokens, in `jobs.json`) requires every publishable docs graph in all four registries, reading
+the **array literals** not the file text — a graph named only in a comment does not count, which
+is what happened. Verified in both directions: green on the corrected tree, exit 1 naming the
+missing registry when the entry is removed.
+
+Gate now passes honestly: **304 entities · 9 composed pages covering 282 · 22 excluded ·
+4 hand-authored · nothing dropped.**
+
+### ⚠ MATT DECIDED: DO NOT TURN COMPOSITION ON YET
+
+Asked directly. **"Not yet — sets first."** The composed pages group by whole SOURCE FILE (one set
+per graph: "What it does" = all of features + all of use-cases), which is coarser than the curated
+typed sets he described. Turning it on now designs the IA twice and moves every reader URL twice.
+F187.1 is **blocked by decision, not by defect** — the gate stays green and unused.
+
+### F187 — sets, recorded as plan, with two findings AGAINST it
+
+- **There are already two grouping primitives**, where F65 says there must be one:
+  `ktype:EntitySet`/`has-member` in the app, `void:Dataset`/`schema:isBasedOn` in the docs, with
+  zero references to the former anywhere in the publish layer. The docs page is the fourth
+  consumer and was built separately anyway.
+- **"A set is not a node"** (Matt) contradicts both his own requirement that sets carry attributes
+  and F65's already-settled answer. Marked **ASK MATT**, not decided. Best reading: the objection
+  is about RENDERING — a set should be a region or hull, not one more circle.
+- **SKOS ALREADY HAS THIS.** `skos:ConceptScheme` is a set with attributes; `skos:inScheme` lets a
+  concept belong to SEVERAL schemes — the overlapping membership Matt wants — and poly-hierarchy
+  overlaps containment too. `website.ttl`'s own rule is *standard vocabularies, not invented ones*.
+  **Default to `skos:ConceptScheme` for the set layer.** This settles the two-primitives finding
+  without a migration.
+- `datasetOverlaps()` **already computes the Venn data**, derived not asserted. Nothing renders it.
+
+### The stars: the pipeline worked, the QUEUE was unread
+
+`scripts/offline/stars-scan.ts` already existed and had proposed all of them into
+`reckons-workspace/knowledge.pending.jsonl` — **403 rows**. Only **3 stars are new** since
+2026-09-06 and all three are marginal. **Triage was the missing step, not collection.** Five
+reviewed properly into `reckons-competitive.ttl` (OpenWhispr, Token Optimizer, Agent Orchestrator,
+knowledge_graph, GraphGen), each with what NOT to take. GraphGen is marked
+`kpred:honest-note` as reviewed from metadata only.
+
+### ⚠ BLOCKED ON MATT: the Ollama upgrade (he approved it; sudo needs his password)
+
+`qwen3.8:latest` is **17.7 GB and carries a 0.9 GB VISION PROJECTOR** — it could replace both
+`qwen3:32b` (extraction) and `qwen2.5vl:7b` (visual gate). It fits one 3090 with KV headroom; the
+`27b-q8_0` tag is 30 GB and would need both cards. **The pull failed: `412 — requires a newer
+version of Ollama`.** Installed **0.31.1**, latest **v0.33.3**. Matt approved the upgrade but
+`sudo` is password-gated, so he runs:
+
+```bash
+curl -fsSL https://ollama.com/install.sh | sh     # upgrades in place, restarts the service
+ollama pull qwen3.8:latest
+```
+
+Then score it against the published baseline (`qwen3:32b` = 74%) with `npm run offline:score` —
+do not claim it is better without the number.
+
+### Next, in order
+
+1. **Build F187 set semantics** — Matt's explicit gate on the docs fix. Start with
+   `skos:ConceptScheme`, and settle the "is a set a node" question with him first.
+2. Point a rendered check at the docs diagrams (carried from 2026-09-06 — all six gates are text
+   gates; the diagrams were broken while every one reported aligned).
+3. Manual walk of add → review with real dictated notes.
+4. The two grounding leaks in `src/lib/rdf/structural-context.ts`, then `npm run offline:score`.
+5. **F177 freeform capture — DO NOT BUILD.** Matt asked to talk the user stories through first.
+6. PRs #205, #204, #198, #197 all conflict on `reckons-roadmap.ttl`; **check each for duplicate
+   `kpred:feature-id`**. (Max id is now **F187**; no duplicates as of 2026-09-08.)
+7. **Triage the 403-row pending queue.** It is real work and it is Opus's job.
+
+### Verification
+
+242 publish/scripts tests · graph-lint **0 errors** · **align six gates aligned** · both TTLs parse.
 
 ## ▶ SESSION 2026-09-06 (late) — the diagrams were broken, and every gate said fine
 
@@ -12,12 +112,14 @@ rather than merging both and resolving a pointless conflict. Untracked and delib
 bugs are. Recorded on `kb:journey-docs` as `kpred:measured` + `kpred:principle`, not only here.
 
 ### THE PAGE PRINTED `4 &middot; Use` AT READERS
+
 Stage labels were written with the HTML entity; mermaid escapes the ampersand when it builds the
 SVG text node, so the entity reached the reader as literal text. Five labels, two diagrams. Now
 guarded by a test over every diagram in `static/*.ttl` that still allows a bare `&` (valid mermaid:
 `A & B`) and `<br/>`.
 
 ### THEN LOOKING PROPERLY FOUND WORSE — THREE FAULTS, ALL COUNTED
+
 1. **`normalizeSvg` rewrote the whole document instead of the root.** It stripped `width` from
    **153 of 153 `<rect>`** and **55 of 55 `<foreignObject>`** elements and wrote `height="100%"`
    onto **107 children**, where a percentage resolves against the viewBox — so every node box was
@@ -33,6 +135,7 @@ guarded by a test over every diagram in `static/*.ttl` that still allows a bare 
 would have been a silent no-op against nine stale entries. Remember this when touching the renderer.
 
 ### ⚠ THE REAL GAP: ALL SIX GATES ARE TEXT GATES
+
 graph-lint parsed, the cache hit, `md-align` matched all 316 files and all six align gates reported
 aligned — while every box in every diagram was broken. **Rendered output needs a rendered check.**
 The pieces exist: the visual-regression suite drives Chromium and the VLM gate (`qwen2.5vl:7b`)
@@ -43,6 +146,7 @@ Verified: 2866 tests / 200 files, svelte-check 0/0, align six gates, and — the
 could have caught any of this — **screenshots of a diagram in both themes, looked at**.
 
 ### Next, in order
+
 1. Point a rendered check at the docs diagrams (above).
 2. Manual walk of add → review with real dictated notes — ring capture is merged now.
 3. The two grounding leaks in `src/lib/rdf/structural-context.ts`, then `npm run offline:score`.
@@ -51,6 +155,7 @@ could have caught any of this — **screenshots of a diagram in both themes, loo
    `kpred:feature-id`** — #206 had three, invisible to git and to graph-lint.
 
 ### The docs link, and the trap in it
+
 **`/docs/user-paths/user-paths`** is the hub. The bare `/docs/user-paths` returns the SPA shell with
 a **200 and no content**, which looks like a working page and is not. On `dev` only; `reckons.ai`
 deploys from `main`.
@@ -70,7 +175,9 @@ Nine paths under it (`core-loop`, `everyday-notes`, `capture-spoken`, …). **No
 taken yet.
 
 ### PR #206 merged — and the "mechanical" conflict resolution was not mechanical
+
 HANDOFF said "take dev's side on the three files". Two of three were that. The third was a trap:
+
 - `notes-pull.ts` — dev's side whole (dev has validated transactional writes; nothing lost).
 - `workspace.svelte.ts` — dev's side **per hunk, not per file**. Taking the file would have silently
   dropped 13 lines this branch added OUTSIDE the conflict that auto-merge had already placed.
@@ -88,6 +195,7 @@ Verified on the merged tree: **2859 tests / 200 files**, svelte-check 0/0, graph
 align six gates.
 
 ### Still open, in the order agreed 2026-09-06
+
 1. **The manual walk of add → review with real dictated notes.** Ring capture is merged now, so
    there is finally a real note to walk. The pending queue holds ~379 rows, almost all offline-job
    findings — that exercises review with machine output, not capture.
@@ -108,8 +216,9 @@ a misunderstanding to correct: if the condensation step is not visible on the wa
 genuinely does look like a notes app that makes you do extra work in the middle.
 
 ### TWO THINGS WERE SILENTLY BROKEN, AND BOTH ARE WHY THE PATHS REACHED NOBODY
+
 1. **`docs-user-paths.ttl` was never in `SOURCES`.** Five journeys written on 2026-09-04 generated
-   **zero pages** for two days and nothing reported it. The graph *was* linked into the MCP
+   **zero pages** for two days and nothing reported it. The graph _was_ linked into the MCP
    workspace, which made it look present while the public site had no route to it at all.
 2. **Every hub page was a table of contents with no contents.** Body relations only pointed
    OUTWARD (`kpred:uses`, `skos:related`) while `skos:broader` points UP, so a parent page rendered
@@ -119,12 +228,14 @@ genuinely does look like a notes app that makes you do extra work in the middle.
    docs sections**, not just the new one — 40 pages gained navigation.
 
 ### WHAT SHIPPED
+
 `/docs/user-paths` — **nine paths, 35 pages**, led by **the core loop** (add → review → add →
 review → reckon), grounded in `tests/e2e/workflow-add-review-reckon.test.ts` so page and test move
 together. Two paths are new and marked **`scaffolded` on the page itself**: everyday notes and
 spoken capture. Nine mermaid diagrams.
 
 ### DIAGRAMS RENDER AT BUILD TIME — the docs route ships no JavaScript
+
 `src/routes/docs/+layout.ts` sets `csr = false` deliberately, so loading a ~500 KB mermaid runtime
 to draw a picture would reverse a real performance decision for decoration. Mermaid runs once
 against the Chromium already here for Playwright (`scripts/lib/mermaid-render.ts`), and the docs
@@ -140,12 +251,14 @@ as that instruction rather than a stack trace. Mermaid's baked purple is rewritt
 `--diagram-*` variables, so restyling every diagram is a CSS edit, not a re-render.
 
 ### VERIFICATION
+
 `npm run align` — all six gates aligned. `md-align` — **all 316 content files match the graph**.
 16 new tests in `scripts/__tests__/mermaid-render.test.ts`, none of which launch a browser.
 
 ### ⚠ OPEN, AND MATT ASKED FOR IT NEXT: the user stories in depth (F177)
-`kb:freeform-capture` records the direction — *"more freeform notetaking, but with triples
-remaining the core"* — with **both halves load-bearing** and two open questions that are NOT
+
+`kb:freeform-capture` records the direction — _"more freeform notetaking, but with triples
+remaining the core"_ — with **both halves load-bearing** and two open questions that are NOT
 settled: whether the unit on screen is the note or the claims taken out of it, and whether a note
 becomes editable after capture (and if so, what happens to facts already confirmed from a sentence
 that has since changed). **Do not build any of it before that conversation.**
@@ -161,22 +274,24 @@ files pass**, 25/25 script-tier offline jobs clean, Ollama up with 17 models and
 `VITE_OLLAMA_INGEST_MODEL=qwen3:32b`.
 
 ### F159 was stale in all three items — two done, one half done
+
 - **ONE, dictated task → bridge: BUILT** as F160 `kb:task-bridge` (already `functional`, with
   `has-file` links). `tasks-export.ts` / `tasks-import.ts` cross the IndexedDB↔Node boundary via
   the workspace TTL sync. F159's note still said "THE ONLY MISSING LINK IS A BRIDGE".
-  *Genuinely left*: no task-specific review surface — grep for `AgentTask`/`task-state`/`done-when`
+  _Genuinely left_: no task-specific review surface — grep for `AgentTask`/`task-state`/`done-when`
   in `review/+page.svelte` returns nothing, so a proposed task is still four ordinary pending rows.
 - **TWO, standards alignment: HALF DONE, and it is the half the note named first.**
   `vocabulary-ttl.test.ts` asserts `notationsOf(AltitudeScheme) === Object.keys(ALTITUDE_RANK)`
-  and cross-checks `TASK_EFFECTS`. *Genuinely left*: `ReviewStatus` and `TaskState` TS unions are
+  and cross-checks `TASK_EFFECTS`. _Genuinely left_: `ReviewStatus` and `TaskState` TS unions are
   still unchecked against the TTL — that test imports two unions, not four.
 - **THREE, terse review: RENDERED.** `review-pipeline.ts` composes both "orphaned" modules and
   `review/+page.svelte` renders the spotlight strip (`data-testid="spotlight"`) and entity cards.
   13 Playwright tests in `tests/e2e/review.test.ts` cover it.
 
 ### ⚠ THE RING-NOTES TEST LIVED ONLY ON AN UNMERGED BRANCH — FIXED THIS SESSION
-`startWorkspacePolling` — the 10s tick whose own comment records *"Two of three dictated notes were
-lost this way on 2026-08-27"* — **appeared in no test file on `dev`**. The fix shipped; the test
+
+`startWorkspacePolling` — the 10s tick whose own comment records _"Two of three dictated notes were
+lost this way on 2026-08-27"_ — **appeared in no test file on `dev`**. The fix shipped; the test
 pinning it was in PR #206 (`workspace-poll-drain.test.ts`) and has never merged. `dev` did cover
 the drain's concurrency guard (`workspace-sync.test.ts`: "coalesces concurrent in-page drains").
 What was untested was that the **poll calls the drain at all**.
@@ -188,9 +303,10 @@ the tick drains the queue, it does not re-import a consumed row, and a failed cy
 reverting only the catch fails the third. They are not tests that pass either way.
 
 ### AND THAT SEARCH FOUND A REAL BUG ON `dev`: the poll tick had lost its `.catch()`
+
 PR #206 has `.catch((e) => console.warn('[workspace] poll cycle failed:', e))`; `dev`'s
 re-implementation is a bare `void pullFromWorkspace().then(() => drainAndImportPending())`.
-The drain *does* reject — on a database error, or an acknowledgement write that did not land, both
+The drain _does_ reject — on a database error, or an acknowledgement write that did not land, both
 already covered by neighbouring tests. **Fixed in this branch.** Be precise about the damage: the
 timer survives either way, `setInterval` does not care about a rejected promise. What was lost is
 the **diagnostic** — the only evidence capture had broken became an unhandled rejection nobody
@@ -198,6 +314,7 @@ attributed, so a failed note is indistinguishable from a note that never arrived
 exact failure mode of the 2026-08-27 incident, one layer down.
 
 ### PR #206 (ring capture) — all-green CI, conflicting since 2026-08-27
+
 11/11 checks pass. Conflict is only 3 files and **`dev` is ahead on all three**
 (`notes-pull.ts` +78 lines, `workspace.svelte.ts` +223, roadmap). The payload does not conflict:
 `static/n8n/ios-note-capture.workflow.json`, `note-capture-local`, `note-drain`,
@@ -205,6 +322,7 @@ exact failure mode of the 2026-08-27 incident, one layer down.
 mechanical: **take dev's side on the three, keep the new files.**
 
 ### The two grounding leaks are still open — confirmed by reading the code
+
 `src/lib/rdf/structural-context.ts` is unchanged since 2026-09-01. Line ~195 drops open-decisions
 at zero overlap; line ~201 slices anchors by budget with **no floor at all**. No identifier or
 proposition rejection anywhere in the file. Its 24 tests include a relevance-floor regression for
@@ -212,6 +330,7 @@ open **decisions** (2026-08-19) and **nothing equivalent for anchors** — so th
 exactly the untested gaps, and the fix should start as two failing tests.
 
 ### Next, in order (agreed with Matt 2026-09-06)
+
 1. **Rebase and merge PR #206** — restores ring capture; without it there is no ring note to review.
    Bring `workspace-poll-drain.test.ts` across even where the source already matches.
 2. **Manual walk of add → review with real dictated notes.** Note the pending queue currently holds
@@ -221,8 +340,9 @@ exactly the untested gaps, and the fix should start as two failing tests.
    (qwen3:32b 74% ungrounded; grounding made all six models worse).
 
 ### Host findings from `offline:all --tier=script` (host-health)
-Beyond the known dead drive — reported as **`nvme0n1`** (critical_warning 0x9, available_spare 0%,
-SMART FAILED), *not* `nvme1n1` as earlier entries say; worth confirming which is which — two more:
+
+Beyond the known dead drive — reported as **`nvme0n1`** (critical*warning 0x9, available_spare 0%,
+SMART FAILED), \_not* `nvme1n1` as earlier entries say; worth confirming which is which — two more:
 **port 8000 listening on all interfaces** with no allowlist entry (overlaps the camera/pfsense
 re-networking plan), and **rkhunter has never actually run** (`/etc/default/rkhunter` ships with
 `CRON_DAILY_RUN` empty; log last written 4 days ago).
@@ -234,12 +354,14 @@ so graph-lint's has-file check passes. 2689 tests / 192 files pass, svelte-check
 graph-lint 0 errors, 25/25 script-tier offline jobs clean.
 
 ### THE GATE EXISTS NOW — `scripts/offline/extraction-score.ts` (F146 phase 1's missing half)
+
 `npm run offline:score` · ground truth in `tests/fixtures/notes-corpus/expectations.json`
 (19 scoreable + 4 known-broken), 22 unit tests, `main()` guarded so importing it in vitest does
 NOT fire models. It measures what `extraction-chain.ts` structurally cannot: whether the triples
 are the RIGHT triples. **Every "extraction got better" claim now has a number to move.**
 
 Three failure kinds are separated, and BOTH splits were forced by real output, not designed:
+
 - **INVENTION** — `lumenpath | can-genrate-comparison-documents | true`. A REQUEST became a
   claimed capability. Nobody said that. This is the corpus's highest-value assertion, failing.
 - **MISROUTING** — `user | request-to-generate | comparison-document`. The model understood
@@ -248,13 +370,15 @@ Three failure kinds are separated, and BOTH splits were forced by real output, n
   sentence, asserts nothing, extracts nothing. Scoring this as invention was simply wrong.
 
 ### ⚠ GRAPH GROUNDING DOES NOT HELP EXTRACTION — unanimous across 6 models
+
 Every model scored BEST with **no** graph context. none→full: gemma3:27b 72→56, devstral 56→22,
 qwen3.6 50→44, qwen3-coder 39→28, lfm2.5 33→22, llama3.2 22→17. **Not one improved.**
 This is the measurement `kb:structural-grounding`'s own remaining note demanded before any claim
-could be made. Matt's report ("lean less on existing graph if its small or empty") *understates*
+could be made. Matt's report ("lean less on existing graph if its small or empty") _understates_
 it — the problem is not confined to small graphs.
 
 **Two deterministic leaks, both localised, both unfixed:**
+
 1. **No relevance floor on anchors.** `selectStructuralContext` drops open-decisions at zero
    lexical overlap but applies no floor to anchors. Measured on corpus 01: a 40-statement graph
    injects **1,001 tokens, 2 of 12 anchors relevant**; the 227-statement graph injects 368 tokens
@@ -265,10 +389,11 @@ it — the problem is not confined to small graphs.
    output. `co-hyponyms.ts` already refuses identifier schemes; structural-context does not.
 
 ### ⚠ A 32K CONTEXT WAS RUNNING A 32B MODEL ON THE CPU — the biggest single find
-Matt: *"My CPU was maxing out my 24 threads... GPU was under utilized??"* `ollama ps` said
+
+Matt: _"My CPU was maxing out my 24 threads... GPU was under utilized??"_ `ollama ps` said
 `qwen3:32b · 25 GB · 100% CPU · context 32768`, both 3090s at 0-8%, load average 145. Weights are
 20GB and fit a 24GB card fine — the **KV cache** pushed it over, and Ollama fell back to CPU
-*entirely*. The host sets `OLLAMA_CONTEXT_LENGTH=32768` and the app never overrode it per request.
+_entirely_. The host sets `OLLAMA_CONTEXT_LENGTH=32768` and the app never overrode it per request.
 Fixed by `contextWindowFor()` in `providers.ts` (sizes `num_ctx` to the actual prompt, 4K floor,
 25% headroom). After: `21 GB · 100% GPU · context 8192`, spread across BOTH cards ~11GB each.
 **Every local extraction in the app was paying this** — a silent ~20x slowdown, no error, on
@@ -276,6 +401,7 @@ hardware that looks idle. Also observed: gemma3:27b (18GB) + phi4:14b (9.8GB) re
 which is the headroom that makes the requested concurrent queue feasible.
 
 ### MODEL RANKING — the roster was wrong, and the configured model was the WORST one
+
 **`.env` had `VITE_OLLAMA_INGEST_MODEL=llama3.2:3b`, which is LAST of eleven at 22%.** That is the
 direct cause of the extraction quality Matt reported. Now `qwen3:32b`.
 On GPU, 8192 ctx, strict recall over 19 expectations, no graph context:
@@ -290,13 +416,15 @@ Earlier CPU-era numbers (gemma3 72%) used an 18-expectation denominator; 03.5 wa
 known-broken the same day, so 68% is a stricter denominator and NOT a regression.
 
 ### THINKING MODE MEASURED, AND IT DID NOT EARN ITS COST
+
 qwen3:32b: **74% single-pass, 63% with `--thinking`** (one run each, 2026-09-04). The critic added
 11 triples so it IS finding things — it has not been shown to find the RIGHT things. Shipped
 OFF (`ollamaThinkingMode`, `VITE_OLLAMA_THINKING_MODE=false`). This is the gate working as F146
-phase 1 demanded: *"a harness that only ever confirms improvement is a marketing instrument."*
+phase 1 demanded: _"a harness that only ever confirms improvement is a marketing instrument."_
 Needs repeat runs before any verdict — run-to-run variance is real (gemma3 scored 67% then 72%).
 
 ### OLD RANKING, superseded by the GPU run above (kept: it was measured on CPU/32K ctx)
+
 `gemma3:27b 72% · devstral-small-2 56% · qwen3.6 50% · qwen3-coder 39% · lfm2.5 33% · llama3.2:3b 22%`
 **The code specialist is the wrong tool for prose**: qwen3-coder is 4th of 6 and scores 20% where
 gemma3 scores 70% on the same file. Cost: gemma3 ~60s/source vs qwen3-coder ~14s.
@@ -305,6 +433,7 @@ of fields, so our open-ended triple prompt is the wrong format for it) and **qwe
 Run-to-run variance is real: gemma3/small scored 67% then 72% on re-run. Do not read 5pts as signal.
 
 ### THINKING MODE BUILT — `src/lib/integrations/llm/extract-critic.ts` (12 tests)
+
 The two-pass extract-then-critic F146 already names, and `kb:ref-docling-graph` independently
 validates as "skeleton-then-flesh dense extraction". Critic sees source AND first pass, asked only
 what is MISSING. **Unioned, never substituted** — pinned by a test that it cannot delete a
@@ -312,6 +441,7 @@ first-pass fact. Opt-in (`--thinking` on the scorer, `thinking: true` on the oll
 **UNMEASURED: nobody has run --thinking against the corpus yet. Do not claim it helps.**
 
 ### UI: cancel is real now
+
 `button.primary` had no `:disabled` rule and its `:hover` fired anyway, so a dead button lit up
 orange while its label cycled stage names — fixed globally in `global.css`. Added a step-based
 progress bar (NOT a fake timer) and a cancel button. `AbortSignal` threaded through all 8
@@ -319,12 +449,14 @@ providers → ollama-extract → `ingest()`, so an in-flight 27B generation actu
 stage-boundary checks so nothing half-lands in the graph.
 
 ### Disk: 51G reclaimed (83% → 76%, 210G free), Matt approved each target
+
 Deleted LM Studio gemma-2-27b (21G, superseded by ollama gemma3:27b), Codestral-22B (17G),
 Llava-v1.5-7B (5.8G), and `~/.cache/huggingface` (7.8G). **phi-4-GGUF kept.**
 Pulling qwen3:32b, mistral-small3.2:24b, command-r:35b, phi4:14b to benchmark the 48GB class
 (2x RTX 3090). ⚠ `nvme1n1` SMART still FAILED, `available_spare 0%` — unchanged, still unfixed.
 
 ### Next, in order (Matt: "after benchmarking, experiment with workflow fixes")
+
 1. ~~Finish the 48GB benchmark~~ **DONE** — table above, `.env` + `.env.example` updated.
 2. **The two grounding fixes**, then RE-RUN. The baseline is published so the fix has a
    number to beat; do not claim it worked without one. `kb:ref-ontocast`'s ontology-RETRIEVAL
@@ -343,28 +475,30 @@ Pulling qwen3:32b, mistral-small3.2:24b, command-r:35b, phi4:14b to benchmark th
 
 ---
 
-
 ## ▶ SESSION 2026-09-02 — the graph audit, and the chain measured composed
 
 Branch `fix/cascade-real-graph` off `dev`, 3 commits, **not pushed and no PR opened** —
 Matt's call. 86 files / 1,397 rdf tests, svelte-check 0/0, graph-lint 0 errors.
 
 ### ⚠ UNRELATED AND URGENT: `nvme1n1` SMART health FAILED
+
 `host-health` reports `critical_warning 0x9`, `available_spare 0%` (threshold 10%). The drive
 is failing NOW. Matt said he will "look at drive RMA and camera re-network later" — it is
 acknowledged, not fixed. `exposure` also flags port 8000 listening on all interfaces.
 
 ### THE GRAPH AUDIT — it does not save context the way the ledger claims
+
 - **102 graph queries EVER** (79 reads + 23 writes) against 3,652 file-touching calls. Graph
   share of context 3.6%, of carry 6.6% (was 1.1%/1.7% in August — tripled, from near-zero).
 - **Head-to-head, kb_compress is 3x MORE expensive than grep for a KNOWN entity**: 1,950
   tokens vs 660. Its value is DISCOVERY, not retrieval. `graph-economics` claims 28.0K saved
   per query against a 30K baseline the job itself flags as never measured — do not quote it.
 - **What the graph does earn: 118K tokens of avoided rework**, 5 features not rebuilt under new
-  names. Matt: *"the avoided rework is the win for sure."* That is the plan working, not
+  names. Matt: _"the avoided rework is the win for sure."_ That is the plan working, not
   compression. `npm run ab:benchmark` — the experiment that would settle it — STILL never run.
 
 ### WHY THE PENDING-FACT SUMMARY NEVER LANDED — root-caused, three layers
+
 1. **Five summaries, none of which summarizes the facts.** `reviewTreeSummary`,
    `reviewPlanSummary`, `attentionSummary`, `routingSummary`, `reanalysisSummary` all count
    QUEUE SHAPE ("12 decisions open; 3 contested"). None says what the facts CLAIM.
@@ -379,10 +513,11 @@ acknowledged, not fixed. `exposure` also flags port 8000 listening on all interf
    A model echoing what it was shown was rejected every time. **Yield 0% → 100%** once fixed.
 
 After the fixes, on the real Pebble notes: facts 2,295→217 · clusters 1→33 · 944.0→4.5 per
-question · agent input 0→16. It now produces a real question: *"Is Orange Logic an enterprise
-dam?" settles 4 facts.* (The transcription damage survives — should be **DAM**.)
+question · agent input 0→16. It now produces a real question: _"Is Orange Logic an enterprise
+dam?" settles 4 facts._ (The transcription damage survives — should be **DAM**.)
 
 ### THE CHAIN, MEASURED COMPOSED — `npm run` → `scripts/offline/extraction-chain.ts`
+
 Every stage had passing unit tests and NOTHING measured them composed, which is exactly where
 both bugs above lived. New script-tier job + `tests/fixtures/extraction-chain.ttl` (synthetic —
 the repo is PUBLIC and `reckons-workspace/kbs/*` is gitignored, so Matt's notes stay local).
@@ -398,6 +533,7 @@ no structure = every claim lands as an orphan and review degrades to a flat list
 reported symptom, measured.**
 
 ### CO-HYPONYMS — the seam closed (`src/lib/rdf/co-hyponyms.ts`, 10 tests)
+
 One lexical signal, two opposite readings, and only the destructive one ran:
 `node attribute {name,value,type,...}` scored 0.85 to vocabulary-repair, which offered to MERGE
 them. A shared head with DIFFERENT tails is positive evidence they are DIFFERENT things.
@@ -413,6 +549,7 @@ repairs — and a repair merges entities, destroying the provenance link to the 
 tree still has 0 decisions open. Do not report "6 of 32 would be placed" as "placed".
 
 ### KNOWN-GOOD, do not re-derive
+
 - **`triple-shape.ts` WORKS.** All 5 collapsed subjects (`orange-logic-is-an-enterprise-dam`
   etc.) are caught by `looksLikeProposition`. The 3 still in the notes graph are LEGACY,
   extracted before the guard landed. Not a broken control — do not "fix" it.
@@ -425,6 +562,7 @@ tree still has 0 decisions open. Do not report "6 of 32 would be placed" as "pla
   one wrong "no groups found" result.
 
 ### Next, in order
+
 1. Wire `proposeCoHyponyms` into the pipeline as a stage and surface each group as ONE review
    question. This is what moves the tree off 0 decisions.
 2. The scoring half of F146 phase 1: a corpus of raw note TEXT with hand-checked expected
@@ -434,7 +572,6 @@ tree still has 0 decisions open. Do not report "6 of 32 would be placed" as "pla
    counters remain the only summaries.
 
 ---
-
 
 ## ▶ SESSION 2026-08-29 — honor 3D, and make voice truly opt-in
 
@@ -492,6 +629,7 @@ tree still has 0 decisions open. Do not report "6 of 32 would be placed" as "pla
   of 183 entities, because most untyped entities were notes and no type existed for one to have.
 
 **KNOWN-BAD, do not rediscover:**
+
 - `review.test.ts:184` fails — bisected to review-page work carried in from an earlier session, NOT
   from this work. Recorded on `bd071d8`.
 - **Every good audio-portrait model fails the licence gate** — LivePortrait, MuseTalk and the whole
@@ -553,13 +691,13 @@ dead links below.
   TERMINAL, over JSONL on disk, unreachable from the browser. So this is not "add a UI"; it is
   lifting one shared definition of an open question into `src/lib/rdf/`, then building the
   proactive half neither channel has. Governed by an existing principle rather than a new one:
-  *an agent must not ask what it can verify*.
+  _an agent must not ask what it can verify_.
 - **F142 `kb:graph-goal`** (planned) — minted because F141 needs it and F99.1 already named it
   missing. "telos" appears exactly once in the roadmap: in the 2026-08-13 note saying it is absent.
   Without it, ranking can only produce what is IMMINENT, never what is IMPORTANT — and question
   generation can only find what is incomplete, never what matters.
 - **F143 `kb:game-development`** (**speculative**, 4 phases) — a game's canon as a graph. The sharp
-  framing: *we are not entering the asset-generation market, we are entering the approval market*.
+  framing: _we are not entering the asset-generation market, we are entering the approval market_.
   Status is speculative and not planned because no game developer has asked for this; phase 1 is a
   falsifiable experiment on shipped machinery (one real canon, does it catch anything a human
   missed) and phases 3-4 should not be built before it.
@@ -661,7 +799,6 @@ had ever run. Do not chase n8n-side naming again.
 - **Outlook/GMail/Drive agent control** — needs an ACTION queue with a review gate; nothing exists.
 - n8n "Read me first" sticky still draws the abandoned Google Drive hop.
 
-
 **Last updated: 2026-08-26.** Working branch: `fix/claude-review-hardening`, based directly on
 `origin/dev` at `61700e5`. The review/refinement patch below is being organized into release-ready
 commits; do not rebase the dirty tree without first preserving it.
@@ -690,6 +827,7 @@ what is missing is the compiler and the cap. Nothing built, and the prose should
 before something demonstrably replaces it.
 
 **Waiting on Matt** (`kpred:decision-owner`, plus two partial facts in the queue):
+
 - TanStack Table v9 as a dependency for `sv-table`'s blocks, or port only the dependency-free
   presentation pieces? Offline-first bundle weight is the trade.
 - Invert the workspace-sync capture default (denylist → user-marker allowlist)? A breaking UX change.
@@ -739,6 +877,7 @@ uncommitted, including generated performance reports.
 ## ▶ LATEST (2026-08-21e) — why the demo tree was empty, folder grouping, retention, click perf
 
 ### THE DEMO TREE WAS EMPTY, AND IT WAS NOT THE TREE
+
 Diagnosed, not guessed: `demo-decision-tree.ttl` imports as **87 plain triples**
 (`cleanImportCount: 87`), so `isAnnotated` is false and `kb-import.ts:76` overrides every
 statement to **`confirmed`**. Via workspace sync the graph lands fully settled → the review queue
@@ -751,14 +890,17 @@ annotated file, which already states real statuses. **NO UI EXPOSES IT YET** —
 the toggle does not.
 
 ### The workspace is `reckons-workspace/`, not the repo root
+
 `reckons-workspace/kbs/preview-collage/preview-collage.ttl` was rewritten at 14:46 during the
 session — that is what the app is syncing. Both demos were in repo-root `kbs/` only, which is why
 they never appeared. Now copied to `reckons-workspace/kbs/demo-decision-tree/` and
 `.../demo-review-tree/`.
 
 ### /kb: group graphs by synced folder sub-directory (F113 `folder` basis)
+
 `graph-sets.ts` already had declared → defined → derived. Folder is the missing source, and it
 outranks the name-prefix guess because a folder the user made is intent, not spelling.
+
 - `folderSetOf(path, name)` — **a graph's own folder is not a set; a folder that CONTAINS graphs
   is.** `kbs/clients/acme` → "clients"; `kbs/acme` → null; the shared `kbs/` wrapper never groups.
 - `KbEntry.folderPath` (a cache of where a file WAS, never authoritative for reading).
@@ -767,9 +909,11 @@ outranks the name-prefix guess because a folder the user made is intent, not spe
 - 11 new tests (34 in `graph-sets.test.ts`).
 
 ### Log/event nodes archive separately from decisions — `src/lib/rdf/retention.ts`
+
 `fact-altitude.ts` has classified facts since F139 and `archive.ts` has pruned since F97, and
 **neither has ever read the other** (grep "altitude" in archive.ts: zero hits). So retention was
 altitude-blind, and the only safe policy was keep-everything.
+
 - `log` → ageable · `record` → conditional · `evidence`/`judgment`/`decision` → **keep, at any age**.
 - **REFERENCE BEATS AGE:** nothing ageable is archived while a live decision or judgment still
   points at it — archiving it would leave the ruling asserting something with nothing behind it.
@@ -777,16 +921,19 @@ altitude-blind, and the only safe policy was keep-everything.
 - 12 tests. Pure — it partitions and explains; it archives nothing.
 
 ### Click performance across the whole app — `perf-crawl.ts --clicks`
+
 Every visible button on a route, clicked and timed: settle-to-DOM-quiet (MutationObserver, not a
 fixed wait), long tasks attributed to that click only, worst frame, and **whether the DOM changed
 at all** — a 900ms click that changes nothing is a different, worse bug. Destructive labels
 (delete/clear/reject/unlink…) are never clicked and are reported as skipped.
 
 **It immediately caught the freeze.** `/` with `--throttle=4`:
+
 ```
 ✗ /   9 clicked · 3 skipped · 7 over budget
    1200ms Getting started →   2 long task(s)  worst frame 42868ms  never settled
 ```
+
 **A 42,868 ms frame.** Two other buttons never settled; two could not be clicked at all (5s timeout).
 
 **HARDWARE HONESTY (Matt: "most users would not have as powerful of dual GPU system as I do").**
@@ -799,17 +946,17 @@ LENGTH, so /kb's sort buttons ("recent", "size", "name") were reported as inert 
 changes neither. Now a content hash.
 
 ### Verification
+
 `vitest src/lib/{stores,rdf,storage}` **99 files / 1,504 tests green** · `svelte-check` 0 errors ·
 `graph-lint` 0 errors · tsc clean. Nothing committed.
 
 ---
 
-
 ## ▶ LATEST (2026-08-21d) — F139 step 3: freeform re-analysis of the pending set
 
-Matt: *"the summary of the pending facts is a start to step 3, and the analyze buttons are a start
+Matt: _"the summary of the pending facts is a start to step 3, and the analyze buttons are a start
 to the guidance actions. In addition we need a way to prompt directly after the summary, to suggest
-freeform re-analysis of the pending facts."*
+freeform re-analysis of the pending facts."_
 
 **Built.** A freeform instruction field renders immediately below the altitude headline in
 `/review` — placement is the feature, because that is where a person has just read what the shape
@@ -828,12 +975,12 @@ ALTERNATIVES. The risk here is a reorganization pass quietly introducing a claim
 tidying: the human asks for grouping and receives an assertion they never read. So the operation
 set is **closed**:
 
-| op | what it does |
-|---|---|
-| `attach` | put pending facts under an open decision (the 1,688 orphans) |
-| `group` | gather facts into ONE question |
-| `depend` | mark one decision prerequisite to another |
-| `drop` | flag as noise or duplicate — a proposal to reject, never a rejection |
+| op       | what it does                                                         |
+| -------- | -------------------------------------------------------------------- |
+| `attach` | put pending facts under an open decision (the 1,688 orphans)         |
+| `group`  | gather facts into ONE question                                       |
+| `depend` | mark one decision prerequisite to another                            |
+| `drop`   | flag as noise or duplicate — a proposal to reject, never a rejection |
 
 There is no `add`, no `edit`, no `settle`. A pass that cannot invent a fact cannot launder one into
 the graph, whatever the instruction said and whatever the model returned. Unknown ids,
@@ -847,6 +994,7 @@ is a closed operation set over existing ids, so there is no channel through whic
 reaches a person.
 
 ### Honest gaps
+
 - **The operations are proposals that are DISPLAYED but not yet APPLIED.** There is no apply
   handler — the next step is wiring `attach`/`group`/`depend`/`drop` to the pending store. Right
   now the value is "see what a re-analysis would do", not "do it".
@@ -856,6 +1004,7 @@ reaches a person.
 - Not visually verified in a browser beyond the e2e assertions.
 
 ### Verification
+
 `vitest src/lib/rdf` **71 files / 1,115 tests green** · review e2e **29/29** across all projects
 (desktop-chrome/firefox/safari, mobile-ios, tablet) · `svelte-check` **0 errors**, 4 warnings all
 pre-existing (pointer handlers, video captions) · `graph-lint` 0 errors.
@@ -867,10 +1016,10 @@ full-file run, which is how CI runs it, is green.
 
 ---
 
-
 ## ▶ LATEST (2026-08-21c) — decision dependency, and a faked fixture for the tree UI
 
 ### Decision order is now projected from the plan
+
 `Statement.blocks` was meant to carry decision ordering and never did (8 of 529 rows). But the
 relations were never missing — they were held at FEATURE level: `kpred:depends-on`, 140 edges.
 `decisionDependencies()` in `src/lib/rdf/review-tree.ts` projects them onto open decisions:
@@ -890,7 +1039,8 @@ most `depends-on` edges simply connect a feature that has an open decision to on
 Do not read 7/78 as a failure of the mechanism, and do not read it as success either.
 
 ### A faked fixture for the tree UI — `tests/fixtures/demo-decision-tree.ttl`
-Matt: *"we can work on the accurate extraction, separately than the UI/UX of the intended result."*
+
+Matt: _"we can work on the accurate extraction, separately than the UI/UX of the intended result."_
 So this graph is hand-authored in the shape extraction is TRYING to reach, to let the tree layout
 be designed and judged now. Companion to `demo-review-tree.ttl` (which shows the review PROCESS);
 this one shows **depth and order**. Verified output:
@@ -916,6 +1066,7 @@ invisible. Found by running the tree over the fixture, not by reading the code �
 point of having one. Noted in the fixture header.
 
 ### Matt's 3-step extraction architecture (2026-08-21) — recorded in the graph
+
 1. **Incorporation** — ground new extraction in the existing graph AND the already-pending facts.
 2. **Intermediary automated analysis** — relate every pending fact to existing facts AND to other
    pending facts by logic hierarchy and dependency, so root decisions become stacked upon with
@@ -937,11 +1088,11 @@ judgments still under no decision root; nothing relates pending fact to pending 
 **Step 3 is not built** — no manual re-analysis trigger, no divergence surface.
 
 ### Verification
+
 `vitest src/lib/rdf` **70 files / 1,105 tests green** · `graph-lint` 0 errors, 8 warnings · tsc
 clean · fixture renders as documented. Nothing committed.
 
 ---
-
 
 ## ▶ LATEST (2026-08-21b) — the review's last step: prose decisions now split into options
 
@@ -953,6 +1104,7 @@ of text. `distillationRequest()` had defined the contract since 2026-08-19 and *
 it** — `graph-decisions.ts` called it only to print the task name.
 
 **Built and measured on real data:**
+
 - `validateProposedOptions()` + `DistillationOutcome` in `src/lib/rdf/review-tree.ts`, 12 tests
   (`src/lib/rdf/__tests__/distill-options.test.ts`).
 - `scripts/offline/distill-decisions.ts` — agent tier, ground → prompt → validate → emit pending
@@ -970,7 +1122,7 @@ selection/template"; the three NeMo sidecar architectures named in the prose. Th
 produced nothing: its prose poses a question without naming alternatives.
 
 **A real defect the run exposed, now guarded:** all three options of one decision claimed to kill
-the *same nine facts*. A price identical across every option is not a price — it looks like
+the _same nine facts_. A price identical across every option is not a price — it looks like
 graph-derived evidence while carrying no information. The validator now drops such prices and keeps
 the options bare, with a test either way.
 
@@ -981,6 +1133,7 @@ The job is registered in `jobs.json` **DISABLED** for exactly that reason. **Nex
 `--limit=40`, read the rejections, and only then consider enabling it.**
 
 ### Still open — the other half of "consolidated and dependency tracked"
+
 - **1,688 judgments sit under no decision root.** They reach a human and attach to nothing. That
   is the remaining consolidation gap, and it is bigger than the options gap just closed.
 - **Dependency tracking is partial**: roots rank by "unlocks N", but `Statement.blocks` is sparse
@@ -988,9 +1141,10 @@ The job is registered in `jobs.json` **DISABLED** for exactly that reason. **Nex
 - Duplicate roots: one feature can spawn several decision roots (Entity sets ×2, NeMo ×2).
 
 ### Also this session — maintenance
+
 - **`npm run offline:dead-weight`** (`scripts/offline/dead-weight.ts`, script tier, registered):
   a repeatable flag for **orphaned and superseded features**, not a disk report. Finds artifacts
-  whose *producing* job is disabled, graph features whose files have all vanished, unshipped plans
+  whose _producing_ job is disabled, graph features whose files have all vanished, unshipped plans
   whose files a shipped feature already owns, and never-called exports **rolled up per owning
   feature**. Two precision bugs found and fixed while building it: treating "mentions" as
   "produces" hid the 209MB button-crawl finding behind an enabled job, and conflating "never
@@ -1002,11 +1156,11 @@ The job is registered in `jobs.json` **DISABLED** for exactly that reason. **Nex
   every one is a question for you.
 
 ### Verification
+
 `vitest src/lib/rdf` **69 files / 1,099 tests green** · distill+review-tree 34/34 · `graph-lint`
 0 errors, 8 warnings · tsc clean · JSON valid. Nothing committed.
 
 ---
-
 
 ## ▶ LATEST (2026-08-21) — context management: measured, and the counterfactual now has a harness
 
@@ -1020,14 +1174,14 @@ and the line is now corrected to print the actual shares.
 `jobs.json`). Measures CARRY COST — tokens x turns re-read — because a block entering context
 early is paid for on every later request. Results:
 
-| what fills context | share of context | share of CARRY |
-|---|---|---|
-| tool-params (what we SEND) | 36.8% | **35.2%** |
-| Bash results | 24.5% | 26.8% |
-| Read results | 13.8% | 19.0% |
-| assistant text | 10.5% | 9.8% |
-| human | 10.0% | 4.3% |
-| **all graph queries** | 1.1% | **1.7%** |
+| what fills context         | share of context | share of CARRY |
+| -------------------------- | ---------------- | -------------- |
+| tool-params (what we SEND) | 36.8%            | **35.2%**      |
+| Bash results               | 24.5%            | 26.8%          |
+| Read results               | 13.8%            | 19.0%          |
+| assistant text             | 10.5%            | 9.8%           |
+| human                      | 10.0%            | 4.3%           |
+| **all graph queries**      | 1.1%             | **1.7%**       |
 
 Two things nobody had guessed. (1) The largest category is tool **parameters**, not results.
 (2) File reading outweighs graph querying **27x** — F135's premise holds on our own data.
@@ -1050,6 +1204,7 @@ recorded because task selection decides the result. Example spec: `tests/ab-task
 **Not yet run — that is the next step, and it is Matt's call to spend on it.**
 
 ### Also landed
+
 - **HANDOFF.md was the single most expensive artifact in this project's context**: 2,377 lines,
   ~33k tokens, 46 sections back to 2026-07-16, and CLAUDE.md orders every session to read it
   first — 45.0M carried tokens across 14 reads. Split: everything before 2026-08-16 moved
@@ -1064,6 +1219,7 @@ recorded because task selection decides the result. Example spec: `tests/ab-task
   in the gitignored local file, not a shared one. **Takes effect next session start.**
 
 ### Verification
+
 `offline:all --tier=script` 21/22 · `graph-lint` 0 errors, 8 warnings · tsc clean on all four
 touched scripts · JSON valid. **`status-evidence` FAILS (1 undeclared shipped-untested
 feature) — pre-existing, not from this work: no TTL was touched here; it comes from the
@@ -1072,7 +1228,6 @@ uncommitted F139 roadmap patch (+670 lines).** Unit/visual suites not re-run: no
 session-tokens).
 
 ---
-
 
 ## ▶ WRAP-UP (2026-08-19, end of session) — READ THIS FIRST
 
@@ -1089,17 +1244,17 @@ unambiguously from this session:
 review patch that was already in the working tree when the session started.** Separating the hunks
 needs interactive staging, and guessing which lines are whose risks losing your work:
 
-| file | total changed | roughly mine |
-|---|---|---|
-| `src/lib/3d/KnowledgeGraph.svelte` | 147 | ~40 (cooling schedule) |
-| `src/lib/3d/KnowledgeGraph2D.svelte` | 59 | ~45 (cooling schedule) |
-| `src/routes/(app)/review/+page.svelte` | 620 | ~250 (tree + cascade UI) |
-| `src/lib/stores/ingest.svelte.ts` | 563 | ~35 (F136.3 grounding) |
-| `src/lib/rdf/types.ts` | 130 | ~20 (settledBy/settledByDecision) |
-| `static/reckons-roadmap.ttl` | 661 | ~145 (F139/F139.1/F136.3/F140/F141 + kb:dichotomy) |
-| `tests/e2e/review.test.ts` | 126 | all of it |
-| `src/lib/rdf/{dichotomy,review-routing}.ts` | 13 | all (quadratic fixes) |
-| `scripts/offline/jobs.json`, `package.json` | 21 / small | job + npm script registration |
+| file                                        | total changed | roughly mine                                       |
+| ------------------------------------------- | ------------- | -------------------------------------------------- |
+| `src/lib/3d/KnowledgeGraph.svelte`          | 147           | ~40 (cooling schedule)                             |
+| `src/lib/3d/KnowledgeGraph2D.svelte`        | 59            | ~45 (cooling schedule)                             |
+| `src/routes/(app)/review/+page.svelte`      | 620           | ~250 (tree + cascade UI)                           |
+| `src/lib/stores/ingest.svelte.ts`           | 563           | ~35 (F136.3 grounding)                             |
+| `src/lib/rdf/types.ts`                      | 130           | ~20 (settledBy/settledByDecision)                  |
+| `static/reckons-roadmap.ttl`                | 661           | ~145 (F139/F139.1/F136.3/F140/F141 + kb:dichotomy) |
+| `tests/e2e/review.test.ts`                  | 126           | all of it                                          |
+| `src/lib/rdf/{dichotomy,review-routing}.ts` | 13            | all (quadratic fixes)                              |
+| `scripts/offline/jobs.json`, `package.json` | 21 / small    | job + npm script registration                      |
 
 **Commit your own patch first, then these separate cleanly.** Nothing is lost — it is all in the
 working tree and the whole suite is green on it.
@@ -1112,14 +1267,14 @@ energy forever. Added an alpha that decays (d3's 0.0228 → floor in ~300 ticks)
 only — damping and integration keep raw `dt` — plus a gate that skips the whole physics block once
 cooled, so a settled graph stops running an O(n²) pass every frame.
 
-| graph | lines | before | after |
-|---|---|---|---|
-| demo-review-tree | 110 | 8,674 ms | **5,651 ms** |
-| starter-quickstart | 113 | 13,001 ms | **5,695 ms** |
-| starter-everyday | 254 | 24,677 ms | **5,693 ms** |
-| starter-guide | 398 | 27,649 ms | **8,489 ms** |
-| reckons-production | 451 | **never settled** | **17,936 ms — now terminates** |
-| reckons-roadmap | 4,247 | never, 10.1 s frames | still never, 10.1 s frames |
+| graph              | lines | before               | after                          |
+| ------------------ | ----- | -------------------- | ------------------------------ |
+| demo-review-tree   | 110   | 8,674 ms             | **5,651 ms**                   |
+| starter-quickstart | 113   | 13,001 ms            | **5,695 ms**                   |
+| starter-everyday   | 254   | 24,677 ms            | **5,693 ms**                   |
+| starter-guide      | 398   | 27,649 ms            | **8,489 ms**                   |
+| reckons-production | 451   | **never settled**    | **17,936 ms — now terminates** |
+| reckons-roadmap    | 4,247 | never, 10.1 s frames | still never, 10.1 s frames     |
 
 Delta traces now decay cleanly (`5.35 4.57 2.17 0.84 0.38 0.19`) instead of hovering at 3–5.
 
@@ -1171,19 +1326,21 @@ lane that settles a cluster in one click. 66 unit tests; full suite 156 files / 
 review e2e; svelte-check 0 errors.
 
 **Matt's four corrections, in order:**
-1. *No artifacts.* Reckons.AI is a live site with publishing; the review process belongs in the app.
-2. *Aggregate and cascade, don't summarize.* "50 statements of datetime stamps are noise, one
+
+1. _No artifacts._ Reckons.AI is a live site with publishing; the review process belongs in the app.
+2. _Aggregate and cascade, don't summarize._ "50 statements of datetime stamps are noise, one
    question, did this work occur on X date?" The answer is recorded as the user's own fact and
    propagates to every member via `settledByDecision`.
-3. *Not just script tier.* "The summarization of many detailed facts into accurate decision points is
+3. _Not just script tier._ "The summarization of many detailed facts into accurate decision points is
    not mechanically viable… aggregation and dependency decisions I'm certain need LLM assistance."
    The deterministic bases are now explicitly a FLOOR; the agent tier is primary, made safe by
    `validateProposedAggregation` rather than by its prompt.
-4. *The answer restructures the set.* A purpose answer ("a package update and debugging") splits one
+4. _The answer restructures the set._ A purpose answer ("a package update and debugging") splits one
    cluster into two labelled sets. Three invariants: exhaustive, disjoint, and every purpose traceable
    to the user's own words.
 
 **Claims this work disproved — do not re-assert them:**
+
 - "1,641 outstanding review items" was wrong. It came from `graph-decisions.ts` feeding every
   CONFIRMED fact in as pending. `buildReviewTree` now filters by status itself and `read-graph.ts`
   requires an explicit `asReviewSet` opt-in.
@@ -1195,6 +1352,7 @@ review e2e; svelte-check 0 errors.
   claims that merely agree.
 
 **Honest gaps (why F139/F139.1 are `scaffolded`, not `functional`):**
+
 - The cascade lane has NO in-browser test. `extractMock` returns three fixed triples with
   unclassified predicates → `judgment` → never cascadable, so no mock ingest can build a cluster.
   The e2e records a `coverage-gap` annotation rather than passing silently. Needs a seeding route
@@ -1233,6 +1391,7 @@ graph-lint scans `static/*.ttl` and the fixture asserts a deliberate lifecycle c
 there would make a real check fail for a fictional reason.
 
 Two defects in the F139 design were found BY this demo and fixed:
+
 - A contested entity with no written question never appeared in the tree at all, despite the tree's
   own rule that contested outranks everything. `buildReviewTree` now synthesizes an IMPLIED root for
   it, anchored on the oldest conflicting side, with the question composed at read time.
@@ -1282,3 +1441,32 @@ single most expensive artifact in this project's context (`npm run offline:conte
 `kb_search` / `kb_compress` hold what was actually decided, which is the part worth keeping.
 
 **Keep this file short.** When you add a session section, move the oldest one to the archive.
+
+Manual note: **ADDRESSED 2026-09-08 — recorded as F187 `kb:set-semantics` in
+`static/reckons-roadmap.ttl`, with the two findings against it and the SKOS answer. Kept verbatim
+below because the graph entry is a reading of it, not a replacement for it.**
+
+We need to work on the docs. https://reckons.ai/docs is a cluttered mess. There should be sets utilized to organize different nodes, into a cohesive meta-concept. The entity set, extends above the entity itself (set of triples), and could be described as a group. Sets or groups of entities can contain entities from other existing sets, and could be used to draw a venn diagram to highlight contrasting sets of facts.
+
+The sets in this case will be to group many entities into a page. The page needs a higher level of order and conceptual meaning beyond single entities.
+Show less
+Sets already exist as a concept here — let me check what the graph says before designing anything, and actually look at what /docs shows a reader.
+
+Bash Read the existing graph-sets concept
+IN
+grep -n '^kb:graph-sets' -A 14 static/reckons-roadmap.ttl | head -20
+
+OUT
+903:kb:graph-sets rdf:type ktype:Feature ;
+904- rdfs:label "Graph sets — roles, relations, and how each observation was made" ;
+905- kpred:feature-id "F113" ;
+906- kpred:has-status "planned" ;
+907- kpred:relates-to kb:design-observed-archive ;
+908- kpred:relates-to kb:entity-sets ;
+909- kpred:relates-to kb:graph-db-connectors ;
+910- kpred:relates-to kb:design-vs-output ;
+911- kpred:depends-on kb:multi-kb ;
+912- kpred:description "Matt (2026-07-30): organize graphs into SETS the way facts are organized into entity sets (F65), with explicit ROLES and RELATIONS between members — and with each observation graph declaring HOW the observation was made, because visual tests and code tests observe the same artifact differently and are therefore different graphs, not one merged one. Also moves agent PROPOSALS out of knowledge.pending.jsonl and into a graph role, which is where they always belonged." ;`
+...
+
+We should be allowed to define set types, like entity types, and define attributes for the set. I think sets can have triples. Such that an entity could be converted to a set of entities. When I think of real life examples, I can see a representation of a set of entities as a group of people, or a group of objects. The set itself can have attributes, like a name, a description, and other metadata. The set can also have relationships to other sets or entities. For example, a set of people could be related to a set of organizations they all belong to, or a single individual entity could be. My sister had feedback in this way, not everyone thinks of things in triple facts, nor even as indivudual entities. We need to be able to allow for further expression of human thought, while maintaining a standard of triples. The set iis not a node in the graph, but rather a grouping of nodes. There must be new layouts that similar to hubs, highlight the sets.
