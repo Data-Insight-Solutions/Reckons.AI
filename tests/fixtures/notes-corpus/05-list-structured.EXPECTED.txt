@@ -1,0 +1,92 @@
+EXPECTED — 05-list-structured.md
+================================
+DRAFT, 2026-09-08 — awaiting Matt's review before the JSON is treated as truth.
+
+The first fixture that asks for SETS (F187). Every other file in this corpus
+asks "did it get the fact"; this one also asks "did it get the GROUPING", which
+is a different question with different ways of being wrong.
+
+THE GOAL THIS FILE EXISTS TO MEASURE
+------------------------------------
+Given a source containing lists, extraction should produce BOTH the individual
+facts AND a set per real grouping — with the right members, no extra members,
+and the members in ONE set rather than scattered across several. A run that
+extracts every fact perfectly and produces no groupings scores 100% on the old
+metric and 0% on this one, which is the whole reason the file exists.
+
+
+SHOULD PRODUCE — SETS (4 expected, 1 of them a trap)
+----------------------------------------------------
+S1  THE SHORTLIST — unordered, 3 members
+      kb:set-shortlist   a                skos:Collection
+      kb:set-shortlist   skos:prefLabel   "shortlist"
+      kb:set-shortlist   skos:member      kb:aprimo, kb:bynder, kb:opentext
+    Exactly three. Vantage Suite and Lumenpath are named in the same paragraph
+    and are explicitly NOT in it — including either is over-inclusion, and it is
+    the most likely failure because both words are nearby.
+
+S2  ALREADY DEPLOYED — unordered, 2 members
+      kb:set-deployed    skos:member      kb:vantage-suite, kb:opentext
+
+S3  MEMBERSHIP OVERLAPS — this is an assertion about S1 and S2, not a third set
+    kb:opentext is a member of BOTH. If the extractor partitions — puts OpenText
+    in one group and removes it from the other — that is the failure F187 is
+    designed around, because sets overlap and do not partition. The source says
+    so in plain words so that a model has no excuse.
+
+S4  THE MIGRATION — ORDERED, 4 members, order load-bearing
+      inventory -> map-metadata -> dry-run -> cut-over
+    Scored on order, not only membership. The source states the order is not
+    negotiable and that each phase depends on the previous one, so a set with
+    the right four members in the wrong sequence is WRONG, not partially right.
+    See F187.2: order should be authored on stable IRIs with an ordinal, NOT as
+    an rdf:List of blank nodes — blank-node labels are not stable across parses
+    (measured 2026-09-08), so a list-shaped answer re-proposes itself forever.
+
+MUST NOT PRODUCE — THE TRAP
+---------------------------
+S5  "Open concerns" is a bulleted list and is NOT a set.
+      The source states it outright: "they are not a group of anything — they
+      are separate objections to separate vendors."
+    A model that groups it has learned "bullet list => collection", which is
+    exactly the wrong rule and would fill real graphs with junk groupings.
+    A model that emits the three concerns as three ORDINARY facts against three
+    different vendors has read it correctly.
+    THIS IS THE DISCRIMINATING EXPECTATION. Recall on S1-S4 without S5 held is
+    not evidence of understanding; it is evidence of a bullet-list heuristic.
+
+
+SHOULD PRODUCE — ORDINARY FACTS (the existing metric still applies)
+------------------------------------------------------------------
+  kb:vantage-suite   kpred:dropped-because   "file format"
+  kb:lumenpath       kpred:is-a              kb:cad-platform     [not DAM]
+  kb:jordan-vale     kpred:role              "selection lead"
+  kb:priya-raman     kpred:role              "technical reviewer"
+  kb:jordan-vale     kpred:works-at          kb:northwind-analytics
+  kb:priya-raman     kpred:works-at          kb:northwind-analytics
+  kb:aprimo          kpred:concern           "per-seat licensing"
+  kb:bynder          kpred:concern           "no on-premise option"
+  kb:opentext        kpred:concern           "requires professional services"
+
+
+KNOWN-BROKEN, do not record as findings
+---------------------------------------
+  · NOTHING WILL PRODUCE A SET TODAY. No prompt asks for one, so the S1-S4
+    expectations are expected to score ZERO on the current pipeline. That is
+    the baseline, deliberately — the number exists so a process change has
+    something to beat. Do not read the zero as a regression.
+  · "Phase 3" as a reference to the dry-run step will probably not resolve to
+    the same entity as "Dry-run the transfer". Anaphora across a list boundary
+    is the chunking failure 04 describes, showing up at small scale.
+  · Jordan Vale vs Jordan Veil (02) is a deliberate near-duplicate across the
+    corpus. Whether normalizeEntities folds them is a MERGE question, not an
+    extraction one, and should not be scored here either way.
+
+
+WHAT TO JUDGE
+-------------
+Two things, and they must be reported separately or the second hides inside the
+first: (1) are the groupings found, with correct membership and order; (2) is
+the trap refused. A model scoring well on (1) and failing (2) has not learned
+sets — it has learned bullet lists, and it will be worse than useless on a real
+graph where most lists are not groups.
