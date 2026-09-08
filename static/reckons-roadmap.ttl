@@ -6926,3 +6926,37 @@ kb:docs-graph-registration rdf:type ktype:Phase ;
                kpred:principle    "Is this filename in that list is answerable by a rule, so per the work-tiering ladder it must not be left to a model or to a person remembering. Four hand-maintained lists of the same thing will drift again; that is what they do. The specific missing entries were the symptom and this is the fix." ;
                kpred:measured     "Verified in both directions on 2026-09-08: green on the corrected tree, and exit 1 naming the missing registry when docs-user-paths.ttl was removed from website.ttl. A check only ever seen passing has not been shown to check anything." ;
                kpred:tested-by    "scripts/__tests__/docs-graph-registration.test.ts" .
+
+# =============================================================================
+## F188: The lead term — which of an entity's names leads, and who decides
+## Matt, 2026-09-08. RECORDED AS PLAN, not built.
+# =============================================================================
+
+kb:lead-term rdf:type        ktype:Feature ;
+               rdfs:label   "Lead term — a user-settable preferred label, with synonyms behind it" ;
+               kpred:feature-id   "F188" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "medium" ;
+               kpred:relates-to   kb:node-synonyms ;
+               kpred:relates-to   kb:set-semantics ;
+               kpred:relates-to   kb:entity-normalization ;
+               kpred:description  "An entity has one name that leads and any number of names behind it. In SKOS that is exactly skos:prefLabel and skos:altLabel, and the user-facing act Matt describes — changing the title to a different synonym — is the PROMOTION of an altLabel to prefLabel, with the outgoing lead demoted rather than deleted." ;
+               kpred:decided      "MATT, 2026-09-08: we will need to consider the lead term of the entities and how users can set that, by changing title to a different synonym. So promotion is a USER act, not an inference. That matters because the machine can propose a synonym safely — adding an alias takes nothing away — while choosing which name LEADS is authorship, and the same distinction F88 draws about minting a feature." ;
+               kpred:measured     "THE GRAPH HAS NO LEAD TERM TODAY, MEASURED 2026-09-08 by parsing every static/*.ttl: rdfs:label 1840, skos:prefLabel 42, skos:altLabel 0. Every one of the 42 prefLabels is in reckons-vocabulary.ttl, the controlled-vocabulary file. So entity display names are rdfs:label and nothing else." ;
+               kpred:known-issue  "THAT MIX IS AN INTEGRITY GAP THE MOMENT SYNONYMS ARRIVE. kb:node-synonyms and src/lib/rdf/merge-aliases.ts both land rival names as skos:altLabel, correctly — it is SKOS own term. But SKOS pairs altLabel with prefLabel, so the result is entities carrying altLabels and no prefLabel at all. A SKOS reader then sees synonyms for a concept with no preferred name, and kb:ref-orionbelt reports missing prefLabel as one of its 22 named checks. Worse for this feature specifically: if the lead term is rdfs:label and the synonyms are skos:altLabel, PROMOTION HAS NO STANDARD FORM — it is not a swap of two SKOS properties, it is an edit across two vocabularies." ;
+               kpred:open-question "Migrate or mirror? MIGRATE rdfs:label to skos:prefLabel is the clean answer and touches 1840 triples plus every reader — rdfs:label is what docs-pages.ts, the composition layer and the graph canvas all read for a title. MIRROR writes both, with skos:prefLabel as the authored lead and rdfs:label GENERATED from it, which keeps every existing reader working and makes promotion a one-property swap; the cost is two places holding a name, which this project normally refuses. Mirroring is defensible only if the generated half is checked by a script rather than maintained by hand — which is exactly the shape of scripts/offline/graph-lint.ts. ASK MATT." ;
+               kpred:constraint   "PROPOSE ALIASES, NEVER PROMOTE. A machine may add skos:altLabel because adding a name is additive and reversible. It must not choose the lead: kb:tenet-honesty aside, the lead term is what every reader sees and what search ranks first, so an automated promotion silently renames the user's own concepts. extraction-score.ts follows this rule as of 2026-09-08 — it queues altLabel proposals and never a prefLabel." ;
+               kpred:remaining    "Nothing built. The UI hook already exists and kb:node-synonyms names it: the node detail panel does inline label editing (saveLabel), so a lead-term picker belongs beside the label rather than on a new surface. Blocked on the migrate-or-mirror question above." .
+
+kb:synonym-harvest rdf:type  ktype:Phase ;
+               rdfs:label   "Harvest synonyms from the extraction corpus, as proposals" ;
+               kpred:feature-id   "F188.1" ;
+               kpred:has-status   "functional" ;
+               kpred:part-of      kb:lead-term ;
+               kpred:has-file     "scripts/offline/extraction-score.ts" ;
+               kpred:tested-by    "scripts/offline/__tests__/extraction-score.test.ts" ;
+               kpred:description  "SHIPPED 2026-09-08. When the scorer finds an expected fact under a DIFFERENT predicate name, it now keeps both names instead of counting the event and discarding the pair. Each pair is a candidate skos:altLabel, reported in the run and queued to knowledge.pending.jsonl under --pending, aggregated so a five-run benchmark proposes each synonym ONCE with a run count rather than five times." ;
+               kpred:decided      "MATT, 2026-09-08: the terminology synonyms should be identified in these tests, to better score extractions. The harness already KNEW — loose recall minus strict recall is precisely the count of facts found under a rival name — and threw the pair away inside a .some(), so it printed a complaint where it could have produced data." ;
+               kpred:principle    "PERSISTENCE IS THE SIGNAL, so the run count is printed and never collapsed. A drift seen in one run of five is a model having a bad day; the same drift in every run is our vocabulary genuinely disagreeing with the language people use. Only the second is worth a reviewer's attention, and a report that averaged them would hide the difference." ;
+               kpred:measured     "It is the same finding kb:ingest-synonyms reached from the opposite end — zero skos:altLabel triples across 25 graphs because the only alias trigger was a human confirming a merge, the rarest event in the product. The corpus is a second source of the same data that needs no human at all, and it runs already." ;
+               kpred:constraint   "NO DRIFT IS RECORDED ON A MISS, and there is a test for it. Treating not found as evidence about vocabulary would queue pairs where one half is fiction; drift is only captured when the fact WAS found and only the predicate differed." .

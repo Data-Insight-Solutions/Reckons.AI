@@ -251,3 +251,52 @@ describe('the shipped ground truth', () => {
     }
   });
 });
+
+/**
+ * SYNONYM CAPTURE — Matt, 2026-09-08: "the terminology synonyms should be identified in these
+ * tests, to better score extractions."
+ *
+ * The scorer already KNEW a synonym existed — loose-minus-strict is exactly that count — and
+ * discarded the pair inside a `.some()`, so it reported "1 fact found under a DIFFERENT predicate
+ * name" without ever saying which. These pin that the pair is now kept, and, just as importantly,
+ * that it is NOT invented where there is nothing to learn from.
+ */
+describe('vocabulary drift is named, not just counted', () => {
+  const spec: FileSpec = {
+    title: 'synonyms',
+    expected: [
+      { id: 'A', s: ['lumenpath'], p: ['is-a'], o: ['enterprise-cad'] },
+      { id: 'B', s: ['jordan-veil'], p: ['owns'], o: ['northwind-analytics'] },
+    ],
+  };
+
+  it('keeps BOTH names when the fact is found under a rival predicate', () => {
+    const s = scoreOne(spec, [t('lumenpath', 'belongs-to-category', 'enterprise-cad')]);
+    expect(s.drift).toHaveLength(1);
+    expect(s.drift[0].id).toBe('A');
+    expect(s.drift[0].expected).toEqual(['is-a']);
+    expect(s.drift[0].emitted).toBe('belongs-to-category');
+  });
+
+  it('records NO drift on an exact hit — a match has no rival term', () => {
+    expect(scoreOne(spec, [t('lumenpath', 'is-a', 'enterprise-cad')]).drift).toEqual([]);
+  });
+
+  it('records NO drift on a miss — a fact never found teaches no synonym', () => {
+    // The dangerous failure mode: treating "we did not find it" as evidence about vocabulary
+    // would fill the review queue with pairs where one half is fiction.
+    const s = scoreOne(spec, [t('somebody-else', 'is-a', 'something-else')]);
+    expect(s.missed).toContain('A');
+    expect(s.drift).toEqual([]);
+  });
+
+  it('names one pair per drifting expectation, so two drifts are two candidates', () => {
+    const s = scoreOne(spec, [
+      t('lumenpath', 'belongs-to-category', 'enterprise-cad'),
+      t('jordan-veil', 'is-owner-of', 'northwind-analytics'),
+    ]);
+    expect(s.strict).toEqual([]);
+    expect(s.loose.sort()).toEqual(['A', 'B']);
+    expect(s.drift.map((d) => d.emitted).sort()).toEqual(['belongs-to-category', 'is-owner-of']);
+  });
+});

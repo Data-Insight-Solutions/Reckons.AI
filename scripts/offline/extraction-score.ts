@@ -227,6 +227,17 @@ export interface Score {
   condition: string;
   /** Which repetition this came from (0-based). Always 0 unless --repeat=N. */
   run: number;
+  /**
+   * Facts found under the WRONG predicate name, with both names kept.
+   *
+   * Matt, 2026-09-08: "the terminology synonyms should be identified in these tests, to better
+   * score extractions." The harness already knew a synonym existed — the loose-minus-strict count
+   * IS that number — and threw the pair away in a `.some()`, reporting "2 facts found under a
+   * DIFFERENT predicate name" without ever saying which. So the measurement produced a complaint
+   * where it could have produced DATA: every one of these pairs is a candidate skos:altLabel,
+   * discovered by running the corpus rather than guessed at a whiteboard.
+   */
+  drift: Array<{ id: string; expected: string[]; emitted: string }>;
   yield: number;
   strict: string[];
   loose: string[];
@@ -266,6 +277,7 @@ export function scoreOne(
     missed: string[] = [];
   const brokenFixed: string[] = [],
     brokenStillBroken: string[] = [];
+  const drift: Score['drift'] = [];
 
   for (const exp of spec.expected) {
     const hitStrict = triples.some(
@@ -287,6 +299,13 @@ export function scoreOne(
     if (hitStrict) strict.push(exp.id);
     if (hitLoose) loose.push(exp.id);
     if (!hitLoose) missed.push(exp.id);
+    // The synonym, named. Only when the fact WAS found: a miss has no rival term to learn from.
+    if (hitLoose && !hitStrict) {
+      const t = triples.find(
+        (x) => slotMatches(exp.s, x.subject, 'subject') && slotMatches(exp.o, x.object, 'object'),
+      );
+      if (t) drift.push({ id: exp.id, expected: exp.p, emitted: t.predicate });
+    }
   }
 
   /*
@@ -373,6 +392,7 @@ export function scoreOne(
     yield: triples.length,
     strict,
     loose,
+    drift,
     missed,
     brokenFixed,
     brokenStillBroken,
@@ -504,6 +524,7 @@ async function main() {
             yield: 0,
             strict: [],
             loose: [],
+            drift: [],
             missed: spec.expected.filter((x) => !x.knownBroken).map((x) => x.id),
             brokenFixed: [],
             brokenStillBroken: [],
@@ -547,10 +568,13 @@ function reportOne(s: Score, spec: FileSpec, ctx: GraphContext) {
   console.log(
     `  ${recall}strict ${pct(s.strict.length, total)}${X} ${D}(${s.strict.length}/${total})${X}   loose ${pct(s.loose.length, total)} ${D}(${s.loose.length}/${total})${X}   yield ${String(s.yield).padStart(3)} triples${critic}   ${D}${s.seconds.toFixed(1)}s${X}`,
   );
-  if (s.loose.length > s.strict.length) {
+  if (s.drift.length > 0) {
     console.log(
-      `  ${Y}· ${s.loose.length - s.strict.length} fact(s) found under a DIFFERENT predicate name — vocabulary drift, not a miss${X}`,
+      `  ${Y}· ${s.drift.length} fact(s) found under a DIFFERENT predicate name — vocabulary drift, not a miss${X}`,
     );
+    for (const d of s.drift) {
+      console.log(`      ${D}${d.id}${X}  expected ${C}${d.expected.join(' | ')}${X}  got ${Y}${d.emitted}${X}`);
+    }
   }
   if (ctx.offered.size > 0) {
     const ec = s.entitiesReused > 0 ? G : R;
@@ -750,6 +774,46 @@ function summary(scores: Score[], specs: Record<string, FileSpec>) {
     }
   }
 
+  /*
+   * SYNONYM CANDIDATES — the harness's most useful by-product, and until 2026-09-08 it was thrown
+   * away. Every row here is a fact the model FOUND under a rival predicate name, so the pair is a
+   * candidate skos:altLabel discovered by measurement rather than guessed.
+   *
+   * Counted across runs on purpose: a drift seen once is a model having a bad day, the same drift
+   * seen in every run is the vocabulary genuinely disagreeing with ours, and the two deserve very
+   * different treatment. So the run count is printed and NOT collapsed.
+   *
+   * This is the same finding kb:ingest-synonyms (F126.1) made from the other end — zero
+   * skos:altLabel triples existed across 25 graphs because the only alias trigger was a human
+   * confirming a merge. The corpus is a second path to the same data, and it needs no human.
+   */
+  const drifts = new Map<string, { expected: string; emitted: string; runs: Set<string>; ids: Set<string> }>();
+  for (const sc of scores) {
+    for (const d of sc.drift) {
+      const key = `${d.expected[0]} → ${d.emitted}`;
+      const cur = drifts.get(key) ?? { expected: d.expected[0], emitted: d.emitted, runs: new Set(), ids: new Set() };
+      cur.runs.add(`${sc.model}#${sc.run}`);
+      cur.ids.add(d.id);
+      drifts.set(key, cur);
+    }
+  }
+  if (drifts.size > 0) {
+    const totalRuns = new Set(scores.map((sc) => `${sc.model}#${sc.run}`)).size;
+    console.log(`\n${B}Synonym candidates${X} ${D}— the fact was found, our predicate name was not the one used${X}`);
+    const sorted = [...drifts.entries()].sort((a, b) => b[1].runs.size - a[1].runs.size);
+    for (const [, d] of sorted) {
+      const persistent = d.runs.size > totalRuns / 2;
+      console.log(
+        `  ${persistent ? Y : D}${d.runs.size}/${totalRuns} runs${X}  ours ${C}${d.expected}${X}` +
+          `  theirs ${Y}${d.emitted}${X}  ${D}(${[...d.ids].sort().join(', ')})${X}`,
+      );
+    }
+    console.log(
+      `${D}  A pair seen in most runs is the vocabulary disagreeing, not a fluke — those are the ones worth\n` +
+        `  proposing as skos:altLabel. Pass --pending to queue them for review.${X}`,
+    );
+  }
+
   const anyInvented = rows.reduce((n, r) => n + r.inv, 0);
   const anyMisrouted = rows.reduce((n, r) => n + r.mis, 0);
   if (anyInvented > 0)
@@ -769,6 +833,44 @@ function queue(scores: Score[], specs: Record<string, FileSpec>) {
   const lines: string[] = [];
   const add = (subject: string, predicate: string, object: string, note: string, type: string, priority: string) =>
     lines.push(JSON.stringify({ subject, predicate, object, note, type, agent: 'extraction-score', priority }));
+
+  /*
+   * SYNONYMS FIRST — proposed as skos:altLabel, which is what a rival term for the same fact IS.
+   *
+   * Aggregated across runs BEFORE queuing rather than one row per occurrence, because a five-run
+   * benchmark would otherwise put the same synonym in the review queue five times, and a job that
+   * floods the queue moves cost from collection to triage rather than removing it
+   * (kb:work-tiering). One row per pair, carrying how persistent it was, is the reviewable unit.
+   *
+   * Deliberately a PROPOSAL and never a write. Which of two rival terms should lead is an
+   * authorship decision — Matt, 2026-09-08, on users setting the lead term — and altLabel is the
+   * safe half of it: adding a synonym never demotes anything. Promoting one to skos:prefLabel is
+   * the part a human does.
+   */
+  const pairs = new Map<string, { expected: string; emitted: string; runs: Set<string>; ids: Set<string> }>();
+  for (const s of scores) {
+    for (const d of s.drift) {
+      const key = `${d.expected[0]} → ${d.emitted}`;
+      const cur = pairs.get(key) ?? { expected: d.expected[0], emitted: d.emitted, runs: new Set(), ids: new Set() };
+      cur.runs.add(`${s.model}#${s.run}`);
+      cur.ids.add(d.id);
+      pairs.set(key, cur);
+    }
+  }
+  const totalRuns = new Set(scores.map((s) => `${s.model}#${s.run}`)).size;
+  for (const [, d] of pairs) {
+    add(
+      d.expected,
+      'skos:altLabel',
+      d.emitted,
+      `Extraction found the fact under "${d.emitted}" where the corpus expects "${d.expected}" — `
+        + `seen in ${d.runs.size} of ${totalRuns} run(s), expectation(s) ${[...d.ids].sort().join(', ')}. `
+        + `A rival term for the same fact is a synonym. Accepting adds it as an alias; it does NOT `
+        + `change which term leads.`,
+      d.runs.size > totalRuns / 2 ? 'suggestion' : 'observation',
+      d.runs.size > totalRuns / 2 ? 'medium' : 'low',
+    );
+  }
 
   for (const s of scores) {
     if (s.invented.length) {
