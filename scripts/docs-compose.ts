@@ -56,7 +56,8 @@ const NAV_DOCS_NS = 'urn:reckons:docs/nav/';
 const CORPUS = [
   'docs-triples-rdf.ttl', 'docs-llm.ttl', 'docs-use-cases.ttl', 'docs-features.ttl',
   'docs-integrations-tech.ttl', 'docs-tips-security.ttl', 'docs-timeline-ecosystem.ttl',
-  'docs-architecture.ttl', 'docs-coding-workflow.ttl', 'docs-testing.ttl', 'starter-guide.ttl',
+  'docs-architecture.ttl', 'docs-coding-workflow.ttl', 'docs-testing.ttl',
+  'docs-user-paths.ttl', 'starter-guide.ttl',
 ];
 
 const C = {

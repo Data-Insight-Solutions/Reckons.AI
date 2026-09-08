@@ -251,6 +251,13 @@
       "desc": "F140 GPU-real performance crawl: a HEADED browser on the real GPU, asserting on TIME (long tasks, time-to-usable, settled velocity). DISABLED in the sweep because it needs a DISPLAY and a running dev server \u2014 it aborts rather than silently falling back to SwiftShader, since a green perf report from a software rasterizer is worse than none. Run it manually: npm run dev, then npm run offline:perf -- --ladder --trace-delta"
     },
     {
+      "name": "docs-graph-registration",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/docs-graph-registration.ts --quiet",
+      "desc": "Every publishable docs graph must appear in all four registries (docs-pages SOURCES, docs-compose CORPUS, docs-consolidate CORPUS, a void:Dataset in website.ttl). docs-user-paths.ttl was in one of the four, so composition would have deleted nine published journeys while the orphan gate reported nothing dropped."
+    },
+    {
       "name": "host-health",
       "tier": "script",
       "enabled": true,
