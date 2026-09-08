@@ -665,3 +665,72 @@ kb:ref-liveportrait rdf:type   ktype:Reference ;
                kpred:description  "Drives a still portrait with a driving video, which is exactly 'the character in the meme, with the reaction defined' from F161. Technically the closest thing to the hard part of that story." ;
                kpred:honest-note  "AND IT IS THE ONE WE CANNOT USE. The API reports NOASSERTION — no licence GitHub recognises — so the deterministic gate that cleared every other repo in this graph fails this one. Recorded rather than quietly dropped, because the capability is the right shape and someone will find it again: if it is ever relicensed, revisit. The repo has also moved owner (KwaiVGI to KlingAIResearch), which is its own signal about stability." ;
                kpred:relates-to   kb:meme-with-context .
+
+# ==============================================================================
+# Starred and reviewed 2026-09-08. READMEs read, licences fetched from the API.
+# All ten were already proposed by scripts/offline/stars-scan.ts and were sitting
+# in reckons-workspace/knowledge.pending.jsonl awaiting triage — the pipeline
+# worked; the queue was the part nobody had read. These five are the ones that
+# touch live work. The rest stay pending.
+# ==============================================================================
+
+kb:ref-openwhispr rdf:type     ktype:Reference ;
+               rdfs:label   "OpenWhispr — local-first voice dictation with a global hotkey" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   27 ;
+               kpred:repo-url     "https://github.com/OpenWhispr/openwhispr" ;
+               kpred:license      "MIT" ;
+               kpred:copy-permitted "yes — MIT, attribution required" ;
+               kpred:relates-to   kb:freeform-capture ;
+               kpred:description  "README reviewed 2026-09-08. 7.8k stars. Electron dictation for macOS, Windows and Linux: press a hotkey, speak, and the text appears at the cursor in whatever app has focus. Transcription is local by default (Whisper or NVIDIA Parakeet) with cloud BYOK as the opt-in, and it carries on into meeting transcription with on-device speaker diarization, voice fingerprints across meetings, and a notes surface with folders and semantic search." ;
+               kpred:evidence     "THE CAPTURE GESTURE IS THE PART WORTH STUDYING, AND IT IS THE HALF F177 HAS NOT SETTLED. Its unit is the utterance, delivered to wherever the cursor already is — no destination chosen, no review step, no structure imposed at capture time. Reckons has the opposite: capture arrives as pending statements for review. kb:freeform-capture leaves open whether the unit on screen is the note or the claims taken out of it, and this is a working, popular answer to the note half of that question." ;
+               kpred:constraint   "IT IS NOT A CONDENSATION PRODUCT, WHICH IS EXACTLY THE GAP MATT'S SISTER REPORTED. Dictation to cursor is transcription — a faithful copy of what was said. Reckons claims something different, that facts are extracted and held against each other, and that difference is invisible if the capture surface looks identical. Borrow the frictionlessness of the entry gesture, not the model of what happens after it." .
+
+kb:ref-token-optimizer rdf:type ktype:Reference ;
+               rdfs:label   "Token Optimizer — measured context waste for coding agents" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   28 ;
+               kpred:repo-url     "https://github.com/alexgreensh/token-optimizer" ;
+               kpred:license      "NOASSERTION" ;
+               kpred:copy-permitted "NO — GitHub reports no recognised licence (checked 2026-09-08). Read it for patterns; copy nothing. Same gate as kb:ref-orionbelt." ;
+               kpred:relates-to   kb:work-tiering ;
+               kpred:description  "README reviewed 2026-09-08. 2.2k stars. A Claude Code plugin that instruments where an agent session spends tokens and reports it on a dashboard, covering bloated configs, unused skills, stale memory, compaction loss and model misrouting rather than only command output — its own claim is that output compression is 15-25% of context and the rest is the other 75%." ;
+               kpred:evidence     "IT MEASURES THE THING THIS PROJECT ASSERTS. kb:work-tiering says offloading is not free and that the ladder must be measured with npm run session:tokens; the categories above are a ready-made breakdown for that number, and CLAUDE.md itself is one of the artifacts it would price — HANDOFF.md was already measured at 45.0M carried tokens across 14 reads, which is the same finding arrived at by hand." ;
+               kpred:constraint   "UNLICENSED, so the categories are the borrowable part and none of the code is. It is also a plugin for the harness rather than a property of this repository, so it prices Claude Code sessions and says nothing about the local tiers — the half of the ladder where the savings were supposed to come from." .
+
+kb:ref-agent-orchestrator rdf:type ktype:Reference ;
+               rdfs:label   "Agent Orchestrator — a desktop workspace for fleets of coding agents" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   29 ;
+               kpred:repo-url     "https://github.com/Untrivial-ai/agent-orchestrator" ;
+               kpred:license      "Apache-2.0" ;
+               kpred:copy-permitted "yes — Apache-2.0, attribution required (+ NOTICE, patent grant)" ;
+               kpred:relates-to   kb:agent-orchestration ;
+               kpred:description  "README reviewed 2026-09-08. 11.1k stars. A local desktop app plus daemon that gives every task its own agent, branch and git worktree, then follows conversation, terminal, changed files, PR, CI and review state as one session on a live Kanban. A project-aware orchestrator plans and splits larger outcomes across workers." ;
+               kpred:evidence     "BRANCH-AND-WORKTREE-PER-TASK IS THE SAME ANSWER THIS PROJECT REACHED, arrived at independently and shipped further. kb:agent-orchestration wants tasks claimed and steered as a SET; AO makes the session the unit and hangs the whole review trail off it. The part Reckons does not have is the live view — here a running agent's state is a terminal someone has to be looking at." ;
+               kpred:constraint   "IT ORCHESTRATES AGENTS OVER A REPOSITORY; RECKONS ORCHESTRATES WORK OVER A GRAPH. A task here is a triple (F87) and its definition-of-done is reviewable as a fact, which is the thing a Kanban card is not. Take the session-as-unit and the worktree isolation; do not take the board as the model of the work." .
+
+kb:ref-knowledge-graph-rahulnyk rdf:type ktype:Reference ;
+               rdfs:label   "knowledge_graph (rahulnyk) — concepts, not entities, with proximity as the edge" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   30 ;
+               kpred:repo-url     "https://github.com/rahulnyk/knowledge_graph" ;
+               kpred:license      "MIT" ;
+               kpred:copy-permitted "yes — MIT, attribution required" ;
+               kpred:relates-to   kb:triple-extraction ;
+               kpred:relates-to   kb:passage-grounding ;
+               kpred:description  "README reviewed 2026-09-08. 4k stars. A notebook-scale pipeline that chunks a document, extracts CONCEPTS per chunk with an LLM rather than entities with an NER model, and treats co-occurrence within a chunk as the relation — every edge is the text chunk in which both concepts appear. Output feeds graph-augmented retrieval." ;
+               kpred:evidence     "TWO CLAIMS WORTH TESTING AGAINST OUR OWN CORPUS. (1) Concepts beat entities: its author reports that Pleasant weather in Bangalore makes a more useful node than Bangalore. Our extraction scorer measures exactly this class of judgement and the corpus already separates INVENTION from MISROUTING, so it is a scoreable hypothesis rather than an opinion. (2) The edge IS the passage, which is kb:passage-grounding arrived at from the other direction — grounding as a by-product of how the edge was formed rather than a citation attached afterwards." ;
+               kpred:constraint   "PROXIMITY IS NOT A NAMED RELATION, and this project's own graph-lint penalises exactly that: 746 relates-to edges are already flagged as a generic relation that adds an edge and no knowledge. Co-occurrence would industrialise the thing we are trying to reduce. Take the concept-over-entity question to the scorer; do not take the edge rule." .
+
+kb:ref-graphgen rdf:type       ktype:Reference ;
+               rdfs:label   "GraphGen — graph-driven synthetic data for fine-tuning" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   31 ;
+               kpred:repo-url     "https://github.com/InternScience/GraphGen" ;
+               kpred:license      "Apache-2.0" ;
+               kpred:copy-permitted "yes — Apache-2.0, attribution required (+ NOTICE, patent grant)" ;
+               kpred:relates-to   kb:triple-extraction ;
+               kpred:description  "Metadata and repository description reviewed 2026-09-08; README NOT read in depth. 1.2k stars, Apache-2.0. Builds a knowledge graph from source text and uses it to generate supervised fine-tuning data, the stated aim being coverage of what the graph knows rather than whatever a prompt happened to produce." ;
+               kpred:evidence     "IT INVERTS THE DIRECTION THIS PROJECT USES A GRAPH FOR. Here the graph grounds a prompt at inference; there the graph enumerates what training data must cover. The overlap worth noting is that both need a graph that is COMPLETE enough to be a coverage measure, which is what the extraction scorer's expectations file already is on a small scale." ;
+               kpred:honest-note  "REVIEWED FROM THE OUTSIDE ONLY. The evidence line above is inference from the description, not from reading the code or the paper, and it should not be cited as a finding until someone does. Recorded at this depth deliberately rather than written up as though it had been studied." .
