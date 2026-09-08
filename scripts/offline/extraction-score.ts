@@ -872,76 +872,101 @@ function queue(scores: Score[], specs: Record<string, FileSpec>) {
     );
   }
 
+  /*
+   * EVERY OTHER FINDING IS AGGREGATED ACROSS RUNS TOO — because --repeat multiplies the queue.
+   *
+   * This loop used to emit one row per SCORE, which is one per (model, file, run). That was fine
+   * at --repeat=1 and becomes flooding the moment it is not: six models over three files at
+   * --repeat=5 is 90 scores and would have put roughly 200 rows into a queue already holding 403,
+   * most of them the same finding restated five times. kb:work-tiering is explicit that a job
+   * which floods the queue moves cost from collection to triage rather than removing it.
+   *
+   * So the unit is (model, file, finding) with the run count carried, exactly as synonyms above.
+   * The run count is not decoration: an invention in one run of five is a sampling artefact, an
+   * invention in five of five is the model's behaviour, and a reviewer needs to see which.
+   */
+  const totalRunsPerModel = new Map<string, number>();
   for (const s of scores) {
-    if (s.invented.length) {
-      add(
-        'kb:extraction-accuracy',
-        'kpred:invented-fact',
-        `${s.model} on ${s.file}`,
-        `${s.invented.length} triple(s) assert something the source only REQUESTED: ${s.invented
-          .slice(0, 2)
-          .map((i) => i.triple)
-          .join(' ; ')}`,
-        'drift-warning',
-        'high',
-      );
+    const k = `${s.model} ${s.file}`;
+    totalRunsPerModel.set(k, Math.max(totalRunsPerModel.get(k) ?? 0, s.run + 1));
+  }
+
+  interface Finding {
+    subject: string;
+    predicate: string;
+    kind: string;
+    type: string;
+    priority: string;
+    describe: (s: Score) => string | null;
+  }
+  const FINDINGS: Finding[] = [
+    {
+      subject: 'kb:extraction-accuracy', predicate: 'kpred:invented-fact', kind: 'invented',
+      type: 'drift-warning', priority: 'high',
+      describe: (s) => s.invented.length
+        ? `${s.invented.length} triple(s) assert something the source only REQUESTED: `
+          + s.invented.slice(0, 2).map((i) => i.triple).join(' ; ')
+        : null,
+    },
+    {
+      subject: 'kb:extraction-accuracy', predicate: 'kpred:verbatim-not-extracted', kind: 'verbatim',
+      type: 'observation', priority: 'medium',
+      describe: (s) => s.verbatim.length
+        ? `${s.verbatim.length} note(s) were STORED as a sentence rather than extracted into facts: `
+          + s.verbatim[0].triple.slice(0, 160)
+        : null,
+    },
+    {
+      subject: 'kb:note-intent', predicate: 'kpred:misrouted-request', kind: 'misrouted',
+      type: 'observation', priority: 'medium',
+      describe: (s) => s.misrouted.length
+        ? `${s.misrouted.length} triple(s) were correctly marked as REQUESTS but stayed in the fact stream: `
+          + s.misrouted.slice(0, 2).map((i) => i.triple).join(' ; ')
+        : null,
+    },
+    {
+      subject: 'kb:triple-shape', predicate: 'kpred:guard-regression', kind: 'shape',
+      type: 'drift-warning', priority: 'high',
+      describe: (s) => s.shapeViolations.length
+        ? `looksLikeProposition should reject these subjects: ${s.shapeViolations.slice(0, 3).join(' ; ')}`
+        : null,
+    },
+    {
+      subject: 'kb:extraction-accuracy', predicate: 'kpred:entity-fragmented', kind: 'fragments',
+      type: 'observation', priority: 'medium',
+      describe: (s) => s.fragments.length
+        ? `${s.fragments.length} entity minted more than once in ONE run: `
+          + s.fragments.slice(0, 3).map(([, v]) => v.join(' / ')).join(' ; ')
+        : null,
+    },
+    {
+      subject: 'kb:vocabulary-grounding', predicate: 'kpred:predicate-drift', kind: 'drift',
+      type: 'observation', priority: 'medium',
+      describe: (s) => {
+        if (s.loose.length <= s.strict.length) return null;
+        const total = (specs[s.file]?.expected ?? []).filter((e) => !e.knownBroken).length;
+        return `${s.loose.length - s.strict.length} of ${total} expected facts were found under a `
+          + `different predicate name — F136 grounding is not landing here.`;
+      },
+    },
+  ];
+
+  for (const f of FINDINGS) {
+    const seen = new Map<string, { hits: number; sample: string }>();
+    for (const s of scores) {
+      const desc = f.describe(s);
+      if (!desc) continue;
+      const k = `${s.model} ${s.file}`;
+      const cur = seen.get(k) ?? { hits: 0, sample: desc };
+      cur.hits += 1;
+      seen.set(k, cur);
     }
-    if (s.verbatim.length) {
-      add(
-        'kb:extraction-accuracy',
-        'kpred:verbatim-not-extracted',
-        `${s.model} on ${s.file}`,
-        `${s.verbatim.length} note(s) were STORED as a sentence rather than extracted into facts: ${s.verbatim[0].triple.slice(0, 160)}`,
-        'observation',
-        'medium',
-      );
-    }
-    if (s.misrouted.length) {
-      add(
-        'kb:note-intent',
-        'kpred:misrouted-request',
-        `${s.model} on ${s.file}`,
-        `${s.misrouted.length} triple(s) were correctly marked as REQUESTS but stayed in the fact stream: ${s.misrouted
-          .slice(0, 2)
-          .map((i) => i.triple)
-          .join(' ; ')}`,
-        'observation',
-        'medium',
-      );
-    }
-    if (s.shapeViolations.length) {
-      add(
-        'kb:triple-shape',
-        'kpred:guard-regression',
-        `${s.model} on ${s.file}`,
-        `looksLikeProposition should reject these subjects: ${s.shapeViolations.slice(0, 3).join(' ; ')}`,
-        'drift-warning',
-        'high',
-      );
-    }
-    if (s.fragments.length) {
-      add(
-        'kb:extraction-accuracy',
-        'kpred:entity-fragmented',
-        `${s.model} on ${s.file}`,
-        `${s.fragments.length} entity minted more than once in ONE run: ${s.fragments
-          .slice(0, 3)
-          .map(([, v]) => v.join(' / '))
-          .join(' ; ')}`,
-        'observation',
-        'medium',
-      );
-    }
-    const total = (specs[s.file]?.expected ?? []).filter((e) => !e.knownBroken).length;
-    if (s.loose.length > s.strict.length) {
-      add(
-        'kb:vocabulary-grounding',
-        'kpred:predicate-drift',
-        `${s.model} on ${s.file}`,
-        `${s.loose.length - s.strict.length} of ${total} expected facts were found under a different predicate name — F136 grounding is not landing here.`,
-        'observation',
-        'medium',
-      );
+    for (const [k, v] of seen) {
+      const runs = totalRunsPerModel.get(k) ?? 1;
+      const persistence = runs > 1 ? ` Seen in ${v.hits} of ${runs} run(s).` : '';
+      add(f.subject, f.predicate, k, `${v.sample}${persistence}`, f.type,
+        // A finding in a minority of runs is weaker evidence and is filed as such.
+        runs > 1 && v.hits <= runs / 2 ? 'low' : f.priority);
     }
   }
   if (!lines.length) {
