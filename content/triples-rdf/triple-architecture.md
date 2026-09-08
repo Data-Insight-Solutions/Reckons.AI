@@ -70,6 +70,10 @@ In 'Earth orbits Sun', Earth=subject, orbits=predicate, Sun=object.
 
 A compact, human-readable syntax for writing RDF triples.
 
+**[Why a graph, and not a notepad](../triples-rdf/why-not-a-notepad)**
+
+Take one sentence from a real working note: Vantage Suite was dropped at this stage on file format grounds.
+
 ## Related
 
 - [What Is Reckons.AI](../guide/what-is-reckons-ai)
