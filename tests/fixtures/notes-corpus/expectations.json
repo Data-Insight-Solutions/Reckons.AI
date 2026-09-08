@@ -494,7 +494,7 @@
   "_notSets": "THE DISCRIMINATING EXPECTATION. A list in the source that is explicitly NOT a group. A model that groups it has learned 'bullet list => collection', which would fill a real graph with junk groupings. Scored SEPARATELY from set recall and never averaged into it (Matt, 2026-09-08): a model can score 100% on grouping while failing this, and that is the diagnosis that matters.",
   "05-list-structured.md": {
     "title": "list-structured working notes — the first fixture that asks for SETS",
-    "_status": "DRAFT 2026-09-08 — awaiting Matt's review. 05-list-structured.EXPECTED.txt is authoritative; this file is derived from it and is the bug when they disagree.",
+    "_status": "REVIEWED AND APPROVED BY MATT 2026-09-08. 05-list-structured.EXPECTED.txt is authoritative; this file is derived from it and is the bug when they disagree.",
     "expected": [
       {
         "id": "05.1",

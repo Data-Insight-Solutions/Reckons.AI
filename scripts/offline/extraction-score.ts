@@ -62,6 +62,10 @@ import { readFileSync, existsSync, appendFileSync } from 'fs';
 import path from 'path';
 import { extractWithOllama } from '../../src/lib/integrations/llm/ollama-extract.js';
 import type { ExtractedTriple } from '../../src/lib/integrations/llm/extractor.js';
+import {
+  scoreSets, scoreOverlap, scoreTraps,
+  type SetExpectation, type NotSetExpectation, type SetScore, type OverlapScore, type TrapScore,
+} from './set-score.js';
 import { looksLikeProposition } from '../../src/lib/rdf/triple-shape.js';
 import { selectVocabulary, buildVocabularySection } from '../../src/lib/rdf/vocabulary-context.js';
 import { selectStructuralContext, buildStructuralSection } from '../../src/lib/rdf/structural-context.js';
@@ -208,6 +212,10 @@ export interface FileSpec {
   title: string;
   expected: Expectation[];
   forbidden?: { slugs: string[]; why: string };
+  /** F187.3 — groupings this source should produce. Scored by set-score.ts, reported apart. */
+  sets?: SetExpectation[];
+  /** F187.3 — lists that must NOT become groupings. Never averaged into set recall. */
+  notSets?: NotSetExpectation[];
 }
 
 export function loadSpecs(dir = CORPUS): Record<string, FileSpec> {
@@ -238,6 +246,10 @@ export interface Score {
    * discovered by running the corpus rather than guessed at a whiteboard.
    */
   drift: Array<{ id: string; expected: string[]; emitted: string }>;
+  /** F187.3 — grouping stage, kept apart from relation recall so neither hides the other. */
+  sets: SetScore[];
+  overlaps: OverlapScore[];
+  traps: TrapScore[];
   yield: number;
   strict: string[];
   loose: string[];
@@ -393,6 +405,9 @@ export function scoreOne(
     strict,
     loose,
     drift,
+    sets: scoreSets(spec.sets ?? [], triples),
+    overlaps: scoreOverlap(spec.sets ?? [], scoreSets(spec.sets ?? [], triples), triples),
+    traps: scoreTraps(spec.notSets ?? [], triples),
     missed,
     brokenFixed,
     brokenStillBroken,
@@ -525,6 +540,9 @@ async function main() {
             strict: [],
             loose: [],
             drift: [],
+            sets: [],
+            overlaps: [],
+            traps: [],
             missed: spec.expected.filter((x) => !x.knownBroken).map((x) => x.id),
             brokenFixed: [],
             brokenStillBroken: [],
@@ -576,6 +594,42 @@ function reportOne(s: Score, spec: FileSpec, ctx: GraphContext) {
       console.log(`      ${D}${d.id}${X}  expected ${C}${d.expected.join(' | ')}${X}  got ${Y}${d.emitted}${X}`);
     }
   }
+  /*
+   * THE GROUPING STAGE, REPORTED APART FROM RECALL (F187.3, Matt 2026-09-08).
+   *
+   * Four numbers and never one. A model can have perfect membership recall and be wrong in three
+   * distinct ways — it swept in nearby nouns (precision), it got the sequence backwards (order),
+   * it split one group into three (spread) — and a single averaged figure would show none of them.
+   */
+  if (s.sets.length > 0) {
+    const anyFound = s.sets.some((x) => x.found);
+    console.log(`  ${anyFound ? C : D}· sets${X}`);
+    for (const x of s.sets) {
+      if (!x.found) {
+        console.log(`      ${D}${x.id}${X}  ${R}not grouped${X}  ${D}missing ${x.missing.join(', ')}${X}`);
+        continue;
+      }
+      const bits = [`recall ${(x.recall * 100).toFixed(0)}%`];
+      if (x.precision !== null) bits.push(`precision ${(x.precision * 100).toFixed(0)}%`);
+      if (x.order !== null) bits.push(`order ${(x.order * 100).toFixed(0)}%`);
+      if (x.spread > 1) bits.push(`${Y}SPREAD across ${x.spread} sets${X}`);
+      const bad = x.extras.length ? `  ${Y}extras: ${x.extras.join(', ')}${X}` : '';
+      console.log(`      ${D}${x.id}${X}  as ${C}${x.matched}${X}  ${bits.join('  ')}${bad}`);
+    }
+  }
+  for (const o of s.overlaps) {
+    console.log(o.held
+      ? `      ${D}${o.id}${X}  ${G}overlap held${X} ${D}— member is in ${o.presentIn.join(' and ')}${X}`
+      : `      ${D}${o.id}${X}  ${R}PARTITIONED${X} ${D}— member reached ${o.presentIn.length || 'none'} of `
+        + `${o.requiredIn.length} required sets; sets overlap, they do not partition${X}`);
+  }
+  for (const tr of s.traps) {
+    console.log(tr.refused
+      ? `      ${D}${tr.id}${X}  ${G}trap refused${X} ${D}— the non-group was left ungrouped${X}`
+      : `      ${D}${tr.id}${X}  ${R}TRAP FAILED${X} ${D}— grouped as "${tr.groupedAs}"; `
+        + `the model has learned "bullet list => collection"${X}`);
+  }
+
   if (ctx.offered.size > 0) {
     const ec = s.entitiesReused > 0 ? G : R;
     console.log(
@@ -811,6 +865,47 @@ function summary(scores: Score[], specs: Record<string, FileSpec>) {
     console.log(
       `${D}  A pair seen in most runs is the vocabulary disagreeing, not a fluke — those are the ones worth\n` +
         `  proposing as skos:altLabel. Pass --pending to queue them for review.${X}`,
+    );
+  }
+
+  /*
+   * THE GROUPING STAGE ACROSS RUNS — a second table, not a column in the first.
+   *
+   * Set recall and relation recall answer different questions and must not be summed: a run that
+   * extracts every fact and produces no groupings is 100% on one and 0% on the other, which is
+   * precisely the state of the pipeline today and the reason 05-list-structured.md exists.
+   */
+  const setModels = [...new Set(scores.filter((s) => s.sets.length > 0).map((s) => s.model))];
+  if (setModels.length > 0) {
+    console.log(`\n${B}Grouping stage${X} ${D}— separate from relation recall, and from each other${X}`);
+    console.log(`${D}model                        found  recall  precis  order   spread  overlap  trap${X}`);
+    for (const model of setModels) {
+      const mine = scores.filter((s) => s.model === model);
+      const sets = mine.flatMap((s) => s.sets);
+      const overlaps = mine.flatMap((s) => s.overlaps);
+      const traps = mine.flatMap((s) => s.traps);
+      const mean = (xs: Array<number | null>) => {
+        const v = xs.filter((x): x is number => x !== null);
+        return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+      };
+      const pctOrNa = (x: number | null) => (x === null ? '   n/a' : `${(x * 100).toFixed(0).padStart(5)}%`);
+      const found = sets.filter((x) => x.found).length;
+      const fragmented = sets.filter((x) => x.spread > 1).length;
+      const overlapHeld = overlaps.filter((o) => o.held).length;
+      const trapsRefused = traps.filter((t) => t.refused).length;
+      const c = found === 0 ? R : G;
+      console.log(
+        `${model.slice(0, 26).padEnd(28)} ${c}${String(found).padStart(2)}/${String(sets.length).padEnd(3)}${X}`
+        + `${pctOrNa(mean(sets.map((x) => x.recall)))} ${pctOrNa(mean(sets.map((x) => x.precision)))} `
+        + `${pctOrNa(mean(sets.map((x) => x.order)))}  ${fragmented ? Y : D}${String(fragmented).padStart(5)}${X}  `
+        + `${overlapHeld === overlaps.length && overlaps.length ? G : R}${overlapHeld}/${overlaps.length}${X}      `
+        + `${trapsRefused === traps.length ? G : R}${trapsRefused}/${traps.length}${X}`,
+      );
+    }
+    console.log(
+      `${D}  spread = expectations whose members were split across several sets.\n`
+      + `  trap = lists the source says are NOT groups and that must be left ungrouped. A high recall\n`
+      + `  with a failed trap is a bullet-list heuristic, not an understanding of sets.${X}`,
     );
   }
 

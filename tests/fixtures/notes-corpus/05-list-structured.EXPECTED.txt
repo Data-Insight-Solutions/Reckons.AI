@@ -1,6 +1,7 @@
 EXPECTED — 05-list-structured.md
 ================================
-DRAFT, 2026-09-08 — awaiting Matt's review before the JSON is treated as truth.
+REVIEWED AND APPROVED BY MATT, 2026-09-08. Authoritative; expectations.json is derived
+from this file and is the bug when the two disagree.
 
 The first fixture that asks for SETS (F187). Every other file in this corpus
 asks "did it get the fact"; this one also asks "did it get the GROUPING", which
