@@ -72,10 +72,14 @@ SHOULD PRODUCE — ORDINARY FACTS (the existing metric still applies)
 
 KNOWN-BROKEN, do not record as findings
 ---------------------------------------
-  · NOTHING WILL PRODUCE A SET TODAY. No prompt asks for one, so the S1-S4
-    expectations are expected to score ZERO on the current pipeline. That is
-    the baseline, deliberately — the number exists so a process change has
-    something to beat. Do not read the zero as a regression.
+  · [CORRECTED 2026-09-08 BY MEASUREMENT — the prediction below was WRONG.]
+    This said "nothing will produce a set today ... expected to score ZERO".
+    Six models over five runs each say otherwise: they emit membership edges
+    UNPROMPTED, finding 2-10 of 15 expected sets with no prompt asking for one.
+    mistral-small3.2:24b reached 50% recall on the baseline arm. So the baseline
+    is NOT zero and a set-prompting arm has a real number to beat, not a
+    walkover. Kept rather than deleted: a prediction that was measured and
+    falsified is worth more than a tidy file.
   · "Phase 3" as a reference to the dry-run step will probably not resolve to
     the same entity as "Dry-run the transfer". Anaphora across a list boundary
     is the chunking failure 04 describes, showing up at small scale.

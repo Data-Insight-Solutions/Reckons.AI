@@ -58,7 +58,7 @@
  *
  * Needs OLLAMA_BASE_URL. Emits PROPOSALS only — it never writes source or TTL.
  */
-import { readFileSync, existsSync, appendFileSync } from 'fs';
+import { readFileSync, existsSync, appendFileSync, writeFileSync, mkdirSync } from 'fs';
 import path from 'path';
 import { extractWithOllama } from '../../src/lib/integrations/llm/ollama-extract.js';
 import type { ExtractedTriple } from '../../src/lib/integrations/llm/extractor.js';
@@ -563,6 +563,30 @@ async function main() {
       }
      }
     }
+  }
+
+  /*
+   * ALWAYS PERSIST THE RUN. Twice on 2026-09-08 a multi-hour benchmark was piped through `tail`
+   * and its headline table — the medians the whole run existed to produce — was destroyed by the
+   * command that displayed it. The numbers survived only as far as a terminal scrollback that had
+   * already scrolled.
+   *
+   * A measurement that exists only in scrollback is not a record. It is written before anything is
+   * printed, so a truncated view of the output costs a look at a file rather than the run.
+   */
+  try {
+    const dir = path.resolve('tests/bench/results');
+    mkdirSync(dir, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const out = path.join(dir, `extraction-score_${stamp}.json`);
+    writeFileSync(out, JSON.stringify({
+      at: new Date().toISOString(), base: BASE_URL, models: MODELS, conditions: CONDITIONS,
+      repeat: REPEAT, thinking: THINKING, corpus: CORPUS, scores,
+    }, null, 2) + '\n', 'utf8');
+    if (!JSON_OUT) console.log(`${D}Run saved to ${out}${X}`);
+  } catch (e) {
+    // Never fail a benchmark because its archive could not be written — but say so loudly.
+    console.log(`${R}Could not save the run: ${e instanceof Error ? e.message : String(e)}${X}`);
   }
 
   if (JSON_OUT) {
