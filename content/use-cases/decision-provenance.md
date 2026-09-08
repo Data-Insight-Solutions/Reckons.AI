@@ -1,7 +1,7 @@
 ---
 title: "Decision Provenance"
 slug: "decision-provenance"
-order: 1003
+order: 1004
 section: "Use Cases"
 parent: "collaborative-knowledge"
 template: doc

@@ -1,7 +1,7 @@
 ---
 title: "Import as Source with Update Detection"
 slug: "import-as-source"
-order: 1007
+order: 1010
 section: "Use Cases"
 parent: "collaborative-knowledge"
 template: doc

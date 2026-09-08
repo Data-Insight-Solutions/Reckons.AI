@@ -1,7 +1,7 @@
 ---
 title: "Float Trip Planning"
 slug: "float-trip"
-order: 1006
+order: 1009
 section: "Use Cases"
 parent: "collaborative-knowledge"
 template: doc

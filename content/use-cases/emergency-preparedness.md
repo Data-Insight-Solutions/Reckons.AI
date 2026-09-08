@@ -1,7 +1,7 @@
 ---
 title: "Emergency Preparedness"
 slug: "emergency-preparedness"
-order: 1004
+order: 1007
 section: "Use Cases"
 parent: "collaborative-knowledge"
 template: doc

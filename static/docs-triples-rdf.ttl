@@ -211,29 +211,3 @@ shelly:persona
     shelly:personality      "precise, educational, thorough" ;
     shelly:responseStyle    "concise" ;
     shelly:systemPrompt     "You are helping someone learn about RDF, Turtle syntax, and semantic triples. Give clear examples. Use the entities in this graph as reference material." .
-
-## =============================================================================
-## Why a graph and not a notepad — the argument, with the measurement under it.
-## Matt, 2026-09-08, ahead of a first-time reader who twice read the product as a
-## generic note-taking app. The numbers below are from that day's corpus run.
-## =============================================================================
-
-arch:WhyNotANotepad
-    rdf:type            ktype:Concept ;
-    rdf:type            skos:Concept ;
-    rdfs:label          "Why a graph, and not a notepad" ;
-    skos:broader        arch:TripleArchitecture ;
-    skos:definition     "Take one sentence from a real working note: Vantage Suite was dropped at this stage on file format grounds. A notepad keeps the sentence. Reckons.AI keeps the fact underneath it. The difference does not show at ten notes and decides everything at a thousand, because the question you will eventually ask is not what did I write, it is what did we drop, and why." ;
-    kpred:diagram       """flowchart LR
-  N["One sentence in your notes<br/>Vantage Suite was dropped<br/>on file format grounds"]
-  N --> P["A notepad<br/>keeps the sentence"]
-  N --> G["Reckons.AI<br/>keeps the fact"]
-  P --> PQ["What did we drop, and why?<br/>search 11 phrasings<br/>find some, miss the rest"]
-  G --> GQ["What did we drop, and why?<br/>one relation, ten synonyms<br/>one answer"]""" ;
-    kpred:diagram-caption "The same sentence, two destinations. The divergence is invisible until you ask a question that spans more notes than you can re-read." ;
-    kpred:principle     "THIS IS NOT AN ARGUMENT AGAINST NOTE-TAKING, and reading it that way loses what it says. Capture should be as close to frictionless as it can be — talking at your phone should be enough. The claim is about what happens AFTER capture: a pile of prose is a pile you must re-read, and re-reading does not scale. Structure is the price of being able to ask the pile a question later." ;
-    kpred:measured      "THE DIVERGENCE IS MEASURED, NOT ASSERTED. On 2026-09-08 six local models each read the same short document five times. Twelve relations came back under FIFTY-ONE different names. The single relation dropped-because was written eleven ways in thirty readings: was-eliminated, was-dropped-on, dropped-from-shortlist, excluded-from-shortlist-due-to, was-dropped-due-to, was-dropped-from-shortlist-due-to, was-eliminated-from-shortlist, was-excluded-from-shortlist-because-of, was-dropped-from-shortlist-reason, was-dropped-from-shortlist-reason-for, and dropped-from-shortlist-due-to. is-a drew eleven names, lacks eight, concern and role five each." ;
-    kpred:example       "WHAT THAT COSTS YOU, CONCRETELY. Those eleven phrasings are what a year of your own notes looks like, because you do not phrase things the same way twice either. In a notepad they are eleven unrelated strings: searching dropped finds four of them, and nothing tells you the other seven exist. In a graph they are one relation carrying ten alternative labels, so the question is answered once and completely. That is the whole of the efficiency claim, and it is why the extra step in the middle is not busywork." ;
-    kpred:principle     "AND THE STEP IN THE MIDDLE IS WHERE YOU STAY IN CHARGE. Extraction proposes; nothing enters your graph until you accept it. That is the same review queue the machine's own findings go through, which is why a wrong reading is a thing you correct in one place rather than a wrong sentence you have to remember not to trust." ;
-    kpred:honest-note   "THE PRODUCT HAS NOT BEEN SHOWING THIS. A careful first-time reader read Reckons.AI as generic storyboarding and note-taking, twice, on 2026-09-06 and again on 2026-09-08 after further exposure. That is a finding about this product rather than about the reader: if the condensation is not visible on the way in, what is left genuinely does look like a notes app that asks you to do extra work in the middle. This page exists because the argument was being asserted and never shown." ;
-    skos:example        "In 'Vantage Suite was dropped on file format grounds': vantage-suite = subject, dropped-because = predicate, file-format = object." .

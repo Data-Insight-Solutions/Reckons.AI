@@ -1,9 +1,9 @@
 ---
 title: "Why a graph, and not a notepad"
 slug: "why-not-a-notepad"
-order: 1021
-section: "Triples & RDF"
-parent: "triple-architecture"
+order: 1020
+section: "Use Cases"
+parent: "software-engineering"
 template: doc
 status: published
 nav: sidebar

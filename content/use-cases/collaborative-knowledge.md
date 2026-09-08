@@ -1,7 +1,7 @@
 ---
 title: "Collaborative Knowledge"
 slug: "collaborative-knowledge"
-order: 1001
+order: 1002
 section: "Use Cases"
 template: doc
 status: published
