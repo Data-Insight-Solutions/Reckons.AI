@@ -258,6 +258,13 @@
       "desc": "Every publishable docs graph must appear in all four registries (docs-pages SOURCES, docs-compose CORPUS, docs-consolidate CORPUS, a void:Dataset in website.ttl). docs-user-paths.ttl was in one of the four, so composition would have deleted nine published journeys while the orphan gate reported nothing dropped."
     },
     {
+      "name": "set-pages",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/set-pages.ts --quiet",
+      "desc": "Reports the docs site the one-set-one-page model would produce (F187.5): candidate pages derived from skos:broader and hub degree, cross-links derived from shared membership, and the entities no set claims. Report-only \u2014 deciding what gets a page is editorial, not a check."
+    },
+    {
       "name": "host-health",
       "tier": "script",
       "enabled": true,
