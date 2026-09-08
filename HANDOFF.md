@@ -104,7 +104,11 @@ do not claim it is better without the number.
 
 ### Verification
 
-242 publish/scripts tests · graph-lint **0 errors** · **align six gates aligned** · both TTLs parse.
+**2897 tests / 203 files** · graph-lint **0 errors** · **align six gates aligned** · both TTLs parse.
+
+Pre-existing script-tier failures, verified on the parent branch too, NOT caused here:
+`landing-data-align` (landing-thesis.json duplicates the graph and drifted when the tenets were
+shortened) and `status-evidence` (undeclared gap is `kb:tenet-alignment` from 42ab245).
 
 ## ▶ SESSION 2026-09-06 (late) — the diagrams were broken, and every gate said fine
 
