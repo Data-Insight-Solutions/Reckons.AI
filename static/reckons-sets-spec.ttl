@@ -91,14 +91,14 @@ kb:acme      a ktype:Organization , skos:Concept ; skos:prefLabel "Acme" .
 # in the standard, without contradiction.
 
 kb:set-founding-team a skos:Collection ;
-    rdf:type kset:people ;                       # the SET TYPE, from the scheme above
+    kpred:set-type kset:people ;                 # the SET TYPE — a PROPERTY, not rdf:type. See §8.
     skos:prefLabel "Founding team" ;
     dcterms:description "The three people who were there before the first release." ;
     dcterms:created "2026-09-08" ;
     skos:member kb:ada , kb:brendan , kb:chi .
 
 kb:set-partners a skos:Collection ;
-    rdf:type kset:organizations ;
+    kpred:set-type kset:organizations ;
     skos:prefLabel "Partner organizations" ;
     skos:member kb:northwind , kb:acme .
 
@@ -108,7 +108,7 @@ kb:set-partners a skos:Collection ;
 # asserted, which is what datasetOverlaps() already does for the docs graphs.
 
 kb:set-advisors a skos:Collection ;
-    rdf:type kset:people ;
+    kpred:set-type kset:people ;
     skos:prefLabel "Advisors" ;
     skos:member kb:ada , kb:chi .
 
@@ -117,7 +117,7 @@ kb:set-advisors a skos:Collection ;
 # schemes do not nest.
 
 kb:set-everyone a skos:Collection ;
-    rdf:type kset:people ;
+    kpred:set-type kset:people ;
     skos:prefLabel "Everyone involved" ;
     skos:member kb:set-founding-team , kb:set-advisors , kb:set-partners .
 
@@ -127,7 +127,7 @@ kb:set-everyone a skos:Collection ;
 # an rdf:List, so order round-trips in TTL without a local ordering predicate.
 
 kb:set-core-loop a skos:OrderedCollection ;
-    rdf:type kset:journey ;
+    kpred:set-type kset:journey ;
     skos:prefLabel "The core loop" ;
     dcterms:description "add, review, add, review, reckon — the path the docs lead with." ;
     skos:memberList ( kb:step-add kb:step-review kb:step-add-again kb:step-review-again kb:step-reckon ) .
@@ -156,3 +156,30 @@ kpred:set-relates-to a rdf:Property ;
 
 kb:set-founding-team kpred:set-relates-to kb:set-partners .
 kb:set-advisors      kpred:set-relates-to kb:northwind .
+
+# ── 8. WHY set-type IS A PROPERTY AND NOT rdf:type — the punning trap ───────
+# Corrected 2026-09-08 after Matt sent Nicolas Figay's "Combined usage of SKOS
+# and OWL: an experimentation" (observablehq.com/@nfigay). The first draft of
+# this file wrote `rdf:type kset:people`, which made kset:people BOTH an
+# individual (a skos:Concept in the SetTypeScheme) and a class (the type of a
+# collection). That is PUNNING: forbidden in OWL 1, legal in OWL 2, and in
+# Figay's words "not well supported by Protege" — his recommended workaround is
+# splitting the class-facing and individual-facing statements into separate
+# files, which is a real cost to carry for no gain here.
+#
+# It is also not what this repository does. reckons-vocabulary.ttl declares
+# klife:functional as `a skos:Concept` with `skos:notation "functional"`, and the
+# code writes `kpred:has-status "functional"` — a PROPERTY whose value names the
+# concept. It never writes `rdf:type klife:functional`. So the house pattern is
+# already punning-free, and the first draft departed from it by accident.
+#
+# The one deliberate difference from has-status: the value here is an IRI rather
+# than a notation literal, because a status is a CLOSED enum the TypeScript
+# switches on while set types are user-definable, and a user-minted type needs an
+# identity the graph can carry.
+
+kpred:set-type a rdf:Property ;
+    rdfs:label "set type" ;
+    rdfs:domain skos:Collection ;
+    rdfs:range skos:Concept ;
+    rdfs:comment "What kind of set this is. A PROPERTY rather than rdf:type, so a set type stays an individual in ktype:SetTypeScheme and is never simultaneously a class — avoiding OWL 2 punning, which is legal but poorly tooled." .
