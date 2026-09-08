@@ -49,7 +49,7 @@ const C = {
  * Stated here rather than filtered silently: an unexplained exemption is how the next graph
  * gets quietly added to this list instead of to the four registries.
  */
-const EXEMPT: Record<string, string> = {
+export const EXEMPT: Record<string, string> = {
   'docs-all.ttl':
     'Standalone importable hub — an overview graph with KB Leap nodes to the sub-graphs, '
     + 'referenced by no generator. starter-guide.ttl is what the site publishes as the Guide.',
@@ -71,7 +71,7 @@ interface Registry {
  * the entire point — `docs-user-paths.ttl` appeared in prose in more than one of these files
  * while being absent from the list that actually drives the code.
  */
-function arrayLiteralEntries(text: string, name: string): Set<string> {
+export function arrayLiteralEntries(text: string, name: string): Set<string> {
   const start = text.indexOf(`const ${name}`);
   if (start === -1) return new Set();
   const open = text.indexOf('[', start);
@@ -81,7 +81,7 @@ function arrayLiteralEntries(text: string, name: string): Set<string> {
   return new Set([...body.matchAll(/['"]([\w.-]+\.ttl)['"]/g)].map((m) => m[1]));
 }
 
-const REGISTRIES: Registry[] = [
+export const REGISTRIES: Registry[] = [
   {
     label: 'SOURCES in scripts/docs-pages.ts (per-entity generator)',
     file: 'scripts/docs-pages.ts',
@@ -168,4 +168,5 @@ function main(): void {
   process.exit(1);
 }
 
-main();
+// Guarded so a test can import the pure parts without running the check as a side effect.
+if (process.argv[1] && process.argv[1].endsWith('docs-graph-registration.ts')) main();
