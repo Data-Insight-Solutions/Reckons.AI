@@ -27,6 +27,7 @@
 ## =============================================================================
 
 cw:CodingWorkflow rdf:type     ktype:Concept ;
+    kpred:render-as     "gallery" ;
     rdfs:label          "Coding workflow" ;
     hnav:order          90 ;
     skos:definition     "Reckons.AI turns a codebase into a graph you can interrogate, and then keeps the code and the plan honest with each other. The plan lives in the graph; code is checked against it; agents propose, humans decide. This page is generated from that same graph, so it cannot claim a capability the graph does not have." ;

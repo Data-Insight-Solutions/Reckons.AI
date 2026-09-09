@@ -39,6 +39,7 @@
 
 path:UserPaths
     rdf:type            ktype:Concept ;
+    kpred:render-as     "gallery" ;
     rdfs:label          "User paths" ;
     hnav:order          40 ;
     skos:definition     "The routes people actually take through Reckons.AI, each written as an intention rather than a feature. Start with the core loop below \u2014 every other path is that loop with one stage emphasised. They overlap deliberately, because the same person moves between them as their work changes." ;

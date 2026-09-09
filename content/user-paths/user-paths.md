@@ -29,38 +29,16 @@ If you read ONE thing, Read the core loop. Everything here is the same four stag
 
 ## In this section
 
-**[The core loop — add, review, add, review, decide](../user-paths/core-loop)**
+<div class="card-grid">
 
-The whole product in one path: facts go in, a person settles what is true, and the settled graph is then asked to help decide something.
+<a class="card" href="../user-paths/core-loop"><span class="card-title">The core loop — add, review, add, review, decide</span><span class="card-text">The whole product in one path: facts go in, a person settles what is true, and the settled graph is then asked to help decide something.</span></a>
+<a class="card" href="../user-paths/everyday-notes"><span class="card-title">Keeping everyday notes</span><span class="card-status">scaffolded</span><span class="card-text">You want to write things down the way you always have — loosely, in your own words, without deciding up front what any of it means.</span></a>
+<a class="card" href="../user-paths/capture-spoken"><span class="card-title">Capturing something you said out loud</span><span class="card-status">scaffolded</span><span class="card-text">The thought arrives while you are walking, driving, or away from the machine.</span></a>
+<a class="card" href="../user-paths/build-for-research"><span class="card-title">Building a graph for research</span><span class="card-text">You are investigating something over weeks — a technology choice, a literature area, a decision with real money behind it — and you want what you learn to accumulate instead of scattering across tabs and notes.</span></a>
+<a class="card" href="../user-paths/add-to-existing"><span class="card-title">Adding to a graph you already have</span><span class="card-text">The everyday path.</span></a>
+<a class="card" href="../user-paths/compare-graphs"><span class="card-title">Comparing your graph to another's</span><span class="card-text">Two people investigated the same subject and reached different graphs.</span></a>
+<a class="card" href="../user-paths/view-story"><span class="card-title">Viewing a story built on a graph</span><span class="card-text">The learner's path, and the only one that does not require building anything.</span></a>
+<a class="card" href="../user-paths/use-reckoning"><span class="card-title">Using reckoning to decide something</span><span class="card-text">You have a graph and a decision.</span></a>
+<a class="card" href="../user-paths/paths-overlap"><span class="card-title">The paths are not separate products</span><span class="card-text">One person moves between all five as their work changes: research until there is enough to decide, reckon to decide it, compare against a colleague who disagreed, then turn the settled result into a story for whoever comes next.</span></a>
 
-**[Keeping everyday notes](../user-paths/everyday-notes)** — **scaffolded**
-
-You want to write things down the way you always have — loosely, in your own words, without deciding up front what any of it means.
-
-**[Capturing something you said out loud](../user-paths/capture-spoken)** — **scaffolded**
-
-The thought arrives while you are walking, driving, or away from the machine.
-
-**[Building a graph for research](../user-paths/build-for-research)**
-
-You are investigating something over weeks — a technology choice, a literature area, a decision with real money behind it — and you want what you learn to accumulate instead of scattering across tabs and notes.
-
-**[Adding to a graph you already have](../user-paths/add-to-existing)**
-
-The everyday path.
-
-**[Comparing your graph to another's](../user-paths/compare-graphs)**
-
-Two people investigated the same subject and reached different graphs.
-
-**[Viewing a story built on a graph](../user-paths/view-story)**
-
-The learner's path, and the only one that does not require building anything.
-
-**[Using reckoning to decide something](../user-paths/use-reckoning)**
-
-You have a graph and a decision.
-
-**[The paths are not separate products](../user-paths/paths-overlap)**
-
-One person moves between all five as their work changes: research until there is enough to decide, reckon to decide it, compare against a colleague who disagreed, then turn the settled result into a story for whoever comes next.
+</div>

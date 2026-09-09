@@ -20,71 +20,73 @@ The fundamental unit of knowledge in RDF: a three-part statement -- subject, pre
 
 ## In this section
 
-### IRI (Identifier)
+<details class="accordion"><summary>IRI (Identifier)</summary>
 
 A globally unique identifier for a resource. IRIs are the names of things in RDF -- like URLs but for any concept, not just web pages. Example: urn:reckons:guide/WhatIsReckonsAI
 
-### Knowledge Graph
+</details>
+
+<details class="accordion"><summary>Knowledge Graph</summary>
 
 A graph-structured database where entities are nodes and relationships are edges. Multiple triples form a graph. The same subject can appear in many triples, creating a web of connected knowledge.
 
-<figure class="scene" role="group" aria-label="A graph is nodes and the named edges between them. Rendered once at build time, so this page still ships no JavaScript."><img src="/scenes/46c4b80ee503153f.png" width="1200" height="480" alt="Nine spheres arranged in a ring, connected by thin lines to the neighbours one and three places along — entities joined by the relations asserted between them." loading="lazy" decoding="async" /><figcaption>A graph is nodes and the named edges between them. Rendered once at build time, so this page still ships no JavaScript.</figcaption></figure>
+</details>
 
-<figure class="scene scene-live" role="group" aria-label="A graph is nodes and the named edges between them. Rendered once at build time, so this page still ships no JavaScript."><iframe src="/scenes/live/graph-ring" title="Nine spheres arranged in a ring, connected by thin lines to the neighbours one and three places along — entities joined by the relations asserted between them." width="1200" height="600" loading="lazy" style="border:0;max-width:100%;aspect-ratio:1200/600"></iframe><figcaption>A graph is nodes and the named edges between them. Rendered once at build time, so this page still ships no JavaScript.</figcaption></figure>
-
-#### Why it is this way
-
-**Note**
-
-Reckons.AI renders your knowledge graph as an interactive 3D force-directed graph.
-
-#### Detail
-
-**Scene Height**
-
-480
-
-**Scene Width**
-
-1200
-
-### Literal Values
+<details class="accordion"><summary>Literal Values</summary>
 
 A data value in RDF: a string, number, date, or boolean. Literals can have a language tag (@en) or a datatype IRI (^^xsd:integer). Example: '42'^^xsd:integer is a typed literal.
 
-**[Plain Text Portability](../triples-rdf/plain-text-portability)**
+</details>
+
+<details class="accordion"><summary>Plain Text Portability</summary>
 
 Your knowledge graph exports as a .ttl file -- plain text, human-readable, no proprietary format.
 
-### Provenance
+[Read more](../triples-rdf/plain-text-portability)
+
+</details>
+
+<details class="accordion"><summary>Provenance</summary>
 
 Every triple in Reckons.AI carries its source. You always know where a fact came from, how trusted that source is, and when it was added. Metadata about metadata -- this is what makes a graph trustworthy.
 
-**[RDF (Resource Description Framework)](../triples-rdf/rdf)**
+</details>
+
+<details class="accordion"><summary>RDF (Resource Description Framework)</summary>
 
 A W3C standard for representing knowledge as a graph of linked statements.
 
-### Reification
+[Read more](../triples-rdf/rdf)
+
+</details>
+
+<details class="accordion"><summary>Reification</summary>
 
 Making a statement about a statement. In RDF, reification assigns an IRI to a triple so it can be annotated with provenance, confidence, or temporal bounds. Reckons.AI uses reification in its TTL export format.
 
-### Subject - Predicate - Object
+</details>
+
+<details class="accordion"><summary>Subject - Predicate - Object</summary>
 
 Subject: the entity being described (always an IRI). Predicate: the relationship or property (always an IRI). Object: the value or target (an IRI or a literal string/number/date). Example: 'Alice worksAt AcmeCorp'. Example: 'Policy covers water-damage'.
 
-#### What we found
+</details>
 
-**Example**
-
-In 'Earth orbits Sun', Earth=subject, orbits=predicate, Sun=object.
-
-**[The Review Workflow](../triples-rdf/review-workflow)**
+<details class="accordion"><summary>The Review Workflow</summary>
 
 1.
 
-**[Turtle (.ttl) Syntax](../triples-rdf/turtle)**
+[Read more](../triples-rdf/review-workflow)
+
+</details>
+
+<details class="accordion"><summary>Turtle (.ttl) Syntax</summary>
 
 A compact, human-readable syntax for writing RDF triples.
+
+[Read more](../triples-rdf/turtle)
+
+</details>
 
 ## Related
 

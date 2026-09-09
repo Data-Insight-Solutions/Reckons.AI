@@ -253,8 +253,8 @@
       "path": "coding-workflow/coding-workflow",
       "entity": "urn:reckons:docs/coding-workflow/CodingWorkflow",
       "graph": "docs-coding-workflow.ttl",
-      "factHash": "e59b775af4ea2216",
-      "factCount": 4,
+      "factHash": "a55f82ed8b72bdf5",
+      "factCount": 5,
       "floor": "evidence"
     },
     {
@@ -565,8 +565,8 @@
       "path": "integrations-tech/integrations",
       "entity": "urn:reckons:integration/Integrations",
       "graph": "docs-integrations-tech.ttl",
-      "factHash": "8ae28c82f2082bb1",
-      "factCount": 1,
+      "factHash": "6aeb3dcf6dcdbb15",
+      "factCount": 2,
       "floor": "evidence"
     },
     {
@@ -861,8 +861,8 @@
       "path": "triples-rdf/triple-architecture",
       "entity": "urn:reckons:arch/TripleArchitecture",
       "graph": "docs-triples-rdf.ttl",
-      "factHash": "008e53fc54040970",
-      "factCount": 1,
+      "factHash": "26af549136a3289f",
+      "factCount": 2,
       "floor": "evidence"
     },
     {
@@ -1117,8 +1117,8 @@
       "path": "user-paths/user-paths",
       "entity": "urn:reckons:path/UserPaths",
       "graph": "docs-user-paths.ttl",
-      "factHash": "10542599411ec97b",
-      "factCount": 6,
+      "factHash": "254acf9485e7d3b1",
+      "factCount": 7,
       "floor": "evidence"
     },
     {

@@ -41,6 +41,7 @@ nav:BackToHub
 
 arch:TripleArchitecture
     rdf:type            ktype:Concept ;
+    kpred:render-as     "accordion" ;
     rdf:type            skos:Concept ;
     rdfs:label          "The Semantic Triple" ;
     hnav:order          20 ;
