@@ -1,5 +1,5 @@
 {
-  "built": 131,
+  "built": 132,
   "pages": [
     {
       "path": "architecture/claude-md-minimal",
@@ -657,6 +657,15 @@
       "factCount": 12,
       "floor": "evidence",
       "pageHash": "347ed7e43e866cce"
+    },
+    {
+      "path": "learn/start-here",
+      "entity": "urn:reckons:feature/StartHere",
+      "graph": "docs-features.ttl",
+      "factHash": "aaffe49da06a3857",
+      "factCount": 6,
+      "floor": "evidence",
+      "pageHash": "938d42c786f4225d"
     },
     {
       "path": "learn/what-it-does",

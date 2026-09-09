@@ -499,3 +499,55 @@ set:TheLoop rdf:type        skos:OrderedCollection ;
     kpred:in-set        set:TheLoop ;
     kpred:member-entity set:MoveUse ;
     kpred:member-order  "5" .
+
+## =============================================================================
+## START HERE — the page a first-time reader actually lands on.
+##
+## It replaces composed output: content/learn/start-here.md was an alphabetical
+## dump of every section heading in the corpus, under the promise "the only page
+## a new reader needs". Matt, 2026-09-06: "start here is a long list."
+##
+## This is an ORIENTATION page, deliberately not a duplicate of Getting Started.
+## It answers the four questions a newcomer has, in the order they have them,
+## and sends them somewhere real for each. The set is the sequence; the page is
+## the entity — a set contributes the route, it does not define the page.
+## =============================================================================
+
+feat:StartHere
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Start here" ;
+    hnav:order          1 ;
+    kpred:page-section  "Learn" ;
+    kpred:page-slug     "start-here" ;
+    skos:definition     "Reckons.AI turns things you read into facts you have checked, and then lets you ask those facts what to do. It is not a note-taking app: the difference is that nothing is in your graph unless you accepted it, and every fact can show you the sentence it came from. Four pages below, in the order the questions usually arrive — what it is, what it does, how to start, and what it is for." ;
+    kpred:audience      "Someone who has just arrived and does not yet know whether this is for them." ;
+    kpred:principle     "READ THESE FOUR IN ORDER AND STOP. The rest of this site is reference, and reference read early is the reason a good tool looks complicated. If you only have five minutes, read what it does — the five moves are the whole product." ;
+    kpred:constraint    "THIS TAKES LONGER TO GET VALUE FROM THAN A NOTES APP, and that is the trade rather than a rough edge. You review what a model proposes before it becomes yours, which costs you time at the start and is exactly why the answers are worth something later. If you want something that reads your files and answers confidently without asking, this is the wrong tool and that is a fine conclusion to reach on this page." .
+
+set:FirstHour rdf:type      skos:OrderedCollection ;
+    kpred:set-kind      kset:story ;
+    skos:prefLabel      "Your first four pages" ;
+    skos:definition     "In the order the questions usually arrive." ;
+    skos:member         guide:WhatIsReckonsAI, feat:FiveMoves, guide:GettingStarted, feat:Reckoning ;
+    kpred:set-relates-to feat:StartHere .
+
+<urn:reckons:set/FirstHour/member/WhatIsReckonsAI>
+    kpred:in-set        set:FirstHour ;
+    kpred:member-entity guide:WhatIsReckonsAI ;
+    kpred:member-order  "1" .
+
+<urn:reckons:set/FirstHour/member/FiveMoves>
+    kpred:in-set        set:FirstHour ;
+    kpred:member-entity feat:FiveMoves ;
+    kpred:member-order  "2" .
+
+<urn:reckons:set/FirstHour/member/GettingStarted>
+    kpred:in-set        set:FirstHour ;
+    kpred:member-entity guide:GettingStarted ;
+    kpred:member-order  "3" .
+
+<urn:reckons:set/FirstHour/member/Reckoning>
+    kpred:in-set        set:FirstHour ;
+    kpred:member-entity feat:Reckoning ;
+    kpred:member-order  "4" .

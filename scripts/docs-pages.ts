@@ -798,11 +798,18 @@ function renderSetSections(e: Entity, refs: Map<string, PageRef>): string[] {
 
   const out: string[] = [];
   if (story?.definition) out.push(`## ${escapeMdText(story.label)}`, '', escapeMdText(story.definition), '');
+  /*
+   * A LONE SET IS THE SECTION, not a subsection of whatever came before it. With several sets a
+   * story heading introduces them and each sits beneath it at h3; with one there is no story
+   * heading, so an h3 renders as though it belonged to the previous h2 — on Start here it made
+   * "Your first four pages" look like part of "Why it is this way".
+   */
+  const level = story?.definition || ordered.length > 1 ? '###' : '##';
   for (const [i, set] of ordered.entries()) {
     // The ordinal is shown only when the order is asserted. Numbering an unordered set would be
     // inventing a sequence, which is the same failure as a forced link.
     const n = positionOf.get(set.iri);
-    out.push(`### ${n !== undefined ? `${n} · ` : ''}${escapeMdText(set.label)}`, '');
+    out.push(`${level} ${n !== undefined ? `${n} · ` : ''}${escapeMdText(set.label)}`, '');
     if (set.definition) out.push(escapeMdText(set.definition), '');
 
     // Each member under its OWN name, linked to whatever page carries it — which for a folded
