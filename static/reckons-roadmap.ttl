@@ -6779,6 +6779,7 @@ kb:domain-strategy rdf:type    ktype:Decision ;
 
 kb:graph-to-content rdf:type   ktype:Feature ;
                rdfs:label   "Generating from the graph — the direction we have barely built" ;
+               kpred:description  "Turning a slice of the graph into something a person consumes — prose, a diagram, a deck, a video — by selecting a portion and choosing a level of detail. Prose already works: derived sentences are computed on 77 docs pages and a local model drafts entity descriptions as proposals. The rest is unbuilt, and the open question is where a generated artifact LIVES, since writing it back into the graph turns it into a literal that can go stale, which is the problem generation was meant to solve." ;
                kpred:feature-id   "F182" ;
                kpred:has-status   "planned" ;
                kpred:priority     "high" ;
@@ -6796,6 +6797,7 @@ kb:graph-to-content rdf:type   ktype:Feature ;
 
 kb:task-model-bench rdf:type   ktype:Feature ;
                rdfs:label   "Define a task, search HuggingFace, benchmark the options" ;
+               kpred:description  "Define a task, find candidate models for it, and score them against each other on a corpus you control — so choosing a model is a measurement rather than a preference. The task itself is a graph entity, which is what makes the corpus, the candidates and the scores one queryable record instead of three files. The pattern already exists for extraction and for the visual gate; what is missing is the ability to point it at a NEW task, including multi-modal ones like video with audio, where there are no fixtures at all today." ;
                kpred:feature-id   "F183" ;
                kpred:has-status   "planned" ;
                kpred:decided      "MATT, 2026-09-06: an easy way to define a task, search HuggingFace for candidates, and benchmark them against each other — \u0027critical when nailing down the multitudes of multi-media content there is. Video with audio, meme photo with text.\u0027" ;
@@ -6826,6 +6828,7 @@ kb:tenet-alignment rdf:type    ktype:Feature ;
 
 kb:blog-delivery rdf:type      ktype:Feature ;
                rdfs:label   "Multi-media generated content ships as blog entries in the CMS" ;
+               kpred:description  "Generated content arriving as reviewable blog posts rather than as files someone has to notice. Output from graph-to-content lands in the CMS as an editable draft, so a person reads it before anyone else does — the same propose-then-settle contract every other machine output here goes through, applied to publishing." ;
                kpred:feature-id   "F185" ;
                kpred:has-status   "planned" ;
                kpred:decided      "MATT, 2026-09-06: \u0027deliver the multi-media content via blog entries in the CMS.\u0027 This settles where F182\u0027s output GOES, which was its biggest unanswered question — generated prose, diagrams and other media become posts a human edits and publishes, not files that appear in a directory." ;
@@ -6847,6 +6850,7 @@ kb:blog-delivery rdf:type      ktype:Feature ;
 
 kb:submit-experiment rdf:type  ktype:Feature ;
                rdfs:label   "Request a new content type — submissions that become roadmap entries" ;
+               kpred:description  "A public form for requesting a new content type — somebody describes an output modality they want, what it should produce and what it would need, and the request enters the roadmap as an entity at `speculative`. It is a feature request rather than a runnable artifact, so it is built and tested here before anything is published, and the status on its public page is the honest promise: `speculative` means nobody has agreed to build it." ;
                kpred:feature-id   "F186" ;
                kpred:has-status   "planned" ;
                kpred:priority     "high" ;
