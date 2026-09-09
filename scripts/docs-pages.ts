@@ -604,7 +604,27 @@ function leapLink(e: Entity): { href: string; title: string } | null {
  *
  * It says only what it can support. No dependency facts, no sentence about dependencies.
  */
+/**
+ * The one-sentence excerpt, from the definition or failing that the description.
+ *
+ * Not every graph can carry a skos:definition: static/reckons-roadmap.ttl does not declare the
+ * skos prefix at all, so kb:thesis — the most-linked page on the site — published with an empty
+ * excerpt and nothing said so. The frontmatter excerpt is what a card, a search result and the
+ * contents page all show, so an empty one is three blank spaces a reader sees.
+ */
+function excerptFor(e: Entity): string {
+  const source = e.definition || e.literalProps.get(`${KPRED}description`)?.[0] || '';
+  return source ? firstSentence(source) : '';
+}
+
 function renderDerived(e: Entity, children: ChildRef[]): string[] {
+  /*
+   * NEVER THE FIRST THING ON A PAGE. Found on content/principles/thesis.md, which has no
+   * skos:definition, so the computed sentence became the lede and the page opened with "It has 10
+   * parts below." A derived sentence is a statement ABOUT the thing and only makes sense after the
+   * thing has been introduced; with no introduction it is a caption with nothing above it.
+   */
+  if (!e.definition) return [];
   const status = e.literalProps.get(HAS_STATUS)?.[0];
   const uses = e.iriProps.get(`${KPRED}uses`)?.length ?? 0;
   const parts: string[] = [];
@@ -1029,7 +1049,7 @@ function main(): void {
     const arr = childrenOf.get(parent) ?? [];
     arr.push({
       slug: slugs.get(e.iri)!, section: e.section, title: docsTitle(e.title), types: e.types,
-      excerpt: e.definition ? firstSentence(e.definition) : '',
+      excerpt: excerptFor(e),
       status: e.literalProps.get(HAS_STATUS)?.[0] ?? null,
       order: Number.isFinite(step) ? step : (e.navOrder ?? Number.MAX_SAFE_INTEGER),
       folded: isPage.get(e.iri) ? null : (byIri.get(e.iri) ?? null),
@@ -1066,7 +1086,7 @@ function main(): void {
     template: 'doc',
     status: 'published',
     nav: 'sidebar',
-    excerpt: e.definition ? firstSentence(e.definition) : '',
+    excerpt: excerptFor(e),
     body: renderBody(e, refs, childrenOf.get(e.iri) ?? [], childHeadingFor(e.iri)),
     // Sorted by slug (not source IRI): `md-align`'s round trip reconstructs `related`
     // via synthetic `urn:kbase:concept/<slug>` IRIs and re-sorts alphabetically, so the

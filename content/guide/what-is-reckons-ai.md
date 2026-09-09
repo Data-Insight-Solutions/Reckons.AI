@@ -16,7 +16,7 @@ related:
 
 Reckons.AI is a personal knowledge graph that runs entirely in your browser. No server, no account, no cloud dependency. Your data stays on your device in IndexedDB, and you control every piece of knowledge that enters your graph through a human review process.
 
-<p class="derived">It has 43 parts below.</p>
+<p class="derived">It has 44 parts below.</p>
 
 ## In this section
 
@@ -40,6 +40,7 @@ Reckons.AI is a personal knowledge graph that runs entirely in your browser. No 
 
 <div class="card-grid">
 
+<a class="card" href="../guide/who-makes-this"><span class="card-title">Who makes Reckons.AI</span><span class="card-text">Reckons.AI is built by one person at a small consultancy, which is worth knowing before you decide how much to depend on it.</span></a>
 <a class="card" href="../features/graph3-d"><span class="card-title">3D / 2D Knowledge Graph</span><span class="card-text">Interactive force-directed graph in WebGL (3D) or Canvas (2D fallback).</span></a>
 <a class="card" href="../features/compare"><span class="card-title">Compare / Diff Engine</span><span class="card-text">Compare two knowledge graphs or snapshots at /compare.</span></a>
 <a class="card" href="#content-safety-features"><span class="card-title">Content Safety</span><span class="card-text">Ethics preamble injected into ALL LLM system prompts.</span></a>

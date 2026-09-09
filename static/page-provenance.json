@@ -1,5 +1,5 @@
 {
-  "built": 141,
+  "built": 139,
   "pages": [
     {
       "path": "architecture/claude-md-minimal",
@@ -490,14 +490,6 @@
       "floor": "evidence"
     },
     {
-      "path": "guide/data-insight-solutions-guide",
-      "entity": "urn:reckons:creator/DataInsightSolutions",
-      "graph": "starter-guide.ttl",
-      "factHash": "5192f41084d2bd90",
-      "factCount": 2,
-      "floor": "evidence"
-    },
-    {
       "path": "guide/getting-started",
       "entity": "urn:reckons:guide/GettingStarted",
       "graph": "starter-guide.ttl",
@@ -514,14 +506,6 @@
       "floor": "evidence"
     },
     {
-      "path": "guide/matthew-roe-guide",
-      "entity": "urn:reckons:creator/MatthewRoe",
-      "graph": "starter-guide.ttl",
-      "factHash": "896ba3fde62c664a",
-      "factCount": 3,
-      "floor": "evidence"
-    },
-    {
       "path": "guide/reckons-ai",
       "entity": "urn:reckons:guide/ReckonsAI",
       "graph": "starter-guide.ttl",
@@ -530,19 +514,19 @@
       "floor": "evidence"
     },
     {
-      "path": "guide/reckons-philosophy",
-      "entity": "urn:reckons:story/ReckonsPhilosophy",
-      "graph": "starter-guide.ttl",
-      "factHash": "e3b0c44298fc1c14",
-      "factCount": 0,
-      "floor": "evidence"
-    },
-    {
       "path": "guide/what-is-reckons-ai",
       "entity": "urn:reckons:guide/WhatIsReckonsAI",
       "graph": "starter-guide.ttl",
       "factHash": "e6132748e97861b7",
       "factCount": 2,
+      "floor": "evidence"
+    },
+    {
+      "path": "guide/who-makes-this",
+      "entity": "urn:reckons:guide/WhoMakesThis",
+      "graph": "starter-guide.ttl",
+      "factHash": "db26edeabe0c9f58",
+      "factCount": 1,
       "floor": "evidence"
     },
     {

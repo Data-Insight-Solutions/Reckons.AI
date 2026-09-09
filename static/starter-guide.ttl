@@ -65,6 +65,7 @@ guide:ReckonsAI
 
 creator:DataInsightSolutions
     rdf:type            ktype:Organization ;
+    skos:broader        guide:WhoMakesThis ;
     rdfs:label          "Data Insight Solutions LLC" ;
     skos:definition     "The company behind Reckons.AI. A software consultancy focused on knowledge management, data engineering, and AI-augmented tooling." ;
     kpred:operates      guide:ReckonsAI ;
@@ -72,6 +73,7 @@ creator:DataInsightSolutions
 
 creator:MatthewRoe
     rdf:type            ktype:Person ;
+    skos:broader        guide:WhoMakesThis ;
     rdfs:label          "Matthew Roe" ;
     skos:definition     "Owner-operator of Data Insight Solutions LLC and creator of Reckons.AI. Designed the local-first architecture, the human-in-the-loop review workflow, and the graph Leap cross-referencing system." ;
     kpred:role          "Founder & Developer" ;
@@ -424,6 +426,7 @@ guide:QuickStartExample
 
 story:ReckonsPhilosophy
     rdf:type            story:Story ;
+    skos:broader        guide:WhoMakesThis ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "The Reckons.AI Story" ;
@@ -519,3 +522,16 @@ shelly:persona
     shelly:personality      "knowledgeable, empowering, direct" ;
     shelly:responseStyle    "conversational" ;
     shelly:systemPrompt     "You are helping someone learn Reckons.AI. This is the documentation HUB -- a compact overview. Nodes labeled 'LEAP:' link to deeper sub-graphs (separate .ttl files). Emphasize practical uses, individual empowerment, and the accuracy advantage of graph-grounded LLM responses. Be honest about what LLMs can and cannot do. Encourage the user to build their own knowledge and never blindly trust any model output." .
+
+## =============================================================================
+## Who makes this. Three parentless stubs of 24-31 words each were publishing as
+## their own pages because nothing could fold them; grouped 2026-09-08.
+## =============================================================================
+
+guide:WhoMakesThis
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Who makes Reckons.AI" ;
+    hnav:order          19 ;
+    skos:broader        guide:WhatIsReckonsAI ;
+    skos:definition     "Reckons.AI is built by one person at a small consultancy, which is worth knowing before you decide how much to depend on it. It is open source and its data is plain text you can take with you, so the answer to what happens if they stop is that you keep the graph and the format is a published standard." .

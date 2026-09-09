@@ -6,12 +6,11 @@ section: "Principles"
 template: doc
 status: published
 nav: sidebar
+excerpt: "Most knowledge tools store what you know."
 generated: "docs-kb"
 ---
 
 # The thesis
-
-<p class="derived">It has 10 parts below.</p>
 
 Most knowledge tools store what you know. Reckons.AI stores HOW YOU KNOW IT — and refuses to fake it when it cannot.
 

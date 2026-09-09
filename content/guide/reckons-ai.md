@@ -22,8 +22,8 @@ A personal knowledge graph that runs entirely in your browser. Local-first, open
 
 **Created By**
 
-- [Data Insight Solutions LLC](../guide/data-insight-solutions-guide)
-- [Matthew Roe](../guide/matthew-roe-guide)
+- [Who makes Reckons.AI](../guide/who-makes-this)
+- [Who makes Reckons.AI](../guide/who-makes-this)
 
 - [Shelly (AI Assistant)](../features/shelly)
 - [Technology Stack](../integrations-tech/architecture-integrations-tech)
