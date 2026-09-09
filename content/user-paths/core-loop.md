@@ -90,6 +90,6 @@ Say where you are, say what you are trying to reach, and the graph proposes a ro
 
 **Uses**
 
+- [A reckoning — asking your graph what to do](../learn/reckoning)
 - [Ingest](../features/ingest)
 - [Review System](../features/review-system)
-- [What Is Reckons.AI](../guide/what-is-reckons-ai)

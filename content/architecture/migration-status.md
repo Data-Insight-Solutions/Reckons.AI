@@ -133,9 +133,15 @@ docs/SECURITY.md (248 lines) covers vulnerability tracking and response process.
 
 partial
 
-**[STYLE_GUIDE.md → Hybrid](../architecture/mig-style-guide)**
+### STYLE_GUIDE.md → Hybrid
 
-docs/STYLE_GUIDE.md (226 lines) contains CSS variable tables and component patterns.
+docs/STYLE_GUIDE.md (226 lines) contains CSS variable tables and component patterns. The conceptual summary belongs in TTL (this graph). The literal CSS values (hex codes, font stacks, z-index numbers) should live as code comments in the CSS source files. A TTL entity with the key conventions exists here (arch:StyleConventions).
+
+#### Detail
+
+**Status**
+
+hybrid
 
 ### USER_STORIES.md → Superseded
 

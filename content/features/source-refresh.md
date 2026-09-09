@@ -1,7 +1,7 @@
 ---
 title: "Source Refresh"
 slug: "source-refresh"
-order: 1033
+order: 1032
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc

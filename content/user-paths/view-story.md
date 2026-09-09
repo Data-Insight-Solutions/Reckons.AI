@@ -53,9 +53,9 @@ static/starter-turtles.ttl — kb:turtle-story, seven steps across six layouts. 
 
 A good story opens on the unarranged graph. Seeing the mess first is what makes the second step land — the tree was always in there, it just could not be seen.
 
-**[Let each question pick its own layout](../user-paths/story-2)**
+### Let each question pick its own layout
 
-'How are these related' is a hierarchy question.
+'How are these related' is a hierarchy question. 'Where does this happen' is a map question. 'In what order' is a timeline question. A story that changes layout to show off layouts teaches nothing; one that changes because the question changed teaches what layouts are for.
 
 ### Ask Shelly about any node you land on
 

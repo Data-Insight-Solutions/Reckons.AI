@@ -40,9 +40,9 @@ When a model generates plausible-sounding but false information. This is not a b
 
 Small language models that run on your own machine (via Ollama, or fully in-browser via WebAssembly).
 
-**[Models Are Tools, Not Thinkers](../llm/not-magic)**
+### Models Are Tools, Not Thinkers
 
-A language model is a tool -- powerful, but still a tool.
+A language model is a tool -- powerful, but still a tool. It cannot verify its own outputs, does not know what is true, and will confidently produce plausible-sounding falsehoods. Calling them 'AI' implies agency they do not have. Treat them as highly capable text prediction engines.
 
 ### Prompt Engineering
 

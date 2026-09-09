@@ -23,9 +23,9 @@ All user data lives in browser IndexedDB (Dexie v4). No server, no accounts, no 
 
 Core deps: svelte 5, sveltekit 2, dexie 4, n3 1.x, three 0.169, @huggingface/transformers 3.x, bits-ui 2.x, fflate 0.8. Dev deps: vitest 4.x, playwright 1.x, typescript 5.x. All deps actively maintained. No abandoned packages. Browser-only runtime — no server deps in production.
 
-**[PROV-O Alignment](../architecture/prov-o-alignment)**
+### PROV-O Alignment
 
-Partial alignment with W3C PROV-O ontology.
+Partial alignment with W3C PROV-O ontology. Source provenance tracked via custom urn:kbase:meta/ predicates (source, ingestedAt, confidence, excerpt). Full prov:Activity chains not implemented — unnecessary complexity for a personal graph where the user IS the reviewing agent. Custom namespace chosen for simplicity and smaller TTL output.
 
 ### RDF Vocabulary Decisions
 

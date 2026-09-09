@@ -33,7 +33,7 @@ Reckons.AI connects to external tools and data sources while keeping your graph 
 <a class="card" href="#model-cache-integrations-tech"><span class="card-title">Model Cache Management</span><span class="card-text">Inspect, sideload, and purge locally cached WASM models via Cache API.</span></a>
 <a class="card" href="../integrations-tech/n8n-cloud-sync"><span class="card-title">n8n Cloud Sync</span><span class="card-text">Private, self-hosted cloud sync via n8n workflow automation on a self-hosted VPS.</span></a>
 <a class="card" href="#pdf-import"><span class="card-title">PDF / Image Import (Mistral OCR)</span><span class="card-text">Upload PDFs or images.</span></a>
-<a class="card" href="../integrations-tech/vs-code-extension"><span class="card-title">VS Code Extension (Planned)</span><span class="card-text">Auto-inject graph into coding sessions via MCP bridge.</span></a>
+<a class="card" href="#vs-code-extension"><span class="card-title">VS Code Extension (Planned)</span><span class="card-text">Auto-inject graph into coding sessions via MCP bridge.</span></a>
 <a class="card" href="#web-scraping"><span class="card-title">Web Scraping (Jina / Firecrawl)</span><span class="card-text">Extract content from URLs.</span></a>
 <a class="card" href="#workspace-sync"><span class="card-title">Workspace Folder Sync</span><span class="card-text">Auto-exports knowledge.ttl to a local folder on each mutation.</span></a>
 
@@ -79,6 +79,10 @@ Inspect, sideload, and purge locally cached WASM models via Cache API. Manifests
 <h3 id="pdf-import">PDF / Image Import (Mistral OCR)</h3>
 
 Upload PDFs or images. Mistral OCR extracts text, then the LLM extracts triples. Contracts, invoices, academic papers -- all become structured knowledge.
+
+<h3 id="vs-code-extension">VS Code Extension (Planned)</h3>
+
+Auto-inject graph into coding sessions via MCP bridge. Wraps reckons-ai-mcp as child process with stdio transport. Phase 1: MCP bridge + auto-inject. Phase 2: live updates from editor actions. Phase 3: sidebar graph browser with webview graph. Zero config — activates when it detects kbs/*/*.ttl in workspace (legacy kbs/*/kb.ttl also recognized).
 
 <h3 id="web-scraping">Web Scraping (Jina / Firecrawl)</h3>
 

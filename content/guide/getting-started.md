@@ -43,7 +43,7 @@ Go to Review to see extracted triples. Confirm accurate ones, reject incorrect o
 
 ### Step 4: Explore the Graph
 
-Go to view (the home tab) to see your knowledge in 3D. Click nodes to select them, use the RadialMenu for actions, and use filters to focus. The graph tab manages your graphs: create, switch, rename, currents, and publishing.
+Go to view (the home tab) to see your knowledge in 3D. Click a node to select it, then choose an action from the ring of buttons that appears around it, and use the filters to narrow what is shown. The graph tab manages your graphs: create, switch, rename, currents, and publishing.
 
 ### Step 5: Ask Shelly
 

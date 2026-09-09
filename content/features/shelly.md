@@ -1,7 +1,7 @@
 ---
 title: "Shelly (AI Assistant)"
 slug: "shelly"
-order: 1031
+order: 1030
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc

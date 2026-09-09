@@ -10,7 +10,7 @@ nav: sidebar
 excerpt: "shadcn-svelte components are introduced on Tailwind v4 with Tailwind's CSS reset (preflight) disabled."
 generated: "docs-kb"
 related:
-  - "style-conventions"
+  - "what-is-reckons-ai"
 ---
 
 # Tailwind-Without-Preflight Containment
@@ -19,4 +19,4 @@ shadcn-svelte components are introduced on Tailwind v4 with Tailwind's CSS reset
 
 ## Related
 
-- [Style Conventions](../architecture/style-conventions)
+- [What Is Reckons.AI](../guide/what-is-reckons-ai)

@@ -72,4 +72,4 @@ Follow the facts the proposal cites back into the graph. If it leans on somethin
 **Uses**
 
 - [3D / 2D Knowledge Graph](../features/graph3-d)
-- [What Is Reckons.AI](../guide/what-is-reckons-ai)
+- [A reckoning — asking your graph what to do](../learn/reckoning)

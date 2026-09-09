@@ -1,271 +1,86 @@
 ---
-title: "What it does"
+title: "What Reckons.AI does, in five moves"
 slug: "what-it-does"
-order: 2
+order: 50
 section: "Learn"
 template: doc
 status: published
 nav: sidebar
-excerpt: "Every capability, and a worked example of each — what you can actually do with it."
-generated: "docs-composed"
+excerpt: "Reckons.AI does one thing in five moves: it takes what you put in, works out the claims inside it, asks you which are true, keeps the ones you accept with their sources attached, and then lets you ask the result questions."
+generated: "docs-kb"
 ---
 
-# What it does
-
-Every capability, and a worked example of each — what you can actually do with it.
-
-## Features
-
-### 3D / 2D Knowledge Graph
-
-Interactive force-directed graph in WebGL (3D) or Canvas (2D fallback). Per-entity icons from urn:kbase:predicate/icon2d statements with emoji fallback. Label overlap prevention sorts by degree and hides collisions. Hub emphasis, layout modes (force/focus/source/type/hub), filter chips.
-
-### Compare / Diff Engine
-
-Compare two knowledge graphs or snapshots at /compare. Diff engine categorizes changes as Add, Reinforce, Conflict, Merge, Remove. Visual Venn diagram and diff table with bulk accept/reject.
-
-### Confluence Migration
-
-Bulk import from Confluence spaces. Upload an HTML export ZIP, parse the page tree, chunk large pages with sliding window (10K chars, 2K overlap), and extract triples using local models (Ollama recommended). Preserves page hierarchy as skos:broader, converts Confluence labels to entity types, tracks provenance per page. Pause/resume checkpoint for overnight imports of large spaces.
-
-### Content Safety
-
-Ethics preamble injected into ALL LLM system prompts. Content classifier with two levels: blocked (filtered out on ingest) and mature (flagged on export with advisory). Discourse, disagreement, and academic content pass freely.
-
-### Context Compression
-
-Condense your context. Keep the meaning. Knowledge graphs are dense by nature — a page of prose becomes a handful of triples. Semantic meaning preserved, tokens reduced. Feed compressed graph directly to AI agents via MCP. Structured triples outperform summaries because no relationships are paraphrased away.
-
-### Cross-Graph Alignment
-
-Align entities across knowledge graphs. Entity matching via exact IRI match and embedding similarity. IRI remapping for entities that represent the same concept across graphs. Align tab in review page. KbPicker selects source graph, AlignmentCard shows each match with accept/reject.
-
-### Currents
-
-Streamed ingest: point a current at an RSS feed, URL, or topic and it brings recurring external content into your graph on a schedule. Items arrive via the n8n Currents Monitor (or a direct in-browser RSS fetch as fallback) and are ranked by affinity to your graph's most-connected entities, with near-duplicates collapsed and content-policy filtering applied. New facts always land as pending — a current never bypasses review. An entity-type gate (set in graph settings) restricts which types a current may CREATE; facts attaching to entities already in the graph always flow through. Configure currents and the type gate from the graph page.
-
-### Diff Summary
-
-LLM-generated 3-part summaries of diffs: what is new, what reinforces existing knowledge, and what conflicts. Integrated in /compare, /review, and the browser extension sidepanel.
-
-### Disambiguation
-
-Automatic detection of duplicate or similar entities using text embeddings and cosine similarity. Suggests merges for your review in the Merges tab.
-
-### Entity Normalization
-
-Post-extraction normalization that rewrites incoming IRIs to match existing graph entities and predicates using embedding similarity. Prevents duplicate entities like 'octopus-vulgaris' vs 'common-octopus' from entering the review queue. Two-pass matching: exact label (case-insensitive) then cosine similarity (0.90 entity, 0.88 predicate). Protected standard vocabularies (rdf:, rdfs:, skos:, xsd:) are never remapped.
-
-### Entity Type System
-
-Categorize entities (Person, Place, Concept, Tool, Document, Organization, Event) with custom colors and 3D shapes. Types assigned via rdf:type statements.
-
-### Git Analysis
-
-Git-aware MCP tools for agent plan alignment. Tools: kb_git_status (branch/commits), kb_check_plan (BM25 drift detection), kb_pending (review queue), kb_git_diff_triples (file-to-Graph cross-ref), kb_alignment_score (quantitative 0-1 score across 4 dimensions: coverage, status alignment, dependency respect, scope discipline). Enhanced kb_add_note supports type, priority, agent, and commit_sha metadata.
-
-### Graph Identity
-
-Each graph has a stable UUID (never changes, used for MCP routing and graph Leap) and a content fingerprint (SHA-256 of sorted N-Quads, changes with every edit). Both visible in Settings.
-
-### Graph Leap
-
-Cross-reference entities between graphs. A leap node stores a target (Graph stable ID, app path, or URL) as an ordinary RDF triple. Nodes with leaps show an amber ring. Click to jump to the target graph, navigate within the app, or open an external URL. Docs sub-graphs auto-import on first click.
-
-### History Mode
-
-Time-travel through your graph at /history. Scrub a timeline to see the graph at any past point. All mutations are logged in the changelog.
-
-### Ingest
-
-Add knowledge from text, URLs, documents, calendars, iCal feeds, Indico events, or Turtle files. An LLM extracts semantic triples from unstructured input. Every extracted triple starts as pending for your review.
-
-### Kokoro TTS
-
-Local text-to-speech for story walkthroughs. 82M model cached in browser. Falls back to browser speech synthesis if unavailable.
-
-### LLM Backends
-
-9 providers: Claude, OpenAI, Gemini, Ollama (local), OpenRouter (free tier), WASM (offline, Qwen2.5-0.5B-Instruct), Chrome AI (Gemini Nano), Manual paste, Mock. Per-task backend overrides let you use different providers for ingest, chat, analysis, diff summary, and merge analysis. Prefer-local routing can redirect chat, diff summary, and merge analysis to a reachable local Ollama server.
-
-### MCP Workspace
-
-Reckons.AI uses its own MCP server to track product state. Three internal graphs (Roadmap, Production, Features) are symlinked from static/*.ttl into mcp-workspace/kbs/. Claude Code queries these graphs before planning work. Edit a TTL file and the MCP server auto-reloads. Setup: bash scripts/setup-mcp-workspace.sh.
-
-### Model Cache Management
-
-Inspect, sideload, and purge locally cached WASM models. Manifests for Qwen2.5-0.5B (500MB), BGE-small-en-v1.5 (33MB), MiniLM-L6-v2 (22MB), Kokoro 82M (88MB), Whisper Tiny (42MB). Settings &gt; Integrations &gt; local model cache.
-
-### Multi-Graph Management
-
-Create, switch, rename, and delete independent knowledge graphs. Each graph has its own IndexedDB store, stable UUID, content fingerprint, and optional accent color. Per-tab graph support via URL ?kb= parameter.
-
-### Passage Grounding
-
-Verbatim source excerpts attached to extracted triples. LLM prompt rule requests the exact source sentence. Persists via meta:excerpt in TTL reification. Displayed in StatementCard and DiffEntry.
-
-### Persona System
-
-Each graph can embed its own AI assistant personality using the shelly: vocabulary. A work graph might have a direct, technical persona while a personal graph has a calm guide. Persona travels with the .ttl file.
-
-### Pod View
-
-Turn on the pod view from the Graph tab (currents section) to see arrivals -- nodes touched only by pending facts from a current -- drift gently at reduced opacity with a dashed halo, kept visually distinct until you accept or dismiss them from the node. Accept folds an arrival into the graph for normal review; dismiss clears it. It is a per-device view preference (stored locally, not in the graph) and is honoured by the home graph view.
-
-### Predicate Manager
-
-View all predicates in your graph with usage counts. Rename predicates across all statements or merge two predicates into one. Accessible from the graph page.
-
-### Prefer-Local Routing
-
-Opt-in setting that redirects chat, diff-summary, and merge-analysis to a local Ollama model whenever it is reachable, instead of your chosen cloud backend. Falls back to your normal backend chain the moment Ollama is unreachable -- no extraction quality is sacrificed silently. A companion structured-extraction mode uses a compact, schema-constrained prompt so small local models still produce clean facts.
-
-### Published Graph Site
-
-Any graph can publish itself as a browsable website. Entities typed as a web page export to markdown with frontmatter (title, section, order, excerpt) via the graph's structure -- skos:broader for parent/child, nav:order and nav:next/nav:prev for sequence. The generated site is served at /docs. The graph stays the source of truth: generated pages are regenerated from the graph, and hand-edits to them are overwritten by the next regeneration by design. A Git-backed admin UI edits non-generated content (like release posts); a drift check flags generated pages that no longer match their graph.
-
-### Reckoning (STP)
-
-Situation-Target-Proposal: describe your situation, state your goal, and the AI synthesizes options grounded ONLY in your confirmed triples. Every option cites its sources.
-
-### Release Notes
-
-Versioned release posts (starting with v0.1.0) authored as graph facts and published through the docs site, using the same web-page model as the rest of /docs.
-
-### Review System
-
-Three tabs: Incoming (new triples), Deletions (removal proposals), Merges (duplicate entity suggestions). Confirm, reject, or refine each statement. Nothing enters your graph without your approval.
-
-### Review Workbench
-
-The review page pairs its four tabs (incoming, deletions, merges, align) with a preview graph: browse controls step through items, a node-details + chat pane explains the selected fact in context, and clicking a review item flies the preview graph to its node with the relevant edge highlighted.
-
-### Shelly (AI Assistant)
-
-The turtle-shaped AI assistant. Three tabs: tutorial, chat (grounded in your graph), and explore (guided story tours). Each graph can embed its own Shelly persona via the shelly: vocabulary. Supports Whisper STT voice input and Kokoro TTS voice output.
-
-### Source Monitoring
-
-Watch URLs for content changes. The n8n Source Monitor workflow checks every 6 hours, detects diffs via content hash, and queues pending notes for review. Surfaces via /webhook/reckons-kb-pending endpoint.
-
-### Source Refresh
-
-Generic refresh for url, repository, and calendar sources. Auto-refresh on open and on interval (configurable). Graph page refresh button. MCP tools: kb_list_sources and kb_request_refresh. Delta comparison shows what changed since last ingest.
-
-### Source Trust System
-
-Sources accumulate trust scores based on your review decisions. Trusted sources can be auto-confirmed. A time-decay formula prevents stale trust from persisting.
-
-### Story System
-
-Guided walkthroughs defined as triples using the story: vocabulary. Steps can highlight entities, trigger prompts, and pose questions. Playback with countdown timer and TTS. Shareable via .ttl files.
-
-### Text Chunking
-
-Sliding window chunking for sources exceeding the 12K character extraction limit. Each chunk gets a context header (source title, chunk N of M, parent page). Cross-chunk deduplication merges triples with identical (subject, predicate, object) after slugification. Benefits all source types, not just Confluence.
-
-### Turtle Export
-
-Export your graph as a .ttl file with full reification metadata (status, source, confidence, timestamps, excerpts). Roundtrip-safe. Clean export for interop or full export with all metadata.
-
-### What Reckons.AI does, in five moves
+# What Reckons.AI does, in five moves
 
 Reckons.AI does one thing in five moves: it takes what you put in, works out the claims inside it, asks you which are true, keeps the ones you accept with their sources attached, and then lets you ask the result questions. Everything below is a part of one of those five moves. If you only read one thing about the product, read this page rather than the component list underneath it — the components make sense as answers to the five moves and make very little sense on their own.
 
-### Whisper STT
+<figure class="diagram" role="group" aria-label="The five moves. Step 3 is the one that makes the rest worth anything, and it is the one no amount of automation removes."><svg id="md0df9a469394a443" width="100%" xmlns="http://www.w3.org/2000/svg" class="flowchart" viewBox="0 0 1389 371.86297607421875" role="graphics-document document" aria-roledescription="flowchart-v2"><style>#md0df9a469394a443{font-family:ui-sans-serif,system-ui,sans-serif;font-size:16px;fill:var(--diagram-line);}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#md0df9a469394a443 .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#md0df9a469394a443 .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#md0df9a469394a443 .error-icon{fill:var(--diagram-note-border);}#md0df9a469394a443 .error-text{fill:var(--diagram-note-border);stroke:var(--diagram-note-border);}#md0df9a469394a443 .edge-thickness-normal{stroke-width:1px;}#md0df9a469394a443 .edge-thickness-thick{stroke-width:3.5px;}#md0df9a469394a443 .edge-pattern-solid{stroke-dasharray:0;}#md0df9a469394a443 .edge-thickness-invisible{stroke-width:0;fill:none;}#md0df9a469394a443 .edge-pattern-dashed{stroke-dasharray:3;}#md0df9a469394a443 .edge-pattern-dotted{stroke-dasharray:2;}#md0df9a469394a443 .marker{fill:var(--diagram-line);stroke:var(--diagram-line);}#md0df9a469394a443 .marker.cross{stroke:var(--diagram-line);}#md0df9a469394a443 svg{font-family:ui-sans-serif,system-ui,sans-serif;font-size:16px;}#md0df9a469394a443 p{margin:0;}#md0df9a469394a443 .label{font-family:ui-sans-serif,system-ui,sans-serif;color:var(--diagram-line);}#md0df9a469394a443 .cluster-label text{fill:var(--diagram-line);}#md0df9a469394a443 .cluster-label span{color:var(--diagram-line);}#md0df9a469394a443 .cluster-label span p{background-color:transparent;}#md0df9a469394a443 .label text,#md0df9a469394a443 span{fill:var(--diagram-line);color:var(--diagram-line);}#md0df9a469394a443 .node rect,#md0df9a469394a443 .node circle,#md0df9a469394a443 .node ellipse,#md0df9a469394a443 .node polygon,#md0df9a469394a443 .node path{fill:var(--diagram-node-bg);stroke:var(--diagram-node-border);stroke-width:1px;}#md0df9a469394a443 .rough-node .label text,#md0df9a469394a443 .node .label text,#md0df9a469394a443 .image-shape .label,#md0df9a469394a443 .icon-shape .label{text-anchor:middle;}#md0df9a469394a443 .node .katex path{fill:var(--diagram-ink);stroke:var(--diagram-ink);stroke-width:1px;}#md0df9a469394a443 .rough-node .label,#md0df9a469394a443 .node .label,#md0df9a469394a443 .image-shape .label,#md0df9a469394a443 .icon-shape .label{text-align:center;}#md0df9a469394a443 .node.clickable{cursor:pointer;}#md0df9a469394a443 .root .anchor path{fill:var(--diagram-line)!important;stroke-width:0;stroke:var(--diagram-line);}#md0df9a469394a443 .arrowheadPath{fill:var(--diagram-line);}#md0df9a469394a443 .edgePaths .path{stroke:var(--diagram-line);stroke-width:1px;}#md0df9a469394a443 .flowchart-link{stroke:var(--diagram-line);fill:none;}#md0df9a469394a443 .edgeLabel{background-color:var(--diagram-surface);text-align:center;}#md0df9a469394a443 .edgeLabel p{background-color:var(--diagram-surface);}#md0df9a469394a443 .edgeLabel rect{opacity:0.5;background-color:var(--diagram-surface);fill:var(--diagram-surface);}#md0df9a469394a443 .labelBkg{background-color:var(--diagram-surface);}#md0df9a469394a443 .cluster rect{fill:var(--diagram-note-bg);stroke:var(--diagram-note-border);stroke-width:1px;}#md0df9a469394a443 .cluster text{fill:var(--diagram-line);}#md0df9a469394a443 .cluster span{color:var(--diagram-line);}#md0df9a469394a443 .node .collapsed-indicator{fill:var(--diagram-note-border);stroke:none;opacity:0.6;}#md0df9a469394a443 .node .collapsed-separator{stroke:var(--diagram-note-border);stroke-width:0.75px;}#md0df9a469394a443 div.mermaidTooltip{position:absolute;text-align:center;max-width:200px;padding:2px;font-family:ui-sans-serif,system-ui,sans-serif;font-size:12px;background:var(--diagram-note-bg);border:1px solid var(--diagram-note-border);border-radius:2px;pointer-events:none;z-index:100;}#md0df9a469394a443 .flowchartTitleText{text-anchor:middle;font-size:18px;fill:var(--diagram-line);}#md0df9a469394a443 rect.text{fill:none;stroke-width:0;}#md0df9a469394a443 .icon-shape,#md0df9a469394a443 .image-shape{background-color:var(--diagram-surface);text-align:center;}#md0df9a469394a443 .icon-shape p,#md0df9a469394a443 .image-shape p{background-color:var(--diagram-surface);padding:2px;}#md0df9a469394a443 .icon-shape .label rect,#md0df9a469394a443 .image-shape .label rect{opacity:0.5;background-color:var(--diagram-surface);fill:var(--diagram-surface);}#md0df9a469394a443 .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#md0df9a469394a443 .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#md0df9a469394a443 .node .neo-node{stroke:var(--diagram-node-border);}#md0df9a469394a443 [data-look="neo"].node rect,#md0df9a469394a443 [data-look="neo"].cluster rect,#md0df9a469394a443 [data-look="neo"].node polygon{stroke:var(--diagram-node-border);filter:drop-shadow(1px 2px 2px var(--diagram-line));}#md0df9a469394a443 [data-look="neo"].swimlane.cluster rect{filter:none;}#md0df9a469394a443 [data-look="neo"].node path{stroke:var(--diagram-node-border);stroke-width:1px;}#md0df9a469394a443 [data-look="neo"].node .outer-path{filter:drop-shadow(1px 2px 2px var(--diagram-line));}#md0df9a469394a443 [data-look="neo"].node .neo-line path{stroke:var(--diagram-node-border);filter:none;}#md0df9a469394a443 [data-look="neo"].node circle{stroke:var(--diagram-node-border);filter:drop-shadow(1px 2px 2px var(--diagram-line));}#md0df9a469394a443 [data-look="neo"].node circle .state-start{fill:var(--diagram-ink);}#md0df9a469394a443 [data-look="neo"].icon-shape .icon{fill:var(--diagram-node-border);filter:drop-shadow(1px 2px 2px var(--diagram-line));}#md0df9a469394a443 [data-look="neo"].icon-shape .icon-neo path{stroke:var(--diagram-node-border);filter:drop-shadow(1px 2px 2px var(--diagram-line));}#md0df9a469394a443 :root{--mermaid-font-family:ui-sans-serif,system-ui,sans-serif;}</style><g><marker id="md0df9a469394a443_flowchart-v2-pointEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></path></marker><marker id="md0df9a469394a443_flowchart-v2-pointStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="4.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 5 L 10 10 L 10 0 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></path></marker><marker id="md0df9a469394a443_flowchart-v2-pointEnd-margin" class="marker flowchart-v2" viewBox="0 0 11.5 14" refX="11.5" refY="7" markerUnits="userSpaceOnUse" markerWidth="10.5" markerHeight="14" orient="auto"><path d="M 0 0 L 11.5 7 L 0 14 z" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"></path></marker><marker id="md0df9a469394a443_flowchart-v2-pointStart-margin" class="marker flowchart-v2" viewBox="0 0 11.5 14" refX="1" refY="7" markerUnits="userSpaceOnUse" markerWidth="11.5" markerHeight="14" orient="auto"><polygon points="0,7 11.5,14 11.5,0" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"></polygon></marker><marker id="md0df9a469394a443_flowchart-v2-circleEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="11" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></circle></marker><marker id="md0df9a469394a443_flowchart-v2-circleStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="-1" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></circle></marker><marker id="md0df9a469394a443_flowchart-v2-circleEnd-margin" class="marker flowchart-v2" viewBox="0 0 10 10" refY="5" refX="12.25" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"></circle></marker><marker id="md0df9a469394a443_flowchart-v2-circleStart-margin" class="marker flowchart-v2" viewBox="0 0 10 10" refX="-2" refY="5" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"></circle></marker><marker id="md0df9a469394a443_flowchart-v2-crossEnd" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="12" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"></path></marker><marker id="md0df9a469394a443_flowchart-v2-crossStart" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="-1" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"></path></marker><marker id="md0df9a469394a443_flowchart-v2-crossEnd-margin" class="marker cross flowchart-v2" viewBox="0 0 15 15" refX="17.7" refY="7.5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto"><path d="M 1,1 L 14,14 M 1,14 L 14,1" class="arrowMarkerPath" style="stroke-width: 2.5;"></path></marker><marker id="md0df9a469394a443_flowchart-v2-crossStart-margin" class="marker cross flowchart-v2" viewBox="0 0 15 15" refX="-3.5" refY="7.5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto"><path d="M 1,1 L 14,14 M 1,14 L 14,1" class="arrowMarkerPath" style="stroke-width: 2.5; stroke-dasharray: 1, 0;"></path></marker><g class="root"><g class="clusters"></g><g class="edgePaths"><path d="M192.903,178.213L201.19,172.936C209.477,167.659,226.051,157.105,237.838,151.828C249.625,146.551,256.625,146.551,260.125,146.551L263.625,146.551" id="md0df9a469394a443-L_IN_EX_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_IN_EX_0" data-points="W3sieCI6MTkyLjkwMzIzMTYwNjY2ODc4LCJ5IjoxNzguMjEyNjUyMjA2NDIwOX0seyJ4IjoyNDIuNjI1LCJ5IjoxNDYuNTUwOTMzODM3ODkwNjJ9LHsieCI6MjY3LjYyNSwieSI6MTQ2LjU1MDkzMzgzNzg5MDYyfV0=" data-look="classic" marker-end="url(#md0df9a469394a443_flowchart-v2-pointEnd)"></path><path d="M507.781,146.551L511.948,146.551C516.115,146.551,524.448,146.551,532.115,146.551C539.781,146.551,546.781,146.551,550.281,146.551L553.781,146.551" id="md0df9a469394a443-L_EX_RV_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_EX_RV_0" data-points="W3sieCI6NTA3Ljc4MTI1LCJ5IjoxNDYuNTUwOTMzODM3ODkwNjJ9LHsieCI6NTMyLjc4MTI1LCJ5IjoxNDYuNTUwOTMzODM3ODkwNjJ9LHsieCI6NTU3Ljc4MTI1LCJ5IjoxNDYuNTUwOTMzODM3ODkwNjJ9XQ==" data-look="classic" marker-end="url(#md0df9a469394a443_flowchart-v2-pointEnd)"></path><path d="M741.271,112.993L757.017,105.945C772.764,98.896,804.257,84.798,838.897,77.749C873.536,70.701,911.323,70.701,930.216,70.701L949.109,70.701" id="md0df9a469394a443-L_RV_KP_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_RV_KP_0" data-points="W3sieCI6NzQxLjI3MDUwODMyMjQxNjgsInkiOjExMi45OTMzMTcxNjAzMDczOH0seyJ4Ijo4MzUuNzUsInkiOjcwLjcwMDYyMjU1ODU5Mzc1fSx7IngiOjk1My4xMDkzNzUsInkiOjcwLjcwMDYyMjU1ODU5Mzc1fV0=" data-look="classic" marker-end="url(#md0df9a469394a443_flowchart-v2-pointEnd)"></path><path d="M741.271,180.109L757.017,187.157C772.764,194.206,804.257,208.304,829.49,215.352C854.724,222.401,873.698,222.401,883.185,222.401L892.672,222.401" id="md0df9a469394a443-L_RV_X_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_RV_X_0" data-points="W3sieCI6NzQxLjI3MDUwODMyMjQxNjgsInkiOjE4MC4xMDg1NTA1MTU0NzM5fSx7IngiOjgzNS43NSwieSI6MjIyLjQwMTI0NTExNzE4NzV9LHsieCI6ODk2LjY3MTg3NSwieSI6MjIyLjQwMTI0NTExNzE4NzV9XQ==" data-look="classic" marker-end="url(#md0df9a469394a443_flowchart-v2-pointEnd)"></path><path d="M1084.266,70.701L1097.839,70.701C1111.411,70.701,1138.557,70.701,1165.309,88.088C1192.062,105.475,1218.42,140.25,1231.599,157.638L1244.779,175.025" id="md0df9a469394a443-L_KP_US_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_KP_US_0" data-points="W3sieCI6MTA4NC4yNjU2MjUsInkiOjcwLjcwMDYyMjU1ODU5Mzc1fSx7IngiOjExNjUuNzAzMTI1LCJ5Ijo3MC43MDA2MjI1NTg1OTM3NX0seyJ4IjoxMjQ3LjE5NDc0NjgyNDE1NTgsInkiOjE3OC4yMTI2NTIyMDY0MjA5fV0=" data-look="classic" marker-end="url(#md0df9a469394a443_flowchart-v2-pointEnd)"></path><path d="M1231.553,280.213L1220.578,290.521C1209.603,300.829,1187.653,321.446,1152.176,331.755C1116.698,342.063,1067.693,342.063,1012.701,342.063C957.708,342.063,896.729,342.063,837.999,342.063C779.268,342.063,722.786,342.063,672.292,342.063C621.797,342.063,577.289,342.063,530.855,342.063C484.422,342.063,436.063,342.063,387.703,342.063C339.344,342.063,290.984,342.063,255.45,332.192C219.916,322.321,197.206,302.579,185.852,292.708L174.497,282.837" id="md0df9a469394a443-L_US_IN_0" class="edge-thickness-normal edge-pattern-dotted edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_US_IN_0" data-points="W3sieCI6MTIzMS41NTMzNDg4NDgzMzY2LCJ5IjoyODAuMjEyNjUyMjA2NDIwOX0seyJ4IjoxMTY1LjcwMzEyNSwieSI6MzQyLjA2Mjk2MzQ4NTcxNzh9LHsieCI6MTAxOC42ODc1LCJ5IjozNDIuMDYyOTYzNDg1NzE3OH0seyJ4Ijo4MzUuNzUsInkiOjM0Mi4wNjI5NjM0ODU3MTc4fSx7IngiOjY2Ni4zMDQ2ODc1LCJ5IjozNDIuMDYyOTYzNDg1NzE3OH0seyJ4Ijo1MzIuNzgxMjUsInkiOjM0Mi4wNjI5NjM0ODU3MTc4fSx7IngiOjM4Ny43MDMxMjUsInkiOjM0Mi4wNjI5NjM0ODU3MTc4fSx7IngiOjI0Mi42MjUsInkiOjM0Mi4wNjI5NjM0ODU3MTc4fSx7IngiOjE3MS40NzgxNTU2MzY2NTAxLCJ5IjoyODAuMjEyNjUyMjA2NDIwOX1d" data-look="classic" marker-end="url(#md0df9a469394a443_flowchart-v2-pointEnd)"></path></g><g class="edgeLabels"><g class="edgeLabel"><g class="label" data-id="L_IN_EX_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"></tspan></text></g></g><g><rect class="background" style="stroke: none"></rect></g><g class="edgeLabel"><g class="label" data-id="L_EX_RV_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"></tspan></text></g></g><g><rect class="background" style="stroke: none"></rect></g><g class="edgeLabel" transform="translate(835.75, 70.70062255859375)"><g class="label" data-id="L_RV_KP_0" transform="translate(0, -10)"><g><rect class="background" style="" x="-35.921875" y="-3" width="71.84375" height="26"></rect><text y="-10.1" text-anchor="middle" style=""><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"><tspan font-style="normal" class="text-inner-tspan" font-weight="normal">accepted</tspan></tspan></text></g></g></g><g class="edgeLabel" transform="translate(835.75, 222.4012451171875)"><g class="label" data-id="L_RV_X_0" transform="translate(0, -10)"><g><rect class="background" style="" x="-32.3984375" y="-3" width="64.796875" height="26"></rect><text y="-10.1" text-anchor="middle" style=""><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"><tspan font-style="normal" class="text-inner-tspan" font-weight="normal">rejected</tspan></tspan></text></g></g></g><g class="edgeLabel"><g class="label" data-id="L_KP_US_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"></tspan></text></g></g><g><rect class="background" style="stroke: none"></rect></g><g class="edgeLabel" transform="translate(666.3046875, 342.0629634857178)"><g class="label" data-id="L_US_IN_0" transform="translate(0, -18.799999237060547)"><g><rect class="background" style="" x="-73.421875" y="-3" width="146.84375" height="43.599998474121094"></rect><text y="-10.1" text-anchor="middle" style=""><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"><tspan font-style="normal" class="text-inner-tspan" font-weight="normal">a</tspan><tspan font-style="normal" class="text-inner-tspan" font-weight="normal"> new</tspan><tspan font-style="normal" class="text-inner-tspan" font-weight="normal"> question</tspan></tspan><tspan class="text-outer-tspan row" x="0" y="1em" dy="1.1em" text-anchor="middle"><tspan font-style="normal" class="text-inner-tspan" font-weight="normal">needs</tspan><tspan font-style="normal" class="text-inner-tspan" font-weight="normal"> new</tspan><tspan font-style="normal" class="text-inner-tspan" font-weight="normal"> sources</tspan></tspan></text></g></g></g></g><g class="nodes"><g class="node default" id="md0df9a469394a443-flowchart-IN-0" data-look="classic" transform="translate(112.8125, 229.2126522064209)"><rect class="basic label-container" style="" x="-104.8125" y="-51" width="209.625" height="102"></rect><g class="label" style="" transform="translate(-74.8125, -36)"><rect></rect><foreignObject width="149.625" height="72"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>1 · Take it in<br>notes, pages, feeds,<br>things you said</p></span></div></foreignObject></g></g><g class="node default" id="md0df9a469394a443-flowchart-EX-1" data-look="classic" transform="translate(387.703125, 146.55093383789062)"><rect class="basic label-container" style="" x="-120.078125" y="-51" width="240.15625" height="102"></rect><g class="label" style="" transform="translate(-90.078125, -36)"><rect></rect><foreignObject width="180.15625" height="72"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>2 · Work out the claims<br>a model proposes<br>facts, never writes them</p></span></div></foreignObject></g></g><g class="node default" id="md0df9a469394a443-flowchart-RV-2" data-look="classic" transform="translate(666.3046875, 146.55093383789062)"><polygon points="108.5234375,0 217.046875,-108.5234375 108.5234375,-217.046875 0,-108.5234375" class="label-container" transform="translate(-108.0234375, 108.5234375)"></polygon><g class="label" style="" transform="translate(-57.5234375, -36)"><rect></rect><foreignObject width="115.046875" height="72"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>3 · You settle it<br>confirm, refine,<br>reject</p></span></div></foreignObject></g></g><g class="node default" id="md0df9a469394a443-flowchart-KP-3" data-look="classic" transform="translate(1018.6875, 70.70062255859375)"><path d="M0,12.80041478589728 a65.578125,12.80041478589728 0,0,0 131.15625,0 a65.578125,12.80041478589728 0,0,0 -131.15625,0 l0,99.80041478589727 a65.578125,12.80041478589728 0,0,0 131.15625,0 l0,-99.80041478589727" class="basic label-container outer-path" style="" transform="translate(-65.578125, -62.70062217884592)"></path><g class="label" style="" transform="translate(-58.078125, -26)"><rect></rect><foreignObject width="116.15625" height="72"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>4 · Keep it<br>with its sources<br>and its history</p></span></div></foreignObject></g></g><g class="node default" id="md0df9a469394a443-flowchart-US-4" data-look="classic" transform="translate(1285.8515625, 229.2126522064209)"><rect class="basic label-container" style="" x="-95.1484375" y="-51" width="190.296875" height="102"></rect><g class="label" style="" transform="translate(-65.1484375, -36)"><rect></rect><foreignObject width="130.296875" height="72"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>5 · Ask it things<br>reckon, compare,<br>publish</p></span></div></foreignObject></g></g><g class="node default" id="md0df9a469394a443-flowchart-X-11" data-look="classic" transform="translate(1018.6875, 222.4012451171875)"><rect class="basic label-container" style="" x="-122.015625" y="-39" width="244.03125" height="78"></rect><g class="label" style="" transform="translate(-92.015625, -24)"><rect></rect><foreignObject width="184.03125" height="48"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>Dropped, and<br>remembered as rejected</p></span></div></foreignObject></g></g></g></g></g><defs><filter id="md0df9a469394a443-drop-shadow" height="130%" width="130%"><feDropShadow dx="4" dy="4" stdDeviation="0" flood-opacity="0.06" flood-color="var(--diagram-ink)"></feDropShadow></filter></defs><defs><filter id="md0df9a469394a443-drop-shadow-small" height="150%" width="150%"><feDropShadow dx="2" dy="2" stdDeviation="0" flood-opacity="0.06" flood-color="var(--diagram-ink)"></feDropShadow></filter></defs></svg><figcaption>The five moves. Step 3 is the one that makes the rest worth anything, and it is the one no amount of automation removes.</figcaption></figure>
 
-Local speech-to-text via transformers.js using whisper-tiny (42MB). Mic button in the chat tab. Runs entirely in-browser -- no cloud, no API key.
+## At a glance
 
-## Use cases
+**Audience**
 
-### Academic Research Group
+Anyone deciding whether this is the right tool, before reading about any individual capability.
 
-A lab PI maintains a shared base graph of literature reviews, experimental parameters, and confirmed findings. PhD students import it and layer their own experiment results on top. When a student's results conflict with published work, a Reckoning cites papers by DOI and shared parameters to recommend framing -- novel finding or replication caveat. Other students can import each other's results and trace confidence levels through the full trust chain of sources.
+## Why it is this way
 
-### Coding agents that start already knowing
+**Principle**
 
-An agent queries the same graph over MCP instead of re-reading the repository, so the conventions it follows are the ones written down rather than the ones it inferred.
+Nothing enters your graph because a model suggested it. Extraction PROPOSES; you dispose. That single rule is what separates this from a tool that reads your files and answers confidently — it is why the graph can be trusted a year later, and why it can tell you what it does not know instead of inventing an answer.
 
-### Collaborative Knowledge
+**Constraint**
 
-One person organizes a graph around a shared topic, exports a .ttl file, and distributes it. Others import it as a source in their own graph. Each person uses Shelly and the Reckoning to ask questions relevant to them. Decisions are annotated with the sources that informed them. When things change, the organizer re-exports and importers see the diff in Compare.
+The parts below are the detail, not the argument. A component list answers what exists; it does not answer what the thing is FOR, and a reader who meets thirty-nine capabilities before meeting the loop will reasonably conclude this is a notes application with unusual settings.
 
-See also: [Start here](/docs/learn/start-here)
+## The loop, in five moves
 
-### Corporate Pushback
+The whole product as a sequence. Each move is a set of its own, and the order is the point — this is a story rather than a roster, because shuffling it would describe a different product.
 
-When a company stonewalls, you need precision. Ingest their terms of service, your complaint history, regulatory requirements, and previous communications. Shelly can draft a response that cites chapter and verse from THEIR OWN documents.
+### 1 · Take it in
 
-### Decision Provenance
+Paste text, point at a URL or a repository, drop in a PDF, subscribe a current to a feed so it keeps arriving, or just talk — speech to text runs locally. Long sources are chunked so nothing is silently truncated.
 
-When a Reckoning produces a recommendation and the user accepts it, the resulting graph statements are automatically annotated with the source IRIs, Reckoning timestamp, and confidence level. Anyone reading the triple later can see it was added by a Reckoning on a specific date, informed by specific sources. The graph becomes self-documenting.
+- [Ingest](../features/ingest)
+- [Currents](../features/currents)
+- [Whisper STT](../features/shelly) <span class="link-note">— on the Shelly (AI Assistant) page</span>
+- [Text Chunking](../features/ingest) <span class="link-note">— on the Ingest page</span>
+- [Confluence Migration](../features/confluence-migration)
 
-### Decisions that keep their evidence
+### 2 · Work out the claims
 
-A benchmark result stays attached to the decision it justified, so next year the question is what the number was, not what someone remembers concluding.
+A language model reads the source and PROPOSES triples, each carrying the verbatim sentence it came from. You choose the model, including a local one, and the setting that keeps everything local is a switch rather than a rewrite.
 
-### Documentation that cannot quietly go stale
+- [LLM Backends](../features/llm-backends)
+- [Passage Grounding](../guide/what-is-reckons-ai) <span class="link-note">— on the What Is Reckons.AI page</span>
+- [Prefer-Local Routing](../features/prefer-local)
+- [Entity Normalization](../features/entity-normalization)
 
-Pages are generated from the graph, so a page cannot disagree with the facts it was made from without a gate failing. Change the graph and the page follows; hand-edit the page and the build tells you.
+### 3 · You settle it
 
-### Emergency Preparedness
+The review queue shows what CHANGED rather than everything found: new claims, claims that contradict something you already accepted, and near-duplicates that are probably the same thing under two names. The contradictions are the valuable part — that is the moment a pile of documents would have stayed quiet.
 
-A neighborhood coordinator maintains a graph of resource inventories, contact trees, shelter locations, and special-needs residents. Before severe weather, they re-ingest NWS alerts, run a Reckoning to match generator owners with power-dependent neighbors, and share the updated TTL. Each neighbor sees their assignment and the backing sources. The graph records resource allocation decisions with the weather warning as provenance.
+- [Review System](../features/review-system)
+- [Review Workbench](../features/review-workbench)
+- [Disambiguation](../guide/what-is-reckons-ai) <span class="link-note">— on the What Is Reckons.AI page</span>
+- [Source Trust System](../guide/what-is-reckons-ai) <span class="link-note">— on the What Is Reckons.AI page</span>
 
-### Employment Rights
+### 4 · Keep it
 
-Track your employment contract terms, company policies, HR correspondence, and performance records. When you need to assert your rights, your graph provides precise, documented, citable facts.
+Accepted facts carry their source, the excerpt they came from, and when you accepted them. You can scrub the graph backwards through time, export the whole thing as a plain-text .ttl file, and keep several independent graphs that do not see each other.
 
-### Float Trip Planning
+- [History Mode](../guide/what-is-reckons-ai) <span class="link-note">— on the What Is Reckons.AI page</span>
+- [Turtle Export](../guide/what-is-reckons-ai) <span class="link-note">— on the What Is Reckons.AI page</span>
+- [Multi-Graph Management](../features/multi-kb)
+- [Graph Identity](../features/multi-kb) <span class="link-note">— on the Multi-Graph Management page</span>
 
-A group plans a weather-dependent river float trip. The organizer builds a graph with launch sites, shuttle logistics, and USGS river gauge data, then shares the TTL with participants. Each person asks Shelly their own questions -- schedule conflicts, gear needs, driving directions. As forecasts change, the organizer re-ingests weather sources, runs a Reckoning to confirm or adjust the launch time, and re-exports. Everyone sees the updated plan and the sources behind it.
+### 5 · Ask it things
 
-### Import as Source with Update Detection
+Describe a situation and a goal and get a proposal grounded in your own facts. Compare two graphs and see exactly where they disagree. Compress a large graph into the part that answers one question. Publish a graph as a website — these pages are that feature, running on the graph that describes this product.
 
-Treat an imported TTL file as a named source with a sharedBy field and content hash. When the original sharer re-exports, importers see a 'source updated' notification and route through Compare instead of direct merge. The importer accepts or rejects individual changes from the updated TTL, keeping their personal annotations intact.
-
-### Insurance Claims
-
-Ingest your policy documents, adjuster correspondence, photos, and repair estimates as triples. When you need to dispute a denial or request review, ask Shelly to draft a response citing specific policy clauses and documented evidence from your graph.
-
-### Legal Disputes
-
-Build a timeline of events, contracts, correspondence, and obligations. Your graph becomes a structured evidence base that you can query: 'What did the landlord promise regarding repairs, and when?' Every answer traces back to a source document.
-
-### Medical Records
-
-Organize diagnoses, prescriptions, test results, and doctor correspondence. Query your own medical history precisely. Prepare for appointments with a complete, structured record.
-
-### Power to the Individual
-
-Insurance companies have teams of analysts. Corporations have legal departments. Landlords have property managers. You have your memory and a stack of papers? Not anymore. Build a graph of your rights, evidence, and correspondence. Ask Shelly to draft a precise response citing your documented facts. You communicate with the authority of an institution.
-
-See also: [Start here](/docs/learn/start-here)
-
-### Recurring Source Ingestion
-
-Mark a URL source as recurring with a check interval. On each re-ingest, a new dated source record is created while the old record is kept for historical comparison. The Compare view shows what changed between ingestions. Enables live-data workflows like weather monitoring, river gauge tracking, and NWS alert subscriptions.
-
-### Research and Academia
-
-Track papers, authors, claims, contradictions. Build a literature review graph where every statement traces back to its source. Ask Shelly to summarize what you know about a topic -- every claim is cited.
-
-### Residential Construction Project
-
-A general contractor maintains a project graph with permits, schedules, and trade dependencies for a renovation. Subcontractors import the TTL to understand their scope and timing. When a change order arrives, the contractor ingests it, runs a Reckoning to assess schedule impact, and re-exports. Each trade asks Shelly their own questions -- 'What does CO-3 add to my scope?' -- without the GC being a bottleneck. Decisions trace back to the change order that triggered them.
-
-### Software engineering
-
-Reckons.AI is built with Reckons.AI, and that is the honest reason this use case is the most detailed one here: it is the only one we have run for a year. A codebase accumulates decisions faster than anything else you own — why a boundary exists, what a change would break, which claim a test actually pins — and almost none of it survives in the code. It ends up in commit messages nobody re-reads, in chat histories that expire, and in the heads of whoever was there. The graph is where those decisions are kept as facts you can query, and the pages you are reading are generated from it.
-
-See also: [Start here](/docs/learn/start-here)
-
-### The codebase, as facts
-
-Modules, files and their dependencies become entities, so what a change touches is a query rather than a guess. The graph holds the part the source cannot: why the boundary is there.
-
-### Why a graph, and not a notepad
-
-Take one sentence from a real working note: Vantage Suite was dropped at this stage on file format grounds. A notepad keeps the sentence. Reckons.AI keeps the fact underneath it. The difference does not show at ten notes and decides everything at a thousand, because the question you will eventually ask is not what did I write, it is what did we drop, and why.
-
-See also: [What you actually do with it](/docs/user-paths/user-paths)
+- [A reckoning — asking your graph what to do](../learn/reckoning)
+- [Compare / Diff Engine](../features/compare)
+- [Context Compression](../features/context-compression-features)
+- [Shelly (AI Assistant)](../features/shelly)
+- [Published Graph Site](../features/published-docs)
+- [LLM Backends](../features/llm-backends)
+- [Prefer-Local Routing](../features/prefer-local)

@@ -1,7 +1,7 @@
 ---
 title: "Review System"
 slug: "review-system"
-order: 1029
+order: 1028
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc

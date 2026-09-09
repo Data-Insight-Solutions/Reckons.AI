@@ -27,4 +27,4 @@ Say where you are, say what you are trying to reach, and the graph proposes a ro
 
 **Uses**
 
-- [What Is Reckons.AI](../guide/what-is-reckons-ai)
+- [A reckoning — asking your graph what to do](../learn/reckoning)

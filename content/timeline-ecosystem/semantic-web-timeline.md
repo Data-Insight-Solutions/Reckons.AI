@@ -166,6 +166,12 @@ A semantic enrichment framework from the AI Alliance. Defines 8 progressive anal
 
 https://github.com/The-AI-Alliance/semiont
 
-**[Reckons.AI Launch](../timeline-ecosystem/reckons-ai-launch)**
+### Reckons.AI Launch
 
-Public launch of Reckons.AI -- a local-first personal knowledge graph built on RDF Turtle.
+Public launch of Reckons.AI -- a local-first personal knowledge graph built on RDF Turtle. Created by Matthew Roe at Data Insight Solutions LLC. Runs entirely in the browser. LLM-powered triple extraction, 3D graph visualization, browser extension for research sessions, and MCP server for AI agent integration.
+
+#### Detail
+
+**Date**
+
+2026-06-01
