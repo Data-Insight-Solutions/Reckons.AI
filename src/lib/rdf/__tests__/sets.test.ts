@@ -8,7 +8,8 @@
  */
 import { describe, it, expect } from 'vitest';
 import {
-  readSets, readNotations, setOverlaps, membershipIri,
+  readSets, readNotations, setOverlaps, membershipIri, readBlocks, blockIri,
+  HAS_BLOCK, BLOCK_SET, BLOCK_COMPONENT, BLOCK_ORDER, BLOCK_CONTENT, BLOCK_HEADING,
   COLLECTION, ORDERED_COLLECTION, MEMBER, PREF_LABEL, DEFINITION,
   SET_KIND, MEMBER_ORDER, IN_SET, HAS_MEMBER_ENTITY, SET_RELATES_TO,
   type SetQuad,
@@ -154,5 +155,77 @@ describe('order belongs to the membership, not the member', () => {
   it('builds a membership IRI that is stable and contains no blank node', () => {
     expect(membershipIri(MIGRATION, APRIMO)).toBe(`${MIGRATION}/member/aprimo`);
     expect(membershipIri(MIGRATION, APRIMO)).toBe(membershipIri(MIGRATION, APRIMO));
+  });
+});
+
+
+/**
+ * BLOCKS — a page is a composition over sets, not a set (Matt, 2026-09-09).
+ *
+ * The assertions that matter are the ones one-set-one-page could not satisfy: two sets on ONE page
+ * with DIFFERENT components, and a block that is not a set at all.
+ */
+describe('a page is an ordered list of blocks', () => {
+  const PAGE = 'urn:reckons:feature/FiveMoves';
+  const b = (n: number) => blockIri(PAGE, n);
+  const page: SetQuad[] = [
+    q(PAGE, HAS_BLOCK, b(1)), q(PAGE, HAS_BLOCK, b(2)), q(PAGE, HAS_BLOCK, b(3)),
+    q(b(1), BLOCK_SET, SHORTLIST), lit(b(1), BLOCK_COMPONENT, 'gallery'), lit(b(1), BLOCK_ORDER, '1'),
+    q(b(2), BLOCK_SET, DEPLOYED), lit(b(2), BLOCK_COMPONENT, 'accordion'), lit(b(2), BLOCK_ORDER, '2'),
+    lit(b(3), BLOCK_ORDER, '3'), q(b(3), BLOCK_CONTENT, 'urn:kbase:concept/some-diagram'),
+    lit(b(3), BLOCK_COMPONENT, 'figure'),
+  ];
+
+  it('renders TWO sets on ONE page with DIFFERENT components', () => {
+    // The thing one-set-one-page forbade by construction, and the reason it was wrong.
+    const blocks = readBlocks(page).get(PAGE)!;
+    expect(blocks.map((x) => [x.set, x.component])).toEqual([
+      [SHORTLIST, 'gallery'],
+      [DEPLOYED, 'accordion'],
+      [null, 'figure'],
+    ]);
+  });
+
+  it('carries a block that is not a set at all — an image, a diagram, a paragraph', () => {
+    const blocks = readBlocks(page).get(PAGE)!;
+    expect(blocks[2].set).toBeNull();
+    expect(blocks[2].content).toBe('urn:kbase:concept/some-diagram');
+  });
+
+  it('orders blocks by their stated position', () => {
+    const shuffled = [...page].reverse();
+    expect(readBlocks(shuffled).get(PAGE)!.map((x) => x.order)).toEqual([1, 2, 3]);
+  });
+
+  it('lets one set appear on two pages with different components', () => {
+    // A set is material, not a page — so the same set can be presented differently elsewhere.
+    const OTHER = 'urn:reckons:feature/Other';
+    const blocks = readBlocks([
+      ...page,
+      q(OTHER, HAS_BLOCK, blockIri(OTHER, 1)),
+      q(blockIri(OTHER, 1), BLOCK_SET, SHORTLIST),
+      lit(blockIri(OTHER, 1), BLOCK_COMPONENT, 'list'),
+      lit(blockIri(OTHER, 1), BLOCK_ORDER, '1'),
+    ]);
+    expect(blocks.get(PAGE)![0].component).toBe('gallery');
+    expect(blocks.get(OTHER)![0].component).toBe('list');
+    expect(blocks.get(OTHER)![0].set).toBe(SHORTLIST);
+  });
+
+  it('falls back to a list on an unrecognised component rather than throwing', () => {
+    // A page that half-renders beats a build that dies over a typo in a presentation hint.
+    const blocks = readBlocks([
+      q(PAGE, HAS_BLOCK, b(9)), q(b(9), BLOCK_SET, SHORTLIST), lit(b(9), BLOCK_COMPONENT, 'carousel'),
+    ]);
+    expect(blocks.get(PAGE)![0].component).toBe('list');
+  });
+
+  it('omits a page with no blocks, so blocks can be adopted one page at a time', () => {
+    expect(readBlocks([q(SHORTLIST, MEMBER, APRIMO)]).size).toBe(0);
+  });
+
+  it('carries an optional heading, so one page can label two sets differently', () => {
+    const blocks = readBlocks([...page, lit(b(1), BLOCK_HEADING, 'What you pick between')]);
+    expect(blocks.get(PAGE)![0].heading).toBe('What you pick between');
   });
 });
