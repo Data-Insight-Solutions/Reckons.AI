@@ -27,4 +27,4 @@ After extraction you are shown what CHANGES, not everything found: new facts, fa
 
 **Uses**
 
-- [Compare / Diff Engine](../features/compare)
+- [Compare — finding out where two people actually disagree](../features/compare)

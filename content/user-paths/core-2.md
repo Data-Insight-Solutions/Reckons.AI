@@ -27,4 +27,4 @@ The proposed facts are waiting, not accepted. Confirm the ones that are right, r
 
 **Uses**
 
-- [Review System](../features/review-system)
+- [Review — where your graph gets smaller and truer](../features/review-system)

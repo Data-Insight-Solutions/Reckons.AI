@@ -71,6 +71,6 @@ Accepting their fact does not erase yours. A conflict that stays recorded as a c
 
 **Uses**
 
-- [Compare / Diff Engine](../features/compare)
-- [Compare / Diff Engine](../features/compare)
+- [Compare — finding out where two people actually disagree](../features/compare)
+- [Compare — finding out where two people actually disagree](../features/compare)
 - [Multi-Graph Management](../features/multi-kb)

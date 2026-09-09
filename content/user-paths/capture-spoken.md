@@ -50,5 +50,5 @@ The honest limit: A Folder cannot wake A CLOSED TAB. The app is a static site in
 **Uses**
 
 - [Ingest](../features/ingest)
-- [Review System](../features/review-system)
+- [Review — where your graph gets smaller and truer](../features/review-system)
 - [Shelly (AI Assistant)](../features/shelly)

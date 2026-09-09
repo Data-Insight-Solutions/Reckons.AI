@@ -77,4 +77,4 @@ Extraction is measured, not assumed: the best model tested recovers about three 
 **Uses**
 
 - [Ingest](../features/ingest)
-- [Review System](../features/review-system)
+- [Review — where your graph gets smaller and truer](../features/review-system)

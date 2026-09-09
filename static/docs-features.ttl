@@ -46,10 +46,18 @@ feat:Ingest
 
 feat:ReviewSystem
     rdf:type            ktype:Concept ;
-    rdfs:label          "Review System" ;
-    skos:definition     "Three tabs: Incoming (new triples), Deletions (removal proposals), Merges (duplicate entity suggestions). Confirm, reject, or refine each statement. Nothing enters your graph without your approval." ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Review — where your graph gets smaller and truer" ;
+    skos:altLabel       "Review System" ;
+    skos:definition     "The step where you decide what is true. A model proposes triples; you confirm, refine or reject each one, and nothing enters your graph without that. It is the slowest part of the product and the only reason the rest of it is worth anything." ;
+    kpred:audience      "Anyone weighing this against a notes app, and wondering why they should do the extra work." ;
+    kpred:principle     "THE POINT IS NOT GATEKEEPING. IT IS SUPERSEDING. A notepad accumulates: write we are going with Aprimo in March and we chose Bynder in July, and both sentences sit there forever with nothing to reconcile them. Search finds whichever matched your words. A retrieval system indexes both and will happily cite the March one at you in September, with a confident tone and a real quotation. Review is the moment a new fact REPLACES an old one instead of joining it — the superseded statement keeps its place in the record, marked as superseded, and stops being what your graph says." ;
+    kpred:principle     "WHICH MEANS THE GRAPH GETS SMALLER AND TRUER OVER TIME. That is the property no append-only store has, and it is the whole return on the work. A year of notes is a year of sediment you must re-read. A year of reviewed facts is a year of decisions you can act on, with the discarded ones still visible if you want to know what you used to think." ;
+    kpred:principle     "THE QUEUE SHOWS WHAT CHANGED, NOT EVERYTHING FOUND. New claims, near-duplicates that are probably one thing under two names, and — the valuable ones — claims that CONTRADICT something you already accepted. A contradiction is the moment a pile of documents would have stayed quiet. Finding it is what you are paying the review time for." ;
+    kpred:constraint    "IT IS GENUINELY SLOW AT THE START, and this page will not pretend otherwise. A graph of nine facts answers nothing worth asking, and getting past that costs you review time before it returns anything. If you want a tool that reads your files and answers confidently without asking, that exists and this is not it." ;
     skos:broader        guide:WhatIsReckonsAI ;
-    skos:related        feat:TrustSystem .
+    skos:related        feat:TrustSystem ;
+    skos:related        feat:Compare .
 
 feat:TrustSystem
     rdf:type            ktype:Concept ;
@@ -97,10 +105,18 @@ feat:Reckoning
 
 feat:Compare
     rdf:type            ktype:Concept ;
-    rdfs:label          "Compare / Diff Engine" ;
-    skos:definition     "Compare two knowledge graphs or snapshots at /compare. Diff engine categorizes changes as Add, Reinforce, Conflict, Merge, Remove. Visual Venn diagram and diff table with bulk accept/reject." ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Compare — finding out where two people actually disagree" ;
+    skos:altLabel       "Compare / Diff Engine" ;
+    skos:definition     "Put two graphs side by side and see what is new, what agrees, and what conflicts. Two colleagues who have each read around the same subject can find the three things they disagree about in a minute, instead of discovering them in a meeting six weeks later." ;
+    kpred:audience      "Anyone who has to reconcile what they know with what somebody else knows." ;
+    kpred:principle     "THIS IS WHAT CLEAR CLAIMS BUY YOU, and it is the return on the review work that is hardest to see up front. Two piles of notes cannot be compared at all — you would have to read both. Two graphs can, but only where they say things in the same shape and the same words. Every time you confirm a fact rather than leaving a paragraph, you are making your knowledge comparable to somebody else\u0027s." ;
+    kpred:principle     "AND A STANDARD VOCABULARY IS WHAT MAKES IT FAST. Writing skos:broader instead of inventing your own word for is-part-of is dull and slightly awkward by hand — and it is why a stranger\u0027s graph lines up with yours without a mapping exercise. The tedious part of interoperability is the part you are doing when you pick a standard term." ;
+    kpred:principle     "YOU COMPARE CLAIMS, NOT SOURCES. My graph learned something from my file and yours learned it from yours; that is not a disagreement about anything, and a diff that reports it is wasting your attention. What two graphs can genuinely disagree about is what they believe — which is why the relation layers separate a claim about the world from a record of where it came from." ;
+    kpred:constraint    "IT CAN ONLY COMPARE WHAT WAS WRITTEN DOWN. Two graphs that use different words for the same relation will show as disagreeing when they agree, and the fix is the same vocabulary work as everywhere else here — there is no clever matching that removes it." ;
     skos:broader        guide:WhatIsReckonsAI ;
-    skos:related        feat:DiffSummary .
+    skos:related        feat:DiffSummary ;
+    skos:related        feat:ReviewSystem .
 
 feat:DiffSummary
     rdf:type            ktype:Concept ;

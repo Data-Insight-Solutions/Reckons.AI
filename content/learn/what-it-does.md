@@ -59,7 +59,7 @@ A language model reads the source and PROPOSES triples, each carrying the verbat
 
 The review queue shows what CHANGED rather than everything found: new claims, claims that contradict something you already accepted, and near-duplicates that are probably the same thing under two names. The contradictions are the valuable part — that is the moment a pile of documents would have stayed quiet.
 
-- [Review System](../features/review-system)
+- [Review — where your graph gets smaller and truer](../features/review-system)
 - [Review Workbench](../features/review-workbench)
 - [Disambiguation](../guide/what-is-reckons-ai) <span class="link-note">— on the What Is Reckons.AI page</span>
 - [Source Trust System](../guide/what-is-reckons-ai) <span class="link-note">— on the What Is Reckons.AI page</span>
@@ -78,7 +78,7 @@ Accepted facts carry their source, the excerpt they came from, and when you acce
 Describe a situation and a goal and get a proposal grounded in your own facts. Compare two graphs and see exactly where they disagree. Compress a large graph into the part that answers one question. Publish a graph as a website — these pages are that feature, running on the graph that describes this product.
 
 - [A reckoning — asking your graph what to do](../learn/reckoning)
-- [Compare / Diff Engine](../features/compare)
+- [Compare — finding out where two people actually disagree](../features/compare)
 - [Context Compression](../features/context-compression-features)
 - [Shelly (AI Assistant)](../features/shelly)
 - [Published Graph Site](../features/published-docs)

@@ -71,5 +71,5 @@ When a source raises a question it does not answer, record the question.
 
 - [3D / 2D Knowledge Graph](../features/graph3-d)
 - [Ingest](../features/ingest)
-- [Review System](../features/review-system)
+- [Review — where your graph gets smaller and truer](../features/review-system)
 - [What Is Reckons.AI](../guide/what-is-reckons-ai)

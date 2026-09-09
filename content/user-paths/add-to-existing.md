@@ -66,5 +66,5 @@ Two names that mean one thing get merged; a shared name-head with different tail
 **Uses**
 
 - [Ingest](../features/ingest)
-- [Review System](../features/review-system)
+- [Review — where your graph gets smaller and truer](../features/review-system)
 - [What Is Reckons.AI](../guide/what-is-reckons-ai)

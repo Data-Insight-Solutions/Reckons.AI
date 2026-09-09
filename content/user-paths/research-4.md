@@ -21,4 +21,4 @@ When a source raises a question it does not answer, record the question. A parti
 
 **Uses**
 
-- [Review System](../features/review-system)
+- [Review — where your graph gets smaller and truer](../features/review-system)

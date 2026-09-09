@@ -33,4 +33,4 @@ The measured number is real and is published rather than rounded up: 74% strict 
 
 **Uses**
 
-- [Review System](../features/review-system)
+- [Review — where your graph gets smaller and truer](../features/review-system)

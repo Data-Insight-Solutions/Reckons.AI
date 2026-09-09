@@ -33,4 +33,4 @@ This is where the friction is. See the path's honest-note: the queue is currentl
 
 **Uses**
 
-- [Review System](../features/review-system)
+- [Review — where your graph gets smaller and truer](../features/review-system)
