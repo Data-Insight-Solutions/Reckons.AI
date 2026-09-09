@@ -99,8 +99,19 @@ noise.**
 ### Verification
 
 **151 pages: 0 without an excerpt, 0 dead links, 0 placeholders, 0 under 40 words.** `md-align`
-all 151 match. **Ten align gates**, each of the three new ones verified by breaking it. 390 script
-tests, svelte-check 0/0, graph-lint 0 errors.
+all 151 match. **Ten align gates**, each of the three new ones verified by breaking it.
+**2935 tests / 205 files**, svelte-check 0/0, graph-lint **0 errors and no `incomplete` entities
+at all** — every feature in the roadmap now states what it is.
+
+Local agents were used as CLAUDE.md prescribes. `code-review` produced 12 findings of which
+**2 were real** (a symlink recursion, and a `new Function` boundary now documented beside the
+call); 3 were stale, the rest misreads — and the tool reported its own incompleteness (38 of 63
+files omitted by `--max-files`, 3 timed out). `describe-entities` drafted 6 descriptions, flat but
+accurate, 4 accepted after rewriting. Queue is **548 rows**.
+
+Pre-existing script-tier failures, unchanged and NOT from this work: `landing-data-align`,
+`status-evidence` (undeclared gap is `kb:tenet-alignment`), and the host checks — port 8000 open,
+rkhunter never running, and `nvme1n1` SMART FAILED with 0% spare. That drive is still dying.
 
 ## ▶ SESSION 2026-09-06 (late) — the diagrams were broken, and every gate said fine
 
