@@ -35,7 +35,7 @@
 @prefix kpred:  <urn:kbase:predicate/> .
 @prefix hnav:   <urn:reckons:nav/> .
 
-<urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a08-b008-000000000008" .
+<urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a0c-b00c-000000000012" .
 
 path:UserPaths
     rdf:type            ktype:Concept ;

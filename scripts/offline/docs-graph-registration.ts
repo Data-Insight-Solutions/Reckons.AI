@@ -113,6 +113,33 @@ export const REGISTRIES: Registry[] = [
   },
 ];
 
+/**
+ * A stable graph id must identify ONE graph.
+ *
+ * Found the hard way on 2026-09-08: docs-architecture.ttl and docs-user-paths.ttl both declared
+ * a1b2c3d4-e5f6-4a08-b008-000000000008, so a KB Leap naming that id resolved to whichever file
+ * was parsed last — the Architecture leap sent readers to a user-paths page. Nothing reported it,
+ * because each file is valid on its own and the collision only exists between them. This is the
+ * same shape as the duplicate kpred:feature-id the roadmap already warns about: ids minted by
+ * copying a header, and invisible to every check that looks at one file at a time.
+ *
+ * docs-all.ttl is exempt because it is a CONCATENATION of the sub-graphs — its duplicates are the
+ * point of the file, not a fault in it.
+ */
+function duplicateStableIds(): Array<{ id: string; files: string[] }> {
+  const byId = new Map<string, string[]>();
+  for (const f of readdirSync(STATIC_DIR).filter((f) => f.endsWith('.ttl'))) {
+    if (f in EXEMPT) continue;
+    const text = readFileSync(join(STATIC_DIR, f), 'utf8');
+    for (const m of text.matchAll(/kbStableId>?\s+"([^"]+)"/g)) {
+      byId.set(m[1], [...(byId.get(m[1]) ?? []), f]);
+    }
+  }
+  return [...byId.entries()]
+    .filter(([, files]) => files.length > 1)
+    .map(([id, files]) => ({ id, files }));
+}
+
 function main(): void {
   const quiet = process.argv.includes('--quiet');
 
@@ -152,10 +179,17 @@ function main(): void {
     process.exit(1);
   }
 
-  if (missing.length === 0) {
-    console.log(C.green(`  every docs graph is registered in all ${REGISTRIES.length} lists.`));
+  const dupes = duplicateStableIds();
+  for (const d of dupes) {
+    console.log(C.red(`  DUPLICATE kbStableId ${d.id}`));
+    console.log(C.red(`    claimed by: ${d.files.join(', ')} — a KB Leap naming this id resolves to whichever parses last.`));
+  }
+
+  if (missing.length === 0 && dupes.length === 0) {
+    console.log(C.green(`  every docs graph is registered in all ${REGISTRIES.length} lists, with a unique stable id.`));
     return;
   }
+  if (missing.length === 0) process.exit(1);
 
   console.log('');
   for (const m of missing) {

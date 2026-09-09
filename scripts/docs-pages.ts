@@ -685,9 +685,24 @@ function renderChildren(children: ChildRef[], heading: string, renderAs: string 
   const lines = [`## ${escapeMdText(heading)}`, ''];
 
   if (renderAs === 'gallery') {
+    /*
+     * WHERE A CARD POINTS, and getting this wrong shipped 22 dead links on one page.
+     *
+     * The first version linked every child to `../section/slug`, which is only correct for a
+     * child that EARNED A PAGE. A folded child has no page — that is what folded means — and a
+     * leap node's destination is another section entirely. So a gallery must resolve three cases,
+     * and it must also not silently drop the folded children's content the way the first version
+     * did: in list mode they render inline, so in gallery mode they have to render below the
+     * cards and be reachable by anchor.
+     */
+    const inlineAfter: ChildRef[] = [];
     lines.push('<div class="card-grid">', '');
     for (const c of children) {
-      const href = `../${slugify(c.section)}/${c.slug}`;
+      const leap = c.folded ? leapLink(c.folded) : null;
+      let href: string;
+      if (leap) href = leap.href;                       // a leap goes where it leaps to
+      else if (!c.folded) href = `../${slugify(c.section)}/${c.slug}`;   // it has its own page
+      else { href = `#${c.slug}`; inlineAfter.push(c); } // no page: anchor, rendered below
       const flag = c.status && c.status !== 'functional' && c.status !== 'production'
         ? `<span class="card-status">${escapeMdText(c.status)}</span>` : '';
       lines.push(
@@ -696,6 +711,14 @@ function renderChildren(children: ChildRef[], heading: string, renderAs: string 
       );
     }
     lines.push('', '</div>', '');
+    // The folded content itself, so a gallery never costs a reader the text a list would show.
+    for (const c of inlineAfter) {
+      lines.push(`<h3 id="${c.slug}">${escapeMdText(c.title)}</h3>`, '');
+      if (c.folded?.definition) lines.push(escapeMdText(c.folded.definition), '');
+      lines.push(...renderDiagramFor(c.folded!));
+      lines.push(...renderSceneFor(c.folded!));
+      lines.push(...renderProse(c.folded!, 4));
+    }
     return lines;
   }
 
@@ -852,22 +875,6 @@ function main(): void {
   const refs = new Map<string, PageRef>();
   for (const e of entities) refs.set(e.iri, { slug: slugs.get(e.iri)!, section: e.section, title: e.title });
 
-  /*
-   * Resolve every leap to the LEAD page of the graph it names — the lowest-ordered page in that
-   * section, which is the section's own hub. In the app a leap switches graphs; on the site the
-   * equivalent act is arriving at the top of that subject, not at an arbitrary page inside it.
-   */
-  const bySid = sectionsByStableId(fileQuads);
-  const leadOf = new Map<string, Entity>();
-  for (const e of entities) {
-    const cur = leadOf.get(e.section);
-    if (!cur || (order.get(e.iri) ?? 0) < (order.get(cur.iri) ?? 0)) leadOf.set(e.section, e);
-  }
-  for (const [sid, section] of bySid) {
-    const lead = leadOf.get(section);
-    if (lead) LEAP_TARGETS.set(sid, { section, slug: slugs.get(lead.iri)!, title: lead.title });
-  }
-
   // Children, indexed by parent, so a hub page can render the route through what it contains.
   // Sort key: explicit kpred:step-order first (a numbered sequence the author wrote), then
   // nav:order, then title — deterministic in every case, which the regeneration check requires.
@@ -897,6 +904,26 @@ function main(): void {
     const host = parentOf.get(e.iri);
     const hostInlines = !!host && (byIriEarly.get(host)?.literalProps.get(RENDER_INLINE)?.[0] === 'true');
     isPage.set(e.iri, earnsPage(e, hasChildren.has(e.iri), parentOf.has(e.iri), hostInlines));
+  }
+
+  /*
+   * Resolve every leap to the LEAD page of the graph it names — the lowest-ordered page in that
+   * section, which is the section's own hub. In the app a leap switches graphs; on the site the
+   * equivalent act is arriving at the top of that subject, not at an arbitrary page inside it.
+   */
+  const bySid = sectionsByStableId(fileQuads);
+  const leadOf = new Map<string, Entity>();
+  for (const e of entities) {
+    // ONLY A PAGE CAN BE A LEAP TARGET. The first version took the lowest-ordered ENTITY, which
+    // in Timeline & Ecosystem is a folded milestone with no page of its own — so the leap linked
+    // to a URL that 404s. A folded entity is content on someone else's page, never a destination.
+    if (!isPage.get(e.iri)) continue;
+    const cur = leadOf.get(e.section);
+    if (!cur || (order.get(e.iri) ?? 0) < (order.get(cur.iri) ?? 0)) leadOf.set(e.section, e);
+  }
+  for (const [sid, section] of bySid) {
+    const lead = leadOf.get(section);
+    if (lead) LEAP_TARGETS.set(sid, { section, slug: slugs.get(lead.iri)!, title: lead.title });
   }
 
   // A link to a folded entity must still go somewhere: it resolves to the page that now CONTAINS
