@@ -234,7 +234,7 @@ async function main(): Promise<void> {
     });
   });
   transactPendingQueue(PENDING, (current) => ({
-    next: current + (current.endsWith('\n') || current === '' ? '' : '\n') + lines.join('\n') + '\n',
+    content: current + (current.endsWith('\n') || current === '' ? '' : '\n') + lines.join('\n') + '\n',
     result: undefined,
   }));
   console.log(C.green(`  queued ${lines.length} proposal(s) from ${findings.length} finding(s) → reckons-workspace/knowledge.pending.jsonl`));
