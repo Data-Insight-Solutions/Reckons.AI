@@ -243,6 +243,24 @@ job:host-health rdf:type          ktype:OfflineJob ;
     kpred:job-enabled   "true" ;
     kpred:job-blocking  "false" .
 
+job:jobs-graph rdf:type          ktype:OfflineJob ;
+    rdfs:label          "jobs-graph" ;
+    skos:prefLabel      "jobs-graph" ;
+    skos:definition     "The graph view of these jobs (static/reckons-jobs.ttl) must match jobs.json. A task is a triple (F87); this keeps the two in step until the graph becomes the source." ;
+    kpred:job-tier      "script" ;
+    kpred:command       "npx tsx scripts/jobs-graph.ts --check" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "false" .
+
+job:landing-data rdf:type          ktype:OfflineJob ;
+    rdfs:label          "landing-data" ;
+    skos:prefLabel      "landing-data" ;
+    skos:definition     "src/lib/data/landing-thesis.json is generated from the tenets in the graph. This guards against hand-editing it back into drift." ;
+    kpred:job-tier      "script" ;
+    kpred:command       "npx tsx scripts/landing-data.ts --check" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "false" .
+
 job:landing-data-align rdf:type          ktype:OfflineJob ;
     rdfs:label          "landing-data-align" ;
     skos:prefLabel      "landing-data-align" ;
@@ -324,6 +342,15 @@ job:server-health rdf:type          ktype:OfflineJob ;
     kpred:job-enabled   "true" ;
     kpred:job-blocking  "false" .
 
+job:set-integrity rdf:type          ktype:OfflineJob ;
+    rdfs:label          "set-integrity" ;
+    skos:prefLabel      "set-integrity" ;
+    skos:definition     "F187: every skos:member must resolve to something that exists. A dangling member does not read to a reader as an error, it reads as a promise — the five-move sets named three entities that did not exist and the page said they were 'covered inside the pages above'." ;
+    kpred:job-tier      "script" ;
+    kpred:command       "npx tsx scripts/offline/set-integrity.ts" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "false" .
+
 job:set-pages rdf:type          ktype:OfflineJob ;
     rdfs:label          "set-pages" ;
     skos:prefLabel      "set-pages" ;
@@ -395,9 +422,9 @@ jobset:agent rdf:type      skos:Collection ;
 jobset:script rdf:type      skos:Collection ;
     skos:prefLabel      "script tier" ;
     skos:definition     "Deterministic, zero tokens, no model. Right by construction and runs in CI. The work-tiering ladder says to grow this tier in preference to the others, and it is the larger one." ;
-    skos:member         job:alignment-sweep, job:altitude-report, job:build-guard, job:button-crawl, job:claim-audit, job:code-sprawl, job:competitor-scan, job:context-composition, job:csp-origin-audit, job:dead-weight, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:landing-data-align, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:safety-attestation, job:scope-check, job:server-health, job:set-pages, job:shacl-validate, job:shared-deps, job:status-evidence, job:tenet-align, job:untested-options .
+    skos:member         job:alignment-sweep, job:altitude-report, job:build-guard, job:button-crawl, job:claim-audit, job:code-sprawl, job:competitor-scan, job:context-composition, job:csp-origin-audit, job:dead-weight, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:safety-attestation, job:scope-check, job:server-health, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:status-evidence, job:tenet-align, job:untested-options .
 
 jobset:all rdf:type          skos:Collection ;
     skos:prefLabel      "Offline jobs" ;
-    skos:definition     "Every job the offline sweep can run — 41 of them, 33 needing no model at all." ;
+    skos:definition     "Every job the offline sweep can run — 44 of them, 36 needing no model at all." ;
     skos:member         jobset:agent, jobset:script .
