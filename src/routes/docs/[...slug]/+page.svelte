@@ -107,6 +107,29 @@
   }
 
   /*
+   * LOG ARCHIVE — the latest entry is shown as prose; earlier ones sit behind a disclosure.
+   * Quieter than a normal accordion because it is bookkeeping: a reader should be able to see
+   * that there IS more without the page inviting them to read it.
+   */
+  .doc-prose :global(details.log-archive) { margin: 0 0 1.25rem; }
+  .doc-prose :global(details.log-archive summary) {
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+    padding: 0.2rem 0;
+  }
+  .doc-prose :global(details.log-archive summary:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .doc-prose :global(details.log-archive ul) {
+    margin: 0.4rem 0 0;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+
+  /*
    * SET MEMBERSHIP (F187.5) — which sets an entity belongs to. Styled like the derived sentence
    * because it is the same kind of statement: computed from the graph, not written by anyone.
    */

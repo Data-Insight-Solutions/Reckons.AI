@@ -55,6 +55,7 @@ import { loadCache, diagramKey, diagramFigure } from './lib/mermaid-render.js';
 import { loadSceneCache, sceneKey, sceneFigure, sceneIframe } from './lib/scene-render.js';
 import { hashFacts, DEFAULT_FLOOR } from './lib/page-provenance.js';
 import { docsTitle } from './lib/docs-title.js';
+import { altitudeOf, ALTITUDE_RANK } from '../src/lib/rdf/fact-altitude.js';
 import { readSets, readNotations, setOverlaps, type EntitySet } from '../src/lib/rdf/sets.js';
 
 const ROOT = resolve(import.meta.dirname ?? '.', '..');
@@ -495,8 +496,56 @@ function renderProse(e: Entity, depth: number): string[] {
       continue;
     }
     if (band) lines.push(`**${escapeMdText(humanize(localName(k)))}**`, '');
-    if (values.length === 1) lines.push(escapeMdText(values[0]), '');
-    else { for (const v of values) lines.push(`- ${escapeMdText(v)}`); lines.push(''); }
+    if (values.length === 1) { lines.push(escapeMdText(values[0]), ''); continue; }
+
+    /*
+     * LOG-LEVEL VALUES: LATEST FIRST, THE REST BEHIND A DISCLOSURE.
+     *
+     * Matt, 2026-09-09: "for logs, it should be the latest, and should allow opening more log
+     * entry triples in the archive side of the graph."
+     *
+     * A log asserts only that a thing happened — fact altitude's own definition, and the reason it
+     * ranks 0. Eleven of them printed as a bulleted list is a wall in front of the prose somebody
+     * actually wrote, and a reader scrolls past all eleven to reach it. So the newest is shown and
+     * the rest are archived into a <details>, which costs no JavaScript and is still reachable by
+     * the browser's own find-in-page once opened.
+     *
+     * Only for LOW-ALTITUDE values. A predicate carrying several MEASUREMENTS or PRINCIPLES is a
+     * page with several things to say, and hiding those would be hiding the content.
+     */
+    const lowAltitude = values.every((v) => ALTITUDE_RANK[altitudeOf({
+      s: { kind: 'iri', value: e.iri },
+      p: { kind: 'iri', value: k },
+      o: { kind: 'literal', value: v },
+    } as Parameters<typeof altitudeOf>[0])] <= ALTITUDE_RANK.record);
+
+    if (!lowAltitude) {
+      for (const v of values) lines.push(`- ${escapeMdText(v)}`);
+      lines.push('');
+      continue;
+    }
+
+    // Newest first where the values carry a date; otherwise last-stated, which is the best proxy
+    // for latest a graph without timestamps can offer — and is stated rather than implied.
+    const dated = [...values].sort((a, b) => {
+      const da = /\d{4}-\d{2}-\d{2}/.exec(a)?.[0] ?? '';
+      const db = /\d{4}-\d{2}-\d{2}/.exec(b)?.[0] ?? '';
+      if (da && db) return db.localeCompare(da);
+      return values.indexOf(b) - values.indexOf(a);
+    });
+    lines.push(escapeMdText(dated[0]), '');
+    const rest = dated.slice(1);
+    if (rest.length) {
+      lines.push(
+        `<details class="log-archive"><summary>${rest.length} earlier `
+        + `${rest.length === 1 ? 'entry' : 'entries'}</summary>`,
+        '',
+        ...rest.map((v) => `- ${escapeMdText(v)}`),
+        '',
+        '</details>',
+        '',
+      );
+    }
   }
   return lines;
 }
