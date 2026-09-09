@@ -1,17 +1,17 @@
 ---
 title: "Reckons.AI Launch"
 slug: "reckons-ai-launch"
-order: 1018
+order: 15
 section: "Timeline & Ecosystem"
+parent: "semantic-web-timeline"
 template: doc
 status: published
 nav: sidebar
 excerpt: "Public launch of Reckons.AI -- a local-first personal knowledge graph built on RDF Turtle."
 generated: "docs-kb"
 related:
-  - "data-insight-solutions-timeline-ecosystem"
-  - "knowledge-graphs-and-ll-ms"
-  - "mcp-spec"
+  - "semantic-web-organizations"
+  - "semantic-web-timeline"
   - "what-is-reckons-ai"
 ---
 
@@ -29,9 +29,9 @@ Public launch of Reckons.AI -- a local-first personal knowledge graph built on R
 
 **Created By**
 
-- [Matthew Roe](../timeline-ecosystem/matthew-roe-timeline-ecosystem)
+- [Who thought of it — people in this story](../timeline-ecosystem/semantic-web-people)
 
-- [Data Insight Solutions LLC](../timeline-ecosystem/data-insight-solutions-timeline-ecosystem)
-- [Knowledge Graphs Meet LLMs](../timeline-ecosystem/knowledge-graphs-and-ll-ms)
-- [Model Context Protocol (MCP)](../timeline-ecosystem/mcp-spec)
+- [How we got here — a timeline of the semantic web](../timeline-ecosystem/semantic-web-timeline)
+- [How we got here — a timeline of the semantic web](../timeline-ecosystem/semantic-web-timeline)
 - [What Is Reckons.AI](../guide/what-is-reckons-ai)
+- [Who built it — the organizations behind the standards](../timeline-ecosystem/semantic-web-organizations)
