@@ -331,6 +331,14 @@
       "enabled": true,
       "cmd": "npx tsx scripts/offline/docs-review.ts --limit=12",
       "desc": "Reads published pages and names ONE term each uses without explaining — the legibility failure a first-time reader hit twice. Grounded on terms the docs DO define, validated against the page text, aggregated by term so one gap is one proposal. Agent tier, proposals only."
+    },
+    {
+      "name": "config-observer",
+      "tier": "script",
+      "enabled": true,
+      "blocking": false,
+      "cmd": "npx tsx scripts/offline/config-observer.ts --quiet",
+      "desc": "F198: what the configuration CLAIMS, against what the logs SHOW. A config file is an unverifiable claim made by the party it benefits; this goes and finds the evidence. It never reads a status — every incident it exists for had a `success` somewhere — so it crosses a stage boundary or reports UNCHECKABLE."
     }
   ]
 }
