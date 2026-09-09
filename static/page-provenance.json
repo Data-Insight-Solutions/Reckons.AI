@@ -1,5 +1,5 @@
 {
-  "built": 138,
+  "built": 140,
   "pages": [
     {
       "path": "architecture/claude-md-minimal",
@@ -658,11 +658,27 @@
       "floor": "evidence"
     },
     {
+      "path": "llm/retrieval-augmented",
+      "entity": "urn:reckons:llm/RetrievalAugmented",
+      "graph": "docs-llm.ttl",
+      "factHash": "a3ebc7a074fa8068",
+      "factCount": 2,
+      "floor": "evidence"
+    },
+    {
       "path": "llm/structured-outputs",
       "entity": "urn:reckons:llm/StructuredOutputs",
       "graph": "docs-llm.ttl",
       "factHash": "f312e067aaefa5b8",
       "factCount": 1,
+      "floor": "evidence"
+    },
+    {
+      "path": "llm/versus-vector-rag",
+      "entity": "urn:reckons:llm/VersusVectorRAG",
+      "graph": "docs-llm.ttl",
+      "factHash": "a91582f043136dd6",
+      "factCount": 10,
       "floor": "evidence"
     },
     {

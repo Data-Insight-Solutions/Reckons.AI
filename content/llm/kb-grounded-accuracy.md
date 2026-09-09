@@ -19,9 +19,9 @@ When an LLM has access to your reviewed knowledge graph, its outputs become dram
 
 ## In this section
 
-### RAG (Retrieval-Augmented Generation)
+**[RAG (Retrieval-Augmented Generation)](../llm/retrieval-augmented)**
 
-A technique where an LLM retrieves relevant facts from a knowledge graph before generating a response. Dramatically reduces hallucination because the model grounds its answer in your verified data, not its training set.
+Retrieval-Augmented Generation: before answering, a system fetches passages that look relevant to the question and puts them in the prompt.
 
 ## Related
 

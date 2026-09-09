@@ -18,6 +18,10 @@ The models people call 'AI' are trained statistical models built with human know
 
 ## In this section
 
+**[Reckons.AI compared with vector search and RAG](../llm/versus-vector-rag)**
+
+Vector search and Reckons.AI answer different questions, and most of the confusion between them comes from pretending they answer the same one.
+
 ### Built on Human Knowledge
 
 Every layer of a language model relies on human work. The training corpus is human-written text. The architecture was designed by human researchers. RLHF alignment uses human judgments. The model's outputs are a reflection of collective human knowledge, filtered through statistical compression.
