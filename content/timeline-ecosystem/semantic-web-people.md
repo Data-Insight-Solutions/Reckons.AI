@@ -1,7 +1,7 @@
 ---
 title: "Who thought of it — people in this story"
 slug: "semantic-web-people"
-order: 1015
+order: 1014
 section: "Timeline & Ecosystem"
 template: doc
 status: published

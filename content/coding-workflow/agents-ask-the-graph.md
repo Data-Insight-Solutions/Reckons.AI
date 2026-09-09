@@ -1,7 +1,7 @@
 ---
 title: "Agents ask the graph, not you"
 slug: "agents-ask-the-graph"
-order: 8
+order: 97
 section: "Coding Workflow"
 parent: "coding-workflow"
 template: doc

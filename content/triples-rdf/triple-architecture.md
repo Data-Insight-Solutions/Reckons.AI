@@ -1,7 +1,7 @@
 ---
 title: "The Semantic Triple"
 slug: "triple-architecture"
-order: 1019
+order: 20
 section: "Triples & RDF"
 template: doc
 status: published

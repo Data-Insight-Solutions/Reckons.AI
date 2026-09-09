@@ -1,7 +1,7 @@
 ---
 title: "What Is Reckons.AI"
 slug: "what-is-reckons-ai"
-order: 1015
+order: 10
 section: "Guide"
 template: doc
 status: published
@@ -53,6 +53,10 @@ Click for architecture decisions, TTL-first documentation strategy, standards al
 ### LEAP: Test Suite & Visual Regression
 
 Click for test documentation as interactive stories. Walk through user story E2E tests step-by-step with screenshots attached to each node. Covers Dev Sprint Planning, User Docs Import, Cross-Graph Alignment, and page-level visual regression.
+
+**[Shelly (AI Assistant)](../features/shelly)**
+
+The turtle-shaped AI assistant.
 
 **[3D / 2D Knowledge Graph](../features/graph3-d)**
 
@@ -153,10 +157,6 @@ Three tabs: Incoming (new triples), Deletions (removal proposals), Merges (dupli
 **[Schema-Constrained Local Extraction](../architecture/schema-constrained-extraction)**
 
 Small local models (via Ollama) are unreliable at freeform triple extraction, so the local extraction path constrains the model to a fixed JSON schema (subject/predicate/object/type fields) with a compact prompt rather than the richer freeform prompt used for cloud backends.
-
-**[Shelly (AI Assistant)](../features/shelly)**
-
-The turtle-shaped AI assistant.
 
 **[Source Refresh](../features/source-refresh)**
 

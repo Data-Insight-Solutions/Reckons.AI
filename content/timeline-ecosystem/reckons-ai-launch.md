@@ -1,7 +1,7 @@
 ---
 title: "Reckons.AI Launch"
 slug: "reckons-ai-launch"
-order: 15
+order: 135
 section: "Timeline & Ecosystem"
 parent: "semantic-web-timeline"
 template: doc

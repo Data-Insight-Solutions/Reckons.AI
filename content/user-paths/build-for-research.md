@@ -1,7 +1,7 @@
 ---
 title: "Building a graph for research"
 slug: "build-for-research"
-order: 3
+order: 43
 section: "User Paths"
 parent: "user-paths"
 template: doc

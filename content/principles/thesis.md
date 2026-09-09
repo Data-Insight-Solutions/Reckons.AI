@@ -1,7 +1,7 @@
 ---
 title: "The thesis"
 slug: "thesis"
-order: 1000
+order: 15
 section: "Principles"
 template: doc
 status: published

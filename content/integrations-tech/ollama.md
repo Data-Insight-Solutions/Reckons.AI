@@ -1,7 +1,7 @@
 ---
 title: "Ollama (Local LLM Offload)"
 slug: "ollama"
-order: 1020
+order: 1019
 section: "Integrations & Tech"
 parent: "integrations"
 template: doc

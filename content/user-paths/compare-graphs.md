@@ -1,7 +1,7 @@
 ---
 title: "Comparing your graph to another's"
 slug: "compare-graphs"
-order: 5
+order: 45
 section: "User Paths"
 parent: "user-paths"
 template: doc

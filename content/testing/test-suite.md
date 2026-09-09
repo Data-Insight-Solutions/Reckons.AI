@@ -1,7 +1,7 @@
 ---
 title: "Test Suite"
 slug: "test-suite"
-order: 1009
+order: 110
 section: "Testing"
 template: doc
 status: published

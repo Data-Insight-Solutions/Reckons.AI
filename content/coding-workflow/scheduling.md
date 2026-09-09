@@ -1,7 +1,7 @@
 ---
 title: "Task scheduling in the graph (PLANNED, not built)"
 slug: "scheduling"
-order: 12
+order: 101
 section: "Coding Workflow"
 parent: "coding-workflow"
 template: doc

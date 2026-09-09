@@ -12,6 +12,7 @@
 @prefix guide:  <urn:reckons:guide/> .
 @prefix feat:   <urn:reckons:feature/> .
 @prefix ktype:  <urn:kbase:type/> .
+@prefix hnav:   <urn:reckons:nav/> .
 
 ## KB Identity
 <urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a06-b006-000000000006" .
@@ -102,6 +103,7 @@ guide:Security
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Security and Privacy" ;
+    hnav:order          80 ;
     skos:definition     "Reckons.AI is designed so that your data cannot leak by accident. The architecture makes security the default, not an afterthought." ;
     skos:related        guide:WhatIsReckonsAI .
 

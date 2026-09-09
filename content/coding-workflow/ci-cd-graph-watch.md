@@ -1,7 +1,7 @@
 ---
 title: "CI/CD graph watch — the plan reviews your PR"
 slug: "ci-cd-graph-watch"
-order: 4
+order: 93
 section: "Coding Workflow"
 parent: "coding-workflow"
 template: doc

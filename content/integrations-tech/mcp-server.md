@@ -1,7 +1,7 @@
 ---
 title: "MCP Server"
 slug: "mcp-server"
-order: 1011
+order: 1010
 section: "Integrations & Tech"
 parent: "integrations"
 template: doc

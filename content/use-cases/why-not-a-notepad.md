@@ -1,7 +1,7 @@
 ---
 title: "Why a graph, and not a notepad"
 slug: "why-not-a-notepad"
-order: 1020
+order: 1019
 section: "Use Cases"
 parent: "software-engineering"
 template: doc

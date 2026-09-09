@@ -1,7 +1,7 @@
 ---
 title: "Tips and Tricks"
 slug: "tips"
-order: 1015
+order: 1014
 section: "Tips"
 template: doc
 status: published

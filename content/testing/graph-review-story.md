@@ -1,7 +1,7 @@
 ---
 title: "Reckons.AI Graph Review — Goal & Workflow"
 slug: "graph-review-story"
-order: 0
+order: 111
 section: "Testing"
 parent: "test-suite"
 template: doc

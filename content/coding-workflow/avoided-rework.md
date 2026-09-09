@@ -1,7 +1,7 @@
 ---
 title: "The saving is not compression — it is the feature you did not build twice"
 slug: "avoided-rework"
-order: 13
+order: 102
 section: "Coding Workflow"
 parent: "coding-workflow"
 template: doc

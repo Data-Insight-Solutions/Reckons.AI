@@ -11,6 +11,7 @@
 @prefix guide:  <urn:reckons:guide/> .
 @prefix llm:    <urn:reckons:llm/> .
 @prefix ktype:  <urn:kbase:type/> .
+@prefix hnav:   <urn:reckons:nav/> .
 @prefix kpred:  <urn:kbase:predicate/> .
 
 ## KB Identity
@@ -64,6 +65,7 @@ feat:Graph3D
 feat:Shelly
     rdf:type            ktype:Person ;
     rdfs:label          "Shelly (AI Assistant)" ;
+    hnav:order          50 ;
     skos:definition     "The turtle-shaped AI assistant. Three tabs: tutorial, chat (grounded in your graph), and explore (guided story tours). Each graph can embed its own Shelly persona via the shelly: vocabulary. Supports Whisper STT voice input and Kokoro TTS voice output." ;
     skos:broader        guide:WhatIsReckonsAI ;
     skos:related        feat:WhisperSTT ;

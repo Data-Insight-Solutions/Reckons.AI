@@ -11,6 +11,7 @@
 @prefix use:    <urn:reckons:use/> .
 @prefix guide:  <urn:reckons:guide/> .
 @prefix ktype:  <urn:kbase:type/> .
+@prefix hnav:   <urn:reckons:nav/> .
 @prefix kpred:  <urn:kbase:predicate/> .
 
 ## KB Identity
@@ -39,6 +40,7 @@ use:PersonalEmpowerment
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Power to the Individual" ;
+    hnav:order          30 ;
     skos:definition     "Insurance companies have teams of analysts. Corporations have legal departments. Landlords have property managers. You have your memory and a stack of papers? Not anymore. Build a graph of your rights, evidence, and correspondence. Ask Shelly to draft a precise response citing YOUR documented facts. You communicate with the authority of an institution." ;
     skos:related        guide:WhatIsReckonsAI .
 

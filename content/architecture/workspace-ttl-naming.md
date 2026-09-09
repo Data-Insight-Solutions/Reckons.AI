@@ -1,7 +1,7 @@
 ---
 title: "Workspace TTL Naming Convention"
 slug: "workspace-ttl-naming"
-order: 1048
+order: 1047
 section: "Architecture"
 parent: "workspace-folder-design"
 template: doc

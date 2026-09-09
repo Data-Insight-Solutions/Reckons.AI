@@ -1,7 +1,7 @@
 ---
 title: "Ingest a repository into a graph"
 slug: "repo-ingest"
-order: 2
+order: 91
 section: "Coding Workflow"
 parent: "coding-workflow"
 template: doc

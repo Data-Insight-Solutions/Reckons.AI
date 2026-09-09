@@ -2596,6 +2596,7 @@ kb:graph-db-connectors rdf:type ktype:Feature ;
 #   an unverifiable claim, made by the party it benefits, is not evidence.
 
 kb:thesis rdf:type             ktype:Concept ;
+               hnav:order         15 ;
                rdfs:label   "The thesis" ;
                kpred:render-inline "true" ;
                kpred:children-label "The tenets" ;

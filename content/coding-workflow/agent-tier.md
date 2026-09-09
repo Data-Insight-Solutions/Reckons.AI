@@ -1,7 +1,7 @@
 ---
 title: "The local agent tier — a first pass that never touches your source"
 slug: "agent-tier"
-order: 7
+order: 96
 section: "Coding Workflow"
 parent: "work-tiering"
 template: doc

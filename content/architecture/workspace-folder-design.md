@@ -1,7 +1,7 @@
 ---
 title: "Workspace Folder Design"
 slug: "workspace-folder-design"
-order: 1047
+order: 1046
 section: "Architecture"
 parent: "local-first-arch"
 template: doc

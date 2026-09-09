@@ -1,7 +1,7 @@
 ---
 title: "Check your work against the plan (git analysis)"
 slug: "git-analysis-coding-workflow"
-order: 3
+order: 92
 section: "Coding Workflow"
 parent: "coding-workflow"
 template: doc

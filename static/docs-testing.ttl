@@ -15,6 +15,7 @@
 @prefix test:   <urn:reckons:test/> .
 @prefix guide:  <urn:reckons:guide/> .
 @prefix ktype:  <urn:kbase:type/> .
+@prefix hnav:   <urn:reckons:nav/> .
 @prefix kpred:  <urn:kbase:predicate/> .
 
 ## KB Identity
@@ -42,13 +43,14 @@ nav:BackToHub
 test:TestSuite
     rdf:type            ktype:Concept ;
     rdfs:label          "Test Suite" ;
+    hnav:order          110 ;
     skos:definition     "Reckons.AI test infrastructure: 336+ unit tests (Vitest + jsdom), Playwright E2E with 6 device profiles, visual regression with pixel analysis + DOM overlap + text presence checks, optional Mistral OCR and Claude Vision tiers. All tests run locally without API keys." ;
     skos:related        guide:WhatIsReckonsAI .
 
 test:GraphReviewStory
     rdf:type            ktype:Concept ;
     rdfs:label          "Reckons.AI Graph Review — Goal & Workflow" ;
-    <urn:reckons:nav/order> "0"^^xsd:integer ;
+    <urn:reckons:nav/order> "111"^^xsd:integer ;
     skos:definition     """The Reckons.AI Graph Review is an offline, exhaustive audit of the whole app treated as a graph: every button is clicked, every screen is visually checked, and every finding is tied back to the graph for human review. It runs locally and Opus-reviewed — no cloud dependency — and scores against the Web/Mobile UI-UX rubric.
 
 ### The goal

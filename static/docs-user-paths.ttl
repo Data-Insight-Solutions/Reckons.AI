@@ -40,6 +40,7 @@
 path:UserPaths
     rdf:type            ktype:Concept ;
     rdfs:label          "User paths" ;
+    hnav:order          40 ;
     skos:definition     "The routes people actually take through Reckons.AI, each written as an intention rather than a feature. Start with the core loop below \u2014 every other path is that loop with one stage emphasised. They overlap deliberately, because the same person moves between them as their work changes." ;
     kpred:read-first    "If you read ONE thing, Read the core loop. Everything here is the same four stages: something comes IN, the app PROPOSES what it thinks that means, you SETTLE what is true, and the settled graph is then USED \u2014 to decide, to compare, or to teach. A path is just that loop with the weight moved to a different stage." ;
     kpred:diagram       """flowchart TB
@@ -97,7 +98,7 @@ path:BuildForResearch
     kpred:diagram-caption "Research is a loop, not a line. The unanswered questions feed back and direct the next source." ;
     skos:broader        path:UserPaths ;
     hnav:layer          "1"^^xsd:integer ;
-    hnav:order          "3"^^xsd:integer .
+    hnav:order          "43"^^xsd:integer .
 
 path:Research-1
     rdf:type            ktype:Concept ;
@@ -159,7 +160,7 @@ path:AddToExisting
     kpred:diagram-caption "The everyday path. The real decision is not what to add but whether it is the same thing you already have." ;
     skos:broader        path:UserPaths ;
     hnav:layer          "1"^^xsd:integer ;
-    hnav:order          "4"^^xsd:integer .
+    hnav:order          "44"^^xsd:integer .
 
 path:Add-1
     rdf:type            ktype:Concept ;
@@ -212,7 +213,7 @@ path:CompareGraphs
     kpred:diagram-caption "Their graph is never merged into yours. Disagreement stays legible instead of being averaged away." ;
     skos:broader        path:UserPaths ;
     hnav:layer          "1"^^xsd:integer ;
-    hnav:order          "5"^^xsd:integer .
+    hnav:order          "45"^^xsd:integer .
 
 path:Compare-1
     rdf:type            ktype:Concept ;
@@ -264,7 +265,7 @@ path:ViewStory
     kpred:diagram-caption "A story is a route through a graph, not a slideshow. It ends on an absence deliberately." ;
     skos:broader        path:UserPaths ;
     hnav:layer          "1"^^xsd:integer ;
-    hnav:order          "6"^^xsd:integer .
+    hnav:order          "46"^^xsd:integer .
 
 path:Story-1
     rdf:type            ktype:Concept ;
@@ -320,7 +321,7 @@ path:UseReckoning
     kpred:diagram-caption "A reckoning cites the facts it used, so any part of it can be followed back and disagreed with." ;
     skos:broader        path:UserPaths ;
     hnav:layer          "1"^^xsd:integer ;
-    hnav:order          "7"^^xsd:integer .
+    hnav:order          "47"^^xsd:integer .
 
 path:Reckon-1
     rdf:type            ktype:Concept ;
@@ -358,7 +359,7 @@ path:PathsOverlap
     kpred:principle     "The sharing direction is researcher -> LEARNER, and it only works if review happened. A story built on unreviewed facts teaches someone a graph nobody checked, with all the authority of a finished artifact and none of the verification. Review is not admin overhead in front of the fun part; it is what makes the sharing honest." ;
     skos:broader        path:UserPaths ;
     hnav:layer          "1"^^xsd:integer ;
-    hnav:order          "8"^^xsd:integer .
+    hnav:order          "48"^^xsd:integer .
 
 ## ===========================================================================
 ## PATH 0 — The core loop.  This is the ONE to read first.
@@ -392,7 +393,7 @@ path:CoreLoop
     kpred:honest-note   "This path is tested end to end on every CI run, against the real app with a mock extraction backend. What the test does NOT cover is extraction QUALITY — it asserts that facts arrive, are settled by a person, and reach the reckoning, not that the facts were the right ones. Quality is measured separately and honestly: see the extraction score, which currently tops out at 74% recall on a hand-checked corpus." ;
     skos:broader        path:UserPaths ;
     hnav:layer          "1"^^xsd:integer ;
-    hnav:order          "0"^^xsd:integer .
+    hnav:order          "40"^^xsd:integer .
 
 path:Core-1
     rdf:type            ktype:Concept ;
@@ -474,7 +475,7 @@ path:EverydayNotes
     kpred:open-question "What is the unit a person sees — the note, or the claims taken out of it? The review queue chose the claim and became unusable at scale; the answer for everyday notes may be the opposite, with claims folded underneath the sentence that produced them." ;
     skos:broader        path:UserPaths ;
     hnav:layer          "1"^^xsd:integer ;
-    hnav:order          "1"^^xsd:integer .
+    hnav:order          "41"^^xsd:integer .
 
 path:Everyday-1
     rdf:type            ktype:Concept ;
@@ -528,4 +529,4 @@ path:CaptureSpoken
     kpred:honest-note   "The honest limit: A Folder cannot wake A CLOSED TAB. The app is a static site in a browser, so the poll runs only while it is open. Notes accumulate in the shared folder and arrive when you next open the app — they are not lost, but they are not live either. True background capture needs a process rather than a page, and that is not built. The n8n workflows that make the phone half work are also not merged yet." ;
     skos:broader        path:UserPaths ;
     hnav:layer          "1"^^xsd:integer ;
-    hnav:order          "2"^^xsd:integer .
+    hnav:order          "42"^^xsd:integer .

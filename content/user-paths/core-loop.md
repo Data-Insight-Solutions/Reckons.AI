@@ -1,7 +1,7 @@
 ---
 title: "The core loop — add, review, add, review, decide"
 slug: "core-loop"
-order: 0
+order: 40
 section: "User Paths"
 parent: "user-paths"
 template: doc

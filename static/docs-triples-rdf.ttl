@@ -14,6 +14,7 @@
 @prefix guide:  <urn:reckons:guide/> .
 @prefix feat:   <urn:reckons:feature/> .
 @prefix ktype:  <urn:kbase:type/> .
+@prefix hnav:   <urn:reckons:nav/> .
 @prefix kpred:  <urn:kbase:predicate/> .
 
 ## KB Identity
@@ -42,6 +43,7 @@ arch:TripleArchitecture
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "The Semantic Triple" ;
+    hnav:order          20 ;
     skos:definition     "The fundamental unit of knowledge in RDF: a three-part statement -- subject, predicate, object. Any fact expressible in human language can be expressed as a triple. Triples connect to form a graph, and graphs reveal relationships that documents hide." ;
     skos:related        guide:WhatIsReckonsAI .
 

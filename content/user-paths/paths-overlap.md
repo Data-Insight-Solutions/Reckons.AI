@@ -1,7 +1,7 @@
 ---
 title: "The paths are not separate products"
 slug: "paths-overlap"
-order: 8
+order: 48
 section: "User Paths"
 parent: "user-paths"
 template: doc

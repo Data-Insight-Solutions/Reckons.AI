@@ -11,6 +11,7 @@
 @prefix tech:   <urn:reckons:tech/> .
 @prefix guide:  <urn:reckons:guide/> .
 @prefix ktype:  <urn:kbase:type/> .
+@prefix hnav:   <urn:reckons:nav/> .
 
 ## KB Identity
 <urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a05-b005-000000000005" .
@@ -37,6 +38,7 @@ nav:BackToHub
 int:Integrations
     rdf:type            ktype:Concept ;
     rdfs:label          "Integrations" ;
+    hnav:order          70 ;
     skos:definition     "Reckons.AI connects to external tools and data sources while keeping your graph local. Every integration is optional -- the core app works with zero external dependencies." ;
     skos:related        guide:WhatIsReckonsAI .
 

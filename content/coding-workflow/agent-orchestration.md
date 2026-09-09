@@ -1,7 +1,7 @@
 ---
 title: "Agent orchestration — bring your own harness (PLANNED, not built)"
 slug: "agent-orchestration"
-order: 11
+order: 100
 section: "Coding Workflow"
 parent: "coding-workflow"
 template: doc

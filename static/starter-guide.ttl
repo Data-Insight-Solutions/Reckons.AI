@@ -83,6 +83,7 @@ guide:WhatIsReckonsAI
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "What Is Reckons.AI" ;
+    hnav:order          10 ;
     skos:definition     "Reckons.AI is a personal knowledge graph that runs entirely in your browser. No server, no account, no cloud dependency. Your data stays on your device in IndexedDB, and you control every piece of knowledge that enters your graph through a human review process." ;
     hnav:layer          "2"^^xsd:integer ;
     skos:related        arch:TripleArchitecture ;

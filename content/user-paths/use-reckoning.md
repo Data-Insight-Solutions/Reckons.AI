@@ -1,7 +1,7 @@
 ---
 title: "Using reckoning to decide something"
 slug: "use-reckoning"
-order: 7
+order: 47
 section: "User Paths"
 parent: "user-paths"
 template: doc

@@ -1,7 +1,7 @@
 ---
 title: "Security and Privacy"
 slug: "security"
-order: 1012
+order: 80
 section: "Tips"
 template: doc
 status: published

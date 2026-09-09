@@ -1,7 +1,7 @@
 ---
 title: "The script tier — checks that cannot hallucinate"
 slug: "script-tier"
-order: 6
+order: 95
 section: "Coding Workflow"
 parent: "work-tiering"
 template: doc

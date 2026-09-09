@@ -1,7 +1,7 @@
 ---
 title: "XSS Protection"
 slug: "xss-protection"
-order: 1019
+order: 1018
 section: "Tips"
 parent: "security"
 template: doc

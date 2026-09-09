@@ -1,7 +1,7 @@
 ---
 title: "TTL-First Documentation"
 slug: "ttl-first-docs"
-order: 1044
+order: 1043
 section: "Architecture"
 parent: "what-is-reckons-ai"
 template: doc
@@ -19,6 +19,10 @@ Reckons.AI uses its own TTL knowledge graphs as the primary documentation format
 
 ## In this section
 
+**[TTL vs Markdown Gap Analysis](../architecture/ttl-vs-markdown-gaps)**
+
+Ongoing evaluation of what TTL handles well vs where markdown is still needed.
+
 **[Graph Is Source of Truth (Docs Pipeline)](../architecture/graph-is-source-of-truth)**
 
 The docs TTL knowledge graphs (static/*.ttl) are the canonical source for the published /docs site, not the other way around: scripts/docs-pages.ts reads the docs graphs and generates content/*.md, which SvelteKit prerenders.
@@ -30,10 +34,6 @@ Tracking which markdown docs have been migrated to TTL graphs.
 **[Minimal CLAUDE.md Pattern](../architecture/claude-md-minimal)**
 
 Keep CLAUDE.md as small as possible — only hard constraints (file format rules, test commands, key directories) and MCP instructions.
-
-**[TTL vs Markdown Gap Analysis](../architecture/ttl-vs-markdown-gaps)**
-
-Ongoing evaluation of what TTL handles well vs where markdown is still needed.
 
 ## Related
 

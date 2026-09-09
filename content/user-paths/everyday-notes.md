@@ -1,7 +1,7 @@
 ---
 title: "Keeping everyday notes"
 slug: "everyday-notes"
-order: 1
+order: 41
 section: "User Paths"
 parent: "user-paths"
 template: doc

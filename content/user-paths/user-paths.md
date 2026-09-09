@@ -1,7 +1,7 @@
 ---
 title: "User paths"
 slug: "user-paths"
-order: 1023
+order: 40
 section: "User Paths"
 template: doc
 status: published

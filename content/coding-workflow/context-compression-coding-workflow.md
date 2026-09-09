@@ -1,7 +1,7 @@
 ---
 title: "Feed an agent the graph, not the repo"
 slug: "context-compression-coding-workflow"
-order: 10
+order: 99
 section: "Coding Workflow"
 parent: "coding-workflow"
 template: doc

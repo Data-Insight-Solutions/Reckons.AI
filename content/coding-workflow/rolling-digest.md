@@ -1,7 +1,7 @@
 ---
 title: "One report that grows, instead of twenty that interrupt"
 slug: "rolling-digest"
-order: 9
+order: 98
 section: "Coding Workflow"
 parent: "coding-workflow"
 template: doc

@@ -1,7 +1,7 @@
 ---
 title: "Power to the Individual"
 slug: "personal-empowerment"
-order: 1014
+order: 30
 section: "Use Cases"
 template: doc
 status: published

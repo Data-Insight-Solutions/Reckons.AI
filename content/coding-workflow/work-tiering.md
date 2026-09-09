@@ -1,7 +1,7 @@
 ---
 title: "Work tiering — stop paying frontier prices for rules"
 slug: "work-tiering"
-order: 5
+order: 94
 section: "Coding Workflow"
 parent: "coding-workflow"
 template: doc

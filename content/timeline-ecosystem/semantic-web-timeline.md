@@ -1,7 +1,7 @@
 ---
 title: "How we got here — a timeline of the semantic web"
 slug: "semantic-web-timeline"
-order: 1005
+order: 121
 section: "Timeline & Ecosystem"
 template: doc
 status: published

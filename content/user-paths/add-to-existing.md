@@ -1,7 +1,7 @@
 ---
 title: "Adding to a graph you already have"
 slug: "add-to-existing"
-order: 4
+order: 44
 section: "User Paths"
 parent: "user-paths"
 template: doc

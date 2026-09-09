@@ -1,7 +1,7 @@
 ---
 title: "Recurring Source Ingestion"
 slug: "recurring-source-ingestion"
-order: 1015
+order: 1014
 section: "Use Cases"
 parent: "collaborative-knowledge"
 template: doc

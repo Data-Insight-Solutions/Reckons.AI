@@ -1,7 +1,7 @@
 ---
 title: "n8n Cloud Sync"
 slug: "n8n-cloud-sync"
-order: 1016
+order: 1015
 section: "Integrations & Tech"
 parent: "integrations"
 template: doc

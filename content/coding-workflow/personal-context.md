@@ -1,7 +1,7 @@
 ---
 title: "Consistency comes from YOUR context, not from a better model"
 slug: "personal-context"
-order: 15
+order: 104
 section: "Coding Workflow"
 parent: "avoided-rework"
 template: doc

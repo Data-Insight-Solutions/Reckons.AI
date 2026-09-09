@@ -1,7 +1,7 @@
 ---
 title: "One session, five features not rebuilt"
 slug: "case-study-one-session"
-order: 14
+order: 103
 section: "Coding Workflow"
 parent: "avoided-rework"
 template: doc

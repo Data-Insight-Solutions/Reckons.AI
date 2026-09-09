@@ -153,7 +153,7 @@ person:DanBrickley
 
 tl:RDF10
     skos:broader        topic:SemanticWebTimeline ;
-    hnav:order          1 ;
+    hnav:order          121 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "RDF 1.0 Specification" ;
@@ -164,7 +164,7 @@ tl:RDF10
 
 tl:SemanticWebVision
     skos:broader        topic:SemanticWebTimeline ;
-    hnav:order          2 ;
+    hnav:order          122 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Semantic Web Vision (Scientific American)" ;
@@ -174,7 +174,7 @@ tl:SemanticWebVision
 
 tl:OWL10
     skos:broader        topic:SemanticWebTimeline ;
-    hnav:order          3 ;
+    hnav:order          123 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "OWL 1.0 (Web Ontology Language)" ;
@@ -184,7 +184,7 @@ tl:OWL10
 
 tl:SPARQL10
     skos:broader        topic:SemanticWebTimeline ;
-    hnav:order          6 ;
+    hnav:order          126 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "SPARQL 1.0" ;
@@ -195,7 +195,7 @@ tl:SPARQL10
 
 tl:LinkedDataPrinciples
     skos:broader        topic:SemanticWebTimeline ;
-    hnav:order          4 ;
+    hnav:order          124 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Linked Data Principles" ;
@@ -206,7 +206,7 @@ tl:LinkedDataPrinciples
 
 tl:DBpediaLaunch
     skos:broader        topic:SemanticWebTimeline ;
-    hnav:order          5 ;
+    hnav:order          125 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "DBpedia Launch" ;
@@ -216,7 +216,7 @@ tl:DBpediaLaunch
 
 tl:WikidataLaunch
     skos:broader        topic:SemanticWebTimeline ;
-    hnav:order          8 ;
+    hnav:order          128 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Wikidata Launch" ;
@@ -229,7 +229,7 @@ tl:WikidataLaunch
 
 tl:JSONLD10
     skos:broader        topic:SemanticWebTimeline ;
-    hnav:order          9 ;
+    hnav:order          129 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "JSON-LD 1.0" ;
@@ -240,7 +240,7 @@ tl:JSONLD10
 
 tl:GoogleKnowledgeGraph
     skos:broader        topic:SemanticWebTimeline ;
-    hnav:order          7 ;
+    hnav:order          127 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Google Knowledge Graph" ;
@@ -250,7 +250,7 @@ tl:GoogleKnowledgeGraph
 
 tl:RDF11
     skos:broader        topic:SemanticWebTimeline ;
-    hnav:order          10 ;
+    hnav:order          130 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "RDF 1.1 Specification" ;
@@ -260,7 +260,7 @@ tl:RDF11
 
 tl:SHACL
     skos:broader        topic:SemanticWebTimeline ;
-    hnav:order          11 ;
+    hnav:order          131 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "SHACL (Shapes Constraint Language)" ;
@@ -270,7 +270,7 @@ tl:SHACL
 
 tl:KnowledgeGraphsAndLLMs
     skos:broader        topic:SemanticWebTimeline ;
-    hnav:order          12 ;
+    hnav:order          132 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Knowledge Graphs Meet LLMs" ;
@@ -280,7 +280,7 @@ tl:KnowledgeGraphsAndLLMs
 
 tl:MCPSpec
     skos:broader        topic:SemanticWebTimeline ;
-    hnav:order          13 ;
+    hnav:order          133 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Model Context Protocol (MCP)" ;
@@ -291,7 +291,7 @@ tl:MCPSpec
 
 tl:SemiontRelease
     skos:broader        topic:SemanticWebTimeline ;
-    hnav:order          14 ;
+    hnav:order          134 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Semiont (AI Alliance)" ;
@@ -304,7 +304,7 @@ tl:SemiontRelease
 
 tl:ReckonsAILaunch
     skos:broader        topic:SemanticWebTimeline ;
-    hnav:order          15 ;
+    hnav:order          135 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Reckons.AI Launch" ;
@@ -374,6 +374,7 @@ topic:SemanticWebTimeline
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "How we got here — a timeline of the semantic web" ;
+    hnav:order          121 ;
     skos:definition     "Twenty-seven years from the RDF 1.0 specification to this product, in fifteen steps. The shape of it matters more than any single entry: the standards were finished long before anything made them easy, and the recent turn is not a new standard at all but language models arriving with an appetite for structured context. Read in order — each step is here because it made the next one possible." .
 
 topic:SemanticWebOrganizations

@@ -1,7 +1,7 @@
 ---
 title: "Residential Construction Project"
 slug: "construction-project"
-order: 1017
+order: 1016
 section: "Use Cases"
 parent: "collaborative-knowledge"
 template: doc

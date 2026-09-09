@@ -1,7 +1,7 @@
 ---
 title: "Integrations"
 slug: "integrations"
-order: 1009
+order: 70
 section: "Integrations & Tech"
 template: doc
 status: published

@@ -1,7 +1,7 @@
 ---
 title: "Watch the diff, not the fact list"
 slug: "add-2"
-order: 1024
+order: 1023
 section: "User Paths"
 parent: "add-to-existing"
 template: doc

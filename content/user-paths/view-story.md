@@ -1,7 +1,7 @@
 ---
 title: "Viewing a story built on a graph"
 slug: "view-story"
-order: 6
+order: 46
 section: "User Paths"
 parent: "user-paths"
 template: doc

@@ -1,7 +1,7 @@
 ---
 title: "Who built it — the organizations behind the standards"
 slug: "semantic-web-organizations"
-order: 1014
+order: 1013
 section: "Timeline & Ecosystem"
 template: doc
 status: published
