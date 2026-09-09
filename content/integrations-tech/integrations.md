@@ -16,6 +16,8 @@ related:
 
 Reckons.AI connects to external tools and data sources while keeping your graph local. Every integration is optional -- the core app works with zero external dependencies.
 
+<p class="derived">It has 18 parts below.</p>
+
 ## In this section
 
 ### Browser Extension

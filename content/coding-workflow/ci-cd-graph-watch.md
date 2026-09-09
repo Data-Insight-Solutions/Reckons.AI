@@ -17,6 +17,8 @@ generated: "docs-kb"
 
 On every push and pull request, CI compares the code changes against the plan in the graph and posts an alignment report as a PR comment: score, discrepancies, drift warnings, and a KB snapshot artifact. Drift is surfaced where the review already happens, rather than in a dashboard nobody opens.
 
+<p class="derived">This is built and working.</p>
+
 ## What we found
 
 **Proof**

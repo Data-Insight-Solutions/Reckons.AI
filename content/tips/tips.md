@@ -16,6 +16,8 @@ related:
 
 Practical advice for getting the most out of Reckons.AI.
 
+<p class="derived">It has 7 parts below.</p>
+
 ## In this section
 
 ### Export Often

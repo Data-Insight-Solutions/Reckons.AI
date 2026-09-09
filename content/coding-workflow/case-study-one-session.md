@@ -17,6 +17,8 @@ generated: "docs-kb"
 
 Five requests arrived across a single session on 2026-07-19, each framed as new work — and every one of them had already been decided months earlier. The agent had no memory of those sessions; the graph did: (1) 'summarize a node and its relations' was the unbuilt remainder of F65 entity sets, F96 quick graph settings and the graph-legibility condensation idea; (2) 'group review triples and accept a set' was loop-job-grouping, which already specified batch accept with outlier highlighting — only the topical-relevance axis was genuinely new; (3) 'graphs need HNSW-style jumps to sub-graphs' met hierarchy-nav (layers within a graph) and KBLeap (jumps between graphs), narrowing the work to the one missing middle rung; (4) 'find the most relevant graph for this ingest' met routeQuestion(), already built and tested, needing only a generalized input; (5) the AI-council merge met loop-subagent-graphs, which had already established that a sub-agent returns a graph and that merging graphs is the product.
 
+<p class="derived">This is built and working.</p>
+
 ## Why it is this way
 
 **Honest Note**

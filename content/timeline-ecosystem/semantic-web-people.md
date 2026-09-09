@@ -14,6 +14,8 @@ generated: "docs-kb"
 
 A short list, and deliberately short: these are the people whose specific ideas this product rests on, not a hall of fame. Each entry says what they did that Reckons.AI actually uses.
 
+<p class="derived">It has 4 parts below.</p>
+
 ## In this section
 
 ### Dan Brickley

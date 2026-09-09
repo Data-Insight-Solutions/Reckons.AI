@@ -15,6 +15,8 @@ generated: "docs-kb"
 
 Static SvelteKit 2 app with Svelte 5 runes. Threlte/Three.js for 3D, N3.js for RDF parsing, @huggingface/transformers for embeddings and local LLM, Dexie for IndexedDB storage. No server required.
 
+<p class="derived">It has 9 parts below.</p>
+
 ## In this section
 
 ### @huggingface/transformers v3

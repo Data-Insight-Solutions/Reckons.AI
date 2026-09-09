@@ -17,6 +17,8 @@ generated: "docs-kb"
 
 Point Reckons.AI at a repository and it builds a Codebase graph: modules, their source files (kpred:has-file), and the relationships between them. The result is queryable — 'which module owns this file', 'what does this depend on' — instead of grep and hope.
 
+<p class="derived">This is built, working, and in daily use here.</p>
+
 ## What we found
 
 **Proof**

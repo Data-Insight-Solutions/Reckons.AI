@@ -15,6 +15,8 @@ generated: "docs-kb"
 
 Playwright-based visual regression. 5 analysis layers (cheapest first): pixel analysis (solid fill, color anomaly), DOM overlap detection, text presence checks, Mistral OCR (if API key), Claude Vision semantic analysis (if API key). Screenshots saved to tests/visual/screenshots/.
 
+<p class="derived">It has 2 parts below.</p>
+
 ## Detail
 
 **Command**

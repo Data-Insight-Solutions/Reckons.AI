@@ -17,6 +17,8 @@ generated: "docs-kb"
 
 A local model (via Ollama, on your own hardware) reviews a diff, drafts a missing description, or reads for staleness — always inside a scripted harness: ground it in the graph, constrain the prompt, validate the output, emit a PROPOSAL. It writes to the review queue. It never writes to source, and it never writes to the graph.
 
+<p class="derived">This is built and working.</p>
+
 ## Why it is this way
 
 **Principle**

@@ -16,6 +16,8 @@ related:
 
 Reckons.AI is a personal knowledge graph that runs entirely in your browser. No server, no account, no cloud dependency. Your data stays on your device in IndexedDB, and you control every piece of knowledge that enters your graph through a human review process.
 
+<p class="derived">It has 43 parts below.</p>
+
 ## In this section
 
 ### Read next

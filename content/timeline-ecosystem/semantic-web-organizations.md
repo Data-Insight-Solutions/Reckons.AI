@@ -14,6 +14,8 @@ generated: "docs-kb"
 
 The standards bodies, implementers and companies whose work Reckons.AI is assembled from. None of this was invented here; the graph formats, the query language and the constraint vocabulary are all decades of other people's work, and naming them is both accurate and the point — a local-first product that depends on open standards depends on the people who keep them open.
 
+<p class="derived">It has 9 parts below.</p>
+
 ## In this section
 
 ### Anthropic

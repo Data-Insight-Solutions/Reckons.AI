@@ -17,6 +17,8 @@ generated: "docs-kb"
 
 This does not exist yet. The design: a task is a triple — goal, tier, harness preference, due-at, blocked-by, outcome — and any harness can drain the queue: Claude Code, Codex, a local Ollama script, or a human in the review queue. The graph becomes the orchestration config, so the queue outlives whichever agent CLI is fashionable this quarter, and a harness that hits a usage limit hands its task back rather than stalling it forever.
 
+<p class="derived">This is planned and not built yet.</p>
+
 ## Why it is this way
 
 **Principle**

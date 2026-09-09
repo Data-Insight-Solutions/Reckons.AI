@@ -15,6 +15,8 @@ generated: "docs-kb"
 
 Compare two knowledge graphs or snapshots at /compare. Diff engine categorizes changes as Add, Reinforce, Conflict, Merge, Remove. Visual Venn diagram and diff table with bulk accept/reject.
 
+<p class="derived">It has one part below.</p>
+
 ## In this section
 
 ### Diff Summary

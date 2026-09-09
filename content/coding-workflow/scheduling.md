@@ -17,6 +17,8 @@ generated: "docs-kb"
 
 This does not exist yet. Tasks, schedules and outcomes as graph facts, drained by whichever runner is available — the in-app worker on any device, an optional desktop process, or the MCP server when an agent is already connected.
 
+<p class="derived">This is planned and not built yet.</p>
+
 ## Why it is this way
 
 **Principle**

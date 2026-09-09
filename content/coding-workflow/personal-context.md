@@ -17,6 +17,8 @@ generated: "docs-kb"
 
 The facts that did the work in that session were not general knowledge, and no model would have produced them from training. 'Granularity breeds rubber-stamping — a review list that is too fine trains the human to accept all.' 'Cleaning is itself damaging; an automated tidy-up that drops a fact you needed is worse than the mess.' 'Spend attention on disagreement, not agreement.' 'Unclassified fails toward the human.' These are one person's judgments, formed on this project, written down once. Because they were in the graph, they constrained work months later — an accept-all control shipped WITH outlier highlighting rather than without it, because the graph objected.
 
+<p class="derived">This is built and working.</p>
+
 ## Why it is this way
 
 **Principle**

@@ -16,6 +16,8 @@ related:
 
 Insurance companies have teams of analysts. Corporations have legal departments. Landlords have property managers. You have your memory and a stack of papers? Not anymore. Build a graph of your rights, evidence, and correspondence. Ask Shelly to draft a precise response citing your documented facts. You communicate with the authority of an institution.
 
+<p class="derived">It has 6 parts below.</p>
+
 ## In this section
 
 ### Corporate Pushback

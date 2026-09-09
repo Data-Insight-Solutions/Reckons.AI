@@ -15,6 +15,8 @@ generated: "docs-kb"
 
 Design decisions and implementation details for F26 Confluence Migration. Covers the 6-step migration pipeline, sliding window chunking, local model recommendations, pause/resume checkpointing, and page hierarchy preservation.
 
+<p class="derived">It has 6 parts below.</p>
+
 ## In this section
 
 **[6-Step Migration Pipeline](../architecture/conf-migration-pipeline)**

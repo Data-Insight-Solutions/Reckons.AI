@@ -94,6 +94,19 @@
      mermaid's baked width/height, which is what lets the figure size itself to the
      column rather than to whatever viewport happened to render it. */
   /*
+   * DERIVED PROSE (F192) — a sentence COMPUTED from the graph rather than written into it.
+   * Set apart visually because a reader is owed the difference: everything else on the page is
+   * something a person wrote, and this is a statement of what the facts currently are.
+   */
+  .doc-prose :global(p.derived) {
+    margin: 0.75rem 0 1.5rem;
+    padding: 0.6rem 0 0.6rem 0.9rem;
+    border-left: 2px solid var(--accent);
+    color: var(--ink-2);
+    font-size: 0.9rem;
+  }
+
+  /*
    * CARD GALLERY and ACCORDION (F190/F191) — both declared in the graph by kpred:render-as, and
    * both deliberately ZERO JavaScript so they can exist on a route with csr = false. The
    * accordion is <details>/<summary>, which is keyboard-accessible for free and which the

@@ -15,6 +15,8 @@ generated: "docs-kb"
 
 A W3C standard for representing knowledge as a graph of linked statements. The foundation of the Semantic Web. RDF itself is abstract -- Turtle, JSON-LD, and RDF/XML are concrete serialization formats.
 
+<p class="derived">It has 6 parts below.</p>
+
 ## In this section
 
 ### JSON-LD

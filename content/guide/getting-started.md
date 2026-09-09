@@ -15,6 +15,8 @@ generated: "docs-kb"
 
 A step-by-step guide to building your first knowledge graph.
 
+<p class="derived">It has 7 parts below.</p>
+
 ## In this section
 
 ### Quick-Start Example graph

@@ -17,6 +17,8 @@ related:
 
 When an LLM has access to your reviewed knowledge graph, its outputs become dramatically more accurate. Instead of guessing from training data, it retrieves your confirmed facts. This is called retrieval-augmented generation (RAG) -- and the quality of the retrieval source is everything. Your curated graph is the best source possible.
 
+<p class="derived">It has one part below.</p>
+
 ## In this section
 
 **[RAG (Retrieval-Augmented Generation)](../llm/retrieval-augmented)**

@@ -16,6 +16,8 @@ related:
 
 Reckons.AI test infrastructure: 336+ unit tests (Vitest + jsdom), Playwright E2E with 6 device profiles, visual regression with pixel analysis + DOM overlap + text presence checks, optional Mistral OCR and Claude Vision tiers. All tests run locally without API keys.
 
+<p class="derived">It has 3 parts below.</p>
+
 ## In this section
 
 **[Reckons.AI Graph Review — Goal & Workflow](../testing/graph-review-story)**

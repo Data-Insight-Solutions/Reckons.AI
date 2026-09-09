@@ -15,6 +15,8 @@ generated: "docs-kb"
 
 All user data lives in browser IndexedDB (Dexie v4). No server, no accounts, no cloud dependency. The app is a static SvelteKit build. Export to .ttl for portability. Workspace folder sync for disk backup and MCP server access.
 
+<p class="derived">It has 5 parts below.</p>
+
 ## In this section
 
 ### Dependency Health

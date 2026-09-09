@@ -17,6 +17,8 @@ related:
 
 Create, switch, rename, and delete independent knowledge graphs. Each graph has its own IndexedDB store, stable UUID, content fingerprint, and optional accent color. Per-tab graph support via URL ?kb= parameter.
 
+<p class="derived">It has 2 parts below.</p>
+
 ## In this section
 
 ### Graph Identity

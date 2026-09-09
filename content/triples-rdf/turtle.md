@@ -15,6 +15,8 @@ generated: "docs-kb"
 
 A compact, human-readable syntax for writing RDF triples. File extension: .ttl. Uses prefix declarations, semicolons to share subjects, commas to share predicates, and periods to end statement groups. This file is itself written in Turtle.
 
+<p class="derived">It has 4 parts below.</p>
+
 ## In this section
 
 ### @prefix Declaration

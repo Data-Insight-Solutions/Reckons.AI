@@ -15,6 +15,8 @@ generated: "docs-kb"
 
 Baseline visual regression screenshots for each major page. These are not stories but single-page captures used for pixel analysis and DOM overlap detection.
 
+<p class="derived">It has 8 parts below.</p>
+
 ## In this section
 
 ### Graph Management Page

@@ -17,6 +17,8 @@ generated: "docs-kb"
 
 kb_compress selects the relevant subgraph for a question and serializes it compactly, so an agent gets grounded context instead of a directory listing.
 
+<p class="derived">This is built and working.</p>
+
 ## Why it is this way
 
 **Honest Note**

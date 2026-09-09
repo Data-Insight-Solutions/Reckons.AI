@@ -17,6 +17,8 @@ generated: "docs-kb"
 
 When an agent needs a decision it cannot make, it does not stop and wait for you. It emits the question AS A PARTIAL FACT into the graph — subject and predicate known, object '?', plus a note on what the question blocks — and moves to the next unblocked task. You answer whenever you like, in the review queue. The answer flows back and the waiting work resumes.
 
+<p class="derived">This is built and working.</p>
+
 ## Why it is this way
 
 **Principle**

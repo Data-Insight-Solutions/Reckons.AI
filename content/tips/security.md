@@ -16,6 +16,8 @@ related:
 
 Reckons.AI is designed so that your data cannot leak by accident. The architecture makes security the default, not an afterthought.
 
+<p class="derived">It has 11 parts below.</p>
+
 ## In this section
 
 <details class="accordion"><summary>API Key Safety</summary>

@@ -15,6 +15,8 @@ generated: "docs-kb"
 
 Extraction is measured, not assumed: the best model tested recovers about three quarters of what a careful reader would. Review is where that gap gets closed, and it is why the facts wait for you instead of being written straight into the graph.
 
+<p class="derived">It builds on 1 other capability.</p>
+
 ## Why it is this way
 
 **Honest Note**

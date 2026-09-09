@@ -17,6 +17,8 @@ related:
 
 Three tabs: Incoming (new triples), Deletions (removal proposals), Merges (duplicate entity suggestions). Confirm, reject, or refine each statement. Nothing enters your graph without your approval.
 
+<p class="derived">It has one part below.</p>
+
 ## In this section
 
 **[Review Workbench](../features/review-workbench)**

@@ -82,6 +82,7 @@ const SCENE_LIVE        = 'urn:kbase:predicate/scene-live';
  * the TARGET graph's stable id, which every docs graph declares, so the mapping is derivable. */
 /* How an entity's children should be PRESENTED. The transformation is a fact in the graph, so it
  * is reproducible and reviewable rather than a decision buried in the generator. */
+const KPRED             = 'urn:kbase:predicate/';
 const RENDER_AS         = 'urn:kbase:predicate/render-as';
 const LEAP              = 'urn:reckons:leap';
 const KB_STABLE_ID      = 'urn:reckons:meta/kbStableId';
@@ -583,6 +584,57 @@ function leapLink(e: Entity): { href: string; title: string } | null {
   return t ? { href: `../${slugify(t.section)}/${t.slug}`, title: t.title } : null;
 }
 
+/**
+ * DERIVED PROSE (F192) — a sentence computed from the graph, never stored in it.
+ *
+ * Matt, 2026-09-08: "Do we have generation of unique prose, that is a defined explanation for a
+ * set or entity, that does not literally exist as graph content? ... Sometimes I would want a
+ * regenerated description based on a status."
+ *
+ * Every word on these pages has until now been a literal somebody wrote. This is the other kind:
+ * text that is a FUNCTION of the facts, so it cannot go stale and cannot be wrong unless the facts
+ * are. Change a status from planned to production and this sentence changes with it, with nobody
+ * editing prose.
+ *
+ * DELIBERATELY THE DETERMINISTIC TIER, and per kb:work-tiering that is where to start rather than
+ * where to compromise. A model writing a description is the OTHER half of Matt's question and
+ * needs an alignment check, because a model can assert what the graph does not say — the same
+ * invention failure the extraction scorer measures, arriving on the way out instead of the way in.
+ * Computed prose needs no such check: it is right by construction, and it costs nothing.
+ *
+ * It says only what it can support. No dependency facts, no sentence about dependencies.
+ */
+function renderDerived(e: Entity, children: ChildRef[]): string[] {
+  const status = e.literalProps.get(HAS_STATUS)?.[0];
+  const uses = e.iriProps.get(`${KPRED}uses`)?.length ?? 0;
+  const parts: string[] = [];
+
+  if (status) {
+    const stance: Record<string, string> = {
+      speculative: 'is an idea being considered, and nothing is built',
+      planned: 'is planned and not built yet',
+      'in-progress': 'is being built now',
+      scaffolded: 'exists in outline, with gaps',
+      functional: 'is built and working',
+      production: 'is built, working, and in daily use here',
+    };
+    if (stance[status]) parts.push(`This ${stance[status]}`);
+  }
+  if (children.length) {
+    const unbuilt = children.filter((c) => c.status && !['functional', 'production'].includes(c.status)).length;
+    parts.push(children.length === 1
+      ? 'It has one part below'
+      : `It has ${children.length} parts below`
+        + (unbuilt ? `, ${unbuilt} of which ${unbuilt === 1 ? 'is' : 'are'} not built yet` : ''));
+  }
+  if (uses) parts.push(`It builds on ${uses} other ${uses === 1 ? 'capability' : 'capabilities'}`);
+  if (!parts.length) return [];
+
+  // Marked as derived so a reader can tell computed text from written text, and so a hand edit to
+  // it is never proposed back into the graph — there is nothing there to edit.
+  return [`<p class="derived">${escapeMdText(parts.join('. '))}.</p>`, ''];
+}
+
 function renderSceneFor(e: Entity): string[] {
   const out: string[] = [];
   if (e.scene) {
@@ -812,6 +864,7 @@ function renderBody(
   // The picture goes directly under the sentence that introduces it, not at the bottom.
   lines.push(...renderDiagramFor(e));
   lines.push(...renderSceneFor(e));
+  lines.push(...renderDerived(e, children));
   const ownLeap = leapLink(e);
   if (ownLeap) lines.push(`**[Open ${escapeMdText(ownLeap.title)} →](${ownLeap.href})**`, '');
 

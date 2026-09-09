@@ -17,6 +17,8 @@ generated: "docs-kb"
 
 Every recurring task is routed to the cheapest tier that can do it correctly. SCRIPT: the answer is checkable by a rule ('does this path exist', 'is this status in the enum') — deterministic code, zero tokens, zero hallucination, runs in CI. LOCAL AGENT: the answer is judgment over language and being wrong is cheap, because the output is a proposal a human gates — a local model inside a scripted harness that grounds it, validates its output, and emits a reviewable proposal. FRONTIER: cross-file architectural reasoning, deciding process, and code that lands.
 
+<p class="derived">This is being built now. It has 2 parts below.</p>
+
 ## Why it is this way
 
 **Principle**

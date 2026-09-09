@@ -17,6 +17,8 @@ generated: "docs-kb"
 
 Agents append findings — bug found, claim falsified, shipped, decision needed — to a single dated digest while you are away, and each finding is also written into the graph as a pending fact on the entity it concerns. You come back to one accumulating page, not a scrollback to reconstruct.
 
+<p class="derived">This is built and working.</p>
+
 ## Why it is this way
 
 **Honest Note**

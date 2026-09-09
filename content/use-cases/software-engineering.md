@@ -16,6 +16,8 @@ related:
 
 Reckons.AI is built with Reckons.AI, and that is the honest reason this use case is the most detailed one here: it is the only one we have run for a year. A codebase accumulates decisions faster than anything else you own — why a boundary exists, what a change would break, which claim a test actually pins — and almost none of it survives in the code. It ends up in commit messages nobody re-reads, in chat histories that expire, and in the heads of whoever was there. The graph is where those decisions are kept as facts you can query, and the pages you are reading are generated from it.
 
+<p class="derived">It has 5 parts below.</p>
+
 ## At a glance
 
 **Audience**

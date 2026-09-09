@@ -15,6 +15,8 @@ generated: "docs-kb"
 
 A sentence usually asserts more than one thing. Splitting them apart is the step that turns a note into something answerable later — and it is the step you would never do by hand, which is the entire reason a model is involved at all.
 
+<p class="derived">It builds on 1 other capability.</p>
+
 ## Related
 
 **Uses**

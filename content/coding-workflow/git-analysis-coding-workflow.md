@@ -17,6 +17,8 @@ generated: "docs-kb"
 
 The graph knows what you INTENDED. Git knows what you DID. Git analysis compares them: kb_check_plan tells you whether the work you are about to do matches something planned; kb_git_diff_triples finds which graph entities your diff actually touched; kb_alignment_score gives a 0-1 score across four dimensions (coverage, status alignment, dependency respect, scope discipline). Commits that match no planned work are flagged as unplanned — not blocked, but not invisible either.
 
+<p class="derived">This is built, working, and in daily use here.</p>
+
 ## What we found
 
 **Proof**

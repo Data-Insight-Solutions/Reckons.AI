@@ -15,6 +15,8 @@ generated: "docs-kb"
 
 Add knowledge from text, URLs, documents, calendars, iCal feeds, Indico events, or Turtle files. An LLM extracts semantic triples from unstructured input. Every extracted triple starts as pending for your review.
 
+<p class="derived">It has 3 parts below, 2 of which are not built yet.</p>
+
 ## In this section
 
 **[Confluence Migration](../features/confluence-migration)** — **planned**

@@ -15,6 +15,8 @@ generated: "docs-kb"
 
 Tracking which markdown docs have been migrated to TTL graphs. Goal: eliminate all docs/*.md files except where markdown format is structurally required (GitHub conventions, Claude Code system files).
 
+<p class="derived">It has 15 parts below.</p>
+
 ## In this section
 
 **[CONFLUENCE_MIGRATION.md → Superseded](../architecture/mig-confluence)**

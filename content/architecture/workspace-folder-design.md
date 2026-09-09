@@ -18,6 +18,8 @@ related:
 
 User-selected directory via File System Access API (Chrome/Edge only). Structure: knowledge.ttl (legacy single-Graph), kbs/{String.fromCharCode(123)}name{String.fromCharCode(125)}/{String.fromCharCode(123)}name{String.fromCharCode(125)}.ttl + meta.json (multi-Graph; legacy kbs/{String.fromCharCode(123)}name{String.fromCharCode(125)}/kb.ttl still read as a fallback), knowledge.pending.jsonl (MCP inbox), settings_profile.json. Auto-exports on every graph mutation (2s debounce). sources.json was removed: it was written on export but never consumed on import, so it added disk writes without a reader.
 
+<p class="derived">It has 2 parts below.</p>
+
 ## In this section
 
 **[Pending JSONL Queue](../architecture/pending-jsonl-queue)**

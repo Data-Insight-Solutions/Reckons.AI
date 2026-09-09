@@ -15,6 +15,8 @@ generated: "docs-kb"
 
 Settle facts while the source is still fresh in your mind. A reviewer who batches a week of ingests is judging claims they no longer remember reading, which is how a wrong fact gets confirmed.
 
+<p class="derived">It builds on 1 other capability.</p>
+
 ## Why it is this way
 
 **Honest Note**

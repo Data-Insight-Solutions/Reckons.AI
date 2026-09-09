@@ -17,6 +17,8 @@ generated: "docs-kb"
 
 The usual pitch for a knowledge graph in front of a coding agent is token compression: feed a dense subgraph instead of re-reading the repo. That saving is real but modest. The larger one is structural — an agent that can query what you already decided proposes an EXTENSION to an existing feature instead of a new feature under a slightly different name. A duplicate feature is not a one-off cost: you pay to build it, then pay forever to maintain two things that should have been one, and the second one drifts from the first the first time either is tuned.
 
+<p class="derived">This is built and working. It has 2 parts below.</p>
+
 ## Why it is this way
 
 **Principle**

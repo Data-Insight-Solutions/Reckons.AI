@@ -17,6 +17,8 @@ related:
 
 One person organizes a graph around a shared topic, exports a .ttl file, and distributes it. Others import it as a source in their own graph. Each person uses Shelly and the Reckoning to ask questions relevant to them. Decisions are annotated with the sources that informed them. When things change, the organizer re-exports and importers see the diff in Compare.
 
+<p class="derived">It has 7 parts below.</p>
+
 ## In this section
 
 **[Academic Research Group](../use-cases/academic-research-group)**

@@ -14,6 +14,8 @@ generated: "docs-kb"
 
 Twenty-seven years from the RDF 1.0 specification to this product, in fifteen steps. The shape of it matters more than any single entry: the standards were finished long before anything made them easy, and the recent turn is not a new standard at all but language models arriving with an appetite for structured context. Read in order — each step is here because it made the next one possible.
 
+<p class="derived">It has 15 parts below.</p>
+
 ## In this section
 
 ### RDF 1.0 Specification

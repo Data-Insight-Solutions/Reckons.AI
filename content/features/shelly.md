@@ -15,6 +15,8 @@ generated: "docs-kb"
 
 The turtle-shaped AI assistant. Three tabs: tutorial, chat (grounded in your graph), and explore (guided story tours). Each graph can embed its own Shelly persona via the shelly: vocabulary. Supports Whisper STT voice input and Kokoro TTS voice output.
 
+<p class="derived">It has 4 parts below.</p>
+
 ## In this section
 
 ### Kokoro TTS

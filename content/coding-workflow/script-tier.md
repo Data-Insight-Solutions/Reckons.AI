@@ -17,6 +17,8 @@ generated: "docs-kb"
 
 Deterministic checks that run on every push and cost nothing: graph invariants (dead file links, invalid statuses, duplicate IDs, dangling dependencies); evidence for status claims (a feature marked shipped must link a test or declare that it has none — you may ship untested code, but not silently); prompt/safety-preamble drift; production-build verification; and a license gate on every third-party dependency we study.
 
+<p class="derived">This is built and working.</p>
+
 ## What we found
 
 **Proof**

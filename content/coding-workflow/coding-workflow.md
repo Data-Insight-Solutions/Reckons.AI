@@ -14,6 +14,8 @@ generated: "docs-kb"
 
 Reckons.AI turns a codebase into a graph you can interrogate, and then keeps the code and the plan honest with each other. The plan lives in the graph; code is checked against it; agents propose, humans decide. This page is generated from that same graph, so it cannot claim a capability the graph does not have.
 
+<p class="derived">It has 11 parts below, 3 of which are not built yet.</p>
+
 ## Why it is this way
 
 **Principle**
