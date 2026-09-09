@@ -2609,6 +2609,7 @@ kb:tenet-evidence rdf:type     ktype:Tenet ;
                kpred:show-on-landing "true" ;
                kpred:tenet-status "belief" ;
                hnav:order   1 ;
+               kpred:tenet-lead   "This is the spine. We arrived at it three separate times from three different directions: a stated purpose does not unlock a content gate, a weak similarity does not justify a link, and a source you control yourself is not a source." ;
                kpred:tenet-body   "This is the spine. We arrived at it three separate times from three different directions: a stated purpose does not unlock a content gate, a weak similarity does not justify a link, and a source you control yourself is not a source. Each time the answer was the same — so we stopped treating it as a rule and started treating it as the thesis." .
 
 kb:tenet-citation rdf:type     ktype:Tenet ;
@@ -2617,6 +2618,7 @@ kb:tenet-citation rdf:type     ktype:Tenet ;
                kpred:show-on-landing "true" ;
                kpred:tenet-status "built" ;
                hnav:order   2 ;
+               kpred:tenet-lead   "Every extracted fact quotes the sentence it came from — and we CHECK that the quote is really in your source." ;
                kpred:tenet-body   "Every extracted fact quotes the sentence it came from — and we CHECK that the quote is really in your source. Language models paraphrase, and a paraphrased citation is a forgery that looks right. If we cannot find the quote, we drop it and lower our confidence. A missing receipt is honest. A convincing fake is not." .
 
 kb:tenet-link rdf:type         ktype:Tenet ;
@@ -2625,6 +2627,7 @@ kb:tenet-link rdf:type         ktype:Tenet ;
                kpred:show-on-landing "true" ;
                kpred:tenet-status "belief" ;
                hnav:order   4 ;
+               kpred:tenet-lead   "Disconnected facts are merely less useful. An invented edge is a lie the graph tells itself — it LOOKS like knowledge and is not." ;
                kpred:tenet-body   "Disconnected facts are merely less useful. An invented edge is a lie the graph tells itself — it LOOKS like knowledge and is not. So if a new fact does not genuinely connect to what you already know, we connect it to nothing and say so. 'Is related to' is a non-link wearing the costume of a link." .
 
 kb:tenet-export rdf:type       ktype:Tenet ;
@@ -2633,6 +2636,7 @@ kb:tenet-export rdf:type       ktype:Tenet ;
                kpred:show-on-landing "true" ;
                kpred:tenet-status "built" ;
                hnav:order   5 ;
+               kpred:tenet-lead   "Your graph is a plain text file on your machine, and we will never withhold it from you — whatever it contains." ;
                kpred:tenet-body   "Your graph is a plain text file on your machine, and we will never withhold it from you — whatever it contains. But when WE are the one carrying your content to someone else, we are a participant in that delivery, and we take responsibility for what we carry. We gate only what we carry." .
 
 kb:tenet-private rdf:type      ktype:Tenet ;
@@ -2641,6 +2645,7 @@ kb:tenet-private rdf:type      ktype:Tenet ;
                kpred:show-on-landing "true" ;
                kpred:tenet-status "built" ;
                hnav:order   6 ;
+               kpred:tenet-lead   "Think privately. Be wrong privately. Change your mind privately." ;
                kpred:tenet-body   "Think privately. Be wrong privately. Change your mind privately. Your own graph needs no permission, no account, and no provenance — because it makes no claim on anyone else. Provenance is a claim made TO SOMEONE; alone with your notes, there is nobody to substantiate it to, and no reason to pretend otherwise." .
 
 kb:tenet-honesty rdf:type      ktype:Tenet ;
@@ -2649,6 +2654,7 @@ kb:tenet-honesty rdf:type      ktype:Tenet ;
                kpred:show-on-landing "true" ;
                kpred:tenet-status "built" ;
                hnav:order   7 ;
+               kpred:tenet-lead   "Our safety documentation states plainly which protections exist and which do not, and an automated check verifies them against the live code every week — recording the failures too." ;
                kpred:tenet-body   "Our safety documentation states plainly which protections exist and which do not, and an automated check verifies them against the live code every week — recording the failures too. We have already caught ourselves overclaiming, and corrected it in public. A safety promise you cannot verify is just marketing." .
 
 kb:tenet-no-account rdf:type   ktype:Tenet ;
@@ -2657,6 +2663,7 @@ kb:tenet-no-account rdf:type   ktype:Tenet ;
                kpred:show-on-landing "true" ;
                kpred:tenet-status "built" ;
                hnav:order   8 ;
+               kpred:tenet-lead   "There is no sign-up, no email, and no server holding your graph — the app is static files and a browser database, so there is nothing to log in TO." ;
                kpred:tenet-body   "There is no sign-up, no email, and no server holding your graph — the app is static files and a browser database, so there is nothing to log in TO. Where a feature genuinely cannot work without an account, it is YOUR account with a service you chose: your API key, your n8n, your Cloudflare. Publishing and cross-device sync are where this will be tested, and neither is solved yet." ;
                kpred:relates-to   kb:tenet-private ;
                kpred:relates-to   kb:tenet-export .
@@ -2667,6 +2674,7 @@ kb:tenet-open rdf:type         ktype:Tenet ;
                kpred:show-on-landing "true" ;
                kpred:tenet-status "built" ;
                hnav:order   9 ;
+               kpred:tenet-lead   "The application is MIT licensed and your graph is stored in Turtle, a W3C standard rather than a private format with an exporter bolted on." ;
                kpred:tenet-body   "The application is MIT licensed and your graph is stored in Turtle, a W3C standard rather than a private format with an exporter bolted on. If we disappeared tomorrow, your graph and the code that reads it would both still work. The honest part: the strongest models this app can call are not open, and a local one is measurably worse at extraction today." ;
                kpred:relates-to   kb:tenet-export ;
                kpred:relates-to   kb:tenet-no-account .
@@ -2677,6 +2685,7 @@ kb:tenet-freedom rdf:type      ktype:Tenet ;
                kpred:show-on-landing "true" ;
                kpred:tenet-status "belief" ;
                hnav:order   10 ;
+               kpred:tenet-lead   "Enclosing knowledge behind a login, a subscription, or a format one vendor controls is a choice somebody made, not a property of the knowledge." ;
                kpred:tenet-body   "Enclosing knowledge behind a login, a subscription, or a format one vendor controls is a choice somebody made, not a property of the knowledge. The tools for thinking with what you know should be free to use, read, and leave. This is a BELIEF, not a control — nothing in the code enforces it, and it is why the other tenets are shaped the way they are." ;
                kpred:relates-to   kb:tenet-open ;
                kpred:relates-to   kb:tenet-export .
@@ -2760,6 +2769,7 @@ kb:tenet-absence rdf:type      ktype:Tenet ;
                kpred:show-on-landing "true" ;
                kpred:tenet-status "built" ;
                hnav:order   3 ;
+               kpred:tenet-lead   "You cannot ask a question you have not discovered you have." ;
                kpred:tenet-body   "You cannot ask a question you have not discovered you have. So a fact whose object is still unknown is not a gap in the graph — it is the point of it. Subject known, predicate known, object still open, and four things stalled behind it. That turns 'go find out what we are missing' into 'answer this one question'. The knowledge you need to decide is usually a few people away; the hard part was never reaching them, it was knowing what to ask." .
 
 # Self-hostable integrations to round out the open-source stack (raised 2026-07-10).
@@ -6813,6 +6823,8 @@ kb:task-model-bench rdf:type   ktype:Feature ;
 kb:tenet-alignment rdf:type    ktype:Feature ;
                rdfs:label   "Tenet alignment — checking the roadmap against what we say we believe" ;
                kpred:feature-id   "F184" ;
+                              kpred:test-coverage "none" ;
+               kpred:honest-note  "UNTESTED, AND SAYING SO RATHER THAN IMPLYING OTHERWISE. scripts/offline/tenet-align.ts does its parsing and reporting at module scope, so it cannot be imported by a test without running the whole scan — testing it means either a refactor to export the matching logic or driving it as a subprocess. Neither is done. It is advisory: it reports to a human and writes only proposals, so an undetected bug produces a bad suggestion rather than a bad write. That is why it is acceptable to ship untested, and not a reason to leave the gap undeclared (kb:honest-status)." ;
                kpred:has-status   "functional" ;
                kpred:has-file     "scripts/offline/tenet-align.ts" ;
                kpred:description  "Reads every roadmap feature against the tenets in kb:thesis and reports where they disagree: account pressure, closed-by-default dependencies, a store with no export path, a functional claim with no test or measurement, a status that outranks its own dependency, and tenets nothing is built against. Script tier, zero tokens, registered in the session sweep." ;
@@ -7193,9 +7205,34 @@ kb:derived-prose rdf:type    ktype:Feature ;
                kpred:priority     "medium" ;
                kpred:part-of      kb:rich-pages ;
                kpred:has-file     "scripts/docs-pages.ts" ;
+               kpred:tested-by    "scripts/__tests__/derived-prose.test.ts" ;
                kpred:decided      "MATT, 2026-09-08: do we have generation of unique prose, a defined explanation for a set or entity that does not literally exist as graph content? Sometimes I would want a regenerated description based on a status. Until now every word on a docs page was a literal somebody wrote; there was no computed text of any kind." ;
                kpred:measured     "SHIPPED 2026-09-08, the deterministic half. renderDerived composes a sentence from status, child count, how many children are unbuilt, and how many capabilities an entity builds on. Live on 78 pages. Change a status from planned to production and the sentence changes with it, with nobody editing prose." ;
                kpred:principle    "IT CANNOT BE WRONG UNLESS THE FACTS ARE, and that is the whole reason to start here. Computed prose is a function of the graph, so it needs no review, no alignment check and no tokens — and per kb:work-tiering the deterministic tier is where to start rather than where to compromise. It also says only what it can support: no dependency facts, no sentence about dependencies." ;
                kpred:constraint   "MARKED AS DERIVED, in the markup and visually. A reader is owed the difference between a sentence a person wrote and a statement of what the facts currently are. It also matters mechanically: docs-edits.ts proposes hand edits back onto the entity that owns the sentence, and there is no literal behind derived text to edit — an unmarked computed paragraph would eventually be proposed back into the graph as though someone had written it." ;
                kpred:remaining    "THE OTHER HALF — A MODEL WRITING A DESCRIPTION — IS NOT BUILT, and it is a different problem with a different risk. mcp-server/src/generate-page.ts already drafts a page from the graph with a local model, proposal-only. What is missing is the ALIGNMENT CHECK Matt asked for: does the generated prose assert anything the graph does not say? That is the invention failure the extraction scorer already measures, arriving on the way OUT instead of the way in, and scripts/offline/claim-audit.ts is the nearest existing machinery — it audits hand-written prose against the graph today and would need to be pointed at generated prose." ;
                kpred:open-question "Where should generated prose LIVE? If it is written into the graph it stops being generated and becomes a literal that can go stale, which is the problem it was meant to solve. If it is generated at build time it must be cached and reviewed like the diagrams and scenes are, since a local model is not deterministic. The diagram cache is the precedent and probably the answer." .
+
+# =============================================================================
+## F193: The source document as a first-class node — not just the text pulled out of it
+## Matt's sister, relayed by Matt 2026-09-09. RECORDED AS PLAN, with the gap measured.
+# =============================================================================
+
+kb:source-as-subject rdf:type ktype:Feature ;
+               rdfs:label   "The source document is sometimes the thing being discussed" ;
+               kpred:description  "Today a document is a conveyor: a PDF is OCRed, the text is extracted into triples, and the file itself is dropped. This feature treats the document as a node in its own right — addressable, reopenable, and available as the subject of facts rather than only their origin. It does not replace abstraction to triples; it keeps the original reachable underneath them." ;
+               kpred:feature-id   "F193" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "medium" ;
+               kpred:relates-to   kb:entity-sets ;
+               kpred:relates-to   kb:agent-orchestration ;
+               kpred:relates-to   kb:currents ;
+               kpred:decided      "MATT'S SISTER, RELAYED 2026-09-09: sometimes original documents ARE the intended concept to be discussed in the graph. A set may be extrapolated into a folder of files. The abstraction to triples is critical, but the source itself may matter — especially for automations and agent orchestration. The web URL is that literal reference for Currents; ingesting a PDF needs the same, with a clear reference to its location on disk." ;
+               kpred:principle    "THE OUTSIDE VIEW IS WORTH RECORDING SEPARATELY FROM THE ARGUMENT FOR IT. This came from someone who does not build the thing, describing what she expected whiteboarding and notetaking to do. Two readers have already read Reckons.AI as generic notetaking (kb:journey-docs); this is the opposite signal — a reader who assumed MORE fidelity to the original than the product delivers. Both are evidence about the same seam." ;
+               kpred:measured     "THE GAP IS EXACT AND WORSE THAN IT SOUNDS. src/lib/stores/ingest.svelte.ts line 167 sets uri = `file://${input.filename ?? input.title}` for every document — a BARE FILENAME with no directory, because a browser File object deliberately does not expose its path. So `file://report.pdf` is not a location; it is a label shaped like one, and nothing can reopen it. A URL source keeps a working address (line 148, uri = input.url) and a repository keeps a real one; the document case is the only ingest kind whose uri cannot be dereferenced." ;
+               kpred:measured     "AND THE BYTES ARE NOT KEPT EITHER. src/lib/storage/kb-assets.ts has exactly three slots — icons, previews, models — and none for source documents. A PDF is parsed by src/lib/integrations/parsers/mistral-ocr.ts or local-ocr.ts, the text goes to extraction, and the file is garbage after the tab closes. Statement.excerpt preserves the sentence a fact came from, which is real grounding, but there is no path back to the page it sat on." ;
+               kpred:constraint   "LOCAL-FIRST MAKES THIS HARDER THAN IT LOOKS, and pretending otherwise would produce a broken feature. The browser cannot read an arbitrary disk path, so a stored absolute path is a HINT for a human or a desktop agent, not something the app can open. Three honest options, and they are not equivalent: (1) store the path as a fact and label it as a hint that only the machine it was ingested on can follow; (2) retain the bytes in IndexedDB, which makes the source genuinely reopenable and makes graphs much larger to export; (3) File System Access API handles, which survive reload with permission but are Chromium-only and per-origin. Probably 1 for every case and 2 opt-in per source." ;
+               kpred:principle    "THE ORCHESTRATION CASE IS THE STRONGEST ONE, and it is already live in this repo. static/reckons-jobs.ttl gives every offline job a kpred:command — which is a reference to a script on disk, stated as a fact. A job whose source file cannot be found is not a job any more, so for automations the pointer to the artifact IS part of the definition rather than provenance about it. That is the sister's argument arriving from the other direction." ;
+               kpred:open-question "A SET OVER A FOLDER — what is the member, the file or the entity extracted from it? F187 sets group ENTITIES via skos:member. If a folder of files is a set, either each file becomes an entity (making documents first-class, which is this feature) or the set holds what was extracted from them (which is what sets already do and loses the folder). The first is coherent and is the direction implied; it means a document node with its own type, label and triples, of which one is where it came from." ;
+               kpred:open-question "WHAT DOES A DOCUMENT NODE LOOK LIKE IN THE GRAPH UI? It has no obvious geometry in BUILT_IN_TYPES and it is not a concept. If it renders as an ordinary node then a graph of 200 ingested files drowns the concepts they describe — which is the argument for it being a distinct type with its own visibility control, not for leaving it out." ;
+               kpred:honest-note  "NOTHING OF THIS IS BUILT. Documents are ingested, parsed, and forgotten; the uri they leave behind cannot be followed. Currents does keep a real URL for web sources, which is why the sister's comparison is apt — the web case already does what the file case does not." .
