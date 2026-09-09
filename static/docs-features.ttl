@@ -65,7 +65,6 @@ feat:Graph3D
 feat:Shelly
     rdf:type            ktype:Person ;
     rdfs:label          "Shelly (AI Assistant)" ;
-    hnav:order          50 ;
     skos:definition     "The turtle-shaped AI assistant. Three tabs: tutorial, chat (grounded in your graph), and explore (guided story tours). Each graph can embed its own Shelly persona via the shelly: vocabulary. Supports Whisper STT voice input and Kokoro TTS voice output." ;
     skos:broader        guide:WhatIsReckonsAI ;
     skos:related        feat:WhisperSTT ;
@@ -380,3 +379,38 @@ shelly:persona
     shelly:personality      "knowledgeable, enthusiastic, practical" ;
     shelly:responseStyle    "concise" ;
     shelly:systemPrompt     "You are helping someone learn about Reckons.AI features. Explain how each feature works and give practical usage tips. Reference the feature entities in this graph." .
+
+## =============================================================================
+## The high-level view. Matt, 2026-09-08: "What it does page needs a much higher
+## level view, not just individual feature component parts." Before this, a
+## reader arriving at Features met 39 components and no account of the whole.
+## =============================================================================
+
+feat:FiveMoves
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "What Reckons.AI does, in five moves" ;
+    hnav:order          50 ;
+    skos:broader        feat:WhatIsReckonsAI ;
+    skos:definition     "Reckons.AI does one thing in five moves: it takes what you put in, works out the claims inside it, asks you which are true, keeps the ones you accept with their sources attached, and then lets you ask the result questions. Everything below is a part of one of those five moves. If you only read one thing about the product, read this page rather than the component list underneath it — the components make sense as answers to the five moves and make very little sense on their own." ;
+    kpred:render-as     "gallery" ;
+    kpred:audience      "Anyone deciding whether this is the right tool, before reading about any individual capability." ;
+    kpred:diagram       """flowchart LR
+  IN["1 · Take it in<br/>notes, pages, feeds,<br/>things you said"]
+  EX["2 · Work out the claims<br/>a model proposes<br/>facts, never writes them"]
+  RV{"3 · You settle it<br/>confirm, refine,<br/>reject"}
+  KP[("4 · Keep it<br/>with its sources<br/>and its history")]
+  US["5 · Ask it things<br/>reckon, compare,<br/>publish"]
+  IN --> EX --> RV
+  RV -->|"accepted"| KP
+  RV -->|"rejected"| X["Dropped, and<br/>remembered as rejected"]
+  KP --> US
+  US -.->|"a new question<br/>needs new sources"| IN""" ;
+    kpred:diagram-caption "The five moves. Step 3 is the one that makes the rest worth anything, and it is the one no amount of automation removes." ;
+    kpred:principle     "Nothing enters your graph because a model suggested it. Extraction PROPOSES; you dispose. That single rule is what separates this from a tool that reads your files and answers confidently — it is why the graph can be trusted a year later, and why it can tell you what it does not know instead of inventing an answer." ;
+    kpred:example       "1 · TAKE IT IN. Paste text, point at a URL or a repository, drop in a PDF, subscribe a current to a feed so it keeps arriving, or just talk — speech to text runs locally. Long sources are chunked so nothing is silently truncated." ;
+    kpred:example       "2 · WORK OUT THE CLAIMS. A language model reads the source and proposes triples, each carrying the verbatim sentence it came from. You choose the model, including a local one, and the setting that keeps everything local is a switch rather than a rewrite." ;
+    kpred:example       "3 · YOU SETTLE IT. The review queue shows what CHANGED rather than everything found: new claims, claims that contradict something you already accepted, and near-duplicates that are probably the same thing under two names. Contradictions are the valuable part — that is the moment a pile of documents would have stayed quiet." ;
+    kpred:example       "4 · KEEP IT. Accepted facts carry their source, the excerpt they came from, and when you accepted them. You can scrub the graph backwards through time, export the whole thing as a plain-text .ttl file, and keep several independent graphs that do not see each other." ;
+    kpred:example       "5 · ASK IT THINGS. Describe a situation and a goal and get a proposal grounded in your own facts. Compare two graphs and see exactly where they disagree. Compress a large graph into the part that answers one question. Publish a graph as a website — these pages are that feature, running on the graph that describes this product." ;
+    kpred:constraint    "The parts below are the detail, not the argument. A component list answers what exists; it does not answer what the thing is FOR, and a reader who meets thirty-nine capabilities before meeting the loop will reasonably conclude this is a notes application with unusual settings." .

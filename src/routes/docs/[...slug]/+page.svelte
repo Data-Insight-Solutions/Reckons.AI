@@ -93,6 +93,70 @@
      mermaid runtime here and the docs route keeps csr = false. The renderer strips
      mermaid's baked width/height, which is what lets the figure size itself to the
      column rather than to whatever viewport happened to render it. */
+  /*
+   * CARD GALLERY and ACCORDION (F190/F191) — both declared in the graph by kpred:render-as, and
+   * both deliberately ZERO JavaScript so they can exist on a route with csr = false. The
+   * accordion is <details>/<summary>, which is keyboard-accessible for free and which the
+   * browser's own find-in-page can reach once opened.
+   */
+  .doc-prose :global(.card-grid) {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: 0.75rem;
+    margin: 1.25rem 0 2rem;
+  }
+  .doc-prose :global(.card) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: var(--surface);
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.12s ease;
+  }
+  .doc-prose :global(.card:hover),
+  .doc-prose :global(.card:focus-visible) { border-color: var(--accent); }
+  .doc-prose :global(.card-title) {
+    font-family: var(--font-mono);
+    font-size: 0.92rem;
+    color: var(--accent);
+  }
+  .doc-prose :global(.card-text) {
+    font-size: 0.84rem;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+  .doc-prose :global(.card-status) {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+  .doc-prose :global(details.accordion) {
+    border-top: 1px solid var(--line);
+    padding: 0.15rem 0;
+  }
+  .doc-prose :global(details.accordion summary) {
+    cursor: pointer;
+    padding: 0.65rem 0;
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+  }
+  .doc-prose :global(details.accordion summary:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .doc-prose :global(details.accordion[open] summary) { color: var(--accent); }
+  .doc-prose :global(details.accordion > :not(summary)) {
+    margin: 0 0 0.85rem;
+    padding-left: 1rem;
+    border-left: 2px solid var(--line);
+  }
+
   .doc-prose :global(figure.diagram) {
     margin: 1.75rem 0;
     padding: 1.25rem 1rem;

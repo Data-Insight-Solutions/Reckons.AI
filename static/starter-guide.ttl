@@ -81,6 +81,7 @@ creator:MatthewRoe
 
 guide:WhatIsReckonsAI
     rdf:type            ktype:Concept ;
+    kpred:render-as     "gallery" ;
     rdf:type            skos:Concept ;
     rdfs:label          "What Is Reckons.AI" ;
     hnav:order          10 ;

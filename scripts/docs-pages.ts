@@ -78,6 +78,9 @@ const SCENE_ALT         = 'urn:kbase:predicate/scene-alt';
 const SCENE_LIVE        = 'urn:kbase:predicate/scene-live';
 /* A KB Leap: in the app it switches graphs, on the site it must become a web link. The value is
  * the TARGET graph's stable id, which every docs graph declares, so the mapping is derivable. */
+/* How an entity's children should be PRESENTED. The transformation is a fact in the graph, so it
+ * is reproducible and reviewable rather than a decision buried in the generator. */
+const RENDER_AS         = 'urn:kbase:predicate/render-as';
 const LEAP              = 'urn:reckons:leap';
 const KB_STABLE_ID      = 'urn:reckons:meta/kbStableId';
 const STEP_ORDER        = 'urn:kbase:predicate/step-order';
@@ -266,6 +269,8 @@ interface Entity {
   sceneLive: string | null;
   /** Stable id of the graph this entity leaps to, if it is a leap node. */
   leapTo: string | null;
+  /** "accordion" | "gallery" | null (a plain list). Declared by kpred:render-as. */
+  renderAs: string | null;
 }
 
 function extractEntity(iri: string, section: string, quads: Quad[]): Entity {
@@ -284,6 +289,7 @@ function extractEntity(iri: string, section: string, quads: Quad[]): Entity {
   let sceneAlt: string | null = null;
   let sceneLive: string | null = null;
   let leapTo: string | null = null;
+  let renderAs: string | null = null;
 
   for (const q of own) {
     const p = q.predicate.value;
@@ -298,6 +304,7 @@ function extractEntity(iri: string, section: string, quads: Quad[]): Entity {
     if (p === SCENE_ALT && q.object.termType === 'Literal') { sceneAlt = q.object.value; continue; }
     if (p === SCENE_LIVE && q.object.termType === 'Literal') { sceneLive = q.object.value; continue; }
     if (p === LEAP && q.object.termType === 'Literal') { leapTo = q.object.value; continue; }
+    if (p === RENDER_AS && q.object.termType === 'Literal') { renderAs = q.object.value.trim(); continue; }
     if (p === SKOS_BROADER && q.object.termType === 'NamedNode') { parent = parent ?? q.object.value; continue; }
     if (p === NAV_ORDER && q.object.termType === 'Literal') { navOrder = parseInt(q.object.value, 10); continue; }
     if (p === DIAGRAM && q.object.termType === 'Literal') { diagram = diagram ?? q.object.value; continue; }
@@ -322,7 +329,7 @@ function extractEntity(iri: string, section: string, quads: Quad[]): Entity {
 
   return {
     iri, section, title: title || localName(iri), types, definition, parent, navOrder,
-    scene, sceneCaption, sceneAlt, sceneLive, leapTo,
+    scene, sceneCaption, sceneAlt, sceneLive, leapTo, renderAs,
     literalProps, iriProps, diagram, diagramCaption,
   };
 }
@@ -655,9 +662,61 @@ function earnsPage(e: Entity, hasChildren: boolean, hasParentPage: boolean, host
  * A child's status travels with it, so a hub cannot quietly present a step that is not built as
  * though it were finished (kb:honest-status) — the gap is visible before the reader clicks.
  */
-function renderChildren(children: ChildRef[], heading: string): string[] {
+/**
+ * How a set of children is PRESENTED, declared in the graph by kpred:render-as.
+ *
+ * Matt, 2026-09-08: "more dynamic elements for lists of things, like a filterable gallery of
+ * cards. Or, maybe accordion for shorter lists. These transformations should be noted in triples,
+ * and reproducible." So the choice is a fact on the parent, not a decision in this file — the same
+ * declaration always produces the same page, and changing the presentation is a graph edit that
+ * goes through review like any other.
+ *
+ * BOTH SHIP ZERO JAVASCRIPT, which is why they can exist at all on a route with csr = false.
+ * An accordion is <details>/<summary>, which every browser has had for years and which is
+ * keyboard-accessible and findable by the browser's own find-in-page when open. A gallery is CSS
+ * grid. Neither needs the search island's treatment.
+ *
+ * FILTERING IS NOT HERE YET, and it is the one part that would. A filter over a fixed, small set
+ * of facets can be done with radio inputs and :has() and still ship no script; an open text filter
+ * cannot. Deferred deliberately rather than quietly turned into a reason to enable csr.
+ */
+function renderChildren(children: ChildRef[], heading: string, renderAs: string | null = null): string[] {
   if (!children.length) return [];
   const lines = [`## ${escapeMdText(heading)}`, ''];
+
+  if (renderAs === 'gallery') {
+    lines.push('<div class="card-grid">', '');
+    for (const c of children) {
+      const href = `../${slugify(c.section)}/${c.slug}`;
+      const flag = c.status && c.status !== 'functional' && c.status !== 'production'
+        ? `<span class="card-status">${escapeMdText(c.status)}</span>` : '';
+      lines.push(
+        `<a class="card" href="${href}"><span class="card-title">${escapeMdText(c.title)}</span>${flag}`
+        + `<span class="card-text">${escapeMdText(c.excerpt ?? '')}</span></a>`,
+      );
+    }
+    lines.push('', '</div>', '');
+    return lines;
+  }
+
+  if (renderAs === 'accordion') {
+    for (const c of children) {
+      const flag = c.status && c.status !== 'functional' && c.status !== 'production'
+        ? ` — **${escapeMdText(c.status)}**` : '';
+      const body = c.folded?.definition ?? c.excerpt ?? '';
+      const more = c.folded ? '' : `\n\n[Read more](../${slugify(c.section)}/${c.slug})`;
+      lines.push(
+        `<details class="accordion"><summary>${escapeMdText(c.title)}${flag}</summary>`,
+        '',
+        `${escapeMdText(body)}${more}`,
+        '',
+        '</details>',
+        '',
+      );
+    }
+    return lines;
+  }
+
   for (const c of children) {
     const flag = c.status && c.status !== 'functional' && c.status !== 'production'
       ? ` — **${escapeMdText(c.status)}**`
@@ -706,7 +765,7 @@ function renderBody(
   // for this page, not for its table of contents.
   lines.push(...renderProse(e, 2));
 
-  lines.push(...renderChildren(children, childHeading));
+  lines.push(...renderChildren(children, childHeading, e.renderAs));
 
   const iriKeys = [...e.iriProps.keys()]
     .filter((k) => !RENDER_ONLY_STRUCTURAL.has(k))

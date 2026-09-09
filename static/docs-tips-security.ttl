@@ -12,6 +12,7 @@
 @prefix guide:  <urn:reckons:guide/> .
 @prefix feat:   <urn:reckons:feature/> .
 @prefix ktype:  <urn:kbase:type/> .
+@prefix kpred:  <urn:kbase:predicate/> .
 @prefix hnav:   <urn:reckons:nav/> .
 
 ## KB Identity
@@ -101,6 +102,7 @@ tip:ShareTTL
 
 guide:Security
     rdf:type            ktype:Concept ;
+    kpred:render-as     "accordion" ;
     rdf:type            skos:Concept ;
     rdfs:label          "Security and Privacy" ;
     hnav:order          80 ;
