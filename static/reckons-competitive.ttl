@@ -792,3 +792,23 @@ kb:ref-nanopub rdf:type        ktype:Reference ;
                kpred:decided      "MATT, 2026-09-09: borrow the principles and reasoning rather than the tooling, and align the app so that integration stays possible — 'potentially Reckons.AI will be a UI interface layer for them.' There is a real gap to fill there: the reference client is AGPL, the JavaScript libraries are MIT, and their dependency is n3, which this app already ships." ;
                kpred:relates-to   kb:relation-layers ;
                kpred:relates-to   kb:nanopub-alignment .
+
+## =============================================================================
+## n8n — not a competitor either. A DEPENDENCY this graph was not watching,
+## which is how a licence claim goes stale unnoticed (see kb:ref-flowise).
+## =============================================================================
+
+kb:ref-n8n rdf:type            ktype:Reference ;
+               rdfs:label   "n8n — the optional per-user automation layer" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   35 ;
+               kpred:repo-url     "https://github.com/n8n-io/n8n" ;
+               kpred:license      "NOASSERTION" ;
+               kpred:copy-permitted "NO. The GitHub API returns NOASSERTION because n8n ships the SUSTAINABLE USE LICENSE, which is fair-code and NOT OSI open source: source-available, free to self-host for internal use, with restrictions on hosting it as a service to others. It is not MIT-compatible, so no n8n code, node source or documentation prose may be copied into this MIT repository. USING a self-hosted instance over its API is unaffected and is exactly what the integration does — that is the licence working as intended, not a loophole." ;
+               kpred:description  "Read 2026-09-09. 203,874 stars. A self-hosted workflow automation tool. Reckons.AI uses it as an OPTIONAL, PER-USER layer rather than a backend — CLAUDE.md is explicit that this product is local-first with no general backend, and that n8n owns web side-effects rather than core state." ;
+               kpred:evidence     "IT IS ALREADY LOAD-BEARING FOR CAPTURE, and the graph should say so. Nine n8n entities exist across the roadmap and shipped graphs, three integration modules live in src/lib/integrations/n8n/, and a live instance runs the capture path: a ring dictates a note, an MCP tool posts it to a webhook, n8n buffers it in its own data table, and the local poller drains it into knowledge.pending.jsonl. Verified working on 2026-09-09 — executions 4484 and 4510 both succeeded." ;
+               kpred:principle    "THE CAPTURE PATH IS ALSO THE ANSWER TO `TRACK REAL LIFE`. F195 wants the review queue to reflect events rather than pushing a person into a screen, and n8n is the layer that KNOWS an event happened — a calendar entry, a document arriving, something said out loud into a ring. The note that produced F197 reached this graph that way, which is the feature demonstrating itself." ;
+               kpred:constraint   "CAPTURED NOTES ARRIVE PENDING, NEVER CONFIRMED, and this matters more here than anywhere else in the product. The writer is a speech-to-text transcript arriving from the public internet, which is exactly where a misheard name becomes a confident triple. The workflow's own documentation states this; it is recorded here so the constraint survives the workflow being edited." ;
+               kpred:known-issue  "THE MCP CLIENT CONFIG IS BROKEN IN THIS REPOSITORY, though the service is not. .mcp.json declares n8n-tools with url ${N8N_MCP_URL}; the value exists in .env but is not substituted, so the client reports INVALID_CONFIG and cannot connect. The n8n instance and its workflows are unaffected — conflating the two led to a wrong report on 2026-09-09." ;
+               kpred:relates-to   kb:question-supersession ;
+               kpred:relates-to   kb:claim-substantiation .
