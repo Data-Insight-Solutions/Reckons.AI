@@ -1,8 +1,75 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-09-08 (long session).** On `feat/docs-sets-and-composition-gate`
-(**PR #228**, base `dev`), 57 commits, stacked on `fix/diagram-entity-labels` / **PR #227**.
-Nothing pushed to `main`. **PR #226 is SUPERSEDED by #227.**
+**Last updated: 2026-09-09.** On `feat/sets-compose-pages` (**PR #234**, base `dev`, 73 commits —
+the whole unmerged docs chain). Nothing pushed to `main`. Supersedes PR #228.
+
+## ▶ WAITING ON MATT
+
+1. **MERGE #234 TO `dev`, THEN PROMOTE TO `main`.** Matt wants the docs on prod this week for his
+   sister to read. `dev → staging → main`; production deploys from `main` on push, so the
+   promotion is the deploy. **Verify the base with `gh pr view <n> --json baseRefName` before
+   merging anything** — branch protection is still not enforced.
+2. **THE FIVE-MOVES FACET** for a filtered gallery. One predicate on each of ~39 features —
+   editorial work, then radio inputs + `:has()`, still zero JavaScript.
+3. **THE REMAINING 7 COMPOSED PAGES.** `learn/start-here`, `learn/how-it-works`, `build/*`,
+   `project/*` are still alphabetical dumps from `docs-compose.ts`. `learn/what-it-does` shows the
+   pattern that replaces them: an authored entity plus sets, placed with `kpred:page-section` /
+   `kpred:page-slug`. No longer blocked — F187.5 landed.
+4. **`/dev/nvme1n1` HAS FAILED.** SMART FAILED, 174,071 media errors, 0% spare. Not mounted, holds
+   nothing this repo uses (OS and checkout are on `nvme0n1`, healthy). Reported because it is real.
+
+### THE FOLD THRESHOLD IS SETTLED, differently than expected
+`PAGE_THRESHOLD_WORDS = 45` stays. Matt: cohesion beats URL reduction, and one entity can fold into
+several pages. What changed instead is **sibling cohesion** — a childless sibling barely over the
+line rejoins the majority of its siblings that folded, so a sequence cannot split across URLs
+because one step gained two words. Bounded to genuinely marginal cases (10 pages, 46-56 words):
+the unbounded version took 24, including a 520-word page that had earned its URL.
+
+### `npm run docs:compose` IS STILL HELD
+Two generators still exist. `docs-pages.ts` publishes per ENTITY (131 pages); `docs-compose.ts`
+publishes what `website.ttl` designs (8, all alphabetical dumps). A collision guard refuses to
+overwrite `docs-kb` pages. The route out is the one `learn/what-it-does` just took, page by page.
+
+## ▶ SESSION 2026-09-09 — sets compose pages; two silent failures
+
+**F187.5 SHIPPED.** A set contributes a titled SECTION to a page; it does not define the page —
+Matt's correction. Order comes from a story set's `member-order`. `/docs/learn/what-it-does` went
+from 271 lines of alphabetical dump to the five moves as a sequence.
+
+**THE TERM THE PRODUCT IS NAMED AFTER WAS UNDEFINED.** A local model read all 151 pages asking one
+question each; the top answer, on 8 pages, was "Reckoning". It was thin enough to be folded, so it
+had nowhere to be explained. Now 520 words at `/docs/learn/reckoning`.
+
+**TWO SILENT FAILURES, same shape.** `docs-review` reported "queued 92 proposal(s)" and wrote
+nothing — it returned `next` where the transaction type expects `content`, and `content` is
+optional so a typo is indistinguishable from "change nothing"; the boundary now throws on unknown
+keys. And `src/lib/rdf/sets.ts` held two literal NUL bytes as a map-key separator: correct at
+runtime, and `grep` returned nothing for the entire file.
+
+**THREE GATES THAT WERE FAILING NOW PASS.** `landing-data-align` was reading a renamed field
+(`item.body` vs `lead`) and reporting all ten tenets as differing; `landing-thesis.json` is now
+GENERATED from the graph, which carries `tenet-lead` beside `tenet-body`. `status-evidence` had two
+undeclared gaps — `kb:derived-prose` got a real test (which found a bug: a hub with one unbuilt part
+dropped the "not built yet" clause), `kb:tenet-alignment` is declared untested with the reason.
+`competitor-scan` caught Flowise relicensed to NOASSERTION — all rights reserved, ideas only.
+
+**NEW SCRIPT-TIER GATES (33/33 clean):** `set-integrity` (every `skos:member` must exist — it
+caught three set members authored from labels rather than IRIs, which made a page promise content
+that did not exist), `jobs-graph --check`, `landing-data --check`.
+
+**JOBS ARE TRIPLES.** 44 offline jobs are entities grouped by tier into `skos:Collection`, so the
+existing graph UI shows them with no new interface. `jobs.json` stays the source for now.
+
+**F193 RECORDED** — the source document as a first-class node, from Matt's sister. `ingest.svelte.ts`
+sets `uri = file://${filename}`: a bare filename, no directory, so it can never be reopened. The
+bytes are not kept either.
+
+### Verification
+`align` 9/9 · `offline:all --tier=script` 33/33 · `npm run check` 4209 files 0 errors ·
+`vitest scripts/ src/lib/rdf/` 1609 passed · full suite 2963/2965 (2 pre-existing timeouts under
+parallel load, both pass in isolation) · zero dead internal links across 142 pages.
+
+---
 
 ## ▶ SESSION 2026-09-08 — the docs, end to end
 
