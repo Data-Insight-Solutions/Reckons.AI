@@ -37,11 +37,11 @@ Pending facts waiting in review the next time you open the graph.
 
 **Principle**
 
-A DICTATED INSTRUCTION IS NOT A DICTATED FACT. Saying 'find me three suppliers' is a REQUEST, and an extractor with no notion of that will happily record it as a claim that three suppliers exist. Requests are routed into tasks before the model sees them, and a dictated task lands with no permissions and no acceptance test — so speech is never a route to unsupervised action.
+A Dictated instruction is not A DICTATED FACT. Saying 'find me three suppliers' is a REQUEST, and an extractor with no notion of that will happily record it as a claim that three suppliers exist. Requests are routed into tasks before the model sees them, and a dictated task lands with no permissions and no acceptance test — so speech is never a route to unsupervised action.
 
 **Honest Note**
 
-THE HONEST LIMIT: A FOLDER CANNOT WAKE A CLOSED TAB. The app is a static site in a browser, so the poll runs only while it is open. Notes accumulate in the shared folder and arrive when you next open the app — they are not lost, but they are not live either. True background capture needs a process rather than a page, and that is not built. The n8n workflows that make the phone half work are also not merged yet.
+The honest limit: A Folder cannot wake A CLOSED TAB. The app is a static site in a browser, so the poll runs only while it is open. Notes accumulate in the shared folder and arrive when you next open the app — they are not lost, but they are not live either. True background capture needs a process rather than a page, and that is not built. The n8n workflows that make the phone half work are also not merged yet.
 
 ## Related
 

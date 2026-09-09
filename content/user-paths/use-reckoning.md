@@ -37,7 +37,7 @@ A proposal you can trace back to the specific facts it rests on.
 
 **Honest Note**
 
-IT IS ONLY AS GOOD AS WHAT YOU CONFIRMED. Reckoning reasons over the graph, so a graph full of unreviewed pending facts produces a confident proposal resting on claims nobody checked. Run it after a review pass, not instead of one. It states which facts it used, so a proposal you distrust can be traced rather than argued with.
+It is only as good as what you confirmed. Reckoning reasons over the graph, so a graph full of unreviewed pending facts produces a confident proposal resting on claims nobody checked. Run it after a review pass, not instead of one. It states which facts it used, so a proposal you distrust can be traced rather than argued with.
 
 ## Steps
 

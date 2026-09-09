@@ -37,7 +37,7 @@ A list of genuine disagreements, separated from mere differences of wording.
 
 **Honest Note**
 
-THE HARD PART IS TELLING A REAL DISAGREEMENT FROM A NAMING ONE, and that is not fully solved. Two graphs can say the same thing in different words and look like a conflict, or use one word for two things and look like agreement. Predicate matching by embedding was benchmarked across five models and does not separate synonyms reliably (16.7% caught, negative separation), so wording differences are surfaced for a human rather than resolved automatically.
+The hard part is telling A Real disagreement from A NAMING ONE, and that is not fully solved. Two graphs can say the same thing in different words and look like a conflict, or use one word for two things and look like agreement. Predicate matching by embedding was benchmarked across five models and does not separate synonyms reliably (16.7% caught, negative separation), so wording differences are surfaced for a human rather than resolved automatically.
 
 ## Steps
 

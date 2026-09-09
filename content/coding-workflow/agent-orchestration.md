@@ -7,7 +7,7 @@ parent: "coding-workflow"
 template: doc
 status: published
 nav: sidebar
-excerpt: "THIS DOES NOT EXIST YET."
+excerpt: "This does not exist yet."
 generated: "docs-kb"
 ---
 
@@ -15,7 +15,7 @@ generated: "docs-kb"
 
 > **Planned** — on the roadmap, **not yet built**. Described here as intended, not as shipped.
 
-THIS DOES NOT EXIST YET. The design: a task is a triple — goal, tier, harness preference, due-at, blocked-by, outcome — and any harness can drain the queue: Claude Code, Codex, a local Ollama script, or a human in the review queue. The graph becomes the orchestration config, so the queue outlives whichever agent CLI is fashionable this quarter, and a harness that hits a usage limit hands its task back rather than stalling it forever.
+This does not exist yet. The design: a task is a triple — goal, tier, harness preference, due-at, blocked-by, outcome — and any harness can drain the queue: Claude Code, Codex, a local Ollama script, or a human in the review queue. The graph becomes the orchestration config, so the queue outlives whichever agent CLI is fashionable this quarter, and a harness that hits a usage limit hands its task back rather than stalling it forever.
 
 ## Why it is this way
 

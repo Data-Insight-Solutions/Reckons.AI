@@ -37,7 +37,7 @@ A graph where the claims are separable, sourced, and disagreements are visible i
 
 **Honest Note**
 
-THE LONGEST PATH AND THE ONE WITH THE MOST FRICTION LEFT. Extraction and review both work; what does not yet work is the queue getting SHORTER as the graph grows. Measured 2026-09-04: a freshly extracted graph still presents as a flat list of ~32 claims with 0 grouped decisions, because typing proposes no types and hierarchy places no parents. You will get a good graph out of this path; you will spend longer in review than you should.
+The longest path and the ONE with the most friction left. Extraction and review both work; what does not yet work is the queue getting SHORTER as the graph grows. Measured 2026-09-04: a freshly extracted graph still presents as a flat list of ~32 claims with 0 grouped decisions, because typing proposes no types and hierarchy places no parents. You will get a good graph out of this path; you will spend longer in review than you should.
 
 ## Steps
 

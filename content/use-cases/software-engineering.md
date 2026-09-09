@@ -26,11 +26,11 @@ Anyone maintaining a codebase with more history than any one person remembers �
 
 **Principle**
 
-THE PLAN LIVES IN THE GRAPH, NOT IN THE CODE. A feature exists as an entity with a status before it exists as a file, and the status ladder is honest — speculative, planned, scaffolded, functional, production. A feature is not functional because we wish it were. That single rule is what makes the graph usable as a plan rather than as marketing: you can ask what is actually built and get an answer that has been kept true.
+The plan lives in the graph, not in the code. A feature exists as an entity with a status before it exists as a file, and the status ladder is honest — speculative, planned, scaffolded, functional, production. A feature is not functional because we wish it were. That single rule is what makes the graph usable as a plan rather than as marketing: you can ask what is actually built and get an answer that has been kept true.
 
 **Honest Note**
 
-AND THE GAPS ARE IN HERE TOO, which is the point of writing them down. On 2026-09-08 a check found that 62% of the generated documentation pages were under 120 words — a title and a paragraph — because thin concepts with no parent cannot be folded into anything. That finding is a fact in this graph, it is why this page is written as a parent with folded children, and you are reading the fix.
+The gaps are in here too, which is the point of writing them down. On 2026-09-08 a check found that 62% of the generated documentation pages were under 120 words — a title and a paragraph — because thin concepts with no parent cannot be folded into anything. That finding is a fact in this graph, it is why this page is written as a parent with folded children, and you are reading the fix.
 
 ## What we found
 

@@ -37,7 +37,7 @@ New facts connected to the right existing entities — or standing as new ones, 
 
 **Honest Note**
 
-CONNECTION IS PARTLY AUTOMATIC AND PARTLY NOT YET SURFACED. Since 2026-09-04 extraction runs UNGROUNDED and reconciles afterwards: names that are the same word with different grammar (is-used-by / used-by) are connected automatically, and probable mis-hearings (lumen path / Lumenpath) are held back as proposals for you. The proposals are computed but have NO REVIEW SURFACE yet, so today you will meet both spellings as two separate rows and merge them by hand.
+Connection is partly automatic and partly not yet surfaced. Since 2026-09-04 extraction runs UNGROUNDED and reconciles afterwards: names that are the same word with different grammar (is-used-by / used-by) are connected automatically, and probable mis-hearings (lumen path / Lumenpath) are held back as proposals for you. The proposals are computed but have No review surface yet, so today you will meet both spellings as two separate rows and merge them by hand.
 
 ## Steps
 

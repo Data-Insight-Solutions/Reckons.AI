@@ -37,12 +37,12 @@ A decision you can trace back to the individual claims it rests on.
 
 **Principle**
 
-- NOTHING IS AUTO-ACCEPTED. Every extracted fact arrives PENDING and stays there until a person confirms it. That single rule is the difference between a graph you can rely on and a transcript of what a language model guessed.
-- REVIEW HAPPENS TWICE, AND THAT IS NOT AN ACCIDENT. Settling the first batch before adding the second is what lets the second batch be matched against something. A graph reviewed only at the end is a pile of claims that never got the chance to connect.
+- Nothing is auto-accepted. Every extracted fact arrives PENDING and stays there until a person confirms it. That single rule is the difference between a graph you can rely on and a transcript of what a language model guessed.
+- Review happens twice, and that is not an accident. Settling the first batch before adding the second is what lets the second batch be matched against something. A graph reviewed only at the end is a pile of claims that never got the chance to connect.
 
 **Honest Note**
 
-THIS PATH IS TESTED END TO END ON EVERY CI RUN, against the real app with a mock extraction backend. What the test does NOT cover is extraction QUALITY — it asserts that facts arrive, are settled by a person, and reach the reckoning, not that the facts were the right ones. Quality is measured separately and honestly: see the extraction score, which currently tops out at 74% recall on a hand-checked corpus.
+This path is tested end to end on every CI run, against the real app with a mock extraction backend. What the test does NOT cover is extraction QUALITY — it asserts that facts arrive, are settled by a person, and reach the reckoning, not that the facts were the right ones. Quality is measured separately and honestly: see the extraction score, which currently tops out at 74% recall on a hand-checked corpus.
 
 ## Detail
 

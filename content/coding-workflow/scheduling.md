@@ -7,7 +7,7 @@ parent: "coding-workflow"
 template: doc
 status: published
 nav: sidebar
-excerpt: "THIS DOES NOT EXIST YET."
+excerpt: "This does not exist yet."
 generated: "docs-kb"
 ---
 
@@ -15,7 +15,7 @@ generated: "docs-kb"
 
 > **Planned** — on the roadmap, **not yet built**. Described here as intended, not as shipped.
 
-THIS DOES NOT EXIST YET. Tasks, schedules and outcomes as graph facts, drained by whichever runner is available — the in-app worker on any device, an optional desktop process, or the MCP server when an agent is already connected.
+This does not exist yet. Tasks, schedules and outcomes as graph facts, drained by whichever runner is available — the in-app worker on any device, an optional desktop process, or the MCP server when an agent is already connected.
 
 ## Why it is this way
 

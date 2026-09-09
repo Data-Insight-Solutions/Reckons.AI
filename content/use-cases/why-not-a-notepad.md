@@ -21,22 +21,22 @@ Take one sentence from a real working note: Vantage Suite was dropped at this st
 
 **Principle**
 
-- AND THE STEP IN THE MIDDLE IS WHERE YOU STAY IN CHARGE. Extraction proposes; nothing enters your graph until you accept it. That is the same review queue the machine's own findings go through, which is why a wrong reading is a thing you correct in one place rather than a wrong sentence you have to remember not to trust.
-- THIS IS NOT AN ARGUMENT AGAINST NOTE-TAKING, and reading it that way loses what it says. Capture should be as close to frictionless as it can be — talking at your phone should be enough. The claim is about what happens AFTER capture: a pile of prose is a pile you must re-read, and re-reading does not scale. Structure is the price of being able to ask the pile a question later.
+- The step in the middle is where you stay in charge. Extraction proposes; nothing enters your graph until you accept it. That is the same review queue the machine's own findings go through, which is why a wrong reading is a thing you correct in one place rather than a wrong sentence you have to remember not to trust.
+- This is not an argument against note-taking, and reading it that way loses what it says. Capture should be as close to frictionless as it can be — talking at your phone should be enough. The claim is about what happens AFTER capture: a pile of prose is a pile you must re-read, and re-reading does not scale. Structure is the price of being able to ask the pile a question later.
 
 **Honest Note**
 
-THE PRODUCT HAS NOT BEEN SHOWING THIS. A careful first-time reader read Reckons.AI as generic storyboarding and note-taking, twice, on 2026-09-06 and again on 2026-09-08 after further exposure. That is a finding about this product rather than about the reader: if the condensation is not visible on the way in, what is left genuinely does look like a notes app that asks you to do extra work in the middle. This page exists because the argument was being asserted and never shown.
+The product has not been showing this. A careful first-time reader read Reckons.AI as generic storyboarding and note-taking, twice, on 2026-09-06 and again on 2026-09-08 after further exposure. That is a finding about this product rather than about the reader: if the condensation is not visible on the way in, what is left genuinely does look like a notes app that asks you to do extra work in the middle. This page exists because the argument was being asserted and never shown.
 
 ## What we found
 
 **Measured**
 
-THE DIVERGENCE IS MEASURED, NOT ASSERTED. On 2026-09-08 six local models each read the same short document five times. Twelve relations came back under FIFTY-ONE different names. The single relation dropped-because was written eleven ways in thirty readings: was-eliminated, was-dropped-on, dropped-from-shortlist, excluded-from-shortlist-due-to, was-dropped-due-to, was-dropped-from-shortlist-due-to, was-eliminated-from-shortlist, was-excluded-from-shortlist-because-of, was-dropped-from-shortlist-reason, was-dropped-from-shortlist-reason-for, and dropped-from-shortlist-due-to. is-a drew eleven names, lacks eight, concern and role five each.
+The divergence is measured, NOT ASSERTED. On 2026-09-08 six local models each read the same short document five times. Twelve relations came back under FIFTY-ONE different names. The single relation dropped-because was written eleven ways in thirty readings: was-eliminated, was-dropped-on, dropped-from-shortlist, excluded-from-shortlist-due-to, was-dropped-due-to, was-dropped-from-shortlist-due-to, was-eliminated-from-shortlist, was-excluded-from-shortlist-because-of, was-dropped-from-shortlist-reason, was-dropped-from-shortlist-reason-for, and dropped-from-shortlist-due-to. is-a drew eleven names, lacks eight, concern and role five each.
 
 **Example**
 
-WHAT THAT COSTS YOU, CONCRETELY. Those eleven phrasings are what a year of your own notes looks like, because you do not phrase things the same way twice either. In a notepad they are eleven unrelated strings: searching dropped finds four of them, and nothing tells you the other seven exist. In a graph they are one relation carrying ten alternative labels, so the question is answered once and completely. That is the whole of the efficiency claim, and it is why the extra step in the middle is not busywork.
+What that costs you, CONCRETELY. Those eleven phrasings are what a year of your own notes looks like, because you do not phrase things the same way twice either. In a notepad they are eleven unrelated strings: searching dropped finds four of them, and nothing tells you the other seven exist. In a graph they are one relation carrying ten alternative labels, so the question is answered once and completely. That is the whole of the efficiency claim, and it is why the extra step in the middle is not busywork.
 
 **Example**
 

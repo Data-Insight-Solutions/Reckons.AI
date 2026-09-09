@@ -37,12 +37,12 @@ The note kept verbatim, plus the claims inside it settled as facts you can query
 
 **Principle**
 
-- THE PROSE IS NEVER THE LOSER. Whatever the extractor makes of a note, the note itself is kept verbatim — fillers, comma splices and all. A system that replaced your sentence with its own reading of it would be asking you to trust a summary of your own thought.
-- TRIPLES STAY THE CORE, AND FREEFORM IS THE WAY IN, NOT AN ALTERNATIVE TO THEM. Storing prose and calling it done is the easy version and it forfeits everything downstream: you cannot diff a paragraph, cite half of it, notice it contradicts another one, or record that it left a question open. Freeform capture is worth supporting because typing triples by hand is a terrible way to think — not because the triple was the problem.
+- The prose is never the loser. Whatever the extractor makes of a note, the note itself is kept verbatim — fillers, comma splices and all. A system that replaced your sentence with its own reading of it would be asking you to trust a summary of your own thought.
+- Triples stay the core, and freeform is the way in, not an alternative to them. Storing prose and calling it done is the easy version and it forfeits everything downstream: you cannot diff a paragraph, cite half of it, notice it contradicts another one, or record that it left a question open. Freeform capture is worth supporting because typing triples by hand is a terrible way to think — not because the triple was the problem.
 
 **Honest Note**
 
-READ THE STATUS. You can write a freeform note today at /ingest and it will be extracted into reviewable facts — that part works. What does NOT exist is a note-taking SURFACE: no notebook, no daily page, no editing a note after you wrote it, no browsing your notes as notes rather than as graph nodes. Today a note is an input to extraction and then it is a source record. If you arrived wanting somewhere to keep your thinking, that place is not built yet.
+Read the status. You can write a freeform note today at /ingest and it will be extracted into reviewable facts — that part works. What does NOT exist is a note-taking SURFACE: no notebook, no daily page, no editing a note after you wrote it, no browsing your notes as notes rather than as graph nodes. Today a note is an input to extraction and then it is a source record. If you arrived wanting somewhere to keep your thinking, that place is not built yet.
 
 ## What is not done
 

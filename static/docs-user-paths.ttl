@@ -6,7 +6,7 @@
 ## existing graph, comparing your graph to another's, viewing a story built on a
 ## graph, using reckoning, etc."
 ##
-## WHY THIS IS A SEPARATE GRAPH FROM docs-features.ttl. That file lists 41
+## Why this is A Separate graph from docs-features.ttl. That file lists 41
 ## features and answers "what can this do?" — organised by MECHANISM: Ingest,
 ## Review System, Compare, Reckoning, Shelly. A person arriving does not have a
 ## mechanism, they have an INTENTION: "I am researching something and want to
@@ -17,7 +17,7 @@
 ## feat:Something). Editing a feature's description in one place stays correct in
 ## both, and a path that names no feature is a path with nothing behind it.
 ##
-## EVERY PATH CARRIES ITS OWN HONEST STATUS (kb:honest-status). Some of these are
+## Every path carries its own honest status (kb:honest-status). Some of these are
 ## smooth today; some have a real gap in the middle, and the gap is stated ON THE
 ## STEP where a person would hit it, not in a footnote at the bottom. A journey
 ## document that describes a frictionless flow which does not exist is the most
@@ -41,7 +41,7 @@ path:UserPaths
     rdf:type            ktype:Concept ;
     rdfs:label          "User paths" ;
     skos:definition     "The routes people actually take through Reckons.AI, each written as an intention rather than a feature. Start with the core loop below \u2014 every other path is that loop with one stage emphasised. They overlap deliberately, because the same person moves between them as their work changes." ;
-    kpred:read-first    "IF YOU READ ONE THING, READ THE CORE LOOP. Everything here is the same four stages: something comes IN, the app PROPOSES what it thinks that means, you SETTLE what is true, and the settled graph is then USED \u2014 to decide, to compare, or to teach. A path is just that loop with the weight moved to a different stage." ;
+    kpred:read-first    "If you read ONE thing, Read the core loop. Everything here is the same four stages: something comes IN, the app PROPOSES what it thinks that means, you SETTLE what is true, and the settled graph is then USED \u2014 to decide, to compare, or to teach. A path is just that loop with the weight moved to a different stage." ;
     kpred:diagram       """flowchart TB
   subgraph s1["1 · Capture"]
     N["A note, page, PDF,<br/>or something you said"]
@@ -66,8 +66,8 @@ path:UserPaths
   G --> C
   G --> S""" ;
     kpred:diagram-caption "The four stages every user path passes through. Nothing reaches the graph without passing stage 3." ;
-    kpred:principle     "A PATH IS NAMED BY WHAT THE PERSON WANTS, NOT BY WHAT THE APP PROVIDES. 'Building a graph for research' is a path; 'Ingest' is a feature. If a path's name could appear in the settings menu, it has been named from the wrong side." ;
-    kpred:principle     "THE UNIT IS A TRIPLE, AND THAT IS THE WHOLE DIFFERENCE. A notes app stores what you wrote. This stores what you MEANT, broken into separate claims small enough to disagree with one at a time \u2014 subject, relation, object. That is why the graph can tell you two sources conflict, that a claim rests on nothing, or that a question was never answered. A paragraph cannot do any of those things, however well it is written." ;
+    kpred:principle     "A Path is named by what the person wants, not by what the app provides. 'Building a graph for research' is a path; 'Ingest' is a feature. If a path's name could appear in the settings menu, it has been named from the wrong side." ;
+    kpred:principle     "The unit is A TRIPLE, and that is the whole difference. A notes app stores what you wrote. This stores what you MEANT, broken into separate claims small enough to disagree with one at a time \u2014 subject, relation, object. That is why the graph can tell you two sources conflict, that a claim rests on nothing, or that a question was never answered. A paragraph cannot do any of those things, however well it is written." ;
     hnav:layer          "0"^^xsd:integer .
 
 ## ===========================================================================
@@ -86,7 +86,7 @@ path:BuildForResearch
     kpred:uses          feat:TrustSystem ;
     kpred:uses          feat:Graph3D ;
     kpred:has-status    "functional" ;
-    kpred:honest-note   "THE LONGEST PATH AND THE ONE WITH THE MOST FRICTION LEFT. Extraction and review both work; what does not yet work is the queue getting SHORTER as the graph grows. Measured 2026-09-04: a freshly extracted graph still presents as a flat list of ~32 claims with 0 grouped decisions, because typing proposes no types and hierarchy places no parents. You will get a good graph out of this path; you will spend longer in review than you should." ;
+    kpred:honest-note   "The longest path and the ONE with the most friction left. Extraction and review both work; what does not yet work is the queue getting SHORTER as the graph grows. Measured 2026-09-04: a freshly extracted graph still presents as a flat list of ~32 claims with 0 grouped decisions, because typing proposes no types and hierarchy places no parents. You will get a good graph out of this path; you will spend longer in review than you should." ;
     kpred:diagram       """flowchart LR
   Q["A question you<br/>cannot answer yet"] --> N["New graph<br/>for that question"]
   N --> F["Feed it what<br/>you are reading"]
@@ -149,7 +149,7 @@ path:AddToExisting
     kpred:uses          feat:Disambiguation ;
     kpred:uses          feat:ReviewSystem ;
     kpred:has-status    "functional" ;
-    kpred:honest-note   "CONNECTION IS PARTLY AUTOMATIC AND PARTLY NOT YET SURFACED. Since 2026-09-04 extraction runs UNGROUNDED and reconciles afterwards: names that are the same word with different grammar (is-used-by / used-by) are connected automatically, and probable mis-hearings (lumen path / Lumenpath) are held back as proposals for you. The proposals are computed but have NO REVIEW SURFACE yet, so today you will meet both spellings as two separate rows and merge them by hand." ;
+    kpred:honest-note   "Connection is partly automatic and partly not yet surfaced. Since 2026-09-04 extraction runs UNGROUNDED and reconciles afterwards: names that are the same word with different grammar (is-used-by / used-by) are connected automatically, and probable mis-hearings (lumen path / Lumenpath) are held back as proposals for you. The proposals are computed but have No review surface yet, so today you will meet both spellings as two separate rows and merge them by hand." ;
     kpred:diagram       """flowchart LR
   S["Something new"] --> D{"Does it belong to<br/>a graph you have?"}
   D -->|"yes"| E["Add there"]
@@ -201,7 +201,7 @@ path:CompareGraphs
     kpred:uses          feat:DiffSummary ;
     kpred:uses          feat:MultiKB ;
     kpred:has-status    "functional" ;
-    kpred:honest-note   "THE HARD PART IS TELLING A REAL DISAGREEMENT FROM A NAMING ONE, and that is not fully solved. Two graphs can say the same thing in different words and look like a conflict, or use one word for two things and look like agreement. Predicate matching by embedding was benchmarked across five models and does not separate synonyms reliably (16.7% caught, negative separation), so wording differences are surfaced for a human rather than resolved automatically." ;
+    kpred:honest-note   "The hard part is telling A Real disagreement from A NAMING ONE, and that is not fully solved. Two graphs can say the same thing in different words and look like a conflict, or use one word for two things and look like agreement. Predicate matching by embedding was benchmarked across five models and does not separate synonyms reliably (16.7% caught, negative separation), so wording differences are surfaced for a human rather than resolved automatically." ;
     kpred:diagram       """flowchart LR
   A[("Your graph")] --> C["Compare"]
   B[("Theirs, imported<br/>as its own graph")] --> C
@@ -256,7 +256,7 @@ path:ViewStory
     kpred:uses          feat:Shelly ;
     kpred:has-status    "functional" ;
     kpred:example       "static/starter-turtles.ttl — kb:turtle-story, seven steps across six layouts. Each step asks a question the current view cannot answer, then switches to the layout that can, so layouts arrive as answers rather than as features." ;
-    kpred:honest-note   "STORIES ARE AUTHORED BY HAND TODAY. There is no story editor: the steps are written as triples in the graph file. That is fine for a starter graph shipped with the app and a real barrier for a teacher who wants to build one for their class." ;
+    kpred:honest-note   "Stories are authored by hand today. There is no story editor: the steps are written as triples in the graph file. That is fine for a starter graph shipped with the app and a real barrier for a teacher who wants to build one for their class." ;
     kpred:diagram       """flowchart LR
   T["Start in the tangle<br/>on purpose"] --> L["Each question picks<br/>its own layout"]
   L --> A["Ask Shelly about<br/>any node you land on"]
@@ -310,7 +310,7 @@ path:UseReckoning
     kpred:uses          feat:Reckoning ;
     kpred:uses          feat:Graph3D ;
     kpred:has-status    "functional" ;
-    kpred:honest-note   "IT IS ONLY AS GOOD AS WHAT YOU CONFIRMED. Reckoning reasons over the graph, so a graph full of unreviewed pending facts produces a confident proposal resting on claims nobody checked. Run it after a review pass, not instead of one. It states which facts it used, so a proposal you distrust can be traced rather than argued with." ;
+    kpred:honest-note   "It is only as good as what you confirmed. Reckoning reasons over the graph, so a graph full of unreviewed pending facts produces a confident proposal resting on claims nobody checked. Run it after a review pass, not instead of one. It states which facts it used, so a proposal you distrust can be traced rather than argued with." ;
     kpred:diagram       """flowchart LR
   S["Situation<br/>where you actually are"] --> P["Proposal"]
   T["Target<br/>you could tell you reached"] --> P
@@ -348,20 +348,20 @@ path:Reckon-3
     kpred:step-order    "3"^^xsd:integer .
 
 ## ===========================================================================
-## WHERE THE PATHS MEET
+## Where the paths meet
 ## ===========================================================================
 
 path:PathsOverlap
     rdf:type            ktype:Concept ;
     rdfs:label          "The paths are not separate products" ;
     skos:definition     "One person moves between all five as their work changes: research until there is enough to decide, reckon to decide it, compare against a colleague who disagreed, then turn the settled result into a story for whoever comes next. The graph is the same object throughout — that continuity is the point of the whole app." ;
-    kpred:principle     "THE SHARING DIRECTION IS RESEARCHER -> LEARNER, AND IT ONLY WORKS IF REVIEW HAPPENED. A story built on unreviewed facts teaches someone a graph nobody checked, with all the authority of a finished artifact and none of the verification. Review is not admin overhead in front of the fun part; it is what makes the sharing honest." ;
+    kpred:principle     "The sharing direction is researcher -> LEARNER, and it only works if review happened. A story built on unreviewed facts teaches someone a graph nobody checked, with all the authority of a finished artifact and none of the verification. Review is not admin overhead in front of the fun part; it is what makes the sharing honest." ;
     skos:broader        path:UserPaths ;
     hnav:layer          "1"^^xsd:integer ;
     hnav:order          "8"^^xsd:integer .
 
 ## ===========================================================================
-## PATH 0 — The core loop.  THIS IS THE ONE TO READ FIRST.
+## PATH 0 — The core loop.  This is the ONE to read first.
 ## ---------------------------------------------------------------------------
 ## Grounded in tests/e2e/workflow-add-review-reckon.test.ts, which drives exactly
 ## these five stages against the running app on every CI run. If this page and
@@ -382,14 +382,14 @@ path:CoreLoop
   R2 --> K["Reckon"]
   K --> O["Situation<br/>Target<br/>Proposal"]""" ;
     kpred:diagram-caption "The five stages of tests/e2e/workflow-add-review-reckon.test.ts. The loop repeats: it is add-review-add-review, not add-add-review." ;
-    kpred:principle     "REVIEW HAPPENS TWICE, AND THAT IS NOT AN ACCIDENT. Settling the first batch before adding the second is what lets the second batch be matched against something. A graph reviewed only at the end is a pile of claims that never got the chance to connect." ;
-    kpred:principle     "NOTHING IS AUTO-ACCEPTED. Every extracted fact arrives PENDING and stays there until a person confirms it. That single rule is the difference between a graph you can rely on and a transcript of what a language model guessed." ;
+    kpred:principle     "Review happens twice, and that is not an accident. Settling the first batch before adding the second is what lets the second batch be matched against something. A graph reviewed only at the end is a pile of claims that never got the chance to connect." ;
+    kpred:principle     "Nothing is auto-accepted. Every extracted fact arrives PENDING and stays there until a person confirms it. That single rule is the difference between a graph you can rely on and a transcript of what a language model guessed." ;
     kpred:uses          feat:Ingest ;
     kpred:uses          feat:ReviewSystem ;
     kpred:uses          feat:Reckoning ;
     kpred:has-status    "functional" ;
     kpred:tested-by     "tests/e2e/workflow-add-review-reckon.test.ts" ;
-    kpred:honest-note   "THIS PATH IS TESTED END TO END ON EVERY CI RUN, against the real app with a mock extraction backend. What the test does NOT cover is extraction QUALITY — it asserts that facts arrive, are settled by a person, and reach the reckoning, not that the facts were the right ones. Quality is measured separately and honestly: see the extraction score, which currently tops out at 74% recall on a hand-checked corpus." ;
+    kpred:honest-note   "This path is tested end to end on every CI run, against the real app with a mock extraction backend. What the test does NOT cover is extraction QUALITY — it asserts that facts arrive, are settled by a person, and reach the reckoning, not that the facts were the right ones. Quality is measured separately and honestly: see the extraction score, which currently tops out at 74% recall on a hand-checked corpus." ;
     skos:broader        path:UserPaths ;
     hnav:layer          "1"^^xsd:integer ;
     hnav:order          "0"^^xsd:integer .
@@ -465,12 +465,12 @@ path:EverydayNotes
   R --> G[("Graph")]
   K -.->|"always recoverable"| G""" ;
     kpred:diagram-caption "The note survives as written; the claims inside it become separately reviewable. The dotted line is the promise that structuring never costs you the original." ;
-    kpred:principle     "THE PROSE IS NEVER THE LOSER. Whatever the extractor makes of a note, the note itself is kept verbatim — fillers, comma splices and all. A system that replaced your sentence with its own reading of it would be asking you to trust a summary of your own thought." ;
-    kpred:principle     "TRIPLES STAY THE CORE, AND FREEFORM IS THE WAY IN, NOT AN ALTERNATIVE TO THEM. Storing prose and calling it done is the easy version and it forfeits everything downstream: you cannot diff a paragraph, cite half of it, notice it contradicts another one, or record that it left a question open. Freeform capture is worth supporting because typing triples by hand is a terrible way to think — not because the triple was the problem." ;
+    kpred:principle     "The prose is never the loser. Whatever the extractor makes of a note, the note itself is kept verbatim — fillers, comma splices and all. A system that replaced your sentence with its own reading of it would be asking you to trust a summary of your own thought." ;
+    kpred:principle     "Triples stay the core, and freeform is the way in, not an alternative to them. Storing prose and calling it done is the easy version and it forfeits everything downstream: you cannot diff a paragraph, cite half of it, notice it contradicts another one, or record that it left a question open. Freeform capture is worth supporting because typing triples by hand is a terrible way to think — not because the triple was the problem." ;
     kpred:uses          feat:Ingest ;
     kpred:uses          feat:ReviewSystem ;
     kpred:has-status    "scaffolded" ;
-    kpred:honest-note   "READ THE STATUS. You can write a freeform note today at /ingest and it will be extracted into reviewable facts — that part works. What does NOT exist is a note-taking SURFACE: no notebook, no daily page, no editing a note after you wrote it, no browsing your notes as notes rather than as graph nodes. Today a note is an input to extraction and then it is a source record. If you arrived wanting somewhere to keep your thinking, that place is not built yet." ;
+    kpred:honest-note   "Read the status. You can write a freeform note today at /ingest and it will be extracted into reviewable facts — that part works. What does NOT exist is a note-taking SURFACE: no notebook, no daily page, no editing a note after you wrote it, no browsing your notes as notes rather than as graph nodes. Today a note is an input to extraction and then it is a source record. If you arrived wanting somewhere to keep your thinking, that place is not built yet." ;
     kpred:open-question "What is the unit a person sees — the note, or the claims taken out of it? The review queue chose the claim and became unusable at scale; the answer for everyday notes may be the opposite, with claims folded underneath the sentence that produced them." ;
     skos:broader        path:UserPaths ;
     hnav:layer          "1"^^xsd:integer ;
@@ -520,12 +520,12 @@ path:CaptureSpoken
   F --> A["App picks it up<br/>on a 10s poll"]
   A --> R{"Review<br/>when you are back"}""" ;
     kpred:diagram-caption "n8n is the buffer that makes this work: a note spoken while the laptop is shut has to live somewhere until the app next runs." ;
-    kpred:principle     "A DICTATED INSTRUCTION IS NOT A DICTATED FACT. Saying 'find me three suppliers' is a REQUEST, and an extractor with no notion of that will happily record it as a claim that three suppliers exist. Requests are routed into tasks before the model sees them, and a dictated task lands with no permissions and no acceptance test — so speech is never a route to unsupervised action." ;
+    kpred:principle     "A Dictated instruction is not A DICTATED FACT. Saying 'find me three suppliers' is a REQUEST, and an extractor with no notion of that will happily record it as a claim that three suppliers exist. Requests are routed into tasks before the model sees them, and a dictated task lands with no permissions and no acceptance test — so speech is never a route to unsupervised action." ;
     kpred:uses          feat:Ingest ;
     kpred:uses          feat:ReviewSystem ;
     kpred:uses          feat:WhisperSTT ;
     kpred:has-status    "scaffolded" ;
-    kpred:honest-note   "THE HONEST LIMIT: A FOLDER CANNOT WAKE A CLOSED TAB. The app is a static site in a browser, so the poll runs only while it is open. Notes accumulate in the shared folder and arrive when you next open the app — they are not lost, but they are not live either. True background capture needs a process rather than a page, and that is not built. The n8n workflows that make the phone half work are also not merged yet." ;
+    kpred:honest-note   "The honest limit: A Folder cannot wake A CLOSED TAB. The app is a static site in a browser, so the poll runs only while it is open. Notes accumulate in the shared folder and arrive when you next open the app — they are not lost, but they are not live either. True background capture needs a process rather than a page, and that is not built. The n8n workflows that make the phone half work are also not merged yet." ;
     skos:broader        path:UserPaths ;
     hnav:layer          "1"^^xsd:integer ;
     hnav:order          "2"^^xsd:integer .

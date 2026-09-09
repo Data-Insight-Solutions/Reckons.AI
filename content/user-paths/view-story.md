@@ -37,7 +37,7 @@ Having understood a subject through its structure rather than through prose abou
 
 **Honest Note**
 
-STORIES ARE AUTHORED BY HAND TODAY. There is no story editor: the steps are written as triples in the graph file. That is fine for a starter graph shipped with the app and a real barrier for a teacher who wants to build one for their class.
+Stories are authored by hand today. There is no story editor: the steps are written as triples in the graph file. That is fine for a starter graph shipped with the app and a real barrier for a teacher who wants to build one for their class.
 
 ## What we found
 

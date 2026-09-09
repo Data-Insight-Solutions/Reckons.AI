@@ -121,7 +121,7 @@ guide:HumanInTheLoop
 
 
 ## =============================================================================
-## KB LEAP NODES — Gateways to detailed sub-graphs
+## Kb leap nodes — Gateways to detailed sub-graphs
 ## =============================================================================
 ## Each leap node appears with an amber ring in the graph view. Click the
 ## arrow button to jump -- the sub-graph auto-imports as a new KB on first use.

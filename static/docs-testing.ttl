@@ -571,7 +571,7 @@ test:ManualER-Step9
 @prefix shelly: <urn:reckons:shelly/> .
 
 ## =============================================================================
-## REVIEW WORKLOAD AFTER ENHANCED EXTRACTION (2026-09-04)
+## Review workload after enhanced extraction (2026-09-04)
 ## =============================================================================
 ## Matt: "we have attempted the summary, hierarchy, and other elements to reduce
 ## reviewer workload, but now with enhanced extraction we should test again."
@@ -582,7 +582,7 @@ test:ManualER-Step9
 ## qwen3:32b, passage-verified excerpts, then deterministic vocabulary reconcile —
 ## and writes every statement PENDING so it arrives as review work.
 ##
-## READ THE MEASURED RESULT BELOW BEFORE YOU START. The automated chain already
+## Read the measured result below before you start. The automated chain already
 ## says the decision tree is EMPTY. This walkthrough is not asking you to discover
 ## that; it is asking whether the flat list is nonetheless navigable, and which of
 ## the three missing mechanisms you would want first.
@@ -618,7 +618,7 @@ test:RWAE-Step2
     rdf:type            story:Step ;
     story:partOf        test:ReviewWorkloadAfterExtraction ;
     story:order         "2"^^xsd:integer ;
-    story:title         "THE MAIN QUESTION — how many decisions does it ask you to make?" ;
+    story:title         "The main question — how many decisions does it ask you to make?" ;
     story:content       "Count what the page actually puts in front of you. The chain harness says 0 decisions and 32 loose judgments, which means a flat list. Judge whether that is true in the UI, and then judge the thing no harness can: could you get through it? Time yourself on the first ten. If you find yourself re-reading the same entity under two names, note which two — that is the reconcile gap, not a review-UI gap." ;
     kpred:assertion     "you can state a number: how many distinct decisions the queue asked for" ;
     kpred:page          "/review" .

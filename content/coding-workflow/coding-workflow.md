@@ -54,11 +54,11 @@ kb_compress selects the relevant subgraph for a question and serializes it compa
 
 **[Agent orchestration — bring your own harness (PLANNED, not built)](../coding-workflow/agent-orchestration)** — **planned**
 
-THIS DOES NOT EXIST YET.
+This does not exist yet.
 
 **[Task scheduling in the graph (PLANNED, not built)](../coding-workflow/scheduling)** — **planned**
 
-THIS DOES NOT EXIST YET.
+This does not exist yet.
 
 **[The saving is not compression — it is the feature you did not build twice](../coding-workflow/avoided-rework)**
 
