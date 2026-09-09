@@ -48,6 +48,10 @@ When an agent needs a decision it cannot make, it does not stop and wait for you
 
 Agents append findings — bug found, claim falsified, shipped, decision needed — to a single dated digest while you are away, and each finding is also written into the graph as a pending fact on the entity it concerns.
 
+**[Compared with the tools you already use](../coding-workflow/versus-dev-tooling)**
+
+A developer keeping track of a codebase today typically runs three or four separate things: a coding agent that reads the repository, something that maps or searches the code, something that remembers across sessions, and a documentation site.
+
 **[Feed an agent the graph, not the repo](../coding-workflow/context-compression-coding-workflow)**
 
 kb_compress selects the relevant subgraph for a question and serializes it compactly, so an agent gets grounded context instead of a directory listing.

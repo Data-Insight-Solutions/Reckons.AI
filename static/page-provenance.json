@@ -1,5 +1,5 @@
 {
-  "built": 140,
+  "built": 141,
   "pages": [
     {
       "path": "architecture/claude-md-minimal",
@@ -311,6 +311,14 @@
       "graph": "docs-coding-workflow.ttl",
       "factHash": "e5fe5df1d99a20b3",
       "factCount": 4,
+      "floor": "evidence"
+    },
+    {
+      "path": "coding-workflow/versus-dev-tooling",
+      "entity": "urn:reckons:docs/coding-workflow/VersusDevTooling",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "06dc8b49a343cabb",
+      "factCount": 10,
       "floor": "evidence"
     },
     {
