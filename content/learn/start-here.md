@@ -14,9 +14,17 @@ generated: "docs-composed"
 
 Get a graph on screen and a first fact into it. The only page a new reader needs.
 
+### Architecture & Design
+
+architecture decisions, TTL-first documentation strategy, standards alignment (PROV-O, SKOS), deployment patterns, style conventions, dependency health, and the markdown migration tracker.
+
 ### Data Insight Solutions LLC
 
 The company behind Reckons.AI. A software consultancy focused on knowledge management, data engineering, and AI-augmented tooling.
+
+### Features
+
+detailed coverage of every feature: Ingest, Review, Trust, Graph, Shelly, Reckonings, Compare, Multi-Graph, graph Leap, Content Safety, Predicate Manager, Whisper STT, Kokoro TTS, and more.
 
 ### Getting Started
 
@@ -28,41 +36,13 @@ Nothing enters your confirmed knowledge graph without your explicit review. Ever
 
 See also: [What it does](/docs/learn/what-it-does)
 
-### LEAP: Architecture & Design
+### Integrations & Tech
 
-Click for architecture decisions, TTL-first documentation strategy, standards alignment (PROV-O, SKOS), deployment patterns, style conventions, dependency health, and the markdown migration tracker.
+integrations (Calendar, MCP, Extension, Whisper, Kokoro, OCR, Firecrawl, Meshy 3D) and the technology stack (SvelteKit 2, Threlte 8, N3.js, @huggingface/transformers, Dexie).
 
-### LEAP: Features
+### Language Models
 
-Click for detailed coverage of every feature: Ingest, Review, Trust, Graph, Shelly, Reckonings, Compare, Multi-Graph, graph Leap, Content Safety, Predicate Manager, Whisper STT, Kokoro TTS, and more.
-
-### LEAP: Integrations & Tech
-
-Click for integrations (Calendar, MCP, Extension, Whisper, Kokoro, OCR, Firecrawl, Meshy 3D) and the technology stack (SvelteKit 2, Threlte 8, N3.js, @huggingface/transformers, Dexie).
-
-### LEAP: Language Models
-
-Click to learn what LLMs actually are, why they hallucinate, how RAG works, and why your curated graph makes AI dramatically more accurate.
-
-### LEAP: Test Suite & Visual Regression
-
-Click for test documentation as interactive stories. Walk through user story E2E tests step-by-step with screenshots attached to each node. Covers Dev Sprint Planning, User Docs Import, Cross-Graph Alignment, and page-level visual regression.
-
-### LEAP: Timeline & RDF Ecosystem
-
-Click for the RDF timeline from 1999 to 2026, key organizations (W3C, AI Alliance, Schema.org), people (Tim Berners-Lee), and the Reckons.AI launch.
-
-### LEAP: Tips & Security
-
-Click for practical tips (start small, review carefully, export often, use Ollama offline) and the security architecture (no server, API key safety, content safety, CSP, offline-capable).
-
-### LEAP: Triples & RDF Deep Dive
-
-Click to explore the semantic triple architecture, Turtle syntax, RDF standards (RDFS, SKOS, SPARQL, JSON-LD, PROV-O), and knowledge graph fundamentals.
-
-### LEAP: Use Cases
-
-Click to explore real-world scenarios: insurance claims, legal disputes, employment rights, medical records, corporate pushback, and research.
+What language models actually are, why they hallucinate, how retrieval-augmented generation works, and how a reviewed graph compares with it.
 
 ### Local-First Architecture
 
@@ -122,7 +102,27 @@ Go to Settings -&gt; Backup and Export to download your graph as Turtle. Share t
 
 See also: [What it does](/docs/learn/what-it-does)
 
+### Test Suite & Visual Regression
+
+test documentation as interactive stories. Walk through user story E2E tests step-by-step with screenshots attached to each node. Covers Dev Sprint Planning, User Docs Import, Cross-Graph Alignment, and page-level visual regression.
+
 ### The Reckons.AI Story
+
+### Timeline & RDF Ecosystem
+
+the RDF timeline from 1999 to 2026, key organizations (W3C, AI Alliance, Schema.org), people (Tim Berners-Lee), and the Reckons.AI launch.
+
+### Tips & Security
+
+practical tips (start small, review carefully, export often, use Ollama offline) and the security architecture (no server, API key safety, content safety, CSP, offline-capable).
+
+### Triples & RDF Deep Dive
+
+The semantic triple, Turtle syntax, and the RDF standards this product is built on — RDFS, SKOS, SPARQL, JSON-LD and PROV-O.
+
+### Use Cases
+
+Worked scenarios: insurance claims, legal disputes, employment rights, medical records, corporate pushback, research, and software engineering.
 
 ### What Is Reckons.AI
 

@@ -168,6 +168,10 @@ Sliding window chunking for sources exceeding the 12K character extraction limit
 
 Export your graph as a .ttl file with full reification metadata (status, source, confidence, timestamps, excerpts). Roundtrip-safe. Clean export for interop or full export with all metadata.
 
+### What Reckons.AI does, in five moves
+
+Reckons.AI does one thing in five moves: it takes what you put in, works out the claims inside it, asks you which are true, keeps the ones you accept with their sources attached, and then lets you ask the result questions. Everything below is a part of one of those five moves. If you only read one thing about the product, read this page rather than the component list underneath it — the components make sense as answers to the five moves and make very little sense on their own.
+
 ### Whisper STT
 
 Local speech-to-text via transformers.js using whisper-tiny (42MB). Mic button in the chat tab. Runs entirely in-browser -- no cloud, no API key.
@@ -177,6 +181,10 @@ Local speech-to-text via transformers.js using whisper-tiny (42MB). Mic button i
 ### Academic Research Group
 
 A lab PI maintains a shared base graph of literature reviews, experimental parameters, and confirmed findings. PhD students import it and layer their own experiment results on top. When a student's results conflict with published work, a Reckoning cites papers by DOI and shared parameters to recommend framing -- novel finding or replication caveat. Other students can import each other's results and trace confidence levels through the full trust chain of sources.
+
+### Coding agents that start already knowing
+
+An agent queries the same graph over MCP instead of re-reading the repository, so the conventions it follows are the ones written down rather than the ones it inferred.
 
 ### Collaborative Knowledge
 
@@ -191,6 +199,14 @@ When a company stonewalls, you need precision. Ingest their terms of service, yo
 ### Decision Provenance
 
 When a Reckoning produces a recommendation and the user accepts it, the resulting graph statements are automatically annotated with the source IRIs, Reckoning timestamp, and confidence level. Anyone reading the triple later can see it was added by a Reckoning on a specific date, informed by specific sources. The graph becomes self-documenting.
+
+### Decisions that keep their evidence
+
+A benchmark result stays attached to the decision it justified, so next year the question is what the number was, not what someone remembers concluding.
+
+### Documentation that cannot quietly go stale
+
+Pages are generated from the graph, so a page cannot disagree with the facts it was made from without a gate failing. Change the graph and the page follows; hand-edit the page and the build tells you.
 
 ### Emergency Preparedness
 
@@ -222,7 +238,7 @@ Organize diagnoses, prescriptions, test results, and doctor correspondence. Quer
 
 ### Power to the Individual
 
-Insurance companies have teams of analysts. Corporations have legal departments. Landlords have property managers. You have your memory and a stack of papers? Not anymore. Build a graph of your rights, evidence, and correspondence. Ask Shelly to draft a precise response citing YOUR documented facts. You communicate with the authority of an institution.
+Insurance companies have teams of analysts. Corporations have legal departments. Landlords have property managers. You have your memory and a stack of papers? Not anymore. Build a graph of your rights, evidence, and correspondence. Ask Shelly to draft a precise response citing your documented facts. You communicate with the authority of an institution.
 
 See also: [Start here](/docs/learn/start-here)
 
@@ -237,3 +253,19 @@ Track papers, authors, claims, contradictions. Build a literature review graph w
 ### Residential Construction Project
 
 A general contractor maintains a project graph with permits, schedules, and trade dependencies for a renovation. Subcontractors import the TTL to understand their scope and timing. When a change order arrives, the contractor ingests it, runs a Reckoning to assess schedule impact, and re-exports. Each trade asks Shelly their own questions -- 'What does CO-3 add to my scope?' -- without the GC being a bottleneck. Decisions trace back to the change order that triggered them.
+
+### Software engineering
+
+Reckons.AI is built with Reckons.AI, and that is the honest reason this use case is the most detailed one here: it is the only one we have run for a year. A codebase accumulates decisions faster than anything else you own — why a boundary exists, what a change would break, which claim a test actually pins — and almost none of it survives in the code. It ends up in commit messages nobody re-reads, in chat histories that expire, and in the heads of whoever was there. The graph is where those decisions are kept as facts you can query, and the pages you are reading are generated from it.
+
+See also: [Start here](/docs/learn/start-here)
+
+### The codebase, as facts
+
+Modules, files and their dependencies become entities, so what a change touches is a query rather than a guess. The graph holds the part the source cannot: why the boundary is there.
+
+### Why a graph, and not a notepad
+
+Take one sentence from a real working note: Vantage Suite was dropped at this stage on file format grounds. A notepad keeps the sentence. Reckons.AI keeps the fact underneath it. The difference does not show at ten notes and decides everything at a thousand, because the question you will eventually ask is not what did I write, it is what did we drop, and why.
+
+See also: [What you actually do with it](/docs/user-paths/user-paths)

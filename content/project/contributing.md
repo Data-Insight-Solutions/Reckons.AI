@@ -18,7 +18,7 @@ How this repository is developed and tested — for people changing the code, no
 
 ### Agent orchestration — bring your own harness (PLANNED, not built)
 
-THIS DOES NOT EXIST YET. The design: a task is a triple — goal, tier, harness preference, due-at, blocked-by, outcome — and any harness can drain the queue: Claude Code, Codex, a local Ollama script, or a human in the review queue. The graph becomes the orchestration config, so the queue outlives whichever agent CLI is fashionable this quarter, and a harness that hits a usage limit hands its task back rather than stalling it forever.
+This does not exist yet. The design: a task is a triple — goal, tier, harness preference, due-at, blocked-by, outcome — and any harness can drain the queue: Claude Code, Codex, a local Ollama script, or a human in the review queue. The graph becomes the orchestration config, so the queue outlives whichever agent CLI is fashionable this quarter, and a harness that hits a usage limit hands its task back rather than stalling it forever.
 
 ### Agents ask the graph, not you
 
@@ -36,7 +36,11 @@ On every push and pull request, CI compares the code changes against the plan in
 
 Reckons.AI turns a codebase into a graph you can interrogate, and then keeps the code and the plan honest with each other. The plan lives in the graph; code is checked against it; agents propose, humans decide. This page is generated from that same graph, so it cannot claim a capability the graph does not have.
 
-### Consistency comes from YOUR context, not from a better model
+### Compared with the tools you already use
+
+A developer keeping track of a codebase today typically runs three or four separate things: a coding agent that reads the repository, something that maps or searches the code, something that remembers across sessions, and a documentation site. Each is good at its job. The claim here is not that Reckons.AI beats any of them at that job — it does not — but that the four are the same store viewed four ways, and keeping them separate is what makes each of them lose the others' work.
+
+### Consistency comes from your context, not from a better model
 
 The facts that did the work in that session were not general knowledge, and no model would have produced them from training. 'Granularity breeds rubber-stamping — a review list that is too fine trains the human to accept all.' 'Cleaning is itself damaging; an automated tidy-up that drops a fact you needed is worse than the mess.' 'Spend attention on disagreement, not agreement.' 'Unclassified fails toward the human.' These are one person's judgments, formed on this project, written down once. Because they were in the graph, they constrained work months later — an accept-all control shipped WITH outlier highlighting rather than without it, because the graph objected.
 
@@ -58,7 +62,7 @@ Five requests arrived across a single session on 2026-07-19, each framed as new 
 
 ### Task scheduling in the graph (PLANNED, not built)
 
-THIS DOES NOT EXIST YET. Tasks, schedules and outcomes as graph facts, drained by whichever runner is available — the in-app worker on any device, an optional desktop process, or the MCP server when an agent is already connected.
+This does not exist yet. Tasks, schedules and outcomes as graph facts, drained by whichever runner is available — the in-app worker on any device, an optional desktop process, or the MCP server when an agent is already connected.
 
 ### The local agent tier — a first pass that never touches your source
 

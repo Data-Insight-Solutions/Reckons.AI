@@ -53,6 +53,7 @@ import { parsePageFile } from '../src/lib/publish/site-import';
 import { loadCache, diagramKey, diagramFigure } from './lib/mermaid-render.js';
 import { loadSceneCache, sceneKey, sceneFigure, sceneIframe } from './lib/scene-render.js';
 import { hashFacts, DEFAULT_FLOOR } from './lib/page-provenance.js';
+import { docsTitle } from './lib/docs-title.js';
 
 const ROOT = resolve(import.meta.dirname ?? '.', '..');
 const STATIC_DIR = join(ROOT, 'static');
@@ -576,19 +577,6 @@ function renderDiagramFor(e: Entity): string[] {
  * is deliberate: a graph can be present in the app and absent from the site, and inventing a URL
  * for it would send a reader to a 404 that looks like our mistake rather than an absent section.
  */
-/**
- * A title as a READER of the docs should see it.
- *
- * Matt, 2026-09-08: "We should avoid labelling the LEAPs at the beginning, it has no relevancy
- * here in the docs." Correct — LEAP is the name of a gesture in the APP, where it switches you to
- * another graph. On a website the same node is simply a link to another section, and prefixing
- * nine of them with a word from a different interface tells a reader nothing and costs them the
- * first four characters of every title.
- */
-function docsTitle(title: string): string {
-  return title.replace(/^LEAP:\s*/i, '').trim();
-}
-
 function leapLink(e: Entity): { href: string; title: string } | null {
   if (!e.leapTo) return null;
   const t = LEAP_TARGETS.get(e.leapTo);

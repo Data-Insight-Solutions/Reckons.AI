@@ -36,6 +36,7 @@ import { contentPath, pageToMarkdown } from '../src/lib/publish/site-export';
 import { parsePageFile } from '../src/lib/publish/site-import';
 import { slugify, type SitePage } from '../src/lib/rdf/page';
 import { escapeMdText } from '../src/lib/publish/md-escape';
+import { docsTitle } from './lib/docs-title.js';
 
 const ROOT = resolve(import.meta.dirname ?? '.', '..');
 const STATIC_DIR = join(ROOT, 'static');
@@ -88,7 +89,7 @@ function readEntities(): LinkableEntity[] {
       if (s.startsWith(NAV_DOCS_NS)) continue;
       if (q.predicate.value === RDF_TYPE && q.object.value.startsWith(KTYPE_NS)) {
         types.set(s, [...(types.get(s) ?? []), q.object.value.slice(KTYPE_NS.length)]);
-      } else if (q.predicate.value === RDFS_LABEL) titles.set(s, q.object.value);
+      } else if (q.predicate.value === RDFS_LABEL) titles.set(s, docsTitle(q.object.value));
       else if (q.predicate.value === SKOS_DEFINITION) defs.set(s, q.object.value);
       else if (q.predicate.value === SKOS_BROADER) parents.set(s, q.object.value);
       else if (q.predicate.value === SKOS_RELATED) {
