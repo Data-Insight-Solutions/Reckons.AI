@@ -129,8 +129,26 @@ export async function renderScenes(specs: Map<string, SceneSpec>): Promise<Map<s
         (renderer.setSize as (a: number, b: number) => void)(w as number, h as number);
         (renderer.setPixelRatio as (r: number) => void)(2);
         document.body.appendChild(renderer.domElement as unknown as Node);
-        // The author's scene body. Kept as a Function rather than eval so the scoped names are
-        // explicit and a scene cannot quietly reach for anything else in the page.
+        /*
+         * ┌─ THE SCENE SOURCE IS EXECUTED, SO WHERE IT COMES FROM IS THE WHOLE SAFETY ARGUMENT ─┐
+         * │                                                                                    │
+         * │ This runs JavaScript out of a graph. That is fine for a graph in THIS REPOSITORY —  │
+         * │ anyone who can write static/*.ttl can already commit code, so it opens no new door. │
+         * │ It would be CATASTROPHIC for a graph a user imported from someone else: "here is an │
+         * │ interesting knowledge base" would become code execution on their machine.           │
+         * │                                                                                    │
+         * │ The boundary that makes it safe is in docs-scenes.ts, which collects scenes ONLY    │
+         * │ from static/*.ttl and never from an imported graph, the app's IndexedDB, or         │
+         * │ anything a user could have been handed. That boundary must not be widened without a │
+         * │ better argument than convenience — the same rule scripts/agent/runner.ts states for │
+         * │ executing a task's shell command.                                                   │
+         * │                                                                                    │
+         * │ Raised by the local code review on 2026-09-08, which was right that this is         │
+         * │ unsanitised execution and could not see where the input comes from.                 │
+         * └────────────────────────────────────────────────────────────────────────────────────┘
+         * Kept as a Function rather than eval so the scoped names are explicit and a scene
+         * cannot quietly reach for anything else in the page.
+         */
         // eslint-disable-next-line no-new-func
         const run = new Function('THREE', 'scene', 'camera', 'renderer', src as string);
         run(T, scene, camera, renderer);

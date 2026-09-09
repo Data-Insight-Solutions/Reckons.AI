@@ -16,7 +16,7 @@
  *
  * Usage: npx tsx scripts/docs-search-index.ts [--check]
  */
-import { readFileSync, readdirSync, writeFileSync, statSync } from 'fs';
+import { readFileSync, readdirSync, writeFileSync } from 'fs';
 import { join, resolve, relative } from 'path';
 
 const ROOT = resolve(import.meta.dirname ?? '.', '..');
@@ -35,11 +35,20 @@ export interface SearchDoc {
   text: string;
 }
 
+/**
+ * Walk content/ for markdown, without following symbolic links.
+ *
+ * The first version used statSync, which FOLLOWS a link, so a symlinked directory pointing at an
+ * ancestor would recurse until the stack gave out. Nothing in content/ is a link today, but this
+ * repository symlinks graphs into MCP workspaces as a matter of course, and a build that hangs is
+ * a bad way to find out someone did it here. Dirent.isDirectory() reports a link as a link, so
+ * this cannot cycle — the same approach walkMd() in docs-pages.ts already takes.
+ */
 function walk(dir: string, out: string[] = []): string[] {
-  for (const e of readdirSync(dir)) {
-    const full = join(dir, e);
-    if (statSync(full).isDirectory()) walk(full, out);
-    else if (e.endsWith('.md')) out.push(full);
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, e.name);
+    if (e.isDirectory()) walk(full, out);
+    else if (e.isFile() && e.name.endsWith('.md')) out.push(full);
   }
   return out;
 }
