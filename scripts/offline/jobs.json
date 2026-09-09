@@ -280,6 +280,22 @@
       "desc": "F187: every skos:member must resolve to something that exists. A dangling member does not read to a reader as an error, it reads as a promise — the five-move sets named three entities that did not exist and the page said they were 'covered inside the pages above'."
     },
     {
+      "name": "layer-risk",
+      "tier": "script",
+      "enabled": true,
+      "blocking": false,
+      "cmd": "npx tsx scripts/offline/layer-risk.ts --quiet",
+      "desc": "F194 blast radius: how many statements would stop being reviewed if the name-shaped provenance suspects were classified provenance. Because provenance auto-confirms, the classification is a trust boundary and this is the number that governs it. Proposes nothing."
+    },
+    {
+      "name": "layer-classify",
+      "tier": "agent",
+      "enabled": false,
+      "blocking": false,
+      "cmd": "OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://localhost:11434} npx tsx scripts/offline/layer-classify.ts --limit=40",
+      "desc": "F194 agent tier: propose claim/provenance/question for each unclassified predicate, biggest blast radius first. DISABLED as a routine job — it is a bulk one-off, and re-proposing the same 355 predicates every sweep would bury the queue it writes to. Run it by hand with --limit and read the provenance verdicts first: those are the ones that remove a human from the loop."
+    },
+    {
       "name": "jobs-graph",
       "tier": "script",
       "enabled": true,
