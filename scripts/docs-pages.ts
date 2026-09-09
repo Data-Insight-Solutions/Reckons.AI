@@ -50,6 +50,7 @@ import { escapeMdText } from '../src/lib/publish/md-escape';
 import { NAV_ORDER, NAV_NEXT, NAV_PREV, NAV_LAYER } from '../src/lib/rdf/hierarchy';
 import { contentPath, pageToMarkdown } from '../src/lib/publish/site-export';
 import { parsePageFile } from '../src/lib/publish/site-import';
+import { createHash } from 'node:crypto';
 import { loadCache, diagramKey, diagramFigure } from './lib/mermaid-render.js';
 import { loadSceneCache, sceneKey, sceneFigure, sceneIframe } from './lib/scene-render.js';
 import { hashFacts, DEFAULT_FLOOR } from './lib/page-provenance.js';
@@ -1180,12 +1181,23 @@ function main(): void {
       predicate: { value: q.predicate.value },
       object: { value: q.object.value, termType: q.object.termType },
     }));
+    const path = contentPath(page).replace(/^content\//, '').replace(/\.md$/, '');
     return {
-      path: contentPath(page).replace(/^content\//, '').replace(/\.md$/, ''),
+      path,
       entity: page.iri,
       graph: home.get(page.iri)!,
       ...hashFacts(quads, page.iri),
       floor: DEFAULT_FLOOR,
+      /*
+       * The page's own bytes, so docs-staleness.ts can answer the question that has no other way
+       * of being asked: did the facts move while the page did NOT? A page whose facts changed
+       * should look different; one that does not is either failing to surface what changed or has
+       * provenance pointing at the wrong entity.
+       */
+      pageHash: createHash('sha256')
+        .update(newFiles.get(contentPath(page)) ?? '')
+        .digest('hex')
+        .slice(0, 16),
     };
   }).sort((a, b) => a.path.localeCompare(b.path));
   writeFileSync(

@@ -251,6 +251,13 @@
       "desc": "F140 GPU-real performance crawl: a HEADED browser on the real GPU, asserting on TIME (long tasks, time-to-usable, settled velocity). DISABLED in the sweep because it needs a DISPLAY and a running dev server \u2014 it aborts rather than silently falling back to SwiftShader, since a green perf report from a software rasterizer is worse than none. Run it manually: npm run dev, then npm run offline:perf -- --ladder --trace-delta"
     },
     {
+      "name": "docs-staleness",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/docs-staleness.ts --quiet",
+      "desc": "The GRAPH -> PAGE half of the trigger (F189): reports pages whose substantive facts moved since generation, and SILENT pages where the facts moved and the page did not. Altitude-filtered, so a status change fires and a timestamp does not."
+    },
+    {
       "name": "docs-edits",
       "tier": "script",
       "enabled": true,
