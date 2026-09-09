@@ -203,6 +203,47 @@ function main(): void {
   const handAuthored = website.pages.filter((p) => p.sources.length === 0);
   const report = composePages(composable, entities, website.exclusions);
 
+  /*
+   * REFUSE TO CLAIM A PAGE THE OTHER GENERATOR OWNS.
+   *
+   * Found on 2026-09-08: running this rewrote content/user-paths/user-paths.md from
+   * generated "docs-kb" to generated "docs-composed", and running docs-pages.ts took it straight
+   * back. Whichever ran last won, and `npm run align` reported green EITHER WAY because its docs
+   * gate only checks docs-kb pages. Two generators silently fighting over one file is exactly the
+   * second-source-of-truth this project exists to prevent, and it was invisible.
+   *
+   * Both generators are meant to coexist only until F187.5 replaces both with sets-define-pages,
+   * so this does not resolve the duplication — it makes the overlap impossible to cause by
+   * accident, and names the file when it happens.
+   */
+  const owned = new Map<string, string>();
+  for (const dir of ['content']) {
+    const walk = (d: string): void => {
+      if (!existsSync(d)) return;
+      for (const e of readdirSync(d, { withFileTypes: true })) {
+        const full = join(d, e.name);
+        if (e.isDirectory()) { walk(full); continue; }
+        if (!e.name.endsWith('.md')) continue;
+        const m = /^generated:\s*"([^"]+)"/m.exec(readFileSync(full, 'utf8'));
+        if (m) owned.set(full, m[1]);
+      }
+    };
+    walk(join(ROOT, dir));
+  }
+  const collisions = report.pages
+    .map((pg) => ({ pg, path: join(ROOT, contentPath({ section: pg.section, slug: pg.slug } as SitePage)) }))
+    .filter(({ path }) => owned.get(path) === PER_ENTITY_TAG);
+  if (collisions.length > 0) {
+    console.log('');
+    console.log(C.red(`  ${collisions.length} composed page(s) would OVERWRITE a per-entity page:`));
+    for (const c of collisions) {
+      console.log(C.red(`    ${c.path.replace(`${ROOT}/`, '')}  (currently generated: "${PER_ENTITY_TAG}")`));
+    }
+    console.log(C.red('  Refusing. Two generators claiming one file is a silent second source of truth,'));
+    console.log(C.red('  and the align gates cannot see it. Resolve the overlap in static/website.ttl first.'));
+    process.exit(1);
+  }
+
   console.log('');
   console.log(C.bold('compose docs') + C.dim(` — static/${SITE_FILE}`));
   console.log(`  ${describeComposition(report)}`);

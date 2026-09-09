@@ -7057,6 +7057,7 @@ kb:disambiguation-evidence rdf:type ktype:Reference ;
 
 kb:librarian rdf:type        ktype:Feature ;
                rdfs:label   "The librarian — archived knowledge that keeps the live pages current" ;
+               kpred:description  "Keeping the archive and the live pages in agreement. The graph records what is known and the site publishes it, and the work is the CORRESPONDENCE between them: which page rests on which fact, so that when a fact moves the page is known to be stale rather than discovered to be wrong by a reader. Page provenance records the link; fact altitude decides what counts as a change worth reacting to; hand edits on a page are proposed back onto the entity that owns the sentence." ;
                kpred:feature-id   "F189" ;
                kpred:has-status   "functional" ;
                kpred:priority     "high" ;
@@ -7140,6 +7141,7 @@ kb:set-order rdf:type        ktype:Phase ;
 
 kb:rich-pages rdf:type       ktype:Feature ;
                rdfs:label   "Richer generated pages — embedded media, statuses, and 3D" ;
+               kpred:description  "Everything a generated page can contain beyond prose and links: build-time diagrams, status banners, embedded images, three.js scenes rendered to a still or embedded as an interactive island, and the render-as transformations that turn a list of children into a card gallery or an accordion. The constraint that shapes all of it is that the docs route ships no client JavaScript, so each addition either renders at build time or is charged only to the page that asks for it." ;
                kpred:feature-id   "F190" ;
                kpred:has-status   "planned" ;
                kpred:priority     "medium" ;
@@ -7157,6 +7159,7 @@ kb:rich-pages rdf:type       ktype:Feature ;
 
 kb:docs-search rdf:type      ktype:Feature ;
                rdfs:label   "Search and guided interaction in the docs" ;
+               kpred:description  "Finding things in the documentation, and the guided interaction around it. Search is the firm requirement — a site of this size without it is one people give up on — and is built as an island: one route where JavaScript is allowed, reached from pages that stay static. Guided questions and in-docs chat are the softer half, and the recommendation there is to link into the app rather than run a second assistant that knows different things." ;
                kpred:feature-id   "F191" ;
                kpred:has-status   "planned" ;
                kpred:priority     "high" ;
@@ -7172,6 +7175,7 @@ kb:docs-search rdf:type      ktype:Feature ;
 
 kb:derived-prose rdf:type    ktype:Feature ;
                rdfs:label   "Derived prose — sentences computed from the graph, not stored in it" ;
+               kpred:description  "Sentences a page states that nobody wrote: text computed from the facts rather than stored as a literal. A status, a count of parts, how many of them are unbuilt. Because it is a function of the graph it cannot go stale and needs no review, which is why the deterministic form ships first; a model writing a description is the other half and needs an alignment check against what the graph actually says." ;
                kpred:feature-id   "F192" ;
                kpred:has-status   "functional" ;
                kpred:priority     "medium" ;
