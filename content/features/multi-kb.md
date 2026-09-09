@@ -19,6 +19,8 @@ Create, switch, rename, and delete independent knowledge graphs. Each graph has 
 
 <p class="derived">It has 2 parts below.</p>
 
+<p class="in-sets">Part of Keep it.</p>
+
 ## In this section
 
 ### Graph Identity

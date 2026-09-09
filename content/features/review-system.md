@@ -19,6 +19,8 @@ Three tabs: Incoming (new triples), Deletions (removal proposals), Merges (dupli
 
 <p class="derived">It has one part below.</p>
 
+<p class="in-sets">Part of You settle it.</p>
+
 ## In this section
 
 **[Review Workbench](../features/review-workbench)**

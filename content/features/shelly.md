@@ -17,6 +17,8 @@ The turtle-shaped AI assistant. Three tabs: tutorial, chat (grounded in your gra
 
 <p class="derived">It has 4 parts below.</p>
 
+<p class="in-sets">Part of Ask it things.</p>
+
 ## In this section
 
 ### Kokoro TTS

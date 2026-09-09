@@ -54,6 +54,7 @@ import { loadCache, diagramKey, diagramFigure } from './lib/mermaid-render.js';
 import { loadSceneCache, sceneKey, sceneFigure, sceneIframe } from './lib/scene-render.js';
 import { hashFacts, DEFAULT_FLOOR } from './lib/page-provenance.js';
 import { docsTitle } from './lib/docs-title.js';
+import { readSets, readNotations, setOverlaps, type EntitySet } from '../src/lib/rdf/sets.js';
 
 const ROOT = resolve(import.meta.dirname ?? '.', '..');
 const STATIC_DIR = join(ROOT, 'static');
@@ -529,6 +530,9 @@ const DIAGRAMS = loadCache();
 const SCENES = loadSceneCache();
 /** stable id -> the page a leap should land on. Filled in main(), read by the renderers. */
 const LEAP_TARGETS = new Map<string, { section: string; slug: string; title: string }>();
+/** Sets declared anywhere in the corpus, and which sets each entity belongs to. F187.5. */
+const SETS: EntitySet[] = [];
+const SETS_OF = new Map<string, EntitySet[]>();
 
 /**
  * stable graph id -> section title, read from each source's own `kbStableId`.
@@ -615,6 +619,34 @@ function leapLink(e: Entity): { href: string; title: string } | null {
 function excerptFor(e: Entity): string {
   const source = e.definition || e.literalProps.get(`${KPRED}description`)?.[0] || '';
   return source ? firstSentence(source) : '';
+}
+
+/**
+ * Which sets this entity belongs to (F187.5).
+ *
+ * Rendered because membership is the thing a parent-child tree cannot say: an entity has ONE
+ * parent and may belong to SEVERAL sets, and the several is usually the interesting part. A
+ * feature that appears in both "work out the claims" and "ask it things" is telling a reader
+ * something true about the product that no tree could express.
+ *
+ * Sets whose members are all elsewhere on this page are skipped — repeating a set on the page that
+ * IS that set would be a link to here.
+ */
+function renderSetMembership(e: Entity, refs: Map<string, PageRef>): string[] {
+  const sets = (SETS_OF.get(e.iri) ?? []).filter((s) => s.kind !== 'story');
+  if (sets.length === 0) return [];
+  const parts = sets
+    .map((s) => {
+      const owner = refs.get(s.iri);
+      return owner
+        ? `[${escapeMdText(s.label)}](../${slugify(owner.section)}/${owner.slug})`
+        : escapeMdText(s.label);
+    })
+    .sort();
+  return [
+    `<p class="in-sets">Part of ${parts.join(', ')}.</p>`,
+    '',
+  ];
 }
 
 function renderDerived(e: Entity, children: ChildRef[]): string[] {
@@ -885,6 +917,7 @@ function renderBody(
   lines.push(...renderDiagramFor(e));
   lines.push(...renderSceneFor(e));
   lines.push(...renderDerived(e, children));
+  lines.push(...renderSetMembership(e, refs));
   const ownLeap = leapLink(e);
   if (ownLeap) lines.push(`**[Open ${escapeMdText(ownLeap.title)} →](${ownLeap.href})**`, '');
 
@@ -1015,6 +1048,26 @@ function main(): void {
    * section, which is the section's own hub. In the app a leap switches graphs; on the site the
    * equivalent act is arriving at the top of that subject, not at an arbitrary page inside it.
    */
+  /*
+   * SETS (F187.5) — read once, from every source graph, with kinds resolved from the vocabulary.
+   *
+   * A set is not a page yet; this is the step before that. What it buys immediately is the thing
+   * Matt asked for first: an entity knows which sets it belongs to, so a page can say where it
+   * sits in the larger story rather than leaving the reader to infer it from a sidebar. And
+   * because membership OVERLAPS, one entity can say it belongs to two — which a parent-child tree
+   * structurally cannot express.
+   */
+  const vocabQuads = parseTtl(join(STATIC_DIR, 'reckons-vocabulary.ttl'));
+  const notations = readNotations(vocabQuads as never[]);
+  for (const [, quads] of fileQuads) {
+    for (const set of readSets(quads as never[], notations)) SETS.push(set);
+  }
+  for (const set of SETS) {
+    for (const m of set.members) {
+      SETS_OF.set(m.iri, [...(SETS_OF.get(m.iri) ?? []), set]);
+    }
+  }
+
   const bySid = sectionsByStableId(fileQuads);
   const leadOf = new Map<string, Entity>();
   for (const e of entities) {

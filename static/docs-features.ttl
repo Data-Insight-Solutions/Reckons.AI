@@ -11,6 +11,8 @@
 @prefix guide:  <urn:reckons:guide/> .
 @prefix llm:    <urn:reckons:llm/> .
 @prefix ktype:  <urn:kbase:type/> .
+@prefix kset:   <urn:kbase:type/set-kind/> .
+@prefix set:    <urn:reckons:set/> .
 @prefix hnav:   <urn:reckons:nav/> .
 @prefix kpred:  <urn:kbase:predicate/> .
 
@@ -414,3 +416,77 @@ feat:FiveMoves
     kpred:example       "4 · KEEP IT. Accepted facts carry their source, the excerpt they came from, and when you accepted them. You can scrub the graph backwards through time, export the whole thing as a plain-text .ttl file, and keep several independent graphs that do not see each other." ;
     kpred:example       "5 · ASK IT THINGS. Describe a situation and a goal and get a proposal grounded in your own facts. Compare two graphs and see exactly where they disagree. Compress a large graph into the part that answers one question. Publish a graph as a website — these pages are that feature, running on the graph that describes this product." ;
     kpred:constraint    "The parts below are the detail, not the argument. A component list answers what exists; it does not answer what the thing is FOR, and a reader who meets thirty-nine capabilities before meeting the loop will reasonably conclude this is a notes application with unusual settings." .
+
+## =============================================================================
+## THE FIVE MOVES, AS SETS (F187). Matt, 2026-09-09: the five moves and the six
+## steps in Getting Started are great simplifications for human review.
+## Each move is a skos:Collection over features that ALREADY EXIST as entities —
+## the set adds the meaning, not the content. A feature may belong to more than
+## one; membership overlaps rather than partitions.
+## =============================================================================
+
+set:MoveCapture rdf:type          skos:Collection ;
+    kpred:set-kind      kset:page ;
+    skos:prefLabel      "Take it in" ;
+    skos:definition     "A note, a page you read, a repository, a feed you subscribe to, or something you said out loud. Long sources are chunked so nothing is silently truncated." ;
+    skos:member         feat:Ingest, feat:Currents, feat:WhisperSTT, feat:TextChunking, feat:ConfluenceMigration ;
+    kpred:set-relates-to feat:FiveMoves .
+
+set:MoveExtract rdf:type          skos:Collection ;
+    kpred:set-kind      kset:page ;
+    skos:prefLabel      "Work out the claims" ;
+    skos:definition     "A model reads the source and PROPOSES triples, each carrying the sentence it came from. You choose the model, including a local one." ;
+    skos:member         feat:LLMBackends, feat:PassageGrounding, feat:PreferLocal, feat:EntityNormalization ;
+    kpred:set-relates-to feat:FiveMoves .
+
+set:MoveSettle rdf:type          skos:Collection ;
+    kpred:set-kind      kset:page ;
+    skos:prefLabel      "You settle it" ;
+    skos:definition     "The queue shows what CHANGED rather than everything found: new claims, claims that contradict something you already accepted, and near-duplicates. The contradictions are the valuable part." ;
+    skos:member         feat:ReviewSystem, feat:ReviewWorkbench, feat:Disambiguation, feat:SourceTrust ;
+    kpred:set-relates-to feat:FiveMoves .
+
+set:MoveKeep rdf:type          skos:Collection ;
+    kpred:set-kind      kset:page ;
+    skos:prefLabel      "Keep it" ;
+    skos:definition     "Accepted facts carry their source, the excerpt they came from, and when you accepted them — and you can scrub the graph backwards through time or take the whole thing away as plain text." ;
+    skos:member         feat:HistoryMode, feat:TurtleExport, feat:MultiKB, feat:GraphIdentity ;
+    kpred:set-relates-to feat:FiveMoves .
+
+set:MoveUse rdf:type          skos:Collection ;
+    kpred:set-kind      kset:page ;
+    skos:prefLabel      "Ask it things" ;
+    skos:definition     "Describe a situation and a goal and get a proposal grounded in your own facts. Compare two graphs and see where they disagree. Publish a graph as a website — these pages are that feature." ;
+    skos:member         feat:Reckoning, feat:Compare, feat:ContextCompression, feat:Shelly, feat:PublishedDocs, feat:LLMBackends, feat:PreferLocal ;
+    kpred:set-relates-to feat:FiveMoves .
+
+set:TheLoop rdf:type        skos:OrderedCollection ;
+    kpred:set-kind      kset:story ;
+    skos:prefLabel      "The loop, in five moves" ;
+    skos:definition     "The whole product as a sequence. Each move is a set of its own, and the order is the point — this is a story rather than a roster, because shuffling it would describe a different product." ;
+    skos:member         set:MoveCapture, set:MoveExtract, set:MoveSettle, set:MoveKeep, set:MoveUse .
+
+<urn:reckons:set/TheLoop/member/MoveCapture>
+    kpred:in-set        set:TheLoop ;
+    kpred:member-entity set:MoveCapture ;
+    kpred:member-order  "1" .
+
+<urn:reckons:set/TheLoop/member/MoveExtract>
+    kpred:in-set        set:TheLoop ;
+    kpred:member-entity set:MoveExtract ;
+    kpred:member-order  "2" .
+
+<urn:reckons:set/TheLoop/member/MoveSettle>
+    kpred:in-set        set:TheLoop ;
+    kpred:member-entity set:MoveSettle ;
+    kpred:member-order  "3" .
+
+<urn:reckons:set/TheLoop/member/MoveKeep>
+    kpred:in-set        set:TheLoop ;
+    kpred:member-entity set:MoveKeep ;
+    kpred:member-order  "4" .
+
+<urn:reckons:set/TheLoop/member/MoveUse>
+    kpred:in-set        set:TheLoop ;
+    kpred:member-entity set:MoveUse ;
+    kpred:member-order  "5" .

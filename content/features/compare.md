@@ -17,6 +17,8 @@ Compare two knowledge graphs or snapshots at /compare. Diff engine categorizes c
 
 <p class="derived">It has one part below.</p>
 
+<p class="in-sets">Part of Ask it things.</p>
+
 ## In this section
 
 ### Diff Summary

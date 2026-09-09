@@ -17,6 +17,8 @@ generated: "docs-kb"
 
 <p class="derived">It has 2 parts below.</p>
 
+<p class="in-sets">Part of Ask it things, Work out the claims.</p>
+
 ## In this section
 
 ### Model Cache Management

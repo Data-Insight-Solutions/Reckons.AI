@@ -107,6 +107,18 @@
   }
 
   /*
+   * SET MEMBERSHIP (F187.5) — which sets an entity belongs to. Styled like the derived sentence
+   * because it is the same kind of statement: computed from the graph, not written by anyone.
+   */
+  .doc-prose :global(p.in-sets) {
+    margin: -0.5rem 0 1.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .doc-prose :global(p.in-sets a) { color: var(--accent); }
+
+  /*
    * CARD GALLERY and ACCORDION (F190/F191) — both declared in the graph by kpred:render-as, and
    * both deliberately ZERO JavaScript so they can exist on a route with csr = false. The
    * accordion is <details>/<summary>, which is keyboard-accessible for free and which the

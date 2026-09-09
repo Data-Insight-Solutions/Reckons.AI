@@ -15,6 +15,8 @@ generated: "docs-kb"
 
 Condense your context. Keep the meaning. Knowledge graphs are dense by nature — a page of prose becomes a handful of triples. Semantic meaning preserved, tokens reduced. Feed compressed graph directly to AI agents via MCP. Structured triples outperform summaries because no relationships are paraphrased away.
 
+<p class="in-sets">Part of Ask it things.</p>
+
 ## Detail
 
 **Has Param**

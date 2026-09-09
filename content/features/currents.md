@@ -19,6 +19,8 @@ Streamed ingest: point a current at an RSS feed, URL, or topic and it brings rec
 
 <p class="derived">It has one part below.</p>
 
+<p class="in-sets">Part of Take it in.</p>
+
 ## In this section
 
 **[Pod View](../features/pod-view)**

@@ -21,6 +21,8 @@ Bulk import from Confluence spaces. Upload an HTML export ZIP, parse the page tr
 
 <p class="derived">This is planned and not built yet.</p>
 
+<p class="in-sets">Part of Take it in.</p>
+
 ## Related
 
 - [Entity Normalization](../features/entity-normalization)

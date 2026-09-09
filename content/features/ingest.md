@@ -17,6 +17,8 @@ Add knowledge from text, URLs, documents, calendars, iCal feeds, Indico events, 
 
 <p class="derived">It has 3 parts below, 2 of which are not built yet.</p>
 
+<p class="in-sets">Part of Take it in.</p>
+
 ## In this section
 
 **[Confluence Migration](../features/confluence-migration)** — **planned**

@@ -17,6 +17,8 @@ Any graph can publish itself as a browsable website. Entities typed as a web pag
 
 <p class="derived">It has one part below.</p>
 
+<p class="in-sets">Part of Ask it things.</p>
+
 ## In this section
 
 ### Release Notes

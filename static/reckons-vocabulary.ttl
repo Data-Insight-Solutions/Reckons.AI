@@ -6,6 +6,7 @@
 @prefix ktask:  <urn:kbase:type/task-state/> .
 @prefix kstat:  <urn:kbase:type/review-status/> .
 @prefix klife:  <urn:kbase:type/lifecycle/> .
+@prefix kset:   <urn:kbase:type/set-kind/> .
 @prefix kshape: <urn:kbase:shape/> .
 @prefix hnav:   <urn:reckons:nav/> .
 @prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -274,3 +275,70 @@ kshape:StatementStatus a sh:NodeShape ;
         sh:severity sh:Violation ;
         sh:message "kmeta:status must be one of the ktype:ReviewStatusScheme notations."
     ] .
+
+# ── SET KINDS (F187) ─────────────────────────────────────────────────────────
+# What kind of grouping a set is. A set TYPE describes the GROUP the way an
+# entity type describes one node, and it is a controlled vocabulary for exactly
+# the reason the others here are: the code and the graph must agree on the words.
+#
+# NOT rdf:type ON THE SET. A collection carries kpred:set-kind pointing at one of
+# these concepts. Using rdf:type would make each concept simultaneously an
+# individual (a member of this scheme) and a class (the type of a collection) —
+# OWL 2 punning, legal but poorly tooled, and a departure from how every other
+# vocabulary here is used: the code writes kpred:has-status "functional", never
+# rdf:type klife:functional. See kb:ref-figay-skos-owl.
+
+ktype:SetKindScheme a skos:ConceptScheme ;
+    rdfs:label "Kinds of set" ;
+    skos:definition "What a grouping IS: a page, a story with an order, a roster of like things, or a contrast between two sets of facts." ;
+    skos:note "A set may carry no kind at all. An untyped collection is still a collection, and requiring a kind before you can group two things would put a taxonomy decision in front of the simplest possible act." ;
+    skos:hasTopConcept kset:page, kset:story, kset:roster, kset:contrast .
+
+kset:page a skos:Concept ;
+    skos:inScheme ktype:SetKindScheme ;
+    skos:prefLabel "Page" ;
+    skos:notation "page" ;
+    skos:definition "A set whose members make one document. This is the kind that answers F187.5 — the set defines the page, and its members are the sections." .
+
+kset:story a skos:Concept ;
+    skos:inScheme ktype:SetKindScheme ;
+    skos:prefLabel "Story" ;
+    skos:notation "story" ;
+    skos:definition "A set whose ORDER carries meaning: a sequence, a path, a chain of prerequisites. Shuffling it changes what it says, which is what distinguishes it from a roster." ;
+    skos:note "A story should be a skos:OrderedCollection. The kind records the intent; the collection type records the mechanism." .
+
+kset:roster a skos:Concept ;
+    skos:inScheme ktype:SetKindScheme ;
+    skos:prefLabel "Roster" ;
+    skos:notation "roster" ;
+    skos:definition "A set of like things where order is presentation rather than meaning — the people on a team, the vendors on a shortlist. Sorting it alphabetically loses nothing." .
+
+kset:contrast a skos:Concept ;
+    skos:inScheme ktype:SetKindScheme ;
+    skos:prefLabel "Contrast" ;
+    skos:notation "contrast" ;
+    skos:definition "A set that exists to be compared with another — the overlap is the point. Two contrast sets sharing members are what a Venn draws, and the shared membership is derived rather than asserted." .
+
+ktype:SetKindOrder a skos:OrderedCollection ;
+    rdfs:label "Set kinds, most structured first" ;
+    skos:memberList ( kset:story kset:page kset:contrast kset:roster ) .
+
+# ── The predicates a set uses ────────────────────────────────────────────────
+# Declared here so the vocabulary is one file rather than folklore. skos:member
+# and skos:prefLabel are the standard's own and need no declaration; these three
+# are the local departures, and each says why it exists.
+
+kpred:set-kind a rdf:Property ;
+    rdfs:label "set kind" ;
+    rdfs:domain skos:Collection ;
+    rdfs:range skos:Concept ;
+    rdfs:comment "Which kind of set this is, from ktype:SetKindScheme. A PROPERTY rather than rdf:type, to avoid OWL 2 punning — see the scheme's note." .
+
+kpred:member-order a rdf:Property ;
+    rdfs:label "member order" ;
+    rdfs:comment "The position of ONE member within ONE set, carried on a skolemised membership node. It cannot live on the member itself: an entity may sit third in one set and first in another, and it cannot live in an rdf:List because blank-node labels are not stable across parses (measured 2026-09-08), so a list re-proposes its whole chain on every re-import." .
+
+kpred:set-relates-to a rdf:Property ;
+    rdfs:label "set relates to" ;
+    rdfs:domain skos:Collection ;
+    rdfs:comment "A relation between two SETS, or a set and one entity. LOCAL: SKOS has no Collection-to-Collection relation — its mapping properties relate Concepts, and skos:related is domain and range skos:Concept, so reusing it here would be a range violation." .
