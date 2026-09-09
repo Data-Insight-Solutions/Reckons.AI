@@ -677,8 +677,8 @@
       "path": "llm/versus-vector-rag",
       "entity": "urn:reckons:llm/VersusVectorRAG",
       "graph": "docs-llm.ttl",
-      "factHash": "a91582f043136dd6",
-      "factCount": 10,
+      "factHash": "60c14564493adef0",
+      "factCount": 13,
       "floor": "evidence"
     },
     {

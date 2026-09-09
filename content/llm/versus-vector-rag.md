@@ -27,11 +27,16 @@ Anyone who already has a RAG pipeline, or is deciding whether to build one, and 
 
 **Principle**
 
-THE UNIT IS THE WHOLE DIFFERENCE. RAG retrieves CHUNKS OF TEXT chosen by vector proximity; a passage that reads like the question comes back, and the model reads it and writes an answer. Reckons.AI retrieves CLAIMS a person has confirmed, each with the sentence it came from. Everything else on this page follows from that one choice, in both directions.
+- AN INDEX IS A SNAPSHOT; A GRAPH IS A RECORD. This is the difference Matt named on 2026-09-08 and it is the one most easily missed, because both systems look identical the day you build them. A vector index holds embeddings of the text as it was at ingest. It has no notion of a claim having been ACCEPTED, by whom, or when; no notion of one claim REPLACING another; and — the part that bites — no way to tell you it has gone out of date. A graph here carries a review status on every statement (pending, confirmed, refined, rejected, superseded), a supersedes link from a claim to the one it replaced, and a history you can scrub backwards through. The index is rebuilt; the graph accumulates.
+- THE UNIT IS THE WHOLE DIFFERENCE. RAG retrieves CHUNKS OF TEXT chosen by vector proximity; a passage that reads like the question comes back, and the model reads it and writes an answer. Reckons.AI retrieves CLAIMS a person has confirmed, each with the sentence it came from. Everything else on this page follows from that one choice, in both directions.
 
 **Constraint**
 
 THEY COMPOSE, AND THIS PRODUCT ALREADY USES BOTH. Reckons.AI ships BM25 full-text search and BGE-small embeddings, and uses vector similarity for entity disambiguation — deciding that two names probably mean one thing is a similarity problem, not a logical one. The useful architecture is usually vectors for RECALL and a graph for JUDGEMENT: let similarity find the candidates, and let a reviewed structure decide what is true. Treating them as rivals costs you one of the two.
+
+**Honest Note**
+
+TWO WAYS THAT ARGUMENT CAN BE OVERSTATED, AND BOTH SHOULD BE RESISTED. FIRST, a RAG index is not frozen forever — incremental re-embedding is ordinary practice, and a well-run pipeline re-indexes on change. The real difference is not that an index CANNOT be current, it is that it cannot tell you WHETHER it is; staleness is invisible rather than permanent. SECOND, a RAG corpus can be made entirely of documents humans wrote and reviewed. The difference is GRANULARITY, not the presence of a human: a reviewed document is one decision covering a thousand claims, and the chunk that comes back carries no record of which of them anybody actually checked.
 
 ## What we found
 
@@ -44,6 +49,7 @@ THEY COMPOSE, AND THIS PRODUCT ALREADY USES BOTH. Reckons.AI ships BM25 full-tex
 **Example**
 
 - WHAT A REVIEWED GRAPH DOES THAT VECTOR SEARCH STRUCTURALLY CANNOT. It can tell you two sources DISAGREE. Two chunks that contradict each other are two chunks with high similarity to the same query, and nothing in the index knows they cannot both be true; two triples with the same subject and predicate and different objects are a contradiction by construction, detectable without reading anything. It can answer a question about ABSENCE — what do I not know — which a similarity search cannot express, because the nearest neighbour of a question with no answer is still some passage. It can be CORRECTED once: fix a fact and every answer that rests on it changes, where re-embedding a corrected document leaves every stale chunk exactly where it was. And its provenance is per-claim rather than per-chunk, so a citation points at the sentence that supports the fact rather than at the paragraph it was near.
+- WHAT THAT MEANS IN PRACTICE. Ask a stale index a question and it answers confidently from text that is no longer true, because nothing in a chunk records that its source changed. Ask a graph the same question and the machinery exists to know: page provenance hashes the SUBSTANTIVE facts behind an answer and reports when they have moved, and source refresh and monitoring watch the documents a graph was built from. Being able to say I may be out of date, and here is exactly which part is a property of the record, not of the retrieval.
 - WHAT VECTOR SEARCH DOES BETTER, and it is not a short list. It needs no extraction step, so ingesting a thousand documents costs an embedding pass and nothing else — no review queue, no human in the loop, no decisions. It handles a question phrased in words the corpus never uses, because proximity in embedding space does not require anyone to have agreed on vocabulary. It degrades gracefully: a bad match returns a slightly-off passage rather than nothing. And it scales to corpora far beyond what anyone would sit and review. If your problem is find me the part of these ten thousand pages that talks about X, a vector index is the right tool and a graph is a slower way to get a worse answer.
 
 ## What is not done
