@@ -124,6 +124,10 @@ const RENDER_ONLY_STRUCTURAL = new Set<string>([
   PART_OF, STEP_ORDER, RENDER_INLINE, CHILDREN_LABEL,
   // Which surface a tenet appears on is a routing flag, not something to print at a reader.
   SHOW_ON_LANDING,
+  // Where the page LIVES is routing too. Without these, the first page to use the override
+  // published a "Detail" section reading "Page Section: Learn / Page Slug: what-it-does" — the
+  // generator's own plumbing, printed at a reader as though it were a fact about the product.
+  `${KPRED}page-section`, `${KPRED}page-slug`,
 ]);
 
 // ── Section map — file → display title. Order here is the processing order used to
@@ -255,7 +259,7 @@ function resolveHomeFiles(fileQuads: Map<string, Quad[]>): Map<string, string> {
 
 // ── Entity extraction ────────────────────────────────────────────────────────
 
-interface Entity {
+export interface Entity {
   iri: string;
   section: string;
   title: string;
@@ -344,7 +348,12 @@ function extractEntity(iri: string, section: string, quads: Quad[]): Entity {
 
 function assignSlugs(entities: Entity[]): Map<string, string> {
   const base = new Map<string, string>();
-  for (const e of entities) base.set(e.iri, kebabLocal(localName(e.iri)));
+  // An explicit kpred:page-slug wins over the name derived from the IRI, so a page can own a URL a
+  // reader was given. Collisions are still resolved below, and an explicit slug that collides is a
+  // mistake worth seeing rather than one to paper over.
+  for (const e of entities) {
+    base.set(e.iri, e.literalProps.get(`${KPRED}page-slug`)?.[0] ?? kebabLocal(localName(e.iri)));
+  }
 
   const byBase = new Map<string, Entity[]>();
   for (const e of entities) {
@@ -391,7 +400,7 @@ function assignSlugs(entities: Entity[]): Map<string, string> {
 interface PageRef { slug: string; section: string; title: string }
 
 /** One child in a hub's walkthrough: enough to summarise it without opening it. */
-interface ChildRef {
+export interface ChildRef {
   slug: string; section: string; title: string;
   /** Humanized rdf:type names — a gallery groups by these when the children are mixed. */
   types: string[];
@@ -583,6 +592,15 @@ const LEAP_TARGETS = new Map<string, { section: string; slug: string; title: str
 /** Sets declared anywhere in the corpus, and which sets each entity belongs to. F187.5. */
 const SETS: EntitySet[] = [];
 const SETS_OF = new Map<string, EntitySet[]>();
+/**
+ * Every entity's OWN title, page or not.
+ *
+ * Needed because `refs` deliberately remaps a folded entity to the page that contains it, HOST
+ * TITLE INCLUDED — which is right for a prose cross-reference and wrong for a set member. Rendered
+ * from refs alone, the "take it in" set listed Whisper STT as "Shelly (AI Assistant)" and Ingest
+ * twice, because two of its five members fold into other pages. A set must name its own members.
+ */
+const TITLE_OF = new Map<string, string>();
 
 /**
  * stable graph id -> section title, read from each source's own `kbStableId`.
@@ -699,7 +717,7 @@ function renderSetMembership(e: Entity, refs: Map<string, PageRef>): string[] {
   ];
 }
 
-function renderDerived(e: Entity, children: ChildRef[]): string[] {
+export function renderDerived(e: Entity, children: ChildRef[]): string[] {
   /*
    * NEVER THE FIRST THING ON A PAGE. Found on content/principles/thesis.md, which has no
    * skos:definition, so the computed sentence became the lede and the page opened with "It has 10
@@ -724,10 +742,15 @@ function renderDerived(e: Entity, children: ChildRef[]): string[] {
   }
   if (children.length) {
     const unbuilt = children.filter((c) => c.status && !['functional', 'production'].includes(c.status)).length;
-    parts.push(children.length === 1
-      ? 'It has one part below'
-      : `It has ${children.length} parts below`
-        + (unbuilt ? `, ${unbuilt} of which ${unbuilt === 1 ? 'is' : 'are'} not built yet` : ''));
+    /*
+     * The unbuilt clause belongs to BOTH branches. It was inside the plural one only, so a hub
+     * with exactly one part, and that part not built, said "It has one part below." and dropped
+     * the fact that it is not built — the page quietly claimed more than the graph supports.
+     * Caught by scripts/__tests__/derived-prose.test.ts on 2026-09-09.
+     */
+    const count = children.length === 1 ? 'It has one part below' : `It has ${children.length} parts below`;
+    const notBuilt = unbuilt ? `, ${unbuilt} of which ${unbuilt === 1 ? 'is' : 'are'} not built yet` : '';
+    parts.push(count + notBuilt);
   }
   if (uses) parts.push(`It builds on ${uses} other ${uses === 1 ? 'capability' : 'capabilities'}`);
   if (!parts.length) return [];
@@ -735,6 +758,89 @@ function renderDerived(e: Entity, children: ChildRef[]): string[] {
   // Marked as derived so a reader can tell computed text from written text, and so a hand edit to
   // it is never proposed back into the graph — there is nothing there to edit.
   return [`<p class="derived">${escapeMdText(parts.join('. '))}.</p>`, ''];
+}
+
+/**
+ * THE SETS THAT COMPOSE THIS PAGE (F187.5) — a set contributes a section; it does not BE the page.
+ *
+ * Matt, 2026-09-09, correcting an earlier reading: "a set may define a set of entities and triples
+ * related to a page, but it does NOT define the page." So this is deliberately additive. The page
+ * is still an entity with its own definition, diagram, principle and examples; a set that points at
+ * it with kpred:set-relates-to adds a titled section listing its members. Several sets may point at
+ * one page, and a page with none renders exactly as it did before.
+ *
+ * ORDER COMES FROM A STORY SET, NOT FROM THIS FUNCTION. If an ordered collection has these sets as
+ * its members, its member-order decides the sequence — which is what makes the five moves read as
+ * one, two, three rather than alphabetically. Sets outside any story fall to their label, which is
+ * stable but is not a claim that the order means anything.
+ */
+/** Muted trailing note on a link. Plain HTML so it survives the markdown round-trip unchanged. */
+const C_DIM_OPEN = '<span class="link-note">';
+const C_DIM_CLOSE = '</span>';
+
+function renderSetSections(e: Entity, refs: Map<string, PageRef>): string[] {
+  const composing = SETS.filter((s) => s.relatesTo.includes(e.iri));
+  if (composing.length === 0) return [];
+
+  // A story whose members are these sets is the sequence the author intended.
+  const story = SETS.find((s) =>
+    s.ordered && composing.length > 1 && composing.every((c) => s.members.some((m) => m.iri === c.iri)));
+  const positionOf = new Map<string, number>();
+  if (story) for (const m of story.members) if (m.order !== undefined) positionOf.set(m.iri, m.order);
+
+  const ordered = [...composing].sort((a, b) => {
+    const pa = positionOf.get(a.iri), pb = positionOf.get(b.iri);
+    if (pa !== undefined && pb !== undefined) return pa - pb;
+    if (pa !== undefined) return -1;
+    if (pb !== undefined) return 1;
+    return a.label.localeCompare(b.label);
+  });
+
+  const out: string[] = [];
+  if (story?.definition) out.push(`## ${escapeMdText(story.label)}`, '', escapeMdText(story.definition), '');
+  for (const [i, set] of ordered.entries()) {
+    // The ordinal is shown only when the order is asserted. Numbering an unordered set would be
+    // inventing a sequence, which is the same failure as a forced link.
+    const n = positionOf.get(set.iri);
+    out.push(`### ${n !== undefined ? `${n} · ` : ''}${escapeMdText(set.label)}`, '');
+    if (set.definition) out.push(escapeMdText(set.definition), '');
+
+    // Each member under its OWN name, linked to whatever page carries it — which for a folded
+    // member is a page about something else. Deduplicated by (name, destination) so a set whose
+    // members share a host page still names each of them once.
+    const seen = new Set<string>();
+    const links: string[] = [];
+    for (const m of set.members) {
+      const ref = refs.get(m.iri);
+      if (!ref) continue;
+      const title = docsTitle(TITLE_OF.get(m.iri) ?? ref.title);
+      const href = `../${slugify(ref.section)}/${ref.slug}`;
+      const key = `${title}\u0000${href}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      /*
+       * SAY WHEN THE DESTINATION IS NAMED SOMETHING ELSE.
+       *
+       * A folded member has no page of its own, so its link lands on the page that contains it —
+       * "Whisper STT" going to a page headed "Shelly". Anchoring would be tidier but only gallery
+       * pages mint per-child ids, so linking to `#slug` would produce dead anchors on every page
+       * rendered as a list. Naming the destination is honest, costs nothing, and cannot break.
+       */
+      const hostTitle = docsTitle(ref.title);
+      const elsewhere = hostTitle !== title ? ` ${C_DIM_OPEN}— on the ${escapeMdText(hostTitle)} page${C_DIM_CLOSE}` : '';
+      links.push(`- [${escapeMdText(title)}](${href})${elsewhere}`);
+    }
+    if (links.length) out.push(...links, '');
+
+    // A member with no page of its own is not silently dropped: it is content somewhere else, and
+    // saying how many there are keeps the count honest without inventing a link.
+    const unlinked = set.members.length - seen.size;
+    if (unlinked > 0) {
+      out.push(`<p class="derived">${unlinked} more ${unlinked === 1 ? 'part is' : 'parts are'} covered inside the pages above.</p>`, '');
+    }
+    if (i === ordered.length - 1) out.push('');
+  }
+  return out;
 }
 
 function renderSceneFor(e: Entity): string[] {
@@ -975,6 +1081,11 @@ function renderBody(
   // for this page, not for its table of contents.
   lines.push(...renderProse(e, 2));
 
+  // The sets that compose this page go BETWEEN the prose and the child list: they are the
+  // structured account of the thing, and the child list is the exhaustive one. A reader who stops
+  // after the sets has read the argument; the components below answer it in detail.
+  lines.push(...renderSetSections(e, refs));
+
   lines.push(...renderChildren(children, childHeading, e.renderAs));
 
   const iriKeys = [...e.iriProps.keys()]
@@ -1037,6 +1148,24 @@ function main(): void {
     .map(([iri, file]) => extractEntity(iri, sectionOf.get(file)!, fileQuads.get(file)!))
     .sort((a, b) => a.iri.localeCompare(b.iri));
 
+  /*
+   * WHERE A PAGE LIVES IS A FACT, NOT A SIDE EFFECT OF WHICH FILE IT WAS WRITTEN IN.
+   *
+   * Section is otherwise derived from the source graph, which is a good default and a bad rule for
+   * the handful of pages a reader actually lands on. The five moves are authored in
+   * docs-features.ttl because that is where the features are, but a first-time reader needs them at
+   * /docs/learn/what-it-does — and moving the entity between files to move its URL would be filing
+   * by navigation rather than by subject.
+   *
+   * So kpred:page-section and kpred:page-slug override the default, and being facts they are
+   * reviewable and diffable like everything else. Deliberately narrow: this places a page, it does
+   * not restructure the navigation.
+   */
+  for (const e of entities) {
+    const section = e.literalProps.get(`${KPRED}page-section`)?.[0];
+    if (section) e.section = section;
+  }
+
   const slugs = assignSlugs(entities);
 
   // order: explicit nav:order kept as-is; everything else gets a deterministic
@@ -1061,6 +1190,7 @@ function main(): void {
   // pageToMarkdown's own handling of unresolvable parent/related IRIs).
   const refs = new Map<string, PageRef>();
   for (const e of entities) refs.set(e.iri, { slug: slugs.get(e.iri)!, section: e.section, title: e.title });
+  for (const e of entities) TITLE_OF.set(e.iri, e.title);
 
   // Children, indexed by parent, so a hub page can render the route through what it contains.
   // Sort key: explicit kpred:step-order first (a numbered sequence the author wrote), then
@@ -1091,6 +1221,49 @@ function main(): void {
     const host = parentOf.get(e.iri);
     const hostInlines = !!host && (byIriEarly.get(host)?.literalProps.get(RENDER_INLINE)?.[0] === 'true');
     isPage.set(e.iri, earnsPage(e, hasChildren.has(e.iri), parentOf.has(e.iri), hostInlines));
+  }
+
+  /*
+   * SIBLING COHESION — a sequence folds or unfolds as a unit.
+   *
+   * The word threshold judges each entity alone, which splits groups that only make sense
+   * together. Editing "use the RadialMenu" into plain English on 2026-09-09 took Step 4 of Getting
+   * Started from 44 words to 46, and Step 4 alone got a URL while Steps 1, 2, 3 and 5 stayed
+   * folded into the walkthrough. A five-step sequence with one step living somewhere else is worse
+   * than either whole version of it, and nothing about the reader's needs changed — a comma did.
+   *
+   * Matt, 2026-09-09: "the folds is less critical than the cohesive story of each page... the
+   * reduction of URLs is secondary to the cohesion and user experience of the docs."
+   *
+   * ONLY MARGINAL SIBLINGS REJOIN, and this bound is the whole rule rather than a refinement of
+   * it. The first version folded any minority into the majority and took 24 pages with it,
+   * including a 520-word page on what a reckoning is — which is not a threshold artifact, it is a
+   * page that earned its URL next to shorter siblings. So a sibling rejoins only when it is barely
+   * over the line (within a quarter of the threshold), where the split really is an accident of
+   * counting. A sibling with children is never folded: it is a junction.
+   */
+  const MARGINAL = PAGE_THRESHOLD_WORDS * 1.25;
+  const siblingsOf = new Map<string, Entity[]>();
+  for (const e of entities) {
+    const host = parentOf.get(e.iri);
+    if (host) siblingsOf.set(host, [...(siblingsOf.get(host) ?? []), e]);
+  }
+  const rejoined: string[] = [];
+  for (const group of siblingsOf.values()) {
+    const foldable = group.filter((e) => !hasChildren.has(e.iri));
+    if (foldable.length < 3) continue;   // two siblings are not a sequence
+    const folded = foldable.filter((e) => !isPage.get(e.iri));
+    const paged = foldable.filter((e) => isPage.get(e.iri));
+    if (folded.length > paged.length && paged.length > 0) {
+      for (const e of paged) {
+        if (proseWeight(e) >= MARGINAL) continue;   // it earned the page on its own merits
+        isPage.set(e.iri, false);
+        rejoined.push(e.title);
+      }
+    }
+  }
+  if (rejoined.length > 0) {
+    console.log(`  folded back into their sequence: ${rejoined.join(', ')}`);
   }
 
   /*
@@ -1294,4 +1467,6 @@ function main(): void {
   }
 }
 
-main();
+// Guarded so this module can be IMPORTED by a test without generating the whole site. Every step
+// in docs-build.ts runs it as a subprocess, so the CLI path is unchanged.
+if (process.argv[1] && process.argv[1].endsWith('docs-pages.ts')) main();

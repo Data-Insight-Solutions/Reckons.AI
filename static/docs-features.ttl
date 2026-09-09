@@ -74,8 +74,20 @@ feat:Shelly
 
 feat:Reckoning
     rdf:type            ktype:Concept ;
-    rdfs:label          "Reckoning (STP)" ;
-    skos:definition     "Situation-Target-Proposal: describe your situation, state your goal, and the AI synthesizes options grounded ONLY in your confirmed triples. Every option cites its sources." ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "A reckoning — asking your graph what to do" ;
+    skos:altLabel       "Reckoning" ;
+    skos:altLabel       "Situation-Target-Proposal" ;
+    skos:altLabel       "STP" ;
+    skos:definition     "A reckoning is what this product is named after, and it is the thing you do once you have a graph worth asking. You describe the situation you are in and the outcome you want, and you get back options that are built ONLY from facts you have confirmed — each one showing which of your own facts it stands on. The name is the old sense of the word: to reckon is to work something out from what you have, and to be held to account for the answer." ;
+    kpred:page-section  "Learn" ;
+    kpred:page-slug     "reckoning" ;
+    kpred:audience      "Anyone who has been told this is a note-taking tool and is wondering what it is actually for." ;
+    kpred:example       "SITUATION: our staging deploys have failed twice this month, both times after a dependency bump, and the person who set the pipeline up has left. TARGET: stop the failures without rebuilding the pipeline. What comes back is a handful of options assembled from what your graph already holds about those deploys — and each one names the facts it used, so you can see whether it read the situation correctly before you act on it." ;
+    kpred:principle     "IT CANNOT USE A FACT YOU HAVE NOT ACCEPTED. That is the entire difference between this and asking a chatbot the same question. A chatbot answers from everything it has ever read plus whatever you pasted; a reckoning answers from your confirmed graph and nothing else, which is why it can tell you it does not have enough to go on instead of producing a confident answer built on nothing." ;
+    kpred:principle     "EVERY OPTION SHOWS ITS WORKING. An option that cites three facts you recognise is one you can act on. An option that cites a fact you had forgotten is the useful kind of surprise. An option that cites nothing does not appear, because a proposal with no grounding is a guess with better formatting." ;
+    kpred:constraint    "IT IS ONLY AS GOOD AS WHAT YOU PUT IN, and the product does not pretend otherwise. A reckoning over a graph of nine facts will say very little of value. This is the honest cost of the approach: the review step that makes the answer trustworthy is also the step that makes it slow to get started, and no amount of automation removes it without also removing the reason to believe the result." ;
+    kpred:constraint    "IT PROPOSES. YOU DECIDE. A reckoning does not act, schedule, send, or change anything — it hands you options and the reasoning behind them. Nothing in this product does something on your behalf because it concluded that it should." ;
     skos:broader        guide:WhatIsReckonsAI .
 
 
@@ -349,7 +361,7 @@ feat:ReviewWorkbench
 feat:PublishedDocs
     rdf:type            ktype:Concept ;
     rdfs:label          "Published Graph Site" ;
-    skos:definition     "Any graph can publish itself as a browsable website. Entities typed as a web page export to markdown with frontmatter (title, section, order, excerpt) via the graph's structure -- skos:broader for parent/child, nav:order and nav:next/nav:prev for sequence. The generated site is served at /docs. The graph stays the source of truth: generated pages are regenerated from the graph, and hand-edits to them are overwritten by the next regeneration by design. A Git-backed admin UI edits non-generated content (like release posts); a drift check flags generated pages that no longer match their graph." ;
+    skos:definition     "Any graph can publish itself as a browsable website. Entities typed as a web page export to markdown with frontmatter (title, section, order, excerpt) via the graph's own structure: the parent-child links decide the section a page sits in, and the ordering facts decide the sequence pages read in. The generated site is served at /docs. The graph stays the source of truth: generated pages are regenerated from the graph, and hand-edits to them are overwritten by the next regeneration by design. A Git-backed admin UI edits non-generated content (like release posts); a drift check flags generated pages that no longer match their graph." ;
     skos:broader        guide:WhatIsReckonsAI ;
     skos:related        feat:ReleaseNotes .
 
@@ -396,6 +408,8 @@ feat:FiveMoves
     skos:broader        feat:WhatIsReckonsAI ;
     skos:definition     "Reckons.AI does one thing in five moves: it takes what you put in, works out the claims inside it, asks you which are true, keeps the ones you accept with their sources attached, and then lets you ask the result questions. Everything below is a part of one of those five moves. If you only read one thing about the product, read this page rather than the component list underneath it — the components make sense as answers to the five moves and make very little sense on their own." ;
     kpred:render-as     "gallery" ;
+    kpred:page-section  "Learn" ;
+    kpred:page-slug     "what-it-does" ;
     kpred:audience      "Anyone deciding whether this is the right tool, before reading about any individual capability." ;
     kpred:diagram       """flowchart LR
   IN["1 · Take it in<br/>notes, pages, feeds,<br/>things you said"]
@@ -410,11 +424,6 @@ feat:FiveMoves
   US -.->|"a new question<br/>needs new sources"| IN""" ;
     kpred:diagram-caption "The five moves. Step 3 is the one that makes the rest worth anything, and it is the one no amount of automation removes." ;
     kpred:principle     "Nothing enters your graph because a model suggested it. Extraction PROPOSES; you dispose. That single rule is what separates this from a tool that reads your files and answers confidently — it is why the graph can be trusted a year later, and why it can tell you what it does not know instead of inventing an answer." ;
-    kpred:example       "1 · TAKE IT IN. Paste text, point at a URL or a repository, drop in a PDF, subscribe a current to a feed so it keeps arriving, or just talk — speech to text runs locally. Long sources are chunked so nothing is silently truncated." ;
-    kpred:example       "2 · WORK OUT THE CLAIMS. A language model reads the source and proposes triples, each carrying the verbatim sentence it came from. You choose the model, including a local one, and the setting that keeps everything local is a switch rather than a rewrite." ;
-    kpred:example       "3 · YOU SETTLE IT. The review queue shows what CHANGED rather than everything found: new claims, claims that contradict something you already accepted, and near-duplicates that are probably the same thing under two names. Contradictions are the valuable part — that is the moment a pile of documents would have stayed quiet." ;
-    kpred:example       "4 · KEEP IT. Accepted facts carry their source, the excerpt they came from, and when you accepted them. You can scrub the graph backwards through time, export the whole thing as a plain-text .ttl file, and keep several independent graphs that do not see each other." ;
-    kpred:example       "5 · ASK IT THINGS. Describe a situation and a goal and get a proposal grounded in your own facts. Compare two graphs and see exactly where they disagree. Compress a large graph into the part that answers one question. Publish a graph as a website — these pages are that feature, running on the graph that describes this product." ;
     kpred:constraint    "The parts below are the detail, not the argument. A component list answers what exists; it does not answer what the thing is FOR, and a reader who meets thirty-nine capabilities before meeting the loop will reasonably conclude this is a notes application with unusual settings." .
 
 ## =============================================================================
@@ -428,35 +437,35 @@ feat:FiveMoves
 set:MoveCapture rdf:type          skos:Collection ;
     kpred:set-kind      kset:page ;
     skos:prefLabel      "Take it in" ;
-    skos:definition     "A note, a page you read, a repository, a feed you subscribe to, or something you said out loud. Long sources are chunked so nothing is silently truncated." ;
+    skos:definition     "Paste text, point at a URL or a repository, drop in a PDF, subscribe a current to a feed so it keeps arriving, or just talk — speech to text runs locally. Long sources are chunked so nothing is silently truncated." ;
     skos:member         feat:Ingest, feat:Currents, feat:WhisperSTT, feat:TextChunking, feat:ConfluenceMigration ;
     kpred:set-relates-to feat:FiveMoves .
 
 set:MoveExtract rdf:type          skos:Collection ;
     kpred:set-kind      kset:page ;
     skos:prefLabel      "Work out the claims" ;
-    skos:definition     "A model reads the source and PROPOSES triples, each carrying the sentence it came from. You choose the model, including a local one." ;
+    skos:definition     "A language model reads the source and PROPOSES triples, each carrying the verbatim sentence it came from. You choose the model, including a local one, and the setting that keeps everything local is a switch rather than a rewrite." ;
     skos:member         feat:LLMBackends, feat:PassageGrounding, feat:PreferLocal, feat:EntityNormalization ;
     kpred:set-relates-to feat:FiveMoves .
 
 set:MoveSettle rdf:type          skos:Collection ;
     kpred:set-kind      kset:page ;
     skos:prefLabel      "You settle it" ;
-    skos:definition     "The queue shows what CHANGED rather than everything found: new claims, claims that contradict something you already accepted, and near-duplicates. The contradictions are the valuable part." ;
-    skos:member         feat:ReviewSystem, feat:ReviewWorkbench, feat:Disambiguation, feat:SourceTrust ;
+    skos:definition     "The review queue shows what CHANGED rather than everything found: new claims, claims that contradict something you already accepted, and near-duplicates that are probably the same thing under two names. The contradictions are the valuable part — that is the moment a pile of documents would have stayed quiet." ;
+    skos:member         feat:ReviewSystem, feat:ReviewWorkbench, feat:Disambiguation, feat:TrustSystem ;
     kpred:set-relates-to feat:FiveMoves .
 
 set:MoveKeep rdf:type          skos:Collection ;
     kpred:set-kind      kset:page ;
     skos:prefLabel      "Keep it" ;
-    skos:definition     "Accepted facts carry their source, the excerpt they came from, and when you accepted them — and you can scrub the graph backwards through time or take the whole thing away as plain text." ;
-    skos:member         feat:HistoryMode, feat:TurtleExport, feat:MultiKB, feat:GraphIdentity ;
+    skos:definition     "Accepted facts carry their source, the excerpt they came from, and when you accepted them. You can scrub the graph backwards through time, export the whole thing as a plain-text .ttl file, and keep several independent graphs that do not see each other." ;
+    skos:member         feat:HistoryMode, feat:TTLExport, feat:MultiKB, feat:KBIdentity ;
     kpred:set-relates-to feat:FiveMoves .
 
 set:MoveUse rdf:type          skos:Collection ;
     kpred:set-kind      kset:page ;
     skos:prefLabel      "Ask it things" ;
-    skos:definition     "Describe a situation and a goal and get a proposal grounded in your own facts. Compare two graphs and see where they disagree. Publish a graph as a website — these pages are that feature." ;
+    skos:definition     "Describe a situation and a goal and get a proposal grounded in your own facts. Compare two graphs and see exactly where they disagree. Compress a large graph into the part that answers one question. Publish a graph as a website — these pages are that feature, running on the graph that describes this product." ;
     skos:member         feat:Reckoning, feat:Compare, feat:ContextCompression, feat:Shelly, feat:PublishedDocs, feat:LLMBackends, feat:PreferLocal ;
     kpred:set-relates-to feat:FiveMoves .
 

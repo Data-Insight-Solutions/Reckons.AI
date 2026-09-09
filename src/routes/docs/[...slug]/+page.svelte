@@ -142,6 +142,16 @@
   .doc-prose :global(p.in-sets a) { color: var(--accent); }
 
   /*
+   * SET MEMBER whose page is named something else (F187.5). A folded member lives on another
+   * entity's page, so the link text and the destination heading disagree — this says so quietly
+   * rather than letting the reader discover it by arriving somewhere unexpected.
+   */
+  .doc-prose :global(span.link-note) {
+    color: var(--muted);
+    font-size: 0.85em;
+  }
+
+  /*
    * CARD GALLERY and ACCORDION (F190/F191) — both declared in the graph by kpred:render-as, and
    * both deliberately ZERO JavaScript so they can exist on a route with csr = false. The
    * accordion is <details>/<summary>, which is keyboard-accessible for free and which the
