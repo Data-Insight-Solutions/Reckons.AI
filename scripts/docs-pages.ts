@@ -388,6 +388,8 @@ interface PageRef { slug: string; section: string; title: string }
 /** One child in a hub's walkthrough: enough to summarise it without opening it. */
 interface ChildRef {
   slug: string; section: string; title: string;
+  /** Humanized rdf:type names — a gallery groups by these when the children are mixed. */
+  types: string[];
   excerpt: string;      // first sentence of the child's definition
   status: string | null; // so a hub can say which of its steps are not built
   order: number;         // step-order, then nav:order, then alphabetical
@@ -574,6 +576,19 @@ function renderDiagramFor(e: Entity): string[] {
  * is deliberate: a graph can be present in the app and absent from the site, and inventing a URL
  * for it would send a reader to a 404 that looks like our mistake rather than an absent section.
  */
+/**
+ * A title as a READER of the docs should see it.
+ *
+ * Matt, 2026-09-08: "We should avoid labelling the LEAPs at the beginning, it has no relevancy
+ * here in the docs." Correct — LEAP is the name of a gesture in the APP, where it switches you to
+ * another graph. On a website the same node is simply a link to another section, and prefixing
+ * nine of them with a word from a different interface tells a reader nothing and costs them the
+ * first four characters of every title.
+ */
+function docsTitle(title: string): string {
+  return title.replace(/^LEAP:\s*/i, '').trim();
+}
+
 function leapLink(e: Entity): { href: string; title: string } | null {
   if (!e.leapTo) return null;
   const t = LEAP_TARGETS.get(e.leapTo);
@@ -687,6 +702,30 @@ function renderChildren(children: ChildRef[], heading: string, renderAs: string 
 
   if (renderAs === 'gallery') {
     /*
+     * A MIXED GALLERY IS GROUPED BY TYPE, because 43 cards in one list is not a page, it is an
+     * inventory. On the guide hub those 43 are two different kinds of thing — nine other SECTIONS
+     * of these docs and twenty-seven CAPABILITIES — and presenting them as one list asks the
+     * reader to work that out for themselves from the titles.
+     *
+     * The group names are reader-facing rather than the type's own name: "KnowledgeBase" is the
+     * word the app uses for a graph, and on a website the same node is a section to read. An
+     * unmapped type falls back to its humanized name, which is at worst as good as no grouping.
+     */
+    const GROUP_NAMES: Record<string, string> = {
+      // Keys are the HUMANIZED type names, because Entity.types stores them already humanized.
+      'Knowledge Base': 'Read next',
+      Concept: 'What it can do',
+      Person: 'People',
+      Document: 'Reference',
+    };
+    const groupOf = (c: ChildRef) => c.types.find((t) => t in GROUP_NAMES) ?? c.types[0] ?? 'Concept';
+    const groups = new Map<string, ChildRef[]>();
+    for (const c of children) {
+      const k = groupOf(c);
+      groups.set(k, [...(groups.get(k) ?? []), c]);
+    }
+    const grouped = groups.size > 1;
+    /*
      * WHERE A CARD POINTS, and getting this wrong shipped 22 dead links on one page.
      *
      * The first version linked every child to `../section/slug`, which is only correct for a
@@ -697,8 +736,10 @@ function renderChildren(children: ChildRef[], heading: string, renderAs: string 
      * cards and be reachable by anchor.
      */
     const inlineAfter: ChildRef[] = [];
-    lines.push('<div class="card-grid">', '');
-    for (const c of children) {
+    for (const [type, members] of groups) {
+      if (grouped) lines.push(`### ${escapeMdText(GROUP_NAMES[type] ?? humanize(type))}`, '');
+      lines.push('<div class="card-grid">', '');
+      for (const c of members) {
       const leap = c.folded ? leapLink(c.folded) : null;
       let href: string;
       if (leap) href = leap.href;                       // a leap goes where it leaps to
@@ -710,8 +751,9 @@ function renderChildren(children: ChildRef[], heading: string, renderAs: string 
         `<a class="card" href="${href}"><span class="card-title">${escapeMdText(c.title)}</span>${flag}`
         + `<span class="card-text">${escapeMdText(c.excerpt ?? '')}</span></a>`,
       );
+      }
+      lines.push('', '</div>', '');
     }
-    lines.push('', '</div>', '');
     // The folded content itself, so a gallery never costs a reader the text a list would show.
     for (const c of inlineAfter) {
       lines.push(`<h3 id="${c.slug}">${escapeMdText(c.title)}</h3>`, '');
@@ -945,7 +987,7 @@ function main(): void {
     const step = stepRaw !== undefined ? parseInt(stepRaw, 10) : NaN;
     const arr = childrenOf.get(parent) ?? [];
     arr.push({
-      slug: slugs.get(e.iri)!, section: e.section, title: e.title,
+      slug: slugs.get(e.iri)!, section: e.section, title: docsTitle(e.title), types: e.types,
       excerpt: e.definition ? firstSentence(e.definition) : '',
       status: e.literalProps.get(HAS_STATUS)?.[0] ?? null,
       order: Number.isFinite(step) ? step : (e.navOrder ?? Number.MAX_SAFE_INTEGER),
