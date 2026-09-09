@@ -949,8 +949,8 @@
       "path": "use-cases/why-not-a-notepad",
       "entity": "urn:reckons:use/WhyNotANotepad",
       "graph": "docs-use-cases.ttl",
-      "factHash": "38b03ee51453ad5c",
-      "factCount": 11,
+      "factHash": "4922b070c1a1faba",
+      "factCount": 14,
       "floor": "evidence"
     },
     {
