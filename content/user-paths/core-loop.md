@@ -42,7 +42,7 @@ A decision you can trace back to the individual claims it rests on.
 
 **Honest Note**
 
-This path is tested end to end on every CI run, against the real app with a mock extraction backend. What the test does NOT cover is extraction QUALITY — it asserts that facts arrive, are settled by a person, and reach the reckoning, not that the facts were the right ones. Quality is measured separately and honestly: see the extraction score, which currently tops out at 74% recall on a hand-checked corpus.
+This path is tested end to end on every CI run, against the real app with a mock extraction backend. What the test does not cover is extraction QUALITY — it asserts that facts arrive, are settled by a person, and reach the reckoning, not that the facts were the right ones. Quality is measured separately and honestly: see the extraction score, which currently tops out at 74% recall on a hand-checked corpus.
 
 ## Detail
 

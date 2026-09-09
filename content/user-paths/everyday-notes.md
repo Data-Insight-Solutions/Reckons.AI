@@ -42,7 +42,7 @@ The note kept verbatim, plus the claims inside it settled as facts you can query
 
 **Honest Note**
 
-Read the status. You can write a freeform note today at /ingest and it will be extracted into reviewable facts — that part works. What does NOT exist is a note-taking SURFACE: no notebook, no daily page, no editing a note after you wrote it, no browsing your notes as notes rather than as graph nodes. Today a note is an input to extraction and then it is a source record. If you arrived wanting somewhere to keep your thinking, that place is not built yet.
+Read the status. You can write a freeform note today at /ingest and it will be extracted into reviewable facts — that part works. What does not exist is a note-taking SURFACE: no notebook, no daily page, no editing a note after you wrote it, no browsing your notes as notes rather than as graph nodes. Today a note is an input to extraction and then it is a source record. If you arrived wanting somewhere to keep your thinking, that place is not built yet.
 
 ## What is not done
 

@@ -18,39 +18,39 @@ Reckons.AI is a personal knowledge graph that runs entirely in your browser. No 
 
 ## In this section
 
-### LEAP: Triples & RDF Deep Dive
+### [LEAP: Triples & RDF Deep Dive](../triples-rdf/triple-architecture)
 
 Click to explore the semantic triple architecture, Turtle syntax, RDF standards (RDFS, SKOS, SPARQL, JSON-LD, PROV-O), and knowledge graph fundamentals.
 
-### LEAP: Language Models
+### [LEAP: Language Models](../llm/what-ll-ms-are)
 
 Click to learn what LLMs actually are, why they hallucinate, how RAG works, and why your curated graph makes AI dramatically more accurate.
 
-### LEAP: Use Cases
+### [LEAP: Use Cases](../use-cases/personal-empowerment)
 
 Click to explore real-world scenarios: insurance claims, legal disputes, employment rights, medical records, corporate pushback, and research.
 
-### LEAP: Features
+### [LEAP: Features](../features/shelly)
 
 Click for detailed coverage of every feature: Ingest, Review, Trust, Graph, Shelly, Reckonings, Compare, Multi-Graph, graph Leap, Content Safety, Predicate Manager, Whisper STT, Kokoro TTS, and more.
 
-### LEAP: Integrations & Tech
+### [LEAP: Integrations & Tech](../integrations-tech/integrations)
 
 Click for integrations (Calendar, MCP, Extension, Whisper, Kokoro, OCR, Firecrawl, Meshy 3D) and the technology stack (SvelteKit 2, Threlte 8, N3.js, @huggingface/transformers, Dexie).
 
-### LEAP: Tips & Security
+### [LEAP: Tips & Security](../tips/security)
 
 Click for practical tips (start small, review carefully, export often, use Ollama offline) and the security architecture (no server, API key safety, content safety, CSP, offline-capable).
 
-### LEAP: Timeline & RDF Ecosystem
+### [LEAP: Timeline & RDF Ecosystem](../timeline-ecosystem/rdf10)
 
 Click for the RDF timeline from 1999 to 2026, key organizations (W3C, AI Alliance, Schema.org), people (Tim Berners-Lee), and the Reckons.AI launch.
 
-### LEAP: Architecture & Design
+### [LEAP: Architecture & Design](../user-paths/core-loop)
 
 Click for architecture decisions, TTL-first documentation strategy, standards alignment (PROV-O, SKOS), deployment patterns, style conventions, dependency health, and the markdown migration tracker.
 
-### LEAP: Test Suite & Visual Regression
+### [LEAP: Test Suite & Visual Regression](../testing/test-suite)
 
 Click for test documentation as interactive stories. Walk through user story E2E tests step-by-step with screenshots attached to each node. Covers Dev Sprint Planning, User Docs Import, Cross-Graph Alignment, and page-level visual regression.
 

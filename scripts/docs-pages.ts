@@ -76,6 +76,10 @@ const SCENE             = 'urn:kbase:predicate/scene';
 const SCENE_CAPTION     = 'urn:kbase:predicate/scene-caption';
 const SCENE_ALT         = 'urn:kbase:predicate/scene-alt';
 const SCENE_LIVE        = 'urn:kbase:predicate/scene-live';
+/* A KB Leap: in the app it switches graphs, on the site it must become a web link. The value is
+ * the TARGET graph's stable id, which every docs graph declares, so the mapping is derivable. */
+const LEAP              = 'urn:reckons:leap';
+const KB_STABLE_ID      = 'urn:reckons:meta/kbStableId';
 const STEP_ORDER        = 'urn:kbase:predicate/step-order';
 const PART_OF           = 'urn:kbase:predicate/part-of';
 const THESIS_IRI        = 'urn:kbase:concept/thesis';
@@ -260,6 +264,8 @@ interface Entity {
   sceneCaption: string | null;
   sceneAlt: string | null;
   sceneLive: string | null;
+  /** Stable id of the graph this entity leaps to, if it is a leap node. */
+  leapTo: string | null;
 }
 
 function extractEntity(iri: string, section: string, quads: Quad[]): Entity {
@@ -277,6 +283,7 @@ function extractEntity(iri: string, section: string, quads: Quad[]): Entity {
   let sceneCaption: string | null = null;
   let sceneAlt: string | null = null;
   let sceneLive: string | null = null;
+  let leapTo: string | null = null;
 
   for (const q of own) {
     const p = q.predicate.value;
@@ -290,6 +297,7 @@ function extractEntity(iri: string, section: string, quads: Quad[]): Entity {
     if (p === SCENE_CAPTION && q.object.termType === 'Literal') { sceneCaption = q.object.value; continue; }
     if (p === SCENE_ALT && q.object.termType === 'Literal') { sceneAlt = q.object.value; continue; }
     if (p === SCENE_LIVE && q.object.termType === 'Literal') { sceneLive = q.object.value; continue; }
+    if (p === LEAP && q.object.termType === 'Literal') { leapTo = q.object.value; continue; }
     if (p === SKOS_BROADER && q.object.termType === 'NamedNode') { parent = parent ?? q.object.value; continue; }
     if (p === NAV_ORDER && q.object.termType === 'Literal') { navOrder = parseInt(q.object.value, 10); continue; }
     if (p === DIAGRAM && q.object.termType === 'Literal') { diagram = diagram ?? q.object.value; continue; }
@@ -314,7 +322,7 @@ function extractEntity(iri: string, section: string, quads: Quad[]): Entity {
 
   return {
     iri, section, title: title || localName(iri), types, definition, parent, navOrder,
-    scene, sceneCaption, sceneAlt, sceneLive,
+    scene, sceneCaption, sceneAlt, sceneLive, leapTo,
     literalProps, iriProps, diagram, diagramCaption,
   };
 }
@@ -507,6 +515,27 @@ const STATUS_BANNER: Record<string, string> = {
  */
 const DIAGRAMS = loadCache();
 const SCENES = loadSceneCache();
+/** stable id -> the page a leap should land on. Filled in main(), read by the renderers. */
+const LEAP_TARGETS = new Map<string, { section: string; slug: string; title: string }>();
+
+/**
+ * stable graph id -> section title, read from each source's own `kbStableId`.
+ *
+ * A KB Leap names its target by stable id because in the app it switches graphs. On the site the
+ * same id has to become a URL, and every docs graph already declares its id — so the mapping is
+ * DERIVED rather than kept in a table that would drift from the graphs it describes.
+ */
+function sectionsByStableId(fileQuads: Map<string, Quad[]>): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const { file, section } of SOURCES) {
+    for (const q of fileQuads.get(file) ?? []) {
+      if (q.predicate.value === KB_STABLE_ID && q.object.termType === 'Literal') {
+        out.set(q.object.value, section);
+      }
+    }
+  }
+  return out;
+}
 
 function renderDiagramFor(e: Entity): string[] {
   const source = e.diagram;
@@ -530,6 +559,19 @@ function renderDiagramFor(e: Entity): string[] {
  * a GPU and a browser, so it happens once in `npm run docs:scenes` and its output is committed and
  * reviewed. A miss is a loud failure naming the command, not a silent blank.
  */
+/**
+ * The link a leap should be, or null if its target graph is not published.
+ *
+ * A leap whose target does not resolve renders as ordinary prose rather than a broken link. That
+ * is deliberate: a graph can be present in the app and absent from the site, and inventing a URL
+ * for it would send a reader to a 404 that looks like our mistake rather than an absent section.
+ */
+function leapLink(e: Entity): { href: string; title: string } | null {
+  if (!e.leapTo) return null;
+  const t = LEAP_TARGETS.get(e.leapTo);
+  return t ? { href: `../${slugify(t.section)}/${t.slug}`, title: t.title } : null;
+}
+
 function renderSceneFor(e: Entity): string[] {
   const out: string[] = [];
   if (e.scene) {
@@ -621,7 +663,13 @@ function renderChildren(children: ChildRef[], heading: string): string[] {
       ? ` — **${escapeMdText(c.status)}**`
       : '';
     if (c.folded) {
-      lines.push(`### ${escapeMdText(c.title)}${flag}`, '');
+      // A leap is a link by DEFAULT, from its type, not by a per-page decision. In the app it
+      // switches graphs; here the same node has to be somewhere a reader can actually go, and
+      // before this it rendered as a heading saying "Click to explore" with nothing to click.
+      const leap = leapLink(c.folded);
+      lines.push(leap
+        ? `### [${escapeMdText(c.title)}](${leap.href})${flag}`
+        : `### ${escapeMdText(c.title)}${flag}`, '');
       if (c.folded.definition) lines.push(escapeMdText(c.folded.definition), '');
       lines.push(...renderDiagramFor(c.folded));
       lines.push(...renderSceneFor(c.folded));
@@ -651,6 +699,8 @@ function renderBody(
   // The picture goes directly under the sentence that introduces it, not at the bottom.
   lines.push(...renderDiagramFor(e));
   lines.push(...renderSceneFor(e));
+  const ownLeap = leapLink(e);
+  if (ownLeap) lines.push(`**[Open ${escapeMdText(ownLeap.title)} →](${ownLeap.href})**`, '');
 
   // The page's own prose, in reading order, BEFORE the route onward: a reader arriving here came
   // for this page, not for its table of contents.
@@ -742,6 +792,22 @@ function main(): void {
   // pageToMarkdown's own handling of unresolvable parent/related IRIs).
   const refs = new Map<string, PageRef>();
   for (const e of entities) refs.set(e.iri, { slug: slugs.get(e.iri)!, section: e.section, title: e.title });
+
+  /*
+   * Resolve every leap to the LEAD page of the graph it names — the lowest-ordered page in that
+   * section, which is the section's own hub. In the app a leap switches graphs; on the site the
+   * equivalent act is arriving at the top of that subject, not at an arbitrary page inside it.
+   */
+  const bySid = sectionsByStableId(fileQuads);
+  const leadOf = new Map<string, Entity>();
+  for (const e of entities) {
+    const cur = leadOf.get(e.section);
+    if (!cur || (order.get(e.iri) ?? 0) < (order.get(cur.iri) ?? 0)) leadOf.set(e.section, e);
+  }
+  for (const [sid, section] of bySid) {
+    const lead = leadOf.get(section);
+    if (lead) LEAP_TARGETS.set(sid, { section, slug: slugs.get(lead.iri)!, title: lead.title });
+  }
 
   // Children, indexed by parent, so a hub page can render the route through what it contains.
   // Sort key: explicit kpred:step-order first (a numbered sequence the author wrote), then

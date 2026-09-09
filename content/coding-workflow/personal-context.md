@@ -1,5 +1,5 @@
 ---
-title: "Consistency comes from YOUR context, not from a better model"
+title: "Consistency comes from your context, not from a better model"
 slug: "personal-context"
 order: 104
 section: "Coding Workflow"
@@ -11,7 +11,7 @@ excerpt: "The facts that did the work in that session were not general knowledge
 generated: "docs-kb"
 ---
 
-# Consistency comes from YOUR context, not from a better model
+# Consistency comes from your context, not from a better model
 
 > **Functional** — built and working, with rough edges still being smoothed.
 
@@ -21,7 +21,7 @@ The facts that did the work in that session were not general knowledge, and no m
 
 **Principle**
 
-A general model gives you general answers, consistently. A graph gives you YOUR answers, consistently. The second is what a long project needs, because most of what makes a project coherent is not best practice — it is the specific, contestable calls you made and would otherwise re-litigate every few weeks.
+A general model gives you general answers, consistently. A graph gives you your answers, consistently. The second is what a long project needs, because most of what makes a project coherent is not best practice — it is the specific, contestable calls you made and would otherwise re-litigate every few weeks.
 
 **Honest Note**
 

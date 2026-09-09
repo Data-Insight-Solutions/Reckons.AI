@@ -9,6 +9,7 @@
 @prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
 @prefix use:    <urn:reckons:use/> .
+@prefix path:   <urn:reckons:path/> .
 @prefix guide:  <urn:reckons:guide/> .
 @prefix ktype:  <urn:kbase:type/> .
 @prefix hnav:   <urn:reckons:nav/> .
@@ -41,7 +42,7 @@ use:PersonalEmpowerment
     rdf:type            skos:Concept ;
     rdfs:label          "Power to the Individual" ;
     hnav:order          30 ;
-    skos:definition     "Insurance companies have teams of analysts. Corporations have legal departments. Landlords have property managers. You have your memory and a stack of papers? Not anymore. Build a graph of your rights, evidence, and correspondence. Ask Shelly to draft a precise response citing YOUR documented facts. You communicate with the authority of an institution." ;
+    skos:definition     "Insurance companies have teams of analysts. Corporations have legal departments. Landlords have property managers. You have your memory and a stack of papers? Not anymore. Build a graph of your rights, evidence, and correspondence. Ask Shelly to draft a precise response citing your documented facts. You communicate with the authority of an institution." ;
     skos:related        guide:WhatIsReckonsAI .
 
 use:InsuranceClaims
@@ -235,6 +236,9 @@ use:WhyNotANotepad
     kpred:principle     "This is not an argument against note-taking, and reading it that way loses what it says. Capture should be as close to frictionless as it can be — talking at your phone should be enough. The claim is about what happens AFTER capture: a pile of prose is a pile you must re-read, and re-reading does not scale. Structure is the price of being able to ask the pile a question later." ;
     kpred:measured      "The divergence is measured, NOT ASSERTED. On 2026-09-08 six local models each read the same short document five times. Twelve relations came back under FIFTY-ONE different names. The single relation dropped-because was written eleven ways in thirty readings: was-eliminated, was-dropped-on, dropped-from-shortlist, excluded-from-shortlist-due-to, was-dropped-due-to, was-dropped-from-shortlist-due-to, was-eliminated-from-shortlist, was-excluded-from-shortlist-because-of, was-dropped-from-shortlist-reason, was-dropped-from-shortlist-reason-for, and dropped-from-shortlist-due-to. is-a drew eleven names, lacks eight, concern and role five each." ;
     kpred:example       "What that costs you, CONCRETELY. Those eleven phrasings are what a year of your own notes looks like, because you do not phrase things the same way twice either. In a notepad they are eleven unrelated strings: searching dropped finds four of them, and nothing tells you the other seven exist. In a graph they are one relation carrying ten alternative labels, so the question is answered once and completely. That is the whole of the efficiency claim, and it is why the extra step in the middle is not busywork." ;
+    kpred:example       "And the second thing a notepad cannot do: tell you that two of your notes disagree. When a new source arrives, Reckons.AI does not show you everything it found — it shows you what changed: facts that are new, facts that contradict something you already confirmed, and near-duplicates of things you already have. The contradictions are the valuable part. A second source disagreeing with the first is the exact moment you want to be interrupted, and it is precisely the moment a folder of documents stays silent — both notes are still there, both still look true, and nothing in the pile knows they cannot both be." ;
+    kpred:example       "That comparison is only possible because the unit is a claim rather than a paragraph. Two paragraphs about the same vendor do not contradict each other in any way a machine can see; two triples with the same subject and predicate and different objects do, exactly and cheaply. It is the same property that makes the fifty-one names above a solvable problem instead of a search problem." ;
+    skos:related        path:Add-2 ;
     kpred:principle     "The step in the middle is where you stay in charge. Extraction proposes; nothing enters your graph until you accept it. That is the same review queue the machine's own findings go through, which is why a wrong reading is a thing you correct in one place rather than a wrong sentence you have to remember not to trust." ;
     kpred:honest-note   "The product has not been showing this. A careful first-time reader read Reckons.AI as generic storyboarding and note-taking, twice, on 2026-09-06 and again on 2026-09-08 after further exposure. That is a finding about this product rather than about the reader: if the condensation is not visible on the way in, what is left genuinely does look like a notes app that asks you to do extra work in the middle. This page exists because the argument was being asserted and never shown." ;
     skos:example        "In 'Vantage Suite was dropped on file format grounds': vantage-suite = subject, dropped-because = predicate, file-format = object." .

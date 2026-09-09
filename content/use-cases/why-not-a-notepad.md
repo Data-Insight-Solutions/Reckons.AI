@@ -9,6 +9,8 @@ status: published
 nav: sidebar
 excerpt: "Take one sentence from a real working note: Vantage Suite was dropped at this stage on file format grounds."
 generated: "docs-kb"
+related:
+  - "add-2"
 ---
 
 # Why a graph, and not a notepad
@@ -36,8 +38,14 @@ The divergence is measured, NOT ASSERTED. On 2026-09-08 six local models each re
 
 **Example**
 
-What that costs you, CONCRETELY. Those eleven phrasings are what a year of your own notes looks like, because you do not phrase things the same way twice either. In a notepad they are eleven unrelated strings: searching dropped finds four of them, and nothing tells you the other seven exist. In a graph they are one relation carrying ten alternative labels, so the question is answered once and completely. That is the whole of the efficiency claim, and it is why the extra step in the middle is not busywork.
+- And the second thing a notepad cannot do: tell you that two of your notes disagree. When a new source arrives, Reckons.AI does not show you everything it found — it shows you what changed: facts that are new, facts that contradict something you already confirmed, and near-duplicates of things you already have. The contradictions are the valuable part. A second source disagreeing with the first is the exact moment you want to be interrupted, and it is precisely the moment a folder of documents stays silent — both notes are still there, both still look true, and nothing in the pile knows they cannot both be.
+- That comparison is only possible because the unit is a claim rather than a paragraph. Two paragraphs about the same vendor do not contradict each other in any way a machine can see; two triples with the same subject and predicate and different objects do, exactly and cheaply. It is the same property that makes the fifty-one names above a solvable problem instead of a search problem.
+- What that costs you, CONCRETELY. Those eleven phrasings are what a year of your own notes looks like, because you do not phrase things the same way twice either. In a notepad they are eleven unrelated strings: searching dropped finds four of them, and nothing tells you the other seven exist. In a graph they are one relation carrying ten alternative labels, so the question is answered once and completely. That is the whole of the efficiency claim, and it is why the extra step in the middle is not busywork.
 
 **Example**
 
 In 'Vantage Suite was dropped on file format grounds': vantage-suite = subject, dropped-because = predicate, file-format = object.
+
+## Related
+
+- [Watch the diff, not the fact list](../user-paths/add-2)

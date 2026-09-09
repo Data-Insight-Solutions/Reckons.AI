@@ -277,7 +277,7 @@ llm:WhatLLMsAre
 llm:KBGroundedAccuracy
     rdf:type            ktype:Concept ;
     rdfs:label          "Graph-Grounded Accuracy" ;
-    skos:definition     "When an LLM retrieves YOUR confirmed facts instead of guessing, accuracy skyrockets. Your curated graph is the best retrieval source possible." ;
+    skos:definition     "When an LLM retrieves your confirmed facts instead of guessing, accuracy skyrockets. Your curated graph is the best retrieval source possible." ;
     skos:broader        llm:WhatLLMsAre .
 
 use:PersonalEmpowerment
@@ -445,7 +445,7 @@ story:TriplesPower
     story:partOf        story:ReckonsPhilosophy ;
     story:order         "2" ;
     story:title         "Your Personal Context" ;
-    story:content       "Every fact you confirm becomes part of YOUR knowledge graph. 'Policy covers water-damage'. 'Contract expires July 1st'. 'Landlord agreed to repairs on March 5th'. This is your personal context -- structured, searchable, and portable. When new information arrives, it is compared against what you already know." ;
+    story:content       "Every fact you confirm becomes part of your knowledge graph. 'Policy covers water-damage'. 'Contract expires July 1st'. 'Landlord agreed to repairs on March 5th'. This is your personal context -- structured, searchable, and portable. When new information arrives, it is compared against what you already know." ;
     story:highlight     arch:SubjectPredicateObject ;
     story:prompt        "Give examples of personal facts as triples and how they connect to reveal insights." ;
     story:question      "What facts from your own life would be most useful to have structured?" .
@@ -464,7 +464,7 @@ story:WhatLLMsReally
     story:partOf        story:ReckonsPhilosophy ;
     story:order         "4" ;
     story:title         "AI Tools, Your Review" ;
-    story:content       "Language models extract facts from documents, but they can hallucinate. That is why every extracted triple goes through YOUR review. You confirm, reject, or refine. The model does the heavy lifting; you keep it honest." ;
+    story:content       "Language models extract facts from documents, but they can hallucinate. That is why every extracted triple goes through your review. You confirm, reject, or refine. The model does the heavy lifting; you keep it honest." ;
     story:highlight     llm:WhatLLMsAre ;
     story:prompt        "Explain what LLMs can and cannot do, and why human review matters." ;
     story:question      "Does knowing this change how you think about AI tools?" .
@@ -474,7 +474,7 @@ story:KBAccuracy
     story:partOf        story:ReckonsPhilosophy ;
     story:order         "5" ;
     story:title         "Your graph Makes AI Accurate" ;
-    story:content       "When an LLM retrieves from YOUR reviewed knowledge graph, its answers become dramatically more accurate. Instead of guessing from training data, it cites your confirmed facts. Your curated graph is the best possible source." ;
+    story:content       "When an LLM retrieves from your reviewed knowledge graph, its answers become dramatically more accurate. Instead of guessing from training data, it cites your confirmed facts. Your curated graph is the best possible source." ;
     story:highlight     llm:KBGroundedAccuracy ;
     story:prompt        "Explain retrieval-augmented generation and why a curated personal graph outperforms generic data." .
 

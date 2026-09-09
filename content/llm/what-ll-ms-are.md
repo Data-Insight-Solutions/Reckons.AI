@@ -24,7 +24,7 @@ Every layer of a language model relies on human work. The training corpus is hum
 
 **[Graph-Grounded Accuracy](../llm/kb-grounded-accuracy)**
 
-When an LLM has access to YOUR reviewed knowledge graph, its outputs become dramatically more accurate.
+When an LLM has access to your reviewed knowledge graph, its outputs become dramatically more accurate.
 
 ### Hallucination
 

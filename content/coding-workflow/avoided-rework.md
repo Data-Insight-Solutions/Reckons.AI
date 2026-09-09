@@ -39,6 +39,6 @@ Measured by scripts/offline/graph-economics.ts, which counts BOTH sides — main
 
 Five requests arrived across a single session on 2026-07-19, each framed as new work — and every one of them had already been decided months earlier.
 
-**[Consistency comes from YOUR context, not from a better model](../coding-workflow/personal-context)**
+**[Consistency comes from your context, not from a better model](../coding-workflow/personal-context)**
 
 The facts that did the work in that session were not general knowledge, and no model would have produced them from training.
