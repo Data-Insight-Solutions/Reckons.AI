@@ -26,11 +26,25 @@ A globally unique identifier for a resource. IRIs are the names of things in RDF
 
 A graph-structured database where entities are nodes and relationships are edges. Multiple triples form a graph. The same subject can appear in many triples, creating a web of connected knowledge.
 
+<figure class="scene" role="group" aria-label="A graph is nodes and the named edges between them. Rendered once at build time, so this page still ships no JavaScript."><img src="/scenes/46c4b80ee503153f.png" width="1200" height="480" alt="Nine spheres arranged in a ring, connected by thin lines to the neighbours one and three places along — entities joined by the relations asserted between them." loading="lazy" decoding="async" /><figcaption>A graph is nodes and the named edges between them. Rendered once at build time, so this page still ships no JavaScript.</figcaption></figure>
+
+<figure class="scene scene-live" role="group" aria-label="A graph is nodes and the named edges between them. Rendered once at build time, so this page still ships no JavaScript."><iframe src="/scenes/live/graph-ring" title="Nine spheres arranged in a ring, connected by thin lines to the neighbours one and three places along — entities joined by the relations asserted between them." width="1200" height="600" loading="lazy" style="border:0;max-width:100%;aspect-ratio:1200/600"></iframe><figcaption>A graph is nodes and the named edges between them. Rendered once at build time, so this page still ships no JavaScript.</figcaption></figure>
+
 #### Why it is this way
 
 **Note**
 
 Reckons.AI renders your knowledge graph as an interactive 3D force-directed graph.
+
+#### Detail
+
+**Scene Height**
+
+480
+
+**Scene Width**
+
+1200
 
 ### Literal Values
 

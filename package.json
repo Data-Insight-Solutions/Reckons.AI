@@ -156,7 +156,9 @@
     "ab:benchmark": "npx tsx scripts/offline/ab-graph-benchmark.ts",
     "offline:dead-weight": "npx tsx scripts/offline/dead-weight.ts",
     "offline:distill": "npx tsx scripts/offline/distill-decisions.ts",
-    "fixture:review": "npx tsx scripts/offline/make-review-fixture.ts"
+    "fixture:review": "npx tsx scripts/offline/make-review-fixture.ts",
+    "docs:scenes": "npx tsx scripts/docs-scenes.ts",
+    "docs:scenes:check": "npx tsx scripts/docs-scenes.ts --check"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.112.1",

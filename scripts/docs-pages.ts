@@ -51,6 +51,7 @@ import { NAV_ORDER, NAV_NEXT, NAV_PREV, NAV_LAYER } from '../src/lib/rdf/hierarc
 import { contentPath, pageToMarkdown } from '../src/lib/publish/site-export';
 import { parsePageFile } from '../src/lib/publish/site-import';
 import { loadCache, diagramKey, diagramFigure } from './lib/mermaid-render.js';
+import { loadSceneCache, sceneKey, sceneFigure, sceneIframe } from './lib/scene-render.js';
 
 const ROOT = resolve(import.meta.dirname ?? '.', '..');
 const STATIC_DIR = join(ROOT, 'static');
@@ -69,6 +70,12 @@ const KTYPE_NS          = 'urn:kbase:type/';
 const NAV_DOCS_NS       = 'urn:reckons:docs/nav/'; // per-sub-graph "back to hub" stub namespace
 const DIAGRAM           = 'urn:kbase:predicate/diagram';
 const DIAGRAM_CAPTION   = 'urn:kbase:predicate/diagram-caption';
+/* F190 — a three.js scene, rendered to a still at build time (kpred:scene) or embedded as an
+ * iframe island when it must react to a pointer (kpred:scene-live). Both keep `csr = false`. */
+const SCENE             = 'urn:kbase:predicate/scene';
+const SCENE_CAPTION     = 'urn:kbase:predicate/scene-caption';
+const SCENE_ALT         = 'urn:kbase:predicate/scene-alt';
+const SCENE_LIVE        = 'urn:kbase:predicate/scene-live';
 const STEP_ORDER        = 'urn:kbase:predicate/step-order';
 const PART_OF           = 'urn:kbase:predicate/part-of';
 const THESIS_IRI        = 'urn:kbase:concept/thesis';
@@ -249,6 +256,10 @@ interface Entity {
   // the "Details" list, but renderBody still needs it to look the finished SVG up in the cache.
   diagram: string | null;
   diagramCaption: string | null;
+  scene: string | null;
+  sceneCaption: string | null;
+  sceneAlt: string | null;
+  sceneLive: string | null;
 }
 
 function extractEntity(iri: string, section: string, quads: Quad[]): Entity {
@@ -262,6 +273,10 @@ function extractEntity(iri: string, section: string, quads: Quad[]): Entity {
   const iriProps = new Map<string, string[]>();
   let diagram: string | null = null;
   let diagramCaption: string | null = null;
+  let scene: string | null = null;
+  let sceneCaption: string | null = null;
+  let sceneAlt: string | null = null;
+  let sceneLive: string | null = null;
 
   for (const q of own) {
     const p = q.predicate.value;
@@ -271,6 +286,10 @@ function extractEntity(iri: string, section: string, quads: Quad[]): Entity {
     }
     if (p === RDFS_LABEL && q.object.termType === 'Literal') { title = q.object.value; continue; }
     if (p === SKOS_DEFINITION && q.object.termType === 'Literal') { definition = q.object.value; continue; }
+    if (p === SCENE && q.object.termType === 'Literal') { scene = q.object.value; continue; }
+    if (p === SCENE_CAPTION && q.object.termType === 'Literal') { sceneCaption = q.object.value; continue; }
+    if (p === SCENE_ALT && q.object.termType === 'Literal') { sceneAlt = q.object.value; continue; }
+    if (p === SCENE_LIVE && q.object.termType === 'Literal') { sceneLive = q.object.value; continue; }
     if (p === SKOS_BROADER && q.object.termType === 'NamedNode') { parent = parent ?? q.object.value; continue; }
     if (p === NAV_ORDER && q.object.termType === 'Literal') { navOrder = parseInt(q.object.value, 10); continue; }
     if (p === DIAGRAM && q.object.termType === 'Literal') { diagram = diagram ?? q.object.value; continue; }
@@ -295,6 +314,7 @@ function extractEntity(iri: string, section: string, quads: Quad[]): Entity {
 
   return {
     iri, section, title: title || localName(iri), types, definition, parent, navOrder,
+    scene, sceneCaption, sceneAlt, sceneLive,
     literalProps, iriProps, diagram, diagramCaption,
   };
 }
@@ -486,6 +506,7 @@ const STATUS_BANNER: Record<string, string> = {
  * loud failure naming the fix, never a silently missing picture.
  */
 const DIAGRAMS = loadCache();
+const SCENES = loadSceneCache();
 
 function renderDiagramFor(e: Entity): string[] {
   const source = e.diagram;
@@ -500,6 +521,37 @@ function renderDiagramFor(e: Entity): string[] {
     );
   }
   return [diagramFigure(svg, e.diagramCaption ?? undefined), ''];
+}
+
+/**
+ * A three.js scene, as a still or as an iframe island — never as script in the document.
+ *
+ * The still is looked up by hash and NEVER rendered here, exactly as diagrams are: rendering needs
+ * a GPU and a browser, so it happens once in `npm run docs:scenes` and its output is committed and
+ * reviewed. A miss is a loud failure naming the command, not a silent blank.
+ */
+function renderSceneFor(e: Entity): string[] {
+  const out: string[] = [];
+  if (e.scene) {
+    const key = sceneKey(e.scene);
+    const size = SCENES[key];
+    if (!size) {
+      throw new Error(
+        `No rendered scene for <${e.iri}> (key ${key}).\n` +
+        `Scenes are rendered ahead of time so this generator stays deterministic and JS-free.\n` +
+        `Fix: npm run docs:scenes`,
+      );
+    }
+    // Alt text is required, not defaulted: a generated page cannot be asked for it later.
+    if (!e.sceneAlt) {
+      throw new Error(`<${e.iri}> declares kpred:scene with no kpred:scene-alt. A picture with no alt text is a picture some readers do not get.`);
+    }
+    out.push(sceneFigure(key, size, e.sceneAlt, e.sceneCaption ?? undefined), '');
+  }
+  if (e.sceneLive) {
+    out.push(sceneIframe(e.sceneLive, e.sceneAlt ?? e.title, { width: 1200, height: 600 }, e.sceneCaption ?? undefined), '');
+  }
+  return out;
 }
 
 /**
@@ -572,6 +624,7 @@ function renderChildren(children: ChildRef[], heading: string): string[] {
       lines.push(`### ${escapeMdText(c.title)}${flag}`, '');
       if (c.folded.definition) lines.push(escapeMdText(c.folded.definition), '');
       lines.push(...renderDiagramFor(c.folded));
+      lines.push(...renderSceneFor(c.folded));
       lines.push(...renderProse(c.folded, 4));
     } else {
       lines.push(`**[${escapeMdText(c.title)}](../${slugify(c.section)}/${c.slug})**${flag}`, '');
@@ -597,6 +650,7 @@ function renderBody(
 
   // The picture goes directly under the sentence that introduces it, not at the bottom.
   lines.push(...renderDiagramFor(e));
+  lines.push(...renderSceneFor(e));
 
   // The page's own prose, in reading order, BEFORE the route onward: a reader arriving here came
   // for this page, not for its table of contents.
