@@ -1,114 +1,106 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-09-08.** On `feat/docs-sets-and-composition-gate` (**PR #228**, base `dev`,
-stacked on `fix/diagram-entity-labels` / **PR #227**). Nothing pushed to `main`. **PR #226 is
-SUPERSEDED by #227** — close it rather than merging both. Untracked and deliberate:
-`scripts/__shot__.ts`, `share/`.
+**Last updated: 2026-09-08 (long session).** On `feat/docs-sets-and-composition-gate`
+(**PR #228**, base `dev`), 57 commits, stacked on `fix/diagram-entity-labels` / **PR #227**.
+Nothing pushed to `main`. **PR #226 is SUPERSEDED by #227.**
 
-## ▶ SESSION 2026-09-08 — /docs is a mess, and the gate that would have fixed it could not run
+## ▶ SESSION 2026-09-08 — the docs, end to end
 
-Matt's manual note: **"/docs is a cluttered mess"**, plus a design for SETS as the organizing
-layer. Both halves turned out to be already half-built and quietly broken.
+Started on Matt's manual note (`/docs` is a cluttered mess, sets should organise it) and ran the
+length of the documentation system. **Ten align gates now, up from six.**
 
-### THE MESS IS MEASURED, NOT AN IMPRESSION
+### ⚠ FOUR THINGS ARE WAITING ON MATT — nothing else is blocked
 
-171 pages in 18 flat sections, 159 generated one-per-entity. Six sections share the default
-`order: 1000` and are alphabetized by accident. **Testing sorts to `order: 0`** — the front door
-of the documentation leads with the test docs. `website.ttl` records the earlier measurement of
-the same page at **23,407px tall with 815 anchors**.
+1. **THE FOLD THRESHOLD.** `PAGE_THRESHOLD_WORDS = 45` in `docs-pages.ts`. Measured over the 227
+   entities that *could* fold: at 45, 85 fold; at 80, 171; at **120, 195**. Raising it to 120
+   collapses ~110 pages into their parents **and removes 110 URLs**. That is why Architecture is
+   17-thin-of-25 with *zero* orphans — its entities have parents, they are just over the bar.
+   Needs a number from Matt, and ideally anchors so old addresses still land on the text.
+2. **THE FIVE-MOVES FACET** for a filtered gallery. Filtering needs an axis; the natural one is the
+   five moves on `feat:FiveMoves`. That is one predicate on each of ~39 features — editorial work,
+   then radio inputs + `:has()`, still zero JavaScript.
+3. **SETS.** F187.5 (sets define pages) supersedes BOTH page generators. Everything about `learn/*`
+   is blocked behind it — see below.
+4. **THE OLLAMA UPGRADE IS DONE** (0.33.3, qwen3.8 pulled) — no longer blocked.
 
-### THE FIX WAS DESIGNED IN FEBRUARY AND NEVER SWITCHED ON — two faults kept it there
+### ⚠ DO NOT RUN `npm run docs:compose`
 
-1. **The gate crashed.** `npm run docs:consolidate` died on `Page welcome declares no sources`.
-   `docs-compose.ts` (the WRITER) partitioned hand-authored pages out; `docs-consolidate.ts` (the
-   GATE) did not. So the tool that writes pages ran while the orphan report — the whole safeguard
-   against consolidating 269 pages and losing content — could not run at all. **A check weaker
-   than the action it guards.** Both now share `partitionPages()`; the strict rule is unchanged
-   and a test pins that an unpartitioned call still throws.
-2. **The gate was blind exactly where the generator was.** `docs-user-paths.ttl` was registered in
-   `docs-pages.ts` and in **none** of the other three lists. `npm run docs:compose` would have
-   **pruned the 21 published user-path pages** — nine journeys with hand-rendered diagrams,
-   shipped two days earlier — and composed nothing to replace them, while the gate printed
-   *"nothing would be dropped"* in green. **Proved, not assumed:** adding the graph to the corpus
-   flipped the same gate to *"35 entities would NOT be published"*.
+**There are two page generators and they fight.** `docs-pages.ts` publishes one page per ENTITY
+(~150). `docs-compose.ts` publishes the pages `website.ttl` DESIGNS (9). They overlap: running
+compose rewrote `content/user-paths/user-paths.md` to `generated: "docs-composed"`, running pages
+took it straight back, and **`align` reported green either way** because its docs gate only checks
+`docs-kb` pages. A collision guard now refuses and names the file, but the duplication is real
+until F187.5 lands. `website.ttl`'s own header has said `STATUS: PROPOSED, not live` all along.
 
-**The recurrence is the real fix.** `scripts/offline/docs-graph-registration.ts` (script tier,
-zero tokens, in `jobs.json`) requires every publishable docs graph in all four registries, reading
-the **array literals** not the file text — a graph named only in a comment does not count, which
-is what happened. Verified in both directions: green on the corrected tree, exit 1 naming the
-missing registry when the entry is removed.
+**This is why `content/learn/*.md` cannot be fixed yet** — `learn/what-it-does.md` is 2,436 words
+across 56 sections, an alphabetical dump, and it is composed output. Only sets change that.
 
-Gate now passes honestly: **304 entities · 9 composed pages covering 282 · 22 excluded ·
-4 hand-authored · nothing dropped.**
+### What shipped
 
-### ⚠ MATT DECIDED: DO NOT TURN COMPOSITION ON YET
+**ORGANISATION.** Timeline & Ecosystem went from 28 one-paragraph pages (median 50w) to **3 sets**
+— the timeline ordered chronologically from `kpred:date`, then written back as `hnav:order` so it
+can be curated without re-deriving. Nav is a beginner-first story: one number was doing two jobs
+(a page's position *and* its section's), so any section starting at 0 jumped to the front —
+**Testing ranked first, Guide ranked 1000th.** Fixed with per-section order BANDS.
 
-Asked directly. **"Not yet — sets first."** The composed pages group by whole SOURCE FILE (one set
-per graph: "What it does" = all of features + all of use-cases), which is coarser than the curated
-typed sets he described. Turning it on now designs the IA twice and moves every reader URL twice.
-F187.1 is **blocked by decision, not by defect** — the gate stays green and unused.
+**PAGES.** `render-as` in triples → card gallery / accordion, both zero-JS (81 cards, 21 accordion
+sections). Three.js: build-time still **and** iframe island, docs pages still ship **0 script
+tags**. Search as an island — 1 script tag on `/docs/search`, 0 elsewhere. Derived prose computed
+from the graph on 77 pages. 44 caps lead-ins → 3.
 
-### F187 — sets, recorded as plan, with two findings AGAINST it
+**THE LIBRARIAN (F189, functional).** `page-provenance.json` for all 138 pages; `docs-edits.ts`
+detects hand edits and proposes them back **onto the entity that owns the sentence** — which needed
+provenance, because `site-import` mints `urn:kbase:concept/{slug}` and would have created a second
+entity for the same thing.
 
-- **There are already two grouping primitives**, where F65 says there must be one:
-  `ktype:EntitySet`/`has-member` in the app, `void:Dataset`/`schema:isBasedOn` in the docs, with
-  zero references to the former anywhere in the publish layer. The docs page is the fourth
-  consumer and was built separately anyway.
-- **"A set is not a node"** (Matt) contradicts both his own requirement that sets carry attributes
-  and F65's already-settled answer. Marked **ASK MATT**, not decided. Best reading: the objection
-  is about RENDERING — a set should be a region or hull, not one more circle.
-- **SKOS ALREADY HAS THIS.** `skos:ConceptScheme` is a set with attributes; `skos:inScheme` lets a
-  concept belong to SEVERAL schemes — the overlapping membership Matt wants — and poly-hierarchy
-  overlaps containment too. `website.ttl`'s own rule is *standard vocabularies, not invented ones*.
-  **Default to `skos:ConceptScheme` for the set layer.** This settles the two-primitives finding
-  without a migration.
-- `datasetOverlaps()` **already computes the Venn data**, derived not asserted. Nothing renders it.
+**COMPARISONS.** vs vector/RAG (1,250 words, four arguments, leading with where we lose) and vs
+dev tooling. Both carry the unflattering numbers: extraction recall 53-63%, and our own compression
+claim was once published at 60-70% when the format saves ~18%.
 
-### The stars: the pipeline worked, the QUEUE was unread
+### Bugs found, in order of how badly they hid
 
-`scripts/offline/stars-scan.ts` already existed and had proposed all of them into
-`reckons-workspace/knowledge.pending.jsonl` — **403 rows**. Only **3 stars are new** since
-2026-09-06 and all three are marginal. **Triage was the missing step, not collection.** Five
-reviewed properly into `reckons-competitive.ttl` (OpenWhispr, Token Optimizer, Agent Orchestrator,
-knowledge_graph, GraphGen), each with what NOT to take. GraphGen is marked
-`kpred:honest-note` as reviewed from metadata only.
+- **22 of 43 cards were 404s.** Galleries linked every child, but a folded child has no page — and
+  gallery mode *also dropped their content entirely*.
+- **A duplicate `kbStableId`**: `docs-architecture.ttl` and `docs-user-paths.ttl` both claimed
+  `…-000000000008`, so the Architecture leap sent readers to a user-paths page. Each file is valid
+  alone; the collision only exists between them. Now guarded.
+- **`docs:consolidate` crashed**, so the gate that reports what composition would drop could not
+  run while the tool that writes pages could. And its corpus could not see `docs-user-paths.ttl`,
+  so it reported "nothing would be dropped" while composition would have deleted 21 published pages.
+- **The edit detector silently read nothing** (a regex assuming a block ends with `.` on its own
+  line) and cheerfully reported "no edits" — the worst failure shape, since it looks like success.
 
-### ⚠ BLOCKED ON MATT: the Ollama upgrade (he approved it; sudo needs his password)
+### Benchmarks — read the caveat before the numbers
 
-`qwen3.8:latest` is **17.7 GB and carries a 0.9 GB VISION PROJECTOR** — it could replace both
-`qwen3:32b` (extraction) and `qwen2.5vl:7b` (visual gate). It fits one 3090 with KV headroom; the
-`27b-q8_0` tag is 30 GB and would need both cards. **The pull failed: `412 — requires a newer
-version of Ollama`.** Installed **0.31.1**, latest **v0.33.3**. Matt approved the upgrade but
-`sudo` is password-gated, so he runs:
+`--repeat=N` with median, spread, and a **refusal to compare when ranges overlap** was built
+because single runs decide nothing here: qwen3:32b scored 74% and 53% at identical settings on the
+same day. **The whole published roster ranking is single-run and its gaps are smaller than the
+noise.**
 
-```bash
-curl -fsSL https://ollama.com/install.sh | sh     # upgrades in place, restarts the service
-ollama pull qwen3.8:latest
-```
-
-Then score it against the published baseline (`qwen3:32b` = 74%) with `npm run offline:score` —
-do not claim it is better without the number.
+- **Grouping baseline** (6 models × 5 runs): `mistral-small3.2:24b` leads at 50% recall — **and
+  failed the trap 5/5**, grouping the list the source explicitly calls "not a group". On a combined
+  score it would have been declared the winner.
+- **Order is 0% across all six models.** Overlap held 0/5 for five of six — models partition.
+- **qwen3.8**: extraction median 47% vs qwen3:32b's 63%, with 12 inventions to 0. But its VLM
+  result inverted once thinking was disabled — **0.92 gate, 96%, zero misses** — because the bench
+  budgeted 12 tokens and it spent them reasoning. The fix already existed in `providers.ts` and had
+  never been propagated.
 
 ### Next, in order
 
-1. **Build F187 set semantics** — Matt's explicit gate on the docs fix. Start with
-   `skos:ConceptScheme`, and settle the "is a set a node" question with him first.
-2. Point a rendered check at the docs diagrams (carried from 2026-09-06 — all six gates are text
-   gates; the diagrams were broken while every one reported aligned).
-3. Manual walk of add → review with real dictated notes.
-4. The two grounding leaks in `src/lib/rdf/structural-context.ts`, then `npm run offline:score`.
-5. **F177 freeform capture — DO NOT BUILD.** Matt asked to talk the user stories through first.
-6. PRs #205, #204, #198, #197 all conflict on `reckons-roadmap.ttl`; **check each for duplicate
-   `kpred:feature-id`**. (Max id is now **F187**; no duplicates as of 2026-09-08.)
-7. **Triage the 403-row pending queue.** It is real work and it is Opus's job.
+1. Whichever of the four decisions above Matt makes.
+2. Triage `reckons-workspace/knowledge.pending.jsonl` (**515 rows**) — real work, and Opus's job.
+3. The re-run that recovers the relation medians lost to a `tail` (results now always persist to
+   `tests/bench/results/`).
+4. Point a rendered check at the docs diagrams — still open from 2026-09-06.
+5. PRs #205, #204, #198, #197 conflict on `reckons-roadmap.ttl`; check each for duplicate
+   `kpred:feature-id`. Max id is now **F192**; no duplicates.
 
 ### Verification
 
-**2897 tests / 203 files** · graph-lint **0 errors** · **align six gates aligned** · both TTLs parse.
-
-Pre-existing script-tier failures, verified on the parent branch too, NOT caused here:
-`landing-data-align` (landing-thesis.json duplicates the graph and drifted when the tenets were
-shortened) and `status-evidence` (undeclared gap is `kb:tenet-alignment` from 42ab245).
+**151 pages: 0 without an excerpt, 0 dead links, 0 placeholders, 0 under 40 words.** `md-align`
+all 151 match. **Ten align gates**, each of the three new ones verified by breaking it. 390 script
+tests, svelte-check 0/0, graph-lint 0 errors.
 
 ## ▶ SESSION 2026-09-06 (late) — the diagrams were broken, and every gate said fine
 
