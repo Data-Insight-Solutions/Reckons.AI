@@ -52,6 +52,7 @@ import { contentPath, pageToMarkdown } from '../src/lib/publish/site-export';
 import { parsePageFile } from '../src/lib/publish/site-import';
 import { loadCache, diagramKey, diagramFigure } from './lib/mermaid-render.js';
 import { loadSceneCache, sceneKey, sceneFigure, sceneIframe } from './lib/scene-render.js';
+import { hashFacts, DEFAULT_FLOOR } from './lib/page-provenance.js';
 
 const ROOT = resolve(import.meta.dirname ?? '.', '..');
 const STATIC_DIR = join(ROOT, 'static');
@@ -1005,6 +1006,37 @@ function main(): void {
 
   const newFiles = new Map<string, string>();
   for (const page of pages) newFiles.set(contentPath(page), pageToMarkdown(page, slugs));
+
+  /*
+   * PAGE PROVENANCE (F189) — which entity made which page, and a hash of the facts it used.
+   *
+   * The mapping exists here and was thrown away at the end of every run. Without it two things
+   * are impossible: knowing which pages a substantive graph change SHOULD have moved, and — the
+   * reason it is written now — proposing a HAND EDIT back onto the right subject. site-import
+   * mints `urn:kbase:concept/{slug}` from a file, which is a different entity from the
+   * `urn:reckons:feature/…` that generated it, so without provenance an edit round-trips into a
+   * second entity describing the same thing.
+   */
+  const provenance = pages.map((page) => {
+    const e = byIri.get(page.iri)!;
+    const quads = (fileQuads.get(home.get(page.iri)!) ?? []).map((q) => ({
+      subject: { value: q.subject.value },
+      predicate: { value: q.predicate.value },
+      object: { value: q.object.value, termType: q.object.termType },
+    }));
+    return {
+      path: contentPath(page).replace(/^content\//, '').replace(/\.md$/, ''),
+      entity: page.iri,
+      graph: home.get(page.iri)!,
+      ...hashFacts(quads, page.iri),
+      floor: DEFAULT_FLOOR,
+    };
+  }).sort((a, b) => a.path.localeCompare(b.path));
+  writeFileSync(
+    join(STATIC_DIR, 'page-provenance.json'),
+    JSON.stringify({ built: provenance.length, pages: provenance }, null, 2) + '\n',
+    'utf8',
+  );
 
   // ── Prune stale generated files (never touches files without generated: "docs-kb") ──
   const existingMd = walkMd(CONTENT_DIR);

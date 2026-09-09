@@ -160,7 +160,8 @@
     "docs:scenes": "npx tsx scripts/docs-scenes.ts",
     "docs:scenes:check": "npx tsx scripts/docs-scenes.ts --check",
     "docs:search-index": "npx tsx scripts/docs-search-index.ts",
-    "docs:search-index:check": "npx tsx scripts/docs-search-index.ts --check"
+    "docs:search-index:check": "npx tsx scripts/docs-search-index.ts --check",
+    "docs:edits": "npx tsx scripts/offline/docs-edits.ts"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.112.1",

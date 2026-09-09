@@ -251,6 +251,13 @@
       "desc": "F140 GPU-real performance crawl: a HEADED browser on the real GPU, asserting on TIME (long tasks, time-to-usable, settled velocity). DISABLED in the sweep because it needs a DISPLAY and a running dev server \u2014 it aborts rather than silently falling back to SwiftShader, since a green perf report from a software rasterizer is worse than none. Run it manually: npm run dev, then npm run offline:perf -- --ladder --trace-delta"
     },
     {
+      "name": "docs-edits",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/docs-edits.ts",
+      "desc": "Finds hand edits on generated docs pages and reports them against the entity that owns the sentence (via static/page-provenance.json). Report-only in the sweep: accepting an edit into the graph is a human decision, so --pending is manual."
+    },
+    {
       "name": "docs-graph-registration",
       "tier": "script",
       "enabled": true,
