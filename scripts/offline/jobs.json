@@ -284,6 +284,13 @@
       "enabled": true,
       "cmd": "npx tsx scripts/offline/host-health.ts --pending",
       "desc": "Replaces Observium, which was running, exposed and never looked at. Deterministic host checks \u2014 disk pressure, critical mounts actually mounted, unexpected all-interface listeners, firewall state, container health, security updates, failed units \u2014 pushing ONLY what needs a human into the review queue. Reports UNKNOWN for anything needing root rather than assuming it is fine. Read-only: the F170 maintenance-level tier, which never acts."
+    },
+    {
+      "name": "docs-review",
+      "tier": "agent",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/docs-review.ts --limit=12",
+      "desc": "Reads published pages and names ONE term each uses without explaining \u2014 the legibility failure a first-time reader hit twice. Grounded on terms the docs DO define, validated against the page text, aggregated by term so one gap is one proposal. Agent tier, proposals only."
     }
   ]
 }

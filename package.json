@@ -164,7 +164,8 @@
     "docs:edits": "npx tsx scripts/offline/docs-edits.ts",
     "docs:build": "npx tsx scripts/docs-build.ts",
     "docs:build:check": "npx tsx scripts/docs-build.ts --check",
-    "docs:staleness": "npx tsx scripts/offline/docs-staleness.ts"
+    "docs:staleness": "npx tsx scripts/offline/docs-staleness.ts",
+    "docs:review": "npx tsx scripts/offline/docs-review.ts"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.112.1",
