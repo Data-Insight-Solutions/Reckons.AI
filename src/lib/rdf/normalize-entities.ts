@@ -45,7 +45,11 @@ export interface NormalizeResult {
   subjectRemaps: number;
   /** Number of predicate IRIs that were remapped */
   predicateRemaps: number;
-  /** Details of each remap for logging */
+  /**
+   * Each remap with the similarity that justified it. Consumed by
+   * {@link aliasesFromNormalization} to preserve the folded-away name as a pending
+   * skos:altLabel, so it is no longer only a logging aid.
+   */
   remaps: Array<{ from: string; to: string; kind: 'subject' | 'predicate'; similarity: number }>;
 }
 
@@ -112,6 +116,13 @@ async function _normalize(
   // ── Build remap tables ─────────────────────────────────────────────────
 
   const entityRemap = new Map<string, string>(); // incoming IRI → existing IRI
+  // Similarity that justified each remap, kept alongside rather than inside the map so the
+  // rewrite loop below is untouched. Filled at every point a remap is recorded — an exact
+  // label match scores 1, an embedding match carries its cosine. Previously every remap was
+  // reported with similarity 0 under a comment claiming it was "filled below"; nothing filled
+  // it, so no caller could tell a certain fold from a marginal one (kb:ingest-synonyms).
+  const entitySim = new Map<string, number>();
+  const predicateSim = new Map<string, number>();
   const predicateRemap = new Map<string, string>();
 
   // Incoming entity IRIs = subjects + non-literal objects (deduplicated)
@@ -140,6 +151,7 @@ async function _normalize(
       const exactMatch = existingLabelMap.get(newLabels[i].toLowerCase());
       if (exactMatch && exactMatch !== newEntityIRIs[i]) {
         entityRemap.set(newEntityIRIs[i], exactMatch);
+        entitySim.set(newEntityIRIs[i], 1);
       }
     }
 
@@ -170,6 +182,7 @@ async function _normalize(
 
         if (bestSim >= SUBJECT_MATCH_THRESHOLD && bestIRI !== newEntityIRIs[idx]) {
           entityRemap.set(newEntityIRIs[idx], bestIRI);
+          entitySim.set(newEntityIRIs[idx], bestSim);
         }
       }
     }
@@ -189,6 +202,7 @@ async function _normalize(
       const exactMatch = existingPredLabelMap.get(newPredLabels[i].toLowerCase());
       if (exactMatch && exactMatch !== newPredicateIRIs[i]) {
         predicateRemap.set(newPredicateIRIs[i], exactMatch);
+        predicateSim.set(newPredicateIRIs[i], 1);
       }
     }
 
@@ -233,6 +247,7 @@ async function _normalize(
 
         if (bestSim >= PREDICATE_MATCH_THRESHOLD && bestIRI !== newPredicateIRIs[idx]) {
           predicateRemap.set(newPredicateIRIs[idx], bestIRI);
+          predicateSim.set(newPredicateIRIs[idx], bestSim);
         }
       }
     }
@@ -249,10 +264,10 @@ async function _normalize(
   const remaps: NormalizeResult['remaps'] = [];
 
   for (const [from, to] of entityRemap) {
-    remaps.push({ from, to, kind: 'subject', similarity: 0 }); // similarity filled below
+    remaps.push({ from, to, kind: 'subject', similarity: entitySim.get(from) ?? 0 });
   }
   for (const [from, to] of predicateRemap) {
-    remaps.push({ from, to, kind: 'predicate', similarity: 0 });
+    remaps.push({ from, to, kind: 'predicate', similarity: predicateSim.get(from) ?? 0 });
   }
 
   const rewritten = incoming.map(st => {
