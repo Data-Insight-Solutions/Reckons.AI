@@ -1,5 +1,5 @@
 {
-  "built": 132,
+  "built": 133,
   "pages": [
     {
       "path": "architecture/claude-md-minimal",
@@ -650,6 +650,15 @@
       "pageHash": "2541925a50e65a91"
     },
     {
+      "path": "learn/how-it-works",
+      "entity": "urn:reckons:arch/HowItWorks",
+      "graph": "docs-triples-rdf.ttl",
+      "factHash": "ced60b7891f3b8cf",
+      "factCount": 9,
+      "floor": "evidence",
+      "pageHash": "23dab8bbaf979a2a"
+    },
+    {
       "path": "learn/reckoning",
       "entity": "urn:reckons:feature/Reckoning",
       "graph": "docs-features.ttl",
@@ -881,7 +890,7 @@
       "factHash": "9e6c2ff3d6ac3baf",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "7631800110ba4fae"
+      "pageHash": "9c7176190f3e9570"
     },
     {
       "path": "triples-rdf/rdf",
@@ -890,7 +899,7 @@
       "factHash": "f8535793163b42e5",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "a37267c156c74af7"
+      "pageHash": "37666da80091010f"
     },
     {
       "path": "triples-rdf/triple-architecture",
@@ -899,7 +908,7 @@
       "factHash": "26af549136a3289f",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "a0befc3095b75b8b"
+      "pageHash": "250cc0bb7be3eea0"
     },
     {
       "path": "triples-rdf/turtle",
@@ -908,7 +917,7 @@
       "factHash": "6aecd139be76db04",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "9ca708b1aca31262"
+      "pageHash": "74fe87f3f8f0e71e"
     },
     {
       "path": "use-cases/academic-research-group",

@@ -1,225 +1,80 @@
 ---
-title: "How it works"
+title: "How it works, from one fact to a graph you own"
 slug: "how-it-works"
-order: 3
+order: 60
 section: "Learn"
+parent: "triple-architecture"
 template: doc
 status: published
 nav: sidebar
-excerpt: "Triples, graphs and the design decisions behind them — why the data is shaped this way."
-generated: "docs-composed"
+excerpt: "Everything here is built on one small idea repeated: a fact is three parts, and three parts can be linked."
+generated: "docs-kb"
 ---
 
-# How it works
+# How it works, from one fact to a graph you own
 
-Triples, graphs and the design decisions behind them — why the data is shaped this way.
+Everything here is built on one small idea repeated: a fact is three parts, and three parts can be linked. Write a fact down as subject, predicate, object and you can join it to every other fact that mentions the same thing, record where it came from, mark whether you have accepted it, and save the lot as plain text you can read without this software. Those five steps are the whole data model, and the rest of the product is machinery around them.
 
-## Architecture
+<figure class="diagram" role="group" aria-label="One idea repeated. Step 4 is the only one that needs a person, and it is the one that makes the other four worth doing."><svg id="m4ab5fdd789c873e4" width="100%" xmlns="http://www.w3.org/2000/svg" class="flowchart" viewBox="0 0 1596.875244140625 191.796875" role="graphics-document document" aria-roledescription="flowchart-v2"><style>#m4ab5fdd789c873e4{font-family:ui-sans-serif,system-ui,sans-serif;font-size:16px;fill:var(--diagram-line);}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#m4ab5fdd789c873e4 .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#m4ab5fdd789c873e4 .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#m4ab5fdd789c873e4 .error-icon{fill:var(--diagram-note-border);}#m4ab5fdd789c873e4 .error-text{fill:var(--diagram-note-border);stroke:var(--diagram-note-border);}#m4ab5fdd789c873e4 .edge-thickness-normal{stroke-width:1px;}#m4ab5fdd789c873e4 .edge-thickness-thick{stroke-width:3.5px;}#m4ab5fdd789c873e4 .edge-pattern-solid{stroke-dasharray:0;}#m4ab5fdd789c873e4 .edge-thickness-invisible{stroke-width:0;fill:none;}#m4ab5fdd789c873e4 .edge-pattern-dashed{stroke-dasharray:3;}#m4ab5fdd789c873e4 .edge-pattern-dotted{stroke-dasharray:2;}#m4ab5fdd789c873e4 .marker{fill:var(--diagram-line);stroke:var(--diagram-line);}#m4ab5fdd789c873e4 .marker.cross{stroke:var(--diagram-line);}#m4ab5fdd789c873e4 svg{font-family:ui-sans-serif,system-ui,sans-serif;font-size:16px;}#m4ab5fdd789c873e4 p{margin:0;}#m4ab5fdd789c873e4 .label{font-family:ui-sans-serif,system-ui,sans-serif;color:var(--diagram-line);}#m4ab5fdd789c873e4 .cluster-label text{fill:var(--diagram-line);}#m4ab5fdd789c873e4 .cluster-label span{color:var(--diagram-line);}#m4ab5fdd789c873e4 .cluster-label span p{background-color:transparent;}#m4ab5fdd789c873e4 .label text,#m4ab5fdd789c873e4 span{fill:var(--diagram-line);color:var(--diagram-line);}#m4ab5fdd789c873e4 .node rect,#m4ab5fdd789c873e4 .node circle,#m4ab5fdd789c873e4 .node ellipse,#m4ab5fdd789c873e4 .node polygon,#m4ab5fdd789c873e4 .node path{fill:var(--diagram-node-bg);stroke:var(--diagram-node-border);stroke-width:1px;}#m4ab5fdd789c873e4 .rough-node .label text,#m4ab5fdd789c873e4 .node .label text,#m4ab5fdd789c873e4 .image-shape .label,#m4ab5fdd789c873e4 .icon-shape .label{text-anchor:middle;}#m4ab5fdd789c873e4 .node .katex path{fill:var(--diagram-ink);stroke:var(--diagram-ink);stroke-width:1px;}#m4ab5fdd789c873e4 .rough-node .label,#m4ab5fdd789c873e4 .node .label,#m4ab5fdd789c873e4 .image-shape .label,#m4ab5fdd789c873e4 .icon-shape .label{text-align:center;}#m4ab5fdd789c873e4 .node.clickable{cursor:pointer;}#m4ab5fdd789c873e4 .root .anchor path{fill:var(--diagram-line)!important;stroke-width:0;stroke:var(--diagram-line);}#m4ab5fdd789c873e4 .arrowheadPath{fill:var(--diagram-line);}#m4ab5fdd789c873e4 .edgePaths .path{stroke:var(--diagram-line);stroke-width:1px;}#m4ab5fdd789c873e4 .flowchart-link{stroke:var(--diagram-line);fill:none;}#m4ab5fdd789c873e4 .edgeLabel{background-color:var(--diagram-surface);text-align:center;}#m4ab5fdd789c873e4 .edgeLabel p{background-color:var(--diagram-surface);}#m4ab5fdd789c873e4 .edgeLabel rect{opacity:0.5;background-color:var(--diagram-surface);fill:var(--diagram-surface);}#m4ab5fdd789c873e4 .labelBkg{background-color:var(--diagram-surface);}#m4ab5fdd789c873e4 .cluster rect{fill:var(--diagram-note-bg);stroke:var(--diagram-note-border);stroke-width:1px;}#m4ab5fdd789c873e4 .cluster text{fill:var(--diagram-line);}#m4ab5fdd789c873e4 .cluster span{color:var(--diagram-line);}#m4ab5fdd789c873e4 .node .collapsed-indicator{fill:var(--diagram-note-border);stroke:none;opacity:0.6;}#m4ab5fdd789c873e4 .node .collapsed-separator{stroke:var(--diagram-note-border);stroke-width:0.75px;}#m4ab5fdd789c873e4 div.mermaidTooltip{position:absolute;text-align:center;max-width:200px;padding:2px;font-family:ui-sans-serif,system-ui,sans-serif;font-size:12px;background:var(--diagram-note-bg);border:1px solid var(--diagram-note-border);border-radius:2px;pointer-events:none;z-index:100;}#m4ab5fdd789c873e4 .flowchartTitleText{text-anchor:middle;font-size:18px;fill:var(--diagram-line);}#m4ab5fdd789c873e4 rect.text{fill:none;stroke-width:0;}#m4ab5fdd789c873e4 .icon-shape,#m4ab5fdd789c873e4 .image-shape{background-color:var(--diagram-surface);text-align:center;}#m4ab5fdd789c873e4 .icon-shape p,#m4ab5fdd789c873e4 .image-shape p{background-color:var(--diagram-surface);padding:2px;}#m4ab5fdd789c873e4 .icon-shape .label rect,#m4ab5fdd789c873e4 .image-shape .label rect{opacity:0.5;background-color:var(--diagram-surface);fill:var(--diagram-surface);}#m4ab5fdd789c873e4 .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#m4ab5fdd789c873e4 .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#m4ab5fdd789c873e4 .node .neo-node{stroke:var(--diagram-node-border);}#m4ab5fdd789c873e4 [data-look="neo"].node rect,#m4ab5fdd789c873e4 [data-look="neo"].cluster rect,#m4ab5fdd789c873e4 [data-look="neo"].node polygon{stroke:var(--diagram-node-border);filter:drop-shadow(1px 2px 2px var(--diagram-line));}#m4ab5fdd789c873e4 [data-look="neo"].swimlane.cluster rect{filter:none;}#m4ab5fdd789c873e4 [data-look="neo"].node path{stroke:var(--diagram-node-border);stroke-width:1px;}#m4ab5fdd789c873e4 [data-look="neo"].node .outer-path{filter:drop-shadow(1px 2px 2px var(--diagram-line));}#m4ab5fdd789c873e4 [data-look="neo"].node .neo-line path{stroke:var(--diagram-node-border);filter:none;}#m4ab5fdd789c873e4 [data-look="neo"].node circle{stroke:var(--diagram-node-border);filter:drop-shadow(1px 2px 2px var(--diagram-line));}#m4ab5fdd789c873e4 [data-look="neo"].node circle .state-start{fill:var(--diagram-ink);}#m4ab5fdd789c873e4 [data-look="neo"].icon-shape .icon{fill:var(--diagram-node-border);filter:drop-shadow(1px 2px 2px var(--diagram-line));}#m4ab5fdd789c873e4 [data-look="neo"].icon-shape .icon-neo path{stroke:var(--diagram-node-border);filter:drop-shadow(1px 2px 2px var(--diagram-line));}#m4ab5fdd789c873e4 :root{--mermaid-font-family:ui-sans-serif,system-ui,sans-serif;}</style><g><marker id="m4ab5fdd789c873e4_flowchart-v2-pointEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></path></marker><marker id="m4ab5fdd789c873e4_flowchart-v2-pointStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="4.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 5 L 10 10 L 10 0 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></path></marker><marker id="m4ab5fdd789c873e4_flowchart-v2-pointEnd-margin" class="marker flowchart-v2" viewBox="0 0 11.5 14" refX="11.5" refY="7" markerUnits="userSpaceOnUse" markerWidth="10.5" markerHeight="14" orient="auto"><path d="M 0 0 L 11.5 7 L 0 14 z" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"></path></marker><marker id="m4ab5fdd789c873e4_flowchart-v2-pointStart-margin" class="marker flowchart-v2" viewBox="0 0 11.5 14" refX="1" refY="7" markerUnits="userSpaceOnUse" markerWidth="11.5" markerHeight="14" orient="auto"><polygon points="0,7 11.5,14 11.5,0" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"></polygon></marker><marker id="m4ab5fdd789c873e4_flowchart-v2-circleEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="11" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></circle></marker><marker id="m4ab5fdd789c873e4_flowchart-v2-circleStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="-1" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></circle></marker><marker id="m4ab5fdd789c873e4_flowchart-v2-circleEnd-margin" class="marker flowchart-v2" viewBox="0 0 10 10" refY="5" refX="12.25" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"></circle></marker><marker id="m4ab5fdd789c873e4_flowchart-v2-circleStart-margin" class="marker flowchart-v2" viewBox="0 0 10 10" refX="-2" refY="5" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"></circle></marker><marker id="m4ab5fdd789c873e4_flowchart-v2-crossEnd" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="12" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"></path></marker><marker id="m4ab5fdd789c873e4_flowchart-v2-crossStart" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="-1" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"></path></marker><marker id="m4ab5fdd789c873e4_flowchart-v2-crossEnd-margin" class="marker cross flowchart-v2" viewBox="0 0 15 15" refX="17.7" refY="7.5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto"><path d="M 1,1 L 14,14 M 1,14 L 14,1" class="arrowMarkerPath" style="stroke-width: 2.5;"></path></marker><marker id="m4ab5fdd789c873e4_flowchart-v2-crossStart-margin" class="marker cross flowchart-v2" viewBox="0 0 15 15" refX="-3.5" refY="7.5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto"><path d="M 1,1 L 14,14 M 1,14 L 14,1" class="arrowMarkerPath" style="stroke-width: 2.5; stroke-dasharray: 1, 0;"></path></marker><g class="root"><g class="clusters"></g><g class="edgePaths"><path d="M263.922,95.898L268.089,95.898C272.255,95.898,280.589,95.898,288.255,95.898C295.922,95.898,302.922,95.898,306.422,95.898L309.922,95.898" id="m4ab5fdd789c873e4-L_F_G_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_F_G_0" data-points="W3sieCI6MjYzLjkyMTg3NSwieSI6OTUuODk4NDM3NX0seyJ4IjoyODguOTIxODc1LCJ5Ijo5NS44OTg0Mzc1fSx7IngiOjMxMy45MjE4NzUsInkiOjk1Ljg5ODQzNzV9XQ==" data-look="classic" marker-end="url(#m4ab5fdd789c873e4_flowchart-v2-pointEnd)"></path><path d="M554.313,95.898L558.479,95.898C562.646,95.898,570.979,95.898,578.646,95.898C586.313,95.898,593.313,95.898,596.813,95.898L600.313,95.898" id="m4ab5fdd789c873e4-L_G_P_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_G_P_0" data-points="W3sieCI6NTU0LjMxMjUsInkiOjk1Ljg5ODQzNzV9LHsieCI6NTc5LjMxMjUsInkiOjk1Ljg5ODQzNzV9LHsieCI6NjA0LjMxMjUsInkiOjk1Ljg5ODQzNzV9XQ==" data-look="classic" marker-end="url(#m4ab5fdd789c873e4_flowchart-v2-pointEnd)"></path><path d="M834.641,84.622L843.533,83.752C852.425,82.881,870.208,81.14,888.862,81.409C907.517,81.679,927.041,83.96,936.803,85.1L946.565,86.241" id="m4ab5fdd789c873e4-L_P_R_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_P_R_0" data-points="W3sieCI6ODM0LjY0MDYyNSwieSI6ODQuNjIyMjk5NzcyODQyNDV9LHsieCI6ODg3Ljk5MjMzMjQ1ODQ5NjEsInkiOjc5LjM5ODQzNzV9LHsieCI6OTUwLjUzNzg0NTg1MDYxOTUsInkiOjg2LjcwNDYzMTU2NjM3MjYzfV0=" data-look="classic" marker-end="url(#m4ab5fdd789c873e4_flowchart-v2-pointEnd)"></path><path d="M1117.141,95.898L1123.713,95.898C1130.284,95.898,1143.427,95.898,1155.904,95.898C1168.38,95.898,1180.19,95.898,1186.095,95.898L1192,95.898" id="m4ab5fdd789c873e4-L_R_T_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_R_T_0" data-points="W3sieCI6MTExNy4xNDA5MTQ5MTY5OTIyLCJ5Ijo5NS44OTg0Mzc1fSx7IngiOjExNTYuNTcwNjAyNDE2OTkyMiwieSI6OTUuODk4NDM3NX0seyJ4IjoxMTk2LjAwMDI4OTkxNjk5MjIsInkiOjk1Ljg5ODQzNzV9XQ==" data-look="classic" marker-end="url(#m4ab5fdd789c873e4_flowchart-v2-pointEnd)"></path><path d="M950.538,105.092L940.114,106.31C929.689,107.528,908.841,109.963,890.188,110.375C871.535,110.787,855.079,109.176,846.85,108.37L838.622,107.564" id="m4ab5fdd789c873e4-L_R_P_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_R_P_0" data-points="W3sieCI6OTUwLjUzNzg0NTg1MDYxOTUsInkiOjEwNS4wOTIyNDM0MzM2MjczN30seyJ4Ijo4ODcuOTkyMzMyNDU4NDk2MSwieSI6MTEyLjM5ODQzNzV9LHsieCI6ODM0LjY0MDYyNSwieSI6MTA3LjE3NDU3NTIyNzE1NzU1fV0=" data-look="classic" marker-end="url(#m4ab5fdd789c873e4_flowchart-v2-pointEnd)"></path><path d="M1338.922,65.571L1346.648,62.292C1354.373,59.013,1369.825,52.456,1377.55,65.844C1385.276,79.232,1385.276,112.565,1378.164,126.213C1371.052,139.862,1356.828,133.825,1349.716,130.807L1342.604,127.789" id="m4ab5fdd789c873e4-L_T_T_0" class="edge-thickness-normal edge-pattern-dotted edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_T_T_0" data-points="W3sieCI6MTMzOC45MjIxNjQ5MTY5OTIyLCJ5Ijo2NS41NzA3NjYwNjUxODYxOH0seyJ4IjoxMzg1LjI3NTk3MjM2NjMzMywieSI6NDUuODk4NDM3NX0seyJ4IjoxMzg1LjI3NTk3MjM2NjMzMywieSI6MTQ1Ljg5ODQzNzV9LHsieCI6MTMzOC45MjIxNjQ5MTY5OTIyLCJ5IjoxMjYuMjI2MTA4OTM0ODEzODJ9XQ==" data-look="classic" marker-end="url(#m4ab5fdd789c873e4_flowchart-v2-pointEnd)"></path></g><g class="edgeLabels"><g class="edgeLabel"><g class="label" data-id="L_F_G_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"></tspan></text></g></g><g><rect class="background" style="stroke: none"></rect></g><g class="edgeLabel"><g class="label" data-id="L_G_P_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"></tspan></text></g></g><g><rect class="background" style="stroke: none"></rect></g><g class="edgeLabel"><g class="label" data-id="L_P_R_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"></tspan></text></g></g><g><rect class="background" style="stroke: none"></rect></g><g class="edgeLabel" transform="translate(1156.5706024169922, 95.8984375)"><g class="label" data-id="L_R_T_0" transform="translate(0, -10)"><g><rect class="background" style="" x="-14.4296875" y="-3" width="28.859375" height="26"></rect><text y="-10.1" text-anchor="middle" style=""><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"><tspan font-style="normal" class="text-inner-tspan" font-weight="normal">yes</tspan></tspan></text></g></g></g><g class="edgeLabel" transform="translate(892.64269, 111.85521)"><g class="label" data-id="L_R_P_0" transform="translate(-0.10951995849609375, -10)"><g><rect class="background" style="" x="-28.2421875" y="-3" width="56.70341491699219" height="26"></rect><text y="-10.1" text-anchor="middle" style=""><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"><tspan font-style="normal" class="text-inner-tspan" font-weight="normal">not</tspan><tspan font-style="normal" class="text-inner-tspan" font-weight="normal"> yet</tspan></tspan></text></g></g></g><g class="edgeLabel" transform="translate(1464.127534866333, 95.8984375)"><g class="label" data-id="L_T_T_0" transform="translate(0, -18.799999237060547)"><g><rect class="background" style="" x="-74.8515625" y="-3" width="149.703125" height="43.599998474121094"></rect><text y="-10.1" text-anchor="middle" style=""><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"><tspan font-style="normal" class="text-inner-tspan" font-weight="normal">open</tspan><tspan font-style="normal" class="text-inner-tspan" font-weight="normal"> it</tspan><tspan font-style="normal" class="text-inner-tspan" font-weight="normal"> in</tspan><tspan font-style="normal" class="text-inner-tspan" font-weight="normal"> anything,</tspan></tspan><tspan class="text-outer-tspan row" x="0" y="1em" dy="1.1em" text-anchor="middle"><tspan font-style="normal" class="text-inner-tspan" font-weight="normal">or</tspan><tspan font-style="normal" class="text-inner-tspan" font-weight="normal"> nothing</tspan><tspan font-style="normal" class="text-inner-tspan" font-weight="normal"> at</tspan><tspan font-style="normal" class="text-inner-tspan" font-weight="normal"> all</tspan></tspan></text></g></g></g></g><g class="nodes"><g class="node default" id="m4ab5fdd789c873e4-flowchart-F-0" data-look="classic" transform="translate(135.9609375, 95.8984375)"><rect class="basic label-container" style="" x="-127.9609375" y="-39" width="255.921875" height="78"></rect><g class="label" style="" transform="translate(-97.9609375, -24)"><rect></rect><foreignObject width="195.921875" height="48"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>1 · One fact<br>subject · predicate · object</p></span></div></foreignObject></g></g><g class="node default" id="m4ab5fdd789c873e4-flowchart-G-1" data-look="classic" transform="translate(434.1171875, 95.8984375)"><rect class="basic label-container" style="" x="-120.1953125" y="-39" width="240.390625" height="78"></rect><g class="label" style="" transform="translate(-90.1953125, -24)"><rect></rect><foreignObject width="180.390625" height="48"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>2 · Facts join up<br>same name, same thing</p></span></div></foreignObject></g></g><g class="node default" id="m4ab5fdd789c873e4-flowchart-P-2" data-look="classic" transform="translate(719.4765625, 95.8984375)"><rect class="basic label-container" style="" x="-115.1640625" y="-39" width="230.328125" height="78"></rect><g class="label" style="" transform="translate(-85.1640625, -24)"><rect></rect><foreignObject width="170.328125" height="48"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>3 · Where it came from<br>source, excerpt, date</p></span></div></foreignObject></g></g><g class="node default" id="m4ab5fdd789c873e4-flowchart-R-3" data-look="classic" transform="translate(1029.2424774169922, 95.8984375)"><polygon points="87.8984375,0 175.796875,-87.8984375 87.8984375,-175.796875 0,-87.8984375" class="label-container" transform="translate(-87.3984375, 87.8984375)"></polygon><g class="label" style="" transform="translate(-48.8984375, -24)"><rect></rect><foreignObject width="97.796875" height="48"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>4 · Accepted?<br>you decide</p></span></div></foreignObject></g></g><g class="node default" id="m4ab5fdd789c873e4-flowchart-T-4" data-look="classic" transform="translate(1267.4612274169922, 95.8984375)"><path d="M0,13.336152096576662 a71.4609375,13.336152096576662 0,0,0 142.921875,0 a71.4609375,13.336152096576662 0,0,0 -142.921875,0 l0,76.33615209657665 a71.4609375,13.336152096576662 0,0,0 142.921875,0 l0,-76.33615209657665" class="basic label-container outer-path" style="" transform="translate(-71.4609375, -51.50422814486499)"></path><g class="label" style="" transform="translate(-63.9609375, -14)"><rect></rect><foreignObject width="127.921875" height="48"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>5 · Plain text<br>a .ttl file you own</p></span></div></foreignObject></g></g><g class="label edgeLabel" id="T---T---1" transform="translate(1388.9721649177372, 74.99843788146973)"><rect width="0.1" height="0.1"></rect><g class="label" style="" transform="translate(0, 0)"><rect></rect><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 10px; text-align: center;"><span class="nodeLabel"></span></div></foreignObject></g></g><g class="label edgeLabel" id="T---T---2" transform="translate(1588.7752899192274, 95.8984375)"><rect width="0.1" height="0.1"></rect><g class="label" style="" transform="translate(0, 0)"><rect></rect><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 10px; text-align: center;"><span class="nodeLabel"></span></div></foreignObject></g></g></g></g></g><defs><filter id="m4ab5fdd789c873e4-drop-shadow" height="130%" width="130%"><feDropShadow dx="4" dy="4" stdDeviation="0" flood-opacity="0.06" flood-color="var(--diagram-ink)"></feDropShadow></filter></defs><defs><filter id="m4ab5fdd789c873e4-drop-shadow-small" height="150%" width="150%"><feDropShadow dx="2" dy="2" stdDeviation="0" flood-opacity="0.06" flood-color="var(--diagram-ink)"></feDropShadow></filter></defs></svg><figcaption>One idea repeated. Step 4 is the only one that needs a person, and it is the one that makes the other four worth doing.</figcaption></figure>
 
-### Advantage: Graph Visualization
+## At a glance
 
-TTL docs load into the app as interactive 3D/2D knowledge graphs. Navigate visually. See relationships. This is impossible with markdown — it is the product demonstrating itself.
+**Audience**
 
-### Advantage: MCP Queryability
+Anyone who wants to know why the data is shaped this way before trusting it with anything. No RDF background assumed — the standards are named at the end, not the start.
 
-kb_search finds relevant entities across all graphs with a single query. No need to know which file to read. kb_compress cuts the tokens you feed an LLM, mostly by SELECTING a relevant subgraph rather than handing over the whole graph (the compact encoding itself is worth a further ~18% — measured, not estimated). kb_reckoning gives grounded STP analysis. This is fundamentally better than reading 15 markdown files.
+## Why it is this way
 
-### Advantage: Semantic Linking
+**Principle**
 
-Entities link via skos:related, skos:broader, skos:narrower. A feature entity connects to its roadmap status, its design decisions, its integration dependencies. Markdown cross-references are just hyperlinks with no semantic meaning.
+THE SHAPE IS THE POINT, NOT THE FORMAT. A note application stores your words; this stores your CLAIMS, one at a time, each with its own source and its own status. That is why two documents can be compared, why a contradiction can be detected at all, and why the graph can tell you it does not know something instead of guessing. Turtle and RDF are how it is written down; they are not the reason.
 
-### Currents Settings as Meta Triples
+**Constraint**
 
-Per-graph currents configuration (allowed entity types, per-current source/cadence/label) lives IN the graph as ordinary statements under the urn:reckons:meta/currents/ namespace, the same pattern used by nav:order for hierarchy. This means settings travel with TTL export/import and are visible to MCP tools without a separate settings store. isMetaPredicate hides the whole namespace from the rendered graph edges so it does not clutter the visualization.
+THE STANDARDS COME LAST ON PURPOSE. A reader who meets RDF, SKOS, SPARQL and PROV-O before meeting a single fact learns that this is complicated, which is the opposite of true. The sequence below introduces one idea at a time and names the standard that already solved it only once the idea is in place.
 
-See also: [What it does](/docs/learn/what-it-does)
+## From one fact to a graph you own
 
-### Dependency Health
+Five steps, and each one only makes sense once the previous one is in place. This is a story rather than a roster: read in another order and it becomes a glossary of terms instead of an explanation.
 
-Core deps: svelte 5, sveltekit 2, dexie 4, n3 1.x, three 0.169, @huggingface/transformers 3.x, bits-ui 2.x, fflate 0.8. Dev deps: vitest 4.x, playwright 1.x, typescript 5.x. All deps actively maintained. No abandoned packages. Browser-only runtime — no server deps in production.
+### 1 · One fact is three parts
 
-### Files That Must Stay Markdown
+Subject, predicate, object — the thing, what is being said about it, and the value. 'Policy covers water-damage.' A subject and a predicate are always names that can be pointed at; the object is either another name or a plain value like a date or a number. That is the entire unit of storage.
 
-CLAUDE.md (Claude Code system file, always loaded into context), MEMORY.md (auto-memory system file), .claude/commands/*.md (slash command definitions), README.md (GitHub convention, npm ecosystem), CONTRIBUTING.md (GitHub convention). These are consumed by tools that require markdown format.
+- [Subject - Predicate - Object](../triples-rdf/triple-architecture) <span class="link-note">— on the The Semantic Triple page</span>
+- [IRI (Identifier)](../triples-rdf/triple-architecture) <span class="link-note">— on the The Semantic Triple page</span>
+- [Literal Values](../triples-rdf/triple-architecture) <span class="link-note">— on the The Semantic Triple page</span>
 
-### Gap: Code Block Formatting
+### 2 · Facts join into a graph
 
-CSS variable tables, TypeScript patterns, shell commands lose syntax highlighting in TTL string literals. Mitigation: keep code conventions as inline code comments near the actual code. Use TTL for the conceptual summary (what the convention IS), not the literal code.
+Two facts that mention the same name are automatically about the same thing, so a pile of separate statements becomes a network with no filing decision required. Nobody chooses a folder, and nothing has to be filed twice to appear in two places.
 
-### Gap: Discovery Without Prior Knowledge
+- [Knowledge Graph](../triples-rdf/triple-architecture) <span class="link-note">— on the The Semantic Triple page</span>
+- [The Semantic Triple](../triples-rdf/triple-architecture)
+- [Linked Data](../triples-rdf/rdf) <span class="link-note">— on the RDF (Resource Description Framework) page</span>
 
-Markdown: Glob docs/*.md shows all docs. TTL via MCP: must know what to search for. Mitigation: kb_list_entities gives full entity list, kb_stats gives overview, CLAUDE.md lists which graphs exist and their purpose. The hub TTL (starter-guide.ttl) provides a table of contents.
+### 3 · Every fact remembers where it came from
 
-### Gap: Full Context Loading
+A stored fact carries the source it was read from, the verbatim excerpt that supports it, and when it arrived. This is what makes a claim checkable a year later rather than merely present — and it is why the graph can show you the sentence behind an answer instead of asking you to trust it.
 
-Reading a markdown file puts full content in context. MCP kb_search returns BM25 results — good for targeted queries, incomplete for broad understanding. Mitigation: kb_compress gives a budget-capped summary, kb_subgraph gives entity neighborhood, reading the TTL file directly is always possible as fallback.
+- [Provenance](../triples-rdf/triple-architecture) <span class="link-note">— on the The Semantic Triple page</span>
+- [Reification](../triples-rdf/triple-architecture) <span class="link-note">— on the The Semantic Triple page</span>
+- [PROV-O (Provenance Ontology)](../triples-rdf/rdf) <span class="link-note">— on the RDF (Resource Description Framework) page</span>
 
-### Gap: Procedural Sequences
+### 4 · Nothing is true until you say so
 
-Step-by-step instructions (install X, then configure Y, then run Z) are awkward as triples. Mitigation: use skos:note for numbered steps within an entity, or use plain-text comments in TTL files. For setup/install guides, keep as README.md or inline code comments.
+Extracted facts arrive PENDING. They are in the file, visible and traceable, and they are not part of what you know until you confirm them. A model proposes and you dispose — which is the one rule that separates this from software that reads your documents and answers confidently.
 
-### Graph Is Source of Truth (Docs Pipeline)
+- [The Review Workflow](../triples-rdf/triple-architecture) <span class="link-note">— on the The Semantic Triple page</span>
 
-The docs TTL knowledge graphs (static/*.ttl) are the canonical source for the published /docs site, not the other way around: scripts/docs-pages.ts reads the docs graphs and generates content/*.md, which SvelteKit prerenders. There is deliberately NO markdown-to-TTL back-propagation (decided 2026-07-03): graph edits happen in the app or directly on the TTL files, the Sveltia CMS admin UI is only for non-generated content, and hand-edits to generated pages are overwritten by the next regeneration by design. scripts/md-align.ts (built on the site-import round-trip) flags generated pages that have drifted from their graph, so accidental hand-edits are caught rather than silently absorbed.
+### 5 · It is plain text you can take away
 
-See also: [What it does](/docs/learn/what-it-does)
+The whole graph is a Turtle file: readable in any text editor, diffable in git, and loadable by software that has never heard of Reckons.AI. The standards named here are the ones that already solved these problems — they are the reason your graph outlives this tool rather than a reason it is complicated.
 
-### Local-First Architecture
-
-All user data lives in browser IndexedDB (Dexie v4). No server, no accounts, no cloud dependency. The app is a static SvelteKit build. Export to .ttl for portability. Workspace folder sync for disk backup and MCP server access.
-
-### Markdown Migration Status
-
-Tracking which markdown docs have been migrated to TTL graphs. Goal: eliminate all docs/*.md files except where markdown format is structurally required (GitHub conventions, Claude Code system files).
-
-### Minimal CLAUDE.md Pattern
-
-Keep CLAUDE.md as small as possible — only hard constraints (file format rules, test commands, key directories) and MCP instructions. All feature docs, roadmap, architecture, and design decisions live in TTL graphs. CLAUDE.md tells Claude HOW to find information (use kb_search), not what the information IS.
-
-### Mobile Access via Local Server
-
-Run Reckons.AI on a Linux machine with Ollama, access from mobile via LAN. Requires: Vite dev server bound to 0.0.0.0, Ollama OLLAMA_HOST=0.0.0.0, optional self-signed SSL for HTTPS. QR code generation built into settings page. PWA installable on mobile after first visit.
-
-### Mobile Voice Capture (Design)
-
-Planned: async voice memo capture on iOS/Android via n8n webhook. Record memo → n8n receives audio → Whisper transcription → extract triples → write to pending.jsonl → appears in review queue on next app load. No mobile app required — uses native voice recorder + Shortcuts/Tasker to POST to webhook.
-
-### Pending JSONL Queue
-
-Append-only JSONL file (pending.jsonl) serves as message queue between MCP server/CLI tools and the web app. Entries carry subject, predicate, object, type, priority, agent, commitSha metadata. Web app drains on load or manual trigger, converts to pending statements for human review, then clears the file. JSONL chosen over TTL for this role because: atomic line-append is safe for concurrent writes, rich metadata is native JSON, parse cost is trivial, drain-and-clear is a queue pattern not a knowledge pattern.
-
-### PROV-O Alignment
-
-Partial alignment with W3C PROV-O ontology. Source provenance tracked via custom urn:kbase:meta/ predicates (source, ingestedAt, confidence, excerpt). Full prov:Activity chains not implemented — unnecessary complexity for a personal graph where the user IS the reviewing agent. Custom namespace chosen for simplicity and smaller TTL output.
-
-### RDF Vocabulary Decisions
-
-Standard: rdf:type, rdfs:label, skos:definition, skos:broader, skos:related, skos:note. Custom: urn:kbase:type/ (entity types), urn:kbase:predicate/ (user predicates), urn:kbase:meta/ (reification metadata: status, source, confidence, excerpt, timestamps). urn:reckons: namespace for product-specific vocab (leap, shelly, feature).
-
-### Schema-Constrained Local Extraction
-
-Small local models (via Ollama) are unreliable at freeform triple extraction, so the local extraction path constrains the model to a fixed JSON schema (subject/predicate/object/type fields) with a compact prompt rather than the richer freeform prompt used for cloud backends. This trades some extraction nuance for reliability: schema-constrained output parses deterministically even from a 1-4B parameter model, where freeform JSON from the same model frequently fails to parse. Structured output is still treated as ordinary pending proposals — nothing bypasses review.
-
-See also: [What it does](/docs/learn/what-it-does)
-
-### Static Deployment
-
-SvelteKit adapter-static produces a pure client-side build. No server-side runtime in production. Deployable to any static host (Netlify, Vercel, GitHub Pages, local file server). Vite dev server provides HMR during development only.
-
-### Style Conventions
-
-Brand: dark theme, accent #7dd3fc (sky-300). Fonts: Bespoke Stencil Bold (display), Supreme Regular (body/mono), self-hosted (no Google Fonts). CSS variables: --accent, --accent-soft, --data, --surface, --surface-2, --surface-3, --line, --muted, --font-mono, --font-display, --rad, --rad-sm, --rad-lg. Z-index scale: node-labels=10, panels=300, Shelly=350, SearchBar=390, NavBar=400, MergeReview=500. bits-ui components always use :global(.class) for CSS targeting.
-
-### Tailwind-Without-Preflight Containment
-
-shadcn-svelte components are introduced on Tailwind v4 with Tailwind's CSS reset (preflight) disabled. Preflight would rewrite base element styles (margins, headings, form controls) across the whole app and collide with the existing hand-rolled Liquid CSS. Disabling it lets Tailwind utility classes and the new components layer on top of, rather than replace, the current design language. Component-level tokens map onto the existing CSS variables (--accent, --surface, --rad, etc.) documented in arch:StyleConventions, so new shadcn components pick up the same theme automatically.
-
-### TTL vs Markdown Gap Analysis
-
-Ongoing evaluation of what TTL handles well vs where markdown is still needed. Key gaps: procedural sequences (step-by-step), code block formatting, ASCII diagrams, long-form rationale prose. Key advantages: MCP queryability, cross-Graph linking, type system, semantic diff, compression (a relevant subgraph instead of the whole graph; the compact encoding adds ~18% on top — measured), graph visualization.
-
-### TTL-First Documentation
-
-Reckons.AI uses its own TTL knowledge graphs as the primary documentation format. Claude Code queries graphs via MCP tools (kb_search, kb_get_entity, kb_compress) instead of reading markdown files. This dogfoods the product and proves that structured knowledge graphs can replace prose documentation for AI-assisted development.
-
-### Workspace Folder Design
-
-User-selected directory via File System Access API (Chrome/Edge only). Structure: knowledge.ttl (legacy single-Graph), kbs/{String.fromCharCode(123)}name{String.fromCharCode(125)}/{String.fromCharCode(123)}name{String.fromCharCode(125)}.ttl + meta.json (multi-Graph; legacy kbs/{String.fromCharCode(123)}name{String.fromCharCode(125)}/kb.ttl still read as a fallback), knowledge.pending.jsonl (MCP inbox), settings_profile.json. Auto-exports on every graph mutation (2s debounce). sources.json was removed: it was written on export but never consumed on import, so it added disk writes without a reader.
-
-See also: [What it does](/docs/learn/what-it-does)
-
-### Workspace TTL Naming Convention
-
-Each graph's Turtle file is named after its own folder — kbs/&lt;name&gt;/&lt;name&gt;.ttl — rather than a fixed kb.ttl inside each folder. Renaming a graph therefore renames both the directory and the file together, so `ls kbs/` is a legible index of every graph on disk and file managers/sync tools show meaningful names instead of a directory full of identically-named kb.ttl files. The reader still falls back to the legacy kbs/&lt;name&gt;/kb.ttl name (and migrates it to the new convention on next save) so older workspaces keep working.
-
-## Triples and RDF
-
-### @prefix Declaration
-
-Declares a short alias for a namespace IRI. Example: @prefix rdf: &lt;http://www.w3.org/1999/02/22-rdf-syntax-ns#&gt; . Prefixes make Turtle readable -- without them every IRI needs full angle-bracket notation.
-
-### Comma (,) -- Same Subject and Predicate
-
-In Turtle, a comma separates objects that share the same subject and predicate. Example: ex:Earth ex:hasOcean ex:Pacific , ex:Atlantic , ex:Indian .
-
-### IRI (Identifier)
-
-A globally unique identifier for a resource. IRIs are the names of things in RDF -- like URLs but for any concept, not just web pages. Example: urn:reckons:guide/WhatIsReckonsAI
-
-### JSON-LD
-
-JSON-based serialization for RDF. Embeds linked data in standard JSON using a @context object. Popular for web APIs.
-
-### Knowledge Graph
-
-A graph-structured database where entities are nodes and relationships are edges. Multiple triples form a graph. The same subject can appear in many triples, creating a web of connected knowledge.
-
-### Linked Data
-
-Tim Berners-Lee's principles for publishing data on the web: use IRIs, use HTTP, provide useful RDF, and link to other datasets.
-
-### Literal Values
-
-A data value in RDF: a string, number, date, or boolean. Literals can have a language tag (@en) or a datatype IRI (^^xsd:integer). Example: '42'^^xsd:integer is a typed literal.
-
-### Period (.) -- End of Statement Group
-
-A period terminates a group of triples about the same subject.
-
-### Plain Text Portability
-
-Your knowledge graph exports as a .ttl file -- plain text, human-readable, no proprietary format. You can open it in any text editor, diff it with git, email it, or print it. When apps shut down and formats die, your .ttl file will still work. It is the most durable way to store knowledge.
-
-### PROV-O (Provenance Ontology)
-
-A W3C vocabulary for expressing provenance: who created something, when, and from what sources. Reckons.AI uses prov:wasDerivedFrom to link statements to their source.
-
-### Provenance
-
-Every triple in Reckons.AI carries its source. You always know where a fact came from, how trusted that source is, and when it was added. Metadata about metadata -- this is what makes a graph trustworthy.
-
-See also: [What it does](/docs/learn/what-it-does)
-
-### RDF (Resource Description Framework)
-
-A W3C standard for representing knowledge as a graph of linked statements. The foundation of the Semantic Web. RDF itself is abstract -- Turtle, JSON-LD, and RDF/XML are concrete serialization formats.
-
-### RDF Schema (RDFS)
-
-A vocabulary for describing classes and properties: rdfs:Class, rdfs:subClassOf, rdfs:domain, rdfs:range, rdfs:label, rdfs:comment. Reckons.AI uses rdfs:label for human-readable entity names.
-
-### Reification
-
-Making a statement about a statement. In RDF, reification assigns an IRI to a triple so it can be annotated with provenance, confidence, or temporal bounds. Reckons.AI uses reification in its TTL export format.
-
-### Semicolon (;) -- Same Subject
-
-In Turtle, a semicolon separates predicate-object pairs that share the same subject. Example: ex:Earth rdf:type ex:Planet ; ex:orbits ex:Sun .
-
-### SKOS (Simple Knowledge Organization System)
-
-A vocabulary for taxonomies and concept hierarchies using skos:broader, skos:narrower, skos:related. This documentation file uses SKOS to organize concepts.
-
-### SPARQL
-
-The query language for RDF graphs. Like SQL for relational databases, but for triple stores. Example: SELECT ?name WHERE {String.fromCharCode(123)} ?person foaf:name ?name {String.fromCharCode(125)}
-
-### Subject - Predicate - Object
-
-Subject: the entity being described (always an IRI). Predicate: the relationship or property (always an IRI). Object: the value or target (an IRI or a literal string/number/date). Example: 'Alice worksAt AcmeCorp'. Example: 'Policy covers water-damage'.
-
-### The Review Workflow
-
-1. Ingest -- paste text, upload documents, import calendars. 2. Review -- the LLM extracts triples, you confirm or reject each one. 3. Explore -- navigate your 3D knowledge graph. 4. Ask Shelly -- get answers grounded in your confirmed facts. 5. Share -- export your .ttl.
-
-See also: [What it does](/docs/learn/what-it-does)
-
-### The Semantic Triple
-
-The fundamental unit of knowledge in RDF: a three-part statement -- subject, predicate, object. Any fact expressible in human language can be expressed as a triple. Triples connect to form a graph, and graphs reveal relationships that documents hide.
-
-See also: [Start here](/docs/learn/start-here)
-
-### Turtle (.ttl) Syntax
-
-A compact, human-readable syntax for writing RDF triples. File extension: .ttl. Uses prefix declarations, semicolons to share subjects, commas to share predicates, and periods to end statement groups. This file is itself written in Turtle.
+- [Plain Text Portability](../triples-rdf/plain-text-portability)
+- [Turtle (.ttl) Syntax](../triples-rdf/turtle)
+- [RDF (Resource Description Framework)](../triples-rdf/rdf)
+- [RDF Schema (RDFS)](../triples-rdf/rdf) <span class="link-note">— on the RDF (Resource Description Framework) page</span>
+- [SKOS (Simple Knowledge Organization System)](../triples-rdf/rdf) <span class="link-note">— on the RDF (Resource Description Framework) page</span>
+- [SPARQL](../triples-rdf/rdf) <span class="link-note">— on the RDF (Resource Description Framework) page</span>
+- [JSON-LD](../triples-rdf/rdf) <span class="link-note">— on the RDF (Resource Description Framework) page</span>
