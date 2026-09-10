@@ -47,6 +47,12 @@ import sharp from 'sharp';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync } from 'fs';
 import { execFileSync } from 'child_process';
 import path from 'path';
+import {
+  clipFrozenSpans,
+  interactionIsBlocking,
+  measureClickToQuiet,
+  performanceRunIsBlocking,
+} from './lib/perf-interactions';
 
 const C = { b: '\x1b[1m', d: '\x1b[2m', g: '\x1b[32m', y: '\x1b[33m', r: '\x1b[31m', c: '\x1b[36m', x: '\x1b[0m' };
 
@@ -64,6 +70,9 @@ const LONG_TASK_MS = Number(arg('long-task', '200'));
 /** Frames per second to subsample a recording at. */
 const FPS = Number(arg('fps', '4'));
 const OUT_DIR = 'tests/visual/results/perf';
+const RUN_ID = `${new Date().toISOString().replace(/[:.]/g, '-')}_${process.pid}`;
+const VIDEO_DIR = path.join(OUT_DIR, 'video', RUN_ID);
+const FRAME_DIR = path.join(OUT_DIR, 'frames', RUN_ID);
 /** Interaction crawl: click every button on a route and time the reaction. */
 const CLICKS_MODE = args.includes('--clicks');
 /** A click that has not settled by here is a stall the user feels as a freeze. */
@@ -99,13 +108,16 @@ const FLOWS: Record<string, { start: string; click: string; settle: string; labe
     label: 'landing → Documentation Graph (the "getting started" path)',
     start: '/',
     click: 'button:has-text("Documentation Graph")',
-    settle: 'canvas',
+    settle: '[data-graph-renderer="3d"] canvas',
   },
   everyday: {
     label: 'landing → the everyday starter graph',
     start: '/',
     click: '.btn-primary, button:has-text("Start")',
-    settle: 'canvas',
+    // The landing hero itself owns a decorative canvas. Waiting for plain `canvas` reported the
+    // pre-click landing page as a finished graph and hid the expensive work this flow exists to
+    // measure. The starter intentionally hands off to transient 2D now, so name that outcome.
+    settle: '[data-graph-renderer="2d"] canvas',
   },
 };
 
@@ -120,7 +132,17 @@ interface RouteResult {
   /** Set when THIS SCRIPT is wrong (selector matched nothing), not the page. */
   harnessError: string | null;
   /** Convergence measurement: when the graph stopped moving, and how hard it moved getting there. */
-  stillness?: { ms: number; samples: number; lastChangeMs: number; peakDelta: number; finalDelta: number } | null;
+  stillness?: StillnessResult | null;
+}
+
+interface StillnessResult {
+  ms: number;
+  samples: number;
+  lastChangeMs: number;
+  peakDelta: number;
+  finalDelta: number;
+  /** A capture/decode failure is a harness failure, never evidence that the graph stood still. */
+  error: string | null;
 }
 
 /**
@@ -128,19 +150,65 @@ interface RouteResult {
  * already missed the long tasks that load caused — which are the ones that matter most.
  */
 const OBSERVER = `
-window.__perf = { longTasks: [], frames: [] };
+window.__perf = { longTasks: [], longAnimationFrames: [], frames: [] };
 try {
   new PerformanceObserver((list) => {
     for (const e of list.getEntries()) {
       const attribution = (e.attribution || []).map((a) => a.name || a.containerName || '').filter(Boolean);
-      window.__perf.longTasks.push({ duration: e.duration, name: attribution.join(',') || e.name || 'unknown' });
+      window.__perf.longTasks.push({ startTime: e.startTime, duration: e.duration, name: attribution.join(',') || e.name || 'unknown' });
     }
   }).observe({ entryTypes: ['longtask'] });
 } catch (err) { window.__perf.observerError = String(err); }
+try {
+  new PerformanceObserver((list) => {
+    for (const e of list.getEntries()) {
+      window.__perf.longAnimationFrames.push({
+        startTime: e.startTime,
+        duration: e.duration,
+        scripts: (e.scripts || []).map((script) => ({
+          duration: script.duration,
+          sourceURL: script.sourceURL || '',
+          functionName: script.functionName || script.invoker || '',
+          invokerType: script.invokerType || '',
+        })),
+      });
+    }
+  }).observe({ type: 'long-animation-frame', buffered: true });
+} catch { /* Long Animation Frames are newer than longtask; keep the base instrument available. */ }
 let last = performance.now();
 function tick(now) { window.__perf.frames.push(now - last); last = now; requestAnimationFrame(tick); }
 requestAnimationFrame(tick);
 `;
+
+type PerfSnapshot = {
+  longTasks: Array<{ startTime?: number; duration: number; name: string }>;
+  longAnimationFrames?: Array<{
+    startTime: number;
+    duration: number;
+    scripts: Array<{ duration: number; sourceURL: string; functionName: string; invokerType: string }>;
+  }>;
+  frames: number[];
+  observerError?: string;
+};
+
+/** Attach LoAF script/function attribution to otherwise anonymous Long Tasks. */
+function attributedLongTasks(perf: PerfSnapshot | null | undefined) {
+  return (perf?.longTasks ?? []).map((task) => {
+    if (task.name !== 'unknown' || task.startTime === undefined) return task;
+    const taskEnd = task.startTime + task.duration;
+    const loaf = perf?.longAnimationFrames?.find((frame) =>
+      frame.startTime < taskEnd && frame.startTime + frame.duration > task.startTime);
+    const scripts = [...(loaf?.scripts ?? [])]
+      .sort((a, b) => b.duration - a.duration)
+      .slice(0, 2)
+      .map((script) => {
+        const file = script.sourceURL.split('/').pop() || 'inline';
+        const fn = script.functionName ? `:${script.functionName}` : '';
+        return `${file}${fn} ${script.duration.toFixed(0)}ms`;
+      });
+    return scripts.length ? { ...task, name: scripts.join(', ') } : task;
+  });
+}
 
 /**
  * Context options: fill the REAL window rather than Playwright's 1280x720 default.
@@ -153,7 +221,7 @@ requestAnimationFrame(tick);
 function viewportOpts() {
   return {
     viewport: null,
-    ...(WITH_VIDEO ? { recordVideo: { dir: path.join(OUT_DIR, 'video'), size: { width: WIN_W, height: WIN_H } } } : {}),
+    ...(WITH_VIDEO ? { recordVideo: { dir: VIDEO_DIR, size: { width: WIN_W, height: WIN_H } } } : {}),
   } as Parameters<Browser['newContext']>[0];
 }
 
@@ -194,8 +262,13 @@ const USABLE: Record<string, string> = {
  * Two consecutive frames being byte-identical is the strongest possible evidence of a frozen UI, and
  * it costs a buffer compare. This is why video does not need a model to catch a freeze.
  */
-function findFrozenSpans(video: string, route: string): RouteResult['frozenSpans'] {
-  const frameDir = path.join(OUT_DIR, 'frames', route.replace(/\W+/g, '_') || 'root');
+function findFrozenSpans(
+  video: string,
+  route: string,
+  pendingUntilSec: number,
+  pendingFromSec = 0,
+): RouteResult['frozenSpans'] {
+  const frameDir = path.join(FRAME_DIR, route.replace(/\W+/g, '_') || 'root');
   rmSync(frameDir, { recursive: true, force: true });
   mkdirSync(frameDir, { recursive: true });
 
@@ -229,12 +302,16 @@ function findFrozenSpans(video: string, route: string): RouteResult['frozenSpans
     prev = buf;
   }
   if (runLen >= FPS) spans.push({ fromSec: runStart / FPS, toSec: (runStart + runLen) / FPS, frames: runLen + 1 });
-  return spans;
+  // Identical frames are only a failure while the route/flow says work is
+  // pending. Once usable, an unchanged page is healthy stillness, not a freeze.
+  return clipFrozenSpans(spans, pendingFromSec, pendingUntilSec, 1, FPS);
 }
 
 async function measureRoute(browser: Browser, route: string): Promise<RouteResult> {
   const ctx = await browser.newContext(viewportOpts());
   const page = await ctx.newPage();
+  const videoStartedAt = Date.now();
+  const video = WITH_VIDEO ? page.video() : null;
   await page.addInitScript(OBSERVER);
 
   const failures: string[] = [];
@@ -263,11 +340,29 @@ async function measureRoute(browser: Browser, route: string): Promise<RouteResul
     else failures.push(`never became visible within ${waitMs}ms (${present} matching node(s) present but hidden)`);
   }
 
+  // A visible canvas means rendering started, not that graph work finished. When the app exposes
+  // its cooling state, keep the video freeze window open until the simulation itself settles.
+  // Static pages publish `true` immediately and therefore do not become false freeze positives.
+  let pendingUntilMs = Date.now() - videoStartedAt;
+  const graphState = page.locator('[data-graph-settled]').first();
+  if (await graphState.count().catch(() => 0)) {
+    const settleTimeout = Math.max(BUDGET * 4, 10_000);
+    try {
+      await graphState.waitFor({ state: 'visible', timeout: 1_000 });
+      if (await graphState.getAttribute('data-graph-settled') !== 'true') {
+        await page.locator('[data-graph-settled="true"]').first().waitFor({ state: 'attached', timeout: settleTimeout });
+      }
+    } catch {
+      failures.push(`graph simulation did not report settled within ${settleTimeout}ms`);
+    }
+    pendingUntilMs = Date.now() - videoStartedAt;
+  }
+
   // Let the page live a moment so the graph's simulation and any late work show up in the numbers.
   await page.waitForTimeout(3_000);
 
-  const perf = await page.evaluate(() => (window as unknown as { __perf: { longTasks: { duration: number; name: string }[]; frames: number[]; observerError?: string } }).__perf);
-  const longTasks = (perf?.longTasks ?? []).filter((t) => t.duration >= LONG_TASK_MS).sort((a, b) => b.duration - a.duration);
+  const perf = await page.evaluate(() => (window as unknown as { __perf: PerfSnapshot }).__perf);
+  const longTasks = attributedLongTasks(perf).filter((t) => t.duration >= LONG_TASK_MS).sort((a, b) => b.duration - a.duration);
   const frames = (perf?.frames ?? []).filter((f) => f > 0);
   const sorted = [...frames].sort((a, b) => a - b);
   const worstFrame = sorted.length ? sorted[sorted.length - 1] : 0;
@@ -284,11 +379,10 @@ async function measureRoute(browser: Browser, route: string): Promise<RouteResul
   await ctx.close(); // the video is only finalized on context close
 
   let frozenSpans: RouteResult['frozenSpans'] = [];
-  if (WITH_VIDEO) {
-    const videos = readdirSync(path.join(OUT_DIR, 'video')).filter((f) => f.endsWith('.webm')).sort();
-    const latest = videos[videos.length - 1];
-    if (latest) {
-      frozenSpans = findFrozenSpans(path.join(OUT_DIR, 'video', latest), route);
+  if (video) {
+    const videoPath = await video.path().catch(() => null);
+    if (videoPath) {
+      frozenSpans = findFrozenSpans(videoPath, route, Math.max(0, pendingUntilMs) / 1000);
       for (const s of frozenSpans) {
         failures.push(`frozen ${(s.toSec - s.fromSec).toFixed(1)}s (${s.frames} identical frames from ${s.fromSec.toFixed(1)}s)`);
       }
@@ -318,7 +412,7 @@ async function measureRoute(browser: Browser, route: string): Promise<RouteResul
 async function timeToStill(
   page: Page,
   opts: { maxMs: number; sampleMs?: number; stableSamples?: number; epsilon?: number },
-): Promise<{ ms: number; samples: number; lastChangeMs: number; peakDelta: number; finalDelta: number }> {
+): Promise<StillnessResult> {
   const sampleMs = opts.sampleMs ?? 300;
   const need = opts.stableSamples ?? 3;
   /** Mean per-channel difference, 0-255. Antialiasing moves a couple of units; a drifting node far more. */
@@ -330,6 +424,7 @@ async function timeToStill(
   let lastChangeMs = 0;
   let peakDelta = 0;
   let finalDelta = 0;
+  let captureFailures = 0;
 
   /*
    * SAMPLED VIA page.screenshot AND DECODED TO REAL PIXELS. Two earlier versions of this function
@@ -361,6 +456,7 @@ async function timeToStill(
       px = await sharp(shot).resize(64, 64, { fit: 'fill' }).removeAlpha().raw().toBuffer();
     } catch {
       px = null;
+      captureFailures++;
     }
     samples++;
 
@@ -374,7 +470,7 @@ async function timeToStill(
         stable++;
         if (stable >= need) {
           if (TRACE) console.log(`      ${C.d}Δ trace: ${trace.join(' ')}${C.x}`);
-          return { ms: Date.now() - t0, samples, lastChangeMs, peakDelta, finalDelta };
+          return { ms: Date.now() - t0, samples, lastChangeMs, peakDelta, finalDelta, error: null };
         }
       } else {
         stable = 0;
@@ -385,7 +481,13 @@ async function timeToStill(
     await page.waitForTimeout(sampleMs);
   }
   if (TRACE) console.log(`      ${C.d}Δ trace: ${trace.join(' ')}${C.x}`);
-  return { ms: -1, samples, lastChangeMs, peakDelta, finalDelta };
+  if (trace.length === 0) {
+    return {
+      ms: -1, samples, lastChangeMs, peakDelta, finalDelta,
+      error: `stillness probe captured no comparable frames (${captureFailures}/${samples} screenshot failures)`,
+    };
+  }
+  return { ms: -1, samples, lastChangeMs, peakDelta, finalDelta, error: null };
 }
 
 /**
@@ -399,16 +501,38 @@ async function measureFlow(browser: Browser, name: string): Promise<RouteResult>
   const flow = FLOWS[name];
   const ctx = await browser.newContext(viewportOpts());
   const page = await ctx.newPage();
+  const videoStartedAt = Date.now();
+  const video = WITH_VIDEO ? page.video() : null;
   await page.addInitScript(OBSERVER);
   const failures: string[] = [];
   let harnessError: string | null = null;
 
   await page.goto(BASE_URL + flow.start, { waitUntil: 'domcontentloaded' }).catch(() => {});
-  // Reset the counters so the flow is measured, not the landing page's own load.
-  await page.evaluate(() => { (window as unknown as { __perf: { longTasks: unknown[]; frames: number[] } }).__perf.longTasks = []; });
+  // A freshly updated production service worker can replace the document just after
+  // domcontentloaded. Reset against the document that survives that hand-off rather than crashing
+  // the whole crawl with "execution context was destroyed" (or silently measuring the old page).
+  let countersReset = false;
+  for (let attempt = 0; attempt < 3 && !countersReset; attempt++) {
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
+    try {
+      await page.evaluate(() => {
+        const perf = (window as unknown as { __perf?: { longTasks: unknown[]; longAnimationFrames?: unknown[]; frames: number[] } }).__perf;
+        if (!perf) throw new Error('performance observer did not initialize');
+        perf.longTasks = [];
+        perf.longAnimationFrames = [];
+        perf.frames = [];
+      });
+      countersReset = true;
+    } catch (error) {
+      if (attempt === 2) throw error;
+      await page.waitForTimeout(150);
+    }
+  }
 
   const target = page.locator(flow.click).first();
   let timeToUsable = -1;
+  let pendingFromMs = 0;
+  let pendingUntilMs = 0;
   const waitMs = Math.max(BUDGET * 8, 30_000);
   try {
     await target.waitFor({ state: 'visible', timeout: 10_000 });
@@ -418,20 +542,32 @@ async function measureFlow(browser: Browser, name: string): Promise<RouteResult>
 
   if (!harnessError) {
     const t0 = Date.now();
+    pendingFromMs = t0 - videoStartedAt;
     await target.click().catch((e) => failures.push(`click failed: ${String(e).split('\n')[0]}`));
     try {
       await page.locator(flow.settle).first().waitFor({ state: 'visible', timeout: waitMs });
+      const graphState = page.locator('[data-graph-settled]').first();
+      if (await graphState.count().catch(() => 0)) {
+        // A landing page publishes true because it has no graph work. The measurement is only real
+        // after this click's graph has announced BOTH sides of its own lifecycle. Requiring false
+        // first prevents a stale pre-click true from laundering mount/simulation time into a green
+        // sub-second result; requiring true afterwards proves the new graph actually converged.
+        await page.locator('[data-graph-settled="false"]').first().waitFor({ state: 'attached', timeout: waitMs });
+        await page.locator('[data-graph-settled="true"]').first().waitFor({ state: 'attached', timeout: waitMs });
+      }
       timeToUsable = Date.now() - t0;
+      pendingUntilMs = Date.now() - videoStartedAt;
     } catch {
       timeToUsable = Date.now() - t0;
+      pendingUntilMs = Date.now() - videoStartedAt;
       failures.push(`never settled within ${waitMs}ms — this is the freeze class`);
     }
     await page.waitForTimeout(4_000);
     if (timeToUsable > BUDGET) failures.push(`interaction took ${timeToUsable}ms, over the ${BUDGET}ms budget`);
   }
 
-  const perf = await page.evaluate(() => (window as unknown as { __perf: { longTasks: { duration: number; name: string }[]; frames: number[] } }).__perf);
-  const longTasks = (perf?.longTasks ?? []).filter((t) => t.duration >= LONG_TASK_MS).sort((a, b) => b.duration - a.duration);
+  const perf = await page.evaluate(() => (window as unknown as { __perf: PerfSnapshot }).__perf);
+  const longTasks = attributedLongTasks(perf).filter((t) => t.duration >= LONG_TASK_MS).sort((a, b) => b.duration - a.duration);
   const frames = (perf?.frames ?? []).filter((f) => f > 0).sort((a, b) => a - b);
   for (const t of longTasks.slice(0, 3)) failures.push(`long task ${t.duration.toFixed(0)}ms blocked the main thread (${t.name})`);
 
@@ -439,11 +575,15 @@ async function measureFlow(browser: Browser, name: string): Promise<RouteResult>
   await ctx.close();
 
   let frozenSpans: RouteResult['frozenSpans'] = [];
-  if (WITH_VIDEO) {
-    const videos = readdirSync(path.join(OUT_DIR, 'video')).filter((f) => f.endsWith('.webm')).sort();
-    const latest = videos[videos.length - 1];
-    if (latest) {
-      frozenSpans = findFrozenSpans(path.join(OUT_DIR, 'video', latest), `flow_${name}`);
+  if (video) {
+    const videoPath = await video.path().catch(() => null);
+    if (videoPath) {
+      frozenSpans = findFrozenSpans(
+        videoPath,
+        `flow_${name}`,
+        Math.max(0, pendingUntilMs) / 1000,
+        Math.max(0, pendingFromMs) / 1000,
+      );
       for (const sp of frozenSpans) {
         failures.push(`frozen ${(sp.toSec - sp.fromSec).toFixed(1)}s (${sp.frames} identical frames from ${sp.fromSec.toFixed(1)}s)`);
       }
@@ -485,7 +625,7 @@ async function measureLadderRung(browser: Browser, file: string, label: string):
   const failures: string[] = [];
   let harnessError: string | null = null;
   let timeToUsable = -1;
-  let stillness: { ms: number; samples: number; lastChangeMs: number; peakDelta: number; finalDelta: number } | null = null;
+  let stillness: StillnessResult | null = null;
 
   await page.goto(BASE_URL + '/ingest', { waitUntil: 'domcontentloaded' }).catch(() => {});
   try {
@@ -501,7 +641,9 @@ async function measureLadderRung(browser: Browser, file: string, label: string):
     const still = await timeToStill(page, { maxMs: Math.max(BUDGET * 12, 45_000) });
     timeToUsable = still.ms === -1 ? -1 : Date.now() - t0;
     stillness = still;
-    if (still.ms === -1) {
+    if (still.error) {
+      harnessError = still.error;
+    } else if (still.ms === -1) {
       failures.push(
         `graph NEVER settled within ${Math.max(BUDGET * 12, 45_000)}ms — still moving at ${still.finalDelta.toFixed(1)} ` +
           `mean delta (peak ${still.peakDelta.toFixed(1)}, last movement ${still.lastChangeMs}ms)`,
@@ -513,8 +655,8 @@ async function measureLadderRung(browser: Browser, file: string, label: string):
     harnessError = `ladder rung failed to drive: ${String(e).split('\n')[0]}`;
   }
 
-  const perf = await page.evaluate(() => (window as unknown as { __perf: { longTasks: { duration: number; name: string }[]; frames: number[] } }).__perf).catch(() => null);
-  const longTasks = (perf?.longTasks ?? []).filter((t) => t.duration >= LONG_TASK_MS).sort((a, b) => b.duration - a.duration);
+  const perf = await page.evaluate(() => (window as unknown as { __perf: PerfSnapshot }).__perf).catch(() => null);
+  const longTasks = attributedLongTasks(perf).filter((t) => t.duration >= LONG_TASK_MS).sort((a, b) => b.duration - a.duration);
   const frames = (perf?.frames ?? []).filter((f) => f > 0).sort((a, b) => a - b);
   for (const t of longTasks.slice(0, 2)) failures.push(`long task ${t.duration.toFixed(0)}ms (${t.name})`);
 
@@ -609,9 +751,9 @@ console.log(
  * app" requires.
  *
  * WHAT IS MEASURED PER CLICK, and why each is needed:
- *   settleMs    from click to the DOM going quiet. This is the number a user experiences as "the
- *               app responded". Measured with a MutationObserver rather than a fixed wait, so a
- *               fast click is not credited with the timeout it never used.
+ *   settleMs    from BEFORE the click handler starts to the DOM going quiet. This is the number a
+ *               user experiences as "the app responded". The MutationObserver is installed before
+ *               the click, so synchronous handler cost and mutations cannot disappear from it.
  *   longTasks   main-thread blocks attributed to THIS click — buffers are reset immediately before
  *               it, so nothing from page load is charged to a button.
  *   worstFrame  the jank during the settle window: the dropped frames of a janky reactive update.
@@ -665,8 +807,8 @@ async function measureInteractions(
      * turns a best case into something closer to a mid-range laptop, and the rate is printed with
      * every result so no figure is ever read without its hardware.
      */
+    const cdp = await ctx.newCDPSession(page);
     if (opts.throttle > 1) {
-      const cdp = await ctx.newCDPSession(page);
       await cdp.send('Emulation.setCPUThrottlingRate', { rate: opts.throttle });
     }
 
@@ -716,28 +858,17 @@ async function measureInteractions(
       if (!before) { out.push({ route, label, settleMs: -1, longTasks: [], worstFrame: 0, changed: false, error: 'page unreachable' }); continue; }
 
       const before_labels = opts.depth > 0 ? await labelsNow() : [];
-      const t0 = Date.now();
+      let measurement;
       try {
-        await el.click({ timeout: 5_000, noWaitAfter: true });
+        measurement = await measureClickToQuiet(
+          page,
+          () => el.click({ timeout: 5_000, noWaitAfter: true }),
+          { budgetMs: opts.budgetMs, minimumObserveMs: opts.settleMs },
+        );
       } catch (e) {
         out.push({ route, label, settleMs: -1, longTasks: [], worstFrame: 0, changed: false, error: `click failed: ${(e as Error).message.split('\n')[0].slice(0, 60)}` });
         continue;
       }
-
-      // Settle = the DOM going quiet. A fixed wait would credit a fast click with time it never used.
-      const settleMs = await page.evaluate(async (budget) => {
-        return await new Promise<number>((resolve) => {
-          const start = performance.now();
-          let last = start;
-          const obs = new MutationObserver(() => { last = performance.now(); });
-          obs.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
-          const iv = setInterval(() => {
-            const now = performance.now();
-            if (now - last > 250) { clearInterval(iv); obs.disconnect(); resolve(Math.round(last - start)); }
-            else if (now - start > budget) { clearInterval(iv); obs.disconnect(); resolve(-2); } // never settled
-          }, 50);
-        });
-      }, opts.budgetMs).catch(() => -1);
 
       const after = await page.evaluate(() => {
         const t = document.body.innerText;
@@ -751,17 +882,14 @@ async function measureInteractions(
         };
       }).catch(() => null);
 
-      // A deliberate pause: measuring the instant after a click misses a reaction that starts late.
-      if (opts.settleMs) await page.waitForTimeout(opts.settleMs);
-
       out.push({
         route,
         label,
-        settleMs: settleMs === -2 ? opts.budgetMs : settleMs,
+        settleMs: measurement.responseMs,
         longTasks: (after?.longTasks ?? []).filter((t) => t.duration >= LONG_TASK_MS),
         worstFrame: after?.frames?.length ? Math.max(...after.frames) : 0,
         changed: !!after && (after.nodes !== before.nodes || after.text !== before.text),
-        error: settleMs === -2 ? `never settled within ${opts.budgetMs}ms` : undefined,
+        error: measurement.timedOut ? `never settled within ${opts.budgetMs}ms` : undefined,
       });
 
       budget--;
@@ -778,8 +906,14 @@ async function measureInteractions(
         const revealed = (await labelsNow()).filter((l) => l && !before_labels.includes(l));
         for (const childLabel of revealed.slice(0, Math.min(6, budget))) {
           if (DESTRUCTIVE.test(childLabel)) { out.push({ route, label: `${label} → ${childLabel}`, settleMs: 0, longTasks: [], worstFrame: 0, changed: false, skipped: 'destructive label' }); continue; }
-          const child = page.locator('button:visible, [role="button"]:visible', { hasText: childLabel }).first();
+          // Exact accessible name avoids clicking an outer card whose name merely CONTAINS the
+          // revealed child button's text (nested interactive wrappers exist in the review UI).
+          const child = page.getByRole('button', { name: childLabel, exact: true }).first();
           if (!(await child.count().catch(() => 0))) continue;
+          if (!(await child.isEnabled().catch(() => false))) {
+            out.push({ route, label: `${label} → ${childLabel}`, settleMs: 0, longTasks: [], worstFrame: 0, changed: false, skipped: 'disabled until input is supplied' });
+            continue;
+          }
           const cb = await page.evaluate(() => {
             (window as any).__perf.longTasks = []; (window as any).__perf.frames = [];
             const t = document.body.innerText; let h = 0;
@@ -787,20 +921,12 @@ async function measureInteractions(
             return { nodes: document.querySelectorAll('*').length, text: h };
           }).catch(() => null);
           if (!cb) break;
-          const ct0 = Date.now();
-          const clicked = await child.click({ timeout: 4_000, noWaitAfter: true }).then(() => true).catch(() => false);
-          if (!clicked) { out.push({ route, label: `${label} → ${childLabel}`, settleMs: -1, longTasks: [], worstFrame: 0, changed: false, error: 'click failed' }); budget--; continue; }
-          const cSettle = await page.evaluate(async (budgetMs) => await new Promise<number>((resolve) => {
-            const start = performance.now(); let last = start;
-            const obs = new MutationObserver(() => { last = performance.now(); });
-            obs.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
-            const iv = setInterval(() => {
-              const now = performance.now();
-              if (now - last > 250) { clearInterval(iv); obs.disconnect(); resolve(Math.round(last - start)); }
-              else if (now - start > budgetMs) { clearInterval(iv); obs.disconnect(); resolve(-2); }
-            }, 50);
-          }), opts.budgetMs).catch(() => -1);
-          if (opts.settleMs) await page.waitForTimeout(opts.settleMs);
+          const childMeasurement = await measureClickToQuiet(
+            page,
+            () => child.click({ timeout: 4_000, noWaitAfter: true }),
+            { budgetMs: opts.budgetMs, minimumObserveMs: opts.settleMs },
+          ).catch(() => null);
+          if (!childMeasurement) { out.push({ route, label: `${label} → ${childLabel}`, settleMs: -1, longTasks: [], worstFrame: 0, changed: false, error: 'click failed' }); budget--; continue; }
           const ca = await page.evaluate(() => {
             const t = document.body.innerText; let h = 0;
             for (let i = 0; i < t.length; i++) { h = ((h << 5) - h + t.charCodeAt(i)) | 0; }
@@ -810,27 +936,41 @@ async function measureInteractions(
           }).catch(() => null);
           out.push({
             route, label: `${label} → ${childLabel}`,
-            settleMs: cSettle === -2 ? opts.budgetMs : cSettle,
+            settleMs: childMeasurement.responseMs,
             longTasks: (ca?.longTasks ?? []).filter((t) => t.duration >= LONG_TASK_MS),
             worstFrame: ca?.frames?.length ? Math.max(...ca.frames) : 0,
             changed: !!ca && (ca.nodes !== cb.nodes || ca.text !== cb.text),
-            error: cSettle === -2 ? `never settled within ${opts.budgetMs}ms` : undefined,
+            error: childMeasurement.timedOut ? `never settled within ${opts.budgetMs}ms` : undefined,
           });
           budget--;
-          void ct0;
           if (page.url() !== `${BASE_URL}${route}`) break; // navigated away: stop following this path
         }
       }
 
-      // Return to a known state: a click may have navigated or opened a modal that hides the rest.
-      if (page.url() !== `${BASE_URL}${route}`) {
-        await page.goto(`${BASE_URL}${route}`, { waitUntil: 'domcontentloaded', timeout: 30_000 }).catch(() => {});
-        await page.waitForTimeout(800);
+      // Always reload the route. A click can replace the whole in-memory view WITHOUT changing the
+      // URL (landing → official graph is `/` → `/`); Escape cannot restore that baseline, and the
+      // lazy `buttons.nth(i)` locator would otherwise start measuring unrelated graph controls.
+      // Clear the ephemeral crawl context's persistent stores too: starter-graph actions write to
+      // IndexedDB, so a document reload alone can legitimately restore the just-created graph.
+      // Without this reset, button #2 is selected from a different UI than button #2 at baseline.
+      await page.evaluate(() => {
+        localStorage.clear();
+        sessionStorage.clear();
+      }).catch(() => {});
+      await cdp.send('Storage.clearDataForOrigin', {
+        origin: new URL(BASE_URL).origin,
+        storageTypes: 'indexeddb,local_storage',
+      });
+      const baselineUrl = `${BASE_URL}${route}`;
+      if (page.url() === baselineUrl) {
+        // `goto()` to the current URL can be handled as a same-document SvelteKit navigation,
+        // preserving module state such as the landing page's active official graph. `reload()`
+        // guarantees a fresh document and therefore a comparable baseline for the next control.
+        await page.reload({ waitUntil: 'domcontentloaded', timeout: 30_000 }).catch(() => {});
       } else {
-        await page.keyboard.press('Escape').catch(() => {});
-        await page.waitForTimeout(150);
+        await page.goto(baselineUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 }).catch(() => {});
       }
-      void (Date.now() - t0);
+      await page.waitForTimeout(800);
     }
 
     if (total > opts.max) {
@@ -876,15 +1016,18 @@ if (CLICKS_MODE) {
     const rs = await measureInteractions(browser, route, { budgetMs: CLICK_BUDGET, throttle: THROTTLE, max: MAX_CLICKS, depth: CLICK_DEPTH, settleMs: SETTLE_MS });
     clicks.push(...rs);
     const measured = rs.filter((r) => !r.skipped);
-    const bad = measured.filter((r) => r.error || r.settleMs >= CLICK_BUDGET || r.longTasks.length);
+    const bad = measured.filter((r) => interactionIsBlocking(r, CLICK_BUDGET));
     console.log(
       `${bad.length ? C.r + '✗' : C.g + '✓'} ${route.padEnd(11)}${C.x} ` +
       `${String(measured.length).padStart(3)} clicked · ${rs.length - measured.length} skipped · ` +
       `${bad.length} over budget or blocking`,
     );
-    // Worst first: the one a person would actually notice.
-    for (const r of [...measured].sort((a, b) => b.settleMs - a.settleMs).slice(0, 8)) {
-      const over = r.error || r.settleMs >= CLICK_BUDGET || r.longTasks.length;
+    // Blocking results first, then slowest. A long-task failure can have a low settleMs and must
+    // not disappear below eight merely slower green interactions.
+    for (const r of [...measured]
+      .sort((a, b) => Number(interactionIsBlocking(b, CLICK_BUDGET)) - Number(interactionIsBlocking(a, CLICK_BUDGET)) || b.settleMs - a.settleMs)
+      .slice(0, 8)) {
+      const over = interactionIsBlocking(r, CLICK_BUDGET);
       if (!over && r.settleMs < CLICK_BUDGET / 3) continue;
       console.log(
         `    ${over ? C.y : C.d}${String(r.settleMs).padStart(5)}ms${C.x} ${r.label.padEnd(30)} ` +
@@ -906,7 +1049,7 @@ if (CLICKS_MODE) {
   }, null, 2));
 
   const measured = clicks.filter((c) => !c.skipped);
-  const overBudget = measured.filter((c) => c.settleMs >= CLICK_BUDGET || c.error);
+  const overBudget = measured.filter((c) => interactionIsBlocking(c, CLICK_BUDGET));
   const inert = measured.filter((c) => !c.error && !c.changed);
   console.log(`\n${C.b}${measured.length} click(s) measured${C.x} · ${overBudget.length} over ${CLICK_BUDGET}ms · ${inert.length} changed nothing`);
   console.log(`${C.d}report: ${reportPath}${C.x}`);
@@ -978,8 +1121,12 @@ if (harnessBroken.length) {
 }
 const failed = results.filter((r) => r.failures.length > 0);
 console.log(`\n${C.d}report: ${out}${C.x}`);
-if (failed.length) {
-  console.log(`${C.r}${failed.length} of ${results.length} route(s) over budget or stalling.${C.x}\n`);
+if (performanceRunIsBlocking(results)) {
+  const parts = [
+    failed.length ? `${failed.length} over budget or stalling` : '',
+    harnessBroken.length ? `${harnessBroken.length} not measurable` : '',
+  ].filter(Boolean).join(' · ');
+  console.log(`${C.r}${parts} of ${results.length} route result(s) failed.${C.x}\n`);
   process.exit(1);
 }
 console.log(`${C.g}All ${results.length} route(s) within budget.${C.x}\n`);

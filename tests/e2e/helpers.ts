@@ -12,7 +12,15 @@ import { type Page, type BrowserContext, expect } from '@playwright/test';
 export async function clearStorage(page: Page): Promise<void> {
   // Navigate to the app origin so we have IndexedDB access
   if (!page.url().startsWith('http://localhost')) {
-    await page.goto('/');
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await page.goto('/', { waitUntil: 'domcontentloaded' });
+        break;
+      } catch (error) {
+        if (attempt >= 2) throw error;
+        await page.waitForTimeout(400);
+      }
+    }
   }
   await page.evaluate(async () => {
     // Delete by known name (plus any versioned variants)
@@ -42,24 +50,32 @@ export async function clearStorage(page: Page): Promise<void> {
 
 /**
  * Navigate to the app and wait until the NavBar is visible.
- * Re-navigates to "/" if not already on the app — avoids a redundant
- * navigation when clearStorage() was already called.
+ * Re-navigates to "/" only if not already there, then waits for store-backed
+ * route content rather than treating the server-rendered navigation as proof
+ * that client hydration has finished.
  *
  * Also installs a handler to auto-dismiss the download consent dialog
  * (embedding model / WASM model) that would otherwise block ingest flow.
  */
 export async function waitForApp(page: Page): Promise<void> {
-  // A single fresh load of the app root. In dev, HMR or the service worker can abort an in-flight
-  // navigation (net::ERR_ABORTED) — and the old code fired goto('/') up to three times in a row,
-  // which made that abort likely. One navigation, retried on abort, is both simpler and reliable.
-  for (let i = 0; ; i++) {
-    try { await page.goto('/', { waitUntil: 'domcontentloaded' }); break; }
-    catch (e) {
-      if (i >= 2) throw e;
-      await page.waitForTimeout(400);
+  const alreadyAtRoot = (() => {
+    try { return new URL(page.url()).pathname === '/'; }
+    catch { return false; }
+  })();
+  if (!alreadyAtRoot) {
+    // In dev, HMR or the service worker can abort an in-flight navigation. Retry that one intended
+    // navigation, but never reload a root page that clearStorage() has already opened and begun
+    // hydrating — doing so aborts Vite's pending module imports in Firefox.
+    for (let i = 0; ; i++) {
+      try { await page.goto('/', { waitUntil: 'domcontentloaded' }); break; }
+      catch (e) {
+        if (i >= 2) throw e;
+        await page.waitForTimeout(400);
+      }
     }
   }
   await page.locator('nav').waitFor({ timeout: 15_000 });
+  await expect(page.getByText('loading…', { exact: true })).not.toBeVisible({ timeout: 15_000 });
 
   // Auto-dismiss download consent dialogs (embedding / WASM models).
   // These block the ingest pipeline in E2E since no model cache exists.

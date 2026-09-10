@@ -6,132 +6,35 @@ section: "Learn"
 template: doc
 status: published
 nav: sidebar
-excerpt: "Get a graph on screen and a first fact into it. The only page a new reader needs."
-generated: "docs-composed"
+excerpt: "Reckons.AI turns things you read into facts you have checked, and then lets you ask those facts what to do."
+generated: "docs-kb"
 ---
 
 # Start here
 
-Get a graph on screen and a first fact into it. The only page a new reader needs.
+Reckons.AI turns things you read into facts you have checked, and then lets you ask those facts what to do. It is not a note-taking app: the difference is that nothing is in your graph unless you accepted it, and every fact can show you the sentence it came from. Four pages below, in the order the questions usually arrive — what it is, what it does, how to start, and what it is for.
 
-### Data Insight Solutions LLC
+## At a glance
 
-The company behind Reckons.AI. A software consultancy focused on knowledge management, data engineering, and AI-augmented tooling.
+**Audience**
 
-### Getting Started
+Someone who has just arrived and does not yet know whether this is for them.
 
-A step-by-step guide to building your first knowledge graph.
+## Why it is this way
 
-### Human-in-the-Loop
+**Principle**
 
-Nothing enters your confirmed knowledge graph without your explicit review. Every triple extracted by an LLM starts as 'pending' and must be confirmed, rejected, or refined by you. You are the authority.
+READ THESE FOUR IN ORDER AND STOP. The rest of this site is reference, and reference read early is the reason a good tool looks complicated. If you only have five minutes, read what it does — the five moves are the whole product.
 
-See also: [What it does](/docs/learn/what-it-does)
+**Constraint**
 
-### LEAP: Architecture & Design
+THIS TAKES LONGER TO GET VALUE FROM THAN A NOTES APP, and that is the trade rather than a rough edge. You review what a model proposes before it becomes yours, which costs you time at the start and is exactly why the answers are worth something later. If you want something that reads your files and answers confidently without asking, this is the wrong tool and that is a fine conclusion to reach on this page.
 
-Click for architecture decisions, TTL-first documentation strategy, standards alignment (PROV-O, SKOS), deployment patterns, style conventions, dependency health, and the markdown migration tracker.
+## Your first four pages
 
-### LEAP: Features
+In the order the questions usually arrive.
 
-Click for detailed coverage of every feature: Ingest, Review, Trust, Graph, Shelly, Reckonings, Compare, Multi-Graph, graph Leap, Content Safety, Predicate Manager, Whisper STT, Kokoro TTS, and more.
-
-### LEAP: Integrations & Tech
-
-Click for integrations (Calendar, MCP, Extension, Whisper, Kokoro, OCR, Firecrawl, Meshy 3D) and the technology stack (SvelteKit 2, Threlte 8, N3.js, @huggingface/transformers, Dexie).
-
-### LEAP: Language Models
-
-Click to learn what LLMs actually are, why they hallucinate, how RAG works, and why your curated graph makes AI dramatically more accurate.
-
-### LEAP: Test Suite & Visual Regression
-
-Click for test documentation as interactive stories. Walk through user story E2E tests step-by-step with screenshots attached to each node. Covers Dev Sprint Planning, User Docs Import, Cross-Graph Alignment, and page-level visual regression.
-
-### LEAP: Timeline & RDF Ecosystem
-
-Click for the RDF timeline from 1999 to 2026, key organizations (W3C, AI Alliance, Schema.org), people (Tim Berners-Lee), and the Reckons.AI launch.
-
-### LEAP: Tips & Security
-
-Click for practical tips (start small, review carefully, export often, use Ollama offline) and the security architecture (no server, API key safety, content safety, CSP, offline-capable).
-
-### LEAP: Triples & RDF Deep Dive
-
-Click to explore the semantic triple architecture, Turtle syntax, RDF standards (RDFS, SKOS, SPARQL, JSON-LD, PROV-O), and knowledge graph fundamentals.
-
-### LEAP: Use Cases
-
-Click to explore real-world scenarios: insurance claims, legal disputes, employment rights, medical records, corporate pushback, and research.
-
-### Local-First Architecture
-
-Everything runs in the browser. Your graph is stored in IndexedDB, API keys never leave your device, and the app works offline after first load. No server means no data breaches, no vendor lock-in, and no monthly subscription.
-
-### Matthew Roe
-
-Owner-operator of Data Insight Solutions LLC and creator of Reckons.AI. Designed the local-first architecture, the human-in-the-loop review workflow, and the graph Leap cross-referencing system.
-
-### Open Source (MIT)
-
-Reckons.AI is MIT-licensed. Read the code, fork it, self-host it, run it offline forever. No proprietary lock-in, no subscription, no way to lose access to your own tool.
-
-### Quick-Start Example graph
-
-A practical knowledge graph with people, projects, research notes, decisions, and metrics. Import it from the Info page to see how real-world data maps to triples. 15 entities, 90 triples.
-
-### Reckons.AI
-
-A personal knowledge graph that runs entirely in your browser. Local-first, open-source, human-in-the-loop. Your data, your device, your authority.
-
-See also: [What it does](/docs/learn/what-it-does) · [Connecting other systems](/docs/build/connecting-other-systems)
-
-### Step 1: Choose an LLM Backend
-
-Go to Settings and configure at least one LLM provider. Ollama (free, local) or OpenRouter (free tier) are good starting points.
-
-See also: [What it does](/docs/learn/what-it-does)
-
-### Step 2: Ingest Your First Content
-
-Go to add (the + tab) and paste text, a URL, or upload a document. The LLM will extract semantic facts automatically.
-
-See also: [What it does](/docs/learn/what-it-does)
-
-### Step 3: Review Pending Statements
-
-Go to Review to see extracted triples. Confirm accurate ones, reject incorrect ones, refine those that need adjustment.
-
-See also: [What it does](/docs/learn/what-it-does)
-
-### Step 4: Explore the Graph
-
-Go to view (the home tab) to see your knowledge in 3D. Click nodes to select them, use the RadialMenu for actions, and use filters to focus. The graph tab manages your graphs: create, switch, rename, currents, and publishing.
-
-See also: [What it does](/docs/learn/what-it-does)
-
-### Step 5: Ask Shelly
-
-Click the turtle icon in the search bar to chat with Shelly. Ask questions about your graph, play the story walkthrough, or request a Reckoning.
-
-See also: [What it does](/docs/learn/what-it-does)
-
-### Step 6: Export and Share
-
-Go to Settings -&gt; Backup and Export to download your graph as Turtle. Share the .ttl file or set up workspace sync for MCP integration.
-
-See also: [What it does](/docs/learn/what-it-does)
-
-### The Reckons.AI Story
-
-### What Is Reckons.AI
-
-Reckons.AI is a personal knowledge graph that runs entirely in your browser. No server, no account, no cloud dependency. Your data stays on your device in IndexedDB, and you control every piece of knowledge that enters your graph through a human review process.
-
-See also: [How it works](/docs/learn/how-it-works)
-
-### Why Reckons.AI Matters
-
-In an era of information overload, Reckons.AI gives individuals a structured way to capture, verify, connect, and retrieve knowledge. It bridges the gap between human understanding and machine processing -- your knowledge becomes queryable, shareable, and portable.
-
-See also: [What it does](/docs/learn/what-it-does)
+- [What Is Reckons.AI](../guide/what-is-reckons-ai)
+- [What Reckons.AI does, in five moves](../learn/what-it-does)
+- [Getting Started](../guide/getting-started)
+- [A reckoning — asking your graph what to do](../learn/reckoning)

@@ -20,7 +20,7 @@ Every layer of a language model relies on human work. The training corpus is hum
 
 ### Graph-Grounded Accuracy
 
-When an LLM has access to YOUR reviewed knowledge graph, its outputs become dramatically more accurate. Instead of guessing from training data, it retrieves YOUR confirmed facts. This is called retrieval-augmented generation (RAG) -- and the quality of the retrieval source is everything. Your curated graph is the best source possible.
+When an LLM has access to your reviewed knowledge graph, its outputs become dramatically more accurate. Instead of guessing from training data, it retrieves your confirmed facts. This is called retrieval-augmented generation (RAG) -- and the quality of the retrieval source is everything. Your curated graph is the best source possible.
 
 See also: [What it does](/docs/learn/what-it-does)
 
@@ -48,7 +48,11 @@ See also: [What it does](/docs/learn/what-it-does)
 
 ### RAG (Retrieval-Augmented Generation)
 
-A technique where an LLM retrieves relevant facts from a knowledge graph before generating a response. Dramatically reduces hallucination because the model grounds its answer in your verified data, not its training set.
+Retrieval-Augmented Generation: before answering, a system fetches passages that look relevant to the question and puts them in the prompt. In the usual form, retrieval is by VECTOR SIMILARITY — documents are split into chunks, each chunk is turned into a vector by an embedding model, and the question is turned into a vector too; the chunks whose vectors sit nearest the question are the ones the model gets to read.
+
+### Reckons.AI compared with vector search and RAG
+
+Vector search and Reckons.AI answer different questions, and most of the confusion between them comes from pretending they answer the same one. A vector index answers what does this remind me of. A reviewed graph answers what do I actually hold, and what does it contradict. Neither is a better version of the other, and the honest recommendation at the bottom of this page is to use both.
 
 ### Structured Outputs
 

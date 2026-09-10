@@ -124,3 +124,96 @@ export function questionSummary(st: Statement): string {
   if (n === 0) return head;
   return `${head} (blocks ${n} thing${n === 1 ? '' : 's'})`;
 }
+
+/**
+ * ── ANSWERED BY THE NEXT DOCUMENT (F195) ────────────────────────────────────
+ *
+ * Matt, 2026-09-09: "a question from a document last week could be accepted and used in graph,
+ * then a new document has a decision or new claim about the same thing, there was a meeting and
+ * it is now decided. The question triple should be superceded easily by accepting the extracted
+ * claim."
+ *
+ * THE MATCH IS AN EQUALITY TEST, WHICH IS WHY THIS IS CHEAP AND SAFE. An open question is subject
+ * S, predicate P, object unknown. An incoming extraction asserting S and P with a real object
+ * ANSWERS it. No model, no similarity threshold, no judgment — and therefore no way to hallucinate
+ * a match. Everything expensive about this feature is in the presentation, not the detection.
+ *
+ * IT ONLY FINDS. It applies nothing: `supersede()` in the kb store already marks the old statement
+ * superseded and links the replacement, and this returns the pairs a human is asked to confirm.
+ * Answering a question is still accepting a claim, and F194 keeps claims in the layer a person
+ * settles.
+ */
+
+/** An open question, and the incoming claim that would settle it. */
+export interface QuestionAnswer {
+  /** The open question already in the graph. */
+  question: Statement;
+  /** The incoming statement whose object answers it. */
+  answer: Statement;
+  /** What answering it releases — the reason to put this at the top of a queue. */
+  unblocks: string[];
+}
+
+/** Same term, meaning same VALUE and same KIND — an IRI and a literal that read alike are not equal. */
+function sameTerm(a: { kind: string; value: string }, b: { kind: string; value: string }): boolean {
+  return a.kind === b.kind && a.value === b.value;
+}
+
+/** Does this statement assert a real object, rather than asking for one? */
+function isAssertion(st: Statement): boolean {
+  return !isPartial(st)
+    && st.o.value !== UNKNOWN_OBJECT
+    && st.status !== 'rejected'
+    && st.status !== 'superseded';
+}
+
+/**
+ * Which incoming statements answer which open questions.
+ *
+ * `incoming` is what a new document produced; `existing` is the graph as it stands. They may be
+ * the same array — a batch that both asks and answers is legitimate, and a statement is never
+ * allowed to answer itself.
+ *
+ * Ordered by what answering RELEASES, then by the age of the question. That ordering is the
+ * feature: a queue sorted by arrival is a chore, and a queue that leads with "this settles
+ * something four other things were waiting on" is a report on what happened.
+ */
+export function answersToOpenQuestions(
+  incoming: Statement[],
+  existing: Statement[],
+): QuestionAnswer[] {
+  const questions = openQuestions(existing);
+  if (questions.length === 0) return [];
+
+  const pairs: QuestionAnswer[] = [];
+  for (const question of questions) {
+    for (const answer of incoming) {
+      if (answer.id === question.id) continue;              // nothing answers itself
+      if (!isAssertion(answer)) continue;
+      if (!sameTerm(question.s, answer.s)) continue;
+      if (question.p.value !== answer.p.value) continue;
+      pairs.push({ question, answer, unblocks: question.blocks ?? [] });
+    }
+  }
+
+  return pairs.sort(
+    (a, b) =>
+      b.unblocks.length - a.unblocks.length
+      || a.question.createdAt - b.question.createdAt,
+  );
+}
+
+/**
+ * One sentence for the review card.
+ *
+ * It names the cost of the question rather than describing the triple, because the triple is
+ * already on the card and the cost is the part that decides whether to read it now.
+ */
+export function answerSummary(qa: QuestionAnswer): string {
+  const n = qa.unblocks.length;
+  const asked = qa.question.question?.trim();
+  const head = asked && asked.length > 0
+    ? `Answers: ${asked}`
+    : `Answers an open question about ${qa.question.s.value}`;
+  return n === 0 ? head : `${head} — and unblocks ${n} thing${n === 1 ? '' : 's'}`;
+}

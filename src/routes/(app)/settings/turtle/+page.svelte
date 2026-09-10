@@ -1,29 +1,40 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { page } from '$app/state';
   import { turtleSettings, updateTurtleSettings, setTurtlePersonality, setVoiceType } from '$lib/stores/turtle-settings.svelte';
   import { settings } from '$lib/stores/settings.svelte';
-  import { VOICES, speakStreaming } from '$lib/integrations/llm/kokoro-tts';
+  import { KOKORO_VOICES } from '$lib/integrations/llm/voice-catalog';
 
   let ts = $derived(turtleSettings());
 
   // ── Kokoro voice picker ──────────────────────────────────────────────────
   let previewAbort: (() => void) | null = null;
   let previewingVoice = $state('');
+  let previewRequestId = 0;
 
   const voicesByGroup = $derived.by(() => {
-    const groups: Record<string, typeof VOICES> = {};
-    for (const v of VOICES) {
+    const groups: Record<string, typeof KOKORO_VOICES> = {};
+    for (const v of KOKORO_VOICES) {
       const key = `${v.accent} ${v.gender === 'F' ? 'Female' : 'Male'}`;
       (groups[key] ??= []).push(v);
     }
     return groups;
   });
 
-  function previewVoice(voiceId: string) {
+  async function previewVoice(voiceId: string) {
     if (previewAbort) { previewAbort(); previewAbort = null; }
-    if (previewingVoice === voiceId) { previewingVoice = ''; return; }
+    if (previewingVoice === voiceId) { previewRequestId++; previewingVoice = ''; return; }
+    const requestId = ++previewRequestId;
     previewingVoice = voiceId;
-    previewAbort = speakStreaming('Hello! This is how I sound when reading your knowledge graph.', {
+    const kokoro = await import('$lib/integrations/llm/kokoro-tts');
+    try {
+      await kokoro.getReady();
+    } catch {
+      if (previewRequestId === requestId) previewingVoice = '';
+      return;
+    }
+    if (previewRequestId !== requestId || !turtleSettings().voiceEnabled) return;
+    previewAbort = kokoro.speakStreaming('Hello! This is how I sound when reading your knowledge graph.', {
       voice: voiceId,
       rate: ts.speechRate ?? 0.75,
       volume: Math.min((ts.volume ?? 75) / 100, 0.9),
@@ -31,6 +42,21 @@
       onError: () => { previewingVoice = ''; previewAbort = null; },
     });
   }
+
+  function setVoiceOptIn(enabled: boolean) {
+    if (!enabled) {
+      previewRequestId++;
+      previewAbort?.();
+      previewAbort = null;
+      previewingVoice = '';
+    }
+    updateTurtleSettings({ voiceEnabled: enabled });
+  }
+
+  onDestroy(() => {
+    previewRequestId++;
+    previewAbort?.();
+  });
 
   // Derived helpers for Hume config status
   const humeConfigured = $derived(!!(ts.humeApiKey || settings().humeAiApiKey));
@@ -277,10 +303,15 @@
           <input
             type="checkbox"
             checked={ts.voiceEnabled}
-            onchange={(e) => updateTurtleSettings({ voiceEnabled: (e.target as HTMLInputElement).checked })}
+            aria-describedby="voice-opt-in-hint"
+            onchange={(e) => setVoiceOptIn((e.target as HTMLInputElement).checked)}
           />
-          <span>Enable Voice</span>
+          <span>Enable voice features</span>
         </label>
+        <p id="voice-opt-in-hint" class="hint">
+          Off by default. Until enabled, Reckons.AI does not load Kokoro, connect to Hume,
+          download a speech model, or request microphone access.
+        </p>
       </div>
 
       {#if ts.voiceEnabled}
@@ -387,8 +418,10 @@
       {/if}
     </section>
 
-    <!-- ── Hume.AI ────────────────────────────────────────────────────── -->
-    <section class="settings-section">
+    <!-- Hume configuration is itself behind the local voice opt-in. A key or
+         token endpoint imported from another profile must never activate it. -->
+    {#if ts.voiceEnabled}
+      <section class="settings-section">
       <h2>Hume.AI Voice Persona</h2>
 
       <p class="section-intro">
@@ -485,7 +518,8 @@
           <li>Paste it in the <strong>EVI Config ID</strong> field above.</li>
         </ol>
       </details>
-    </section>
+      </section>
+    {/if}
 
   </div>
 

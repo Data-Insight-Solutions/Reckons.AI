@@ -33,6 +33,16 @@ export type EntityTypeDef = {
   /** Suggested predicates for nodes of this type (shown in detail panel) */
   schemaPredicates: string[];
   builtIn: boolean;
+  /**
+   * May a node of this type be classified as a HUB? (Matt, 2026-08-28.)
+   *
+   * Hubs are meant to be the core concepts, people and organizations a graph is built around.
+   * A Document or Web Page CAN be one — a paper everything cites genuinely is a hub — but it is
+   * rare, and by default a file accumulates degree by being referenced rather than by mattering.
+   * Undefined means allowed, so a custom type the user mints is eligible unless they say
+   * otherwise; only the types that reliably produce false hubs opt out.
+   */
+  allowHub?: boolean;
   /** Emoji character (or short text) shown as a billboard icon on the node in 2D and 3D views */
   icon2d?: string;
   /** URL to a .glb model file used instead of the procedural geometry in the 3D view */
@@ -152,6 +162,7 @@ export const BUILT_IN_TYPES: EntityTypeDef[] = [
       'urn:kbase:predicate/local-path',
       'urn:kbase:predicate/description'
     ],
+    allowHub: false,
     builtIn: true
   },
   {
@@ -170,6 +181,7 @@ export const BUILT_IN_TYPES: EntityTypeDef[] = [
       'urn:reckons:page/excerpt',
       'urn:reckons:nav/order'
     ],
+    allowHub: false,
     builtIn: true
   },
   {

@@ -1,0 +1,41 @@
+{
+  "schema": "perf-crawl/1",
+  "finishedAt": "2026-08-24T02:16:00.100Z",
+  "baseUrl": "http://127.0.0.1:4180",
+  "renderer": "ANGLE (NVIDIA Corporation, NVIDIA GeForce RTX 3090/PCIe/SSE2, OpenGL 4.5.0)",
+  "softwareRendered": false,
+  "budgetMs": 2500,
+  "longTaskMs": 200,
+  "results": [
+    {
+      "route": "flow:everyday",
+      "timeToUsable": 1006,
+      "longTasks": [
+        {
+          "startTime": 1502.6999999955297,
+          "duration": 645,
+          "name": "BazjDylt.js:IDBTransaction.oncomplete 645ms, DluXX-vU.js:FrameRequestCallback 397ms"
+        },
+        {
+          "startTime": 2149.2999999970198,
+          "duration": 399,
+          "name": "BazjDylt.js:IDBTransaction.oncomplete 645ms, DluXX-vU.js:FrameRequestCallback 397ms"
+        },
+        {
+          "startTime": 187.60000000149012,
+          "duration": 212,
+          "name": "BazjDylt.js:IDBTransaction.oncomplete 212ms, 4._l51zQKi.js:http://127.0.0.1:4180/_app/immutable/nodes/4._l51zQKi.js 16ms"
+        }
+      ],
+      "worstFrame": 1033.2000000000003,
+      "medianFrame": 16.699999999999818,
+      "frozenSpans": [],
+      "failures": [
+        "long task 645ms blocked the main thread (BazjDylt.js:IDBTransaction.oncomplete 645ms, DluXX-vU.js:FrameRequestCallback 397ms)",
+        "long task 399ms blocked the main thread (BazjDylt.js:IDBTransaction.oncomplete 645ms, DluXX-vU.js:FrameRequestCallback 397ms)",
+        "long task 212ms blocked the main thread (BazjDylt.js:IDBTransaction.oncomplete 212ms, 4._l51zQKi.js:http://127.0.0.1:4180/_app/immutable/nodes/4._l51zQKi.js 16ms)"
+      ],
+      "harnessError": null
+    }
+  ]
+}

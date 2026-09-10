@@ -1,0 +1,31 @@
+EXPECTED — 01-note-single.txt
+=============================
+The smallest useful unit: one dictated sentence pair, two claims.
+
+SHOULD PRODUCE (3-4 facts, all pending):
+  kb:lumenpath        rdfs:label       "Lumenpath"            [after repair]
+  kb:lumenpath        kpred:is-a       kb:enterprise-cad
+  kb:enterprise-cad   kpred:used-by    kb:architecture-studio
+  kb:enterprise-cad   kpred:purpose    "manage drawings and models"
+
+MUST NOT PRODUCE:
+  kb:lumen-path-is-an-enterprise-cad-platform
+      A whole sentence as one entity slug. rdf/triple-shape.ts
+      (looksLikeProposition) rejects this at the door — verified 2026-09-02 —
+      so its appearance is a REGRESSION in that guard, not a model failure.
+
+KNOWN-BROKEN, do not record as a new finding:
+  · "Lumen path" is very unlikely to be repaired to "Lumenpath" on a FRESH
+    graph. vocabulary-repair matches against names the graph ALREADY HAS, so
+    with nothing to match it cannot fire. This is correct behaviour and the
+    reason note 02 seeds the vocabulary first.
+  · "cad" will not be capitalised to CAD. Nothing in the pipeline knows the
+    acronym, and the homophone is real English, so no rule catches it. This is
+    the "enterprise dam" case exactly.
+  · No rdf:type will be proposed. Measured 0 of 16 on the real corpus — no
+    built-in type carries the predicates a dictated note produces (F149).
+  · No skos:broader. Extraction emits none; co-hyponym inference is not wired
+    into the app, only into the offline chain harness.
+
+WHAT TO JUDGE: are the two claims separated into distinct facts with a real
+subject, or collapsed into one node? That is the only question this file asks.

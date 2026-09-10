@@ -55,8 +55,13 @@ import { requiresUserAuthority } from './verifiability';
 
 const KPRED = 'urn:kbase:predicate/';
 
-/** Highest to lowest. The order IS the review tree's depth. */
-export type Altitude = 'decision' | 'judgment' | 'evidence' | 'record' | 'log';
+/**
+ * Highest to lowest. The order IS the review tree's depth.
+ *
+ * Derived from `Statement['altitude']` so a hand-set override and the classifier can never come to
+ * mean different things — this module imports Statement, so the union has to live there.
+ */
+export type Altitude = NonNullable<Statement['altitude']>;
 
 export const ALTITUDE_RANK: Record<Altitude, number> = {
   decision: 4,
@@ -213,6 +218,11 @@ const RECORD_PREDICATES = new Set([
   `${KPRED}imports`,
   `${KPRED}path`,
   `${KPRED}is-test`,
+  // Which sentence a triple was read out of. Mechanical by construction — the extractor wrote it
+  // and re-running extraction re-derives it — so it is a record, not a claim about the world.
+  // The FACT "Orange Logic is an enterprise DAM" needs a human; that it came from a note dictated
+  // at 16:56 does not.
+  `${KPRED}extracted-from`,
   `${KPRED}depends-on-module`,
   `${KPRED}provides`,
   `${KPRED}has-feature`,
@@ -242,6 +252,13 @@ const LOG_PREDICATES = new Set([
   'http://purl.org/dc/terms/created',
   `${KPRED}date`,
   `${KPRED}git-commit`,
+  // Voice capture. A dictated sentence stamped with the time it was said asserts only that
+  // somebody said something, and the person who would be asked to confirm it is the person who
+  // said it — the definition of a fact with no reviewable content. The KNOWLEDGE in a note is
+  // whatever extraction reads out of it, and those triples are reviewed on their own merits.
+  // Matt, 2026-08-27: "a raw note with timestamp is not a knowledge point its a log".
+  `${KPRED}captured-note`,
+  `${KPRED}extracted-at`,
 ]);
 
 /**
@@ -426,8 +443,43 @@ function predicateAltitude(p: string): Altitude | null {
   return result;
 }
 
+/**
+ * Classifications the USER has accepted for this graph's own predicates, and which therefore
+ * outrank the built-in table.
+ *
+ * WHY AN OVERRIDE AT ALL. The table was built from Reckons' authored graphs and reaches 95.1%
+ * there; on a captured graph it reaches 39.6%, and everything it misses defaults to `judgment`.
+ * `review-tree` already ruled on the remedy — "the fix is predicate discipline in the graph, not
+ * a cleverer guess in the classifier" — and discipline in the graph needs somewhere to live.
+ *
+ * THE USER OUTRANKS THE TABLE, AND ONLY THE USER. This is set from facts a person accepted in
+ * review (`<predicate> kpred:altitude "log"`), never from an extractor and never from a proposal.
+ * A pipeline that could quietly reclassify predicates could quietly hide decisions, which is the
+ * one failure the whole altitude design exists to prevent.
+ */
+let userAltitudes: ReadonlyMap<string, Altitude> = new Map();
+
+/** Install the accepted classifications. Pass an empty map to clear. */
+export function setUserAltitudes(map: ReadonlyMap<string, Altitude>): void {
+  userAltitudes = map;
+  predicateAltitudeCache.clear();
+}
+
 export function altitudeOf(st: Statement): Altitude {
   const p = st.p.value;
+
+  // A hand-set altitude on this fact wins over everything, including the predicate-level
+  // override: it is the most specific thing a person has said about this exact statement. No
+  // completion-narration demotion applies — the user has looked at this one and ruled.
+  if (st.altitude) return st.altitude;
+
+  const byUser = userAltitudes.get(p);
+  if (byUser !== undefined) {
+    // The completion-narration demotion still applies: a user saying "this predicate is a
+    // judgment" is a statement about the PREDICATE, not a promise about every literal under it.
+    if (byUser === 'judgment' && isCompletionNarration(st)) return 'log';
+    return byUser;
+  }
 
   const byPredicate = predicateAltitude(p);
   if (byPredicate !== null) {
@@ -475,6 +527,8 @@ export function altitudeOf(st: Statement): Altitude {
 /** True when this predicate (or its family) is actually in the table — for honest coverage. */
 export function isClassified(st: Statement): boolean {
   const p = st.p.value;
+  // A predicate the user has ruled on is classified BY DEFINITION — that is what coverage means.
+  if (userAltitudes.has(p)) return true;
   if (
     DECISION_PREDICATES.has(p) ||
     JUDGMENT_PREDICATES.has(p) ||

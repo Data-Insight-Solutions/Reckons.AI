@@ -56,7 +56,31 @@ const DESCRIBING = new Set([
  * likely wrong. Elsewhere among describing predicates, divergent values are a NATURAL dichotomy
  * that may coexist (two roles, two facets) and should be representable rather than resolved.
  */
-const SINGLE_VALUED = new Set([`${KPRED}has-status`, `${KPRED}status`, `${KPRED}category`, `${KPRED}kind`]);
+const SINGLE_VALUED = new Set([
+  `${KPRED}has-status`, `${KPRED}status`, `${KPRED}category`, `${KPRED}kind`,
+  `${KPRED}decided-on`,
+]);
+
+/**
+ * CHOICE PREDICATES — where the object NAMES AN OPTION rather than describing the entity, so the
+ * value is a LINK and the literal-only gate above would drop it.
+ *
+ * Matt, 2026-09-02: "there should be a conflict between the two pending facts 'Lumenpath is CAD
+ * platform of choice' and a second 'Vantage Suite is the CAD platform of choice'."
+ *
+ * Written the obvious way — `kb:lumenpath kpred:is-chosen true` beside `kb:vantage-suite
+ * kpred:is-chosen true` — those are two DIFFERENT subjects, so nothing relates them and no chooser
+ * can appear. Hanging both off the DECISION as divergent values of one predicate is what makes it
+ * a this-or-that. But then the value is an option IRI, and gate 2 ("a described value is a
+ * literal, not a link") drops it, which is why `kpred:chosen-platform` on the decision produced no
+ * conflict at all when first tried.
+ *
+ * THE GATE IS STILL A GATE. This is not "allow links through": it is a named, closed set of
+ * predicates that are single-valued BY MEANING — a decision lands on one option — where two values
+ * is a genuine contradiction rather than the normal many-links case that gate 2 exists to exclude.
+ * `kpred:decided-on` is existing vocabulary (3 uses in the roadmap), not a new word.
+ */
+const CHOICE_LINKED = new Set([`${KPRED}decided-on`]);
 
 export type DichotomyKind = 'conflict' | 'dichotomy';
 
@@ -114,8 +138,11 @@ export function findDichotomies(statements: Statement[], minIdentity = 0.6): Dic
     // Group this entity's DESCRIBING values by predicate.
     const byPred = new Map<string, Set<string>>();
     for (const s of own) {
-      if (!DESCRIBING.has(s.p.value)) continue; // gate 2: describing attributes only
-      if (!isLit(s.o)) continue; // a described value is a literal, not a link
+      const choiceLink = CHOICE_LINKED.has(s.p.value);
+      if (!choiceLink && !DESCRIBING.has(s.p.value)) continue; // gate 2: describing attributes only
+      // A described value is a literal, not a link — EXCEPT for a choice predicate, whose whole
+      // job is to name which option was picked.
+      if (!isLit(s.o) && !choiceLink) continue;
       const set = byPred.get(s.p.value) ?? new Set<string>();
       set.add(s.o.value.trim());
       byPred.set(s.p.value, set);

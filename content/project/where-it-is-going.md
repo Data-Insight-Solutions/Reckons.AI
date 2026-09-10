@@ -46,6 +46,10 @@ Maintains the Dublin Core metadata vocabulary — one of the earliest and most w
 
 Google announced its Knowledge Graph in 2012, using structured data (including Freebase and Schema.org) to enhance search results with entity panels. Brought knowledge graphs into mainstream awareness.
 
+### How we got here — a timeline of the semantic web
+
+Twenty-seven years from the RDF 1.0 specification to this product, in fifteen steps. The shape of it matters more than any single entry: the standards were finished long before anything made them easy, and the recent turn is not a new standard at all but language models arriving with an appetite for structured context. Read in order — each step is here because it made the next one possible.
+
 ### IETF (Internet Engineering Task Force)
 
 Develops internet standards including URI/IRI specifications (RFC 3986, RFC 3987) that underpin RDF identifiers.
@@ -139,6 +143,14 @@ Inventor of the World Wide Web (1989) and the Semantic Web vision (2001). Founde
 ### W3C (World Wide Web Consortium)
 
 The main international standards body for the Web. Founded by Tim Berners-Lee in 1994. Publishes the RDF, OWL, SPARQL, and SKOS specifications. Stewards the Semantic Web vision.
+
+### Who built it — the organizations behind the standards
+
+The standards bodies, implementers and companies whose work Reckons.AI is assembled from. None of this was invented here; the graph formats, the query language and the constraint vocabulary are all decades of other people's work, and naming them is both accurate and the point — a local-first product that depends on open standards depends on the people who keep them open.
+
+### Who thought of it — people in this story
+
+A short list, and deliberately short: these are the people whose specific ideas this product rests on, not a hall of fame. Each entry says what they did that Reckons.AI actually uses.
 
 ### Wikidata Launch
 
