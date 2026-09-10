@@ -1,6 +1,6 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-09-09.** On `feat/sets-compose-pages` (**PR #234**, base `dev`, 73 commits —
+**Last updated: 2026-09-10.** On `feat/sets-compose-pages` (**PR #234**, base `dev`, 73 commits —
 the whole unmerged docs chain). Nothing pushed to `main`. Supersedes PR #228.
 
 ## ▶ WAITING ON MATT
@@ -29,6 +29,61 @@ the unbounded version took 24, including a 520-word page that had earned its URL
 Two generators still exist. `docs-pages.ts` publishes per ENTITY (131 pages); `docs-compose.ts`
 publishes what `website.ttl` designs (8, all alphabetical dumps). A collision guard refuses to
 overwrite `docs-kb` pages. The route out is the one `learn/what-it-does` just took, page by page.
+
+## ▶ SESSION 2026-09-10 — a review procedure for the CLI and MCP (F199)
+
+Matt: *"we need a cli and mcp review procedure… I will ideally use Claude Code chat to review
+critical decisions, and choose a claim."* Then, mid-build: *"We could ask who is currently using
+CLI, record local system user, etc?"*
+
+**THE ASYMMETRY WAS THE WHOLE PROBLEM.** Everything here could propose; nothing outside the
+browser could settle. That is why 1,046 rows went unruled — proposing costs a script one line,
+settling cost a context switch into another program.
+
+    reckons review                       ranked by consequence
+    reckons review show <id>             every competing claim, with its proposers
+    reckons review accept <id> <claim>   choose a claim ('all' takes a batch)
+    kb_review_next / _show / _decide     the same three steps over MCP
+
+**A verdict never writes a graph.** It journals to `knowledge.decisions.jsonl`; the app applies it
+on the next drain (proposals first, then verdicts — a verdict names a statement that only exists
+once its row has imported). No accept deletes; losers are superseded.
+
+### TWO DESTRUCTIVE BUGS, both found by running it on the REAL queue rather than fixtures
+1. Top-ranked "decision" was `kpred:unexplained-term` with **94 competing claims** — which do not
+   compete. Accepting one would have superseded 93 true observations. Predicate arity is now
+   MEASURED from the graph (the vocabulary declares no cardinality): `has-status` (351 subjects,
+   never plural) is a CHOICE; `principle` (plural on 101 of 191) is a BATCH, and a batch
+   supersedes nothing.
+2. `server-health` was then called functional on **two subjects' evidence**, so `n8n: kernel` and
+   `n8n: reboot` competed. Both true. Single-valuedness is no longer believed below
+   `MIN_SUBJECTS_FOR_FUNCTIONAL`.
+
+### Identity is OBSERVED, not accepted
+`actor.ts` reads the OS account, machine, route, and whether the harness reports an AI agent
+(`CLAUDECODE` / `AI_AGENT` / `CLAUDE_CODE_SESSION_ID` — set by the environment, not the caller).
+**Still not a credential**: an agent running as `matt` reports `matt`. What it buys is that an
+agent in the loop is visible. **An agent may not settle its own proposal** — F52's wall in two
+steps — checked by comparing `agentId` against `proposedBy`; every other agent-routed accept is
+downgraded to pending rather than confirmed.
+
+### Honest
+**The live queue contains ZERO genuine choices.** All 27 contested groups sit on accumulating
+predicates, so every one is a batch. Choose-a-claim is built, tested and reachable; it has no
+instance in this queue — a fact about what the jobs propose, not about the feature.
+
+CLI and MCP share the procedure **by symlink**, not by copy (`cli/src/review-session.ts` →
+`mcp-server/src/`), with `preserveSymlinks` in the CLI tsconfig. Two copies is how one quietly
+loses a refusal.
+
+**Verification:** 43 new review-session tests, 19 decision-journal · mcp-server 146 + 10 ·
+app 2997/2997 across 208 files · svelte-check 4211 files 0 errors · `offline --tier=script` 35/35 ·
+`graph-lint` 0 errors · `kb-align` no discrepancies · all three MCP tools driven over stdio.
+
+**Not built:** answering a partial fact (supplying an object) from a terminal — F32's picker is
+still app-only. Ranking still uses row fields, not `buildReviewTree`'s dependency projection.
+
+---
 
 ## ▶ SESSION 2026-09-09 — sets compose pages; two silent failures
 
