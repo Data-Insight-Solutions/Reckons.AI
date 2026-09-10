@@ -7,17 +7,9 @@ import { clearStorage, waitForApp } from './helpers';
  * Reckons.AI actively invites multi-tab use: the graph list renders an
  * "Open {name} in a new browser tab" button (kb/+page.svelte:749), and KB
  * resolution is deliberately per-tab (sessionStorage → localStorage, db.ts:246).
- * But as of this file there is NO cross-tab coordination anywhere in src/:
- * no `storage` event listener, no BroadcastChannel, no Dexie liveQuery.
- *
- * These tests characterize what that actually costs the user. They are written
- * BEFORE the fix, deliberately (Matt: "test first, then fix"), so the shape of
- * the defect is pinned down by observation rather than assumption.
- *
- * Tests marked `test.fail()` are KNOWN-BROKEN and expected to fail. Playwright
- * reports them as passing while broken, and LOUDLY flags them the moment they
- * start passing — so whoever lands the sync layer gets told which gaps closed.
- * Delete the `test.fail()` line as each one is genuinely fixed.
+ * Registry writes propagate through the browser's `storage` event, while facts
+ * propagate through Dexie's live-query invalidation. These tests keep both paths
+ * honest without relying on navigation or reload to refresh either snapshot.
  *
  * Two pages in ONE BrowserContext = two real tabs of the same browser profile,
  * sharing localStorage and IndexedDB. (Two *contexts* would be two profiles,
@@ -75,11 +67,7 @@ test.describe('multi-tab: graph registry', () => {
     await tabB.close();
   });
 
-  // KNOWN BROKEN: kb/+page.svelte:114 snapshots getRegistry() into $state at mount
-  // and only re-reads on LOCAL actions (lines 176/181/192). No `storage` listener,
-  // so tab B never learns that tab A created a graph.
-  test('DEFECT — a graph created in tab A appears in tab B WITHOUT a reload', async ({ context }) => {
-    test.fail();
+  test('a graph created in tab A appears in tab B WITHOUT a reload', async ({ context }) => {
     const tabA = await context.newPage();
     await clearStorage(tabA);
     await waitForApp(tabA);
@@ -104,10 +92,7 @@ test.describe('multi-tab: graph registry', () => {
     await tabB.close();
   });
 
-  // KNOWN BROKEN: same missing `storage` listener. Worse than staleness — tab B
-  // offers the user a graph that no longer exists in the registry.
-  test('DEFECT — a graph removed in tab A disappears from tab B WITHOUT a reload', async ({ context }) => {
-    test.fail();
+  test('a graph removed in tab A disappears from tab B WITHOUT a reload', async ({ context }) => {
     const tabA = await context.newPage();
     await clearStorage(tabA);
     await waitForApp(tabA);
@@ -139,12 +124,10 @@ test.describe('multi-tab: same graph, concurrent facts', () => {
    * localStorage.currentKbId (db.ts:255), so two tabs land on the SAME graph
    * unless the user deliberately switches. Both write the same IndexedDB.
    *
-   * KNOWN BROKEN: no Dexie liveQuery / observable anywhere in src/, so neither
-   * tab observes the other's writes. For an app whose purpose is accumulating
-   * facts, two windows silently diverging is a core-promise failure.
+   * Live query invalidation keeps the already-mounted review queue aligned with
+   * committed writes from the other tab.
    */
-  test('DEFECT — facts ingested in tab A are visible in tab B on the same graph', async ({ context }) => {
-    test.fail();
+  test('facts ingested in tab A are visible in tab B on the same graph', async ({ context }) => {
     const tabA = await context.newPage();
     await clearStorage(tabA);
     await waitForApp(tabA);
@@ -175,6 +158,21 @@ test.describe('multi-tab: same graph, concurrent facts', () => {
 
     // Tab B is ALREADY on /review and does not navigate. The facts should arrive.
     await expect(tabB.getByText(/multi.session.co/i).first()).toBeVisible({ timeout: 5_000 });
+
+    // The live query also invalidates in the WRITING tab. Its local mutation path must not append
+    // the same rows a second time if the IndexedDB snapshot wins the scheduling race.
+    const readStoreIds = (page: Page) => page.evaluate(async () => {
+      const runtimeImport = (path: string) => import(/* @vite-ignore */ path);
+      const store = await runtimeImport('/src/lib/stores/kb.svelte.ts') as typeof import('../../src/lib/stores/kb.svelte');
+      return {
+        statements: store.statements().map((statement) => statement.id).sort(),
+        sources: store.sources().map((source) => source.id).sort(),
+      };
+    });
+    const [writerRows, observerRows] = await Promise.all([readStoreIds(tabA), readStoreIds(tabB)]);
+    expect(new Set(writerRows.statements).size).toBe(writerRows.statements.length);
+    expect(new Set(writerRows.sources).size).toBe(writerRows.sources.length);
+    expect(observerRows).toEqual(writerRows);
 
     await tabA.close();
     await tabB.close();

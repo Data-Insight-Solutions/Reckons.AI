@@ -85,6 +85,56 @@ describe('buildHierarchy', () => {
     const roots = buildHierarchy(stmts);
     expect(roots.length).toBe(0);
   });
+
+  it('breaks cycles deterministically and includes every hierarchy node once', () => {
+    const edges = [
+      mkStmt('urn:b', SKOS_BROADER, 'urn:a'),
+      mkStmt('urn:c', SKOS_BROADER, 'urn:b'),
+      mkStmt('urn:a', SKOS_BROADER, 'urn:c'),
+      mkStmt('urn:self', SKOS_BROADER, 'urn:self'),
+    ];
+    const flatten = (nodes: ReturnType<typeof buildHierarchy>): string[] =>
+      nodes.flatMap((node) => [node.iri, ...flatten(node.children)]);
+
+    const forward = buildHierarchy(edges);
+    const reversed = buildHierarchy([...edges].reverse());
+    expect(flatten(forward).sort()).toEqual(['urn:a', 'urn:b', 'urn:c', 'urn:self']);
+    expect(forward).toEqual(reversed);
+    expect(forward.map((root) => root.iri)).toContain('urn:a');
+    expect(forward.map((root) => root.iri)).toContain('urn:self');
+  });
+
+  it('chooses a stable parent when repeated broader edges disagree', () => {
+    const edges = [
+      mkStmt('urn:child', SKOS_BROADER, 'urn:z-parent'),
+      mkStmt('urn:child', SKOS_BROADER, 'urn:a-parent'),
+    ];
+    expect(buildHierarchy(edges)).toEqual(buildHierarchy([...edges].reverse()));
+    const roots = buildHierarchy(edges);
+    expect(roots.find((root) => root.iri === 'urn:a-parent')?.children[0].iri).toBe('urn:child');
+  });
+
+  it('builds a 6,000-level imported taxonomy without overflowing the call stack', () => {
+    const depth = 6_000;
+    const edges = Array.from({ length: depth - 1 }, (_, index) =>
+      mkStmt(`urn:node-${index + 1}`, SKOS_BROADER, `urn:node-${index}`));
+
+    const roots = buildHierarchy(edges);
+    expect(roots).toHaveLength(1);
+    expect(roots[0].iri).toBe('urn:node-0');
+    expect(roots[0].layer).toBe(depth - 1);
+
+    let current = roots[0];
+    let visited = 1;
+    while (current.children.length > 0) {
+      expect(current.children).toHaveLength(1);
+      current = current.children[0];
+      visited++;
+    }
+    expect(visited).toBe(depth);
+    expect(current.iri).toBe(`urn:node-${depth - 1}`);
+    expect(current.layer).toBe(0);
+  });
 });
 
 describe('getOrderedChildren', () => {
@@ -163,6 +213,16 @@ describe('buildHierarchyAnchors', () => {
     const nodes = [{ key: 'i:urn:solo' }];
     const anchors = buildHierarchyAnchors([], nodes, []);
     expect(anchors.size).toBe(0);
+  });
+
+  it('lays out cyclic hierarchy data without dropping the component', () => {
+    const stmts = [
+      mkStmt('urn:a', SKOS_BROADER, 'urn:b'),
+      mkStmt('urn:b', SKOS_BROADER, 'urn:a'),
+    ];
+    const anchors = buildHierarchyAnchors(stmts, [{ key: 'i:urn:a' }, { key: 'i:urn:b' }], []);
+    expect([...anchors.keys()].sort()).toEqual(['i:urn:a', 'i:urn:b']);
+    expect([...anchors.values()].every(({ x, y }) => Number.isFinite(x) && Number.isFinite(y))).toBe(true);
   });
 });
 

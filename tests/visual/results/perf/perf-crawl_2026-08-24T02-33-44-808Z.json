@@ -1,0 +1,23 @@
+{
+  "schema": "perf-crawl/1",
+  "finishedAt": "2026-08-24T02:33:44.808Z",
+  "baseUrl": "http://127.0.0.1:4181",
+  "renderer": "ANGLE (NVIDIA Corporation, NVIDIA GeForce RTX 3090/PCIe/SSE2, OpenGL 4.5.0)",
+  "softwareRendered": false,
+  "budgetMs": 4000,
+  "longTaskMs": 200,
+  "results": [
+    {
+      "route": "flow:everyday",
+      "timeToUsable": 16003,
+      "longTasks": [],
+      "worstFrame": 0,
+      "medianFrame": 0,
+      "frozenSpans": [],
+      "failures": [
+        "navigation failed: Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL"
+      ],
+      "harnessError": "selector matched nothing on this route: h1, h2"
+    }
+  ]
+}

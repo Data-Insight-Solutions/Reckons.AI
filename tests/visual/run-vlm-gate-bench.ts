@@ -44,6 +44,17 @@ const OLLAMA_URL = getArg('--url', process.env.OLLAMA_BASE_URL ?? 'http://localh
 // 128k VLM default just balloons VRAM. Big enough to hold an image, small enough
 // that every model fits on one GPU without contention.
 const NUM_CTX = parseInt(getArg('--ctx', '8192'), 10);
+/** Token budget for the answer. Twelve is ample for YES/NO and starves a reasoning model. */
+const NUM_PREDICT = parseInt(getArg('--num-predict', '12'), 10);
+/**
+ * --think=true|false. Default OFF for any model that supports it, because this is a GATE: the
+ * question is one word and the budget is one word's worth. Pass --think=true to measure a
+ * reasoning model on its own terms, and raise --num-predict with it or the result is meaningless.
+ */
+const THINK: boolean | null = (() => {
+  const v = getArg('--think', 'false').toLowerCase();
+  return v === 'none' ? null : v !== 'false';
+})();
 const DEFAULT_MODELS = ['granite3.2-vision', 'qwen2.5vl:3b', 'qwen2.5vl:7b', 'moondream'];
 const MODELS = getArg('--models', DEFAULT_MODELS.join(',')).split(',').map((s) => s.trim()).filter(Boolean);
 
@@ -60,7 +71,20 @@ async function askVLM(model: string, imgB64: string, question: string): Promise<
       images: [imgB64],
       stream: false,
       keep_alive: '10m',
-      options: { temperature: 0, num_predict: 12, num_ctx: NUM_CTX },
+      /*
+       * THINKING OFF BY DEFAULT — a gate asks for one word and budgets twelve tokens for it.
+       *
+       * Measured 2026-09-08: qwen3.8 scored 0% accuracy with all 48 checks AMBIGUOUS, and it was
+       * not blind. The same call returns `response: ""` with the thinking field holding "The user
+       * wants a simple YES or NO answer about whether visible…" — the model spent the entire
+       * num_predict budget opening its reasoning and never reached the answer. With think:false it
+       * replies "YES". Scoring a reasoning model through a twelve-token window measures the window.
+       *
+       * Sent only when explicitly set, so models with no thinking mode are unaffected: Ollama
+       * rejects `think` on a model that does not support it.
+       */
+      ...(THINK === null ? {} : { think: THINK }),
+      options: { temperature: 0, num_predict: NUM_PREDICT, num_ctx: NUM_CTX },
     }),
   });
   if (!res.ok) throw new Error(`ollama ${res.status}: ${await res.text()}`);

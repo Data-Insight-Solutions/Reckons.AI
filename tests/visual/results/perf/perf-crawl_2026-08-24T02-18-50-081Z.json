@@ -1,0 +1,35 @@
+{
+  "schema": "perf-crawl/1",
+  "finishedAt": "2026-08-24T02:18:50.081Z",
+  "baseUrl": "http://127.0.0.1:4180",
+  "renderer": "ANGLE (NVIDIA Corporation, NVIDIA GeForce RTX 3090/PCIe/SSE2, OpenGL 4.5.0)",
+  "softwareRendered": false,
+  "budgetMs": 2500,
+  "longTaskMs": 200,
+  "results": [
+    {
+      "route": "flow:everyday",
+      "timeToUsable": 1033,
+      "longTasks": [
+        {
+          "startTime": 1413.3000000044703,
+          "duration": 709,
+          "name": "BazjDylt.js:IDBTransaction.oncomplete 710ms, DluXX-vU.js:FrameRequestCallback 359ms"
+        },
+        {
+          "startTime": 2124.10000000149,
+          "duration": 362,
+          "name": "BazjDylt.js:IDBTransaction.oncomplete 710ms, DluXX-vU.js:FrameRequestCallback 359ms"
+        }
+      ],
+      "worstFrame": 1066.6,
+      "medianFrame": 16.699999999999818,
+      "frozenSpans": [],
+      "failures": [
+        "long task 709ms blocked the main thread (BazjDylt.js:IDBTransaction.oncomplete 710ms, DluXX-vU.js:FrameRequestCallback 359ms)",
+        "long task 362ms blocked the main thread (BazjDylt.js:IDBTransaction.oncomplete 710ms, DluXX-vU.js:FrameRequestCallback 359ms)"
+      ],
+      "harnessError": null
+    }
+  ]
+}

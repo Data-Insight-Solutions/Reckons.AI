@@ -19,6 +19,7 @@
  *   reckons kbs                      list available KBs in ~/.reckons/
  *   reckons use <name>               set default KB
  *   reckons ingest "note text"       quick-ingest via LLM extraction
+ *   reckons review                   decisions waiting on you; accept/reject/defer a claim
  *   echo "query" | reckons ask       pipe mode
  */
 
@@ -30,6 +31,7 @@ import { join } from 'node:path';
 import { KBReader, search } from './kb.js';
 import { chat, extract, buildContext, type LLMConfig, type Provider } from './llm.js';
 import { detectAudioCaps, printAudioCaps, record, transcribe, speak, chime, cleanup, type AudioCaps } from './audio.js';
+import { cmdReview } from './review.js';
 
 // ── Config file (.reckonsrc) ─────────────────────────────────────────────────
 
@@ -139,6 +141,11 @@ const { values: opts, positionals } = parseArgs({
     quiet:      { type: 'boolean', short: 'q', default: false },
     limit:      { type: 'string',  short: 'n' },
     caps:       { type: 'boolean', default: false },
+    // `reckons review` filters and the verdict note. Declared here because parseArgs is global.
+    contested:  { type: 'boolean', default: false },
+    high:       { type: 'boolean', default: false },
+    agent:      { type: 'string' },
+    note:       { type: 'string' },
   },
   allowPositionals: true,
   strict: false,
@@ -812,6 +819,32 @@ async function main(): Promise<void> {
       }
       if (!question) { process.stderr.write('Usage: reckons ask "question"\n'); process.exit(1); }
       await cmdAsk(question);
+      return;
+    }
+
+    case 'review':
+    case 'r': {
+      /*
+       * The procedure needs the GRAPH, not just the queue: which predicates hold one value is
+       * measured from the triples (review-session.predicateArity), and without it every decision
+       * would be treated as a batch — no claim would ever be presented as a choice.
+       */
+      ensureKB();
+      process.exit(cmdReview(
+        positionals.slice(1),
+        {
+          contested: Boolean(opts.contested),
+          high: Boolean(opts.high),
+          agent: typeof opts.agent === 'string' ? opts.agent : undefined,
+          note: typeof opts.note === 'string' ? opts.note : undefined,
+        },
+        {
+          readTriples: (path) => new KBReader(path).allTriples(),
+          kbPath,
+          json: Boolean(opts.json),
+          limit: typeof opts.limit === 'string' ? Number(opts.limit) : undefined,
+        },
+      ));
       return;
     }
 

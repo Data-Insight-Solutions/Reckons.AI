@@ -18,10 +18,10 @@
  */
 
 import { createInterface } from 'node:readline';
-import { appendFileSync, readFileSync, existsSync } from 'node:fs';
+import { appendFileSync, readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { mergeGraphs, mergeToPending } from './merge.js';
-import { join } from 'node:path';
-import { MultiKBReader, type Triple } from './kb-reader.js';
+import { dirname, join } from 'node:path';
+import { KBReader, MultiKBReader, type Triple } from './kb-reader.js';
 import { compressTriples, estimateTokens } from './compress.js';
 import { bm25Search, invalidateCache } from './search.js';
 import { gitStatus, gitLog, gitChangedFiles } from './git-utils.js';
@@ -62,6 +62,14 @@ WHEN UNCERTAIN OR STUCK, ASK — do not guess. Emit a QUESTION with kb_add_note 
 POLICY: never push to main (feature branch → PR → dev). Do NOT create docs/*.md — add entities to the TTL KBs. Surface findings/proposals as pending graph entries (kb_add_note), not chat.`;
 import { generatePageMarkdown, type GeneratePageParams } from './generate-page.js';
 import type { PageTemplate } from './page-markdown.js';
+import { loadLayerMap, renderLayered } from './layers.js';
+import { readPendingRows, renderReviewLinks, reviewGroups } from './review-links.js';
+import {
+  buildVerdict, filterDecisions, groupDecisions, predicateArity, recordVerdicts, renderDecision,
+  renderQueue, renderVerdict, ReviewRefusal, rowId, settledIds, type Arity, type Decision,
+  type VerdictKind,
+} from './review-session.js';
+import { currentActor } from './actor.js';
 
 // ── Args ─────────────────────────────────────────────────────────────────────
 
@@ -269,6 +277,58 @@ const TOOLS = [
     }
   },
   {
+    name: 'kb_review_links',
+    description: 'Turn the pending queue into reviewable TASKS: groups proposals by the agent that made them and returns a deep link opening the review screen filtered to each group, highest consequence first. "1,047 pending" is not a task anybody starts; "22 provenance verdicts, here is the URL" is finishable in a sitting.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        base: { type: 'string', description: 'App URL the links should point at — http://localhost:5173 in dev, https://reckons.ai in production. Defaults to localhost:5173.' },
+        agent: { type: 'string', description: 'Only groups whose agent contains this substring.' },
+      }
+    }
+  },
+  {
+    name: 'kb_review_next',
+    description: 'THE REVIEW PROCEDURE (F199) — the pending queue grouped into DECISIONS rather than rows, ranked by consequence. Rows sharing a subject and predicate but proposing different objects are one question with competing claims, not three chores. Returns the decisions to settle and what each one is asking. Settles nothing.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        limit: { type: 'number', description: 'How many decisions to list (default 10).' },
+        contested: { type: 'boolean', description: 'Only decisions where claims disagree — the ones that need a person.' },
+        high: { type: 'boolean', description: 'Only high-priority decisions.' },
+        agent: { type: 'string', description: 'Only decisions with a claim proposed by an agent matching this substring.' },
+        ...KB_PARAM
+      }
+    }
+  },
+  {
+    name: 'kb_review_show',
+    description: 'One decision in full: the question, every competing claim with its proposers and notes, whether each claim is human-attested or a machine proposal, and what accepting one would supersede. This is the surface for CHOOSING A CLAIM.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        decision: { type: 'string', description: 'Decision id from kb_review_next.' },
+        ...KB_PARAM
+      },
+      required: ['decision']
+    }
+  },
+  {
+    name: 'kb_review_decide',
+    description: 'Record a verdict on a decision: accept a named claim, reject, defer, or ask. Appends to knowledge.decisions.jsonl for the app to apply on its next drain — it does NOT write the graph, and nothing is deleted (losing claims are superseded and stay recoverable). Identity is observed from the process, not supplied. REFUSES to settle a contest between two human-attested claims.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        decision: { type: 'string', description: 'Decision id from kb_review_next.' },
+        verdict: { type: 'string', enum: ['accept', 'reject', 'defer', 'ask'], description: 'accept = this claim is true; reject = it is not; defer = not now, with a reason; ask = turn it back into an open question.' },
+        claim: { type: 'string', description: 'Which claim to accept. REQUIRED when a decision has more than one competing claim.' },
+        note: { type: 'string', description: 'Why. The only part of a verdict a future reader cannot reconstruct.' },
+        ...KB_PARAM
+      },
+      required: ['decision', 'verdict']
+    }
+  },
+  {
     name: 'kb_git_diff_triples',
     description: 'Cross-reference git changes with KB entities. Shows which KB facts relate to recently changed files.',
     inputSchema: {
@@ -440,11 +500,19 @@ function handleKbGetEntity(params: { entity: string; kb?: string }): object {
   const asSubject = capped.filter(t => t.subject === iri);
   const asObject  = capped.filter(t => t.object  === iri);
 
+  /*
+   * LAYERED (F194). Matt, 2026-09-09: "For MCP and tool use, lets get detailed responses for
+   * claims, questions, and provenance recorded."
+   *
+   * A flat list hands an agent `.has-file package.json` and `.principle The graph is the plan` as
+   * though they were the same kind of statement. They are not: one is what a person settled, the
+   * other is how a file got recorded. The layer map is read from the corpus on each call rather
+   * than cached, because a classification accepted from the review queue should take effect
+   * without restarting the server.
+   */
+  const layerMap = loadLayerMap(kb.allTriples(params.kb));
   const lines: string[] = [slug];
-  for (const t of asSubject) {
-    const p = t.predicate.split('/').pop() ?? t.predicate;
-    lines.push(`.${p} ${t.object}`);
-  }
+  lines.push(...renderLayered(asSubject, layerMap, { max: MAX }));
   if (asObject.length > 0) {
     lines.push('refs:');
     for (const t of asObject) {
@@ -811,18 +879,197 @@ function handleKbCheckPlan(params: { work: string; commits?: number; kb?: string
   return { content: [{ type: 'text', text: sections.join('\n') }] };
 }
 
-function handleKbPending(params: { kb?: string }): object {
-  const folders: string[] = [];
+/**
+ * kb_review_links — the queue as a set of finishable jobs (F195).
+ *
+ * Reads the same workspace queue kb_pending reads, and answers the different question: not "what
+ * is waiting" but "what should a person open first, and where is the link". See review-links.ts
+ * for why grouping by agent and ordering by consequence is the whole of it.
+ */
+function handleKbReviewLinks(params: { base?: string; agent?: string }): object {
+  const base = params.base ?? 'http://localhost:5173';
+  const files = pendingQueueFiles();
+  const rows = files.flatMap((f) => readPendingRows(f));
+  const groups = reviewGroups(rows, base)
+    .filter((g) => !params.agent || g.agent.toLowerCase().includes(params.agent.toLowerCase()));
 
+  if (files.length === 0) {
+    return { content: [{ type: 'text', text: 'No pending queue file found in this workspace, which is NOT the same as an empty queue.' }] };
+  }
+  return { content: [{ type: 'text', text: renderReviewLinks(groups, rows.length) }] };
+}
+
+
+// ── The review procedure (F199) ─────────────────────────────────────────────
+//
+// Three tools, one shape: LIST what needs deciding, SHOW one decision in full, RECORD a verdict.
+// The split matters because the middle step is the only one that costs a person anything — the
+// list is a glance and the verdict is a keystroke, while reading the competing claims is the
+// actual work. Collapsing show into decide would mean settling things unread, which is the
+// failure mode a 1,046-row queue produces on its own.
+
+interface ReviewNextParams { limit?: number; contested?: boolean; high?: boolean; agent?: string; kb?: string }
+interface ReviewDecideParams { decision: string; verdict: VerdictKind; claim?: string; note?: string; kb?: string }
+
+/**
+ * Where a graph's verdicts are journalled: beside its queue, never inside it.
+ *
+ * A SEPARATE FILE ON PURPOSE. The queue crosses a trust boundary in one direction — many writers
+ * propose, the app consumes. Verdicts travel the other way. Keeping them in one file would mean a
+ * drain that consumes proposals also has to avoid consuming verdicts, and the first bug in that
+ * scheme silently eats decisions.
+ */
+function decisionsFileFor(pendingFile: string): string {
+  return pendingFile.replace(/pending\.jsonl$/, 'decisions.jsonl');
+}
+
+/**
+ * Which predicates hold one value and which accumulate, measured from the graphs themselves.
+ *
+ * Cached for the process because it walks every triple in the workspace, and recomputing it per
+ * tool call would make listing the queue quadratic in the graph. It is invalidated by nothing:
+ * a predicate's arity is a property of the corpus, not of the queue, and a server restart is a
+ * cheap enough refresh for a measurement that changes when the graph is edited.
+ */
+let arityCache: ReadonlyMap<string, Arity> | null = null;
+function workspaceArity(): ReadonlyMap<string, Arity> {
+  if (arityCache) return arityCache;
+  try {
+    const triples = [...kb.allTriples(), ...legacySiblingTriples()];
+    return (arityCache = predicateArity(triples));
+  } catch {
+    // An unreadable graph must not stop a review. An empty map means every predicate is unknown,
+    // and unknown resolves to `multi`, which supersedes nothing.
+    return (arityCache = new Map());
+  }
+}
+
+/**
+ * In LEGACY mode, the graphs sitting beside the one that was opened.
+ *
+ * WITHOUT THIS THE TWO SURFACES DISAGREE, observed 2026-09-10: pointed at a single small
+ * knowledge.ttl the MCP called `has-status` a BATCH while `reckons review`, which scans the
+ * workspace, called the same decision a CHOICE. Same queue, same id, two different questions asked
+ * of the person — and whichever they happened to open decided whether accepting one claim would
+ * supersede the others. Arity is a property of the CORPUS, so both surfaces must read the same
+ * corpus. Multi-KB mode already does, through kb.allTriples().
+ */
+function legacySiblingTriples(): { subject: string; predicate: string; object: string }[] {
+  if (!kb.isLegacy()) return [];
+  const out: { subject: string; predicate: string; object: string }[] = [];
+  const root = dirname(kbPath);
+  for (const dir of [root, join(root, 'kbs')]) {
+    let entries: string[];
+    try { entries = readdirSync(dir, { withFileTypes: true }).map((e) => e.name); } catch { continue; }
+    for (const entry of entries) {
+      const full = join(dir, entry);
+      const files: string[] = [];
+      try {
+        if (entry.endsWith('.ttl')) files.push(full);
+        else if (statSync(full).isDirectory()) {
+          for (const inner of readdirSync(full)) if (inner.endsWith('.ttl')) files.push(join(full, inner));
+        }
+      } catch { continue; }
+      for (const file of files) {
+        if (file === kbPath) continue; // already counted via kb.allTriples()
+        // One unreadable graph narrows what arity is known; it must not stop a review.
+        try { out.push(...new KBReader(file).allTriples()); } catch { /* skip */ }
+      }
+    }
+  }
+  return out;
+}
+
+/** Every decision in this workspace, ranked, with already-settled ones removed. */
+function loadDecisions(kbFilter?: string): { decisions: Decision[]; files: string[]; totalRows: number; settled: number } {
+  const files = pendingQueueFiles(kbFilter);
+  const rows = files.flatMap((f) => readPendingRows(f));
+  const settled = new Set<string>();
+  for (const f of files) for (const id of settledIds(decisionsFileFor(f))) settled.add(id);
+  // A decision already ruled on is not shown again. It is not DELETED from the queue either —
+  // the app owns that, and a tool that quietly shrank the queue would make the two disagree.
+  const all = groupDecisions(rows, workspaceArity());
+  const decisions = all.filter((d) => !settled.has(d.id));
+  return { decisions, files, totalRows: rows.length, settled: all.length - decisions.length };
+}
+
+function handleKbReviewNext(params: ReviewNextParams): object {
+  const { decisions, files, totalRows, settled } = loadDecisions(params.kb);
+  if (files.length === 0) {
+    return { content: [{ type: 'text', text: 'No pending queue file found in this workspace, which is NOT the same as an empty queue.' }] };
+  }
+  const shown = filterDecisions(decisions, {
+    kb: params.kb, contested: params.contested, high: params.high, agent: params.agent,
+  });
+  const body = [
+    renderQueue(shown, decisions.length, params.limit ?? 10, settled),
+    '',
+    `From ${totalRows} queue row(s) across ${files.length} file(s).`,
+    'kb_review_show(decision) reads one in full; kb_review_decide(decision, verdict) records a verdict.',
+  ].join('\n');
+  return { content: [{ type: 'text', text: body }] };
+}
+
+function handleKbReviewShow(params: { decision: string; kb?: string }): object {
+  const { decisions } = loadDecisions(params.kb);
+  const d = decisions.find((x) => x.id === params.decision);
+  if (!d) {
+    // Distinguish "already settled" from "never existed": they need opposite responses, and a bare
+    // not-found sends a reader looking for a typo when the real answer is that they already ruled.
+    return { content: [{ type: 'text', text: `No open decision ${params.decision}. It may already have a verdict in the journal, or the id may be from a stale listing — run kb_review_next again.` }] };
+  }
+  const index = decisions.indexOf(d);
+  return { content: [{ type: 'text', text: renderDecision(d, { index, total: decisions.length }) }] };
+}
+
+function handleKbReviewDecide(params: ReviewDecideParams): object {
+  const { decisions, files } = loadDecisions(params.kb);
+  const d = decisions.find((x) => x.id === params.decision);
+  if (!d) {
+    return { content: [{ type: 'text', text: `No open decision ${params.decision}. Nothing was recorded. Run kb_review_next for current ids.` }], isError: true };
+  }
+
+  /*
+   * Route the verdict to the queue file the decision actually came from. Guessing the first file
+   * would journal a roadmap verdict beside a different graph's queue, where the app would never
+   * look for it — a verdict that lands nowhere is worse than a refusal, because it reports success.
+   */
+  const target = files.find((f) => readPendingRows(f).some((r) => d.rowIds.includes(rowId(r))));
+  if (!target) {
+    return { content: [{ type: 'text', text: `Could not locate the queue file holding ${d.id}. Nothing was recorded.` }], isError: true };
+  }
+
+  try {
+    const verdict = buildVerdict({
+      decision: d, verdict: params.verdict, claim: params.claim, note: params.note,
+      actor: currentActor('mcp'),
+    });
+    recordVerdicts(decisionsFileFor(target), [verdict]);
+    return { content: [{ type: 'text', text: renderVerdict(verdict, d) }] };
+  } catch (e) {
+    if (e instanceof ReviewRefusal) {
+      // A refusal is a correct outcome, not a crash — say what it refused and what to do instead.
+      return { content: [{ type: 'text', text: `REFUSED. ${e.message}\n\nNothing was recorded.` }], isError: true };
+    }
+    throw e;
+  }
+}
+
+/**
+ * Every pending queue file this workspace exposes.
+ *
+ * Extracted so kb_pending and kb_review_links cannot disagree about where the queue IS — two
+ * copies of a path-resolution rule is how one tool reports an empty queue while the other reports
+ * a thousand rows, and neither is obviously wrong.
+ */
+function pendingQueueFiles(kbFilter?: string): string[] {
+  const folders: string[] = [];
   if (kb.isLegacy()) {
-    // Legacy: check sidecar file
     const legacyPath = kbPath.replace(/\.ttl$/, '.pending.jsonl');
     if (existsSync(legacyPath)) folders.push(legacyPath);
   } else {
-    // Workspace: scan kbs/*/pending.jsonl
-    const kbList = kb.listKbs();
-    for (const k of kbList) {
-      if (params.kb && !k.name.toLowerCase().includes(params.kb.toLowerCase()) && k.folderName !== params.kb) continue;
+    for (const k of kb.listKbs()) {
+      if (kbFilter && !k.name.toLowerCase().includes(kbFilter.toLowerCase()) && k.folderName !== kbFilter) continue;
       const kbFolder = kb.getKbFolderPath(k.folderName);
       if (kbFolder) {
         const pendingPath = join(kbFolder, 'pending.jsonl');
@@ -830,6 +1077,11 @@ function handleKbPending(params: { kb?: string }): object {
       }
     }
   }
+  return folders;
+}
+
+function handleKbPending(params: { kb?: string }): object {
+  const folders = pendingQueueFiles(params.kb);
 
   type PendingLine = { subject: string; predicate: string; object: string; note?: string; type?: string; priority?: string; agent?: string; addedAt?: string };
   const entries: Array<PendingLine & { file: string }> = [];
@@ -1472,6 +1724,10 @@ rl.on('line', (line) => {
           case 'kb_git_status':  respond(id ?? null, handleKbGitStatus(toolArgs as { commits?: number; diff?: boolean })); break;
           case 'kb_check_plan':  respond(id ?? null, handleKbCheckPlan(toolArgs as { work: string; commits?: number; kb?: string })); break;
           case 'kb_pending':     respond(id ?? null, handleKbPending(toolArgs as { kb?: string })); break;
+          case 'kb_review_links': respond(id ?? null, handleKbReviewLinks(toolArgs as { base?: string; agent?: string })); break;
+          case 'kb_review_next':  respond(id ?? null, handleKbReviewNext(toolArgs as ReviewNextParams)); break;
+          case 'kb_review_show':  respond(id ?? null, handleKbReviewShow(toolArgs as { decision: string; kb?: string })); break;
+          case 'kb_review_decide': respond(id ?? null, handleKbReviewDecide(toolArgs as unknown as ReviewDecideParams)); break;
           case 'kb_git_diff_triples': respond(id ?? null, handleKbGitDiffTriples(toolArgs as { ref?: string; kb?: string })); break;
           case 'kb_alignment_score': respond(id ?? null, handleKbAlignmentScore(toolArgs as { ref?: string; work?: string; kb?: string })); break;
           case 'kb_compress': respond(id ?? null, handleKbCompress(toolArgs as { query: string; budget?: number; hops?: number; kb?: string })); break;

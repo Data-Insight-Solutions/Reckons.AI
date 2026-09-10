@@ -70,9 +70,10 @@ export type PendingQueueTransaction<T> = {
  * The one host-side read/modify/write boundary for a pending JSONL file.
  *
  * Every Node producer and rewriter of the same path must participate in this advisory lock. The
- * browser File System Access API cannot hold Linux `flock`, so `workspace.svelte.ts` draining the
- * file remains a separate cross-runtime gap; this helper intentionally does not overclaim safety
- * against a simultaneous browser drain.
+ * browser File System Access API cannot hold Linux `flock`, so `withFileLock` publishes a leased
+ * `.lock.active` marker while this transaction runs. `workspace.svelte.ts` observes that marker
+ * before draining. This narrows the cross-runtime race but is still optimistic concurrency: the
+ * browser cannot atomically acquire the kernel lock.
  */
 export function transactPendingQueue<T>(
   queuePath: string,
@@ -81,6 +82,25 @@ export function transactPendingQueue<T>(
   return withFileLock(`${queuePath}.lock`, () => {
     const current = readTextOr(queuePath, '');
     const transaction = action(current);
+    /*
+     * A KEY THAT IS NOT `content` MEANS THE CALLER INTENDED A WRITE THAT WILL NOT HAPPEN.
+     *
+     * `content` is optional so a transaction can decide to change nothing, which makes a misspelled
+     * key indistinguishable from "leave it alone" — and it fails SILENTLY while the caller prints
+     * whatever success message it had planned. That is not hypothetical: docs-review.ts returned
+     * `next:` for a day, reported "queued 92 proposal(s)", and wrote nothing. TypeScript's excess
+     * property check would have caught it; the script runs under tsx, which does not typecheck.
+     *
+     * Throwing is right rather than warning: a producer that believes it queued findings and did
+     * not is worse than a crash, because the queue is how these jobs reach a human at all.
+     */
+    const unknown = Object.keys(transaction).filter((k) => k !== 'content' && k !== 'result');
+    if (unknown.length > 0) {
+      throw new Error(
+        `transactPendingQueue: unknown key(s) ${unknown.map((k) => `\`${k}\``).join(', ')} in the returned `
+        + `transaction for ${queuePath}. Did you mean \`content\`? Nothing was written.`,
+      );
+    }
     if (transaction.content !== undefined && transaction.content !== current) {
       atomicWriteFile(queuePath, transaction.content);
     }
@@ -99,6 +119,7 @@ export const RECOMPUTABLE_AGENTS = new Set([
   'offline:alignment-sweep',
   'offline:graph-lint',
   'offline:server-health',
+  'offline:integration-health',
   'offline:competitor-scan',
   'offline:proposal-yield',
   'offline:shacl-validate',

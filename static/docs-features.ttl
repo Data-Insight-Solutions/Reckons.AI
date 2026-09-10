@@ -11,6 +11,9 @@
 @prefix guide:  <urn:reckons:guide/> .
 @prefix llm:    <urn:reckons:llm/> .
 @prefix ktype:  <urn:kbase:type/> .
+@prefix kset:   <urn:kbase:type/set-kind/> .
+@prefix set:    <urn:reckons:set/> .
+@prefix hnav:   <urn:reckons:nav/> .
 @prefix kpred:  <urn:kbase:predicate/> .
 
 ## KB Identity
@@ -43,10 +46,18 @@ feat:Ingest
 
 feat:ReviewSystem
     rdf:type            ktype:Concept ;
-    rdfs:label          "Review System" ;
-    skos:definition     "Three tabs: Incoming (new triples), Deletions (removal proposals), Merges (duplicate entity suggestions). Confirm, reject, or refine each statement. Nothing enters your graph without your approval." ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Review — where your graph gets smaller and truer" ;
+    skos:altLabel       "Review System" ;
+    skos:definition     "The step where you decide what is true. A model proposes triples; you confirm, refine or reject each one, and nothing enters your graph without that. It is the slowest part of the product and the only reason the rest of it is worth anything." ;
+    kpred:audience      "Anyone weighing this against a notes app, and wondering why they should do the extra work." ;
+    kpred:principle     "THE POINT IS NOT GATEKEEPING. IT IS SUPERSEDING. A notepad accumulates: write we are going with Aprimo in March and we chose Bynder in July, and both sentences sit there forever with nothing to reconcile them. Search finds whichever matched your words. A retrieval system indexes both and will happily cite the March one at you in September, with a confident tone and a real quotation. Review is the moment a new fact REPLACES an old one instead of joining it — the superseded statement keeps its place in the record, marked as superseded, and stops being what your graph says." ;
+    kpred:principle     "WHICH MEANS THE GRAPH GETS SMALLER AND TRUER OVER TIME. That is the property no append-only store has, and it is the whole return on the work. A year of notes is a year of sediment you must re-read. A year of reviewed facts is a year of decisions you can act on, with the discarded ones still visible if you want to know what you used to think." ;
+    kpred:principle     "THE QUEUE SHOWS WHAT CHANGED, NOT EVERYTHING FOUND. New claims, near-duplicates that are probably one thing under two names, and — the valuable ones — claims that CONTRADICT something you already accepted. A contradiction is the moment a pile of documents would have stayed quiet. Finding it is what you are paying the review time for." ;
+    kpred:constraint    "IT IS GENUINELY SLOW AT THE START, and this page will not pretend otherwise. A graph of nine facts answers nothing worth asking, and getting past that costs you review time before it returns anything. If you want a tool that reads your files and answers confidently without asking, that exists and this is not it." ;
     skos:broader        guide:WhatIsReckonsAI ;
-    skos:related        feat:TrustSystem .
+    skos:related        feat:TrustSystem ;
+    skos:related        feat:Compare .
 
 feat:TrustSystem
     rdf:type            ktype:Concept ;
@@ -71,8 +82,20 @@ feat:Shelly
 
 feat:Reckoning
     rdf:type            ktype:Concept ;
-    rdfs:label          "Reckoning (STP)" ;
-    skos:definition     "Situation-Target-Proposal: describe your situation, state your goal, and the AI synthesizes options grounded ONLY in your confirmed triples. Every option cites its sources." ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "A reckoning — asking your graph what to do" ;
+    skos:altLabel       "Reckoning" ;
+    skos:altLabel       "Situation-Target-Proposal" ;
+    skos:altLabel       "STP" ;
+    skos:definition     "A reckoning is what this product is named after, and it is the thing you do once you have a graph worth asking. You describe the situation you are in and the outcome you want, and you get back options that are built ONLY from facts you have confirmed — each one showing which of your own facts it stands on. The name is the old sense of the word: to reckon is to work something out from what you have, and to be held to account for the answer." ;
+    kpred:page-section  "Learn" ;
+    kpred:page-slug     "reckoning" ;
+    kpred:audience      "Anyone who has been told this is a note-taking tool and is wondering what it is actually for." ;
+    kpred:example       "SITUATION: our staging deploys have failed twice this month, both times after a dependency bump, and the person who set the pipeline up has left. TARGET: stop the failures without rebuilding the pipeline. What comes back is a handful of options assembled from what your graph already holds about those deploys — and each one names the facts it used, so you can see whether it read the situation correctly before you act on it." ;
+    kpred:principle     "IT CANNOT USE A FACT YOU HAVE NOT ACCEPTED. That is the entire difference between this and asking a chatbot the same question. A chatbot answers from everything it has ever read plus whatever you pasted; a reckoning answers from your confirmed graph and nothing else, which is why it can tell you it does not have enough to go on instead of producing a confident answer built on nothing." ;
+    kpred:principle     "EVERY OPTION SHOWS ITS WORKING. An option that cites three facts you recognise is one you can act on. An option that cites a fact you had forgotten is the useful kind of surprise. An option that cites nothing does not appear, because a proposal with no grounding is a guess with better formatting." ;
+    kpred:constraint    "IT IS ONLY AS GOOD AS WHAT YOU PUT IN, and the product does not pretend otherwise. A reckoning over a graph of nine facts will say very little of value. This is the honest cost of the approach: the review step that makes the answer trustworthy is also the step that makes it slow to get started, and no amount of automation removes it without also removing the reason to believe the result." ;
+    kpred:constraint    "IT PROPOSES. YOU DECIDE. A reckoning does not act, schedule, send, or change anything — it hands you options and the reasoning behind them. Nothing in this product does something on your behalf because it concluded that it should." ;
     skos:broader        guide:WhatIsReckonsAI .
 
 
@@ -82,10 +105,18 @@ feat:Reckoning
 
 feat:Compare
     rdf:type            ktype:Concept ;
-    rdfs:label          "Compare / Diff Engine" ;
-    skos:definition     "Compare two knowledge graphs or snapshots at /compare. Diff engine categorizes changes as Add, Reinforce, Conflict, Merge, Remove. Visual Venn diagram and diff table with bulk accept/reject." ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Compare — finding out where two people actually disagree" ;
+    skos:altLabel       "Compare / Diff Engine" ;
+    skos:definition     "Put two graphs side by side and see what is new, what agrees, and what conflicts. Two colleagues who have each read around the same subject can find the three things they disagree about in a minute, instead of discovering them in a meeting six weeks later." ;
+    kpred:audience      "Anyone who has to reconcile what they know with what somebody else knows." ;
+    kpred:principle     "THIS IS WHAT CLEAR CLAIMS BUY YOU, and it is the return on the review work that is hardest to see up front. Two piles of notes cannot be compared at all — you would have to read both. Two graphs can, but only where they say things in the same shape and the same words. Every time you confirm a fact rather than leaving a paragraph, you are making your knowledge comparable to somebody else\u0027s." ;
+    kpred:principle     "AND A STANDARD VOCABULARY IS WHAT MAKES IT FAST. Writing skos:broader instead of inventing your own word for is-part-of is dull and slightly awkward by hand — and it is why a stranger\u0027s graph lines up with yours without a mapping exercise. The tedious part of interoperability is the part you are doing when you pick a standard term." ;
+    kpred:principle     "YOU COMPARE CLAIMS, NOT SOURCES. My graph learned something from my file and yours learned it from yours; that is not a disagreement about anything, and a diff that reports it is wasting your attention. What two graphs can genuinely disagree about is what they believe — which is why the relation layers separate a claim about the world from a record of where it came from." ;
+    kpred:constraint    "IT CAN ONLY COMPARE WHAT WAS WRITTEN DOWN. Two graphs that use different words for the same relation will show as disagreeing when they agree, and the fix is the same vocabulary work as everywhere else here — there is no clever matching that removes it." ;
     skos:broader        guide:WhatIsReckonsAI ;
-    skos:related        feat:DiffSummary .
+    skos:related        feat:DiffSummary ;
+    skos:related        feat:ReviewSystem .
 
 feat:DiffSummary
     rdf:type            ktype:Concept ;
@@ -346,7 +377,7 @@ feat:ReviewWorkbench
 feat:PublishedDocs
     rdf:type            ktype:Concept ;
     rdfs:label          "Published Graph Site" ;
-    skos:definition     "Any graph can publish itself as a browsable website. Entities typed as a web page export to markdown with frontmatter (title, section, order, excerpt) via the graph's structure -- skos:broader for parent/child, nav:order and nav:next/nav:prev for sequence. The generated site is served at /docs. The graph stays the source of truth: generated pages are regenerated from the graph, and hand-edits to them are overwritten by the next regeneration by design. A Git-backed admin UI edits non-generated content (like release posts); a drift check flags generated pages that no longer match their graph." ;
+    skos:definition     "Any graph can publish itself as a browsable website. Entities typed as a web page export to markdown with frontmatter (title, section, order, excerpt) via the graph's own structure: the parent-child links decide the section a page sits in, and the ordering facts decide the sequence pages read in. The generated site is served at /docs. The graph stays the source of truth: generated pages are regenerated from the graph, and hand-edits to them are overwritten by the next regeneration by design. A Git-backed admin UI edits non-generated content (like release posts); a drift check flags generated pages that no longer match their graph." ;
     skos:broader        guide:WhatIsReckonsAI ;
     skos:related        feat:ReleaseNotes .
 
@@ -378,3 +409,161 @@ shelly:persona
     shelly:personality      "knowledgeable, enthusiastic, practical" ;
     shelly:responseStyle    "concise" ;
     shelly:systemPrompt     "You are helping someone learn about Reckons.AI features. Explain how each feature works and give practical usage tips. Reference the feature entities in this graph." .
+
+## =============================================================================
+## The high-level view. Matt, 2026-09-08: "What it does page needs a much higher
+## level view, not just individual feature component parts." Before this, a
+## reader arriving at Features met 39 components and no account of the whole.
+## =============================================================================
+
+feat:FiveMoves
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "What Reckons.AI does, in five moves" ;
+    hnav:order          50 ;
+    skos:broader        feat:WhatIsReckonsAI ;
+    skos:definition     "Reckons.AI does one thing in five moves: it takes what you put in, works out the claims inside it, asks you which are true, keeps the ones you accept with their sources attached, and then lets you ask the result questions. Everything below is a part of one of those five moves. If you only read one thing about the product, read this page rather than the component list underneath it — the components make sense as answers to the five moves and make very little sense on their own." ;
+    kpred:render-as     "gallery" ;
+    kpred:page-section  "Learn" ;
+    kpred:page-slug     "what-it-does" ;
+    kpred:audience      "Anyone deciding whether this is the right tool, before reading about any individual capability." ;
+    kpred:diagram       """flowchart LR
+  IN["1 · Take it in<br/>notes, pages, feeds,<br/>things you said"]
+  EX["2 · Work out the claims<br/>a model proposes<br/>facts, never writes them"]
+  RV{"3 · You settle it<br/>confirm, refine,<br/>reject"}
+  KP[("4 · Keep it<br/>with its sources<br/>and its history")]
+  US["5 · Ask it things<br/>reckon, compare,<br/>publish"]
+  IN --> EX --> RV
+  RV -->|"accepted"| KP
+  RV -->|"rejected"| X["Dropped, and<br/>remembered as rejected"]
+  KP --> US
+  US -.->|"a new question<br/>needs new sources"| IN""" ;
+    kpred:diagram-caption "The five moves. Step 3 is the one that makes the rest worth anything, and it is the one no amount of automation removes." ;
+    kpred:principle     "Nothing enters your graph because a model suggested it. Extraction PROPOSES; you dispose. That single rule is what separates this from a tool that reads your files and answers confidently — it is why the graph can be trusted a year later, and why it can tell you what it does not know instead of inventing an answer." ;
+    kpred:constraint    "The parts below are the detail, not the argument. A component list answers what exists; it does not answer what the thing is FOR, and a reader who meets thirty-nine capabilities before meeting the loop will reasonably conclude this is a notes application with unusual settings." .
+
+## =============================================================================
+## THE FIVE MOVES, AS SETS (F187). Matt, 2026-09-09: the five moves and the six
+## steps in Getting Started are great simplifications for human review.
+## Each move is a skos:Collection over features that ALREADY EXIST as entities —
+## the set adds the meaning, not the content. A feature may belong to more than
+## one; membership overlaps rather than partitions.
+## =============================================================================
+
+set:MoveCapture rdf:type          skos:Collection ;
+    kpred:set-kind      kset:page ;
+    skos:prefLabel      "Take it in" ;
+    skos:definition     "Paste text, point at a URL or a repository, drop in a PDF, subscribe a current to a feed so it keeps arriving, or just talk — speech to text runs locally. Long sources are chunked so nothing is silently truncated." ;
+    skos:member         feat:Ingest, feat:Currents, feat:WhisperSTT, feat:TextChunking, feat:ConfluenceMigration ;
+    kpred:set-relates-to feat:FiveMoves .
+
+set:MoveExtract rdf:type          skos:Collection ;
+    kpred:set-kind      kset:page ;
+    skos:prefLabel      "Work out the claims" ;
+    skos:definition     "A language model reads the source and PROPOSES triples, each carrying the verbatim sentence it came from. You choose the model, including a local one, and the setting that keeps everything local is a switch rather than a rewrite." ;
+    skos:member         feat:LLMBackends, feat:PassageGrounding, feat:PreferLocal, feat:EntityNormalization ;
+    kpred:set-relates-to feat:FiveMoves .
+
+set:MoveSettle rdf:type          skos:Collection ;
+    kpred:set-kind      kset:page ;
+    skos:prefLabel      "You settle it" ;
+    skos:definition     "The review queue shows what CHANGED rather than everything found: new claims, claims that contradict something you already accepted, and near-duplicates that are probably the same thing under two names. The contradictions are the valuable part — that is the moment a pile of documents would have stayed quiet." ;
+    skos:member         feat:ReviewSystem, feat:ReviewWorkbench, feat:Disambiguation, feat:TrustSystem ;
+    kpred:set-relates-to feat:FiveMoves .
+
+set:MoveKeep rdf:type          skos:Collection ;
+    kpred:set-kind      kset:page ;
+    skos:prefLabel      "Keep it" ;
+    skos:definition     "Accepted facts carry their source, the excerpt they came from, and when you accepted them. You can scrub the graph backwards through time, export the whole thing as a plain-text .ttl file, and keep several independent graphs that do not see each other." ;
+    skos:member         feat:HistoryMode, feat:TTLExport, feat:MultiKB, feat:KBIdentity ;
+    kpred:set-relates-to feat:FiveMoves .
+
+set:MoveUse rdf:type          skos:Collection ;
+    kpred:set-kind      kset:page ;
+    skos:prefLabel      "Ask it things" ;
+    skos:definition     "Describe a situation and a goal and get a proposal grounded in your own facts. Compare two graphs and see exactly where they disagree. Compress a large graph into the part that answers one question. Publish a graph as a website — these pages are that feature, running on the graph that describes this product." ;
+    skos:member         feat:Reckoning, feat:Compare, feat:ContextCompression, feat:Shelly, feat:PublishedDocs, feat:LLMBackends, feat:PreferLocal ;
+    kpred:set-relates-to feat:FiveMoves .
+
+set:TheLoop rdf:type        skos:OrderedCollection ;
+    kpred:set-kind      kset:story ;
+    skos:prefLabel      "The loop, in five moves" ;
+    skos:definition     "The whole product as a sequence. Each move is a set of its own, and the order is the point — this is a story rather than a roster, because shuffling it would describe a different product." ;
+    skos:member         set:MoveCapture, set:MoveExtract, set:MoveSettle, set:MoveKeep, set:MoveUse .
+
+<urn:reckons:set/TheLoop/member/MoveCapture>
+    kpred:in-set        set:TheLoop ;
+    kpred:member-entity set:MoveCapture ;
+    kpred:member-order  "1" .
+
+<urn:reckons:set/TheLoop/member/MoveExtract>
+    kpred:in-set        set:TheLoop ;
+    kpred:member-entity set:MoveExtract ;
+    kpred:member-order  "2" .
+
+<urn:reckons:set/TheLoop/member/MoveSettle>
+    kpred:in-set        set:TheLoop ;
+    kpred:member-entity set:MoveSettle ;
+    kpred:member-order  "3" .
+
+<urn:reckons:set/TheLoop/member/MoveKeep>
+    kpred:in-set        set:TheLoop ;
+    kpred:member-entity set:MoveKeep ;
+    kpred:member-order  "4" .
+
+<urn:reckons:set/TheLoop/member/MoveUse>
+    kpred:in-set        set:TheLoop ;
+    kpred:member-entity set:MoveUse ;
+    kpred:member-order  "5" .
+
+## =============================================================================
+## START HERE — the page a first-time reader actually lands on.
+##
+## It replaces composed output: content/learn/start-here.md was an alphabetical
+## dump of every section heading in the corpus, under the promise "the only page
+## a new reader needs". Matt, 2026-09-06: "start here is a long list."
+##
+## This is an ORIENTATION page, deliberately not a duplicate of Getting Started.
+## It answers the four questions a newcomer has, in the order they have them,
+## and sends them somewhere real for each. The set is the sequence; the page is
+## the entity — a set contributes the route, it does not define the page.
+## =============================================================================
+
+feat:StartHere
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Start here" ;
+    hnav:order          1 ;
+    kpred:page-section  "Learn" ;
+    kpred:page-slug     "start-here" ;
+    skos:definition     "Reckons.AI turns things you read into facts you have checked, and then lets you ask those facts what to do. It is not a note-taking app: the difference is that nothing is in your graph unless you accepted it, and every fact can show you the sentence it came from. Four pages below, in the order the questions usually arrive — what it is, what it does, how to start, and what it is for." ;
+    kpred:audience      "Someone who has just arrived and does not yet know whether this is for them." ;
+    kpred:principle     "READ THESE FOUR IN ORDER AND STOP. The rest of this site is reference, and reference read early is the reason a good tool looks complicated. If you only have five minutes, read what it does — the five moves are the whole product." ;
+    kpred:constraint    "THIS TAKES LONGER TO GET VALUE FROM THAN A NOTES APP, and that is the trade rather than a rough edge. You review what a model proposes before it becomes yours, which costs you time at the start and is exactly why the answers are worth something later. If you want something that reads your files and answers confidently without asking, this is the wrong tool and that is a fine conclusion to reach on this page." .
+
+set:FirstHour rdf:type      skos:OrderedCollection ;
+    kpred:set-kind      kset:story ;
+    skos:prefLabel      "Your first four pages" ;
+    skos:definition     "In the order the questions usually arrive." ;
+    skos:member         guide:WhatIsReckonsAI, feat:FiveMoves, guide:GettingStarted, feat:Reckoning ;
+    kpred:set-relates-to feat:StartHere .
+
+<urn:reckons:set/FirstHour/member/WhatIsReckonsAI>
+    kpred:in-set        set:FirstHour ;
+    kpred:member-entity guide:WhatIsReckonsAI ;
+    kpred:member-order  "1" .
+
+<urn:reckons:set/FirstHour/member/FiveMoves>
+    kpred:in-set        set:FirstHour ;
+    kpred:member-entity feat:FiveMoves ;
+    kpred:member-order  "2" .
+
+<urn:reckons:set/FirstHour/member/GettingStarted>
+    kpred:in-set        set:FirstHour ;
+    kpred:member-entity guide:GettingStarted ;
+    kpred:member-order  "3" .
+
+<urn:reckons:set/FirstHour/member/Reckoning>
+    kpred:in-set        set:FirstHour ;
+    kpred:member-entity feat:Reckoning ;
+    kpred:member-order  "4" .

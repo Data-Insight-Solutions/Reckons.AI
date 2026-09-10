@@ -51,22 +51,30 @@ const statuses = new Set<string>();
 for (const q of quads) {
   const p = q.predicate.value;
   if (p.endsWith('rdf-schema#label')) label.set(q.subject.value, q.object.value);
-  else if (p.endsWith('tenet-body')) body.set(q.subject.value, q.object.value);
+  // The landing page shows kpred:tenet-lead (the opening line); kpred:tenet-body is the full
+  // statement the docs show. Comparing against the wrong one is not a hypothetical: this gate read
+  // `item.body` after the JSON key was renamed to `lead`, so it compared every tenet against
+  // undefined and reported all ten as differing. Read the field the file actually has.
+  else if (p.endsWith('tenet-lead')) body.set(q.subject.value, q.object.value);
   else if (p.endsWith('has-status')) statuses.add(q.object.value);
 }
 
 // ── Thesis: must match the graph exactly ─────────────────────────────────────
 
 if (existsSync(THESIS)) {
-  const json = JSON.parse(readFileSync(THESIS, 'utf8')) as Array<{ headline: string; body: string }>;
-  const tenets = [...body.entries()].map(([iri, b]) => ({ headline: label.get(iri) ?? '', body: b }));
+  const json = JSON.parse(readFileSync(THESIS, 'utf8')) as Array<{ headline: string; lead: string }>;
+  const tenets = [...body.entries()].map(([iri, b]) => ({ headline: label.get(iri) ?? '', lead: b }));
   for (const item of json) {
     checked++;
     const match = tenets.find((t) => norm(t.headline) === norm(item.headline));
     if (!match) {
       problems.push(`thesis: "${norm(item.headline).slice(0, 60)}" is in the JSON and NOT in the graph`);
-    } else if (norm(match.body) !== norm(item.body)) {
-      problems.push(`thesis: body differs from the graph for "${norm(item.headline).slice(0, 50)}"`);
+    } else if (typeof item.lead !== 'string') {
+      // Guard against the exact bug this gate had: a renamed key must fail as a SCHEMA error, not
+      // as ten content mismatches that send the reader looking at the prose.
+      problems.push(`thesis: "${norm(item.headline).slice(0, 50)}" has no \`lead\` field — the JSON schema changed and this check is reading nothing`);
+    } else if (norm(match.lead) !== norm(item.lead)) {
+      problems.push(`thesis: lead differs from the graph for "${norm(item.headline).slice(0, 50)}"`);
     }
   }
   for (const t of tenets) {
@@ -132,8 +140,8 @@ if (problems.length === 0) {
 }
 
 console.log(
-  '\n\x1b[2mlanding-thesis.json duplicates ktype:Tenet/pred:tenet-body and should eventually be\n' +
-    'GENERATED from the graph, as content/*.md already is. landing-roadmap.json is editorial\n' +
+  '\n\x1b[2mlanding-thesis.json IS GENERATED from the graph as of 2026-09-09 (npm run landing:data),\n' +
+    'so this check now guards against hand-editing it rather than detecting drift. landing-roadmap.json is editorial\n' +
     'selection, so only its statuses are checked — matching it to the graph would be demanding\n' +
     'the marketing copy be the changelog.\x1b[0m',
 );

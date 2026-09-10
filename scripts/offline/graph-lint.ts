@@ -39,11 +39,57 @@ const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
 const FEATURE = 'urn:kbase:type/Feature';
 
-/** Feature lifecycle, in maturity order. `in-progress` is de-facto (roadmap uses it for started work). */
-const RANK: Record<string, number> = {
-  speculative: 0, planned: 1, 'in-progress': 2, scaffolded: 3, functional: 4, production: 5,
-};
-const STATUSES = new Set(Object.keys(RANK));
+/**
+ * THE CLOSED VOCABULARIES COME FROM THE GRAPH, NOT FROM THIS FILE.
+ *
+ * `static/reckons-vocabulary.ttl` defines them as SKOS concept schemes, each concept carrying a
+ * `skos:notation` equal to the literal the code writes, ordered by `hnav:order`. Reading them
+ * here is what makes that file load-bearing rather than decorative — and it is what
+ * kb:feature-lifecycle-vocab (F75.2) asked for in 2026-07-12: the lifecycle QUERYABLE instead of
+ * tacit, so adding a status is a graph edit rather than a code change.
+ *
+ * Falls back to the previously hardcoded lifecycle if the file is missing, and SAYS SO. A linter
+ * that silently stops enforcing because its rules went missing is worse than one that fails.
+ */
+const VOCAB_FILE = 'static/reckons-vocabulary.ttl';
+
+function loadScheme(quads: Quad[], schemeIri: string): { notations: Set<string>; rank: Record<string, number> } {
+  const SKOS = 'http://www.w3.org/2004/02/skos/core#';
+  const inScheme = new Set(
+    quads.filter((q) => q.predicate.value === `${SKOS}inScheme` && q.object.value === schemeIri)
+      .map((q) => q.subject.value),
+  );
+  const notations: Set<string> = new Set();
+  const rank: Record<string, number> = {};
+  for (const concept of inScheme) {
+    const notation = quads.find((q) => q.subject.value === concept && q.predicate.value === `${SKOS}notation`)?.object.value;
+    if (!notation) continue;
+    notations.add(notation);
+    const order = quads.find((q) => q.subject.value === concept && q.predicate.value === 'urn:reckons:nav/order')?.object.value;
+    if (order !== undefined) rank[notation] = Number(order);
+  }
+  return { notations, rank };
+}
+
+const vocabQuads: Quad[] = existsSync(VOCAB_FILE)
+  ? new Parser().parse(readFileSync(VOCAB_FILE, 'utf8'))
+  : [];
+if (vocabQuads.length === 0) {
+  console.error(`[graph-lint] ${VOCAB_FILE} is missing or empty — falling back to the built-in lifecycle. Vocabulary checks are DEGRADED.`);
+}
+
+const lifecycle = loadScheme(vocabQuads, 'urn:kbase:type/FeatureLifecycle');
+const RANK: Record<string, number> = Object.keys(lifecycle.rank).length > 0
+  ? lifecycle.rank
+  : { speculative: 0, planned: 1, 'in-progress': 2, scaffolded: 3, functional: 4, production: 5 };
+const STATUSES = lifecycle.notations.size > 0 ? lifecycle.notations : new Set(Object.keys(RANK));
+
+/** The other closed sets, checked the same way: predicate -> the scheme its literal must come from. */
+const VOCAB_CHECKS: { predicate: string; scheme: string; label: string }[] = [
+  { predicate: `${KPRED}altitude`, scheme: 'urn:kbase:type/AltitudeScheme', label: 'altitude' },
+  { predicate: `${KPRED}task-state`, scheme: 'urn:kbase:type/TaskStateScheme', label: 'task state' },
+  { predicate: 'urn:kbase:meta/status', scheme: 'urn:kbase:type/ReviewStatusScheme', label: 'review status' },
+];
 /** Predicates whose object must be an entity that exists somewhere in the corpus. */
 const REF_PREDS = ['depends-on', 'part-of', 'relates-to', 'blocks', 'blocked-by'].map((p) => KPRED + p);
 /** Predicates whose object is a repo-relative path that must exist on disk. */
@@ -143,6 +189,24 @@ for (const { q, file } of quads) {
   if (!STATUSES.has(q.object.value)) {
     add('error', 'bad-status', file, q.subject.value,
       `has-status "${q.object.value}" is not a lifecycle value (${[...STATUSES].join(' → ')}).`);
+  }
+}
+
+// ── bad-vocab: the OTHER closed sets, checked against the same SKOS schemes.
+//
+// These were free-text literals with nothing checking them at all until 2026-08-28 — an altitude
+// of "boss" or a task-state of "dnoe" would have been accepted silently and then quietly changed
+// what the graph shows and what a runner may take. Reading the permitted values from the
+// vocabulary file rather than hardcoding them is the point: adding a value is a graph edit.
+for (const { q, file } of quads) {
+  const check = VOCAB_CHECKS.find((c) => c.predicate === q.predicate.value);
+  if (!check) continue;
+  const scheme = loadScheme(vocabQuads, check.scheme);
+  if (scheme.notations.size === 0) continue;   // no scheme defined: nothing to enforce, say nothing
+  if (!scheme.notations.has(q.object.value)) {
+    add('error', 'bad-vocab', file, q.subject.value,
+      `${check.label} "${q.object.value}" is not in ${check.scheme.split('/').pop()} ` +
+      `(${[...scheme.notations].join(', ')}).`);
   }
 }
 

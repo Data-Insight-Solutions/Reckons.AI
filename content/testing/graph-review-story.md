@@ -1,7 +1,7 @@
 ---
 title: "Reckons.AI Graph Review — Goal & Workflow"
 slug: "graph-review-story"
-order: 0
+order: 111
 section: "Testing"
 parent: "test-suite"
 template: doc
@@ -12,8 +12,6 @@ generated: "docs-kb"
 ---
 
 # Reckons.AI Graph Review — Goal & Workflow
-
-*Concept*
 
 The Reckons.AI Graph Review is an offline, exhaustive audit of the whole app treated as a graph: every button is clicked, every screen is visually checked, and every finding is tied back to the graph for human review. It runs locally and Opus-reviewed — no cloud dependency — and scores against the Web/Mobile UI-UX rubric.
 

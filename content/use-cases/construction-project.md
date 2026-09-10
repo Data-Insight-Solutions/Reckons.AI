@@ -1,7 +1,7 @@
 ---
 title: "Residential Construction Project"
 slug: "construction-project"
-order: 1014
+order: 1016
 section: "Use Cases"
 parent: "collaborative-knowledge"
 template: doc
@@ -10,17 +10,13 @@ nav: sidebar
 excerpt: "A general contractor maintains a project graph with permits, schedules, and trade dependencies for a renovation."
 generated: "docs-kb"
 related:
-  - "legal-disputes"
+  - "personal-empowerment"
 ---
 
 # Residential Construction Project
-
-*Concept*
 
 A general contractor maintains a project graph with permits, schedules, and trade dependencies for a renovation. Subcontractors import the TTL to understand their scope and timing. When a change order arrives, the contractor ingests it, runs a Reckoning to assess schedule impact, and re-exports. Each trade asks Shelly their own questions -- 'What does CO-3 add to my scope?' -- without the GC being a bottleneck. Decisions trace back to the change order that triggered them.
 
 ## Related
 
-**Related**
-
-- [Legal Disputes](../use-cases/legal-disputes)
+- [Power to the Individual](../use-cases/personal-empowerment)

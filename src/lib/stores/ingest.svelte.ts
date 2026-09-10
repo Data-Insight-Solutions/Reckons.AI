@@ -1,4 +1,5 @@
 import { v4 as uuid } from 'uuid';
+import { ollamaModelFor } from '../integrations/llm/model-for-task';
 import type { Source, Statement } from '../rdf/types';
 import { extractWithClaude } from '../integrations/llm/claude';
 import { extractWithWasm } from '../integrations/llm/wasm';
@@ -6,8 +7,13 @@ import { extractWithOllama } from '../integrations/llm/ollama-extract';
 import { chatOpenAI, chatGemini, chatOpenRouter, chatChromeAI, chatReckons } from '../integrations/llm/providers';
 import { triplesToStatements, extractMock, parseTriplesJSONWithReport, validateExtractedTriples, EXTRACTION_SYSTEM_PROMPT, buildExtractionUserPrompt, type ExtractedTriple } from '../integrations/llm/extractor';
 import { computeDiff, type Diff } from '../rdf/diff';
+import { rejectCollapsedTriples } from '../rdf/triple-shape';
+import { selectKnownClaims, buildClaimsSection } from '../rdf/claims-context';
 import { semanticEnrichDiff, labelFromIRI } from '../rdf/semantic-diff';
 import { normalizeEntities } from '../rdf/normalize-entities';
+import { reconcileVocabulary, reconcileSummary } from '../rdf/vocabulary-reconcile';
+import { surveyTypes, buildTypeStatements } from '../rdf/entity-typing';
+import { allTypes } from './entity-types.svelte';
 import { aliasesFromNormalization } from '../rdf/ingest-aliases';
 import { selectVocabulary, buildVocabularySection } from '../rdf/vocabulary-context';
 import {
@@ -58,7 +64,7 @@ export type IngestDone = {
 
 export type IngestCancelled = {
   phase: 'cancelled';
-  reason: 'archive-reference';
+  reason: 'archive-reference' | 'user-cancelled';
 };
 
 export type IngestProgress =
@@ -95,8 +101,26 @@ async function fetchReadable(url: string): Promise<{ title: string; text: string
 
 export async function ingest(
   input: IngestInput,
-  onProgress?: (p: IngestProgress) => void
+  onProgress?: (p: IngestProgress) => void,
+  opts: { signal?: AbortSignal } = {}
 ): Promise<IngestResult> {
+  /*
+   * CANCELLING AN INGEST (Matt, 2026-09-04). Two things have to be true for a cancel to be honest,
+   * and only the first is obvious:
+   *
+   *   1. the in-flight model call actually stops — `signal` is threaded all the way to fetch, so a
+   *      27B generation is aborted rather than left running against a result nobody will read;
+   *   2. NOTHING REACHES THE GRAPH. Checked at every stage boundary below, because abort resolution
+   *      is not instantaneous: a request can complete in the gap between the click and the check,
+   *      and a half-ingested source is worse than no cancel at all.
+   */
+  const { signal } = opts;
+  const cancelled = (): IngestCancelled => {
+    const c: IngestCancelled = { phase: 'cancelled', reason: 'user-cancelled' };
+    onProgress?.(c);
+    return c;
+  };
+  const stopped = () => signal?.aborted === true;
   const id = uuid();
   let title: string;
   let text: string;
@@ -197,7 +221,7 @@ export async function ingest(
     backend === 'claude'     ? (s.claudeModel     ?? 'claude-opus-4-7')                        :
     backend === 'openai'     ? (s.openaiModel     ?? 'gpt-4o-mini')                            :
     backend === 'gemini'     ? (s.geminiModel     ?? 'gemini-2.0-flash')                       :
-    backend === 'ollama'     ? (s.ollamaModel     ?? 'llama3.2')                               :
+    backend === 'ollama'     ? ollamaModelFor('ingest', s)                               :
     backend === 'wasm'       ? (s.wasmIngestModel || s.wasmModel || 'onnx-community/Qwen2.5-0.5B-Instruct') :
     backend === 'openrouter' ? (s.openrouterModel ?? 'meta-llama/llama-3.2-3b-instruct:free')  :
     backend === 'reckons'    ? (s.reckonsModel    ?? '@cf/meta/llama-3.1-8b-instruct')         :
@@ -269,16 +293,40 @@ export async function ingest(
        * Both sections are appended LAST and are EMPTY on a first ingest, so an empty graph pays
        * nothing and every existing prompt keeps its bytes when there is nothing to say.
        */
-      const groundingStatements = allStatements();
+      /*
+       * PROMPT GROUNDING IS NOW OPT-IN, AND OFF BY DEFAULT — measured, not preferred.
+       *
+       * Context ladder, 2026-09-04, qwen3:32b on tests/fixtures/notes-corpus (one graph sliced to
+       * controlled anchor budgets):
+       *   none  recall 53%   predicate reuse  0%
+       *   sm    recall 26%   predicate reuse 89%
+       *   lg    recall 26%   predicate reuse 88%
+       *   full  recall 32%   predicate reuse 75%
+       * Grounding roughly HALVES the facts found. The model adopts offered vocabulary at 75-89%
+       * even when those words come from an unrelated part of the graph, which is why an irrelevant
+       * anchor is not merely wasted prompt — it actively pulls extraction toward the wrong words.
+       *
+       * The vocabulary agreement it bought is now recovered AFTER extraction by
+       * rdf/vocabulary-reconcile.ts, where every connection is a reviewable proposal rather than an
+       * ungated nudge. Set `groundExtractionPrompt` to bring it back; it stays available because no
+       * arm has yet tested whether it helps the model SEGMENT text, which no later stage can fix.
+       */
+      const groundingStatements = settings().groundExtractionPrompt === true ? allStatements() : [];
       const vocabCtx = selectVocabulary(groundingStatements, text);
       structCtx = selectStructuralContext(groundingStatements, { sourceText: text });
-      const graphContext = `${buildVocabularySection(vocabCtx)}${buildStructuralSection(structCtx)}`;
+      // What the graph already CLAIMS about those anchors — so a follow-up note can refine or
+      // contradict an earlier fact instead of restating it as a near-duplicate. Appended last and
+      // empty on a first ingest, like the two sections before it.
+      const claimsCtx = selectKnownClaims(groundingStatements, structCtx.anchors);
+      const graphContext = `${buildVocabularySection(vocabCtx)}${buildStructuralSection(structCtx)}${buildClaimsSection(claimsCtx)}`;
       if (backend === 'openai') {
         const raw = await chatOpenAI(
           [{ role: 'user', content: buildExtractionUserPrompt(text, title, graphContext) }],
           systemPrompt,
           s.openaiApiKey!,
-          s.openaiModel
+          s.openaiModel,
+          undefined,
+          signal
         );
         const parsed = parseTriplesJSONWithReport(raw);
         triples = parsed.triples;
@@ -289,20 +337,26 @@ export async function ingest(
           [{ role: 'user', content: buildExtractionUserPrompt(text, title, graphContext) }],
           systemPrompt,
           s.geminiApiKey!,
-          s.geminiModel
+          s.geminiModel,
+          undefined,
+          signal
         );
         const parsed = parseTriplesJSONWithReport(raw);
         triples = parsed.triples;
         parsedCandidateCount = parsed.candidateCount;
         parserRejectedCount = parsed.parserRejectedCount;
       } else if (backend === 'claude') {
-        triples = await extractWithClaude(text, title, { apiKey: s.claudeApiKey!, model: s.claudeModel, systemPrompt });
+        triples = await extractWithClaude(text, title, {
+          apiKey: s.claudeApiKey!, model: s.claudeModel, systemPrompt, graphContext, signal,
+        });
       } else if (backend === 'openrouter') {
         const raw = await chatOpenRouter(
           [{ role: 'user', content: buildExtractionUserPrompt(text, title, graphContext) }],
           systemPrompt,
           s.openrouterApiKey!,
-          s.openrouterModel
+          s.openrouterModel,
+          undefined,
+          signal
         );
         const parsed = parseTriplesJSONWithReport(raw);
         triples = parsed.triples;
@@ -313,11 +367,17 @@ export async function ingest(
         // prompt above — pass it through as an override so small-model prompt
         // selection doesn't replace it.
         triples = await extractWithOllama(text, title, {
-          model: s.ollamaModel,
+          model: ollamaModelFor('ingest', s),
           baseUrl: s.ollamaBaseUrl,
           systemPromptOverride: kind === 'repository' ? systemPrompt : undefined,
           promptMode: s.ollamaPromptMode,
-          structured: s.ollamaStructuredExtraction !== false
+          structured: s.ollamaStructuredExtraction !== false,
+          graphContext,
+          signal,
+          // Opt-in second pass (F146 extract-then-critic). Off unless the user asks: measured at
+          // 63% vs 74% single-pass on 2026-09-04, so it costs a second generation for a benefit
+          // that has not been demonstrated.
+          thinking: s.ollamaThinkingMode === true,
         });
       } else if (backend === 'reckons') {
         const raw = await chatReckons(
@@ -325,7 +385,9 @@ export async function ingest(
           systemPrompt,
           s.reckonsApiKey!,
           s.reckonsBaseUrl,
-          s.reckonsModel
+          s.reckonsModel,
+          undefined,
+          signal
         );
         const parsed = parseTriplesJSONWithReport(raw);
         triples = parsed.triples;
@@ -342,7 +404,7 @@ export async function ingest(
         parserRejectedCount = parsed.parserRejectedCount;
       } else if (backend === 'wasm') {
         try {
-          triples = await extractWithWasm(text, title, s.wasmIngestModel || s.wasmModel);
+          triples = await extractWithWasm(text, title, s.wasmIngestModel || s.wasmModel, graphContext);
         } catch (wasmErr) {
           console.warn('[fallback] WASM extraction failed, using mock:', wasmErr);
           const errMsg = wasmErr instanceof Error ? wasmErr.message : String(wasmErr);
@@ -403,6 +465,21 @@ export async function ingest(
         }
         triples = structuralCheck.kept;
       }
+
+      // A model that collapses a whole sentence into one node passes every TYPE check — a
+      // proposition is a perfectly good string. "Orange Logic is an enterprise DAM" arrived as
+      // the entity `orange-logic-is-an-enterprise-dam` with the relation never extracted at all.
+      // Caught by a rule rather than by a better prompt, so it holds for whichever model is
+      // behind the extractor. Rejected, never repaired: splitting the slug on its verb would turn
+      // a parse into a fact.
+      const shaped = rejectCollapsedTriples(triples);
+      if (shaped.rejected.length > 0) {
+        console.warn(
+          `[ingest] dropped ${shaped.rejected.length} collapsed triple(s):`,
+          shaped.rejected.map((r) => `${r.subject} (${r.reason})`),
+        );
+      }
+      triples = shaped.triples;
 
       const validated = validateExtractedTriples(triples);
       const candidates = parsedCandidateCount ?? triples.length;
@@ -465,6 +542,27 @@ export async function ingest(
     run = startExtractionStage(run, activeRunStage);
     onProgress?.({ phase: 'normalizing' });
     let existingStmts = allStatements();
+
+    /*
+     * DEFERRED GROUNDING (F146 phase 2) — connect to the graph HERE, not in the extraction prompt.
+     *
+     * Measured 2026-09-04 on the notes corpus: prompt-time grounding took qwen3:32b from 53% recall
+     * to 26-32% while raising predicate reuse from 0% to 75-89%. It buys vocabulary agreement and
+     * pays for it in facts found. This stage recovers the agreement without the cost, because
+     * matching extracted names against graph names is a small CLOSED comparison rather than an open
+     * extraction — and unlike a prompt injection, every match it makes can be reviewed.
+     *
+     * Runs BEFORE normalizeEntities on purpose: it is deterministic and free, so it settles the
+     * morphological cases (`is-used-by` -> `used-by`) at zero cost, leaving the embedding pass a
+     * smaller and genuinely semantic problem. It also keeps working on graphs over 500 entities,
+     * where normalizeEntities disables itself.
+     */
+    const reconciled = reconcileVocabulary(newStatements, existingStmts);
+    newStatements = reconciled.statements;
+    if (reconciled.applied.length > 0 || reconciled.suggested.length > 0) {
+      console.info(`[ingest] Vocabulary reconcile — ${reconcileSummary(reconciled)}`);
+    }
+
     const normResult = await normalizeEntities(newStatements, existingStmts);
 
     // A fold produced a synonym; keep it rather than letting it become a conflict.
@@ -485,6 +583,37 @@ export async function ingest(
       console.info(`[ingest] Preserved ${aliased.conversions.length} name(s) as pending aliases:`,
         aliased.conversions.map(c => `"${c.value}" → ${labelFromIRI(c.iri)} (${c.similarity.toFixed(3)})`));
     }
+    run = finishExtractionStage(run, activeRunStage);
+    await saveExtractionRun(run);
+
+    // TYPES BEFORE REVIEW (Matt, 2026-08-28: "we need types set, before a user reviews").
+    //
+    // The extractor emits no types, so every entity it mints reaches the queue as an unlabelled
+    // thing — and a reviewer's first question is always WHAT IS THIS. This runs in the same slot
+    // as normalize and for the same reason: fixing it here is cheaper than asking a person later.
+    //
+    // A proposed type does not ADD a review row. It lands as a pending rdf:type on an entity that
+    // already has pending facts, so groupPendingByEntity folds it into that entity's existing
+    // card — a fuller card, not another one.
+    activeRunStage = 'type';
+    run = startExtractionStage(run, activeRunStage);
+    const typeSurvey = surveyTypes(newStatements, allTypes(), existingStmts);
+    if (typeSurvey.proposals.length > 0) {
+      newStatements = [
+        ...newStatements,
+        ...buildTypeStatements(
+          typeSurvey.proposals,
+          { g: newStatements[0].g, sourceId: source.id },
+          () => uuid(),
+        ),
+      ];
+    }
+    // Say what could NOT be typed as loudly as what could. An entity the rules declined to type
+    // is exactly the "undefined garbage" this stage exists to reduce, and hiding the count would
+    // make the stage look more effective than it is.
+    console.info(
+      `[ingest] Typed ${typeSurvey.proposals.length} entities; ${typeSurvey.undecided.length} left untyped for the user`,
+    );
     run = finishExtractionStage(run, activeRunStage);
     await saveExtractionRun(run);
 

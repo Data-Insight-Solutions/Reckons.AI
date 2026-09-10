@@ -8,7 +8,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import {
-  composePages, describeComposition, PageDefinitionError,
+  composePages, describeComposition, PageDefinitionError, partitionPages,
   type PageDefinition, type SourceEntity,
 } from '../page-composition';
 
@@ -264,5 +264,39 @@ describe('deliberate exclusion is not the same as an orphan', () => {
       [{ id: 'r', under: 'nowhere', reason: 'Internal.' }],
     );
     expect(report.pages[0].entityCount).toBe(2);
+  });
+});
+
+/**
+ * The regression these pin: `docs-compose.ts` filtered source-less pages out and
+ * `docs-consolidate.ts` did not, so the WRITER ran while the GATE meant to be consulted first
+ * crashed on `Page welcome declares no sources`. The strict rule below is still strict — it is
+ * the partition that decides what is subject to it, and both callers now share this one.
+ */
+describe('a page with no sources is hand-authored, not invalid', () => {
+  const composed = def({ id: 'how-it-works', sources: [{ kind: 'graph', graph: ARCH }] });
+  const handAuthored = def({ id: 'welcome', sources: [] });
+
+  it('separates the pages a generator writes from the ones a person wrote', () => {
+    const { composable, handAuthored: hand } = partitionPages([composed, handAuthored]);
+    expect(composable.map((p) => p.id)).toEqual(['how-it-works']);
+    expect(hand.map((p) => p.id)).toEqual(['welcome']);
+  });
+
+  it('composes the partitioned pages without throwing', () => {
+    const { composable } = partitionPages([composed, handAuthored]);
+    expect(() => composePages(composable, entities)).not.toThrow();
+  });
+
+  it('still refuses a source-less page passed in unpartitioned — the check is not weakened', () => {
+    expect(() => composePages([composed, handAuthored], entities))
+      .toThrow(PageDefinitionError);
+  });
+
+  it('keeps a hand-authored page out of the composed output rather than emitting an empty one', () => {
+    const { composable } = partitionPages([composed, handAuthored]);
+    const report = composePages(composable, entities);
+    expect(report.pages.map((p) => p.id)).toEqual(['how-it-works']);
+    expect(report.emptyPages).toEqual([]);
   });
 });

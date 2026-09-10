@@ -199,4 +199,17 @@ describe('extractWithOllama', () => {
     const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
     expect(body.messages[0].content).toBe(custom);
   });
+
+  it('includes the existing graph context in the user request', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ message: { content: JSON.stringify([VALID_TRIPLE]) } }));
+
+    await extractWithOllama('text', 'Test', {
+      model: 'llama3.2:3b',
+      graphContext: '\nEXISTING GRAPH: acme depends-on storage',
+    });
+
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    const user = body.messages.find((message: { role: string }) => message.role === 'user');
+    expect(user.content).toContain('EXISTING GRAPH: acme depends-on storage');
+  });
 });
