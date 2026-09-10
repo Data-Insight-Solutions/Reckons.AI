@@ -1,0 +1,162 @@
+{
+  "name": "Reckons — Google Tasks Current",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Polls Google Tasks and writes new/changed tasks into reckons_currents_items, where the Reckons.AI app picks them up via fetchCurrentItems(). Import, attach a Google Tasks OAuth2 credential, set TASKLIST and GRAPH_STABLE_ID in the Config node, activate."
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Why this polls instead of listening\n\nThe Google Tasks API has **no `watch` method and no push channel**. Calendar and Gmail have push notifications; Tasks never got one, and n8n ships a Google Tasks *action* node but no trigger node. So this is a Schedule Trigger, and the freshness of your captures is bounded by the cadence below — 5 minutes by default.\n\n`updatedMin` keeps each poll cheap: only tasks modified since the last successful run come back, not the whole list.\n\n## Setup\n\n1. Attach a **Google Tasks OAuth2** credential (scope `tasks.readonly` is enough).\n2. Open **Config** and set `TASKLIST` and `GRAPH_STABLE_ID`.\n3. Activate.\n\nGet `GRAPH_STABLE_ID` from Reckons.AI → Settings → Graphs. Sending captures to the wrong graph is the one mistake this workflow cannot detect for you.",
+        "height": 520,
+        "width": 420
+      },
+      "id": "sticky-why",
+      "name": "Read me first",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-380, 40]
+    },
+    {
+      "parameters": {
+        "content": "## The overlap is deliberate\n\nThe poll window reaches back **2 minutes further** than the last run. Task `updated` timestamps are server-side and a run can straddle a write, so an exact window drops captures — silently, which is the worst way to lose a note.\n\nRe-fetching is safe: the app's `buildArrivalStatements` mints deterministic ids, so the same task arriving twice updates rather than duplicates.\n\n**Losing a note is unrecoverable. Seeing one twice is free.**",
+        "height": 300,
+        "width": 380
+      },
+      "id": "sticky-overlap",
+      "name": "On the overlap",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [600, 400]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Every 5 minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [80, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "TASKLIST",
+              "value": "@default",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "GRAPH_STABLE_ID",
+              "value": "PUT-YOUR-GRAPH-STABLE-ID-HERE",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "CURRENT_SLUG",
+              "value": "google-tasks",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "OVERLAP_MINUTES",
+              "value": 2,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "config",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [280, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Poll window: last successful run, minus an overlap, in RFC 3339 as tasks.list requires.\n// First run has no watermark, so it reaches back 24h rather than pulling a lifetime of tasks.\nconst wf = $getWorkflowStaticData('global');\nconst cfg = $input.first().json;\nconst overlapMs = (cfg.OVERLAP_MINUTES ?? 2) * 60 * 1000;\n\nconst last = wf.lastPollIso ? Date.parse(wf.lastPollIso) : null;\nconst since = last === null\n  ? Date.now() - 24 * 60 * 60 * 1000\n  : last - overlapMs;\n\n// Stamped BEFORE the fetch, not after. If the fetch fails the watermark must not advance,\n// and if it succeeds anything written during the request is covered by the next overlap.\nwf.pendingPollIso = new Date().toISOString();\n\nreturn [{ json: { ...cfg, updatedMin: new Date(since).toISOString() } }];"
+      },
+      "id": "window",
+      "name": "Poll window",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 200]
+    },
+    {
+      "parameters": {
+        "resource": "task",
+        "operation": "getAll",
+        "task": "={{ $json.TASKLIST }}",
+        "returnAll": true,
+        "additionalFields": {
+          "updatedMin": "={{ $json.updatedMin }}",
+          "showCompleted": false,
+          "showHidden": false,
+          "showDeleted": false
+        }
+      },
+      "id": "fetch-tasks",
+      "name": "Google Tasks: get changed",
+      "type": "n8n-nodes-base.googleTasks",
+      "typeVersion": 1,
+      "position": [700, 200],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Shape each task into the CurrentItem the app already understands\n// (src/lib/rdf/current-ranking.ts). Nothing is interpreted here: the title is carried\n// verbatim, because what you dictated is a fact and what it MEANT is a reading the review\n// queue exists to gate.\nconst cfg = $('Config').first().json;\nconst now = new Date().toISOString();\n\nconst out = [];\nfor (const item of $input.all()) {\n  const t = item.json;\n  if (!t || !t.id) continue;\n\n  const title = (t.title || '').trim();\n  // A task with no title is a Google artifact, not something a person said.\n  if (!title) continue;\n\n  out.push({\n    json: {\n      externalId: t.id,\n      title,\n      url: t.selfLink || `https://tasks.google.com/task/${t.id}`,\n      summary: (t.notes || '').trim() || undefined,\n      publishedAt: t.updated || t.due || now,\n      sourceLabel: 'Google Tasks',\n      currentSlug: cfg.CURRENT_SLUG,\n      graphStableId: cfg.GRAPH_STABLE_ID,\n      fetchedAt: now,\n      capturedVia: 'google-tasks'\n    }\n  });\n}\nreturn out;"
+      },
+      "id": "shape",
+      "name": "Shape as CurrentItem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 200]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "tableName": "reckons_currents_items",
+        "dataToSend": "autoMapInputData",
+        "matchingColumns": ["externalId", "graphStableId"],
+        "options": {}
+      },
+      "id": "store",
+      "name": "Upsert reckons_currents_items",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [1140, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Advance the watermark ONLY now, on the success path. A failed fetch leaves lastPollIso\n// where it was, so the next run re-covers the gap instead of stepping over it.\nconst wf = $getWorkflowStaticData('global');\nif (wf.pendingPollIso) {\n  wf.lastPollIso = wf.pendingPollIso;\n  delete wf.pendingPollIso;\n}\nreturn [{ json: { ok: true, watermark: wf.lastPollIso, written: $input.all().length } }];"
+      },
+      "id": "commit",
+      "name": "Commit watermark",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1360, 200]
+    }
+  ],
+  "connections": {
+    "Every 5 minutes": { "main": [[{ "node": "Config", "type": "main", "index": 0 }]] },
+    "Config": { "main": [[{ "node": "Poll window", "type": "main", "index": 0 }]] },
+    "Poll window": { "main": [[{ "node": "Google Tasks: get changed", "type": "main", "index": 0 }]] },
+    "Google Tasks: get changed": { "main": [[{ "node": "Shape as CurrentItem", "type": "main", "index": 0 }]] },
+    "Shape as CurrentItem": { "main": [[{ "node": "Upsert reckons_currents_items", "type": "main", "index": 0 }]] },
+    "Upsert reckons_currents_items": { "main": [[{ "node": "Commit watermark", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

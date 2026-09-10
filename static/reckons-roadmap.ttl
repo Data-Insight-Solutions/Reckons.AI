@@ -9,6 +9,7 @@
 @prefix train:  <urn:reckons:training/> .
 @prefix hnav:   <urn:reckons:nav/> .
 @prefix code:   <urn:reckons:code/> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
 
 # ==============================================================================
 # Reckons.AI Product Design & Roadmap KB
@@ -1486,8 +1487,11 @@ kb:asset-generation rdf:type ktype:Feature ;
                kpred:has-status   "planned" ;
                kpred:relates-to   kb:asset-viewer ;
                kpred:relates-to   kb:int-meshy ;
-               kpred:description  "Generate the assets the viewer shows, local-first where feasible. 3D/GLB: Meshy.ai already integrated (kb:int-meshy) for text/image→3D; local open-source 3D-gen (e.g. TRELLIS/InstantMesh via a Python sidecar + GPU) is speculative and heavy. VIDEO: not WASM/browser-feasible today — text/image-to-video models (LTX-Video, CogVideoX, AnimateDiff) need a GPU sidecar (ComfyUI/diffusers) or a cloud API; transformers.js has no video-gen support. So: cloud/service for video now, local behind an optional GPU sidecar later (shares the NeMo/Cosmos sidecar direction). Keep everything opt-in per Integration Boundaries; report failures, never block." ;
-               kpred:open-question "First local path: a shared Python GPU sidecar (Cosmos/NeMo/ComfyUI) exposed like Ollama? Which is the realistic default for a subscription user with no local GPU — Meshy (3D) + a cloud video API?" .
+               kpred:description  "Generate the assets the viewer shows, local-first where feasible. 3D/GLB: Meshy.ai already integrated (kb:int-meshy) for text/image→3D; local open-source 3D-gen (e.g. TRELLIS/InstantMesh via a Python sidecar + GPU) is speculative and heavy. VIDEO: this entity framed video as GENERATIVE ONLY, and that was the gap — text/image-to-video models (LTX-Video, CogVideoX, AnimateDiff) need a GPU sidecar (ComfyUI/diffusers) or a cloud API, and transformers.js has no video-gen support. A THIRD PATH this entity did not consider is deterministic rendering: HTML/CSS through a headless browser plus FFmpeg, no model and no GPU, which covers the video Reckons.AI actually wants first (a subgraph tour, an entity card, a timeline, an animated diff) because that content is data we already hold. See F58.6. So: deterministic render first, cloud/service for synthesis now, local behind an optional GPU sidecar later (shares the NeMo/Cosmos sidecar direction). Keep everything opt-in per Integration Boundaries; report failures, never block." ;
+               kpred:open-question "First local path: a shared Python GPU sidecar (Cosmos/NeMo/ComfyUI) exposed like Ollama? Which is the realistic default for a subscription user with no local GPU — Meshy (3D) + a cloud video API?" ;
+               kpred:relates-to   kb:content-orchestration ;
+               kpred:relates-to   kb:ref-hyperframes ;
+               kpred:honest-note  "BLIND SPOT NAMED 2026-08-25 (Matt). The description above treats 'video generation' as necessarily GENERATIVE and therefore as requiring a GPU sidecar or a cloud API. That is true for photoreal footage and FALSE for the video this product needs first. Deterministic HTML-to-MP4 rendering — headless Chrome seek plus FFmpeg, no model and no GPU (kb:ref-hyperframes) — covers graph-derived motion such as subgraph tours, entity cards, timelines and animated diffs, with no sidecar at all. This feature's video arm should be split into DERIVED motion (deterministic, local, buildable now, and regression-testable because the renderer is deterministic) and GENERATED footage (still needs the sidecar or a cloud service) before the open question above is answered, because the two halves have different blockers and only one of them is actually blocked." .
 
 kb:aggressive-local-offload rdf:type ktype:Feature ;
                rdfs:label   "Aggressive local-model offload (extend working time)" ;
@@ -3426,6 +3430,21 @@ kb:mvg-3d-gen rdf:type ktype:Feature ;
                kpred:depends-on   kb:blender-mcp ;
                kpred:open-question "Is a free-form local text-to-3D model (not preset-parametric) viable in-browser or via a sidecar, or is Meshy (cloud) the only path for arbitrary prose prompts?" .
 
+kb:mvg-video-gen rdf:type  ktype:Feature ;
+               rdfs:label    "Video generation — deterministic render first, synthesis second" ;
+               kpred:feature-id   "F58.10" ;
+               kpred:has-status   "speculative" ;
+               kpred:part-of      kb:meta-visual-generation ;
+               kpred:relates-to   kb:asset-generation ;
+               kpred:relates-to   kb:content-orchestration ;
+               kpred:relates-to   kb:ref-hyperframes ;
+               kpred:description  "Producing video from a graph. TWO PATHS, and they are not the same technology: DETERMINISTIC RENDER turns data we already hold into frames — a subgraph tour, an entity card, a timeline, an animated diff — through HTML/CSS and a headless browser, no model and no GPU; SYNTHESIS generates footage that was never in the data, which needs a video model. Almost everything Reckons.AI would want is the first kind." ;
+               kpred:decided      "MATT, 2026-09-10: \u0027we should include video features, including video generation on the roadmap.\u0027 The F58 family had image-gen (F58.2) and 3d-gen (F58.3) and no video child at all, while F74.1 carried video only as a generation problem. This is the missing sibling." ;
+               kpred:principle    "DETERMINISTIC RENDER IS THE DEFAULT AND SYNTHESIS IS THE EXCEPTION. The content is a graph we hold exactly; asking a video model to re-derive it is the same category error kb:content-orchestration already names about scripts, and the same one F58.4\u0027s cheapest-representation rule makes about text. A renderer that guarantees same input, same frames also makes an asset REGRESSION-TESTABLE, which is what kb:visual-acceptance needs and what a green exit code never gave it." ;
+               kpred:constraint   "NOT BROWSER-FEASIBLE, EITHER PATH. Deterministic render needs Node, FFmpeg and headless Chrome; synthesis needs a GPU or a cloud API. Reckons.AI is a static local-first browser app, so both belong at build time (CI or scripts/offline/), in the reckons CLI, or as an opt-in n8n side-effect — which is the Integration Boundary already written down. Neither may become a hard dependency of the core app." ;
+               kpred:honest-note  "NOTHING IS BUILT AND THIS IS SPECULATIVE, matching its F58 siblings. No renderer, no generation step, no fixtures — kb:content-submissions already measured that there are 33 bench scripts and NO fixtures for video-with-audio. The status records that video is in scope, which is a decision, not progress." ;
+               kpred:open-question "Who owns a composition once a human edits it? Sveltia edits only non-generated content/*.md and there is no markdown-to-TTL back-propagation, so either scripts/md-align.ts extends to cover compositions and their rendered assets, or compositions are graph-only and deliberately not CMS-editable. Carried over from the 2026-08-25 HyperFrames review (PR #197) and still unanswered." .
+
 kb:mvg-output-types rdf:type ktype:Feature ;
                rdfs:label    "Maximal output types (PNG / PDF / GLB)" ;
                kpred:feature-id   "F58.4" ;
@@ -4043,7 +4062,7 @@ kb:ingest-routing rdf:type     ktype:Feature ;
 kb:search-consistency rdf:type ktype:Feature ;
                rdfs:label         "Search consistency — coverage first, then a user taxonomy" ;
                kpred:feature-id   "F104" ;
-               kpred:has-status   "planned" ;
+               kpred:has-status   "functional" ;
                kpred:priority     "high" ;
                kpred:description  "Make kb_search reliable enough that grep is not needed as a backstop. Two independent causes were measured on 2026-07-19 and they need fixing in cost order: a COVERAGE gap (the MCP server is symlinked to only 6 of 23 graphs, so shipped features and most docs are simply unindexed) and a VOCABULARY gap (BM25 does no synonym expansion, so 'set' cannot match 'group'). Coverage is a symlink change with no new concepts; vocabulary needs skos:altLabel plus query expansion, then embeddings for the synonyms nobody listed. A user-defined taxonomy sits on top, with PoolParty as SKOS interop rather than a dependency." ;
                kpred:relates-to   kb:agent-context-dogfooding ;
@@ -4056,20 +4075,26 @@ kb:search-consistency rdf:type ktype:Feature ;
                kpred:decision     "POOLPARTY IS INTEROP, NOT A DEPENDENCY. PoolParty is a SKOS thesaurus manager, and SKOS is exactly what steps 2 and 3 produce — so the integration is IMPORT/EXPORT of a SKOS concept scheme, letting an enterprise bring a thesaurus they already maintain. It must never become required to search your own graph. ELASTICSEARCH IS REJECTED FOR CORE: Reckons.AI is local-first with no general backend (see the integration-boundaries rule), and a search server would make a network service mandatory for the most basic operation in the product. As an optional per-user integration for very large graphs it is defensible; as the search layer it is not." ;
                kpred:open-question "Is a user-defined taxonomy an enterprise feature or a core one? UNDECIDED (Matt, 2026-07-19). Argument for core: the synonym problem bites a single user with one graph, and a personal vocabulary ('my clients' = 'accounts') is exactly the personal context this product claims to hold. Argument for enterprise: maintaining a controlled vocabulary is real work most individuals will not do, and it overlaps RBAC/governance territory. Leaning core-but-optional, with PoolParty import as the enterprise on-ramp." ;
                kpred:honest-note  "A THESAURUS NOBODY MAINTAINS IS WORSE THAN NONE — it silently expands queries along relationships that are stale, and the user cannot see why a search returned what it did. So altLabels must be inspectable, attributable, and reviewable like any other fact (they ARE facts), and query expansion must be able to show which term matched via which alias. Unexplained recall is not an improvement over unexplained silence." ;
-               kpred:remaining    "Not built. (1) workspace symlink coverage + a script-tier check that every static/*.ttl is reachable by MCP; (2) skos:altLabel authoring UI + BM25 query expansion; (3) embedding-backed fallback ranking; (4) SKOS concept-scheme import/export for PoolParty interop." .
+               kpred:measured     "CAUSE 1 IS FIXED, AND NOBODY WROTE IT DOWN (audited 2026-08-25). The measured baseline was 6 of 23 graphs and ~3.9K triples; kb_stats now reports 23 KBs and 10,199 triples. The coverage step shipped at some point between 2026-07-19 and this audit while this entity still read \'Not built\' for all four items — a status that understated the work, which is the same honesty failure as overstating it (kb:honest-status)." ;
+               kpred:measured     "CAUSE 2 IS FIXED AND MEASURED (2026-08-25). tests/bench/run-synonym-search-bench.ts, against the real 12,554-triple static/ corpus with 17 seeded aliases: synonym-phrased queries went from 75.0%% to 100%% top-1 and MRR 0.828 to 1.000. The control arm — queries that already worked — went from 66.7%% to 100%% top-1 and MRR 0.806 to 1.000. Three queries promoted, ZERO demoted, zero lost. The predicted precision cost did not appear, because the final design never touches the index." ;
+               kpred:decided      "SCORE THE ALIAS, DO NOT EXPAND THE INDEX. The first implementation appended each subject\'s aliases to the text of every one of its triples, which is the obvious reading of \'query expansion\'. The benchmark falsified it twice: appending lengthened every triple of an aliased entity so BM25\'s length normalisation pushed kb:mcp-server from rank 1 to rank 4 for its own direct query \'MCP server\'; and spraying a short alias across an entity\'s triples multiplied that term\'s document frequency, so adding the alias \'KB\' to kb:knowledge-graph knocked the query \'KB\' out of the top 10 entirely. Documenting a synonym made the entity HARDER to find by the exact name the synonym was added to serve. The shipped design scores aliases as a post-hoc bonus, leaving BM25 untouched, so a query that worked before scores identically after." ;
+               kpred:remaining    "BUILT (2026-08-25): (1) coverage — 23 of 23 graphs indexed; (2) skos:altLabel authoring in the node panel + alias scoring in BOTH bm25 implementations with per-result match attribution, and 17 seeded aliases so the thesaurus is no longer empty. NOT BUILT: (3) embedding-backed fallback ranking — still the only thing that catches the synonym nobody listed; (4) SKOS concept-scheme import/export for PoolParty interop; (5) the graph-level synonym set kb:node-synonyms names as the second tier, still needed for \'graph\' = \'KB\' across ~1,789 nodes; (6) a script-tier check that every static/*.ttl stays reachable by MCP, so cause 1 cannot silently regress." .
 
 kb:node-synonyms rdf:type      ktype:Phase ;
                rdfs:label         "Phase 2 — user-managed synonyms on each node (skos:altLabel)" ;
                kpred:part-of      kb:search-consistency ;
                hnav:order         2 ;
-               kpred:has-status   "planned" ;
+               kpred:has-status   "functional" ;
+               kpred:tested-by    "src/lib/rdf/__tests__/bm25-aliases.test.ts" ;
+               kpred:tested-by    "mcp-server/src/__tests__/search-aliases.test.ts" ;
                kpred:principle    "PUT THE VOCABULARY WHERE THE USER ALREADY IS (Matt, 2026-07-19: 'user managed synonyms on each node might be good'). A synonym added while looking at the node costs nothing; the same synonym added in a separate taxonomy manager costs a context switch, and will therefore not be added. This is kb:loop-idea-inbox's rule applied to vocabulary — capture must cost nothing or it will not happen — and it is why per-node aliases beat a standalone thesaurus tool for the first cut, even though the standalone tool is more powerful." ;
                kpred:description  "Each entity may carry skos:altLabel values the user writes, and BM25 expands queries across them. Standards-native, not a custom field: the graph is ALREADY SKOS (skos:definition 517 uses, skos:broader 420), while altLabel/prefLabel/hiddenLabel are used ZERO times and nothing in src/ or mcp-server/ reads them — so this activates an unused half of a standard already in play, and it round-trips in TTL and exports to any SKOS tool for free. UI home is obvious: the node detail panel already does inline label editing (saveLabel, src/routes/(app)/+page.svelte:1409), so aliases sit beside the label rather than in a new surface." ;
                kpred:constraint   "PER-NODE IS NOT ENOUGH ON ITS OWN, and the gap is already live in this project. Entity-specific aliases ('entity set' = 'group' = 'batch') belong on the node. GLOBAL vocabulary equivalences do not: the KB -> graph terminology migration means 'graph' = 'KB' = 'knowledge base' across essentially every entity, and writing that onto 1,789 nodes is absurd. So a graph-level synonym set is needed as well. Build per-node FIRST (it is the one the user will actually maintain), and treat the global set as a second tier rather than pretending one mechanism covers both." ;
                kpred:constraint   "AN ALIAS COLLISION IS A DUPLICATE SIGNAL, NOT A CONFLICT TO RESOLVE SILENTLY. If two entities claim the same altLabel they are probably the same thing — which is exactly what kb:entity-normalization already detects by embedding similarity. Route collisions into the existing merge-suggestion path rather than letting search quietly return both and calling it recall." ;
                kpred:constraint   "ALIASES ARE FACTS. They carry provenance and review status like any other statement, so an embedding-PROPOSED alias (normalizeEntities already computes the similarity) lands as PENDING for review and is never auto-applied. A vocabulary the user did not agree to is not user-managed." ;
                kpred:honest-note  "Synonyms trade PRECISION for recall, and the cost is not zero: expanding 'set' to 'group' will surface rows the user did not want. So the result must show WHICH ALIAS MATCHED — unexplained recall is no better than unexplained silence, and it is worse in one way, because it looks like it worked. Also note per-node aliases would NOT have caught the F65/loop-job-grouping duplication on their own unless someone had already thought to add 'group' to the set entity; embeddings (phase 3) are what catch the synonym nobody anticipated." ;
-               kpred:remaining    "Not built. altLabel editing in the node panel; BM25 query expansion over altLabels with match attribution; alias-collision -> merge suggestion; embedding-proposed aliases as pending facts; graph-level synonym set as the second tier." .
+               kpred:remaining    "BUILT 2026-08-25: altLabel editing in the node panel (an \'also known as\' chip row beside the label, per this entity\'s own principle about not making the user context-switch); alias scoring with per-result match attribution in mcp-server/src/search.ts AND src/lib/rdf/bm25.ts; embedding-proposed aliases as pending facts via kb:ingest-synonyms, rendered dashed and flagged in the panel so a proposal never reads as an agreed name. NOT BUILT: alias-collision -> merge suggestion; the graph-level synonym set (second tier); embedding-backed fallback ranking." ;
+               kpred:honest-note  "THE PREDICTED PRECISION COST DID NOT MATERIALISE, and the reason matters more than the result. This entity warned that \'expanding set to group will surface rows the user did not want\'. Measured, the control arm IMPROVED (top-1 66.7%% -> 100%%). That is not because the warning was wrong — it was right about index expansion, which the benchmark caught degrading exactly as predicted — but because the shipped design scores aliases separately and never touches the index. The warning selected the design; it did not describe the outcome." .
 
 # -- Environmental impact of local-first AI (F105) ---------------------------------
 # Matt (2026-07-19): emphasize offline local; servers and API usage are a cost in many
@@ -4451,7 +4476,8 @@ kb:merge-synonyms rdf:type ktype:Feature ;
                kpred:principle    "A MERGE IS A CLAIM THAT TWO NAMES DENOTE ONE THING, so discarding the losing name throws away the evidence for the claim being made. It is a lossy edit dressed as a cleanup." ;
                kpred:decided      "THE LOSING NAME IS PRESERVED WHICHEVER SIDE LOSES. If the user resolves the label conflict in favour of the DROPPED entity, the KEPT entity's original name is the one about to be rejected — so the alias pass reads the surviving primary label and preserves everything else, rather than assuming the kept entity's name always wins. Tested explicitly." ;
                kpred:evidence     "TRANSITIVITY IS FREE, and that is why this is a statement rather than a side table. Aliases are statements whose subject is the kept entity, so a later merge of that entity into a third redirects them along with everything else. A node merged three times still carries every name it has ever had, with no special handling." ;
-               kpred:remaining    "BUILT: src/lib/rdf/merge-aliases.ts (pure — value derivation, case/whitespace normalisation, dedupe, IRI-slug recovery, primary-label resolution) wired into onMergeConfirm, 12 tests. NOT BUILT: search does not yet match an entity by its altLabel, and the node panel does not display or let you edit the synonym list. entityAnswersTo() exists for the first of those and has no caller." .
+               kpred:remaining    "BUILT: src/lib/rdf/merge-aliases.ts (pure — value derivation, case/whitespace normalisation, dedupe, IRI-slug recovery, primary-label resolution) wired into onMergeConfirm, 12 tests. The two gaps recorded here are now CLOSED (2026-08-25): search matches an entity by its altLabel (kb:node-synonyms), and the node panel displays and edits the synonym list. entityAnswersTo() finally has a caller — the panel uses it so adding a name the entity already answers to is a no-op rather than a duplicate row." ;
+               kpred:evidence     "IT WAS ONLY EVER ONE PATH. F126 shipped the alias WRITE path in August and produced zero synonyms in practice, because its sole trigger is a human confirming a merge — the rarest event in the product. Five weeks later the graph still contained no skos:altLabel at all. A correct mechanism on a path nobody walks is indistinguishable from no mechanism, which is why kb:ingest-synonyms puts the same fix where the traffic is." .
 
 kb:import-target-resolution rdf:type ktype:Feature ;
                kpred:touches-module code:storage ;
@@ -7415,3 +7441,157 @@ kb:terminal-review rdf:type ktype:Feature ;
                kpred:measured     "TWO DESTRUCTIVE BUGS, BOTH FOUND BY RUNNING IT ON THE REAL 1,038-ROW QUEUE RATHER THAN ON FIXTURES. (1) The top-ranked decision was `kb:journey-docs kpred:unexplained-term` with NINETY-FOUR competing claims — which are not competing at all, but 94 different terms all true at once; accepting one would have superseded 93 correct observations. Fixed by measuring predicate arity from the graph: `has-status` (351 subjects, never plural) is a CHOICE, `principle` (101 of 191 plural) is a BATCH, and a batch supersedes nothing. (2) `kpred:server-health` was then called functional on two subjects' evidence, making `n8n: kernel` and `n8n: reboot` compete — both true. Fixed by refusing to believe single-valuedness below MIN_SUBJECTS_FOR_FUNCTIONAL, because 'never plural over two subjects' is indistinguishable from 'not plural yet'." ;
                kpred:known-issue  "THE LIVE QUEUE CONTAINS ZERO GENUINE CHOICES as of 2026-09-10: all 27 contested groups sit on accumulating observation predicates, so every one is a batch. The choose-a-claim path is built, tested and reachable — it has no instance in this queue today. That is a fact about what the offline jobs currently propose, not about the feature." ;
                kpred:honest-note  "THE RANKING IS NOT YET buildReviewTree. review-tree.ts ranks STATEMENTS already in a graph; the queue is rows that have not been drained into one, so this ranks on the fields a row actually carries — priority, competing claims, agent, age. That is a weaker signal than the dependency projection F195 specifies, and the two should converge once drained-and-pending rows can be ranked by the same code." .
+
+# Research runs — 2026-08-26
+# ==============================================================================
+
+kb:research-run rdf:type       ktype:Feature ;
+               rdfs:label         "Research run — a question becomes a graph you can throw away" ;
+               kpred:feature-id   "F200" ;
+               kpred:renumbered-from "F141 — MINTED BY HAND ON THIS BRANCH 2026-08-26 AND COLLIDED. While it sat unmerged for fifteen days, dev spent F141 on kb:interview-mode (\u0027the model asks, you answer\u0027). Two unrelated features, one id. Matt, 2026-09-10: interview-mode keeps the number because every existing reference to F141 already means it — the same rule the 2026-09-06 F142-F144 renumber used. Caught by graph-lint\u0027s duplicate-id check, which exists because this has now happened three times: hand-minted ids on long-lived branches will keep colliding." ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:depends-on   kb:ingest-routing ;
+               kpred:depends-on   kb:cross-kb-alignment ;
+               kpred:relates-to   kb:multi-kb ;
+               kpred:relates-to   kb:browser-fact-finding ;
+               kpred:relates-to   kb:review-attention ;
+               kpred:description  "One instruction — 'research this grant', 'research this site' — produces a NEW graph holding what was found, which the user then keeps separate, merges into an existing graph, or discards. Matt (2026-08-26): 'refer to existing graphs, and create a new one that could be imported into existing if I choose. I think this workflow will be critical.'" ;
+               kpred:principle    "GROUND BEFORE FETCHING. The first act of a research run is to query the graphs the user already has and SAY what is already known — sources, dates, gaps — before a single page is retrieved. An agent that re-derives what you already hold is precisely the waste this product exists to prevent, and skipping this step would make the research feature a betrayal of the thesis rather than an expression of it." ;
+               kpred:principle    "A FRESH GRAPH IS A CONTROL, NOT A CONVENIENCE. kb:review-attention already records that tenure anchors perspective: the longer a graph is worked, the more its established intention frames new facts. Researching directly INTO an anchored graph pulls findings toward the existing view, and the pull is invisible from inside. A separate graph is the only cheap way to see what the sources actually said before deciding what it means to you." ;
+               kpred:principle    "THE DELIVERABLE IS A DECISION, NOT A GRAPH. A run ends by presenting three outcomes — keep separate, merge, discard — and discard must be as easy as the others. A research artifact you cannot throw away is one you will keep out of sunk cost, and that is how a registry fills with graphs nobody trusts." ;
+               kpred:principle    "REPORT THE ABSENCE. A run that could not find the deadline must SAY it could not find the deadline. The most useful node is a well-formed absence, and F32 already models it — needsObject with the question attached — so a research run emits partial facts for what it went looking for and did not get, rather than quietly returning a shorter list." ;
+               kpred:constraint   "EVERY TRIPLE KEEPS ITS EXCERPT. F9 passage-grounding is not optional here. Research is the path most likely to put a fabricated claim into a graph, because the user did not read the sources — they are trusting the run. A triple whose excerpt cannot be found in the retrieved text must be dropped, not shown." ;
+               kpred:constraint   "REUSE THE SCORER, DO NOT WRITE A THIRD. Grounding needs 'which graphs know about this?', which is routeQuestion's job and F103's factoring work. A parallel relevance engine here would be the second divergence of the same idea in one area." ;
+               kpred:open-question "Where does a research run EXECUTE? The browser can fetch and extract (kb:browser-fact-finding), but multi-source gathering with retries is n8n-shaped, and an agent loop is Claude-shaped. Leaning browser-first for one URL and n8n for the multi-source sweep, so the core stays local-first and the fan-out is an opt-in integration — but this is undecided and it determines the whole shape." ;
+               kpred:open-question "Does a research graph get a TYPE GATE by default? currents-settings already supports one and its own description uses a research graph as the example ('a research graph admits only Tool and Concept'). A gate keeps a run from minting fifty Person entities off a staff directory, but a wrong gate silently drops the finding that mattered." ;
+               kpred:remaining    "Not built. Five phases below." .
+
+kb:rr-ground rdf:type          ktype:Phase ;
+               rdfs:label         "Phase 1 — say what is already known, before fetching anything" ;
+               kpred:part-of      kb:research-run ;
+               hnav:order         1 ;
+               kpred:has-status   "planned" ;
+               kpred:description  "Score every graph in the registry against the research question and report prior knowledge as a first-class result: which graphs, how many statements, from which sources, how stale. Reuses routeQuestion's scoring per kb:research-run's constraint. This phase is shippable ALONE and is worth shipping alone — 'you already have 12 facts about this grant from 3 sources, last touched in March' is useful before any fetching exists." .
+
+kb:rr-gather rdf:type          ktype:Phase ;
+               rdfs:label         "Phase 2 — retrieve, with the graph shortcut taken first" ;
+               kpred:part-of      kb:research-run ;
+               hnav:order         2 ;
+               kpred:has-status   "planned" ;
+               kpred:description  "Fetch the sources. kb:ttl-aware-ingest runs FIRST: if a source publishes text/turtle, import it directly rather than extracting prose the publisher already modelled — cheaper, exact and lossless. scripts/offline/find-feed.ts answers the adjacent question for a site you want to keep watching rather than read once." ;
+               kpred:constraint   "RESPECT A REFUSAL. A login wall, a robots exclusion or a terms prohibition is an answer, not an obstacle. The run records that the source could not be read and moves on — see kb:announcement-channels for the worked case." .
+
+kb:rr-land rdf:type            ktype:Phase ;
+               rdfs:label         "Phase 3 — land findings in a new graph named from the question" ;
+               kpred:part-of      kb:research-run ;
+               hnav:order         3 ;
+               kpred:has-status   "planned" ;
+               kpred:description  "importAsNewKb() already creates a graph from an ingest (src/routes/(app)/ingest/+page.svelte). The work is naming it from the question, marking it as a research artifact so the registry can show it as provisional, and carrying the run's own provenance — question, sources attempted, sources refused, when." .
+
+kb:rr-delta rdf:type           ktype:Phase ;
+               rdfs:label         "Phase 4 — report the delta, not the dump" ;
+               kpred:part-of      kb:research-run ;
+               hnav:order         4 ;
+               kpred:has-status   "planned" ;
+               kpred:description  "Diff the research graph against what phase 1 found: what is NEW, what CORROBORATES an existing statement from a second source, what CONFLICTS. The engine exists — wf-compare categorises Add/Reinforce/Conflict/Merge/Remove — so this is wiring, not invention." ;
+               kpred:principle    "A CONFLICT IS THE MOST VALUABLE THING A RUN CAN RETURN. Fifty corroborating facts change nothing you believed. One source contradicting a statement you have been relying on is the finding worth the whole run, and it must be surfaced first rather than buried in a list sorted by confidence." .
+
+kb:rr-decide rdf:type          ktype:Phase ;
+               rdfs:label         "Phase 5 — keep, merge, or discard" ;
+               kpred:part-of      kb:research-run ;
+               hnav:order         5 ;
+               kpred:has-status   "planned" ;
+               kpred:description  "Merge routes through cross-KB alignment (F16): computeAlignment() matches entities by IRI and embedding, applyAlignmentToActiveKb() applies the accepted matches. That path is SHIPPED, which is why this feature is mostly orchestration rather than new machinery. Discard deletes the graph and keeps the run record, so a question already asked and answered unhelpfully is not asked again." .
+
+kb:facebook-personal-feed rdf:type ktype:Concept ;
+               rdfs:label         "Watching a personal Facebook feed — settled: not possible" ;
+               kpred:relates-to   kb:currents ;
+               kpred:note         "Belongs under kb:announcement-channels, which arrives with PR #204. Attached to kb:currents until that merges rather than asserting an edge that does not resolve — a dangling reference is how a graph starts lying quietly." ;
+               kpred:honest-note  "ASKED AND ANSWERED, 2026-08-26. Reading your OWN News Feed by API is not gated behind approval — it was REMOVED. The /me/home edge was retired on 2015-10-06 and the read_stream permission that once served it has not existed for a decade. There is no modern equivalent and no review process that restores it." ;
+               kpred:honest-note  "user_posts DOES NOT HELP. It grants what YOU posted, not what you SEE — the opposite of what catching a community announcement requires. Combined with the Groups API removal (2024-04-22) and Page Public Content Access needing App Review, every route to reading other people's Facebook posts is closed to a personal project." ;
+               kpred:decided      "SKIP FACEBOOK. Matt (2026-08-26): 'Facebook may need to be skipped if its too difficult.' It is not difficult, it is closed, which is a better reason to stop. Effort moves to channels that publish: scripts/offline/find-feed.ts checks any site for a feed including unlinked conventional paths, and an IMAP capture kind remains the highest-value next channel." .
+
+kb:find-feed rdf:type          ktype:Feature ;
+               rdfs:label         "Feed discovery — can this site be watched at all?" ;
+               kpred:feature-id   "F29.6" ;
+               kpred:has-status   "functional" ;
+               kpred:part-of      kb:currents ;
+               kpred:note         "Belongs under kb:announcement-channels, which arrives with PR #204." ;
+               kpred:tested-by    "scripts/offline/__tests__/find-feed.test.ts" ;
+               kpred:has-file     "scripts/offline/find-feed.ts" ;
+               kpred:description  "Given a URL, reports whether it publishes RSS, Atom or Turtle — checking both the links the page declares and the conventional paths nothing links to (/feed, /rss.xml, ?format=rss, /RSSFeed.aspx for municipal CMSs). Script tier: every question is a rule, so it costs zero tokens and cannot invent a feed." ;
+               kpred:evidence     "SITES PUBLISH FEEDS WITHOUT ADVERTISING THEM. WordPress serves /feed on every install; a human checking by eye concludes 'no feed' and reaches for a scraper. The classifier also accepts a feed served with the wrong content-type, which municipal CMSs do constantly — trusting the header would report no feed on a site that has one." ;
+               kpred:decided      "A NEGATIVE IS A REAL ANSWER. When nothing is found the script says so plainly and points at email, rather than implying the user should try harder against a site that does not want to be read." .
+
+# Capture currents + personal workspace separation — 2026-08-26
+# ==============================================================================
+
+kb:tasks-current rdf:type      ktype:Feature ;
+               rdfs:label         "Google Tasks capture current" ;
+               kpred:feature-id   "F29.4" ;
+               kpred:has-status   "functional" ;
+               kpred:part-of      kb:currents ;
+               kpred:relates-to   kb:personal-workspace ;
+               kpred:tested-by    "src/lib/integrations/n8n/__tests__/google-tasks-workflow.test.ts" ;
+               kpred:tested-by    "src/lib/rdf/__tests__/currents-tasks-kind.test.ts" ;
+               kpred:description  "A fourth CurrentKind, 'tasks', for quick capture rather than publication: a note dictated into a phone or a note-taking ring lands in Google Tasks, and the n8n Currents Monitor polls it into reckons_currents_items where fetchCurrentItems() already reads. Ships as an importable workflow, static/n8n/google-tasks-current.workflow.json." ;
+               kpred:constraint   "GOOGLE TASKS CANNOT BE WATCHED, ONLY POLLED. The Tasks API exposes eight methods on the tasks resource and NONE of them is `watch` — there is no push channel of any kind, where Calendar and Gmail both have one, and n8n ships a Google Tasks action node but no trigger node. So capture freshness is bounded by the cadence, and nothing in the design can improve on that. tasks.list does accept updatedMin (RFC 3339), which at least keeps each poll cheap." ;
+               kpred:decided      "LOSING A NOTE IS UNRECOVERABLE; SEEING ONE TWICE IS FREE. The poll window reaches back two minutes further than the last run, because task `updated` timestamps are server-side and a run can straddle a write. Re-fetching is safe: buildArrivalStatements mints deterministic ids, so a task arriving twice updates rather than duplicates. The watermark is staged before the fetch and committed only after the write, so a failed run re-covers its window instead of stepping over it." ;
+               kpred:decided      "THE TRANSCRIPT IS THE FACT; THE READING IS NOT. The workflow carries the task title verbatim and interprets nothing. Arrivals are already `pending` (buildArrivalStatements), which matters more than usual here because the input is speech-to-text captured one-handed — the exact place a misheard proper noun becomes a confidently wrong triple. Capture automatically, gate the reading." ;
+               kpred:remaining    "iOS Quick Note via Shortcuts POSTing to the same table under a different slug — Apple Notes has no third-party read API, so a shortcut is the supported route rather than a workaround. An IMAP/email capture kind. No browser fallback is planned: fetchCurrentDirect refuses a tasks current by design, because it holds no OAuth credential." .
+
+kb:personal-workspace rdf:type ktype:Feature ;
+               rdfs:label         "Personal workspace separation" ;
+               kpred:feature-id   "F29.5" ;
+               kpred:has-status   "functional" ;
+               kpred:relates-to   kb:tasks-current ;
+               kpred:description  "reckons-workspace/kbs/** is gitignored entirely — personal graphs (notes, grants, household) are the user's data and never enter the repository. Example graphs ship from static/examples/ instead and are COPIED in by scripts/setup-reckons-workspace.sh, so a fresh clone gets a worked example without a personal graph ever becoming tracked." ;
+               kpred:principle    "PERSONAL DATA IS NOT SOURCE, AND THE STAKES ARE DEPLOYMENT. Production deploys from main on every push, so anything tracked is anything published. A personal notes graph in the repository is a personal notes graph on the internet." ;
+               kpred:decided      "COPY, NEVER SYMLINK. Every other workspace graph is symlinked to static/ because it is the project describing itself — edit the graph, edit the repo. Examples are starting points for the user's own data, so a symlink would make the first edit to a personal notes graph a modification of a tracked file. That is precisely the confusion the separation exists to prevent." ;
+               kpred:fixed        "The .gitignore block claimed 'the demo/starter fixtures already tracked under kbs/ stay tracked and versioned as before'. They were not: git ls-files reckons-workspace/kbs/ returned ZERO. A fresh clone got an empty workspace and no worked example of what a personal graph looks like." ;
+               kpred:fixed        "F104's COVERAGE FIX WAS NEVER IN THE SCRIPT. setup-reckons-workspace.sh linked six hand-picked graphs into mcp-workspace while the working workspace had 23 — repaired by hand at some point and never written down. Every fresh clone silently recreated the exact bug F104 measured (kb_search blind to reckons-shipped.ttl, so a search for completed work returns nothing and invites a rebuild). The script now derives the link set from static/*.ttl with four documented exclusions, so a NEW graph is covered the day it is added rather than the day somebody remembers this file. graph-lint's mcp-invisible warnings went 18 to 3, the 3 being the exclusions." .
+
+kb:announcement-channels rdf:type ktype:Concept ;
+               rdfs:label         "Watching community announcement channels" ;
+               kpred:relates-to   kb:currents ;
+               kpred:description  "The 'we missed the soccer signups' problem: a time-critical local notice announced once, in one channel, seen by nobody who needed it." ;
+               kpred:principle    "THIS IS A COVERAGE PROBLEM, NOT A SCRAPING PROBLEM. A deadline missed because it was announced in one place is fixed by watching more channels, not by defeating the one channel that is hardest to watch." ;
+               kpred:honest-note  "FACEBOOK GROUPS ARE NOT WATCHABLE. Meta removed the Groups API on 2024-04-22 — all third-party read access, not merely posting. There is no API, no feed and no supported route. Tools claiming otherwise drive a logged-in browser session, which is against Facebook's terms and breaks whenever the markup changes." ;
+               kpred:honest-note  "FACEBOOK PAGES ARE WATCHABLE ONLY IF YOU ADMINISTER THE PAGE. With a Page access token and pages_read_engagement, /page/feed is readable. For a Page you do not administer this needs the Page Public Content Access feature, which requires Meta App Review and is not realistically granted to a personal project. Becoming an editor of the club's Page is a social fix that opens the technical one." ;
+               kpred:honest-note  "CURRENTS DOES NOT SCRAPE, AND SHOULD NOT START. fetchCurrentDirect parses RSS/Atom XML only. A 'url' current pointed at facebook.com returns a login wall — not a parse bug to fix but a refusal to respect." ;
+               kpred:decided      "WATCH THE CHANNELS THAT WANT TO BE READ. Club sites, council pages and school newsletters usually publish RSS or send email. A dedicated address subscribed to every relevant list, watched over IMAP, catches more real announcements than any Facebook workaround and keeps working next season." ;
+               kpred:remaining    "An 'email' current kind polling IMAP through n8n — the highest-value next capture channel, and the one most likely to have caught the signup notice." .
+
+# THESAURUS — the names these entities also answer to (skos:altLabel)
+#
+# F104 phase 2 (kb:node-synonyms). Until 2026-08-25 altLabel/prefLabel/hiddenLabel were used
+# ZERO times across all 25 graphs: the thesaurus half of a standard already in play sat
+# unused, so kb_search could only ever match the one name an entity happened to be labelled
+# with. Every value below is a name this project genuinely uses for the thing in prose, chat
+# or its own roadmap text — not a guess at what someone might type.
+#
+# These are FACTS and are reviewable like any other. Measured effect on the real corpus by
+# tests/bench/run-synonym-search-bench.ts: synonym-phrased queries went from 75.0% to 100%
+# top-1 (MRR 0.828 -> 1.000) with no regression on the queries that already worked.
+# ==============================================================================
+
+kb:entity-sets skos:altLabel "group" , "grouping" , "batch" , "collection" .
+
+kb:model-training skos:altLabel "fine-tuning" , "LoRA" .
+
+
+kb:ingest-synonyms rdf:type    ktype:Feature ;
+               rdfs:label         "Synonyms survive an ingest" ;
+               kpred:feature-id   "F126.1" ;
+               kpred:has-status   "functional" ;
+               kpred:part-of      kb:search-consistency ;
+               kpred:relates-to   kb:merge-synonyms ;
+               kpred:relates-to   kb:node-synonyms ;
+               kpred:relates-to   kb:entity-normalization ;
+               kpred:tested-by    "src/lib/rdf/__tests__/ingest-aliases.test.ts" ;
+               kpred:description  "normalizeEntities folds an incoming entity onto an existing one when their labels embed closely enough, rewriting the subject IRI and nothing else. The incoming rdfs:label therefore survived the rewrite and landed on the canonical entity as a SECOND label — which computeDiff classifies as a `conflicts` entry, so the review UI asked a human to pick a winner and set the loser to rejected. src/lib/rdf/ingest-aliases.ts converts those doomed labels into pending skos:altLabel instead, keeping the statement id so provenance, source and excerpt travel with the name." ;
+               kpred:evidence     "IT IS THE F126 BUG ONE PATH EARLIER, AND THE EXPENSIVE ONE. Merging is rare and deliberate; ingest is constant. Every fold already computes a name pair and a cosine and, before this, kept them only long enough to console.info a line — the NormalizeResult.remaps field was documented \'for logging\'. The thesaurus F104 wants was being derived and discarded several times a day, while kb:node-synonyms planned to have users type the same vocabulary by hand." ;
+               kpred:decided      "PENDING, NOT CONFIRMED — the one place this differs from kb:merge-synonyms. There a human had just settled the merge, so reviewing the alias it implies would ask the same question twice. Here nobody agreed to anything: an embedding decided two labels were close. kb:node-synonyms is explicit that \'a vocabulary the user did not agree to is not user-managed\', so these enter the review queue carrying the cosine that proposed them as their confidence, and the node panel renders them dashed and flagged." ;
+               kpred:known-issue  "IT ONLY LEARNS FROM FOLDS THAT ACTUALLY HAPPEN. A source using a name too distant to clear SUBJECT_MATCH_THRESHOLD creates a separate entity instead, and no synonym is proposed — the duplicate is left for the merge path, where F126 catches it. So this widens the mouth of the funnel, it does not remove the floor." ;
+               kpred:fixed        "normalizeEntities reported every remap with similarity 0 under a comment claiming it was \'filled below\'. Nothing filled it, so no consumer could tell a certain fold from a marginal one. Now an exact label match scores 1 and an embedding match carries its cosine." .
