@@ -89,6 +89,8 @@ const VOCAB_CHECKS: { predicate: string; scheme: string; label: string }[] = [
   { predicate: `${KPRED}altitude`, scheme: 'urn:kbase:type/AltitudeScheme', label: 'altitude' },
   { predicate: `${KPRED}task-state`, scheme: 'urn:kbase:type/TaskStateScheme', label: 'task state' },
   { predicate: 'urn:kbase:meta/status', scheme: 'urn:kbase:type/ReviewStatusScheme', label: 'review status' },
+  // 100 uses across static/*.ttl and nothing checked any of them until 2026-09-10.
+  { predicate: `${KPRED}priority`, scheme: 'urn:kbase:type/PriorityScheme', label: 'priority' },
 ];
 /** Predicates whose object must be an entity that exists somewhere in the corpus. */
 const REF_PREDS = ['depends-on', 'part-of', 'relates-to', 'blocks', 'blocked-by'].map((p) => KPRED + p);
@@ -210,6 +212,75 @@ for (const { q, file } of quads) {
   }
 }
 
+// ── value-hub: a standardized attribute VALUE must never become an entity.
+//
+// MATT, 2026-09-10, on finding a node called "high" in his own graph: "I didn't like the 'high',
+// it made little sense, until I realized it was a priority. We may need rules against a hub of an
+// object like that, it misinterprets a key concept of the graph, with instead a standardized
+// attribute value."
+//
+// WHY THIS IS NOT COSMETIC. Promoting an enum value to an entity hands it the degree of every
+// statement that uses it, so the layout and any centrality reading present it as one of the most
+// important concepts in the graph — when it is a value from a closed list. "high" is not something
+// the graph knows about; it is how the graph says how much something matters. A reader meets a
+// large well-connected node and reasonably concludes it is a key concept. It is a unit.
+//
+// THE RULE NEEDS NO NEW LIST, which is what makes it script tier. reckons-vocabulary.ttl already
+// declares the closed vocabularies as SKOS concept schemes with skos:notation equal to the literal
+// the code writes, and loadScheme() above already reads them for bad-vocab. So "is this subject a
+// standardized attribute value wearing an entity's clothes?" is a set-membership test against
+// notations the graph itself publishes.
+//
+// WHERE GROUPING BY A VALUE IS GENUINELY WANTED, THE ANSWER IS A SET. "Everything currently high
+// priority" is a reasonable thing to look at, and skos:Collection is the honest type for it —
+// grouping, nestable, overlapping, with its own attributes and explicit members. The set carries
+// the grouping; the literal stays a literal on each member. A collection declares what it is; a
+// value-hub pretends to be a concept.
+const schemeNotations = new Set<string>();
+for (const check of VOCAB_CHECKS) {
+  for (const n of loadScheme(vocabQuads, check.scheme).notations) schemeNotations.add(n.toLowerCase());
+}
+for (const n of lifecycle.notations) schemeNotations.add(n.toLowerCase());
+if (schemeNotations.size > 0) {
+  /*
+   * SCOPED TO THE CONCEPT NAMESPACE, and the first draft of this check was not — it reported 26
+   * findings and every one was wrong. Two kinds of legitimate IRI share local names with notations:
+   *
+   *   ktype:Decision and friends are CLASSES. A class named after a value is not a value-hub.
+   *   ktype:altitude, ktype:lifecycle, ktype:task-state ARE the SKOS concepts that DEFINE these
+   *   vocabularies — they must exist as IRIs, or there is no scheme to check against. Flagging the
+   *   definition of the rule as a violation of the rule is a special kind of wrong.
+   *
+   * The actual defect is a value promoted into the CONCEPT namespace, where domain knowledge lives.
+   * rdf:type objects are excluded for the same reason: naming a class is not asserting a value.
+   */
+  const inbound = new Map<string, number>();
+  for (const { q } of quads) {
+    if (q.object.termType !== 'NamedNode') continue;
+    if (q.predicate.value === RDF_TYPE) continue;
+    inbound.set(q.object.value, (inbound.get(q.object.value) ?? 0) + 1);
+  }
+  const seen = new Set<string>();
+  for (const { q, file } of quads) {
+    if (q.predicate.value === RDF_TYPE) continue;
+    for (const term of [q.subject, q.object]) {
+      if (term.termType !== 'NamedNode' || !term.value.startsWith(KB)) continue;
+      const local = term.value.slice(KB.length);
+      if (!schemeNotations.has(local.toLowerCase())) continue;
+      const key = `${file}::${term.value}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const degree = inbound.get(term.value) ?? 0;
+      add('error', 'value-hub', file, term.value,
+        `"${local}" is a value from a declared vocabulary and must not be a CONCEPT — ` +
+        `it appears as kb:${local}${degree > 1 ? ` with ${degree} inbound edge(s)` : ''}. ` +
+        `An attribute value promoted to a node takes the degree of every statement using it, so it ` +
+        `reads as a key concept when it is a unit. Keep it a literal on each subject; if the ` +
+        `grouping is wanted, model it as a skos:Collection, which declares what it is.`);
+    }
+  }
+}
+
 // ── conflicting-status: an entity in two lifecycle states at once is UNDEFINED.
 //
 // This check exists because the linter did not have it, and the gap shipped: an entity was
@@ -244,14 +315,14 @@ const lifecycled = new Set([...features, ...phases]);
 const statusesOf = new Map<string, Set<string>>();
 for (const { q, file } of quads) {
   if (q.predicate.value !== KPRED + 'has-status' || !lifecycled.has(q.subject.value)) continue;
-  const key = `${file} ${q.subject.value}`;
+  const key = JSON.stringify([file, q.subject.value]);
   const set = statusesOf.get(key) ?? new Set<string>();
   set.add(q.object.value);
   statusesOf.set(key, set);
 }
 for (const [key, values] of statusesOf) {
   if (values.size <= 1) continue;
-  const [file, subject] = key.split(' ');
+  const [file, subject] = JSON.parse(key) as [string, string];
   add('error', 'conflicting-status', file, subject,
     `has-status is asserted ${values.size} times IN THE SAME FILE with different values: ${[...values].map((v) => `"${v}"`).join(' and ')}. ` +
     `An entity in two lifecycle states is undefined — and every consumer silently takes the FIRST one it parses.`);
