@@ -62,6 +62,7 @@ WHEN UNCERTAIN OR STUCK, ASK — do not guess. Emit a QUESTION with kb_add_note 
 POLICY: never push to main (feature branch → PR → dev). Do NOT create docs/*.md — add entities to the TTL KBs. Surface findings/proposals as pending graph entries (kb_add_note), not chat.`;
 import { generatePageMarkdown, type GeneratePageParams } from './generate-page.js';
 import type { PageTemplate } from './page-markdown.js';
+import { loadLayerMap, renderLayered } from './layers.js';
 
 // ── Args ─────────────────────────────────────────────────────────────────────
 
@@ -430,11 +431,19 @@ function handleKbGetEntity(params: { entity: string; kb?: string }): object {
   const asSubject = capped.filter(t => t.subject === iri);
   const asObject  = capped.filter(t => t.object  === iri);
 
+  /*
+   * LAYERED (F194). Matt, 2026-09-09: "For MCP and tool use, lets get detailed responses for
+   * claims, questions, and provenance recorded."
+   *
+   * A flat list hands an agent `.has-file package.json` and `.principle The graph is the plan` as
+   * though they were the same kind of statement. They are not: one is what a person settled, the
+   * other is how a file got recorded. The layer map is read from the corpus on each call rather
+   * than cached, because a classification accepted from the review queue should take effect
+   * without restarting the server.
+   */
+  const layerMap = loadLayerMap(kb.allTriples(params.kb));
   const lines: string[] = [slug];
-  for (const t of asSubject) {
-    const p = t.predicate.split('/').pop() ?? t.predicate;
-    lines.push(`.${p} ${t.object}`);
-  }
+  lines.push(...renderLayered(asSubject, layerMap, { max: MAX }));
   if (asObject.length > 0) {
     lines.push('refs:');
     for (const t of asObject) {

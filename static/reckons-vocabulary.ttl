@@ -428,6 +428,12 @@ klayer:question a skos:Concept ;
     skos:note "A question carries what it BLOCKS. That is the difference between a to-do and a priority, and it is why this layer summarizes best over a SET rather than over a lone triple: a set declares an intent, and an absence is only well-formed relative to something you are trying to do." ;
     hnav:order 3 .
 
+kpred:assumption rdfs:label "extraction assumption" ;
+    kpred:layer         klayer:provenance ;
+    skos:definition     "Something the extraction had to DECIDE in order to produce a statement, which the source did not say outright. Resolving a pronoun, reading `the vendor` as a named company, dating an undated note from the document around it — each is a judgment the machine made and a reviewer would otherwise have to reconstruct." ;
+    skos:note           "Matt, 2026-09-09: MCP responses should carry `the provenance about the extraction process, assumptions, etc.` Nothing recorded assumptions before this. An extraction that silently resolves `they` to a specific person produces a confident triple whose weakest link is invisible — and F197 substantiation cannot weigh a claim whose reasoning was never written down." ;
+    skos:note           "IT IS PROVENANCE, NOT A CLAIM, and the survival test says why: an assumption is about how a statement CAME TO BE, and means nothing once separated from the extraction that made it. It therefore auto-confirms with the rest of the provenance layer — recording what the machine assumed is bookkeeping; the assumption being CORRECT is a property of the claim above it, which a person still settles." .
+
 kpred:layer rdfs:label "relation layer" ;
     skos:definition "Which layer of ktype:LayerScheme a PREDICATE belongs to. Declared on the predicate rather than the statement because that makes the boundary a fact a script can enforce instead of a convention that drifts — Matt, 2026-09-09: \"I think its a predicate difference personally.\"" ;
     skos:note "A per-statement override may follow the precedent of kpred:altitude, which fixes one fact where the predicate is usually right. It does not exist yet and should not be added until a real case needs it." .
