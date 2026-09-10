@@ -85,6 +85,18 @@
   let activeTab = $state<Tab>('incoming');
   /** F32: filter the incoming list to only partial "? question" facts. */
   let questionsOnly = $state(false);
+  /**
+   * Narrow the queue to one agent's proposals, from ?agent= (F195).
+   *
+   * Matt, 2026-09-09: "I want to reduce the force of users into the Reckons.AI review screen."
+   * A queue of a thousand undifferentiated rows is a chore nobody opens twice. A LINK to the
+   * twenty-two rows that need a decision is a task. This is the parameter that makes such a link
+   * possible, and kb_review_links on the MCP server is what mints them.
+   *
+   * Substring, not equality, because agents name themselves with their model attached —
+   * "offline:layer-classify (qwen3:32b)" — and a link should survive the model changing.
+   */
+  let agentFilter = $state('');
 
   // ── Graph view mode ───────────────────────────────────────────────────────
   type GraphMode = 'preview' | 'compare' | 'overlay';
@@ -139,13 +151,20 @@
   // picture, the queue is assembling a decision — so the queue keeps raw altitude and the
   // difference is stated rather than smoothed over. Revisit with the cascade validator in hand,
   // not by changing this line.
-  const incoming = $derived(
+  const byAltitude = $derived(
     reviewFloor === null
       ? allIncoming
       : allIncoming.filter((s) => ALTITUDE_RANK[altitudeOf(s)] >= ALTITUDE_RANK[reviewFloor]),
   );
+  const incoming = $derived(
+    agentFilter === ''
+      ? byAltitude
+      : byAltitude.filter((s) => (s.proposedBy ?? '').toLowerCase().includes(agentFilter.toLowerCase())),
+  );
+  /** Hidden BY THE AGENT FILTER, kept apart from the altitude count so the banner can say which. */
+  const hiddenByAgent = $derived(agentFilter === '' ? 0 : byAltitude.length - incoming.length);
   /** Said out loud rather than silently dropped — a hidden row must look hidden, not absent. */
-  const hiddenLogCount = $derived(allIncoming.length - incoming.length);
+  const hiddenLogCount = $derived(allIncoming.length - byAltitude.length);
   const pendingDeletions = $derived(pendingRemovalStatements());
   const pendingMerges = $derived(pendingMergeStatements());
 
@@ -1331,6 +1350,8 @@
       alignSelectedKbs = new Set(alignParam.split(',').filter(Boolean));
       activeTab = 'align';
     }
+    const agentParam = params.get('agent');
+    if (agentParam) { agentFilter = agentParam; activeTab = 'incoming'; }
     const tabParam = params.get('tab');
     if (tabParam && ['incoming', 'deletions', 'merges', 'align'].includes(tabParam)) {
       activeTab = tabParam as Tab;
@@ -1451,6 +1472,16 @@
               </div>
             {/if}
           </div>
+        {/if}
+        {#if agentFilter !== ''}
+          <!-- A FILTER ARRIVED FROM A LINK MUST LOOK LIKE ONE. Someone opening a shared review
+               link sees a short queue; without this they would reasonably conclude that is the
+               whole queue, and clear it as done. Says what is hidden and offers the way out. -->
+          <span class="agent-filter mono">
+            {agentFilter}
+            {#if hiddenByAgent > 0}<span class="agent-filter-count">+{hiddenByAgent} hidden</span>{/if}
+            <button type="button" onclick={() => { agentFilter = ''; const u = new URL(window.location.href); u.searchParams.delete('agent'); history.replaceState({}, '', u); }} title="Show every agent's proposals">clear</button>
+          </span>
         {/if}
         {#if hiddenLogCount > 0}
           <!-- Inline, not on a line of its own: it is a footnote to the detail control beside it,
@@ -2924,6 +2955,19 @@
     opacity: 0.6;
     font-size: 0.75rem;
   }
+  /* The agent filter reads as an active constraint, not as decoration — it is the difference
+     between "this is the queue" and "this is a slice of the queue you were sent". */
+  .agent-filter {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-size: 0.72rem; padding: 0.1rem 0.45rem;
+    border: 1px solid var(--accent); border-radius: 999px; color: var(--accent);
+  }
+  .agent-filter-count { color: var(--muted); }
+  .agent-filter button {
+    background: none; border: none; padding: 0; cursor: pointer;
+    color: var(--muted); font: inherit; text-decoration: underline;
+  }
+  .agent-filter button:hover { color: var(--accent); }
 
   .cascade-answer {
     display: flex;

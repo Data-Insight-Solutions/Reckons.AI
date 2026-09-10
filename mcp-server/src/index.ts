@@ -63,6 +63,7 @@ POLICY: never push to main (feature branch → PR → dev). Do NOT create docs/*
 import { generatePageMarkdown, type GeneratePageParams } from './generate-page.js';
 import type { PageTemplate } from './page-markdown.js';
 import { loadLayerMap, renderLayered } from './layers.js';
+import { readPendingRows, renderReviewLinks, reviewGroups } from './review-links.js';
 
 // ── Args ─────────────────────────────────────────────────────────────────────
 
@@ -267,6 +268,17 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: { ...KB_PARAM }
+    }
+  },
+  {
+    name: 'kb_review_links',
+    description: 'Turn the pending queue into reviewable TASKS: groups proposals by the agent that made them and returns a deep link opening the review screen filtered to each group, highest consequence first. "1,047 pending" is not a task anybody starts; "22 provenance verdicts, here is the URL" is finishable in a sitting.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        base: { type: 'string', description: 'App URL the links should point at — http://localhost:5173 in dev, https://reckons.ai in production. Defaults to localhost:5173.' },
+        agent: { type: 'string', description: 'Only groups whose agent contains this substring.' },
+      }
     }
   },
   {
@@ -810,18 +822,41 @@ function handleKbCheckPlan(params: { work: string; commits?: number; kb?: string
   return { content: [{ type: 'text', text: sections.join('\n') }] };
 }
 
-function handleKbPending(params: { kb?: string }): object {
-  const folders: string[] = [];
+/**
+ * kb_review_links — the queue as a set of finishable jobs (F195).
+ *
+ * Reads the same workspace queue kb_pending reads, and answers the different question: not "what
+ * is waiting" but "what should a person open first, and where is the link". See review-links.ts
+ * for why grouping by agent and ordering by consequence is the whole of it.
+ */
+function handleKbReviewLinks(params: { base?: string; agent?: string }): object {
+  const base = params.base ?? 'http://localhost:5173';
+  const files = pendingQueueFiles();
+  const rows = files.flatMap((f) => readPendingRows(f));
+  const groups = reviewGroups(rows, base)
+    .filter((g) => !params.agent || g.agent.toLowerCase().includes(params.agent.toLowerCase()));
 
+  if (files.length === 0) {
+    return { content: [{ type: 'text', text: 'No pending queue file found in this workspace, which is NOT the same as an empty queue.' }] };
+  }
+  return { content: [{ type: 'text', text: renderReviewLinks(groups, rows.length) }] };
+}
+
+/**
+ * Every pending queue file this workspace exposes.
+ *
+ * Extracted so kb_pending and kb_review_links cannot disagree about where the queue IS — two
+ * copies of a path-resolution rule is how one tool reports an empty queue while the other reports
+ * a thousand rows, and neither is obviously wrong.
+ */
+function pendingQueueFiles(kbFilter?: string): string[] {
+  const folders: string[] = [];
   if (kb.isLegacy()) {
-    // Legacy: check sidecar file
     const legacyPath = kbPath.replace(/\.ttl$/, '.pending.jsonl');
     if (existsSync(legacyPath)) folders.push(legacyPath);
   } else {
-    // Workspace: scan kbs/*/pending.jsonl
-    const kbList = kb.listKbs();
-    for (const k of kbList) {
-      if (params.kb && !k.name.toLowerCase().includes(params.kb.toLowerCase()) && k.folderName !== params.kb) continue;
+    for (const k of kb.listKbs()) {
+      if (kbFilter && !k.name.toLowerCase().includes(kbFilter.toLowerCase()) && k.folderName !== kbFilter) continue;
       const kbFolder = kb.getKbFolderPath(k.folderName);
       if (kbFolder) {
         const pendingPath = join(kbFolder, 'pending.jsonl');
@@ -829,6 +864,11 @@ function handleKbPending(params: { kb?: string }): object {
       }
     }
   }
+  return folders;
+}
+
+function handleKbPending(params: { kb?: string }): object {
+  const folders = pendingQueueFiles(params.kb);
 
   type PendingLine = { subject: string; predicate: string; object: string; note?: string; type?: string; priority?: string; agent?: string; addedAt?: string };
   const entries: Array<PendingLine & { file: string }> = [];
@@ -1471,6 +1511,7 @@ rl.on('line', (line) => {
           case 'kb_git_status':  respond(id ?? null, handleKbGitStatus(toolArgs as { commits?: number; diff?: boolean })); break;
           case 'kb_check_plan':  respond(id ?? null, handleKbCheckPlan(toolArgs as { work: string; commits?: number; kb?: string })); break;
           case 'kb_pending':     respond(id ?? null, handleKbPending(toolArgs as { kb?: string })); break;
+          case 'kb_review_links': respond(id ?? null, handleKbReviewLinks(toolArgs as { base?: string; agent?: string })); break;
           case 'kb_git_diff_triples': respond(id ?? null, handleKbGitDiffTriples(toolArgs as { ref?: string; kb?: string })); break;
           case 'kb_alignment_score': respond(id ?? null, handleKbAlignmentScore(toolArgs as { ref?: string; work?: string; kb?: string })); break;
           case 'kb_compress': respond(id ?? null, handleKbCompress(toolArgs as { query: string; budget?: number; hops?: number; kb?: string })); break;
