@@ -180,6 +180,20 @@ export type Statement = {
   supersedes?: string;
   /** Human-readable rendering produced at extraction time */
   gloss?: string;
+  /**
+   * An altitude set BY HAND on this one fact, overriding what the classifier reads from its
+   * predicate (Matt, 2026-08-28: "an easy way to adjust the depth/altitude of the new fact").
+   *
+   * Two levels of correction exist and they answer different questions. `kpred:altitude` on a
+   * PREDICATE fixes the class — every fact using that word, forever, which is the high-leverage
+   * repair. This field fixes THIS FACT, for when the predicate is usually right and this one use
+   * of it is not. Prefer the predicate-level fix where it applies; a graph full of per-fact
+   * overrides is a predicate nobody classified.
+   *
+   * The union is duplicated here rather than imported because `fact-altitude.ts` imports Statement
+   * from this module; `Altitude` there is derived FROM this field, so the two cannot drift.
+   */
+  altitude?: 'decision' | 'judgment' | 'evidence' | 'record' | 'log';
   /** Verbatim source sentence/phrase the triple was derived from */
   excerpt?: string;
   /**
@@ -307,6 +321,7 @@ export type ExtractionStageName =
   | 'validate'
   | 'ground'
   | 'normalize'
+  | 'type'
   | 'archive'
   | 'diff'
   | 'persist';
@@ -417,12 +432,15 @@ export const STMT_PREFIX = 'urn:kbase:stmt/';
  * a finding is still a decision you rule on, just not a thing the graph pretends to know about. */
 export const TEST_TELEMETRY_PREFIX = 'urn:reckons:test/';
 
-/** Predicates whose object is a presentation image (2D icon / preview photo).
+/** Predicates whose object is a presentation asset (2D icon / photo / video).
  * They're consumed directly by the icon/preview maps; as edges they'd render
- * the raw data-URI or URL as a junk literal node, so they're metadata here. */
+ * the raw data-URI or URL as a junk literal node, so they're metadata here.
+ * GIF and GLB references already live under urn:kbase:meta/* and are covered by
+ * the namespace check in isMetaPredicate(). */
 export const PRESENTATION_IMAGE_PREDICATES = new Set([
   'urn:kbase:predicate/icon2d',
   'urn:kbase:predicate/photo',
+  'urn:kbase:predicate/video',
   // Provenance ABOUT a photo — who made it, where to check the licence. Belongs in the detail
   // panel beside the image, never as an edge to a literal node holding a credit line or a URL.
   'urn:kbase:predicate/photo-credit',

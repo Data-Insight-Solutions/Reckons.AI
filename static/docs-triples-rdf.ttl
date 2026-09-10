@@ -14,6 +14,7 @@
 @prefix guide:  <urn:reckons:guide/> .
 @prefix feat:   <urn:reckons:feature/> .
 @prefix ktype:  <urn:kbase:type/> .
+@prefix hnav:   <urn:reckons:nav/> .
 @prefix kpred:  <urn:kbase:predicate/> .
 
 ## KB Identity
@@ -40,8 +41,10 @@ nav:BackToHub
 
 arch:TripleArchitecture
     rdf:type            ktype:Concept ;
+    kpred:render-as     "accordion" ;
     rdf:type            skos:Concept ;
     rdfs:label          "The Semantic Triple" ;
+    hnav:order          20 ;
     skos:definition     "The fundamental unit of knowledge in RDF: a three-part statement -- subject, predicate, object. Any fact expressible in human language can be expressed as a triple. Triples connect to form a graph, and graphs reveal relationships that documents hide." ;
     skos:related        guide:WhatIsReckonsAI .
 
@@ -73,7 +76,35 @@ arch:KnowledgeGraph
     rdfs:label          "Knowledge Graph" ;
     skos:definition     "A graph-structured database where entities are nodes and relationships are edges. Multiple triples form a graph. The same subject can appear in many triples, creating a web of connected knowledge." ;
     skos:broader        arch:TripleArchitecture ;
-    skos:note           "Reckons.AI renders your knowledge graph as an interactive 3D force-directed graph." .
+    skos:note           "Reckons.AI renders your knowledge graph as an interactive 3D force-directed graph." ;
+    kpred:scene         """
+  camera.position.set(0, 0, 6);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  const key = new THREE.DirectionalLight(0xffffff, 1.1);
+  key.position.set(4, 5, 6); scene.add(key);
+  const nodes = [];
+  const N = 9;
+  for (let i = 0; i < N; i++) {
+    const a = (i / N) * Math.PI * 2;
+    const m = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.34, 2),
+      new THREE.MeshStandardMaterial({ color: 0xff7a1a, roughness: 0.35, metalness: 0.1 })
+    );
+    m.position.set(Math.cos(a) * 2.6, Math.sin(a) * 1.5, Math.sin(a * 2) * 0.6);
+    scene.add(m); nodes.push(m);
+  }
+  const edge = new THREE.LineBasicMaterial({ color: 0x8899aa, transparent: true, opacity: 0.55 });
+  for (let i = 0; i < N; i++) for (const j of [i + 1, i + 3]) {
+    const b = nodes[j % N];
+    const g = new THREE.BufferGeometry().setFromPoints([nodes[i].position, b.position]);
+    scene.add(new THREE.Line(g, edge));
+  }
+""" ;
+    kpred:scene-width   1200 ;
+    kpred:scene-height  480 ;
+    kpred:scene-alt     "Nine spheres arranged in a ring, connected by thin lines to the neighbours one and three places along — entities joined by the relations asserted between them." ;
+    kpred:scene-caption "A graph is nodes and the named edges between them. Rendered once at build time, so this page still ships no JavaScript." ;
+    kpred:scene-live    "graph-ring" .
 
 arch:Provenance
     rdf:type            ktype:Concept ;

@@ -43,6 +43,12 @@ export interface ViewAdjust {
    * 'timeline' and 'hierarchy', so Shelly could not request a timeline layout AT ALL —
    * the single most obvious thing to offer someone looking at dated facts. A view-control
    * API that cannot express the view is not an API.
+      *
+   * THE SAME BUG HAD A SECOND HALF, FOUND 2026-09-04. Widening the TYPE was not enough: the
+   * adjust_view vocabulary in the PROMPT (turtle-chat.ts) still listed only force/focus/source/
+   * type/hub, so timeline, hierarchy and order were requestable by the type system and unknown to
+   * the model that had to name them. A capability is only real when every layer that mentions it
+   * agrees — fixed alongside adding 'map'.
    */
   layout?: GraphLayout;
   /** Filter chips to activate (replaces current set) */

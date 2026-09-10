@@ -57,6 +57,9 @@ const CHAT_MAX_TOKENS = parseInt(getArg('--chat-max-tokens', '2048'), 10);
 // Extraction needs headroom for the reasoning AND the triples that follow it. qwen3.6 spent 7805
 // chars thinking before emitting anything, which alone exceeds the old 2048 budget.
 const INGEST_MAX_TOKENS = parseInt(getArg('--ingest-max-tokens', '8192'), 10);
+
+// 'auto' | 'compact' (few-shot) | 'full' (the 11-rule prompt). See ollama-extract.ts.
+const PROMPT_VARIANT = getArg('--prompt-variant', 'auto') as 'auto' | 'compact' | 'full';
 // F136: put the existing graph's predicate vocabulary into the extraction prompt.
 const GROUNDED = args.includes('--ground');
 
@@ -271,7 +274,14 @@ async function benchIngestStructured(model: string): Promise<ExtractedTriple[]> 
     const triples = await extractWithOllama(sourceText, 'Common Octopus — Wikipedia', {
       model,
       baseUrl: OLLAMA_URL,
-      maxTokens: 2048
+      // Was hardcoded to 2048, which silently ignored --ingest-max-tokens on the very path the
+      // app actually uses. A reasoning model spends its budget thinking before it answers, so a
+      // fixed small budget scored it at zero for running out of room rather than for being wrong.
+      maxTokens: INGEST_MAX_TOKENS,
+      // 'auto' picks few-shot only for models <=4B (isSmallOllamaModel). Forcing the variant is
+      // how you find out whether a large model was losing to a 3B one on the PROMPT rather than
+      // on capability — which is a different fix from swapping the model.
+      promptMode: PROMPT_VARIANT
     });
     console.log(`  Ingest: parsed ${triples.length} triples (structured)`);
     return triples;

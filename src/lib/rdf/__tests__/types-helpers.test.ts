@@ -194,9 +194,10 @@ describe('isMetaPredicate', () => {
     expect(isMetaPredicate('http://www.w3.org/ns/prov#endedAtTime')).toBe(true);
   });
 
-  it('hides presentation image predicates (icon2d / photo) so their data-URI/URL object never becomes a node', () => {
+  it('hides presentation asset predicates so their data-URI/URL object never becomes a node', () => {
     expect(isMetaPredicate('urn:kbase:predicate/icon2d')).toBe(true);
     expect(isMetaPredicate('urn:kbase:predicate/photo')).toBe(true);
+    expect(isMetaPredicate('urn:kbase:predicate/video')).toBe(true);
   });
 });
 

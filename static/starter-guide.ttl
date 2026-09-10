@@ -65,6 +65,7 @@ guide:ReckonsAI
 
 creator:DataInsightSolutions
     rdf:type            ktype:Organization ;
+    skos:broader        guide:WhoMakesThis ;
     rdfs:label          "Data Insight Solutions LLC" ;
     skos:definition     "The company behind Reckons.AI. A software consultancy focused on knowledge management, data engineering, and AI-augmented tooling." ;
     kpred:operates      guide:ReckonsAI ;
@@ -72,6 +73,7 @@ creator:DataInsightSolutions
 
 creator:MatthewRoe
     rdf:type            ktype:Person ;
+    skos:broader        guide:WhoMakesThis ;
     rdfs:label          "Matthew Roe" ;
     skos:definition     "Owner-operator of Data Insight Solutions LLC and creator of Reckons.AI. Designed the local-first architecture, the human-in-the-loop review workflow, and the graph Leap cross-referencing system." ;
     kpred:role          "Founder & Developer" ;
@@ -81,8 +83,10 @@ creator:MatthewRoe
 
 guide:WhatIsReckonsAI
     rdf:type            ktype:Concept ;
+    kpred:render-as     "gallery" ;
     rdf:type            skos:Concept ;
     rdfs:label          "What Is Reckons.AI" ;
+    hnav:order          10 ;
     skos:definition     "Reckons.AI is a personal knowledge graph that runs entirely in your browser. No server, no account, no cloud dependency. Your data stays on your device in IndexedDB, and you control every piece of knowledge that enters your graph through a human review process." ;
     hnav:layer          "2"^^xsd:integer ;
     skos:related        arch:TripleArchitecture ;
@@ -121,7 +125,7 @@ guide:HumanInTheLoop
 
 
 ## =============================================================================
-## KB LEAP NODES — Gateways to detailed sub-graphs
+## Kb leap nodes — Gateways to detailed sub-graphs
 ## =============================================================================
 ## Each leap node appears with an amber ring in the graph view. Click the
 ## arrow button to jump -- the sub-graph auto-imports as a new KB on first use.
@@ -134,7 +138,7 @@ guide:HumanInTheLoop
 leap:TriplesAndRDF
     rdf:type            ktype:KnowledgeBase ;
     rdfs:label          "LEAP: Triples & RDF Deep Dive" ;
-    skos:definition     "Click to explore the semantic triple architecture, Turtle syntax, RDF standards (RDFS, SKOS, SPARQL, JSON-LD, PROV-O), and knowledge graph fundamentals." ;
+    skos:definition     "The semantic triple, Turtle syntax, and the RDF standards this product is built on — RDFS, SKOS, SPARQL, JSON-LD and PROV-O." ;
     skos:broader        guide:WhatIsReckonsAI ;
     hnav:order          "1"^^xsd:integer ;
     hnav:layer          "1"^^xsd:integer ;
@@ -145,7 +149,7 @@ leap:TriplesAndRDF
 leap:LanguageModels
     rdf:type            ktype:KnowledgeBase ;
     rdfs:label          "LEAP: Language Models" ;
-    skos:definition     "Click to learn what LLMs actually are, why they hallucinate, how RAG works, and why your curated graph makes AI dramatically more accurate." ;
+    skos:definition     "What language models actually are, why they hallucinate, how retrieval-augmented generation works, and how a reviewed graph compares with it." ;
     skos:broader        guide:WhatIsReckonsAI ;
     hnav:order          "2"^^xsd:integer ;
     hnav:layer          "1"^^xsd:integer ;
@@ -157,7 +161,7 @@ leap:LanguageModels
 leap:UseCases
     rdf:type            ktype:KnowledgeBase ;
     rdfs:label          "LEAP: Use Cases" ;
-    skos:definition     "Click to explore real-world scenarios: insurance claims, legal disputes, employment rights, medical records, corporate pushback, and research." ;
+    skos:definition     "Worked scenarios: insurance claims, legal disputes, employment rights, medical records, corporate pushback, research, and software engineering." ;
     skos:broader        guide:WhatIsReckonsAI ;
     hnav:order          "3"^^xsd:integer ;
     hnav:layer          "1"^^xsd:integer ;
@@ -169,7 +173,7 @@ leap:UseCases
 leap:Features
     rdf:type            ktype:KnowledgeBase ;
     rdfs:label          "LEAP: Features" ;
-    skos:definition     "Click for detailed coverage of every feature: Ingest, Review, Trust, Graph, Shelly, Reckonings, Compare, Multi-Graph, graph Leap, Content Safety, Predicate Manager, Whisper STT, Kokoro TTS, and more." ;
+    skos:definition     "detailed coverage of every feature: Ingest, Review, Trust, Graph, Shelly, Reckonings, Compare, Multi-Graph, graph Leap, Content Safety, Predicate Manager, Whisper STT, Kokoro TTS, and more." ;
     skos:broader        guide:WhatIsReckonsAI ;
     hnav:order          "4"^^xsd:integer ;
     hnav:layer          "1"^^xsd:integer ;
@@ -181,7 +185,7 @@ leap:Features
 leap:IntegrationsTech
     rdf:type            ktype:KnowledgeBase ;
     rdfs:label          "LEAP: Integrations & Tech" ;
-    skos:definition     "Click for integrations (Calendar, MCP, Extension, Whisper, Kokoro, OCR, Firecrawl, Meshy 3D) and the technology stack (SvelteKit 2, Threlte 8, N3.js, @huggingface/transformers, Dexie)." ;
+    skos:definition     "integrations (Calendar, MCP, Extension, Whisper, Kokoro, OCR, Firecrawl, Meshy 3D) and the technology stack (SvelteKit 2, Threlte 8, N3.js, @huggingface/transformers, Dexie)." ;
     skos:broader        guide:WhatIsReckonsAI ;
     hnav:order          "5"^^xsd:integer ;
     hnav:layer          "1"^^xsd:integer ;
@@ -193,7 +197,7 @@ leap:IntegrationsTech
 leap:TipsSecurity
     rdf:type            ktype:KnowledgeBase ;
     rdfs:label          "LEAP: Tips & Security" ;
-    skos:definition     "Click for practical tips (start small, review carefully, export often, use Ollama offline) and the security architecture (no server, API key safety, content safety, CSP, offline-capable)." ;
+    skos:definition     "practical tips (start small, review carefully, export often, use Ollama offline) and the security architecture (no server, API key safety, content safety, CSP, offline-capable)." ;
     skos:broader        guide:WhatIsReckonsAI ;
     hnav:order          "6"^^xsd:integer ;
     hnav:layer          "1"^^xsd:integer ;
@@ -205,7 +209,7 @@ leap:TipsSecurity
 leap:TimelineEcosystem
     rdf:type            ktype:KnowledgeBase ;
     rdfs:label          "LEAP: Timeline & RDF Ecosystem" ;
-    skos:definition     "Click for the RDF timeline from 1999 to 2026, key organizations (W3C, AI Alliance, Schema.org), people (Tim Berners-Lee), and the Reckons.AI launch." ;
+    skos:definition     "the RDF timeline from 1999 to 2026, key organizations (W3C, AI Alliance, Schema.org), people (Tim Berners-Lee), and the Reckons.AI launch." ;
     skos:broader        guide:WhatIsReckonsAI ;
     hnav:order          "7"^^xsd:integer ;
     hnav:layer          "1"^^xsd:integer ;
@@ -217,7 +221,7 @@ leap:TimelineEcosystem
 leap:Architecture
     rdf:type            ktype:KnowledgeBase ;
     rdfs:label          "LEAP: Architecture & Design" ;
-    skos:definition     "Click for architecture decisions, TTL-first documentation strategy, standards alignment (PROV-O, SKOS), deployment patterns, style conventions, dependency health, and the markdown migration tracker." ;
+    skos:definition     "architecture decisions, TTL-first documentation strategy, standards alignment (PROV-O, SKOS), deployment patterns, style conventions, dependency health, and the markdown migration tracker." ;
     skos:broader        guide:WhatIsReckonsAI ;
     hnav:order          "8"^^xsd:integer ;
     hnav:layer          "1"^^xsd:integer ;
@@ -229,7 +233,7 @@ leap:Architecture
 leap:Testing
     rdf:type            ktype:KnowledgeBase ;
     rdfs:label          "LEAP: Test Suite & Visual Regression" ;
-    skos:definition     "Click for test documentation as interactive stories. Walk through user story E2E tests step-by-step with screenshots attached to each node. Covers Dev Sprint Planning, User Docs Import, Cross-Graph Alignment, and page-level visual regression." ;
+    skos:definition     "test documentation as interactive stories. Walk through user story E2E tests step-by-step with screenshots attached to each node. Covers Dev Sprint Planning, User Docs Import, Cross-Graph Alignment, and page-level visual regression." ;
     skos:broader        guide:WhatIsReckonsAI ;
     hnav:order          "9"^^xsd:integer ;
     hnav:layer          "1"^^xsd:integer ;
@@ -276,7 +280,7 @@ llm:WhatLLMsAre
 llm:KBGroundedAccuracy
     rdf:type            ktype:Concept ;
     rdfs:label          "Graph-Grounded Accuracy" ;
-    skos:definition     "When an LLM retrieves YOUR confirmed facts instead of guessing, accuracy skyrockets. Your curated graph is the best retrieval source possible." ;
+    skos:definition     "When an LLM retrieves your confirmed facts instead of guessing, accuracy skyrockets. Your curated graph is the best retrieval source possible." ;
     skos:broader        llm:WhatLLMsAre .
 
 use:PersonalEmpowerment
@@ -383,7 +387,7 @@ guide:Step3
 guide:Step4
     rdf:type            ktype:Document ;
     rdfs:label          "Step 4: Explore the Graph" ;
-    skos:definition     "Go to view (the home tab) to see your knowledge in 3D. Click nodes to select them, use the RadialMenu for actions, and use filters to focus. The graph tab manages your graphs: create, switch, rename, currents, and publishing." ;
+    skos:definition     "Go to view (the home tab) to see your knowledge in 3D. Click a node to select it, then choose an action from the ring of buttons that appears around it, and use the filters to narrow what is shown. The graph tab manages your graphs: create, switch, rename, currents, and publishing." ;
     skos:broader        guide:GettingStarted ;
     skos:related        feat:Graph3D .
 
@@ -422,6 +426,7 @@ guide:QuickStartExample
 
 story:ReckonsPhilosophy
     rdf:type            story:Story ;
+    skos:broader        guide:WhoMakesThis ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "The Reckons.AI Story" ;
@@ -444,7 +449,7 @@ story:TriplesPower
     story:partOf        story:ReckonsPhilosophy ;
     story:order         "2" ;
     story:title         "Your Personal Context" ;
-    story:content       "Every fact you confirm becomes part of YOUR knowledge graph. 'Policy covers water-damage'. 'Contract expires July 1st'. 'Landlord agreed to repairs on March 5th'. This is your personal context -- structured, searchable, and portable. When new information arrives, it is compared against what you already know." ;
+    story:content       "Every fact you confirm becomes part of your knowledge graph. 'Policy covers water-damage'. 'Contract expires July 1st'. 'Landlord agreed to repairs on March 5th'. This is your personal context -- structured, searchable, and portable. When new information arrives, it is compared against what you already know." ;
     story:highlight     arch:SubjectPredicateObject ;
     story:prompt        "Give examples of personal facts as triples and how they connect to reveal insights." ;
     story:question      "What facts from your own life would be most useful to have structured?" .
@@ -463,7 +468,7 @@ story:WhatLLMsReally
     story:partOf        story:ReckonsPhilosophy ;
     story:order         "4" ;
     story:title         "AI Tools, Your Review" ;
-    story:content       "Language models extract facts from documents, but they can hallucinate. That is why every extracted triple goes through YOUR review. You confirm, reject, or refine. The model does the heavy lifting; you keep it honest." ;
+    story:content       "Language models extract facts from documents, but they can hallucinate. That is why every extracted triple goes through your review. You confirm, reject, or refine. The model does the heavy lifting; you keep it honest." ;
     story:highlight     llm:WhatLLMsAre ;
     story:prompt        "Explain what LLMs can and cannot do, and why human review matters." ;
     story:question      "Does knowing this change how you think about AI tools?" .
@@ -473,7 +478,7 @@ story:KBAccuracy
     story:partOf        story:ReckonsPhilosophy ;
     story:order         "5" ;
     story:title         "Your graph Makes AI Accurate" ;
-    story:content       "When an LLM retrieves from YOUR reviewed knowledge graph, its answers become dramatically more accurate. Instead of guessing from training data, it cites your confirmed facts. Your curated graph is the best possible source." ;
+    story:content       "When an LLM retrieves from your reviewed knowledge graph, its answers become dramatically more accurate. Instead of guessing from training data, it cites your confirmed facts. Your curated graph is the best possible source." ;
     story:highlight     llm:KBGroundedAccuracy ;
     story:prompt        "Explain retrieval-augmented generation and why a curated personal graph outperforms generic data." .
 
@@ -517,3 +522,16 @@ shelly:persona
     shelly:personality      "knowledgeable, empowering, direct" ;
     shelly:responseStyle    "conversational" ;
     shelly:systemPrompt     "You are helping someone learn Reckons.AI. This is the documentation HUB -- a compact overview. Nodes labeled 'LEAP:' link to deeper sub-graphs (separate .ttl files). Emphasize practical uses, individual empowerment, and the accuracy advantage of graph-grounded LLM responses. Be honest about what LLMs can and cannot do. Encourage the user to build their own knowledge and never blindly trust any model output." .
+
+## =============================================================================
+## Who makes this. Three parentless stubs of 24-31 words each were publishing as
+## their own pages because nothing could fold them; grouped 2026-09-08.
+## =============================================================================
+
+guide:WhoMakesThis
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Who makes Reckons.AI" ;
+    hnav:order          19 ;
+    skos:broader        guide:WhatIsReckonsAI ;
+    skos:definition     "Reckons.AI is built by one person at a small consultancy, which is worth knowing before you decide how much to depend on it. It is open source and its data is plain text you can take with you, so the answer to what happens if they stop is that you keep the graph and the format is a published standard." .

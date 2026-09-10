@@ -18,7 +18,7 @@ KBS="$WORKSPACE/kbs"
 
 echo "Setting up Reckons workspace..."
 
-mkdir -p "$KBS"/{production,roadmap,features,docs,quickstart,codebase,architecture}
+mkdir -p "$KBS"/{production,roadmap,features,docs,quickstart,codebase,architecture,vocabulary,generation}
 
 # Clean up legacy meta.json files (no longer needed — discovery uses {folder}.ttl)
 find "$KBS" -name meta.json -delete 2>/dev/null || true
@@ -33,6 +33,18 @@ ln -sf ../../../static/docs-features.ttl      "$KBS/features/features.ttl"
 ln -sf ../../../static/starter-quickstart.ttl "$KBS/quickstart/quickstart.ttl"
 ln -sf ../../../static/reckons-codebase.ttl   "$KBS/codebase/codebase.ttl"
 ln -sf ../../../static/docs-architecture.ttl  "$KBS/architecture/architecture.ttl"
+# The controlled vocabularies (SKOS + SHACL). Linked so an agent can ASK what a valid altitude or
+# task state is, rather than inferring it from examples — which is the whole reason for defining
+# them in the graph instead of in TypeScript.
+ln -sf ../../../static/reckons-vocabulary.ttl "$KBS/vocabulary/vocabulary.ttl"
+# The local-generation catalogue, so an agent can ask what is available and what its licence
+# permits rather than guessing from a model name.
+ln -sf ../../../static/reckons-generation-tools.ttl "$KBS/generation/generation.ttl"
+# The offline jobs, as entities (F87: a task is a triple). Linked so an agent can ask what runs,
+# at which tier, and whether it is enabled — instead of reading scripts/offline/jobs.json, which is
+# the same facts in a format nothing else in the system can query.
+mkdir -p "$KBS/jobs"
+ln -sf ../../../static/reckons-jobs.ttl "$KBS/jobs/jobs.ttl"
 
 # Docs KB: merge all sub-graphs into one file, then symlink
 cat static/starter-guide.ttl \
@@ -45,7 +57,7 @@ cat static/starter-guide.ttl \
     > static/docs-all.ttl
 ln -sf ../../../static/docs-all.ttl "$KBS/docs/docs.ttl"
 
-echo "Workspace ready: $WORKSPACE/ (7 KBs, symlinked to static/*.ttl)"
+echo "Workspace ready: $WORKSPACE/ (8 KBs, symlinked to static/*.ttl)"
 
 # ── mcp-workspace: the graphs Claude Code's `reckons` MCP server reads ─────────
 #
@@ -107,6 +119,9 @@ declare -A MCP_RENAME=(
   [docs-tips-security.ttl]=tips-security
   [docs-triples-rdf.ttl]=triples-rdf
   [docs-use-cases.ttl]=use-cases
+  # Added on dev after this branch was cut. The loop below would call it `docs-user-paths`;
+  # dev linked it as `user-paths` and saved kb= arguments already use that.
+  [docs-user-paths.ttl]=user-paths
 )
 
 linked=0

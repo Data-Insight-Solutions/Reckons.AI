@@ -80,7 +80,9 @@ test('ingest navigation link works from nav', async ({ page }) => {
   // NavBar label for the ingest route is "add" (terminology sweep renamed
   // ingest -> add); the underlying route is still /ingest.
   const link = page.locator('nav').getByRole('link', { name: /^add$/i });
-  await link.click();
-  expect(page.url()).toContain('/ingest');
+  await Promise.all([
+    page.waitForURL((url) => url.pathname === '/ingest'),
+    link.click(),
+  ]);
   await expect(page.locator('h1, h2').first()).toBeVisible({ timeout: 8_000 });
 });

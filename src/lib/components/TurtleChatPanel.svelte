@@ -6,7 +6,7 @@
    *  • "learn" — guided tutorial on KB concepts and workflow
    *  • "chat"         — free-form Claude conversation that can propose KB changes
    */
-  import { onMount, tick } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { confirmedStatements, statements, sources, addStatements, addSource, updateStatement, setStatus } from '$lib/stores/kb.svelte';
   import { typeMap } from '$lib/stores/entity-types.svelte';
@@ -20,11 +20,16 @@
   import { v4 as uuid } from 'uuid';
   import { applyShellyViewAdjust, activeStoryId, stopStory, storyAutoPlayRequested, clearStoryAutoPlay } from '$lib/stores/shelly-bridge.svelte';
   import { extractStories, type Story, type StoryStep } from '$lib/rdf/story';
+  import type { GraphLayout } from '$lib/rdf/view-suggestions';
+
+  /** Layouts the renderer accepts — the guard for an authored story:layout. */
+  const KNOWN_LAYOUTS: GraphLayout[] = ['force', 'focus', 'source', 'type', 'hub', 'timeline', 'order', 'hierarchy', 'map'];
+
   import { wasmStatus, wasmPct, wasmStatusText } from '$lib/stores/wasm-status.svelte';
   import { turtleSettings, updateTurtleSettings } from '$lib/stores/turtle-settings.svelte';
   import AdaptivePanel from './AdaptivePanel.svelte';
-  import ShellyVoice from './ShellyVoice.svelte';
   import { Tabs } from 'bits-ui';
+  import type { HumeAuthPlan } from '$lib/integrations/hume/token';
 
   let { onclose = () => {}, initialMessage = null, exploreMode = false, storyId = null } = $props<{
     onclose?: () => void;
@@ -558,13 +563,30 @@
 
     storyMessages = [...storyMessages, { role: 'shelly', content: msg, isStep: true, stepIdx: idx }];
 
-    // Highlight entities — use focus layout when spotlighting a specific node
+    /*
+     * A STEP'S OWN LAYOUT WINS. story:layout is what the author chose to answer THIS step's
+     * question — a taxonomy step wants the tree, a life-cycle step wants the timeline — and until
+     * 2026-09-04 it was parsed by nobody: every step fell back to 'focus' or to whatever view the
+     * previous step happened to leave behind. The highlight-count heuristic stays as the fallback
+     * for stories that state no layout, which is most of the older ones.
+     *
+     * A step may also change layout WITHOUT highlighting anything (an overview step), so this no
+     * longer sits inside the highlights branch.
+     */
+    // PARSE PERMISSIVELY, VALIDATE AT USE. story.ts passes story:layout through as a plain string
+    // so a graph authored for a different build still loads; the check belongs here, where an
+    // unknown name would otherwise reach the renderer. An unrecognised layout falls back rather
+    // than throwing, so a story from a newer build degrades instead of breaking.
+    const authored = KNOWN_LAYOUTS.includes(step.layout as GraphLayout) ? (step.layout as GraphLayout) : undefined;
+    const stepLayout = authored ?? (step.highlights.length <= 2 ? 'focus' : undefined);
     if (step.highlights.length > 0) {
       applyShellyViewAdjust({
         selectEntity: step.highlights[0],
         spotlight: step.highlights,
-        layout: step.highlights.length <= 2 ? 'focus' : undefined
+        layout: stepLayout
       });
+    } else if (authored) {
+      applyShellyViewAdjust({ layout: authored });
     }
 
     // Speak step via browser TTS when voice is enabled
@@ -589,11 +611,10 @@
     if (storyAutoPlaying) startCountdown();
   }
 
-  // ── TTS Engine (Kokoro streaming) ─────────────────────────────────────────
-  import * as kokoro from '$lib/integrations/llm/kokoro-tts';
-  import { planHumeAuth, type HumeAuthPlan } from '$lib/integrations/hume/token';
-  import { resolveHumeTtsAuth, synthesizeHumeSpeech, shouldNarrateWithHume } from '$lib/integrations/hume/tts';
-
+  // ── TTS Engine (loaded only after the persisted voice opt-in) ──────────────
+  type KokoroModule = typeof import('$lib/integrations/llm/kokoro-tts');
+  let kokoro: KokoroModule | null = null;
+  let kokoroImport: Promise<KokoroModule> | null = null;
   let ttsBroken = $state(false);
   let stopCurrentSpeech: (() => void) | null = null;
 
@@ -601,16 +622,33 @@
   let kokoroReady = $state(false);
   let kokoroLoadPct = $state(0);
   let kokoroPhase = $state<'download' | 'init'>('download');
-  kokoro.onKokoroStatus((status, pct, phase) => {
-    kokoroReady = status === 'ready';
-    kokoroLoadPct = pct;
-    kokoroPhase = phase;
-  });
+  function getKokoro(): Promise<KokoroModule> {
+    if (kokoro) return Promise.resolve(kokoro);
+    if (!kokoroImport) {
+      kokoroImport = import('$lib/integrations/llm/kokoro-tts').then((module) => {
+        kokoro = module;
+        module.onKokoroStatus((status, pct, phase) => {
+          kokoroReady = status === 'ready';
+          kokoroLoadPct = pct;
+          kokoroPhase = phase;
+        });
+        return module;
+      });
+    }
+    return kokoroImport;
+  }
 
-  // Start loading Kokoro when panel opens with voice enabled (lazy — no load on page mount)
+  // A saved `true` is a prior opt-in. A fresh/default or imported graph stays
+  // false, so opening text chat cannot fetch Kokoro or an ONNX runtime.
   $effect(() => {
-    if (turtleSettings().voiceEnabled && !kokoroReady) {
-      kokoro.warmup();
+    const ts = turtleSettings();
+    if (ts.voiceEnabled && ts.voiceType === 'tts' && !kokoroReady) {
+      void getKokoro().then((module) => {
+        const current = turtleSettings();
+        if (current.voiceEnabled && current.voiceType === 'tts') module.warmup();
+      });
+    } else if (!ts.voiceEnabled) {
+      stopSpeaking();
     }
   });
 
@@ -638,45 +676,39 @@
   let speechQueued = $state(false); // true while waiting for Kokoro model to load
 
   function speakText(text: string): void {
-    if (ttsBroken) return;
+    const ts0 = turtleSettings();
+    if (!ts0.voiceEnabled || ttsBroken) return;
     const clean = cleanForSpeech(text);
     if (!clean) return;
 
     stopSpeaking();
 
-    // F5.1 — narrate in the voice this persona was CONFIGURED with. Kokoro is the default and
-    // the fallback: if the Hume voice is chosen but unavailable, unauthorized or unreachable, we
-    // drop to the local voice rather than letting the story go silent.
-    const ts0 = turtleSettings();
-    const s0 = settings();
-    const plan = planHumeAuth({
-      apiKey: ts0.humeApiKey || s0.humeAiApiKey,
-      secretKey: ts0.humeSecretKey || s0.humeSecretKey,
-      tokenUrl: ts0.humeTokenUrl,
-    });
-    if (shouldNarrateWithHume(ts0.voiceType, plan)) {
-      void speakWithHume(clean, plan);
-      return;
-    }
-
-    if (!kokoroReady) {
-      // Model still loading — freeze countdown until speech actually starts
-      speechQueued = true;
-      const myId = ++pendingSpeechId;
-      kokoro.getReady()
-        .then(() => { speechQueued = false; if (pendingSpeechId !== myId) return; startStreaming(clean); })
-        .catch(() => { speechQueued = false; ttsBroken = true; });
-      return;
-    }
-
-    startStreaming(clean);
+    const myId = ++pendingSpeechId;
+    if (ts0.voiceType === 'hume') void speakWithConfiguredHume(clean, myId);
+    else void queueKokoro(clean, myId);
   }
 
-  function startStreaming(text: string): void {
-    const ts = turtleSettings();
-    const voice = ts.kokoroVoice || kokoro.DEFAULT_VOICE;
+  async function queueKokoro(text: string, myId: number): Promise<void> {
+    speechQueued = true;
+    try {
+      const module = await getKokoro();
+      if (pendingSpeechId !== myId || !turtleSettings().voiceEnabled) return;
+      await module.getReady();
+      if (pendingSpeechId !== myId || !turtleSettings().voiceEnabled) return;
+      startStreaming(text, module);
+    } catch {
+      if (pendingSpeechId === myId) ttsBroken = true;
+    } finally {
+      if (pendingSpeechId === myId) speechQueued = false;
+    }
+  }
 
-    stopCurrentSpeech = kokoro.speakStreaming(text, {
+  function startStreaming(text: string, module: KokoroModule): void {
+    if (!turtleSettings().voiceEnabled) return;
+    const ts = turtleSettings();
+    const voice = ts.kokoroVoice || module.DEFAULT_VOICE;
+
+    stopCurrentSpeech = module.speakStreaming(text, {
       voice,
       rate: ts.speechRate ?? 0.75,
       volume: Math.min((ts.volume ?? 75) / 100, 0.9),
@@ -695,14 +727,35 @@
    * Narrate through Hume, falling back to the local voice on ANY failure (F5.1). The fallback
    * is deliberate and audible — a remote voice that 401s should change the voice, not the story.
    */
-  async function speakWithHume(clean: string, plan: HumeAuthPlan): Promise<void> {
-    const myId = ++pendingSpeechId;
+  async function speakWithConfiguredHume(clean: string, myId: number): Promise<void> {
+    const ts = turtleSettings();
+    const s = settings();
+    const [{ planHumeAuth }, { shouldNarrateWithHume }] = await Promise.all([
+      import('$lib/integrations/hume/token'),
+      import('$lib/integrations/hume/tts'),
+    ]);
+    if (pendingSpeechId !== myId || !turtleSettings().voiceEnabled) return;
+    const plan = planHumeAuth({
+      apiKey: ts.humeApiKey || s.humeAiApiKey,
+      secretKey: ts.humeSecretKey || s.humeSecretKey,
+      tokenUrl: ts.humeTokenUrl,
+    });
+    if (!shouldNarrateWithHume(ts.voiceType, plan)) {
+      await queueKokoro(clean, myId);
+      return;
+    }
+    await speakWithHume(clean, plan, myId);
+  }
+
+  async function speakWithHume(clean: string, plan: HumeAuthPlan, myId: number): Promise<void> {
     try {
       const ts = turtleSettings();
+      const { resolveHumeTtsAuth, synthesizeHumeSpeech } = await import('$lib/integrations/hume/tts');
+      if (pendingSpeechId !== myId || !turtleSettings().voiceEnabled) return;
       const auth = await resolveHumeTtsAuth(plan);
       if (!auth) throw new Error('no usable Hume credential');
       const blob = await synthesizeHumeSpeech({ text: clean, auth, voiceId: ts.humeConfigId });
-      if (pendingSpeechId !== myId) return; // superseded/stopped while synthesizing
+      if (pendingSpeechId !== myId || !turtleSettings().voiceEnabled) return;
 
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
@@ -727,8 +780,7 @@
       console.warn('[narration] Hume voice unavailable, using the local voice instead:', e);
       storySpeaking = false;
       stopCurrentSpeech = null;
-      if (kokoroReady) startStreaming(clean);
-      else kokoro.getReady().then(() => { if (pendingSpeechId === myId) startStreaming(clean); }).catch(() => { ttsBroken = true; });
+      if (turtleSettings().voiceEnabled) await queueKokoro(clean, myId);
     }
   }
 
@@ -1001,8 +1053,8 @@
   }
 
   // ── Voice ──────────────────────────────────────────────────────────────────
-  let showVoice = $state(false);
-  const hasHume = $derived(!!settings().humeAiApiKey);
+  const voiceEnabled = $derived(turtleSettings().voiceEnabled);
+  const humeVoiceSelected = $derived(voiceEnabled && turtleSettings().voiceType === 'hume');
   let voiceVolume = $state(0);          // 0-1 mic volume from AnalyserNode
   let interimText = $state('');         // live interim transcript (clears on turn end)
 
@@ -1012,6 +1064,7 @@
   let whisperController: ReturnType<typeof import('$lib/integrations/llm/whisper-stt').startMicRecording> | null = null;
 
   async function toggleWhisperMic() {
+    if (!turtleSettings().voiceEnabled || turtleSettings().voiceType !== 'tts') return;
     if (whisperRecording) {
       // Stop recording and transcribe
       if (!whisperController) return;
@@ -1039,10 +1092,27 @@
       const { startMicRecording } = await import('$lib/integrations/llm/whisper-stt');
       const { registerWhisperConsent } = await import('$lib/stores/download-consent.svelte');
       await registerWhisperConsent();
+      if (!turtleSettings().voiceEnabled || turtleSettings().voiceType !== 'tts') return;
       whisperController = startMicRecording();
       whisperRecording = true;
     }
   }
+
+  function stopWhisperCapture() {
+    whisperController?.cancel();
+    whisperController = null;
+    whisperRecording = false;
+    whisperTranscribing = false;
+  }
+
+  $effect(() => {
+    if (!voiceEnabled || turtleSettings().voiceType !== 'tts') stopWhisperCapture();
+  });
+
+  onDestroy(() => {
+    stopWhisperCapture();
+    stopSpeaking();
+  });
 
   function handleVoiceMessage(role: 'user' | 'assistant', content: string, actions?: import('$lib/types/turtle-chat').KBAction[]) {
     messages = [...messages, { role, content, actions: actions ?? [] }];
@@ -1343,13 +1413,27 @@
         <button class="send primary" onclick={sendMessage} disabled={loading || !input.trim() || (isWasmProvider && wasmStatus() === 'loading')}>
           ↑
         </button>
-        {#if hasHume}
-          <ShellyVoice
-            onclose={() => {}}
-            onmessage={handleVoiceMessage}
-            oninterim={(t) => { interimText = t; tick().then(() => { if (msgListRef) msgListRef.scrollTop = msgListRef.scrollHeight; }); }}
-            onvolume={(v) => { voiceVolume = v; }}
-          />
+        {#if !voiceEnabled}
+          <button
+            class="mic-btn voice-off"
+            onclick={() => goto('/settings/turtle')}
+            title="Voice is off by default — enable it in Shelly settings"
+            aria-label="Voice is off; open voice settings"
+          >🎤×</button>
+        {:else if humeVoiceSelected}
+          {#await import('./ShellyVoice.svelte')}
+            <span class="voice-control-loading mono">voice…</span>
+          {:then voiceModule}
+            {@const ShellyVoice = voiceModule.default}
+            <ShellyVoice
+              onclose={() => {}}
+              onmessage={handleVoiceMessage}
+              oninterim={(t) => { interimText = t; tick().then(() => { if (msgListRef) msgListRef.scrollTop = msgListRef.scrollHeight; }); }}
+              onvolume={(v) => { voiceVolume = v; }}
+            />
+          {:catch}
+            <a class="voice-error-link mono" href="/settings/turtle">voice unavailable</a>
+          {/await}
         {:else}
           <button
             class="mic-btn"
@@ -1525,7 +1609,12 @@
           {#if exploreMessages.length === 0 && exploreLoading}
             <div class="msg assistant">
               <img src="/svg/head1.svg" alt="" class="msg-icon" />
-              <div class="msg-body thinking"><span></span><span></span><span></span></div>
+              <div class="msg-body thinking" role="status">
+                <span class="thinking-label mono">reading your graph…</span>
+                <span class="thinking-dots" aria-hidden="true">
+                  <span></span><span></span><span></span>
+                </span>
+              </div>
             </div>
           {/if}
 
@@ -1545,7 +1634,12 @@
           {#if exploreLoading && exploreMessages.length > 0}
             <div class="msg assistant">
               <img src="/svg/head1.svg" alt="" class="msg-icon" />
-              <div class="msg-body thinking"><span></span><span></span><span></span></div>
+              <div class="msg-body thinking" role="status">
+                <span class="thinking-label mono">thinking…</span>
+                <span class="thinking-dots" aria-hidden="true">
+                  <span></span><span></span><span></span>
+                </span>
+              </div>
             </div>
           {/if}
 
@@ -1588,6 +1682,8 @@
   .panel-header {
     display: flex;
     align-items: center;
+    width: 100%;
+    box-sizing: border-box;
     gap: 0.5rem;
     padding: 0.6rem 0.75rem;
     border-bottom: 1px solid var(--line);
@@ -1868,18 +1964,28 @@
   /* Typing indicator */
   .thinking {
     display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    min-height: 1.2rem;
+  }
+  .thinking-label {
+    color: var(--muted);
+    font-size: 0.66rem;
+    white-space: nowrap;
+  }
+  .thinking-dots {
+    display: inline-flex;
     gap: 4px;
     align-items: center;
-    height: 1.2rem;
   }
-  .thinking span {
+  .thinking-dots span {
     width: 6px; height: 6px;
     border-radius: 50%;
     background: var(--accent);
     animation: bounce 1.1s infinite;
   }
-  .thinking span:nth-child(2) { animation-delay: 0.18s; }
-  .thinking span:nth-child(3) { animation-delay: 0.36s; }
+  .thinking-dots span:nth-child(2) { animation-delay: 0.18s; }
+  .thinking-dots span:nth-child(3) { animation-delay: 0.36s; }
   @keyframes bounce {
     0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
     40% { transform: translateY(-5px); opacity: 1; }
@@ -2288,7 +2394,8 @@
       text-align: center;
       padding: 0.4rem 0.2rem;
       font-size: 0.72rem;
-      min-height: 36px;
+      min-width: 44px;
+      min-height: 44px;
     }
     .close {
       font-size: 1.1rem;
@@ -2308,7 +2415,7 @@
     .story-exit {
       font-size: 0.85rem;
       min-width: 44px;
-      min-height: 36px;
+      min-height: 44px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -2317,8 +2424,25 @@
       color: var(--danger);
     }
     .story-btn {
-      min-height: 36px;
+      min-width: 44px;
+      min-height: 44px;
       padding: 0.3rem 0.55rem;
+    }
+    .input-row textarea,
+    .send,
+    .mic-btn,
+    .next-stop,
+    .story-resume,
+    .explore-story-chip,
+    .starter-card,
+    .step-buttons button {
+      min-height: 44px;
+    }
+    .send,
+    .mic-btn,
+    .story-resume,
+    .step-buttons button {
+      min-width: 44px;
     }
   }
 </style>

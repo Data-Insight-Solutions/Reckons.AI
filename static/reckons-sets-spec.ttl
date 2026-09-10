@@ -1,0 +1,185 @@
+# =============================================================================
+# STATUS: PROPOSED, not live. Nothing reads this file.
+#
+# Worked example for F187 (kb:set-semantics), written 2026-09-08 during the
+# design conversation with Matt and kept because a design nobody can run is a
+# design nobody can check. It follows the precedent of static/website.ttl, which
+# sat as a proposed architecture before anything was wired to it.
+#
+# It is NOT vocabulary yet. If Matt accepts the shape, ktype:SetTypeScheme below
+# belongs in static/reckons-vocabulary.ttl beside AltitudeScheme and
+# ReviewStatusScheme, and the kb:ada / kb:northwind instances are illustration
+# that should NOT travel with it.
+#
+# VALIDATED against its own claims, not merely parsed (2026-09-08):
+#   100 quads parse
+#   SKOS S13 holds — all 5 collections disjoint from Concept and ConceptScheme
+#   skos:member range (Concept UNION Collection) satisfied by every member
+#   skos:related never used on a Collection (it is domain/range Concept)
+#   overlap real: kb:ada is a member of 2 sets
+#   nesting real: a Collection is a member of another Collection
+# =============================================================================
+
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos:  <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix kb:    <urn:kbase:concept/> .
+@prefix kpred: <urn:kbase:predicate/> .
+@prefix ktype: <urn:kbase:type/> .
+@prefix kset:  <urn:kbase:settype/> .
+
+# =============================================================================
+# F187 — sets, in SKOS. WORKED EXAMPLE, not yet wired into publishing.
+#
+# Three axes, deliberately not conflated:
+#   skos:Collection        the SET            — grouping, nestable, overlapping
+#   skos:OrderedCollection the ORDERED set    — same thing, membership sequenced
+#   skos:ConceptScheme     the SET-TYPE vocab — the closed enum of kinds of set
+# =============================================================================
+
+# ── 1. Set TYPES are a controlled vocabulary, exactly like AltitudeScheme ────
+# "Define set types, like entity types" (Matt). This is the same pattern
+# reckons-vocabulary.ttl already uses for ReviewStatusScheme and FeatureLifecycle,
+# so it introduces no new mechanism.
+
+ktype:SetTypeScheme a skos:ConceptScheme ;
+    rdfs:label "Kinds of set" ;
+    skos:definition "What kind of grouping a set is. A set type describes the GROUP, the way an entity type describes one node." ;
+    skos:hasTopConcept kset:people, kset:organizations, kset:journey, kset:page .
+
+kset:people a skos:Concept ;
+    skos:inScheme ktype:SetTypeScheme ;
+    skos:prefLabel "People" ;
+    skos:notation "people" .
+
+kset:organizations a skos:Concept ;
+    skos:inScheme ktype:SetTypeScheme ;
+    skos:prefLabel "Organizations" ;
+    skos:notation "organizations" .
+
+kset:journey a skos:Concept ;
+    skos:inScheme ktype:SetTypeScheme ;
+    skos:prefLabel "Journey" ;
+    skos:notation "journey" ;
+    skos:note "Ordered by nature — a journey whose steps are shuffled is a different journey." .
+
+kset:page a skos:Concept ;
+    skos:inScheme ktype:SetTypeScheme ;
+    skos:prefLabel "Page" ;
+    skos:notation "page" ;
+    skos:note "The docs case: the set is what gives a page meaning above its entities." .
+
+# ── 2. Entities are skos:Concept as well as their own ktype ─────────────────
+# Matt, 2026-09-08: "entities need to be tied into Concept". This declares what
+# 636 IRIs in static/ are ALREADY entailed to be by their skos:broader edges.
+# Both types are carried: ktype: says what it is here, skos: says it is a SKOS
+# concept. Publishing filters on the urn:kbase:type/ namespace, so this is inert
+# for the site.
+
+kb:ada    a ktype:Person , skos:Concept ; skos:prefLabel "Ada" .
+kb:brendan a ktype:Person , skos:Concept ; skos:prefLabel "Brendan" .
+kb:chi    a ktype:Person , skos:Concept ; skos:prefLabel "Chi" .
+
+kb:northwind a ktype:Organization , skos:Concept ; skos:prefLabel "Northwind" .
+kb:acme      a ktype:Organization , skos:Concept ; skos:prefLabel "Acme" .
+
+# ── 3. A SET is a skos:Collection: attributes of its own, and members ───────
+# It has an IRI and carries triples, yet is formally DISJOINT from skos:Concept
+# (SKOS S13) — so it is not one of the nodes in the concept graph. That is
+# Matt's "the set is not a node in the graph, but rather a grouping of nodes",
+# in the standard, without contradiction.
+
+kb:set-founding-team a skos:Collection ;
+    kpred:set-type kset:people ;                 # the SET TYPE — a PROPERTY, not rdf:type. See §8.
+    skos:prefLabel "Founding team" ;
+    dcterms:description "The three people who were there before the first release." ;
+    dcterms:created "2026-09-08" ;
+    skos:member kb:ada , kb:brendan , kb:chi .
+
+kb:set-partners a skos:Collection ;
+    kpred:set-type kset:organizations ;
+    skos:prefLabel "Partner organizations" ;
+    skos:member kb:northwind , kb:acme .
+
+# ── 4. Membership OVERLAPS — it does not partition ─────────────────────────
+# Ada is in two sets at once. Nothing about the first set had to change, and
+# neither set owns her. This is the Venn: the intersection is derivable, never
+# asserted, which is what datasetOverlaps() already does for the docs graphs.
+
+kb:set-advisors a skos:Collection ;
+    kpred:set-type kset:people ;
+    skos:prefLabel "Advisors" ;
+    skos:member kb:ada , kb:chi .
+
+# ── 5. Sets NEST — skos:member ranges over Concept UNION Collection ─────────
+# A set of sets needs no invention. This is why Collection, not ConceptScheme:
+# schemes do not nest.
+
+kb:set-everyone a skos:Collection ;
+    kpred:set-type kset:people ;
+    skos:prefLabel "Everyone involved" ;
+    skos:member kb:set-founding-team , kb:set-advisors , kb:set-partners .
+
+# ── 6. An ORDERED set, where sequence is the point ──────────────────────────
+# The user-paths case. Same parent class, so it is a set like any other; the
+# only difference is that membership carries a list. Note skos:memberList is
+# an rdf:List, so order round-trips in TTL without a local ordering predicate.
+
+kb:set-core-loop a skos:OrderedCollection ;
+    kpred:set-type kset:journey ;
+    skos:prefLabel "The core loop" ;
+    dcterms:description "add, review, add, review, reckon — the path the docs lead with." ;
+    skos:memberList ( kb:step-add kb:step-review kb:step-add-again kb:step-review-again kb:step-reckon ) .
+
+kb:step-add          a ktype:Step , skos:Concept ; skos:prefLabel "Add" .
+kb:step-review       a ktype:Step , skos:Concept ; skos:prefLabel "Review" .
+kb:step-add-again    a ktype:Step , skos:Concept ; skos:prefLabel "Add more" .
+kb:step-review-again a ktype:Step , skos:Concept ; skos:prefLabel "Review again" .
+kb:step-reckon       a ktype:Step , skos:Concept ; skos:prefLabel "Reckon" .
+
+# ── 7. THE ONE HONEST DEPARTURE: set-to-set relations ───────────────────────
+# Matt: "a set of people could be related to a set of organizations they all
+# belong to". SKOS has NO Collection-to-Collection relation. Its mapping
+# properties (exactMatch, broadMatch, ...) relate CONCEPTS across schemes, and
+# skos:related has domain and range skos:Concept, so using it here would be a
+# range violation on a Collection.
+#
+# So this is declared LOCAL and labelled as such, in the way static/website.ttl
+# declares reckons:excludes-under rather than bending a standard term into
+# meaning something it does not.
+
+kpred:set-relates-to a rdf:Property ;
+    rdfs:label "set relates to" ;
+    rdfs:domain skos:Collection ;
+    rdfs:comment "A relation between two SETS, or a set and one entity. LOCAL: SKOS has no Collection-to-Collection relation, and skos:related is domain/range skos:Concept so it cannot be reused here without a range violation." .
+
+kb:set-founding-team kpred:set-relates-to kb:set-partners .
+kb:set-advisors      kpred:set-relates-to kb:northwind .
+
+# ── 8. WHY set-type IS A PROPERTY AND NOT rdf:type — the punning trap ───────
+# Corrected 2026-09-08 after Matt sent Nicolas Figay's "Combined usage of SKOS
+# and OWL: an experimentation" (observablehq.com/@nfigay). The first draft of
+# this file wrote `rdf:type kset:people`, which made kset:people BOTH an
+# individual (a skos:Concept in the SetTypeScheme) and a class (the type of a
+# collection). That is PUNNING: forbidden in OWL 1, legal in OWL 2, and in
+# Figay's words "not well supported by Protege" — his recommended workaround is
+# splitting the class-facing and individual-facing statements into separate
+# files, which is a real cost to carry for no gain here.
+#
+# It is also not what this repository does. reckons-vocabulary.ttl declares
+# klife:functional as `a skos:Concept` with `skos:notation "functional"`, and the
+# code writes `kpred:has-status "functional"` — a PROPERTY whose value names the
+# concept. It never writes `rdf:type klife:functional`. So the house pattern is
+# already punning-free, and the first draft departed from it by accident.
+#
+# The one deliberate difference from has-status: the value here is an IRI rather
+# than a notation literal, because a status is a CLOSED enum the TypeScript
+# switches on while set types are user-definable, and a user-minted type needs an
+# identity the graph can carry.
+
+kpred:set-type a rdf:Property ;
+    rdfs:label "set type" ;
+    rdfs:domain skos:Collection ;
+    rdfs:range skos:Concept ;
+    rdfs:comment "What kind of set this is. A PROPERTY rather than rdf:type, so a set type stays an individual in ktype:SetTypeScheme and is never simultaneously a class — avoiding OWL 2 punning, which is legal but poorly tooled." .

@@ -1,0 +1,41 @@
+EXPECTED — 03-doc-medium.md
+===========================
+Structured prose, ~380 words, headed sections. Where 02 tests damage handling,
+this tests STRUCTURE: can the extractor use a document's own shape.
+
+WHAT TO JUDGE:
+
+1. ALTITUDE SEPARATION — this document contains all four altitudes and they must
+   not arrive flattened into one list:
+     decision   "No recommendation yet" + the open trade-off
+     judgment   "we assess the terms as unfavourable", "that is a lock-in risk"
+     evidence   founded 2014, Toronto, privately held, per-seat licensing
+     record     prepared-by, date, status
+   A run that files "founded in 2014" and "the terms are unfavourable" at the
+   same altitude has not understood the document. The first is checkable; the
+   second is an opinion Northwind is authoring.
+
+2. HEDGING MUST SURVIVE. "we assess", "we propose", "should be weighed" are
+   attributed opinions. An extractor that records `kb:lumenpath kpred:licensing
+   "unfavourable"` as a flat fact has stripped the attribution and turned a
+   judgment into a measurement. Look for the claim carrying its author.
+
+3. THE "WHAT WE DO NOT KNOW" SECTION IS THE MOST IMPORTANT PART.
+   Two explicit absences — no pricing above 50 seats, connector untested. These
+   are well-formed absences stated outright, which is the rarest and most
+   valuable thing a document can contain (kb:mission). They should become
+   QUESTIONS or partial facts (F32, needsObject), not be dropped.
+   EXPECTED TODAY: they are probably dropped or flattened into prose facts.
+   Confirm which — this is the single best test of whether the extractor can
+   represent missing information at all.
+
+4. NEXT ACTIONS are three TASKS, not claims. Same rule as note 02's requests.
+
+5. NO CONTRADICTION WITH 02. If 02 was ingested first, this document AGREES with
+   it on Lumenpath and Northwind and DISAGREES on "enterprise cad" vs the
+   correctly-spelled "enterprise DAM". A second source disagreeing with the
+   first is the signal the review queue exists for — it should surface as
+   something to settle, not silently overwrite.
+
+WHAT A GOOD RUN LOOKS LIKE: the two unknowns survive as questions, the opinions
+keep their author, and the disagreement with 02 is visible.

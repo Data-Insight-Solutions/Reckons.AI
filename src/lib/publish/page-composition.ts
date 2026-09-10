@@ -121,6 +121,33 @@ export interface CompositionReport {
 
 export class PageDefinitionError extends Error {}
 
+/**
+ * Split declared pages into the ones composition writes and the ones a person wrote.
+ *
+ * A page declaring NO sources is HAND-AUTHORED: the site graph lists it so navigation and
+ * alignment can see it, but no generator produces it and nothing may overwrite it. That is a
+ * different thing from a page whose declared sources failed to RESOLVE — `readWebsiteGraph`
+ * records those in `problems` and only then leaves the source list empty, so a caller that
+ * partitions without also surfacing `problems` turns a typo into a page that quietly became
+ * hand-authored.
+ *
+ * Shared because it was not. `docs-compose.ts` partitioned; `scripts/offline/docs-consolidate.ts`
+ * passed every page straight to `composePages` and died on the first hand-authored one
+ * (`Page welcome declares no sources`). So the tool that WRITES pages ran, while the gate meant
+ * to be consulted first — the orphan report, the whole safeguard against consolidating 269 pages
+ * into a dozen and losing content — could not run at all. The check was weaker than the action it
+ * guards, which is the one direction that must never happen.
+ */
+export function partitionPages(definitions: PageDefinition[]): {
+  composable: PageDefinition[];
+  handAuthored: PageDefinition[];
+} {
+  return {
+    composable: definitions.filter((d) => d.sources.length > 0),
+    handAuthored: definitions.filter((d) => d.sources.length === 0),
+  };
+}
+
 /** Does this entity match one declared source? */
 function matches(entity: SourceEntity, source: PageSource): boolean {
   switch (source.kind) {

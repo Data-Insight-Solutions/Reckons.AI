@@ -12,14 +12,29 @@ import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 
+/**
+ * The `.lock` file is a persistent inode used by Linux `flock`; its existence says nothing about
+ * whether the lock is held. Cross-runtime readers that cannot participate in flock instead watch
+ * this short-lived marker. A process crash may strand it, so the marker carries a finite lease.
+ */
+export const FILE_LOCK_ACTIVE_SUFFIX = '.active';
+export const FILE_LOCK_ACTIVE_LEASE_MS = 60_000;
+
+export function activeFileLockPath(lockPath: string): string {
+  return `${lockPath}${FILE_LOCK_ACTIVE_SUFFIX}`;
+}
+
 /** Hold a kernel flock for one short synchronous state transaction.
  *
  * The flock child locks inherited fd 3. Linux associates the lock with the shared open-file
  * description, so it remains held by the parent until `closeSync(fd)`. Process death releases it
- * automatically; the persistent empty `.lock` pathname therefore needs no stale-PID reaper. */
+ * automatically. The persistent `.lock` pathname remains for reuse; `.lock.active` exists only
+ * while the transaction runs, and its expiry lets browser readers recover after a process crash. */
 export function withFileLock<T>(lockPath: string, action: () => T, timeoutSeconds = 10): T {
   mkdirSync(path.dirname(lockPath), { recursive: true });
   const fd = openSync(lockPath, 'a', 0o600);
+  const activePath = activeFileLockPath(lockPath);
+  let activeMarkerWritten = false;
   try {
     const locked = spawnSync('flock', ['-x', '-w', String(timeoutSeconds), '3'], {
       stdio: ['ignore', 'ignore', 'pipe', fd],
@@ -29,8 +44,24 @@ export function withFileLock<T>(lockPath: string, action: () => T, timeoutSecond
     if (locked.status !== 0) {
       throw new Error(`could not acquire ${lockPath}: ${(locked.stderr ?? '').trim() || `flock exited ${locked.status}`}`);
     }
+
+    const acquiredAt = Date.now();
+    atomicWriteFile(activePath, JSON.stringify({
+      version: 1,
+      pid: process.pid,
+      acquiredAt,
+      expiresAt: acquiredAt + FILE_LOCK_ACTIVE_LEASE_MS,
+    }) + '\n');
+    activeMarkerWritten = true;
     return action();
   } finally {
+    // Remove the browser-visible marker before releasing flock so a following host transaction
+    // cannot create its marker and then have this process remove it. Cleanup is best-effort: the
+    // finite lease is the crash/error recovery path, and a cleanup error must not make a committed
+    // state transaction look failed to its caller.
+    if (activeMarkerWritten) {
+      try { rmSync(activePath, { force: true }); } catch { /* expires shortly */ }
+    }
     closeSync(fd);
   }
 }

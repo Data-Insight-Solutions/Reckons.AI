@@ -41,9 +41,28 @@ import {
 } from '../rdf/source-cache';
 import { classifyText } from '../safety/content-policy';
 import {
+  getWorkspaceRow,
+  putWorkspaceRow,
+  clearWorkspaceRow,
+  defaultGraphWorkspaceStore,
+} from '../storage/app-db';
+import {
+  acknowledgePendingJsonl,
+  normalizePendingGraphName,
   partitionPendingJsonl,
   type PendingEntry,
 } from '../rdf/pending-entry';
+
+/**
+ * Where a handle from BEFORE the app-level store might still be sitting: this graph's own
+ * database first, then the default graph — which is where a long-standing setup keeps it, and
+ * therefore what saves a re-pick the first time a freshly created graph is opened.
+ */
+function legacyWorkspaceStores() {
+  const stores = [db.workspace as never];
+  if (db.name !== 'kbase') stores.push(defaultGraphWorkspaceStore() as never);
+  return stores;
+}
 
 /** Filename written to the workspace dir on every KB mutation (read by the MCP server). */
 export const WORKSPACE_KB_FILE = 'knowledge.ttl';
@@ -78,12 +97,10 @@ const AUTOSYNC_KEY = 'reckons:ws-autosync';
 export function seenHashesKey(): string {
   if (typeof window === 'undefined') return 'reckons:ws-seen-hashes';
   try {
-    const url = new URL(window.location.href);
-    const fromUrl = url.searchParams.get('kb');
-    if (fromUrl) return `reckons:ws-seen-hashes:${fromUrl}`;
-    const fromSession = sessionStorage.getItem('sessionKbId');
-    if (fromSession) return `reckons:ws-seen-hashes:${fromSession}`;
-    return `reckons:ws-seen-hashes:${localStorage.getItem('currentKbId') ?? 'kbase'}`;
+    // `?kb=` may be a human-facing graph NAME. getCurrentKbId() resolves that alias to the
+    // registry's opaque id, so `/?kb=roadmap` and `/?kb=kbase_123` share one loop guard instead
+    // of importing the same folder twice under two storage keys.
+    return `reckons:ws-seen-hashes:${getCurrentKbId()}`;
   } catch {
     return 'reckons:ws-seen-hashes';
   }
@@ -157,7 +174,9 @@ function readAutoSyncPref(): boolean {
 
 /** Called on app startup — loads the stored handle and checks current permission. */
 export async function loadWorkspace(): Promise<void> {
-  const row = await db.workspace.get('main');
+  // App-level, with a one-time adoption of any handle an older version left in this graph's
+  // own database. See app-db.ts: the handle describes the browser, not the graph.
+  const row = await getWorkspaceRow(legacyWorkspaceStores());
   if (!row) { _state = 'none'; return; }
   _name = row.name;
   // Restore the last-seen revision baseline BEFORE the initial pull, so a reconnect skips files
@@ -183,7 +202,16 @@ export async function loadWorkspace(): Promise<void> {
 function onWorkspaceConnected(): void {
   if (!_autoSyncEnabled) return;
   // Fire-and-forget: an initial pull followed by the polling loop.
-  void pullFromWorkspace().finally(() => startWorkspacePolling());
+  //
+  // The pending queue is drained here as well as on page load. Linking a folder mid-session used
+  // to sync graph TTLs but leave queued proposals sitting in knowledge.pending.jsonl until the
+  // next reload or a manual refresh — so a note dictated into a ring arrived on disk, and then
+  // appeared to have vanished. Connecting a folder is exactly when the user expects what is in
+  // it to show up.
+  void pullFromWorkspace()
+    .then(() => drainAndImportPending())
+    .catch(() => { /* both paths report their own failures; never break connection on this */ })
+    .finally(() => startWorkspacePolling());
 }
 
 /** Ask the user to pick a directory. Returns true on success. */
@@ -192,7 +220,7 @@ export async function pickWorkspace(): Promise<boolean> {
   try {
     const handle = await (window as unknown as { showDirectoryPicker(o?: { mode?: string }): Promise<FileSystemDirectoryHandle> })
       .showDirectoryPicker({ mode: 'readwrite' });
-    await db.workspace.put({ id: 'main', handle, name: handle.name });
+    await putWorkspaceRow(handle, handle.name, db.workspace);
     _handle = handle;
     _name = handle.name;
     _state = 'connected';
@@ -213,7 +241,7 @@ export async function pickWorkspace(): Promise<boolean> {
 
 /** Re-request permission for the stored handle (call once per session if state === 'disconnected'). */
 export async function reconnectWorkspace(): Promise<boolean> {
-  const row = await db.workspace.get('main');
+  const row = await getWorkspaceRow(legacyWorkspaceStores());
   if (!row) return false;
   try {
     const perm = await (row.handle as any).requestPermission({ mode: 'readwrite' });
@@ -235,7 +263,7 @@ export async function clearWorkspace(): Promise<void> {
   stopWorkspacePolling();
   _seenHashes.clear();
   if (typeof localStorage !== 'undefined') localStorage.removeItem(seenHashesKey());
-  await db.workspace.delete('main');
+  await clearWorkspaceRow(legacyWorkspaceStores());
   _handle = null;
   _name = null;
   _state = 'none';
@@ -325,6 +353,71 @@ export async function writeToWorkspace(filename: string, content: string): Promi
   }
 }
 
+/**
+ * Queue acknowledgement is the commit marker for a pending import, so it cannot use the
+ * best-effort helpers above. A missing handle, failed re-read, failed write, or failed close must
+ * reject the drain: reporting success would leave the row queued and import it again on retry.
+ */
+async function readWorkspaceFileStrict(filename: string): Promise<string> {
+  const fh = await findWorkspaceFile(filename);
+  if (!fh) throw new Error(`Workspace file is unavailable: ${filename}`);
+  return (await fh.getFile()).text();
+}
+
+async function writeWorkspaceFileStrict(
+  filename: string,
+  content: string,
+  expectedCurrent?: string,
+): Promise<void> {
+  if (!_handle) throw new Error('Workspace is not connected');
+  const fh = await findWorkspaceFile(filename, { create: true });
+  if (!fh) throw new Error(`Workspace file is unavailable: ${filename}`);
+  const writable = await fh.createWritable({ keepExistingData: true });
+  if (expectedCurrent !== undefined) {
+    const current = await (await fh.getFile()).text();
+    if (current !== expectedCurrent) {
+      await writable.abort('Workspace queue changed before acknowledgement');
+      throw new Error(`Workspace file changed before acknowledgement: ${filename}`);
+    }
+  }
+  await writable.write(content);
+  await writable.close();
+}
+
+const HOST_LOCK_ACTIVE_SUFFIX = '.lock.active';
+
+/**
+ * Host writers use a persistent `.lock` pathname as the inode behind Linux flock. Existence of
+ * that file is therefore not activity. While the kernel lock is actually held they publish a
+ * leased `.lock.active` JSON marker for browser clients, which cannot participate in flock. The
+ * expiry is the crash-recovery path when a process dies before removing its marker.
+ */
+async function activeHostLockMarker(marker: FileSystemFileHandle): Promise<boolean> {
+  let text: string;
+  try {
+    text = await (await marker.getFile()).text();
+  } catch {
+    // If a marker was found but cannot be inspected, fail closed for this short operation. A valid
+    // expired marker is handled below; unreadable workspace permissions will fail the write too.
+    return true;
+  }
+  try {
+    const value = JSON.parse(text) as { expiresAt?: unknown };
+    return typeof value.expiresAt === 'number'
+      && Number.isFinite(value.expiresAt)
+      && value.expiresAt > Date.now();
+  } catch {
+    // Compatible writers replace marker JSON atomically. Invalid content cannot prove activity and
+    // must not become a new permanent sentinel with the same failure mode as `.lock` existence.
+    return false;
+  }
+}
+
+async function workspaceFileHasActiveHostLock(filename: string): Promise<boolean> {
+  const marker = await findWorkspaceFile(`${filename}${HOST_LOCK_ACTIVE_SUFFIX}`);
+  return marker ? activeHostLockMarker(marker) : false;
+}
+
 /** Write a text file into a subdirectory handle. */
 async function writeToDir(dir: FileSystemDirectoryHandle, filename: string, content: string): Promise<void> {
   const fh = await dir.getFileHandle(filename, { create: true });
@@ -354,8 +447,8 @@ export function lastWriteHold(): WriteHold { return _lastHold; }
  * Two independent checks, because the two writers fail differently:
  *
  *   locked    a host process (scripts/offline/pending-queue.ts and friends) holds `<file>.lock`
- *             through a Linux flock. The browser cannot take that lock, but it CAN see the sentinel,
- *             so it waits rather than racing a transaction that is midway through.
+ *             through Linux flock and publishes a leased `<file>.lock.active` marker. The browser
+ *             cannot take flock, but it CAN inspect that transient marker.
  *   diverged  the bytes on disk no longer hash to what we last read. Catches every other writer —
  *             Claude Code, a script, `git checkout` — including those that take no lock at all.
  *
@@ -370,8 +463,10 @@ async function holdWrite(
 ): Promise<WriteHold> {
   // 1. A host transaction is in flight.
   try {
-    await dir.getFileHandle(`${filename}.lock`);
-    return { held: true, reason: 'locked', detail: `${filename} is locked by a local process` };
+    const marker = await dir.getFileHandle(`${filename}${HOST_LOCK_ACTIVE_SUFFIX}`);
+    if (await activeHostLockMarker(marker)) {
+      return { held: true, reason: 'locked', detail: `${filename} is locked by a local process` };
+    }
   } catch { /* absent — nothing holds it */ }
 
   // 2. Compare-and-swap against what we last read.
@@ -784,6 +879,16 @@ async function _triggerWorkspaceTtlExport(): Promise<void> {
 export const WORKSPACE_PENDING_FILE = 'knowledge.pending.jsonl';
 
 /**
+ * Verdicts reached OUTSIDE the app — `reckons review` and the kb_review_* MCP tools (F199).
+ *
+ * A sibling of the queue, deliberately not the queue itself. The queue carries proposals INTO
+ * review from many writers; this carries decisions back out of a terminal claiming to settle them.
+ * One file for both would mean the drain that consumes proposals also has to avoid consuming
+ * verdicts, and the first bug in that scheme silently eats somebody's decision.
+ */
+export const WORKSPACE_DECISIONS_FILE = 'knowledge.decisions.jsonl';
+
+/**
  * Read knowledge.pending.jsonl, take the entries meant for the ACTIVE graph, and PUT THE
  * REST BACK. Returns an empty array if the file doesn't exist or no workspace is connected.
  *
@@ -792,6 +897,48 @@ export const WORKSPACE_PENDING_FILE = 'knowledge.pending.jsonl';
  * that graph to claim. An unscoped or invalid row is also retained verbatim: guessing a
  * destination from the active tab is how a roadmap finding lands in a user's personal notes.
  */
+/**
+ * What is waiting in the queue for OTHER graphs — without draining anything.
+ *
+ * Matt, 2026-09-09, opening a review link: "0 pending changes." The queue held 1,036 rows. Every
+ * one was either addressed to a different graph or carried no address at all, so the drain
+ * correctly took none of them and the screen correctly reported none — and the reader is left
+ * with a dead end that looks like completion.
+ *
+ * "Nothing for you" and "nothing at all" are different answers and the screen was giving the
+ * second when the first was true. This computes the difference so it can be shown: which graphs
+ * have work waiting, and how much is addressed to nobody.
+ *
+ * READ-ONLY. It parses the same file the drain reads and writes nothing back, so calling it can
+ * never consume a row.
+ */
+export async function pendingWaitingElsewhere(): Promise<{ byGraph: Array<{ kb: string; count: number }>; unaddressed: number }> {
+  const text = await readFromWorkspace(WORKSPACE_PENDING_FILE);
+  if (!text?.trim()) return { byGraph: [], unaddressed: 0 };
+
+  const active = new Set(
+    [getCurrentKbName(), getCurrentKbId()].filter(Boolean).map(normalizePendingGraphName),
+  );
+  const counts = new Map<string, number>();
+  let unaddressed = 0;
+
+  for (const line of text.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed === '') continue;
+    let kb: unknown;
+    try { kb = (JSON.parse(trimmed) as { kb?: unknown }).kb; } catch { continue; }
+    if (typeof kb !== 'string' || kb.trim() === '') { unaddressed++; continue; }
+    const slug = normalizePendingGraphName(kb);
+    if (active.has(slug)) continue;                 // this one WILL drain; not "elsewhere"
+    counts.set(slug, (counts.get(slug) ?? 0) + 1);
+  }
+
+  return {
+    byGraph: [...counts].map(([kb, count]) => ({ kb, count })).sort((a, b) => b.count - a.count),
+    unaddressed,
+  };
+}
+
 export async function drainWorkspacePending(): Promise<PendingEntry[]> {
   const text = await readFromWorkspace(WORKSPACE_PENDING_FILE);
   if (!text?.trim()) return [];
@@ -846,26 +993,127 @@ function objectTerm(value: string, declared?: 'literal' | 'iri'): { kind: 'liter
   return value.startsWith('urn:') ? { kind: 'iri', value } : { kind: 'literal', value };
 }
 
-export async function drainAndImportPending(): Promise<number> {
-  const pending = await drainWorkspacePending();
+/**
+ * Apply verdicts journalled by the CLI or the MCP review tools, and return how many landed.
+ *
+ * ORDERING MATTERS AND IT IS THE OPPOSITE OF WHAT LOOKS NATURAL: proposals drain FIRST, then
+ * verdicts. A verdict names a statement by its triple, and a statement only exists once its row
+ * has been imported — so applying verdicts before the drain would match nothing on the very run
+ * that queued the work. `drainAndImportPending` calls this at the end for that reason.
+ *
+ * A verdict that matches nothing is KEPT, not discarded. Recording a decision against a row that
+ * has not been drained yet is early, not wrong; deleting it would silently lose a judgment
+ * somebody actually made. Refusals are kept too, so the refusal stays visible rather than
+ * disappearing into a log nobody reads.
+ */
+export async function drainWorkspaceDecisions(): Promise<number> {
+  if (await workspaceFileHasActiveHostLock(WORKSPACE_DECISIONS_FILE)) return 0;
+  const text = await readFromWorkspace(WORKSPACE_DECISIONS_FILE);
+  if (!text?.trim()) return 0;
+
+  const { parseDecisionJsonl, applyVerdicts } = await import('../rdf/decision-journal');
+  const { verdicts, issues } = parseDecisionJsonl(text);
+  if (issues.length > 0) {
+    console.warn(
+      `[workspace] ${issues.length} decision line(s) could not be applied: `
+      + issues.map((i) => `line ${i.line} ${i.code}`).join(', '),
+    );
+  }
+  if (verdicts.length === 0) return 0;
+
+  const { statements, setStatuses } = await import('./kb.svelte');
+  const outcome = applyVerdicts(verdicts, statements());
+
+  for (const { verdict, reason } of outcome.refused) {
+    // Loud, not silent: a refused settlement is the boundary doing its job, and the only way a
+    // person learns the agent tried is if this says so.
+    console.warn(`[workspace] REFUSED decision ${verdict.decision}: ${reason}`);
+  }
+
+  if (outcome.changes.length > 0) {
+    await setStatuses(outcome.changes.map((c) => ({
+      id: c.id, status: c.status, settledBy: c.settledBy, settledByDecision: c.settledByDecision,
+    })));
+  }
+
+  /*
+   * Consume only what was applied. An unmatched or refused verdict is written back byte-for-line,
+   * so the journal can never erase a decision it could not act on — the same rule the pending
+   * drain follows, for the same reason.
+   */
+  const applied = new Set(outcome.applied);
+  const retained = text.split('\n').filter((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return false;
+    try {
+      const id = (JSON.parse(trimmed) as { decision?: string }).decision;
+      return !(typeof id === 'string' && applied.has(id));
+    } catch {
+      return true; // an unparseable line is evidence, not rubbish
+    }
+  });
+  await writeToWorkspace(
+    WORKSPACE_DECISIONS_FILE,
+    retained.length ? retained.join('\n') + '\n' : '',
+  );
+
+  return outcome.changes.length;
+}
+
+let pendingImport: Promise<number> | null = null;
+
+/**
+ * Coalesce the startup and manual review triggers in this page. Without this guard both callers
+ * can import the same snapshot before either reaches acknowledgement.
+ */
+export function drainAndImportPending(): Promise<number> {
+  if (pendingImport) return pendingImport;
+  const run = drainAndImportPendingOnce();
+  pendingImport = run;
+  run.then(
+    () => { if (pendingImport === run) pendingImport = null; },
+    () => { if (pendingImport === run) pendingImport = null; },
+  );
+  return run;
+}
+
+async function drainAndImportPendingOnce(): Promise<number> {
+  // Host-side queue writers advertise their flock with a leased active marker the browser can
+  // observe. The `.lock` pathname itself persists between transactions and is not an activity bit.
+  if (await workspaceFileHasActiveHostLock(WORKSPACE_PENDING_FILE)) return 0;
+
+  // Snapshot first, but do not mutate the queue yet. Filesystem and IndexedDB cannot share a
+  // transaction, so the safe ordering is at-least-once: commit locally, then acknowledge exactly
+  // the rows from this snapshot. Stable row ids make a crash retry idempotent in IndexedDB; the
+  // final strict re-read preserves appends that arrived while the transaction was running.
+  const snapshot = await readFromWorkspace(WORKSPACE_PENDING_FILE);
+  if (!snapshot?.trim()) return 0;
+  const currentKbId = getCurrentKbId();
+  const active = [getCurrentKbName(), currentKbId];
+  const partition = partitionPendingJsonl(snapshot, active);
+  const pending = partition.entries;
   if (pending.length === 0) return 0;
 
-  const { addStatements, addSource } = await import('./kb.svelte');
-  const { v4: uuid } = await import('uuid');
+  const { prepareStatementsForWrite, persistSourceBatch } = await import('./kb.svelte');
+  const { v5: uuidv5 } = await import('uuid');
 
-  const sourceId = `mcp-pending-${Date.now()}`;
+  const queueNamespace = uuidv5('https://reckons.ai/workspace-pending', uuidv5.URL);
+  const sourceId = `mcp-pending-${uuidv5(
+    JSON.stringify([currentKbId, ...partition.consumedLines]),
+    queueNamespace,
+  )}`;
   const now = Date.now();
 
   const agents = [...new Set(pending.map(e => e.agent).filter(Boolean))];
   const agentSuffix = agents.length > 0 ? ` (${agents.join(', ')})` : '';
-  await addSource({
+  const source = {
     id: sourceId,
     title: `MCP${agentSuffix} — ${pending.length} queued note${pending.length > 1 ? 's' : ''}`,
     uri: `urn:mcp:pending:${sourceId}`,
     kind: 'analysis',
     trustLevel: 'review',
     ingestedAt: now,
-  });
+  } as const;
 
   const priorityToConfidence: Record<string, number> = { high: 0.9, normal: 0.7, low: 0.5 };
   const typePrefix: Record<string, string> = {
@@ -875,7 +1123,11 @@ export async function drainAndImportPending(): Promise<number> {
     'status-update': '[STATUS] ',
   };
 
-  const sts = pending.map(e => {
+  const rowOccurrences = new Map<string, number>();
+  const sts = pending.map((e, index) => {
+    const rawLine = partition.consumedLines[index];
+    const occurrence = rowOccurrences.get(rawLine) ?? 0;
+    rowOccurrences.set(rawLine, occurrence + 1);
     const confidence = priorityToConfidence[e.priority ?? 'normal'] ?? 0.7;
     // Partial fact (F32): no object supplied — the reviewer fills it in.
     const partial = e.object == null || e.object === '';
@@ -884,22 +1136,17 @@ export async function drainAndImportPending(): Promise<number> {
     const gloss = prefix + (question ?? e.note ?? '');
     const excerpt = e.commitSha ? `commit: ${e.commitSha}` : undefined;
 
-    // A fact a SCRIPT re-derived arrives settled. `verifiedBy` is only ever stamped by a
-    // deterministic check that reproduced the claim from the thing it describes — a path that
-    // exists on disk, an edge transcribed from the canonical roadmap graph. Those were never
-    // decisions: queueing them asked a human to confirm something already proved, and 140
-    // roadmap dependency edges copied verbatim out of a TTL is the clearest case.
-    //
-    // Judgements never carry this flag, so opinions still land as pending no matter how
-    // confidently they were stated. The verifier's name is kept on the statement, so an
-    // auto-accepted fact says who accepted it and can be found and reversed.
-    const verified = typeof e.verifiedBy === 'string' && e.verifiedBy.trim().length > 0;
-
     return {
-      id: uuid(),
+      // Raw bytes plus duplicate occurrence make retries stable without collapsing two deliberate,
+      // identical partial questions. Graph scope prevents the same producer row in two KBs from
+      // sharing an id if their databases are later combined.
+      id: uuidv5(JSON.stringify([currentKbId, rawLine, occurrence]), queueNamespace),
       sourceId,
-      status: (verified && !partial ? 'confirmed' : 'pending') as 'confirmed' | 'pending',
-      ...(verified ? { verifiedBy: e.verifiedBy } : {}),
+      // The queue is a proposal transport, not an authentication channel. `verifiedBy` is a
+      // legacy self-attested string and `verificationClaim` is intentionally advisory; either can
+      // be forged by the same writer that supplied the triple. A separately authenticated future
+      // verifier may use a trusted write path, but no JSONL row can settle itself.
+      status: 'pending' as const,
       confidence,
       s: { kind: 'iri' as const, value: e.subject },
       p: { kind: 'iri' as const, value: e.predicate },
@@ -940,13 +1187,78 @@ export async function drainAndImportPending(): Promise<number> {
   // and folding them would silently drop what the hole costs — a destructive action must never be
   // silent. Cross-batch dedupe (against already-imported pending) also remains — that needs a
   // graph read, not just this batch.
-  const { kept: deduped, folded } = dedupeCompletePending(sts);
+  const { kept: deduped, folded, groups } = dedupeCompletePending(sts);
   if (folded) console.info(`[F80.1] folded ${folded} duplicate pending note(s) before review`);
 
-  // Origin 'agent' engages the F52 boundary in addStatements: these are agent-queued notes, so
+  // A previous attempt may have committed IndexedDB and then failed to acknowledge the file.
+  // Stable ids are durable receipts: do not write or audit those statements a second time.
+  const durable = await db.statements.bulkGet(deduped.map((statement) => statement.id));
+  const unpersisted = deduped.filter((_, index) => !durable[index]);
+
+  // Origin 'agent' engages the F52 boundary: these are agent-queued notes, so
   // any settled status is downgraded to a proposal — agents propose, the human settles.
-  await addStatements(deduped, sourceId, { origin: 'agent' });
-  return deduped.length;
+  let written: typeof deduped = [];
+  if (unpersisted.length > 0) {
+    const plan = await prepareStatementsForWrite(unpersisted, sourceId, { origin: 'agent' });
+    written = await persistSourceBatch(source, plan);
+  }
+
+  // Admission can intentionally hold rows (content policy or an archived-entity
+  // decision). A queue row is acknowledged only when its statement id is now
+  // durable. Exact duplicates point at their durable canonical representative.
+  const durableAfter = await db.statements.bulkGet(deduped.map((statement) => statement.id));
+  const delivered = new Set(
+    deduped.filter((_, index) => durableAfter[index]).map((statement) => statement.id),
+  );
+  const representative = new Map<string, string>();
+  for (const group of groups) {
+    for (const duplicate of group.duplicates) representative.set(duplicate.id, group.keep.id);
+  }
+  const acknowledgedLines = sts.flatMap((statement, index) => {
+    const receiptId = representative.get(statement.id) ?? statement.id;
+    return delivered.has(receiptId) ? [partition.consumedLines[index]] : [];
+  });
+
+  // Re-read before acknowledging so rows appended during the IndexedDB transaction survive. Do
+  // not fall back to the old snapshot: a transient read error followed by a successful stale
+  // rewrite would erase those appends.
+  if (acknowledgedLines.length > 0) {
+    const latest = await readWorkspaceFileStrict(WORKSPACE_PENDING_FILE);
+    // A host writer may have started after the initial marker check. Once its marker disappears,
+    // the idempotent retry will subtract our rows from the host's committed version.
+    if (await workspaceFileHasActiveHostLock(WORKSPACE_PENDING_FILE)) {
+      throw new Error(`Workspace file is locked by a local process: ${WORKSPACE_PENDING_FILE}`);
+    }
+    await writeWorkspaceFileStrict(
+      WORKSPACE_PENDING_FILE,
+      acknowledgePendingJsonl(latest, acknowledgedLines),
+      latest,
+    );
+  }
+
+  // A dictated note lands here as ONE log-level fact carrying a whole sentence. Reading it into
+  // triples is not an optional extra step the user should have to remember: the note is the
+  // TRANSPORT, and the facts inside it are the point. Extraction is therefore automatic, and
+  // everything it reads out still arrives pending for review.
+  //
+  // Dynamically imported to keep the extraction pipeline (and the model backends behind it) out
+  // of this module's static dependency graph — the workspace store is loaded on every page.
+  void import('./note-extraction.svelte')
+    .then((m) => m.extractCapturedNotes())
+    .catch((err) => console.warn('[notes] automatic extraction failed:', err));
+
+  /*
+   * Verdicts LAST, and the order is the opposite of what looks natural (F199). A verdict names its
+   * statement by triple, and the statement only exists once the row above has been imported — so
+   * applying verdicts before the drain would match nothing on the very run that queued the work.
+   * Failure here must not fail the drain: the proposals are already durable, and an unapplied
+   * verdict stays in its journal for the next pass.
+   */
+  await drainWorkspaceDecisions().catch(
+    (err) => { console.warn('[workspace] applying journalled decisions failed:', err); return 0; },
+  );
+
+  return written.length;
 }
 
 /**
@@ -1167,10 +1479,37 @@ export async function resyncNow(): Promise<{ imported: string[]; updated: string
 
 // ── Polling ──────────────────────────────────────────────────────────────────
 
-/** Start the background poll loop (idempotent). No-op without a handle. */
+/**
+ * Start the background poll loop (idempotent). No-op without a handle.
+ *
+ * THE TICK DRAINS PENDING TOO, and until 2026-08-26 it did not. pullFromWorkspace only reads
+ * kbs/*.ttl, so a row appended to knowledge.pending.jsonl by anything OUTSIDE the browser — an
+ * agent, a scheduled job, an n8n workflow relaying a note dictated into a phone — arrived only
+ * when the app was reloaded or /review was opened by hand. Leave the app open on the graph and
+ * a captured note simply never showed up, which reads exactly like the capture having failed.
+ *
+ * Sequenced rather than fired in parallel: the TTL pull can replace a graph wholesale, and
+ * importing notes into a graph that is about to be overwritten wastes the import. Errors are
+ * caught here because an unhandled rejection inside setInterval is invisible AND leaves the
+ * user with a silently dead sync.
+ */
 export function startWorkspacePolling(ms: number = POLL_INTERVAL_MS): void {
   if (_pollTimer || !_handle || typeof setInterval === 'undefined') return;
-  _pollTimer = setInterval(() => { void pullFromWorkspace(); }, ms);
+  // Pull graph TTLs AND drain the proposal queue. The poll used to do only the first, so a note
+  // dictated into a ring reached knowledge.pending.jsonl on disk and then sat there until the
+  // next page load or a manual refresh — the app was polling a folder while ignoring the one file
+  // in it that changes most. Two of three dictated notes were lost this way on 2026-08-27; they
+  // were never lost, just never picked up.
+  // AND A FAILED CYCLE MUST SAY SO. Neither half is infallible — the drain rejects on a database
+  // error or an acknowledgement write that did not land — and without a catch that rejection is
+  // unhandled, so the one signal that capture is broken is a console message nobody wrote. The
+  // timer itself survives either way; what is lost is the diagnostic, which on this path is the
+  // difference between a note that failed loudly and a note that appears never to have arrived.
+  _pollTimer = setInterval(() => {
+    void pullFromWorkspace()
+      .then(() => drainAndImportPending())
+      .catch((e) => console.warn('[workspace] poll cycle failed:', e));
+  }, ms);
 }
 
 export function stopWorkspacePolling(): void {
@@ -1204,7 +1543,7 @@ if (typeof window !== 'undefined' && import.meta.env?.DEV) {
     // a graph-target mismatch returns 0 and still looks like a successful drain. Exposed so a
     // browser test can assert rows actually arrive, per graph, rather than trusting unit tests
     // over a path whose real inputs are a directory handle and a `?kb=` id.
-    drainWorkspacePending, drainAndImportPending,
+    drainWorkspacePending, drainAndImportPending, drainWorkspaceDecisions,
   };
 }
 

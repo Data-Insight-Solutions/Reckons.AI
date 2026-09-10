@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import {
     statements,
     sources,
@@ -33,14 +34,15 @@
     getRegistry,
     getCurrentKbId,
     switchToKb,
-    createKb,
     removeKbFromRegistry,
     updateKbName,
     toggleBookmark,
+    subscribeRegistry,
     kbUrl,
     kbFileSlug,
     type KbEntry
   } from '$lib/storage/kb-registry';
+  import { createNamedKb, renameKb } from '$lib/storage/kb-naming';
   import { groupGraphsWithArchives, groupRows } from '$lib/storage/archive-gallery';
   import { bucketIntoSets, findDuplicateGraphs } from '$lib/storage/graph-sets';
   import { sweepArchiveByAge } from '$lib/storage/archive-store';
@@ -72,7 +74,15 @@
 
   async function saveTitle() {
     titleSaving = true;
-    await updateSettings({ kbTitle: kbTitleLocal.trim() || undefined });
+    const name = kbTitleLocal.trim();
+    if (name) {
+      // One writer for both stores: the title box used to leave the registry — and therefore
+      // /kb's list and every ?kb=<name> link — pointing at the old name.
+      await renameKb(currentKbId, name, updateSettings);
+      localKbs = getRegistry();
+    } else {
+      await updateSettings({ kbTitle: undefined });
+    }
     titleSaving = false;
   }
 
@@ -128,6 +138,11 @@
 
   // ── KB registry ───────────────────────────────────────────────────────────
   let localKbs = $state<KbEntry[]>(getRegistry());
+  // Install during component initialisation, before the first gallery rows render. Waiting for
+  // onMount leaves a small window where another tab can write after the snapshot above but before
+  // the listener exists, permanently losing that event.
+  const unsubscribeRegistry = subscribeRegistry((registry) => { localKbs = registry; });
+  onDestroy(unsubscribeRegistry);
   let newKbName = $state('');
   let showNewKbForm = $state(false);
   let editingKbId = $state<string | null>(null);
@@ -261,10 +276,12 @@
     localKbs.filter(kb => (kbFilter === 'all' || kb.bookmarked) && !matchesQuery(kb, kbQuery)).length
   );
 
-  function handleCreateKb() {
+  async function handleCreateKb() {
     const name = newKbName.trim();
     if (!name) return;
-    const entry = createKb(name);
+    // Seeds the new graph's own kbTitle as well as the registry entry, so the graph opens
+    // already knowing its name instead of presenting an empty title box.
+    const entry = await createNamedKb(name);
     switchToKb(entry.id); // triggers reload
   }
 
@@ -348,10 +365,14 @@
     editingName = kb.name;
   }
 
-  function commitRename() {
+  async function commitRename() {
     if (editingKbId && editingName.trim()) {
-      updateKbName(editingKbId, editingName.trim());
+      const name = editingName.trim();
+      const renamed = editingKbId;
+      await renameKb(renamed, name, updateSettings);
       localKbs = getRegistry();
+      // Renaming the graph you are looking at must move the header too, not just the list row.
+      if (renamed === currentKbId) kbTitleLocal = name;
     }
     editingKbId = null;
   }
@@ -367,6 +388,64 @@
   let driveFiles = $state<DriveFile[]>([]);
   let driveLoading = $state(false);
   let driveError = $state('');
+
+  /*
+   * OPENING A GRAPH IS NOT MERGING ONE (Matt, 2026-09-04: "We do still need add graph, but that is
+   * for merging a graph into an existing, not reading a story from an existing graph.")
+   *
+   * Two different operations were sharing one screen, and only one of them was named.
+   *
+   *   MERGE — /ingest "add to graph". Facts land PENDING and you judge them one by one. That is
+   *           correct and deliberately not fast: reviewing what you are absorbing is the point,
+   *           and it runs entity normalisation (embeddings, a 33 MB model) to find near-duplicates
+   *           against what you already hold. Unchanged.
+   *   OPEN  — this. Someone hands you a whole graph to READ. There is nothing to reconcile it
+   *           against, so normalisation buys nothing and a 420-row review queue is pure obstacle.
+   *           One bulk write, confirmed, into its own graph.
+   *
+   * It reuses ingestNewKb, which is the same path workspace sync and Drive sync already take —
+   * proven, and not a fourth copy of "make a KB from a TTL".
+   */
+  let openFile = $state<File | null>(null);
+  let openBusy = $state(false);
+  let openError = $state('');
+
+  async function openGraphFile(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = ''; // let the same file be picked again after an error
+    if (!file) return;
+
+    openFile = file;
+    openBusy = true;
+    openError = '';
+    try {
+      const ttl = await file.text();
+      const name = file.name.replace(/\.(ttl|turtle|n3|nq)$/i, '');
+      const { ingestNewKb } = await import('$lib/stores/kb-import');
+      const result = await ingestNewKb({ ttl, assets: new Map() }, { name }, `file://${file.name}`);
+      if (!result || result.count === 0) {
+        // A file that parses to nothing is a wrong file, not an empty graph. Saying so beats
+        // switching the user into a blank graph and letting them wonder what happened.
+        openError = 'No facts found in that file — is it a Turtle graph?';
+        return;
+      }
+      /*
+       * The prompt is cleared for THIS graph before switching, so the layout's post-load check
+       * announces it. Without this, a graph opened here would be silent: `oneTime` dismissals are
+       * keyed by graph id, and a re-import of a graph the user once dismissed would never announce
+       * its story again even though they have just deliberately opened it to read.
+       */
+      const { undismissNotification } = await import('$lib/stores/notifications.svelte');
+      undismissNotification(`story:available:${result.kbId}`);
+      switchToKb(result.kbId); // triggers reload into the newly opened graph
+    } catch (e) {
+      openError = e instanceof Error ? e.message : String(e);
+    } finally {
+      openBusy = false;
+      openFile = null;
+    }
+  }
   let driveLoaded = $state(false);
 
   async function loadDriveFiles() {
@@ -1153,6 +1232,29 @@
     {/if}
   </div>
 
+  <!-- Open a graph file — READ a graph someone handed you, as opposed to MERGING one (/ingest) -->
+  <div class="drive-section">
+    <div class="drive-head">
+      <span class="mono" style="font-size:0.75rem; color:var(--muted);">open a graph file</span>
+      <label class="open-graph-label mono">
+        <span>{openBusy ? 'opening…' : 'choose .ttl'}</span>
+        <input
+          type="file"
+          accept=".ttl,.turtle,.n3,.nq,text/turtle,application/n-quads"
+          onchange={openGraphFile}
+          disabled={openBusy}
+        />
+      </label>
+    </div>
+    <p class="hint">
+      Opens it as its own graph, ready to read — nothing to review first.
+      To <em>merge</em> a graph into this one fact by fact, use <a href="/ingest">Add</a> instead.
+    </p>
+    {#if openError}
+      <p class="err mono">{openError}</p>
+    {/if}
+  </div>
+
   <!-- GDrive files -->
   <div class="drive-section">
     <div class="drive-head">
@@ -1181,8 +1283,12 @@
                 <span class="drive-file-name">{f.name}</span>
                 <span class="drive-file-date mono">{new Date(f.modifiedTime).toLocaleDateString()}</span>
               </div>
-              <a href="/ingest">
-                <button class="sm">import →</button>
+              <!-- Was a bare <a href="/ingest">, i.e. the MERGE route: a Drive graph offered
+                   here landed as a review queue instead of opening. It also carried no file
+                   reference, so /ingest opened with nothing selected and the user had to find
+                   the file again by hand. -->
+              <a href="/ingest" title="Opens the Add page — merges this graph into the current one, fact by fact">
+                <button class="sm">merge →</button>
               </a>
             </div>
           {/each}
@@ -2223,6 +2329,17 @@
     padding-top: 0.75rem;
     margin-top: 0.5rem;
   }
+  .open-graph-label {
+    font-size: 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: var(--rad-sm);
+    padding: 0.3rem 0.6rem;
+    cursor: pointer;
+    color: var(--muted);
+  }
+  .open-graph-label:hover { color: var(--accent); border-color: var(--accent); }
+  .open-graph-label input { display: none; }
+
   .drive-head {
     display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 0.5rem;

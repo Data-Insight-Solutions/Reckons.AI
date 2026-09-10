@@ -1,0 +1,68 @@
+{
+  "schema": "perf-crawl/1",
+  "finishedAt": "2026-08-23T00:44:19.752Z",
+  "baseUrl": "http://localhost:5174",
+  "renderer": "ANGLE (NVIDIA Corporation, NVIDIA GeForce RTX 3090/PCIe/SSE2, OpenGL 4.5.0)",
+  "softwareRendered": false,
+  "budgetMs": 2500,
+  "longTaskMs": 200,
+  "results": [
+    {
+      "route": "/",
+      "timeToUsable": 2009,
+      "longTasks": [
+        {
+          "duration": 446,
+          "name": "unknown"
+        }
+      ],
+      "worstFrame": 450,
+      "medianFrame": 16.699999999999818,
+      "frozenSpans": [],
+      "failures": [
+        "long task 446ms blocked the main thread (unknown)"
+      ],
+      "harnessError": null
+    },
+    {
+      "route": "/review",
+      "timeToUsable": 929,
+      "longTasks": [],
+      "worstFrame": 66.7,
+      "medianFrame": 16.699999999999818,
+      "frozenSpans": [],
+      "failures": [],
+      "harnessError": null
+    },
+    {
+      "route": "/ingest",
+      "timeToUsable": 1187,
+      "longTasks": [],
+      "worstFrame": 33.30000000000001,
+      "medianFrame": 16.699999999999818,
+      "frozenSpans": [],
+      "failures": [],
+      "harnessError": null
+    },
+    {
+      "route": "/kb",
+      "timeToUsable": 1303,
+      "longTasks": [],
+      "worstFrame": 16.800000000000182,
+      "medianFrame": 16.699999999999818,
+      "frozenSpans": [],
+      "failures": [],
+      "harnessError": null
+    },
+    {
+      "route": "/settings",
+      "timeToUsable": 1214,
+      "longTasks": [],
+      "worstFrame": 33.39999999999998,
+      "medianFrame": 16.699999999999818,
+      "frozenSpans": [],
+      "failures": [],
+      "harnessError": null
+    }
+  ]
+}
