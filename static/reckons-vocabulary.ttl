@@ -6,6 +6,8 @@
 @prefix ktask:  <urn:kbase:type/task-state/> .
 @prefix kstat:  <urn:kbase:type/review-status/> .
 @prefix klife:  <urn:kbase:type/lifecycle/> .
+@prefix kset:   <urn:kbase:type/set-kind/> .
+@prefix klayer: <urn:kbase:type/layer/> .
 @prefix kshape: <urn:kbase:shape/> .
 @prefix hnav:   <urn:reckons:nav/> .
 @prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -274,3 +276,164 @@ kshape:StatementStatus a sh:NodeShape ;
         sh:severity sh:Violation ;
         sh:message "kmeta:status must be one of the ktype:ReviewStatusScheme notations."
     ] .
+
+# ── SET KINDS (F187) ─────────────────────────────────────────────────────────
+# What kind of grouping a set is. A set TYPE describes the GROUP the way an
+# entity type describes one node, and it is a controlled vocabulary for exactly
+# the reason the others here are: the code and the graph must agree on the words.
+#
+# NOT rdf:type ON THE SET. A collection carries kpred:set-kind pointing at one of
+# these concepts. Using rdf:type would make each concept simultaneously an
+# individual (a member of this scheme) and a class (the type of a collection) —
+# OWL 2 punning, legal but poorly tooled, and a departure from how every other
+# vocabulary here is used: the code writes kpred:has-status "functional", never
+# rdf:type klife:functional. See kb:ref-figay-skos-owl.
+
+ktype:SetKindScheme a skos:ConceptScheme ;
+    rdfs:label "Kinds of set" ;
+    skos:definition "What a grouping IS: a page, a story with an order, a roster of like things, or a contrast between two sets of facts." ;
+    skos:note "A set may carry no kind at all. An untyped collection is still a collection, and requiring a kind before you can group two things would put a taxonomy decision in front of the simplest possible act." ;
+    skos:hasTopConcept kset:page, kset:story, kset:roster, kset:contrast .
+
+kset:page a skos:Concept ;
+    skos:inScheme ktype:SetKindScheme ;
+    skos:prefLabel "Page" ;
+    skos:notation "page" ;
+    skos:definition "A set whose members make one document. This is the kind that answers F187.5 — the set defines the page, and its members are the sections." .
+
+kset:story a skos:Concept ;
+    skos:inScheme ktype:SetKindScheme ;
+    skos:prefLabel "Story" ;
+    skos:notation "story" ;
+    skos:definition "A set whose ORDER carries meaning: a sequence, a path, a chain of prerequisites. Shuffling it changes what it says, which is what distinguishes it from a roster." ;
+    skos:note "A story should be a skos:OrderedCollection. The kind records the intent; the collection type records the mechanism." .
+
+kset:roster a skos:Concept ;
+    skos:inScheme ktype:SetKindScheme ;
+    skos:prefLabel "Roster" ;
+    skos:notation "roster" ;
+    skos:definition "A set of like things where order is presentation rather than meaning — the people on a team, the vendors on a shortlist. Sorting it alphabetically loses nothing." .
+
+kset:contrast a skos:Concept ;
+    skos:inScheme ktype:SetKindScheme ;
+    skos:prefLabel "Contrast" ;
+    skos:notation "contrast" ;
+    skos:definition "A set that exists to be compared with another — the overlap is the point. Two contrast sets sharing members are what a Venn draws, and the shared membership is derived rather than asserted." .
+
+ktype:SetKindOrder a skos:OrderedCollection ;
+    rdfs:label "Set kinds, most structured first" ;
+    skos:memberList ( kset:story kset:page kset:contrast kset:roster ) .
+
+# ── The predicates a set uses ────────────────────────────────────────────────
+# Declared here so the vocabulary is one file rather than folklore. skos:member
+# and skos:prefLabel are the standard's own and need no declaration; these three
+# are the local departures, and each says why it exists.
+
+kpred:set-kind a rdf:Property ;
+    rdfs:label "set kind" ;
+    rdfs:domain skos:Collection ;
+    rdfs:range skos:Concept ;
+    rdfs:comment "Which kind of set this is, from ktype:SetKindScheme. A PROPERTY rather than rdf:type, to avoid OWL 2 punning — see the scheme's note." .
+
+kpred:member-order a rdf:Property ;
+    rdfs:label "member order" ;
+    rdfs:comment "The position of ONE member within ONE set, carried on a skolemised membership node. It cannot live on the member itself: an entity may sit third in one set and first in another, and it cannot live in an rdf:List because blank-node labels are not stable across parses (measured 2026-09-08), so a list re-proposes its whole chain on every re-import." .
+
+kpred:set-relates-to a rdf:Property ;
+    rdfs:label "set relates to" ;
+    rdfs:domain skos:Collection ;
+    rdfs:comment "A relation between two SETS, or a set and one entity. LOCAL: SKOS has no Collection-to-Collection relation — its mapping properties relate Concepts, and skos:related is domain and range skos:Concept, so reusing it here would be a range violation." .
+
+
+## =============================================================================
+## RELATION LAYER — claim, provenance, or question.
+##
+## Matt, 2026-09-09: "the relations of semantic triples needs to be overlapped
+## and separate from that of source. They are inherently different relations."
+## Then "provenance vs ontology." Then the trichotomy itself: "predicates can be
+## decided, provenance, or question?"
+##
+## WHAT MAKES THESE THREE AND NOT SOME OTHER THREE: each names WHO SETTLES IT.
+## A claim is settled by a person. A provenance relation is settled by
+## the harness that ran the extraction. A question is not settled, and that is the
+## point of it. Three layers, three dispositions, one axis.
+##
+## An earlier draft of this block used assertion / provenance / STANDING, taking
+## the third from nanopublications' publication-info. That was a category error:
+## status, supersession and altitude are properties of a STATEMENT and live in
+## fields (src/lib/rdf/types.ts), so as a class of PREDICATE the layer was nearly
+## empty. Question is not — though it is smaller than first counted: kpred:remaining
+## looked like a question and is NOT one. Matt, 2026-09-09: "plan isn\u0027t really a
+## question." Its 243 values read "Real-world testing, reconnection handling" and
+## "DONE WHEN speakText routes by voiceType" — plans and definitions of done, which
+## somebody decided. kpred:open-question reads "Sidecar architecture: Docker
+## Compose, standalone FastAPI, or Ollama-style model runner?" — alternatives named,
+## nobody has chosen. So the layer is ~140 uses, not 388, and a plan is a claim.
+##
+## AND IT MAKES THE MISSION OPERATIONAL. "The most useful thing a graph can hold
+## is a well-formed absence" is a tenet on the landing page; with question as a
+## LAYER it becomes a view you can switch to. Show only this layer and you are
+## looking at the shape of what is missing.
+##
+## THE SHAPE IS NANOPUBLICATIONS-ADJACENT AND THE DEBT IS ACKNOWLEDGED: every
+## nanopub is three named graphs sharing IRIs. Ours are three, differently cut,
+## because a nanopub cannot express a question. The pattern is an idea and carries
+## no licence; their spec is CC BY-SA 3.0, so its prose is not copied and every
+## definition below is written fresh.
+##
+## THIS IS A TRUST BOUNDARY, NOT A TAXONOMY. Matt decided on 2026-09-09 that
+## provenance auto-confirms, log included. So a predicate mis-filed as provenance
+## would write world-claims into the confirmed graph with NO REVIEW, inverting the
+## promise the product is built on. The default is `claim` and it fails toward
+## MORE review, never less — the same fail-upward rule ktype:AltitudeScheme uses.
+## Forgetting to classify costs a reviewer one card. It cannot cost a silent write.
+## =============================================================================
+
+ktype:LayerScheme a skos:ConceptScheme ;
+    rdfs:label "Relation layer" ;
+    skos:definition "What KIND of relation a predicate expresses, judged by who settles it: a person, the harness, or nobody yet." ;
+    skos:note "The discriminating question is what the relation is ABOUT. `Aprimo is-a DAM vendor` is about Aprimo. `Aprimo mentioned-in report.pdf` is about the document. Both are true, both are useful, and drawing them in one picture is why a first-time reader concludes they do not understand triples." ;
+    skos:hasTopConcept klayer:claim, klayer:provenance, klayer:question .
+
+klayer:claim a skos:Concept ;
+    skos:inScheme ktype:LayerScheme ;
+    skos:prefLabel "Claim" ;
+    skos:notation "claim" ;
+    skos:definition "A claim about the world, which a person settles. This is the layer a reader means when they ask what the graph knows, and the only one that requires human review before it is confirmed." ;
+    skos:note "NAMED `claim` RATHER THAN `decided`, DELIBERATELY. `decided` reads as a synonym for status confirmed, and it is not: a PENDING statement sits in this layer and has not been decided at all — that is what the review queue is for. `claim` names what the relation IS, and leaves whether it has been settled to the status field where it belongs." ;
+    skos:note "THE FAIL-SAFE DEFAULT. An unclassified predicate lands here, because the alternative auto-confirms it." ;
+    skos:closeMatch <https://schema.org/Claim> ;
+    skos:note "STANDARDS FOOTING: schema.org carries a Claim type for the same idea — a factual assertion that something else can review — and nanopublications call this the assertion graph. Renaming this layer from `decided` to `claim` moved it TOWARD a standard rather than away from one." ;
+    skos:note "LICENCE NOTE, WRITTEN AFTER GETTING IT WRONG HERE: the schema.org vocabulary is CC BY-SA 3.0, and so are the nanopublication guidelines. Using their TERMS — the IRIs, via skos:closeMatch — is free and is the entire point of a shared vocabulary. Pasting their DEFINITION PROSE into a skos:definition or skos:note is redistribution, and ShareAlike would attach to it inside an MIT repository. An earlier draft of this very note quoted schema.org\u0027s wording verbatim. Reference the IRI; write the sentence yourself." ;
+    hnav:order 1 .
+
+klayer:provenance a skos:Concept ;
+    skos:inScheme ktype:LayerScheme ;
+    skos:prefLabel "Provenance" ;
+    skos:notation "provenance" ;
+    skos:definition "Where a claim came from and how it got here: the source, the passage, the run, the model, the file, the commit. Settled by the harness, because the harness already knows it. It is about a document or a process, never about the world the document describes." ;
+    skos:note "THE DISCRIMINATOR, FOUND BY GETTING IT WRONG (2026-09-09). `Settled by the machine` is not enough, because it conflates two different things: a provenance fact the harness KNOWS because it did the work, and a claim about the world the harness can VERIFY. A local model asked to sort 12 predicates filed `imports` and `part-of` as provenance on exactly that confusion — `moduleA imports moduleB` is checkable by a script, so it looked mechanical, but it is a claim ABOUT THE CODE and 981 uses of it would have stopped being reviewed. THE TEST THAT SEPARATES THEM: if every source were deleted, would the statement still mean anything? `A imports B` survives — it is a claim, and Statement.verifiedBy already exists to record that a deterministic check settled it. `This fact came from report.pdf section 3` does not survive; it is only about the source, and that is provenance." ;
+    skos:note "AUTO-CONFIRMED, so this list stays small and every entry earns its place. Nothing here is a judgment — which is also the argument for never asking an extractor to decide it. The model emits claims; the harness attaches the provenance. Taking that decision away from the model is what should remove the `an entity is a paragraph` failure, where document structure is mirrored into the concept graph." ;
+    skos:note "STANDARDS FOOTING: this is the best-standardized of the three. PROV-O gives it Entity, Activity and Agent, prov:wasDerivedFrom is already emitted by src/lib/rdf/serialize.ts, and W3C Web Annotation gives the passage a shape — `excerpt` plus `grounded` is a hand-rolled TextQuoteSelector that does not yet carry the name." ;
+    hnav:order 2 .
+
+klayer:question a skos:Concept ;
+    skos:inScheme ktype:LayerScheme ;
+    skos:prefLabel "Question" ;
+    skos:notation "question" ;
+    skos:definition "A relation that is deliberately unsettled: the subject and predicate are known and the object is open, or the whole relation is asked rather than stated. It is answered, not confirmed." ;
+    skos:note "ITS LIFECYCLE IS DIFFERENT AND THAT IS WHY IT IS A LAYER. A claim runs pending to confirmed; a question runs asked to answered, and F32 already builds that — needsObject shows the reviewer an entity picker instead of an accept button. Rejecting a question is not the same act as rejecting a claim." ;
+    skos:note "STANDARDS FOOTING IS THIN, AND THAT IS WHERE THE INVENTION IS. Three near neighbours and none of them is a layer. Wikidata `somevalue` says a property HAS a value that is unknown, which is exactly needsObject — but it is a value-level marker carrying no asker and no cost. W3C Web Annotation defines oa:questioning for an annotation whose purpose is to ask something about its target — a motivation attached to an annotation, not a relation in a graph. SPARQL is a question that cannot be stored, prioritised, or handed to a person. Two of these three layers are standard; this one is ours." ;
+    skos:note "INDEPENDENT CONVERGENCE, AND A WARNING WITH IT. Wikidata represented somevalue with BLANK NODES, found it broken — SPARQL does not honour existential semantics, so isBlank() filtering gives wrong answers — and is migrating to SKOLEM IRIs. F187.2 reached the same conclusion for set membership on its own reasoning, that n3 allocates bnode labels from a process-global counter so a list re-proposes its whole chain on re-import. The largest public knowledge graph hit the same wall on the same construct and made the same correction. The warning is the other half: an open object must be skolemised here too, or this layer inherits the exact bug Wikidata is spending years undoing." ;
+    skos:note "A question carries what it BLOCKS. That is the difference between a to-do and a priority, and it is why this layer summarizes best over a SET rather than over a lone triple: a set declares an intent, and an absence is only well-formed relative to something you are trying to do." ;
+    hnav:order 3 .
+
+kpred:assumption rdfs:label "extraction assumption" ;
+    kpred:layer         klayer:provenance ;
+    skos:definition     "Something the extraction had to DECIDE in order to produce a statement, which the source did not say outright. Resolving a pronoun, reading `the vendor` as a named company, dating an undated note from the document around it — each is a judgment the machine made and a reviewer would otherwise have to reconstruct." ;
+    skos:note           "Matt, 2026-09-09: MCP responses should carry `the provenance about the extraction process, assumptions, etc.` Nothing recorded assumptions before this. An extraction that silently resolves `they` to a specific person produces a confident triple whose weakest link is invisible — and F197 substantiation cannot weigh a claim whose reasoning was never written down." ;
+    skos:note           "IT IS PROVENANCE, NOT A CLAIM, and the survival test says why: an assumption is about how a statement CAME TO BE, and means nothing once separated from the extraction that made it. It therefore auto-confirms with the rest of the provenance layer — recording what the machine assumed is bookkeeping; the assumption being CORRECT is a property of the claim above it, which a person still settles." .
+
+kpred:layer rdfs:label "relation layer" ;
+    skos:definition "Which layer of ktype:LayerScheme a PREDICATE belongs to. Declared on the predicate rather than the statement because that makes the boundary a fact a script can enforce instead of a convention that drifts — Matt, 2026-09-09: \"I think its a predicate difference personally.\"" ;
+    skos:note "A per-statement override may follow the precedent of kpred:altitude, which fixes one fact where the predicate is usually right. It does not exist yet and should not be added until a real case needs it." .

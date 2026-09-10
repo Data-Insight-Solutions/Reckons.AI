@@ -11,6 +11,7 @@
  * scores hand-written triples rather than firing six models at Ollama from inside vitest.
  */
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { norm, normPredicate, slotMatches, scoreOne, loadSpecs, type FileSpec } from '../extraction-score';
 
 const t = (subject: string, predicate: string, object: string) => ({ subject, predicate, object });
@@ -211,8 +212,13 @@ describe('connection — the metric the first sweep was missing', () => {
 describe('the shipped ground truth', () => {
   const specs = loadSpecs('tests/fixtures/notes-corpus');
 
-  it('loads, and covers the three committed corpus files', () => {
-    expect(Object.keys(specs).sort()).toEqual(['01-note-single.txt', '02-notes-batch.txt', '03-doc-medium.md']);
+  it('loads, and covers the four committed corpus files', () => {
+    // Pinned deliberately: a fixture that stops being scored should break a test, not go quiet.
+    // 04-article-large.md is absent on purpose — it is a fetch-on-demand placeholder, not content,
+    // because committing Wikipedia text would carry CC BY-SA attribution into every derived artifact.
+    expect(Object.keys(specs).sort()).toEqual([
+      '01-note-single.txt', '02-notes-batch.txt', '03-doc-medium.md', '05-list-structured.md',
+    ]);
   });
 
   it('every expectation has a stable id and all three slots populated', () => {
@@ -249,5 +255,99 @@ describe('the shipped ground truth', () => {
         }
       }
     }
+  });
+});
+
+/**
+ * SYNONYM CAPTURE — Matt, 2026-09-08: "the terminology synonyms should be identified in these
+ * tests, to better score extractions."
+ *
+ * The scorer already KNEW a synonym existed — loose-minus-strict is exactly that count — and
+ * discarded the pair inside a `.some()`, so it reported "1 fact found under a DIFFERENT predicate
+ * name" without ever saying which. These pin that the pair is now kept, and, just as importantly,
+ * that it is NOT invented where there is nothing to learn from.
+ */
+describe('vocabulary drift is named, not just counted', () => {
+  const spec: FileSpec = {
+    title: 'synonyms',
+    expected: [
+      { id: 'A', s: ['lumenpath'], p: ['is-a'], o: ['enterprise-cad'] },
+      { id: 'B', s: ['jordan-veil'], p: ['owns'], o: ['northwind-analytics'] },
+    ],
+  };
+
+  it('keeps BOTH names when the fact is found under a rival predicate', () => {
+    const s = scoreOne(spec, [t('lumenpath', 'belongs-to-category', 'enterprise-cad')]);
+    expect(s.drift).toHaveLength(1);
+    expect(s.drift[0].id).toBe('A');
+    expect(s.drift[0].expected).toEqual(['is-a']);
+    expect(s.drift[0].emitted).toBe('belongs-to-category');
+  });
+
+  it('records NO drift on an exact hit — a match has no rival term', () => {
+    expect(scoreOne(spec, [t('lumenpath', 'is-a', 'enterprise-cad')]).drift).toEqual([]);
+  });
+
+  it('records NO drift on a miss — a fact never found teaches no synonym', () => {
+    // The dangerous failure mode: treating "we did not find it" as evidence about vocabulary
+    // would fill the review queue with pairs where one half is fiction.
+    const s = scoreOne(spec, [t('somebody-else', 'is-a', 'something-else')]);
+    expect(s.missed).toContain('A');
+    expect(s.drift).toEqual([]);
+  });
+
+  it('names one pair per drifting expectation, so two drifts are two candidates', () => {
+    const s = scoreOne(spec, [
+      t('lumenpath', 'belongs-to-category', 'enterprise-cad'),
+      t('jordan-veil', 'is-owner-of', 'northwind-analytics'),
+    ]);
+    expect(s.strict).toEqual([]);
+    expect(s.loose.sort()).toEqual(['A', 'B']);
+    expect(s.drift.map((d) => d.emitted).sort()).toEqual(['belongs-to-category', 'is-owner-of']);
+  });
+});
+
+/**
+ * PER-STAGE GROUND TRUTH (F187.3) — these assert the SHAPE of the new expectation kinds, not any
+ * model's performance. Nothing scores sets yet; the ground truth lands before the scorer so that
+ * the first set run has a number to be measured against rather than a target invented after the
+ * fact, which is the failure kb:extraction-scoring exists to prevent.
+ */
+describe('the set ground truth is well formed', () => {
+  const raw = JSON.parse(
+    readFileSync('tests/fixtures/notes-corpus/expectations.json', 'utf8'),
+  ) as Record<string, { sets?: unknown[]; notSets?: unknown[] }>;
+  const five = raw['05-list-structured.md'];
+  type SetExp = { id: string; why: string; label: string[]; members: string[][]; ordered: boolean; exclusive: boolean };
+  const sets = (five.sets ?? []) as SetExp[];
+
+  it('carries set expectations, and every one states WHY it is a set', () => {
+    expect(sets.length).toBeGreaterThanOrEqual(4);
+    for (const s of sets) {
+      expect(s.id, 'set expectation missing id').toMatch(/^\d+\.S\d+$/);
+      expect(s.why.trim().length, `${s.id} has no stated reason`).toBeGreaterThan(30);
+      expect(s.members.length, `${s.id} has no members`).toBeGreaterThan(0);
+      for (const m of s.members) expect(m.length, `${s.id} member with no accepted slug`).toBeGreaterThan(0);
+    }
+  });
+
+  it('includes at least one ORDERED set — order is a stage of its own', () => {
+    expect(sets.some((s) => s.ordered)).toBe(true);
+  });
+
+  it('includes a member that must appear in TWO sets — overlap, not partition', () => {
+    const overlap = sets.find((s) => 'mustAppearInSets' in s) as (SetExp & { mustAppearInSets: string[] }) | undefined;
+    expect(overlap, 'no overlap expectation — sets that only partition do not test F187').toBeDefined();
+    expect(overlap!.mustAppearInSets.length).toBeGreaterThanOrEqual(2);
+    // The sets it names must actually exist, or the expectation silently checks nothing.
+    for (const id of overlap!.mustAppearInSets) {
+      expect(sets.some((s) => s.id === id), `overlap names ${id}, which is not a set here`).toBe(true);
+    }
+  });
+
+  it('carries the TRAP — a list that must NOT be grouped', () => {
+    // Without this, high set-recall is unfalsifiable: a model that groups every bullet list
+    // would score perfectly while having learned exactly the wrong rule.
+    expect((five.notSets ?? []).length).toBeGreaterThan(0);
   });
 });

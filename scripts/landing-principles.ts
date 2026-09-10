@@ -60,7 +60,13 @@ const tenetIris = [
 
 interface Tenet {
   headline: string;
-  body: string;
+  /**
+   * The FIRST SENTENCE only. The landing page is not where a reader should meet a 70-word
+   * argument seven times over — Matt, 2026-09-06: "landing isn't a good place for that level of
+   * detail." The full body is published at /docs/principles, generated from the same triple, so
+   * there is still exactly one source and the depth lives where someone came looking for it.
+   */
+  lead: string;
   status: 'built' | 'belief';
   order: number;
 }
@@ -84,7 +90,19 @@ for (const iri of tenetIris) {
     problems.push(`${iri}: kpred:tenet-status must be "built" or "belief" (got "${status}")`);
     continue;
   }
-  tenets.push({ headline, body, status, order });
+  // Split on the first sentence end followed by a capital, so "kb:honest-status." mid-sentence
+  // does not truncate the lead.
+  // First sentence — but a lead has to stand alone, and some bodies open with a fragment. The
+  // evidence tenet begins "This is the spine.", which on the landing page said nothing at all, so
+  // a short opener takes the following sentence with it.
+  const sentences = (body.match(/[^.!?]+[.!?]+(?=\s|$)/g) ?? [body]).map((x) => x.trim());
+  const MIN_LEAD_WORDS = 9, MAX_LEAD_SENTENCES = 3;
+  let lead = sentences[0] ?? body;
+  for (let i = 1; i < sentences.length && i < MAX_LEAD_SENTENCES; i++) {
+    if (lead.split(/\s+/).length >= MIN_LEAD_WORDS) break;
+    lead = `${lead} ${sentences[i]}`;   // "Think privately. Be wrong privately." is still only
+  }                                     // five words, so one extra sentence is not always enough.
+  tenets.push({ headline, lead, status, order });
 }
 
 if (problems.length) {

@@ -14,9 +14,12 @@
 import { describe, it, expect } from 'vitest';
 import { diagramKey, normalizeSvg, diagramFigure } from '../lib/mermaid-render';
 import { collectDiagramSources, DIAGRAM_PREDICATE } from '../docs-diagrams';
-import { writeFileSync, mkdtempSync } from 'fs';
+import { writeFileSync, mkdtempSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import { resolve } from 'path';
+
+const STATIC_DIR = resolve(import.meta.dirname ?? '.', '..', '..', 'static');
 
 describe('diagramKey', () => {
   it('is stable for the same source', () => {
@@ -80,6 +83,59 @@ describe('normalizeSvg', () => {
   });
 });
 
+describe('normalizeSvg touches only the root — the regression that broke every node box', () => {
+  /**
+   * MEASURED DAMAGE, not a hypothetical (2026-09-06). The width/height rewrite ran over the whole
+   * document, so across the nine published diagrams it stripped `width` from all 153 <rect>s and
+   * all 55 <foreignObject>s and set `height="100%"` on 107 elements. On a child, a percentage
+   * height resolves against the viewBox — so every node box became as tall as the whole diagram
+   * while losing the width that gives it a shape, and a label in a zero-width foreignObject has
+   * nowhere to lay out. Every gate stayed green throughout: the TTL parsed, the cache hit, the
+   * pages matched. A picture can be wrong in ways only a person looking at it can see, which is
+   * why these assertions count elements rather than trusting the pipeline.
+   */
+  const svg = (body: string) =>
+    `<svg id="mermaid-1" width="1024" height="768" style="max-width: 1024px;" viewBox="0 0 1024 768">${body}</svg>`;
+
+  it('strips the root width and height so the stylesheet and viewBox size the figure', () => {
+    const out = normalizeSvg(svg(''), 'abc');
+    expect(out).not.toMatch(/<svg[^>]*\swidth="1024"/);
+    expect(out).not.toMatch(/<svg[^>]*\sheight="768"/);
+    expect(out).not.toMatch(/max-width/);
+    // The viewBox is the aspect ratio — losing it would make `height: auto` meaningless.
+    expect(out).toMatch(/viewBox="0 0 1024 768"/);
+  });
+
+  it('leaves every child element its own width and height', () => {
+    const out = normalizeSvg(
+      svg('<rect class="label-container" x="-113" y="-39" width="227" height="78"></rect>'),
+      'abc',
+    );
+    expect(out).toMatch(/<rect[^>]*width="227"/);
+    expect(out).toMatch(/<rect[^>]*height="78"/);
+  });
+
+  it('never writes a percentage height onto a child', () => {
+    const out = normalizeSvg(
+      svg('<foreignObject width="160" height="24"></foreignObject><circle r="5" width="10" height="10"></circle>'),
+      'abc',
+    );
+    expect(out).not.toContain('height="100%"');
+    expect(out).toMatch(/<foreignObject[^>]*width="160"[^>]*height="24"/);
+  });
+
+  it('maps the colors mermaid writes as rgb()/hsl(), not only its hexes', () => {
+    // These are the ones that break DARK theme: a near-white plate behind every edge label.
+    const out = normalizeSvg(
+      svg('<g style="background-color:rgba(232,232,232, 0.8);filter:drop-shadow(1px 2px 2px rgba(185, 185, 185, 1))"></g>'),
+      'abc',
+    );
+    expect(out).not.toMatch(/rgba?\(/);
+    expect(out).toContain('var(--diagram-surface)');
+    expect(out).toContain('var(--diagram-line)');
+  });
+});
+
 describe('diagramFigure', () => {
   it('carries the caption as an accessible label as well as visible text', () => {
     const out = diagramFigure('<svg/>', 'How a note becomes facts');
@@ -137,5 +193,40 @@ describe('collectDiagramSources', () => {
 
   it('names the predicate the docs graphs actually use', () => {
     expect(DIAGRAM_PREDICATE).toBe('urn:kbase:predicate/diagram');
+  });
+});
+
+describe('no HTML entity reaches a diagram label', () => {
+  /**
+   * A REAL BUG, CAUGHT BY EYE ON THE PUBLISHED PAGE (2026-09-06). The user-paths stage labels were
+   * written `"1 &middot; Capture"`, and mermaid escapes the ampersand when it builds the SVG text
+   * node — so the finished page rendered the literal string `1 &middot; Capture` to every reader.
+   *
+   * Nothing caught it: the TTL parses, the diagram renders, the cache hits, and all six align gates
+   * pass, because an entity is perfectly valid text. Only a person looking at the picture could
+   * see it, and that is exactly the kind of check worth demoting to a rule (F74.3). The fix is to
+   * write the character itself — TTL is UTF-8 and mermaid draws it correctly.
+   */
+  const ENTITY = /&(?:[a-zA-Z][a-zA-Z0-9]{1,31}|#\d{1,7}|#[xX][0-9a-fA-F]{1,6});/;
+
+  it('flags an entity in a diagram source', () => {
+    expect(ENTITY.test('subgraph s1["1 &middot; Capture"]')).toBe(true);
+    expect(ENTITY.test('S --> D["Agreements &amp; conflicts"]')).toBe(true);
+  });
+
+  it('leaves a bare ampersand and mermaid\'s own markup alone', () => {
+    // `A & B` is valid mermaid (a node list), and <br/> is the line break mermaid documents.
+    expect(ENTITY.test('flowchart LR\n  A & B --> C')).toBe(false);
+    expect(ENTITY.test('D["Agreements · conflicts<br/>· only-in-one"]')).toBe(false);
+  });
+
+  it('every diagram declared in the real graphs is entity-free', () => {
+    const graphs = readdirSync(STATIC_DIR)
+      .filter((f) => f.endsWith('.ttl'))
+      .map((f) => join(STATIC_DIR, f));
+    const offenders = collectDiagramSources(graphs)
+      .filter((src) => ENTITY.test(src))
+      .map((src) => src.slice(0, 80));
+    expect(offenders).toEqual([]);
   });
 });

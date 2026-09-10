@@ -1,7 +1,7 @@
 ---
 title: "What Is Reckons.AI"
 slug: "what-is-reckons-ai"
-order: 1015
+order: 10
 section: "Guide"
 template: doc
 status: published
@@ -10,192 +10,151 @@ excerpt: "Reckons.AI is a personal knowledge graph that runs entirely in your br
 generated: "docs-kb"
 related:
   - "triple-architecture"
-  - "why-it-matters"
 ---
 
 # What Is Reckons.AI
 
-*Concept*
-
 Reckons.AI is a personal knowledge graph that runs entirely in your browser. No server, no account, no cloud dependency. Your data stays on your device in IndexedDB, and you control every piece of knowledge that enters your graph through a human review process.
 
-## Where to go next
+<p class="derived">It has 44 parts below.</p>
 
-**[LEAP: Triples & RDF Deep Dive](../guide/triples-and-rdf)**
+## In this section
 
-Click to explore the semantic triple architecture, Turtle syntax, RDF standards (RDFS, SKOS, SPARQL, JSON-LD, PROV-O), and knowledge graph fundamentals.
+### Read next
 
-**[LEAP: Language Models](../guide/language-models)**
+<div class="card-grid">
 
-Click to learn what LLMs actually are, why they hallucinate, how RAG works, and why your curated graph makes AI dramatically more accurate.
+<a class="card" href="../triples-rdf/triple-architecture"><span class="card-title">Triples & RDF Deep Dive</span><span class="card-text">The semantic triple, Turtle syntax, and the RDF standards this product is built on — RDFS, SKOS, SPARQL, JSON-LD and PROV-O.</span></a>
+<a class="card" href="../llm/what-ll-ms-are"><span class="card-title">Language Models</span><span class="card-text">What language models actually are, why they hallucinate, how retrieval-augmented generation works, and how a reviewed graph compares with it.</span></a>
+<a class="card" href="../use-cases/personal-empowerment"><span class="card-title">Use Cases</span><span class="card-text">Worked scenarios: insurance claims, legal disputes, employment rights, medical records, corporate pushback, research, and software engineering.</span></a>
+<a class="card" href="../features/graph3-d"><span class="card-title">Features</span><span class="card-text">detailed coverage of every feature: Ingest, Review, Trust, Graph, Shelly, Reckonings, Compare, Multi-Graph, graph Leap, Content Safety, Predicate Manager, Whisper STT, Kokoro TTS, and more.</span></a>
+<a class="card" href="../integrations-tech/integrations"><span class="card-title">Integrations & Tech</span><span class="card-text">integrations (Calendar, MCP, Extension, Whisper, Kokoro, OCR, Firecrawl, Meshy 3D) and the technology stack (SvelteKit 2, Threlte 8, N3.js, @huggingface/transformers, Dexie).</span></a>
+<a class="card" href="../tips/security"><span class="card-title">Tips & Security</span><span class="card-text">practical tips (start small, review carefully, export often, use Ollama offline) and the security architecture (no server, API key safety, content safety, CSP, offline-capable).</span></a>
+<a class="card" href="../timeline-ecosystem/semantic-web-timeline"><span class="card-title">Timeline & RDF Ecosystem</span><span class="card-text">the RDF timeline from 1999 to 2026, key organizations (W3C, AI Alliance, Schema.org), people (Tim Berners-Lee), and the Reckons.AI launch.</span></a>
+<a class="card" href="../architecture/ttl-vs-markdown-gaps"><span class="card-title">Architecture & Design</span><span class="card-text">architecture decisions, TTL-first documentation strategy, standards alignment (PROV-O, SKOS), deployment patterns, style conventions, dependency health, and the markdown migration tracker.</span></a>
+<a class="card" href="../testing/test-suite"><span class="card-title">Test Suite & Visual Regression</span><span class="card-text">test documentation as interactive stories.</span></a>
 
-**[LEAP: Use Cases](../guide/use-cases)**
+</div>
 
-Click to explore real-world scenarios: insurance claims, legal disputes, employment rights, medical records, corporate pushback, and research.
+### What it can do
 
-**[LEAP: Features](../guide/features)**
+<div class="card-grid">
 
-Click for detailed coverage of every feature: Ingest, Review, Trust, Graph, Shelly, Reckonings, Compare, Multi-Graph, graph Leap, Content Safety, Predicate Manager, Whisper STT, Kokoro TTS, and more.
+<a class="card" href="../guide/who-makes-this"><span class="card-title">Who makes Reckons.AI</span><span class="card-text">Reckons.AI is built by one person at a small consultancy, which is worth knowing before you decide how much to depend on it.</span></a>
+<a class="card" href="../features/graph3-d"><span class="card-title">3D / 2D Knowledge Graph</span><span class="card-text">Interactive force-directed graph in WebGL (3D) or Canvas (2D fallback).</span></a>
+<a class="card" href="../learn/reckoning"><span class="card-title">A reckoning — asking your graph what to do</span><span class="card-text">A reckoning is what this product is named after, and it is the thing you do once you have a graph worth asking.</span></a>
+<a class="card" href="../features/compare"><span class="card-title">Compare — finding out where two people actually disagree</span><span class="card-text">Put two graphs side by side and see what is new, what agrees, and what conflicts.</span></a>
+<a class="card" href="#content-safety-features"><span class="card-title">Content Safety</span><span class="card-text">Ethics preamble injected into ALL LLM system prompts.</span></a>
+<a class="card" href="../features/context-compression-features"><span class="card-title">Context Compression</span><span class="card-text">Condense your context.</span></a>
+<a class="card" href="#cross-kb-alignment"><span class="card-title">Cross-Graph Alignment</span><span class="card-text">Align entities across knowledge graphs.</span></a>
+<a class="card" href="../features/currents"><span class="card-title">Currents</span><span class="card-text">Streamed ingest: point a current at an RSS feed, URL, or topic and it brings recurring external content into your graph on a schedule.</span></a>
+<a class="card" href="../architecture/currents-meta-triples"><span class="card-title">Currents Settings as Meta Triples</span><span class="card-text">Per-graph currents configuration (allowed entity types, per-current source/cadence/label) lives IN the graph as ordinary statements under the urn:reckons:meta/currents/ namespace, the same pattern used by nav:order for hierarchy.</span></a>
+<a class="card" href="#disambiguation"><span class="card-title">Disambiguation</span><span class="card-text">Automatic detection of duplicate or similar entities using text embeddings and cosine similarity.</span></a>
+<a class="card" href="#entity-types"><span class="card-title">Entity Type System</span><span class="card-text">Categorize entities (Person, Place, Concept, Tool, Document, Organization, Event) with custom colors and 3D shapes.</span></a>
+<a class="card" href="#history-mode"><span class="card-title">History Mode</span><span class="card-text">Time-travel through your graph at /history.</span></a>
+<a class="card" href="#human-in-the-loop"><span class="card-title">Human-in-the-Loop</span><span class="card-text">Nothing enters your confirmed knowledge graph without your explicit review.</span></a>
+<a class="card" href="../features/ingest"><span class="card-title">Ingest</span><span class="card-text">Add knowledge from text, URLs, documents, calendars, iCal feeds, Indico events, or Turtle files.</span></a>
+<a class="card" href="../features/llm-backends"><span class="card-title">LLM Backends</span><span class="card-text">9 providers: Claude, OpenAI, Gemini, Ollama (local), OpenRouter (free tier), WASM (offline, Qwen2.5-0.5B-Instruct), Chrome AI (Gemini Nano), Manual paste, Mock.</span></a>
+<a class="card" href="../architecture/local-first-arch"><span class="card-title">Local-First Architecture</span><span class="card-text">All user data lives in browser IndexedDB (Dexie v4).</span></a>
+<a class="card" href="#local-first"><span class="card-title">Local-First Architecture</span><span class="card-text">Everything runs in the browser.</span></a>
+<a class="card" href="../features/mcp-workspace"><span class="card-title">MCP Workspace</span><span class="card-text">Reckons.AI uses its own MCP server to track product state.</span></a>
+<a class="card" href="../features/multi-kb"><span class="card-title">Multi-Graph Management</span><span class="card-text">Create, switch, rename, and delete independent knowledge graphs.</span></a>
+<a class="card" href="#open-source"><span class="card-title">Open Source (MIT)</span><span class="card-text">Reckons.AI is MIT-licensed.</span></a>
+<a class="card" href="#passage-grounding"><span class="card-title">Passage Grounding</span><span class="card-text">Verbatim source excerpts attached to extracted triples.</span></a>
+<a class="card" href="#predicate-manager"><span class="card-title">Predicate Manager</span><span class="card-text">View all predicates in your graph with usage counts.</span></a>
+<a class="card" href="../features/published-docs"><span class="card-title">Published Graph Site</span><span class="card-text">Any graph can publish itself as a browsable website.</span></a>
+<a class="card" href="../features/review-system"><span class="card-title">Review — where your graph gets smaller and truer</span><span class="card-text">The step where you decide what is true.</span></a>
+<a class="card" href="../architecture/schema-constrained-extraction"><span class="card-title">Schema-Constrained Local Extraction</span><span class="card-text">Small local models (via Ollama) are unreliable at freeform triple extraction, so the local extraction path constrains the model to a fixed JSON schema (subject/predicate/object/type fields) with a compact prompt rather than the richer freeform prompt used for cloud backends.</span></a>
+<a class="card" href="../features/source-refresh"><span class="card-title">Source Refresh</span><span class="card-text">Generic refresh for url, repository, and calendar sources.</span></a>
+<a class="card" href="#trust-system"><span class="card-title">Source Trust System</span><span class="card-text">Sources accumulate trust scores based on your review decisions.</span></a>
+<a class="card" href="#style-conventions"><span class="card-title">Style Conventions</span><span class="card-text">Brand: dark theme, accent #7dd3fc (sky-300).</span></a>
+<a class="card" href="../architecture/tailwind-containment"><span class="card-title">Tailwind-Without-Preflight Containment</span><span class="card-text">shadcn-svelte components are introduced on Tailwind v4 with Tailwind's CSS reset (preflight) disabled.</span></a>
+<a class="card" href="../integrations-tech/architecture-integrations-tech"><span class="card-title">Technology Stack</span><span class="card-text">Static SvelteKit 2 app with Svelte 5 runes.</span></a>
+<a class="card" href="../architecture/ttl-first-docs"><span class="card-title">TTL-First Documentation</span><span class="card-text">Reckons.AI uses its own TTL knowledge graphs as the primary documentation format.</span></a>
+<a class="card" href="#ttl-export"><span class="card-title">Turtle Export</span><span class="card-text">Export your graph as a .ttl file with full reification metadata (status, source, confidence, timestamps, excerpts).</span></a>
+<a class="card" href="#why-it-matters"><span class="card-title">Why Reckons.AI Matters</span><span class="card-text">In an era of information overload, Reckons.AI gives individuals a structured way to capture, verify, connect, and retrieve knowledge.</span></a>
 
-**[LEAP: Integrations & Tech](../guide/integrations-tech)**
+</div>
 
-Click for integrations (Calendar, MCP, Extension, Whisper, Kokoro, OCR, Firecrawl, Meshy 3D) and the technology stack (SvelteKit 2, Threlte 8, N3.js, @huggingface/transformers, Dexie).
+### Reference
 
-**[LEAP: Tips & Security](../guide/tips-security)**
+<div class="card-grid">
 
-Click for practical tips (start small, review carefully, export often, use Ollama offline) and the security architecture (no server, API key safety, content safety, CSP, offline-capable).
+<a class="card" href="../guide/getting-started"><span class="card-title">Getting Started</span><span class="card-text">A step-by-step guide to building your first knowledge graph.</span></a>
 
-**[LEAP: Timeline & RDF Ecosystem](../guide/timeline-ecosystem)**
+</div>
 
-Click for the RDF timeline from 1999 to 2026, key organizations (W3C, AI Alliance, Schema.org), people (Tim Berners-Lee), and the Reckons.AI launch.
+### People
 
-**[LEAP: Architecture & Design](../guide/architecture-guide)**
+<div class="card-grid">
 
-Click for architecture decisions, TTL-first documentation strategy, standards alignment (PROV-O, SKOS), deployment patterns, style conventions, dependency health, and the markdown migration tracker.
+<a class="card" href="../features/shelly"><span class="card-title">Shelly (AI Assistant)</span><span class="card-text">The turtle-shaped AI assistant.</span></a>
 
-**[LEAP: Test Suite & Visual Regression](../guide/testing)**
+</div>
 
-Click for test documentation as interactive stories.
+<h3 id="content-safety-features">Content Safety</h3>
 
-**[3D / 2D Knowledge Graph](../features/graph3-d)**
+Ethics preamble injected into ALL LLM system prompts. Content classifier with two levels: blocked (filtered out on ingest) and mature (flagged on export with advisory). Discourse, disagreement, and academic content pass freely.
 
-Interactive force-directed graph in WebGL (3D) or Canvas (2D fallback).
+<h3 id="cross-kb-alignment">Cross-Graph Alignment</h3>
 
-**[Compare / Diff Engine](../features/compare)**
+Align entities across knowledge graphs. Entity matching via exact IRI match and embedding similarity. IRI remapping for entities that represent the same concept across graphs. Align tab in review page. KbPicker selects source graph, AlignmentCard shows each match with accept/reject.
 
-Compare two knowledge graphs or snapshots at /compare.
+<h3 id="disambiguation">Disambiguation</h3>
 
-**[Content Safety](../features/content-safety-features)**
+Automatic detection of duplicate or similar entities using text embeddings and cosine similarity. Suggests merges for your review in the Merges tab.
 
-Ethics preamble injected into ALL LLM system prompts.
+<h3 id="entity-types">Entity Type System</h3>
 
-**[Context Compression](../features/context-compression-features)**
+Categorize entities (Person, Place, Concept, Tool, Document, Organization, Event) with custom colors and 3D shapes. Types assigned via rdf:type statements.
 
-Condense your context.
+<h3 id="history-mode">History Mode</h3>
 
-**[Cross-Graph Alignment](../features/cross-kb-alignment)**
+Time-travel through your graph at /history. Scrub a timeline to see the graph at any past point. All mutations are logged in the changelog.
 
-Align entities across knowledge graphs.
+<h3 id="human-in-the-loop">Human-in-the-Loop</h3>
 
-**[Currents](../features/currents)**
+Nothing enters your confirmed knowledge graph without your explicit review. Every triple extracted by an LLM starts as 'pending' and must be confirmed, rejected, or refined by you. You are the authority.
 
-Streamed ingest: point a current at an RSS feed, URL, or topic and it brings recurring external content into your graph on a schedule.
+<h3 id="local-first">Local-First Architecture</h3>
 
-**[Currents Settings as Meta Triples](../architecture/currents-meta-triples)**
+Everything runs in the browser. Your graph is stored in IndexedDB, API keys never leave your device, and the app works offline after first load. No server means no data breaches, no vendor lock-in, and no monthly subscription.
 
-Per-graph currents configuration (allowed entity types, per-current source/cadence/label) lives IN the graph as ordinary statements under the urn:reckons:meta/currents/ namespace, the same pattern used by nav:order for hierarchy.
+#### Why it is this way
 
-**[Disambiguation](../features/disambiguation)**
+**Note**
 
-Automatic detection of duplicate or similar entities using text embeddings and cosine similarity.
+This is not just a feature -- it is a design philosophy. Your knowledge belongs to you.
 
-**[Entity Type System](../features/entity-types)**
+<h3 id="open-source">Open Source (MIT)</h3>
 
-Categorize entities (Person, Place, Concept, Tool, Document, Organization, Event) with custom colors and 3D shapes.
+Reckons.AI is MIT-licensed. Read the code, fork it, self-host it, run it offline forever. No proprietary lock-in, no subscription, no way to lose access to your own tool.
 
-**[Getting Started](../guide/getting-started)**
+<h3 id="passage-grounding">Passage Grounding</h3>
 
-A step-by-step guide to building your first knowledge graph.
+Verbatim source excerpts attached to extracted triples. LLM prompt rule requests the exact source sentence. Persists via meta:excerpt in TTL reification. Displayed in StatementCard and DiffEntry.
 
-**[History Mode](../features/history-mode)**
+<h3 id="predicate-manager">Predicate Manager</h3>
 
-Time-travel through your graph at /history.
+View all predicates in your graph with usage counts. Rename predicates across all statements or merge two predicates into one. Accessible from the graph page.
 
-**[Human-in-the-Loop](../guide/human-in-the-loop)**
+<h3 id="trust-system">Source Trust System</h3>
 
-Nothing enters your confirmed knowledge graph without your explicit review.
+Sources accumulate trust scores based on your review decisions. Trusted sources can be auto-confirmed. A time-decay formula prevents stale trust from persisting.
 
-**[Ingest](../features/ingest)**
+<h3 id="style-conventions">Style Conventions</h3>
 
-Add knowledge from text, URLs, documents, calendars, iCal feeds, Indico events, or Turtle files.
+Brand: dark theme, accent #7dd3fc (sky-300). Fonts: Bespoke Stencil Bold (display), Supreme Regular (body/mono), self-hosted (no Google Fonts). CSS variables: --accent, --accent-soft, --data, --surface, --surface-2, --surface-3, --line, --muted, --font-mono, --font-display, --rad, --rad-sm, --rad-lg. Z-index scale: node-labels=10, panels=300, Shelly=350, SearchBar=390, NavBar=400, MergeReview=500. bits-ui components always use :global(.class) for CSS targeting.
 
-**[LLM Backends](../features/llm-backends)**
+<h3 id="ttl-export">Turtle Export</h3>
 
-9 providers: Claude, OpenAI, Gemini, Ollama (local), OpenRouter (free tier), WASM (offline, Qwen2.5-0.5B-Instruct), Chrome AI (Gemini Nano), Manual paste, Mock.
+Export your graph as a .ttl file with full reification metadata (status, source, confidence, timestamps, excerpts). Roundtrip-safe. Clean export for interop or full export with all metadata.
 
-**[Local-First Architecture](../architecture/local-first-arch)**
+<h3 id="why-it-matters">Why Reckons.AI Matters</h3>
 
-All user data lives in browser IndexedDB (Dexie v4).
-
-**[Local-First Architecture](../guide/local-first)**
-
-Everything runs in the browser.
-
-**[MCP Workspace](../features/mcp-workspace)**
-
-Reckons.AI uses its own MCP server to track product state.
-
-**[Multi-Graph Management](../features/multi-kb)**
-
-Create, switch, rename, and delete independent knowledge graphs.
-
-**[Open Source (MIT)](../guide/open-source)**
-
-Reckons.AI is MIT-licensed.
-
-**[Passage Grounding](../features/passage-grounding)**
-
-Verbatim source excerpts attached to extracted triples.
-
-**[Predicate Manager](../features/predicate-manager)**
-
-View all predicates in your graph with usage counts.
-
-**[Published Graph Site](../features/published-docs)**
-
-Any graph can publish itself as a browsable website.
-
-**[Reckoning (STP)](../features/reckoning)**
-
-Situation-Target-Proposal: describe your situation, state your goal, and the AI synthesizes options grounded ONLY in your confirmed triples.
-
-**[Review System](../features/review-system)**
-
-Three tabs: Incoming (new triples), Deletions (removal proposals), Merges (duplicate entity suggestions).
-
-**[Schema-Constrained Local Extraction](../architecture/schema-constrained-extraction)**
-
-Small local models (via Ollama) are unreliable at freeform triple extraction, so the local extraction path constrains the model to a fixed JSON schema (subject/predicate/object/type fields) with a compact prompt rather than the richer freeform prompt used for cloud backends.
-
-**[Shelly (AI Assistant)](../features/shelly)**
-
-The turtle-shaped AI assistant.
-
-**[Source Refresh](../features/source-refresh)**
-
-Generic refresh for url, repository, and calendar sources.
-
-**[Source Trust System](../features/trust-system)**
-
-Sources accumulate trust scores based on your review decisions.
-
-**[Style Conventions](../architecture/style-conventions)**
-
-Brand: dark theme, accent #7dd3fc (sky-300).
-
-**[Tailwind-Without-Preflight Containment](../architecture/tailwind-containment)**
-
-shadcn-svelte components are introduced on Tailwind v4 with Tailwind's CSS reset (preflight) disabled.
-
-**[Technology Stack](../integrations-tech/architecture-integrations-tech)**
-
-Static SvelteKit 2 app with Svelte 5 runes.
-
-**[TTL-First Documentation](../architecture/ttl-first-docs)**
-
-Reckons.AI uses its own TTL knowledge graphs as the primary documentation format.
-
-**[Turtle Export](../features/ttl-export)**
-
-Export your graph as a .ttl file with full reification metadata (status, source, confidence, timestamps, excerpts).
-
-**[Why Reckons.AI Matters](../guide/why-it-matters)**
-
-In an era of information overload, Reckons.AI gives individuals a structured way to capture, verify, connect, and retrieve knowledge.
+In an era of information overload, Reckons.AI gives individuals a structured way to capture, verify, connect, and retrieve knowledge. It bridges the gap between human understanding and machine processing -- your knowledge becomes queryable, shareable, and portable.
 
 ## Related
 
-**Related**
-
 - [The Semantic Triple](../triples-rdf/triple-architecture)
-- [Why Reckons.AI Matters](../guide/why-it-matters)
+- [What Is Reckons.AI](../guide/what-is-reckons-ai)

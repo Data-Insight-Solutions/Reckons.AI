@@ -48,6 +48,7 @@ import {
 } from '../storage/app-db';
 import {
   acknowledgePendingJsonl,
+  normalizePendingGraphName,
   partitionPendingJsonl,
   type PendingEntry,
 } from '../rdf/pending-entry';
@@ -878,6 +879,16 @@ async function _triggerWorkspaceTtlExport(): Promise<void> {
 export const WORKSPACE_PENDING_FILE = 'knowledge.pending.jsonl';
 
 /**
+ * Verdicts reached OUTSIDE the app — `reckons review` and the kb_review_* MCP tools (F199).
+ *
+ * A sibling of the queue, deliberately not the queue itself. The queue carries proposals INTO
+ * review from many writers; this carries decisions back out of a terminal claiming to settle them.
+ * One file for both would mean the drain that consumes proposals also has to avoid consuming
+ * verdicts, and the first bug in that scheme silently eats somebody's decision.
+ */
+export const WORKSPACE_DECISIONS_FILE = 'knowledge.decisions.jsonl';
+
+/**
  * Read knowledge.pending.jsonl, take the entries meant for the ACTIVE graph, and PUT THE
  * REST BACK. Returns an empty array if the file doesn't exist or no workspace is connected.
  *
@@ -886,6 +897,48 @@ export const WORKSPACE_PENDING_FILE = 'knowledge.pending.jsonl';
  * that graph to claim. An unscoped or invalid row is also retained verbatim: guessing a
  * destination from the active tab is how a roadmap finding lands in a user's personal notes.
  */
+/**
+ * What is waiting in the queue for OTHER graphs — without draining anything.
+ *
+ * Matt, 2026-09-09, opening a review link: "0 pending changes." The queue held 1,036 rows. Every
+ * one was either addressed to a different graph or carried no address at all, so the drain
+ * correctly took none of them and the screen correctly reported none — and the reader is left
+ * with a dead end that looks like completion.
+ *
+ * "Nothing for you" and "nothing at all" are different answers and the screen was giving the
+ * second when the first was true. This computes the difference so it can be shown: which graphs
+ * have work waiting, and how much is addressed to nobody.
+ *
+ * READ-ONLY. It parses the same file the drain reads and writes nothing back, so calling it can
+ * never consume a row.
+ */
+export async function pendingWaitingElsewhere(): Promise<{ byGraph: Array<{ kb: string; count: number }>; unaddressed: number }> {
+  const text = await readFromWorkspace(WORKSPACE_PENDING_FILE);
+  if (!text?.trim()) return { byGraph: [], unaddressed: 0 };
+
+  const active = new Set(
+    [getCurrentKbName(), getCurrentKbId()].filter(Boolean).map(normalizePendingGraphName),
+  );
+  const counts = new Map<string, number>();
+  let unaddressed = 0;
+
+  for (const line of text.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed === '') continue;
+    let kb: unknown;
+    try { kb = (JSON.parse(trimmed) as { kb?: unknown }).kb; } catch { continue; }
+    if (typeof kb !== 'string' || kb.trim() === '') { unaddressed++; continue; }
+    const slug = normalizePendingGraphName(kb);
+    if (active.has(slug)) continue;                 // this one WILL drain; not "elsewhere"
+    counts.set(slug, (counts.get(slug) ?? 0) + 1);
+  }
+
+  return {
+    byGraph: [...counts].map(([kb, count]) => ({ kb, count })).sort((a, b) => b.count - a.count),
+    unaddressed,
+  };
+}
+
 export async function drainWorkspacePending(): Promise<PendingEntry[]> {
   const text = await readFromWorkspace(WORKSPACE_PENDING_FILE);
   if (!text?.trim()) return [];
@@ -938,6 +991,73 @@ export async function drainWorkspacePending(): Promise<PendingEntry[]> {
 function objectTerm(value: string, declared?: 'literal' | 'iri'): { kind: 'literal' | 'iri'; value: string } {
   if (declared) return { kind: declared, value };
   return value.startsWith('urn:') ? { kind: 'iri', value } : { kind: 'literal', value };
+}
+
+/**
+ * Apply verdicts journalled by the CLI or the MCP review tools, and return how many landed.
+ *
+ * ORDERING MATTERS AND IT IS THE OPPOSITE OF WHAT LOOKS NATURAL: proposals drain FIRST, then
+ * verdicts. A verdict names a statement by its triple, and a statement only exists once its row
+ * has been imported — so applying verdicts before the drain would match nothing on the very run
+ * that queued the work. `drainAndImportPending` calls this at the end for that reason.
+ *
+ * A verdict that matches nothing is KEPT, not discarded. Recording a decision against a row that
+ * has not been drained yet is early, not wrong; deleting it would silently lose a judgment
+ * somebody actually made. Refusals are kept too, so the refusal stays visible rather than
+ * disappearing into a log nobody reads.
+ */
+export async function drainWorkspaceDecisions(): Promise<number> {
+  if (await workspaceFileHasActiveHostLock(WORKSPACE_DECISIONS_FILE)) return 0;
+  const text = await readFromWorkspace(WORKSPACE_DECISIONS_FILE);
+  if (!text?.trim()) return 0;
+
+  const { parseDecisionJsonl, applyVerdicts } = await import('../rdf/decision-journal');
+  const { verdicts, issues } = parseDecisionJsonl(text);
+  if (issues.length > 0) {
+    console.warn(
+      `[workspace] ${issues.length} decision line(s) could not be applied: `
+      + issues.map((i) => `line ${i.line} ${i.code}`).join(', '),
+    );
+  }
+  if (verdicts.length === 0) return 0;
+
+  const { statements, setStatuses } = await import('./kb.svelte');
+  const outcome = applyVerdicts(verdicts, statements());
+
+  for (const { verdict, reason } of outcome.refused) {
+    // Loud, not silent: a refused settlement is the boundary doing its job, and the only way a
+    // person learns the agent tried is if this says so.
+    console.warn(`[workspace] REFUSED decision ${verdict.decision}: ${reason}`);
+  }
+
+  if (outcome.changes.length > 0) {
+    await setStatuses(outcome.changes.map((c) => ({
+      id: c.id, status: c.status, settledBy: c.settledBy, settledByDecision: c.settledByDecision,
+    })));
+  }
+
+  /*
+   * Consume only what was applied. An unmatched or refused verdict is written back byte-for-line,
+   * so the journal can never erase a decision it could not act on — the same rule the pending
+   * drain follows, for the same reason.
+   */
+  const applied = new Set(outcome.applied);
+  const retained = text.split('\n').filter((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return false;
+    try {
+      const id = (JSON.parse(trimmed) as { decision?: string }).decision;
+      return !(typeof id === 'string' && applied.has(id));
+    } catch {
+      return true; // an unparseable line is evidence, not rubbish
+    }
+  });
+  await writeToWorkspace(
+    WORKSPACE_DECISIONS_FILE,
+    retained.length ? retained.join('\n') + '\n' : '',
+  );
+
+  return outcome.changes.length;
 }
 
 let pendingImport: Promise<number> | null = null;
@@ -1126,6 +1246,17 @@ async function drainAndImportPendingOnce(): Promise<number> {
   void import('./note-extraction.svelte')
     .then((m) => m.extractCapturedNotes())
     .catch((err) => console.warn('[notes] automatic extraction failed:', err));
+
+  /*
+   * Verdicts LAST, and the order is the opposite of what looks natural (F199). A verdict names its
+   * statement by triple, and the statement only exists once the row above has been imported — so
+   * applying verdicts before the drain would match nothing on the very run that queued the work.
+   * Failure here must not fail the drain: the proposals are already durable, and an unapplied
+   * verdict stays in its journal for the next pass.
+   */
+  await drainWorkspaceDecisions().catch(
+    (err) => { console.warn('[workspace] applying journalled decisions failed:', err); return 0; },
+  );
 
   return written.length;
 }
@@ -1412,7 +1543,7 @@ if (typeof window !== 'undefined' && import.meta.env?.DEV) {
     // a graph-target mismatch returns 0 and still looks like a successful drain. Exposed so a
     // browser test can assert rows actually arrive, per graph, rather than trusting unit tests
     // over a path whose real inputs are a directory handle and a `?kb=` id.
-    drainWorkspacePending, drainAndImportPending,
+    drainWorkspacePending, drainAndImportPending, drainWorkspaceDecisions,
   };
 }
 

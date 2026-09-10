@@ -665,3 +665,150 @@ kb:ref-liveportrait rdf:type   ktype:Reference ;
                kpred:description  "Drives a still portrait with a driving video, which is exactly 'the character in the meme, with the reaction defined' from F161. Technically the closest thing to the hard part of that story." ;
                kpred:honest-note  "AND IT IS THE ONE WE CANNOT USE. The API reports NOASSERTION — no licence GitHub recognises — so the deterministic gate that cleared every other repo in this graph fails this one. Recorded rather than quietly dropped, because the capability is the right shape and someone will find it again: if it is ever relicensed, revisit. The repo has also moved owner (KwaiVGI to KlingAIResearch), which is its own signal about stability." ;
                kpred:relates-to   kb:meme-with-context .
+
+# ==============================================================================
+# Starred and reviewed 2026-09-08. READMEs read, licences fetched from the API.
+# All ten were already proposed by scripts/offline/stars-scan.ts and were sitting
+# in reckons-workspace/knowledge.pending.jsonl awaiting triage — the pipeline
+# worked; the queue was the part nobody had read. These five are the ones that
+# touch live work. The rest stay pending.
+# ==============================================================================
+
+kb:ref-openwhispr rdf:type     ktype:Reference ;
+               rdfs:label   "OpenWhispr — local-first voice dictation with a global hotkey" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   27 ;
+               kpred:repo-url     "https://github.com/OpenWhispr/openwhispr" ;
+               kpred:license      "MIT" ;
+               kpred:copy-permitted "yes — MIT, attribution required" ;
+               kpred:relates-to   kb:freeform-capture ;
+               kpred:description  "README reviewed 2026-09-08. 7.8k stars. Electron dictation for macOS, Windows and Linux: press a hotkey, speak, and the text appears at the cursor in whatever app has focus. Transcription is local by default (Whisper or NVIDIA Parakeet) with cloud BYOK as the opt-in, and it carries on into meeting transcription with on-device speaker diarization, voice fingerprints across meetings, and a notes surface with folders and semantic search." ;
+               kpred:evidence     "THE CAPTURE GESTURE IS THE PART WORTH STUDYING, AND IT IS THE HALF F177 HAS NOT SETTLED. Its unit is the utterance, delivered to wherever the cursor already is — no destination chosen, no review step, no structure imposed at capture time. Reckons has the opposite: capture arrives as pending statements for review. kb:freeform-capture leaves open whether the unit on screen is the note or the claims taken out of it, and this is a working, popular answer to the note half of that question." ;
+               kpred:constraint   "IT IS NOT A CONDENSATION PRODUCT, WHICH IS EXACTLY THE GAP MATT'S SISTER REPORTED. Dictation to cursor is transcription — a faithful copy of what was said. Reckons claims something different, that facts are extracted and held against each other, and that difference is invisible if the capture surface looks identical. Borrow the frictionlessness of the entry gesture, not the model of what happens after it." .
+
+kb:ref-token-optimizer rdf:type ktype:Reference ;
+               rdfs:label   "Token Optimizer — measured context waste for coding agents" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   28 ;
+               kpred:repo-url     "https://github.com/alexgreensh/token-optimizer" ;
+               kpred:license      "NOASSERTION" ;
+               kpred:copy-permitted "NO — GitHub reports no recognised licence (checked 2026-09-08). Read it for patterns; copy nothing. Same gate as kb:ref-orionbelt." ;
+               kpred:relates-to   kb:work-tiering ;
+               kpred:description  "README reviewed 2026-09-08. 2.2k stars. A Claude Code plugin that instruments where an agent session spends tokens and reports it on a dashboard, covering bloated configs, unused skills, stale memory, compaction loss and model misrouting rather than only command output — its own claim is that output compression is 15-25% of context and the rest is the other 75%." ;
+               kpred:evidence     "IT MEASURES THE THING THIS PROJECT ASSERTS. kb:work-tiering says offloading is not free and that the ladder must be measured with npm run session:tokens; the categories above are a ready-made breakdown for that number, and CLAUDE.md itself is one of the artifacts it would price — HANDOFF.md was already measured at 45.0M carried tokens across 14 reads, which is the same finding arrived at by hand." ;
+               kpred:constraint   "UNLICENSED, so the categories are the borrowable part and none of the code is. It is also a plugin for the harness rather than a property of this repository, so it prices Claude Code sessions and says nothing about the local tiers — the half of the ladder where the savings were supposed to come from." .
+
+kb:ref-agent-orchestrator rdf:type ktype:Reference ;
+               rdfs:label   "Agent Orchestrator — a desktop workspace for fleets of coding agents" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   29 ;
+               kpred:repo-url     "https://github.com/Untrivial-ai/agent-orchestrator" ;
+               kpred:license      "Apache-2.0" ;
+               kpred:copy-permitted "yes — Apache-2.0, attribution required (+ NOTICE, patent grant)" ;
+               kpred:relates-to   kb:agent-orchestration ;
+               kpred:description  "README reviewed 2026-09-08. 11.1k stars. A local desktop app plus daemon that gives every task its own agent, branch and git worktree, then follows conversation, terminal, changed files, PR, CI and review state as one session on a live Kanban. A project-aware orchestrator plans and splits larger outcomes across workers." ;
+               kpred:evidence     "BRANCH-AND-WORKTREE-PER-TASK IS THE SAME ANSWER THIS PROJECT REACHED, arrived at independently and shipped further. kb:agent-orchestration wants tasks claimed and steered as a SET; AO makes the session the unit and hangs the whole review trail off it. The part Reckons does not have is the live view — here a running agent's state is a terminal someone has to be looking at." ;
+               kpred:constraint   "IT ORCHESTRATES AGENTS OVER A REPOSITORY; RECKONS ORCHESTRATES WORK OVER A GRAPH. A task here is a triple (F87) and its definition-of-done is reviewable as a fact, which is the thing a Kanban card is not. Take the session-as-unit and the worktree isolation; do not take the board as the model of the work." .
+
+kb:ref-knowledge-graph-rahulnyk rdf:type ktype:Reference ;
+               rdfs:label   "knowledge_graph (rahulnyk) — concepts, not entities, with proximity as the edge" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   30 ;
+               kpred:repo-url     "https://github.com/rahulnyk/knowledge_graph" ;
+               kpred:license      "MIT" ;
+               kpred:copy-permitted "yes — MIT, attribution required" ;
+               kpred:relates-to   kb:triple-extraction ;
+               kpred:relates-to   kb:passage-grounding ;
+               kpred:description  "README reviewed 2026-09-08. 4k stars. A notebook-scale pipeline that chunks a document, extracts CONCEPTS per chunk with an LLM rather than entities with an NER model, and treats co-occurrence within a chunk as the relation — every edge is the text chunk in which both concepts appear. Output feeds graph-augmented retrieval." ;
+               kpred:evidence     "TWO CLAIMS WORTH TESTING AGAINST OUR OWN CORPUS. (1) Concepts beat entities: its author reports that Pleasant weather in Bangalore makes a more useful node than Bangalore. Our extraction scorer measures exactly this class of judgement and the corpus already separates INVENTION from MISROUTING, so it is a scoreable hypothesis rather than an opinion. (2) The edge IS the passage, which is kb:passage-grounding arrived at from the other direction — grounding as a by-product of how the edge was formed rather than a citation attached afterwards." ;
+               kpred:constraint   "PROXIMITY IS NOT A NAMED RELATION, and this project's own graph-lint penalises exactly that: 746 relates-to edges are already flagged as a generic relation that adds an edge and no knowledge. Co-occurrence would industrialise the thing we are trying to reduce. Take the concept-over-entity question to the scorer; do not take the edge rule." .
+
+kb:ref-graphgen rdf:type       ktype:Reference ;
+               rdfs:label   "GraphGen — graph-driven synthetic data for fine-tuning" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   31 ;
+               kpred:repo-url     "https://github.com/InternScience/GraphGen" ;
+               kpred:license      "Apache-2.0" ;
+               kpred:copy-permitted "yes — Apache-2.0, attribution required (+ NOTICE, patent grant)" ;
+               kpred:relates-to   kb:triple-extraction ;
+               kpred:description  "Metadata and repository description reviewed 2026-09-08; README NOT read in depth. 1.2k stars, Apache-2.0. Builds a knowledge graph from source text and uses it to generate supervised fine-tuning data, the stated aim being coverage of what the graph knows rather than whatever a prompt happened to produce." ;
+               kpred:evidence     "IT INVERTS THE DIRECTION THIS PROJECT USES A GRAPH FOR. Here the graph grounds a prompt at inference; there the graph enumerates what training data must cover. The overlap worth noting is that both need a graph that is COMPLETE enough to be a coverage measure, which is what the extraction scorer's expectations file already is on a small scale." ;
+               kpred:honest-note  "REVIEWED FROM THE OUTSIDE ONLY. The evidence line above is inference from the description, not from reading the code or the paper, and it should not be cited as a finding until someone does. Recorded at this depth deliberately rather than written up as though it had been studied." .
+
+# ── An ARTICLE, not a repo. Sent by Matt 2026-09-08 and it changed the design. ──
+kb:ref-figay-skos-owl rdf:type ktype:Reference ;
+               rdfs:label   "Figay — Combined usage of SKOS and OWL: an experimentation" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   32 ;
+               kpred:link         "https://observablehq.com/@nfigay/combined-usage-of-skos-and-owl-an-experimentation" ;
+               kpred:license      "n/a — an Observable notebook, read not copied" ;
+               kpred:copy-permitted "no code taken; cited for its argument" ;
+               kpred:relates-to   kb:set-semantics ;
+               kpred:relates-to   kb:entity-sets ;
+               kpred:description  "Read 2026-09-08 (fetched via the Observable notebook API; the rendered page rate-limits). Nicolas Figay loads a real SKOS thesaurus into Protege with and without the SKOS OWL DL sub-set and reports what actually happens. The load-bearing observation for us: under SKOS OWL DL a skos:Concept becomes an OWL INDIVIDUAL, while the thing a modeller usually wants it to be is an OWL CLASS. Making one IRI both is PUNNING — forbidden in OWL 1, legal since OWL 2, and in his words not well supported by Protege, with the practical workaround being to split class-facing and individual-facing statements into separate files." ;
+               kpred:evidence     "IT CAUGHT A REAL DEFECT IN OUR OWN SPEC, WITHIN THE HOUR. The first draft of static/reckons-sets-spec.ttl wrote rdf:type kset:people on a collection while also declaring kset:people a skos:Concept — punning, by accident, in the very first worked example. Corrected to kpred:set-type, a property whose range is skos:Concept, which keeps every set type an individual and nothing a class. Verified by a check over the file: zero IRIs appear both as an rdf:type object and as a skos:Concept subject." ;
+               kpred:evidence     "IT ALSO SHOWS THE HOUSE PATTERN WAS ALREADY RIGHT, which is why the fix was a return rather than an invention. reckons-vocabulary.ttl declares klife:functional as a skos:Concept with skos:notation, and the code writes kpred:has-status \"functional\" — a property whose value names the concept, never rdf:type klife:functional. Every existing controlled vocabulary here is punning-free already; the sets draft departed from the convention and the article is what made that visible." ;
+               kpred:constraint   "ONE CAUTION WE MUST NOT OVER-READ. Figay warns that promoting concepts to owl:Class should NOT be systematic, since only a subpart of concepts are classes. That does not touch the decision to type entities as skos:Concept — our entities are individuals and stay individuals. It is a warning against a SECOND step nobody has proposed: also declaring them owl:Class. Do not let the caution be cited against the thing it does not apply to." ;
+               kpred:open-question "Figay notes an OWL ontology can be DERIVED from a skos:ConceptScheme by taking everything inScheme. If set types live in a scheme, that is a route from user-defined sets to a checkable ontology without asking anyone to write OWL. Parked: it is a later question than F187 and needs the set layer to exist first." .
+
+kb:ref-flowise rdf:type        ktype:Reference ;
+               rdfs:label   "Flowise — visual builder for LLM agents (ARCHIVED)" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   33 ;
+               kpred:repo-url     "https://github.com/FlowiseAI/Flowise" ;
+               kpred:license      "NOASSERTION" ;
+               kpred:copy-permitted "NO. CORRECTED 2026-09-09 by scripts/offline/competitor-scan.ts, which failed against this entity. It was recorded as Apache-2.0 with a commercial carve-out; the GitHub API now returns NOASSERTION, meaning no licence is asserted at all and default copyright applies — all rights reserved. That is stricter than the carve-out it replaces: not partly copyable, not copyable. IDEAS ONLY, and no code, assets, or prose. Matt was right to flag the licensing before asking, and right for a stronger reason than either of us had." ;
+               kpred:archived     "true" ;
+               kpred:honest-note  "THE SCAN CAUGHT THIS, NOT A PERSON, AND THAT IS THE POINT OF IT. The entity was written on 2026-09-09 from the repository as it was described rather than as the API reports it, and the licence claim was wrong within hours. A competitor's licence is exactly the kind of fact that changes without telling you and that is expensive to be wrong about." ;
+               kpred:relates-to   kb:work-tiering ;
+               kpred:relates-to   kb:agent-orchestration ;
+               kpred:description  "Read 2026-09-09. 55,447 stars and ARCHIVED on 2026-08-13 — the maintainers have moved on and the repository points at a Future of Flowise discussion. A node-based visual editor for building LLM chains and agents, self-hosted, running a server on port 3000." ;
+               kpred:evidence     "THE GUI IDEA IS RIGHT AND THE GAP IS REAL. Reckons has 39 offline jobs in scripts/offline/jobs.json and NO interface of any kind — they are run by typing a command, and their output lands in a 548-row JSONL queue. Matt asking for a GUI to manage offline tasks is asking about a genuine hole." ;
+               kpred:constraint   "BUT THE SHAPE IS WRONG FOR THIS SYSTEM, and the numbers say why. 32 of the 39 jobs are SCRIPT TIER — deterministic, zero tokens, no model at all. A visual LLM-flow builder manages the 7 agent-tier jobs at best and adds nothing to the 32, which is the majority the work-tiering ladder deliberately grew. It would be a large dependency serving the smaller half of the problem." ;
+               kpred:constraint   "AND ITS QUEUE WOULD BE A SECOND SOURCE OF TRUTH. kb:agent-orchestration states that a task IS a triple and the graph is the config, so any harness can drain it. Flowise keeps flows in its own store, which means the thing that says what work exists would live outside the graph — the exact duplication the two docs generators are already being untangled from. Adopting an ARCHIVED project as infrastructure also means owning it." ;
+               kpred:decided      "RECOMMENDATION: do not adopt it; build the small thing it makes obvious. A view over jobs.json and the pending queue — what jobs exist, which tier, when each last ran, what it proposed — is days of work against a dependency that is no longer maintained, and it can read the graph directly rather than mirroring it. Take the IDEA that offline work deserves a surface; leave the platform. Worth revisiting only if the agent tier grows to where flow composition is the actual bottleneck." ;
+               kpred:known-issue  "Port 3000 is already the FalkorDB container on this machine, so a naive `npx flowise start` would collide. A small detail, and the kind that surfaces after the decision rather than before it." .
+
+## =============================================================================
+## Nanopublications — not a competitor. The nearest thing to prior art for what
+## this product is trying to be, and a network it could plausibly join.
+## Licences verified against the GitHub and npm APIs, 2026-09-09.
+## =============================================================================
+
+kb:ref-nanopub rdf:type        ktype:Reference ;
+               rdfs:label   "Nanopublications — signed, citable, three-graph knowledge records" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   34 ;
+               kpred:repo-url     "https://github.com/Nanopublication/nanopub-js" ;
+               kpred:license      "MIT" ;
+               kpred:copy-permitted "yes — MIT, attribution required. That covers the JavaScript client specifically. THE ECOSYSTEM IS NOT UNIFORM and the differences matter: nanopub-java MIT, nanopub-py Apache-2.0, nanopub-registry / nanopub-query / nanopub-monitor all MIT, @nanopub/sign MIT with zero dependencies. nanodash — the reference user interface, and the one you would most want to study — is AGPL-3.0: read it, copy nothing. @nanopub/nanopub-elements declares MIT in package.json but ships NO LICENSE file, so GitHub reports none; treat it as unlicensed until somebody asks them." ;
+               kpred:constraint   "THE SPECIFICATION IS CC BY-SA 3.0, and so is the schema.org vocabulary this project also draws on. Using their TERMS — the IRIs, via skos:closeMatch — is free and is the entire point of shared vocabulary. Pasting their DEFINITION PROSE into a skos:definition is redistribution, and ShareAlike would attach to it inside an MIT repository. This was learned by doing it: a draft of ktype:LayerScheme quoted schema.org verbatim and had to be rewritten." ;
+               kpred:description  "Read 2026-09-09. A nanopublication is the smallest publishable unit of knowledge: four named graphs — Head, assertion, provenance, publication-info — where Head declares the other three, the identifier is a hash of the content, and the whole thing is signed. Run by Knowledge Pixels and a research community rather than a company; records are immutable, public, and citable, and can be superseded or retracted." ;
+               kpred:evidence     "THE PATTERN IS THE THING WORTH TAKING, and this repository already had it without the name. src/lib/rdf/types.ts carries all three layers as FIELDS on one flat Statement record — s/p/o as the assertion, g plus sourceId plus excerpt plus grounded as provenance, status plus supersedes plus altitude as publication info. Naming them is what F194 does." ;
+               kpred:evidence     "A REAL RECORD, FETCHED FROM THE REGISTRY 2026-09-09, is one triple of assertion and a great deal of context: `orcid:... npx:approvesOf <another nanopub>`. Its provenance graph is a single prov:wasAttributedTo; its pubinfo carries creator, timestamp, a CC0 licence, the templates it was created from, and an RSA public key with a signature over the whole publication. Nanopubs about other nanopubs are how the ecosystem does peer assessment without an editorial board." ;
+               kpred:constraint   "IT CANNOT EXPRESS A QUESTION, and that is the load-bearing difference. Nanopublications are an ASSERTION format; there is no natural way to publish `subject known, predicate known, object open, and four things stalled behind it`. That construct is this product's mission statement, so the question layer stays local and only claims and provenance could ever be published." ;
+               kpred:principle    "TRUSTY URIs ARE WORTH TAKING WHETHER OR NOT ANYTHING INTEGRATES. A content-hash identifier survives export and re-import; a uuid does not. Cross-graph alignment and merge are both weaker than they need to be for exactly that reason." ;
+               kpred:evidence     "INDEPENDENT CONVERGENCE WORTH RECORDING: Wikidata expressed `unknown value` with blank nodes, found it broken because SPARQL does not honour existential semantics, and is migrating to skolem IRIs. F187.2 reached the same conclusion for set membership on its own reasoning about n3 bnode labels. The same correction will be needed for an open object in the question layer." ;
+               kpred:decided      "MATT, 2026-09-09: borrow the principles and reasoning rather than the tooling, and align the app so that integration stays possible — 'potentially Reckons.AI will be a UI interface layer for them.' There is a real gap to fill there: the reference client is AGPL, the JavaScript libraries are MIT, and their dependency is n3, which this app already ships." ;
+               kpred:relates-to   kb:relation-layers ;
+               kpred:relates-to   kb:nanopub-alignment .
+
+## =============================================================================
+## n8n — not a competitor either. A DEPENDENCY this graph was not watching,
+## which is how a licence claim goes stale unnoticed (see kb:ref-flowise).
+## =============================================================================
+
+kb:ref-n8n rdf:type            ktype:Reference ;
+               rdfs:label   "n8n — the optional per-user automation layer" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   35 ;
+               kpred:repo-url     "https://github.com/n8n-io/n8n" ;
+               kpred:license      "NOASSERTION" ;
+               kpred:copy-permitted "NO. The GitHub API returns NOASSERTION because n8n ships the SUSTAINABLE USE LICENSE, which is fair-code and NOT OSI open source: source-available, free to self-host for internal use, with restrictions on hosting it as a service to others. It is not MIT-compatible, so no n8n code, node source or documentation prose may be copied into this MIT repository. USING a self-hosted instance over its API is unaffected and is exactly what the integration does — that is the licence working as intended, not a loophole." ;
+               kpred:description  "Read 2026-09-09. 203,874 stars. A self-hosted workflow automation tool. Reckons.AI uses it as an OPTIONAL, PER-USER layer rather than a backend — CLAUDE.md is explicit that this product is local-first with no general backend, and that n8n owns web side-effects rather than core state." ;
+               kpred:evidence     "IT IS ALREADY LOAD-BEARING FOR CAPTURE, and the graph should say so. Nine n8n entities exist across the roadmap and shipped graphs, three integration modules live in src/lib/integrations/n8n/, and a live instance runs the capture path: a ring dictates a note, an MCP tool posts it to a webhook, n8n buffers it in its own data table, and the local poller drains it into knowledge.pending.jsonl. Verified working on 2026-09-09 — executions 4484 and 4510 both succeeded." ;
+               kpred:principle    "THE CAPTURE PATH IS ALSO THE ANSWER TO `TRACK REAL LIFE`. F195 wants the review queue to reflect events rather than pushing a person into a screen, and n8n is the layer that KNOWS an event happened — a calendar entry, a document arriving, something said out loud into a ring. The note that produced F197 reached this graph that way, which is the feature demonstrating itself." ;
+               kpred:constraint   "CAPTURED NOTES ARRIVE PENDING, NEVER CONFIRMED, and this matters more here than anywhere else in the product. The writer is a speech-to-text transcript arriving from the public internet, which is exactly where a misheard name becomes a confident triple. The workflow's own documentation states this; it is recorded here so the constraint survives the workflow being edited." ;
+               kpred:known-issue  "THE MCP CLIENT CONFIG IS BROKEN IN THIS REPOSITORY, though the service is not. .mcp.json declares n8n-tools with url ${N8N_MCP_URL}; the value exists in .env but is not substituted, so the client reports INVALID_CONFIG and cannot connect. The n8n instance and its workflows are unaffected — conflating the two led to a wrong report on 2026-09-09." ;
+               kpred:relates-to   kb:question-supersession ;
+               kpred:relates-to   kb:claim-substantiation .

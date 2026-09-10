@@ -37,7 +37,7 @@ export const CACHE_FILE = join(ROOT, 'static', 'diagram-cache.json');
  * config, an upgrade that moves layout. It is part of every cache key, so bumping it invalidates
  * every entry at once instead of leaving a mix of old and new output that nobody can tell apart.
  */
-const RENDER_CONTRACT = 'v1';
+const RENDER_CONTRACT = 'v2';
 
 export type DiagramCache = Record<string, string>;
 
@@ -87,6 +87,17 @@ const COLOR_MAP: ReadonlyArray<[RegExp, string]> = [
   // Plain white fills (subgraph backgrounds).
   [/#ffffff/gi, 'var(--diagram-surface)'],
   [/#fff\b/gi, 'var(--diagram-surface)'],
+  // Colors mermaid writes as rgb()/hsl() rather than hex, which the hex rules above cannot see.
+  // These survived the first pass and are the ones that break DARK theme: the edge-label plate and
+  // the label background are a near-white grey, so an edge label rendered as a pale blob sitting
+  // on a dark page, and the node drop-shadow was a light grey halo.
+  [/rgba?\(\s*232\s*,\s*232\s*,\s*232\s*,\s*0\.8\s*\)/gi, 'var(--diagram-surface)'],
+  [/rgba?\(\s*232\s*,\s*232\s*,\s*232\s*,\s*0\.5\s*\)/gi, 'var(--diagram-surface)'],
+  [/rgba?\(\s*185\s*,\s*185\s*,\s*185\s*,\s*1\s*\)/gi, 'var(--diagram-line)'],
+  [/hsl\(\s*80\s*,\s*100%\s*,\s*96\.[0-9]*%\s*\)/gi, 'var(--diagram-note-bg)'],
+  // Mermaid's error styling. Kept mapped rather than left maroon so a broken diagram is legible
+  // in both themes — an error you cannot read is a second bug on top of the first.
+  [/#552222/gi, 'var(--diagram-note-border)'],
 ];
 
 /**
@@ -111,12 +122,24 @@ export function normalizeSvg(svg: string, stableId: string): string {
     out = out.replaceAll(id, `d${stableId}-${n++}`);
   }
 
-  // 2. Drop the inline max-width mermaid computes from the viewport it happened to render in.
-  //    The docs stylesheet sizes the figure; a baked pixel width would fight it and would also
-  //    vary with the headless window size, which is exactly the non-determinism we are removing.
-  out = out.replace(/\s*style="[^"]*max-width:[^"]*"/gi, '');
-  out = out.replace(/\swidth="[\d.]+(?:px)?"/gi, '');
-  out = out.replace(/\sheight="[\d.]+(?:px)?"/gi, ' height="100%"');
+  // 2. Size the ROOT SVG from the stylesheet rather than from the window that rendered it, and
+  //    touch NOTHING ELSE.
+  //
+  //    THIS WAS A BUG, AND A BAD ONE (fixed 2026-09-06). The width/height rewrite used to run over
+  //    the whole document, so it stripped `width` from all 153 <rect>s and all 55 <foreignObject>s
+  //    across the nine diagrams and set `height="100%"` on 107 elements that are not the root. A
+  //    percentage height on a child resolves against the viewBox, so every node box grew to the
+  //    full height of the diagram while losing the width that gives it a shape — and a
+  //    foreignObject with no width lays its label out in a zero-width box. The pictures rendered,
+  //    which is why every gate stayed green.
+  //
+  //    Only the root carries mermaid's viewport-derived numbers, so only the root is rewritten.
+  //    Its `viewBox` survives untouched and supplies the aspect ratio the stylesheet scales.
+  out = out.replace(/^<svg\b[^>]*>/i, (rootTag) =>
+    rootTag
+      .replace(/\s*style="[^"]*max-width:[^"]*"/gi, '')
+      .replace(/\s(?:width|height)="[\d.]+(?:px)?"/gi, ''),
+  );
 
   // 3. Theme the palette.
   for (const [re, cssVar] of COLOR_MAP) out = out.replace(re, cssVar);

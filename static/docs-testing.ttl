@@ -15,6 +15,7 @@
 @prefix test:   <urn:reckons:test/> .
 @prefix guide:  <urn:reckons:guide/> .
 @prefix ktype:  <urn:kbase:type/> .
+@prefix hnav:   <urn:reckons:nav/> .
 @prefix kpred:  <urn:kbase:predicate/> .
 
 ## KB Identity
@@ -42,13 +43,14 @@ nav:BackToHub
 test:TestSuite
     rdf:type            ktype:Concept ;
     rdfs:label          "Test Suite" ;
+    hnav:order          110 ;
     skos:definition     "Reckons.AI test infrastructure: 336+ unit tests (Vitest + jsdom), Playwright E2E with 6 device profiles, visual regression with pixel analysis + DOM overlap + text presence checks, optional Mistral OCR and Claude Vision tiers. All tests run locally without API keys." ;
     skos:related        guide:WhatIsReckonsAI .
 
 test:GraphReviewStory
     rdf:type            ktype:Concept ;
     rdfs:label          "Reckons.AI Graph Review — Goal & Workflow" ;
-    <urn:reckons:nav/order> "0"^^xsd:integer ;
+    <urn:reckons:nav/order> "111"^^xsd:integer ;
     skos:definition     """The Reckons.AI Graph Review is an offline, exhaustive audit of the whole app treated as a graph: every button is clicked, every screen is visually checked, and every finding is tied back to the graph for human review. It runs locally and Opus-reviewed — no cloud dependency — and scores against the Web/Mobile UI-UX rubric.
 
 ### The goal
@@ -514,7 +516,7 @@ test:ManualER-Step4b
     story:partOf        test:ManualExtractionReview ;
     story:order         "5"^^xsd:integer ;
     story:title         "Cross-check against the triples-only graph" ;
-    story:content       "Open `extraction-tests` in the workspace — 41 statements already extracted, so it exercises the analysis chain with the extractor held constant. Its blocks are labelled: mis-transcriptions repair SHOULD catch, note ids it must NOT merge, sentence-shaped slugs, the co-hyponym seam, and a working skos:broader hierarchy as the control. If the app behaves differently here than `npx tsx scripts/offline/extraction-chain.ts --graph=reckons-workspace/kbs/extraction-tests/extraction-tests.ttl`, the difference is in the app's wiring rather than in the rules — which is the most useful kind of finding this walkthrough can produce." ;
+    story:content       "Open `extraction-tests` in the workspace — 41 statements already extracted, so it exercises the analysis chain with the extractor held constant. Its blocks are labelled: mis-transcriptions repair SHOULD catch, note ids it must not merge, sentence-shaped slugs, the co-hyponym seam, and a working skos:broader hierarchy as the control. If the app behaves differently here than `npx tsx scripts/offline/extraction-chain.ts --graph=reckons-workspace/kbs/extraction-tests/extraction-tests.ttl`, the difference is in the app's wiring rather than in the rules — which is the most useful kind of finding this walkthrough can produce." ;
     kpred:assertion     "app and harness agree on the same graph, or the difference is recorded" ;
     kpred:page          "/review" .
 
@@ -571,7 +573,7 @@ test:ManualER-Step9
 @prefix shelly: <urn:reckons:shelly/> .
 
 ## =============================================================================
-## REVIEW WORKLOAD AFTER ENHANCED EXTRACTION (2026-09-04)
+## Review workload after enhanced extraction (2026-09-04)
 ## =============================================================================
 ## Matt: "we have attempted the summary, hierarchy, and other elements to reduce
 ## reviewer workload, but now with enhanced extraction we should test again."
@@ -582,7 +584,7 @@ test:ManualER-Step9
 ## qwen3:32b, passage-verified excerpts, then deterministic vocabulary reconcile —
 ## and writes every statement PENDING so it arrives as review work.
 ##
-## READ THE MEASURED RESULT BELOW BEFORE YOU START. The automated chain already
+## Read the measured result below before you start. The automated chain already
 ## says the decision tree is EMPTY. This walkthrough is not asking you to discover
 ## that; it is asking whether the flat list is nonetheless navigable, and which of
 ## the three missing mechanisms you would want first.
@@ -594,7 +596,7 @@ test:ReviewWorkloadAfterExtraction
     story:description   "Re-test whether summary, hierarchy and aggregation reduce reviewer workload, now that extraction runs on qwen3:32b with grounding deferred to post-hoc reconciliation. The automated half is already measured and negative — the tree is still empty. What a person has to judge is whether the queue is WORKABLE anyway, and what is actually missing." ;
     story:autoplay      "false" ;
     story:pace          "0" ;
-    kpred:measured      "2026-09-04, generated corpus (3 sources, 41 statements, all pending). IMPROVED vs the 2026-09-02 baseline: 0 sentence-shaped entity slugs, down from 3 — triple-shape.ts is holding and the collapsed-subject failure is gone. UNCHANGED: 0 types proposed (0 of 11 untyped settleable), 0 entities placed in a hierarchy, 39 orphans, 0 decisions open, 32 loose judgments. Aggregation now produces NOTHING at all, because 41 statements across 3 sources contains no bookkeeping cluster big enough to be worth one question — on the 217-statement baseline it formed 33. So better extraction did NOT reduce review workload: it produced cleaner facts in the same flat list." ;
+    kpred:measured      "2026-09-04, generated corpus (3 sources, 41 statements, all pending). IMPROVED vs the 2026-09-02 baseline: 0 sentence-shaped entity slugs, down from 3 — triple-shape.ts is holding and the collapsed-subject failure is gone. UNCHANGED: 0 types proposed (0 of 11 untyped settleable), 0 entities placed in a hierarchy, 39 orphans, 0 decisions open, 32 loose judgments. Aggregation now produces NOTHING at all, because 41 statements across 3 sources contains no bookkeeping cluster big enough to be worth one question — on the 217-statement baseline it formed 33. So better extraction did not reduce review workload: it produced cleaner facts in the same flat list." ;
     skos:broader        test:GraphReviewStory .
 
 test:RWAE-Step0
@@ -618,7 +620,7 @@ test:RWAE-Step2
     rdf:type            story:Step ;
     story:partOf        test:ReviewWorkloadAfterExtraction ;
     story:order         "2"^^xsd:integer ;
-    story:title         "THE MAIN QUESTION — how many decisions does it ask you to make?" ;
+    story:title         "The main question — how many decisions does it ask you to make?" ;
     story:content       "Count what the page actually puts in front of you. The chain harness says 0 decisions and 32 loose judgments, which means a flat list. Judge whether that is true in the UI, and then judge the thing no harness can: could you get through it? Time yourself on the first ten. If you find yourself re-reading the same entity under two names, note which two — that is the reconcile gap, not a review-UI gap." ;
     kpred:assertion     "you can state a number: how many distinct decisions the queue asked for" ;
     kpred:page          "/review" .

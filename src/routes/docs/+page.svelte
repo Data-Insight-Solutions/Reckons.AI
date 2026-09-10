@@ -13,6 +13,8 @@
     Pages are nodes in the Reckons.AI graph — this site is generated from it.
   </p>
 
+  <p class="search-link"><a href="/docs/search">Search these pages →</a></p>
+
   {#each data.sections as { section, docs } (section)}
     <section class="index-section">
       <h2>{section}</h2>
@@ -50,6 +52,11 @@
     color: var(--ink-2);
     margin: 0.75rem 0 2.5rem;
     max-width: 60ch;
+  }
+  .search-link {
+    margin: 0 0 2rem;
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
   }
   .index-section + .index-section {
     margin-top: 2rem;

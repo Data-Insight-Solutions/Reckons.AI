@@ -156,7 +156,18 @@
     "ab:benchmark": "npx tsx scripts/offline/ab-graph-benchmark.ts",
     "offline:dead-weight": "npx tsx scripts/offline/dead-weight.ts",
     "offline:distill": "npx tsx scripts/offline/distill-decisions.ts",
-    "fixture:review": "npx tsx scripts/offline/make-review-fixture.ts"
+    "fixture:review": "npx tsx scripts/offline/make-review-fixture.ts",
+    "docs:scenes": "npx tsx scripts/docs-scenes.ts",
+    "docs:scenes:check": "npx tsx scripts/docs-scenes.ts --check",
+    "docs:search-index": "npx tsx scripts/docs-search-index.ts",
+    "docs:search-index:check": "npx tsx scripts/docs-search-index.ts --check",
+    "docs:edits": "npx tsx scripts/offline/docs-edits.ts",
+    "docs:build": "npx tsx scripts/docs-build.ts",
+    "jobs:graph": "npx tsx scripts/jobs-graph.ts",
+    "landing:data": "npx tsx scripts/landing-data.ts",
+    "docs:build:check": "npx tsx scripts/docs-build.ts --check",
+    "docs:staleness": "npx tsx scripts/offline/docs-staleness.ts",
+    "docs:review": "npx tsx scripts/offline/docs-review.ts"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.112.1",

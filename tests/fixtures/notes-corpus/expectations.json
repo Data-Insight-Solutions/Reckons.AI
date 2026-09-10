@@ -488,5 +488,249 @@
       "why": "the document says 'No recommendation yet'. Naming a recommended/selected platform invents the conclusion the document explicitly withholds. Recording that NO recommendation was made is correct and must not be flagged — qwen3-coder emitted `has-no-recommendation true` on 2026-09-04 and an earlier, broader forbidden list wrongly called that an invention. Next actions are TASKS, same rule as 02."
     }
   },
-  "_requestMarkers": "A triple touching a forbidden slug is INVENTED HISTORY only if it asserts the thing happened. If its predicate marks it as a request/task/ask, it is a ROUTING miss instead — the extractor understood the intent but note-intent.ts never got to move it out of the fact stream. Both are failures; only the first writes something false into the graph."
+  "_requestMarkers": "A triple touching a forbidden slug is INVENTED HISTORY only if it asserts the thing happened. If its predicate marks it as a request/task/ask, it is a ROUTING miss instead — the extractor understood the intent but note-intent.ts never got to move it out of the fact stream. Both are failures; only the first writes something false into the graph.",
+  "_stages": "PER-STAGE GROUND TRUTH (F187.3, Matt 2026-09-08: 'we need all of these extraction steps as potentially separate ... this is not simple, so neither should be the testing'). A file entry may carry any of: `expected` (s/p/o relations — the only stage scored before today), `placements` (is a mention an ENTITY or an ATTRIBUTE VALUE), `sets` (membership, set attributes, and order), and `notSets` (lists that must NOT be grouped). Each is scored and REPORTED SEPARATELY. One combined number is what exists now and it is exactly why a drop cannot be attributed to a stage.",
+  "_sets": "A `sets` entry is {id, why, label[], members[][], ordered, exclusive}. `members` is a list of accepted-slug arrays, one per member, matched like s/p/o slots. `ordered: true` scores SEQUENCE as well as membership — a right-membership wrong-order set is WRONG, not partially right. `exclusive: true` scores PRECISION: any extra member is over-inclusion. Membership recall and precision are reported apart, because a model that grabs every nearby noun scores well on one and badly on the other, and averaging them hides the failure.",
+  "_notSets": "THE DISCRIMINATING EXPECTATION. A list in the source that is explicitly NOT a group. A model that groups it has learned 'bullet list => collection', which would fill a real graph with junk groupings. Scored SEPARATELY from set recall and never averaged into it (Matt, 2026-09-08): a model can score 100% on grouping while failing this, and that is the diagnosis that matters.",
+  "05-list-structured.md": {
+    "title": "list-structured working notes — the first fixture that asks for SETS",
+    "_status": "REVIEWED AND APPROVED BY MATT 2026-09-08. 05-list-structured.EXPECTED.txt is authoritative; this file is derived from it and is the bug when they disagree.",
+    "expected": [
+      {
+        "id": "05.1",
+        "why": "the dropped vendor and its stated reason stay one fact, not two orphans",
+        "s": [
+          "vantage-suite"
+        ],
+        "p": [
+          "dropped-because",
+          "dropped-for",
+          "rejected-because",
+          "reason"
+        ],
+        "o": [
+          "file-format",
+          "proprietary-file-format",
+          "file-format-grounds"
+        ]
+      },
+      {
+        "id": "05.2",
+        "why": "Lumenpath must NOT be classified as a DAM — the source says it is CAD and out of scope",
+        "s": [
+          "lumenpath"
+        ],
+        "p": [
+          "is-a",
+          "type",
+          "instance-of",
+          "kind-of",
+          "category"
+        ],
+        "o": [
+          "cad-platform",
+          "cad",
+          "enterprise-cad"
+        ]
+      },
+      {
+        "id": "05.3",
+        "why": "a person's role is a fact about the person, not a label on the project",
+        "s": [
+          "jordan-vale"
+        ],
+        "p": [
+          "role",
+          "leads",
+          "leading",
+          "is-a"
+        ],
+        "o": [
+          "selection-lead",
+          "lead",
+          "selection"
+        ]
+      },
+      {
+        "id": "05.4",
+        "why": "the second person is not dropped — two people in one sentence is where one is usually lost",
+        "s": [
+          "priya-raman"
+        ],
+        "p": [
+          "role",
+          "is-a",
+          "reviewer"
+        ],
+        "o": [
+          "technical-reviewer",
+          "reviewer"
+        ]
+      },
+      {
+        "id": "05.5",
+        "why": "employment is stated once for both people and must attach to each",
+        "s": [
+          "priya-raman"
+        ],
+        "p": [
+          "works-at",
+          "employer",
+          "member-of",
+          "affiliation"
+        ],
+        "o": [
+          "northwind-analytics",
+          "northwind"
+        ]
+      },
+      {
+        "id": "05.6",
+        "why": "a concern attaches to the vendor it is about, not to the concerns list",
+        "s": [
+          "bynder"
+        ],
+        "p": [
+          "concern",
+          "limitation",
+          "lacks",
+          "issue",
+          "drawback"
+        ],
+        "o": [
+          "no-on-premise",
+          "on-premise",
+          "no-on-premise-deployment",
+          "on-premise-deployment"
+        ]
+      }
+    ],
+    "sets": [
+      {
+        "id": "05.S1",
+        "why": "the shortlist is exactly three; Vantage Suite and Lumenpath are named in the same paragraph and explicitly excluded, so either appearing is over-inclusion",
+        "label": [
+          "shortlist",
+          "the-shortlist",
+          "shortlisted",
+          "carried-forward"
+        ],
+        "members": [
+          [
+            "aprimo"
+          ],
+          [
+            "bynder"
+          ],
+          [
+            "opentext",
+            "open-text"
+          ]
+        ],
+        "ordered": false,
+        "exclusive": true
+      },
+      {
+        "id": "05.S2",
+        "why": "a second, smaller group over the same vocabulary",
+        "label": [
+          "deployed",
+          "already-deployed",
+          "incumbent",
+          "platforms-we-already-run"
+        ],
+        "members": [
+          [
+            "vantage-suite"
+          ],
+          [
+            "opentext",
+            "open-text"
+          ]
+        ],
+        "ordered": false,
+        "exclusive": true
+      },
+      {
+        "id": "05.S3",
+        "why": "OVERLAP. OpenText is in both S1 and S2 and the source says so in plain words. Partitioning — putting it in one and removing it from the other — is the failure F187 is designed around, since sets overlap and do not partition.",
+        "label": [
+          "__overlap__"
+        ],
+        "members": [
+          [
+            "opentext",
+            "open-text"
+          ]
+        ],
+        "ordered": false,
+        "exclusive": false,
+        "mustAppearInSets": [
+          "05.S1",
+          "05.S2"
+        ]
+      },
+      {
+        "id": "05.S4",
+        "why": "ORDER IS LOAD-BEARING and the source says it is not negotiable. Right members in the wrong sequence is wrong, not partially right. Per F187.2 the order must be a stable ordinal, NOT an rdf:List of blank nodes.",
+        "label": [
+          "migration",
+          "migration-phases",
+          "phases"
+        ],
+        "members": [
+          [
+            "inventory",
+            "inventory-the-existing-assets",
+            "inventory-assets"
+          ],
+          [
+            "map-the-metadata-schema",
+            "map-metadata",
+            "metadata-schema"
+          ],
+          [
+            "dry-run",
+            "dry-run-the-transfer",
+            "dry-run-transfer"
+          ],
+          [
+            "cut-over",
+            "cut-over-and-decommission",
+            "cutover",
+            "decommission"
+          ]
+        ],
+        "ordered": true,
+        "exclusive": true
+      }
+    ],
+    "notSets": [
+      {
+        "id": "05.N1",
+        "why": "THE TRAP. 'Open concerns' is a bulleted list that the source explicitly states is not a group: 'they are not a group of anything — they are separate objections to separate vendors.' Grouping it means the model learned 'bullet list => collection'. Scored separately from set recall and never averaged in.",
+        "members": [
+          [
+            "aprimo"
+          ],
+          [
+            "bynder"
+          ],
+          [
+            "opentext",
+            "open-text"
+          ]
+        ],
+        "insteadExpect": "three ordinary facts, each concern attached to the vendor it is about (see 05.6)"
+      }
+    ],
+    "forbidden": {
+      "slugs": [
+        "open-concerns",
+        "three-things-still-worry-us",
+        "the-order-is-not-negotiable"
+      ],
+      "why": "section headings and whole clauses as entity slugs — looksLikeProposition should reject these, so their appearance is a regression in that guard"
+    }
+  }
 }

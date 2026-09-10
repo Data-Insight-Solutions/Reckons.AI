@@ -55,6 +55,13 @@
       "desc": "Graph invariants: dead has-file/tested-by links, bad status, duplicate feature-ids, dangling refs, incomplete features"
     },
     {
+      "name": "tenet-align",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/tenet-align.ts",
+      "desc": "Reads every roadmap feature against the tenets in kb:thesis and reports where they disagree: account pressure, closed-by-default dependencies, a store with no export, a 'functional' claim with no test or measurement, a status that outranks its own dependency, and tenets nothing is built against. Script tier and free, so it runs every session — an alignment check is only a habit if it costs nothing. Report-only: a rule cannot read intent, so the output is a reading list, never a verdict."
+    },
+    {
       "name": "extraction-chain",
       "tier": "script",
       "enabled": true,
@@ -188,6 +195,13 @@
       "desc": "Local model drafts kpred:description for entities graph-lint found incomplete, grounded in their own subgraph + linked files (needs OLLAMA_BASE_URL)"
     },
     {
+      "name": "docs-expand",
+      "tier": "agent",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/docs-expand.ts --limit=10",
+      "desc": "Drafts prose for docs entities too thin to be a page (under 45 words, the same threshold docs-pages.ts uses to decide what earns a URL). Grounded on the entity's own triples plus its parent and siblings, so the draft matches the register of the pages around it. PROPOSAL ONLY: emits suggestions to knowledge.pending.jsonl and never edits a TTL. Note this is NOT doc generation — scripts/docs-pages.ts renders the pages and stays deterministic, because md-align requires byte-identical regeneration."
+    },
+    {
       "name": "code-review",
       "tier": "agent",
       "enabled": true,
@@ -237,11 +251,94 @@
       "desc": "F140 GPU-real performance crawl: a HEADED browser on the real GPU, asserting on TIME (long tasks, time-to-usable, settled velocity). DISABLED in the sweep because it needs a DISPLAY and a running dev server — it aborts rather than silently falling back to SwiftShader, since a green perf report from a software rasterizer is worse than none. Run it manually: npm run dev, then npm run offline:perf -- --ladder --trace-delta"
     },
     {
+      "name": "docs-staleness",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/docs-staleness.ts --quiet",
+      "desc": "The GRAPH -> PAGE half of the trigger (F189): reports pages whose substantive facts moved since generation, and SILENT pages where the facts moved and the page did not. Altitude-filtered, so a status change fires and a timestamp does not."
+    },
+    {
+      "name": "docs-edits",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/docs-edits.ts",
+      "desc": "Finds hand edits on generated docs pages and reports them against the entity that owns the sentence (via static/page-provenance.json). Report-only in the sweep: accepting an edit into the graph is a human decision, so --pending is manual."
+    },
+    {
+      "name": "docs-graph-registration",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/docs-graph-registration.ts --quiet",
+      "desc": "Every publishable docs graph must appear in all four registries (docs-pages SOURCES, docs-compose CORPUS, docs-consolidate CORPUS, a void:Dataset in website.ttl). docs-user-paths.ttl was in one of the four, so composition would have deleted nine published journeys while the orphan gate reported nothing dropped."
+    },
+    {
+      "name": "set-integrity",
+      "tier": "script",
+      "enabled": true,
+      "blocking": false,
+      "cmd": "npx tsx scripts/offline/set-integrity.ts",
+      "desc": "F187: every skos:member must resolve to something that exists. A dangling member does not read to a reader as an error, it reads as a promise — the five-move sets named three entities that did not exist and the page said they were 'covered inside the pages above'."
+    },
+    {
+      "name": "layer-risk",
+      "tier": "script",
+      "enabled": true,
+      "blocking": false,
+      "cmd": "npx tsx scripts/offline/layer-risk.ts --quiet",
+      "desc": "F194 blast radius: how many statements would stop being reviewed if the name-shaped provenance suspects were classified provenance. Because provenance auto-confirms, the classification is a trust boundary and this is the number that governs it. Proposes nothing."
+    },
+    {
+      "name": "layer-classify",
+      "tier": "agent",
+      "enabled": false,
+      "blocking": false,
+      "cmd": "OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://localhost:11434} npx tsx scripts/offline/layer-classify.ts --limit=40",
+      "desc": "F194 agent tier: propose claim/provenance/question for each unclassified predicate, biggest blast radius first. DISABLED as a routine job — it is a bulk one-off, and re-proposing the same 355 predicates every sweep would bury the queue it writes to. Run it by hand with --limit and read the provenance verdicts first: those are the ones that remove a human from the loop."
+    },
+    {
+      "name": "jobs-graph",
+      "tier": "script",
+      "enabled": true,
+      "blocking": false,
+      "cmd": "npx tsx scripts/jobs-graph.ts --check",
+      "desc": "The graph view of these jobs (static/reckons-jobs.ttl) must match jobs.json. A task is a triple (F87); this keeps the two in step until the graph becomes the source."
+    },
+    {
+      "name": "landing-data",
+      "tier": "script",
+      "enabled": true,
+      "blocking": false,
+      "cmd": "npx tsx scripts/landing-data.ts --check",
+      "desc": "src/lib/data/landing-thesis.json is generated from the tenets in the graph. This guards against hand-editing it back into drift."
+    },
+    {
+      "name": "set-pages",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/set-pages.ts --quiet",
+      "desc": "Reports the docs site the one-set-one-page model would produce (F187.5): candidate pages derived from skos:broader and hub degree, cross-links derived from shared membership, and the entities no set claims. Report-only — deciding what gets a page is editorial, not a check."
+    },
+    {
       "name": "host-health",
       "tier": "script",
       "enabled": true,
       "cmd": "npx tsx scripts/offline/host-health.ts --pending",
       "desc": "Replaces Observium, which was running, exposed and never looked at. Deterministic host checks — disk pressure, critical mounts actually mounted, unexpected all-interface listeners, firewall state, container health, security updates, failed units — pushing ONLY what needs a human into the review queue. Reports UNKNOWN for anything needing root rather than assuming it is fine. Read-only: the F170 maintenance-level tier, which never acts."
+    },
+    {
+      "name": "docs-review",
+      "tier": "agent",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/docs-review.ts --limit=12",
+      "desc": "Reads published pages and names ONE term each uses without explaining — the legibility failure a first-time reader hit twice. Grounded on terms the docs DO define, validated against the page text, aggregated by term so one gap is one proposal. Agent tier, proposals only."
+    },
+    {
+      "name": "config-observer",
+      "tier": "script",
+      "enabled": true,
+      "blocking": false,
+      "cmd": "npx tsx scripts/offline/config-observer.ts --quiet",
+      "desc": "F198: what the configuration CLAIMS, against what the logs SHOW. A config file is an unverifiable claim made by the party it benefits; this goes and finds the evidence. It never reads a status — every incident it exists for had a `success` somewhere — so it crosses a stage boundary or reports UNCHECKABLE."
     }
   ]
 }

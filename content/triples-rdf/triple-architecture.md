@@ -1,7 +1,7 @@
 ---
 title: "The Semantic Triple"
 slug: "triple-architecture"
-order: 1019
+order: 20
 section: "Triples & RDF"
 template: doc
 status: published
@@ -14,54 +14,78 @@ related:
 
 # The Semantic Triple
 
-*Concept*
-
 The fundamental unit of knowledge in RDF: a three-part statement -- subject, predicate, object. Any fact expressible in human language can be expressed as a triple. Triples connect to form a graph, and graphs reveal relationships that documents hide.
 
-## Where to go next
+<p class="derived">It has 10 parts below.</p>
 
-**[IRI (Identifier)](../triples-rdf/iri)**
+## In this section
 
-A globally unique identifier for a resource.
+<details class="accordion"><summary>IRI (Identifier)</summary>
 
-**[Knowledge Graph](../triples-rdf/knowledge-graph)**
+A globally unique identifier for a resource. IRIs are the names of things in RDF -- like URLs but for any concept, not just web pages. Example: urn:reckons:guide/WhatIsReckonsAI
 
-A graph-structured database where entities are nodes and relationships are edges.
+</details>
 
-**[Literal Values](../triples-rdf/literal)**
+<details class="accordion"><summary>Knowledge Graph</summary>
 
-A data value in RDF: a string, number, date, or boolean.
+A graph-structured database where entities are nodes and relationships are edges. Multiple triples form a graph. The same subject can appear in many triples, creating a web of connected knowledge.
 
-**[Plain Text Portability](../triples-rdf/plain-text-portability)**
+</details>
+
+<details class="accordion"><summary>Literal Values</summary>
+
+A data value in RDF: a string, number, date, or boolean. Literals can have a language tag (@en) or a datatype IRI (^^xsd:integer). Example: '42'^^xsd:integer is a typed literal.
+
+</details>
+
+<details class="accordion"><summary>Plain Text Portability</summary>
 
 Your knowledge graph exports as a .ttl file -- plain text, human-readable, no proprietary format.
 
-**[Provenance](../triples-rdf/provenance)**
+[Read more](../triples-rdf/plain-text-portability)
 
-Every triple in Reckons.AI carries its source.
+</details>
 
-**[RDF (Resource Description Framework)](../triples-rdf/rdf)**
+<details class="accordion"><summary>Provenance</summary>
+
+Every triple in Reckons.AI carries its source. You always know where a fact came from, how trusted that source is, and when it was added. Metadata about metadata -- this is what makes a graph trustworthy.
+
+</details>
+
+<details class="accordion"><summary>RDF (Resource Description Framework)</summary>
 
 A W3C standard for representing knowledge as a graph of linked statements.
 
-**[Reification](../triples-rdf/reification)**
+[Read more](../triples-rdf/rdf)
 
-Making a statement about a statement.
+</details>
 
-**[Subject - Predicate - Object](../triples-rdf/subject-predicate-object)**
+<details class="accordion"><summary>Reification</summary>
 
-Subject: the entity being described (always an IRI).
+Making a statement about a statement. In RDF, reification assigns an IRI to a triple so it can be annotated with provenance, confidence, or temporal bounds. Reckons.AI uses reification in its TTL export format.
 
-**[The Review Workflow](../triples-rdf/review-workflow)**
+</details>
 
-1.
+<details class="accordion"><summary>Subject - Predicate - Object</summary>
 
-**[Turtle (.ttl) Syntax](../triples-rdf/turtle)**
+Subject: the entity being described (always an IRI). Predicate: the relationship or property (always an IRI). Object: the value or target (an IRI or a literal string/number/date). Example: 'Alice worksAt AcmeCorp'. Example: 'Policy covers water-damage'.
+
+</details>
+
+<details class="accordion"><summary>The Review Workflow</summary>
+
+1. Ingest -- paste text, upload documents, import calendars. 2. Review -- the LLM extracts triples, you confirm or reject each one. 3. Explore -- navigate your 3D knowledge graph. 4. Ask Shelly -- get answers grounded in your confirmed facts. 5. Share -- export your .ttl.
+
+</details>
+
+<details class="accordion"><summary>Turtle (.ttl) Syntax</summary>
 
 A compact, human-readable syntax for writing RDF triples.
 
-## Related
+[Read more](../triples-rdf/turtle)
 
-**Related**
+</details>
+
+## Related
 
 - [What Is Reckons.AI](../guide/what-is-reckons-ai)

@@ -15,14 +15,14 @@ related:
 
 # Confluence Migration
 
-*Feature*
-
 > **Planned** — on the roadmap, **not yet built**. Described here as intended, not as shipped.
 
 Bulk import from Confluence spaces. Upload an HTML export ZIP, parse the page tree, chunk large pages with sliding window (10K chars, 2K overlap), and extract triples using local models (Ollama recommended). Preserves page hierarchy as skos:broader, converts Confluence labels to entity types, tracks provenance per page. Pause/resume checkpoint for overnight imports of large spaces.
 
-## Related
+<p class="derived">This is planned and not built yet.</p>
 
-**Related**
+<p class="in-sets">Part of Take it in.</p>
+
+## Related
 
 - [Entity Normalization](../features/entity-normalization)

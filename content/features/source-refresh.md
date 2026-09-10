@@ -1,7 +1,7 @@
 ---
 title: "Source Refresh"
 slug: "source-refresh"
-order: 1033
+order: 1032
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc
@@ -13,12 +13,12 @@ generated: "docs-kb"
 
 # Source Refresh
 
-*Concept*
-
 Generic refresh for url, repository, and calendar sources. Auto-refresh on open and on interval (configurable). Graph page refresh button. MCP tools: kb_list_sources and kb_request_refresh. Delta comparison shows what changed since last ingest.
 
-## Steps
+<p class="derived">It has one part below.</p>
 
-**[Source Monitoring](../features/source-monitoring)**
+## In this section
 
-Watch URLs for content changes.
+### Source Monitoring
+
+Watch URLs for content changes. The n8n Source Monitor workflow checks every 6 hours, detects diffs via content hash, and queues pending notes for review. Surfaces via /webhook/reckons-kb-pending endpoint.

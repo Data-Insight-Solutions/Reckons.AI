@@ -1,7 +1,7 @@
 ---
 title: "Tips and Tricks"
 slug: "tips"
-order: 1015
+order: 1014
 section: "Tips"
 template: doc
 status: published
@@ -14,42 +14,40 @@ related:
 
 # Tips and Tricks
 
-*Concept*
-
 Practical advice for getting the most out of Reckons.AI.
 
-## Where to go next
+<p class="derived">It has 7 parts below.</p>
 
-**[Export Often](../tips/export-often)**
+## In this section
 
-Your .ttl export is your insurance policy.
+### Export Often
 
-**[Name Entities Well](../tips/name-entities-well)**
+Your .ttl export is your insurance policy. Export regularly. Keep backups. The file is plain text -- it will outlast any app, any platform, any company.
 
-Use clear, specific entity names.
+### Name Entities Well
 
-**[Review Carefully](../tips/review-carefully)**
+Use clear, specific entity names. 'Q3 2025 Revenue Report' is better than 'Report'. Good names make the graph navigable and Shelly's answers more precise.
 
-The quality of your graph depends entirely on the quality of your review.
+### Review Carefully
 
-**[Share Your .ttl](../tips/share-ttl)**
+The quality of your graph depends entirely on the quality of your review. Reject inaccurate triples. Refine ambiguous ones. A smaller graph of confirmed facts is far more valuable than a large graph of unreviewed noise.
 
-Export your graph and share the .ttl file.
+### Share Your .ttl
 
-**[Start Small](../tips/start-small)**
+Export your graph and share the .ttl file. Recipients can import it and see a semantic diff against their own graph. Collaboration through structured knowledge exchange -- no real-time sync needed.
 
-Begin with one document or topic you care about.
+### Start Small
 
-**[Use Ollama for Offline](../tips/use-ollama-offline)**
+Begin with one document or topic you care about. Ingest it, review the triples, confirm the accurate ones. Your graph grows naturally with each source you add. Over time, connections emerge that you never would have seen reading documents linearly.
 
-Install Ollama on your machine for fully local, fully offline LLM inference.
+### Use Ollama for Offline
 
-**[Use Source Trust](../tips/use-source-trust)**
+Install Ollama on your machine for fully local, fully offline LLM inference. Zero data leaves your device. Good models: llama3.2, mistral, phi3.
 
-Mark reliable sources as trusted to auto-confirm future imports from them.
+### Use Source Trust
+
+Mark reliable sources as trusted to auto-confirm future imports from them. But start conservative -- trust is earned through consistent accuracy.
 
 ## Related
-
-**Related**
 
 - [What Is Reckons.AI](../guide/what-is-reckons-ai)
