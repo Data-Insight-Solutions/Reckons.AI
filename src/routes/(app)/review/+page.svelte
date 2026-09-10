@@ -29,7 +29,7 @@
     addSource,
   } from '$lib/stores/kb.svelte';
   import { getRegistry, getCurrentKbId } from '$lib/storage/kb-registry';
-  import { drainAndImportPending, workspaceState, supportsWorkspace } from '$lib/stores/workspace.svelte';
+  import { drainAndImportPending, pendingWaitingElsewhere, workspaceState, supportsWorkspace } from '$lib/stores/workspace.svelte';
   import { runPartition } from '$lib/rdf/partition-run';
   import { planOptionCascade, cascadeWrites } from '$lib/rdf/option-cascade';
   import {
@@ -97,6 +97,8 @@
    * "offline:layer-classify (qwen3:32b)" — and a link should survive the model changing.
    */
   let agentFilter = $state('');
+  /** Rows the drain could not deliver here — shown only when this graph's drain came up empty. */
+  let waitingElsewhere = $state<{ byGraph: Array<{ kb: string; count: number }>; unaddressed: number } | null>(null);
 
   // ── Graph view mode ───────────────────────────────────────────────────────
   type GraphMode = 'preview' | 'compare' | 'overlay';
@@ -551,7 +553,20 @@
         return;
       }
       const count = await drainAndImportPending();
-      drainResult = count > 0 ? `${count} imported` : 'none queued for this graph';
+      /*
+       * "NONE FOR YOU" AND "NONE AT ALL" ARE DIFFERENT ANSWERS, and this screen used to give the
+       * second when the first was true. Matt drained a queue of 1,036 rows and read "0 pending
+       * changes" — every row was addressed to another graph or to none, so the drain correctly
+       * took nothing and the message correctly said nothing, and the reader is left at a dead end
+       * that looks like completion. When there is nothing here, say where the work IS.
+       */
+      if (count > 0) {
+        drainResult = `${count} imported`;
+        waitingElsewhere = null;
+      } else {
+        drainResult = 'none queued for this graph';
+        waitingElsewhere = await pendingWaitingElsewhere();
+      }
       // store update is reactive — no manual refresh needed
     } catch { drainResult = 'error'; }
     finally { draining = false; setTimeout(() => drainResult = null, 6000); }
@@ -1738,6 +1753,20 @@
           </button>
         {/if}
       </p>
+      {#if waitingElsewhere && (waitingElsewhere.byGraph.length > 0 || waitingElsewhere.unaddressed > 0)}
+        <!-- THE SIGNPOST. Shown only after a drain came up empty here: an empty queue that is
+             empty because the work is somewhere else should say so, and link there. -->
+        <p class="waiting-elsewhere mono">
+          {#each waitingElsewhere.byGraph as g (g.kb)}
+            <a href="/review?kb={encodeURIComponent(g.kb)}&tab=incoming" title="Open the {g.kb} graph and drain its proposals">{g.count} in {g.kb}</a>
+          {/each}
+          {#if waitingElsewhere.unaddressed > 0}
+            <span class="unaddressed" title="These rows name no graph, so no drain can deliver them. The job that wrote them needs to set kb.">
+              {waitingElsewhere.unaddressed} addressed to no graph
+            </span>
+          {/if}
+        </p>
+      {/if}
     </div>
 
     <!-- Tab bar -->
@@ -2962,6 +2991,14 @@
     font-size: 0.72rem; padding: 0.1rem 0.45rem;
     border: 1px solid var(--accent); border-radius: 999px; color: var(--accent);
   }
+  /* Only ever visible when this graph's drain found nothing — a dead end turned into a route. */
+  .waiting-elsewhere {
+    display: flex; flex-wrap: wrap; gap: 0.5rem;
+    margin: 0.35rem 0 0; font-size: 0.7rem;
+  }
+  .waiting-elsewhere a { color: var(--accent); text-decoration: none; border-bottom: 1px dotted currentColor; }
+  .waiting-elsewhere a:hover { border-bottom-style: solid; }
+  .waiting-elsewhere .unaddressed { color: var(--muted); }
   .agent-filter-count { color: var(--muted); }
   .agent-filter button {
     background: none; border: none; padding: 0; cursor: pointer;

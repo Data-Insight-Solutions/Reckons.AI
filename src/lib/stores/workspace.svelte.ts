@@ -48,6 +48,7 @@ import {
 } from '../storage/app-db';
 import {
   acknowledgePendingJsonl,
+  normalizePendingGraphName,
   partitionPendingJsonl,
   type PendingEntry,
 } from '../rdf/pending-entry';
@@ -886,6 +887,48 @@ export const WORKSPACE_PENDING_FILE = 'knowledge.pending.jsonl';
  * that graph to claim. An unscoped or invalid row is also retained verbatim: guessing a
  * destination from the active tab is how a roadmap finding lands in a user's personal notes.
  */
+/**
+ * What is waiting in the queue for OTHER graphs — without draining anything.
+ *
+ * Matt, 2026-09-09, opening a review link: "0 pending changes." The queue held 1,036 rows. Every
+ * one was either addressed to a different graph or carried no address at all, so the drain
+ * correctly took none of them and the screen correctly reported none — and the reader is left
+ * with a dead end that looks like completion.
+ *
+ * "Nothing for you" and "nothing at all" are different answers and the screen was giving the
+ * second when the first was true. This computes the difference so it can be shown: which graphs
+ * have work waiting, and how much is addressed to nobody.
+ *
+ * READ-ONLY. It parses the same file the drain reads and writes nothing back, so calling it can
+ * never consume a row.
+ */
+export async function pendingWaitingElsewhere(): Promise<{ byGraph: Array<{ kb: string; count: number }>; unaddressed: number }> {
+  const text = await readFromWorkspace(WORKSPACE_PENDING_FILE);
+  if (!text?.trim()) return { byGraph: [], unaddressed: 0 };
+
+  const active = new Set(
+    [getCurrentKbName(), getCurrentKbId()].filter(Boolean).map(normalizePendingGraphName),
+  );
+  const counts = new Map<string, number>();
+  let unaddressed = 0;
+
+  for (const line of text.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed === '') continue;
+    let kb: unknown;
+    try { kb = (JSON.parse(trimmed) as { kb?: unknown }).kb; } catch { continue; }
+    if (typeof kb !== 'string' || kb.trim() === '') { unaddressed++; continue; }
+    const slug = normalizePendingGraphName(kb);
+    if (active.has(slug)) continue;                 // this one WILL drain; not "elsewhere"
+    counts.set(slug, (counts.get(slug) ?? 0) + 1);
+  }
+
+  return {
+    byGraph: [...counts].map(([kb, count]) => ({ kb, count })).sort((a, b) => b.count - a.count),
+    unaddressed,
+  };
+}
+
 export async function drainWorkspacePending(): Promise<PendingEntry[]> {
   const text = await readFromWorkspace(WORKSPACE_PENDING_FILE);
   if (!text?.trim()) return [];
