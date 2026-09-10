@@ -16,9 +16,19 @@ related:
 
 The fundamental unit of knowledge in RDF: a three-part statement -- subject, predicate, object. Any fact expressible in human language can be expressed as a triple. Triples connect to form a graph, and graphs reveal relationships that documents hide.
 
-<p class="derived">It has 10 parts below.</p>
+<p class="derived">It has 11 parts below.</p>
+
+<p class="in-sets">Part of Facts join into a graph.</p>
 
 ## In this section
+
+<details class="accordion"><summary>How it works, from one fact to a graph you own</summary>
+
+Everything here is built on one small idea repeated: a fact is three parts, and three parts can be linked.
+
+[Read more](../learn/how-it-works)
+
+</details>
 
 <details class="accordion"><summary>IRI (Identifier)</summary>
 
