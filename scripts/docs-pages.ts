@@ -1316,11 +1316,33 @@ function main(): void {
   // A link to a folded entity must still go somewhere: it resolves to the page that now CONTAINS
   // it. Dropping the link instead would quietly delete a cross-reference the author wrote.
   const byIri = new Map(entities.map((e) => [e.iri, e]));
+  /*
+   * REDIRECTS ARE COLLECTED HERE BECAUSE THIS IS THE ONLY PLACE THAT KNOWS.
+   *
+   * A folded entity had a URL yesterday and does not have one today. On 2026-09-10 the
+   * consolidation took production from 281 pages to 142, and 169 URLs that had been returning 200
+   * on reckons.ai started returning 404 the moment it deployed — no internal link broke, because
+   * the remap below fixes those, but every bookmark and every indexed search result did.
+   *
+   * The mapping cannot be reconstructed after the fact: page-provenance.json records only the
+   * pages that WERE built, so a folded entity leaves no trace of where it went. It is knowable
+   * only in this loop, where the entity's own slug and its host's page are both in hand. So it is
+   * captured as it is computed, and regenerating the docs regenerates the redirects — a table
+   * maintained by hand would drift the first time a threshold moved.
+   */
+  const redirects: { from: string; to: string }[] = [];
   for (const e of entities) {
     if (isPage.get(e.iri)) continue;
     const host = parentOf.get(e.iri);
     const hostRef = host ? refs.get(host) : undefined;
-    if (hostRef) refs.set(e.iri, hostRef);
+    if (hostRef) {
+      const from = `/docs/${e.section ? `${slugify(e.section)}/` : ''}${slugs.get(e.iri)!}`;
+      const to = `/docs/${hostRef.section ? `${slugify(hostRef.section)}/` : ''}${hostRef.slug}`;
+      // A self-redirect is a loop, not a redirect. It happens when a folded entity and its host
+      // resolve to the same slug, which is legal and must simply produce no rule.
+      if (from !== to) redirects.push({ from, to });
+      refs.set(e.iri, hostRef);
+    }
   }
 
   const childrenOf = new Map<string, ChildRef[]>();
@@ -1429,6 +1451,68 @@ function main(): void {
         .slice(0, 16),
     };
   }).sort((a, b) => a.path.localeCompare(b.path));
+  /*
+   * Cloudflare Pages reads `_redirects` from the site root, and adapter-static copies static/
+   * there verbatim. 301 rather than 302: these moves are permanent, and a permanent code is what
+   * lets a search engine transfer the old URL's standing to the page that absorbed it.
+   *
+   * Sorted for a stable diff — an unordered file would show churn on every run and the
+   * regeneration check would call it drift.
+   */
+  /*
+   * MOVES, NOT ONLY FOLDS — and this half was missing until it was measured.
+   *
+   * The fold pass above covered 168 of the 169 URLs that 404'd after the 2026-09-10 deploy. The
+   * one it missed was /docs/features/reckoning, which did not fold: it kept its page and CHANGED
+   * SECTION, to /docs/learn/reckoning, because an author gave it kpred:page-section "Learn". A
+   * moved page breaks its old URL exactly as thoroughly as a folded one, and nothing in the fold
+   * logic can see it, because from that loop's point of view the entity still has a page.
+   *
+   * The previous run's provenance is the record of where each entity USED to live, so a move is
+   * simply an entity whose path changed between runs. Read before the file is overwritten below.
+   */
+  try {
+    const prior = JSON.parse(readFileSync(join(STATIC_DIR, 'page-provenance.json'), 'utf8')) as
+      { pages?: { path: string; entity: string }[] };
+    const nowByEntity = new Map(pages.map((pg) => [pg.iri, contentPath(pg).replace(/^content\//, '').replace(/\.md$/, '')]));
+    for (const old of prior.pages ?? []) {
+      const current = nowByEntity.get(old.entity);
+      if (current && current !== old.path) redirects.push({ from: `/docs/${old.path}`, to: `/docs/${current}` });
+    }
+  } catch {
+    // No prior provenance (a fresh clone) means no moves are knowable. That is a smaller file,
+    // not a wrong one — and the fold rules, which are derived from this run alone, still hold.
+  }
+
+  /*
+   * HISTORY THE GENERATOR CANNOT KNOW.
+   *
+   * Move detection compares this run against the previous run's provenance — but
+   * page-provenance.json was only added on 2026-09-08, so any page that moved BEFORE that leaves
+   * no record anywhere. Exactly one such URL was found by measuring the live 404s after the
+   * 2026-09-10 deploy: /docs/features/reckoning became /docs/learn/reckoning when the entity was
+   * given kpred:page-section "Learn".
+   *
+   * This list is deliberately tiny and deliberately closed. It is not a place to hand-maintain
+   * redirects — everything after 2026-09-08 is derived above, and anything added here should be
+   * because a URL predates the record, not because the derivation was inconvenient.
+   */
+  for (const [from, to] of [['/docs/features/reckoning', '/docs/learn/reckoning']] as const) {
+    redirects.push({ from, to });
+  }
+
+  const redirectLines = [...new Map(redirects.map((r) => [r.from, r.to]))]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([from, to]) => `${from}  ${to}  301`);
+  writeFileSync(
+    join(STATIC_DIR, '_redirects'),
+    '# GENERATED by scripts/docs-pages.ts — do not hand-edit.\n'
+    + '# One line per entity that no longer has a page of its own, pointing at the page that\n'
+    + '# absorbed it. Regenerated whenever the docs are, so it cannot drift from the folding.\n'
+    + redirectLines.join('\n') + '\n',
+    'utf8',
+  );
+
   writeFileSync(
     join(STATIC_DIR, 'page-provenance.json'),
     JSON.stringify({ built: provenance.length, pages: provenance }, null, 2) + '\n',
