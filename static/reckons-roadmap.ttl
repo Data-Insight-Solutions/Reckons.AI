@@ -2749,6 +2749,20 @@ kb:view-suggestions rdf:type   ktype:Feature ;
 # ABSENCE turns "go find out what we are missing" into "answer this one question, and four
 # blocked things unblock".
 
+kb:minimal-ontology rdf:type   ktype:Concept ;
+               rdfs:label   "Small context packages, not a world model" ;
+               kpred:part-of      kb:reckons-ai ;
+               kpred:relates-to   kb:thesis ;
+               kpred:relates-to   kb:entity-sets ;
+               kpred:relates-to   kb:set-semantics ;
+               kpred:description  "What this product asks of you is small and local. A graph here is a handful of facts about one thing you are working on — a vendor decision, a trip, a migration, a design argument — not a model of a domain. The scope is a package of context, and the right size for one is the size that answers the question you have." ;
+               kpred:decided      "MATT, 2026-09-09: 'there is an interesting minimal ontology principle that could be referenced in purpose of this app. The graph editing should not be so extensive to describe a world model, rather localized small context packages.'" ;
+               kpred:principle    "THE WORLD-MODEL EXPECTATION IS WHY KNOWLEDGE GRAPHS HAVE A REPUTATION FOR FAILING. The received idea is that you model the domain first: get the taxonomy right, agree the classes, cover the cases — and only then does anything become useful. That project has an unbounded beginning and no natural end, which is why it is usually abandoned somewhere in the middle with nothing to show. A reader who thinks that is what this is will not start, and they would be right not to." ;
+               kpred:principle    "SO THE UNIT IS THE SET, NOT THE ONTOLOGY. F187 sets exist for exactly this: `DAM vendor selection` is a grouping of the few entities that decision touches. It is not an ontology of procurement, it makes no claim about vendors in general, and it is finished when the decision is made. Several such packages can sit in one graph without ever being reconciled into a single scheme, because membership overlaps rather than partitions." ;
+               kpred:principle    "AND MULTI-GRAPH IS THE SAME INSTINCT ONE LEVEL UP. Separate graphs that do not see each other is not a limitation to be engineered away — it is the shape of how people actually hold context. Your work graph and your kitchen renovation are not two regions of one universal graph waiting to be joined, and treating them as such is how a personal tool acquires an ontologist." ;
+               kpred:constraint   "THE TENSION WITH STANDARDS IS REAL AND IT RESOLVES CLEANLY: BORROW VOCABULARY, DO NOT BUILD IT. The argument for SKOS and schema.org is that a shared term makes your graph comparable to somebody else's without a mapping exercise. The argument here is that your SCOPE should stay small. Those pull in the same direction — reaching for skos:broader instead of inventing a word is precisely how you avoid authoring an ontology, because somebody already did that part." ;
+               kpred:honest-note  "THIS IS A STATEMENT OF PURPOSE, NOT A CONTROL. Nothing in the code stops anyone building a sprawling scheme, and the predicate economy check in graph-lint currently reports 355 distinct predicates in this repository's own graphs, 97 of them used exactly once. That number is evidence that the pull toward a private vocabulary is strong even when you know better — which is an argument for saying this out loud rather than assuming it." .
+
 kb:mission rdf:type            ktype:Concept ;
                rdfs:label   "The mission" ;
                kpred:part-of      kb:reckons-ai ;
