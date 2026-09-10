@@ -1,0 +1,294 @@
+{
+  "name": "Reckons \u2014 iOS Note Capture",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Receives a dictated note from an iOS Shortcut and appends it to knowledge.pending.jsonl in the Google Drive workspace folder, where Reckons.AI's folder sync picks it up. Nothing connects INBOUND to your machine."
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## The shape, and why\n\n```\niPhone Shortcut \u2500\u2500POST\u2500\u2500\u25b6 n8n (your VPS) \u2500\u2500\u25b6 Google Drive\n                                                   \u2502\n                              Reckons.AI \u25c0\u2500\u2500poll\u2500\u2500\u2500\u2518\n```\n\n**Nothing connects inbound to your laptop.** Reckons.AI is a static browser app \u2014 there is no local server to expose. It polls the workspace folder every 10s while open (Drive every 45s) and pulls.\n\n**n8n is the buffer, and the buffer is required.** You dictate at 08:41 with the laptop shut. Something has to hold the note until the app next runs. n8n is that something; without it the note is simply lost.\n\n**A folder cannot wake a closed tab.** If Reckons.AI is not open, notes accumulate in Drive and arrive when you next open it. That is the honest limit of a local-first browser app, not a bug to route around.\n\n## Setup\n\n1. Attach a **Google Drive OAuth2** credential.\n2. Open **Config**: set `WORKSPACE_FOLDER_ID` (the Drive folder Reckons.AI syncs) and `TARGET_GRAPH` (the graph NAME, e.g. `personal-notes`).\n3. Attach **Header Auth** to the Webhook node. This URL is on the public internet.\n4. Copy the production webhook URL into the Shortcut below.",
+        "height": 640,
+        "width": 460
+      },
+      "id": "sticky-shape",
+      "name": "Read me first",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -460,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## The iOS Shortcut\n\n1. **Dictate Text** (or *Get Text from Input* if the ring hands you text)\n2. **Get Contents of URL**\n   - Method `POST`\n   - Headers: your auth header, `Content-Type: application/json`\n   - Request Body \u2192 JSON:\n     - `text` \u2192 Dictated Text\n     - `capturedAt` \u2192 Current Date (ISO 8601)\n\nAdd it to the Action Button or Back Tap and it is one press.\n\n## Test without a phone\n\n```bash\ncurl -X POST \"$WEBHOOK\" \\\n  -H 'Authorization: Bearer TOKEN' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"text\":\"ask about stall fees\"}'\n```\n\nThen watch it appear in Reckons.AI within ~45s (Drive poll) without touching the app.",
+        "height": 560,
+        "width": 400
+      },
+      "id": "sticky-shortcut",
+      "name": "The Shortcut",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        40,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "reckons-note",
+        "responseMode": "responseNode",
+        "options": {},
+        "authentication": "headerAuth"
+      },
+      "id": "webhook",
+      "name": "Note received",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        80,
+        200
+      ],
+      "webhookId": "reckons-note"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "WORKSPACE_FOLDER_ID",
+              "value": "PUT-YOUR-DRIVE-FOLDER-ID-HERE",
+              "type": "string"
+            },
+            {
+              "id": "c2",
+              "name": "TARGET_GRAPH",
+              "value": "personal-notes",
+              "type": "string"
+            },
+            {
+              "id": "c3",
+              "name": "PENDING_FILE",
+              "value": "knowledge.pending.jsonl",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "config",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        280,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build ONE pending row from an untrusted payload.\n//\n// THE INJECTION THIS GUARDS. knowledge.pending.jsonl is newline-delimited: one row per line.\n// A dictated note containing a newline \u2014 trivially produced by saying \"new line\", and produced\n// by accident whenever a transcript breaks a sentence \u2014 would end the row early and let the\n// remainder parse as a SECOND row, forging a fact nobody said. JSON.stringify escapes newlines\n// to \\n, so the row is built by stringifying an object and never by concatenating strings.\n// This is the JSONL twin of the CR/LF header injection the contact workflow guards against.\n//\n// The note text is carried VERBATIM into the object. What was said is the fact; what it meant\n// is a reading the review queue exists to gate.\n\nconst cfg = $('Config').first().json;\nconst body = $('Note received').first().json.body ?? {};\n\n// ACCEPT WHAT ACTUALLY ARRIVES, from either caller.\n//\n// An iOS Shortcut POSTs {text}. The MCP tool posts {input}: n8n's MCP Server Trigger presents\n// every attached tool to the client as a single freeform `input` field, regardless of the\n// parameter schema configured on the tool node \u2014 verified against a live tools/list, where a\n// tool declaring text+capturedAt still advertised only `input`. Reading body.text alone meant\n// every note captured through MCP arrived empty and was dropped, while the client was told it\n// succeeded. A model may also hand back the whole object as a JSON string, so try that too.\nfunction noteText(b) {\n  if (typeof b.text === 'string' && b.text.trim()) return b.text;\n  const inp = b.input;\n  if (typeof inp === 'string' && inp.trim()) {\n    const s = inp.trim();\n    if (s.startsWith('{')) {\n      try {\n        const parsed = JSON.parse(s);\n        if (typeof parsed.text === 'string' && parsed.text.trim()) return parsed.text;\n      } catch { /* not JSON \u2014 it is just the note, fall through */ }\n    }\n    return inp;\n  }\n  if (inp && typeof inp === 'object' && typeof inp.text === 'string') return inp.text;\n  return '';\n}\n\nconst raw = noteText(body);\nconst text = raw.trim();\n\nif (!text) {\n  return [{ json: { ok: false, reason: 'empty note \u2014 nothing was said', skip: true } }];\n}\n\n// A dictation is a sentence, not a document. Cap it so a malformed or hostile client cannot\n// push an unbounded string into a file the app parses on every poll.\nconst MAX = 2000;\nconst clipped = text.length > MAX;\nconst value = clipped ? text.slice(0, MAX) : text;\n\nconst capturedAt = typeof body.capturedAt === 'string' && !Number.isNaN(Date.parse(body.capturedAt))\n  ? new Date(body.capturedAt).toISOString()\n  : new Date().toISOString();\n\n// Subject is derived from the timestamp, not from the text: deriving it from a transcript\n// would mint an entity out of a possibly-misheard proper noun before any human saw it.\nconst subject = `urn:kbase:concept/note-${capturedAt.replace(/[:.]/g, '-')}`;\n\nconst row = {\n  subject,\n  predicate: 'urn:kbase:predicate/captured-note',\n  object: value,\n  kb: cfg.TARGET_GRAPH,\n  type: 'observation',\n  agent: 'ios-shortcut',\n  note: `Dictated ${capturedAt}${clipped ? ' (truncated at 2000 chars)' : ''}`,\n  addedAt: capturedAt\n};\n\n// One line, newline-terminated. JSON.stringify guarantees no raw newline survives inside it.\nconst line = JSON.stringify(row) + '\\n';\nif (line.split('\\n').length !== 2) {\n  throw new Error('refusing to write a row containing a newline');\n}\n\nreturn [{ json: { ok: true, skip: false, line, subject, capturedAt, clipped } }];"
+      },
+      "id": "build-row",
+      "name": "Build pending row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "not-skipped",
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "guard",
+      "name": "Something was said?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        700,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "={{ $('Config').first().json.PENDING_FILE }}",
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $('Config').first().json.WORKSPACE_FOLDER_ID }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "find-file",
+      "name": "Find pending file",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        920,
+        140
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Append, never replace. The file is a QUEUE the app consumes and rewrites: it takes the rows\n// it can safely import and writes the remainder back. Overwriting instead of appending would\n// discard rows the app has not yet drained \u2014 captures lost with no error anywhere.\n//\n// A read-modify-write has a real race if two notes arrive within the same second: the second\n// read can miss the first write, and the first note is lost. This is left as a known limit\n// rather than pretended away \u2014 dictation is human-paced, and the honest mitigation is n8n's\n// own concurrency setting on this workflow, not a lock invented here.\n\nconst built = $('Build pending row').first().json;\nconst existing = $input.first()?.json?.existingContent ?? '';\nconst prefix = existing && !existing.endsWith('\\n') ? existing + '\\n' : existing;\n\nreturn [{ json: { content: prefix + built.line, subject: built.subject } }];"
+      },
+      "id": "append",
+      "name": "Append to queue",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Find pending file').first().json.id }}"
+        },
+        "changeFileContent": true,
+        "newUpdatedFileName": "={{ $('Config').first().json.PENDING_FILE }}",
+        "options": {}
+      },
+      "id": "write",
+      "name": "Write to Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1360,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, captured: $('Build pending row').first().json.subject }) }}",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Confirm to phone",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1580,
+        140
+      ]
+    }
+  ],
+  "connections": {
+    "Note received": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Build pending row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build pending row": {
+      "main": [
+        [
+          {
+            "node": "Something was said?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Something was said?": {
+      "main": [
+        [
+          {
+            "node": "Find pending file",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Find pending file": {
+      "main": [
+        [
+          {
+            "node": "Append to queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append to queue": {
+      "main": [
+        [
+          {
+            "node": "Write to Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write to Drive": {
+      "main": [
+        [
+          {
+            "node": "Confirm to phone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

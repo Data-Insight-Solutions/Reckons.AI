@@ -58,10 +58,14 @@
  *
  * Needs OLLAMA_BASE_URL. Emits PROPOSALS only — it never writes source or TTL.
  */
-import { readFileSync, existsSync, appendFileSync } from 'fs';
+import { readFileSync, existsSync, appendFileSync, writeFileSync, mkdirSync } from 'fs';
 import path from 'path';
 import { extractWithOllama } from '../../src/lib/integrations/llm/ollama-extract.js';
 import type { ExtractedTriple } from '../../src/lib/integrations/llm/extractor.js';
+import {
+  scoreSets, scoreOverlap, scoreTraps,
+  type SetExpectation, type NotSetExpectation, type SetScore, type OverlapScore, type TrapScore,
+} from './set-score.js';
 import { looksLikeProposition } from '../../src/lib/rdf/triple-shape.js';
 import { selectVocabulary, buildVocabularySection } from '../../src/lib/rdf/vocabulary-context.js';
 import { selectStructuralContext, buildStructuralSection } from '../../src/lib/rdf/structural-context.js';
@@ -85,6 +89,17 @@ const JSON_OUT = args.includes('--json');
  * it — a second pass that does not move strict recall is costing twice the time for nothing, and a
  * second pass that raises yield without raising recall is manufacturing noise for the review queue.
  */
+/*
+ * REPEAT — because a single run cannot choose anything here, and this harness spent two weeks
+ * pretending it could. qwen3:32b scored 74% and 53% AT IDENTICAL SETTINGS ON THE SAME DAY
+ * (2026-09-04). Any comparison of two models on one run each is inside that spread and therefore
+ * says nothing. kb:task-model-bench already named this as the thing to build FIRST.
+ *
+ * The median is reported rather than the mean: with a spread this wide one bad run drags a mean
+ * somewhere no individual run ever was, and the SPREAD is printed beside it because a median that
+ * hides a 21-point range is the same lie in a smaller font.
+ */
+const REPEAT = Math.max(1, parseInt(arg('repeat', '1'), 10) || 1);
 const THINKING = args.includes('--thinking');
 const PENDING_OUT = args.includes('--pending');
 const CORPUS = arg('corpus', 'tests/fixtures/notes-corpus');
@@ -197,6 +212,10 @@ export interface FileSpec {
   title: string;
   expected: Expectation[];
   forbidden?: { slugs: string[]; why: string };
+  /** F187.3 — groupings this source should produce. Scored by set-score.ts, reported apart. */
+  sets?: SetExpectation[];
+  /** F187.3 — lists that must NOT become groupings. Never averaged into set recall. */
+  notSets?: NotSetExpectation[];
 }
 
 export function loadSpecs(dir = CORPUS): Record<string, FileSpec> {
@@ -214,6 +233,23 @@ export interface Score {
   file: string;
   model: string;
   condition: string;
+  /** Which repetition this came from (0-based). Always 0 unless --repeat=N. */
+  run: number;
+  /**
+   * Facts found under the WRONG predicate name, with both names kept.
+   *
+   * Matt, 2026-09-08: "the terminology synonyms should be identified in these tests, to better
+   * score extractions." The harness already knew a synonym existed — the loose-minus-strict count
+   * IS that number — and threw the pair away in a `.some()`, reporting "2 facts found under a
+   * DIFFERENT predicate name" without ever saying which. So the measurement produced a complaint
+   * where it could have produced DATA: every one of these pairs is a candidate skos:altLabel,
+   * discovered by running the corpus rather than guessed at a whiteboard.
+   */
+  drift: Array<{ id: string; expected: string[]; emitted: string }>;
+  /** F187.3 — grouping stage, kept apart from relation recall so neither hides the other. */
+  sets: SetScore[];
+  overlaps: OverlapScore[];
+  traps: TrapScore[];
   yield: number;
   strict: string[];
   loose: string[];
@@ -247,12 +283,13 @@ export function scoreOne(
   spec: FileSpec,
   triples: ExtractedTriple[],
   offered: { offered: Set<string>; offeredPredicates: Set<string> } = { offered: new Set(), offeredPredicates: new Set() },
-): Omit<Score, 'file' | 'model' | 'condition' | 'seconds'> {
+): Omit<Score, 'file' | 'model' | 'condition' | 'seconds' | 'run'> {
   const strict: string[] = [],
     loose: string[] = [],
     missed: string[] = [];
   const brokenFixed: string[] = [],
     brokenStillBroken: string[] = [];
+  const drift: Score['drift'] = [];
 
   for (const exp of spec.expected) {
     const hitStrict = triples.some(
@@ -274,6 +311,13 @@ export function scoreOne(
     if (hitStrict) strict.push(exp.id);
     if (hitLoose) loose.push(exp.id);
     if (!hitLoose) missed.push(exp.id);
+    // The synonym, named. Only when the fact WAS found: a miss has no rival term to learn from.
+    if (hitLoose && !hitStrict) {
+      const t = triples.find(
+        (x) => slotMatches(exp.s, x.subject, 'subject') && slotMatches(exp.o, x.object, 'object'),
+      );
+      if (t) drift.push({ id: exp.id, expected: exp.p, emitted: t.predicate });
+    }
   }
 
   /*
@@ -360,6 +404,10 @@ export function scoreOne(
     yield: triples.length,
     strict,
     loose,
+    drift,
+    sets: scoreSets(spec.sets ?? [], triples),
+    overlaps: scoreOverlap(spec.sets ?? [], scoreSets(spec.sets ?? [], triples), triples),
+    traps: scoreTraps(spec.notSets ?? [], triples),
     missed,
     brokenFixed,
     brokenStillBroken,
@@ -459,6 +507,7 @@ async function main() {
 
   for (const model of MODELS) {
     for (const condition of CONDITIONS) {
+     for (let run = 0; run < REPEAT; run++) {
       for (const [fileName, spec] of Object.entries(specs)) {
         const src = path.join(CORPUS, fileName);
         if (!existsSync(src)) continue;
@@ -478,7 +527,7 @@ async function main() {
             },
           });
           const s = scoreOne(spec, triples, ctx);
-          scores.push({ ...s, file: fileName, model, condition, criticAdded, seconds: (Date.now() - t0) / 1000 });
+          scores.push({ ...s, file: fileName, model, condition, run, criticAdded, seconds: (Date.now() - t0) / 1000 });
           if (!JSON_OUT) reportOne(scores[scores.length - 1], spec, ctx);
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
@@ -486,9 +535,14 @@ async function main() {
             file: fileName,
             model,
             condition,
+            run,
             yield: 0,
             strict: [],
             loose: [],
+            drift: [],
+            sets: [],
+            overlaps: [],
+            traps: [],
             missed: spec.expected.filter((x) => !x.knownBroken).map((x) => x.id),
             brokenFixed: [],
             brokenStillBroken: [],
@@ -507,7 +561,32 @@ async function main() {
           if (!JSON_OUT) console.log(`  ${R}✗ ${model} / ${condition} / ${fileName}: ${msg.slice(0, 160)}${X}\n`);
         }
       }
+     }
     }
+  }
+
+  /*
+   * ALWAYS PERSIST THE RUN. Twice on 2026-09-08 a multi-hour benchmark was piped through `tail`
+   * and its headline table — the medians the whole run existed to produce — was destroyed by the
+   * command that displayed it. The numbers survived only as far as a terminal scrollback that had
+   * already scrolled.
+   *
+   * A measurement that exists only in scrollback is not a record. It is written before anything is
+   * printed, so a truncated view of the output costs a look at a file rather than the run.
+   */
+  try {
+    const dir = path.resolve('tests/bench/results');
+    mkdirSync(dir, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const out = path.join(dir, `extraction-score_${stamp}.json`);
+    writeFileSync(out, JSON.stringify({
+      at: new Date().toISOString(), base: BASE_URL, models: MODELS, conditions: CONDITIONS,
+      repeat: REPEAT, thinking: THINKING, corpus: CORPUS, scores,
+    }, null, 2) + '\n', 'utf8');
+    if (!JSON_OUT) console.log(`${D}Run saved to ${out}${X}`);
+  } catch (e) {
+    // Never fail a benchmark because its archive could not be written — but say so loudly.
+    console.log(`${R}Could not save the run: ${e instanceof Error ? e.message : String(e)}${X}`);
   }
 
   if (JSON_OUT) {
@@ -531,11 +610,50 @@ function reportOne(s: Score, spec: FileSpec, ctx: GraphContext) {
   console.log(
     `  ${recall}strict ${pct(s.strict.length, total)}${X} ${D}(${s.strict.length}/${total})${X}   loose ${pct(s.loose.length, total)} ${D}(${s.loose.length}/${total})${X}   yield ${String(s.yield).padStart(3)} triples${critic}   ${D}${s.seconds.toFixed(1)}s${X}`,
   );
-  if (s.loose.length > s.strict.length) {
+  if (s.drift.length > 0) {
     console.log(
-      `  ${Y}· ${s.loose.length - s.strict.length} fact(s) found under a DIFFERENT predicate name — vocabulary drift, not a miss${X}`,
+      `  ${Y}· ${s.drift.length} fact(s) found under a DIFFERENT predicate name — vocabulary drift, not a miss${X}`,
     );
+    for (const d of s.drift) {
+      console.log(`      ${D}${d.id}${X}  expected ${C}${d.expected.join(' | ')}${X}  got ${Y}${d.emitted}${X}`);
+    }
   }
+  /*
+   * THE GROUPING STAGE, REPORTED APART FROM RECALL (F187.3, Matt 2026-09-08).
+   *
+   * Four numbers and never one. A model can have perfect membership recall and be wrong in three
+   * distinct ways — it swept in nearby nouns (precision), it got the sequence backwards (order),
+   * it split one group into three (spread) — and a single averaged figure would show none of them.
+   */
+  if (s.sets.length > 0) {
+    const anyFound = s.sets.some((x) => x.found);
+    console.log(`  ${anyFound ? C : D}· sets${X}`);
+    for (const x of s.sets) {
+      if (!x.found) {
+        console.log(`      ${D}${x.id}${X}  ${R}not grouped${X}  ${D}missing ${x.missing.join(', ')}${X}`);
+        continue;
+      }
+      const bits = [`recall ${(x.recall * 100).toFixed(0)}%`];
+      if (x.precision !== null) bits.push(`precision ${(x.precision * 100).toFixed(0)}%`);
+      if (x.order !== null) bits.push(`order ${(x.order * 100).toFixed(0)}%`);
+      if (x.spread > 1) bits.push(`${Y}SPREAD across ${x.spread} sets${X}`);
+      const bad = x.extras.length ? `  ${Y}extras: ${x.extras.join(', ')}${X}` : '';
+      console.log(`      ${D}${x.id}${X}  as ${C}${x.matched}${X}  ${bits.join('  ')}${bad}`);
+    }
+  }
+  for (const o of s.overlaps) {
+    console.log(o.held
+      ? `      ${D}${o.id}${X}  ${G}overlap held${X} ${D}— member is in ${o.presentIn.join(' and ')}${X}`
+      : `      ${D}${o.id}${X}  ${R}PARTITIONED${X} ${D}— member reached ${o.presentIn.length || 'none'} of `
+        + `${o.requiredIn.length} required sets; sets overlap, they do not partition${X}`);
+  }
+  for (const tr of s.traps) {
+    console.log(tr.refused
+      ? `      ${D}${tr.id}${X}  ${G}trap refused${X} ${D}— the non-group was left ungrouped${X}`
+      : `      ${D}${tr.id}${X}  ${R}TRAP FAILED${X} ${D}— grouped as "${tr.groupedAs}"; `
+        + `the model has learned "bullet list => collection"${X}`);
+  }
+
   if (ctx.offered.size > 0) {
     const ec = s.entitiesReused > 0 ? G : R;
     console.log(
@@ -642,6 +760,60 @@ function summary(scores: Score[], specs: Record<string, FileSpec>) {
     );
   }
 
+  /*
+   * MEDIAN AND SPREAD ACROSS REPEATS — the table above is a MEAN over all runs, and a mean is the
+   * wrong summary for a distribution this wide. Printed only when there is more than one run,
+   * because a "median of 1" would dress a single sample up as a result.
+   *
+   * The SPREAD is the number that decides whether a comparison is allowed at all: if two models'
+   * ranges overlap, the harness has not distinguished them, and saying which is better on these
+   * data would be exactly the marketing instrument F146 phase 1 warned about.
+   */
+  if (REPEAT > 1) {
+    const median = (xs: number[]): number => {
+      const a = [...xs].sort((p, q) => p - q);
+      const m = Math.floor(a.length / 2);
+      return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+    };
+    console.log(`\n${B}Median of ${REPEAT} runs, with the spread${X} ${D}— the table above is the mean${X}`);
+    const ranges = new Map<string, { lo: number; hi: number; med: number }>();
+    for (const [k, group] of groups) {
+      const [model, condition] = k.split(' ');
+      const byRun = new Map<number, { hit: number; tot: number }>();
+      for (const sc of group) {
+        const cur = byRun.get(sc.run) ?? { hit: 0, tot: 0 };
+        cur.hit += sc.strict.length;
+        cur.tot += totalExpected(sc.file);
+        byRun.set(sc.run, cur);
+      }
+      const perRun = [...byRun.values()].map((v) => (v.tot ? (v.hit / v.tot) * 100 : 0));
+      const med = median(perRun);
+      const lo = Math.min(...perRun);
+      const hi = Math.max(...perRun);
+      ranges.set(k, { lo, hi, med });
+      const runs = perRun.map((x) => `${x.toFixed(0)}%`).join(' ');
+      console.log(
+        `  ${model.slice(0, 26).padEnd(28)} ${condition.padEnd(9)} median ${C}${med.toFixed(0).padStart(3)}%${X}` +
+          `  spread ${lo.toFixed(0)}-${hi.toFixed(0)}%  ${D}(${runs})${X}`,
+      );
+    }
+    // Do the ranges overlap? If they do, this run distinguished nothing, and it must say so.
+    const keys = [...ranges.keys()];
+    for (let i = 0; i < keys.length; i++) {
+      for (let j = i + 1; j < keys.length; j++) {
+        const a = ranges.get(keys[i])!;
+        const b = ranges.get(keys[j])!;
+        if (a.lo <= b.hi && b.lo <= a.hi) {
+          console.log(
+            `\n${Y}${keys[i]} and ${keys[j]} have OVERLAPPING ranges ` +
+              `(${a.lo.toFixed(0)}-${a.hi.toFixed(0)}% vs ${b.lo.toFixed(0)}-${b.hi.toFixed(0)}%). ` +
+              `This run did not distinguish them — do not pick one on these data.${X}`,
+          );
+        }
+      }
+    }
+  }
+
   const best = rows[0];
   console.log();
   if (!best || best.strict === 0) {
@@ -680,6 +852,87 @@ function summary(scores: Score[], specs: Record<string, FileSpec>) {
     }
   }
 
+  /*
+   * SYNONYM CANDIDATES — the harness's most useful by-product, and until 2026-09-08 it was thrown
+   * away. Every row here is a fact the model FOUND under a rival predicate name, so the pair is a
+   * candidate skos:altLabel discovered by measurement rather than guessed.
+   *
+   * Counted across runs on purpose: a drift seen once is a model having a bad day, the same drift
+   * seen in every run is the vocabulary genuinely disagreeing with ours, and the two deserve very
+   * different treatment. So the run count is printed and NOT collapsed.
+   *
+   * This is the same finding kb:ingest-synonyms (F126.1) made from the other end — zero
+   * skos:altLabel triples existed across 25 graphs because the only alias trigger was a human
+   * confirming a merge. The corpus is a second path to the same data, and it needs no human.
+   */
+  const drifts = new Map<string, { expected: string; emitted: string; runs: Set<string>; ids: Set<string> }>();
+  for (const sc of scores) {
+    for (const d of sc.drift) {
+      const key = `${d.expected[0]} → ${d.emitted}`;
+      const cur = drifts.get(key) ?? { expected: d.expected[0], emitted: d.emitted, runs: new Set(), ids: new Set() };
+      cur.runs.add(`${sc.model}#${sc.run}`);
+      cur.ids.add(d.id);
+      drifts.set(key, cur);
+    }
+  }
+  if (drifts.size > 0) {
+    const totalRuns = new Set(scores.map((sc) => `${sc.model}#${sc.run}`)).size;
+    console.log(`\n${B}Synonym candidates${X} ${D}— the fact was found, our predicate name was not the one used${X}`);
+    const sorted = [...drifts.entries()].sort((a, b) => b[1].runs.size - a[1].runs.size);
+    for (const [, d] of sorted) {
+      const persistent = d.runs.size > totalRuns / 2;
+      console.log(
+        `  ${persistent ? Y : D}${d.runs.size}/${totalRuns} runs${X}  ours ${C}${d.expected}${X}` +
+          `  theirs ${Y}${d.emitted}${X}  ${D}(${[...d.ids].sort().join(', ')})${X}`,
+      );
+    }
+    console.log(
+      `${D}  A pair seen in most runs is the vocabulary disagreeing, not a fluke — those are the ones worth\n` +
+        `  proposing as skos:altLabel. Pass --pending to queue them for review.${X}`,
+    );
+  }
+
+  /*
+   * THE GROUPING STAGE ACROSS RUNS — a second table, not a column in the first.
+   *
+   * Set recall and relation recall answer different questions and must not be summed: a run that
+   * extracts every fact and produces no groupings is 100% on one and 0% on the other, which is
+   * precisely the state of the pipeline today and the reason 05-list-structured.md exists.
+   */
+  const setModels = [...new Set(scores.filter((s) => s.sets.length > 0).map((s) => s.model))];
+  if (setModels.length > 0) {
+    console.log(`\n${B}Grouping stage${X} ${D}— separate from relation recall, and from each other${X}`);
+    console.log(`${D}model                        found  recall  precis  order   spread  overlap  trap${X}`);
+    for (const model of setModels) {
+      const mine = scores.filter((s) => s.model === model);
+      const sets = mine.flatMap((s) => s.sets);
+      const overlaps = mine.flatMap((s) => s.overlaps);
+      const traps = mine.flatMap((s) => s.traps);
+      const mean = (xs: Array<number | null>) => {
+        const v = xs.filter((x): x is number => x !== null);
+        return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+      };
+      const pctOrNa = (x: number | null) => (x === null ? '   n/a' : `${(x * 100).toFixed(0).padStart(5)}%`);
+      const found = sets.filter((x) => x.found).length;
+      const fragmented = sets.filter((x) => x.spread > 1).length;
+      const overlapHeld = overlaps.filter((o) => o.held).length;
+      const trapsRefused = traps.filter((t) => t.refused).length;
+      const c = found === 0 ? R : G;
+      console.log(
+        `${model.slice(0, 26).padEnd(28)} ${c}${String(found).padStart(2)}/${String(sets.length).padEnd(3)}${X}`
+        + `${pctOrNa(mean(sets.map((x) => x.recall)))} ${pctOrNa(mean(sets.map((x) => x.precision)))} `
+        + `${pctOrNa(mean(sets.map((x) => x.order)))}  ${fragmented ? Y : D}${String(fragmented).padStart(5)}${X}  `
+        + `${overlapHeld === overlaps.length && overlaps.length ? G : R}${overlapHeld}/${overlaps.length}${X}      `
+        + `${trapsRefused === traps.length ? G : R}${trapsRefused}/${traps.length}${X}`,
+      );
+    }
+    console.log(
+      `${D}  spread = expectations whose members were split across several sets.\n`
+      + `  trap = lists the source says are NOT groups and that must be left ungrouped. A high recall\n`
+      + `  with a failed trap is a bullet-list heuristic, not an understanding of sets.${X}`,
+    );
+  }
+
   const anyInvented = rows.reduce((n, r) => n + r.inv, 0);
   const anyMisrouted = rows.reduce((n, r) => n + r.mis, 0);
   if (anyInvented > 0)
@@ -700,76 +953,139 @@ function queue(scores: Score[], specs: Record<string, FileSpec>) {
   const add = (subject: string, predicate: string, object: string, note: string, type: string, priority: string) =>
     lines.push(JSON.stringify({ subject, predicate, object, note, type, agent: 'extraction-score', priority }));
 
+  /*
+   * SYNONYMS FIRST — proposed as skos:altLabel, which is what a rival term for the same fact IS.
+   *
+   * Aggregated across runs BEFORE queuing rather than one row per occurrence, because a five-run
+   * benchmark would otherwise put the same synonym in the review queue five times, and a job that
+   * floods the queue moves cost from collection to triage rather than removing it
+   * (kb:work-tiering). One row per pair, carrying how persistent it was, is the reviewable unit.
+   *
+   * Deliberately a PROPOSAL and never a write. Which of two rival terms should lead is an
+   * authorship decision — Matt, 2026-09-08, on users setting the lead term — and altLabel is the
+   * safe half of it: adding a synonym never demotes anything. Promoting one to skos:prefLabel is
+   * the part a human does.
+   */
+  const pairs = new Map<string, { expected: string; emitted: string; runs: Set<string>; ids: Set<string> }>();
   for (const s of scores) {
-    if (s.invented.length) {
-      add(
-        'kb:extraction-accuracy',
-        'kpred:invented-fact',
-        `${s.model} on ${s.file}`,
-        `${s.invented.length} triple(s) assert something the source only REQUESTED: ${s.invented
-          .slice(0, 2)
-          .map((i) => i.triple)
-          .join(' ; ')}`,
-        'drift-warning',
-        'high',
-      );
+    for (const d of s.drift) {
+      const key = `${d.expected[0]} → ${d.emitted}`;
+      const cur = pairs.get(key) ?? { expected: d.expected[0], emitted: d.emitted, runs: new Set(), ids: new Set() };
+      cur.runs.add(`${s.model}#${s.run}`);
+      cur.ids.add(d.id);
+      pairs.set(key, cur);
     }
-    if (s.verbatim.length) {
-      add(
-        'kb:extraction-accuracy',
-        'kpred:verbatim-not-extracted',
-        `${s.model} on ${s.file}`,
-        `${s.verbatim.length} note(s) were STORED as a sentence rather than extracted into facts: ${s.verbatim[0].triple.slice(0, 160)}`,
-        'observation',
-        'medium',
-      );
+  }
+  const totalRuns = new Set(scores.map((s) => `${s.model}#${s.run}`)).size;
+  for (const [, d] of pairs) {
+    add(
+      d.expected,
+      'skos:altLabel',
+      d.emitted,
+      `Extraction found the fact under "${d.emitted}" where the corpus expects "${d.expected}" — `
+        + `seen in ${d.runs.size} of ${totalRuns} run(s), expectation(s) ${[...d.ids].sort().join(', ')}. `
+        + `A rival term for the same fact is a synonym. Accepting adds it as an alias; it does NOT `
+        + `change which term leads.`,
+      d.runs.size > totalRuns / 2 ? 'suggestion' : 'observation',
+      d.runs.size > totalRuns / 2 ? 'medium' : 'low',
+    );
+  }
+
+  /*
+   * EVERY OTHER FINDING IS AGGREGATED ACROSS RUNS TOO — because --repeat multiplies the queue.
+   *
+   * This loop used to emit one row per SCORE, which is one per (model, file, run). That was fine
+   * at --repeat=1 and becomes flooding the moment it is not: six models over three files at
+   * --repeat=5 is 90 scores and would have put roughly 200 rows into a queue already holding 403,
+   * most of them the same finding restated five times. kb:work-tiering is explicit that a job
+   * which floods the queue moves cost from collection to triage rather than removing it.
+   *
+   * So the unit is (model, file, finding) with the run count carried, exactly as synonyms above.
+   * The run count is not decoration: an invention in one run of five is a sampling artefact, an
+   * invention in five of five is the model's behaviour, and a reviewer needs to see which.
+   */
+  const totalRunsPerModel = new Map<string, number>();
+  for (const s of scores) {
+    const k = `${s.model} ${s.file}`;
+    totalRunsPerModel.set(k, Math.max(totalRunsPerModel.get(k) ?? 0, s.run + 1));
+  }
+
+  interface Finding {
+    subject: string;
+    predicate: string;
+    kind: string;
+    type: string;
+    priority: string;
+    describe: (s: Score) => string | null;
+  }
+  const FINDINGS: Finding[] = [
+    {
+      subject: 'kb:extraction-accuracy', predicate: 'kpred:invented-fact', kind: 'invented',
+      type: 'drift-warning', priority: 'high',
+      describe: (s) => s.invented.length
+        ? `${s.invented.length} triple(s) assert something the source only REQUESTED: `
+          + s.invented.slice(0, 2).map((i) => i.triple).join(' ; ')
+        : null,
+    },
+    {
+      subject: 'kb:extraction-accuracy', predicate: 'kpred:verbatim-not-extracted', kind: 'verbatim',
+      type: 'observation', priority: 'medium',
+      describe: (s) => s.verbatim.length
+        ? `${s.verbatim.length} note(s) were STORED as a sentence rather than extracted into facts: `
+          + s.verbatim[0].triple.slice(0, 160)
+        : null,
+    },
+    {
+      subject: 'kb:note-intent', predicate: 'kpred:misrouted-request', kind: 'misrouted',
+      type: 'observation', priority: 'medium',
+      describe: (s) => s.misrouted.length
+        ? `${s.misrouted.length} triple(s) were correctly marked as REQUESTS but stayed in the fact stream: `
+          + s.misrouted.slice(0, 2).map((i) => i.triple).join(' ; ')
+        : null,
+    },
+    {
+      subject: 'kb:triple-shape', predicate: 'kpred:guard-regression', kind: 'shape',
+      type: 'drift-warning', priority: 'high',
+      describe: (s) => s.shapeViolations.length
+        ? `looksLikeProposition should reject these subjects: ${s.shapeViolations.slice(0, 3).join(' ; ')}`
+        : null,
+    },
+    {
+      subject: 'kb:extraction-accuracy', predicate: 'kpred:entity-fragmented', kind: 'fragments',
+      type: 'observation', priority: 'medium',
+      describe: (s) => s.fragments.length
+        ? `${s.fragments.length} entity minted more than once in ONE run: `
+          + s.fragments.slice(0, 3).map(([, v]) => v.join(' / ')).join(' ; ')
+        : null,
+    },
+    {
+      subject: 'kb:vocabulary-grounding', predicate: 'kpred:predicate-drift', kind: 'drift',
+      type: 'observation', priority: 'medium',
+      describe: (s) => {
+        if (s.loose.length <= s.strict.length) return null;
+        const total = (specs[s.file]?.expected ?? []).filter((e) => !e.knownBroken).length;
+        return `${s.loose.length - s.strict.length} of ${total} expected facts were found under a `
+          + `different predicate name — F136 grounding is not landing here.`;
+      },
+    },
+  ];
+
+  for (const f of FINDINGS) {
+    const seen = new Map<string, { hits: number; sample: string }>();
+    for (const s of scores) {
+      const desc = f.describe(s);
+      if (!desc) continue;
+      const k = `${s.model} ${s.file}`;
+      const cur = seen.get(k) ?? { hits: 0, sample: desc };
+      cur.hits += 1;
+      seen.set(k, cur);
     }
-    if (s.misrouted.length) {
-      add(
-        'kb:note-intent',
-        'kpred:misrouted-request',
-        `${s.model} on ${s.file}`,
-        `${s.misrouted.length} triple(s) were correctly marked as REQUESTS but stayed in the fact stream: ${s.misrouted
-          .slice(0, 2)
-          .map((i) => i.triple)
-          .join(' ; ')}`,
-        'observation',
-        'medium',
-      );
-    }
-    if (s.shapeViolations.length) {
-      add(
-        'kb:triple-shape',
-        'kpred:guard-regression',
-        `${s.model} on ${s.file}`,
-        `looksLikeProposition should reject these subjects: ${s.shapeViolations.slice(0, 3).join(' ; ')}`,
-        'drift-warning',
-        'high',
-      );
-    }
-    if (s.fragments.length) {
-      add(
-        'kb:extraction-accuracy',
-        'kpred:entity-fragmented',
-        `${s.model} on ${s.file}`,
-        `${s.fragments.length} entity minted more than once in ONE run: ${s.fragments
-          .slice(0, 3)
-          .map(([, v]) => v.join(' / '))
-          .join(' ; ')}`,
-        'observation',
-        'medium',
-      );
-    }
-    const total = (specs[s.file]?.expected ?? []).filter((e) => !e.knownBroken).length;
-    if (s.loose.length > s.strict.length) {
-      add(
-        'kb:vocabulary-grounding',
-        'kpred:predicate-drift',
-        `${s.model} on ${s.file}`,
-        `${s.loose.length - s.strict.length} of ${total} expected facts were found under a different predicate name — F136 grounding is not landing here.`,
-        'observation',
-        'medium',
-      );
+    for (const [k, v] of seen) {
+      const runs = totalRunsPerModel.get(k) ?? 1;
+      const persistence = runs > 1 ? ` Seen in ${v.hits} of ${runs} run(s).` : '';
+      add(f.subject, f.predicate, k, `${v.sample}${persistence}`, f.type,
+        // A finding in a minority of runs is weaker evidence and is filed as such.
+        runs > 1 && v.hits <= runs / 2 ? 'low' : f.priority);
     }
   }
   if (!lines.length) {

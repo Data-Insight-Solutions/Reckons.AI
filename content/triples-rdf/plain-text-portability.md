@@ -13,12 +13,12 @@ generated: "docs-kb"
 
 # Plain Text Portability
 
-*Concept*
-
 Your knowledge graph exports as a .ttl file -- plain text, human-readable, no proprietary format. You can open it in any text editor, diff it with git, email it, or print it. When apps shut down and formats die, your .ttl file will still work. It is the most durable way to store knowledge.
 
-## Details
+<p class="in-sets">Part of It is plain text you can take away.</p>
+
+## Why it is this way
 
 **Note**
 
-- Any RDF tool (SPARQL endpoints, Protege, PoolParty, Neo4j, Python's rdflib) can read your .ttl file directly.
+Any RDF tool (SPARQL endpoints, Protege, PoolParty, Neo4j, Python's rdflib) can read your .ttl file directly.

@@ -577,16 +577,31 @@ export async function setStatus(id: string, status: ReviewStatus) {
  * reactive state changes only after that durable boundary succeeds.
  */
 export async function setStatuses(
-  updates: readonly { id: string; status: ReviewStatus }[],
+  updates: readonly {
+    id: string;
+    status: ReviewStatus;
+    /**
+     * Who settled it and through which channel (F199). Optional because the app's own review
+     * screen is the settler by default and needs no stamp; a verdict arriving from a terminal or
+     * an MCP client MUST carry one, because that is the only thing that keeps "Matt settling
+     * through the CLI" distinguishable from "an agent settling its own proposal" (Statement.settledBy).
+     */
+    settledBy?: { actor: string; channel: string; at: number };
+    settledByDecision?: string;
+  }[],
 ) {
   if (isReadOnly()) return;
   const requested = new Map<string, ReviewStatus>();
+  const provenance = new Map<string, { settledBy?: { actor: string; channel: string; at: number }; settledByDecision?: string }>();
   for (const update of updates) {
     const prior = requested.get(update.id);
     if (prior && prior !== update.status) {
       throw new Error(`Conflicting statuses requested for statement ${update.id}`);
     }
     requested.set(update.id, update.status);
+    if (update.settledBy || update.settledByDecision) {
+      provenance.set(update.id, { settledBy: update.settledBy, settledByDecision: update.settledByDecision });
+    }
   }
   if (requested.size === 0) return;
 
@@ -608,7 +623,14 @@ export async function setStatuses(
       if (!before) return [];
       const status = requested.get(ids[index])!;
       if (before.status === status) return [];
-      const after = JSON.parse(JSON.stringify({ ...before, status, updatedAt: now })) as Statement;
+      // Provenance travels with the status, in the same durable write. A settled fact whose
+      // settler is unknown is worse than an unsettled one, because it looks accounted for.
+      const stamp = provenance.get(ids[index]) ?? {};
+      const after = JSON.parse(JSON.stringify({
+        ...before, status, updatedAt: now,
+        ...(stamp.settledBy ? { settledBy: stamp.settledBy } : {}),
+        ...(stamp.settledByDecision ? { settledByDecision: stamp.settledByDecision } : {}),
+      })) as Statement;
       return [{ before, after }];
     });
     if (changed.length === 0) return;

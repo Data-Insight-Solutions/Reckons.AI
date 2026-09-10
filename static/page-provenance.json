@@ -1,0 +1,1202 @@
+{
+  "built": 133,
+  "pages": [
+    {
+      "path": "architecture/claude-md-minimal",
+      "entity": "urn:reckons:arch/ClaudeMdMinimal",
+      "graph": "docs-architecture.ttl",
+      "factHash": "8407af6453648320",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "6a3e76825819b371"
+    },
+    {
+      "path": "architecture/conf-local-models",
+      "entity": "urn:reckons:arch/ConfLocalModels",
+      "graph": "docs-architecture.ttl",
+      "factHash": "c0405ab9629bd0bd",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "1ef47eebeb88b567"
+    },
+    {
+      "path": "architecture/conf-migration-pipeline",
+      "entity": "urn:reckons:arch/ConfMigrationPipeline",
+      "graph": "docs-architecture.ttl",
+      "factHash": "3ecaf7298c95016f",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "9c0c026c6a110221"
+    },
+    {
+      "path": "architecture/conf-pause-resume",
+      "entity": "urn:reckons:arch/ConfPauseResume",
+      "graph": "docs-architecture.ttl",
+      "factHash": "2343bfad77332676",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "4f5d2b78ee94188f"
+    },
+    {
+      "path": "architecture/conf-sliding-window",
+      "entity": "urn:reckons:arch/ConfSlidingWindow",
+      "graph": "docs-architecture.ttl",
+      "factHash": "2bf5e42f96aa6a92",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "c38fb63fedd92ba4"
+    },
+    {
+      "path": "architecture/currents-meta-triples",
+      "entity": "urn:reckons:arch/CurrentsMetaTriples",
+      "graph": "docs-architecture.ttl",
+      "factHash": "b3b4e3b4234476d2",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "fcbfc413e710f2db"
+    },
+    {
+      "path": "architecture/graph-is-source-of-truth",
+      "entity": "urn:reckons:arch/GraphIsSourceOfTruth",
+      "graph": "docs-architecture.ttl",
+      "factHash": "4127680866982e43",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "baf07b92b38d3197"
+    },
+    {
+      "path": "architecture/local-first-arch",
+      "entity": "urn:reckons:arch/LocalFirstArch",
+      "graph": "docs-architecture.ttl",
+      "factHash": "c3edab6e003c82cf",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "7c89709be122d9bb"
+    },
+    {
+      "path": "architecture/mig-confluence",
+      "entity": "urn:reckons:arch/MigConfluence",
+      "graph": "docs-architecture.ttl",
+      "factHash": "fa7b89520e7e159b",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "21ddb004a0a4d013"
+    },
+    {
+      "path": "architecture/mig-confluence-design",
+      "entity": "urn:reckons:arch/MigConfluenceDesign",
+      "graph": "docs-architecture.ttl",
+      "factHash": "b0fa9861d45b6739",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "a61eeab834286096"
+    },
+    {
+      "path": "architecture/migration-status",
+      "entity": "urn:reckons:arch/MigrationStatus",
+      "graph": "docs-architecture.ttl",
+      "factHash": "cd7d5ebc5c8435d9",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "3a88a187b63f3f9f"
+    },
+    {
+      "path": "architecture/mobile-access",
+      "entity": "urn:reckons:arch/MobileAccess",
+      "graph": "docs-architecture.ttl",
+      "factHash": "2beee64617f39f0c",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "09c40cab0c6946cd"
+    },
+    {
+      "path": "architecture/mobile-voice-capture",
+      "entity": "urn:reckons:arch/MobileVoiceCapture",
+      "graph": "docs-architecture.ttl",
+      "factHash": "da4d24ae8341358e",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "43d90dc54abe6576"
+    },
+    {
+      "path": "architecture/pending-jsonl-queue",
+      "entity": "urn:reckons:arch/PendingJsonlQueue",
+      "graph": "docs-architecture.ttl",
+      "factHash": "149b4cb942cfe13d",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "ac40b8e5676a2903"
+    },
+    {
+      "path": "architecture/schema-constrained-extraction",
+      "entity": "urn:reckons:arch/SchemaConstrainedExtraction",
+      "graph": "docs-architecture.ttl",
+      "factHash": "1adaac81174e927d",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "3a6070cdbabb6e68"
+    },
+    {
+      "path": "architecture/static-deployment",
+      "entity": "urn:reckons:arch/StaticDeployment",
+      "graph": "docs-architecture.ttl",
+      "factHash": "913a91e2443045b3",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "c0db20b07dc3f37f"
+    },
+    {
+      "path": "architecture/tailwind-containment",
+      "entity": "urn:reckons:arch/TailwindContainment",
+      "graph": "docs-architecture.ttl",
+      "factHash": "4387f0edd6045b96",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "b180dc6d4ff0102d"
+    },
+    {
+      "path": "architecture/ttl-advantage-query",
+      "entity": "urn:reckons:arch/TtlAdvantageQuery",
+      "graph": "docs-architecture.ttl",
+      "factHash": "a2cdec49e781a7fb",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "ac69d63704b0f007"
+    },
+    {
+      "path": "architecture/ttl-first-docs",
+      "entity": "urn:reckons:arch/TtlFirstDocs",
+      "graph": "docs-architecture.ttl",
+      "factHash": "d445e9896d8c96fb",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "6dd99eb2bb47f1a6"
+    },
+    {
+      "path": "architecture/ttl-vs-markdown-gaps",
+      "entity": "urn:reckons:arch/TtlVsMarkdownGaps",
+      "graph": "docs-architecture.ttl",
+      "factHash": "29ed8d08529d3b6f",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "c37a8eb8c6848b53"
+    },
+    {
+      "path": "architecture/workspace-folder-design",
+      "entity": "urn:reckons:arch/WorkspaceFolderDesign",
+      "graph": "docs-architecture.ttl",
+      "factHash": "1f5dcfb1ef57be72",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "453f77dba5d059b7"
+    },
+    {
+      "path": "architecture/workspace-ttl-naming",
+      "entity": "urn:reckons:arch/WorkspaceTtlNaming",
+      "graph": "docs-architecture.ttl",
+      "factHash": "6f8554f99ebdd192",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "fd5e7868d6a5588b"
+    },
+    {
+      "path": "coding-workflow/agent-orchestration",
+      "entity": "urn:reckons:docs/coding-workflow/AgentOrchestration",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "a4e5c04c66af5e42",
+      "factCount": 4,
+      "floor": "evidence",
+      "pageHash": "9c6140ec69a70332"
+    },
+    {
+      "path": "coding-workflow/agent-tier",
+      "entity": "urn:reckons:docs/coding-workflow/AgentTier",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "1f0b76bda12db1a5",
+      "factCount": 4,
+      "floor": "evidence",
+      "pageHash": "dcd86b35c172d8c7"
+    },
+    {
+      "path": "coding-workflow/agents-ask-the-graph",
+      "entity": "urn:reckons:docs/coding-workflow/AgentsAskTheGraph",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "7bb5977775d3293d",
+      "factCount": 5,
+      "floor": "evidence",
+      "pageHash": "b4b78206399baf07"
+    },
+    {
+      "path": "coding-workflow/avoided-rework",
+      "entity": "urn:reckons:docs/coding-workflow/AvoidedRework",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "6ef92207d04a541e",
+      "factCount": 5,
+      "floor": "evidence",
+      "pageHash": "5c35b6bf96a35ced"
+    },
+    {
+      "path": "coding-workflow/case-study-one-session",
+      "entity": "urn:reckons:docs/coding-workflow/CaseStudyOneSession",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "c1bcc56e07e8237f",
+      "factCount": 5,
+      "floor": "evidence",
+      "pageHash": "a67551a593771a8c"
+    },
+    {
+      "path": "coding-workflow/ci-cd-graph-watch",
+      "entity": "urn:reckons:docs/coding-workflow/CiCdGraphWatch",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "77b144dd5a8a4fdb",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "9f8ef71151dd0ca5"
+    },
+    {
+      "path": "coding-workflow/coding-workflow",
+      "entity": "urn:reckons:docs/coding-workflow/CodingWorkflow",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "a55f82ed8b72bdf5",
+      "factCount": 5,
+      "floor": "evidence",
+      "pageHash": "6f66aed6aaa634ea"
+    },
+    {
+      "path": "coding-workflow/context-compression-coding-workflow",
+      "entity": "urn:reckons:docs/coding-workflow/ContextCompression",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "53e7a3db2f057c3b",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "a38f3106de20ccca"
+    },
+    {
+      "path": "coding-workflow/git-analysis-coding-workflow",
+      "entity": "urn:reckons:docs/coding-workflow/GitAnalysis",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "90e3b47cf8e5618d",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "1ea7ecd6585e0383"
+    },
+    {
+      "path": "coding-workflow/personal-context",
+      "entity": "urn:reckons:docs/coding-workflow/PersonalContext",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "e3a83234e06b2355",
+      "factCount": 5,
+      "floor": "evidence",
+      "pageHash": "347f40c7c02ae283"
+    },
+    {
+      "path": "coding-workflow/repo-ingest",
+      "entity": "urn:reckons:docs/coding-workflow/RepoIngest",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "872fd0fca81aa304",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "53e9c20d9a69c5c3"
+    },
+    {
+      "path": "coding-workflow/rolling-digest",
+      "entity": "urn:reckons:docs/coding-workflow/RollingDigest",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "8a3fb1d7a304827a",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "07fca09dc2a9456b"
+    },
+    {
+      "path": "coding-workflow/scheduling",
+      "entity": "urn:reckons:docs/coding-workflow/Scheduling",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "62c91f2f5560f4fc",
+      "factCount": 4,
+      "floor": "evidence",
+      "pageHash": "950794dd6a81466c"
+    },
+    {
+      "path": "coding-workflow/script-tier",
+      "entity": "urn:reckons:docs/coding-workflow/ScriptTier",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "e5fe5df1d99a20b3",
+      "factCount": 4,
+      "floor": "evidence",
+      "pageHash": "8e6c58039c522f44"
+    },
+    {
+      "path": "coding-workflow/versus-dev-tooling",
+      "entity": "urn:reckons:docs/coding-workflow/VersusDevTooling",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "06dc8b49a343cabb",
+      "factCount": 10,
+      "floor": "evidence",
+      "pageHash": "0c6041f3119c54a8"
+    },
+    {
+      "path": "coding-workflow/work-tiering",
+      "entity": "urn:reckons:docs/coding-workflow/WorkTiering",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "a1698b934b7eca01",
+      "factCount": 4,
+      "floor": "evidence",
+      "pageHash": "c3e8fd2b850e179b"
+    },
+    {
+      "path": "features/compare",
+      "entity": "urn:reckons:feature/Compare",
+      "graph": "docs-features.ttl",
+      "factHash": "8a682a95e2a94964",
+      "factCount": 7,
+      "floor": "evidence",
+      "pageHash": "90cd1230abe2b7b2"
+    },
+    {
+      "path": "features/confluence-migration",
+      "entity": "urn:reckons:feature/ConfluenceMigration",
+      "graph": "docs-features.ttl",
+      "factHash": "bf1ceb711831ad74",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "a6828aa70c2b83ec"
+    },
+    {
+      "path": "features/context-compression-features",
+      "entity": "urn:reckons:feature/ContextCompression",
+      "graph": "docs-features.ttl",
+      "factHash": "6bd1770646801da8",
+      "factCount": 5,
+      "floor": "evidence",
+      "pageHash": "d2d001d3c7609251"
+    },
+    {
+      "path": "features/currents",
+      "entity": "urn:reckons:feature/Currents",
+      "graph": "docs-features.ttl",
+      "factHash": "62fb314412ba035c",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "518a0c3da1fd13c7"
+    },
+    {
+      "path": "features/entity-normalization",
+      "entity": "urn:reckons:feature/EntityNormalization",
+      "graph": "docs-features.ttl",
+      "factHash": "bc3108b8531593f3",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "67439816f744811a"
+    },
+    {
+      "path": "features/git-analysis-features",
+      "entity": "urn:reckons:feature/GitAnalysis",
+      "graph": "docs-features.ttl",
+      "factHash": "f333857bb0e8230f",
+      "factCount": 4,
+      "floor": "evidence",
+      "pageHash": "e5a921669085923c"
+    },
+    {
+      "path": "features/graph3-d",
+      "entity": "urn:reckons:feature/Graph3D",
+      "graph": "docs-features.ttl",
+      "factHash": "6f532d4ad6638474",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "3fd6035114c1b20a"
+    },
+    {
+      "path": "features/ingest",
+      "entity": "urn:reckons:feature/Ingest",
+      "graph": "docs-features.ttl",
+      "factHash": "9b77b66b3915f216",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "acb47955f7153741"
+    },
+    {
+      "path": "features/kb-leap",
+      "entity": "urn:reckons:feature/KBLeap",
+      "graph": "docs-features.ttl",
+      "factHash": "96351d4ad0f087cf",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "48ded817eb19b9d9"
+    },
+    {
+      "path": "features/llm-backends",
+      "entity": "urn:reckons:feature/LLMBackends",
+      "graph": "docs-features.ttl",
+      "factHash": "9f149cd7911a84e2",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "fae7914c4daef7b4"
+    },
+    {
+      "path": "features/mcp-workspace",
+      "entity": "urn:reckons:feature/MCPWorkspace",
+      "graph": "docs-features.ttl",
+      "factHash": "568f9d100bb313dd",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "d6b53402afd27267"
+    },
+    {
+      "path": "features/multi-kb",
+      "entity": "urn:reckons:feature/MultiKB",
+      "graph": "docs-features.ttl",
+      "factHash": "25557a8ce1b2ed13",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "92b73430cfdbc9f5"
+    },
+    {
+      "path": "features/pod-view",
+      "entity": "urn:reckons:feature/PodView",
+      "graph": "docs-features.ttl",
+      "factHash": "7b7460d47d0e40a8",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "97f7be2250fc6235"
+    },
+    {
+      "path": "features/prefer-local",
+      "entity": "urn:reckons:feature/PreferLocal",
+      "graph": "docs-features.ttl",
+      "factHash": "e29400a030eec1ad",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "39df2b73bb0f4c49"
+    },
+    {
+      "path": "features/published-docs",
+      "entity": "urn:reckons:feature/PublishedDocs",
+      "graph": "docs-features.ttl",
+      "factHash": "0f26a7a072ac342f",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "30b6063af24a5a73"
+    },
+    {
+      "path": "features/review-system",
+      "entity": "urn:reckons:feature/ReviewSystem",
+      "graph": "docs-features.ttl",
+      "factHash": "9d4d9aec4531971c",
+      "factCount": 7,
+      "floor": "evidence",
+      "pageHash": "be6c63b8e1afb98c"
+    },
+    {
+      "path": "features/review-workbench",
+      "entity": "urn:reckons:feature/ReviewWorkbench",
+      "graph": "docs-features.ttl",
+      "factHash": "dd75837cc5fbc432",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "498e06d5d53d5708"
+    },
+    {
+      "path": "features/shelly",
+      "entity": "urn:reckons:feature/Shelly",
+      "graph": "docs-features.ttl",
+      "factHash": "2b9af0ffa43dc843",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "a7c6955352ad43a3"
+    },
+    {
+      "path": "features/source-refresh",
+      "entity": "urn:reckons:feature/SourceRefresh",
+      "graph": "docs-features.ttl",
+      "factHash": "e339a50af1fb796d",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "b8625600661dc318"
+    },
+    {
+      "path": "guide/getting-started",
+      "entity": "urn:reckons:guide/GettingStarted",
+      "graph": "starter-guide.ttl",
+      "factHash": "f12905e86b3b8d2b",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "c26ec85b69e7d018"
+    },
+    {
+      "path": "guide/reckons-ai",
+      "entity": "urn:reckons:guide/ReckonsAI",
+      "graph": "starter-guide.ttl",
+      "factHash": "bd2d655104660935",
+      "factCount": 4,
+      "floor": "evidence",
+      "pageHash": "1afb7d0a35229543"
+    },
+    {
+      "path": "guide/what-is-reckons-ai",
+      "entity": "urn:reckons:guide/WhatIsReckonsAI",
+      "graph": "starter-guide.ttl",
+      "factHash": "e6132748e97861b7",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "45007c0594b4e51f"
+    },
+    {
+      "path": "guide/who-makes-this",
+      "entity": "urn:reckons:guide/WhoMakesThis",
+      "graph": "starter-guide.ttl",
+      "factHash": "db26edeabe0c9f58",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "6255428e01260141"
+    },
+    {
+      "path": "integrations-tech/architecture-integrations-tech",
+      "entity": "urn:reckons:tech/Architecture",
+      "graph": "docs-integrations-tech.ttl",
+      "factHash": "ad7975c3836d34c9",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "8ca02ed0f99edc36"
+    },
+    {
+      "path": "integrations-tech/cosmos3-nano",
+      "entity": "urn:reckons:integration/Cosmos3Nano",
+      "graph": "docs-integrations-tech.ttl",
+      "factHash": "87b242afc07cbb0b",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "1e751edbce4281c1"
+    },
+    {
+      "path": "integrations-tech/integrations",
+      "entity": "urn:reckons:integration/Integrations",
+      "graph": "docs-integrations-tech.ttl",
+      "factHash": "6aeb3dcf6dcdbb15",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "cddda2d03eda3c02"
+    },
+    {
+      "path": "integrations-tech/mcp-server",
+      "entity": "urn:reckons:integration/MCPServer",
+      "graph": "docs-integrations-tech.ttl",
+      "factHash": "72ac30d4ad86b720",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "eb751f7f75339394"
+    },
+    {
+      "path": "integrations-tech/n8n-cloud-sync",
+      "entity": "urn:reckons:integration/N8nCloudSync",
+      "graph": "docs-integrations-tech.ttl",
+      "factHash": "924e1110bdbb151f",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "727a491bee81d763"
+    },
+    {
+      "path": "integrations-tech/n8n-currents-monitor",
+      "entity": "urn:reckons:integration/N8nCurrentsMonitor",
+      "graph": "docs-integrations-tech.ttl",
+      "factHash": "bed703ab5d54815f",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "dc26563d2d1c706a"
+    },
+    {
+      "path": "integrations-tech/n8n-data-tables",
+      "entity": "urn:reckons:integration/N8nDataTables",
+      "graph": "docs-integrations-tech.ttl",
+      "factHash": "8babf4d2e0056e36",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "7057caedefaf1e81"
+    },
+    {
+      "path": "integrations-tech/n8n-source-monitor",
+      "entity": "urn:reckons:integration/N8nSourceMonitor",
+      "graph": "docs-integrations-tech.ttl",
+      "factHash": "1285085c3071c907",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "7a09c006a7631db7"
+    },
+    {
+      "path": "integrations-tech/n8n-sync-hub",
+      "entity": "urn:reckons:integration/N8nSyncHub",
+      "graph": "docs-integrations-tech.ttl",
+      "factHash": "e38878508134488b",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "6abba94529452c04"
+    },
+    {
+      "path": "integrations-tech/nemo-speech",
+      "entity": "urn:reckons:integration/NemoSpeech",
+      "graph": "docs-integrations-tech.ttl",
+      "factHash": "23ff643bc5bc8a99",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "68659b9c53d78cd8"
+    },
+    {
+      "path": "integrations-tech/ollama",
+      "entity": "urn:reckons:integration/Ollama",
+      "graph": "docs-integrations-tech.ttl",
+      "factHash": "a90a2cfbe4d44b36",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "2541925a50e65a91"
+    },
+    {
+      "path": "learn/how-it-works",
+      "entity": "urn:reckons:arch/HowItWorks",
+      "graph": "docs-triples-rdf.ttl",
+      "factHash": "ced60b7891f3b8cf",
+      "factCount": 9,
+      "floor": "evidence",
+      "pageHash": "23dab8bbaf979a2a"
+    },
+    {
+      "path": "learn/reckoning",
+      "entity": "urn:reckons:feature/Reckoning",
+      "graph": "docs-features.ttl",
+      "factHash": "89d392b37415bd8c",
+      "factCount": 12,
+      "floor": "evidence",
+      "pageHash": "347ed7e43e866cce"
+    },
+    {
+      "path": "learn/start-here",
+      "entity": "urn:reckons:feature/StartHere",
+      "graph": "docs-features.ttl",
+      "factHash": "aaffe49da06a3857",
+      "factCount": 6,
+      "floor": "evidence",
+      "pageHash": "938d42c786f4225d"
+    },
+    {
+      "path": "learn/what-it-does",
+      "entity": "urn:reckons:feature/FiveMoves",
+      "graph": "docs-features.ttl",
+      "factHash": "0e265d32ca434b7b",
+      "factCount": 9,
+      "floor": "evidence",
+      "pageHash": "82029db11759da41"
+    },
+    {
+      "path": "llm/kb-grounded-accuracy",
+      "entity": "urn:reckons:llm/KBGroundedAccuracy",
+      "graph": "docs-llm.ttl",
+      "factHash": "d9a00ea7707cd729",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "7b01276b46613348"
+    },
+    {
+      "path": "llm/local-models",
+      "entity": "urn:reckons:llm/LocalModels",
+      "graph": "docs-llm.ttl",
+      "factHash": "ff846cf8cd9f2621",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "c7236f6a4864e28d"
+    },
+    {
+      "path": "llm/retrieval-augmented",
+      "entity": "urn:reckons:llm/RetrievalAugmented",
+      "graph": "docs-llm.ttl",
+      "factHash": "a3ebc7a074fa8068",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "92ff165ae092ef48"
+    },
+    {
+      "path": "llm/structured-outputs",
+      "entity": "urn:reckons:llm/StructuredOutputs",
+      "graph": "docs-llm.ttl",
+      "factHash": "f312e067aaefa5b8",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "b959165248b87182"
+    },
+    {
+      "path": "llm/versus-vector-rag",
+      "entity": "urn:reckons:llm/VersusVectorRAG",
+      "graph": "docs-llm.ttl",
+      "factHash": "60c14564493adef0",
+      "factCount": 13,
+      "floor": "evidence",
+      "pageHash": "3b8ccb43df3a20ef"
+    },
+    {
+      "path": "llm/what-ll-ms-are",
+      "entity": "urn:reckons:llm/WhatLLMsAre",
+      "graph": "docs-llm.ttl",
+      "factHash": "0e5e035088d0edc1",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "4b3c58e74e6a0eaf"
+    },
+    {
+      "path": "principles/thesis",
+      "entity": "urn:kbase:concept/thesis",
+      "graph": "reckons-roadmap.ttl",
+      "factHash": "b62c3cde010e51d1",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "a2bfc0bf8f3ce0f1"
+    },
+    {
+      "path": "testing/graph-review-story",
+      "entity": "urn:reckons:test/GraphReviewStory",
+      "graph": "docs-testing.ttl",
+      "factHash": "dc3104a9d2751bd2",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "f4cc9cc205cebceb"
+    },
+    {
+      "path": "testing/page-screenshots",
+      "entity": "urn:reckons:test/PageScreenshots",
+      "graph": "docs-testing.ttl",
+      "factHash": "d9600c88557cd268",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "78a56f71eb123052"
+    },
+    {
+      "path": "testing/test-suite",
+      "entity": "urn:reckons:test/TestSuite",
+      "graph": "docs-testing.ttl",
+      "factHash": "becc5146029c62b3",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "3767510cd2570944"
+    },
+    {
+      "path": "testing/visual-tests",
+      "entity": "urn:reckons:test/VisualTests",
+      "graph": "docs-testing.ttl",
+      "factHash": "9d0ddb82700ce0bd",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "d17871a331ec7910"
+    },
+    {
+      "path": "timeline-ecosystem/semantic-web-organizations",
+      "entity": "urn:reckons:topic/SemanticWebOrganizations",
+      "graph": "docs-timeline-ecosystem.ttl",
+      "factHash": "f5c6f486f6c2f19d",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "6156246a4f5d1647"
+    },
+    {
+      "path": "timeline-ecosystem/semantic-web-people",
+      "entity": "urn:reckons:topic/SemanticWebPeople",
+      "graph": "docs-timeline-ecosystem.ttl",
+      "factHash": "8454f882a82173a3",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "65b06ae3c5a98d49"
+    },
+    {
+      "path": "timeline-ecosystem/semantic-web-timeline",
+      "entity": "urn:reckons:topic/SemanticWebTimeline",
+      "graph": "docs-timeline-ecosystem.ttl",
+      "factHash": "6860c1b1a6e9c81e",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "66123422f48ea84a"
+    },
+    {
+      "path": "tips/data-classification",
+      "entity": "urn:reckons:tip/DataClassification",
+      "graph": "docs-tips-security.ttl",
+      "factHash": "82ac6d360b5137f1",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "5683cf6355f1d30c"
+    },
+    {
+      "path": "tips/dependency-audit",
+      "entity": "urn:reckons:tip/DependencyAudit",
+      "graph": "docs-tips-security.ttl",
+      "factHash": "8fbbc0a23c059cc8",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "b5c5ecaa34166d06"
+    },
+    {
+      "path": "tips/no-telemetry",
+      "entity": "urn:reckons:tip/NoTelemetry",
+      "graph": "docs-tips-security.ttl",
+      "factHash": "bd7984cc5865f02e",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "d9b797d2ceb0fb43"
+    },
+    {
+      "path": "tips/risk-warnings",
+      "entity": "urn:reckons:tip/RiskWarnings",
+      "graph": "docs-tips-security.ttl",
+      "factHash": "23c2e3737c8fc494",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "49bed147f32eb506"
+    },
+    {
+      "path": "tips/security",
+      "entity": "urn:reckons:guide/Security",
+      "graph": "docs-tips-security.ttl",
+      "factHash": "a34521d1e0654589",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "29340cb6c553e4fc"
+    },
+    {
+      "path": "tips/tips",
+      "entity": "urn:reckons:tip/Tips",
+      "graph": "docs-tips-security.ttl",
+      "factHash": "9d4e6838c88b3524",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "366297ebca34f489"
+    },
+    {
+      "path": "tips/vulnerability-response",
+      "entity": "urn:reckons:tip/VulnerabilityResponse",
+      "graph": "docs-tips-security.ttl",
+      "factHash": "1f3d0ed2425f7681",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "f1ddaddf8a74ef6e"
+    },
+    {
+      "path": "tips/xss-protection",
+      "entity": "urn:reckons:tip/XSSProtection",
+      "graph": "docs-tips-security.ttl",
+      "factHash": "bb6a3ae56200a408",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "90c2a28402af7174"
+    },
+    {
+      "path": "triples-rdf/plain-text-portability",
+      "entity": "urn:reckons:arch/PlainTextPortability",
+      "graph": "docs-triples-rdf.ttl",
+      "factHash": "9e6c2ff3d6ac3baf",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "9c7176190f3e9570"
+    },
+    {
+      "path": "triples-rdf/rdf",
+      "entity": "urn:reckons:topic/RDF",
+      "graph": "docs-triples-rdf.ttl",
+      "factHash": "f8535793163b42e5",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "37666da80091010f"
+    },
+    {
+      "path": "triples-rdf/triple-architecture",
+      "entity": "urn:reckons:arch/TripleArchitecture",
+      "graph": "docs-triples-rdf.ttl",
+      "factHash": "26af549136a3289f",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "250cc0bb7be3eea0"
+    },
+    {
+      "path": "triples-rdf/turtle",
+      "entity": "urn:reckons:topic/Turtle",
+      "graph": "docs-triples-rdf.ttl",
+      "factHash": "6aecd139be76db04",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "74fe87f3f8f0e71e"
+    },
+    {
+      "path": "use-cases/academic-research-group",
+      "entity": "urn:reckons:use/AcademicResearchGroup",
+      "graph": "docs-use-cases.ttl",
+      "factHash": "92adad24a03016cf",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "b9bcc621ceaaa5e5"
+    },
+    {
+      "path": "use-cases/collaborative-knowledge",
+      "entity": "urn:reckons:use/CollaborativeKnowledge",
+      "graph": "docs-use-cases.ttl",
+      "factHash": "251602181319eebe",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "95c38fceb97cfd2b"
+    },
+    {
+      "path": "use-cases/construction-project",
+      "entity": "urn:reckons:use/ConstructionProject",
+      "graph": "docs-use-cases.ttl",
+      "factHash": "a628b1d5e2d78e75",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "9dc4ec107893a499"
+    },
+    {
+      "path": "use-cases/decision-provenance",
+      "entity": "urn:reckons:use/DecisionProvenance",
+      "graph": "docs-use-cases.ttl",
+      "factHash": "d659e5aaa4ec05f5",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "b901a41af1d48264"
+    },
+    {
+      "path": "use-cases/emergency-preparedness",
+      "entity": "urn:reckons:use/EmergencyPreparedness",
+      "graph": "docs-use-cases.ttl",
+      "factHash": "dd191a52334bfe1c",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "82d7271ea394ee92"
+    },
+    {
+      "path": "use-cases/float-trip",
+      "entity": "urn:reckons:use/FloatTrip",
+      "graph": "docs-use-cases.ttl",
+      "factHash": "3d8e657026b9019d",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "2a77d3c75d650ab6"
+    },
+    {
+      "path": "use-cases/import-as-source",
+      "entity": "urn:reckons:use/ImportAsSource",
+      "graph": "docs-use-cases.ttl",
+      "factHash": "694b915f6ee3ebf9",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "7fe3ecbfa5506416"
+    },
+    {
+      "path": "use-cases/personal-empowerment",
+      "entity": "urn:reckons:use/PersonalEmpowerment",
+      "graph": "docs-use-cases.ttl",
+      "factHash": "04bd7013e583734b",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "0039deb2e9ce93ee"
+    },
+    {
+      "path": "use-cases/recurring-source-ingestion",
+      "entity": "urn:reckons:use/RecurringSourceIngestion",
+      "graph": "docs-use-cases.ttl",
+      "factHash": "d25d75f4869f7301",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "fcef83ea53b1e994"
+    },
+    {
+      "path": "use-cases/software-engineering",
+      "entity": "urn:reckons:use/SoftwareEngineering",
+      "graph": "docs-use-cases.ttl",
+      "factHash": "5dd99d443dc2dcd1",
+      "factCount": 5,
+      "floor": "evidence",
+      "pageHash": "89e7ab960bf94ebe"
+    },
+    {
+      "path": "use-cases/why-not-a-notepad",
+      "entity": "urn:reckons:use/WhyNotANotepad",
+      "graph": "docs-use-cases.ttl",
+      "factHash": "4922b070c1a1faba",
+      "factCount": 14,
+      "floor": "evidence",
+      "pageHash": "2bd54a686cb7703d"
+    },
+    {
+      "path": "user-paths/add-2",
+      "entity": "urn:reckons:path/Add-2",
+      "graph": "docs-user-paths.ttl",
+      "factHash": "faf5d0815ff55f89",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "8e96d928f82fb4fb"
+    },
+    {
+      "path": "user-paths/add-3",
+      "entity": "urn:reckons:path/Add-3",
+      "graph": "docs-user-paths.ttl",
+      "factHash": "19b488b471e85bf4",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "76d6df5a6f723206"
+    },
+    {
+      "path": "user-paths/add-to-existing",
+      "entity": "urn:reckons:path/AddToExisting",
+      "graph": "docs-user-paths.ttl",
+      "factHash": "50cfb0c53e335c67",
+      "factCount": 11,
+      "floor": "evidence",
+      "pageHash": "c3e453e424b632a9"
+    },
+    {
+      "path": "user-paths/build-for-research",
+      "entity": "urn:reckons:path/BuildForResearch",
+      "graph": "docs-user-paths.ttl",
+      "factHash": "ad395c4cba59604a",
+      "factCount": 12,
+      "floor": "evidence",
+      "pageHash": "7143dfd4f08096aa"
+    },
+    {
+      "path": "user-paths/capture-spoken",
+      "entity": "urn:reckons:path/CaptureSpoken",
+      "graph": "docs-user-paths.ttl",
+      "factHash": "e6e517e905f8dc01",
+      "factCount": 12,
+      "floor": "evidence",
+      "pageHash": "0f7ac5cffbc514b8"
+    },
+    {
+      "path": "user-paths/compare-graphs",
+      "entity": "urn:reckons:path/CompareGraphs",
+      "graph": "docs-user-paths.ttl",
+      "factHash": "fab7f0bc851278cf",
+      "factCount": 11,
+      "floor": "evidence",
+      "pageHash": "6d74ad4e0670bb7c"
+    },
+    {
+      "path": "user-paths/core-1",
+      "entity": "urn:reckons:path/Core-1",
+      "graph": "docs-user-paths.ttl",
+      "factHash": "46b3b6a920bb4630",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "e6b8bf8ce7e63b17"
+    },
+    {
+      "path": "user-paths/core-2",
+      "entity": "urn:reckons:path/Core-2",
+      "graph": "docs-user-paths.ttl",
+      "factHash": "b548c45343f2f06b",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "4ae5d54d6645845b"
+    },
+    {
+      "path": "user-paths/core-5",
+      "entity": "urn:reckons:path/Core-5",
+      "graph": "docs-user-paths.ttl",
+      "factHash": "8f8a562821548cf5",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "160fec00e4f2bc44"
+    },
+    {
+      "path": "user-paths/core-loop",
+      "entity": "urn:reckons:path/CoreLoop",
+      "graph": "docs-user-paths.ttl",
+      "factHash": "a7f246bbd97004fb",
+      "factCount": 13,
+      "floor": "evidence",
+      "pageHash": "7d238bb7fbb2ede1"
+    },
+    {
+      "path": "user-paths/everyday-2",
+      "entity": "urn:reckons:path/Everyday-2",
+      "graph": "docs-user-paths.ttl",
+      "factHash": "679c76612b60cabe",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "d94d4ab309e1c113"
+    },
+    {
+      "path": "user-paths/everyday-3",
+      "entity": "urn:reckons:path/Everyday-3",
+      "graph": "docs-user-paths.ttl",
+      "factHash": "337f51282e8b0f7a",
+      "factCount": 4,
+      "floor": "evidence",
+      "pageHash": "ba7c72bee537f3e2"
+    },
+    {
+      "path": "user-paths/everyday-notes",
+      "entity": "urn:reckons:path/EverydayNotes",
+      "graph": "docs-user-paths.ttl",
+      "factHash": "ecad896e59a406c7",
+      "factCount": 13,
+      "floor": "evidence",
+      "pageHash": "f8a543664abbd53c"
+    },
+    {
+      "path": "user-paths/paths-overlap",
+      "entity": "urn:reckons:path/PathsOverlap",
+      "graph": "docs-user-paths.ttl",
+      "factHash": "9f5f1eba1e044564",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "bff109d6f90c107c"
+    },
+    {
+      "path": "user-paths/research-1",
+      "entity": "urn:reckons:path/Research-1",
+      "graph": "docs-user-paths.ttl",
+      "factHash": "f44bd29ab93576fd",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "3036c4c893e7cfd8"
+    },
+    {
+      "path": "user-paths/research-3",
+      "entity": "urn:reckons:path/Research-3",
+      "graph": "docs-user-paths.ttl",
+      "factHash": "d7d5f745f9ad8f24",
+      "factCount": 4,
+      "floor": "evidence",
+      "pageHash": "668fda18e6ed00d9"
+    },
+    {
+      "path": "user-paths/research-4",
+      "entity": "urn:reckons:path/Research-4",
+      "graph": "docs-user-paths.ttl",
+      "factHash": "fa164b132c408ad4",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "59919bb506de1d21"
+    },
+    {
+      "path": "user-paths/use-reckoning",
+      "entity": "urn:reckons:path/UseReckoning",
+      "graph": "docs-user-paths.ttl",
+      "factHash": "55ca665d02d32aa1",
+      "factCount": 10,
+      "floor": "evidence",
+      "pageHash": "a99e12272bfc641c"
+    },
+    {
+      "path": "user-paths/user-paths",
+      "entity": "urn:reckons:path/UserPaths",
+      "graph": "docs-user-paths.ttl",
+      "factHash": "254acf9485e7d3b1",
+      "factCount": 7,
+      "floor": "evidence",
+      "pageHash": "39c9fa40d38cf492"
+    },
+    {
+      "path": "user-paths/view-story",
+      "entity": "urn:reckons:path/ViewStory",
+      "graph": "docs-user-paths.ttl",
+      "factHash": "99e6ffbebf08ac26",
+      "factCount": 12,
+      "floor": "evidence",
+      "pageHash": "36706be462592282"
+    }
+  ]
+}

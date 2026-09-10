@@ -15,6 +15,7 @@
 @prefix topic:  <urn:reckons:topic/> .
 @prefix guide:  <urn:reckons:guide/> .
 @prefix ktype:  <urn:kbase:type/> .
+@prefix hnav:   <urn:reckons:nav/> .
 @prefix kpred:  <urn:kbase:predicate/> .
 @prefix kmeta:  <urn:kbase:meta/> .
 
@@ -41,6 +42,7 @@ nav:BackToHub
 ## =============================================================================
 
 org:W3C
+    skos:broader        topic:SemanticWebOrganizations ;
     rdf:type            ktype:Organization ;
     rdf:type            skos:Concept ;
     rdfs:label          "W3C (World Wide Web Consortium)" ;
@@ -52,6 +54,7 @@ org:W3C
     <urn:reckons:leap/label> "W3C RDF Homepage" .
 
 org:IETF
+    skos:broader        topic:SemanticWebOrganizations ;
     rdf:type            ktype:Organization ;
     rdf:type            skos:Concept ;
     rdfs:label          "IETF (Internet Engineering Task Force)" ;
@@ -59,6 +62,7 @@ org:IETF
     skos:related        org:W3C .
 
 org:DublinCore
+    skos:broader        topic:SemanticWebOrganizations ;
     rdf:type            ktype:Organization ;
     rdf:type            skos:Concept ;
     rdfs:label          "Dublin Core Metadata Initiative (DCMI)" ;
@@ -67,6 +71,7 @@ org:DublinCore
     skos:related        org:W3C .
 
 org:SchemaOrg
+    skos:broader        topic:SemanticWebOrganizations ;
     rdf:type            ktype:Organization ;
     rdf:type            skos:Concept ;
     rdfs:label          "Schema.org" ;
@@ -76,6 +81,7 @@ org:SchemaOrg
     skos:related        org:W3C .
 
 org:ApacheJena
+    skos:broader        topic:SemanticWebOrganizations ;
     rdf:type            ktype:Organization ;
     rdf:type            skos:Concept ;
     rdfs:label          "Apache Jena" ;
@@ -83,6 +89,7 @@ org:ApacheJena
     skos:related        topic:SPARQL .
 
 org:OpenLinkSoftware
+    skos:broader        topic:SemanticWebOrganizations ;
     rdf:type            ktype:Organization ;
     rdf:type            skos:Concept ;
     rdfs:label          "OpenLink Software (Virtuoso)" ;
@@ -90,6 +97,7 @@ org:OpenLinkSoftware
     skos:related        tl:DBpediaLaunch .
 
 org:Anthropic
+    skos:broader        topic:SemanticWebOrganizations ;
     rdf:type            ktype:Organization ;
     rdf:type            skos:Concept ;
     rdfs:label          "Anthropic" ;
@@ -98,6 +106,7 @@ org:Anthropic
     skos:related        tl:MCPSpec .
 
 org:AIAlliance
+    skos:broader        topic:SemanticWebOrganizations ;
     rdf:type            ktype:Organization ;
     rdf:type            skos:Concept ;
     rdfs:label          "The AI Alliance" ;
@@ -113,6 +122,7 @@ org:AIAlliance
 ## =============================================================================
 
 person:TimBernersLee
+    skos:broader        topic:SemanticWebPeople ;
     rdf:type            ktype:Person ;
     rdf:type            skos:Concept ;
     rdfs:label          "Tim Berners-Lee" ;
@@ -121,6 +131,7 @@ person:TimBernersLee
     skos:related        tl:SemanticWebVision .
 
 person:PatHayes
+    skos:broader        topic:SemanticWebPeople ;
     rdf:type            ktype:Person ;
     rdf:type            skos:Concept ;
     rdfs:label          "Pat Hayes" ;
@@ -128,6 +139,7 @@ person:PatHayes
     skos:related        tl:RDF10 .
 
 person:DanBrickley
+    skos:broader        topic:SemanticWebPeople ;
     rdf:type            ktype:Person ;
     rdf:type            skos:Concept ;
     rdfs:label          "Dan Brickley" ;
@@ -140,6 +152,8 @@ person:DanBrickley
 ## =============================================================================
 
 tl:RDF10
+    skos:broader        topic:SemanticWebTimeline ;
+    hnav:order          121 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "RDF 1.0 Specification" ;
@@ -149,6 +163,8 @@ tl:RDF10
     skos:related        person:TimBernersLee .
 
 tl:SemanticWebVision
+    skos:broader        topic:SemanticWebTimeline ;
+    hnav:order          122 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Semantic Web Vision (Scientific American)" ;
@@ -157,6 +173,8 @@ tl:SemanticWebVision
     skos:related        person:TimBernersLee .
 
 tl:OWL10
+    skos:broader        topic:SemanticWebTimeline ;
+    hnav:order          123 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "OWL 1.0 (Web Ontology Language)" ;
@@ -165,6 +183,8 @@ tl:OWL10
     kpred:publishedBy   org:W3C .
 
 tl:SPARQL10
+    skos:broader        topic:SemanticWebTimeline ;
+    hnav:order          126 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "SPARQL 1.0" ;
@@ -174,6 +194,8 @@ tl:SPARQL10
     skos:related        topic:SPARQL .
 
 tl:LinkedDataPrinciples
+    skos:broader        topic:SemanticWebTimeline ;
+    hnav:order          124 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Linked Data Principles" ;
@@ -183,6 +205,8 @@ tl:LinkedDataPrinciples
     skos:related        topic:LinkedData .
 
 tl:DBpediaLaunch
+    skos:broader        topic:SemanticWebTimeline ;
+    hnav:order          125 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "DBpedia Launch" ;
@@ -191,6 +215,8 @@ tl:DBpediaLaunch
     skos:related        topic:LinkedData .
 
 tl:WikidataLaunch
+    skos:broader        topic:SemanticWebTimeline ;
+    hnav:order          128 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Wikidata Launch" ;
@@ -202,6 +228,8 @@ tl:WikidataLaunch
     <urn:reckons:leap/label> "Wikidata" .
 
 tl:JSONLD10
+    skos:broader        topic:SemanticWebTimeline ;
+    hnav:order          129 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "JSON-LD 1.0" ;
@@ -211,6 +239,8 @@ tl:JSONLD10
     skos:related        topic:JSONLD .
 
 tl:GoogleKnowledgeGraph
+    skos:broader        topic:SemanticWebTimeline ;
+    hnav:order          127 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Google Knowledge Graph" ;
@@ -219,6 +249,8 @@ tl:GoogleKnowledgeGraph
     skos:related        org:SchemaOrg .
 
 tl:RDF11
+    skos:broader        topic:SemanticWebTimeline ;
+    hnav:order          130 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "RDF 1.1 Specification" ;
@@ -227,6 +259,8 @@ tl:RDF11
     kpred:publishedBy   org:W3C .
 
 tl:SHACL
+    skos:broader        topic:SemanticWebTimeline ;
+    hnav:order          131 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "SHACL (Shapes Constraint Language)" ;
@@ -235,6 +269,8 @@ tl:SHACL
     kpred:publishedBy   org:W3C .
 
 tl:KnowledgeGraphsAndLLMs
+    skos:broader        topic:SemanticWebTimeline ;
+    hnav:order          132 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Knowledge Graphs Meet LLMs" ;
@@ -243,6 +279,8 @@ tl:KnowledgeGraphsAndLLMs
     skos:related        guide:WhatIsReckonsAI .
 
 tl:MCPSpec
+    skos:broader        topic:SemanticWebTimeline ;
+    hnav:order          133 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Model Context Protocol (MCP)" ;
@@ -252,6 +290,8 @@ tl:MCPSpec
     skos:related        guide:WhatIsReckonsAI .
 
 tl:SemiontRelease
+    skos:broader        topic:SemanticWebTimeline ;
+    hnav:order          134 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Semiont (AI Alliance)" ;
@@ -263,6 +303,8 @@ tl:SemiontRelease
     <urn:reckons:leap/label> "Semiont on GitHub" .
 
 tl:ReckonsAILaunch
+    skos:broader        topic:SemanticWebTimeline ;
+    hnav:order          135 ;
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Reckons.AI Launch" ;
@@ -275,6 +317,7 @@ tl:ReckonsAILaunch
     skos:related        org:DataInsightSolutions .
 
 org:DataInsightSolutions
+    skos:broader        topic:SemanticWebOrganizations ;
     rdf:type            ktype:Organization ;
     rdf:type            skos:Concept ;
     rdfs:label          "Data Insight Solutions LLC" ;
@@ -282,6 +325,7 @@ org:DataInsightSolutions
     skos:related        person:MatthewRoe .
 
 person:MatthewRoe
+    skos:broader        topic:SemanticWebPeople ;
     rdf:type            ktype:Person ;
     rdf:type            skos:Concept ;
     rdfs:label          "Matthew Roe" ;
@@ -318,3 +362,29 @@ shelly:persona
     shelly:personality      "historically informed, connecting past to present" ;
     shelly:responseStyle    "concise" ;
     shelly:systemPrompt     "You are guiding someone through the history and ecosystem of RDF, knowledge graphs, and semantic web technology. Connect historical milestones to present-day features in Reckons.AI. Use dates to ground the narrative." .
+
+## =============================================================================
+## Three sets, replacing 28 one-paragraph pages.
+## Matt, 2026-09-08: "a set should tell a story and a story has an order."
+## The milestone order is INFERRED from kpred:date, then authored as hnav:order
+## so it can be curated without re-deriving it.
+## =============================================================================
+
+topic:SemanticWebTimeline
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "How we got here — a timeline of the semantic web" ;
+    hnav:order          121 ;
+    skos:definition     "Twenty-seven years from the RDF 1.0 specification to this product, in fifteen steps. The shape of it matters more than any single entry: the standards were finished long before anything made them easy, and the recent turn is not a new standard at all but language models arriving with an appetite for structured context. Read in order — each step is here because it made the next one possible." .
+
+topic:SemanticWebOrganizations
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Who built it — the organizations behind the standards" ;
+    skos:definition     "The standards bodies, implementers and companies whose work Reckons.AI is assembled from. None of this was invented here; the graph formats, the query language and the constraint vocabulary are all decades of other people's work, and naming them is both accurate and the point — a local-first product that depends on open standards depends on the people who keep them open." .
+
+topic:SemanticWebPeople
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Who thought of it — people in this story" ;
+    skos:definition     "A short list, and deliberately short: these are the people whose specific ideas this product rests on, not a hall of fame. Each entry says what they did that Reckons.AI actually uses." .

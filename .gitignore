@@ -70,6 +70,11 @@ reckons-workspace/kbs/*/sources.json
 reckons-workspace/knowledge.ttl
 reckons-workspace/knowledge.pending.jsonl
 reckons-workspace/knowledge.answers.jsonl
+# Verdicts journalled by `reckons review` / kb_review_decide (F199). Local decisions awaiting the
+# app's next drain — a person's judgment about THEIR graph, not a fact about this repository.
+reckons-workspace/knowledge.decisions.jsonl
+reckons-workspace/kbs/*/decisions.jsonl
+*.decisions.jsonl
 reckons-workspace/*.prune-backup-*.jsonl
 static/docs-all.ttl
 

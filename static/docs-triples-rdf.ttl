@@ -14,7 +14,10 @@
 @prefix guide:  <urn:reckons:guide/> .
 @prefix feat:   <urn:reckons:feature/> .
 @prefix ktype:  <urn:kbase:type/> .
+@prefix hnav:   <urn:reckons:nav/> .
 @prefix kpred:  <urn:kbase:predicate/> .
+@prefix kset:   <urn:kbase:type/set-kind/> .
+@prefix set:    <urn:reckons:set/> .
 
 ## KB Identity
 <urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a01-b001-000000000001" .
@@ -40,8 +43,10 @@ nav:BackToHub
 
 arch:TripleArchitecture
     rdf:type            ktype:Concept ;
+    kpred:render-as     "accordion" ;
     rdf:type            skos:Concept ;
     rdfs:label          "The Semantic Triple" ;
+    hnav:order          20 ;
     skos:definition     "The fundamental unit of knowledge in RDF: a three-part statement -- subject, predicate, object. Any fact expressible in human language can be expressed as a triple. Triples connect to form a graph, and graphs reveal relationships that documents hide." ;
     skos:related        guide:WhatIsReckonsAI .
 
@@ -73,7 +78,35 @@ arch:KnowledgeGraph
     rdfs:label          "Knowledge Graph" ;
     skos:definition     "A graph-structured database where entities are nodes and relationships are edges. Multiple triples form a graph. The same subject can appear in many triples, creating a web of connected knowledge." ;
     skos:broader        arch:TripleArchitecture ;
-    skos:note           "Reckons.AI renders your knowledge graph as an interactive 3D force-directed graph." .
+    skos:note           "Reckons.AI renders your knowledge graph as an interactive 3D force-directed graph." ;
+    kpred:scene         """
+  camera.position.set(0, 0, 6);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  const key = new THREE.DirectionalLight(0xffffff, 1.1);
+  key.position.set(4, 5, 6); scene.add(key);
+  const nodes = [];
+  const N = 9;
+  for (let i = 0; i < N; i++) {
+    const a = (i / N) * Math.PI * 2;
+    const m = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.34, 2),
+      new THREE.MeshStandardMaterial({ color: 0xff7a1a, roughness: 0.35, metalness: 0.1 })
+    );
+    m.position.set(Math.cos(a) * 2.6, Math.sin(a) * 1.5, Math.sin(a * 2) * 0.6);
+    scene.add(m); nodes.push(m);
+  }
+  const edge = new THREE.LineBasicMaterial({ color: 0x8899aa, transparent: true, opacity: 0.55 });
+  for (let i = 0; i < N; i++) for (const j of [i + 1, i + 3]) {
+    const b = nodes[j % N];
+    const g = new THREE.BufferGeometry().setFromPoints([nodes[i].position, b.position]);
+    scene.add(new THREE.Line(g, edge));
+  }
+""" ;
+    kpred:scene-width   1200 ;
+    kpred:scene-height  480 ;
+    kpred:scene-alt     "Nine spheres arranged in a ring, connected by thin lines to the neighbours one and three places along — entities joined by the relations asserted between them." ;
+    kpred:scene-caption "A graph is nodes and the named edges between them. Rendered once at build time, so this page still ships no JavaScript." ;
+    kpred:scene-live    "graph-ring" .
 
 arch:Provenance
     rdf:type            ktype:Concept ;
@@ -211,3 +244,115 @@ shelly:persona
     shelly:personality      "precise, educational, thorough" ;
     shelly:responseStyle    "concise" ;
     shelly:systemPrompt     "You are helping someone learn about RDF, Turtle syntax, and semantic triples. Give clear examples. Use the entities in this graph as reference material." .
+
+## =============================================================================
+## HOW IT WORKS, AS A SEQUENCE (F187.5). Matt, 2026-09-10: "I like
+## /docs/learn/what-it-does but not /docs/learn/how-it-works which is just a
+## flat list still."
+##
+## It was a flat list because nothing claimed the slug, so docs-compose.ts fell
+## back to dumping every entity in ds:triples-rdf and ds:architecture in
+## ALPHABETICAL order — which put "Advantage: Graph Visualization", "Gap: Code
+## Block Formatting" and "Tailwind-Without-Preflight Containment" on the page a
+## learner opens to find out what a triple is. Those are real engineering notes
+## and they are not an explanation of anything.
+##
+## Same fix as feat:FiveMoves: an authored entity claims the slug, and an
+## ordered story set supplies the sections. The sets group entities that
+## ALREADY EXIST in this graph — the set adds the meaning, not the content.
+## =============================================================================
+
+arch:HowItWorks
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "How it works, from one fact to a graph you own" ;
+    hnav:order          60 ;
+    skos:broader        arch:TripleArchitecture ;
+    skos:definition     "Everything here is built on one small idea repeated: a fact is three parts, and three parts can be linked. Write a fact down as subject, predicate, object and you can join it to every other fact that mentions the same thing, record where it came from, mark whether you have accepted it, and save the lot as plain text you can read without this software. Those five steps are the whole data model, and the rest of the product is machinery around them." ;
+    kpred:render-as     "gallery" ;
+    kpred:page-section  "Learn" ;
+    kpred:page-slug     "how-it-works" ;
+    kpred:audience      "Anyone who wants to know why the data is shaped this way before trusting it with anything. No RDF background assumed — the standards are named at the end, not the start." ;
+    kpred:principle     "THE SHAPE IS THE POINT, NOT THE FORMAT. A note application stores your words; this stores your CLAIMS, one at a time, each with its own source and its own status. That is why two documents can be compared, why a contradiction can be detected at all, and why the graph can tell you it does not know something instead of guessing. Turtle and RDF are how it is written down; they are not the reason." ;
+    kpred:constraint    "THE STANDARDS COME LAST ON PURPOSE. A reader who meets RDF, SKOS, SPARQL and PROV-O before meeting a single fact learns that this is complicated, which is the opposite of true. The sequence below introduces one idea at a time and names the standard that already solved it only once the idea is in place." ;
+    kpred:diagram       """flowchart LR
+  F["1 · One fact<br/>subject · predicate · object"]
+  G["2 · Facts join up<br/>same name, same thing"]
+  P["3 · Where it came from<br/>source, excerpt, date"]
+  R{"4 · Accepted?<br/>you decide"}
+  T[("5 · Plain text<br/>a .ttl file you own")]
+  F --> G --> P --> R
+  R -->|"yes"| T
+  R -->|"not yet"| P
+  T -.->|"open it in anything,<br/>or nothing at all"| T""" ;
+    kpred:diagram-caption "One idea repeated. Step 4 is the only one that needs a person, and it is the one that makes the other four worth doing." .
+
+## ── The five steps, each a set over entities that already exist ──────────────
+
+set:StepFact rdf:type       skos:Collection ;
+    kpred:set-kind      kset:page ;
+    skos:prefLabel      "One fact is three parts" ;
+    skos:definition     "Subject, predicate, object — the thing, what is being said about it, and the value. 'Policy covers water-damage.' A subject and a predicate are always names that can be pointed at; the object is either another name or a plain value like a date or a number. That is the entire unit of storage." ;
+    skos:member         arch:SubjectPredicateObject , arch:IRI , arch:Literal ;
+    kpred:set-relates-to arch:HowItWorks .
+
+set:StepJoin rdf:type       skos:Collection ;
+    kpred:set-kind      kset:page ;
+    skos:prefLabel      "Facts join into a graph" ;
+    skos:definition     "Two facts that mention the same name are automatically about the same thing, so a pile of separate statements becomes a network with no filing decision required. Nobody chooses a folder, and nothing has to be filed twice to appear in two places." ;
+    skos:member         arch:KnowledgeGraph , arch:TripleArchitecture , topic:LinkedData ;
+    kpred:set-relates-to arch:HowItWorks .
+
+set:StepProvenance rdf:type skos:Collection ;
+    kpred:set-kind      kset:page ;
+    skos:prefLabel      "Every fact remembers where it came from" ;
+    skos:definition     "A stored fact carries the source it was read from, the verbatim excerpt that supports it, and when it arrived. This is what makes a claim checkable a year later rather than merely present — and it is why the graph can show you the sentence behind an answer instead of asking you to trust it." ;
+    skos:member         arch:Provenance , arch:Reification , topic:PROVO ;
+    kpred:set-relates-to arch:HowItWorks .
+
+set:StepReview rdf:type     skos:Collection ;
+    kpred:set-kind      kset:page ;
+    skos:prefLabel      "Nothing is true until you say so" ;
+    skos:definition     "Extracted facts arrive PENDING. They are in the file, visible and traceable, and they are not part of what you know until you confirm them. A model proposes and you dispose — which is the one rule that separates this from software that reads your documents and answers confidently." ;
+    skos:member         arch:ReviewWorkflow ;
+    kpred:set-relates-to arch:HowItWorks .
+
+set:StepPortable rdf:type   skos:Collection ;
+    kpred:set-kind      kset:page ;
+    skos:prefLabel      "It is plain text you can take away" ;
+    skos:definition     "The whole graph is a Turtle file: readable in any text editor, diffable in git, and loadable by software that has never heard of Reckons.AI. The standards named here are the ones that already solved these problems — they are the reason your graph outlives this tool rather than a reason it is complicated." ;
+    skos:member         arch:PlainTextPortability , topic:Turtle , topic:RDF , topic:RDFS , topic:SKOS , topic:SPARQL , topic:JSONLD ;
+    kpred:set-relates-to arch:HowItWorks .
+
+## ── The story set: order is the argument ─────────────────────────────────────
+
+set:FromFactToGraph rdf:type skos:OrderedCollection ;
+    kpred:set-kind      kset:story ;
+    skos:prefLabel      "From one fact to a graph you own" ;
+    skos:definition     "Five steps, and each one only makes sense once the previous one is in place. This is a story rather than a roster: read in another order and it becomes a glossary of terms instead of an explanation." ;
+    skos:member         set:StepFact , set:StepJoin , set:StepProvenance , set:StepReview , set:StepPortable .
+
+<urn:reckons:set/FromFactToGraph/member/StepFact>
+    kpred:in-set        set:FromFactToGraph ;
+    kpred:member-entity set:StepFact ;
+    kpred:member-order  "1" .
+
+<urn:reckons:set/FromFactToGraph/member/StepJoin>
+    kpred:in-set        set:FromFactToGraph ;
+    kpred:member-entity set:StepJoin ;
+    kpred:member-order  "2" .
+
+<urn:reckons:set/FromFactToGraph/member/StepProvenance>
+    kpred:in-set        set:FromFactToGraph ;
+    kpred:member-entity set:StepProvenance ;
+    kpred:member-order  "3" .
+
+<urn:reckons:set/FromFactToGraph/member/StepReview>
+    kpred:in-set        set:FromFactToGraph ;
+    kpred:member-entity set:StepReview ;
+    kpred:member-order  "4" .
+
+<urn:reckons:set/FromFactToGraph/member/StepPortable>
+    kpred:in-set        set:FromFactToGraph ;
+    kpred:member-entity set:StepPortable ;
+    kpred:member-order  "5" .

@@ -540,10 +540,14 @@
               {t.status === 'built' ? 'enforced in code' : 'what we believe'}
             </span>
           </div>
-          <p>{t.body}</p>
+          <p>{t.lead}</p>
         </div>
       {/each}
     </div>
+
+    <p class="thesis-readmore">
+      <a href="/docs/principles/thesis">Read the full thesis &rarr;</a>
+    </p>
 
     {#if THESIS.length > THESIS_PREVIEW}
       <button

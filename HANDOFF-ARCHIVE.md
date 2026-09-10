@@ -621,7 +621,7 @@ things now block a fully-working announcement and BOTH are Matt's to do (not cod
 
 **BLOCKING the feedback announcement — Matt only, I cannot do these:**
 1. **SMTP credential** on the n8n workflow. Workflow built + created (unpublished):
-   https://n8n.srv814827.hstgr.cloud/workflow/93gfOyLx8pzcMoka — Send node wants an "Outlook SMTP"
+   https://$N8N_HOST/workflow/93gfOyLx8pzcMoka — Send node wants an "Outlook SMTP"
    cred (smtp.office365.com:587, STARTTLS, mailbox login / app password). Then ACTIVATE it.
 2. **`VITE_FEEDBACK_WEBHOOK_URL`** in Cloudflare Pages env = the webhook URL, then redeploy.
    Until set, the LIVE site's feedback still falls back to mailto — the endpoint is build-time

@@ -361,7 +361,7 @@ kb:test-unit        rdf:type     ktype:TestCategory ;
                     kpred:checks   "prefer-local routing" ;
                     kpred:checks   "graph publishing (site export/import)" ;
                     kpred:checks   "web-page model" ;
-                    kpred:expected-result "643 tests pass across 35 files (web app); mcp-server adds 44 vitest + 6 node:test tests." .
+                    kpred:expected-result "2997 tests pass across 208 files (web app); mcp-server adds 146 vitest + 10 node:test tests. Measured 2026-09-10." .
 
 kb:test-e2e         rdf:type     ktype:TestCategory ;
                     rdfs:label   "E2E Tests" ;
@@ -405,7 +405,7 @@ kb:test-mcp         rdf:type     ktype:TestCategory ;
                     kpred:checks   "20 tool handlers" ;
                     kpred:checks   "Ollama client + local LLM bridge" ;
                     kpred:checks   "page/entity markdown generation" ;
-                    kpred:expected-result "build succeeds, 0 errors; 44 vitest + 6 node:test tests pass" .
+                    kpred:expected-result "build succeeds, 0 errors; 146 vitest + 10 node:test tests pass (2026-09-10)" .
 
 # ── Ingest Source Types ──────────────────────────────────────────────────────
 

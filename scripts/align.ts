@@ -45,10 +45,43 @@ const GATES: Gate[] = [
     check: 'npx tsx scripts/offline/graph-lint.ts',
   },
   {
+    // Ordered BEFORE 'docs pages' on purpose: a missing diagram makes docs-pages.ts throw, so
+    // without this gate the failure surfaces as a stack trace from the generator rather than as
+    // the one-line instruction that actually fixes it.
+    name: 'docs diagrams',
+    why: 'every mermaid diagram declared in a graph must be in the committed render cache — CI never renders, because mermaid lays text out with the fonts of whatever machine runs it and a re-render in CI would produce a diff nobody wrote',
+    check: 'npx tsx scripts/docs-diagrams.ts --check',
+    fix: 'npx tsx scripts/docs-diagrams.ts',
+  },
+  {
+    // Ordered with the diagrams gate and for the same reason: a scene missing from the cache makes
+    // docs-pages.ts throw, and a stack trace is a worse message than the command that fixes it.
+    name: 'docs scenes',
+    why: 'every three.js scene declared in a graph must be in the committed render cache — CI never renders, because a GPU and a software rasteriser do not produce identical pixels and a re-render would show a diff nobody wrote',
+    check: 'npx tsx scripts/docs-scenes.ts --check',
+    fix: 'npx tsx scripts/docs-scenes.ts',
+  },
+  {
+    // Not a generated surface, so it cannot drift the way the others do — but a docs graph
+    // registered in some lists and not others publishes inconsistently AND blinds the orphan gate
+    // in the same place, which is how docs-user-paths.ttl nearly lost 21 published pages.
+    name: 'graph registration',
+    why: 'every publishable docs graph must appear in all four registries, with a unique stable id — a partially registered graph publishes inconsistently and the gate that would catch it goes blind in the same place',
+    check: 'npx tsx scripts/offline/docs-graph-registration.ts --quiet',
+  },
+  {
     name: 'docs pages',
     why: 'content/*.md must match what the graph generates — a hand-edited page is a second source of truth',
     check: 'npx tsx scripts/md-align.ts',
     fix: 'npx tsx scripts/docs-pages.ts',
+  },
+  {
+    // AFTER 'docs pages': the index is built FROM content/, so checking it before the pages are
+    // known to be current would report a stale index that is really a stale build.
+    name: 'docs search',
+    why: 'the search index is built from content/ and is fetched by every reader who opens search — a stale index silently returns yesterday\'s pages',
+    check: 'npx tsx scripts/docs-search-index.ts --check',
+    fix: 'npx tsx scripts/docs-search-index.ts',
   },
   {
     name: 'landing features',

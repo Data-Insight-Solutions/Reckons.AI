@@ -16,6 +16,7 @@
 @prefix tech:   <urn:reckons:tech/> .
 @prefix feat:   <urn:reckons:feature/> .
 @prefix ktype:  <urn:kbase:type/> .
+@prefix hnav:   <urn:reckons:nav/> .
 @prefix kpred:  <urn:kbase:predicate/> .
 
 ## KB Identity
@@ -50,6 +51,7 @@ arch:TtlFirstDocs
 arch:TtlVsMarkdownGaps
     rdf:type            ktype:Concept ;
     rdfs:label          "TTL vs Markdown Gap Analysis" ;
+    hnav:order          100 ;
     skos:definition     "Ongoing evaluation of what TTL handles well vs where markdown is still needed. Key gaps: procedural sequences (step-by-step), code block formatting, ASCII diagrams, long-form rationale prose. Key advantages: MCP queryability, cross-Graph linking, type system, semantic diff, compression (a relevant subgraph instead of the whole graph; the compact encoding adds ~18% on top — measured), graph visualization." ;
     skos:broader        arch:TtlFirstDocs .
 
