@@ -12,6 +12,8 @@ import {
   questionsByImpact,
   resolvePartial,
   questionSummary,
+  answersToOpenQuestions,
+  answerSummary,
   UNKNOWN_OBJECT,
 } from '../partial-facts';
 import { computeDiff } from '../diff';
@@ -182,5 +184,119 @@ describe('questionSummary', () => {
   it('falls back to the triple when no question text was given', () => {
     const q = question('x', 'y', { question: undefined });
     expect(questionSummary(q)).toContain('What is the object of');
+  });
+});
+
+
+/**
+ * ── ANSWERED BY THE NEXT DOCUMENT (F195) ────────────────────────────────────
+ *
+ * Matt's scenario: a question is captured from last week's document, a meeting happens, and this
+ * week's document states the decision. Accepting the new claim should close the question.
+ *
+ * The match is an equality test, so what is worth testing is not whether equality works — it is
+ * every way a match could be claimed WRONGLY. A false match here supersedes a real question with
+ * an unrelated fact and tells the user four things were unblocked when nothing was.
+ */
+describe('answersToOpenQuestions', () => {
+  it('matches an incoming claim to the question it settles', () => {
+    const q = question('dam-vendor', 'chosen');
+    const a = fact('dam-vendor', 'chosen', 'Bynder');
+    const found = answersToOpenQuestions([a], [q]);
+    expect(found).toHaveLength(1);
+    expect(found[0].question.id).toBe(q.id);
+    expect(found[0].answer.id).toBe(a.id);
+  });
+
+  it('does not treat another question as an answer', () => {
+    // The placeholder is an object like any other to a naive comparison, and matching it would
+    // supersede one open question with a second open question.
+    const q1 = question('dam-vendor', 'chosen');
+    const q2 = question('dam-vendor', 'chosen');
+    expect(answersToOpenQuestions([q2], [q1])).toEqual([]);
+  });
+
+  it('never lets a statement answer itself', () => {
+    const q = question('dam-vendor', 'chosen');
+    expect(answersToOpenQuestions([q], [q])).toEqual([]);
+  });
+
+  it('ignores questions the user already settled or rejected', () => {
+    const rejected = question('a', 'x', { status: 'rejected' });
+    const superseded = question('b', 'y', { status: 'superseded' });
+    const answers = [fact('a', 'x', 'one'), fact('b', 'y', 'two')];
+    expect(answersToOpenQuestions(answers, [rejected, superseded])).toEqual([]);
+  });
+
+  it('does not accept a rejected or superseded statement AS an answer', () => {
+    const q = question('dam-vendor', 'chosen');
+    const stale = fact('dam-vendor', 'chosen', 'Aprimo', { status: 'rejected' });
+    const dead = fact('dam-vendor', 'chosen', 'OpenText', { status: 'superseded' });
+    expect(answersToOpenQuestions([stale, dead], [q])).toEqual([]);
+  });
+
+  it('requires the subject AND the predicate to match', () => {
+    const q = question('dam-vendor', 'chosen');
+    const wrongSubject = fact('crm-vendor', 'chosen', 'Bynder');
+    const wrongPredicate = fact('dam-vendor', 'considered', 'Bynder');
+    expect(answersToOpenQuestions([wrongSubject, wrongPredicate], [q])).toEqual([]);
+  });
+
+  it('does not match a literal subject to an IRI subject that reads the same', () => {
+    // Comparing only .value would equate lit("x") with iri("x"). They are different nodes.
+    const q = question('dam-vendor', 'chosen');
+    const a = fact('dam-vendor', 'chosen', 'Bynder', { s: lit(`${KB}dam-vendor`) });
+    expect(answersToOpenQuestions([a], [q])).toEqual([]);
+  });
+
+  it('leads with the answer that releases the most work', () => {
+    const small = question('a', 'x', { blocks: ['one'], createdAt: 10 });
+    const big = question('b', 'y', { blocks: ['one', 'two', 'three'], createdAt: 20 });
+    const found = answersToOpenQuestions(
+      [fact('a', 'x', 'ans-a'), fact('b', 'y', 'ans-b')],
+      [small, big],
+    );
+    expect(found.map((f) => f.unblocks.length)).toEqual([3, 1]);
+  });
+
+  it('breaks a tie toward the older question', () => {
+    const older = question('a', 'x', { createdAt: 10 });
+    const newer = question('b', 'y', { createdAt: 99 });
+    const found = answersToOpenQuestions(
+      [fact('a', 'x', 'one'), fact('b', 'y', 'two')],
+      [newer, older],
+    );
+    expect(found[0].question.id).toBe(older.id);
+  });
+
+  it('returns every candidate when a document offers more than one answer', () => {
+    // Two documents saying different things is a decision for a person, not for this function.
+    const q = question('dam-vendor', 'chosen');
+    const found = answersToOpenQuestions(
+      [fact('dam-vendor', 'chosen', 'Bynder'), fact('dam-vendor', 'chosen', 'Aprimo')],
+      [q],
+    );
+    expect(found).toHaveLength(2);
+  });
+
+  it('settles two identical questions with one claim', () => {
+    const q1 = question('dam-vendor', 'chosen', { createdAt: 10 });
+    const q2 = question('dam-vendor', 'chosen', { createdAt: 20 });
+    const found = answersToOpenQuestions([fact('dam-vendor', 'chosen', 'Bynder')], [q1, q2]);
+    expect(found).toHaveLength(2);
+  });
+
+  it('is empty when there is nothing to answer', () => {
+    expect(answersToOpenQuestions([fact('a', 'x', 'one')], [])).toEqual([]);
+    expect(answersToOpenQuestions([], [question('a', 'x')])).toEqual([]);
+  });
+
+  it('summarises what accepting it would release', () => {
+    const q = question('dam-vendor', 'chosen', { blocks: ['migration', 'budget'] });
+    const [qa] = answersToOpenQuestions([fact('dam-vendor', 'chosen', 'Bynder')], [q]);
+    expect(answerSummary(qa)).toContain('unblocks 2 things');
+    const alone = question('x', 'y', { blocks: [] });
+    const [qb] = answersToOpenQuestions([fact('x', 'y', 'z')], [alone]);
+    expect(answerSummary(qb)).not.toContain('unblocks');
   });
 });
