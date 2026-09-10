@@ -193,7 +193,7 @@
     "mermaid": "^11.17.2",
     "rdf-validate-shacl": "^0.6.5",
     "shadcn-svelte": "^1.4.2",
-    "sharp": "^0.35.3",
+    "sharp": "^0.35.4",
     "storybook": "^10.5.2",
     "svelte": "^5.56.6",
     "svelte-check": "^4.7.3",
