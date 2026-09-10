@@ -9,8 +9,11 @@
 @prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
 @prefix use:    <urn:reckons:use/> .
+@prefix path:   <urn:reckons:path/> .
 @prefix guide:  <urn:reckons:guide/> .
 @prefix ktype:  <urn:kbase:type/> .
+@prefix hnav:   <urn:reckons:nav/> .
+@prefix kpred:  <urn:kbase:predicate/> .
 
 ## KB Identity
 <urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a03-b003-000000000003" .
@@ -38,7 +41,8 @@ use:PersonalEmpowerment
     rdf:type            ktype:Concept ;
     rdf:type            skos:Concept ;
     rdfs:label          "Power to the Individual" ;
-    skos:definition     "Insurance companies have teams of analysts. Corporations have legal departments. Landlords have property managers. You have your memory and a stack of papers? Not anymore. Build a graph of your rights, evidence, and correspondence. Ask Shelly to draft a precise response citing YOUR documented facts. You communicate with the authority of an institution." ;
+    hnav:order          30 ;
+    skos:definition     "Insurance companies have teams of analysts. Corporations have legal departments. Landlords have property managers. You have your memory and a stack of papers? Not anymore. Build a graph of your rights, evidence, and correspondence. Ask Shelly to draft a precise response citing your documented facts. You communicate with the authority of an institution." ;
     skos:related        guide:WhatIsReckonsAI .
 
 use:InsuranceClaims
@@ -163,3 +167,81 @@ shelly:persona
     shelly:personality      "empowering, practical, direct" ;
     shelly:responseStyle    "concise" ;
     shelly:systemPrompt     "You are helping someone understand how a personal knowledge graph levels the playing field. Give concrete, practical examples. Emphasize that a well-curated graph lets individuals communicate with institutional authority." .
+
+## =============================================================================
+## Software engineering — the use case this project is itself.
+## Matt, 2026-09-08. Written as a PARENT with folded children, deliberately: the
+## per-entity generator makes 62% of pages a title and one paragraph, and the fix
+## is grouping, not longer paragraphs.
+## =============================================================================
+
+use:SoftwareEngineering
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Software engineering" ;
+    skos:definition     "Reckons.AI is built with Reckons.AI, and that is the honest reason this use case is the most detailed one here: it is the only one we have run for a year. A codebase accumulates decisions faster than anything else you own — why a boundary exists, what a change would break, which claim a test actually pins — and almost none of it survives in the code. It ends up in commit messages nobody re-reads, in chat histories that expire, and in the heads of whoever was there. The graph is where those decisions are kept as facts you can query, and the pages you are reading are generated from it." ;
+    skos:related        guide:WhatIsReckonsAI ;
+    kpred:audience      "Anyone maintaining a codebase with more history than any one person remembers — and anyone whose coding agents keep asking questions the last session already answered." ;
+    kpred:principle     "The plan lives in the graph, not in the code. A feature exists as an entity with a status before it exists as a file, and the status ladder is honest — speculative, planned, scaffolded, functional, production. A feature is not functional because we wish it were. That single rule is what makes the graph usable as a plan rather than as marketing: you can ask what is actually built and get an answer that has been kept true." ;
+    kpred:measured      "DOGFOODED AT A REAL SIZE, as of 2026-09-08: seven graphs describing the product, roughly 16,300 facts, with the codebase graph carrying a file link for every git-tracked source file. Six alignment gates run on every change and fail the build when the published site stops saying what the graph says." ;
+    kpred:honest-note   "The gaps are in here too, which is the point of writing them down. On 2026-09-08 a check found that 62% of the generated documentation pages were under 120 words — a title and a paragraph — because thin concepts with no parent cannot be folded into anything. That finding is a fact in this graph, it is why this page is written as a parent with folded children, and you are reading the fix." .
+
+use:CodebaseAsGraph
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "The codebase, as facts" ;
+    skos:broader        use:SoftwareEngineering ;
+    skos:definition     "Modules, files and their dependencies become entities, so what a change touches is a query rather than a guess. The graph holds the part the source cannot: why the boundary is there." .
+
+use:DocsThatStayTrue
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Documentation that cannot quietly go stale" ;
+    skos:broader        use:SoftwareEngineering ;
+    skos:definition     "Pages are generated from the graph, so a page cannot disagree with the facts it was made from without a gate failing. Change the graph and the page follows; hand-edit the page and the build tells you." .
+
+use:AgentGrounding
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Coding agents that start already knowing" ;
+    skos:broader        use:SoftwareEngineering ;
+    skos:definition     "An agent queries the same graph over MCP instead of re-reading the repository, so the conventions it follows are the ones written down rather than the ones it inferred." .
+
+use:DecisionsWithEvidence
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Decisions that keep their evidence" ;
+    skos:broader        use:SoftwareEngineering ;
+    skos:definition     "A benchmark result stays attached to the decision it justified, so next year the question is what the number was, not what someone remembers concluding." .
+
+## =============================================================================
+## Why a graph and not a notepad — the argument, with the measurement under it.
+## Matt, 2026-09-08, ahead of a first-time reader who twice read the product as a
+## generic note-taking app. The numbers below are from that day's corpus run.
+## =============================================================================
+
+use:WhyNotANotepad
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Why a graph, and not a notepad" ;
+    skos:broader        use:SoftwareEngineering ;
+    skos:definition     "Take one sentence from a real working note: Vantage Suite was dropped at this stage on file format grounds. A notepad keeps the sentence. Reckons.AI keeps the fact underneath it. The difference does not show at ten notes and decides everything at a thousand, because the question you will eventually ask is not what did I write, it is what did we drop, and why." ;
+    kpred:diagram       """flowchart LR
+  N["One sentence in your notes<br/>Vantage Suite was dropped<br/>on file format grounds"]
+  N --> P["A notepad<br/>keeps the sentence"]
+  N --> G["Reckons.AI<br/>keeps the fact"]
+  P --> PQ["What did we drop, and why?<br/>search 11 phrasings<br/>find some, miss the rest"]
+  G --> GQ["What did we drop, and why?<br/>one relation, ten synonyms<br/>one answer"]""" ;
+    kpred:diagram-caption "The same sentence, two destinations. The divergence is invisible until you ask a question that spans more notes than you can re-read." ;
+    kpred:principle     "This is not an argument against note-taking, and reading it that way loses what it says. Capture should be as close to frictionless as it can be — talking at your phone should be enough. The claim is about what happens AFTER capture: a pile of prose is a pile you must re-read, and re-reading does not scale. Structure is the price of being able to ask the pile a question later." ;
+    kpred:measured      "The divergence is measured, NOT ASSERTED. On 2026-09-08 six local models each read the same short document five times. Twelve relations came back under FIFTY-ONE different names. The single relation dropped-because was written eleven ways in thirty readings: was-eliminated, was-dropped-on, dropped-from-shortlist, excluded-from-shortlist-due-to, was-dropped-due-to, was-dropped-from-shortlist-due-to, was-eliminated-from-shortlist, was-excluded-from-shortlist-because-of, was-dropped-from-shortlist-reason, was-dropped-from-shortlist-reason-for, and dropped-from-shortlist-due-to. is-a drew eleven names, lacks eight, concern and role five each." ;
+    kpred:example       "What that costs you, CONCRETELY. Those eleven phrasings are what a year of your own notes looks like, because you do not phrase things the same way twice either. In a notepad they are eleven unrelated strings: searching dropped finds four of them, and nothing tells you the other seven exist. In a graph they are one relation carrying ten alternative labels, so the question is answered once and completely. That is the whole of the efficiency claim, and it is why the extra step in the middle is not busywork." ;
+    kpred:example       "And the second thing a notepad cannot do: tell you that two of your notes disagree. When a new source arrives, Reckons.AI does not show you everything it found — it shows you what changed: facts that are new, facts that contradict something you already confirmed, and near-duplicates of things you already have. The contradictions are the valuable part. A second source disagreeing with the first is the exact moment you want to be interrupted, and it is precisely the moment a folder of documents stays silent — both notes are still there, both still look true, and nothing in the pile knows they cannot both be." ;
+    kpred:example       "That comparison is only possible because the unit is a claim rather than a paragraph. Two paragraphs about the same vendor do not contradict each other in any way a machine can see; two triples with the same subject and predicate and different objects do, exactly and cheaply. It is the same property that makes the fifty-one names above a solvable problem instead of a search problem." ;
+    skos:related        path:Add-2 ;
+    kpred:example       "And the third thing, which is the one you cannot get to by writing more carefully: a notepad has no COMMON LANGUAGE with anyone else's notepad. Reckons.AI writes its structure in SKOS and the other standard vocabularies — rdf:type, rdfs:label, skos:broader, skos:definition, dcterms and PROV — which are not our invention and not our property. So somebody else's graph, built for their own reasons in their own words, still has a shape yours can be laid against: same relations for is-a-kind-of, same relations for what this is called, same way of saying where a claim came from. Two piles of prose have nothing to lay against each other at all." ;
+    kpred:example       "Doing that by hand is miserable, and that is the actual argument for the machine. Writing SKOS carefully as you take notes is not something anyone will keep up, which is why extraction proposes the structure and you only judge it. The tedious, standardised half is the half a machine is good at; the half that needs you is deciding whether the claim is true. Get that division backwards — a person doing the formatting and a model doing the deciding — and you have the worst of both." ;
+    kpred:measured      "HOW STANDARD IS IT, HONESTLY? Counted across every graph in this repository on 2026-09-08: 6,895 uses of standard-vocabulary predicates against 10,286 local urn: ones — SKOS alone accounts for 1,847, with dcterms at 317 and PROV at 234. So the SKELETON is standard and the DOMAIN VOCABULARY largely is not. That split is the honest version of the claim: two graphs can be aligned on their structure the day they meet, because both say skos:broader and rdfs:label; aligning what their predicates MEAN is the work, and it is exactly the work the fifty-one rival names above describe. Cross-Graph Alignment exists here and does the first part; the second is still being built." ;
+    kpred:principle     "The step in the middle is where you stay in charge. Extraction proposes; nothing enters your graph until you accept it. That is the same review queue the machine's own findings go through, which is why a wrong reading is a thing you correct in one place rather than a wrong sentence you have to remember not to trust." ;
+    kpred:honest-note   "The product has not been showing this. A careful first-time reader read Reckons.AI as generic storyboarding and note-taking, twice, on 2026-09-06 and again on 2026-09-08 after further exposure. That is a finding about this product rather than about the reader: if the condensation is not visible on the way in, what is left genuinely does look like a notes app that asks you to do extra work in the middle. This page exists because the argument was being asserted and never shown." ;
+    skos:example        "In 'Vantage Suite was dropped on file format grounds': vantage-suite = subject, dropped-because = predicate, file-format = object." .

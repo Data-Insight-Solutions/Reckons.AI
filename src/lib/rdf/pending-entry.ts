@@ -37,17 +37,21 @@ export interface PendingEntry {
   priority?: PendingPriority;
   askedByGraph?: string;
   /**
-   * A DETERMINISTIC check confirmed this fact, and by what.
+   * Legacy, self-attested verifier label.
    *
-   * Only ever set by a script that re-derived the claim from the thing it is about — a path that
-   * exists, an edge transcribed from a canonical graph. It is the machine lane the routing model
-   * (rdf/review-routing.ts) has always described and which has settled nothing, because no
-   * producer ever recorded that it had checked.
-   *
-   * Never set for a judgement. "Is this a real defect", "should this predicate be renamed" and
-   * every opinion stay a human decision no matter how confidently a model states them.
+   * A queue row can be written by an MCP client or any local process, so this string is not an
+   * authentication credential and MUST NOT authorize confirmation. It is retained only for
+   * compatibility with old queue files; new verifier runs write `verificationClaim` instead.
    */
   verifiedBy?: string;
+  /**
+   * Advisory result of a deterministic check, such as `script:queue-verify/path-exists`.
+   *
+   * This is deliberately named a claim: it travels in the same untrusted JSON object as the fact
+   * and therefore cannot prove who ran the check. Queue drains preserve the human review boundary
+   * regardless of this value. A future auto-settle lane needs a separately authenticated channel.
+   */
+  verificationClaim?: string;
   [key: string]: unknown;
 }
 
@@ -55,15 +59,21 @@ export type PendingEntryIssueCode =
   | 'malformed-json'
   | 'not-an-object'
   | 'missing-subject'
+  | 'invalid-subject-iri'
   | 'missing-predicate'
+  | 'invalid-predicate-iri'
   | 'missing-content'
+  | 'invalid-object'
+  | 'invalid-object-kind'
+  | 'invalid-object-iri'
   | 'missing-kb'
   | 'invalid-kb'
   | 'invalid-type'
   | 'invalid-priority'
   | 'invalid-finding-class'
   | 'invalid-added-at'
-  | 'invalid-blocks';
+  | 'invalid-blocks'
+  | 'invalid-block-iri';
 
 export type PendingEntryParseResult =
   | { ok: true; entry: PendingEntry }
@@ -75,6 +85,25 @@ const FINDING_CLASSES = new Set(['form', 'drift', 'defect']);
 
 function nonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
+}
+
+/**
+ * RDF named nodes carry absolute IRIs. `new URL()` alone is too forgiving for this boundary — it
+ * silently percent-encodes spaces and accepts malformed percent escapes — so reject characters
+ * forbidden by RFC 3987 first, then require an absolute scheme and a parseable URL/URN.
+ */
+export function isAbsoluteRdfIri(value: unknown): value is string {
+  if (!nonEmptyString(value)) return false;
+  const iri = value.trim();
+  if (!/^[A-Za-z][A-Za-z0-9+.-]*:/.test(iri)) return false;
+  if (/[\u0000-\u0020<>"{}|\\^`]/u.test(iri)) return false;
+  if (/%(?![0-9A-Fa-f]{2})/.test(iri)) return false;
+  try {
+    new URL(iri);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -100,11 +129,21 @@ export function parsePendingEntryLine(
   if (!nonEmptyString(row.subject)) {
     return { ok: false, code: 'missing-subject', message: 'subject must be a non-empty string' };
   }
+  if (!isAbsoluteRdfIri(row.subject)) {
+    return { ok: false, code: 'invalid-subject-iri', message: 'subject must be an absolute RDF IRI' };
+  }
   if (!nonEmptyString(row.predicate)) {
     return { ok: false, code: 'missing-predicate', message: 'predicate must be a non-empty string' };
   }
+  if (!isAbsoluteRdfIri(row.predicate)) {
+    return { ok: false, code: 'invalid-predicate-iri', message: 'predicate must be an absolute RDF IRI' };
+  }
 
-  const hasObject = typeof row.object === 'string' && row.object.length > 0;
+  if (row.object !== undefined && typeof row.object !== 'string') {
+    return { ok: false, code: 'invalid-object', message: 'object must be a string when supplied' };
+  }
+  const object = typeof row.object === 'string' ? row.object : undefined;
+  const hasObject = object !== undefined && object.length > 0;
   const hasQuestion = nonEmptyString(row.question);
   const hasNote = nonEmptyString(row.note);
   if (!hasObject && !hasQuestion && !hasNote) {
@@ -113,6 +152,25 @@ export function parsePendingEntryLine(
       code: 'missing-content',
       message: 'row needs an object, question, or note',
     };
+  }
+  if (
+    row.objectKind !== undefined &&
+    row.objectKind !== 'literal' &&
+    row.objectKind !== 'iri'
+  ) {
+    return {
+      ok: false,
+      code: 'invalid-object-kind',
+      message: 'objectKind must be literal or iri',
+    };
+  }
+  // `objectTerm()` infers urn:* objects as named nodes even when objectKind is omitted, so validate
+  // both the explicit and inferred IRI paths here rather than letting malformed RDF reach storage.
+  const objectIsIri = hasObject && (
+    row.objectKind === 'iri' || (row.objectKind === undefined && object?.startsWith('urn:'))
+  );
+  if (objectIsIri && !isAbsoluteRdfIri(object)) {
+    return { ok: false, code: 'invalid-object-iri', message: 'IRI object must be an absolute RDF IRI' };
   }
 
   if (row.kb !== undefined && !nonEmptyString(row.kb)) {
@@ -154,13 +212,23 @@ export function parsePendingEntryLine(
   ) {
     return { ok: false, code: 'invalid-blocks', message: 'blocks must be a string or string array' };
   }
+  const blocks = Array.isArray(row.blocks) ? row.blocks : row.blocks === undefined ? [] : [row.blocks];
+  if (blocks.some((block) => !isAbsoluteRdfIri(block))) {
+    return { ok: false, code: 'invalid-block-iri', message: 'every blocker must be an absolute RDF IRI' };
+  }
 
   const entry = {
     ...row,
     subject: row.subject.trim(),
     predicate: row.predicate.trim(),
+    ...(objectIsIri && object ? { object: object.trim() } : {}),
     ...(nonEmptyString(row.kb) ? { kb: row.kb.trim() } : {}),
     ...(row.priority === 'medium' ? { priority: 'normal' as const } : {}),
+    ...(typeof row.blocks === 'string'
+      ? { blocks: row.blocks.trim() }
+      : Array.isArray(row.blocks)
+        ? { blocks: row.blocks.map((block) => block.trim()) }
+        : {}),
   } as PendingEntry;
 
   return { ok: true, entry };
@@ -183,6 +251,8 @@ export interface PendingQueueIssue {
 
 export interface PendingQueuePartition {
   entries: PendingEntry[];
+  /** Original text of rows selected for this graph, used for post-commit acknowledgement. */
+  consumedLines: string[];
   /** Original text of rows not consumed, including malformed and invalid rows. */
   retainedLines: string[];
   issues: PendingQueueIssue[];
@@ -205,6 +275,7 @@ export function partitionPendingJsonl(
   activeKb: string | readonly string[],
 ): PendingQueuePartition {
   const entries: PendingEntry[] = [];
+  const consumedLines: string[] = [];
   const retainedLines: string[] = [];
   const issues: PendingQueueIssue[] = [];
   const active = new Set(
@@ -229,9 +300,38 @@ export function partitionPendingJsonl(
       continue;
     }
     entries.push(parsed.entry);
+    consumedLines.push(line);
   }
 
-  return { entries, retainedLines, issues };
+  return { entries, consumedLines, retainedLines, issues };
+}
+
+/**
+ * Remove exactly the queue rows that a successful import consumed.
+ *
+ * This is a multiset subtraction over the original bytes. If another writer appended rows while
+ * IndexedDB was committing, those rows survive the acknowledgement; an identical append also
+ * survives once the number of originally consumed copies has been removed. At worst a failed
+ * acknowledgement imports a duplicate next time — it never loses an uncommitted proposal.
+ */
+export function acknowledgePendingJsonl(text: string, consumedLines: readonly string[]): string {
+  const remainingCounts = new Map<string, number>();
+  for (const line of consumedLines) {
+    remainingCounts.set(line, (remainingCounts.get(line) ?? 0) + 1);
+  }
+
+  const retained: string[] = [];
+  for (const line of text.split('\n')) {
+    if (!line.trim()) continue;
+    const remaining = remainingCounts.get(line) ?? 0;
+    if (remaining > 0) {
+      if (remaining === 1) remainingCounts.delete(line);
+      else remainingCounts.set(line, remaining - 1);
+    } else {
+      retained.push(line);
+    }
+  }
+  return retained.length ? `${retained.join('\n')}\n` : '';
 }
 
 export interface PendingQueueInspection {

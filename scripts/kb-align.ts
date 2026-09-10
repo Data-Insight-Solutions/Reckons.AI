@@ -146,12 +146,13 @@ function runSvelteCheck(): TestResult {
     const out = execSync('npx svelte-check --threshold error 2>&1', {
       cwd: ROOT, encoding: 'utf8', timeout: 120_000,
     });
-    const m = out.match(/COMPLETED\s+(\d+)\s+FILES\s+(\d+)\s+ERRORS\s+(\d+)\s+WARNINGS/);
+    const legacy = out.match(/COMPLETED\s+(\d+)\s+FILES\s+(\d+)\s+ERRORS\s+(\d+)\s+WARNINGS/i);
+    const current = out.match(/svelte-check found\s+(\d+)\s+errors?\s+and\s+(\d+)\s+warnings?/i);
     // `--threshold error` exits non-zero when there are errors, so reaching here
     // without throwing means the type check passed. If the summary line can't be
     // parsed, fall back to 0 (not a bogus -1 that reads as a phantom failure).
-    const errors = m ? parseInt(m[2]) : 0;
-    const warnings = m ? parseInt(m[3]) : 0;
+    const errors = current ? parseInt(current[1]) : legacy ? parseInt(legacy[2]) : 0;
+    const warnings = current ? parseInt(current[2]) : legacy ? parseInt(legacy[3]) : 0;
     return {
       name: 'typecheck',
       passed: errors === 0 ? 1 : 0,

@@ -24,6 +24,9 @@
 ##     whole subject is verifiable claims. Removing them also took the file from 83 KB
 ##     to 16 KB. Real portraits can return whenever their provenance can be stated.
 ##   - TWO options (campgrounds) with a nightly PRICE, elevation and reservation link.
+##   - A MIXED ASSET SAMPLE in the trip itself: an animated campfire GIF, a short
+##     sunrise WebM, and an orbitable A-frame tent GLB. "Preview all" therefore
+##     demonstrates the viewer's real image / GIF / video / 3D range on first use.
 ##   - TWO weather FORECASTS (one per option — they differ by elevation).
 ##   - FOUR routes: each person's DRIVE to each option (two distances per person),
 ##     so you can see the trip is genuinely "meet in the middle".
@@ -44,6 +47,7 @@
 @prefix ktype: <urn:kbase:type/> .
 @prefix kb:    <urn:kbase:concept/> .
 @prefix p:     <urn:kbase:predicate/> .
+@prefix kmeta: <urn:kbase:meta/> .
 
 ## == Custom entity types =====================================================
 ktype:Campground
@@ -296,6 +300,7 @@ kb:ev-pitch-camp
     p:photo         "/png/starter/pitch-camp.jpg" ;
     p:photo-credit  "Bureau of Land Management California · Public domain" ;
     p:photo-source  "https://commons.wikimedia.org/wiki/File:Crowley_Lake_campground_site_(48061851118).jpg" ;
+    kmeta:glbModel  "/glb/starter/a-frame-tent.glb" ;
     p:ruled-out-by  kb:lake-george ;
     p:scheduled-at  "2026-07-10T19:30"^^xsd:dateTime ;
     p:ends-at       "2026-07-10T20:30"^^xsd:dateTime .
@@ -309,6 +314,7 @@ kb:ev-campfire
     p:photo         "/png/starter/campfire.jpg" ;
     p:photo-credit  "U.S. Forest Service, Pacific Northwest Region · Public Domain Mark 1.0" ;
     p:photo-source  "https://www.flickr.com/photos/135886671@N08/45365195765" ;
+    kmeta:gifPreview "/gif/starter/campfire.gif" ;
     p:ruled-out-by  kb:lake-george ;
     p:scheduled-at  "2026-07-10T21:00"^^xsd:dateTime ;
     p:ends-at       "2026-07-10T23:30"^^xsd:dateTime .
@@ -324,6 +330,7 @@ kb:ev-sunrise-shoot
     p:photo         "/png/starter/sunrise-shoot.jpg" ;
     p:photo-credit  "Andrew D Cox / U.S. Forest Service · Public Domain Mark 1.0" ;
     p:photo-source  "https://www.flickr.com/photos/140082569@N07/24809580078" ;
+    p:video         "/video/starter/sunrise-shoot.webm" ;
     p:ruled-out-by  kb:oh-ridge ;
     p:scheduled-at  "2026-07-11T05:32"^^xsd:dateTime ;
     p:ends-at       "2026-07-11T07:00"^^xsd:dateTime .

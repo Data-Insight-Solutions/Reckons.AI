@@ -100,6 +100,24 @@ describe('buildReviewTree', () => {
     expect(d.hidden.map((s) => s.id).sort()).toEqual(['l', 'r']);
   });
 
+  it('does not reuse rejected or superseded facts as live decision context or option costs', () => {
+    const rejectedJudgment = st(WEEKEND, `${KPRED}description`, 'A rejected rationale.', {
+      id: 'rejected-j', status: 'rejected',
+    });
+    const optionFact = st('urn:kbase:concept/ev', `${KPRED}part-of`, '', { o: iri(WEEKEND), id: 'part' });
+    const rejectedCost = st('urn:kbase:concept/ev', `${KPRED}ruled-out-by`, '', {
+      o: iri(LAKE), id: 'rejected-cost', status: 'superseded',
+    });
+
+    const tree = buildReviewTree(
+      [question],
+      [question, judgment, rejectedJudgment, optionFact, rejectedCost],
+    );
+    const decision = tree.decisions[0];
+    expect(decision.judgments.map((item) => item.id)).toEqual(['j']);
+    expect(decision.options).toEqual([]);
+  });
+
   it('a settled decision is CONTEXT, never a second item to review', () => {
     const tree = buildReviewTree([settled], [settled]);
     expect(tree.decisions).toHaveLength(0);

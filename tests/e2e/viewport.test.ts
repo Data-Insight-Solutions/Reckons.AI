@@ -29,7 +29,10 @@ function isTouchDevice(page: Page): boolean {
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page }, testInfo) => {
+  // The load-budget case must begin from the fixture's untouched about:blank page. Navigating here
+  // first warms the HTTP/module cache and turns a claimed first-load measurement into a reload.
+  if (testInfo.title === 'app loads within 5 seconds on simulated slow connection') return;
   await clearStorage(page);
   await waitForApp(page);
 });
@@ -108,30 +111,29 @@ test('touch targets are large enough on mobile viewports', async ({ page }) => {
 
   await page.goto('/ingest');
 
-  // All buttons should have a minimum tap target size of 44px (WCAG 2.5.5)
+  // Every visible button and navigation link should have a 44×44px tap target.
+  // This is a regression gate, not a diagnostic: icon-only controls need a
+  // comfortable hit area just as much as labelled controls do.
   const tooSmall = await page.evaluate(() => {
-    const buttons = Array.from(document.querySelectorAll('button:not([hidden])'));
-    return buttons
-      .filter(btn => {
-        const r = btn.getBoundingClientRect();
+    const targets = Array.from(document.querySelectorAll<HTMLElement>(
+      'button:not([hidden]), nav[aria-label="Main navigation"] a[href]'
+    ));
+    return targets
+      .filter(target => {
+        const r = target.getBoundingClientRect();
         return r.width > 0 && r.height > 0 && (r.width < 44 || r.height < 44);
       })
-      .map(btn => ({ text: (btn as HTMLElement).innerText?.trim().slice(0, 30), w: Math.round((btn as HTMLElement).getBoundingClientRect().width), h: Math.round((btn as HTMLElement).getBoundingClientRect().height) }));
+      .map(target => {
+        const r = target.getBoundingClientRect();
+        return {
+          name: target.getAttribute('aria-label') || target.innerText?.trim().slice(0, 30),
+          width: Math.round(r.width),
+          height: Math.round(r.height),
+        };
+      });
   });
 
-  // Report but don't hard-fail — use as a diagnostic (some icon-only buttons may be small)
-  if (tooSmall.length > 0) {
-    console.warn(`[viewport] ${tooSmall.length} button(s) below 44px tap target:`, tooSmall);
-  }
-
-  // Hard requirement: the primary submit button must always be tap-safe
-  const submitBtn = page.getByRole('button', { name: /extract facts/i });
-  if (await submitBtn.count() > 0) {
-    const box = await submitBtn.boundingBox();
-    if (box) {
-      expect(box.height).toBeGreaterThanOrEqual(36); // slightly relaxed for mobile
-    }
-  }
+  expect(tooSmall, `Undersized mobile targets: ${JSON.stringify(tooSmall)}`).toEqual([]);
 });
 
 test('File System Access API availability is handled gracefully', async ({ page }) => {
@@ -166,13 +168,15 @@ test('app loads within 5 seconds on simulated slow connection', async ({ page })
   }
 
   const start = Date.now();
-  await page.goto('/');
+  // The budget is for the usable app shell, not for every deferred image/model asset. Waiting for
+  // the browser `load` event here charged unrelated subresources before we even looked for the nav.
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.locator('nav').waitFor({ timeout: 15_000 });
   const loadTime = Date.now() - start;
 
   // App shell (nav) should appear within 5 seconds even on throttled connection
-  // Service worker caches assets after first load — this tests the first-load path
-  expect(loadTime).toBeLessThan(15_000); // generous upper bound; tighten in CI after baseline
+  // This test deliberately bypasses the suite setup, so the context has not loaded or cached the app.
+  expect(loadTime).toBeLessThan(5_000);
 
   console.log(`[viewport] App shell load time on ${page.viewportSize()?.width}px viewport: ${loadTime}ms`);
 });

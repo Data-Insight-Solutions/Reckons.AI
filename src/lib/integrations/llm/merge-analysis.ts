@@ -7,6 +7,7 @@
  */
 
 import { chatClaude, chatOpenAI, chatGemini, chatOllama, chatOpenRouter, chatReckons, chatChromeAI } from './providers';
+import { ollamaModelFor } from './model-for-task';
 import { chatWithWasm } from './wasm';
 import { settings } from '$lib/stores/settings.svelte';
 import { db } from '$lib/storage/db';
@@ -119,7 +120,7 @@ export async function analyzeMerge(params: MergeAnalysisParams): Promise<string>
   const model =
     effectiveProvider === 'openai'     ? s.openaiModel :
     effectiveProvider === 'gemini'     ? s.geminiModel :
-    effectiveProvider === 'ollama'     ? s.ollamaModel :
+    effectiveProvider === 'ollama'     ? ollamaModelFor('mergeAnalysis', s) :
     effectiveProvider === 'openrouter' ? s.openrouterModel :
     effectiveProvider === 'reckons'    ? (s.reckonsModel ?? '@cf/meta/llama-3.1-8b-instruct') :
     effectiveProvider === 'wasm'       ? (s.wasmAnalyzeModel || s.wasmModel) :

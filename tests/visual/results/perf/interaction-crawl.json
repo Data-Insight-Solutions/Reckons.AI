@@ -1,6 +1,6 @@
 {
   "schema": "perf-crawl/interactions@1",
-  "finishedAt": "2026-08-22T02:23:46.196Z",
+  "finishedAt": "2026-08-23T22:01:37.707Z",
   "baseUrl": "http://localhost:5173",
   "renderer": "ANGLE (NVIDIA Corporation, NVIDIA GeForce RTX 3090/PCIe/SSE2, OpenGL 4.5.0)",
   "throttle": 4,
@@ -9,86 +9,955 @@
     {
       "route": "/",
       "label": "Getting started →",
-      "settleMs": 0,
-      "longTasks": [],
-      "worstFrame": 150,
-      "changed": true
-    },
-    {
-      "route": "/",
-      "label": "button #1",
       "settleMs": 1200,
       "longTasks": [
         {
-          "duration": 338,
+          "duration": 1040,
+          "name": "unknown"
+        },
+        {
+          "duration": 575,
           "name": "unknown"
         }
       ],
-      "worstFrame": 349.99999999999955,
+      "worstFrame": 1616.6999999999998,
       "changed": true,
       "error": "never settled within 1200ms"
     },
     {
       "route": "/",
-      "label": "button #2",
+      "label": "Or explore the full concept graph →",
+      "settleMs": 2484,
+      "longTasks": [
+        {
+          "duration": 927,
+          "name": "unknown"
+        },
+        {
+          "duration": 623,
+          "name": "unknown"
+        }
+      ],
+      "worstFrame": 1533.4,
+      "changed": true,
+      "error": "never settled within 1200ms"
+    },
+    {
+      "route": "/",
+      "label": "📖 Documentation Graph The full Reckons.AI guide",
+      "settleMs": 1698,
+      "longTasks": [
+        {
+          "duration": 1025,
+          "name": "unknown"
+        },
+        {
+          "duration": 622,
+          "name": "unknown"
+        }
+      ],
+      "worstFrame": 1633.3000000000002,
+      "changed": true,
+      "error": "never settled within 1200ms"
+    },
+    {
+      "route": "/",
+      "label": "🚀 Quick-Start Example People, projects, decisio",
       "settleMs": 1200,
+      "longTasks": [
+        {
+          "duration": 652,
+          "name": "unknown"
+        },
+        {
+          "duration": 363,
+          "name": "unknown"
+        }
+      ],
+      "worstFrame": 999.9999999999998,
+      "changed": true,
+      "error": "never settled within 1200ms"
+    },
+    {
+      "route": "/",
+      "label": "🔍 Review a visual test Four captured screens of",
+      "settleMs": 1200,
+      "longTasks": [
+        {
+          "duration": 481,
+          "name": "unknown"
+        },
+        {
+          "duration": 365,
+          "name": "unknown"
+        }
+      ],
+      "worstFrame": 833.2999999999997,
+      "changed": true,
+      "error": "never settled within 1200ms"
+    },
+    {
+      "route": "/",
+      "label": "＋ Start from scratch Begin with an empty KB. Ing",
+      "settleMs": 101,
       "longTasks": [],
-      "worstFrame": 300,
-      "changed": true,
-      "error": "never settled within 1200ms"
+      "worstFrame": 16.799999999999955,
+      "changed": true
     },
     {
       "route": "/",
-      "label": "button #3",
-      "settleMs": 1200,
+      "label": "SHOW 4 MORE ▾",
+      "settleMs": 53,
       "longTasks": [],
-      "worstFrame": 166.69999999999982,
-      "changed": true,
-      "error": "never settled within 1200ms"
+      "worstFrame": 16.800000000000182,
+      "changed": true
     },
     {
       "route": "/",
-      "label": "button #4",
-      "settleMs": 1200,
+      "label": "◈ ANALYZE",
+      "settleMs": 57,
       "longTasks": [],
-      "worstFrame": 150,
-      "changed": true,
-      "error": "never settled within 1200ms"
+      "worstFrame": 16.799999999999955,
+      "changed": true
     },
     {
       "route": "/",
-      "label": "button #5",
-      "settleMs": 1200,
+      "label": "✎",
+      "settleMs": 109,
       "longTasks": [],
-      "worstFrame": 133.4000000000001,
-      "changed": true,
-      "error": "never settled within 1200ms"
+      "worstFrame": 33.299999999999955,
+      "changed": true
     },
     {
       "route": "/",
-      "label": "button #6",
-      "settleMs": 1200,
+      "label": "🐚 1",
+      "settleMs": 52,
+      "longTasks": [],
+      "worstFrame": 16.700000000000045,
+      "changed": true
+    },
+    {
+      "route": "/",
+      "label": "Open Shelly chat",
+      "settleMs": 102,
+      "longTasks": [],
+      "worstFrame": 33.299999999999955,
+      "changed": true
+    },
+    {
+      "route": "/",
+      "label": "✕",
+      "settleMs": 42,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": true
+    },
+    {
+      "route": "/review",
+      "label": "PREVIEW",
+      "settleMs": 43,
+      "longTasks": [],
+      "worstFrame": 16.800000000000182,
+      "changed": true
+    },
+    {
+      "route": "/review",
+      "label": "COMPARE",
+      "settleMs": 54,
+      "longTasks": [],
+      "worstFrame": 16.700000000000045,
+      "changed": true
+    },
+    {
+      "route": "/review",
+      "label": "OVERLAY",
+      "settleMs": 65,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": true
+    },
+    {
+      "route": "/review",
+      "label": "3D",
+      "settleMs": 45,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": true
+    },
+    {
+      "route": "/review",
+      "label": "3D → 2D",
+      "settleMs": 35,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": true
+    },
+    {
+      "route": "/review",
+      "label": "free",
+      "settleMs": 49,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": false
+    },
+    {
+      "route": "/review",
+      "label": "focus",
+      "settleMs": 45,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": true
+    },
+    {
+      "route": "/review",
+      "label": "hub",
+      "settleMs": 49,
+      "longTasks": [],
+      "worstFrame": 16.800000000000182,
+      "changed": true
+    },
+    {
+      "route": "/review",
+      "label": "time",
+      "settleMs": 61,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": true
+    },
+    {
+      "route": "/review",
+      "label": "arrange",
+      "settleMs": 39,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": true
+    },
+    {
+      "route": "/review",
+      "label": "tree",
+      "settleMs": 47,
+      "longTasks": [],
+      "worstFrame": 16.700000000000045,
+      "changed": true
+    },
+    {
+      "route": "/review",
+      "label": "incoming",
+      "settleMs": 47,
+      "longTasks": [],
+      "worstFrame": 16.700000000000045,
+      "changed": false
+    },
+    {
+      "route": "/review",
+      "label": "delete",
+      "settleMs": 0,
+      "longTasks": [],
+      "worstFrame": 0,
+      "changed": false,
+      "skipped": "destructive label"
+    },
+    {
+      "route": "/review",
+      "label": "merge",
+      "settleMs": 37,
+      "longTasks": [],
+      "worstFrame": 16.800000000000068,
+      "changed": true
+    },
+    {
+      "route": "/review",
+      "label": "align",
+      "settleMs": 49,
+      "longTasks": [],
+      "worstFrame": 16.800000000000182,
+      "changed": true
+    },
+    {
+      "route": "/review",
+      "label": "align → align 0 graphs",
+      "settleMs": 0,
+      "longTasks": [],
+      "worstFrame": 0,
+      "changed": false,
+      "skipped": "disabled until input is supplied"
+    },
+    {
+      "route": "/review",
+      "label": "◈ ANALYZE",
+      "settleMs": 54,
+      "longTasks": [],
+      "worstFrame": 16.800000000000068,
+      "changed": true
+    },
+    {
+      "route": "/review",
+      "label": "✎",
+      "settleMs": 100,
+      "longTasks": [],
+      "worstFrame": 33.299999999999955,
+      "changed": true
+    },
+    {
+      "route": "/review",
+      "label": "✎ → close",
+      "settleMs": 86,
+      "longTasks": [],
+      "worstFrame": 16.800000000000182,
+      "changed": true
+    },
+    {
+      "route": "/ingest",
+      "label": "note",
+      "settleMs": 48,
+      "longTasks": [],
+      "worstFrame": 16.800000000000182,
+      "changed": false
+    },
+    {
+      "route": "/ingest",
+      "label": "reminder",
+      "settleMs": 48,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": true
+    },
+    {
+      "route": "/ingest",
+      "label": "url",
+      "settleMs": 43,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": true
+    },
+    {
+      "route": "/ingest",
+      "label": "document",
+      "settleMs": 53,
+      "longTasks": [],
+      "worstFrame": 16.800000000000068,
+      "changed": true
+    },
+    {
+      "route": "/ingest",
+      "label": "vault ⟁",
+      "settleMs": 44,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": true
+    },
+    {
+      "route": "/ingest",
+      "label": "facts ✎",
+      "settleMs": 61,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": true
+    },
+    {
+      "route": "/ingest",
+      "label": "facts ✎ → ✕",
+      "settleMs": 45,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": true
+    },
+    {
+      "route": "/ingest",
+      "label": "facts ✎ → + add row",
+      "settleMs": 51,
+      "longTasks": [],
+      "worstFrame": 16.800000000000182,
+      "changed": true
+    },
+    {
+      "route": "/ingest",
+      "label": "facts ✎ → add to graph →",
+      "settleMs": 0,
+      "longTasks": [],
+      "worstFrame": 0,
+      "changed": false,
+      "skipped": "disabled until input is supplied"
+    },
+    {
+      "route": "/ingest",
+      "label": "graph",
+      "settleMs": 64,
+      "longTasks": [],
+      "worstFrame": 16.700000000000045,
+      "changed": true
+    },
+    {
+      "route": "/ingest",
+      "label": "graph → as new graph",
+      "settleMs": 0,
+      "longTasks": [],
+      "worstFrame": 0,
+      "changed": false,
+      "skipped": "disabled until input is supplied"
+    },
+    {
+      "route": "/ingest",
+      "label": "graph → import →",
+      "settleMs": 0,
+      "longTasks": [],
+      "worstFrame": 0,
+      "changed": false,
+      "skipped": "disabled until input is supplied"
+    },
+    {
+      "route": "/ingest",
+      "label": "drive",
+      "settleMs": 52,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": true
+    },
+    {
+      "route": "/ingest",
+      "label": "calendar",
+      "settleMs": 67,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": true
+    },
+    {
+      "route": "/ingest",
+      "label": "folder",
+      "settleMs": 53,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": true
+    },
+    {
+      "route": "/ingest",
+      "label": "folder → Choose Folder",
+      "settleMs": 42,
+      "longTasks": [],
+      "worstFrame": 33.399999999999864,
+      "changed": true
+    },
+    {
+      "route": "/ingest",
+      "label": "repo",
+      "settleMs": 52,
+      "longTasks": [],
+      "worstFrame": 33.40000000000009,
+      "changed": true
+    },
+    {
+      "route": "/ingest",
+      "label": "repo → preview",
+      "settleMs": 0,
+      "longTasks": [],
+      "worstFrame": 0,
+      "changed": false,
+      "skipped": "disabled until input is supplied"
+    },
+    {
+      "route": "/ingest",
+      "label": "use any LLM",
+      "settleMs": 0,
+      "longTasks": [],
+      "worstFrame": 0,
+      "changed": false,
+      "skipped": "disabled"
+    },
+    {
+      "route": "/ingest",
+      "label": "extract facts →",
+      "settleMs": 0,
+      "longTasks": [],
+      "worstFrame": 0,
+      "changed": false,
+      "skipped": "disabled"
+    },
+    {
+      "route": "/ingest",
+      "label": "◈ ANALYZE",
+      "settleMs": 63,
+      "longTasks": [],
+      "worstFrame": 16.800000000000068,
+      "changed": true
+    },
+    {
+      "route": "/ingest",
+      "label": "✎",
+      "settleMs": 89,
+      "longTasks": [],
+      "worstFrame": 33.5,
+      "changed": true
+    },
+    {
+      "route": "/ingest",
+      "label": "✎ → close",
+      "settleMs": 72,
+      "longTasks": [],
+      "worstFrame": 16.700000000000273,
+      "changed": true
+    },
+    {
+      "route": "/kb",
+      "label": "+ new",
+      "settleMs": 58,
+      "longTasks": [],
+      "worstFrame": 16.800000000000182,
+      "changed": true
+    },
+    {
+      "route": "/kb",
+      "label": "+ new → create & switch",
+      "settleMs": 0,
+      "longTasks": [],
+      "worstFrame": 0,
+      "changed": false,
+      "skipped": "disabled until input is supplied"
+    },
+    {
+      "route": "/kb",
+      "label": "+ new → cancel",
+      "settleMs": 50,
+      "longTasks": [],
+      "worstFrame": 16.800000000000182,
+      "changed": true
+    },
+    {
+      "route": "/kb",
+      "label": "all (1)",
+      "settleMs": 40,
+      "longTasks": [],
+      "worstFrame": 16.800000000000068,
+      "changed": false
+    },
+    {
+      "route": "/kb",
+      "label": "bookmarked (0)",
+      "settleMs": 0,
+      "longTasks": [],
+      "worstFrame": 0,
+      "changed": false,
+      "skipped": "disabled"
+    },
+    {
+      "route": "/kb",
+      "label": "recent",
+      "settleMs": 49,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": false
+    },
+    {
+      "route": "/kb",
+      "label": "size",
+      "settleMs": 53,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": false
+    },
+    {
+      "route": "/kb",
+      "label": "name",
+      "settleMs": 45,
+      "longTasks": [],
+      "worstFrame": 16.800000000000182,
+      "changed": false
+    },
+    {
+      "route": "/kb",
+      "label": "☆",
+      "settleMs": 92,
+      "longTasks": [],
+      "worstFrame": 33.299999999999955,
+      "changed": true
+    },
+    {
+      "route": "/kb",
+      "label": "Default Graph",
+      "settleMs": 53,
+      "longTasks": [],
+      "worstFrame": 16.800000000000182,
+      "changed": false
+    },
+    {
+      "route": "/kb",
+      "label": "☐",
+      "settleMs": 58,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": true
+    },
+    {
+      "route": "/kb",
+      "label": "☐ → clear",
+      "settleMs": 0,
+      "longTasks": [],
+      "worstFrame": 0,
+      "changed": false,
+      "skipped": "destructive label"
+    },
+    {
+      "route": "/kb",
+      "label": "▸ ARCHIVE OLD EVENTS",
+      "settleMs": 55,
+      "longTasks": [],
+      "worstFrame": 16.800000000000182,
+      "changed": true
+    },
+    {
+      "route": "/kb",
+      "label": "↻ refresh",
+      "settleMs": 51,
+      "longTasks": [],
+      "worstFrame": 16.700000000000045,
+      "changed": true
+    },
+    {
+      "route": "/kb",
+      "label": "show ▼",
+      "settleMs": 42,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": true
+    },
+    {
+      "route": "/kb",
+      "label": "show ▼ → hide ▲",
+      "settleMs": 37,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": true
+    },
+    {
+      "route": "/kb",
+      "label": "+ create",
+      "settleMs": 42,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": true
+    },
+    {
+      "route": "/kb",
+      "label": "+ create → hide ▲",
+      "settleMs": 51,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": true
+    },
+    {
+      "route": "/kb",
+      "label": "+ configure",
+      "settleMs": 75,
+      "longTasks": [],
+      "worstFrame": 16.800000000000182,
+      "changed": true
+    },
+    {
+      "route": "/kb",
+      "label": "+ configure → hide ▲",
+      "settleMs": 49,
+      "longTasks": [],
+      "worstFrame": 16.800000000000182,
+      "changed": true
+    },
+    {
+      "route": "/kb",
+      "label": "🐋 pod view off",
+      "settleMs": 54,
+      "longTasks": [],
+      "worstFrame": 16.800000000000182,
+      "changed": true
+    },
+    {
+      "route": "/kb",
+      "label": "🐋 pod view off → 🐋 pod view on",
+      "settleMs": 41,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": true
+    },
+    {
+      "route": "/kb",
+      "label": "📁 link a folder",
+      "settleMs": 52,
+      "longTasks": [],
+      "worstFrame": 49.899999999999864,
+      "changed": false
+    },
+    {
+      "route": "/kb",
+      "label": "turtle (.ttl)",
+      "settleMs": 67,
       "longTasks": [],
       "worstFrame": 100,
-      "changed": true,
-      "error": "never settled within 1200ms"
+      "changed": false
     },
     {
-      "route": "/",
-      "label": "button #7",
-      "settleMs": 1200,
+      "route": "/kb",
+      "label": "trig (.trig)",
+      "settleMs": 46,
       "longTasks": [],
-      "worstFrame": 116.70000000000027,
-      "changed": true,
-      "error": "never settled within 1200ms"
+      "worstFrame": 16.800000000000182,
+      "changed": false
     },
     {
-      "route": "/",
-      "label": "button #8",
-      "settleMs": 147,
+      "route": "/kb",
+      "label": "n-quads (.nq)",
+      "settleMs": 44,
       "longTasks": [],
-      "worstFrame": 233.4000000000001,
+      "worstFrame": 16.700000000000045,
+      "changed": false
+    },
+    {
+      "route": "/kb",
+      "label": "turtle + inferred",
+      "settleMs": 53,
+      "longTasks": [],
+      "worstFrame": 16.800000000000068,
+      "changed": false
+    },
+    {
+      "route": "/kb",
+      "label": "export subset",
+      "settleMs": 47,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": false
+    },
+    {
+      "route": "/kb",
+      "label": "(+1 more)",
+      "settleMs": 0,
+      "longTasks": [],
+      "worstFrame": 0,
+      "changed": false,
+      "skipped": "over --max-clicks=25"
+    },
+    {
+      "route": "/settings",
+      "label": "load SDK",
+      "settleMs": 94,
+      "longTasks": [],
+      "worstFrame": 33.200000000000045,
       "changed": true
+    },
+    {
+      "route": "/settings",
+      "label": "load SDK → Download (500 MB)",
+      "settleMs": 95,
+      "longTasks": [],
+      "worstFrame": 33.29999999999973,
+      "changed": true
+    },
+    {
+      "route": "/settings",
+      "label": "load SDK",
+      "settleMs": 62,
+      "longTasks": [],
+      "worstFrame": 16.800000000000182,
+      "changed": true
+    },
+    {
+      "route": "/settings",
+      "label": "Mock (testing) ▾",
+      "settleMs": 128,
+      "longTasks": [],
+      "worstFrame": 66.70000000000005,
+      "changed": true
+    },
+    {
+      "route": "/settings",
+      "label": "small",
+      "settleMs": 141,
+      "longTasks": [],
+      "worstFrame": 66.69999999999993,
+      "changed": false
+    },
+    {
+      "route": "/settings",
+      "label": "medium",
+      "settleMs": 54,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": false
+    },
+    {
+      "route": "/settings",
+      "label": "large",
+      "settleMs": 142,
+      "longTasks": [],
+      "worstFrame": 83.29999999999995,
+      "changed": false
+    },
+    {
+      "route": "/settings",
+      "label": "3D",
+      "settleMs": 48,
+      "longTasks": [],
+      "worstFrame": 16.700000000000045,
+      "changed": false
+    },
+    {
+      "route": "/settings",
+      "label": "2D",
+      "settleMs": 52,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": false
+    },
+    {
+      "route": "/settings",
+      "label": "manual",
+      "settleMs": 51,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": false
+    },
+    {
+      "route": "/settings",
+      "label": "auto-expand",
+      "settleMs": 46,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": true
+    },
+    {
+      "route": "/settings",
+      "label": "preview all",
+      "settleMs": 56,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": true
+    },
+    {
+      "route": "/settings",
+      "label": "on",
+      "settleMs": 59,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": true
+    },
+    {
+      "route": "/settings",
+      "label": "on → off",
+      "settleMs": 55,
+      "longTasks": [],
+      "worstFrame": 16.800000000000182,
+      "changed": true
+    },
+    {
+      "route": "/settings",
+      "label": "connect google account",
+      "settleMs": 0,
+      "longTasks": [],
+      "worstFrame": 0,
+      "changed": false,
+      "skipped": "disabled"
+    },
+    {
+      "route": "/settings",
+      "label": "save current",
+      "settleMs": 105,
+      "longTasks": [],
+      "worstFrame": 33.299999999999955,
+      "changed": true
+    },
+    {
+      "route": "/settings",
+      "label": "save current → revert",
+      "settleMs": 55,
+      "longTasks": [],
+      "worstFrame": 16.800000000000182,
+      "changed": false
+    },
+    {
+      "route": "/settings",
+      "label": "save current → clear",
+      "settleMs": 0,
+      "longTasks": [],
+      "worstFrame": 0,
+      "changed": false,
+      "skipped": "destructive label"
+    },
+    {
+      "route": "/settings",
+      "label": "↓ .json",
+      "settleMs": 64,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": false
+    },
+    {
+      "route": "/settings",
+      "label": "copy full",
+      "settleMs": 46,
+      "longTasks": [],
+      "worstFrame": 16.800000000000182,
+      "changed": true
+    },
+    {
+      "route": "/settings",
+      "label": "copy full → copied ✓",
+      "settleMs": 51,
+      "longTasks": [],
+      "worstFrame": 16.800000000000182,
+      "changed": false
+    },
+    {
+      "route": "/settings",
+      "label": "compute",
+      "settleMs": 58,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": true
+    },
+    {
+      "route": "/settings",
+      "label": "compute → ↻",
+      "settleMs": 54,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": false
+    },
+    {
+      "route": "/settings",
+      "label": "Monospace ▾",
+      "settleMs": 81,
+      "longTasks": [],
+      "worstFrame": 33.299999999999955,
+      "changed": true
+    },
+    {
+      "route": "/settings",
+      "label": "pick file…",
+      "settleMs": 47,
+      "longTasks": [],
+      "worstFrame": 33.30000000000007,
+      "changed": false
+    },
+    {
+      "route": "/settings",
+      "label": "↓ .ttl",
+      "settleMs": 58,
+      "longTasks": [],
+      "worstFrame": 50,
+      "changed": false
+    },
+    {
+      "route": "/settings",
+      "label": "↓ .ttl",
+      "settleMs": 49,
+      "longTasks": [],
+      "worstFrame": 16.799999999999955,
+      "changed": false
+    },
+    {
+      "route": "/settings",
+      "label": "(+2 more)",
+      "settleMs": 0,
+      "longTasks": [],
+      "worstFrame": 0,
+      "changed": false,
+      "skipped": "over --max-clicks=25"
     }
   ]
 }

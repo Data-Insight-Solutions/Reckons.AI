@@ -5,6 +5,7 @@
  */
 
 import type { Diff, DiffEntry } from './diff';
+import { ollamaModelFor } from '../integrations/llm/model-for-task';
 import type { Statement } from './types';
 import { chatClaude, chatOpenAI, chatGemini, chatOllama, chatOpenRouter, chatReckons, chatChromeAI, type ChatMessage } from '$lib/integrations/llm/providers';
 import { chatWithWasm } from '$lib/integrations/llm/wasm';
@@ -101,7 +102,7 @@ export async function generateDiffSummary(
     } else if (provider === 'gemini') {
       raw = await chatGemini(messages, SUMMARY_SYSTEM, s.geminiApiKey ?? '', s.geminiModel ?? 'gemini-2.0-flash', 512);
     } else if (provider === 'ollama') {
-      raw = await chatOllama(messages, SUMMARY_SYSTEM, s.ollamaModel ?? 'llama3.2', s.ollamaBaseUrl, 512);
+      raw = await chatOllama(messages, SUMMARY_SYSTEM, ollamaModelFor('diffSummary', s), s.ollamaBaseUrl, 512);
     } else if (provider === 'openrouter') {
       raw = await chatOpenRouter(messages, SUMMARY_SYSTEM, s.openrouterApiKey ?? '', s.openrouterModel ?? 'meta-llama/llama-3.1-8b-instruct', 512);
     } else if (provider === 'reckons') {

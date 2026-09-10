@@ -74,10 +74,6 @@ const rows = candidates.map(({ from, to }) => ({
   object: to,
   // Without this the drain writes the object as a literal and the edge becomes a leaf.
   objectKind: 'iri' as const,
-  // Provable by construction: every row here is transcribed from the canonical roadmap graph in
-  // this same run, so the claim "the roadmap says X depends on Y" is re-derivable by reading that
-  // file. Queueing them as questions asked a human to confirm a copy operation.
-  verifiedBy: 'script:queue-dependencies/roadmap-edge',
   kb: 'roadmap',
   type: 'suggestion' as const,
   priority: 'normal' as const,

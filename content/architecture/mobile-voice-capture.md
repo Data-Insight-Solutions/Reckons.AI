@@ -13,12 +13,10 @@ generated: "docs-kb"
 
 # Mobile Voice Capture (Design)
 
-*Concept*
-
 Planned: async voice memo capture on iOS/Android via n8n webhook. Record memo → n8n receives audio → Whisper transcription → extract triples → write to pending.jsonl → appears in review queue on next app load. No mobile app required — uses native voice recorder + Shortcuts/Tasker to POST to webhook.
 
-## Details
+## Detail
 
 **Status**
 
-- planned
+planned

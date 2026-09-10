@@ -68,6 +68,7 @@ site:docs a schema:WebSite ;
     schema:url <https://reckons.ai/docs> ;
     schema:hasPart site:start-here ,
                    site:what-it-does ,
+                   site:user-paths ,
                    site:how-it-works ,
                    site:ai-models ,
                    site:connecting-other-systems ,
@@ -126,6 +127,15 @@ ds:testing a void:Dataset ;
     dcterms:title "Testing" ;
     dcterms:source "docs-testing.ttl" .
 
+# Added 2026-09-08. This graph shipped on 2026-09-06 and was registered in docs-pages.ts ONLY,
+# so the composition design, its corpus and this file all had no idea it existed — and the
+# consolidation gate reported "nothing would be dropped" while composition would have deleted
+# nine published journeys. A docs graph now has to appear in every list, checked by
+# scripts/offline/docs-graph-registration.ts.
+ds:user-paths a void:Dataset ;
+    dcterms:title "User paths" ;
+    dcterms:source "docs-user-paths.ttl" .
+
 # ── The pages ────────────────────────────────────────────────────────────────
 # Every page carries schema:abstract. Composition REFUSES a page without one, because a page
 # nobody can state the point of is precisely what the 269 auto-generated pages already are.
@@ -183,6 +193,15 @@ site:working-safely a schema:WebPage ;
     schema:position 6 ;
     schema:abstract "Keeping a graph trustworthy: what stays on your machine, what leaves, and how facts get checked." ;
     schema:isBasedOn ds:tips-security .
+
+site:user-paths a schema:WebPage ;
+    schema:isPartOf site:docs ;
+    dcterms:isPartOf "User Paths" ;
+    schema:name "What you actually do with it" ;
+    schema:url <https://reckons.ai/docs/user-paths/user-paths> ;
+    schema:position 3 ;
+    schema:abstract "Nine journeys end to end, led by the core loop — add, review, add, review, reckon. Each is grounded in the test that keeps it honest." ;
+    schema:isBasedOn ds:user-paths .
 
 site:where-it-is-going a schema:WebPage ;
     schema:isPartOf site:docs ;

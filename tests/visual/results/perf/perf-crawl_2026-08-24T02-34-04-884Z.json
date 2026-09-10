@@ -1,0 +1,29 @@
+{
+  "schema": "perf-crawl/1",
+  "finishedAt": "2026-08-24T02:34:04.884Z",
+  "baseUrl": "http://127.0.0.1:4181",
+  "renderer": "ANGLE (NVIDIA Corporation, NVIDIA GeForce RTX 3090/PCIe/SSE2, OpenGL 4.5.0)",
+  "softwareRendered": false,
+  "budgetMs": 4000,
+  "longTaskMs": 200,
+  "results": [
+    {
+      "route": "flow:everyday",
+      "timeToUsable": 963,
+      "longTasks": [
+        {
+          "startTime": 1497.6000000014901,
+          "duration": 251,
+          "name": "DLFbtofM.js:FrameRequestCallback 8ms"
+        }
+      ],
+      "worstFrame": 283.29999999999995,
+      "medianFrame": 16.699999999999818,
+      "frozenSpans": [],
+      "failures": [
+        "long task 251ms blocked the main thread (DLFbtofM.js:FrameRequestCallback 8ms)"
+      ],
+      "harnessError": null
+    }
+  ]
+}
