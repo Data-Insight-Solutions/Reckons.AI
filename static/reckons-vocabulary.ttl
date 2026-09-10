@@ -6,6 +6,7 @@
 @prefix ktask:  <urn:kbase:type/task-state/> .
 @prefix kstat:  <urn:kbase:type/review-status/> .
 @prefix klife:  <urn:kbase:type/lifecycle/> .
+@prefix kprio:  <urn:kbase:priority/> .
 @prefix kset:   <urn:kbase:type/set-kind/> .
 @prefix klayer: <urn:kbase:type/layer/> .
 @prefix kshape: <urn:kbase:shape/> .
@@ -437,3 +438,43 @@ kpred:assumption rdfs:label "extraction assumption" ;
 kpred:layer rdfs:label "relation layer" ;
     skos:definition "Which layer of ktype:LayerScheme a PREDICATE belongs to. Declared on the predicate rather than the statement because that makes the boundary a fact a script can enforce instead of a convention that drifts — Matt, 2026-09-09: \"I think its a predicate difference personally.\"" ;
     skos:note "A per-statement override may follow the precedent of kpred:altitude, which fixes one fact where the predicate is usually right. It does not exist yet and should not be added until a real case needs it." .
+
+# =============================================================================
+## PRIORITY — 100 uses in the corpus and, until now, no declared vocabulary.
+##
+## Found 2026-09-10 while adding graph-lint's value-hub check. `kpred:priority`
+## carries "high" (86), "medium" (12) and "low" (2) across static/*.ttl, and
+## nothing checked any of them: a typo would have been accepted in silence, and
+## the value-hub rule could not recognise "high" as a standardized value because
+## no scheme said it was one. Declaring it here is what makes both checks work,
+## and it is the same argument kb:feature-lifecycle-vocab made in 2026-07-12 —
+## the vocabulary belongs in the graph so adding a value is a graph edit.
+# =============================================================================
+
+ktype:PriorityScheme a skos:ConceptScheme ;
+    rdfs:label "Priority" ;
+    skos:definition "How much something matters relative to the other things competing for the same attention." ;
+    skos:note "A PRIORITY IS AN ATTRIBUTE VALUE AND NEVER AN ENTITY. Matt, 2026-09-10, on finding a node called 'high' in his graph: it 'misinterprets a key concept of the graph, with instead a standardized attribute value'. Promoted to a node it inherits the degree of every statement that uses it and reads as one of the most important concepts present, when it is a unit. Where the grouping is genuinely wanted — everything currently high priority — model it as a skos:Collection, which declares what it is." ;
+    skos:note "Most facts carry no priority at all, and that is the normal case rather than an omission. An unprioritised fact is not low priority; it is simply one nobody has ranked." ;
+    skos:hasTopConcept kprio:high, kprio:medium, kprio:low .
+
+kprio:high a skos:Concept ;
+    skos:inScheme ktype:PriorityScheme ;
+    skos:prefLabel "High" ;
+    skos:notation "high" ;
+    hnav:order 1 ;
+    skos:definition "Acts as a blocker or a deadline: something else waits on it, or the cost of leaving it rises with time." .
+
+kprio:medium a skos:Concept ;
+    skos:inScheme ktype:PriorityScheme ;
+    skos:prefLabel "Medium" ;
+    skos:notation "medium" ;
+    hnav:order 2 ;
+    skos:definition "Worth doing and nothing waits on it." .
+
+kprio:low a skos:Concept ;
+    skos:inScheme ktype:PriorityScheme ;
+    skos:prefLabel "Low" ;
+    skos:notation "low" ;
+    hnav:order 3 ;
+    skos:definition "Recorded so it is not lost, and deferring it costs nothing today." .
