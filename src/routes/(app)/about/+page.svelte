@@ -221,6 +221,13 @@
       <div class="hero-ctas">
         <a href="/" class="btn-primary">Open Graph →</a>
         <a href="/ingest" class="btn-secondary">Add your first source</a>
+        <!--
+          THE DOCS HAD NO WAY IN. 142 published pages and, before this, the only link to /docs
+          anywhere in the app was inside /docs itself — so the whole set was reachable only by
+          typing the URL. Both other buttons here ask the reader to START DOING something; a
+          first-time reader who wants to understand it first had nowhere to go.
+        -->
+        <a href="/docs" class="btn-secondary">Read the docs</a>
       </div>
     </div>
     <div class="scroll-hint" aria-hidden="true">↓</div>
@@ -936,6 +943,7 @@
       <a href="/ingest" class="btn-primary">Add your first source →</a>
       <a href="/" class="btn-secondary">Explore the graph</a>
       <a href="/settings" class="btn-secondary">Configure a backend</a>
+      <a href="/docs" class="btn-secondary">Read the docs</a>
     </div>
 
     <!-- Sea creature: flipped graph-fish -->
@@ -1021,6 +1029,7 @@
     </a>
     <p class="mono footer-credit">Developed by <a href="https://data-insight.solutions/" target="_blank" rel="noopener noreferrer">Data Insight Solutions LLC</a></p>
     <div class="footer-links mono">
+      <a href="/docs" class="footer-github">Docs</a>
       <a href="https://github.com/Data-Insight-Solutions/Reckons.AI" target="_blank" rel="noopener noreferrer" class="footer-github">GitHub</a>
       <!-- Design-system pilot: shadcn Button (outline) restyled with utilities to
            match the .footer-github pill exactly — proves the Liquid token mapping. -->
