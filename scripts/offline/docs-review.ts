@@ -228,6 +228,9 @@ async function main(): Promise<void> {
         + `Either explain it once and link to it, or reject this if the term is ordinary for the `
         + `audience of those pages.`,
       type: 'suggestion',
+      // kb:journey-docs is asserted in static/reckons-roadmap.ttl. An unscoped row is retained by
+      // the drain rather than imported, so omitting this silently delivers nothing.
+      kb: 'roadmap',
       agent: 'offline:docs-review',
       // A term unexplained on many pages is a real gap; on one page it is probably fine.
       priority: n >= 3 ? 'medium' : 'low',

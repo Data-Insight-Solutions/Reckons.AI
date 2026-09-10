@@ -238,6 +238,18 @@ async function main(): Promise<void> {
         ? ` ACCEPTING THIS STOPS ${r.p.uses} STATEMENT(S) BEING REVIEWED — provenance auto-confirms. Check the sample values before accepting.`
         : ''),
     type: 'suggestion',
+    /*
+     * WITHOUT `kb` A ROW CAN NEVER BE DELIVERED. drainWorkspacePending refuses to guess a
+     * destination from whichever graph happens to be open — "guessing a destination from the
+     * active tab is how a roadmap finding lands in a user's personal notes" — so an unscoped row
+     * is retained in the file forever and shows up nowhere. The first full run of this job wrote
+     * 355 of them and the review screen correctly reported 0 pending changes.
+     *
+     * `vocabulary` because that is the graph where predicates are DEFINED (ktype:LayerScheme and
+     * every kpred: declaration live in static/reckons-vocabulary.ttl), and a classification is a
+     * fact about a predicate.
+     */
+    kb: 'vocabulary',
     agent: `offline:layer-classify (${MODEL})`,
     // A provenance verdict is the one that removes a human from the loop. It is not a routine
     // suggestion and should not queue as one.
