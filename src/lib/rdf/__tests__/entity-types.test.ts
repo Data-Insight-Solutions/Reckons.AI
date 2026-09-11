@@ -45,7 +45,11 @@ describe('BUILT_IN_TYPES', () => {
     // cone and tetrahedron share the upward triangle in 2D — that's by design.
     // box-flat (the flat page slab) is shared by Document and Web Page — both are
     // flat "page" concepts, differentiated by color and icon (📄 blue vs 🌐 green).
-    const SHARED_GEOMETRIES = new Set(['cone', 'tetrahedron', 'box-flat']);
+    // torus-knot is shared by the TWO SPELLINGS OF ONE TYPE: ktype:EntitySet (F65, still in
+    // graphs in the wild) and skos:Collection (what the app writes since 2026-09-11). They are
+    // deliberately identical in every visible way — a set must not change shape on the canvas
+    // because of which dialect wrote it.
+    const SHARED_GEOMETRIES = new Set(['cone', 'tetrahedron', 'box-flat', 'torus-knot']);
     const geoCounts = new Map<string, string[]>();
     for (const t of BUILT_IN_TYPES) {
       const list = geoCounts.get(t.geometry) ?? [];
@@ -57,6 +61,17 @@ describe('BUILT_IN_TYPES', () => {
       if (SHARED_GEOMETRIES.has(geo)) continue;
       expect(types, `geometry '${geo}' used by: ${types.join(', ')}`).toHaveLength(1);
     }
+  });
+
+  it('the two spellings of Set are visually identical', () => {
+    const sets = BUILT_IN_TYPES.filter((t) => t.label === 'Set');
+    expect(sets).toHaveLength(2);
+    const [a, b] = sets;
+    // If these ever diverge, the same set renders differently depending on which vocabulary
+    // wrote it — the exact confusion merging the two vocabularies was meant to end.
+    expect(a.geometry).toBe(b.geometry);
+    expect(a.color).toBe(b.color);
+    expect(a.icon2d).toBe(b.icon2d);
   });
 
   it('all types have a color string starting with #', () => {

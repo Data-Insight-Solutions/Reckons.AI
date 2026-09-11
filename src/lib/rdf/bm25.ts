@@ -30,6 +30,39 @@ export type BM25Result = {
 const K1 = 1.5;
 const B  = 0.75;
 
+/*
+ * STRUCTURAL ROWS DO NOT COMPETE WITH FACTS — see mcp-server/src/search.ts for the measurement
+ * and the reasoning. Duplicated here for the same reason the algorithm is: this module must not
+ * pull the server into the browser bundle. The two weights must stay in step; if one changes,
+ * `set-complexity` re-measures both.
+ */
+const MEMBERSHIP_PREDICATES = new Set([
+  'http://www.w3.org/2004/02/skos/core#member',
+  'urn:kbase:predicate/has-member',
+  'member',
+  'has-member',
+]);
+const ORDER_PREDICATES = new Set([
+  'urn:kbase:predicate/member-order',
+  'urn:kbase:predicate/in-set',
+  'urn:kbase:predicate/member-entity',
+  'member-order',
+  'in-set',
+  'member-entity',
+]);
+
+/**
+ * A multiplier on a row's BM25 score, by what KIND of row it is. 1.0 for an ordinary fact.
+ *
+ * Accepts a bare local name as well as a full IRI, because BM25Doc.predicate is whatever the
+ * caller put there and both spellings are in use.
+ */
+export function structuralWeight(predicate: string): number {
+  if (ORDER_PREDICATES.has(predicate)) return 0.1;
+  if (MEMBERSHIP_PREDICATES.has(predicate)) return 0.2;
+  return 1;
+}
+
 function tokenize(text: string): string[] {
   return text
     .toLowerCase()
@@ -88,7 +121,10 @@ export class BM25Index {
 
     const results: BM25Result[] = [];
     for (let i = 0; i < this.N; i++) {
-      if (scores[i] > 0) results.push({ id: this.docs[i].id, score: scores[i], doc: this.docs[i] });
+      if (scores[i] > 0) {
+        const doc = this.docs[i];
+        results.push({ id: doc.id, score: scores[i] * structuralWeight(doc.predicate), doc });
+      }
     }
 
     return results

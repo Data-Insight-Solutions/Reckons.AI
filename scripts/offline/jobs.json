@@ -280,6 +280,14 @@
       "desc": "F187: every skos:member must resolve to something that exists. A dangling member does not read to a reader as an error, it reads as a promise — the five-move sets named three entities that did not exist and the page said they were 'covered inside the pages above'."
     },
     {
+      "name": "set-complexity",
+      "tier": "script",
+      "enabled": true,
+      "blocking": false,
+      "cmd": "npx tsx scripts/offline/set-complexity.ts --quiet",
+      "desc": "Matt, 2026-09-11: 'anything above and beyond standard triples is worth deep complexity analysis. Search and compute should not suffer greatly.' Measures what sets cost in storage, SEARCH CROWDING, compute and terms-to-learn, reporting plain sets, ordered sets and page blocks apart so they can be bought or refused separately."
+    },
+    {
       "name": "layer-risk",
       "tier": "script",
       "enabled": true,

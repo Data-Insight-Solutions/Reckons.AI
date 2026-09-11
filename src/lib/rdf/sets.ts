@@ -28,12 +28,32 @@
 const SKOS = 'http://www.w3.org/2004/02/skos/core#';
 const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 const KPRED = 'urn:kbase:predicate/';
+const KTYPE = 'urn:kbase:type/';
 
 export const COLLECTION = `${SKOS}Collection`;
 export const ORDERED_COLLECTION = `${SKOS}OrderedCollection`;
 export const MEMBER = `${SKOS}member`;
 export const PREF_LABEL = `${SKOS}prefLabel`;
 export const DEFINITION = `${SKOS}definition`;
+
+/*
+ * THE APP'S OWN GROUPING VOCABULARY, READ AS AN EQUAL (2026-09-11).
+ *
+ * F65 shipped `ktype:EntitySet` + `kpred:has-member` + `rdfs:label` and the graph canvas still
+ * writes it; F187 chose `skos:Collection` + `skos:member` + `skos:prefLabel` and this module read
+ * only that. So for three days EVERY SET A USER MADE IN THE APP WAS INVISIBLE TO THE SETS LAYER —
+ * including the two that ship in static/knowledge.ttl and static/starter-everyday.ttl, which
+ * `set-integrity` and `set-pages` therefore never saw. Found by grepping both vocabularies rather
+ * than by any test, because each half was internally consistent and neither knew about the other.
+ *
+ * The roadmap already called this a rename rather than a rebuild (kb:set-semantics, .measured):
+ * the two shapes are isomorphic. So READ BOTH, FOREVER — old graphs and hand-written TTL keep
+ * working — and WRITE SKOS, which `buildEntitySet` now does. This is not a migration with an end
+ * date; it is a reader that accepts the dialect it is handed.
+ */
+export const ENTITY_SET_TYPE = `${KTYPE}EntitySet`;
+export const HAS_MEMBER = `${KPRED}has-member`;
+export const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
 export const SET_KIND = `${KPRED}set-kind`;
 export const MEMBER_ORDER = `${KPRED}member-order`;
 export const SET_RELATES_TO = `${KPRED}set-relates-to`;
@@ -83,6 +103,8 @@ export function membershipIri(setIri: string, memberIri: string): string {
 export function readSets(quads: SetQuad[], notationOf: Map<string, string> = new Map()): EntitySet[] {
   const isSet = new Map<string, boolean>();
   const label = new Map<string, string>();
+  /* rdfs:label is the F65 spelling. Kept apart so skos:prefLabel always wins where both exist. */
+  const fallbackLabel = new Map<string, string>();
   const definition = new Map<string, string>();
   const kind = new Map<string, string>();
   const members = new Map<string, string[]>();
@@ -98,13 +120,17 @@ export function readSets(quads: SetQuad[], notationOf: Map<string, string> = new
     const o = q.object.value;
     switch (p) {
       case RDF_TYPE:
-        if (o === COLLECTION) isSet.set(s, isSet.get(s) ?? false);
+        if (o === COLLECTION || o === ENTITY_SET_TYPE) isSet.set(s, isSet.get(s) ?? false);
         else if (o === ORDERED_COLLECTION) isSet.set(s, true);
         break;
       case PREF_LABEL: label.set(s, o); break;
+      case RDFS_LABEL: fallbackLabel.set(s, o); break;
       case DEFINITION: definition.set(s, o); break;
       case SET_KIND: kind.set(s, o); break;
-      case MEMBER: members.set(s, [...(members.get(s) ?? []), o]); break;
+      case MEMBER:
+      case HAS_MEMBER:
+        members.set(s, [...(members.get(s) ?? []), o]);
+        break;
       case SET_RELATES_TO: relates.set(s, [...(relates.get(s) ?? []), o]); break;
       case MEMBER_ORDER: {
         const n = Number.parseInt(o, 10);
@@ -146,7 +172,7 @@ export function readSets(quads: SetQuad[], notationOf: Map<string, string> = new
     const kindIri = kind.get(iri);
     out.push({
       iri,
-      label: label.get(iri) ?? localName(iri),
+      label: label.get(iri) ?? fallbackLabel.get(iri) ?? localName(iri),
       definition: definition.get(iri) ?? '',
       kind: kindIri ? (notationOf.get(kindIri) ?? localName(kindIri)) : null,
       ordered,

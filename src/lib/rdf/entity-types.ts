@@ -241,6 +241,28 @@ export const BUILT_IN_TYPES: EntityTypeDef[] = [
       'urn:kbase:predicate/description'
     ],
     builtIn: true
+  },
+  /*
+   * The SAME type under its standard name. New sets are written as skos:Collection (2026-09-11);
+   * without this entry they would render as untyped nodes — no torus-knot, no ⬡, no schema
+   * predicates in the node panel — while the legacy ones above kept all three.
+   *
+   * Two entries rather than one renamed entry, because graphs in the wild carry the old type and
+   * re-typing them on read would be a silent rewrite of somebody's data.
+   */
+  {
+    iri: 'http://www.w3.org/2004/02/skos/core#Collection',
+    label: 'Set',
+    geometry: 'torus-knot',
+    color: '#a78bfa',
+    description: 'A grouping of entities — members overlap rather than partition, and the group carries facts of its own',
+    icon2d: '⬡',
+    schemaPredicates: [
+      'http://www.w3.org/2004/02/skos/core#member',
+      'http://www.w3.org/2004/02/skos/core#definition',
+      'urn:kbase:predicate/set-kind'
+    ],
+    builtIn: true
   }
 ];
 

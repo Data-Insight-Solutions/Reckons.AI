@@ -17,7 +17,10 @@ const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 const ENTITY_TYPE = 'urn:kbase:type/EntityType';
 const LEAP_PRED = 'urn:reckons:leap';
 const NAV_NS = 'urn:reckons:nav/';
+/* Both spellings of membership — see src/lib/rdf/entity-sets.ts. A set written in either dialect
+ * is equally destructive to delete, so protection must not depend on which one wrote it. */
 const HAS_MEMBER = 'urn:kbase:predicate/has-member';
+const SKOS_MEMBER = 'http://www.w3.org/2004/02/skos/core#member';
 
 export type EntityProtection = { protected: boolean; reason?: string };
 
@@ -39,7 +42,7 @@ export function entityProtection(iri: string, statements: Statement[]): EntityPr
     if (!isActive(s)) continue;
 
     // This entity is a SET that groups other nodes.
-    if (s.s.kind === 'iri' && s.s.value === iri && s.p.value === HAS_MEMBER) memberCount++;
+    if (s.s.kind === 'iri' && s.s.value === iri && (s.p.value === HAS_MEMBER || s.p.value === SKOS_MEMBER)) memberCount++;
 
     // Other nodes typed AS this entity → it's a type in use.
     if (s.p.value === RDF_TYPE && s.o.kind === 'iri' && s.o.value === iri && s.s.value !== iri) {

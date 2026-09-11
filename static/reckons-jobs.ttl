@@ -369,6 +369,15 @@ job:server-health rdf:type          ktype:OfflineJob ;
     kpred:job-enabled   "true" ;
     kpred:job-blocking  "false" .
 
+job:set-complexity rdf:type          ktype:OfflineJob ;
+    rdfs:label          "set-complexity" ;
+    skos:prefLabel      "set-complexity" ;
+    skos:definition     "Matt, 2026-09-11: 'anything above and beyond standard triples is worth deep complexity analysis. Search and compute should not suffer greatly.' Measures what sets cost in storage, SEARCH CROWDING, compute and terms-to-learn, reporting plain sets, ordered sets and page blocks apart so they can be bought or refused separately." ;
+    kpred:job-tier      "script" ;
+    kpred:command       "npx tsx scripts/offline/set-complexity.ts --quiet" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "false" .
+
 job:set-integrity rdf:type          ktype:OfflineJob ;
     rdfs:label          "set-integrity" ;
     skos:prefLabel      "set-integrity" ;
@@ -449,9 +458,9 @@ jobset:agent rdf:type      skos:Collection ;
 jobset:script rdf:type      skos:Collection ;
     skos:prefLabel      "script tier" ;
     skos:definition     "Deterministic, zero tokens, no model. Right by construction and runs in CI. The work-tiering ladder says to grow this tier in preference to the others, and it is the larger one." ;
-    skos:member         job:alignment-sweep, job:altitude-report, job:build-guard, job:button-crawl, job:claim-audit, job:code-sprawl, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:safety-attestation, job:scope-check, job:server-health, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:status-evidence, job:tenet-align, job:untested-options .
+    skos:member         job:alignment-sweep, job:altitude-report, job:build-guard, job:button-crawl, job:claim-audit, job:code-sprawl, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:safety-attestation, job:scope-check, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:status-evidence, job:tenet-align, job:untested-options .
 
 jobset:all rdf:type          skos:Collection ;
     skos:prefLabel      "Offline jobs" ;
-    skos:definition     "Every job the offline sweep can run — 47 of them, 38 needing no model at all." ;
+    skos:definition     "Every job the offline sweep can run — 48 of them, 39 needing no model at all." ;
     skos:member         jobset:agent, jobset:script .
