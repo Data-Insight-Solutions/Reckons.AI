@@ -1,5 +1,5 @@
 {
-  "built": 132,
+  "built": 139,
   "pages": [
     {
       "path": "architecture/claude-md-minimal",
@@ -881,7 +881,7 @@
       "factHash": "9e6c2ff3d6ac3baf",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "7631800110ba4fae"
+      "pageHash": "4efb4f628e0563fd"
     },
     {
       "path": "triples-rdf/rdf",
@@ -890,7 +890,70 @@
       "factHash": "f8535793163b42e5",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "a37267c156c74af7"
+      "pageHash": "44f13c81fec2ee20"
+    },
+    {
+      "path": "triples-rdf/review-workflow",
+      "entity": "urn:reckons:arch/ReviewWorkflow",
+      "graph": "docs-triples-rdf.ttl",
+      "factHash": "f238ce9a0dd935bc",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "a78abd53cabac78f"
+    },
+    {
+      "path": "triples-rdf/set-architecture",
+      "entity": "urn:reckons:arch/SetArchitecture",
+      "graph": "docs-triples-rdf.ttl",
+      "factHash": "cd2a3b25a1ff8654",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "c7cbe59f73d5c5ab"
+    },
+    {
+      "path": "triples-rdf/set-in-extraction",
+      "entity": "urn:reckons:arch/SetInExtraction",
+      "graph": "docs-triples-rdf.ttl",
+      "factHash": "51f69f3cb9c05431",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "cf9ec61edd9c616f"
+    },
+    {
+      "path": "triples-rdf/set-membership-word",
+      "entity": "urn:reckons:arch/SetMembershipWord",
+      "graph": "docs-triples-rdf.ttl",
+      "factHash": "9ac041261dcc48ac",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "e650bb238e434ef5"
+    },
+    {
+      "path": "triples-rdf/set-order",
+      "entity": "urn:reckons:arch/SetOrder",
+      "graph": "docs-triples-rdf.ttl",
+      "factHash": "21b38a207925348e",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "03b22c290ec9eb7d"
+    },
+    {
+      "path": "triples-rdf/set-overlap",
+      "entity": "urn:reckons:arch/SetOverlap",
+      "graph": "docs-triples-rdf.ttl",
+      "factHash": "16cfbb492b103243",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "7d2431487ec84486"
+    },
+    {
+      "path": "triples-rdf/set-vs-triple",
+      "entity": "urn:reckons:arch/SetVsTriple",
+      "graph": "docs-triples-rdf.ttl",
+      "factHash": "7334749eb49e6b28",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "5bd0a983b060409c"
     },
     {
       "path": "triples-rdf/triple-architecture",
@@ -899,7 +962,7 @@
       "factHash": "26af549136a3289f",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "a0befc3095b75b8b"
+      "pageHash": "3afa62b6e4268514"
     },
     {
       "path": "triples-rdf/turtle",
@@ -908,7 +971,7 @@
       "factHash": "6aecd139be76db04",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "9ca708b1aca31262"
+      "pageHash": "ed7e1413ae9620b1"
     },
     {
       "path": "use-cases/academic-research-group",

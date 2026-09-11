@@ -74,7 +74,9 @@ Subject: the entity being described (always an IRI). Predicate: the relationship
 
 <details class="accordion"><summary>The Review Workflow</summary>
 
-1. Ingest -- paste text, upload documents, import calendars. 2. Review -- the LLM extracts triples, you confirm or reject each one. 3. Explore -- navigate your 3D knowledge graph. 4. Ask Shelly -- get answers grounded in your confirmed facts. 5. Share -- export your .ttl.
+1.
+
+[Read more](../triples-rdf/review-workflow)
 
 </details>
 

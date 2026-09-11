@@ -39,6 +39,12 @@ nav:BackToHub
 ## The Semantic Triple Architecture
 ## =============================================================================
 
+## Sets sit BESIDE the triple as the second unit, not under it. Added 2026-09-11
+## when grouping became part of extraction rather than only of the docs site.
+## Written for a first-time reader: no jargon is used here that is not explained
+## in the sentence that uses it (kb:journey-docs — unexplained jargon is a defect,
+## not a style choice).
+
 arch:TripleArchitecture
     rdf:type            ktype:Concept ;
     kpred:render-as     "accordion" ;
@@ -133,10 +139,66 @@ arch:ReviewWorkflow
     rdf:type            ktype:Document ;
     rdf:type            skos:Concept ;
     rdfs:label          "The Review Workflow" ;
-    skos:definition     "1. Ingest -- paste text, upload documents, import calendars. 2. Review -- the LLM extracts triples, you confirm or reject each one. 3. Explore -- navigate your 3D knowledge graph. 4. Ask Shelly -- get answers grounded in your confirmed facts. 5. Share -- export your .ttl." ;
+    skos:definition     "1. Ingest -- paste text, upload documents, import calendars. 2. Review -- the AI proposes facts and, where your text already grouped things, the groups they belong to; you confirm or reject each one. 3. Explore -- navigate your 3D knowledge graph. 4. Ask Shelly -- get answers grounded in your confirmed facts. 5. Share -- export your .ttl." ;
+    skos:related        arch:SetInExtraction ;
     skos:broader        arch:TripleArchitecture ;
     skos:related        feat:Ingest ;
     skos:related        feat:ReviewSystem .
+
+
+## =============================================================================
+## Sets — the second unit of knowledge
+## =============================================================================
+
+arch:SetArchitecture
+    rdf:type            ktype:Concept ;
+    kpred:render-as     "accordion" ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "The Set" ;
+    hnav:order          25 ;
+    skos:definition     "A set is a named group of things, and it is made of ordinary statements just like everything else here. Where a triple says something about ONE thing, a set says something about SEVERAL at once -- that these three vendors are the shortlist, that these five steps are the recipe. It has a name, a description and facts of its own, so you can say things about the group without saying them about each member." ;
+    skos:note           "You may see the word Collection in exported files. It is the same thing under its standard name -- Reckons.AI writes sets as skos:Collection so other tools can read them." ;
+    skos:related        arch:TripleArchitecture .
+
+arch:SetVsTriple
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "What a set says that triples cannot" ;
+    skos:definition     "Triples alone cannot tell the difference between a fact about a GROUP and the same fact about each of its members. 'The team weighs 800 kilos' and 'each person on the team weighs 800 kilos' come out identical if the only thing you can describe is one member at a time. Giving the group its own name and its own facts separates them. That is the one thing a set genuinely adds, and it is why sets are part of the substrate rather than a way of laying out a page." ;
+    skos:broader        arch:SetArchitecture ;
+    skos:example        "A set called 'DAM shortlist' can carry 'decided on 2026-08-14' and 'three of eleven considered' -- facts about the shortlist, true of no single vendor in it." .
+
+arch:SetOverlap
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Membership overlaps -- it does not file things away" ;
+    skos:definition     "A thing can belong to as many sets as it really belongs to. A vendor can be on the shortlist AND already deployed; a person can be in the project team AND the football team. This is the difference between a set and a folder: a folder makes you choose one home for a thing, and choosing wrongly hides it. Where two sets share members, that shared part is itself worth looking at -- Reckons.AI works it out rather than asking you to maintain a list of related things by hand." ;
+    skos:broader        arch:SetArchitecture ;
+    skos:note           "This turned out to be the hard part for automatic grouping. In a benchmark of four local AI models across five runs each, not one ever put a single thing into two sets -- every model filed each thing in exactly one place. It is the main reason grouping here does not rely on a model." .
+
+arch:SetOrder
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "Order belongs to the membership, not to the member" ;
+    skos:definition     "Some sets are sequences -- the steps of a recipe, the stages of a process. When order matters, the position is recorded against the PAIR of set-and-member rather than against the member, because the same thing can be third in one sequence and first in another. A step is not inherently step four; it is step four of this particular process." ;
+    skos:broader        arch:SetArchitecture ;
+    skos:note           "Most sets are not sequences and pay nothing for this. Ordering a set costs about four times as much storage per member as leaving it unordered, so it is worth applying only where the sequence actually carries meaning." .
+
+arch:SetMembershipWord
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "A set can keep your own word for membership" ;
+    skos:definition     "Most groupings already exist in your notes under a word you chose -- a project 'includes' these tasks, a menu 'offers' these dishes. Reckons.AI can mark that thing as a set without rewriting any of it, by recording which of your words carries the membership. Your vocabulary is kept; nothing is duplicated; and the group becomes something you can name, describe and view as a whole." ;
+    skos:broader        arch:SetArchitecture ;
+    skos:example        "'Project Ash includes design, build, handover' stays exactly as written. One extra fact says Project Ash is a set, and another says that 'includes' is what its membership is carried by." .
+
+arch:SetInExtraction
+    rdf:type            ktype:Concept ;
+    rdf:type            skos:Concept ;
+    rdfs:label          "How groups are found when you add something" ;
+    skos:definition     "When you add a note or a document, Reckons.AI looks for groups in what it just read, as a separate step after it has worked out the individual facts. It only proposes a group where your text already put several things under one heading -- it does not guess that a list is a group, and it never adds one on its own. Every proposal waits for you in Review, and it says why it grouped what it did." ;
+    skos:broader        arch:SetArchitecture ;
+    skos:note           "It says what it REFUSED as well as what it found. A grouping step that only reports its successes looks cleverer than it is -- in the benchmark that informed this, the two models with a perfect record for not over-grouping achieved it by never grouping anything at all." .
 
 
 ## =============================================================================

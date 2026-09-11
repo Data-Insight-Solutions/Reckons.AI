@@ -361,7 +361,7 @@ kb:test-unit        rdf:type     ktype:TestCategory ;
                     kpred:checks   "prefer-local routing" ;
                     kpred:checks   "graph publishing (site export/import)" ;
                     kpred:checks   "web-page model" ;
-                    kpred:expected-result "2997 tests pass across 208 files (web app); mcp-server adds 146 vitest + 10 node:test tests. Measured 2026-09-10." .
+                    kpred:expected-result "3023 tests pass across 209 files (web app); mcp-server adds 150 vitest + 10 node:test tests. Measured 2026-09-11." .
 
 kb:test-e2e         rdf:type     ktype:TestCategory ;
                     rdfs:label   "E2E Tests" ;
