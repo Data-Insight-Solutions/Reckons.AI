@@ -1,6 +1,100 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-09-10 (evening).** On `feat/sets-compose-pages` (**PR #234**, base `dev`, 73 commits —
+**Last updated: 2026-09-11.** On `feat/sets-and-statements` (branched off `feat/sets-compose-pages`),
+four commits, not yet pushed or PR'd. Nothing on `main`.
+
+## ▶ SESSION 2026-09-11 — sets through extraction, and what grouping costs
+
+Matt: *"if we have not yet refactored to include both Sets and Triples within extraction steps,
+and throughout the app and documentation, then please continue that"* — then, mid-session, the two
+questions that shaped it: **is there anything triples + sets cannot describe**, and **are sets
+worth the complexity, because search and compute must not suffer.**
+
+### THE BUG THAT WAS SITTING THERE: two grouping vocabularies, neither aware of the other
+F65 shipped `ktype:EntitySet` + `kpred:has-member` and the canvas still writes it; F187 chose
+`skos:Collection` + `skos:member` and `sets.ts` read only that. Each half passed its own tests, so
+nothing failed — **every set a user made in the app was invisible to the sets layer**, including
+the two that ship in `static/knowledge.ttl` and `static/starter-everyday.ttl`. `readSets` now reads
+both; `buildEntitySet` writes SKOS (keeping `rdfs:label` beside `prefLabel`, or a new set renders
+as a bare IRI). Found by grepping, not by a test. There is now a test that crosses the seam.
+
+### WHAT SETS COST — measured, and one cost was real
+`scripts/offline/set-complexity.ts` (new, script-tier gate, 36/36 sweep) over 17k quads:
+storage **1.07%**, compute **1.9x a plain scan** on a 4ms pass — both noise. **Search was not
+noise**: BM25 makes one document per statement, so membership rows competed with facts —
+**11 of 25 member-name queries had one in the top 10, and 5 of 25 lost a real result.** Structural
+rows are now downweighted in both search implementations (`0.2`, a swept plateau, not a guess:
+0.5/0.3/0.2/0.15/0.05 → 3/2/1/1/1 displaced). **5 → 1.** The survivor is genuinely the strongest
+lexical match and is reported, not tuned away.
+
+**Verdict: plain sets keep; ordered sets cost 4x per member and should be bought deliberately;
+page blocks (F187.5) are 6 local terms with 0 standard behind them and are the part to scrutinize.**
+
+### SETS ARE IN EXTRACTION NOW — deterministic, arm (c)
+New `group` stage between `type` and `archive` (`ExtractionStageName` gained it). It recognizes
+groupings the graph ALREADY STATES rather than asking a model, which is what the work-tiering
+ladder and the 2026-09-09 bench both said to do first. **A derived set costs TWO quads, not N+2**:
+it declares `skos:Collection` and names the carrying predicate with `kpred:member-predicate`
+instead of restating N edges — so no duplicated facts and no new rows in the search index.
+
+**IT SCORED 0% ON THE FIRST REAL GRAPH AND THAT WAS THE VALUABLE PART.** Four sets proposed over
+personal-notes, four wrong; three grouped by `kpred:extracted-from`. That predicate sits under
+`urn:kbase:predicate/` like every claim, so F194's reader fell through to the `claim` fail-safe —
+**every MCP tool response had been filing provenance alongside what the graph knows.** Now
+declared in `reckons-vocabulary.ttl` and in both layer readers. A bug in one feature found a
+misclassification affecting three, and the fix was one classification, not one more exclusion list.
+After it: personal-notes 0 proposed / 4 refused (correct — it states no groupings); roadmap 23,
+all real (`integrations has-integration` 8, `stabilization-trust-boundaries has-part` 9).
+
+### THE ROUND-TRIP CLAIM IS NO LONGER UNTESTED
+F187.2 asserted sets "round-trip exactly like any other fact" on the strength of the reasoning
+that produced it. Eight cases now check it. **The ordered case is the one that mattered**: the
+skolemised membership node chosen over `rdf:List` survives, byte-identical across two parses in
+one process — the exact condition that broke `rdf:List`. Overlap survives too.
+
+### ⚠ WAITING ON MATT — two principle decisions, one answered and one half-answered
+1. **SET CLOSURE: decided.** `kpred:members-complete`, default open. *Not yet built* — the
+   vocabulary, the reader and the review affordance are all still to do.
+2. **ABSENCE/POLARITY: half-decided and this is the open one.** Matt wants set polarity AND asks
+   whether a *predicate* can carry it rather than a substrate field. He then sharpened it:
+   *"Questions are 'open' versus claims which are closed. Maybe we need a 'we don't know yet'
+   predicate, that is different than a question?"* — which is a real three-way distinction the app
+   collapses into one today:
+   - **question** — open, someone waits (`needsObject`, `askedBy`, `blocks`). A task.
+   - **asserted unknown** — CLOSED, positive claim about the state of knowledge. Falsifiable.
+     **Does not exist.**
+   - **negative claim** — "X does not have Y". **Does not exist**; today it is ad-hoc vocabulary
+     (`kpred:capability-gap`, `kpred:we-avoid`), which is exactly how the video contradiction
+     survived sixteen days.
+
+   Hard constraint found: **RDF cannot serialize a negative triple.** So whatever is held in
+   memory, on disk it must be a declared predicate or a reified node — the same mirror pattern
+   already used for order. Nothing built; needs Matt's call on shape before it is.
+
+3. **NAMING: "Statements and Groups"?** Matt asked. My read: **"Statement" yes — it is not even a
+   rename**, `types.ts` already says `export type Statement`, and "triple" is both drift and
+   *wrong* (the record is a quad plus eight fields). **"Group" over "Set": hold** — the argument
+   for it is good (a mathematical set is unordered, duplicate-free and defined by membership alone;
+   ours are ordered, named, typed, overlapping — a reader who knows "set" will be wrong four
+   times), but there is an unfinished KB→graph rename in flight (`terminology.ts`) and this session
+   was spent fixing a bug caused by two names for one thing. Land one rename before starting
+   another. On disk it stays `skos:Collection` regardless.
+
+### Still open on sets
+Review is the unsolved half — a set is confirmed row by row, not as one decision. Smaller than it
+was (two rows, folded into an existing entity card) but not yet a grouping decision; it bootstraps
+on `kb:loop-job-grouping`. Stages 6 (SET ATTRIBUTES) and 7 (ORDER) untouched.
+`tests/fixtures/notes-corpus/expectations.json` still carries no set expectations, so model arms
+(b) and (d) remain unmeasurable even though arm (c) has real numbers.
+
+### Verification
+Full suite **3023/3023 across 209 files** · mcp **150 + 10** · svelte-check **4213 files 0 errors**
+· `offline --tier=script` **36/36** · graph-lint **0 errors** · set-integrity 0 · md-align **149/149**
+· kb-align **no discrepancies** (fixed a stale claim: production.ttl said 2997 tests / 208 files).
+
+---
+
+**Previously — 2026-09-10 (evening).** On `feat/sets-compose-pages` (**PR #234**, base `dev`, 73 commits —
 the whole unmerged docs chain). Nothing pushed to `main`. Supersedes PR #228.
 
 ## ▶ WAITING ON MATT
