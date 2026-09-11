@@ -6,6 +6,7 @@ import { extractWithWasm } from '../integrations/llm/wasm';
 import { extractWithOllama } from '../integrations/llm/ollama-extract';
 import { chatOpenAI, chatGemini, chatOpenRouter, chatChromeAI, chatReckons } from '../integrations/llm/providers';
 import { triplesToStatements, extractMock, parseTriplesJSONWithReport, validateExtractedTriples, EXTRACTION_SYSTEM_PROMPT, buildExtractionUserPrompt, type ExtractedTriple } from '../integrations/llm/extractor';
+import { deriveSets, derivedSetStatements } from '../rdf/set-derive';
 import { computeDiff, type Diff } from '../rdf/diff';
 import { rejectCollapsedTriples } from '../rdf/triple-shape';
 import { selectKnownClaims, buildClaimsSection } from '../rdf/claims-context';
@@ -600,6 +601,69 @@ export async function ingest(
       `[ingest] Typed ${typeSurvey.proposals.length} entities; ${typeSurvey.undecided.length} left untyped for the user`,
     );
     run = finishExtractionStage(run, activeRunStage);
+    await saveExtractionRun(run);
+
+    /*
+     * GROUPING (F187.3, arm c) — the fifth of the nine extraction stages, and deterministic.
+     *
+     * Runs AFTER `type` because a grouping is only meaningful once its members are canonical
+     * entities: deriving before normalize would group "common-octopus" separately from
+     * "octopus-vulgaris" and propose two sets where the graph has one.
+     *
+     * WHY NO MODEL. The roadmap names four arms and says which to try first (kb:staged-extraction):
+     * derive deterministically before prompting anything. The set bench earned that ordering — the
+     * best local model found 10 of 15 sets at 0.44 precision, and OVERLAP, the capability
+     * skos:Collection was chosen for, scored 0 of 5 across every model and every run. A rule that
+     * recognizes a grouping already stated cannot invent a member.
+     *
+     * Like a proposed type, a proposed set does not ADD a review row: both statements land on an
+     * entity that already has pending facts, so the existing card gets fuller rather than the queue
+     * getting longer.
+     */
+    activeRunStage = 'group';
+    run = startExtractionStage(run, activeRunStage);
+    {
+      const RDF_TYPE_IRI = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
+      const SET_TYPES = new Set([
+        'http://www.w3.org/2004/02/skos/core#Collection',
+        'http://www.w3.org/2004/02/skos/core#OrderedCollection',
+        'urn:kbase:type/EntitySet',
+      ]);
+      const alreadySets = new Set<string>();
+      for (const st of [...existingStmts, ...newStatements]) {
+        if (st.p.value === RDF_TYPE_IRI && st.o.kind === 'iri' && SET_TYPES.has(st.o.value)) {
+          alreadySets.add(st.s.value);
+        }
+      }
+
+      /*
+       * Derived over new AND existing statements together, because this ingest may COMPLETE a
+       * grouping that two earlier facts started — that case is the most useful one and deriving
+       * over the new batch alone would miss it.
+       *
+       * But only candidates THIS RUN CONTRIBUTED TO are proposed. Without that filter every ingest
+       * would re-propose every grouping in the graph, and a queue that repeats itself is one
+       * nobody reads.
+       */
+      const fromThisRun = new Set(newStatements.map((st) => `${st.s.value}\u0000${st.p.value}`));
+      const { derived, whyNot } = deriveSets([...existingStmts, ...newStatements], alreadySets);
+      const fresh = derived.filter((d) => fromThisRun.has(`${d.iri}\u0000${d.via}`));
+
+      const proposals = fresh.flatMap((d) => derivedSetStatements(d, { id: source.id, graph: newStatements[0].g.value }));
+      if (proposals.length > 0) {
+        newStatements = [...newStatements, ...proposals.map((st) => ({ ...st, extractionRunId: run.id }))];
+      }
+      // Refusals reported as loudly as finds (kb:honest-status). A rule that only ever announces
+      // what it found looks more capable than it is, and its blind spots stay invisible.
+      console.info(
+        `[ingest/F187.3] grouped ${fresh.length} candidate set(s) from ${derived.length} in graph; ` +
+        `${whyNot.length} refused (${[...new Set(whyNot.map((w) => w.reason))].join('; ') || 'none'})`,
+      );
+      run = finishExtractionStage(
+        run, activeRunStage, 'succeeded',
+        `${fresh.length} candidate set(s); ${whyNot.length} refused`,
+      );
+    }
     await saveExtractionRun(run);
 
     activeRunStage = 'archive';

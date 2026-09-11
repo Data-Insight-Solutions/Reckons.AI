@@ -57,6 +57,31 @@ export const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
 export const SET_KIND = `${KPRED}set-kind`;
 export const MEMBER_ORDER = `${KPRED}member-order`;
 export const SET_RELATES_TO = `${KPRED}set-relates-to`;
+
+/**
+ * MEMBERSHIP BY DECLARATION — a set that costs 2 quads instead of N+2 (2026-09-11).
+ *
+ * A graph almost always states its groupings already, under its own word:
+ *
+ *     kb:dam-shortlist  kpred:includes  kb:aprimo, kb:opentext, kb:bynder .
+ *
+ * That IS a set. Making it readable as one by restating every edge as skos:member would duplicate
+ * N facts to add no information, and — measured, not assumed — every duplicate is another BM25
+ * document competing with real facts (scripts/offline/set-complexity.ts: membership rows displaced
+ * a real result in 5 of 25 queries before weighting). So instead the set NAMES the predicate its
+ * membership is already carried by:
+ *
+ *     kb:dam-shortlist  a skos:Collection ; kpred:member-predicate kpred:includes .
+ *
+ * Two quads, regardless of how many members, and NO new membership rows in the index at all. It is
+ * also the honest encoding: it records that this graph's word for membership is `includes`, rather
+ * than overwriting the author's vocabulary with ours.
+ *
+ * skos:member still works and is still what an authored set uses. This is an ADDITIONAL route in,
+ * for the far commoner case of a grouping that already exists under another name — which is what
+ * makes deterministic derivation possible at all (see src/lib/rdf/set-derive.ts).
+ */
+export const MEMBER_PREDICATE = `${KPRED}member-predicate`;
 /** Skolemised membership: <set>/member/<member-local-name> carries the ordinal for that pair. */
 export const IN_SET = `${KPRED}in-set`;
 export const HAS_MEMBER_ENTITY = `${KPRED}member-entity`;
@@ -84,6 +109,13 @@ export interface EntitySet {
   members: SetMember[];
   /** Other sets, or entities, this set points at. */
   relatesTo: string[];
+  /**
+   * Predicates this set's membership is carried by, instead of skos:member. Empty for an authored
+   * set. Non-empty means the grouping was already in the graph under the author's own word — worth
+   * showing a reviewer, because it is the difference between "somebody grouped these" and "these
+   * were already grouped and we noticed".
+   */
+  memberPredicates: string[];
 }
 
 const localName = (iri: string): string => iri.split(/[/#]/).filter(Boolean).pop() ?? iri;
@@ -113,6 +145,8 @@ export function readSets(quads: SetQuad[], notationOf: Map<string, string> = new
   const ordinalOf = new Map<string, number>();
   const memberOfNode = new Map<string, string>();
   const setOfNode = new Map<string, string>();
+  /** set IRI -> predicates that already carry its membership (kpred:member-predicate). */
+  const declaredVia = new Map<string, Set<string>>();
 
   for (const q of quads) {
     const s = q.subject.value;
@@ -137,9 +171,31 @@ export function readSets(quads: SetQuad[], notationOf: Map<string, string> = new
         if (Number.isFinite(n)) ordinalOf.set(s, n);
         break;
       }
+      case MEMBER_PREDICATE: {
+        const set = declaredVia.get(s) ?? new Set<string>();
+        set.add(o);
+        declaredVia.set(s, set);
+        break;
+      }
       case IN_SET: setOfNode.set(s, o); break;
       case HAS_MEMBER_ENTITY: memberOfNode.set(s, o); break;
       default: break;
+    }
+  }
+
+  /*
+   * SECOND PASS — members carried by a declared predicate. Separate from the first because a
+   * declaration can appear after the edges it describes, and a single pass would miss those.
+   * Still O(n) and still one allocation-free scan; compute measured at ~2ms over 17k quads.
+   */
+  if (declaredVia.size > 0) {
+    for (const q of quads) {
+      const via = declaredVia.get(q.subject.value);
+      if (!via || !via.has(q.predicate.value)) continue;
+      // Literals are values, not members. A set of strings is an attribute with repetition.
+      if (q.object.termType === 'Literal') continue;
+      const existing = members.get(q.subject.value) ?? [];
+      if (!existing.includes(q.object.value)) members.set(q.subject.value, [...existing, q.object.value]);
     }
   }
 
@@ -178,6 +234,7 @@ export function readSets(quads: SetQuad[], notationOf: Map<string, string> = new
       ordered,
       members: withOrder,
       relatesTo: relates.get(iri) ?? [],
+      memberPredicates: [...(declaredVia.get(iri) ?? [])].sort(),
     });
   }
   return out.sort((a, b) => a.label.localeCompare(b.label));

@@ -16,6 +16,7 @@
  *   vocabulary entity names that look like damaged versions of other entity names
  *   typing     how many entities a deterministic survey can type
  *   hierarchy  roots, depth, and how many entities hang under nothing
+ *   grouping   which entities already form a set, under the graph's own word for membership
  *   aggregate  how many questions the cascade floor can form, and how much they settle
  *   tree       the decision tree a person actually faces
  *
@@ -33,6 +34,7 @@ import { buildHierarchy } from '../../src/lib/rdf/hierarchy.js';
 import { proposeCoHyponyms, coHyponymSummary, areCoHyponyms } from '../../src/lib/rdf/co-hyponyms.js';
 import { clusterForCascade, cascadeSummary } from '../../src/lib/rdf/fact-aggregation.js';
 import { buildReviewTree, reviewTreeSummary } from '../../src/lib/rdf/review-tree.js';
+import { deriveSets } from '../../src/lib/rdf/set-derive.js';
 
 const B = '\x1b[1m', D = '\x1b[2m', G = '\x1b[32m', Y = '\x1b[33m', C = '\x1b[36m', R = '\x1b[31m', X = '\x1b[0m';
 
@@ -60,6 +62,13 @@ export interface ChainReport {
   hierarchy: { roots: number; maxDepth: number; placed: number; orphans: number };
   /** Siblings a shared name head would place, which hierarchy alone cannot see. */
   coHyponyms: { groups: number; wouldPlace: number; heads: string[] };
+  /**
+   * Stage 5 of kb:staged-extraction — GROUPING, deterministic. `refused` is reported beside
+   * `sets` on purpose: a grouping rule that only ever announces what it found looks more capable
+   * than it is, and the bench showed refusing is most of the skill (the two models that never
+   * fell into the "not a group" trap never formed a set either).
+   */
+  grouping: { sets: number; members: number; refused: number; overlapping: number; names: string[] };
   aggregate: { clusters: number; covered: number; perQuestion: number };
   tree: { decisions: number; orphanJudgments: number; suppressed: number };
   verdict: { facts: number; decisions: number; factsPerDecision: number };
@@ -154,6 +163,15 @@ export async function runChain(graph: string): Promise<
   const tree = buildReviewTree(statements, statements, { typeOf });
   const suppressed = tree.suppressed.record + tree.suppressed.log;
 
+  /*
+   * GROUPING — run over the same statements every other stage saw, so a set it finds is a set the
+   * review tree will actually meet. Overlap is counted separately because it is the one capability
+   * skos:Collection was chosen for and the one the local model roster scored 0 of 5 on.
+   */
+  const { derived: derivedSets, whyNot: refusedSets } = deriveSets(statements);
+  const memberCounts = new Map<string, number>();
+  for (const d of derivedSets) for (const m of d.members) memberCounts.set(m, (memberCounts.get(m) ?? 0) + 1);
+
   const decisions = tree.decisions.length + clusters.length;
   const report: ChainReport = {
     graph: GRAPH,
@@ -165,6 +183,13 @@ export async function runChain(graph: string): Promise<
       groups: coGroups.length,
       wouldPlace: coGroups.reduce((n, g) => n + g.members.length, 0),
       heads: coGroups.map((g) => g.head),
+    },
+    grouping: {
+      sets: derivedSets.length,
+      members: derivedSets.reduce((n, d) => n + d.members.length, 0),
+      refused: refusedSets.length,
+      overlapping: [...memberCounts.values()].filter((n) => n > 1).length,
+      names: derivedSets.slice(0, 4).map((d) => d.iri.split(/[/#]/).filter(Boolean).pop() ?? d.iri),
     },
     aggregate: { clusters: clusters.length, covered, perQuestion: clusters.length ? covered / clusters.length : 0 },
     tree: { decisions: tree.decisions.length, orphanJudgments: tree.orphans.length, suppressed },
@@ -214,6 +239,15 @@ async function main() {
   const co = r.coHyponyms;
   console.log(`${B}4b siblings${X}   ${co.groups ? `${G}${r.lines.coHyponyms}${X}` : `${D}${r.lines.coHyponyms}${X}`}`);
   for (const head of co.heads.slice(0, 4)) console.log(`  ${D}·${X} ${C}${head}${X}`);
+
+  const gr = r.grouping;
+  console.log(`${B}4c grouping${X}   ` +
+    (gr.sets
+      ? `${G}${gr.sets} set(s)${X} over ${gr.members} members` +
+        (gr.overlapping ? ` ${D}·${X} ${G}${gr.overlapping} entit${gr.overlapping === 1 ? 'y' : 'ies'} in more than one${X}` : ` ${D}· no overlap${X}`)
+      : `${D}no grouping stated in this graph${X}`) +
+    ` ${D}· ${gr.refused} refused${X}`);
+  for (const n of gr.names) console.log(`  ${D}·${X} ${C}${n}${X}`);
 
   console.log(`${B}5 aggregate${X}   ${r.lines.cascade}`);
   console.log(`${B}6 tree${X}        ${r.lines.tree}`);
