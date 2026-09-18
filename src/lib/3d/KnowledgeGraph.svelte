@@ -46,6 +46,7 @@
     cameraSpec = null,
     previewKeys = null,
     labelPriorityKeys = null,
+    viewportInsets = undefined,
     previewSizePx = 96,
     onselect = () => {},
     onhover = () => {},
@@ -90,6 +91,13 @@
     previewKeys?: Set<string> | null;
     /** Keep key hubs labelled when ordinary distance/overlap culling would hide them. */
     labelPriorityKeys?: Set<string> | null;
+    /**
+     * Pixels of canvas hidden behind floating panels on each side, so the graph is framed by what
+     * the user can SEE rather than by the canvas rectangle. Mirrors the 2D renderer's prop of the
+     * same name; measured 2026-09-18 at 372px on the left with Shelly and the filters open, which
+     * is 29% of a 1280px canvas and the reason the graph read as bunched.
+     */
+    viewportInsets?: { left?: number; right?: number; top?: number; bottom?: number };
     /** On-screen size of a preview thumbnail in px (settings.nodePreviewSize). */
     previewSizePx?: number;
     onselect?: (key: string | null, ctrlKey?: boolean) => void;
@@ -1240,6 +1248,20 @@
       const cam = camera.current as THREE.PerspectiveCamera;
       const canvasWidth = canvas.clientWidth;
       const canvasHeight = canvas.clientHeight;
+
+      /*
+       * FRAME THE FREE SPACE, NOT THE CANVAS. setViewOffset shifts the projection by a pixel
+       * amount without changing scale — the 3D equivalent of the 2D renderer's camX/camY nudge —
+       * so orbiting, zooming and hit-testing all keep working, because the camera itself has not
+       * moved. Clearing it when there is nothing to offset matters: a stale view offset survives
+       * a resize and skews every later frame.
+       */
+      const dx = (((viewportInsets?.left ?? 0) - (viewportInsets?.right ?? 0)) / 2);
+      const dy = (((viewportInsets?.top ?? 0) - (viewportInsets?.bottom ?? 0)) / 2);
+      if (cam.isPerspectiveCamera && canvasWidth > 0 && canvasHeight > 0) {
+        if (dx !== 0 || dy !== 0) cam.setViewOffset(canvasWidth, canvasHeight, -dx, -dy, canvasWidth, canvasHeight);
+        else if (cam.view?.enabled) cam.clearViewOffset();
+      }
       const aspect = cam.isPerspectiveCamera ? cam.aspect : 0;
       if (
         canvasWidth !== previousCanvasWidth ||

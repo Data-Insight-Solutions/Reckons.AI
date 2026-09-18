@@ -1353,8 +1353,22 @@
    */
   let assetGutters = $state({ left: 0, right: 0 });
 
+  /*
+   * MEASURED ALWAYS, NOT ONLY FOR AN EXPANDED ASSET (2026-09-18).
+   *
+   * This was gated on `expandedAssetKey`, so the one thing that needed the numbers most — the
+   * GRAPH CAMERA — never got them. With Shelly's panel open and the filter stack beside it, roughly
+   * half the viewport is covered, but the default force layout has no camera fit and rests at the
+   * canvas centre, so the graph settled underneath the panels and read as "the nodes are bunched
+   * up". Sweeping REPEL, BASE_REST and CENTER across both renderers moved the spread by less than
+   * noise, because those constants scale the layout and the camera just refits. The lever was never
+   * the physics; it was aiming the camera at the space that is actually free.
+   *
+   * The same measurement now serves both consumers, rather than a second copy that would drift from
+   * this one's hard-won rule about which panels count.
+   */
   $effect(() => {
-    if (!expandedAssetKey || assetFullscreen) return;
+    if (assetFullscreen) return;
     const measure = () => {
       const midX = window.innerWidth / 2;
       let left = 0, right = 0;
@@ -2199,6 +2213,7 @@
       {timelineTimeSource}
       sources={sceneSources}
       labelPriorityKeys={sourceLabels}
+      viewportInsets={assetGutters}
       showSourceNodes={perspective === 'statements' && detailLevel === 'all'}
       targetKey={hoverTarget}
       onselect={(k, ctrlKey) => {
@@ -2246,6 +2261,7 @@
           previewSizePx={nodePreviewSize}
           sources={sceneSources}
           labelPriorityKeys={sourceLabels}
+          viewportInsets={assetGutters}
           targetKey={hoverTarget}
           onselect={(k, ctrlKey) => {
         if (!autoExpandAssets) collapseAsset(); // manual mode: a graph click collapses; auto mode: the effect re-syncs

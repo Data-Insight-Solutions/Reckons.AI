@@ -30,6 +30,7 @@
     sources = [],
     showSourceNodes = true,
     labelPriorityKeys = null,
+    viewportInsets = undefined,
     layout = 'force',
     timelineZoom = 1,
     timelineCenter = null,
@@ -71,6 +72,20 @@
     showSourceNodes?: boolean;
     /** Keep key hubs labelled when ordinary overlap culling would hide them. */
     labelPriorityKeys?: Set<string> | null;
+    /**
+     * Pixels of canvas hidden behind floating panels on each side. The graph is CENTRED ON WHAT
+     * THE USER CAN SEE rather than on the canvas rectangle.
+     *
+     * Without this the default force layout puts nodes at world origin and the camera sits at the
+     * canvas centre, so with Shelly's panel open (~370px) and the filters and notification stacks
+     * beside it, roughly half the viewport is covered and the graph settles underneath them. It
+     * reads as "the nodes are bunched up" because the visible half is crowded while the hidden half
+     * holds the rest. No amount of repulsion tuning fixes that — measured 2026-09-18, sweeping
+     * REPEL, BASE_REST and CENTER across both renderers moved the spread by less than noise,
+     * because those constants scale the whole layout and the camera simply refits. Zooming is not
+     * spreading; the fix is to aim the camera at the space that is actually free.
+     */
+    viewportInsets?: { left?: number; right?: number; top?: number; bottom?: number };
     layout?: 'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy' | 'map';
     timelineZoom?: number;
     timelineCenter?: number | null;
@@ -889,6 +904,26 @@
   // Camera: center of canvas = world origin (0,0); scale = px per world unit
   const MIN_CAMERA_SCALE = 0.05;
   let camX = 0, camY = 0, camScale = 40;
+  /* Once the user has panned or zoomed, the camera is theirs and the inset offset stops applying. */
+  let userMovedCamera = false;
+  /** Half the left/right (and top/bottom) imbalance: the shift that centres on the free space. */
+  const insetOffset = $derived({
+    x: (((viewportInsets?.left ?? 0) - (viewportInsets?.right ?? 0)) / 2),
+    y: (((viewportInsets?.top ?? 0) - (viewportInsets?.bottom ?? 0)) / 2),
+  });
+
+  /*
+   * The FORCE layout has no camera fit — the structured fit above runs only for hub, hierarchy,
+   * map and source — so its resting camera stayed at (0,0), the canvas centre, forever. That is
+   * the default view, and the one that looked clumped. Offsetting the resting camera aims it at
+   * the free space instead. It stops the moment the user pans or zooms: after that the camera is
+   * theirs, and moving it under them would be worse than any amount of crowding.
+   */
+  $effect(() => {
+    if (userMovedCamera || layout !== 'force') return;
+    camX = insetOffset.x;
+    camY = insetOffset.y;
+  });
   let reportedCamScale = $state(40);
   let prevW = 0, prevH = 0;
   // Cached viewport rect — updated once per tick to avoid repeated layout queries
@@ -920,8 +955,8 @@
       const fitY = Math.max(1, height - inset * 2) / Math.max(maxY - minY + clusterPadding, 1);
       camScale = Math.max(MIN_CAMERA_SCALE, Math.min(40, fitX, fitY));
       reportedCamScale = camScale;
-      camX = -((minX + maxX) / 2) * camScale;
-      camY = -((minY + maxY) / 2) * camScale;
+      camX = -((minX + maxX) / 2) * camScale + insetOffset.x;
+      camY = -((minY + maxY) / 2) * camScale + insetOffset.y;
     });
   }
 
@@ -1667,6 +1702,7 @@
         isDragging = true;
         camX = dragStart.cx + dx;
         camY = dragStart.cy + dy;
+        userMovedCamera = true;
       }
     }
     const hit = hitTest(e.clientX, e.clientY);
@@ -1744,6 +1780,7 @@
     const newScale = Math.max(MIN_CAMERA_SCALE, Math.min(400, camScale * factor));
     camX = px - (px - camX) * (newScale / camScale);
     camY = py - (py - camY) * (newScale / camScale);
+    userMovedCamera = true;
     camScale = newScale;
     reportedCamScale = camScale;
   }
