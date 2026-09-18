@@ -42,7 +42,7 @@
   let clientReady = $state(false);
   // Document/form routes scroll inside a viewport that ends above the fixed
   // mobile nav. Full-bleed graph/workspace routes keep owning the viewport.
-  const reservedNavRoutes = ['/ingest', '/kb', '/settings', '/reckoning', '/analyze', '/compare', '/about'];
+  const reservedNavRoutes = ['/notes', '/ingest', '/kb', '/settings', '/reckoning', '/analyze', '/compare', '/about'];
   const usesReservedNavShell = $derived(
     reservedNavRoutes.some((route) => page.url.pathname === route || page.url.pathname.startsWith(`${route}/`))
   );
