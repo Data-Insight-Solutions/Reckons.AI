@@ -919,8 +919,21 @@
    * the free space instead. It stops the moment the user pans or zooms: after that the camera is
    * theirs, and moving it under them would be worse than any amount of crowding.
    */
+  /*
+   * EVERY LAYOUT THAT DOES NOT RUN A CAMERA FIT, not just 'force'.
+   *
+   * First version checked `layout !== 'force'` and fixed only the free layout — Matt, 2026-09-18:
+   * "Free layout mode is doing better with spread out nodes, others like focus aren't fixed yet."
+   * scheduleStructuredFit2D covers hub, hierarchy, map and source and applies the offset itself;
+   * focus, type, timeline and order run NEITHER path, so their camera sat at the canvas centre and
+   * the graph stayed behind the panels. Listing the fitted layouts and offsetting everything else
+   * fails in the safe direction: a new layout gets the offset by default rather than silently
+   * missing out, which is how this gap happened in the first place.
+   */
+  const STRUCTURED_FIT_LAYOUTS = new Set(['hub', 'hierarchy', 'map', 'source']);
+
   $effect(() => {
-    if (userMovedCamera || layout !== 'force') return;
+    if (userMovedCamera || STRUCTURED_FIT_LAYOUTS.has(layout)) return;
     camX = insetOffset.x;
     camY = insetOffset.y;
   });

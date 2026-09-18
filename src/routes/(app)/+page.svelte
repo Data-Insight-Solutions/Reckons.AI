@@ -120,12 +120,7 @@
    */
   const showWelcome = $derived($page.url.searchParams.has('welcome'));
 
-  // The landing is a page for someone who has not started yet, so it is the one place a
-  // notification cannot be about anything they did. Deferred while it shows — see the note on
-  // setNotificationsSuppressed — and released the moment there is a graph.
-  $effect(() => {
-    setNotificationsSuppressed(visible.length === 0 || showWelcome);
-  });
+
   let provenanceControls = $state(createProvenanceControls());
   let sourceScene = $state<ReturnType<typeof projectProvenance> | null>(null);
   const canvasMode = $derived(perspective === 'statements' || provenanceControls.presentation === 'graph');
@@ -413,7 +408,7 @@
    * the push from making notification state a dependency of this effect.
    */
   $effect(() => {
-    if (visible.length === 0) return;
+    if (showingLanding) return;
     untrack(() => {
       pushNotification({
         id: 'tip-shelly-explore',
@@ -646,17 +641,32 @@
       !GRAPH_EXCLUDED_PREDICATES.has(s.p.value)
     )
   );
+  /*
+   * ONE ANSWER TO "IS THE LANDING ON SCREEN", because two answers drifted apart the day ?welcome
+   * shipped. The graph chrome was gated on `visible.length > 0` with the comment "hidden on
+   * landing page (no nodes yet)" — true only while the landing implied an empty graph. ?welcome
+   * broke that assumption immediately: the filter panel rendered over the marketing page, because
+   * there WERE nodes, just nothing showing them. Every surface that means "the landing is up" now
+   * reads this instead of re-deriving it.
+   */
+  const showingLanding = $derived(visible.length === 0 || showWelcome);
+  // The landing is a page for someone who has not started yet, so it is the one place a
+  // notification cannot be about anything they did. Deferred while it shows — see the note on
+  // setNotificationsSuppressed — and released the moment there is a graph.
+  $effect(() => {
+    setNotificationsSuppressed(showingLanding);
+  });
 
   // Run before the graph branch updates, so a 3D graph does not mount a throwaway 2D canvas first.
   // No graph means no context allocation; once facts arrive, the saved renderer preference is
   // authoritative and the capability probe runs exactly once when 3D is requested.
   $effect.pre(() => {
-    if (visible.length === 0 || use2D || webglChecked) return;
+    if (showingLanding || use2D || webglChecked) return;
     webglChecked = true;
     webglAvailable = checkWebGL();
   });
   $effect(() => {
-    if (visible.length === 0 || use2D || !webglAvailable) graph3DReady = false;
+    if (showingLanding || use2D || !webglAvailable) graph3DReady = false;
   });
 
   /**
@@ -2189,17 +2199,17 @@
 <div class="viewport">
   <section
     class="graph"
-    aria-label={perspective === 'sources' ? 'Sources graph' : visible.length === 0 ? 'Getting started' : 'Knowledge graph'}
+    aria-label={perspective === 'sources' ? 'Sources graph' : showingLanding ? 'Getting started' : 'Knowledge graph'}
     onpointermove={onGraphPointerMove}
-    class:graph-landing={visible.length === 0}
-    data-graph-renderer={visible.length === 0 ? 'landing' : use2D || !webglAvailable ? '2d' : '3d'}
+    class:graph-landing={showingLanding}
+    data-graph-renderer={showingLanding ? 'landing' : use2D || !webglAvailable ? '2d' : '3d'}
     data-graph-ready={graph3DReady}
     data-graph-perspective={perspective}
     data-provenance-nodes={perspective === 'sources' ? sourceScene?.nodes.size : undefined}
     data-provenance-links={perspective === 'sources' ? sourceScene?.edges.length : undefined}
-    data-graph-settled={visible.length === 0 || graphSettled}
+    data-graph-settled={showingLanding || graphSettled}
   >
-  {#if visible.length === 0 || showWelcome}
+  {#if showingLanding}
     {#if perspective === 'sources' && !showWelcome}<div class="sources-empty"><h2>Select sources to explore</h2><p>Choose up to five sources from the source picker.</p></div>{:else}<LandingPage />{/if}
   {:else if use2D || !webglAvailable}
     <KnowledgeGraph2D
@@ -2299,12 +2309,12 @@
 </div>
 {/if}
 
-<!-- Floating filter UI overlay — hidden on landing page (no nodes yet).
+<!-- Floating filter UI overlay — hidden whenever the landing is up (see showingLanding).
      Desktop: always-open SnapPanel. Compact: bottom sheet behind the FAB below. -->
-{#if perspective === 'statements' && isCompact() && visible.length > 0 && !filterSheetOpen}
+{#if perspective === 'statements' && isCompact() && !showingLanding && !filterSheetOpen}
   <button class="filter-fab mono" onclick={() => (filterSheetOpen = true)} aria-label="Filters & layout">☰ filters</button>
 {/if}
-{#if perspective === 'statements' && visible.length > 0}
+{#if perspective === 'statements' && !showingLanding}
 <AdaptivePanel corner="top-left" width={360} minWidth={240} maxWidth={800} zIndex={300} title="Filters & layout" open={isCompact() ? filterSheetOpen : true} onOpenChange={(o) => (filterSheetOpen = o)}>
 <div class="overlay-inner">
 
@@ -2441,7 +2451,9 @@
 </AdaptivePanel>
 {/if}
 
-{#if visible.length > 0}
+<!-- Searching a graph you cannot see is not a thing anybody wants; hidden with the rest of the
+     graph chrome whenever the landing is up (see showingLanding). -->
+{#if !showingLanding}
 <SearchBar
   statements={perspective === 'sources' ? [...visible, ...statements()] : statements()}
   onselectnode={selectGraphNode}
