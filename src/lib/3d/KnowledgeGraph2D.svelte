@@ -5,7 +5,7 @@
    * Physics constants mirror the 3D version; camScale bridges the unit gap.
    */
   import { onMount, onDestroy } from 'svelte';
-  import type { Statement } from '$lib/rdf/types';
+  import type { Source, Statement } from '$lib/rdf/types';
   import { termKey, isIRI, isLit, isMetaPredicate, displayLiteralLabel } from '$lib/rdf/types';
   import { parseGraphDate } from '$lib/rdf/parse-date';
   import { buildNodeTimes, timelineRange, undatedCount } from '$lib/rdf/timeline-layout';
@@ -28,6 +28,8 @@
     targetKey = null,
     historyTimestamp = null,
     sources = [],
+    showSourceNodes = true,
+    labelPriorityKeys = null,
     layout = 'force',
     timelineZoom = 1,
     timelineCenter = null,
@@ -65,6 +67,10 @@
     targetKey?: string | null;
     historyTimestamp?: number | null;
     sources?: any[];
+    /** Provenance is log-level structure; the statements view hides it by default. */
+    showSourceNodes?: boolean;
+    /** Keep key hubs labelled when ordinary overlap culling would hide them. */
+    labelPriorityKeys?: Set<string> | null;
     layout?: 'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy' | 'map';
     timelineZoom?: number;
     timelineCenter?: number | null;
@@ -310,7 +316,7 @@
         entitySources.get(k)!.add(st.sourceId);
       }
     }
-    for (const src of sources as any[]) {
+    for (const src of (showSourceNodes ? sources : []) as any[]) {
       const srcKey = `src:${src.id}`;
       const c = nodePositionCache.get(srcKey);
       const x = c?.x ?? (spawnCenter?.x ?? 0) + (Math.random() - 0.5) * 12;
@@ -412,6 +418,7 @@
     } else if (layout === 'source') {
       const r = buildSourceAnchors();
       activeAnchors  = r.anchors; markerData = r.markers;
+      scheduleStructuredFit2D(activeAnchors, 'source');
       anchorStrength = 0.80; nodeColorMap = r.nodeColors; hubNodeKeys = [];
     } else if (layout === 'type') {
       const r = buildTypeAnchors();
@@ -697,8 +704,11 @@
   }
 
   function buildSourceAnchors() {
-    // Find source nodes injected into the graph
-    const srcNodes = nodes.filter(n => n.key.startsWith('src:'));
+    // Clustering still works when the detail floor hides provenance nodes.
+    // These anchors position entities; they do not add source nodes or links.
+    const recordedIds = new Set((statements as Statement[]).filter((st) => st.status !== 'rejected' && st.status !== 'superseded').map((st) => st.sourceId));
+    const srcNodes = (sources as Source[]).filter((source) => source.kind !== 'analysis' && recordedIds.has(source.id))
+      .map((source) => ({ key: `src:${source.id}`, label: source.title }));
     if (!srcNodes.length) return { anchors: new Map<string, {x:number;y:number}>(), markers: [] as Marker[], nodeColors: new Map<string, string>() };
 
     // Arrange source nodes in a circle
@@ -885,7 +895,7 @@
   let _rect = { left: 0, top: 0, width: 0, height: 0 };
 
   /** Frame structured anchors as a whole instead of cropping their outer clusters below overlays. */
-  function scheduleStructuredFit2D(anchors: Map<string, { x: number; y: number }>, expectedLayout: 'hub' | 'hierarchy' | 'map') {
+  function scheduleStructuredFit2D(anchors: Map<string, { x: number; y: number }>, expectedLayout: 'hub' | 'hierarchy' | 'map' | 'source') {
     requestAnimationFrame(() => {
       if (layout !== expectedLayout || activeAnchors !== anchors || anchors.size === 0) return;
       const width = canvasEl?.clientWidth ?? _rect.width;
@@ -904,8 +914,10 @@
       // Compact panes still cap this at 12%, so a short mobile hierarchy does not lose its canvas.
       const outerGutter = Math.min(88, width * 0.12, height * 0.12);
       const inset = nodeMargin + outerGutter;
-      const fitX = Math.max(1, width - inset * 2) / Math.max(maxX - minX, 1);
-      const fitY = Math.max(1, height - inset * 2) / Math.max(maxY - minY, 1);
+      // Source anchors are cluster centers; leave room for the entities around each center.
+      const clusterPadding = expectedLayout === 'source' ? 8 : 0;
+      const fitX = Math.max(1, width - inset * 2) / Math.max(maxX - minX + clusterPadding, 1);
+      const fitY = Math.max(1, height - inset * 2) / Math.max(maxY - minY + clusterPadding, 1);
       camScale = Math.max(MIN_CAMERA_SCALE, Math.min(40, fitX, fitY));
       reportedCamScale = camScale;
       camX = -((minX + maxX) / 2) * camScale;
@@ -1492,7 +1504,7 @@
         prevH = h;
         // The initial hierarchy fit is viewport-dependent. A phone rotation, split-pane resize,
         // or desktop panel drag must recompute it instead of leaving the tree cropped or tiny.
-        if ((layout === 'hierarchy' || layout === 'hub') && activeAnchors.size > 0) {
+        if ((layout === 'hierarchy' || layout === 'hub' || layout === 'source') && activeAnchors.size > 0) {
           scheduleStructuredFit2D(activeAnchors, layout);
         }
       }
@@ -1523,7 +1535,7 @@
           const isSel = n.key === selected;
           const isHov = n.key === hoveredKey;
           // Always show selected/hovered labels
-          if (isSel || isHov) {
+          if (isSel || isHov || labelPriorityKeys?.has(n.key)) {
             placed.push({ x: lx, y: ly, w: lblW, h: lblH });
             labelData.push({ key: n.key, label: n.label, x: s.x, y: s.y, opacity: 1.0 });
             continue;
