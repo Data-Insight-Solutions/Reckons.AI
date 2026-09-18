@@ -265,6 +265,11 @@ export const PUBLISHED_ETHICS_WRAPPER = `IMPORTANT SAFETY RULES (non-negotiable,
 `;
 
 export interface TurtleChatOptions {
+  /**
+   * Explicit permission for a model to see this graph. Required: absence is a refusal, so a caller
+   * that has not asked the user cannot accidentally proceed.
+   */
+  consent?: 'granted' | 'declined';
   provider: TurtleChatProvider;
   apiKey: string;
   model?: string;
@@ -334,8 +339,33 @@ export function assembleSystemPrompt(opts: {
   return basePrompt;
 }
 
+/** Thrown when Shelly is asked to run before the user has agreed a model may see their graph. */
+export class AiConsentRequiredError extends Error {
+  constructor() {
+    super('Shelly needs permission before showing your notes to a language model.');
+    this.name = 'AiConsentRequiredError';
+  }
+}
+
 export async function turtleChat(opts: TurtleChatOptions): Promise<TurtleChatResponse> {
   const { provider, apiKey, model, ollamaBaseUrl, reckonsBaseUrl, messages, kbContext, exploreMode, voiceMode, customPrompt, publishedMode } = opts;
+
+  /*
+   * FAIL CLOSED. Every path into a model for Shelly comes through here, so the permission is
+   * checked here rather than at each call site — a future caller that forgets gets a clear error
+   * instead of quietly sending somebody's graph to a model.
+   *
+   * This is NOT the download gate. That one asks before fetching model weights: it is about bytes,
+   * and once a model is cached it never fires again. Someone wary of AI is not worried about a
+   * 33MB download, they are worried about what the model is shown — and nothing asked about that.
+   *
+   * `mock` and `manual` are exempt because they show the graph to NOTHING: mock returns a
+   * deterministic canned answer and manual hands the text back to the user. Prompting there would
+   * be asking permission to do something that does not happen, which is exactly the kind of nag
+   * that teaches people to click through the prompts that do matter.
+   */
+  const NO_MODEL_PROVIDERS = new Set(['mock', 'manual']);
+  if (!NO_MODEL_PROVIDERS.has(provider) && opts.consent !== 'granted') throw new AiConsentRequiredError();
   const system = assembleSystemPrompt({ kbContext, exploreMode, voiceMode, customPrompt, publishedMode, provider })
     + buildContextSection(kbContext);
 

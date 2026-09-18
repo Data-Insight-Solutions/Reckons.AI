@@ -11,7 +11,7 @@
   import { confirmedStatements, statements, sources, addStatements, addSource, updateStatement, setStatus } from '$lib/stores/kb.svelte';
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { ONBOARDING_TEMPLATES, BLANK_TEMPLATE } from '$lib/onboarding/templates';
-  import { settings } from '$lib/stores/settings.svelte';
+  import { settings, updateSettings } from '$lib/stores/settings.svelte';
   import { RDF_TYPE } from '$lib/rdf/entity-types';
   import type { TurtleChatMessage, KBAction, KBContext } from '$lib/types/turtle-chat';
   import { buildKBContext as buildKBContextShared } from '$lib/rdf/kb-context';
@@ -70,6 +70,9 @@
   const isWasmProvider = $derived.by(() => {
     return resolveChatProvider().provider === 'wasm';
   });
+
+  /** Named for the consent prompt: people deserve to know WHERE their notes are going. */
+  const chatProvider = $derived.by(() => resolveChatProvider().provider);
 
   // Auto-send initialMessage when provided (e.g. from search bar forwarding)
   $effect(() => {
@@ -358,6 +361,7 @@
         provider,
         apiKey,
         model,
+        consent: aiConsent,
         ollamaBaseUrl: s.ollamaBaseUrl,
         reckonsBaseUrl: s.reckonsBaseUrl,
         messages: messages.slice(-12).map((m) => ({ role: m.role, content: m.content })),
@@ -370,6 +374,21 @@
     } finally {
       loading = false;
     }
+  }
+
+  /*
+   * SHELLY ASKS BEFORE A MODEL SEES YOUR GRAPH (Matt, 2026-09-18: "Shelly should have opt-in model
+   * usage for people 'scared' of AI").
+   *
+   * Separate from the model-DOWNLOAD gate, which asks about bytes and never fires again once a
+   * model is cached. Someone wary of AI is not worried about a 33MB download; they are worried
+   * about what the model is shown, and until now nothing asked. Answering is remembered, and
+   * declining is a real answer — Shelly keeps working for everything that needs no model.
+   */
+  const aiConsent = $derived(settings().aiUsageConsent);
+
+  async function grantAiConsent(granted: boolean) {
+    await updateSettings({ aiUsageConsent: granted ? 'granted' : 'declined' });
   }
 
   function onKeydown(e: KeyboardEvent) {
@@ -425,6 +444,7 @@
 
     try {
       const resp = await turtleChat({
+        consent: aiConsent,
         provider, apiKey, model,
         ollamaBaseUrl: s.ollamaBaseUrl,
         reckonsBaseUrl: s.reckonsBaseUrl,
@@ -880,6 +900,7 @@
 
     try {
       const resp = await turtleChat({
+        consent: aiConsent,
         provider, apiKey, model,
         ollamaBaseUrl: s.ollamaBaseUrl,
         reckonsBaseUrl: s.reckonsBaseUrl,
@@ -1400,6 +1421,31 @@
               <span class="wasm-pct">{wasmPct()}%</span>
             {/if}
           {/if}
+        </div>
+      {/if}
+
+      <!--
+        ASK BEFORE A MODEL SEES THE GRAPH. Shown once, before the first model call, and remembered.
+        Deliberately says WHERE the model runs and WHAT it is shown, because "allow AI?" is not a
+        question anybody can answer — the thing people want to know is whether their notes leave
+        the device. Declining is a real answer, not a nag: Shelly keeps working for everything that
+        needs no model.
+      -->
+      {#if aiConsent === undefined}
+        <div class="ai-consent" role="group" aria-label="Allow Shelly to use a model">
+          <p class="ai-consent-q">Shelly answers by sending the relevant parts of your graph to a language model.</p>
+          <p class="ai-consent-where mono">{isWasmProvider ? 'runs on this device — nothing leaves it' : `sends to ${chatProvider}`}</p>
+          <div class="ai-consent-actions">
+            <button class="primary" onclick={() => grantAiConsent(true)}>Allow</button>
+            <button onclick={() => grantAiConsent(false)}>Not now</button>
+          </div>
+        </div>
+      {:else if aiConsent === 'declined'}
+        <div class="ai-consent">
+          <p class="ai-consent-q">Shelly's model is switched off, so chat is unavailable.</p>
+          <div class="ai-consent-actions">
+            <button class="primary" onclick={() => grantAiConsent(true)}>Turn it on</button>
+          </div>
         </div>
       {/if}
 

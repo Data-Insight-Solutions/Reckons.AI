@@ -150,6 +150,16 @@ export type SettingsRecord = {
    * silently inside a catch block, with nothing shown to the user.
    */
   allowCorsProxy?: boolean;
+  /**
+   * Whether the user has agreed that Shelly may send their graph content to a language model.
+   *
+   * DISTINCT FROM THE DOWNLOAD GATE, and that distinction is the point (Matt, 2026-09-18: "Shelly
+   * should have opt-in model usage for people 'scared' of AI"). The existing consent asks before
+   * fetching MODEL WEIGHTS — it is about bytes, and it never fires again once a model is cached.
+   * Somebody wary of AI is not worried about a 33MB download; they are worried about what the model
+   * is shown. Nothing asked about that. `undefined` means not yet asked.
+   */
+  aiUsageConsent?: 'granted' | 'declined';
   /** Reckons.AI Cloud Workers — managed AI inference hosted on Cloudflare Workers */
   reckonsApiKey?: string;
   reckonsModel?: string;
@@ -311,6 +321,7 @@ export const DEFAULT_SETTINGS: SettingsRecord = {
   mistralApiKey: import.meta.env.VITE_MISTRAL_API_KEY || undefined,
   firecrawlApiKey: import.meta.env.VITE_FIRECRAWL_API_KEY || undefined,
   allowCorsProxy: false,
+  aiUsageConsent: undefined,
   reckonsApiKey: import.meta.env.VITE_RECKONS_API_KEY || undefined,
   reckonsModel: import.meta.env.VITE_RECKONS_MODEL ?? '@cf/meta/llama-3.1-8b-instruct',
   reckonsBaseUrl: import.meta.env.VITE_RECKONS_BASE_URL ?? 'https://api.reckons.ai',
@@ -607,6 +618,7 @@ export async function saveSettings(patch: Partial<SettingsRecord>): Promise<void
       mistralApiKey: m.mistralApiKey,
       firecrawlApiKey: m.firecrawlApiKey,
       allowCorsProxy: m.allowCorsProxy,
+      aiUsageConsent: m.aiUsageConsent,
       reckonsApiKey: m.reckonsApiKey,
       reckonsModel: m.reckonsModel,
       reckonsBaseUrl: m.reckonsBaseUrl,
