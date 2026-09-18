@@ -20,6 +20,24 @@ test('personal inbox survives reload and sends a reviewed copy in the built app'
   await expect(page.getByRole('status')).toContainText('Copied to Default Graph');
   await expect(page.locator('.history')).toContainText('Copied');
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
-  await expect(page.getByRole('navigation').getByRole('link', { name: 'notes', exact: true })).toBeVisible();
   expect(errors).toEqual([]);
+});
+
+/*
+ * WHERE THE INBOX LIVES IS A DECISION, SO IT IS ASSERTED AS ONE.
+ *
+ * This file previously ended by requiring a top-level `notes` link in the navigation. Matt removed
+ * that tab on 2026-09-16 — writing a note and keeping notes are the same errand, and /ingest
+ * already defaults to mode 'note', so a second tab made the product ask a first-time user to learn
+ * two answers to "where do I write something down". The assertion outlived the design and went on
+ * demanding the tab back; nothing caught it because the branch was never committed, so CI never ran
+ * it until 2026-09-17.
+ *
+ * Both halves are asserted deliberately. The presence check alone would still pass if somebody
+ * re-added the tab, which is the exact thing that was decided against.
+ */
+test('the notes inbox is reached from the Add page, and is not a tab of its own', async ({ page }) => {
+  await page.goto('/ingest');
+  await expect(page.getByText('Your notes inbox', { exact: true })).toBeVisible();
+  await expect(page.getByRole('navigation').getByRole('link', { name: 'notes', exact: true })).toHaveCount(0);
 });
