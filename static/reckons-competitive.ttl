@@ -6,6 +6,7 @@
 @prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
 @prefix ktype:  <urn:kbase:type/> .
 @prefix hnav:   <urn:reckons:nav/> .
+@prefix train:  <urn:reckons:training/> .
 
 # ==============================================================================
 # Reckons.AI — Competitive Research KB
@@ -329,12 +330,25 @@ kb:ref-hyperframes rdf:type    ktype:Reference ;
                kpred:last-push    "2026-08-27"^^xsd:date ;
                kpred:description  "Turns HTML, CSS, media and SEEKABLE animations into deterministic MP4 through headless Chrome: the renderer advances animation to an explicit frame time rather than recording against a wall clock, so the same input yields the same frames. Ships 20 agent skills behind a single `/hyperframes` router that installs each creation workflow on demand instead of loading all twenty." ;
                kpred:relates-to   kb:context-compression ;
-               kpred:honest-note  "NOT a competitor and barely adjacent — it renders video, we render graphs. It is in this graph for two transferable techniques and for nothing else, and its 42,748 stars say nothing about us. Recording weak relevance as weak is the point: a research graph that inflates every input into a threat or an opportunity is marketing with footnotes." ;
+               kpred:honest-note  "NOT a competitor, and no longer \u0027barely adjacent\u0027 — that phrasing was written while video was believed to be out of scope, and it stopped being true on 2026-09-10. It renders video deterministically; we now intend to. Its 42,748 stars still say nothing about us, and recording weak relevance as weak remains the rule where it applies." ;
                kpred:worth-adopting kb:adopt-skill-router ;
                kpred:evidence     "Seek-based determinism names a problem we actually have. OverlayGraph.svelte:128-129 seeds initial node positions with unseeded Math.random(), so the 2D layout is not reproducible run to run, which is why visual assertions on it must wait for a settled state instead of comparing frames. Driving time as a parameter rather than as elapsed wall clock is the shape of a fix. Nothing is copied; the idea is free and the expression is not needed." ;
-               kpred:we-avoid     "Video generation as a product surface." ;
-               kpred:avoid-reason "Reckons.AI has no video feature and must not acquire one in order to justify a library. If this ever earns a place it is in announcing a release, not in the app." .
-
+               kpred:capability-gap "Reckons.AI has no video feature TODAY: no renderer, no generation step, no pipeline. True on 2026-09-10 and the reason F58.6 and F74.1 are speculative and planned rather than functional." ;
+               kpred:decided      "MATT, 2026-09-10: \u0027we should include video features, including video generation on the roadmap.\u0027 This REPLACES a kpred:we-avoid on this entity reading \u0027Video generation as a product surface\u0027, with the reason \u0027Reckons.AI has no video feature and must not acquire one in order to justify a library.\u0027" ;
+               kpred:correction   "THE AVOIDANCE WAS A CAPABILITY CLAIM MIS-FILED AS A PRINCIPLE — Matt\u0027s own diagnosis, 2026-09-10: \u0027likely a claim statement about current capability, not a roadmap principle.\u0027 \u0027Reckons.AI has no video feature\u0027 is a true statement about the system TODAY and is kept above as kpred:capability-gap. \u0027must not acquire one\u0027 is a standing rule about the future, and nobody had decided it. The two were written in one sentence, so a fact about what is built silently became a constraint on what may be built — and it then contradicted the roadmap, which has carried video since F74.1 (planned, \u0027Asset generation (video \u00b7 3D/GLB)\u0027), F115 camera ingest and kb:video-asset-analysis. This is the F194 layer distinction with real consequences: a claim is settled by evidence and expires when the evidence changes; a principle binds until somebody revisits it." ;
+               kpred:honest-note  "THE CONTRADICTION SAT UNSEEN FOR SIXTEEN DAYS because the two sides were never in the same file. #197 reviewed HyperFrames on 2026-08-25 and argued it dissolves a blocker F74.1 records as unsolved; a scan on 2026-08-27 wrote the avoidance onto dev while #197 sat unmerged, 105 commits behind. Nothing was wrong with either write in isolation. Found 2026-09-10 only by merging them." ;
+               kpred:relates-to kb:asset-generation ;
+               kpred:relates-to kb:content-orchestration ;
+               kpred:relates-to kb:graph-publishing ;
+               kpred:relates-to kb:visual-acceptance ;
+               kpred:relates-to kb:asset-viewer ;
+               kpred:evidence "IT DISSOLVES A BLOCKER kb:asset-generation RECORDS AS UNSOLVED. F74.1 frames video generation entirely as GENERATIVE — LTX-Video, CogVideoX, AnimateDiff — and therefore concludes 'cloud/service for video now, local behind an optional GPU sidecar later'. HyperFrames is a third path that entity does not consider: deterministic rendering with no model, no GPU and no cloud API. For the video Reckons needs first — a subgraph tour, an entity card, a timeline, an animated diff — the content is DATA WE ALREADY HOLD rather than photoreal footage, and rendering it needs a browser and FFmpeg, both of which we have." ;
+               kpred:evidence "IT IS kb:content-orchestration's OWN PRINCIPLE WITH HTML IN THE MIDDLE. F90 states THE SCENE IS A GRAPH, NOT A SCRIPT: the graph describes the composition, the script is generated from it, and the rendered artifact is derived and disposable, so an asset keeps its provenance and two scenes can be diffed. HyperFrames is that exact pattern with generated HTML where F90 puts generated Blender Python — and HTML is a format this codebase already produces from the graph via scripts/docs-pages.ts." ;
+               kpred:evidence "DETERMINISM ANSWERS F90's SECOND PRINCIPLE. kb:content-orchestration warns that A GREEN EXIT CODE IS NOT A GOOD IMAGE — Blender will render a black frame and exit 0. A renderer that guarantees same input, same frames, same output makes a rendered asset regression-testable, which is what kb:visual-acceptance needs and what the existing qwen2.5vl:7b visual gate could then score, instead of merely checking that a process succeeded." ;
+               kpred:constraint "NODE 22 + FFMPEG + HEADLESS CHROME IS NOT BROWSER-FEASIBLE. Reckons is a static local-first browser app and this cannot run inside it. The honest placements are build-time (CI or scripts/offline/), the reckons CLI, or an opt-in n8n side-effect — which is precisely the Integration Boundary already written down: n8n owns web side-effects, not core state. It must never become a hard dependency of the core app." ;
+               kpred:scope-decision "THE SVELTIA COMBINATION IS AUTHORING PLUS BUILD-TIME RENDER, NOT DYNAMIC CONTENT. A coherent pipeline does exist: a WebPage node carries the composition, scripts/docs-pages.ts emits it to content/, Sveltia edits that markdown through the existing GitHub-backed admin, and CI renders the MP4 as a static asset. That respects kb:shelly-in-sveltia because nothing patches Sveltia — we integrate through the files it already edits. But HyperFrames' output is a static MP4 and its whole value is the deterministic seek-and-capture render; for genuinely live front-end motion you would use HTML and GSAP directly in Svelte, where HyperFrames adds nothing." ;
+               kpred:open-question "Sveltia edits only NON-GENERATED content/*.md and there is no markdown-to-TTL back-propagation (code:docs-site). So who owns a composition once a human tweaks it in the CMS — does scripts/md-align.ts extend to cover compositions and their rendered assets, or are compositions graph-only and deliberately not CMS-editable?" ;
+               kpred:note "MATT'S CORRECTION, 2026-08-25. First-pass review called this the weakest of the six and scoped it to rendering demo footage. Matt raised two uses — combined with Sveltia for front-end content, and generating video out of a graph definition under asset generation — and the second is strong enough to change the verdict, because it lands on F74.1 and F90 together. Recorded because the misread was a category error worth not repeating: 'video generation' was read as 'generative video', which silently imported a GPU requirement that deterministic rendering does not have." .
 kb:ref-sv-table rdf:type       ktype:Reference ;
                rdfs:label   "sv-table (SikandarJODD) — Svelte 5 data-table components" ;
                kpred:part-of      kb:competitive-landscape ;
@@ -349,8 +363,13 @@ kb:ref-sv-table rdf:type       ktype:Reference ;
                kpred:relates-to   kb:wf-review ;
                kpred:relates-to   kb:structured-data ;
                kpred:honest-note  "The smallest and least famous repo in this graph at 69 stars, and the one most likely to produce working code this quarter. Relevance is not proportional to stars, and a competitive graph that sorts by popularity would have discarded this one." ;
-               kpred:worth-adopting kb:adopt-table-primitive .
-
+               kpred:worth-adopting kb:adopt-table-primitive ;
+               kpred:relates-to kb:graph-legibility ;
+               kpred:relates-to kb:cross-kb-alignment ;
+               kpred:relates-to kb:review-attention ;
+               kpred:evidence "IT DROPS INTO THE STACK WE ALREADY RUN. This repo depends on shadcn-svelte ^1.4.2 and bits-ui ^2.18.1, which is exactly what sv-table targets, so a component is copied source rather than a new runtime dependency and there is no upgrade coupling afterwards. The surfaces that would benefit already exist: the /review flat row list, where kb:graph-legibility still owes predicate and time filters; the align tab (kb:cross-kb-alignment); and the Compare diff table." ;
+               kpred:constraint "AUDIT PER COMPONENT, DO NOT ADOPT WHOLESALE. Its package pins @tanstack/svelte-table at exactly 9.0.0 while npm latest is 9.1.2, and individual components carry their own dependencies — @dnd-kit/svelte, motion-sv, runed, torph — several of them very low-traffic packages. Copy the single component needed, read what it imports, and treat each transitive dependency as its own supply-chain decision rather than inheriting the demo site's full set." ;
+               kpred:scope-decision "CANDIDATE SOURCE, NOT A DEPENDENCY. Take filters and pagination first if anything is taken at all. Row drag, column pinning and expandable sub-rows are features kb:review-attention would argue AGAINST on this product's review surfaces — granularity breeds rubber-stamping, and a table that can do everything invites a reviewer to accept all." .
 # ── WHAT WE ADOPT ────────────────────────────────────────────────────────────
 # Each is a proposal against a roadmap entity, not a decision. Status stays
 # speculative until Matt rules on it (kb:honest-status).
@@ -733,8 +752,16 @@ kb:ref-graphgen rdf:type       ktype:Reference ;
                kpred:relates-to   kb:triple-extraction ;
                kpred:description  "Metadata and repository description reviewed 2026-09-08; README NOT read in depth. 1.2k stars, Apache-2.0. Builds a knowledge graph from source text and uses it to generate supervised fine-tuning data, the stated aim being coverage of what the graph knows rather than whatever a prompt happened to produce." ;
                kpred:evidence     "IT INVERTS THE DIRECTION THIS PROJECT USES A GRAPH FOR. Here the graph grounds a prompt at inference; there the graph enumerates what training data must cover. The overlap worth noting is that both need a graph that is COMPLETE enough to be a coverage measure, which is what the extraction scorer's expectations file already is on a small scale." ;
-               kpred:honest-note  "REVIEWED FROM THE OUTSIDE ONLY. The evidence line above is inference from the description, not from reading the code or the paper, and it should not be cited as a finding until someone does. Recorded at this depth deliberately rather than written up as though it had been studied." .
-
+               kpred:honest-note  "REVIEWED FROM THE OUTSIDE ONLY. The evidence line above is inference from the description, not from reading the code or the paper, and it should not be cited as a finding until someone does. Recorded at this depth deliberately rather than written up as though it had been studied." ;
+               kpred:link "https://arxiv.org/abs/2505.20416" ;
+               kpred:relates-to kb:model-training ;
+               kpred:relates-to train:phase-1 ;
+               kpred:relates-to train:phase-2 ;
+               kpred:relates-to kb:local-model-bench ;
+               kpred:relates-to kb:reviewable-graph-patches ;
+               kpred:evidence "IT IS train:phase-1's FEATURE LIST, ALREADY BUILT. That phase reads 'Convert graph triples into instruction-tuning pairs. Entity QA, relationship QA, multi-hop reasoning, and subgraph summarization generation strategies. Augmentation with paraphrases and negative examples.' GraphGen does entity QA, multi-hop QA by neighbourhood sampling, and style-controlled augmentation, out of a graph, today." ;
+               kpred:evidence "IT ANSWERS kb:model-training's RECORDED OPEN QUESTION — 'how to measure if fine-tuned model is better than RAG alone?' The calibration-error step is a usable answer: measure where the model is confidently wrong BEFORE training, generate against exactly those gaps, and re-measure the same set afterwards. That yields a targeted before-and-after on known-weak knowledge rather than a blended score — the discipline kb:reviewable-graph-patches already demands when it insists no blended score may let better recall hide semantic corruption." ;
+               kpred:scope-decision "PORT THE METHOD, NOT THE PACKAGE. It is Python with ray and gradio, and it builds its OWN graph from raw text — we already hold a reviewed graph, so the extraction half is redundant and the generation half is the part worth having. The realistic Reckons shape is a script-tier exporter walking existing triples into JSONL, with calibration-error gap-finding as the strategy for choosing WHICH triples to generate against." .
 # ── An ARTICLE, not a repo. Sent by Matt 2026-09-08 and it changed the design. ──
 kb:ref-figay-skos-owl rdf:type ktype:Reference ;
                rdfs:label   "Figay — Combined usage of SKOS and OWL: an experimentation" ;
@@ -812,3 +839,43 @@ kb:ref-n8n rdf:type            ktype:Reference ;
                kpred:known-issue  "THE MCP CLIENT CONFIG IS BROKEN IN THIS REPOSITORY, though the service is not. .mcp.json declares n8n-tools with url ${N8N_MCP_URL}; the value exists in .env but is not substituted, so the client reports INVALID_CONFIG and cannot connect. The n8n instance and its workflows are unaffected — conflating the two led to a wrong report on 2026-09-09." ;
                kpred:relates-to   kb:question-supersession ;
                kpred:relates-to   kb:claim-substantiation .
+
+# =============================================================================
+## External projects reviewed 2026-08-25 (PR #197) that had no entity on dev.
+# The other four from that review already existed here and were merged predicate-wise.
+# =============================================================================
+
+kb:ref-agentacct rdf:type ktype:Reference ;
+    rdfs:label "agentacct — work receipts and honest cost accounting for coding agents" ;
+    kpred:repo-url "https://github.com/mikehasa/agentacct" ;
+    kpred:license "MIT" ;
+    kpred:copy-permitted "yes — MIT, attribution required" ;
+    kpred:relates-to kb:session-tokens ;
+    kpred:relates-to kb:work-tiering ;
+    kpred:relates-to kb:subscription-cost-awareness ;
+    kpred:relates-to kb:graph-economics ;
+    kpred:relates-to kb:async-orchestration ;
+    kpred:relates-to kb:honest-status ;
+    kpred:description "README reviewed 2026-08-25. Local-first Python CLI plus macOS app that reads the session logs Claude Code, Codex, OpenCode and Hermes already write to disk, and rolls each task into one 'Work Receipt': the commands run, files touched, tokens, estimated cost, outcome, gaps, and per-field provenance. Nothing binds a network port, there is no telemetry, and no API key is ever stored or requested. MIT, 647 stars, actively pushed (2026-08-25)." ;
+    kpred:evidence "IT SEPARATES THE CLAIM FROM THE PROOF, WHICH IS kb:honest-status AS A DATA MODEL. Every fact on a receipt is labelled with where it came from (client hook, transcript scan, the agent's MCP records, CI), and every join between usage and recorded work carries a confidence label (exact/high/medium/low). An agent reporting 'done' never raises the evidence bar; a passing check does. Where it cannot prove a link it shows the gap rather than guessing — the same refusal to fabricate that kb:honest-status demands of us in prose, expressed as a schema." ;
+    kpred:evidence "IT READS THE SAME INPUT WE ALREADY PARSE. scripts/session-tokens.ts reads ~/.claude/projects/<slug>/*.jsonl for per-session token usage; agentacct reads the same transcripts and adds per-task rollup, cost attribution, and a plan-consumption estimate calibrated from the user's own recorded limit history. kb:subscription-cost-awareness is recorded as PLANNED, NOTHING BUILT (2026-07-31), and this is the closest existing prior art for the number that entity wants." ;
+    kpred:scope-decision "USE THE TOOL, COPY THE RECEIPT SCHEMA, VENDOR NOTHING. Python and macOS-first, so it cannot ship inside a browser app. Run it alongside npm run session:tokens to test our own tiering claims — F74.3 is only true if measured, and kb:async-orchestration already commits to benchmarking the framework against plain Opus. The transferable design is the receipt itself: claim and proof in separate fields, confidence-labelled joins, per-field provenance — the shape F88 review gates and kb:reviewable-graph-patches already need." ;
+    kpred:honest-note "NOT INSTALLED, NOT RUN (2026-08-25). Every capability above is the README's claim, not a verified observation. Its own cost figures are explicitly pricing-table estimates rather than invoices; inheriting that caveat is part of using it." ;
+    kpred:part-of      kb:competitive-landscape .
+
+kb:ref-ai-memory rdf:type ktype:Reference ;
+    rdfs:label "ai-memory — cross-vendor agent handoff as a git-backed markdown wiki" ;
+    kpred:repo-url "https://github.com/akitaonrails/ai-memory" ;
+    kpred:license "MIT" ;
+    kpred:copy-permitted "yes — MIT, attribution required" ;
+    kpred:relates-to kb:local-session-memory ;
+    kpred:relates-to kb:context-engine ;
+    kpred:relates-to kb:agent-context-dogfooding ;
+    kpred:relates-to kb:async-orchestration ;
+    kpred:relates-to kb:ref-iai-personal-memory-engine ;
+    kpred:description "README reviewed 2026-08-25. Rust service giving coding agents long-term memory across vendors: quit Claude Code mid-task, start Codex in the same directory, continue without re-explaining the architecture, the failed approaches or the open questions. Lifecycle hooks capture bounded sanitized observations; at session end those consolidate into a summary and the next agent receives a bounded handoff. The store is plain markdown in a git repo — greppable, Obsidian-openable, rsync-backed, with no vector database to babysit. MIT, 4,540 stars, actively pushed (2026-08-25)." ;
+    kpred:evidence "IT IS THE HANDOFF.md PRACTICE, AUTOMATED. This repo already keeps a hand-written HANDOFF.md naming the active branch, the current task, what has been found so it is not re-derived, and which decisions are Matt's rather than the agent's. It is maintained by hand, which means it is maintained late. ai-memory produces that artifact from session boundaries and injects it at the next session start, across a different vendor's agent. Its bounded-pack shape is the same retrieve-per-request contract as kb:context-engine." ;
+    kpred:constraint "SAME OBJECTION ALREADY RECORDED ON kb:ref-iai-personal-memory-engine — DO NOT PROMOTE CAPTURE TO FACT. ai-memory compiles its wiki from captured lifecycle observations. Reckons has decided the conversation is not the asset: only durable reviewed judgement becomes a triple, and silently promoting captured turns would bypass F52 and change the privacy and retention posture. Verbatim history may be a legitimate SOURCE feeding proposals; it is not an authoritative write path." ;
+    kpred:scope-decision "REFERENCE THE HANDOFF CONTRACT, NOT THE ENGINE. The portable value is the contract — what a bounded handoff contains, when it is produced, how the next session consumes it, and what happens when a harness cannot inject one. The engine is a Rust binary whose product IS its integration surface across 20+ agent harnesses; none of that belongs in a local-first browser app." ;
+    kpred:honest-note "NOT INSTALLED, NOT RUN (2026-08-25). Claims come from the README's own support matrix, which is unusually candid about per-harness gaps — several harnesses capture but cannot inject handoffs, and it says so per row rather than in a footnote. That candour is itself a working model for kb:honest-status." ;
+    kpred:part-of      kb:competitive-landscape .

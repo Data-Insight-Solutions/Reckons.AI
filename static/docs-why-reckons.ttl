@@ -26,7 +26,7 @@
 ## Fabric IQ was announced at Ignite 2025. Palantir, Stardog and Ontotext predate us by
 ## years to decades.
 ##
-## The evidence is kept as knowledge in static/reckons-roadmap.ttl under F200
+## The evidence is kept as knowledge in static/reckons-roadmap.ttl under F205
 ## kpred:measured, and is deliberately not published. A reader needs the argument, not our
 ## editing history. The page leads with convergence instead, which is both true and
 ## stronger.

@@ -17,6 +17,8 @@ A W3C standard for representing knowledge as a graph of linked statements. The f
 
 <p class="derived">It has 6 parts below.</p>
 
+<p class="in-sets">Part of It is plain text you can take away.</p>
+
 ## In this section
 
 ### JSON-LD

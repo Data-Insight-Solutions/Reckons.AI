@@ -146,6 +146,20 @@ export const METRICS: Metric[] = [
 
 const CODE_EXTENSIONS = ['.ts', '.js', '.svelte'];
 
+/**
+ * TEST FILES DO NOT VOTE ON PRODUCTION STYLE, and the ratchet found this out the hard way.
+ *
+ * Its first real run failed on a single new camelCase "constant": `const expected = {...}` in a
+ * test dev had added. A fixture is not a constant and its name is not a style decision — naming a
+ * local fixture UPPER_SNAKE would be worse, not better. Counting them meant the baseline drifted
+ * with test volume rather than with style, so the gate would have fired on work that was correct
+ * and been raised until it meant nothing.
+ *
+ * Applied to the upstream packages too, for the same reason and so the comparison stays like for
+ * like: what is being measured is the style of the shipped library, not of its test suite.
+ */
+export const TEST_PATH = /(^|\/)__tests__\/|\.test\.[cm]?[jt]s$|\.spec\.[cm]?[jt]s$|(^|\/)tests?\//;
+
 function walk(dir: string, out: string[] = [], depth = 0): string[] {
   if (depth > 12) return out;
   let entries: string[];
@@ -164,7 +178,7 @@ function walk(dir: string, out: string[] = [], depth = 0): string[] {
       continue;
     }
     if (st.isDirectory()) walk(full, out, depth + 1);
-    else if (CODE_EXTENSIONS.some((e) => name.endsWith(e))) out.push(full);
+    else if (CODE_EXTENSIONS.some((e) => name.endsWith(e)) && !TEST_PATH.test(full)) out.push(full);
   }
   return out;
 }

@@ -85,6 +85,19 @@ export async function fetchCurrentItems(graphStableId: string, since?: string): 
  * primary, reliable path (F29.2 decision, kb:currents-phase-2).
  */
 export async function fetchCurrentDirect(def: CurrentDef, graphStableId = ''): Promise<CurrentItem[]> {
+  // A tasks current has no browser fallback and never will. Google Tasks needs an OAuth
+  // credential the browser does not hold, and this function parses RSS/Atom XML — pointing it
+  // at the Tasks API would fail as "could not parse as RSS", which names the symptom and hides
+  // the cause. Say the real thing instead.
+  if (def.kind === 'tasks') {
+    throw new Error(
+      `"${def.label}" is a tasks current, which only the n8n Currents Monitor can fetch: the ` +
+        'Google Tasks API requires an OAuth credential and has no push channel, so it is polled ' +
+        'server-side. Configure settings.n8nBaseUrl and import ' +
+        'static/n8n/google-tasks-current.workflow.json.'
+    );
+  }
+
   let res: Response;
   try {
     res = await fetch(def.sourceUrl);

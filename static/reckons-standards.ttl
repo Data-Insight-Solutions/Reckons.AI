@@ -100,11 +100,12 @@ kstd:unit-of-code rdf:type ktype:CodingStandard ;
 kstd:literal-constant-case rdf:type ktype:CodingStandard ;
     rdfs:label "UPPER_SNAKE for literal constants" ;
     kpred:has-status "decided" ;
-    kpred:measured "2026-09-17: this codebase 723 UPPER_SNAKE, 77 camelCase, 15 PascalCase (89% of 815). Svelte 98/18 (84%), SvelteKit 41/23 (64%) — BOTH RANK-1 SOURCES AGREE WITH US. Threlte prefers camelCase (33 of 37) and three.js PascalCase (170 of 241)." ;
+    kpred:measured "2026-09-17, EXCLUDING TEST FILES (see the honest-note): this codebase 565 UPPER_SNAKE, 16 camelCase, 15 PascalCase — 95% of 596. Svelte 98/18 (84%), SvelteKit 41/23 (64%) — BOTH RANK-1 SOURCES AGREE WITH US. Threlte prefers camelCase (33 of 37) and three.js PascalCase (170 of 241)." ;
     kpred:decided "UPPER_SNAKE for a module-level constant with a literal initializer. Our own practice and both rank-1 sources agree; Threlte's sample is 37 declarations and does not outweigh that." ;
     kpred:principle "THREE.JS'S PASCALCASE IS NOT A COMPETING STYLE, IT IS A FOREIGN NAME. THREE.DoubleSide and THREE.FrontSide are its public API surface, so a file near the 3D layer will carry MAX_NODES and THREE.DoubleSide on adjacent lines and that is correct. Consistency with it is neither available nor desirable — see F203's binding classes." ;
     kpred:honest-note "A module-scope SINGLETON is a different thing and stays camelCase: `const saveBtn = document.getElementById(...)`, `const parser = new Parser()`. Conflating the two is what made a first run report a conflict with SvelteKit and Threlte that does not exist." ;
-    kpred:ratchet "constant/camelCase/77" ;
+    kpred:honest-note "TEST FILES DO NOT VOTE ON PRODUCTION STYLE, and the ratchet found this out by firing on correct work. Its first real run failed on ONE new camelCase constant — `const expected = {...}` in a test that arrived with a dev merge. A fixture is not a constant and its name is not a style decision; naming it UPPER_SNAKE would be worse. Excluding tests dropped the count from 78 to 16, so 62 of 78 were fixtures: the baseline had been tracking test VOLUME rather than style, and would have been raised until it meant nothing. The exclusion applies to the upstream packages too, so the comparison stays like for like — what is measured is the style of a shipped library, not of its test suite." ;
+    kpred:ratchet "constant/camelCase/16" ;
     kpred:enforced-by "scripts/offline/naming-conventions.ts --check — ratcheted at 77 camelCase literal constants." ;
     kpred:relates-to kb:coding-standards .
 

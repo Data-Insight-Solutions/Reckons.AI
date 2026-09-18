@@ -17,6 +17,8 @@ A compact, human-readable syntax for writing RDF triples. File extension: .ttl. 
 
 <p class="derived">It has 4 parts below.</p>
 
+<p class="in-sets">Part of It is plain text you can take away.</p>
+
 ## In this section
 
 ### @prefix Declaration

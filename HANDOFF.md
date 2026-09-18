@@ -1,9 +1,16 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-09-17.** On `feat/sets-and-statements`. Changes remain in the working tree;
-no session on this branch has committed, pushed, merged or deployed them. That is now three weeks
-of work behind no CI gate, and it is the single largest risk on this branch — `npm run check`, the
-unit suite, `graph-lint` and `build:verify` all run in CI and none of them has ever run against it.
+**Last updated: 2026-09-17.** On `feat/sets-and-statements`, now **committed and pushed** in ten
+commits and merged with `origin/dev` (it was 63 commits behind). Three weeks of working-tree
+changes that no CI gate had ever seen are now on a branch a PR can gate. Not merged to `dev`, and
+not deployed.
+
+**The merge produced one collision worth knowing about:** both sides had hand-minted **F200**.
+dev spent it on `kb:research-run`, which by then also carried the sub-phase F200.1, so
+`kb:why-reckons-positioning` moved to **F205** under the rule this project has now applied four
+times — the id stays with the feature every existing reference already means. This is the fourth
+such collision (F42/F43, F142-F144, F141, F200) and the common factor is branch lifetime, not the
+minting.
 
 ## Session 2026-09-17 — terminology and coding standards, measured
 
@@ -292,11 +299,10 @@ overwrite `docs-kb` pages. The route out is the one `learn/what-it-does` just to
 
 ## ▶ SESSION 2026-09-10 (evening) — merged the backlog; a plan contradiction settled
 
-Matt: _"I think we need to work through and merge as much valuable work as possible then?"_
+Matt: *"I think we need to work through and merge as much valuable work as possible then?"*
 **20 open PRs → 7.** Nothing pushed to `main`; base verified before every merge.
 
 ### Merged to `dev`
-
 - **#234** (89 commits) — the docs chain plus the F199 review procedure.
 - **9 dependabot** — all were targeting **`main`**, bypassing `dev → staging → main`. Retargeted
   to `dev` first. `gh pr edit --base` FAILED SILENTLY on all nine (a `gh` bug: it queries
@@ -307,12 +313,10 @@ Matt: _"I think we need to work through and merge as much valuable work as possi
 - **Held:** #232 (vitest 4→5, a major) and #214 (22 dev-deps in one PR).
 
 ### Closed
-
-#228 and #227 — verified _fully contained_ in #234 via `git merge-base --is-ancestor`, so nothing
+#228 and #227 — verified *fully contained* in #234 via `git merge-base --is-ancestor`, so nothing
 was lost. #226 — a stale 09-06 handoff, but it carried the one durable finding below.
 
 ### THE PLAN CONTRADICTION, and how it was settled
-
 #226 warned that hand-minted feature ids on long-lived branches would collide again. They had:
 **#205 minted `F141` for `kb:research-run` while `kb:interview-mode` already held it on dev.**
 `graph-lint`'s `duplicate-id` rule catches it — verified by resolving the merge naively in a
@@ -320,14 +324,13 @@ throwaway worktree: it reported `feature-id "F141" is claimed by 2 entities` and
 **It then caught ME too**, when F58.6 turned out to be taken. Third time in two weeks.
 
 A second, deeper one surfaced merging #197 — two of Matt's own judgments, two days apart:
-
 - **Aug 25 (#197):** HyperFrames "dissolves a blocker `kb:asset-generation` records as unsolved."
 - **Aug 27 (dev):** `we-avoid "Video generation as a product surface."`
 
 **MATT, 2026-09-10: "we should include video features, including video generation on the roadmap."**
 And then the sharper diagnosis: **"likely a claim statement about current capability, not a roadmap
-principle."** That is why the fix is not a deletion. _"Reckons.AI has no video feature"_ is true
-TODAY and is kept as `kpred:capability-gap`; _"must not acquire one"_ was a standing rule nobody
+principle."** That is why the fix is not a deletion. *"Reckons.AI has no video feature"* is true
+TODAY and is kept as `kpred:capability-gap`; *"must not acquire one"* was a standing rule nobody
 had decided. Written as one sentence, a fact about what is built became a constraint on what may
 be built — and contradicted a roadmap carrying video since F74.1, F115 and `kb:video-asset-analysis`.
 **This is the F194 layer distinction with teeth: a claim expires when the evidence changes; a
@@ -340,14 +343,13 @@ it framed video as GENERATIVE ONLY, and the deterministic path (HTML/CSS → hea
 FFmpeg, no model, no GPU) covers the video wanted first, because that content is data we hold.
 
 ### Four stale PRs rebased onto dev, pushed, awaiting Matt's merge
-
 All were ~105 commits behind. **None were mechanical.**
-
 - **#197** — #197 filed six References into `roadmap.ttl`; dev had put four of the same subjects
   into `competitive.ttl`. Both-sides would define one subject twice with two labels. dev's
   placement is canonical; #197's editorial predicates grafted on (12+6+9 lines). Moving content
   moved it out from under its prefix declaration — `train:` now declared in `competitive.ttl`.
 - **#205** — F141 → **F200**, with `kpred:renumbered-from` recording why.
+- **2026-09-17** — why-reckons-positioning F200 → **F205**, colliding with dev's `kb:research-run`.
 - **#204** — took THIS BRANCH's setup script (derives graphs from `static/*.ttl`; **29 linked vs
   dev's 10**) but added `[docs-user-paths.ttl]=user-paths`, because dev added that graph after the
   branch was cut and the derive loop would have silently RENAMED it. Verified by running it.
@@ -358,9 +360,11 @@ errors in `mcp-server/src/kb-reader.ts` — a file it never touched. I had flagg
 rather than claiming a clean run, and CI proved it real.
 
 CAUSE: #198 adds `tests/bench/run-synonym-search-bench.ts`, which imports across the package
-boundary into `mcp-server/src/search.js` and `kb-reader.js`. **`tests/**/\*.ts`is in the app's
-tsconfig include list**, so that import pulled mcp-server into the SvelteKit program — where`moduleResolution`is`bundler`, not the `Node16`mcp-server compiles under. Under bundler
-resolution the stale`@types/n3@1.21.3`(n3 is 2.7.11 and ships NO types of its own) resolves`Quad`/`Store` as namespaces. One package type-checked with another package's compiler options.
+boundary into `mcp-server/src/search.js` and `kb-reader.js`. **`tests/**/*.ts` is in the app's
+tsconfig include list**, so that import pulled mcp-server into the SvelteKit program — where
+`moduleResolution` is `bundler`, not the `Node16` mcp-server compiles under. Under bundler
+resolution the stale `@types/n3@1.21.3` (n3 is 2.7.11 and ships NO types of its own) resolves
+`Quad`/`Store` as namespaces. One package type-checked with another package's compiler options.
 
 FIX: `tests/bench/**` excluded from the app's check. **HONEST COST: 22 bench scripts are now
 type-checked by nothing** (4217 → 4193 files). They need their own tsconfig with Node16
