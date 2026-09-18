@@ -1,5 +1,5 @@
 {
-  "built": 133,
+  "built": 146,
   "pages": [
     {
       "path": "architecture/claude-md-minimal",
@@ -656,7 +656,7 @@
       "factHash": "ced60b7891f3b8cf",
       "factCount": 9,
       "floor": "evidence",
-      "pageHash": "23dab8bbaf979a2a"
+      "pageHash": "6c1edf774fdebfcc"
     },
     {
       "path": "learn/reckoning",
@@ -890,7 +890,7 @@
       "factHash": "9e6c2ff3d6ac3baf",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "9c7176190f3e9570"
+      "pageHash": "59c037f10d40c330"
     },
     {
       "path": "triples-rdf/rdf",
@@ -899,7 +899,70 @@
       "factHash": "f8535793163b42e5",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "37666da80091010f"
+      "pageHash": "bece65ac9ac67dc4"
+    },
+    {
+      "path": "triples-rdf/review-workflow",
+      "entity": "urn:reckons:arch/ReviewWorkflow",
+      "graph": "docs-triples-rdf.ttl",
+      "factHash": "f238ce9a0dd935bc",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "1857110a47d19944"
+    },
+    {
+      "path": "triples-rdf/set-architecture",
+      "entity": "urn:reckons:arch/SetArchitecture",
+      "graph": "docs-triples-rdf.ttl",
+      "factHash": "cd2a3b25a1ff8654",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "c7cbe59f73d5c5ab"
+    },
+    {
+      "path": "triples-rdf/set-in-extraction",
+      "entity": "urn:reckons:arch/SetInExtraction",
+      "graph": "docs-triples-rdf.ttl",
+      "factHash": "51f69f3cb9c05431",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "cf9ec61edd9c616f"
+    },
+    {
+      "path": "triples-rdf/set-membership-word",
+      "entity": "urn:reckons:arch/SetMembershipWord",
+      "graph": "docs-triples-rdf.ttl",
+      "factHash": "9ac041261dcc48ac",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "e650bb238e434ef5"
+    },
+    {
+      "path": "triples-rdf/set-order",
+      "entity": "urn:reckons:arch/SetOrder",
+      "graph": "docs-triples-rdf.ttl",
+      "factHash": "21b38a207925348e",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "03b22c290ec9eb7d"
+    },
+    {
+      "path": "triples-rdf/set-overlap",
+      "entity": "urn:reckons:arch/SetOverlap",
+      "graph": "docs-triples-rdf.ttl",
+      "factHash": "16cfbb492b103243",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "7d2431487ec84486"
+    },
+    {
+      "path": "triples-rdf/set-vs-triple",
+      "entity": "urn:reckons:arch/SetVsTriple",
+      "graph": "docs-triples-rdf.ttl",
+      "factHash": "7334749eb49e6b28",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "5bd0a983b060409c"
     },
     {
       "path": "triples-rdf/triple-architecture",
@@ -908,7 +971,7 @@
       "factHash": "26af549136a3289f",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "250cc0bb7be3eea0"
+      "pageHash": "a2551d24a2681fdf"
     },
     {
       "path": "triples-rdf/turtle",
@@ -917,7 +980,7 @@
       "factHash": "6aecd139be76db04",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "74fe87f3f8f0e71e"
+      "pageHash": "c3eb2306337ef45b"
     },
     {
       "path": "use-cases/academic-research-group",
@@ -1197,6 +1260,60 @@
       "factCount": 12,
       "floor": "evidence",
       "pageHash": "36706be462592282"
+    },
+    {
+      "path": "why-reckons-ai/core-is-note-taking",
+      "entity": "urn:reckons:why/CoreIsNoteTaking",
+      "graph": "docs-why-reckons.ttl",
+      "factHash": "dedbc84d3cc1f515",
+      "factCount": 4,
+      "floor": "evidence",
+      "pageHash": "2ef7e70e119a5815"
+    },
+    {
+      "path": "why-reckons-ai/democratise",
+      "entity": "urn:reckons:why/Democratise",
+      "graph": "docs-why-reckons.ttl",
+      "factHash": "a303df510c1d4703",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "32f8188a32c229dd"
+    },
+    {
+      "path": "why-reckons-ai/enterprise-convergence",
+      "entity": "urn:reckons:why/EnterpriseConvergence",
+      "graph": "docs-why-reckons.ttl",
+      "factHash": "5c86e38685d4822f",
+      "factCount": 5,
+      "floor": "evidence",
+      "pageHash": "07eda6f78265cacf"
+    },
+    {
+      "path": "why-reckons-ai/open-source-breadth",
+      "entity": "urn:reckons:why/OpenSourceBreadth",
+      "graph": "docs-why-reckons.ttl",
+      "factHash": "4175f5506b2121c9",
+      "factCount": 4,
+      "floor": "evidence",
+      "pageHash": "a2ac1a60575a4358"
+    },
+    {
+      "path": "why-reckons-ai/what-you-pay-for",
+      "entity": "urn:reckons:why/WhatYouPayFor",
+      "graph": "docs-why-reckons.ttl",
+      "factHash": "f25b7772533d57ed",
+      "factCount": 4,
+      "floor": "evidence",
+      "pageHash": "b4f0ad3aed256334"
+    },
+    {
+      "path": "why-reckons-ai/why-reckons",
+      "entity": "urn:reckons:why/WhyReckons",
+      "graph": "docs-why-reckons.ttl",
+      "factHash": "e32151e03a9418c1",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "b02839fe0122d2ad"
     }
   ]
 }

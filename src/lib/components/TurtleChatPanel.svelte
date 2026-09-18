@@ -11,7 +11,8 @@
   import { confirmedStatements, statements, sources, addStatements, addSource, updateStatement, setStatus } from '$lib/stores/kb.svelte';
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { ONBOARDING_TEMPLATES, BLANK_TEMPLATE } from '$lib/onboarding/templates';
-  import { settings } from '$lib/stores/settings.svelte';
+  import { settings, updateSettings } from '$lib/stores/settings.svelte';
+  import { openFeedback } from '$lib/stores/feedback.svelte';
   import { RDF_TYPE } from '$lib/rdf/entity-types';
   import type { TurtleChatMessage, KBAction, KBContext } from '$lib/types/turtle-chat';
   import { buildKBContext as buildKBContextShared } from '$lib/rdf/kb-context';
@@ -70,6 +71,9 @@
   const isWasmProvider = $derived.by(() => {
     return resolveChatProvider().provider === 'wasm';
   });
+
+  /** Named for the consent prompt: people deserve to know WHERE their notes are going. */
+  const chatProvider = $derived.by(() => resolveChatProvider().provider);
 
   // Auto-send initialMessage when provided (e.g. from search bar forwarding)
   $effect(() => {
@@ -358,6 +362,7 @@
         provider,
         apiKey,
         model,
+        consent: aiConsent,
         ollamaBaseUrl: s.ollamaBaseUrl,
         reckonsBaseUrl: s.reckonsBaseUrl,
         messages: messages.slice(-12).map((m) => ({ role: m.role, content: m.content })),
@@ -369,6 +374,38 @@
       handleChatError(e, provider);
     } finally {
       loading = false;
+    }
+  }
+
+  /*
+   * SHELLY ASKS BEFORE A MODEL SEES YOUR GRAPH (Matt, 2026-09-18: "Shelly should have opt-in model
+   * usage for people 'scared' of AI").
+   *
+   * Separate from the model-DOWNLOAD gate, which asks about bytes and never fires again once a
+   * model is cached. Someone wary of AI is not worried about a 33MB download; they are worried
+   * about what the model is shown, and until now nothing asked. Answering is remembered, and
+   * declining is a real answer — Shelly keeps working for everything that needs no model.
+   */
+  const aiConsent = $derived(settings().aiUsageConsent);
+
+  async function grantAiConsent(granted: boolean) {
+    await updateSettings({ aiUsageConsent: granted ? 'granted' : 'declined' });
+    if (!granted) return;
+
+    /*
+     * SAYING YES HAS TO DO SOMETHING. Granting consent used to leave the refusal on screen —
+     * "Shelly needs permission before showing your notes to a language model" — because errorMsg
+     * and exploreErrorMsg are sticky state that nothing cleared, and `exploreStarted` is set
+     * BEFORE the request, so the run that failed never retried. The user clicked Allow and the app
+     * carried on saying no. A permission prompt that does not visibly unblock the thing it was
+     * blocking reads as broken, and worse, teaches people their answer was not heard.
+     */
+    errorMsg = '';
+    errorLink = null;
+    exploreErrorMsg = '';
+    if (tab === 'explore') {
+      exploreStarted = true;
+      await sendExploreMessage(null);
     }
   }
 
@@ -425,6 +462,7 @@
 
     try {
       const resp = await turtleChat({
+        consent: aiConsent,
         provider, apiKey, model,
         ollamaBaseUrl: s.ollamaBaseUrl,
         reckonsBaseUrl: s.reckonsBaseUrl,
@@ -880,6 +918,7 @@
 
     try {
       const resp = await turtleChat({
+        consent: aiConsent,
         provider, apiKey, model,
         ollamaBaseUrl: s.ollamaBaseUrl,
         reckonsBaseUrl: s.reckonsBaseUrl,
@@ -1137,6 +1176,7 @@
 
     // 3. Apply safe inline markdown on already-escaped text
     text = text
+      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
       .replace(/`([^`]+)`/g, '<code>$1</code>')
@@ -1179,6 +1219,38 @@
     </div>
   {/snippet}
 
+  <!--
+    ASK BEFORE A MODEL SEES THE GRAPH, AT PANEL LEVEL (Matt, 2026-09-18: opt-in model usage for
+    people wary of AI).
+    
+    This first lived inside the chat tab, which was a dead end: `explore` runs a model on open, hit
+    the closed gate and showed "Shelly needs permission…" with no way anywhere to give it. A consent
+    prompt that is not reachable from the surface that triggered the request is not a gate, it is a
+    wall. Above the tabs, every path that needs permission can also grant it.
+    
+    Separate from the model-DOWNLOAD gate, which asks about bytes and never fires again once a model
+    is cached. Someone wary of AI is not worried about a 33MB download; they are worried about what
+    the model is shown. Naming WHERE it runs matters more than the word "AI": "runs on this device"
+    and "sends to openai" are different promises, and only one of them needs thinking about.
+  -->
+  {#if aiConsent === undefined}
+    <div class="ai-consent" role="group" aria-label="Allow Shelly to use a model">
+      <p class="ai-consent-q">Shelly answers by sending the relevant parts of your graph to a language model.</p>
+      <p class="ai-consent-where mono">{isWasmProvider ? 'runs on this device — nothing leaves it' : `sends to ${chatProvider}`}</p>
+      <div class="ai-consent-actions">
+        <button class="primary" onclick={() => grantAiConsent(true)}>Allow</button>
+        <button onclick={() => grantAiConsent(false)}>Not now</button>
+      </div>
+    </div>
+  {:else if aiConsent === 'declined'}
+    <div class="ai-consent">
+      <p class="ai-consent-q">Shelly's model is off, so answers are unavailable. Everything that needs no model still works.</p>
+      <div class="ai-consent-actions">
+        <button class="primary" onclick={() => grantAiConsent(true)}>Turn it on</button>
+      </div>
+    </div>
+  {/if}
+
   <!-- ── Tutorial tab ── -->
   <Tabs.Content value="tutorial" class="tcp-tab-content">
     <div class="tutorial">
@@ -1215,6 +1287,32 @@
         </div>
       {/if}
 
+      <!--
+        HELP LIVES HERE, NOT IN A FLOATING BUBBLE (Matt, 2026-09-18: "Screen real estate is
+        precious, maybe these things should be in the Shelly chat panel" — yes, and `learn` is
+        already the help surface, so this costs no new pixels and needs no gating rules of its own.
+        A `?` bubble would be one more always-on overlay, which is the exact class of thing that
+        just leaked onto the landing four times).
+
+        THE ALPHA NOTE IS HERE BECAUSE IT IS TRUE, not as a disclaimer. kb:honest-status: naming a
+        limitation beside the thing it limits beats a footer nobody reads.
+      -->
+      <div class="help-block">
+        <p class="help-heading mono">about this app</p>
+        <p class="help-alpha">
+          Reckons.AI is <strong>alpha</strong> — v0.2.0, one maintainer. Things will be rough, and
+          some of what you see is newer than its own documentation.
+        </p>
+        <div class="help-links">
+          <a href="/docs">Read the docs →</a>
+          <a href="/?welcome">See the welcome page →</a>
+          <button class="help-link-btn" onclick={() => openFeedback('shelly-learn')}>Send feedback →</button>
+        </div>
+        <p class="help-note mono">
+          Shelly answers from YOUR graph, not from the documentation — so for questions about how
+          Reckons.AI itself works, the docs are the better place to look.
+        </p>
+      </div>
       <div class="step-body">
         <h3 class="step-title">{currentStep.title}</h3>
         <!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -1243,6 +1341,7 @@
           {/if}
         </div>
       </div>
+
     </div>
   </Tabs.Content>
 
@@ -1512,11 +1611,11 @@
           <div class="story-controls">
             <span class="story-step-label mono">{storyStepIdx + 1} / {currentStory.steps.length}</span>
             <div class="story-nav">
-              <button class="story-btn" onclick={storyPrev} disabled={storyStepIdx <= 0 || storyLoading} title="Previous step">←</button>
+              <button class="story-btn" onclick={storyPrev} disabled={storyStepIdx <= 0 || storyLoading} title="Previous step" aria-label="Previous step">←</button>
               <button class="story-btn" class:active={storyAutoPlaying} onclick={toggleAutoPlay} disabled={storyLoading} title={storyAutoPlaying ? 'Pause' : 'Auto-play'}>
                 {storyAutoPlaying ? '⏸' : '▶'}
               </button>
-              <button class="story-btn" onclick={storyNext} disabled={storyStepIdx >= currentStory.steps.length - 1 || storyLoading} title="Next step">→</button>
+              <button class="story-btn" onclick={storyNext} disabled={storyStepIdx >= currentStory.steps.length - 1 || storyLoading} title="Next step" aria-label="Next step">→</button>
             </div>
             <div class="story-audio">
               {#if ttsBroken}
@@ -1754,11 +1853,78 @@
   }
 
   /* ── Tutorial ── */
+  /*
+   * CONSENT PROMPT — above the tabs, so every path that needs permission can also grant it.
+   * Styled as a statement rather than an alert: it is a question about what the user wants, not a
+   * warning that something went wrong.
+   */
+  .ai-consent {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--surface-3, #2a3a4d);
+    background: var(--surface-2, #131c26);
+  }
+  .ai-consent-q { font-size: 0.85rem; margin: 0 0 0.35rem; color: var(--ink-2); line-height: 1.45; }
+  .ai-consent-where { font-size: 0.72rem; color: var(--muted); margin: 0 0 0.7rem; }
+  .ai-consent-actions { display: flex; gap: 0.5rem; }
+  .ai-consent-actions button {
+    min-height: 44px;
+    padding: 0 1rem;
+    border-radius: var(--rad, 8px);
+    border: 1px solid var(--surface-3, #2a3a4d);
+    background: var(--surface-3, #1b2734);
+    color: var(--ink-2);
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  .ai-consent-actions button.primary { background: var(--accent); border-color: var(--accent); color: #05231f; font-weight: 600; }
+
+  /* Help block on the learn tab — quiet, at the end, found by someone looking for it. */
+  .help-block {
+    flex: 0 0 auto;
+    padding: 0.9rem 1.1rem;
+    border-bottom: 1px solid var(--surface-3, #2a3a4d);
+  }
+  .help-heading {
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 0.45rem;
+  }
+  .help-alpha { font-size: 0.82rem; margin: 0 0 0.6rem; color: var(--ink-2); line-height: 1.45; }
+  .help-links { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; }
+  .help-links a,
+  .help-link-btn {
+    font-size: 0.82rem;
+    color: var(--accent);
+    text-decoration: none;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    /* 44px tap target, same rule as the landing's standalone links. */
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .help-links a:hover, .help-link-btn:hover { text-decoration: underline; }
+  .help-note { font-size: 0.72rem; color: var(--muted); margin: 0.3rem 0 0; line-height: 1.5; }
+
+  /*
+   * THE WHOLE TAB SCROLLS, NOT A WINDOW INSIDE IT (Matt, 2026-09-18: the guide "should go below
+   * the new content and not be in a small scroll, full height").
+   *
+   * .step-body used to own `overflow-y: auto` inside a 65vh cap, so the guide read through a short
+   * porthole with the panel's own scrollbar beside it — two scrollbars, and the shorter one hid
+   * most of the text. One scrolling container, full height, and the help block above it stays
+   * where somebody looking for help will meet it first.
+   */
   .tutorial {
     display: flex;
     flex-direction: column;
     min-height: 380px;
-    max-height: 65vh;
+    max-height: none;
+    overflow-y: auto;
   }
 
   /* ── Starter templates (shown when KB is empty) ── */
@@ -1823,9 +1989,8 @@
     margin: 0.6rem 0 0.2rem;
   }
   .step-body {
-    flex: 1;
+    flex: 1 0 auto;
     padding: 1rem 1.1rem 0.5rem;
-    overflow-y: auto;
   }
   .step-title {
     font-size: 0.95rem;

@@ -18,7 +18,7 @@ KBS="$WORKSPACE/kbs"
 
 echo "Setting up Reckons workspace..."
 
-mkdir -p "$KBS"/{production,roadmap,features,docs,quickstart,codebase,architecture,vocabulary,generation}
+mkdir -p "$KBS"/{production,roadmap,features,docs,quickstart,codebase,architecture,vocabulary,generation,terminology,standards}
 
 # Clean up legacy meta.json files (no longer needed — discovery uses {folder}.ttl)
 find "$KBS" -name meta.json -delete 2>/dev/null || true
@@ -37,6 +37,13 @@ ln -sf ../../../static/docs-architecture.ttl  "$KBS/architecture/architecture.tt
 # task state is, rather than inferring it from examples — which is the whole reason for defining
 # them in the graph instead of in TypeScript.
 ln -sf ../../../static/reckons-vocabulary.ttl "$KBS/vocabulary/vocabulary.ttl"
+# Terminology (F203) and coding standards (F204). Linked because the failure they exist to prevent
+# is an agent GUESSING a convention it could have looked up: which of four things "node" means
+# here, or whether a constant is UPPER_SNAKE. A graph nothing can search is a graph nobody reads,
+# and silence from kb_search reads as "no such rule exists" rather than "not linked".
+mkdir -p "$KBS/terminology" "$KBS/standards"
+ln -sf ../../../static/reckons-terminology.ttl "$KBS/terminology/terminology.ttl"
+ln -sf ../../../static/reckons-standards.ttl   "$KBS/standards/standards.ttl"
 # The local-generation catalogue, so an agent can ask what is available and what its licence
 # permits rather than guessing from a model name.
 ln -sf ../../../static/reckons-generation-tools.ttl "$KBS/generation/generation.ttl"
@@ -45,6 +52,12 @@ ln -sf ../../../static/reckons-generation-tools.ttl "$KBS/generation/generation.
 # the same facts in a format nothing else in the system can query.
 mkdir -p "$KBS/jobs"
 ln -sf ../../../static/reckons-jobs.ttl "$KBS/jobs/jobs.ttl"
+# The positioning graph (F200). Linked as its own KB rather than only folded into docs-all.ttl so
+# that "why this instead of Palantir / OntoBricks / Logseq" is ANSWERABLE by kb_search. It is the
+# one graph in the workspace that is openly persuasion, and it carries its own sources and dates
+# so an agent quoting it can quote the evidence too.
+mkdir -p "$KBS/why"
+ln -sf ../../../static/docs-why-reckons.ttl "$KBS/why/why.ttl"
 
 # Docs KB: merge all sub-graphs into one file, then symlink
 cat static/starter-guide.ttl \
@@ -54,6 +67,7 @@ cat static/starter-guide.ttl \
     static/docs-integrations-tech.ttl \
     static/docs-tips-security.ttl \
     static/docs-timeline-ecosystem.ttl \
+    static/docs-why-reckons.ttl \
     > static/docs-all.ttl
 ln -sf ../../../static/docs-all.ttl "$KBS/docs/docs.ttl"
 

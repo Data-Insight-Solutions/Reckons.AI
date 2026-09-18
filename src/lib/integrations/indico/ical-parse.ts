@@ -19,14 +19,40 @@ export interface ICalEvent {
  * Fetch and parse an iCal URL. Works with any public .ics feed.
  * Tries direct fetch first; if CORS blocks it, falls back to a proxy.
  */
-export async function fetchICalEvents(icalUrl: string): Promise<ICalEvent[]> {
+export async function fetchICalEvents(
+  icalUrl: string,
+  opts: { allowCorsProxy?: boolean } = {},
+): Promise<ICalEvent[]> {
   let text: string;
   try {
     const res = await fetch(icalUrl);
     if (!res.ok) throw new Error(`${res.status}`);
     text = await res.text();
   } catch {
-    // CORS blocked — use corsproxy.io as fallback
+    /*
+     * THE PROXY FALLBACK IS OPT-IN, BECAUSE THE URL IS OFTEN THE CREDENTIAL.
+     *
+     * A calendar "secret address" — the private iCal link Google and Outlook hand out — is bearer
+     * authentication carried in a URL. Relaying one through corsproxy.io gives an unaffiliated
+     * third party both the key to that calendar and everything inside it. Until 2026-09-18 that
+     * happened SILENTLY, inside this catch, with nothing shown to the user and no way to decline.
+     *
+     * kb:data-egress-model classes a third-party relay as `third-party-service`, which requires
+     * explicit user connect; a silent fallback is precisely what it rules out. Failing loudly is
+     * the right default — the user can enable the relay knowing what it costs, or use a feed that
+     * permits direct access. Neither choice leaks anything they did not choose to leak.
+     *
+     * The permission is PASSED IN rather than read from a store, so this module stays a pure
+     * parser that a test can drive without mounting the app.
+     */
+    if (!opts.allowCorsProxy) {
+      throw new Error(
+        'This calendar server refuses direct browser requests (CORS). Fetching it would relay the ' +
+          'URL through corsproxy.io, a third party — and a private iCal address is itself the ' +
+          'password to that calendar. Enable the calendar CORS proxy in Settings to allow it, or ' +
+          'use a feed that permits direct access.'
+      );
+    }
     const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(icalUrl)}`;
     const res = await fetch(proxyUrl);
     if (!res.ok) throw new Error(`iCal fetch failed (via proxy): ${res.status}`);

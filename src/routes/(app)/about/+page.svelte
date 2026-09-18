@@ -9,6 +9,7 @@
   // in src/lib/styles/tailwind.css (see kb:design-system in reckons-roadmap.ttl).
   import { Button } from '$lib/components/ui/button';
   import ContactForm from '$lib/components/ContactForm.svelte';
+  import { HUMANITY_PDC_EXAMPLE, openHumanityPdcExample } from '$lib/examples/humanity-pdc';
 
   // ── Compression benchmark data ─────────────────────────────────────────
   const GITHUB_REPO = 'https://github.com/Data-Insight-Solutions/Reckons.AI';
@@ -47,6 +48,7 @@
       entities: 15,
       triples: 90
     },
+    HUMANITY_PDC_EXAMPLE,
   ];
 
   let loadingKb = $state<string | null>(null);
@@ -57,6 +59,7 @@
     loadingKb = kb.id;
     loadError = '';
     try {
+      if (kb.id === HUMANITY_PDC_EXAMPLE.id) { await openHumanityPdcExample(); return; }
       const res = await fetch(kb.file);
       if (!res.ok) throw new Error(`Failed to fetch ${kb.file}`);
       const ttl = await res.text();
@@ -228,6 +231,12 @@
           first-time reader who wants to understand it first had nowhere to go.
         -->
         <a href="/docs" class="btn-secondary">Read the docs</a>
+        <!--
+          THE WAY BACK TO THE LANDING (Matt, 2026-09-18: "I can't really get back to the landing
+          without clearing cache"). ?welcome renders it over the graph without touching any stored
+          data, so re-reading the pitch or showing someone the demo no longer costs you your graphs.
+        -->
+        <a href="/?welcome" class="btn-secondary">See the welcome page</a>
       </div>
     </div>
     <div class="scroll-hint" aria-hidden="true">↓</div>
@@ -866,7 +875,7 @@
 
     <p class="starter-sub-heading mono">example data</p>
     <p class="starter-sub-desc">
-      Import example facts into your own graph to see how real-world data looks as a graph.
+      Explore example facts and sourced proposals. Humanity AI + PDC opens as a separate editable graph.
     </p>
 
     <div class="starter-grid">
@@ -888,12 +897,19 @@
           {#if loadingKb === kb.id}
             <span class="starter-loading mono">importing...</span>
           {:else}
-            <span class="starter-action mono">import →</span>
+            <span class="starter-action mono">{kb.id === HUMANITY_PDC_EXAMPLE.id ? 'open example →' : 'import →'}</span>
           {/if}
         </button>
       {/each}
     </div>
   </section>
+
+  <p class="starter-sub-desc">
+    Grant alignment example inputs:
+    <a href="/example-humanity-opportunity.ttl" download>opportunity graph</a>
+    and <a href="/example-reckons-seeker.ttl" download>grant seeker graph</a>.
+    Open the Humanity AI + PDC example above to follow their combined story.
+  </p>
 
   <!-- ── Quick Reference ──────────────────────────────────────────────────── -->
   <section class="section ref-section" aria-label="Quick reference">

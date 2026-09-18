@@ -32,13 +32,26 @@ notepad](../use-cases/why-not-a-notepad).
 - **Keeping a year of your own notes usable**, when you no longer remember how
   you phrased something the first time.
 
+## What it is
+
+It is a notes app, and the extra step is the point rather than an apology for
+one. Capture should be as easy as talking at your phone, and anywhere it is
+harder than that, treat it as a bug rather than as rigour. The difference comes
+after capture: instead of leaving you a pile of prose to re-read, it works out
+the claims inside what you wrote and asks you to confirm them — so that a year
+later you can ask your notes a question instead of searching them.
+
 ## What it is not
 
-It is not a notes app with extra steps, and it is not an assistant that reads
-your files and answers confidently. Nothing enters your graph because a model
-suggested it. Every fact was proposed, shown to you, and accepted — which is why
-the graph can be trusted later, and why it can tell you what it does **not**
-know.
+It is not a tool for researchers who already think in ontologies, and you do not
+need to know what a triple is to use it. Learning to see your own notes as
+things and the relationships between them is something the app should teach you
+by showing you, not a prerequisite you bring with you.
+
+It is also not an assistant that reads your files and answers confidently.
+Nothing enters your graph because a model suggested it. Every fact was proposed,
+shown to you, and accepted — which is why the graph can be trusted later, and why
+it can tell you what it does **not** know.
 
 ## Where to go next
 

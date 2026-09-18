@@ -67,6 +67,13 @@ vi.mock('../../storage/db', () => ({
 
 vi.mock('../settings.svelte', () => ({ updateSettings: vi.fn(async () => {}) }));
 
+// Inbox persistence is exercised with real IndexedDB in personal-notes.test.ts (browser tests).
+// These tests isolate the ordinary proposal queue and filesystem acknowledgement boundary.
+vi.mock('../../storage/personal-notes', () => ({
+  deliverApprovedNoteTransfers: async () => [],
+  importPersonalCaptureRows: async () => ({ acknowledgedLines: [], written: 0, held: 0 }),
+}));
+
 vi.mock('../kb.svelte', () => ({
   loadAll: loadAllSpy,
   prepareStatementsForWrite: prepareStatementsForWriteSpy,

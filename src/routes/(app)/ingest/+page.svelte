@@ -844,7 +844,7 @@
     try {
       const { fetchICalEvents } = await import('$lib/integrations/indico/ical-parse');
       const { eventsToStatements: icalToStatements } = await import('$lib/integrations/google/calendar-rdf');
-      const events = await fetchICalEvents(icalUrl.trim());
+      const events = await fetchICalEvents(icalUrl.trim(), { allowCorsProxy: settings().allowCorsProxy });
       const sourceId = `ical-${Date.now()}`;
       // Convert ICalEvent to CalendarEvent shape for reuse of eventsToStatements
       const calEvents = events.map(ev => ({
@@ -1396,6 +1396,30 @@
     <p class="err" role="alert" tabindex="-1" data-ingest-error>{error}</p>
   {/if}
 </div>
+{/if}
+
+<!--
+  THE NOTES INBOX LIVES HERE, not on a tab of its own (Matt, 2026-09-16). Writing a note and
+  keeping notes are the same errand, and /ingest already defaults to mode 'note' — a separate
+  top-level `notes` tab made the product ask a first-time user to learn two answers to "where do
+  I write something down". Collapsed by default so capture stays the first thing on the page, and
+  dynamically imported so Dexie's live queries load only for someone who opens it.
+-->
+{#if mode === 'note'}
+  <details class="card notes-inbox-card">
+    <summary class="notes-inbox-summary">
+      <span>Your notes inbox</span>
+      <span class="hint mono">saved notes, kept whole — review a copy into any graph</span>
+    </summary>
+    {#await import('$lib/components/NotesInbox.svelte')}
+      <p class="hint mono" style="padding: 0.75rem 0;">loading your notes…</p>
+    {:then module}
+      {@const NotesInbox = module.default}
+      <NotesInbox />
+    {:catch}
+      <p class="err" role="alert">The notes inbox could not be loaded. Your saved notes are unaffected.</p>
+    {/await}
+  </details>
 {/if}
 
 {#if mode === 'kb'}
@@ -2015,4 +2039,14 @@
     .action-group { justify-content: stretch; }
     .action-group > * { flex: 1; text-align: center; }
   }
+
+  /* The notes inbox disclosure on the Add page (mode: note). */
+  .notes-inbox-card { margin-top: 1rem; padding: 0.9rem 1.1rem; }
+  .notes-inbox-summary {
+    cursor: pointer; display: flex; flex-wrap: wrap; align-items: baseline;
+    gap: 0.6rem; list-style: none; font-weight: 600; color: var(--ink);
+  }
+  .notes-inbox-summary::-webkit-details-marker { display: none; }
+  .notes-inbox-summary::before { content: '▸'; color: var(--accent); font-size: 0.8em; }
+  details[open] > .notes-inbox-summary::before { content: '▾'; }
 </style>

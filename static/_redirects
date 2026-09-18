@@ -166,7 +166,6 @@
 /docs/triples-rdf/provo  /docs/triples-rdf/rdf  301
 /docs/triples-rdf/rdfs  /docs/triples-rdf/rdf  301
 /docs/triples-rdf/reification  /docs/triples-rdf/triple-architecture  301
-/docs/triples-rdf/review-workflow  /docs/triples-rdf/triple-architecture  301
 /docs/triples-rdf/skos  /docs/triples-rdf/rdf  301
 /docs/triples-rdf/sparql  /docs/triples-rdf/rdf  301
 /docs/triples-rdf/subject-predicate-object  /docs/triples-rdf/triple-architecture  301
@@ -199,3 +198,15 @@
 /docs/user-paths/story-2  /docs/user-paths/view-story  301
 /docs/user-paths/story-3  /docs/user-paths/view-story  301
 /docs/user-paths/story-4  /docs/user-paths/view-story  301
+/docs/why-reckons-ai/accessibility-is-the-feature  /docs/why-reckons-ai/core-is-note-taking  301
+/docs/why-reckons-ai/combined-capabilities  /docs/why-reckons-ai/open-source-breadth  301
+/docs/why-reckons-ai/no-subscription  /docs/why-reckons-ai/what-you-pay-for  301
+/docs/why-reckons-ai/open-source-respect  /docs/why-reckons-ai/open-source-breadth  301
+/docs/why-reckons-ai/shared-methodology  /docs/why-reckons-ai/enterprise-convergence  301
+/docs/why-reckons-ai/teach-entities-by-showing  /docs/why-reckons-ai/core-is-note-taking  301
+/docs/why-reckons-ai/the-visual-difference  /docs/why-reckons-ai/open-source-breadth  301
+/docs/why-reckons-ai/vendor-fabric-iq  /docs/why-reckons-ai/enterprise-convergence  301
+/docs/why-reckons-ai/vendor-onto-bricks  /docs/why-reckons-ai/enterprise-convergence  301
+/docs/why-reckons-ai/vendor-palantir  /docs/why-reckons-ai/enterprise-convergence  301
+/docs/why-reckons-ai/vendor-specialists  /docs/why-reckons-ai/enterprise-convergence  301
+/docs/why-reckons-ai/where-we-are-smaller  /docs/why-reckons-ai/enterprise-convergence  301

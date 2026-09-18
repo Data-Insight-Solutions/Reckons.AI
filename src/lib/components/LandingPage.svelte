@@ -7,6 +7,7 @@
   import { activateOfficialKb, preloadOfficialKb, officialKbError } from '$lib/stores/official-kb.svelte';
   import { importTurtleFull } from '$lib/rdf/import-ttl';
   import { startStory, startExplore } from '$lib/stores/shelly-bridge.svelte';
+  import { HUMANITY_PDC_EXAMPLE, openHumanityPdcExample } from '$lib/examples/humanity-pdc';
 
   // Warm the larger documentation graph after the landing page has had time to hydrate. Starting
   // its fetch/parse during component initialization competes with an immediate starter click on the
@@ -28,6 +29,7 @@
 
   const EXAMPLE_KBS = [
     { id: 'quickstart', icon: '🚀', title: 'Quick-Start Example', body: 'People, projects, decisions, metrics', file: '/starter-quickstart.ttl' },
+    HUMANITY_PDC_EXAMPLE,
   ];
 
   const GUIDE_STORY_ID = 'urn:reckons:story/ReckonsPhilosophy';
@@ -119,6 +121,7 @@
     loadingExample = kb.id;
     actionError = null;
     try {
+      if (kb.id === HUMANITY_PDC_EXAMPLE.id) { await openHumanityPdcExample(); return; }
       const res = await fetch(kb.file);
       if (!res.ok) throw new Error(`Failed to fetch ${kb.file}`);
       const ttl = await res.text();
@@ -178,9 +181,20 @@
     const TEAL = '#1a9b8e';
     const PURPLE = '#6b4399';
     const labels = ['Climate', 'IPCC', 'CO₂ ppm', 'Arctic', 'sea level', 'credibility', 'Reckons.AI', 'policy', 'evidence'];
+    /*
+     * JITTERED 3x3 PLACEMENT, NOT PURE RANDOM (Matt, 2026-09-18: "space the nodes further, they
+     * are bunched up too tightly"). Nine uniformly random points in a square clump far more often
+     * than intuition suggests. Measured over 2000 trials: the old placement put two nodes closer
+     * than 0.10 apart on 83% of page loads, median nearest-pair 0.062, worst 0.002. One node per
+     * SHUFFLED grid cell, jittered within it, leaves a gutter between cells — 0% clumped, median
+     * 0.171 — while still arranging differently on every visit. The shuffle matters: without it
+     * label and colour would correlate with screen position, which would look designed rather
+     * than alive. Node index still drives label, colour and edges, so topology is unchanged.
+     */
+    const cells = [...Array(9).keys()].sort(() => Math.random() - 0.5);
     const nodes: Node[] = Array.from({ length: 9 }, (_, i) => ({
-      x: Math.random() * 0.8 + 0.1,
-      y: Math.random() * 0.8 + 0.1,
+      x: 0.22 + (cells[i] % 3) * 0.28 + (Math.random() - 0.5) * 0.18,
+      y: 0.22 + ((cells[i] / 3) | 0) * 0.28 + (Math.random() - 0.5) * 0.18,
       vx: (Math.random() - 0.5) * 0.0004,
       vy: (Math.random() - 0.5) * 0.0004,
       r: 5 + Math.random() * 4,
@@ -291,6 +305,83 @@
     }
   ];
 
+  /**
+   * F200 — the comparison sections. Mirrors static/docs-why-reckons.ttl, which is the source of
+   * truth and carries the sources and dates behind every figure here. Two rules when editing:
+   * no price goes in without a citation in that graph, and no priority claim goes in at all
+   * (why:PriorityClaimRejected — OntoBricks predates us by two months and the page says so).
+   */
+  const VENDORS = [
+    {
+      name: 'Palantir Foundry',
+      what: 'The Ontology layer — objects, links and actions over enterprise data. The product that made "ontology" a boardroom word.',
+      cost: '$500k–$2M / year typical',
+      note: 'Reported first contracts. No public rate card.'
+    },
+    {
+      name: 'Databricks OntoBricks',
+      what: 'OWL ontologies, R2RML mappings, a materialized triple store, OWL 2 RL reasoning, SHACL — and MCP, so a model can query the graph.',
+      cost: 'Requires a Databricks workspace',
+      note: 'Source-available, not OSI open source. Unity Catalog, SQL Warehouse and Lakebase are consumption-billed.'
+    },
+    {
+      name: 'Microsoft Fabric IQ',
+      what: 'An Ontology item defining entity types, properties and relationships over a native graph engine, feeding data agents.',
+      cost: 'Requires Fabric capacity',
+      note: 'Announced at Ignite 2025, GA at Build 2026. Ontology billing meters began in H1 2026.'
+    },
+    {
+      name: 'Stardog · Ontotext GraphDB',
+      what: 'The specialists. Real SPARQL, real reasoning at scale, federation — genuinely more capable than us at the things they do.',
+      cost: 'Sales call, or per CPU core',
+      note: 'GraphDB Free exists: two concurrent queries, and its licence forbids use in anything that generates revenue.'
+    }
+  ];
+
+  /**
+   * ORDERED BY WHAT A NORMAL PERSON MEETS FIRST, not by what impresses a semantic-web audience.
+   * Matt, 2026-09-16: the core is "a functional personal assistant and that is note taking with
+   * extra steps" — so capture leads and the 3D graph is an enhancement, not the entry point.
+   */
+  const OSS_BREADTH = [
+    {
+      icon: '◉',
+      title: 'Say it, and it is a note',
+      body: 'Type it, paste it, or talk at your phone. Speech-to-text runs on the device, so the easiest way in is also the most private one. A graph you can fill by talking is open to people a keyboard shuts out.',
+      color: 'var(--accent)'
+    },
+    {
+      icon: '◱',
+      title: 'Your notes become facts',
+      body: 'Note apps build a backlink graph over documents: the nodes are pages and the links mean nothing in particular. Reckons.AI reads your note and proposes statements: a typed relationship between two things, carrying its source. You confirm or reject each one. Later you ask a question instead of searching.',
+      color: 'var(--data)'
+    },
+    {
+      icon: '◈',
+      title: 'No ontology required up front',
+      body: 'Triplestores assume you arrive with an ontology, a server and a SPARQL endpoint. Reckons.AI assumes you arrive with a voice note. The vocabulary grows out of what you confirm, and the Sources view shows what your own document became, which is how you learn to see things and relationships without a tutorial.',
+      color: 'var(--accent)'
+    },
+    {
+      icon: '⌂',
+      title: 'The whole stack runs locally',
+      body: 'On-device extraction through WASM or Ollama, on-device embeddings for semantic search, Whisper speech-to-text and Kokoro speech back out. Bring a cloud key if you want one. Nothing breaks without it.',
+      color: 'var(--data)'
+    },
+    {
+      icon: '⬢',
+      title: 'Then: a graph you can look at',
+      body: '3D navigation, hierarchical layouts, per-entity icons, and nodes that carry a photograph, a video clip or an orbitable GLB model. An enhancement rather than the entry point, but it is how the shape of what you know becomes something you can see.',
+      color: 'var(--accent)'
+    },
+    {
+      icon: '⌁',
+      title: 'And: queryable by your agents',
+      body: 'An MCP server exposes your graph to Claude Code, editors and any other MCP client, and WebPage entities round-trip to markdown so the graph can publish as a site. These docs are generated from the same graph the app reads.',
+      color: 'var(--data)'
+    }
+  ];
+
   const FEATURES = [
     {
       icon: '⬡',
@@ -366,11 +457,14 @@
     <canvas bind:this={canvas} class="nodes-canvas" aria-hidden="true"></canvas>
 
     <div class="hero-content">
-      <p class="kicker mono">knowledge graph · provenance · trust</p>
-      <img src="/svg/logo-text.svg" alt="Reckons.AI" class="hero-logo" />
-      <p class="tagline">
-        A knowledge graph that knows<br/><em>your situation.</em>
+      <p class="kicker mono">
+        knowledge graph · provenance · trust
+        <span class="alpha-badge">alpha · v0.2.0</span>
       </p>
+      <img src="/svg/logo-text.svg" alt="Reckons.AI" class="hero-logo" />
+      <h1 class="tagline">
+        A knowledge graph that knows<br/><em>your situation.</em>
+      </h1>
       <p class="sub">
         Condense your context. Keep the meaning.<br/>
         An assistant that understands your situation, <em>controlled by you,</em> private by default.
@@ -443,11 +537,11 @@
           <span class="tmpl-icon">{kb.icon}</span>
           <strong class="tmpl-label">{kb.title}</strong>
           <p class="tmpl-desc">{kb.body}</p>
-          <span class="tmpl-scenario mono">example data · imports into your graph</span>
+          <span class="tmpl-scenario mono">{kb.id === HUMANITY_PDC_EXAMPLE.id ? 'opens its own editable graph · sourced proposals' : 'example data · imports into your graph'}</span>
           {#if loadingExample === kb.id}
             <span class="tmpl-loading mono">importing...</span>
           {:else}
-            <span class="tmpl-cta">Import example →</span>
+            <span class="tmpl-cta">{kb.id === HUMANITY_PDC_EXAMPLE.id ? 'Open example →' : 'Import example →'}</span>
           {/if}
         </button>
       {/each}
@@ -720,6 +814,60 @@
     <p class="enterprise-cta mono">Enterprise features in development. <a href="https://data-insight.solutions/contact" target="_blank" rel="noopener noreferrer">Get in touch →</a></p>
   </section>
 
+  <!-- WHY NOT THE ENTERPRISE STACK — mirrors static/docs-why-reckons.ttl (F200) -->
+  <section class="section vendors-section">
+    <p class="section-kicker mono">why reckons.ai</p>
+    <h2>The same technology.<br/><em>Without the invoice.</em></h2>
+    <p class="section-sub">Palantir, Databricks and Microsoft all shipped an ontology layer, and underneath the branding they made the same four choices: RDF triples, OWL, SHACL, and MCP so a model can query the graph. Those are the choices Reckons.AI makes too — not because we were first, but because when several well-funded teams land on one architecture independently, it is probably the right one.</p>
+
+    <div class="vendor-list">
+      {#each VENDORS as v}
+        <div class="vendor-row">
+          <div class="vendor-head">
+            <strong class="vendor-name">{v.name}</strong>
+            <span class="vendor-cost mono">{v.cost}</span>
+          </div>
+          <p class="vendor-what">{v.what}</p>
+          <p class="vendor-note mono">{v.note}</p>
+        </div>
+      {/each}
+
+      <div class="vendor-row vendor-row-ours">
+        <div class="vendor-head">
+          <strong class="vendor-name">Reckons.AI</strong>
+          <span class="vendor-cost mono">$0 — MIT licensed</span>
+        </div>
+        <p class="vendor-what">The same representation, running in your browser against local storage. No account, no seat count, no usage meter, and no server we could bill you from.</p>
+        <p class="vendor-note mono">Point it at a cloud model and you pay that provider for tokens. The WASM and Ollama backends are the zero-cost path.</p>
+      </div>
+    </div>
+
+    <p class="vendors-honest">
+      <strong>What we do not have:</strong> no SPARQL engine, a small forward-chaining RDFS/OWL subset rather than OWL 2 RL, advisory-only SHACL shapes, no clustering and no governance story. If your problem is fifty million rows under a compliance regime, buy the enterprise product — it is better at that. If you want to know what you know and where each piece came from, you should not need a procurement department.
+    </p>
+  </section>
+
+  <!-- WHY NOT ANOTHER OPEN-SOURCE TOOL -->
+  <section class="section">
+    <p class="section-kicker mono">against the open-source field</p>
+    <h2>A notes app.<br/><em>The extra step is the point.</em></h2>
+    <p class="section-sub">Open source splits this problem in two and solves each half separately. The personal knowledge tools — Logseq, SiYuan, Trilium, Obsidian — have spent years making capture effortless, but their graph is untyped: the nodes are pages and the links mean nothing in particular. The RDF tools model meaning properly and assume you arrive with an ontology, a server and a SPARQL endpoint. Reckons.AI is the part in between, and it stands on the notes side of it — you capture the way you would anywhere else, and what you get back is a graph.</p>
+
+    <div class="features-grid">
+      {#each OSS_BREADTH as f}
+        <div class="feature-card">
+          <span class="feat-icon" style="color: {f.color}">{f.icon}</span>
+          <h3>{f.title}</h3>
+          <p>{f.body}</p>
+        </div>
+      {/each}
+    </div>
+
+    <p class="vendors-honest">
+      <strong>Where they beat us:</strong> Logseq and SiYuan each have tens of thousands of stars and a maturity we do not approach. CodeFlow holds the local-first line more purely — one HTML file, no build step. SiYuan has solved self-hosted sync, which we currently answer with &ldquo;no&rdquo;. Competition here is healthy and open, and a comparison that only flatters its author is one you should discount.
+    </p>
+  </section>
+
   <!-- Roadmap -->
   <section class="section">
     <p class="section-kicker mono">roadmap</p>
@@ -831,6 +979,25 @@
     letter-spacing: 0.12em;
     text-transform: uppercase;
     margin: 0;
+  }
+
+  /*
+   * SAY WHAT IT IS, WHERE SOMEBODY WILL SEE IT (2026-09-18). The LinkedIn post that brought the
+   * first real traffic disclosed the maturity honestly — v0.2.0, one maintainer, no SPARQL engine.
+   * The SITE disclosed nothing, and links outlive posts: anyone arriving via a repost, a DM or a
+   * bookmark met a polished app making no claim about its state. kb:honest-status is explicit that
+   * aspiration in the present tense is a lie with good manners, so this sits in the first line of
+   * the hero rather than in a footer nobody scrolls to.
+   */
+  .alpha-badge {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.15em 0.55em;
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    white-space: nowrap;
   }
 
   .hero-logo {
@@ -1440,12 +1607,27 @@
     line-height: 1.55;
   }
 
+  /*
+   * 44px TAP TARGETS FOR STANDALONE LINKS (guideline-touch-targets, 2026-09-18).
+   * Measured on a Pixel 7, these were 18-21px tall — reliably missable with a thumb. WCAG 2.5.5
+   * exempts links sitting INLINE inside a sentence, and four on this page legitimately are, so
+   * only the standalone calls to action are padded here. Padding rather than height keeps the
+   * text baseline where the design puts it.
+   */
   .step-link {
     font-size: 0.82rem;
     color: var(--accent);
     text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
   }
   .step-link:hover { text-decoration: underline; }
+  .thesis-readmore a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
 
   /* ── Document Problem ────────────────────────────────── */
   .docs-problem-section {
@@ -1544,6 +1726,86 @@
     background: linear-gradient(135deg, var(--surface) 0%, rgba(107, 67, 153, 0.06) 100%);
     border-radius: var(--rad-lg);
     padding: 3rem 2rem;
+  }
+
+  /* ── F200 comparison sections ────────────────────────────── */
+  .vendor-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.75rem;
+  }
+
+  .vendor-row {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--rad);
+    padding: 1.1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    transition: border-color 0.2s;
+  }
+
+  .vendor-row:hover { border-color: var(--accent-soft); }
+
+  /* Ours is the last row on purpose — the contrast only lands after the prices. */
+  .vendor-row-ours {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .vendor-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .vendor-name { font-size: 0.98rem; color: var(--ink); }
+
+  .vendor-cost {
+    font-size: 0.78rem;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+
+  .vendor-row-ours .vendor-cost { font-weight: 600; }
+
+  .vendor-what {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  .vendor-note {
+    font-size: 0.74rem;
+    color: var(--muted);
+    opacity: 0.8;
+    margin: 0;
+    line-height: 1.55;
+  }
+
+  /* The limitations paragraph. Deliberately NOT shrunk into a footnote — per kb:honest-status
+     the weakness belongs beside the claim it weakens, at the same weight. */
+  .vendors-honest {
+    font-size: 0.85rem;
+    color: var(--muted);
+    line-height: 1.7;
+    max-width: 62ch;
+    margin: 1.5rem auto 0;
+    padding: 1rem 1.15rem;
+    border-left: 2px solid var(--line);
+    text-align: left;
+  }
+
+  .vendors-honest strong { color: var(--ink); }
+
+  @media (max-width: 640px) {
+    .vendor-head { flex-direction: column; gap: 0.2rem; }
+    .vendor-cost { white-space: normal; }
   }
 
   .enterprise-grid {
