@@ -1,0 +1,7 @@
+# avasaturdaymarket.com is the second domain. Point it here and let Cloudflare
+# Pages serve it, then rely on the canonical tag in each page so search engines
+# index one address rather than two copies of the same site.
+#
+# If you would rather avasaturdaymarket.com be the primary name, change the
+# canonical + og:url tags in the three pages and the loc entries in sitemap.xml,
+# and reverse this comment. Nothing else in the site hardcodes a domain.
