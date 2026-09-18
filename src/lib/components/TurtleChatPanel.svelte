@@ -1287,6 +1287,32 @@
         </div>
       {/if}
 
+      <!--
+        HELP LIVES HERE, NOT IN A FLOATING BUBBLE (Matt, 2026-09-18: "Screen real estate is
+        precious, maybe these things should be in the Shelly chat panel" — yes, and `learn` is
+        already the help surface, so this costs no new pixels and needs no gating rules of its own.
+        A `?` bubble would be one more always-on overlay, which is the exact class of thing that
+        just leaked onto the landing four times).
+
+        THE ALPHA NOTE IS HERE BECAUSE IT IS TRUE, not as a disclaimer. kb:honest-status: naming a
+        limitation beside the thing it limits beats a footer nobody reads.
+      -->
+      <div class="help-block">
+        <p class="help-heading mono">about this app</p>
+        <p class="help-alpha">
+          Reckons.AI is <strong>alpha</strong> — v0.2.0, one maintainer. Things will be rough, and
+          some of what you see is newer than its own documentation.
+        </p>
+        <div class="help-links">
+          <a href="/docs">Read the docs →</a>
+          <a href="/?welcome">See the welcome page →</a>
+          <button class="help-link-btn" onclick={() => openFeedback('shelly-learn')}>Send feedback →</button>
+        </div>
+        <p class="help-note mono">
+          Shelly answers from YOUR graph, not from the documentation — so for questions about how
+          Reckons.AI itself works, the docs are the better place to look.
+        </p>
+      </div>
       <div class="step-body">
         <h3 class="step-title">{currentStep.title}</h3>
         <!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -1316,32 +1342,6 @@
         </div>
       </div>
 
-      <!--
-        HELP LIVES HERE, NOT IN A FLOATING BUBBLE (Matt, 2026-09-18: "Screen real estate is
-        precious, maybe these things should be in the Shelly chat panel" — yes, and `learn` is
-        already the help surface, so this costs no new pixels and needs no gating rules of its own.
-        A `?` bubble would be one more always-on overlay, which is the exact class of thing that
-        just leaked onto the landing four times).
-
-        THE ALPHA NOTE IS HERE BECAUSE IT IS TRUE, not as a disclaimer. kb:honest-status: naming a
-        limitation beside the thing it limits beats a footer nobody reads.
-      -->
-      <div class="help-block">
-        <p class="help-heading mono">about this app</p>
-        <p class="help-alpha">
-          Reckons.AI is <strong>alpha</strong> — v0.2.0, one maintainer. Things will be rough, and
-          some of what you see is newer than its own documentation.
-        </p>
-        <div class="help-links">
-          <a href="/docs">Read the docs →</a>
-          <a href="/?welcome">See the welcome page →</a>
-          <button class="help-link-btn" onclick={() => openFeedback('shelly-learn')}>Send feedback →</button>
-        </div>
-        <p class="help-note mono">
-          Shelly answers from YOUR graph, not from the documentation — so for questions about how
-          Reckons.AI itself works, the docs are the better place to look.
-        </p>
-      </div>
     </div>
   </Tabs.Content>
 
@@ -1880,9 +1880,9 @@
 
   /* Help block on the learn tab — quiet, at the end, found by someone looking for it. */
   .help-block {
-    margin-top: 1.1rem;
-    padding-top: 0.9rem;
-    border-top: 1px solid var(--surface-3, #2a3a4d);
+    flex: 0 0 auto;
+    padding: 0.9rem 1.1rem;
+    border-bottom: 1px solid var(--surface-3, #2a3a4d);
   }
   .help-heading {
     font-size: 0.68rem;
@@ -1910,11 +1910,21 @@
   .help-links a:hover, .help-link-btn:hover { text-decoration: underline; }
   .help-note { font-size: 0.72rem; color: var(--muted); margin: 0.3rem 0 0; line-height: 1.5; }
 
+  /*
+   * THE WHOLE TAB SCROLLS, NOT A WINDOW INSIDE IT (Matt, 2026-09-18: the guide "should go below
+   * the new content and not be in a small scroll, full height").
+   *
+   * .step-body used to own `overflow-y: auto` inside a 65vh cap, so the guide read through a short
+   * porthole with the panel's own scrollbar beside it — two scrollbars, and the shorter one hid
+   * most of the text. One scrolling container, full height, and the help block above it stays
+   * where somebody looking for help will meet it first.
+   */
   .tutorial {
     display: flex;
     flex-direction: column;
     min-height: 380px;
-    max-height: 65vh;
+    max-height: none;
+    overflow-y: auto;
   }
 
   /* ── Starter templates (shown when KB is empty) ── */
@@ -1979,9 +1989,8 @@
     margin: 0.6rem 0 0.2rem;
   }
   .step-body {
-    flex: 1;
+    flex: 1 0 auto;
     padding: 1rem 1.1rem 0.5rem;
-    overflow-y: auto;
   }
   .step-title {
     font-size: 0.95rem;
