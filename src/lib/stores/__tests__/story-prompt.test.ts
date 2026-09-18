@@ -9,6 +9,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const pushNotification = vi.fn();
 vi.mock('../notifications.svelte', () => ({ pushNotification }));
+const startStory = vi.fn();
+const startExplore = vi.fn();
+vi.mock('../shelly-bridge.svelte', () => ({ startStory, startExplore }));
 
 const { detectStory, promptStoryIfPresent } = await import('../story-prompt.svelte');
 import type { Statement } from '../../rdf/types';
@@ -30,7 +33,7 @@ const st = (s: string, p: string, o: string, literal = false): Statement =>
 
 const step = (n: number) => st(`urn:kbase:concept/step-${n}`, RDF_TYPE, 'urn:reckons:story/Step');
 
-beforeEach(() => pushNotification.mockClear());
+beforeEach(() => vi.clearAllMocks());
 
 describe('detectStory', () => {
   it('counts step SUBJECTS, not triples', () => {
@@ -76,6 +79,27 @@ describe('detectStory', () => {
 });
 
 describe('promptStoryIfPresent', () => {
+  it('opens the pending authored story when the reader clicks its notification', () => {
+    const story = 'urn:kbase:concept/walkthrough';
+    const graph = [
+      st(story, RDF_TYPE, 'urn:reckons:story/Story'), step(1), step(2),
+      st('urn:kbase:concept/step-1', 'urn:reckons:story/partOf', story),
+      st('urn:kbase:concept/step-2', 'urn:reckons:story/partOf', story),
+    ].map((s) => ({ ...s, status: 'pending' as const }));
+    promptStoryIfPresent(graph, 'kb-example');
+    expect(startStory).not.toHaveBeenCalled();
+    pushNotification.mock.calls[0][0].action.onclick();
+    expect(startStory).toHaveBeenCalledWith(story);
+    expect(startExplore).not.toHaveBeenCalled();
+    expect(graph.every((s) => s.status === 'pending')).toBe(true);
+  });
+
+  it('opens exploration for legacy steps without a containing story', () => {
+    promptStoryIfPresent([step(1), step(2)], 'kb-legacy');
+    pushNotification.mock.calls[0][0].action.onclick();
+    expect(startExplore).toHaveBeenCalledOnce();
+  });
+
   it('announces a real story once, scoped to the graph', () => {
     promptStoryIfPresent([step(1), step(2), step(3)], 'kb-turtles');
     expect(pushNotification).toHaveBeenCalledTimes(1);

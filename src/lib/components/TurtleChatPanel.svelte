@@ -1137,6 +1137,7 @@
 
     // 3. Apply safe inline markdown on already-escaped text
     text = text
+      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
       .replace(/`([^`]+)`/g, '<code>$1</code>')
@@ -1512,11 +1513,11 @@
           <div class="story-controls">
             <span class="story-step-label mono">{storyStepIdx + 1} / {currentStory.steps.length}</span>
             <div class="story-nav">
-              <button class="story-btn" onclick={storyPrev} disabled={storyStepIdx <= 0 || storyLoading} title="Previous step">←</button>
+              <button class="story-btn" onclick={storyPrev} disabled={storyStepIdx <= 0 || storyLoading} title="Previous step" aria-label="Previous step">←</button>
               <button class="story-btn" class:active={storyAutoPlaying} onclick={toggleAutoPlay} disabled={storyLoading} title={storyAutoPlaying ? 'Pause' : 'Auto-play'}>
                 {storyAutoPlaying ? '⏸' : '▶'}
               </button>
-              <button class="story-btn" onclick={storyNext} disabled={storyStepIdx >= currentStory.steps.length - 1 || storyLoading} title="Next step">→</button>
+              <button class="story-btn" onclick={storyNext} disabled={storyStepIdx >= currentStory.steps.length - 1 || storyLoading} title="Next step" aria-label="Next step">→</button>
             </div>
             <div class="story-audio">
               {#if ttsBroken}
