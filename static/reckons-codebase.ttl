@@ -186,7 +186,6 @@ code:components  rdf:type     ktype:Concept ;
                  kpred:has-file "src/lib/components/OverlayScene.svelte" ;
                  kpred:has-file "src/lib/components/QRSharePanel.svelte" ;
                  kpred:has-file "src/lib/components/ShellyVoice.svelte" ;
-                 kpred:has-file "src/lib/components/VoiceInput.svelte" ;
                  kpred:has-file "src/lib/components/ui/Select.svelte" ;
                  kpred:has-file "src/lib/components/ui/Tooltip.svelte" .
 

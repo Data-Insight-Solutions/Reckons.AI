@@ -1,5 +1,5 @@
 {
-  "built": 139,
+  "built": 145,
   "pages": [
     {
       "path": "architecture/claude-md-minimal",
@@ -1251,6 +1251,60 @@
       "factCount": 12,
       "floor": "evidence",
       "pageHash": "36706be462592282"
+    },
+    {
+      "path": "why-reckons-ai/core-is-note-taking",
+      "entity": "urn:reckons:why/CoreIsNoteTaking",
+      "graph": "docs-why-reckons.ttl",
+      "factHash": "dedbc84d3cc1f515",
+      "factCount": 4,
+      "floor": "evidence",
+      "pageHash": "2ef7e70e119a5815"
+    },
+    {
+      "path": "why-reckons-ai/democratise",
+      "entity": "urn:reckons:why/Democratise",
+      "graph": "docs-why-reckons.ttl",
+      "factHash": "a303df510c1d4703",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "32f8188a32c229dd"
+    },
+    {
+      "path": "why-reckons-ai/enterprise-convergence",
+      "entity": "urn:reckons:why/EnterpriseConvergence",
+      "graph": "docs-why-reckons.ttl",
+      "factHash": "5c86e38685d4822f",
+      "factCount": 5,
+      "floor": "evidence",
+      "pageHash": "07eda6f78265cacf"
+    },
+    {
+      "path": "why-reckons-ai/open-source-breadth",
+      "entity": "urn:reckons:why/OpenSourceBreadth",
+      "graph": "docs-why-reckons.ttl",
+      "factHash": "4175f5506b2121c9",
+      "factCount": 4,
+      "floor": "evidence",
+      "pageHash": "a2ac1a60575a4358"
+    },
+    {
+      "path": "why-reckons-ai/what-you-pay-for",
+      "entity": "urn:reckons:why/WhatYouPayFor",
+      "graph": "docs-why-reckons.ttl",
+      "factHash": "f25b7772533d57ed",
+      "factCount": 4,
+      "floor": "evidence",
+      "pageHash": "b4f0ad3aed256334"
+    },
+    {
+      "path": "why-reckons-ai/why-reckons",
+      "entity": "urn:reckons:why/WhyReckons",
+      "graph": "docs-why-reckons.ttl",
+      "factHash": "e32151e03a9418c1",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "b02839fe0122d2ad"
     }
   ]
 }
