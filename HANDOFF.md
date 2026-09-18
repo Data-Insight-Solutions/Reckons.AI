@@ -1,16 +1,174 @@
 # Session handoff — read this first if you are picking up mid-stream
 
-**Last updated: 2026-09-11.** On `feat/sets-and-statements` (branched off `feat/sets-compose-pages`),
-four commits, not yet pushed or PR'd. Nothing on `main`.
+**Last updated: 2026-09-17.** On `feat/sets-and-statements`. Changes remain in the working tree;
+no session on this branch has committed, pushed, merged or deployed them. That is now three weeks
+of work behind no CI gate, and it is the single largest risk on this branch — `npm run check`, the
+unit suite, `graph-lint` and `build:verify` all run in CI and none of them has ever run against it.
+
+## Session 2026-09-17 — terminology and coding standards, measured
+
+**Matt's two rulings this session, both now in the graph.** (1) *Framework standards outrank an
+individual's opinions* — SvelteKit and Svelte first, then Threlte, then three.js over its own API
+surface only, and Mr.doob's Code Style last. (2) *Spell out the abbreviation, keep the word* — `kb`
+becomes `knowledgeBase`, the concept stays "knowledge base" in every register, and migrating to
+"graph" is formally rejected because `graph` already means four things at 4802 occurrences. (3) A
+third ruling settled F204's open conflict: **`type` by default, `interface` only as a deliberate
+extension point.**
+
+**Built (F203 → scaffolded, F204 → scaffolded):**
+
+- `scripts/offline/term-usage.ts` — counts every term in `static/reckons-terminology.ttl` against
+  `src/` and `content/`, classifying each occurrence by binding class (free/contract/foreign) and
+  register (standards/developer/user). The terminology graph had *claimed* this script existed
+  before it did; that claim is now true. 19 tests.
+- `scripts/offline/naming-conventions.ts` — measures naming conventions in this codebase **and in
+  the upstream packages it is built on**, because a style guide's prose is not evidence and its
+  shipped code is. `--check` is a RATCHET over baselines held in the graph. 16 tests.
+- `static/reckons-standards.ttl` — F204's graph: six rules, each with its source, its count, and
+  the check that enforces it or an admission that nothing does. Both new graphs are now linked into
+  both MCP workspaces, so `kb_search` can see them.
+
+**Two claims reported to Matt earlier in this session were WRONG and are corrected in the graph.**
+Both came from shell one-liners, and both were caught by writing the measurement down as code:
+
+1. "Constants: 174 UPPER_SNAKE vs 16 camelCase, decisive internally." The real ratio is 723 to 77,
+   and the useful part is that *both rank-1 frameworks agree with us* rather than being silent.
+2. A first run of the conventions script reported that we mark private members with underscores
+   against SvelteKit's `#private`. We do not. It was counting module-scope mutable state in a
+   codebase with 16 classes in total. **A metric that answers a question nobody asked, confidently,
+   causes a decision to be taken to resolve a conflict that was never there.** Same class of error
+   made the term reporter rank `class` as the most-used term in the codebase at 6030 uses — 5675 of
+   them the HTML attribute. Both are pinned by tests now.
+
+**Validation, 2026-09-17 (goes stale fast):** 3086 unit tests across 216 files passed; `npm run
+check` 4230 files, 0 errors, 0 warnings; `graph-lint` 0 errors (9 pre-existing warnings, down from
+11); `npm run offline:all -- --tier=script` 38/38 clean after regenerating the jobs graph.
+
+**Where the local tier helped and where it did not.** `code-review.ts` produced two findings on the
+new scripts and **both were rejected after checking them**: it claimed `singular('categories')`
+yields "categoriy" (it yields "category") and that `readFileSync` needs a null check (it throws,
+and both call sites are already in `try`/`catch`). They are still sitting in
+`reckons-workspace/knowledge.pending.jsonl` and can be rejected in the Review tab. Note also that
+the command AGENTS.md documents — `code-review.ts --base=origin/dev` — reviews only the **committed**
+range, so on a branch whose work is entirely uncommitted it silently reviews nothing new. Pass
+`--worktree`.
+
+**Not done, and none of it blocked:** nothing has been renamed. The cheapest available cleanup is
+the 95 underscore-prefixed module-scope names — free-bound, and all three Svelte-family sources are
+unanimous at 100% unmarked — but the rule is still open and the tree already has uncommitted work in
+nearly every directory, so a sweep now would land inside a diff no one can review. Private class
+members (12 declarations, both rank-1 sources say `#private`) is the other open rule.
+
+## Session 2026-09-14 — Personal Notes as the input graph
+
+Matt's latest direction supersedes the earlier question about routing explicit voice instructions:
+**everything lands in the personal graph, then dissemination happens after review**. Allowing a
+destination is not approval for every note. Split/merge or another transfer mechanism should execute
+what the user reviewed. Recorded as F177.1 (`kb:personal-notes-routing`) alongside the broader F177.
+
+Implemented locally at **`/notes`**, linked as **notes** in navigation:
+
+- Save/browse/search original text without invoking a model. Reuses an existing uniquely named
+  Personal Notes graph; otherwise creates one under a deterministic local id. The inbox is independent
+  of the active graph. Original-note editing/revision history and board positioning are still pending.
+- An explicit allowlist binds local graph ids, starts empty, and excludes archives. Review a copy,
+  optionally edit it down to one topic, choose an allowed graph, then **Approve and send copy**.
+  Raw transcripts cannot grant permission or approve routing. Claims remain pending in the destination.
+- The app-level Dexie database is now v2, adding `notesPolicy` and `noteTransfers`. An approved immutable
+  text snapshot is delivered automatically. Destination source + statements + changelog commit together;
+  the source id is a deterministic receipt, so retries after an outbox receipt failure preserve user
+  edits and avoid duplicates. Revocation cancels waiting approvals; re-enabling alone never revives them.
+  Web Locks serialize delivery and permission changes across tabs; unavailable locking fails closed.
+- Copies contain only reviewed prose and `prov:wasDerivedFrom` pointing to the original note, with
+  source provenance retained through Turtle round-trip. Full original transcripts and unrelated claims
+  are never bundled into an excerpt copy. Approval history/permissions themselves are browser-local.
+- The workspace drain now sends all valid captured-note rows to Personal Notes regardless of the
+  selected/requested graph. Other proposals still route to their declared active graph. Identical
+  redeliveries fold; conflicting text under an existing note identity stays queued and cannot fall through
+  into another graph. A capture row is acknowledged only after browser storage AND inbox Turtle export.
+- Added a targeted graph exporter that reports actual save/hold outcomes, including for inactive graphs.
+  The notes screen distinguishes browser persistence from workspace export; held destination exports
+  have an explicit retry control. Existing filesystem locking remains optimistic across browser/host.
+- Real-browser testing exposed an existing queue corruption bug: `keepExistingData: true` with a shorter
+  string write retained the old suffix. Strict acknowledgement now writes an empty staging file and
+  aborts failed writes; the committed original remains available for the final compare before close.
+
+Voice collection investigation (read-only): both local n8n capture/MCP workflows are active. The local
+collector is scheduled every 15 minutes. At inspection, n8n's buffer was empty and the workspace queue
+contained 19 captured-note rows for 13 unique subjects (latest captured Sept 11 02:11 UTC). None of those
+13 subjects appeared in the saved personal-notes.ttl. This was a queued-ingestion gap, not evidence of
+lost recordings. No real user graph/queue or live n8n workflow was modified during implementation.
+The new browser importer still needs this build running with a connected workspace and an open app;
+it removes the requirement to keep Personal Notes selected. Do not claim the real backlog was drained.
+
+Validation: 3042 unit tests across 212 files passed; Svelte check 0 errors/warnings; six real Chromium
+desktop/Pixel browser tests cover capture, excerpt privacy, inactive-graph queue/TTL acknowledgement,
+conflicts, permission revocation, and retries after a destination commit/outbox-receipt failure. Build
+passed and all four minified graph smoke tests passed. Targeted workspace tests passed after the queue
+writer fix. Graph lint: zero errors, nine existing vocabulary/workspace-visibility warnings. New files
+are intent-to-add for the graph linter; nothing is committed or staged as final content.
+The dedicated Notes production smoke also passed on desktop and Pixel 7 (two tests), verifying save,
+reload and reviewed delivery against the minified build. It now runs in `playwright.smoke.config.ts`.
+
+Safari verification is still unavailable in this environment: Playwright WebKit reports an internal
+navigation error before loading /notes. An independent Node HTTP server serving only a static heading
+produces the same error; a data: page does render. This isolates the failure below application code,
+but it does not establish iPhone compatibility. Do not report that test as passed.
+
+Next: propose split/merge plans over selected notes and settled claims, with a preview of exact outgoing
+content and destination conflicts. Keep approval attached to that snapshot. Add portable routing history
+and deliberate cross-device permission setup, then original-note revisions and persistent storyboards.
+The delivered mechanism copies reviewed prose; do not describe it as automatic semantic graph merging.
+
+## Session 2026-09-13 — everyday life on a common personal graph
+
+Matt corrected the priority while Sources work was being completed. His sister's feedback:
+people who cannot organize their material freely, including as a storyboard, will not become
+users. First a note-taking, personal assistant and scheduler web app across devices; scientific
+nanopublications, compact structured sharing and comparison come later. Personal data ownership
+is a primary purpose.
+
+Asked which everyday workflow should guide the work, Matt answered **all of them and more**:
+**a personal knowledge graph is the common default for people**. He then clarified that triple
+extraction and graph relations power MCP and agent context as **a transparent text database
+underneath the freeform chaos of life**. Do not narrow this into a separate notes app or make
+users structure their thoughts before saving and arranging them.
+
+Recorded on `kb:reckons-ai`, `kb:freeform-capture` (F177), `kb:personal-assistant` (F99),
+`kb:calendar-management` and `kb:nanopub-alignment` (F196, now low priority). The old F177 framing
+that notes are merely input for extraction is superseded. Original words and user arrangements
+must survive; derived claims retain their evidence and review state. Ordinary note capture is
+not automatic confirmation of derived claims or permission for an assistant action.
+
+**Next implementation priority:** editable notes and persistent free-form organization as views
+of the same personal graph used by tasks, appointments and the assistant. Source browsing does
+not satisfy this. Still resolve note revisions versus already confirmed claims, and distinguish
+web availability from implemented cross-device sync and reliable background reminders.
+
+**Sources work completed locally:** the previous unfinished changes now use the shared graph
+surface plus Folders, List and Gallery, with common details. Fixed review filters discarding set
+identity/labels, source clusters outside the viewport, statement-view dimming leaking into
+Sources labels, and the mobile picker losing its open state. Added tests for browsing the same
+set/member across all presentations, including a 390px phone, and expanded the production smoke
+flow. Existing unrelated screenshot and `share/` changes were left in place.
+
+**Checks:** 3,039 unit tests across 211 files; five Sources browser tests; Svelte check with zero
+errors/warnings; minified build completed. Graph lint: zero errors, nine workspace-link warnings.
+Four production smoke tests also pass, including Sources in 3D and the intentional 2D fallback,
+plus all three non-canvas presentations. The first smoke run hit the documentation tour covering
+the source picker; the test now closes that tour through its visible close button before browsing.
+
+---
 
 ## ▶ SESSION 2026-09-11 — sets through extraction, and what grouping costs
 
-Matt: *"if we have not yet refactored to include both Sets and Triples within extraction steps,
-and throughout the app and documentation, then please continue that"* — then, mid-session, the two
+Matt: _"if we have not yet refactored to include both Sets and Triples within extraction steps,
+and throughout the app and documentation, then please continue that"_ — then, mid-session, the two
 questions that shaped it: **is there anything triples + sets cannot describe**, and **are sets
 worth the complexity, because search and compute must not suffer.**
 
 ### THE BUG THAT WAS SITTING THERE: two grouping vocabularies, neither aware of the other
+
 F65 shipped `ktype:EntitySet` + `kpred:has-member` and the canvas still writes it; F187 chose
 `skos:Collection` + `skos:member` and `sets.ts` read only that. Each half passed its own tests, so
 nothing failed — **every set a user made in the app was invisible to the sets layer**, including
@@ -19,6 +177,7 @@ both; `buildEntitySet` writes SKOS (keeping `rdfs:label` beside `prefLabel`, or 
 as a bare IRI). Found by grepping, not by a test. There is now a test that crosses the seam.
 
 ### WHAT SETS COST — measured, and one cost was real
+
 `scripts/offline/set-complexity.ts` (new, script-tier gate, 36/36 sweep) over 17k quads:
 storage **1.07%**, compute **1.9x a plain scan** on a 4ms pass — both noise. **Search was not
 noise**: BM25 makes one document per statement, so membership rows competed with facts —
@@ -31,6 +190,7 @@ lexical match and is reported, not tuned away.
 page blocks (F187.5) are 6 local terms with 0 standard behind them and are the part to scrutinize.**
 
 ### SETS ARE IN EXTRACTION NOW — deterministic, arm (c)
+
 New `group` stage between `type` and `archive` (`ExtractionStageName` gained it). It recognizes
 groupings the graph ALREADY STATES rather than asking a model, which is what the work-tiering
 ladder and the 2026-09-09 bench both said to do first. **A derived set costs TWO quads, not N+2**:
@@ -47,18 +207,20 @@ After it: personal-notes 0 proposed / 4 refused (correct — it states no groupi
 all real (`integrations has-integration` 8, `stabilization-trust-boundaries has-part` 9).
 
 ### THE ROUND-TRIP CLAIM IS NO LONGER UNTESTED
+
 F187.2 asserted sets "round-trip exactly like any other fact" on the strength of the reasoning
 that produced it. Eight cases now check it. **The ordered case is the one that mattered**: the
 skolemised membership node chosen over `rdf:List` survives, byte-identical across two parses in
 one process — the exact condition that broke `rdf:List`. Overlap survives too.
 
 ### ⚠ WAITING ON MATT — two principle decisions, one answered and one half-answered
-1. **SET CLOSURE: decided.** `kpred:members-complete`, default open. *Not yet built* — the
+
+1. **SET CLOSURE: decided.** `kpred:members-complete`, default open. _Not yet built_ — the
    vocabulary, the reader and the review affordance are all still to do.
 2. **ABSENCE/POLARITY: half-decided and this is the open one.** Matt wants set polarity AND asks
-   whether a *predicate* can carry it rather than a substrate field. He then sharpened it:
-   *"Questions are 'open' versus claims which are closed. Maybe we need a 'we don't know yet'
-   predicate, that is different than a question?"* — which is a real three-way distinction the app
+   whether a _predicate_ can carry it rather than a substrate field. He then sharpened it:
+   _"Questions are 'open' versus claims which are closed. Maybe we need a 'we don't know yet'
+   predicate, that is different than a question?"_ — which is a real three-way distinction the app
    collapses into one today:
    - **question** — open, someone waits (`needsObject`, `askedBy`, `blocks`). A task.
    - **asserted unknown** — CLOSED, positive claim about the state of knowledge. Falsifiable.
@@ -73,7 +235,7 @@ one process — the exact condition that broke `rdf:List`. Overlap survives too.
 
 3. **NAMING: "Statements and Groups"?** Matt asked. My read: **"Statement" yes — it is not even a
    rename**, `types.ts` already says `export type Statement`, and "triple" is both drift and
-   *wrong* (the record is a quad plus eight fields). **"Group" over "Set": hold** — the argument
+   _wrong_ (the record is a quad plus eight fields). **"Group" over "Set": hold** — the argument
    for it is good (a mathematical set is unordered, duplicate-free and defined by membership alone;
    ours are ordered, named, typed, overlapping — a reader who knows "set" will be wrong four
    times), but there is an unfinished KB→graph rename in flight (`terminology.ts`) and this session
@@ -81,6 +243,7 @@ one process — the exact condition that broke `rdf:List`. Overlap survives too.
    another. On disk it stays `skos:Collection` regardless.
 
 ### Still open on sets
+
 Review is the unsolved half — a set is confirmed row by row, not as one decision. Smaller than it
 was (two rows, folded into an existing entity card) but not yet a grouping decision; it bootstraps
 on `kb:loop-job-grouping`. Stages 6 (SET ATTRIBUTES) and 7 (ORDER) untouched.
@@ -88,6 +251,7 @@ on `kb:loop-job-grouping`. Stages 6 (SET ATTRIBUTES) and 7 (ORDER) untouched.
 (b) and (d) remain unmeasurable even though arm (c) has real numbers.
 
 ### Verification
+
 Full suite **3023/3023 across 209 files** · mcp **150 + 10** · svelte-check **4213 files 0 errors**
 · `offline --tier=script` **36/36** · graph-lint **0 errors** · set-integrity 0 · md-align **149/149**
 · kb-align **no discrepancies** (fixed a stale claim: production.ttl said 2997 tests / 208 files).
@@ -113,6 +277,7 @@ the whole unmerged docs chain). Nothing pushed to `main`. Supersedes PR #228.
    nothing this repo uses (OS and checkout are on `nvme0n1`, healthy). Reported because it is real.
 
 ### THE FOLD THRESHOLD IS SETTLED, differently than expected
+
 `PAGE_THRESHOLD_WORDS = 45` stays. Matt: cohesion beats URL reduction, and one entity can fold into
 several pages. What changed instead is **sibling cohesion** — a childless sibling barely over the
 line rejoins the majority of its siblings that folded, so a sequence cannot split across URLs
@@ -120,16 +285,18 @@ because one step gained two words. Bounded to genuinely marginal cases (10 pages
 the unbounded version took 24, including a 520-word page that had earned its URL.
 
 ### `npm run docs:compose` IS STILL HELD
+
 Two generators still exist. `docs-pages.ts` publishes per ENTITY (131 pages); `docs-compose.ts`
 publishes what `website.ttl` designs (8, all alphabetical dumps). A collision guard refuses to
 overwrite `docs-kb` pages. The route out is the one `learn/what-it-does` just took, page by page.
 
 ## ▶ SESSION 2026-09-10 (evening) — merged the backlog; a plan contradiction settled
 
-Matt: *"I think we need to work through and merge as much valuable work as possible then?"*
+Matt: _"I think we need to work through and merge as much valuable work as possible then?"_
 **20 open PRs → 7.** Nothing pushed to `main`; base verified before every merge.
 
 ### Merged to `dev`
+
 - **#234** (89 commits) — the docs chain plus the F199 review procedure.
 - **9 dependabot** — all were targeting **`main`**, bypassing `dev → staging → main`. Retargeted
   to `dev` first. `gh pr edit --base` FAILED SILENTLY on all nine (a `gh` bug: it queries
@@ -140,10 +307,12 @@ Matt: *"I think we need to work through and merge as much valuable work as possi
 - **Held:** #232 (vitest 4→5, a major) and #214 (22 dev-deps in one PR).
 
 ### Closed
-#228 and #227 — verified *fully contained* in #234 via `git merge-base --is-ancestor`, so nothing
+
+#228 and #227 — verified _fully contained_ in #234 via `git merge-base --is-ancestor`, so nothing
 was lost. #226 — a stale 09-06 handoff, but it carried the one durable finding below.
 
 ### THE PLAN CONTRADICTION, and how it was settled
+
 #226 warned that hand-minted feature ids on long-lived branches would collide again. They had:
 **#205 minted `F141` for `kb:research-run` while `kb:interview-mode` already held it on dev.**
 `graph-lint`'s `duplicate-id` rule catches it — verified by resolving the merge naively in a
@@ -151,13 +320,14 @@ throwaway worktree: it reported `feature-id "F141" is claimed by 2 entities` and
 **It then caught ME too**, when F58.6 turned out to be taken. Third time in two weeks.
 
 A second, deeper one surfaced merging #197 — two of Matt's own judgments, two days apart:
+
 - **Aug 25 (#197):** HyperFrames "dissolves a blocker `kb:asset-generation` records as unsolved."
 - **Aug 27 (dev):** `we-avoid "Video generation as a product surface."`
 
 **MATT, 2026-09-10: "we should include video features, including video generation on the roadmap."**
 And then the sharper diagnosis: **"likely a claim statement about current capability, not a roadmap
-principle."** That is why the fix is not a deletion. *"Reckons.AI has no video feature"* is true
-TODAY and is kept as `kpred:capability-gap`; *"must not acquire one"* was a standing rule nobody
+principle."** That is why the fix is not a deletion. _"Reckons.AI has no video feature"_ is true
+TODAY and is kept as `kpred:capability-gap`; _"must not acquire one"_ was a standing rule nobody
 had decided. Written as one sentence, a fact about what is built became a constraint on what may
 be built — and contradicted a roadmap carrying video since F74.1, F115 and `kb:video-asset-analysis`.
 **This is the F194 layer distinction with teeth: a claim expires when the evidence changes; a
@@ -170,7 +340,9 @@ it framed video as GENERATIVE ONLY, and the deterministic path (HTML/CSS → hea
 FFmpeg, no model, no GPU) covers the video wanted first, because that content is data we hold.
 
 ### Four stale PRs rebased onto dev, pushed, awaiting Matt's merge
+
 All were ~105 commits behind. **None were mechanical.**
+
 - **#197** — #197 filed six References into `roadmap.ttl`; dev had put four of the same subjects
   into `competitive.ttl`. Both-sides would define one subject twice with two labels. dev's
   placement is canonical; #197's editorial predicates grafted on (12+6+9 lines). Moving content
@@ -186,11 +358,9 @@ errors in `mcp-server/src/kb-reader.ts` — a file it never touched. I had flagg
 rather than claiming a clean run, and CI proved it real.
 
 CAUSE: #198 adds `tests/bench/run-synonym-search-bench.ts`, which imports across the package
-boundary into `mcp-server/src/search.js` and `kb-reader.js`. **`tests/**/*.ts` is in the app's
-tsconfig include list**, so that import pulled mcp-server into the SvelteKit program — where
-`moduleResolution` is `bundler`, not the `Node16` mcp-server compiles under. Under bundler
-resolution the stale `@types/n3@1.21.3` (n3 is 2.7.11 and ships NO types of its own) resolves
-`Quad`/`Store` as namespaces. One package type-checked with another package's compiler options.
+boundary into `mcp-server/src/search.js` and `kb-reader.js`. **`tests/**/\*.ts`is in the app's
+tsconfig include list**, so that import pulled mcp-server into the SvelteKit program — where`moduleResolution`is`bundler`, not the `Node16`mcp-server compiles under. Under bundler
+resolution the stale`@types/n3@1.21.3`(n3 is 2.7.11 and ships NO types of its own) resolves`Quad`/`Store` as namespaces. One package type-checked with another package's compiler options.
 
 FIX: `tests/bench/**` excluded from the app's check. **HONEST COST: 22 bench scripts are now
 type-checked by nothing** (4217 → 4193 files). They need their own tsconfig with Node16
@@ -204,9 +374,9 @@ wrong in CI. Run the suite there, but let CI settle types.
 
 ## ▶ SESSION 2026-09-10 — a review procedure for the CLI and MCP (F199)
 
-Matt: *"we need a cli and mcp review procedure… I will ideally use Claude Code chat to review
-critical decisions, and choose a claim."* Then, mid-build: *"We could ask who is currently using
-CLI, record local system user, etc?"*
+Matt: _"we need a cli and mcp review procedure… I will ideally use Claude Code chat to review
+critical decisions, and choose a claim."_ Then, mid-build: _"We could ask who is currently using
+CLI, record local system user, etc?"_
 
 **THE ASYMMETRY WAS THE WHOLE PROBLEM.** Everything here could propose; nothing outside the
 browser could settle. That is why 1,046 rows went unruled — proposing costs a script one line,
@@ -222,6 +392,7 @@ on the next drain (proposals first, then verdicts — a verdict names a statemen
 once its row has imported). No accept deletes; losers are superseded.
 
 ### TWO DESTRUCTIVE BUGS, both found by running it on the REAL queue rather than fixtures
+
 1. Top-ranked "decision" was `kpred:unexplained-term` with **94 competing claims** — which do not
    compete. Accepting one would have superseded 93 true observations. Predicate arity is now
    MEASURED from the graph (the vocabulary declares no cardinality): `has-status` (351 subjects,
@@ -232,6 +403,7 @@ once its row has imported). No accept deletes; losers are superseded.
    `MIN_SUBJECTS_FOR_FUNCTIONAL`.
 
 ### Identity is OBSERVED, not accepted
+
 `actor.ts` reads the OS account, machine, route, and whether the harness reports an AI agent
 (`CLAUDECODE` / `AI_AGENT` / `CLAUDE_CODE_SESSION_ID` — set by the environment, not the caller).
 **Still not a credential**: an agent running as `matt` reports `matt`. What it buys is that an
@@ -240,6 +412,7 @@ steps — checked by comparing `agentId` against `proposedBy`; every other agent
 downgraded to pending rather than confirmed.
 
 ### Honest
+
 **The live queue contains ZERO genuine choices.** All 27 contested groups sit on accumulating
 predicates, so every one is a batch. Choose-a-claim is built, tested and reachable; it has no
 instance in this queue — a fact about what the jobs propose, not about the feature.
@@ -292,6 +465,7 @@ sets `uri = file://${filename}`: a bare filename, no directory, so it can never 
 bytes are not kept either.
 
 ### Verification
+
 `align` 9/9 · `offline:all --tier=script` 33/33 · `npm run check` 4209 files 0 errors ·
 `vitest scripts/ src/lib/rdf/` 1609 passed · full suite 2963/2965 (2 pre-existing timeouts under
 parallel load, both pass in isolation) · zero dead internal links across 142 pages.
@@ -306,9 +480,9 @@ length of the documentation system. **Ten align gates now, up from six.**
 ### ⚠ FOUR THINGS ARE WAITING ON MATT — nothing else is blocked
 
 1. **THE FOLD THRESHOLD.** `PAGE_THRESHOLD_WORDS = 45` in `docs-pages.ts`. Measured over the 227
-   entities that *could* fold: at 45, 85 fold; at 80, 171; at **120, 195**. Raising it to 120
+   entities that _could_ fold: at 45, 85 fold; at 80, 171; at **120, 195**. Raising it to 120
    collapses ~110 pages into their parents **and removes 110 URLs**. That is why Architecture is
-   17-thin-of-25 with *zero* orphans — its entities have parents, they are just over the bar.
+   17-thin-of-25 with _zero_ orphans — its entities have parents, they are just over the bar.
    Needs a number from Matt, and ideally anchors so old addresses still land on the text.
 2. **THE FIVE-MOVES FACET** for a filtered gallery. Filtering needs an axis; the natural one is the
    five moves on `feat:FiveMoves`. That is one predicate on each of ~39 features — editorial work,
@@ -334,7 +508,7 @@ across 56 sections, an alphabetical dump, and it is composed output. Only sets c
 **ORGANISATION.** Timeline & Ecosystem went from 28 one-paragraph pages (median 50w) to **3 sets**
 — the timeline ordered chronologically from `kpred:date`, then written back as `hnav:order` so it
 can be curated without re-deriving. Nav is a beginner-first story: one number was doing two jobs
-(a page's position *and* its section's), so any section starting at 0 jumped to the front —
+(a page's position _and_ its section's), so any section starting at 0 jumped to the front —
 **Testing ranked first, Guide ranked 1000th.** Fixed with per-section order BANDS.
 
 **PAGES.** `render-as` in triples → card gallery / accordion, both zero-JS (81 cards, 21 accordion
@@ -354,7 +528,7 @@ claim was once published at 60-70% when the format saves ~18%.
 ### Bugs found, in order of how badly they hid
 
 - **22 of 43 cards were 404s.** Galleries linked every child, but a folded child has no page — and
-  gallery mode *also dropped their content entirely*.
+  gallery mode _also dropped their content entirely_.
 - **A duplicate `kbStableId`**: `docs-architecture.ttl` and `docs-user-paths.ttl` both claimed
   `…-000000000008`, so the Architecture leap sent readers to a user-paths page. Each file is valid
   alone; the collision only exists between them. Now guarded.
@@ -1771,3 +1945,6 @@ OUT
 ...
 
 We should be allowed to define set types, like entity types, and define attributes for the set. I think sets can have triples. Such that an entity could be converted to a set of entities. When I think of real life examples, I can see a representation of a set of entities as a group of people, or a group of objects. The set itself can have attributes, like a name, a description, and other metadata. The set can also have relationships to other sets or entities. For example, a set of people could be related to a set of organizations they all belong to, or a single individual entity could be. My sister had feedback in this way, not everyone thinks of things in triple facts, nor even as indivudual entities. We need to be able to allow for further expression of human thought, while maintaining a standard of triples. The set iis not a node in the graph, but rather a grouping of nodes. There must be new layouts that similar to hubs, highlight the sets.
+
+NEW:
+I think because there can be no thing as a negative triple, I believe we need pre-defiend predicates, custom entities, and custom sets allowed, predicates must have special types that are core to the reasoning model.
