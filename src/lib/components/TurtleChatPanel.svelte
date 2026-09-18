@@ -1201,6 +1201,38 @@
     </div>
   {/snippet}
 
+  <!--
+    ASK BEFORE A MODEL SEES THE GRAPH, AT PANEL LEVEL (Matt, 2026-09-18: opt-in model usage for
+    people wary of AI).
+    
+    This first lived inside the chat tab, which was a dead end: `explore` runs a model on open, hit
+    the closed gate and showed "Shelly needs permission…" with no way anywhere to give it. A consent
+    prompt that is not reachable from the surface that triggered the request is not a gate, it is a
+    wall. Above the tabs, every path that needs permission can also grant it.
+    
+    Separate from the model-DOWNLOAD gate, which asks about bytes and never fires again once a model
+    is cached. Someone wary of AI is not worried about a 33MB download; they are worried about what
+    the model is shown. Naming WHERE it runs matters more than the word "AI": "runs on this device"
+    and "sends to openai" are different promises, and only one of them needs thinking about.
+  -->
+  {#if aiConsent === undefined}
+    <div class="ai-consent" role="group" aria-label="Allow Shelly to use a model">
+      <p class="ai-consent-q">Shelly answers by sending the relevant parts of your graph to a language model.</p>
+      <p class="ai-consent-where mono">{isWasmProvider ? 'runs on this device — nothing leaves it' : `sends to ${chatProvider}`}</p>
+      <div class="ai-consent-actions">
+        <button class="primary" onclick={() => grantAiConsent(true)}>Allow</button>
+        <button onclick={() => grantAiConsent(false)}>Not now</button>
+      </div>
+    </div>
+  {:else if aiConsent === 'declined'}
+    <div class="ai-consent">
+      <p class="ai-consent-q">Shelly's model is off, so answers are unavailable. Everything that needs no model still works.</p>
+      <div class="ai-consent-actions">
+        <button class="primary" onclick={() => grantAiConsent(true)}>Turn it on</button>
+      </div>
+    </div>
+  {/if}
+
   <!-- ── Tutorial tab ── -->
   <Tabs.Content value="tutorial" class="tcp-tab-content">
     <div class="tutorial">
@@ -1421,31 +1453,6 @@
               <span class="wasm-pct">{wasmPct()}%</span>
             {/if}
           {/if}
-        </div>
-      {/if}
-
-      <!--
-        ASK BEFORE A MODEL SEES THE GRAPH. Shown once, before the first model call, and remembered.
-        Deliberately says WHERE the model runs and WHAT it is shown, because "allow AI?" is not a
-        question anybody can answer — the thing people want to know is whether their notes leave
-        the device. Declining is a real answer, not a nag: Shelly keeps working for everything that
-        needs no model.
-      -->
-      {#if aiConsent === undefined}
-        <div class="ai-consent" role="group" aria-label="Allow Shelly to use a model">
-          <p class="ai-consent-q">Shelly answers by sending the relevant parts of your graph to a language model.</p>
-          <p class="ai-consent-where mono">{isWasmProvider ? 'runs on this device — nothing leaves it' : `sends to ${chatProvider}`}</p>
-          <div class="ai-consent-actions">
-            <button class="primary" onclick={() => grantAiConsent(true)}>Allow</button>
-            <button onclick={() => grantAiConsent(false)}>Not now</button>
-          </div>
-        </div>
-      {:else if aiConsent === 'declined'}
-        <div class="ai-consent">
-          <p class="ai-consent-q">Shelly's model is switched off, so chat is unavailable.</p>
-          <div class="ai-consent-actions">
-            <button class="primary" onclick={() => grantAiConsent(true)}>Turn it on</button>
-          </div>
         </div>
       {/if}
 
