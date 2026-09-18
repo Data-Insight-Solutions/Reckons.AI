@@ -297,6 +297,24 @@ job:layer-risk rdf:type          ktype:OfflineJob ;
     kpred:job-enabled   "true" ;
     kpred:job-blocking  "false" .
 
+job:naming-conventions rdf:type          ktype:OfflineJob ;
+    rdfs:label          "naming-conventions" ;
+    skos:prefLabel      "naming-conventions" ;
+    skos:definition     "F204. Counts naming conventions in THIS codebase and in the upstream packages it is built on (SvelteKit, Svelte, Threlte, three.js), ranked by Matt's 2026-09-17 precedence: framework > library binding > upstream > an individual's style guide. A style guide's prose settles nothing; the shipped code does. Reports NO EVIDENCE rather than zero where a source is silent, so a silent source never casts a vote." ;
+    kpred:job-tier      "script" ;
+    kpred:command       "npx tsx scripts/offline/naming-conventions.ts" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "false" .
+
+job:naming-ratchet rdf:type          ktype:OfflineJob ;
+    rdfs:label          "naming-ratchet" ;
+    skos:prefLabel      "naming-ratchet" ;
+    skos:definition     "F204 enforcement. The DECIDED naming rules may not get worse: baselines live in static/reckons-standards.ttl as kpred:ratchet, and this fails only when a count goes UP. Advisory rather than blocking because a naming slip is not a failure you cannot take back after a push — and a gate that cries wolf gets switched off, at which point it protects nothing." ;
+    kpred:job-tier      "script" ;
+    kpred:command       "npx tsx scripts/offline/naming-conventions.ts --check" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "false" .
+
 job:perf-crawl rdf:type          ktype:OfflineJob ;
     rdfs:label          "perf-crawl" ;
     skos:prefLabel      "perf-crawl" ;
@@ -432,6 +450,15 @@ job:tenet-align rdf:type          ktype:OfflineJob ;
     kpred:job-enabled   "true" ;
     kpred:job-blocking  "false" .
 
+job:term-usage rdf:type          ktype:OfflineJob ;
+    rdfs:label          "term-usage" ;
+    skos:prefLabel      "term-usage" ;
+    skos:definition     "F203. Every term in static/reckons-terminology.ttl counted against the source tree, each occurrence classified by binding class (free/contract/foreign) and register (standards/developer/user). The free count is the rename headroom; the contract count is a data migration. Also names the terms whose user-facing word is still UNDECIDED and how many occurrences each decision is holding." ;
+    kpred:job-tier      "script" ;
+    kpred:command       "npx tsx scripts/offline/term-usage.ts --pending" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "false" .
+
 job:untested-options rdf:type          ktype:OfflineJob ;
     rdfs:label          "untested-options" ;
     skos:prefLabel      "untested-options" ;
@@ -458,9 +485,9 @@ jobset:agent rdf:type      skos:Collection ;
 jobset:script rdf:type      skos:Collection ;
     skos:prefLabel      "script tier" ;
     skos:definition     "Deterministic, zero tokens, no model. Right by construction and runs in CI. The work-tiering ladder says to grow this tier in preference to the others, and it is the larger one." ;
-    skos:member         job:alignment-sweep, job:altitude-report, job:build-guard, job:button-crawl, job:claim-audit, job:code-sprawl, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:safety-attestation, job:scope-check, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:status-evidence, job:tenet-align, job:untested-options .
+    skos:member         job:alignment-sweep, job:altitude-report, job:build-guard, job:button-crawl, job:claim-audit, job:code-sprawl, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:safety-attestation, job:scope-check, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:status-evidence, job:tenet-align, job:term-usage, job:untested-options .
 
 jobset:all rdf:type          skos:Collection ;
     skos:prefLabel      "Offline jobs" ;
-    skos:definition     "Every job the offline sweep can run — 48 of them, 39 needing no model at all." ;
+    skos:definition     "Every job the offline sweep can run — 51 of them, 42 needing no model at all." ;
     skos:member         jobset:agent, jobset:script .

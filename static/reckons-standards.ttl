@@ -1,0 +1,148 @@
+@prefix kb:     <urn:kbase:concept/> .
+@prefix kpred:  <urn:kbase:predicate/> .
+@prefix ktype:  <urn:kbase:type/> .
+@prefix kstd:   <urn:kbase:standard/> .
+@prefix ksrc:   <urn:kbase:standard/source/> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+# =============================================================================
+# CODING STANDARDS — MEASURED, SOURCED, AND RANKED (F204)
+# =============================================================================
+#
+# Matt, 2026-09-17: "I would put Threlte and other key framework standards as more important
+# than specific individuals' opinions."
+#
+# WHAT THAT SENTENCE FIXED. The first pass at this feature read Mr.doob's Code Style — one
+# person's house rules for contributing to three.js — and treated it as a peer of the framework
+# this application is actually built in. It is not. Mr.doob's guide mandates tabs, single quotes
+# and `if ( condition )` inner spacing, none of which is a portable best practice and all of
+# which would fight Prettier on every save. Ranking the sources turns "what do we think about
+# tabs" into a question nobody has to hold an opinion about.
+#
+# WHAT A STYLE GUIDE CANNOT TELL YOU, AND CODE CAN. Mr.doob's guide says constants are
+# "UPPER_SNAKE_CASE or UpperCamelCase depending on context" — which settles nothing. Counting
+# three.js's own source settles it in a second: 170 PascalCase against 26 UPPER_SNAKE, because
+# its constants are its public API surface (THREE.DoubleSide, THREE.FrontSide). Every rule below
+# is therefore backed by a COUNT produced by scripts/offline/naming-conventions.ts, which anyone
+# can re-run, rather than by a recollection of what a document said.
+#
+# THE MEASUREMENT ALSO CORRECTED TWO CLAIMS THIS FILE NEARLY SHIPPED. A first run reported that
+# SvelteKit and Threlte prefer camelCase constants and so conflict with our UPPER_SNAKE, and that
+# our codebase marks private members with an underscore against SvelteKit's `#private`. Both were
+# artifacts of loose regular expressions: the first was counting module-scope singletons
+# (`const saveBtn = document.getElementById(...)`), which every one of these projects cases
+# camelCase including us, and the second was counting module-scope mutable state in a codebase
+# that has 16 classes in total. A metric that answers a question nobody asked, confidently, does
+# not merely report a wrong number — it causes a decision to be taken to resolve a conflict that
+# was never there. Both are pinned by tests in scripts/offline/__tests__/naming-conventions.test.ts.
+#
+# HONEST STATUS, 2026-09-17: this file RECORDS decisions and measurements. Two of the five rules
+# below are DECIDED and three are OPEN. Nothing here is enforced by a linter yet — the reporter
+# measures, it does not fail a build — so every rule marked `unenforced` is a preference with
+# good paperwork, exactly what kb:honest-status says to admit rather than to imply otherwise.
+
+<urn:kbase:vocabulary/standards> a skos:ConceptScheme ;
+    dcterms:title "Reckons.AI coding standards" ;
+    dcterms:modified "2026-09-17"^^xsd:date ;
+    skos:definition "Naming and declaration rules, each with the source it came from, the count that supports it, and the check that enforces it — or an admission that nothing does." .
+
+# ── SOURCE PRECEDENCE — the ranking Matt set, and the reason it is a ranking ──
+
+kstd:source-precedence rdf:type ktype:CodingStandard ;
+    rdfs:label "Source precedence: framework over library over individual" ;
+    kpred:has-status "decided" ;
+    kpred:decided "MATT, 2026-09-17: framework standards outrank an individual's opinions. Ranked: (1) the framework we build inside — SvelteKit, then Svelte; (2) the library binding we use — Threlte, a Svelte library solving our exact problem; (3) the upstream library itself — three.js, for its own API surface only; (4) an individual's style guide, lowest, and only where nothing above it has evidence." ;
+    kpred:principle "A SOURCE WITH NO EVIDENCE GETS NO VOTE. three.js is authored in JavaScript, so it holds no position at all on interface-versus-type; it cannot. The reporter says NO EVIDENCE rather than zero, because silence and disagreement are different facts and reading one as the other is how a silent source ends up casting a vote." ;
+    kpred:principle "RANK DECIDES A TIE, IT DOES NOT OVERRIDE A COUNT. Where a higher-ranked source disagrees with a convention we already follow at 89%, the report says so and a human decides; the rank breaks the deadlock when our own practice is a coin flip." ;
+    kpred:enforced-by "scripts/offline/naming-conventions.ts" ;
+    kpred:relates-to kb:coding-standards .
+
+ksrc:sveltekit rdf:type ktype:StandardSource ;
+    rdfs:label "SvelteKit" ; kpred:rank "1" ;
+    kpred:description "The framework this application is built in. We live inside its file conventions already — +page.svelte and +layout.svelte are mandated lowercase and are not ours to style." ;
+    kpred:sees-also <https://svelte.dev/docs/kit> .
+
+ksrc:svelte rdf:type ktype:StandardSource ;
+    rdfs:label "Svelte" ; kpred:rank "1" ;
+    kpred:description "The component framework underneath SvelteKit. Its public type surface is the clearest available example of when a project reaches for interface over type." ;
+    kpred:sees-also <https://svelte.dev/docs> .
+
+ksrc:threlte rdf:type ktype:StandardSource ;
+    rdfs:label "Threlte" ; kpred:rank "2" ;
+    kpred:description "The Svelte binding for three.js, and the closest precedent this project has: it solves our exact problem of a foreign library's vocabulary colliding with our own. It does not rename the foreign thing, it namespaces it — THREE.Mesh becomes <T.Mesh>, props stay camelCase, nested values are set with pierced dot-notation (position.y={1})." ;
+    kpred:sees-also <https://threlte.xyz/docs/reference/core/t> .
+
+ksrc:three rdf:type ktype:StandardSource ;
+    rdfs:label "three.js" ; kpred:rank "3" ;
+    kpred:description "The rendering library. Authoritative over its own API surface and nothing else — its casing is a foreign name under F203's binding classes, not a style choice available to us." ;
+    kpred:sees-also <https://threejs.org/> .
+
+ksrc:mrdoob-style rdf:type ktype:StandardSource ;
+    rdfs:label "Mr.doob's Code Style" ; kpred:rank "4" ;
+    kpred:description "One maintainer's house rules for contributing to three.js. Ranked lowest by Matt's 2026-09-17 decision, and explicitly NOT a source for formatting here: its tabs, single quotes and inner-parenthesis spacing are rules for contributing to THEIR repository, and this project's formatting is settled by Prettier and npm run check." ;
+    kpred:sees-also <https://github.com/mrdoob/three.js/wiki/Mr.doob's-Code-Style%E2%84%A2> .
+
+# ── THE RULES ────────────────────────────────────────────────────────────────
+
+kstd:unit-of-code rdf:type ktype:CodingStandard ;
+    rdfs:label "Exported functions, not exported classes" ;
+    kpred:has-status "decided" ;
+    kpred:measured "2026-09-17, scripts/offline/naming-conventions.ts: this codebase 952 exported functions against 16 exported classes (98%). SvelteKit 382/17 (96%), Svelte 1267/35 (97%), Threlte 12/6 (67%), three.js src 52/1 (98%)." ;
+    kpred:decided "SETTLED, AND NOT BY US. Every ranked source with evidence agrees, including three.js's own module source. Nothing to argue about." ;
+    kpred:principle "THE INTERESTING CONSEQUENCE IS FOR THE OTHER RULES. At 16 classes, any convention borrowed from three.js about class naming or private members governs about 2% of our declarations. A rule's weight is the count it applies to, not the confidence of the source it came from." ;
+    kpred:enforced-by "unenforced — no linter checks this, and none is needed while the ratio is 60:1" ;
+    kpred:relates-to kb:coding-standards .
+
+kstd:literal-constant-case rdf:type ktype:CodingStandard ;
+    rdfs:label "UPPER_SNAKE for literal constants" ;
+    kpred:has-status "decided" ;
+    kpred:measured "2026-09-17: this codebase 723 UPPER_SNAKE, 77 camelCase, 15 PascalCase (89% of 815). Svelte 98/18 (84%), SvelteKit 41/23 (64%) — BOTH RANK-1 SOURCES AGREE WITH US. Threlte prefers camelCase (33 of 37) and three.js PascalCase (170 of 241)." ;
+    kpred:decided "UPPER_SNAKE for a module-level constant with a literal initializer. Our own practice and both rank-1 sources agree; Threlte's sample is 37 declarations and does not outweigh that." ;
+    kpred:principle "THREE.JS'S PASCALCASE IS NOT A COMPETING STYLE, IT IS A FOREIGN NAME. THREE.DoubleSide and THREE.FrontSide are its public API surface, so a file near the 3D layer will carry MAX_NODES and THREE.DoubleSide on adjacent lines and that is correct. Consistency with it is neither available nor desirable — see F203's binding classes." ;
+    kpred:honest-note "A module-scope SINGLETON is a different thing and stays camelCase: `const saveBtn = document.getElementById(...)`, `const parser = new Parser()`. Conflating the two is what made a first run report a conflict with SvelteKit and Threlte that does not exist." ;
+    kpred:ratchet "constant/camelCase/77" ;
+    kpred:enforced-by "scripts/offline/naming-conventions.ts --check — ratcheted at 77 camelCase literal constants." ;
+    kpred:relates-to kb:coding-standards .
+
+kstd:declaration-kind rdf:type ktype:CodingStandard ;
+    rdfs:label "type by default, interface as a deliberate extension point" ;
+    kpred:has-status "decided" ;
+    kpred:decided "MATT, 2026-09-17: type by default; interface only where a consumer is meant to extend the declaration. This fits all three evidence sets rather than overruling one — Svelte's interfaces are concentrated in its PUBLIC type surface, which is exactly what interface exists for (declaration merging), while SvelteKit and Threlte lean type in ordinary library code, as do we." ;
+    kpred:ratchet "declaration/interface/282" ;
+    kpred:measured "2026-09-17: this codebase 340 type against 282 interface — 55%, which is a coin flip, not a convention. SvelteKit 249/169 (60% type), Threlte 273/67 (80% type), Svelte 173/83 (68% INTERFACE), three.js NO EVIDENCE because it is authored in JavaScript." ;
+    kpred:open-question "THE SOURCES SPLIT, AND THE SPLIT IS EXPLICABLE RATHER THAN RANDOM. Svelte's interfaces are concentrated in its PUBLIC TYPE SURFACE (types/index.d.ts), which is the case interface exists for: declaration merging, so a consumer can augment it. SvelteKit and Threlte lean type in ordinary library code. The rule that fits all three evidence sets is therefore not 'always type' but 'type by default, interface where a consumer is meant to extend it'." ;
+    kpred:recommendation "TYPE AS THE DEFAULT, INTERFACE ONLY AS A DELIBERATE EXTENSION POINT. It matches two of the three ranked sources with evidence, matches our own lean, explains the third rather than contradicting it, and fits a codebase that leans on unions interface cannot express (Term = NamedNode | BlankNode | Literal). Whatever is chosen is worth a lint rule rather than a paragraph — 622 declarations is too many to settle by review." ;
+    kpred:enforced-by "scripts/offline/naming-conventions.ts --check — a RATCHET, not a gate: the 282 existing interfaces are the baseline and the build fails only if that number goes up. An interface that really is an extension point is exempted by saying so in a comment on or above it, which documents the exception at the point a reader meets it." ;
+    kpred:honest-note "THE RATCHET DOES NOT CONVERT ANYTHING. 282 declarations still use the non-default form and no migration is planned; the rule stops the number growing, and lowering the baseline in a commit is how a cleanup gets locked in. Enforced is not the same as satisfied, and this entry says which one it is." ;
+    kpred:relates-to kb:coding-standards .
+
+kstd:private-member rdf:type ktype:CodingStandard ;
+    rdfs:label "How a private class member is marked" ;
+    kpred:has-status "open" ;
+    kpred:measured "2026-09-17: this codebase has 12 such declarations in total — 8 TypeScript private, 4 underscore. SvelteKit 86 #private (100%), Svelte 135 #private (99%), three.js 304 underscore (100%), Threlte NO EVIDENCE." ;
+    kpred:recommendation "#private, following both rank-1 sources. The blast radius is 12 declarations, so this is the cheapest rule on the list to adopt and the least important to argue about. Mr.doob's underscore prefix is rank 4 and is superseded by the language itself." ;
+    kpred:honest-note "OUR 12 DECLARATIONS ARE NOT A CONVENTION AND SHOULD NOT BE DESCRIBED AS ONE. The reporter names anything under five hits NO EVIDENCE for exactly this reason; twelve is barely above that line." ;
+    kpred:enforced-by "unenforced" ;
+    kpred:relates-to kb:coding-standards .
+
+kstd:module-state-prefix rdf:type ktype:CodingStandard ;
+    rdfs:label "Module-scope mutable state carries no prefix" ;
+    kpred:has-status "open" ;
+    kpred:measured "2026-09-17: this codebase 165 unmarked against 95 underscore-prefixed (63%, the second coin flip). SvelteKit, Svelte and Threlte are unmarked at 100%. three.js prefixes 55 of 68." ;
+    kpred:recommendation "DROP THE PREFIX. All three ranked Svelte-family sources are unanimous, and the 95 prefixed names (_labelLast, _autoSaveTimer, _loading) are the three.js habit leaking into files that have nothing to do with three.js. Every one of them is FREE-bound under F203 — they are module-local identifiers — so this is the largest rename on the list that costs nothing but a diff." ;
+    kpred:honest-note "This rule only exists because a metric measuring private members accidentally measured this instead. It is a real convention in this codebase and was undocumented; finding it by accident is not a reason to leave it undocumented." ;
+    kpred:enforced-by "unenforced" ;
+    kpred:relates-to kb:coding-standards .
+
+kstd:formatting-out-of-scope rdf:type ktype:CodingStandard ;
+    rdfs:label "Formatting is settled by the formatter, not by this graph" ;
+    kpred:has-status "decided" ;
+    kpred:decided "Indentation, quote style and inner spacing are decided by Prettier and checked by npm run check. They are deliberately absent from this graph." ;
+    kpred:principle "A RULE TWO TOOLS BOTH ENFORCE IS A RULE THAT WILL EVENTUALLY DISAGREE WITH ITSELF. Recording tabs-versus-spaces here would create a second source of truth for something already automated, and the automated one wins every save." ;
+    kpred:honest-note "Recorded explicitly, rather than merely omitted, so that a later session reading Mr.doob's Code Style does not import three.js's house style as though it were a portable best practice." ;
+    kpred:enforced-by "prettier, via npm run check" ;
+    kpred:relates-to kb:coding-standards .

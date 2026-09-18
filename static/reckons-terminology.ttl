@@ -1,0 +1,266 @@
+@prefix kb:     <urn:kbase:concept/> .
+@prefix kpred:  <urn:kbase:predicate/> .
+@prefix ktype:  <urn:kbase:type/> .
+@prefix kterm:  <urn:kbase:term/> .
+@prefix kreg:   <urn:kbase:type/register/> .
+@prefix kbind:  <urn:kbase:type/binding/> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+# =============================================================================
+# THE TERMINOLOGY OF RECKONS.AI — ONE WORD, ONE MEANING, THREE AUDIENCES (F203)
+# =============================================================================
+#
+# Matt, 2026-09-17: "A Reckons.AI taxonomy and ontology for all terminology... Node is a
+# common component part of 3d rendering and part of three.js. Node is a runtime. Node is
+# part of a graph, connected by edges." And later: "We need to start separating the hyper
+# technical, SHACL for example, from more simple terms entity types or shapes, more
+# simplistic front end user terms."
+#
+# WHY THIS FILE IS SEPARATE FROM reckons-vocabulary.ttl. That file models CLOSED VALUE SETS
+# — altitude, task state, review status, lifecycle, set kind, layer — enums whose members are
+# fixed and whose job is validation. This file models TERMS: the words themselves, what each
+# one means, which audience each spelling is for, and what it costs to change it. Same
+# standards, same family, different shape. A reader looking for "what may this field contain"
+# wants that file; a reader looking for "what does node mean here" wants this one.
+#
+# ── THE TWO AXES ────────────────────────────────────────────────────────────
+#
+# REGISTER says WHO A LABEL IS FOR. Three of them:
+#   kreg:standards   the W3C word — sh:NodeShape, skos:Concept, quad, named graph.
+#                    Precise, foreign, non-negotiable: it means what the spec says.
+#   kreg:developer   the word someone working in this codebase uses. Ours to choose,
+#                    and chosen so no two of them can be confused with each other.
+#   kreg:user        what a first-time non-technical reader sees in the interface.
+#                    Chosen for recognition, not for precision.
+#
+# BINDING CLASS says WHAT IT COSTS TO CHANGE THE IDENTIFIER. Three of them:
+#   kbind:free       local identifiers. Renaming costs a diff and nothing else.
+#   kbind:contract   serialized or addressed: urn:kbase: IRI segments, TTL predicate
+#                    names, Dexie store names, localStorage keys, URL params, MCP tool
+#                    arguments, export formats. Renaming is a DATA MIGRATION that can
+#                    break graphs users already have. Never a refactor.
+#   kbind:foreign    owned by somebody else — RDF, SKOS, SHACL, PROV-O, three.js,
+#                    Node.js. Cannot be renamed at all, only disambiguated by
+#                    qualifying OUR uses so the bare word never stands alone.
+#
+# The axes correlate without matching. A standards term is almost always foreign and a
+# user-facing word almost always free, but a DEVELOPER term can be either: a local
+# variable is free, a Dexie table name is a contract. Both axes are recorded per concept,
+# and a rename is safe only when the binding class says so — whatever register it came from.
+#
+# ── WHY PLAIN LITERALS AND NOT SKOS-XL ──────────────────────────────────────
+#
+# SKOS-XL is the standards-correct way to attach metadata (like a register) to a label: it
+# makes each label a resource with its own properties. It is deliberately NOT used here, and
+# the reason is search. The MCP server's kb_search is BM25 full-text over literals. Promoting
+# labels to resources would mean a search for "node" no longer matches the concept that
+# explains "node" — which is the single most likely query this file will ever receive. That
+# is the cost the complexity budget says nobody looks at, so it is written down here instead:
+# register-qualified predicates keep every label a searchable literal, at the price of three
+# project predicates rather than one standard vocabulary. Revisit if search moves off BM25.
+#
+# ── HONEST STATUS ───────────────────────────────────────────────────────────
+#
+# 2026-09-17: this file DEFINES terms. Nothing enforces them yet. scripts/offline/term-usage.ts
+# reads it and reports where each term is used, under which binding class and in which register,
+# which is measurement rather than enforcement. No lint rule fails a build over a banned bare
+# word, no application code reads this file, and no identifier has been renamed. Defining a
+# vocabulary is not using one — the same sentence reckons-vocabulary.ttl had to write about itself.
+#
+# THE COUNTS IN THE SCOPE NOTES BELOW ARE SUPERSEDED AND KEPT ONLY AS PROSE. They came from two
+# shell one-liners on 2026-09-17 that counted whole words. The reporter counts identifier
+# SEGMENTS instead — so nodeMap, MAX_NODES and node all count toward `node`, which is what a
+# rename would actually have to touch — and discards occurrences that are language or markup
+# syntax rather than our term. The numbers moved a long way: `node` 947 -> 3010, `graph`
+# 2706 -> 4802, `kb` 1739 -> 4140. Run the reporter for a current figure and do not cite the
+# prose below as a measurement:
+#
+#     npx tsx scripts/offline/term-usage.ts
+#     npx tsx scripts/offline/term-usage.ts --term=node   # with its top files
+#
+# The classification is a LINE-LEVEL heuristic biased toward calling a line contract or foreign,
+# because the mistake that costs something is renaming a serialized name, not leaving a free one
+# alone. Read the free count as an upper bound on safe renames, never as a work order.
+
+<urn:kbase:vocabulary/terminology> a skos:ConceptScheme ;
+    dcterms:title "Reckons.AI terminology" ;
+    dcterms:modified "2026-09-17"^^xsd:date ;
+    skos:definition "Every term this product uses, with a label per audience and a binding class saying what it costs to change." .
+
+# ── REGISTERS ────────────────────────────────────────────────────────────────
+
+ktype:RegisterScheme a skos:ConceptScheme ;
+    skos:prefLabel "Label registers" ;
+    skos:definition "Who a given spelling of a concept is written for." .
+
+kreg:standards a skos:Concept ; skos:inScheme ktype:RegisterScheme ;
+    skos:notation "standards" ; skos:prefLabel "Standards register" ;
+    skos:definition "The W3C or upstream-library word. Means exactly what its specification says and cannot be redefined here." .
+
+kreg:developer a skos:Concept ; skos:inScheme ktype:RegisterScheme ;
+    skos:notation "developer" ; skos:prefLabel "Developer register" ;
+    skos:definition "The word used in this codebase. Chosen for unambiguity against neighbouring terms rather than for friendliness." .
+
+kreg:user a skos:Concept ; skos:inScheme ktype:RegisterScheme ;
+    skos:notation "user" ; skos:prefLabel "User register" ;
+    skos:definition "What a first-time non-technical reader sees in the interface. Chosen for recognition; may be less precise than the developer term, and that is allowed because the mapping is recorded here." .
+
+# ── BINDING CLASSES ──────────────────────────────────────────────────────────
+
+ktype:BindingScheme a skos:ConceptScheme ;
+    skos:prefLabel "Identifier binding classes" ;
+    skos:definition "What it costs to change an identifier that carries this term." .
+
+kbind:free a skos:Concept ; skos:inScheme ktype:BindingScheme ;
+    skos:notation "free" ; skos:prefLabel "Free" ;
+    skos:definition "A local identifier. Renaming costs a diff and nothing else." .
+
+kbind:contract a skos:Concept ; skos:inScheme ktype:BindingScheme ;
+    skos:notation "contract" ; skos:prefLabel "Contract" ;
+    skos:definition "Serialized or addressed, so somebody else's stored data depends on the exact spelling. Renaming is a data migration, never a refactor." .
+
+kbind:foreign a skos:Concept ; skos:inScheme ktype:BindingScheme ;
+    skos:notation "foreign" ; skos:prefLabel "Foreign" ;
+    skos:definition "Owned by an upstream specification or library. Cannot be renamed; can only be disambiguated by qualifying our own uses." .
+
+# ── THE FOUR NODES — the worked example this whole feature came from ─────────
+#
+# One string, four meanings, and only ONE of them is ours to name. This is why the rule
+# cannot be "node means X" and has to be "the bare word node is banned as an identifier".
+
+kterm:rdf-node a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "RDF term" ;
+    kpred:standards-label "NamedNode / BlankNode / Literal" ;
+    kpred:user-label "value" ;
+    kpred:binding-class kbind:foreign ;
+    skos:definition "One of the three kinds of thing that can occupy a position in an RDF triple. Defined by RDF and the RDF-JS interface, not by this project." ;
+    skos:scopeNote "Appears in src/lib/rdf/types.ts as NamedNode and BlankNode. These names are fixed by the specification — do not rename them, and do not reuse the word for our own vertex concept." ;
+    skos:hiddenLabel "node" ;
+    kpred:sees-also <https://www.w3.org/TR/rdf11-concepts/> .
+
+kterm:graph-vertex a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "entity" ;
+    kpred:standards-label "subject IRI" ;
+    kpred:user-label "thing" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "A subject in the user's knowledge base: the thing statements are made about. What a person means when they point at a circle in the graph view." ;
+    skos:scopeNote "THE ONLY ONE OF THE FOUR NODES THAT IS OURS TO NAME, and the codebase already has a better word for it: entity, used 927 times across 183 files. Prefer entity in data and logic; reserve node strictly for the RENDERED representation of an entity (see kterm:rendered-node)." ;
+    skos:hiddenLabel "node", "vertex" ;
+    skos:related kterm:rendered-node .
+
+kterm:rendered-node a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "entity marker" ;
+    kpred:user-label "dot" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "The drawn representation of an entity in the 2D or 3D view — its position, colour, icon, label and hit target. A presentation object, not data." ;
+    skos:scopeNote "This is where most of the 947 bare uses of node actually live (src/lib/3d/, nodeMap, nodeColors, nodePositionCache). Renaming these is FREE and is the highest-value cleanup available, because it is exactly the collision with three.js." ;
+    skos:hiddenLabel "node" .
+
+kterm:scene-object a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "scene object" ;
+    kpred:standards-label "THREE.Object3D" ;
+    kpred:binding-class kbind:foreign ;
+    skos:definition "A member of a three.js scene graph — a mesh, light, camera or group. Three.js's own hierarchy concept." ;
+    skos:scopeNote "Threlte is the precedent worth copying: it does not rename the foreign thing, it namespaces it, so THREE.Mesh becomes <T.Mesh> and the origin stays visible. Qualify our own uses rather than competing for the word." ;
+    skos:hiddenLabel "node" ;
+    kpred:sees-also <https://threlte.xyz/docs/reference/core/t> .
+
+kterm:node-runtime a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "Node.js" ;
+    kpred:standards-label "Node.js" ;
+    kpred:binding-class kbind:foreign ;
+    skos:definition "The JavaScript runtime the build, the MCP server and the offline scripts run on." ;
+    skos:scopeNote "Only ever appears as a proper noun or in a node: import specifier. It is never a domain term, and it must never be shortened to node in prose where a reader could take it for an entity." ;
+    skos:hiddenLabel "node" .
+
+# ── THE MOST OVERLOADED WORD IN THE CODEBASE ────────────────────────────────
+#
+# 2706 occurrences across 288 files, meaning at least four different things. Matt,
+# 2026-09-17: "I think graph is overloaded, we might need more specific terminology."
+# The user-facing word is NOT yet decided; that decision gates the largest rename here.
+
+kterm:knowledge-base a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "knowledge base" ;
+    kpred:standards-label "RDF dataset" ;
+    kpred:user-label "knowledge base" ;
+    kpred:binding-class kbind:contract ;
+    skos:definition "One user-owned collection of entities, statements and sources, stored as its own IndexedDB database and exportable as one Turtle file." ;
+    skos:scopeNote "DECIDED (Matt, 2026-09-17): SPELL OUT THE ABBREVIATION, KEEP THE WORD. The concept stays 'knowledge base' in every register — the abbreviation kb is what goes, not the noun. Migrating to 'graph' was half-decided and is now rejected: graph is already the most overloaded word here, meaning four things at 4802 occurrences, so that migration would have traded a clear-but-jargon term for an ambiguous-but-friendly one. A friendlier user-register word was considered and declined; the three-register model makes that reversible later without touching code, because only the user label would move." ;
+    skos:scopeNote "WHAT MOVES AND WHAT DOES NOT. The identifier kb is FREE where it is a local name — 3658 of its 4140 occurrences — and becomes knowledgeBase. It is CONTRACT-bound in four places that do NOT move without a data migration: the urn:kbase: namespace (1301 of the 1380 kbase occurrences, plus every stored user graph), the ?kb= URL parameter in bookmarkable links, Dexie database names from resolveDbName(), and the kb argument on every MCP tool. Renaming a free identifier is a diff; renaming any of those four is a migration that breaks graphs people already have." ;
+    skos:hiddenLabel "kb", "KB", "kbase" .
+
+kterm:named-graph a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "named graph" ;
+    kpred:standards-label "named graph" ;
+    kpred:user-label "source group" ;
+    kpred:binding-class kbind:foreign ;
+    skos:definition "The fourth element of a quad: the graph IRI a statement belongs to. In this product it carries the source a statement was derived from, and it is the join point the enterprise side is built on." ;
+    skos:scopeNote "A standards term with a fixed meaning. When the word graph appears near quads, TriG, or nanopublications it means THIS and nothing else — qualify it as named graph every time." ;
+    skos:hiddenLabel "graph" .
+
+kterm:graph-view a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "graph view" ;
+    kpred:user-label "the map" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "The 2D or 3D visual rendering of a knowledge base — the force layout, the camera, the drawn markers and edges." ;
+    skos:scopeNote "A presentation concept. Never store data under this name and never let it stand as bare graph in a module that also handles quads." ;
+    skos:hiddenLabel "graph" .
+
+# ── OUR OWN DOMAIN TERMS ────────────────────────────────────────────────────
+
+kterm:statement a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "statement" ;
+    kpred:standards-label "triple / rdf:Statement" ;
+    kpred:user-label "fact" ;
+    kpred:binding-class kbind:contract ;
+    skos:definition "One subject-predicate-object claim, with a review status, a confidence and a source. The unit the review queue settles." ;
+    skos:scopeNote "1764 occurrences across 241 files. The user-facing word has been fact for a long time and that is fine — a person settling a review queue is not thinking about reification. Contract-bound because statement ids and the urn:kbase:stmt/ prefix are serialized into every export." ;
+    skos:hiddenLabel "triple", "fact", "claim" .
+
+kterm:source a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "source" ;
+    kpred:standards-label "prov:Entity" ;
+    kpred:user-label "where it came from" ;
+    kpred:binding-class kbind:contract ;
+    skos:definition "The document, note, URL or repository a set of statements was extracted from, retained so any claim can be traced back to it." ;
+    skos:scopeNote "1578 occurrences across 223 files. Serialized under urn:kbase:source/, so the identifier is contract-bound even where the variable name is free." ;
+    skos:hiddenLabel "provenance" .
+
+kterm:set a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "set" ;
+    kpred:standards-label "skos:Collection / skos:OrderedCollection" ;
+    kpred:user-label "group" ;
+    kpred:binding-class kbind:contract ;
+    skos:definition "A named, possibly ordered collection of entities, used to compose pages, stories, rosters and contrasts." ;
+    skos:scopeNote "1767 occurrences across 254 files — and a collision risk with JavaScript's own Set, which is a different thing entirely. A variable holding a JS Set of entity IRIs and a variable holding one of our sets must never share a name shape." ;
+    skos:hiddenLabel "collection", "group" .
+
+kterm:shape a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "shape" ;
+    kpred:standards-label "sh:NodeShape / sh:PropertyShape" ;
+    kpred:user-label "what a kind of thing should have" ;
+    kpred:binding-class kbind:foreign ;
+    skos:definition "A SHACL constraint describing what a conforming entity of some type must look like — which properties it carries and what values they may take." ;
+    skos:scopeNote "MATT'S EXAMPLE OF THE HYPER-TECHNICAL REGISTER, 2026-09-17. sh:NodeShape teaches a first-time reader nothing, so the interface must never show it; but the developer word cannot be softened either, because SHACL's shape means something exact and a vaguer synonym would licence writing constraints that do not validate. This is precisely the case the three registers exist for: keep the spec word in the code, put the plain sentence in the interface, and record here that they are the same concept." ;
+    skos:hiddenLabel "schema", "constraint" ;
+    kpred:sees-also <https://www.w3.org/TR/shacl/> .
+
+kterm:entity-type a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "entity type" ;
+    kpred:standards-label "rdf:type / rdfs:Class" ;
+    kpred:user-label "kind of thing" ;
+    kpred:binding-class kbind:contract ;
+    skos:definition "What an entity is — Person, Organization, Feature, Event. Serialized under urn:kbase:type/." ;
+    skos:scopeNote "The user register matters here more than almost anywhere else: kind of thing is immediately understood, where entity type and rdf:type are both barriers to a first-time reader." ;
+    skos:hiddenLabel "type", "class" .
+
+kterm:reckoning a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "reckoning" ;
+    kpred:user-label "working it out" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "A grounded Situation-Target-Proposal deliberation over the graph: what is true now, what is wanted, and what would close the gap." ;
+    skos:scopeNote "The product's own coinage and the root of its name, so it stays. 57 occurrences across 14 files — small enough that if it ever needs renaming, it is cheap." .
