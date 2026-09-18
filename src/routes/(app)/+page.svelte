@@ -73,7 +73,7 @@
   import { getSettings, saveSettings } from '$lib/storage/db';
   import { previewModeFrom, legacyFlagsFor, PREVIEW_MODES, PREVIEW_MODE_LABELS, PREVIEW_MODE_HINTS } from '$lib/storage/preview-mode';
   import { shouldSuggest2D, dismissPerfSuggestion, resetPerfMonitor, currentFps } from '$lib/stores/perf-monitor.svelte';
-  import { pushNotification, dismissNotification, notificationStackHeight } from '$lib/stores/notifications.svelte';
+  import { pushNotification, dismissNotification, notificationStackHeight, setNotificationsSuppressed } from '$lib/stores/notifications.svelte';
 
   function checkWebGL(): boolean {
     if (typeof window === 'undefined') return false;
@@ -103,6 +103,29 @@
 
   let selected = $state<string | null>(null);
   let perspective = $state<'statements' | 'sources'>('statements');
+
+  /*
+   * REVISITING THE LANDING IS A REQUEST, NEVER A SIDE EFFECT (Matt, 2026-09-18: "I can't really
+   * get back to the landing without clearing cache").
+   *
+   * Once you have a graph, `visible.length === 0` is never true again, so the landing became
+   * unreachable — the only way back was wiping site data, which also wipes the user's graphs. That
+   * is a bad trade for wanting to re-read the pitch or hand someone a demo.
+   *
+   * It is deliberately driven by ?welcome and NOTHING else. The emptiness branch must stay exactly
+   * as narrow as it is: filters used to splice statements out of `visible`, so filtering to zero
+   * matches tripped that branch and drew the MARKETING LANDING PAGE over somebody's own graph (see
+   * the note on `visible` below). An explicit parameter cannot be reached by accident, is
+   * bookmarkable, and touches no stored data.
+   */
+  const showWelcome = $derived($page.url.searchParams.has('welcome'));
+
+  // The landing is a page for someone who has not started yet, so it is the one place a
+  // notification cannot be about anything they did. Deferred while it shows — see the note on
+  // setNotificationsSuppressed — and released the moment there is a graph.
+  $effect(() => {
+    setNotificationsSuppressed(visible.length === 0 || showWelcome);
+  });
   let provenanceControls = $state(createProvenanceControls());
   let sourceScene = $state<ReturnType<typeof projectProvenance> | null>(null);
   const canvasMode = $derived(perspective === 'statements' || provenanceControls.presentation === 'graph');
@@ -2162,8 +2185,8 @@
     data-provenance-links={perspective === 'sources' ? sourceScene?.edges.length : undefined}
     data-graph-settled={visible.length === 0 || graphSettled}
   >
-  {#if visible.length === 0}
-    {#if perspective === 'sources'}<div class="sources-empty"><h2>Select sources to explore</h2><p>Choose up to five sources from the source picker.</p></div>{:else}<LandingPage />{/if}
+  {#if visible.length === 0 || showWelcome}
+    {#if perspective === 'sources' && !showWelcome}<div class="sources-empty"><h2>Select sources to explore</h2><p>Choose up to five sources from the source picker.</p></div>{:else}<LandingPage />{/if}
   {:else if use2D || !webglAvailable}
     <KnowledgeGraph2D
       statements={visible}

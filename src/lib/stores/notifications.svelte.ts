@@ -48,7 +48,31 @@ function saveDismissed(ids: Set<string>) {
   try { localStorage.setItem(DISMISSED_KEY, JSON.stringify([...ids])); } catch { /* ignore */ }
 }
 
-export function notifications(): AppNotification[] { return _notifications; }
+/*
+ * DEFERRED, NOT DROPPED (Matt, 2026-09-18: "eight notifications queued on the landing page is
+ * silly, we need to spread out and push back notifications when users want to see them, after
+ * they are actually attempting to use a graph").
+ *
+ * A first-time visitor arriving from a link met a tray of eight — a Shelly tour for a graph they
+ * did not have, a 3D performance warning about a scene they had not rendered, model-status notes
+ * about work they had not asked for. Every one of them is useful LATER and noise on arrival, and
+ * a stack of eight teaches somebody to dismiss the ninth without reading it.
+ *
+ * Suppression HIDES, it does not discard: anything pushed while the landing is showing stays in
+ * the queue and appears the moment there is a graph to be notified about. Important notifications
+ * are exempt, because the one case that must never be deferred is a warning about something going
+ * wrong right now.
+ */
+let _suppressed = $state(false);
+
+/** Called by the page that knows whether the user is looking at the marketing landing. */
+export function setNotificationsSuppressed(v: boolean): void { _suppressed = v; }
+
+export function notificationsSuppressed(): boolean { return _suppressed; }
+
+export function notifications(): AppNotification[] {
+  return _suppressed ? _notifications.filter((n) => n.important) : _notifications;
+}
 
 export function pushNotification(n: Omit<AppNotification, 'id'> & { id?: string }): void {
   const id = n.id ?? Math.random().toString(36).slice(2, 10);

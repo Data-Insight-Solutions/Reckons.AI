@@ -231,6 +231,12 @@
           first-time reader who wants to understand it first had nowhere to go.
         -->
         <a href="/docs" class="btn-secondary">Read the docs</a>
+        <!--
+          THE WAY BACK TO THE LANDING (Matt, 2026-09-18: "I can't really get back to the landing
+          without clearing cache"). ?welcome renders it over the graph without touching any stored
+          data, so re-reading the pitch or showing someone the demo no longer costs you your graphs.
+        -->
+        <a href="/?welcome" class="btn-secondary">See the welcome page</a>
       </div>
     </div>
     <div class="scroll-hint" aria-hidden="true">↓</div>

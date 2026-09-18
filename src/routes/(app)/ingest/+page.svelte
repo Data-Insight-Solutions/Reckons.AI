@@ -844,7 +844,7 @@
     try {
       const { fetchICalEvents } = await import('$lib/integrations/indico/ical-parse');
       const { eventsToStatements: icalToStatements } = await import('$lib/integrations/google/calendar-rdf');
-      const events = await fetchICalEvents(icalUrl.trim());
+      const events = await fetchICalEvents(icalUrl.trim(), { allowCorsProxy: settings().allowCorsProxy });
       const sourceId = `ical-${Date.now()}`;
       // Convert ICalEvent to CalendarEvent shape for reuse of eventsToStatements
       const calEvents = events.map(ev => ({

@@ -142,6 +142,14 @@ export type SettingsRecord = {
   mistralApiKey?: string;
   /** Firecrawl API key — JS-rendered web scraping, replaces Jina Reader when set */
   firecrawlApiKey?: string;
+  /**
+   * Allow a calendar feed to be fetched through the public corsproxy.io relay when the server
+   * refuses a direct browser request. OFF unless the user turns it on, and it must stay off by
+   * default: an iCal "secret address" (Google, Outlook) IS the credential for that calendar, so
+   * relaying one hands a stranger both the key and the contents. Until 2026-09-18 this happened
+   * silently inside a catch block, with nothing shown to the user.
+   */
+  allowCorsProxy?: boolean;
   /** Reckons.AI Cloud Workers — managed AI inference hosted on Cloudflare Workers */
   reckonsApiKey?: string;
   reckonsModel?: string;
@@ -302,6 +310,7 @@ export const DEFAULT_SETTINGS: SettingsRecord = {
   humeConfigId: import.meta.env.VITE_HUME_CONFIG_ID || undefined,
   mistralApiKey: import.meta.env.VITE_MISTRAL_API_KEY || undefined,
   firecrawlApiKey: import.meta.env.VITE_FIRECRAWL_API_KEY || undefined,
+  allowCorsProxy: false,
   reckonsApiKey: import.meta.env.VITE_RECKONS_API_KEY || undefined,
   reckonsModel: import.meta.env.VITE_RECKONS_MODEL ?? '@cf/meta/llama-3.1-8b-instruct',
   reckonsBaseUrl: import.meta.env.VITE_RECKONS_BASE_URL ?? 'https://api.reckons.ai',
@@ -597,6 +606,7 @@ export async function saveSettings(patch: Partial<SettingsRecord>): Promise<void
       extensionHighlight: m.extensionHighlight ? JSON.parse(JSON.stringify(m.extensionHighlight)) : undefined,
       mistralApiKey: m.mistralApiKey,
       firecrawlApiKey: m.firecrawlApiKey,
+      allowCorsProxy: m.allowCorsProxy,
       reckonsApiKey: m.reckonsApiKey,
       reckonsModel: m.reckonsModel,
       reckonsBaseUrl: m.reckonsBaseUrl,
