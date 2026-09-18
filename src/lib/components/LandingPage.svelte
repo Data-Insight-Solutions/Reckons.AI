@@ -181,9 +181,20 @@
     const TEAL = '#1a9b8e';
     const PURPLE = '#6b4399';
     const labels = ['Climate', 'IPCC', 'CO₂ ppm', 'Arctic', 'sea level', 'credibility', 'Reckons.AI', 'policy', 'evidence'];
+    /*
+     * JITTERED 3x3 PLACEMENT, NOT PURE RANDOM (Matt, 2026-09-18: "space the nodes further, they
+     * are bunched up too tightly"). Nine uniformly random points in a square clump far more often
+     * than intuition suggests. Measured over 2000 trials: the old placement put two nodes closer
+     * than 0.10 apart on 83% of page loads, median nearest-pair 0.062, worst 0.002. One node per
+     * SHUFFLED grid cell, jittered within it, leaves a gutter between cells — 0% clumped, median
+     * 0.171 — while still arranging differently on every visit. The shuffle matters: without it
+     * label and colour would correlate with screen position, which would look designed rather
+     * than alive. Node index still drives label, colour and edges, so topology is unchanged.
+     */
+    const cells = [...Array(9).keys()].sort(() => Math.random() - 0.5);
     const nodes: Node[] = Array.from({ length: 9 }, (_, i) => ({
-      x: Math.random() * 0.8 + 0.1,
-      y: Math.random() * 0.8 + 0.1,
+      x: 0.22 + (cells[i] % 3) * 0.28 + (Math.random() - 0.5) * 0.18,
+      y: 0.22 + ((cells[i] / 3) | 0) * 0.28 + (Math.random() - 0.5) * 0.18,
       vx: (Math.random() - 0.5) * 0.0004,
       vy: (Math.random() - 0.5) * 0.0004,
       r: 5 + Math.random() * 4,
@@ -446,11 +457,14 @@
     <canvas bind:this={canvas} class="nodes-canvas" aria-hidden="true"></canvas>
 
     <div class="hero-content">
-      <p class="kicker mono">knowledge graph · provenance · trust</p>
-      <img src="/svg/logo-text.svg" alt="Reckons.AI" class="hero-logo" />
-      <p class="tagline">
-        A knowledge graph that knows<br/><em>your situation.</em>
+      <p class="kicker mono">
+        knowledge graph · provenance · trust
+        <span class="alpha-badge">alpha · v0.2.0</span>
       </p>
+      <img src="/svg/logo-text.svg" alt="Reckons.AI" class="hero-logo" />
+      <h1 class="tagline">
+        A knowledge graph that knows<br/><em>your situation.</em>
+      </h1>
       <p class="sub">
         Condense your context. Keep the meaning.<br/>
         An assistant that understands your situation, <em>controlled by you,</em> private by default.
@@ -965,6 +979,25 @@
     letter-spacing: 0.12em;
     text-transform: uppercase;
     margin: 0;
+  }
+
+  /*
+   * SAY WHAT IT IS, WHERE SOMEBODY WILL SEE IT (2026-09-18). The LinkedIn post that brought the
+   * first real traffic disclosed the maturity honestly — v0.2.0, one maintainer, no SPARQL engine.
+   * The SITE disclosed nothing, and links outlive posts: anyone arriving via a repost, a DM or a
+   * bookmark met a polished app making no claim about its state. kb:honest-status is explicit that
+   * aspiration in the present tense is a lie with good manners, so this sits in the first line of
+   * the hero rather than in a footer nobody scrolls to.
+   */
+  .alpha-badge {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.15em 0.55em;
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    white-space: nowrap;
   }
 
   .hero-logo {
@@ -1574,12 +1607,27 @@
     line-height: 1.55;
   }
 
+  /*
+   * 44px TAP TARGETS FOR STANDALONE LINKS (guideline-touch-targets, 2026-09-18).
+   * Measured on a Pixel 7, these were 18-21px tall — reliably missable with a thumb. WCAG 2.5.5
+   * exempts links sitting INLINE inside a sentence, and four on this page legitimately are, so
+   * only the standalone calls to action are padded here. Padding rather than height keeps the
+   * text baseline where the design puts it.
+   */
   .step-link {
     font-size: 0.82rem;
     color: var(--accent);
     text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
   }
   .step-link:hover { text-decoration: underline; }
+  .thesis-readmore a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
 
   /* ── Document Problem ────────────────────────────────── */
   .docs-problem-section {

@@ -374,14 +374,32 @@
     const s = await getSettings();
     if (s.nodeLabelFontSize != null) labelFontSize = s.nodeLabelFontSize;
 
-    // First-run tip: tell users about Shelly chat and the explore tour
-    pushNotification({
-      id: 'tip-shelly-explore',
-      type: 'info',
-      oneTime: true,
-      title: 'Meet Shelly',
-      body: 'Ask questions, add knowledge, or take a guided tour of your graph.',
-      action: { label: 'Open Shelly chat', onclick: () => setShellyChatOpen(true) }
+  });
+
+  /*
+   * THE SHELLY TIP WAITS FOR A GRAPH (Matt, 2026-09-18: "Shelly should be relevant in graph view,
+   * as with most notifications").
+   *
+   * It used to fire from onMount, so a first-time visitor met it on the LANDING page — an
+   * interruption sitting above the logo, offering "a guided tour of your graph" before they had a
+   * graph, or any idea what Shelly was. It is the first thing 140k LinkedIn impressions' worth of
+   * traffic saw. A notification that arrives before the thing it refers to is not onboarding, it
+   * is noise, and it trains people to dismiss the next one.
+   *
+   * `oneTime` already dedupes by id, so re-running as the graph loads is harmless; untrack keeps
+   * the push from making notification state a dependency of this effect.
+   */
+  $effect(() => {
+    if (visible.length === 0) return;
+    untrack(() => {
+      pushNotification({
+        id: 'tip-shelly-explore',
+        type: 'info',
+        oneTime: true,
+        title: 'Meet Shelly',
+        body: 'Ask questions, add knowledge, or take a guided tour of your graph.',
+        action: { label: 'Open Shelly chat', onclick: () => setShellyChatOpen(true) }
+      });
     });
   });
 
