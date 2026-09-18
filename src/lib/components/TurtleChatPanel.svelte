@@ -12,6 +12,7 @@
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { ONBOARDING_TEMPLATES, BLANK_TEMPLATE } from '$lib/onboarding/templates';
   import { settings, updateSettings } from '$lib/stores/settings.svelte';
+  import { openFeedback } from '$lib/stores/feedback.svelte';
   import { RDF_TYPE } from '$lib/rdf/entity-types';
   import type { TurtleChatMessage, KBAction, KBContext } from '$lib/types/turtle-chat';
   import { buildKBContext as buildKBContextShared } from '$lib/rdf/kb-context';
@@ -1314,6 +1315,33 @@
           {/if}
         </div>
       </div>
+
+      <!--
+        HELP LIVES HERE, NOT IN A FLOATING BUBBLE (Matt, 2026-09-18: "Screen real estate is
+        precious, maybe these things should be in the Shelly chat panel" — yes, and `learn` is
+        already the help surface, so this costs no new pixels and needs no gating rules of its own.
+        A `?` bubble would be one more always-on overlay, which is the exact class of thing that
+        just leaked onto the landing four times).
+
+        THE ALPHA NOTE IS HERE BECAUSE IT IS TRUE, not as a disclaimer. kb:honest-status: naming a
+        limitation beside the thing it limits beats a footer nobody reads.
+      -->
+      <div class="help-block">
+        <p class="help-heading mono">about this app</p>
+        <p class="help-alpha">
+          Reckons.AI is <strong>alpha</strong> — v0.2.0, one maintainer. Things will be rough, and
+          some of what you see is newer than its own documentation.
+        </p>
+        <div class="help-links">
+          <a href="/docs">Read the docs →</a>
+          <a href="/?welcome">See the welcome page →</a>
+          <button class="help-link-btn" onclick={() => openFeedback('shelly-learn')}>Send feedback →</button>
+        </div>
+        <p class="help-note mono">
+          Shelly answers from YOUR graph, not from the documentation — so for questions about how
+          Reckons.AI itself works, the docs are the better place to look.
+        </p>
+      </div>
     </div>
   </Tabs.Content>
 
@@ -1825,6 +1853,63 @@
   }
 
   /* ── Tutorial ── */
+  /*
+   * CONSENT PROMPT — above the tabs, so every path that needs permission can also grant it.
+   * Styled as a statement rather than an alert: it is a question about what the user wants, not a
+   * warning that something went wrong.
+   */
+  .ai-consent {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--surface-3, #2a3a4d);
+    background: var(--surface-2, #131c26);
+  }
+  .ai-consent-q { font-size: 0.85rem; margin: 0 0 0.35rem; color: var(--ink-2); line-height: 1.45; }
+  .ai-consent-where { font-size: 0.72rem; color: var(--muted); margin: 0 0 0.7rem; }
+  .ai-consent-actions { display: flex; gap: 0.5rem; }
+  .ai-consent-actions button {
+    min-height: 44px;
+    padding: 0 1rem;
+    border-radius: var(--rad, 8px);
+    border: 1px solid var(--surface-3, #2a3a4d);
+    background: var(--surface-3, #1b2734);
+    color: var(--ink-2);
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  .ai-consent-actions button.primary { background: var(--accent); border-color: var(--accent); color: #05231f; font-weight: 600; }
+
+  /* Help block on the learn tab — quiet, at the end, found by someone looking for it. */
+  .help-block {
+    margin-top: 1.1rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--surface-3, #2a3a4d);
+  }
+  .help-heading {
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 0.45rem;
+  }
+  .help-alpha { font-size: 0.82rem; margin: 0 0 0.6rem; color: var(--ink-2); line-height: 1.45; }
+  .help-links { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; }
+  .help-links a,
+  .help-link-btn {
+    font-size: 0.82rem;
+    color: var(--accent);
+    text-decoration: none;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    /* 44px tap target, same rule as the landing's standalone links. */
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .help-links a:hover, .help-link-btn:hover { text-decoration: underline; }
+  .help-note { font-size: 0.72rem; color: var(--muted); margin: 0.3rem 0 0; line-height: 1.5; }
+
   .tutorial {
     display: flex;
     flex-direction: column;
