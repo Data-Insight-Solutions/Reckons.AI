@@ -389,6 +389,23 @@
 
   async function grantAiConsent(granted: boolean) {
     await updateSettings({ aiUsageConsent: granted ? 'granted' : 'declined' });
+    if (!granted) return;
+
+    /*
+     * SAYING YES HAS TO DO SOMETHING. Granting consent used to leave the refusal on screen —
+     * "Shelly needs permission before showing your notes to a language model" — because errorMsg
+     * and exploreErrorMsg are sticky state that nothing cleared, and `exploreStarted` is set
+     * BEFORE the request, so the run that failed never retried. The user clicked Allow and the app
+     * carried on saying no. A permission prompt that does not visibly unblock the thing it was
+     * blocking reads as broken, and worse, teaches people their answer was not heard.
+     */
+    errorMsg = '';
+    errorLink = null;
+    exploreErrorMsg = '';
+    if (tab === 'explore') {
+      exploreStarted = true;
+      await sendExploreMessage(null);
+    }
   }
 
   function onKeydown(e: KeyboardEvent) {
