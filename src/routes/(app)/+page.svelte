@@ -649,7 +649,17 @@
    * there WERE nodes, just nothing showing them. Every surface that means "the landing is up" now
    * reads this instead of re-deriving it.
    */
-  const showingLanding = $derived(visible.length === 0 || showWelcome);
+  const showingLanding = $derived(showWelcome || (visible.length === 0 && perspective !== 'sources'));
+
+  /*
+   * NOT THE SAME THING AS THE LANDING, and conflating them broke the source picker.
+   *
+   * In the sources perspective with nothing picked yet, `visible.length === 0` is also true — but
+   * that is a legitimate GRAPH state ("choose up to five sources"), not the marketing page. The
+   * first version of showingLanding lumped them together, which would have hidden SourcesExplorer
+   * exactly when a user needed it to pick their first source.
+   */
+  const showingSourcesEmpty = $derived(!showWelcome && perspective === 'sources' && visible.length === 0);
   // The landing is a page for someone who has not started yet, so it is the one place a
   // notification cannot be about anything they did. Deferred while it shows — see the note on
   // setNotificationsSuppressed — and released the moment there is a graph.
@@ -2183,14 +2193,17 @@
   </div>
 {/snippet}
 
-{#if statements().length > 0 || sources().length > 0}
+<!-- Graph chrome: hidden whenever the landing is up (see showingLanding). -->
+{#if !showingLanding && (statements().length > 0 || sources().length > 0)}
   <div class="perspective-switch" class:banner-offset={officialKbActive()} role="group" aria-label="Graph perspective">
     <button aria-pressed={perspective === 'statements'} onclick={() => switchPerspective('statements')}>Statements</button>
     <button aria-pressed={perspective === 'sources'} onclick={() => switchPerspective('sources')}>Sources</button>
   </div>
 {/if}
 
-{#if perspective === 'sources'}
+<!-- Graph chrome. Hidden for the marketing landing, but NOT for the sources-empty state,
+     which is where somebody picks their first source. -->
+{#if perspective === 'sources' && !showingLanding}
   <SourcesExplorer statements={statements()} sources={sources()} bind:controls={provenanceControls} bind:selected
     onscene={(scene) => sourceScene = scene} {graphTools} assetFor={nodeAssetFor}
     onentity={(key) => { switchPerspective('statements'); selected = key; }} />
@@ -2209,8 +2222,10 @@
     data-provenance-links={perspective === 'sources' ? sourceScene?.edges.length : undefined}
     data-graph-settled={showingLanding || graphSettled}
   >
-  {#if showingLanding}
-    {#if perspective === 'sources' && !showWelcome}<div class="sources-empty"><h2>Select sources to explore</h2><p>Choose up to five sources from the source picker.</p></div>{:else}<LandingPage />{/if}
+  {#if showingSourcesEmpty}
+    <div class="sources-empty"><h2>Select sources to explore</h2><p>Choose up to five sources from the source picker.</p></div>
+  {:else if showingLanding}
+    <LandingPage />
   {:else if use2D || !webglAvailable}
     <KnowledgeGraph2D
       statements={visible}
