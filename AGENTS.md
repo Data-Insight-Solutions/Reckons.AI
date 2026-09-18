@@ -212,7 +212,7 @@ This project uses TTL knowledge bases as the primary documentation format. **Do 
 
 - `kpred:tested-by` — Links a Production KB feature entity to its test file (repo-relative path, e.g., `src/lib/rdf/__tests__/diff.test.ts`)
 - `kpred:has-file` — Links a Codebase KB module entity to its source files (repo-relative path)
-- `kpred:has-status` — Feature lifecycle: `speculative` → `planned` → `scaffolded` → `functional` → `production`
+- `kpred:has-status` — Feature lifecycle: `speculative` → `planned` → `in-progress` → `scaffolded` → `functional` → `production`. **SIX, not five** — this line said five until 2026-09-18, and a session that hardcoded the enum from it silently skipped every `in-progress` feature in a constraint check instead of failing. The authority is `static/reckons-vocabulary.ttl`, where each status carries its `skos:notation` and its `hnav:order`; read the rank from there rather than from this sentence, the way `graph-lint` does. (`in-progress` is recorded in the graph as de-facto rather than designed.)
 - `kpred:depends-on` — Feature dependency (alignment scoring checks these are met)
 
 ## Code Conventions

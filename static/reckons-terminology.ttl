@@ -258,6 +258,79 @@ kterm:entity-type a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminolo
     skos:scopeNote "The user register matters here more than almost anywhere else: kind of thing is immediately understood, where entity type and rdf:type are both barriers to a first-time reader." ;
     skos:hiddenLabel "type", "class" .
 
+# ── STATE — "functional to whom?" ────────────────────────────────────────────
+#
+# Matt, 2026-09-18: "The collapse of state is simply to ignore a relevant perspective. No single
+# state is an encompassing perspective on a state of an entity. One perspective may say Done while
+# another says New and both may be correct from the expertise of a different industry."
+#
+# THE PATTERN IS NOW THREE-FOR-THREE IN THIS PROJECT, and naming it is the point of writing it here:
+#   "node means X"    wrong — four perspectives own the word, so qualify by REGISTER (F203).
+#   "what does g mean" wrong — Matt, 2026-07-13: "it assumed one answer for one product. It has TWO
+#                      answers, because there are two products." Private .ttl is self-attestation;
+#                      published .trig is a publication by an accountable publisher (F75).
+#   "status is X"      wrong for the same reason, and still unfixed.
+# A BARE VALUE IS A COLLAPSED RELATION. Where a word means different things to different readers,
+# the reader belongs in the data rather than in a footnote apologising for the word.
+#
+# THE GRAPH ALREADY NEEDED THREE ANSWERS AND BUILT THREE PREDICATES RATHER THAN ONE RELATION
+# (measured 2026-09-18): kpred:has-status 518 uses, the BUILDER's view; kpred:data-egress plus
+# kpred:gated-by 11 uses, the SAFETY view, and the only one that is machine-checkable;
+# kpred:in-dev / dev-approved / stakeholder-approved 15 uses, the RELEASE view (F33). Three
+# perspectives on the state of one entity, none reconciled, none declaring itself a perspective —
+# so "functional to whom" is answerable today only by noticing which predicate you happened to read.
+#
+# WHY THE OBVIOUS FIX IS BLOCKED. Perspective-as-named-graph is the standards answer and is NOT
+# available: TriG has one graph slot and F75 spent it on the SOURCE ("File = KB, named graph =
+# source"), and overloading it was declined once already. Reification is available (toTurtleFull
+# does it properly) but hides the literal from BM25 search — the same argument that ruled out
+# SKOS-XL above. So the affordable shape is the one registers already use: a CLOSED set of
+# perspectives, and a qualified predicate per perspective, keeping every value a searchable literal.
+#
+# NOT BUILT, AND DELIBERATELY NOT BUILT YET. The evidence for a general mechanism is thin: only 14
+# of 271 honest-notes explicitly correct a reading of a status. F75 declined a conditional writer
+# for a condition no local graph met, and called that declining on evidence rather than deferring;
+# the same discipline applies here. What is cheap and honest TODAY is to stop pretending
+# has-status is global — it is the builder's perspective, and saying so costs one sentence.
+
+kterm:entity-state a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "state" ;
+    kpred:standards-label "no single term — see scope note" ;
+    kpred:user-label "where it has got to" ;
+    kpred:binding-class kbind:contract ;
+    skos:definition "What is true of an entity right now, FROM A NAMED PERSPECTIVE. Not a single global value: one perspective may correctly say Done while another correctly says New, because they are answering different questions with different expertise." ;
+    skos:scopeNote "kpred:has-status is the BUILDER's perspective and should be read as a summary, not as the state. It is contract-bound — 518 uses, graph-lint validates it against the lifecycle scheme, and the docs generators read it — so it does not move. What can change is that it stops implying it is the only answer." ;
+    skos:scopeNote "THE LIFECYCLE IS SIX, NOT FIVE, and the authority is static/reckons-vocabulary.ttl where each status carries skos:notation and hnav:order. AGENTS.md said five until 2026-09-18; a session that hardcoded the enum from that prose silently SKIPPED every in-progress feature in a constraint check instead of failing. Read the rank from the graph, the way graph-lint does." ;
+    skos:scopeNote "THE SCALE ALSO BREAKS UNDER COMPOSITION, which is evidence it is not a progression: kb:graph-publishing is in-progress (order 2) while three of its own phases are functional (order 4), so the whole ranks below its parts. 'In-progress' for a composite means 'some parts are done', which is not a point on that line at all." ;
+    skos:hiddenLabel "status", "state", "stage" ;
+    skos:related kterm:share-composition .
+
+# ── SHARE — three things, and reaching for the word lands on the wrong one ──
+#
+# Matt, 2026-09-18: "there is a parallel here with 'publish' and 'share' and we shouldn't build
+# twice." The parallel is real, and the collision underneath it is the reason it would happen:
+# the word already names a machine-to-machine transfer AND a document written for a person.
+
+kterm:share-package a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "share package" ;
+    kpred:standards-label "RDF dataset serialization" ;
+    kpred:user-label "send someone your graph" ;
+    kpred:binding-class kbind:contract ;
+    skos:definition "Moving GRAPH DATA to another machine so it can be imported: a URL pointing at hosted Turtle (kb:share-links), or the versioned lossless package with a manifest and integrity hashes (kb:canonical-graph-package, F107.3). The recipient is software, and the test of success is that a round trip is semantically identical." ;
+    skos:scopeNote "Gated by kb:publish-safety-gate and classified mediated-distribution, because Reckons.AI is the intermediary carrying somebody's content. kb:source-reference-copy already decided that retained third-party documents must be excluded from a share package BY CONSTRUCTION rather than by remembering to — sources/ is inside the sync boundary and outside the publish boundary." ;
+    skos:hiddenLabel "share", "export", "package" .
+
+kterm:share-composition a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "composed share" ;
+    kpred:standards-label "ktype:WebPage" ;
+    kpred:user-label "something you can send a person" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "A DOCUMENT composed from a subset of the graph and written for a named audience — the LinkedIn post in share/ is the worked example, and it says of itself that it is grounded in static/docs-why-reckons.ttl. The recipient is a person, and the test of success is that they understand it." ;
+    skos:scopeNote "THIS IS NOT A SECOND PIPELINE. src/lib/publish/page-composition.ts already states the mechanism — 'a PAGE is authored, and it declares its SOURCES: one or more graphs, named entities, or type filters' — and targets.ts already abstracts the destination, including a plain zip. A composed share is that composition with a non-site target and a USER-register wording; what differs from publishing the docs site is audience, scope and durability, not machinery. Building it as its own feature would duplicate composition AND duplicate the gate, and a distribution path with its own separate gate is how a gate gets missed." ;
+    skos:scopeNote "MEASURED 2026-09-18, share/ as it stands: linkedin-why-reckons.md is a hand-made composition of the F205 positioning graph; the banner is a source .html plus two rendered PNGs (680KB of the folder's 724KB) whose regeneration is documented in the source but automated nowhere; turtles-story.ttl was a byte-identical copy of static/starter-turtles.ttl. One instance is not a category — the folder is evidence of the shape, not yet a reason to build the target." ;
+    skos:hiddenLabel "share" ;
+    skos:related kterm:share-package .
+
 kterm:reckoning a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
     skos:prefLabel "reckoning" ;
     kpred:user-label "working it out" ;
