@@ -468,8 +468,8 @@ export async function ingest(
       }
 
       // A model that collapses a whole sentence into one node passes every TYPE check — a
-      // proposition is a perfectly good string. "Orange Logic is an enterprise DAM" arrived as
-      // the entity `orange-logic-is-an-enterprise-dam` with the relation never extracted at all.
+      // proposition is a perfectly good string. "Example Archive is an enterprise DAM" arrived as
+      // the entity `example-archive-is-an-enterprise-dam` with the relation never extracted at all.
       // Caught by a rule rather than by a better prompt, so it holds for whichever model is
       // behind the extractor. Rejected, never repaired: splitting the slug on its verb would turn
       // a parse into a fact.

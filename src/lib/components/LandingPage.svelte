@@ -7,7 +7,6 @@
   import { activateOfficialKb, preloadOfficialKb, officialKbError } from '$lib/stores/official-kb.svelte';
   import { importTurtleFull } from '$lib/rdf/import-ttl';
   import { startStory, startExplore } from '$lib/stores/shelly-bridge.svelte';
-  import { HUMANITY_PDC_EXAMPLE, openHumanityPdcExample } from '$lib/examples/humanity-pdc';
 
   // Warm the larger documentation graph after the landing page has had time to hydrate. Starting
   // its fetch/parse during component initialization competes with an immediate starter click on the
@@ -29,7 +28,6 @@
 
   const EXAMPLE_KBS = [
     { id: 'quickstart', icon: '🚀', title: 'Quick-Start Example', body: 'People, projects, decisions, metrics', file: '/starter-quickstart.ttl' },
-    HUMANITY_PDC_EXAMPLE,
   ];
 
   const GUIDE_STORY_ID = 'urn:reckons:story/ReckonsPhilosophy';
@@ -121,7 +119,6 @@
     loadingExample = kb.id;
     actionError = null;
     try {
-      if (kb.id === HUMANITY_PDC_EXAMPLE.id) { await openHumanityPdcExample(); return; }
       const res = await fetch(kb.file);
       if (!res.ok) throw new Error(`Failed to fetch ${kb.file}`);
       const ttl = await res.text();
@@ -537,11 +534,11 @@
           <span class="tmpl-icon">{kb.icon}</span>
           <strong class="tmpl-label">{kb.title}</strong>
           <p class="tmpl-desc">{kb.body}</p>
-          <span class="tmpl-scenario mono">{kb.id === HUMANITY_PDC_EXAMPLE.id ? 'opens its own editable graph · sourced proposals' : 'example data · imports into your graph'}</span>
+          <span class="tmpl-scenario mono">example data · imports into your graph</span>
           {#if loadingExample === kb.id}
             <span class="tmpl-loading mono">importing...</span>
           {:else}
-            <span class="tmpl-cta">{kb.id === HUMANITY_PDC_EXAMPLE.id ? 'Open example →' : 'Import example →'}</span>
+            <span class="tmpl-cta">Import example →</span>
           {/if}
         </button>
       {/each}

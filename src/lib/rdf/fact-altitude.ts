@@ -220,7 +220,7 @@ const RECORD_PREDICATES = new Set([
   `${KPRED}is-test`,
   // Which sentence a triple was read out of. Mechanical by construction — the extractor wrote it
   // and re-running extraction re-derives it — so it is a record, not a claim about the world.
-  // The FACT "Orange Logic is an enterprise DAM" needs a human; that it came from a note dictated
+  // The FACT "Example Archive is an enterprise DAM" needs a human; that it came from a note dictated
   // at 16:56 does not.
   `${KPRED}extracted-from`,
   `${KPRED}depends-on-module`,

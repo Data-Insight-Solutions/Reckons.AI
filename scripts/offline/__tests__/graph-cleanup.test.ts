@@ -13,22 +13,22 @@ const PREFIX = `@prefix kb: <urn:kbase:concept/> .
 describe('analyse — collapsed entities', () => {
   it('finds a proposition that became an entity name', () => {
     const g = parse(`${PREFIX}
-      kb:orange-logic-is-an-enterprise-dam kpred:used-by kb:large-companies .
+      kb:example-archive-is-an-enterprise-dam kpred:used-by kb:large-companies .
     `);
     const { findings } = analyse(g);
     const collapsed = findings.filter((f) => f.kind === 'collapsed');
     expect(collapsed).toHaveLength(1);
-    expect(collapsed[0].entity).toContain('orange-logic-is-an-enterprise-dam');
+    expect(collapsed[0].entity).toContain('example-archive-is-an-enterprise-dam');
   });
 
   it('leaves an ordinary name alone', () => {
-    const g = parse(`${PREFIX} kb:orange-logic kpred:used-by kb:large-companies .`);
+    const g = parse(`${PREFIX} kb:example-archive kpred:used-by kb:large-companies .`);
     expect(analyse(g).findings.filter((f) => f.kind === 'collapsed')).toHaveLength(0);
   });
 
   it('traces a collapsed entity back to the note it came from', () => {
     const g = parse(`${PREFIX}
-      kb:orange-logic-is-an-enterprise-dam kpred:extracted-from kb:note-1 .
+      kb:example-archive-is-an-enterprise-dam kpred:extracted-from kb:note-1 .
     `);
     expect(analyse(g).findings.find((f) => f.kind === 'collapsed')?.note).toContain('note-1');
   });

@@ -14,7 +14,7 @@ notes on 2026-09-02 rather than inventing new ones:
   homophone on a domain acronym          "enterprise damn"   -> enterprise DAM
   proper nouns split by the decoder      "A primo and binder"-> Aprimo, Bynder
   a person's name misheard               "Matthew Rowe"      -> Roe
-  a whole sentence as one entity slug    orange-logic-is-an-enterprise-dam
+  a whole sentence as one entity slug    example-archive-is-an-enterprise-dam (synthetic name)
   co-hyponyms sharing a name head        node attribute {name,value,type,...}
   a REQUEST mixed in with claims         "generate a doc and email it to me"
 

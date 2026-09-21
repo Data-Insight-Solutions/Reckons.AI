@@ -111,7 +111,7 @@ describe('GrantSeeker shape', () => {
 
   it('accepts a complete profile', async () => {
     const r = await check(
-      `kb:g a ktype:GrantSeeker ; rdfs:label "Ava Growers Market" ; kpred:geography "Ava, Missouri" ; kpred:focus-area "farmers market" ; kpred:entity-type "nonprofit" .`,
+      `kb:g a ktype:GrantSeeker ; rdfs:label "Meadow Growers Market" ; kpred:geography "Example County" ; kpred:focus-area "farmers market" ; kpred:entity-type "nonprofit" .`,
     );
     expect(r.conforms).toBe(true);
   });

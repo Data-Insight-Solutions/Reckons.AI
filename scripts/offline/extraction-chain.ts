@@ -46,7 +46,7 @@ const JSON_OUT = args.includes('--json');
 const KCONCEPT = 'urn:kbase:concept/';
 const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 
-/** Entity slug -> readable words. `orange-logic-is-an-enterprise-dam` -> "orange logic is an …". */
+/** Entity slug -> readable words. `example-archive-is-an-enterprise-dam` -> "example archive is an …". */
 const words = (iri: string) => iri.replace(KCONCEPT, '').replace(/[-_]/g, ' ').trim();
 
 export interface ChainReport {
@@ -87,7 +87,7 @@ function countPlaced(nodes: ReturnType<typeof buildHierarchy>): number {
 
 /**
  * SENTENCE-SHAPED ENTITY SLUGS ARE THE LOUDEST EXTRACTION DEFECT AND NOTHING FLAGS THEM.
- * `kb:orange-logic-is-an-enterprise-dam` is a whole claim collapsed into one node: it can never
+ * `kb:example-archive-is-an-enterprise-dam` is a whole claim collapsed into one node: it can never
  * match another entity, never be typed, and never join a hierarchy, so every later stage silently
  * does nothing with it. A verb in the slug is the tell.
  */

@@ -325,9 +325,9 @@ kterm:share-composition a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/ter
     kpred:standards-label "ktype:WebPage" ;
     kpred:user-label "something you can send a person" ;
     kpred:binding-class kbind:free ;
-    skos:definition "A DOCUMENT composed from a subset of the graph and written for a named audience — the LinkedIn post in share/ is the worked example, and it says of itself that it is grounded in static/docs-why-reckons.ttl. The recipient is a person, and the test of success is that they understand it." ;
+    skos:definition "A document composed from a subset of the graph and written for a named audience. The recipient is a person, and the test of success is that they understand it." ;
     skos:scopeNote "THIS IS NOT A SECOND PIPELINE. src/lib/publish/page-composition.ts already states the mechanism — 'a PAGE is authored, and it declares its SOURCES: one or more graphs, named entities, or type filters' — and targets.ts already abstracts the destination, including a plain zip. A composed share is that composition with a non-site target and a USER-register wording; what differs from publishing the docs site is audience, scope and durability, not machinery. Building it as its own feature would duplicate composition AND duplicate the gate, and a distribution path with its own separate gate is how a gate gets missed." ;
-    skos:scopeNote "MEASURED 2026-09-18, share/ as it stands: linkedin-why-reckons.md is a hand-made composition of the F205 positioning graph; the banner is a source .html plus two rendered PNGs (680KB of the folder's 724KB) whose regeneration is documented in the source but automated nowhere; turtles-story.ttl was a byte-identical copy of static/starter-turtles.ttl. One instance is not a category — the folder is evidence of the shape, not yet a reason to build the target." ;
+    skos:scopeNote "Public examples must be generic and purpose-built for Reckons.AI. Personal sharing drafts and third-party site projects belong outside the public repository." ;
     skos:hiddenLabel "share" ;
     skos:related kterm:share-package .
 

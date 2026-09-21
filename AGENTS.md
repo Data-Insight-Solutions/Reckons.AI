@@ -50,6 +50,8 @@ This project has its own Reckons.AI MCP server configured (`reckons`). It expose
 - **When touching code files**: `kb_search` the Codebase KB to see which module owns the file.
 - **At the start of a session**: `kb_stats` to see current state.
 
+Public examples must be generic and purpose-built for Reckons.AI. Keep personal notes, grant applications, external-project sites and sharing drafts outside this public repository. Regression tests use synthetic transcripts, never copied personal captures. Every pushed branch is public; keeping content outside a site deployment folder does not make it private.
+
 ### Keeping KBs up to date
 
 The KBs are symlinked from `static/*.ttl` files in this repo. When you complete a feature or change the roadmap:

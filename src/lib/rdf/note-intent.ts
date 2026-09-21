@@ -62,7 +62,7 @@ export const AMBIGUOUS_THRESHOLD = 0.3;
  *
  * Bare form ONLY, and that restriction is doing real work: "runs", "emailed" and "checking" can
  * never open an English imperative, so leaving them out costs nothing and removes a whole class of
- * false positive ("Orange Logic runs on AWS").
+ * false positive ("Example Archive runs on AWS").
  */
 const IMPERATIVE_OPENERS = new Set([
   'run', 'research', 'find', 'check', 'draft', 'write', 'email', 'call', 'schedule', 'book',
@@ -71,7 +71,7 @@ const IMPERATIVE_OPENERS = new Set([
   'fix', 'test', 'verify', 'confirm', 'track', 'watch', 'monitor', 'list', 'gather', 'collect',
   'contact', 'apply', 'register', 'sign', 'order', 'buy', 'plan', 'organize', 'organise',
   'prepare', 'estimate', 'price', 'quote', 'measure', 'count', 'read', 'watch', 'explore',
-  // Added 2026-08-28 after "Generate a document about orange logic and email it to me." was
+  // Added 2026-08-28 after a document-generation request (synthetic example below) was
   // read as a STATEMENT and extracted as prose. `create`, `make` and `build` were all present;
   // `generate` was not, and one missing word silently turned a request into invented facts.
   'generate', 'produce', 'publish', 'post', 'share', 'compile', 'extract', 'convert', 'export',
@@ -146,8 +146,9 @@ const FINITE_FOLLOWERS = new Set([
  * Words that open a subordinate clause, so the finite verb after them is NOT the sentence's main
  * assertion.
  *
- * FOUND ON A REAL DICTATION, 2026-08-28. "Run a research task for new grants or current grants
- * THAT ARE for city Parks and Rec, THAT HAVE childhood activities like swim team" is a command
+ * Regression found in dictation on 2026-08-28; this illustration uses synthetic text:
+ * "Run a research task for new workshops or current workshops
+ * THAT ARE for city Arts and Crafts, THAT HAVE community activities like book club" is a command
  * with two relative clauses hanging off its object. Counting `are` and `have` as assertions
  * dragged an obvious instruction down into the hedge band. A verb inside "grants that are…"
  * describes the thing being asked for; it does not state a fact about the world. Longer, more
@@ -185,7 +186,7 @@ function words(value: string): string[] {
  * Split one sentence into separate imperative clauses.
  *
  * Matt, 2026-08-28: "Actually multiple agent tasks, generate document, and email me." He is right —
- * "Generate a document about orange logic AND EMAIL IT TO ME" is two pieces of work, and one task
+ * "Generate a document about example archive AND EMAIL IT TO ME" is two pieces of work, and one task
  * carrying both has a `done-when` nobody could write.
  *
  * THIS REVERSES A DELIBERATE EARLIER DECISION, recorded in splitSentences below, so the reasoning

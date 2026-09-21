@@ -17,7 +17,7 @@
 ## are not distinguished from value imports, so coupling is OVER-counted elsewhere.
 ## File granularity, not symbol — see kb:serena-prior-art for what would fix that.
 ##
-## 728 files · 1315 import edges · generated 2026-09-18
+## 737 files · 1320 import edges · generated 2026-09-21
 ## =============================================================================
 
 @prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -125,6 +125,11 @@
 <urn:reckons:file/mcp-server/src/__tests__/review-session.test.ts> rdf:type ktype:SourceFile ;
     rdfs:label "review-session.test.ts" ;
     kpred:path "mcp-server/src/__tests__/review-session.test.ts" ;
+    kpred:is-test "true" .
+
+<urn:reckons:file/mcp-server/src/__tests__/search-aliases.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "search-aliases.test.ts" ;
+    kpred:path "mcp-server/src/__tests__/search-aliases.test.ts" ;
     kpred:is-test "true" .
 
 <urn:reckons:file/mcp-server/src/__tests__/search.test.ts> rdf:type ktype:SourceFile ;
@@ -499,12 +504,6 @@
     rdfs:label "docs-search-index.ts" ;
     kpred:path "scripts/docs-search-index.ts" .
 
-<urn:reckons:file/scripts/examples/build-humanity-pdc.ts> rdf:type ktype:SourceFile ;
-    rdfs:label "build-humanity-pdc.ts" ;
-    kpred:path "scripts/examples/build-humanity-pdc.ts" ;
-    kpred:imports <urn:reckons:file/src/lib/rdf/serialize.ts> ;
-    kpred:imports <urn:reckons:file/src/lib/rdf/types.ts> .
-
 <urn:reckons:file/scripts/extension/__tests__/firefox-manifest.test.ts> rdf:type ktype:SourceFile ;
     rdfs:label "firefox-manifest.test.ts" ;
     kpred:path "scripts/extension/__tests__/firefox-manifest.test.ts" ;
@@ -611,6 +610,12 @@
     kpred:path "scripts/offline/__tests__/extraction-score.test.ts" ;
     kpred:is-test "true" ;
     kpred:imports <urn:reckons:file/scripts/offline/extraction-score.ts> .
+
+<urn:reckons:file/scripts/offline/__tests__/find-feed.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "find-feed.test.ts" ;
+    kpred:path "scripts/offline/__tests__/find-feed.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/scripts/offline/find-feed.ts> .
 
 <urn:reckons:file/scripts/offline/__tests__/fixtures/pending-queue-writer.ts> rdf:type ktype:SourceFile ;
     rdfs:label "pending-queue-writer.ts" ;
@@ -789,6 +794,10 @@
 <urn:reckons:file/scripts/offline/fetch-starter-images.ts> rdf:type ktype:SourceFile ;
     rdfs:label "fetch-starter-images.ts" ;
     kpred:path "scripts/offline/fetch-starter-images.ts" .
+
+<urn:reckons:file/scripts/offline/find-feed.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "find-feed.ts" ;
+    kpred:path "scripts/offline/find-feed.ts" .
 
 <urn:reckons:file/scripts/offline/generate-file-graph.ts> rdf:type ktype:SourceFile ;
     rdfs:label "generate-file-graph.ts" ;
@@ -1398,7 +1407,6 @@
     rdfs:label "LandingPage.svelte" ;
     kpred:path "src/lib/components/LandingPage.svelte" ;
     skos:broader code:components ;
-    kpred:imports <urn:reckons:file/src/lib/examples/humanity-pdc.ts> ;
     kpred:imports <urn:reckons:file/src/lib/onboarding/templates.ts> ;
     kpred:imports <urn:reckons:file/src/lib/rdf/import-ttl.ts> ;
     kpred:imports <urn:reckons:file/src/lib/stores/kb.svelte.ts> ;
@@ -1600,6 +1608,7 @@
     kpred:imports <urn:reckons:file/src/lib/rdf/view-suggestions.ts> ;
     kpred:imports <urn:reckons:file/src/lib/stores/download-consent.svelte.ts> ;
     kpred:imports <urn:reckons:file/src/lib/stores/entity-types.svelte.ts> ;
+    kpred:imports <urn:reckons:file/src/lib/stores/feedback.svelte.ts> ;
     kpred:imports <urn:reckons:file/src/lib/stores/ingest.svelte.ts> ;
     kpred:imports <urn:reckons:file/src/lib/stores/kb.svelte.ts> ;
     kpred:imports <urn:reckons:file/src/lib/stores/settings.svelte.ts> ;
@@ -1714,14 +1723,6 @@
     kpred:path "src/lib/embed.ts" ;
     skos:broader code:embed ;
     kpred:imports <urn:reckons:file/src/lib/integrations/llm/device-select.ts> .
-
-<urn:reckons:file/src/lib/examples/humanity-pdc.ts> rdf:type ktype:SourceFile ;
-    rdfs:label "humanity-pdc.ts" ;
-    kpred:path "src/lib/examples/humanity-pdc.ts" ;
-    skos:broader code:embed ;
-    kpred:imports <urn:reckons:file/src/lib/rdf/import-ttl.ts> ;
-    kpred:imports <urn:reckons:file/src/lib/storage/kb-registry.ts> ;
-    kpred:imports <urn:reckons:file/src/lib/stores/kb-import.ts> .
 
 <urn:reckons:file/src/lib/extension-bridge.ts> rdf:type ktype:SourceFile ;
     rdfs:label "extension-bridge.ts" ;
@@ -1864,6 +1865,13 @@
     skos:broader code:indico ;
     kpred:imports <urn:reckons:file/src/lib/integrations/indico/client.ts> .
 
+<urn:reckons:file/src/lib/integrations/indico/__tests__/ical-proxy-consent.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "ical-proxy-consent.test.ts" ;
+    kpred:path "src/lib/integrations/indico/__tests__/ical-proxy-consent.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:indico ;
+    kpred:imports <urn:reckons:file/src/lib/integrations/indico/ical-parse.ts> .
+
 <urn:reckons:file/src/lib/integrations/indico/__tests__/reachability.test.ts> rdf:type ktype:SourceFile ;
     rdfs:label "reachability.test.ts" ;
     kpred:path "src/lib/integrations/indico/__tests__/reachability.test.ts" ;
@@ -1919,6 +1927,13 @@
     rdfs:label "types.ts" ;
     kpred:path "src/lib/integrations/indico/types.ts" ;
     skos:broader code:indico .
+
+<urn:reckons:file/src/lib/integrations/llm/__tests__/ai-consent.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "ai-consent.test.ts" ;
+    kpred:path "src/lib/integrations/llm/__tests__/ai-consent.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:llm ;
+    kpred:imports <urn:reckons:file/src/lib/integrations/llm/turtle-chat.ts> .
 
 <urn:reckons:file/src/lib/integrations/llm/__tests__/device-capability.test.ts> rdf:type ktype:SourceFile ;
     rdfs:label "device-capability.test.ts" ;
@@ -2151,6 +2166,14 @@
     kpred:imports <urn:reckons:file/src/lib/integrations/n8n/contact.ts> ;
     kpred:imports <urn:reckons:file/src/lib/stores/feedback.svelte.ts> .
 
+<urn:reckons:file/src/lib/integrations/n8n/__tests__/currents-sync-tasks.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "currents-sync-tasks.test.ts" ;
+    kpred:path "src/lib/integrations/n8n/__tests__/currents-sync-tasks.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:n8n ;
+    kpred:imports <urn:reckons:file/src/lib/integrations/n8n/currents-sync.ts> ;
+    kpred:imports <urn:reckons:file/src/lib/rdf/currents.ts> .
+
 <urn:reckons:file/src/lib/integrations/n8n/__tests__/currents-sync.test.ts> rdf:type ktype:SourceFile ;
     rdfs:label "currents-sync.test.ts" ;
     kpred:path "src/lib/integrations/n8n/__tests__/currents-sync.test.ts" ;
@@ -2159,6 +2182,12 @@
     kpred:imports <urn:reckons:file/src/lib/integrations/n8n/currents-sync.ts> ;
     kpred:imports <urn:reckons:file/src/lib/rdf/currents.ts> ;
     kpred:imports <urn:reckons:file/src/lib/rdf/types.ts> .
+
+<urn:reckons:file/src/lib/integrations/n8n/__tests__/google-tasks-workflow.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "google-tasks-workflow.test.ts" ;
+    kpred:path "src/lib/integrations/n8n/__tests__/google-tasks-workflow.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:n8n .
 
 <urn:reckons:file/src/lib/integrations/n8n/__tests__/ios-note-workflow.test.ts> rdf:type ktype:SourceFile ;
     rdfs:label "ios-note-workflow.test.ts" ;
@@ -2478,6 +2507,13 @@
     kpred:imports <urn:reckons:file/src/lib/rdf/captured-notes.ts> ;
     kpred:imports <urn:reckons:file/src/lib/rdf/types.ts> .
 
+<urn:reckons:file/src/lib/rdf/__tests__/bm25-aliases.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "bm25-aliases.test.ts" ;
+    kpred:path "src/lib/rdf/__tests__/bm25-aliases.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:rdf ;
+    kpred:imports <urn:reckons:file/src/lib/rdf/bm25.ts> .
+
 <urn:reckons:file/src/lib/rdf/__tests__/bm25.test.ts> rdf:type ktype:SourceFile ;
     rdfs:label "bm25.test.ts" ;
     kpred:path "src/lib/rdf/__tests__/bm25.test.ts" ;
@@ -2529,6 +2565,13 @@
     kpred:imports <urn:reckons:file/src/lib/rdf/currents-persist.ts> ;
     kpred:imports <urn:reckons:file/src/lib/rdf/currents.ts> ;
     kpred:imports <urn:reckons:file/src/lib/rdf/types.ts> .
+
+<urn:reckons:file/src/lib/rdf/__tests__/currents-tasks-kind.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "currents-tasks-kind.test.ts" ;
+    kpred:path "src/lib/rdf/__tests__/currents-tasks-kind.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:rdf ;
+    kpred:imports <urn:reckons:file/src/lib/rdf/currents.ts> .
 
 <urn:reckons:file/src/lib/rdf/__tests__/currents.test.ts> rdf:type ktype:SourceFile ;
     rdfs:label "currents.test.ts" ;
@@ -2707,15 +2750,14 @@
     kpred:imports <urn:reckons:file/src/lib/rdf/hierarchy.ts> ;
     kpred:imports <urn:reckons:file/src/lib/rdf/types.ts> .
 
-<urn:reckons:file/src/lib/rdf/__tests__/humanity-pdc-example.test.ts> rdf:type ktype:SourceFile ;
-    rdfs:label "humanity-pdc-example.test.ts" ;
-    kpred:path "src/lib/rdf/__tests__/humanity-pdc-example.test.ts" ;
+<urn:reckons:file/src/lib/rdf/__tests__/ingest-aliases.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "ingest-aliases.test.ts" ;
+    kpred:path "src/lib/rdf/__tests__/ingest-aliases.test.ts" ;
     kpred:is-test "true" ;
     skos:broader code:rdf ;
-    kpred:imports <urn:reckons:file/src/lib/examples/humanity-pdc.ts> ;
-    kpred:imports <urn:reckons:file/src/lib/rdf/import-ttl.ts> ;
-    kpred:imports <urn:reckons:file/src/lib/rdf/serialize.ts> ;
-    kpred:imports <urn:reckons:file/src/lib/rdf/story.ts> .
+    kpred:imports <urn:reckons:file/src/lib/rdf/ingest-aliases.ts> ;
+    kpred:imports <urn:reckons:file/src/lib/rdf/merge-aliases.ts> ;
+    kpred:imports <urn:reckons:file/src/lib/rdf/types.ts> .
 
 <urn:reckons:file/src/lib/rdf/__tests__/kb-context.test.ts> rdf:type ktype:SourceFile ;
     rdfs:label "kb-context.test.ts" ;
@@ -3439,6 +3481,13 @@
     kpred:path "src/lib/rdf/import-ttl.ts" ;
     skos:broader code:rdf ;
     kpred:imports <urn:reckons:file/src/lib/rdf/fact-altitude.ts> ;
+    kpred:imports <urn:reckons:file/src/lib/rdf/types.ts> .
+
+<urn:reckons:file/src/lib/rdf/ingest-aliases.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "ingest-aliases.ts" ;
+    kpred:path "src/lib/rdf/ingest-aliases.ts" ;
+    skos:broader code:rdf ;
+    kpred:imports <urn:reckons:file/src/lib/rdf/merge-aliases.ts> ;
     kpred:imports <urn:reckons:file/src/lib/rdf/types.ts> .
 
 <urn:reckons:file/src/lib/rdf/kb-context.ts> rdf:type ktype:SourceFile ;
@@ -4212,6 +4261,13 @@
     kpred:imports <urn:reckons:file/src/lib/rdf/types.ts> ;
     kpred:imports <urn:reckons:file/src/lib/stores/note-extraction.svelte.ts> .
 
+<urn:reckons:file/src/lib/stores/__tests__/notification-suppression.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "notification-suppression.test.ts" ;
+    kpred:path "src/lib/stores/__tests__/notification-suppression.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:stores ;
+    kpred:imports <urn:reckons:file/src/lib/stores/notifications.svelte.ts> .
+
 <urn:reckons:file/src/lib/stores/__tests__/official-kb.test.ts> rdf:type ktype:SourceFile ;
     rdfs:label "official-kb.test.ts" ;
     kpred:path "src/lib/stores/__tests__/official-kb.test.ts" ;
@@ -4371,6 +4427,7 @@
     kpred:imports <urn:reckons:file/src/lib/rdf/diff.ts> ;
     kpred:imports <urn:reckons:file/src/lib/rdf/entity-typing.ts> ;
     kpred:imports <urn:reckons:file/src/lib/rdf/import-ttl.ts> ;
+    kpred:imports <urn:reckons:file/src/lib/rdf/ingest-aliases.ts> ;
     kpred:imports <urn:reckons:file/src/lib/rdf/normalize-entities.ts> ;
     kpred:imports <urn:reckons:file/src/lib/rdf/semantic-diff.ts> ;
     kpred:imports <urn:reckons:file/src/lib/rdf/set-derive.ts> ;
@@ -4642,6 +4699,7 @@
     kpred:imports <urn:reckons:file/src/lib/rdf/import-ttl.ts> ;
     kpred:imports <urn:reckons:file/src/lib/rdf/kb-leap.ts> ;
     kpred:imports <urn:reckons:file/src/lib/rdf/map-layout.ts> ;
+    kpred:imports <urn:reckons:file/src/lib/rdf/merge-aliases.ts> ;
     kpred:imports <urn:reckons:file/src/lib/rdf/n-hop.ts> ;
     kpred:imports <urn:reckons:file/src/lib/rdf/protected-entities.ts> ;
     kpred:imports <urn:reckons:file/src/lib/rdf/provenance-view.ts> ;
@@ -4672,7 +4730,6 @@
     skos:broader code:routes ;
     kpred:imports <urn:reckons:file/src/lib/components/ContactForm.svelte> ;
     kpred:imports <urn:reckons:file/src/lib/components/ui/button/index.ts> ;
-    kpred:imports <urn:reckons:file/src/lib/examples/humanity-pdc.ts> ;
     kpred:imports <urn:reckons:file/src/lib/rdf/import-ttl.ts> ;
     kpred:imports <urn:reckons:file/src/lib/stores/kb.svelte.ts> ;
     kpred:imports <urn:reckons:file/src/lib/stores/official-kb.svelte.ts> ;
