@@ -8,10 +8,18 @@
 		<!-- CSP: script-src 'self' + wasm-unsafe-eval (ONNX/transformers.js); worker-src blob: (SW + embedding workers);
 		     connect-src lists every provider the browser calls directly; object/base/form locked down.
 		     Fonts are self-hosted in static/fonts/ — no external font requests.
-		     static.cloudflareinsights.com is Cloudflare Web Analytics, which Pages INJECTS into the
-		     served HTML. It was blocked by this policy from launch until 2026-09-18, so the beacon
-		     failed on every visit and the project had no traffic data at all during the first
-		     LinkedIn push. A blocked analytics script fails silently apart from one console line —
+		     TWO cloudflareinsights HOSTS ARE REQUIRED AND THEY ARE NOT THE SAME ONE. The beacon is
+		     FETCHED from static.cloudflareinsights.com (script-src) and then POSTS its measurements
+		     to cloudflareinsights.com/cdn-cgi/rum (connect-src) — no 'static.' prefix. Listing only
+		     the static host loads the script and silently blocks every report it tries to send,
+		     which looks exactly like having no analytics. Caught by the E2E console-error assertion
+		     in tests/e2e/app.test.ts, not by reading the policy.
+		     static.cloudflareinsights.com is Cloudflare Web Analytics, loaded by the explicit script
+		     tag at the end of this head — NOT by Pages edge injection, which was believed to be
+		     doing it and measurably was not (see that tag's comment). It was blocked by this policy
+		     from launch until 2026-09-18, so the beacon failed on every visit and the project had no
+		     traffic data at all during the first LinkedIn push. A blocked analytics script fails
+		     silently apart from one console line —
 		     the only symptom is a dashboard that reads zero, which looks like no traffic rather
 		     than like a bug. It needs BOTH script-src (to load) and connect-src (to report).
 		     ADDING A fetch() TO A NEW HOST MEANS ADDING IT HERE TOO, or the request is refused
@@ -37,7 +45,7 @@
 		     the app sees it. Honest limit: this only helps builds that KNOW the origin (local dev
 		     and self-hosters). On the shared hosted build a user's own server is still unreachable,
 		     and passing CSP is only half — the server must also send Access-Control-Allow-Origin. -->
-		<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-inline' blob: https://storage.googleapis.com https://accounts.google.com https://cdn.jsdelivr.net https://static.cloudflareinsights.com; worker-src 'self' blob:; connect-src 'self' data: blob: https://static.cloudflareinsights.com https://api.anthropic.com https://api.openai.com https://api.mistral.ai https://generativelanguage.googleapis.com https://openrouter.ai https://api.meshy.ai https://www.googleapis.com https://api.hume.ai wss://api.hume.ai https://accounts.google.com https://api.github.com https://api.tavily.com https://api.firecrawl.dev https://api.reckons.ai https://r.jina.ai https://corsproxy.io https://huggingface.co https://*.huggingface.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.huggingface.co https://*.xethub.hf.co https://*.aws.cdn.hf.co https://cdn.jsdelivr.net http://localhost:* ws://localhost:* %RECKONS_EXTRA_CONNECT_SRC%; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; font-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self';" />
+		<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-inline' blob: https://storage.googleapis.com https://accounts.google.com https://cdn.jsdelivr.net https://static.cloudflareinsights.com; worker-src 'self' blob:; connect-src 'self' data: blob: https://static.cloudflareinsights.com https://cloudflareinsights.com https://api.anthropic.com https://api.openai.com https://api.mistral.ai https://generativelanguage.googleapis.com https://openrouter.ai https://api.meshy.ai https://www.googleapis.com https://api.hume.ai wss://api.hume.ai https://accounts.google.com https://api.github.com https://api.tavily.com https://api.firecrawl.dev https://api.reckons.ai https://r.jina.ai https://corsproxy.io https://huggingface.co https://*.huggingface.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.huggingface.co https://*.xethub.hf.co https://*.aws.cdn.hf.co https://cdn.jsdelivr.net http://localhost:* ws://localhost:* %RECKONS_EXTRA_CONNECT_SRC%; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; font-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self';" />
 		<title>Reckons.AI</title>
 		<meta name="description" content="Reckons.AI — the semantic understanding knowledge graph that you review and automatically edit, compare, and share." />
 		<meta property="og:title" content="Reckons.AI" />
@@ -52,6 +60,33 @@
 		<meta name="twitter:description" content="The semantic understanding knowledge graph that you review and automatically edit, compare, and share." />
 		<meta name="twitter:image" content="https://reckons.ai/social-preview.png" />
 		%sveltekit.head%
+		<!-- Cloudflare Web Analytics, INLINE, DELIBERATE, AND GATED TO THE PRODUCTION HOST.
+		     The account has auto_install=true with an enabled ruleset on this zone, and edge injection
+		     still put no beacon in the served HTML — verified 2026-09-22 against reckons.ai,
+		     reckons-ai.pages.dev and dev.reckons-ai.pages.dev, all three returning zero occurrences of
+		     beacon.min.js after the CSP fix had shipped. Since 2026-09-18 the story was "the CSP blocks
+		     it"; that was true and it was not the whole fault. A snippet in source is checkable by grep,
+		     survives proxy and project reconfiguration, and works on custom and pages.dev domains alike.
+		     The token is PUBLIC by design — it ships in the HTML of every page and identifies the site,
+		     not the account; it grants no access and is not a secret.
+		     THE HOSTNAME GATE IS NOT A TEST WORKAROUND. Cloudflare answers /cdn-cgi/rum with an
+		     Access-Control-Allow-Origin naming the REGISTERED site, so the beacon CORS-fails anywhere
+		     else — localhost and every pages.dev preview included. Loading it there would produce
+		     console errors for a report that can never be accepted, and if it ever were accepted it
+		     would mix dev and preview traffic into the production numbers. Measuring only the site the
+		     figures are about is the correct behaviour; the E2E console-error assertion in
+		     tests/e2e/app.test.ts is what forced the question.
+		     IF EDGE INJECTION EVER STARTS WORKING, THIS DOUBLE-COUNTS. Turn auto_install off for this
+		     site rather than removing this tag. -->
+		<script>
+			if (location.hostname === 'reckons.ai') {
+				var cfBeacon = document.createElement('script');
+				cfBeacon.type = 'module';
+				cfBeacon.src = 'https://static.cloudflareinsights.com/beacon.min.js';
+				cfBeacon.setAttribute('data-cf-beacon', '{"token": "6b000f31c4334623a2ccc9b52e25cb8b"}');
+				document.head.appendChild(cfBeacon);
+			}
+		</script>
 	</head>
 	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">%sveltekit.body%</div>
