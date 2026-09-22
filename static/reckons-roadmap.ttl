@@ -7868,3 +7868,45 @@ kb:small-model-ladder rdf:type ktype:Feature ;
     kpred:honest-note "NOTHING IS BUILT, AND THIS IS DELIBERATELY NOT STARTED (2026-09-22). Recorded so the sequencing survives: the interesting work (C, WASM, tiny devices) is the LAST step, and doing it first would measure a runtime against a model nobody has shown is the right one. Hardware available for the measuring steps: 2x RTX 3090, 48GB, 18 models on localhost:11434." ;
     kpred:depends-on kb:local-offload ;
     kpred:relates-to kb:llm-providers, kb:extraction-scoring .
+
+# -- F208: Multi-graph stories — a story that crosses graphs --------------------
+kb:multi-graph-stories rdf:type ktype:Feature ;
+    rdfs:label "Multi-graph stories — one narrative, several graphs" ;
+    kpred:feature-id "F208" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:description "Matt (2026-09-22): allow stories to span more than one graph. Today a story is parsed from ONE statement set — extractStories(stmts) in src/lib/rdf/story.ts takes the current graph and nothing else — so every step must name entities that exist in it. A story that wants to show a fact in the personal graph, then the roadmap entity that fact justifies, cannot be authored at all. The step vocabulary already exists (story:Story, story:Step, story:order, story:partOf, story:highlight, story:pace, story:autoplay); what is missing is a step that says WHICH GRAPH it plays in." ;
+    kpred:principle "THE TRANSITION IS THE INTERESTING PART, NOT THE PLAYBACK. Crossing graphs mid-narrative is exactly the move kb:KBLeap already makes for navigation — urn:reckons:leap carries a stable-id target and switchToKb performs the jump (src/lib/rdf/kb-leap.ts). A story step that changes graph should therefore BE a leap, reusing that resolution and its failure behaviour, rather than inventing a second cross-graph mechanism that can disagree with the first." ;
+    kpred:principle "A STORY MUST NOT BECOME A BACK DOOR INTO A GRAPH THE READER CANNOT OPEN. Graphs are per-user and origin-locked; a published story referencing a private graph must degrade to a named, skippable gap — 'this step needs a graph you do not have' — never a silent skip and never an error that ends playback. The well-formed absence is the honest rendering, and it is also the product's own thesis applied to its own narration." ;
+    kpred:open-question "Does a multi-graph story carry COPIES of the facts it shows, or only references? References stay honest and stay current, and break when the target graph changes. Copies always play, and immediately start lying about a graph that has moved on. kb:source-reference-copy already decided this shape for graph packages — check it before choosing, because the two must not disagree." ;
+    kpred:honest-note "NOT BUILT (2026-09-22). story.ts has no concept of a graph at all: no kb field on a step, no switch during playback, no resolution of a leap target, and no behaviour for a target that is absent. The step vocabulary and the leap mechanism both exist and have never been connected." ;
+    kpred:depends-on kb:multi-kb ;
+    kpred:relates-to kb:story-narration-voice, kb:mcp-leap-traversal .
+
+# -- F209: Custom node positioning — the user places a node, and it stays -------
+kb:custom-node-positioning rdf:type ktype:Feature ;
+    rdfs:label "Custom node positioning — a placed node stays placed" ;
+    kpred:feature-id "F209" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:description "Matt (2026-09-22): allow custom node positioning. Every one of the nine layouts — force, focus, source, type, hub, timeline, order, hierarchy, map — COMPUTES positions, and nothing anywhere persists one: a grep for saved coordinates across src/lib returns nothing. So a user who drags a node into a meaningful arrangement loses it on the next layout run, reload or graph switch. This is the gap under kb:arrange-layout-builder (F60), which proposes arrangement modes on top of a substrate that cannot yet remember where anything was put." ;
+    kpred:principle "A PLACEMENT IS A FACT ABOUT THE USER'S UNDERSTANDING, NOT A RENDERING DETAIL. Where someone chose to put a node carries meaning the automatic layouts cannot derive — that is the whole reason for moving it. So the position belongs in the graph as reviewable, exportable, diffable statements like everything else, not in a private render cache that never leaves the browser and cannot be shared with a published graph." ;
+    kpred:decided "PINNED, NOT FROZEN, AND ONLY PER LAYOUT. A position means something different in map mode than in timeline mode, so one global x/y would be wrong in eight of the nine. Pins are stored per layout, unpinned nodes keep flowing, and a pin is a claim about ONE arrangement rather than a global override. The map layout is the precedent: kb:map-layout already positions by real coordinates, so 'position carries meaning' is established in this codebase rather than novel." ;
+    kpred:open-question "What happens to a pin when the node's data changes enough that the layout would now place it elsewhere — a timeline node whose date is corrected, or a map node whose coordinates are fixed? Honouring the pin preserves the user's arrangement and hides a real correction. Dropping it respects the data and silently discards deliberate work. A third option is to keep the pin and MARK it as diverged, which fits the review spine better than either." ;
+    kpred:honest-note "NOTHING IS BUILT AND THERE IS NO STORAGE FOR IT (2026-09-22). Positions are computed per render; KnowledgeGraph2D.svelte assigns node.x from a computed anchor and nothing writes one back. There is no drag-to-place interaction on the 2D canvas today, so this is a new interaction AND a new persistence shape, not a persistence layer under an existing gesture." ;
+    kpred:relates-to kb:arrange-layout-builder, kb:map-layout, kb:spatial-force-layout .
+
+# -- F210: Diagram layout — lanes by persona or system, time left to right ------
+kb:swimlane-diagram-layout rdf:type ktype:Feature ;
+    rdfs:label "Swim-lane diagram layout — lanes by persona or system, time across" ;
+    kpred:feature-id "F210" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:description "Matt (2026-09-22), naming it as his favourite diagram form: an automated hierarchy-and-order-based DIAGRAM layout — 'laning by persona or system, left to right down the lane by timeline'. A tenth layout, and the first one whose output is a DIAGRAM a person would put in a document rather than a graph they explore. Both inputs already exist and are already used: skos:broader and hnav:order drive kb:hierarchy-nav through buildHierarchy and getOrderedChildren (src/lib/rdf/hierarchy.ts), and the timeline layout already resolves temporal predicates and already has the lane idea in kb:timeline-undated-lane (F59.2)." ;
+    kpred:principle "THIS IS A COMPOSITION OF TWO THINGS THAT WORK, NOT A NEW ENGINE. The lane axis is a GROUPING over one predicate — persona, system, owner, or any other — which is the same operation kb:entity-sets performs. The within-lane axis is the timeline layout, already built and already handling undated nodes without inventing dates for them. Building a third positioning engine to sit beside force and hierarchy would duplicate both; the feature is the composition and the lane vocabulary, and it should be measured against that claim." ;
+    kpred:decided "THE LANE PREDICATE IS CHOSEN BY THE USER, NOT GUESSED. 'Persona or system' are two answers to one question — which predicate defines a lane — and hardcoding either would make the layout useless for the other. The lane axis takes a predicate the way the timeline axis takes a temporal one, so laning by owner, department, environment or status costs nothing extra and needs no new code." ;
+    kpred:open-question "What happens to a node with NO value for the lane predicate? F59.2 already answered the same question for the time axis — a labelled lane, never a fake date — so the consistent answer is an explicit 'unassigned' lane. Confirm that reading rather than assuming it, because a diagram silently omitting nodes is worse than one showing an awkward extra lane." ;
+    kpred:open-question "Does this layout render EDGES as diagram connectors — the arrows that make a swim-lane readable — or reuse the existing graph edge rendering? A swim-lane diagram whose arrows cross lanes arbitrarily is a graph with horizontal stripes, not a diagram. This is the difference between the feature working and merely running." ;
+    kpred:honest-note "NOT BUILT (2026-09-22). No lane concept exists outside the undated-lane special case, nothing groups nodes by an arbitrary predicate for layout purposes, and no layout in the app emits diagram connectors. The ordering and timeline primitives it composes are real and tested; the composition is not." ;
+    kpred:depends-on kb:hierarchy-nav ;
+    kpred:relates-to kb:timeline-undated-lane, kb:entity-sets, kb:spatial-force-layout, kb:map-layout .
