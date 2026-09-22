@@ -105,6 +105,33 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
+  visual:
+    # 28 visual test files existed, were maintained, and were executed by NOTHING. They are wired
+    # in now that the suite is deterministic: three harness faults were fixed first — a selector
+    # naming a class that only exists on another page (180s timeout), evidence/ tests pulled in
+    # without the baseURL their own config provides, and parallel workers sharing one origin's
+    # IndexedDB so a different pair failed on every run. A suite nobody runs rots, and a suite
+    # that fails at random teaches people to ignore it; neither is worth gating on.
+    name: Visual (Chromium)
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:visual
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: visual-report
+          path: playwright-report/
+          retention-days: 14
+          if-no-files-found: ignore
+
   e2e:
     name: E2E (Desktop Chrome)
     runs-on: ubuntu-latest

@@ -39,7 +39,15 @@ export default defineConfig({
     '**/navigation-sweep.test.ts',
   ],
   timeout: 60_000,
-  fullyParallel: true,
+  // SERIAL, FOR THE SAME REASON playwright.config.ts IS — "to avoid origin conflicts". These
+  // tests all drive one app on one localhost origin, so parallel workers share IndexedDB and
+  // localStorage and stomp each other's fixtures. Symptom: a DIFFERENT pair of tests fails on
+  // each run (sheet + preview-collage, then sheet + stories), which reads as product flakiness
+  // and is really the harness. The user-stories project below already set fullyParallel:false
+  // for its own files; this is that lesson applied to the whole config rather than one corner.
+  fullyParallel: false,
+  workers: 1,
+  retries: process.env.CI ? 2 : 0,
 
   use: {
     screenshot: 'only-on-failure',
@@ -58,6 +66,12 @@ export default defineConfig({
       testIgnore: [
         '**/mobile/**',
         '**/user-stories/**',
+        // evidence/ has its own config (playwright.evidence.config.ts) which sets the baseURL
+        // its helpers require; run it with `npm run visual:review`. Without this line the
+        // recursive glob pulls those tests in here, where baseURL is undefined and they fail
+        // with "Visual evidence requires a string baseURL" — a config miss that reads as a
+        // product failure.
+        '**/evidence/**',
         '**/vision-scoring.test.ts',
         '**/vision-vlm.test.ts',
       ],

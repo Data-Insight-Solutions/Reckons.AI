@@ -52,7 +52,12 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-const files = ['src', 'scripts', 'mcp-server/src', 'cli']
+// `tests` was missing until 2026-09-22, which is why 40 of the 47 files the graph did not know
+// about were test files — the top-level suites (tests/e2e, tests/visual, tests/bench). Tests under
+// src/**/__tests__ were always covered because they sit inside `src`, so the graph looked complete
+// while the e2e and visual suites were invisible to it. Those are the same suites CI was not
+// running: a file nothing generates from and nothing executes is absent twice over.
+const files = ['src', 'scripts', 'mcp-server/src', 'cli', 'tests']
   .filter((d) => existsSync(join(ROOT, d)))
   .flatMap((d) => walk(join(ROOT, d)))
   .sort();

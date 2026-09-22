@@ -17,7 +17,7 @@
 ## are not distinguished from value imports, so coupling is OVER-counted elsewhere.
 ## File granularity, not symbol — see kb:serena-prior-art for what would fix that.
 ##
-## 737 files · 1320 import edges · generated 2026-09-21
+## 843 files · 1437 import edges · generated 2026-09-22
 ## =============================================================================
 
 @prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -550,11 +550,21 @@
     rdfs:label "landing-principles.ts" ;
     kpred:path "scripts/landing-principles.ts" .
 
+<urn:reckons:file/scripts/lib/__tests__/alignment.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "alignment.test.ts" ;
+    kpred:path "scripts/lib/__tests__/alignment.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/scripts/lib/alignment.ts> .
+
 <urn:reckons:file/scripts/lib/__tests__/read-file.test.ts> rdf:type ktype:SourceFile ;
     rdfs:label "read-file.test.ts" ;
     kpred:path "scripts/lib/__tests__/read-file.test.ts" ;
     kpred:is-test "true" ;
     kpred:imports <urn:reckons:file/scripts/lib/read-file.ts> .
+
+<urn:reckons:file/scripts/lib/alignment.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "alignment.ts" ;
+    kpred:path "scripts/lib/alignment.ts" .
 
 <urn:reckons:file/scripts/lib/brief-data.ts> rdf:type ktype:SourceFile ;
     rdfs:label "brief-data.ts" ;
@@ -579,6 +589,10 @@
 <urn:reckons:file/scripts/lib/scene-render.ts> rdf:type ktype:SourceFile ;
     rdfs:label "scene-render.ts" ;
     kpred:path "scripts/lib/scene-render.ts" .
+
+<urn:reckons:file/scripts/lib/transcript-dir.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "transcript-dir.ts" ;
+    kpred:path "scripts/lib/transcript-dir.ts" .
 
 <urn:reckons:file/scripts/md-align.ts> rdf:type ktype:SourceFile ;
     rdfs:label "md-align.ts" ;
@@ -675,7 +689,8 @@
 
 <urn:reckons:file/scripts/offline/ab-graph-benchmark.ts> rdf:type ktype:SourceFile ;
     rdfs:label "ab-graph-benchmark.ts" ;
-    kpred:path "scripts/offline/ab-graph-benchmark.ts" .
+    kpred:path "scripts/offline/ab-graph-benchmark.ts" ;
+    kpred:imports <urn:reckons:file/scripts/lib/transcript-dir.ts> .
 
 <urn:reckons:file/scripts/offline/aggregate-decisions.ts> rdf:type ktype:SourceFile ;
     rdfs:label "aggregate-decisions.ts" ;
@@ -696,7 +711,9 @@
 <urn:reckons:file/scripts/offline/button-crawl.ts> rdf:type ktype:SourceFile ;
     rdfs:label "button-crawl.ts" ;
     kpred:path "scripts/offline/button-crawl.ts" ;
-    kpred:imports <urn:reckons:file/scripts/offline/pending-queue.ts> .
+    kpred:imports <urn:reckons:file/scripts/offline/pending-queue.ts> ;
+    kpred:imports <urn:reckons:file/tests/visual/eval-stable.ts> ;
+    kpred:imports <urn:reckons:file/tests/visual/vision-local.ts> .
 
 <urn:reckons:file/scripts/offline/claim-audit.ts> rdf:type ktype:SourceFile ;
     rdfs:label "claim-audit.ts" ;
@@ -722,7 +739,8 @@
 
 <urn:reckons:file/scripts/offline/context-composition.ts> rdf:type ktype:SourceFile ;
     rdfs:label "context-composition.ts" ;
-    kpred:path "scripts/offline/context-composition.ts" .
+    kpred:path "scripts/offline/context-composition.ts" ;
+    kpred:imports <urn:reckons:file/scripts/lib/transcript-dir.ts> .
 
 <urn:reckons:file/scripts/offline/csp-connect-src.ts> rdf:type ktype:SourceFile ;
     rdfs:label "csp-connect-src.ts" ;
@@ -1051,7 +1069,8 @@
 
 <urn:reckons:file/scripts/offline/visual-diff.ts> rdf:type ktype:SourceFile ;
     rdfs:label "visual-diff.ts" ;
-    kpred:path "scripts/offline/visual-diff.ts" .
+    kpred:path "scripts/offline/visual-diff.ts" ;
+    kpred:imports <urn:reckons:file/tests/visual/vision-vlm.ts> .
 
 <urn:reckons:file/scripts/offline/vite-secret-guard.ts> rdf:type ktype:SourceFile ;
     rdfs:label "vite-secret-guard.ts" ;
@@ -1074,7 +1093,8 @@
 
 <urn:reckons:file/scripts/session-tokens.ts> rdf:type ktype:SourceFile ;
     rdfs:label "session-tokens.ts" ;
-    kpred:path "scripts/session-tokens.ts" .
+    kpred:path "scripts/session-tokens.ts" ;
+    kpred:imports <urn:reckons:file/scripts/lib/transcript-dir.ts> .
 
 <urn:reckons:file/scripts/visual-baseline-update.ts> rdf:type ktype:SourceFile ;
     rdfs:label "visual-baseline-update.ts" ;
@@ -2759,6 +2779,14 @@
     kpred:imports <urn:reckons:file/src/lib/rdf/merge-aliases.ts> ;
     kpred:imports <urn:reckons:file/src/lib/rdf/types.ts> .
 
+<urn:reckons:file/src/lib/rdf/__tests__/intent-escalation.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "intent-escalation.test.ts" ;
+    kpred:path "src/lib/rdf/__tests__/intent-escalation.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:rdf ;
+    kpred:imports <urn:reckons:file/src/lib/rdf/intent-escalation.ts> ;
+    kpred:imports <urn:reckons:file/src/lib/rdf/note-intent.ts> .
+
 <urn:reckons:file/src/lib/rdf/__tests__/kb-context.test.ts> rdf:type ktype:SourceFile ;
     rdfs:label "kb-context.test.ts" ;
     kpred:path "src/lib/rdf/__tests__/kb-context.test.ts" ;
@@ -3489,6 +3517,12 @@
     skos:broader code:rdf ;
     kpred:imports <urn:reckons:file/src/lib/rdf/merge-aliases.ts> ;
     kpred:imports <urn:reckons:file/src/lib/rdf/types.ts> .
+
+<urn:reckons:file/src/lib/rdf/intent-escalation.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "intent-escalation.ts" ;
+    kpred:path "src/lib/rdf/intent-escalation.ts" ;
+    skos:broader code:rdf ;
+    kpred:imports <urn:reckons:file/src/lib/rdf/note-intent.ts> .
 
 <urn:reckons:file/src/lib/rdf/kb-context.ts> rdf:type ktype:SourceFile ;
     rdfs:label "kb-context.ts" ;
@@ -5053,3 +5087,627 @@
     kpred:path "src/stories/SnapPanel.stories.ts" ;
     skos:broader code:storybook ;
     kpred:imports <urn:reckons:file/src/lib/components/SnapPanel.svelte> .
+
+<urn:reckons:file/tests/bench/agentic-tasks.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "agentic-tasks.ts" ;
+    kpred:path "tests/bench/agentic-tasks.ts" ;
+    skos:broader code:test-bench .
+
+<urn:reckons:file/tests/bench/coding-golden.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "coding-golden.ts" ;
+    kpred:path "tests/bench/coding-golden.ts" ;
+    skos:broader code:test-bench .
+
+<urn:reckons:file/tests/bench/cost-golden.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "cost-golden.ts" ;
+    kpred:path "tests/bench/cost-golden.ts" ;
+    skos:broader code:test-bench .
+
+<urn:reckons:file/tests/bench/decision-golden.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "decision-golden.ts" ;
+    kpred:path "tests/bench/decision-golden.ts" ;
+    skos:broader code:test-bench .
+
+<urn:reckons:file/tests/bench/landing-visual-score.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "landing-visual-score.ts" ;
+    kpred:path "tests/bench/landing-visual-score.ts" ;
+    skos:broader code:test-bench .
+
+<urn:reckons:file/tests/bench/predicate-vocab-scoring.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "predicate-vocab-scoring.test.ts" ;
+    kpred:path "tests/bench/predicate-vocab-scoring.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:test-bench ;
+    kpred:imports <urn:reckons:file/tests/bench/predicate-vocab-scoring.ts> .
+
+<urn:reckons:file/tests/bench/predicate-vocab-scoring.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "predicate-vocab-scoring.ts" ;
+    kpred:path "tests/bench/predicate-vocab-scoring.ts" ;
+    skos:broader code:test-bench .
+
+<urn:reckons:file/tests/bench/run-agentic-bench.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "run-agentic-bench.ts" ;
+    kpred:path "tests/bench/run-agentic-bench.ts" ;
+    skos:broader code:test-bench ;
+    kpred:imports <urn:reckons:file/tests/bench/agentic-tasks.ts> .
+
+<urn:reckons:file/tests/bench/run-bench.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "run-bench.ts" ;
+    kpred:path "tests/bench/run-bench.ts" ;
+    skos:broader code:test-bench ;
+    kpred:imports <urn:reckons:file/src/lib/integrations/llm/extractor.ts> ;
+    kpred:imports <urn:reckons:file/src/lib/safety/content-policy.ts> ;
+    kpred:imports <urn:reckons:file/tests/bench/scoring.ts> .
+
+<urn:reckons:file/tests/bench/run-coding-bench.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "run-coding-bench.ts" ;
+    kpred:path "tests/bench/run-coding-bench.ts" ;
+    skos:broader code:test-bench ;
+    kpred:imports <urn:reckons:file/tests/bench/coding-golden.ts> .
+
+<urn:reckons:file/tests/bench/run-compression-bench.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "run-compression-bench.ts" ;
+    kpred:path "tests/bench/run-compression-bench.ts" ;
+    skos:broader code:test-bench .
+
+<urn:reckons:file/tests/bench/run-cost-bench.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "run-cost-bench.ts" ;
+    kpred:path "tests/bench/run-cost-bench.ts" ;
+    skos:broader code:test-bench ;
+    kpred:imports <urn:reckons:file/tests/bench/cost-golden.ts> .
+
+<urn:reckons:file/tests/bench/run-decision-bench.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "run-decision-bench.ts" ;
+    kpred:path "tests/bench/run-decision-bench.ts" ;
+    skos:broader code:test-bench ;
+    kpred:imports <urn:reckons:file/src/lib/rdf/intent-escalation.ts> ;
+    kpred:imports <urn:reckons:file/src/lib/rdf/note-intent.ts> ;
+    kpred:imports <urn:reckons:file/src/lib/safety/content-policy.ts> ;
+    kpred:imports <urn:reckons:file/tests/bench/decision-golden.ts> .
+
+<urn:reckons:file/tests/bench/run-docs-bench.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "run-docs-bench.ts" ;
+    kpred:path "tests/bench/run-docs-bench.ts" ;
+    skos:broader code:test-bench .
+
+<urn:reckons:file/tests/bench/run-kb-workflow.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "run-kb-workflow.ts" ;
+    kpred:path "tests/bench/run-kb-workflow.ts" ;
+    skos:broader code:test-bench .
+
+<urn:reckons:file/tests/bench/run-landing-page-bench.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "run-landing-page-bench.ts" ;
+    kpred:path "tests/bench/run-landing-page-bench.ts" ;
+    skos:broader code:test-bench .
+
+<urn:reckons:file/tests/bench/run-landing-page-e2e.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "run-landing-page-e2e.ts" ;
+    kpred:path "tests/bench/run-landing-page-e2e.ts" ;
+    skos:broader code:test-bench ;
+    kpred:imports <urn:reckons:file/tests/bench/landing-visual-score.ts> .
+
+<urn:reckons:file/tests/bench/run-ollama-bench.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "run-ollama-bench.ts" ;
+    kpred:path "tests/bench/run-ollama-bench.ts" ;
+    skos:broader code:test-bench ;
+    kpred:imports <urn:reckons:file/src/lib/integrations/llm/extractor.ts> ;
+    kpred:imports <urn:reckons:file/src/lib/integrations/llm/ollama-extract.ts> ;
+    kpred:imports <urn:reckons:file/src/lib/rdf/types.ts> ;
+    kpred:imports <urn:reckons:file/src/lib/rdf/vocabulary-context.ts> ;
+    kpred:imports <urn:reckons:file/src/lib/safety/content-policy.ts> ;
+    kpred:imports <urn:reckons:file/tests/bench/scoring.ts> .
+
+<urn:reckons:file/tests/bench/run-predicate-vocab-bench.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "run-predicate-vocab-bench.ts" ;
+    kpred:path "tests/bench/run-predicate-vocab-bench.ts" ;
+    skos:broader code:test-bench ;
+    kpred:imports <urn:reckons:file/tests/bench/predicate-vocab-scoring.ts> ;
+    kpred:imports <urn:reckons:file/tests/visual/hf-model-query.ts> .
+
+<urn:reckons:file/tests/bench/run-stt-bench.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "run-stt-bench.ts" ;
+    kpred:path "tests/bench/run-stt-bench.ts" ;
+    skos:broader code:test-bench .
+
+<urn:reckons:file/tests/bench/run-synonym-search-bench.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "run-synonym-search-bench.ts" ;
+    kpred:path "tests/bench/run-synonym-search-bench.ts" ;
+    skos:broader code:test-bench .
+
+<urn:reckons:file/tests/bench/run-tts-bench.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "run-tts-bench.ts" ;
+    kpred:path "tests/bench/run-tts-bench.ts" ;
+    skos:broader code:test-bench .
+
+<urn:reckons:file/tests/bench/scoring.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "scoring.test.ts" ;
+    kpred:path "tests/bench/scoring.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:test-bench ;
+    kpred:imports <urn:reckons:file/src/lib/integrations/llm/extractor.ts> ;
+    kpred:imports <urn:reckons:file/tests/bench/scoring.ts> .
+
+<urn:reckons:file/tests/bench/scoring.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "scoring.ts" ;
+    kpred:path "tests/bench/scoring.ts" ;
+    skos:broader code:test-bench ;
+    kpred:imports <urn:reckons:file/src/lib/integrations/llm/extractor.ts> .
+
+<urn:reckons:file/tests/e2e/app.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "app.test.ts" ;
+    kpred:path "tests/e2e/app.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:test-e2e ;
+    kpred:imports <urn:reckons:file/tests/e2e/helpers.ts> .
+
+<urn:reckons:file/tests/e2e/archive-gallery.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "archive-gallery.test.ts" ;
+    kpred:path "tests/e2e/archive-gallery.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/e2e/helpers.ts> .
+
+<urn:reckons:file/tests/e2e/archive-reference.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "archive-reference.test.ts" ;
+    kpred:path "tests/e2e/archive-reference.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/src/lib/rdf/archive.ts> ;
+    kpred:imports <urn:reckons:file/src/lib/storage/db.ts> ;
+    kpred:imports <urn:reckons:file/tests/e2e/helpers.ts> .
+
+<urn:reckons:file/tests/e2e/archive-sweep.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "archive-sweep.test.ts" ;
+    kpred:path "tests/e2e/archive-sweep.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/src/lib/storage/db.ts> ;
+    kpred:imports <urn:reckons:file/tests/e2e/helpers.ts> .
+
+<urn:reckons:file/tests/e2e/blog-authoring.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "blog-authoring.test.ts" ;
+    kpred:path "tests/e2e/blog-authoring.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/src/lib/storage/db.ts> ;
+    kpred:imports <urn:reckons:file/tests/e2e/helpers.ts> .
+
+<urn:reckons:file/tests/e2e/first-run-model.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "first-run-model.test.ts" ;
+    kpred:path "tests/e2e/first-run-model.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/e2e/helpers.ts> .
+
+<urn:reckons:file/tests/e2e/graph-render.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "graph-render.test.ts" ;
+    kpred:path "tests/e2e/graph-render.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:test-e2e ;
+    kpred:imports <urn:reckons:file/tests/visual/vision-local.ts> .
+
+<urn:reckons:file/tests/e2e/helpers.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "helpers.ts" ;
+    kpred:path "tests/e2e/helpers.ts" ;
+    skos:broader code:test-e2e .
+
+<urn:reckons:file/tests/e2e/hierarchy-hang.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "hierarchy-hang.test.ts" ;
+    kpred:path "tests/e2e/hierarchy-hang.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/e2e/helpers.ts> .
+
+<urn:reckons:file/tests/e2e/indico-diagnostic.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "indico-diagnostic.test.ts" ;
+    kpred:path "tests/e2e/indico-diagnostic.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/e2e/helpers.ts> .
+
+<urn:reckons:file/tests/e2e/ingest-draft.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "ingest-draft.test.ts" ;
+    kpred:path "tests/e2e/ingest-draft.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/e2e/helpers.ts> .
+
+<urn:reckons:file/tests/e2e/ingest.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "ingest.test.ts" ;
+    kpred:path "tests/e2e/ingest.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:test-e2e ;
+    kpred:imports <urn:reckons:file/tests/e2e/helpers.ts> .
+
+<urn:reckons:file/tests/e2e/insets-check.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "insets-check.test.ts" ;
+    kpred:path "tests/e2e/insets-check.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/visual/settle.ts> .
+
+<urn:reckons:file/tests/e2e/landing-chrome.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "landing-chrome.test.ts" ;
+    kpred:path "tests/e2e/landing-chrome.test.ts" ;
+    kpred:is-test "true" .
+
+<urn:reckons:file/tests/e2e/multi-session.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "multi-session.test.ts" ;
+    kpred:path "tests/e2e/multi-session.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/src/lib/stores/kb.svelte.ts> ;
+    kpred:imports <urn:reckons:file/tests/e2e/helpers.ts> .
+
+<urn:reckons:file/tests/e2e/notes-production.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "notes-production.test.ts" ;
+    kpred:path "tests/e2e/notes-production.test.ts" ;
+    kpred:is-test "true" .
+
+<urn:reckons:file/tests/e2e/perf-interactions.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "perf-interactions.test.ts" ;
+    kpred:path "tests/e2e/perf-interactions.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/scripts/offline/lib/perf-interactions.ts> .
+
+<urn:reckons:file/tests/e2e/personal-notes.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "personal-notes.test.ts" ;
+    kpred:path "tests/e2e/personal-notes.test.ts" ;
+    kpred:is-test "true" .
+
+<urn:reckons:file/tests/e2e/provenance-view.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "provenance-view.test.ts" ;
+    kpred:path "tests/e2e/provenance-view.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/src/lib/rdf/types.ts> ;
+    kpred:imports <urn:reckons:file/src/lib/storage/db.ts> ;
+    kpred:imports <urn:reckons:file/src/lib/stores/settings.svelte.ts> .
+
+<urn:reckons:file/tests/e2e/resilience.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "resilience.test.ts" ;
+    kpred:path "tests/e2e/resilience.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:test-e2e ;
+    kpred:imports <urn:reckons:file/tests/e2e/helpers.ts> .
+
+<urn:reckons:file/tests/e2e/review-graph-visual.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "review-graph-visual.test.ts" ;
+    kpred:path "tests/e2e/review-graph-visual.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/e2e/helpers.ts> .
+
+<urn:reckons:file/tests/e2e/review.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "review.test.ts" ;
+    kpred:path "tests/e2e/review.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:test-e2e ;
+    kpred:imports <urn:reckons:file/tests/e2e/helpers.ts> .
+
+<urn:reckons:file/tests/e2e/settings-llm-quick.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "settings-llm-quick.test.ts" ;
+    kpred:path "tests/e2e/settings-llm-quick.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/e2e/helpers.ts> .
+
+<urn:reckons:file/tests/e2e/settings.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "settings.test.ts" ;
+    kpred:path "tests/e2e/settings.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:test-e2e ;
+    kpred:imports <urn:reckons:file/tests/e2e/helpers.ts> .
+
+<urn:reckons:file/tests/e2e/settle-probe.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "settle-probe.test.ts" ;
+    kpred:path "tests/e2e/settle-probe.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/visual/settle.ts> .
+
+<urn:reckons:file/tests/e2e/ui-priority-regressions.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "ui-priority-regressions.test.ts" ;
+    kpred:path "tests/e2e/ui-priority-regressions.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/src/lib/storage/db.ts> ;
+    kpred:imports <urn:reckons:file/tests/e2e/helpers.ts> .
+
+<urn:reckons:file/tests/e2e/viewport.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "viewport.test.ts" ;
+    kpred:path "tests/e2e/viewport.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:test-e2e ;
+    kpred:imports <urn:reckons:file/tests/e2e/helpers.ts> .
+
+<urn:reckons:file/tests/e2e/visual-contract.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "visual-contract.test.ts" ;
+    kpred:path "tests/e2e/visual-contract.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:test-e2e .
+
+<urn:reckons:file/tests/e2e/workflow-add-review-reckon.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "workflow-add-review-reckon.test.ts" ;
+    kpred:path "tests/e2e/workflow-add-review-reckon.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/e2e/helpers.ts> .
+
+<urn:reckons:file/tests/extension/extension-visual.spec.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "extension-visual.spec.ts" ;
+    kpred:path "tests/extension/extension-visual.spec.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/extension/fixtures.ts> .
+
+<urn:reckons:file/tests/extension/fixtures.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "fixtures.ts" ;
+    kpred:path "tests/extension/fixtures.ts" .
+
+<urn:reckons:file/tests/extension/research-session.spec.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "research-session.spec.ts" ;
+    kpred:path "tests/extension/research-session.spec.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/extension/fixtures.ts> .
+
+<urn:reckons:file/tests/visual/docs-pages.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "docs-pages.test.ts" ;
+    kpred:path "tests/visual/docs-pages.test.ts" ;
+    kpred:is-test "true" .
+
+<urn:reckons:file/tests/visual/embed-scoring.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "embed-scoring.ts" ;
+    kpred:path "tests/visual/embed-scoring.ts" ;
+    skos:broader code:test-visual .
+
+<urn:reckons:file/tests/visual/eval-stable.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "eval-stable.ts" ;
+    kpred:path "tests/visual/eval-stable.ts" .
+
+<urn:reckons:file/tests/visual/evidence/global-setup.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "global-setup.ts" ;
+    kpred:path "tests/visual/evidence/global-setup.ts" ;
+    skos:broader code:test-visual ;
+    kpred:imports <urn:reckons:file/scripts/visual-evidence-contract.ts> .
+
+<urn:reckons:file/tests/visual/evidence/manual-facts.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "manual-facts.test.ts" ;
+    kpred:path "tests/visual/evidence/manual-facts.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:test-visual ;
+    kpred:imports <urn:reckons:file/scripts/visual-evidence-contract.ts> .
+
+<urn:reckons:file/tests/visual/fixtures/golden-visual.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "golden-visual.ts" ;
+    kpred:path "tests/visual/fixtures/golden-visual.ts" ;
+    skos:broader code:test-visual ;
+    kpred:imports <urn:reckons:file/tests/visual/vision-scoring.ts> .
+
+<urn:reckons:file/tests/visual/hf-model-query.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "hf-model-query.ts" ;
+    kpred:path "tests/visual/hf-model-query.ts" ;
+    skos:broader code:test-visual .
+
+<urn:reckons:file/tests/visual/kb-seed.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "kb-seed.ts" ;
+    kpred:path "tests/visual/kb-seed.ts" ;
+    skos:broader code:test-visual .
+
+<urn:reckons:file/tests/visual/mobile/graph-view.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "graph-view.test.ts" ;
+    kpred:path "tests/visual/mobile/graph-view.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:test-visual ;
+    kpred:imports <urn:reckons:file/tests/visual/vision-local.ts> .
+
+<urn:reckons:file/tests/visual/mobile/overlay.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "overlay.test.ts" ;
+    kpred:path "tests/visual/mobile/overlay.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:test-visual ;
+    kpred:imports <urn:reckons:file/tests/visual/vision-local.ts> .
+
+<urn:reckons:file/tests/visual/preview-collage.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "preview-collage.test.ts" ;
+    kpred:path "tests/visual/preview-collage.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/visual/kb-seed.ts> .
+
+<urn:reckons:file/tests/visual/run-embed-bench.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "run-embed-bench.ts" ;
+    kpred:path "tests/visual/run-embed-bench.ts" ;
+    skos:broader code:test-visual ;
+    kpred:imports <urn:reckons:file/tests/visual/embed-scoring.ts> ;
+    kpred:imports <urn:reckons:file/tests/visual/hf-model-query.ts> .
+
+<urn:reckons:file/tests/visual/run-visual-bench.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "run-visual-bench.ts" ;
+    kpred:path "tests/visual/run-visual-bench.ts" ;
+    skos:broader code:test-visual ;
+    kpred:imports <urn:reckons:file/tests/visual/fixtures/golden-visual.ts> ;
+    kpred:imports <urn:reckons:file/tests/visual/vision-analyze.ts> ;
+    kpred:imports <urn:reckons:file/tests/visual/vision-local.ts> ;
+    kpred:imports <urn:reckons:file/tests/visual/vision-scoring.ts> .
+
+<urn:reckons:file/tests/visual/run-vlm-gate-bench.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "run-vlm-gate-bench.ts" ;
+    kpred:path "tests/visual/run-vlm-gate-bench.ts" ;
+    kpred:imports <urn:reckons:file/tests/visual/vlm-golden.ts> .
+
+<urn:reckons:file/tests/visual/settle.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "settle.ts" ;
+    kpred:path "tests/visual/settle.ts" .
+
+<urn:reckons:file/tests/visual/sheet.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "sheet.test.ts" ;
+    kpred:path "tests/visual/sheet.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/visual/vision-local.ts> .
+
+<urn:reckons:file/tests/visual/stories.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "stories.test.ts" ;
+    kpred:path "tests/visual/stories.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:test-visual ;
+    kpred:imports <urn:reckons:file/tests/visual/vision-analyze.ts> ;
+    kpred:imports <urn:reckons:file/tests/visual/vision-local.ts> .
+
+<urn:reckons:file/tests/visual/user-stories/archive-sweep.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "archive-sweep.test.ts" ;
+    kpred:path "tests/visual/user-stories/archive-sweep.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/src/lib/storage/db.ts> .
+
+<urn:reckons:file/tests/visual/user-stories/async-questions.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "async-questions.test.ts" ;
+    kpred:path "tests/visual/user-stories/async-questions.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/visual/eval-stable.ts> ;
+    kpred:imports <urn:reckons:file/tests/visual/kb-seed.ts> .
+
+<urn:reckons:file/tests/visual/user-stories/blog-authoring.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "blog-authoring.test.ts" ;
+    kpred:path "tests/visual/user-stories/blog-authoring.test.ts" ;
+    kpred:is-test "true" .
+
+<urn:reckons:file/tests/visual/user-stories/coding-workflow.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "coding-workflow.test.ts" ;
+    kpred:path "tests/visual/user-stories/coding-workflow.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:test-visual ;
+    kpred:imports <urn:reckons:file/tests/visual/kb-seed.ts> ;
+    kpred:imports <urn:reckons:file/tests/visual/vision-local.ts> .
+
+<urn:reckons:file/tests/visual/user-stories/contact-form.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "contact-form.test.ts" ;
+    kpred:path "tests/visual/user-stories/contact-form.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/visual/kb-seed.ts> .
+
+<urn:reckons:file/tests/visual/user-stories/context-gathering-live.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "context-gathering-live.test.ts" ;
+    kpred:path "tests/visual/user-stories/context-gathering-live.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/visual/kb-seed.ts> .
+
+<urn:reckons:file/tests/visual/user-stories/context-gathering.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "context-gathering.test.ts" ;
+    kpred:path "tests/visual/user-stories/context-gathering.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/visual/kb-seed.ts> .
+
+<urn:reckons:file/tests/visual/user-stories/cross-kb-align.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "cross-kb-align.test.ts" ;
+    kpred:path "tests/visual/user-stories/cross-kb-align.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:test-visual ;
+    kpred:imports <urn:reckons:file/tests/visual/kb-seed.ts> ;
+    kpred:imports <urn:reckons:file/tests/visual/vision-local.ts> .
+
+<urn:reckons:file/tests/visual/user-stories/dev-sprint.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "dev-sprint.test.ts" ;
+    kpred:path "tests/visual/user-stories/dev-sprint.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:test-visual ;
+    kpred:imports <urn:reckons:file/tests/visual/kb-seed.ts> ;
+    kpred:imports <urn:reckons:file/tests/visual/vision-local.ts> .
+
+<urn:reckons:file/tests/visual/user-stories/filter-ghosting.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "filter-ghosting.test.ts" ;
+    kpred:path "tests/visual/user-stories/filter-ghosting.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/visual/kb-seed.ts> .
+
+<urn:reckons:file/tests/visual/user-stories/full-sweep.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "full-sweep.test.ts" ;
+    kpred:path "tests/visual/user-stories/full-sweep.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/visual/kb-seed.ts> ;
+    kpred:imports <urn:reckons:file/tests/visual/workflow-harness.ts> .
+
+<urn:reckons:file/tests/visual/user-stories/graph-labels.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "graph-labels.test.ts" ;
+    kpred:path "tests/visual/user-stories/graph-labels.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/visual/vision-local.ts> .
+
+<urn:reckons:file/tests/visual/user-stories/graph-sync.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "graph-sync.test.ts" ;
+    kpred:path "tests/visual/user-stories/graph-sync.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/visual/kb-seed.ts> .
+
+<urn:reckons:file/tests/visual/user-stories/navigation-sweep.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "navigation-sweep.test.ts" ;
+    kpred:path "tests/visual/user-stories/navigation-sweep.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/visual/workflow-harness.ts> .
+
+<urn:reckons:file/tests/visual/user-stories/ocr-ingest.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "ocr-ingest.test.ts" ;
+    kpred:path "tests/visual/user-stories/ocr-ingest.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/visual/kb-seed.ts> .
+
+<urn:reckons:file/tests/visual/user-stories/ocr-visual.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "ocr-visual.test.ts" ;
+    kpred:path "tests/visual/user-stories/ocr-visual.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/visual/vision-local.ts> .
+
+<urn:reckons:file/tests/visual/user-stories/previews.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "previews.test.ts" ;
+    kpred:path "tests/visual/user-stories/previews.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/visual/kb-seed.ts> .
+
+<urn:reckons:file/tests/visual/user-stories/returned-fact.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "returned-fact.test.ts" ;
+    kpred:path "tests/visual/user-stories/returned-fact.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/src/lib/storage/db.ts> .
+
+<urn:reckons:file/tests/visual/user-stories/settings-publishing.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "settings-publishing.test.ts" ;
+    kpred:path "tests/visual/user-stories/settings-publishing.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/visual/kb-seed.ts> .
+
+<urn:reckons:file/tests/visual/user-stories/user-docs.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "user-docs.test.ts" ;
+    kpred:path "tests/visual/user-stories/user-docs.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:test-visual ;
+    kpred:imports <urn:reckons:file/tests/visual/kb-seed.ts> ;
+    kpred:imports <urn:reckons:file/tests/visual/vision-local.ts> .
+
+<urn:reckons:file/tests/visual/vision-analyze.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "vision-analyze.ts" ;
+    kpred:path "tests/visual/vision-analyze.ts" ;
+    skos:broader code:test-visual ;
+    kpred:imports <urn:reckons:file/tests/visual/vision-vlm.ts> .
+
+<urn:reckons:file/tests/visual/vision-local.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "vision-local.ts" ;
+    kpred:path "tests/visual/vision-local.ts" ;
+    skos:broader code:test-visual ;
+    kpred:imports <urn:reckons:file/tests/visual/eval-stable.ts> .
+
+<urn:reckons:file/tests/visual/vision-scoring.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "vision-scoring.test.ts" ;
+    kpred:path "tests/visual/vision-scoring.test.ts" ;
+    kpred:is-test "true" ;
+    skos:broader code:test-visual ;
+    kpred:imports <urn:reckons:file/tests/visual/vision-local.ts> ;
+    kpred:imports <urn:reckons:file/tests/visual/vision-scoring.ts> .
+
+<urn:reckons:file/tests/visual/vision-scoring.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "vision-scoring.ts" ;
+    kpred:path "tests/visual/vision-scoring.ts" ;
+    skos:broader code:test-visual ;
+    kpred:imports <urn:reckons:file/tests/visual/vision-local.ts> .
+
+<urn:reckons:file/tests/visual/vision-vlm.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "vision-vlm.test.ts" ;
+    kpred:path "tests/visual/vision-vlm.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/tests/visual/vision-vlm.ts> .
+
+<urn:reckons:file/tests/visual/vision-vlm.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "vision-vlm.ts" ;
+    kpred:path "tests/visual/vision-vlm.ts" .
+
+<urn:reckons:file/tests/visual/vlm-golden.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "vlm-golden.ts" ;
+    kpred:path "tests/visual/vlm-golden.ts" .
+
+<urn:reckons:file/tests/visual/workflow-harness.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "workflow-harness.ts" ;
+    kpred:path "tests/visual/workflow-harness.ts" ;
+    kpred:imports <urn:reckons:file/tests/visual/eval-stable.ts> ;
+    kpred:imports <urn:reckons:file/tests/visual/kb-seed.ts> ;
+    kpred:imports <urn:reckons:file/tests/visual/vision-local.ts> .
