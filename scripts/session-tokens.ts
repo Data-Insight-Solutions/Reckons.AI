@@ -18,6 +18,7 @@
 import { readFileSync, readdirSync } from 'fs';
 import { homedir } from 'os';
 import path from 'path';
+import { resolveTranscriptDir } from './lib/transcript-dir';
 
 // Relative Opus token weights (input=1): output is dear, cache-read is cheap.
 const W = { input: 1, cacheW: 1.25, cacheR: 0.1, output: 5 };
@@ -25,7 +26,7 @@ const W = { input: 1, cacheW: 1.25, cacheR: 0.1, output: 5 };
 const args = process.argv.slice(2);
 const flag = (n: string) => args.find((a) => a.startsWith(`--${n}=`))?.split('=')[1];
 const top = Number(flag('top') ?? 0);
-const dir = flag('path') ?? path.join(homedir(), '.claude', 'projects', process.cwd().replace(/[/.]/g, '-'));
+const dir = flag('path') ?? resolveTranscriptDir();
 
 type Row = { date: string; id: string; msgs: number; input: number; cacheW: number; cacheR: number; output: number; eff: number };
 

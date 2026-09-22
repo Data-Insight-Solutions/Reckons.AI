@@ -40,6 +40,7 @@ import { readFileSync, readdirSync, existsSync } from 'fs';
 import { execFileSync } from 'child_process';
 import { homedir } from 'os';
 import path from 'path';
+import { resolveTranscriptDir } from '../lib/transcript-dir';
 
 /** Project convention: ~1.33 tokens per word (mcp-server/src/index.ts estimateTokens). */
 const tokens = (s: string) => Math.round(s.split(/\s+/).filter(Boolean).length * 1.33);
@@ -49,38 +50,6 @@ const flag = (n: string) => args.find((a) => a.startsWith(`--${n}=`))?.split('='
 const JSON_OUT = args.includes('--json');
 const top = Number(flag('top') ?? 12);
 const only = flag('session');
-/**
- * Transcript dir for a working directory, under Claude Code's path-mangling convention.
- */
-const projectDir = (cwd: string) =>
-  path.join(homedir(), '.claude', 'projects', cwd.replace(/[/.]/g, '-'));
-
-/**
- * Logs are keyed by the directory Claude Code ran in, which for a git WORKTREE is the
- * worktree path — where no transcripts have ever been written. Falling back to the main
- * worktree keeps the job working from `git worktree add` checkouts instead of reporting
- * "No transcripts" and exiting non-zero, which reads as a failing check rather than as
- * being run from the wrong directory (the same silent-miss shape as code-review.ts's
- * --worktree flag).
- */
-function resolveTranscriptDir(): string {
-  const here = projectDir(process.cwd());
-  if (existsSync(here)) return here;
-  try {
-    const common = execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore']
-    }).trim();
-    if (common.endsWith('/.git')) {
-      const main = projectDir(common.slice(0, -'/.git'.length));
-      if (existsSync(main)) return main;
-    }
-  } catch {
-    /* not a git checkout, or no git — fall through to the original path */
-  }
-  return here;
-}
-
 const dir = flag('path') ?? resolveTranscriptDir();
 
 type Block = {
