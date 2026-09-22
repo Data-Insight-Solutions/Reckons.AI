@@ -833,10 +833,10 @@
       "path": "tips/no-telemetry",
       "entity": "urn:reckons:tip/NoTelemetry",
       "graph": "docs-tips-security.ttl",
-      "factHash": "306bb1c52e722a70",
+      "factHash": "37d0624624334820",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "3ddaed3e955726a7"
+      "pageHash": "8bdca7e55550acd1"
     },
     {
       "path": "tips/risk-warnings",
