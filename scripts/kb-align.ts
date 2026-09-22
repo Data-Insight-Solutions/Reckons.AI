@@ -21,6 +21,10 @@ import { MultiKBReader, type Triple } from '../mcp-server/src/kb-reader.js';
 import { bm25Search, invalidateCache } from '../mcp-server/src/search.js';
 import { gitChangedFiles, gitLog, gitStatus } from '../mcp-server/src/git-utils.js';
 import { transactPendingQueue } from './offline/pending-queue.js';
+import {
+  readLifecycleRanks, buildFileIndex, isDerived, resolveTouchedFeatures, dependencyEdges,
+  scoreCoverage, scoreStatus, scoreDeps, scoreScope, composite, grade
+} from './lib/alignment.js';
 
 // ── CLI args ─────────────────────────────────────────────────────────────────
 
@@ -29,8 +33,11 @@ const SKIP_E2E = args.includes('--skip-e2e');
 const SKIP_TESTS = args.includes('--skip-tests');
 const DRY_RUN = args.includes('--dry-run');
 const VERBOSE = args.includes('--verbose');
+// Accept BOTH `--ref X` and `--ref=X`. The '=' form was silently ignored and fell back to the
+// default, so a run against the wrong range reported the right-looking header and a wrong score.
 const refIdx = args.indexOf('--ref');
-const GIT_REF = refIdx >= 0 ? args[refIdx + 1] ?? 'HEAD~5' : 'HEAD~5';
+const refEq = args.find(a => a.startsWith('--ref='))?.slice('--ref='.length);
+const GIT_REF = refEq || (refIdx >= 0 ? args[refIdx + 1] ?? 'HEAD~5' : 'HEAD~5');
 
 const ROOT = resolve(import.meta.dirname ?? '.', '..');
 const WORKSPACE = join(ROOT, 'reckons-workspace');
@@ -324,16 +331,6 @@ function compareResults(results: TestResult[], kbEntities: KBTestEntity[]): Disc
 
 // ── Alignment scoring (inlined from MCP handler) ─────────────────────────────
 
-function scoreStatusAlignment(status: string): { score: number; verdict: string; reason: string } {
-  const ORDER: Record<string, number> = { speculative: 0, planned: 1, scaffolded: 2, functional: 3, production: 4 };
-  const rank = ORDER[status];
-  if (rank === undefined) return { score: 0.5, verdict: 'aligned', reason: `unknown status "${status}"` };
-  if (rank <= 1) return { score: 1.0, verdict: 'advancing', reason: `${status} — actively advancing` };
-  if (rank === 2) return { score: 0.9, verdict: 'advancing', reason: `${status} — building on scaffold` };
-  if (rank === 3) return { score: 0.7, verdict: 'aligned', reason: `${status} — polishing` };
-  return { score: 0.5, verdict: 'aligned', reason: `${status} — production touch` };
-}
-
 type AlignmentReport = {
   composite: number;
   grade: string;
@@ -343,8 +340,17 @@ type AlignmentReport = {
   scope: number;
   verdicts: Array<{ entity: string; status: string; verdict: string; reason: string }>;
   changedFiles: number;
+  details: string[];
+  applicable: { coverage: boolean; status: boolean; deps: boolean; scope: boolean };
 };
 
+/**
+ * Score a change against the plan the graph records.
+ *
+ * Every dimension is scoped to the diff and resolved through the graph's own file links
+ * (kpred:tested-by, kpred:touches-module + kpred:has-file / kpred:path). The rationale for each
+ * one, and the four faults in the version this replaces, are in scripts/lib/alignment.ts.
+ */
 function computeAlignment(kb: MultiKBReader, ref: string): AlignmentReport | null {
   let changed: { path: string; status: string }[];
   try {
@@ -355,85 +361,63 @@ function computeAlignment(kb: MultiKBReader, ref: string): AlignmentReport | nul
   if (changed.length === 0) return null;
 
   const allTriples = kb.allTriples();
+  const ranks = readLifecycleRanks(allTriples);
+  const index = buildFileIndex(allTriples);
 
-  // Extract keywords from file paths
-  const keywords = new Set<string>();
-  for (const f of changed) {
-    for (const part of f.path.split('/')) {
-      const name = part.replace(/\.[^.]+$/, '');
-      if (name.length > 2) {
-        keywords.add(name.toLowerCase());
-        for (const w of name.split(/[-_.]/).filter(w => w.length > 2)) keywords.add(w.toLowerCase());
-      }
+  // Generated files are produced FROM the graph; scoring them punishes regenerating them.
+  const source = changed.map(c => c.path).filter(pth => !isDerived(pth));
+
+  const touched = resolveTouchedFeatures(source, allTriples, index);
+  const edges = dependencyEdges(touched, allTriples);
+
+  const cov = scoreCoverage(source, index);
+  const st = scoreStatus(touched.map(t => t.status), ranks);
+  const dep = scoreDeps(edges, ranks);
+  const sc = scoreScope(source, index);
+
+  const verdicts: AlignmentReport['verdicts'] = touched.map(t => ({
+    entity: t.iri.split('/').pop() ?? t.iri,
+    status: t.status,
+    verdict: ranks.get(t.status) === undefined ? 'unknown-status'
+      : ranks.get(t.status)! === 0 ? 'unplanned'
+      : ranks.get(t.status)! >= Math.max(...ranks.values()) - 1 ? 'maintenance' : 'advancing',
+    reason: t.via
+  }));
+
+  const comp = composite({ coverage: cov, status: st, deps: dep, scope: sc });
+  // Nothing measurable is a real answer; do not print a 0 that reads as a failing grade.
+  if (comp === null) return null;
+
+  const details = [
+    `coverage  ${cov.detail}`,
+    `status    ${st.detail}`,
+    `deps      ${dep.detail}`,
+    `scope     ${sc.detail}`,
+    `${changed.length - source.length} generated file(s) excluded from scoring`
+  ];
+  if (cov.unknown.length) {
+    details.push(`unlinked: ${cov.unknown.slice(0, 5).join(', ')}${cov.unknown.length > 5 ? ` (+${cov.unknown.length - 5})` : ''}`);
+  }
+  for (const v of dep.violations.slice(0, 3)) details.push(`dep violation: ${v}`);
+
+  return {
+    composite: comp,
+    grade: grade(comp),
+    coverage: cov.score,
+    status: st.score,
+    deps: dep.score,
+    scope: sc.score,
+    verdicts,
+    changedFiles: changed.length,
+    details,
+    applicable: {
+      coverage: cov.applicable !== false,
+      status: st.applicable !== false,
+      deps: dep.applicable !== false,
+      scope: sc.applicable !== false
     }
-  }
-
-  const searchHits = bm25Search(allTriples, [...keywords].join(' '), 15);
-
-  // Group by entity, find features with status
-  const entityMap = new Map<string, Triple[]>();
-  for (const hit of searchHits) {
-    if (!entityMap.has(hit.triple.subject)) {
-      entityMap.set(hit.triple.subject, kb.triplesAbout(hit.triple.subject));
-    }
-  }
-
-  const features: Array<{ iri: string; slug: string; status: string }> = [];
-  for (const [iri, triples] of entityMap) {
-    const statusT = triples.find(t => t.predicate.endsWith('/has-status'));
-    if (!statusT) continue;
-    features.push({ iri, slug: iri.split('/').pop() ?? iri, status: statusT.object });
-  }
-
-  // Coverage: fraction of changed files linked to KB entities
-  const matchedSlugs = new Set<string>();
-  for (const fe of features) {
-    matchedSlugs.add(fe.slug.toLowerCase());
-    for (const w of fe.slug.toLowerCase().split(/[-_]/)) if (w.length > 2) matchedSlugs.add(w);
-  }
-
-  let covered = 0;
-  for (const f of changed) {
-    const name = f.path.split('/').pop()?.replace(/\.[^.]+$/, '')?.toLowerCase() ?? '';
-    if ([...matchedSlugs].some(s => name.includes(s) || s.includes(name))) covered++;
-  }
-  const coverageScore = changed.length > 0 ? covered / changed.length : 0;
-
-  // Status alignment
-  const verdicts: AlignmentReport['verdicts'] = [];
-  let statusSum = 0;
-  for (const fe of features) {
-    const sa = scoreStatusAlignment(fe.status);
-    verdicts.push({ entity: fe.slug, status: fe.status, verdict: sa.verdict, reason: sa.reason });
-    statusSum += sa.score;
-  }
-  const statusScore = features.length > 0 ? statusSum / features.length : 0;
-
-  // Scope discipline
-  const unmatched = changed.length - covered;
-  const scopeScore = changed.length > 0 ? Math.max(0, 1 - (unmatched / changed.length) * 0.8) : 1;
-
-  // Deps: simplified — check if feature deps are met
-  let depScore = 1.0;
-  for (const fe of features) {
-    const triples = entityMap.get(fe.iri) ?? [];
-    const deps = triples.filter(t => t.predicate.endsWith('/depends-on'));
-    for (const d of deps) {
-      const depTriples = kb.triplesAbout(d.object);
-      const depStatus = depTriples.find(t => t.predicate.endsWith('/has-status'));
-      if (depStatus && !['production', 'functional'].includes(depStatus.object)) {
-        depScore *= 0.5;
-      }
-    }
-  }
-
-  const composite = coverageScore * 0.30 + statusScore * 0.30 + depScore * 0.20 + scopeScore * 0.20;
-  const grade = composite >= 0.85 ? 'EXCELLENT' : composite >= 0.70 ? 'GOOD' : composite >= 0.50 ? 'FAIR' : 'POOR';
-
-  return { composite, grade, coverage: coverageScore, status: statusScore, deps: depScore, scope: scopeScore, verdicts, changedFiles: changed.length };
+  };
 }
-
-// ── Git diff triples ─────────────────────────────────────────────────────────
 
 function gitDiffTriples(kb: MultiKBReader, ref: string): Discrepancy[] {
   const discrepancies: Discrepancy[] = [];
@@ -617,8 +601,16 @@ function main() {
   if (alignment) {
     const scoreColor = alignment.composite >= 0.7 ? ok : alignment.composite >= 0.5 ? warn : fail;
     console.log(`  Score: ${scoreColor(`${alignment.composite.toFixed(2)} (${alignment.grade})`)}`);
-    console.log(`  Coverage:  ${(alignment.coverage * 100).toFixed(0)}%  Status: ${(alignment.status * 100).toFixed(0)}%  Deps: ${(alignment.deps * 100).toFixed(0)}%  Scope: ${(alignment.scope * 100).toFixed(0)}%`);
+    const pct = (v: number, applicable: boolean) => (applicable ? `${(v * 100).toFixed(0)}%` : 'n/a');
+    console.log(
+      `  Coverage:  ${pct(alignment.coverage, alignment.applicable.coverage)}` +
+      `  Status: ${pct(alignment.status, alignment.applicable.status)}` +
+      `  Deps: ${pct(alignment.deps, alignment.applicable.deps)}` +
+      `  Scope: ${pct(alignment.scope, alignment.applicable.scope)}`
+    );
     console.log(`  ${alignment.changedFiles} files changed`);
+    // A score without its reason teaches people to ignore the score.
+    for (const d of alignment.details) console.log(dim(`    ${d}`));
 
     if (VERBOSE && alignment.verdicts.length > 0) {
       for (const v of alignment.verdicts) {
