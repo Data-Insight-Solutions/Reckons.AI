@@ -4123,6 +4123,11 @@ kb:ingest-routing rdf:type     ktype:Feature ;
 # Diagnosis found TWO causes, and only the second is a search-quality problem.
 kb:search-consistency rdf:type ktype:Feature ;
                rdfs:label         "Search consistency — coverage first, then a user taxonomy" ;
+               kpred:tested-by    "src/lib/rdf/__tests__/bm25-aliases.test.ts" ;
+               kpred:tested-by    "src/lib/rdf/__tests__/merge-aliases.test.ts" ;
+               kpred:tested-by    "src/lib/rdf/__tests__/ingest-aliases.test.ts" ;
+               kpred:tested-by    "mcp-server/src/__tests__/search-aliases.test.ts" ;
+               kpred:tested-by    "mcp-server/src/__tests__/search.test.ts" ;
                kpred:feature-id   "F104" ;
                kpred:has-status   "functional" ;
                kpred:priority     "high" ;
@@ -7833,3 +7838,33 @@ kb:coding-standards rdf:type ktype:Feature ;
     kpred:remaining "TWO RULES ARE STILL OPEN AND BOTH ARE SMALL. Private class members: ours is 12 declarations, both rank-1 sources say #private, and the only reason not to adopt it is that nobody has said so out loud. Module-scope mutable state: 95 prefixed names against a unanimous upstream, every one of them free-bound, making it the largest rename in F203/F204 that needs no decision from anybody — a codemod plus a ratchet entry would close it." ;
     kpred:depends-on kb:terminology-ontology ;
     kpred:relates-to kb:controlled-vocabularies, kb:reckons-ai .
+
+# -- F206: Settings organized by user terms, code by developer terms ------------
+kb:settings-user-taxonomy rdf:type ktype:Feature ;
+    rdfs:label "Settings organized by user terms, code by developer terms" ;
+    kpred:feature-id "F206" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:description "Matt (2026-09-22): 'The code should be organized by developer terms where possible, and the settings should be organized by user terms.' The settings page is currently a flat list of 21 sections in which the largest group is named after VENDORS — claude, openai, openrouter, chrome built-in AI, ollama, gemini, local wasm, mistral ocr, meshy.ai, google workspace — interleaved with genuine user concerns (display, auto re-analysis, source refresh, my defaults, graph identity, backup & export, local workspace). A person configuring the product does not arrive wanting to configure OpenRouter; they arrive wanting to choose what does their thinking. The vendor is an implementation detail that has been promoted to an organizing principle." ;
+    kpred:principle "THIS IS THE SAME JOB AS THE TERMINOLOGY WORK, NOT A SEPARATE ONE. A user term and a developer term for one concept is exactly a skos:prefLabel and a skos:altLabel on one entity, and F104 already ships alias scoring in both BM25 implementations with per-result match attribution. So the settings IA is not a layout exercise with a glossary bolted on — it is the taxonomy made visible, and the same pair that titles a section also makes it findable by the other name. Build the labels as facts first, render the page from them second." ;
+    kpred:principle "THE DEVELOPER TERM MUST NOT BE DELETED, ONLY DEMOTED. Renaming 'ollama' to 'runs on your machine' in the UI while the settings key, the provider id and every log line still say ollama creates a translation layer that only the maintainer can cross — the opposite of the honest-status rule. Every user-facing section carries its developer term as an inspectable altLabel, so a person reading a console error or a support thread can still find the control." ;
+    kpred:proposed-grouping "SEVEN USER-TERM GROUPS, vendor names moving INSIDE 'thinking' rather than sitting beside it: (1) WHAT DOES THE THINKING — per-task backends, provider keys, prefer-local, model choice; (2) HOW IT LOOKS — display, extension highlights; (3) KEEPING UP TO DATE — auto re-analysis, source refresh; (4) THIS GRAPH — graph identity, my defaults, entity types; (5) YOUR FILES — local workspace, backup & export, publishing; (6) WHAT IT IS CONNECTED TO — google workspace, mistral OCR, meshy, n8n; (7) START OVER — reset to defaults. NOT YET AGREED — the grouping is Matt's call under the product-shape rule, and this predicate records a proposal, not a decision." ;
+    kpred:honest-note "NOTHING IS BUILT (2026-09-22). No prefLabel/altLabel pairs exist for any settings section, the page is still a flat 21-section list, and the grouping above has not been approved. The one thing done is a related copy fix in the same file: the quick-setup hint told users to 'Save at the bottom to apply' on a page that has no Save button and auto-saves every field after a 700ms debounce." ;
+    kpred:depends-on kb:terminology-ontology ;
+    kpred:relates-to kb:controlled-vocabularies, kb:search-consistency .
+
+# -- F207: Smallest capable model ladder, before any WASM packaging -------------
+kb:small-model-ladder rdf:type ktype:Feature ;
+    rdfs:label "Smallest capable model ladder — measure here, then shrink the device" ;
+    kpred:feature-id "F207" ;
+    kpred:has-status "planned" ;
+    kpred:priority "medium" ;
+    kpred:description "Matt (2026-09-22), on packaging capable models into a C/WASM container for small-RAM devices: 'Lets just roadmap that as I have 48GB of GPU to test with. We will want to refine the process and find the capable smallest models to use, before we then try to get those models running on less capable devices.' The sequencing is the feature. Refine the extraction/chat process on hardware that is not the constraint, find the SMALLEST model that still passes, and only then take that specific model to a device that cannot hold it comfortably." ;
+    kpred:principle "OPTIMIZE THE PROCESS BEFORE THE RUNTIME, BECAUSE THE PROCESS MOVES THE NUMBER FURTHER. kb:local-offload already measured it: llama3.2:3b went from ingest F1 0.238 to 0.500 on schema-constrained decoding and a compact few-shot prompt — a 2GB model beating devstral-small-2 on the same task. That gain came from instruction, not from parameters, and it is available on every device for free. Shrinking the runtime first would have made a worse model portable." ;
+    kpred:decided "C IS FOR PORTABILITY AND AUDITABILITY, NOT FOR MEMORY. A minimal C implementation compiles cleanly to WASM with no ONNX Runtime bulk and is small enough to read — both real goods for a local-first product. It does NOT shrink the weights. The ceiling is the ADDRESS SPACE: wasm32 caps at 4GB, realistically 2-3GB after runtime overhead, in any language. Kimi K2 is ~1T parameters MoE with ~32B active; the active set alone at Q4 is roughly 16GB and cannot fit. Quoting a C rewrite as the small-RAM answer confuses the runtime with the payload." ;
+    kpred:decided "THE REAL LEVERS, IN ORDER: (1) prompt and schema constraint, measured above; (2) quantization, Q4 down to Q2/Q3 with importance matrices; (3) MoE EXPERT STREAMING, keeping only hot experts resident — the one that actually suits Kimi-class models; (4) layer streaming from disk, which kb:local-offload already records as disk-bound and batch-only, and which is WORSE in a browser where there is no mmap and the store is OPFS or the Cache API. wasm64 lifts the 4GB cap but needs SharedArrayBuffer with COOP/COEP headers, which collides with the CSP posture." ;
+    kpred:open-question "WHO IS THIS FOR — the zero-install user or the power user? It decides everything downstream. WASM's only unique value is that a visitor needs to install nothing, and the price is the 4GB ceiling and small models. A user willing to install anything is better served by the local bridge that already exists (Ollama on 11434, via prefer-local.ts), which has no ceiling at all. MATT'S CALL under the product-shape rule." ;
+    kpred:remaining "(1) A ladder benchmark that reports the SMALLEST model passing each task threshold, not the best overall — the existing bench suite ranks winners and does not answer 'what is the floor'. (2) A per-task floor recorded per device class. (3) Only then: evaluate a C/WASM runtime against that specific floor model." ;
+    kpred:honest-note "NOTHING IS BUILT, AND THIS IS DELIBERATELY NOT STARTED (2026-09-22). Recorded so the sequencing survives: the interesting work (C, WASM, tiny devices) is the LAST step, and doing it first would measure a runtime against a model nobody has shown is the right one. Hardware available for the measuring steps: 2x RTX 3090, 48GB, 18 models on localhost:11434." ;
+    kpred:depends-on kb:local-offload ;
+    kpred:relates-to kb:llm-providers, kb:extraction-scoring .
