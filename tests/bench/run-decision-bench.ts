@@ -19,6 +19,7 @@
 import { readIntent } from '../../src/lib/rdf/note-intent';
 import { classifyText } from '../../src/lib/safety/content-policy';
 import { INTENT_CASES, SAFETY_CASES, EASY_INTENT, TASKS } from './decision-golden';
+import { needsEscalation } from '../../src/lib/rdf/intent-escalation';
 
 type Verdict = { choice: string; confidence: number | null };
 type Backend = { name: string; intent(t: string): Promise<Verdict>; safety(t: string): Promise<Verdict> };
@@ -128,9 +129,34 @@ async function score(b: Backend): Promise<Row[]> {
   return rows;
 }
 
+/**
+ * RULE-GATES-MODEL: the rule answers, and only a HEDGED reading is escalated. This is the
+ * shippable configuration — it pays model latency on the ambiguous band alone, and inherits the
+ * rule's 10/10 on the easy slice for free. It cannot fix a reading the rule got confidently
+ * wrong, by construction, and the report exists to show exactly how much that leaves behind.
+ */
+const escalations = { calls: 0, seen: 0 };
+function gatedBackend(inner: Backend): Backend {
+  return {
+    name: `gated: rule -> ${inner.name.split(' ')[0]}`,
+    async intent(t) {
+      const r = readIntent(t);
+      escalations.seen++;
+      if (!needsEscalation(r)) return { choice: r.intent, confidence: r.score };
+      // p50 hides this: the median sentence costs nothing, the escalated minority pays full price.
+      escalations.calls++;
+      return inner.intent(t);
+    },
+    safety: t => heuristic.safety(t)
+  };
+}
+
 const backends: Backend[] = [heuristic];
 const ollamaModel = flag('ollama');
-if (ollamaModel) backends.push(ollamaBackend(ollamaModel));
+if (ollamaModel) {
+  const o = ollamaBackend(ollamaModel);
+  backends.push(o, gatedBackend(o));
+}
 if (args.includes('--jev')) backends.push(jevBackend());
 
 const all: Row[] = [];
@@ -158,5 +184,11 @@ else if (backends.length === 1) {
     console.log(`  ${r.backend}: ${delta > 0 ? `+${delta}` : delta} vs the rule on the hard slice` +
       `${delta <= 0 ? ' — has not earned its cost or latency.' : ''}`);
   }
+}
+if (escalations.seen > 0) {
+  const pct = ((escalations.calls / escalations.seen) * 100).toFixed(0);
+  console.log(`\n  Gate spent ${escalations.calls} model call(s) over ${escalations.seen} sentence(s) (${pct}%).`);
+  console.log('  p50 of 0ms above is the MEDIAN sentence, which never escalates — an escalated one');
+  console.log('  still costs full model latency. Read the call count, not the median.');
 }
 console.log('\nSmall n. This is a decision harness with a real baseline, not a published result.');
