@@ -793,9 +793,9 @@
     </div>
     <p class="quick-status mono" class:ok={quickReady}>
       {#if quickReady}
-        ✓ ready{NEEDS_KEY.has(quickBackend) ? ' — key is set' : ' — no key needed'}. Save at the bottom to apply.
+        ✓ ready{NEEDS_KEY.has(quickBackend) ? ' — key is set' : ' — no key needed'} — saved automatically.
       {:else}
-        ⚠ {quickBackend} needs an API key — <a href="#s-{quickBackend}">add it below</a>, then Save.
+        ⚠ {quickBackend} needs an API key — <a href="#s-{quickBackend}">add it below</a>; it saves automatically.
       {/if}
     </p>
   </div>
