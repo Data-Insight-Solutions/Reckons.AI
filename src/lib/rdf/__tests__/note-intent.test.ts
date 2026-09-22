@@ -51,7 +51,7 @@ describe('readIntent — requests for work', () => {
 
   it.each([
     'remind me to call the parks department about deadlines',
-    'look into whether Orange Logic is a private company',
+    'look into whether Example Archive is a private company',
     'email the board about the grant application',
     "todo: get quotes from three vendors",
     "let's compare Primo and Binder",
@@ -62,12 +62,12 @@ describe('readIntent — requests for work', () => {
   });
 
   it('strips dictation fillers before looking at the first word', () => {
-    expect(readIntent('Uh, run the numbers on the swim program').intent).toBe('task');
+    expect(readIntent('Uh, run the numbers on the art program').intent).toBe('task');
     expect(readIntent('Note to self: email the board about the grant').intent).toBe('task');
   });
 
   it('explains every routing it makes', () => {
-    for (const r of [readIntent(THE_NOTE), readIntent('Orange Logic is a private company.')]) {
+    for (const r of [readIntent(THE_NOTE), readIntent('Example Archive is a private company.')]) {
       expect(r.signals.length).toBeGreaterThan(0);
     }
   });
@@ -75,7 +75,7 @@ describe('readIntent — requests for work', () => {
 
 describe('readIntent — assertions', () => {
   it.each([
-    'Orange Logic is a private company.',
+    'Example Archive is a private company.',
     'Matthew Roe owns Data Insight Solutions, LLC.',
     'A primo and binder and open text are potential integrations.',
   ])('reads %j as an assertion', (sentence) => {
@@ -107,7 +107,7 @@ describe('readIntent — assertions', () => {
 describe('readIntent — the middle band', () => {
   it('hedges when the sentence both commands and asserts', () => {
     // "costs" is a finite verb, so this could be "check X" or a note about what X costs.
-    const r = readIntent('check the swim program costs');
+    const r = readIntent('check the art program costs');
     expect(r.intent).toBe('ambiguous');
     expect(r.score).toBeGreaterThan(0);
   });
@@ -116,12 +116,12 @@ describe('readIntent — the middle band', () => {
 describe('readNote', () => {
   it('splits a mixed note and sends only the prose to the extractor', () => {
     const r = readNote(
-      'Orange Logic is a private company. Run research on grants for kids swimming.',
+      'Example Archive is a private company. Run research on grants for beginner painting.',
     );
     expect(r.tasks.map((t) => t.sentence)).toEqual([
-      'Run research on grants for kids swimming.',
+      'Run research on grants for beginner painting.',
     ]);
-    expect(r.factText).toBe('Orange Logic is a private company.');
+    expect(r.factText).toBe('Example Archive is a private company.');
   });
 
   it('leaves nothing for the extractor when the whole note is an instruction', () => {
@@ -129,14 +129,14 @@ describe('readNote', () => {
   });
 
   it('sends an ambiguous sentence down BOTH paths', () => {
-    const r = readNote('check the swim program costs');
+    const r = readNote('check the art program costs');
     expect(r.tasks).toHaveLength(1);
-    expect(r.factText).toBe('check the swim program costs');
+    expect(r.factText).toBe('check the art program costs');
   });
 
   it('never drops a sentence', () => {
     const text =
-      'Orange Logic is a private company. Run research on grants. Check the swim program costs.';
+      'Example Archive is a private company. Run research on grants. Check the art program costs.';
     const r = readNote(text);
     const covered = new Set([...r.tasks.map((t) => t.sentence), ...splitSentences(r.factText)]);
     for (const sentence of splitSentences(text)) expect(covered.has(sentence)).toBe(true);
@@ -191,7 +191,7 @@ describe('buildTaskProposals', () => {
   });
 
   it('says in the gloss why an ambiguous sentence is also being extracted', () => {
-    const captured = note('check the swim program costs');
+    const captured = note('check the art program costs');
     const [p] = buildTaskProposals(
       captured,
       readNote(captured.text).tasks,
@@ -260,34 +260,32 @@ describe('a proposed task is not runnable', () => {
   });
 });
 
-// The transcript that exposed the subordinate-clause hole, dictated 2026-08-28T13:38:52Z and
-// kept verbatim - dictation fillers, comma splices and all. A detector tuned on invented
-// sentences is tuned on the wrong distribution.
-const REAL_TRANSCRIPT =
-  'run a research task for new grants or current grants that are, for city, uh, Parks and Rec, ' +
-  'that have, uh, childhood activities, uh, like swim team.';
+// Synthetic dictation preserves fillers and subordinate clauses without publishing a personal note.
+const DICTATION_FIXTURE =
+  'run a research task for new workshops or current workshops that are, for city, uh, Arts and Crafts, ' +
+  'that have, uh, community activities, uh, like book club.';
 
-describe('the real dictation', () => {
+describe('dictation with subordinate clauses', () => {
   it('reads as a task despite two relative clauses on its object', () => {
-    const r = readIntent(REAL_TRANSCRIPT);
+    const r = readIntent(DICTATION_FIXTURE);
     expect(r.intent).toBe('task');
     expect(r.signals.join(' ')).toContain('no main-clause verb');
   });
 
   it('sends nothing to the extractor', () => {
-    expect(readNote(REAL_TRANSCRIPT).factText).toBe('');
+    expect(readNote(DICTATION_FIXTURE).factText).toBe('');
   });
 
   it('keeps the fillers in the goal — the transcript is the record', () => {
-    const captured = note(REAL_TRANSCRIPT);
+    const captured = note(DICTATION_FIXTURE);
     const [p] = buildTaskProposals(
       captured,
-      readNote(REAL_TRANSCRIPT).tasks,
+      readNote(DICTATION_FIXTURE).tasks,
       template,
       nextId,
       1_700_000,
     );
-    expect(p.statements.find((s) => s.p.value === TASK_GOAL)?.o.value).toBe(REAL_TRANSCRIPT);
+    expect(p.statements.find((s) => s.p.value === TASK_GOAL)?.o.value).toBe(DICTATION_FIXTURE);
   });
 
   // A verb in a MAIN clause still counts; the exclusion is narrow on purpose.
@@ -295,18 +293,18 @@ describe('the real dictation', () => {
     expect(readIntent('The grant program that we found is closing in June.').intent).toBe(
       'assertion',
     );
-    expect(readIntent('check the swim program costs').intent).toBe('ambiguous');
+    expect(readIntent('check the art program costs').intent).toBe('ambiguous');
   });
 });
 
 // Matt, 2026-08-28: "Actually multiple agent tasks, generate document, and email me."
 describe('one sentence, several tasks', () => {
-  const TWO = 'Generate a document about orange logic and email it to me.';
+  const TWO = 'Generate a document about example archive and email it to me.';
 
   it('splits a coordinated imperative into separate tasks', () => {
     const r = readNote(TWO);
     expect(r.tasks).toHaveLength(2);
-    expect(r.tasks[0].sentence).toBe('Generate a document about orange logic');
+    expect(r.tasks[0].sentence).toBe('Generate a document about example archive');
     expect(r.tasks[1].sentence).toBe('email it to me.');
   });
 
@@ -332,7 +330,7 @@ describe('one sentence, several tasks', () => {
   });
 
   it('leaves an assertion containing "and" entirely alone', () => {
-    const r = readNote('Orange Logic is a private company and it is growing.');
+    const r = readNote('Example Archive is a private company and it is growing.');
     expect(r.tasks).toHaveLength(0);
     expect(r.factText).toContain('and it is growing');
   });

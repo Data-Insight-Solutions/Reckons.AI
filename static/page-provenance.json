@@ -833,10 +833,10 @@
       "path": "tips/no-telemetry",
       "entity": "urn:reckons:tip/NoTelemetry",
       "graph": "docs-tips-security.ttl",
-      "factHash": "bd7984cc5865f02e",
+      "factHash": "61cd95dce78d547c",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "d9b797d2ceb0fb43"
+      "pageHash": "bcd9b6e56ad0dccb"
     },
     {
       "path": "tips/risk-warnings",
@@ -854,7 +854,7 @@
       "factHash": "a34521d1e0654589",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "29340cb6c553e4fc"
+      "pageHash": "6b8df80617877f7d"
     },
     {
       "path": "tips/tips",

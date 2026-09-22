@@ -30,12 +30,12 @@ const anchor = (slug: string): StructuralAnchor =>
 describe('selectKnownClaims', () => {
   it('collects what is already claimed about an anchor', () => {
     const ctx = selectKnownClaims(
-      [st('orange-logic', 'is-a', 'Enterprise DAM')],
-      [anchor('orange-logic')],
+      [st('example-archive', 'is-a', 'Enterprise DAM')],
+      [anchor('example-archive')],
     );
     expect(ctx.anchorsCovered).toBe(1);
     expect(ctx.claims[0]).toMatchObject({
-      subjectSlug: 'orange-logic',
+      subjectSlug: 'example-archive',
       predicate: 'is-a',
       object: 'Enterprise DAM',
       confirmed: true,
@@ -46,8 +46,8 @@ describe('selectKnownClaims', () => {
     // A second note usually arrives while the first note's facts are still pending. Excluding
     // them would miss the exact case this module exists for.
     const ctx = selectKnownClaims(
-      [st('orange-logic', 'is-a', 'Enterprise DAM', 'pending')],
-      [anchor('orange-logic')],
+      [st('example-archive', 'is-a', 'Enterprise DAM', 'pending')],
+      [anchor('example-archive')],
     );
     expect(ctx.claims[0].confirmed).toBe(false);
   });
@@ -55,10 +55,10 @@ describe('selectKnownClaims', () => {
   it('never grounds on a rejected or superseded claim', () => {
     const ctx = selectKnownClaims(
       [
-        st('orange-logic', 'is-a', 'a river dam', 'rejected'),
-        st('orange-logic', 'is-a', 'nope', 'superseded'),
+        st('example-archive', 'is-a', 'a river dam', 'rejected'),
+        st('example-archive', 'is-a', 'nope', 'superseded'),
       ],
-      [anchor('orange-logic')],
+      [anchor('example-archive')],
     );
     expect(ctx.claims).toHaveLength(0);
   });
@@ -83,7 +83,7 @@ describe('selectKnownClaims', () => {
   });
 
   it('says nothing about an anchor the graph holds no claims for', () => {
-    const ctx = selectKnownClaims([st('other', 'p', 'v')], [anchor('orange-logic')]);
+    const ctx = selectKnownClaims([st('other', 'p', 'v')], [anchor('example-archive')]);
     expect(ctx.claims).toHaveLength(0);
   });
 });
@@ -95,8 +95,8 @@ describe('buildClaimsSection', () => {
 
   it('marks unconfirmed claims and invites contradiction', () => {
     const ctx = selectKnownClaims(
-      [st('orange-logic', 'is-a', 'Enterprise DAM', 'pending')],
-      [anchor('orange-logic')],
+      [st('example-archive', 'is-a', 'Enterprise DAM', 'pending')],
+      [anchor('example-archive')],
     );
     const section = buildClaimsSection(ctx);
 
@@ -107,7 +107,7 @@ describe('buildClaimsSection', () => {
   });
 
   it('does not label a confirmed claim as unconfirmed', () => {
-    const ctx = selectKnownClaims([st('orange-logic', 'is-a', 'DAM')], [anchor('orange-logic')]);
+    const ctx = selectKnownClaims([st('example-archive', 'is-a', 'DAM')], [anchor('example-archive')]);
     // Check the CLAIM LINE, not the whole section — the trailing instructions legitimately use
     // the word "(unconfirmed)" while explaining what the marker means.
     const claimLine = buildClaimsSection(ctx)

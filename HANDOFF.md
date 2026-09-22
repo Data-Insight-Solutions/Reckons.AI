@@ -1,5 +1,24 @@
 # Session handoff — read this first if you are picking up mid-stream
 
+**Current work — 2026-09-21:** `fix/public-example-privacy`, based on `origin/dev` at
+`5aeb2ff`. Matt requested generic public examples only and removal of external-project material.
+The cleanup removes the project-specific grant example, its UI entry points and graph records,
+and the tracked `share/` and `sites/` trees. Generic starters remain. Regression fixtures now
+use synthetic organizations and transcripts; public notes no longer quote the captured text
+identified by this audit. Private copies were preserved locally outside this repository.
+
+**Validation on 2026-09-21:** 3,157 unit tests passed; type check had zero errors or warnings;
+`align`, the production build, build verification and provider-secret scan passed. The startup
+script sweep had an existing `status-evidence` failure: `search-consistency` and
+`personal-workspace` lacked coverage declarations. This change declares the latter's untested
+boundary honestly; it does not resolve the unrelated search feature's coverage declaration.
+
+**Privacy limit:** removing files from this branch does not remove other branches, historical
+commits, forks or cached copies. No history rewrite, merge or deployment is authorized by this
+cleanup. The external website is deployed separately from this Git repository.
+
+The entries below are historical handoffs; their branch and validation claims are dated.
+
 **Last updated: 2026-09-17.** On `feat/sets-and-statements`, now **committed and pushed** in ten
 commits and merged with `origin/dev` (it was 63 commits behind). Three weeks of working-tree
 changes that no CI gate had ever seen are now on a branch a PR can gate. Not merged to `dev`, and
@@ -992,7 +1011,7 @@ acknowledged, not fixed. `exposure` also flags port 8000 listening on all interf
    A model echoing what it was shown was rejected every time. **Yield 0% → 100%** once fixed.
 
 After the fixes, on the real Pebble notes: facts 2,295→217 · clusters 1→33 · 944.0→4.5 per
-question · agent input 0→16. It now produces a real question: _"Is Orange Logic an enterprise
+question · agent input 0→16. It now produces a question (paraphrased with an invented name): _"Is Example Archive an enterprise
 dam?" settles 4 facts._ (The transcription damage survives — should be **DAM**.)
 
 ### THE CHAIN, MEASURED COMPOSED — `npm run` → `scripts/offline/extraction-chain.ts`
@@ -1029,7 +1048,7 @@ tree still has 0 decisions open. Do not report "6 of 32 would be placed" as "pla
 
 ### KNOWN-GOOD, do not re-derive
 
-- **`triple-shape.ts` WORKS.** All 5 collapsed subjects (`orange-logic-is-an-enterprise-dam`
+- **`triple-shape.ts` WORKS.** All 5 collapsed subjects (synthetic example: `example-archive-is-an-enterprise-dam`
   etc.) are caught by `looksLikeProposition`. The 3 still in the notes graph are LEGACY,
   extracted before the guard landed. Not a broken control — do not "fix" it.
 - **There is no `repair` or `hierarchy` stage in `ExtractionStageName`** (route/extract/validate/
@@ -1208,9 +1227,8 @@ task vocabulary instead (`ktype:AgentTask` + `kpred:goal`, verbatim).
 - Roadmap: `kb:orch-dictated-task` (F87 phase 6, `functional`). 39 + 5 tests; 93 files / 1407 in
   `rdf`+`stores`; svelte-check 0/0.
 
-**The first draft got the real sentence wrong, and that is the lesson.** Matt dictated
-"...grants that are, for city, uh, Parks and Rec, that have, uh, childhood activities..." — scored
-0.5, hedged instead of routed. Its `are`/`have` sit in relative clauses describing the grants being
+**The first draft got the real sentence wrong.** A personal dictation with relative clauses
+scored 0.5, hedged instead of routed. The public fixture now substitutes synthetic text. Its `are`/`have` sit in relative clauses describing the grants being
 asked for, so the detector got WORSE the more detail the speaker gave. Fixed by ignoring finite
 verbs after a subordinator. **Invented test sentences never surfaced it; the first real transcript
 did, immediately.** Re-scored 0.75, zero text to the extractor.
@@ -1230,7 +1248,7 @@ retry against? Until one exists, dictating out of signal loses the note silently
 
 ## ▶ LATEST (2026-08-27) — voice capture works end to end; extraction is automatic
 
-**The ring → graph path is live and proven.** Pebble Index 01 double-click → MCP
+**The ring → graph path is live and proven.** a capture-ring double-click → MCP
 `/mcp/reckons-capture` (Streamable HTTP, bearer) → tool `capture_note` → `/webhook/reckons-note`
 → n8n data table → `scripts/notes-pull.ts --watch` → `knowledge.pending.jsonl` → app import →
 automatic extraction → review queue. First successful n8n execution 2826 at 15:22:58Z.

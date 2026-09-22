@@ -61,8 +61,8 @@ beforeEach(() => {
 
 describe('extractCapturedNotes — instructions', () => {
   const INSTRUCTION =
-    'run a research task for new grants or current grants that are, for city, uh, Parks and Rec, ' +
-    'that have, uh, childhood activities, uh, like swim team.';
+    'run a research task for new workshops or current workshops that are, for city, uh, Arts and Crafts, ' +
+    'that have, uh, community activities, uh, like book club.';
 
   it('never calls the extractor when the whole note is an instruction', async () => {
     stored = [capturedNote('urn:kbase:concept/note-1', INSTRUCTION)];
@@ -95,19 +95,19 @@ describe('extractCapturedNotes — instructions', () => {
     stored = [
       capturedNote(
         'urn:kbase:concept/note-2',
-        'Orange Logic is a private company. Run research on grants for kids swimming.',
+        'Example Archive is a private company. Run research on grants for beginner painting.',
       ),
     ];
     const result = await extractCapturedNotes();
 
     expect(ingest).toHaveBeenCalledTimes(1);
-    expect(ingest.mock.calls[0][0].body).toBe('Orange Logic is a private company.');
+    expect(ingest.mock.calls[0][0].body).toBe('Example Archive is a private company.');
     expect(result.tasks).toBe(1);
-    expect(goalOf()).toBe('Run research on grants for kids swimming.');
+    expect(goalOf()).toBe('Run research on grants for beginner painting.');
   });
 
   it('extracts an ordinary note exactly as before', async () => {
-    stored = [capturedNote('urn:kbase:concept/note-3', 'Orange Logic is a private company.')];
+    stored = [capturedNote('urn:kbase:concept/note-3', 'Example Archive is a private company.')];
     const result = await extractCapturedNotes();
 
     expect(ingest).toHaveBeenCalledTimes(1);

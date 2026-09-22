@@ -8,7 +8,7 @@
  * ALIAS EXPANSION (kb:node-synonyms phase 2). Every triple is indexed under its subject's
  * skos:altLabel values as well as its own text, so a fact recorded under one name is findable
  * by every other name that entity answers to. This is the VOCABULARY half of F104: BM25 scores
- * literal token overlap, so before this, an entity called "Ava Growers Market" was simply
+ * literal token overlap, so before this, an entity called "Meadow Growers Market" was simply
  * unreachable by the name a source actually used, and search returned nothing — which reads
  * identically to the fact not existing.
  *

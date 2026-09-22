@@ -6,7 +6,7 @@ triples, so none of them exercise the extractor at all — that gap is why the
 extraction half of the chain had never been driven by hand.
 
 These files are the input side. They are SYNTHETIC because this repository is
-public and the real corpus (Matt's dictated Pebble Index 01 notes) lives in the
+public and the real corpus (the maintainer's private dictated notes) lives in the
 gitignored workspace. They reproduce the damage patterns catalogued from the real
 notes on 2026-09-02 rather than inventing new ones:
 
@@ -14,7 +14,7 @@ notes on 2026-09-02 rather than inventing new ones:
   homophone on a domain acronym          "enterprise damn"   -> enterprise DAM
   proper nouns split by the decoder      "A primo and binder"-> Aprimo, Bynder
   a person's name misheard               "Matthew Rowe"      -> Roe
-  a whole sentence as one entity slug    orange-logic-is-an-enterprise-dam
+  a whole sentence as one entity slug    example-archive-is-an-enterprise-dam (synthetic name)
   co-hyponyms sharing a name head        node attribute {name,value,type,...}
   a REQUEST mixed in with claims         "generate a doc and email it to me"
 

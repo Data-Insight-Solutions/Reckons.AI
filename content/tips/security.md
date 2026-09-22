@@ -62,7 +62,7 @@ There is no server to hack. Your data lives in your browser's IndexedDB. The app
 
 <details class="accordion"><summary>No Telemetry Constraint</summary>
 
-Reckons.AI collects zero telemetry, zero analytics, and performs zero third-party tracking.
+NO PERSONAL TELEMETRY.
 
 [Read more](../tips/no-telemetry)
 

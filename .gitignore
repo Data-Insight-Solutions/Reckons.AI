@@ -158,18 +158,12 @@ tests/visual/results/perf/*
 !tests/visual/results/perf/*.json
 reckons-workspace/stars-scan.state.json
 
-# CAPTURED NOTES ARE PERSONAL AND THIS REPOSITORY IS PUBLIC.
-#
-# reckons-workspace/tasks-inbox/ holds both project task drafts (fine to share) and NOTES CAPTURED
-# FROM THE USER — voice, quick capture, the notes inbox — which are not. Two of the latter were
-# committed and published: "Run a research task for new grants…" and "Generate a document about
-# orange logic and email it to me." (2026-08-28, found 2026-09-18). They are real personal notes
-# in a public repository.
-#
-# The capture filename is the discriminator: note-<ISO timestamp>-<n>.md is written by the capture
-# path, while a hand-authored task draft is named by its slug. Ignoring the machine-written shape
-# keeps the shared task drafts shareable and the personal ones private BY CONSTRUCTION, which is
-# the rule kb:source-reference-copy already states for graph packages: exclude by construction
-# rather than by remembering to.
+# Personal captures are local data. Ignoring a path does not remove earlier commits
+# or copies of its content in tests, graphs, docs, or other branches.
 reckons-workspace/tasks-inbox/note-*.md
 reckons-workspace/*.jsonl.*
+
+# Private sharing drafts and separately deployed projects stay outside the public tree.
+# Purpose-built public examples belong under static/examples/ or static/starter-*.ttl.
+/share/
+/sites/

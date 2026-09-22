@@ -4,7 +4,7 @@ import type { AgentTask } from '../agent-task';
 
 const dictated: AgentTask = {
   iri: 'urn:reckons:task/note-2026-08-28T13-38-52-197Z-1',
-  goal: 'run a research task for new grants or current grants that are, for city, uh, Parks and Rec, that have, uh, childhood activities, uh, like swim team.',
+  goal: 'run a research task for new workshops or current workshops that are, for city, uh, Arts and Crafts, that have, uh, community activities, uh, like book club.',
   tier: 'frontier',
   harness: 'any',
   effects: [],

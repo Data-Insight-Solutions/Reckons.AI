@@ -24,7 +24,7 @@
 # is invisible to all of them.
 #
 # IT IS SYNTHETIC ON PURPOSE. The real corpus that exposed these shapes is Matt's
-# dictated Pebble Index 01 notes, which live in the gitignored workspace because
+# private dictated notes corpus, which live in the gitignored workspace because
 # this repository is public. This fixture reproduces the same SHAPES with
 # fictional content — a small architecture studio and its CAD tooling — so the
 # chain can be asserted in CI without publishing anybody's notes. Run the harness

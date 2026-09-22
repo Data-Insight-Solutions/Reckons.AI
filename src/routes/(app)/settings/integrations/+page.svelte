@@ -142,7 +142,7 @@
       keyPlaceholder: '...',
       features: [],  // Mistral used for OCR parsing only (not chat/ingest extraction yet)
       docsUrl: 'https://console.mistral.ai/',
-      note: 'Used for Mistral OCR: PDF and image → markdown parsing. Drop a PDF on the document ingest tab.'
+      note: 'Used for Mistral OCR: PDF and image → markdown parsing. Drop a PDF on the add tab, under document.'
     },
     {
       id: 'github',

@@ -54,7 +54,7 @@ describe('distinctivePredicates — shared predicates are not evidence', () => {
 
 describe('surveyTypes', () => {
   it('takes the type the source stated', () => {
-    const survey = surveyTypes([st('orange-logic', 'is-a', 'Organization')], BUILT_IN_TYPES);
+    const survey = surveyTypes([st('example-archive', 'is-a', 'Organization')], BUILT_IN_TYPES);
     expect(survey.proposals).toHaveLength(1);
     expect(survey.proposals[0].typeIri).toBe('urn:kbase:type/Organization');
     expect(survey.proposals[0].basis).toBe('stated');

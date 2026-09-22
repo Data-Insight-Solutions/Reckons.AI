@@ -4,8 +4,8 @@ import { SKOS_ALT_LABEL } from '../merge-aliases';
 import type { Statement, ReviewStatus } from '../types';
 
 const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
-const KEEP = 'urn:kbase:concept/ava-growers-market';
-const FOLDED = 'urn:kbase:concept/ava-farmers-mkt';
+const KEEP = 'urn:kbase:concept/meadow-growers-market';
+const FOLDED = 'urn:kbase:concept/meadow-farmers-mkt';
 const OTHER = 'urn:kbase:concept/somewhere-else';
 const SELLS = 'urn:kbase:predicate/sells';
 
@@ -38,21 +38,21 @@ describe('aliasesFromNormalization', () => {
   it('preserves the name a fold would otherwise turn into a rejected conflict', () => {
     // The exact shape normalizeEntities leaves behind: the incoming label survived the IRI
     // rewrite and now sits on the canonical entity as a rival rdfs:label.
-    const existing = [st(KEEP, RDFS_LABEL, 'Ava Growers Market')];
-    const incoming = [st(KEEP, RDFS_LABEL, 'Ava Farmers Mkt', 'pending')];
+    const existing = [st(KEEP, RDFS_LABEL, 'Meadow Growers Market')];
+    const incoming = [st(KEEP, RDFS_LABEL, 'Meadow Farmers Mkt', 'pending')];
 
     const { statements, conversions } = aliasesFromNormalization(incoming, fold(), existing);
 
     expect(statements[0].p.value).toBe(SKOS_ALT_LABEL);
-    expect(statements[0].o).toEqual({ kind: 'literal', value: 'Ava Farmers Mkt' });
+    expect(statements[0].o).toEqual({ kind: 'literal', value: 'Meadow Farmers Mkt' });
     expect(conversions).toEqual([
-      { iri: KEEP, value: 'Ava Farmers Mkt', fromIri: FOLDED, similarity: 0.93 },
+      { iri: KEEP, value: 'Meadow Farmers Mkt', fromIri: FOLDED, similarity: 0.93 },
     ]);
   });
 
   it('marks the alias pending, because an embedding proposed it and no human agreed', () => {
-    const existing = [st(KEEP, RDFS_LABEL, 'Ava Growers Market')];
-    const incoming = [st(KEEP, RDFS_LABEL, 'Ava Farmers Mkt', 'confirmed')];
+    const existing = [st(KEEP, RDFS_LABEL, 'Meadow Growers Market')];
+    const incoming = [st(KEEP, RDFS_LABEL, 'Meadow Farmers Mkt', 'confirmed')];
 
     const { statements } = aliasesFromNormalization(incoming, fold(), existing);
 
@@ -62,8 +62,8 @@ describe('aliasesFromNormalization', () => {
   });
 
   it('carries the cosine that proposed it as the statement confidence', () => {
-    const existing = [st(KEEP, RDFS_LABEL, 'Ava Growers Market')];
-    const incoming = [st(KEEP, RDFS_LABEL, 'Ava Farmers Mkt')];
+    const existing = [st(KEEP, RDFS_LABEL, 'Meadow Growers Market')];
+    const incoming = [st(KEEP, RDFS_LABEL, 'Meadow Farmers Mkt')];
 
     const { statements } = aliasesFromNormalization(incoming, fold(0.884), existing);
 
@@ -71,8 +71,8 @@ describe('aliasesFromNormalization', () => {
   });
 
   it('keeps the id and provenance, so the name keeps the citation that produced it', () => {
-    const existing = [st(KEEP, RDFS_LABEL, 'Ava Growers Market')];
-    const incoming = [st(KEEP, RDFS_LABEL, 'Ava Farmers Mkt')];
+    const existing = [st(KEEP, RDFS_LABEL, 'Meadow Growers Market')];
+    const incoming = [st(KEEP, RDFS_LABEL, 'Meadow Farmers Mkt')];
     const originalId = incoming[0].id;
 
     const { statements } = aliasesFromNormalization(incoming, fold(), existing);
@@ -84,7 +84,7 @@ describe('aliasesFromNormalization', () => {
 
   it('leaves a label alone when the target has no name yet — that is naming, not synonymy', () => {
     const existing = [st(KEEP, SELLS, 'apples')]; // exists, but unnamed
-    const incoming = [st(KEEP, RDFS_LABEL, 'Ava Farmers Mkt')];
+    const incoming = [st(KEEP, RDFS_LABEL, 'Meadow Farmers Mkt')];
 
     const { statements, conversions } = aliasesFromNormalization(incoming, fold(), existing);
 
@@ -103,8 +103,8 @@ describe('aliasesFromNormalization', () => {
   });
 
   it('does not re-add a name the entity already answers to by label', () => {
-    const existing = [st(KEEP, RDFS_LABEL, 'Ava Growers Market')];
-    const incoming = [st(KEEP, RDFS_LABEL, '  ava growers market  ')];
+    const existing = [st(KEEP, RDFS_LABEL, 'Meadow Growers Market')];
+    const incoming = [st(KEEP, RDFS_LABEL, '  meadow growers market  ')];
 
     const { statements, conversions } = aliasesFromNormalization(incoming, fold(), existing);
 
@@ -116,10 +116,10 @@ describe('aliasesFromNormalization', () => {
 
   it('does not re-add a name already recorded as an alias, so re-ingest is idempotent', () => {
     const existing = [
-      st(KEEP, RDFS_LABEL, 'Ava Growers Market'),
-      st(KEEP, SKOS_ALT_LABEL, 'Ava Farmers Mkt'),
+      st(KEEP, RDFS_LABEL, 'Meadow Growers Market'),
+      st(KEEP, SKOS_ALT_LABEL, 'Meadow Farmers Mkt'),
     ];
-    const incoming = [st(KEEP, RDFS_LABEL, 'Ava Farmers Mkt')];
+    const incoming = [st(KEEP, RDFS_LABEL, 'Meadow Farmers Mkt')];
 
     const { conversions } = aliasesFromNormalization(incoming, fold(), existing);
 
@@ -128,10 +128,10 @@ describe('aliasesFromNormalization', () => {
 
   it('ignores a rejected label when deciding what the entity answers to', () => {
     const existing = [
-      st(KEEP, RDFS_LABEL, 'Ava Growers Market'),
-      st(KEEP, SKOS_ALT_LABEL, 'Ava Farmers Mkt', 'rejected'),
+      st(KEEP, RDFS_LABEL, 'Meadow Growers Market'),
+      st(KEEP, SKOS_ALT_LABEL, 'Meadow Farmers Mkt', 'rejected'),
     ];
-    const incoming = [st(KEEP, RDFS_LABEL, 'Ava Farmers Mkt')];
+    const incoming = [st(KEEP, RDFS_LABEL, 'Meadow Farmers Mkt')];
 
     const { conversions } = aliasesFromNormalization(incoming, fold(), existing);
 
@@ -142,22 +142,22 @@ describe('aliasesFromNormalization', () => {
   });
 
   it('mints each distinct name once when a source repeats it', () => {
-    const existing = [st(KEEP, RDFS_LABEL, 'Ava Growers Market')];
+    const existing = [st(KEEP, RDFS_LABEL, 'Meadow Growers Market')];
     const incoming = [
-      st(KEEP, RDFS_LABEL, 'Ava Farmers Mkt'),
-      st(KEEP, RDFS_LABEL, 'ava farmers mkt'),
-      st(KEEP, RDFS_LABEL, 'Ava Market'),
+      st(KEEP, RDFS_LABEL, 'Meadow Farmers Mkt'),
+      st(KEEP, RDFS_LABEL, 'meadow farmers mkt'),
+      st(KEEP, RDFS_LABEL, 'Meadow Market'),
     ];
 
     const { statements, conversions } = aliasesFromNormalization(incoming, fold(), existing);
 
-    expect(conversions.map((c) => c.value)).toEqual(['Ava Farmers Mkt', 'Ava Market']);
+    expect(conversions.map((c) => c.value)).toEqual(['Meadow Farmers Mkt', 'Meadow Market']);
     expect(statements[1].p.value).toBe(RDFS_LABEL); // the case-variant duplicate, left alone
   });
 
   it('attributes the strongest fold when several entities collapse into one target', () => {
-    const existing = [st(KEEP, RDFS_LABEL, 'Ava Growers Market')];
-    const incoming = [st(KEEP, RDFS_LABEL, 'Ava Farmers Mkt')];
+    const existing = [st(KEEP, RDFS_LABEL, 'Meadow Growers Market')];
+    const incoming = [st(KEEP, RDFS_LABEL, 'Meadow Farmers Mkt')];
     const remaps: SubjectRemap[] = [
       { from: FOLDED, to: KEEP, kind: 'subject', similarity: 0.88 },
       { from: OTHER, to: KEEP, kind: 'subject', similarity: 0.97 },
@@ -170,8 +170,8 @@ describe('aliasesFromNormalization', () => {
   });
 
   it('ignores predicate remaps — a folded predicate is not a name', () => {
-    const existing = [st(KEEP, RDFS_LABEL, 'Ava Growers Market')];
-    const incoming = [st(KEEP, RDFS_LABEL, 'Ava Farmers Mkt')];
+    const existing = [st(KEEP, RDFS_LABEL, 'Meadow Growers Market')];
+    const incoming = [st(KEEP, RDFS_LABEL, 'Meadow Farmers Mkt')];
     const remaps: SubjectRemap[] = [
       { from: 'urn:kbase:predicate/vends', to: SELLS, kind: 'predicate', similarity: 0.95 },
     ];
@@ -183,8 +183,8 @@ describe('aliasesFromNormalization', () => {
   });
 
   it('returns the statements untouched when nothing was folded', () => {
-    const existing = [st(KEEP, RDFS_LABEL, 'Ava Growers Market')];
-    const incoming = [st(KEEP, RDFS_LABEL, 'Ava Farmers Mkt')];
+    const existing = [st(KEEP, RDFS_LABEL, 'Meadow Growers Market')];
+    const incoming = [st(KEEP, RDFS_LABEL, 'Meadow Farmers Mkt')];
 
     const { statements, conversions } = aliasesFromNormalization(incoming, [], existing);
 
@@ -193,8 +193,8 @@ describe('aliasesFromNormalization', () => {
   });
 
   it('leaves non-label statements of a folded entity completely alone', () => {
-    const existing = [st(KEEP, RDFS_LABEL, 'Ava Growers Market')];
-    const incoming = [st(KEEP, SELLS, 'apples'), st(KEEP, RDFS_LABEL, 'Ava Farmers Mkt')];
+    const existing = [st(KEEP, RDFS_LABEL, 'Meadow Growers Market')];
+    const incoming = [st(KEEP, SELLS, 'apples'), st(KEEP, RDFS_LABEL, 'Meadow Farmers Mkt')];
 
     const { statements } = aliasesFromNormalization(incoming, fold(), existing);
 
@@ -203,7 +203,7 @@ describe('aliasesFromNormalization', () => {
   });
 
   it('skips a blank or whitespace-only label rather than minting an empty name', () => {
-    const existing = [st(KEEP, RDFS_LABEL, 'Ava Growers Market')];
+    const existing = [st(KEEP, RDFS_LABEL, 'Meadow Growers Market')];
     const incoming = [st(KEEP, RDFS_LABEL, '   ')];
 
     const { statements, conversions } = aliasesFromNormalization(incoming, fold(), existing);
@@ -213,8 +213,8 @@ describe('aliasesFromNormalization', () => {
   });
 
   it('does not mutate the arrays it is given', () => {
-    const existing = [st(KEEP, RDFS_LABEL, 'Ava Growers Market')];
-    const incoming = [st(KEEP, RDFS_LABEL, 'Ava Farmers Mkt')];
+    const existing = [st(KEEP, RDFS_LABEL, 'Meadow Growers Market')];
+    const incoming = [st(KEEP, RDFS_LABEL, 'Meadow Farmers Mkt')];
     const snapshot = JSON.parse(JSON.stringify(incoming));
 
     aliasesFromNormalization(incoming, fold(), existing);
