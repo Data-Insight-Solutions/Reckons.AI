@@ -1,7 +1,7 @@
 /**
  * CO-HYPONYMS — entities whose names share a prefix are SIBLINGS, not duplicates (F146).
  *
- * THE SEAM THIS CLOSES. Measured 2026-09-02 on the dictated Pebble Index 01 notes and reproduced in
+ * THE SEAM THIS CLOSES. Measured 2026-09-02 on the private dictated notes corpus and reproduced in
  * tests/fixtures/extraction-chain.ttl: five entities named `render setting {width, height, quality,
  * samples, format}` (real corpus: `node attribute {name, value, type, repeats, count}`) share a
  * prefix, and TWO STAGES READ THAT SIGNAL IN OPPOSITE DIRECTIONS.

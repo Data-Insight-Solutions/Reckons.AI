@@ -1248,7 +1248,7 @@ retry against? Until one exists, dictating out of signal loses the note silently
 
 ## ▶ LATEST (2026-08-27) — voice capture works end to end; extraction is automatic
 
-**The ring → graph path is live and proven.** Pebble Index 01 double-click → MCP
+**The ring → graph path is live and proven.** a capture-ring double-click → MCP
 `/mcp/reckons-capture` (Streamable HTTP, bearer) → tool `capture_note` → `/webhook/reckons-note`
 → n8n data table → `scripts/notes-pull.ts --watch` → `knowledge.pending.jsonl` → app import →
 automatic extraction → review queue. First successful n8n execution 2826 at 15:22:58Z.

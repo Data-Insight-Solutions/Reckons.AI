@@ -6,7 +6,7 @@ triples, so none of them exercise the extractor at all — that gap is why the
 extraction half of the chain had never been driven by hand.
 
 These files are the input side. They are SYNTHETIC because this repository is
-public and the real corpus (Matt's dictated Pebble Index 01 notes) lives in the
+public and the real corpus (the maintainer's private dictated notes) lives in the
 gitignored workspace. They reproduce the damage patterns catalogued from the real
 notes on 2026-09-02 rather than inventing new ones:
 
