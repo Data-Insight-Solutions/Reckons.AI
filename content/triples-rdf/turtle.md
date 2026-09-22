@@ -1,7 +1,7 @@
 ---
 title: "Turtle (.ttl) Syntax"
 slug: "turtle"
-order: 1019
+order: 1023
 section: "Triples & RDF"
 parent: "triple-architecture"
 template: doc

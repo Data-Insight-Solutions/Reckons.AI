@@ -1,0 +1,266 @@
+# Reckons.AI — Instructions for coding agents
+
+**This file governs every coding agent that works in this repository — Claude Code, Codex,
+Cursor, Gemini CLI, a local Ollama agent in `scripts/offline/`, any of them.** `CLAUDE.md` is a
+symlink to this file so that Claude Code and the `AGENTS.md` convention load the same bytes.
+If you are an agent and you are reading this, these rules apply to you.
+
+> **Why this file is named this way.** It was `CLAUDE.md` only, which meant agents that read
+> `AGENTS.md` by convention started work having seen none of it. In September 2026 a Codex
+> session did careful, well-tested work in this repository and still diverged on three things
+> this file governs: it left everything uncommitted (so no CI gate ever ran), it added a new
+> top-level navigation tab, and its handoff carried a validation claim that went stale. None of
+> those are capability failures. They are all things this file says and that file never said to
+> anyone but Claude. Renaming it was the fix.
+
+## The four rules that are most often missed
+
+1. **Never push to `main`, and land work through a PR.** Feature branch → push → PR (base `dev`,
+   not `main`) → CI green → Matt merges. Work that sits uncommitted in the working tree has
+   been checked by nothing: `npm run check`, the unit suite, `md-align`, `graph-lint` and
+   `build:verify` all run in CI and all block. See "Branch + PR workflow" below.
+2. **Product shape is Matt's decision, not yours.** Adding a route is fine. Adding a *top-level
+   navigation tab*, renaming a core concept, or changing what the product IS are decisions to
+   propose, not to make. When in doubt, build it where the user already goes.
+3. **Plan in the graph first.** The feature must exist in `static/reckons-roadmap.ttl` before you
+   build it, and its status must be updated in the same branch as the code.
+4. **Say what is not true.** Report failures as loudly as successes, and date any claim that can
+   go stale ("3042 tests passed" is true for about a day). See "Honest status" below.
+
+## Project
+
+This is **Reckons.AI**, a personal knowledge base app built on SvelteKit + TypeScript + Dexie (IndexedDB). The local directory name is `tripleNotes` but the product is called Reckons.AI.
+
+## Knowledge Base Context (MCP)
+
+This project has its own Reckons.AI MCP server configured (`reckons`). It exposes knowledge bases that describe the product itself:
+
+- **Roadmap** — Feature status, planned work, design decisions, dependencies. Check this before starting new features.
+- **Production** — Tech stack, test suite health, architecture, source types, MCP tools. Links test files via `kpred:tested-by`.
+- **Features** — User-facing feature documentation (ingest, review, graph, Shelly, compare, multi-KB, safety, etc.)
+- **Architecture** — Design decisions, TTL-first docs strategy, standards alignment, deployment, style conventions, markdown migration tracker.
+- **Testing** — Test suite docs as interactive stories with ordered steps, screenshots, and assertions.
+- **Codebase** — Module structure, file links (`kpred:has-file`), cross-KB leaps. Covers all git-tracked source files.
+
+### When to query the KBs
+
+- **Before planning new work**: `kb_search` the Roadmap KB for the feature area. Check if it's already planned, in progress, or done.
+- **Before modifying architecture**: `kb_search` the Production KB for the component. Understand dependencies.
+- **When asked about features**: `kb_search` the Features KB for how things work.
+- **When touching code files**: `kb_search` the Codebase KB to see which module owns the file.
+- **At the start of a session**: `kb_stats` to see current state.
+
+Public examples must be generic and purpose-built for Reckons.AI. Keep personal notes, grant applications, external-project sites and sharing drafts outside this public repository. Regression tests use synthetic transcripts, never copied personal captures. Every pushed branch is public; keeping content outside a site deployment folder does not make it private.
+
+### Keeping KBs up to date
+
+The KBs are symlinked from `static/*.ttl` files in this repo. When you complete a feature or change the roadmap:
+
+1. Update the relevant `.ttl` file in `static/` (e.g., `reckons-roadmap.ttl`, `reckons-production.ttl`, `docs-features.ttl`, `reckons-codebase.ttl`)
+2. The MCP server watches for file changes and auto-reloads — no restart needed.
+
+### MCP tools available
+
+- `kb_list_kbs` — List all KBs with triple counts
+- `kb_search(query, kb?)` — BM25 full-text search
+- `kb_get_entity(entity, kb?)` — All triples about an entity
+- `kb_list_entities(kb?)` — List all entity IRIs
+- `kb_stats(kb?)` — Triple/entity/source counts
+- `kb_subgraph(entity, hops?, kb?)` — N-hop neighbourhood
+- `kb_reckoning(situation, target, kb?)` — AI-grounded Situation-Target-Proposal
+- `kb_git_status(commits?, diff?)` — Current branch, staged/modified files, recent commits
+- `kb_check_plan(work, commits?, kb?)` — Check work alignment against KB entities
+- `kb_pending(kb?)` — List queued proposals from pending.jsonl
+- `kb_git_diff_triples(ref?, kb?)` — Cross-reference git changes with KB entities
+- `kb_alignment_score(ref?, work?, kb?)` — Quantitative alignment score (0–1) with per-dimension breakdown
+- `kb_compress(query, budget?, hops?, kb?)` — Compressed KB context for LLM prompts (~60-70% token reduction)
+- `kb_local_extract(text, source?, kb?)` — Extract triples via a LOCAL Ollama model (opt-in via `OLLAMA_BASE_URL`); returns proposals only, never writes to a KB
+- `kb_local_summarize(entity?, text?, kb?, budget?)` — Summarize an entity subgraph or raw text via a LOCAL Ollama model (opt-in via `OLLAMA_BASE_URL`)
+- `kb_generate_page(prompt, kb?, section?, slug?, title?, template?, budget?)` — PROPOSAL ONLY: draft a WebPage markdown document (frontmatter + body) grounded in the graph via the kb_compress pipeline, generated by a LOCAL Ollama model (opt-in via `OLLAMA_BASE_URL`); never writes to a KB or file
+- `kb_entity_markdown(entity, kb?)` — Deterministic (no LLM) rendering of one entity as WebPage markdown from its triples; works without `OLLAMA_BASE_URL`
+
+### Git analysis workflow
+
+Use `/check-plan` or the individual tools to maintain alignment between code and KBs:
+
+- **Before starting work**: `kb_check_plan` to verify alignment with the roadmap
+- **After significant changes**: `kb_git_diff_triples` to find affected KB entities
+- **Before proposing KB updates**: `kb_pending` to avoid duplicates
+- **Proposing updates**: `kb_add_note` with `type`/`priority`/`agent` metadata
+- **Measuring alignment**: `kb_alignment_score` for a quantitative 0–1 score across 4 dimensions
+- **Drift detected**: use type `'drift-warning'` + priority `'high'`
+
+### Pre/Post review workflow
+
+Use `/pre-review` and `/post-review` to capture KB snapshots before and after code changes:
+
+- **Before making changes**: `/pre-review <description of planned work>` — captures a baseline snapshot of KB entities, alignment score, and test/file links
+- **After making changes**: `/post-review` — compares current state against the pre-review snapshot, showing entity changes, status transitions, new test coverage, and alignment score delta
+- This gives the user a structured before/after view of how code changes affect the knowledge base
+
+### CI/CD KB Watch
+
+The `.github/workflows/kb-watch.yml` workflow runs on every push/PR to main:
+
+1. Builds the MCP server and sets up the workspace
+2. Runs `scripts/kb-align.ts` to compare code changes against KB plans
+3. Posts an alignment report as a PR comment (for PRs)
+4. Writes a step summary with alignment score, discrepancies, and drift warnings
+5. Saves a KB snapshot artifact for post-action comparison
+
+The alignment score is a composite of 4 dimensions (30% coverage, 30% status alignment, 20% dependency respect, 20% scope discipline). Commits that don't match any planned KB work are flagged as unplanned.
+
+### Branch + PR workflow (required)
+
+**Never push directly to `main`.** All changes — including agent work, KB/TTL edits, and docs — land via:
+
+1. Feature branch (`fix/…`, `feat/…`, `chore/…`) or agent worktree branch
+2. Push the branch, open a PR (`gh pr create`)
+3. CI green (unit tests, build, md-align; visual smoke once available) before merge
+4. The user merges, or explicitly approves a merge
+
+Production deploys from `main` on every push — an unreviewed push is an unreviewed deploy.
+
+**Default PR base is `dev`, NOT `main`.** The pipeline is `dev → staging → main` (F33). Feature PRs target **`dev`**; only deliberate, approved promotions go to `main`. Branch protection is **not yet enforced** on any branch (audited 2026-07-11) and will be enabled at launch (see F33 `enforcement-plan`) — so until then the guardrail is behavioral: **before merging any PR, verify its resolved base branch** (`gh pr view <n> --json baseRefName`) — `gh pr edit --base` can silently fail, and a mis-targeted merge to `main` deploys straight to production. Never merge to `main` without explicit production intent.
+
+### Graphs are the plan and source of truth
+
+The TTL graphs in `static/` are the canonical plan and system description — code follows the graphs, not the other way around:
+
+- **Before building**: the feature/phase must exist in `reckons-roadmap.ttl` (status `planned`/`in-progress`). Plan changes are TTL edits, committed like code.
+- **After shipping**: update the entity status + description in the same branch as the code.
+- **Findings and proposals** (discrepancies, suggestions, drift): don't just report in chat — propose them as pending graph entries for in-app review. Append JSONL lines to the app workspace's `knowledge.pending.jsonl` (`{ subject, predicate, object, note?, type?: observation|question|suggestion|status-update|drift-warning, agent?, priority? }` — see `drainWorkspacePending` in `src/lib/stores/workspace.svelte.ts`), or use `kb_add_note` when the MCP server is connected. The app imports them as pending facts for human review.
+- **Docs sections generated from graphs** (`content/` via `scripts/docs-pages.ts`): edit the TTL, regenerate, never hand-edit generated pages.
+
+### Picking up mid-stream? Read `HANDOFF.md` FIRST
+
+If the user says "continue" (or a scheduled/cloud session starts with no context), read
+**`HANDOFF.md`** (repo root) before anything else. It names the active branch, the current
+task, what has already been found (so you don't re-derive it), and the decisions that are
+Matt's to make rather than yours. Keep it current when you hand off.
+
+### Honest status — always (kb:honest-status)
+
+**Never describe a control, feature, or capability that does not exist yet.** Distinguish what is BUILT from what is INTENDED *at the point of each claim*, not in a footnote. Aspiration written in the present tense is a lie with good manners.
+
+- This bites hardest in `SAFETY.md`, `COUNSEL-BRIEF.md`, and anything user-facing. Overclaiming a control we cannot exercise is itself a liability. (Real incident, 2026-07-12: `SAFETY.md` was written saying "we gate publishing" while F66 was merely `planned` — publishing is in fact ungated — and claimed the ethics preamble "cannot be overridden" when it is open-source code anyone can delete. Both fixed.)
+- `kpred:has-status` must reflect reality. A feature is not `functional` because we wish it were.
+- **Report failures as loudly as successes.** The safety attestation deliberately records its own failing control; a log that is always green is not a record. If tests fail, say so with the output. If a step was skipped, say that.
+- Say the weakness out loud, in the sentence that describes the thing.
+
+### Work tiering — route the task before you do it (F74.3)
+
+Before doing any recurring task yourself, route it to the **cheapest tier that can do it correctly**. Take the first test it passes:
+
+1. **Script tier** — the answer is checkable by a rule ("does this path exist", "does this parse", "is this status in the enum"). Write deterministic code: zero tokens, zero hallucination, runs in CI, fails loudly. `scripts/offline/graph-lint.ts` is the model.
+2. **Agent tier** — the answer is judgment over language, and being wrong is cheap because the output is a **proposal a human gates** (first-pass code review, drafting a description, staleness reads). A local Ollama model, always inside a scripted harness: **ground → prompt → validate → emit-proposal**. It writes to `knowledge.pending.jsonl`, *never* to source or TTL. `scripts/offline/describe-entities.ts` is the model.
+3. **Opus** — cross-file architectural reasoning, deciding process, triaging the queue the other tiers fill, and writing code that lands.
+
+**Offloading is not free.** A local job that emits 30 findings of which 25 are noise moves cost from generation to *triage* rather than removing it; deterministic checks have zero triage cost because they're right by construction. So **prefer growing the script tier over the agent tier**, and measure with `npm run session:tokens`.
+
+**Promotion ladder**: anything Opus does twice becomes an agent job or a script; anything an agent gets right *reliably* is demoted to a script — reliability proves the rule was expressible. Opus designs the harness; the local model is a plugin inside it (the PR #43 devstral lesson: local models hallucinate conventions and mangle serialization, so ground-first and validate).
+
+Jobs live in `scripts/offline/jobs.json` with a `tier` field. `npm run offline:all` runs script tier first; `npm run offline:all -- --tier=script` runs only the free ones.
+
+### RUN THESE — the offline tools are not optional reading
+
+**This section exists because the doctrine above did not work on its own.** On 2026-07-18 a session
+read the tiering rules at startup and then did an entire multi-hour analysis at Opus tier anyway —
+never once invoking the local models sitting idle on `localhost:11434`. Philosophy does not change
+behavior; commands do. So: **before doing a recurring task yourself, run the job that already does
+it.** Ollama is opt-in per-command via `OLLAMA_BASE_URL=http://localhost:11434` (check it is up with
+`curl -s localhost:11434/api/tags`; if it is down, say so rather than silently falling back to Opus).
+
+| When | Run | Tier |
+|---|---|---|
+| **Start of any work session** | `npm run offline:all -- --tier=script` | script — 11 checks, ~60s, zero tokens |
+| **MCP graphs missing/empty, or fresh clone** | `bash scripts/setup-reckons-workspace.sh` | script — rebuilds both workspaces, fails loudly on dangling links |
+| **Before opening a PR / after writing code** | `OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/code-review.ts --base=origin/dev --worktree` | agent — local first-pass review |
+| **Entities missing `kpred:description`** | `OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/describe-entities.ts --limit=10` | agent — drafts prose |
+| **Visual regression prod↔dev** | `npx tsx scripts/offline/visual-diff.ts --base=… --head=…` | agent — local VLM |
+| **Checking a TTL parses / graph invariants** | `npx tsx scripts/offline/graph-lint.ts` | script |
+| **"Is this claim true?" in README/SAFETY.md** | `npx tsx scripts/offline/claim-audit.ts --pending` | script |
+
+**`--worktree` is not optional, and leaving it off fails silently.** Without it the reviewer diffs
+`mergeBase...HEAD` — the *committed* range only — so on a branch whose work is still in the working
+tree it prints a tidy report having reviewed none of it. Observed 2026-09-17: the documented command
+reviewed 25 committed files and skipped both new uncommitted ones without a word. An intent-to-add
+file (which rule 1 of graph-lint effectively requires for new files) is the worst case: it is
+tracked, so it gets no untracked-file diff, and uncommitted, so it gets no range diff either.
+
+Agent-tier jobs emit **proposals only**, into `reckons-workspace/knowledge.pending.jsonl` — they
+never edit source or TTL. **Triaging that queue is Opus's job, and it is real work**: a local review
+of one branch produced 22 findings of which roughly a third were actionable, so read them, accept
+the real ones, and reject the rest out loud rather than merging them wholesale. A worked example —
+qwen3-coder flagged `restoreSnapshot` for trusting its input unvalidated (accepted: it was a
+graph-wipe path, now guarded and tested), while two other findings on the same file misread
+deliberate design and were rejected.
+
+Local models available here (2026-07-18): `qwen3-coder:latest` and `devstral-small-2` for code,
+`qwen2.5vl:7b` for visual, `nemotron3:33b` / `qwen3.6` for general reasoning, `nomic-embed-text`
+for embeddings.
+
+### TTL-first documentation policy
+
+This project uses TTL knowledge bases as the primary documentation format. **Do NOT create new docs/*.md files.** Instead:
+
+- **For feature/design docs**: Add entities to the appropriate TTL KB (roadmap, features, architecture, integrations)
+- **For code conventions**: Use inline code comments near the actual code
+- **Query before reading**: Use `kb_search` to find information before reading raw files
+- **Existing markdown**: `docs/*.md` files are being migrated to TTL. Check `kb_search("migration status", kb="architecture")` for current state
+- **Must stay markdown**: AGENTS.md (and its CLAUDE.md symlink), HANDOFF.md, COUNSEL-BRIEF.md, MEMORY.md, .claude/commands/*.md, README.md, CONTRIBUTING.md, SAFETY.md (system/policy docs; SAFETY.md is the human-readable safety & responsibility statement — the graph mirrors it in kb:content-safety)
+
+### KB predicates convention
+
+- `kpred:tested-by` — Links a Production KB feature entity to its test file (repo-relative path, e.g., `src/lib/rdf/__tests__/diff.test.ts`)
+- `kpred:has-file` — Links a Codebase KB module entity to its source files (repo-relative path)
+- `kpred:has-status` — Feature lifecycle: `speculative` → `planned` → `in-progress` → `scaffolded` → `functional` → `production`. **SIX, not five** — this line said five until 2026-09-18, and a session that hardcoded the enum from it silently skipped every `in-progress` feature in a constraint check instead of failing. The authority is `static/reckons-vocabulary.ttl`, where each status carries its `skos:notation` and its `hnav:order`; read the rank from there rather than from this sentence, the way `graph-lint` does. (`in-progress` is recorded in the graph as de-facto rather than designed.)
+- `kpred:depends-on` — Feature dependency (alignment scoring checks these are met)
+
+## Code Conventions
+
+- **CSS**: Use CSS variables (`--accent`, `--surface`, `--font-mono`, etc.) from `docs/STYLE_GUIDE.md`
+- **bits-ui**: Always `:global(.unique-class)` for CSS targeting
+- **Z-index scale**: node-labels=10, panels=300, Shelly=350, SearchBar=390, NavBar=400, MergeReview=500
+- **LLM providers**: claude, openai, gemini, ollama, wasm, mock, manual, openrouter, chrome-ai
+- **Review statuses**: pending, pending-removal, confirmed, refined, rejected, superseded
+- **Embedding model**: BGE-small-en-v1.5 (33MB, 384d, q8) via `src/lib/embed.ts`
+- **Content safety**: `ETHICS_PREAMBLE` is injected by PURPOSE and LOCALITY, not everywhere (`ethicsPreambleFor` in `safety/content-policy.ts`). **Sharing always carries it** — a published persona keeps it even on a local model, because locality says nothing about who reads the output. Remote conversation carries it. **Local-only usage does not** (`kb:tenet-private` — a private graph makes no claim on anybody), and neither do structured-output prompts, where `filterBlockedStatements` already vets every written statement deterministically. Unclassified providers default to remote, so forgetting to classify one keeps the preamble rather than dropping it. Changed 2026-08-14; it previously said ALL prompts, which cost ~121 tokens per call on paths with no beneficiary.
+
+## Integration Boundaries (read before adding a "backend")
+
+- **Reckons.AI is local-first with NO general backend.** Do not treat n8n (or any single service) as *the* backend for all things Reckons.AI. n8n is an **optional, per-user automation layer**: a user connects their own self-hosted n8n instance to enable *personalized* automation/integration flowing **into and out of** their Reckons.AI — e.g. the contact form (`src/lib/integrations/n8n/contact.ts`) posts to *their* webhook. The app itself stays static/offline-first; n8n owns web *side-effects*, not core state.
+- **All integrations are optional and per-user, behind `settings.*`** and (eventually) the Integration Plugin SDK (roadmap F61). When a feature "needs a server", first ask whether it can be local/offline; if not, make it an opt-in integration, never a hard dependency of the core app.
+- Cloud-automation providers (Zapier, Power Automate, …) are *future alternatives* to self-hosted n8n, not replacements for local-first behavior.
+
+## Testing
+
+- Unit tests: `npx vitest run`
+- Visual tests: `npx playwright test --config=playwright.visual.config.ts`
+- Full local suite: `bash tests/bench/run-local-suite.sh`
+- MCP server: `cd mcp-server && npm test`
+- KB alignment: `npx tsx scripts/kb-align.ts --skip-e2e`
+- KB snapshot: `npx tsx scripts/kb-snapshot.ts --output snapshot.json`
+
+## Claude Code Commands
+
+- `/check-plan` — Check current work against KB alignment (score + drift)
+- `/kb-align` — Run tests, compare results against Production KB, write pending entries
+- `/pre-review <work>` — Capture KB snapshot before code changes
+- `/post-review` — Compare current state against pre-review snapshot
+
+## Key Directories
+
+- `src/lib/rdf/` — Core RDF types, diff, semantic-diff, normalize-entities, serialize, currents
+- `src/lib/stores/` — Svelte 5 rune stores (kb, settings, ingest, disambiguation, workspace)
+- `src/lib/publish/` — Graph-first site publishing (WebPage nodes ↔ content/*.md round-trip, Sveltia CMS wiring)
+- `src/lib/components/ui/` — shadcn-svelte primitives (badge, button, card, separator, skeleton)
+- `src/lib/integrations/llm/` — LLM backends (claude, wasm, extractor, providers)
+- `src/lib/integrations/github/` — Repo ingest
+- `src/lib/safety/` — Content policy, ethics preamble
+- `mcp-server/` — Standalone MCP server (Node.js, N3.js)
+- `cli/` — `reckons` terminal/audio CLI (shell commands + smart-glasses listen mode)
+- `static/*.ttl` — Documentation and reference KBs
+- `content/` — Generated markdown pages (from docs TTLs via `scripts/docs-pages.ts`) — do not hand-edit
+- `tests/bench/` — Ollama LLM benchmarks and scoring
+- `scripts/` — KB alignment, snapshot, docs-page generation, and workspace setup scripts

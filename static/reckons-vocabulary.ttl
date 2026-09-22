@@ -6,6 +6,7 @@
 @prefix ktask:  <urn:kbase:type/task-state/> .
 @prefix kstat:  <urn:kbase:type/review-status/> .
 @prefix klife:  <urn:kbase:type/lifecycle/> .
+@prefix kprio:  <urn:kbase:priority/> .
 @prefix kset:   <urn:kbase:type/set-kind/> .
 @prefix klayer: <urn:kbase:type/layer/> .
 @prefix kshape: <urn:kbase:shape/> .
@@ -434,6 +435,69 @@ kpred:assumption rdfs:label "extraction assumption" ;
     skos:note           "Matt, 2026-09-09: MCP responses should carry `the provenance about the extraction process, assumptions, etc.` Nothing recorded assumptions before this. An extraction that silently resolves `they` to a specific person produces a confident triple whose weakest link is invisible — and F197 substantiation cannot weigh a claim whose reasoning was never written down." ;
     skos:note           "IT IS PROVENANCE, NOT A CLAIM, and the survival test says why: an assumption is about how a statement CAME TO BE, and means nothing once separated from the extraction that made it. It therefore auto-confirms with the rest of the provenance layer — recording what the machine assumed is bookkeeping; the assumption being CORRECT is a property of the claim above it, which a person still settles." .
 
+## THE PREDICATES THAT RECORD HOW A STATEMENT GOT HERE (added 2026-09-11).
+##
+## FOUND BY BUILDING SOMETHING ELSE. The deterministic set-derivation stage (F187.3) was run over
+## reckons-workspace/kbs/personal-notes and proposed FOUR sets, of which four were wrong — three
+## of them grouped by `kpred:extracted-from`. "This note was extracted from those four notes" is
+## not a grouping of members, it is a record of where the text came from; a rule that reads it as
+## membership will propose a set for every note in every graph.
+##
+## The layer vocabulary already had the right answer and nobody had written it down: these are
+## provenance, and were defaulting to `claim` because unclassified means claim (the fail-safe).
+## Declaring them fixes the set rule, the MCP layer split, and the review disposition at once —
+## which is the argument for classifying a predicate once in the graph rather than maintaining an
+## exclusion list in each script that needs one.
+
+kpred:extracted-from rdfs:label "extracted from" ;
+    kpred:layer         klayer:provenance ;
+    skos:definition     "The source this statement was derived from. A record the extractor produced and can re-derive, not an assertion anybody made about the world." ;
+    skos:note           "SURVIVES THE SEPARATION TEST THE WRONG WAY, which is how you know it is provenance: detached from the extraction that made it, `extracted-from` means nothing. src/lib/rdf/captured-notes.ts already said so in a comment — this declares it where a script can read it." .
+
+kpred:has-property rdfs:label "has property" ;
+    skos:definition     "An attribute of the subject. Plural by nature — a thing has many properties — so repetition on one subject is accumulation, not a grouping." ;
+    skos:note           "NOT a layer classification: a property IS a claim about the world and a person should settle it. Recorded here only so the note above about grouping has somewhere to point. It is listed in ACCUMULATING_PREDICATES in src/lib/rdf/set-derive.ts for the same reason kpred:principle is: plural is how the predicate works, not evidence of a set." .
+
 kpred:layer rdfs:label "relation layer" ;
     skos:definition "Which layer of ktype:LayerScheme a PREDICATE belongs to. Declared on the predicate rather than the statement because that makes the boundary a fact a script can enforce instead of a convention that drifts — Matt, 2026-09-09: \"I think its a predicate difference personally.\"" ;
     skos:note "A per-statement override may follow the precedent of kpred:altitude, which fixes one fact where the predicate is usually right. It does not exist yet and should not be added until a real case needs it." .
+
+# =============================================================================
+## PRIORITY — 100 uses in the corpus and, until now, no declared vocabulary.
+##
+## Found 2026-09-10 while adding graph-lint's value-hub check. `kpred:priority`
+## carries "high" (86), "medium" (12) and "low" (2) across static/*.ttl, and
+## nothing checked any of them: a typo would have been accepted in silence, and
+## the value-hub rule could not recognise "high" as a standardized value because
+## no scheme said it was one. Declaring it here is what makes both checks work,
+## and it is the same argument kb:feature-lifecycle-vocab made in 2026-07-12 —
+## the vocabulary belongs in the graph so adding a value is a graph edit.
+# =============================================================================
+
+ktype:PriorityScheme a skos:ConceptScheme ;
+    rdfs:label "Priority" ;
+    skos:definition "How much something matters relative to the other things competing for the same attention." ;
+    skos:note "A PRIORITY IS AN ATTRIBUTE VALUE AND NEVER AN ENTITY. Matt, 2026-09-10, on finding a node called 'high' in his graph: it 'misinterprets a key concept of the graph, with instead a standardized attribute value'. Promoted to a node it inherits the degree of every statement that uses it and reads as one of the most important concepts present, when it is a unit. Where the grouping is genuinely wanted — everything currently high priority — model it as a skos:Collection, which declares what it is." ;
+    skos:note "Most facts carry no priority at all, and that is the normal case rather than an omission. An unprioritised fact is not low priority; it is simply one nobody has ranked." ;
+    skos:hasTopConcept kprio:high, kprio:medium, kprio:low .
+
+kprio:high a skos:Concept ;
+    skos:inScheme ktype:PriorityScheme ;
+    skos:prefLabel "High" ;
+    skos:notation "high" ;
+    hnav:order 1 ;
+    skos:definition "Acts as a blocker or a deadline: something else waits on it, or the cost of leaving it rises with time." .
+
+kprio:medium a skos:Concept ;
+    skos:inScheme ktype:PriorityScheme ;
+    skos:prefLabel "Medium" ;
+    skos:notation "medium" ;
+    hnav:order 2 ;
+    skos:definition "Worth doing and nothing waits on it." .
+
+kprio:low a skos:Concept ;
+    skos:inScheme ktype:PriorityScheme ;
+    skos:prefLabel "Low" ;
+    skos:notation "low" ;
+    hnav:order 3 ;
+    skos:definition "Recorded so it is not lost, and deferring it costs nothing today." .

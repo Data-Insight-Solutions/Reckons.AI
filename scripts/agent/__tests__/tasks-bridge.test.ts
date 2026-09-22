@@ -6,7 +6,7 @@ import type { AgentTask } from '../../../src/lib/rdf/agent-task';
 
 const dictated: AgentTask = {
   iri: 'urn:reckons:task/note-1',
-  goal: 'run a research task for new grants for city Parks and Rec.',
+  goal: 'run a research task for new grants for city Arts and Crafts.',
   tier: 'frontier',
   harness: 'any',
   effects: [],

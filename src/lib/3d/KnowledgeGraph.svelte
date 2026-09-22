@@ -45,6 +45,8 @@
     timelineTimeSource = 'event' as 'event' | 'ingested',
     cameraSpec = null,
     previewKeys = null,
+    labelPriorityKeys = null,
+    viewportInsets = undefined,
     previewSizePx = 96,
     onselect = () => {},
     onhover = () => {},
@@ -87,6 +89,15 @@
      * eight layout values rather than being a ninth.
      */
     previewKeys?: Set<string> | null;
+    /** Keep key hubs labelled when ordinary distance/overlap culling would hide them. */
+    labelPriorityKeys?: Set<string> | null;
+    /**
+     * Pixels of canvas hidden behind floating panels on each side, so the graph is framed by what
+     * the user can SEE rather than by the canvas rectangle. Mirrors the 2D renderer's prop of the
+     * same name; measured 2026-09-18 at 372px on the left with Shelly and the filters open, which
+     * is 29% of a 1280px canvas and the reason the graph read as bunched.
+     */
+    viewportInsets?: { left?: number; right?: number; top?: number; bottom?: number };
     /** On-screen size of a preview thumbnail in px (settings.nodePreviewSize). */
     previewSizePx?: number;
     onselect?: (key: string | null, ctrlKey?: boolean) => void;
@@ -201,13 +212,14 @@
   let previousCanvasHeight = 0;
   let previousCameraAspect = 0;
 
-  /** Fit a structured tree as a whole; its orphan lane is part of the visible composition too. */
-  function fitHierarchyCamera3D(anchors: Map<string, THREE.Vector3>) {
+  /** Frame structured layouts, including source clusters and a tree's orphan lane. */
+  function fitStructuredCamera3D(anchors: Map<string, THREE.Vector3>) {
     if (cameraSpec || anchors.size === 0 || !camera.current) return;
     const cam = camera.current as THREE.PerspectiveCamera;
     if (!cam.isPerspectiveCamera) return;
     const sphere = new THREE.Sphere();
     new THREE.Box3().setFromPoints([...anchors.values()]).getBoundingSphere(sphere);
+    if (layout === 'source') sphere.radius += 4; // anchors mark cluster centers, not their extent
     const previousTarget = orbitRef?.target ?? cameraTarget;
     const direction = cam.position.clone().sub(previousTarget);
     if (direction.lengthSq() === 0) direction.set(0, 0, 1);
@@ -952,6 +964,7 @@
     } else if (layout === 'source') {
       const { anchors, markers, nodeColors } = buildSourceAnchors();
       activeAnchors = anchors;
+      fitStructuredCamera3D(anchors);
       layoutMarkers = markers;
       layoutRingRadii = [];
       anchorStrength = 0.80;
@@ -994,7 +1007,7 @@
         node.pos.copy(anchor);
         node.vel.set(0, 0, 0);
       }
-      fitHierarchyCamera3D(anchors);
+      fitStructuredCamera3D(anchors);
       layoutMarkers = markers;
       layoutRingRadii = [];
       anchorStrength = 0.85;
@@ -1235,6 +1248,20 @@
       const cam = camera.current as THREE.PerspectiveCamera;
       const canvasWidth = canvas.clientWidth;
       const canvasHeight = canvas.clientHeight;
+
+      /*
+       * FRAME THE FREE SPACE, NOT THE CANVAS. setViewOffset shifts the projection by a pixel
+       * amount without changing scale — the 3D equivalent of the 2D renderer's camX/camY nudge —
+       * so orbiting, zooming and hit-testing all keep working, because the camera itself has not
+       * moved. Clearing it when there is nothing to offset matters: a stale view offset survives
+       * a resize and skews every later frame.
+       */
+      const dx = (((viewportInsets?.left ?? 0) - (viewportInsets?.right ?? 0)) / 2);
+      const dy = (((viewportInsets?.top ?? 0) - (viewportInsets?.bottom ?? 0)) / 2);
+      if (cam.isPerspectiveCamera && canvasWidth > 0 && canvasHeight > 0) {
+        if (dx !== 0 || dy !== 0) cam.setViewOffset(canvasWidth, canvasHeight, -dx, -dy, canvasWidth, canvasHeight);
+        else if (cam.view?.enabled) cam.clearViewOffset();
+      }
       const aspect = cam.isPerspectiveCamera ? cam.aspect : 0;
       if (
         canvasWidth !== previousCanvasWidth ||
@@ -1246,8 +1273,8 @@
         previousCameraAspect = aspect;
         // Hierarchy framing depends on the limiting horizontal/vertical FOV. Re-fit after a
         // renderer resize (including rotation and split panes) without reheating the simulation.
-        if (layout === 'hierarchy' && activeAnchors.size > 0) {
-          fitHierarchyCamera3D(activeAnchors);
+        if ((layout === 'hierarchy' || layout === 'source') && activeAnchors.size > 0) {
+          fitStructuredCamera3D(activeAnchors);
         }
       }
 
@@ -1359,8 +1386,9 @@
           // on a 9-photo graph exactly one label survived and it was the one node without a photo.
           // The thumbnail is the content the user asked to see, not an incidental annotation.
           const hasPreview = (k: string) => previewKeys != null && previewKeys.has(k);
+          const hasPriorityLabel = (k: string) => labelPriorityKeys?.has(k) ?? false;
           const candidates = allProjected
-            .filter(e => e.adjDist <= cutoff || e.key === selected || e.key === targetKey || hasPreview(e.key))
+            .filter(e => e.adjDist <= cutoff || e.key === selected || e.key === targetKey || hasPreview(e.key) || hasPriorityLabel(e.key))
             .sort((a, b) => a.adjDist - b.adjDist);
 
           // Separate rawDist-sorted list for the occlusion check (closer nodes first).
@@ -1378,7 +1406,7 @@
             // shown deliberately. Occlusion and proximity dedup exist to stop TEXT from piling up;
             // applying them to a requested thumbnail silently drops the thing that was requested.
             // Overlap between the thumbnails themselves is the collision pass's job, not this one's.
-            const isSpecial = entry.key === selected || entry.key === targetKey || hasPreview(entry.key);
+            const isSpecial = entry.key === selected || entry.key === targetKey || hasPreview(entry.key) || hasPriorityLabel(entry.key);
 
             // 1. Sphere-occlusion: skip if the label position falls inside a closer node's sphere.
             if (!isSpecial) {

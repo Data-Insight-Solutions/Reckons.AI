@@ -157,3 +157,13 @@ reckons-workspace/knowledge.pending.jsonl.*
 tests/visual/results/perf/*
 !tests/visual/results/perf/*.json
 reckons-workspace/stars-scan.state.json
+
+# Personal captures are local data. Ignoring a path does not remove earlier commits
+# or copies of its content in tests, graphs, docs, or other branches.
+reckons-workspace/tasks-inbox/note-*.md
+reckons-workspace/*.jsonl.*
+
+# Private sharing drafts and separately deployed projects stay outside the public tree.
+# Purpose-built public examples belong under static/examples/ or static/starter-*.ttl.
+/share/
+/sites/

@@ -5,7 +5,7 @@
    * Physics constants mirror the 3D version; camScale bridges the unit gap.
    */
   import { onMount, onDestroy } from 'svelte';
-  import type { Statement } from '$lib/rdf/types';
+  import type { Source, Statement } from '$lib/rdf/types';
   import { termKey, isIRI, isLit, isMetaPredicate, displayLiteralLabel } from '$lib/rdf/types';
   import { parseGraphDate } from '$lib/rdf/parse-date';
   import { buildNodeTimes, timelineRange, undatedCount } from '$lib/rdf/timeline-layout';
@@ -28,6 +28,9 @@
     targetKey = null,
     historyTimestamp = null,
     sources = [],
+    showSourceNodes = true,
+    labelPriorityKeys = null,
+    viewportInsets = undefined,
     layout = 'force',
     timelineZoom = 1,
     timelineCenter = null,
@@ -65,6 +68,24 @@
     targetKey?: string | null;
     historyTimestamp?: number | null;
     sources?: any[];
+    /** Provenance is log-level structure; the statements view hides it by default. */
+    showSourceNodes?: boolean;
+    /** Keep key hubs labelled when ordinary overlap culling would hide them. */
+    labelPriorityKeys?: Set<string> | null;
+    /**
+     * Pixels of canvas hidden behind floating panels on each side. The graph is CENTRED ON WHAT
+     * THE USER CAN SEE rather than on the canvas rectangle.
+     *
+     * Without this the default force layout puts nodes at world origin and the camera sits at the
+     * canvas centre, so with Shelly's panel open (~370px) and the filters and notification stacks
+     * beside it, roughly half the viewport is covered and the graph settles underneath them. It
+     * reads as "the nodes are bunched up" because the visible half is crowded while the hidden half
+     * holds the rest. No amount of repulsion tuning fixes that — measured 2026-09-18, sweeping
+     * REPEL, BASE_REST and CENTER across both renderers moved the spread by less than noise,
+     * because those constants scale the whole layout and the camera simply refits. Zooming is not
+     * spreading; the fix is to aim the camera at the space that is actually free.
+     */
+    viewportInsets?: { left?: number; right?: number; top?: number; bottom?: number };
     layout?: 'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy' | 'map';
     timelineZoom?: number;
     timelineCenter?: number | null;
@@ -310,7 +331,7 @@
         entitySources.get(k)!.add(st.sourceId);
       }
     }
-    for (const src of sources as any[]) {
+    for (const src of (showSourceNodes ? sources : []) as any[]) {
       const srcKey = `src:${src.id}`;
       const c = nodePositionCache.get(srcKey);
       const x = c?.x ?? (spawnCenter?.x ?? 0) + (Math.random() - 0.5) * 12;
@@ -412,6 +433,7 @@
     } else if (layout === 'source') {
       const r = buildSourceAnchors();
       activeAnchors  = r.anchors; markerData = r.markers;
+      scheduleStructuredFit2D(activeAnchors, 'source');
       anchorStrength = 0.80; nodeColorMap = r.nodeColors; hubNodeKeys = [];
     } else if (layout === 'type') {
       const r = buildTypeAnchors();
@@ -697,8 +719,11 @@
   }
 
   function buildSourceAnchors() {
-    // Find source nodes injected into the graph
-    const srcNodes = nodes.filter(n => n.key.startsWith('src:'));
+    // Clustering still works when the detail floor hides provenance nodes.
+    // These anchors position entities; they do not add source nodes or links.
+    const recordedIds = new Set((statements as Statement[]).filter((st) => st.status !== 'rejected' && st.status !== 'superseded').map((st) => st.sourceId));
+    const srcNodes = (sources as Source[]).filter((source) => source.kind !== 'analysis' && recordedIds.has(source.id))
+      .map((source) => ({ key: `src:${source.id}`, label: source.title }));
     if (!srcNodes.length) return { anchors: new Map<string, {x:number;y:number}>(), markers: [] as Marker[], nodeColors: new Map<string, string>() };
 
     // Arrange source nodes in a circle
@@ -879,13 +904,46 @@
   // Camera: center of canvas = world origin (0,0); scale = px per world unit
   const MIN_CAMERA_SCALE = 0.05;
   let camX = 0, camY = 0, camScale = 40;
+  /* Once the user has panned or zoomed, the camera is theirs and the inset offset stops applying. */
+  let userMovedCamera = false;
+  /** Half the left/right (and top/bottom) imbalance: the shift that centres on the free space. */
+  const insetOffset = $derived({
+    x: (((viewportInsets?.left ?? 0) - (viewportInsets?.right ?? 0)) / 2),
+    y: (((viewportInsets?.top ?? 0) - (viewportInsets?.bottom ?? 0)) / 2),
+  });
+
+  /*
+   * The FORCE layout has no camera fit — the structured fit above runs only for hub, hierarchy,
+   * map and source — so its resting camera stayed at (0,0), the canvas centre, forever. That is
+   * the default view, and the one that looked clumped. Offsetting the resting camera aims it at
+   * the free space instead. It stops the moment the user pans or zooms: after that the camera is
+   * theirs, and moving it under them would be worse than any amount of crowding.
+   */
+  /*
+   * EVERY LAYOUT THAT DOES NOT RUN A CAMERA FIT, not just 'force'.
+   *
+   * First version checked `layout !== 'force'` and fixed only the free layout — Matt, 2026-09-18:
+   * "Free layout mode is doing better with spread out nodes, others like focus aren't fixed yet."
+   * scheduleStructuredFit2D covers hub, hierarchy, map and source and applies the offset itself;
+   * focus, type, timeline and order run NEITHER path, so their camera sat at the canvas centre and
+   * the graph stayed behind the panels. Listing the fitted layouts and offsetting everything else
+   * fails in the safe direction: a new layout gets the offset by default rather than silently
+   * missing out, which is how this gap happened in the first place.
+   */
+  const STRUCTURED_FIT_LAYOUTS = new Set(['hub', 'hierarchy', 'map', 'source']);
+
+  $effect(() => {
+    if (userMovedCamera || STRUCTURED_FIT_LAYOUTS.has(layout)) return;
+    camX = insetOffset.x;
+    camY = insetOffset.y;
+  });
   let reportedCamScale = $state(40);
   let prevW = 0, prevH = 0;
   // Cached viewport rect — updated once per tick to avoid repeated layout queries
   let _rect = { left: 0, top: 0, width: 0, height: 0 };
 
   /** Frame structured anchors as a whole instead of cropping their outer clusters below overlays. */
-  function scheduleStructuredFit2D(anchors: Map<string, { x: number; y: number }>, expectedLayout: 'hub' | 'hierarchy' | 'map') {
+  function scheduleStructuredFit2D(anchors: Map<string, { x: number; y: number }>, expectedLayout: 'hub' | 'hierarchy' | 'map' | 'source') {
     requestAnimationFrame(() => {
       if (layout !== expectedLayout || activeAnchors !== anchors || anchors.size === 0) return;
       const width = canvasEl?.clientWidth ?? _rect.width;
@@ -904,12 +962,14 @@
       // Compact panes still cap this at 12%, so a short mobile hierarchy does not lose its canvas.
       const outerGutter = Math.min(88, width * 0.12, height * 0.12);
       const inset = nodeMargin + outerGutter;
-      const fitX = Math.max(1, width - inset * 2) / Math.max(maxX - minX, 1);
-      const fitY = Math.max(1, height - inset * 2) / Math.max(maxY - minY, 1);
+      // Source anchors are cluster centers; leave room for the entities around each center.
+      const clusterPadding = expectedLayout === 'source' ? 8 : 0;
+      const fitX = Math.max(1, width - inset * 2) / Math.max(maxX - minX + clusterPadding, 1);
+      const fitY = Math.max(1, height - inset * 2) / Math.max(maxY - minY + clusterPadding, 1);
       camScale = Math.max(MIN_CAMERA_SCALE, Math.min(40, fitX, fitY));
       reportedCamScale = camScale;
-      camX = -((minX + maxX) / 2) * camScale;
-      camY = -((minY + maxY) / 2) * camScale;
+      camX = -((minX + maxX) / 2) * camScale + insetOffset.x;
+      camY = -((minY + maxY) / 2) * camScale + insetOffset.y;
     });
   }
 
@@ -1492,7 +1552,7 @@
         prevH = h;
         // The initial hierarchy fit is viewport-dependent. A phone rotation, split-pane resize,
         // or desktop panel drag must recompute it instead of leaving the tree cropped or tiny.
-        if ((layout === 'hierarchy' || layout === 'hub') && activeAnchors.size > 0) {
+        if ((layout === 'hierarchy' || layout === 'hub' || layout === 'source') && activeAnchors.size > 0) {
           scheduleStructuredFit2D(activeAnchors, layout);
         }
       }
@@ -1523,7 +1583,7 @@
           const isSel = n.key === selected;
           const isHov = n.key === hoveredKey;
           // Always show selected/hovered labels
-          if (isSel || isHov) {
+          if (isSel || isHov || labelPriorityKeys?.has(n.key)) {
             placed.push({ x: lx, y: ly, w: lblW, h: lblH });
             labelData.push({ key: n.key, label: n.label, x: s.x, y: s.y, opacity: 1.0 });
             continue;
@@ -1655,6 +1715,7 @@
         isDragging = true;
         camX = dragStart.cx + dx;
         camY = dragStart.cy + dy;
+        userMovedCamera = true;
       }
     }
     const hit = hitTest(e.clientX, e.clientY);
@@ -1732,6 +1793,7 @@
     const newScale = Math.max(MIN_CAMERA_SCALE, Math.min(400, camScale * factor));
     camX = px - (px - camX) * (newScale / camScale);
     camY = py - (py - camY) * (newScale / camScale);
+    userMovedCamera = true;
     camScale = newScale;
     reportedCamScale = camScale;
   }

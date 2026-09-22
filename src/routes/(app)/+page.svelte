@@ -16,6 +16,9 @@
   import StatementCard from '$lib/components/StatementCard.svelte';
   import LandingPage from '$lib/components/LandingPage.svelte';
   import SourcesPanel from '$lib/components/SourcesPanel.svelte';
+  import SourcesExplorer from '$lib/components/SourcesExplorer.svelte';
+  import { officialKbActive } from '$lib/stores/official-kb.svelte';
+  import { createProvenanceControls, type projectProvenance } from '$lib/rdf/provenance-view';
   import RelationBuilder from '$lib/components/RelationBuilder.svelte';
   import Select from '$lib/components/ui/Select.svelte';
   import Tooltip from '$lib/components/ui/Tooltip.svelte';
@@ -70,7 +73,7 @@
   import { getSettings, saveSettings } from '$lib/storage/db';
   import { previewModeFrom, legacyFlagsFor, PREVIEW_MODES, PREVIEW_MODE_LABELS, PREVIEW_MODE_HINTS } from '$lib/storage/preview-mode';
   import { shouldSuggest2D, dismissPerfSuggestion, resetPerfMonitor, currentFps } from '$lib/stores/perf-monitor.svelte';
-  import { pushNotification, dismissNotification, notificationStackHeight } from '$lib/stores/notifications.svelte';
+  import { pushNotification, dismissNotification, notificationStackHeight, setNotificationsSuppressed } from '$lib/stores/notifications.svelte';
 
   function checkWebGL(): boolean {
     if (typeof window === 'undefined') return false;
@@ -99,6 +102,48 @@
   let graphSettled = $state(false);
 
   let selected = $state<string | null>(null);
+  let perspective = $state<'statements' | 'sources'>('statements');
+
+  /*
+   * REVISITING THE LANDING IS A REQUEST, NEVER A SIDE EFFECT (Matt, 2026-09-18: "I can't really
+   * get back to the landing without clearing cache").
+   *
+   * Once you have a graph, `visible.length === 0` is never true again, so the landing became
+   * unreachable — the only way back was wiping site data, which also wipes the user's graphs. That
+   * is a bad trade for wanting to re-read the pitch or hand someone a demo.
+   *
+   * It is deliberately driven by ?welcome and NOTHING else. The emptiness branch must stay exactly
+   * as narrow as it is: filters used to splice statements out of `visible`, so filtering to zero
+   * matches tripped that branch and drew the MARKETING LANDING PAGE over somebody's own graph (see
+   * the note on `visible` below). An explicit parameter cannot be reached by accident, is
+   * bookmarkable, and touches no stored data.
+   */
+  const showWelcome = $derived($page.url.searchParams.has('welcome'));
+
+
+  let provenanceControls = $state(createProvenanceControls());
+  let sourceScene = $state<ReturnType<typeof projectProvenance> | null>(null);
+  const canvasMode = $derived(perspective === 'statements' || provenanceControls.presentation === 'graph');
+  const sourceLabels = $derived(perspective === 'sources' && sourceScene
+    ? new Set([...sourceScene.nodes].filter(([, node]) => node.kind !== 'entity').map(([key]) => key)) : null);
+  const sceneSources = $derived(perspective === 'sources' ? sourceScene?.sources.map((item) => item.source ??
+    { id: item.id, title: item.title, uri: '', kind: 'note' as const, ingestedAt: 0 }) ?? [] : sources());
+  let statementsLayout = 'force';
+  let sourcesLayout = 'source';
+  function switchPerspective(next: 'statements' | 'sources') {
+    if (next === perspective) return;
+    if (perspective === 'statements') statementsLayout = layout; else sourcesLayout = layout;
+    perspective = next;
+    layout = (next === 'sources' ? sourcesLayout : statementsLayout) as typeof layout;
+    selected = null; multiSelected = new Set(); navHistory = [];
+  }
+  function selectGraphNode(key: string | null) {
+    if (perspective === 'sources' && key) {
+      const containing = sourceScene?.sources.flatMap((source) => source.groups.filter((group) => group.members.includes(key)).map((group) => group.key)) ?? [];
+      provenanceControls.expanded = new Set([...provenanceControls.expanded, ...containing]);
+    }
+    selected = key;
+  }
   let hoverTarget = $state<string | null>(null);
   /** Pod view (F29.3): whether the currently selected node is an unaccepted arrival. */
   let selectedIsArrival = $state(false);
@@ -325,6 +370,7 @@
 
   onMount(async () => {
     const params = $page.url.searchParams;
+    if (['sources', 'provenance'].includes(params.get('perspective') ?? '')) switchPerspective('sources');
     const l = params.get('layout');
     if (l && ['force','focus','source','type','hub','timeline','order','hierarchy'].includes(l)) layout = l as typeof layout;
     const sel = params.get('sel');
@@ -346,14 +392,32 @@
     const s = await getSettings();
     if (s.nodeLabelFontSize != null) labelFontSize = s.nodeLabelFontSize;
 
-    // First-run tip: tell users about Shelly chat and the explore tour
-    pushNotification({
-      id: 'tip-shelly-explore',
-      type: 'info',
-      oneTime: true,
-      title: 'Meet Shelly',
-      body: 'Ask questions, add knowledge, or take a guided tour of your graph.',
-      action: { label: 'Open Shelly chat', onclick: () => setShellyChatOpen(true) }
+  });
+
+  /*
+   * THE SHELLY TIP WAITS FOR A GRAPH (Matt, 2026-09-18: "Shelly should be relevant in graph view,
+   * as with most notifications").
+   *
+   * It used to fire from onMount, so a first-time visitor met it on the LANDING page — an
+   * interruption sitting above the logo, offering "a guided tour of your graph" before they had a
+   * graph, or any idea what Shelly was. It is the first thing 140k LinkedIn impressions' worth of
+   * traffic saw. A notification that arrives before the thing it refers to is not onboarding, it
+   * is noise, and it trains people to dismiss the next one.
+   *
+   * `oneTime` already dedupes by id, so re-running as the graph loads is harmless; untrack keeps
+   * the push from making notification state a dependency of this effect.
+   */
+  $effect(() => {
+    if (showingLanding) return;
+    untrack(() => {
+      pushNotification({
+        id: 'tip-shelly-explore',
+        type: 'info',
+        oneTime: true,
+        title: 'Meet Shelly',
+        body: 'Ask questions, add knowledge, or take a guided tour of your graph.',
+        action: { label: 'Open Shelly chat', onclick: () => setShellyChatOpen(true) }
+      });
     });
   });
 
@@ -399,6 +463,8 @@
      * The current params are an INPUT to the write, never a reason to write again.
      */
     const params = new URLSearchParams(untrack(() => $page.url.searchParams));
+    if (perspective === 'sources') params.set('perspective', perspective);
+    else params.delete('perspective');
     if (layout !== 'force') params.set('layout', layout);
     else params.delete('layout');
     // Each of these must DELETE when empty. Rebuilding from scratch got that for free; carrying
@@ -411,7 +477,7 @@
     // 'detailed' is the default, so it stays out of the URL; every other rung is shareable.
     if (detailLevel !== 'detailed') params.set('detail', detailLevel); else params.delete('detail');
     const qs = params.toString();
-    replaceState(qs ? `?${qs}` : '?', {});
+    replaceState(qs ? `?${qs}` : '?', { ...untrack(() => $page.state), graphPerspective: perspective });
   });
   // Auto-populate nodeOrder when switching to order layout
   $effect(() => {
@@ -569,23 +635,48 @@
   // hubs/islands/leaps filters already worked this way; the status/source/type ones did not.
   // Now there is one mechanism.
   const visible = $derived.by(() =>
-    statements().filter((s) =>
+    perspective === 'sources' ? sourceScene?.statements ?? [] : statements().filter((s) =>
       s.status !== 'rejected' &&
       s.status !== 'superseded' &&
       !GRAPH_EXCLUDED_PREDICATES.has(s.p.value)
     )
   );
+  /*
+   * ONE ANSWER TO "IS THE LANDING ON SCREEN", because two answers drifted apart the day ?welcome
+   * shipped. The graph chrome was gated on `visible.length > 0` with the comment "hidden on
+   * landing page (no nodes yet)" — true only while the landing implied an empty graph. ?welcome
+   * broke that assumption immediately: the filter panel rendered over the marketing page, because
+   * there WERE nodes, just nothing showing them. Every surface that means "the landing is up" now
+   * reads this instead of re-deriving it.
+   */
+  const showingLanding = $derived(showWelcome || (visible.length === 0 && perspective !== 'sources'));
+
+  /*
+   * NOT THE SAME THING AS THE LANDING, and conflating them broke the source picker.
+   *
+   * In the sources perspective with nothing picked yet, `visible.length === 0` is also true — but
+   * that is a legitimate GRAPH state ("choose up to five sources"), not the marketing page. The
+   * first version of showingLanding lumped them together, which would have hidden SourcesExplorer
+   * exactly when a user needed it to pick their first source.
+   */
+  const showingSourcesEmpty = $derived(!showWelcome && perspective === 'sources' && visible.length === 0);
+  // The landing is a page for someone who has not started yet, so it is the one place a
+  // notification cannot be about anything they did. Deferred while it shows — see the note on
+  // setNotificationsSuppressed — and released the moment there is a graph.
+  $effect(() => {
+    setNotificationsSuppressed(showingLanding);
+  });
 
   // Run before the graph branch updates, so a 3D graph does not mount a throwaway 2D canvas first.
   // No graph means no context allocation; once facts arrive, the saved renderer preference is
   // authoritative and the capability probe runs exactly once when 3D is requested.
   $effect.pre(() => {
-    if (visible.length === 0 || use2D || webglChecked) return;
+    if (showingLanding || use2D || webglChecked) return;
     webglChecked = true;
     webglAvailable = checkWebGL();
   });
   $effect(() => {
-    if (visible.length === 0 || use2D || !webglAvailable) graph3DReady = false;
+    if (showingLanding || use2D || !webglAvailable) graph3DReady = false;
   });
 
   /**
@@ -645,7 +736,7 @@
   const graphView = $derived(
     buildGraphView(visible, {
       categoryNodes: showCategoryNodes,
-      minAltitude: detail.floor ?? undefined,
+      minAltitude: perspective === 'sources' ? undefined : detail.floor ?? undefined,
     }),
   );
 
@@ -657,7 +748,7 @@
 
   /** Statements the canvas actually draws. */
   const drawn = $derived(
-    detail.hubsOnly ? hubOnlyEdges(graphView.edges, detailHubKeys) : graphView.edges,
+    perspective === 'sources' ? sourceScene?.edges ?? [] : detail.hubsOnly ? hubOnlyEdges(graphView.edges, detailHubKeys) : graphView.edges,
   );
 
   /** Everything the detail ladder took off the canvas — the floor AND the hubs rung. */
@@ -1282,8 +1373,22 @@
    */
   let assetGutters = $state({ left: 0, right: 0 });
 
+  /*
+   * MEASURED ALWAYS, NOT ONLY FOR AN EXPANDED ASSET (2026-09-18).
+   *
+   * This was gated on `expandedAssetKey`, so the one thing that needed the numbers most — the
+   * GRAPH CAMERA — never got them. With Shelly's panel open and the filter stack beside it, roughly
+   * half the viewport is covered, but the default force layout has no camera fit and rests at the
+   * canvas centre, so the graph settled underneath the panels and read as "the nodes are bunched
+   * up". Sweeping REPEL, BASE_REST and CENTER across both renderers moved the spread by less than
+   * noise, because those constants scale the layout and the camera just refits. The lever was never
+   * the physics; it was aiming the camera at the space that is actually free.
+   *
+   * The same measurement now serves both consumers, rather than a second copy that would drift from
+   * this one's hard-won rule about which panels count.
+   */
   $effect(() => {
-    if (!expandedAssetKey || assetFullscreen) return;
+    if (assetFullscreen) return;
     const measure = () => {
       const midX = window.innerWidth / 2;
       let left = 0, right = 0;
@@ -1915,17 +2020,211 @@
   }
 </script>
 
+<svelte:window onkeydown={(e) => {
+  if (e.key === 'Escape' && expandedAssetKey) {
+    if (assetFullscreen) assetFullscreen = false; else collapseAsset();
+  }
+}} />
+
+{#snippet graphTools()}
+  <!-- FORCE -->
+  <div class="overlay-group">
+    <!-- "view", not "layout": the group now holds TWO controls that each name themselves, and
+         reusing one of their names for the heading is the same confusion the old "force" heading
+         had — a label that means something different from the thing beside it. -->
+    <span class="group-label mono">view</span>
+    <div class="chip-row">
+      <Popover.Root bind:open={showLayoutMenu}>
+        <Popover.Trigger>
+          {#snippet child({ props })}
+            <button {...props} class="chip" class:active={showLayoutMenu}
+              title={availableLayouts.find((l) => l.value === layout)?.title}>
+              <span class="lbl mono">{availableLayouts.find((l) => l.value === layout)?.label ?? layout}</span>
+              <span class="arr mono">{showLayoutMenu ? '▲' : '▼'}</span>
+            </button>
+          {/snippet}
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Content class="filter-popover" sideOffset={6}>
+            {#each availableLayouts as l (l.value)}
+              <button class="chip small" class:active={layout === l.value} title={l.title}
+                onclick={() => { layout = l.value; showLayoutMenu = false; }}>
+                <span class="lbl mono">{l.label}</span>
+              </button>
+            {/each}
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
+
+      {#if perspective === 'statements'}
+      <Popover.Root bind:open={showDetailMenu}>
+        <Popover.Trigger>
+          {#snippet child({ props })}
+            <button {...props} class="chip" class:active={detailLevel !== 'detailed' || showDetailMenu}
+              title={detail.title}>
+              <span class="lbl mono">{detail.label}</span>
+              <span class="arr mono">{showDetailMenu ? '▲' : '▼'}</span>
+            </button>
+          {/snippet}
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Content class="filter-popover" sideOffset={6}>
+            {#each DETAIL_LEVELS as level (level.id)}
+              <button class="chip small" class:active={detailLevel === level.id} title={level.title}
+                onclick={() => { detailLevel = level.id; showDetailMenu = false; }}>
+                <span class="lbl mono">{level.label}</span>
+              </button>
+            {/each}
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
+      {:else}
+        <button class="chip" onclick={() => provenanceControls.expanded = provenanceControls.expanded.size
+          ? new Set() : new Set(sourceScene?.sources.flatMap((source) => source.groups.map((group) => group.key)) ?? [])}>
+          {provenanceControls.expanded.size ? 'Collapse sets' : 'Expand sets'}
+        </button>
+      {/if}
+    </div>
+    <!--
+      HIDDEN MUST BE VISIBLY HIDDEN (Matt's own condition on this feature). A canvas that is
+      quietly missing 900 facts is not a cleaner graph, it is a graph that lies about its size.
+      The node count is the one that answers "is it less cluttered"; the fact count is the one
+      that answers "what did that cost me".
+    -->
+    {#if perspective === 'statements' && detailHidden.statements > 0}
+      <span class="depth-hidden mono" title="Hidden from the canvas only. Every fact is still in the graph, and still listed in a node's panel.">
+        {detailHidden.nodes} node{detailHidden.nodes === 1 ? '' : 's'} ·
+        {detailHidden.statements} fact{detailHidden.statements === 1 ? '' : 's'} hidden
+      </span>
+    {/if}
+    {#if podMode}
+      <span class="pod-indicator mono" title="Pod view is on — arrivals from your currents drift in translucent until you accept them. Toggle it on the Graph tab.">🐋 pod</span>
+    {/if}
+  </div>
+
+  <!-- PREVIEWS — one mode, not two booleans that can contradict each other. "preview all" spreads
+       every thumbnail so they are all visible; "auto-expand" blows the selected one up to cover
+       most of the graph. Both at once meant the overlay hid the collage, so they are exclusive. -->
+  <div class="overlay-group">
+    <span class="group-label mono">previews</span>
+    <div class="chip-row">
+      <Popover.Root bind:open={showPreviewMenu}>
+        <Popover.Trigger>
+          {#snippet child({ props })}
+            <button
+              {...props}
+              class="chip"
+              class:active={previewMode !== 'manual' || showPreviewMenu}
+              title={PREVIEW_MODE_HINTS[previewMode]}
+            >
+              <span class="lbl mono">{PREVIEW_MODE_LABELS[previewMode]}</span>
+              <span class="arr mono">{showPreviewMenu ? '▲' : '▼'}</span>
+            </button>
+          {/snippet}
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Content class="filter-popover" sideOffset={6}>
+            {#each PREVIEW_MODES as mode (mode)}
+              <button
+                class="chip small"
+                class:active={previewMode === mode}
+                title={PREVIEW_MODE_HINTS[mode]}
+                onclick={() => {
+                  updateSettings({ previewMode: mode, ...legacyFlagsFor(mode) });
+                  showPreviewMenu = false;
+                }}
+              >
+                <span class="lbl mono">{PREVIEW_MODE_LABELS[mode]}</span>
+              </button>
+            {/each}
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
+    </div>
+  </div>
+
+  <!-- TIMELINE CONTROLS (visible only when timeline layout is active) -->
+  {#if layout === 'timeline'}
+  <div class="overlay-group">
+    <span class="group-label mono">timeline</span>
+    <div class="timeline-controls">
+      <div class="timeline-row">
+        <span class="timeline-label mono">zoom</span>
+        <input
+          type="range"
+          min="1"
+          max="50"
+          step="0.5"
+          bind:value={timelineZoom}
+          class="timeline-slider"
+        />
+        <span class="timeline-value mono">{timelineZoom.toFixed(0)}x</span>
+      </div>
+      <div class="timeline-row">
+        <span class="timeline-label mono">show</span>
+        <div class="chip-row">
+          <button
+            class="chip chip-sm"
+            class:active={timelineTimeSource === 'event'}
+            onclick={() => { timelineTimeSource = 'event'; timelineCenter = null; }}
+          ><span class="lbl mono">event dates</span></button>
+          <button
+            class="chip chip-sm"
+            class:active={timelineTimeSource === 'ingested'}
+            onclick={() => { timelineTimeSource = 'ingested'; timelineCenter = null; }}
+          ><span class="lbl mono">ingested</span></button>
+        </div>
+      </div>
+      {#if timelineCenter !== null}
+      <div class="timeline-row">
+        <button
+          class="chip chip-sm"
+          onclick={() => { timelineCenter = null; timelineZoom = 1; }}
+        ><span class="lbl mono">reset view</span></button>
+      </div>
+      {/if}
+    </div>
+  </div>
+  {/if}
+
+  <div class="chip-row" role="group" aria-label="Graph renderer">
+    <button class="chip" aria-pressed={use2D || !webglAvailable} onclick={() => { use2D = true; updateSettings({ prefer2D: true }); }}>2D</button>
+    <button class="chip" aria-pressed={!use2D && webglAvailable} onclick={() => { use2D = false; updateSettings({ prefer2D: false }); }}>3D</button>
+  </div>
+{/snippet}
+
+<!-- Graph chrome: hidden whenever the landing is up (see showingLanding). -->
+{#if !showingLanding && (statements().length > 0 || sources().length > 0)}
+  <div class="perspective-switch" class:banner-offset={officialKbActive()} role="group" aria-label="Graph perspective">
+    <button aria-pressed={perspective === 'statements'} onclick={() => switchPerspective('statements')}>Statements</button>
+    <button aria-pressed={perspective === 'sources'} onclick={() => switchPerspective('sources')}>Sources</button>
+  </div>
+{/if}
+
+<!-- Graph chrome. Hidden for the marketing landing, but NOT for the sources-empty state,
+     which is where somebody picks their first source. -->
+{#if perspective === 'sources' && !showingLanding}
+  <SourcesExplorer statements={statements()} sources={sources()} bind:controls={provenanceControls} bind:selected
+    onscene={(scene) => sourceScene = scene} {graphTools} assetFor={nodeAssetFor}
+    onentity={(key) => { switchPerspective('statements'); selected = key; }} />
+{/if}
+{#if canvasMode}
 <div class="viewport">
   <section
     class="graph"
-    aria-label={visible.length === 0 ? 'Getting started' : 'Knowledge graph'}
+    aria-label={perspective === 'sources' ? 'Sources graph' : showingLanding ? 'Getting started' : 'Knowledge graph'}
     onpointermove={onGraphPointerMove}
-    class:graph-landing={visible.length === 0}
-    data-graph-renderer={visible.length === 0 ? 'landing' : use2D || !webglAvailable ? '2d' : '3d'}
+    class:graph-landing={showingLanding}
+    data-graph-renderer={showingLanding ? 'landing' : use2D || !webglAvailable ? '2d' : '3d'}
     data-graph-ready={graph3DReady}
-    data-graph-settled={visible.length === 0 || graphSettled}
+    data-graph-perspective={perspective}
+    data-provenance-nodes={perspective === 'sources' ? sourceScene?.nodes.size : undefined}
+    data-provenance-links={perspective === 'sources' ? sourceScene?.edges.length : undefined}
+    data-graph-settled={showingLanding || graphSettled}
   >
-  {#if visible.length === 0}
+  {#if showingSourcesEmpty}
+    <div class="sources-empty"><h2>Select sources to explore</h2><p>Choose up to five sources from the source picker.</p></div>
+  {:else if showingLanding}
     <LandingPage />
   {:else if use2D || !webglAvailable}
     <KnowledgeGraph2D
@@ -1937,11 +2236,14 @@
       {timelineZoom}
       {timelineCenter}
       {timelineTimeSource}
-      sources={sources()}
+      sources={sceneSources}
+      labelPriorityKeys={sourceLabels}
+      viewportInsets={assetGutters}
+      showSourceNodes={perspective === 'statements' && detailLevel === 'all'}
       targetKey={hoverTarget}
       onselect={(k, ctrlKey) => {
         if (!autoExpandAssets) collapseAsset(); // manual mode: a graph click collapses; auto mode: the effect re-syncs
-        if (ctrlKey && k) {
+        if (ctrlKey && k && perspective === 'statements') {
           const next = new Set(multiSelected);
           if (next.has(k)) next.delete(k); else next.add(k);
           multiSelected = next;
@@ -1953,13 +2255,13 @@
       }}
       onhover={(k) => (hoverTarget = k)}
       onlabelsmove={setNodeLabels}
-      onmarkersmove={(m) => { markerLabels = m; }}
+      onmarkersmove={(m) => { markerLabels = perspective === 'sources' ? [] : m; }}
       onsettledchange={(settled) => { graphSettled = settled; }}
       ontimelinepan={(c) => { timelineCenter = c; }}
       {nodeOrder}
       onreorder={(order) => { nodeOrder = order; }}
       highlighted={[...highlightedSet]}
-      {dimMode}
+      dimMode={perspective === 'statements' && dimMode}
       {podMode}
       {ghostGraph}
       {ghostAnchorKey}
@@ -1982,11 +2284,13 @@
           {timelineTimeSource}
           previewKeys={previewNodeKeys}
           previewSizePx={nodePreviewSize}
-          sources={sources()}
+          sources={sceneSources}
+          labelPriorityKeys={sourceLabels}
+          viewportInsets={assetGutters}
           targetKey={hoverTarget}
           onselect={(k, ctrlKey) => {
         if (!autoExpandAssets) collapseAsset(); // manual mode: a graph click collapses; auto mode: the effect re-syncs
-        if (ctrlKey && k) {
+        if (ctrlKey && k && perspective === 'statements') {
           const next = new Set(multiSelected);
           if (next.has(k)) next.delete(k); else next.add(k);
           multiSelected = next;
@@ -1998,12 +2302,12 @@
       }}
           onhover={(k) => (hoverTarget = k)}
           onlabelsmove={setNodeLabels}
-          onmarkersmove={(m) => { markerLabels = m; }}
+          onmarkersmove={(m) => { markerLabels = perspective === 'sources' ? [] : m; }}
           onsettledchange={(settled) => { graphSettled = settled; }}
           ontimelinepan={(c) => { timelineCenter = c; }}
           onready={() => (graph3DReady = true)}
           highlighted={[...highlightedSet]}
-          {dimMode}
+          dimMode={perspective === 'statements' && dimMode}
         />
       </Canvas>
       {#snippet failed(error)}
@@ -2018,13 +2322,14 @@
 
   </section>
 </div>
+{/if}
 
-<!-- Floating filter UI overlay — hidden on landing page (no nodes yet).
+<!-- Floating filter UI overlay — hidden whenever the landing is up (see showingLanding).
      Desktop: always-open SnapPanel. Compact: bottom sheet behind the FAB below. -->
-{#if isCompact() && visible.length > 0 && !filterSheetOpen}
+{#if perspective === 'statements' && isCompact() && !showingLanding && !filterSheetOpen}
   <button class="filter-fab mono" onclick={() => (filterSheetOpen = true)} aria-label="Filters & layout">☰ filters</button>
 {/if}
-{#if visible.length > 0}
+{#if perspective === 'statements' && !showingLanding}
 <AdaptivePanel corner="top-left" width={360} minWidth={240} maxWidth={800} zIndex={300} title="Filters & layout" open={isCompact() ? filterSheetOpen : true} onOpenChange={(o) => (filterSheetOpen = o)}>
 <div class="overlay-inner">
 
@@ -2150,159 +2455,7 @@
     </div>
   </div>
 
-  <!-- FORCE -->
-  <div class="overlay-group">
-    <!-- "view", not "layout": the group now holds TWO controls that each name themselves, and
-         reusing one of their names for the heading is the same confusion the old "force" heading
-         had — a label that means something different from the thing beside it. -->
-    <span class="group-label mono">view</span>
-    <div class="chip-row">
-      <Popover.Root bind:open={showLayoutMenu}>
-        <Popover.Trigger>
-          {#snippet child({ props })}
-            <button {...props} class="chip" class:active={showLayoutMenu}
-              title={availableLayouts.find((l) => l.value === layout)?.title}>
-              <span class="lbl mono">{availableLayouts.find((l) => l.value === layout)?.label ?? layout}</span>
-              <span class="arr mono">{showLayoutMenu ? '▲' : '▼'}</span>
-            </button>
-          {/snippet}
-        </Popover.Trigger>
-        <Popover.Portal>
-          <Popover.Content class="filter-popover" sideOffset={6}>
-            {#each availableLayouts as l (l.value)}
-              <button class="chip small" class:active={layout === l.value} title={l.title}
-                onclick={() => { layout = l.value; showLayoutMenu = false; }}>
-                <span class="lbl mono">{l.label}</span>
-              </button>
-            {/each}
-          </Popover.Content>
-        </Popover.Portal>
-      </Popover.Root>
-
-      <Popover.Root bind:open={showDetailMenu}>
-        <Popover.Trigger>
-          {#snippet child({ props })}
-            <button {...props} class="chip" class:active={detailLevel !== 'detailed' || showDetailMenu}
-              title={detail.title}>
-              <span class="lbl mono">{detail.label}</span>
-              <span class="arr mono">{showDetailMenu ? '▲' : '▼'}</span>
-            </button>
-          {/snippet}
-        </Popover.Trigger>
-        <Popover.Portal>
-          <Popover.Content class="filter-popover" sideOffset={6}>
-            {#each DETAIL_LEVELS as level (level.id)}
-              <button class="chip small" class:active={detailLevel === level.id} title={level.title}
-                onclick={() => { detailLevel = level.id; showDetailMenu = false; }}>
-                <span class="lbl mono">{level.label}</span>
-              </button>
-            {/each}
-          </Popover.Content>
-        </Popover.Portal>
-      </Popover.Root>
-    </div>
-    <!--
-      HIDDEN MUST BE VISIBLY HIDDEN (Matt's own condition on this feature). A canvas that is
-      quietly missing 900 facts is not a cleaner graph, it is a graph that lies about its size.
-      The node count is the one that answers "is it less cluttered"; the fact count is the one
-      that answers "what did that cost me".
-    -->
-    {#if detailHidden.statements > 0}
-      <span class="depth-hidden mono" title="Hidden from the canvas only. Every fact is still in the graph, and still listed in a node's panel.">
-        {detailHidden.nodes} node{detailHidden.nodes === 1 ? '' : 's'} ·
-        {detailHidden.statements} fact{detailHidden.statements === 1 ? '' : 's'} hidden
-      </span>
-    {/if}
-  
-    {#if podMode}
-      <span class="pod-indicator mono" title="Pod view is on — arrivals from your currents drift in translucent until you accept them. Toggle it on the Graph tab.">🐋 pod</span>
-    {/if}
-  </div>
-
-  <!-- PREVIEWS — one mode, not two booleans that can contradict each other. "preview all" spreads
-       every thumbnail so they are all visible; "auto-expand" blows the selected one up to cover
-       most of the graph. Both at once meant the overlay hid the collage, so they are exclusive. -->
-  <div class="overlay-group">
-    <span class="group-label mono">previews</span>
-    <div class="chip-row">
-      <Popover.Root bind:open={showPreviewMenu}>
-        <Popover.Trigger>
-          {#snippet child({ props })}
-            <button
-              {...props}
-              class="chip"
-              class:active={previewMode !== 'manual' || showPreviewMenu}
-              title={PREVIEW_MODE_HINTS[previewMode]}
-            >
-              <span class="lbl mono">{PREVIEW_MODE_LABELS[previewMode]}</span>
-              <span class="arr mono">{showPreviewMenu ? '▲' : '▼'}</span>
-            </button>
-          {/snippet}
-        </Popover.Trigger>
-        <Popover.Portal>
-          <Popover.Content class="filter-popover" sideOffset={6}>
-            {#each PREVIEW_MODES as mode (mode)}
-              <button
-                class="chip small"
-                class:active={previewMode === mode}
-                title={PREVIEW_MODE_HINTS[mode]}
-                onclick={() => {
-                  updateSettings({ previewMode: mode, ...legacyFlagsFor(mode) });
-                  showPreviewMenu = false;
-                }}
-              >
-                <span class="lbl mono">{PREVIEW_MODE_LABELS[mode]}</span>
-              </button>
-            {/each}
-          </Popover.Content>
-        </Popover.Portal>
-      </Popover.Root>
-    </div>
-  </div>
-
-  <!-- TIMELINE CONTROLS (visible only when timeline layout is active) -->
-  {#if layout === 'timeline'}
-  <div class="overlay-group">
-    <span class="group-label mono">timeline</span>
-    <div class="timeline-controls">
-      <div class="timeline-row">
-        <span class="timeline-label mono">zoom</span>
-        <input
-          type="range"
-          min="1"
-          max="50"
-          step="0.5"
-          bind:value={timelineZoom}
-          class="timeline-slider"
-        />
-        <span class="timeline-value mono">{timelineZoom.toFixed(0)}x</span>
-      </div>
-      <div class="timeline-row">
-        <span class="timeline-label mono">show</span>
-        <div class="chip-row">
-          <button
-            class="chip chip-sm"
-            class:active={timelineTimeSource === 'event'}
-            onclick={() => { timelineTimeSource = 'event'; timelineCenter = null; }}
-          ><span class="lbl mono">event dates</span></button>
-          <button
-            class="chip chip-sm"
-            class:active={timelineTimeSource === 'ingested'}
-            onclick={() => { timelineTimeSource = 'ingested'; timelineCenter = null; }}
-          ><span class="lbl mono">ingested</span></button>
-        </div>
-      </div>
-      {#if timelineCenter !== null}
-      <div class="timeline-row">
-        <button
-          class="chip chip-sm"
-          onclick={() => { timelineCenter = null; timelineZoom = 1; }}
-        ><span class="lbl mono">reset view</span></button>
-      </div>
-      {/if}
-    </div>
-  </div>
-  {/if}
+  {@render graphTools()}
 
   <!-- Graph package & sync lives in the GRAPHS tab (/kb), alongside sources, predicates
        and the graph registry. It was buried in this filter panel behind a disclosure,
@@ -2313,18 +2466,20 @@
 </AdaptivePanel>
 {/if}
 
-{#if visible.length > 0}
+<!-- Searching a graph you cannot see is not a thing anybody wants; hidden with the rest of the
+     graph chrome whenever the landing is up (see showingLanding). -->
+{#if !showingLanding}
 <SearchBar
-  statements={statements()}
-  onselectnode={(key) => { selected = key; }}
-  onselectstatement={(_, subjectKey) => { selected = subjectKey; }}
+  statements={perspective === 'sources' ? [...visible, ...statements()] : statements()}
+  onselectnode={selectGraphNode}
+  onselectstatement={(_, subjectKey) => selectGraphNode(subjectKey)}
   onshellyquery={(q) => requestShellyChat(q)}
   onshellyopen={() => setShellyChatOpen(true)}
 />
 {/if}
 
 <!-- Multi-select action panel — shown when 2+ nodes selected via Ctrl+click -->
-{#if multiSelected.size >= 2}
+{#if perspective === 'statements' && multiSelected.size >= 2}
   {@const [nodeA, nodeB] = multiSelectedList}
   <div class="multisel-panel">
     <span class="multisel-count mono">{multiSelected.size} selected</span>
@@ -2355,8 +2510,15 @@
 <!-- transition:fade handles distance-culling enter/exit; dim-hidden handles dimMode + selected -->
 <!-- Always-visible node labels — shared GraphLabels overlay (F92). The asset thumbnail and leap
      badge are page-specific, passed as snippets so this page keeps them and their styling. -->
-<GraphLabels labels={nodeLabels} {selected} {hoverTarget} {dimMode} {highlightedSet} {labelFontSize}>
+{#if canvasMode}
+<GraphLabels labels={nodeLabels} {selected} {hoverTarget} dimMode={perspective === 'statements' && dimMode} {highlightedSet} {labelFontSize}>
   {#snippet preview(n)}
+    {@const sourceNode = perspective === 'sources' ? sourceScene?.nodes.get(n.key) : undefined}
+    {#if sourceNode?.kind === 'group'}
+      <button class="source-set-preview" aria-label={`Inspect set ${sourceNode.group.label}`} onclick={() => selected = n.key}>
+        <span class="set-card-icon" aria-hidden="true">▦</span><span><strong>{sourceNode.group.label}</strong><small>{sourceNode.group.members.length} members</small></span>
+      </button>
+    {/if}
     <!-- Show the node image when previews are forced on, OR for the focused/selected/highlighted
          nodes. Click it to expand large (→ fullscreen). Hidden while it is the expanded one. -->
     <!-- Under an active filter, "preview all" means all the nodes the filter kept — not all nodes
@@ -2410,6 +2572,7 @@
     {m.label}
   </div>
 {/each}
+{/if}
 
 <!-- Hover content tooltip — shows full text for literal nodes, skos:definition for IRI nodes -->
 {#if hoverContent && !gifActiveKey}
@@ -2527,11 +2690,6 @@
   </div>
 {/if}
 
-<svelte:window onkeydown={(e) => {
-  if (e.key === 'Escape' && expandedAssetKey) {
-    if (assetFullscreen) assetFullscreen = false; else collapseAsset();
-  }
-}} />
 
 <!-- Keyboard nav hint (shown briefly when a node is selected) -->
 {#if selected && navHistory.length === 0}
@@ -2554,7 +2712,7 @@
 {/if}
 
 <!-- Unified node panel — shown when a node is selected -->
-{#if selected && nodeDetails}
+{#if perspective === 'statements' && selected && nodeDetails}
   {@const info = nodeDetails}
   <AdaptivePanel corner="bottom-right" width={320} minWidth={240} maxWidth={800} zIndex={300} title={info.label} open={true} onOpenChange={(o) => { if (!o) { selected = null; editingLabel = false; showMergeUI = false; showRelationUI = false; showMergeReview = false; } }} extraStyle="max-height: calc(100vh - {132 + notificationStackHeight.get()}px)">
     {#snippet header()}
@@ -3074,6 +3232,27 @@
 {/if}
 
 <style>
+  .source-set-preview { pointer-events: auto; display: flex; gap: 0.55rem; align-items: center; transform: translate(-50%, -110%); padding: 0.55rem 0.75rem; min-width: 130px; max-width: 230px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--rad); text-align: left; box-shadow: 0 3px 12px #0004; }
+  .source-set-preview strong { display: block; font-size: 0.8rem; white-space: normal; }
+  .source-set-preview small { display: block; font-size: 0.7rem; color: var(--muted); margin-top: 0.15rem; }
+  .set-card-icon { font-size: 1.3rem; color: var(--accent); }
+  :global(.source-set-preview + .node-label) { display: none; }
+  .perspective-switch {
+    position: fixed; z-index: 350; top: 0.75rem; left: 0.75rem;
+    display: flex; gap: 0.25rem; padding: 0.25rem; background: var(--surface);
+    border: 1px solid var(--line); border-radius: var(--rad);
+  }
+  .perspective-switch.banner-offset { top: 2.7rem; }
+  .sources-empty { margin: 8rem auto; text-align: center; }
+  .perspective-switch button { font-size: 0.8rem; min-height: 36px; padding: 0.4rem 0.7rem; }
+  .perspective-switch button[aria-pressed='true'] { color: var(--accent); border-color: var(--accent); }
+  @media (max-width: 1000px) {
+    .perspective-switch, .perspective-switch.banner-offset {
+      top: auto; bottom: calc(5.75rem + env(safe-area-inset-bottom));
+      left: 50%; transform: translateX(-50%);
+    }
+    .perspective-switch button { min-height: 44px; }
+  }
   /* ── Analysis toast ── */
   .analyze-toast {
     position: fixed;

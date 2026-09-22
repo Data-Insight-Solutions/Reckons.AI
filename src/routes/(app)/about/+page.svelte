@@ -228,6 +228,12 @@
           first-time reader who wants to understand it first had nowhere to go.
         -->
         <a href="/docs" class="btn-secondary">Read the docs</a>
+        <!--
+          THE WAY BACK TO THE LANDING (Matt, 2026-09-18: "I can't really get back to the landing
+          without clearing cache"). ?welcome renders it over the graph without touching any stored
+          data, so re-reading the pitch or showing someone the demo no longer costs you your graphs.
+        -->
+        <a href="/?welcome" class="btn-secondary">See the welcome page</a>
       </div>
     </div>
     <div class="scroll-hint" aria-hidden="true">↓</div>
@@ -866,7 +872,7 @@
 
     <p class="starter-sub-heading mono">example data</p>
     <p class="starter-sub-desc">
-      Import example facts into your own graph to see how real-world data looks as a graph.
+      Explore generic example facts designed for learning Reckons.AI.
     </p>
 
     <div class="starter-grid">
@@ -894,6 +900,7 @@
       {/each}
     </div>
   </section>
+
 
   <!-- ── Quick Reference ──────────────────────────────────────────────────── -->
   <section class="section ref-section" aria-label="Quick reference">

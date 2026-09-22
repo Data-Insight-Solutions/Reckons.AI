@@ -498,7 +498,7 @@ test:ManualER-Step3
     story:partOf        test:ManualExtractionReview ;
     story:order         "3"^^xsd:integer ;
     story:title         "Ingest eight dictated notes — 02-notes-batch.txt" ;
-    story:content       "kb:note-02-batch in the `extraction-corpus` graph — the one that matters: every damage pattern catalogued from the real Pebble Index 01 notes, plus enough vocabulary for repair to have something to match. Seven things to judge, in its kpred:expected. The highest-value one is FIRST: the last two notes are REQUESTS, and must become tasks rather than facts. A fact asserting a document was generated is a claim nobody made. Ingest AFTER 01 — 01 seeds the vocabulary that makes repair possible here." ;
+    story:content       "kb:note-02-batch in the `extraction-corpus` graph — the one that matters: every damage pattern catalogued from the real private notes corpus, plus enough vocabulary for repair to have something to match. Seven things to judge, in its kpred:expected. The highest-value one is FIRST: the last two notes are REQUESTS, and must become tasks rather than facts. A fact asserting a document was generated is a claim nobody made. Ingest AFTER 01 — 01 seeds the vocabulary that makes repair possible here." ;
     kpred:assertion     "2 tasks routed, 0 facts asserting the requests" ;
     kpred:page          "/ingest" .
 

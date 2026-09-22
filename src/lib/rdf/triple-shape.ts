@@ -1,15 +1,16 @@
 /**
  * Catching a triple that a model collapsed into one node.
  *
- * THE FAILURE, OBSERVED 2026-08-27. Dictating "Orange Logic is an enterprise DAM" produced the
- * entity `orange-logic-is-an-enterprise-dam`. The whole proposition became the SUBJECT, and the
+ * THE FAILURE, OBSERVED 2026-08-27 (illustrated with a synthetic name). A sentence like
+ * "Example Archive is an enterprise DAM" became the
+ * entity `example-archive-is-an-enterprise-dam`. The whole proposition became the SUBJECT, and the
  * relation it states was never extracted at all. `validateExtractedTriples` waved it through
  * because that function checks TYPES — is the subject a non-empty string? — and a sentence is a
  * perfectly good string.
  *
  * WHY A RULE AND NOT A BETTER PROMPT. The prompt already says to emit subject/predicate/object,
  * and a model that ignores it will keep ignoring it. This is checkable by a rule: a name does not
- * contain a finite verb. "Orange Logic" is a name; "Orange Logic is an enterprise DAM" is a claim
+ * contain a finite verb. "Example Archive" is a name; "Example Archive is an enterprise DAM" is a claim
  * about one. So this is script tier — deterministic, free, and right by construction rather than
  * right on average. It holds whichever model is behind the extractor, including a future one.
  *
@@ -57,7 +58,7 @@ function tokens(value: string): string[] {
  * True when a string reads as a CLAIM rather than a NAME.
  *
  * Requires a finite verb with at least one content word on each side: "is-a" alone is a predicate
- * and perfectly legitimate, while "orange-logic-is-an-enterprise-dam" is a sentence wearing a
+ * and perfectly legitimate, while "example-archive-is-an-enterprise-dam" is a sentence wearing a
  * slug's clothes.
  */
 export function looksLikeProposition(value: string): boolean {

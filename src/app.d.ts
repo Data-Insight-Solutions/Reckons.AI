@@ -4,7 +4,7 @@ declare global {
     // interface Error {}
     // interface Locals {}
     // interface PageData {}
-    // interface PageState {}
+    interface PageState { graphPerspective?: 'statements' | 'sources'; }
     // interface Platform {}
   }
 }

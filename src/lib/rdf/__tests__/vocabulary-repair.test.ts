@@ -157,7 +157,7 @@ describe('repairCandidates', () => {
 });
 
 /**
- * MEASURED 2026-09-02 on the dictated Pebble Index 01 notes. `phoneticKey` strips digits — right,
+ * MEASURED 2026-09-02 on the private dictated notes corpus. `phoneticKey` strips digits — right,
  * since a digit has no sound to key on — but that collapsed every timestamped note id to the same
  * key. 14 note ids produced 12 confident "repairs", all false, and a repair merges entities, so
  * accepting one would have destroyed the provenance linking a fact to the note it came from.
