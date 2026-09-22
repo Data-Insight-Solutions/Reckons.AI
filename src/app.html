@@ -8,10 +8,20 @@
 		<!-- CSP: script-src 'self' + wasm-unsafe-eval (ONNX/transformers.js); worker-src blob: (SW + embedding workers);
 		     connect-src lists every provider the browser calls directly; object/base/form locked down.
 		     Fonts are self-hosted in static/fonts/ — no external font requests.
-		     static.cloudflareinsights.com is Cloudflare Web Analytics, which Pages INJECTS into the
-		     served HTML. It was blocked by this policy from launch until 2026-09-18, so the beacon
-		     failed on every visit and the project had no traffic data at all during the first
-		     LinkedIn push. A blocked analytics script fails silently apart from one console line —
+		     TWO cloudflareinsights HOSTS ARE REQUIRED AND THEY ARE NOT THE SAME ONE. Cloudflare
+		     INJECTS the Web Analytics beacon at the edge (verified in a real browser on production
+		     2026-09-22: a module script with our site token, integrity hash and spa:2 — it is NOT in
+		     this file and must not be added here, or it double-counts). That script is FETCHED from
+		     static.cloudflareinsights.com, which script-src allows, and then POSTS its measurements to
+		     cloudflareinsights.com/cdn-cgi/rum — no 'static.' prefix — which connect-src did NOT list.
+		     So the beacon loaded and every report it sent was blocked by our own policy, which looks
+		     exactly like having no analytics at all. Caught by the E2E console-error assertion in
+		     tests/e2e/app.test.ts, not by reading the policy. NOTE that curl cannot see any of this:
+		     edge injection only fires for browser requests, so `curl | grep beacon` returns nothing on
+		     a site where the beacon is present and working. It was blocked by this policy
+		     from launch until 2026-09-18, so the beacon failed on every visit and the project had no
+		     traffic data at all during the first LinkedIn push. A blocked analytics script fails
+		     silently apart from one console line —
 		     the only symptom is a dashboard that reads zero, which looks like no traffic rather
 		     than like a bug. It needs BOTH script-src (to load) and connect-src (to report).
 		     ADDING A fetch() TO A NEW HOST MEANS ADDING IT HERE TOO, or the request is refused
@@ -37,7 +47,7 @@
 		     the app sees it. Honest limit: this only helps builds that KNOW the origin (local dev
 		     and self-hosters). On the shared hosted build a user's own server is still unreachable,
 		     and passing CSP is only half — the server must also send Access-Control-Allow-Origin. -->
-		<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-inline' blob: https://storage.googleapis.com https://accounts.google.com https://cdn.jsdelivr.net https://static.cloudflareinsights.com; worker-src 'self' blob:; connect-src 'self' data: blob: https://static.cloudflareinsights.com https://api.anthropic.com https://api.openai.com https://api.mistral.ai https://generativelanguage.googleapis.com https://openrouter.ai https://api.meshy.ai https://www.googleapis.com https://api.hume.ai wss://api.hume.ai https://accounts.google.com https://api.github.com https://api.tavily.com https://api.firecrawl.dev https://api.reckons.ai https://r.jina.ai https://corsproxy.io https://huggingface.co https://*.huggingface.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.huggingface.co https://*.xethub.hf.co https://*.aws.cdn.hf.co https://cdn.jsdelivr.net http://localhost:* ws://localhost:* %RECKONS_EXTRA_CONNECT_SRC%; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; font-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self';" />
+		<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-inline' blob: https://storage.googleapis.com https://accounts.google.com https://cdn.jsdelivr.net https://static.cloudflareinsights.com; worker-src 'self' blob:; connect-src 'self' data: blob: https://static.cloudflareinsights.com https://cloudflareinsights.com https://api.anthropic.com https://api.openai.com https://api.mistral.ai https://generativelanguage.googleapis.com https://openrouter.ai https://api.meshy.ai https://www.googleapis.com https://api.hume.ai wss://api.hume.ai https://accounts.google.com https://api.github.com https://api.tavily.com https://api.firecrawl.dev https://api.reckons.ai https://r.jina.ai https://corsproxy.io https://huggingface.co https://*.huggingface.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.huggingface.co https://*.xethub.hf.co https://*.aws.cdn.hf.co https://cdn.jsdelivr.net http://localhost:* ws://localhost:* %RECKONS_EXTRA_CONNECT_SRC%; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; font-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self';" />
 		<title>Reckons.AI</title>
 		<meta name="description" content="Reckons.AI — the semantic understanding knowledge graph that you review and automatically edit, compare, and share." />
 		<meta property="og:title" content="Reckons.AI" />
