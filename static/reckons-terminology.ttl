@@ -191,7 +191,11 @@ kterm:knowledge-base a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/termin
     skos:definition "One user-owned collection of entities, statements and sources, stored as its own IndexedDB database and exportable as one Turtle file." ;
     skos:scopeNote "DECIDED (Matt, 2026-09-17): SPELL OUT THE ABBREVIATION, KEEP THE WORD. The concept stays 'knowledge base' in every register — the abbreviation kb is what goes, not the noun. Migrating to 'graph' was half-decided and is now rejected: graph is already the most overloaded word here, meaning four things at 4802 occurrences, so that migration would have traded a clear-but-jargon term for an ambiguous-but-friendly one. A friendlier user-register word was considered and declined; the three-register model makes that reversible later without touching code, because only the user label would move." ;
     skos:scopeNote "WHAT MOVES AND WHAT DOES NOT. The identifier kb is FREE where it is a local name — 3658 of its 4140 occurrences — and becomes knowledgeBase. It is CONTRACT-bound in four places that do NOT move without a data migration: the urn:kbase: namespace (1301 of the 1380 kbase occurrences, plus every stored user graph), the ?kb= URL parameter in bookmarkable links, Dexie database names from resolveDbName(), and the kb argument on every MCP tool. Renaming a free identifier is a diff; renaming any of those four is a migration that breaks graphs people already have." ;
-    skos:hiddenLabel "kb", "KB", "kbase" .
+    skos:scopeNote "THE UNIT IS ONE .ttl AND THAT IS THE POINT (Matt, 2026-09-23): 'the unit of one marble on the desk is a single .ttl knowledge graph'. One knowledge base = one IndexedDB database = one exported Turtle file = one marble. Distinct units with limits, because a unit without a boundary stops being usable — the thing a person picks up has to be small enough to hold." ;
+    skos:scopeNote "MARBLE AND SPACE ARE ONE THING IN TWO STATES, not two concepts. A marble is the CLOSED form — the object on the desk, in a collection, something you pick up. A space is the OPEN form — where you are once you jump in. kterm:graph-view names the open state; this concept names the thing itself. The office-and-marbles metaphor is a presentation of that duality, not a new layer of the model." ;
+    skos:scopeNote "WHY 'knowledge graph' IS NOT THE USER WORD (Matt, 2026-09-23): it describes HOW THE SYSTEM WORKS, which makes it the right thing to say to a developer and the wrong thing to put in front of everyone else. The standards term underneath stays accurate and unchanged — kpred:standards-label is 'RDF dataset', and a quad's fourth element is a named graph (kterm:named-graph). Borrow the standard where it is accurate; translate at the surface." ;
+    skos:hiddenLabel "kb", "KB", "kbase" ;
+    skos:altLabel "marble" .
 
 kterm:named-graph a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
     skos:prefLabel "named graph" ;
@@ -204,9 +208,10 @@ kterm:named-graph a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminolo
 
 kterm:graph-view a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
     skos:prefLabel "graph view" ;
-    kpred:user-label "the map" ;
+    kpred:user-label "space" ;
     kpred:binding-class kbind:free ;
     skos:definition "The 2D or 3D visual rendering of a knowledge base — the force layout, the camera, the drawn markers and edges." ;
+    skos:scopeNote "DECIDED (Matt, 2026-09-23): the user-facing word is SPACE, and it spans BOTH 2D and 3D on purpose. Switching dimension is a change of VIEW, not a change of thing — you do not rename a document when you open print preview — so one word has to cover both or the interface implies two objects where there is one. 'World' was considered and is narrower: it reads 3D, and it competes with the marble metaphor below rather than completing it." ;
     skos:scopeNote "A presentation concept. Never store data under this name and never let it stand as bare graph in a module that also handles quads." ;
     skos:hiddenLabel "graph" .
 
@@ -314,10 +319,12 @@ kterm:entity-state a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminol
 kterm:share-package a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
     skos:prefLabel "share package" ;
     kpred:standards-label "RDF dataset serialization" ;
-    kpred:user-label "send someone your graph" ;
+    kpred:user-label "everything needed to open this elsewhere" ;
     kpred:binding-class kbind:contract ;
+    skos:scopeNote "IT IS A FORMAT, NOT AN ACT (Matt, 2026-09-23): 'the complete set of files needed for the proper export, and then import for full functionality — this would include the .glb or images'. A space is not only its .ttl. Assets live in three slots (icons, previews, models) as urn:kbase:asset/*, and a Turtle file alone drops them, so a graph that round-trips through .ttl loses fidelity it never announces losing. The package is the bundle that does not: kb:canonical-graph-package is DONE WHEN re-import is semantically identical for statements in every review state, source records, stable IDs, review metadata AND assets." ;
+    skos:scopeNote "SO IT CARRIES NO EGRESS CLASS, AND THAT IS CORRECT RATHER THAN MISSING. kb:canonical-graph-package declares no kpred:data-egress because a CONTAINER has none — the ACT that moves it does. The same package is a user-export when the user downloads it and carries it themselves (a right, and kb:data-egress-model says a gate there is a BUG), and a mediated-distribution when Reckons.AI hosts it and hands out a link (a privilege, gated). An earlier version of this note asserted the whole term was 'gated by kb:publish-safety-gate and classified mediated-distribution', which is a category error: it put a gate on a file format and would have gated the user's own export." ;
     skos:definition "Moving GRAPH DATA to another machine so it can be imported: a URL pointing at hosted Turtle (kb:share-links), or the versioned lossless package with a manifest and integrity hashes (kb:canonical-graph-package, F107.3). The recipient is software, and the test of success is that a round trip is semantically identical." ;
-    skos:scopeNote "Gated by kb:publish-safety-gate and classified mediated-distribution, because Reckons.AI is the intermediary carrying somebody's content. kb:source-reference-copy already decided that retained third-party documents must be excluded from a share package BY CONSTRUCTION rather than by remembering to — sources/ is inside the sync boundary and outside the publish boundary." ;
+    skos:scopeNote "THE GATE BELONGS TO THE ACT, NOT HERE — kb:share-links and kb:graph-publishing are both classified mediated-distribution and both gated by kb:publish-safety-gate, because in those Reckons.AI IS the intermediary carrying somebody's content. kb:source-reference-copy already decided that retained third-party documents must be excluded from a share package BY CONSTRUCTION rather than by remembering to — sources/ is inside the sync boundary and outside the publish boundary." ;
     skos:hiddenLabel "share", "export", "package" .
 
 kterm:share-composition a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
@@ -337,3 +344,67 @@ kterm:reckoning a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology
     kpred:binding-class kbind:free ;
     skos:definition "A grounded Situation-Target-Proposal deliberation over the graph: what is true now, what is wanted, and what would close the gap." ;
     skos:scopeNote "The product's own coinage and the root of its name, so it stays. 57 occurrences across 14 files — small enough that if it ever needs renaming, it is cheap." .
+
+kterm:explore-view a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "explore view" ;
+    kpred:user-label "explore" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "One of the two views of a SPACE: the one you move around in, where statements are already settled and you are looking at what you have." ;
+    skos:scopeNote "A VIEW OF THE SPACE, NOT A SEPARATE THING (Matt, 2026-09-23). Explore and review are two ways of looking at one knowledge base, the way 2D and 3D are — see kterm:graph-view, which is why 'space' had to cover both dimensions rather than splitting." ;
+    skos:related kterm:review-view, kterm:graph-view .
+
+kterm:review-view a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "review view" ;
+    kpred:user-label "review" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "The other view of a SPACE: the one where statements are still pending and a person is deciding what enters." ;
+    skos:scopeNote "The two views differ by the STATE of what they show — settled versus pending — not by what they are showing. Both are the same space." ;
+    skos:related kterm:explore-view, kterm:graph-view .
+
+kterm:source-graph a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "source graph" ;
+    kpred:standards-label "named graph (in TriG/N-Quads); a set of meta:Source descriptions (in Turtle)" ;
+    kpred:user-label "where it came from" ;
+    kpred:binding-class kbind:contract ;
+    skos:definition "The half of a space's file that describes WHERE statements came from: one meta:Source per note, email, thread, page or file, each with its title, URI, kind and ingest time." ;
+    skos:scopeNote "WHERE THE WORD 'graph' IS LITERAL AND WHERE IT IS NOT — measured 2026-09-23, because 'standards where accurate' requires knowing which. In toNQuads and toTriG the source IS the fourth element of every quad, so 'named graph' is exact. In a .ttl export it is NOT: Turtle has one default graph and no GRAPH blocks, so the two halves are two POPULATIONS in one graph, joined by prov:wasDerivedFrom on reified rdf:Statement nodes. Verified against tests/fixtures/multi-source.ttl: 5 meta:Source descriptions, 9 rdf:Statement nodes, zero GRAPH blocks." ;
+    skos:related kterm:statement-graph, kterm:named-graph .
+
+kterm:statement-graph a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "statement graph" ;
+    kpred:standards-label "rdf:Statement reification (Turtle); the default graph's quads (N-Quads)" ;
+    kpred:user-label "what you know" ;
+    kpred:binding-class kbind:contract ;
+    skos:definition "The other half of a space's file: the statements themselves, each carrying its status, confidence, altitude and a prov:wasDerivedFrom link to the source it came from." ;
+    skos:scopeNote "BOTH HALVES LIVE IN ONE FILE, AND THAT IS THE UNIT (Matt, 2026-09-23): 'the source graph and the statement graph are both contained within the .ttl for the space'. One space, one file, both halves — which is what makes a space portable and what makes the limit on its size meaningful." ;
+    skos:related kterm:source-graph, kterm:statement .
+
+kterm:export-act a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "export" ;
+    kpred:standards-label "data portability" ;
+    kpred:user-label "save a copy" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "The act of the USER taking their own space out — a .ttl, or the complete share package with assets. The user carries it from there." ;
+    skos:scopeNote "A RIGHT, AND UNGATED BY RULE. kb:data-egress-model classifies this user-export: 'Reckons.AI never withholds a user's own data from them, whatever it contains', and a blocking gate here is a BUG, not caution. Advisory only, via scanForExportAdvisory. Once the file has left, what happens next is the user's responsibility and not a control we can pretend to have." ;
+    skos:related kterm:share-package, kterm:publish-act .
+
+kterm:publish-act a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "publish" ;
+    kpred:standards-label "mediated distribution" ;
+    kpred:user-label "put it somewhere people can reach" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "The act of RECKONS.AI putting a space, or a document composed from one, at an address someone else can fetch — kb:share-links, kb:graph-publishing." ;
+    skos:scopeNote "A PRIVILEGE, AND GATED BY RULE, because the app is the intermediary in the delivery rather than a bystander to it. Both kb:share-links and kb:graph-publishing declare kpred:data-egress 'mediated-distribution' and require kpred:gated-by. The distinction from export is NOT who receives it — software or person — but WHO CARRIES IT." ;
+    skos:scopeNote "WHAT PUBLISH ACTUALLY PRODUCES (Matt, 2026-09-23): 'typically a web page, or if we have some central space directory for people to search. The publish may or may not publish with the export package as a deliverable on the web page.' So the page is the publication and the PACKAGE IS AN OPTIONAL ATTACHMENT — one act, potentially two payloads, and that resolves the recipient question rather than choosing between them: the prose serves a person, the attached package serves software, same publish." ;
+    skos:scopeNote "THE ATTACHMENT CHANGES WHAT IS DISCLOSED, SO THE GATE CANNOT READ THE ACT ALONE. A composed page exposes the sentences someone wrote for an audience; attaching the share package exposes the WHOLE space including assets, review metadata and every source record. Those are different disclosures under one verb, so kb:publish-safety-gate has to consider the PAYLOAD and not only that a publish occurred — otherwise the smaller case sets the bar for the larger one." ;
+    skos:scopeNote "A CENTRAL DIRECTORY IS NOT BUILT AND IS NOT THE SAME THING. Publishing to your own address makes Reckons.AI a host; operating a searchable directory of other people's spaces makes it a PUBLISHER of a catalogue, which is a different role with different obligations. Nothing like it exists today — kb:reference-graph-catalogue is the nearest neighbour and should be checked before anything is designed here." ;
+    skos:related kterm:export-act, kterm:share-composition, kterm:share-package .
+
+kterm:access-link a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "access link" ;
+    kpred:standards-label "bearer credential" ;
+    kpred:user-label "let my other device in" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "A token-bearing URL that admits another DEVICE to this instance — the QR mobile-access path. It moves no graph data at all." ;
+    skos:scopeNote "THE THIRD SENSE OF 'share', AND THE ONE MOST EASILY MISFILED. QRSharePanel calls navigator.share with the title 'Reckons.AI access link', so the operating system's own share sheet is used to hand over a CREDENTIAL. Leaking it is an authentication failure, not a content-disclosure one, so neither the export right nor the distribution gate is the right model for it — a content advisory on a credential would be nonsense, and so would a content gate." ;
+    skos:related kterm:export-act, kterm:publish-act .
