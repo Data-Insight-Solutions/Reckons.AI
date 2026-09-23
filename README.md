@@ -226,5 +226,5 @@ Structure organisational knowledge around **People · Policy · Procedure** — 
 
 - **No backend server** — all state in IndexedDB; Turtle export for backup. Optional n8n cloud sync is self-hosted.
 - **No accounts** — your KB is yours alone, on this device. Enterprise RBAC is an opt-in layer.
-- **No analytics, no tracking, no remote logging**
+- **No personal telemetry** — the app collects nothing and there is no server to receive it. The public website counts visits in aggregate via Cloudflare Web Analytics (cookieless, no persistent identifier, no cross-site tracking); it measures the marketing and docs pages, never anything inside your graph.
 - URL ingestion proxies through `r.jina.ai/<url>` for clean-text extraction; use the note or document tab to avoid that hop entirely

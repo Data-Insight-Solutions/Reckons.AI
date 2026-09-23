@@ -24,7 +24,7 @@ We would rather tell you the truth than sound reassuring. **As of 2026-07-12:**
 
 | | Status |
 |---|---|
-| Ethics preamble in every AI prompt | ✅ **Built and verified** ([attestation log](static/reckons-safety-log.ttl)) |
+| Ethics preamble on shared and remote prompts | ✅ **Built and verified** ([attestation log](static/reckons-safety-log.ttl)) — purpose- and locality-gated since 2026-08-14, **not every prompt**: sharing always carries it, local-only use omits it, and structured extraction omits it because `filterBlockedStatements` vets every written statement deterministically. COUNSEL-BRIEF.md has described it accurately since the change; this row said "every AI prompt" until 2026-09-23. |
 | Content classifier on ingest | ⚠️ **Built** — pattern-based, imperfect; see the caveat below |
 | Export advisory header | ✅ **Built** |
 | **Publish safety gate** | ✅ **Built** (F66) — publishing through Reckons.AI is now gated |
