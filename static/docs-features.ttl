@@ -421,7 +421,7 @@ feat:FiveMoves
     rdf:type            skos:Concept ;
     rdfs:label          "What Reckons.AI does, in five moves" ;
     hnav:order          50 ;
-    skos:broader        feat:WhatIsReckonsAI ;
+    skos:broader        guide:WhatIsReckonsAI ;
     skos:definition     "Reckons.AI does one thing in five moves: it takes what you put in, works out the claims inside it, asks you which are true, keeps the ones you accept with their sources attached, and then lets you ask the result questions. Everything below is a part of one of those five moves. If you only read one thing about the product, read this page rather than the component list underneath it — the components make sense as answers to the five moves and make very little sense on their own." ;
     kpred:render-as     "gallery" ;
     kpred:page-section  "Learn" ;
