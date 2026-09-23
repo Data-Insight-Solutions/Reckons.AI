@@ -18,6 +18,8 @@
 @prefix hnav:   <urn:reckons:nav/> .
 @prefix kpred:  <urn:kbase:predicate/> .
 @prefix kmeta:  <urn:kbase:meta/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix schema:  <https://schema.org/> .
 
 ## KB Identity
 <urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a07-b007-000000000007" .
@@ -127,7 +129,7 @@ person:TimBernersLee
     rdf:type            skos:Concept ;
     rdfs:label          "Tim Berners-Lee" ;
     skos:definition     "Inventor of the World Wide Web (1989) and the Semantic Web vision (2001). Founded W3C. Proposed the Linked Data principles: use URIs, use HTTP, provide RDF, link to other datasets." ;
-    kpred:worksAt       org:W3C ;
+    schema:worksFor       org:W3C ;
     skos:related        tl:SemanticWebVision .
 
 person:PatHayes
@@ -159,7 +161,7 @@ tl:RDF10
     rdfs:label          "RDF 1.0 Specification" ;
     skos:definition     "First W3C Recommendation for the Resource Description Framework. Established the triple model (subject-predicate-object) and RDF/XML serialization. The formal birth of machine-readable knowledge graphs on the web." ;
     kpred:date          "1999-02-22"^^xsd:date ;
-    kpred:publishedBy   org:W3C ;
+    dcterms:publisher   org:W3C ;
     skos:related        person:TimBernersLee .
 
 tl:SemanticWebVision
@@ -180,7 +182,7 @@ tl:OWL10
     rdfs:label          "OWL 1.0 (Web Ontology Language)" ;
     skos:definition     "W3C Recommendation for expressing rich ontologies: class hierarchies, cardinality constraints, equivalences. Built on RDF. Enables automated reasoning about domain knowledge." ;
     kpred:date          "2004-02-10"^^xsd:date ;
-    kpred:publishedBy   org:W3C .
+    dcterms:publisher   org:W3C .
 
 tl:SPARQL10
     skos:broader        topic:SemanticWebTimeline ;
@@ -190,7 +192,7 @@ tl:SPARQL10
     rdfs:label          "SPARQL 1.0" ;
     skos:definition     "First W3C Recommendation for querying RDF graphs. SPARQL is to triple stores what SQL is to relational databases. Enabled programmatic access to any RDF dataset." ;
     kpred:date          "2008-01-15"^^xsd:date ;
-    kpred:publishedBy   org:W3C ;
+    dcterms:publisher   org:W3C ;
     skos:related        topic:SPARQL .
 
 tl:LinkedDataPrinciples
@@ -222,7 +224,7 @@ tl:WikidataLaunch
     rdfs:label          "Wikidata Launch" ;
     skos:definition     "Wikimedia's free knowledge graph. Over 100 million items, all queryable via SPARQL. The largest collaboratively edited knowledge graph in the world. Powers infoboxes across all Wikipedia language editions." ;
     kpred:date          "2012-10-29"^^xsd:date ;
-    kpred:publishedBy   "Wikimedia Foundation" ;
+    dcterms:publisher   "Wikimedia Foundation" ;
     skos:related        tl:DBpediaLaunch ;
     <urn:reckons:leap>       "https://www.wikidata.org" ;
     <urn:reckons:leap/label> "Wikidata" .
@@ -235,7 +237,7 @@ tl:JSONLD10
     rdfs:label          "JSON-LD 1.0" ;
     skos:definition     "W3C Recommendation for embedding linked data in JSON. Made RDF accessible to web developers who found RDF/XML and Turtle unfamiliar. Adopted by Schema.org as the preferred format." ;
     kpred:date          "2014-01-16"^^xsd:date ;
-    kpred:publishedBy   org:W3C ;
+    dcterms:publisher   org:W3C ;
     skos:related        topic:JSONLD .
 
 tl:GoogleKnowledgeGraph
@@ -256,7 +258,7 @@ tl:RDF11
     rdfs:label          "RDF 1.1 Specification" ;
     skos:definition     "Updated W3C Recommendation. Added Turtle and JSON-LD as official serializations, adopted IRIs (replacing URIs), and clarified the abstract syntax. The current version of the RDF standard." ;
     kpred:date          "2014-02-25"^^xsd:date ;
-    kpred:publishedBy   org:W3C .
+    dcterms:publisher   org:W3C .
 
 tl:SHACL
     skos:broader        topic:SemanticWebTimeline ;
@@ -266,7 +268,7 @@ tl:SHACL
     rdfs:label          "SHACL (Shapes Constraint Language)" ;
     skos:definition     "W3C Recommendation for validating RDF graphs against a set of constraints (shapes). Like a schema for RDF: define required properties, value types, and cardinalities." ;
     kpred:date          "2017-07-20"^^xsd:date ;
-    kpred:publishedBy   org:W3C .
+    dcterms:publisher   org:W3C .
 
 tl:KnowledgeGraphsAndLLMs
     skos:broader        topic:SemanticWebTimeline ;
@@ -286,7 +288,7 @@ tl:MCPSpec
     rdfs:label          "Model Context Protocol (MCP)" ;
     skos:definition     "An open protocol by Anthropic for connecting AI models to external data sources and tools. Reckons.AI implements an MCP server so Claude Desktop, Cursor, and other agents can query your knowledge graph." ;
     kpred:date          "2024-11-25"^^xsd:date ;
-    kpred:publishedBy   org:Anthropic ;
+    dcterms:publisher   org:Anthropic ;
     skos:related        guide:WhatIsReckonsAI .
 
 tl:SemiontRelease
@@ -297,7 +299,7 @@ tl:SemiontRelease
     rdfs:label          "Semiont (AI Alliance)" ;
     skos:definition     "A semantic enrichment framework from the AI Alliance. Defines 8 progressive analysis flows: Frame, Yield, Mark, Match, Bind, Gather, Browse, Beckon. Inspired Reckons.AI's Research Sessions and planned enrichment pipeline." ;
     kpred:date          "2025-01-01"^^xsd:date ;
-    kpred:publishedBy   org:AIAlliance ;
+    dcterms:publisher   org:AIAlliance ;
     kpred:website       "https://github.com/The-AI-Alliance/semiont" ;
     <urn:reckons:leap>       "https://github.com/The-AI-Alliance/semiont" ;
     <urn:reckons:leap/label> "Semiont on GitHub" .
@@ -310,7 +312,7 @@ tl:ReckonsAILaunch
     rdfs:label          "Reckons.AI Launch" ;
     skos:definition     "Public launch of Reckons.AI -- a local-first personal knowledge graph built on RDF Turtle. Created by Matthew Roe at Data Insight Solutions LLC. Runs entirely in the browser. LLM-powered triple extraction, 3D graph visualization, browser extension for research sessions, and MCP server for AI agent integration." ;
     kpred:date          "2026-06-01"^^xsd:date ;
-    kpred:createdBy     person:MatthewRoe ;
+    dcterms:creator     person:MatthewRoe ;
     skos:related        guide:WhatIsReckonsAI ;
     skos:related        tl:KnowledgeGraphsAndLLMs ;
     skos:related        tl:MCPSpec ;
@@ -331,7 +333,7 @@ person:MatthewRoe
     rdfs:label          "Matthew Roe" ;
     skos:definition     "Owner-operator of Data Insight Solutions LLC. Creator of Reckons.AI. Designed the local-first architecture, human-in-the-loop review workflow, and the graph Leap cross-referencing system." ;
     kpred:role          "Founder & Developer" ;
-    kpred:worksAt       org:DataInsightSolutions ;
+    schema:worksFor       org:DataInsightSolutions ;
     skos:related        tl:ReckonsAILaunch .
 
 

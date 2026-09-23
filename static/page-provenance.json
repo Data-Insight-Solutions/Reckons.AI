@@ -527,10 +527,10 @@
       "path": "guide/reckons-ai",
       "entity": "urn:reckons:guide/ReckonsAI",
       "graph": "starter-guide.ttl",
-      "factHash": "bd2d655104660935",
-      "factCount": 4,
+      "factHash": "012d8944de8205cb",
+      "factCount": 2,
       "floor": "evidence",
-      "pageHash": "1afb7d0a35229543"
+      "pageHash": "46022796f1ea8f47"
     },
     {
       "path": "guide/what-is-reckons-ai",
@@ -809,7 +809,7 @@
       "factHash": "6860c1b1a6e9c81e",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "66123422f48ea84a"
+      "pageHash": "82ce58811e33ef33"
     },
     {
       "path": "tips/data-classification",

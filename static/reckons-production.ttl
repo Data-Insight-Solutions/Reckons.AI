@@ -7,6 +7,7 @@
 @prefix ktype:  <urn:kbase:type/> .
 @prefix story:  <urn:reckons:story/> .
 @prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix schema:  <https://schema.org/> .
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Reckons.AI Production Status KB
@@ -21,8 +22,8 @@
 
 kb:reckons-ai  rdf:type          ktype:Application ;
                rdfs:label        "Reckons.AI" ;
-               kpred:has-url     "https://reckons.ai" ;
-               kpred:has-repo    "https://github.com/Data-Insight-Solutions/Reckons.AI" ;
+               schema:url     "https://reckons.ai" ;
+               schema:codeRepository    "https://github.com/Data-Insight-Solutions/Reckons.AI" ;
                kpred:built-with  kb:sveltekit ;
                kpred:built-with  kb:typescript ;
                kpred:built-with  kb:dexie ;
@@ -195,7 +196,7 @@ kb:n8n-cloud-sync   rdf:type     ktype:Feature ;
 
 kb:ci-cd-kb-watch   rdf:type     ktype:Feature ;
                     rdfs:label   "Reckons.AI Graph Alignment" ;
-                    kpred:aka          "CI/CD graph Watch" ;
+                    skos:altLabel          "CI/CD graph Watch" ;
                     kpred:has-status   "functional" ;
                     kpred:description  "GitHub Actions graph-alignment scoring, pre/post review snapshots, and Claude Code commands for agent coding workflows. Runs on push/PR to main, staging, and dev; posts a 'Reckons.AI Graph Alignment Check' status and a PR comment with a deep link to the in-app review." ;
                     kpred:tested-by    "tests/visual/user-stories/coding-workflow.test.ts" ;
