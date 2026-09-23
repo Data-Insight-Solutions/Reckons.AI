@@ -700,9 +700,14 @@ code:docs  rdf:type     ktype:Concept ;
            kpred:has-file "docs/MOBILE_CAPTURE.md" ;
            kpred:has-file "docs/MOBILE_LOCAL_SERVER.md" ;
            kpred:has-file "docs/LOCAL_HOME_FOLDER.md" ;
-           kpred:has-file "ROADMAP.md" ;
-           kpred:has-file "SETUP.md" ;
-           kpred:has-file "AUDIT.md" .
+           kpred:has-file "SETUP.md" .
+
+# ROADMAP.md and AUDIT.md were removed 2026-09-23. Both were hand-maintained duplicates of what
+# the graphs already hold, and both had stopped being maintained: ROADMAP.md's highest feature was
+# F23 against the graph's F216, last touched 2026-07-04, and AUDIT.md still claimed the ethics
+# preamble goes into "all LLM prompts" — false since 2026-08-14, and a SAFETY claim, which is the
+# category AGENTS.md says overclaiming is itself a liability. HANDOFF-ARCHIVE.md had flagged both
+# as stale in July and neither was retired. The canonical roadmap is static/reckons-roadmap.ttl.
 
 code:types-lib  rdf:type     ktype:Concept ;
                 rdfs:label   "Type Definitions" ;

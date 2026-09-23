@@ -49,7 +49,7 @@ note / url / doc / .ttl / calendar / extension
 - **Browser extension** — compare any webpage against your KB, accumulate research sessions across tabs, batch ingest
 - **MCP server** — expose your KB to Claude Desktop, Cursor, and other MCP-compatible AI agents
 - **Predicate Manager** — view, rename, and merge predicates across your KB
-- **Content safety** — ethics preamble in all LLM prompts, content classifier, export advisory
+- **Content safety** — ethics preamble on shared and remote prompts (purpose- and locality-gated, `ethicsPreambleFor` — not local-only or structured-output), content classifier, export advisory
 - **Passage grounding** — verbatim source excerpts attached to extracted triples
 - **Diff summaries** — LLM-generated 3-part summaries (new/reinforcing/conflicting)
 - **Whisper STT** — local speech-to-text via transformers.js (no cloud required)
