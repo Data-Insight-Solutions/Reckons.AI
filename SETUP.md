@@ -10,8 +10,8 @@ Reckons.AI is a personal knowledge graph that runs entirely in the browser. All 
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Node.js | ≥ 18 | Build toolchain |
-| pnpm | ≥ 8 | Package manager (`npm i -g pnpm`) |
+| Node.js | ≥ 22 | Build toolchain (package.json `engines`; CI runs 22 and 24) |
+| npm | bundled with Node | Package manager — this repo has a `package-lock.json` and CI runs `npm ci` |
 | A modern browser | Chrome 120+ / Firefox 113+ | WebGL, IndexedDB, Web Workers |
 
 Optional for local LLM:
@@ -23,8 +23,8 @@ Optional for local LLM:
 
 ```bash
 git clone <repo-url> && cd tripleNotes
-pnpm install
-pnpm dev            # starts at http://localhost:5173
+npm install
+npm run dev            # starts at http://localhost:5173
 ```
 
 ### Environment variables (optional)
@@ -43,8 +43,8 @@ See `.env.example` for the full list with documentation. At minimum you need one
 ### Production build
 
 ```bash
-pnpm build          # outputs to build/
-pnpm preview        # preview the production build locally
+npm run build          # outputs to build/
+npm run preview        # preview the production build locally
 ```
 
 The output is a static site — deploy to any static host (Netlify, Vercel, a Raspberry Pi running nginx, etc.).
@@ -56,8 +56,8 @@ The output is a static site — deploy to any static host (Netlify, Vercel, a Ra
 ### Build
 
 ```bash
-pnpm build:extension      # one-time build → dist/extension/
-pnpm dev:extension        # watch mode (rebuilds on file change)
+npm run build:extension      # one-time build → dist/extension/
+npm run dev:extension        # watch mode (rebuilds on file change)
 ```
 
 ### Install in Chrome / Edge / Brave
@@ -91,7 +91,7 @@ For persistent install on Firefox, the extension must be signed by Mozilla. To t
 
 Firefox for Android supports MV3 extensions via the [Custom Add-on Collection](https://support.mozilla.org/en-US/kb/extended-add-ons-support-firefox-android) flow:
 
-1. Build the extension: `pnpm build:extension`
+1. Build the extension: `npm run build:extension`
 2. Create a Mozilla account at accounts.firefox.com
 3. Upload the extension ZIP to [addons.mozilla.org](https://addons.mozilla.org) as an **unlisted** extension (for personal use) or submit for review
 4. On your Android device: Firefox → **Settings** → **About Firefox** → tap the Firefox logo 5× (enables developer mode)
@@ -154,7 +154,7 @@ Default model: `HuggingFaceTB/SmolLM2-360M-Instruct` (~370MB). Configurable in S
 
 ```bash
 # Build the web app
-pnpm build
+npm run build
 
 # Serve with any static server
 npx serve build/        # quick test
@@ -246,7 +246,7 @@ node mcp-server/dist/index.js --kb mcp-workspace
 
 **"Shelly disappears after graph loads"** — Known compositor issue on some GPU drivers. The `will-change: transform` CSS should fix it. If not, try disabling GPU acceleration in your browser.
 
-**"KB gives 500"** — Usually an SSR issue when running `pnpm dev` and visiting /kb. The localStorage guards in `kb-registry.ts` should prevent this; if you see it, hard-reload.
+**"KB gives 500"** — Usually an SSR issue when running `npm run dev` and visiting /kb. The localStorage guards in `kb-registry.ts` should prevent this; if you see it, hard-reload.
 
 **Ollama connection refused** — Ensure `ollama serve` is running. Check `http://localhost:11434` in a browser — you should see `"Ollama is running"`.
 
