@@ -90,6 +90,36 @@ const moduleFor = (f: string): string | null =>
 
 // ── Imports ──────────────────────────────────────────────────────────────────
 
+/**
+ * EXTERNAL PACKAGES, WHICH THIS DROPPED UNTIL 2026-09-23 — and dropping them lost the evidence
+ * that says what a word MEANS in a given file.
+ *
+ * static/reckons-terminology.ttl records five meanings for the bare word `node`, and three of
+ * them are FOREIGN: an RDF term (n3), a scene object (three), and the runtime (Node.js). Which
+ * one a file means is not a judgment when the file's imports are known — a module importing
+ * `three` almost certainly means the scene object, one importing `n3` means the RDF term. The
+ * import IS the provenance for the vocabulary, the same way a source is provenance for a fact.
+ *
+ * So a bare specifier now becomes an edge to a package entity rather than being discarded.
+ * dcterms:requires is the borrowed term — "a related resource that is required by the described
+ * resource to support its function" — per kb:minimal-ontology and the reinvented-term rule.
+ */
+/** npm's own shape: optional @scope/, then lowercase, digits, dot, dash, underscore. */
+const PKG_NAME = /^(@[a-z0-9][\w.-]*\/)?[a-z0-9][\w.-]*$/;
+
+const packageOf = (spec: string): string | null => {
+  if (spec.startsWith('.') || spec.startsWith('$') || spec.startsWith('/')) return null;
+  // Node builtins collapse to one entity. `node:crypto` and `node:fs` are the same dependency —
+  // the runtime — and its colon is not legal in a Turtle local name anyway.
+  if (spec.startsWith('node:')) return 'node';
+  // @scope/name keeps two segments; everything else keeps one. Deep paths are the same package.
+  const parts = spec.split('/');
+  const name = spec.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
+  // VALIDATED, because IMPORT_RE matches any quoted string after `from` and picked up prose:
+  // an import-shaped line in a comment produced `pkg:not plural yet`, which does not parse.
+  return name && PKG_NAME.test(name) ? name : null;
+};
+
 const CANDIDATES = ['', '.ts', '.js', '.svelte', '/index.ts', '/index.js'];
 function resolveImport(from: string, spec: string): string | null {
   let base: string | null = null;
@@ -106,14 +136,44 @@ function resolveImport(from: string, spec: string): string | null {
 
 const IMPORT_RE = /(?:from\s+|import\s*\(\s*)['"]([^'"]+)['"]/g;
 const imports = new Map<string, Set<string>>();
+/** file -> external packages it imports. The provenance for a file's foreign vocabulary. */
+const pkgUses = new Map<string, Set<string>>();
+const allPkgs = new Set<string>();
 const fileSet = new Set(files);
 for (const f of files) {
   const text = readFileSync(join(ROOT, f), 'utf8');
   for (const m of text.matchAll(IMPORT_RE)) {
+    const pkg = packageOf(m[1]);
+    if (pkg) {
+      if (!pkgUses.has(f)) pkgUses.set(f, new Set());
+      pkgUses.get(f)!.add(pkg);
+      allPkgs.add(pkg);
+    }
     const t = resolveImport(f, m[1]);
     if (!t || t === f || !fileSet.has(t)) continue;
     if (!imports.has(f)) imports.set(f, new Set());
     imports.get(f)!.add(t);
+  }
+}
+
+/**
+ * A package is a SOURCE, so it needs somewhere to go and look — Matt, 2026-09-23. The registry
+ * URL is derivable from the name; homepage and repository come from the installed manifest when
+ * it is present, so a self-hoster without node_modules still gets a usable entity rather than
+ * none. schema:url and dcterms:source are borrowed rather than minted, per kb:minimal-ontology.
+ */
+function packageUrls(name: string): { npm: string; homepage?: string; repo?: string } {
+  const npm = `https://www.npmjs.com/package/${name}`;
+  try {
+    const m = JSON.parse(readFileSync(join(ROOT, 'node_modules', name, 'package.json'), 'utf8'));
+    const repo = typeof m.repository === 'string' ? m.repository : m.repository?.url;
+    return {
+      npm,
+      homepage: typeof m.homepage === 'string' ? m.homepage : undefined,
+      repo: typeof repo === 'string' ? repo.replace(/^git\+/, '').replace(/\.git$/, '') : undefined,
+    };
+  } catch {
+    return { npm };
   }
 }
 
@@ -152,6 +212,9 @@ const lines: string[] = [
   '@prefix ktype:  <urn:kbase:type/> .',
   '@prefix kpred:  <urn:kbase:predicate/> .',
   '@prefix code:   <urn:reckons:code/> .',
+  '@prefix pkg:    <urn:reckons:package/> .',
+  '@prefix schema: <https://schema.org/> .',
+  '@prefix dcterms: <http://purl.org/dc/terms/> .',
   '',
 ];
 
@@ -163,13 +226,36 @@ for (const f of files) {
   if (isTest(f)) lines.push('    kpred:is-test "true" ;');
   if (mod) lines.push(`    skos:broader ${mod.replace('urn:reckons:code/', 'code:')} ;`);
   const deps = [...(imports.get(f) ?? [])].sort();
-  if (deps.length > 0) {
-    lines.push(...deps.map((d, i) => `    kpred:imports ${iri(d)}${i === deps.length - 1 ? ' .' : ' ;'}`));
+  const pkgs = [...(pkgUses.get(f) ?? [])].sort();
+  // dcterms:requires — "a related resource required by the described resource to support its
+  // function". Borrowed rather than minted; it is also the edge that says which FOREIGN
+  // vocabulary a file speaks, which is what makes `node` resolvable per file.
+  const tail = [
+    ...deps.map((d) => `    kpred:imports ${iri(d)}`),
+    ...pkgs.map((p) => `    dcterms:requires pkg:${p.replace(/[^A-Za-z0-9]/g, '_')}`),
+  ];
+  if (tail.length > 0) {
+    lines.push(...tail.map((l, i) => `${l}${i === tail.length - 1 ? ' .' : ' ;'}`));
   } else {
     // Close the statement on the last property written.
     const last = lines.pop()!;
     lines.push(last.replace(/ ;$/, ' .'));
   }
+  lines.push('');
+}
+
+// ── Package entities — a source you can go and look at ───────────────────────
+for (const name of [...allPkgs].sort()) {
+  const u = packageUrls(name);
+  const id = `pkg:${name.replace(/[^A-Za-z0-9]/g, '_')}`;
+  const props = [
+    `    rdfs:label ${JSON.stringify(name)}`,
+    `    schema:url <${u.npm}>`,
+  ];
+  if (u.homepage && /^https?:\/\//.test(u.homepage)) props.push(`    schema:sameAs <${u.homepage}>`);
+  if (u.repo && /^https?:\/\//.test(u.repo)) props.push(`    dcterms:source <${u.repo}>`);
+  lines.push(`${id} rdf:type ktype:Package ;`);
+  lines.push(props.join(' ;\n') + ' .');
   lines.push('');
 }
 
