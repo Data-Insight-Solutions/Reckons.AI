@@ -10,6 +10,7 @@
 @prefix hnav:   <urn:reckons:nav/> .
 @prefix code:   <urn:reckons:code/> .
 @prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix schema:  <https://schema.org/> .
 
 # ==============================================================================
 # Reckons.AI Product Design & Roadmap KB
@@ -42,7 +43,7 @@ kb:provenance-view rdf:type ktype:Feature ;
 
 kb:reckons-ai  rdf:type          ktype:Application ;
                rdfs:label        "Reckons.AI" ;
-               kpred:tagline     "Personal knowledge graph with LLM-powered triple extraction" ;
+               schema:slogan     "Personal knowledge graph with LLM-powered triple extraction" ;
                kpred:decided     "MATT, 2026-09-13: Reckons.AI should first serve everyday users as a note-taking, personal assistant and scheduler web app across devices. Users must be able to organize their material freely, including as a storyboard. Helping people own their personal data takes priority over scientific nanopublication integration, compact structured sharing and comparison. Science can come second to users." ;
                kpred:decided     "MATT, 2026-09-13, clarification: all of these workflows and more belong here; a personal knowledge graph is the common default for people. Notes, visual stories, tasks, appointments and assistance are views and uses of the same user-owned graph, not competing product categories or separate stores that users must reconcile." ;
                kpred:decided     "MATT, 2026-09-13: triple extraction and relations power MCP and agent context as a transparent text database underneath the freeform chaos of life. The graph is the inspectable foundation for flexible human activity, not a demand that users organize their lives into statements before the app becomes useful." ;
@@ -288,7 +289,7 @@ kb:graph-publishing rdf:type ktype:Feature ;
                kpred:principle    "A markdown alignment check keeps content/*.md honest against the graph: CI regenerates markdown from the WebPage nodes and flags any committed .md that drifts (edited outside the graph, or graph changed without re-publish) — mirroring the Reckons.AI Graph Alignment Check." ;
                kpred:principle    "The docs knowledge graphs (static/starter-guide.ttl + static/docs-*.ttl) are the source of truth for the 'generated' /docs sections; Sveltia CMS is for the OTHER content (releases) and for capturing refinements back into the graph, not for hand-editing generated pages — see kb:docs-pipeline." ;
                kpred:supports     "Embeddable images (Sveltia media_folder) and the rest of Sveltia's CMS widgets remain available for hand-editing." ;
-               kpred:credits      "Sveltia CMS — github.com/sveltia/sveltia-cms (MIT). Used as an external dependency; consider sponsoring." .
+               schema:creditText      "Sveltia CMS — github.com/sveltia/sveltia-cms (MIT). Used as an external dependency; consider sponsoring." .
 
 ## -- Published-graph exchange: publish → discover → zero-LLM re-ingest → subscribe --
 ## The loop: a Reckons.AI page already IS a graph, so anything it publishes carries
@@ -2609,7 +2610,7 @@ kb:matthew-roe rdf:type        ktype:Person ;
                rdfs:label   "Matthew Roe" ;
                kpred:has-role     <urn:kbase:role/owner-operator> ;
                kpred:has-role     <urn:kbase:role/technical-solutions-architect> ;
-               kpred:affiliation  "Data Insight Solutions" ;
+               schema:affiliation  "Data Insight Solutions" ;
                kpred:description  "Owner-operator and technical solutions architect of Reckons.AI (under Data Insight Solutions). Seeded 2026-07-16 as the worked example of descriptive roles — and as the accountable 'who' for provenance and publishing." .
 
 kb:backend-services rdf:type   ktype:Feature ;

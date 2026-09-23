@@ -7,6 +7,7 @@
 @prefix ktype:  <urn:kbase:type/> .
 @prefix hnav:   <urn:reckons:nav/> .
 @prefix train:  <urn:reckons:training/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
 
 # ==============================================================================
 # Reckons.AI — Competitive Research KB
@@ -43,7 +44,7 @@ kb:competitive-landscape rdf:type ktype:Concept ;
                kpred:description  "The open-source neighbourhood around Reckons.AI: code-to-graph tools, local-first analyzers, agent orchestration layers, crawlers, and on-device speech. Mapped to learn from, and to record what we deliberately decline." ;
                kpred:principle    "Competition is healthy and open. Most of this neighbourhood is MIT or Apache-2.0, and several projects do a specific thing better than we do. Say so." ;
                kpred:principle    "The features we AVOID are the ones that define the product. Anyone can add a cloud share button; refusing to is the thesis." ;
-               kpred:scanned-at   "2026-07-14"^^xsd:date .
+               dcterms:date   "2026-07-14"^^xsd:date .
 
 # ── The license gate ──────────────────────────────────────────────────────────
 # Deterministic, script-checkable, and load-bearing before a single line is copied.

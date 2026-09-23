@@ -13,6 +13,7 @@
 @prefix dc:     <http://purl.org/dc/terms/> .
 @prefix kb:     <urn:kbase:concept/> .
 @prefix pred:   <urn:kbase:predicate/> .
+@prefix schema: <https://schema.org/> .
 
 
 ## ═════════════════════════════════════════════════════════════════════════════
@@ -24,7 +25,7 @@ kb:Alice
     rdfs:label      "Alice" ;
     foaf:name       "Alice Chen" ;
     pred:role       "lead engineer" ;
-    pred:worksAt    kb:AcmeCorp ;
+    schema:worksFor kb:AcmeCorp ;
     pred:knows      kb:Bob , kb:Carol .
 
 kb:Bob
@@ -32,7 +33,7 @@ kb:Bob
     rdfs:label      "Bob" ;
     foaf:name       "Bob Martinez" ;
     pred:role       "product manager" ;
-    pred:worksAt    kb:AcmeCorp ;
+    schema:worksFor kb:AcmeCorp ;
     pred:knows      kb:Alice .
 
 kb:Carol
@@ -40,7 +41,7 @@ kb:Carol
     rdfs:label      "Carol" ;
     foaf:name       "Carol Okafor" ;
     pred:role       "data scientist" ;
-    pred:worksAt    kb:AcmeCorp ;
+    schema:worksFor kb:AcmeCorp ;
     pred:knows      kb:Alice .
 
 kb:AcmeCorp

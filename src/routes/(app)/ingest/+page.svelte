@@ -1409,7 +1409,23 @@
   <details class="card notes-inbox-card">
     <summary class="notes-inbox-summary">
       <span>Your notes inbox</span>
-      <span class="hint mono">saved notes, kept whole — review a copy into any graph</span>
+      <!--
+        THIS LINE CONTRADICTED THE FORM ABOVE IT (Matt, 2026-09-23: "seems disjointed from a
+        single note title and body above"). The textarea a few lines up says a note "will be
+        decomposed into facts"; this said notes are "kept whole". Two opposite claims, inches
+        apart, appearing to describe the same note.
+
+        They describe DIFFERENT PATHS and nothing said so. What you type above goes through
+        ingest() and becomes facts in the graph you are in. The inbox holds captures that
+        arrived from the synced workspace folder — a phone shortcut, a voice note, an
+        automation writing knowledge.pending.jsonl — which are held word-for-word precisely
+        because nobody was there to review them when they landed.
+
+        So the line now says where its contents came from, which is the fact that makes the
+        two paths distinguishable, rather than describing a mechanism that reads as a promise
+        about the note being written.
+      -->
+      <span class="hint mono">captures from your phone, voice or synced folder — held word-for-word until you file each into a graph</span>
     </summary>
     {#await import('$lib/components/NotesInbox.svelte')}
       <p class="hint mono" style="padding: 0.75rem 0;">loading your notes…</p>

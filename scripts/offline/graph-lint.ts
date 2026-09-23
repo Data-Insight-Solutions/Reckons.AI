@@ -352,6 +352,41 @@ for (const { q, file } of quads) {
   }
 }
 
+// ── prefix-drift: one namespace written under several prefixes.
+//
+// urn:kbase:predicate/ is declared as kpred:, pred: AND p: across this corpus — three names for
+// one namespace. It parses fine, which is why it survived: RDF resolves prefixes and does not
+// care. Everything ELSE cares. A grep for kpred:X silently misses two thirds of the vocabulary,
+// which is exactly how a migration on 2026-09-23 left `pred:worksAt` behind after reporting
+// success, and it is how any reader learns three words for one idea.
+//
+// Reported per namespace rather than per file, because the fix is to pick one and the finding is
+// the disagreement, not any single declaration.
+{
+  const nsToPrefixes = new Map<string, Map<string, string>>(); // ns -> prefix -> first file seen
+  // docs-all.ttl is a CONCATENATION built by setup-reckons-workspace.sh, so every prefix in it
+  // belongs to some other file. Including it would name the wrong file in every finding — and it
+  // carries no `# generated` header, so isGenerated does not catch it.
+  for (const f of readdirSync('static').filter((n) => n.endsWith('.ttl') && n !== 'docs-all.ttl')) {
+    let text: string;
+    try { text = readFileSync(path.join('static', f), 'utf8'); } catch { continue; }
+    if (isGenerated(text)) continue;
+    for (const m of text.matchAll(/@prefix\s+([A-Za-z][\w-]*):\s*<([^>]+)>/g)) {
+      const [, prefix, ns] = m;
+      if (!nsToPrefixes.has(ns)) nsToPrefixes.set(ns, new Map());
+      if (!nsToPrefixes.get(ns)!.has(prefix)) nsToPrefixes.get(ns)!.set(prefix, f);
+    }
+  }
+  for (const [ns, prefixes] of nsToPrefixes) {
+    if (prefixes.size < 2) continue;
+    const listed = [...prefixes].map(([p, f]) => `${p}: (${f})`).join(', ');
+    add('warn', 'prefix-drift', 'static/', ns,
+      `<${ns}> is written under ${prefixes.size} different prefixes — ${listed}. It parses, ` +
+      `because RDF resolves prefixes; every tool that does not parse gets it wrong. A grep for ` +
+      `one prefix silently misses the rest, and a reader learns several words for one namespace.`);
+  }
+}
+
 // ── SKOS INTEGRITY. skos:broader is used ~420 times and was validated by NOTHING until
 // 2026-09-22 — which matters more than the count, because buildHierarchy (src/lib/rdf/hierarchy.ts)
 // WALKS it to build the tree layout and the hierarchical navigation. An unchecked cycle there is
