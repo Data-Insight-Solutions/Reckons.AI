@@ -16,14 +16,13 @@ A browser extension lets you compare any web page against your Turtle in real ti
 git clone <repo>
 cd tripleNotes
 cp .env.example .env          # add your API key(s)
-pnpm install
-pnpm dev                    # http://localhost:5173
+npm install
+npm run dev                    # http://localhost:5173
 ```
 
 ### Option B — Docker (one command, no Node required)
 
 ```bash
-docker compose up              # http://localhost:5173
 ```
 
 All data is stored in IndexedDB inside your browser. Nothing is sent to any server.
@@ -31,7 +30,7 @@ All data is stored in IndexedDB inside your browser. Nothing is sent to any serv
 ### Option C — Static hosting (Netlify / Vercel / Cloudflare Pages)
 
 ```bash
-pnpm build                  # generates build/
+npm run build                  # generates build/
 ```
 
 Deploy `dist/` to any static host. No backend required. The app is a pure PWA — install it from the browser for an app-like experience on desktop and mobile.
@@ -188,7 +187,7 @@ The extension requires **Google Chrome** (or Chromium-based browsers: Edge, Brav
 
 ### Installation
 
-1. `pnpm build:extension` — builds to `dist/extension/`
+1. `npm run build:extension` — builds to `dist/extension/`
 2. Chrome → `chrome://extensions` → Enable "Developer mode"
 3. "Load unpacked" → select `dist/extension/`
 
@@ -310,7 +309,7 @@ Voice input via the Hume.AI SDK is scaffolded in `src/lib/components/VoiceInput.
 ### Setup
 
 ```bash
-pnpm install @humeai/voice
+npm install @humeai/voice
 ```
 
 1. Sign up at [hume.ai](https://hume.ai) and create an API key
@@ -424,7 +423,7 @@ Keys in `.env` are baked into the extension build at compile time and stored as 
 ### Building the Extension
 
 ```bash
-pnpm build:extension        # outputs to dist/extension/
+npm run build:extension        # outputs to dist/extension/
 ```
 
 The extension build is separate from the app build (`vite.extension.config.ts`). Both share types from `src/extension/types.ts`.
@@ -432,10 +431,10 @@ The extension build is separate from the app build (`vite.extension.config.ts`).
 ### Testing
 
 ```bash
-pnpm test:e2e               # desktop Chrome only
-pnpm test:e2e:devices       # all 6 device profiles
-pnpm test:e2e:mobile        # Android + iOS + tablet
-pnpm test:e2e:headed        # headed Chrome (for debugging)
+npm run test:e2e               # desktop Chrome only
+npm run test:e2e:devices       # all 6 device profiles
+npm run test:e2e:mobile        # Android + iOS + tablet
+npm run test:e2e:headed        # headed Chrome (for debugging)
 ```
 
 Device profiles: `desktop-chrome`, `desktop-firefox`, `desktop-safari`, `mobile-android` (Pixel 7), `mobile-ios` (iPhone 15), `tablet` (iPad Pro 11).

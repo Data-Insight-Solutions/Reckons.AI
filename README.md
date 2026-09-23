@@ -71,17 +71,11 @@ note / url / doc / .ttl / calendar / extension
 
 ```bash
 cp .env.example .env   # add at least one AI backend key (or leave blank for WASM)
-pnpm install
-pnpm dev               # http://localhost:5173
+npm install
+npm run dev               # http://localhost:5173
 ```
 
 No AI key required — the local WASM backend works out of the box (slower, fully offline).
-
-For Docker:
-
-```bash
-docker compose up      # http://localhost:5173
-```
 
 ---
 
@@ -125,7 +119,7 @@ Every fact is a `Statement` — an RDF triple with provenance:
   g: { kind: 'iri', value: 'urn:kbase:source/<uuid>' },  // provenance
   sourceId: '<uuid>',
   confidence: 0.95,
-  status: 'confirmed',   // pending | confirmed | refined | rejected | superseded
+  status: 'confirmed',   // pending | pending-removal | confirmed | refined | rejected | superseded
   excerpt: 'Alice organized the float trip last summer.',  // verbatim source sentence
 }
 ```
