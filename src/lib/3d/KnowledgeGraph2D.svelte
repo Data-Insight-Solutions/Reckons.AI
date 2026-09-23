@@ -1659,6 +1659,8 @@
 
   // ── Right-click timeline scrubbing state ────────────────────────────
   let timelineDragging = false;
+  /** Which mouse button began the current drag; 2 is the right button. */
+  let dragButton = 0;
   let timelineDragStartX = 0;
   let timelineDragStartCenter = 0;
 
@@ -1672,8 +1674,15 @@
   }
 
   function onPointerDown(e: PointerEvent) {
-    if (e.button === 2 && layout === 'timeline') {
-      // Right-click: start timeline scrub
+    // RIGHT-DRAG TRANSLATES THE CAMERA, IN EVERY LAYOUT (Matt, 2026-09-23). It used to be
+    // hijacked here for timeline scrubbing, which made the timeline the ONE view where the
+    // right button did something else — so the gesture a user had just learned everywhere else
+    // stopped working exactly where the view is widest and panning matters most.
+    //
+    // Scrubbing moves to SHIFT + drag rather than disappearing: the timeline has a zoom slider
+    // and a reset, but nothing else pans the time axis, so removing this without a replacement
+    // would have taken away the only way to move through time while zoomed in.
+    if (e.button === 2 && layout === 'timeline' && e.shiftKey) {
       timelineDragging = true;
       timelineDragStartX = e.clientX;
       const range = getTimelineDataRange();
@@ -1683,6 +1692,10 @@
     }
     isPointerDown = true;
     isDragging    = false;
+    // Which button started this drag. The RIGHT button always means "move the view", even when
+    // the press landed on a node — otherwise panning fails wherever the graph is dense, which is
+    // exactly where you need it.
+    dragButton    = e.button;
     dragStart     = { x: e.clientX, y: e.clientY, cx: camX, cy: camY };
     dragStartHit  = hitTest(e.clientX, e.clientY);
     canvasEl?.setPointerCapture(e.pointerId);
@@ -1711,7 +1724,10 @@
         const wy = (e.clientY - _rect.top - _rect.height / 2 - camY) / camScale;
         orderDragNode.x = wx;
         orderDragNode.y = wy;
-      } else if (!dragStartHit && Math.hypot(dx, dy) > 10) {
+      } else if ((dragButton === 2 || !dragStartHit) && Math.hypot(dx, dy) > 10) {
+        // dragButton === 2 bypasses the "did not start on a node" condition: a right-drag is a
+        // camera gesture whatever is under the cursor. Left-drag keeps the old rule, so pressing
+        // on a node still selects it rather than sliding the view out from under you.
         isDragging = true;
         camX = dragStart.cx + dx;
         camY = dragStart.cy + dy;
