@@ -16,7 +16,7 @@ related:
 
 Reckons.AI is a personal knowledge graph that runs entirely in your browser. No server, no account, no cloud dependency. Your data stays on your device in IndexedDB, and you control every piece of knowledge that enters your graph through a human review process.
 
-<p class="derived">It has 44 parts below.</p>
+<p class="derived">It has 45 parts below.</p>
 
 ## In this section
 
@@ -41,6 +41,7 @@ Reckons.AI is a personal knowledge graph that runs entirely in your browser. No 
 <div class="card-grid">
 
 <a class="card" href="../guide/who-makes-this"><span class="card-title">Who makes Reckons.AI</span><span class="card-text">Reckons.AI is built by one person at a small consultancy, which is worth knowing before you decide how much to depend on it.</span></a>
+<a class="card" href="../learn/what-it-does"><span class="card-title">What Reckons.AI does, in five moves</span><span class="card-text">Reckons.AI does one thing in five moves: it takes what you put in, works out the claims inside it, asks you which are true, keeps the ones you accept with their sources attached, and then lets you ask the result questions.</span></a>
 <a class="card" href="../features/graph3-d"><span class="card-title">3D / 2D Knowledge Graph</span><span class="card-text">Interactive force-directed graph in WebGL (3D) or Canvas (2D fallback).</span></a>
 <a class="card" href="../learn/reckoning"><span class="card-title">A reckoning — asking your graph what to do</span><span class="card-text">A reckoning is what this product is named after, and it is the thing you do once you have a graph worth asking.</span></a>
 <a class="card" href="../features/compare"><span class="card-title">Compare — finding out where two people actually disagree</span><span class="card-text">Put two graphs side by side and see what is new, what agrees, and what conflicts.</span></a>

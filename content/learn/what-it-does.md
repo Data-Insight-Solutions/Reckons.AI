@@ -3,6 +3,7 @@ title: "What Reckons.AI does, in five moves"
 slug: "what-it-does"
 order: 50
 section: "Learn"
+parent: "what-is-reckons-ai"
 template: doc
 status: published
 nav: sidebar
