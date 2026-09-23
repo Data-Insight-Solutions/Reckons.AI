@@ -342,3 +342,37 @@ kterm:reckoning a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology
     kpred:binding-class kbind:free ;
     skos:definition "A grounded Situation-Target-Proposal deliberation over the graph: what is true now, what is wanted, and what would close the gap." ;
     skos:scopeNote "The product's own coinage and the root of its name, so it stays. 57 occurrences across 14 files — small enough that if it ever needs renaming, it is cheap." .
+
+kterm:explore-view a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "explore view" ;
+    kpred:user-label "explore" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "One of the two views of a SPACE: the one you move around in, where statements are already settled and you are looking at what you have." ;
+    skos:scopeNote "A VIEW OF THE SPACE, NOT A SEPARATE THING (Matt, 2026-09-23). Explore and review are two ways of looking at one knowledge base, the way 2D and 3D are — see kterm:graph-view, which is why 'space' had to cover both dimensions rather than splitting." ;
+    skos:related kterm:review-view, kterm:graph-view .
+
+kterm:review-view a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "review view" ;
+    kpred:user-label "review" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "The other view of a SPACE: the one where statements are still pending and a person is deciding what enters." ;
+    skos:scopeNote "The two views differ by the STATE of what they show — settled versus pending — not by what they are showing. Both are the same space." ;
+    skos:related kterm:explore-view, kterm:graph-view .
+
+kterm:source-graph a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "source graph" ;
+    kpred:standards-label "named graph (in TriG/N-Quads); a set of meta:Source descriptions (in Turtle)" ;
+    kpred:user-label "where it came from" ;
+    kpred:binding-class kbind:contract ;
+    skos:definition "The half of a space's file that describes WHERE statements came from: one meta:Source per note, email, thread, page or file, each with its title, URI, kind and ingest time." ;
+    skos:scopeNote "WHERE THE WORD 'graph' IS LITERAL AND WHERE IT IS NOT — measured 2026-09-23, because 'standards where accurate' requires knowing which. In toNQuads and toTriG the source IS the fourth element of every quad, so 'named graph' is exact. In a .ttl export it is NOT: Turtle has one default graph and no GRAPH blocks, so the two halves are two POPULATIONS in one graph, joined by prov:wasDerivedFrom on reified rdf:Statement nodes. Verified against tests/fixtures/multi-source.ttl: 5 meta:Source descriptions, 9 rdf:Statement nodes, zero GRAPH blocks." ;
+    skos:related kterm:statement-graph, kterm:named-graph .
+
+kterm:statement-graph a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "statement graph" ;
+    kpred:standards-label "rdf:Statement reification (Turtle); the default graph's quads (N-Quads)" ;
+    kpred:user-label "what you know" ;
+    kpred:binding-class kbind:contract ;
+    skos:definition "The other half of a space's file: the statements themselves, each carrying its status, confidence, altitude and a prov:wasDerivedFrom link to the source it came from." ;
+    skos:scopeNote "BOTH HALVES LIVE IN ONE FILE, AND THAT IS THE UNIT (Matt, 2026-09-23): 'the source graph and the statement graph are both contained within the .ttl for the space'. One space, one file, both halves — which is what makes a space portable and what makes the limit on its size meaningful." ;
+    skos:related kterm:source-graph, kterm:statement .
