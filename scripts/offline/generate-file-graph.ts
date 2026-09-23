@@ -109,8 +109,16 @@ const PKG_NAME = /^(@[a-z0-9][\w.-]*\/)?[a-z0-9][\w.-]*$/;
 
 const packageOf = (spec: string): string | null => {
   if (spec.startsWith('.') || spec.startsWith('$') || spec.startsWith('/')) return null;
-  // Node builtins collapse to one entity. `node:crypto` and `node:fs` are the same dependency —
-  // the runtime — and its colon is not legal in a Turtle local name anyway.
+  // Node builtins collapse to one entity, because `node:crypto` and `node:fs` ARE one
+  // dependency: the runtime.
+  //
+  // NOT because of the colon — that reason was wrong and is corrected here. Turtle 1.1's
+  // PN_LOCAL grammar explicitly permits ':' in a local name, so `pkg:node:crypto` parses fine
+  // (verified against N3). For characters that genuinely are not allowed, the standard options
+  // are percent-encoding (`%3A`, legal) or a full IRI in angle brackets (always safe);
+  // backslash escaping covers the reserved set ~.-!$&'()*+,;=/?#@%_ but NOT ':', precisely
+  // because ':' needs no escape. The parse failure blamed on this was entirely the other bug —
+  // prose from a comment becoming `pkg:not plural yet`, where the SPACES are illegal.
   if (spec.startsWith('node:')) return 'node';
   // @scope/name keeps two segments; everything else keeps one. Deep paths are the same package.
   const parts = spec.split('/');
