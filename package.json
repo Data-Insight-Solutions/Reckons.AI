@@ -41,6 +41,7 @@
     "storybook": "storybook dev --port 6006",
     "build-storybook": "storybook build",
     "test:visual": "playwright test --config=playwright.visual.config.ts --project=chromium",
+    "test:visual:ci": "VISUAL_SKIP_STORYBOOK=1 playwright test --config=playwright.visual.config.ts --project=chromium",
     "test:stories": "playwright test --config=playwright.visual.config.ts --project=user-stories",
     "test:visual:all": "playwright test --config=playwright.visual.config.ts",
     "test:workflows": "playwright test --config=playwright.workflows.config.ts",
