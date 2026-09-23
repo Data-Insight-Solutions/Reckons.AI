@@ -52,7 +52,7 @@ note / url / doc / .ttl / calendar / extension
 - **Content safety** — ethics preamble on shared and remote prompts (purpose- and locality-gated, `ethicsPreambleFor` — not local-only or structured-output), content classifier, export advisory
 - **Passage grounding** — verbatim source excerpts attached to extracted triples
 - **Diff summaries** — LLM-generated 3-part summaries (new/reinforcing/conflicting)
-- **Whisper STT** — local speech-to-text via transformers.js (no cloud required)
+- **Whisper STT** — local speech-to-text via transformers.js, no cloud required ([`whisper-stt.ts`](src/lib/integrations/llm/whisper-stt.ts))
 - **Kokoro TTS** — local text-to-speech for story walkthroughs
 - **Per-task LLM backends** — use different providers for ingest, chat, analysis, and diff summary
 - **Model cache management** — inspect, sideload, and purge locally cached WASM models
@@ -224,7 +224,7 @@ Structure organisational knowledge around **People · Policy · Procedure** — 
 
 ## Things that are deliberately absent
 
-- **No backend server** — all state in IndexedDB; Turtle export for backup. Optional n8n cloud sync is self-hosted.
+- **No backend server** — all state in IndexedDB; Turtle export for backup. Optional n8n cloud sync is self-hosted. Enforced by the build: [`svelte.config.js`](svelte.config.js) uses `adapter-static`, so there is no server to run.
 - **No accounts** — your KB is yours alone, on this device. Enterprise RBAC is an opt-in layer.
-- **No analytics, no tracking, no remote logging**
+- **No personal telemetry** — the app collects nothing and there is no server to receive it. The public website counts visits in aggregate via Cloudflare Web Analytics (cookieless, no persistent identifier, no cross-site tracking); it measures the marketing and docs pages, never anything inside your graph. Full statement: [no-telemetry](https://reckons.ai/docs/no-telemetry).
 - URL ingestion proxies through `r.jina.ai/<url>` for clean-text extraction; use the note or document tab to avoid that hop entirely

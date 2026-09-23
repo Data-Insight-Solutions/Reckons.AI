@@ -136,6 +136,65 @@ for (const file of SURFACES) {
 
 // ── Check 2: countable claims ──────────────────────────────────────────────
 /** Ground truth, counted — not remembered. */
+/**
+ * CHECK 3 — AN ABSOLUTE SAFETY CLAIM MUST CITE ITS PROOF.
+ *
+ * The two checks above compare a feature's LABEL against the graph's STATUS. Whether a described
+ * BEHAVIOUR still matches the code is outside that model entirely, and on 2026-09-23 that gap cost
+ * six weeks of a false safety claim: ETHICS_PREAMBLE became purpose- and locality-gated on
+ * 2026-08-14, COUNSEL-BRIEF.md was updated, and README, SAFETY.md, AUDIT.md and
+ * reckons-shipped.ttl all went on saying "every prompt". Nothing could have noticed, because
+ * nothing was looking at behaviour.
+ *
+ * THE BEHAVIOUR WAS TESTED THE WHOLE TIME — src/lib/safety/__tests__/ethics-purpose.test.ts pins
+ * exactly the gating the prose denied. The prose and the proof both existed and nothing connected
+ * them. So the rule is not "is this sentence true", which is a judgment no script can make. It is
+ * "does this sentence POINT AT something that would fail if it stopped being true", which is a
+ * fact about the text.
+ *
+ * Scoped deliberately to ABSOLUTE quantifiers over SAFETY and PRIVACY nouns. A hedged sentence
+ * makes no absolute claim and needs no proof; a claim about layout or colour is not worth the
+ * ceremony. Widening this is how the check becomes noise nobody reads.
+ */
+const ABSOLUTE = /\b(every|all|never|always|no|zero|any)\b/i;
+const HIGH_STAKES = /\b(prompt|preamble|telemetry|tracking|analytics|encrypt|filtered|blocked|server|cloud|uploaded|transmitted|leaves your device|stays on your device)\b/i;
+/** A citation is a repo path or a link — something a reader can follow and a change can break. */
+const CITES = /(\([^)]*\.(ts|svelte|ttl|md)[^)]*\)|`[^`]*\.(ts|svelte|ttl)`|\]\(|https?:\/\/)/;
+
+/**
+ * PROSE DOCUMENTS ONLY, and the first draft of this check proves why. Run across every SURFACE it
+ * produced 22 findings, most of them landing-page body copy — "Your graph lives in your browser",
+ * "No cloud required". Those are marketing sentences, and demanding an inline citation in one is
+ * absurd; the claim behind them belongs in SAFETY.md, which the page defers to. Twenty-two
+ * findings of which sixteen are unactionable is the noise this file already warns about: it
+ * trains the reader to dismiss the checker, and the one real finding goes unread with the rest.
+ */
+const PROSE_SURFACES = SURFACES.filter((f) => f.endsWith('.md'));
+
+function auditAbsoluteClaims(): void {
+  for (const file of PROSE_SURFACES) {
+    if (!existsSync(file)) continue;
+    const text = readFileSync(file, 'utf8');
+    text.split('\n').forEach((line, i) => {
+      const bare = line.replace(/^\s*[-*|>#]+\s*/, '').trim();
+      if (bare.length < 25) return;
+      if (!ABSOLUTE.test(bare) || !HIGH_STAKES.test(bare)) return;
+      if (HEDGES.some((h) => bare.toLowerCase().includes(h))) return;
+      if (CITES.test(bare)) return;
+      findings.push({
+        level: 'warn',
+        check: 'unproven-absolute',
+        file,
+        msg: `${file}:${i + 1} makes an absolute claim about a safety or privacy behaviour and ` +
+             `cites nothing that would fail if it stopped being true: "${bare.slice(0, 110)}". ` +
+             `Point it at the test, the function, or the graph entity that pins it — or hedge it. ` +
+             `ETHICS_PREAMBLE was gated on 2026-08-14 and three surfaces said "every prompt" for ` +
+             `six weeks because no sentence pointed at ethics-purpose.test.ts.`,
+      });
+    });
+  }
+}
+
 function countMcpTools(): number | null {
   const f = 'mcp-server/src/index.ts';
   if (!existsSync(f)) return null;
@@ -172,6 +231,8 @@ function countTests(): number | null {
  *
  * So a countable claim is only checked when it is UNQUALIFIED.
  */
+auditAbsoluteClaims();
+
 const SCOPE_WORDS = /\b(safety|unit|visual|e2e|smoke|integration|mcp|browser|extension|agent|snapshot|regression)\b/i;
 
 const COUNTABLE: { label: string; re: RegExp; actual: () => number | null }[] = [
