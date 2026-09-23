@@ -1226,12 +1226,17 @@
     // wherever the springs balanced and simply overlap. "All visible" is a property, and a
     // property that must hold gets asserted, not approached — the same reason the date axis is
     // pinned rather than tuned.
-    if (collageOn) {
+    // Runs when ANYTHING claims room, not only under the collage modifier. Feeding GLB radii into
+    // the map above and teaching the springs to respect them is not enough on its own: repulsion
+    // is size-blind by design, so without this pass the models settle wherever the springs balance
+    // and simply overlap — which is the state Matt reported. The pass is the part that turns
+    // "wants to be apart" into "is apart".
+    if ((collageOn || radii.size > 0) && camera.current) {
       // The camera's right and up vectors, pulled from its world matrix. Separation happens in
       // THIS plane: pushing two nodes apart along the view axis satisfies the arithmetic and
       // changes nothing a viewer can see, which is exactly how the first version converged while
       // still painting a pile.
-      const m = camera.current!.matrixWorld.elements;
+      const m = camera.current.matrixWorld.elements;
       const basis = {
         right: { x: m[0], y: m[1], z: m[2] },
         up: { x: m[4], y: m[5], z: m[6] },
