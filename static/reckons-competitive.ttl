@@ -879,3 +879,15 @@ kb:ref-ai-memory rdf:type ktype:Reference ;
     kpred:scope-decision "REFERENCE THE HANDOFF CONTRACT, NOT THE ENGINE. The portable value is the contract — what a bounded handoff contains, when it is produced, how the next session consumes it, and what happens when a harness cannot inject one. The engine is a Rust binary whose product IS its integration surface across 20+ agent harnesses; none of that belongs in a local-first browser app." ;
     kpred:honest-note "NOT INSTALLED, NOT RUN (2026-08-25). Claims come from the README's own support matrix, which is unusually candid about per-harness gaps — several harnesses capture but cannot inject handoffs, and it says so per row rather than in a footnote. That candour is itself a working model for kb:honest-status." ;
     kpred:part-of      kb:competitive-landscape .
+
+kb:comp-flora rdf:type ktype:Competitor ;
+               rdfs:label   "Flora" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   36 ;
+               kpred:product-url  "https://docs.flora.ai/" ;
+               kpred:description  "A generative-AI CANVAS: nodes wired together on a 2D surface where the edges carry generation, so an asset is produced by connecting inputs to a transform. Matt saw it demonstrated 2026-09-23 and named the case that lands closest — 'connect a color palette to an image and recolor the image with different color combinations'." ;
+               kpred:assessment   "THE OVERLAP IS REAL AND IT IS NARROW: digital ASSET GENERATION, which this roadmap holds as kb:asset-generation (F74.1, planned — Meshy for text/image-to-3D, local generation speculative). Flora has shipped the thing that entity describes wanting, and the palette-to-image case is one Reckons.AI has no answer for today." ;
+               kpred:assessment   "AND THE SHAPE IS THE SAME EVEN WHERE THE PURPOSE IS NOT — which is the part worth noticing rather than dismissing. A palette node wired to an image node through a recolor transform IS a graph: two entities and a typed edge that means something. Flora points that mechanic at MAKING THINGS; Reckons.AI points it at KNOWING things. Identical primitive, opposite direction." ;
+               kpred:assessment   "WHAT IT IS NOT, IN MATT'S WORDS (2026-09-23): 'It is not ontology building, it is generative ai canvas.' So it does not compete on the review spine — no pending state, no human gating what enters — on provenance, on a portable standard format a user owns, or on local-first storage. Those are structural differences rather than feature gaps, and a demo will not surface them because they are properties of where the data lives and who approves it." ;
+               kpred:honest-note  "ASSESSED FROM A DEMONSTRATION AND THE PUBLIC DOCS URL, NOT FROM USE. Nothing here is measured: no licence check, no storage-model verification, no test of whether assets or projects can be exported. Those are exactly the questions that decide how much of the above holds, and none has been asked yet. Treat this as a first reading to be corrected, not as a competitive finding." ;
+               kpred:relates-to   kb:asset-generation .
