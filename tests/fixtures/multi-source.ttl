@@ -1,0 +1,199 @@
+@prefix kb:     <urn:kbase:concept/> .
+@prefix kpred:  <urn:kbase:predicate/> .
+@prefix ktype:  <urn:kbase:type/> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix meta:   <urn:kbase:meta/> .
+@prefix prov:   <http://www.w3.org/ns/prov#> .
+@prefix dc:     <http://purl.org/dc/terms/> .
+
+<urn:reckons:kb> <urn:reckons:meta/kbStableId> "3f5c81d4-9a27-4c6b-8e13-000000000501" .
+
+# ==============================================================================
+# MULTI-SOURCE FIXTURE — several real-shaped sources feeding one graph
+# ==============================================================================
+#
+# WHY THIS EXISTS. Matt, 2026-09-22: example graphs need MULTIPLE SOURCE FILES —
+# "separate notes, emails, and correspondence (message threads) to mimic real
+# sources". SourcesExplorer.svelte and SourcesPanel.svelte had ZERO test coverage
+# of any kind, and the reason is visible the moment you look for a fixture: every
+# other graph here arrives from one source, so the view's actual job — telling you
+# WHICH source said a thing, and what to do when two disagree — had nothing to act
+# on.
+#
+# FIVE SOURCES, FOUR NATURES, ONE SUBJECT. A village hall roof repair, entirely
+# fictional. Two dictated notes, one email, one message thread, one council web
+# page. They overlap deliberately: three of them talk about the same quote, and
+# TWO OF THEM DISAGREE ABOUT THE FIGURE. That disagreement is the point. A graph
+# where every fact has exactly one uncontested source does not need a sources
+# view, and will not test one.
+#
+# ON KINDS, HONESTLY. Source.kind is a closed union in src/lib/rdf/types.ts —
+# url | document | note | reminder | semfile | analysis | calendar | repository |
+# turtle. There is NO `email` and no `thread`. So the email and the message thread
+# below are both `document`, which means the kind filter cannot separate them even
+# though a reader obviously can. That is a real modelling gap, recorded here
+# rather than papered over by inventing enum values in a fixture: adding them
+# would also mean deciding whether they are refreshable (REFRESHABLE_KINDS is
+# url/repository/calendar today, and you cannot re-fetch an email somebody sent
+# you), which is a product decision and not a fixture's to make.
+#
+# The URL source is included as the contrast case: it is the only refreshable one
+# here, so a test can assert that the view distinguishes what can be re-fetched
+# from what cannot.
+
+# ── Sources ──────────────────────────────────────────────────────────────────
+
+<urn:kbase:source/note-site-visit>
+    rdf:type meta:Source ;
+    dc:title "Site visit — north roof, dictated" ;
+    meta:sourceUri "note://2026-03-02-site-visit" ;
+    meta:sourceKind "note" ;
+    meta:trustLevel "review" ;
+    dc:created "2026-03-02T10:15:00.000Z"^^xsd:dateTime .
+
+<urn:kbase:source/note-committee>
+    rdf:type meta:Source ;
+    dc:title "Committee meeting — 9 March, dictated afterwards" ;
+    meta:sourceUri "note://2026-03-09-committee" ;
+    meta:sourceKind "note" ;
+    meta:trustLevel "review" ;
+    dc:created "2026-03-09T20:40:00.000Z"^^xsd:dateTime .
+
+# An email: one author, one timestamp, a figure stated precisely.
+<urn:kbase:source/email-bramley-quote>
+    rdf:type meta:Source ;
+    dc:title "Email — Bramley Roofing, revised quote" ;
+    meta:sourceUri "file://correspondence/2026-03-11-bramley-quote.eml" ;
+    meta:sourceKind "document" ;
+    meta:trustLevel "review" ;
+    dc:created "2026-03-11T09:02:00.000Z"^^xsd:dateTime .
+
+# A thread: several messages, several authors, and the answer only appears in the
+# last one. This is the shape an email cannot test — a source whose meaning
+# depends on message ORDER.
+<urn:kbase:source/thread-key-access>
+    rdf:type meta:Source ;
+    dc:title "Thread — hall key access (4 messages)" ;
+    meta:sourceUri "file://correspondence/2026-03-14-key-access.thread" ;
+    meta:sourceKind "document" ;
+    meta:trustLevel "review" ;
+    dc:created "2026-03-14T16:25:00.000Z"^^xsd:dateTime .
+
+# The only refreshable source here — REFRESHABLE_KINDS is url/repository/calendar.
+<urn:kbase:source/url-council-grants>
+    rdf:type meta:Source ;
+    dc:title "District council — community buildings grant" ;
+    meta:sourceUri "https://example.invalid/grants/community-buildings" ;
+    meta:sourceKind "url" ;
+    meta:trustLevel "trusted" ;
+    dc:created "2026-03-15T08:00:00.000Z"^^xsd:dateTime .
+
+# ── Entities ─────────────────────────────────────────────────────────────────
+
+kb:village-hall rdf:type ktype:Concept ; rdfs:label "Village hall" .
+kb:north-roof rdf:type ktype:Concept ; rdfs:label "North roof" .
+kb:bramley-roofing rdf:type ktype:Concept ; rdfs:label "Bramley Roofing" .
+kb:buildings-grant rdf:type ktype:Concept ; rdfs:label "Community buildings grant" .
+
+# ── Statements ───────────────────────────────────────────────────────────────
+# Each carries prov:wasDerivedFrom, which is what the sources view reads.
+
+<urn:kbase:stmt/ms0000000000000001>
+    rdf:type rdf:Statement ;
+    rdf:subject kb:north-roof ;
+    rdf:predicate kpred:part-of ;
+    rdf:object kb:village-hall ;
+    meta:status "confirmed" ;
+    meta:confidence "0.9"^^xsd:decimal ;
+    prov:wasDerivedFrom <urn:kbase:source/note-site-visit> ;
+    dc:created "2026-03-02T10:15:00.000Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/ms0000000000000002>
+    rdf:type rdf:Statement ;
+    rdf:subject kb:north-roof ;
+    rdf:predicate kpred:condition ;
+    rdf:object "Slipped slates above the kitchen; water ingress after south-westerlies" ;
+    meta:status "confirmed" ;
+    meta:confidence "0.8"^^xsd:decimal ;
+    prov:wasDerivedFrom <urn:kbase:source/note-site-visit> ;
+    dc:created "2026-03-02T10:15:00.000Z"^^xsd:dateTime .
+
+# THE DISAGREEMENT, PART ONE — the committee's recollection, dictated from memory.
+<urn:kbase:stmt/ms0000000000000003>
+    rdf:type rdf:Statement ;
+    rdf:subject kb:bramley-roofing ;
+    rdf:predicate kpred:quoted-amount ;
+    rdf:object "4200" ;
+    meta:status "pending" ;
+    meta:confidence "0.5"^^xsd:decimal ;
+    prov:wasDerivedFrom <urn:kbase:source/note-committee> ;
+    dc:created "2026-03-09T20:40:00.000Z"^^xsd:dateTime .
+
+# THE DISAGREEMENT, PART TWO — the email, two days later, saying something else.
+# Same subject, same predicate, different object, different source. A sources view
+# that cannot surface this pair is not doing its job.
+<urn:kbase:stmt/ms0000000000000004>
+    rdf:type rdf:Statement ;
+    rdf:subject kb:bramley-roofing ;
+    rdf:predicate kpred:quoted-amount ;
+    rdf:object "4650" ;
+    meta:status "pending" ;
+    meta:confidence "0.9"^^xsd:decimal ;
+    prov:wasDerivedFrom <urn:kbase:source/email-bramley-quote> ;
+    dc:created "2026-03-11T09:02:00.000Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/ms0000000000000005>
+    rdf:type rdf:Statement ;
+    rdf:subject kb:bramley-roofing ;
+    rdf:predicate kpred:works-on ;
+    rdf:object kb:north-roof ;
+    meta:status "confirmed" ;
+    meta:confidence "0.9"^^xsd:decimal ;
+    prov:wasDerivedFrom <urn:kbase:source/email-bramley-quote> ;
+    dc:created "2026-03-11T09:02:00.000Z"^^xsd:dateTime .
+
+# From the THREAD, and only from its last message — the earlier three proposed
+# arrangements that were superseded within the same source.
+<urn:kbase:stmt/ms0000000000000006>
+    rdf:type rdf:Statement ;
+    rdf:subject kb:village-hall ;
+    rdf:predicate kpred:key-held-by ;
+    rdf:object "Parish clerk, collected from the post office" ;
+    meta:status "confirmed" ;
+    meta:confidence "0.8"^^xsd:decimal ;
+    prov:wasDerivedFrom <urn:kbase:source/thread-key-access> ;
+    dc:created "2026-03-14T16:25:00.000Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/ms0000000000000007>
+    rdf:type rdf:Statement ;
+    rdf:subject kb:buildings-grant ;
+    rdf:predicate kpred:closes-on ;
+    rdf:object "2026-05-30" ;
+    meta:status "confirmed" ;
+    meta:confidence "0.95"^^xsd:decimal ;
+    prov:wasDerivedFrom <urn:kbase:source/url-council-grants> ;
+    dc:created "2026-03-15T08:00:00.000Z"^^xsd:dateTime .
+
+# One entity carrying facts from THREE different sources — the overlap case a
+# per-source view has to group correctly.
+<urn:kbase:stmt/ms0000000000000008>
+    rdf:type rdf:Statement ;
+    rdf:subject kb:village-hall ;
+    rdf:predicate kpred:eligible-for ;
+    rdf:object kb:buildings-grant ;
+    meta:status "pending" ;
+    meta:confidence "0.6"^^xsd:decimal ;
+    prov:wasDerivedFrom <urn:kbase:source/url-council-grants> ;
+    dc:created "2026-03-15T08:00:00.000Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/ms0000000000000009>
+    rdf:type rdf:Statement ;
+    rdf:subject kb:village-hall ;
+    rdf:predicate kpred:discussed-at ;
+    rdf:object "Committee meeting, 9 March" ;
+    meta:status "confirmed" ;
+    meta:confidence "0.9"^^xsd:decimal ;
+    prov:wasDerivedFrom <urn:kbase:source/note-committee> ;
+    dc:created "2026-03-09T20:40:00.000Z"^^xsd:dateTime .
