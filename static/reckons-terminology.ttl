@@ -191,7 +191,11 @@ kterm:knowledge-base a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/termin
     skos:definition "One user-owned collection of entities, statements and sources, stored as its own IndexedDB database and exportable as one Turtle file." ;
     skos:scopeNote "DECIDED (Matt, 2026-09-17): SPELL OUT THE ABBREVIATION, KEEP THE WORD. The concept stays 'knowledge base' in every register — the abbreviation kb is what goes, not the noun. Migrating to 'graph' was half-decided and is now rejected: graph is already the most overloaded word here, meaning four things at 4802 occurrences, so that migration would have traded a clear-but-jargon term for an ambiguous-but-friendly one. A friendlier user-register word was considered and declined; the three-register model makes that reversible later without touching code, because only the user label would move." ;
     skos:scopeNote "WHAT MOVES AND WHAT DOES NOT. The identifier kb is FREE where it is a local name — 3658 of its 4140 occurrences — and becomes knowledgeBase. It is CONTRACT-bound in four places that do NOT move without a data migration: the urn:kbase: namespace (1301 of the 1380 kbase occurrences, plus every stored user graph), the ?kb= URL parameter in bookmarkable links, Dexie database names from resolveDbName(), and the kb argument on every MCP tool. Renaming a free identifier is a diff; renaming any of those four is a migration that breaks graphs people already have." ;
-    skos:hiddenLabel "kb", "KB", "kbase" .
+    skos:scopeNote "THE UNIT IS ONE .ttl AND THAT IS THE POINT (Matt, 2026-09-23): 'the unit of one marble on the desk is a single .ttl knowledge graph'. One knowledge base = one IndexedDB database = one exported Turtle file = one marble. Distinct units with limits, because a unit without a boundary stops being usable — the thing a person picks up has to be small enough to hold." ;
+    skos:scopeNote "MARBLE AND SPACE ARE ONE THING IN TWO STATES, not two concepts. A marble is the CLOSED form — the object on the desk, in a collection, something you pick up. A space is the OPEN form — where you are once you jump in. kterm:graph-view names the open state; this concept names the thing itself. The office-and-marbles metaphor is a presentation of that duality, not a new layer of the model." ;
+    skos:scopeNote "WHY 'knowledge graph' IS NOT THE USER WORD (Matt, 2026-09-23): it describes HOW THE SYSTEM WORKS, which makes it the right thing to say to a developer and the wrong thing to put in front of everyone else. The standards term underneath stays accurate and unchanged — kpred:standards-label is 'RDF dataset', and a quad's fourth element is a named graph (kterm:named-graph). Borrow the standard where it is accurate; translate at the surface." ;
+    skos:hiddenLabel "kb", "KB", "kbase" ;
+    skos:altLabel "marble" .
 
 kterm:named-graph a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
     skos:prefLabel "named graph" ;
@@ -204,9 +208,10 @@ kterm:named-graph a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminolo
 
 kterm:graph-view a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
     skos:prefLabel "graph view" ;
-    kpred:user-label "the map" ;
+    kpred:user-label "space" ;
     kpred:binding-class kbind:free ;
     skos:definition "The 2D or 3D visual rendering of a knowledge base — the force layout, the camera, the drawn markers and edges." ;
+    skos:scopeNote "DECIDED (Matt, 2026-09-23): the user-facing word is SPACE, and it spans BOTH 2D and 3D on purpose. Switching dimension is a change of VIEW, not a change of thing — you do not rename a document when you open print preview — so one word has to cover both or the interface implies two objects where there is one. 'World' was considered and is narrower: it reads 3D, and it competes with the marble metaphor below rather than completing it." ;
     skos:scopeNote "A presentation concept. Never store data under this name and never let it stand as bare graph in a module that also handles quads." ;
     skos:hiddenLabel "graph" .
 
