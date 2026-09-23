@@ -36,8 +36,13 @@ playwright-report-evidence/
 .DS_Store
 Thumbs.db
 
-# Claude Code sessions
-.claude/
+# Claude Code sessions.
+# `.claude/*` and NOT `.claude/` — git never descends into an excluded DIRECTORY, so the two
+# negations below were dead from the day they were written: the commands stayed ignored and only
+# stayed in the repo because they were committed before the rule existed. Excluding the CONTENTS
+# lets a negation work. Found by scripts/offline/repo-hygiene.ts, which reports a file that is
+# tracked and ignored at once.
+.claude/*
 # …but the slash commands ARE project files. CLAUDE.md lists them as project docs, and
 # reckons-codebase.ttl claims them with kpred:has-file — a claim that was TRUE on the author's
 # laptop and FALSE in every other checkout, which is the worst shape a claim can have.
@@ -83,8 +88,12 @@ tests/visual/button-crawl.ttl
 tests/visual/screenshots/button-crawl/
 # Crawl RESULT json embeds base64 screenshots — individual runs reach 95MB, and
 # 577MB had accumulated untracked, one `git add .` away from entering history
-# permanently. Six older, small results (4.6MB) are already tracked and stay so.
+# permanently. TWO older results are already tracked and stay so, negated below so the ignore
+# file stops contradicting the repository. (This note said "six older, small results (4.6MB)";
+# there are two, and one of them is 4.5MB on its own — corrected 2026-09-23 after measuring.)
 tests/visual/results/button-crawl_*.json
+!tests/visual/results/button-crawl_2026-07-09T14-44-01-152Z.json
+!tests/visual/results/button-crawl_2026-07-09T14-51-08-668Z.json
 
 # tesseract.js OCR language data (downloaded at runtime)
 eng.traineddata
@@ -140,6 +149,17 @@ static/kbs/*
 # kbs/button-crawl alone reached 209MB: button-crawl.ts embeds every screenshot as
 # a full data: URI literal. Nothing here belongs in the repository.
 kbs/*
+# …except the graphs that SHIP: the default graph a new install opens, the three demo fixtures
+# e2e and visual tests seed from, and the two example corpora. These are authored content, not
+# generated bulk, and they were tracked-and-ignored at the same time until 2026-09-23.
+!kbs/default-kb/
+!kbs/default-kb/*.ttl
+!kbs/demo-*/
+!kbs/demo-*/*.ttl
+!kbs/triples-rdf/
+!kbs/triples-rdf/*.ttl
+!kbs/use-cases/
+!kbs/use-cases/*.ttl
 reckons-workspace/kbs/*
 reckons-workspace/*.json
 reckons-workspace/runs/
