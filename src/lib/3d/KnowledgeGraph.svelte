@@ -391,7 +391,26 @@
 
   // ── Layout builders ─────────────────────────────────────────────────────────
 
-  const FOCUS_RING_R = 5.5; // world-units between hop rings
+  /**
+   * WORLD UNITS BETWEEN HOP RINGS, sized to the biggest thing on them.
+   *
+   * It was a flat 5.5, which predates nodes having real radii. A GLB can now legitimately claim
+   * several world units, so fixed rings put two of them on adjacent hops closer than either one
+   * is wide and the collision pass then fought the ring anchors it could not satisfy — the state
+   * Matt reported as "focus mode looks broken now. We need the radial spread and much further
+   * spread." Sizing the gap from the largest radius present makes the rings reachable, so the
+   * anchors and the separation pass agree instead of pulling against each other.
+   */
+  const focusRingR = $derived.by(() => {
+    let maxR = 0.32;
+    for (const n of nodes) {
+      const url = entityIcon3dMap.get(n.key);
+      const intrinsic = url ? (glbRadius.get(url) ?? 0) : 0;
+      const r = intrinsic > 0 ? glbWorldRadius(intrinsic, n.degree) : markerWorldRadius(n.degree);
+      if (r > maxR) maxR = r;
+    }
+    return Math.max(9, maxR * 2.6 + 4);
+  });
 
   function buildFocusAnchors(): { anchors: Map<string, THREE.Vector3>; radii: number[]; distances: Map<string, number> } {
     if (!selected) return { anchors: new Map(), radii: [], distances: new Map() };
@@ -459,7 +478,7 @@
           nodeKeys.forEach((k, i) => {
             const fa = nodeKeys.length === 1 ? midAngle : angle + (i + 0.5) * (sectorArc / nodeKeys.length);
             const zOff = (i % 2 === 0 ? 1 : -1) * 0.55;
-            anchors.set(k, new THREE.Vector3(FOCUS_RING_R * Math.cos(fa), FOCUS_RING_R * Math.sin(fa), zOff));
+            anchors.set(k, new THREE.Vector3(focusRingR * Math.cos(fa), focusRingR * Math.sin(fa), zOff));
             nodeAngle.set(k, fa);
           });
           angle += sectorArc;
@@ -489,7 +508,7 @@
         parentGroups.get(pk)!.push(k);
       }
 
-      const r = hop * FOCUS_RING_R;
+      const r = hop * focusRingR;
       for (const [pk, siblings] of parentGroups) {
         const base = pk === '__none__' ? 0 : (nodeAngle.get(pk) ?? 0);
         // Fan siblings symmetrically around the parent's angle, narrowing as hop increases
@@ -507,13 +526,13 @@
     // ── 5. Disconnected nodes: outer orbit ───────────────────────────────────
     const unreachable = nodes.filter(n => !anchors.has(n.key));
     unreachable.forEach((n, i) => {
-      const r = (maxD + 2.5) * FOCUS_RING_R;
+      const r = (maxD + 2.5) * focusRingR;
       const theta = (2 * Math.PI * i) / Math.max(unreachable.length, 1);
       anchors.set(n.key, new THREE.Vector3(r * Math.cos(theta), r * Math.sin(theta), (i % 3 - 1) * 2));
     });
 
     const radii: number[] = [];
-    for (let d = 1; d <= maxD; d++) radii.push(d * FOCUS_RING_R);
+    for (let d = 1; d <= maxD; d++) radii.push(d * focusRingR);
     return { anchors, radii, distances };
   }
 
@@ -659,10 +678,37 @@
 
     const anchors = new Map<string, THREE.Vector3>();
     for (const hub of hubNodes) anchors.set(hub.key, hubAnchorPos.get(hub.key)!);
+    /**
+     * FAN EACH HUB'S MEMBERS AROUND IT, rather than stacking every one on the hub's own point
+     * (Matt, 2026-09-24: "Types layout is better spread than Hub currently").
+     *
+     * Every satellite used to be anchored to the IDENTICAL position — its hub — and then had to
+     * shove its way out against an anchorStrength of 0.78 pulling it back. Repulsion won that
+     * argument badly and unevenly, which is exactly why hub looked tighter than type: type
+     * distributes its members, hub piled them and hoped.
+     *
+     * Placement is a phyllotactic spiral (golden angle, radius as sqrt of index), which gives
+     * even density at any count without tuning a per-size ring — the same reason sunflowers use
+     * it. The anchors now describe the spread, so the springs no longer have to invent it.
+     */
+    const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+    const SAT_SPACING = 2.4;
+    const byHub = new Map<number, string[]>();
     for (const node of nodes) {
       if (hubKeySet.has(node.key)) continue;
       const idx = nodeHubIdx.get(node.key) ?? 0;
-      anchors.set(node.key, hubAnchorPos.get(hubNodes[idx].key)!.clone());
+      if (!byHub.has(idx)) byHub.set(idx, []);
+      byHub.get(idx)!.push(node.key);
+    }
+    for (const [idx, members] of byHub) {
+      const centre = hubAnchorPos.get(hubNodes[idx].key)!;
+      members.forEach((k, i) => {
+        const r = SAT_SPACING * Math.sqrt(i + 1);
+        const a = i * GOLDEN_ANGLE;
+        anchors.set(k, centre.clone().add(
+          new THREE.Vector3(r * Math.cos(a), r * Math.sin(a), ((i % 3) - 1) * 0.6),
+        ));
+      });
     }
 
     const nodeColors = new Map<string, string>();
@@ -1003,7 +1049,13 @@
       activeAnchors = anchors;
       layoutMarkers = markers;
       layoutRingRadii = [];
-      anchorStrength = 0.82;
+      // PULL HARDER (Matt, 2026-09-24: "Type and Hub layouts need to 'pull' nodes harder to
+      // their destinations"). These two are CLUSTER layouts: the anchor IS the answer, and a
+      // weak pull left nodes negotiating with repulsion somewhere between their group and the
+      // next one, which reads as a blurry grouping rather than a decisive one. Safe to raise
+      // now that hub's anchors describe a real spread instead of stacking every member on one
+      // point — a strong pull toward a pile would only have made the pile tighter.
+      anchorStrength = 1.35;
       nodeColorMap = new Map(); // type colors come from typeDef, no override needed
       hubNodeKeys = [];
     } else if (layout === 'hub') {
@@ -1011,7 +1063,7 @@
       activeAnchors = anchors;
       layoutMarkers = markers;
       layoutRingRadii = [];
-      anchorStrength = 0.78;
+      anchorStrength = 1.35; // see the note on the type layout above
       nodeColorMap = nodeColors;
       hubNodeKeys = hubKeys;
     } else if (layout === 'timeline') {
@@ -1116,7 +1168,9 @@
     const SPRING     = layout === 'force' ? 0.18 : 0.10;
     const CENTER     = activeAnchors.size > 0 ? 0.008 : 0.04;
     const DAMP       = 0.86;
-    const BASE_REST  = 2.4;
+    // The free layout has no camera fit, so a longer rest is genuinely visible there where it
+    // would merely rescale a fitted layout (Matt: "free mode should be a bit more spread").
+    const BASE_REST  = layout === 'force' ? 3.4 : 2.4;
     const LOCK_TIMELINE_X = layout === 'timeline';
     const LOCK_HIERARCHY_Y = layout === 'hierarchy';
 

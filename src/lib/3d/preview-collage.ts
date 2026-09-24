@@ -181,6 +181,8 @@ export const SELECTED_NODE_SCALE = 1.6;
 export const MARKER_UNIT_RADIUS = 0.32;
 /** GraphNode renders a GLB group at `scale * GLB_GROUP_SCALE`. */
 export const GLB_GROUP_SCALE = 0.8;
+/** GraphNode also LIFTS the group by `scale * GLB_Y_OFFSET` so the model sits above the node. */
+export const GLB_Y_OFFSET = 0.55;
 
 /** GraphNode's `degreeScale` — the RAW figure, with no marker conversion applied. */
 export function degreeScale(degree: number): number {
@@ -201,7 +203,14 @@ export function markerWorldRadius(degree: number): number {
  * .svelte file where nothing could test it; it is a function so the third one fails here.
  */
 export function glbWorldRadius(intrinsicRadius: number, degree: number): number {
-  return intrinsicRadius * degreeScale(degree) * GLB_GROUP_SCALE;
+  const s = degreeScale(degree);
+  // THE MODEL IS NOT CENTRED ON THE NODE. GraphNode lifts it by scale * GLB_Y_OFFSET, while
+  // the springs and the collision pass reserve a circle centred on node.pos — so the model
+  // sat ABOVE the room made for it and overlapped whatever was up there (Matt, 2026-09-24:
+  // "the glb is offset up, higher than the space made for it"). Including the lift makes the
+  // reserved circle reach the top of the model. It over-reserves sideways, which is the safe
+  // direction: the alternative is separating around a centre nothing is drawn at.
+  return intrinsicRadius * s * GLB_GROUP_SCALE + s * GLB_Y_OFFSET;
 }
 
 export function resolveOverlaps(

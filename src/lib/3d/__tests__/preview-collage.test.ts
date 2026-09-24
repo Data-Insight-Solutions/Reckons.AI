@@ -326,14 +326,21 @@ describe('node layout radius derivation', () => {
     // world radius carries no 0.32. The old code multiplied it in and made every model a
     // third of its drawn size.
     const intrinsic = 2.5;
-    expect(glbWorldRadius(intrinsic, 3)).toBeCloseTo(intrinsic * degreeScale(3) * 0.8, 6);
-    expect(glbWorldRadius(intrinsic, 3)).not.toBeCloseTo(intrinsic * degreeScale(3) * 0.32 * 0.8, 3);
+    const s = degreeScale(3);
+    // model body (scale * 0.8) PLUS the lift GraphNode applies (scale * 0.55), because the
+    // reserved circle is centred on node.pos and the model is not.
+    expect(glbWorldRadius(intrinsic, 3)).toBeCloseTo(intrinsic * s * 0.8 + s * 0.55, 6);
+    // the old, wrong value — marker conversion applied to a model
+    expect(glbWorldRadius(intrinsic, 3)).not.toBeCloseTo(intrinsic * s * 0.32 * 0.8, 3);
   });
 
   it('a unit-radius model claims meaningfully more room than a marker of the same degree', () => {
-    // 0.8 / 0.32 = 2.5x. This ratio is the whole reason models overlapped.
+    // (0.8 + 0.55) / 0.32 = 4.21875 for a unit-radius model: body plus the draw lift, against
+    // the marker's unit sphere. The old code produced 0.8x — LESS than a marker — which is how
+    // models ended up with less room than the dots beside them.
     const ratio = glbWorldRadius(1, 5) / markerWorldRadius(5);
-    expect(ratio).toBeCloseTo(2.5, 6);
+    expect(ratio).toBeCloseTo((0.8 + 0.55) / 0.32, 6);
+    expect(ratio).toBeGreaterThan(1);
   });
 
   it('radius grows with degree in both, and never goes backwards', () => {
