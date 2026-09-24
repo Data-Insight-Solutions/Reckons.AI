@@ -4,7 +4,6 @@
 @prefix kterm:  <urn:kbase:term/> .
 @prefix kreg:   <urn:kbase:type/register/> .
 @prefix kbind:  <urn:kbase:type/binding/> .
-@prefix kvoc:   <urn:kbase:type/vocabulary/> .
 @prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
@@ -120,7 +119,29 @@ kreg:backend a skos:Concept ; skos:inScheme ktype:RegisterScheme ;
 
 kreg:user a skos:Concept ; skos:inScheme ktype:RegisterScheme ;
     skos:notation "user" ; skos:prefLabel "User register" ;
-    skos:definition "What a first-time non-technical reader sees in the interface. Chosen for recognition; may be less precise than the developer term, and that is allowed because the mapping is recorded here." .
+    skos:definition "What a first-time non-technical reader sees in the interface. Chosen for recognition; may be less precise than the developer term, and that is allowed because the mapping is recorded here." ;
+    skos:scopeNote "IT HAS THREE LEVELS, AND THEY ARE LEVELS RATHER THAN A SECOND AXIS (Matt, 2026-09-23): 'front end and backend have use within developer, and user experience has the generic, theme and custom levels within the user tiers.' An earlier version of this file modelled theme and custom as an orthogonal 'applied vocabulary' scheme sitting beside the registers. That was over-built: a themed word and a user's own word are both what a PERSON reads, so they are the user register at greater specificity, not a different kind of thing. One hierarchy, not two axes." ;
+    skos:narrower kreg:generic, kreg:theme, kreg:custom .
+
+kreg:generic a skos:Concept ; skos:inScheme ktype:RegisterScheme ;
+    skos:notation "generic" ; skos:prefLabel "Generic user register" ;
+    skos:broader kreg:user ;
+    skos:definition "The default user-facing word, independent of any theme or personalization. THIS IS THE ONE THAT BINDS: a nav label, a route, an API argument and a stored identifier use the generic word, because the levels below it may be absent, switched off, or different for every user." .
+
+kreg:theme a skos:Concept ; skos:inScheme ktype:RegisterScheme ;
+    skos:notation "theme" ; skos:prefLabel "Theme user register" ;
+    skos:broader kreg:user ;
+    skos:definition "What a visual theme renders a concept as. Product-authored, shipped with the theme, the same for every user who has that theme on." ;
+    skos:scopeNote "ONE THEME EXISTS AND IT IS ALREADY LIVE: undersea. Shelly the turtle, currents, the pod, the conch shell notification icon — ShellyVoice.svelte, NotificationStack.svelte, Meshy_AI_Turtle_1.glb, starter-turtles.ttl, and F29 currents, which is shipped. Its words are scattered across features with nothing recording that they are one theme's vocabulary. kb:undersea-pod-ui (F37, speculative) is the deeper VISUAL treatment of a live theme, not the theme's existence." ;
+    skos:scopeNote "MUNDANE OFFICE, where 'marble' comes from, is an ILLUSTRATION of a second theme and has no entity anywhere. That is why marble must never sit on a concept as a bare skos:altLabel — it did until 2026-09-23, and within the hour it was proposed as a candidate nav label. A theme word that leaks into the generic level has skipped a level, and the nav is where that shows." ;
+    skos:scopeNote "NOT MODELLED PER-TERM YET. The standard mechanism is SKOS-XL: a skosxl:Label is a resource, so it can carry which theme it belongs to where a plain literal cannot. Deferred deliberately — the shipped theme words are real, but nobody has written down which concept each one skins, and inventing that mapping is a product call." .
+
+kreg:custom a skos:Concept ; skos:inScheme ktype:RegisterScheme ;
+    skos:notation "custom" ; skos:prefLabel "Custom user register" ;
+    skos:broader kreg:user ;
+    skos:definition "The words one user substitutes for their own domain. User-authored, stored in their own graph, different for every user — the mechanism behind translating between two people's terminologies." ;
+    skos:scopeNote "THE PER-NODE HALF IS BUILT: kb:node-synonyms is functional — each entity carries user-written skos:altLabel values and BM25 expands queries across them. Standards-native rather than a custom field." ;
+    skos:scopeNote "THE GRAPH-LEVEL HALF IS NOT, AND IS A SEPARATE TIER BY DECISION. kb:node-synonyms records why: a global equivalence such as graph = KB = knowledge base holds across essentially every entity, and writing it onto 1,789 nodes is absurd. Per-node first because it is the one a user will actually maintain; a graph-level synonym set is the second tier and does not exist yet." .
 
 # ── BINDING CLASSES ──────────────────────────────────────────────────────────
 
@@ -139,37 +160,6 @@ kbind:contract a skos:Concept ; skos:inScheme ktype:BindingScheme ;
 kbind:foreign a skos:Concept ; skos:inScheme ktype:BindingScheme ;
     skos:notation "foreign" ; skos:prefLabel "Foreign" ;
     skos:definition "Owned by an upstream specification or library. Cannot be renamed; can only be disambiguated by qualifying our own uses." .
-
-# ── APPLIED VOCABULARIES — the second axis (Matt, 2026-09-23) ────────────────
-#
-# "You are correct there is a fourth level, and it is user customized terminology,
-# or theme terminology."
-#
-# A REGISTER ANSWERS WHO IS READING. AN APPLIED VOCABULARY ANSWERS WHOSE WORDS ARE ON.
-# The two are orthogonal: a themed word and a user's own word are both rewrites of the
-# SAME concept at the SAME register, so neither is a fifth register and neither may
-# become the generic word. The generic word is what a label, a route, an API argument
-# and a stored identifier use; an applied vocabulary only ever changes what is rendered.
-#
-# This axis is not hypothetical — both populations already exist in the product, and
-# neither is recorded as a vocabulary anywhere.
-
-ktype:VocabularyScheme a skos:ConceptScheme ;
-    skos:prefLabel "Applied vocabularies" ;
-    skos:definition "A set of substitute labels applied over the generic vocabulary at render time. Never authoritative: the generic word underneath is what identifiers and contracts use." .
-
-kvoc:theme a skos:Concept ; skos:inScheme ktype:VocabularyScheme ;
-    skos:notation "theme" ; skos:prefLabel "Theme vocabulary" ;
-    skos:definition "The words a visual theme renders a concept as. Product-authored, shipped with the theme, the same for every user of that theme." ;
-    skos:scopeNote "ONE THEME EXISTS AND IT IS ALREADY LIVE: undersea. Shelly the turtle, currents, the pod, the conch shell notification icon (ShellyVoice.svelte, NotificationStack.svelte, Meshy_AI_Turtle_1.glb, starter-turtles.ttl, F29). Its words are scattered across features with nothing saying they are one theme's vocabulary. kb:undersea-pod-ui (F37, speculative) is the deeper VISUAL treatment of that live theme, not the theme's existence." ;
-    skos:scopeNote "MUNDANE OFFICE, where 'marble' comes from, is an ILLUSTRATION of a second theme and has no entity. That is exactly why marble must not sit on a concept as a bare skos:altLabel — it did until 2026-09-23, and within the hour it was proposed as a nav label." ;
-    skos:scopeNote "NOT MODELLED PER-TERM YET. The standard mechanism is SKOS-XL: a skosxl:Label is a resource, so it can carry which theme it belongs to, where a plain literal cannot. Deliberately deferred — the shipped theme words are real but nobody has written down which concept each one skins, and inventing that mapping is a product call." .
-
-kvoc:user-custom a skos:Concept ; skos:inScheme ktype:VocabularyScheme ;
-    skos:notation "user-custom" ; skos:prefLabel "User vocabulary" ;
-    skos:definition "The words one user substitutes for their own domain. User-authored, stored in their own graph, different for every user — the mechanism behind translating between two people's terminologies." ;
-    skos:scopeNote "THE PER-NODE HALF IS BUILT: kb:node-synonyms is functional — each entity carries user-written skos:altLabel values and BM25 expands queries across them. Standards-native rather than a custom field." ;
-    skos:scopeNote "THE GRAPH-LEVEL HALF IS NOT, AND IS A SEPARATE TIER BY DECISION. kb:node-synonyms records why: a global equivalence such as graph = KB = knowledge base holds across essentially every entity, and writing it onto 1,789 nodes is absurd. Per-node first because it is the one a user will actually maintain; a graph-level synonym set is the second tier and does not exist yet." .
 
 # ── THE FOUR NODES — the worked example this whole feature came from ─────────
 #
@@ -230,7 +220,7 @@ kterm:node-runtime a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminol
 kterm:knowledge-base a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
     skos:prefLabel "knowledge base" ;
     kpred:standards-label "RDF dataset" ;
-    kpred:user-label "knowledge base" ;
+    kpred:user-label "space" ;
     kpred:binding-class kbind:contract ;
     skos:definition "One user-owned collection of entities, statements and sources, stored as its own IndexedDB database and exportable as one Turtle file." ;
     skos:scopeNote "DECIDED (Matt, 2026-09-17): SPELL OUT THE ABBREVIATION, KEEP THE WORD. The concept stays 'knowledge base' in every register — the abbreviation kb is what goes, not the noun. Migrating to 'graph' was half-decided and is now rejected: graph is already the most overloaded word here, meaning four things at 4802 occurrences, so that migration would have traded a clear-but-jargon term for an ambiguous-but-friendly one. A friendlier user-register word was considered and declined; the three-register model makes that reversible later without touching code, because only the user label would move." ;
@@ -240,6 +230,8 @@ kterm:knowledge-base a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/termin
     skos:scopeNote "A THEMED WORD IS NOT A SYNONYM (Matt, 2026-09-23): 'marble is one theme example where the theme is mundane office. The theme of undersea may be pool or some other visualized distinct knowledge graph terminology.' So themed words sit on a THEME AXIS that is orthogonal to the three registers — the same concept renders as one word under one theme and another word under another, while the generic word underneath does not move. Registers answer WHO is reading; a theme answers WHICH SKIN is on." ;
     skos:scopeNote "THE UNDERSEA THEME IS ALREADY SHIPPED, AND NOBODY WROTE IT DOWN AS A THEME (Matt, 2026-09-23): 'Shelly the turtle, currents, the conch shell notification icon, etc. are signs of the undersea theme.' All verified in the product — ShellyVoice.svelte, the conch in NotificationStack.svelte, Meshy_AI_Turtle_1.glb, starter-turtles.ttl, and F29 currents with its pod view, which is shipped. So the theme is not an intention: it is the product's live identity, and its words are scattered across features with no entity anywhere saying they are one theme's vocabulary. kb:undersea-pod-ui (F37) is speculative, but F37 is only the DEEPER VISUAL TREATMENT of a theme that already exists — reading its status as the theme's status is the mistake, and this note made it before being corrected." ;
     skos:scopeNote "WHAT THAT MEANS FOR NAMING. Themed words are already load-bearing in the interface, so the rule is not hypothetical: the generic word is what a label, a route or an API uses, and the themed word is what the skin may render. A themed word must never become the generic one — this concept carried skos:altLabel \"marble\" until 2026-09-23, promoting a word from the MUNDANE OFFICE theme, which has no entity at all, into the general vocabulary. It leaked immediately: 'marbles' was proposed as a candidate nav label for /kb on the strength of that altLabel alone. Modelling the theme axis properly (SKOS-XL reified labels carrying their theme, so 'conch' and 'currents' hang off kb:undersea-pod-ui rather than off the concepts they skin) is now WORTH DOING, because there is real shipped vocabulary to attach — it is not built yet, and that is a gap rather than a decision." ;
+    skos:scopeNote "THE USER LABEL MOVED TO 'space' (Matt, 2026-09-23): 'its space, and spaces is the current graphs tab.' This is exactly the reversal the 2026-09-17 note anticipated when it declined a friendlier word — 'the three-register model makes that reversible later without touching code, because only the user label would move' — and only the user label has moved. The generic user word for one of these is SPACE and for the collection is SPACES; the developer word stays 'knowledge base', the standards word stays 'RDF dataset', and every contract-bound spelling (urn:kbase:, ?kb=, the Dexie database names, the kb argument on every MCP tool) is untouched." ;
+    skos:scopeNote "SO THE THING AND ITS VIEW SHARE ONE USER WORD, DELIBERATELY. kterm:graph-view also carries the user label 'space'. A person does not distinguish the object from being inside it, and forcing them to would invent a distinction the interface does not need; the developer register keeps the two apart where the code has to care. The nav reads space for the one you are in and spaces for the collection." ;
     skos:scopeNote "WHY 'knowledge graph' IS NOT THE USER WORD (Matt, 2026-09-23): it describes HOW THE SYSTEM WORKS, which makes it the right thing to say to a developer and the wrong thing to put in front of everyone else. The standards term underneath stays accurate and unchanged — kpred:standards-label is 'RDF dataset', and a quad's fourth element is a named graph (kterm:named-graph). Borrow the standard where it is accurate; translate at the surface." ;
     skos:hiddenLabel "kb", "KB", "kbase" .
 

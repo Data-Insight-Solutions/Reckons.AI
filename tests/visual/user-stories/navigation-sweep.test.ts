@@ -24,7 +24,7 @@ const DESTINATIONS = [
   { label: 'add', path: '/ingest' },
   { label: 'review', path: '/review' },
   { label: 'reckon', path: '/reckoning' },
-  { label: 'graph', path: '/kb' },
+  { label: 'spaces', path: '/kb' },
 ];
 
 for (const device of DEVICES) {
