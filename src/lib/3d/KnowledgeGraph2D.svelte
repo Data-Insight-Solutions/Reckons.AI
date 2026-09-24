@@ -15,6 +15,7 @@
   import { leapNodeKeys } from '$lib/rdf/kb-leap';
   import { buildHierarchyAnchors } from '$lib/rdf/hierarchy';
   import { hopDistances, adjacencyFromPairs } from '$lib/rdf/n-hop';
+  import { focusPlacement, toPlane } from '$lib/rdf/focus-layout';
   import { icon2dOverrides } from '$lib/stores/icon2d-overrides.svelte';
   import type { GhostGraph, GhostNode } from '$lib/rdf/ghost-graph';
 
@@ -634,87 +635,24 @@
     return { anchors, markers };
   }
 
+  /**
+   * Focus anchors, from the shared rdf/focus-layout.ts.
+   *
+   * This body used to be ~80 lines duplicated almost exactly in KnowledgeGraph.svelte — same hop
+   * walk, same predicate grouping, same in/out arc split, same hop-2 fan. That is the shape the
+   * map and timeline layouts were extracted to fix, after the note above records the two
+   * renderers "drifted apart on undated nodes". The module returns POLAR placement and each
+   * renderer projects it, because 2D and 3D genuinely disagree about coordinates and agree about
+   * hop and angle.
+   */
   function buildFocusAnchors(): Map<string, { x: number; y: number }> {
-    if (!selected) return new Map();
-    // Shared traversal (rdf/n-hop.ts). This used to walk the whole EDGE LIST for every
-    // dequeued node — O(V*E) — because no adjacency map existed. Building one first makes
-    // it O(V+E), which matters on the large graphs the focus layout is most useful on.
-    const dist = hopDistances(adjacencyFromPairs(edges.map((e) => [e.a.key, e.b.key] as const)), selected);
-    const anchors = new Map<string, { x: number; y: number }>([[selected, { x: 0, y: 0 }]]);
-    const angleMap = new Map<string, number>();
-    const maxD = dist.size > 0 ? Math.max(...dist.values()) : 0;
-
-    const outGroups = new Map<string, string[]>(); const inGroups = new Map<string, string[]>();
-    for (const e of edges) {
-      if (e.a.key === selected && dist.get(e.b.key) === 1) {
-        if (!outGroups.has(e.predicate)) outGroups.set(e.predicate, []);
-        if (!outGroups.get(e.predicate)!.includes(e.b.key)) outGroups.get(e.predicate)!.push(e.b.key);
-      }
-      if (e.b.key === selected && dist.get(e.a.key) === 1) {
-        if (!inGroups.has(e.predicate)) inGroups.set(e.predicate, []);
-        if (!inGroups.get(e.predicate)!.includes(e.a.key)) inGroups.get(e.predicate)!.push(e.a.key);
-      }
-    }
-    const outCount = [...outGroups.values()].reduce((s, a) => s + a.length, 0);
-    const inCount  = [...inGroups.values()].reduce((s, a) => s + a.length, 0);
-    const total    = outCount + inCount;
-    if (total > 0) {
-      const GAP = 0.30;
-      let outArc: number, inArc: number, outStart: number, inStart: number;
-      if (inCount === 0)  { outArc = 2*Math.PI; outStart = -Math.PI; inArc = 0; inStart = 0; }
-      else if (outCount === 0) { inArc = 2*Math.PI; inStart = -Math.PI; outArc = 0; outStart = 0; }
-      else {
-        const fOut = Math.max(0.22, Math.min(0.78, outCount / total));
-        outArc = fOut*(2*Math.PI)-GAP; inArc = (1-fOut)*(2*Math.PI)-GAP;
-        outStart = Math.PI/2 - outArc/2; inStart = -Math.PI/2 - inArc/2;
-      }
-      const placeArc = (groups: Map<string, string[]>, tot: number, start: number, arc: number) => {
-        let angle = start;
-        for (const [, keys] of groups) {
-          if (!keys.length) continue;
-          const sector = arc * (keys.length / tot);
-          const mid = angle + sector / 2;
-          keys.forEach((k, i) => {
-            const fa = keys.length === 1 ? mid : angle + (i + 0.5) * (sector / keys.length);
-            anchors.set(k, { x: FOCUS_R*Math.cos(fa), y: FOCUS_R*Math.sin(fa) });
-            angleMap.set(k, fa);
-          });
-          angle += sector;
-        }
-      };
-      placeArc(outGroups, outCount, outStart, outArc);
-      placeArc(inGroups,  inCount,  inStart,  inArc);
-    }
-    for (let hop = 2; hop <= maxD; hop++) {
-      const hopNodes = [...dist.entries()].filter(([,d]) => d === hop).map(([k]) => k);
-      const parentGroups = new Map<string, string[]>();
-      for (const k of hopNodes) {
-        let pk: string | null = null;
-        for (const e of edges) {
-          if (e.a.key === k && dist.get(e.b.key) === hop-1) { pk = e.b.key; break; }
-          if (e.b.key === k && dist.get(e.a.key) === hop-1) { pk = e.a.key; break; }
-        }
-        const g = pk ?? '__none__';
-        if (!parentGroups.has(g)) parentGroups.set(g, []);
-        parentGroups.get(g)!.push(k);
-      }
-      const r = hop * FOCUS_R;
-      for (const [pk, siblings] of parentGroups) {
-        const base = pk === '__none__' ? 0 : (angleMap.get(pk) ?? 0);
-        const fan  = Math.min(Math.PI*0.35, Math.PI*0.7/Math.max(siblings.length, 1));
-        siblings.forEach((k, i) => {
-          const fa = base + (siblings.length === 1 ? 0 : (i - (siblings.length-1)/2) * fan);
-          anchors.set(k, { x: r*Math.cos(fa), y: r*Math.sin(fa) });
-          angleMap.set(k, fa);
-        });
-      }
-    }
-    const unreachable = nodes.filter(n => !anchors.has(n.key));
-    unreachable.forEach((n, i) => {
-      const r2 = (maxD + 2.5) * FOCUS_R;
-      const theta = (2*Math.PI*i) / Math.max(unreachable.length, 1);
-      anchors.set(n.key, { x: r2*Math.cos(theta), y: r2*Math.sin(theta) });
-    });
+    const { placement } = focusPlacement(
+      edges.map((e) => ({ a: e.a.key, b: e.b.key, predicate: e.predicate })),
+      nodes.map((n) => n.key),
+      selected ?? null,
+    );
+    const anchors = new Map<string, { x: number; y: number }>();
+    for (const [key, p] of placement) anchors.set(key, toPlane(p, FOCUS_R));
     return anchors;
   }
 
