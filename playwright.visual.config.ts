@@ -28,14 +28,21 @@ const sharedEnv = {
 export default defineConfig({
   testDir: './tests/visual',
   testMatch: '**/*.test.ts',
-  // vision-scoring / vision-vlm live in tests/visual/ but are vitest unit tests
-  // (they use `describe` from vitest, run as part of `npx vitest run`). Playwright
-  // must not collect them, or its whole run aborts at collection.
+  // THE vision-*.test.ts FILES ARE VITEST, NOT PLAYWRIGHT. They live in tests/visual/
+  // beside the helpers they cover but use `describe` from vitest and run under
+  // `npx vitest run`; Playwright collecting even one of them aborts its ENTIRE run
+  // with "Cannot read properties of undefined (reading 'config')", which reads as a
+  // product failure and is a config miss.
+  //
+  // Matched by PATTERN rather than enumerated, because the enumeration had to be kept
+  // in sync in two places (here and in the chromium project below) and adding
+  // vision-ux.test.ts broke CI on exactly that. The naming convention is now the rule:
+  // a vision-*.test.ts file in tests/visual/ is a vitest unit test.
+  //
   // navigation-sweep is a 5-device × 5-destination matrix — heavy; it has its own
   // runner (npm run test:workflows via playwright.workflows.config.ts).
   testIgnore: [
-    '**/vision-scoring.test.ts',
-    '**/vision-vlm.test.ts',
+    '**/vision-*.test.ts',
     '**/navigation-sweep.test.ts',
   ],
   timeout: 60_000,
@@ -73,8 +80,9 @@ export default defineConfig({
         // with "Visual evidence requires a string baseURL" — a config miss that reads as a
         // product failure.
         '**/evidence/**',
-        '**/vision-scoring.test.ts',
-        '**/vision-vlm.test.ts',
+        // Same rule as the top-level ignore — a project-level testIgnore REPLACES it,
+        // so the pattern has to be repeated rather than inherited.
+        '**/vision-*.test.ts',
       ],
       use: {
         ...devices['Desktop Chrome'],
