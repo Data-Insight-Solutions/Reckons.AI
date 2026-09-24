@@ -6,6 +6,17 @@ import fs from 'node:fs';
 import path from 'path';
 
 /**
+ * THE VERSION HAS ONE SOURCE, AND IT IS package.json.
+ *
+ * The landing badge used to read `alpha · v0.2.0` as a hardcoded literal, independent of the
+ * declared version — two numbers that could drift, and did: main carried 68 commits merged
+ * after 0.2.0 was set while the badge went on claiming it. A version string that no longer
+ * describes the build is a stale claim, and kb:honest-status does not exempt one because it is
+ * short. Injected here so the interface cannot state a version the package does not.
+ */
+const pkgVersion = JSON.parse(fs.readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version;
+
+/**
  * Workbox normally precaches every generated JS/WASM asset. That defeats an
  * application-level opt-in: a fresh install would still download Kokoro,
  * Hume, Whisper/Transformers and ONNX before the user enabled voice.
@@ -59,6 +70,7 @@ function toPublicPrecacheUrl(url: string): string | null {
 }
 
 export default defineConfig({
+  define: { __APP_VERSION__: JSON.stringify(pkgVersion) },
   plugins: [
     // Tailwind v4 powers the shadcn-svelte design-system foundation only.
     // src/lib/styles/tailwind.css imports theme + utilities layers WITHOUT

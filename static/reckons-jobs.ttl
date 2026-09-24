@@ -486,6 +486,15 @@ job:ux-impression rdf:type          ktype:OfflineJob ;
     kpred:job-enabled   "false" ;
     kpred:job-blocking  "false" .
 
+job:version-align rdf:type          ktype:OfflineJob ;
+    rdfs:label          "version-align" ;
+    skos:prefLabel      "version-align" ;
+    skos:definition     "The version number, the build and the graph cannot disagree. package.json must have a matching ktype:Release entity, and no source file may hardcode a version literal — the badge and Shelly both read __APP_VERSION__, injected by vite from package.json. BLOCKING because a wrong version on the landing page is a claim to every visitor, it is free to check, and it cannot be right by accident." ;
+    kpred:job-tier      "script" ;
+    kpred:command       "npx tsx scripts/offline/version-align.ts" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "true" .
+
 job:visual-diff rdf:type          ktype:OfflineJob ;
     rdfs:label          "visual-diff" ;
     skos:prefLabel      "visual-diff" ;
@@ -503,9 +512,9 @@ jobset:agent rdf:type      skos:Collection ;
 jobset:script rdf:type      skos:Collection ;
     skos:prefLabel      "script tier" ;
     skos:definition     "Deterministic, zero tokens, no model. Right by construction and runs in CI. The work-tiering ladder says to grow this tier in preference to the others, and it is the larger one." ;
-    skos:member         job:alignment-sweep, job:altitude-report, job:build-guard, job:button-crawl, job:claim-audit, job:code-sprawl, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:repo-hygiene, job:safety-attestation, job:scope-check, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:status-evidence, job:tenet-align, job:term-usage, job:untested-options .
+    skos:member         job:alignment-sweep, job:altitude-report, job:build-guard, job:button-crawl, job:claim-audit, job:code-sprawl, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:repo-hygiene, job:safety-attestation, job:scope-check, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:status-evidence, job:tenet-align, job:term-usage, job:untested-options, job:version-align .
 
 jobset:all rdf:type          skos:Collection ;
     skos:prefLabel      "Offline jobs" ;
-    skos:definition     "Every job the offline sweep can run — 53 of them, 43 needing no model at all." ;
+    skos:definition     "Every job the offline sweep can run — 54 of them, 44 needing no model at all." ;
     skos:member         jobset:agent, jobset:script .

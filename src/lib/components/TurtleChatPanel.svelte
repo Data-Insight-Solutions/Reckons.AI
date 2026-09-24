@@ -1300,7 +1300,7 @@
       <div class="help-block">
         <p class="help-heading mono">about this app</p>
         <p class="help-alpha">
-          Reckons.AI is <strong>alpha</strong> — v0.2.0, one maintainer. Things will be rough, and
+          Reckons.AI is <strong>alpha</strong> — v{__APP_VERSION__}, one maintainer. Things will be rough, and
           some of what you see is newer than its own documentation.
         </p>
         <div class="help-links">
