@@ -17,7 +17,7 @@
   import { parseGraphDate, EVENT_DATE_PREDICATES } from '$lib/rdf/parse-date';
   import { buildNodeTimes, timelineRange, undatedCount } from '$lib/rdf/timeline-layout';
   import { cameraPosition, CAMERA_PRESETS, type CameraSpec } from './camera-presets';
-  import { resolveOverlaps, previewWorldRadius, SELECTED_NODE_SCALE, markerWorldRadius, glbWorldRadius } from './preview-collage';
+  import { resolveOverlaps, previewWorldRadius, SELECTED_NODE_SCALE, markerWorldRadius, glbWorldRadius, focusRingRadius } from './preview-collage';
   import GraphNode, { loadGltfTemplate } from '$lib/components/GraphNode.svelte';
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { RDF_TYPE, RDFS_LABEL, type EntityTypeDef } from '$lib/rdf/entity-types';
@@ -415,6 +415,38 @@
   function buildFocusAnchors(): { anchors: Map<string, THREE.Vector3>; radii: number[]; distances: Map<string, number> } {
     if (!selected) return { anchors: new Map(), radii: [], distances: new Map() };
 
+    /**
+     * RINGS SIZED FROM WHAT THEY MUST HOLD, not from a constant (Matt, 2026-09-24: "focus still
+     * leaves other nodes way too close to the focused node... We need layered rings out from the
+     * focused node").
+     *
+     * hop * focusRingR alone ignores two things that decide whether a ring is actually clear:
+     *
+     *   INSIDE IT — the focused node is drawn at SELECTED_NODE_SCALE and may be a GLB, so hop 1
+     *   has to start outside the focused node's own radius, not at a fixed 9 units from a point.
+     *   This is why neighbours appeared to sit on top of it however far the constant was pushed.
+     *
+     *   ON IT — n nodes on a circle need n * (2r + gap) of circumference between them, so a ring
+     *   with many members has to grow or they crowd shoulder to shoulder at the ring's own radius.
+     *
+     * Taking the max of the three keeps the layered look while guaranteeing both clearances.
+     */
+    const RING_GAP = 2.2;
+    const nodeRadiusOf = (key: string, degree: number) => {
+      const url = entityIcon3dMap.get(key);
+      const intrinsic = url ? (glbRadius.get(url) ?? 0) : 0;
+      const base = intrinsic > 0 ? glbWorldRadius(intrinsic, degree) : markerWorldRadius(degree);
+      return key === selected ? base * SELECTED_NODE_SCALE : base;
+    };
+    let widestNode = 0.32;
+    for (const n of nodes) widestNode = Math.max(widestNode, nodeRadiusOf(n.key, n.degree));
+    const focusedNode = nodes.find((n) => n.key === selected);
+    const focusedRadius = focusedNode ? nodeRadiusOf(focusedNode.key, focusedNode.degree) : 0.32;
+    const ringRadius = (hop: number, count: number) =>
+      focusRingRadius(hop, count, {
+        baseRing: focusRingR, focusedRadius, widestNode, gap: RING_GAP,
+      });
+
     // ── 1. BFS hop distances ─────────────────────────────────────────────────
     // Shared traversal (rdf/n-hop.ts) — this was a verbatim copy of the 2D version, and
     // both rescanned the entire EDGE LIST per dequeued node (O(V*E)). Building an
@@ -478,7 +510,8 @@
           nodeKeys.forEach((k, i) => {
             const fa = nodeKeys.length === 1 ? midAngle : angle + (i + 0.5) * (sectorArc / nodeKeys.length);
             const zOff = (i % 2 === 0 ? 1 : -1) * 0.55;
-            anchors.set(k, new THREE.Vector3(focusRingR * Math.cos(fa), focusRingR * Math.sin(fa), zOff));
+            const r1 = ringRadius(1, totalDirect);
+            anchors.set(k, new THREE.Vector3(r1 * Math.cos(fa), r1 * Math.sin(fa), zOff));
             nodeAngle.set(k, fa);
           });
           angle += sectorArc;
@@ -508,7 +541,7 @@
         parentGroups.get(pk)!.push(k);
       }
 
-      const r = hop * focusRingR;
+      const r = ringRadius(hop, hopNodes.length);
       for (const [pk, siblings] of parentGroups) {
         const base = pk === '__none__' ? 0 : (nodeAngle.get(pk) ?? 0);
         // Fan siblings symmetrically around the parent's angle, narrowing as hop increases
@@ -526,13 +559,18 @@
     // ── 5. Disconnected nodes: outer orbit ───────────────────────────────────
     const unreachable = nodes.filter(n => !anchors.has(n.key));
     unreachable.forEach((n, i) => {
-      const r = (maxD + 2.5) * focusRingR;
+      const r = ringRadius(maxD + 1, unreachable.length) + focusRingR * 1.5;
       const theta = (2 * Math.PI * i) / Math.max(unreachable.length, 1);
       anchors.set(n.key, new THREE.Vector3(r * Math.cos(theta), r * Math.sin(theta), (i % 3 - 1) * 2));
     });
 
     const radii: number[] = [];
-    for (let d = 1; d <= maxD; d++) radii.push(d * focusRingR);
+    for (let d = 1; d <= maxD; d++) {
+      const countAtHop = d === 1
+        ? totalDirect
+        : [...distances.values()].filter((x) => x === d).length;
+      radii.push(ringRadius(d, countAtHop));
+    }
     return { anchors, radii, distances };
   }
 

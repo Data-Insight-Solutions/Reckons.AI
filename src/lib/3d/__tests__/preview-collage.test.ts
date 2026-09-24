@@ -5,7 +5,7 @@ import {
   overlaps,
   previewWorldRadius,
   CAM_HALF_TAN,
-  type Positioned, markerWorldRadius, glbWorldRadius, degreeScale, SELECTED_NODE_SCALE } from '../preview-collage';
+  type Positioned, markerWorldRadius, glbWorldRadius, degreeScale, SELECTED_NODE_SCALE, focusRingRadius } from '../preview-collage';
 
 /** Matches the solver's default slop, so the checker tolerates exactly what the solver leaves. */
 const SLOP = 0.02;
@@ -354,5 +354,40 @@ describe('node layout radius derivation', () => {
     // Three call sites read this: the mesh, the DOM thumbnail and the layout radius. The bug
     // was that only the first knew about it.
     expect(SELECTED_NODE_SCALE).toBeGreaterThan(1);
+  });
+});
+
+
+describe('focus ring radius', () => {
+  const opts = { baseRing: 9, focusedRadius: 0.3, widestNode: 0.32, gap: 2.2 };
+
+  it('falls back to the plain hop spacing when nothing else binds', () => {
+    expect(focusRingRadius(1, 1, opts)).toBeCloseTo(9, 6);
+    expect(focusRingRadius(3, 1, opts)).toBeCloseTo(27, 6);
+  });
+
+  it('grows ring 1 so it starts OUTSIDE a large focused node', () => {
+    // The reported bug: neighbours sat on top of the focused node because the ring was a fixed
+    // distance from a POINT, and a selected model is nothing like a point.
+    const big = { ...opts, focusedRadius: 14 };
+    expect(focusRingRadius(1, 1, big)).toBeGreaterThan(14);
+    expect(focusRingRadius(1, 1, big)).toBeCloseTo(14 + 0.32 + 2.2, 6);
+  });
+
+  it('grows a busy ring so its members are not shoulder to shoulder', () => {
+    const crowded = focusRingRadius(1, 60, opts);
+    // 60 nodes each needing 2r + gap of arc cannot fit on a circle of radius 9.
+    expect(crowded).toBeGreaterThan(9);
+    expect(2 * Math.PI * crowded).toBeGreaterThanOrEqual(60 * (2 * opts.widestNode + opts.gap) - 1e-6);
+  });
+
+  it('never returns a ring inside its predecessor', () => {
+    for (let hop = 1; hop < 6; hop++) {
+      expect(focusRingRadius(hop + 1, 5, opts)).toBeGreaterThan(focusRingRadius(hop, 5, opts));
+    }
+  });
+
+  it('a single member does not inflate the ring', () => {
+    expect(focusRingRadius(2, 1, opts)).toBeCloseTo(focusRingRadius(2, 0, opts), 6);
   });
 });

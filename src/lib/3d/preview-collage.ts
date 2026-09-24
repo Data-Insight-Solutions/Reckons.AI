@@ -189,6 +189,28 @@ export function degreeScale(degree: number): number {
   return 0.85 + 0.45 * Math.log2(1 + degree);
 }
 
+/**
+ * Radius of hop-ring `hop` in the focus layout.
+ *
+ * `hop * baseRing` alone ignores the two things that decide whether a ring is actually clear,
+ * which is why neighbours kept sitting on the focused node however far the constant was pushed:
+ *
+ *   INSIDE IT — the focused node is drawn enlarged and may be a model, so ring 1 has to begin
+ *   outside ITS radius, not at a fixed distance from a point.
+ *   ON IT — n nodes on a circle need n * (2r + gap) of circumference, so a busy ring has to grow
+ *   or its members crowd shoulder to shoulder.
+ */
+export function focusRingRadius(
+  hop: number,
+  count: number,
+  opts: { baseRing: number; focusedRadius: number; widestNode: number; gap: number },
+): number {
+  const { baseRing, focusedRadius, widestNode, gap } = opts;
+  const fitsAround = count > 1 ? (count * (2 * widestNode + gap)) / (2 * Math.PI) : 0;
+  const clearsFocused = focusedRadius + widestNode + gap + (hop - 1) * baseRing;
+  return Math.max(hop * baseRing, fitsAround, clearsFocused);
+}
+
 export function markerWorldRadius(degree: number): number {
   return degreeScale(degree) * MARKER_UNIT_RADIUS;
 }
