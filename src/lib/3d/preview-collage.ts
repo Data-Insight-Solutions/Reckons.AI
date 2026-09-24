@@ -161,6 +161,17 @@ function fallbackAxis(key: string, lockX: boolean): { x: number; y: number; z: n
  * Returns the number of pairs it had to separate, which is what a test asserts on and what a
  * caller can use to tell "settled" from "still resolving".
  */
+/**
+ * How much bigger a SELECTED node draws than its unselected self.
+ *
+ * Read by three places that must agree or the selection looks broken in a different way in
+ * each: GraphNode.svelte (the mesh), KnowledgeGraph.svelte (the layout radius, so neighbours
+ * make room) and the graph page (the DOM preview thumbnail). It lived as a bare 1.6 in the
+ * first of those while the other two did not know about it at all — the node grew, the
+ * thumbnail stayed put, and the neighbours never moved.
+ */
+export const SELECTED_NODE_SCALE = 1.6;
+
 export function resolveOverlaps(
   nodes: Positioned[],
   radiusOf: (n: Positioned) => number,

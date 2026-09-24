@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Canvas } from '@threlte/core';
+  import { SELECTED_NODE_SCALE } from '$lib/3d/preview-collage';
   import { goto } from '$app/navigation';
   import KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
   import { parseCameraSpec, type CameraSpec } from '$lib/3d/camera-presets';
@@ -2533,7 +2534,8 @@
     {#if (previewsShownFor(n.key) || n.key === selected || highlightedSet.has(n.key)) && n.key !== expandedAssetKey}
       {@const a = nodeAssetFor(iriFromNodeKey(n.key))}
       {#if a}
-        {@const dims = `width: ${nodePreviewSize}px; height: ${nodePreviewSize}px;`}
+        {@const thumbPx = nodePreviewSize * (n.key === selected ? SELECTED_NODE_SCALE : 1)}
+        {@const dims = `width: ${thumbPx}px; height: ${thumbPx}px;`}
         <button
           type="button"
           class="node-preview-thumb"
@@ -4303,17 +4305,24 @@
     padding: 0.2rem 0.45rem;
   }
   .asset-controls {
+    /* ANCHORED TO THE IMAGE'S BOX, NOT THE VIEWPORT (Matt, 2026-09-24: "the preview X and
+       fullscreen buttons are way off to the upper right and difficult to find").
+       They were placed with `top:50%; left:50%` plus a translate of 40vw / -39vh — viewport
+       units, so the wider the display the further they flew from the picture they belong to,
+       ending up in a corner with nothing around them. .asset-large is already inset to the
+       free space between the side panels, so its own top-right corner is where a person
+       looks. */
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(calc(40vw - 100%), calc(-39vh));
+    top: 0.75rem;
+    right: 0.75rem;
     display: flex;
-    gap: 0.35rem;
+    gap: 0.5rem;
     pointer-events: auto;
   }
   .asset-controls button {
-    width: 34px;
-    height: 34px;
+    /* 44px is the floor in kb:web-uiux-rubric (touch-targets); these were 34. */
+    width: 44px;
+    height: 44px;
     border-radius: 8px;
     border: 1px solid var(--line);
     background: var(--surface);

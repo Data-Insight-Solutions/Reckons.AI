@@ -17,7 +17,7 @@
   import { parseGraphDate, EVENT_DATE_PREDICATES } from '$lib/rdf/parse-date';
   import { buildNodeTimes, timelineRange, undatedCount } from '$lib/rdf/timeline-layout';
   import { cameraPosition, CAMERA_PRESETS, type CameraSpec } from './camera-presets';
-  import { resolveOverlaps, previewWorldRadius } from './preview-collage';
+  import { resolveOverlaps, previewWorldRadius, SELECTED_NODE_SCALE } from './preview-collage';
   import GraphNode, { loadGltfTemplate } from '$lib/components/GraphNode.svelte';
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { RDF_TYPE, RDFS_LABEL, type EntityTypeDef } from '$lib/rdf/entity-types';
@@ -1112,8 +1112,6 @@
     if (simAlpha >= SIM_ALPHA_MIN) {
     /** Force timestep, scaled by the cooling schedule. Damping and integration use raw dt. */
     const fdt = dt * simAlpha;
-    /** Mirrors the selected branch of `scale` in GraphNode.svelte — keep the two in step. */
-    const SELECTED_NODE_SCALE = 1.6;
     const REPEL      = 1.6;
     const SPRING     = layout === 'force' ? 0.18 : 0.10;
     const CENTER     = activeAnchors.size > 0 ? 0.008 : 0.04;
@@ -1151,7 +1149,11 @@
           previewKeys!.has(n.key)
             // A thumbnail is a fixed pixel size, so the world room it needs grows with camera
             // distance — which is what keeps the separation honest at every zoom, not just one.
-            ? Math.max(base, previewWorldRadius(previewSizePx, camPos.distanceTo(n.pos), halfH))
+            // A SELECTED preview is drawn larger by the page, so the room it needs grows with
+            // it — sizing from the unselected px here is what let neighbours sit inside it.
+            ? Math.max(base, previewWorldRadius(
+                previewSizePx * (n.key === selected ? SELECTED_NODE_SCALE : 1),
+                camPos.distanceTo(n.pos), halfH))
             : base,
         );
       }
@@ -1269,14 +1271,38 @@
         right: { x: m[0], y: m[1], z: m[2] },
         up: { x: m[4], y: m[5], z: m[6] },
       };
+      /**
+       * GIVE IT THE NODES THAT CARRY A SIZE, because above its cap it does nothing at all.
+       *
+       * resolveOverlaps bails with `if (nodes.length > maxNodes) return 0` — and 0 is also
+       * what it returns when everything converged, so on a graph over 400 nodes the pass was
+       * silently a no-op and looked like success. With preview-all on, that is every node
+       * demanding a thumbnail's worth of room and nothing separating any of them, which is
+       * what Matt reported.
+       *
+       * The pass is O(n^2), so raising the cap is not the answer. The nodes that need it are
+       * the ones with a real radius — previews and GLBs — so hand it those, largest first if
+       * even they exceed the cap. Nodes left out keep the 0.32 default and are the ones whose
+       * overlap is least visible.
+       */
+      const OVERLAP_CAP = 400;
+      let separable = nodes;
+      if (nodes.length > OVERLAP_CAP && radii.size > 0) {
+        separable = nodes.filter((n) => radii.has(n.key));
+        if (separable.length > OVERLAP_CAP) {
+          separable = [...separable]
+            .sort((a, b) => radiusOf(b) - radiusOf(a))
+            .slice(0, OVERLAP_CAP);
+        }
+      }
       resolveOverlaps(
-        nodes,
+        separable,
         radiusOf,
         // Full strength, iterated to convergence. Easing (0.35, one pass) measurably lost to the
         // edge springs: on the 9-photo fixture it reported 16 overlapping pairs every frame and
         // painted a pile. Running last in the frame and converging is what turns "spread out a
         // bit" into the property the feature is named for.
-        { lockX: LOCK_TIMELINE_X, strength: 1, iterations: 12, basis },
+        { lockX: LOCK_TIMELINE_X, strength: 1, iterations: 12, basis, maxNodes: OVERLAP_CAP },
       );
     }
 
