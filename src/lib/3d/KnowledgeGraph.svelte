@@ -1507,7 +1507,18 @@
 
     function onPointerDown(e: PointerEvent) {
       if (e.button !== 2) return; // right-click only
-      dragging = true;
+      /**
+       * DO NOT CLAIM THE DRAG BEFORE IT IS ESTABLISHED — this is the "timeline keeps moving
+       * after the right button is released" bug (Matt, 2026-09-24).
+       *
+       * `dragging = true` used to run HERE, above the `times.length === 0` bail below. On a
+       * graph with no timeline data that bail returned with dragging latched true and
+       * setPointerCapture never reached — and without capture, a pointerup that lands anywhere
+       * but this canvas never arrives, so nothing ever cleared the flag. Every subsequent mouse
+       * move then scrubbed the timeline with no button held, for the rest of the session.
+       *
+       * The flag is now set together with the capture, after every reason to bail has passed.
+       */
       startX = e.clientX;
       // Compute current data range for mapping pixel delta to time delta
       const nodeTime = new Map<string, number>();
@@ -1533,7 +1544,8 @@
       const dataMax = Math.max(...times);
       const dataRange = dataMax - dataMin || 1;
       startCenter = timelineCenter ?? (dataMin + dataRange / 2);
-      canvas!.setPointerCapture(e.pointerId);
+      dragging = true;
+      try { canvas!.setPointerCapture(e.pointerId); } catch { /* capture is best-effort */ }
     }
 
     function onPointerMove(e: PointerEvent) {
@@ -1569,21 +1581,47 @@
     }
 
     function onPointerUp(e: PointerEvent) {
+      endDrag(e.pointerId);
+    }
+
+    /**
+     * Same safety net as the 2D renderer. pointerup is not guaranteed to arrive for a RIGHT
+     * button: a native context menu that takes the pointer swallows it and the browser revokes
+     * the capture, firing lostpointercapture instead. Only listening for pointerup leaves the
+     * scrub running against a cursor with no button held.
+     */
+    function endDrag(pointerId?: number) {
       if (!dragging) return;
       dragging = false;
-      canvas!.releasePointerCapture(e.pointerId);
+      if (pointerId !== undefined) {
+        try { canvas!.releasePointerCapture(pointerId); } catch { /* already released */ }
+      }
     }
+    function onPointerCancel(e: PointerEvent) { endDrag(e.pointerId); }
+    function onLostPointerCapture() { endDrag(); }
 
     canvas.addEventListener('contextmenu', onContextMenu);
     canvas.addEventListener('pointerdown', onPointerDown);
     canvas.addEventListener('pointermove', onPointerMove);
     canvas.addEventListener('pointerup', onPointerUp);
+    canvas.addEventListener('pointercancel', onPointerCancel);
+    canvas.addEventListener('lostpointercapture', onLostPointerCapture);
+    // THE RELEASE MAY NOT LAND ON THE CANVAS. Pointer capture normally guarantees it does, but
+    // capture can fail or never be taken, and then the pointerup goes to whatever is under the
+    // cursor. Listening on the window is what makes ending the drag independent of where the
+    // mouse happens to be, which is the property this gesture was missing.
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerCancel);
 
     return () => {
       canvas.removeEventListener('contextmenu', onContextMenu);
       canvas.removeEventListener('pointerdown', onPointerDown);
       canvas.removeEventListener('pointermove', onPointerMove);
       canvas.removeEventListener('pointerup', onPointerUp);
+      canvas.removeEventListener('pointercancel', onPointerCancel);
+      canvas.removeEventListener('lostpointercapture', onLostPointerCapture);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerCancel);
     };
   });
 </script>
