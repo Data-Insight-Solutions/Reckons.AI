@@ -4,6 +4,7 @@
 @prefix kterm:  <urn:kbase:term/> .
 @prefix kreg:   <urn:kbase:type/register/> .
 @prefix kbind:  <urn:kbase:type/binding/> .
+@prefix kvoc:   <urn:kbase:type/vocabulary/> .
 @prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
@@ -103,7 +104,19 @@ kreg:standards a skos:Concept ; skos:inScheme ktype:RegisterScheme ;
 
 kreg:developer a skos:Concept ; skos:inScheme ktype:RegisterScheme ;
     skos:notation "developer" ; skos:prefLabel "Developer register" ;
-    skos:definition "The word used in this codebase. Chosen for unambiguity against neighbouring terms rather than for friendliness." .
+    skos:definition "The word used in this codebase. Chosen for unambiguity against neighbouring terms rather than for friendliness." ;
+    skos:scopeNote "IT HAS TWO HALVES THAT COLLIDE ON THE SAME WORDS (Matt, 2026-09-23): 'we need generic, front end, backend developer terms and lean on any framework or standard terms as well.' The four nodes below are the proof — three.js Object3D is a FRONT-END word, an RDF node is a BACK-END and standards word, our entity is back-end, and Node.js is neither. One developer register cannot record which of those a spelling belongs to, so it cannot warn the person about to pick the wrong one." ;
+    skos:narrower kreg:frontend, kreg:backend .
+
+kreg:frontend a skos:Concept ; skos:inScheme ktype:RegisterScheme ;
+    skos:notation "frontend" ; skos:prefLabel "Front-end developer register" ;
+    skos:broader kreg:developer ;
+    skos:definition "The word used in rendering, components and interaction code — Svelte, Threlte, three.js, bits-ui. LEAN ON THE FRAMEWORK'S OWN WORD where one exists: Threlte is the precedent, since it namespaces THREE.Mesh as <T.Mesh> rather than renaming it, so the origin stays visible." .
+
+kreg:backend a skos:Concept ; skos:inScheme ktype:RegisterScheme ;
+    skos:notation "backend" ; skos:prefLabel "Back-end developer register" ;
+    skos:broader kreg:developer ;
+    skos:definition "The word used in data, storage and protocol code — RDF/N3, Dexie, the MCP server, serialization. Local-first means there is no server, so 'back end' here names the data half of a browser application rather than a remote tier. LEAN ON THE SPECIFICATION'S OWN WORD where one exists; where it does not, this is where the contract-bound spellings live." .
 
 kreg:user a skos:Concept ; skos:inScheme ktype:RegisterScheme ;
     skos:notation "user" ; skos:prefLabel "User register" ;
@@ -126,6 +139,37 @@ kbind:contract a skos:Concept ; skos:inScheme ktype:BindingScheme ;
 kbind:foreign a skos:Concept ; skos:inScheme ktype:BindingScheme ;
     skos:notation "foreign" ; skos:prefLabel "Foreign" ;
     skos:definition "Owned by an upstream specification or library. Cannot be renamed; can only be disambiguated by qualifying our own uses." .
+
+# ── APPLIED VOCABULARIES — the second axis (Matt, 2026-09-23) ────────────────
+#
+# "You are correct there is a fourth level, and it is user customized terminology,
+# or theme terminology."
+#
+# A REGISTER ANSWERS WHO IS READING. AN APPLIED VOCABULARY ANSWERS WHOSE WORDS ARE ON.
+# The two are orthogonal: a themed word and a user's own word are both rewrites of the
+# SAME concept at the SAME register, so neither is a fifth register and neither may
+# become the generic word. The generic word is what a label, a route, an API argument
+# and a stored identifier use; an applied vocabulary only ever changes what is rendered.
+#
+# This axis is not hypothetical — both populations already exist in the product, and
+# neither is recorded as a vocabulary anywhere.
+
+ktype:VocabularyScheme a skos:ConceptScheme ;
+    skos:prefLabel "Applied vocabularies" ;
+    skos:definition "A set of substitute labels applied over the generic vocabulary at render time. Never authoritative: the generic word underneath is what identifiers and contracts use." .
+
+kvoc:theme a skos:Concept ; skos:inScheme ktype:VocabularyScheme ;
+    skos:notation "theme" ; skos:prefLabel "Theme vocabulary" ;
+    skos:definition "The words a visual theme renders a concept as. Product-authored, shipped with the theme, the same for every user of that theme." ;
+    skos:scopeNote "ONE THEME EXISTS AND IT IS ALREADY LIVE: undersea. Shelly the turtle, currents, the pod, the conch shell notification icon (ShellyVoice.svelte, NotificationStack.svelte, Meshy_AI_Turtle_1.glb, starter-turtles.ttl, F29). Its words are scattered across features with nothing saying they are one theme's vocabulary. kb:undersea-pod-ui (F37, speculative) is the deeper VISUAL treatment of that live theme, not the theme's existence." ;
+    skos:scopeNote "MUNDANE OFFICE, where 'marble' comes from, is an ILLUSTRATION of a second theme and has no entity. That is exactly why marble must not sit on a concept as a bare skos:altLabel — it did until 2026-09-23, and within the hour it was proposed as a nav label." ;
+    skos:scopeNote "NOT MODELLED PER-TERM YET. The standard mechanism is SKOS-XL: a skosxl:Label is a resource, so it can carry which theme it belongs to, where a plain literal cannot. Deliberately deferred — the shipped theme words are real but nobody has written down which concept each one skins, and inventing that mapping is a product call." .
+
+kvoc:user-custom a skos:Concept ; skos:inScheme ktype:VocabularyScheme ;
+    skos:notation "user-custom" ; skos:prefLabel "User vocabulary" ;
+    skos:definition "The words one user substitutes for their own domain. User-authored, stored in their own graph, different for every user — the mechanism behind translating between two people's terminologies." ;
+    skos:scopeNote "THE PER-NODE HALF IS BUILT: kb:node-synonyms is functional — each entity carries user-written skos:altLabel values and BM25 expands queries across them. Standards-native rather than a custom field." ;
+    skos:scopeNote "THE GRAPH-LEVEL HALF IS NOT, AND IS A SEPARATE TIER BY DECISION. kb:node-synonyms records why: a global equivalence such as graph = KB = knowledge base holds across essentially every entity, and writing it onto 1,789 nodes is absurd. Per-node first because it is the one a user will actually maintain; a graph-level synonym set is the second tier and does not exist yet." .
 
 # ── THE FOUR NODES — the worked example this whole feature came from ─────────
 #
