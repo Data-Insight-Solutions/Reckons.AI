@@ -90,7 +90,7 @@ async function seedFixture(page: Page) {
 async function setLayout(page: Page, label: string) {
   await page
     .locator('.overlay-group')
-    .filter({ has: page.locator('.group-label', { hasText: /^\s*view\s*$/i }) })
+    .filter({ has: page.locator('.group-label', { hasText: /^\s*layout\s*$/i }) })
     .locator('.chip')
     .first()
     .click();

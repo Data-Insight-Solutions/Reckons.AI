@@ -383,6 +383,15 @@ kterm:reckoning a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology
     skos:definition "A grounded Situation-Target-Proposal deliberation over the graph: what is true now, what is wanted, and what would close the gap." ;
     skos:scopeNote "The product's own coinage and the root of its name, so it stays. 57 occurrences across 14 files — small enough that if it ever needs renaming, it is cheap." .
 
+kterm:layout a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "layout" ;
+    kpred:user-label "layout" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "How the nodes of one space are ARRANGED on screen — free, focus, type, hub, time, arrange, tree. A property of the drawing, not of what is being drawn." ;
+    skos:scopeNote "IT IS NOT A VIEW, AND CALLING IT ONE COST A SCREEN (Matt, 2026-09-24): 'I think view would be more of the Statements vs Sources, and Explore versus review. I think these are graph node layouts still.' Three concepts already claim 'view' — kterm:explore-view, kterm:review-view and kterm:graph-view — so labelling the arrangement picker 'view' made one word mean two different things in the same panel. A VIEW is which population or which stage you are looking at; a LAYOUT is where the nodes sit." ;
+    skos:scopeNote "THE HEADING HAD A REAL PROBLEM BEFORE THIS, WHICH IS WHY IT MOVED. It once read 'force', a layout name, sitting above a control that also named a layout — a heading that meant the same kind of thing as the chip beside it. That collision is gone now the chip shows the CURRENT layout instead of a fixed word, so 'layout' is free to be the heading it should always have been." ;
+    skos:hiddenLabel "view", "force" .
+
 kterm:explore-view a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
     skos:prefLabel "explore view" ;
     kpred:user-label "explore" ;
