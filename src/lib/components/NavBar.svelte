@@ -8,7 +8,11 @@
   import { openFeedback } from '$lib/stores/feedback.svelte';
 
   const items: { href: string; label: string; glyph?: string; svg?: string; img?: string; small?: boolean }[] = [
-    { href: '/', label: 'view' },
+    // Labels are the USER register from static/reckons-terminology.ttl, not the
+    // developer one. kterm:graph-view records the decision: the user-facing word
+    // is "space", and it deliberately spans BOTH 2D and 3D, because switching
+    // dimension is a change of view and not a change of thing.
+    { href: '/', label: 'space' },
     { href: '/ingest', label: 'add', glyph: '＋' },
     { href: '/review', label: 'review', glyph: '◐' },
     { href: '/reckoning', label: 'reckon', glyph: '⟁' },
@@ -225,7 +229,7 @@
 {/if}
 
 <nav aria-label="Main navigation">
-  <a href="/" class="wordmark" class:active={page.url.pathname === '/'} aria-label="Reckons.AI — 3D view">
+  <a href="/" class="wordmark" class:active={page.url.pathname === '/'} aria-label="Reckons.AI — space">
     <img src="/svg/circlegraph.svg" alt="Reckons.AI" class="wm-logo" />
   </a>
   <div class="divider"></div>

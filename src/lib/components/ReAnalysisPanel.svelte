@@ -195,7 +195,7 @@
                             <span class="confidence mono">{Math.round(m.confidence * 100)}%</span>
                           </div>
                           <p class="action-reason">{m.reason}</p>
-                          <p class="action-hint mono">use the graph view to select either node and merge →</p>
+                          <p class="action-hint mono">use the space to select either node and merge →</p>
                         </div>
                         <button class="sm ghost dismiss-btn" onclick={() => dismissMerge(m.entityAIri, m.entityBIri)} title="dismiss">✕</button>
                       </div>

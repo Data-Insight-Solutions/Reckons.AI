@@ -16,8 +16,11 @@ import { DEVICES, useDevice, screenshotStep, stepAudit, waitForAppReady , gotoSt
 
 const APP = 'http://localhost:5174';
 
+// Labels are the USER register recorded in static/reckons-terminology.ttl — the
+// test asserts the decided word, so a drift back to a developer-register label
+// fails here rather than shipping.
 const DESTINATIONS = [
-  { label: 'view', path: '/' },
+  { label: 'space', path: '/' },
   { label: 'add', path: '/ingest' },
   { label: 'review', path: '/review' },
   { label: 'reckon', path: '/reckoning' },

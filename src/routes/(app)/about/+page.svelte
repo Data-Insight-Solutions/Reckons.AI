@@ -427,7 +427,7 @@
           </div>
           <div class="pipe-node pipe-output">
             <span class="pipe-tag mono">explore</span>
-            <strong>3D Graph View</strong>
+            <strong>Space</strong>
             <p>Force-directed graph. Filter by type or source. Hub emphasis. History playback.</p>
           </div>
         </div>
