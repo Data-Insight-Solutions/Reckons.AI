@@ -471,6 +471,12 @@ const STANDARD_EQUIVALENTS: Record<string, string> = {
   [KPRED + 'language']: 'dcterms:language',
   [KPRED + 'keywords']: 'schema:keywords',
   [KPRED + 'url']: 'schema:url',
+  // Added after I minted kpred:product-url in a competitive entry the day AFTER writing this
+  // rule. Table-driven means it catches only what is listed, and the first thing I did was mint
+  // one that was not — so the table grows by the same route it was meant to prevent.
+  [KPRED + 'product-url']: 'schema:url',
+  [KPRED + 'has-url']: 'schema:url',
+  [KPRED + 'model']: 'schema:model',
   [KPRED + 'email']: 'schema:email (or foaf:mbox)',
   [KPRED + 'broader']: 'skos:broader',
   [KPRED + 'narrower']: 'skos:narrower',

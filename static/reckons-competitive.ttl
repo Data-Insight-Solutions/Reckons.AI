@@ -8,6 +8,7 @@
 @prefix hnav:   <urn:reckons:nav/> .
 @prefix train:  <urn:reckons:training/> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix schema: <https://schema.org/> .
 
 # ==============================================================================
 # Reckons.AI — Competitive Research KB
@@ -885,7 +886,7 @@ kb:comp-flora rdf:type ktype:Competitor ;
                rdfs:label   "Flora" ;
                kpred:part-of      kb:competitive-landscape ;
                hnav:order   36 ;
-               kpred:product-url  "https://docs.flora.ai/" ;
+               schema:url         <https://docs.flora.ai/> ;
                kpred:description  "A generative-AI CANVAS: nodes wired together on a 2D surface where the edges carry generation, so an asset is produced by connecting inputs to a transform. Matt saw it demonstrated 2026-09-23 and named the case that lands closest — 'connect a color palette to an image and recolor the image with different color combinations'." ;
                kpred:assessment   "THE OVERLAP IS REAL AND IT IS NARROW: digital ASSET GENERATION, which this roadmap holds as kb:asset-generation (F74.1, planned — Meshy for text/image-to-3D, local generation speculative). Flora has shipped the thing that entity describes wanting, and the palette-to-image case is one Reckons.AI has no answer for today." ;
                kpred:assessment   "AND THE SHAPE IS THE SAME EVEN WHERE THE PURPOSE IS NOT — which is the part worth noticing rather than dismissing. A palette node wired to an image node through a recolor transform IS a graph: two entities and a typed edge that means something. Flora points that mechanic at MAKING THINGS; Reckons.AI points it at KNOWING things. Identical primitive, opposite direction." ;
