@@ -15,6 +15,25 @@ env:
   ONNXRUNTIME_NODE_INSTALL: skip
 
 jobs:
+  # THE PROMOTION GATE runs first and costs seconds: main is reached through staging or not at
+  # all. F33 has declared dev -> staging -> main since it was written and nothing checked it —
+  # measured 2026-09-24, staging sat 422 commits behind dev. A declared step enforced by
+  # remembering is not a step.
+  promotion-gate:
+    name: Promotion gate (staging → main)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check the promotion path
+        run: npx tsx scripts/offline/promotion-gate.ts
+        env:
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+          GITHUB_HEAD_REF: ${{ github.head_ref }}
+
   check:
     name: Type check + Unit tests + Build
     runs-on: ubuntu-latest
