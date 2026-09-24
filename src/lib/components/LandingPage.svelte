@@ -456,7 +456,7 @@
     <div class="hero-content">
       <p class="kicker mono">
         knowledge graph · provenance · trust
-        <span class="alpha-badge">alpha · v0.2.0</span>
+        <span class="alpha-badge">alpha · v{__APP_VERSION__}</span>
       </p>
       <img src="/svg/logo-text.svg" alt="Reckons.AI" class="hero-logo" />
       <h1 class="tagline">

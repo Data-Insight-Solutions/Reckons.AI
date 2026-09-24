@@ -17,7 +17,7 @@
   import { parseGraphDate, EVENT_DATE_PREDICATES } from '$lib/rdf/parse-date';
   import { buildNodeTimes, timelineRange, undatedCount } from '$lib/rdf/timeline-layout';
   import { cameraPosition, CAMERA_PRESETS, type CameraSpec } from './camera-presets';
-  import { resolveOverlaps, previewWorldRadius } from './preview-collage';
+  import { resolveOverlaps, previewWorldRadius, SELECTED_NODE_SCALE, markerWorldRadius, glbWorldRadius, focusRingRadius } from './preview-collage';
   import GraphNode, { loadGltfTemplate } from '$lib/components/GraphNode.svelte';
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { RDF_TYPE, RDFS_LABEL, type EntityTypeDef } from '$lib/rdf/entity-types';
@@ -391,10 +391,61 @@
 
   // ── Layout builders ─────────────────────────────────────────────────────────
 
-  const FOCUS_RING_R = 5.5; // world-units between hop rings
+  /**
+   * WORLD UNITS BETWEEN HOP RINGS, sized to the biggest thing on them.
+   *
+   * It was a flat 5.5, which predates nodes having real radii. A GLB can now legitimately claim
+   * several world units, so fixed rings put two of them on adjacent hops closer than either one
+   * is wide and the collision pass then fought the ring anchors it could not satisfy — the state
+   * Matt reported as "focus mode looks broken now. We need the radial spread and much further
+   * spread." Sizing the gap from the largest radius present makes the rings reachable, so the
+   * anchors and the separation pass agree instead of pulling against each other.
+   */
+  const focusRingR = $derived.by(() => {
+    let maxR = 0.32;
+    for (const n of nodes) {
+      const url = entityIcon3dMap.get(n.key);
+      const intrinsic = url ? (glbRadius.get(url) ?? 0) : 0;
+      const r = intrinsic > 0 ? glbWorldRadius(intrinsic, n.degree) : markerWorldRadius(n.degree);
+      if (r > maxR) maxR = r;
+    }
+    return Math.max(9, maxR * 2.6 + 4);
+  });
 
   function buildFocusAnchors(): { anchors: Map<string, THREE.Vector3>; radii: number[]; distances: Map<string, number> } {
     if (!selected) return { anchors: new Map(), radii: [], distances: new Map() };
+
+    /**
+     * RINGS SIZED FROM WHAT THEY MUST HOLD, not from a constant (Matt, 2026-09-24: "focus still
+     * leaves other nodes way too close to the focused node... We need layered rings out from the
+     * focused node").
+     *
+     * hop * focusRingR alone ignores two things that decide whether a ring is actually clear:
+     *
+     *   INSIDE IT — the focused node is drawn at SELECTED_NODE_SCALE and may be a GLB, so hop 1
+     *   has to start outside the focused node's own radius, not at a fixed 9 units from a point.
+     *   This is why neighbours appeared to sit on top of it however far the constant was pushed.
+     *
+     *   ON IT — n nodes on a circle need n * (2r + gap) of circumference between them, so a ring
+     *   with many members has to grow or they crowd shoulder to shoulder at the ring's own radius.
+     *
+     * Taking the max of the three keeps the layered look while guaranteeing both clearances.
+     */
+    const RING_GAP = 2.2;
+    const nodeRadiusOf = (key: string, degree: number) => {
+      const url = entityIcon3dMap.get(key);
+      const intrinsic = url ? (glbRadius.get(url) ?? 0) : 0;
+      const base = intrinsic > 0 ? glbWorldRadius(intrinsic, degree) : markerWorldRadius(degree);
+      return key === selected ? base * SELECTED_NODE_SCALE : base;
+    };
+    let widestNode = 0.32;
+    for (const n of nodes) widestNode = Math.max(widestNode, nodeRadiusOf(n.key, n.degree));
+    const focusedNode = nodes.find((n) => n.key === selected);
+    const focusedRadius = focusedNode ? nodeRadiusOf(focusedNode.key, focusedNode.degree) : 0.32;
+    const ringRadius = (hop: number, count: number) =>
+      focusRingRadius(hop, count, {
+        baseRing: focusRingR, focusedRadius, widestNode, gap: RING_GAP,
+      });
 
     // ── 1. BFS hop distances ─────────────────────────────────────────────────
     // Shared traversal (rdf/n-hop.ts) — this was a verbatim copy of the 2D version, and
@@ -459,7 +510,8 @@
           nodeKeys.forEach((k, i) => {
             const fa = nodeKeys.length === 1 ? midAngle : angle + (i + 0.5) * (sectorArc / nodeKeys.length);
             const zOff = (i % 2 === 0 ? 1 : -1) * 0.55;
-            anchors.set(k, new THREE.Vector3(FOCUS_RING_R * Math.cos(fa), FOCUS_RING_R * Math.sin(fa), zOff));
+            const r1 = ringRadius(1, totalDirect);
+            anchors.set(k, new THREE.Vector3(r1 * Math.cos(fa), r1 * Math.sin(fa), zOff));
             nodeAngle.set(k, fa);
           });
           angle += sectorArc;
@@ -489,7 +541,7 @@
         parentGroups.get(pk)!.push(k);
       }
 
-      const r = hop * FOCUS_RING_R;
+      const r = ringRadius(hop, hopNodes.length);
       for (const [pk, siblings] of parentGroups) {
         const base = pk === '__none__' ? 0 : (nodeAngle.get(pk) ?? 0);
         // Fan siblings symmetrically around the parent's angle, narrowing as hop increases
@@ -507,13 +559,18 @@
     // ── 5. Disconnected nodes: outer orbit ───────────────────────────────────
     const unreachable = nodes.filter(n => !anchors.has(n.key));
     unreachable.forEach((n, i) => {
-      const r = (maxD + 2.5) * FOCUS_RING_R;
+      const r = ringRadius(maxD + 1, unreachable.length) + focusRingR * 1.5;
       const theta = (2 * Math.PI * i) / Math.max(unreachable.length, 1);
       anchors.set(n.key, new THREE.Vector3(r * Math.cos(theta), r * Math.sin(theta), (i % 3 - 1) * 2));
     });
 
     const radii: number[] = [];
-    for (let d = 1; d <= maxD; d++) radii.push(d * FOCUS_RING_R);
+    for (let d = 1; d <= maxD; d++) {
+      const countAtHop = d === 1
+        ? totalDirect
+        : [...distances.values()].filter((x) => x === d).length;
+      radii.push(ringRadius(d, countAtHop));
+    }
     return { anchors, radii, distances };
   }
 
@@ -659,10 +716,37 @@
 
     const anchors = new Map<string, THREE.Vector3>();
     for (const hub of hubNodes) anchors.set(hub.key, hubAnchorPos.get(hub.key)!);
+    /**
+     * FAN EACH HUB'S MEMBERS AROUND IT, rather than stacking every one on the hub's own point
+     * (Matt, 2026-09-24: "Types layout is better spread than Hub currently").
+     *
+     * Every satellite used to be anchored to the IDENTICAL position — its hub — and then had to
+     * shove its way out against an anchorStrength of 0.78 pulling it back. Repulsion won that
+     * argument badly and unevenly, which is exactly why hub looked tighter than type: type
+     * distributes its members, hub piled them and hoped.
+     *
+     * Placement is a phyllotactic spiral (golden angle, radius as sqrt of index), which gives
+     * even density at any count without tuning a per-size ring — the same reason sunflowers use
+     * it. The anchors now describe the spread, so the springs no longer have to invent it.
+     */
+    const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+    const SAT_SPACING = 2.4;
+    const byHub = new Map<number, string[]>();
     for (const node of nodes) {
       if (hubKeySet.has(node.key)) continue;
       const idx = nodeHubIdx.get(node.key) ?? 0;
-      anchors.set(node.key, hubAnchorPos.get(hubNodes[idx].key)!.clone());
+      if (!byHub.has(idx)) byHub.set(idx, []);
+      byHub.get(idx)!.push(node.key);
+    }
+    for (const [idx, members] of byHub) {
+      const centre = hubAnchorPos.get(hubNodes[idx].key)!;
+      members.forEach((k, i) => {
+        const r = SAT_SPACING * Math.sqrt(i + 1);
+        const a = i * GOLDEN_ANGLE;
+        anchors.set(k, centre.clone().add(
+          new THREE.Vector3(r * Math.cos(a), r * Math.sin(a), ((i % 3) - 1) * 0.6),
+        ));
+      });
     }
 
     const nodeColors = new Map<string, string>();
@@ -1003,7 +1087,13 @@
       activeAnchors = anchors;
       layoutMarkers = markers;
       layoutRingRadii = [];
-      anchorStrength = 0.82;
+      // PULL HARDER (Matt, 2026-09-24: "Type and Hub layouts need to 'pull' nodes harder to
+      // their destinations"). These two are CLUSTER layouts: the anchor IS the answer, and a
+      // weak pull left nodes negotiating with repulsion somewhere between their group and the
+      // next one, which reads as a blurry grouping rather than a decisive one. Safe to raise
+      // now that hub's anchors describe a real spread instead of stacking every member on one
+      // point — a strong pull toward a pile would only have made the pile tighter.
+      anchorStrength = 1.35;
       nodeColorMap = new Map(); // type colors come from typeDef, no override needed
       hubNodeKeys = [];
     } else if (layout === 'hub') {
@@ -1011,7 +1101,7 @@
       activeAnchors = anchors;
       layoutMarkers = markers;
       layoutRingRadii = [];
-      anchorStrength = 0.78;
+      anchorStrength = 1.35; // see the note on the type layout above
       nodeColorMap = nodeColors;
       hubNodeKeys = hubKeys;
     } else if (layout === 'timeline') {
@@ -1116,7 +1206,9 @@
     const SPRING     = layout === 'force' ? 0.18 : 0.10;
     const CENTER     = activeAnchors.size > 0 ? 0.008 : 0.04;
     const DAMP       = 0.86;
-    const BASE_REST  = 2.4;
+    // The free layout has no camera fit, so a longer rest is genuinely visible there where it
+    // would merely rescale a fitted layout (Matt: "free mode should be a bit more spread").
+    const BASE_REST  = layout === 'force' ? 3.4 : 2.4;
     const LOCK_TIMELINE_X = layout === 'timeline';
     const LOCK_HIERARCHY_Y = layout === 'hierarchy';
 
@@ -1135,8 +1227,23 @@
       const url = entityIcon3dMap.get(n.key);
       const intrinsic = url ? (glbRadius.get(url) ?? 0) : 0;
       if (intrinsic > 0) {
-        const degreeScale = (0.85 + 0.45 * Math.log2(1 + n.degree)) * 0.32;
-        radii.set(n.key, Math.max(degreeScale, intrinsic * degreeScale * 0.8));
+        /**
+         * THE GLB RADIUS WAS 0.32x TOO SMALL, AND THAT IS WHY MODELS STILL TOUCHED (Matt,
+         * 2026-09-24: "the GLB nodes need more space also", after "minor collision on the
+         * large tent 3d model").
+         *
+         * Derivation, because the two numbers here are easy to mix up. GraphNode draws a model
+         * as <T.Group scale={scale * 0.8}> where `scale` is the RAW degree scale
+         * (0.85 + 0.45*log2(1+degree)), so its world radius is intrinsic * raw * 0.8. A plain
+         * marker is a unit sphere of world radius 0.32 at scale 1, so ITS world radius is
+         * raw * 0.32 — and that 0.32 is a marker conversion, not part of the degree scale.
+         *
+         * The old line applied the marker conversion to the model as well
+         * (intrinsic * raw * 0.32 * 0.8), under-reporting every GLB by a factor of about three.
+         * The springs and the collision pass were both sizing a model a third of its drawn size,
+         * which is exactly as much room as it needed to still overlap.
+         */
+        radii.set(n.key, Math.max(markerWorldRadius(n.degree), glbWorldRadius(intrinsic, n.degree)));
       }
     }
     if (collageOn) {
@@ -1149,9 +1256,39 @@
           previewKeys!.has(n.key)
             // A thumbnail is a fixed pixel size, so the world room it needs grows with camera
             // distance — which is what keeps the separation honest at every zoom, not just one.
-            ? Math.max(base, previewWorldRadius(previewSizePx, camPos.distanceTo(n.pos), halfH))
+            // A SELECTED preview is drawn larger by the page, so the room it needs grows with
+            // it — sizing from the unselected px here is what let neighbours sit inside it.
+            ? Math.max(base, previewWorldRadius(
+                previewSizePx * (n.key === selected ? SELECTED_NODE_SCALE : 1),
+                camPos.distanceTo(n.pos), halfH))
             : base,
         );
+      }
+    }
+    /**
+     * THE SELECTED NODE GROWS AND THE LAYOUT HAD NO IDEA (Matt, 2026-09-24: "the node
+     * enlarges, but the other nodes around collide heavily").
+     *
+     * GraphNode.svelte draws a selected node at max(degreeScale, 1.0) * SELECTED_NODE_SCALE,
+     * while this map held only the UNSELECTED base — so the springs and the collision pass
+     * were both sizing a node that had already grown past them, and the neighbours stayed
+     * exactly where they were while it swelled through them.
+     *
+     * Putting the DRAWN size in here is the whole fix: radiusOf is read by the edge springs
+     * below AND by resolveOverlaps, so the neighbours both want the room and get pushed out
+     * of it. No new force, nothing to tune, and it turns the collision pass on for the frames
+     * where it is needed via the `radii.size > 0` guard that already exists.
+     *
+     * The ring is drawn at a further 1.6x and is deliberately NOT counted: clearing the node's
+     * body is the honest requirement, and clearing its halo too would shove the neighbourhood
+     * more than twice as far for a decoration.
+     */
+    if (selected) {
+      const sel = nodes.find((n) => n.key === selected);
+      if (sel) {
+        const degreeScale = 0.85 + 0.45 * Math.log2(1 + sel.degree);
+        const drawn = Math.max(degreeScale, 1.0) * SELECTED_NODE_SCALE;
+        radii.set(selected, Math.max(radii.get(selected) ?? 0, drawn * 0.32));
       }
     }
     const radiusOf = (n: { key: string }) => radii.get(n.key) ?? 0.32;
@@ -1241,14 +1378,38 @@
         right: { x: m[0], y: m[1], z: m[2] },
         up: { x: m[4], y: m[5], z: m[6] },
       };
+      /**
+       * GIVE IT THE NODES THAT CARRY A SIZE, because above its cap it does nothing at all.
+       *
+       * resolveOverlaps bails with `if (nodes.length > maxNodes) return 0` — and 0 is also
+       * what it returns when everything converged, so on a graph over 400 nodes the pass was
+       * silently a no-op and looked like success. With preview-all on, that is every node
+       * demanding a thumbnail's worth of room and nothing separating any of them, which is
+       * what Matt reported.
+       *
+       * The pass is O(n^2), so raising the cap is not the answer. The nodes that need it are
+       * the ones with a real radius — previews and GLBs — so hand it those, largest first if
+       * even they exceed the cap. Nodes left out keep the 0.32 default and are the ones whose
+       * overlap is least visible.
+       */
+      const OVERLAP_CAP = 400;
+      let separable = nodes;
+      if (nodes.length > OVERLAP_CAP && radii.size > 0) {
+        separable = nodes.filter((n) => radii.has(n.key));
+        if (separable.length > OVERLAP_CAP) {
+          separable = [...separable]
+            .sort((a, b) => radiusOf(b) - radiusOf(a))
+            .slice(0, OVERLAP_CAP);
+        }
+      }
       resolveOverlaps(
-        nodes,
+        separable,
         radiusOf,
         // Full strength, iterated to convergence. Easing (0.35, one pass) measurably lost to the
         // edge springs: on the 9-photo fixture it reported 16 overlapping pairs every frame and
         // painted a pile. Running last in the frame and converging is what turns "spread out a
         // bit" into the property the feature is named for.
-        { lockX: LOCK_TIMELINE_X, strength: 1, iterations: 12, basis },
+        { lockX: LOCK_TIMELINE_X, strength: 1, iterations: 12, basis, maxNodes: OVERLAP_CAP },
       );
     }
 
