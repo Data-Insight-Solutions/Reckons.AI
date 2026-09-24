@@ -1112,6 +1112,8 @@
     if (simAlpha >= SIM_ALPHA_MIN) {
     /** Force timestep, scaled by the cooling schedule. Damping and integration use raw dt. */
     const fdt = dt * simAlpha;
+    /** Mirrors the selected branch of `scale` in GraphNode.svelte — keep the two in step. */
+    const SELECTED_NODE_SCALE = 1.6;
     const REPEL      = 1.6;
     const SPRING     = layout === 'force' ? 0.18 : 0.10;
     const CENTER     = activeAnchors.size > 0 ? 0.008 : 0.04;
@@ -1152,6 +1154,32 @@
             ? Math.max(base, previewWorldRadius(previewSizePx, camPos.distanceTo(n.pos), halfH))
             : base,
         );
+      }
+    }
+    /**
+     * THE SELECTED NODE GROWS AND THE LAYOUT HAD NO IDEA (Matt, 2026-09-24: "the node
+     * enlarges, but the other nodes around collide heavily").
+     *
+     * GraphNode.svelte draws a selected node at max(degreeScale, 1.0) * SELECTED_NODE_SCALE,
+     * while this map held only the UNSELECTED base — so the springs and the collision pass
+     * were both sizing a node that had already grown past them, and the neighbours stayed
+     * exactly where they were while it swelled through them.
+     *
+     * Putting the DRAWN size in here is the whole fix: radiusOf is read by the edge springs
+     * below AND by resolveOverlaps, so the neighbours both want the room and get pushed out
+     * of it. No new force, nothing to tune, and it turns the collision pass on for the frames
+     * where it is needed via the `radii.size > 0` guard that already exists.
+     *
+     * The ring is drawn at a further 1.6x and is deliberately NOT counted: clearing the node's
+     * body is the honest requirement, and clearing its halo too would shove the neighbourhood
+     * more than twice as far for a decoration.
+     */
+    if (selected) {
+      const sel = nodes.find((n) => n.key === selected);
+      if (sel) {
+        const degreeScale = 0.85 + 0.45 * Math.log2(1 + sel.degree);
+        const drawn = Math.max(degreeScale, 1.0) * SELECTED_NODE_SCALE;
+        radii.set(selected, Math.max(radii.get(selected) ?? 0, drawn * 0.32));
       }
     }
     const radiusOf = (n: { key: string }) => radii.get(n.key) ?? 0.32;

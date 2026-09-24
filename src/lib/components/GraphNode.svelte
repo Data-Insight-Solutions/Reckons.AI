@@ -153,6 +153,8 @@
   const degreeScale = $derived(0.85 + 0.45 * Math.log2(1 + node.degree));
 
   const scale = $derived.by(() => {
+    // 1.6 is mirrored by SELECTED_NODE_SCALE in KnowledgeGraph.svelte, which sizes the
+    // layout radius from it so neighbours make room. Change both or they disagree.
     if (selected) return Math.max(degreeScale, 1.0) * 1.6;
     if (highlighted) return Math.max(degreeScale, 1.0) * 1.3;
     if (focusHop !== null && focusHop > 0) return degreeScale * (focusHop === 1 ? 1.05 : 0.92);
