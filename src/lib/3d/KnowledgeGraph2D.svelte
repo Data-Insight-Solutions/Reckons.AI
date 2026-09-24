@@ -1525,25 +1525,23 @@
       const d = Math.hypot(dx, dy) + 0.001;
       const k = e.isSourceEdge ? SPRING * 0.25 : SPRING;
       /**
-       * THE REST LENGTH MUST NOT ASK FOR LESS ROOM THAN THE TWO NODES OCCUPY. The 3D renderer
-       * has had this guard since F133; the 2D one never did, and the numbers were stark:
-       * BASE_REST is 3.2 world units while nodeRadius is 5–9, so the spring was pulling every
-       * pair to under a THIRD of the distance at which their own markers stop overlapping, and
-       * only the draw order hid it.
+       * REVERTED, AND THE REASON IS WORTH KEEPING (2026-09-24).
        *
-       * WHY THIS HELPS WHEN RAISING REPEL DID NOT (measured 2026-09-18, recorded on the
-       * viewportInsets prop): the camera auto-fits, so screen separation lands at roughly
-       * viewport / sqrt(nodeCount) no matter what the constants are — scaling the whole layout
-       * cancels out. This term does not scale the layout, it scales with DEGREE, so a hub and
-       * its neighbours claim more room than two leaves do. A differential survives a refit.
-       * Expect the visible change in dense hub neighbourhoods, which is where crowding is;
-       * a sparse graph will look much the same, and that is the geometry, not a weak setting.
+       * This briefly read `rest = max(BASE_REST * semanticDist, nodeWorldRadius(a) +
+       * nodeWorldRadius(b))`, copying the guard 3D has had since F133. It is right in 3D and
+       * WRONG HERE, because nodeWorldRadius divides by camScale: 2D nodes hold a fixed SCREEN
+       * size, so their world size changes with zoom. That made the spring's rest length a
+       * function of the camera — about 1.4 world units at the default camScale of 40 and 10-18
+       * below camScale 4 — so zooming out made every spring demand three to five times more
+       * room and the whole graph re-expanded and rearranged while the user was navigating.
+       * Matt saw it immediately: "some of the nodes get tangled up".
+       *
+       * THE LESSON: overlap here is a SCREEN-space problem because node size is screen-space,
+       * and solving it through a world-space spring couples the simulation to the camera. If
+       * 2D needs overlap resolution it wants a post-projection separation pass of its own — the
+       * shape of resolveOverlaps in the 3D renderer — not a longer spring.
        */
-      const rest = Math.max(
-        BASE_REST * e.semanticDist,
-        nodeWorldRadius(e.a) + nodeWorldRadius(e.b),
-      );
-      const f = (d - rest) * k;
+      const f = (d - BASE_REST * e.semanticDist) * k;
       e.a.vx += (dx/d)*f*fdt*5; e.a.vy += (dy/d)*f*fdt*5;
       e.b.vx -= (dx/d)*f*fdt*5; e.b.vy -= (dy/d)*f*fdt*5;
     }
