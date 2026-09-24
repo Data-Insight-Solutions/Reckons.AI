@@ -34,6 +34,14 @@
       "desc": "ASYNC alignment: sweeps the hand-written surfaces align(1) cannot generate (README, SAFETY.md, COUNSEL-BRIEF.md, app shell, landing copy) for claims the graph contradicts — an unbuilt feature described as working, or a countable claim that is simply wrong. Emits PROPOSALS for review; never gates a build, because 'is this sentence overclaiming' is a judgment"
     },
     {
+      "name": "version-align",
+      "tier": "script",
+      "enabled": true,
+      "blocking": true,
+      "cmd": "npx tsx scripts/offline/version-align.ts",
+      "desc": "The version number, the build and the graph cannot disagree. package.json must have a matching ktype:Release entity, and no source file may hardcode a version literal — the badge and Shelly both read __APP_VERSION__, injected by vite from package.json. BLOCKING because a wrong version on the landing page is a claim to every visitor, it is free to check, and it cannot be right by accident."
+    },
+    {
       "name": "landing-data-align",
       "tier": "script",
       "enabled": true,

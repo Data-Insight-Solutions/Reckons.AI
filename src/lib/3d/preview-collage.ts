@@ -161,6 +161,80 @@ function fallbackAxis(key: string, lockX: boolean): { x: number; y: number; z: n
  * Returns the number of pairs it had to separate, which is what a test asserts on and what a
  * caller can use to tell "settled" from "still resolving".
  */
+/**
+ * How much bigger a SELECTED node draws than its unselected self.
+ *
+ * Read by three places that must agree or the selection looks broken in a different way in
+ * each: GraphNode.svelte (the mesh), KnowledgeGraph.svelte (the layout radius, so neighbours
+ * make room) and the graph page (the DOM preview thumbnail). It lived as a bare 1.6 in the
+ * first of those while the other two did not know about it at all — the node grew, the
+ * thumbnail stayed put, and the neighbours never moved.
+ */
+export const SELECTED_NODE_SCALE = 1.6;
+
+/**
+ * World radius of a plain node marker at a given degree.
+ *
+ * A marker is a unit sphere of world radius MARKER_UNIT_RADIUS drawn at GraphNode's degree
+ * scale, so its world radius is simply the product.
+ */
+export const MARKER_UNIT_RADIUS = 0.32;
+/** GraphNode renders a GLB group at `scale * GLB_GROUP_SCALE`. */
+export const GLB_GROUP_SCALE = 0.8;
+/** GraphNode also LIFTS the group by `scale * GLB_Y_OFFSET` so the model sits above the node. */
+export const GLB_Y_OFFSET = 0.55;
+
+/** GraphNode's `degreeScale` — the RAW figure, with no marker conversion applied. */
+export function degreeScale(degree: number): number {
+  return 0.85 + 0.45 * Math.log2(1 + degree);
+}
+
+/**
+ * Radius of hop-ring `hop` in the focus layout.
+ *
+ * `hop * baseRing` alone ignores the two things that decide whether a ring is actually clear,
+ * which is why neighbours kept sitting on the focused node however far the constant was pushed:
+ *
+ *   INSIDE IT — the focused node is drawn enlarged and may be a model, so ring 1 has to begin
+ *   outside ITS radius, not at a fixed distance from a point.
+ *   ON IT — n nodes on a circle need n * (2r + gap) of circumference, so a busy ring has to grow
+ *   or its members crowd shoulder to shoulder.
+ */
+export function focusRingRadius(
+  hop: number,
+  count: number,
+  opts: { baseRing: number; focusedRadius: number; widestNode: number; gap: number },
+): number {
+  const { baseRing, focusedRadius, widestNode, gap } = opts;
+  const fitsAround = count > 1 ? (count * (2 * widestNode + gap)) / (2 * Math.PI) : 0;
+  const clearsFocused = focusedRadius + widestNode + gap + (hop - 1) * baseRing;
+  return Math.max(hop * baseRing, fitsAround, clearsFocused);
+}
+
+export function markerWorldRadius(degree: number): number {
+  return degreeScale(degree) * MARKER_UNIT_RADIUS;
+}
+
+/**
+ * World radius of a GLB model node.
+ *
+ * THE TRAP THIS EXISTS TO CLOSE: the 0.32 is a MARKER conversion — the unit sphere's radius —
+ * and is not part of the degree scale. Applying it to a model as well under-reports every GLB
+ * by about a factor of three, which is what made them still overlap after the radii map was
+ * introduced. Two separate bugs have now lived in this arithmetic while it was inline in a
+ * .svelte file where nothing could test it; it is a function so the third one fails here.
+ */
+export function glbWorldRadius(intrinsicRadius: number, degree: number): number {
+  const s = degreeScale(degree);
+  // THE MODEL IS NOT CENTRED ON THE NODE. GraphNode lifts it by scale * GLB_Y_OFFSET, while
+  // the springs and the collision pass reserve a circle centred on node.pos — so the model
+  // sat ABOVE the room made for it and overlapped whatever was up there (Matt, 2026-09-24:
+  // "the glb is offset up, higher than the space made for it"). Including the lift makes the
+  // reserved circle reach the top of the model. It over-reserves sideways, which is the safe
+  // direction: the alternative is separating around a centre nothing is drawn at.
+  return intrinsicRadius * s * GLB_GROUP_SCALE + s * GLB_Y_OFFSET;
+}
+
 export function resolveOverlaps(
   nodes: Positioned[],
   radiusOf: (n: Positioned) => number,
