@@ -18,7 +18,7 @@
   import { buildNodeTimes, timelineRange, undatedCount } from '$lib/rdf/timeline-layout';
   import { cameraPosition, CAMERA_PRESETS, type CameraSpec } from './camera-presets';
   import { resolveOverlaps, previewWorldRadius } from './preview-collage';
-  import GraphNode from '$lib/components/GraphNode.svelte';
+  import GraphNode, { loadGltfTemplate } from '$lib/components/GraphNode.svelte';
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { RDF_TYPE, RDFS_LABEL, type EntityTypeDef } from '$lib/rdf/entity-types';
   import { glbOverrides } from '$lib/stores/glb-overrides.svelte';
@@ -152,6 +152,34 @@
 
   /** Set of node keys that have a KB Leap defined. */
   const leapKeys = $derived(leapNodeKeys(statements as Statement[]));
+
+  /**
+   * INTRINSIC WORLD RADIUS OF EACH DISTINCT GLB, measured once per URL.
+   *
+   * A plain marker is a unit sphere scaled by degree; a GLB is whatever size its author exported,
+   * and Meshy output is routinely an order of magnitude larger. The layout assumed 0.32 for every
+   * node, so models were spaced as though they were markers and overlapped exactly as much as
+   * their real size exceeded that guess.
+   *
+   * NOT FIXED BY TURNING UP REPULSION — measured 2026-09-18 and recorded on the viewportInsets
+   * prop below: sweeping REPEL, BASE_REST and CENTER "moved the spread by less than noise",
+   * because those scale the WHOLE layout and the camera simply refits. Zooming is not spreading.
+   * A per-node radius is different in kind: it changes RELATIVE spacing, which survives a refit.
+   */
+  const glbRadius = $state(new Map<string, number>());
+  $effect(() => {
+    const urls = new Set(entityIcon3dMap.values());
+    for (const url of urls) {
+      if (glbRadius.has(url)) continue;
+      glbRadius.set(url, 0); // claim it so concurrent frames do not re-request
+      loadGltfTemplate(url)
+        .then((scene) => {
+          const sphere = new THREE.Box3().setFromObject(scene).getBoundingSphere(new THREE.Sphere());
+          if (Number.isFinite(sphere.radius) && sphere.radius > 0) glbRadius.set(url, sphere.radius);
+        })
+        .catch(() => { /* a model that will not load simply keeps the marker radius */ });
+    }
+  });
 
   /** Per-entity GLB override: entity node key → glb URL (editor store + statement-level refs) */
   const entityIcon3dMap = $derived.by(() => {
@@ -1100,6 +1128,17 @@
     // itself, because a node pushed further from the camera immediately demands more room.
     const collageOn = !!previewKeys && previewKeys.size > 0 && !!camera.current && !!renderer;
     const radii = new Map<string, number>();
+    // GLB nodes need room in EVERY mode, not only when the collage modifier is on. The group is
+    // rendered at scale * 0.8 in GraphNode, so the world radius is the model's own bounding
+    // radius times that — which is what the springs and the collision pass below both read.
+    for (const n of nodes) {
+      const url = entityIcon3dMap.get(n.key);
+      const intrinsic = url ? (glbRadius.get(url) ?? 0) : 0;
+      if (intrinsic > 0) {
+        const degreeScale = (0.85 + 0.45 * Math.log2(1 + n.degree)) * 0.32;
+        radii.set(n.key, Math.max(degreeScale, intrinsic * degreeScale * 0.8));
+      }
+    }
     if (collageOn) {
       const camPos = camera.current!.position;
       const halfH = renderer!.domElement.clientHeight * 0.5;
@@ -1138,7 +1177,11 @@
       // converging. Lengthening the rest so it never asks for less than the nodes occupy makes the
       // two agree, so the spread is where the layout WANTS to be instead of where it is forced.
       let rest = BASE_REST * e.semanticDist;
-      if (collageOn) rest = Math.max(rest, radiusOf(e.a) + radiusOf(e.b));
+      // Was `if (collageOn)`. The rest length must never ask for less room than the two nodes
+      // occupy, and that is as true for a GLB as for a thumbnail — otherwise the spring pulls
+      // them together every frame while the collision pass shoves them apart, and the layout
+      // settles with visible overlap instead of converging.
+      if (collageOn || radii.size > 0) rest = Math.max(rest, radiusOf(e.a) + radiusOf(e.b));
       const f = (d - rest) * SPRING;
       e.a.vel.x += (dx / d) * f * fdt * 8; e.a.vel.y += (dy / d) * f * fdt * 8; e.a.vel.z += (dz / d) * f * fdt * 8;
       e.b.vel.x -= (dx / d) * f * fdt * 8; e.b.vel.y -= (dy / d) * f * fdt * 8; e.b.vel.z -= (dz / d) * f * fdt * 8;
@@ -1183,12 +1226,17 @@
     // wherever the springs balanced and simply overlap. "All visible" is a property, and a
     // property that must hold gets asserted, not approached — the same reason the date axis is
     // pinned rather than tuned.
-    if (collageOn) {
+    // Runs when ANYTHING claims room, not only under the collage modifier. Feeding GLB radii into
+    // the map above and teaching the springs to respect them is not enough on its own: repulsion
+    // is size-blind by design, so without this pass the models settle wherever the springs balance
+    // and simply overlap — which is the state Matt reported. The pass is the part that turns
+    // "wants to be apart" into "is apart".
+    if ((collageOn || radii.size > 0) && camera.current) {
       // The camera's right and up vectors, pulled from its world matrix. Separation happens in
       // THIS plane: pushing two nodes apart along the view axis satisfies the arithmetic and
       // changes nothing a viewer can see, which is exactly how the first version converged while
       // still painting a pile.
-      const m = camera.current!.matrixWorld.elements;
+      const m = camera.current.matrixWorld.elements;
       const basis = {
         right: { x: m[0], y: m[1], z: m[2] },
         up: { x: m[4], y: m[5], z: m[6] },
@@ -1459,7 +1507,18 @@
 
     function onPointerDown(e: PointerEvent) {
       if (e.button !== 2) return; // right-click only
-      dragging = true;
+      /**
+       * DO NOT CLAIM THE DRAG BEFORE IT IS ESTABLISHED — this is the "timeline keeps moving
+       * after the right button is released" bug (Matt, 2026-09-24).
+       *
+       * `dragging = true` used to run HERE, above the `times.length === 0` bail below. On a
+       * graph with no timeline data that bail returned with dragging latched true and
+       * setPointerCapture never reached — and without capture, a pointerup that lands anywhere
+       * but this canvas never arrives, so nothing ever cleared the flag. Every subsequent mouse
+       * move then scrubbed the timeline with no button held, for the rest of the session.
+       *
+       * The flag is now set together with the capture, after every reason to bail has passed.
+       */
       startX = e.clientX;
       // Compute current data range for mapping pixel delta to time delta
       const nodeTime = new Map<string, number>();
@@ -1485,7 +1544,8 @@
       const dataMax = Math.max(...times);
       const dataRange = dataMax - dataMin || 1;
       startCenter = timelineCenter ?? (dataMin + dataRange / 2);
-      canvas!.setPointerCapture(e.pointerId);
+      dragging = true;
+      try { canvas!.setPointerCapture(e.pointerId); } catch { /* capture is best-effort */ }
     }
 
     function onPointerMove(e: PointerEvent) {
@@ -1521,21 +1581,47 @@
     }
 
     function onPointerUp(e: PointerEvent) {
+      endDrag(e.pointerId);
+    }
+
+    /**
+     * Same safety net as the 2D renderer. pointerup is not guaranteed to arrive for a RIGHT
+     * button: a native context menu that takes the pointer swallows it and the browser revokes
+     * the capture, firing lostpointercapture instead. Only listening for pointerup leaves the
+     * scrub running against a cursor with no button held.
+     */
+    function endDrag(pointerId?: number) {
       if (!dragging) return;
       dragging = false;
-      canvas!.releasePointerCapture(e.pointerId);
+      if (pointerId !== undefined) {
+        try { canvas!.releasePointerCapture(pointerId); } catch { /* already released */ }
+      }
     }
+    function onPointerCancel(e: PointerEvent) { endDrag(e.pointerId); }
+    function onLostPointerCapture() { endDrag(); }
 
     canvas.addEventListener('contextmenu', onContextMenu);
     canvas.addEventListener('pointerdown', onPointerDown);
     canvas.addEventListener('pointermove', onPointerMove);
     canvas.addEventListener('pointerup', onPointerUp);
+    canvas.addEventListener('pointercancel', onPointerCancel);
+    canvas.addEventListener('lostpointercapture', onLostPointerCapture);
+    // THE RELEASE MAY NOT LAND ON THE CANVAS. Pointer capture normally guarantees it does, but
+    // capture can fail or never be taken, and then the pointerup goes to whatever is under the
+    // cursor. Listening on the window is what makes ending the drag independent of where the
+    // mouse happens to be, which is the property this gesture was missing.
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerCancel);
 
     return () => {
       canvas.removeEventListener('contextmenu', onContextMenu);
       canvas.removeEventListener('pointerdown', onPointerDown);
       canvas.removeEventListener('pointermove', onPointerMove);
       canvas.removeEventListener('pointerup', onPointerUp);
+      canvas.removeEventListener('pointercancel', onPointerCancel);
+      canvas.removeEventListener('lostpointercapture', onLostPointerCapture);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerCancel);
     };
   });
 </script>

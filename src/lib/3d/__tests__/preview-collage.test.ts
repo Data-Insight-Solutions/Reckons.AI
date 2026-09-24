@@ -241,3 +241,66 @@ describe('the O(n^2) guard', () => {
     expect(resolveOverlaps(nodes, () => 1, { maxNodes: 50 })).toBeGreaterThan(0);
   });
 });
+
+/**
+ * GLB NODES, WHICH ARE THE CASE THAT WAS NOT COVERED.
+ *
+ * Matt reported models colliding on a real graph (2026-09-23) and I first claimed no automated
+ * test could reach it. That was wrong twice: resolveOverlaps is a pure exported function with
+ * this very test file beside it, and the app already ships an example model. The real defect was
+ * that both the radius map and this solver were gated on the collage modifier, so a GLB — whose
+ * world size is whatever its author exported, routinely an order of magnitude past a marker's
+ * 0.32 — was spaced as though it were a marker in every ordinary view.
+ *
+ * These assert the PROPERTY rather than a screenshot: given radii that differ by an order of
+ * magnitude, nothing ends up closer than the two radii it needs. A pixel comparison would catch
+ * a change; this catches the thing being wrong.
+ */
+describe('separation when radii differ by an order of magnitude (GLB beside markers)', () => {
+  const MARKER = 0.32;
+  const MODEL = 3.2; // a Meshy-scale export against a default marker
+
+  const radiusFor = (big: Set<string>) => (n: Positioned) => (big.has(n.key) ? MODEL : MARKER);
+
+  it('pushes a model clear of a marker sitting on top of it', () => {
+    const nodes = [at('model', 0, 0), at('marker', 0.1, 0)];
+    const big = new Set(['model']);
+    resolveOverlaps(nodes, radiusFor(big), { strength: 1, iterations: 24 });
+    const d = Math.hypot(nodes[0].pos.x - nodes[1].pos.x, nodes[0].pos.y - nodes[1].pos.y, nodes[0].pos.z - nodes[1].pos.z);
+    expect(d).toBeGreaterThanOrEqual(MODEL + MARKER - SLOP);
+  });
+
+  it('separates two models from each other, not just from markers', () => {
+    const nodes = [at('a', 0, 0), at('b', 0.5, 0.2)];
+    const big = new Set(['a', 'b']);
+    resolveOverlaps(nodes, radiusFor(big), { strength: 1, iterations: 24 });
+    const d = Math.hypot(nodes[0].pos.x - nodes[1].pos.x, nodes[0].pos.y - nodes[1].pos.y, nodes[0].pos.z - nodes[1].pos.z);
+    expect(d).toBeGreaterThanOrEqual(MODEL * 2 - SLOP);
+  });
+
+  it('leaves no overlapping pair in a mixed cluster', () => {
+    const nodes = [
+      at('m1', 0, 0), at('m2', 0.4, 0.1), at('m3', -0.3, 0.2),
+      at('n1', 0.1, -0.1), at('n2', -0.2, -0.3), at('n3', 0.2, 0.3),
+    ];
+    const big = new Set(['m1', 'm2', 'm3']);
+    const r = radiusFor(big);
+    resolveOverlaps(nodes, r, { strength: 1, iterations: 40 });
+    // overlaps() compares ONE pair, so check every pair and name the ones that fail.
+    const still: string[] = [];
+    for (let i = 0; i < nodes.length; i++)
+      for (let j = i + 1; j < nodes.length; j++)
+        if (overlaps(nodes[i], nodes[j], r, { tolerance: SLOP })) still.push(`${nodes[i].key}/${nodes[j].key}`);
+    expect(still).toEqual([]);
+  });
+
+  // The bug was never that separation is impossible — it is that nothing asked for it outside
+  // collage. A uniform radius spreads to 2*0.32 and calls it done, which is what the layout did
+  // to a model ten times that size.
+  it('a uniform marker radius leaves models overlapping, which is the defect', () => {
+    const nodes = [at('model-a', 0, 0), at('model-b', 0.1, 0)];
+    resolveOverlaps(nodes, () => MARKER, { strength: 1, iterations: 24 });
+    const d = Math.hypot(nodes[0].pos.x - nodes[1].pos.x, nodes[0].pos.y - nodes[1].pos.y, nodes[0].pos.z - nodes[1].pos.z);
+    expect(d).toBeLessThan(MODEL * 2); // spaced as markers — still colliding as models
+  });
+});

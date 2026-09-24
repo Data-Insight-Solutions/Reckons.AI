@@ -352,6 +352,141 @@ for (const { q, file } of quads) {
   }
 }
 
+// ── prefix-drift: one namespace written under several prefixes.
+//
+// urn:kbase:predicate/ is declared as kpred:, pred: AND p: across this corpus — three names for
+// one namespace. It parses fine, which is why it survived: RDF resolves prefixes and does not
+// care. Everything ELSE cares. A grep for kpred:X silently misses two thirds of the vocabulary,
+// which is exactly how a migration on 2026-09-23 left `pred:worksAt` behind after reporting
+// success, and it is how any reader learns three words for one idea.
+//
+// Reported per namespace rather than per file, because the fix is to pick one and the finding is
+// the disagreement, not any single declaration.
+{
+  const nsToPrefixes = new Map<string, Map<string, string>>(); // ns -> prefix -> first file seen
+  // docs-all.ttl is a CONCATENATION built by setup-reckons-workspace.sh, so every prefix in it
+  // belongs to some other file. Including it would name the wrong file in every finding — and it
+  // carries no `# generated` header, so isGenerated does not catch it.
+  for (const f of readdirSync('static').filter((n) => n.endsWith('.ttl') && n !== 'docs-all.ttl')) {
+    let text: string;
+    try { text = readFileSync(path.join('static', f), 'utf8'); } catch { continue; }
+    if (isGenerated(text)) continue;
+    for (const m of text.matchAll(/@prefix\s+([A-Za-z][\w-]*):\s*<([^>]+)>/g)) {
+      const [, prefix, ns] = m;
+      if (!nsToPrefixes.has(ns)) nsToPrefixes.set(ns, new Map());
+      if (!nsToPrefixes.get(ns)!.has(prefix)) nsToPrefixes.get(ns)!.set(prefix, f);
+    }
+  }
+  for (const [ns, prefixes] of nsToPrefixes) {
+    if (prefixes.size < 2) continue;
+    const listed = [...prefixes].map(([p, f]) => `${p}: (${f})`).join(', ');
+    add('warn', 'prefix-drift', 'static/', ns,
+      `<${ns}> is written under ${prefixes.size} different prefixes — ${listed}. It parses, ` +
+      `because RDF resolves prefixes; every tool that does not parse gets it wrong. A grep for ` +
+      `one prefix silently misses the rest, and a reader learns several words for one namespace.`);
+  }
+}
+
+// ── SKOS INTEGRITY. skos:broader is used ~420 times and was validated by NOTHING until
+// 2026-09-22 — which matters more than the count, because buildHierarchy (src/lib/rdf/hierarchy.ts)
+// WALKS it to build the tree layout and the hierarchical navigation. An unchecked cycle there is
+// not a tidiness problem; it is a traversal that does not terminate. These are also the rules a
+// taxonomy needs before it can be authored, and the ones kb_subgraph leans on when an agent asks
+// the graph about itself.
+const SKOS_NS = 'http://www.w3.org/2004/02/skos/core#';
+const BROADER = SKOS_NS + 'broader';
+const NARROWER = SKOS_NS + 'narrower';
+
+// broader-dangling: a parent that was never defined. REF_PREDS deliberately covers the kpred:
+// relations and has never covered SKOS, so a broken hierarchy edge was invisible to the check
+// that exists precisely to catch broken edges.
+for (const { q, file } of quads) {
+  if (q.predicate.value !== BROADER && q.predicate.value !== NARROWER) continue;
+  if (q.object.termType !== 'NamedNode') continue;
+  if (!typed.has(q.object.value)) {
+    add('error', 'broader-dangling', file, q.subject.value,
+      `skos:${q.predicate.value === BROADER ? 'broader' : 'narrower'} → ${short(q.object.value)}, ` +
+      `which has no rdf:type anywhere. The hierarchy walks this edge, so the child becomes an ` +
+      `orphan that no tree renders and no kb_subgraph returns.`);
+  }
+}
+
+// broader-cycle: a concept that is its own ancestor. buildHierarchy would loop.
+{
+  const parents = new Map<string, string[]>();
+  for (const { q } of quads) {
+    if (q.predicate.value === BROADER && q.object.termType === 'NamedNode') {
+      parents.set(q.subject.value, [...(parents.get(q.subject.value) ?? []), q.object.value]);
+    }
+    // narrower is the inverse, and a cycle can be spelled with either or both.
+    if (q.predicate.value === NARROWER && q.object.termType === 'NamedNode') {
+      parents.set(q.object.value, [...(parents.get(q.object.value) ?? []), q.subject.value]);
+    }
+  }
+  const state = new Map<string, 'visiting' | 'done'>();
+  const reported = new Set<string>();
+  const walk = (node: string, path: string[]): void => {
+    const seen = state.get(node);
+    if (seen === 'done') return;
+    if (seen === 'visiting') {
+      const cycle = [...path.slice(path.indexOf(node)), node].map(short).join(' → ');
+      const key = [...path].sort().join('|');
+      if (!reported.has(key)) {
+        reported.add(key);
+        add('error', 'broader-cycle', fileOf(node), node,
+          `skos:broader cycle — ${cycle}. buildHierarchy walks these edges to build the tree ` +
+          `layout, so this does not terminate.`);
+      }
+      return;
+    }
+    state.set(node, 'visiting');
+    for (const parent of parents.get(node) ?? []) walk(parent, [...path, node]);
+    state.set(node, 'done');
+  };
+  for (const node of parents.keys()) walk(node, []);
+}
+
+// ── reinvented-term: a private word where a standard already has one.
+//
+// kb:minimal-ontology states the constraint — "BORROW VOCABULARY, DO NOT BUILD IT" — and records
+// 355 predicates with 97 used once. The count is now 459 and 109, so roughly a hundred private
+// words were minted while that sentence sat in the graph unenforced. A principle nobody can run
+// is a preference; this is the smallest version that is a rule.
+//
+// DELIBERATELY A SHORT, EXACT TABLE. A fuzzy matcher guessing that some kpred: "resembles" a
+// schema.org term would produce exactly the noisy queue AGENTS.md warns about, where triage costs
+// more than the finding saves. Every entry below is a term whose standard equivalent means the
+// SAME thing, not merely a similar thing — add one only when that is true.
+const STANDARD_EQUIVALENTS: Record<string, string> = {
+  [KPRED + 'part-of']: 'schema:isPartOf (or dcterms:isPartOf)',
+  [KPRED + 'has-part']: 'schema:hasPart (or dcterms:hasPart)',
+  [KPRED + 'description']: 'schema:description (or dcterms:description / skos:definition)',
+  [KPRED + 'sender']: 'schema:sender',
+  [KPRED + 'recipient']: 'schema:recipient',
+  [KPRED + 'author']: 'schema:author (or dcterms:creator)',
+  [KPRED + 'created']: 'dcterms:created (or schema:dateCreated)',
+  [KPRED + 'modified']: 'dcterms:modified',
+  [KPRED + 'format']: 'dcterms:format, with an IANA media type',
+  [KPRED + 'license']: 'dcterms:license (or schema:license)',
+  [KPRED + 'language']: 'dcterms:language',
+  [KPRED + 'keywords']: 'schema:keywords',
+  [KPRED + 'url']: 'schema:url',
+  [KPRED + 'email']: 'schema:email (or foaf:mbox)',
+  [KPRED + 'broader']: 'skos:broader',
+  [KPRED + 'narrower']: 'skos:narrower',
+  [KPRED + 'derived-from']: 'prov:wasDerivedFrom',
+};
+{
+  const used = new Set(quads.map(({ q }) => q.predicate.value));
+  for (const [ours, theirs] of Object.entries(STANDARD_EQUIVALENTS)) {
+    if (!used.has(ours)) continue;
+    add('warn', 'reinvented-term', fileOf(ours) === '?' ? 'static/' : fileOf(ours), ours,
+      `${short(ours)} duplicates ${theirs}. kb:minimal-ontology: "BORROW VOCABULARY, DO NOT ` +
+      `BUILD IT" — a borrowed term makes this graph comparable to somebody else's without a ` +
+      `mapping exercise, and an agent reading it over MCP already knows what it means.`);
+  }
+}
+
 // ── egress-gate: DISTRIBUTION needs a gate; EXPORT must NOT have one (kb:data-egress-model).
 // Two invariants, both enforceable:
 //   1. mediated-distribution / third-party-service => kpred:gated-by required, and the

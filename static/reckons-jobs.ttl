@@ -360,6 +360,15 @@ job:queue-dedupe rdf:type          ktype:OfflineJob ;
     kpred:job-enabled   "true" ;
     kpred:job-blocking  "false" .
 
+job:repo-hygiene rdf:type          ktype:OfflineJob ;
+    rdfs:label          "repo-hygiene" ;
+    skos:prefLabel      "repo-hygiene" ;
+    skos:definition     "What is TRACKED that should not be. The other sweeps read claims and generated content; none looks at the file tree, which is how a 4.5MB test artifact and a served .ttl.bak stayed in a public repo. Blocking: tracked-but-ignored (a .gitignore rule added after a commit does nothing, so the rule keeps failing silently) and backup artifacts. Advisory: files over 1MB, because a GLB model and an accident look identical to a rule." ;
+    kpred:job-tier      "script" ;
+    kpred:command       "npx tsx scripts/offline/repo-hygiene.ts" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "false" .
+
 job:safety-attestation rdf:type          ktype:OfflineJob ;
     rdfs:label          "safety-attestation" ;
     skos:prefLabel      "safety-attestation" ;
@@ -468,6 +477,15 @@ job:untested-options rdf:type          ktype:OfflineJob ;
     kpred:job-enabled   "true" ;
     kpred:job-blocking  "false" .
 
+job:ux-impression rdf:type          ktype:OfflineJob ;
+    rdfs:label          "ux-impression" ;
+    skos:prefLabel      "ux-impression" ;
+    skos:definition     "Qualitative UX read of real screens by the local VLM: does this screen look crowded, is one thing clearly most important, does the text read comfortably. Asks only what no script can answer — touch targets, blank screens and contrast are measured deterministically by button-crawl and vision-local instead. Has NO golden set, so it is proposal-only and never blocking; run --calibrate first, which renders a deliberately terrible page and a deliberately clean one and refuses to report at all unless the model can tell them apart. Disabled by default: needs OLLAMA_BASE_URL and a reachable deploy." ;
+    kpred:job-tier      "agent" ;
+    kpred:command       "npx tsx scripts/offline/ux-impression.ts --url=${UX_IMPRESSION_URL:-https://reckons.ai} --width=${UX_IMPRESSION_WIDTH:-390} --height=${UX_IMPRESSION_HEIGHT:-844} --pending" ;
+    kpred:job-enabled   "false" ;
+    kpred:job-blocking  "false" .
+
 job:visual-diff rdf:type          ktype:OfflineJob ;
     rdfs:label          "visual-diff" ;
     skos:prefLabel      "visual-diff" ;
@@ -480,14 +498,14 @@ job:visual-diff rdf:type          ktype:OfflineJob ;
 jobset:agent rdf:type      skos:Collection ;
     skos:prefLabel      "agent tier" ;
     skos:definition     "A local model inside a scripted harness — ground, prompt, validate, emit-proposal. Output is a PROPOSAL a human gates, never a write, because being wrong here has to be cheap." ;
-    skos:member         job:aggregate-decisions, job:code-review, job:describe-entities, job:distill-decisions, job:docs-expand, job:docs-review, job:extraction-score, job:layer-classify, job:visual-diff .
+    skos:member         job:aggregate-decisions, job:code-review, job:describe-entities, job:distill-decisions, job:docs-expand, job:docs-review, job:extraction-score, job:layer-classify, job:ux-impression, job:visual-diff .
 
 jobset:script rdf:type      skos:Collection ;
     skos:prefLabel      "script tier" ;
     skos:definition     "Deterministic, zero tokens, no model. Right by construction and runs in CI. The work-tiering ladder says to grow this tier in preference to the others, and it is the larger one." ;
-    skos:member         job:alignment-sweep, job:altitude-report, job:build-guard, job:button-crawl, job:claim-audit, job:code-sprawl, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:safety-attestation, job:scope-check, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:status-evidence, job:tenet-align, job:term-usage, job:untested-options .
+    skos:member         job:alignment-sweep, job:altitude-report, job:build-guard, job:button-crawl, job:claim-audit, job:code-sprawl, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:repo-hygiene, job:safety-attestation, job:scope-check, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:status-evidence, job:tenet-align, job:term-usage, job:untested-options .
 
 jobset:all rdf:type          skos:Collection ;
     skos:prefLabel      "Offline jobs" ;
-    skos:definition     "Every job the offline sweep can run — 51 of them, 42 needing no model at all." ;
+    skos:definition     "Every job the offline sweep can run — 53 of them, 43 needing no model at all." ;
     skos:member         jobset:agent, jobset:script .

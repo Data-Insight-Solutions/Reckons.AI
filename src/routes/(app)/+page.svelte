@@ -2029,10 +2029,16 @@
 {#snippet graphTools()}
   <!-- FORCE -->
   <div class="overlay-group">
-    <!-- "view", not "layout": the group now holds TWO controls that each name themselves, and
-         reusing one of their names for the heading is the same confusion the old "force" heading
-         had — a label that means something different from the thing beside it. -->
-    <span class="group-label mono">view</span>
+    <!-- "layout", not "view" (Matt, 2026-09-24: "I think view would be more of the Statements vs
+         Sources, and Explore versus review. I think these are graph node layouts still").
+         VIEW IS ALREADY TAKEN: kterm:explore-view, kterm:review-view and kterm:graph-view all
+         claim it in static/reckons-terminology.ttl, so using it here for the ARRANGEMENT OF
+         NODES made one word mean two things on the same screen.
+         The earlier rename to "view" was avoiding a real collision — the heading used to read
+         "force", which is itself a layout name — but that collision is gone now that the chip
+         shows the CURRENT layout rather than a fixed word, so "layout" no longer clashes with
+         anything beside it. -->
+    <span class="group-label mono">layout</span>
     <div class="chip-row">
       <Popover.Root bind:open={showLayoutMenu}>
         <Popover.Trigger>

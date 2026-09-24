@@ -208,7 +208,26 @@ This project uses TTL knowledge bases as the primary documentation format. **Do 
 - **For code conventions**: Use inline code comments near the actual code
 - **Query before reading**: Use `kb_search` to find information before reading raw files
 - **Existing markdown**: `docs/*.md` files are being migrated to TTL. Check `kb_search("migration status", kb="architecture")` for current state
-- **Must stay markdown**: AGENTS.md (and its CLAUDE.md symlink), HANDOFF.md, COUNSEL-BRIEF.md, MEMORY.md, .claude/commands/*.md, README.md, CONTRIBUTING.md, SAFETY.md (system/policy docs; SAFETY.md is the human-readable safety & responsibility statement — the graph mirrors it in kb:content-safety)
+- **Must stay markdown, and WHY each one** — the list is here so a root-level `.md` is either on
+  it or is a candidate for deletion. Two were not on it and had rotted unnoticed for eleven weeks
+  (ROADMAP.md stopped at F23 while the graph reached F216; AUDIT.md still claimed the ethics
+  preamble went into "all LLM prompts", false since 2026-08-14). Both were removed 2026-09-23.
+
+  | File | Why it cannot be a graph entity |
+  |---|---|
+  | `AGENTS.md` (+ `CLAUDE.md` symlink) | Agents read it before they can query anything. A rule inside the thing it governs cannot bootstrap. |
+  | `HANDOFF.md` | Read first by a session with no context, including cloud runs that have no MCP server yet. |
+  | `HANDOFF-ARCHIVE.md` | Retired handoffs. Kept because the incidents in it are cited as evidence; it is history, not instruction. |
+  | `COUNSEL-BRIEF.md` | A legal/responsibility statement. `claim-audit` verifies it, so it must stay a surface that check can read. |
+  | `MEMORY.md` | Loaded into an agent's context by the harness, outside this repo's control. |
+  | `README.md` | GitHub renders it. There is no alternative. |
+  | `CONTRIBUTING.md` | GitHub community standard; linked from the PR and issue flows. |
+  | `SAFETY.md` | Human-readable safety statement; the graph mirrors it in `kb:content-safety`. |
+  | `SETUP.md` | Install instructions someone follows BEFORE the app or its docs site exists to be read. |
+  | `.claude/commands/*.md` | Claude Code loads them from disk by path. |
+
+  **The roadmap is `static/reckons-roadmap.ttl` and the pages generated from it — not a
+  markdown file.** Anything else new at the root needs a row above or it does not belong there.
 
 ### KB predicates convention
 

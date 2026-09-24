@@ -49,10 +49,10 @@ note / url / doc / .ttl / calendar / extension
 - **Browser extension** — compare any webpage against your KB, accumulate research sessions across tabs, batch ingest
 - **MCP server** — expose your KB to Claude Desktop, Cursor, and other MCP-compatible AI agents
 - **Predicate Manager** — view, rename, and merge predicates across your KB
-- **Content safety** — ethics preamble in all LLM prompts, content classifier, export advisory
+- **Content safety** — ethics preamble on shared and remote prompts (purpose- and locality-gated, `ethicsPreambleFor` — not local-only or structured-output), content classifier, export advisory
 - **Passage grounding** — verbatim source excerpts attached to extracted triples
 - **Diff summaries** — LLM-generated 3-part summaries (new/reinforcing/conflicting)
-- **Whisper STT** — local speech-to-text via transformers.js (no cloud required)
+- **Whisper STT** — local speech-to-text via transformers.js, no cloud required ([`whisper-stt.ts`](src/lib/integrations/llm/whisper-stt.ts))
 - **Kokoro TTS** — local text-to-speech for story walkthroughs
 - **Per-task LLM backends** — use different providers for ingest, chat, analysis, and diff summary
 - **Model cache management** — inspect, sideload, and purge locally cached WASM models
@@ -71,17 +71,11 @@ note / url / doc / .ttl / calendar / extension
 
 ```bash
 cp .env.example .env   # add at least one AI backend key (or leave blank for WASM)
-pnpm install
-pnpm dev               # http://localhost:5173
+npm install
+npm run dev               # http://localhost:5173
 ```
 
 No AI key required — the local WASM backend works out of the box (slower, fully offline).
-
-For Docker:
-
-```bash
-docker compose up      # http://localhost:5173
-```
 
 ---
 
@@ -125,7 +119,7 @@ Every fact is a `Statement` — an RDF triple with provenance:
   g: { kind: 'iri', value: 'urn:kbase:source/<uuid>' },  // provenance
   sourceId: '<uuid>',
   confidence: 0.95,
-  status: 'confirmed',   // pending | confirmed | refined | rejected | superseded
+  status: 'confirmed',   // pending | pending-removal | confirmed | refined | rejected | superseded
   excerpt: 'Alice organized the float trip last summer.',  // verbatim source sentence
 }
 ```
@@ -230,7 +224,7 @@ Structure organisational knowledge around **People · Policy · Procedure** — 
 
 ## Things that are deliberately absent
 
-- **No backend server** — all state in IndexedDB; Turtle export for backup. Optional n8n cloud sync is self-hosted.
+- **No backend server** — all state in IndexedDB; Turtle export for backup. Optional n8n cloud sync is self-hosted. Enforced by the build: [`svelte.config.js`](svelte.config.js) uses `adapter-static`, so there is no server to run.
 - **No accounts** — your KB is yours alone, on this device. Enterprise RBAC is an opt-in layer.
-- **No analytics, no tracking, no remote logging**
+- **No personal telemetry** — the app collects nothing and there is no server to receive it. The public website counts visits in aggregate via Cloudflare Web Analytics (cookieless, no persistent identifier, no cross-site tracking); it measures the marketing and docs pages, never anything inside your graph. Full statement: [no-telemetry](https://reckons.ai/docs/no-telemetry).
 - URL ingestion proxies through `r.jina.ai/<url>` for clean-text extraction; use the note or document tab to avoid that hop entirely
