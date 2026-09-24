@@ -1540,7 +1540,7 @@
           />
           <span class="currents-label mono">🐋 pod view on the graph</span>
         </label>
-        <p class="section-hint" style="margin: 0.2rem 0 0;">when on, pending arrivals drift in translucent on the graph view, with accept / dismiss on each node.</p>
+        <p class="section-hint" style="margin: 0.2rem 0 0;">when on, pending arrivals drift in translucent in your space, with accept / dismiss on each node.</p>
       </div>
 
       <div class="currents-field">

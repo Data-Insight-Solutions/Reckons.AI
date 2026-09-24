@@ -223,6 +223,13 @@
       "desc": "Local-VLM visual regression prod↔dev (needs OLLAMA_BASE_URL; set VISUAL_DIFF_BASE / VISUAL_DIFF_HEAD)"
     },
     {
+      "name": "ux-impression",
+      "tier": "agent",
+      "enabled": false,
+      "cmd": "npx tsx scripts/offline/ux-impression.ts --url=${UX_IMPRESSION_URL:-https://reckons.ai} --width=${UX_IMPRESSION_WIDTH:-390} --height=${UX_IMPRESSION_HEIGHT:-844} --pending",
+      "desc": "Qualitative UX read of real screens by the local VLM: does this screen look crowded, is one thing clearly most important, does the text read comfortably. Asks only what no script can answer — touch targets, blank screens and contrast are measured deterministically by button-crawl and vision-local instead. Has NO golden set, so it is proposal-only and never blocking; run --calibrate first, which renders a deliberately terrible page and a deliberately clean one and refuses to report at all unless the model can tell them apart. Disabled by default: needs OLLAMA_BASE_URL and a reachable deploy."
+    },
+    {
       "name": "server-health",
       "tier": "script",
       "enabled": true,

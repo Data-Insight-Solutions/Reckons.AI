@@ -69,7 +69,7 @@ const C = {
 };
 
 export type BindingClass = 'free' | 'contract' | 'foreign';
-export type Register = 'standards' | 'developer' | 'user';
+export type Register = 'standards' | 'frontend' | 'backend' | 'developer' | 'user';
 
 export type Term = {
   iri: string;
@@ -162,10 +162,35 @@ export function bindingOfLine(line: string): { binding: BindingClass; why?: stri
   return { binding: 'free' };
 }
 
+/**
+ * The developer register has TWO HALVES that collide on the same words, and one
+ * bucket could not tell them apart (Matt, 2026-09-23). `node` is the proof: it is
+ * a three.js Object3D on the front end, an RDF term on the back end, and a
+ * runtime in neither. Splitting the bucket is what lets the report say which
+ * spelling a file is reaching for.
+ *
+ * Deliberately falls back to the undivided `developer` rather than guessing. A
+ * line that is genuinely neither — a config, a plain utility — is better counted
+ * as unclassified than shoved into a half it does not belong to, because the
+ * free count is read as rename headroom.
+ */
+const FRONTEND_FILE_RE = /(^|\/)(components|routes|3d|actions|stores)\//;
+const FRONTEND_LINE_RE = /\b(?:svelte|threlte|three|bits-ui|tailwind|\$state|\$derived|\$effect|onMount|Canvas|Object3D|Mesh|css|aria-)\b/i;
+const BACKEND_FILE_RE = /(^|\/)(rdf|storage|publish|safety|mcp-server|cli|scripts)\//;
+// No w3c prefixes or rdf-js class names here: FOREIGN_MARKERS matches those first
+// and returns 'standards', so listing them again would be dead alternatives that
+// read as coverage.
+const BACKEND_LINE_RE = /\b(?:quad|triple|turtle|trig|nquads|dexie|indexeddb|serializ|reify|reification)\b/i;
+
 export function registerOfLine(line: string, file: string): Register {
   if (file.endsWith('.md')) return 'user';
   if (USER_COPY_RE.test(line)) return 'user';
   for (const m of FOREIGN_MARKERS) if (m.re.test(line)) return 'standards';
+  // Line evidence beats path, because one file legitimately holds both halves.
+  if (BACKEND_LINE_RE.test(line)) return 'backend';
+  if (FRONTEND_LINE_RE.test(line)) return 'frontend';
+  if (BACKEND_FILE_RE.test(file)) return 'backend';
+  if (FRONTEND_FILE_RE.test(file) || file.endsWith('.svelte')) return 'frontend';
   return 'developer';
 }
 
@@ -250,7 +275,13 @@ export type TokenUsage = {
   bindingWhy: Map<string, number>;
 };
 
-function emptyUsage(token: string, meanings: Term[]): TokenUsage {
+/**
+ * The ONE definition of a counter's shape. Exported because the test suite used to
+ * carry its own copy of this literal, and when the developer register was split the
+ * two drifted silently — every new counter read back NaN or undefined instead of
+ * failing loudly at the point of the mistake.
+ */
+export function emptyUsage(token: string, meanings: Term[] = []): TokenUsage {
   return {
     token,
     meanings,
@@ -258,7 +289,7 @@ function emptyUsage(token: string, meanings: Term[]): TokenUsage {
     excluded: 0,
     files: new Set(),
     binding: { free: 0, contract: 0, foreign: 0 },
-    register: { standards: 0, developer: 0, user: 0 },
+    register: { standards: 0, frontend: 0, backend: 0, developer: 0, user: 0 },
     byFile: new Map(),
     bindingWhy: new Map(),
   };
@@ -376,7 +407,7 @@ function main(): void {
   const pad = (s: string, n: number) => s.padEnd(n);
   console.log(
     C.bold(
-      `\n  ${pad('TOKEN', 14)}${pad('USES', 7)}${pad('FILES', 7)}${pad('FREE', 7)}${pad('CONTRACT', 10)}${pad('FOREIGN', 9)}${pad('USER', 7)}MEANINGS`,
+      `\n  ${pad('TOKEN', 14)}${pad('USES', 7)}${pad('FILES', 7)}${pad('FREE', 7)}${pad('CONTRACT', 10)}${pad('FOREIGN', 9)}${pad('FE', 6)}${pad('BE', 6)}${pad('USER', 7)}MEANINGS`,
     ),
   );
   for (const u of usages) {
@@ -385,7 +416,7 @@ function main(): void {
     console.log(
       `  ${name}${pad(String(u.occurrences), 7)}${pad(String(u.files.size), 7)}` +
         `${C.green(pad(String(u.binding.free), 7))}${C.magenta(pad(String(u.binding.contract), 10))}` +
-        `${C.dim(pad(String(u.binding.foreign), 9))}${C.cyan(pad(String(u.register.user), 7))}` +
+        `${C.dim(pad(String(u.binding.foreign), 9))}${pad(String(u.register.frontend), 6)}${pad(String(u.register.backend), 6)}${C.cyan(pad(String(u.register.user), 7))}` +
         `${u.meanings.length} ${u.meanings.map((m) => m.prefLabel).join(' / ')}`,
     );
   }
