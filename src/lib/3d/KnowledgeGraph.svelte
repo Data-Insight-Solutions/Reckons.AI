@@ -17,7 +17,7 @@
   import { parseGraphDate, EVENT_DATE_PREDICATES } from '$lib/rdf/parse-date';
   import { buildNodeTimes, timelineRange, undatedCount } from '$lib/rdf/timeline-layout';
   import { cameraPosition, CAMERA_PRESETS, type CameraSpec } from './camera-presets';
-  import { resolveOverlaps, previewWorldRadius, SELECTED_NODE_SCALE } from './preview-collage';
+  import { resolveOverlaps, previewWorldRadius, SELECTED_NODE_SCALE, markerWorldRadius, glbWorldRadius } from './preview-collage';
   import GraphNode, { loadGltfTemplate } from '$lib/components/GraphNode.svelte';
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { RDF_TYPE, RDFS_LABEL, type EntityTypeDef } from '$lib/rdf/entity-types';
@@ -1135,8 +1135,23 @@
       const url = entityIcon3dMap.get(n.key);
       const intrinsic = url ? (glbRadius.get(url) ?? 0) : 0;
       if (intrinsic > 0) {
-        const degreeScale = (0.85 + 0.45 * Math.log2(1 + n.degree)) * 0.32;
-        radii.set(n.key, Math.max(degreeScale, intrinsic * degreeScale * 0.8));
+        /**
+         * THE GLB RADIUS WAS 0.32x TOO SMALL, AND THAT IS WHY MODELS STILL TOUCHED (Matt,
+         * 2026-09-24: "the GLB nodes need more space also", after "minor collision on the
+         * large tent 3d model").
+         *
+         * Derivation, because the two numbers here are easy to mix up. GraphNode draws a model
+         * as <T.Group scale={scale * 0.8}> where `scale` is the RAW degree scale
+         * (0.85 + 0.45*log2(1+degree)), so its world radius is intrinsic * raw * 0.8. A plain
+         * marker is a unit sphere of world radius 0.32 at scale 1, so ITS world radius is
+         * raw * 0.32 — and that 0.32 is a marker conversion, not part of the degree scale.
+         *
+         * The old line applied the marker conversion to the model as well
+         * (intrinsic * raw * 0.32 * 0.8), under-reporting every GLB by a factor of about three.
+         * The springs and the collision pass were both sizing a model a third of its drawn size,
+         * which is exactly as much room as it needed to still overlap.
+         */
+        radii.set(n.key, Math.max(markerWorldRadius(n.degree), glbWorldRadius(intrinsic, n.degree)));
       }
     }
     if (collageOn) {

@@ -172,6 +172,38 @@ function fallbackAxis(key: string, lockX: boolean): { x: number; y: number; z: n
  */
 export const SELECTED_NODE_SCALE = 1.6;
 
+/**
+ * World radius of a plain node marker at a given degree.
+ *
+ * A marker is a unit sphere of world radius MARKER_UNIT_RADIUS drawn at GraphNode's degree
+ * scale, so its world radius is simply the product.
+ */
+export const MARKER_UNIT_RADIUS = 0.32;
+/** GraphNode renders a GLB group at `scale * GLB_GROUP_SCALE`. */
+export const GLB_GROUP_SCALE = 0.8;
+
+/** GraphNode's `degreeScale` — the RAW figure, with no marker conversion applied. */
+export function degreeScale(degree: number): number {
+  return 0.85 + 0.45 * Math.log2(1 + degree);
+}
+
+export function markerWorldRadius(degree: number): number {
+  return degreeScale(degree) * MARKER_UNIT_RADIUS;
+}
+
+/**
+ * World radius of a GLB model node.
+ *
+ * THE TRAP THIS EXISTS TO CLOSE: the 0.32 is a MARKER conversion — the unit sphere's radius —
+ * and is not part of the degree scale. Applying it to a model as well under-reports every GLB
+ * by about a factor of three, which is what made them still overlap after the radii map was
+ * introduced. Two separate bugs have now lived in this arithmetic while it was inline in a
+ * .svelte file where nothing could test it; it is a function so the third one fails here.
+ */
+export function glbWorldRadius(intrinsicRadius: number, degree: number): number {
+  return intrinsicRadius * degreeScale(degree) * GLB_GROUP_SCALE;
+}
+
 export function resolveOverlaps(
   nodes: Positioned[],
   radiusOf: (n: Positioned) => number,

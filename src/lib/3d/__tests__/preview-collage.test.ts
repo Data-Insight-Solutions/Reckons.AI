@@ -5,8 +5,7 @@ import {
   overlaps,
   previewWorldRadius,
   CAM_HALF_TAN,
-  type Positioned,
-} from '../preview-collage';
+  type Positioned, markerWorldRadius, glbWorldRadius, degreeScale, SELECTED_NODE_SCALE } from '../preview-collage';
 
 /** Matches the solver's default slop, so the checker tolerates exactly what the solver leaves. */
 const SLOP = 0.02;
@@ -302,5 +301,51 @@ describe('separation when radii differ by an order of magnitude (GLB beside mark
     resolveOverlaps(nodes, () => MARKER, { strength: 1, iterations: 24 });
     const d = Math.hypot(nodes[0].pos.x - nodes[1].pos.x, nodes[0].pos.y - nodes[1].pos.y, nodes[0].pos.z - nodes[1].pos.z);
     expect(d).toBeLessThan(MODEL * 2); // spaced as markers — still colliding as models
+  });
+});
+
+
+/**
+ * THE RADIUS DERIVATION, which is where both GLB bugs actually lived.
+ *
+ * The solver above was already covered; the arithmetic that tells it how big each node is was
+ * not, because it sat inline in a .svelte file. It has now been wrong twice — once by giving
+ * every node a uniform radius (PR #281), once by applying the MARKER unit-sphere conversion to
+ * a model as well and under-reporting every GLB by about a factor of three (2026-09-24, "the
+ * GLB nodes need more space also"). Both were invisible to the solver's own tests, which
+ * happily separate whatever radii they are handed.
+ */
+describe('node layout radius derivation', () => {
+  it('a marker is the degree scale times the unit-sphere radius', () => {
+    expect(markerWorldRadius(0)).toBeCloseTo(degreeScale(0) * 0.32, 6);
+    expect(markerWorldRadius(7)).toBeCloseTo(degreeScale(7) * 0.32, 6);
+  });
+
+  it('a GLB does NOT get the marker conversion — that was the bug', () => {
+    // GraphNode draws the model at `scale * 0.8` with `scale` the RAW degree scale, so the
+    // world radius carries no 0.32. The old code multiplied it in and made every model a
+    // third of its drawn size.
+    const intrinsic = 2.5;
+    expect(glbWorldRadius(intrinsic, 3)).toBeCloseTo(intrinsic * degreeScale(3) * 0.8, 6);
+    expect(glbWorldRadius(intrinsic, 3)).not.toBeCloseTo(intrinsic * degreeScale(3) * 0.32 * 0.8, 3);
+  });
+
+  it('a unit-radius model claims meaningfully more room than a marker of the same degree', () => {
+    // 0.8 / 0.32 = 2.5x. This ratio is the whole reason models overlapped.
+    const ratio = glbWorldRadius(1, 5) / markerWorldRadius(5);
+    expect(ratio).toBeCloseTo(2.5, 6);
+  });
+
+  it('radius grows with degree in both, and never goes backwards', () => {
+    for (let d = 0; d < 20; d++) {
+      expect(markerWorldRadius(d + 1)).toBeGreaterThan(markerWorldRadius(d));
+      expect(glbWorldRadius(1, d + 1)).toBeGreaterThan(glbWorldRadius(1, d));
+    }
+  });
+
+  it('the selection scale is the single shared figure, not a local copy', () => {
+    // Three call sites read this: the mesh, the DOM thumbnail and the layout radius. The bug
+    // was that only the first knew about it.
+    expect(SELECTED_NODE_SCALE).toBeGreaterThan(1);
   });
 });
