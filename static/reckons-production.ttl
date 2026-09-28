@@ -559,3 +559,9 @@ kb:env-production a ktype:Environment ;
 kb:graph-publishing skos:altLabel "docs site" , "static site publishing" .
 
 kb:browser-extension skos:altLabel "web extension" , "Chrome extension" .
+
+kb:local-security-audits a ktype:Feature ;
+    rdfs:label "Private agent security checks" ;
+    kpred:has-status "functional" ;
+    kpred:description "Local tooling, not a hosted app capability: npm run host:check inspects Linux without privilege escalation; npm run security:dependencies explicitly contacts the npm registry for tracked lockfiles. Reports remain in private state outside Git. A passing check is scoped evidence, not certification that a device or deployment is secure." ;
+    kpred:tested-by "scripts/offline/__tests__/host-health.test.ts", "scripts/offline/__tests__/dependency-health.test.ts" .
