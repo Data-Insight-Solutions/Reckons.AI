@@ -138,6 +138,7 @@ code:storage  rdf:type     ktype:Concept ;
               kpred:has-file "src/lib/storage/kb-registry.ts" ;
               kpred:has-file "src/lib/storage/archive-store.ts" ;
               kpred:has-file "src/lib/storage/backup.ts" ;
+              kpred:has-file "src/lib/storage/settings-profile.ts" ;
               kpred:has-file "src/lib/storage/semantic-export.ts" ;
               kpred:has-file "src/lib/storage/kb-assets.ts" ;
               kpred:has-file "src/lib/storage/kb-fingerprint.ts" ;

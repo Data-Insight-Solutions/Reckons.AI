@@ -1,54 +1,91 @@
-/**
- * F107.5 sentinel test: the shareable settings profile must carry NO credential — including
- * ones nested inside objects it passes through (turtleSettings.humeApiKey/humeSecretKey), which
- * is exactly how a key leaked before the recursive redaction pass was added.
- */
-import { describe, it, expect, vi } from 'vitest';
+import { Blob as NodeBlob } from 'node:buffer';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
-const SENTINEL_TOP = 'SENTINEL-TOP-LEVEL-SECRET-do-not-export';
-const SENTINEL_NESTED = 'SENTINEL-NESTED-HUME-SECRET-do-not-export';
-
-// backup.ts imports db + getSettings at module load; stub ./db so importing it never constructs
-// a real Dexie, and so getSettings returns a settings object seeded with sentinel secrets.
-vi.mock('../db', () => ({
-  db: {},
-  getSettings: async () => ({
-    key: 'main',
-    // Top-level credentials — must never be in the allowlisted profile.
-    claudeApiKey: SENTINEL_TOP,
-    humeAiApiKey: SENTINEL_TOP,
-    githubToken: SENTINEL_TOP,
-    // Public fields that SHOULD survive.
-    claudeModel: 'claude-opus',
-    ollamaBaseUrl: 'http://localhost:11434',
-    humeConfigId: 'cfg-public-id',
-    // Nested credentials inside a wholesale-copied object — the real leak.
+const { sentinel, current } = vi.hoisted(() => {
+  const sentinel = 'SYNTHETIC-CREDENTIAL-DO-NOT-EXPORT';
+  return { sentinel, current: {
+    key: 'main', claudeApiKey: sentinel, humeAiApiKey: sentinel, githubToken: sentinel,
+    claudeModel: 'example-model', ollamaBaseUrl: 'http://localhost:11434', humeConfigId: 'public-config',
     turtleSettings: {
-      name: 'Shelly',
-      humeApiKey: SENTINEL_NESTED,
-      humeSecretKey: SENTINEL_NESTED,
-      humeConfigId: 'cfg-public-id',
+      name: 'Example helper', humeApiKey: sentinel, humeSecretKey: sentinel,
+      humeConfigId: 'public-config', unknownAuthorization: sentinel,
+      position: { x: 5, y: 8 }, clickBindings: { single: 'chat', double: 'explore', right: 'menu' },
     },
-    extensionHighlight: { color: '#f60', apiToken: SENTINEL_NESTED },
-  }),
+    extensionHighlight: { conflictColor: '#ff6600', apiToken: sentinel },
+  } };
+});
+vi.mock('../db', () => ({
+  DEFAULT_SETTINGS: current,
+  db: {
+    settings: { get: async () => current },
+    statements: { toArray: async () => [] },
+    sources: { toArray: async () => [] },
+  },
+  getSettings: async () => current,
 }));
 
-import { buildSettingsProfileJson } from '../backup';
+import { buildSettingsProfileJson, exportSettingsProfile, exportKBFull, parseSettingsProfile } from '../backup';
+import type { SettingsRecord } from '../db';
 
-describe('settings profile export — no secret escapes (F107.5)', () => {
-  it('contains no sentinel secret anywhere in the serialized profile', async () => {
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+
+describe('credential boundaries (F107.5)', () => {
+  it('workspace profile serialization excludes nested and unknown credentials', async () => {
     const json = await buildSettingsProfileJson();
-    expect(json).not.toContain(SENTINEL_TOP);
-    expect(json).not.toContain(SENTINEL_NESTED);
+    expect(json).not.toContain(sentinel);
+    const profile = JSON.parse(json);
+    expect(profile.claudeModel).toBe('example-model');
+    expect(profile.turtleSettings.humeConfigId).toBe('public-config');
+    expect(profile.extensionHighlight.conflictColor).toBe('#ff6600');
   });
 
-  it('still carries the public, shareable settings', async () => {
-    const profile = JSON.parse(await buildSettingsProfileJson());
-    expect(profile.claudeModel).toBe('claude-opus');
-    expect(profile.ollamaBaseUrl).toBe('http://localhost:11434');
-    expect(profile.humeConfigId).toBe('cfg-public-id'); // an ID, not a credential
-    expect(profile.turtleSettings.name).toBe('Shelly');
-    expect(profile.turtleSettings.humeApiKey).toBeUndefined();
-    expect(profile.turtleSettings.humeSecretKey).toBeUndefined();
+  it.each([exportSettingsProfile, exportKBFull])('download %s excludes settings credentials', async (download) => {
+    vi.stubGlobal('Blob', NodeBlob);
+    const blobs: NodeBlob[] = [];
+    vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => {
+      blobs.push(blob as unknown as NodeBlob);
+      return 'blob:synthetic';
+    });
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    await download();
+    expect(blobs).toHaveLength(1);
+    const payload = await blobs[0].text();
+    expect(payload).not.toContain(sentinel);
+    expect(payload).toContain('Example helper');
+  });
+
+  it('imports preference patches without replacing top-level or nested credentials', () => {
+    const payload = {
+      _format: 'reckons-settings-profile', _version: 1,
+      key: 'user-defaults', claudeApiKey: 'attacker-value', kbStableId: 'replacement-id',
+      turtleSettings: { name: 'New name', humeApiKey: 'attacker-value', humeSecretKey: '', position: { x: 9 } },
+      extensionHighlight: { apiToken: 'attacker-value', unknownAuthorization: 'attacker-value' },
+    };
+    const patch = parseSettingsProfile(JSON.stringify(payload), current as unknown as SettingsRecord);
+    expect(patch).not.toHaveProperty('claudeApiKey');
+    expect(patch).not.toHaveProperty('key');
+    expect(patch).not.toHaveProperty('kbStableId');
+    expect(JSON.stringify(patch)).not.toContain('attacker-value');
+    expect(patch?.turtleSettings).toMatchObject({ name: 'New name', humeApiKey: sentinel, humeSecretKey: sentinel, position: { x: 9, y: 8 } });
+    expect(current.turtleSettings.name).toBe('Example helper');
+  });
+
+  it.each([
+    { _version: 2 }, { preferredBackend: ['claude'] }, { turtleSettings: [] },
+    { turtleSettings: { name: { token: 'unexpected' } } },
+    { extensionHighlight: { saturation: '100' } },
+    { ollamaBaseUrl: 'https://user:secret@example.test' },
+    { ollamaBaseUrl: 'https://example.test/?token=secret' },
+  ])('rejects malformed or credential-bearing known fields: %j', (fields) => {
+    expect(parseSettingsProfile(JSON.stringify({ _format: 'reckons-settings-profile', _version: 1, ...fields }))).toBeNull();
+  });
+
+  it('ignores prototype fields at every depth', () => {
+    const json = '{"_format":"reckons-settings-profile","_version":1,"__proto__":{"polluted":true},"constructor":{"prototype":{"polluted":true}},"turtleSettings":{"__proto__":{"polluted":true},"name":"Clean"}}';
+    const patch = parseSettingsProfile(json);
+    expect(patch?.turtleSettings?.name).toBe('Clean');
+    expect(Object.prototype).not.toHaveProperty('polluted');
+    expect(JSON.stringify(patch)).not.toContain('polluted');
   });
 });
