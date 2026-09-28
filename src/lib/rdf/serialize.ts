@@ -1,3 +1,4 @@
+import { encodePortableMetadata } from './portable-metadata';
 import type { Statement, Source, Term, NamedNode } from './types';
 import { isIRI, isLit, isBNode, termToString } from './types';
 import { scanForExportAdvisory, exportAdvisoryHeader, exportAdvisoryTriple } from '../safety/content-policy';
@@ -410,6 +411,7 @@ export function toTurtleFull(
       lines.push(`    meta:sourceKind "${src.kind}" ;`);
       if (src.trustLevel) lines.push(`    meta:trustLevel "${src.trustLevel}" ;`);
       if (src.trustScore != null) lines.push(`    meta:trustScore "${src.trustScore}"^^xsd:decimal ;`);
+      lines.push(`    meta:sourceMetadata ${JSON.stringify(encodePortableMetadata(src, 'source'))} ;`);
       lines.push(`    dc:created "${new Date(src.ingestedAt).toISOString()}"^^xsd:dateTime .`);
       lines.push('');
     }
@@ -425,6 +427,7 @@ export function toTurtleFull(
     lines.push(`    rdf:object ${termTTL(st.o, prefixes)} ;`);
     lines.push(`    meta:status "${st.status}" ;`);
     lines.push(`    meta:confidence "${st.confidence}"^^xsd:decimal ;`);
+    lines.push(`    meta:reviewMetadata ${JSON.stringify(encodePortableMetadata(st, 'statement'))} ;`);
     // Attribution must survive the export, or proposal yield can only ever be computed inside
     // the browser — and the job that would compute it is script tier, reading these files.
     if (st.proposedBy) lines.push(`    meta:proposed-by ${JSON.stringify(st.proposedBy)} ;`);

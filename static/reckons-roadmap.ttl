@@ -4288,6 +4288,10 @@ kb:canonical-graph-package rdf:type ktype:Feature ;
                kpred:remaining    "DONE WHEN export to an empty database and re-import is semantically identical for confirmed, refined, pending, rejected and superseded statements, source records, stable IDs, review metadata and assets; malformed/partial packages fail validation without touching live data; format/version migration fixtures pass; and app, MCP, Drive and CLI use one shared parser/writer contract." .
 
 kb:transactional-sync-protocol rdf:type ktype:Feature ;
+               kpred:progress "2026-09-28: full Turtle now supplements RDF reification with validated version-1 metadata for review decisions, question routing, grounding flags, modification times, source linkage and extraction/repository metadata. Local extraction run records/IDs remain local. Invalid reified records now fail before replacing live data. Drive export persists/registers stable graph IDs, fixing duplicate imports when a display name differs from its slug. Browser contract tests exercise real IndexedDB and OPFS, simulated Drive transport, binary assets, malformed input, mid-write rollback and recovery snapshots. Changelog/extraction-run portability, asset recovery snapshots, versioned packages, conflict UI and full MCP/CLI conformance remain open." ;
+               kpred:tested-by "tests/e2e/sync-preservation.test.ts" ;
+               kpred:tested-by "src/lib/stores/__tests__/kb-import-roundtrip.test.ts" ;
+               kpred:decided "2026-09-28 increment: strengthen fidelity tests beyond status counts to review attribution, timestamps and source metadata; exercise folder and Drive transports with real serialization and browser IndexedDB; inject malformed imports and transaction write failures. Correct losses exposed by these tests. This is not the complete versioned graph package or conflict-review UI." ;
                rdfs:label         "Transactional workspace, Drive, and MCP interoperability" ;
                kpred:feature-id   "F107.4" ;
                kpred:has-status   "scaffolded" ;

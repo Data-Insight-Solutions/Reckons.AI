@@ -50,6 +50,7 @@ code:rdf  rdf:type     ktype:Concept ;
           skos:broader code:repo ;
           kpred:has-file "src/lib/rdf/types.ts" ;
           kpred:has-file "src/lib/rdf/serialize.ts" ;
+              kpred:has-file "src/lib/rdf/portable-metadata.ts" ;
           kpred:has-file "src/lib/rdf/import-ttl.ts" ;
           kpred:has-file "src/lib/rdf/diff.ts" ;
           kpred:has-file "src/lib/rdf/diff-summary.ts" ;

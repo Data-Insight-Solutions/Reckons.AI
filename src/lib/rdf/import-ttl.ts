@@ -1,3 +1,4 @@
+import { decodePortableMetadata } from './portable-metadata';
 /**
  * Import annotated Turtle files produced by toTurtleFull().
  * Uses N3.js to parse, then reconstructs Statement[] and Source[]
@@ -110,6 +111,7 @@ export async function importTurtleFull(turtle: string): Promise<ImportResult> {
       else if (pv === RDF + 'object')               d.o           = n3ToTerm(ov);
       else if (pv === KBASE + 'status')             d.status      = ov.value;
       else if (pv === KBASE + 'confidence')         d.confidence  = parseFloat(ov.value);
+      else if (pv === KBASE + 'reviewMetadata')     d.portable    = decodePortableMetadata(ov.value, 'statement');
       else if (pv === KBASE + 'proposed-by')        d.proposedBy  = ov.value;
       else if (pv === KBASE + 'asked-by')           d.askedBy     = ov.value;
       else if (pv === KBASE + 'altitude')           d.altitude    = isAltitude(ov.value) ? ov.value : undefined;
@@ -129,6 +131,7 @@ export async function importTurtleFull(turtle: string): Promise<ImportResult> {
       else if (pv === KBASE + 'sourceKind')         d.kind        = ov.value;
       else if (pv === KBASE + 'trustLevel')         d.trustLevel  = ov.value;
       else if (pv === KBASE + 'trustScore')         d.trustScore  = parseFloat(ov.value);
+      else if (pv === KBASE + 'sourceMetadata')     d.portable    = decodePortableMetadata(ov.value, 'source');
       else if (pv === DC    + 'created')            d.ingestedAt  = new Date(ov.value).getTime();
     } else {
       // Plain triple — for non-annotated Turtle fallback (includes rdf:type)
@@ -177,7 +180,14 @@ export async function importTurtleFull(turtle: string): Promise<ImportResult> {
     const s = d.s as Term | null;
     const p = d.p as Term | null;
     const o = d.o as Term | null;
-    if (!s || !p || !o || p.kind !== 'iri') continue;
+    if (!s || !p || !o || p.kind !== 'iri') throw new Error('Incomplete annotated statement');
+    if (d.status !== undefined && !['pending', 'pending-removal', 'confirmed', 'refined', 'rejected', 'superseded'].includes(String(d.status))) {
+      throw new Error('Invalid annotated review status');
+    }
+    if (d.confidence !== undefined && (!Number.isFinite(d.confidence) || Number(d.confidence) < 0 || Number(d.confidence) > 1)) {
+      throw new Error('Invalid annotated confidence');
+    }
+    if (d.createdAt !== undefined && !Number.isFinite(d.createdAt)) throw new Error('Invalid annotated creation time');
 
     const g = (d.g as Term | null) ?? { kind: 'iri' as const, value: 'urn:kbase:source/unknown' };
     const sourceId = g.kind === 'iri' && g.value.startsWith(SRC_PREFIX)
@@ -200,7 +210,8 @@ export async function importTurtleFull(turtle: string): Promise<ImportResult> {
       excerpt:    d.excerpt as string | undefined,
       supersedes: d.supersedes as string | undefined,
       createdAt:  (d.createdAt as number) ?? Date.now(),
-      updatedAt:  (d.createdAt as number) ?? Date.now()
+      updatedAt:  (d.createdAt as number) ?? Date.now(),
+      ...(d.portable as Partial<Statement> | undefined),
     });
   }
 
@@ -216,7 +227,8 @@ export async function importTurtleFull(turtle: string): Promise<ImportResult> {
       kind:       ((d.kind as Source['kind']) ?? 'document'),
       trustLevel: d.trustLevel as Source['trustLevel'],
       trustScore: d.trustScore as number | undefined,
-      ingestedAt: (d.ingestedAt as number) ?? Date.now()
+      ingestedAt: (d.ingestedAt as number) ?? Date.now(),
+      ...(d.portable as Partial<Source> | undefined),
     });
   }
 

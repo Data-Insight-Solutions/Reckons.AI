@@ -73,6 +73,8 @@ kb:shadcn-svelte rdf:type   ktype:Library ;
 # ── Features ─────────────────────────────────────────────────────────────────
 
 kb:knowledge-graph  rdf:type     ktype:Feature ;
+                    kpred:tested-by "tests/e2e/sync-preservation.test.ts" ;
+                    kpred:tested-by "src/lib/stores/__tests__/kb-import-roundtrip.test.ts" ;
                     rdfs:label   "Knowledge Graph" ;
                     kpred:renders-with kb:force-graph-2d ;
                     kpred:renders-with kb:three-js-3d ;
