@@ -13,9 +13,11 @@ generated: "docs-kb"
 
 # Shelly (AI Assistant)
 
+> **Production** — built, tested, and in use.
+
 The turtle-shaped AI assistant. Three tabs: tutorial, chat (grounded in your graph), and explore (guided story tours). Each graph can embed its own Shelly persona via the shelly: vocabulary. Supports Whisper STT voice input and Kokoro TTS voice output.
 
-<p class="derived">It has 4 parts below.</p>
+<p class="derived">This is built, working, and in daily use here. It has 4 parts below.</p>
 
 <p class="in-sets">Part of Ask it things.</p>
 

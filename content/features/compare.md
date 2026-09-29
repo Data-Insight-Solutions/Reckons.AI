@@ -15,9 +15,11 @@ related:
 
 # Compare — finding out where two people actually disagree
 
+> **Production** — built, tested, and in use.
+
 Put two graphs side by side and see what is new, what agrees, and what conflicts. Two colleagues who have each read around the same subject can find the three things they disagree about in a minute, instead of discovering them in a meeting six weeks later.
 
-<p class="derived">It has one part below.</p>
+<p class="derived">This is built, working, and in daily use here. It has one part below.</p>
 
 <p class="in-sets">Part of Ask it things.</p>
 

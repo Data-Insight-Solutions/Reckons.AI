@@ -13,7 +13,11 @@ generated: "docs-kb"
 
 # 3D / 2D Knowledge Graph
 
+> **Production** — built, tested, and in use.
+
 Interactive force-directed graph in WebGL (3D) or Canvas (2D fallback). Per-entity icons from urn:kbase:predicate/icon2d statements with emoji fallback. Label overlap prevention sorts by degree and hides collisions. Hub emphasis, layout modes (force/focus/source/type/hub), filter chips.
+
+<p class="derived">This is built, working, and in daily use here.</p>
 
 ## Why it is this way
 

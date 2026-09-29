@@ -13,9 +13,11 @@ generated: "docs-kb"
 
 # LLM Backends
 
+> **Production** — built, tested, and in use.
+
 9 providers: Claude, OpenAI, Gemini, Ollama (local), OpenRouter (free tier), WASM (offline, Qwen2.5-0.5B-Instruct), Chrome AI (Gemini Nano), Manual paste, Mock. Per-task backend overrides let you use different providers for ingest, chat, analysis, diff summary, and merge analysis. Prefer-local routing can redirect chat, diff summary, and merge analysis to a reachable local Ollama server.
 
-<p class="derived">It has 2 parts below.</p>
+<p class="derived">This is built, working, and in daily use here. It has 2 parts below.</p>
 
 <p class="in-sets">Part of Ask it things, Work out the claims.</p>
 
