@@ -292,6 +292,9 @@ kb:workspace-export rdf:type     ktype:Feature ;
                     kpred:tested-by    "src/lib/storage/__tests__/settings-profile-secrets.test.ts" .
 
 kb:graph-publishing rdf:type     ktype:Feature ;
+                    kpred:tested-by "src/lib/publish/__tests__/site-generator.test.ts" ;
+                    kpred:tested-by "scripts/__tests__/site-output.test.ts" ;
+                    kpred:tested-by "tests/e2e/publish-security.test.ts" ;
                     rdfs:label   "Graph Publishing" ;
                     kpred:has-status   "functional" ;
                     kpred:description  "F27 — exports WebPage-typed graph entities to a static-site bundle (frontmatter + markdown) at /docs, and re-imports edits back into graph statements. scripts/docs-pages.ts regenerates content/ from the docs knowledge graphs; scripts/md-align.ts checks the two stay in lockstep. Sveltia CMS (static/admin/) edits content/*.md through a GitHub-backed admin UI." ;

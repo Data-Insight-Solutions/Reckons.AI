@@ -225,6 +225,13 @@ code:design-system  rdf:type     ktype:Concept ;
 ## =============================================================================
 
 code:publish  rdf:type     ktype:Concept ;
+              kpred:has-file "src/lib/publish/site-generator.ts" ;
+              kpred:has-file "src/lib/publish/output-policy.ts" ;
+              kpred:has-file "src/lib/publish/output-path.ts" ;
+              kpred:has-file "src/lib/publish/targets.ts" ;
+              kpred:has-file "scripts/lib/site-output.ts" ;
+              kpred:tested-by "scripts/__tests__/site-output.test.ts" ;
+              kpred:tested-by "tests/e2e/publish-security.test.ts" ;
               rdfs:label   "Graph Publishing" ;
               skos:definition "Exports a graph's WebPage entities to a static-site-ready bundle (frontmatter + markdown) and re-imports edits back into graph statements. Backs the /docs prerendered site and the scripts/docs-pages.ts generator." ;
               skos:broader code:repo ;

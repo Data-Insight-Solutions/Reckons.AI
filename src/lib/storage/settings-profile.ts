@@ -6,6 +6,7 @@ type Rule = ((value: unknown) => boolean) | { [key: string]: Rule };
 const text = (v: unknown) => typeof v === 'string';
 const bool = (v: unknown) => typeof v === 'boolean';
 const number = (v: unknown) => typeof v === 'number' && Number.isFinite(v);
+const range = (min: number, max = Number.MAX_SAFE_INTEGER) => (v: unknown) => number(v) && Number(v) >= min && Number(v) <= max;
 const oneOf = (...values: string[]) => (v: unknown) => typeof v === 'string' && values.includes(v);
 const backend = oneOf('claude', 'openai', 'gemini', 'ollama', 'wasm', 'mock', 'openrouter', 'chrome-ai', 'reckons');
 const analysisBackend = oneOf('claude', 'openai', 'gemini', 'ollama', 'wasm', 'openrouter', 'chrome-ai', 'reckons');
@@ -24,18 +25,18 @@ const endpoint = (v: unknown) => {
 const turtle = {
   name: text, greeting: text, personality: oneOf('helpful', 'witty', 'laid-back', 'sarcastic'),
   systemPrompt: text, responseStyle: oneOf('concise', 'detailed', 'conversational'),
-  maxResponseWords: number, patienceLevel: number, engagement: oneOf('low', 'medium', 'high'),
+  maxResponseWords: range(0), patienceLevel: range(0, 100), engagement: oneOf('low', 'medium', 'high'),
   voiceEnabled: bool, voiceType: oneOf('tts', 'hume'), kokoroVoice: text,
-  speechRate: number, volume: number, humeConfigId: text, humeTokenUrl: endpoint, whisperModel: text,
-  animationSpeed: oneOf('slow', 'normal', 'fast'), opacity: number, size: oneOf('small', 'medium', 'large'),
+  speechRate: range(0.5, 2), volume: range(0, 100), humeConfigId: text, humeTokenUrl: endpoint, whisperModel: text,
+  animationSpeed: oneOf('slow', 'normal', 'fast'), opacity: range(0, 100), size: oneOf('small', 'medium', 'large'),
   glowEffect: bool, positionSticky: bool, position: { x: number, y: number },
-  wanderRange: number, clickBindings: { single: text, double: text, right: text },
-  proactiveHelp: oneOf('never', 'errors-only', 'always'), showTutorialHints: bool, responseFrequency: number,
+  wanderRange: range(0, 100), clickBindings: { single: text, double: text, right: text },
+  proactiveHelp: oneOf('never', 'errors-only', 'always'), showTutorialHints: bool, responseFrequency: range(0, 100),
 } satisfies Record<Exclude<keyof TurtleSettings, 'humeApiKey' | 'humeSecretKey'>, Rule>;
 
 const highlight = {
-  conflictColor: text, reinforceColor: text, newColor: text, saturation: number,
-  labelFontSize: number, labelHoverScale: number, labelFontFamily: text,
+  conflictColor: text, reinforceColor: text, newColor: text, saturation: range(0, 100),
+  labelFontSize: range(1, 256), labelHoverScale: range(0.1, 10), labelFontFamily: text,
 } satisfies Record<keyof HighlightSettings, Rule>;
 
 const profile = {
@@ -46,9 +47,9 @@ const profile = {
   ollamaIngestModel: text, ollamaAnalyzeModel: text, ollamaChatModel: text,
   ollamaDiffSummaryModel: text, ollamaMergeAnalysisModel: text, ollamaBaseUrl: endpoint,
   wasmModel: text, wasmIngestModel: text, wasmAnalyzeModel: text, wasmChatModel: text,
-  openrouterModel: text, autoAnalyzeOnImport: bool, autoAnalyzeIntervalMinutes: number,
-  embeddingThreshold: number, autoConfirmHighConfidence: bool, uiScale: oneOf('sm', 'md', 'lg'),
-  nodeLabelFontSize: number, shellyCustomPrompt: text, humeConfigId: text,
+  openrouterModel: text, autoAnalyzeOnImport: bool, autoAnalyzeIntervalMinutes: range(0),
+  embeddingThreshold: range(0, 1), autoConfirmHighConfidence: bool, uiScale: oneOf('sm', 'md', 'lg'),
+  nodeLabelFontSize: range(1, 256), shellyCustomPrompt: text, humeConfigId: text,
   turtleSettings: turtle, extensionHighlight: highlight,
 } satisfies Record<Exclude<keyof SettingsProfile, '_format' | '_version' | 'exportedAt'>, Rule>;
 

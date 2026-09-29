@@ -35,6 +35,18 @@ afterEach(async () => {
 });
 
 describe('security dependency overrides', () => {
+  it('keeps patched Undici request handling compatible without network access', async () => {
+    const require = createRequire(import.meta.url);
+    expect(versionAtLeast(require('undici/package.json').version, '7.29.1')).toBe(true);
+    const { MockAgent, fetch } = require('undici');
+    const dispatcher = new MockAgent();
+    dispatcher.disableNetConnect();
+    dispatcher.get('https://example.test').intercept({ path: '/health' }).reply(200, 'healthy');
+    try {
+      const response = await fetch('https://example.test/health', { dispatcher });
+      expect(await response.text()).toBe('healthy');
+    } finally { await dispatcher.close(); }
+  });
   it('refuses ZIP extraction through existing directory and file symlinks', async () => {
     const require = createRequire(import.meta.url);
     const AdmZip = require('adm-zip');

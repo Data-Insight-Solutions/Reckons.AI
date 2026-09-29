@@ -75,6 +75,8 @@ describe('credential boundaries (F107.5)', () => {
     { _version: 2 }, { preferredBackend: ['claude'] }, { turtleSettings: [] },
     { turtleSettings: { name: { token: 'unexpected' } } },
     { extensionHighlight: { saturation: '100' } },
+    { turtleSettings: { wanderRange: -1 } }, { turtleSettings: { volume: 101 } },
+    { embeddingThreshold: 2 }, { autoAnalyzeIntervalMinutes: -1 },
     { ollamaBaseUrl: 'https://user:secret@example.test' },
     { ollamaBaseUrl: 'https://example.test/?token=secret' },
   ])('rejects malformed or credential-bearing known fields: %j', (fields) => {
