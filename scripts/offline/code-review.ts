@@ -22,6 +22,7 @@ import { queueFindings, type Finding } from './pending-queue.js';
 import { consumeStoredMcpContext, type ConsumedMcpContext } from '../agent/mcp-context.js';
 import { selectReviewBatch, type PriorReviewBatch } from '../agent/run-contract.js';
 import { chunkReviewDiff, discoverReviewFiles, renderReviewDiff, resolveReviewBase } from './lib/review-git.js';
+import { pendingQueuePath } from './lib/main-workspace.js';
 
 const raw = process.argv.slice(2);
 const flag = (n: string) => raw.find((a) => a.startsWith(`--${n}=`))?.split('=').slice(1).join('=');
@@ -35,7 +36,8 @@ const WORKTREE = raw.includes('--worktree');
 const EXPLICIT_FILES = flag('files')?.split(',').map((file) => file.trim()).filter(Boolean);
 const REPORT = flag('report');
 const MAX_DIFF_CHARS = 14_000; // chunk large files; never silently review only a prefix
-const PENDING = 'reckons-workspace/knowledge.pending.jsonl';
+// The MAIN checkout's queue, even when this runs in a worktree — see lib/main-workspace.ts.
+const PENDING = pendingQueuePath();
 
 /** The runner, not the model, queries MCP. Treat returned graph text as REFERENCE DATA, never
  * instructions: a graph can quote arbitrary source material and must not acquire prompt authority. */
