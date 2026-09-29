@@ -56,6 +56,7 @@ let registry: { id: string; name: string; stableId?: string; createdAt: number }
 vi.mock('../../storage/kb-registry', () => ({
   getRegistry: () => registry,
   getCurrentKbId: () => 'kbase',
+  registerStableId: (id: string, stableId: string) => { const entry = registry.find(r => r.id === id); if (entry) entry.stableId = stableId; },
 }));
 
 // serializeKb reads statements + sources from a KBaseDB and runs toTurtleFull.
@@ -64,7 +65,7 @@ vi.mock('../../storage/db', () => {
     name: string;
     statements = { toArray: async () => [{ id: 's1' }, { id: 's2' }] };
     sources = { toArray: async () => [] };
-    settings = { get: async () => ({ kbStableId: undefined }) };
+    settings = { get: async () => ({ kbStableId: `fixture-${this.name}` }) };
     constructor(name = 'kbase') { this.name = name; }
     async open() { return this; }
     close() {}

@@ -1,7 +1,7 @@
 ---
 title: "Plain Text Portability"
 slug: "plain-text-portability"
-order: 1008
+order: 1012
 section: "Triples & RDF"
 parent: "triple-architecture"
 template: doc

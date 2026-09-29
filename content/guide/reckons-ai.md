@@ -20,7 +20,7 @@ A personal knowledge graph that runs entirely in your browser. Local-first, open
 
 ## Related
 
-**Created By**
+**Creator**
 
 - [Who makes Reckons.AI](../guide/who-makes-this)
 - [Who makes Reckons.AI](../guide/who-makes-this)

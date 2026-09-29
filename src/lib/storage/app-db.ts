@@ -21,6 +21,7 @@
 
 import Dexie, { type Table } from 'dexie';
 import type { WorkspaceRow } from './db';
+import type { NotesPolicy, NoteTransfer } from '../rdf/personal-notes';
 
 /** Fixed, deliberately not derived from the active graph. That derivation was the bug. */
 const APP_DB_NAME = 'kbase-app';
@@ -30,10 +31,15 @@ const WORKSPACE_KEY = 'main';
 
 export class AppDB extends Dexie {
   workspace!: Table<WorkspaceRow, string>;
+  notesPolicy!: Table<NotesPolicy, string>;
+  noteTransfers!: Table<NoteTransfer, string>;
 
   constructor(name = APP_DB_NAME) {
     super(name);
     this.version(1).stores({ workspace: 'id' });
+    this.version(2).stores({
+      workspace: 'id', notesPolicy: 'id', noteTransfers: 'id, inboxId, state',
+    });
   }
 }
 

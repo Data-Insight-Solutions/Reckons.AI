@@ -12,6 +12,31 @@ export type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
 const CLAUDE_URL = 'https://api.anthropic.com/v1/messages';
 
+/**
+ * Claude Opus 5 / 5.5, Sonnet 5 and Fable/Mythos think whenever `thinking` is omitted (Opus 5.5
+ * cannot turn it off at all), and thinking tokens count toward `max_tokens` even though their
+ * text is not returned. A ceiling sized for a thinking-off reply (512, 1024) is spent on thinking
+ * and the reply comes back cut off or empty, so those models get room for both. Older models
+ * (the Haiku 4.5 default included) keep the caller's number unchanged.
+ */
+export function claudeMaxTokens(model: string, replyTokens: number): number {
+  return /^claude-(opus-5|sonnet-5|fable|mythos)/.test(model) ? Math.max(replyTokens, 16_000) : replyTokens;
+}
+
+/**
+ * The reply text of a Messages API response. Reads blocks by `type`, never by position: on
+ * thinking models the first block is a `thinking` block. A safety-classifier decline is an HTTP
+ * 200 with `stop_reason: "refusal"`, so it is surfaced as an error here rather than as an empty
+ * string that a JSON parser downstream reports as "no array found".
+ */
+export function claudeReplyText(data: { stop_reason?: string; content?: { type: string; text?: string }[] }): string {
+  if (data.stop_reason === 'refusal') throw new Error('Claude declined this request (stop_reason: refusal)');
+  return (data.content ?? [])
+    .filter((b) => b.type === 'text')
+    .map((b) => b.text ?? '')
+    .join('');
+}
+
 export async function chatClaude(
   messages: ChatMessage[],
   system: string,
@@ -31,7 +56,7 @@ export async function chatClaude(
     },
     body: JSON.stringify({
       model,
-      max_tokens: maxTokens,
+      max_tokens: claudeMaxTokens(model, maxTokens),
       system,
       messages
     })
@@ -40,11 +65,7 @@ export async function chatClaude(
     const body = await res.text().catch(() => '');
     throw new Error(`Claude API ${res.status}: ${body.slice(0, 300)}`);
   }
-  const data = await res.json();
-  return (data.content ?? [])
-    .filter((b: { type: string }) => b.type === 'text')
-    .map((b: { text: string }) => b.text)
-    .join('');
+  return claudeReplyText(await res.json());
 }
 
 // ── OpenAI ────────────────────────────────────────────────────────────────────

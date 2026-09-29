@@ -38,8 +38,9 @@ function st(
 }
 
 const NOTE = 'urn:kbase:concept/note-2026-08-27T16-56-41-444Z';
+// Synthetic dictation: contractions and repeated spaces must survive unchanged.
 const TEXT =
-  "I have a new idea for Recon's AI.  It's gonna be a content orchestration platform built on top of Enterprise dams like Orange Logic.";
+  "I have a new idea for Recon's AI.  It's gonna be a demo catalog built on top of sample archives like Example Archive.";
 const template = { g: { kind: 'iri' as const, value: 'urn:kbase:graph/personal-notes' }, sourceId: 'src-1' };
 
 function lit(value: string) {
@@ -116,8 +117,8 @@ describe('provenance', () => {
   it('links every extracted subject back to the sentence it came from', () => {
     const [note] = findUnextractedNotes([st(NOTE, CAPTURED_NOTE, lit(TEXT))]);
     const extracted = [
-      st('urn:kbase:concept/orange-logic', 'urn:kbase:predicate/is-a', lit('DAM')),
-      st('urn:kbase:concept/orange-logic', 'urn:kbase:predicate/used-by', lit('x')),
+      st('urn:kbase:concept/example-archive', 'urn:kbase:predicate/is-a', lit('DAM')),
+      st('urn:kbase:concept/example-archive', 'urn:kbase:predicate/used-by', lit('x')),
     ];
     const links = buildProvenanceLinks(note, extracted, template, nextId);
     // One link per distinct subject, not one per triple.
@@ -136,7 +137,7 @@ describe('provenance', () => {
 describe('buildRepairProposals', () => {
   const vocab: VocabularyEntry[] = [
     { name: 'Reckons.AI', iri: 'urn:kbase:concept/reckons-ai', viaAlias: false },
-    { name: 'Orange Logic', iri: 'urn:kbase:concept/orange-logic', viaAlias: false },
+    { name: 'Example Archive', iri: 'urn:kbase:concept/example-archive', viaAlias: false },
   ];
 
   it("proposes an altLabel for a mis-heard name, as PENDING", () => {
@@ -154,9 +155,9 @@ describe('buildRepairProposals', () => {
   });
 
   it('proposes nothing for a name the graph already matches exactly', () => {
-    const extracted = [st('urn:kbase:concept/x', 'urn:kbase:predicate/eg', lit('Orange Logic'))];
+    const extracted = [st('urn:kbase:concept/x', 'urn:kbase:predicate/eg', lit('Example Archive'))];
     const proposals = buildRepairProposals(extracted, vocab, template, nextId);
-    expect(proposals.some((p) => p.candidate.match === 'Orange Logic')).toBe(false);
+    expect(proposals.some((p) => p.candidate.match === 'Example Archive')).toBe(false);
   });
 
   it('never re-asks a question the user already rejected', () => {

@@ -4,8 +4,8 @@
  * The backend has been per-task since the beginning (`ingestBackend`, `chatBackend`, ...) and WASM
  * has had per-task models (`wasmIngestModel`, ...), but every Ollama task shared a single
  * `ollamaModel`. That is not a small gap: it is how prose extraction ended up running on
- * `qwen3-coder`, a code model, which collapsed "Orange Logic is an enterprise DAM" into the single
- * entity `orange-logic-is-an-enterprise-dam`. Nobody chose that; there was simply nowhere to say
+ * `qwen3-coder`, a code model, which collapsed prose into an entity (synthetic illustration:
+ * `example-archive-is-an-enterprise-dam`). Nobody chose that; there was simply nowhere to say
  * otherwise.
  *
  * ONE RESOLVER, NOT TEN FALLBACKS. Ten call sites each wrote `s.ollamaModel ?? 'llama3.2'`. Ten

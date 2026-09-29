@@ -5,9 +5,9 @@
  * (`vocabulary-context`) and the entities it holds (`structural-context`). Both are about NAMES.
  * Neither tells the model what has already been SAID.
  *
- * So a follow-up note could only ever restate or append. Dictate "Orange Logic is an enterprise
- * DAM" today and "Orange Logic also handles rights management" tomorrow, and the second extraction
- * sees the anchor `orange-logic ("Orange Logic")` and nothing else — it cannot tell that it is
+ * So a follow-up note could only ever restate or append. Dictate "Example Archive is an enterprise
+ * DAM" today and "Example Archive also handles rights management" tomorrow, and the second extraction
+ * sees the anchor `example-archive ("Example Archive")` and nothing else — it cannot tell that it is
  * adding to a claim, cannot notice it is contradicting one, and cannot sharpen a rough earlier
  * fact into a better one. The diff catches exact duplicates afterwards, but by then the model has
  * already spent its one chance to produce a REFINEMENT instead of a near-copy.

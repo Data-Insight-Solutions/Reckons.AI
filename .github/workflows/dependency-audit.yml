@@ -1,0 +1,41 @@
+name: Dependency audit
+
+on:
+  pull_request:
+    branches: [dev, staging, main]
+  push:
+    branches: [dev, staging, main]
+  schedule:
+    - cron: '23 8 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Dependencies (${{ matrix.project }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ['.', mcp-server, cli]
+    steps:
+      - uses: actions/checkout@v7
+      # Scheduled workflows run from the default branch; audit the integration
+      # branch too, where the next release's dependencies are maintained.
+      - uses: actions/checkout@v7
+        if: github.event_name == 'schedule'
+        with:
+          ref: dev
+          path: integration
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Audit locked production and development dependencies
+        working-directory: ${{ matrix.project }}
+        run: npm audit --package-lock-only --audit-level=low
+      - name: Audit scheduled integration dependencies
+        if: github.event_name == 'schedule' && !cancelled()
+        working-directory: integration/${{ matrix.project }}
+        run: npm audit --package-lock-only --audit-level=low

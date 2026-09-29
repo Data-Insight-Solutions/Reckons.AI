@@ -65,7 +65,7 @@ A stored fact carries the source it was read from, the verbatim excerpt that sup
 
 Extracted facts arrive PENDING. They are in the file, visible and traceable, and they are not part of what you know until you confirm them. A model proposes and you dispose — which is the one rule that separates this from software that reads your documents and answers confidently.
 
-- [The Review Workflow](../triples-rdf/triple-architecture) <span class="link-note">— on the The Semantic Triple page</span>
+- [The Review Workflow](../triples-rdf/review-workflow)
 
 ### 5 · It is plain text you can take away
 

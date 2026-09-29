@@ -1,0 +1,457 @@
+@prefix kb:     <urn:kbase:concept/> .
+@prefix kpred:  <urn:kbase:predicate/> .
+@prefix ktype:  <urn:kbase:type/> .
+@prefix kterm:  <urn:kbase:term/> .
+@prefix kreg:   <urn:kbase:type/register/> .
+@prefix kbind:  <urn:kbase:type/binding/> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+# =============================================================================
+# THE TERMINOLOGY OF RECKONS.AI — ONE WORD, ONE MEANING, THREE AUDIENCES (F203)
+# =============================================================================
+#
+# Matt, 2026-09-17: "A Reckons.AI taxonomy and ontology for all terminology... Node is a
+# common component part of 3d rendering and part of three.js. Node is a runtime. Node is
+# part of a graph, connected by edges." And later: "We need to start separating the hyper
+# technical, SHACL for example, from more simple terms entity types or shapes, more
+# simplistic front end user terms."
+#
+# WHY THIS FILE IS SEPARATE FROM reckons-vocabulary.ttl. That file models CLOSED VALUE SETS
+# — altitude, task state, review status, lifecycle, set kind, layer — enums whose members are
+# fixed and whose job is validation. This file models TERMS: the words themselves, what each
+# one means, which audience each spelling is for, and what it costs to change it. Same
+# standards, same family, different shape. A reader looking for "what may this field contain"
+# wants that file; a reader looking for "what does node mean here" wants this one.
+#
+# ── THE TWO AXES ────────────────────────────────────────────────────────────
+#
+# REGISTER says WHO A LABEL IS FOR. Three of them:
+#   kreg:standards   the W3C word — sh:NodeShape, skos:Concept, quad, named graph.
+#                    Precise, foreign, non-negotiable: it means what the spec says.
+#   kreg:developer   the word someone working in this codebase uses. Ours to choose,
+#                    and chosen so no two of them can be confused with each other.
+#   kreg:user        what a first-time non-technical reader sees in the interface.
+#                    Chosen for recognition, not for precision.
+#
+# BINDING CLASS says WHAT IT COSTS TO CHANGE THE IDENTIFIER. Three of them:
+#   kbind:free       local identifiers. Renaming costs a diff and nothing else.
+#   kbind:contract   serialized or addressed: urn:kbase: IRI segments, TTL predicate
+#                    names, Dexie store names, localStorage keys, URL params, MCP tool
+#                    arguments, export formats. Renaming is a DATA MIGRATION that can
+#                    break graphs users already have. Never a refactor.
+#   kbind:foreign    owned by somebody else — RDF, SKOS, SHACL, PROV-O, three.js,
+#                    Node.js. Cannot be renamed at all, only disambiguated by
+#                    qualifying OUR uses so the bare word never stands alone.
+#
+# The axes correlate without matching. A standards term is almost always foreign and a
+# user-facing word almost always free, but a DEVELOPER term can be either: a local
+# variable is free, a Dexie table name is a contract. Both axes are recorded per concept,
+# and a rename is safe only when the binding class says so — whatever register it came from.
+#
+# ── WHY PLAIN LITERALS AND NOT SKOS-XL ──────────────────────────────────────
+#
+# SKOS-XL is the standards-correct way to attach metadata (like a register) to a label: it
+# makes each label a resource with its own properties. It is deliberately NOT used here, and
+# the reason is search. The MCP server's kb_search is BM25 full-text over literals. Promoting
+# labels to resources would mean a search for "node" no longer matches the concept that
+# explains "node" — which is the single most likely query this file will ever receive. That
+# is the cost the complexity budget says nobody looks at, so it is written down here instead:
+# register-qualified predicates keep every label a searchable literal, at the price of three
+# project predicates rather than one standard vocabulary. Revisit if search moves off BM25.
+#
+# ── HONEST STATUS ───────────────────────────────────────────────────────────
+#
+# 2026-09-17: this file DEFINES terms. Nothing enforces them yet. scripts/offline/term-usage.ts
+# reads it and reports where each term is used, under which binding class and in which register,
+# which is measurement rather than enforcement. No lint rule fails a build over a banned bare
+# word, no application code reads this file, and no identifier has been renamed. Defining a
+# vocabulary is not using one — the same sentence reckons-vocabulary.ttl had to write about itself.
+#
+# THE COUNTS IN THE SCOPE NOTES BELOW ARE SUPERSEDED AND KEPT ONLY AS PROSE. They came from two
+# shell one-liners on 2026-09-17 that counted whole words. The reporter counts identifier
+# SEGMENTS instead — so nodeMap, MAX_NODES and node all count toward `node`, which is what a
+# rename would actually have to touch — and discards occurrences that are language or markup
+# syntax rather than our term. The numbers moved a long way: `node` 947 -> 3010, `graph`
+# 2706 -> 4802, `kb` 1739 -> 4140. Run the reporter for a current figure and do not cite the
+# prose below as a measurement:
+#
+#     npx tsx scripts/offline/term-usage.ts
+#     npx tsx scripts/offline/term-usage.ts --term=node   # with its top files
+#
+# The classification is a LINE-LEVEL heuristic biased toward calling a line contract or foreign,
+# because the mistake that costs something is renaming a serialized name, not leaving a free one
+# alone. Read the free count as an upper bound on safe renames, never as a work order.
+
+<urn:kbase:vocabulary/terminology> a skos:ConceptScheme ;
+    dcterms:title "Reckons.AI terminology" ;
+    dcterms:modified "2026-09-17"^^xsd:date ;
+    skos:definition "Every term this product uses, with a label per audience and a binding class saying what it costs to change." .
+
+# ── REGISTERS ────────────────────────────────────────────────────────────────
+
+ktype:RegisterScheme a skos:ConceptScheme ;
+    skos:prefLabel "Label registers" ;
+    skos:definition "Who a given spelling of a concept is written for." .
+
+kreg:standards a skos:Concept ; skos:inScheme ktype:RegisterScheme ;
+    skos:notation "standards" ; skos:prefLabel "Standards register" ;
+    skos:definition "The W3C or upstream-library word. Means exactly what its specification says and cannot be redefined here." .
+
+kreg:developer a skos:Concept ; skos:inScheme ktype:RegisterScheme ;
+    skos:notation "developer" ; skos:prefLabel "Developer register" ;
+    skos:definition "The word used in this codebase. Chosen for unambiguity against neighbouring terms rather than for friendliness." ;
+    skos:scopeNote "IT HAS TWO HALVES THAT COLLIDE ON THE SAME WORDS (Matt, 2026-09-23): 'we need generic, front end, backend developer terms and lean on any framework or standard terms as well.' The four nodes below are the proof — three.js Object3D is a FRONT-END word, an RDF node is a BACK-END and standards word, our entity is back-end, and Node.js is neither. One developer register cannot record which of those a spelling belongs to, so it cannot warn the person about to pick the wrong one." ;
+    skos:narrower kreg:frontend, kreg:backend .
+
+kreg:frontend a skos:Concept ; skos:inScheme ktype:RegisterScheme ;
+    skos:notation "frontend" ; skos:prefLabel "Front-end developer register" ;
+    skos:broader kreg:developer ;
+    skos:definition "The word used in rendering, components and interaction code — Svelte, Threlte, three.js, bits-ui. LEAN ON THE FRAMEWORK'S OWN WORD where one exists: Threlte is the precedent, since it namespaces THREE.Mesh as <T.Mesh> rather than renaming it, so the origin stays visible." .
+
+kreg:backend a skos:Concept ; skos:inScheme ktype:RegisterScheme ;
+    skos:notation "backend" ; skos:prefLabel "Back-end developer register" ;
+    skos:broader kreg:developer ;
+    skos:definition "The word used in data, storage and protocol code — RDF/N3, Dexie, the MCP server, serialization. Local-first means there is no server, so 'back end' here names the data half of a browser application rather than a remote tier. LEAN ON THE SPECIFICATION'S OWN WORD where one exists; where it does not, this is where the contract-bound spellings live." .
+
+kreg:user a skos:Concept ; skos:inScheme ktype:RegisterScheme ;
+    skos:notation "user" ; skos:prefLabel "User register" ;
+    skos:definition "What a first-time non-technical reader sees in the interface. Chosen for recognition; may be less precise than the developer term, and that is allowed because the mapping is recorded here." ;
+    skos:scopeNote "IT HAS THREE LEVELS, AND THEY ARE LEVELS RATHER THAN A SECOND AXIS (Matt, 2026-09-23): 'front end and backend have use within developer, and user experience has the generic, theme and custom levels within the user tiers.' An earlier version of this file modelled theme and custom as an orthogonal 'applied vocabulary' scheme sitting beside the registers. That was over-built: a themed word and a user's own word are both what a PERSON reads, so they are the user register at greater specificity, not a different kind of thing. One hierarchy, not two axes." ;
+    skos:narrower kreg:generic, kreg:theme, kreg:custom .
+
+kreg:generic a skos:Concept ; skos:inScheme ktype:RegisterScheme ;
+    skos:notation "generic" ; skos:prefLabel "Generic user register" ;
+    skos:broader kreg:user ;
+    skos:definition "The default user-facing word, independent of any theme or personalization. THIS IS THE ONE THAT BINDS: a nav label, a route, an API argument and a stored identifier use the generic word, because the levels below it may be absent, switched off, or different for every user." .
+
+kreg:theme a skos:Concept ; skos:inScheme ktype:RegisterScheme ;
+    skos:notation "theme" ; skos:prefLabel "Theme user register" ;
+    skos:broader kreg:user ;
+    skos:definition "What a visual theme renders a concept as. Product-authored, shipped with the theme, the same for every user who has that theme on." ;
+    skos:scopeNote "ONE THEME EXISTS AND IT IS ALREADY LIVE: undersea. Shelly the turtle, currents, the pod, the conch shell notification icon — ShellyVoice.svelte, NotificationStack.svelte, Meshy_AI_Turtle_1.glb, starter-turtles.ttl, and F29 currents, which is shipped. Its words are scattered across features with nothing recording that they are one theme's vocabulary. kb:undersea-pod-ui (F37, speculative) is the deeper VISUAL treatment of a live theme, not the theme's existence." ;
+    skos:scopeNote "MUNDANE OFFICE, where 'marble' comes from, is an ILLUSTRATION of a second theme and has no entity anywhere. That is why marble must never sit on a concept as a bare skos:altLabel — it did until 2026-09-23, and within the hour it was proposed as a candidate nav label. A theme word that leaks into the generic level has skipped a level, and the nav is where that shows." ;
+    skos:scopeNote "NOT MODELLED PER-TERM YET. The standard mechanism is SKOS-XL: a skosxl:Label is a resource, so it can carry which theme it belongs to where a plain literal cannot. Deferred deliberately — the shipped theme words are real, but nobody has written down which concept each one skins, and inventing that mapping is a product call." .
+
+kreg:custom a skos:Concept ; skos:inScheme ktype:RegisterScheme ;
+    skos:notation "custom" ; skos:prefLabel "Custom user register" ;
+    skos:broader kreg:user ;
+    skos:definition "The words one user substitutes for their own domain. User-authored, stored in their own graph, different for every user — the mechanism behind translating between two people's terminologies." ;
+    skos:scopeNote "THE PER-NODE HALF IS BUILT: kb:node-synonyms is functional — each entity carries user-written skos:altLabel values and BM25 expands queries across them. Standards-native rather than a custom field." ;
+    skos:scopeNote "THE GRAPH-LEVEL HALF IS NOT, AND IS A SEPARATE TIER BY DECISION. kb:node-synonyms records why: a global equivalence such as graph = KB = knowledge base holds across essentially every entity, and writing it onto 1,789 nodes is absurd. Per-node first because it is the one a user will actually maintain; a graph-level synonym set is the second tier and does not exist yet." .
+
+# ── BINDING CLASSES ──────────────────────────────────────────────────────────
+
+ktype:BindingScheme a skos:ConceptScheme ;
+    skos:prefLabel "Identifier binding classes" ;
+    skos:definition "What it costs to change an identifier that carries this term." .
+
+kbind:free a skos:Concept ; skos:inScheme ktype:BindingScheme ;
+    skos:notation "free" ; skos:prefLabel "Free" ;
+    skos:definition "A local identifier. Renaming costs a diff and nothing else." .
+
+kbind:contract a skos:Concept ; skos:inScheme ktype:BindingScheme ;
+    skos:notation "contract" ; skos:prefLabel "Contract" ;
+    skos:definition "Serialized or addressed, so somebody else's stored data depends on the exact spelling. Renaming is a data migration, never a refactor." .
+
+kbind:foreign a skos:Concept ; skos:inScheme ktype:BindingScheme ;
+    skos:notation "foreign" ; skos:prefLabel "Foreign" ;
+    skos:definition "Owned by an upstream specification or library. Cannot be renamed; can only be disambiguated by qualifying our own uses." .
+
+# ── THE FOUR NODES — the worked example this whole feature came from ─────────
+#
+# One string, four meanings, and only ONE of them is ours to name. This is why the rule
+# cannot be "node means X" and has to be "the bare word node is banned as an identifier".
+
+kterm:rdf-node a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "RDF term" ;
+    kpred:standards-label "NamedNode / BlankNode / Literal" ;
+    kpred:user-label "value" ;
+    kpred:binding-class kbind:foreign ;
+    skos:definition "One of the three kinds of thing that can occupy a position in an RDF triple. Defined by RDF and the RDF-JS interface, not by this project." ;
+    skos:scopeNote "Appears in src/lib/rdf/types.ts as NamedNode and BlankNode. These names are fixed by the specification — do not rename them, and do not reuse the word for our own vertex concept." ;
+    skos:hiddenLabel "node" ;
+    kpred:sees-also <https://www.w3.org/TR/rdf11-concepts/> .
+
+kterm:graph-vertex a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "entity" ;
+    kpred:standards-label "subject IRI" ;
+    kpred:user-label "thing" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "A subject in the user's knowledge base: the thing statements are made about. What a person means when they point at a circle in the graph view." ;
+    skos:scopeNote "THE ONLY ONE OF THE FOUR NODES THAT IS OURS TO NAME, and the codebase already has a better word for it: entity, used 927 times across 183 files. Prefer entity in data and logic; reserve node strictly for the RENDERED representation of an entity (see kterm:rendered-node)." ;
+    skos:hiddenLabel "node", "vertex" ;
+    skos:related kterm:rendered-node .
+
+kterm:rendered-node a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "entity marker" ;
+    kpred:user-label "dot" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "The drawn representation of an entity in the 2D or 3D view — its position, colour, icon, label and hit target. A presentation object, not data." ;
+    skos:scopeNote "This is where most of the 947 bare uses of node actually live (src/lib/3d/, nodeMap, nodeColors, nodePositionCache). Renaming these is FREE and is the highest-value cleanup available, because it is exactly the collision with three.js." ;
+    skos:hiddenLabel "node" .
+
+kterm:scene-object a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "scene object" ;
+    kpred:standards-label "THREE.Object3D" ;
+    kpred:binding-class kbind:foreign ;
+    skos:definition "A member of a three.js scene graph — a mesh, light, camera or group. Three.js's own hierarchy concept." ;
+    skos:scopeNote "Threlte is the precedent worth copying: it does not rename the foreign thing, it namespaces it, so THREE.Mesh becomes <T.Mesh> and the origin stays visible. Qualify our own uses rather than competing for the word." ;
+    skos:hiddenLabel "node" ;
+    kpred:sees-also <https://threlte.xyz/docs/reference/core/t> .
+
+kterm:node-runtime a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "Node.js" ;
+    kpred:standards-label "Node.js" ;
+    kpred:binding-class kbind:foreign ;
+    skos:definition "The JavaScript runtime the build, the MCP server and the offline scripts run on." ;
+    skos:scopeNote "Only ever appears as a proper noun or in a node: import specifier. It is never a domain term, and it must never be shortened to node in prose where a reader could take it for an entity." ;
+    skos:hiddenLabel "node" .
+
+# ── THE MOST OVERLOADED WORD IN THE CODEBASE ────────────────────────────────
+#
+# 2706 occurrences across 288 files, meaning at least four different things. Matt,
+# 2026-09-17: "I think graph is overloaded, we might need more specific terminology."
+# The user-facing word is NOT yet decided; that decision gates the largest rename here.
+
+kterm:knowledge-base a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "knowledge base" ;
+    kpred:standards-label "RDF dataset" ;
+    kpred:user-label "space" ;
+    kpred:binding-class kbind:contract ;
+    skos:definition "One user-owned collection of entities, statements and sources, stored as its own IndexedDB database and exportable as one Turtle file." ;
+    skos:scopeNote "DECIDED (Matt, 2026-09-17): SPELL OUT THE ABBREVIATION, KEEP THE WORD. The concept stays 'knowledge base' in every register — the abbreviation kb is what goes, not the noun. Migrating to 'graph' was half-decided and is now rejected: graph is already the most overloaded word here, meaning four things at 4802 occurrences, so that migration would have traded a clear-but-jargon term for an ambiguous-but-friendly one. A friendlier user-register word was considered and declined; the three-register model makes that reversible later without touching code, because only the user label would move." ;
+    skos:scopeNote "WHAT MOVES AND WHAT DOES NOT. The identifier kb is FREE where it is a local name — 3658 of its 4140 occurrences — and becomes knowledgeBase. It is CONTRACT-bound in four places that do NOT move without a data migration: the urn:kbase: namespace (1301 of the 1380 kbase occurrences, plus every stored user graph), the ?kb= URL parameter in bookmarkable links, Dexie database names from resolveDbName(), and the kb argument on every MCP tool. Renaming a free identifier is a diff; renaming any of those four is a migration that breaks graphs people already have." ;
+    skos:scopeNote "THE UNIT IS ONE .ttl AND THAT IS THE POINT (Matt, 2026-09-23): 'the unit of one marble on the desk is a single .ttl knowledge graph'. One knowledge base = one IndexedDB database = one exported Turtle file = one marble. Distinct units with limits, because a unit without a boundary stops being usable — the thing a person picks up has to be small enough to hold." ;
+    skos:scopeNote "TWO STATES, AND THE CLOSED ONE HAS NO GENERIC WORD YET. The thing has a CLOSED form — the object in a collection, something you pick up — and an OPEN form, where you are once you jump in. kterm:graph-view names the open state as 'space'; this concept names the thing itself, generically 'knowledge base'. The duality is real and survives any theme." ;
+    skos:scopeNote "A THEMED WORD IS NOT A SYNONYM (Matt, 2026-09-23): 'marble is one theme example where the theme is mundane office. The theme of undersea may be pool or some other visualized distinct knowledge graph terminology.' So themed words sit on a THEME AXIS that is orthogonal to the three registers — the same concept renders as one word under one theme and another word under another, while the generic word underneath does not move. Registers answer WHO is reading; a theme answers WHICH SKIN is on." ;
+    skos:scopeNote "THE UNDERSEA THEME IS ALREADY SHIPPED, AND NOBODY WROTE IT DOWN AS A THEME (Matt, 2026-09-23): 'Shelly the turtle, currents, the conch shell notification icon, etc. are signs of the undersea theme.' All verified in the product — ShellyVoice.svelte, the conch in NotificationStack.svelte, Meshy_AI_Turtle_1.glb, starter-turtles.ttl, and F29 currents with its pod view, which is shipped. So the theme is not an intention: it is the product's live identity, and its words are scattered across features with no entity anywhere saying they are one theme's vocabulary. kb:undersea-pod-ui (F37) is speculative, but F37 is only the DEEPER VISUAL TREATMENT of a theme that already exists — reading its status as the theme's status is the mistake, and this note made it before being corrected." ;
+    skos:scopeNote "WHAT THAT MEANS FOR NAMING. Themed words are already load-bearing in the interface, so the rule is not hypothetical: the generic word is what a label, a route or an API uses, and the themed word is what the skin may render. A themed word must never become the generic one — this concept carried skos:altLabel \"marble\" until 2026-09-23, promoting a word from the MUNDANE OFFICE theme, which has no entity at all, into the general vocabulary. It leaked immediately: 'marbles' was proposed as a candidate nav label for /kb on the strength of that altLabel alone. Modelling the theme axis properly (SKOS-XL reified labels carrying their theme, so 'conch' and 'currents' hang off kb:undersea-pod-ui rather than off the concepts they skin) is now WORTH DOING, because there is real shipped vocabulary to attach — it is not built yet, and that is a gap rather than a decision." ;
+    skos:scopeNote "THE USER LABEL MOVED TO 'space' (Matt, 2026-09-23): 'its space, and spaces is the current graphs tab.' This is exactly the reversal the 2026-09-17 note anticipated when it declined a friendlier word — 'the three-register model makes that reversible later without touching code, because only the user label would move' — and only the user label has moved. The generic user word for one of these is SPACE and for the collection is SPACES; the developer word stays 'knowledge base', the standards word stays 'RDF dataset', and every contract-bound spelling (urn:kbase:, ?kb=, the Dexie database names, the kb argument on every MCP tool) is untouched." ;
+    skos:scopeNote "SO THE THING AND ITS VIEW SHARE ONE USER WORD, DELIBERATELY. kterm:graph-view also carries the user label 'space'. A person does not distinguish the object from being inside it, and forcing them to would invent a distinction the interface does not need; the developer register keeps the two apart where the code has to care. The nav reads space for the one you are in and spaces for the collection." ;
+    skos:scopeNote "WHY 'knowledge graph' IS NOT THE USER WORD (Matt, 2026-09-23): it describes HOW THE SYSTEM WORKS, which makes it the right thing to say to a developer and the wrong thing to put in front of everyone else. The standards term underneath stays accurate and unchanged — kpred:standards-label is 'RDF dataset', and a quad's fourth element is a named graph (kterm:named-graph). Borrow the standard where it is accurate; translate at the surface." ;
+    skos:hiddenLabel "kb", "KB", "kbase" .
+
+kterm:named-graph a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "named graph" ;
+    kpred:standards-label "named graph" ;
+    kpred:user-label "source group" ;
+    kpred:binding-class kbind:foreign ;
+    skos:definition "The fourth element of a quad: the graph IRI a statement belongs to. In this product it carries the source a statement was derived from, and it is the join point the enterprise side is built on." ;
+    skos:scopeNote "A standards term with a fixed meaning. When the word graph appears near quads, TriG, or nanopublications it means THIS and nothing else — qualify it as named graph every time." ;
+    skos:hiddenLabel "graph" .
+
+kterm:graph-view a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "graph view" ;
+    kpred:user-label "space" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "The 2D or 3D visual rendering of a knowledge base — the force layout, the camera, the drawn markers and edges." ;
+    skos:scopeNote "DECIDED (Matt, 2026-09-23): the user-facing word is SPACE, and it spans BOTH 2D and 3D on purpose. Switching dimension is a change of VIEW, not a change of thing — you do not rename a document when you open print preview — so one word has to cover both or the interface implies two objects where there is one. 'World' was considered and is narrower: it reads 3D, where a space is whichever dimension you are currently in. Note that 'space' is the GENERIC word and stays generic: 'knowledge graph' is the technical register for the same thing, and a theme may skin it further (see kterm:knowledge-base on the theme axis)." ;
+    skos:scopeNote "A presentation concept. Never store data under this name and never let it stand as bare graph in a module that also handles quads." ;
+    skos:hiddenLabel "graph" .
+
+# ── OUR OWN DOMAIN TERMS ────────────────────────────────────────────────────
+
+kterm:statement a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "statement" ;
+    kpred:standards-label "triple / rdf:Statement" ;
+    kpred:user-label "fact" ;
+    kpred:binding-class kbind:contract ;
+    skos:definition "One subject-predicate-object claim, with a review status, a confidence and a source. The unit the review queue settles." ;
+    skos:scopeNote "1764 occurrences across 241 files. The user-facing word has been fact for a long time and that is fine — a person settling a review queue is not thinking about reification. Contract-bound because statement ids and the urn:kbase:stmt/ prefix are serialized into every export." ;
+    skos:hiddenLabel "triple", "fact", "claim" .
+
+kterm:source a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "source" ;
+    kpred:standards-label "prov:Entity" ;
+    kpred:user-label "where it came from" ;
+    kpred:binding-class kbind:contract ;
+    skos:definition "The document, note, URL or repository a set of statements was extracted from, retained so any claim can be traced back to it." ;
+    skos:scopeNote "1578 occurrences across 223 files. Serialized under urn:kbase:source/, so the identifier is contract-bound even where the variable name is free." ;
+    skos:hiddenLabel "provenance" .
+
+kterm:set a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "set" ;
+    kpred:standards-label "skos:Collection / skos:OrderedCollection" ;
+    kpred:user-label "group" ;
+    kpred:binding-class kbind:contract ;
+    skos:definition "A named, possibly ordered collection of entities, used to compose pages, stories, rosters and contrasts." ;
+    skos:scopeNote "1767 occurrences across 254 files — and a collision risk with JavaScript's own Set, which is a different thing entirely. A variable holding a JS Set of entity IRIs and a variable holding one of our sets must never share a name shape." ;
+    skos:hiddenLabel "collection", "group" .
+
+kterm:shape a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "shape" ;
+    kpred:standards-label "sh:NodeShape / sh:PropertyShape" ;
+    kpred:user-label "what a kind of thing should have" ;
+    kpred:binding-class kbind:foreign ;
+    skos:definition "A SHACL constraint describing what a conforming entity of some type must look like — which properties it carries and what values they may take." ;
+    skos:scopeNote "MATT'S EXAMPLE OF THE HYPER-TECHNICAL REGISTER, 2026-09-17. sh:NodeShape teaches a first-time reader nothing, so the interface must never show it; but the developer word cannot be softened either, because SHACL's shape means something exact and a vaguer synonym would licence writing constraints that do not validate. This is precisely the case the three registers exist for: keep the spec word in the code, put the plain sentence in the interface, and record here that they are the same concept." ;
+    skos:hiddenLabel "schema", "constraint" ;
+    kpred:sees-also <https://www.w3.org/TR/shacl/> .
+
+kterm:entity-type a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "entity type" ;
+    kpred:standards-label "rdf:type / rdfs:Class" ;
+    kpred:user-label "kind of thing" ;
+    kpred:binding-class kbind:contract ;
+    skos:definition "What an entity is — Person, Organization, Feature, Event. Serialized under urn:kbase:type/." ;
+    skos:scopeNote "The user register matters here more than almost anywhere else: kind of thing is immediately understood, where entity type and rdf:type are both barriers to a first-time reader." ;
+    skos:hiddenLabel "type", "class" .
+
+# ── STATE — "functional to whom?" ────────────────────────────────────────────
+#
+# Matt, 2026-09-18: "The collapse of state is simply to ignore a relevant perspective. No single
+# state is an encompassing perspective on a state of an entity. One perspective may say Done while
+# another says New and both may be correct from the expertise of a different industry."
+#
+# THE PATTERN IS NOW THREE-FOR-THREE IN THIS PROJECT, and naming it is the point of writing it here:
+#   "node means X"    wrong — four perspectives own the word, so qualify by REGISTER (F203).
+#   "what does g mean" wrong — Matt, 2026-07-13: "it assumed one answer for one product. It has TWO
+#                      answers, because there are two products." Private .ttl is self-attestation;
+#                      published .trig is a publication by an accountable publisher (F75).
+#   "status is X"      wrong for the same reason, and still unfixed.
+# A BARE VALUE IS A COLLAPSED RELATION. Where a word means different things to different readers,
+# the reader belongs in the data rather than in a footnote apologising for the word.
+#
+# THE GRAPH ALREADY NEEDED THREE ANSWERS AND BUILT THREE PREDICATES RATHER THAN ONE RELATION
+# (measured 2026-09-18): kpred:has-status 518 uses, the BUILDER's view; kpred:data-egress plus
+# kpred:gated-by 11 uses, the SAFETY view, and the only one that is machine-checkable;
+# kpred:in-dev / dev-approved / stakeholder-approved 15 uses, the RELEASE view (F33). Three
+# perspectives on the state of one entity, none reconciled, none declaring itself a perspective —
+# so "functional to whom" is answerable today only by noticing which predicate you happened to read.
+#
+# WHY THE OBVIOUS FIX IS BLOCKED. Perspective-as-named-graph is the standards answer and is NOT
+# available: TriG has one graph slot and F75 spent it on the SOURCE ("File = KB, named graph =
+# source"), and overloading it was declined once already. Reification is available (toTurtleFull
+# does it properly) but hides the literal from BM25 search — the same argument that ruled out
+# SKOS-XL above. So the affordable shape is the one registers already use: a CLOSED set of
+# perspectives, and a qualified predicate per perspective, keeping every value a searchable literal.
+#
+# NOT BUILT, AND DELIBERATELY NOT BUILT YET. The evidence for a general mechanism is thin: only 14
+# of 271 honest-notes explicitly correct a reading of a status. F75 declined a conditional writer
+# for a condition no local graph met, and called that declining on evidence rather than deferring;
+# the same discipline applies here. What is cheap and honest TODAY is to stop pretending
+# has-status is global — it is the builder's perspective, and saying so costs one sentence.
+
+kterm:entity-state a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "state" ;
+    kpred:standards-label "no single term — see scope note" ;
+    kpred:user-label "where it has got to" ;
+    kpred:binding-class kbind:contract ;
+    skos:definition "What is true of an entity right now, FROM A NAMED PERSPECTIVE. Not a single global value: one perspective may correctly say Done while another correctly says New, because they are answering different questions with different expertise." ;
+    skos:scopeNote "kpred:has-status is the BUILDER's perspective and should be read as a summary, not as the state. It is contract-bound — 518 uses, graph-lint validates it against the lifecycle scheme, and the docs generators read it — so it does not move. What can change is that it stops implying it is the only answer." ;
+    skos:scopeNote "THE LIFECYCLE IS SIX, NOT FIVE, and the authority is static/reckons-vocabulary.ttl where each status carries skos:notation and hnav:order. AGENTS.md said five until 2026-09-18; a session that hardcoded the enum from that prose silently SKIPPED every in-progress feature in a constraint check instead of failing. Read the rank from the graph, the way graph-lint does." ;
+    skos:scopeNote "THE SCALE ALSO BREAKS UNDER COMPOSITION, which is evidence it is not a progression: kb:graph-publishing is in-progress (order 2) while three of its own phases are functional (order 4), so the whole ranks below its parts. 'In-progress' for a composite means 'some parts are done', which is not a point on that line at all." ;
+    skos:hiddenLabel "status", "state", "stage" ;
+    skos:related kterm:share-composition .
+
+# ── SHARE — three things, and reaching for the word lands on the wrong one ──
+#
+# Matt, 2026-09-18: "there is a parallel here with 'publish' and 'share' and we shouldn't build
+# twice." The parallel is real, and the collision underneath it is the reason it would happen:
+# the word already names a machine-to-machine transfer AND a document written for a person.
+
+kterm:share-package a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "share package" ;
+    kpred:standards-label "RDF dataset serialization" ;
+    kpred:user-label "everything needed to open this elsewhere" ;
+    kpred:binding-class kbind:contract ;
+    skos:scopeNote "IT IS A FORMAT, NOT AN ACT (Matt, 2026-09-23): 'the complete set of files needed for the proper export, and then import for full functionality — this would include the .glb or images'. A space is not only its .ttl. Assets live in three slots (icons, previews, models) as urn:kbase:asset/*, and a Turtle file alone drops them, so a graph that round-trips through .ttl loses fidelity it never announces losing. The package is the bundle that does not: kb:canonical-graph-package is DONE WHEN re-import is semantically identical for statements in every review state, source records, stable IDs, review metadata AND assets." ;
+    skos:scopeNote "SO IT CARRIES NO EGRESS CLASS, AND THAT IS CORRECT RATHER THAN MISSING. kb:canonical-graph-package declares no kpred:data-egress because a CONTAINER has none — the ACT that moves it does. The same package is a user-export when the user downloads it and carries it themselves (a right, and kb:data-egress-model says a gate there is a BUG), and a mediated-distribution when Reckons.AI hosts it and hands out a link (a privilege, gated). An earlier version of this note asserted the whole term was 'gated by kb:publish-safety-gate and classified mediated-distribution', which is a category error: it put a gate on a file format and would have gated the user's own export." ;
+    skos:definition "Moving GRAPH DATA to another machine so it can be imported: a URL pointing at hosted Turtle (kb:share-links), or the versioned lossless package with a manifest and integrity hashes (kb:canonical-graph-package, F107.3). The recipient is software, and the test of success is that a round trip is semantically identical." ;
+    skos:scopeNote "THE GATE BELONGS TO THE ACT, NOT HERE — kb:share-links and kb:graph-publishing are both classified mediated-distribution and both gated by kb:publish-safety-gate, because in those Reckons.AI IS the intermediary carrying somebody's content. kb:source-reference-copy already decided that retained third-party documents must be excluded from a share package BY CONSTRUCTION rather than by remembering to — sources/ is inside the sync boundary and outside the publish boundary." ;
+    skos:hiddenLabel "share", "export", "package" .
+
+kterm:share-composition a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "composed share" ;
+    kpred:standards-label "ktype:WebPage" ;
+    kpred:user-label "something you can send a person" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "A document composed from a subset of the graph and written for a named audience. The recipient is a person, and the test of success is that they understand it." ;
+    skos:scopeNote "THIS IS NOT A SECOND PIPELINE. src/lib/publish/page-composition.ts already states the mechanism — 'a PAGE is authored, and it declares its SOURCES: one or more graphs, named entities, or type filters' — and targets.ts already abstracts the destination, including a plain zip. A composed share is that composition with a non-site target and a USER-register wording; what differs from publishing the docs site is audience, scope and durability, not machinery. Building it as its own feature would duplicate composition AND duplicate the gate, and a distribution path with its own separate gate is how a gate gets missed." ;
+    skos:scopeNote "Public examples must be generic and purpose-built for Reckons.AI. Personal sharing drafts and third-party site projects belong outside the public repository." ;
+    skos:hiddenLabel "share" ;
+    skos:related kterm:share-package .
+
+kterm:reckoning a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "reckoning" ;
+    kpred:user-label "working it out" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "A grounded Situation-Target-Proposal deliberation over the graph: what is true now, what is wanted, and what would close the gap." ;
+    skos:scopeNote "The product's own coinage and the root of its name, so it stays. 57 occurrences across 14 files — small enough that if it ever needs renaming, it is cheap." .
+
+kterm:layout a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "layout" ;
+    kpred:user-label "layout" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "How the nodes of one space are ARRANGED on screen — free, focus, type, hub, time, arrange, tree. A property of the drawing, not of what is being drawn." ;
+    skos:scopeNote "IT IS NOT A VIEW, AND CALLING IT ONE COST A SCREEN (Matt, 2026-09-24): 'I think view would be more of the Statements vs Sources, and Explore versus review. I think these are graph node layouts still.' Three concepts already claim 'view' — kterm:explore-view, kterm:review-view and kterm:graph-view — so labelling the arrangement picker 'view' made one word mean two different things in the same panel. A VIEW is which population or which stage you are looking at; a LAYOUT is where the nodes sit." ;
+    skos:scopeNote "THE HEADING HAD A REAL PROBLEM BEFORE THIS, WHICH IS WHY IT MOVED. It once read 'force', a layout name, sitting above a control that also named a layout — a heading that meant the same kind of thing as the chip beside it. That collision is gone now the chip shows the CURRENT layout instead of a fixed word, so 'layout' is free to be the heading it should always have been." ;
+    skos:hiddenLabel "view", "force" .
+
+kterm:explore-view a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "explore view" ;
+    kpred:user-label "explore" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "One of the two views of a SPACE: the one you move around in, where statements are already settled and you are looking at what you have." ;
+    skos:scopeNote "A VIEW OF THE SPACE, NOT A SEPARATE THING (Matt, 2026-09-23). Explore and review are two ways of looking at one knowledge base, the way 2D and 3D are — see kterm:graph-view, which is why 'space' had to cover both dimensions rather than splitting." ;
+    skos:related kterm:review-view, kterm:graph-view .
+
+kterm:review-view a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "review view" ;
+    kpred:user-label "review" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "The other view of a SPACE: the one where statements are still pending and a person is deciding what enters." ;
+    skos:scopeNote "The two views differ by the STATE of what they show — settled versus pending — not by what they are showing. Both are the same space." ;
+    skos:related kterm:explore-view, kterm:graph-view .
+
+kterm:source-graph a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "source graph" ;
+    kpred:standards-label "named graph (in TriG/N-Quads); a set of meta:Source descriptions (in Turtle)" ;
+    kpred:user-label "where it came from" ;
+    kpred:binding-class kbind:contract ;
+    skos:definition "The half of a space's file that describes WHERE statements came from: one meta:Source per note, email, thread, page or file, each with its title, URI, kind and ingest time." ;
+    skos:scopeNote "WHERE THE WORD 'graph' IS LITERAL AND WHERE IT IS NOT — measured 2026-09-23, because 'standards where accurate' requires knowing which. In toNQuads and toTriG the source IS the fourth element of every quad, so 'named graph' is exact. In a .ttl export it is NOT: Turtle has one default graph and no GRAPH blocks, so the two halves are two POPULATIONS in one graph, joined by prov:wasDerivedFrom on reified rdf:Statement nodes. Verified against tests/fixtures/multi-source.ttl: 5 meta:Source descriptions, 9 rdf:Statement nodes, zero GRAPH blocks." ;
+    skos:related kterm:statement-graph, kterm:named-graph .
+
+kterm:statement-graph a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "statement graph" ;
+    kpred:standards-label "rdf:Statement reification (Turtle); the default graph's quads (N-Quads)" ;
+    kpred:user-label "what you know" ;
+    kpred:binding-class kbind:contract ;
+    skos:definition "The other half of a space's file: the statements themselves, each carrying its status, confidence, altitude and a prov:wasDerivedFrom link to the source it came from." ;
+    skos:scopeNote "BOTH HALVES LIVE IN ONE FILE, AND THAT IS THE UNIT (Matt, 2026-09-23): 'the source graph and the statement graph are both contained within the .ttl for the space'. One space, one file, both halves — which is what makes a space portable and what makes the limit on its size meaningful." ;
+    skos:related kterm:source-graph, kterm:statement .
+
+kterm:export-act a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "export" ;
+    kpred:standards-label "data portability" ;
+    kpred:user-label "save a copy" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "The act of the USER taking their own space out — a .ttl, or the complete share package with assets. The user carries it from there." ;
+    skos:scopeNote "A RIGHT, AND UNGATED BY RULE. kb:data-egress-model classifies this user-export: 'Reckons.AI never withholds a user's own data from them, whatever it contains', and a blocking gate here is a BUG, not caution. Advisory only, via scanForExportAdvisory. Once the file has left, what happens next is the user's responsibility and not a control we can pretend to have." ;
+    skos:related kterm:share-package, kterm:publish-act .
+
+kterm:publish-act a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "publish" ;
+    kpred:standards-label "mediated distribution" ;
+    kpred:user-label "put it somewhere people can reach" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "The act of RECKONS.AI putting a space, or a document composed from one, at an address someone else can fetch — kb:share-links, kb:graph-publishing." ;
+    skos:scopeNote "A PRIVILEGE, AND GATED BY RULE, because the app is the intermediary in the delivery rather than a bystander to it. Both kb:share-links and kb:graph-publishing declare kpred:data-egress 'mediated-distribution' and require kpred:gated-by. The distinction from export is NOT who receives it — software or person — but WHO CARRIES IT." ;
+    skos:scopeNote "WHAT PUBLISH ACTUALLY PRODUCES (Matt, 2026-09-23): 'typically a web page, or if we have some central space directory for people to search. The publish may or may not publish with the export package as a deliverable on the web page.' So the page is the publication and the PACKAGE IS AN OPTIONAL ATTACHMENT — one act, potentially two payloads, and that resolves the recipient question rather than choosing between them: the prose serves a person, the attached package serves software, same publish." ;
+    skos:scopeNote "THE ATTACHMENT CHANGES WHAT IS DISCLOSED, SO THE GATE CANNOT READ THE ACT ALONE. A composed page exposes the sentences someone wrote for an audience; attaching the share package exposes the WHOLE space including assets, review metadata and every source record. Those are different disclosures under one verb, so kb:publish-safety-gate has to consider the PAYLOAD and not only that a publish occurred — otherwise the smaller case sets the bar for the larger one." ;
+    skos:scopeNote "A CENTRAL DIRECTORY IS NOT BUILT AND IS NOT THE SAME THING. Publishing to your own address makes Reckons.AI a host; operating a searchable directory of other people's spaces makes it a PUBLISHER of a catalogue, which is a different role with different obligations. Nothing like it exists today — kb:reference-graph-catalogue is the nearest neighbour and should be checked before anything is designed here." ;
+    skos:related kterm:export-act, kterm:share-composition, kterm:share-package .
+
+kterm:access-link a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "access link" ;
+    kpred:standards-label "bearer credential" ;
+    kpred:user-label "let my other device in" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "A token-bearing URL that admits another DEVICE to this instance — the QR mobile-access path. It moves no graph data at all." ;
+    skos:scopeNote "THE THIRD SENSE OF 'share', AND THE ONE MOST EASILY MISFILED. QRSharePanel calls navigator.share with the title 'Reckons.AI access link', so the operating system's own share sheet is used to hand over a CREDENTIAL. Leaking it is an authentication failure, not a content-disclosure one, so neither the export right nor the distribution gate is the right model for it — a content advisory on a credential would be nonsense, and so would a content gate." ;
+    skos:related kterm:export-act, kterm:publish-act .

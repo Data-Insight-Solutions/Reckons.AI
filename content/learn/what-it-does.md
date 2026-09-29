@@ -3,6 +3,7 @@ title: "What Reckons.AI does, in five moves"
 slug: "what-it-does"
 order: 50
 section: "Learn"
+parent: "what-is-reckons-ai"
 template: doc
 status: published
 nav: sidebar
@@ -38,7 +39,7 @@ The whole product as a sequence. Each move is a set of its own, and the order is
 
 ### 1 · Take it in
 
-Paste text, point at a URL or a repository, drop in a PDF, subscribe a current to a feed so it keeps arriving, or just talk — speech to text runs locally. Long sources are chunked so nothing is silently truncated.
+Paste text, point at a URL or a repository, drop in a PDF, subscribe a current to a feed so it keeps arriving, or just talk — speech to text runs locally. Extraction reads the first 12,000 characters of a source, about 2,000 words, and a longer source is cut there without a warning today; splitting long sources into chunks is planned, not built.
 
 - [Ingest](../features/ingest)
 - [Currents](../features/currents)

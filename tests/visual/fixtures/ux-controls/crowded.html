@@ -1,0 +1,27 @@
+<!doctype html><meta charset="utf-8"><title>control: crowded</title>
+<!-- DELIBERATELY BAD. A known-bad anchor for the UX impression calibration: dense
+     to the edges, no whitespace, 9px low-contrast text, six equally loud buttons
+     competing for primacy, four clashing fonts and accent colours. If a model
+     reads this the same as control-airy.html, it is not discriminating and its
+     readings on real screens mean nothing. -->
+<style>
+  body{margin:0;background:#3a3a38;color:#4e4e4a;font:9px/1.05 Georgia,serif;}
+  .g{display:grid;grid-template-columns:repeat(6,1fr);gap:0;}
+  .c{border:1px solid #454543;padding:1px;overflow:hidden;height:78px}
+  h1{font:11px Impact,sans-serif;color:#565652;margin:0}
+  button{font:bold 11px Comic Sans MS,cursive;padding:6px 10px;margin:1px;border:0;color:#fff}
+  .bar button:nth-child(1){background:#c0392b}.bar button:nth-child(2){background:#27ae60}
+  .bar button:nth-child(3){background:#8e44ad}.bar button:nth-child(4){background:#d35400}
+  .bar button:nth-child(5){background:#2980b9}.bar button:nth-child(6){background:#16a085}
+  .side{position:fixed;right:0;top:0;width:180px;height:100%;background:#424240;font:8px monospace}
+</style>
+<div class="bar"><button>Save</button><button>Publish</button><button>Delete</button><button>Export</button><button>Merge</button><button>Reset</button></div>
+<div class="g" id="g"></div>
+<div class="side" id="s"></div>
+<script>
+  const words='provenance statement entity source review merge graph export publish ingest reckoning alignment predicate triple quad namespace serialization'.split(' ');
+  const txt=n=>Array.from({length:n},()=>words[Math.floor(Math.random()*words.length)]).join(' ');
+  let h='';for(let i=0;i<96;i++)h+=`<div class="c"><h1>${txt(3)}</h1>${txt(28)}</div>`;
+  document.getElementById('g').innerHTML=h;
+  document.getElementById('s').innerHTML=Array.from({length:60},()=>txt(9)).join('<br>');
+</script>

@@ -98,7 +98,7 @@ Wikimedia's free knowledge graph. Over 100 million items, all queryable via SPAR
 
 2012-10-29
 
-**Published By**
+**Publisher**
 
 Wikimedia Foundation
 

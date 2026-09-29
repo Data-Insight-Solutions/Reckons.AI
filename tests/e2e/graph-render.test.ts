@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page, type TestInfo } from '@playwright/test';
 import { analyzePixels } from '../visual/vision-local';
 
 /**
@@ -19,6 +19,32 @@ import { analyzePixels } from '../visual/vision-local';
  * `playwright.smoke.config.ts` and the `npm run test:e2e:smoke` script, which
  * is wired into CI as its own gate (`.github/workflows/ci.yml`, job `smoke`).
  */
+
+async function verifyProductionProvenance(page: Page, testInfo: TestInfo, renderer: '2d' | '3d') {
+  // Opening the documentation starts Shelly's guided tour over the source picker.
+  const closeTour = page.getByRole('button', { name: 'close', exact: true });
+  if (await closeTour.isVisible()) await closeTour.click();
+  await page.getByRole('button', { name: 'Sources', exact: true }).click();
+  const graph = page.getByRole('region', { name: 'Sources graph' });
+  await expect(graph).toHaveAttribute('data-graph-renderer', renderer);
+  if (renderer === '3d') await expect(graph).toHaveAttribute('data-graph-ready', 'true');
+  await expect(graph).toHaveAttribute('data-graph-settled', 'true', { timeout: 20_000 });
+  const frame = await graph.locator('canvas').screenshot();
+  const pixels = await analyzePixels(frame);
+  expect(pixels.isBlank, pixels.anomalyDetails.join('; ')).toBe(false);
+  await testInfo.attach(`production-provenance-${renderer}`, { body: frame, contentType: 'image/png' });
+  await page.getByRole('button', { name: /^Inspect source / }).first().click();
+  await expect(page.getByRole('heading', { name: 'How extraction happened' })).toBeVisible();
+  await expect(page.getByText('No extraction execution record is available for this source.')).toBeVisible();
+  await page.getByRole('button', { name: 'Close source details' }).click();
+  for (const mode of ['Folders', 'List', 'Gallery']) {
+    await page.getByRole('group', { name: 'Source presentation' }).getByRole('button', { name: mode, exact: true }).click();
+    await expect(page.getByRole('region', { name: `${mode} of source sets` })).toBeVisible();
+    await expect(page.locator('.node-label-wrap')).toHaveCount(0);
+  }
+  await page.getByRole('button', { name: 'Statements', exact: true }).click();
+  await expect(page.locator('[data-graph-perspective="statements"]')).toBeVisible();
+}
 
 test('documentation graph renders nodes without a WebGL/renderer crash', async ({ page }, testInfo) => {
   const pageErrors: string[] = [];
@@ -79,6 +105,8 @@ test('documentation graph renders nodes without a WebGL/renderer crash', async (
   // `failed` snippet in routes/(app)/+page.svelte) must never appear.
   await expect(page.locator('.no-webgl')).toHaveCount(0);
 
+  await verifyProductionProvenance(page, testInfo, '3d');
+
   // Any console or page error invalidates visual evidence. A narrow renderer
   // filter would let unrelated runtime failures normalize into a green gate.
   expect(pageErrors, `Uncaught page errors:\n${pageErrors.join('\n---\n')}`).toHaveLength(0);
@@ -124,6 +152,7 @@ test('documentation graph uses the intentional 2D fallback when WebGL is unavail
   expect(fallbackPixels.isBlank, fallbackPixels.anomalyDetails.join('; ')).toBe(false);
   expect(fallbackPixels.uniqueColorCount).toBeGreaterThan(20);
   await expect(page.locator('.no-webgl')).toHaveCount(0);
+  await verifyProductionProvenance(page, testInfo, '2d');
   expect(pageErrors, `Uncaught page errors:\n${pageErrors.join('\n---\n')}`).toHaveLength(0);
   expect(consoleErrors, `Console errors:\n${consoleErrors.join('\n---\n')}`).toHaveLength(0);
 });

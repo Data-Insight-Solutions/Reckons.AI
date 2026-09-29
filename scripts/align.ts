@@ -45,6 +45,11 @@ const GATES: Gate[] = [
     check: 'npx tsx scripts/offline/graph-lint.ts',
   },
   {
+    name: 'graph catalog',
+    why: 'every graph must say what it is for — design, observed, archive, reference, docs or starter — and who writes it',
+    check: 'npx tsx scripts/offline/graph-catalog.ts --check',
+  },
+  {
     // Ordered BEFORE 'docs pages' on purpose: a missing diagram makes docs-pages.ts throw, so
     // without this gate the failure surfaces as a stack trace from the generator rather than as
     // the one-line instruction that actually fixes it.

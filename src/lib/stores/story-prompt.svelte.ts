@@ -21,6 +21,8 @@
  * and never nags again on that graph, while a DIFFERENT graph with a story still announces itself.
  */
 import { pushNotification } from './notifications.svelte';
+import { startExplore, startStory } from './shelly-bridge.svelte';
+import { extractStories } from '$lib/rdf/story';
 import type { Statement } from '$lib/rdf/types';
 
 const STEP_TYPES = new Set(['urn:reckons:story/Step', 'urn:kbase:type/TestStep']);
@@ -83,7 +85,14 @@ export function promptStoryIfPresent(statements: readonly Statement[], graphId: 
     type: 'info',
     title: found.title ? `“${found.title}” is a guided story` : 'This graph has a guided story',
     body: `${found.steps} steps, written by whoever built this graph. It changes the view as the question changes.`,
-    action: { label: 'Start the story' },
+    action: {
+      label: 'Start the story',
+      onclick: () => {
+        const story = extractStories([...statements]).find((candidate) => candidate.steps.length >= 2);
+        if (story) startStory(story.id);
+        else startExplore(); // Legacy visual-test steps surface in Shelly's explore tab.
+      },
+    },
     oneTime: true,
   });
   return found;

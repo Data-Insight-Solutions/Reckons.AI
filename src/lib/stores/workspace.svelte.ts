@@ -40,6 +40,7 @@ import {
   type SourceBaseline
 } from '../rdf/source-cache';
 import { classifyText } from '../safety/content-policy';
+import { captureRows } from '../rdf/personal-notes';
 import {
   getWorkspaceRow,
   putWorkspaceRow,
@@ -372,16 +373,23 @@ async function writeWorkspaceFileStrict(
   if (!_handle) throw new Error('Workspace is not connected');
   const fh = await findWorkspaceFile(filename, { create: true });
   if (!fh) throw new Error(`Workspace file is unavailable: ${filename}`);
-  const writable = await fh.createWritable({ keepExistingData: true });
-  if (expectedCurrent !== undefined) {
-    const current = await (await fh.getFile()).text();
-    if (current !== expectedCurrent) {
-      await writable.abort('Workspace queue changed before acknowledgement');
-      throw new Error(`Workspace file changed before acknowledgement: ${filename}`);
+  // Use an empty staging file. keepExistingData leaves the old suffix behind when a queue shrinks;
+  // real FileSystemWritableFileStream.write(string) does not truncate (unlike our old unit fake).
+  // The committed file remains readable for this comparison until the stream closes.
+  const writable = await fh.createWritable();
+  try {
+    if (expectedCurrent !== undefined) {
+      const current = await (await fh.getFile()).text();
+      if (current !== expectedCurrent) {
+        throw new Error(`Workspace file changed before acknowledgement: ${filename}`);
+      }
     }
+    await writable.write(content);
+    await writable.close();
+  } catch (error) {
+    await writable.abort(error).catch(() => {});
+    throw error;
   }
-  await writable.write(content);
-  await writable.close();
 }
 
 const HOST_LOCK_ACTIVE_SUFFIX = '.lock.active';
@@ -533,8 +541,8 @@ export async function writeKbToFolder(
   ttl: string,
   stableId?: string,
   assets?: CollectedAsset[]
-): Promise<void> {
-  if (!_handle) return;
+): Promise<boolean> {
+  if (!_handle) return false;
   try {
     const kbsDir = await getOrCreateDir(_handle, 'kbs');
     const folderName = kbFolderName(entry.name, entry.id);
@@ -547,7 +555,7 @@ export async function writeKbToFolder(
     _lastHold = hold;
     if (hold.held) {
       console.warn(`[workspace] write held for "${entry.name}": ${hold.detail} (${hold.reason})`);
-      return;
+      return false;
     }
 
     await writeToDir(kbDir, `${folderName}.ttl`, ttl);
@@ -559,9 +567,32 @@ export async function writeKbToFolder(
     if (assets && assets.length > 0) {
       await writeAssetsToFolder(kbDir, assets);
     }
+    return true;
   } catch (e) {
     console.warn(`[workspace] KB folder write failed for "${entry.name}":`, e);
+    return false;
   }
+}
+
+/** Export a graph changed by inbox capture/transfer even when another graph is active. */
+export async function syncNotesGraphToWorkspace(id: string): Promise<boolean> {
+  if (!_handle) return false;
+  const entry = getRegistry().find((graph) => graph.id === id);
+  if (!entry) return false;
+  const graph = new KBaseDB(id);
+  try {
+    const { toTurtleFull } = await import('../rdf/serialize');
+    const statements = await graph.statements.toArray();
+    const sources = await graph.sources.toArray();
+    const settings = await graph.settings.get('main');
+    const stableId = await getOrCreateStableId(settings?.kbStableId, async (id) => {
+      await graph.settings.put({ ...DEFAULT_SETTINGS, ...settings, kbStableId: id });
+    });
+    registerStableId(id, stableId, statements.length);
+    const assets = await collectAssets(graph);
+    const ttl = toTurtleFull(statements, sources, { kbStableId: stableId }) + await assetTriples(graph, assets);
+    return await writeKbToFolder(entry, ttl, stableId, assets);
+  } finally { graph.close(); }
 }
 
 /** Write binary assets to assets/{category}/ subdirectories. */
@@ -1078,6 +1109,10 @@ export function drainAndImportPending(): Promise<number> {
 }
 
 async function drainAndImportPendingOnce(): Promise<number> {
+  const { importPersonalCaptureRows, deliverApprovedNoteTransfers } = await import('../storage/personal-notes');
+  for (const id of await deliverApprovedNoteTransfers()) {
+    await syncNotesGraphToWorkspace(id).catch((error) => console.warn('[notes] workspace export deferred:', error));
+  }
   // Host-side queue writers advertise their flock with a leased active marker the browser can
   // observe. The `.lock` pathname itself persists between transactions and is not an activity bit.
   if (await workspaceFileHasActiveHostLock(WORKSPACE_PENDING_FILE)) return 0;
@@ -1086,13 +1121,33 @@ async function drainAndImportPendingOnce(): Promise<number> {
   // transaction, so the safe ordering is at-least-once: commit locally, then acknowledge exactly
   // the rows from this snapshot. Stable row ids make a crash retry idempotent in IndexedDB; the
   // final strict re-read preserves appends that arrived while the transaction was running.
-  const snapshot = await readFromWorkspace(WORKSPACE_PENDING_FILE);
+  let snapshot = await readFromWorkspace(WORKSPACE_PENDING_FILE);
   if (!snapshot?.trim()) return 0;
+  const captures = await importPersonalCaptureRows(snapshot);
+  if (captures.held) console.warn(`[notes] ${captures.held} captured row(s) held in the inbox queue`);
+  if (captures.acknowledgedLines.length) {
+    // Save captures to their graph file before acknowledging when a workspace is linked. A held
+    // export leaves both the durable browser copy and the queue available for the next attempt.
+    const exported = captures.inboxId && await syncNotesGraphToWorkspace(captures.inboxId);
+    if (exported) {
+      const latest = await readWorkspaceFileStrict(WORKSPACE_PENDING_FILE);
+      if (await workspaceFileHasActiveHostLock(WORKSPACE_PENDING_FILE)) return captures.written;
+      await writeWorkspaceFileStrict(WORKSPACE_PENDING_FILE,
+        acknowledgePendingJsonl(latest, captures.acknowledgedLines), latest);
+    }
+  }
+  // Even held captures belong to Personal Notes. Never fall through to the active graph importer.
+  snapshot = acknowledgePendingJsonl(snapshot, captureRows(snapshot).map((row) => row.line));
   const currentKbId = getCurrentKbId();
+  if (captures.inboxId === currentKbId && captures.written > 0) {
+    // Enrichment is independent of capture and cannot authorize dissemination.
+    void import('./note-extraction.svelte').then((m) => m.extractCapturedNotes())
+      .catch((error) => console.warn('[notes] extraction deferred:', error));
+  }
   const active = [getCurrentKbName(), currentKbId];
   const partition = partitionPendingJsonl(snapshot, active);
   const pending = partition.entries;
-  if (pending.length === 0) return 0;
+  if (pending.length === 0) return captures.written;
 
   const { prepareStatementsForWrite, persistSourceBatch } = await import('./kb.svelte');
   const { v5: uuidv5 } = await import('uuid');
@@ -1258,7 +1313,7 @@ async function drainAndImportPendingOnce(): Promise<number> {
     (err) => { console.warn('[workspace] applying journalled decisions failed:', err); return 0; },
   );
 
-  return written.length;
+  return written.length + captures.written;
 }
 
 /**

@@ -5,7 +5,7 @@
    * Physics constants mirror the 3D version; camScale bridges the unit gap.
    */
   import { onMount, onDestroy } from 'svelte';
-  import type { Statement } from '$lib/rdf/types';
+  import type { Source, Statement } from '$lib/rdf/types';
   import { termKey, isIRI, isLit, isMetaPredicate, displayLiteralLabel } from '$lib/rdf/types';
   import { parseGraphDate } from '$lib/rdf/parse-date';
   import { buildNodeTimes, timelineRange, undatedCount } from '$lib/rdf/timeline-layout';
@@ -28,6 +28,9 @@
     targetKey = null,
     historyTimestamp = null,
     sources = [],
+    showSourceNodes = true,
+    labelPriorityKeys = null,
+    viewportInsets = undefined,
     layout = 'force',
     timelineZoom = 1,
     timelineCenter = null,
@@ -65,6 +68,24 @@
     targetKey?: string | null;
     historyTimestamp?: number | null;
     sources?: any[];
+    /** Provenance is log-level structure; the statements view hides it by default. */
+    showSourceNodes?: boolean;
+    /** Keep key hubs labelled when ordinary overlap culling would hide them. */
+    labelPriorityKeys?: Set<string> | null;
+    /**
+     * Pixels of canvas hidden behind floating panels on each side. The graph is CENTRED ON WHAT
+     * THE USER CAN SEE rather than on the canvas rectangle.
+     *
+     * Without this the default force layout puts nodes at world origin and the camera sits at the
+     * canvas centre, so with Shelly's panel open (~370px) and the filters and notification stacks
+     * beside it, roughly half the viewport is covered and the graph settles underneath them. It
+     * reads as "the nodes are bunched up" because the visible half is crowded while the hidden half
+     * holds the rest. No amount of repulsion tuning fixes that — measured 2026-09-18, sweeping
+     * REPEL, BASE_REST and CENTER across both renderers moved the spread by less than noise,
+     * because those constants scale the whole layout and the camera simply refits. Zooming is not
+     * spreading; the fix is to aim the camera at the space that is actually free.
+     */
+    viewportInsets?: { left?: number; right?: number; top?: number; bottom?: number };
     layout?: 'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy' | 'map';
     timelineZoom?: number;
     timelineCenter?: number | null;
@@ -310,7 +331,7 @@
         entitySources.get(k)!.add(st.sourceId);
       }
     }
-    for (const src of sources as any[]) {
+    for (const src of (showSourceNodes ? sources : []) as any[]) {
       const srcKey = `src:${src.id}`;
       const c = nodePositionCache.get(srcKey);
       const x = c?.x ?? (spawnCenter?.x ?? 0) + (Math.random() - 0.5) * 12;
@@ -412,6 +433,7 @@
     } else if (layout === 'source') {
       const r = buildSourceAnchors();
       activeAnchors  = r.anchors; markerData = r.markers;
+      scheduleStructuredFit2D(activeAnchors, 'source');
       anchorStrength = 0.80; nodeColorMap = r.nodeColors; hubNodeKeys = [];
     } else if (layout === 'type') {
       const r = buildTypeAnchors();
@@ -697,8 +719,11 @@
   }
 
   function buildSourceAnchors() {
-    // Find source nodes injected into the graph
-    const srcNodes = nodes.filter(n => n.key.startsWith('src:'));
+    // Clustering still works when the detail floor hides provenance nodes.
+    // These anchors position entities; they do not add source nodes or links.
+    const recordedIds = new Set((statements as Statement[]).filter((st) => st.status !== 'rejected' && st.status !== 'superseded').map((st) => st.sourceId));
+    const srcNodes = (sources as Source[]).filter((source) => source.kind !== 'analysis' && recordedIds.has(source.id))
+      .map((source) => ({ key: `src:${source.id}`, label: source.title }));
     if (!srcNodes.length) return { anchors: new Map<string, {x:number;y:number}>(), markers: [] as Marker[], nodeColors: new Map<string, string>() };
 
     // Arrange source nodes in a circle
@@ -879,13 +904,63 @@
   // Camera: center of canvas = world origin (0,0); scale = px per world unit
   const MIN_CAMERA_SCALE = 0.05;
   let camX = 0, camY = 0, camScale = 40;
+  /* Once the user has panned or zoomed, the camera is theirs and the inset offset stops applying. */
+  let userMovedCamera = false;
+  /** Half the left/right (and top/bottom) imbalance: the shift that centres on the free space. */
+  const insetOffset = $derived({
+    x: (((viewportInsets?.left ?? 0) - (viewportInsets?.right ?? 0)) / 2),
+    y: (((viewportInsets?.top ?? 0) - (viewportInsets?.bottom ?? 0)) / 2),
+  });
+
+  /*
+   * The FORCE layout has no camera fit — the structured fit above runs only for hub, hierarchy,
+   * map and source — so its resting camera stayed at (0,0), the canvas centre, forever. That is
+   * the default view, and the one that looked clumped. Offsetting the resting camera aims it at
+   * the free space instead. It stops the moment the user pans or zooms: after that the camera is
+   * theirs, and moving it under them would be worse than any amount of crowding.
+   */
+  /*
+   * EVERY LAYOUT THAT DOES NOT RUN A CAMERA FIT, not just 'force'.
+   *
+   * First version checked `layout !== 'force'` and fixed only the free layout — Matt, 2026-09-18:
+   * "Free layout mode is doing better with spread out nodes, others like focus aren't fixed yet."
+   * scheduleStructuredFit2D covers hub, hierarchy, map and source and applies the offset itself;
+   * focus, type, timeline and order run NEITHER path, so their camera sat at the canvas centre and
+   * the graph stayed behind the panels. Listing the fitted layouts and offsetting everything else
+   * fails in the safe direction: a new layout gets the offset by default rather than silently
+   * missing out, which is how this gap happened in the first place.
+   */
+  const STRUCTURED_FIT_LAYOUTS = new Set(['hub', 'hierarchy', 'map', 'source']);
+
+  /**
+   * A NEW LAYOUT IS A NEW PICTURE, so the old framing does not carry over.
+   *
+   * userMovedCamera latches true on the first pan or zoom and was reset NOWHERE — not on a
+   * layout change, not ever. That is right while you are looking at one arrangement (moving
+   * the camera under someone is worse than any amount of crowding) and wrong the moment the
+   * arrangement is replaced: switching to timeline after having dragged the free layout left
+   * the camera parked wherever that drag ended, aimed at nothing, with the offset that would
+   * have centred it permanently switched off. It reads as a view stuck where you left it.
+   *
+   * Reset on layout change only. A pan within one layout still belongs to the user.
+   */
+  // Not initialised from `layout` here: reading a prop at module scope captures only its first
+  // value (svelte state_referenced_locally). Seeded on the effect's first run instead.
+  let framedLayout: typeof layout | undefined;
+  $effect(() => {
+    if (framedLayout !== undefined && layout !== framedLayout) userMovedCamera = false;
+    framedLayout = layout;
+    if (userMovedCamera || STRUCTURED_FIT_LAYOUTS.has(layout)) return;
+    camX = insetOffset.x;
+    camY = insetOffset.y;
+  });
   let reportedCamScale = $state(40);
   let prevW = 0, prevH = 0;
   // Cached viewport rect — updated once per tick to avoid repeated layout queries
   let _rect = { left: 0, top: 0, width: 0, height: 0 };
 
   /** Frame structured anchors as a whole instead of cropping their outer clusters below overlays. */
-  function scheduleStructuredFit2D(anchors: Map<string, { x: number; y: number }>, expectedLayout: 'hub' | 'hierarchy' | 'map') {
+  function scheduleStructuredFit2D(anchors: Map<string, { x: number; y: number }>, expectedLayout: 'hub' | 'hierarchy' | 'map' | 'source') {
     requestAnimationFrame(() => {
       if (layout !== expectedLayout || activeAnchors !== anchors || anchors.size === 0) return;
       const width = canvasEl?.clientWidth ?? _rect.width;
@@ -904,12 +979,14 @@
       // Compact panes still cap this at 12%, so a short mobile hierarchy does not lose its canvas.
       const outerGutter = Math.min(88, width * 0.12, height * 0.12);
       const inset = nodeMargin + outerGutter;
-      const fitX = Math.max(1, width - inset * 2) / Math.max(maxX - minX, 1);
-      const fitY = Math.max(1, height - inset * 2) / Math.max(maxY - minY, 1);
+      // Source anchors are cluster centers; leave room for the entities around each center.
+      const clusterPadding = expectedLayout === 'source' ? 8 : 0;
+      const fitX = Math.max(1, width - inset * 2) / Math.max(maxX - minX + clusterPadding, 1);
+      const fitY = Math.max(1, height - inset * 2) / Math.max(maxY - minY + clusterPadding, 1);
       camScale = Math.max(MIN_CAMERA_SCALE, Math.min(40, fitX, fitY));
       reportedCamScale = camScale;
-      camX = -((minX + maxX) / 2) * camScale;
-      camY = -((minY + maxY) / 2) * camScale;
+      camX = -((minX + maxX) / 2) * camScale + insetOffset.x;
+      camY = -((minY + maxY) / 2) * camScale + insetOffset.y;
     });
   }
 
@@ -1447,6 +1524,23 @@
       const dx = e.b.x - e.a.x, dy = e.b.y - e.a.y;
       const d = Math.hypot(dx, dy) + 0.001;
       const k = e.isSourceEdge ? SPRING * 0.25 : SPRING;
+      /**
+       * REVERTED, AND THE REASON IS WORTH KEEPING (2026-09-24).
+       *
+       * This briefly read `rest = max(BASE_REST * semanticDist, nodeWorldRadius(a) +
+       * nodeWorldRadius(b))`, copying the guard 3D has had since F133. It is right in 3D and
+       * WRONG HERE, because nodeWorldRadius divides by camScale: 2D nodes hold a fixed SCREEN
+       * size, so their world size changes with zoom. That made the spring's rest length a
+       * function of the camera — about 1.4 world units at the default camScale of 40 and 10-18
+       * below camScale 4 — so zooming out made every spring demand three to five times more
+       * room and the whole graph re-expanded and rearranged while the user was navigating.
+       * Matt saw it immediately: "some of the nodes get tangled up".
+       *
+       * THE LESSON: overlap here is a SCREEN-space problem because node size is screen-space,
+       * and solving it through a world-space spring couples the simulation to the camera. If
+       * 2D needs overlap resolution it wants a post-projection separation pass of its own — the
+       * shape of resolveOverlaps in the 3D renderer — not a longer spring.
+       */
       const f = (d - BASE_REST * e.semanticDist) * k;
       e.a.vx += (dx/d)*f*fdt*5; e.a.vy += (dy/d)*f*fdt*5;
       e.b.vx -= (dx/d)*f*fdt*5; e.b.vy -= (dy/d)*f*fdt*5;
@@ -1492,7 +1586,7 @@
         prevH = h;
         // The initial hierarchy fit is viewport-dependent. A phone rotation, split-pane resize,
         // or desktop panel drag must recompute it instead of leaving the tree cropped or tiny.
-        if ((layout === 'hierarchy' || layout === 'hub') && activeAnchors.size > 0) {
+        if ((layout === 'hierarchy' || layout === 'hub' || layout === 'source') && activeAnchors.size > 0) {
           scheduleStructuredFit2D(activeAnchors, layout);
         }
       }
@@ -1523,7 +1617,7 @@
           const isSel = n.key === selected;
           const isHov = n.key === hoveredKey;
           // Always show selected/hovered labels
-          if (isSel || isHov) {
+          if (isSel || isHov || labelPriorityKeys?.has(n.key)) {
             placed.push({ x: lx, y: ly, w: lblW, h: lblH });
             labelData.push({ key: n.key, label: n.label, x: s.x, y: s.y, opacity: 1.0 });
             continue;
@@ -1599,6 +1693,8 @@
 
   // ── Right-click timeline scrubbing state ────────────────────────────
   let timelineDragging = false;
+  /** Which mouse button began the current drag; 2 is the right button. */
+  let dragButton = 0;
   let timelineDragStartX = 0;
   let timelineDragStartCenter = 0;
 
@@ -1612,8 +1708,15 @@
   }
 
   function onPointerDown(e: PointerEvent) {
-    if (e.button === 2 && layout === 'timeline') {
-      // Right-click: start timeline scrub
+    // RIGHT-DRAG TRANSLATES THE CAMERA, IN EVERY LAYOUT (Matt, 2026-09-23). It used to be
+    // hijacked here for timeline scrubbing, which made the timeline the ONE view where the
+    // right button did something else — so the gesture a user had just learned everywhere else
+    // stopped working exactly where the view is widest and panning matters most.
+    //
+    // Scrubbing moves to SHIFT + drag rather than disappearing: the timeline has a zoom slider
+    // and a reset, but nothing else pans the time axis, so removing this without a replacement
+    // would have taken away the only way to move through time while zoomed in.
+    if (e.button === 2 && layout === 'timeline' && e.shiftKey) {
       timelineDragging = true;
       timelineDragStartX = e.clientX;
       const range = getTimelineDataRange();
@@ -1623,6 +1726,10 @@
     }
     isPointerDown = true;
     isDragging    = false;
+    // Which button started this drag. The RIGHT button always means "move the view", even when
+    // the press landed on a node — otherwise panning fails wherever the graph is dense, which is
+    // exactly where you need it.
+    dragButton    = e.button;
     dragStart     = { x: e.clientX, y: e.clientY, cx: camX, cy: camY };
     dragStartHit  = hitTest(e.clientX, e.clientY);
     canvasEl?.setPointerCapture(e.pointerId);
@@ -1651,10 +1758,14 @@
         const wy = (e.clientY - _rect.top - _rect.height / 2 - camY) / camScale;
         orderDragNode.x = wx;
         orderDragNode.y = wy;
-      } else if (!dragStartHit && Math.hypot(dx, dy) > 10) {
+      } else if ((dragButton === 2 || !dragStartHit) && Math.hypot(dx, dy) > 10) {
+        // dragButton === 2 bypasses the "did not start on a node" condition: a right-drag is a
+        // camera gesture whatever is under the cursor. Left-drag keeps the old rule, so pressing
+        // on a node still selects it rather than sliding the view out from under you.
         isDragging = true;
         camX = dragStart.cx + dx;
         camY = dragStart.cy + dy;
+        userMovedCamera = true;
       }
     }
     const hit = hitTest(e.clientX, e.clientY);
@@ -1667,8 +1778,7 @@
 
   function onPointerUp(e: PointerEvent) {
     if (timelineDragging) {
-      timelineDragging = false;
-      canvasEl?.releasePointerCapture(e.pointerId);
+      endDrag(e.pointerId);
       return;
     }
     // Order layout: finalize reorder on drop
@@ -1699,17 +1809,52 @@
       const hit = dragStartHit ?? hitTest(e.clientX, e.clientY);
       onselect(hit?.key ?? null, e.ctrlKey);
     }
-    isPointerDown = false;
-    isDragging    = false;
-    dragStartHit  = null;
+    endDrag(e.pointerId);
   }
 
-  function onPointerCancel() {
+  /**
+   * THE ONE PLACE A DRAG ENDS.
+   *
+   * It used to end in two places that each forgot something, and dragButton was reset in
+   * neither — so after a right-drag the flag that makes the right button bypass the
+   * "did not start on a node" guard stayed set until the next pointerdown happened to
+   * overwrite it. Combined with a pointerup that never arrives, that is a camera which
+   * follows a cursor with no button held (Matt, 2026-09-23: the timeline right-drag is
+   * "stuck after initial use and release of right click").
+   *
+   * The capture is released explicitly rather than relying on the implicit release at
+   * pointerup, because the paths that call this instead of pointerup are precisely the
+   * ones where pointerup did not happen.
+   */
+  function endDrag(pointerId?: number) {
     isPointerDown = false;
     isDragging    = false;
     dragStartHit  = null;
+    dragButton    = 0;
     orderDragNode = null;
     timelineDragging = false;
+    if (pointerId !== undefined) {
+      try { canvasEl?.releasePointerCapture(pointerId); } catch { /* already released */ }
+    }
+  }
+
+  function onPointerCancel(e: PointerEvent) {
+    endDrag(e.pointerId);
+  }
+
+  /**
+   * THE SAFETY NET. A right-click can open a native context menu, and a menu that takes the
+   * pointer swallows the pointerup that would have ended the drag — the browser then revokes
+   * the capture and fires lostpointercapture instead. Without this the drag never ends and the
+   * view follows the bare cursor for the rest of the session.
+   */
+  function onLostPointerCapture() {
+    if (isPointerDown || timelineDragging) endDrag();
+  }
+
+  /** Belt and braces for the case where the pointer leaves without a release reaching us. */
+  function onPointerLeave(e: PointerEvent) {
+    if (e.buttons === 0 && (isPointerDown || timelineDragging)) endDrag(e.pointerId);
   }
 
   function onContextMenu2D(e: Event) {
@@ -1732,6 +1877,7 @@
     const newScale = Math.max(MIN_CAMERA_SCALE, Math.min(400, camScale * factor));
     camX = px - (px - camX) * (newScale / camScale);
     camY = py - (py - camY) * (newScale / camScale);
+    userMovedCamera = true;
     camScale = newScale;
     reportedCamScale = camScale;
   }
@@ -1756,6 +1902,8 @@
   onpointermove={onPointerMove}
   onpointerup={onPointerUp}
   onpointercancel={onPointerCancel}
+  onlostpointercapture={onLostPointerCapture}
+  onpointerleave={onPointerLeave}
   onwheel={onWheel}
   oncontextmenu={onContextMenu2D}
 ></canvas>

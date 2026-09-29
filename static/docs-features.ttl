@@ -421,7 +421,7 @@ feat:FiveMoves
     rdf:type            skos:Concept ;
     rdfs:label          "What Reckons.AI does, in five moves" ;
     hnav:order          50 ;
-    skos:broader        feat:WhatIsReckonsAI ;
+    skos:broader        guide:WhatIsReckonsAI ;
     skos:definition     "Reckons.AI does one thing in five moves: it takes what you put in, works out the claims inside it, asks you which are true, keeps the ones you accept with their sources attached, and then lets you ask the result questions. Everything below is a part of one of those five moves. If you only read one thing about the product, read this page rather than the component list underneath it — the components make sense as answers to the five moves and make very little sense on their own." ;
     kpred:render-as     "gallery" ;
     kpred:page-section  "Learn" ;
@@ -453,7 +453,7 @@ feat:FiveMoves
 set:MoveCapture rdf:type          skos:Collection ;
     kpred:set-kind      kset:page ;
     skos:prefLabel      "Take it in" ;
-    skos:definition     "Paste text, point at a URL or a repository, drop in a PDF, subscribe a current to a feed so it keeps arriving, or just talk — speech to text runs locally. Long sources are chunked so nothing is silently truncated." ;
+    skos:definition     "Paste text, point at a URL or a repository, drop in a PDF, subscribe a current to a feed so it keeps arriving, or just talk — speech to text runs locally. Extraction reads the first 12,000 characters of a source, about 2,000 words, and a longer source is cut there without a warning today; splitting long sources into chunks is planned, not built." ;
     skos:member         feat:Ingest, feat:Currents, feat:WhisperSTT, feat:TextChunking, feat:ConfluenceMigration ;
     kpred:set-relates-to feat:FiveMoves .
 

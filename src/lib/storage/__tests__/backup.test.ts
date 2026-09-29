@@ -58,16 +58,9 @@ describe('parseSettingsProfile', () => {
   });
 
   it('does not include API keys even if present in JSON', () => {
-    // API keys are not in the SettingsProfile interface, so even if someone
-    // manually adds them to the JSON, they won't appear in the returned object
-    // (they'll pass through since we do a spread, but this verifies the interface
-    // doesn't define them — tested by ensuring standard fields work)
-    const withKey = { ...validProfile, claudeApiKey: 'sk-secret' };
+    const withKey = { ...validProfile, claudeApiKey: 'synthetic-secret' };
     const result = parseSettingsProfile(JSON.stringify(withKey));
-    expect(result).not.toBeNull();
-    // The key would be in result because parseSettingsProfile does a spread,
-    // but importantly it's NOT in the SettingsProfile interface definition.
-    // The key protection is in exportSettingsProfile() which never includes keys.
+    expect(result).not.toHaveProperty('claudeApiKey');
     expect(result?.preferredBackend).toBe('claude');
   });
 });

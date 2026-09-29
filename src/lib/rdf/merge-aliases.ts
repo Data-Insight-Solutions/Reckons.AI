@@ -5,7 +5,7 @@
  * THE PROBLEM THIS FIXES. Merging redirects every statement from the dropped entity onto the
  * kept one, and MergeReview treats two different `rdfs:label` values as a CONFLICT the user
  * must resolve — one wins, and the loser is set to `rejected`. So the moment you merge
- * "Ava Farmers Market" into "Ava Growers Market", the graph forgets it was ever called the
+ * "Meadow Farmers Market" into "Meadow Growers Market", the graph forgets it was ever called the
  * first thing. That name was real: it is what a source called it, what a search would look
  * for, and what the next import will arrive as — at which point the entity is duplicated
  * again and the same merge is done a second time by hand.
@@ -60,7 +60,7 @@ function namesOf(iri: string, statements: Statement[]): string[] {
  * The alias values a merge of `dropIri` into `keepIri` should record on the kept entity.
  *
  * Includes the dropped entity's labels and any aliases it had already accumulated, plus the
- * name implied by its IRI — a node created as `urn:kbase:concept/ava-farmers-market` carries
+ * name implied by its IRI — a node created as `urn:kbase:concept/meadow-farmers-market` carries
  * a name in its identifier whether or not anyone wrote an rdfs:label for it, and dropping the
  * IRI silently drops that name too.
  *

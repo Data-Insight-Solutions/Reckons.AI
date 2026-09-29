@@ -41,6 +41,7 @@
     "storybook": "storybook dev --port 6006",
     "build-storybook": "storybook build",
     "test:visual": "playwright test --config=playwright.visual.config.ts --project=chromium",
+    "test:visual:ci": "VISUAL_SKIP_STORYBOOK=1 playwright test --config=playwright.visual.config.ts --project=chromium",
     "test:stories": "playwright test --config=playwright.visual.config.ts --project=user-stories",
     "test:visual:all": "playwright test --config=playwright.visual.config.ts",
     "test:workflows": "playwright test --config=playwright.workflows.config.ts",
@@ -87,6 +88,7 @@
     "bench:coding:save": "npx tsx tests/bench/run-coding-bench.ts --save",
     "bench:agentic": "npx tsx tests/bench/run-agentic-bench.ts",
     "bench:agentic:save": "npx tsx tests/bench/run-agentic-bench.ts --save",
+    "bench:decision": "npx tsx tests/bench/run-decision-bench.ts",
     "bench:cost": "npx tsx tests/bench/run-cost-bench.ts",
     "bench:cost:run": "npx tsx tests/bench/run-cost-bench.ts --run --save",
     "bench:ollama": "npx tsx tests/bench/run-ollama-bench.ts",
@@ -116,6 +118,9 @@
     "offline:decisions": "npx tsx scripts/offline/graph-decisions.ts",
     "offline:aggregate": "npx tsx scripts/offline/aggregate-decisions.ts",
     "offline:lint": "npx tsx scripts/offline/graph-lint.ts",
+    "offline:terms": "npx tsx scripts/offline/term-usage.ts",
+    "offline:naming": "npx tsx scripts/offline/naming-conventions.ts",
+    "offline:naming:check": "npx tsx scripts/offline/naming-conventions.ts --check",
     "offline:chain": "npx tsx scripts/offline/extraction-chain.ts",
     "offline:score": "npx tsx scripts/offline/extraction-score.ts",
     "secret:scan": "npx tsx scripts/offline/secret-scan.ts --ci",
@@ -169,7 +174,9 @@
     "landing:data": "npx tsx scripts/landing-data.ts",
     "docs:build:check": "npx tsx scripts/docs-build.ts --check",
     "docs:staleness": "npx tsx scripts/offline/docs-staleness.ts",
-    "docs:review": "npx tsx scripts/offline/docs-review.ts"
+    "docs:review": "npx tsx scripts/offline/docs-review.ts",
+    "host:check": "tsx scripts/offline/host-health.ts",
+    "security:dependencies": "tsx scripts/offline/dependency-health.ts"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.112.1",
@@ -184,6 +191,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "@types/chrome": "^0.2.2",
     "@types/qrcode": "^1.5.6",
+    "@types/sanitize-html": "^2.16.1",
     "@types/three": "^0.185.1",
     "@vite-pwa/sveltekit": "^1.1.0",
     "@vitest/coverage-v8": "^4.1.10",
@@ -219,6 +227,7 @@
     "marked": "^18.0.11",
     "n3": "^2.7.11",
     "qrcode": "^1.5.4",
+    "sanitize-html": "^2.17.7",
     "tesseract.js": "^7.0.0",
     "three": "^0.185.1",
     "uuid": "^14.0.2"
@@ -227,10 +236,10 @@
     "uuid": "$uuid",
     "cookie": "^0.7.0",
     "sharp": "$sharp",
-    "adm-zip": "0.6.0",
+    "adm-zip": "0.6.1",
     "fast-uri": "^3.1.7",
     "postcss": "^8.5.23",
-    "undici": "^7.29.0",
+    "undici": "^7.29.1",
     "browserslist": "^4.28.7"
   }
 }

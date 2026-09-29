@@ -37,6 +37,7 @@
 @prefix leap:   <urn:reckons:docs/leap/> .
 @prefix hnav:   <urn:reckons:nav/> .
 @prefix creator: <urn:reckons:creator/> .
+@prefix schema:  <https://schema.org/> .
 
 ## KB Identity
 <urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a00-b000-000000000000" .
@@ -55,8 +56,8 @@ guide:ReckonsAI
     skos:related        guide:WhatIsReckonsAI ;
     skos:related        feat:Shelly ;
     skos:related        tech:Architecture ;
-    kpred:createdBy     creator:DataInsightSolutions ;
-    kpred:createdBy     creator:MatthewRoe .
+    dc:creator     creator:DataInsightSolutions ;
+    dc:creator     creator:MatthewRoe .
 
 
 ## =============================================================================
@@ -77,7 +78,7 @@ creator:MatthewRoe
     rdfs:label          "Matthew Roe" ;
     skos:definition     "Owner-operator of Data Insight Solutions LLC and creator of Reckons.AI. Designed the local-first architecture, the human-in-the-loop review workflow, and the graph Leap cross-referencing system." ;
     kpred:role          "Founder & Developer" ;
-    kpred:worksAt       creator:DataInsightSolutions ;
+    schema:worksFor       creator:DataInsightSolutions ;
     skos:related        guide:ReckonsAI .
 
 

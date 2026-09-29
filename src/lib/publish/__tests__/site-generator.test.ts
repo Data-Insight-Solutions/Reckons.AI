@@ -5,6 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import { generateStaticSite, extractTheme, regenerateChangedPages, siteShellSignature } from '../site-generator';
 import type { Statement } from '../../rdf/types';
+import { buildSiteFiles, sveltiaAdminHtml, SVELTIA_CMS_CDN, SVELTIA_CMS_INTEGRITY } from '../site-export';
 
 const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
@@ -47,6 +48,34 @@ const base = [
 ];
 
 describe('generateStaticSite', () => {
+  it.each(['../escape', '/absolute', 'a\\b', '%2e%2e', 'bad" onclick="x', 'a//b'])('refuses unsafe slug %s in full, incremental and source exports', (slug) => {
+    const input = [...base, ...page('urn:example:bad', 'Bad', { slug })];
+    expect(() => generateStaticSite(input)).toThrow('Unsafe site output path');
+    expect(() => regenerateChangedPages(input, ['urn:example:bad'])).toThrow('Unsafe site output path');
+    expect(() => buildSiteFiles(input)).toThrow('Unsafe site output path');
+  });
+
+  it('refuses colliding output paths', () => {
+    const input = [...base, ...page('urn:example:duplicate', 'Other', { slug: 'about' })];
+    expect(() => generateStaticSite(input)).toThrow('Duplicate');
+    expect(() => regenerateChangedPages(input, [ABOUT])).toThrow('Duplicate');
+    expect(() => buildSiteFiles(input)).toThrow('Duplicate');
+  });
+
+  it('strips active HTML and remote image loads while preserving ordinary Markdown', () => {
+    const body = '**Safe**\n\n<script>window.compromised=1</script><img src="https://tracker.example/pixel" onerror="window.compromised=1"><a href="javascript:alert(1)">link</a><iframe srcdoc="bad"></iframe><style>body{color:red}</style><img src="/media/safe.png">';
+    const html = generateStaticSite(page(HOME, 'Safe', { body })).files['index.html'];
+    expect(html).toContain('<strong>Safe</strong>');
+    expect(html).toContain('src="/media/safe.png"');
+    expect(html).not.toMatch(/<script|<iframe|<style|onerror=|javascript:|tracker\.example/);
+    expect(html).toContain("script-src 'none'");
+  });
+
+  it('pins the CMS script and attaches its integrity digest', () => {
+    expect(SVELTIA_CMS_CDN).toMatch(/@sveltia\/cms@\d+\.\d+\.\d+\/dist\/sveltia-cms\.js$/);
+    expect(SVELTIA_CMS_INTEGRITY).toMatch(/^sha384-[A-Za-z0-9+/]{64}$/);
+    expect(sveltiaAdminHtml()).toContain(`integrity="${SVELTIA_CMS_INTEGRITY}" crossorigin="anonymous"`);
+  });
   it('renders one clean-URL HTML file per published page, plus styles + graph.json', () => {
     const site = generateStaticSite(base, { siteTitle: 'My Site' });
     expect(site.pageCount).toBe(2);
@@ -73,12 +102,24 @@ describe('generateStaticSite', () => {
 });
 
 describe('extractTheme + graph-driven design', () => {
+  it('rejects CSS declaration injection and remote or executable logo URLs', () => {
+    const input = [
+      st('urn:theme', RDF_TYPE, 'urn:kbase:type/SiteTheme', true),
+      st('urn:theme', `${SITE}accent`, 'red;}body{background:url(https://tracker.example)}'),
+      st('urn:theme', `${SITE}font`, 'serif; background:url(https://tracker.example)'),
+      st('urn:theme', `${SITE}logo`, 'javascript:alert(1)'),
+    ];
+    expect(extractTheme(input)).toMatchObject({ accent: '#f59e0b', logoUrl: null });
+    expect(generateStaticSite([...base, ...input]).files['styles.css']).not.toContain('tracker');
+    input[3].o.value = 'https://tracker.example/logo.png';
+    expect(extractTheme(input).logoUrl).toBeNull();
+  });
   const THEME = 'urn:kbase:concept/theme';
   const themed = [
     ...base,
     st(THEME, RDF_TYPE, 'urn:kbase:type/SiteTheme', true),
     st(THEME, `${SITE}accent`, '#ff0066'),
-    st(THEME, `${SITE}logo`, 'https://example.com/logo.png'),
+    st(THEME, `${SITE}logo`, '/media/logo.png'),
     st(THEME, `${SITE}title`, 'Themed'),
   ];
 
@@ -91,14 +132,14 @@ describe('extractTheme + graph-driven design', () => {
   it('reads accent, logo, and title from a SiteTheme entity', () => {
     const t = extractTheme(themed);
     expect(t.accent).toBe('#ff0066');
-    expect(t.logoUrl).toBe('https://example.com/logo.png');
+    expect(t.logoUrl).toBe('/media/logo.png');
     expect(t.title).toBe('Themed');
   });
 
   it('injects the theme into the generated CSS and shows the logo', () => {
     const site = generateStaticSite(themed);
     expect(site.files['styles.css']).toContain('--accent:#ff0066');
-    expect(site.files['index.html']).toContain('class="site-logo" src="https://example.com/logo.png"');
+    expect(site.files['index.html']).toContain('class="site-logo" src="/media/logo.png"');
   });
 });
 

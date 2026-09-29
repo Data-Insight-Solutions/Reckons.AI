@@ -1,10 +1,8 @@
 /**
  * Which facts a human never needs to be asked about.
  *
- * Matt, 2026-08-27: "Extracted facts need approvals by humans, its semantically risky to not. The
- * log level facts that are verified by system details are not necessarily disputed, automatically
- * trust verifiable facts... the fact Orange Logic is an Enterprise DAM could be extracted and
- * would need verification. The provenance of that fact does not need human verification."
+ * Design decision, 2026-08-27 (paraphrased): extracted claims require human approval;
+ * system-verified provenance can be trusted automatically. Examples use invented names.
  *
  * TWO INDEPENDENT REASONS A FACT IS NOT WORTH ASKING ABOUT, and they compose with OR:
  *
@@ -16,7 +14,7 @@
  *      carries less authority than the check.
  *
  * WHAT THIS DELIBERATELY DOES NOT COVER. Everything a model READ OUT of a note stays pending, at
- * every altitude. "Orange Logic is an enterprise DAM" is a claim about the world made by a
+ * every altitude. "Example Archive is an enterprise DAM" is a claim about the world made by a
  * language model from a possibly-misheard transcript, and its being mundane is not evidence that
  * it is true. The saving here is confined to facts the SYSTEM asserts about its own operation:
  * that a note was captured, when it was extracted, and which sentence a triple came from.

@@ -23,6 +23,12 @@ describe('isSecretKey (F107.5)', () => {
 });
 
 describe('redactSecrets', () => {
+  it('does not create a prototype from untrusted JSON keys', () => {
+    const out = redactSecrets(JSON.parse('{"__proto__":{"polluted":true},"name":"safe","child":{"constructor":{"token":"secret"}}}'));
+    expect(Object.getPrototypeOf(out)).toBe(Object.prototype);
+    expect(out.polluted).toBeUndefined();
+    expect(out).toEqual({ name: 'safe', child: {} });
+  });
   it('drops secret fields at the top level', () => {
     const out = redactSecrets({ claudeApiKey: 'sk-live-123', claudeModel: 'opus' });
     expect(out).toEqual({ claudeModel: 'opus' });
