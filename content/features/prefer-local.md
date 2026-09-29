@@ -13,6 +13,10 @@ generated: "docs-kb"
 
 # Prefer-Local Routing
 
+> **Production** — built, tested, and in use.
+
 Opt-in setting that redirects chat, diff-summary, and merge-analysis to a local Ollama model whenever it is reachable, instead of your chosen cloud backend. Falls back to your normal backend chain the moment Ollama is unreachable -- no extraction quality is sacrificed silently. A companion structured-extraction mode uses a compact, schema-constrained prompt so small local models still produce clean facts.
+
+<p class="derived">This is built, working, and in daily use here.</p>
 
 <p class="in-sets">Part of Ask it things, Work out the claims.</p>
