@@ -152,8 +152,8 @@
   .count-all:disabled { opacity: 0.6; cursor: progress; }
   .map-svg { width: 100%; max-width: 560px; height: auto; align-self: center; background: var(--surface); border: 1px solid var(--line); border-radius: var(--rad); }
   .region circle { fill: var(--surface-2); stroke: var(--line); stroke-dasharray: 3 4; }
-  .region-title { font-family: var(--font-mono); font-size: 15px; fill: var(--ink-2); }
-  .region-basis { fill: var(--muted); font-size: 13px; }
+  .region-title { font-family: var(--font-mono); font-size: 18px; fill: var(--ink-2); }
+  .region-basis { fill: var(--muted); font-size: 15px; }
   .edge { stroke: var(--accent); stroke-opacity: 0.45; stroke-linecap: round; }
   .edge-selected { stroke-opacity: 0.9; }
   .node { cursor: pointer; outline: none; }
@@ -161,7 +161,7 @@
   .node.current circle { fill: var(--accent-soft); stroke-width: 3; }
   .node.uncounted circle { stroke-dasharray: 4 3; stroke: var(--muted); }
   .node.selected circle, .node:focus-visible circle { stroke-width: 3.5; stroke: var(--accent); }
-  .node text { font-size: 15px; fill: var(--ink); pointer-events: none; paint-order: stroke; stroke: var(--surface); stroke-width: 3px; }
+  .node text { font-size: 19px; fill: var(--ink); pointer-events: none; paint-order: stroke; stroke: var(--surface); stroke-width: 3px; }
   .map-detail { border: 1px solid var(--line); border-radius: var(--rad-sm); padding: 0.6rem 0.75rem; background: var(--surface); display: flex; flex-direction: column; gap: 0.35rem; }
   .detail-head { display: flex; align-items: center; gap: 0.5rem; }
   .tag { font-size: 0.6rem; color: var(--accent); text-transform: uppercase; }

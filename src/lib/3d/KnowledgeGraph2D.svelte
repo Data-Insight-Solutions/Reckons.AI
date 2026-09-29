@@ -1630,7 +1630,7 @@
           }
           if (!overlaps) {
             placed.push({ x: lx, y: ly, w: lblW, h: lblH });
-            labelData.push({ key: n.key, label: n.label, x: s.x, y: s.y, opacity: 0.85 });
+            labelData.push({ key: n.key, label: n.label, x: s.x, y: s.y, opacity: 1 });
           } else {
             // Hidden but still in DOM for hover to reveal
             labelData.push({ key: n.key, label: n.label, x: s.x, y: s.y, opacity: 0 });
