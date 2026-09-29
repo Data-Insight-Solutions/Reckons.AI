@@ -8138,7 +8138,7 @@ kb:published-space-directory rdf:type ktype:Feature ;
 kb:meta-graph-view rdf:type ktype:Feature ;
     rdfs:label "Spaces view — the meta-graph, one level above the explorer" ;
     kpred:feature-id "F218" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "in-progress" ;
     kpred:depends-on kb:graph-sets ;
     kpred:depends-on kb:multi-kb ;
     kpred:relates-to kb:entity-sets ;
@@ -8253,6 +8253,11 @@ kb:phone-approvals rdf:type ktype:Feature ;
                kpred:measured     "THE TASK VOCABULARY ALREADY ANTICIPATED THE PROMOTION STEP AND IT IS UNUSED. ktype:TaskStateScheme declares proposed, open, claimed, waiting, done, failed — and all 25 tasks in reckons-workspace/tasks.ttl are `open`, with `proposed` used nowhere (verified 2026-09-10). A voiced task arrives `proposed`; the click moves it to `open`; the existing runner takes it from there. Nothing new is needed in the model." ;
                kpred:remaining    "NOTHING IS BUILT, and the order matters because each step is useful alone. (1) A TEMPLATE REGISTRY with the four properties above as its admission test — this is the actual new concept and it is small. (2) The approval-to-task link on the laptop, which is the prerequisite for everything and does not involve voice at all. (3) Voice selecting a template, which cli/src/voice-commands.ts is already shaped for: `run-agent-task` exists and confirms out loud, with no handler behind it. (4) The phone view, last — a phone that can approve nothing is not worth pairing." ;
                kpred:honest-note  "AND THE SIMPLEST VERSION MAY BE ENOUGH FOR A LONG TIME. Notifying a phone needs no pairing if the notification is an ordinary message with a link; n8n can already send one. QR pairing buys a persistent session, which is worth building once the approval flow has proven it gets used. Do not build the pairing in order to find out whether the feature is wanted." .
+
+kb:meta-graph-view kpred:progress "2026-09-29, PHASE 1 BUILT (Matt chose it as the next build: 'we need a UI/UX around the meta-graph relations'). A Spaces map at the top of the Spaces tab: each space a node sized by statement count, leaps between two spaces aggregated into one edge whose width grows with the count and which keeps a count per direction, spaces clustered by the set buckets the tab already computes, each cluster labelled with its basis (by name, by folder). Deterministic polar placement, no simulation. Selecting a space lists its connections with counts each way and opens it. Leap counts live on the registry entry: the current space is counted from memory once loaded, the others on an explicit 'count leaps in every space' action, and a space never counted is drawn dashed and described as uncounted rather than as having no leaps. Leaps to a stable id not on this device are counted and reported. Checked in Chromium at desktop and phone widths, light and dark, with no page errors." ;
+    kpred:has-file "src/lib/rdf/space-graph.ts", "src/lib/components/SpacesMap.svelte", "src/lib/storage/space-leaps.ts" ;
+    kpred:tested-by "src/lib/rdf/__tests__/space-graph.test.ts" ;
+    kpred:measured "NOT YET: node labels are drawn inside the scaled drawing, so on a phone-width screen they render at roughly 10px; the detail panel below the map carries full-size text. No browser test covers the map yet; the check on 2026-09-29 was a manual screenshot run. Phases 2 (declared membership from a dcat:Catalog), 3 (a model per space) and 4 (scoping a view or a reckoning to a set) are not built, and the repository-graphs view Matt also asked for (app first, then this repo's 40 catalogued graphs) is not started." .
 
 # =============================================================================
 # 0.2.5 PLANNING, 2026-09-29 — the dual perspective, the source view, one canvas,

@@ -1,0 +1,72 @@
+import { describe, it, expect } from 'vitest';
+import { aggregateEdges, buildSpaceGraph, leapTargetCounts, nodeRadius, edgeWidth, type SpaceInput } from '../space-graph';
+import { LEAP_PRED } from '../kb-leap';
+import type { Statement } from '../types';
+
+const leap = (target: string, status: Statement['status'] = 'confirmed') =>
+  ({ id: target + status, s: { kind: 'iri', value: 'urn:x:node' }, p: { kind: 'iri', value: LEAP_PRED }, o: { kind: 'literal', value: target }, status }) as unknown as Statement;
+
+describe('leapTargetCounts', () => {
+  it('counts active space-to-space leaps by target, ignoring app paths, URLs and rejected rows', () => {
+    const counts = leapTargetCounts([
+      leap('uuid-b'), leap('uuid-b'), leap('uuid-c'),
+      leap('/review'), leap('https://example.org'),
+      leap('uuid-b', 'rejected'), leap('uuid-c', 'superseded'),
+    ]);
+    expect(counts).toEqual({ 'uuid-b': 2, 'uuid-c': 1 });
+  });
+});
+
+const space = (id: string, leapTargets?: Record<string, number>, statementCount = 10): SpaceInput =>
+  ({ id, name: id.toUpperCase(), stableId: `uuid-${id}`, statementCount, leapTargets });
+
+describe('aggregateEdges', () => {
+  it('makes one edge per pair and keeps the count each way', () => {
+    const { edges } = aggregateEdges([space('a', { 'uuid-b': 3 }), space('b', { 'uuid-a': 1 }), space('c', {})]);
+    expect(edges).toEqual([{ a: 'a', b: 'b', aToB: 3, bToA: 1, total: 4 }]);
+  });
+
+  it('counts leaps to a space that is not registered as unresolved, and ignores a leap to itself', () => {
+    const { edges, unresolved } = aggregateEdges([space('a', { 'uuid-gone': 2, 'uuid-a': 5 })]);
+    expect(edges).toEqual([]);
+    expect(unresolved.get('a')).toBe(2);
+  });
+});
+
+describe('buildSpaceGraph', () => {
+  const sets = [
+    { id: 'work', title: 'Work', basis: 'derived', memberIds: ['a', 'b'] },
+    { id: 'home', title: 'Home', basis: 'folder', memberIds: ['c'] },
+  ];
+
+  it('places every space once, clusters each set, and is the same every time', () => {
+    const spaces = [space('a', { 'uuid-c': 1 }), space('b', {}), space('c')];
+    const g1 = buildSpaceGraph(spaces, sets);
+    const g2 = buildSpaceGraph(spaces, sets);
+    expect(g1).toEqual(g2);
+    expect(g1.nodes.map((n) => [n.id, n.setId])).toEqual([['a', 'work'], ['b', 'work'], ['c', 'home']]);
+    expect(g1.regions.map((r) => [r.id, r.count])).toEqual([['work', 2], ['home', 1]]);
+    // Members of one set sit inside that set's region.
+    for (const n of g1.nodes) {
+      const r = g1.regions.find((x) => x.id === n.setId)!;
+      expect(Math.hypot(n.x - r.x, n.y - r.y)).toBeLessThan(r.r);
+    }
+  });
+
+  it('says how many spaces have not been counted, rather than treating them as having no leaps', () => {
+    const g = buildSpaceGraph([space('a', {}), space('b'), space('c')], sets);
+    expect(g.uncounted).toBe(2);
+    expect(g.nodes.find((n) => n.id === 'b')!.leapsCounted).toBe(false);
+    expect(g.nodes.find((n) => n.id === 'a')!.leapsCounted).toBe(true);
+  });
+});
+
+describe('sizes', () => {
+  it('scales nodes by area and caps edge width', () => {
+    expect(nodeRadius(0, 100)).toBe(10);
+    expect(nodeRadius(100, 100)).toBe(26);
+    expect(nodeRadius(25, 100)).toBeCloseTo(18);
+    expect(edgeWidth(1)).toBe(3);
+    expect(edgeWidth(10_000)).toBe(9);
+  });
+});
